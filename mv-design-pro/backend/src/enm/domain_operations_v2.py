@@ -637,8 +637,8 @@ def _has_transformer_in_path(enm: dict[str, Any], station: dict[str, Any]) -> bo
 
 
 def _resolve_catalog_ref(
-    direct_ref: Any,
-    binding: Any,
+    direct_ref: object,
+    binding: object | None,
 ) -> tuple[str | None, str | None]:
     """Wyznacz catalog_ref z jawnego pola lub catalog_binding.
 
@@ -661,7 +661,7 @@ def _resolve_catalog_ref(
 
 
 def _validate_required_materialization(
-    materialized_params: Any,
+    materialized_params: object,
     required_fields: list[str],
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Sprawdź kompletność materialized_params dla pól wymaganych przez solver."""

@@ -5,11 +5,6 @@ from enm.models import ENMDefaults, ENMHeader, EnergyNetworkModel
 
 CABLE_ID = "cable-tfk-yakxs-3x120"
 TRAFO_ID = "tr-sn-nn-15-04-630kva-dyn11"
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
 CABLE_BINDING = {
     "catalog_namespace": "KABEL_SN",
     "catalog_item_id": CABLE_ID,
@@ -20,16 +15,6 @@ TRAFO_BINDING = {
     "catalog_item_id": TRAFO_ID,
     "catalog_item_version": "2024.1",
 }
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
 
 
 def _empty_enm() -> dict:
@@ -55,29 +40,9 @@ def _build_source_plus_segments(segment_lengths_m: list[int]) -> dict:
                 "dlugosc_m": length,
                 "name": f"Odcinek {idx + 1}",
                 "catalog_ref": CABLE_ID,
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
                 "catalog_binding": CABLE_BINDING,
             },
             "catalog_binding": CABLE_BINDING,
-=======
-            },
->>>>>>> theirs
-=======
-            },
->>>>>>> theirs
-=======
-            },
->>>>>>> theirs
-=======
-            },
->>>>>>> theirs
-=======
-            },
->>>>>>> theirs
         })
     return snapshot
 
@@ -99,11 +64,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
         "station_type": "B",
         "insert_at": {"ratio": 0.5},
         "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
         "transformer": {
             "create": True,
             "transformer_catalog_ref": TRAFO_ID,
@@ -121,31 +81,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
     assert created_transformer["parameter_source"] == "CATALOG"
     assert created_transformer["meta"]["catalog_item_version"] == "2024.1"
 
-=======
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO_ID},
-    })
-
->>>>>>> theirs
-=======
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO_ID},
-    })
-
->>>>>>> theirs
-=======
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO_ID},
-    })
-
->>>>>>> theirs
-=======
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO_ID},
-    })
-
->>>>>>> theirs
-=======
-        "transformer": {"create": True, "transformer_catalog_ref": TRAFO_ID},
-    })
-
->>>>>>> theirs
     station_bus_ref = next(
         bus["ref_id"] for bus in snapshot.get("buses", [])
         if "sn_bus" in bus.get("ref_id", "")
@@ -157,11 +92,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
             "rodzaj": "KABEL",
             "dlugosc_m": 150,
             "catalog_ref": CABLE_ID,
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
             "catalog_binding": CABLE_BINDING,
         },
         "catalog_binding": CABLE_BINDING,
@@ -172,34 +102,6 @@ def test_sequence_continue_continue_insert_station_then_branch():
     assert created_branch["catalog_ref"] == CABLE_ID
     assert created_branch["catalog_namespace"] == "KABEL_SN"
     assert created_branch["meta"]["catalog_item_version"] == "2024.1"
-=======
-=======
->>>>>>> theirs
-        },
-    })
-
-    assert len(snapshot.get("branches", [])) >= 3
-<<<<<<< ours
->>>>>>> theirs
-=======
-=======
->>>>>>> theirs
-        },
-    })
-
-    assert len(snapshot.get("branches", [])) >= 3
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
-        },
-    })
-
-    assert len(snapshot.get("branches", [])) >= 3
->>>>>>> theirs
 
 
 def test_sequence_edit_delete_continue_trunk():
@@ -223,11 +125,6 @@ def test_sequence_edit_delete_continue_trunk():
             "rodzaj": "KABEL",
             "dlugosc_m": 190,
             "catalog_ref": CABLE_ID,
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
             "catalog_binding": CABLE_BINDING,
         },
         "catalog_binding": CABLE_BINDING,
@@ -274,29 +171,3 @@ def test_sequence_clear_and_reassign_catalog_keeps_snapshot_contract_valid():
     assert rebound_segment.get("catalog_namespace") == "KABEL_SN"
     assert rebound_segment.get("source_mode") == "KATALOG"
     assert rebound_segment.get("meta", {}).get("catalog_item_version") == "2024.1"
-=======
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-        },
-    })
-
-    assert len(snapshot.get("branches", [])) >= 2
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
-<<<<<<< ours
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
-=======
->>>>>>> theirs
