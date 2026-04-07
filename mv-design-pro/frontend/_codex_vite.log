@@ -1,0 +1,43 @@
+
+> mv-design-pro-frontend@0.1.0 dev
+> vite
+
+
+  [32m[1mVITE[22m v5.4.21[39m  [2mready in [0m[1m609[22m[2m[0m ms[22m
+
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m5173[22m/[39m
+  [32m➜[39m  [1mNetwork[22m: [36mhttp://192.168.1.20:[1m5173[22m/[39m
+[2m11:40:18[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/navigation/__tests__/routes.test.ts[22m
+[2m11:47:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/index.css[22m
+[2m14:00:55[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/ui/results-inspector/ResultsInspectorPage.tsx, /src/ui/proof/TraceStepView.tsx, /src/ui/proof/compare/TraceDiffList.tsx, /src/ui/proof/compare/TraceCompareView.tsx[22m
+[2m14:01:03[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/ui/results-inspector/ResultsInspectorPage.tsx, /src/ui/proof/TraceStepView.tsx, /src/ui/proof/compare/TraceDiffList.tsx, /src/ui/proof/compare/TraceCompareView.tsx[22m
+[2m14:01:40[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/ui/sld/DiagnosticResultsLayer.tsx, /src/ui/sld/SldEditorPage.tsx, /src/ui/sld/ResultsOverlay.tsx, /src/ui/sld/SLDView.tsx, /src/ui/sld/SldTechLabelsLayer.tsx, /src/ui/sld/SLDViewPage.tsx, /src/ui/sld/inspector/SldInspectorPanel.tsx, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-inspector/ResultsInspectorPage.tsx[22m
+[2m14:02:00[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/ui/sld/DiagnosticResultsLayer.tsx, /src/ui/sld/SldEditorPage.tsx, /src/ui/sld/ResultsOverlay.tsx, /src/ui/sld/SLDView.tsx, /src/ui/sld/SldTechLabelsLayer.tsx, /src/ui/sld/SLDViewPage.tsx, /src/ui/sld/inspector/SldInspectorPanel.tsx, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-inspector/ResultsInspectorPage.tsx[22m
+[2m14:02:14[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/ui/sld/DiagnosticResultsLayer.tsx, /src/ui/sld/SldEditorPage.tsx, /src/ui/sld/ResultsOverlay.tsx, /src/ui/sld/SLDView.tsx, /src/ui/sld/SldTechLabelsLayer.tsx, /src/ui/sld/SLDViewPage.tsx, /src/ui/sld/inspector/SldInspectorPanel.tsx, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-inspector/ResultsInspectorPage.tsx[22m
+[2m14:02:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.tsx, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/SldOverlayPanel.tsx, /src/ui/results-workspace/CompareViewPanel.tsx, /src/ui/results-workspace/WorkspaceSidebar.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-workspace/WorkspaceHeader.tsx, /src/ui/results-workspace/BatchViewPanel.tsx[22m
+[2m14:02:53[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/index.css, /src/App.tsx, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/SldOverlayPanel.tsx, /src/ui/results-workspace/CompareViewPanel.tsx, /src/ui/results-workspace/WorkspaceSidebar.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-workspace/WorkspaceHeader.tsx, /src/ui/results-workspace/BatchViewPanel.tsx[22m
+[2m14:03:49[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/SldOverlayPanel.tsx, /src/ui/results-workspace/CompareViewPanel.tsx, /src/ui/results-workspace/WorkspaceSidebar.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-workspace/WorkspaceHeader.tsx, /src/ui/results-workspace/BatchViewPanel.tsx[22m
+[2m14:04:21[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/App.tsx, /src/index.css, /src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/ui/results-workspace/SldOverlayPanel.tsx, /src/ui/results-workspace/CompareViewPanel.tsx, /src/ui/results-workspace/WorkspaceSidebar.tsx, /src/ui/results-workspace/RunViewPanel.tsx, /src/ui/results-workspace/WorkspaceHeader.tsx, /src/ui/results-workspace/BatchViewPanel.tsx[22m
+[2m14:04:39[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/index.css[22m
+[2m14:10:04[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/ResultsWorkspacePage.tsx, /src/index.css[22m
+[2m14:10:47[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx, /src/index.css[22m
+[2m14:12:42[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx[22m
+[2m14:13:10[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-inspector/ResultsInspectorPage.tsx, /src/index.css[22m
+[2m14:13:28[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/RunViewPanel.tsx, /src/index.css[22m
+[2m14:13:45[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-inspector/LegacyTraceWorkspacePage.tsx, /src/index.css[22m
+[2m14:13:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-inspector/LegacyTraceWorkspacePage.tsx[22m
+[2m14:14:22[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx, /src/index.css[22m
+[2m14:15:58[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx, /src/index.css[22m
+[2m14:17:43[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx[22m
+[2m14:18:46[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx[22m
+[2m14:20:26[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx[22m
+[2m14:20:47[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/store.test.ts[22m
+[2m14:21:06[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/ResultsWorkspacePage.test.tsx[22m
+[2m14:21:55[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/ResultsWorkspacePage.test.tsx[22m
+[2m14:22:38[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/ResultsWorkspacePage.test.tsx[22m
+[2m14:28:06[22m [36m[1m[vite][22m[39m [32mhmr update [39m[2m/src/ui/results-workspace/SldOverlayPanel.tsx, /src/index.css[22m
+[2m14:28:12[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/SldOverlayPanel.test.tsx[22m
+[2m14:29:14[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/SldOverlayPanel.test.tsx[22m
+[2m14:30:02[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/ResultsWorkspacePage.test.tsx[22m
+[2m14:30:48[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2msrc/ui/results-workspace/__tests__/SldOverlayPanel.test.tsx[22m
+[2m14:37:45[22m [36m[1m[vite][22m[39m [32mpage reload [39m[2mplaywright-report/index.html[22m

@@ -1,0 +1,133 @@
+[2m14:01:40[22m [31m[1m[vite][22m[39m Pre-transform error: Failed to load url /src/ui/results-inspector/api.ts (resolved id: C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend/src/ui/results-inspector/api.ts) in C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend/src/index.css. Does the file exist?
+[2m14:20:50[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:20:50[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:21:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:21:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:21:57[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:21:57[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:22:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:22:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:28:13[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:28:13[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:29:14[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:29:14[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:29:25[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:29:25[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:30:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:30:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:30:49[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:30:49[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:03[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:08[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:10[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:11[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/transformer-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:13[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:14[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/transformer-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:15[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:15[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:16[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/transformer-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:18[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:19[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:24[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:31:28[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:39[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:50[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:51[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:51[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/transformer-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:52[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/cable-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:33:53[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/line-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:36:59[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/transformer-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+[2m14:37:00[22m [31m[1m[vite][22m[39m [31mhttp proxy error: /api/catalog/switch-equipment-types[39m
+Error: connect ECONNREFUSED 127.0.0.1:8000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
