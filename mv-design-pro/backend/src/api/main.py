@@ -22,6 +22,7 @@ from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_comparisons import router as protection_comparisons_router
 from api.reference_patterns import router as reference_patterns_router
+from api.results_workspace import router as results_workspace_router
 from api.sld import router as sld_router
 from api.study_cases import router as study_cases_router
 from api.xlsx_import import router as xlsx_import_router
@@ -104,6 +105,7 @@ app.include_router(projects_router)
 app.include_router(proof_pack_router)
 app.include_router(protection_comparisons_router)
 app.include_router(reference_patterns_router)
+app.include_router(results_workspace_router)
 app.include_router(sld_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)

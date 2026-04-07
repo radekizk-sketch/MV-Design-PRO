@@ -88,11 +88,11 @@ def test_analysis_runs_router_ignores_legacy_analysis_run_rows(client: TestClien
         analysis_type="short_circuit_sn",
     )
 
-    list_response = client.get(f"/projects/{project_id}/analysis-runs")
+    list_response = client.get(f"/api/projects/{project_id}/analysis-runs")
     assert list_response.status_code == 200
     assert str(legacy_run.id) not in {item["id"] for item in list_response.json()["items"]}
 
-    detail_response = client.get(f"/analysis-runs/{legacy_run.id}")
+    detail_response = client.get(f"/api/analysis-runs/{legacy_run.id}")
     assert detail_response.status_code == 404
     assert detail_response.json()["detail"] == f"Run {legacy_run.id} not found"
 
@@ -143,12 +143,85 @@ def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> 
         f"/projects/{uuid4()}/protection-runs",
         json={"sc_run_id": str(uuid4()), "protection_case_id": str(uuid4())},
     ).status_code == 404
-    assert client.get(f"/api/results-workspace/{uuid4()}").status_code == 404
+    workspace_response = client.get(f"/api/results-workspace/{uuid4()}")
+    assert workspace_response.status_code == 200
+    assert workspace_response.json()["study_case_id"]
     assert client.get(f"/api/issues/study-cases/{uuid4()}/issues").status_code == 404
     assert client.post(
         "/api/v1/domain-ops/execute",
         json={"operation": "add_grid_source_sn", "payload": {}, "meta": {}},
     ).status_code == 404
+
+
+def test_results_workspace_lists_canonical_runs(client: TestClient) -> None:
+    _, case_id = _seed_project_and_case(client)
+
+    domain_op = client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "add_grid_source_sn",
+                "payload": {
+                    "voltage_kv": 15.0,
+                    "sk3_mva": 250.0,
+                    "rx_ratio": 0.1,
+                },
+            }
+        },
+    )
+    assert domain_op.status_code == 200
+
+    run_response = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "SC_3F"},
+    )
+    assert run_response.status_code == 201
+    run_id = run_response.json()["id"]
+
+    workspace_response = client.get(f"/api/results-workspace/{case_id}")
+    assert workspace_response.status_code == 200
+
+    payload = workspace_response.json()
+    assert payload["study_case_id"] == str(case_id)
+    assert any(item["run_id"] == run_id for item in payload["runs"])
+
+
+def test_canonical_short_circuit_run_exposes_results_tables_for_workspace(client: TestClient) -> None:
+    _, case_id = _seed_project_and_case(client)
+
+    domain_op = client.post(
+        f"/api/cases/{case_id}/enm/domain-ops",
+        json={
+            "operation": {
+                "name": "add_grid_source_sn",
+                "payload": {
+                    "voltage_kv": 15.0,
+                    "sk3_mva": 250.0,
+                    "rx_ratio": 0.1,
+                },
+            }
+        },
+    )
+    assert domain_op.status_code == 200
+
+    run_response = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "SC_3F"},
+    )
+    assert run_response.status_code == 201
+    run_id = run_response.json()["id"]
+
+    execute_response = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_response.status_code == 200
+
+    results_index_response = client.get(f"/api/analysis-runs/{run_id}/results/index")
+    assert results_index_response.status_code == 200
+    tables = results_index_response.json()["tables"]
+    assert any(table["table_id"] == "short-circuit" for table in tables)
+
+    short_circuit_response = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert short_circuit_response.status_code == 200
+    assert len(short_circuit_response.json()["rows"]) > 0
 
 
 def test_production_enm_has_single_public_write_path(client: TestClient) -> None:

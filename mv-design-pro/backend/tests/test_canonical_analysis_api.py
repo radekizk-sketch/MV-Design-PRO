@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
+from enm.canonical_analysis import CanonicalRun, build_extended_trace
 
 
 def _reset_backend_state() -> None:
@@ -170,29 +172,49 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert execution_payload["validation_snapshot"] == readiness_payload["validation"]
     assert execution_payload["readiness_snapshot"] == readiness_payload["readiness"]
 
-    results_index = client.get(f"/analysis-runs/{run_id}/results/index")
+    results_index = client.get(f"/api/analysis-runs/{run_id}/results/index")
     assert results_index.status_code == 200
     index_payload = results_index.json()
     assert index_payload["run_header"]["snapshot_id"] == snapshot_hash
     assert index_payload["run_header"]["input_hash"] == input_hash
 
-    short_circuit = client.get(f"/analysis-runs/{run_id}/results/short-circuit")
+    short_circuit = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
     assert short_circuit.status_code == 200
     short_circuit_payload = short_circuit.json()
     assert short_circuit_payload["run_id"] == run_id
     assert short_circuit_payload["rows"]
 
-    trace_details = client.get(f"/analysis-runs/{run_id}/results/trace")
+    run_snapshot_response = client.get(f"/api/analysis-runs/{run_id}/snapshot")
+    assert run_snapshot_response.status_code == 200
+    run_snapshot_payload = run_snapshot_response.json()
+    assert run_snapshot_payload["header"]["hash_sha256"] == snapshot_hash
+    assert run_snapshot_payload["sources"]
+
+    trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200
     trace_payload = trace_details.json()
     assert trace_payload["run_id"] == run_id
     assert trace_payload["snapshot_id"] == snapshot_hash
     assert trace_payload["input_hash"] == input_hash
+    assert trace_payload["trace_contract_version"] == "1.0"
+    assert trace_payload["selection_index"]
     assert trace_payload["white_box_trace"]
+    first_target_id = short_circuit_payload["rows"][0]["target_id"]
+    assert trace_payload["selection_index"][first_target_id]["element_type"] == "Bus"
+    assert trace_payload["selection_index"][first_target_id]["step_indices"]
+    first_trace_step = trace_payload["white_box_trace"][0]
+    assert first_trace_step["step_key"] == (first_trace_step.get("key") or "trace-step-1")
+    assert first_trace_step["related_elements"]
+    assert first_trace_step["primary_element_ref"] == first_target_id
+    assert first_trace_step["primary_element_type"] == "Bus"
+    assert any(link["role"] == "CEL_ANALIZY" for link in first_trace_step["related_elements"])
+    assert all(link["element_ref"] in trace_payload["selection_index"] for link in first_trace_step["related_elements"])
 
-    trace_view = client.get(f"/analysis-runs/{run_id}/trace")
+    trace_view = client.get(f"/api/analysis-runs/{run_id}/trace")
     assert trace_view.status_code == 200
-    assert trace_view.json()["trace"] == trace_payload["white_box_trace"]
+    legacy_trace = trace_view.json()["trace"]
+    assert len(legacy_trace) == len(trace_payload["white_box_trace"])
+    assert legacy_trace[0]["target_id"] == first_trace_step["target_id"]
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:
@@ -237,6 +259,30 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert trace_payload["run_id"] == run_id
     assert trace_payload["snapshot_id"] == run_payload["enm_hash"]
 
+    canonical_index_response = client.get(f"/api/analysis-runs/{run_id}/results/index")
+    assert canonical_index_response.status_code == 200
+    canonical_index_payload = canonical_index_response.json()
+    assert canonical_index_payload["run_header"]["snapshot_id"] == run_payload["enm_hash"]
+    assert canonical_index_payload["run_header"]["input_hash"] == run_payload["input_hash"]
+
+    canonical_trace_response = client.get(f"/api/analysis-runs/{run_id}/results/trace")
+    assert canonical_trace_response.status_code == 200
+    canonical_trace_payload = canonical_trace_response.json()
+    assert canonical_trace_payload["snapshot_id"] == run_payload["enm_hash"]
+    assert canonical_trace_payload["input_hash"] == run_payload["input_hash"]
+    assert canonical_trace_payload["trace_contract_version"] == "1.0"
+    assert set(canonical_trace_payload["selection_index"]) == {"branch-load", "bus-load", "bus-main"}
+    assert canonical_trace_payload["selection_index"]["bus-main"]["element_type"] == "Bus"
+    assert canonical_trace_payload["selection_index"]["bus-load"]["element_type"] == "Bus"
+    assert canonical_trace_payload["selection_index"]["branch-load"]["element_type"] == "LineBranch"
+    assert canonical_trace_payload["selection_index"]["bus-main"]["step_indices"]
+    assert canonical_trace_payload["selection_index"]["branch-load"]["step_indices"]
+    final_step = canonical_trace_payload["white_box_trace"][-1]
+    assert final_step["related_elements"]
+    assert final_step["primary_element_ref"] in canonical_trace_payload["selection_index"]
+    assert final_step["primary_element_type"] in {"Bus", "LineBranch"}
+    assert {link["element_ref"] for link in final_step["related_elements"]} == {"branch-load", "bus-load", "bus-main"}
+
     export_response = client.get(f"/power-flow-runs/{run_id}/export/json")
     assert export_response.status_code == 200
     export_payload = export_response.json()
@@ -246,11 +292,64 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert export_payload["trace_summary"]["converged"] is True
 
 
+def test_build_extended_trace_contract_lifts_nested_refs_into_selection_index() -> None:
+    run = CanonicalRun(
+        id=uuid4(),
+        case_id="case-trace",
+        project_id="project-trace",
+        analysis_type="short_circuit_sn",
+        status="FINISHED",
+        created_at=datetime.now(timezone.utc),
+        snapshot_hash="snap-trace",
+        input_hash="input-trace",
+        snapshot={
+            "buses": [
+                {"ref_id": "bus-main"},
+                {"ref_id": "bus-load"},
+            ],
+            "branches": [
+                {"ref_id": "branch-load", "type": "cable"},
+            ],
+        },
+        validation={},
+        readiness={},
+        white_box_trace=[
+            {
+                "title": "Krok kontraktu",
+                "inputs": {"fault_node_id": "bus-main"},
+                "result": {"bus_ids": ["bus-load"]},
+                "metadata": {"branch_ids": ["branch-load"]},
+            }
+        ],
+    )
+
+    trace_payload = build_extended_trace(run)
+
+    assert trace_payload["trace_contract_version"] == "1.0"
+    assert trace_payload["selection_index"]["bus-main"]["element_type"] == "Bus"
+    assert trace_payload["selection_index"]["bus-main"]["step_indices"] == [0]
+    assert trace_payload["selection_index"]["bus-load"]["element_type"] == "Bus"
+    assert trace_payload["selection_index"]["bus-load"]["step_indices"] == [0]
+    assert trace_payload["selection_index"]["branch-load"]["element_type"] == "LineBranch"
+    assert trace_payload["selection_index"]["branch-load"]["step_indices"] == [0]
+
+    step = trace_payload["white_box_trace"][0]
+    assert step["step_key"] == "trace-step-1"
+    assert step["related_elements"]
+    assert step["primary_element_ref"] in trace_payload["selection_index"]
+    assert step["primary_element_type"] in {"Bus", "LineBranch"}
+    assert {link["element_ref"] for link in step["related_elements"]} >= {
+        "bus-main",
+        "bus-load",
+        "branch-load",
+    }
+
+
 def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(client: TestClient) -> None:
     case_id = str(uuid4())
 
     assert client.get("/snapshots/snap-1").status_code == 404
     assert client.get(f"/cases/{case_id}/snapshot").status_code == 404
     assert client.post(f"/cases/{case_id}/actions/batch", json={"actions": []}).status_code == 404
-    assert client.get("/analysis-runs/design_synth.connection_study/run-1").status_code == 404
-    assert client.get("/analysis-runs").status_code == 404
+    assert client.get("/api/analysis-runs/design_synth.connection_study/run-1").status_code == 404
+    assert client.get("/api/analysis-runs").status_code == 404

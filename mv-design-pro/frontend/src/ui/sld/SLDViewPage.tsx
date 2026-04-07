@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { SLDView } from './SLDView';
 import { useSldEditorStore } from '../sld-editor/SldEditorStore';
 import { useSelectionStore } from '../selection/store';
+import { ROUTES } from '../navigation';
 import { ProtectionDiagnosticsPanel } from '../results/ProtectionDiagnosticsPanel';
 import { SldInspectorPanel } from './inspector';
 import { buildReferenceScenario, type ReferenceScenarioId } from './core/referenceTopologies';
@@ -65,7 +66,7 @@ const REFERENCE_SCENARIO_LABELS_PL: Readonly<Record<ReferenceScenarioId, string>
 function setReferenceScenarioInHash(scenarioId: ReferenceScenarioId | null): void {
   const hash = window.location.hash;
   const [routePart, queryPart = ''] = hash.split('?');
-  const route = routePart || '#sld-view';
+  const route = routePart || ROUTES.SLD_VIEW.hash;
   const params = new URLSearchParams(queryPart);
 
   if (scenarioId) {

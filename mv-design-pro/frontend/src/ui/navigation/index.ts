@@ -5,6 +5,8 @@ export {
   ROUTES,
   getCurrentRoute,
   getRouteByHash,
+  normalizeHashRoute,
+  normalizeEditorHashRoute,
   navigateTo,
   navigateToSld,
   navigateToResults,

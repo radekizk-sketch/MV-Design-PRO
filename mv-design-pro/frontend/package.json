@@ -20,7 +20,7 @@
     "guard:codenames": "python ../scripts/no_codenames_guard.py",
     "test:e2e:bootstrap": "npm ci && npm run test:e2e:setup",
     "test:e2e:setup:real": "cd ../backend && poetry install --with dev && cd ../frontend && npm run test:e2e:setup",
-    "test:e2e:real": "PLAYWRIGHT_REAL_BACKEND=1 node ./scripts/playwright-run.mjs e2e/critical-run-flow.spec.ts"
+    "test:e2e:real": "node ./scripts/playwright-run-real.mjs e2e/critical-run-flow.spec.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",

@@ -29,29 +29,34 @@ export interface RouteDefinition {
   requiredMode?: 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
 }
 
+const EDITOR_ROUTE_HASH = '#editor';
+const RESULTS_ROUTE_HASH = '#results';
+const LEGACY_EDITOR_ALIASES = new Set(['', '#sld', '#network-build']);
+const LEGACY_RESULTS_ALIASES = new Set(['#results-workspace']);
+
 /**
  * Application routes with Polish labels.
  * CANONICAL: No project codes (P11, etc.) in UX — Polish only.
  */
 export const ROUTES: Record<string, RouteDefinition> = {
   SLD: {
-    hash: '',
-    label: 'Schemat jednokreskowy',
-    description: 'Edycja schematu sieci',
-    icon: 'SLD',
+    hash: EDITOR_ROUTE_HASH,
+    label: 'Edytor sieci',
+    description: 'Kanoniczny edytor sieci oparty o katalogi i płótno SLD',
+    icon: 'EDY',
     requiredMode: undefined, // Available in all modes
   },
   SLD_VIEW: {
     hash: '#sld-view',
-    label: 'Podglad schematu',
-    description: 'Podglad schematu jednokreskowego (tylko odczyt)',
-    icon: 'VIEW',
-    requiredMode: undefined, // Available in all modes (read-only)
+    label: 'Pomocniczy podglad SLD',
+    description: 'Pomocniczy podglad diagnostyczny SLD w trybie tylko do odczytu',
+    icon: 'AUX',
+    requiredMode: undefined,
   },
   RESULTS: {
-    hash: '#results',
-    label: 'Przeglad wynikow',
-    description: 'Tabele wynikow obliczen',
+    hash: RESULTS_ROUTE_HASH,
+    label: 'Wyniki i analiza',
+    description: 'Kanoniczna przestrzen wynikow, porownan i nakladki SLD',
     icon: 'RES',
     requiredMode: 'RESULT_VIEW',
   },
@@ -78,8 +83,8 @@ export const ROUTES: Record<string, RouteDefinition> = {
   },
   RESULTS_WORKSPACE: {
     hash: '#results-workspace',
-    label: 'Przestrzen robocza wynikow',
-    description: 'Zintegrowana przestrzen robocza: obliczenia, wsady, porownania, nakladka SLD',
+    label: 'Wyniki i analiza (alias)',
+    description: 'Alias zgodnosci. Docelowo prowadzi do kanonicznej przestrzeni wynikow.',
     icon: 'WSP',
     requiredMode: 'RESULT_VIEW',
   },
@@ -99,8 +104,8 @@ export const ROUTES: Record<string, RouteDefinition> = {
   },
   NETWORK_BUILD: {
     hash: '#network-build',
-    label: 'Budowa sieci',
-    description: 'Kanoniczny ekran modelowania sieci SN od GPZ w widoku SLD',
+    label: 'Edytor sieci (alias zgodnosci)',
+    description: 'Historyczny alias zgodnosci prowadzacy do kanonicznego edytora sieci.',
     icon: 'BLD',
     requiredMode: 'MODEL_EDIT',
   },
@@ -156,13 +161,30 @@ export const ROUTES: Record<string, RouteDefinition> = {
 };
 
 /**
+ * Normalize legacy editor aliases to the single canonical editor route.
+ */
+export function normalizeEditorHashRoute(hash: string): string {
+  const queryIndex = hash.indexOf('?');
+  const cleanHash = queryIndex !== -1 ? hash.slice(0, queryIndex) : hash;
+  return LEGACY_EDITOR_ALIASES.has(cleanHash) ? EDITOR_ROUTE_HASH : cleanHash;
+}
+
+/**
+ * Normalize legacy aliases to their canonical route.
+ */
+export function normalizeHashRoute(hash: string): string {
+  const normalizedEditorHash = normalizeEditorHashRoute(hash);
+  return LEGACY_RESULTS_ALIASES.has(normalizedEditorHash)
+    ? RESULTS_ROUTE_HASH
+    : normalizedEditorHash;
+}
+
+/**
  * Get route by hash.
  * NAVIGATION_SELECTOR_UI: Strips query params before matching.
  */
 export function getRouteByHash(hash: string): RouteDefinition | null {
-  // Strip query params from hash for matching
-  const queryIndex = hash.indexOf('?');
-  const cleanHash = queryIndex !== -1 ? hash.slice(0, queryIndex) : hash;
+  const cleanHash = normalizeHashRoute(hash);
 
   for (const route of Object.values(ROUTES)) {
     if (route.hash === cleanHash || route.hash === cleanHash.replace('#', '')) {
@@ -193,7 +215,7 @@ export function navigateTo(route: RouteDefinition | string): void {
     const queryIndex = currentHash.indexOf('?');
     const queryPart = queryIndex !== -1 ? currentHash.slice(queryIndex) : '';
 
-    window.location.hash = targetRoute.hash + queryPart;
+    window.location.hash = normalizeHashRoute(targetRoute.hash) + queryPart;
   }
 }
 

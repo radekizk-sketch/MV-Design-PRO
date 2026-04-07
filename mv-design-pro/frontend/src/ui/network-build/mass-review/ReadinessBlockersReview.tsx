@@ -11,6 +11,8 @@ import { useCallback, useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useSelectionStore } from '../../selection';
 import { useNetworkBuildStore } from '../networkBuildStore';
+import { executeFixAction } from '../fixActionExecution';
+import { resolveSelectedElementFromSnapshot } from '../../selection/resolveElementSelection';
 
 // =============================================================================
 // Category helpers
@@ -53,6 +55,7 @@ function categorizeBlocker(code: string): BlockerCategory {
 // =============================================================================
 
 export function ReadinessBlockersReview() {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
   const fixActions = useSnapshotStore((s) => s.fixActions);
   const selectElement = useSelectionStore((s) => s.selectElement);
@@ -72,19 +75,32 @@ export function ReadinessBlockersReview() {
 
   const handleNavigate = useCallback(
     (elementRef: string) => {
-      selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+      selectElement(resolveSelectedElementFromSnapshot(snapshot, elementRef));
       window.dispatchEvent(
         new CustomEvent('sld:center-on-element', { detail: { elementId: elementRef } }),
       );
     },
-    [selectElement],
+    [selectElement, snapshot],
   );
 
   const handleFix = useCallback(
-    (elementRef: string) => {
-      openOperationForm('update_element_parameters', { element_ref: elementRef });
+    (code: string, elementRef: string) => {
+      const fixAction = fixActions.find(
+        (candidate) => candidate.code === code && candidate.element_ref === elementRef,
+      );
+
+      if (!fixAction) {
+        openOperationForm('update_element_parameters', { element_ref: elementRef });
+        return;
+      }
+
+      executeFixAction({
+        action: fixAction,
+        navigateToElement: handleNavigate,
+        openOperationForm,
+      });
     },
-    [openOperationForm],
+    [fixActions, handleNavigate, openOperationForm],
   );
 
   if (blockers.length === 0) {
@@ -139,7 +155,7 @@ export function ReadinessBlockersReview() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleFix(b.element_ref!);
+                      handleFix(b.code, b.element_ref!);
                     }}
                     className="px-2 py-0.5 text-[9px] bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
                   >

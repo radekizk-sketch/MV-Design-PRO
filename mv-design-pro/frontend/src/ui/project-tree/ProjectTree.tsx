@@ -1,25 +1,25 @@
-/**
+﻿/**
  * Project Tree Component (PF-style Drzewo Projektu)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § A: Project Tree structure
- * - wizard_screens.md § 1: Navigation paradigm
- * - sld_rules.md § G.1: SLD ↔ Wizard synchronization
+ * - powerfactory_ui_parity.md Â§ A: Project Tree structure
+ * - wizard_screens.md Â§ 1: Navigation paradigm
+ * - sld_rules.md Â§ G.1: SLD â†” Wizard synchronization
  *
  * Structure:
  * - Projekt
- *   - Sieć
+ *   - SieÄ‡
  *     - Szyny
  *     - Linie
  *     - Kable
  *     - Transformatory
- *     - Łączniki
- *     - Źródła
+ *     - ĹÄ…czniki
+ *     - ĹąrĂłdĹ‚a
  *     - Odbiory
- *   - Katalog typów (read-only)
+ *   - Katalog typĂłw (read-only)
  *     - Typy linii
  *     - Typy kabli
- *     - Typy transformatorów
+ *     - Typy transformatorĂłw
  *     - Typy aparatury
  *   - Przypadki obliczeniowe
  *   - Wyniki
@@ -42,32 +42,32 @@ import type { CatalogMissingCounts } from './useCatalogTreeNodes';
 
 const TREE_NODE_LABELS: Record<TreeNodeType, string> = {
   PROJECT: 'Projekt',
-  NETWORK: 'Sieć',
+  NETWORK: 'SieÄ‡',
   STATION: 'Stacja',          // FIX-05: Station label (or from station name)
-  VOLTAGE_LEVEL: 'Poziom napięcia',  // FIX-05: Voltage level label
+  VOLTAGE_LEVEL: 'Poziom napiÄ™cia',  // FIX-05: Voltage level label
   BUSES: 'Szyny',
   LINES: 'Linie',
   CABLES: 'Kable',
   TRANSFORMERS: 'Transformatory',
-  SWITCHES: 'Łączniki',
-  SOURCES: 'Źródła',
+  SWITCHES: 'ĹÄ…czniki',
+  SOURCES: 'ĹąrĂłdĹ‚a',
   LOADS: 'Odbiory',
-  TYPE_CATALOG: 'Katalog typów',
+  TYPE_CATALOG: 'Katalog typĂłw',
   LINE_TYPES: 'Typy linii',
   CABLE_TYPES: 'Typy kabli',
-  TRANSFORMER_TYPES: 'Typy transformatorów',
+  TRANSFORMER_TYPES: 'Typy transformatorĂłw',
   SWITCH_EQUIPMENT_TYPES: 'Typy aparatury',
   CASES: 'Przypadki obliczeniowe',
   STUDY_CASE: '',  // P10: Label from case name
   RESULTS: 'Wyniki',
   RUN_ITEM: '',  // P11c: Label from run metadata
   PROTECTION_RESULTS: 'Zabezpieczenia',  // P15c: Protection results
-  PROTECTION_RUNS: 'Runy zabezpieczeń',  // P15c: Protection runs
-  PROTECTION_COMPARISONS: 'Porównania A/B',  // P15c: Protection comparisons
-  POWER_FLOW_RESULTS: 'Rozpływ mocy',  // P20b: Power flow results
-  POWER_FLOW_RUNS: 'Rozpływy',  // P20b: Power flow runs
+  PROTECTION_RUNS: 'Runy zabezpieczeĹ„',  // P15c: Protection runs
+  PROTECTION_COMPARISONS: 'PorĂłwnania A/B',  // P15c: Protection comparisons
+  POWER_FLOW_RESULTS: 'RozpĹ‚yw mocy',  // P20b: Power flow results
+  POWER_FLOW_RUNS: 'RozpĹ‚ywy',  // P20b: Power flow runs
   GENERATORS: 'Generatory / OZE',  // PR-9: Generators category
-  MEASUREMENTS: 'Przekładniki',  // PR-9: Measurement transformers (CT/VT)
+  MEASUREMENTS: 'PrzekĹ‚adniki',  // PR-9: Measurement transformers (CT/VT)
   PROTECTION_ASSIGNMENTS: 'Zabezpieczenia',  // PR-9: Protection assignments
   SHORT_CIRCUIT_RESULTS: 'Zwarcia',  // SC results category
   SHORT_CIRCUIT_RUNS: 'Runy zwarciowe',  // SC runs subcategory
@@ -113,7 +113,7 @@ interface StudyCaseItem {
 }
 
 /** Typ topologii sieci */
-type TopologyType = 'radialny' | 'pierścieniowy';
+type TopologyType = 'radialny' | 'pierĹ›cieniowy';
 
 /** Akcja menu kontekstowego elementu */
 interface ElementContextAction {
@@ -121,11 +121,11 @@ interface ElementContextAction {
   label: string;
 }
 
-/** Domyślne akcje menu kontekstowego (Polish) */
+/** DomyĹ›lne akcje menu kontekstowego (Polish) */
 const ELEMENT_CONTEXT_ACTIONS: ElementContextAction[] = [
-  { id: 'show-on-sld', label: 'Pokaż na schemacie' },
-  { id: 'show-properties', label: 'Pokaż właściwości' },
-  { id: 'go-to-wizard-step', label: 'Przejdź do kroku kreatora' },
+  { id: 'show-on-sld', label: 'PokaĹĽ na schemacie' },
+  { id: 'show-properties', label: 'PokaĹĽ wĹ‚aĹ›ciwoĹ›ci' },
+  { id: 'go-to-wizard-step', label: 'Pokaz kontekst edycji' },
 ];
 
 interface ProjectTreeProps {
@@ -148,7 +148,7 @@ interface ProjectTreeProps {
     transformerTypes: number;
     switchEquipmentTypes: number;
   };
-  /** Readiness blockers z snapshotStore — do wyliczenia statusów katalogowych */
+  /** Readiness blockers z snapshotStore â€” do wyliczenia statusĂłw katalogowych */
   readinessBlockers?: Array<{
     code: string;
     element_ref: string | null;
@@ -159,13 +159,13 @@ interface ProjectTreeProps {
   // P11c: Run history list (for Results Browser)
   runHistory?: RunHistoryItem[];
   resultsCount?: number;
-  /** Typ topologii sieci: radialny lub pierścieniowy */
+  /** Typ topologii sieci: radialny lub pierĹ›cieniowy */
   topologyType?: TopologyType;
   /** Readiness status: gotowy/niegotowy */
   readinessStatus?: 'OK' | 'WARN' | 'FAIL';
   onNodeClick?: (node: TreeNode) => void;
   onCategoryClick?: (nodeType: TreeNodeType, elementType?: ElementType) => void;
-  /** Callback: otwórz przeglądarkę katalogową na danej zakładce */
+  /** Callback: otwĂłrz przeglÄ…darkÄ™ katalogowÄ… na danej zakĹ‚adce */
   onCatalogBrowse?: (treeNodeType: TreeNodeType) => void;
   // P10: Study case callbacks
   onStudyCaseClick?: (caseId: string) => void;
@@ -181,7 +181,7 @@ interface ProjectTreeProps {
 // ============================================================================
 
 // ============================================================================
-// Search/Filter helper — recursively filters tree nodes by query
+// Search/Filter helper â€” recursively filters tree nodes by query
 // ============================================================================
 
 function filterTreeNode(node: TreeNode, query: string): TreeNode | null {
@@ -341,7 +341,7 @@ export function ProjectTree({
     [readinessBlockers, elements]
   );
 
-  // Buduj podwęzły TYPE_CATALOG z rejestru (deterministyczne)
+  // Buduj podwÄ™zĹ‚y TYPE_CATALOG z rejestru (deterministyczne)
   const catalogTreeNodes = useCatalogTreeNodes(typeCounts, catalogMissing);
 
   // Build tree structure
@@ -402,8 +402,8 @@ export function ProjectTree({
           hour: '2-digit',
           minute: '2-digit',
         });
-        const solverLabel = run.solver_kind === 'PF' ? 'Rozpływ' : isShortCircuitRun(run.solver_kind) ? 'Zwarcie' : run.solver_kind;
-        const label = `${solverLabel} [${run.case_name}] — ${date}`;
+        const solverLabel = run.solver_kind === 'PF' ? 'RozpĹ‚yw' : isShortCircuitRun(run.solver_kind) ? 'Zwarcie' : run.solver_kind;
+        const label = `${solverLabel} [${run.case_name}] â€” ${date}`;
 
         return {
           id: `run-${run.run_id}`,
@@ -626,30 +626,15 @@ export function ProjectTree({
         // P10: Study case click
         onStudyCaseClick?.(node.studyCaseId);
       } else if (node.nodeType === 'RUN_ITEM' && node.runId) {
-        // P11c/P15c/P20b: Run click - open appropriate Results Inspector
-        if (node.solverKind === 'protection' || node.solverKind === 'protection_analysis') {
-          // P15c: Protection run - navigate to protection results
-          window.location.hash = '#protection-results';
-          onRunClick?.(node.runId);
-        } else if (node.solverKind === 'PF' || node.solverKind === 'power_flow') {
-          // P20b: Power flow run - navigate to power flow results
-          window.location.hash = '#power-flow-results';
-          onRunClick?.(node.runId);
-        } else if (node.solverKind && isShortCircuitRun(node.solverKind)) {
-          // SC run - navigate to short circuit results
-          window.location.hash = '#short-circuit-results';
-          onRunClick?.(node.runId);
-        } else {
-          // P11c: Other runs - use existing handler
-          onRunClick?.(node.runId);
-        }
+        // Single canonical results handoff: delegate to parent router only.
+        onRunClick?.(node.runId);
       } else if (
         node.nodeType === 'LINE_TYPES' ||
         node.nodeType === 'CABLE_TYPES' ||
         node.nodeType === 'TRANSFORMER_TYPES' ||
         node.nodeType === 'SWITCH_EQUIPMENT_TYPES'
       ) {
-        // Catalog type node click — otwórz przeglądarkę katalogową
+        // Catalog type node click â€” otwĂłrz przeglÄ…darkÄ™ katalogowÄ…
         onCatalogBrowse?.(node.nodeType);
       } else if (TREE_NODE_TO_ELEMENT_TYPE[node.nodeType]) {
         // Category click - open Data Manager
@@ -707,7 +692,7 @@ export function ProjectTree({
       case 'OK':
         return 'Gotowy';
       case 'WARN':
-        return 'Ostrzeżenia';
+        return 'OstrzeĹĽenia';
       case 'FAIL':
         return 'Niegotowy';
       default:
@@ -731,7 +716,7 @@ export function ProjectTree({
             <span
               className="text-[10px] text-gray-500 bg-gray-200 px-1.5 py-0.5 rounded"
               data-testid="project-tree-element-count"
-              title={`Łączna liczba elementów: ${totalElementCount}`}
+              title={`ĹÄ…czna liczba elementĂłw: ${totalElementCount}`}
             >
               {totalElementCount} elem.
             </span>
@@ -786,7 +771,7 @@ export function ProjectTree({
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               onClick={() => setSearchQuery('')}
               data-testid="project-tree-search-clear"
-              aria-label="Wyczyść filtr"
+              aria-label="WyczyĹ›Ä‡ filtr"
             >
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M3 3 L9 9 M9 3 L3 9" />
@@ -956,7 +941,7 @@ function TreeNodeComponent({
             className="w-4 h-4 flex items-center justify-center text-gray-400 hover:text-gray-600 mr-1 flex-shrink-0"
             data-testid={`tree-toggle-${node.id}`}
             aria-expanded={isExpanded}
-            aria-label={isExpanded ? 'Zwiń węzeł' : 'Rozwiń węzeł'}
+            aria-label={isExpanded ? 'ZwiĹ„ wÄ™zeĹ‚' : 'RozwiĹ„ wÄ™zeĹ‚'}
             onClick={(e) => {
               e.stopPropagation();
               onToggle(node.id);
@@ -1013,9 +998,9 @@ function TreeNodeComponent({
           <span
             className="ml-1 text-[9px] text-gray-400 flex-shrink-0"
             data-testid={`tree-node-out-of-service-${node.elementId}`}
-            title="Element wyłączony z eksploatacji"
+            title="Element wyĹ‚Ä…czony z eksploatacji"
           >
-            wył.
+            wyĹ‚.
           </span>
         )}
 

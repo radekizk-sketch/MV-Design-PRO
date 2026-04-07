@@ -19,6 +19,7 @@ import { InsertBranchPoleForm } from './forms/InsertBranchPoleForm';
 import { InsertZksnForm } from './forms/InsertZksnForm';
 import { StartBranchForm } from './forms/StartBranchForm';
 import { ConnectRingForm } from './forms/ConnectRingForm';
+import { SetNormalOpenPointForm } from './forms/SetNormalOpenPointForm';
 import { InsertSectionSwitchForm } from './forms/InsertSectionSwitchForm';
 import { AddTransformerForm } from './forms/AddTransformerForm';
 import { AddOzeSourceForm } from './forms/AddOzeSourceForm';
@@ -109,7 +110,7 @@ function renderFormComponent(op: string, closeForm: () => void): React.ReactNode
     case 'connect_secondary_ring_sn':
       return <ConnectRingForm />;
     case 'set_normal_open_point':
-      return <ConnectRingForm />;
+      return <SetNormalOpenPointForm />;
     case 'insert_section_switch_sn':
       return <InsertSectionSwitchForm />;
     case 'add_transformer_sn_nn':

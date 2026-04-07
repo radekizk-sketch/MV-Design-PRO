@@ -24,7 +24,7 @@ export function InsertSectionSwitchForm() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
-  const segmentRef = (context?.segmentRef as string) ?? '';
+  const segmentRef = (context?.segmentRef as string) ?? (context?.segment_ref as string) ?? '';
   const segmentLabel = (context?.segmentLabel as string) ?? segmentRef;
 
   const handleSubmit = useCallback(

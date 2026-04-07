@@ -25,5 +25,6 @@ export {
 } from './store';
 
 // Components
-export { ResultsInspectorPage } from './ResultsInspectorPage';
+export { ResultsInspectorPage as LegacyResultsInspectorPage } from './ResultsInspectorPage';
+export { LegacyTraceWorkspacePage } from './LegacyTraceWorkspacePage';
 export { SldOverlay } from './SldOverlay';

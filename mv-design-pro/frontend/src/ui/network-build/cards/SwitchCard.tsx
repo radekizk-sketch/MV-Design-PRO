@@ -286,8 +286,11 @@ export function SwitchCard({ elementId }: { elementId: string }) {
   }, [openOperationForm, elementId]);
 
   const handleSetNop = useCallback(() => {
-    openOperationForm('set_normal_open_point', { switch_ref: elementId });
-  }, [openOperationForm, elementId]);
+    openOperationForm('set_normal_open_point', {
+      switch_ref: elementId,
+      switch_label: branch?.name ?? elementId,
+    });
+  }, [branch?.name, openOperationForm, elementId]);
 
   const actions = useMemo((): CardAction[] => {
     const acts: CardAction[] = [
@@ -313,7 +316,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
     ) {
       acts.push({
         id: 'set_nop',
-        label: isNop ? 'Usuń oznaczenie NPO' : 'Ustaw jako NPO',
+        label: isNop ? 'Usun oznaczenie NOP' : 'Ustaw jako NOP',
         variant: isNop ? 'danger' : 'secondary',
         onClick: handleSetNop,
       });

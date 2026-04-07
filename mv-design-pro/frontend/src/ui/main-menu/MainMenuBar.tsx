@@ -1,19 +1,19 @@
-/**
- * MainMenuBar — Pasek menu głównego (PowerFactory/ETAP Style)
+﻿/**
+ * MainMenuBar â€” Pasek menu gĹ‚Ăłwnego (PowerFactory/ETAP Style)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Menu narzędziowe — szybki dostęp do akcji
+ * - powerfactory_ui_parity.md: Menu narzÄ™dziowe â€” szybki dostÄ™p do akcji
  *
- * Pasek menu o stylu klasy przemysłowej:
- * - Plik (Projekt): Nowy, Otwórz, Zapisz, Eksportuj
- * - Edycja: Cofnij, Ponów, Zaznacz wszystko
- * - Widok: Nawigator, Inspektor, Schemat SLD, Kreator
- * - Sieć: Dodaj element, Walidacja, Gotowość
- * - Obliczenia: Zwarcia 3F, Rozpływ mocy, Wyniki
- * - Narzędzia: Eksport PDF, Eksport DOCX, Ustawienia
+ * Pasek menu o stylu klasy przemysĹ‚owej:
+ * - Plik (Projekt): Nowy, OtwĂłrz, Zapisz, Eksportuj
+ * - Edycja: Cofnij, PonĂłw, Zaznacz wszystko
+ * - Widok: Nawigator, Inspektor, Edytor sieci
+ * - SieÄ‡: Dodaj element, Walidacja, GotowoĹ›Ä‡
+ * - Obliczenia: Zwarcia 3F, RozpĹ‚yw mocy, Wyniki
+ * - NarzÄ™dzia: Eksport PDF, Eksport DOCX, Ustawienia
  * - Pomoc: Dokumentacja, Informacje
  *
- * Skróty klawiaturowe wyświetlane obok etykiet.
+ * SkrĂłty klawiaturowe wyĹ›wietlane obok etykiet.
  *
  * 100% POLISH UI
  */
@@ -50,7 +50,7 @@ const MENU_GROUPS: MenuGroup[] = [
     label: 'Plik',
     items: [
       { id: 'new-project', label: 'Nowy projekt', shortcut: 'Ctrl+N' },
-      { id: 'open-project', label: 'Otwórz projekt', shortcut: 'Ctrl+O' },
+      { id: 'open-project', label: 'OtwĂłrz projekt', shortcut: 'Ctrl+O' },
       { id: 'save', label: 'Zapisz', shortcut: 'Ctrl+S' },
       { id: 'sep-1', label: '', separator: true },
       { id: 'export-pdf', label: 'Eksportuj PDF', shortcut: 'Ctrl+Shift+P' },
@@ -65,12 +65,12 @@ const MENU_GROUPS: MenuGroup[] = [
     label: 'Edycja',
     items: [
       { id: 'undo', label: 'Cofnij', shortcut: 'Ctrl+Z' },
-      { id: 'redo', label: 'Ponów', shortcut: 'Ctrl+Y' },
+      { id: 'redo', label: 'PonĂłw', shortcut: 'Ctrl+Y' },
       { id: 'sep-1', label: '', separator: true },
       { id: 'select-all', label: 'Zaznacz wszystko', shortcut: 'Ctrl+A' },
       { id: 'deselect', label: 'Odznacz', shortcut: 'Esc' },
       { id: 'sep-2', label: '', separator: true },
-      { id: 'delete', label: 'Usuń zaznaczone', shortcut: 'Del', danger: true },
+      { id: 'delete', label: 'UsuĹ„ zaznaczone', shortcut: 'Del', danger: true },
     ],
   },
   {
@@ -78,11 +78,10 @@ const MENU_GROUPS: MenuGroup[] = [
     label: 'Widok',
     items: [
       { id: 'navigator', label: 'Nawigator projektu', shortcut: 'Ctrl+1' },
-      { id: 'inspector', label: 'Inspektor właściwości', shortcut: 'Ctrl+2' },
-      { id: 'sld', label: 'Schemat jednokreskowy', shortcut: 'Ctrl+3' },
-      { id: 'network-build', label: 'Budowa sieci', shortcut: 'Ctrl+4' },
+      { id: 'inspector', label: 'Inspektor wĹ‚aĹ›ciwoĹ›ci', shortcut: 'Ctrl+2' },
+      { id: 'network-editor', label: 'Edytor sieci', shortcut: 'Ctrl+3' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'zoom-in', label: 'Powiększ', shortcut: '+' },
+      { id: 'zoom-in', label: 'PowiÄ™ksz', shortcut: '+' },
       { id: 'zoom-out', label: 'Pomniejsz', shortcut: '-' },
       { id: 'fit-content', label: 'Dopasuj do schematu', shortcut: 'F' },
       { id: 'reset-view', label: 'Resetuj widok', shortcut: '0' },
@@ -90,17 +89,17 @@ const MENU_GROUPS: MenuGroup[] = [
   },
   {
     id: 'network',
-    label: 'Sieć',
+    label: 'SieÄ‡',
     items: [
-      { id: 'add-bus', label: 'Dodaj szynę' },
-      { id: 'add-line', label: 'Dodaj linię' },
+      { id: 'add-bus', label: 'Dodaj szynÄ™' },
+      { id: 'add-line', label: 'Dodaj liniÄ™' },
       { id: 'add-cable', label: 'Dodaj kabel' },
       { id: 'add-transformer', label: 'Dodaj transformator' },
-      { id: 'add-source', label: 'Dodaj źródło' },
-      { id: 'add-load', label: 'Dodaj odbiór' },
+      { id: 'add-source', label: 'Dodaj ĹşrĂłdĹ‚o' },
+      { id: 'add-load', label: 'Dodaj odbiĂłr' },
       { id: 'sep-1', label: '', separator: true },
       { id: 'validate', label: 'Walidacja modelu' },
-      { id: 'readiness', label: 'Sprawdź gotowość' },
+      { id: 'readiness', label: 'SprawdĹş gotowoĹ›Ä‡' },
     ],
   },
   {
@@ -109,22 +108,22 @@ const MENU_GROUPS: MenuGroup[] = [
     items: [
       { id: 'run-sc-3f', label: 'Zwarcia 3F (IEC 60909)' },
       { id: 'run-sc-1f', label: 'Zwarcia 1F (doziemne)' },
-      { id: 'run-power-flow', label: 'Rozpływ mocy' },
+      { id: 'run-power-flow', label: 'RozpĹ‚yw mocy' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'case-manager', label: 'Menedżer przypadków' },
-      { id: 'results', label: 'Przeglądaj wyniki' },
-      { id: 'compare', label: 'Porównaj przypadki' },
+      { id: 'case-manager', label: 'MenedĹĽer przypadkĂłw' },
+      { id: 'results', label: 'Wyniki i analiza' },
+      { id: 'compare', label: 'PorĂłwnaj przypadki' },
     ],
   },
   {
     id: 'tools',
-    label: 'Narzędzia',
+    label: 'NarzÄ™dzia',
     items: [
-      { id: 'catalog', label: 'Biblioteka typów' },
+      { id: 'catalog', label: 'Biblioteka typĂłw' },
       { id: 'protection', label: 'Zabezpieczenia' },
-      { id: 'tcc', label: 'Krzywe czasowo-prądowe' },
+      { id: 'tcc', label: 'Krzywe czasowo-prÄ…dowe' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'whitebox', label: 'Ślad obliczeń' },
+      { id: 'whitebox', label: 'Ĺšlad obliczeĹ„' },
     ],
   },
   {
@@ -132,7 +131,7 @@ const MENU_GROUPS: MenuGroup[] = [
     label: 'Pomoc',
     items: [
       { id: 'docs', label: 'Dokumentacja' },
-      { id: 'shortcuts', label: 'Skróty klawiaturowe' },
+      { id: 'shortcuts', label: 'SkrĂłty klawiaturowe' },
       { id: 'sep-1', label: '', separator: true },
       { id: 'about', label: 'O programie MV-DESIGN-PRO' },
     ],
@@ -281,3 +280,4 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
 }
 
 export default MainMenuBar;
+

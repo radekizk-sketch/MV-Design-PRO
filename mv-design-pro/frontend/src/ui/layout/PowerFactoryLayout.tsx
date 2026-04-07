@@ -221,6 +221,7 @@ export function PowerFactoryLayout({
   const activeCaseId = useActiveCaseId();
   const activeMode = useActiveMode();
   const toggleCaseManager = useAppStateStore((state) => state.toggleCaseManager);
+  const toggleIssuePanel = useAppStateStore((state) => state.toggleIssuePanel);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
 
   // Selection state
@@ -229,7 +230,7 @@ export function PowerFactoryLayout({
   // Panel states
   const [treeSidebarCollapsed, setTreeSidebarCollapsed] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [leftPanelMode, setLeftPanelMode] = useState<'build' | 'tree'>('build');
+  const [leftPanelMode, setLeftPanelMode] = useState<'build' | 'catalog' | 'tree'>('catalog');
 
   // Network build store — active operation form
   const activeOperationForm = useNetworkBuildStore((s) => s.activeOperationForm);
@@ -237,7 +238,6 @@ export function PowerFactoryLayout({
   // Modal/overlay states
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [massReviewOpen, setMassReviewOpen] = useState(false);
-  const [catalogBrowserOpen, setCatalogBrowserOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
 
@@ -256,6 +256,8 @@ export function PowerFactoryLayout({
   // Derived state
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const showBuildPanel = activeMode === 'MODEL_EDIT' && leftPanelMode === 'build';
+  const showCatalogPanel = activeMode === 'MODEL_EDIT' && leftPanelMode === 'catalog';
+  const showTreePanel = activeMode !== 'MODEL_EDIT' || leftPanelMode === 'tree';
 
   // Toggle handlers
   const toggleTreeSidebar = useCallback(() => {
@@ -264,6 +266,11 @@ export function PowerFactoryLayout({
 
   const toggleInspector = useCallback(() => {
     setInspectorCollapsed((prev) => !prev);
+  }, []);
+
+  const handleOpenCatalogPanel = useCallback(() => {
+    setTreeSidebarCollapsed(false);
+    setLeftPanelMode('catalog');
   }, []);
 
   // Action handlers
@@ -292,6 +299,14 @@ export function PowerFactoryLayout({
   const handleCaseManagerClose = useCallback(() => {
     toggleCaseManager(false);
   }, [toggleCaseManager]);
+
+  const handleToggleIssuePanel = useCallback(() => {
+    toggleIssuePanel();
+  }, [toggleIssuePanel]);
+
+  const handleOpenIssuePanel = useCallback(() => {
+    toggleIssuePanel(true);
+  }, [toggleIssuePanel]);
 
   // Inspector content - show operation form, engineering inspector, custom content, or empty state
   const resolvedInspectorContent = useMemo(() => {
@@ -336,10 +351,14 @@ export function PowerFactoryLayout({
           projectName={projectName}
           caseName={activeCaseId ?? undefined}
           onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
-          onOpenCatalogBrowser={() => setCatalogBrowserOpen(true)}
+          onOpenCatalogBrowser={handleOpenCatalogPanel}
           onOpenMassReview={() => setMassReviewOpen(true)}
           onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
           onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
+          onRunAnalysis={handleCalculateClick}
+          onOpenResults={handleResultsClick}
+          onToggleIssuePanel={handleToggleIssuePanel}
+          issuePanelOpen={issuePanelOpen}
         />
       )}
 
@@ -375,6 +394,19 @@ export function PowerFactoryLayout({
                       data-testid="left-panel-mode-build"
                     >
                       Budowa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLeftPanelMode('catalog')}
+                      className={clsx(
+                        'px-2 py-0.5 text-[10px] rounded-sm transition-colors',
+                        leftPanelMode === 'catalog'
+                          ? 'bg-ind-100 text-ind-800 font-medium'
+                          : 'text-chrome-500 hover:bg-chrome-100',
+                      )}
+                      data-testid="left-panel-mode-catalog"
+                    >
+                      Katalogi
                     </button>
                     <button
                       type="button"
@@ -419,7 +451,12 @@ export function PowerFactoryLayout({
               <ProcessPanel />
             </div>
           )}
-          {!treeSidebarCollapsed && !showBuildPanel && (
+          {!treeSidebarCollapsed && showCatalogPanel && (
+            <div className="flex-1 overflow-hidden border-t border-chrome-100">
+              <CatalogBrowser className="h-full" mode="browse" />
+            </div>
+          )}
+          {!treeSidebarCollapsed && showTreePanel && (
             <div className="flex-1 overflow-hidden">
               <ProjectTree
                 projectName={projectName}
@@ -427,6 +464,7 @@ export function PowerFactoryLayout({
                 typeCounts={typeCounts}
                 studyCases={studyCases}
                 runHistory={runHistory}
+                onCatalogBrowse={() => handleOpenCatalogPanel()}
                 onNodeClick={onTreeNodeClick}
                 onCategoryClick={onTreeCategoryClick}
                 onStudyCaseClick={onTreeStudyCaseClick}
@@ -443,8 +481,20 @@ export function PowerFactoryLayout({
                 type="button"
                 onClick={toggleTreeSidebar}
                 className="flex h-8 w-8 items-center justify-center rounded-ind text-chrome-400 hover:bg-chrome-100 hover:text-chrome-700 transition-colors"
-                title={showBuildPanel ? 'Panel budowy sieci' : 'Nawigator projektu'}
-                aria-label={showBuildPanel ? 'Otwórz panel budowy sieci' : 'Otwórz nawigator projektu'}
+                title={
+                  showBuildPanel
+                    ? 'Panel budowy sieci'
+                    : showCatalogPanel
+                    ? 'Panel katalogów'
+                    : 'Nawigator projektu'
+                }
+                aria-label={
+                  showBuildPanel
+                    ? 'Otwórz panel budowy sieci'
+                    : showCatalogPanel
+                    ? 'Otwórz panel katalogów'
+                    : 'Otwórz nawigator projektu'
+                }
               >
                 <IconFolder />
               </button>
@@ -541,7 +591,13 @@ export function PowerFactoryLayout({
       </div>
 
       {/* Pasek gotowości (MODEL_EDIT only) */}
-      {activeMode === 'MODEL_EDIT' && <ReadinessBar />}
+      {activeMode === 'MODEL_EDIT' && (
+        <ReadinessBar
+          onRunAnalysis={handleCalculateClick}
+          onOpenResults={handleResultsClick}
+          onOpenIssuePanel={handleOpenIssuePanel}
+        />
+      )}
 
       {/* Pasek stanu (ALWAYS visible at bottom) */}
       <StatusBar
@@ -562,21 +618,6 @@ export function PowerFactoryLayout({
         isOpen={massReviewOpen}
         onClose={() => setMassReviewOpen(false)}
       />
-
-      {/* Catalog Browser */}
-      {catalogBrowserOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-          onClick={() => setCatalogBrowserOpen(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-2xl w-[800px] max-w-[95vw] h-[600px] max-h-[85vh] overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <CatalogBrowser />
-          </div>
-        </div>
-      )}
 
       {/* Project Metadata Modal */}
       <ProjectMetadataModal

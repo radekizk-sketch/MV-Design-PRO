@@ -25,7 +25,7 @@ import {
   useFilteredBranchResults,
   useHasShortCircuitResults,
 } from './store';
-import type { ResultsInspectorTab, BusResultRow, BranchResultRow, ShortCircuitRow } from './types';
+import type { ResultsInspectorTab, BusResultRow, BranchResultRow, ShortCircuitRow, ExtendedTrace } from './types';
 import {
   RESULTS_TAB_LABELS,
   RESULT_STATUS_LABELS,
@@ -40,7 +40,7 @@ import type { ElementType } from '../types';
 import { InspectorPanel } from '../inspector';
 import { ResultsExport } from './ResultsExport';
 import { resolveAvailableResultsTabs } from './viewState';
-import { TraceViewerContainer } from '../proof';
+import { TraceViewerContainer, type SelectionToTraceMap } from '../proof';
 
 // =============================================================================
 // Helper Functions
@@ -68,6 +68,35 @@ function getStatusBadgeClass(severity: 'info' | 'success' | 'warning'): string {
     default:
       return 'bg-slate-100 text-slate-600';
   }
+}
+
+function buildSelectionToTraceMap(trace: ExtendedTrace | null): SelectionToTraceMap | undefined {
+  if (!trace || trace.white_box_trace.length === 0) {
+    return undefined;
+  }
+
+  const map: SelectionToTraceMap = new Map();
+
+  Object.values(trace.selection_index ?? {}).forEach((entry) => {
+    const firstStepIndex = entry.step_indices[0];
+    if (entry.element_ref && firstStepIndex !== undefined && !map.has(entry.element_ref)) {
+      map.set(entry.element_ref, firstStepIndex);
+    }
+  });
+
+  if (map.size > 0) {
+    return map;
+  }
+
+  trace.white_box_trace.forEach((step, index) => {
+    step.related_elements?.forEach((related) => {
+      if (!map.has(related.element_ref)) {
+        map.set(related.element_ref, index);
+      }
+    });
+  });
+
+  return map;
 }
 
 // =============================================================================
@@ -649,6 +678,11 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
     return resolveAvailableResultsTabs(forcedTab, hasShortCircuit);
   }, [forcedTab, hasShortCircuit]);
 
+  const selectionToTraceMap = useMemo(
+    () => buildSelectionToTraceMap(extendedTrace),
+    [extendedTrace],
+  );
+
   // Error display
   if (error) {
     return (
@@ -805,6 +839,8 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
               <TraceViewerContainer
                 trace={extendedTrace}
                 isLoading={isLoadingTrace}
+                selectionId={globalSelectedElement?.id ?? null}
+                selectionToTraceMap={selectionToTraceMap}
               />
             )}
           </div>

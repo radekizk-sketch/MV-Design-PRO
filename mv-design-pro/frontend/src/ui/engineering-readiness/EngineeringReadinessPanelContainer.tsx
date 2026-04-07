@@ -15,6 +15,8 @@ import { EngineeringReadinessPanel } from './EngineeringReadinessPanel';
 import { useEngineeringReadinessStore } from './store';
 import { useSldEditorStore } from '../sld-editor/SldEditorStore';
 import { useSelectionStore } from '../selection/store';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { resolveSelectedElementFromSnapshot } from '../selection/resolveElementSelection';
 import type { FixAction } from '../types';
 
 // =============================================================================
@@ -31,6 +33,7 @@ export const EngineeringReadinessPanelContainer: React.FC<
   const { data, loading, error, load, clear } = useEngineeringReadinessStore();
   const sldStore = useSldEditorStore();
   const selectionStore = useSelectionStore();
+  const snapshot = useSnapshotStore((state) => state.snapshot);
 
   // Fetch data when case changes
   useEffect(() => {
@@ -64,14 +67,10 @@ export const EngineeringReadinessPanelContainer: React.FC<
       sldStore.highlightSymbols([elementRef], 'HIGH');
 
       // Select element and center SLD
-      selectionStore.selectElement({
-        id: elementRef,
-        type: 'Bus', // Generic — actual type resolved by SLD
-        name: elementRef,
-      });
+      selectionStore.selectElement(resolveSelectedElementFromSnapshot(snapshot, elementRef));
       selectionStore.centerSldOnElement(elementRef);
     },
-    [sldStore, selectionStore],
+    [sldStore, selectionStore, snapshot],
   );
 
   /**
@@ -87,11 +86,9 @@ export const EngineeringReadinessPanelContainer: React.FC<
           // Navigate to the element first (if exists)
           if (fixAction.element_ref) {
             sldStore.highlightSymbols([fixAction.element_ref], 'HIGH');
-            selectionStore.selectElement({
-              id: fixAction.element_ref,
-              type: 'Bus',
-              name: fixAction.element_ref,
-            });
+            selectionStore.selectElement(
+              resolveSelectedElementFromSnapshot(snapshot, fixAction.element_ref),
+            );
             selectionStore.centerSldOnElement(fixAction.element_ref);
           }
 
@@ -116,7 +113,7 @@ export const EngineeringReadinessPanelContainer: React.FC<
         }
       }
     },
-    [sldStore, selectionStore, handleNavigate],
+    [sldStore, selectionStore, handleNavigate, snapshot],
   );
 
   // Loading state

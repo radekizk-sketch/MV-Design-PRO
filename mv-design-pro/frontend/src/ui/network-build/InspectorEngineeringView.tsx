@@ -20,6 +20,7 @@ import { useSnapshotStore } from '../topology/snapshotStore';
 import { useSelectionStore } from '../selection';
 import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
+import { ROUTES } from '../navigation';
 import type { EnergyNetworkModel, ReadinessInfo, Branch, LogicalViewsV1 } from '../../types/enm';
 import type { CanonicalOpName } from '../../types/domainOps';
 
@@ -48,6 +49,8 @@ interface QuickAction {
   context?: Record<string, unknown>;
   variant?: 'primary' | 'secondary' | 'danger';
 }
+
+type OverviewTone = 'slate' | 'amber' | 'emerald' | 'blue';
 
 // =============================================================================
 // Element type labels
@@ -446,6 +449,8 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const activeMode = useAppStateStore((s) => s.activeMode);
+  const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
+  const toggleIssuePanel = useAppStateStore((s) => s.toggleIssuePanel);
 
   const elementId = selectedElements.length > 0 ? selectedElements[0].id : null;
 
@@ -454,12 +459,104 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
     [elementId, snapshot, readiness, logicalViews],
   );
 
+  const readinessSummary = useMemo(() => {
+    if (!elementId) {
+      return { blockers: 0, warnings: 0 };
+    }
+
+    return {
+      blockers: (readiness?.blockers ?? []).filter((item) => item.element_ref === elementId).length,
+      warnings: (readiness?.warnings ?? []).filter((item) => item.element_ref === elementId).length,
+    };
+  }, [elementId, readiness]);
+
+  const catalogRef = useMemo(() => {
+    for (const section of sections) {
+      const field = section.fields.find((item) => item.key === 'catalog_ref');
+      if (field) {
+        return field.value;
+      }
+    }
+
+    return null;
+  }, [sections]);
+
+  const parentContext = useMemo(() => {
+    for (const section of sections) {
+      const stationField = section.fields.find((item) => item.key === 'parent_station');
+      if (stationField?.value) {
+        return stationField.value;
+      }
+
+      const roleField = section.fields.find((item) => item.key === 'role');
+      if (roleField?.value) {
+        return roleField.value;
+      }
+    }
+
+    return null;
+  }, [sections]);
+
+  const overviewItems = useMemo(
+    () => [
+      {
+        label: 'Katalog',
+        value: catalogRef && catalogRef !== '—' ? 'przypisany' : 'wymaga uzupelnienia',
+        tone: catalogRef && catalogRef !== '—' ? 'blue' : 'amber',
+      },
+      {
+        label: 'Gotowosc',
+        value:
+          readinessSummary.blockers > 0
+            ? `${readinessSummary.blockers} blokerow`
+            : readinessSummary.warnings > 0
+              ? `${readinessSummary.warnings} ostrzezen`
+              : 'bez zastrzezen',
+        tone:
+          readinessSummary.blockers > 0
+            ? 'amber'
+            : readinessSummary.warnings > 0
+              ? 'blue'
+              : 'emerald',
+      },
+      {
+        label: 'Wyniki',
+        value:
+          resultStatus === 'FRESH'
+            ? 'aktualne'
+            : resultStatus === 'OUTDATED'
+              ? 'wymagaja odswiezenia'
+              : 'brak',
+        tone:
+          resultStatus === 'FRESH'
+            ? 'emerald'
+            : resultStatus === 'OUTDATED'
+              ? 'amber'
+              : 'slate',
+      },
+      {
+        label: 'Kontekst',
+        value: parentContext ? String(parentContext) : 'bez nadrzednego kontekstu',
+        tone: 'slate',
+      },
+    ] as Array<{ label: string; value: string; tone: OverviewTone }>,
+    [catalogRef, parentContext, readinessSummary.blockers, readinessSummary.warnings, resultStatus],
+  );
+
   const handleAction = useCallback(
     (action: QuickAction) => {
       openOperationForm(action.op, action.context);
     },
     [openOperationForm],
   );
+
+  const handleOpenResults = useCallback(() => {
+    window.location.hash = ROUTES.RESULTS.hash;
+  }, []);
+
+  const handleOpenIssues = useCallback(() => {
+    toggleIssuePanel(true);
+  }, [toggleIssuePanel]);
 
   if (!elementId || sections.length === 0) {
     return (
@@ -487,6 +584,38 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         <p className="text-[10px] text-gray-500 mt-0.5">
           {ELEMENT_TYPE_LABELS[elementType] ?? elementType} &middot; {elementId}
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 border-b border-gray-100 px-4 py-3">
+        {overviewItems.map((item) => (
+          <OverviewBadge
+            key={item.label}
+            label={item.label}
+            value={item.value}
+            tone={item.tone}
+          />
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-b border-gray-100 px-4 py-2">
+        {readinessSummary.blockers > 0 && (
+          <button
+            type="button"
+            onClick={handleOpenIssues}
+            className="rounded bg-amber-50 px-2.5 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100"
+          >
+            Pokaz problemy
+          </button>
+        )}
+        {resultStatus !== 'NONE' && (
+          <button
+            type="button"
+            onClick={handleOpenResults}
+            className="rounded bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:bg-slate-200"
+          >
+            Wyniki elementu
+          </button>
+        )}
       </div>
 
       {/* Sections */}
@@ -523,6 +652,30 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function OverviewBadge({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: OverviewTone;
+}) {
+  const toneClasses: Record<OverviewTone, string> = {
+    slate: 'border-slate-200 bg-slate-50 text-slate-700',
+    amber: 'border-amber-200 bg-amber-50 text-amber-700',
+    emerald: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+    blue: 'border-blue-200 bg-blue-50 text-blue-700',
+  };
+
+  return (
+    <div className={clsx('rounded border px-2.5 py-2', toneClasses[tone])}>
+      <div className="text-[9px] font-semibold uppercase tracking-wide">{label}</div>
+      <div className="mt-1 text-[11px] font-medium">{value}</div>
     </div>
   );
 }

@@ -160,6 +160,7 @@ function buildStandardHandlers(
     onSetNOP: () =>
       handlers.onOpenOperationForm('set_normal_open_point', {
         switch_ref: req.elementId,
+        switch_label: req.elementName,
       }),
   };
 }

@@ -192,11 +192,34 @@ def _compute_content_hash(data: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def map_run_to_summary(run: Run) -> RunSummary:
+def map_run_to_summary(run: Run | Any) -> RunSummary:
     """Map domain Run to RunSummary DTO.
 
     NOTE: Run has no created_at — uses started_at as proxy for ordering.
     """
+    if hasattr(run, "to_execution_dict"):
+        payload = run.to_execution_dict()
+        created_at_value = getattr(run, "created_at", None)
+        created_at_str = (
+            created_at_value.isoformat()
+            if hasattr(created_at_value, "isoformat")
+            else str(created_at_value or payload.get("started_at") or "")
+        )
+        return RunSummary(
+            run_id=str(payload.get("id", getattr(run, "id", ""))),
+            analysis_type=str(payload.get("analysis_type", getattr(run, "analysis_type", ""))),
+            status=str(payload.get("status", getattr(run, "status", ""))),
+            solver_input_hash=str(
+                payload.get(
+                    "solver_input_hash",
+                    getattr(run, "solver_input_hash", getattr(run, "input_hash", "")),
+                )
+            ),
+            created_at=created_at_str,
+            finished_at=payload.get("finished_at"),
+            error_message=payload.get("error_message"),
+        )
+
     # Run uses started_at (not created_at) — use as timestamp proxy
     created_at_str = ""
     if hasattr(run, "started_at") and run.started_at:
