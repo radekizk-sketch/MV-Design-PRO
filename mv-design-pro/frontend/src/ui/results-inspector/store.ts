@@ -29,6 +29,7 @@ import type {
   ShortCircuitResults,
   SldResultOverlay,
 } from './types';
+import type { EnergyNetworkModel } from '../../types/enm';
 import * as api from './api';
 
 /**
@@ -46,6 +47,7 @@ interface ResultsInspectorState {
   branchResults: BranchResults | null;
   shortCircuitResults: ShortCircuitResults | null;
   extendedTrace: ExtendedTrace | null;
+  runSnapshot: EnergyNetworkModel | null;
 
   // SLD overlay
   sldOverlay: SldResultOverlay | null;
@@ -63,6 +65,7 @@ interface ResultsInspectorState {
   isLoadingBranches: boolean;
   isLoadingShortCircuit: boolean;
   isLoadingTrace: boolean;
+  isLoadingRunSnapshot: boolean;
   isLoadingOverlay: boolean;
 
   // Error state
@@ -78,7 +81,9 @@ interface ResultsInspectorState {
   loadBranchResults: () => Promise<void>;
   loadShortCircuitResults: () => Promise<void>;
   loadExtendedTrace: () => Promise<void>;
+  loadRunSnapshot: () => Promise<void>;
   loadSldOverlay: (projectId: string, diagramId: string) => Promise<void>;
+  setSldOverlay: (overlay: SldResultOverlay | null) => void;
   reset: () => void;
 }
 
@@ -92,6 +97,7 @@ const initialState = {
   branchResults: null,
   shortCircuitResults: null,
   extendedTrace: null,
+  runSnapshot: null,
   sldOverlay: null,
   overlayVisible: true,
   activeTab: 'BUSES' as ResultsInspectorTab,
@@ -101,6 +107,7 @@ const initialState = {
   isLoadingBranches: false,
   isLoadingShortCircuit: false,
   isLoadingTrace: false,
+  isLoadingRunSnapshot: false,
   isLoadingOverlay: false,
   error: null,
 };
@@ -124,6 +131,7 @@ export const useResultsInspectorStore = create<ResultsInspectorState>((set, get)
       branchResults: null,
       shortCircuitResults: null,
       extendedTrace: null,
+      runSnapshot: null,
       sldOverlay: null,
     });
 
@@ -246,6 +254,20 @@ export const useResultsInspectorStore = create<ResultsInspectorState>((set, get)
     }
   },
 
+  loadRunSnapshot: async () => {
+    const { selectedRunId } = get();
+    if (!selectedRunId) return;
+
+    set({ isLoadingRunSnapshot: true, error: null });
+    try {
+      const runSnapshot = await api.fetchRunSnapshot(selectedRunId);
+      set({ runSnapshot, isLoadingRunSnapshot: false });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Błąd ładowania migawki uruchomienia';
+      set({ error: message, isLoadingRunSnapshot: false });
+    }
+  },
+
   /**
    * Load SLD overlay for selected run.
    */
@@ -261,6 +283,10 @@ export const useResultsInspectorStore = create<ResultsInspectorState>((set, get)
       const message = err instanceof Error ? err.message : 'Błąd ładowania nakładki SLD';
       set({ error: message, isLoadingOverlay: false });
     }
+  },
+
+  setSldOverlay: (sldOverlay) => {
+    set({ sldOverlay });
   },
 
   /**

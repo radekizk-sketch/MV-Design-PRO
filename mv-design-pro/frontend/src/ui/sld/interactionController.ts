@@ -2,12 +2,6 @@ import type { SelectedElement } from '../types';
 import type { CreatorTool } from '../topology/editorPalette';
 import { CREATOR_TOOLS } from '../topology/editorPalette';
 import type { CanonicalOpName } from '../../types/domainOps';
-import {
-  DEFAULT_CABLE_BINDING,
-  DEFAULT_CABLE_CATALOG_ID,
-  DEFAULT_TRANSFORMER_BINDING,
-  DEFAULT_TRANSFORMER_CATALOG_ID,
-} from './catalogDefaults';
 
 export type ToolRuntimeStatus = 'DZIALA' | 'ZABLOKOWANE' | 'MAPOWANIE';
 
@@ -25,7 +19,7 @@ export interface ToolStatusRow {
 }
 
 export interface ResolvedToolAction {
-  mode: 'SELECT_ONLY' | 'DOMAIN_OP' | 'BLOCKED';
+  mode: 'SELECT_ONLY' | 'OPEN_FORM' | 'DOMAIN_OP' | 'BLOCKED';
   canonicalOp: CanonicalOpName | null;
   payload: Record<string, unknown>;
   reasonPl: string | null;
@@ -43,97 +37,72 @@ const TOOL_STATUS: Record<Exclude<CreatorTool, null>, ToolRuntimeStatus> = {
   continue_trunk: 'DZIALA',
   insert_station: 'DZIALA',
   start_branch: 'DZIALA',
-  connect_ring: 'DZIALA',
-  set_nop: 'DZIALA',
-  add_pv: 'DZIALA',
-  add_bess: 'DZIALA',
+  connect_ring: 'ZABLOKOWANE',
+  set_nop: 'ZABLOKOWANE',
+  add_pv: 'ZABLOKOWANE',
+  add_bess: 'ZABLOKOWANE',
   edit_properties: 'DZIALA',
   assign_catalog: 'DZIALA',
   delete_element: 'DZIALA',
 };
 
-function inferTargetRef(target: SelectedElement): string {
-  return target.id;
-}
-
-function buildContinueTrunkPayload(
-  ref: string,
-  target: SelectedElement,
-  interaction: InteractionTargetContext,
-): Record<string, unknown> {
-  const payload: Record<string, unknown> = {
-    segment: {
-      rodzaj: 'KABEL',
-      dlugosc_m: 120,
-      name: `Odcinek ${target.name ?? ref}`,
-      catalog_ref: DEFAULT_CABLE_CATALOG_ID,
-      catalog_binding: DEFAULT_CABLE_BINDING,
-    },
-    catalog_binding: DEFAULT_CABLE_BINDING,
-  };
-
-  if (interaction.kind === 'port' || target.type === 'Bus' || target.type === 'Source') {
-    payload.from_terminal_id = ref;
+function buildBlockedReason(tool: Exclude<CreatorTool, null>): string {
+  switch (tool) {
+    case 'connect_ring':
+      return 'Domknięcie ringu jest poza zakresem tego etapu i pozostaje wygaszone.';
+    case 'set_nop':
+      return 'Ustawianie NOP pozostaje wygaszone do etapu domknięcia ringu.';
+    case 'add_pv':
+    case 'add_bess':
+      return 'Źródła OZE/BESS nie są częścią tego etapu inżynierskiego przepływu SN.';
+    default:
+      return 'Narzędzie jest zablokowane w bieżącym etapie produktu.';
   }
-
-  return payload;
 }
 
-function buildInsertStationPayload(ref: string): Record<string, unknown> {
-  return {
-    segment_ref: ref,
-    station_type: 'B',
-    insert_at: {
-      mode: 'RATIO',
-      value: 0.5,
-    },
-    station: {
-      station_type: 'B',
-      station_role: 'STACJA_SN_NN',
-      station_name: `Stacja ${ref}`,
-      sn_voltage_kv: 15,
-      nn_voltage_kv: 0.4,
-    },
-    transformer: {
-      create: true,
-      transformer_catalog_ref: DEFAULT_TRANSFORMER_CATALOG_ID,
-      model_type: 'DWU_UZWOJENIOWY',
-      tap_changer_present: false,
-      catalog_binding: DEFAULT_TRANSFORMER_BINDING,
-    },
-    catalog_binding: DEFAULT_TRANSFORMER_BINDING,
-  };
-}
-
-function buildStartBranchPayload(
-  ref: string,
-  interaction: InteractionTargetContext,
+function buildOpenFormContext(
+  tool: Exclude<CreatorTool, null>,
+  target: SelectedElement,
 ): Record<string, unknown> {
-  return {
-    ...(interaction.kind === 'port'
-      ? { from_ref: `${ref}.BRANCH` }
-      : { from_bus_ref: ref }),
-    segment: {
-      rodzaj: 'KABEL',
-      dlugosc_m: 80,
-      name: `Odgałęzienie ${ref}`,
-      catalog_ref: DEFAULT_CABLE_CATALOG_ID,
-      catalog_binding: DEFAULT_CABLE_BINDING,
-    },
-    catalog_binding: DEFAULT_CABLE_BINDING,
-  };
+  switch (tool) {
+    case 'add_gpz':
+      return {};
+    case 'continue_trunk':
+      return {
+        fromTerminalId: target.id,
+        terminalLabel: target.name,
+      };
+    case 'insert_station':
+      return {
+        segmentRef: target.id,
+        segmentLabel: target.name,
+        insertRatio: 0.5,
+      };
+    case 'start_branch':
+      return {
+        fromRef: `${target.id}.BRANCH`,
+        from_bus_ref: target.type === 'Bus' ? target.id : undefined,
+        sourceLabel: target.name,
+      };
+    case 'assign_catalog':
+      return {
+        element_ref: target.id,
+        element_name: target.name,
+        element_type: target.type,
+      };
+    case 'edit_properties':
+      return {
+        element_ref: target.id,
+        element_name: target.name,
+      };
+    default:
+      return {};
+  }
 }
 
-function buildAssignCatalogPayload(ref: string, target: SelectedElement): Record<string, unknown> {
-  const isTransformer = target.type === 'TransformerBranch';
-  const binding = isTransformer ? DEFAULT_TRANSFORMER_BINDING : DEFAULT_CABLE_BINDING;
-
+function buildDeletePayload(target: SelectedElement): Record<string, unknown> {
   return {
-    element_ref: ref,
-    catalog_item_id: binding.catalog_item_id,
-    catalog_namespace: binding.catalog_namespace,
-    catalog_item_version: binding.catalog_item_version,
-    source_mode: 'KATALOG',
+    element_ref: target.id,
   };
 }
 
@@ -145,22 +114,15 @@ export function getToolStatusTable(): ToolStatusRow[] {
         tool: tool.id,
         canonicalOp: tool.canonicalOp,
         status,
-        reasonPl: 'Narzędzie ma aktywne mapowanie na operację domenową.',
+        reasonPl: 'Narzędzie prowadzi do kanonicznego formularza albo operacji domenowej bez zgadywania parametrów.',
       };
     }
-    if (status === 'MAPOWANIE') {
-      return {
-        tool: tool.id,
-        canonicalOp: tool.canonicalOp,
-        status,
-        reasonPl: 'Narzędzie wymaga doboru namespace katalogu z kontekstu elementu.',
-      };
-    }
+
     return {
       tool: tool.id,
       canonicalOp: tool.canonicalOp,
       status,
-      reasonPl: 'Narzędzie ma aktywne mapowanie na operację domenową.',
+      reasonPl: buildBlockedReason(tool.id),
     };
   });
 }
@@ -201,14 +163,11 @@ export function resolveToolAction(
 
   const status = TOOL_STATUS[tool];
   if (status !== 'DZIALA') {
-    const blockedReason = status === 'MAPOWANIE'
-      ? 'Narzędzie wymaga mapowania na katalog z kontekstu elementu.'
-      : 'Narzędzie jest zablokowane w bieżącym trybie.';
     return {
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
       payload: {},
-      reasonPl: blockedReason,
+      reasonPl: buildBlockedReason(tool),
     };
   }
 
@@ -217,28 +176,15 @@ export function resolveToolAction(
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
       payload: {},
-      reasonPl: 'Najpierw dodaj GPZ/źródło SN.',
-    };
-  }
-
-  if (def.requiresRing && !ctx.hasRing) {
-    return {
-      mode: 'BLOCKED',
-      canonicalOp: def.canonicalOp,
-      payload: {},
-      reasonPl: 'To narzędzie wymaga istniejącej struktury ring.',
+      reasonPl: 'Najpierw dodaj GPZ lub źródło zasilania SN.',
     };
   }
 
   const allowedTargets: Partial<Record<Exclude<CreatorTool, null>, InteractionTargetContext['kind'][]>> = {
     add_gpz: ['canvas'],
-    continue_trunk: ['port', 'element'],
+    continue_trunk: ['port'],
     insert_station: ['element'],
     start_branch: ['port'],
-    connect_ring: ['port'],
-    set_nop: ['element', 'port'],
-    add_pv: ['port', 'element'],
-    add_bess: ['port', 'element'],
     edit_properties: ['element'],
     assign_catalog: ['element'],
     delete_element: ['element', 'port'],
@@ -259,70 +205,46 @@ export function resolveToolAction(
     };
   }
 
-  if (tool === 'start_branch' && interaction.kind === 'port' && interaction.portRole !== 'BRANCH_OUT') {
+  if (tool === 'continue_trunk' && interaction.portRole !== 'TRUNK_OUT') {
     return {
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
       payload: {},
-      reasonPl: 'To narzędzie wymaga portu odgałęzienia BRANCH_OUT.',
-    };
-  }
-  if (tool === 'connect_ring' && interaction.kind === 'port' && interaction.portRole !== 'RING') {
-    return {
-      mode: 'BLOCKED',
-      canonicalOp: def.canonicalOp,
-      payload: {},
-      reasonPl: 'To narzędzie wymaga portu RING.',
+      reasonPl: 'Kontynuacja magistrali wymaga portu TRUNK_OUT na otwartym końcu sieci.',
     };
   }
 
-  if (!def.requiresSldContext) {
+  if (tool === 'start_branch' && interaction.portRole !== 'BRANCH_OUT') {
+    return {
+      mode: 'BLOCKED',
+      canonicalOp: def.canonicalOp,
+      payload: {},
+      reasonPl: 'Odgałęzienie może wystartować tylko z portu BRANCH_OUT.',
+    };
+  }
+
+  if (tool === 'insert_station' && target.type !== 'LineBranch') {
+    return {
+      mode: 'BLOCKED',
+      canonicalOp: def.canonicalOp,
+      payload: {},
+      reasonPl: 'Wstawienie stacji wymaga wskazania odcinka SN.',
+    };
+  }
+
+  if (tool === 'delete_element') {
     return {
       mode: 'DOMAIN_OP',
       canonicalOp: def.canonicalOp,
-      payload: tool === 'add_gpz' ? { voltage_kv: 15, sk3_mva: 250, rx_ratio: 0.1 } : {},
+      payload: buildDeletePayload(target),
       reasonPl: null,
     };
   }
 
-  const targetRef = inferTargetRef(target);
-
-  const payloadBuilders: Record<
-    Exclude<CreatorTool, null>,
-    (
-      ref: string,
-      currentTarget: SelectedElement,
-      currentInteraction: InteractionTargetContext,
-    ) => Record<string, unknown>
-  > = {
-    select: () => ({}),
-    move: () => ({}),
-    add_gpz: () => ({ voltage_kv: 15, sk3_mva: 250, rx_ratio: 0.1 }),
-    continue_trunk: (ref, currentTarget, currentInteraction) => (
-      buildContinueTrunkPayload(ref, currentTarget, currentInteraction)
-    ),
-    insert_station: (ref) => buildInsertStationPayload(ref),
-    start_branch: (ref, _currentTarget, currentInteraction) => (
-      buildStartBranchPayload(ref, currentInteraction)
-    ),
-    connect_ring: (ref) => ({ from_terminal_ref: ref, to_terminal_ref: ref }),
-    set_nop: (ref) => ({ segment_ref: ref }),
-    add_pv: (ref) => ({ node_ref: ref, p_kw: 50 }),
-    add_bess: (ref) => ({ node_ref: ref, p_kw: 100, e_kwh: 200 }),
-    edit_properties: (ref, currentTarget) => ({
-      element_ref: ref,
-      parameters: {
-        name: currentTarget.name ?? ref,
-      },
-    }),
-    assign_catalog: (ref, currentTarget) => buildAssignCatalogPayload(ref, currentTarget),
-    delete_element: (ref) => ({ element_ref: ref }),
-  };
-
   return {
-    mode: 'DOMAIN_OP',
+    mode: 'OPEN_FORM',
     canonicalOp: def.canonicalOp,
-    payload: payloadBuilders[tool](targetRef, target, interaction),
+    payload: buildOpenFormContext(tool, target),
     reasonPl: null,
   };
 }

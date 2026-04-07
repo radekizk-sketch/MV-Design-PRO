@@ -260,7 +260,7 @@ class TestAnalysisRunSummaryContract:
             enm_hash="enm-hash",
             results_valid=True,
             deduplicated=False,
-            result_location="/analysis-runs/run-1/results",
+            result_location="/api/analysis-runs/run-1/results",
         )
         d = summary.to_dict()
         required_keys = {

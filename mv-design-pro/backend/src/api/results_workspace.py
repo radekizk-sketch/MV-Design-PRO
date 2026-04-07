@@ -35,6 +35,8 @@ from application.batch_execution_service import BatchExecutionService
 from application.read_models.results_workspace_projection import (
     build_workspace_projection,
 )
+from api.execution_runs import get_engine
+from enm.canonical_analysis import list_runs_for_case as list_canonical_runs_for_case
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +50,14 @@ def _get_execution_service(request: Request) -> ExecutionEngineService:
     """Resolve ExecutionEngineService from app state."""
     if hasattr(request.app.state, "execution_engine_service"):
         return request.app.state.execution_engine_service
-    return ExecutionEngineService()
+    return get_engine()
 
 
 def _get_batch_service(request: Request) -> BatchExecutionService:
     """Resolve BatchExecutionService from app state."""
     if hasattr(request.app.state, "batch_execution_service"):
         return request.app.state.batch_execution_service
-    return BatchExecutionService()
+    return BatchExecutionService(_get_execution_service(request))
 
 
 @router.get("/{study_case_id}")
@@ -84,9 +86,12 @@ async def get_results_workspace(
 
         # Fetch runs
         try:
-            runs = execution_service.list_runs_for_case(study_case_id)
+            runs = list_canonical_runs_for_case(str(study_case_id))
         except (StudyCaseNotFoundError, Exception):
-            runs = []
+            try:
+                runs = execution_service.list_runs_for_case(study_case_id)
+            except Exception:
+                runs = []
 
         # Fetch batches
         try:

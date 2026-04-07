@@ -1,10 +1,10 @@
-/**
- * ProtectionSettingsPage — Nastawy zabezpieczen nadpradowych.
+﻿/**
+ * ProtectionSettingsPage â€” Nastawy zabezpieczen nadpradowych.
  *
  * Wyswietla liste zabezpieczen z mozliwoscia konfiguracji nastaw:
  * - I> (pierwszy stopien nadpradowy)
  * - I>> (drugi stopien nadpradowy / zwarciowy)
- * - t1, t2 (czasy zadziałania)
+ * - t1, t2 (czasy zadziaĹ‚ania)
  * - Typ krzywej (DT, IEC SI/VI/EI/LI)
  *
  * CANONICAL: brak fizyki, pure configuration/display UI.
@@ -44,9 +44,9 @@ function formatSetting(setting: ProtectionSetting): {
 } {
   return {
     functionLabel: FUNCTION_LABELS[setting.function_type] ?? setting.function_type,
-    threshold: setting.threshold_a != null ? `${setting.threshold_a.toFixed(1)} A` : '—',
-    timeDelay: setting.time_delay_s != null ? `${setting.time_delay_s.toFixed(2)} s` : '—',
-    curveLabel: setting.curve_type ? (CURVE_LABELS[setting.curve_type] ?? setting.curve_type) : '—',
+    threshold: setting.threshold_a != null ? `${setting.threshold_a.toFixed(1)} A` : 'â€”',
+    timeDelay: setting.time_delay_s != null ? `${setting.time_delay_s.toFixed(2)} s` : 'â€”',
+    curveLabel: setting.curve_type ? (CURVE_LABELS[setting.curve_type] ?? setting.curve_type) : 'â€”',
   };
 }
 
@@ -89,7 +89,7 @@ export function ProtectionSettingsPage() {
               Nastawy zabezpieczen
             </h1>
             <p className="text-sm text-gray-500">
-              Model nie zawiera zabezpieczen. Dodaj zabezpieczenia w kreatorze sieci
+              Model nie zawiera zabezpieczen. Dodaj zabezpieczenia w edytorze sieci
               lub w module rozdzielnic.
             </p>
           </div>

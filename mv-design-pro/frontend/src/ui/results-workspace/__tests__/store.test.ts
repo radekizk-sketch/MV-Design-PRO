@@ -105,6 +105,7 @@ beforeEach(() => {
     selectedBatchId: null,
     selectedComparisonId: null,
     overlayMode: 'result',
+    snapshotViewMode: 'RUN_SNAPSHOT',
     filter: 'ALL',
     isLoading: false,
     error: null,
@@ -174,6 +175,35 @@ describe('ResultsWorkspaceStore — Mode transitions', () => {
     expect(updated.mode).toBe('BATCH');
     expect(updated.selectedRunId).toBe('run-abc');
   });
+
+  it('syncFromUrl respects explicit workspace mode and selection', () => {
+    window.location.hash = '#results?mode=compare&comparison=cmp-77&overlay=delta';
+
+    useResultsWorkspaceStore.getState().syncFromUrl();
+
+    const updated = useResultsWorkspaceStore.getState();
+    expect(updated.mode).toBe('COMPARE');
+    expect(updated.selectedComparisonId).toBe('cmp-77');
+    expect(updated.overlayMode).toBe('delta');
+  });
+
+  it('syncToUrl serializes explicit mode for deep links', () => {
+    window.location.hash = '#results';
+    useResultsWorkspaceStore.setState({
+      mode: 'RUN',
+      selectedRunId: 'run-55',
+      selectedBatchId: null,
+      selectedComparisonId: null,
+      overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
+    });
+
+    useResultsWorkspaceStore.getState().syncToUrl();
+
+    expect(window.location.hash).toContain('#results?mode=run');
+    expect(window.location.hash).toContain('run=run-55');
+    expect(window.location.hash).toContain('overlay=result');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -236,6 +266,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: null,
       selectedComparisonId: null,
       overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.toString()).toBe('');
   });
@@ -246,6 +277,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: null,
       selectedComparisonId: null,
       overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.get('run')).toBe('run-123');
   });
@@ -256,6 +288,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: 'batch-456',
       selectedComparisonId: null,
       overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.get('batch')).toBe('batch-456');
   });
@@ -266,6 +299,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: null,
       selectedComparisonId: 'cmp-789',
       overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.get('comparison')).toBe('cmp-789');
   });
@@ -276,6 +310,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: null,
       selectedComparisonId: null,
       overlayMode: 'delta',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.get('overlay')).toBe('delta');
   });
@@ -286,6 +321,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: null,
       selectedComparisonId: null,
       overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
     });
     expect(params.get('overlay')).toBeNull();
   });
@@ -296,6 +332,7 @@ describe('buildWorkspaceUrlParams', () => {
       selectedBatchId: 'batch-2',
       selectedComparisonId: 'cmp-3',
       overlayMode: 'delta' as const,
+      snapshotViewMode: 'RUN_SNAPSHOT' as const,
     };
     const a = buildWorkspaceUrlParams(input).toString();
     const b = buildWorkspaceUrlParams(input).toString();

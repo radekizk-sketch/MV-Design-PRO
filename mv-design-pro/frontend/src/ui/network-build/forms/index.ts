@@ -11,6 +11,7 @@ export { InsertBranchPoleForm } from './InsertBranchPoleForm';
 export { InsertZksnForm } from './InsertZksnForm';
 export { StartBranchForm } from './StartBranchForm';
 export { ConnectRingForm } from './ConnectRingForm';
+export { SetNormalOpenPointForm } from './SetNormalOpenPointForm';
 export { InsertSectionSwitchForm } from './InsertSectionSwitchForm';
 export { AddTransformerForm } from './AddTransformerForm';
 export { AddOzeSourceForm } from './AddOzeSourceForm';

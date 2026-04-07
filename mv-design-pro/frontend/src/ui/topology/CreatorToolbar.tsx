@@ -93,7 +93,7 @@ export function CreatorToolbar({
       </div>
 
       <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wide font-semibold text-gray-500 border-t border-gray-200">
-        Budowa sieci SN
+        Operacje sieci SN
       </div>
       <div className="flex flex-wrap items-center gap-1 px-3 pb-2">
         {groupedTools.build.map((tool) => (

@@ -10,6 +10,7 @@
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
 import { useNetworkBuildDerived } from './networkBuildStore';
+import { useAppStateStore, useCanCalculate } from '../app-state';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 // =============================================================================
@@ -25,6 +26,10 @@ export interface TopContextBarProps {
   onOpenMassReview?: () => void;
   onOpenProjectMetadata?: () => void;
   onOpenSnapshotHistory?: () => void;
+  onRunAnalysis?: () => void;
+  onOpenResults?: () => void;
+  onToggleIssuePanel?: () => void;
+  issuePanelOpen?: boolean;
 }
 
 // =============================================================================
@@ -60,10 +65,16 @@ export function TopContextBar({
   onOpenMassReview,
   onOpenProjectMetadata,
   onOpenSnapshotHistory,
+  onRunAnalysis,
+  onOpenResults,
+  onToggleIssuePanel,
+  issuePanelOpen = false,
 }: TopContextBarProps) {
   const { buildPhase, buildPhaseLabel: phaseLabel, blockersByCategory, isReady } =
     useNetworkBuildDerived();
   const snapshot = useSnapshotStore((s) => s.snapshot);
+  const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
+  const { allowed: canRunAnalysis, reason: calculateBlockedReason } = useCanCalculate();
 
   const stats = useMemo(() => {
     if (!snapshot) return null;
@@ -166,6 +177,64 @@ export function TopContextBar({
         {/* Search */}
         <button
           type="button"
+          onClick={onToggleIssuePanel}
+          className={clsx(
+            'flex items-center gap-1 px-2 py-1 rounded transition-colors',
+            issuePanelOpen
+              ? 'bg-amber-100 text-amber-800'
+              : 'text-gray-500 hover:bg-gray-100',
+          )}
+          title="Pokaz panel problemow i diagnostyki"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 4.5h.008v.008H12v-.008z" />
+          </svg>
+          <span className="hidden sm:inline">Problemy</span>
+          {(blockersByCategory.total > 0 || issuePanelOpen) && (
+            <span className="rounded-full bg-white/80 px-1.5 py-0.5 text-[9px] font-semibold">
+              {blockersByCategory.total}
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={onRunAnalysis}
+          disabled={!onRunAnalysis || !canRunAnalysis}
+          className={clsx(
+            'flex items-center gap-1 px-2 py-1 rounded transition-colors',
+            onRunAnalysis && canRunAnalysis
+              ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+              : 'cursor-not-allowed bg-slate-100 text-slate-400',
+          )}
+          title={calculateBlockedReason ?? 'Uruchom analize dla aktywnego przypadku'}
+        >
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+          </svg>
+          <span className="hidden sm:inline">Oblicz</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onOpenResults}
+          disabled={!onOpenResults || resultStatus === 'NONE'}
+          className={clsx(
+            'flex items-center gap-1 px-2 py-1 rounded transition-colors',
+            onOpenResults && resultStatus !== 'NONE'
+              ? 'text-gray-600 hover:bg-gray-100'
+              : 'cursor-not-allowed text-gray-300',
+          )}
+          title={resultStatus === 'NONE' ? 'Brak wynikow dla aktywnego przypadku' : 'Otworz kanoniczna przestrzen wynikow'}
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+          </svg>
+          <span className="hidden sm:inline">Wyniki</span>
+        </button>
+
+        <button
+          type="button"
           onClick={onOpenGlobalSearch}
           className="flex items-center gap-1 px-2 py-1 rounded text-gray-500 hover:bg-gray-100 transition-colors"
           title="Szukaj elementu (Ctrl+K)"
@@ -189,7 +258,7 @@ export function TopContextBar({
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
           </svg>
-          <span className="hidden sm:inline">Katalog</span>
+          <span className="hidden sm:inline">Katalogi</span>
         </button>
 
         {/* Mass review */}

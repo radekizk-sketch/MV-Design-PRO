@@ -9,12 +9,20 @@ if (!executable) {
 }
 
 const extraArgs = process.argv.slice(2);
+const runnerCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 const result = spawnSync(
-  'npx',
+  runnerCommand,
   ['playwright', 'test', ...extraArgs],
   {
     stdio: 'inherit',
     env,
+    shell: process.platform === 'win32',
   },
 );
+
+if (result.error) {
+  console.error('[playwright-run] Nie udalo sie uruchomic Playwright:', result.error.message);
+  process.exit(1);
+}
+
 process.exit(result.status ?? 1);

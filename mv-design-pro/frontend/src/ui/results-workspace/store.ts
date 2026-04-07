@@ -1,25 +1,8 @@
 /**
- * Results Workspace Store — PR-22 + PR-23 (Determinism Lock)
+ * Results Workspace Store
  *
- * State management for Unified Results Workspace.
- * Supports RUN / BATCH / COMPARE modes with deep-linking.
- *
- * CANONICAL ALIGNMENT:
- * - SYSTEM_SPEC.md: Read-only result display, no physics
- * - UI_CORE_ARCHITECTURE.md: Deterministic URL synchronization
- *
- * INVARIANTS:
- * - No physics calculations
- * - No model mutations
- * - Deterministic sorting (lexicographic, no Date.now, no Math.random)
- * - URL ↔ state synchronization (deep-linking)
- * - Mode determines which panel is active (RUN/BATCH/COMPARE)
- *
- * PR-23 URL DETERMINISM LOCK:
- * - URL is the SOLE source of truth for mode/selection/overlay
- * - buildUrlFromState() and parseStateFromUrl() are pure functions
- * - serialize → parse → serialize must produce identical URL
- * - No internal defaults override URL state
+ * URL remains the single source of truth for run selection, overlay mode
+ * and snapshot context mode.
  */
 
 import { create } from 'zustand';
@@ -27,6 +10,7 @@ import type {
   WorkspaceProjection,
   WorkspaceMode,
   OverlayDisplayMode,
+  SnapshotViewMode,
   WorkspaceFilter,
   RunSummary,
   BatchSummary,
@@ -35,36 +19,18 @@ import type {
 import { WORKSPACE_URL_PARAMS } from './types';
 import * as api from './api';
 
-// =============================================================================
-// State Interface
-// =============================================================================
-
 interface ResultsWorkspaceState {
-  // Study case context
   studyCaseId: string | null;
-
-  // Projection data (from backend)
   projection: WorkspaceProjection | null;
-
-  // Mode selection
   mode: WorkspaceMode;
-
-  // Item selection (one per mode)
   selectedRunId: string | null;
   selectedBatchId: string | null;
   selectedComparisonId: string | null;
-
-  // SLD overlay mode
   overlayMode: OverlayDisplayMode;
-
-  // Filter
+  snapshotViewMode: SnapshotViewMode;
   filter: WorkspaceFilter;
-
-  // Loading / error states
   isLoading: boolean;
   error: string | null;
-
-  // Actions
   setStudyCaseId: (id: string | null) => void;
   loadProjection: (studyCaseId: string) => Promise<void>;
   setMode: (mode: WorkspaceMode) => void;
@@ -72,16 +38,13 @@ interface ResultsWorkspaceState {
   selectBatch: (batchId: string | null) => void;
   selectComparison: (comparisonId: string | null) => void;
   setOverlayMode: (mode: OverlayDisplayMode) => void;
+  setSnapshotViewMode: (mode: SnapshotViewMode) => void;
   setFilter: (filter: WorkspaceFilter) => void;
   syncFromUrl: () => void;
   syncToUrl: () => void;
   clearError: () => void;
   reset: () => void;
 }
-
-// =============================================================================
-// Initial State
-// =============================================================================
 
 const initialState = {
   studyCaseId: null as string | null,
@@ -91,106 +54,102 @@ const initialState = {
   selectedBatchId: null as string | null,
   selectedComparisonId: null as string | null,
   overlayMode: 'result' as OverlayDisplayMode,
+  snapshotViewMode: 'RUN_SNAPSHOT' as SnapshotViewMode,
   filter: 'ALL' as WorkspaceFilter,
   isLoading: false,
   error: null as string | null,
 };
 
-// =============================================================================
-// URL Helpers (deterministic, no side effects)
-// =============================================================================
-
-/**
- * Parse workspace params from URL hash.
- * Works with hash-based routing: #results-workspace?run=...&overlay=result
- */
 export function parseWorkspaceUrlParams(): {
   runId: string | null;
   batchId: string | null;
   comparisonId: string | null;
   overlayMode: OverlayDisplayMode | null;
+  snapshotViewMode: SnapshotViewMode | null;
 } {
   if (typeof window === 'undefined') {
-    return { runId: null, batchId: null, comparisonId: null, overlayMode: null };
+    return {
+      runId: null,
+      batchId: null,
+      comparisonId: null,
+      overlayMode: null,
+      snapshotViewMode: null,
+    };
   }
 
   const hash = window.location.hash;
   const queryIndex = hash.indexOf('?');
   if (queryIndex === -1) {
-    return { runId: null, batchId: null, comparisonId: null, overlayMode: null };
+    return {
+      runId: null,
+      batchId: null,
+      comparisonId: null,
+      overlayMode: null,
+      snapshotViewMode: null,
+    };
   }
 
   const params = new URLSearchParams(hash.slice(queryIndex + 1));
-
   const overlayRaw = params.get(WORKSPACE_URL_PARAMS.OVERLAY);
-  let overlayMode: OverlayDisplayMode | null = null;
-  if (overlayRaw === 'result' || overlayRaw === 'delta' || overlayRaw === 'none') {
-    overlayMode = overlayRaw;
-  }
+  const contextRaw = params.get(WORKSPACE_URL_PARAMS.CONTEXT);
 
   return {
     runId: params.get(WORKSPACE_URL_PARAMS.RUN),
     batchId: params.get(WORKSPACE_URL_PARAMS.BATCH),
     comparisonId: params.get(WORKSPACE_URL_PARAMS.COMPARISON),
-    overlayMode,
+    overlayMode:
+      overlayRaw === 'result' || overlayRaw === 'delta' || overlayRaw === 'none'
+        ? overlayRaw
+        : null,
+    snapshotViewMode:
+      contextRaw === 'current'
+        ? 'CURRENT_MODEL'
+        : contextRaw === 'run'
+          ? 'RUN_SNAPSHOT'
+          : null,
   };
 }
 
-/**
- * Build URL search params from workspace state.
- * Deterministic output — no random values.
- */
 export function buildWorkspaceUrlParams(state: {
   selectedRunId: string | null;
   selectedBatchId: string | null;
   selectedComparisonId: string | null;
   overlayMode: OverlayDisplayMode;
+  snapshotViewMode: SnapshotViewMode;
 }): URLSearchParams {
   const params = new URLSearchParams();
-
-  if (state.selectedRunId) {
-    params.set(WORKSPACE_URL_PARAMS.RUN, state.selectedRunId);
-  }
-  if (state.selectedBatchId) {
-    params.set(WORKSPACE_URL_PARAMS.BATCH, state.selectedBatchId);
-  }
+  if (state.selectedRunId) params.set(WORKSPACE_URL_PARAMS.RUN, state.selectedRunId);
+  if (state.selectedBatchId) params.set(WORKSPACE_URL_PARAMS.BATCH, state.selectedBatchId);
   if (state.selectedComparisonId) {
     params.set(WORKSPACE_URL_PARAMS.COMPARISON, state.selectedComparisonId);
   }
   if (state.overlayMode !== 'result') {
     params.set(WORKSPACE_URL_PARAMS.OVERLAY, state.overlayMode);
   }
-
+  if (state.snapshotViewMode !== 'RUN_SNAPSHOT') {
+    params.set(WORKSPACE_URL_PARAMS.CONTEXT, 'current');
+  }
   return params;
 }
 
-// =============================================================================
-// PR-23: URL Determinism Lock — buildUrlFromState / parseStateFromUrl
-// =============================================================================
-
-/**
- * Workspace URL state — the minimal set of fields persisted in URL.
- * This is the SOLE source of truth for view state after hard refresh.
- */
 export interface WorkspaceUrlState {
   mode: WorkspaceMode;
   selectedRunId: string | null;
   selectedBatchId: string | null;
   selectedComparisonId: string | null;
   overlayMode: OverlayDisplayMode;
+  snapshotViewMode: SnapshotViewMode;
 }
 
-/**
- * PR-23: Build a deterministic URL search string from workspace state.
- *
- * Pure function. No side effects. Deterministic output.
- * serialize(state) → parse(url) → serialize(state') must yield identical URL.
- */
 export function buildUrlFromState(state: WorkspaceUrlState): string {
   const params = new URLSearchParams();
 
-  // Mode is always explicit in URL (no implicit defaults)
   params.set('mode', state.mode.toLowerCase());
+  params.set(WORKSPACE_URL_PARAMS.OVERLAY, state.overlayMode);
+  params.set(
+    WORKSPACE_URL_PARAMS.CONTEXT,
+    state.snapshotViewMode === 'CURRENT_MODEL' ? 'current' : 'run'
+  );
 
   if (state.selectedRunId) {
     params.set(WORKSPACE_URL_PARAMS.RUN, state.selectedRunId);
@@ -202,34 +161,29 @@ export function buildUrlFromState(state: WorkspaceUrlState): string {
     params.set(WORKSPACE_URL_PARAMS.COMPARISON, state.selectedComparisonId);
   }
 
-  // Overlay always explicit — no implicit 'result' default
-  params.set(WORKSPACE_URL_PARAMS.OVERLAY, state.overlayMode);
-
   return params.toString();
 }
 
-/**
- * PR-23: Parse workspace state from a URL search string.
- *
- * Pure function. No side effects. Deterministic output.
- * Returns fully populated WorkspaceUrlState with explicit defaults.
- */
 export function parseStateFromUrl(search: string): WorkspaceUrlState {
   const params = new URLSearchParams(search);
 
   const modeRaw = params.get('mode');
   let mode: WorkspaceMode = 'RUN';
   if (modeRaw === 'batch') mode = 'BATCH';
-  else if (modeRaw === 'compare') mode = 'COMPARE';
-  else if (modeRaw === 'run') mode = 'RUN';
+  if (modeRaw === 'compare') mode = 'COMPARE';
 
   const overlayRaw = params.get(WORKSPACE_URL_PARAMS.OVERLAY);
   let overlayMode: OverlayDisplayMode = 'result';
-  if (overlayRaw === 'result' || overlayRaw === 'delta' || overlayRaw === 'none') {
+  if (overlayRaw === 'delta' || overlayRaw === 'none' || overlayRaw === 'result') {
     overlayMode = overlayRaw;
   }
 
-  // Infer mode from selection if mode param is absent
+  const contextRaw = params.get(WORKSPACE_URL_PARAMS.CONTEXT);
+  let snapshotViewMode: SnapshotViewMode = 'RUN_SNAPSHOT';
+  if (contextRaw === 'current') {
+    snapshotViewMode = 'CURRENT_MODEL';
+  }
+
   const runId = params.get(WORKSPACE_URL_PARAMS.RUN);
   const batchId = params.get(WORKSPACE_URL_PARAMS.BATCH);
   const comparisonId = params.get(WORKSPACE_URL_PARAMS.COMPARISON);
@@ -246,21 +200,14 @@ export function parseStateFromUrl(search: string): WorkspaceUrlState {
     selectedBatchId: batchId,
     selectedComparisonId: comparisonId,
     overlayMode,
+    snapshotViewMode,
   };
 }
 
-// =============================================================================
-// Filtering Helpers (deterministic)
-// =============================================================================
-
-export function filterRuns(
-  runs: RunSummary[],
-  filter: WorkspaceFilter
-): RunSummary[] {
+export function filterRuns(runs: RunSummary[], filter: WorkspaceFilter): RunSummary[] {
   if (filter === 'ALL') return runs;
   if (filter === 'DONE') return runs.filter((r) => r.status === 'DONE');
   if (filter === 'FAILED') return runs.filter((r) => r.status === 'FAILED');
-  // Analysis type filters
   return runs.filter((r) => r.analysis_type === filter);
 }
 
@@ -283,218 +230,173 @@ export function filterComparisons(
   return comparisons.filter((c) => c.analysis_type === filter);
 }
 
-// =============================================================================
-// Store
-// =============================================================================
+export const useResultsWorkspaceStore = create<ResultsWorkspaceState>((set, get) => ({
+  ...initialState,
 
-export const useResultsWorkspaceStore = create<ResultsWorkspaceState>(
-  (set, get) => ({
-    ...initialState,
-
-    setStudyCaseId: (id) => {
-      const current = get().studyCaseId;
-      if (current !== id) {
-        set({ studyCaseId: id, projection: null, error: null });
-        if (id) {
-          get().loadProjection(id);
-        }
+  setStudyCaseId: (id) => {
+    const current = get().studyCaseId;
+    if (current !== id) {
+      set({ studyCaseId: id, projection: null, error: null });
+      if (id) {
+        void get().loadProjection(id);
       }
-    },
+    }
+  },
 
-    loadProjection: async (studyCaseId) => {
-      set({ isLoading: true, error: null });
-      try {
-        const projection = await api.fetchWorkspaceProjection(studyCaseId);
-        set({ projection, isLoading: false });
-
-        // Auto-select latest done run if none selected
-        const { selectedRunId } = get();
-        if (!selectedRunId && projection.latest_done_run_id) {
-          set({ selectedRunId: projection.latest_done_run_id });
-        }
-      } catch (err) {
-        const message =
-          err instanceof Error
-            ? err.message
-            : 'Błąd ładowania przestrzeni roboczej wyników';
-        set({ error: message, isLoading: false });
+  loadProjection: async (studyCaseId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const projection = await api.fetchWorkspaceProjection(studyCaseId);
+      set({ projection, isLoading: false });
+      const { selectedRunId } = get();
+      if (!selectedRunId && projection.latest_done_run_id) {
+        set({
+          selectedRunId: projection.latest_done_run_id,
+          snapshotViewMode: 'RUN_SNAPSHOT',
+        });
       }
-    },
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Błąd ładowania przestrzeni roboczej wyników';
+      set({ error: message, isLoading: false });
+    }
+  },
 
-    setMode: (mode) => {
-      set({ mode });
-      get().syncToUrl();
-    },
+  setMode: (mode) => {
+    set({ mode });
+    get().syncToUrl();
+  },
 
-    selectRun: (runId) => {
-      set({
-        selectedRunId: runId,
-        mode: 'RUN',
-        overlayMode: 'result',
-      });
-      get().syncToUrl();
-    },
+  selectRun: (runId) => {
+    set({
+      selectedRunId: runId,
+      mode: 'RUN',
+      overlayMode: 'result',
+      snapshotViewMode: 'RUN_SNAPSHOT',
+    });
+    get().syncToUrl();
+  },
 
-    selectBatch: (batchId) => {
-      set({
-        selectedBatchId: batchId,
-        mode: 'BATCH',
-      });
-      get().syncToUrl();
-    },
+  selectBatch: (batchId) => {
+    set({
+      selectedBatchId: batchId,
+      mode: 'BATCH',
+    });
+    get().syncToUrl();
+  },
 
-    selectComparison: (comparisonId) => {
-      set({
-        selectedComparisonId: comparisonId,
-        mode: 'COMPARE',
-        overlayMode: 'delta',
-      });
-      get().syncToUrl();
-    },
+  selectComparison: (comparisonId) => {
+    set({
+      selectedComparisonId: comparisonId,
+      mode: 'COMPARE',
+      overlayMode: 'delta',
+    });
+    get().syncToUrl();
+  },
 
-    setOverlayMode: (overlayMode) => {
-      set({ overlayMode });
-      get().syncToUrl();
-    },
+  setOverlayMode: (overlayMode) => {
+    set({ overlayMode });
+    get().syncToUrl();
+  },
 
-    setFilter: (filter) => {
-      set({ filter });
-    },
+  setSnapshotViewMode: (snapshotViewMode) => {
+    set({ snapshotViewMode });
+    get().syncToUrl();
+  },
 
-    syncFromUrl: () => {
-      const urlState = parseWorkspaceUrlParams();
+  setFilter: (filter) => {
+    set({ filter });
+  },
 
-      const updates: Partial<ResultsWorkspaceState> = {};
+  syncFromUrl: () => {
+    if (typeof window === 'undefined') {
+      return;
+    }
 
-      if (urlState.runId) {
-        updates.selectedRunId = urlState.runId;
-        updates.mode = 'RUN';
-      }
-      if (urlState.batchId) {
-        updates.selectedBatchId = urlState.batchId;
-        updates.mode = 'BATCH';
-      }
-      if (urlState.comparisonId) {
-        updates.selectedComparisonId = urlState.comparisonId;
-        updates.mode = 'COMPARE';
-      }
-      if (urlState.overlayMode) {
-        updates.overlayMode = urlState.overlayMode;
-      }
+    const hash = window.location.hash;
+    const queryIndex = hash.indexOf('?');
+    const rawSearch = queryIndex === -1 ? '' : hash.slice(queryIndex + 1);
+    const urlState = parseStateFromUrl(rawSearch);
 
-      if (Object.keys(updates).length > 0) {
-        set(updates);
-      }
-    },
+    set({
+      mode: urlState.mode,
+      selectedRunId: urlState.selectedRunId,
+      selectedBatchId: urlState.selectedBatchId,
+      selectedComparisonId: urlState.selectedComparisonId,
+      overlayMode: urlState.overlayMode,
+      snapshotViewMode: urlState.snapshotViewMode,
+    });
+  },
 
-    syncToUrl: () => {
-      if (typeof window === 'undefined') return;
+  syncToUrl: () => {
+    if (typeof window === 'undefined') return;
 
-      const state = get();
-      const params = buildWorkspaceUrlParams({
-        selectedRunId: state.selectedRunId,
-        selectedBatchId: state.selectedBatchId,
-        selectedComparisonId: state.selectedComparisonId,
-        overlayMode: state.overlayMode,
-      });
+    const state = get();
+    const hash = window.location.hash;
+    const queryIndex = hash.indexOf('?');
+    const baseHash = queryIndex !== -1 ? hash.slice(0, queryIndex) : hash;
+    const canonicalBaseHash = baseHash === '#results-workspace' ? '#results' : baseHash;
+    const queryString = buildUrlFromState({
+      mode: state.mode,
+      selectedRunId: state.selectedRunId,
+      selectedBatchId: state.selectedBatchId,
+      selectedComparisonId: state.selectedComparisonId,
+      overlayMode: state.overlayMode,
+      snapshotViewMode: state.snapshotViewMode,
+    });
+    const newHash = queryString ? `${canonicalBaseHash}?${queryString}` : canonicalBaseHash;
+    const newUrl = `${window.location.pathname}${newHash}`;
+    window.history.replaceState(null, '', newUrl);
+  },
 
-      const hash = window.location.hash;
-      const queryIndex = hash.indexOf('?');
-      const baseHash = queryIndex !== -1 ? hash.slice(0, queryIndex) : hash;
+  clearError: () => set({ error: null }),
 
-      const queryString = params.toString();
-      const newHash = queryString ? `${baseHash}?${queryString}` : baseHash;
+  reset: () => set(initialState),
+}));
 
-      const newUrl = `${window.location.pathname}${newHash}`;
-      window.history.replaceState(null, '', newUrl);
-    },
-
-    clearError: () => set({ error: null }),
-
-    reset: () => set(initialState),
-  })
-);
-
-// =============================================================================
-// Derived Hooks
-// =============================================================================
-
-/**
- * Hook: Get filtered runs from projection.
- */
 export function useFilteredRuns(): RunSummary[] {
-  return useResultsWorkspaceStore((state) => {
-    const runs = state.projection?.runs ?? [];
-    return filterRuns(runs, state.filter);
-  });
+  return useResultsWorkspaceStore((state) => filterRuns(state.projection?.runs ?? [], state.filter));
 }
 
-/**
- * Hook: Get filtered batches from projection.
- */
 export function useFilteredBatches(): BatchSummary[] {
-  return useResultsWorkspaceStore((state) => {
-    const batches = state.projection?.batches ?? [];
-    return filterBatches(batches, state.filter);
-  });
+  return useResultsWorkspaceStore((state) =>
+    filterBatches(state.projection?.batches ?? [], state.filter)
+  );
 }
 
-/**
- * Hook: Get filtered comparisons from projection.
- */
 export function useFilteredComparisons(): ComparisonSummary[] {
-  return useResultsWorkspaceStore((state) => {
-    const comparisons = state.projection?.comparisons ?? [];
-    return filterComparisons(comparisons, state.filter);
-  });
+  return useResultsWorkspaceStore((state) =>
+    filterComparisons(state.projection?.comparisons ?? [], state.filter)
+  );
 }
 
-/**
- * Hook: Get currently selected run details.
- */
 export function useSelectedRunDetail(): RunSummary | null {
   return useResultsWorkspaceStore((state) => {
     if (!state.selectedRunId || !state.projection) return null;
-    return (
-      state.projection.runs.find((r) => r.run_id === state.selectedRunId) ??
-      null
-    );
+    return state.projection.runs.find((run) => run.run_id === state.selectedRunId) ?? null;
   });
 }
 
-/**
- * Hook: Get currently selected batch details.
- */
 export function useSelectedBatchDetail(): BatchSummary | null {
   return useResultsWorkspaceStore((state) => {
     if (!state.selectedBatchId || !state.projection) return null;
-    return (
-      state.projection.batches.find(
-        (b) => b.batch_id === state.selectedBatchId
-      ) ?? null
-    );
+    return state.projection.batches.find((batch) => batch.batch_id === state.selectedBatchId) ?? null;
   });
 }
 
-/**
- * Hook: Get currently selected comparison details.
- */
 export function useSelectedComparisonDetail(): ComparisonSummary | null {
   return useResultsWorkspaceStore((state) => {
     if (!state.selectedComparisonId || !state.projection) return null;
     return (
       state.projection.comparisons.find(
-        (c) => c.comparison_id === state.selectedComparisonId
+        (comparison) => comparison.comparison_id === state.selectedComparisonId
       ) ?? null
     );
   });
 }
 
-/**
- * Hook: Get workspace projection hash.
- */
 export function useProjectionHash(): string | null {
-  return useResultsWorkspaceStore(
-    (state) => state.projection?.deterministic_hash ?? null
-  );
+  return useResultsWorkspaceStore((state) => state.projection?.deterministic_hash ?? null);
 }

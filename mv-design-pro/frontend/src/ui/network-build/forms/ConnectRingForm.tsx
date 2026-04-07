@@ -17,6 +17,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { validateCatalogFirst } from './catalogFirstRules';
+import { notify } from '../../notifications/store';
 
 type FormStage = 'ring' | 'nop';
 
@@ -32,7 +33,7 @@ export function ConnectRingForm() {
 
   const terminalA = useMemo(
     () => ({
-      id: (context?.terminalA_id as string) ?? '',
+      id: (context?.terminalA_id as string) ?? (context?.terminalAId as string) ?? '',
       label: (context?.terminalA_label as string) ?? 'Terminal A',
     }),
     [context],
@@ -40,14 +41,14 @@ export function ConnectRingForm() {
 
   const terminalB = useMemo(
     () => ({
-      id: (context?.terminalB_id as string) ?? '',
+      id: (context?.terminalB_id as string) ?? (context?.terminalBId as string) ?? '',
       label: (context?.terminalB_label as string) ?? 'Terminal B',
     }),
     [context],
   );
 
   const nopCandidates = useMemo<NOPCandidate[]>(() => {
-    const raw = context?.nop_candidates;
+    const raw = context?.nop_candidates ?? context?.nopCandidates;
     if (Array.isArray(raw)) return raw as NOPCandidate[];
     return [];
   }, [context]);
@@ -75,10 +76,20 @@ export function ConnectRingForm() {
         length_m: data.length_m,
         catalog_binding: data.catalog_binding,
       });
+
+      if (nopCandidates.length === 0) {
+        notify(
+          'Pierscien zostal domkniety. Wybierz lacznik na schemacie i ustaw NOP w osobnym kroku.',
+          'success',
+        );
+        closeForm();
+        return;
+      }
+
       setRingData(data);
       setStage('nop');
     },
-    [activeCaseId, executeDomainOperation, terminalA, terminalB],
+    [activeCaseId, closeForm, executeDomainOperation, nopCandidates.length, terminalA, terminalB],
   );
 
   const handleNopSubmit = useCallback(

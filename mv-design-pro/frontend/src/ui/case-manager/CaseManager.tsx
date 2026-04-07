@@ -27,6 +27,7 @@ import { useStudyCasesStore, useSortedCases } from '../study-cases/store';
 import { useAppStateStore, type CaseKind } from '../app-state';
 import { useModeGating } from './useModeGating';
 import { createProject } from '../projects/api';
+import { ROUTES } from '../navigation';
 
 // =============================================================================
 // Types
@@ -194,10 +195,10 @@ export function CaseManager({
       // User is automatically taken to SLD view (default route) with the new active case
       onClose?.();
 
-      // Navigate to SLD (default route) to ensure user is in edit mode
+      // Navigate to the canonical editor route to ensure user is in edit mode
       // This handles case where user was on results or other routes
-      if (window.location.hash !== '' && window.location.hash !== '#sld') {
-        window.location.hash = '';
+      if (window.location.hash !== ROUTES.SLD.hash) {
+        window.location.hash = ROUTES.SLD.hash;
       }
     } catch (e) {
       // Error handled in store
@@ -241,9 +242,9 @@ export function CaseManager({
         // User is automatically taken to SLD view (default route) with the activated case
         onClose?.();
 
-        // Navigate to SLD (default route) to ensure user is in edit mode
-        if (window.location.hash !== '' && window.location.hash !== '#sld') {
-          window.location.hash = '';
+        // Navigate to the canonical editor route to ensure user is in edit mode
+        if (window.location.hash !== ROUTES.SLD.hash) {
+          window.location.hash = ROUTES.SLD.hash;
         }
       } catch (e) {
         // Error handled in store

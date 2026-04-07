@@ -16,8 +16,11 @@
 import { useCallback, useState } from 'react';
 import { clsx } from 'clsx';
 import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
+import { useAppStateStore, useCanCalculate } from '../app-state';
 import { useSelectionStore } from '../selection';
-import { resolveModalType } from '../schema-completeness/fixActionModalBridge';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { resolveSelectedElementFromSnapshot } from '../selection/resolveElementSelection';
+import { executeFixAction } from './fixActionExecution';
 import type { FixAction } from '../../types/enm';
 
 // =============================================================================
@@ -57,64 +60,25 @@ function categorizeBlocker(code: string): FilterCategory {
   return 'analiza';
 }
 
-// =============================================================================
-// Fix action resolution — uses canonical FixActionType values from backend
-// =============================================================================
-
-/**
- * Blocker code → fallback modal_type when backend doesn't send modal_type.
- * Used only for OPEN_MODAL actions where modal_type is null.
- */
-const CODE_TO_MODAL_TYPE: Record<string, string> = {
-  missing_source: 'SourceModal',
-  'network.no_source': 'SourceModal',
-  'source.missing_short_circuit': 'SourceModal',
-  no_source: 'SourceModal',
-  missing_transformer: 'TransformerModal',
-  'transformer.missing_uk_percent': 'TransformerModal',
-  no_transformer: 'TransformerModal',
-  missing_catalog: 'CatalogPicker',
-  'line.missing_catalog': 'CatalogPicker',
-  'line.missing_impedance': 'CatalogPicker',
-  no_catalog: 'CatalogPicker',
-  missing_protection: 'ProtectionBindingModal',
-  no_protection: 'ProtectionBindingModal',
-  missing_load: 'LoadModal',
-  missing_generator: 'GeneratorModal',
-  missing_field_device: 'FieldDeviceModal',
-  'switch.missing_normal_state': 'FieldDeviceModal',
-  missing_bay: 'FieldDeviceModal',
-};
-
-
-const CODE_TO_OPERATION: Array<{ pattern: RegExp; op: 'assign_catalog_to_element' | 'update_element_parameters' | 'add_transformer_sn_nn' | 'set_normal_open_point' | 'insert_branch_pole_on_segment_sn' | 'insert_zksn_on_segment_sn' }> = [
-  { pattern: /catalog|missing_type|impedance|zero_seq|missing_rating|line\.missing_impedance|transformer\.missing_uk_percent/i, op: 'assign_catalog_to_element' },
-  { pattern: /tap_position|operating|switch_state|normal_state|grounding|network\.grounding|switch\.missing_normal_state/i, op: 'update_element_parameters' },
-  { pattern: /branch_point\.invalid_parent_medium|branch_connection\.source_not_branch_capable/i, op: 'insert_branch_pole_on_segment_sn' },
-  { pattern: /zksn\.branch_count_invalid|branch_connection\.invalid_source_port|branch_point\.branch_port_occupied/i, op: 'insert_zksn_on_segment_sn' },
-  { pattern: /transformer|oze\.missing_transformer|bess\.missing_transformer/i, op: 'add_transformer_sn_nn' },
-  { pattern: /ring|nop/i, op: 'set_normal_open_point' },
-];
-
-function resolveOperationForCode(code: string): 'assign_catalog_to_element' | 'update_element_parameters' | 'add_transformer_sn_nn' | 'set_normal_open_point' | 'insert_branch_pole_on_segment_sn' | 'insert_zksn_on_segment_sn' | null {
-  for (const candidate of CODE_TO_OPERATION) {
-    if (candidate.pattern.test(code)) return candidate.op;
-  }
-  return null;
-}
-
-// =============================================================================
-// ReadinessBar
-// =============================================================================
-
 export interface ReadinessBarProps {
   className?: string;
+  onRunAnalysis?: () => void;
+  onOpenResults?: () => void;
+  onOpenIssuePanel?: () => void;
 }
 
-export function ReadinessBar({ className }: ReadinessBarProps) {
+export function ReadinessBar({
+  className,
+  onRunAnalysis,
+  onOpenResults,
+  onOpenIssuePanel,
+}: ReadinessBarProps) {
   const { readiness, blockersByCategory, isReady, fixActions } = useNetworkBuildDerived();
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const selectElement = useSelectionStore((s) => s.selectElement);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
+  const { allowed: canRunAnalysis, reason: calculateBlockedReason } = useCanCalculate();
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [expanded, setExpanded] = useState(false);
 
@@ -128,63 +92,20 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
   const handleNavigateToElement = useCallback(
     (elementRef: string) => {
       if (elementRef) {
-        selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+        selectElement(resolveSelectedElementFromSnapshot(snapshot, elementRef));
         window.dispatchEvent(new CustomEvent('sld:center-on-element', { detail: { elementId: elementRef } }));
       }
     },
-    [selectElement],
+    [selectElement, snapshot],
   );
 
   const handleFixAction = useCallback(
     (action: FixAction) => {
-      const payload = action.element_ref ? { element_ref: action.element_ref } : {};
-
-      switch (action.action_type) {
-        case 'NAVIGATE_TO_ELEMENT': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          break;
-        }
-        case 'OPEN_MODAL': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          const modalType = action.modal_type ?? CODE_TO_MODAL_TYPE[action.code] ?? null;
-          const modalId = resolveModalType(modalType);
-          if (modalId) {
-            window.dispatchEvent(
-              new CustomEvent('modal:open', { detail: { modalId, context: payload } }),
-            );
-          } else {
-            const fallbackOp = resolveOperationForCode(action.code) ?? 'update_element_parameters';
-            openOperationForm(fallbackOp, payload);
-          }
-          break;
-        }
-        case 'SELECT_CATALOG': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          openOperationForm('assign_catalog_to_element', payload);
-          break;
-        }
-        case 'ADD_MISSING_DEVICE': {
-          const devModalType = action.modal_type ?? CODE_TO_MODAL_TYPE[action.code] ?? null;
-          const devModalId = resolveModalType(devModalType);
-          if (devModalId) {
-            window.dispatchEvent(
-              new CustomEvent('modal:open', { detail: { modalId: devModalId, context: payload } }),
-            );
-          } else {
-            const op = resolveOperationForCode(action.code) ?? 'update_element_parameters';
-            openOperationForm(op, payload);
-          }
-          break;
-        }
-        default:
-          break;
-      }
+      executeFixAction({
+        action,
+        navigateToElement: handleNavigateToElement,
+        openOperationForm,
+      });
     },
     [handleNavigateToElement, openOperationForm],
   );
@@ -209,6 +130,42 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
         <span className="text-[10px] text-gray-500">
           {warnings.length > 0 ? `${warnings.length} ostrzeżeń` : 'Brak zastrzeżeń'}
         </span>
+        <div className="ml-auto flex items-center gap-2">
+          {warnings.length > 0 && onOpenIssuePanel && (
+            <button
+              type="button"
+              onClick={onOpenIssuePanel}
+              className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-medium text-amber-700 hover:bg-amber-100"
+            >
+              Problemy
+            </button>
+          )}
+          {resultStatus !== 'NONE' && onOpenResults && (
+            <button
+              type="button"
+              onClick={onOpenResults}
+              className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-700 hover:bg-slate-100"
+            >
+              Wyniki i analiza
+            </button>
+          )}
+          {onRunAnalysis && (
+            <button
+              type="button"
+              onClick={onRunAnalysis}
+              disabled={!canRunAnalysis}
+              title={calculateBlockedReason ?? 'Uruchom obliczenia dla aktywnego przypadku'}
+              className={clsx(
+                'rounded-full px-2.5 py-1 text-[10px] font-medium',
+                canRunAnalysis
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                  : 'cursor-not-allowed bg-slate-200 text-slate-400',
+              )}
+            >
+              Uruchom analize
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -280,6 +237,27 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
               </button>
             );
           })}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {(blockersByCategory.total > 0 || warnings.length > 0) && onOpenIssuePanel && (
+            <button
+              type="button"
+              onClick={onOpenIssuePanel}
+              className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Otworz problemy
+            </button>
+          )}
+          {resultStatus !== 'NONE' && onOpenResults && (
+            <button
+              type="button"
+              onClick={onOpenResults}
+              className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Wyniki
+            </button>
+          )}
         </div>
       </div>
 

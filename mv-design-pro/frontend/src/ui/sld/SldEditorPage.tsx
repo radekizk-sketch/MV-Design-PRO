@@ -1,13 +1,13 @@
-/**
- * SLD Editor Page — PowerFactory/ETAP Style Main Editor View
+﻿/**
+ * SLD Editor Page â€” PowerFactory/ETAP Style Main Editor View
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Layout narzędziowy ZAWSZE renderowany
- * - wizard_screens.md § 2.1: Główna struktura okna
- * - sld_rules.md: SLD ↔ selection synchronization
+ * - powerfactory_ui_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
+ * - wizard_screens.md Â§ 2.1: GĹ‚Ăłwna struktura okna
+ * - sld_rules.md: SLD â†” selection synchronization
  *
  * POWERFACTORY/ETAP RULE:
- * > Layout narzędziowy ZAWSZE jest renderowany.
+ * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * FEATURES:
@@ -43,6 +43,7 @@ import { LabelModeToolbar } from './LabelModeToolbar';
 import { CreatorToolbar } from '../topology/CreatorToolbar';
 import type { CreatorTool } from '../topology/editorPalette';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { getToolStatusTable, resolveToolAction } from './interactionController';
 import { TypePicker } from '../catalog/TypePicker';
@@ -63,7 +64,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'bus_main',
     elementId: 'bus_main',
     elementType: 'Bus',
-    elementName: 'Szyna główna SN',
+    elementName: 'Szyna gĹ‚Ăłwna SN',
     position: { x: 400, y: 200 },
     inService: true,
     width: 100,
@@ -83,7 +84,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'source_grid',
     elementId: 'source_grid',
     elementType: 'Source',
-    elementName: 'Sieć zasilająca',
+    elementName: 'SieÄ‡ zasilajÄ…ca',
     position: { x: 400, y: 40 },
     inService: true,
     connectedToNodeId: 'bus_main',
@@ -272,7 +273,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const clearSelection = useSelectionStore((state) => state.clearSelection);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
 
-  // Readiness live store — real data from API
+  // Readiness live store â€” real data from API
   const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const readinessStatus = useReadinessLiveStore((state) => state.status);
   const readinessLoading = useReadinessLiveStore((state) => state.loading);
@@ -280,12 +281,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const readinessToggleGroup = useReadinessLiveStore((state) => state.toggleGroup);
   const readinessRefresh = useReadinessLiveStore((state) => state.refresh);
 
-  // Results inspector store — for SldResultsAccess
+  // Results inspector store â€” for SldResultsAccess
   const busResults = useResultsInspectorStore((state) => state.busResults);
   const branchResults = useResultsInspectorStore((state) => state.branchResults);
   const shortCircuitResults = useResultsInspectorStore((state) => state.shortCircuitResults);
 
-  // Study cases — for hasCases wiring
+  // Study cases â€” for hasCases wiring
   const studyCasesCount = useStudyCasesStore((state) => state.cases.length);
 
   // Inspector panel state
@@ -310,6 +311,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     port_role?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE';
   } | null>(null);
   const executeEnmOperation = useSnapshotStore((state) => state.executeDomainOperation);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const resetEnmStore = useSnapshotStore((state) => state.reset);
   const enmSnapshot = useSnapshotStore((state) => state.snapshot);
   const enmReadiness = useSnapshotStore((state) => state.readiness);
@@ -320,7 +322,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const [catalogAssignmentState, catalogAssignmentActions] = useCatalogAssignment();
   const [segmentCatalogDraft, setSegmentCatalogDraft] = useState<string>('');
 
-  // UX 10/10: Results mode flag — true when RESULT_VIEW mode and results available
+  // UX 10/10: Results mode flag â€” true when RESULT_VIEW mode and results available
   const isResultsMode = activeMode === 'RESULT_VIEW';
 
   // Resolve element data from SLD editor store for EngineeringInspector
@@ -475,13 +477,13 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
   const refreshCatalogForSelectedElement = useCallback(async () => {
     if (!activeCaseId || !selectedElement || !selectedEnmElement) {
-      notify('Brak aktywnego przypadku lub elementu do odświeżenia katalogu.', 'warning');
+      notify('Brak aktywnego przypadku lub elementu do odĹ›wieĹĽenia katalogu.', 'warning');
       return;
     }
 
     const binding = getDefaultBindingForElement(selectedEnmElement);
     if (!binding) {
-      notify('Nie można odtworzyć bindingu katalogowego dla elementu.', 'warning');
+      notify('Nie moĹĽna odtworzyÄ‡ bindingu katalogowego dla elementu.', 'warning');
       return;
     }
 
@@ -493,7 +495,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       source_mode: 'KATALOG',
     });
     notify(
-      result ? 'Odświeżono parametry elementu z katalogu.' : 'Nie udało się odświeżyć parametrów z katalogu.',
+      result ? 'OdĹ›wieĹĽono parametry elementu z katalogu.' : 'Nie udaĹ‚o siÄ™ odĹ›wieĹĽyÄ‡ parametrĂłw z katalogu.',
       result ? 'success' : 'error',
     );
   }, [activeCaseId, executeEnmOperation, selectedElement, selectedEnmElement]);
@@ -510,7 +512,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       catalog_namespace: inferCatalogNamespaceFromElement(selectedSegmentBranch),
     });
     notify(
-      result ? 'Usunięto przypisanie katalogu segmentu.' : 'Nie udało się usunąć katalogu segmentu.',
+      result ? 'UsuniÄ™to przypisanie katalogu segmentu.' : 'Nie udaĹ‚o siÄ™ usunÄ…Ä‡ katalogu segmentu.',
       result ? 'success' : 'error',
     );
   }, [activeCaseId, executeEnmOperation, selectedSegment, selectedSegmentBranch]);
@@ -640,7 +642,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       }
 
       if (!projectId) {
-        notify('Nie można utworzyć przypadku: brak aktywnego projektu. Otwórz Menedżer przypadków i utwórz projekt.', 'warning');
+        notify('Nie moĹĽna utworzyÄ‡ przypadku: brak aktywnego projektu. OtwĂłrz MenedĹĽer przypadkĂłw i utwĂłrz projekt.', 'warning');
         return;
       }
 
@@ -656,12 +658,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
       notify(`Utworzono i aktywowano przypadek: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany błąd';
+      const message = error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). Sprawdź połączenie i spróbuj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). SprawdĹş poĹ‚Ä…czenie i sprĂłbuj ponownie.', 'warning');
         return;
       }
-      notify(`Nie udało się utworzyć przypadku. Szczegóły techniczne: ${message}`, 'error');
+      notify(`Nie udaĹ‚o siÄ™ utworzyÄ‡ przypadku. SzczegĂłĹ‚y techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
@@ -672,14 +674,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     setInspectorPanelVisible(false);
   }, []);
 
-  // BLOK 8: Uruchom obliczenia — otwiera menedżer przypadków z widokiem obliczeniowym
+  // BLOK 8: Uruchom obliczenia â€” otwiera menedĹĽer przypadkĂłw z widokiem obliczeniowym
   const handleCalculate = useCallback(() => {
     if (onOpenCaseManager) {
       onOpenCaseManager();
     } else {
       toggleCaseManager(true);
     }
-    notify('Otwarto menedżer przypadków — wybierz przypadek i uruchom obliczenia.', 'info');
+    notify('Otwarto menedĹĽer przypadkĂłw â€” wybierz przypadek i uruchom obliczenia.', 'info');
   }, [onOpenCaseManager, toggleCaseManager]);
 
   // BLOK 2: Nawigacja do elementu z panelu FixActions
@@ -732,27 +734,39 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       activeCaseId,
     }, interaction);
 
-    if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'Narzędzie chwilowo niedostępne.';
+    if (resolved.mode === 'BLOCKED' || !resolved.canonicalOp) {
+      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
     }
 
-    const result = await executeEnmOperation(activeCaseId!, resolved.canonicalOp, resolved.payload);
-    if (result) {
+    if (resolved.mode === 'OPEN_FORM') {
+      openOperationForm(resolved.canonicalOp, resolved.payload);
       const msg = interaction.kind === 'port'
-        ? `Wykonano ${resolved.canonicalOp} przez port ${interaction.portRole}.`
-        : `Wykonano ${resolved.canonicalOp} dla ${target.name}.`;
+        ? 'Otworzono formularz ' + resolved.canonicalOp + ' dla portu ' + interaction.portRole + '.'
+        : 'Otworzono formularz ' + resolved.canonicalOp + ' dla ' + target.name + '.';
+      setInteractionMessage(msg);
+      notify(msg, 'info');
+      setActiveTool('select');
+      return;
+    }
+
+    const result = await executeEnmOperation(activeCaseId!, resolved.canonicalOp, resolved.payload);
+    if (result && !result.error) {
+      const msg = interaction.kind === 'port'
+        ? 'Wykonano ' + resolved.canonicalOp + ' przez port ' + interaction.portRole + '.'
+        : 'Wykonano ' + resolved.canonicalOp + ' dla ' + target.name + '.';
       setInteractionMessage(msg);
       notify(msg, 'success');
       setActiveTool('select');
-    } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiodła się.`;
-      setInteractionMessage(err);
-      notify(err, 'error');
+      return;
     }
-  }, [hasSource, hasRing, activeCaseId, executeEnmOperation]);
+
+    const err = 'Operacja ' + resolved.canonicalOp + ' nie powiodĹ‚a siÄ™.';
+    setInteractionMessage(err);
+    notify(err, 'error');
+  }, [hasSource, hasRing, activeCaseId, executeEnmOperation, openOperationForm]);
 
   const buildPreview = useCallback((
     tool: CreatorTool,
@@ -771,8 +785,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     setInteractionPreview({
       target_kind: interaction.kind === 'port' ? 'port' : interaction.kind,
       target_id: target.id,
-      valid: resolved.mode === 'DOMAIN_OP',
-      message_pl: resolved.reasonPl ?? `Gotowe: ${resolved.canonicalOp}`,
+      valid: resolved.mode === 'DOMAIN_OP' || resolved.mode === 'OPEN_FORM',
+      message_pl:
+        resolved.reasonPl ??
+        (resolved.mode === 'OPEN_FORM'
+          ? 'Gotowe: formularz ' + resolved.canonicalOp
+          : 'Gotowe: ' + resolved.canonicalOp),
       port_role: interaction.portRole,
     });
   }, [hasSource, hasRing, activeCaseId]);
@@ -791,7 +809,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           disabled={!activeCaseId}
         />
         <div className="p-3 text-xs border-t border-gray-200 bg-white overflow-auto">
-          <div className="font-semibold text-gray-700 mb-2">Status narzędzi ENM_OP</div>
+          <div className="font-semibold text-gray-700 mb-2">Status narzÄ™dzi ENM_OP</div>
           <div className="space-y-1" data-testid="interaction-tool-status-table">
             {toolStatusTable.map((row) => (
               <div key={row.tool} className="flex items-start justify-between gap-2">
@@ -821,8 +839,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
               data-testid="sld-tool-preview-hint"
             >
               {hoveredElementName
-                ? `Podgląd operacji ${activeTool} na: ${hoveredElementName}`
-                : `Tryb ${activeTool}: wskaż poprawny element, segment lub port.`}
+                ? `PodglÄ…d operacji ${activeTool} na: ${hoveredElementName}`
+                : `Tryb ${activeTool}: wskaĹĽ poprawny element, segment lub port.`}
             </div>
           )}
           {hoveredSegmentRef && (
@@ -847,12 +865,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_gpz') {
               void runResolvedAction(
                 'add_gpz',
-                { id: 'canvas', type: 'Bus', name: 'płótna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('Kliknięto tło płótna.');
+            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -922,7 +940,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           />
         )}
 
-        {/* BLOK 2: Panel naprawczy — floating bottom-left */}
+        {/* BLOK 2: Panel naprawczy â€” floating bottom-left */}
         {activeCaseId && (
           <div className="pointer-events-none absolute bottom-12 left-4 z-20">
             <SldFixActionsPanel
@@ -933,7 +951,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           </div>
         )}
 
-        {/* UX 10/10: panel gotowości + panel braków danych — lewy dolny róg, nad panelem szybkich napraw */}
+        {/* UX 10/10: panel gotowoĹ›ci + panel brakĂłw danych â€” lewy dolny rĂłg, nad panelem szybkich napraw */}
         {activeCaseId && (
           <div
             className="pointer-events-none absolute bottom-28 left-4 z-20 flex w-80 flex-col gap-2 xl:w-96"
@@ -956,7 +974,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           </div>
         )}
 
-        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar — bottom-right corner */}
+        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
         <div
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
           data-testid="sld-bottom-right-toolbars"
@@ -973,7 +991,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         />
       )}
 
-      {/* UX 10/10: EngineeringInspector — replaces SldInspectorPanel in MODEL_EDIT mode */}
+      {/* UX 10/10: EngineeringInspector â€” replaces SldInspectorPanel in MODEL_EDIT mode */}
       {inspectorPanelVisible && selectedElement && activeMode === 'MODEL_EDIT' && (
         <div data-testid="sld-engineering-inspector-wrapper" className="flex-shrink-0">
           <EngineeringInspector
@@ -997,23 +1015,23 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             onChangeCatalogType={openCatalogPickerForSelectedElement}
             onRefreshFromCatalog={refreshCatalogForSelectedElement}
             onNavigateToResults={() => {
-              notify('Przejście do wyników elementu...', 'info');
+              notify('PrzejĹ›cie do wynikĂłw elementu...', 'info');
             }}
             onEditProtection={() => {
-              notify('Edycja zabezpieczeń elementu...', 'info');
+              notify('Edycja zabezpieczeĹ„ elementu...', 'info');
             }}
             onDeleteElement={async () => {
               if (!activeCaseId || !selectedElement) {
-                notify('Brak aktywnego przypadku lub elementu do usunięcia.', 'warning');
+                notify('Brak aktywnego przypadku lub elementu do usuniÄ™cia.', 'warning');
                 return;
               }
               const result = await executeEnmOperation(activeCaseId, 'delete_element', {
                 element_ref: selectedElement.id,
               });
               if (result) {
-                notify(`Usunięto element: ${selectedElement.name ?? selectedElement.id}.`, 'success');
+                notify(`UsuniÄ™to element: ${selectedElement.name ?? selectedElement.id}.`, 'success');
               } else {
-                notify('Nie udało się usunąć elementu z modelu.', 'error');
+                notify('Nie udaĹ‚o siÄ™ usunÄ…Ä‡ elementu z modelu.', 'error');
               }
             }}
           />
@@ -1030,16 +1048,16 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             <div><span className="font-medium">from:</span> {selectedSegment.from_ref}</div>
             <div><span className="font-medium">to:</span> {selectedSegment.to_ref}</div>
             <div data-testid="sld-segment-inspector-status">
-              <span className="font-medium">status:</span> {String(selectedSegmentBranch?.status ?? '—')}
+              <span className="font-medium">status:</span> {String(selectedSegmentBranch?.status ?? 'â€”')}
             </div>
             <div data-testid="sld-segment-inspector-voltage">
-              <span className="font-medium">napięcie:</span> {selectedSegmentBusVoltageKv ?? '—'} kV
+              <span className="font-medium">napiÄ™cie:</span> {selectedSegmentBusVoltageKv ?? 'â€”'} kV
             </div>
             <div data-testid="sld-segment-inspector-length">
-              <span className="font-medium">długość:</span> {String(selectedSegmentBranch?.length_km ?? '—')} km
+              <span className="font-medium">dĹ‚ugoĹ›Ä‡:</span> {String(selectedSegmentBranch?.length_km ?? 'â€”')} km
             </div>
             <div data-testid="sld-segment-inspector-type">
-              <span className="font-medium">typ linii/kabla:</span> {String(selectedSegmentBranch?.type ?? '—')}
+              <span className="font-medium">typ linii/kabla:</span> {String(selectedSegmentBranch?.type ?? 'â€”')}
             </div>
             <div data-testid="sld-segment-inspector-catalog">
               <span className="font-medium">katalog:</span> {String(selectedSegmentBranch?.catalog_ref ?? 'BRAK')}
@@ -1053,9 +1071,9 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           </div>
 
           <div className="mt-3 rounded border border-gray-200 p-2">
-            <div className="text-xs font-semibold text-gray-700">Gotowość obliczeń i Szybkie naprawy</div>
+            <div className="text-xs font-semibold text-gray-700">GotowoĹ›Ä‡ obliczeĹ„ i Szybkie naprawy</div>
             <div className="mt-1 text-[11px] text-gray-600" data-testid="sld-segment-readiness-status">
-              Gotowy: {enmReadiness?.ready ? 'TAK' : 'NIE'} | Blockery: {enmReadiness?.blockers.length ?? 0} | Ostrzeżenia: {enmReadiness?.warnings.length ?? 0}
+              Gotowy: {enmReadiness?.ready ? 'TAK' : 'NIE'} | Blockery: {enmReadiness?.blockers.length ?? 0} | OstrzeĹĽenia: {enmReadiness?.warnings.length ?? 0}
             </div>
             <ul className="mt-1 list-disc pl-4 text-[11px] text-gray-700" data-testid="sld-segment-fix-actions">
               {selectedSegmentFixActions.length === 0 ? (
@@ -1073,7 +1091,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           <div className="mt-3 rounded border border-gray-200 p-2">
             <div className="text-xs font-semibold text-gray-700">Edycja segmentu (ENM_OP)</div>
             <label className="mt-2 block text-[11px] text-gray-600">
-              Długość [km]
+              DĹ‚ugoĹ›Ä‡ [km]
               <input
                 data-testid="sld-segment-input-length"
                 type="number"
@@ -1106,7 +1124,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                 }
                 const length = Number(segmentLengthKmDraft);
                 if (!Number.isFinite(length) || length <= 0) {
-                  notify('Podaj poprawną dodatnią długość segmentu.', 'warning');
+                  notify('Podaj poprawnÄ… dodatniÄ… dĹ‚ugoĹ›Ä‡ segmentu.', 'warning');
                   return;
                 }
                 void executeEnmOperation(activeCaseId, 'update_element_parameters', {
@@ -1136,7 +1154,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
               className="mt-2 w-full rounded border border-emerald-300 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50"
               onClick={openCatalogPickerForSelectedSegment}
             >
-              Zmień typ z katalogu
+              ZmieĹ„ typ z katalogu
             </button>
             <button
               data-testid="sld-segment-clear-catalog-button"
@@ -1147,7 +1165,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                 void clearCatalogForSelectedSegment();
               }}
             >
-              Usuń przypisanie katalogu
+              UsuĹ„ przypisanie katalogu
             </button>
             <input
               data-testid="sld-segment-input-catalog"
@@ -1190,20 +1208,20 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         </aside>
       )}
 
-      {/* UX 10/10: SldResultsAccess — floating right panel in results mode */}
+      {/* UX 10/10: SldResultsAccess â€” floating right panel in results mode */}
       {isResultsMode && selectedElement && (
         <div data-testid="sld-results-access-wrapper" className="flex-shrink-0">
           <SldResultsAccess
             selectedElementId={selectedElement.id}
             resultsSummary={resultsSummary}
             onShowWhiteBox={(elId) => {
-              notify(`Otwarcie śladu obliczeń dla: ${elId}`, 'info');
+              notify(`Otwarcie Ĺ›ladu obliczeĹ„ dla: ${elId}`, 'info');
             }}
             onShowFullResults={(elId) => {
-              notify(`Pełne wyniki dla: ${elId}`, 'info');
+              notify(`PeĹ‚ne wyniki dla: ${elId}`, 'info');
             }}
             onExportResults={(elId, format) => {
-              notify(`Eksport wyników (${format}) dla: ${elId}`, 'info');
+              notify(`Eksport wynikĂłw (${format}) dla: ${elId}`, 'info');
             }}
             onShowProtectionCoverage={(elId) => {
               notify(`Pokrycie zabezpieczeniowe: ${elId}`, 'info');
@@ -1229,7 +1247,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udało się przypisać typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

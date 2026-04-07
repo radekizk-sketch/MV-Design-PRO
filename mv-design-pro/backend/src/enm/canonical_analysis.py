@@ -9,7 +9,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from enm.hash import compute_enm_hash
-from enm.mapping import map_enm_to_network_graph
+from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from enm.validator import ENMValidator
@@ -227,8 +227,17 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     tk_s = float(run.options.get("thermal_time_seconds", 1.0))
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
+    fault_node_ids = [
+        _ref_to_uuid(ref_id)
+        for ref_id in sorted(
+            item.get("ref_id")
+            for item in _iter_snapshot_elements(run.snapshot or {}, "buses")
+            if isinstance(item.get("ref_id"), str) and item.get("ref_id").strip()
+        )
+        if _ref_to_uuid(ref_id) in graph.nodes
+    ]
 
-    for node_id in sorted(graph.nodes.keys()):
+    for node_id in fault_node_ids:
         result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,
             fault_node_id=node_id,
@@ -462,7 +471,7 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "short_circuit_sn":
         tables.append(
             {
-                "table_id": "short_circuit",
+                "table_id": "short-circuit",
                 "label_pl": "Zwarcia",
                 "row_count": len(raw_result.get("results", [])),
                 "columns": [
@@ -569,10 +578,12 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
         return {"run_id": str(run.id), "rows": []}
     rows = []
     for item in (run.raw_result or {}).get("results", []):
+        resolved_target_id, _ = _resolve_snapshot_element_ref(run.snapshot or {}, item.get("fault_node_id") or "")
+        target_id = resolved_target_id or item.get("fault_node_id")
         rows.append(
             {
-                "target_id": item.get("fault_node_id"),
-                "target_name": item.get("fault_node_id"),
+                "target_id": target_id,
+                "target_name": target_id,
                 "ikss_ka": _amps_to_ka(item.get("ikss_a")),
                 "ip_ka": _amps_to_ka(item.get("ip_a")),
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
@@ -591,12 +602,371 @@ def _amps_to_ka(value: Any) -> float | None:
     return float(value) / 1000.0
 
 
+_TRACE_ROLE_PRIORITY = {
+    "CEL_ANALIZY": 0,
+    "ELEMENT_GLOWNY": 1,
+    "WYNIK_ELEMENTU": 2,
+    "KONTEKST_SIECI": 3,
+}
+
+_SNAPSHOT_COLLECTION_ELEMENT_TYPES: tuple[tuple[str, str], ...] = (
+    ("buses", "Bus"),
+    ("branches", "LineBranch"),
+    ("transformers", "TransformerBranch"),
+    ("sources", "Source"),
+    ("loads", "Load"),
+    ("generators", "Generator"),
+    ("substations", "Station"),
+    ("bays", "BaySN"),
+    ("measurements", "Measurement"),
+    ("protection_assignments", "ProtectionAssignment"),
+)
+
+
+def _iter_snapshot_elements(snapshot: dict[str, Any], collection_key: str) -> list[dict[str, Any]]:
+    value = snapshot.get(collection_key)
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _snapshot_collection_element_type(collection_key: str, item: dict[str, Any], default_element_type: str) -> str:
+    if collection_key == "branches":
+        branch_type = item.get("type")
+        if branch_type in {"switch", "breaker", "bus_coupler", "disconnector", "fuse"}:
+            return "Switch"
+    return default_element_type
+
+
+def _resolve_snapshot_element_ref(
+    snapshot: dict[str, Any],
+    element_ref: str,
+) -> tuple[str | None, str | None]:
+    if not element_ref:
+        return None, None
+
+    normalized_ref = element_ref.strip()
+    if not normalized_ref:
+        return None, None
+
+    for collection_key, default_element_type in _SNAPSHOT_COLLECTION_ELEMENT_TYPES:
+        for item in _iter_snapshot_elements(snapshot, collection_key):
+            ref_id = item.get("ref_id")
+            if not isinstance(ref_id, str) or not ref_id.strip():
+                continue
+
+            element_type = _snapshot_collection_element_type(collection_key, item, default_element_type)
+            if ref_id == normalized_ref:
+                return ref_id, element_type
+            if collection_key in {"buses", "branches", "transformers"} and _ref_to_uuid(ref_id) == normalized_ref:
+                return ref_id, element_type
+    return None, None
+
+
+def _infer_snapshot_element_type(snapshot: dict[str, Any], element_ref: str) -> str | None:
+    _, element_type = _resolve_snapshot_element_ref(snapshot, element_ref)
+    return element_type
+
+
+def _fallback_element_type_for_key(key: str) -> str | None:
+    bus_keys = {
+        "target_id",
+        "target_ref",
+        "fault_node_id",
+        "bus_id",
+        "node_id",
+        "from_bus",
+        "to_bus",
+        "from_node_id",
+        "to_node_id",
+        "slack_bus_id",
+    }
+    branch_keys = {"branch_id"}
+    if key in bus_keys:
+        return "Bus"
+    if key in branch_keys:
+        return "LineBranch"
+    return None
+
+
+def _append_trace_link(
+    *,
+    links: list[dict[str, str]],
+    seen: set[tuple[str, str]],
+    snapshot: dict[str, Any],
+    element_ref: str | None,
+    role: str,
+    key_hint: str | None = None,
+) -> None:
+    if not isinstance(element_ref, str):
+        return
+
+    normalized_ref = element_ref.strip()
+    if not normalized_ref:
+        return
+
+    resolved_ref, element_type = _resolve_snapshot_element_ref(snapshot, normalized_ref)
+    if resolved_ref is not None:
+        normalized_ref = resolved_ref
+    elif snapshot:
+        return
+    elif key_hint is not None:
+        element_type = _fallback_element_type_for_key(key_hint)
+    if element_type is None:
+        return
+
+    dedupe_key = (normalized_ref, role)
+    if dedupe_key in seen:
+        return
+    seen.add(dedupe_key)
+    links.append(
+        {
+            "element_ref": normalized_ref,
+            "element_type": element_type,
+            "role": role,
+        }
+    )
+
+
+def _extend_trace_links_from_payload(
+    *,
+    payload: Any,
+    links: list[dict[str, str]],
+    seen: set[tuple[str, str]],
+    snapshot: dict[str, Any],
+    role: str,
+) -> None:
+    if payload is None:
+        return
+
+    if isinstance(payload, str):
+        _append_trace_link(
+            links=links,
+            seen=seen,
+            snapshot=snapshot,
+            element_ref=payload,
+            role=role,
+        )
+        return
+
+    if isinstance(payload, list):
+        for item in payload:
+            _extend_trace_links_from_payload(
+                payload=item,
+                links=links,
+                seen=seen,
+                snapshot=snapshot,
+                role=role,
+            )
+        return
+
+    if not isinstance(payload, dict):
+        return
+
+    direct_link_keys = (
+        "element_ref",
+        "element_id",
+        "target_id",
+        "target_ref",
+        "fault_node_id",
+        "bus_id",
+        "branch_id",
+        "node_id",
+        "from_bus",
+        "to_bus",
+        "from_node_id",
+        "to_node_id",
+        "slack_bus_id",
+    )
+
+    for key in direct_link_keys:
+        _append_trace_link(
+            links=links,
+            seen=seen,
+            snapshot=snapshot,
+            element_ref=payload.get(key),
+            role=role,
+            key_hint=key,
+        )
+
+    list_link_keys = ("pq_bus_ids", "pv_bus_ids", "bus_ids", "branch_ids")
+    for key in list_link_keys:
+        value = payload.get(key)
+        if isinstance(value, list):
+            for item in value:
+                _append_trace_link(
+                    links=links,
+                    seen=seen,
+                    snapshot=snapshot,
+                    element_ref=item if isinstance(item, str) else None,
+                    role=role,
+                    key_hint="branch_id" if key == "branch_ids" else "bus_id",
+                )
+
+    for nested_key in ("inputs", "result", "output", "context", "metadata"):
+        nested_payload = payload.get(nested_key)
+        if nested_payload is not None:
+            _extend_trace_links_from_payload(
+                payload=nested_payload,
+                links=links,
+                seen=seen,
+                snapshot=snapshot,
+                role=role,
+            )
+
+
+def _build_trace_step_contract(
+    *,
+    run: CanonicalRun,
+    step: dict[str, Any],
+    step_index: int,
+) -> dict[str, Any]:
+    canonical_step = dict(step)
+    snapshot = run.snapshot or {}
+    links: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+
+    _append_trace_link(
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        element_ref=canonical_step.get("target_id"),
+        role="CEL_ANALIZY",
+        key_hint="target_id",
+    )
+    _append_trace_link(
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        element_ref=canonical_step.get("fault_node_id"),
+        role="CEL_ANALIZY",
+        key_hint="fault_node_id",
+    )
+    _append_trace_link(
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        element_ref=canonical_step.get("element_ref"),
+        role="ELEMENT_GLOWNY",
+        key_hint="element_ref",
+    )
+    _append_trace_link(
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        element_ref=canonical_step.get("bus_id"),
+        role="WYNIK_ELEMENTU",
+        key_hint="bus_id",
+    )
+    _append_trace_link(
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        element_ref=canonical_step.get("branch_id"),
+        role="WYNIK_ELEMENTU",
+        key_hint="branch_id",
+    )
+
+    _extend_trace_links_from_payload(
+        payload=canonical_step.get("context"),
+        links=links,
+        seen=seen,
+        snapshot=snapshot,
+        role="KONTEKST_SIECI",
+    )
+    for nested_key in ("inputs", "result", "output", "metadata"):
+        _extend_trace_links_from_payload(
+            payload=canonical_step.get(nested_key),
+            links=links,
+            seen=seen,
+            snapshot=snapshot,
+            role="KONTEKST_SIECI",
+        )
+
+    if run.analysis_type == "PF" and canonical_step.get("phase") == "final":
+        graph = (run.raw_result or {}).get("graph") or {}
+        for bus_id in sorted((graph.get("nodes") or {}).keys()):
+            _append_trace_link(
+                links=links,
+                seen=seen,
+                snapshot=snapshot,
+                element_ref=bus_id,
+                role="WYNIK_ELEMENTU",
+                key_hint="bus_id",
+            )
+        for branch_id in sorted((graph.get("branches") or {}).keys()):
+            _append_trace_link(
+                links=links,
+                seen=seen,
+                snapshot=snapshot,
+                element_ref=branch_id,
+                role="WYNIK_ELEMENTU",
+                key_hint="branch_id",
+            )
+
+    sorted_links = sorted(
+        links,
+        key=lambda item: (
+            _TRACE_ROLE_PRIORITY.get(item["role"], 99),
+            item["element_type"],
+            item["element_ref"],
+        ),
+    )
+
+    primary_link = next(
+        (
+            item
+            for item in sorted_links
+            if item["role"] in {"CEL_ANALIZY", "ELEMENT_GLOWNY", "WYNIK_ELEMENTU"}
+        ),
+        None,
+    )
+    if primary_link is None and sorted_links:
+        primary_link = sorted_links[0]
+
+    canonical_step["step_key"] = canonical_step.get("key") or f"trace-step-{step_index + 1}"
+    canonical_step["related_elements"] = sorted_links
+    if primary_link is not None:
+        canonical_step["primary_element_ref"] = primary_link["element_ref"]
+        canonical_step["primary_element_type"] = primary_link["element_type"]
+    return canonical_step
+
+
 def build_extended_trace(run: CanonicalRun) -> dict[str, Any]:
+    contracted_trace = [
+        _build_trace_step_contract(run=run, step=step, step_index=index)
+        for index, step in enumerate(run.white_box_trace)
+    ]
+    selection_index: dict[str, dict[str, Any]] = {}
+    for step_index, step in enumerate(contracted_trace):
+        for related in step.get("related_elements", []):
+            element_ref = related["element_ref"]
+            entry = selection_index.setdefault(
+                element_ref,
+                {
+                    "element_ref": element_ref,
+                    "element_type": related["element_type"],
+                    "step_indices": [],
+                },
+            )
+            if step_index not in entry["step_indices"]:
+                entry["step_indices"].append(step_index)
+
+    ordered_selection_index = {
+        element_ref: {
+            "element_ref": payload["element_ref"],
+            "element_type": payload["element_type"],
+            "step_indices": payload["step_indices"],
+        }
+        for element_ref, payload in sorted(selection_index.items(), key=lambda item: item[0])
+    }
     return {
         "run_id": str(run.id),
         "snapshot_id": run.snapshot_hash,
         "input_hash": run.input_hash,
-        "white_box_trace": list(run.white_box_trace),
+        "trace_contract_version": "1.0",
+        "selection_index": ordered_selection_index,
+        "white_box_trace": contracted_trace,
     }
 
 

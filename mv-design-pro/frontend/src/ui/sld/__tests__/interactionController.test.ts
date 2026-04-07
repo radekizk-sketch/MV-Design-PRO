@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { getToolStatusTable, resolveToolAction } from '../interactionController';
 import type { SelectedElement } from '../../types';
 
@@ -9,7 +10,7 @@ const TARGET: SelectedElement = {
 };
 
 describe('interactionController', () => {
-  it('zwraca tabelę statusów z delete_element ustawionym jako DZIALA', () => {
+  it('zwraca tabele statusow z delete_element ustawionym jako DZIALA', () => {
     const table = getToolStatusTable();
     const deleteRow = table.find((row) => row.tool === 'delete_element');
 
@@ -18,7 +19,7 @@ describe('interactionController', () => {
     expect(deleteRow?.canonicalOp).toBe('delete_element');
   });
 
-  it('blokuje akcję, gdy brak aktywnego case', () => {
+  it('blokuje akcje, gdy brak aktywnego case', () => {
     const resolved = resolveToolAction('continue_trunk', TARGET, {
       hasSource: true,
       hasRing: false,
@@ -29,37 +30,35 @@ describe('interactionController', () => {
     expect(resolved.reasonPl).toContain('Brak aktywnego przypadku');
   });
 
-  it('buduje payload dla insert_station_on_segment_sn', () => {
+  it('otwiera formularz wstawienia stacji dla odcinka SN', () => {
     const resolved = resolveToolAction('insert_station', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
     });
 
-    expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.mode).toBe('OPEN_FORM');
     expect(resolved.canonicalOp).toBe('insert_station_on_segment_sn');
-    expect(resolved.payload.segment_ref).toBe('seg-001');
-    expect(resolved.payload.catalog_binding).toMatchObject({
-      catalog_namespace: 'TRAFO_SN_NN',
-      catalog_item_id: 'tr-sn-nn-15-04-630kva-dyn11',
+    expect(resolved.payload).toEqual({
+      segmentRef: 'seg-001',
+      segmentLabel: 'Segment 001',
+      insertRatio: 0.5,
     });
   });
 
-  it('buduje payload assign_catalog z kanonicznym bindingiem katalogowym', () => {
+  it('otwiera formularz przypisania katalogu bez zgadywania parametrow', () => {
     const resolved = resolveToolAction('assign_catalog', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
     });
 
-    expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.mode).toBe('OPEN_FORM');
     expect(resolved.canonicalOp).toBe('assign_catalog_to_element');
-    expect(resolved.payload).toMatchObject({
+    expect(resolved.payload).toEqual({
       element_ref: 'seg-001',
-      catalog_namespace: 'KABEL_SN',
-      catalog_item_id: 'cable-tfk-yakxs-3x120',
-      catalog_item_version: '2024.1',
-      source_mode: 'KATALOG',
+      element_name: 'Segment 001',
+      element_type: 'LineBranch',
     });
   });
 
@@ -75,71 +74,88 @@ describe('interactionController', () => {
     expect(resolved.payload).toEqual({ element_ref: 'seg-001' });
   });
 
-  it('pozwala wykonać add_gpz po kliknięciu płótna (canvas)', () => {
-    const resolved = resolveToolAction('add_gpz', TARGET, {
-      hasSource: false,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'canvas' });
+  it('otwiera formularz GPZ po kliknieciu plotna', () => {
+    const resolved = resolveToolAction(
+      'add_gpz',
+      TARGET,
+      {
+        hasSource: false,
+        hasRing: false,
+        activeCaseId: 'case-1',
+      },
+      { kind: 'canvas' },
+    );
 
-    expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.mode).toBe('OPEN_FORM');
     expect(resolved.canonicalOp).toBe('add_grid_source_sn');
-    expect(resolved.payload).toEqual({ voltage_kv: 15, sk3_mva: 250, rx_ratio: 0.1 });
+    expect(resolved.payload).toEqual({});
   });
 
-  it('blokuje start_branch na porcie innym niż BRANCH_OUT', () => {
-    const resolved = resolveToolAction('start_branch', TARGET, {
-      hasSource: true,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'port', portRole: 'TRUNK_OUT' });
+  it('blokuje start_branch na porcie innym niz BRANCH_OUT', () => {
+    const resolved = resolveToolAction(
+      'start_branch',
+      TARGET,
+      {
+        hasSource: true,
+        hasRing: false,
+        activeCaseId: 'case-1',
+      },
+      { kind: 'port', portRole: 'TRUNK_OUT' },
+    );
 
     expect(resolved.mode).toBe('BLOCKED');
     expect(resolved.reasonPl).toContain('BRANCH_OUT');
   });
 
-  it('blokuje narzędzie wymagające elementu, gdy kliknięto płótno', () => {
-    const resolved = resolveToolAction('insert_station', TARGET, {
-      hasSource: true,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'canvas' });
+  it('blokuje narzedzie wymagajace elementu, gdy kliknieto plotno', () => {
+    const resolved = resolveToolAction(
+      'insert_station',
+      TARGET,
+      {
+        hasSource: true,
+        hasRing: false,
+        activeCaseId: 'case-1',
+      },
+      { kind: 'canvas' },
+    );
 
     expect(resolved.mode).toBe('BLOCKED');
     expect(resolved.reasonPl).toContain('elementu');
   });
 
-  it('obsługuje elastyczną kolejność: edycja -> delete -> dalsza rozbudowa trunk', () => {
-    const edit = resolveToolAction('edit_properties', TARGET, {
-      hasSource: true,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'element' });
-    const del = resolveToolAction('delete_element', TARGET, {
-      hasSource: true,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'element' });
-    const trunk = resolveToolAction('continue_trunk', TARGET, {
-      hasSource: true,
-      hasRing: false,
-      activeCaseId: 'case-1',
-    }, { kind: 'element' });
+  it('otwiera formularz kontynuacji magistrali tylko dla poprawnego portu', () => {
+    const resolved = resolveToolAction(
+      'continue_trunk',
+      TARGET,
+      {
+        hasSource: true,
+        hasRing: false,
+        activeCaseId: 'case-1',
+      },
+      { kind: 'port', portRole: 'TRUNK_OUT' },
+    );
 
-    expect(edit.mode).toBe('DOMAIN_OP');
-    expect(edit.payload).toEqual({
-      element_ref: 'seg-001',
-      parameters: {
-        name: 'Segment 001',
-      },
+    expect(resolved.mode).toBe('OPEN_FORM');
+    expect(resolved.canonicalOp).toBe('continue_trunk_segment_sn');
+    expect(resolved.payload).toEqual({
+      fromTerminalId: 'seg-001',
+      terminalLabel: 'Segment 001',
     });
-    expect(del.mode).toBe('DOMAIN_OP');
-    expect(trunk.mode).toBe('DOMAIN_OP');
-    expect(trunk.payload).toMatchObject({
-      catalog_binding: {
-        catalog_namespace: 'KABEL_SN',
-        catalog_item_id: 'cable-tfk-yakxs-3x120',
-      },
+  });
+
+  it('blokuje ring i NOP poza zakresem tego etapu', () => {
+    const ring = resolveToolAction('connect_ring', TARGET, {
+      hasSource: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
     });
+    const nop = resolveToolAction('set_nop', TARGET, {
+      hasSource: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    });
+
+    expect(ring.mode).toBe('BLOCKED');
+    expect(nop.mode).toBe('BLOCKED');
   });
 });

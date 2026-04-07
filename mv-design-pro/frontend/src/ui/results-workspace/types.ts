@@ -48,6 +48,17 @@ export const OVERLAY_MODE_LABELS: Readonly<Record<OverlayDisplayMode, string>> =
 } as const;
 
 // =============================================================================
+// Snapshot Context Mode
+// =============================================================================
+
+export type SnapshotViewMode = 'RUN_SNAPSHOT' | 'CURRENT_MODEL';
+
+export const SNAPSHOT_VIEW_MODE_LABELS: Readonly<Record<SnapshotViewMode, string>> = {
+  RUN_SNAPSHOT: 'Migawka uruchomienia',
+  CURRENT_MODEL: 'Model bieżący',
+} as const;
+
+// =============================================================================
 // Run Summary
 // =============================================================================
 
@@ -235,6 +246,7 @@ export const WORKSPACE_URL_PARAMS = {
   BATCH: 'batch',
   COMPARISON: 'comparison',
   OVERLAY: 'overlay',
+  CONTEXT: 'context',
   SCENARIO: 'scenario',
 } as const;
 

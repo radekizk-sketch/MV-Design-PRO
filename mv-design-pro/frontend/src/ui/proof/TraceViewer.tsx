@@ -473,9 +473,16 @@ export function TraceViewer({
 interface TraceViewerContainerProps {
   trace: ExtendedTrace | null;
   isLoading: boolean;
+  selectionId?: string | null;
+  selectionToTraceMap?: SelectionToTraceMap;
 }
 
-export function TraceViewerContainer({ trace, isLoading }: TraceViewerContainerProps) {
+export function TraceViewerContainer({
+  trace,
+  isLoading,
+  selectionId,
+  selectionToTraceMap,
+}: TraceViewerContainerProps) {
   if (isLoading) {
     return <LoadingState />;
   }
@@ -484,5 +491,11 @@ export function TraceViewerContainer({ trace, isLoading }: TraceViewerContainerP
     return <EmptyState />;
   }
 
-  return <TraceViewer trace={trace} />;
+  return (
+    <TraceViewer
+      trace={trace}
+      selectionId={selectionId}
+      selectionToTraceMap={selectionToTraceMap}
+    />
+  );
 }

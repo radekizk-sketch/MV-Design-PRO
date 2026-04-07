@@ -379,7 +379,7 @@ class AnalysisDispatchService:
         results_valid = run.result_status != "OUTDATED"
         result_location: str | None = None
         if analysis_kind == AnalysisKind.SHORT_CIRCUIT:
-            result_location = f"/analysis-runs/{run.id}/results"
+                result_location = f"/api/analysis-runs/{run.id}/results"
         elif analysis_kind == AnalysisKind.POWER_FLOW:
             result_location = f"/power-flow-runs/{run.id}/results"
 

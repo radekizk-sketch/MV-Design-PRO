@@ -22,10 +22,13 @@ import {
   useNetworkBuildStore,
   useNetworkBuildDerived,
 } from './networkBuildStore';
+import { useSelectionStore } from '../selection';
 import type {
   StationSummary,
   TransformerSummary,
   OzeSourceSummary,
+  AvailableBranchPort,
+  RingCandidate,
 } from './networkBuildStore';
 import type { TerminalRef, TrunkViewV1, BranchViewV1 } from '../../types/enm';
 
@@ -185,31 +188,43 @@ function TrunksSection({
   openTerminals: TerminalRef[];
 }) {
   const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const defaultSegmentRef = trunks[0]?.segments[trunks[0].segments.length - 1] ?? '';
 
   const handleContinueTrunk = useCallback(
     (terminal: TerminalRef) => {
       openForm('continue_trunk_segment_sn', {
-        terminal_id: terminal.element_id,
-        port_id: terminal.port_id,
-        trunk_id: terminal.trunk_id,
+        fromTerminalId: terminal.element_id,
+        trunkId: terminal.trunk_id,
+        portId: terminal.port_id,
+        terminalLabel: terminal.element_id,
       });
     },
     [openForm],
   );
 
   const handleInsertStation = useCallback(
-    (trunkId: string) => {
-      openForm('insert_station_on_segment_sn', { trunk_id: trunkId });
+    (segmentRef: string) => {
+      openForm('insert_station_on_segment_sn', {
+        segmentRef,
+        segmentLabel: segmentRef,
+        insertRatio: 0.5,
+      });
     },
     [openForm],
   );
 
-  const handleInsertBranchPole = useCallback(() => {
-    openForm('insert_branch_pole_on_segment_sn');
+  const handleInsertBranchPole = useCallback((segmentRef: string) => {
+    openForm('insert_branch_pole_on_segment_sn', {
+      segment_ref: segmentRef,
+      segment_id: segmentRef,
+    });
   }, [openForm]);
 
-  const handleInsertZksn = useCallback(() => {
-    openForm('insert_zksn_on_segment_sn');
+  const handleInsertZksn = useCallback((segmentRef: string) => {
+    openForm('insert_zksn_on_segment_sn', {
+      segment_ref: segmentRef,
+      segment_id: segmentRef,
+    });
   }, [openForm]);
 
   return (
@@ -230,7 +245,7 @@ function TrunksSection({
               )}
               <button
                 type="button"
-                onClick={() => handleInsertStation(trunk.corridor_ref)}
+                onClick={() => handleInsertStation(trunk.segments[trunk.segments.length - 1] ?? trunk.corridor_ref)}
                 className="ml-auto text-[10px] text-ind-600 hover:text-ind-800"
               >
                 [Wstaw stację]
@@ -261,18 +276,21 @@ function TrunksSection({
         <p className="text-[10px] text-chrome-500 font-medium uppercase">Wstaw obiekt w odcinek SN</p>
         <ActionButton
           label="+ Wstaw stację"
-          onClick={() => openForm('insert_station_on_segment_sn')}
+          onClick={() => handleInsertStation(defaultSegmentRef)}
           testId="btn-insert-object-station"
+          disabled={!defaultSegmentRef}
         />
         <ActionButton
           label="+ Wstaw słup rozgałęźny"
-          onClick={handleInsertBranchPole}
+          onClick={() => handleInsertBranchPole(defaultSegmentRef)}
           testId="btn-insert-object-branch-pole"
+          disabled={!defaultSegmentRef}
         />
         <ActionButton
           label="+ Wstaw ZKSN"
-          onClick={handleInsertZksn}
+          onClick={() => handleInsertZksn(defaultSegmentRef)}
           testId="btn-insert-object-zksn"
+          disabled={!defaultSegmentRef}
         />
       </div>
     </div>
@@ -283,18 +301,44 @@ function TrunksSection({
 // Section 3: Stacje
 // =============================================================================
 
-function StationsSection({ stations }: { stations: StationSummary[] }) {
+function StationsSection({
+  stations,
+  availableBranchPorts,
+  defaultSegmentRef,
+}: {
+  stations: StationSummary[];
+  availableBranchPorts: AvailableBranchPort[];
+  defaultSegmentRef: string | null;
+}) {
   const openForm = useNetworkBuildStore((s) => s.openOperationForm);
 
   const handleInsertStation = useCallback(() => {
-    openForm('insert_station_on_segment_sn');
-  }, [openForm]);
+    if (!defaultSegmentRef) {
+      return;
+    }
+
+    openForm('insert_station_on_segment_sn', {
+      segmentRef: defaultSegmentRef,
+      segmentLabel: defaultSegmentRef,
+      insertRatio: 0.5,
+    });
+  }, [defaultSegmentRef, openForm]);
 
   const handleStartBranch = useCallback(
     (stationId: string) => {
-      openForm('start_branch_segment_sn', { from_station_id: stationId });
+      const availablePort = availableBranchPorts.find((port) => port.stationId === stationId);
+      if (!availablePort) {
+        return;
+      }
+
+      openForm('start_branch_segment_sn', {
+        fromRef: `${availablePort.stationId}.BRANCH`,
+        from_bus_ref: availablePort.busRef,
+        sourceLabel: `${availablePort.stationName} / pole ${availablePort.bayRole}`,
+        stationId,
+      });
     },
-    [openForm],
+    [availableBranchPorts, openForm],
   );
 
   return (
@@ -334,6 +378,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
         label="+ Wstaw stację w segment"
         onClick={handleInsertStation}
         testId="btn-insert-station"
+        disabled={!defaultSegmentRef}
       />
     </div>
   );
@@ -343,12 +388,28 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
 // Section 4: Odgałęzienia
 // =============================================================================
 
-function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
+function BranchesSection({
+  branches,
+  availableBranchPorts,
+}: {
+  branches: BranchViewV1[];
+  availableBranchPorts: AvailableBranchPort[];
+}) {
   const openForm = useNetworkBuildStore((s) => s.openOperationForm);
 
   const handleStartBranch = useCallback(() => {
-    openForm('start_branch_segment_sn');
-  }, [openForm]);
+    const fallbackPort = availableBranchPorts[0];
+    if (!fallbackPort) {
+      return;
+    }
+
+    openForm('start_branch_segment_sn', {
+      fromRef: `${fallbackPort.stationId}.BRANCH`,
+      from_bus_ref: fallbackPort.busRef,
+      sourceLabel: `${fallbackPort.stationName} / pole ${fallbackPort.bayRole}`,
+      stationId: fallbackPort.stationId,
+    });
+  }, [availableBranchPorts, openForm]);
 
   return (
     <div className="px-3 py-2 space-y-2">
@@ -373,6 +434,7 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
         label="+ Rozpocznij odgałęzienie"
         onClick={handleStartBranch}
         testId="btn-start-branch"
+        disabled={availableBranchPorts.length === 0}
       />
     </div>
   );
@@ -383,41 +445,81 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
 // =============================================================================
 
 function SectioningSection({
-  ringCandidateCount,
+  ringCandidates,
+  defaultSegmentRef,
+  selectedSwitchRef,
+  selectedSwitchName,
 }: {
-  ringCandidateCount: number;
+  ringCandidates: RingCandidate[];
+  defaultSegmentRef: string | null;
+  selectedSwitchRef: string | null;
+  selectedSwitchName: string | null;
 }) {
   const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const firstRingCandidate = ringCandidates[0] ?? null;
 
   const handleInsertSwitch = useCallback(() => {
-    openForm('insert_section_switch_sn');
-  }, [openForm]);
+    if (!defaultSegmentRef) {
+      return;
+    }
+
+    openForm('insert_section_switch_sn', {
+      segmentRef: defaultSegmentRef,
+      segment_ref: defaultSegmentRef,
+      segmentLabel: defaultSegmentRef,
+    });
+  }, [defaultSegmentRef, openForm]);
 
   const handleConnectRing = useCallback(() => {
-    openForm('connect_secondary_ring_sn');
-  }, [openForm]);
+    if (!firstRingCandidate) {
+      return;
+    }
+
+    openForm('connect_secondary_ring_sn', {
+      terminalA_id: firstRingCandidate.terminalA.element_id,
+      terminalAId: firstRingCandidate.terminalA.element_id,
+      terminalA_label: firstRingCandidate.terminalA.element_id,
+      terminalB_id: firstRingCandidate.terminalB.element_id,
+      terminalBId: firstRingCandidate.terminalB.element_id,
+      terminalB_label: firstRingCandidate.terminalB.element_id,
+    });
+  }, [firstRingCandidate, openForm]);
 
   const handleSetNop = useCallback(() => {
-    openForm('set_normal_open_point');
-  }, [openForm]);
+    if (!selectedSwitchRef) {
+      return;
+    }
+
+    openForm('set_normal_open_point', {
+      switch_ref: selectedSwitchRef,
+      switch_label: selectedSwitchName ?? selectedSwitchRef,
+      ring_label: 'Aktywny pierscien SN',
+    });
+  }, [openForm, selectedSwitchName, selectedSwitchRef]);
 
   return (
     <div className="px-3 py-2 space-y-1.5">
+      <div className="rounded border border-amber-200 bg-amber-50 px-2.5 py-2 text-[11px] text-amber-800">
+        W tym etapie produkcyjnym aktywne jest sekcjonowanie. Ring i NOP pozostają wygaszone
+        do osobnego domknięcia architektonicznego.
+      </div>
       <ActionButton
         label="+ Wstaw łącznik sekcyjny"
         onClick={handleInsertSwitch}
         testId="btn-insert-switch"
+        disabled={!defaultSegmentRef}
       />
       <ActionButton
-        label={`+ Domknij pierścień${ringCandidateCount > 0 ? ` (${ringCandidateCount} kandydatów)` : ''}`}
+        label={`+ Domknij pierścień${ringCandidates.length > 0 ? ` (${ringCandidates.length} kandydatow)` : ''}`}
         onClick={handleConnectRing}
         testId="btn-connect-ring"
-        disabled={ringCandidateCount === 0}
+        disabled={true}
       />
       <ActionButton
         label="Ustaw punkt normalnie otwarty (NOP)"
         onClick={handleSetNop}
         testId="btn-set-nop"
+        disabled={true}
       />
     </div>
   );
@@ -567,12 +669,14 @@ export interface ProcessPanelProps {
 export function ProcessPanel({ className }: ProcessPanelProps) {
   const collapsedSections = useNetworkBuildStore((s) => s.collapsedSections);
   const toggleSection = useNetworkBuildStore((s) => s.toggleSection);
+  const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
 
   const {
     buildPhaseLabel: phaseLabel,
     logicalViews,
     openTerminals,
     ringCandidates,
+    availableBranchPorts,
     stationSummaries,
     transformerSummaries,
     ozeSourceSummaries,
@@ -588,6 +692,7 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
 
   const trunks = logicalViews?.trunks ?? [];
   const branches = logicalViews?.branches ?? [];
+  const defaultSegmentRef = trunks[0]?.segments[trunks[0].segments.length - 1] ?? null;
 
   const isSectionCollapsed = useCallback(
     (id: string) => collapsedSections.has(id),
@@ -602,6 +707,8 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
   const transformerStatus: StatusLevel = transformerCount > 0 ? 'done' : stationCount > 0 ? 'partial' : 'empty';
   const ozeStatus: StatusLevel = generatorCount > 0 ? 'done' : 'empty';
   const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
+  const selectedSwitchRef = selectedElement?.type === 'Switch' ? selectedElement.id : null;
+  const selectedSwitchName = selectedElement?.type === 'Switch' ? selectedElement.name : null;
 
   return (
     <div
@@ -648,7 +755,13 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           collapsed={isSectionCollapsed('stations')}
           onToggle={() => toggleSection('stations')}
         />
-        {!isSectionCollapsed('stations') && <StationsSection stations={stationSummaries} />}
+        {!isSectionCollapsed('stations') && (
+          <StationsSection
+            stations={stationSummaries}
+            availableBranchPorts={availableBranchPorts}
+            defaultSegmentRef={defaultSegmentRef}
+          />
+        )}
 
         {/* 4. Odgałęzienia */}
         <SectionHeader
@@ -659,7 +772,9 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           collapsed={isSectionCollapsed('branches')}
           onToggle={() => toggleSection('branches')}
         />
-        {!isSectionCollapsed('branches') && <BranchesSection branches={branches} />}
+        {!isSectionCollapsed('branches') && (
+          <BranchesSection branches={branches} availableBranchPorts={availableBranchPorts} />
+        )}
 
         {/* 5. Sekcjonowanie i ringi */}
         <SectionHeader
@@ -670,7 +785,12 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           onToggle={() => toggleSection('sectioning')}
         />
         {!isSectionCollapsed('sectioning') && (
-          <SectioningSection ringCandidateCount={ringCandidates.length} />
+          <SectioningSection
+            ringCandidates={ringCandidates}
+            defaultSegmentRef={defaultSegmentRef}
+            selectedSwitchRef={selectedSwitchRef}
+            selectedSwitchName={selectedSwitchName}
+          />
         )}
 
         {/* 6. Transformatory i nN */}

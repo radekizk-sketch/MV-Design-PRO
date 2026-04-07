@@ -54,13 +54,61 @@ export type DiagSevUrlValue = typeof DIAG_SEV_URL_VALUES[keyof typeof DIAG_SEV_U
 /**
  * Valid element types for URL validation.
  */
-const VALID_ELEMENT_TYPES: ElementType[] = [
+const KNOWN_ELEMENT_TYPES: ElementType[] = [
   'Bus',
   'LineBranch',
   'TransformerBranch',
   'Switch',
   'Source',
   'Load',
+  'Generator',
+  'Measurement',
+  'ProtectionAssignment',
+  'Terminal',
+  'PortBranch',
+  'Station',
+  'BaySN',
+  'Relay',
+  'SecondaryLink',
+  'NOP',
+  'BusNN',
+  'MainBreakerNN',
+  'FeederNN',
+  'SegmentNN',
+  'LoadNN',
+  'SwitchboardNN',
+  'SourceFieldNN',
+  'PVInverter',
+  'BESSInverter',
+  'EnergyStorage',
+  'Genset',
+  'UPS',
+  'EnergyMeter',
+  'PowerQualityMeter',
+  'SurgeArresterNN',
+  'Earthing',
+  'MeasurementNN',
+  'AuxBus',
+  'ConnectionPoint',
+  'SwitchNN',
+  'ProtectionNN',
+  'SourceController',
+  'InternalJunction',
+  'CableJointNN',
+  'FaultCurrentLimiter',
+  'FilterCompensator',
+  'TelecontrolDevice',
+  'BusSectionNN',
+  'BusCouplerNN',
+  'ReserveLink',
+  'SourceDisconnect',
+  'PowerLimit',
+  'WorkProfile',
+  'OperatingMode',
+  'ConnectionConstraints',
+  'MeteringBlock',
+  'SyncPoint',
+  'DescriptiveElement',
 ];
 
 
@@ -69,7 +117,7 @@ const VALID_ELEMENT_TYPES: ElementType[] = [
  * Check if string is valid ElementType.
  */
 function isValidElementType(type: string): type is ElementType {
-  return VALID_ELEMENT_TYPES.includes(type as ElementType);
+  return type.trim().length > 0 && KNOWN_ELEMENT_TYPES.includes(type as ElementType);
 }
 
 /**
@@ -181,7 +229,18 @@ export function updateUrlWithSelection(selection: SelectedElement | null): void 
   }
 
   const currentHash = getCurrentHashRoute();
-  const params = encodeSelectionToParams(selection);
+  const params = getCurrentSearchParams();
+
+  params.delete(URL_PARAMS.SELECTION_ID);
+  params.delete(URL_PARAMS.SELECTION_TYPE);
+  params.delete(URL_PARAMS.SELECTION_NAME);
+
+  if (selection && !isConnectionNodeLikeId(selection.id)) {
+    params.set(URL_PARAMS.SELECTION_ID, selection.id);
+    params.set(URL_PARAMS.SELECTION_TYPE, selection.type);
+    params.set(URL_PARAMS.SELECTION_NAME, selection.name);
+  }
+
   const queryString = params.toString();
 
   // Build new URL: hash + optional query string
@@ -315,19 +374,23 @@ export function updateUrlWithSelectionAndDiagnostics(
   }
 
   const currentHash = getCurrentHashRoute();
-  const params = new URLSearchParams();
+  const params = getCurrentSearchParams();
 
-  // Add selection params
+  params.delete(URL_PARAMS.SELECTION_ID);
+  params.delete(URL_PARAMS.SELECTION_TYPE);
+  params.delete(URL_PARAMS.SELECTION_NAME);
   if (selection && !isConnectionNodeLikeId(selection.id)) {
     params.set(URL_PARAMS.SELECTION_ID, selection.id);
     params.set(URL_PARAMS.SELECTION_TYPE, selection.type);
     params.set(URL_PARAMS.SELECTION_NAME, selection.name);
   }
 
-  // Add diagnostics params
   if (diagnostics.visible) {
     params.set(URL_PARAMS.DIAGNOSTICS_VISIBLE, '1');
     params.set(URL_PARAMS.DIAGNOSTICS_SEVERITY, filterToUrlValue(diagnostics.filter));
+  } else {
+    params.delete(URL_PARAMS.DIAGNOSTICS_VISIBLE);
+    params.delete(URL_PARAMS.DIAGNOSTICS_SEVERITY);
   }
 
   const queryString = params.toString();

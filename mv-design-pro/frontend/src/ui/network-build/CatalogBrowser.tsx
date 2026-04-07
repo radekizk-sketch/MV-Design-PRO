@@ -110,9 +110,15 @@ export interface CatalogBrowserProps {
   className?: string;
   onSelectType?: (typeId: string, namespace: CatalogNamespace) => void;
   onClose?: () => void;
+  mode?: 'assign' | 'browse';
 }
 
-export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrowserProps) {
+export function CatalogBrowser({
+  className,
+  onSelectType,
+  onClose,
+  mode = 'assign',
+}: CatalogBrowserProps) {
   const [activeNamespace, setActiveNamespace] = useState<CatalogNamespace>('KABEL_SN');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
@@ -194,7 +200,11 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div>
           <h3 className="text-sm font-semibold text-gray-800">Przeglądarka katalogów</h3>
-          <p className="text-[10px] text-gray-500 mt-0.5">Wybierz kategorię i typ elementu</p>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {mode === 'assign'
+              ? 'Wybierz kategorię i typ elementu.'
+              : 'Przeglądaj warianty katalogowe i porównuj parametry.'}
+          </p>
         </div>
         {onClose && (
           <button
@@ -303,13 +313,19 @@ export function CatalogBrowser({ className, onSelectType, onClose }: CatalogBrow
                     {selectedType.manufacturer && ` • ${selectedType.manufacturer}`}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAssign}
-                  className="px-3 py-1 text-[10px] font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  Przypisz do elementu
-                </button>
+                {mode === 'assign' && onSelectType ? (
+                  <button
+                    type="button"
+                    onClick={handleAssign}
+                    className="px-3 py-1 text-[10px] font-medium bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
+                    Przypisz do elementu
+                  </button>
+                ) : (
+                  <div className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-medium text-slate-600">
+                    Tryb przeglądowy
+                  </div>
+                )}
               </div>
             </div>
           )}

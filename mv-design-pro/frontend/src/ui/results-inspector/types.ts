@@ -163,6 +163,8 @@ export interface ShortCircuitResults {
 export interface TraceStep {
   /** Unique key for the step (internal) */
   key?: string;
+  /** Stable contract key for URL/selection joins */
+  step_key?: string;
   /** Step index (1-based for display) */
   step?: number;
   /** Human-readable step title (Polish) */
@@ -184,6 +186,9 @@ export interface TraceStep {
   equation_id?: string;
   output?: unknown;
   timestamp?: string;
+  primary_element_ref?: string;
+  primary_element_type?: string;
+  related_elements?: TraceRelatedElement[];
   [key: string]: unknown;
 }
 
@@ -194,6 +199,24 @@ export interface TraceValue {
   value: number | string | boolean | null;
   unit?: string;
   label?: string;
+}
+
+export type TraceElementRole =
+  | 'CEL_ANALIZY'
+  | 'ELEMENT_GLOWNY'
+  | 'WYNIK_ELEMENTU'
+  | 'KONTEKST_SIECI';
+
+export interface TraceRelatedElement {
+  element_ref: string;
+  element_type: string;
+  role: TraceElementRole;
+}
+
+export interface TraceSelectionIndexEntry {
+  element_ref: string;
+  element_type: string;
+  step_indices: number[];
 }
 
 /**
@@ -252,6 +275,8 @@ export interface ExtendedTrace {
   run_id: string;
   snapshot_id: string | null;
   input_hash: string;
+  trace_contract_version?: string;
+  selection_index?: Record<string, TraceSelectionIndexEntry>;
   white_box_trace: TraceStep[];
 }
 

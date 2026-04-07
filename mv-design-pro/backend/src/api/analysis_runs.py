@@ -26,7 +26,7 @@ from enm.canonical_analysis import (
 )
 
 
-router = APIRouter()
+router = APIRouter(prefix="/api", tags=["analysis-runs"])
 
 
 def _require_canonical_run(run_id: UUID) -> CanonicalRun:
@@ -80,6 +80,12 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
             detail=f"Wyniki przebiegu {run_id} są niedostępne (status={canonical_run.status})",
         )
     return canonicalize_json(build_result_items(canonical_run))
+
+
+@router.get("/analysis-runs/{run_id}/snapshot")
+def get_analysis_run_snapshot(run_id: UUID) -> dict[str, Any]:
+    canonical_run = _require_canonical_run(run_id)
+    return canonicalize_json(canonical_run.snapshot or {})
 
 
 @router.get("/analysis-runs/{run_id}/overlay")

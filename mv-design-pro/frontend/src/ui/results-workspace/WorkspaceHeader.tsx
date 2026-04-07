@@ -12,6 +12,7 @@
 
 import { useResultsWorkspaceStore } from './store';
 import { useAppStateStore } from '../app-state/store';
+import { ROUTES } from '../navigation';
 import type { WorkspaceMode } from './types';
 import {
   WORKSPACE_MODE_LABELS,
@@ -40,8 +41,31 @@ export function WorkspaceHeader() {
       className="border-b border-slate-200 bg-white px-4 py-3"
       data-testid="workspace-header"
     >
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-slate-700">
+          Wyniki i analiza
+        </span>
+        {projection && (
+          <span className="rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-blue-700">
+            {projection.runs.length} obliczen / {projection.batches.length} wsadow / {projection.comparisons.length} porownan
+          </span>
+        )}
+        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
+          Jeden przeplyw od wyboru runu do nakladki SLD
+        </span>
+      </div>
+
       {/* Top row: context info */}
       <div className="flex items-center gap-4 text-sm mb-2">
+        <button
+          type="button"
+          onClick={() => {
+            window.location.hash = ROUTES.SLD.hash;
+          }}
+          className="rounded border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Powrot do edytora
+        </button>
         <span className="font-medium text-slate-700">
           {caseName ?? 'Brak aktywnego przypadku'}
         </span>

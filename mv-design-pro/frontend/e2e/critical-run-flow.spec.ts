@@ -238,6 +238,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
 
   await page.goto('/#results');
   await expect(page).toHaveURL(/#results/);
+  await expect(page.getByTestId('results-workspace')).toBeVisible();
 
   // Krok 8: Realne wyniki backend
   if (!runId.startsWith('legacy-sc-')) {
@@ -246,6 +247,51 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
       expect(resultResponse.ok()).toBeTruthy();
     }
   }
+
+  // Krok 8a: UI wynikow -> wskazanie elementu -> White Box -> powrot do modelu
+  await page.goto(`/#results?run=${runId}&mode=run`);
+  await expect(page.getByTestId('results-workspace')).toBeVisible();
+  await expect(page.getByTestId('sld-overlay-panel')).toBeVisible();
+  await expect(page.getByTestId('sld-viewer-area')).toBeVisible();
+  await expect(page.getByTestId('snapshot-view-run_snapshot')).toBeVisible();
+  await expect(page.getByTestId('snapshot-view-current_model')).toBeVisible();
+
+  await expect
+    .poll(async () => await page.locator('[data-testid="run-view-panel"] tbody tr').count(), {
+      timeout: 45000,
+    })
+    .toBeGreaterThan(0);
+
+  await expect
+    .poll(async () => await page.locator('[data-testid="sld-results-overlay"]').count(), {
+      timeout: 45000,
+    })
+    .toBeGreaterThan(0);
+  await expect(page.getByTestId('sld-legend-panel')).toBeVisible();
+
+  await page.getByTestId('snapshot-view-current_model').click();
+  await expect(page.getByTestId('snapshot-view-current_model')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('snapshot-view-run_snapshot').click();
+  await expect(page.getByTestId('snapshot-view-run_snapshot')).toHaveAttribute('aria-checked', 'true');
+
+  await page.locator('[data-testid="run-view-panel"] tbody tr').first().click();
+  await expect(page).toHaveURL(/sel=/);
+
+  await page.getByTestId('run-open-proof').click();
+  await expect(page).toHaveURL(/#proof/);
+  await expect(page.getByTestId('legacy-trace-workspace-page')).toBeVisible();
+
+  await page.goto(`/#results?run=${runId}&mode=run`);
+  await expect
+    .poll(async () => await page.locator('[data-testid="run-view-panel"] tbody tr').count(), {
+      timeout: 45000,
+    })
+    .toBeGreaterThan(0);
+  await page.locator('[data-testid="run-view-panel"] tbody tr').first().click();
+  await expect(page).toHaveURL(/sel=/);
+  await page.getByTestId('run-open-model').click();
+  await expect(page).toHaveURL(/#editor/);
+  await expect(page).toHaveURL(/sel=/);
 
   // Krok 9: Geometria bazowa snapshotu bez zmian po wynikach
   const enmAfterResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm`);
