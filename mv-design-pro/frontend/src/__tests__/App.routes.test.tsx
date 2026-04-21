@@ -279,6 +279,15 @@ describe('App hash routes', () => {
     expect(window.location.hash).toBe('#sld');
   });
 
+  it('otwiera kanoniczna trase rozdzielnicy bez drugiej prawdy', async () => {
+    window.location.hash = '#switchgear';
+
+    render(<App />);
+
+    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
+    expect(window.location.hash).toBe('#switchgear');
+  });
+
   it('pokazuje jawny blad dla nieznanej trasy zamiast cichego fallbacku', async () => {
     window.location.hash = '#nieznana-trasa';
 
@@ -287,7 +296,7 @@ describe('App hash routes', () => {
     expect(await screen.findByText('Nieznana trasa interfejsu')).toBeInTheDocument();
   });
 
-  it.each(['#case-manager', '#network-build', '#switchgear'])(
+  it.each(['#case-manager', '#network-build'])(
     'odrzuca legacy public route %s i pokazuje blad kanoniczny',
     async (legacyRoute) => {
       window.location.hash = legacyRoute;

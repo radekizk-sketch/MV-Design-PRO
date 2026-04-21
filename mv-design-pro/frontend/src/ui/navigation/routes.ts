@@ -47,6 +47,13 @@ export const ROUTES = {
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
+  SWITCHGEAR: {
+    hash: '#switchgear',
+    label: 'Kreator rozdzielnicy',
+    description: 'Kontekst rozdzielnicy w kanonicznym shellu',
+    icon: 'SWG',
+    requiredMode: 'MODEL_EDIT',
+  },
   CASE_CONFIG: {
     hash: '#case-config',
     label: 'Kontekst przypadku',
@@ -241,6 +248,10 @@ export function navigateToResultsPowerFlow(context: RouteContextOptions = {}): v
 
 export function navigateToNetworkBuild(): void {
   navigateTo(ROUTES.SLD);
+}
+
+export function navigateToSwitchgear(): void {
+  navigateTo(ROUTES.SWITCHGEAR);
 }
 
 export function navigateToCaseConfig(context: RouteContextOptions = {}): void {

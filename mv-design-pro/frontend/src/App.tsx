@@ -52,6 +52,7 @@ import {
   navigateToResults,
   navigateToResultsProtection,
   navigateToVariants,
+  navigateToSwitchgear,
   resolveAnalysisRouteAliasTab,
   useUrlSelectionSync,
 } from './ui/navigation';
@@ -295,6 +296,8 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'switchgear':
+        navigateToSwitchgear();
+        break;
       case 'power-distribution':
         navigateToNetworkBuild();
         break;

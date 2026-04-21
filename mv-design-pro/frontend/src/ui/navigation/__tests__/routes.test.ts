@@ -11,6 +11,7 @@ import {
   navigateToResults,
   navigateToResultsPowerFlow,
   navigateToResultsProtection,
+  navigateToSwitchgear,
   resolveAnalysisRouteAliasTab,
 } from '../routes';
 
@@ -35,9 +36,12 @@ describe('routes V12.5', () => {
     expect(getRouteByHash('#results')).toBeNull();
     expect(getRouteByHash('#proof')).toBeNull();
     expect(getRouteByHash('#compare')).toBeNull();
-    expect(getRouteByHash('#switchgear')).toBeNull();
     expect(getRouteByHash('#network-build')).toBeNull();
     expect(getRouteByHash('#case-manager')).toBeNull();
+  });
+
+  it('exposes the canonical switchgear helper route', () => {
+    expect(getRouteByHash('#switchgear')).toEqual(ROUTES.SWITCHGEAR);
   });
 
   it('treats legacy result hashes only as aliases to the canonical E-24 route', () => {
@@ -94,6 +98,11 @@ describe('routes V12.5', () => {
     navigateToNetworkBuild();
     location = getHashParts();
     expect(location.hash).toBe('#sld');
+    expect(location.params.has('tab')).toBe(false);
+
+    navigateToSwitchgear();
+    location = getHashParts();
+    expect(location.hash).toBe('#switchgear');
     expect(location.params.has('tab')).toBe(false);
   });
 });
