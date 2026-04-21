@@ -12,6 +12,7 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -65,6 +66,18 @@ def _format_value(value: Any) -> str:
     if isinstance(value, list):
         return f"[{len(value)} elementow]"
     return str(value)
+
+
+def _wrap_text_lines(text: str, *, max_chars: int = 110) -> list[str]:
+    """Wrap text without truncation."""
+    if not text:
+        return []
+    return textwrap.wrap(
+        text,
+        width=max_chars,
+        break_long_words=True,
+        break_on_hyphens=False,
+    ) or [text]
 
 
 class _PDFLayout:
@@ -377,16 +390,20 @@ def _add_wb_step_pdf(lay: _PDFLayout, step: dict) -> None:
 
     formula = step.get("formula_latex", "")
     if formula:
-        lay.draw_text(f"  Wzor: {formula}", font_size=9)
+        lay.draw_text("Wzór:", bold=True, font_size=10)
+        for line in _wrap_text_lines(str(formula), max_chars=105):
+            lay.draw_text(line, x=lay.left_margin + 10 * mm, font_size=9)
 
     inputs = step.get("inputs", {})
     if inputs and isinstance(inputs, dict):
         for k, v in inputs.items():
             lay.draw_text(f"  {k}: {_format_value(v)}", font_size=9)
 
-    substitution = step.get("substitution", "")
+    substitution = step.get("substitution_latex") or step.get("substitution", "")
     if substitution:
-        lay.draw_text(f"  Podstawienie: {str(substitution)[:80]}", font_size=9)
+        lay.draw_text("Podstawienie:", bold=True, font_size=10)
+        for line in _wrap_text_lines(str(substitution), max_chars=105):
+            lay.draw_text(line, x=lay.left_margin + 10 * mm, font_size=9)
 
     result_data = step.get("result", {})
     if result_data and isinstance(result_data, dict):

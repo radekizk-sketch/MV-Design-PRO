@@ -12,6 +12,7 @@ class WhiteBoxStep:
     inputs: dict[str, Any]
     substitution: str
     result: dict[str, Any]
+    substitution_latex: str | None = None
     notes: str | None = None
 
 
@@ -30,6 +31,7 @@ class WhiteBoxTracer:
         inputs: dict[str, Any],
         substitution: str,
         result: dict[str, Any],
+        substitution_latex: str | None = None,
         notes: str | None = None,
     ) -> None:
         self.add_step(
@@ -39,6 +41,7 @@ class WhiteBoxTracer:
                 formula_latex=formula_latex,
                 inputs=inputs,
                 substitution=substitution,
+                substitution_latex=substitution_latex,
                 result=result,
                 notes=notes,
             )
@@ -52,6 +55,7 @@ class WhiteBoxTracer:
                 "formula_latex": step.formula_latex,
                 "inputs": step.inputs,
                 "substitution": step.substitution,
+                "substitution_latex": step.substitution_latex,
                 "result": step.result,
                 "notes": step.notes,
             }

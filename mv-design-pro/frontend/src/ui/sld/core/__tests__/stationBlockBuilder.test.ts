@@ -425,6 +425,85 @@ describe('Field/Device Building — RUN #3D', () => {
     expect(cb!.id).toBe('cb_1');
   });
 
+  it('explicit field_specs renderuje pole GPZ bez gałęzi heurystycznych', () => {
+    const input = makeBaseInput({
+      connectionNodes: [
+        { id: 'bus_gpz', name: 'Szyna GPZ', voltageKv: 15, inService: true },
+      ],
+      stations: [
+        {
+          id: 'sta_gpz',
+          name: 'GPZ 15 kV',
+          stationType: StationKind.MAIN_SUBSTATION,
+          voltageKv: 15,
+          busIds: ['bus_gpz'],
+          switchIds: [],
+          transformerIds: [],
+          fieldSpecs: [
+            {
+              fieldRef: 'bay_sn_in',
+              name: 'Pole SN wejściowe',
+              bayRole: 'IN',
+              busRef: 'bus_gpz',
+              equipmentRefs: ['cb_in'],
+              protectionRef: null,
+              gpzSectionId: 'sec_1',
+              tags: ['gpz', 'sn'],
+              meta: { source_field_kind: 'IN' },
+            },
+          ],
+          nnFieldSpecs: [
+            {
+              fieldRef: 'bay_meas',
+              name: 'Pole pomiarowe',
+              bayRole: 'MEASUREMENT',
+              busRef: 'bus_gpz',
+              equipmentRefs: ['ct_in'],
+              protectionRef: null,
+              gpzSectionId: null,
+              tags: ['pomiar'],
+              meta: { source_field_kind: 'MEASUREMENT' },
+            },
+          ],
+        },
+      ],
+      devices: [
+        {
+          id: 'cb_in',
+          name: 'Wyłącznik wejściowy',
+          kind: DeviceKind.CB,
+          nodeId: 'bus_gpz',
+          inService: true,
+          catalogRef: 'cat_cb_in',
+          state: 'CLOSED',
+          bayRef: 'bay_sn_in',
+        },
+        {
+          id: 'ct_in',
+          name: 'Przekładnik prądowy',
+          kind: DeviceKind.CT,
+          nodeId: 'bus_gpz',
+          inService: true,
+          catalogRef: 'cat_ct_in',
+          state: null,
+          bayRef: 'bay_meas',
+        },
+      ],
+      sources: [
+        { id: 'src_gpz', name: 'GPZ 110/15kV', nodeId: 'bus_gpz', inService: true },
+      ],
+    });
+
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_gpz');
+
+    expect(block).toBeDefined();
+    expect(block!.fields.map(field => field.id)).toEqual(['bay_meas', 'bay_sn_in']);
+    expect(block!.fields.find(f => f.fieldRole === FieldRoleV1.LINE_IN)).toBeDefined();
+    expect(block!.fields.find(f => f.fieldRole === FieldRoleV1.MEASUREMENT_SN)).toBeDefined();
+    expect(block!.devices.map(device => device.id)).toEqual(['cb_in', 'ct_in']);
+  });
+
   it('GN-OZE-SN: PV i BESS generatory tworza pola', () => {
     const input = buildGN_OZE_SN();
     const result = buildVisualGraphFromTopology(input);
