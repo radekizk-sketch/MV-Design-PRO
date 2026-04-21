@@ -19,6 +19,17 @@ from pathlib import Path
 from typing import Any
 
 
+def _trace_step_substitution_text(step: dict[str, Any]) -> str | None:
+    """Return the canonical substitution text for a white-box step."""
+    substitution_latex = step.get("substitution_latex")
+    if substitution_latex:
+        return str(substitution_latex)
+    substitution = step.get("substitution")
+    if substitution:
+        return str(substitution)
+    return None
+
+
 def export_trace_jsonl(
     white_box_trace: list[dict[str, Any]],
     output_path: str | Path,
@@ -87,6 +98,10 @@ def export_trace_jsonl(
         substitution = step.get("substitution")
         if substitution:
             line_data["substitution"] = str(substitution)
+
+        substitution_latex = _trace_step_substitution_text(step)
+        if substitution_latex:
+            line_data["substitution_latex"] = substitution_latex
 
         title = step.get("title")
         if title:

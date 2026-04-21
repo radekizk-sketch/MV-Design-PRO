@@ -38,7 +38,7 @@ class ShortCircuitPostProcessResult:
 
 def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray]:
     builder = AdmittanceMatrixBuilder(graph)
-    y_bus = builder.build()
+    y_bus = builder.build(ground_slack_buses=False)
 
     try:
         z_bus = np.linalg.inv(y_bus)

@@ -4,7 +4,11 @@
  */
 import { describe, it, expect } from 'vitest';
 import { readTopologyFromENM } from '../topologyInputReader';
-import type { EnergyNetworkModel, Generator as ENMGenerator } from '../../../../types/enm';
+import type {
+  EnergyNetworkModel,
+  Generator as ENMGenerator,
+  Measurement as ENMMeasurement,
+} from '../../../../types/enm';
 
 // =============================================================================
 // HELPERS
@@ -14,6 +18,7 @@ function minimalENM(overrides?: {
   generators?: ENMGenerator[];
   transformers?: EnergyNetworkModel['transformers'];
   substations?: EnergyNetworkModel['substations'];
+  measurements?: ENMMeasurement[];
 }): EnergyNetworkModel {
   return {
     header: {
@@ -37,7 +42,7 @@ function minimalENM(overrides?: {
     bays: [],
     junctions: [],
     corridors: [],
-    measurements: [],
+    measurements: overrides?.measurements ?? [],
     protection_assignments: [],
   };
 }
@@ -220,5 +225,127 @@ describe('readTopologyFromENM — PV/BESS connection variant validation', () => 
     const result = readTopologyFromENM(enm);
     const ids = result.generators.map(g => g.id);
     expect(ids).toEqual(['gen_a', 'gen_m', 'gen_z']);
+  });
+});
+
+describe('readTopologyFromENM — field specs propagation', () => {
+  it('propagates explicit field_specs and nn_field_specs from GPZ meta', () => {
+    const enm = minimalENM({
+      measurements: [
+          {
+            id: 'uuid-meas-1',
+            ref_id: 'meas_ct_1',
+            name: 'Przekładnik prądowy 1',
+            tags: [],
+            meta: {},
+            measurement_type: 'CT',
+            bus_ref: 'bus_sn',
+            bay_ref: 'bay_sn_in',
+            rating: { ratio_primary: 200, ratio_secondary: 1, accuracy_class: '5P', burden_va: 10 },
+            connection: 'star',
+            purpose: 'protection',
+            catalog_ref: 'cat_ct_1',
+            catalog_namespace: 'test',
+            parameter_source: 'CATALOG',
+            source_mode: 'KATALOG',
+            materialized_params: {},
+            overrides: [],
+          },
+      ],
+      substations: [{
+        id: 'uuid-gpz',
+        ref_id: 'gpz_1',
+        name: 'GPZ',
+        tags: [],
+        meta: {
+          field_specs: [
+            {
+              fieldRef: 'bay_sn_in',
+              name: 'Pole SN wejściowe',
+              bayRole: 'IN',
+              busRef: 'bus_sn',
+              equipmentRefs: ['meas_ct_1'],
+              protectionRef: 'prot_1',
+              gpzSectionId: 'sec_1',
+              tags: ['gpz', 'sn'],
+              meta: { source_field_kind: 'IN' },
+            },
+          ],
+          nn_field_specs: [
+            {
+              fieldRef: 'bay_nn_out',
+              name: 'Pole nN wyjściowe',
+              bayRole: 'OUT',
+              busRef: 'bus_sn',
+              equipmentRefs: [],
+              protectionRef: null,
+              gpzSectionId: null,
+              tags: ['nn'],
+              meta: { source_field_kind: 'FEEDER' },
+            },
+          ],
+        },
+        station_type: 'gpz',
+        bus_refs: ['bus_sn'],
+        transformer_refs: [],
+        gpz_sections: [
+          {
+            section_id: 'sec_1',
+            order: 1,
+            name: 'Sekcja 1',
+            line_field_name: 'Pole linii 1',
+            bus_ref: 'bus_sn',
+          },
+        ],
+      }],
+    });
+
+    const result = readTopologyFromENM(enm);
+    const station = result.stations.find(s => s.id === 'gpz_1');
+    expect(station).toBeDefined();
+    expect(station!.fieldSpecs?.map(spec => spec.fieldRef)).toEqual(['bay_sn_in']);
+    expect(station!.nnFieldSpecs?.map(spec => spec.fieldRef)).toEqual(['bay_nn_out']);
+
+    const measurement = result.devices.find(device => device.id === 'meas_ct_1');
+    expect(measurement).toBeDefined();
+    expect(measurement!.bayRef).toBe('bay_sn_in');
+  });
+
+  it('synthesizes GPZ field_specs from gpz_sections when explicit field_specs are absent', () => {
+    const enm = minimalENM({
+      substations: [{
+        id: 'uuid-gpz',
+        ref_id: 'gpz_2',
+        name: 'GPZ 2',
+        tags: [],
+        meta: {},
+        station_type: 'gpz',
+        bus_refs: ['bus_sn'],
+        transformer_refs: [],
+        gpz_sections: [
+          {
+            section_id: 'sec_10',
+            order: 10,
+            name: 'Sekcja 10',
+            line_field_name: 'Pole linii 10',
+            bus_ref: 'bus_sn',
+          },
+          {
+            section_id: 'sec_20',
+            order: 20,
+            name: 'Sekcja 20',
+            line_field_name: null,
+            bus_ref: 'bus_sn',
+          },
+        ],
+      }],
+    });
+
+    const result = readTopologyFromENM(enm);
+    const station = result.stations.find(s => s.id === 'gpz_2');
+    expect(station).toBeDefined();
+    expect(station!.fieldSpecs?.length).toBe(2);
+    expect(station!.fieldSpecs?.[0].fieldRef).toBe('gpz_2:section:sec_10:field');
+    expect(station!.fieldSpecs?.[1].fieldRef).toBe('gpz_2:section:sec_20:field');
   });
 });
