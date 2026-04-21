@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Layout Pipeline V1 â€” 6-fazowy, deterministyczny pipeline layoutu SLD.
  *
  * UKĹAD PIONOWY (VERTICAL SN) â€” STYL ABB/CANONICAL:

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Rich Action Menu Builders — pełne menu kontekstowe A–AZ.
  *
  * CANONICAL ALIGNMENT:

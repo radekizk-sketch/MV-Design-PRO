@@ -1,4 +1,4 @@
-﻿/**
+/**
  * CanonicalSymbolRenderer â€” Komponenty SVG dla symboli CANONICAL
  *
  * CANONICAL ALIGNMENT:

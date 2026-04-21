@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Typy operacji domenowych — budowa sieci SN od GPZ.
  * Lustrzane odbicie backend domain_ops_models.py.
  */
