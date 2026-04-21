@@ -13,20 +13,19 @@ import json
 
 import numpy as np
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
+from network_model.solvers.short_circuit_contributions import (
+    ShortCircuitBranchContribution,
+    ShortCircuitSourceContribution,
+)
 from network_model.solvers.short_circuit_iec60909 import (
     EXPECTED_SHORT_CIRCUIT_RESULT_KEYS,
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
-)
-from network_model.solvers.short_circuit_contributions import (
-    ShortCircuitBranchContribution,
-    ShortCircuitSourceContribution,
 )
 
 
@@ -236,7 +235,7 @@ class TestShortCircuitResultContract:
         ]
         for field in float_fields:
             value = getattr(result, field)
-            assert isinstance(value, (int, float)), f"{field} should be numeric"
+            assert isinstance(value, int | float), f"{field} should be numeric"
 
         # Complex field
         assert isinstance(result.zkk_ohm, complex)
@@ -246,9 +245,7 @@ class TestShortCircuitResultContract:
         assert isinstance(result.white_box_trace, list)
 
         # Optional list field
-        assert result.branch_contributions is None or isinstance(
-            result.branch_contributions, list
-        )
+        assert result.branch_contributions is None or isinstance(result.branch_contributions, list)
 
     def test_white_box_trace_is_non_empty_list(self):
         """white_box_trace jest niepustą listą z wymaganymi krokami."""
@@ -285,8 +282,8 @@ class TestShortCircuitResultContract:
             assert isinstance(contrib.source_id, str)
             assert isinstance(contrib.source_name, str)
             assert hasattr(contrib.source_type, "value")  # Enum
-            assert isinstance(contrib.i_contrib_a, (int, float))
-            assert isinstance(contrib.share, (int, float))
+            assert isinstance(contrib.i_contrib_a, int | float)
+            assert isinstance(contrib.share, int | float)
 
 
 # -----------------------------------------------------------------------------
@@ -523,9 +520,9 @@ class TestContractConstant:
         missing_in_contract = dataclass_fields - contract_keys
 
         # Nie powinno być brakujących pól (chyba że są wewnętrzne)
-        assert not missing_in_contract, (
-            f"Pola dataclass nie ujęte w kontrakcie: {missing_in_contract}"
-        )
+        assert (
+            not missing_in_contract
+        ), f"Pola dataclass nie ujęte w kontrakcie: {missing_in_contract}"
 
     def test_contract_has_minimum_required_keys(self):
         """Kontrakt zawiera minimalne wymagane klucze."""

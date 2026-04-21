@@ -8,11 +8,12 @@ Tests cover:
 - Error handling (404, 422, 409)
 - Persistence across requests
 """
+
 from __future__ import annotations
 
-import pytest
 from uuid import uuid4
 
+import pytest
 
 pytest.importorskip("fastapi")
 
@@ -33,13 +34,16 @@ class TestProjectsCRUD:
 
     def test_create_project_full(self, app_client):
         """POST /api/projects — pełna konfiguracja"""
-        resp = app_client.post("/api/projects", json={
-            "name": "Elektrownia Wiatrowa",
-            "description": "Farma wiatrowa 10 MW, przyłączenie do GPZ",
-            "mode": "TO-BE",
-            "voltage_level_kv": 30.0,
-            "frequency_hz": 50.0,
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "Elektrownia Wiatrowa",
+                "description": "Farma wiatrowa 10 MW, przyłączenie do GPZ",
+                "mode": "TO-BE",
+                "voltage_level_kv": 30.0,
+                "frequency_hz": 50.0,
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["name"] == "Elektrownia Wiatrowa"
@@ -49,36 +53,48 @@ class TestProjectsCRUD:
 
     def test_create_project_with_60hz_frequency(self, app_client):
         """POST /api/projects — częstotliwość 60 Hz (US standard)"""
-        resp = app_client.post("/api/projects", json={
-            "name": "US Grid Project",
-            "frequency_hz": 60.0,
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "US Grid Project",
+                "frequency_hz": 60.0,
+            },
+        )
         assert resp.status_code == 201
         data = resp.json()
         assert data["frequency_hz"] == 60.0
 
     def test_create_project_invalid_frequency(self, app_client):
         """POST /api/projects — nieprawidłowa częstotliwość"""
-        resp = app_client.post("/api/projects", json={
-            "name": "Bad Freq",
-            "frequency_hz": 45.0,
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "Bad Freq",
+                "frequency_hz": 45.0,
+            },
+        )
         assert resp.status_code == 422  # Pydantic validation
 
     def test_create_project_invalid_voltage_zero(self, app_client):
         """POST /api/projects — napięcie = 0 (niedozwolone)"""
-        resp = app_client.post("/api/projects", json={
-            "name": "Zero Voltage",
-            "voltage_level_kv": 0,
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "Zero Voltage",
+                "voltage_level_kv": 0,
+            },
+        )
         assert resp.status_code == 422
 
     def test_create_project_invalid_voltage_negative(self, app_client):
         """POST /api/projects — napięcie ujemne (niedozwolone)"""
-        resp = app_client.post("/api/projects", json={
-            "name": "Negative Voltage",
-            "voltage_level_kv": -15.0,
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "Negative Voltage",
+                "voltage_level_kv": -15.0,
+            },
+        )
         assert resp.status_code == 422
 
     def test_create_project_empty_name(self, app_client):
@@ -222,19 +238,25 @@ class TestProjectsCRUD:
 
     def test_mode_to_be(self, app_client):
         """POST /api/projects — mode TO-BE"""
-        resp = app_client.post("/api/projects", json={
-            "name": "TO-BE Project",
-            "mode": "TO-BE",
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "TO-BE Project",
+                "mode": "TO-BE",
+            },
+        )
         assert resp.status_code == 201
         assert resp.json()["mode"] == "TO-BE"
 
     def test_invalid_mode(self, app_client):
         """POST /api/projects — nieprawidłowy mode"""
-        resp = app_client.post("/api/projects", json={
-            "name": "Invalid Mode",
-            "mode": "INVALID",
-        })
+        resp = app_client.post(
+            "/api/projects",
+            json={
+                "name": "Invalid Mode",
+                "mode": "INVALID",
+            },
+        )
         assert resp.status_code == 422
 
 

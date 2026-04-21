@@ -21,13 +21,27 @@ Pokrycie:
 
 from __future__ import annotations
 
-import copy
+import io
 import json
 import zipfile
-import io
 
 import pytest
-
+from domain.incremental_archive import (
+    INCREMENTAL_FORMAT_ID,
+    INCREMENTAL_SCHEMA_VERSION,
+    BaseHashMismatchError,
+    IncrementalExportResult,
+    IncrementalExportType,
+    IncrementalStructureError,
+    SectionChangeStatus,
+    SectionDelta,
+    apply_incremental_archive,
+    build_incremental_archive,
+    compute_export_result,
+    compute_section_deltas,
+    deserialize_incremental,
+    serialize_incremental,
+)
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
@@ -44,27 +58,7 @@ from domain.project_archive import (
     SldSection,
     archive_to_dict,
     compute_archive_fingerprints,
-    compute_hash,
 )
-from domain.incremental_archive import (
-    INCREMENTAL_FORMAT_ID,
-    INCREMENTAL_SCHEMA_VERSION,
-    BaseHashMismatchError,
-    IncrementalArchive,
-    IncrementalArchiveError,
-    IncrementalExportResult,
-    IncrementalExportType,
-    IncrementalStructureError,
-    SectionChangeStatus,
-    SectionDelta,
-    apply_incremental_archive,
-    build_incremental_archive,
-    compute_export_result,
-    compute_section_deltas,
-    deserialize_incremental,
-    serialize_incremental,
-)
-
 
 # ============================================================================
 # FIXTURES — tworzenie archiwum testowych
@@ -307,9 +301,7 @@ class TestBuildIncrementalArchive:
     def test_deterministic_signature_consistency(self) -> None:
         """Ta sama delta → taka sama sygnatura (determinizm)."""
         base = _make_archive()
-        modified = _make_archive(
-            branches=[{"id": "b1", "from": "n1", "to": "n2"}]
-        )
+        modified = _make_archive(branches=[{"id": "b1", "from": "n1", "to": "n2"}])
 
         ts = "2025-06-01T12:00:00Z"
         incr1 = build_incremental_archive(base.fingerprints, modified, base_timestamp=ts)
@@ -320,12 +312,8 @@ class TestBuildIncrementalArchive:
     def test_different_changes_different_signature(self) -> None:
         """Różne zmiany → różna sygnatura."""
         base = _make_archive()
-        mod_a = _make_archive(
-            nodes=[{"id": "n1", "name": "X", "voltage_kv": 15.0}]
-        )
-        mod_b = _make_archive(
-            nodes=[{"id": "n1", "name": "Y", "voltage_kv": 15.0}]
-        )
+        mod_a = _make_archive(nodes=[{"id": "n1", "name": "X", "voltage_kv": 15.0}])
+        mod_b = _make_archive(nodes=[{"id": "n1", "name": "Y", "voltage_kv": 15.0}])
 
         ts = "2025-06-01T12:00:00Z"
         incr_a = build_incremental_archive(base.fingerprints, mod_a, base_timestamp=ts)
@@ -371,12 +359,8 @@ class TestApplyIncrementalArchive:
     def test_apply_base_hash_mismatch_raises(self) -> None:
         """Niezgodność hash bazowego → BaseHashMismatchError."""
         base = _make_archive()
-        other_base = _make_archive(
-            nodes=[{"id": "n99", "name": "Other", "voltage_kv": 1.0}]
-        )
-        modified = _make_archive(
-            study_results=[{"id": "r1", "val": 100}]
-        )
+        other_base = _make_archive(nodes=[{"id": "n99", "name": "Other", "voltage_kv": 1.0}])
+        modified = _make_archive(study_results=[{"id": "r1", "val": 100}])
 
         incr = build_incremental_archive(base.fingerprints, modified)
 
@@ -398,9 +382,7 @@ class TestApplyIncrementalArchive:
         delta1 = build_incremental_archive(base.fingerprints, step1)
         reconstructed1 = apply_incremental_archive(base, delta1)
 
-        assert (
-            archive_to_dict(reconstructed1) == archive_to_dict(step1)
-        )
+        assert archive_to_dict(reconstructed1) == archive_to_dict(step1)
 
         # Krok 2: dodajemy przypadek obliczeniowy
         step2 = _make_archive(
@@ -410,18 +392,11 @@ class TestApplyIncrementalArchive:
             ],
             study_cases=[{"id": "sc1", "name": "Scenariusz"}],
         )
-        delta2 = build_incremental_archive(
-            reconstructed1.fingerprints, step2
-        )
+        delta2 = build_incremental_archive(reconstructed1.fingerprints, step2)
         reconstructed2 = apply_incremental_archive(reconstructed1, delta2)
 
-        assert (
-            archive_to_dict(reconstructed2) == archive_to_dict(step2)
-        )
-        assert (
-            reconstructed2.fingerprints.archive_hash
-            == step2.fingerprints.archive_hash
-        )
+        assert archive_to_dict(reconstructed2) == archive_to_dict(step2)
+        assert reconstructed2.fingerprints.archive_hash == step2.fingerprints.archive_hash
 
 
 class TestSerializationRoundtrip:
@@ -467,26 +442,19 @@ class TestSerializationRoundtrip:
             assert orig_map[name].new_hash == rest_map[name].new_hash
 
         # Zweryfikuj fingerprints
-        assert (
-            restored.fingerprints.archive_hash
-            == incr.fingerprints.archive_hash
-        )
+        assert restored.fingerprints.archive_hash == incr.fingerprints.archive_hash
 
     def test_roundtrip_then_apply(self) -> None:
         """Serializacja → deserializacja → nałożenie delty → poprawny wynik."""
         base = _make_archive()
-        modified = _make_archive(
-            study_results=[{"id": "r1", "type": "SC3F", "ik3": 12.5}]
-        )
+        modified = _make_archive(study_results=[{"id": "r1", "type": "SC3F", "ik3": 12.5}])
 
         incr = build_incremental_archive(base.fingerprints, modified)
         data = serialize_incremental(incr)
         restored_incr = deserialize_incremental(data)
 
         result = apply_incremental_archive(base, restored_incr)
-        assert (
-            archive_to_dict(result) == archive_to_dict(modified)
-        )
+        assert archive_to_dict(result) == archive_to_dict(modified)
 
     def test_serialized_is_valid_zip(self) -> None:
         """Wynik serializacji to prawidłowy plik ZIP z incremental.json."""
@@ -507,41 +475,20 @@ class TestSizeSavings:
     def test_delta_smaller_than_full(self) -> None:
         """Delta powinna być mniejsza niż pełne archiwum."""
         base = _make_archive(
-            nodes=[
-                {"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0}
-                for i in range(50)
-            ],
-            branches=[
-                {"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"}
-                for i in range(49)
-            ],
-            study_cases=[
-                {"id": f"sc{i}", "name": f"Przypadek {i}"}
-                for i in range(20)
-            ],
-            study_results=[
-                {"id": f"r{i}", "value": i * 1.1}
-                for i in range(30)
-            ],
+            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
+            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
+            study_results=[{"id": f"r{i}", "value": i * 1.1} for i in range(30)],
         )
 
         # Niewielka zmiana — tylko wyniki
         modified = _make_archive(
-            nodes=[
-                {"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0}
-                for i in range(50)
-            ],
-            branches=[
-                {"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"}
-                for i in range(49)
-            ],
-            study_cases=[
-                {"id": f"sc{i}", "name": f"Przypadek {i}"}
-                for i in range(20)
-            ],
+            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(50)],
+            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
             study_results=[
-                {"id": f"r{i}", "value": i * 2.2}  # zmienione wyniki
-                for i in range(30)
+                {"id": f"r{i}", "value": i * 2.2}
+                for i in range(30)  # zmienione wyniki
             ],
         )
 
@@ -549,9 +496,7 @@ class TestSizeSavings:
         delta_bytes = serialize_incremental(incr)
 
         # Serializuj pełne archiwum dla porównania
-        full_json = json.dumps(
-            archive_to_dict(modified), sort_keys=True, indent=2
-        )
+        full_json = json.dumps(archive_to_dict(modified), sort_keys=True, indent=2)
         full_buf = io.BytesIO()
         with zipfile.ZipFile(full_buf, "w", zipfile.ZIP_DEFLATED) as zf:
             zf.writestr("archive.json", full_json)
@@ -563,32 +508,14 @@ class TestSizeSavings:
         """compute_export_result zwraca poprawne metryki."""
         # Duże archiwum — delta powinna być mniejsza
         base = _make_archive(
-            nodes=[
-                {"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0}
-                for i in range(100)
-            ],
-            branches=[
-                {"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"}
-                for i in range(99)
-            ],
-            study_cases=[
-                {"id": f"sc{i}", "name": f"Przypadek {i}"}
-                for i in range(50)
-            ],
+            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(100)],
+            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(99)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(50)],
         )
         modified = _make_archive(
-            nodes=[
-                {"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0}
-                for i in range(100)
-            ],
-            branches=[
-                {"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"}
-                for i in range(99)
-            ],
-            study_cases=[
-                {"id": f"sc{i}", "name": f"Przypadek zmieniony {i}"}
-                for i in range(50)
-            ],
+            nodes=[{"id": f"n{i}", "name": f"Bus{i}", "voltage_kv": 15.0} for i in range(100)],
+            branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(99)],
+            study_cases=[{"id": f"sc{i}", "name": f"Przypadek zmieniony {i}"} for i in range(50)],
         )
 
         incr = build_incremental_archive(base.fingerprints, modified)
@@ -681,43 +608,23 @@ class TestFingerprintsAfterApply:
         incr = build_incremental_archive(base.fingerprints, modified)
         result = apply_incremental_archive(base, incr)
 
-        assert (
-            result.fingerprints.archive_hash
-            == modified.fingerprints.archive_hash
-        )
-        assert (
-            result.fingerprints.network_model_hash
-            == modified.fingerprints.network_model_hash
-        )
-        assert (
-            result.fingerprints.cases_hash
-            == modified.fingerprints.cases_hash
-        )
-        assert (
-            result.fingerprints.proofs_hash
-            == modified.fingerprints.proofs_hash
-        )
+        assert result.fingerprints.archive_hash == modified.fingerprints.archive_hash
+        assert result.fingerprints.network_model_hash == modified.fingerprints.network_model_hash
+        assert result.fingerprints.cases_hash == modified.fingerprints.cases_hash
+        assert result.fingerprints.proofs_hash == modified.fingerprints.proofs_hash
 
     def test_unchanged_sections_preserve_hash(self) -> None:
         """Sekcje UNCHANGED zachowują hash po nałożeniu delty."""
         base = _make_archive()
-        modified = _make_archive(
-            nodes=[{"id": "n1", "name": "Changed", "voltage_kv": 99.0}]
-        )
+        modified = _make_archive(nodes=[{"id": "n1", "name": "Changed", "voltage_kv": 99.0}])
 
         incr = build_incremental_archive(base.fingerprints, modified)
         result = apply_incremental_archive(base, incr)
 
         # sld nie zmieniło się — hash powinien być taki sam jak w bazie
-        assert (
-            result.fingerprints.sld_hash
-            == base.fingerprints.sld_hash
-        )
+        assert result.fingerprints.sld_hash == base.fingerprints.sld_hash
         # runs nie zmieniło się
-        assert (
-            result.fingerprints.runs_hash
-            == base.fingerprints.runs_hash
-        )
+        assert result.fingerprints.runs_hash == base.fingerprints.runs_hash
 
 
 class TestExportType:

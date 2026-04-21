@@ -8,20 +8,16 @@ BINDING: any failure blocks merge.
 
 import itertools
 
-import pytest
-
 from domain.element_ref import ElementRefV1, ElementTypeV1, build_element_ref_index
-from domain.export_manifest import ExportManifestV1, build_export_manifest
+from domain.export_manifest import build_export_manifest
 from domain.generator_validation import validate_generator_connections
 from domain.readiness import (
     ReadinessAreaV1,
     ReadinessIssueV1,
     ReadinessPriority,
-    ReadinessProfileV1,
     build_readiness_profile,
 )
-from domain.result_join import ResultJoinV1, join_results
-
+from domain.result_join import join_results
 
 # =============================================================================
 # FIXTURES
@@ -45,16 +41,18 @@ def _make_generators(count: int = 5) -> list[dict]:
                 variant = "block_transformer"
                 block_ref = f"tr_block_{i}"
 
-        gens.append({
-            "ref_id": f"gen_{i:03d}",
-            "name": f"Generator {i}",
-            "gen_type": gen_type,
-            "bus_ref": f"bus_{i}",
-            "catalog_ref": f"cat_{i}" if i % 4 != 0 else None,
-            "connection_variant": variant,
-            "blocking_transformer_ref": block_ref,
-            "station_ref": station_ref,
-        })
+        gens.append(
+            {
+                "ref_id": f"gen_{i:03d}",
+                "name": f"Generator {i}",
+                "gen_type": gen_type,
+                "bus_ref": f"bus_{i}",
+                "catalog_ref": f"cat_{i}" if i % 4 != 0 else None,
+                "connection_variant": variant,
+                "blocking_transformer_ref": block_ref,
+                "station_ref": station_ref,
+            }
+        )
     return gens
 
 
@@ -80,18 +78,12 @@ def _make_stations(gens: list[dict]) -> dict[str, dict]:
 
 def _make_snapshot_index(ids: list[str]) -> dict[str, ElementRefV1]:
     """Create snapshot element index from IDs."""
-    return {
-        eid: ElementRefV1(element_id=eid, element_type=ElementTypeV1.GENERATOR)
-        for eid in ids
-    }
+    return {eid: ElementRefV1(element_id=eid, element_type=ElementTypeV1.GENERATOR) for eid in ids}
 
 
 def _make_element_results(ids: list[str]) -> list[dict]:
     """Create element results list from IDs."""
-    return [
-        {"element_ref": eid, "values": {"p_mw": 1.0 * i}}
-        for i, eid in enumerate(ids)
-    ]
+    return [{"element_ref": eid, "values": {"p_mw": 1.0 * i}} for i, eid in enumerate(ids)]
 
 
 # =============================================================================
@@ -137,7 +129,7 @@ class TestGeneratorValidationDeterminism:
         stations = _make_stations(gens)
 
         issues = validate_generator_connections(gens, transformers, stations)
-        for code in set(i.code for i in issues):
+        for code in {i.code for i in issues}:
             code_issues = [i for i in issues if i.code == code]
             ids = [i.element_id for i in code_issues]
             assert ids == sorted(ids), f"Issues for {code} not sorted by element_id"
@@ -242,10 +234,7 @@ class TestResultJoinDeterminism:
     def test_100x_stable(self) -> None:
         ids = [f"elem_{i:03d}" for i in range(50)]
         snapshot_index = _make_snapshot_index(ids)
-        results = [
-            {"element_ref": eid, "values": {"value": i * 1.5}}
-            for i, eid in enumerate(ids)
-        ]
+        results = [{"element_ref": eid, "values": {"value": i * 1.5}} for i, eid in enumerate(ids)]
 
         reference = join_results(
             snapshot_element_ids=snapshot_index,
@@ -382,7 +371,7 @@ class TestFullChainDeterminism:
             issues = validate_generator_connections(gens, transformers, stations)
 
             # Step 2: Build readiness (issues from validation are already ReadinessIssueV1)
-            profile = build_readiness_profile(
+            build_readiness_profile(
                 snapshot_id="snap_e2e",
                 snapshot_fingerprint="fp_e2e",
                 issues=issues,
@@ -420,7 +409,7 @@ class TestFullChainDeterminism:
 
         def run_chain(gen_list: list[dict]) -> str:
             issues = validate_generator_connections(gen_list, transformers, stations)
-            profile = build_readiness_profile(
+            build_readiness_profile(
                 snapshot_id="snap_e2e",
                 snapshot_fingerprint="fp_e2e",
                 issues=issues,

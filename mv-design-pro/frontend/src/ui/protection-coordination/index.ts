@@ -6,7 +6,7 @@
  * CANONICAL ALIGNMENT:
  * - 100% Polish labels
  * - READ-ONLY relative to solver results
- * - PowerFactory parity UX
+ * - Canonical parity UX
  */
 
 // Types and constants

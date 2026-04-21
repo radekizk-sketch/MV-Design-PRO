@@ -14,7 +14,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -369,9 +368,7 @@ class TestExportWithoutWhiteBox:
 
         assert "Wyniki" in full_text
 
-    def test_export_without_white_box_omits_white_box_section(
-        self, tmp_path: Path
-    ) -> None:
+    def test_export_without_white_box_omits_white_box_section(self, tmp_path: Path) -> None:
         """Verify that White Box section is not present when include_white_box=False."""
         graph = build_transformer_only_graph()
         result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(

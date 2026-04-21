@@ -6,17 +6,13 @@ Czysta funkcja: ENM → TopologyGraph (bez efektów ubocznych, deterministyczna)
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal
+from dataclasses import dataclass
 
 from .models import (
-    EnergyNetworkModel,
-    Corridor,
-    Junction,
-    Substation,
-    Bay,
-    OverheadLine,
     Cable,
+    EnergyNetworkModel,
+    Junction,
+    OverheadLine,
 )
 
 
@@ -120,10 +116,10 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     """
     # Zbierz referencje
     source_bus_refs = sorted({s.bus_ref for s in enm.sources})
-    bus_map = {b.ref_id: b for b in enm.buses}
+    {b.ref_id: b for b in enm.buses}
     branch_map = {b.ref_id: b for b in enm.branches}
-    sub_map = {s.ref_id: s for s in enm.substations}
-    junction_map = {j.ref_id: j for j in enm.junctions}
+    {s.ref_id: s for s in enm.substations}
+    {j.ref_id: j for j in enm.junctions}
 
     # Bus → substation mapping
     bus_to_sub: dict[str, str] = {}
@@ -133,7 +129,7 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
 
     # Bus → junction mapping
     bus_to_junc: dict[str, str] = {}
-    for junc in enm.junctions:
+    for _junc in enm.junctions:
         # Heurystyka: szukamy szyny, która ma ≥3 gałęzie (T-node)
         # Na razie mapujemy po branch_refs
         pass
@@ -155,14 +151,16 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     # Buduj TopologyNodes (posortowane po ref_id dla determinizmu)
     topo_nodes = []
     for bus in sorted(enm.buses, key=lambda b: b.ref_id):
-        topo_nodes.append(TopologyNode(
-            bus_ref=bus.ref_id,
-            voltage_kv=bus.voltage_kv,
-            is_source_bus=bus.ref_id in source_bus_refs,
-            substation_ref=bus_to_sub.get(bus.ref_id),
-            junction_ref=bus_to_junc.get(bus.ref_id),
-            degree=bus_degree.get(bus.ref_id, 0),
-        ))
+        topo_nodes.append(
+            TopologyNode(
+                bus_ref=bus.ref_id,
+                voltage_kv=bus.voltage_kv,
+                is_source_bus=bus.ref_id in source_bus_refs,
+                substation_ref=bus_to_sub.get(bus.ref_id),
+                junction_ref=bus_to_junc.get(bus.ref_id),
+                degree=bus_degree.get(bus.ref_id, 0),
+            )
+        )
 
     # Buduj trunk segments (segmenty toru głównego)
     trunk_segments = _identify_trunk(enm, source_bus_refs)
@@ -171,11 +169,13 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
     entry_points = []
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
         for br in sorted(sub.bus_refs):
-            entry_points.append(EntryPoint(
-                substation_ref=sub.ref_id,
-                bus_ref=br,
-                entry_point_ref=sub.entry_point_ref,
-            ))
+            entry_points.append(
+                EntryPoint(
+                    substation_ref=sub.ref_id,
+                    bus_ref=br,
+                    entry_point_ref=sub.entry_point_ref,
+                )
+            )
 
     # Corridor info
     corridor_infos = []
@@ -183,16 +183,18 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
         total_len = 0.0
         for seg_ref in corr.ordered_segment_refs:
             branch = branch_map.get(seg_ref)
-            if branch and isinstance(branch, (OverheadLine, Cable)):
+            if branch and isinstance(branch, OverheadLine | Cable):
                 total_len += branch.length_km
-        corridor_infos.append(CorridorInfo(
-            ref_id=corr.ref_id,
-            name=corr.name,
-            corridor_type=corr.corridor_type,
-            segment_count=len(corr.ordered_segment_refs),
-            total_length_km=round(total_len, 3),
-            has_no_point=corr.no_point_ref is not None,
-        ))
+        corridor_infos.append(
+            CorridorInfo(
+                ref_id=corr.ref_id,
+                name=corr.name,
+                corridor_type=corr.corridor_type,
+                segment_count=len(corr.ordered_segment_refs),
+                total_length_km=round(total_len, 3),
+                has_no_point=corr.no_point_ref is not None,
+            )
+        )
 
     # Junction info
     junction_infos = []
@@ -200,18 +202,20 @@ def build_topology_graph(enm: EnergyNetworkModel) -> TopologyGraph:
         # Spróbuj znaleźć szynę powiązaną z węzłem T
         # Heurystyka: szyna, której degree ≥ 3 i jest podłączona do gałęzi z junction
         junc_bus = _find_junction_bus(junc, enm)
-        junction_infos.append(JunctionInfo(
-            ref_id=junc.ref_id,
-            name=junc.name,
-            junction_type=junc.junction_type,
-            branch_count=len(junc.connected_branch_refs),
-            bus_ref=junc_bus,
-        ))
+        junction_infos.append(
+            JunctionInfo(
+                ref_id=junc.ref_id,
+                name=junc.name,
+                junction_type=junc.junction_type,
+                branch_count=len(junc.connected_branch_refs),
+                bus_ref=junc_bus,
+            )
+        )
 
     # Statystyki
     total_line_length = 0.0
     for branch in enm.branches:
-        if isinstance(branch, (OverheadLine, Cable)):
+        if isinstance(branch, OverheadLine | Cable):
             total_line_length += branch.length_km
 
     stats = TopologyStats(
@@ -250,7 +254,7 @@ def _identify_trunk(
     for branch in enm.branches:
         if branch.status != "closed":
             continue
-        if isinstance(branch, (OverheadLine, Cable)):
+        if isinstance(branch, OverheadLine | Cable):
             length = branch.length_km
         else:
             length = 0.0
@@ -263,12 +267,8 @@ def _identify_trunk(
 
     # Uwzględnij transformatory (łączą szyny WN/SN — kluczowe dla trunk BFS)
     for trafo in enm.transformers:
-        bus_branches.setdefault(trafo.hv_bus_ref, []).append(
-            (trafo.ref_id, trafo.lv_bus_ref, 0.0)
-        )
-        bus_branches.setdefault(trafo.lv_bus_ref, []).append(
-            (trafo.ref_id, trafo.hv_bus_ref, 0.0)
-        )
+        bus_branches.setdefault(trafo.hv_bus_ref, []).append((trafo.ref_id, trafo.lv_bus_ref, 0.0))
+        bus_branches.setdefault(trafo.lv_bus_ref, []).append((trafo.ref_id, trafo.hv_bus_ref, 0.0))
 
     # BFS od szyn źródłowych
     visited: set[str] = set()
@@ -288,13 +288,15 @@ def _identify_trunk(
                 if next_bus in visited:
                     continue
                 visited.add(next_bus)
-                trunk.append(TrunkSegment(
-                    branch_ref=br_ref,
-                    from_bus_ref=current,
-                    to_bus_ref=next_bus,
-                    length_km=length,
-                    order=order,
-                ))
+                trunk.append(
+                    TrunkSegment(
+                        branch_ref=br_ref,
+                        from_bus_ref=current,
+                        to_bus_ref=next_bus,
+                        length_km=length,
+                        order=order,
+                    )
+                )
                 order += 1
                 queue.append(next_bus)
 

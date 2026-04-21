@@ -126,9 +126,7 @@ def test_parallel_branches_are_distinct_elements() -> None:
     diagram = project_snapshot_to_sld(snapshot)
 
     branch_ids = [
-        element.identity
-        for element in diagram.elements
-        if element.element_type == "branch"
+        element.identity for element in diagram.elements if element.element_type == "branch"
     ]
     assert branch_ids == ["b1", "b2"]
 

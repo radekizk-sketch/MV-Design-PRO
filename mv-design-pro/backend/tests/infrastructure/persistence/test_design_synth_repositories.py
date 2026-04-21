@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
-
-from sqlalchemy import text
-from sqlalchemy.orm import Session
 
 from application.analyses.design_synth.models import (
     DesignEvidence,
@@ -26,6 +23,8 @@ from infrastructure.persistence.repositories import (
     DesignSpecRepository,
     ProjectRepository,
 )
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 
 def _setup_session() -> Session:
@@ -53,7 +52,7 @@ def test_design_spec_repository_roundtrip_and_list() -> None:
     case = _seed_project_and_case(session)
 
     repo = DesignSpecRepository(session)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     spec = DesignSpec(
         id=uuid4(),
         case_id=case.id,
@@ -79,7 +78,7 @@ def test_design_proposal_repository_roundtrip_and_list() -> None:
     case = _seed_project_and_case(session)
 
     repo = DesignProposalRepository(session)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     proposal = DesignProposal(
         id=uuid4(),
         case_id=case.id,
@@ -111,7 +110,7 @@ def test_design_evidence_repository_roundtrip_and_list() -> None:
         case_id=case.id,
         snapshot_id="snap-3",
         evidence_json={"runs": ["run-1"]},
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     repo.add(evidence)
 
@@ -136,8 +135,8 @@ def test_design_spec_canonical_json_determinism() -> None:
         case_id=case.id,
         base_snapshot_id="snap-4",
         spec_json=payload,
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
     )
     repo.add(spec)
 

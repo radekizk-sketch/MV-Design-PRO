@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
 
 from network_model.core.branch import BranchType
 from network_model.core.snapshot import NetworkSnapshot, snapshot_read_only_guard
@@ -13,7 +13,7 @@ from network_model.core.snapshot import NetworkSnapshot, snapshot_read_only_guar
 class SldDiagram:
     diagram_id: str
     snapshot_id: str
-    elements: tuple["SldElement", ...] = field(default_factory=tuple)
+    elements: tuple[SldElement, ...] = field(default_factory=tuple)
 
     def to_dict(self) -> dict:
         return {
@@ -119,7 +119,7 @@ class SldSwitchElement:
     """
     SLD element for switching apparatus.
 
-    PowerFactory Alignment (per SYSTEM_SPEC.md § 2.4, sld_rules.md § A.2):
+    Canonical Alignment (per SYSTEM_SPEC.md § 2.4, sld_rules.md § A.2):
     - switch_type: BREAKER, DISCONNECTOR, LOAD_SWITCH, FUSE
     - state: OPEN or CLOSED (affects topology)
     - in_service: whether switch participates in calculations
@@ -154,7 +154,7 @@ class SldSwitchElement:
 # NOTE: SldPccMarkerElement was REMOVED per SYSTEM_SPEC.md § 18.3.4 and sld_rules.md § A.4.
 # BoundaryNode (Point of Common Coupling / węzeł przyłączenia) is interpretation-only
 # overlay from Analysis layer (BoundaryIdentifier). It MUST NOT appear as a base SLD symbol.
-# See: POWERFACTORY_COMPLIANCE.md SD-020, SD-021.
+# See: CANONICAL_COMPLIANCE.md SD-020, SD-021.
 
 SldElement = (
     SldBusElement

@@ -2,7 +2,7 @@
 Study Case Domain Model — P10 FULL MAX
 
 CANONICAL ALIGNMENT:
-- P10 FULL MAX: Study Cases / Variants (PowerFactory-grade)
+- P10 FULL MAX: Study Cases / Variants (industrial-grade)
 - StudyCase = configuration entity, NOT domain entity
 - One Project = One NetworkModel (invariant)
 - Case NEVER mutates NetworkModel
@@ -21,16 +21,17 @@ INVALIDATION RULES:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 from uuid import UUID, uuid4
 
 
 class StudyCaseResultStatus(str, Enum):
-    """Result status for a study case (PowerFactory-grade)."""
-    NONE = "NONE"          # No calculations performed
-    FRESH = "FRESH"        # Results are current
+    """Result status for a study case (industrial-grade)."""
+
+    NONE = "NONE"  # No calculations performed
+    FRESH = "FRESH"  # Results are current
     OUTDATED = "OUTDATED"  # Results need recalculation
 
 
@@ -45,14 +46,15 @@ class StudyCaseConfig:
     Contains ONLY calculation parameters, NOT network topology.
     Immutable — changes create new config instances.
     """
+
     # Short-circuit analysis parameters
     c_factor_max: float = 1.10  # Voltage factor for max short-circuit (IEC 60909)
     c_factor_min: float = 0.95  # Voltage factor for min short-circuit
 
     # Power flow parameters
-    base_mva: float = 100.0     # Base MVA for per-unit calculations
-    max_iterations: int = 50   # Max Newton-Raphson iterations
-    tolerance: float = 1e-6     # Convergence tolerance
+    base_mva: float = 100.0  # Base MVA for per-unit calculations
+    max_iterations: int = 50  # Max Newton-Raphson iterations
+    tolerance: float = 1e-6  # Convergence tolerance
 
     # Analysis options
     include_motor_contribution: bool = True
@@ -95,6 +97,7 @@ class StudyCaseResult:
     Contains metadata about the result, not the result itself.
     Actual results are stored in AnalysisRun.
     """
+
     analysis_run_id: UUID
     analysis_type: str
     calculated_at: datetime
@@ -142,11 +145,11 @@ class ProtectionConfig:
         bound_at: Timestamp when template was bound to this case.
     """
 
-    template_ref: Optional[str] = None
-    template_fingerprint: Optional[str] = None
-    library_manifest_ref: Optional[dict[str, Any]] = None
+    template_ref: str | None = None
+    template_fingerprint: str | None = None
+    library_manifest_ref: dict[str, Any] | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
-    bound_at: Optional[datetime] = None
+    bound_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for storage."""
@@ -186,6 +189,7 @@ class StudyCase:
     - network_snapshot_id: Reference to the snapshot this case was configured against
     - When NetworkModel changes (new snapshot), result_status becomes OUTDATED
     """
+
     id: UUID
     project_id: UUID
     name: str
@@ -212,8 +216,8 @@ class StudyCase:
 
     # Audit metadata
     revision: int = 1
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     # For backward compatibility with study_payload field
     study_payload: dict[str, Any] = field(default_factory=dict)
@@ -242,12 +246,16 @@ class StudyCase:
             network_snapshot_id=self.network_snapshot_id,
             config=config,
             protection_config=self.protection_config,
-            result_status=StudyCaseResultStatus.OUTDATED if self.result_status == StudyCaseResultStatus.FRESH else self.result_status,
+            result_status=(
+                StudyCaseResultStatus.OUTDATED
+                if self.result_status == StudyCaseResultStatus.FRESH
+                else self.result_status
+            ),
             is_active=self.is_active,
             result_refs=self.result_refs,
             revision=self.revision + 1,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=config.to_dict(),
         )
 
@@ -264,12 +272,16 @@ class StudyCase:
             network_snapshot_id=self.network_snapshot_id,
             config=self.config,
             protection_config=protection_config,
-            result_status=StudyCaseResultStatus.OUTDATED if self.result_status == StudyCaseResultStatus.FRESH else self.result_status,
+            result_status=(
+                StudyCaseResultStatus.OUTDATED
+                if self.result_status == StudyCaseResultStatus.FRESH
+                else self.result_status
+            ),
             is_active=self.is_active,
             result_refs=self.result_refs,
             revision=self.revision + 1,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -288,7 +300,7 @@ class StudyCase:
             result_refs=self.result_refs,
             revision=self.revision + 1,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -307,7 +319,7 @@ class StudyCase:
             result_refs=self.result_refs,
             revision=self.revision + 1,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -369,7 +381,7 @@ class StudyCase:
             result_refs=self.result_refs,
             revision=self.revision,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -391,7 +403,7 @@ class StudyCase:
             result_refs=(*self.result_refs, result_ref),
             revision=self.revision,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -399,7 +411,7 @@ class StudyCase:
         """
         P10a: Bind this case to a new network snapshot.
 
-        INVALIDATION RULE (PowerFactory-grade):
+        INVALIDATION RULE (industrial-grade):
         - If snapshot changes AND case has FRESH results → mark as OUTDATED
         - If snapshot changes AND case has NONE results → keep NONE
         """
@@ -422,7 +434,7 @@ class StudyCase:
             result_refs=self.result_refs,
             revision=self.revision + 1,
             created_at=self.created_at,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             study_payload=self.study_payload,
         )
 
@@ -430,13 +442,13 @@ class StudyCase:
         """
         Clone this case with new ID.
 
-        CLONING RULES (PowerFactory-style):
+        CLONING RULES (canonical-style):
         - Configuration is copied (including protection_config)
         - network_snapshot_id is copied (same snapshot binding)
         - Results are NOT copied (status = NONE)
         - New case is NOT active
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         return StudyCase(
             id=uuid4(),
             project_id=self.project_id,
@@ -478,10 +490,7 @@ class StudyCase:
         """Deserialize from dictionary."""
         config = StudyCaseConfig.from_dict(data.get("config", {}))
         protection_config = ProtectionConfig.from_dict(data.get("protection_config", {}))  # P14c
-        result_refs = tuple(
-            StudyCaseResult.from_dict(ref)
-            for ref in data.get("result_refs", [])
-        )
+        result_refs = tuple(StudyCaseResult.from_dict(ref) for ref in data.get("result_refs", []))
         return cls(
             id=UUID(data["id"]),
             project_id=UUID(data["project_id"]),
@@ -494,8 +503,16 @@ class StudyCase:
             is_active=data.get("is_active", False),
             result_refs=result_refs,
             revision=data.get("revision", 1),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
-            updated_at=datetime.fromisoformat(data["updated_at"]) if "updated_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
+            updated_at=(
+                datetime.fromisoformat(data["updated_at"])
+                if "updated_at" in data
+                else datetime.now(UTC)
+            ),
             study_payload=config.to_dict(),
         )
 
@@ -523,7 +540,7 @@ def new_study_case(
         New StudyCase instance with status NONE
     """
     cfg = config or StudyCaseConfig()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return StudyCase(
         id=uuid4(),
         project_id=project_id,
@@ -549,6 +566,7 @@ class StudyCaseComparison:
 
     P10: Case Compare view — 100% read-only, no mutations.
     """
+
     case_a_id: UUID
     case_b_id: UUID
     case_a_name: str

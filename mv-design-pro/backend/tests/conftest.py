@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import importlib.util
+import inspect
 import sys
 from pathlib import Path
-import importlib.util
 
 import pytest
 
@@ -10,9 +11,32 @@ import pytest
 backend_src = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(backend_src))
 
+
+def _install_httpx_testclient_compat() -> None:
+    """Bridge starlette<=0.27 TestClient onto httpx>=0.28 for backend tests."""
+    if importlib.util.find_spec("httpx") is None:
+        return
+
+    import httpx
+
+    if getattr(httpx.Client.__init__, "_backend_test_compat", False):
+        return
+    if "app" in inspect.signature(httpx.Client.__init__).parameters:
+        return
+
+    original_init = httpx.Client.__init__
+
+    def _compat_init(self, *args, app=None, **kwargs):
+        return original_init(self, *args, **kwargs)
+
+    _compat_init._backend_test_compat = True  # type: ignore[attr-defined]
+    httpx.Client.__init__ = _compat_init
+
+
+_install_httpx_testclient_compat()
+
 _MISSING_DEPS = {
-    name for name in ("sqlalchemy", "numpy", "networkx")
-    if importlib.util.find_spec(name) is None
+    name for name in ("sqlalchemy", "numpy", "networkx") if importlib.util.find_spec(name) is None
 }
 
 
@@ -24,6 +48,7 @@ def pytest_ignore_collect(collection_path, config):
         return False
     return True
 
+
 @pytest.fixture()
 def db_engine(tmp_path):
     if importlib.util.find_spec("sqlalchemy") is None:
@@ -31,7 +56,6 @@ def db_engine(tmp_path):
 
     from infrastructure.persistence.db import (
         create_engine_from_url,
-        create_session_factory,
         init_db,
     )
 

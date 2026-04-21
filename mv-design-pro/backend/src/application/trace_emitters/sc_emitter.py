@@ -14,6 +14,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from application.trace_emitters.deterministic_ids import deterministic_trace_id
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
     TraceArtifactV2,
@@ -25,7 +26,6 @@ from domain.trace_v2.artifact import (
 )
 from domain.trace_v2.equation_registry_v2 import EquationRegistryV2
 from domain.trace_v2.math_spec_version import CURRENT_MATH_SPEC_VERSION
-from application.trace_emitters.deterministic_ids import deterministic_trace_id
 
 
 def _fmt(x: float) -> str:
@@ -103,33 +103,48 @@ class TraceEmitterSC:
         """Extract input TraceValues from SC result."""
         inputs: dict[str, TraceValue] = {}
         inputs["fault_node_id"] = TraceValue(
-            name="fault_node_id", value=r["fault_node_id"],
-            unit="—", label_pl="Węzeł zwarcia",
+            name="fault_node_id",
+            value=r["fault_node_id"],
+            unit="—",
+            label_pl="Węzeł zwarcia",
         )
         inputs["short_circuit_type"] = TraceValue(
-            name="short_circuit_type", value=r["short_circuit_type"],
-            unit="—", label_pl="Typ zwarcia",
+            name="short_circuit_type",
+            value=r["short_circuit_type"],
+            unit="—",
+            label_pl="Typ zwarcia",
         )
         inputs["c_factor"] = TraceValue(
-            name="c_factor", value=canonical_float(r["c_factor"]),
-            unit="—", label_pl="Współczynnik napięciowy c",
+            name="c_factor",
+            value=canonical_float(r["c_factor"]),
+            unit="—",
+            label_pl="Współczynnik napięciowy c",
         )
         inputs["un_v"] = TraceValue(
-            name="un_v", value=canonical_float(r["un_v"]),
-            unit="V", label_pl="Napięcie znamionowe",
+            name="un_v",
+            value=canonical_float(r["un_v"]),
+            unit="V",
+            label_pl="Napięcie znamionowe",
         )
         inputs["tk_s"] = TraceValue(
-            name="tk_s", value=canonical_float(r["tk_s"]),
-            unit="s", label_pl="Czas trwania zwarcia",
+            name="tk_s",
+            value=canonical_float(r["tk_s"]),
+            unit="s",
+            label_pl="Czas trwania zwarcia",
         )
         inputs["tb_s"] = TraceValue(
-            name="tb_s", value=canonical_float(r["tb_s"]),
-            unit="s", label_pl="Czas Ib",
+            name="tb_s",
+            value=canonical_float(r["tb_s"]),
+            unit="s",
+            label_pl="Czas Ib",
         )
         return inputs
 
     def _build_steps(
-        self, r: dict[str, Any], fault_node_id: str, sc_type: str,
+        self,
+        r: dict[str, Any],
+        fault_node_id: str,
+        sc_type: str,
     ) -> list[TraceEquationStep]:
         """Build equation steps from white_box_trace."""
         wb_trace = r.get("white_box_trace", [])
@@ -181,7 +196,7 @@ class TraceEmitterSC:
                     unit = "s"
                 intermediates[k] = TraceValue(
                     name=k,
-                    value=canonical_float(val) if isinstance(val, (int, float)) else str(val),
+                    value=canonical_float(val) if isinstance(val, int | float) else str(val),
                     unit=unit,
                     label_pl=k,
                 )
@@ -202,48 +217,63 @@ class TraceEmitterSC:
 
             result_tv = TraceValue(
                 name=result_key,
-                value=canonical_float(result_val) if isinstance(result_val, (int, float)) else str(result_val),
+                value=(
+                    canonical_float(result_val)
+                    if isinstance(result_val, int | float)
+                    else str(result_val)
+                ),
                 unit=result_unit,
                 label_pl=eq.label_pl,
             )
 
-            steps.append(TraceEquationStep(
-                step_id=step_id,
-                subject_id=fault_node_id,
-                eq_id=eq_id,
-                label_pl=eq.label_pl,
-                symbolic_latex=eq.latex_symbolic,
-                substituted_latex=wb_step.get("substitution", ""),
-                inputs_used=tuple(sorted(wb_step.get("inputs", {}).keys())),
-                intermediate_values=intermediates,
-                result=result_tv,
-                origin="solver",
-                derived_in_adapter=False,
-            ))
+            steps.append(
+                TraceEquationStep(
+                    step_id=step_id,
+                    subject_id=fault_node_id,
+                    eq_id=eq_id,
+                    label_pl=eq.label_pl,
+                    symbolic_latex=eq.latex_symbolic,
+                    substituted_latex=wb_step.get("substitution", ""),
+                    inputs_used=tuple(sorted(wb_step.get("inputs", {}).keys())),
+                    intermediate_values=intermediates,
+                    result=result_tv,
+                    origin="solver",
+                    derived_in_adapter=False,
+                )
+            )
 
         # I_dyn step (adapter-derived, always present)
-        ikss_a = r.get("ikss_a", 0.0)
+        r.get("ikss_a", 0.0)
         ip_a = r.get("ip_a", 0.0)
         if self._registry.contains("SC_IDYN"):
             eq_idyn = self._registry.get("SC_IDYN")
-            steps.append(TraceEquationStep(
-                step_id="SC_IDYN_008",
-                subject_id=fault_node_id,
-                eq_id="SC_IDYN",
-                label_pl=eq_idyn.label_pl,
-                symbolic_latex=eq_idyn.latex_symbolic,
-                substituted_latex=f"I_{{dyn}} = {_fmt(ip_a)}",
-                inputs_used=("ip_a",),
-                intermediate_values={
-                    "ip_a": TraceValue(name="ip_a", value=canonical_float(ip_a), unit="A", label_pl="Prąd udarowy"),
-                },
-                result=TraceValue(
-                    name="idyn_a", value=canonical_float(ip_a),
-                    unit="A", label_pl="Prąd dynamiczny",
-                ),
-                origin="adapter",
-                derived_in_adapter=True,
-            ))
+            steps.append(
+                TraceEquationStep(
+                    step_id="SC_IDYN_008",
+                    subject_id=fault_node_id,
+                    eq_id="SC_IDYN",
+                    label_pl=eq_idyn.label_pl,
+                    symbolic_latex=eq_idyn.latex_symbolic,
+                    substituted_latex=f"I_{{dyn}} = {_fmt(ip_a)}",
+                    inputs_used=("ip_a",),
+                    intermediate_values={
+                        "ip_a": TraceValue(
+                            name="ip_a",
+                            value=canonical_float(ip_a),
+                            unit="A",
+                            label_pl="Prąd udarowy",
+                        ),
+                    },
+                    result=TraceValue(
+                        name="idyn_a",
+                        value=canonical_float(ip_a),
+                        unit="A",
+                        label_pl="Prąd dynamiczny",
+                    ),
+                    origin="adapter",
+                    derived_in_adapter=True,
+                )
+            )
 
         return steps
 
@@ -263,7 +293,7 @@ class TraceEmitterSC:
             if val is not None:
                 outputs[key] = TraceValue(
                     name=key,
-                    value=canonical_float(val) if isinstance(val, (int, float)) else str(val),
+                    value=canonical_float(val) if isinstance(val, int | float) else str(val),
                     unit=unit,
                     label_pl=label,
                 )
@@ -271,8 +301,10 @@ class TraceEmitterSC:
         # I_dyn always present (= ip_a)
         ip = r.get("ip_a", 0.0)
         outputs["idyn_a"] = TraceValue(
-            name="idyn_a", value=canonical_float(ip),
-            unit="A", label_pl="Prąd dynamiczny",
+            name="idyn_a",
+            value=canonical_float(ip),
+            unit="A",
+            label_pl="Prąd dynamiczny",
         )
 
         return outputs

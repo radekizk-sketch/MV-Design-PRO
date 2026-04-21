@@ -1,27 +1,21 @@
 /**
- * Bramka katalogowa UI — sprawdzenie wymagania katalogu przed operacja.
+ * Bramka katalogowa UI - sprawdzenie wymagania katalogu przed operacja.
  *
- * REGULA: Frontend NIGDY nie wysyla operacji tworzacej segment lub transformator
- * bez wypelnionego catalog_binding w payload.
- *
- * Pipeline:
- *   operationId → requiresCatalog(operationId) → catalogNamespace(operationId) → CatalogPicker
- *
- * INVARIANTS:
- * - Mapa operacja → namespace jest deterministyczna
- * - Brak heurystyk — jesli operacja wymaga katalogu, MUSI miec binding
- * - 100% Polish labels
+ * Regula: frontend nigdy nie wysyla operacji tworzacej segment lub aparat
+ * bez poprawnego `catalog_binding` w payload.
  */
 
-/**
- * Namespace katalogu — mapuje na backend `_infer_namespace()`.
- */
+import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
+import { resolveContextActionOperation } from './actionRouting';
+
 export type CatalogNamespace =
   | 'ZRODLO_SN'
   | 'KABEL_SN'
   | 'TRAFO_SN_NN'
   | 'APARAT_SN'
   | 'APARAT_NN'
+  | 'CONVERTER'
+  | 'mv_branch_points'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
   | 'ZABEZPIECZENIE'
@@ -29,12 +23,9 @@ export type CatalogNamespace =
   | 'VT'
   | 'OBCIAZENIE';
 
-/**
- * Operacje wymagajace bramy katalogowej.
- * Mapowanie 1:1 z backend _CATALOG_REQUIRED_OPERATIONS.
- */
 const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   add_grid_source_sn: 'ZRODLO_SN',
+  add_sn_bay: 'APARAT_SN',
   continue_trunk_segment_sn: 'KABEL_SN',
   start_branch_segment_sn: 'KABEL_SN',
   insert_station_on_segment_sn: 'TRAFO_SN_NN',
@@ -42,81 +33,33 @@ const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   connect_secondary_ring_sn: 'KABEL_SN',
   insert_section_switch_sn: 'APARAT_SN',
   add_nn_outgoing_field: 'APARAT_NN',
-  add_pv_inverter_nn: 'ZRODLO_NN_PV',
-  add_bess_inverter_nn: 'ZRODLO_NN_BESS',
+  add_converter_source: 'CONVERTER',
   add_relay: 'ZABEZPIECZENIE',
   add_ct: 'CT',
   add_vt: 'VT',
 };
 
-/**
- * Mapowanie context menu action ID → canonical operation name.
- * Uzywane do przelozenia kliknietego przycisku menu na operacje domenowa.
- */
-const ACTION_TO_OPERATION: Record<string, string> = {
-  add_gpz: 'add_grid_source_sn',
-  add_source: 'add_grid_source_sn',
-  // K2: Terminal
-  add_trunk_segment: 'continue_trunk_segment_sn',
-  // K3: Segment
-  add_station: 'insert_station_on_segment_sn',
-  insert_station_a: 'insert_station_on_segment_sn',
-  insert_station_b: 'insert_station_on_segment_sn',
-  insert_station_c: 'insert_station_on_segment_sn',
-  insert_station_d: 'insert_station_on_segment_sn',
-  insert_switch: 'insert_section_switch_sn',
-  insert_section_switch: 'insert_section_switch_sn',
-  insert_disconnector: 'insert_section_switch_sn',
-  // K4: Branch
-  add_cable: 'start_branch_segment_sn',
-  add_branch: 'start_branch_segment_sn',
-  // K5: Ring
-  start_secondary_link: 'connect_secondary_ring_sn',
-  // Station
-  add_transformer: 'add_transformer_sn_nn',
-  // nN
-  add_nn_feeder: 'add_nn_outgoing_field',
-  add_feeder: 'add_nn_outgoing_field',
-  add_pv: 'add_pv_inverter_nn',
-  add_bess: 'add_bess_inverter_nn',
-  add_relay: 'add_relay',
-  add_protection: 'add_relay',
-  add_ct: 'add_ct',
-  add_vt: 'add_vt',
-  add_line: 'start_branch_segment_sn',
-  add_source_field: 'add_nn_outgoing_field',
-  add_source_field_nn: 'add_nn_outgoing_field',
-  // Direct catalog operations
-  add_load: 'add_nn_load',
-  assign_catalog: 'assign_catalog_to_element',
-  assign_tr_catalog: 'assign_catalog_to_element',
-  assign_bus_catalog: 'assign_catalog_to_element',
-  assign_inverter_catalog: 'assign_catalog_to_element',
-  assign_storage_catalog: 'assign_catalog_to_element',
-  assign_switch_catalog: 'assign_catalog_to_element',
-  assign_cable_catalog: 'assign_catalog_to_element',
-};
+function resolveCanonicalOperationName(operationId: string): CanonicalOpName | null {
+  const resolved = resolveContextActionOperation(operationId) ?? operationId;
+  return isCanonicalOpName(resolved) ? resolved : null;
+}
 
-/**
- * Sprawdz czy operacja wymaga bramy katalogowej.
- */
 export function requiresCatalog(operationId: string): boolean {
-  const canonicalOp = ACTION_TO_OPERATION[operationId] ?? operationId;
+  const canonicalOp = resolveCanonicalOperationName(operationId);
+  if (canonicalOp === null) {
+    return false;
+  }
   return canonicalOp in CATALOG_REQUIRED_OPERATIONS;
 }
 
-/**
- * Pobierz namespace katalogu dla operacji.
- * Zwraca undefined jesli operacja nie wymaga katalogu.
- */
 export function catalogNamespace(operationId: string): CatalogNamespace | undefined {
-  const canonicalOp = ACTION_TO_OPERATION[operationId] ?? operationId;
+  const canonicalOp = resolveCanonicalOperationName(operationId);
+  if (canonicalOp === null) {
+    return undefined;
+  }
   return CATALOG_REQUIRED_OPERATIONS[canonicalOp];
 }
 
-/**
- * Pobierz polska etykiete dla namespace katalogu.
- */
 export function catalogNamespaceLabel(ns: CatalogNamespace): string {
   const labels: Record<CatalogNamespace, string> = {
     ZRODLO_SN: 'Zasilanie systemowe SN',
@@ -124,6 +67,8 @@ export function catalogNamespaceLabel(ns: CatalogNamespace): string {
     TRAFO_SN_NN: 'Transformator SN/nN',
     APARAT_SN: 'Aparat SN',
     APARAT_NN: 'Aparat nN',
+    CONVERTER: 'Źródło przekształtnikowe',
+    mv_branch_points: 'Slup odgalezny SN',
     ZRODLO_NN_PV: 'Falownik PV',
     ZRODLO_NN_BESS: 'Falownik BESS',
     ZABEZPIECZENIE: 'Zabezpieczenie',
@@ -134,43 +79,31 @@ export function catalogNamespaceLabel(ns: CatalogNamespace): string {
   return labels[ns];
 }
 
-/**
- * Przeloz action ID na kanonyczna nazwe operacji.
- */
 export function resolveCanonicalOperation(actionId: string): string {
-  return ACTION_TO_OPERATION[actionId] ?? actionId;
+  return resolveCanonicalOperationName(actionId) ?? actionId;
 }
 
-/**
- * Interfejs wynikowy bramy katalogowej.
- */
 export interface CatalogGateResult {
-  /** Czy operacja wymaga katalogu */
   required: boolean;
-  /** Namespace katalogu (jesli wymagany) */
   namespace?: CatalogNamespace;
-  /** Polska etykieta (jesli wymagany) */
   label?: string;
-  /** Kanonyczna nazwa operacji */
   canonicalOperation: string;
 }
 
-/**
- * Sprawdz brame katalogowa dla danej akcji.
- */
 export function checkCatalogGate(actionId: string): CatalogGateResult {
-  const canonicalOp = resolveCanonicalOperation(actionId);
-  const ns = catalogNamespace(actionId);
-  if (ns) {
+  const canonicalOperation = resolveCanonicalOperation(actionId);
+  const namespace = catalogNamespace(actionId);
+  if (!namespace) {
     return {
-      required: true,
-      namespace: ns,
-      label: catalogNamespaceLabel(ns),
-      canonicalOperation: canonicalOp,
+      required: false,
+      canonicalOperation,
     };
   }
+
   return {
-    required: false,
-    canonicalOperation: canonicalOp,
+    required: true,
+    namespace,
+    label: catalogNamespaceLabel(namespace),
+    canonicalOperation,
   };
 }

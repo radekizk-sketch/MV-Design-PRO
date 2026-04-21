@@ -24,7 +24,19 @@ from __future__ import annotations
 from uuid import UUID, uuid4
 
 import pytest
-
+from application.batch_execution_service import (
+    BatchExecutionService,
+    BatchNotFoundError,
+    BatchNotPendingError,
+)
+from application.execution_engine.errors import StudyCaseNotFoundError
+from application.execution_engine.service import ExecutionEngineService
+from application.sc_comparison_service import (
+    AnalysisTypeMismatchError,
+    RunNotDoneError,
+    ScComparisonService,
+    StudyCaseMismatchError,
+)
 from domain.batch_job import (
     BatchJob,
     BatchJobStatus,
@@ -44,21 +56,7 @@ from domain.sc_comparison import (
     compute_comparison_input_hash,
     compute_numeric_delta,
 )
-from application.batch_execution_service import (
-    BatchExecutionService,
-    BatchNotFoundError,
-    BatchNotPendingError,
-)
-from application.sc_comparison_service import (
-    ScComparisonService,
-    AnalysisTypeMismatchError,
-    RunNotDoneError,
-    StudyCaseMismatchError,
-)
-from application.execution_engine.service import ExecutionEngineService
-from application.execution_engine.errors import StudyCaseNotFoundError
-from domain.study_case import new_study_case, StudyCaseConfig
-
+from domain.study_case import StudyCaseConfig, new_study_case
 
 # =============================================================================
 # Fixtures
@@ -124,12 +122,8 @@ class TestBatchHashDeterminism:
         sorted_ids = tuple(sorted(scenario_ids, key=str))
         hashes = ("hash_a", "hash_b")
 
-        h1 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, sorted_ids, hashes
-        )
-        h2 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, sorted_ids, hashes
-        )
+        h1 = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, sorted_ids, hashes)
+        h2 = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, sorted_ids, hashes)
         assert h1 == h2
 
     def test_different_analysis_type_different_hash(self):
@@ -137,30 +131,20 @@ class TestBatchHashDeterminism:
         scenario_ids = (uuid4(),)
         hashes = ("hash_a",)
 
-        h1 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, scenario_ids, hashes
-        )
-        h2 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_1F, scenario_ids, hashes
-        )
+        h1 = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, scenario_ids, hashes)
+        h2 = compute_batch_input_hash(ExecutionAnalysisType.SC_1F, scenario_ids, hashes)
         assert h1 != h2
 
     def test_different_content_hash_different_batch_hash(self):
         """Different content hashes produce different batch hashes."""
         sid = uuid4()
-        h1 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, (sid,), ("hash_a",)
-        )
-        h2 = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, (sid,), ("hash_b",)
-        )
+        h1 = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, (sid,), ("hash_a",))
+        h2 = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, (sid,), ("hash_b",))
         assert h1 != h2
 
     def test_hash_is_sha256(self):
         """Batch input hash is a valid SHA-256 hex string."""
-        h = compute_batch_input_hash(
-            ExecutionAnalysisType.SC_3F, (uuid4(),), ("h",)
-        )
+        h = compute_batch_input_hash(ExecutionAnalysisType.SC_3F, (uuid4(),), ("h",))
         assert len(h) == 64
         assert all(c in "0123456789abcdef" for c in h)
 
@@ -582,29 +566,19 @@ class TestInputHashStability:
 
     def test_same_inputs_same_hash(self):
         """Identical inputs produce the same comparison hash."""
-        h1 = compute_comparison_input_hash(
-            "sig_base", "sig_other", ExecutionAnalysisType.SC_3F
-        )
-        h2 = compute_comparison_input_hash(
-            "sig_base", "sig_other", ExecutionAnalysisType.SC_3F
-        )
+        h1 = compute_comparison_input_hash("sig_base", "sig_other", ExecutionAnalysisType.SC_3F)
+        h2 = compute_comparison_input_hash("sig_base", "sig_other", ExecutionAnalysisType.SC_3F)
         assert h1 == h2
 
     def test_different_signatures_different_hash(self):
         """Different signatures produce different hashes."""
-        h1 = compute_comparison_input_hash(
-            "sig_a", "sig_b", ExecutionAnalysisType.SC_3F
-        )
-        h2 = compute_comparison_input_hash(
-            "sig_a", "sig_c", ExecutionAnalysisType.SC_3F
-        )
+        h1 = compute_comparison_input_hash("sig_a", "sig_b", ExecutionAnalysisType.SC_3F)
+        h2 = compute_comparison_input_hash("sig_a", "sig_c", ExecutionAnalysisType.SC_3F)
         assert h1 != h2
 
     def test_comparison_hash_is_sha256(self):
         """Comparison input hash is valid SHA-256."""
-        h = compute_comparison_input_hash(
-            "a", "b", ExecutionAnalysisType.SC_3F
-        )
+        h = compute_comparison_input_hash("a", "b", ExecutionAnalysisType.SC_3F)
         assert len(h) == 64
         assert all(c in "0123456789abcdef" for c in h)
 
@@ -973,17 +947,17 @@ class TestGoldenFixture:
         service = BatchExecutionService(engine)
 
         sid0, sid1, sid2 = uuid4(), uuid4(), uuid4()
-        kwargs = dict(
-            study_case_id=case_id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            scenario_ids=[sid0, sid1, sid2],
-            scenario_content_hashes=["ch0", "ch1", "ch2"],
-            solver_inputs=[
+        kwargs = {
+            "study_case_id": case_id,
+            "analysis_type": ExecutionAnalysisType.SC_3F,
+            "scenario_ids": [sid0, sid1, sid2],
+            "scenario_content_hashes": ["ch0", "ch1", "ch2"],
+            "solver_inputs": [
                 _sample_solver_input(0),
                 _sample_solver_input(1),
                 _sample_solver_input(2),
             ],
-        )
+        }
 
         b1 = service.create_batch_job(**kwargs)
         b2 = service.create_batch_job(**kwargs)
@@ -1063,9 +1037,9 @@ class TestBatchExecutionAPI:
     @pytest.fixture
     def client(self):
         """Fresh TestClient with clean state."""
-        from fastapi.testclient import TestClient
-        from api.main import app
         import api.batch_execution as batch_mod
+        from api.main import app
+        from fastapi.testclient import TestClient
 
         # Reset singletons
         batch_mod._batch_service = None

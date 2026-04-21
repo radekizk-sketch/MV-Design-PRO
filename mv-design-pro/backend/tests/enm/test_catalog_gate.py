@@ -6,13 +6,12 @@ segmenty i transformatory bez katalogu.
 
 Testy deterministyczne: kazdy test jest izolowany i powtarzalny.
 """
+
 from __future__ import annotations
 
 import pytest
-
-from enm.models import EnergyNetworkModel, ENMHeader, ENMDefaults
 from enm.domain_operations import execute_domain_operation
-
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -371,16 +370,20 @@ class TestCatalogGateDeterminism:
             },
         }
 
-        r1 = execute_domain_operation(enm_dict=snapshot, op_name="continue_trunk_segment_sn", payload=payload)
-        r2 = execute_domain_operation(enm_dict=snapshot, op_name="continue_trunk_segment_sn", payload=payload)
+        r1 = execute_domain_operation(
+            enm_dict=snapshot, op_name="continue_trunk_segment_sn", payload=payload
+        )
+        r2 = execute_domain_operation(
+            enm_dict=snapshot, op_name="continue_trunk_segment_sn", payload=payload
+        )
 
         assert r1.get("snapshot") is not None
         assert r2.get("snapshot") is not None
 
         # Deterministyczny: identyczny wynik
-        assert r1.get("layout_hash") == r2.get("layout_hash"), (
-            "Determinism violation: different layout_hash for same input"
-        )
+        assert r1.get("layout_hash") == r2.get(
+            "layout_hash"
+        ), "Determinism violation: different layout_hash for same input"
 
 
 # ===========================================================================
@@ -408,9 +411,9 @@ class TestCatalogGateErrorFormat:
         assert result.get("error") is not None
         # Sprawdz ze komunikat jest po polsku (zawiera polskie znaki)
         error_msg = result.get("error", "")
-        assert any(c in error_msg for c in "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ"), (
-            f"Error message should be in Polish: {error_msg}"
-        )
+        assert any(
+            c in error_msg for c in "ąćęłńóśźżĄĆĘŁŃÓŚŹŻ"
+        ), f"Error message should be in Polish: {error_msg}"
 
     def test_error_code_is_stable(self):
         """Kod bledu 'catalog.ref_required' jest stabilny (nie zmienia sie)."""
@@ -699,7 +702,9 @@ class TestCatalogGateInsertSectionSwitch:
 
         seg_ref = _get_first_cable_ref(snapshot)
         switch_count_before = sum(
-            1 for branch in snapshot.get("branches", []) if branch.get("type") in {"switch", "breaker"}
+            1
+            for branch in snapshot.get("branches", [])
+            if branch.get("type") in {"switch", "breaker"}
         )
 
         result = execute_domain_operation(
@@ -714,9 +719,12 @@ class TestCatalogGateInsertSectionSwitch:
         assert result.get("error_code") == "catalog.ref_required"
         assert result.get("snapshot") is None
         switch_count_after = sum(
-            1 for branch in snapshot.get("branches", []) if branch.get("type") in {"switch", "breaker"}
+            1
+            for branch in snapshot.get("branches", [])
+            if branch.get("type") in {"switch", "breaker"}
         )
         assert switch_count_after == switch_count_before
+
 
 @pytest.mark.parametrize(
     "malformed_binding",
@@ -773,7 +781,6 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
     )
     assert result.get("error_code") == "catalog.ref_required"
     assert result.get("changes", {}).get("created_element_ids", []) == []
-
 
     # 4) start_branch_segment_sn
     bus_ref = _get_sn_bus_ref(snapshot)

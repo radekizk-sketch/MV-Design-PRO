@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import io
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
-
-from fastapi.testclient import TestClient
 
 from api.main import app
 from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
 from domain.analysis_run import AnalysisRun
 from domain.models import OperatingCase, Project
 from domain.project_design_mode import ProjectDesignMode
+from fastapi.testclient import TestClient
 from infrastructure.persistence.db import (
     create_engine_from_url,
     create_session_factory,
@@ -73,7 +72,7 @@ def _prepare_api_client(tmp_path):
     )
 
     run_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     run = AnalysisRun(
         id=run_id,
         project_id=project_id,
@@ -180,7 +179,11 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
         assert "pakiet_dowodowy/SC2F.zip" in entries
         assert "pakiet_dowodowy/SC2FZ.zip" in entries
 
-        for nested_name in ["pakiet_dowodowy/SC1FZ.zip", "pakiet_dowodowy/SC2F.zip", "pakiet_dowodowy/SC2FZ.zip"]:
+        for nested_name in [
+            "pakiet_dowodowy/SC1FZ.zip",
+            "pakiet_dowodowy/SC2F.zip",
+            "pakiet_dowodowy/SC2FZ.zip",
+        ]:
             nested_bytes = bundle.read(nested_name)
             with zipfile.ZipFile(io.BytesIO(nested_bytes)) as nested:
                 nested_entries = set(nested.namelist())

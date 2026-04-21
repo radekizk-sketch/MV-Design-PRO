@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -42,7 +42,7 @@ def _build_results_inspector_service() -> tuple[ResultsInspectorService, UUID]:
         )
     )
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     element_id = "line-001"
     run_id = uuid4()
     AnalysisRunRepository(session).create(
@@ -104,6 +104,9 @@ def test_get_extended_trace_exposes_catalog_provenance_on_steps() -> None:
         "manual_override_element_count": 1,
         "manual_override_count": 1,
     }
-    assert trace["catalog_context_by_element"]["line-001"]["source_catalog_label"] == "KABEL_SN:cable-120@2026.04"
+    assert (
+        trace["catalog_context_by_element"]["line-001"]["source_catalog_label"]
+        == "KABEL_SN:cable-120@2026.04"
+    )
     assert trace["white_box_trace"][0]["catalog_context_entry"]["element_id"] == "line-001"
     assert trace["white_box_trace"][0]["manual_override_count"] == 1

@@ -3,8 +3,8 @@
  *
  * CANONICAL ALIGNMENT:
  * - Sugiyama Framework: layered drawing, crossing minimization
- * - ETAP Auto-Build: rule-based placement, composite networks
- * - PowerFactory Diagram Layout Tool: k-neighbourhood expansion
+ * - CANONICAL Auto-Build: rule-based placement, composite networks
+ * - Canonical Diagram Layout Tool: k-neighbourhood expansion
  *
  * KEY DESIGN PRINCIPLES:
  * - DYNAMIC VOLTAGES: Napięcia odczytywane z MODELU, nie hardkodowane
@@ -250,7 +250,7 @@ export interface LayoutConfig {
 }
 
 /**
- * Domyślna konfiguracja layoutu (ETAP-grade).
+ * Domyślna konfiguracja layoutu (CANONICAL-grade).
  */
 export const DEFAULT_LAYOUT_CONFIG: LayoutConfig = {
   // Grid
@@ -593,7 +593,7 @@ export interface LayoutDebugInfo {
   /** Łączna liczba elementów */
   totalNodes: number;
 
-  /** Floating symbols (ETAP violation) */
+  /** Floating symbols (CANONICAL violation) */
   floatingSymbols: string[];
 
   /** Quarantined symbols (w strefie kwarantanny) */
@@ -755,7 +755,7 @@ export type PlacementAlgorithm = 'pipeline' | 'force-directed' | 'greedy';
 
 /**
  * Styl połączeń krawędzi.
- * - 'orthogonal': segmenty H/V (domyślny, ETAP-grade)
+ * - 'orthogonal': segmenty H/V (domyślny, CANONICAL-grade)
  * - 'diagonal': bezpośrednie linie skośne
  */
 export type ConnectionStyle = 'orthogonal' | 'diagonal';

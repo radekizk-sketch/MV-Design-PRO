@@ -8,7 +8,6 @@ Ensures:
 """
 
 import pytest
-
 from domain.readiness_fix_actions import (
     KNOWN_BLOCKER_CODES,
     KNOWN_BLOCKER_PREFIXES,
@@ -17,52 +16,63 @@ from domain.readiness_fix_actions import (
 )
 from enm.fix_actions import FixAction
 
-VALID_ACTION_TYPES = frozenset({
-    "OPEN_MODAL",
-    "NAVIGATE_TO_ELEMENT",
-    "SELECT_CATALOG",
-    "ADD_MISSING_DEVICE",
-})
+VALID_ACTION_TYPES = frozenset(
+    {
+        "OPEN_MODAL",
+        "NAVIGATE_TO_ELEMENT",
+        "SELECT_CATALOG",
+        "ADD_MISSING_DEVICE",
+    }
+)
 
 
 class TestResolveFixAction:
     """Test resolve_fix_action for individual codes."""
 
-    @pytest.mark.parametrize("code", [
-        "catalog.ref_missing",
-        "generator.connection_variant_missing",
-        "generator.station_ref_missing",
-        "generator.station_ref_invalid",
-        "generator.block_transformer_missing",
-        "generator.block_transformer_invalid",
-        "generator.connection_variant_invalid",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "catalog.ref_missing",
+            "generator.connection_variant_missing",
+            "generator.station_ref_missing",
+            "generator.station_ref_invalid",
+            "generator.block_transformer_missing",
+            "generator.block_transformer_invalid",
+            "generator.connection_variant_invalid",
+        ],
+    )
     def test_generator_codes_have_fix_action(self, code: str) -> None:
         result = resolve_fix_action(code, element_id="gen-1")
         assert result is not None, f"Code {code!r} must have a FixAction"
         assert isinstance(result, FixAction)
         assert result.action_type in VALID_ACTION_TYPES
 
-    @pytest.mark.parametrize("code", [
-        "station.nn_without_transformer",
-        "protection.binding_missing",
-        "generator.nn_variant_requires_station_transformer",
-        "generator.block_variant_requires_block_transformer",
-        "generator.block_transformer_catalog_missing",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "station.nn_without_transformer",
+            "protection.binding_missing",
+            "generator.nn_variant_requires_station_transformer",
+            "generator.block_variant_requires_block_transformer",
+            "generator.block_transformer_catalog_missing",
+        ],
+    )
     def test_station_field_codes_have_fix_action(self, code: str) -> None:
         result = resolve_fix_action(code, element_id="station-1")
         assert result is not None, f"Code {code!r} must have a FixAction"
         assert isinstance(result, FixAction)
         assert result.action_type in VALID_ACTION_TYPES
 
-    @pytest.mark.parametrize("code", [
-        "E003",
-        "W005",
-        "W006",
-        "W007",
-        "W008",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "E003",
+            "W005",
+            "W006",
+            "W007",
+            "W008",
+        ],
+    )
     def test_topology_codes_have_fix_action(self, code: str) -> None:
         result = resolve_fix_action(code, element_id="bus-1")
         assert result is not None, f"Code {code!r} must have a FixAction"
@@ -102,9 +112,7 @@ class TestBlockerFixActionCoverage:
         )
 
     def test_known_blocker_codes_not_empty(self) -> None:
-        assert len(KNOWN_BLOCKER_CODES) >= 20, (
-            "Expected at least 20 known BLOCKER codes"
-        )
+        assert len(KNOWN_BLOCKER_CODES) >= 20, "Expected at least 20 known BLOCKER codes"
 
     def test_known_blocker_prefixes_not_empty(self) -> None:
         assert len(KNOWN_BLOCKER_PREFIXES) >= 1

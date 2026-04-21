@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # ROZDZIAŁ 6 — KONTRAKTY SOLVERÓW & MAPOWANIE ENM → MODEL OBLICZENIOWY
 
 **Wersja:** 1.1 SUPPLEMENT
@@ -826,7 +832,7 @@ class PowerFlowNewtonSolution:
     fallback_info: dict[str, str] | None       # Informacja o fallback solvera
 ```
 
-### 6.6.7 Etapy solvera PF Newton-Raphson
+### 6.6.7 benchmarky solvera PF Newton-Raphson
 
 ```
 1. Walidacja     → sprawdzenie spójności grafu, typów węzłów
@@ -1056,3 +1062,4 @@ Rozdział 6 jest kanonicznie domknięty, jeżeli spełnione są WSZYSTKIE poniż
 ---
 
 **KONIEC ROZDZIAŁU 6**
+

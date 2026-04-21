@@ -231,8 +231,8 @@ TRANSFORMER_CREATED     CATALOG_ASSIGNED         PARAMETERS_UPDATED
 ## 3. Kanon nazw operacji
 
 System definiuje dokladnie **10 kanonicznych operacji domenowych**. Frontend wysyla WYLACZNIE
-nazwy kanoniczne. Alternatywne nazwy (aliasy) sa tlumaczone automatycznie w warstwie
-`ALIAS_MAP` po stronie backendu.
+nazwy kanoniczne. W aktywnej powierzchni V11 nie wystepuja aliasy operacji ani
+alternatywne identyfikatory formularzy.
 
 ---
 
@@ -267,7 +267,7 @@ dokladnie jeden GPZ).
 
 **Cel:** Kontynuacja budowy magistrali SN o kolejny segment (odcinek kabla lub linii napowietrznej).
 
-**Aliasy:** `add_trunk_segment_sn`
+**Publiczna nazwa V11:** tylko `continue_trunk_segment_sn`
 
 **Wymagane pola payload:**
 
@@ -295,7 +295,7 @@ dokladnie jeden GPZ).
 **Cel:** Wstawienie stacji transformatorowej SN/nN na istniejacym segmencie magistrali.
 Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
-**Aliasy:** `insert_station_on_trunk_segment_sn`, `insert_station_on_trunk_segment`
+**Publiczna nazwa V11:** tylko `insert_station_on_segment_sn`
 
 **Wymagane pola payload:**
 
@@ -338,7 +338,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 **Cel:** Rozpoczecie nowego odgalezienia (branch) od istniejacej szyny SN.
 
-**Aliasy:** `add_branch_segment_sn`, `start_branch_from_port`
+**Publiczna nazwa V11:** tylko `start_branch_segment_sn`
 
 **Wymagane pola payload:**
 
@@ -390,7 +390,7 @@ Operacja krytyczna --- dzieli segment na dwa i tworzy pelny blok stacji.
 
 **Cel:** Zamkniecie pierscienia SN --- polaczenie dwoch szyn segmentem zamykajacym.
 
-**Aliasy:** `connect_ring_sn`, `connect_secondary_ring`, `connect_ring`
+**Publiczna nazwa V11:** tylko `connect_secondary_ring_sn`
 
 **Wymagane pola payload:**
 
@@ -731,21 +731,11 @@ sugestie dla frontendu, co nalezy zrobic:
 
 ---
 
-## Dodatek A: Mapa aliasow operacji
+## Dodatek A: Zasada nazewnictwa V11
 
-| Alias (stara nazwa) | Nazwa kanoniczna |
-|----------------------|-----------------|
-| `add_trunk_segment_sn` | `continue_trunk_segment_sn` |
-| `add_branch_segment_sn` | `start_branch_segment_sn` |
-| `start_branch_from_port` | `start_branch_segment_sn` |
-| `insert_station_on_trunk_segment_sn` | `insert_station_on_segment_sn` |
-| `insert_station_on_trunk_segment` | `insert_station_on_segment_sn` |
-| `connect_ring_sn` | `connect_secondary_ring_sn` |
-| `connect_secondary_ring` | `connect_secondary_ring_sn` |
-| `connect_ring` | `connect_secondary_ring_sn` |
-
-**Zasada:** Frontend wysyla WYLACZNIE nazwy kanoniczne. Aliasy istnieja wylacznie
-dla kompatybilnosci wstecznej i sa tlumaczone w jednym miejscu (`ALIAS_MAP`).
+W aktywnej powierzchni V11 frontend, testy E2E i dokumentacja uzywaja wylacznie
+nazw kanonicznych operacji. Historyczne aliasy zostaly usuniete z aktywnej
+dokumentacji i nie stanowia juz czesci kontraktu publicznego.
 
 ---
 

@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 2.4, § 3: Siatka Właściwości
- * - powerfactory_ui_parity.md § D: Property Grid rules
+ * - ui_canonical_parity.md § D: Property Grid rules
  *
  * Exports:
  * - PropertyGrid: Main component

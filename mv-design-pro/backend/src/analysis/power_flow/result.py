@@ -1,18 +1,19 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable
+from typing import Any
 
 
 def _complex_to_dict(value: complex) -> dict[str, float]:
     return {"re": float(value.real), "im": float(value.imag)}
 
 
-def _sorted_complex_dict(values: Dict[str, complex]) -> dict[str, dict[str, float]]:
+def _sorted_complex_dict(values: dict[str, complex]) -> dict[str, dict[str, float]]:
     return {key: _complex_to_dict(values[key]) for key in sorted(values.keys())}
 
 
-def _sorted_float_dict(values: Dict[str, float]) -> dict[str, float]:
+def _sorted_float_dict(values: dict[str, float]) -> dict[str, float]:
     return {key: float(values[key]) for key in sorted(values.keys())}
 
 
@@ -28,11 +29,8 @@ def _serialize_value(value: Any) -> Any:
     if hasattr(value, "tolist"):
         return _serialize_value(value.tolist())
     if isinstance(value, dict):
-        return {
-            key: _serialize_value(value[key])
-            for key in _sorted_keys(value.keys())
-        }
-    if isinstance(value, (list, tuple)):
+        return {key: _serialize_value(value[key]) for key in _sorted_keys(value.keys())}
+    if isinstance(value, list | tuple):
         return [_serialize_value(item) for item in value]
     if isinstance(value, set):
         return [_serialize_value(item) for item in sorted(value)]

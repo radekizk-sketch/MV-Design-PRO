@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - docs/spec/ Section 10: Enhanced Element Inspector requirements
- * - powerfactory_ui_parity.md Section D: Property Grid rules
+ * - ui_canonical_parity.md Section D: Property Grid rules
  * - wizard_screens.md Section 3: Field definitions per element type
  *
  * FEATURES:

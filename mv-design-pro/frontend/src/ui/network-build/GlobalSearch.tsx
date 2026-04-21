@@ -1,9 +1,9 @@
 /**
- * GlobalSearch — Wyszukiwarka globalna (Ctrl+K).
+ * GlobalSearch â€” Wyszukiwarka globalna (Ctrl+K).
  *
- * Command palette wyszukująca elementy ENM po nazwie/ref_id/typie.
- * Wynik → nawigacja do elementu na SLD + zaznaczenie w drzewie.
- * Max 20 wyników, grouping po kategoriach.
+ * Command palette wyszukujÄ…ca elementy ENM po nazwie/ref_id/typie.
+ * Wynik â†’ nawigacja do elementu na SLD + zaznaczenie w drzewie.
+ * Max 20 wynikĂłw, grouping po kategoriach.
  *
  * BINDING: 100% PL etykiety.
  */
@@ -11,6 +11,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
+import { formatStationTypeLabelPl } from '../shared/stationTypeLabels';
 import { useSelectionStore } from '../selection';
 
 // =============================================================================
@@ -29,13 +31,13 @@ interface SearchResult {
 type SearchCategory = 'sources' | 'buses' | 'branches' | 'transformers' | 'stations' | 'generators' | 'loads';
 
 const CATEGORY_LABELS: Record<SearchCategory, string> = {
-  sources: 'Źródła zasilania',
+  sources: 'ĹąrĂłdĹ‚a zasilania',
   buses: 'Szyny',
-  branches: 'Gałęzie / Odcinki',
+  branches: 'GaĹ‚Ä™zie / Odcinki',
   transformers: 'Transformatory',
   stations: 'Stacje',
-  generators: 'Źródła OZE / Generatory',
-  loads: 'Obciążenia',
+  generators: 'ĹąrĂłdĹ‚a OZE / Generatory',
+  loads: 'ObciÄ…ĹĽenia',
 };
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -138,7 +140,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           category: 'stations',
           categoryLabel: CATEGORY_LABELS.stations,
           elementType: 'Station',
-          detail: `Typ: ${s.station_type}`,
+          detail: `Typ: ${formatStationTypeLabelPl(s.station_type)}`,
         });
       }
     }
@@ -152,7 +154,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
           category: 'generators',
           categoryLabel: CATEGORY_LABELS.generators,
           elementType: 'Generator',
-          detail: `${g.p_mw} MW, ${g.gen_type ?? 'unknown'}`,
+          detail: `${g.p_mw} MW, ${formatGeneratorTypeShortLabelPl(g.gen_type)}`,
         });
       }
     }
@@ -270,16 +272,16 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         <div className="max-h-[50vh] overflow-y-auto">
           {query.trim() && results.length === 0 && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Nie znaleziono elementów</p>
-              <p className="text-[10px] text-gray-400 mt-1">Spróbuj innej frazy</p>
+              <p className="text-sm text-gray-500">Nie znaleziono elementĂłw</p>
+              <p className="text-[10px] text-gray-400 mt-1">SprĂłbuj innej frazy</p>
             </div>
           )}
 
           {!query.trim() && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Wpisz nazwę lub identyfikator elementu</p>
+              <p className="text-sm text-gray-500">Wpisz nazwÄ™ lub identyfikator elementu</p>
               <p className="text-[10px] text-gray-400 mt-1">
-                Szukaj szyn, odcinków, stacji, transformatorów, źródeł OZE
+                Szukaj szyn, odcinkĂłw, stacji, transformatorĂłw, ĹşrĂłdeĹ‚ OZE
               </p>
             </div>
           )}
@@ -325,8 +327,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         {/* Footer */}
         {results.length > 0 && (
           <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center gap-4 text-[10px] text-gray-400">
-            <span>{results.length} wyników</span>
-            <span>↑↓ nawigacja</span>
+            <span>{results.length} wynikĂłw</span>
+            <span>â†‘â†“ nawigacja</span>
             <span>Enter wybierz</span>
             <span>Esc zamknij</span>
           </div>

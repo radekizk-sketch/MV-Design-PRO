@@ -1,4 +1,10 @@
-# Rozdział 10 — Scenariusze Obliczeniowe & Study Cases (ETAP-Grade)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 10 — Scenariusze Obliczeniowe & Study Cases (benchmark-Grade)
 
 **Wersja:** 1.1
 **Status:** AS-IS (z sekcjami TO-BE jawnie oznaczonymi)
@@ -13,7 +19,7 @@
 
 ### §10.0.1 Cel
 
-Niniejszy rozdział definiuje **kanoniczny system scenariuszy obliczeniowych MV-DESIGN-PRO** na poziomie ETAP-grade, obejmujący:
+Niniejszy rozdział definiuje **kanoniczny system scenariuszy obliczeniowych MV-DESIGN-PRO** na poziomie benchmark-grade, obejmujący:
 - hierarchię Project → ENM → StudyCase → AnalysisRun → Result + WhiteBoxTrace,
 - model danych StudyCase (frozen, config-only, immutable per ENM),
 - model danych AnalysisRun (frozen, jednorazowe wykonanie, state machine),
@@ -42,7 +48,7 @@ Study Case jest **kontraktem sterującym solverami**.
 
 ### §10.0.3 Referencja do Rozdziału 5 (§5.9)
 
-Rozdział 5 §5.9 definiuje **podstawowy kontrakt architektoniczny** Study Case (immutability, cykl życia, invalidacja). Niniejszy Rozdział 10 **implementuje i rozszerza** ten kontrakt na poziomie ETAP-grade. Ustalenia z §5.9 są BINDING i NIE są powtarzane — jedynie referencowane.
+Rozdział 5 §5.9 definiuje **podstawowy kontrakt architektoniczny** Study Case (immutability, cykl życia, invalidacja). Niniejszy Rozdział 10 **implementuje i rozszerza** ten kontrakt na poziomie benchmark-grade. Ustalenia z §5.9 są BINDING i NIE są powtarzane — jedynie referencowane.
 
 ---
 
@@ -882,7 +888,7 @@ def execute_run(run_id: UUID) -> AnalysisRun:
 
 ---
 
-## §10.17 — UI Study Case (ETAP-style, kontrakt prezentacyjny)
+## §10.17 — UI Study Case (benchmark-style, kontrakt prezentacyjny)
 
 ### §10.17.1 Zasada (BINDING)
 
@@ -1036,7 +1042,7 @@ Wszystkie pola `*_jsonb` w ORM używają `DeterministicJSON` — custom SQLAlche
 | 24 | Zakazy Z-SC-01..09 sformułowane | ✅ |
 | 25 | Inwarianty INV-SC-01..09 sformułowane | ✅ |
 | 26 | Scenariusze kanoniczne (PF: 5 + SC: 6 + U: 2 + operacyjne: 3 TO-BE) | ✅ |
-| 27 | Parytet ETAP w scenariuszach (jedyna zmienna v1 = Config) | ✅ |
+| 27 | Parytet benchmark w scenariuszach (jedyna zmienna v1 = Config) | ✅ |
 | 28 | Deterministyczny White Box (snapshot → config → solver → wynik) | ✅ |
 | 29 | Brak mutacji ENM z poziomu Case (BINDING) | ✅ |
 | 30 | Sekcje TO-BE NIE blokują zatwierdzenia | ✅ |
@@ -1345,3 +1351,4 @@ Obie ścieżki są kompatybilne — decyzja implementacyjna.
 ---
 
 *Koniec Rozdziału 10*
+

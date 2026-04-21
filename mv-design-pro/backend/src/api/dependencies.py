@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request
-
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
 

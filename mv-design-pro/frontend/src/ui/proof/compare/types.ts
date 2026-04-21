@@ -2,7 +2,7 @@
  * Typy dla porównania śladów obliczeń (Trace Comparison)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie Case/Run A vs B
+ * - ui_canonical_parity.md: Porównanie Case/Run A vs B
  * - SYSTEM_SPEC.md: READ-ONLY result display
  * - UI 100% po polsku
  *

@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - CASE_COMPARISON_UI_CONTRACT.md: Case A vs B comparison UI
  * - RESULTS_BROWSER_CONTRACT.md: Run selection and filtering
- * - powerfactory_ui_parity.md: Deterministic tables, Polish labels
+ * - ui_canonical_parity.md: Deterministic tables, Polish labels
  * - AGENTS.md: NOT-A-SOLVER, no physics in UI
  *
  * FEATURES:
@@ -80,7 +80,7 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz Run —</option>
+        <option value="">— Wybierz uruchomienie —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           const solverLabel = run.solver_kind === 'PF' ? 'Rozpływ' : run.solver_kind === 'short_circuit_sn' ? 'Zwarcie' : run.solver_kind;
@@ -289,12 +289,12 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
 
   const handleCompare = useCallback(async () => {
     if (!runAId || !runBId) {
-      setError('Wybierz oba Runy (A i B) aby wykonać porównanie.');
+      setError('Wybierz oba uruchomienia (A i B), aby wykonac porownanie.');
       return;
     }
 
     if (runAId === runBId) {
-      setError('Run A i Run B muszą być różne.');
+      setError('Uruchomienie A i uruchomienie B musza byc rozne.');
       return;
     }
 
@@ -350,16 +350,16 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
       <div className="mx-auto max-w-6xl px-6 py-6">
         {/* Run Selectors */}
         <div className="rounded border border-slate-200 bg-white p-4">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Wybierz Runy do porównania</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Wybierz uruchomienia do porownania</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <RunSelector
-              label="Run A (baseline)"
+              label="Uruchomienie A (wzorzec)"
               runs={runHistory}
               selectedRunId={runAId}
               onChange={setRunAId}
             />
             <RunSelector
-              label="Run B (porównanie)"
+              label="Uruchomienie B (porownanie)"
               runs={runHistory}
               selectedRunId={runBId}
               onChange={setRunBId}

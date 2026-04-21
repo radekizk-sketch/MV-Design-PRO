@@ -2,7 +2,7 @@
  * DETERMINISTYCZNY GENERATOR IDENTYFIKATORÓW — PR-SLD-03 (N-07)
  *
  * CANONICAL ALIGNMENT:
- * - AUDYT_SLD_ETAP.md: N-07 — brak Date.now/Math.random
+ * - AUDYT_SLD_CANONICAL.md: N-07 — brak Date.now/Math.random
  * - sld_rules.md § A.1: Bijection (symbol ↔ model element)
  *
  * ZASADY:

@@ -40,6 +40,8 @@ LINK_CHECK_FILES = [
     REPO_ROOT / "README.md",
 ]
 
+ACTIVE_REPO_HYGIENE_DOC = "docs/audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md"
+
 REQUIRED_STAGE_DOCS = [
     "docs/catalog/CATALOG_DATA_TRUTH_MATRIX_V1.md",
     "docs/catalog/CATALOG_INDUSTRIAL_SERIES_MATRIX.md",
@@ -61,7 +63,7 @@ REQUIRED_STAGE_DOCS = [
     "docs/sld/SLD_TYPY_STACJI_KANONICZNE.md",
     "docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md",
     "docs/audit/AUDYT_KATALOG_FIRST_END_TO_END.md",
-    "docs/audit/REPO_HYGIENE_PO_ETAPIE_KATALOG_FIRST.md",
+    ACTIVE_REPO_HYGIENE_DOC,
 ]
 
 REQUIRED_BINDING_DOCS = [
@@ -75,7 +77,7 @@ REQUIRED_BINDING_DOCS = [
     "docs/sld/SLD_TYPY_STACJI_KANONICZNE.md",
     "docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md",
     "docs/audit/AUDYT_KATALOG_FIRST_END_TO_END.md",
-    "docs/audit/REPO_HYGIENE_PO_ETAPIE_KATALOG_FIRST.md",
+    ACTIVE_REPO_HYGIENE_DOC,
 ]
 
 CANONICAL_INDEX_FILE = PROJECT_ROOT / "docs/INDEX_KANONICZNY.md"
@@ -119,6 +121,25 @@ def _read_text(path: Path) -> str | None:
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _extract_markdown_targets(path: Path) -> list[str]:
+    content = _read_text(path) or ""
+    targets: list[str] = []
+    for match in MD_LINK_PATTERN.finditer(content):
+        target = match.group(2).split("#", 1)[0].strip()
+        if not target or target.startswith(("http://", "https://", "mailto:", "#")):
+            continue
+        targets.append(target)
+    return targets
+
+
+def _normalize_project_target(base_path: Path, target: str) -> str | None:
+    resolved = (base_path.parent / target).resolve()
+    try:
+        return resolved.relative_to(PROJECT_ROOT).as_posix()
+    except ValueError:
         return None
 
 
@@ -194,9 +215,14 @@ def check_canonical_index() -> list[str]:
         return ["  missing canonical index -> docs/INDEX_KANONICZNY.md"]
 
     content = _read_text(CANONICAL_INDEX_FILE) or ""
+    linked_targets = {
+        normalized
+        for raw_target in _extract_markdown_targets(CANONICAL_INDEX_FILE)
+        if (normalized := _normalize_project_target(CANONICAL_INDEX_FILE, raw_target)) is not None
+    }
     violations: list[str] = []
     for rel_path in CANONICAL_INDEX_REQUIRED_REFERENCES:
-        if rel_path not in content:
+        if rel_path not in linked_targets:
             violations.append(
                 f"  docs/INDEX_KANONICZNY.md missing binding reference -> {rel_path}"
             )

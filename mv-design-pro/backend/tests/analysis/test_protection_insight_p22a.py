@@ -3,13 +3,6 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from application.proof_engine.types import (
-    ProofDocument,
-    ProofHeader,
-    ProofSummary,
-    ProofType,
-    ProofValue,
-)
 from analysis.normative.models import (
     NormativeContext,
     NormativeItem,
@@ -19,7 +12,13 @@ from analysis.normative.models import (
 )
 from analysis.protection_insight.builder import ProtectionInsightBuilder
 from analysis.protection_insight.models import ProtectionSelectivityStatus
-
+from application.proof_engine.types import (
+    ProofDocument,
+    ProofHeader,
+    ProofSummary,
+    ProofType,
+    ProofValue,
+)
 
 RUN_TS = datetime(2024, 3, 1, 9, 0, 0)
 
@@ -41,9 +40,7 @@ def _make_proof(
         "ip_ka": ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),
         "idyn_ka": ProofValue.create("I_{dyn}", idyn_ka, "kA", "idyn_ka"),
         "i2t_ka2s": ProofValue.create("∫i²dt", i2t_ka2s, "kA²s", "i2t_ka2s"),
-        "ith_limit_ka2s": ProofValue.create(
-            "I_th", ith_limit_ka2s, "kA²s", "ith_limit_ka2s"
-        ),
+        "ith_limit_ka2s": ProofValue.create("I_th", ith_limit_ka2s, "kA²s", "ith_limit_ka2s"),
     }
     if selectivity_margin_s is not None:
         key_results["selectivity_margin_s"] = ProofValue.create(

@@ -19,22 +19,18 @@ import os
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel, Field
-
+from fastapi import APIRouter, HTTPException, Request
 from infrastructure.cloud_backup import (
     CloudBackendType,
     CloudBackupConfig,
     CloudBackupConfigError,
-    CloudBackupDownloadError,
     CloudBackupError,
-    CloudBackupIntegrityError,
     CloudBackupNotFoundError,
     CloudBackupPermissionError,
-    CloudBackupUploadError,
-    create_backup_provider,
     compute_file_hash,
+    create_backup_provider,
 )
+from pydantic import BaseModel
 
 logger = logging.getLogger("mv_design_pro.api.cloud_backup")
 
@@ -63,8 +59,7 @@ def _get_cloud_config() -> CloudBackupConfig:
         backend = CloudBackendType(backend_str.upper())
     except ValueError:
         raise CloudBackupConfigError(
-            f"Nieobsługiwany backend: {backend_str}. "
-            f"Dozwolone: S3, GCS, LOCAL"
+            f"Nieobsługiwany backend: {backend_str}. " f"Dozwolone: S3, GCS, LOCAL"
         )
 
     bucket = os.getenv("CLOUD_BACKUP_BUCKET", "/tmp/mv-design-pro-backups")
@@ -372,10 +367,7 @@ def restore_from_backup(
     if result.status.value == "FAILED":
         raise HTTPException(
             status_code=422,
-            detail=(
-                "Import z kopii zapasowej nie powiódł się: "
-                + "; ".join(result.errors)
-            ),
+            detail=("Import z kopii zapasowej nie powiódł się: " + "; ".join(result.errors)),
         )
 
     logger.info(

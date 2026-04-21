@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Iterable
-
-from application.proof_engine.types import ProofDocument, ProofValue
+from collections.abc import Iterable
 
 from analysis.normative.models import (
     NormativeConfig,
@@ -16,6 +14,7 @@ from analysis.normative.models import (
 )
 from analysis.normative.rule_registry import RULES, NormativeRule
 from analysis.normative.serializer import sort_items
+from application.proof_engine.types import ProofDocument, ProofValue
 
 
 class NormativeEvaluator:
@@ -95,10 +94,7 @@ def _missing_proof_item(rule: NormativeRule) -> NormativeItem:
         limit_value=None,
         limit_unit=None,
         margin=None,
-        why_pl=(
-            "Brak dowodu (ProofDocument) dla pakietu "
-            f"{rule.proof_type.value}."
-        ),
+        why_pl=("Brak dowodu (ProofDocument) dla pakietu " f"{rule.proof_type.value}."),
         requires=requires,
     )
 
@@ -489,7 +485,7 @@ def _target_id(proof: ProofDocument) -> str:
 
 
 def _is_numeric(value: object) -> bool:
-    return isinstance(value, (int, float))
+    return isinstance(value, int | float)
 
 
 def _status_from_ok(value: str) -> NormativeStatus:

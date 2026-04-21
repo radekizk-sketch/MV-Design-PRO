@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # SPECYFIKACJA KANONICZNA MV-DESIGN-PRO
 # ROZDZIAŁ 2: MODEL DOMENOWY ENM — BYTY, GRANICE, SEMANTYKA
 
@@ -728,7 +734,7 @@ System MV-DESIGN-PRO rozróżnia dwie odrębne klasy funkcji zabezpieczeniowych.
 
 #### B. ProtectionFunction.Network (zabezpieczenia sieciowe)
 
-**Definicja:** Klasyczne zabezpieczenia sieciowe IEC / ETAP, realizowane przez zewnętrzne przekaźniki zabezpieczeniowe, nastawialne, selektywne, koordynowane w ramach sieci SN.
+**Definicja:** Klasyczne zabezpieczenia sieciowe IEC / benchmark, realizowane przez zewnętrzne przekaźniki zabezpieczeniowe, nastawialne, selektywne, koordynowane w ramach sieci SN.
 
 **Właściwości:**
 - **Nastawialne** — nastawy wynikają z analizy zwarciowej i rozpływowej sieci.
@@ -1019,9 +1025,9 @@ UI:
 - **NIE JEST** solverem — nie wykonuje obliczeń fizycznych.
 - **NIE JEST** osobnym modelem danych — operuje na danych z `ProtectionEvaluation` i ENM.
 
-### 2.18.2 Widok tabelaryczny nastaw (kanon ETAP-style)
+### 2.18.2 Widok tabelaryczny nastaw (kanon benchmark-style)
 
-UI MUSI prezentować zabezpieczenia w formie tabel analogicznych do ETAP / e2TANGO / PowerFactory.
+UI MUSI prezentować zabezpieczenia w formie tabel analogicznych do benchmark / e2TANGO / benchmark.
 
 **Kolumny obowiązkowe:**
 
@@ -1065,7 +1071,7 @@ System posiada implementację interfejsu zabezpieczeń (AS-IS):
 
 ### 2.18.4 Wykresy TCC (Time-Current Characteristics)
 
-UI MUSI prezentować krzywe TCC zgodnie z konwencją ETAP:
+UI MUSI prezentować krzywe TCC zgodnie z konwencją benchmark:
 - Oś X: prąd [A] lub wielokrotność prądu nastawczego [×I_pickup] — skala logarytmiczna.
 - Oś Y: czas [s] — skala logarytmiczna.
 - Krzywe: IEC 60255 (SI, VI, EI, LTI, DT) oraz IEEE C37.112 (MI, STI).
@@ -1230,7 +1236,7 @@ Domena zabezpieczeń MV-DESIGN-PRO jest uznana za **ZAMKNIĘTĄ** po spełnieniu
 | 9 | White Box: `event_class` ∈ {TECHNOLOGICAL, NETWORK} | ✅ §2.17.3 |
 | 10 | White Box: `event_scope` ∈ {LOCAL_DEVICE, NETWORK_SECTION} | ✅ §2.17.3 |
 | 11 | White Box: raport „kto zadziałał pierwszy" | ✅ §2.17.4 |
-| 12 | UI: widok tabelaryczny ETAP-style (11 kolumn obowiązkowych) | ✅ §2.18.2 |
+| 12 | UI: widok tabelaryczny benchmark-style (11 kolumn obowiązkowych) | ✅ §2.18.2 |
 | 13 | UI: tryb standardowy (sieciowe) + tryb ekspercki (read-only technologiczne) | ✅ §2.18.3 |
 | 14 | UI: wykresy TCC (IEC 60255 + IEEE C37.112) | ✅ §2.18.4 |
 | 15 | Walidacje: 9 reguł E-P01…I-P02 (niezależne od ENM Validator) | ✅ §2.19 |
@@ -1262,3 +1268,4 @@ Szczegółowa specyfikacja implementacyjna (nastawy, krzywe, algorytmy koordynac
 ---
 
 *Dokument kanoniczny. Wersja 2.0 FINAL. Domena Protection zamknięta (§2.15–§2.21).*
+

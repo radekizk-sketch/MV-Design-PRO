@@ -168,8 +168,8 @@ Zlote sieci (Golden Networks) to zestaw **6 deterministycznych, kanonicznych top
 1. `add_grid_source_sn` - dodanie GPZ
 2. `continue_trunk_segment_sn` - magistrala do stacji
 3. `insert_station_on_segment_sn(type=B)` - wstawienie stacji B z transformatorem
-4. `add_pv_inverter_nn` - dodanie falownika PV na szynie nN
-5. `add_bess_inverter_nn` - dodanie falownika BESS na szynie nN (z parametrami magazynu)
+4. `add_converter_source` - dodanie źródła przekształtnikowego PV na szynie nN
+5. `add_converter_source` - dodanie źródła przekształtnikowego BESS na szynie nN
 
 ---
 
@@ -307,8 +307,8 @@ profile_load:
 1. `add_grid_source_sn` - dodanie GPZ
 2. `continue_trunk_segment_sn` - magistrala
 3. `insert_station_on_segment_sn(type=B)` - stacja B
-4. `add_pv_inverter_nn` - falownik PV
-5. `add_bess_inverter_nn` - falownik BESS
+4. `add_converter_source` - źródło przekształtnikowe PV
+5. `add_converter_source` - źródło przekształtnikowe BESS
 6. `create_study_case(label_pl="Przypadek dzienny")` - Case_DZIEN
 7. `create_study_case(label_pl="Przypadek nocny")` - Case_NOC
 8. `set_case_switch_state(Case_NOC, sw_pv, OTWARTY)` - wylaczenie PV w trybie nocnym

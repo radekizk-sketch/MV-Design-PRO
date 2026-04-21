@@ -7,7 +7,7 @@ Implements PowerFactory-grade type library management:
 - Safe import with conflict detection (merge/replace modes)
 - Hard compatibility rules for type_ref (no mass migrations)
 
-Canonical reference: SYSTEM_SPEC.md § 4 (Catalog), POWERFACTORY_COMPLIANCE.md CT-*
+Canonical reference: SYSTEM_SPEC.md § 4 (Catalog), CANONICAL_COMPLIANCE.md CT-*
 """
 
 from __future__ import annotations
@@ -19,16 +19,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 from uuid import uuid4
-
-from .types import (
-    CableType,
-    LineType,
-    ProtectionCurve,
-    ProtectionDeviceType,
-    ProtectionSettingTemplate,
-    SwitchEquipmentType,
-    TransformerType,
-)
 
 
 class ImportMode(Enum):
@@ -533,9 +523,7 @@ def compute_protection_fingerprint(export: ProtectionLibraryExport) -> str:
     return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
 
 
-def sort_protection_types_deterministically(
-    types: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def sort_protection_types_deterministically(types: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Sort protection type records deterministically (name_pl → id).
 

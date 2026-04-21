@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from analysis.lf_sensitivity.models import (
     LFSensitivityContext,
@@ -57,7 +57,8 @@ class LFSensitivityBuilder:
                     thresholds=voltage_profile.thresholds,
                     delta_pct=self._delta_pct,
                     elements=element_data,
-                    proof_available=proof_p32 is not None and proof_p32.proof_type == ProofType.LOAD_FLOW_VOLTAGE,
+                    proof_available=proof_p32 is not None
+                    and proof_p32.proof_type == ProofType.LOAD_FLOW_VOLTAGE,
                 )
                 entries.append(entry)
 
@@ -156,7 +157,7 @@ def _extract_element_data(proof_p32: ProofDocument | None) -> list[_ElementModel
 
 
 def _numeric_or_none(value: float | str | None) -> float | None:
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     return None
 
@@ -307,10 +308,7 @@ def _drivers_for_element(
                 warn=warn,
                 fail=fail,
             )
-            why = (
-                "Wpływ parametru z modelu P32; "
-                f"margines względem progu {margin_ref}."
-            )
+            why = "Wpływ parametru z modelu P32; " f"margines względem progu {margin_ref}."
             drivers.append(
                 LFSensitivityDriver(
                     bus_id=bus_id,
@@ -343,7 +341,7 @@ def _drivers_for_u_nom(
         u_nom_new = u_nom_kv * (1.0 + sign * delta_pct / 100.0)
         if u_nom_new == 0:
             continue
-        delta_pct_new = base_delta_model * (u_nom_kv ** 2) / (u_nom_new ** 2)
+        delta_pct_new = base_delta_model * (u_nom_kv**2) / (u_nom_new**2)
         delta_delta_pct = delta_pct_new - base_delta_model
         perturbation = _format_perturbation(delta_pct * sign)
         delta_margin, margin_ref = _delta_margin_delta(
@@ -352,10 +350,7 @@ def _drivers_for_u_nom(
             warn=warn,
             fail=fail,
         )
-        why = (
-            "Wpływ napięcia znamionowego z modelu P32; "
-            f"margines względem progu {margin_ref}."
-        )
+        why = "Wpływ napięcia znamionowego z modelu P32; " f"margines względem progu {margin_ref}."
         drivers.append(
             LFSensitivityDriver(
                 bus_id=bus_id,

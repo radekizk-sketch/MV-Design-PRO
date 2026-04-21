@@ -13,6 +13,7 @@ REGULY SEVERITY (jawne, stale):
 - Voltage: |V - 1.0| < 2% -> INFO, 2-5% -> WARN, >5% -> HIGH
 - Branch loading: jesli dostepne dane o obciazeniu
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -45,17 +46,17 @@ if TYPE_CHECKING:
 INTERPRETATION_VERSION = "1.0.0"
 
 # Progi napieciowe (BINDING - stale)
-VOLTAGE_INFO_MAX_PCT = 2.0   # |V - 1.0| < 2% -> INFO
-VOLTAGE_WARN_MAX_PCT = 5.0   # 2-5% -> WARN, >5% -> HIGH
+VOLTAGE_INFO_MAX_PCT = 2.0  # |V - 1.0| < 2% -> INFO
+VOLTAGE_WARN_MAX_PCT = 5.0  # 2-5% -> WARN, >5% -> HIGH
 
 # Progi obciazenia galezi (opcjonalne - jesli brak danych o prądowosci znamionowej)
 # Te progi sa uzywane tylko jesli mamy dane o obciazeniu wzglednym
-BRANCH_LOADING_INFO_MAX_PCT = 70.0   # <70% -> INFO
-BRANCH_LOADING_WARN_MAX_PCT = 90.0   # 70-90% -> WARN, >90% -> HIGH
+BRANCH_LOADING_INFO_MAX_PCT = 70.0  # <70% -> INFO
+BRANCH_LOADING_WARN_MAX_PCT = 90.0  # 70-90% -> WARN, >90% -> HIGH
 
 # P22b BINDING: Progi strat galeziowych (kW) - uzywane gdy brak danych o obciazeniu
-BRANCH_LOSSES_INFO_MAX_KW = 2.0   # < 2 kW -> INFO
-BRANCH_LOSSES_WARN_MAX_KW = 5.0   # 2-5 kW -> WARN, >5 kW -> HIGH
+BRANCH_LOSSES_INFO_MAX_KW = 2.0  # < 2 kW -> INFO
+BRANCH_LOSSES_WARN_MAX_KW = 5.0  # 2-5 kW -> WARN, >5 kW -> HIGH
 
 # Liczba elementow w rankingu top issues
 TOP_ISSUES_COUNT = 10
@@ -103,9 +104,11 @@ class PowerFlowInterpretationBuilder:
             PowerFlowInterpretationResult z pelnymi obserwacjami i rankingiem
         """
         # Timestamp dla trace - jesli nie podany, uzyj z context lub deterministyczny fallback
-        trace_timestamp = run_timestamp or (
-            self._context.run_timestamp if self._context else None
-        ) or datetime(1970, 1, 1)
+        trace_timestamp = (
+            run_timestamp
+            or (self._context.run_timestamp if self._context else None)
+            or datetime(1970, 1, 1)
+        )
 
         # Build interpretation ID (deterministic)
         interpretation_id = self._build_interpretation_id(run_id)
@@ -167,21 +170,25 @@ class PowerFlowInterpretationBuilder:
             # Evidence reference
             evidence_ref = f"PowerFlowResult.node_u_mag_pu[{bus_id}], run_id={run_id}"
 
-            findings.append(VoltageFinding(
-                bus_id=bus_id,
-                v_pu=v_pu,
-                deviation_pct=deviation_pct,
-                severity=severity,
-                description_pl=description_pl,
-                evidence_ref=evidence_ref,
-            ))
+            findings.append(
+                VoltageFinding(
+                    bus_id=bus_id,
+                    v_pu=v_pu,
+                    deviation_pct=deviation_pct,
+                    severity=severity,
+                    description_pl=description_pl,
+                    evidence_ref=evidence_ref,
+                )
+            )
 
         # Sort by severity (HIGH first), then by deviation (descending), then by ID
-        findings.sort(key=lambda f: (
-            SEVERITY_ORDER[f.severity],
-            -f.deviation_pct,
-            f.bus_id,
-        ))
+        findings.sort(
+            key=lambda f: (
+                SEVERITY_ORDER[f.severity],
+                -f.deviation_pct,
+                f.bus_id,
+            )
+        )
 
         return findings
 
@@ -282,26 +289,28 @@ class PowerFlowInterpretationBuilder:
             )
 
             # Evidence reference
-            evidence_ref = (
-                f"PowerFlowResult.branch_s_from/to_mva[{branch_id}], run_id={run_id}"
+            evidence_ref = f"PowerFlowResult.branch_s_from/to_mva[{branch_id}], run_id={run_id}"
+
+            findings.append(
+                BranchLoadingFinding(
+                    branch_id=branch_id,
+                    loading_pct=loading_pct,
+                    losses_p_mw=losses_p_mw,
+                    losses_q_mvar=losses_q_mvar,
+                    severity=severity,
+                    description_pl=description_pl,
+                    evidence_ref=evidence_ref,
+                )
             )
 
-            findings.append(BranchLoadingFinding(
-                branch_id=branch_id,
-                loading_pct=loading_pct,
-                losses_p_mw=losses_p_mw,
-                losses_q_mvar=losses_q_mvar,
-                severity=severity,
-                description_pl=description_pl,
-                evidence_ref=evidence_ref,
-            ))
-
         # Sort by severity (HIGH first), then by losses (descending), then by ID
-        findings.sort(key=lambda f: (
-            SEVERITY_ORDER[f.severity],
-            -abs(f.losses_p_mw),
-            f.branch_id,
-        ))
+        findings.sort(
+            key=lambda f: (
+                SEVERITY_ORDER[f.severity],
+                -abs(f.losses_p_mw),
+                f.branch_id,
+            )
+        )
 
         return findings
 
@@ -364,19 +373,13 @@ class PowerFlowInterpretationBuilder:
     ) -> InterpretationSummary:
         """Build interpretation summary with deterministic ranking."""
         # Count by severity
-        high_count = sum(
-            1 for f in voltage_findings if f.severity == FindingSeverity.HIGH
-        ) + sum(
+        high_count = sum(1 for f in voltage_findings if f.severity == FindingSeverity.HIGH) + sum(
             1 for f in branch_findings if f.severity == FindingSeverity.HIGH
         )
-        warn_count = sum(
-            1 for f in voltage_findings if f.severity == FindingSeverity.WARN
-        ) + sum(
+        warn_count = sum(1 for f in voltage_findings if f.severity == FindingSeverity.WARN) + sum(
             1 for f in branch_findings if f.severity == FindingSeverity.WARN
         )
-        info_count = sum(
-            1 for f in voltage_findings if f.severity == FindingSeverity.INFO
-        ) + sum(
+        info_count = sum(1 for f in voltage_findings if f.severity == FindingSeverity.INFO) + sum(
             1 for f in branch_findings if f.severity == FindingSeverity.INFO
         )
 
@@ -386,36 +389,42 @@ class PowerFlowInterpretationBuilder:
         # Add voltage findings to ranking
         for f in voltage_findings:
             if f.severity != FindingSeverity.INFO:  # Only WARN and HIGH
-                ranked_items.append(InterpretationRankedItem(
-                    rank=0,  # Will be assigned later
-                    element_type="voltage",
-                    element_id=f.bus_id,
-                    severity=f.severity,
-                    magnitude=f.deviation_pct,
-                    description_pl=f.description_pl,
-                ))
+                ranked_items.append(
+                    InterpretationRankedItem(
+                        rank=0,  # Will be assigned later
+                        element_type="voltage",
+                        element_id=f.bus_id,
+                        severity=f.severity,
+                        magnitude=f.deviation_pct,
+                        description_pl=f.description_pl,
+                    )
+                )
 
         # Add branch findings to ranking
         for f in branch_findings:
             if f.severity != FindingSeverity.INFO:  # Only WARN and HIGH
-                ranked_items.append(InterpretationRankedItem(
-                    rank=0,  # Will be assigned later
-                    element_type="branch_loading",
-                    element_id=f.branch_id,
-                    severity=f.severity,
-                    magnitude=abs(f.losses_p_mw) * 1000.0,  # kW for comparison
-                    description_pl=f.description_pl,
-                ))
+                ranked_items.append(
+                    InterpretationRankedItem(
+                        rank=0,  # Will be assigned later
+                        element_type="branch_loading",
+                        element_id=f.branch_id,
+                        severity=f.severity,
+                        magnitude=abs(f.losses_p_mw) * 1000.0,  # kW for comparison
+                        description_pl=f.description_pl,
+                    )
+                )
 
         # Sort by severity, then by magnitude (descending), then by element_type, then by ID
         # P22b: Full deterministic tie-breaker for ranking
         # P22b-fix: Round magnitude to 6 decimal places to avoid floating point precision issues
-        ranked_items.sort(key=lambda item: (
-            SEVERITY_ORDER[item.severity],
-            -round(item.magnitude, 6),
-            item.element_type,
-            item.element_id,
-        ))
+        ranked_items.sort(
+            key=lambda item: (
+                SEVERITY_ORDER[item.severity],
+                -round(item.magnitude, 6),
+                item.element_type,
+                item.element_id,
+            )
+        )
 
         # Assign ranks and take top N
         top_issues = tuple(

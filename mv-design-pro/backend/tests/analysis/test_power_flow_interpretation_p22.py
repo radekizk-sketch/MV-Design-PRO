@@ -6,22 +6,20 @@ Tests:
 - Ranking determinism
 - Polish descriptions
 """
+
 from __future__ import annotations
 
 import json
 from datetime import datetime
 
 import pytest
-
 from analysis.power_flow.result import PowerFlowResult
 from analysis.power_flow_interpretation import (
+    INTERPRETATION_VERSION,
     FindingSeverity,
     InterpretationContext,
     PowerFlowInterpretationBuilder,
-    PowerFlowInterpretationResult,
-    INTERPRETATION_VERSION,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -39,11 +37,11 @@ def sample_power_flow_result() -> PowerFlowResult:
         base_mva=100.0,
         slack_node_id="bus_slack",
         node_u_mag_pu={
-            "bus_a": 1.005,   # 0.5% deviation - INFO
-            "bus_b": 0.975,   # 2.5% deviation - WARN
-            "bus_c": 1.03,    # 3% deviation - WARN
-            "bus_d": 0.92,    # 8% deviation - HIGH
-            "bus_slack": 1.0, # 0% deviation - INFO
+            "bus_a": 1.005,  # 0.5% deviation - INFO
+            "bus_b": 0.975,  # 2.5% deviation - WARN
+            "bus_c": 1.03,  # 3% deviation - WARN
+            "bus_d": 0.92,  # 8% deviation - HIGH
+            "bus_slack": 1.0,  # 0% deviation - INFO
         },
         node_angle_rad={
             "bus_a": 0.01,
@@ -53,14 +51,14 @@ def sample_power_flow_result() -> PowerFlowResult:
             "bus_slack": 0.0,
         },
         branch_s_from_mva={
-            "branch_1": {"re": 0.5, "im": 0.2},    # Low losses
-            "branch_2": {"re": 1.0, "im": 0.3},    # Medium losses
-            "branch_3": {"re": 2.0, "im": 0.8},    # Higher losses
+            "branch_1": {"re": 0.5, "im": 0.2},  # Low losses
+            "branch_2": {"re": 1.0, "im": 0.3},  # Medium losses
+            "branch_3": {"re": 2.0, "im": 0.8},  # Higher losses
         },
         branch_s_to_mva={
             "branch_1": {"re": -0.495, "im": -0.19},  # 5 kW losses
-            "branch_2": {"re": -0.95, "im": -0.25},   # 50 kW losses
-            "branch_3": {"re": -1.85, "im": -0.65},   # 150 kW losses
+            "branch_2": {"re": -0.95, "im": -0.25},  # 50 kW losses
+            "branch_3": {"re": -1.85, "im": -0.65},  # 150 kW losses
         },
     )
 
@@ -414,7 +412,9 @@ def test_ranking_tie_breaker_by_element_type() -> None:
 
     # Find the two items with same magnitude
     voltage_item = next((item for item in relevant_items if item.element_type == "voltage"), None)
-    branch_item = next((item for item in relevant_items if item.element_type == "branch_loading"), None)
+    branch_item = next(
+        (item for item in relevant_items if item.element_type == "branch_loading"), None
+    )
 
     assert voltage_item is not None, "Should have voltage finding"
     assert branch_item is not None, "Should have branch finding"
@@ -511,9 +511,13 @@ def test_ranking_tie_breaker_determinism_multiple_runs() -> None:
     # Extract ranking order from each run
     rankings = []
     for result in results:
-        order = [(item.rank, item.element_type, item.element_id) for item in result.summary.top_issues]
+        order = [
+            (item.rank, item.element_type, item.element_id) for item in result.summary.top_issues
+        ]
         rankings.append(order)
 
     # All rankings should be identical
     for i in range(1, len(rankings)):
-        assert rankings[0] == rankings[i], f"Ranking should be deterministic across runs (run 0 vs run {i})"
+        assert (
+            rankings[0] == rankings[i]
+        ), f"Ranking should be deterministic across runs (run 0 vs run {i})"

@@ -10,7 +10,6 @@ from datetime import datetime
 from uuid import UUID
 
 import pytest
-
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.packs.p16_losses import (
     P16BranchLossInput,
@@ -147,9 +146,7 @@ def test_p16_loss_percent_calculation() -> None:
     # 1.5 MW / 100 MW * 100 = 1.5%
     expected_percent = 1.5
     assert "p_loss_percent" in proof.summary.key_results
-    assert proof.summary.key_results["p_loss_percent"].value == pytest.approx(
-        expected_percent
-    )
+    assert proof.summary.key_results["p_loss_percent"].value == pytest.approx(expected_percent)
 
 
 def test_p16_branch_count() -> None:

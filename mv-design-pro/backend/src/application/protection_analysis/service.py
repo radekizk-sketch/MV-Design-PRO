@@ -16,13 +16,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from application.protection_analysis.engine import (
-    FaultPoint,
-    ProtectionDevice,
     ProtectionEvaluationEngine,
     ProtectionEvaluationInput,
     build_device_from_template,
@@ -35,14 +34,13 @@ from domain.protection_analysis import (
     ProtectionTrace,
     new_protection_analysis_run,
 )
-from domain.study_case import ProtectionConfig, StudyCase
+from domain.study_case import StudyCase
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.types import (
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
-
 
 # =============================================================================
 # CANONICAL JSON UTILITIES
@@ -180,8 +178,10 @@ class ProtectionAnalysisService:
 
             # Update status to RUNNING
             run = self._update_run_status(
-                uow, run, ProtectionRunStatus.RUNNING,
-                started_at=datetime.now(timezone.utc),
+                uow,
+                run,
+                ProtectionRunStatus.RUNNING,
+                started_at=datetime.now(UTC),
             )
 
             try:
@@ -209,8 +209,10 @@ class ProtectionAnalysisService:
 
                 # Update run to FINISHED
                 run = self._update_run_status(
-                    uow, run, ProtectionRunStatus.FINISHED,
-                    finished_at=datetime.now(timezone.utc),
+                    uow,
+                    run,
+                    ProtectionRunStatus.FINISHED,
+                    finished_at=datetime.now(UTC),
                     result_summary=result.summary.to_dict(),
                     trace_json=trace.to_dict(),
                 )
@@ -218,8 +220,10 @@ class ProtectionAnalysisService:
             except Exception as exc:
                 # Update run to FAILED
                 run = self._update_run_status(
-                    uow, run, ProtectionRunStatus.FAILED,
-                    finished_at=datetime.now(timezone.utc),
+                    uow,
+                    run,
+                    ProtectionRunStatus.FAILED,
+                    finished_at=datetime.now(UTC),
                     error_message=str(exc),
                 )
 
@@ -448,7 +452,11 @@ class ProtectionAnalysisService:
         curve = self._get_curve(uow, template.curve_ref) if template.curve_ref else None
 
         # Get device type from catalog
-        device_type = self._get_device_type(uow, template.device_type_ref) if template.device_type_ref else None
+        device_type = (
+            self._get_device_type(uow, template.device_type_ref)
+            if template.device_type_ref
+            else None
+        )
 
         # Get SC result
         sc_result = self._get_sc_result(uow, run.sc_run_id)
@@ -499,14 +507,13 @@ class ProtectionAnalysisService:
         # Use the catalog repository via network repository
         try:
             from network_model.catalog import CatalogRepository
+
             catalog = CatalogRepository(uow.session)
             return catalog.get_protection_setting_template(template_ref)
         except Exception:
             return None
 
-    def _get_curve(
-        self, uow: UnitOfWork, curve_ref: str | None
-    ) -> ProtectionCurve | None:
+    def _get_curve(self, uow: UnitOfWork, curve_ref: str | None) -> ProtectionCurve | None:
         """
         Get protection curve from catalog.
         """
@@ -514,6 +521,7 @@ class ProtectionAnalysisService:
             return None
         try:
             from network_model.catalog import CatalogRepository
+
             catalog = CatalogRepository(uow.session)
             return catalog.get_protection_curve(curve_ref)
         except Exception:
@@ -529,6 +537,7 @@ class ProtectionAnalysisService:
             return None
         try:
             from network_model.catalog import CatalogRepository
+
             catalog = CatalogRepository(uow.session)
             return catalog.get_protection_device_type(device_type_ref)
         except Exception:

@@ -11,7 +11,6 @@ zgodnie z regułami derywacji jednostek z rejestru równań.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from application.proof_engine.types import UnitCheckResult
 
@@ -32,12 +31,12 @@ class UnitDimension:
     """
 
     # Wykładniki dla jednostek bazowych
-    V: int = 0   # Volt
-    A: int = 0   # Amper
-    ohm: int = 0 # Ohm (= V/A)
-    W: int = 0   # Watt (= V*A)
-    m: int = 0   # metr
-    s: int = 0   # sekunda
+    V: int = 0  # Volt
+    A: int = 0  # Amper
+    ohm: int = 0  # Ohm (= V/A)
+    W: int = 0  # Watt (= V*A)
+    m: int = 0  # metr
+    s: int = 0  # sekunda
 
     def __mul__(self, other: UnitDimension) -> UnitDimension:
         return UnitDimension(
@@ -61,8 +60,12 @@ class UnitDimension:
 
     def is_dimensionless(self) -> bool:
         return (
-            self.V == 0 and self.A == 0 and self.ohm == 0 and
-            self.W == 0 and self.m == 0 and self.s == 0
+            self.V == 0
+            and self.A == 0
+            and self.ohm == 0
+            and self.W == 0
+            and self.m == 0
+            and self.s == 0
         )
 
 
@@ -74,24 +77,20 @@ UNIT_DIMENSIONS: dict[str, UnitDimension] = {
     "": UnitDimension(),
     "p.u.": UnitDimension(),
     "%": UnitDimension(),
-
     # Napięcie
     "V": UnitDimension(V=1),
     "kV": UnitDimension(V=1),
     "MV": UnitDimension(V=1),
-
     # Prąd
     "A": UnitDimension(A=1),
     "kA": UnitDimension(A=1),
     "MA": UnitDimension(A=1),
     "kA²s": UnitDimension(A=2, s=1),
     "kA^2s": UnitDimension(A=2, s=1),
-
     # Rezystancja / Impedancja
     "Ω": UnitDimension(ohm=1),
     "mΩ": UnitDimension(ohm=1),
     "Ω/km": UnitDimension(ohm=1, m=-1),
-
     # Moc
     "W": UnitDimension(W=1),
     "kW": UnitDimension(W=1),
@@ -105,11 +104,9 @@ UNIT_DIMENSIONS: dict[str, UnitDimension] = {
     "var": UnitDimension(W=1),
     "kvar": UnitDimension(W=1),
     "Mvar": UnitDimension(W=1),
-
     # Długość
     "m": UnitDimension(m=1),
     "km": UnitDimension(m=1),
-
     # Czas
     "s": UnitDimension(s=1),
     "ms": UnitDimension(s=1),
@@ -483,5 +480,5 @@ class UnitVerifier:
         Returns:
             UnitCheckResult
         """
-        input_units = {symbol: unit for symbol, unit in inputs}
+        input_units = dict(inputs)
         return cls.verify_equation(equation_id, input_units, result_unit)

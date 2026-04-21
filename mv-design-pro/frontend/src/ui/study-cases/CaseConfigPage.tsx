@@ -128,7 +128,7 @@ export function CaseConfigPage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">
-            Konfiguracja przypadku obliczeniowego
+            Kontekst przypadku obliczeniowego
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             Przypadek: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>

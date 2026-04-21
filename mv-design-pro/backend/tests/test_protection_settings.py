@@ -17,7 +17,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from application.protection_settings.engine import (
     THERMAL_DENSITY,
     DelayedSettings,
@@ -28,7 +27,6 @@ from application.protection_settings.engine import (
     SPZAnalysisResult,
     ThermalWithstandResult,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -43,27 +41,27 @@ def _make_input(**overrides) -> ProtectionSettingsInput:
     Ik3max(end)=4000A, Ik3min(end)=2500A,
     Ik2min(end)=2000A, I_load_max=200A.
     """
-    defaults = dict(
-        line_id="L-001",
-        line_name="Linia SN nr 1",
-        cross_section_mm2=120.0,
-        conductor_material="Al",
-        length_km=5.0,
-        i_nominal_a=300.0,
-        ik3_max_beginning_a=8000.0,
-        ik3_min_beginning_a=5000.0,
-        ik3_max_end_a=4000.0,
-        ik3_min_end_a=2500.0,
-        ik2_min_end_a=2000.0,
-        ik_max_next_bus_a=3000.0,
-        i_load_max_a=200.0,
-        delta_t_s=0.3,
-        k_b=1.2,
-        k_bth=1.1,
-        t_upstream_s=0.0,
-        spz_enabled=True,
-        spz_pause_s=0.5,
-    )
+    defaults = {
+        "line_id": "L-001",
+        "line_name": "Linia SN nr 1",
+        "cross_section_mm2": 120.0,
+        "conductor_material": "Al",
+        "length_km": 5.0,
+        "i_nominal_a": 300.0,
+        "ik3_max_beginning_a": 8000.0,
+        "ik3_min_beginning_a": 5000.0,
+        "ik3_max_end_a": 4000.0,
+        "ik3_min_end_a": 2500.0,
+        "ik2_min_end_a": 2000.0,
+        "ik_max_next_bus_a": 3000.0,
+        "i_load_max_a": 200.0,
+        "delta_t_s": 0.3,
+        "k_b": 1.2,
+        "k_bth": 1.1,
+        "t_upstream_s": 0.0,
+        "spz_enabled": True,
+        "spz_pause_s": 0.5,
+    }
     defaults.update(overrides)
     return ProtectionSettingsInput(**defaults)
 
@@ -159,16 +157,12 @@ class TestDelayedSettings:
 
     def test_delayed_sensitivity_ratio(self):
         """Sensitivity k_cz = I_k2_min_end / I_setting."""
-        inp = _make_input(
-            ik2_min_end_a=2000.0, k_b=1.2, i_load_max_a=200.0
-        )
+        inp = _make_input(ik2_min_end_a=2000.0, k_b=1.2, i_load_max_a=200.0)
         result = ProtectionSettingsEngine.calculate(inp)
         # I_setting = 1.2 * 200 = 240
         # k_cz = 2000 / 240 = 8.33
         expected_ratio = round(2000.0 / 240.0, 2)
-        assert result.delayed.sensitivity_ratio == pytest.approx(
-            expected_ratio, abs=0.01
-        )
+        assert result.delayed.sensitivity_ratio == pytest.approx(expected_ratio, abs=0.01)
 
     def test_delayed_sensitivity_passes(self):
         """With high fault current, sensitivity check should pass (k_cz >= 1.5)."""
@@ -199,9 +193,7 @@ class TestDelayedSettings:
         )
         result = ProtectionSettingsEngine.calculate(inp)
         # I_setting = 1.2 * 300 = 360 > 300
-        note_found = any(
-            "przekracza" in n for n in result.delayed.validation_notes
-        )
+        note_found = any("przekracza" in n for n in result.delayed.validation_notes)
         assert note_found
 
     def test_delayed_trace_has_steps(self):
@@ -243,32 +235,24 @@ class TestInstantaneousSettings:
         """I_min_selectivity = k_b * I_k_max_next_bus."""
         inp = _make_input(k_b=1.2, ik_max_next_bus_a=3000.0)
         result = ProtectionSettingsEngine.calculate(inp)
-        assert result.instantaneous.i_min_selectivity_a == pytest.approx(
-            3600.0, abs=0.1
-        )
+        assert result.instantaneous.i_min_selectivity_a == pytest.approx(3600.0, abs=0.1)
 
     def test_thermal_condition_formula(self):
         """I_max_thermal = (s * j_thn / sqrt(t_fault)) / k_bth."""
-        inp = _make_input(
-            cross_section_mm2=120.0, conductor_material="Al", k_bth=1.1
-        )
+        inp = _make_input(cross_section_mm2=120.0, conductor_material="Al", k_bth=1.1)
         result = ProtectionSettingsEngine.calculate(inp)
         j_thn = THERMAL_DENSITY["Al"]
         t_fault_inst = 0.05
         i_th_dop = 120.0 * j_thn / math.sqrt(t_fault_inst)
         expected_max_thermal = i_th_dop / 1.1
-        assert result.instantaneous.i_max_thermal_a == pytest.approx(
-            expected_max_thermal, rel=0.01
-        )
+        assert result.instantaneous.i_max_thermal_a == pytest.approx(expected_max_thermal, rel=0.01)
 
     def test_sensitivity_condition(self):
         """I_max_sensitivity = I_k3_min_beginning / k_b."""
         inp = _make_input(k_b=1.2, ik3_min_beginning_a=5000.0)
         result = ProtectionSettingsEngine.calculate(inp)
         expected = round(5000.0 / 1.2, 1)
-        assert result.instantaneous.i_max_sensitivity_a == pytest.approx(
-            expected, rel=0.01
-        )
+        assert result.instantaneous.i_max_sensitivity_a == pytest.approx(expected, rel=0.01)
 
     def test_valid_range_exists(self):
         """With low next-bus current and high beginning current, valid range exists."""
@@ -283,7 +267,7 @@ class TestInstantaneousSettings:
     def test_no_valid_range(self):
         """When selectivity minimum exceeds sensitivity maximum, no valid range."""
         inp = _make_input(
-            ik_max_next_bus_a=10000.0,   # Very high => high i_min_sel
+            ik_max_next_bus_a=10000.0,  # Very high => high i_min_sel
             ik3_min_beginning_a=5000.0,  # Low => low i_max_sens
             k_b=1.2,
         )
@@ -319,9 +303,7 @@ class TestInstantaneousSettings:
             )
             lower = result.instantaneous.i_min_selectivity_a
             expected_mid = round((lower + upper) / 2.0, 1)
-            assert result.instantaneous.i_setting_a == pytest.approx(
-                expected_mid, abs=0.2
-            )
+            assert result.instantaneous.i_setting_a == pytest.approx(expected_mid, abs=0.2)
 
     def test_no_valid_range_uses_selectivity_min(self):
         """When no valid range, setting should equal i_min_selectivity."""
@@ -642,11 +624,7 @@ class TestOverallValidity:
         """When all checks pass, overall_valid should be True."""
         inp = _make_input()
         result = ProtectionSettingsEngine.calculate(inp)
-        if (
-            result.delayed.is_valid
-            and result.instantaneous.is_valid
-            and result.thermal.is_adequate
-        ):
+        if result.delayed.is_valid and result.instantaneous.is_valid and result.thermal.is_adequate:
             assert result.overall_valid is True
 
     def test_delayed_invalid_makes_overall_invalid(self):
@@ -675,9 +653,7 @@ class TestOverallValidity:
 
     def test_thermal_inadequate_summary_note(self):
         """When thermal check fails, a summary note should mention it."""
-        inp = _make_input(
-            cross_section_mm2=10.0, ik3_max_beginning_a=50000.0
-        )
+        inp = _make_input(cross_section_mm2=10.0, ik3_max_beginning_a=50000.0)
         result = ProtectionSettingsEngine.calculate(inp)
         if not result.thermal.is_adequate:
             assert result.overall_valid is False

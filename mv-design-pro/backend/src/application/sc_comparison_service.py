@@ -15,21 +15,15 @@ INVARIANTS:
 from __future__ import annotations
 
 import logging
-from typing import Any
 from uuid import UUID
 
+from application.execution_engine.service import ExecutionEngineService
 from domain.execution import (
-    ExecutionAnalysisType,
     RunStatus,
 )
 from domain.sc_comparison import (
     ShortCircuitComparison,
     build_comparison,
-)
-from application.execution_engine.service import ExecutionEngineService
-from application.execution_engine.errors import (
-    ResultSetNotFoundError,
-    RunNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -53,9 +47,7 @@ class AnalysisTypeMismatchError(ComparisonError):
     """ResultSets have different analysis types."""
 
     def __init__(self, type_a: str, type_b: str) -> None:
-        super().__init__(
-            f"Typy analiz nie zgadzają się: {type_a} vs {type_b}"
-        )
+        super().__init__(f"Typy analiz nie zgadzają się: {type_a} vs {type_b}")
         self.type_a = type_a
         self.type_b = type_b
 
@@ -64,9 +56,7 @@ class StudyCaseMismatchError(ComparisonError):
     """ResultSets belong to different study cases."""
 
     def __init__(self, case_a: str, case_b: str) -> None:
-        super().__init__(
-            f"Przypadki obliczeniowe nie zgadzają się: {case_a} vs {case_b}"
-        )
+        super().__init__(f"Przypadki obliczeniowe nie zgadzają się: {case_a} vs {case_b}")
         self.case_a = case_a
         self.case_b = case_b
 
@@ -75,9 +65,7 @@ class RunNotDoneError(ComparisonError):
     """Run is not in DONE status."""
 
     def __init__(self, run_id: str, status: str) -> None:
-        super().__init__(
-            f"Przebieg {run_id} ma status {status} — wymagany DONE"
-        )
+        super().__init__(f"Przebieg {run_id} ma status {status} — wymagany DONE")
         self.run_id = run_id
         self.status = status
 
@@ -198,9 +186,5 @@ class ScComparisonService:
     def list_comparisons(self, study_case_id: UUID) -> list[ShortCircuitComparison]:
         """List all comparisons for a study case, newest first."""
         comparison_ids = self._case_comparisons.get(study_case_id, [])
-        comparisons = [
-            self._comparisons[cid]
-            for cid in comparison_ids
-            if cid in self._comparisons
-        ]
+        comparisons = [self._comparisons[cid] for cid in comparison_ids if cid in self._comparisons]
         return list(reversed(comparisons))

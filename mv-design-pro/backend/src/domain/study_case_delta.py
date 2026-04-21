@@ -16,9 +16,9 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from network_model.core.snapshot import NetworkSnapshot
@@ -97,11 +97,7 @@ class DeltaOverlay:
     @property
     def total_changes(self) -> int:
         """Return total number of changes."""
-        return (
-            len(self.added_elements)
-            + len(self.removed_elements)
-            + len(self.modified_elements)
-        )
+        return len(self.added_elements) + len(self.removed_elements) + len(self.modified_elements)
 
     def token_for(self, element_id: str) -> DeltaOverlayToken:
         """

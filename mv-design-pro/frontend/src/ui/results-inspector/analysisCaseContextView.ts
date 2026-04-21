@@ -1,0 +1,215 @@
+import type {
+  AnalysisCaseContext,
+  AnalysisCaseReproducibility,
+  AnalysisCompletenessStatus,
+} from '../shared/analysisCaseContext';
+import { ANALYSIS_COMPLETENESS_LABELS } from '../shared/analysisCaseContext';
+
+export interface AnalysisInputMetadata {
+  snapshot_hash?: string | null;
+  case_id?: string | null;
+  options?: Record<string, unknown> | null;
+  analysis_case_context?: AnalysisCaseContext | null;
+  [key: string]: unknown;
+}
+
+export interface ReproducibilitySummary {
+  label: string;
+  value: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isCompletenessStatus(value: unknown): value is AnalysisCompletenessStatus {
+  return (
+    value === 'complete'
+    || value === 'partial'
+    || value === 'failed'
+    || value === 'not_applicable'
+  );
+}
+
+function assignDefined(target: Record<string, unknown>, source: Record<string, unknown>): void {
+  Object.entries(source).forEach(([key, value]) => {
+    if (value !== undefined) {
+      target[key] = value;
+    }
+  });
+}
+
+function normalizeOptionalString(value: unknown): string | null | undefined {
+  if (value === null) {
+    return null;
+  }
+  return isNonEmptyString(value) ? value : undefined;
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(isNonEmptyString);
+}
+
+function normalizeReproducibility(value: unknown): AnalysisCaseReproducibility {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  return value as AnalysisCaseReproducibility;
+}
+
+export function mergeAnalysisCaseContexts(
+  ...contexts: Array<AnalysisCaseContext | null | undefined>
+): AnalysisCaseContext | null {
+  const merged: Record<string, unknown> = {};
+  const mergedReproducibility: Record<string, unknown> = {};
+  let hasValue = false;
+  let hasReproducibility = false;
+
+  contexts.forEach((context) => {
+    if (!isRecord(context)) {
+      return;
+    }
+
+    hasValue = true;
+    assignDefined(merged, context);
+
+    if (isRecord(context.reproducibility)) {
+      hasReproducibility = true;
+      assignDefined(mergedReproducibility, context.reproducibility);
+    }
+  });
+
+  if (!hasValue) {
+    return null;
+  }
+
+  if (hasReproducibility) {
+    merged.reproducibility = mergedReproducibility;
+  }
+
+  if (
+    !isNonEmptyString(merged.case_ref)
+    || !isNonEmptyString(merged.run_ref)
+    || !isNonEmptyString(merged.proof_pack_ref)
+    || !isNonEmptyString(merged.quality_gate)
+    || !isCompletenessStatus(merged.completeness)
+  ) {
+    return null;
+  }
+
+  return {
+    case_ref: merged.case_ref,
+    case_kind: normalizeOptionalString(merged.case_kind),
+    rodzaj_przypadku: normalizeOptionalString(merged.rodzaj_przypadku),
+    snapshot_ref: normalizeOptionalString(merged.snapshot_ref) ?? null,
+    variant_ref: normalizeOptionalString(merged.variant_ref),
+    run_ref: merged.run_ref,
+    proof_pack_ref: merged.proof_pack_ref,
+    quality_gate: merged.quality_gate,
+    applicability_scope: normalizeStringArray(merged.applicability_scope),
+    completeness: merged.completeness,
+    completeness_legacy: normalizeOptionalString(merged.completeness_legacy),
+    missing_prerequisites: normalizeStringArray(merged.missing_prerequisites),
+    assumptions: isRecord(merged.assumptions)
+      ? (merged.assumptions as Record<string, string | null | undefined>)
+      : undefined,
+    lineage: isRecord(merged.lineage)
+      ? (merged.lineage as Record<string, string | null | undefined>)
+      : undefined,
+    reproducibility: normalizeReproducibility(merged.reproducibility),
+  };
+}
+
+export function getAnalysisCaseLabel(context?: AnalysisCaseContext | null): string | null {
+  if (!context) {
+    return null;
+  }
+
+  const candidates = [context.rodzaj_przypadku, context.case_kind, context.case_ref];
+  return candidates.find(isNonEmptyString) ?? null;
+}
+
+export function getCompletenessLabel(context?: AnalysisCaseContext | null): string | null {
+  if (!context) {
+    return null;
+  }
+
+  return [context.completeness, context.completeness_legacy].find(isNonEmptyString) ?? null;
+}
+
+export function getCompletenessDisplayLabel(context?: AnalysisCaseContext | null): string | null {
+  if (!context) {
+    return null;
+  }
+
+  if (context.completeness) {
+    return ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
+  }
+
+  return getCompletenessLabel(context);
+}
+
+export function getCompletenessTone(
+  completeness?: AnalysisCompletenessStatus | string | null,
+): 'info' | 'success' | 'warning' {
+  if (!isNonEmptyString(completeness)) {
+    return 'info';
+  }
+
+  const normalized = completeness.trim().toLowerCase();
+  if (normalized === 'complete' || normalized === 'ready') {
+    return 'success';
+  }
+
+  return 'warning';
+}
+
+export function formatProofPackRef(proofPackRef?: string | null): string | null {
+  if (!isNonEmptyString(proofPackRef)) {
+    return null;
+  }
+
+  return proofPackRef.length <= 36 ? proofPackRef : `${proofPackRef.slice(0, 33)}...`;
+}
+
+export function getReproducibilitySummary(
+  context?: AnalysisCaseContext | null,
+): ReproducibilitySummary | null {
+  const reproducibility = context?.reproducibility;
+  if (!isRecord(reproducibility)) {
+    return null;
+  }
+
+  const preferredKeys: Array<[keyof AnalysisCaseReproducibility, string]> = [
+    ['results_contract_version', 'Kontrakt'],
+    ['solver_family', 'Solver'],
+    ['solver_version', 'Wersja solvera'],
+    ['proof_renderer_version', 'Proof pack'],
+  ];
+
+  for (const [key, label] of preferredKeys) {
+    const value = reproducibility[key];
+    if (isNonEmptyString(value)) {
+      return { label, value };
+    }
+  }
+
+  for (const [key, value] of Object.entries(reproducibility)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return {
+        label: key.replace(/_/g, ' '),
+        value: String(value),
+      };
+    }
+  }
+
+  return null;
+}

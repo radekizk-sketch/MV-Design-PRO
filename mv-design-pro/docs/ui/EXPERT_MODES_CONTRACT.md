@@ -1,15 +1,15 @@
-# Expert Modes Contract
+﻿# Expert Modes Contract
 
 **Version:** 1.0  
 **Status:** CANONICAL  
 **Phase:** 1.z  
-**Standard:** DIgSILENT PowerFactory / ETAP UI Parity — **SUPERIOR**
+**Standard:** DIgSILENT benchmark / benchmark UI Parity â€” **SUPERIOR**
 
 ---
 
 ## 1. Cel dokumentu
 
-Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI do roli użytkownika **BEZ ukrywania danych**.
+Definicja **Expert Modes** â€” systemu trybĂłw eksperckich dostosowujÄ…cych UI do roli uĹĽytkownika **BEZ ukrywania danych**.
 
 **NO SIMPLIFICATION RULE:** Brak "basic UI" i "advanced UI". Jeden interfejs z opcjami.
 
@@ -21,7 +21,7 @@ Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI d
 - **Focus:** Status, Violations, Quick Actions
 - **Default Columns:** Name, Status, Voltage, Violation
 - **Edit Rights:** READ_ONLY
-- **Proof Access:** NONE (ukryte, ale dostępne przez menu)
+- **Proof Access:** NONE (ukryte, ale dostÄ™pne przez menu)
 
 ### 2.2 Designer Mode
 - **Focus:** Parameters, Catalog, Case Config
@@ -31,7 +31,7 @@ Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI d
 
 ### 2.3 Analyst Mode
 - **Focus:** Results, Comparisons, Charts
-- **Default Columns:** WSZYSTKIE (włącznie z X/R, Contributions)
+- **Default Columns:** WSZYSTKIE (wĹ‚Ä…cznie z X/R, Contributions)
 - **Edit Rights:** READ_ONLY
 - **Proof Access:** VIEW + EXPORT
 
@@ -40,49 +40,49 @@ Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI d
 - **Default Columns:** WSZYSTKIE + Metadata (Timestamp, User, Version)
 - **Edit Rights:** READ_ONLY
 - **Proof Access:** FULL (VIEW + EXPORT + VERIFY)
-- **Special:** Proof P11 domyślnie otwarty
+- **Special:** Proof P11 domyĹ›lnie otwarty
 
 ---
 
 ## 3. NO SIMPLIFICATION RULE (INVARIANT)
 
 1. NIE istnieje "Basic Mode" z okrojonym UI
-2. NIE istnieje "Advanced Mode" z pełnym UI
-3. ISTNIEJE JEDEN UI z opcjami widoczności
-4. Expert Modes zmieniają DOMYŚLNE ustawienia, NIE ukrywają
-5. Użytkownik ZAWSZE może pokazać ukryte sekcje/kolumny
+2. NIE istnieje "Advanced Mode" z peĹ‚nym UI
+3. ISTNIEJE JEDEN UI z opcjami widocznoĹ›ci
+4. Expert Modes zmieniajÄ… DOMYĹšLNE ustawienia, NIE ukrywajÄ…
+5. UĹĽytkownik ZAWSZE moĹĽe pokazaÄ‡ ukryte sekcje/kolumny
 
-**VIOLATION = REGRESJA wymagająca HOTFIX**
+**VIOLATION = REGRESJA wymagajÄ…ca HOTFIX**
 
 ---
 
-## 4. Expert Modes ≠ Access Control
+## 4. Expert Modes â‰  Access Control
 
 | Expert Modes | Access Control |
 |--------------|----------------|
-| Zmieniają *domyślne widoczności* | Blokują *dostęp* |
-| Użytkownik może pokazać ukryte | Użytkownik NIE może odblokować |
+| ZmieniajÄ… *domyĹ›lne widocznoĹ›ci* | BlokujÄ… *dostÄ™p* |
+| UĹĽytkownik moĹĽe pokazaÄ‡ ukryte | UĹĽytkownik NIE moĹĽe odblokowaÄ‡ |
 | UX convenience | Security enforcement |
 | Frontend-only | Backend-enforced |
 
 ---
 
-## 5. ETAP / PowerFactory Parity
+## 5. benchmark / benchmark Parity
 
-| Feature | ETAP | PowerFactory | MV-DESIGN-PRO | Status |
+| Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| User Modes | ✗ | ✗ | ✓ (4 modes) | ➕ SUPERIOR |
-| Mode-based Visibility | ✗ | ✗ | ✓ | ➕ SUPERIOR |
-| NO SIMPLIFICATION RULE | N/A | N/A | ✓ | ➕ SUPERIOR |
+| User Modes | âś— | âś— | âś“ (4 modes) | âž• SUPERIOR |
+| Mode-based Visibility | âś— | âś— | âś“ | âž• SUPERIOR |
+| NO SIMPLIFICATION RULE | N/A | N/A | âś“ | âž• SUPERIOR |
 
-**Ocena:** MV-DESIGN-PRO Expert Modes = SUPERIOR feature ✅
+**Ocena:** MV-DESIGN-PRO Expert Modes = SUPERIOR feature âś…
 
 ---
 
 ## 6. Compliance Checklist
 
 - [ ] 4 tryby: Operator, Designer, Analyst, Auditor
-- [ ] NO SIMPLIFICATION RULE (wszystko dostępne)
+- [ ] NO SIMPLIFICATION RULE (wszystko dostÄ™pne)
 - [ ] Column Picker dla WSZYSTKICH kolumn
 - [ ] Edit Rights = FULL tylko dla Designer
 - [ ] Zmiana trybu zachowuje kontekst
@@ -90,3 +90,4 @@ Definicja **Expert Modes** — systemu trybów eksperckich dostosowujących UI d
 ---
 
 **KONIEC KONTRAKTU EXPERT MODES**
+

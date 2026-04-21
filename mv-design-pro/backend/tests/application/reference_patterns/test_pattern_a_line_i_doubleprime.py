@@ -16,32 +16,26 @@ CANONICAL ALIGNMENT:
 """
 
 import json
-import pytest
 
+import pytest
+from application.analyses.protection.line_overcurrent_setting import (
+    ConductorData,
+    ConductorMaterial,
+    LineOvercurrentSettingAnalyzer,
+    LineOvercurrentSettingInput,
+    SPZConfig,
+    SPZMode,
+)
 from application.reference_patterns import (
-    # Types
-    ReferenceVerdict,
-    ReferencePatternResult,
-    # Helpers
-    stable_json,
-    compare_results_deterministic,
     # Pattern A
     PATTERN_ID,
     PATTERN_NAME_PL,
     LineIDoublePrimeReferencePattern,
+    compare_results_deterministic,
     run_pattern_a,
-    fixture_to_input,
+    # Helpers
+    stable_json,
 )
-from application.analyses.protection.line_overcurrent_setting import (
-    LineOvercurrentSettingInput,
-    LineOvercurrentSettingAnalyzer,
-    ConductorData,
-    ConductorMaterial,
-    SPZConfig,
-    SPZMode,
-    LocalGenerationConfig,
-)
-
 
 # =============================================================================
 # FIXTURES
@@ -253,7 +247,9 @@ class TestVerdictNiezgodne:
 
         assert result.artifacts["window_valid"] is False
         # I_min > I_max
-        assert result.artifacts["window_i_min_primary_a"] > result.artifacts["window_i_max_primary_a"]
+        assert (
+            result.artifacts["window_i_min_primary_a"] > result.artifacts["window_i_max_primary_a"]
+        )
 
     def test_summary_pl_for_niezgodne(
         self,
@@ -620,7 +616,7 @@ class TestFixtureLoading:
 
     def test_fixture_to_input_conversion(self):
         """Test fixture to input conversion."""
-        from application.reference_patterns import load_fixture, fixture_to_input
+        from application.reference_patterns import fixture_to_input, load_fixture
 
         fixture = load_fixture("line_i_doubleprime_case_a.json")
         input_data = fixture_to_input(fixture)
@@ -915,7 +911,9 @@ class TestCaseSpecificArtifacts:
         assert result.artifacts["i_max_sens_primary_a"] == pytest.approx(3466.67, rel=0.01)
 
         # Conflict: I_min > I_max
-        assert result.artifacts["window_i_min_primary_a"] > result.artifacts["window_i_max_primary_a"]
+        assert (
+            result.artifacts["window_i_min_primary_a"] > result.artifacts["window_i_max_primary_a"]
+        )
 
     def test_case_C_narrow_window(self, pattern: LineIDoublePrimeReferencePattern):
         """Test case C artifacts show narrow window correctly."""
@@ -930,7 +928,6 @@ class TestCaseSpecificArtifacts:
 
         # Window width ≈ 80 A
         window_width = (
-            result.artifacts["window_i_max_primary_a"]
-            - result.artifacts["window_i_min_primary_a"]
+            result.artifacts["window_i_max_primary_a"] - result.artifacts["window_i_min_primary_a"]
         )
         assert window_width == pytest.approx(80.0, rel=0.02)

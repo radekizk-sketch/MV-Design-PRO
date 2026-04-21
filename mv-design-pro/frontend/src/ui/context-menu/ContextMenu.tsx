@@ -14,6 +14,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { clsx } from 'clsx';
+import { getOperatingModeLabel, normalizeOperatingMode } from '../operatingMode';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
 import { getContextMenuHeader } from './actions';
 
@@ -23,6 +24,7 @@ interface ContextMenuProps {
   y: number;
   elementType: ElementType;
   elementName: string;
+  headerText?: string;
   mode: OperatingMode;
   actions: ContextMenuAction[];
   onClose: () => void;
@@ -39,11 +41,13 @@ export function ContextMenu({
   y,
   elementType,
   elementName,
+  headerText,
   mode,
   actions,
   onClose,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const runtimeMode = normalizeOperatingMode(mode);
 
   // Close on click outside
   useEffect(() => {
@@ -102,7 +106,7 @@ export function ContextMenu({
       {/* Header */}
       <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
         <span className="text-sm font-medium text-gray-800">
-          {getContextMenuHeader(elementType, elementName)}
+          {headerText ?? getContextMenuHeader(elementType, elementName)}
         </span>
       </div>
 
@@ -112,7 +116,7 @@ export function ContextMenu({
           .filter((action) => action.visible)
           .map((action) => (
             <ContextMenuItem
-              key={action.id}
+              key={action.actionKey ?? action.id}
               action={action}
               onClick={() => handleActionClick(action)}
             />
@@ -124,14 +128,11 @@ export function ContextMenu({
         <span
           className={clsx(
             'text-xs',
-            mode === 'MODEL_EDIT' && 'text-blue-600',
-            mode === 'CASE_CONFIG' && 'text-yellow-600',
-            mode === 'RESULT_VIEW' && 'text-green-600'
+            runtimeMode === 'MODEL_EDIT' && 'text-blue-600',
+            runtimeMode === 'RESULT_VIEW' && 'text-green-600'
           )}
         >
-          {mode === 'MODEL_EDIT' && 'Tryb: Edycja modelu'}
-          {mode === 'CASE_CONFIG' && 'Tryb: Konfiguracja'}
-          {mode === 'RESULT_VIEW' && 'Tryb: Wyniki (tylko odczyt)'}
+          Tryb: {getOperatingModeLabel(mode)}
         </span>
       </div>
     </div>
@@ -179,7 +180,7 @@ function ContextMenuItem({ action, onClick }: ContextMenuItemProps) {
           <div className="bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-[180px]">
             {action.submenu!.map((subAction) => (
               <ContextMenuItem
-                key={subAction.id}
+                key={subAction.actionKey ?? subAction.id}
                 action={subAction}
                 onClick={() => {
                   if (subAction.handler) {

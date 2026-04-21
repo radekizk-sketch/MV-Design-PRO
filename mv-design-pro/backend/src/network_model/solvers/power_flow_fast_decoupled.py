@@ -35,8 +35,6 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import numpy as np
-from scipy import linalg
-
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolution
 from network_model.solvers.power_flow_newton_internal import (
@@ -50,6 +48,7 @@ from network_model.solvers.power_flow_newton_internal import (
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
+from scipy import linalg
 
 
 @dataclass
@@ -535,7 +534,9 @@ class PowerFlowFastDecoupledSolver:
         # LU factorization (scipy uses LAPACK routines)
         try:
             b_prime_lu = linalg.lu_factor(b_prime) if b_prime.size > 0 else None
-            b_double_prime_lu = linalg.lu_factor(b_double_prime) if b_double_prime.size > 0 else None
+            b_double_prime_lu = (
+                linalg.lu_factor(b_double_prime) if b_double_prime.size > 0 else None
+            )
         except linalg.LinAlgError:
             # Singular matrix - return early with failure
             trace.append(
@@ -619,7 +620,7 @@ class PowerFlowFastDecoupledSolver:
             d_p = d_p_full[non_slack_indices]
 
             # Q mismatch for PQ buses only
-            d_q = q_spec[active_pq] - q_calc[active_pq]
+            q_spec[active_pq] - q_calc[active_pq]
 
             # --- P-θ half-iteration ---
             delta_theta = np.zeros(n)

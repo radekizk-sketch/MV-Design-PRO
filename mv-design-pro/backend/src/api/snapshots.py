@@ -2,11 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
 from application.snapshots import SnapshotService
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter()
 

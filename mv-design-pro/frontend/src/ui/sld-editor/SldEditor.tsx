@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md: Full SLD editing experience
- * - powerfactory_ui_parity.md: ≥110% PowerFactory UX
+ * - ui_canonical_parity.md: ≥110% Canonical UX
  * - P30a: Full UNDO/REDO integration
  *
  * FEATURES:

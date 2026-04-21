@@ -8,8 +8,7 @@ export type { WizardState, StepState, ReadinessMatrix } from './wizardStateMachi
 export { useWizardStore, useCurrentStepId, useCanProceedForward, useStepIssues, useTransitionBlockers } from './useWizardStore';
 export type { WizardStoreState, ApplyStepResponse, WizardIssueApi } from './useWizardStore';
 
-// --- Switchgear wizard (RUN #3G) ---
-export { SwitchgearWizardPage } from './switchgear';
+// --- Switchgear internals (RUN #3G) ---
 export type {
   StationListRowV1,
   StationEditDataV1,

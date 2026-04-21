@@ -2,7 +2,7 @@
  * Testy algorytmu porównania śladów obliczeń (diffTrace)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Deterministyczne porównanie
+ * - ui_canonical_parity.md: Deterministyczne porównanie
  * - SYSTEM_SPEC.md: READ-ONLY, brak obliczeń
  *
  * TEST COVERAGE:

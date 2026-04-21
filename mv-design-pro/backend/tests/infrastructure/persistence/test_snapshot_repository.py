@@ -2,9 +2,6 @@ from __future__ import annotations
 
 import json
 
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-
 from infrastructure.persistence.db import (
     create_engine_from_url,
     create_session_factory,
@@ -14,6 +11,8 @@ from infrastructure.persistence.models import _canonicalize
 from infrastructure.persistence.repositories import SnapshotRepository
 from network_model.core import Branch, BranchType, NetworkGraph, Node, NodeType
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta, create_network_snapshot
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 NETWORK_MODEL_ID = "model-1"
 
@@ -128,8 +127,6 @@ def test_snapshot_json_is_deterministic_and_json_safe() -> None:
         {"sid": "snap-json"},
     ).scalar_one()
 
-    expected = json.dumps(
-        _canonicalize(snapshot.to_dict()), sort_keys=True, separators=(",", ":")
-    )
+    expected = json.dumps(_canonicalize(snapshot.to_dict()), sort_keys=True, separators=(",", ":"))
     assert raw_payload == expected
     session.close()

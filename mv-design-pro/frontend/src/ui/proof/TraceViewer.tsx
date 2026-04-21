@@ -2,7 +2,7 @@
  * TraceViewer — Główny widok śladu obliczeń (3-panelowy układ)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: 3-panelowy układ (TOC | Content | Metadata)
+ * - ui_canonical_parity.md: 3-panelowy układ (TOC | Content | Metadata)
  * - wizard_screens.md: RESULT_VIEW mode, Polish labels
  * - SYSTEM_SPEC.md: READ-ONLY result display
  *

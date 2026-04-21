@@ -122,7 +122,10 @@ def _eq(
 def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
     """Shorthand to create a SymbolDefinition."""
     return SymbolDefinition(
-        symbol=symbol, unit=unit, description_pl=desc, mapping_key=key,
+        symbol=symbol,
+        unit=unit,
+        description_pl=desc,
+        mapping_key=key,
     )
 
 
@@ -172,28 +175,26 @@ class ProtectionSettingsProofPack:
             derivation="- * A = A",
         )
         unit_checks_all.append(uc1)
-        sensitivity_ratio = (
-            data.ik2_min_end_a / data.i_delayed_a
-            if data.i_delayed_a > 0
-            else 0.0
+        sensitivity_ratio = data.ik2_min_end_a / data.i_delayed_a if data.i_delayed_a > 0 else 0.0
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("PROT", 1),
+                step_number=1,
+                title_pl="Dobór nastawy zabezpieczenia zwłocznego I>",
+                equation=eq1,
+                input_values=(
+                    _pv("k_b", data.k_b, "-", "k_b"),
+                    _pv("I_{obc,max}", data.i_load_max_a, "A", "i_load_max_a"),
+                    _pv("\\Delta t", data.delta_t_s, "s", "delta_t_s"),
+                ),
+                substitution_latex=(
+                    f"$$I_{{>}} = {data.k_b} \\cdot {data.i_load_max_a:.1f}"
+                    f" = {data.i_delayed_a:.1f} \\; \\mathrm{{A}}$$"
+                ),
+                result=_pv("I_{>}", data.i_delayed_a, "A", "i_delayed_a"),
+                unit_check=uc1,
+            )
         )
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("PROT", 1),
-            step_number=1,
-            title_pl="Dobór nastawy zabezpieczenia zwłocznego I>",
-            equation=eq1,
-            input_values=(
-                _pv("k_b", data.k_b, "-", "k_b"),
-                _pv("I_{obc,max}", data.i_load_max_a, "A", "i_load_max_a"),
-                _pv("\\Delta t", data.delta_t_s, "s", "delta_t_s"),
-            ),
-            substitution_latex=(
-                f"$$I_{{>}} = {data.k_b} \\cdot {data.i_load_max_a:.1f}"
-                f" = {data.i_delayed_a:.1f} \\; \\mathrm{{A}}$$"
-            ),
-            result=_pv("I_{>}", data.i_delayed_a, "A", "i_delayed_a"),
-            unit_check=uc1,
-        ))
 
         # ------------------------------------------------------------------
         # Step 2: Selectivity condition  I>> >= k_b * I_k,max,next
@@ -207,8 +208,12 @@ class ProtectionSettingsProofPack:
             [
                 _sym("I_{min,sel}", "A", "Min. nastawa selektywności", "i_min_sel_a"),
                 _sym("k_b", "-", "Współczynnik bezpieczeństwa", "k_b"),
-                _sym("I_{k,max,next}", "A", "Maks. prąd zwarciowy sąsiedniego pola",
-                     "ik_max_next_bus_a"),
+                _sym(
+                    "I_{k,max,next}",
+                    "A",
+                    "Maks. prąd zwarciowy sąsiedniego pola",
+                    "ik_max_next_bus_a",
+                ),
             ],
         )
         uc2 = UnitCheckResult(
@@ -219,24 +224,25 @@ class ProtectionSettingsProofPack:
             derivation="- * A = A",
         )
         unit_checks_all.append(uc2)
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("PROT", 2),
-            step_number=2,
-            title_pl="Warunek selektywności I>>",
-            equation=eq2,
-            input_values=(
-                _pv("k_b", data.k_b, "-", "k_b"),
-                _pv("I_{k,max,next}", data.ik_max_next_bus_a, "A",
-                     "ik_max_next_bus_a"),
-            ),
-            substitution_latex=(
-                f"$$I_{{>>}} \\geq {data.k_b} \\cdot "
-                f"{data.ik_max_next_bus_a:.1f} = "
-                f"{i_min_sel:.1f} \\; \\mathrm{{A}}$$"
-            ),
-            result=_pv("I_{min,sel}", i_min_sel, "A", "i_min_sel_a"),
-            unit_check=uc2,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("PROT", 2),
+                step_number=2,
+                title_pl="Warunek selektywności I>>",
+                equation=eq2,
+                input_values=(
+                    _pv("k_b", data.k_b, "-", "k_b"),
+                    _pv("I_{k,max,next}", data.ik_max_next_bus_a, "A", "ik_max_next_bus_a"),
+                ),
+                substitution_latex=(
+                    f"$$I_{{>>}} \\geq {data.k_b} \\cdot "
+                    f"{data.ik_max_next_bus_a:.1f} = "
+                    f"{i_min_sel:.1f} \\; \\mathrm{{A}}$$"
+                ),
+                result=_pv("I_{min,sel}", i_min_sel, "A", "i_min_sel_a"),
+                unit_check=uc2,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Step 3: Thermal withstand  I_th,dop = s * j_thn / sqrt(t_k)
@@ -268,25 +274,27 @@ class ProtectionSettingsProofPack:
             derivation="mm² * (A/mm²) / s^0.5 = A",
         )
         unit_checks_all.append(uc3)
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("PROT", 3),
-            step_number=3,
-            title_pl="Warunek wytrzymałości cieplnej I>>",
-            equation=eq3,
-            input_values=(
-                _pv("s", data.cross_section_mm2, "mm²", "cross_section_mm2"),
-                _pv("j_{thn}", data.j_thn, "A/mm²", "j_thn"),
-                _pv("k_{bth}", data.k_bth, "-", "k_bth"),
-                _pv("t_k", t_fault_inst, "s", "t_k_s"),
-            ),
-            substitution_latex=(
-                f"$$I_{{th,dop}} = \\frac{{{data.cross_section_mm2} "
-                f"\\cdot {data.j_thn}}}{{\\sqrt{{{t_fault_inst}}}}} = "
-                f"{i_th_calc:.0f} \\; \\mathrm{{A}}$$"
-            ),
-            result=_pv("I_{th,dop}", round(i_th_calc, 1), "A", "i_th_dop_a"),
-            unit_check=uc3,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("PROT", 3),
+                step_number=3,
+                title_pl="Warunek wytrzymałości cieplnej I>>",
+                equation=eq3,
+                input_values=(
+                    _pv("s", data.cross_section_mm2, "mm²", "cross_section_mm2"),
+                    _pv("j_{thn}", data.j_thn, "A/mm²", "j_thn"),
+                    _pv("k_{bth}", data.k_bth, "-", "k_bth"),
+                    _pv("t_k", t_fault_inst, "s", "t_k_s"),
+                ),
+                substitution_latex=(
+                    f"$$I_{{th,dop}} = \\frac{{{data.cross_section_mm2} "
+                    f"\\cdot {data.j_thn}}}{{\\sqrt{{{t_fault_inst}}}}} = "
+                    f"{i_th_calc:.0f} \\; \\mathrm{{A}}$$"
+                ),
+                result=_pv("I_{th,dop}", round(i_th_calc, 1), "A", "i_th_dop_a"),
+                unit_check=uc3,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Step 4: Sensitivity condition  I>> < I_k,min,bus / k_b
@@ -299,8 +307,7 @@ class ProtectionSettingsProofPack:
             "IRiESD / Hoppel",
             [
                 _sym("I_{max,cz}", "A", "Maks. nastawa czułości", "i_max_sens_a"),
-                _sym("I_{k,min,bus}", "A", "Min. prąd zwarciowy na szynach",
-                     "ik3_min_beginning_a"),
+                _sym("I_{k,min,bus}", "A", "Min. prąd zwarciowy na szynach", "ik3_min_beginning_a"),
                 _sym("k_b", "-", "Współczynnik bezpieczeństwa", "k_b"),
             ],
         )
@@ -312,23 +319,24 @@ class ProtectionSettingsProofPack:
             derivation="A / - = A",
         )
         unit_checks_all.append(uc4)
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("PROT", 4),
-            step_number=4,
-            title_pl="Warunek czułości I>>",
-            equation=eq4,
-            input_values=(
-                _pv("I_{k,min,bus}", data.ik3_min_beginning_a, "A",
-                     "ik3_min_beginning_a"),
-                _pv("k_b", data.k_b, "-", "k_b"),
-            ),
-            substitution_latex=(
-                f"$$I_{{>>}} < \\frac{{{data.ik3_min_beginning_a:.1f}}}"
-                f"{{{data.k_b}}} = {i_max_sens:.1f} \\; \\mathrm{{A}}$$"
-            ),
-            result=_pv("I_{max,cz}", round(i_max_sens, 1), "A", "i_max_sens_a"),
-            unit_check=uc4,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("PROT", 4),
+                step_number=4,
+                title_pl="Warunek czułości I>>",
+                equation=eq4,
+                input_values=(
+                    _pv("I_{k,min,bus}", data.ik3_min_beginning_a, "A", "ik3_min_beginning_a"),
+                    _pv("k_b", data.k_b, "-", "k_b"),
+                ),
+                substitution_latex=(
+                    f"$$I_{{>>}} < \\frac{{{data.ik3_min_beginning_a:.1f}}}"
+                    f"{{{data.k_b}}} = {i_max_sens:.1f} \\; \\mathrm{{A}}$$"
+                ),
+                result=_pv("I_{max,cz}", round(i_max_sens, 1), "A", "i_max_sens_a"),
+                unit_check=uc4,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Step 5: Final summary — feasible range
@@ -351,23 +359,25 @@ class ProtectionSettingsProofPack:
             computed_unit="A",
         )
         unit_checks_all.append(uc5)
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("PROT", 5),
-            step_number=5,
-            title_pl="Podsumowanie — zakres dopuszczalnych nastaw I>>",
-            equation=eq5,
-            input_values=(
-                _pv("I_{min,sel}", round(i_min_sel, 1), "A", "i_min_sel_a"),
-                _pv("I_{max,th}", round(i_max_thermal, 1), "A", "i_max_thermal_a"),
-                _pv("I_{max,cz}", round(i_max_sens, 1), "A", "i_max_sens_a"),
-            ),
-            substitution_latex=(
-                f"$${i_min_sel:.0f} \\leq {data.i_instantaneous_a:.0f} \\leq "
-                f"{min(i_max_thermal, i_max_sens):.0f}$$"
-            ),
-            result=_pv("I_{>>}", data.i_instantaneous_a, "A", "i_instantaneous_a"),
-            unit_check=uc5,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("PROT", 5),
+                step_number=5,
+                title_pl="Podsumowanie — zakres dopuszczalnych nastaw I>>",
+                equation=eq5,
+                input_values=(
+                    _pv("I_{min,sel}", round(i_min_sel, 1), "A", "i_min_sel_a"),
+                    _pv("I_{max,th}", round(i_max_thermal, 1), "A", "i_max_thermal_a"),
+                    _pv("I_{max,cz}", round(i_max_sens, 1), "A", "i_max_sens_a"),
+                ),
+                substitution_latex=(
+                    f"$${i_min_sel:.0f} \\leq {data.i_instantaneous_a:.0f} \\leq "
+                    f"{min(i_max_thermal, i_max_sens):.0f}$$"
+                ),
+                result=_pv("I_{>>}", data.i_instantaneous_a, "A", "i_instantaneous_a"),
+                unit_check=uc5,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Assemble document
@@ -392,9 +402,7 @@ class ProtectionSettingsProofPack:
                 "I_instantaneous_A": _pv(
                     "I_{>>}", data.i_instantaneous_a, "A", "i_instantaneous_a"
                 ),
-                "I_th_dop_A": _pv(
-                    "I_{th,dop}", data.i_th_dop_a, "A", "i_th_dop_a"
-                ),
+                "I_th_dop_A": _pv("I_{th,dop}", data.i_th_dop_a, "A", "i_th_dop_a"),
                 "sensitivity_ratio": _pv(
                     "k_{cz}", round(sensitivity_ratio, 2), "-", "sensitivity_ratio"
                 ),
@@ -405,10 +413,7 @@ class ProtectionSettingsProofPack:
         proof = ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.PROTECTION_OVERCURRENT,
-            title_pl=(
-                f"Dowód doboru nastaw zabezpieczeń I>/I>> — "
-                f"Linia {data.line_name}"
-            ),
+            title_pl=(f"Dowód doboru nastaw zabezpieczeń I>/I>> — " f"Linia {data.line_name}"),
             header=header,
             steps=steps,
             summary=summary,

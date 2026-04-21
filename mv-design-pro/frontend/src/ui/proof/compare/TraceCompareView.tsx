@@ -2,7 +2,7 @@
  * TraceCompareView — Główny widok porównania śladów obliczeń
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie Case/Run A vs B
+ * - ui_canonical_parity.md: Porównanie Case/Run A vs B
  * - wizard_screens.md: Polish labels
  * - SYSTEM_SPEC.md: READ-ONLY display
  *

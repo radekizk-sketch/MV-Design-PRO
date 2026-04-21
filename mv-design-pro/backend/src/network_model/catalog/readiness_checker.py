@@ -24,29 +24,39 @@ from domain.readiness import (
     build_readiness_profile,
 )
 from network_model.catalog.types import (
-    MATERIALIZATION_CONTRACTS,
     CatalogNamespace,
 )
 from network_model.core.snapshot import NetworkSnapshot
-
 
 # ---------------------------------------------------------------------------
 # Technical element namespace detection
 # ---------------------------------------------------------------------------
 
 # Element types that REQUIRE catalog binding
-TECHNICAL_ELEMENT_TYPES: frozenset[str] = frozenset({
-    "LINE", "CABLE", "OVERHEAD_LINE",
-    "TRANSFORMER", "TRANSFORMER_2W",
-    "CIRCUIT_BREAKER", "DISCONNECTOR", "LOAD_SWITCH",
-    "SWITCH", "FUSE",
-    "CT", "VT",
-    "LOAD",
-    "PV_INVERTER", "BESS_INVERTER",
-    "GENERATOR", "INVERTER",
-    "LV_CABLE",
-    "RELAY", "PROTECTION_DEVICE",
-})
+TECHNICAL_ELEMENT_TYPES: frozenset[str] = frozenset(
+    {
+        "LINE",
+        "CABLE",
+        "OVERHEAD_LINE",
+        "TRANSFORMER",
+        "TRANSFORMER_2W",
+        "CIRCUIT_BREAKER",
+        "DISCONNECTOR",
+        "LOAD_SWITCH",
+        "SWITCH",
+        "FUSE",
+        "CT",
+        "VT",
+        "LOAD",
+        "PV_INVERTER",
+        "BESS_INVERTER",
+        "GENERATOR",
+        "INVERTER",
+        "LV_CABLE",
+        "RELAY",
+        "PROTECTION_DEVICE",
+    }
+)
 
 # Mapping of element branch_type to expected catalog namespace
 BRANCH_TYPE_TO_NAMESPACE: dict[str, str] = {
@@ -120,18 +130,16 @@ def _check_sources(graph: Any, issues: list[ReadinessIssueV1]) -> None:
             source_nodes.append(n)
 
     if not source_nodes:
-        # Check if there are any nodes at all
-        if len(graph.nodes) > 0:
-            issues.append(
-                ReadinessIssueV1(
-                    code="source.grid_supply_missing",
-                    area=ReadinessAreaV1.SOURCES,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl="Brak źródła zasilania sieciowego (GPZ)",
-                    fix_hint_pl="Dodaj źródło zasilania w kreatorze",
-                    wizard_step="K2",
-                )
+        issues.append(
+            ReadinessIssueV1(
+                code="source.grid_supply_missing",
+                area=ReadinessAreaV1.SOURCES,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl="Brak źródła zasilania sieciowego (GPZ)",
+                fix_hint_pl="Dodaj źródło zasilania w kreatorze",
+                wizard_step="K2",
             )
+        )
 
     for node in source_nodes:
         node_dict = node.to_dict() if hasattr(node, "to_dict") else {}
@@ -179,7 +187,7 @@ def _check_branches(graph: Any, issues: list[ReadinessIssueV1]) -> None:
         if _is_technical_branch(branch_type):
             binding = branch_dict.get("catalog_binding")
             if binding is None:
-                expected_ns = BRANCH_TYPE_TO_NAMESPACE.get(branch_type, "")
+                BRANCH_TYPE_TO_NAMESPACE.get(branch_type, "")
                 issues.append(
                     ReadinessIssueV1(
                         code="trunk.catalog_missing",
@@ -327,7 +335,7 @@ def _check_nodes(graph: Any, issues: list[ReadinessIssueV1]) -> None:
 
 def _check_topology(graph: Any, issues: list[ReadinessIssueV1]) -> None:
     """Check topology for basic connectivity."""
-    if len(graph.nodes) > 0 and len(graph.branches) == 0:
+    if len(graph.branches) == 0:
         issues.append(
             ReadinessIssueV1(
                 code="trunk.segment_missing",
@@ -342,8 +350,11 @@ def _check_topology(graph: Any, issues: list[ReadinessIssueV1]) -> None:
 def _is_technical_branch(branch_type: str) -> bool:
     """Check if a branch type is a technical element requiring catalog."""
     return branch_type in (
-        "LINE", "CABLE", "OVERHEAD_LINE",
-        "TRANSFORMER", "TRANSFORMER_2W",
+        "LINE",
+        "CABLE",
+        "OVERHEAD_LINE",
+        "TRANSFORMER",
+        "TRANSFORMER_2W",
     )
 
 
@@ -373,9 +384,9 @@ def is_analysis_ready(
         return profile.load_flow_ready, list(profile.short_circuit_issues)
     elif analysis_type == "PROTECTION":
         return profile.protection_ready, [
-            i for i in profile.issues
-            if i.priority == ReadinessPriority.BLOCKER
-            and i.area == ReadinessAreaV1.PROTECTION
+            i
+            for i in profile.issues
+            if i.priority == ReadinessPriority.BLOCKER and i.area == ReadinessAreaV1.PROTECTION
         ]
     else:
         return False, [

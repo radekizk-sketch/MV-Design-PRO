@@ -14,9 +14,9 @@ INVARIANTS:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -25,6 +25,7 @@ from infrastructure.persistence.unit_of_work import UnitOfWork
 @dataclass(frozen=True)
 class InvalidationResult:
     """Result of an invalidation operation (P10a)."""
+
     project_id: UUID
     old_snapshot_id: str | None
     new_snapshot_id: str
@@ -98,7 +99,7 @@ class LifecycleService:
             new_snapshot_id=new_snapshot_id,
             cases_invalidated=cases_invalidated,
             runs_invalidated=runs_invalidated,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
     def invalidate_project_results(self, project_id: UUID) -> int:

@@ -1,7 +1,7 @@
 /**
  * PowerFlowOverlay — Warstwa nakładki wyników przepływu mocy na SLD
  *
- * CANONICAL: IEC 61082 / ETAP power flow result overlay
+ * CANONICAL: IEC 61082 / CANONICAL power flow result overlay
  *
  * FEATURES:
  * - Direction arrows (strzałki kierunku przepływu mocy)
@@ -17,7 +17,7 @@
 
 import React, { useMemo } from 'react';
 import { POWER_ARROW_SIZE } from './IndustrialAesthetics';
-import { CANONICAL_SLD_STYLES, ETAP_VOLTAGE_COLORS } from './sldEtapStyle';
+import { CANONICAL_SLD_STYLES, CANONICAL_VOLTAGE_COLORS } from './sldCanonicalStyle';
 
 // =============================================================================
 // TYPES
@@ -318,14 +318,14 @@ export const PowerFlowOverlay: React.FC<PowerFlowOverlayProps> = ({
 };
 
 /**
- * ETAP voltage color helper for SLD overlays.
- * Maps kV to ETAP voltage color (WN/SN/nN).
+ * CANONICAL voltage color helper for SLD overlays.
+ * Maps kV to CANONICAL voltage color (WN/SN/nN).
  */
 export function getOverlayVoltageColor(kV: number): string {
-  if (kV >= 110) return ETAP_VOLTAGE_COLORS.WN;
-  if (kV >= 6) return ETAP_VOLTAGE_COLORS.SN;
-  if (kV > 0) return ETAP_VOLTAGE_COLORS.nN;
-  return ETAP_VOLTAGE_COLORS.default;
+  if (kV >= 110) return CANONICAL_VOLTAGE_COLORS.WN;
+  if (kV >= 6) return CANONICAL_VOLTAGE_COLORS.SN;
+  if (kV > 0) return CANONICAL_VOLTAGE_COLORS.nN;
+  return CANONICAL_VOLTAGE_COLORS.default;
 }
 
 export default PowerFlowOverlay;

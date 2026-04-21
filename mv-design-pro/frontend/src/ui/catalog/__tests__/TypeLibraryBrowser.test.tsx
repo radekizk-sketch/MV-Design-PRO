@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { TypeLibraryBrowser } from '../TypeLibraryBrowser';
@@ -17,14 +17,14 @@ const TAB_LABELS = [
   'Typy aparatury SN',
   'Typy aparatury nN',
   'Typy kabli nN',
-  'Typy obciazen',
-  'Typy przekladnikow pradowych',
-  'Typy przekladnikow napieciowych',
-  'Typy przekladnikow pomiarowych',
-  'Typy falownikow PV',
-  'Typy falownikow BESS',
-  'Typy konwerterow',
-  'Typy zabezpieczen',
+  'Typy obciążeń',
+  'Typy przekładników prądowych',
+  'Typy przekładników napięciowych',
+  'Typy przekładników pomiarowych',
+  'Typy falowników źródeł fotowoltaicznych',
+  'Typy falowników magazynów energii',
+  'Typy konwerterów',
+  'Typy zabezpieczeń',
 ] as const;
 
 const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
@@ -79,8 +79,8 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
     {
       id: 'source-001',
       name: 'GPZ 110/15 kV',
-      manufacturer: 'OSD Pelnoc',
-      operator_name: 'OSD Pelnoc',
+      manufacturer: 'OSD Północ',
+      operator_name: 'OSD Północ',
       supply_role: 'GPZ',
       short_circuit_model: 'THEVENIN',
       earthing_system: 'RESISTIVE',
@@ -156,18 +156,18 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   LOAD: [
     {
       id: 'load-001',
-      name: 'Odbior przemyslowy',
-      manufacturer: 'Zaklad A',
+      name: 'Odbiór przemysłowy',
+      manufacturer: 'Zakład A',
       p_kw: 1800,
       q_kvar: 540,
       cos_phi: 0.96,
-      profile_id: 'staly',
+      profile_id: 'stały',
     },
   ],
   CT: [
     {
       id: 'ct-001',
-      name: 'CT 400/1 A',
+      name: 'PP 400/1 A',
       manufacturer: 'MeasureTech',
       ratio_primary_a: 400,
       ratio_secondary_a: 1,
@@ -178,7 +178,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   VT: [
     {
       id: 'vt-001',
-      name: 'VT 15 kV',
+      name: 'PN 15 kV',
       manufacturer: 'MeasureTech',
       ratio_primary_v: 15000,
       ratio_secondary_v: 100,
@@ -189,7 +189,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   MEASUREMENT_TRANSFORMER: [
     {
       id: 'mt-001',
-      name: 'Zestaw CT/VT',
+      name: 'Zestaw pomiarowy',
       manufacturer: 'MeasureTech',
       measurement_kind: 'COMBINED',
       accuracy_class: '0.5 / 5P20',
@@ -199,7 +199,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   PV_INVERTER: [
     {
       id: 'pv-001',
-      name: 'Falownik PV 1.2 MW',
+      name: 'Falownik źródła fotowoltaicznego 1.2 MW',
       manufacturer: 'Solar Tech',
       model: 'PV-1200',
       p_max_kw: 1200,
@@ -210,7 +210,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   BESS_INVERTER: [
     {
       id: 'bess-001',
-      name: 'Falownik BESS 1 MW',
+      name: 'Falownik magazynu energii 1 MW',
       manufacturer: 'Storage Power',
       model: 'BESS-1000',
       p_charge_kw: 1000,
@@ -232,7 +232,7 @@ const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
   PROTECTION_DEVICE: [
     {
       id: 'prot-001',
-      name: 'Przekaznik pola liniowego',
+      name: 'Przekaźnik pola liniowego',
       manufacturer: 'RelayWorks',
       model: 'RW-615',
       series: '615',
@@ -266,7 +266,7 @@ describe('TypeLibraryBrowser', () => {
       expect(catalogApi.fetchTypesByCategory).toHaveBeenCalledWith('LINE');
     });
 
-    expect(screen.getByText('Biblioteka typow')).toBeInTheDocument();
+    expect(screen.getByText('Biblioteka typów')).toBeInTheDocument();
     expect(screen.getAllByRole('button').filter((button) => button.textContent?.includes('Typy'))).toHaveLength(16);
     for (const label of TAB_LABELS) {
       expect(screen.getByRole('button', { name: new RegExp(label, 'i') })).toBeInTheDocument();
@@ -300,7 +300,7 @@ describe('TypeLibraryBrowser', () => {
     expect(screen.getByText('Informacje podstawowe')).toBeInTheDocument();
     expect(screen.getByText('Dane katalogowe')).toBeInTheDocument();
     expect(screen.getByText('Operator')).toBeInTheDocument();
-    expect(screen.getAllByText('OSD Pelnoc').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('OSD Północ').length).toBeGreaterThan(1);
     expect(screen.getByText('Moc zwarciowa Sk3 [MVA]')).toBeInTheDocument();
     expect(screen.getByText('350')).toBeInTheDocument();
   });
@@ -335,7 +335,7 @@ describe('TypeLibraryBrowser', () => {
 
     expect(screen.getByPlaceholderText('Szukaj po nazwie, producencie lub ID...')).toHaveValue('');
     await waitFor(() => {
-      expect(screen.getByText('Wybierz typ z listy, aby zobaczyc szczegoly')).toBeInTheDocument();
+      expect(screen.getByText('Wybierz typ z listy, aby zobaczyć szczegóły')).toBeInTheDocument();
     });
   });
 
@@ -344,9 +344,9 @@ describe('TypeLibraryBrowser', () => {
     const onSelectType = vi.fn();
     render(<TypeLibraryBrowser initialTab="PROTECTION_DEVICE" onSelectType={onSelectType} />);
 
-    expect(await screen.findByText('Przekaznik pola liniowego')).toBeInTheDocument();
+    expect(await screen.findByText('Przekaźnik pola liniowego')).toBeInTheDocument();
 
-    await user.click(screen.getByText('Przekaznik pola liniowego'));
+    await user.click(screen.getByText('Przekaźnik pola liniowego'));
 
     expect(onSelectType).toHaveBeenCalledWith('prot-001', 'PROTECTION_DEVICE');
   });
@@ -358,17 +358,17 @@ describe('TypeLibraryBrowser', () => {
 
     render(<TypeLibraryBrowser />);
 
-    expect(screen.getByText('Ladowanie typow...')).toBeInTheDocument();
+    expect(screen.getByText('Ładowanie typów...')).toBeInTheDocument();
   });
 
   it('shows error state', async () => {
-    vi.mocked(catalogApi.fetchTypesByCategory).mockRejectedValueOnce(new Error('Blad API katalogow'));
+    vi.mocked(catalogApi.fetchTypesByCategory).mockRejectedValueOnce(new Error('Błąd API katalogów'));
 
     render(<TypeLibraryBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByText('Blad')).toBeInTheDocument();
-      expect(screen.getByText('Blad API katalogow')).toBeInTheDocument();
+      expect(screen.getByText('Błąd')).toBeInTheDocument();
+      expect(screen.getByText('Błąd API katalogów')).toBeInTheDocument();
     });
   });
 
@@ -378,7 +378,7 @@ describe('TypeLibraryBrowser', () => {
     render(<TypeLibraryBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByText('Brak typow w katalogu.')).toBeInTheDocument();
+      expect(screen.getByText('Brak typów w katalogu.')).toBeInTheDocument();
     });
   });
 });

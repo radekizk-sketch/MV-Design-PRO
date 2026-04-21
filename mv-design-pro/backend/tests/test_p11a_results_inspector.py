@@ -11,24 +11,23 @@ TESTS:
 7. Edge cases (empty results, missing data)
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from application.analysis_run.dtos import (
-    RunHeaderDTO,
-    ResultColumnDTO,
-    ResultTableMetaDTO,
-    ResultsIndexDTO,
-    BusResultsRowDTO,
-    BusResultsDTO,
-    BranchResultsRowDTO,
     BranchResultsDTO,
-    ShortCircuitRowDTO,
-    ShortCircuitResultsDTO,
+    BranchResultsRowDTO,
+    BusResultsDTO,
+    BusResultsRowDTO,
     ExtendedTraceDTO,
-    SldOverlayNodeDTO,
+    ResultColumnDTO,
+    ResultsIndexDTO,
+    ResultTableMetaDTO,
+    RunHeaderDTO,
+    ShortCircuitRowDTO,
     SldOverlayBranchDTO,
+    SldOverlayNodeDTO,
     SldResultOverlayDTO,
 )
 
@@ -41,7 +40,7 @@ class TestRunHeaderDTO:
         run_id = uuid4()
         project_id = uuid4()
         case_id = uuid4()
-        created_at = datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        created_at = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         dto = RunHeaderDTO(
             run_id=run_id,
@@ -69,7 +68,7 @@ class TestRunHeaderDTO:
         run_id = uuid4()
         project_id = uuid4()
         case_id = uuid4()
-        created_at = datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        created_at = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         dto = RunHeaderDTO(
             run_id=run_id,
@@ -100,7 +99,7 @@ class TestRunHeaderDTO:
             project_id=uuid4(),
             case_id=uuid4(),
             snapshot_id="snap-001",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status="FINISHED",
             result_state="VALID",
             solver_kind="PF",
@@ -163,9 +162,7 @@ class TestResultTableMetaDTO:
 
     def test_to_dict_serialization(self):
         """ResultTableMetaDTO must serialize to dict."""
-        columns = (
-            ResultColumnDTO(key="bus_id", label_pl="ID węzła"),
-        )
+        columns = (ResultColumnDTO(key="bus_id", label_pl="ID węzła"),)
         table = ResultTableMetaDTO(
             table_id="buses",
             label_pl="Wyniki węzłowe",
@@ -265,7 +262,7 @@ class TestBusResultsDTO:
 
     def test_determinism_same_inputs(self):
         """Same inputs must produce identical sorting."""
-        run_id = uuid4()
+        uuid4()
         rows = [
             BusResultsRowDTO(bus_id="bus-003", name="C-BUS", un_kv=20.0),
             BusResultsRowDTO(bus_id="bus-001", name="A-BUS", un_kv=20.0),
@@ -275,7 +272,7 @@ class TestBusResultsDTO:
         sorted1 = sorted(rows, key=lambda r: (r.name.lower(), r.bus_id))
         sorted2 = sorted(rows, key=lambda r: (r.name.lower(), r.bus_id))
 
-        for r1, r2 in zip(sorted1, sorted2):
+        for r1, r2 in zip(sorted1, sorted2, strict=False):
             assert r1.bus_id == r2.bus_id
             assert r1.name == r2.name
 
@@ -428,7 +425,9 @@ class TestExtendedTraceDTO:
             snapshot_id="snap-001",
             input_hash="abc123",
             white_box_trace=[{"key": "step1"}],
-            catalog_context=[{"element_id": "line-1", "catalog_binding": {"catalog_item_id": "KABEL-1"}}],
+            catalog_context=[
+                {"element_id": "line-1", "catalog_binding": {"catalog_item_id": "KABEL-1"}}
+            ],
         )
 
         d = dto.to_dict()
@@ -436,7 +435,9 @@ class TestExtendedTraceDTO:
         assert d["snapshot_id"] == "snap-001"
         assert d["input_hash"] == "abc123"
         assert d["white_box_trace"] == [{"key": "step1"}]
-        assert d["catalog_context"] == [{"element_id": "line-1", "catalog_binding": {"catalog_item_id": "KABEL-1"}}]
+        assert d["catalog_context"] == [
+            {"element_id": "line-1", "catalog_binding": {"catalog_item_id": "KABEL-1"}}
+        ]
 
 
 class TestSldOverlayNodeDTO:
@@ -533,9 +534,7 @@ class TestSldResultOverlayDTO:
             SldOverlayNodeDTO(symbol_id="s1", bus_id="n1", u_pu=0.99),
             SldOverlayNodeDTO(symbol_id="s2", bus_id="n2", u_pu=1.01),
         )
-        branches = (
-            SldOverlayBranchDTO(symbol_id="sb1", branch_id="b1", p_mw=3.0),
-        )
+        branches = (SldOverlayBranchDTO(symbol_id="sb1", branch_id="b1", p_mw=3.0),)
 
         dto = SldResultOverlayDTO(
             diagram_id=diagram_id,
@@ -592,8 +591,12 @@ class TestDeterminismRequirements:
         """Same BranchResultsDTO inputs must produce identical JSON."""
         run_id = uuid4()
         rows = (
-            BranchResultsRowDTO(branch_id="br-001", name="LINE-1", from_bus="a", to_bus="b", p_mw=3.0),
-            BranchResultsRowDTO(branch_id="br-002", name="LINE-2", from_bus="b", to_bus="c", p_mw=2.5),
+            BranchResultsRowDTO(
+                branch_id="br-001", name="LINE-1", from_bus="a", to_bus="b", p_mw=3.0
+            ),
+            BranchResultsRowDTO(
+                branch_id="br-002", name="LINE-2", from_bus="b", to_bus="c", p_mw=2.5
+            ),
         )
 
         dto1 = BranchResultsDTO(run_id=run_id, rows=rows)
@@ -605,9 +608,7 @@ class TestDeterminismRequirements:
         """Same SldResultOverlayDTO inputs must produce identical JSON."""
         diagram_id = uuid4()
         run_id = uuid4()
-        buses = (
-            SldOverlayNodeDTO(symbol_id="s1", bus_id="n1", u_pu=0.99),
-        )
+        buses = (SldOverlayNodeDTO(symbol_id="s1", bus_id="n1", u_pu=0.99),)
 
         dto1 = SldResultOverlayDTO(
             diagram_id=diagram_id,
@@ -706,7 +707,7 @@ class TestResultsIndexDTO:
             project_id=uuid4(),
             case_id=uuid4(),
             snapshot_id="snap-001",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status="FINISHED",
             result_state="VALID",
             solver_kind="PF",
@@ -741,7 +742,7 @@ class TestResultsIndexDTO:
             project_id=uuid4(),
             case_id=uuid4(),
             snapshot_id="snap-001",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             status="FINISHED",
             result_state="VALID",
             solver_kind="short_circuit_sn",
@@ -753,9 +754,7 @@ class TestResultsIndexDTO:
                 table_id="short-circuit",
                 label_pl="Wyniki zwarciowe",
                 row_count=1,
-                columns=(
-                    ResultColumnDTO(key="ikss_ka", label_pl="Ik''", unit="kA"),
-                ),
+                columns=(ResultColumnDTO(key="ikss_ka", label_pl="Ik''", unit="kA"),),
             ),
         )
 

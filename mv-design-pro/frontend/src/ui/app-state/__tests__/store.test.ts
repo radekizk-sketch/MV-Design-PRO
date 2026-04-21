@@ -57,10 +57,6 @@ describe('useAppStateStore', () => {
       expect(useAppStateStore.getState().activeAnalysisType).toBeNull();
     });
 
-    it('should start with case manager closed', () => {
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
-    });
-
     it('should start with issue panel closed', () => {
       expect(useAppStateStore.getState().issuePanelOpen).toBe(false);
     });
@@ -185,9 +181,9 @@ describe('useAppStateStore', () => {
   // ===========================================================================
 
   describe('setActiveMode', () => {
-    it('should set operating mode', () => {
+    it('should normalize legacy CASE_CONFIG into MODEL_EDIT', () => {
       useAppStateStore.getState().setActiveMode('CASE_CONFIG');
-      expect(useAppStateStore.getState().activeMode).toBe('CASE_CONFIG');
+      expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
     });
 
     it('should clear activeRunId when exiting RESULT_VIEW', () => {
@@ -207,11 +203,12 @@ describe('useAppStateStore', () => {
       expect(useAppStateStore.getState().activeRunId).toBe('run-1');
     });
 
-    it('should support all three operating modes', () => {
-      for (const mode of ['MODEL_EDIT', 'CASE_CONFIG', 'RESULT_VIEW'] as const) {
-        useAppStateStore.getState().setActiveMode(mode);
-        expect(useAppStateStore.getState().activeMode).toBe(mode);
-      }
+    it('should support writable and read-only shell states', () => {
+      useAppStateStore.getState().setActiveMode('MODEL_EDIT');
+      expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
+
+      useAppStateStore.getState().setActiveMode('RESULT_VIEW');
+      expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
     });
   });
 
@@ -237,9 +234,9 @@ describe('useAppStateStore', () => {
         expect(useAppStateStore.getState().canCalculate()).toBe(false);
       });
 
-      it('should return false when not in MODEL_EDIT mode', () => {
+      it('should return false when in RESULT_VIEW mode', () => {
         useAppStateStore.getState().setActiveCase('case-1', 'Case', 'ShortCircuitCase', 'NONE');
-        useAppStateStore.getState().setActiveMode('CASE_CONFIG');
+        useAppStateStore.getState().setActiveMode('RESULT_VIEW');
         expect(useAppStateStore.getState().canCalculate()).toBe(false);
       });
 
@@ -282,9 +279,9 @@ describe('useAppStateStore', () => {
         expect(useAppStateStore.getState().isModelEditable()).toBe(true);
       });
 
-      it('should return false in CASE_CONFIG mode', () => {
+      it('should normalize CASE_CONFIG to writable shell state', () => {
         useAppStateStore.getState().setActiveMode('CASE_CONFIG');
-        expect(useAppStateStore.getState().isModelEditable()).toBe(false);
+        expect(useAppStateStore.getState().isModelEditable()).toBe(true);
       });
 
       it('should return false in RESULT_VIEW mode', () => {
@@ -299,7 +296,7 @@ describe('useAppStateStore', () => {
         expect(useAppStateStore.getState().isCaseConfigEditable()).toBe(true);
       });
 
-      it('should return true in CASE_CONFIG mode', () => {
+      it('should remain editable for compatibility alias CASE_CONFIG', () => {
         useAppStateStore.getState().setActiveMode('CASE_CONFIG');
         expect(useAppStateStore.getState().isCaseConfigEditable()).toBe(true);
       });
@@ -321,33 +318,6 @@ describe('useAppStateStore', () => {
         useAppStateStore.getState().setActiveMode('CASE_CONFIG');
         expect(useAppStateStore.getState().isReadOnly()).toBe(false);
       });
-    });
-  });
-
-  // ===========================================================================
-  // UI Toggles
-  // ===========================================================================
-
-  describe('toggleCaseManager', () => {
-    it('should toggle case manager panel', () => {
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
-
-      useAppStateStore.getState().toggleCaseManager();
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      useAppStateStore.getState().toggleCaseManager();
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
-    });
-
-    it('should accept explicit open parameter', () => {
-      useAppStateStore.getState().toggleCaseManager(true);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      useAppStateStore.getState().toggleCaseManager(true);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      useAppStateStore.getState().toggleCaseManager(false);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
     });
   });
 
@@ -421,7 +391,6 @@ describe('useAppStateStore', () => {
       useAppStateStore.getState().setActiveRun('run-1');
       useAppStateStore.getState().setActiveSnapshot('snap-1');
       useAppStateStore.getState().setActiveAnalysisType('SHORT_CIRCUIT');
-      useAppStateStore.getState().toggleCaseManager(true);
       useAppStateStore.getState().toggleIssuePanel(true);
 
       // Reset
@@ -438,7 +407,6 @@ describe('useAppStateStore', () => {
       expect(state.activeMode).toBe('MODEL_EDIT');
       expect(state.activeRunId).toBeNull();
       expect(state.activeAnalysisType).toBeNull();
-      expect(state.caseManagerOpen).toBe(false);
       expect(state.issuePanelOpen).toBe(false);
     });
   });

@@ -125,14 +125,24 @@ class TestPermutationInvariance:
         }
 
         a = build_trace_artifact_v2(
-            trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-            math_spec_version="1.0.0", snapshot_hash="s", run_hash="r",
-            inputs=inputs_a, equation_steps=[], outputs={},
+            trace_id="t1",
+            analysis_type=AnalysisTypeV2.SC,
+            math_spec_version="1.0.0",
+            snapshot_hash="s",
+            run_hash="r",
+            inputs=inputs_a,
+            equation_steps=[],
+            outputs={},
         )
         b = build_trace_artifact_v2(
-            trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-            math_spec_version="1.0.0", snapshot_hash="s", run_hash="r",
-            inputs=inputs_b, equation_steps=[], outputs={},
+            trace_id="t1",
+            analysis_type=AnalysisTypeV2.SC,
+            math_spec_version="1.0.0",
+            snapshot_hash="s",
+            run_hash="r",
+            inputs=inputs_b,
+            equation_steps=[],
+            outputs={},
         )
         assert a.trace_signature == b.trace_signature
 

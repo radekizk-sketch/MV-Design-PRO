@@ -9,9 +9,10 @@ describe('CreatorToolbar V2', () => {
     const onToolChange = vi.fn();
     const { container } = render(
       <CreatorToolbar
-        activeTool={'continue_trunk'}
+        activeTool={'continue_trunk_segment_sn'}
         onToolChange={onToolChange}
         hasSource={true}
+        hasCanonicalTrunkStart={true}
         hasRing={true}
       />,
     );
@@ -26,19 +27,20 @@ describe('CreatorToolbar V2', () => {
         activeTool={null}
         onToolChange={onToolChange}
         hasSource={true}
+        hasCanonicalTrunkStart={true}
         hasRing={true}
       />,
     );
 
     expect(screen.getByTestId('creator-tool-select')).toBeDefined();
     expect(screen.getByTestId('creator-tool-move')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-continue_trunk')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-insert_station')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-start_branch')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-connect_ring')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-set_nop')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-add_pv')).toBeDefined();
-    expect(screen.getByTestId('creator-tool-add_bess')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-continue_trunk_segment_sn')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-insert_station_on_segment_sn')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-start_branch_segment_sn')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-connect_secondary_ring_sn')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-set_normal_open_point')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-add_converter_source_pv')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-add_converter_source_bess')).toBeDefined();
     expect(screen.getByTestId('creator-tool-edit_properties')).toBeDefined();
     expect(screen.getByTestId('creator-tool-assign_catalog')).toBeDefined();
     expect(screen.getByTestId('creator-tool-delete_element')).toBeDefined();
@@ -52,22 +54,24 @@ describe('CreatorToolbar V2', () => {
         activeTool={null}
         onToolChange={onToolChange}
         hasSource={false}
+        hasCanonicalTrunkStart={false}
         hasRing={false}
       />,
     );
 
-    expect(screen.getByTestId('creator-tool-add_gpz')).toBeDefined();
+    expect(screen.getByTestId('creator-tool-add_grid_source_sn')).toBeDefined();
 
     rerender(
       <CreatorToolbar
         activeTool={null}
         onToolChange={onToolChange}
         hasSource={true}
+        hasCanonicalTrunkStart={false}
         hasRing={false}
       />,
     );
 
-    expect(screen.queryByTestId('creator-tool-add_gpz')).toBeNull();
+    expect(screen.queryByTestId('creator-tool-add_grid_source_sn')).toBeNull();
   });
 
   it('wywołuje zmianę aktywnego narzędzia po kliknięciu', () => {
@@ -78,12 +82,13 @@ describe('CreatorToolbar V2', () => {
         activeTool={null}
         onToolChange={onToolChange}
         hasSource={true}
+        hasCanonicalTrunkStart={false}
         hasRing={false}
       />,
     );
 
-    fireEvent.click(screen.getByTestId('creator-tool-connect_ring'));
-    expect(onToolChange).toHaveBeenCalledWith('connect_ring');
+    fireEvent.click(screen.getByTestId('creator-tool-connect_secondary_ring_sn'));
+    expect(onToolChange).toHaveBeenCalledWith('connect_secondary_ring_sn');
   });
 
   it('kliknięcie "Usuń z modelu" aktywuje narzędzie delete_element', () => {
@@ -94,12 +99,36 @@ describe('CreatorToolbar V2', () => {
         activeTool={null}
         onToolChange={onToolChange}
         hasSource={true}
+        hasCanonicalTrunkStart={false}
         hasRing={false}
       />,
     );
 
     fireEvent.click(screen.getByTestId('creator-tool-delete_element'));
     expect(onToolChange).toHaveBeenCalledWith('delete_element');
+  });
+  it('nie utrwala technicznych semantyk STACJA_A/B/C/D w palecie', () => {
+    const blob = JSON.stringify(EDITOR_OBJECT_TYPES);
+    expect(blob).not.toContain('STACJA_A');
+    expect(blob).not.toContain('STACJA_B');
+    expect(blob).not.toContain('STACJA_C');
+    expect(blob).not.toContain('STACJA_D');
+  });
+
+  it('ukrywa continue_trunk bez jawnego portu pola GPZ albo otwartego terminala', () => {
+    const onToolChange = vi.fn();
+
+    render(
+      <CreatorToolbar
+        activeTool={null}
+        onToolChange={onToolChange}
+        hasSource={true}
+        hasCanonicalTrunkStart={false}
+        hasRing={false}
+      />,
+    );
+
+    expect(screen.queryByTestId('creator-tool-continue_trunk_segment_sn')).toBeNull();
   });
 });
 

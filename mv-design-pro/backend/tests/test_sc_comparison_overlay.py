@@ -14,23 +14,18 @@ INVARIANTS UNDER TEST:
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime
+from uuid import UUID
 
-import pytest
-
-from domain.execution import ExecutionAnalysisType
-from domain.sc_comparison import (
-    NumericDelta,
-    ShortCircuitComparison,
-    compute_numeric_delta,
-)
 from application.result_mapping.sc_comparison_to_overlay_v1 import (
-    DELTA_LEGEND_PL,
     compute_delta_overlay_content_hash,
     map_sc_comparison_to_overlay_v1,
 )
-
+from domain.execution import ExecutionAnalysisType
+from domain.sc_comparison import (
+    ShortCircuitComparison,
+    compute_numeric_delta,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -42,7 +37,7 @@ FIXED_COMPARISON_ID = UUID("00000000-0000-0000-0000-000000000001")
 FIXED_CASE_ID = UUID("00000000-0000-0000-0000-000000000002")
 FIXED_BASE_SCENARIO_ID = UUID("00000000-0000-0000-0000-000000000003")
 FIXED_OTHER_SCENARIO_ID = UUID("00000000-0000-0000-0000-000000000004")
-FIXED_TIMESTAMP = datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+FIXED_TIMESTAMP = datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC)
 
 
 def _make_comparison_with_deltas() -> ShortCircuitComparison:
@@ -135,7 +130,9 @@ class TestDeterminism:
         overlay_1 = map_sc_comparison_to_overlay_v1(comparison)
         overlay_2 = map_sc_comparison_to_overlay_v1(comparison)
 
-        assert compute_delta_overlay_content_hash(overlay_1) == compute_delta_overlay_content_hash(overlay_2)
+        assert compute_delta_overlay_content_hash(overlay_1) == compute_delta_overlay_content_hash(
+            overlay_2
+        )
 
     def test_different_comparison_different_hash(self) -> None:
         comp_with = _make_comparison_with_deltas()
@@ -230,9 +227,9 @@ class TestNoHexColors:
         overlay = map_sc_comparison_to_overlay_v1(comparison)
 
         payload_str = overlay.model_dump_json()
-        assert not HEX_COLOR_RE.search(payload_str), (
-            f"Hex color found in overlay: {HEX_COLOR_RE.findall(payload_str)}"
-        )
+        assert not HEX_COLOR_RE.search(
+            payload_str
+        ), f"Hex color found in overlay: {HEX_COLOR_RE.findall(payload_str)}"
 
     def test_no_hex_in_overlay_no_changes(self) -> None:
         comparison = _make_comparison_no_changes()
@@ -358,7 +355,9 @@ class TestOrderIndependence:
         overlay_reversed = map_sc_comparison_to_overlay_v1(comp_reversed)
 
         assert overlay_original.model_dump() == overlay_reversed.model_dump()
-        assert compute_delta_overlay_content_hash(overlay_original) == compute_delta_overlay_content_hash(overlay_reversed)
+        assert compute_delta_overlay_content_hash(
+            overlay_original
+        ) == compute_delta_overlay_content_hash(overlay_reversed)
 
 
 # ---------------------------------------------------------------------------

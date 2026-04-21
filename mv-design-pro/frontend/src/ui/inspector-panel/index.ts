@@ -1,7 +1,7 @@
 /**
  * Inspector Panel Module
  *
- * PowerFactory/ETAP-style property inspector panel.
+ * Canonical/CANONICAL-style property inspector panel.
  * ALWAYS visible, shows element properties or "Brak zaznaczenia".
  */
 

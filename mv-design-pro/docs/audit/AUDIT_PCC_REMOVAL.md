@@ -13,7 +13,7 @@
 - ./ARCHITECTURE.md
 - ./AUDIT.md
 - ./PLANS.md
-- ./POWERFACTORY_COMPLIANCE.md
+- ./CANONICAL_COMPLIANCE.md
 - ./SYSTEM_SPEC.md
 - ./backend/pytest_report.txt
 - ./backend/src/analysis/boundary/__init__.py
@@ -140,7 +140,7 @@
 - ./frontend/src/ui/sld-editor/utils/topological-layout/types.ts
 - ./frontend/src/ui/sld/inspector/__tests__/selectionResolver.test.ts
 - ./frontend/src/ui/sld/inspector/selectionResolver.ts
-- ./frontend/src/ui/sld/sldEtapStyle.ts
+- ./frontend/src/ui/sld/sldCanonicalStyle.ts
 - ./frontend/src/ui/wizard/__tests__/wizard-navigation.test.ts
 
 ## Classification
@@ -235,13 +235,13 @@
   - ./frontend/src/ui/sld-editor/utils/topological-layout/types.ts
   - ./frontend/src/ui/sld/inspector/__tests__/selectionResolver.test.ts
   - ./frontend/src/ui/sld/inspector/selectionResolver.ts
-  - ./frontend/src/ui/sld/sldEtapStyle.ts
+  - ./frontend/src/ui/sld/sldCanonicalStyle.ts
   - ./frontend/src/ui/wizard/__tests__/wizard-navigation.test.ts
 - docs/tests/fixtures:
   - ./AGENTS.md
   - ./AUDIT.md
   - ./PLANS.md
-  - ./POWERFACTORY_COMPLIANCE.md
+  - ./CANONICAL_COMPLIANCE.md
   - ./backend/tests/analysis/test_boundary_identifier.py
   - ./backend/tests/api/test_analysis_runs_index_api.py
   - ./backend/tests/api/test_analysis_runs_read_api.py

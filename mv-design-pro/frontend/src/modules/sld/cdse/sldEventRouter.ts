@@ -39,7 +39,7 @@ export interface RouteResult {
   /** Resolved context from the click */
   context: CdseResolvedContext;
   /** Action taken: modal opened, context menu shown, or selection only */
-  action: 'MODAL_OPENED' | 'CONTEXT_MENU' | 'SELECTION_ONLY' | 'NO_ACTION';
+  action: 'SURFACE_OPENED' | 'CONTEXT_MENU' | 'SELECTION_ONLY' | 'NO_ACTION';
   /** Modal target if a modal was dispatched */
   modalTarget?: ModalDispatchTarget;
 }
@@ -85,7 +85,7 @@ export function routeSldClick(
   const modalTarget = dispatchModal(context);
   if (modalTarget) {
     onOpenModal(modalTarget);
-    return { context, action: 'MODAL_OPENED', modalTarget };
+    return { context, action: 'SURFACE_OPENED', modalTarget };
   }
 
   return { context, action: 'SELECTION_ONLY' };
@@ -112,7 +112,7 @@ export function routeSldDoubleClick(
   const modalTarget = dispatchModal(context);
   if (modalTarget) {
     onOpenModal(modalTarget);
-    return { context, action: 'MODAL_OPENED', modalTarget };
+    return { context, action: 'SURFACE_OPENED', modalTarget };
   }
 
   return { context, action: 'NO_ACTION' };

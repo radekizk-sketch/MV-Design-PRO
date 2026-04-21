@@ -10,8 +10,7 @@ RUN #3I COMMIT N1:
 import json
 from pathlib import Path
 
-import pytest
-
+from domain.field_device import AparatTypeV1, DeviceTypeV1, FieldRoleV1, PoleTypeV1
 from domain.switchgear_config import (
     CatalogBindingV1,
     DeviceConfigV1,
@@ -20,7 +19,6 @@ from domain.switchgear_config import (
     SwitchgearConfigV1,
     compute_config_hash,
 )
-from domain.field_device import AparatTypeV1, DeviceTypeV1, FieldRoleV1, PoleTypeV1
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "switchgear_config_fixture_01.json"
 

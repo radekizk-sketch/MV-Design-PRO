@@ -98,7 +98,7 @@ function createSecondBusSymbol(id: string = 'bus-2', x: number = 300, y: number 
 
 /**
  * Create a complete test scenario with busbar and feeders.
- * Returns symbols for a typical ETAP layout:
+ * Returns symbols for a typical CANONICAL layout:
  * - 1 main busbar
  * - 5 feeder branches (connected to secondary buses below)
  */
@@ -293,7 +293,7 @@ describe('SLD Auto-Layout Integration', () => {
         expect(conn.path.length).toBeGreaterThanOrEqual(2);
       }
 
-      // ETAP routing should ensure orthogonal paths
+      // CANONICAL routing should ensure orthogonal paths
       // The routing algorithm uses L/Z routes which are always orthogonal
       // Check that connections are generated and have valid paths
       expect(connections.length).toBeGreaterThan(0);

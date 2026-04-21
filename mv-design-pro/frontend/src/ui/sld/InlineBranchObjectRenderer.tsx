@@ -1,154 +1,105 @@
 /**
- * InlineBranchObjectRenderer — Renderer SVG dla obiektów wbudowanych na torze SN.
+ * InlineBranchObjectRenderer - thin adapter for inline SN branch objects.
  *
- * Renderuje:
- * - Słup rozgałęźny (branch_pole): mały romb na torze z wychodzącą linią odgałęzienia.
- *   Wizualnie liniowy, NIE blok stacji.
- * - ZKSN (zksn): mały prostokąt na torze z portami odgałęzienia.
- *   Explicit enclosure, NIE blok stacji.
- *
- * BINDING: 100% PL etykiety.
+ * Canonical rule:
+ * - shared symbol shapes live in CanonicalSymbolRenderer/SymbolResolver,
+ * - this component owns only object placement, branch leader lines and labels.
  */
 
 import React from 'react';
+import { CanonicalSymbol } from './CanonicalSymbolRenderer';
 import type { InlineBranchObjectV1 } from './core/layoutResult';
-import { ETAP_VOLTAGE_COLORS, ETAP_TYPOGRAPHY } from './sldEtapStyle';
+import { CANONICAL_VOLTAGE_COLORS, CANONICAL_TYPOGRAPHY } from './sldCanonicalStyle';
 
 export interface InlineBranchObjectRendererProps {
   obj: InlineBranchObjectV1;
-  /** Czy element jest zaznaczony */
   selected?: boolean;
-  /** Callback po kliknięciu — przekazuje ID węzła */
   onClick?: (nodeId: string) => void;
+  onDoubleClick?: (nodeId: string) => void;
   showTechnicalLabels?: boolean;
 }
 
-const SN_COLOR = ETAP_VOLTAGE_COLORS.SN;
-const SELECTED_COLOR = '#2563EB'; // blue-600
+const SN_COLOR = CANONICAL_VOLTAGE_COLORS.SN;
+const SELECTED_COLOR = '#2563EB';
 
-// ─── Branch Pole Symbol ───────────────────────────────────────────────────────
-// Mały romb na linii głównej. Odgałęzienie wychodzi prostopadle w prawo.
-const BranchPoleSymbol: React.FC<{
-  x: number;
-  y: number;
-  selected: boolean;
-  label: string;
-  branchPortCount: number;
-  showTechnicalLabels: boolean;
-}> = ({ x, y, selected, label, showTechnicalLabels }) => {
+function inlineBranchSymbolId(objectType: InlineBranchObjectV1['objectType']): 'branch_pole' | 'zksn' {
+  return objectType === 'branch_pole' ? 'branch_pole' : 'zksn';
+}
+
+function inlineBranchSymbolSize(objectType: InlineBranchObjectV1['objectType']): number {
+  return objectType === 'branch_pole' ? 20 : 24;
+}
+
+function technicalLabelForObject(objectType: InlineBranchObjectV1['objectType']): string {
+  return objectType === 'branch_pole' ? 'SO' : 'ZK';
+}
+
+export const InlineBranchObjectRenderer: React.FC<InlineBranchObjectRendererProps> = ({
+  obj,
+  selected = false,
+  onClick,
+  onDoubleClick,
+  showTechnicalLabels = false,
+}) => {
+  const { nodeId, objectType, label, position, branchPortCount } = obj;
+  const { x, y } = position;
   const stroke = selected ? SELECTED_COLOR : SN_COLOR;
-  const r = 7; // half-size of diamond
-  const diamond = `M${x},${y - r} L${x + r},${y} L${x},${y + r} L${x - r},${y} Z`;
+  const symbolId = inlineBranchSymbolId(objectType);
+  const symbolSize = inlineBranchSymbolSize(objectType);
+  const symbolHalfWidth = symbolSize / 2;
+  const symbolHalfHeight = symbolSize / 2;
+
+  const handleClick = onClick
+    ? (event: React.MouseEvent) => {
+        event.stopPropagation();
+        onClick(nodeId);
+      }
+    : undefined;
+
+  const handleDoubleClick = onDoubleClick
+    ? (event: React.MouseEvent) => {
+        event.stopPropagation();
+        onDoubleClick(nodeId);
+      }
+    : undefined;
 
   return (
-    <g data-sld-role="inline-branch-pole" data-node-id={label}>
-      {/* Diamond marker na torze głównym */}
-      <path
-        d={diamond}
-        fill={selected ? '#DBEAFE' : 'white'}
-        stroke={stroke}
-        strokeWidth={selected ? 2 : 1.5}
-        data-testid={`sld-branch-pole-${label}`}
-      />
-      {/* Port BRANCH — linia odgałęzienia wychodząca w prawo */}
-      <line
-        x1={x + r}
-        y1={y}
-        x2={x + r + 18}
-        y2={y}
-        stroke={stroke}
-        strokeWidth={1.2}
-        strokeDasharray="3 2"
-      />
-      {/* Strzałka na końcu portu BRANCH */}
-      <polygon
-        points={`${x + r + 18},${y - 3} ${x + r + 24},${y} ${x + r + 18},${y + 3}`}
-        fill={stroke}
-        stroke="none"
-      />
-      {/* Etykieta */}
-      {showTechnicalLabels && (
-        <text
-          x={x}
-          y={y - r - 4}
-          textAnchor="middle"
-          fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-          fontSize={ETAP_TYPOGRAPHY.fontSize.xsmall}
-          fill={ETAP_TYPOGRAPHY.secondaryColor}
-        >
-          SO
-        </text>
-      )}
-      <text
-        x={x}
-        y={y + r + 12}
-        textAnchor="middle"
-        fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-        fontSize={ETAP_TYPOGRAPHY.fontSize.small}
-        fill={selected ? SELECTED_COLOR : ETAP_TYPOGRAPHY.labelColor}
-        fontWeight={selected ? ETAP_TYPOGRAPHY.fontWeight.semibold : ETAP_TYPOGRAPHY.fontWeight.normal}
+    <g
+      data-testid={`sld-inline-branch-object-${nodeId}`}
+      data-element-id={nodeId}
+      data-element-type={objectType === 'branch_pole' ? 'BranchPole' : 'ZKSN'}
+      data-element-name={label}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+    >
+      <g
+        transform={`translate(${x - symbolHalfWidth}, ${y - symbolHalfHeight})`}
+        data-sld-role={objectType === 'branch_pole' ? 'inline-branch-pole' : 'inline-zksn'}
+        data-node-id={nodeId}
+        data-testid={objectType === 'branch_pole' ? `sld-branch-pole-${label}` : `sld-zksn-${label}`}
       >
-        {label}
-      </text>
-    </g>
-  );
-};
+        <CanonicalSymbol
+          symbolId={symbolId}
+          size={symbolSize}
+          stroke={stroke}
+          fill={selected ? '#DBEAFE' : objectType === 'branch_pole' ? 'white' : '#F8FAFC'}
+        />
+      </g>
 
-// ─── ZKSN Symbol ─────────────────────────────────────────────────────────────
-// Mały prostokąt na kablu głównym. 1 lub 2 porty BRANCH wychodzą prostopadle.
-const ZksnSymbol: React.FC<{
-  x: number;
-  y: number;
-  selected: boolean;
-  label: string;
-  branchPortCount: number;
-  showTechnicalLabels: boolean;
-}> = ({ x, y, selected, label, branchPortCount, showTechnicalLabels }) => {
-  const stroke = selected ? SELECTED_COLOR : SN_COLOR;
-  const w = 22;
-  const h = 14;
-
-  return (
-    <g data-sld-role="inline-zksn" data-node-id={label}>
-      {/* Prostokąt złączki kablowej */}
-      <rect
-        x={x - w / 2}
-        y={y - h / 2}
-        width={w}
-        height={h}
-        rx={3}
-        ry={3}
-        fill={selected ? '#DBEAFE' : '#F8FAFC'}
-        stroke={stroke}
-        strokeWidth={selected ? 2 : 1.5}
-        data-testid={`sld-zksn-${label}`}
-      />
-      {/* Litera Z identyfikująca ZKSN */}
-      <text
-        x={x}
-        y={y + 4}
-        textAnchor="middle"
-        fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-        fontSize={ETAP_TYPOGRAPHY.fontSize.xsmall}
-        fontWeight={ETAP_TYPOGRAPHY.fontWeight.bold}
-        fill={stroke}
-      >
-        Z
-      </text>
-      {/* Port(y) BRANCH — wychodzą prostopadle */}
       {branchPortCount >= 1 && (
         <>
           <line
-            x1={x + w / 2}
-            y1={y - 3}
-            x2={x + w / 2 + 16}
-            y2={y - 3}
+            x1={x + symbolHalfWidth}
+            y1={y - (branchPortCount > 1 ? 3 : 0)}
+            x2={x + symbolHalfWidth + 16}
+            y2={y - (branchPortCount > 1 ? 3 : 0)}
             stroke={stroke}
             strokeWidth={1.2}
             strokeDasharray="3 2"
           />
           <polygon
-            points={`${x + w / 2 + 16},${y - 6} ${x + w / 2 + 22},${y - 3} ${x + w / 2 + 16},${y}`}
+            points={`${x + symbolHalfWidth + 16},${y - (branchPortCount > 1 ? 6 : 3)} ${x + symbolHalfWidth + 22},${y - (branchPortCount > 1 ? 3 : 0)} ${x + symbolHalfWidth + 16},${y + (branchPortCount > 1 ? 0 : 3)}`}
             fill={stroke}
             stroke="none"
           />
@@ -157,89 +108,46 @@ const ZksnSymbol: React.FC<{
       {branchPortCount >= 2 && (
         <>
           <line
-            x1={x + w / 2}
+            x1={x + symbolHalfWidth}
             y1={y + 3}
-            x2={x + w / 2 + 16}
+            x2={x + symbolHalfWidth + 16}
             y2={y + 3}
             stroke={stroke}
             strokeWidth={1.2}
             strokeDasharray="3 2"
           />
           <polygon
-            points={`${x + w / 2 + 16},${y} ${x + w / 2 + 22},${y + 3} ${x + w / 2 + 16},${y + 6}`}
+            points={`${x + symbolHalfWidth + 16},${y} ${x + symbolHalfWidth + 22},${y + 3} ${x + symbolHalfWidth + 16},${y + 6}`}
             fill={stroke}
             stroke="none"
           />
         </>
       )}
-      {/* Etykieta techniczna */}
+
       {showTechnicalLabels && (
         <text
           x={x}
-          y={y - h / 2 - 4}
+          y={y - symbolHalfHeight - 6}
           textAnchor="middle"
-          fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-          fontSize={ETAP_TYPOGRAPHY.fontSize.xsmall}
-          fill={ETAP_TYPOGRAPHY.secondaryColor}
+          fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+          fontSize={CANONICAL_TYPOGRAPHY.fontSize.xsmall}
+          fill={CANONICAL_TYPOGRAPHY.secondaryColor}
         >
-          ZK
+          {technicalLabelForObject(objectType)}
         </text>
       )}
+
       <text
         x={x}
-        y={y + h / 2 + 12}
+        y={y + symbolHalfHeight + 12}
         textAnchor="middle"
-        fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-        fontSize={ETAP_TYPOGRAPHY.fontSize.small}
-        fill={selected ? SELECTED_COLOR : ETAP_TYPOGRAPHY.labelColor}
-        fontWeight={selected ? ETAP_TYPOGRAPHY.fontWeight.semibold : ETAP_TYPOGRAPHY.fontWeight.normal}
+        fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+        fontSize={CANONICAL_TYPOGRAPHY.fontSize.small}
+        fill={selected ? SELECTED_COLOR : CANONICAL_TYPOGRAPHY.labelColor}
+        fontWeight={selected ? CANONICAL_TYPOGRAPHY.fontWeight.semibold : CANONICAL_TYPOGRAPHY.fontWeight.normal}
       >
         {label}
       </text>
-    </g>
-  );
-};
-
-// ─── Main renderer ────────────────────────────────────────────────────────────
-
-export const InlineBranchObjectRenderer: React.FC<InlineBranchObjectRendererProps> = ({
-  obj,
-  selected = false,
-  onClick,
-  showTechnicalLabels = false,
-}) => {
-  const { nodeId, objectType, label, position, branchPortCount } = obj;
-  const { x, y } = position;
-
-  const handleClick = onClick
-    ? (e: React.MouseEvent) => { e.stopPropagation(); onClick(nodeId); }
-    : undefined;
-
-  return (
-    <g
-      data-testid={`sld-inline-branch-object-${nodeId}`}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
-      onClick={handleClick}
-    >
-      {objectType === 'branch_pole' ? (
-        <BranchPoleSymbol
-          x={x}
-          y={y}
-          selected={selected}
-          label={label}
-          branchPortCount={branchPortCount}
-          showTechnicalLabels={showTechnicalLabels}
-        />
-      ) : (
-        <ZksnSymbol
-          x={x}
-          y={y}
-          selected={selected}
-          label={label}
-          branchPortCount={branchPortCount}
-          showTechnicalLabels={showTechnicalLabels}
-        />
-      )}
     </g>
   );
 };

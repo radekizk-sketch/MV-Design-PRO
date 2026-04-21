@@ -1,7 +1,5 @@
 """Tests for PV/BESS generator connection validation (KROK 2-3)."""
 
-import pytest
-
 from domain.generator_validation import validate_generator_connections
 from domain.readiness import ReadinessAreaV1, ReadinessPriority
 
@@ -73,10 +71,12 @@ class TestPVBESSConnectionVariant:
 
     def test_variant_b_block_transformer_valid(self) -> None:
         issues = validate_generator_connections(
-            generators=[_gen(
-                connection_variant="block_transformer",
-                blocking_transformer_ref="tr_block_1",
-            )],
+            generators=[
+                _gen(
+                    connection_variant="block_transformer",
+                    blocking_transformer_ref="tr_block_1",
+                )
+            ],
             transformers_by_ref={"tr_block_1": {"ref_id": "tr_block_1"}},
             stations_by_ref={},
         )
@@ -85,10 +85,12 @@ class TestPVBESSConnectionVariant:
 
     def test_variant_b_missing_transformer_ref(self) -> None:
         issues = validate_generator_connections(
-            generators=[_gen(
-                connection_variant="block_transformer",
-                blocking_transformer_ref=None,
-            )],
+            generators=[
+                _gen(
+                    connection_variant="block_transformer",
+                    blocking_transformer_ref=None,
+                )
+            ],
             transformers_by_ref={},
             stations_by_ref={},
         )
@@ -97,10 +99,12 @@ class TestPVBESSConnectionVariant:
 
     def test_variant_b_invalid_transformer_ref(self) -> None:
         issues = validate_generator_connections(
-            generators=[_gen(
-                connection_variant="block_transformer",
-                blocking_transformer_ref="nonexistent",
-            )],
+            generators=[
+                _gen(
+                    connection_variant="block_transformer",
+                    blocking_transformer_ref="nonexistent",
+                )
+            ],
             transformers_by_ref={"tr_1": {}},
             stations_by_ref={},
         )
@@ -147,11 +151,13 @@ class TestCatalogRefRequired:
 
     def test_with_catalog_ref_no_issue(self) -> None:
         issues = validate_generator_connections(
-            generators=[_gen(
-                catalog_ref="CAT-PV",
-                connection_variant="nn_side",
-                station_ref="s",
-            )],
+            generators=[
+                _gen(
+                    catalog_ref="CAT-PV",
+                    connection_variant="nn_side",
+                    station_ref="s",
+                )
+            ],
             transformers_by_ref={},
             stations_by_ref={"s": {}},
         )
@@ -173,11 +179,13 @@ class TestBESSGenerator:
 
     def test_bess_variant_b_valid(self) -> None:
         issues = validate_generator_connections(
-            generators=[_gen(
-                gen_type="bess",
-                connection_variant="block_transformer",
-                blocking_transformer_ref="tr_bess",
-            )],
+            generators=[
+                _gen(
+                    gen_type="bess",
+                    connection_variant="block_transformer",
+                    blocking_transformer_ref="tr_bess",
+                )
+            ],
             transformers_by_ref={"tr_bess": {}},
             stations_by_ref={},
         )

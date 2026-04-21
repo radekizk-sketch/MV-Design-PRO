@@ -6,15 +6,14 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+
 def canonicalize(obj: dict) -> dict:
     return _canonicalize_value(obj)
 
 
 def fingerprint(obj: dict) -> str:
     canonical_payload = canonicalize(obj)
-    encoded = json.dumps(canonical_payload, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    encoded = json.dumps(canonical_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -56,8 +55,7 @@ def assert_deterministic(
     diff_keys = _diff_keys(scrubbed_a, scrubbed_b)
     diff_preview = ", ".join(diff_keys[:10])
     raise AssertionError(
-        "Determinism check failed. Differing paths: "
-        f"{diff_preview or 'unknown'}"
+        "Determinism check failed. Differing paths: " f"{diff_preview or 'unknown'}"
     )
 
 
@@ -87,11 +85,7 @@ def _stable_sort_key(value: Any) -> str:
 
 def _scrub_keys(value: Any, keys: tuple[str, ...]) -> Any:
     if isinstance(value, dict):
-        return {
-            key: _scrub_keys(child, keys)
-            for key, child in value.items()
-            if key not in keys
-        }
+        return {key: _scrub_keys(child, keys) for key, child in value.items() if key not in keys}
     if isinstance(value, list):
         return [_scrub_keys(item, keys) for item in value]
     return value
@@ -134,7 +128,7 @@ def _diff_keys(a: Any, b: Any, prefix: str = "") -> list[str]:
         diffs = []
         if len(a) != len(b):
             return [prefix or "list_length"]
-        for index, (left, right) in enumerate(zip(a, b)):
+        for index, (left, right) in enumerate(zip(a, b, strict=False)):
             next_prefix = f"{prefix}[{index}]"
             diffs.extend(_diff_keys(left, right, next_prefix))
         return diffs

@@ -18,14 +18,12 @@ Diagnostic format aligned with DIgSILENT PowerFactory "Check Network Data":
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Set
-
-import networkx as nx
 
 
 class Severity(Enum):
     """Validation issue severity."""
-    ERROR = "ERROR"      # Blocking — solver cannot run
+
+    ERROR = "ERROR"  # Blocking — solver cannot run
     WARNING = "WARNING"  # Non-blocking — solver can run with caution
 
 
@@ -42,12 +40,13 @@ class ValidationIssue:
         field: Field name with the issue (if applicable).
         suggested_fix: Actionable fix suggestion (Polish).
     """
+
     code: str
     message: str
     severity: Severity = Severity.ERROR
-    element_id: Optional[str] = None
-    field: Optional[str] = None
-    suggested_fix: Optional[str] = None
+    element_id: str | None = None
+    field: str | None = None
+    suggested_fix: str | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -68,6 +67,7 @@ class ValidationReport:
 
     Immutable pattern — use with_error/with_warning to add issues.
     """
+
     issues: tuple = field(default_factory=tuple)
 
     @property
@@ -81,12 +81,12 @@ class ValidationReport:
         return not any(i.severity == Severity.ERROR for i in self.issues)
 
     @property
-    def errors(self) -> List[ValidationIssue]:
+    def errors(self) -> list[ValidationIssue]:
         """Get all ERROR-level issues."""
         return [i for i in self.issues if i.severity == Severity.ERROR]
 
     @property
-    def warnings(self) -> List[ValidationIssue]:
+    def warnings(self) -> list[ValidationIssue]:
         """Get all WARNING-level issues."""
         return [i for i in self.issues if i.severity == Severity.WARNING]
 
@@ -101,14 +101,17 @@ class ValidationReport:
             New ValidationReport with the added issue.
         """
         return ValidationReport(
-            issues=self.issues + (ValidationIssue(
-                code=issue.code,
-                message=issue.message,
-                severity=Severity.ERROR,
-                element_id=issue.element_id,
-                field=issue.field,
-                suggested_fix=issue.suggested_fix,
-            ),)
+            issues=self.issues
+            + (
+                ValidationIssue(
+                    code=issue.code,
+                    message=issue.message,
+                    severity=Severity.ERROR,
+                    element_id=issue.element_id,
+                    field=issue.field,
+                    suggested_fix=issue.suggested_fix,
+                ),
+            )
         )
 
     def with_warning(self, issue: ValidationIssue) -> "ValidationReport":
@@ -122,14 +125,17 @@ class ValidationReport:
             New ValidationReport with the added issue.
         """
         return ValidationReport(
-            issues=self.issues + (ValidationIssue(
-                code=issue.code,
-                message=issue.message,
-                severity=Severity.WARNING,
-                element_id=issue.element_id,
-                field=issue.field,
-                suggested_fix=issue.suggested_fix,
-            ),)
+            issues=self.issues
+            + (
+                ValidationIssue(
+                    code=issue.code,
+                    message=issue.message,
+                    severity=Severity.WARNING,
+                    element_id=issue.element_id,
+                    field=issue.field,
+                    suggested_fix=issue.suggested_fix,
+                ),
+            )
         )
 
     def to_dict(self) -> dict:
@@ -227,11 +233,13 @@ class NetworkValidator:
     def _check_empty_network(self, graph, report: ValidationReport) -> ValidationReport:
         """Check if network has any nodes."""
         if not graph.nodes:
-            return report.with_error(ValidationIssue(
-                code="network.empty",
-                message="Sieć nie zawiera żadnych szyn (węzłów)",
-                suggested_fix="Dodaj co najmniej jedną szynę do modelu sieci",
-            ))
+            return report.with_error(
+                ValidationIssue(
+                    code="network.empty",
+                    message="Sieć nie zawiera żadnych szyn (węzłów)",
+                    suggested_fix="Dodaj co najmniej jedną szynę do modelu sieci",
+                )
+            )
         return report
 
     # =========================================================================
@@ -249,17 +257,19 @@ class NetworkValidator:
 
         if not graph.is_connected():
             islands = graph.find_islands()
-            return report.with_error(ValidationIssue(
-                code="network.disconnected",
-                message=(
-                    f"Sieć jest niespójna — wykryto {len(islands)} wysp(y). "
-                    f"Solver wymaga jednej spójnej topologii"
-                ),
-                suggested_fix=(
-                    "Połącz wszystkie wyspy gałęziami lub łącznikami, "
-                    "albo usuń odłączone elementy"
-                ),
-            ))
+            return report.with_error(
+                ValidationIssue(
+                    code="network.disconnected",
+                    message=(
+                        f"Sieć jest niespójna — wykryto {len(islands)} wysp(y). "
+                        f"Solver wymaga jednej spójnej topologii"
+                    ),
+                    suggested_fix=(
+                        "Połącz wszystkie wyspy gałęziami lub łącznikami, "
+                        "albo usuń odłączone elementy"
+                    ),
+                )
+            )
         return report
 
     # =========================================================================
@@ -273,20 +283,23 @@ class NetworkValidator:
         Network needs at least one source for power flow.
         """
         # Check for inverter sources
-        if hasattr(graph, 'inverter_sources') and graph.inverter_sources:
+        if hasattr(graph, "inverter_sources") and graph.inverter_sources:
             return report
 
         # Check for SLACK node (acts as source)
         for node in graph.nodes.values():
             from network_model.core.node import NodeType
+
             if node.node_type == NodeType.SLACK:
                 return report
 
-        return report.with_error(ValidationIssue(
-            code="network.no_source",
-            message="Sieć nie ma źródła zasilania (brak szyny SLACK lub źródła falownikowego)",
-            suggested_fix="Dodaj szynę typu SLACK lub źródło falownikowe (OZE)",
-        ))
+        return report.with_error(
+            ValidationIssue(
+                code="network.no_source",
+                message="Sieć nie ma źródła zasilania (brak szyny SLACK lub źródła falownikowego)",
+                suggested_fix="Dodaj szynę typu SLACK lub źródło falownikowe (OZE)",
+            )
+        )
 
     # =========================================================================
     # Rule 4: Dangling elements
@@ -300,27 +313,31 @@ class NetworkValidator:
 
         for branch_id, branch in graph.branches.items():
             if branch.from_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="branch.dangling_from",
-                    message=(
-                        f"Gałąź '{branch.name}' — szyna początkowa "
-                        f"'{branch.from_node_id}' nie istnieje"
-                    ),
-                    element_id=branch_id,
-                    field="from_node_id",
-                    suggested_fix="Podłącz gałąź do istniejącej szyny lub usuń gałąź",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="branch.dangling_from",
+                        message=(
+                            f"Gałąź '{branch.name}' — szyna początkowa "
+                            f"'{branch.from_node_id}' nie istnieje"
+                        ),
+                        element_id=branch_id,
+                        field="from_node_id",
+                        suggested_fix="Podłącz gałąź do istniejącej szyny lub usuń gałąź",
+                    )
+                )
             if branch.to_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="branch.dangling_to",
-                    message=(
-                        f"Gałąź '{branch.name}' — szyna końcowa "
-                        f"'{branch.to_node_id}' nie istnieje"
-                    ),
-                    element_id=branch_id,
-                    field="to_node_id",
-                    suggested_fix="Podłącz gałąź do istniejącej szyny lub usuń gałąź",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="branch.dangling_to",
+                        message=(
+                            f"Gałąź '{branch.name}' — szyna końcowa "
+                            f"'{branch.to_node_id}' nie istnieje"
+                        ),
+                        element_id=branch_id,
+                        field="to_node_id",
+                        suggested_fix="Podłącz gałąź do istniejącej szyny lub usuń gałąź",
+                    )
+                )
 
         return report
 
@@ -334,16 +351,18 @@ class NetworkValidator:
         """
         for node_id, node in graph.nodes.items():
             if node.voltage_level <= 0:
-                report = report.with_error(ValidationIssue(
-                    code="bus.voltage_invalid",
-                    message=(
-                        f"Szyna '{node.name}' — napięcie znamionowe musi być > 0, "
-                        f"aktualnie: {node.voltage_level} kV"
-                    ),
-                    element_id=node_id,
-                    field="voltage_level",
-                    suggested_fix="Ustaw prawidłowy poziom napięcia znamionowego (np. 15, 20, 110 kV)",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="bus.voltage_invalid",
+                        message=(
+                            f"Szyna '{node.name}' — napięcie znamionowe musi być > 0, "
+                            f"aktualnie: {node.voltage_level} kV"
+                        ),
+                        element_id=node_id,
+                        field="voltage_level",
+                        suggested_fix="Ustaw prawidłowy poziom napięcia znamionowego (np. 15, 20, 110 kV)",
+                    )
+                )
         return report
 
     # =========================================================================
@@ -358,28 +377,34 @@ class NetworkValidator:
 
         for branch_id, branch in graph.branches.items():
             if branch.from_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="branch.from_missing",
-                    message=f"Gałąź '{branch.name}' — brak szyny początkowej w modelu",
-                    element_id=branch_id,
-                    field="from_node_id",
-                    suggested_fix="Podłącz gałąź do istniejącej szyny",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="branch.from_missing",
+                        message=f"Gałąź '{branch.name}' — brak szyny początkowej w modelu",
+                        element_id=branch_id,
+                        field="from_node_id",
+                        suggested_fix="Podłącz gałąź do istniejącej szyny",
+                    )
+                )
             if branch.to_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="branch.to_missing",
-                    message=f"Gałąź '{branch.name}' — brak szyny końcowej w modelu",
-                    element_id=branch_id,
-                    field="to_node_id",
-                    suggested_fix="Podłącz gałąź do istniejącej szyny",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="branch.to_missing",
+                        message=f"Gałąź '{branch.name}' — brak szyny końcowej w modelu",
+                        element_id=branch_id,
+                        field="to_node_id",
+                        suggested_fix="Podłącz gałąź do istniejącej szyny",
+                    )
+                )
             if branch.from_node_id == branch.to_node_id:
-                report = report.with_error(ValidationIssue(
-                    code="branch.self_loop",
-                    message=f"Gałąź '{branch.name}' — nie może łączyć szyny samej ze sobą",
-                    element_id=branch_id,
-                    suggested_fix="Zmień szynę początkową lub końcową gałęzi",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="branch.self_loop",
+                        message=f"Gałąź '{branch.name}' — nie może łączyć szyny samej ze sobą",
+                        element_id=branch_id,
+                        suggested_fix="Zmień szynę początkową lub końcową gałęzi",
+                    )
+                )
         return report
 
     # =========================================================================
@@ -396,40 +421,46 @@ class NetworkValidator:
             if branch.branch_type == BranchType.TRANSFORMER:
                 if isinstance(branch, TransformerBranch):
                     if branch.voltage_hv_kv == branch.voltage_lv_kv:
-                        report = report.with_error(ValidationIssue(
-                            code="transformer.voltage_equal",
-                            message=(
-                                f"Transformator '{branch.name}' — napięcie GN i DN "
-                                f"muszą się różnić ({branch.voltage_hv_kv} kV = "
-                                f"{branch.voltage_lv_kv} kV)"
-                            ),
-                            element_id=branch_id,
-                            suggested_fix=(
-                                "Ustaw różne napięcia po stronie GN i DN transformatora"
-                            ),
-                        ))
+                        report = report.with_error(
+                            ValidationIssue(
+                                code="transformer.voltage_equal",
+                                message=(
+                                    f"Transformator '{branch.name}' — napięcie GN i DN "
+                                    f"muszą się różnić ({branch.voltage_hv_kv} kV = "
+                                    f"{branch.voltage_lv_kv} kV)"
+                                ),
+                                element_id=branch_id,
+                                suggested_fix=(
+                                    "Ustaw różne napięcia po stronie GN i DN transformatora"
+                                ),
+                            )
+                        )
                     if branch.voltage_hv_kv <= 0:
-                        report = report.with_error(ValidationIssue(
-                            code="transformer.hv_invalid",
-                            message=(
-                                f"Transformator '{branch.name}' — napięcie strony GN "
-                                f"musi być > 0, aktualnie: {branch.voltage_hv_kv} kV"
-                            ),
-                            element_id=branch_id,
-                            field="voltage_hv_kv",
-                            suggested_fix="Ustaw prawidłowe napięcie strony górnej (GN)",
-                        ))
+                        report = report.with_error(
+                            ValidationIssue(
+                                code="transformer.hv_invalid",
+                                message=(
+                                    f"Transformator '{branch.name}' — napięcie strony GN "
+                                    f"musi być > 0, aktualnie: {branch.voltage_hv_kv} kV"
+                                ),
+                                element_id=branch_id,
+                                field="voltage_hv_kv",
+                                suggested_fix="Ustaw prawidłowe napięcie strony górnej (GN)",
+                            )
+                        )
                     if branch.voltage_lv_kv <= 0:
-                        report = report.with_error(ValidationIssue(
-                            code="transformer.lv_invalid",
-                            message=(
-                                f"Transformator '{branch.name}' — napięcie strony DN "
-                                f"musi być > 0, aktualnie: {branch.voltage_lv_kv} kV"
-                            ),
-                            element_id=branch_id,
-                            field="voltage_lv_kv",
-                            suggested_fix="Ustaw prawidłowe napięcie strony dolnej (DN)",
-                        ))
+                        report = report.with_error(
+                            ValidationIssue(
+                                code="transformer.lv_invalid",
+                                message=(
+                                    f"Transformator '{branch.name}' — napięcie strony DN "
+                                    f"musi być > 0, aktualnie: {branch.voltage_lv_kv} kV"
+                                ),
+                                element_id=branch_id,
+                                field="voltage_lv_kv",
+                                suggested_fix="Ustaw prawidłowe napięcie strony dolnej (DN)",
+                            )
+                        )
         return report
 
     # =========================================================================
@@ -443,29 +474,31 @@ class NetworkValidator:
         from network_model.core.node import NodeType
 
         slack_nodes = [
-            node_id for node_id, node in graph.nodes.items()
-            if node.node_type == NodeType.SLACK
+            node_id for node_id, node in graph.nodes.items() if node.node_type == NodeType.SLACK
         ]
 
         if len(slack_nodes) == 0:
-            return report.with_error(ValidationIssue(
-                code="network.no_slack",
-                message=(
-                    "Sieć nie ma szyny bilansującej (SLACK) — "
-                    "wymagana do rozpływu mocy"
-                ),
-                suggested_fix="Ustaw jedną szynę jako typ SLACK (węzeł referencyjny)",
-            ))
+            return report.with_error(
+                ValidationIssue(
+                    code="network.no_slack",
+                    message=(
+                        "Sieć nie ma szyny bilansującej (SLACK) — " "wymagana do rozpływu mocy"
+                    ),
+                    suggested_fix="Ustaw jedną szynę jako typ SLACK (węzeł referencyjny)",
+                )
+            )
 
         if len(slack_nodes) > 1:
-            return report.with_error(ValidationIssue(
-                code="network.multiple_slack",
-                message=(
-                    f"Sieć ma {len(slack_nodes)} szyn SLACK — "
-                    f"dozwolona jest dokładnie jedna"
-                ),
-                suggested_fix="Zmień nadmiarowe szyny SLACK na typ PQ lub PV",
-            ))
+            return report.with_error(
+                ValidationIssue(
+                    code="network.multiple_slack",
+                    message=(
+                        f"Sieć ma {len(slack_nodes)} szyn SLACK — "
+                        f"dozwolona jest dokładnie jedna"
+                    ),
+                    suggested_fix="Zmień nadmiarowe szyny SLACK na typ PQ lub PV",
+                )
+            )
 
         return report
 
@@ -477,44 +510,49 @@ class NetworkValidator:
         """
         Check if all switch endpoints exist in the network.
         """
-        if not hasattr(graph, 'switches'):
+        if not hasattr(graph, "switches"):
             return report
 
         node_ids = set(graph.nodes.keys())
 
         for switch_id, switch in graph.switches.items():
             if switch.from_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="switch.from_missing",
-                    message=(
-                        f"Łącznik '{switch.name}' — szyna początkowa "
-                        f"'{switch.from_node_id}' nie istnieje"
-                    ),
-                    element_id=switch_id,
-                    field="from_node_id",
-                    suggested_fix="Podłącz łącznik do istniejącej szyny",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="switch.from_missing",
+                        message=(
+                            f"Łącznik '{switch.name}' — szyna początkowa "
+                            f"'{switch.from_node_id}' nie istnieje"
+                        ),
+                        element_id=switch_id,
+                        field="from_node_id",
+                        suggested_fix="Podłącz łącznik do istniejącej szyny",
+                    )
+                )
             if switch.to_node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="switch.to_missing",
-                    message=(
-                        f"Łącznik '{switch.name}' — szyna końcowa "
-                        f"'{switch.to_node_id}' nie istnieje"
-                    ),
-                    element_id=switch_id,
-                    field="to_node_id",
-                    suggested_fix="Podłącz łącznik do istniejącej szyny",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="switch.to_missing",
+                        message=(
+                            f"Łącznik '{switch.name}' — szyna końcowa "
+                            f"'{switch.to_node_id}' nie istnieje"
+                        ),
+                        element_id=switch_id,
+                        field="to_node_id",
+                        suggested_fix="Podłącz łącznik do istniejącej szyny",
+                    )
+                )
             if switch.from_node_id == switch.to_node_id:
-                report = report.with_error(ValidationIssue(
-                    code="switch.self_loop",
-                    message=(
-                        f"Łącznik '{switch.name}' — nie może łączyć "
-                        f"szyny samej ze sobą"
-                    ),
-                    element_id=switch_id,
-                    suggested_fix="Zmień szynę początkową lub końcową łącznika",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="switch.self_loop",
+                        message=(
+                            f"Łącznik '{switch.name}' — nie może łączyć " f"szyny samej ze sobą"
+                        ),
+                        element_id=switch_id,
+                        suggested_fix="Zmień szynę początkową lub końcową łącznika",
+                    )
+                )
 
         return report
 
@@ -522,29 +560,29 @@ class NetworkValidator:
     # Rule 10: Inverter source buses (NEW — PowerFactory-grade)
     # =========================================================================
 
-    def _check_inverter_source_buses(
-        self, graph, report: ValidationReport
-    ) -> ValidationReport:
+    def _check_inverter_source_buses(self, graph, report: ValidationReport) -> ValidationReport:
         """
         Check if all inverter source buses exist in the network.
         """
-        if not hasattr(graph, 'inverter_sources'):
+        if not hasattr(graph, "inverter_sources"):
             return report
 
         node_ids = set(graph.nodes.keys())
 
         for source_id, source in graph.inverter_sources.items():
             if source.node_id not in node_ids:
-                report = report.with_error(ValidationIssue(
-                    code="source.bus_missing",
-                    message=(
-                        f"Źródło falownikowe '{source.name}' — szyna "
-                        f"'{source.node_id}' nie istnieje w modelu"
-                    ),
-                    element_id=source_id,
-                    field="node_id",
-                    suggested_fix="Podłącz źródło do istniejącej szyny",
-                ))
+                report = report.with_error(
+                    ValidationIssue(
+                        code="source.bus_missing",
+                        message=(
+                            f"Źródło falownikowe '{source.name}' — szyna "
+                            f"'{source.node_id}' nie istnieje w modelu"
+                        ),
+                        element_id=source_id,
+                        field="node_id",
+                        suggested_fix="Podłącz źródło do istniejącej szyny",
+                    )
+                )
 
         return report
 
@@ -552,9 +590,7 @@ class NetworkValidator:
     # Rule 11: Branch impedance (non-zero for lines/cables) (NEW)
     # =========================================================================
 
-    def _check_branch_impedance(
-        self, graph, report: ValidationReport
-    ) -> ValidationReport:
+    def _check_branch_impedance(self, graph, report: ValidationReport) -> ValidationReport:
         """
         Check that line/cable branches have non-zero impedance.
 
@@ -572,29 +608,32 @@ class NetworkValidator:
                     if branch.impedance_override is not None:
                         continue
                     if branch.r_ohm_per_km == 0 and branch.x_ohm_per_km == 0:
-                        report = report.with_warning(ValidationIssue(
-                            code="branch.impedance_zero",
-                            message=(
-                                f"Gałąź '{branch.name}' — impedancja zerowa "
-                                f"(R=0, X=0). Może spowodować błąd solvera"
-                            ),
-                            element_id=branch_id,
-                            suggested_fix=(
-                                "Ustaw parametry R i/lub X > 0, "
-                                "lub przypisz typ z katalogu"
-                            ),
-                        ))
+                        report = report.with_warning(
+                            ValidationIssue(
+                                code="branch.impedance_zero",
+                                message=(
+                                    f"Gałąź '{branch.name}' — impedancja zerowa "
+                                    f"(R=0, X=0). Może spowodować błąd solvera"
+                                ),
+                                element_id=branch_id,
+                                suggested_fix=(
+                                    "Ustaw parametry R i/lub X > 0, " "lub przypisz typ z katalogu"
+                                ),
+                            )
+                        )
                     if branch.length_km <= 0:
-                        report = report.with_warning(ValidationIssue(
-                            code="branch.length_zero",
-                            message=(
-                                f"Gałąź '{branch.name}' — długość ≤ 0 "
-                                f"({branch.length_km} km)"
-                            ),
-                            element_id=branch_id,
-                            field="length_km",
-                            suggested_fix="Ustaw długość gałęzi > 0 km",
-                        ))
+                        report = report.with_warning(
+                            ValidationIssue(
+                                code="branch.length_zero",
+                                message=(
+                                    f"Gałąź '{branch.name}' — długość ≤ 0 "
+                                    f"({branch.length_km} km)"
+                                ),
+                                element_id=branch_id,
+                                field="length_km",
+                                suggested_fix="Ustaw długość gałęzi > 0 km",
+                            )
+                        )
 
         return report
 
@@ -602,9 +641,7 @@ class NetworkValidator:
     # Rule 12: Transformer HV/LV polarity vs bus voltages (NEW)
     # =========================================================================
 
-    def _check_transformer_polarity(
-        self, graph, report: ValidationReport
-    ) -> ValidationReport:
+    def _check_transformer_polarity(self, graph, report: ValidationReport) -> ValidationReport:
         """
         Check that transformer HV side connects to higher voltage bus.
 
@@ -625,21 +662,23 @@ class NetworkValidator:
                         and to_node.voltage_level > 0
                         and from_node.voltage_level < to_node.voltage_level
                     ):
-                        report = report.with_warning(ValidationIssue(
-                            code="transformer.polarity_reversed",
-                            message=(
-                                f"Transformator '{branch.name}' — strona GN "
-                                f"({from_node.voltage_level} kV) podłączona do "
-                                f"szyny o niższym napięciu niż strona DN "
-                                f"({to_node.voltage_level} kV). "
-                                f"Sprawdź kierunek podłączenia"
-                            ),
-                            element_id=branch_id,
-                            suggested_fix=(
-                                "Zamień szyny from/to transformatora, aby strona "
-                                "GN była podłączona do szyny wyższego napięcia"
-                            ),
-                        ))
+                        report = report.with_warning(
+                            ValidationIssue(
+                                code="transformer.polarity_reversed",
+                                message=(
+                                    f"Transformator '{branch.name}' — strona GN "
+                                    f"({from_node.voltage_level} kV) podłączona do "
+                                    f"szyny o niższym napięciu niż strona DN "
+                                    f"({to_node.voltage_level} kV). "
+                                    f"Sprawdź kierunek podłączenia"
+                                ),
+                                element_id=branch_id,
+                                suggested_fix=(
+                                    "Zamień szyny from/to transformatora, aby strona "
+                                    "GN była podłączona do szyny wyższego napięcia"
+                                ),
+                            )
+                        )
 
         return report
 
@@ -647,9 +686,7 @@ class NetworkValidator:
     # Rule 13: Voltage level consistency on lines/cables (NEW)
     # =========================================================================
 
-    def _check_voltage_consistency(
-        self, graph, report: ValidationReport
-    ) -> ValidationReport:
+    def _check_voltage_consistency(self, graph, report: ValidationReport) -> ValidationReport:
         """
         Check that lines/cables connect buses at the same voltage level.
 
@@ -669,21 +706,23 @@ class NetworkValidator:
                     and to_node.voltage_level > 0
                     and from_node.voltage_level != to_node.voltage_level
                 ):
-                    report = report.with_warning(ValidationIssue(
-                        code="branch.voltage_mismatch",
-                        message=(
-                            f"Gałąź '{branch.name}' łączy szyny o różnych "
-                            f"napięciach znamionowych: "
-                            f"{from_node.voltage_level} kV i "
-                            f"{to_node.voltage_level} kV"
-                        ),
-                        element_id=branch_id,
-                        suggested_fix=(
-                            "Linie/kable powinny łączyć szyny o tym samym "
-                            "napięciu. Jeśli potrzebna jest zmiana napięcia, "
-                            "użyj transformatora"
-                        ),
-                    ))
+                    report = report.with_warning(
+                        ValidationIssue(
+                            code="branch.voltage_mismatch",
+                            message=(
+                                f"Gałąź '{branch.name}' łączy szyny o różnych "
+                                f"napięciach znamionowych: "
+                                f"{from_node.voltage_level} kV i "
+                                f"{to_node.voltage_level} kV"
+                            ),
+                            element_id=branch_id,
+                            suggested_fix=(
+                                "Linie/kable powinny łączyć szyny o tym samym "
+                                "napięciu. Jeśli potrzebna jest zmiana napięcia, "
+                                "użyj transformatora"
+                            ),
+                        )
+                    )
 
         return report
 

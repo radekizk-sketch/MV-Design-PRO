@@ -32,7 +32,9 @@ import {
   buildNOPContextMenu,
   buildEnergyStorageContextMenu,
   buildSourceSNContextMenu,
+  buildBranchPoleContextMenu,
   buildBusSNContextMenu,
+  buildZksnContextMenu,
   buildBaySNContextMenu,
   buildTransformerContextMenu,
   buildSwitchNNContextMenu,
@@ -46,6 +48,10 @@ import {
 /** Non-separator actions (real menu items). */
 function realActions(items: { separator?: boolean; label: string }[]) {
   return items.filter((a) => !a.separator && a.label !== '');
+}
+
+function actionTokens(items: { id: string; actionKey?: string; separator?: boolean }[]) {
+  return items.filter((a) => !a.separator).map((a) => a.actionKey ?? a.id);
 }
 
 /**
@@ -152,6 +158,8 @@ describe('ACTION_MENU_MINIMUM_OPTIONS', () => {
       'Source',
       'Bus',
       'Station',
+      'BranchPole',
+      'ZKSN',
       'BaySN',
       'Switch',
       'TransformerBranch',
@@ -288,7 +296,7 @@ function describeBuilder(
 
     it('should have unique action IDs (no duplicates except separators)', () => {
       const items = buildFn('MODEL_EDIT');
-      const nonSepIds = items.filter((a) => !a.separator).map((a) => a.id);
+      const nonSepIds = items.filter((a) => !a.separator).map((a) => a.actionKey ?? a.id);
       const uniqueIds = new Set(nonSepIds);
       expect(uniqueIds.size).toBe(nonSepIds.length);
     });
@@ -308,39 +316,49 @@ function describeBuilder(
 // ---------------------------------------------------------------------------
 
 describeBuilder(
+  'buildBranchPoleContextMenu',
+  (mode) => buildBranchPoleContextMenu(mode),
+  'BranchPole',
+  9,
+);
+
+describeBuilder(
+  'buildZksnContextMenu',
+  (mode) => buildZksnContextMenu(mode),
+  'ZKSN',
+  9,
+);
+
+describeBuilder(
   'buildBusNNContextMenu',
   (mode) => buildBusNNContextMenu(mode),
   'BusNN',
-  25,
+  22,
 );
 
 describe('buildBusNNContextMenu — specific', () => {
-  it('should include OZE source actions: add_pv, add_bess, add_genset, add_ups', () => {
+  it('should include shared and dispatchable source actions: converter, genset, ups', () => {
     const items = buildBusNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_pv');
-    expect(ids).toContain('add_bess');
-    expect(ids).toContain('add_genset');
-    expect(ids).toContain('add_ups');
+    const ids = actionTokens(items);
+    expect(ids).toContain('bus_nn_add_converter_source_pv');
+    expect(ids).toContain('bus_nn_add_converter_source_bess');
+    expect(ids).toContain('bus_nn_add_converter_source_fw');
+    expect(ids).toContain('add_genset_nn');
+    expect(ids).toContain('add_ups_nn');
   });
 
   it('should include bus infrastructure actions', () => {
     const items = buildBusNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_bus_section');
-    expect(ids).toContain('add_bus_coupler');
-    expect(ids).toContain('add_energy_meter');
-    expect(ids).toContain('add_quality_meter');
-    expect(ids).toContain('add_surge_arrester');
-    expect(ids).toContain('add_load');
-    expect(ids).toContain('add_segment');
+    const ids = actionTokens(items);
+    expect(ids).toContain('bus_nn_add_feeder');
+    expect(ids).toContain('bus_nn_add_load');
   });
 
   it('should include feeder and source field actions', () => {
     const items = buildBusNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_feeder');
-    expect(ids).toContain('add_source_field');
+    const ids = actionTokens(items);
+    expect(ids).toContain('bus_nn_add_feeder');
+    expect(ids).toContain('bus_nn_source_field');
   });
 
   it('should include voltage edit and catalog assignment', () => {
@@ -375,37 +393,33 @@ describeBuilder(
   'buildFeederNNContextMenu',
   (mode) => buildFeederNNContextMenu(mode),
   'FeederNN',
-  25,
+  22,
 );
 
 describe('buildFeederNNContextMenu — specific', () => {
-  it('should include add_load, add_pv, add_bess actions', () => {
+  it('should include add_nn_load and converter source actions', () => {
     const items = buildFeederNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_load');
-    expect(ids).toContain('add_pv');
-    expect(ids).toContain('add_bess');
+    const ids = actionTokens(items);
+    expect(ids).toContain('feeder_nn_add_load');
+    expect(ids).toContain('feeder_nn_add_converter_source_pv');
+    expect(ids).toContain('feeder_nn_add_converter_source_bess');
+    expect(ids).toContain('feeder_nn_add_converter_source_fw');
   });
 
   it('should include apparatus and cable actions', () => {
     const items = buildFeederNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_fuse');
-    expect(ids).toContain('add_breaker');
-    expect(ids).toContain('add_disconnector');
+    const ids = actionTokens(items);
+    expect(ids).toContain('feeder_nn_add_breaker');
+    expect(ids).toContain('feeder_nn_add_disconnector');
     expect(ids).toContain('assign_switch_catalog');
     expect(ids).toContain('assign_cable_catalog');
   });
 
-  it('should include segment and measurement actions', () => {
+  it('should include segment and protection actions', () => {
     const items = buildFeederNNContextMenu('MODEL_EDIT');
     const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_segment');
     expect(ids).toContain('edit_segment_length');
-    expect(ids).toContain('add_energy_meter');
-    expect(ids).toContain('add_quality_meter');
-    expect(ids).toContain('add_surge_arrester');
-    expect(ids).toContain('add_protection');
+    expect(ids).toContain('add_relay');
   });
 
   it('should include change_role action', () => {
@@ -428,13 +442,14 @@ describeBuilder(
 );
 
 describe('buildSourceFieldNNContextMenu — specific', () => {
-  it('should include all four source type actions', () => {
+  it('should include all shared source type actions', () => {
     const items = buildSourceFieldNNContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_pv');
-    expect(ids).toContain('add_bess');
-    expect(ids).toContain('add_genset');
-    expect(ids).toContain('add_ups');
+    const ids = actionTokens(items);
+    expect(ids).toContain('source_field_nn_add_converter_source_pv');
+    expect(ids).toContain('source_field_nn_add_converter_source_bess');
+    expect(ids).toContain('source_field_nn_add_converter_source_fw');
+    expect(ids).toContain('add_genset_nn');
+    expect(ids).toContain('add_ups_nn');
   });
 
   it('should include change_kind for field type switching', () => {
@@ -446,7 +461,7 @@ describe('buildSourceFieldNNContextMenu — specific', () => {
 });
 
 // ---------------------------------------------------------------------------
-// V) Falownik PV — buildPVInverterContextMenu
+// V) Źródło przekształtnikowe PV — buildPVInverterContextMenu
 // ---------------------------------------------------------------------------
 
 describeBuilder(
@@ -480,12 +495,12 @@ describe('buildPVInverterContextMenu — specific', () => {
     const wb = items.find((a) => a.id === 'show_whitebox');
     expect(wb).toBeDefined();
     expect(wb!.enabled).toBe(true);
-    expect(wb!.label).toContain('ślad obliczeń');
+    expect(wb!.label).toContain('wywód obliczeń');
   });
 });
 
 // ---------------------------------------------------------------------------
-// W) Falownik BESS — buildBESSInverterContextMenu
+// W) Źródło przekształtnikowe BESS — buildBESSInverterContextMenu
 // ---------------------------------------------------------------------------
 
 describeBuilder(
@@ -653,12 +668,36 @@ describeBuilder(
   14,
 );
 
+describe('buildSourceSNContextMenu ??? specific', () => {
+  it('prowadzi do pol GPZ zamiast wyprowadzac magistrale bezposrednio ze zrodla', () => {
+    const items = buildSourceSNContextMenu('MODEL_EDIT');
+    const action = items.find((candidate) => candidate.id === 'open_gpz_fields');
+    expect(action).toBeDefined();
+    expect(action?.label).toContain('pola GPZ');
+    expect(action?.label).toContain('dodaj pole SN');
+    expect(items.some((candidate) => candidate.id === 'continue_trunk_segment_sn')).toBe(false);
+  });
+});
+
 describeBuilder(
   'buildBusSNContextMenu',
   (mode) => buildBusSNContextMenu(mode),
   'Bus',
-  20,
+  16,
 );
+
+describe('buildBusSNContextMenu — specific', () => {
+  it('eksponuje dodanie pola SN jako kanoniczna akcje z wariantem aparatu', () => {
+    const items = buildBusSNContextMenu('MODEL_EDIT');
+    const addBreakerAction = items.find((candidate) => candidate.actionKey === 'bus_sn_add_breaker');
+    const addDisconnectorAction = items.find((candidate) => candidate.actionKey === 'bus_sn_add_disconnector');
+
+    expect(addBreakerAction).toBeDefined();
+    expect(addBreakerAction?.label).toBe('Dodaj pole SN z wyłącznikiem...');
+    expect(addDisconnectorAction).toBeDefined();
+    expect(addDisconnectorAction?.label).toBe('Dodaj pole SN z rozłącznikiem...');
+  });
+});
 
 describeBuilder(
   'buildStationContextMenu',
@@ -710,7 +749,7 @@ describeBuilder(
   'buildRelaySNContextMenu',
   (mode) => buildRelaySNContextMenu(mode),
   'Relay',
-  14,
+  13,
 );
 
 describeBuilder(
@@ -741,24 +780,26 @@ describeBuilder(
 describe('buildStationContextMenu — nN source actions', () => {
   it('should include all nN source addition actions', () => {
     const items = buildStationContextMenu('MODEL_EDIT');
-    const ids = items.map((a) => a.id);
-    expect(ids).toContain('add_pv');
-    expect(ids).toContain('add_bess');
-    expect(ids).toContain('add_genset');
-    expect(ids).toContain('add_ups');
-    expect(ids).toContain('add_nn_bus');
-    expect(ids).toContain('add_nn_feeder');
-    expect(ids).toContain('add_source_field_nn');
+    const ids = actionTokens(items);
+    expect(ids).toContain('station_add_converter_source_pv');
+    expect(ids).toContain('station_add_converter_source_bess');
+    expect(ids).toContain('station_add_converter_source_fw');
+    expect(ids).toContain('add_genset_nn');
+    expect(ids).toContain('add_ups_nn');
+    expect(ids).toContain('station_add_nn_bus');
+    expect(ids).toContain('station_add_feeder');
+    expect(ids).toContain('station_source_field');
   });
 
   it('should disable nN source addition actions in RESULT_VIEW', () => {
     const items = buildStationContextMenu('RESULT_VIEW');
     const sourceActions = items.filter(
       (a) =>
-        a.id === 'add_pv' ||
-        a.id === 'add_bess' ||
-        a.id === 'add_genset' ||
-        a.id === 'add_ups',
+        a.actionKey === 'station_add_converter_source_pv' ||
+        a.actionKey === 'station_add_converter_source_bess' ||
+        a.actionKey === 'station_add_converter_source_fw' ||
+        a.id === 'add_genset_nn' ||
+        a.id === 'add_ups_nn',
     );
     for (const sa of sourceActions) {
       expect(sa.enabled).toBe(false);
@@ -783,7 +824,9 @@ describe('Cross-builder consistency', () => {
     ['buildEnergyMeterContextMenu', () => buildEnergyMeterContextMenu('MODEL_EDIT')],
     ['buildEnergyStorageContextMenu', () => buildEnergyStorageContextMenu('MODEL_EDIT')],
     ['buildSourceSNContextMenu', () => buildSourceSNContextMenu('MODEL_EDIT')],
+    ['buildBranchPoleContextMenu', () => buildBranchPoleContextMenu('MODEL_EDIT')],
     ['buildBusSNContextMenu', () => buildBusSNContextMenu('MODEL_EDIT')],
+    ['buildZksnContextMenu', () => buildZksnContextMenu('MODEL_EDIT')],
     ['buildStationContextMenu', () => buildStationContextMenu('MODEL_EDIT')],
     ['buildBaySNContextMenu', () => buildBaySNContextMenu('MODEL_EDIT')],
     ['buildTransformerContextMenu', () => buildTransformerContextMenu('MODEL_EDIT')],

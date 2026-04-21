@@ -13,9 +13,9 @@
  * BEZPIECZEŃSTWO: Feature flag pozwala włączyć/wyłączyć bez ryzyka regresji
  *
  * CANONICAL ALIGNMENT:
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
- * - ETAP software visual standards (feeders exit perpendicular from busbar)
- * - PowerFactory layout principles
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
+ * - CANONICAL software visual standards (feeders exit perpendicular from busbar)
+ * - Canonical layout principles
  *
  * USAGE:
  * ```typescript

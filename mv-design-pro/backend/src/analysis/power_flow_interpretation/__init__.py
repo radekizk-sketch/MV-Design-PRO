@@ -19,6 +19,7 @@ USAGE:
     # Serialize to dict
     result_dict = interpretation.to_dict()
 """
+
 from analysis.power_flow_interpretation.builder import (
     INTERPRETATION_VERSION,
     PowerFlowInterpretationBuilder,
@@ -35,8 +36,8 @@ from analysis.power_flow_interpretation.models import (
     VoltageFinding,
 )
 from analysis.power_flow_interpretation.serializer import (
-    result_to_dict,
     SEVERITY_ORDER,
+    result_to_dict,
 )
 
 __all__ = [

@@ -1,8 +1,10 @@
 import { buildCatalogBinding } from './catalogBinding';
 import type {
+  BranchPointCatalogType,
   BESSInverterCatalogType,
   CableType,
   CatalogNamespace,
+  ConverterType,
   CTCatalogType,
   LineType,
   LoadCatalogType,
@@ -30,6 +32,28 @@ export class CatalogApiError extends Error {
   }
 }
 
+export function getCatalogErrorMessage(error: unknown): string {
+  if (error instanceof CatalogApiError) {
+    if (error.status >= 500 && !error.detail) {
+      return BACKEND_UNAVAILABLE_MESSAGE;
+    }
+    if (error.detail) {
+      return error.detail;
+    }
+    return `Blad API katalogow (${error.status}).`;
+  }
+  if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) {
+    return error.message;
+  }
+  if (error instanceof Error && error.message.includes('500 Internal Server Error: No detail')) {
+    return BACKEND_UNAVAILABLE_MESSAGE;
+  }
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+  return 'Blad pobierania typow katalogowych.';
+}
+
 export type CatalogListItem =
   | LineType
   | CableType
@@ -44,7 +68,8 @@ export type CatalogListItem =
   | PVInverterCatalogType
   | BESSInverterCatalogType
   | ProtectionDeviceType
-  | SourceSystemCatalogType;
+  | SourceSystemCatalogType
+  | BranchPointCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
   'Odkatalogowanie elementów technicznych jest niedostępne w trybie katalog-first.';
@@ -52,6 +77,8 @@ const NETWORK_ERROR_MESSAGE =
   'Nie mozna polaczyc sie z API katalogow. Uruchom backend i odswiez widok.';
 const CATALOG_OPERATION_ERROR_MESSAGE =
   'Nie udalo sie wykonac operacji katalogowej. Sprobuj ponownie.';
+const BACKEND_UNAVAILABLE_MESSAGE =
+  'Backend katalogow nie odpowiada. Uruchom API i sprobuj ponownie.';
 
 async function handleResponse<T>(response: Response, endpoint: string): Promise<T> {
   if (!response.ok) {
@@ -157,8 +184,46 @@ export async function fetchBessInverterTypes(): Promise<BESSInverterCatalogType[
   return fetchCatalogJson<BESSInverterCatalogType[]>('/api/catalog/bess-inverter-types');
 }
 
+export async function fetchConverterTypes(): Promise<ConverterType[]> {
+  const [pvTypes, bessTypes] = await Promise.all([
+    fetchPvInverterTypes(),
+    fetchBessInverterTypes(),
+  ]);
+
+  const pvConverters: ConverterType[] = pvTypes.map((item) => ({
+    id: item.id,
+    name: item.name,
+    manufacturer: item.manufacturer,
+    kind: 'PV',
+    un_kv: 0.4,
+    sn_mva: item.s_n_kva / 1000,
+    pmax_mw: item.p_max_kw / 1000,
+    cosphi_min: item.cos_phi_min,
+    cosphi_max: item.cos_phi_max,
+  }));
+  const bessConverters: ConverterType[] = bessTypes.map((item) => ({
+    id: item.id,
+    name: item.name,
+    manufacturer: item.manufacturer,
+    kind: 'BESS',
+    un_kv: 0.4,
+    sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
+    pmax_mw: item.p_discharge_kw / 1000,
+    e_kwh: item.e_kwh,
+  }));
+
+  return [...pvConverters, ...bessConverters];
+}
+
 export async function fetchSourceSystemTypes(): Promise<SourceSystemCatalogType[]> {
   return fetchCatalogJson<SourceSystemCatalogType[]>('/api/catalog/source-system-types');
+}
+
+export async function fetchBranchPointTypes(
+  kind?: 'BRANCH_POLE' | 'ZKSN',
+): Promise<BranchPointCatalogType[]> {
+  const query = kind ? `?kind=${encodeURIComponent(kind)}` : '';
+  return fetchCatalogJson<BranchPointCatalogType[]>(`/api/catalog/branch-point-types${query}`);
 }
 
 export async function fetchProtectionDeviceTypes(): Promise<ProtectionDeviceType[]> {
@@ -320,6 +385,12 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SYSTEM_SOURCE':
       types = await fetchSourceSystemTypes();
+      break;
+    case 'BRANCH_POLE':
+      types = await fetchBranchPointTypes('BRANCH_POLE');
+      break;
+    case 'ZKSN':
+      types = await fetchBranchPointTypes('ZKSN');
       break;
     default:
       throw new Error(`Unknown category: ${category}`);

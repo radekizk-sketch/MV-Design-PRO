@@ -14,24 +14,26 @@ from network_model.catalog.types import CatalogBinding
 DEFAULT_CATALOG_VERSION = "2024.1"
 
 # Operations that require catalog binding in their payload
-CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset({
-    "add_grid_source_sn",
-    "continue_trunk_segment_sn",
-    "insert_branch_pole_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_zksn_on_segment_sn",
-    "insert_station_on_segment_sn",
-    "add_transformer_sn_nn",
-    "add_nn_load",
-    "add_pv_inverter_nn",
-    "add_bess_inverter_nn",
-    "add_relay",
-    "add_ct",
-    "add_vt",
-    "add_nn_outgoing_field",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-})
+CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
+    {
+        "add_grid_source_sn",
+        "add_sn_bay",
+        "continue_trunk_segment_sn",
+        "insert_branch_pole_on_segment_sn",
+        "start_branch_segment_sn",
+        "insert_zksn_on_segment_sn",
+        "insert_station_on_segment_sn",
+        "add_transformer_sn_nn",
+        "add_nn_load",
+        "add_converter_source",
+        "add_relay",
+        "add_ct",
+        "add_vt",
+        "add_nn_outgoing_field",
+        "insert_section_switch_sn",
+        "connect_secondary_ring_sn",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -94,10 +96,75 @@ def _explicit_namespace(payload: dict[str, Any]) -> str | None:
     return None
 
 
+def _converter_namespace(payload: dict[str, Any]) -> str | None:
+    technology = payload.get("source_technology")
+    if isinstance(technology, str):
+        normalized = technology.strip().upper()
+        if normalized == "PV":
+            return "ZRODLO_NN_PV"
+        if normalized == "BESS":
+            return "ZRODLO_NN_BESS"
+        if normalized == "FW":
+            return "CONVERTER"
+    return "CONVERTER"
+
+
+def _uses_manual_grid_source_equivalent(payload: dict[str, Any]) -> bool:
+    source_mode = payload.get("source_mode")
+    parameter_source = payload.get("parameter_source")
+    if source_mode in {"EKSPERCKI_RECZNY", "MANUAL", "MANUAL_EQUIVALENT"}:
+        return True
+    if parameter_source == "MANUAL_EQUIVALENT":
+        return True
+    return isinstance(payload.get("manual_equivalent"), dict)
+
+
+def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
+    manual = payload.get("manual_equivalent")
+    if not isinstance(manual, dict):
+        return False
+
+    voltage_kv = manual.get("voltage_kv", payload.get("voltage_kv"))
+    if not isinstance(voltage_kv, int | float) or float(voltage_kv) <= 0:
+        return False
+
+    short_circuit_mode = (
+        str(
+            manual.get(
+                "short_circuit_mode", payload.get("short_circuit_mode", "SHORT_CIRCUIT_POWER")
+            )
+        )
+        .strip()
+        .upper()
+    )
+    if short_circuit_mode == "IMPEDANCE":
+        r_ohm = manual.get("r_ohm", payload.get("r_ohm"))
+        x_ohm = manual.get("x_ohm", payload.get("x_ohm"))
+        return (
+            isinstance(r_ohm, int | float)
+            and float(r_ohm) >= 0
+            and isinstance(x_ohm, int | float)
+            and float(x_ohm) > 0
+        )
+
+    sk3_mva = manual.get("sk3_mva", payload.get("sk3_mva"))
+    rx_ratio = manual.get("rx_ratio", payload.get("rx_ratio"))
+    return (
+        isinstance(sk3_mva, int | float)
+        and float(sk3_mva) > 0
+        and isinstance(rx_ratio, int | float)
+        and float(rx_ratio) > 0
+    )
+
+
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     """Extract catalog_binding from payload, preferring canonical nested contracts."""
 
-    if operation in {"continue_trunk_segment_sn", "start_branch_segment_sn", "connect_secondary_ring_sn"}:
+    if operation in {
+        "continue_trunk_segment_sn",
+        "start_branch_segment_sn",
+        "connect_secondary_ring_sn",
+    }:
         candidate = _extract_binding_from_container(
             payload.get("segment"),
             namespace=_segment_namespace(payload.get("segment")),
@@ -142,6 +209,15 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
+    if operation == "add_sn_bay":
+        candidate = _extract_binding_from_container(
+            payload,
+            namespace="APARAT_SN",
+            ref_keys=("catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
     if operation == "add_nn_load":
         candidate = _extract_binding_from_container(
             payload.get("load") or payload,
@@ -151,23 +227,26 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         if candidate is not None:
             return candidate
 
-    if operation == "add_pv_inverter_nn":
+    if operation == "add_converter_source":
         candidate = _extract_binding_from_container(
-            payload.get("pv_spec") or payload.get("pv_source"),
-            namespace="ZRODLO_NN_PV",
-            ref_keys=("catalog_item_id",),
+            payload,
+            namespace=_converter_namespace(payload),
+            ref_keys=("catalog_ref",),
         )
         if candidate is not None:
             return candidate
 
-    if operation == "add_bess_inverter_nn":
-        candidate = _extract_binding_from_container(
-            payload.get("bess_spec") or payload.get("bess_source"),
-            namespace="ZRODLO_NN_BESS",
-            ref_keys=("inverter_catalog_id",),
-        )
-        if candidate is not None:
-            return candidate
+        materialized = payload.get("materialized_params")
+        if isinstance(materialized, dict):
+            synthesized = _binding_from_ref(
+                _converter_namespace(payload),
+                materialized.get("catalog_item_id"),
+            )
+            if synthesized is not None:
+                version = materialized.get("catalog_item_version")
+                if isinstance(version, str) and version.strip():
+                    synthesized["catalog_item_version"] = version.strip()
+                return synthesized
 
     if operation == "add_relay":
         candidate = _extract_binding_from_container(
@@ -222,10 +301,6 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
         "segment",
         "branch",
         "load",
-        "pv_source",
-        "pv_spec",
-        "bess_source",
-        "bess_spec",
         "protection",
         "transformer",
         "transformer_spec",
@@ -255,18 +330,40 @@ def validate_and_materialize_catalog_binding(
     if operation not in CATALOG_REQUIRED_OPERATIONS:
         return None, {}
 
+    if operation == "add_grid_source_sn" and _uses_manual_grid_source_equivalent(payload):
+        if _manual_grid_source_equivalent_complete(payload):
+            return None, {}
+        return (
+            CatalogPolicyError(
+                code="catalog.ref_required",
+                message_pl="Element techniczny wymaga powiÄ…zania z katalogiem",
+                errors=[
+                    {
+                        "code": "catalog.ref_required",
+                        "message_pl": (
+                            "RÄ™czny odpowiednik GPZ musi byÄ‡ kompletny albo naleĹĽy podaÄ‡ "
+                            "'catalog_binding'."
+                        ),
+                    }
+                ],
+            ),
+            {},
+        )
+
     binding_data = extract_catalog_binding(operation, payload)
     if binding_data is None:
         return (
             CatalogPolicyError(
                 code="catalog.ref_required",
                 message_pl="Element techniczny wymaga powiązania z katalogiem",
-                errors=[{
-                    "code": "catalog.ref_required",
-                    "message_pl": (
-                        f"Operacja '{operation}' wymaga 'catalog_binding' w payload."
-                    ),
-                }],
+                errors=[
+                    {
+                        "code": "catalog.ref_required",
+                        "message_pl": (
+                            f"Operacja '{operation}' wymaga 'catalog_binding' w payload."
+                        ),
+                    }
+                ],
             ),
             {},
         )
@@ -295,10 +392,12 @@ def validate_and_materialize_catalog_binding(
             CatalogPolicyError(
                 code="catalog.ref_required",
                 message_pl="Powiązanie katalogowe ma nieprawidłowy format",
-                errors=[{
-                    "code": "catalog.ref_required",
-                    "message_pl": "Nie można odczytać danych 'catalog_binding'.",
-                }],
+                errors=[
+                    {
+                        "code": "catalog.ref_required",
+                        "message_pl": "Nie można odczytać danych 'catalog_binding'.",
+                    }
+                ],
             ),
             {},
         )
@@ -312,11 +411,12 @@ def validate_and_materialize_catalog_binding(
             CatalogPolicyError(
                 code=mat_result.error_code or "catalog.materialization_failed",
                 message_pl=mat_result.error_message_pl or "Błąd materializacji katalogu",
-                errors=[{
-                    "code": mat_result.error_code or "catalog.materialization_failed",
-                    "message_pl": mat_result.error_message_pl
-                    or "Błąd materializacji katalogu",
-                }],
+                errors=[
+                    {
+                        "code": mat_result.error_code or "catalog.materialization_failed",
+                        "message_pl": mat_result.error_message_pl or "Błąd materializacji katalogu",
+                    }
+                ],
             ),
             {},
         )

@@ -1,8 +1,8 @@
 /**
- * MainMenuBar — Pasek menu głównego (PowerFactory/ETAP Style)
+ * MainMenuBar — Pasek menu głównego (Canonical/CANONICAL Style)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Menu narzędziowe — szybki dostęp do akcji
+ * - ui_canonical_parity.md: Menu narzędziowe — szybki dostęp do akcji
  *
  * Pasek menu o stylu klasy przemysłowej:
  * - Plik (Projekt): Nowy, Otwórz, Zapisz, Eksportuj
@@ -80,6 +80,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'navigator', label: 'Nawigator projektu', shortcut: 'Ctrl+1' },
       { id: 'inspector', label: 'Inspektor właściwości', shortcut: 'Ctrl+2' },
       { id: 'sld', label: 'Schemat jednokreskowy', shortcut: 'Ctrl+3' },
+      { id: 'sld-view', label: 'Podglad schematu', shortcut: 'Ctrl+Shift+3' },
       { id: 'network-build', label: 'Budowa sieci', shortcut: 'Ctrl+4' },
       { id: 'sep-1', label: '', separator: true },
       { id: 'zoom-in', label: 'Powiększ', shortcut: '+' },
@@ -111,9 +112,9 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'run-sc-1f', label: 'Zwarcia 1F (doziemne)' },
       { id: 'run-power-flow', label: 'Rozpływ mocy' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'case-manager', label: 'Menedżer przypadków' },
-      { id: 'results', label: 'Przeglądaj wyniki' },
-      { id: 'compare', label: 'Porównaj przypadki' },
+      { id: 'variants', label: 'Warianty i uruchomienia' },
+      { id: 'analysis', label: 'Poziom analityczny' },
+      { id: 'report', label: 'Generator raportu' },
     ],
   },
   {
@@ -124,7 +125,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'protection', label: 'Zabezpieczenia' },
       { id: 'tcc', label: 'Krzywe czasowo-prądowe' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'whitebox', label: 'Ślad obliczeń' },
+      { id: 'whitebox', label: 'Wywód obliczeń' },
     ],
   },
   {
@@ -281,3 +282,4 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
 }
 
 export default MainMenuBar;
+

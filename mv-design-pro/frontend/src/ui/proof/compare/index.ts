@@ -2,7 +2,7 @@
  * Porównanie śladów obliczeń (Trace Comparison) — Eksporty
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie Case/Run A vs B
+ * - ui_canonical_parity.md: Porównanie Case/Run A vs B
  * - SYSTEM_SPEC.md: READ-ONLY display
  */
 

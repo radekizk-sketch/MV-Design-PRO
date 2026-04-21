@@ -428,8 +428,8 @@ describe('SLD Busbar Feeder Auto-Layout (Default ON)', () => {
     it('should snap all path points to grid', () => {
       const symbols = createBusbarWithFeedersFixture(5);
       const connections = generateConnections(symbols);
-      // ETAP_GEOMETRY.layout.gridSize and connectionRouting gridSnap are both 20
-      // But the routing config gridSnap defaults to ETAP_GEOMETRY.routing.corridorOffset = 8
+      // CANONICAL_GEOMETRY.layout.gridSize and connectionRouting gridSnap are both 20
+      // But the routing config gridSnap defaults to CANONICAL_GEOMETRY.routing.corridorOffset = 8
       // So we check that points are snapped to some regular grid (at least 4px)
       const minGridSnap = 4;
 

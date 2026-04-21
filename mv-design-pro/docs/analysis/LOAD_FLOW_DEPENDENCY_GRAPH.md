@@ -1,4 +1,4 @@
-# LOAD FLOW DEPENDENCY GRAPH — RUN #2A
+﻿# LOAD FLOW DEPENDENCY GRAPH â€” RUN #2A
 
 > **Status**: BINDING
 > **Date**: 2026-02-13
@@ -11,29 +11,29 @@
 ## 1. Dependency Graph (ASCII)
 
 ```
-PR-LF-05 (Governance & CI Guards) ─────────────── GATES ALL MERGES
-    │                                                    │
-    │ (can start in parallel with PR-LF-01)              │
-    │                                                    │
-PR-LF-01 (Domain + Validation + Execution Wiring) ──────┤
-    │                                                    │
-    ├──▸ PR-LF-02 (ResultSet Mapping v1 + Persistence)   │
-    │        │                                           │
-    │        ├──▸ PR-LF-03 (Workspace UI + Results PL)   │
-    │        │                                           │
-    │        └──▸ PR-LF-04 (SLD Overlay token-only)      │
-    │                                                    │
-    └────────────────────────────────────────────────────┘
+PR-LF-05 (Governance & CI Guards) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ GATES ALL MERGES
+    â”‚                                                    â”‚
+    â”‚ (can start in parallel with PR-LF-01)              â”‚
+    â”‚                                                    â”‚
+PR-LF-01 (Domain + Validation + Execution Wiring) â”€â”€â”€â”€â”€â”€â”¤
+    â”‚                                                    â”‚
+    â”śâ”€â”€â–¸ PR-LF-02 (ResultSet Mapping v1 + Persistence)   â”‚
+    â”‚        â”‚                                           â”‚
+    â”‚        â”śâ”€â”€â–¸ PR-LF-03 (Workspace UI + Results PL)   â”‚
+    â”‚        â”‚                                           â”‚
+    â”‚        â””â”€â”€â–¸ PR-LF-04 (SLD Overlay token-only)      â”‚
+    â”‚                                                    â”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 Simplified flow:
 
 ```
-PR-LF-01 ──┬──▸ PR-LF-02 ──┬──▸ PR-LF-03
-            │                │
-            │                └──▸ PR-LF-04
-            │
-            └──▸ PR-LF-05 (can start early, gates ALL)
+PR-LF-01 â”€â”€â”¬â”€â”€â–¸ PR-LF-02 â”€â”€â”¬â”€â”€â–¸ PR-LF-03
+            â”‚                â”‚
+            â”‚                â””â”€â”€â–¸ PR-LF-04
+            â”‚
+            â””â”€â”€â–¸ PR-LF-05 (can start early, gates ALL)
 ```
 
 ---
@@ -91,15 +91,15 @@ PR-LF-03 and PR-LF-04 have no dependency on each other and can be developed and 
 class LoadFlowRunInput:
     """
     Application-level Load Flow run input.
-    ZERO defaults — every field is mandatory and explicit.
+    ZERO defaults â€” every field is mandatory and explicit.
     """
     study_case_id: UUID
     snapshot_id: str
     solver_method: Literal["newton-raphson", "gauss-seidel", "fast-decoupled"]
     modeling_mode: Literal["AC_POWER_FLOW"]
     start_mode: Literal["FLAT_START", "CUSTOM_INITIAL"]
-    tolerance: float          # NO default — caller must specify
-    max_iterations: int       # NO default — caller must specify
+    tolerance: float          # NO default â€” caller must specify
+    max_iterations: int       # NO default â€” caller must specify
     base_mva: float           # Explicit system base
     slack: SlackSpec          # Single slack (explicit node + voltage)
     pq_specs: tuple[PQSpec, ...]
@@ -629,7 +629,7 @@ Commits are small, logical, and self-contained. No aesthetic refactors.
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| `LoadFlowRunInput` contract incomplete (missing field discovered later) | MEDIUM | HIGH -- requires re-review of PR-LF-01 and downstream PRs | Derive all fields from AS-IS `PowerFlowInput` + gap analysis in LOAD_FLOW_ASIS_MAP.md; review against PowerFactory reference |
+| `LoadFlowRunInput` contract incomplete (missing field discovered later) | MEDIUM | HIGH -- requires re-review of PR-LF-01 and downstream PRs | Derive all fields from AS-IS `PowerFlowInput` + gap analysis in LOAD_FLOW_ASIS_MAP.md; review against benchmark reference |
 | Dual execution path conflict (AnalysisRunService vs ExecutionEngine) | HIGH | MEDIUM -- confused callers, duplicate runs | PR-LF-01 establishes `execute_run_load_flow()` as THE canonical path; mark `AnalysisRunService.execute_power_flow_run()` as deprecated with runtime warning |
 | Hash collision between old AnalysisRunService hash and new ExecutionEngine hash | LOW | HIGH -- cache invalidation failures | New `canonical_hash_load_flow()` uses `_canonicalize()` from `execution.py` (different algorithm than AnalysisRunService); document migration path |
 | `_DETERMINISTIC_LIST_KEYS` addition breaks existing SC/Protection hashes | LOW | CRITICAL -- all stored results become invalid | LF keys are additive; existing key set untouched; verify with regression test that SC/Protection hashes remain stable |
@@ -715,3 +715,4 @@ Load Flow closure (RUN #2A) is complete when ALL of:
 ---
 
 *End of Load Flow Dependency Graph (RUN #2A).*
+

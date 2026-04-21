@@ -634,13 +634,29 @@ describe('Layout Pipeline with Station Details — RUN #3D', () => {
     }
   });
 
-  it('computeLayout without stationBlockDetails sets detail=null', () => {
+  it('computeLayout propagates canonical detail into renderer annotations', () => {
+    const input = buildGN_STA_BRANCH();
+    const adapterResult = buildVisualGraphFromTopology(input);
+    const layout = computeLayout(
+      adapterResult.graph,
+      DEFAULT_LAYOUT_CONFIG,
+      adapterResult.stationBlockDetails,
+    );
+
+    const stationChain = layout.canonicalAnnotations?.stationChains.find((chain) => chain.stationId === 'sta_c1');
+    expect(stationChain?.detail?.blockId).toBe('sta_c1');
+
+    const branchPoint = layout.canonicalAnnotations?.branchPoints[0];
+    expect(branchPoint?.detail?.blockId).toBe(branchPoint?.sourceEdgeId);
+  });
+
+  it('computeLayout without explicit stationBlockDetails resolves canonical detail from adapter graph', () => {
     const input = buildGN_STA_LEAF();
     const adapterResult = buildVisualGraphFromTopology(input);
     const layout = computeLayout(adapterResult.graph);
 
     for (const block of layout.switchgearBlocks) {
-      expect(block.detail).toBeNull();
+      expect(block.detail?.blockId).toBe(block.blockId);
     }
   });
 

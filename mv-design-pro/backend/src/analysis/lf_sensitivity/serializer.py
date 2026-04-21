@@ -24,9 +24,7 @@ def driver_to_dict(driver: LFSensitivityDriver) -> dict[str, Any]:
         "perturbation": driver.perturbation,
         "delta_delta_pct": float(driver.delta_delta_pct),
         "delta_margin_pct": (
-            float(driver.delta_margin_pct)
-            if driver.delta_margin_pct is not None
-            else None
+            float(driver.delta_margin_pct) if driver.delta_margin_pct is not None else None
         ),
         "why_pl": driver.why_pl,
     }
@@ -39,14 +37,10 @@ def entry_to_dict(entry: LFSensitivityEntry) -> dict[str, Any]:
             float(entry.base_delta_pct) if entry.base_delta_pct is not None else None
         ),
         "threshold_warn_pct": (
-            float(entry.threshold_warn_pct)
-            if entry.threshold_warn_pct is not None
-            else None
+            float(entry.threshold_warn_pct) if entry.threshold_warn_pct is not None else None
         ),
         "threshold_fail_pct": (
-            float(entry.threshold_fail_pct)
-            if entry.threshold_fail_pct is not None
-            else None
+            float(entry.threshold_fail_pct) if entry.threshold_fail_pct is not None else None
         ),
         "drivers": [driver_to_dict(driver) for driver in entry.drivers],
         "missing_data": list(entry.missing_data),

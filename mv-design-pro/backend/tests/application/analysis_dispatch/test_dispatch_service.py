@@ -20,6 +20,8 @@ import pytest
 backend_src = Path(__file__).parents[3] / "src"
 sys.path.insert(0, str(backend_src))
 
+from datetime import UTC
+
 from application.analysis_dispatch.service import (
     AnalysisDispatchService,
     compute_dispatch_input_hash,
@@ -37,7 +39,6 @@ from domain.analysis_kind import AnalysisKind, analysis_type_to_kind, kind_to_an
 from domain.project_design_mode import ProjectDesignMode
 from infrastructure.persistence.db import create_engine_from_url, create_session_factory, init_db
 from infrastructure.persistence.unit_of_work import build_uow_factory
-
 
 # =============================================================================
 # Helpers
@@ -165,10 +166,16 @@ class TestInputHashDeterminism:
         opts = {"tolerance": 1e-8, "max_iter": 30}
 
         h1 = compute_dispatch_input_hash(
-            AnalysisKind.POWER_FLOW, case_id, enm_hash, opts,
+            AnalysisKind.POWER_FLOW,
+            case_id,
+            enm_hash,
+            opts,
         )
         h2 = compute_dispatch_input_hash(
-            AnalysisKind.POWER_FLOW, case_id, enm_hash, opts,
+            AnalysisKind.POWER_FLOW,
+            case_id,
+            enm_hash,
+            opts,
         )
         assert h1 == h2
         assert len(h1) == 64  # SHA-256 hex
@@ -180,11 +187,17 @@ class TestInputHashDeterminism:
         fault_spec = {"fault_type": "3F", "node_id": "node-1", "c_factor": 1.1}
 
         h1 = compute_dispatch_input_hash(
-            AnalysisKind.SHORT_CIRCUIT, case_id, enm_hash, opts,
+            AnalysisKind.SHORT_CIRCUIT,
+            case_id,
+            enm_hash,
+            opts,
             extra={"fault_spec": fault_spec},
         )
         h2 = compute_dispatch_input_hash(
-            AnalysisKind.SHORT_CIRCUIT, case_id, enm_hash, opts,
+            AnalysisKind.SHORT_CIRCUIT,
+            case_id,
+            enm_hash,
+            opts,
             extra={"fault_spec": fault_spec},
         )
         assert h1 == h2
@@ -195,10 +208,16 @@ class TestInputHashDeterminism:
         extra = {"protection_config_fingerprint": "fp-001"}
 
         h1 = compute_dispatch_input_hash(
-            AnalysisKind.PROTECTION, case_id, enm_hash, extra=extra,
+            AnalysisKind.PROTECTION,
+            case_id,
+            enm_hash,
+            extra=extra,
         )
         h2 = compute_dispatch_input_hash(
-            AnalysisKind.PROTECTION, case_id, enm_hash, extra=extra,
+            AnalysisKind.PROTECTION,
+            case_id,
+            enm_hash,
+            extra=extra,
         )
         assert h1 == h2
 
@@ -247,9 +266,9 @@ class TestAnalysisKindMapping:
 
 class TestAnalysisRunSummaryContract:
     def test_summary_to_dict_contains_all_fields(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         summary = AnalysisRunSummary(
             run_id="run-1",
             analysis_kind="SHORT_CIRCUIT",
@@ -264,20 +283,28 @@ class TestAnalysisRunSummaryContract:
         )
         d = summary.to_dict()
         required_keys = {
-            "run_id", "analysis_kind", "status", "created_at", "finished_at",
-            "input_hash", "enm_hash", "results_valid", "deduplicated",
-            "result_location", "error_message",
+            "run_id",
+            "analysis_kind",
+            "status",
+            "created_at",
+            "finished_at",
+            "input_hash",
+            "enm_hash",
+            "results_valid",
+            "deduplicated",
+            "result_location",
+            "error_message",
         }
         assert required_keys.issubset(set(d.keys()))
 
     def test_summary_deduplicated_flag(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         summary = AnalysisRunSummary(
             run_id="run-2",
             analysis_kind="POWER_FLOW",
             status="FINISHED",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             deduplicated=True,
         )
         d = summary.to_dict()
@@ -320,8 +347,15 @@ class TestPowerFlowDispatch:
 
         d = summary.to_dict()
         # All required keys present
-        for key in ["run_id", "analysis_kind", "status", "input_hash",
-                     "enm_hash", "results_valid", "deduplicated"]:
+        for key in [
+            "run_id",
+            "analysis_kind",
+            "status",
+            "input_hash",
+            "enm_hash",
+            "results_valid",
+            "deduplicated",
+        ]:
             assert key in d, f"Missing key: {key}"
 
 
@@ -375,8 +409,15 @@ class TestShortCircuitDispatch:
 
         d = summary.to_dict()
         # Same shape as PF
-        for key in ["run_id", "analysis_kind", "status", "input_hash",
-                     "enm_hash", "results_valid", "deduplicated"]:
+        for key in [
+            "run_id",
+            "analysis_kind",
+            "status",
+            "input_hash",
+            "enm_hash",
+            "results_valid",
+            "deduplicated",
+        ]:
             assert key in d, f"Missing key: {key}"
 
 

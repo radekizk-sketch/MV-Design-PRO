@@ -6,7 +6,6 @@ from importlib.util import find_spec
 from uuid import UUID
 
 import pytest
-
 from analysis.normative.models import (
     NormativeContext,
     NormativeItem,
@@ -31,7 +30,13 @@ from analysis.protection_insight.models import (
     ProtectionInsightView,
     ProtectionSelectivityStatus,
 )
-from application.proof_engine.types import ProofDocument, ProofHeader, ProofSummary, ProofType, ProofValue
+from application.proof_engine.types import (
+    ProofDocument,
+    ProofHeader,
+    ProofSummary,
+    ProofType,
+    ProofValue,
+)
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
@@ -164,7 +169,7 @@ def _sample_proof() -> ProofDocument:
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         title_pl="Dowód zabezpieczeń",
         header=header,
-        steps=tuple(),
+        steps=(),
         summary=summary,
     )
 
@@ -207,7 +212,7 @@ def test_builder_sorting_and_markers() -> None:
 def test_builder_not_evaluated_when_missing_data() -> None:
     insight = ProtectionInsightView(
         context=None,
-        items=tuple(),
+        items=(),
         summary=ProtectionInsightSummary(
             count_ok=0,
             count_warning=0,
@@ -224,7 +229,7 @@ def test_builder_not_evaluated_when_missing_data() -> None:
             snapshot_id=None,
             trace_id=None,
         ),
-        items=tuple(),
+        items=(),
     )
     view = ProtectionCurvesITBuilder().build(
         protection_insight=insight,
@@ -249,9 +254,10 @@ def test_renderers_are_deterministic() -> None:
 
     svg_a = render_protection_curves_svg(view)
     svg_b = render_protection_curves_svg(view)
-    assert hashlib.sha256(svg_a.encode("utf-8")).hexdigest() == hashlib.sha256(
-        svg_b.encode("utf-8")
-    ).hexdigest()
+    assert (
+        hashlib.sha256(svg_a.encode("utf-8")).hexdigest()
+        == hashlib.sha256(svg_b.encode("utf-8")).hexdigest()
+    )
 
     pdf_a = render_protection_curves_pdf(view)
     pdf_b = render_protection_curves_pdf(view)

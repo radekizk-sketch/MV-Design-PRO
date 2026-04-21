@@ -1,5 +1,5 @@
 /**
- * adapterSemantyczny.ts — Etap 1: Adapter semantyczny SLD.
+ * adapterSemantyczny.ts — Krok 1: Adapter semantyczny SLD.
  *
  * Buduje model semantyczny SiecSld z danych wejsciowych (demonstrator/snapshot).
  * Rozdziela obiekty SLD od geometrii i renderu.
@@ -145,7 +145,7 @@ function domyslnaAparatura(typPola: TypPola): readonly ElementAparatury[] {
 /**
  * Buduje pelny model semantyczny SiecSld z danych wejsciowych.
  *
- * Etap 1 pipeline'u SLD.
+ * Krok 1 pipeline'u SLD.
  * DETERMINIZM: sortowanie po id, brak losowosci.
  */
 export function zbudujSiecSld(dane: DaneWejsciowe): SiecSld {

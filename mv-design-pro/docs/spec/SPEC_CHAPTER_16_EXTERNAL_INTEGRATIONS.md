@@ -1,4 +1,10 @@
-# Rozdział 16 — Integracje Zewnętrzne, Interoperacyjność, Wymiana Danych (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 16 — Integracje Zewnętrzne, Interoperacyjność, Wymiana Danych (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -258,3 +264,4 @@ TO-BE: Pełny audit trail integracji.
 - [ ] API: wersjonowanie, security (TO-BE).
 - [ ] Inwarianty INV-INT-01..06, zakazy Z-INT-01..06.
 - [ ] Decyzje #121–#126 zapisane w AUDIT_SPEC_VS_CODE.md.
+

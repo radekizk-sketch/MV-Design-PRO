@@ -1,5 +1,5 @@
 /**
- * Results Lifecycle Tests (PowerFactory-grade)
+ * Results Lifecycle Tests (Canonical-grade)
  *
  * Tests for:
  * - State machine transitions: NONE → FRESH → OUTDATED

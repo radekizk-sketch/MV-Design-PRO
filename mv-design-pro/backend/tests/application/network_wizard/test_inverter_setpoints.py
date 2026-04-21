@@ -22,9 +22,7 @@ def _build_service() -> NetworkWizardService:
     return NetworkWizardService(build_uow_factory(session_factory))
 
 
-def _build_inverter_network(
-    service: NetworkWizardService, project_id: UUID
-) -> tuple[dict, dict]:
+def _build_inverter_network(service: NetworkWizardService, project_id: UUID) -> tuple[dict, dict]:
     slack = service.add_node(
         project_id,
         NodePayload(
@@ -66,9 +64,7 @@ def _build_inverter_network(
     return slack, inverter_node
 
 
-def _build_converter_network(
-    service: NetworkWizardService, project_id: UUID
-) -> tuple[dict, dict]:
+def _build_converter_network(service: NetworkWizardService, project_id: UUID) -> tuple[dict, dict]:
     return _build_inverter_network(service, project_id)
 
 
@@ -88,9 +84,7 @@ def test_inverter_setpoints_stored_on_case_only() -> None:
     )
     case = service.create_operating_case(project.id, "Case", {"base_mva": 100.0})
 
-    updated_case = service.set_inverter_setpoints(
-        case.id, source["id"], p_mw=2.0, q_mvar=0.5
-    )
+    updated_case = service.set_inverter_setpoints(case.id, source["id"], p_mw=2.0, q_mvar=0.5)
 
     assert updated_case.case_payload["inverter_setpoints"][str(source["id"])]["p_mw"] == 2.0
     sources = service.get_sources(project.id)
@@ -118,9 +112,7 @@ def test_inverter_setpoints_validation() -> None:
         service.set_inverter_setpoints(case.id, source["id"], p_mw=1.0)
 
     with pytest.raises(ValueError):
-        service.set_inverter_setpoints(
-            case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95
-        )
+        service.set_inverter_setpoints(case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95)
 
 
 def test_power_flow_input_uses_case_setpoints_for_inverters() -> None:
@@ -162,9 +154,7 @@ def test_converter_setpoints_stored_on_case_only() -> None:
     )
     case = service.create_operating_case(project.id, "Case", {"base_mva": 100.0})
 
-    updated_case = service.set_converter_setpoints(
-        case.id, source["id"], p_mw=2.0, q_mvar=0.5
-    )
+    updated_case = service.set_converter_setpoints(case.id, source["id"], p_mw=2.0, q_mvar=0.5)
 
     assert updated_case.case_payload["converter_setpoints"][str(source["id"])]["p_mw"] == 2.0
     sources = service.get_sources(project.id)
@@ -192,9 +182,7 @@ def test_converter_setpoints_validation() -> None:
         service.set_converter_setpoints(case.id, source["id"], p_mw=1.0)
 
     with pytest.raises(ValueError):
-        service.set_converter_setpoints(
-            case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95
-        )
+        service.set_converter_setpoints(case.id, source["id"], p_mw=1.0, q_mvar=0.2, cosphi=0.95)
 
 
 def test_power_flow_input_uses_case_setpoints_for_converters() -> None:

@@ -8,8 +8,6 @@ Reference: PROOF_SCHEMAS.md, P11_1a_MVP_SC3F_AND_VDROP.md
 from __future__ import annotations
 
 import json
-import math
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -251,7 +249,7 @@ class ProofValue:
             i = value.imag
             sign = "+" if i >= 0 else ""
             return f"{r:.{precision}f}{sign}j{i:.{precision}f} {unit}".strip()
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             return f"{value:.{precision}f} {unit}".strip()
         return f"{value} {unit}".strip()
 
@@ -472,9 +470,7 @@ class ProofSummary:
             "warnings": list(self.warnings),
             "overall_status": self.overall_status,
             "failed_checks": list(self.failed_checks),
-            "counterfactual_diff": {
-                k: v.to_dict() for k, v in sorted_counterfactual.items()
-            },
+            "counterfactual_diff": {k: v.to_dict() for k, v in sorted_counterfactual.items()},
         }
 
 
@@ -699,7 +695,9 @@ class LossesEnergyInput:
     solver_version: str = field(metadata={"mapping_key": "solver_version"})
     target_kind: LossesEnergyTargetKind = field(metadata={"mapping_key": "target_kind"})
     target_id: str = field(metadata={"mapping_key": "target_id"})
-    points: list[EnergyProfilePoint] = field(default_factory=list, metadata={"mapping_key": "points"})
+    points: list[EnergyProfilePoint] = field(
+        default_factory=list, metadata={"mapping_key": "points"}
+    )
     p_loss_const_kw: float | None = field(default=None, metadata={"mapping_key": "p_loss_kw"})
     duration_h: float | None = field(default=None, metadata={"mapping_key": "t_h"})
 

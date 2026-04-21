@@ -1,51 +1,52 @@
-# PROTECTION CURVES I–t — ETAP++ (C-P22)
+﻿# PROTECTION CURVES Iâ€“t â€” benchmark++ (C-P22)
 
 **Status:** CANONICAL (BINDING)
 
 ## 1. Cel
 
-C-P22 definiuje **deterministyczny** kontrakt prezentacji krzywych czasowo‑prądowych I–t,
-połączony z decyzją normatywną (P20), z jawnymi marginesami i uzasadnieniem WHY.
-Krzywe są **read‑only** (post‑hoc) i nie tworzą nowych obliczeń fizycznych.
+C-P22 definiuje **deterministyczny** kontrakt prezentacji krzywych czasowoâ€‘prÄ…dowych Iâ€“t,
+poĹ‚Ä…czony z decyzjÄ… normatywnÄ… (P20), z jawnymi marginesami i uzasadnieniem WHY.
+Krzywe sÄ… **readâ€‘only** (postâ€‘hoc) i nie tworzÄ… nowych obliczeĹ„ fizycznych.
 
-## 2. ETAP vs MV‑DESIGN‑PRO — tabela różnic
+## 2. benchmark vs MVâ€‘DESIGNâ€‘PRO â€” tabela rĂłĹĽnic
 
-| Obszar | ETAP | MV‑DESIGN‑PRO (ETAP++) |
+| Obszar | benchmark | MVâ€‘DESIGNâ€‘PRO (benchmark++) |
 | --- | --- | --- |
-| Status decyzji | Brak | **PASS / WARNING / FAIL / NOT EVALUATED** na każdym wykresie |
-| Uzasadnienie (WHY) | Ukryte | **Jawne, 1–2 linie** (deterministyczne) |
-| Reguły normatywne (P20) | Brak listy | **Lista reguł P20** przypisana do wykresu |
-| Marginesy | Niejawne | **Jawne marginesy [%]** (bez nowych obliczeń) |
-| Overlay zdarzeń | Opcjonalny | **Ik″, i_p, I_th/I²t** z ProofDocument ID (P18/P19) |
-| Determinizm renderu | Zmienny | **Deterministyczny SVG/PDF** (stały porządek serii/markerów) |
+| Status decyzji | Brak | **PASS / WARNING / FAIL / NOT EVALUATED** na kaĹĽdym wykresie |
+| Uzasadnienie (WHY) | Ukryte | **Jawne, 1â€“2 linie** (deterministyczne) |
+| ReguĹ‚y normatywne (P20) | Brak listy | **Lista reguĹ‚ P20** przypisana do wykresu |
+| Marginesy | Niejawne | **Jawne marginesy [%]** (bez nowych obliczeĹ„) |
+| Overlay zdarzeĹ„ | Opcjonalny | **Ikâ€ł, i_p, I_th/IÂ˛t** z ProofDocument ID (P18/P19) |
+| Determinizm renderu | Zmienny | **Deterministyczny SVG/PDF** (staĹ‚y porzÄ…dek serii/markerĂłw) |
 | Brak danych | Ukryty | **NOT EVALUATED + missing_data[]** |
 
 ## 3. Zasady interpretacji
 
-1. **Krzywa ≠ decyzja**: wykres zawsze zawiera status P20 (PASS/WARNING/FAIL/NOT EVALUATED).
-2. **Brak danych ≠ FAIL**: brak krzywych, markerów lub reguł → status **NOT EVALUATED** i lista `missing_data[]`.
-3. **Marginesy [%]** pochodzą z P22a / P18 (read‑only). Nie są liczone od nowa.
-4. **WHY** zawiera deterministyczne uzasadnienie + listę reguł (1–2 linie).
-5. **BUS/protection‑pair**: wykres jest centryczny względem BUS i pary PRIMARY/BACKUP.
+1. **Krzywa â‰  decyzja**: wykres zawsze zawiera status P20 (PASS/WARNING/FAIL/NOT EVALUATED).
+2. **Brak danych â‰  FAIL**: brak krzywych, markerĂłw lub reguĹ‚ â†’ status **NOT EVALUATED** i lista `missing_data[]`.
+3. **Marginesy [%]** pochodzÄ… z P22a / P18 (readâ€‘only). Nie sÄ… liczone od nowa.
+4. **WHY** zawiera deterministyczne uzasadnienie + listÄ™ reguĹ‚ (1â€“2 linie).
+5. **BUS/protectionâ€‘pair**: wykres jest centryczny wzglÄ™dem BUS i pary PRIMARY/BACKUP.
 
 ## 4. Gwarancje determinismu
 
-- **Identyczne wejścia → identyczne SVG/PDF**.
-- Stała kolejność serii: **PRIMARY → BACKUP → series_id**.
-- Stała kolejność markerów: **IKSS → IP → ITH**.
+- **Identyczne wejĹ›cia â†’ identyczne SVG/PDF**.
+- StaĹ‚a kolejnoĹ›Ä‡ serii: **PRIMARY â†’ BACKUP â†’ series_id**.
+- StaĹ‚a kolejnoĹ›Ä‡ markerĂłw: **IKSS â†’ IP â†’ ITH**.
 - Brak metadanych losowych (timestamp, UUID) w renderze.
 
-## 5. Relacje do pakietów P18 / P20 / P22a / P24+
+## 5. Relacje do pakietĂłw P18 / P20 / P22a / P24+
 
-- **P18/P19** dostarczają markery Ik″ / i_p / I_th/I²t oraz ProofDocument ID.
-- **P20** dostarcza status normatywny i reguły.
-- **P22a** dostarcza marginesy [%] i WHY dla zabezpieczeń.
-- **P24+** zawiera sekcję „Krzywe I–t (jeśli dostępne)” z placeholderem
-  i statusem NOT EVALUATED w przypadku braków.
+- **P18/P19** dostarczajÄ… markery Ikâ€ł / i_p / I_th/IÂ˛t oraz ProofDocument ID.
+- **P20** dostarcza status normatywny i reguĹ‚y.
+- **P22a** dostarcza marginesy [%] i WHY dla zabezpieczeĹ„.
+- **P24+** zawiera sekcjÄ™ â€žKrzywe Iâ€“t (jeĹ›li dostÄ™pne)â€ť z placeholderem
+  i statusem NOT EVALUATED w przypadku brakĂłw.
 
 ## 6. Wymagania MUST
 
 - UI i terminologia **po polsku**.
-- Render **log–log**.
-- Status + reguły + marginesy + WHY są zawsze widoczne.
-- No new physics: brak symulacji dynamicznych i modyfikacji solverów.
+- Render **logâ€“log**.
+- Status + reguĹ‚y + marginesy + WHY sÄ… zawsze widoczne.
+- No new physics: brak symulacji dynamicznych i modyfikacji solverĂłw.
+

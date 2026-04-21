@@ -1,4 +1,4 @@
-# ENM_OP_CONTRACTS_CANONICAL_FULL
+﻿# ENM_OP_CONTRACTS_CANONICAL_FULL
 
 ## Dokument Wiazacy -- Kanoniczne Kontrakty Operacji Domenowych
 
@@ -7,12 +7,12 @@
 | Status            | **CANONICAL / NORMATIVE / BINDING**              |
 | Wersja            | 1.0.0                                            |
 | Data utworzenia    | 2026-02-17                                       |
-| Klasyfikacja      | Industrial (PowerFactory-grade)                  |
+| Klasyfikacja      | Industrial (benchmark-grade)                  |
 | Warstwa           | Domain Layer (Application -> Domain -> Solver)   |
 | Referencja Pydantic | `backend/src/domain/domain_ops_models.py`      |
 
 > **REGULA**: Ten dokument jest JEDYNYM ZRODLEM PRAWDY dla nazw operacji domenowych,
-> mapowania aliasow, kontraktow payload JSON oraz zdarzen domenowych.
+> kontraktow payload JSON oraz zdarzen domenowych.
 > Wszelkie inne dokumenty opisujace operacje traca waznosc w przypadku konfliktu.
 
 ---
@@ -20,7 +20,7 @@
 ## Spis tresci
 
 1. [Kanoniczne nazwy operacji](#1-kanoniczne-nazwy-operacji)
-2. [Mapowanie aliasow](#2-mapowanie-aliasow)
+2. [Regula nazewnictwa V11](#2-regula-nazewnictwa-v11)
 3. [Przyklady payload JSON (16 kompletnych)](#3-przyklady-payload-json)
 4. [Referencja schematow JSON (Pydantic)](#4-referencja-schematow-json-pydantic)
 5. [Zdarzenia domenowe (Domain Events)](#5-zdarzenia-domenowe-domain-events)
@@ -39,15 +39,15 @@
 | 4  | `start_branch_segment_sn`         | Rozpoczecie nowego odgalezienia (branch) od magistrali SN      | Domain / NetworkModel     |
 | 5  | `insert_section_switch_sn`        | Wstawienie lacznika sekcyjnego na segmencie SN                 | Domain / NetworkModel     |
 | 6  | `connect_secondary_ring_sn`       | Zamkniecie pierscienia wtornego (polaczenie dwoch konc. ciag.) | Domain / NetworkModel     |
-| 7  | `set_normal_open_point`           | Ustawienie punktu normalnie otwartego (NOP) w pierścieniu      | Domain / NetworkModel     |
+| 7  | `set_normal_open_point`           | Ustawienie punktu normalnie otwartego (NOP) w pierĹ›cieniu      | Domain / NetworkModel     |
 
 ### 1.2 Operacje Stacyjne i nN (niskie Napiecie)
 
 | Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
 |----|------------------------------------|-----------------------------------------------------------------|---------------------------|
 | 8  | `add_transformer_sn_nn`           | Dodanie transformatora SN/nN w stacji                          | Domain / NetworkModel     |
-| 9  | `add_nn_outgoing_field`           | Dodanie pola odpływowego nN                                    | Domain / NetworkModel     |
-| 10 | `add_nn_source_field`             | Dodanie pola zasilajacego nN (od strony transformatora)        | Domain / NetworkModel     |
+| 9  | `add_nn_outgoing_field`           | Dodanie pola odpĹ‚ywowego nN                                    | Domain / NetworkModel     |
+| 10 | `add_nn_outgoing_field`           | Dodanie pola nN w kontrakcie kanonicznym                       | Domain / NetworkModel     |
 | 11 | `add_nn_load`                     | Dodanie obciazenia na szynie nN                                | Domain / NetworkModel     |
 | 12 | `update_nn_bus_sections`          | Aktualizacja konfiguracji sekcji szyn nN                       | Domain / NetworkModel     |
 | 13 | `update_nn_coupler_state`         | Zmiana stanu lacznika szyn nN (otwarty/zamkniety)              | Domain / NetworkModel     |
@@ -56,9 +56,9 @@
 
 | Nr | Nazwa kanoniczna                   | Opis (PL)                                                      | Warstwa docelowa          |
 |----|------------------------------------|-----------------------------------------------------------------|---------------------------|
-| 14 | `add_pv_inverter_nn`              | Dodanie falownika fotowoltaicznego PV na szynie nN             | Domain / NetworkModel     |
-| 15 | `add_bess_inverter_nn`            | Dodanie falownika magazynu energii BESS na szynie nN           | Domain / NetworkModel     |
-| 16 | `add_genset_nn`                   | Dodanie zespolu pradotwórczego (agregat) na szynie nN          | Domain / NetworkModel     |
+| 14 | `add_converter_source`            | Dodanie ĹşrĂłdĹ‚a przeksztaĹ‚tnikowego PV/BESS/FW na szynie nN     | Domain / NetworkModel     |
+| 15 | `add_converter_source`            | Dodanie ĹşrĂłdĹ‚a przeksztaĹ‚tnikowego PV/BESS/FW na szynie nN     | Domain / NetworkModel     |
+| 16 | `add_genset_nn`                   | Dodanie zespolu pradotwĂłrczego (agregat) na szynie nN          | Domain / NetworkModel     |
 | 17 | `add_ups_nn`                      | Dodanie zasilacza UPS na szynie nN                             | Domain / NetworkModel     |
 | 18 | `set_source_operating_mode`       | Ustawienie trybu pracy zrodla (generacja/kompensacja/isl.)     | Domain / NetworkModel     |
 | 19 | `set_dynamic_profile`             | Przypisanie profilu dynamicznego do zrodla (krzywa P(t), Q(t)) | Domain / NetworkModel     |
@@ -100,24 +100,18 @@
 
 ---
 
-## 2. Mapowanie aliasow
+## 2. Regula nazewnictwa V11
 
-Ponizsze aliasy sa akceptowane przez system i mapowane na nazwy kanoniczne.
-**Alias NIE moze byc uzywany jako nazwa kanoniczna w nowych implementacjach.**
+W aktywnej powierzchni V11 obowiazuja wylacznie nazwy kanoniczne operacji.
+Frontend, testy integracyjne, testy E2E i aktywna dokumentacja nie uzywaja
+aliasow historycznych ani alternatywnych nazw payloadow.
 
-| Alias (PRZESTARZALY)                        | Nazwa kanoniczna (WIAZACA)           | Uwagi                                          |
-|---------------------------------------------|--------------------------------------|-------------------------------------------------|
-| `add_trunk_segment_sn`                      | `continue_trunk_segment_sn`          | Alias historyczny; "continue" precyzuje semantyke kontynuacji magistrali |
-| `add_branch_segment_sn`                     | `start_branch_segment_sn`            | Alias historyczny; "start" precyzuje poczatek nowego odgalezienia        |
-| `connect_ring_sn`                           | `connect_secondary_ring_sn`          | Alias skrocony; pelna nazwa uwzglednia kontekst pierscienia wtornego     |
-| `insert_station_on_trunk_segment_sn`        | `insert_station_on_segment_sn`       | Alias zawezony; operacja dziala na dowolnym segmencie, nie tylko magistrali |
+### Reguly nazewnictwa
 
-### Reguly rozwiazywania aliasow
-
-1. Dispatcher operacji MUSI rozwiazywac aliasy przed walidacja payload.
-2. Alias jest transparentny -- po rozwiazaniu system traktuje operacje identycznie jak kanonyczna.
-3. W logach i trace'ach zapisywany jest ALIAS ORYGINALNY + NAZWA KANONICZNA (dla audytowalnosci).
-4. Nowy kod NIE MOZE uzywac aliasow -- wylacznie nazwy kanoniczne.
+1. Dispatcher operacji przyjmuje wyłącznie nazwy kanoniczne w aktywnej powierzchni V11.
+2. Dokumentacja aktywna opisuje wyłącznie nazwy kanoniczne.
+3. Nowy kod NIE MOZE uzywac aliasow ani alternatywnych identyfikatorow operacji.
+4. Zgodnosc historyczna, jesli jest potrzebna dla migracji, nie stanowi czesci kontraktu publicznego V11.
 
 ---
 
@@ -337,11 +331,11 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
 }
 ```
 
-### Przyklad 10: `add_pv_inverter_nn`
+### Przyklad 10: `add_converter_source`
 
 ```json
 {
-  "operation": "add_pv_inverter_nn",
+  "operation": "add_converter_source",
   "meta": {
     "snapshot_in": "S9",
     "idempotency_key": "3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e",
@@ -365,11 +359,11 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
 }
 ```
 
-### Przyklad 11: `add_bess_inverter_nn`
+### Przyklad 11: `add_converter_source`
 
 ```json
 {
-  "operation": "add_bess_inverter_nn",
+  "operation": "add_converter_source",
   "meta": {
     "snapshot_in": "S10",
     "idempotency_key": "4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f",
@@ -577,7 +571,7 @@ Kazdy przyklad zawiera kompletny obiekt JSON -- bez skrotow, bez "...", z realis
 Ponizej opisano wymagane pola payload dla kazdej operacji.
 Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.py`.
 
-### 4.1 Wspólna koperta (meta)
+### 4.1 WspĂłlna koperta (meta)
 
 | Pole              | Typ      | Wymagane | Opis                                                      |
 |-------------------|----------|----------|------------------------------------------------------------|
@@ -697,9 +691,9 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `cos_phi`             | `float`  | NIE      | 0 < cos_phi <= 1               | Wspolczynnik mocy                 |
 | `load_type`           | `string` | NIE      | STATIC / MOTOR / MIXED          | Typ obciazenia                    |
 | `voltage_dependency`  | `string` | NIE      | CONSTANT_POWER / CONSTANT_IMPEDANCE / CONSTANT_CURRENT | Zaleznosc napiecia |
-| `field_id`            | `string` | NIE      |                                 | ID pola odpływowego               |
+| `field_id`            | `string` | NIE      |                                 | ID pola odpĹ‚ywowego               |
 
-### 4.11 `add_pv_inverter_nn` -- AddPVInverterNNPayload
+### 4.11 `add_converter_source` -- AddConverterSourcePayload
 
 | Pole              | Typ      | Wymagane | Ograniczenia            | Opis                                    |
 |-------------------|----------|----------|-------------------------|-----------------------------------------|
@@ -716,7 +710,7 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | `operating_mode`  | `string` | NIE      | MPPT / FIXED / OFF      | Tryb pracy                              |
 | `in_service`      | `bool`   | NIE      | dom. true               | Czy urzadzenie jest w pracy             |
 
-### 4.12 `add_bess_inverter_nn` -- AddBESSInverterNNPayload
+### 4.12 `add_converter_source` -- AddConverterSourcePayload
 
 | Pole                   | Typ      | Wymagane | Ograniczenia            | Opis                                  |
 |------------------------|----------|----------|-------------------------|---------------------------------------|
@@ -823,7 +817,7 @@ Referencja wskazuje na modele Pydantic w `backend/src/domain/domain_ops_models.p
 | Operacja                    | Klucze wymagane payload                                        | Model Pydantic                        |
 |-----------------------------|----------------------------------------------------------------|---------------------------------------|
 | `add_nn_outgoing_field`     | `station_id`, `nn_bus_id`, `field_name`, `cable_type_ref`, `length_km`, `load_bus_name` | AddNNOutgoingFieldPayload |
-| `add_nn_source_field`       | `station_id`, `nn_bus_id`, `field_name`, `transformer_id`      | AddNNSourceFieldPayload               |
+| `add_nn_outgoing_field`     | `station_id`, `nn_bus_id`, `field_name`, `transformer_id`      | AddNNOutgoingFieldPayload             |
 | `update_nn_bus_sections`    | `station_id`, `nn_bus_id`, `section_count`, `coupler_states`   | UpdateNNBusSectionsPayload            |
 | `update_nn_coupler_state`   | `coupler_id`, `new_state`                                      | UpdateNNCouplerStatePayload           |
 | `add_genset_nn`             | `nn_bus_id`, `genset_name`, `rated_power_kva`, `voltage_kv`, `xd_percent` | AddGensetNNPayload          |
@@ -919,12 +913,12 @@ class DomainEvent(str, Enum):
 | `set_normal_open_point`           | `NOP_SET`, `CASE_STATE_UPDATED`                                            |
 | `add_transformer_sn_nn`           | `TR_CREATED`, `BUS_NN_CREATED`, `FIELDS_CREATED_NN`                        |
 | `add_nn_outgoing_field`           | `FIELDS_CREATED_NN`, `SEGMENT_CREATED`, `BUS_CREATED`                      |
-| `add_nn_source_field`             | `FIELDS_CREATED_NN`, `DEVICES_CREATED_NN`                                  |
+| `add_nn_outgoing_field`           | `FIELDS_CREATED_NN`, `DEVICES_CREATED_NN`                                  |
 | `add_nn_load`                     | `NN_LOAD_CREATED`                                                          |
 | `update_nn_bus_sections`          | `BUS_NN_CREATED`, `DEVICES_CREATED_NN`                                     |
 | `update_nn_coupler_state`         | `CASE_STATE_UPDATED`                                                       |
-| `add_pv_inverter_nn`              | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
-| `add_bess_inverter_nn`            | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
+| `add_converter_source`            | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
+| `add_converter_source`            | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
 | `add_genset_nn`                   | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
 | `add_ups_nn`                      | `NN_SOURCE_CREATED`, `DEVICES_CREATED_NN`                                  |
 | `set_source_operating_mode`       | `CASE_STATE_UPDATED`                                                       |
@@ -976,7 +970,7 @@ class DomainEvent(str, Enum):
 2. **Referencje szyn**: Kazda operacja tworzaca segment MUSI wskazywac na istniejaca szyne (`from_bus_id`).
 3. **Typy katalogowe**: Operacje z `type_ref` / `cable_type_ref` MUSZA odwolywac sie do istniejacego typu w katalogu.
 4. **Unikalnosc nazw**: Nazwy elementow w obrebie jednego typu MUSZA byc unikalne (np. dwie szyny nie moga miec tej samej nazwy).
-5. **NOP**: W kazdym pierścieniu moze byc dokladnie jeden NOP. Operacja `set_normal_open_point` automatycznie zamyka poprzedni NOP (jesli `auto_close_previous = true`).
+5. **NOP**: W kazdym pierĹ›cieniu moze byc dokladnie jeden NOP. Operacja `set_normal_open_point` automatycznie zamyka poprzedni NOP (jesli `auto_close_previous = true`).
 6. **StudyCase immutability**: Operacje `set_case_*` modyfikuja WYLACZNIE dane przypadku obliczeniowego, NIGDY modelu sieci (zgodnie z regula Case Immutability).
 7. **Solver READ-ONLY**: Operacje `run_short_circuit`, `run_power_flow`, `run_time_series_power_flow` NIE modyfikuja modelu sieci -- dzialaja na niemutowalnym snapshocie.
 
@@ -1011,3 +1005,4 @@ class DomainEvent(str, Enum):
 > Wszelkie zmiany w tym dokumencie wymagaja przegladu architektonicznego
 > i aktualizacji numeru wersji. Dokument ten jest referencja wiazaca
 > dla implementacji backendu, frontendu, AI agentow oraz dokumentacji.
+

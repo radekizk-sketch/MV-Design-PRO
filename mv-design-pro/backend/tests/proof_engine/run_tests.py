@@ -95,13 +95,13 @@ def test_sc3f_generation():
     print(f"✓ Document ID: {proof.document_id}")
 
     # Check required steps
-    step_titles = [s.title_pl for s in proof.steps]
-    print(f"\nSteps:")
+    [s.title_pl for s in proof.steps]
+    print("\nSteps:")
     for i, step in enumerate(proof.steps, 1):
         print(f"  {i}. {step.title_pl}")
 
     # Check key results
-    print(f"\nKey Results:")
+    print("\nKey Results:")
     for key, val in sorted(proof.summary.key_results.items()):
         print(f"  {key}: {val.formatted}")
 
@@ -129,7 +129,7 @@ def test_vdrop_generation():
     print(f"✓ Proof type: {proof.proof_type.value}")
 
     # Check key results
-    print(f"\nKey Results:")
+    print("\nKey Results:")
     for key, val in sorted(proof.summary.key_results.items()):
         print(f"  {key}: {val.formatted}")
 
@@ -149,7 +149,7 @@ def test_determinism():
     proof_2 = ProofGenerator.generate_sc3f_proof(data, artifact_id)
 
     # Compare steps
-    for s1, s2 in zip(proof_1.steps, proof_2.steps):
+    for s1, s2 in zip(proof_1.steps, proof_2.steps, strict=False):
         assert s1.step_id == s2.step_id, f"Step ID mismatch: {s1.step_id} vs {s2.step_id}"
         assert s1.result.value == s2.result.value, f"Result mismatch in {s1.step_id}"
 
@@ -175,7 +175,7 @@ def test_equation_registry():
     required_sc3f = ["EQ_SC3F_004", "EQ_SC3F_005", "EQ_SC3F_006", "EQ_SC3F_007", "EQ_SC3F_008"]
     for eq_id in required_sc3f:
         assert eq_id in sc3f, f"Missing equation: {eq_id}"
-    print(f"✓ All required SC3F equations present")
+    print("✓ All required SC3F equations present")
 
     # Validate ID stability
     EquationRegistry.validate_id_stability()
@@ -200,7 +200,7 @@ def test_json_output():
     assert "summary" in json_dict
     assert json_dict["proof_type"] == "SC3F_IEC60909"
 
-    print(f"✓ JSON serialization successful")
+    print("✓ JSON serialization successful")
     print(f"✓ JSON size: {len(json_str)} bytes")
 
     return True
@@ -222,7 +222,7 @@ def test_latex_output():
     assert r"\section{Dowód}" in latex
     assert r"\end{document}" in latex
 
-    print(f"✓ LaTeX generation successful")
+    print("✓ LaTeX generation successful")
     print(f"✓ LaTeX size: {len(latex)} bytes")
 
     return True

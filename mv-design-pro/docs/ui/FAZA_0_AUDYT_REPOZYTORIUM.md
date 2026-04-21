@@ -286,11 +286,11 @@ docs/ui/
 ├── SLD_UI_CONTRACT.md
 ├── SWITCHING_STATE_EXPLORER_CONTRACT.md
 ├── TOPOLOGY_TREE_CONTRACT.md
-├── UI_ETAP_POWERFACTORY_PARITY.md
+├── UI_CANONICAL_PARITY_MATRIX.md
 ├── UI_UX_10_10_ABSOLUTE_CANONICAL.md
 ├── URUCHOMIENIE_UX_SLD.md
 ├── VOLTAGE_PROFILE_BUS_CONTRACT.md
-├── powerfactory_ui_parity.md
+├── ui_canonical_parity.md
 ├── sld_rules.md
 └── wizard_screens.md
 ```

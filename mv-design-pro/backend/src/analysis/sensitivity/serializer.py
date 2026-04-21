@@ -23,9 +23,7 @@ def perturbation_to_dict(perturbation: SensitivityPerturbation) -> dict[str, Any
         "delta_pct": float(perturbation.delta_pct),
         "margin": float(perturbation.margin) if perturbation.margin is not None else None,
         "delta_margin": (
-            float(perturbation.delta_margin)
-            if perturbation.delta_margin is not None
-            else None
+            float(perturbation.delta_margin) if perturbation.delta_margin is not None else None
         ),
         "decision": perturbation.decision.value,
     }

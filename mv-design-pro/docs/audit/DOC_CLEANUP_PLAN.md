@@ -7,7 +7,7 @@ Cel: spójny język PL, jedna prawda kanoniczna, brak duplikatów i sprzecznośc
 - `SYSTEM_SPEC.md` — kanon architektury (BINDING).
 - `AGENTS.md` — governance i zakazy (BINDING).
 - `PLANS.md` — jedyny mechanizm wykonawczy (BINDING).
-- `POWERFACTORY_COMPLIANCE.md` — checklisty PF (BINDING).
+- `CANONICAL_COMPLIANCE.md` — checklisty PF (BINDING).
 - `docs/INDEX.md` — kanoniczny indeks P14–P19 (BINDING).
 - `docs/ui/wizard_screens.md` — kanoniczny opis Wizard/UI (BINDING).
 - `docs/proof_engine/*` — kanoniczne źródła Proof Engine (BINDING).

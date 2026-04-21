@@ -2,7 +2,7 @@
  * TraceToc — Spis treści śladu obliczeń (lewy panel)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Panel nawigacji kroków
+ * - ui_canonical_parity.md: Panel nawigacji kroków
  * - wizard_screens.md: RESULT_VIEW mode, Polish labels
  *
  * FEATURES:

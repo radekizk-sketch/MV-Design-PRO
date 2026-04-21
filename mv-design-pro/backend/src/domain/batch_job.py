@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
@@ -179,7 +179,7 @@ def compute_batch_input_hash(
         SHA-256 hex digest string.
     """
     scenarios = []
-    for sid, chash in zip(scenario_ids, scenario_content_hashes):
+    for sid, chash in zip(scenario_ids, scenario_content_hashes, strict=False):
         scenarios.append({"scenario_id": str(sid), "content_hash": chash})
     scenarios.sort(key=lambda s: s["scenario_id"])
 
@@ -218,16 +218,14 @@ def new_batch_job(
         ValueError: If duplicate scenario_ids or mismatched lengths.
     """
     if len(scenario_ids) != len(scenario_content_hashes):
-        raise ValueError(
-            "scenario_ids i scenario_content_hashes muszą mieć tę samą długość"
-        )
+        raise ValueError("scenario_ids i scenario_content_hashes muszą mieć tę samą długość")
 
     if len(set(scenario_ids)) != len(scenario_ids):
         raise ValueError("scenario_ids zawiera duplikaty")
 
     # Sort by UUID string for deterministic ordering
     paired = sorted(
-        zip(scenario_ids, scenario_content_hashes),
+        zip(scenario_ids, scenario_content_hashes, strict=False),
         key=lambda p: str(p[0]),
     )
     sorted_ids = tuple(p[0] for p in paired)
@@ -244,7 +242,7 @@ def new_batch_job(
         study_case_id=study_case_id,
         analysis_type=analysis_type,
         scenario_ids=sorted_ids,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         status=BatchJobStatus.PENDING,
         batch_input_hash=batch_input_hash,
     )

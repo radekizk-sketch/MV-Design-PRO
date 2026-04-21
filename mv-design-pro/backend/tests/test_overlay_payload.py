@@ -17,9 +17,7 @@ TEST COVERAGE:
 from __future__ import annotations
 
 import re
-from uuid import UUID, uuid4
-
-import pytest
+from uuid import UUID
 
 from domain.result_set import (
     OverlayElement,
@@ -297,9 +295,9 @@ class TestNoHexColors:
             legend=_make_legend(),
         )
         json_str = payload.model_dump_json()
-        assert not HEX_COLOR_PATTERN.search(json_str), (
-            f"Hex color found in overlay payload: {json_str}"
-        )
+        assert not HEX_COLOR_PATTERN.search(
+            json_str
+        ), f"Hex color found in overlay payload: {json_str}"
 
     def test_no_hex_colors_in_load_flow_payload(self) -> None:
         """LOAD_FLOW overlay has no hex colors."""
@@ -310,17 +308,17 @@ class TestNoHexColors:
             legend=_make_legend(),
         )
         json_str = payload.model_dump_json()
-        assert not HEX_COLOR_PATTERN.search(json_str), (
-            f"Hex color found in overlay payload: {json_str}"
-        )
+        assert not HEX_COLOR_PATTERN.search(
+            json_str
+        ), f"Hex color found in overlay payload: {json_str}"
 
     def test_color_tokens_are_semantic(self) -> None:
         """All color_token values are semantic tokens, not hex."""
         valid_tokens = {"ok", "warning", "critical", "inactive"}
         for element in _make_sc3f_elements():
-            assert element.color_token in valid_tokens, (
-                f"Non-semantic color_token: {element.color_token}"
-            )
+            assert (
+                element.color_token in valid_tokens
+            ), f"Non-semantic color_token: {element.color_token}"
 
 
 # =============================================================================
@@ -343,17 +341,17 @@ class TestNoPhysicsOutsideBadges:
             "reactance",
             "frequency",
         }
-        assert field_names & physics_fields == set(), (
-            f"Physics fields found in OverlayElement: {field_names & physics_fields}"
-        )
+        assert (
+            field_names & physics_fields == set()
+        ), f"Physics fields found in OverlayElement: {field_names & physics_fields}"
 
     def test_numeric_badges_contain_only_display_values(self) -> None:
         """numeric_badges contain only float or None values."""
         for element in _make_sc3f_elements():
             for key, value in element.numeric_badges.items():
-                assert value is None or isinstance(value, (int, float)), (
-                    f"Invalid badge value type for {key}: {type(value)}"
-                )
+                assert value is None or isinstance(
+                    value, int | float
+                ), f"Invalid badge value type for {key}: {type(value)}"
 
 
 # =============================================================================
@@ -378,9 +376,9 @@ class TestOverlayLegend:
         element_tokens = {e.color_token for e in elements}
         legend_tokens = {e.color_token for e in legend}
 
-        assert element_tokens.issubset(legend_tokens), (
-            f"Element tokens not covered by legend: {element_tokens - legend_tokens}"
-        )
+        assert element_tokens.issubset(
+            legend_tokens
+        ), f"Element tokens not covered by legend: {element_tokens - legend_tokens}"
 
     def test_legend_description_is_optional(self) -> None:
         """Legend description can be None."""

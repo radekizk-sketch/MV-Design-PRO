@@ -1,11 +1,11 @@
 """
 SLD Result Overlay Builder.
 
-PowerFactory Alignment (per sld_rules.md § B, powerfactory_ui_parity.md § B.2):
+PowerFactory Alignment (per sld_rules.md § B, ui_canonical_parity.md § B.2):
 - Results are OVERLAY only, never written to model
 - result_status: NONE, FRESH, OUTDATED
 - Overlay visible only in RESULT_VIEW mode
-- OUTDATED results → grayed or hidden per powerfactory_ui_parity.md
+- OUTDATED results → grayed or hidden per ui_canonical_parity.md
 
 BoundaryNode (Point of Common Coupling) identification is handled by Analysis layer
 (BoundaryIdentifier), not by this overlay builder.
@@ -19,7 +19,7 @@ from typing import Any
 
 class ResultStatus(str, Enum):
     """
-    Result freshness status (per powerfactory_ui_parity.md § B.2).
+    Result freshness status (per ui_canonical_parity.md § B.2).
 
     NONE: Never computed
     FRESH: Results current with model
@@ -123,12 +123,14 @@ class ResultSldOverlayBuilder:
             node_id = str(node.get("node_id"))
             if node_id in bus_results:
                 bus_data = bus_results[node_id]
-                overlay["nodes"].append({
-                    "node_id": node_id,
-                    "v_pu": bus_data.get("v_pu"),
-                    "v_kv": bus_data.get("v_kv"),
-                    "angle_deg": bus_data.get("angle_deg"),
-                })
+                overlay["nodes"].append(
+                    {
+                        "node_id": node_id,
+                        "v_pu": bus_data.get("v_pu"),
+                        "v_kv": bus_data.get("v_kv"),
+                        "angle_deg": bus_data.get("angle_deg"),
+                    }
+                )
 
         # Extract branch flows
         branch_results = result_payload.get("branch_results", {})
@@ -136,12 +138,14 @@ class ResultSldOverlayBuilder:
             branch_id = str(branch.get("branch_id"))
             if branch_id in branch_results:
                 branch_data = branch_results[branch_id]
-                overlay["branches"].append({
-                    "branch_id": branch_id,
-                    "p_mw": branch_data.get("p_mw"),
-                    "q_mvar": branch_data.get("q_mvar"),
-                    "i_a": branch_data.get("i_a"),
-                    "loading_percent": branch_data.get("loading_percent"),
-                })
+                overlay["branches"].append(
+                    {
+                        "branch_id": branch_id,
+                        "p_mw": branch_data.get("p_mw"),
+                        "q_mvar": branch_data.get("q_mvar"),
+                        "i_a": branch_data.get("i_a"),
+                        "loading_percent": branch_data.get("loading_percent"),
+                    }
+                )
 
         return overlay

@@ -2,12 +2,12 @@
  * engine/index.ts — Eksporty silnika SLD.
  *
  * ARCHITEKTURA:
- *   Etap 1: adapterSemantyczny (Snapshot → SiecSld)
- *   Etap 2: polaEfektywne (jawne + niejawne)
- *   Etap 3: sortowanieAntykrzyzowaniowe
- *   Etap 4-7: geometriaSzyny (busbar + pola + aparatura + porty)
- *   Etap 8: trasowanieOrtogonalne (Manhattan routing)
- *   Etap 9: rendererSld (SVG)
+ *   Krok 1: adapterSemantyczny (Snapshot → SiecSld)
+ *   Krok 2: polaEfektywne (jawne + niejawne)
+ *   Krok 3: sortowanieAntykrzyzowaniowe
+ *   Krok 4-7: geometriaSzyny (busbar + pola + aparatura + porty)
+ *   Krok 8: trasowanieOrtogonalne (Manhattan routing)
+ *   Krok 9: rendererSld (SVG)
  *   Pipeline: pipelineSld (orkiestrator)
  */
 

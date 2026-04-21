@@ -1,7 +1,7 @@
 /**
  * Data Manager Module Exports
  *
- * P9: PowerFactory-style Data Manager (Menedżer Danych)
+ * P9: Canonical-style Data Manager (Menedżer Danych)
  * P9.2: + Inline Editing & Batch Edit 2.0 with Diff Preview
  */
 

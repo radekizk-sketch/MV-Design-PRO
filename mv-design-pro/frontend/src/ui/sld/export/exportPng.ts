@@ -2,7 +2,7 @@
  * SLD PNG Export Utility
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF/ETAP-grade PNG export
+ * - ui_canonical_parity.md: PF/CANONICAL-grade PNG export
  * - SLD_UI_ARCHITECTURE.md: Layer visibility for export
  *
  * FEATURES:

@@ -14,7 +14,6 @@ from typing import Any
 
 from analysis.energy_validation.models import (
     EnergyCheckType,
-    EnergyValidationStatus,
     EnergyValidationView,
 )
 from analysis.power_flow.result import PowerFlowResult

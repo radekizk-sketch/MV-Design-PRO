@@ -7,18 +7,16 @@ BINDING: any failure blocks merge.
 """
 
 import pytest
-
 from domain.field_device import (
     APARAT_TO_DEVICE_TYPE,
     APARAT_TYPE_LABELS_PL,
-    AparatTypeV1,
     DEVICE_TYPE_TO_APARAT,
-    DeviceTypeV1,
     FIELD_ROLE_TO_POLE,
-    FieldRoleV1,
-    GeneratorFieldValidationV1,
     POLE_TO_FIELD_ROLE,
     POLE_TYPE_LABELS_PL,
+    AparatTypeV1,
+    DeviceTypeV1,
+    FieldRoleV1,
     PoleTypeV1,
     validate_generator_field_connection,
 )
@@ -32,7 +30,6 @@ from domain.readiness import (
     require_fields_complete,
     require_protection_bindings,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -71,23 +68,30 @@ class TestPoleToFieldRoleMapping:
 
     def test_roundtrip_pole_to_role_to_pole(self) -> None:
         """PoleType → FieldRole → PoleType roundtrip (many-to-one allowed)."""
-        for pole, role in POLE_TO_FIELD_ROLE.items():
+        for _pole, role in POLE_TO_FIELD_ROLE.items():
             assert FIELD_ROLE_TO_POLE[role] is not None
 
     def test_sn_poles_map_to_sn_roles(self) -> None:
         """SN field types map to SN roles (not nN)."""
         sn_poles = [p for p in PoleTypeV1 if p.value.endswith("_SN") or "_SN_" in p.value]
-        nn_roles = {FieldRoleV1.MAIN_NN, FieldRoleV1.FEEDER_NN, FieldRoleV1.PV_NN, FieldRoleV1.BESS_NN}
+        nn_roles = {
+            FieldRoleV1.MAIN_NN,
+            FieldRoleV1.FEEDER_NN,
+            FieldRoleV1.PV_NN,
+            FieldRoleV1.BESS_NN,
+        }
         for pole in sn_poles:
             assert POLE_TO_FIELD_ROLE[pole] not in nn_roles, f"{pole} maps to nN role"
 
     def test_nn_poles_map_to_nn_roles(self) -> None:
         """Pure nN field types (POLE_*_NN without SN_NN) map to nN roles."""
-        nn_poles = [
-            p for p in PoleTypeV1
-            if p.value.endswith("_NN") and "SN_NN" not in p.value
-        ]
-        nn_roles = {FieldRoleV1.MAIN_NN, FieldRoleV1.FEEDER_NN, FieldRoleV1.PV_NN, FieldRoleV1.BESS_NN}
+        nn_poles = [p for p in PoleTypeV1 if p.value.endswith("_NN") and "SN_NN" not in p.value]
+        nn_roles = {
+            FieldRoleV1.MAIN_NN,
+            FieldRoleV1.FEEDER_NN,
+            FieldRoleV1.PV_NN,
+            FieldRoleV1.BESS_NN,
+        }
         for pole in nn_poles:
             assert POLE_TO_FIELD_ROLE[pole] in nn_roles, f"{pole} does not map to nN role"
 
@@ -248,13 +252,13 @@ class TestGeneratorFieldValidation:
 
     def test_deterministic_output(self) -> None:
         """Same input → same output (determinism)."""
-        kwargs = dict(
-            generator_id="gen_det",
-            generator_type="PV",
-            connection_variant="nn_side",
-            blocking_transformer_ref=None,
-            station_ref="st_det",
-        )
+        kwargs = {
+            "generator_id": "gen_det",
+            "generator_type": "PV",
+            "connection_variant": "nn_side",
+            "blocking_transformer_ref": None,
+            "station_ref": "st_det",
+        }
         r1 = validate_generator_field_connection(**kwargs)
         r2 = validate_generator_field_connection(**kwargs)
         assert r1 == r2

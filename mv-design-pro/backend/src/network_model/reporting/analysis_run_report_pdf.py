@@ -8,8 +8,8 @@ shared reporting dependencies (reportlab) without invoking solvers.
 from __future__ import annotations
 
 import json
-from io import BytesIO
 from importlib.util import find_spec
+from io import BytesIO
 from typing import Any
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
@@ -136,12 +136,8 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
                 f"Typ: {result.get('result_type') or '—'} | "
                 f"Utworzono: {result.get('created_at') or '—'}"
             )
-            draw_wrapped(
-                f"Rozmiar payloadu: {result.get('payload_size_bytes') or 0} B"
-            )
-            draw_wrapped(
-                f"Kluczowe parametry: {_format_value(result.get('payload_summary'))}"
-            )
+            draw_wrapped(f"Rozmiar payloadu: {result.get('payload_size_bytes') or 0} B")
+            draw_wrapped(f"Kluczowe parametry: {_format_value(result.get('payload_summary'))}")
             y -= 2 * mm
     y -= section_spacing
 
@@ -153,9 +149,7 @@ def export_analysis_run_to_pdf(bundle: dict[str, Any]) -> bytes:
     else:
         diagram = overlay.get("diagram", {})
         summary = overlay.get("summary", {})
-        draw_wrapped(
-            f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})"
-        )
+        draw_wrapped(f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})")
         draw_wrapped(
             f"Nodes: {summary.get('node_count', 0)} | "
             f"Branches: {summary.get('branch_count', 0)}"
@@ -244,7 +238,7 @@ def _format_value(value: Any) -> str:
         return "Tak" if value else "Nie"
     if isinstance(value, float):
         return f"{value:.6g}"
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return _truncate_json(value)
     return str(value)
 

@@ -16,33 +16,26 @@ CANONICAL ALIGNMENT:
 """
 
 import json
-import pytest
 
+import pytest
 from application.reference_patterns import (
-    # Types
-    ReferenceVerdict,
-    ReferencePatternResult,
-    # Helpers
-    stable_json,
-    compare_results_deterministic,
-    # Pattern C
     PATTERN_C_ID,
     PATTERN_C_NAME_PL,
-    PATTERN_C_FIXTURES_SUBDIR,
-    PROG_INFORMACYJNY_PCT,
     PROG_GRANICZNY_PCT,
-    TypGeneracji,
-    ZrodloGeneracji,
+    PROG_INFORMACYJNY_PCT,
     DaneZwarciowePunktuZabezpieczenia,
     NastawyZabezpieczen,
-    WzorzecCInput,
+    TypGeneracji,
     WzorzecCGeneracjaLokalna,
-    run_pattern_c,
-    load_fixture_c,
+    WzorzecCInput,
+    ZrodloGeneracji,
+    compare_results_deterministic,
     fixture_to_input_c,
-    get_pattern_c_fixtures_dir,
+    load_fixture_c,
+    run_pattern_c,
+    # Helpers
+    stable_json,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -520,7 +513,11 @@ class TestWhiteBoxTrace:
         """Test criterion steps have formulas."""
         result = pattern.validate(input_data=zgodny_input)
 
-        formula_steps = ["sprawdzenie_zmiany_pradu", "sprawdzenie_blokady_szyn", "sprawdzenie_selektywnosci"]
+        formula_steps = [
+            "sprawdzenie_zmiany_pradu",
+            "sprawdzenie_blokady_szyn",
+            "sprawdzenie_selektywnosci",
+        ]
         for step in result.trace:
             if step["step"] in formula_steps:
                 # Tylko sprawdzenia z pełnymi danymi mają formuły

@@ -89,7 +89,5 @@ def fingerprint_envelope(envelope_dict: dict[str, Any]) -> str:
         if key not in {"created_at_utc", "fingerprint"}
     }
     canonical_payload = canonicalize_json(stable_view)
-    encoded = json.dumps(canonical_payload, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )
+    encoded = json.dumps(canonical_payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()

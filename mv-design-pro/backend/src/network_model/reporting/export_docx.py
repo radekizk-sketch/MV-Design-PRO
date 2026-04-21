@@ -23,15 +23,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
     from network_model.solvers.power_flow_result import PowerFlowResultV1
     from network_model.solvers.power_flow_trace import PowerFlowTrace
+    from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
 # Check for python-docx availability at import time
 try:
     from docx import Document
-    from docx.shared import Pt, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     _DOCX_AVAILABLE = True
 except ImportError:
@@ -190,9 +190,7 @@ def generate_sc_report_docx(
 
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     doc = Document()
     style = doc.styles["Normal"]
@@ -382,7 +380,7 @@ def generate_sc_report_docx(
             row[2].text = str(contrib.get("source_type", "\u2014"))
             row[3].text = _format_value(contrib.get("i_contrib_a"))
             share = contrib.get("share")
-            row[4].text = f"{share * 100:.2f}" if isinstance(share, (int, float)) else "\u2014"
+            row[4].text = f"{share * 100:.2f}" if isinstance(share, int | float) else "\u2014"
     else:
         doc.add_paragraph("Brak danych o udzialach zrodel.")
 
@@ -460,9 +458,7 @@ def generate_pf_report_docx(
 
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     doc = Document()
     style = doc.styles["Normal"]
@@ -561,9 +557,7 @@ def generate_pf_report_docx(
             row[4].text = _format_value(bus.get("q_injected_mvar"))
 
         if len(bus_results) > 50:
-            doc.add_paragraph(
-                f"... oraz {len(bus_results) - 50} dodatkowych wezlow"
-            )
+            doc.add_paragraph(f"... oraz {len(bus_results) - 50} dodatkowych wezlow")
     else:
         doc.add_paragraph("Brak wynikow wezlowych.")
     doc.add_paragraph()
@@ -594,9 +588,7 @@ def generate_pf_report_docx(
             row[4].text = _format_value(branch.get("losses_q_mvar"))
 
         if len(branch_results) > 50:
-            doc.add_paragraph(
-                f"... oraz {len(branch_results) - 50} dodatkowych galezi"
-            )
+            doc.add_paragraph(f"... oraz {len(branch_results) - 50} dodatkowych galezi")
     else:
         doc.add_paragraph("Brak wynikow galeziowych.")
     doc.add_paragraph()

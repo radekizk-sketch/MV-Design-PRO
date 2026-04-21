@@ -148,7 +148,7 @@ class SummaryView:
     warnings: tuple[str, ...] = ()
     overall_status: str | None = None
     failed_checks: tuple[str, ...] = ()
-    protection_comparisons: "ProtectionComparisonView | None" = None
+    protection_comparisons: ProtectionComparisonView | None = None
 
     def to_dict(self) -> dict[str, Any]:
         # Sortowanie key_results alfabetycznie (determinizm)

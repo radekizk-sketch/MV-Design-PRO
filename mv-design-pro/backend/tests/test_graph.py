@@ -18,15 +18,15 @@ import pytest
 backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
-from network_model.core.node import Node, NodeType
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState
-
 
 # =============================================================================
 # Helper functions for creating test objects
 # =============================================================================
+
 
 def create_slack_node(
     node_id: str,
@@ -110,6 +110,7 @@ def create_switch(
 # Test: add_node allows single SLACK and rejects second SLACK
 # =============================================================================
 
+
 class TestAddNodeSlackConstraint:
     """Testy walidacji pojedynczego węzła SLACK."""
 
@@ -170,6 +171,7 @@ class TestAddNodeSlackConstraint:
 # =============================================================================
 # Test: add_branch requires existing nodes
 # =============================================================================
+
 
 class TestAddBranchNodeExistence:
     """Testy walidacji istnienia węzłów przy dodawaniu gałęzi."""
@@ -250,6 +252,7 @@ class TestAddBranchNodeExistence:
 # Test: is_connected true for connected, false for islands
 # =============================================================================
 
+
 class TestIsConnected:
     """Testy analizy spójności sieci."""
 
@@ -303,6 +306,7 @@ class TestIsConnected:
 # =============================================================================
 # Test: find_islands returns two components deterministically
 # =============================================================================
+
 
 class TestFindIslands:
     """Testy znajdowania wysp (komponentów spójności)."""
@@ -383,6 +387,7 @@ class TestFindIslands:
 # Test: inactive branch not in graph edges
 # =============================================================================
 
+
 class TestInactiveBranch:
     """Testy obsługi gałęzi nieaktywnych (in_service=False)."""
 
@@ -450,6 +455,7 @@ class TestInactiveBranch:
 # Test: get_connected_nodes returns neighbors
 # =============================================================================
 
+
 class TestGetConnectedNodes:
     """Testy pobierania sąsiadów węzła."""
 
@@ -510,6 +516,7 @@ class TestGetConnectedNodes:
 # =============================================================================
 # Test: remove operations
 # =============================================================================
+
 
 class TestRemoveOperations:
     """Testy usuwania węzłów i gałęzi."""
@@ -581,6 +588,7 @@ class TestRemoveOperations:
 # Test: get_slack_node
 # =============================================================================
 
+
 class TestGetSlackNode:
     """Testy pobierania węzła SLACK."""
 
@@ -612,6 +620,7 @@ class TestGetSlackNode:
 # Test: rebuild_graph
 # =============================================================================
 
+
 class TestRebuildGraph:
     """Testy przebudowy grafu."""
 
@@ -634,7 +643,7 @@ class TestRebuildGraph:
         graph.add_branch(branch_bc)
 
         # Zapisz stan początkowy
-        initial_edges = set(graph._graph.edges())
+        set(graph._graph.edges())
 
         # Wyczyść graf (symulacja uszkodzenia)
         graph._graph.clear()
@@ -651,6 +660,7 @@ class TestRebuildGraph:
 # =============================================================================
 # Test: edge attributes
 # =============================================================================
+
 
 class TestEdgeAttributes:
     """Testy atrybutów krawędzi grafu."""
@@ -681,6 +691,7 @@ class TestEdgeAttributes:
 # =============================================================================
 # Test: parallel branches between same nodes
 # =============================================================================
+
 
 class TestParallelBranches:
     """Testy obsługi gałęzi równoległych (MultiGraph)."""

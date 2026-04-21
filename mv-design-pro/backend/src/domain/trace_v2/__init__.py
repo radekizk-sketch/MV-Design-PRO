@@ -10,7 +10,12 @@ from domain.trace_v2.artifact import (
     compute_run_hash,
     compute_trace_signature,
 )
-from domain.trace_v2.diff_engine import TraceDiffEngine, TraceDiffEntry, TraceDiffResult, TraceStepDiff
+from domain.trace_v2.diff_engine import (
+    TraceDiffEngine,
+    TraceDiffEntry,
+    TraceDiffResult,
+    TraceStepDiff,
+)
 from domain.trace_v2.equation_registry_v2 import (
     EquationEntryV2,
     EquationRegistryV2,

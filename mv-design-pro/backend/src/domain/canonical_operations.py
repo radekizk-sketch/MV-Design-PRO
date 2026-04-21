@@ -11,18 +11,22 @@ REGULA: Ten modul jest JEDYNYM ZRODLEM PRAWDY dla:
 - kodow gotowosci
 - kontraktu odpowiedzi
 """
+
 from __future__ import annotations
 
 import enum
-from dataclasses import dataclass, field
-from typing import Any, FrozenSet, Mapping
+from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
 
 # ============================================================
 # 1. KANONICZNE NAZWY OPERACJI
 # ============================================================
 
+
 class OperationCategory(enum.Enum):
     """Kategorie operacji domenowych."""
+
     SN_NETWORK = "sn_network"
     STATION_NN = "station_nn"
     OZE_NN = "oze_nn"
@@ -34,6 +38,7 @@ class OperationCategory(enum.Enum):
 @dataclass(frozen=True)
 class OperationSpec:
     """Specyfikacja pojedynczej operacji domenowej."""
+
     canonical_name: str
     category: OperationCategory
     description_pl: str
@@ -52,8 +57,23 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.SN_NETWORK,
         description_pl="Dodanie źródła zasilania sieciowego (GPZ) do sieci SN",
         target_layer="Domain / NetworkModel",
-        required_fields=("source_name", "sn_voltage_kv", "sk3_mva"),
-        optional_fields=("rx_ratio", "notes", "catalog_binding"),
+        required_fields=("voltage_kv",),
+        optional_fields=(
+            "source_name",
+            "sk3_mva",
+            "rx_ratio",
+            "catalog_ref",
+            "catalog_binding",
+            "sections_count",
+            "gpz_sections",
+            "grounding",
+            "zero_sequence",
+            "manual_equivalent",
+            "short_circuit_mode",
+            "source_mode",
+            "parameter_source",
+            "notes",
+        ),
     ),
     "continue_trunk_segment_sn": OperationSpec(
         canonical_name="continue_trunk_segment_sn",
@@ -104,6 +124,21 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         optional_fields=("ring_id", "normal_state"),
         creates_elements=False,
     ),
+    "add_sn_bay": OperationSpec(
+        canonical_name="add_sn_bay",
+        category=OperationCategory.SN_NETWORK,
+        description_pl="Dodanie pola SN do GPZ, stacji, ZKSN albo pola źródłowego",
+        target_layer="Domain / NetworkModel",
+        required_fields=("bus_ref",),
+        optional_fields=(
+            "station_ref",
+            "field_name",
+            "bay_role",
+            "apparatus_kind",
+            "gpz_section_id",
+            "catalog_binding",
+        ),
+    ),
     # --- Station & nN (6 operations) ---
     "add_transformer_sn_nn": OperationSpec(
         canonical_name="add_transformer_sn_nn",
@@ -116,10 +151,18 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
     "add_nn_outgoing_field": OperationSpec(
         canonical_name="add_nn_outgoing_field",
         category=OperationCategory.STATION_NN,
-        description_pl="Dodanie pola odpływowego nN",
+        description_pl="Dodanie pola nN z jawną intencją odpływu albo pola źródłowego",
         target_layer="Domain / NetworkModel",
         required_fields=("target_nn_bus_ref",),
-        optional_fields=("field_name", "field_type", "catalog_binding", "creates_nn_segment", "length_m"),
+        optional_fields=(
+            "field_name",
+            "field_type",
+            "field_role",
+            "source_field_kind",
+            "catalog_binding",
+            "creates_nn_segment",
+            "length_m",
+        ),
     ),
     "add_nn_load": OperationSpec(
         canonical_name="add_nn_load",
@@ -146,20 +189,20 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("element_ref", "parameters"),
         creates_elements=False,
     ),
-    # --- OZE nN (6 operations) ---
-    "add_pv_inverter_nn": OperationSpec(
-        canonical_name="add_pv_inverter_nn",
+    # --- OZE nN (5 operations) ---
+    "add_converter_source": OperationSpec(
+        canonical_name="add_converter_source",
         category=OperationCategory.OZE_NN,
-        description_pl="Dodanie falownika PV na szynie nN",
+        description_pl="Dodanie źródła przekształtnikowego PV, BESS lub FW",
         target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref", "inverter_spec"),
-    ),
-    "add_bess_inverter_nn": OperationSpec(
-        canonical_name="add_bess_inverter_nn",
-        category=OperationCategory.OZE_NN,
-        description_pl="Dodanie falownika BESS na szynie nN",
-        target_layer="Domain / NetworkModel",
-        required_fields=("target_nn_bus_ref", "bess_spec"),
+        required_fields=("source_technology", "connection_variant", "station_ref", "bus_nn_ref"),
+        optional_fields=(
+            "placement",
+            "existing_field_ref",
+            "source_field",
+            "catalog_binding",
+            "materialized_params",
+        ),
     ),
     "add_genset_nn": OperationSpec(
         canonical_name="add_genset_nn",
@@ -378,44 +421,29 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
 }
 
 # Canonical operation names as frozen set (for guards)
-CANONICAL_OP_NAMES: FrozenSet[str] = frozenset(CANONICAL_OPERATIONS.keys())
+CANONICAL_OP_NAMES: frozenset[str] = frozenset(CANONICAL_OPERATIONS.keys())
 
-
-# ============================================================
-# 2. ALIAS MAPPING (jeden slownik, jedno miejsce)
-# ============================================================
-
-ALIAS_MAP: dict[str, str] = {
-    # Historical aliases -> canonical names
-    "add_inverter_nn_pv": "add_pv_inverter_nn",
-    "add_inverter_nn_bess": "add_bess_inverter_nn",
-    "add_nn_source_field": "add_nn_outgoing_field",  # if semantically same
-    "update_nn_bus_sections": "update_element_parameters",
-    "update_nn_coupler_state": "update_element_parameters",
-    # Prompt-canonical aliases (Faza 2 alignment)
-    "add_nn_feeder": "add_nn_outgoing_field",
-    "add_nn_source_pv": "add_pv_inverter_nn",
-    "add_nn_source_bess": "add_bess_inverter_nn",
-    "attach_protection_to_cb": "add_relay",
-    "update_protection_settings": "update_relay_settings",
-    "add_load_to_feeder_nn": "add_nn_load",
+REQUIRED_FIELD_ALIASES: dict[str, dict[str, tuple[str, ...]]] = {
+    "add_grid_source_sn": {
+        "voltage_kv": ("sn_voltage_kv",),
+    }
 }
 
 
 def resolve_operation_name(name: str) -> str:
-    """Resolve alias to canonical operation name."""
-    return ALIAS_MAP.get(name, name)
+    """Zwróć kanoniczną nazwę operacji bez translacji aliasów."""
+    return name
 
 
 def is_canonical_operation(name: str) -> bool:
-    """Check if name is a canonical operation (or resolvable alias)."""
-    resolved = resolve_operation_name(name)
-    return resolved in CANONICAL_OP_NAMES
+    """Check if name is a canonical operation."""
+    return name in CANONICAL_OP_NAMES
 
 
 # ============================================================
 # 3. READINESS CODES (kompletny slownik po polsku)
 # ============================================================
+
 
 class ReadinessLevel(enum.Enum):
     BLOCKER = "BLOCKER"
@@ -436,6 +464,7 @@ class ReadinessArea(enum.Enum):
 @dataclass(frozen=True)
 class ReadinessCodeSpec:
     """Specyfikacja kodu gotowości."""
+
     code: str
     area: ReadinessArea
     priority: int  # 1 = highest
@@ -641,7 +670,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Pierścień SN wymaga punktu normalnie otwartego (NOP)",
         fix_action_id="fix_ring_nop",
-        fix_navigation={"panel": "sld", "modal": "set_nop"},
+        fix_navigation={"panel": "sld", "modal": "set_normal_open_point"},
     ),
     # Protection
     "protection.ct_required": ReadinessCodeSpec(
@@ -721,7 +750,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Brak wersji katalogu w wiązaniu elementu obliczeniowego",
         fix_action_id="fix_catalog_version",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
     "catalog.binding_missing": ReadinessCodeSpec(
         code="catalog.binding_missing",
@@ -730,7 +763,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Element obliczeniowy nie ma przypisanego katalogu",
         fix_action_id="fix_catalog_binding",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
     "catalog.materialization_failed": ReadinessCodeSpec(
         code="catalog.materialization_failed",
@@ -749,7 +786,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło PV nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora)",
         fix_action_id="fix_pv_transformer",
-        fix_navigation={"panel": "inspector", "tab": "transformator", "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "transformator",
+            "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2",
+        },
     ),
     "oze.bess_no_transformer": ReadinessCodeSpec(
         code="oze.bess_no_transformer",
@@ -758,7 +799,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Źródło BESS nie ma transformatora w ścieżce zasilania (zakaz przyłączenia do SN bez transformatora)",
         fix_action_id="fix_bess_transformer",
-        fix_navigation={"panel": "inspector", "tab": "transformator", "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "transformator",
+            "modal": "MODAL_WSTAW_STACJE_SN_NN_WARIANT_2",
+        },
     ),
     # Apparatus (aparaty łączeniowe)
     "apparatus.sn_catalog_missing": ReadinessCodeSpec(
@@ -768,7 +813,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Aparat SN nie ma przypisanego katalogu",
         fix_action_id="fix_apparatus_sn_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
     "apparatus.nn_catalog_missing": ReadinessCodeSpec(
         code="apparatus.nn_catalog_missing",
@@ -777,7 +826,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Aparat nN nie ma przypisanego katalogu",
         fix_action_id="fix_apparatus_nn_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
     # Load
     "load.catalog_missing": ReadinessCodeSpec(
@@ -787,7 +840,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl="Obciążenie nie ma przypisanego katalogu",
         fix_action_id="fix_load_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
     "load.power_zero": ReadinessCodeSpec(
         code="load.power_zero",
@@ -806,7 +863,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl="Kabel nN nie ma przypisanego katalogu",
         fix_action_id="fix_nn_cable_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
     ),
 }
 
@@ -817,12 +878,23 @@ def get_blockers_for_analysis(analysis_type: str) -> tuple[str, ...]:
         "SC_3F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
         "SC_2F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
         "SC_1F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
-        "LOAD_FLOW": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS, ReadinessArea.GENERATORS},
-        "PROTECTION": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS, ReadinessArea.PROTECTION},
+        "LOAD_FLOW": {
+            ReadinessArea.TOPOLOGY,
+            ReadinessArea.SOURCES,
+            ReadinessArea.CATALOGS,
+            ReadinessArea.GENERATORS,
+        },
+        "PROTECTION": {
+            ReadinessArea.TOPOLOGY,
+            ReadinessArea.SOURCES,
+            ReadinessArea.CATALOGS,
+            ReadinessArea.PROTECTION,
+        },
     }
     required_areas = area_map.get(analysis_type, set())
     return tuple(
-        code for code, spec in READINESS_CODES.items()
+        code
+        for code, spec in READINESS_CODES.items()
         if spec.level == ReadinessLevel.BLOCKER and spec.area in required_areas
     )
 
@@ -831,12 +903,14 @@ def get_blockers_for_analysis(analysis_type: str) -> tuple[str, ...]:
 # 4. RESPONSE CONTRACT
 # ============================================================
 
+
 @dataclass(frozen=True)
 class OperationResponseContract:
     """Canonical response contract for ALL domain operations.
 
     Every operation MUST return this structure.
     """
+
     snapshot: Mapping[str, object]  # New ENM snapshot (immutable)
     logical_views: dict[str, Any]  # Deterministic projections
     readiness: dict[str, Any]  # Readiness codes with priorities
@@ -852,6 +926,7 @@ class OperationResponseContract:
 # ============================================================
 # 5. TRUNK CONTRACT (for SN operations)
 # ============================================================
+
 
 class CutMode(enum.Enum):
     FRACTION = "FRACTION"
@@ -911,6 +986,7 @@ class EmbeddingIntent:
 # 6. VALIDATION HELPERS
 # ============================================================
 
+
 def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[str]:
     """Validate that payload contains all required fields for the operation."""
     resolved = resolve_operation_name(op_name)
@@ -918,7 +994,19 @@ def validate_operation_payload(op_name: str, payload: dict[str, Any]) -> list[st
     if spec is None:
         return [f"Nieznana operacja: {op_name}"]
     errors = []
+    alias_map = REQUIRED_FIELD_ALIASES.get(resolved, {})
     for field_name in spec.required_fields:
-        if field_name not in payload or payload[field_name] is None:
+        if field_name in payload and payload[field_name] is not None:
+            continue
+
+        aliases = alias_map.get(field_name, ())
+        if any(alias in payload and payload[alias] is not None for alias in aliases):
+            continue
+
+        if aliases:
+            errors.append(
+                f"Brak wymaganego pola: {field_name} (alias kompatybilnosci: {', '.join(aliases)})"
+            )
+        else:
             errors.append(f"Brak wymaganego pola: {field_name}")
     return errors

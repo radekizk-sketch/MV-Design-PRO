@@ -17,7 +17,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from network_model.core.generator import (
     ControlMode,
     GeneratorNN,
@@ -35,7 +34,6 @@ from network_model.validation.oze_validators import (
     validate_voltage_compatibility,
 )
 from network_model.validation.validator import Severity
-
 
 # ============================================================
 # 1. test_pv_sn_creation
@@ -679,17 +677,13 @@ class TestGeneratorTypesComplete:
         """Każdy GeneratorType ma wpis w _SN_VALIDATORS."""
         for gen_type in GeneratorType:
             validators = get_sn_validators_for_type(gen_type)
-            assert isinstance(validators, list), (
-                f"Brak walidatorów SN dla typu {gen_type.value}"
-            )
+            assert isinstance(validators, list), f"Brak walidatorów SN dla typu {gen_type.value}"
 
     def test_nn_validators_cover_all_types(self) -> None:
         """Każdy GeneratorType ma wpis w _NN_VALIDATORS."""
         for gen_type in GeneratorType:
             validators = get_nn_validators_for_type(gen_type)
-            assert isinstance(validators, list), (
-                f"Brak walidatorów nN dla typu {gen_type.value}"
-            )
+            assert isinstance(validators, list), f"Brak walidatorów nN dla typu {gen_type.value}"
 
     def test_all_control_modes_enumerated(self) -> None:
         """Enum ControlMode zawiera 3 oczekiwane wartości."""
@@ -837,9 +831,7 @@ class TestGeneratorNNValidation:
         )
 
         issues = validate_generator_nn_parameters(gen)
-        current_issues = [
-            i for i in issues if i.code == "oze.nn_inverter_current_invalid"
-        ]
+        current_issues = [i for i in issues if i.code == "oze.nn_inverter_current_invalid"]
         assert len(current_issues) == 1
 
     def test_nn_negative_power_limit_warning(self) -> None:
@@ -853,9 +845,7 @@ class TestGeneratorNNValidation:
         )
 
         issues = validate_generator_nn_parameters(gen)
-        limit_issues = [
-            i for i in issues if i.code == "oze.nn_power_limit_invalid"
-        ]
+        limit_issues = [i for i in issues if i.code == "oze.nn_power_limit_invalid"]
         assert len(limit_issues) == 1
         assert limit_issues[0].severity == Severity.WARNING
 

@@ -12,10 +12,15 @@ from __future__ import annotations
 
 import json
 
+from domain.study_case_delta import (
+    DeltaOverlay,
+    DeltaOverlayToken,
+    FieldChange,
+    compute_delta,
+)
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.canonical_hash import (
     _canonicalize_value,
-    canonical_json,
     canonical_json_from_dict,
     snapshot_hash,
     verify_hash,
@@ -24,16 +29,8 @@ from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.snapshot import (
     NetworkSnapshot,
-    SnapshotMeta,
     create_network_snapshot,
 )
-from domain.study_case_delta import (
-    DeltaOverlay,
-    DeltaOverlayToken,
-    FieldChange,
-    compute_delta,
-)
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -415,7 +412,8 @@ class TestDeltaOverlayComputation:
         assert delta.token_for("n1") == DeltaOverlayToken.MODIFIED
 
         name_changes = [
-            fc for fc in delta.modified_elements
+            fc
+            for fc in delta.modified_elements
             if fc.element_id == "n1" and fc.field_name == "name"
         ]
         assert len(name_changes) == 1
@@ -437,9 +435,7 @@ class TestDeltaOverlayComputation:
         delta = DeltaOverlay(
             added_elements=("e1",),
             removed_elements=("e2",),
-            modified_elements=(
-                FieldChange("e3", "name", "old", "new"),
-            ),
+            modified_elements=(FieldChange("e3", "name", "old", "new"),),
         )
         d = delta.to_dict()
         assert d["added_elements"] == ["e1"]
@@ -489,9 +485,9 @@ class TestDeltaOverlaySymmetry:
         # For each modified field, old/new values are swapped
         for fc_ab in delta_ab.modified_elements:
             matching = [
-                fc for fc in delta_ba.modified_elements
-                if fc.element_id == fc_ab.element_id
-                and fc.field_name == fc_ab.field_name
+                fc
+                for fc in delta_ba.modified_elements
+                if fc.element_id == fc_ab.element_id and fc.field_name == fc_ab.field_name
             ]
             assert len(matching) == 1
             fc_ba = matching[0]

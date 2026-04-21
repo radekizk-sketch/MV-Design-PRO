@@ -6,15 +6,13 @@ elektroenergetycznej z wykorzystaniem biblioteki NetworkX do analizy
 spójności i znajdowania wysp.
 """
 
-from typing import Dict, List
-
 import networkx as nx
 
-from .node import Node, NodeType
 from .branch import Branch
 from .inverter import InverterSource
-from .switch import Switch
+from .node import Node, NodeType
 from .station import Station
+from .switch import Switch
 
 
 class NetworkGraph:
@@ -49,11 +47,11 @@ class NetworkGraph:
     def __init__(self, network_model_id: str | None = None) -> None:
         """Inicjalizuje pusty graf sieci."""
         self.network_model_id = network_model_id
-        self.nodes: Dict[str, Node] = {}
-        self.branches: Dict[str, Branch] = {}
-        self.inverter_sources: Dict[str, InverterSource] = {}
-        self.switches: Dict[str, Switch] = {}
-        self.stations: Dict[str, Station] = {}
+        self.nodes: dict[str, Node] = {}
+        self.branches: dict[str, Branch] = {}
+        self.inverter_sources: dict[str, InverterSource] = {}
+        self.switches: dict[str, Switch] = {}
+        self.stations: dict[str, Station] = {}
         self._graph: nx.MultiGraph = nx.MultiGraph()
 
     def add_node(self, node: Node) -> None:
@@ -72,9 +70,7 @@ class NetworkGraph:
             ValueError: Gdy dodanie węzła powoduje posiadanie więcej niż 1 węzła SLACK.
         """
         if node.id in self.nodes:
-            raise ValueError(
-                f"Węzeł o ID '{node.id}' już istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł o ID '{node.id}' już istnieje w grafie.")
 
         # Dodaj węzeł tymczasowo
         self.nodes[node.id] = node
@@ -110,24 +106,16 @@ class NetworkGraph:
             ValueError: Gdy gałąź łączy węzeł sam ze sobą.
         """
         if branch.id in self.branches:
-            raise ValueError(
-                f"Gałąź o ID '{branch.id}' już istnieje w grafie."
-            )
+            raise ValueError(f"Gałąź o ID '{branch.id}' już istnieje w grafie.")
 
         if branch.from_node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł początkowy '{branch.from_node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł początkowy '{branch.from_node_id}' nie istnieje w grafie.")
 
         if branch.to_node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł końcowy '{branch.to_node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł końcowy '{branch.to_node_id}' nie istnieje w grafie.")
 
         if branch.from_node_id == branch.to_node_id:
-            raise ValueError(
-                f"Gałąź nie może łączyć węzła '{branch.from_node_id}' samego ze sobą."
-            )
+            raise ValueError(f"Gałąź nie może łączyć węzła '{branch.from_node_id}' samego ze sobą.")
 
         # Dodaj gałąź do słownika
         self.branches[branch.id] = branch
@@ -165,19 +153,13 @@ class NetworkGraph:
             ValueError: Gdy łącznik łączy węzeł sam ze sobą.
         """
         if switch.id in self.switches:
-            raise ValueError(
-                f"Łącznik o ID '{switch.id}' już istnieje w grafie."
-            )
+            raise ValueError(f"Łącznik o ID '{switch.id}' już istnieje w grafie.")
 
         if switch.from_node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł początkowy '{switch.from_node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł początkowy '{switch.from_node_id}' nie istnieje w grafie.")
 
         if switch.to_node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł końcowy '{switch.to_node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł końcowy '{switch.to_node_id}' nie istnieje w grafie.")
 
         if switch.from_node_id == switch.to_node_id:
             raise ValueError(
@@ -210,13 +192,9 @@ class NetworkGraph:
             ValueError: Gdy węzeł docelowy nie istnieje.
         """
         if source.id in self.inverter_sources:
-            raise ValueError(
-                f"Źródło falownikowe o ID '{source.id}' już istnieje w grafie."
-            )
+            raise ValueError(f"Źródło falownikowe o ID '{source.id}' już istnieje w grafie.")
         if source.node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł '{source.node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
         self.inverter_sources[source.id] = source
 
     def remove_inverter_source(self, source_id: str) -> None:
@@ -230,12 +208,10 @@ class NetworkGraph:
             ValueError: Gdy źródło o podanym ID nie istnieje.
         """
         if source_id not in self.inverter_sources:
-            raise ValueError(
-                f"Źródło falownikowe o ID '{source_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Źródło falownikowe o ID '{source_id}' nie istnieje w grafie.")
         del self.inverter_sources[source_id]
 
-    def get_inverter_sources_at_node(self, node_id: str) -> List[InverterSource]:
+    def get_inverter_sources_at_node(self, node_id: str) -> list[InverterSource]:
         """
         Zwraca listę aktywnych źródeł falownikowych w danym węźle.
 
@@ -249,9 +225,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł o ID '{node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
         sources = [
             source
             for source in self.inverter_sources.values()
@@ -260,7 +234,7 @@ class NetworkGraph:
         sources.sort(key=lambda source: source.id)
         return sources
 
-    def get_inverter_sources(self) -> List[InverterSource]:
+    def get_inverter_sources(self) -> list[InverterSource]:
         """
         Zwraca listę aktywnych źródeł falownikowych w całej sieci.
 
@@ -288,9 +262,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł o ID '{node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
 
         # Znajdź i usuń wszystkie gałęzie połączone z tym węzłem
         branches_to_remove = [
@@ -329,9 +301,7 @@ class NetworkGraph:
             ValueError: Gdy gałąź o podanym ID nie istnieje.
         """
         if branch_id not in self.branches:
-            raise ValueError(
-                f"Gałąź o ID '{branch_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Gałąź o ID '{branch_id}' nie istnieje w grafie.")
 
         branch = self.branches[branch_id]
 
@@ -355,9 +325,7 @@ class NetworkGraph:
             ValueError: Gdy łącznik o podanym ID nie istnieje.
         """
         if switch_id not in self.switches:
-            raise ValueError(
-                f"Łącznik o ID '{switch_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Łącznik o ID '{switch_id}' nie istnieje w grafie.")
 
         switch = self.switches[switch_id]
 
@@ -381,9 +349,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł o ID '{node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
         return self.nodes[node_id]
 
     def get_branch(self, branch_id: str) -> Branch:
@@ -400,9 +366,7 @@ class NetworkGraph:
             ValueError: Gdy gałąź o podanym ID nie istnieje.
         """
         if branch_id not in self.branches:
-            raise ValueError(
-                f"Gałąź o ID '{branch_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Gałąź o ID '{branch_id}' nie istnieje w grafie.")
         return self.branches[branch_id]
 
     def get_switch(self, switch_id: str) -> Switch:
@@ -419,12 +383,10 @@ class NetworkGraph:
             ValueError: Gdy łącznik o podanym ID nie istnieje.
         """
         if switch_id not in self.switches:
-            raise ValueError(
-                f"Łącznik o ID '{switch_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Łącznik o ID '{switch_id}' nie istnieje w grafie.")
         return self.switches[switch_id]
 
-    def list_switches(self) -> List[Switch]:
+    def list_switches(self) -> list[Switch]:
         """
         Zwraca listę łączników w sieci.
 
@@ -453,9 +415,7 @@ class NetworkGraph:
             ValueError: Gdy stacja o podanym ID już istnieje.
         """
         if station.id in self.stations:
-            raise ValueError(
-                f"Stacja o ID '{station.id}' już istnieje w grafie."
-            )
+            raise ValueError(f"Stacja o ID '{station.id}' już istnieje w grafie.")
         self.stations[station.id] = station
 
     def remove_station(self, station_id: str) -> None:
@@ -472,9 +432,7 @@ class NetworkGraph:
             ValueError: Gdy stacja o podanym ID nie istnieje.
         """
         if station_id not in self.stations:
-            raise ValueError(
-                f"Stacja o ID '{station_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Stacja o ID '{station_id}' nie istnieje w grafie.")
         del self.stations[station_id]
 
     def get_station(self, station_id: str) -> Station:
@@ -491,9 +449,7 @@ class NetworkGraph:
             ValueError: Gdy stacja o podanym ID nie istnieje.
         """
         if station_id not in self.stations:
-            raise ValueError(
-                f"Stacja o ID '{station_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Stacja o ID '{station_id}' nie istnieje w grafie.")
         return self.stations[station_id]
 
     def get_station_optional(self, station_id: str) -> Station | None:
@@ -508,7 +464,7 @@ class NetworkGraph:
         """
         return self.stations.get(station_id)
 
-    def list_stations(self) -> List[Station]:
+    def list_stations(self) -> list[Station]:
         """
         Zwraca listę wszystkich stacji w sieci.
 
@@ -564,10 +520,7 @@ class NetworkGraph:
         Raises:
             ValueError: Gdy brak węzła SLACK lub jest więcej niż jeden.
         """
-        slack_nodes = [
-            node for node in self.nodes.values()
-            if node.node_type == NodeType.SLACK
-        ]
+        slack_nodes = [node for node in self.nodes.values() if node.node_type == NodeType.SLACK]
 
         if len(slack_nodes) == 0:
             raise ValueError("Brak węzła SLACK w sieci.")
@@ -580,7 +533,7 @@ class NetworkGraph:
 
         return slack_nodes[0]
 
-    def get_connected_nodes(self, node_id: str) -> List[Node]:
+    def get_connected_nodes(self, node_id: str) -> list[Node]:
         """
         Zwraca listę węzłów sąsiadujących z danym węzłem.
 
@@ -597,9 +550,7 @@ class NetworkGraph:
             ValueError: Gdy węzeł o podanym ID nie istnieje.
         """
         if node_id not in self.nodes:
-            raise ValueError(
-                f"Węzeł o ID '{node_id}' nie istnieje w grafie."
-            )
+            raise ValueError(f"Węzeł o ID '{node_id}' nie istnieje w grafie.")
 
         neighbor_ids = list(self._graph.neighbors(node_id))
         # Sortuj deterministycznie po ID
@@ -630,7 +581,7 @@ class NetworkGraph:
         simple_graph = nx.Graph(self._graph)
         return nx.is_connected(simple_graph)
 
-    def find_islands(self) -> List[List[str]]:
+    def find_islands(self) -> list[list[str]]:
         """
         Znajduje wyspy (komponenty spójności) w grafie sieci.
 
@@ -656,7 +607,7 @@ class NetworkGraph:
         components = list(nx.connected_components(simple_graph))
 
         # Posortuj węzły wewnątrz każdej wyspy
-        islands = [sorted(list(component)) for component in components]
+        islands = [sorted(component) for component in components]
 
         # Posortuj wyspy malejąco po długości
         islands.sort(key=lambda x: len(x), reverse=True)
@@ -670,15 +621,11 @@ class NetworkGraph:
         Raises:
             ValueError: Gdy w sieci jest więcej niż 1 węzeł SLACK.
         """
-        slack_count = sum(
-            1 for node in self.nodes.values()
-            if node.node_type == NodeType.SLACK
-        )
+        slack_count = sum(1 for node in self.nodes.values() if node.node_type == NodeType.SLACK)
 
         if slack_count > 1:
             raise ValueError(
-                f"W sieci może być maksymalnie jeden węzeł SLACK, "
-                f"aktualnie jest {slack_count}."
+                f"W sieci może być maksymalnie jeden węzeł SLACK, " f"aktualnie jest {slack_count}."
             )
 
     def _rebuild_graph(self) -> None:

@@ -2,7 +2,7 @@
  * Eksport porównania śladów obliczeń do JSON
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Eksport danych do analizy
+ * - ui_canonical_parity.md: Eksport danych do analizy
  * - SYSTEM_SPEC.md: READ-ONLY export
  *
  * RULES (BINDING):

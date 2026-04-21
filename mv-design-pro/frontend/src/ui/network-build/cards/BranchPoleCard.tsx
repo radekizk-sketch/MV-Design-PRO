@@ -1,15 +1,15 @@
 /**
- * BranchPoleCard — karta słupa rozgałęźnego SN.
+ * BranchPoleCard â€” karta sĹ‚upa rozgaĹ‚Ä™Ĺşnego SN.
  *
- * Słup rozgałęźny jest odrębną klasą obiektu (BranchPoleMV), osadzaną
- * wyłącznie na linii napowietrznej SN. NIE jest stacją.
+ * SĹ‚up rozgaĹ‚Ä™Ĺşny jest odrÄ™bnÄ… klasÄ… obiektu (BranchPoleMV), osadzanÄ…
+ * wyĹ‚Ä…cznie na linii napowietrznej SN. NIE jest stacjÄ….
  *
- * Wyświetla:
- * A. Identyfikację i rolę w sieci
- * B. Topologię: port MAIN_IN / MAIN_OUT / BRANCH
+ * WyĹ›wietla:
+ * A. IdentyfikacjÄ™ i rolÄ™ w sieci
+ * B. TopologiÄ™: port MAIN_IN / MAIN_OUT / BRANCH
  * C. Parametry katalogowe
- * D. Gotowość i status kompletności
- * E. Dostępne akcje inżynierskie
+ * D. GotowoĹ›Ä‡ i status kompletnoĹ›ci
+ * E. DostÄ™pne akcje inĹĽynierskie
  *
  * BINDING: 100% PL etykiety.
  */
@@ -32,9 +32,9 @@ function sourceModeLabel(mode: string | null | undefined): string {
     case 'MIGRACJA':
       return 'Migracja danych';
     case 'EKSPERCKI_RECZNY':
-      return 'Ręczny (ekspert)';
+      return 'RÄ™czny (ekspert)';
     default:
-      return mode ?? '—';
+      return mode ?? 'â€”';
   }
 }
 
@@ -45,9 +45,9 @@ function completenessLabel(status: string | null | undefined): string {
     case 'NIEKOMPLETNY':
       return 'Niekompletny';
     case 'BRAK_KATALOGU':
-      return 'Brak powiązania katalogowego';
+      return 'Brak powiÄ…zania katalogowego';
     default:
-      return '—';
+      return 'â€”';
   }
 }
 
@@ -92,24 +92,24 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: branchPoint.ref_id },
           { key: 'name', label: 'Nazwa', value: branchPoint.name },
-          { key: 'type', label: 'Typ obiektu', value: 'Słup rozgałęźny SN' },
-          { key: 'parent_segment', label: 'Odcinek nadrzędny', value: branchPoint.parent_segment_id },
+          { key: 'type', label: 'Typ obiektu', value: 'SĹ‚up rozgaĹ‚Ä™Ĺşny SN' },
+          { key: 'parent_segment', label: 'Odcinek nadrzÄ™dny', value: branchPoint.parent_segment_id },
         ],
       },
       {
         id: 'topology',
         label: 'Topologia',
         fields: [
-          { key: 'main_in', label: 'Port MAIN_IN', value: branchPoint.ports?.MAIN_IN ?? '—' },
-          { key: 'main_out', label: 'Port MAIN_OUT', value: branchPoint.ports?.MAIN_OUT ?? '—' },
+          { key: 'main_in', label: 'Port MAIN_IN', value: branchPoint.ports?.MAIN_IN ?? 'â€”' },
+          { key: 'main_out', label: 'Port MAIN_OUT', value: branchPoint.ports?.MAIN_OUT ?? 'â€”' },
           {
             key: 'branch_port',
-            label: 'Port BRANCH',
-            value: branchPoint.ports?.BRANCH?.[0] ?? '—',
+            label: 'Port odgalezienia',
+            value: branchPoint.ports?.BRANCH?.[0] ?? 'â€”',
           },
           {
             key: 'branch_occupied',
-            label: 'Port BRANCH zajęty',
+            label: 'Port odgalezienia zajety',
             value: branchPoint.branch_occupied?.['BRANCH']
               ? `Tak (${branchPoint.branch_occupied['BRANCH']})`
               : 'Wolny',
@@ -123,21 +123,21 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
           {
             key: 'catalog_ref',
             label: 'Pozycja katalogowa',
-            value: branchPoint.catalog_ref ?? '—',
+            value: branchPoint.catalog_ref ?? 'â€”',
           },
           {
             key: 'catalog_namespace',
-            label: 'Przestrzeń nazw',
-            value: branchPoint.catalog_namespace ?? '—',
+            label: 'PrzestrzeĹ„ nazw',
+            value: branchPoint.catalog_namespace ?? 'â€”',
           },
           {
             key: 'source_mode',
-            label: 'Tryb źródła',
+            label: 'Tryb ĹşrĂłdĹ‚a',
             value: sourceModeLabel(branchPoint.source_mode),
           },
           {
             key: 'completeness',
-            label: 'Kompletność',
+            label: 'KompletnoĹ›Ä‡',
             value: completenessLabel(branchPoint.completeness_status),
           },
         ],
@@ -154,6 +154,14 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
     });
   }, [branchPoint, openOperationForm]);
 
+  const handleEditBranchPole = useCallback(() => {
+    if (!branchPoint) return;
+    openOperationForm('update_element_parameters', {
+      element_ref: branchPoint.ref_id,
+      element_type: 'branch_point',
+    });
+  }, [branchPoint, openOperationForm]);
+
   const handleAssignCatalog = useCallback(() => {
     if (!activeCaseId || !branchPoint) return;
     executeDomainOperation(activeCaseId, 'assign_catalog_to_element', {
@@ -167,8 +175,14 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
 
     const acts: CardAction[] = [
       {
-        id: 'add_branch',
-        label: 'Dodaj odgałęzienie',
+        id: 'edit_branch_pole',
+        label: 'Edytuj sĹ‚up',
+        variant: 'secondary',
+        onClick: handleEditBranchPole,
+      },
+      {
+        id: 'start_branch_segment_sn',
+        label: 'Dodaj odgaĹ‚Ä™zienie',
         variant: 'primary',
         onClick: handleAddBranch,
         disabled: !!(branchPoint.branch_occupied?.['BRANCH']),
@@ -182,12 +196,12 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
     ];
 
     return acts;
-  }, [branchPoint, handleAddBranch, handleAssignCatalog]);
+  }, [branchPoint, handleAddBranch, handleAssignCatalog, handleEditBranchPole]);
 
   if (!branchPoint) {
     return (
       <div className="p-4 text-xs text-gray-500">
-        Słup rozgałęźny nie znaleziony: {elementId}
+        SĹ‚up rozgaĹ‚Ä™Ĺşny nie znaleziony: {elementId}
       </div>
     );
   }
@@ -195,7 +209,7 @@ export function BranchPoleCard({ elementId, onClose }: BranchPoleCardProps) {
   return (
     <ObjectCard
       elementName={branchPoint.name}
-      elementType="Słup rozgałęźny SN"
+      elementType="SĹ‚up rozgaĹ‚Ä™Ĺşny SN"
       elementId={elementId}
       statusDot={statusDot}
       sections={sections}

@@ -10,9 +10,7 @@ BINDING: Komunikaty po polsku, brak kodów projektowych.
 from __future__ import annotations
 
 import copy
-import hashlib
 import json
-import math
 from typing import Any
 
 from network_model.catalog.materialization import materialize_catalog_binding
@@ -20,30 +18,29 @@ from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
 
 from .domain_operations import (
-    _canonical_json,
+    _build_field_spec,
     _compute_seed,
+    _error_legacy_field_write_disabled,
+    _error_response,
     _find_element,
+    _find_legacy_field_element_collection,
     _make_id,
     _response,
-    _error_response,
 )
-
 
 # ---------------------------------------------------------------------------
 # IEC 60255 — krzywe IDMT (TCC)
 # ---------------------------------------------------------------------------
 
 IEC_CURVES = {
-    "SI": {"K": 0.14, "alpha": 0.02},    # Standard Inverse
-    "VI": {"K": 13.5, "alpha": 1.0},      # Very Inverse
-    "EI": {"K": 80.0, "alpha": 2.0},      # Extremely Inverse
-    "LTI": {"K": 120.0, "alpha": 1.0},    # Long Time Inverse
+    "SI": {"K": 0.14, "alpha": 0.02},  # Standard Inverse
+    "VI": {"K": 13.5, "alpha": 1.0},  # Very Inverse
+    "EI": {"K": 80.0, "alpha": 2.0},  # Extremely Inverse
+    "LTI": {"K": 120.0, "alpha": 1.0},  # Long Time Inverse
 }
 
 
-def _compute_tcc_point(
-    i_ratio: float, tms: float, curve_type: str
-) -> float | None:
+def _compute_tcc_point(i_ratio: float, tms: float, curve_type: str) -> float | None:
     """Oblicz czas zadziałania dla danego I/Is wg IEC 60255.
 
     t = TMS * K / ((I/Is)^alpha - 1)
@@ -72,12 +69,112 @@ def _compute_tcc_curve(
         ratio = 1.05 + (max_ratio - 1.05) * n / 49
         t = _compute_tcc_point(ratio, tms, curve_type)
         if t is not None and t > 0:
-            points.append({
-                "i_a": round(ratio * ipickup_a, 2),
-                "i_ratio": round(ratio, 4),
-                "t_s": round(t, 4),
-            })
+            points.append(
+                {
+                    "i_a": round(ratio * ipickup_a, 2),
+                    "i_ratio": round(ratio, 4),
+                    "t_s": round(t, 4),
+                }
+            )
     return points
+
+
+def _field_ref_exists(enm: dict[str, Any], field_ref: str) -> bool:
+    if any(bay.get("ref_id") == field_ref for bay in enm.get("bays", [])):
+        return True
+    for sub in enm.get("substations", []):
+        for key in ("field_specs", "nn_field_specs"):
+            raw_specs = _substation_meta_specs(sub, key)
+            if any(spec.get("field_ref") == field_ref for spec in raw_specs):
+                return True
+    return False
+
+
+def _substation_meta_specs(substation: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    meta = substation.get("meta")
+    if not isinstance(meta, dict):
+        return []
+    raw_specs = meta.get(key)
+    if not isinstance(raw_specs, list):
+        return []
+    return [spec for spec in raw_specs if isinstance(spec, dict)]
+
+
+def _resolve_station_for_field_write(
+    enm: dict[str, Any],
+    *,
+    station_ref: str | None,
+    bus_ref: str,
+) -> dict[str, Any] | None:
+    if station_ref:
+        for sub in enm.get("substations", []):
+            if sub.get("ref_id") == station_ref:
+                return sub
+        return None
+    return _find_station_for_bus(enm, bus_ref)
+
+
+def _append_substation_field_spec(
+    new_enm: dict[str, Any],
+    *,
+    station_ref: str,
+    meta_key: str,
+    field_spec: dict[str, Any],
+) -> bool:
+    for sub in new_enm.get("substations", []):
+        if sub.get("ref_id") != station_ref:
+            continue
+        meta = sub.setdefault("meta", {})
+        if not isinstance(meta, dict):
+            meta = {}
+            sub["meta"] = meta
+        raw_specs = meta.get(meta_key)
+        if not isinstance(raw_specs, list):
+            raw_specs = []
+            meta[meta_key] = raw_specs
+        raw_specs.append(field_spec)
+        return True
+    return False
+
+
+def _field_adapter_error(
+    *,
+    field_ref: str | None,
+    message: str,
+    code: str,
+    attach_protection_view: bool = False,
+) -> dict[str, Any]:
+    response = _error_response(message, code)
+    response["adapter_only"] = True
+    response["attach_field_view"] = True
+    if attach_protection_view:
+        response["attach_protection_view"] = True
+    if field_ref:
+        response["selection_hint"] = {
+            "element_id": field_ref,
+            "element_type": "field",
+            "zoom_to": True,
+        }
+    return response
+
+
+def _relay_adapter_error(
+    *,
+    relay_ref: str,
+    message: str,
+    code: str = "relay.legacy_write_disabled",
+    field_ref: str | None = None,
+) -> dict[str, Any]:
+    response = _error_response(message, code)
+    response["adapter_only"] = True
+    response["attach_field_view"] = True
+    response["attach_protection_view"] = True
+    response["selection_hint"] = {
+        "element_id": field_ref or relay_ref,
+        "element_type": "field" if field_ref else "protection",
+        "zoom_to": True,
+    }
+    return response
 
 
 # ---------------------------------------------------------------------------
@@ -87,47 +184,19 @@ def _compute_tcc_curve(
 
 def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj przekładnik prądowy (CT) do pola stacji."""
-    bay_ref = payload.get("bay_ref")
-    if not bay_ref:
+    field_ref = payload.get("field_ref") or payload.get("bay_ref")
+    if not field_ref:
         return _error_response("Brak identyfikatora pola (bay_ref).", "ct.bay_missing")
-
-    ratio_primary = payload.get("ratio_primary_a")
-    ratio_secondary = payload.get("ratio_secondary_a", 5.0)
-    accuracy_class = payload.get("accuracy_class", "0.5")
-    burden_va = payload.get("burden_va")
-
-    if not ratio_primary or ratio_primary <= 0:
-        return _error_response(
-            "Przekładnia pierwotna CT musi być > 0.", "ct.ratio_primary_invalid"
-        )
-
-    seed = _compute_seed({
-        "op": "add_ct", "bay_ref": bay_ref,
-        "ratio": f"{ratio_primary}/{ratio_secondary}",
-    })
-    ct_ref = _make_id("ct", seed, "measurement")
-
-    new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("measurements", []).append({
-        "ref_id": ct_ref,
-        "name": f"CT {ratio_primary}/{ratio_secondary} A",
-        "measurement_type": "CT",
-        "bay_ref": bay_ref,
-        "rating": {
-            "primary_value": ratio_primary,
-            "secondary_value": ratio_secondary,
-            "accuracy_class": accuracy_class,
-            "burden_va": burden_va,
-        },
-        "catalog_ref": payload.get("catalog_ref"),
-        "tags": [],
-        "meta": {},
-    })
-
-    return _response(
-        new_enm, created=[ct_ref],
-        selection_id=ct_ref, selection_type="measurement",
-        events=[{"event_seq": 1, "event_type": "CT_CREATED", "element_id": ct_ref}],
+    if not _field_ref_exists(enm, field_ref):
+        return _error_response(f"Pole '{field_ref}' nie istnieje.", "ct.field_not_found")
+    return _field_adapter_error(
+        field_ref=field_ref,
+        message=(
+            f"Zapis CT dla pola '{field_ref}' do legacy measurements jest wyłączony w V11. "
+            "Użyj kanonicznego read-modelu pola."
+        ),
+        code="field.legacy_write_disabled",
+        attach_protection_view=True,
     )
 
 
@@ -138,45 +207,19 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj przekładnik napięciowy (VT) do pola stacji."""
-    bay_ref = payload.get("bay_ref")
-    if not bay_ref:
+    field_ref = payload.get("field_ref") or payload.get("bay_ref")
+    if not field_ref:
         return _error_response("Brak identyfikatora pola (bay_ref).", "vt.bay_missing")
-
-    ratio_primary = payload.get("ratio_primary_v")
-    ratio_secondary = payload.get("ratio_secondary_v", 100.0)
-
-    if not ratio_primary or ratio_primary <= 0:
-        return _error_response(
-            "Przekładnia pierwotna VT musi być > 0.", "vt.ratio_primary_invalid"
-        )
-
-    seed = _compute_seed({
-        "op": "add_vt", "bay_ref": bay_ref,
-        "ratio": f"{ratio_primary}/{ratio_secondary}",
-    })
-    vt_ref = _make_id("vt", seed, "measurement")
-
-    new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("measurements", []).append({
-        "ref_id": vt_ref,
-        "name": f"VT {ratio_primary}/{ratio_secondary} V",
-        "measurement_type": "VT",
-        "bay_ref": bay_ref,
-        "rating": {
-            "primary_value": ratio_primary,
-            "secondary_value": ratio_secondary,
-            "accuracy_class": payload.get("accuracy_class", "0.5"),
-            "burden_va": payload.get("burden_va"),
-        },
-        "catalog_ref": payload.get("catalog_ref"),
-        "tags": [],
-        "meta": {},
-    })
-
-    return _response(
-        new_enm, created=[vt_ref],
-        selection_id=vt_ref, selection_type="measurement",
-        events=[{"event_seq": 1, "event_type": "VT_CREATED", "element_id": vt_ref}],
+    if not _field_ref_exists(enm, field_ref):
+        return _error_response(f"Pole '{field_ref}' nie istnieje.", "vt.field_not_found")
+    return _field_adapter_error(
+        field_ref=field_ref,
+        message=(
+            f"Zapis VT dla pola '{field_ref}' do legacy measurements jest wyłączony w V11. "
+            "Użyj kanonicznego read-modelu pola."
+        ),
+        code="field.legacy_write_disabled",
+        attach_protection_view=True,
     )
 
 
@@ -187,34 +230,21 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj przekaźnik ochronny do pola stacji."""
-    bay_ref = payload.get("bay_ref")
+    field_ref = payload.get("field_ref") or payload.get("bay_ref")
     relay_type = payload.get("relay_type", "NADPRADOWY")
-    breaker_ref = payload.get("breaker_ref")
 
-    if not bay_ref:
+    if not field_ref:
         return _error_response("Brak identyfikatora pola (bay_ref).", "relay.bay_missing")
-
-    seed = _compute_seed({"op": "add_relay", "bay_ref": bay_ref, "type": relay_type})
-    relay_ref = _make_id("relay", seed, "protection")
-
-    new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("protection_assignments", []).append({
-        "ref_id": relay_ref,
-        "name": f"Przekaźnik {relay_type}",
-        "protection_type": relay_type,
-        "bay_ref": bay_ref,
-        "breaker_ref": breaker_ref,
-        "settings": {},
-        "tcc_cache": None,
-        "enabled": True,
-        "tags": [],
-        "meta": {},
-    })
-
-    return _response(
-        new_enm, created=[relay_ref],
-        selection_id=relay_ref, selection_type="protection",
-        events=[{"event_seq": 1, "event_type": "RELAY_CREATED", "element_id": relay_ref}],
+    if not _field_ref_exists(enm, field_ref):
+        return _error_response(f"Pole '{field_ref}' nie istnieje.", "relay.field_not_found")
+    return _field_adapter_error(
+        field_ref=field_ref,
+        message=(
+            f"Zapis przekaźnika '{relay_type}' dla pola '{field_ref}' do legacy protection_assignments "
+            "jest wyłączony w V11. Użyj kanonicznego read-modelu pola."
+        ),
+        code="field.legacy_write_disabled",
+        attach_protection_view=True,
     )
 
 
@@ -233,24 +263,12 @@ def update_relay_settings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if not settings:
         return _error_response("Brak nastaw do aktualizacji.", "relay.settings_empty")
 
-    new_enm = copy.deepcopy(enm)
-    found = False
-    for pa in new_enm.get("protection_assignments", []):
-        if pa.get("ref_id") == relay_ref:
-            pa["settings"] = settings
-            pa["tcc_cache"] = None  # Invalidate cache
-            found = True
-            break
-
-    if not found:
-        return _error_response(
-            f"Przekaźnik '{relay_ref}' nie znaleziony.", "relay.not_found"
-        )
-
-    return _response(
-        new_enm, updated=[relay_ref],
-        selection_id=relay_ref,
-        events=[{"event_seq": 1, "event_type": "RELAY_SETTINGS_UPDATED", "element_id": relay_ref}],
+    return _relay_adapter_error(
+        relay_ref=relay_ref,
+        message=(
+            f"Aktualizacja nastaw przekaźnika '{relay_ref}' przez legacy protection_assignments "
+            "jest wyłączona w V11. Użyj kanonicznego read-modelu ochrony."
+        ),
     )
 
 
@@ -263,29 +281,22 @@ def link_relay_to_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     """Powiąż przekaźnik z polem i aparatem wykonawczym."""
     relay_ref = payload.get("relay_ref")
     field_ref = payload.get("field_ref")
-    breaker_ref = payload.get("breaker_ref")
+    payload.get("breaker_ref")
 
     if not relay_ref:
         return _error_response("Brak identyfikatora przekaźnika.", "relay.ref_missing")
     if not field_ref:
         return _error_response("Brak identyfikatora pola.", "relay.field_missing")
+    if not _field_ref_exists(enm, field_ref):
+        return _error_response(f"Pole '{field_ref}' nie istnieje.", "relay.field_not_found")
 
-    new_enm = copy.deepcopy(enm)
-    found = False
-    for pa in new_enm.get("protection_assignments", []):
-        if pa.get("ref_id") == relay_ref:
-            pa["bay_ref"] = field_ref
-            if breaker_ref:
-                pa["breaker_ref"] = breaker_ref
-            found = True
-            break
-
-    if not found:
-        return _error_response(f"Przekaźnik '{relay_ref}' nie znaleziony.", "relay.not_found")
-
-    return _response(
-        new_enm, updated=[relay_ref],
-        events=[{"event_seq": 1, "event_type": "RELAY_SETTINGS_UPDATED", "element_id": relay_ref}],
+    return _relay_adapter_error(
+        relay_ref=relay_ref,
+        field_ref=field_ref,
+        message=(
+            f"Powiązanie przekaźnika '{relay_ref}' z polem '{field_ref}' przez legacy protection_assignments "
+            "jest wyłączone w V11. Użyj kanonicznego read-modelu ochrony."
+        ),
     )
 
 
@@ -300,37 +311,13 @@ def calculate_tcc_curve(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     if not relay_ref:
         return _error_response("Brak identyfikatora przekaźnika.", "tcc.relay_missing")
 
-    new_enm = copy.deepcopy(enm)
-    relay = None
-    for pa in new_enm.get("protection_assignments", []):
-        if pa.get("ref_id") == relay_ref:
-            relay = pa
-            break
-
-    if not relay:
-        return _error_response(f"Przekaźnik '{relay_ref}' nie znaleziony.", "tcc.relay_not_found")
-
-    settings = relay.get("settings", {})
-    ipickup = settings.get("Ipickup_a", 0)
-    tms = settings.get("time_dial", 1.0)
-    curve_type = settings.get("curve_type", "SI")
-
-    if ipickup <= 0:
-        return _error_response(
-            "Próg prądowy Ipickup_a musi być > 0.", "tcc.ipickup_invalid"
-        )
-
-    curve_points = _compute_tcc_curve(ipickup, tms, curve_type)
-    relay["tcc_cache"] = {
-        "curve_type": curve_type,
-        "tms": tms,
-        "ipickup_a": ipickup,
-        "points": curve_points,
-    }
-
-    return _response(
-        new_enm, updated=[relay_ref],
-        events=[{"event_seq": 1, "event_type": "TCC_CURVE_COMPUTED", "element_id": relay_ref}],
+    return _relay_adapter_error(
+        relay_ref=relay_ref,
+        message=(
+            f"Cache TCC dla przekaźnika '{relay_ref}' nie jest już zapisywany do legacy protection_assignments. "
+            "Użyj read-modelu ochrony lub czystej analizy bez persystencji."
+        ),
+        code="tcc.legacy_write_disabled",
     )
 
 
@@ -377,15 +364,17 @@ def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         if t_ds is not None and t_us is not None:
             delta_t = t_us - t_ds
             passed = delta_t >= delta_t_min_s
-            selectivity_results.append({
-                "downstream_ref": downstream.get("ref_id"),
-                "upstream_ref": upstream.get("ref_id"),
-                "ik_a": round(ik, 2),
-                "t_downstream_s": round(t_ds, 4),
-                "t_upstream_s": round(t_us, 4),
-                "delta_t_s": round(delta_t, 4),
-                "passed": passed,
-            })
+            selectivity_results.append(
+                {
+                    "downstream_ref": downstream.get("ref_id"),
+                    "upstream_ref": upstream.get("ref_id"),
+                    "ik_a": round(ik, 2),
+                    "t_downstream_s": round(t_ds, 4),
+                    "t_upstream_s": round(t_us, 4),
+                    "delta_t_s": round(delta_t, 4),
+                    "passed": passed,
+                }
+            )
 
     new_enm = copy.deepcopy(enm)
     new_enm.setdefault("meta", {})["selectivity_results"] = selectivity_results
@@ -395,11 +384,13 @@ def validate_selectivity(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     return _response(
         new_enm,
         events=[{"event_seq": 1, "event_type": "SELECTIVITY_VALIDATED", "element_id": "all"}],
-        audit=[{
-            "step": 1,
-            "action": f"Selektywność: {'OK' if all_passed else 'NIESPEŁNIONA'}",
-            "detail": json.dumps(selectivity_results, ensure_ascii=False),
-        }],
+        audit=[
+            {
+                "step": 1,
+                "action": f"Selektywność: {'OK' if all_passed else 'NIESPEŁNIONA'}",
+                "detail": json.dumps(selectivity_results, ensure_ascii=False),
+            }
+        ],
     )
 
 
@@ -418,26 +409,30 @@ def create_study_case(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     case_id = f"CASE_{seed[:8].upper()}"
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("study_cases", []).append({
-        "case_id": case_id,
-        "label_pl": label_pl,
-        "mode_pl": mode_pl,
-        "switch_states": {},
-        "normal_states": {},
-        "source_modes": {},
-        "time_profile_ref": None,
-        "analysis_settings": {
-            "standard": "IEC_60909",
-            "c_factor_max": 1.10,
-            "c_factor_min": 0.95,
-        },
-        "status": "NONE",
-        "results": None,
-    })
+    new_enm.setdefault("study_cases", []).append(
+        {
+            "case_id": case_id,
+            "label_pl": label_pl,
+            "mode_pl": mode_pl,
+            "switch_states": {},
+            "normal_states": {},
+            "source_modes": {},
+            "time_profile_ref": None,
+            "analysis_settings": {
+                "standard": "IEC_60909",
+                "c_factor_max": 1.10,
+                "c_factor_min": 0.95,
+            },
+            "status": "NONE",
+            "results": None,
+        }
+    )
 
     return _response(
-        new_enm, created=[case_id],
-        selection_id=case_id, selection_type="study_case",
+        new_enm,
+        created=[case_id],
+        selection_id=case_id,
+        selection_type="study_case",
         events=[{"event_seq": 1, "event_type": "STUDY_CASE_CREATED", "element_id": case_id}],
     )
 
@@ -457,8 +452,11 @@ def set_case_switch_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
             case["switch_states"][switch_id] = state
             case["status"] = "OUTDATED"
             return _response(
-                new_enm, updated=[case_id],
-                events=[{"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}],
+                new_enm,
+                updated=[case_id],
+                events=[
+                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
+                ],
             )
 
     return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
@@ -478,8 +476,11 @@ def set_case_normal_state(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         if case.get("case_id") == case_id:
             case["normal_states"][switch_id] = state
             return _response(
-                new_enm, updated=[case_id],
-                events=[{"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}],
+                new_enm,
+                updated=[case_id],
+                events=[
+                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
+                ],
             )
 
     return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
@@ -500,8 +501,11 @@ def set_case_source_mode(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             case["source_modes"][source_id] = mode
             case["status"] = "OUTDATED"
             return _response(
-                new_enm, updated=[case_id],
-                events=[{"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}],
+                new_enm,
+                updated=[case_id],
+                events=[
+                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
+                ],
             )
 
     return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
@@ -520,8 +524,11 @@ def set_case_time_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         if case.get("case_id") == case_id:
             case["time_profile_ref"] = profile_ref
             return _response(
-                new_enm, updated=[case_id],
-                events=[{"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}],
+                new_enm,
+                updated=[case_id],
+                events=[
+                    {"event_seq": 1, "event_type": "CASE_STATE_UPDATED", "element_id": case_id}
+                ],
             )
 
     return _error_response(f"Study Case '{case_id}' nie znaleziony.", "case.not_found")
@@ -540,7 +547,9 @@ def run_short_circuit(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
     ev_seq = 0
 
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id}
+    )
 
     # Placeholder wyników — w produkcji delegowane do solvera IEC 60909
     results = {
@@ -560,7 +569,9 @@ def run_short_circuit(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str,
                 break
 
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id}
+    )
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "RESULTS_MAPPED", "element_id": case_id})
 
@@ -593,7 +604,8 @@ def run_time_series_power_flow(enm: dict[str, Any], payload: dict[str, Any]) -> 
     new_enm = copy.deepcopy(enm)
 
     return _response(
-        new_enm, updated=[case_id] if case_id else [],
+        new_enm,
+        updated=[case_id] if case_id else [],
         events=[
             {"event_seq": 1, "event_type": "ANALYSIS_RUN_STARTED", "element_id": case_id},
             {"event_seq": 2, "event_type": "ANALYSIS_RUN_COMPLETED", "element_id": case_id},
@@ -617,9 +629,16 @@ def compare_study_cases(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
         "delta_overlay_tokens": [],
     }
 
-    return _response(new_enm, events=[
-        {"event_seq": 1, "event_type": "RESULTS_MAPPED", "element_id": f"{case_a_id}_vs_{case_b_id}"},
-    ])
+    return _response(
+        new_enm,
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "RESULTS_MAPPED",
+                "element_id": f"{case_a_id}_vs_{case_b_id}",
+            },
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -725,39 +744,183 @@ def _materialize_nn_source_params(
     return None, "catalog.materialization_incomplete"
 
 
-def add_nn_outgoing_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj odpływ nN do szyny nN."""
+def _normalize_nn_field_role(payload: dict[str, Any]) -> str:
+    raw_role = payload.get("field_role")
+    if isinstance(raw_role, str):
+        normalized = raw_role.strip().upper()
+        if normalized in {"FEEDER", "SOURCE"}:
+            return normalized
+    return "FEEDER"
+
+
+def _normalize_nn_source_field_kind(payload: dict[str, Any]) -> str:
+    raw_kind = payload.get("source_field_kind")
+    if isinstance(raw_kind, str):
+        normalized = raw_kind.strip().upper()
+        if normalized in {"PV", "BESS", "FW", "AGREGAT", "UPS"}:
+            return normalized
+    return "PV"
+
+
+def _normalize_sn_bay_role(payload: dict[str, Any]) -> str:
+    raw_role = payload.get("bay_role")
+    if isinstance(raw_role, str):
+        normalized = raw_role.strip().upper()
+        if normalized in {"IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"}:
+            return normalized
+    return "FEEDER"
+
+
+def _default_sn_bay_name(role: str) -> str:
+    return {
+        "IN": "Pole liniowe dopływowe",
+        "OUT": "Pole liniowe odpływowe",
+        "FEEDER": "Pole liniowe SN",
+        "TR": "Pole transformatorowe",
+        "COUPLER": "Pole sprzęgła",
+        "MEASUREMENT": "Pole pomiarowe",
+        "OZE": "Pole źródłowe SN",
+    }.get(role, "Pole SN")
+
+
+def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj pole SN do istniejącej rozdzielnicy bez zapisu do legacy bays."""
+    bus_ref = payload.get("bus_ref")
+    station_ref = payload.get("station_ref")
+
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response("Brak szyny SN (bus_ref).", "sn.bus_missing")
+
+    bus_ref = bus_ref.strip()
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_ref)
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+
+    bay_role = _normalize_sn_bay_role(payload)
+    raw_specs = _substation_meta_specs(station, "field_specs")
+    role_index = len(
+        [
+            spec
+            for spec in raw_specs
+            if spec.get("bus_ref") == bus_ref and spec.get("bay_role") == bay_role
+        ]
+    )
+    seed = _compute_seed(
+        {
+            "op": "sn_bay",
+            "station_ref": station.get("ref_id"),
+            "bus": bus_ref,
+            "bay_role": bay_role,
+            "n": role_index,
+        }
+    )
+    field_ref = _make_id("sn", seed, "bay")
+    gpz_section_id = payload.get("gpz_section_id")
+    if not isinstance(gpz_section_id, str) or not gpz_section_id.strip():
+        gpz_sections = station.get("gpz_sections")
+        if isinstance(gpz_sections, list):
+            gpz_section_id = next(
+                (
+                    section.get("section_id")
+                    for section in gpz_sections
+                    if isinstance(section, dict) and section.get("bus_ref") == bus_ref
+                ),
+                None,
+            )
+    apparatus_kind = payload.get("apparatus_kind")
+    field_spec = _build_field_spec(
+        field_ref=field_ref,
+        name=payload.get("field_name") or _default_sn_bay_name(bay_role),
+        bay_role=bay_role,
+        bus_ref=bus_ref,
+        gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+        tags=list(payload.get("tags") or []),
+        meta={
+            "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+            "catalog_binding": (
+                copy.deepcopy(payload.get("catalog_binding"))
+                if isinstance(payload.get("catalog_binding"), dict)
+                else None
+            ),
+        },
+    )
+
+    new_enm = copy.deepcopy(enm)
+    if not _append_substation_field_spec(
+        new_enm,
+        station_ref=station["ref_id"],
+        meta_key="field_specs",
+        field_spec=field_spec,
+    ):
+        return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+
+    return _response(
+        new_enm,
+        created=[field_ref],
+        selection_id=field_ref,
+        selection_type="bay",
+        events=[{"event_seq": 1, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref}],
+    )
+
+
+def _add_nn_outgoing_field_internal(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Wewnętrzny zapis odpływu nN do meta.nn_field_specs."""
     bus_nn_ref = payload.get("bus_nn_ref")
     station_ref = payload.get("station_ref")
 
     if not bus_nn_ref:
         return _error_response("Brak szyny nN (bus_nn_ref).", "nn.bus_missing")
 
-    seed = _compute_seed({"op": "nn_outgoing", "bus": bus_nn_ref, "n": len(enm.get("bays", []))})
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+
+    raw_specs = _substation_meta_specs(station, "nn_field_specs")
+    feeder_index = len(
+        [
+            spec
+            for spec in raw_specs
+            if spec.get("bus_ref") == bus_nn_ref and spec.get("bay_role") == "FEEDER"
+        ]
+    )
+    seed = _compute_seed(
+        {
+            "op": "nn_outgoing",
+            "station_ref": station.get("ref_id"),
+            "bus": bus_nn_ref,
+            "n": feeder_index,
+        }
+    )
     feeder_ref = _make_id("nn", seed, "outgoing")
+    field_spec = _build_field_spec(
+        field_ref=feeder_ref,
+        name=payload.get("field_name") or "Odpływ nN",
+        bay_role="FEEDER",
+        bus_ref=bus_nn_ref,
+        tags=list(payload.get("tags") or []),
+        meta={"feeder_role": payload.get("feeder_role", "ODPLYW_NN")},
+    )
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("bays", []).append({
-        "ref_id": feeder_ref,
-        "name": f"Odpływ nN",
-        "bay_role": "FEEDER",
-        "substation_ref": station_ref,
-        "bus_ref": bus_nn_ref,
-        "equipment_refs": [],
-        "protection_ref": None,
-        "tags": [],
-        "meta": {"feeder_role": "ODPLYW_NN"},
-    })
+    if not _append_substation_field_spec(
+        new_enm,
+        station_ref=station["ref_id"],
+        meta_key="nn_field_specs",
+        field_spec=field_spec,
+    ):
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
 
     return _response(
-        new_enm, created=[feeder_ref],
-        selection_id=feeder_ref, selection_type="bay",
+        new_enm,
+        created=[feeder_ref],
+        selection_id=feeder_ref,
+        selection_type="bay",
         events=[{"event_seq": 1, "event_type": "FIELDS_CREATED_NN", "element_id": feeder_ref}],
     )
 
 
-def add_nn_source_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj pole źródłowe do rozdzielni nN."""
+def _append_nn_source_meta_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Wewnętrzny zapis pola źródłowego nN do meta.nn_field_specs."""
     bus_nn_ref = payload.get("bus_nn_ref")
     station_ref = payload.get("station_ref")
     kind = payload.get("source_field_kind", "PV")
@@ -765,27 +928,64 @@ def add_nn_source_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     if not bus_nn_ref:
         return _error_response("Brak szyny nN (bus_nn_ref).", "nn.bus_missing")
 
-    seed = _compute_seed({"op": "nn_source_field", "bus": bus_nn_ref, "kind": kind})
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+
+    raw_specs = _substation_meta_specs(station, "nn_field_specs")
+    source_index = len(
+        [
+            spec
+            for spec in raw_specs
+            if spec.get("bus_ref") == bus_nn_ref
+            and "nn_source_field" in list(spec.get("tags") or [])
+        ]
+    )
+    seed = _compute_seed(
+        {
+            "op": "nn_source_field",
+            "station_ref": station.get("ref_id"),
+            "bus": bus_nn_ref,
+            "kind": kind,
+            "n": source_index,
+        }
+    )
     field_ref = _make_id("nn", seed, "source_field")
+    field_spec = _build_field_spec(
+        field_ref=field_ref,
+        name=payload.get("field_name") or f"Pole źródłowe nN ({kind})",
+        bay_role="OZE",
+        bus_ref=bus_nn_ref,
+        tags=["nn_source_field"],
+        meta={"source_field_kind": kind},
+    )
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("bays", []).append({
-        "ref_id": field_ref,
-        "name": f"Pole źródłowe nN ({kind})",
-        "bay_role": "SOURCE",
-        "substation_ref": station_ref,
-        "bus_ref": bus_nn_ref,
-        "equipment_refs": [],
-        "protection_ref": None,
-        "tags": ["nn_source_field"],
-        "meta": {"source_field_kind": kind},
-    })
+    if not _append_substation_field_spec(
+        new_enm,
+        station_ref=station["ref_id"],
+        meta_key="nn_field_specs",
+        field_spec=field_spec,
+    ):
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
 
     return _response(
-        new_enm, created=[field_ref],
-        selection_id=field_ref, selection_type="bay",
+        new_enm,
+        created=[field_ref],
+        selection_id=field_ref,
+        selection_type="bay",
         events=[{"event_seq": 1, "event_type": "NN_SOURCE_FIELD_CREATED", "element_id": field_ref}],
     )
+
+
+def add_nn_outgoing_field(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """V11: jedyny publiczny write-path pola nN dla odpływu albo pola źródłowego."""
+    field_role = _normalize_nn_field_role(payload)
+    normalized_payload = dict(payload)
+    if field_role == "SOURCE":
+        normalized_payload.setdefault("source_field_kind", _normalize_nn_source_field_kind(payload))
+        return _append_nn_source_meta_field(enm, normalized_payload)
+    return _add_nn_outgoing_field_internal(enm, normalized_payload)
 
 
 def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -801,210 +1001,516 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     load_ref = _make_id("nn", seed, "load")
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("loads", []).append({
-        "ref_id": load_ref,
-        "name": payload.get("load_name") or "Odbiór nN",
-        "bus_ref": bus_nn_ref or feeder_ref,
-        "p_mw": active_power_kw / 1000.0,
-        "q_mvar": (payload.get("reactive_power_kvar") or 0) / 1000.0,
-        "model": "constant_power",
-        "tags": [],
-        "meta": {
-            "load_kind": payload.get("load_kind", "SKUPIONY"),
-            "connection_type": payload.get("connection_type", "TROJFAZOWY"),
-            "feeder_ref": feeder_ref,
-        },
-    })
+    new_enm.setdefault("loads", []).append(
+        {
+            "ref_id": load_ref,
+            "name": payload.get("load_name") or "Odbiór nN",
+            "bus_ref": bus_nn_ref or feeder_ref,
+            "p_mw": active_power_kw / 1000.0,
+            "q_mvar": (payload.get("reactive_power_kvar") or 0) / 1000.0,
+            "model": "constant_power",
+            "tags": [],
+            "meta": {
+                "load_kind": payload.get("load_kind", "SKUPIONY"),
+                "connection_type": payload.get("connection_type", "TROJFAZOWY"),
+                "feeder_ref": feeder_ref,
+            },
+        }
+    )
 
     return _response(
-        new_enm, created=[load_ref],
-        selection_id=load_ref, selection_type="load",
+        new_enm,
+        created=[load_ref],
+        selection_id=load_ref,
+        selection_type="load",
         events=[{"event_seq": 1, "event_type": "NN_LOAD_CREATED", "element_id": load_ref}],
     )
 
 
-def add_pv_inverter_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj falownik PV do rozdzielni nN. Waliduje transformator w ścieżce."""
-    bus_nn_ref = payload.get("bus_nn_ref")
-    station_ref = payload.get("station_ref")
+def _as_float(value: object) -> float | None:
+    if isinstance(value, int | float):
+        return float(value)
+    return None
 
-    if not bus_nn_ref:
-        return _error_response("Brak szyny nN.", "pv.bus_missing")
 
-    # Walidacja: PV wymaga transformatora
-    station = _find_station_for_bus(enm, bus_nn_ref)
-    if station and not _has_transformer_in_path(enm, station):
-        return _error_response(
-            "Falownik PV wymaga transformatora w ścieżce zasilania. "
-            "Dodaj transformator SN/nN przed przyłączeniem źródła OZE.",
-            "pv.transformer_required",
+def _kw_to_mw(value: object) -> float | None:
+    numeric = _as_float(value)
+    if numeric is None:
+        return None
+    return numeric / 1000.0
+
+
+def _first_number(*candidates: object) -> float | None:
+    for candidate in candidates:
+        numeric = _as_float(candidate)
+        if numeric is not None:
+            return numeric
+    return None
+
+
+def _normalize_source_technology(payload: dict[str, Any]) -> str | None:
+    technology = payload.get("source_technology")
+    if isinstance(technology, str):
+        normalized = technology.strip().upper()
+        if normalized in {"PV", "BESS", "FW"}:
+            return normalized
+    return None
+
+
+def _legacy_converter_spec(payload: dict[str, Any], technology: str) -> dict[str, Any]:
+    if technology == "PV" and isinstance(payload.get("pv_spec"), dict):
+        return payload["pv_spec"]
+    if technology == "BESS" and isinstance(payload.get("bess_spec"), dict):
+        return payload["bess_spec"]
+    return {}
+
+
+def _resolve_converter_catalog_namespace(payload: dict[str, Any], technology: str) -> str:
+    binding = payload.get("catalog_binding")
+    if isinstance(binding, dict):
+        namespace = binding.get("catalog_namespace")
+        if isinstance(namespace, str) and namespace.strip():
+            return namespace.strip()
+    if technology == "PV":
+        return "ZRODLO_NN_PV"
+    if technology == "BESS":
+        return "ZRODLO_NN_BESS"
+    return "CONVERTER"
+
+
+def _resolve_converter_catalog_ref(
+    payload: dict[str, Any], technology: str
+) -> tuple[str | None, str | None]:
+    direct_ref: object = payload.get("catalog_ref")
+    if direct_ref is None:
+        materialized = payload.get("materialized_params")
+        if isinstance(materialized, dict):
+            direct_ref = materialized.get("catalog_item_id")
+    return _resolve_catalog_ref(direct_ref, payload.get("catalog_binding"))
+
+
+def _build_converter_materialized_params(
+    *,
+    technology: str,
+    payload: dict[str, Any],
+    catalog_ref: str,
+) -> tuple[dict[str, Any], str | None]:
+    explicit = payload.get("materialized_params")
+    if isinstance(explicit, dict) and explicit:
+        return dict(explicit), None
+
+    if technology == "PV":
+        materialized_params, error = _materialize_nn_source_params(
+            namespace="ZRODLO_NN_PV",
+            catalog_ref=catalog_ref,
+            explicit_params=None,
+            required_fields=["rated_power_ac_kw", "max_power_kw", "control_mode"],
+        )
+        if error or materialized_params is None:
+            return {}, error or "catalog.materialization_incomplete"
+        return {
+            "catalog_item_id": catalog_ref,
+            "catalog_item_version": "2024.1",
+            "rated_power_ac_kw": materialized_params.get("rated_power_ac_kw"),
+            "max_power_kw": materialized_params.get("max_power_kw"),
+            "control_mode": materialized_params.get("control_mode"),
+            "pmax_mw": _kw_to_mw(materialized_params.get("max_power_kw")),
+            "sn_mva": _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
+        }, None
+
+    if technology == "BESS":
+        materialized_params, error = _materialize_nn_source_params(
+            namespace="ZRODLO_NN_BESS",
+            catalog_ref=catalog_ref,
+            explicit_params=None,
+            required_fields=["usable_capacity_kwh", "charge_power_kw", "discharge_power_kw"],
+        )
+        if error or materialized_params is None:
+            return {}, error or "catalog.materialization_incomplete"
+        return {
+            "catalog_item_id": catalog_ref,
+            "catalog_item_version": "2024.1",
+            "usable_capacity_kwh": materialized_params.get("usable_capacity_kwh"),
+            "charge_power_kw": materialized_params.get("charge_power_kw"),
+            "discharge_power_kw": materialized_params.get("discharge_power_kw"),
+            "operation_mode": payload.get("bess_mode"),
+            "pmax_mw": _kw_to_mw(materialized_params.get("discharge_power_kw")),
+            "sn_mva": _kw_to_mw(materialized_params.get("discharge_power_kw")),
+            "e_kwh": materialized_params.get("usable_capacity_kwh"),
+        }, None
+
+    return {
+        "catalog_item_id": catalog_ref,
+        "catalog_item_version": "2024.1",
+    }, None
+
+
+def _resolve_converter_defaults(
+    technology: str,
+    payload: dict[str, Any],
+    materialized_params: dict[str, Any],
+) -> tuple[str, str, str, dict[str, Any], float]:
+    quantity = int(payload.get("quantity") or 1)
+    quantity = max(quantity, 1)
+    explicit_power_mw = _as_float(payload.get("power_setpoint_mw"))
+
+    if technology == "PV":
+        default_power = _first_number(
+            payload.get("power_setpoint_mw"),
+            materialized_params.get("pmax_mw"),
+            _kw_to_mw(materialized_params.get("max_power_kw")),
+            _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
+        )
+        name = str(payload.get("source_name") or "Blok PV")
+        return (
+            name,
+            "pv_inverter",
+            "PV_INVERTER_CREATED",
+            {
+                "control_mode": payload.get("control_mode")
+                or materialized_params.get("control_mode"),
+                "q_min_mvar": _first_number(
+                    payload.get("q_min_mvar"), materialized_params.get("qmin_mvar")
+                ),
+                "q_max_mvar": _first_number(
+                    payload.get("q_max_mvar"), materialized_params.get("qmax_mvar")
+                ),
+                "quantity": quantity,
+            },
+            (
+                explicit_power_mw
+                if explicit_power_mw is not None
+                else (default_power or 0.0) * quantity
+            ),
         )
 
-    pv_spec = payload.get("pv_spec", {})
-    catalog_ref, catalog_error = _resolve_catalog_ref(
-        pv_spec.get("catalog_item_id"),
-        pv_spec.get("catalog_binding") or payload.get("catalog_binding"),
-    )
-    if catalog_error:
-        return _error_response(
-            "Falownik PV wymaga poprawnego powiązania z katalogiem (catalog_ref/catalog_binding).",
-            catalog_error,
+    if technology == "BESS":
+        default_power = _first_number(
+            payload.get("power_setpoint_mw"),
+            materialized_params.get("pmax_mw"),
+            _kw_to_mw(materialized_params.get("discharge_power_kw")),
+            _kw_to_mw(materialized_params.get("charge_power_kw")),
+        )
+        name = str(payload.get("source_name") or "Blok BESS")
+        return (
+            name,
+            "bess",
+            "BESS_INVERTER_CREATED",
+            {
+                "bess_mode": payload.get("bess_mode") or materialized_params.get("operation_mode"),
+                "soc_min_percent": _first_number(payload.get("soc_min_percent")),
+                "soc_max_percent": _first_number(payload.get("soc_max_percent")),
+                "usable_capacity_kwh": _first_number(
+                    materialized_params.get("usable_capacity_kwh"),
+                ),
+                "quantity": quantity,
+            },
+            (
+                explicit_power_mw
+                if explicit_power_mw is not None
+                else (default_power or 0.0) * quantity
+            ),
         )
 
-    materialized_params, materialization_error = _materialize_nn_source_params(
-        namespace="ZRODLO_NN_PV",
-        catalog_ref=catalog_ref,
-        explicit_params=pv_spec.get("materialized_params"),
-        required_fields=["rated_power_ac_kw", "max_power_kw", "control_mode"],
+    default_power = _first_number(
+        payload.get("power_setpoint_mw"),
+        materialized_params.get("pmax_mw"),
+        _kw_to_mw(materialized_params.get("max_power_kw")),
     )
-    if materialization_error:
-        return _error_response(
-            "Falownik PV wymaga pełnej materializacji parametrów katalogowych.",
-            materialization_error,
-        )
-
-    rated_power_ac_kw = (
-        pv_spec.get("rated_power_ac_kw")
-        if pv_spec.get("rated_power_ac_kw") is not None
-        else materialized_params.get("rated_power_ac_kw")
-    )
-    max_power_kw = (
-        pv_spec.get("max_power_kw")
-        if pv_spec.get("max_power_kw") is not None
-        else materialized_params.get("max_power_kw")
-    )
-    control_mode = (
-        pv_spec.get("control_mode")
-        if pv_spec.get("control_mode") is not None
-        else materialized_params.get("control_mode")
-    )
-
-    seed = _compute_seed({"op": "pv_nn", "bus": bus_nn_ref, "p": rated_power_ac_kw or 0})
-    pv_ref = _make_id("pv", seed, "inverter")
-
-    new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("generators", []).append({
-        "ref_id": pv_ref,
-        "name": pv_spec.get("source_name") or "Falownik PV",
-        "bus_ref": bus_nn_ref,
-        "gen_type": "PV_INVERTER",
-        "p_mw": (rated_power_ac_kw or 0) / 1000.0,
-        "q_mvar": 0.0,
-        "catalog_ref": catalog_ref,
-        "catalog_namespace": "ZRODLO_NN_PV",
-        "source_mode": "KATALOG",
-        "materialized_params": materialized_params,
-        "station_ref": station_ref,
-        "in_service": True,
-        "tags": [],
-        "meta": {
-            "control_mode": control_mode,
-            "max_power_kw": max_power_kw,
+    return (
+        str(payload.get("source_name") or "Blok FW"),
+        "wind_inverter",
+        "FW_INVERTER_CREATED",
+        {
+            "control_mode": payload.get("control_mode") or materialized_params.get("control_mode"),
+            "q_min_mvar": _first_number(
+                payload.get("q_min_mvar"), materialized_params.get("qmin_mvar")
+            ),
+            "q_max_mvar": _first_number(
+                payload.get("q_max_mvar"), materialized_params.get("qmax_mvar")
+            ),
+            "quantity": quantity,
         },
-    })
-
-    return _response(
-        new_enm, created=[pv_ref],
-        selection_id=pv_ref, selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "PV_INVERTER_CREATED", "element_id": pv_ref}],
+        explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,
     )
 
 
-def add_bess_inverter_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj falownik BESS do rozdzielni nN. Waliduje transformator w ścieżce."""
+def _legacy_converter_binding(
+    legacy_spec: dict[str, Any],
+    *,
+    technology: str,
+) -> dict[str, Any] | None:
+    binding = legacy_spec.get("catalog_binding")
+    if isinstance(binding, dict):
+        return binding
+
+    item_id_key = "catalog_item_id" if technology == "PV" else "inverter_catalog_id"
+    version_key = "catalog_item_version" if technology == "PV" else "inverter_catalog_version"
+    item_id = legacy_spec.get(item_id_key)
+    if not isinstance(item_id, str) or not item_id.strip():
+        return None
+
+    binding = {
+        "catalog_namespace": "ZRODLO_NN_PV" if technology == "PV" else "ZRODLO_NN_BESS",
+        "catalog_item_id": item_id.strip(),
+        "catalog_item_version": "2024.1",
+        "materialize": True,
+        "snapshot_mapping_version": "1.0",
+    }
+    version = legacy_spec.get(version_key)
+    if isinstance(version, str) and version.strip():
+        binding["catalog_item_version"] = version.strip()
+    return binding
+
+
+def _append_converter_field_if_needed(
+    new_enm: dict[str, Any],
+    *,
+    station_ref: str,
+    bus_nn_ref: str,
+    technology: str,
+    connection_variant: str,
+    payload: dict[str, Any],
+) -> tuple[str | None, list[str], list[dict[str, Any]]] | tuple[None, None, None]:
+    placement = payload.get("placement")
+    if not isinstance(placement, str):
+        placement = "NEW_FIELD" if connection_variant == "block_transformer" else "NEW_FIELD"
+
+    if placement == "EXISTING_FIELD":
+        existing_field_ref = payload.get("existing_field_ref")
+        if not isinstance(existing_field_ref, str) or not existing_field_ref.strip():
+            return None, None, None
+        if not _field_ref_exists(new_enm, existing_field_ref.strip()):
+            return None, None, None
+        return existing_field_ref.strip(), [], []
+
+    station = _resolve_station_for_field_write(new_enm, station_ref=station_ref, bus_ref=bus_nn_ref)
+    if station is None:
+        return None, None, None
+
+    raw_specs = _substation_meta_specs(station, "nn_field_specs")
+    source_index = len(
+        [
+            spec
+            for spec in raw_specs
+            if spec.get("bus_ref") == bus_nn_ref
+            and "nn_source_field" in list(spec.get("tags") or [])
+        ]
+    )
+    field_seed = _compute_seed(
+        {
+            "op": "converter_source_field",
+            "station_ref": station_ref,
+            "bus": bus_nn_ref,
+            "technology": technology,
+            "n": source_index,
+        }
+    )
+    field_ref = _make_id("nn", field_seed, "source_field")
+    source_field = payload.get("source_field")
+    source_field_payload = source_field if isinstance(source_field, dict) else {}
+    field_meta = {"source_field_kind": source_field_payload.get("source_field_kind") or technology}
+    apparatus_binding = source_field_payload.get("catalog_binding")
+    if isinstance(apparatus_binding, dict):
+        field_meta["catalog_binding"] = apparatus_binding
+        catalog_item_id = apparatus_binding.get("catalog_item_id")
+        if isinstance(catalog_item_id, str) and catalog_item_id.strip():
+            field_meta["apparatus_catalog_ref"] = catalog_item_id.strip()
+
+    field_spec = _build_field_spec(
+        field_ref=field_ref,
+        name=str(source_field_payload.get("field_name") or f"Pole {technology} nN"),
+        bay_role="OZE",
+        bus_ref=bus_nn_ref,
+        tags=["nn_source_field"],
+        meta=field_meta,
+    )
+    if not _append_substation_field_spec(
+        new_enm,
+        station_ref=station_ref,
+        meta_key="nn_field_specs",
+        field_spec=field_spec,
+    ):
+        return None, None, None
+
+    return (
+        field_ref,
+        [field_ref],
+        [{"event_type": "NN_SOURCE_FIELD_CREATED", "element_id": field_ref}],
+    )
+
+
+def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW."""
+    technology = _normalize_source_technology(payload)
+    if technology is None:
+        return _error_response(
+            "Źródło przekształtnikowe wymaga jawnego typu source_technology (PV, BESS lub FW).",
+            "converter.source_technology_missing",
+        )
+
+    connection_variant = payload.get("connection_variant")
+    if not isinstance(connection_variant, str) or connection_variant not in {
+        "nn_side",
+        "block_transformer",
+    }:
+        return _error_response(
+            "Źródło przekształtnikowe wymaga jawnego connection_variant (nn_side albo block_transformer).",
+            "converter.connection_variant_missing",
+        )
+
     bus_nn_ref = payload.get("bus_nn_ref")
-    station_ref = payload.get("station_ref")
-
-    if not bus_nn_ref:
-        return _error_response("Brak szyny nN.", "bess.bus_missing")
-
-    station = _find_station_for_bus(enm, bus_nn_ref)
-    if station and not _has_transformer_in_path(enm, station):
-        return _error_response(
-            "Falownik BESS wymaga transformatora w ścieżce zasilania.",
-            "bess.transformer_required",
-        )
-
-    bess_spec = payload.get("bess_spec", {})
-    catalog_ref, catalog_error = _resolve_catalog_ref(
-        bess_spec.get("inverter_catalog_id"),
-        bess_spec.get("catalog_binding") or payload.get("catalog_binding"),
-    )
-    if catalog_error:
-        return _error_response(
-            "Falownik BESS wymaga poprawnego powiązania z katalogiem (catalog_ref/catalog_binding).",
-            catalog_error,
-        )
-
-    materialized_params, materialization_error = _materialize_nn_source_params(
-        namespace="ZRODLO_NN_BESS",
-        catalog_ref=catalog_ref,
-        explicit_params=bess_spec.get("materialized_params"),
-        required_fields=["usable_capacity_kwh", "charge_power_kw", "discharge_power_kw"],
-    )
-    if materialization_error is None:
-        operation_mode = (
-            bess_spec.get("operation_mode")
-            if bess_spec.get("operation_mode") is not None
-            else (
-                materialized_params.get("operation_mode")
-                if isinstance(materialized_params, dict)
-                else None
+    blocking_transformer_ref = payload.get("blocking_transformer_ref")
+    if connection_variant == "block_transformer":
+        if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
+            return _error_response(
+                "Wariant block_transformer wymaga blocking_transformer_ref.",
+                "generator.block_transformer_missing",
             )
+        transformer = next(
+            (
+                item
+                for item in enm.get("transformers", [])
+                if item.get("ref_id") == blocking_transformer_ref
+            ),
+            None,
         )
-        if operation_mode is None:
-            materialization_error = "catalog.materialization_incomplete"
-        else:
-            materialized_params = {
-                **(materialized_params or {}),
-                "operation_mode": operation_mode,
-            }
+        if transformer is None:
+            return _error_response(
+                "Nie znaleziono transformatora blokowego dla źródła przekształtnikowego.",
+                "generator.block_transformer_invalid",
+            )
+        if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
+            bus_nn_ref = transformer.get("lv_bus_ref")
+    if not isinstance(bus_nn_ref, str) or not bus_nn_ref.strip():
+        return _error_response(
+            "Brak szyny nN dla źródła przekształtnikowego.", "converter.bus_missing"
+        )
+
+    station_ref = payload.get("station_ref")
+    if not isinstance(station_ref, str) or not station_ref.strip():
+        return _error_response(
+            "Brak referencji stacji dla źródła przekształtnikowego.", "converter.station_missing"
+        )
+    station_ref = station_ref.strip()
+    bus_nn_ref = bus_nn_ref.strip()
+
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
+    if connection_variant == "nn_side" and not _has_transformer_in_path(enm, station):
+        return _error_response(
+            f"Źródło {technology} wymaga transformatora w ścieżce zasilania stacji.",
+            f"{technology.lower()}.transformer_required",
+        )
+
+    catalog_ref, catalog_error = _resolve_converter_catalog_ref(payload, technology)
+    if catalog_error or not catalog_ref:
+        return _error_response(
+            f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
+            catalog_error or "catalog.ref_required",
+        )
+
+    materialized_params, materialization_error = _build_converter_materialized_params(
+        technology=technology,
+        payload=payload,
+        catalog_ref=catalog_ref,
+    )
     if materialization_error:
         return _error_response(
-            "Falownik BESS wymaga pełnej materializacji parametrów katalogowych.",
+            f"Źródło {technology} wymaga kompletnej materializacji parametrów katalogowych.",
             materialization_error,
         )
 
-    usable_capacity_kwh = (
-        bess_spec.get("usable_capacity_kwh")
-        if bess_spec.get("usable_capacity_kwh") is not None
-        else materialized_params.get("usable_capacity_kwh")
+    name, gen_type, event_type, meta, p_mw = _resolve_converter_defaults(
+        technology,
+        payload,
+        materialized_params,
     )
-    charge_power_kw = (
-        bess_spec.get("charge_power_kw")
-        if bess_spec.get("charge_power_kw") is not None
-        else materialized_params.get("charge_power_kw")
+    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+    source_seed = _compute_seed(
+        {
+            "op": "converter_source",
+            "station_ref": station_ref,
+            "bus": bus_nn_ref,
+            "technology": technology,
+            "catalog_ref": catalog_ref,
+            "name": name,
+        }
     )
-
-    seed = _compute_seed({"op": "bess_nn", "bus": bus_nn_ref, "e": usable_capacity_kwh or 0})
-    bess_ref = _make_id("bess", seed, "inverter")
+    prefix = technology.lower()
+    generator_ref = _make_id(prefix, source_seed, "converter")
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("generators", []).append({
-        "ref_id": bess_ref,
-        "name": bess_spec.get("source_name") or "Falownik BESS",
-        "bus_ref": bus_nn_ref,
-        "gen_type": "BESS_INVERTER",
-        "p_mw": (charge_power_kw or 0) / 1000.0,
-        "q_mvar": 0.0,
-        "catalog_ref": catalog_ref,
-        "catalog_namespace": "ZRODLO_NN_BESS",
-        "source_mode": "KATALOG",
-        "materialized_params": materialized_params,
-        "station_ref": station_ref,
-        "in_service": True,
-        "tags": [],
-        "meta": {
-            "usable_capacity_kwh": usable_capacity_kwh,
-            "operation_mode": materialized_params.get("operation_mode"),
-            "control_strategy": bess_spec.get("control_strategy"),
-        },
-    })
+    field_ref, created_field_ids, field_events = _append_converter_field_if_needed(
+        new_enm,
+        station_ref=station_ref,
+        bus_nn_ref=bus_nn_ref,
+        technology=technology,
+        connection_variant=connection_variant,
+        payload=payload,
+    )
+    if field_ref is None and payload.get("placement") == "EXISTING_FIELD":
+        return _error_response(
+            "Nie znaleziono wskazanego pola źródłowego dla źródła przekształtnikowego.",
+            "converter.field_not_found",
+        )
+
+    generator_meta = {
+        **meta,
+        "field_ref": field_ref,
+    }
+    new_enm.setdefault("generators", []).append(
+        {
+            "ref_id": generator_ref,
+            "name": name,
+            "bus_ref": bus_nn_ref,
+            "gen_type": gen_type,
+            "p_mw": p_mw,
+            "q_mvar": q_mvar,
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": _resolve_converter_catalog_namespace(payload, technology),
+            "source_mode": "KATALOG",
+            "materialized_params": materialized_params,
+            "station_ref": station_ref,
+            "connection_variant": connection_variant,
+            "blocking_transformer_ref": blocking_transformer_ref,
+            "quantity": meta.get("quantity"),
+            "n_parallel": meta.get("quantity"),
+            "in_service": True,
+            "tags": [],
+            "meta": generator_meta,
+        }
+    )
+
+    created_ids = list(created_field_ids or [])
+    created_ids.append(generator_ref)
+    events: list[dict[str, Any]] = []
+    event_seq = 0
+    for raw_event in field_events or []:
+        event_seq += 1
+        events.append(
+            {
+                "event_seq": event_seq,
+                "event_type": raw_event["event_type"],
+                "element_id": raw_event["element_id"],
+            }
+        )
+    event_seq += 1
+    events.append(
+        {
+            "event_seq": event_seq,
+            "event_type": event_type,
+            "element_id": generator_ref,
+        }
+    )
 
     return _response(
-        new_enm, created=[bess_ref],
-        selection_id=bess_ref, selection_type="generator",
-        events=[{"event_seq": 1, "event_type": "BESS_INVERTER_CREATED", "element_id": bess_ref}],
+        new_enm,
+        created=created_ids,
+        selection_id=field_ref or generator_ref,
+        selection_type="bay" if field_ref else "generator",
+        events=events,
     )
 
 
@@ -1016,25 +1522,31 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     if not bus_nn_ref:
         return _error_response("Brak szyny nN.", "genset.bus_missing")
 
-    seed = _compute_seed({"op": "genset_nn", "bus": bus_nn_ref, "p": genset_spec.get("rated_power_kw", 0)})
+    seed = _compute_seed(
+        {"op": "genset_nn", "bus": bus_nn_ref, "p": genset_spec.get("rated_power_kw", 0)}
+    )
     gen_ref = _make_id("gen", seed, "genset")
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("generators", []).append({
-        "ref_id": gen_ref,
-        "name": genset_spec.get("source_name") or "Agregat",
-        "bus_ref": bus_nn_ref,
-        "gen_type": "GENSET",
-        "p_mw": (genset_spec.get("rated_power_kw") or 0) / 1000.0,
-        "q_mvar": 0.0,
-        "in_service": True,
-        "tags": [],
-        "meta": {"operation_mode": genset_spec.get("operation_mode")},
-    })
+    new_enm.setdefault("generators", []).append(
+        {
+            "ref_id": gen_ref,
+            "name": genset_spec.get("source_name") or "Agregat",
+            "bus_ref": bus_nn_ref,
+            "gen_type": "GENSET",
+            "p_mw": (genset_spec.get("rated_power_kw") or 0) / 1000.0,
+            "q_mvar": 0.0,
+            "in_service": True,
+            "tags": [],
+            "meta": {"operation_mode": genset_spec.get("operation_mode")},
+        }
+    )
 
     return _response(
-        new_enm, created=[gen_ref],
-        selection_id=gen_ref, selection_type="generator",
+        new_enm,
+        created=[gen_ref],
+        selection_id=gen_ref,
+        selection_type="generator",
         events=[{"event_seq": 1, "event_type": "GENSET_CREATED", "element_id": gen_ref}],
     )
 
@@ -1047,28 +1559,34 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if not bus_nn_ref:
         return _error_response("Brak szyny nN.", "ups.bus_missing")
 
-    seed = _compute_seed({"op": "ups_nn", "bus": bus_nn_ref, "p": ups_spec.get("rated_power_kw", 0)})
+    seed = _compute_seed(
+        {"op": "ups_nn", "bus": bus_nn_ref, "p": ups_spec.get("rated_power_kw", 0)}
+    )
     ups_ref = _make_id("ups", seed, "ups")
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("generators", []).append({
-        "ref_id": ups_ref,
-        "name": ups_spec.get("source_name") or "UPS",
-        "bus_ref": bus_nn_ref,
-        "gen_type": "UPS",
-        "p_mw": (ups_spec.get("rated_power_kw") or 0) / 1000.0,
-        "q_mvar": 0.0,
-        "in_service": True,
-        "tags": [],
-        "meta": {
-            "backup_time_min": ups_spec.get("backup_time_min"),
-            "operation_mode": ups_spec.get("operation_mode"),
-        },
-    })
+    new_enm.setdefault("generators", []).append(
+        {
+            "ref_id": ups_ref,
+            "name": ups_spec.get("source_name") or "UPS",
+            "bus_ref": bus_nn_ref,
+            "gen_type": "UPS",
+            "p_mw": (ups_spec.get("rated_power_kw") or 0) / 1000.0,
+            "q_mvar": 0.0,
+            "in_service": True,
+            "tags": [],
+            "meta": {
+                "backup_time_min": ups_spec.get("backup_time_min"),
+                "operation_mode": ups_spec.get("operation_mode"),
+            },
+        }
+    )
 
     return _response(
-        new_enm, created=[ups_ref],
-        selection_id=ups_ref, selection_type="generator",
+        new_enm,
+        created=[ups_ref],
+        selection_id=ups_ref,
+        selection_type="generator",
         events=[{"event_seq": 1, "event_type": "UPS_CREATED", "element_id": ups_ref}],
     )
 
@@ -1086,8 +1604,11 @@ def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if gen.get("ref_id") == source_ref:
             gen.setdefault("meta", {})["operating_mode"] = mode
             return _response(
-                new_enm, updated=[source_ref],
-                events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": source_ref}],
+                new_enm,
+                updated=[source_ref],
+                events=[
+                    {"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": source_ref}
+                ],
             )
 
     return _error_response(f"Źródło '{source_ref}' nie znalezione.", "source.not_found")
@@ -1102,16 +1623,19 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
         return _error_response("Brak identyfikatora elementu.", "profile.element_missing")
 
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("dynamic_profiles", []).append({
-        "profile_id": _compute_seed({"op": "profile", "elem": element_ref}),
-        "applies_to_element_id": element_ref,
-        "time_unit": profile.get("time_unit", "h"),
-        "points": profile.get("points", []),
-        "interpolation": profile.get("interpolation", "HOLD"),
-    })
+    new_enm.setdefault("dynamic_profiles", []).append(
+        {
+            "profile_id": _compute_seed({"op": "profile", "elem": element_ref}),
+            "applies_to_element_id": element_ref,
+            "time_unit": profile.get("time_unit", "h"),
+            "points": profile.get("points", []),
+            "interpolation": profile.get("interpolation", "HOLD"),
+        }
+    )
 
     return _response(
-        new_enm, updated=[element_ref],
+        new_enm,
+        updated=[element_ref],
         events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
     )
 
@@ -1125,11 +1649,14 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     """Zmień nazwę elementu."""
     element_ref = payload.get("element_ref")
     new_name = payload.get("new_name")
+    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
 
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "rename.ref_missing")
     if not new_name:
         return _error_response("Brak nowej nazwy.", "rename.name_missing")
+    if legacy_field_collection is not None:
+        return _error_legacy_field_write_disabled(element_ref, legacy_field_collection)
 
     loc = _find_element(enm, element_ref)
     if not loc:
@@ -1140,7 +1667,8 @@ def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
     new_enm[coll][idx]["name"] = new_name
 
     return _response(
-        new_enm, updated=[element_ref],
+        new_enm,
+        updated=[element_ref],
         events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
     )
 
@@ -1149,9 +1677,12 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Ustaw etykietę (label) elementu."""
     element_ref = payload.get("element_ref")
     label = payload.get("label")
+    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
 
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "label.ref_missing")
+    if legacy_field_collection is not None:
+        return _error_legacy_field_write_disabled(element_ref, legacy_field_collection)
 
     loc = _find_element(enm, element_ref)
     if not loc:
@@ -1162,7 +1693,8 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     new_enm[coll][idx]["label"] = label
 
     return _response(
-        new_enm, updated=[element_ref],
+        new_enm,
+        updated=[element_ref],
         events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
     )
 
@@ -1171,39 +1703,40 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 # Export — V2 handlers and canonical ops
 # ---------------------------------------------------------------------------
 
-V2_CANONICAL_OPS = frozenset({
-    # Ochrona
-    "add_ct",
-    "add_vt",
-    "add_relay",
-    "update_relay_settings",
-    "link_relay_to_field",
-    "calculate_tcc_curve",
-    "validate_selectivity",
-    # Study Case
-    "create_study_case",
-    "set_case_switch_state",
-    "set_case_normal_state",
-    "set_case_source_mode",
-    "set_case_time_profile",
-    "run_short_circuit",
-    "run_power_flow",
-    "run_time_series_power_flow",
-    "compare_study_cases",
-    # nN
-    "add_nn_outgoing_field",
-    "add_nn_source_field",
-    "add_nn_load",
-    "add_pv_inverter_nn",
-    "add_bess_inverter_nn",
-    "add_genset_nn",
-    "add_ups_nn",
-    "set_source_operating_mode",
-    "set_dynamic_profile",
-    # Universal
-    "rename_element",
-    "set_label",
-})
+V2_CANONICAL_OPS = frozenset(
+    {
+        # Ochrona
+        "add_ct",
+        "add_vt",
+        "add_relay",
+        "update_relay_settings",
+        "link_relay_to_field",
+        "calculate_tcc_curve",
+        "validate_selectivity",
+        # Study Case
+        "create_study_case",
+        "set_case_switch_state",
+        "set_case_normal_state",
+        "set_case_source_mode",
+        "set_case_time_profile",
+        "run_short_circuit",
+        "run_power_flow",
+        "run_time_series_power_flow",
+        "compare_study_cases",
+        # nN
+        "add_sn_bay",
+        "add_nn_outgoing_field",
+        "add_converter_source",
+        "add_nn_load",
+        "add_genset_nn",
+        "add_ups_nn",
+        "set_source_operating_mode",
+        "set_dynamic_profile",
+        # Universal
+        "rename_element",
+        "set_label",
+    }
+)
 
 ALL_V2_HANDLERS: dict[str, Any] = {
     "add_ct": add_ct,
@@ -1222,11 +1755,10 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "run_power_flow": run_power_flow,
     "run_time_series_power_flow": run_time_series_power_flow,
     "compare_study_cases": compare_study_cases,
+    "add_sn_bay": add_sn_bay,
     "add_nn_outgoing_field": add_nn_outgoing_field,
-    "add_nn_source_field": add_nn_source_field,
+    "add_converter_source": add_converter_source,
     "add_nn_load": add_nn_load,
-    "add_pv_inverter_nn": add_pv_inverter_nn,
-    "add_bess_inverter_nn": add_bess_inverter_nn,
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
     "set_source_operating_mode": set_source_operating_mode,

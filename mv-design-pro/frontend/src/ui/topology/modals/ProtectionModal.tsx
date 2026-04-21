@@ -80,7 +80,7 @@ function validateForm(data: ProtectionFormData): FieldError[] {
     errors.push({ field: 'breaker_ref', message: 'Wyłącznik jest wymagany' });
   }
   if (CT_REQUIRED_TYPES.has(data.device_type) && !data.ct_ref) {
-    errors.push({ field: 'ct_ref', message: `Zabezpieczenie typu '${DEVICE_TYPE_LABELS[data.device_type]}' wymaga przekładnika CT` });
+    errors.push({ field: 'ct_ref', message: `Zabezpieczenie typu '${DEVICE_TYPE_LABELS[data.device_type]}' wymaga przekladnika pradowego` });
   }
   if (!data.catalog_ref) {
     errors.push({ field: 'catalog_ref', message: 'Wybór typu z katalogu jest wymagany' });
@@ -266,7 +266,7 @@ export function ProtectionModal({
               {getError('ct_ref') && <p className="mt-1 text-xs text-red-600">{getError('ct_ref')}</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Przekładnik VT</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Przekladnik napieciowy</label>
               <select
                 value={formData.vt_ref}
                 onChange={(e) => handleChange('vt_ref', e.target.value)}

@@ -6,23 +6,24 @@ Zgodnie z architektura CLAUDE.md:
 - 100% polskie etykiety
 - UTF-8
 """
+
 from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
-from .violations import ViolationType, VoltageViolation, VoltageViolationsResult
+from .violations import ViolationType, VoltageViolationsResult
 
 if TYPE_CHECKING:
     from reportlab.pdfgen.canvas import Canvas
 
 # Check for reportlab availability
 try:
-    from reportlab.pdfgen import canvas as reportlab_canvas
+    from reportlab.lib.colors import HexColor, black
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.lib.colors import red, orange, green, black, HexColor
+    from reportlab.pdfgen import canvas as reportlab_canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -36,7 +37,7 @@ _COLOR_OK = HexColor("#228B22") if _PDF_AVAILABLE else None  # Forest Green
 _COLOR_HEADER = HexColor("#2F4F4F") if _PDF_AVAILABLE else None  # Dark Slate Gray
 
 
-def _format_float(value: Optional[float], decimals: int = 4) -> str:
+def _format_float(value: float | None, decimals: int = 4) -> str:
     """Formatuje liczbe zmiennoprzecinkowa."""
     if value is None:
         return "—"
@@ -69,7 +70,7 @@ def _get_violation_label_pl(violation_type: ViolationType) -> str:
 
 
 def add_violations_section_to_pdf(
-    c: "Canvas",
+    c: Canvas,
     violations_result: VoltageViolationsResult,
     y_position: float,
     left_margin: float,
@@ -210,12 +211,14 @@ def add_violations_section_to_pdf(
 
         # Linia pod naglowkiem
         c.setStrokeColor(black)
-        c.line(left_margin, y + line_height * 0.3, left_margin + sum(col_widths), y + line_height * 0.3)
+        c.line(
+            left_margin, y + line_height * 0.3, left_margin + sum(col_widths), y + line_height * 0.3
+        )
         y -= 2 * mm
 
         # Dane - limit do 50 wierszy
         max_rows = 50
-        for idx, violation in enumerate(violations_result.violations[:max_rows]):
+        for _idx, violation in enumerate(violations_result.violations[:max_rows]):
             y = check_page_break(line_height)
 
             # Kolor wiersza zalezy od typu naruszenia
@@ -272,8 +275,8 @@ def export_violations_report_to_pdf(
     violations_result: VoltageViolationsResult,
     path: str | Path,
     *,
-    metadata: Optional[Dict[str, Any]] = None,
-    title: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    title: str | None = None,
 ) -> Path:
     """
     Eksportuje raport naruszen napieciowych do pliku PDF.
@@ -292,8 +295,7 @@ def export_violations_report_to_pdf(
     """
     if not _PDF_AVAILABLE:
         raise ImportError(
-            "Eksport PDF wymaga reportlab (brak zaleznosci). "
-            "Zainstaluj: pip install reportlab"
+            "Eksport PDF wymaga reportlab (brak zaleznosci). " "Zainstaluj: pip install reportlab"
         )
 
     output_path = Path(path)
@@ -355,8 +357,8 @@ def export_violations_report_to_pdf(
 def export_violations_report_to_bytes(
     violations_result: VoltageViolationsResult,
     *,
-    metadata: Optional[Dict[str, Any]] = None,
-    title: Optional[str] = None,
+    metadata: dict[str, Any] | None = None,
+    title: str | None = None,
 ) -> bytes:
     """
     Eksportuje raport naruszen napieciowych do bajtow (BytesIO).
@@ -374,8 +376,7 @@ def export_violations_report_to_bytes(
     """
     if not _PDF_AVAILABLE:
         raise ImportError(
-            "Eksport PDF wymaga reportlab (brak zaleznosci). "
-            "Zainstaluj: pip install reportlab"
+            "Eksport PDF wymaga reportlab (brak zaleznosci). " "Zainstaluj: pip install reportlab"
         )
 
     # Parametry strony

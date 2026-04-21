@@ -37,20 +37,18 @@ BINDING RULE SET:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any
 
 from application.analyses.protection.base_values.models import (
     BaseValues,
     ProtectionSetpoint,
     ProtectionSetpointBasis,
-    ProtectionSetpointOperator,
 )
 from application.analyses.protection.sanity_checks.models import (
     ProtectionSanityCheckResult,
     SanityCheckCode,
     SanityCheckSeverity,
 )
-
 
 # =============================================================================
 # Function Summary Model (Backend equivalent of TypeScript interface)
@@ -71,6 +69,7 @@ class ProtectionFunctionSummary:
         curve_type: charakterystyka czasowa (opcjonalny)
         notes_pl: notatki (opcjonalny)
     """
+
     code: str
     ansi: tuple[str, ...]
     label_pl: str
@@ -106,6 +105,7 @@ class ElementContext:
         element_id: identyfikator elementu
         element_type: typ elementu (LINE, TRANSFORMER, BUS, BoundaryNode, etc.)
     """
+
     element_id: str
     element_type: str
 

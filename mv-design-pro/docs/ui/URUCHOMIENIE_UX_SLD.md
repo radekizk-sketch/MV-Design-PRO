@@ -50,14 +50,14 @@ w systemie MV-Design-PRO z perspektywy inżyniera OSD.
 - Podaj: moc P [kW], moc bierna Q [kvar], typ odbioru
 - Po zatwierdzeniu: odbiór w Snapshot
 
-### Krok 11: Dodaj PV (add_pv_inverter_nn)
+### Krok 11: Dodaj PV (add_converter_source)
 
 - Na szynie nN → „Dodaj źródło PV (nN)"
 - Podaj: moc zainstalowana [kWp], falownik z katalogu
 - Wymagane: wariant przyłączenia (nn_side lub block_transformer)
 - Readiness: jeśli brak transformatora w ścieżce → blokada
 
-### Krok 12: Dodaj BESS (add_bess_inverter_nn)
+### Krok 12: Dodaj BESS (add_converter_source)
 
 - Na szynie nN → „Dodaj źródło BESS (nN)"
 - Podaj: moc [kW], pojemność [kWh], SOC limits

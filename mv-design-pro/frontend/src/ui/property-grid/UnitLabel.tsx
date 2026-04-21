@@ -2,7 +2,7 @@
  * UnitLabel Component (PF-style)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § D.2: Unit display requirements
+ * - ui_canonical_parity.md § D.2: Unit display requirements
  *
  * Displays engineering units in consistent style:
  * - Voltage: kV, V

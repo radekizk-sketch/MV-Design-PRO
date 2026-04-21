@@ -1,6 +1,6 @@
 # REPO_HYGIENE_PO_ETAPIE_KATALOG_FIRST
 
-Status: wiazacy dokument higieny repo dla aktualnego stanu.
+Status: wiazacy dokument higieny repo dla aktualnego stanu katalog-first.
 
 Aktywne workflow i guardy CI:
 - `.github/workflows/docs-guard.yml` uruchamia `mv-design-pro/scripts/docs_guard.py`,
@@ -26,7 +26,7 @@ Reguly higieny:
 - nowa dokumentacja nie moze przypisywac funkcji produkcyjnych niezamontowanym routerom,
 - nowa dokumentacja nie moze opisywac domkniecia katalog-first tam, gdzie w kodzie pozostaje obejscie legacy,
 - binding docs maja pierwszenstwo nad starszymi szkicami i opisami eksperymentalnymi,
-- wiążąca dokumentacja QA musi wskazywac tylko realne sciezki testow i guardow,
+- wiazaca dokumentacja QA musi wskazywac tylko realne sciezki testow i guardow,
 - aktywne frontendowe typy i scenariusze E2E nie moga utrwalac legacy payload aliases bez jawnego odnotowania tego dlugu w audycie.
 
 Otwarty dlug higieny po aktualnych zmianach:

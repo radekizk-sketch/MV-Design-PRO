@@ -13,17 +13,15 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from application.project_archive.service import ProjectArchiveService
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
     ArchiveImportStatus,
-    compute_hash,
 )
 from infrastructure.persistence.models import (
     NetworkBranchORM,
@@ -31,7 +29,6 @@ from infrastructure.persistence.models import (
     ProjectORM,
     StudyCaseORM,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -42,7 +39,7 @@ from infrastructure.persistence.models import (
 def sample_project(test_db_session):
     """Create a sample project in the database."""
     project_id = uuid4()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     # Create project
     project = ProjectORM(
@@ -318,9 +315,9 @@ class TestImport:
         assert result.status == ArchiveImportStatus.SUCCESS
 
         # Find imported project
-        imported = test_db_session.query(ProjectORM).filter(
-            ProjectORM.id == result.project_id
-        ).first()
+        imported = (
+            test_db_session.query(ProjectORM).filter(ProjectORM.id == result.project_id).first()
+        )
 
         assert imported is not None
         assert imported.name == "Nowy Projekt"
@@ -346,9 +343,9 @@ class TestRoundtrip:
         assert result.status == ArchiveImportStatus.SUCCESS
 
         # Find imported project
-        imported = test_db_session.query(ProjectORM).filter(
-            ProjectORM.id == result.project_id
-        ).first()
+        imported = (
+            test_db_session.query(ProjectORM).filter(ProjectORM.id == result.project_id).first()
+        )
 
         assert imported is not None
         assert imported.name == sample_project.name
@@ -358,12 +355,16 @@ class TestRoundtrip:
         service = ProjectArchiveService(test_db_session)
 
         # Count original network elements
-        original_nodes = test_db_session.query(NetworkNodeORM).filter(
-            NetworkNodeORM.project_id == sample_project.id
-        ).all()
-        original_branches = test_db_session.query(NetworkBranchORM).filter(
-            NetworkBranchORM.project_id == sample_project.id
-        ).all()
+        original_nodes = (
+            test_db_session.query(NetworkNodeORM)
+            .filter(NetworkNodeORM.project_id == sample_project.id)
+            .all()
+        )
+        original_branches = (
+            test_db_session.query(NetworkBranchORM)
+            .filter(NetworkBranchORM.project_id == sample_project.id)
+            .all()
+        )
 
         # Export
         archive_bytes = service.export_project(sample_project.id)
@@ -373,12 +374,16 @@ class TestRoundtrip:
         assert result.status == ArchiveImportStatus.SUCCESS
 
         # Count imported network elements
-        imported_nodes = test_db_session.query(NetworkNodeORM).filter(
-            NetworkNodeORM.project_id == result.project_id
-        ).all()
-        imported_branches = test_db_session.query(NetworkBranchORM).filter(
-            NetworkBranchORM.project_id == result.project_id
-        ).all()
+        imported_nodes = (
+            test_db_session.query(NetworkNodeORM)
+            .filter(NetworkNodeORM.project_id == result.project_id)
+            .all()
+        )
+        imported_branches = (
+            test_db_session.query(NetworkBranchORM)
+            .filter(NetworkBranchORM.project_id == result.project_id)
+            .all()
+        )
 
         # Should have same count
         assert len(imported_nodes) == len(original_nodes)

@@ -1,7 +1,8 @@
 """Tests for Case-Bound Runs API endpoints."""
-import pytest
+
 from uuid import uuid4
 
+import pytest
 from api.case_runs import (
     CaseRunAnalysisType,
     CaseRunStatus,

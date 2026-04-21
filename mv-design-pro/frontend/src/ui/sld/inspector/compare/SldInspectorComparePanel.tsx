@@ -1,10 +1,10 @@
 /**
  * SLD Inspector Compare Panel — PR-SLD-08
  *
- * Panel porównania elementów w inspektorze SLD (READ-ONLY, 120% ETAP).
+ * Panel porównania elementów w inspektorze SLD (READ-ONLY, 120% CANONICAL).
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie właściwości (120% ETAP)
+ * - ui_canonical_parity.md: Porównanie właściwości (120% CANONICAL)
  * - sld_rules.md § G.1: Multi-selection w inspektorze
  *
  * FEATURES:

@@ -7,7 +7,7 @@
  * - Jeden termin = jedna nazwa = jedno źródło
  * - 100% polska terminologia normowa
  * - Pełne znaki diakrytyczne
- * - Spójność z PowerFactory i IEC 60909/60255
+ * - Spójność z Canonical i IEC 60909/60255
  *
  * ZAKRES:
  * - UI-01: Rozpływ mocy — szyny

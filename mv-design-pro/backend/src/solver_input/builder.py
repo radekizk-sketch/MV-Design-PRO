@@ -15,17 +15,14 @@ from __future__ import annotations
 
 from typing import Any
 
+from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
-from network_model.catalog.resolver import ParameterSource
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
-from domain.study_case import StudyCaseConfig
-
 from solver_input.contracts import (
     SOLVER_INPUT_CONTRACT_VERSION,
     BranchPayload,
     BusPayload,
-    EligibilityResult,
     InverterSourcePayload,
     LoadFlowPayload,
     ProvenanceEntrySchema,
@@ -45,7 +42,6 @@ from solver_input.provenance import (
     build_provenance_summary,
     compute_value_hash,
 )
-
 
 # ---------------------------------------------------------------------------
 # Internal helpers
@@ -79,9 +75,7 @@ def _build_branch_payloads(
     """Build deterministically sorted branch payloads with provenance trace."""
     payloads: list[BranchPayload] = []
 
-    line_branches = [
-        b for b in graph.branches.values() if isinstance(b, LineBranch)
-    ]
+    line_branches = [b for b in graph.branches.values() if isinstance(b, LineBranch)]
     line_branches.sort(key=lambda b: b.id)
 
     for branch in line_branches:
@@ -124,15 +118,11 @@ def _build_branch_payloads(
                 )
             else:
                 source_kind = SourceKind.DERIVED
-                source_ref = SourceRef(
-                    derivation_rule="type_ref_not_found_fallback_to_instance"
-                )
+                source_ref = SourceRef(derivation_rule="type_ref_not_found_fallback_to_instance")
         elif branch.type_ref and catalog is None:
             # type_ref present but no catalog — use instance values
             source_kind = SourceKind.DERIVED
-            source_ref = SourceRef(
-                derivation_rule="type_ref_present_but_catalog_unavailable"
-            )
+            source_ref = SourceRef(derivation_rule="type_ref_present_but_catalog_unavailable")
         else:
             # Instance parameters (no type_ref, no override)
             source_kind = SourceKind.DERIVED
@@ -196,9 +186,7 @@ def _build_transformer_payloads(
     """Build deterministically sorted transformer payloads with provenance trace."""
     payloads: list[TransformerPayload] = []
 
-    trafo_branches = [
-        b for b in graph.branches.values() if isinstance(b, TransformerBranch)
-    ]
+    trafo_branches = [b for b in graph.branches.values() if isinstance(b, TransformerBranch)]
     trafo_branches.sort(key=lambda b: b.id)
 
     for trafo in trafo_branches:
@@ -232,9 +220,7 @@ def _build_transformer_payloads(
                 )
             else:
                 source_kind = SourceKind.DERIVED
-                source_ref = SourceRef(
-                    derivation_rule="type_ref_not_found_fallback_to_instance"
-                )
+                source_ref = SourceRef(derivation_rule="type_ref_not_found_fallback_to_instance")
         else:
             source_kind = SourceKind.DERIVED
             source_ref = SourceRef(derivation_rule="instance_parameters")
@@ -323,9 +309,7 @@ def _build_inverter_payloads(
                 ref_id=source.id,
                 name=source.name,
                 bus_ref=source.node_id,
-                converter_kind=(
-                    source.converter_kind.value if source.converter_kind else None
-                ),
+                converter_kind=(source.converter_kind.value if source.converter_kind else None),
                 in_rated_a=source.in_rated_a,
                 k_sc=source.k_sc,
                 contributes_negative_sequence=source.contributes_negative_sequence,

@@ -11,8 +11,6 @@ This module delegates to analysis.boundary (interpretation layer).
 
 from __future__ import annotations
 
-from typing import Optional
-
 from analysis.boundary import BoundaryIdentifier as _BoundaryIdentifier
 from analysis.boundary import BoundaryResult
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta
@@ -28,18 +26,24 @@ class BoundaryIdentifier:
     def __init__(self) -> None:
         self._identifier = _BoundaryIdentifier()
 
-    def identify(self, snapshot: NetworkSnapshot, case_params: dict | None = None) -> BoundaryResult:
+    def identify(
+        self, snapshot: NetworkSnapshot, case_params: dict | None = None
+    ) -> BoundaryResult:
         return self._identifier.identify(snapshot, case_params)
 
-    def identify_connection_node(self, network_graph, case_params: dict | None = None) -> BoundaryResult:
+    def identify_connection_node(
+        self, network_graph, case_params: dict | None = None
+    ) -> BoundaryResult:
         snapshot = NetworkSnapshot(
-            meta=SnapshotMeta.create(network_model_id=getattr(network_graph, "network_model_id", None)),
+            meta=SnapshotMeta.create(
+                network_model_id=getattr(network_graph, "network_model_id", None)
+            ),
             graph=network_graph,
         )
         return self._identifier.identify(snapshot, case_params)
 
 
-def identify_connection_node(network_graph, case_params: dict | None = None) -> Optional[str]:
+def identify_connection_node(network_graph, case_params: dict | None = None) -> str | None:
     """
     Convenience function to identify BoundaryNode.
 

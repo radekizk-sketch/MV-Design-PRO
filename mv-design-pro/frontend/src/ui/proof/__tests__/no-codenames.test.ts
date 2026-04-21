@@ -2,9 +2,9 @@
  * Test: Brak nazw kodowych w UI
  *
  * BINDING RULE:
- * - Nazwy kodowe P11, P14, P17 NIGDY nie są pokazywane w UI
- * - Tylko komentarze dokumentacyjne dla deweloperów mogą zawierać te nazwy
- * - Ten test sprawdza czy w widocznych stringach UI nie ma tych nazw
+ * - Nazwy kodowe P11, P14, P17 nigdy nie sa pokazywane w UI.
+ * - Tylko komentarze dokumentacyjne dla deweloperow moga zawierac te nazwy.
+ * - Ten test sprawdza, czy w widocznych stringach UI nie ma tych nazw.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -45,13 +45,11 @@ describe('UI Codenames Check', () => {
       const lines = content.split('\n');
 
       lines.forEach((line, index) => {
-        // Skip comment lines (// or /* */)
         const trimmedLine = line.trim();
         if (trimmedLine.startsWith('//') || trimmedLine.startsWith('*') || trimmedLine.startsWith('/*')) {
           return;
         }
 
-        // Check for codenames in string literals
         const matches = line.match(CODENAME_REGEX);
         if (matches) {
           violations.push({
@@ -64,14 +62,13 @@ describe('UI Codenames Check', () => {
     }
 
     if (violations.length > 0) {
-      const violationMessages = violations.map(
-        (v) => `  ${v.file}:${v.line}: ${v.content}`
-      ).join('\n');
+      const violationMessages = violations
+        .map((violation) => `  ${violation.file}:${violation.line}: ${violation.content}`)
+        .join('\n');
 
-      // no-codenames-ignore (meta: komunikat błędu dla testu)
       expect.fail(
         `Found codenames in UI-visible strings:\n${violationMessages}\n\n` +
-        'These codenames should NEVER appear in user-facing UI. Use Polish labels instead.'
+          'These codenames should never appear in user-facing UI. Use Polish labels instead.',
       );
     }
 
@@ -79,12 +76,9 @@ describe('UI Codenames Check', () => {
   });
 
   it('should use Polish labels for trace-related UI elements', () => {
-    // Check that RESULTS_TAB_LABELS has Polish label for TRACE
     const typesPath = path.join(RESULTS_INSPECTOR_DIR, 'types.ts');
     if (fs.existsSync(typesPath)) {
       const content = fs.readFileSync(typesPath, 'utf-8');
-
-      // Check for Polish label "Ślad obliczeń"
       expect(content).toContain("TRACE: 'Ślad obliczeń'");
     }
   });
@@ -100,13 +94,11 @@ describe('UI Codenames Check', () => {
       const content = fs.readFileSync(filePath, 'utf-8');
 
       for (const term of forbiddenTerms) {
-        // Only check string literals, not comments
         const stringPattern = new RegExp(`['"\`].*?${term}.*?['"\`]`, 'gi');
         const matches = content.match(stringPattern);
 
         if (matches) {
-          // Filter out matches that are in comments
-          const nonCommentMatches = matches.filter(match => {
+          const nonCommentMatches = matches.filter((match) => {
             const index = content.indexOf(match);
             const lineStart = content.lastIndexOf('\n', index) + 1;
             const lineContent = content.substring(lineStart, index);

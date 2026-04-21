@@ -197,10 +197,12 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
             # Check argument annotations
             for arg in node.args.args:
                 if _annotation_is_bare_any(arg.annotation):
-                    violations.append((
-                        node.lineno,
-                        f"function '{node.name}' parameter '{arg.arg}' is Any",
-                    ))
+                    violations.append(
+                        (
+                            node.lineno,
+                            f"function '{node.name}' parameter '{arg.arg}' is Any",
+                        )
+                    )
 
         # Check variable annotations at class level
         if isinstance(node, ast.AnnAssign):
@@ -211,10 +213,12 @@ def _find_any_annotations_in_file(filepath: Path) -> list[tuple[int, str]]:
             if target_name in {"meta", "study_payload", "case_payload"}:
                 continue
             if _annotation_is_bare_any(node.annotation):
-                violations.append((
-                    getattr(node, "lineno", 0),
-                    f"variable '{target_name}' annotated as Any",
-                ))
+                violations.append(
+                    (
+                        getattr(node, "lineno", 0),
+                        f"variable '{target_name}' annotated as Any",
+                    )
+                )
 
     return violations
 
@@ -283,7 +287,7 @@ def _get_public_types_from_init(init_path: Path) -> set[str]:
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name) and target.id == "__all__":
-                    if isinstance(node.value, (ast.List, ast.Tuple)):
+                    if isinstance(node.value, ast.List | ast.Tuple):
                         return {
                             elt.value
                             for elt in node.value.elts
@@ -328,8 +332,11 @@ def test_no_unused_types():
     # Filter out common false positives (types used dynamically, via reflection,
     # or re-exported for public API compatibility)
     known_dynamic = {
-        "UnitSystem", "BaseQuantities",
-        "FieldDeviceTypeV1", "StationDeviceBindingV1", "StationFieldDeviceV1",
+        "UnitSystem",
+        "BaseQuantities",
+        "FieldDeviceTypeV1",
+        "StationDeviceBindingV1",
+        "StationFieldDeviceV1",
     }
     unused -= known_dynamic
 
@@ -368,30 +375,64 @@ def test_snapshot_hash_stability():
 
     # Build a known network with specific element ordering
     graph1 = NetworkGraph()
-    graph1.add_node(Node(
-        id="A", name="Bus A", node_type=NodeType.SLACK,
-        voltage_level=20.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
-    graph1.add_node(Node(
-        id="B", name="Bus B", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-    ))
-    graph1.add_node(Node(
-        id="C", name="Bus C", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=3.0, reactive_power=1.0,
-    ))
-    graph1.add_branch(LineBranch(
-        id="L1", name="Line 1", branch_type=BranchType.LINE,
-        from_node_id="A", to_node_id="B",
-        r_ohm_per_km=0.4, x_ohm_per_km=0.8, b_us_per_km=0.0,
-        length_km=5.0, rated_current_a=300.0,
-    ))
-    graph1.add_branch(LineBranch(
-        id="L2", name="Line 2", branch_type=BranchType.LINE,
-        from_node_id="B", to_node_id="C",
-        r_ohm_per_km=0.3, x_ohm_per_km=0.6, b_us_per_km=0.0,
-        length_km=3.0, rated_current_a=250.0,
-    ))
+    graph1.add_node(
+        Node(
+            id="A",
+            name="Bus A",
+            node_type=NodeType.SLACK,
+            voltage_level=20.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    graph1.add_node(
+        Node(
+            id="B",
+            name="Bus B",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph1.add_node(
+        Node(
+            id="C",
+            name="Bus C",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=3.0,
+            reactive_power=1.0,
+        )
+    )
+    graph1.add_branch(
+        LineBranch(
+            id="L1",
+            name="Line 1",
+            branch_type=BranchType.LINE,
+            from_node_id="A",
+            to_node_id="B",
+            r_ohm_per_km=0.4,
+            x_ohm_per_km=0.8,
+            b_us_per_km=0.0,
+            length_km=5.0,
+            rated_current_a=300.0,
+        )
+    )
+    graph1.add_branch(
+        LineBranch(
+            id="L2",
+            name="Line 2",
+            branch_type=BranchType.LINE,
+            from_node_id="B",
+            to_node_id="C",
+            r_ohm_per_km=0.3,
+            x_ohm_per_km=0.6,
+            b_us_per_km=0.0,
+            length_km=3.0,
+            rated_current_a=250.0,
+        )
+    )
 
     snap1 = create_network_snapshot(
         graph1,
@@ -407,31 +448,65 @@ def test_snapshot_hash_stability():
     # Build same network with REVERSED element order
     graph2 = NetworkGraph()
     # Add nodes in reverse order
-    graph2.add_node(Node(
-        id="C", name="Bus C", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=3.0, reactive_power=1.0,
-    ))
-    graph2.add_node(Node(
-        id="B", name="Bus B", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-    ))
-    graph2.add_node(Node(
-        id="A", name="Bus A", node_type=NodeType.SLACK,
-        voltage_level=20.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
+    graph2.add_node(
+        Node(
+            id="C",
+            name="Bus C",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=3.0,
+            reactive_power=1.0,
+        )
+    )
+    graph2.add_node(
+        Node(
+            id="B",
+            name="Bus B",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph2.add_node(
+        Node(
+            id="A",
+            name="Bus A",
+            node_type=NodeType.SLACK,
+            voltage_level=20.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
     # Add branches in reverse order
-    graph2.add_branch(LineBranch(
-        id="L2", name="Line 2", branch_type=BranchType.LINE,
-        from_node_id="B", to_node_id="C",
-        r_ohm_per_km=0.3, x_ohm_per_km=0.6, b_us_per_km=0.0,
-        length_km=3.0, rated_current_a=250.0,
-    ))
-    graph2.add_branch(LineBranch(
-        id="L1", name="Line 1", branch_type=BranchType.LINE,
-        from_node_id="A", to_node_id="B",
-        r_ohm_per_km=0.4, x_ohm_per_km=0.8, b_us_per_km=0.0,
-        length_km=5.0, rated_current_a=300.0,
-    ))
+    graph2.add_branch(
+        LineBranch(
+            id="L2",
+            name="Line 2",
+            branch_type=BranchType.LINE,
+            from_node_id="B",
+            to_node_id="C",
+            r_ohm_per_km=0.3,
+            x_ohm_per_km=0.6,
+            b_us_per_km=0.0,
+            length_km=3.0,
+            rated_current_a=250.0,
+        )
+    )
+    graph2.add_branch(
+        LineBranch(
+            id="L1",
+            name="Line 1",
+            branch_type=BranchType.LINE,
+            from_node_id="A",
+            to_node_id="B",
+            r_ohm_per_km=0.4,
+            x_ohm_per_km=0.8,
+            b_us_per_km=0.0,
+            length_km=5.0,
+            rated_current_a=300.0,
+        )
+    )
 
     snap2 = create_network_snapshot(
         graph2,
@@ -465,7 +540,6 @@ def test_solver_whitebox_completeness_sc():
     WHITE BOX Rule (CLAUDE.md): All solvers MUST expose all calculation steps,
     provide intermediate values (Y-bus, Z-thevenin, Ik steps), and allow audit.
     """
-    import numpy as np
 
     from network_model.core.branch import BranchType, LineBranch, TransformerBranch
     from network_model.core.graph import NetworkGraph
@@ -473,32 +547,69 @@ def test_solver_whitebox_completeness_sc():
     from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
     graph = NetworkGraph()
-    graph.add_node(Node(
-        id="HV", name="HV Bus", node_type=NodeType.PQ,
-        voltage_level=110.0, active_power=0.0, reactive_power=0.0,
-    ))
-    graph.add_node(Node(
-        id="MV", name="MV Bus", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-    ))
-    graph.add_node(Node(
-        id="GND", name="Ground Ref", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=0.0, reactive_power=0.0,
-    ))
-    graph.add_branch(TransformerBranch(
-        id="T1", name="Transformer T1", branch_type=BranchType.TRANSFORMER,
-        from_node_id="HV", to_node_id="MV",
-        rated_power_mva=25.0, voltage_hv_kv=110.0, voltage_lv_kv=20.0,
-        uk_percent=10.0, pk_kw=120.0,
-        i0_percent=0.0, p0_kw=0.0,
-        vector_group="Dyn11", tap_position=0, tap_step_percent=2.5,
-    ))
-    graph.add_branch(LineBranch(
-        id="REF", name="Reference", branch_type=BranchType.LINE,
-        from_node_id="MV", to_node_id="GND",
-        r_ohm_per_km=1e9, x_ohm_per_km=0.0, b_us_per_km=0.0,
-        length_km=1.0, rated_current_a=0.0,
-    ))
+    graph.add_node(
+        Node(
+            id="HV",
+            name="HV Bus",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="MV",
+            name="MV Bus",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="GND",
+            name="Ground Ref",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_branch(
+        TransformerBranch(
+            id="T1",
+            name="Transformer T1",
+            branch_type=BranchType.TRANSFORMER,
+            from_node_id="HV",
+            to_node_id="MV",
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=10.0,
+            pk_kw=120.0,
+            i0_percent=0.0,
+            p0_kw=0.0,
+            vector_group="Dyn11",
+            tap_position=0,
+            tap_step_percent=2.5,
+        )
+    )
+    graph.add_branch(
+        LineBranch(
+            id="REF",
+            name="Reference",
+            branch_type=BranchType.LINE,
+            from_node_id="MV",
+            to_node_id="GND",
+            r_ohm_per_km=1e9,
+            x_ohm_per_km=0.0,
+            b_us_per_km=0.0,
+            length_km=1.0,
+            rated_current_a=0.0,
+        )
+    )
 
     result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
         graph=graph,
@@ -509,17 +620,16 @@ def test_solver_whitebox_completeness_sc():
 
     # White-box trace must be non-empty
     assert result.white_box_trace, "white_box_trace is empty — WHITE BOX Rule violated"
-    assert len(result.white_box_trace) >= 3, (
-        f"Expected at least 3 trace steps (Zk, Ikss, kappa), got {len(result.white_box_trace)}"
-    )
+    assert (
+        len(result.white_box_trace) >= 3
+    ), f"Expected at least 3 trace steps (Zk, Ikss, kappa), got {len(result.white_box_trace)}"
 
     # Extract trace step keys
     trace_keys = {step.get("key") for step in result.white_box_trace if isinstance(step, dict)}
 
     # Must contain impedance calculation (Z-thevenin equivalent)
     assert "Zk" in trace_keys, (
-        f"Missing 'Zk' (impedance) step in white_box_trace. "
-        f"Found keys: {trace_keys}"
+        f"Missing 'Zk' (impedance) step in white_box_trace. " f"Found keys: {trace_keys}"
     )
 
     # Must contain Ikss calculation
@@ -530,8 +640,7 @@ def test_solver_whitebox_completeness_sc():
 
     # Must contain kappa calculation
     assert "kappa" in trace_keys, (
-        f"Missing 'kappa' (surge factor) step in white_box_trace. "
-        f"Found keys: {trace_keys}"
+        f"Missing 'kappa' (surge factor) step in white_box_trace. " f"Found keys: {trace_keys}"
     )
 
     # Each trace step must have required fields
@@ -555,10 +664,10 @@ def test_solver_whitebox_completeness_pf():
     WHITE BOX Rule: Power flow solver must expose ybus_trace and nr_trace.
     """
     from analysis.power_flow import (
-        PQSpec,
         PowerFlowInput,
         PowerFlowOptions,
         PowerFlowSolver,
+        PQSpec,
         SlackSpec,
     )
     from network_model.core.branch import BranchType, LineBranch
@@ -566,20 +675,40 @@ def test_solver_whitebox_completeness_pf():
     from network_model.core.node import Node, NodeType
 
     graph = NetworkGraph()
-    graph.add_node(Node(
-        id="S", name="Slack", node_type=NodeType.SLACK,
-        voltage_level=20.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
-    graph.add_node(Node(
-        id="P", name="PQ Load", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=0.0, reactive_power=0.0,
-    ))
-    graph.add_branch(LineBranch(
-        id="L1", name="Line 1", branch_type=BranchType.LINE,
-        from_node_id="S", to_node_id="P",
-        r_ohm_per_km=0.4, x_ohm_per_km=0.8, b_us_per_km=0.0,
-        length_km=5.0, rated_current_a=300.0,
-    ))
+    graph.add_node(
+        Node(
+            id="S",
+            name="Slack",
+            node_type=NodeType.SLACK,
+            voltage_level=20.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="P",
+            name="PQ Load",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_branch(
+        LineBranch(
+            id="L1",
+            name="Line 1",
+            branch_type=BranchType.LINE,
+            from_node_id="S",
+            to_node_id="P",
+            r_ohm_per_km=0.4,
+            x_ohm_per_km=0.8,
+            b_us_per_km=0.0,
+            length_km=5.0,
+            rated_current_a=300.0,
+        )
+    )
 
     pf_input = PowerFlowInput(
         graph=graph,
@@ -596,14 +725,12 @@ def test_solver_whitebox_completeness_pf():
     # White-box trace must contain Y-bus information
     trace = result.white_box_trace
     assert trace is not None, "white_box_trace is None"
-    assert "ybus" in trace, (
-        f"Missing 'ybus' in white_box_trace. Found keys: {list(trace.keys())}"
-    )
+    assert "ybus" in trace, f"Missing 'ybus' in white_box_trace. Found keys: {list(trace.keys())}"
 
     # Must contain Newton-Raphson iteration trace
-    assert "nr_iterations" in trace, (
-        f"Missing 'nr_iterations' in white_box_trace. Found keys: {list(trace.keys())}"
-    )
+    assert (
+        "nr_iterations" in trace
+    ), f"Missing 'nr_iterations' in white_box_trace. Found keys: {list(trace.keys())}"
 
 
 # ===========================================================================
@@ -625,7 +752,6 @@ def test_case_immutability_enforcement():
     from uuid import uuid4
 
     from domain.study_case import (
-        StudyCase,
         StudyCaseConfig,
         StudyCaseResultStatus,
         new_study_case,
@@ -687,63 +813,104 @@ def test_determinism_same_input_same_output_sc():
 
     def build_graph() -> NetworkGraph:
         g = NetworkGraph()
-        g.add_node(Node(
-            id="HV", name="HV Bus", node_type=NodeType.PQ,
-            voltage_level=110.0, active_power=0.0, reactive_power=0.0,
-        ))
-        g.add_node(Node(
-            id="MV", name="MV Bus", node_type=NodeType.PQ,
-            voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-        ))
-        g.add_node(Node(
-            id="GND", name="Ground Ref", node_type=NodeType.PQ,
-            voltage_level=20.0, active_power=0.0, reactive_power=0.0,
-        ))
-        g.add_branch(TransformerBranch(
-            id="T1", name="Transformer T1", branch_type=BranchType.TRANSFORMER,
-            from_node_id="HV", to_node_id="MV",
-            rated_power_mva=25.0, voltage_hv_kv=110.0, voltage_lv_kv=20.0,
-            uk_percent=10.0, pk_kw=120.0,
-            i0_percent=0.0, p0_kw=0.0,
-            vector_group="Dyn11", tap_position=0, tap_step_percent=2.5,
-        ))
-        g.add_branch(LineBranch(
-            id="REF", name="Reference", branch_type=BranchType.LINE,
-            from_node_id="MV", to_node_id="GND",
-            r_ohm_per_km=1e9, x_ohm_per_km=0.0, b_us_per_km=0.0,
-            length_km=1.0, rated_current_a=0.0,
-        ))
+        g.add_node(
+            Node(
+                id="HV",
+                name="HV Bus",
+                node_type=NodeType.PQ,
+                voltage_level=110.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g.add_node(
+            Node(
+                id="MV",
+                name="MV Bus",
+                node_type=NodeType.PQ,
+                voltage_level=20.0,
+                active_power=5.0,
+                reactive_power=2.0,
+            )
+        )
+        g.add_node(
+            Node(
+                id="GND",
+                name="Ground Ref",
+                node_type=NodeType.PQ,
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g.add_branch(
+            TransformerBranch(
+                id="T1",
+                name="Transformer T1",
+                branch_type=BranchType.TRANSFORMER,
+                from_node_id="HV",
+                to_node_id="MV",
+                rated_power_mva=25.0,
+                voltage_hv_kv=110.0,
+                voltage_lv_kv=20.0,
+                uk_percent=10.0,
+                pk_kw=120.0,
+                i0_percent=0.0,
+                p0_kw=0.0,
+                vector_group="Dyn11",
+                tap_position=0,
+                tap_step_percent=2.5,
+            )
+        )
+        g.add_branch(
+            LineBranch(
+                id="REF",
+                name="Reference",
+                branch_type=BranchType.LINE,
+                from_node_id="MV",
+                to_node_id="GND",
+                r_ohm_per_km=1e9,
+                x_ohm_per_km=0.0,
+                b_us_per_km=0.0,
+                length_km=1.0,
+                rated_current_a=0.0,
+            )
+        )
         return g
 
     # Run 1
     result1 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=build_graph(), fault_node_id="MV", c_factor=1.1, tk_s=1.0,
+        graph=build_graph(),
+        fault_node_id="MV",
+        c_factor=1.1,
+        tk_s=1.0,
     )
 
     # Run 2 — fresh graph, identical parameters
     result2 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-        graph=build_graph(), fault_node_id="MV", c_factor=1.1, tk_s=1.0,
+        graph=build_graph(),
+        fault_node_id="MV",
+        c_factor=1.1,
+        tk_s=1.0,
     )
 
     # Verify bit-identical scalar results
-    assert result1.ikss_a == result2.ikss_a, (
-        f"Ik'' not deterministic: {result1.ikss_a} vs {result2.ikss_a}"
-    )
-    assert result1.ip_a == result2.ip_a, (
-        f"Ip not deterministic: {result1.ip_a} vs {result2.ip_a}"
-    )
-    assert result1.ith_a == result2.ith_a, (
-        f"Ith not deterministic: {result1.ith_a} vs {result2.ith_a}"
-    )
-    assert result1.sk_mva == result2.sk_mva, (
-        f"Sk'' not deterministic: {result1.sk_mva} vs {result2.sk_mva}"
-    )
-    assert result1.zkk_ohm == result2.zkk_ohm, (
-        f"Zkk not deterministic: {result1.zkk_ohm} vs {result2.zkk_ohm}"
-    )
-    assert result1.kappa == result2.kappa, (
-        f"kappa not deterministic: {result1.kappa} vs {result2.kappa}"
-    )
+    assert (
+        result1.ikss_a == result2.ikss_a
+    ), f"Ik'' not deterministic: {result1.ikss_a} vs {result2.ikss_a}"
+    assert result1.ip_a == result2.ip_a, f"Ip not deterministic: {result1.ip_a} vs {result2.ip_a}"
+    assert (
+        result1.ith_a == result2.ith_a
+    ), f"Ith not deterministic: {result1.ith_a} vs {result2.ith_a}"
+    assert (
+        result1.sk_mva == result2.sk_mva
+    ), f"Sk'' not deterministic: {result1.sk_mva} vs {result2.sk_mva}"
+    assert (
+        result1.zkk_ohm == result2.zkk_ohm
+    ), f"Zkk not deterministic: {result1.zkk_ohm} vs {result2.zkk_ohm}"
+    assert (
+        result1.kappa == result2.kappa
+    ), f"kappa not deterministic: {result1.kappa} vs {result2.kappa}"
 
     # Verify trace is deterministic (convert to JSON for comparison)
     trace1_json = json.dumps(result1.white_box_trace, sort_keys=True, default=str)
@@ -751,8 +918,7 @@ def test_determinism_same_input_same_output_sc():
     hash1 = hashlib.sha256(trace1_json.encode()).hexdigest()
     hash2 = hashlib.sha256(trace2_json.encode()).hexdigest()
     assert hash1 == hash2, (
-        f"White-box trace not deterministic (hash mismatch):\n"
-        f"  run1: {hash1}\n  run2: {hash2}"
+        f"White-box trace not deterministic (hash mismatch):\n" f"  run1: {hash1}\n  run2: {hash2}"
     )
 
 
@@ -761,10 +927,10 @@ def test_determinism_same_input_same_output_pf():
     Run PF solver twice with identical input, verify bit-identical results.
     """
     from analysis.power_flow import (
-        PQSpec,
         PowerFlowInput,
         PowerFlowOptions,
         PowerFlowSolver,
+        PQSpec,
         SlackSpec,
     )
     from network_model.core.branch import BranchType, LineBranch
@@ -773,20 +939,40 @@ def test_determinism_same_input_same_output_pf():
 
     def build_pf_graph() -> NetworkGraph:
         g = NetworkGraph()
-        g.add_node(Node(
-            id="S", name="Slack", node_type=NodeType.SLACK,
-            voltage_level=20.0, voltage_magnitude=1.0, voltage_angle=0.0,
-        ))
-        g.add_node(Node(
-            id="P", name="PQ Load", node_type=NodeType.PQ,
-            voltage_level=20.0, active_power=0.0, reactive_power=0.0,
-        ))
-        g.add_branch(LineBranch(
-            id="L1", name="Line 1", branch_type=BranchType.LINE,
-            from_node_id="S", to_node_id="P",
-            r_ohm_per_km=0.4, x_ohm_per_km=0.8, b_us_per_km=0.0,
-            length_km=5.0, rated_current_a=300.0,
-        ))
+        g.add_node(
+            Node(
+                id="S",
+                name="Slack",
+                node_type=NodeType.SLACK,
+                voltage_level=20.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+            )
+        )
+        g.add_node(
+            Node(
+                id="P",
+                name="PQ Load",
+                node_type=NodeType.PQ,
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g.add_branch(
+            LineBranch(
+                id="L1",
+                name="Line 1",
+                branch_type=BranchType.LINE,
+                from_node_id="S",
+                to_node_id="P",
+                r_ohm_per_km=0.4,
+                x_ohm_per_km=0.8,
+                b_us_per_km=0.0,
+                length_km=5.0,
+                rated_current_a=300.0,
+            )
+        )
         return g
 
     def build_input() -> PowerFlowInput:
@@ -814,9 +1000,9 @@ def test_determinism_same_input_same_output_pf():
 
     # Verify branch currents are identical
     for branch_id in result1.branch_current_ka:
-        assert result1.branch_current_ka[branch_id] == result2.branch_current_ka[branch_id], (
-            f"Branch current for {branch_id} not deterministic"
-        )
+        assert (
+            result1.branch_current_ka[branch_id] == result2.branch_current_ka[branch_id]
+        ), f"Branch current for {branch_id} not deterministic"
 
 
 # ===========================================================================
@@ -838,20 +1024,40 @@ def test_sld_projection_does_not_mutate_snapshot():
     from network_model.sld_projection import project_snapshot_to_sld
 
     graph = NetworkGraph()
-    graph.add_node(Node(
-        id="A", name="Bus A", node_type=NodeType.SLACK,
-        voltage_level=20.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
-    graph.add_node(Node(
-        id="B", name="Bus B", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-    ))
-    graph.add_branch(LineBranch(
-        id="L1", name="Line 1", branch_type=BranchType.LINE,
-        from_node_id="A", to_node_id="B",
-        r_ohm_per_km=0.4, x_ohm_per_km=0.8, b_us_per_km=0.0,
-        length_km=5.0, rated_current_a=300.0,
-    ))
+    graph.add_node(
+        Node(
+            id="A",
+            name="Bus A",
+            node_type=NodeType.SLACK,
+            voltage_level=20.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="B",
+            name="Bus B",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph.add_branch(
+        LineBranch(
+            id="L1",
+            name="Line 1",
+            branch_type=BranchType.LINE,
+            from_node_id="A",
+            to_node_id="B",
+            r_ohm_per_km=0.4,
+            x_ohm_per_km=0.8,
+            b_us_per_km=0.0,
+            length_km=5.0,
+            rated_current_a=300.0,
+        )
+    )
 
     snapshot = create_network_snapshot(
         graph,

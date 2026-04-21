@@ -162,7 +162,7 @@ describe('Context Menu Actions', () => {
   });
 
   describe('buildNetworkModelContextMenu', () => {
-    it('should have Add submenu with element types', () => {
+    it('should have Add submenu only with GPZ start action', () => {
       const actions = buildNetworkModelContextMenu('MODEL_EDIT');
 
       const addAction = actions.find((a) => a.id === 'add');
@@ -170,11 +170,7 @@ describe('Context Menu Actions', () => {
       expect(addAction!.submenu).toBeDefined();
 
       const submenuLabels = addAction!.submenu!.map((a) => a.label);
-      expect(submenuLabels).toContain('Szynę...');
-      expect(submenuLabels).toContain('Linię/kabel...');
-      expect(submenuLabels).toContain('Transformator 2-uzwojeniowy...');
-      expect(submenuLabels).toContain('Źródło (sieć zewnętrzna)...');
-      expect(submenuLabels).toContain('Odbiornik...');
+      expect(submenuLabels).toEqual(['Dodaj GPZ...']);
     });
 
     it('should disable Add submenu items in RESULT_VIEW', () => {

@@ -21,7 +21,6 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # =============================================================================
 # DOMAIN TYPES
 # =============================================================================
@@ -36,6 +35,7 @@ class ProtectionSelectivityPair:
         upstream_relay_id: Relay closer to source (should trip later)
         downstream_relay_id: Relay closer to fault (should trip first)
     """
+
     pair_id: str
     upstream_relay_id: str
     downstream_relay_id: str
@@ -66,6 +66,7 @@ class SelectivityMarginPoint:
         t_downstream_s: Downstream trip time [s] (None if no trip)
         margin_s: t_upstream - t_downstream [s] (None if either is None)
     """
+
     i_a_primary: float
     t_upstream_s: float | None
     t_downstream_s: float | None
@@ -84,17 +85,12 @@ class SelectivityMarginPoint:
         return cls(
             i_a_primary=float(data["i_a_primary"]),
             t_upstream_s=(
-                float(data["t_upstream_s"])
-                if data.get("t_upstream_s") is not None else None
+                float(data["t_upstream_s"]) if data.get("t_upstream_s") is not None else None
             ),
             t_downstream_s=(
-                float(data["t_downstream_s"])
-                if data.get("t_downstream_s") is not None else None
+                float(data["t_downstream_s"]) if data.get("t_downstream_s") is not None else None
             ),
-            margin_s=(
-                float(data["margin_s"])
-                if data.get("margin_s") is not None else None
-            ),
+            margin_s=(float(data["margin_s"]) if data.get("margin_s") is not None else None),
         )
 
 
@@ -109,6 +105,7 @@ class SelectivityPairResult:
         margin_points: Margin points sorted ascending by i_a_primary
         trace: WHITE BOX trace for audit
     """
+
     pair_id: str
     upstream_relay_id: str
     downstream_relay_id: str
@@ -131,8 +128,7 @@ class SelectivityPairResult:
             upstream_relay_id=str(data["upstream_relay_id"]),
             downstream_relay_id=str(data["downstream_relay_id"]),
             margin_points=tuple(
-                SelectivityMarginPoint.from_dict(mp)
-                for mp in data.get("margin_points", [])
+                SelectivityMarginPoint.from_dict(mp) for mp in data.get("margin_points", [])
             ),
             trace=data.get("trace", {}),
         )
@@ -146,6 +142,7 @@ class CoordinationResultV1:
     - pairs sorted by pair_id
     - deterministic_signature = SHA-256 of canonical result JSON
     """
+
     pairs: tuple[SelectivityPairResult, ...] = field(default_factory=tuple)
     deterministic_signature: str = ""
 
@@ -158,10 +155,7 @@ class CoordinationResultV1:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CoordinationResultV1:
         return cls(
-            pairs=tuple(
-                SelectivityPairResult.from_dict(p)
-                for p in data.get("pairs", [])
-            ),
+            pairs=tuple(SelectivityPairResult.from_dict(p) for p in data.get("pairs", [])),
             deterministic_signature=str(data.get("deterministic_signature", "")),
         )
 
@@ -216,8 +210,7 @@ class DuplicatePairIdError(CoordinationError):
         super().__init__(
             code="coordination.duplicate_pair_id",
             message_pl=(
-                f"Zduplikowane pair_id: {pair_id}. "
-                f"Każda para musi mieć unikalny identyfikator."
+                f"Zduplikowane pair_id: {pair_id}. " f"Każda para musi mieć unikalny identyfikator."
             ),
         )
         self.pair_id = pair_id
@@ -274,18 +267,18 @@ def compute_coordination_v1(
 
         trace = _build_pair_trace(pair, margin_points)
 
-        pair_results.append(SelectivityPairResult(
-            pair_id=pair.pair_id,
-            upstream_relay_id=pair.upstream_relay_id,
-            downstream_relay_id=pair.downstream_relay_id,
-            margin_points=margin_points,
-            trace=trace,
-        ))
+        pair_results.append(
+            SelectivityPairResult(
+                pair_id=pair.pair_id,
+                upstream_relay_id=pair.upstream_relay_id,
+                downstream_relay_id=pair.downstream_relay_id,
+                margin_points=margin_points,
+                trace=trace,
+            )
+        )
 
     # Step 5: Sort by pair_id for determinism
-    sorted_pair_results = tuple(
-        sorted(pair_results, key=lambda p: p.pair_id)
-    )
+    sorted_pair_results = tuple(sorted(pair_results, key=lambda p: p.pair_id))
 
     # Step 6: Compute deterministic signature
     sig_data = {
@@ -326,9 +319,7 @@ def _validate_pairs(
             raise SameRelayPairError(pair.upstream_relay_id)
 
     # Check all relay IDs exist in protection result
-    result_relay_ids = {
-        rr.relay_id for rr in protection_result.relay_results
-    }
+    result_relay_ids = {rr.relay_id for rr in protection_result.relay_results}
     for pair in pairs:
         if pair.upstream_relay_id not in result_relay_ids:
             raise RelayNotInResultError(pair.upstream_relay_id, pair.pair_id)
@@ -400,9 +391,7 @@ def _compute_pair_margins(
     downstream_points = relay_lookup[pair.downstream_relay_id]
 
     # Find common test points (both relays evaluated at same points)
-    common_point_ids = sorted(
-        set(upstream_points.keys()) & set(downstream_points.keys())
-    )
+    common_point_ids = sorted(set(upstream_points.keys()) & set(downstream_points.keys()))
 
     margin_points: list[SelectivityMarginPoint] = []
 
@@ -418,17 +407,17 @@ def _compute_pair_margins(
         if t_upstream is not None and t_downstream is not None:
             margin = round(t_upstream - t_downstream, 6)
 
-        margin_points.append(SelectivityMarginPoint(
-            i_a_primary=i_a_primary,
-            t_upstream_s=t_upstream,
-            t_downstream_s=t_downstream,
-            margin_s=margin,
-        ))
+        margin_points.append(
+            SelectivityMarginPoint(
+                i_a_primary=i_a_primary,
+                t_upstream_s=t_upstream,
+                t_downstream_s=t_downstream,
+                margin_s=margin,
+            )
+        )
 
     # Sort by i_a_primary ascending (deterministic)
-    sorted_margins = tuple(
-        sorted(margin_points, key=lambda mp: mp.i_a_primary)
-    )
+    sorted_margins = tuple(sorted(margin_points, key=lambda mp: mp.i_a_primary))
 
     return sorted_margins
 
@@ -438,18 +427,14 @@ def _build_pair_trace(
     margin_points: tuple[SelectivityMarginPoint, ...],
 ) -> dict[str, Any]:
     """Build WHITE BOX trace for a selectivity pair."""
-    margins_with_value = [
-        mp.margin_s for mp in margin_points if mp.margin_s is not None
-    ]
+    margins_with_value = [mp.margin_s for mp in margin_points if mp.margin_s is not None]
 
     trace: dict[str, Any] = {
         "pair_id": pair.pair_id,
         "upstream_relay_id": pair.upstream_relay_id,
         "downstream_relay_id": pair.downstream_relay_id,
         "formula": "margin = t_upstream − t_downstream",
-        "sign_convention_pl": (
-            "Dodatni margines = upstream wolniejszy (oczekiwane)"
-        ),
+        "sign_convention_pl": ("Dodatni margines = upstream wolniejszy (oczekiwane)"),
         "total_points": len(margin_points),
         "points_with_margin": len(margins_with_value),
     }

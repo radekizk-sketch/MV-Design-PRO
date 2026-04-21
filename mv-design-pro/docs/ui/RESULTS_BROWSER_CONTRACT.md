@@ -1,32 +1,32 @@
-# Results Browser Contract
+﻿# Results Browser Contract
 
 **Version:** 1.0  
 **Status:** CANONICAL  
 **Phase:** 1.z  
-**Reference:** SYSTEM_SPEC.md, ARCHITECTURE.md, ETAP/PowerFactory UI Standards  
-**Standard:** DIgSILENT PowerFactory / ETAP UI Parity
+**Reference:** SYSTEM_SPEC.md, ARCHITECTURE.md, benchmark/benchmark UI Standards  
+**Standard:** DIgSILENT benchmark / benchmark UI Parity
 
 ---
 
 ## 1. Cel dokumentu
 
-Niniejszy dokument definiuje **kanoniczny kontrakt Results Browser** — centralnego narzędzia eksploracji wyników obliczeń jako alternatywy dla nawigacji SLD.
+Niniejszy dokument definiuje **kanoniczny kontrakt Results Browser** â€” centralnego narzÄ™dzia eksploracji wynikĂłw obliczeĹ„ jako alternatywy dla nawigacji SLD.
 
-**Filozofia:** Results Browser + SLD = dwa równorzędne okna do tych samych danych.
+**Filozofia:** Results Browser + SLD = dwa rĂłwnorzÄ™dne okna do tych samych danych.
 
 ---
 
-## 2. Definicje pojęć (BINDING)
+## 2. Definicje pojÄ™Ä‡ (BINDING)
 
 ### 2.1 Results Browser
 
-**Results Browser** to dedykowany panel UI umożliwiający eksplorację wyników obliczeń w strukturze hierarchicznej, niezależnie od układu graficznego SLD.
+**Results Browser** to dedykowany panel UI umoĹĽliwiajÄ…cy eksploracjÄ™ wynikĂłw obliczeĹ„ w strukturze hierarchicznej, niezaleĹĽnie od ukĹ‚adu graficznego SLD.
 
 | Atrybut | Opis |
 |---------|------|
 | Panel ID | Unikalny identyfikator panelu w UI |
 | View Mode | TABLE / TREE / HYBRID |
-| Active Filters | Lista aktywnych filtrów (violations, zone, voltage) |
+| Active Filters | Lista aktywnych filtrĂłw (violations, zone, voltage) |
 | Sort Order | Aktywna kolumna i kierunek sortowania |
 | Selected Element | Aktualnie zaznaczony element (sync z SLD) |
 
@@ -34,36 +34,36 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Results Browser** — central
 
 ```
 PROJECT
-  └── STUDY
-        └── CASE
-              └── SNAPSHOT
-                    └── ANALYSIS RUN
-                          ├── BUSES (node results)
-                          ├── VOLTAGE PROFILE (BUS-centric)
-                          ├── LINES (branch results)
-                          ├── TRANSFORMERS (branch results)
-                          ├── SOURCES (source results)
-                          ├── LOADS (load results)
-                          └── PROTECTIONS (P11 Proof available)
+  â””â”€â”€ STUDY
+        â””â”€â”€ CASE
+              â””â”€â”€ SNAPSHOT
+                    â””â”€â”€ ANALYSIS RUN
+                          â”śâ”€â”€ BUSES (node results)
+                          â”śâ”€â”€ VOLTAGE PROFILE (BUS-centric)
+                          â”śâ”€â”€ LINES (branch results)
+                          â”śâ”€â”€ TRANSFORMERS (branch results)
+                          â”śâ”€â”€ SOURCES (source results)
+                          â”śâ”€â”€ LOADS (load results)
+                          â””â”€â”€ PROTECTIONS (P11 Proof available)
 ```
 
 ---
 
-## 3. Hierarchia drzewa wyników (BINDING)
+## 3. Hierarchia drzewa wynikĂłw (BINDING)
 
 ### 3.1 Poziomy hierarchii
 
 | Poziom | Opis | Expandable | Default State |
 |--------|------|------------|---------------|
-| Project | Projekt główny | ✓ | Expanded |
-| Study | Studium (grupa Cases) | ✓ | Expanded |
-| Case | Przypadek obliczeniowy | ✓ | Expanded |
-| Snapshot | Zamrożony stan modelu | ✓ | Collapsed |
-| Analysis Run | Pojedynczy run obliczeń | ✓ | Collapsed |
-| Target Category | BUS/LINE/TRAFO/SOURCE/LOAD | ✓ | Collapsed |
-| Element | Konkretny element sieci | — | N/A |
+| Project | Projekt gĹ‚Ăłwny | âś“ | Expanded |
+| Study | Studium (grupa Cases) | âś“ | Expanded |
+| Case | Przypadek obliczeniowy | âś“ | Expanded |
+| Snapshot | ZamroĹĽony stan modelu | âś“ | Collapsed |
+| Analysis Run | Pojedynczy run obliczeĹ„ | âś“ | Collapsed |
+| Target Category | BUS/LINE/TRAFO/SOURCE/LOAD | âś“ | Collapsed |
+| Element | Konkretny element sieci | â€” | N/A |
 
-### 3.2 Metadata na każdym poziomie
+### 3.2 Metadata na kaĹĽdym poziomie
 
 **Case Level:**
 | Pole | Opis |
@@ -72,65 +72,65 @@ PROJECT
 | Case Type | SHORT_CIRCUIT / POWER_FLOW |
 | Result Status | NONE / FRESH / OUTDATED |
 | Last Computed | Timestamp ostatniego obliczenia |
-| Violations Count | Liczba przekroczeń norm |
+| Violations Count | Liczba przekroczeĹ„ norm |
 
 **Run Level:**
 | Pole | Opis |
 |------|------|
-| Run ID | UUID biegu obliczeń |
+| Run ID | UUID biegu obliczeĹ„ |
 | Run Timestamp | Data i czas uruchomienia |
 | Solver Version | Wersja solvera |
-| Duration [ms] | Czas obliczeń |
+| Duration [ms] | Czas obliczeĹ„ |
 | Status | SUCCESS / WARNING / ERROR |
 
 ---
 
-## 4. Tabele wyników (PowerFactory-grade)
+## 4. Tabele wynikĂłw (benchmark-grade)
 
-### 4.1 Tabela wyników zwarciowych (SC Results Table)
+### 4.1 Tabela wynikĂłw zwarciowych (SC Results Table)
 
-**Kolumny OBOWIĄZKOWE:**
+**Kolumny OBOWIÄ„ZKOWE:**
 
 | Kolumna | Opis | Format | Sortowalna |
 |---------|------|--------|------------|
-| Bus ID | Identyfikator węzła | UUID | ✓ |
-| Bus Name | Nazwa węzła | String | ✓ |
-| Voltage [kV] | Napięcie znamionowe | Float, 2 dec | ✓ |
-| Fault Type | Typ zwarcia | 3PH / 1PH / 2PH | ✓ |
-| Ik_max [kA] | Prąd zwarciowy max | Float, 2 dec | ✓ |
-| Ik_min [kA] | Prąd zwarciowy min | Float, 2 dec | ✓ |
-| ip [kA] | Prąd udarowy | Float, 2 dec | ✓ |
-| Ith [kA] | Prąd cieplny | Float, 2 dec | ✓ |
-| Sk [MVA] | Moc zwarciowa | Float, 1 dec | ✓ |
-| X/R | Stosunek X/R | Float, 2 dec | ✓ |
-| Status | OK / WARNING / VIOLATION | Enum | ✓ |
+| Bus ID | Identyfikator wÄ™zĹ‚a | UUID | âś“ |
+| Bus Name | Nazwa wÄ™zĹ‚a | String | âś“ |
+| Voltage [kV] | NapiÄ™cie znamionowe | Float, 2 dec | âś“ |
+| Fault Type | Typ zwarcia | 3PH / 1PH / 2PH | âś“ |
+| Ik_max [kA] | PrÄ…d zwarciowy max | Float, 2 dec | âś“ |
+| Ik_min [kA] | PrÄ…d zwarciowy min | Float, 2 dec | âś“ |
+| ip [kA] | PrÄ…d udarowy | Float, 2 dec | âś“ |
+| Ith [kA] | PrÄ…d cieplny | Float, 2 dec | âś“ |
+| Sk [MVA] | Moc zwarciowa | Float, 1 dec | âś“ |
+| X/R | Stosunek X/R | Float, 2 dec | âś“ |
+| Status | OK / WARNING / VIOLATION | Enum | âś“ |
 
-### 4.2 Tabela wyników rozpływu mocy (PF Results Table)
+### 4.2 Tabela wynikĂłw rozpĹ‚ywu mocy (PF Results Table)
 
-**Kolumny OBOWIĄZKOWE:**
+**Kolumny OBOWIÄ„ZKOWE:**
 
 | Kolumna | Opis | Format |
 |---------|------|--------|
 | Element ID | Identyfikator elementu | UUID |
 | Element Name | Nazwa elementu | String |
 | Element Type | BUS / LINE / TRAFO | Enum |
-| U [kV] | Napięcie (BUS) | Float, 3 dec |
-| U [p.u.] | Napięcie per unit (BUS) | Float, 3 dec |
+| U [kV] | NapiÄ™cie (BUS) | Float, 3 dec |
+| U [p.u.] | NapiÄ™cie per unit (BUS) | Float, 3 dec |
 | P [MW] | Moc czynna | Float, 3 dec |
 | Q [Mvar] | Moc bierna | Float, 3 dec |
-| I [A] | Prąd (LINE/TRAFO) | Float, 1 dec |
-| Loading [%] | Obciążenie termiczne | Float, 1 dec |
+| I [A] | PrÄ…d (LINE/TRAFO) | Float, 1 dec |
+| Loading [%] | ObciÄ…ĹĽenie termiczne | Float, 1 dec |
 | P_loss [kW] | Straty mocy czynnej | Float, 2 dec |
 | Status | OK / OVERLOAD / UNDERVOLTAGE | Enum |
 
 ### 4.3 Filtrowanie
 
-**Filtry dostępne:**
+**Filtry dostÄ™pne:**
 
-| Filtr | Opis | Wartości |
+| Filtr | Opis | WartoĹ›ci |
 |-------|------|----------|
 | Violations Only | Tylko przekroczenia | Boolean |
-| Voltage Range | Zakres napięć | [U_min, U_max] kV |
+| Voltage Range | Zakres napiÄ™Ä‡ | [U_min, U_max] kV |
 | Zone | Strefa / feeder | Zone ID |
 | Element Type | Typ elementu | BUS / LINE / TRAFO / ALL |
 | Status | Status wyniku | OK / WARNING / VIOLATION |
@@ -138,52 +138,52 @@ PROJECT
 
 ### 4.4 Sortowanie
 
-**Reguły sortowania:**
+**ReguĹ‚y sortowania:**
 
-1. Kliknięcie nagłówka kolumny → sortowanie rosnące
-2. Drugie kliknięcie → sortowanie malejące
-3. Trzecie kliknięcie → reset do domyślnego (unsorted / by name)
+1. KlikniÄ™cie nagĹ‚Ăłwka kolumny â†’ sortowanie rosnÄ…ce
+2. Drugie klikniÄ™cie â†’ sortowanie malejÄ…ce
+3. Trzecie klikniÄ™cie â†’ reset do domyĹ›lnego (unsorted / by name)
 4. Wielokolumnowe sortowanie: SHIFT + klik
 
 ---
 
-## 5. Porównania Case / Snapshot (MUST)
+## 5. PorĂłwnania Case / Snapshot (MUST)
 
 ### 5.1 Delta View (Comparison Mode)
 
-**Cel:** Porównanie wyników między dwoma (lub trzema) Cases/Snapshots.
+**Cel:** PorĂłwnanie wynikĂłw miÄ™dzy dwoma (lub trzema) Cases/Snapshots.
 
 **Aktywacja:** 
 - Przycisk "Compare" w toolbarze Results Browser
-- Wybór Case A (baseline), Case B (comparison), opcjonalnie Case C
+- WybĂłr Case A (baseline), Case B (comparison), opcjonalnie Case C
 
-**Kolumny w trybie porównania:**
+**Kolumny w trybie porĂłwnania:**
 
 | Kolumna | Opis |
 |---------|------|
 | Element | Identyfikator elementu |
-| Value A | Wartość w Case A |
-| Value B | Wartość w Case B |
-| Δ (B-A) | Różnica absolutna |
-| %Δ | Różnica procentowa |
-| Trend | ▲ IMPROVED / ▼ REGRESSED / = NO_CHANGE |
+| Value A | WartoĹ›Ä‡ w Case A |
+| Value B | WartoĹ›Ä‡ w Case B |
+| Î” (B-A) | RĂłĹĽnica absolutna |
+| %Î” | RĂłĹĽnica procentowa |
+| Trend | â–˛ IMPROVED / â–Ľ REGRESSED / = NO_CHANGE |
 
 ### 5.2 Highlighting zmian
 
 | Trend | Kolor | Znaczenie |
 |-------|-------|-----------|
-| ▲ IMPROVED | Zielony (#22C55E) | Wartość poprawiła się (np. spadek Ik″) |
-| ▼ REGRESSED | Czerwony (#EF4444) | Wartość pogorszyła się |
-| = NO_CHANGE | Szary (#9CA3AF) | Brak istotnej zmiany (|%Δ| < 0.1%) |
+| â–˛ IMPROVED | Zielony (#22C55E) | WartoĹ›Ä‡ poprawiĹ‚a siÄ™ (np. spadek Ikâ€ł) |
+| â–Ľ REGRESSED | Czerwony (#EF4444) | WartoĹ›Ä‡ pogorszyĹ‚a siÄ™ |
+| = NO_CHANGE | Szary (#9CA3AF) | Brak istotnej zmiany (|%Î”| < 0.1%) |
 
-### 5.3 Progi istotności
+### 5.3 Progi istotnoĹ›ci
 
-| Rodzaj zmiany | Próg |
+| Rodzaj zmiany | PrĂłg |
 |---------------|------|
-| Nieistotna | |%Δ| < 0.1% |
-| Mała | 0.1% ≤ |%Δ| < 5% |
-| Znacząca | 5% ≤ |%Δ| < 15% |
-| Duża | |%Δ| ≥ 15% |
+| Nieistotna | |%Î”| < 0.1% |
+| MaĹ‚a | 0.1% â‰¤ |%Î”| < 5% |
+| ZnaczÄ…ca | 5% â‰¤ |%Î”| < 15% |
+| DuĹĽa | |%Î”| â‰Ą 15% |
 
 ---
 
@@ -204,46 +204,46 @@ PROJECT
 | All Data | Wszystkie wiersze |
 | Visible Only | Tylko widoczne (po filtrach) |
 | Selected Only | Tylko zaznaczone |
-| Include Metadata | Dołącz nagłówek z Case/Run info |
+| Include Metadata | DoĹ‚Ä…cz nagĹ‚Ăłwek z Case/Run info |
 
 ### 6.3 Nazwa pliku (deterministyczna)
 
 Format: `{project}_{case}_{analysis}_{timestamp}.{ext}`
 
-Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
+PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ---
 
 ## 7. Synchronizacja z SLD (BINDING)
 
-### 7.1 Reguły synchronizacji
+### 7.1 ReguĹ‚y synchronizacji
 
 | Akcja w Results Browser | Reakcja w SLD |
 |-------------------------|---------------|
-| Kliknięcie wiersza | Podświetlenie elementu na SLD |
-| Podwójne kliknięcie | Centrowanie SLD na elemencie |
-| Hover nad wierszem | Tooltip z miniaturą SLD (opcjonalne) |
+| KlikniÄ™cie wiersza | PodĹ›wietlenie elementu na SLD |
+| PodwĂłjne klikniÄ™cie | Centrowanie SLD na elemencie |
+| Hover nad wierszem | Tooltip z miniaturÄ… SLD (opcjonalne) |
 
 | Akcja w SLD | Reakcja w Results Browser |
 |-------------|---------------------------|
-| Kliknięcie elementu | Podświetlenie wiersza + scroll to |
+| KlikniÄ™cie elementu | PodĹ›wietlenie wiersza + scroll to |
 | Hover nad elementem | Highlight wiersza (light background) |
 
 ### 7.2 Focus Lock
 
-**Focus Lock** = Results Browser i SLD dzielą wspólny fokus.
+**Focus Lock** = Results Browser i SLD dzielÄ… wspĂłlny fokus.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    SINGLE GLOBAL FOCUS                           │
-│  Global Focus = (Target Element, Case, Run, Snapshot, Analysis) │
-│                                                                  │
-│       Results Browser ←───────────→ SLD Viewer                   │
-│              │                           │                       │
-│              └───────────────────────────┘                       │
-│                        ↓                                         │
-│                Element Inspector                                 │
-└─────────────────────────────────────────────────────────────────┘
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚                    SINGLE GLOBAL FOCUS                           â”‚
+â”‚  Global Focus = (Target Element, Case, Run, Snapshot, Analysis) â”‚
+â”‚                                                                  â”‚
+â”‚       Results Browser â†â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â†’ SLD Viewer                   â”‚
+â”‚              â”‚                           â”‚                       â”‚
+â”‚              â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                       â”‚
+â”‚                        â†“                                         â”‚
+â”‚                Element Inspector                                 â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 ---
@@ -254,7 +254,7 @@ Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 | Akcja | Reakcja |
 |-------|---------|
-| Klik wiersza → Inspector | Otwarcie Element Inspector dla elementu |
+| Klik wiersza â†’ Inspector | Otwarcie Element Inspector dla elementu |
 | Double-click | Inspector + Results tab active |
 
 ### 8.2 Topology Tree
@@ -266,7 +266,7 @@ Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ### 8.3 Global Context Bar
 
-| Pole w Context Bar | Źródło |
+| Pole w Context Bar | ĹąrĂłdĹ‚o |
 |--------------------|--------|
 | Active Case | Results Browser selection |
 | Active Snapshot | Results Browser selection |
@@ -276,23 +276,23 @@ Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ## 9. Tryby eksperckie (EXPERT MODES)
 
-### 9.1 Widoczność kolumn per tryb
+### 9.1 WidocznoĹ›Ä‡ kolumn per tryb
 
-| Tryb | Domyślne kolumny |
+| Tryb | DomyĹ›lne kolumny |
 |------|------------------|
 | Operator | Name, Status, Voltage, Violation |
 | Designer | Name, Status, Voltage, P, Q, I, Loading |
 | Analyst | Wszystkie + X/R, Contributions |
 | Auditor | Wszystkie + Metadata (Timestamp, User, Diff) |
 
-### 9.2 Domyślne rozwinięcia drzewa per tryb
+### 9.2 DomyĹ›lne rozwiniÄ™cia drzewa per tryb
 
-| Tryb | Domyślne rozwinięcie |
+| Tryb | DomyĹ›lne rozwiniÄ™cie |
 |------|----------------------|
-| Operator | Case → Buses (violations only) |
-| Designer | Case → Snapshot → All Categories |
-| Analyst | Wszystko rozwinięte |
-| Auditor | Wszystko rozwinięte + History visible |
+| Operator | Case â†’ Buses (violations only) |
+| Designer | Case â†’ Snapshot â†’ All Categories |
+| Analyst | Wszystko rozwiniÄ™te |
+| Auditor | Wszystko rozwiniÄ™te + History visible |
 
 ---
 
@@ -311,11 +311,11 @@ Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 | Klawisz | Akcja |
 |---------|-------|
-| ↑/↓ | Nawigacja między wierszami |
-| Enter | Otwórz Element Inspector |
+| â†‘/â†“ | Nawigacja miÄ™dzy wierszami |
+| Enter | OtwĂłrz Element Inspector |
 | Ctrl+F | Focus na search box |
 | Escape | Zamknij modal / reset filtrow |
-| Tab | Przejdź do następnego focusable |
+| Tab | PrzejdĹş do nastÄ™pnego focusable |
 
 ---
 
@@ -339,49 +339,49 @@ Przykład: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ---
 
-## 12. ETAP / PowerFactory Parity
+## 12. benchmark / benchmark Parity
 
 ### 12.1 Feature Comparison
 
-| Feature | ETAP | PowerFactory | MV-DESIGN-PRO | Status |
+| Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| Hierarchical Tree | ✓ | ✓ | ✓ | ✅ FULL |
-| Multi-Case View | ✓ | ✓ | ✓ | ✅ FULL |
-| Delta Comparison | ✗ | ✓ | ✓ | ✅ FULL |
-| Trend Highlighting | ✗ | ✓ | ✓ + Auto | ➕ SUPERIOR |
-| Export CSV/Excel | ✓ | ✓ | ✓ | ✅ FULL |
-| Export PDF | ✓ | ✗ | ✓ | ➕ SUPERIOR |
-| Sync with SLD | ✓ | ✓ | ✓ + Focus Lock | ➕ SUPERIOR |
-| Virtual Scrolling | ✗ | ✓ | ✓ | ✅ FULL |
-| Expert Modes | ✗ | ✗ | ✓ | ➕ SUPERIOR |
-| Global Context Bar | ✗ | ✗ | ✓ | ➕ SUPERIOR |
+| Hierarchical Tree | âś“ | âś“ | âś“ | âś… FULL |
+| Multi-Case View | âś“ | âś“ | âś“ | âś… FULL |
+| Delta Comparison | âś— | âś“ | âś“ | âś… FULL |
+| Trend Highlighting | âś— | âś“ | âś“ + Auto | âž• SUPERIOR |
+| Export CSV/Excel | âś“ | âś“ | âś“ | âś… FULL |
+| Export PDF | âś“ | âś— | âś“ | âž• SUPERIOR |
+| Sync with SLD | âś“ | âś“ | âś“ + Focus Lock | âž• SUPERIOR |
+| Virtual Scrolling | âś— | âś“ | âś“ | âś… FULL |
+| Expert Modes | âś— | âś— | âś“ | âž• SUPERIOR |
+| Global Context Bar | âś— | âś— | âś“ | âž• SUPERIOR |
 
-### 12.2 Ocena końcowa
+### 12.2 Ocena koĹ„cowa
 
-**MV-DESIGN-PRO Results Browser ≥ ETAP Results View ≥ PowerFactory Output Window** ✅
+**MV-DESIGN-PRO Results Browser â‰Ą benchmark Results View â‰Ą benchmark Output Window** âś…
 
 ---
 
 ## 13. Scenariusze poprawne (ALLOWED)
 
-### 13.1 Scenariusz: Eksploracja wyników zwarciowych
+### 13.1 Scenariusz: Eksploracja wynikĂłw zwarciowych
 
 ```
 USER: Otwiera Results Browser
-USER: Rozwija Case → Snapshot → Run → Buses
+USER: Rozwija Case â†’ Snapshot â†’ Run â†’ Buses
 USER: Klika "Violations Only" filter
 SYSTEM: Tabela pokazuje tylko Bus z Status = VIOLATION
-USER: Sortuje po Ik_max (malejąco)
+USER: Sortuje po Ik_max (malejÄ…co)
 USER: Klika wiersz Bus_007
-SYSTEM: SLD centruje na Bus_007, Element Inspector otwiera się
+SYSTEM: SLD centruje na Bus_007, Element Inspector otwiera siÄ™
 ```
 
-### 13.2 Scenariusz: Porównanie dwóch Cases
+### 13.2 Scenariusz: PorĂłwnanie dwĂłch Cases
 
 ```
 USER: Klika "Compare" w toolbarze
 USER: Wybiera Case A = SC_BASE, Case B = SC_VARIANT
-SYSTEM: Tabela przełącza w tryb Delta View
+SYSTEM: Tabela przeĹ‚Ä…cza w tryb Delta View
 SYSTEM: Koloruje wiersze: zielone (improved), czerwone (regressed)
 USER: Filtruje "REGRESSED only"
 USER: Eksportuje do PDF
@@ -395,52 +395,52 @@ USER: Eksportuje do PDF
 
 **FORBIDDEN:**
 ```
-❌ Results Browser przechowuje kopię wyników (shadow store)
+âťŚ Results Browser przechowuje kopiÄ™ wynikĂłw (shadow store)
 ```
 
 **CORRECT:**
 ```
-✓ Results Browser czyta z Analysis Layer (read-only)
+âś“ Results Browser czyta z Analysis Layer (read-only)
 ```
 
 ### 14.2 Brak synchronizacji
 
 **FORBIDDEN:**
 ```
-❌ Klik w Results Browser NIE aktualizuje SLD
+âťŚ Klik w Results Browser NIE aktualizuje SLD
 ```
 
 **CORRECT:**
 ```
-✓ Single Global Focus — klik → aktualizacja ALL widoków
+âś“ Single Global Focus â€” klik â†’ aktualizacja ALL widokĂłw
 ```
 
 ### 14.3 Ukrywanie kolumn bez powodu
 
 **FORBIDDEN:**
 ```
-❌ "Basic Mode" ukrywa kolumny X/R, Contributions
+âťŚ "Basic Mode" ukrywa kolumny X/R, Contributions
 ```
 
 **CORRECT:**
 ```
-✓ Expert Modes zmieniają DOMYŚLNE widoczności, użytkownik może pokazać wszystko
+âś“ Expert Modes zmieniajÄ… DOMYĹšLNE widocznoĹ›ci, uĹĽytkownik moĹĽe pokazaÄ‡ wszystko
 ```
 
 ---
 
 ## 15. Compliance Checklist
 
-**Implementacja zgodna z RESULTS_BROWSER_CONTRACT.md, jeśli:**
+**Implementacja zgodna z RESULTS_BROWSER_CONTRACT.md, jeĹ›li:**
 
-- [ ] Results Browser implementuje hierarchię drzewa (Project → Study → Case → Snapshot → Run → Category → Element)
-- [ ] Tabele SC i PF zawierają wszystkie OBOWIĄZKOWE kolumny
-- [ ] Sortowanie, filtrowanie działa dla wszystkich kolumn
+- [ ] Results Browser implementuje hierarchiÄ™ drzewa (Project â†’ Study â†’ Case â†’ Snapshot â†’ Run â†’ Category â†’ Element)
+- [ ] Tabele SC i PF zawierajÄ… wszystkie OBOWIÄ„ZKOWE kolumny
+- [ ] Sortowanie, filtrowanie dziaĹ‚a dla wszystkich kolumn
 - [ ] Delta View (Compare) implementuje trend highlighting
 - [ ] Eksport CSV/Excel/PDF zachowuje wszystkie kolumny i metadane
-- [ ] Synchronizacja z SLD (klik → highlight, double-click → center)
-- [ ] Focus Lock (Single Global Focus) działa między Results Browser, SLD, Element Inspector
-- [ ] Expert Modes zmieniają domyślne widoczności, NIE ukrywają danych
+- [ ] Synchronizacja z SLD (klik â†’ highlight, double-click â†’ center)
+- [ ] Focus Lock (Single Global Focus) dziaĹ‚a miÄ™dzy Results Browser, SLD, Element Inspector
+- [ ] Expert Modes zmieniajÄ… domyĹ›lne widocznoĹ›ci, NIE ukrywajÄ… danych
 - [ ] Screen reader support (ARIA labels)
 - [ ] Virtual scrolling dla > 500 wierszy
 - [ ] Performance: render < 500ms, sort < 200ms, filter < 300ms
@@ -451,8 +451,9 @@ USER: Eksportuje do PDF
 
 | Data | Wersja | Zmiany |
 |------|--------|--------|
-| 2026-01-28 | 1.0 | Utworzenie dokumentu — Phase 1.z |
+| 2026-01-28 | 1.0 | Utworzenie dokumentu â€” Phase 1.z |
 
 ---
 
 **KONIEC KONTRAKTU RESULTS BROWSER**
+

@@ -5,7 +5,6 @@ from importlib.util import find_spec
 from uuid import UUID
 
 import pytest
-
 from analysis.normative.models import (
     NormativeContext,
     NormativeItem,
@@ -13,23 +12,23 @@ from analysis.normative.models import (
     NormativeSeverity,
     NormativeStatus,
 )
-from analysis.protection_insight.models import (
-    ProtectionInsightContext,
-    ProtectionInsightItem,
-    ProtectionInsightSummary,
-    ProtectionInsightView,
-    ProtectionSelectivityStatus,
-)
 from analysis.protection_curves_it.models import (
+    ITCurvePoint,
     ITCurveRole,
     ITCurveSeries,
     ITCurveSource,
     ITCurveType,
     ITMarker,
     ITMarkerKind,
-    ITCurvePoint,
     ProtectionCurvesITContext,
     ProtectionCurvesITView,
+)
+from analysis.protection_insight.models import (
+    ProtectionInsightContext,
+    ProtectionInsightItem,
+    ProtectionInsightSummary,
+    ProtectionInsightView,
+    ProtectionSelectivityStatus,
 )
 from analysis.reporting.pdf import export_p24_plus_report_pdf
 from analysis.voltage_profile.models import (
@@ -40,7 +39,6 @@ from analysis.voltage_profile.models import (
     VoltageProfileView,
 )
 from application.proof_engine.types import ProofDocument, ProofHeader, ProofSummary, ProofType
-
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
@@ -247,9 +245,7 @@ def _sample_protection_curves() -> ProtectionCurvesITView:
             source=ITCurveSource.CATALOG,
         ),
     )
-    markers = (
-        ITMarker(kind=ITMarkerKind.IKSS, i_a=12000.0, t_s=None, source_proof_id="p1"),
-    )
+    markers = (ITMarker(kind=ITMarkerKind.IKSS, i_a=12000.0, t_s=None, source_proof_id="p1"),)
     return ProtectionCurvesITView(
         context=context,
         bus_id="BUS-1",
@@ -284,7 +280,7 @@ def _sample_proof_documents() -> tuple[ProofDocument, ...]:
         proof_type=ProofType.PROTECTION_OVERCURRENT,
         title_pl="Dowód zabezpieczeń",
         header=header,
-        steps=tuple(),
+        steps=(),
         summary=summary,
     )
     return (doc,)

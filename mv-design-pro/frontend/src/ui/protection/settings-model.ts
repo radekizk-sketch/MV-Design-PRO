@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - ANSI/IEEE C37.2: Device function numbers
  * - IEC 60255: Protection relay characteristics
- * - PowerFactory/ETAP parity: Settings representation
+ * - Canonical/CANONICAL parity: Settings representation
  *
  * ZASADA KLUCZOWA:
  * - SETPOINT = źródło prawdy (np. 3×In, 0.8×Un, 47.5 Hz)
@@ -275,10 +275,10 @@ export const FUNCTION_CODE_TO_ANSI: Record<ProtectionFunctionCode, AnsiDeviceNum
  * Etykiety polskie dla funkcji zabezpieczeniowych.
  */
 export const FUNCTION_CODE_LABELS_PL: Record<ProtectionFunctionCode, string> = {
-  UNDERVOLTAGE: 'Podnapieciowa (U<)',
-  OVERVOLTAGE: 'Nadnapieciowa (U>)',
-  OVERCURRENT_INST: 'Nadpradowa zwarciowa (I>>)',
-  OVERCURRENT_TIME: 'Nadpradowa czasowa (I>)',
+  UNDERVOLTAGE: 'Podnapięciowa (U<)',
+  OVERVOLTAGE: 'Nadnapięciowa (U>)',
+  OVERCURRENT_INST: 'Nadprądowa zwarciowa (I>>)',
+  OVERCURRENT_TIME: 'Nadprądowa czasowa (I>)',
   EARTH_FAULT_INST: 'Ziemnozwarciowa zwarciowa (Io>>)',
   EARTH_FAULT_TIME: 'Ziemnozwarciowa czasowa (Io>)',
   UNDERFREQUENCY: 'Podczestotliwosciowa (f<)',
@@ -287,7 +287,7 @@ export const FUNCTION_CODE_LABELS_PL: Record<ProtectionFunctionCode, string> = {
   RECLOSING: 'SPZ (Samoczynne Ponowne Zalaczenie)',
   DISTANCE: 'Odleglosciowa',
   DIFFERENTIAL: 'Roznicowa',
-  DIRECTIONAL_OC: 'Kierunkowa nadpradowa',
+  DIRECTIONAL_OC: 'Kierunkowa nadprądowa',
   SYNCHROCHECK: 'Kontrola synchronizmu',
   THERMAL: 'Przeciazeniowa termiczna',
 };
@@ -296,21 +296,21 @@ export const FUNCTION_CODE_LABELS_PL: Record<ProtectionFunctionCode, string> = {
  * Etykiety polskie dla bazy nastawy.
  */
 export const SETPOINT_BASIS_LABELS_PL: Record<ProtectionSetpointBasis, string> = {
-  UN: 'Napiecie znamionowe (Un)',
-  IN: 'Prad znamionowy (In)',
-  HZ: 'Czestotliwosc bazowa (fn)',
-  ABS: 'Wartosc bezwzgledna',
+  UN: 'Napięcie znamionowe (Un)',
+  IN: 'Prąd znamionowy (In)',
+  HZ: 'Częstotliwość bazowa (fn)',
+  ABS: 'Wartość bezwzględna',
 };
 
 /**
  * Etykiety polskie dla operatorów.
  */
 export const SETPOINT_OPERATOR_LABELS_PL: Record<ProtectionSetpointOperator, string> = {
-  LT: 'mniejszy niz (<)',
-  GT: 'wiekszy niz (>)',
-  GE: 'wiekszy lub rowny (>=)',
-  LE: 'mniejszy lub rowny (<=)',
-  EQ: 'rowny (=)',
+  LT: 'mniejszy niż (<)',
+  GT: 'większy niż (>)',
+  GE: 'większy lub równy (>=)',
+  LE: 'mniejszy lub równy (<=)',
+  EQ: 'równy (=)',
 };
 
 // =============================================================================

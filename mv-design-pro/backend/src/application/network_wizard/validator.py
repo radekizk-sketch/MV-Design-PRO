@@ -32,16 +32,28 @@ def _eval_k1(enm: dict[str, Any]) -> StepState:
     if name and name.strip():
         completion += 50
     else:
-        issues.append(WizardIssue(
-            code="K1_NO_NAME", severity=IssueSeverity.BLOCKER,
-            message_pl="Brak nazwy projektu", wizard_step_hint="K1",
-        ))
+        issues.append(
+            WizardIssue(
+                code="K1_NO_NAME",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Brak nazwy projektu",
+                wizard_step_hint="K1",
+            )
+        )
     defaults = header.get("defaults", {})
     if defaults.get("frequency_hz", 0) > 0:
         completion += 50
-    status = StepStatus.ERROR if any(i.severity == IssueSeverity.BLOCKER for i in issues) \
-        else StepStatus.COMPLETE if completion == 100 \
-        else StepStatus.PARTIAL if completion > 0 else StepStatus.EMPTY
+    status = (
+        StepStatus.ERROR
+        if any(i.severity == IssueSeverity.BLOCKER for i in issues)
+        else (
+            StepStatus.COMPLETE
+            if completion == 100
+            else StepStatus.PARTIAL
+            if completion > 0
+            else StepStatus.EMPTY
+        )
+    )
     return StepState(step_id="K1", status=status, completion_percent=completion, issues=issues)
 
 
@@ -57,21 +69,39 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
         if source_bus.get("voltage_kv", 0) > 0:
             completion += 33
     else:
-        issues.append(WizardIssue(
-            code="K2_NO_SOURCE_BUS", severity=IssueSeverity.BLOCKER,
-            message_pl="Brak szyny źródłowej", wizard_step_hint="K2",
-        ))
+        issues.append(
+            WizardIssue(
+                code="K2_NO_SOURCE_BUS",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Brak szyny źródłowej",
+                wizard_step_hint="K2",
+            )
+        )
     if sources:
         completion += 33
     else:
-        issues.append(WizardIssue(
-            code="K2_NO_SOURCE", severity=IssueSeverity.BLOCKER,
-            message_pl="Brak źródła zasilania", wizard_step_hint="K2",
-        ))
-    status = StepStatus.ERROR if any(i.severity == IssueSeverity.BLOCKER for i in issues) \
-        else StepStatus.COMPLETE if completion >= 90 \
-        else StepStatus.PARTIAL if completion > 0 else StepStatus.EMPTY
-    return StepState(step_id="K2", status=status, completion_percent=min(100, completion), issues=issues)
+        issues.append(
+            WizardIssue(
+                code="K2_NO_SOURCE",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Brak źródła zasilania",
+                wizard_step_hint="K2",
+            )
+        )
+    status = (
+        StepStatus.ERROR
+        if any(i.severity == IssueSeverity.BLOCKER for i in issues)
+        else (
+            StepStatus.COMPLETE
+            if completion >= 90
+            else StepStatus.PARTIAL
+            if completion > 0
+            else StepStatus.EMPTY
+        )
+    )
+    return StepState(
+        step_id="K2", status=status, completion_percent=min(100, completion), issues=issues
+    )
 
 
 def _eval_k3(enm: dict[str, Any]) -> StepState:
@@ -80,10 +110,14 @@ def _eval_k3(enm: dict[str, Any]) -> StepState:
     buses = enm.get("buses", [])
     completion = 100 if buses else 0
     if not buses:
-        issues.append(WizardIssue(
-            code="K3_NO_BUSES", severity=IssueSeverity.BLOCKER,
-            message_pl="Brak szyn w modelu", wizard_step_hint="K3",
-        ))
+        issues.append(
+            WizardIssue(
+                code="K3_NO_BUSES",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Brak szyn w modelu",
+                wizard_step_hint="K3",
+            )
+        )
     status = StepStatus.COMPLETE if buses else StepStatus.EMPTY
     return StepState(step_id="K3", status=status, completion_percent=completion, issues=issues)
 
@@ -98,19 +132,29 @@ def _eval_k4(enm: dict[str, Any]) -> StepState:
     completion = 100 if lines else 0
     for ln in lines:
         if ln.get("from_bus_ref") not in bus_refs:
-            issues.append(WizardIssue(
-                code="K4_DANGLING_FROM", severity=IssueSeverity.BLOCKER,
-                message_pl=f"Gałąź {ln.get('name', '?')}: szyna źródłowa nie istnieje",
-                element_ref=ln.get("ref_id"), wizard_step_hint="K4",
-            ))
+            issues.append(
+                WizardIssue(
+                    code="K4_DANGLING_FROM",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna źródłowa nie istnieje",
+                    element_ref=ln.get("ref_id"),
+                    wizard_step_hint="K4",
+                )
+            )
         if ln.get("to_bus_ref") not in bus_refs:
-            issues.append(WizardIssue(
-                code="K4_DANGLING_TO", severity=IssueSeverity.BLOCKER,
-                message_pl=f"Gałąź {ln.get('name', '?')}: szyna docelowa nie istnieje",
-                element_ref=ln.get("ref_id"), wizard_step_hint="K4",
-            ))
+            issues.append(
+                WizardIssue(
+                    code="K4_DANGLING_TO",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Gałąź {ln.get('name', '?')}: szyna docelowa nie istnieje",
+                    element_ref=ln.get("ref_id"),
+                    wizard_step_hint="K4",
+                )
+            )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
-    status = StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if lines else StepStatus.EMPTY
+    status = (
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if lines else StepStatus.EMPTY
+    )
     return StepState(step_id="K4", status=status, completion_percent=completion, issues=issues)
 
 
@@ -121,19 +165,29 @@ def _eval_k5(enm: dict[str, Any]) -> StepState:
     completion = 100 if trafos else 0
     for t in trafos:
         if t.get("uk_percent", 0) <= 0:
-            issues.append(WizardIssue(
-                code="K5_UK_ZERO", severity=IssueSeverity.BLOCKER,
-                message_pl=f"Trafo {t.get('name', '?')}: uk% = 0",
-                element_ref=t.get("ref_id"), wizard_step_hint="K5",
-            ))
+            issues.append(
+                WizardIssue(
+                    code="K5_UK_ZERO",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Trafo {t.get('name', '?')}: uk% = 0",
+                    element_ref=t.get("ref_id"),
+                    wizard_step_hint="K5",
+                )
+            )
         if t.get("sn_mva", 0) <= 0:
-            issues.append(WizardIssue(
-                code="K5_SN_ZERO", severity=IssueSeverity.BLOCKER,
-                message_pl=f"Trafo {t.get('name', '?')}: Sn = 0",
-                element_ref=t.get("ref_id"), wizard_step_hint="K5",
-            ))
+            issues.append(
+                WizardIssue(
+                    code="K5_SN_ZERO",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Trafo {t.get('name', '?')}: Sn = 0",
+                    element_ref=t.get("ref_id"),
+                    wizard_step_hint="K5",
+                )
+            )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
-    status = StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if trafos else StepStatus.EMPTY
+    status = (
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if trafos else StepStatus.EMPTY
+    )
     return StepState(step_id="K5", status=status, completion_percent=completion, issues=issues)
 
 
@@ -148,13 +202,19 @@ def _eval_k6(enm: dict[str, Any]) -> StepState:
     completion = 100 if cnt > 0 else 0
     for ld in loads:
         if ld.get("bus_ref") not in bus_refs:
-            issues.append(WizardIssue(
-                code="K6_LOAD_DANGLING", severity=IssueSeverity.BLOCKER,
-                message_pl=f"Odbiór {ld.get('name', '?')}: szyna nie istnieje",
-                element_ref=ld.get("ref_id"), wizard_step_hint="K6",
-            ))
+            issues.append(
+                WizardIssue(
+                    code="K6_LOAD_DANGLING",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=f"Odbiór {ld.get('name', '?')}: szyna nie istnieje",
+                    element_ref=ld.get("ref_id"),
+                    wizard_step_hint="K6",
+                )
+            )
     has_blockers = any(i.severity == IssueSeverity.BLOCKER for i in issues)
-    status = StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if cnt > 0 else StepStatus.EMPTY
+    status = (
+        StepStatus.ERROR if has_blockers else StepStatus.COMPLETE if cnt > 0 else StepStatus.EMPTY
+    )
     return StepState(step_id="K6", status=status, completion_percent=completion, issues=issues)
 
 
@@ -164,20 +224,34 @@ def _eval_k7(enm: dict[str, Any]) -> StepState:
     branches = enm.get("branches", [])
     sources = enm.get("sources", [])
     lines = [b for b in branches if b.get("type") in ("line_overhead", "cable")]
-    lines_no_z0 = [l for l in lines if l.get("r0_ohm_per_km") is None and l.get("x0_ohm_per_km") is None]
-    src_no_z0 = [s for s in sources if s.get("r0_ohm") is None and s.get("x0_ohm") is None and s.get("z0_z1_ratio") is None]
+    lines_no_z0 = [
+        line
+        for line in lines
+        if line.get("r0_ohm_per_km") is None and line.get("x0_ohm_per_km") is None
+    ]
+    src_no_z0 = [
+        s
+        for s in sources
+        if s.get("r0_ohm") is None and s.get("x0_ohm") is None and s.get("z0_z1_ratio") is None
+    ]
     if lines_no_z0:
-        issues.append(WizardIssue(
-            code="K7_LINES_NO_Z0", severity=IssueSeverity.INFO,
-            message_pl=f"{len(lines_no_z0)} gałęzi bez impedancji zerowej Z0",
-            wizard_step_hint="K7",
-        ))
+        issues.append(
+            WizardIssue(
+                code="K7_LINES_NO_Z0",
+                severity=IssueSeverity.INFO,
+                message_pl=f"{len(lines_no_z0)} gałęzi bez impedancji zerowej Z0",
+                wizard_step_hint="K7",
+            )
+        )
     if src_no_z0:
-        issues.append(WizardIssue(
-            code="K7_SRC_NO_Z0", severity=IssueSeverity.INFO,
-            message_pl=f"{len(src_no_z0)} źródeł bez impedancji zerowej Z0",
-            wizard_step_hint="K7",
-        ))
+        issues.append(
+            WizardIssue(
+                code="K7_SRC_NO_Z0",
+                severity=IssueSeverity.INFO,
+                message_pl=f"{len(src_no_z0)} źródeł bez impedancji zerowej Z0",
+                wizard_step_hint="K7",
+            )
+        )
     total = len(lines) + len(sources)
     with_z0 = (len(lines) - len(lines_no_z0)) + (len(sources) - len(src_no_z0))
     completion = round((with_z0 / total) * 100) if total > 0 else 100
@@ -212,14 +286,24 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
 
     # SC 1F
     lines = [b for b in branches if b.get("type") in ("line_overhead", "cable")]
-    all_lines_z0 = all(
-        l.get("r0_ohm_per_km") is not None or l.get("x0_ohm_per_km") is not None
-        for l in lines
-    ) if lines else True
-    all_src_z0 = all(
-        s.get("r0_ohm") is not None or s.get("x0_ohm") is not None or s.get("z0_z1_ratio") is not None
-        for s in sources
-    ) if sources else True
+    all_lines_z0 = (
+        all(
+            line.get("r0_ohm_per_km") is not None or line.get("x0_ohm_per_km") is not None
+            for line in lines
+        )
+        if lines
+        else True
+    )
+    all_src_z0 = (
+        all(
+            s.get("r0_ohm") is not None
+            or s.get("x0_ohm") is not None
+            or s.get("z0_z1_ratio") is not None
+            for s in sources
+        )
+        if sources
+        else True
+    )
     sc1f_missing = list(sc3f_missing)
     if not all_lines_z0:
         sc1f_missing.append("Brak Z0 w gałęziach")
@@ -238,9 +322,15 @@ def _compute_readiness(enm: dict[str, Any], prereq_steps: list[StepState]) -> Re
         lf_missing.append("Model zawiera blokery")
 
     return ReadinessMatrix(
-        short_circuit_3f=AnalysisReadiness(available=len(sc3f_missing) == 0, missing_requirements=sc3f_missing),
-        short_circuit_1f=AnalysisReadiness(available=len(sc1f_missing) == 0, missing_requirements=sc1f_missing),
-        load_flow=AnalysisReadiness(available=len(lf_missing) == 0, missing_requirements=lf_missing),
+        short_circuit_3f=AnalysisReadiness(
+            available=len(sc3f_missing) == 0, missing_requirements=sc3f_missing
+        ),
+        short_circuit_1f=AnalysisReadiness(
+            available=len(sc1f_missing) == 0, missing_requirements=sc1f_missing
+        ),
+        load_flow=AnalysisReadiness(
+            available=len(lf_missing) == 0, missing_requirements=lf_missing
+        ),
     )
 
 
@@ -262,11 +352,14 @@ def validate_wizard_state(enm: dict[str, Any]) -> WizardStateResponse:
     blockers = [s for s in prereq_steps if s.status == StepStatus.ERROR]
     k8_issues: list[WizardIssue] = []
     if blockers:
-        k8_issues.append(WizardIssue(
-            code="K8_HAS_BLOCKERS", severity=IssueSeverity.BLOCKER,
-            message_pl=f"{len(blockers)} kroków z blokerami: {', '.join(s.step_id for s in blockers)}",
-            wizard_step_hint="K8",
-        ))
+        k8_issues.append(
+            WizardIssue(
+                code="K8_HAS_BLOCKERS",
+                severity=IssueSeverity.BLOCKER,
+                message_pl=f"{len(blockers)} kroków z blokerami: {', '.join(s.step_id for s in blockers)}",
+                wizard_step_hint="K8",
+            )
+        )
     k8 = StepState(
         step_id="K8",
         status=StepStatus.ERROR if blockers else StepStatus.COMPLETE,
@@ -290,12 +383,12 @@ def validate_wizard_state(enm: dict[str, Any]) -> WizardStateResponse:
     # Required steps: K1 (name), K2 (source), K3 (buses). Optional: K4-K7.
     required_ids = {"K1", "K2", "K3"}
     required_complete = all(
-        s.status == StepStatus.COMPLETE
-        for s in prereq_steps if s.step_id in required_ids
+        s.status == StepStatus.COMPLETE for s in prereq_steps if s.step_id in required_ids
     )
     optional_ok = all(
         s.status in (StepStatus.COMPLETE, StepStatus.EMPTY, StepStatus.PARTIAL)
-        for s in prereq_steps if s.step_id not in required_ids
+        for s in prereq_steps
+        if s.step_id not in required_ids
     )
     any_data = len(enm.get("buses", [])) > 0 or len(enm.get("sources", [])) > 0
 

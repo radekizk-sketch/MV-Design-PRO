@@ -23,7 +23,7 @@ import { useAppStateStore } from '../app-state';
 /**
  * Hook for current route with Polish labels.
  */
-export function useCurrentRoute(): RouteDefinition {
+export function useCurrentRoute(): RouteDefinition | null {
   const [route, setRoute] = useState(getCurrentRoute);
 
   useEffect(() => {
@@ -40,7 +40,6 @@ export function useCurrentRoute(): RouteDefinition {
  * Includes mode-aware navigation (e.g., RESULT_VIEW for results routes).
  */
 export function useNavigation() {
-  const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const currentRoute = useCurrentRoute();
 
   /**
@@ -48,40 +47,34 @@ export function useNavigation() {
    * Switches to MODEL_EDIT mode.
    */
   const goToSld = useCallback(() => {
-    setActiveMode('MODEL_EDIT');
     navigateToSld();
-  }, [setActiveMode]);
+  }, []);
 
   /**
    * Navigate to Results (Przegląd wyników).
    * Switches to RESULT_VIEW mode.
    */
   const goToResults = useCallback(() => {
-    setActiveMode('RESULT_VIEW');
     navigateToResults();
-  }, [setActiveMode]);
+  }, []);
 
   /**
    * Navigate to Proof (Ślad obliczeń).
    * Switches to RESULT_VIEW mode.
    */
   const goToProof = useCallback(() => {
-    setActiveMode('RESULT_VIEW');
     navigateToProof();
-  }, [setActiveMode]);
+  }, []);
 
   /**
    * Navigate to any route with automatic mode switching.
    */
   const goTo = useCallback(
     (route: RouteDefinition | keyof typeof ROUTES) => {
-      const targetRoute = typeof route === 'string' ? ROUTES[route] : route;
-      if (targetRoute.requiredMode) {
-        setActiveMode(targetRoute.requiredMode);
-      }
+      const targetRoute = (typeof route === 'string' ? ROUTES[route] : route) as RouteDefinition;
       navigateTo(targetRoute);
     },
-    [setActiveMode]
+    []
   );
 
   return {

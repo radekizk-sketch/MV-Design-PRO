@@ -2,9 +2,10 @@
 
 Markers: @pytest.mark.determinism
 """
-import random
-import pytest
 
+import random
+
+import pytest
 from domain.load_flow_input import (
     ConvergenceParams,
     LoadFlowRunInput,
@@ -84,9 +85,7 @@ class TestPermutationInvariance:
                 generators=base.generators,
                 base_mva=base.base_mva,
             )
-            assert permuted.canonical_hash() == base_hash, (
-                f"Permutation seed={seed} changed hash"
-            )
+            assert permuted.canonical_hash() == base_hash, f"Permutation seed={seed} changed hash"
 
     def test_canonical_dict_permutation_invariant(self):
         base = _make_golden_input()
@@ -112,6 +111,7 @@ class TestCanonicalFloat:
 
     def test_zero_representation(self):
         import json
+
         inp = _make_golden_input()
         raw = json.dumps(inp.canonical_dict(), sort_keys=True, separators=(",", ":"))
         # Should not contain platform-dependent float artifacts

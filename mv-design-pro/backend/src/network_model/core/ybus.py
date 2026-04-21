@@ -15,14 +15,11 @@ System per-unit:
 
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
-
 import numpy as np
 
-from .branch import Branch, BranchType, LineBranch, TransformerBranch
+from .branch import Branch, LineBranch, TransformerBranch
 from .graph import NetworkGraph
 from .node import NodeType
-
 
 S_BASE_MVA: float = 100.0
 
@@ -30,8 +27,8 @@ S_BASE_MVA: float = 100.0
 class _UnionFind:
     """Union-Find do scalania węzłów połączonych zamkniętymi łącznikami."""
 
-    def __init__(self, elements: List[str]) -> None:
-        self._parent: Dict[str, str] = {e: e for e in elements}
+    def __init__(self, elements: list[str]) -> None:
+        self._parent: dict[str, str] = {e: e for e in elements}
 
     def find(self, x: str) -> str:
         while self._parent[x] != x:
@@ -63,15 +60,15 @@ class AdmittanceMatrixBuilder:
 
     def __init__(self, graph: NetworkGraph) -> None:
         self._graph = graph
-        self._node_id_to_index: Dict[str, int] = {}
-        self._representative_ids: List[str] = []
+        self._node_id_to_index: dict[str, int] = {}
+        self._representative_ids: list[str] = []
 
     @property
-    def node_id_to_index(self) -> Dict[str, int]:
+    def node_id_to_index(self) -> dict[str, int]:
         """Zwraca mapowanie node_id -> indeks w macierzy Y-bus."""
         return dict(self._node_id_to_index)
 
-    def _build_merged_node_map(self) -> Tuple[List[str], Dict[str, int]]:
+    def _build_merged_node_map(self) -> tuple[list[str], dict[str, int]]:
         """
         Scala węzły połączone zamkniętymi łącznikami i buduje mapowanie.
 
@@ -88,7 +85,7 @@ class AdmittanceMatrixBuilder:
                 if sw.from_node_id in self._graph.nodes and sw.to_node_id in self._graph.nodes:
                     uf.union(sw.from_node_id, sw.to_node_id)
 
-        representatives = sorted(set(uf.find(nid) for nid in all_node_ids))
+        representatives = sorted({uf.find(nid) for nid in all_node_ids})
         rep_to_idx = {rep: idx for idx, rep in enumerate(representatives)}
         node_to_idx = {nid: rep_to_idx[uf.find(nid)] for nid in all_node_ids}
 
@@ -154,15 +151,15 @@ class AdmittanceMatrixBuilder:
     def get_zbase_ohm(self, node_id: str) -> float:
         """Zwraca Zbase [Ω] dla danego węzła: Vn² / Sbase."""
         vn_kv = self._graph.nodes[node_id].voltage_level
-        return vn_kv ** 2 / S_BASE_MVA
+        return vn_kv**2 / S_BASE_MVA
 
-    def _get_branch_admittances_pu(self, branch: Branch) -> Tuple[complex, complex]:
+    def _get_branch_admittances_pu(self, branch: Branch) -> tuple[complex, complex]:
         """
         Zwraca admitancje w per-unit (Y_series_pu, Y_shunt_per_end_pu).
         """
         if isinstance(branch, LineBranch):
             vn_kv = self._graph.nodes[branch.from_node_id].voltage_level
-            z_base = vn_kv ** 2 / S_BASE_MVA
+            z_base = vn_kv**2 / S_BASE_MVA
             z_total_ohm = branch.get_total_impedance()
             if z_total_ohm == 0:
                 raise ZeroDivisionError("Cannot compute line admittance: impedance is zero")
@@ -177,9 +174,7 @@ class AdmittanceMatrixBuilder:
             z_pu_sn = branch.get_short_circuit_impedance_pu()
             z_pu_base = z_pu_sn * (S_BASE_MVA / branch.rated_power_mva)
             if z_pu_base == 0:
-                raise ZeroDivisionError(
-                    "Cannot compute transformer admittance: impedance is zero"
-                )
+                raise ZeroDivisionError("Cannot compute transformer admittance: impedance is zero")
             y_series_pu = 1.0 / z_pu_base
             y_shunt_per_end_pu = 0.0 + 0.0j
             return y_series_pu, y_shunt_per_end_pu

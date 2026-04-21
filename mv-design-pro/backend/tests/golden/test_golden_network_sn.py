@@ -11,16 +11,15 @@ Sprawdza:
 import math
 
 import pytest
+from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.node import NodeType
+from network_model.core.switch import SwitchState, SwitchType
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.golden.golden_network_sn import (
     build_golden_network,
     get_golden_network_statistics,
 )
-from network_model.core.branch import LineBranch, TransformerBranch
-from network_model.core.switch import SwitchType, SwitchState
-from network_model.core.node import NodeType
-from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
-
 
 # =============================================================================
 # TESTY KOMPLETNOSCI TOPOLOGICZNEJ
@@ -109,9 +108,11 @@ class TestGoldenNetworkCompleteness:
     def test_voltage_levels_correct(self, gn):
         """Wezly maja poprawne poziomy napiec."""
         for node in gn.nodes.values():
-            assert node.voltage_level in (110.0, 15.0, 0.4), (
-                f"Node {node.id}: unexpected voltage {node.voltage_level} kV"
-            )
+            assert node.voltage_level in (
+                110.0,
+                15.0,
+                0.4,
+            ), f"Node {node.id}: unexpected voltage {node.voltage_level} kV"
 
 
 # =============================================================================
@@ -162,9 +163,9 @@ class TestGoldenNetworkTopologyInvariants:
         """Transformatory maja Uhv > Ulv."""
         for b in gn.branches.values():
             if isinstance(b, TransformerBranch):
-                assert b.voltage_hv_kv > b.voltage_lv_kv, (
-                    f"Transformer {b.id}: Uhv={b.voltage_hv_kv} <= Ulv={b.voltage_lv_kv}"
-                )
+                assert (
+                    b.voltage_hv_kv > b.voltage_lv_kv
+                ), f"Transformer {b.id}: Uhv={b.voltage_hv_kv} <= Ulv={b.voltage_lv_kv}"
 
     def test_line_impedances_positive(self, gn):
         """Linie maja R > 0 i X > 0."""
@@ -252,9 +253,9 @@ class TestGoldenNetworkShortCircuitBenchmarks:
         """Zwarcie na koncu magistrali A: Ik'' < Ik'' na GPZ (impedancja wieksza)."""
         result_gpz = self._sc3f(gn, "bus-sn-s1")
         result_end_a = self._sc3f(gn, "bus-a10")
-        assert result_end_a.ikss_a < result_gpz.ikss_a, (
-            f"Ik'' at end A ({result_end_a.ikss_a:.0f} A) should be < GPZ ({result_gpz.ikss_a:.0f} A)"
-        )
+        assert (
+            result_end_a.ikss_a < result_gpz.ikss_a
+        ), f"Ik'' at end A ({result_end_a.ikss_a:.0f} A) should be < GPZ ({result_gpz.ikss_a:.0f} A)"
 
     def test_sc3f_decreasing_along_feeder(self, gn):
         """Prad zwarciowy maleje wzdluz magistrali (im dalej od GPZ, tym mniejszy Ik'')."""
@@ -282,6 +283,6 @@ class TestGoldenNetworkShortCircuitBenchmarks:
         result = self._sc3f(gn, "bus-sn-s1")
         ip_a = result.ip_a
         ik_a = result.ikss_a
-        assert ip_a >= ik_a * math.sqrt(2) * 0.95, (
-            f"ip = {ip_a:.0f} A should be >= sqrt(2) * Ik'' = {ik_a * math.sqrt(2):.0f} A"
-        )
+        assert (
+            ip_a >= ik_a * math.sqrt(2) * 0.95
+        ), f"ip = {ip_a:.0f} A should be >= sqrt(2) * Ik'' = {ik_a * math.sqrt(2):.0f} A"

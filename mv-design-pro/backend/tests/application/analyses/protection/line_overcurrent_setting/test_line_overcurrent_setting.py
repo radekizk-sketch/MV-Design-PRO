@@ -18,28 +18,25 @@ CANONICAL ALIGNMENT:
 """
 
 import json
-import pytest
-from uuid import uuid4
 
+import pytest
 from application.analyses.protection.line_overcurrent_setting import (
-    # Enums
-    ConductorMaterial,
-    SPZMode,
-    GenerationSourceType,
-    LineOvercurrentVerdict,
+    SPZ_THRESHOLD_TABLE_DEFAULT,
     # Data classes
     ConductorData,
-    SPZConfig,
-    LocalGenerationConfig,
-    LineOvercurrentSettingInput,
-    # SPZ lookup
-    SPZLookupTable,
-    SPZ_THRESHOLD_TABLE_DEFAULT,
-    get_spz_blocking_decision,
+    # Enums
+    ConductorMaterial,
+    GenerationSourceType,
     # Analyzer
     LineOvercurrentSettingAnalyzer,
+    LineOvercurrentSettingInput,
+    LineOvercurrentVerdict,
+    LocalGenerationConfig,
+    SPZConfig,
+    # SPZ lookup
+    SPZMode,
+    get_spz_blocking_decision,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -73,7 +70,9 @@ def spz_disabled() -> SPZConfig:
 
 
 @pytest.fixture
-def valid_input(standard_conductor: ConductorData, spz_single: SPZConfig) -> LineOvercurrentSettingInput:
+def valid_input(
+    standard_conductor: ConductorData, spz_single: SPZConfig
+) -> LineOvercurrentSettingInput:
     """Valid input with conforming setting window."""
     return LineOvercurrentSettingInput(
         line_id="line-001",
@@ -94,7 +93,9 @@ def valid_input(standard_conductor: ConductorData, spz_single: SPZConfig) -> Lin
 
 
 @pytest.fixture
-def conflicting_input(standard_conductor: ConductorData, spz_single: SPZConfig) -> LineOvercurrentSettingInput:
+def conflicting_input(
+    standard_conductor: ConductorData, spz_single: SPZConfig
+) -> LineOvercurrentSettingInput:
     """Input with conflicting (invalid) setting window."""
     return LineOvercurrentSettingInput(
         line_id="line-002",
@@ -113,7 +114,9 @@ def conflicting_input(standard_conductor: ConductorData, spz_single: SPZConfig) 
 
 
 @pytest.fixture
-def el_mode_input(standard_conductor: ConductorData, spz_disabled: SPZConfig) -> LineOvercurrentSettingInput:
+def el_mode_input(
+    standard_conductor: ConductorData, spz_disabled: SPZConfig
+) -> LineOvercurrentSettingInput:
     """Input with E-L (local generation) mode enabled."""
     return LineOvercurrentSettingInput(
         line_id="line-003",
@@ -661,7 +664,10 @@ class TestPolishLabels:
         # Check selectivity notes
         assert result.selectivity.notes_pl is not None
         # Should contain Polish words
-        assert any(w in result.selectivity.notes_pl.lower() for w in ["selektywność", "strona", "pierwotna"])
+        assert any(
+            w in result.selectivity.notes_pl.lower()
+            for w in ["selektywność", "strona", "pierwotna"]
+        )
 
 
 # =============================================================================
@@ -741,28 +747,32 @@ class TestFix12Integration:
     def test_instantaneous_selectivity_check_import(self):
         """Test InstantaneousSelectivityCheck can be imported."""
         from domain.protection_device import InstantaneousSelectivityCheck
+
         assert InstantaneousSelectivityCheck is not None
 
     def test_instantaneous_sensitivity_check_import(self):
         """Test InstantaneousSensitivityCheck can be imported."""
         from domain.protection_device import InstantaneousSensitivityCheck
+
         assert InstantaneousSensitivityCheck is not None
 
     def test_instantaneous_thermal_check_import(self):
         """Test InstantaneousThermalCheck can be imported."""
         from domain.protection_device import InstantaneousThermalCheck
+
         assert InstantaneousThermalCheck is not None
 
     def test_spz_from_instantaneous_check_import(self):
         """Test SPZFromInstantaneousCheck can be imported."""
         from domain.protection_device import SPZFromInstantaneousCheck
+
         assert SPZFromInstantaneousCheck is not None
 
     def test_check_serialization(self):
         """Test check types serialize correctly."""
         from domain.protection_device import (
-            InstantaneousSelectivityCheck,
             CoordinationVerdict,
+            InstantaneousSelectivityCheck,
         )
 
         check = InstantaneousSelectivityCheck(

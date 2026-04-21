@@ -21,34 +21,31 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from api.execution_runs import get_engine
 from application.batch_execution_service import (
     BatchExecutionService,
     BatchNotFoundError,
     BatchNotPendingError,
 )
+from application.execution_engine.errors import (
+    ResultSetNotFoundError,
+    RunNotFoundError,
+    StudyCaseNotFoundError,
+)
+from application.result_mapping.sc_comparison_to_overlay_v1 import (
+    compute_delta_overlay_content_hash,
+    map_sc_comparison_to_overlay_v1,
+)
 from application.sc_comparison_service import (
-    ScComparisonService,
     AnalysisTypeMismatchError,
     ComparisonNotFoundError,
     RunNotDoneError,
+    ScComparisonService,
     StudyCaseMismatchError,
 )
-from application.result_mapping.sc_comparison_to_overlay_v1 import (
-    map_sc_comparison_to_overlay_v1,
-    compute_delta_overlay_content_hash,
-)
-from application.execution_engine.errors import (
-    RunNotFoundError,
-    RunNotReadyError,
-    RunBlockedError,
-    ResultSetNotFoundError,
-    StudyCaseNotFoundError,
-)
 from domain.execution import ExecutionAnalysisType
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["batch-execution"])
 
@@ -138,9 +135,7 @@ class CreateComparisonRequest(BaseModel):
     base_run_id: str = Field(..., description="UUID przebiegu bazowego")
     other_run_id: str = Field(..., description="UUID przebiegu porównywanego")
     base_scenario_id: str = Field(..., description="UUID scenariusza bazowego")
-    other_scenario_id: str = Field(
-        ..., description="UUID scenariusza porównywanego"
-    )
+    other_scenario_id: str = Field(..., description="UUID scenariusza porównywanego")
 
 
 class NumericDeltaResponse(BaseModel):
@@ -348,12 +343,8 @@ def create_comparison(
     parsed_case_id = _parse_uuid(case_id, "case_id")
     parsed_base_run_id = _parse_uuid(request.base_run_id, "base_run_id")
     parsed_other_run_id = _parse_uuid(request.other_run_id, "other_run_id")
-    parsed_base_scenario_id = _parse_uuid(
-        request.base_scenario_id, "base_scenario_id"
-    )
-    parsed_other_scenario_id = _parse_uuid(
-        request.other_scenario_id, "other_scenario_id"
-    )
+    parsed_base_scenario_id = _parse_uuid(request.base_scenario_id, "base_scenario_id")
+    parsed_other_scenario_id = _parse_uuid(request.other_scenario_id, "other_scenario_id")
     service = _get_comparison_service()
 
     try:

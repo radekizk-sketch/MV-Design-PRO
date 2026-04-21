@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § C.2: Tryb RESULT_VIEW
- * - powerfactory_ui_parity.md § A.3: URL odzwierciedla stan nawigacji
+ * - ui_canonical_parity.md § A.3: URL odzwierciedla stan nawigacji
  *
  * ZAKRES TESTOW:
  * - Przelaczanie trybow EDYCJA/WYNIKI

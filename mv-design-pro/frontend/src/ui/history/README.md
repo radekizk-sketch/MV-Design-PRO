@@ -1,7 +1,7 @@
 # History Module — P30a UNDO/REDO Infrastructure
 
 ## Cel
-Globalny system UNDO/REDO dla edycji modelu i SLD w standardzie PowerFactory++.
+Globalny system UNDO/REDO dla edycji modelu i SLD w standardzie Canonical++.
 
 ## Cechy
 - **Command Pattern**: Transakcyjne grupowanie zmian

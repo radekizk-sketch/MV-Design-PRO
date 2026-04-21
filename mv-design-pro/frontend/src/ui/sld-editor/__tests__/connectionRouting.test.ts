@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 4: Polaczenia
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 9: Deterministycznosc
- * - AUDYT_SLD_ETAP.md: N-01, N-05
+ * - AUDYT_SLD_CANONICAL.md: N-01, N-05
  *
  * TEST COVERAGE:
  * - Deterministycznosc routingu

@@ -3,14 +3,14 @@ import type { CanonicalOpName } from '../../types/domainOps';
 export type CreatorTool =
   | 'select'
   | 'move'
-  | 'add_gpz'
-  | 'continue_trunk'
-  | 'insert_station'
-  | 'start_branch'
-  | 'connect_ring'
-  | 'set_nop'
-  | 'add_pv'
-  | 'add_bess'
+  | 'add_grid_source_sn'
+  | 'continue_trunk_segment_sn'
+  | 'insert_station_on_segment_sn'
+  | 'start_branch_segment_sn'
+  | 'connect_secondary_ring_sn'
+  | 'set_normal_open_point'
+  | 'add_converter_source_pv'
+  | 'add_converter_source_bess'
   | 'edit_properties'
   | 'assign_catalog'
   | 'delete_element'
@@ -25,6 +25,7 @@ export interface CreatorToolDef {
   canonicalOp: CanonicalOpName | null;
   requiresSldContext: boolean;
   requiresSource?: boolean;
+  requiresTrunkStart?: boolean;
   requiresRing?: boolean;
 }
 
@@ -61,7 +62,7 @@ export const CREATOR_TOOLS: CreatorToolDef[] = [
   {
     id: 'select',
     label: 'Wybierz',
-    icon: '🖱',
+    icon: '⌖',
     description: 'Wybór elementu i przejście do inspektora.',
     group: 'NARZEDZIA',
     canonicalOp: null,
@@ -80,7 +81,7 @@ export const CREATOR_TOOLS: CreatorToolDef[] = [
     id: 'edit_properties',
     label: 'Edytuj właściwości',
     icon: '🛠',
-    description: 'Edycja parametrów elementu przez ENM_OP update.',
+    description: 'Edycja parametrów elementu przez operację domenową.',
     group: 'NARZEDZIA',
     canonicalOp: 'update_element_parameters',
     requiresSldContext: true,
@@ -107,7 +108,7 @@ export const CREATOR_TOOLS: CreatorToolDef[] = [
     requiresSource: true,
   },
   {
-    id: 'add_gpz',
+    id: 'add_grid_source_sn',
     label: 'Dodaj GPZ',
     icon: '⚡',
     description: 'Dodaje punkt zasilania GPZ i rozpoczyna budowę sieci SN.',
@@ -116,19 +117,20 @@ export const CREATOR_TOOLS: CreatorToolDef[] = [
     requiresSldContext: false,
   },
   {
-    id: 'continue_trunk',
+    id: 'continue_trunk_segment_sn',
     label: 'Dodaj odcinek magistrali',
     icon: '━',
-    description: 'Kontynuuje trunk od aktywnego terminala magistrali.',
+    description:
+      'Kontynuuje ciąg główny wyłącznie z portu pola liniowego GPZ albo z otwartego terminala magistrali.',
     group: 'BUDOWA_SIECI',
     canonicalOp: 'continue_trunk_segment_sn',
     requiresSldContext: true,
-    requiresSource: true,
+    requiresTrunkStart: true,
   },
   {
-    id: 'insert_station',
+    id: 'insert_station_on_segment_sn',
     label: 'Wstaw stację w odcinek',
-    icon: '▣',
+    icon: '■',
     description: 'Wstawia stację SN/nN na wskazanym segmencie magistrali.',
     group: 'BUDOWA_SIECI',
     canonicalOp: 'insert_station_on_segment_sn',
@@ -136,52 +138,52 @@ export const CREATOR_TOOLS: CreatorToolDef[] = [
     requiresSource: true,
   },
   {
-    id: 'start_branch',
+    id: 'start_branch_segment_sn',
     label: 'Dodaj odgałęzienie',
     icon: '┣',
-    description: 'Tworzy branch z poprawnego portu semantycznego.',
+    description: 'Tworzy odgałęzienie z poprawnego portu semantycznego.',
     group: 'BUDOWA_SIECI',
     canonicalOp: 'start_branch_segment_sn',
     requiresSldContext: true,
     requiresSource: true,
   },
   {
-    id: 'connect_ring',
+    id: 'connect_secondary_ring_sn',
     label: 'Połącz ring',
-    icon: '◌',
-    description: 'Łączy dwa terminale secondary ring.',
+    icon: '○',
+    description: 'Łączy dwa terminale pierścienia pomocniczego.',
     group: 'BUDOWA_SIECI',
     canonicalOp: 'connect_secondary_ring_sn',
     requiresSldContext: true,
     requiresSource: true,
   },
   {
-    id: 'set_nop',
+    id: 'set_normal_open_point',
     label: 'Ustaw NOP',
     icon: '⊘',
-    description: 'Ustawia normalnie otwarty punkt na segmencie ring.',
+    description: 'Ustawia punkt normalnie otwarty na segmencie ring.',
     group: 'BUDOWA_SIECI',
     canonicalOp: 'set_normal_open_point',
     requiresSldContext: true,
     requiresRing: true,
   },
   {
-    id: 'add_pv',
-    label: 'Dodaj PV',
+    id: 'add_converter_source_pv',
+    label: 'Dodaj źródło fotowoltaiczne',
     icon: '☀',
-    description: 'Dodaje źródło PV po stronie nN.',
+    description: 'Dodaje źródło fotowoltaiczne po stronie nN.',
     group: 'BUDOWA_SIECI',
-    canonicalOp: 'add_pv_inverter_nn',
+    canonicalOp: 'add_converter_source',
     requiresSldContext: true,
     requiresSource: true,
   },
   {
-    id: 'add_bess',
-    label: 'Dodaj BESS',
+    id: 'add_converter_source_bess',
+    label: 'Dodaj magazyn energii',
     icon: '▤',
-    description: 'Dodaje magazyn energii BESS po stronie nN.',
+    description: 'Dodaje magazyn energii po stronie nN.',
     group: 'BUDOWA_SIECI',
-    canonicalOp: 'add_bess_inverter_nn',
+    canonicalOp: 'add_converter_source',
     requiresSldContext: true,
     requiresSource: true,
   },
@@ -195,14 +197,14 @@ export const EDITOR_OBJECT_TYPES: EditorObjectTypeDef[] = [
     domainType: 'grid_source_sn',
     semanticType: 'GPZ',
     createOp: 'add_grid_source_sn',
-    ports: [{ id: 'TRUNK_OUT', label: 'Magistrala', role: 'TRUNK_OUT', direction: 'BOTTOM', hitRadiusPx: 20 }],
+    ports: [],
   },
   {
     id: 'STACJA_KONCOWA',
     label: 'Stacja końcowa',
     category: 'STACJE',
     domainType: 'station_sn_nn_end',
-    semanticType: 'STACJA_A',
+    semanticType: 'STACJA_KONCOWA',
     createOp: 'insert_station_on_segment_sn',
     ports: [{ id: 'TRUNK_IN', label: 'Wejście SN', role: 'TRUNK_IN', direction: 'TOP', hitRadiusPx: 18 }],
   },
@@ -211,7 +213,7 @@ export const EDITOR_OBJECT_TYPES: EditorObjectTypeDef[] = [
     label: 'Stacja przelotowa',
     category: 'STACJE',
     domainType: 'station_sn_nn_pass',
-    semanticType: 'STACJA_B',
+    semanticType: 'STACJA_PRZELOTOWA',
     createOp: 'insert_station_on_segment_sn',
     ports: [
       { id: 'TRUNK_IN', label: 'Wejście SN', role: 'TRUNK_IN', direction: 'LEFT', hitRadiusPx: 18 },
@@ -223,7 +225,7 @@ export const EDITOR_OBJECT_TYPES: EditorObjectTypeDef[] = [
     label: 'Stacja odgałęźna',
     category: 'STACJE',
     domainType: 'station_sn_nn_branch',
-    semanticType: 'STACJA_C',
+    semanticType: 'STACJA_ODGALEZNA',
     createOp: 'insert_station_on_segment_sn',
     ports: [
       { id: 'TRUNK_IN', label: 'Wejście SN', role: 'TRUNK_IN', direction: 'LEFT', hitRadiusPx: 18 },
@@ -236,7 +238,7 @@ export const EDITOR_OBJECT_TYPES: EditorObjectTypeDef[] = [
     label: 'Stacja sekcyjna',
     category: 'STACJE',
     domainType: 'station_sn_section',
-    semanticType: 'STACJA_D',
+    semanticType: 'STACJA_SEKCYJNA',
     createOp: 'insert_section_switch_sn',
     ports: [
       { id: 'TRUNK_IN', label: 'Sekcja A', role: 'TRUNK_IN', direction: 'LEFT', hitRadiusPx: 18 },
@@ -266,25 +268,25 @@ export const EDITOR_OBJECT_TYPES: EditorObjectTypeDef[] = [
     ports: [
       { id: 'TRUNK_IN', label: 'Wejście', role: 'TRUNK_IN', direction: 'TOP', hitRadiusPx: 18 },
       { id: 'TRUNK_OUT', label: 'Wyjście', role: 'TRUNK_OUT', direction: 'BOTTOM', hitRadiusPx: 18 },
-      { id: 'BRANCH_OUT', label: 'Branch', role: 'BRANCH_OUT', direction: 'RIGHT', hitRadiusPx: 20 },
+      { id: 'BRANCH_OUT', label: 'Odgałęzienie', role: 'BRANCH_OUT', direction: 'RIGHT', hitRadiusPx: 20 },
     ],
   },
   {
     id: 'PV',
-    label: 'PV',
+    label: 'Źródło fotowoltaiczne',
     category: 'OZE',
     domainType: 'pv_inverter_nn',
     semanticType: 'PV',
-    createOp: 'add_pv_inverter_nn',
+    createOp: 'add_converter_source',
     ports: [{ id: 'NN_SOURCE', label: 'Przyłącze nN', role: 'NN_SOURCE', direction: 'TOP', hitRadiusPx: 18 }],
   },
   {
     id: 'BESS',
-    label: 'BESS',
+    label: 'Magazyn energii',
     category: 'OZE',
     domainType: 'bess_inverter_nn',
     semanticType: 'BESS',
-    createOp: 'add_bess_inverter_nn',
+    createOp: 'add_converter_source',
     ports: [{ id: 'NN_SOURCE', label: 'Przyłącze nN', role: 'NN_SOURCE', direction: 'TOP', hitRadiusPx: 18 }],
   },
 ];

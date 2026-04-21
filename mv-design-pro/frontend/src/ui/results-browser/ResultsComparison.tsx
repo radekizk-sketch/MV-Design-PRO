@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - compare/types.ts: Comparison patterns
- * - powerfactory_ui_parity.md: Case comparison like PowerFactory
+ * - ui_canonical_parity.md: Case comparison like Canonical
  * - 100% Polish UI
  *
  * FEATURES:

@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # PLAN ROZBUDOWY SPECYFIKACJI MV-DESIGN-PRO
 
 **Data:** 2026-02-08
@@ -55,7 +61,7 @@ docs/spec/
 ├── SPEC_CHAPTER_06_SOLVER_CONTRACTS_AND_MAPPING.md ← Kontrakty solverów & mapowanie ENM→Model Obliczeniowy (GOTOWY, v1.0)
 ├── SPEC_CHAPTER_07_SOURCES_GENERATORS_LOADS.md     ← Model Źródeł, Generatorów i Odbiorów (GOTOWY, v1.1 — suplement GAP)
 ├── SPEC_CHAPTER_08_TYPE_VS_INSTANCE_AND_CATALOGS.md ← Typ vs Instancja + Katalogi Typów (GOTOWY, v1.1 — suplement GAP)
-├── SPEC_CHAPTER_09_PROTECTION_SYSTEM.md              ← System Zabezpieczeń ETAP-Grade (GOTOWY, v1.1 — suplement GAP)
+├── SPEC_CHAPTER_09_PROTECTION_SYSTEM.md              ← System Zabezpieczeń benchmark-Grade (GOTOWY, v1.1 — suplement GAP)
 ├── SPEC_CHAPTER_10_STUDY_CASES_AND_SCENARIOS.md      ← Scenariusze Obliczeniowe & Study Cases (GOTOWY, v1.1 — suplement GAP)
 ├── SPEC_CHAPTER_11_REPORTING_AND_EXPORT.md            ← Raportowanie, Cross-Reference, Trace & Export (GOTOWY, v1.0)
 ├── SPEC_CHAPTER_12_VALIDATION_AND_QA.md               ← Walidacje Systemowe, QA, Reguły Blokujące (GOTOWY, v1.0)
@@ -141,7 +147,7 @@ PREAMBUŁA — CEL, ZAKRES, DEFINICJE (UKOŃCZONA)
             └── Suplement v1.1: AuditContract(7 pól), CompatibilityMatrix(5 relacji), macierz zmian między Cases, StudyCaseOverlay(TO-BE)
   Krok 0i: SPEC_CHAPTER_09_PROTECTION_SYSTEM.md              ✅ GOTOWY (v1.1)
             └── Domena Systemu Zabezpieczeń ZAMKNIĘTA (§9.0–§9.17 + §9.A, Decyzje #59–#64, #80–#83)
-            └── Obejmuje: ProtectionDevice(frozen, 11 pól, 5 stopni nadprądowych), klasy TECHNOLOGICAL/NETWORK, krzywe IEC 60255+IEEE C37.112+producenckie, koordynacja(3 kanoniczne+4 I>>), White Box Protection Trace(9 kroków), porównanie A/B(StateChange, IssueCode), sanity checks(16 reguł), walidacje architektoniczne(E-P01..I-P02), UI ETAP-style(11 kolumn), API(12 endpointów)
+            └── Obejmuje: ProtectionDevice(frozen, 11 pól, 5 stopni nadprądowych), klasy TECHNOLOGICAL/NETWORK, krzywe IEC 60255+IEEE C37.112+producenckie, koordynacja(3 kanoniczne+4 I>>), White Box Protection Trace(9 kroków), porównanie A/B(StateChange, IssueCode), sanity checks(16 reguł), walidacje architektoniczne(E-P01..I-P02), UI benchmark-style(11 kolumn), API(12 endpointów)
             └── Suplement v1.1: EventClass+EventScope na ProtectionTraceStep, DualSCResult(z/bez OZE + ΔIk%), CTType(11 pól)+VTType(10 pól) wg PN-EN 61869, DirectionMode(FORWARD/REVERSE/NON_DIRECTIONAL), walidacje W-P05..I-P03, inwarianty INV-PROT-09..14
   Krok 0j: SPEC_CHAPTER_10_STUDY_CASES_AND_SCENARIOS.md      ✅ GOTOWY (v1.1)
             └── Domena Scenariuszy Obliczeniowych ZAMKNIĘTA (§10.0–§10.22 + §10.A, Decyzje #72–#79, #84–#86)
@@ -263,7 +269,7 @@ FINALIZACJA:
   - Solver SC widzi falownik jako InverterSource (ograniczone źródło prądowe), NIE jako P/Q adjustment
 - §0.8 — Diagram warstw (Mermaid) (~40 linii)
 - §0.9 — Study Case architecture (Case ≠ Model, singleton, invalidation) (~80 linii)
-- §0.10 — PowerFactory mapping (tabela odpowiedników) (~40 linii)
+- §0.10 — benchmark mapping (tabela odpowiedników) (~40 linii)
 - §0.11 — **Warstwa katalogu typów — resolver, precedencja, ParameterSource** (~100 linii)
   - Decision Matrix ref: #15, #18
   - Status: AS-IS (resolver zaimplementowany) + TO-BE (rozszerzenie na Generator)
@@ -732,7 +738,7 @@ FINALIZACJA:
 > - **Decyzja #21:** Podział z §2.15 — Technologiczne vs Sieciowe (rozłączne klasy)
 > - **Decyzja #22:** Koordynacja falownik ↔ sieć (§2.16) — falownik = warunek brzegowy, scenariusz dual „z OZE" / „bez OZE"
 > - **Decyzja #23:** White Box Protection (§2.17) — deterministyczny łańcuch przyczynowy, `event_class` + `event_scope`, raport „kto zadziałał pierwszy"
-> - **Decyzja #24:** UI nastaw (§2.18) — projekcja ENM + Analysis, tryb standardowy/ekspercki, widok ETAP-style, kolumna Źródło sygnału
+> - **Decyzja #24:** UI nastaw (§2.18) — projekcja ENM + Analysis, tryb standardowy/ekspercki, widok benchmark-style, kolumna Źródło sygnału
 > - **Decyzja #25:** ProtectionDevice (§2.20) — byt logiczny ENM, kontener funkcji, zakaz mieszania klas, domena zamknięta
 
 **Rozdziały:**
@@ -745,7 +751,7 @@ FINALIZACJA:
 - §12.7 — Punkt pomiarowy: CT/VT, aparatura sterowana (~60 linii)
 - §12.8 — White Box Protection: łańcuch przyczynowy, rozróżnienie klas, raport sekwencyjny (~100 linii)
 - §12.9 — Walidacje systemowe zabezpieczeń: E-P01…I-P02 (~80 linii)
-- §12.10 — UI nastaw zabezpieczeń: widok ETAP-style, tryby, TCC (~80 linii)
+- §12.10 — UI nastaw zabezpieczeń: widok benchmark-style, tryby, TCC (~80 linii)
 - §12.11 — Mapowanie na kod (~40 linii)
 - §12.12 — Testy akceptacyjne (~40 linii)
 
@@ -1011,3 +1017,4 @@ FINALIZACJA:
 ---
 
 **KONIEC PLANU — GOTOWY DO FINAL APPROVAL**
+

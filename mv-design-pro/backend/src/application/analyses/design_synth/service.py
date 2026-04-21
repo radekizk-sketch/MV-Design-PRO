@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from application.analyses.design_synth.models import (
@@ -16,11 +16,9 @@ class DesignSynthService:
     def __init__(self, uow_factory: Callable[[], UnitOfWork]) -> None:
         self._uow_factory = uow_factory
 
-    def create_spec(
-        self, case_id: UUID, base_snapshot_id: str, spec_payload: dict
-    ) -> UUID:
+    def create_spec(self, case_id: UUID, base_snapshot_id: str, spec_payload: dict) -> UUID:
         spec_id = uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         spec = DesignSpec(
             id=spec_id,
             case_id=case_id,
@@ -53,7 +51,7 @@ class DesignSynthService:
         status: str = "DRAFT",
     ) -> UUID:
         proposal_id = uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         proposal = DesignProposal(
             id=proposal_id,
             case_id=case_id,
@@ -83,7 +81,7 @@ class DesignSynthService:
         evidence_id: UUID | None = None,
     ) -> UUID:
         evidence_id = evidence_id or uuid4()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         evidence = DesignEvidence(
             id=evidence_id,
             case_id=case_id,

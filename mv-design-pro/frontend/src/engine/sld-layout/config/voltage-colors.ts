@@ -19,7 +19,7 @@ import type { VoltageColorRule, VoltageCategory } from '../types';
  * Kolejność: od najwyższego do najniższego napięcia.
  * Algorytm przeszukuje tablicę od góry i zwraca pierwszą pasującą regułę.
  *
- * Kolory inspirowane standardami ETAP i PowerFactory.
+ * Kolory inspirowane standardami CANONICAL i Canonical.
  */
 export const DEFAULT_VOLTAGE_COLOR_MAP: VoltageColorRule[] = [
   // Najwyższe napięcie (NN) — 220kV+
@@ -209,9 +209,9 @@ export function generateVoltageBandId(voltageKV: number): string {
 // =============================================================================
 
 /**
- * Preset kolorów w stylu ETAP.
+ * Preset kolorów w stylu CANONICAL.
  */
-export const ETAP_STYLE_COLORS: VoltageColorRule[] = [
+export const CANONICAL_STYLE_COLORS: VoltageColorRule[] = [
   { minKV: 200, maxKV: Infinity, color: '#E60000', category: 'NN', description: 'Extra High Voltage' },
   { minKV: 60, maxKV: 200, color: '#FF3333', category: 'WN', description: 'High Voltage' },
   { minKV: 16, maxKV: 60, color: '#9900CC', category: 'SN', description: 'Medium Voltage (Upper)' },
@@ -221,9 +221,9 @@ export const ETAP_STYLE_COLORS: VoltageColorRule[] = [
 ];
 
 /**
- * Preset kolorów w stylu PowerFactory.
+ * Preset kolorów w stylu referencyjnym.
  */
-export const POWERFACTORY_STYLE_COLORS: VoltageColorRule[] = [
+export const REFERENCE_STYLE_COLORS: VoltageColorRule[] = [
   { minKV: 200, maxKV: Infinity, color: '#B30000', category: 'NN', description: 'Najwyższe napięcie' },
   { minKV: 60, maxKV: 200, color: '#E63E3E', category: 'WN', description: 'Wysokie napięcie' },
   { minKV: 16, maxKV: 60, color: '#8033CC', category: 'SN', description: 'Średnie napięcie (górne)' },

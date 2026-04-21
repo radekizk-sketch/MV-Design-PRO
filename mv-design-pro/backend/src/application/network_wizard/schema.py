@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 class StepStatus(str, Enum):
     """Status jednego kroku kreatora."""
+
     EMPTY = "empty"
     PARTIAL = "partial"
     COMPLETE = "complete"
@@ -27,6 +28,7 @@ class StepStatus(str, Enum):
 
 class IssueSeverity(str, Enum):
     """Priorytet problemu walidacji."""
+
     BLOCKER = "BLOCKER"
     IMPORTANT = "IMPORTANT"
     INFO = "INFO"
@@ -34,28 +36,27 @@ class IssueSeverity(str, Enum):
 
 class WizardIssue(BaseModel):
     """Pojedynczy problem walidacji kreatora."""
+
     code: str = Field(..., description="Kod problemu (np. K2_NO_SOURCE)")
     severity: IssueSeverity
     message_pl: str = Field(..., description="Komunikat po polsku")
     element_ref: str | None = Field(default=None, description="ref_id elementu")
-    wizard_step_hint: str | None = Field(
-        default=None, description="Krok kreatora (K1-K10)"
-    )
+    wizard_step_hint: str | None = Field(default=None, description="Krok kreatora (K1-K10)")
     suggested_fix: str | None = Field(default=None, description="Sugestia naprawy")
 
 
 class StepState(BaseModel):
     """Stan jednego kroku kreatora."""
+
     step_id: str = Field(..., description="Identyfikator kroku (K1-K10)")
     status: StepStatus
-    completion_percent: int = Field(
-        ge=0, le=100, description="Procent ukończenia (0-100)"
-    )
+    completion_percent: int = Field(ge=0, le=100, description="Procent ukończenia (0-100)")
     issues: list[WizardIssue] = Field(default_factory=list)
 
 
 class AnalysisReadiness(BaseModel):
     """Gotowość jednej analizy."""
+
     available: bool = Field(..., description="Czy analiza jest dostępna")
     missing_requirements: list[str] = Field(
         default_factory=list, description="Brakujące wymagania (PL)"
@@ -64,6 +65,7 @@ class AnalysisReadiness(BaseModel):
 
 class ReadinessMatrix(BaseModel):
     """Macierz gotowości analiz."""
+
     short_circuit_3f: AnalysisReadiness
     short_circuit_1f: AnalysisReadiness
     load_flow: AnalysisReadiness
@@ -71,6 +73,7 @@ class ReadinessMatrix(BaseModel):
 
 class ElementCounts(BaseModel):
     """Liczba elementów w modelu."""
+
     buses: int = 0
     sources: int = 0
     transformers: int = 0
@@ -81,28 +84,28 @@ class ElementCounts(BaseModel):
 
 class WizardStateResponse(BaseModel):
     """Pełny stan kreatora sieci — odpowiedź API."""
+
     steps: list[StepState]
-    overall_status: str = Field(
-        ..., description="empty | incomplete | ready | blocked"
-    )
+    overall_status: str = Field(..., description="empty | incomplete | ready | blocked")
     readiness_matrix: ReadinessMatrix
     element_counts: ElementCounts
 
 
 class WizardStepRequest(BaseModel):
     """Żądanie aktualizacji kroku kreatora."""
+
     step_id: str = Field(..., description="K1-K10")
-    data: dict[str, Any] = Field(
-        default_factory=dict, description="Dane kroku"
-    )
+    data: dict[str, Any] = Field(default_factory=dict, description="Dane kroku")
 
 
 # ---------------------------------------------------------------------------
 # ENM sub-schemas for wizard payloads
 # ---------------------------------------------------------------------------
 
+
 class BusPayload(BaseModel):
     """Szyna — payload kreatora."""
+
     ref_id: str
     name: str
     voltage_kv: float = Field(gt=0)
@@ -112,6 +115,7 @@ class BusPayload(BaseModel):
 
 class SourcePayload(BaseModel):
     """Źródło zasilania — payload kreatora."""
+
     ref_id: str
     name: str
     bus_ref: str
@@ -124,6 +128,7 @@ class SourcePayload(BaseModel):
 
 class BranchPayload(BaseModel):
     """Gałąź (linia/kabel) — payload kreatora."""
+
     ref_id: str
     name: str
     branch_type: str = "line_overhead"
@@ -138,6 +143,7 @@ class BranchPayload(BaseModel):
 
 class TransformerPayload(BaseModel):
     """Transformator — payload kreatora."""
+
     ref_id: str
     name: str
     hv_bus_ref: str
@@ -151,6 +157,7 @@ class TransformerPayload(BaseModel):
 
 class LoadPayload(BaseModel):
     """Odbiór — payload kreatora."""
+
     ref_id: str
     name: str
     bus_ref: str
@@ -167,6 +174,7 @@ class GeneratorPayload(BaseModel):
     - 'block_transformer': przez transformator blokowy do SN
     Brak connection_variant dla PV/BESS → FixAction generator.connection_variant_missing.
     """
+
     ref_id: str
     name: str
     bus_ref: str
@@ -186,6 +194,7 @@ class GeneratorPayload(BaseModel):
 
 class ApplyStepResponse(BaseModel):
     """Odpowiedź z atomowego zastosowania kroku kreatora."""
+
     success: bool = Field(..., description="Czy krok został zastosowany pomyślnie")
     step_id: str = Field(..., description="Krok (K1-K10)")
     precondition_issues: list[WizardIssue] = Field(default_factory=list)
@@ -203,6 +212,7 @@ class ApplyStepResponse(BaseModel):
 
 class CanProceedResponse(BaseModel):
     """Odpowiedź na zapytanie o możliwość przejścia."""
+
     allowed: bool
     from_step: str
     to_step: str

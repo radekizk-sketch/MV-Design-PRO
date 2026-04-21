@@ -5,17 +5,15 @@ maintaining deterministic ordering and stable signatures.
 
 BOUNDARY: This mapper does NOT touch SC or Protection ResultSet contracts.
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-from uuid import UUID
 
 from network_model.solvers.power_flow_result import PowerFlowResultV1
-
 
 LOAD_FLOW_RESULTSET_VERSION = "1.0.0"
 
@@ -23,6 +21,7 @@ LOAD_FLOW_RESULTSET_VERSION = "1.0.0"
 @dataclass(frozen=True)
 class LoadFlowNodeResult:
     """Single node result in LoadFlowResultSetV1."""
+
     node_id: str
     voltage_pu: float
     voltage_kv: float
@@ -44,6 +43,7 @@ class LoadFlowNodeResult:
 @dataclass(frozen=True)
 class LoadFlowBranchResult:
     """Single branch result in LoadFlowResultSetV1."""
+
     branch_id: str
     from_node_id: str
     to_node_id: str
@@ -75,6 +75,7 @@ class LoadFlowBranchResult:
 @dataclass(frozen=True)
 class LoadFlowTotals:
     """Aggregated totals for LoadFlowResultSetV1."""
+
     total_losses_p_mw: float
     total_losses_q_mvar: float
     slack_p_mw: float
@@ -102,6 +103,7 @@ class LoadFlowResultSetV1:
     FROZEN after introduction. Changes require new version.
     Deterministic: same input → same signature.
     """
+
     analysis_type: str  # Always "LOAD_FLOW"
     result_version: str  # Always "1.0.0"
     snapshot_hash: str
@@ -169,33 +171,37 @@ def map_power_flow_to_resultset_v1(
     nodes = []
     for bus_r in pf_result.bus_results:
         base_kv = voltage_bases.get(bus_r.bus_id, 0.0)
-        nodes.append(LoadFlowNodeResult(
-            node_id=bus_r.bus_id,
-            voltage_pu=bus_r.v_pu,
-            voltage_kv=bus_r.v_pu * base_kv,
-            angle_deg=bus_r.angle_deg,
-            p_injected_mw=bus_r.p_injected_mw,
-            q_injected_mvar=bus_r.q_injected_mvar,
-        ))
+        nodes.append(
+            LoadFlowNodeResult(
+                node_id=bus_r.bus_id,
+                voltage_pu=bus_r.v_pu,
+                voltage_kv=bus_r.v_pu * base_kv,
+                angle_deg=bus_r.angle_deg,
+                p_injected_mw=bus_r.p_injected_mw,
+                q_injected_mvar=bus_r.q_injected_mvar,
+            )
+        )
     nodes_sorted = tuple(sorted(nodes, key=lambda n: n.node_id))
 
     # Map branch results (sorted by branch_id)
     branches = []
     for br_r in pf_result.branch_results:
         from_node, to_node = branch_topo.get(br_r.branch_id, ("", ""))
-        branches.append(LoadFlowBranchResult(
-            branch_id=br_r.branch_id,
-            from_node_id=from_node,
-            to_node_id=to_node,
-            p_from_mw=br_r.p_from_mw,
-            q_from_mvar=br_r.q_from_mvar,
-            p_to_mw=br_r.p_to_mw,
-            q_to_mvar=br_r.q_to_mvar,
-            i_from_ka=None,  # TODO: compute from S/U when base voltage available
-            i_to_ka=None,
-            losses_p_mw=br_r.losses_p_mw,
-            losses_q_mvar=br_r.losses_q_mvar,
-        ))
+        branches.append(
+            LoadFlowBranchResult(
+                branch_id=br_r.branch_id,
+                from_node_id=from_node,
+                to_node_id=to_node,
+                p_from_mw=br_r.p_from_mw,
+                q_from_mvar=br_r.q_from_mvar,
+                p_to_mw=br_r.p_to_mw,
+                q_to_mvar=br_r.q_to_mvar,
+                i_from_ka=None,  # TODO: compute from S/U when base voltage available
+                i_to_ka=None,
+                losses_p_mw=br_r.losses_p_mw,
+                losses_q_mvar=br_r.losses_q_mvar,
+            )
+        )
     branches_sorted = tuple(sorted(branches, key=lambda b: b.branch_id))
 
     # Compute power balance

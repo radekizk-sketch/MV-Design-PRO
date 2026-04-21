@@ -1,48 +1,25 @@
-/**
- * Inspector Panel (READ-ONLY Property Grid with 6 Tabs)
- *
- * CANONICAL ALIGNMENT:
- * - ELEMENT_INSPECTOR_CONTRACT.md: 6 zakładek (Overview, Parameters, Results, Contributions, Limits, Proof)
- * - powerfactory_ui_parity.md: Inspector jako property grid (read-only)
- * - wizard_screens.md § 2.4: Inspector wyświetla właściwości wybranego elementu
- * - sld_rules.md § G.1: Synchronizacja selection SLD ↔ Tree ↔ Inspector
- *
- * FEATURES:
- * - 6 zakładek zgodnie z ELEMENT_INSPECTOR_CONTRACT.md
- * - Sekcje/grupy pól (nagłówki)
- * - Format: etykieta → wartość → jednostka
- * - Brak edycji, brak akcji
- * - Spójna obsługa selection z Results Table / SLD / Tree
- * - Stabilne selection_id
- * - Deterministyczne data-testid
- *
- * 100% POLISH UI
- */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { useMemo, useCallback, useState } from 'react';
 import { PropertyGrid } from './PropertyGrid';
 import type {
-  InspectorSection,
-  InspectorField,
-  BusResultData,
   BranchResultData,
+  BusResultData,
+  InspectorSection,
   ShortCircuitResultData,
 } from './types';
-import { INSPECTOR_SECTION_LABELS, FLAG_LABELS } from './types';
+import { FLAG_LABELS, INSPECTOR_SECTION_LABELS } from './types';
+import { navigateToProof } from '../navigation';
 import { useSelectionStore } from '../selection';
+import { useExecutionRunsStore } from '../study-cases/runStore';
 
-// =============================================================================
-// Tab Types & Labels
-// =============================================================================
+type InspectorTab =
+  | 'overview'
+  | 'parameters'
+  | 'results'
+  | 'contributions'
+  | 'limits'
+  | 'proof';
 
-/**
- * Zakładki inspektora zgodnie z ELEMENT_INSPECTOR_CONTRACT.md
- */
-type InspectorTab = 'overview' | 'parameters' | 'results' | 'contributions' | 'limits' | 'proof';
-
-/**
- * Etykiety zakładek (Polish)
- */
 const TAB_LABELS: Record<InspectorTab, string> = {
   overview: 'Przegląd',
   parameters: 'Parametry',
@@ -52,10 +29,6 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   proof: 'Dowód obliczeń',
 };
 
-/**
- * Zakładki dostępne dla poszczególnych typów elementów
- * Zgodnie z ELEMENT_INSPECTOR_CONTRACT.md § 3.1
- */
 const AVAILABLE_TABS: Record<string, InspectorTab[]> = {
   bus: ['overview', 'parameters', 'results', 'contributions', 'limits', 'proof'],
   branch: ['overview', 'parameters', 'results', 'contributions', 'limits'],
@@ -63,13 +36,23 @@ const AVAILABLE_TABS: Record<string, InspectorTab[]> = {
   default: ['overview', 'parameters', 'results'],
 };
 
-// =============================================================================
-// Helper Functions
-// =============================================================================
+type InspectorResultRow =
+  | { type: 'bus'; data: BusResultData }
+  | { type: 'branch'; data: BranchResultData }
+  | { type: 'short_circuit'; data: ShortCircuitResultData };
 
-/**
- * Formatuje wartość liczbową z polskim formatowaniem.
- */
+interface InspectorPanelProps {
+  selectedRow?: InspectorResultRow | null;
+  onClose?: () => void;
+  className?: string;
+}
+
+interface InspectorPanelConnectedProps {
+  resultData?: InspectorResultRow | null;
+  onClose?: () => void;
+  className?: string;
+}
+
 function formatNumber(value: number | null | undefined, decimals = 3): string {
   if (value === null || value === undefined) return '—';
   return value.toLocaleString('pl-PL', {
@@ -78,19 +61,21 @@ function formatNumber(value: number | null | undefined, decimals = 3): string {
   });
 }
 
-/**
- * Formatuje tablicę flag do wyświetlenia.
- */
 function formatFlags(flags: string[]): string {
-  if (flags.length === 0) return '—';
+  if (flags.length === 0) return 'Brak';
   return flags.map((flag) => FLAG_LABELS[flag] ?? flag).join(', ');
 }
 
-// =============================================================================
-// Section Builders for Tabs
-// =============================================================================
-
-// --- OVERVIEW TAB ---
+function formatLimitStatus(status: 'OK' | 'WARNING' | 'VIOLATION'): string {
+  switch (status) {
+    case 'OK':
+      return 'W normie';
+    case 'WARNING':
+      return 'Ostrzeżenie';
+    case 'VIOLATION':
+      return 'Przekroczenie';
+  }
+}
 
 function buildBusOverviewSections(data: BusResultData): InspectorSection[] {
   return [
@@ -99,64 +84,40 @@ function buildBusOverviewSections(data: BusResultData): InspectorSection[] {
       label: INSPECTOR_SECTION_LABELS.identification,
       fields: [
         { key: 'name', label: 'Nazwa', value: data.name },
-        { key: 'bus_id', label: 'ID węzła', value: data.bus_id },
-        { key: 'type', label: 'Typ', value: 'Szyna (Bus)' },
-      ],
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: 'Tak' },
-        { key: 'violations', label: 'Naruszenia limitów', value: data.flags.length > 0 ? data.flags.length : 0 },
+        { key: 'bus_id', label: 'Identyfikator węzła', value: data.bus_id },
+        { key: 'type', label: 'Typ', value: 'Szyna' },
       ],
     },
     {
       id: 'key_values',
       label: 'Kluczowe wartości',
       fields: [
-        { key: 'u_kv', label: 'Napięcie', value: formatNumber(data.u_kv), unit: 'kV', source: 'calculated' },
-        { key: 'u_pu', label: 'Napięcie (p.u.)', value: formatNumber(data.u_pu, 4), unit: 'pu', source: 'calculated' },
-        { key: 'angle_deg', label: 'Kąt fazowy', value: formatNumber(data.angle_deg, 2), unit: '°', source: 'calculated' },
+        { key: 'u_kv', label: 'Napięcie', value: data.u_kv, unit: 'kV', source: 'calculated' },
+        { key: 'u_pu', label: 'Napięcie (p.u.)', value: data.u_pu, unit: 'pu', source: 'calculated' },
+        { key: 'angle_deg', label: 'Kąt fazowy', value: data.angle_deg, unit: '°', source: 'calculated' },
       ],
     },
   ];
 }
 
 function buildBranchOverviewSections(data: BranchResultData): InspectorSection[] {
-  // Określ highlight dla obciążenia
-  const loadingHighlight: InspectorField['highlight'] =
-    data.loading_pct !== null && data.loading_pct > 100
-      ? 'error'
-      : data.loading_pct !== null && data.loading_pct > 80
-        ? 'warning'
-        : undefined;
-
   return [
     {
       id: 'identification',
       label: INSPECTOR_SECTION_LABELS.identification,
       fields: [
         { key: 'name', label: 'Nazwa', value: data.name },
-        { key: 'branch_id', label: 'ID gałęzi', value: data.branch_id },
-        { key: 'type', label: 'Typ', value: 'Gałąź (Branch)' },
-      ],
-    },
-    {
-      id: 'status',
-      label: 'Status',
-      fields: [
-        { key: 'in_service', label: 'W eksploatacji', value: 'Tak' },
-        { key: 'violations', label: 'Naruszenia limitów', value: data.flags.length > 0 ? data.flags.length : 0 },
+        { key: 'branch_id', label: 'Identyfikator gałęzi', value: data.branch_id },
+        { key: 'type', label: 'Typ', value: 'Gałąź' },
       ],
     },
     {
       id: 'key_values',
       label: 'Kluczowe wartości',
       fields: [
-        { key: 'i_a', label: 'Prąd', value: formatNumber(data.i_a, 1), unit: 'A', source: 'calculated' },
-        { key: 'loading_pct', label: 'Obciążenie', value: formatNumber(data.loading_pct, 1), unit: '%', source: 'calculated', highlight: loadingHighlight },
-        { key: 's_mva', label: 'Moc pozorna', value: formatNumber(data.s_mva), unit: 'MVA', source: 'calculated' },
+        { key: 'i_a', label: 'Prąd', value: data.i_a, unit: 'A', source: 'calculated' },
+        { key: 'loading_pct', label: 'Obciążenie', value: data.loading_pct, unit: '%', source: 'calculated' },
+        { key: 's_mva', label: 'Moc pozorna', value: data.s_mva, unit: 'MVA', source: 'calculated' },
       ],
     },
   ];
@@ -169,7 +130,7 @@ function buildShortCircuitOverviewSections(data: ShortCircuitResultData): Inspec
       label: INSPECTOR_SECTION_LABELS.identification,
       fields: [
         { key: 'target_name', label: 'Węzeł zwarcia', value: data.target_name ?? data.target_id },
-        { key: 'target_id', label: 'ID węzła', value: data.target_id },
+        { key: 'target_id', label: 'Identyfikator węzła', value: data.target_id },
         { key: 'fault_type', label: 'Rodzaj zwarcia', value: data.fault_type ?? '—' },
       ],
     },
@@ -177,15 +138,13 @@ function buildShortCircuitOverviewSections(data: ShortCircuitResultData): Inspec
       id: 'key_values',
       label: 'Kluczowe wartości',
       fields: [
-        { key: 'ikss_ka', label: "Ik''", value: formatNumber(data.ikss_ka), unit: 'kA', source: 'calculated', highlight: 'primary' },
-        { key: 'ip_ka', label: 'ip', value: formatNumber(data.ip_ka), unit: 'kA', source: 'calculated' },
-        { key: 'sk_mva', label: "Sk''", value: formatNumber(data.sk_mva, 1), unit: 'MVA', source: 'calculated' },
+        { key: 'ikss_ka', label: "Ik''", value: data.ikss_ka, unit: 'kA', source: 'calculated', highlight: 'primary' },
+        { key: 'ip_ka', label: 'ip', value: data.ip_ka, unit: 'kA', source: 'calculated' },
+        { key: 'sk_mva', label: "Sk''", value: data.sk_mva, unit: 'MVA', source: 'calculated' },
       ],
     },
   ];
 }
-
-// --- PARAMETERS TAB ---
 
 function buildBusParametersSections(data: BusResultData): InspectorSection[] {
   return [
@@ -193,10 +152,9 @@ function buildBusParametersSections(data: BusResultData): InspectorSection[] {
       id: 'electrical',
       label: INSPECTOR_SECTION_LABELS.electrical,
       fields: [
-        { key: 'un_kv', label: 'Napięcie znamionowe', value: formatNumber(data.un_kv, 1), unit: 'kV' },
-        { key: 'v_min', label: 'Limit dolny napięcia', value: '0.90', unit: 'pu' },
-        { key: 'v_max', label: 'Limit górny napięcia', value: '1.10', unit: 'pu' },
-        { key: 'bus_type', label: 'Typ węzła', value: 'PQ' },
+        { key: 'un_kv', label: 'Napięcie znamionowe', value: data.un_kv, unit: 'kV' },
+        { key: 'v_min', label: 'Limit dolny napięcia', value: '0.90 pu' },
+        { key: 'v_max', label: 'Limit górny napięcia', value: '1.10 pu' },
       ],
     },
   ];
@@ -212,14 +170,6 @@ function buildBranchParametersSections(data: BranchResultData): InspectorSection
         { key: 'to_bus', label: 'Do węzła', value: data.to_bus },
       ],
     },
-    {
-      id: 'electrical',
-      label: INSPECTOR_SECTION_LABELS.electrical,
-      fields: [
-        { key: 'i_nom', label: 'Prąd znamionowy', value: '—', unit: 'A' },
-        { key: 'i_max', label: 'Prąd maksymalny', value: '—', unit: 'A' },
-      ],
-    },
   ];
 }
 
@@ -231,13 +181,10 @@ function buildShortCircuitParametersSections(data: ShortCircuitResultData): Insp
       fields: [
         { key: 'fault_type', label: 'Rodzaj zwarcia', value: data.fault_type ?? '—' },
         { key: 'standard', label: 'Norma', value: 'IEC 60909' },
-        { key: 'c_factor', label: 'Współczynnik c', value: '1.10' },
       ],
     },
   ];
 }
-
-// --- RESULTS TAB ---
 
 function buildBusResultsSections(data: BusResultData): InspectorSection[] {
   return [
@@ -245,47 +192,36 @@ function buildBusResultsSections(data: BusResultData): InspectorSection[] {
       id: 'results',
       label: INSPECTOR_SECTION_LABELS.results,
       fields: [
-        { key: 'u_kv', label: 'Napięcie', value: formatNumber(data.u_kv), unit: 'kV', source: 'calculated' },
-        { key: 'u_pu', label: 'Napięcie (p.u.)', value: formatNumber(data.u_pu, 4), unit: 'pu', source: 'calculated' },
-        { key: 'angle_deg', label: 'Kąt fazowy', value: formatNumber(data.angle_deg, 2), unit: '°', source: 'calculated' },
+        { key: 'u_kv', label: 'Napięcie', value: data.u_kv, unit: 'kV', source: 'calculated' },
+        { key: 'u_pu', label: 'Napięcie (p.u.)', value: data.u_pu, unit: 'pu', source: 'calculated' },
+        { key: 'angle_deg', label: 'Kąt fazowy', value: data.angle_deg, unit: '°', source: 'calculated' },
       ],
     },
     {
       id: 'flags',
       label: INSPECTOR_SECTION_LABELS.flags,
-      fields: [
-        { key: 'flags', label: 'Flagi', value: formatFlags(data.flags) },
-      ],
+      fields: [{ key: 'flags', label: 'Flagi', value: formatFlags(data.flags) }],
     },
   ];
 }
 
 function buildBranchResultsSections(data: BranchResultData): InspectorSection[] {
-  const loadingHighlight: InspectorField['highlight'] =
-    data.loading_pct !== null && data.loading_pct > 100
-      ? 'error'
-      : data.loading_pct !== null && data.loading_pct > 80
-        ? 'warning'
-        : undefined;
-
   return [
     {
       id: 'power_flow',
       label: INSPECTOR_SECTION_LABELS.power_flow,
       fields: [
-        { key: 'i_a', label: 'Prąd', value: formatNumber(data.i_a, 1), unit: 'A', source: 'calculated' },
-        { key: 'p_mw', label: 'Moc czynna', value: formatNumber(data.p_mw), unit: 'MW', source: 'calculated' },
-        { key: 'q_mvar', label: 'Moc bierna', value: formatNumber(data.q_mvar), unit: 'Mvar', source: 'calculated' },
-        { key: 's_mva', label: 'Moc pozorna', value: formatNumber(data.s_mva), unit: 'MVA', source: 'calculated' },
-        { key: 'loading_pct', label: 'Obciążenie', value: formatNumber(data.loading_pct, 1), unit: '%', source: 'calculated', highlight: loadingHighlight },
+        { key: 'i_a', label: 'Prąd', value: data.i_a, unit: 'A', source: 'calculated' },
+        { key: 'p_mw', label: 'Moc czynna', value: data.p_mw, unit: 'MW', source: 'calculated' },
+        { key: 'q_mvar', label: 'Moc bierna', value: data.q_mvar, unit: 'Mvar', source: 'calculated' },
+        { key: 's_mva', label: 'Moc pozorna', value: data.s_mva, unit: 'MVA', source: 'calculated' },
+        { key: 'loading_pct', label: 'Obciążenie', value: data.loading_pct, unit: '%', source: 'calculated' },
       ],
     },
     {
       id: 'flags',
       label: INSPECTOR_SECTION_LABELS.flags,
-      fields: [
-        { key: 'flags', label: 'Flagi', value: formatFlags(data.flags) },
-      ],
+      fields: [{ key: 'flags', label: 'Flagi', value: formatFlags(data.flags) }],
     },
   ];
 }
@@ -296,60 +232,28 @@ function buildShortCircuitResultsSections(data: ShortCircuitResultData): Inspect
       id: 'short_circuit',
       label: INSPECTOR_SECTION_LABELS.short_circuit,
       fields: [
-        { key: 'ikss_ka', label: "Ik''", value: formatNumber(data.ikss_ka), unit: 'kA', source: 'calculated', highlight: 'primary' },
-        { key: 'ip_ka', label: 'ip', value: formatNumber(data.ip_ka), unit: 'kA', source: 'calculated' },
-        { key: 'ith_ka', label: 'Ith', value: formatNumber(data.ith_ka), unit: 'kA', source: 'calculated' },
-        { key: 'sk_mva', label: "Sk''", value: formatNumber(data.sk_mva, 1), unit: 'MVA', source: 'calculated' },
+        { key: 'ikss_ka', label: "Ik''", value: data.ikss_ka, unit: 'kA', source: 'calculated', highlight: 'primary' },
+        { key: 'ip_ka', label: 'ip', value: data.ip_ka, unit: 'kA', source: 'calculated' },
+        { key: 'ith_ka', label: 'Ith', value: data.ith_ka, unit: 'kA', source: 'calculated' },
+        { key: 'sk_mva', label: "Sk''", value: data.sk_mva, unit: 'MVA', source: 'calculated' },
       ],
     },
   ];
 }
-
-// --- CONTRIBUTIONS TAB ---
-
-function buildContributionsSections(type: string): InspectorSection[] {
-  // Contributions - pokazuje kontrybutorów do prądu zwarciowego lub obciążenia
-  // W pełnej implementacji dane pochodziłyby z backendu
-  const isShortCircuit = type === 'short_circuit' || type === 'bus';
-
-  return [
-    {
-      id: 'contributions_summary',
-      label: isShortCircuit ? 'Kontrybutorzy prądu zwarciowego' : 'Kontrybutorzy obciążenia',
-      fields: [
-        { key: 'note', label: 'Uwaga', value: 'Dane kontrybutorów wymagają integracji z backendem' },
-        { key: 'total', label: 'Suma kontrybutorów', value: '—' },
-      ],
-    },
-    {
-      id: 'contributors_list',
-      label: 'Lista kontrybutorów',
-      fields: [
-        { key: 'placeholder', label: 'Źródło #1', value: '— (dane niedostępne)' },
-      ],
-    },
-  ];
-}
-
-// --- LIMITS TAB ---
 
 function buildBusLimitsSections(data: BusResultData): InspectorSection[] {
-  const u_pu = data.u_pu ?? 0;
-  const vMargin = u_pu >= 0.95 && u_pu <= 1.05
-    ? 'OK'
-    : u_pu >= 0.90 && u_pu <= 1.10
-      ? 'WARNING'
-      : 'VIOLATION';
+  const uPu = data.u_pu ?? 0;
+  const status = uPu >= 0.95 && uPu <= 1.05 ? 'OK' : uPu >= 0.9 && uPu <= 1.1 ? 'WARNING' : 'VIOLATION';
 
   return [
     {
       id: 'voltage_limits',
       label: 'Limity napięciowe',
       fields: [
-        { key: 'v_limit_check', label: 'Napięcie [p.u.]', value: formatNumber(u_pu, 4), highlight: vMargin === 'VIOLATION' ? 'error' : vMargin === 'WARNING' ? 'warning' : undefined },
-        { key: 'v_min', label: 'Limit dolny', value: '0.90 pu (norma: PN-EN 50160)' },
-        { key: 'v_max', label: 'Limit górny', value: '1.10 pu (norma: PN-EN 50160)' },
-        { key: 'v_status', label: 'Status', value: vMargin },
+        { key: 'v_limit_check', label: 'Napięcie [p.u.]', value: formatNumber(uPu, 4), highlight: status === 'VIOLATION' ? 'error' : status === 'WARNING' ? 'warning' : undefined },
+        { key: 'v_min', label: 'Limit dolny', value: '0.90 pu' },
+        { key: 'v_max', label: 'Limit górny', value: '1.10 pu' },
+        { key: 'v_status', label: 'Status', value: formatLimitStatus(status) },
       ],
     },
   ];
@@ -357,116 +261,167 @@ function buildBusLimitsSections(data: BusResultData): InspectorSection[] {
 
 function buildBranchLimitsSections(data: BranchResultData): InspectorSection[] {
   const loading = data.loading_pct ?? 0;
-  const loadingStatus = loading <= 80 ? 'OK' : loading <= 100 ? 'WARNING' : 'VIOLATION';
+  const status = loading <= 80 ? 'OK' : loading <= 100 ? 'WARNING' : 'VIOLATION';
 
   return [
     {
       id: 'thermal_limits',
       label: 'Limity termiczne',
       fields: [
-        { key: 'loading_check', label: 'Obciążenie [%]', value: formatNumber(loading, 1), highlight: loadingStatus === 'VIOLATION' ? 'error' : loadingStatus === 'WARNING' ? 'warning' : undefined },
+        { key: 'loading_check', label: 'Obciążenie [%]', value: formatNumber(loading, 1), highlight: status === 'VIOLATION' ? 'error' : status === 'WARNING' ? 'warning' : undefined },
         { key: 'i_max', label: 'Limit termiczny', value: '100% (prąd znamionowy)' },
-        { key: 'loading_status', label: 'Status', value: loadingStatus },
+        { key: 'loading_status', label: 'Status', value: formatLimitStatus(status) },
       ],
     },
   ];
 }
 
-function buildShortCircuitLimitsSections(data: ShortCircuitResultData): InspectorSection[] {
-  // W pełnej implementacji Icu pochodziłoby z katalogu
-  const ik = data.ikss_ka ?? 0;
-  const icu = 31.5; // Przykładowa wartość - w praktyce z katalogu
-  const margin = ((icu - ik) / icu) * 100;
-  const status = margin > 15 ? 'OK' : margin >= 0 ? 'WARNING' : 'VIOLATION';
-
-  return [
-    {
-      id: 'switching_capacity',
-      label: 'Zdolność wyłączania',
-      fields: [
-        { key: 'ik', label: "Ik'' [kA]", value: formatNumber(ik), highlight: status === 'VIOLATION' ? 'error' : status === 'WARNING' ? 'warning' : undefined },
-        { key: 'icu', label: 'Icu [kA] (limit)', value: formatNumber(icu) },
-        { key: 'margin', label: 'Margines [%]', value: formatNumber(margin, 1) },
-        { key: 'status', label: 'Status', value: status },
-        { key: 'norm', label: 'Norma', value: 'IEC 60909' },
-      ],
-    },
-  ];
+function EmptyTabState({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="rounded border border-slate-200 bg-white p-4" data-testid="inspector-empty-tab">
+      <div className="text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mt-2 text-sm text-slate-600">{description}</div>
+      {action ? <div className="mt-4">{action}</div> : null}
+    </div>
+  );
 }
 
-// --- PROOF TAB ---
-
-function buildProofSections(_type: string): InspectorSection[] {
-  // Proof (P11) - dowód zgodności dla Bus i Protection
-  return [
-    {
-      id: 'proof_summary',
-      label: 'Dowód zgodności',
-      fields: [
-        { key: 'status', label: 'Status zgodności', value: 'COMPLIANT' },
-        { key: 'audit_date', label: 'Data audytu', value: new Date().toLocaleDateString('pl-PL') },
-        { key: 'standard', label: 'Norma referencyjna', value: 'IEC 60909' },
-      ],
-    },
-    {
-      id: 'proof_actions',
-      label: 'Eksport',
-      fields: [
-        { key: 'export_note', label: 'Uwaga', value: 'Kliknij "Eksportuj PDF" aby wygenerować pełny raport dowodu obliczeń' },
-      ],
-    },
-  ];
+function ContributionsTabContent() {
+  return (
+    <EmptyTabState
+      title="Niedostępne w tym widoku"
+      description="Szczegółowe wkłady nie są dostępne w tym widoku."
+    />
+  );
 }
 
-// =============================================================================
-// Tab Content Component
-// =============================================================================
+function LimitsNoDataContent() {
+  return (
+    <EmptyTabState
+      title="Brak danych"
+      description="Brak danych limitowych dla tego elementu w aktualnym widoku wyników."
+    />
+  );
+}
 
-interface TabContentProps {
+function ProofTabContent() {
+  const activeRunId = useExecutionRunsStore((state) => state.activeRunId);
+
+  const handleOpenProof = useCallback(() => {
+    if (!activeRunId) {
+      return;
+    }
+    navigateToProof({ runId: activeRunId });
+  }, [activeRunId]);
+
+  return (
+    <EmptyTabState
+      title={activeRunId ? 'Otwórz wywód obliczeń' : 'Niedostępny w tym widoku'}
+      description="Wywód obliczeń jest dostępny w dedykowanej zakładce „Wywód”."
+      action={(
+        <div className="space-y-3">
+          <p className="text-xs text-slate-500">
+            Aby przejść dalej, załaduj pakietu wywodu dla aktywnego uruchomienia.
+          </p>
+          <button
+            type="button"
+            data-testid="open-proof-trace-proof"
+            onClick={handleOpenProof}
+            disabled={!activeRunId}
+            className="rounded border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-50 disabled:text-slate-400"
+          >
+            Otwórz wywód obliczeń
+          </button>
+          {!activeRunId ? (
+            <div
+              className="text-xs text-slate-500"
+              data-testid="open-proof-trace-blocked-proof"
+            >
+              Brak aktywnego uruchomienia.
+            </div>
+          ) : null}
+        </div>
+      )}
+    />
+  );
+}
+
+function TabContent({
+  tab,
+  selectedRow,
+}: {
   tab: InspectorTab;
   selectedRow: InspectorResultRow | null;
-}
-
-function TabContent({ tab, selectedRow }: TabContentProps) {
+}) {
   const sections = useMemo<InspectorSection[]>(() => {
     if (!selectedRow) return [];
 
     switch (tab) {
       case 'overview':
         switch (selectedRow.type) {
-          case 'bus': return buildBusOverviewSections(selectedRow.data);
-          case 'branch': return buildBranchOverviewSections(selectedRow.data);
-          case 'short_circuit': return buildShortCircuitOverviewSections(selectedRow.data);
+          case 'bus':
+            return buildBusOverviewSections(selectedRow.data);
+          case 'branch':
+            return buildBranchOverviewSections(selectedRow.data);
+          case 'short_circuit':
+            return buildShortCircuitOverviewSections(selectedRow.data);
         }
-        break;
+        return [];
       case 'parameters':
         switch (selectedRow.type) {
-          case 'bus': return buildBusParametersSections(selectedRow.data);
-          case 'branch': return buildBranchParametersSections(selectedRow.data);
-          case 'short_circuit': return buildShortCircuitParametersSections(selectedRow.data);
+          case 'bus':
+            return buildBusParametersSections(selectedRow.data);
+          case 'branch':
+            return buildBranchParametersSections(selectedRow.data);
+          case 'short_circuit':
+            return buildShortCircuitParametersSections(selectedRow.data);
         }
-        break;
+        return [];
       case 'results':
         switch (selectedRow.type) {
-          case 'bus': return buildBusResultsSections(selectedRow.data);
-          case 'branch': return buildBranchResultsSections(selectedRow.data);
-          case 'short_circuit': return buildShortCircuitResultsSections(selectedRow.data);
+          case 'bus':
+            return buildBusResultsSections(selectedRow.data);
+          case 'branch':
+            return buildBranchResultsSections(selectedRow.data);
+          case 'short_circuit':
+            return buildShortCircuitResultsSections(selectedRow.data);
         }
-        break;
-      case 'contributions':
-        return buildContributionsSections(selectedRow.type);
+        return [];
       case 'limits':
         switch (selectedRow.type) {
-          case 'bus': return buildBusLimitsSections(selectedRow.data);
-          case 'branch': return buildBranchLimitsSections(selectedRow.data);
-          case 'short_circuit': return buildShortCircuitLimitsSections(selectedRow.data);
+          case 'bus':
+            return buildBusLimitsSections(selectedRow.data);
+          case 'branch':
+            return buildBranchLimitsSections(selectedRow.data);
+          case 'short_circuit':
+            return [];
         }
-        break;
+        return [];
+      case 'contributions':
       case 'proof':
-        return buildProofSections(selectedRow.type);
+        return [];
     }
-    return [];
-  }, [tab, selectedRow]);
+  }, [selectedRow, tab]);
+
+  if (tab === 'contributions') {
+    return <ContributionsTabContent />;
+  }
+
+  if (tab === 'proof') {
+    return <ProofTabContent />;
+  }
+
+  if (tab === 'limits' && selectedRow?.type === 'short_circuit') {
+    return <LimitsNoDataContent />;
+  }
 
   if (sections.length === 0) {
     return (
@@ -479,61 +434,24 @@ function TabContent({ tab, selectedRow }: TabContentProps) {
   return <PropertyGrid sections={sections} />;
 }
 
-// =============================================================================
-// InspectorPanel Types
-// =============================================================================
-
-/**
- * Wynik do wyświetlenia w inspektorze.
- */
-type InspectorResultRow =
-  | { type: 'bus'; data: BusResultData }
-  | { type: 'branch'; data: BranchResultData }
-  | { type: 'short_circuit'; data: ShortCircuitResultData };
-
-interface InspectorPanelProps {
-  /**
-   * Wybrany wiersz wyniku do wyświetlenia.
-   * Jeśli null, wyświetla pustą informację.
-   */
-  selectedRow?: InspectorResultRow | null;
-
-  /**
-   * Callback wywoływany przy zamknięciu panelu.
-   */
-  onClose?: () => void;
-
-  /**
-   * Dodatkowe klasy CSS.
-   */
-  className?: string;
-}
-
-// =============================================================================
-// InspectorPanel Component
-// =============================================================================
-
-/**
- * Panel inspektora z 6 zakładkami (read-only property grid).
- *
- * Zgodnie z ELEMENT_INSPECTOR_CONTRACT.md:
- * - Overview: identyfikacja + status + kluczowe wartości
- * - Parameters: parametry techniczne
- * - Results: wyniki obliczeń
- * - Contributions: kontrybutorzy do zwarć / obciążenia
- * - Limits: limity normatywne
- * - Proof (P11): dowód zgodności
- */
-export function InspectorPanel({ selectedRow, onClose, className = '' }: InspectorPanelProps) {
+export function InspectorPanel({
+  selectedRow,
+  onClose,
+  className = '',
+}: InspectorPanelProps) {
   const [activeTab, setActiveTab] = useState<InspectorTab>('overview');
 
-  // Dostępne zakładki dla typu elementu
   const availableTabs = useMemo<InspectorTab[]>(() => {
-    if (!selectedRow) return ['overview', 'parameters', 'results'];
+    if (!selectedRow) return AVAILABLE_TABS.default;
     return AVAILABLE_TABS[selectedRow.type] ?? AVAILABLE_TABS.default;
   }, [selectedRow]);
 
-  // Tytuł panelu
+  useEffect(() => {
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0] ?? 'overview');
+    }
+  }, [activeTab, availableTabs]);
+
   const title = useMemo(() => {
     if (!selectedRow) return 'Właściwości';
 
@@ -543,11 +461,10 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
       case 'branch':
         return `Gałąź: ${selectedRow.data.name}`;
       case 'short_circuit':
-        return `Zwarcie: ${selectedRow.data.target_name ?? selectedRow.data.target_id.substring(0, 8)}`;
+        return `Zwarcie: ${selectedRow.data.target_name ?? selectedRow.data.target_id}`;
     }
   }, [selectedRow]);
 
-  // ID elementu dla testów
   const selectionId = useMemo(() => {
     if (!selectedRow) return null;
 
@@ -561,7 +478,6 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
     }
   }, [selectedRow]);
 
-  // Empty state
   if (!selectedRow) {
     return (
       <div
@@ -578,10 +494,9 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
   return (
     <div
       className={`rounded border border-slate-200 bg-white ${className}`}
-      data-testid="inspector-panel"
       data-selection-id={selectionId}
+      data-testid="inspector-panel"
     >
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -591,7 +506,7 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
             {title}
           </h3>
         </div>
-        {onClose && (
+        {onClose ? (
           <button
             type="button"
             onClick={onClose}
@@ -599,12 +514,11 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
             aria-label="Zamknij panel właściwości"
             data-testid="inspector-close-button"
           >
-            ✕
+            ×
           </button>
-        )}
+        ) : null}
       </div>
 
-      {/* Tab Navigation - S4: 6 zakładek */}
       <div className="border-b border-slate-200 px-2 pt-2" data-testid="inspector-tabs">
         <div className="flex flex-wrap gap-1">
           {(['overview', 'parameters', 'results', 'contributions', 'limits', 'proof'] as InspectorTab[]).map((tab) => {
@@ -615,7 +529,11 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
               <button
                 key={tab}
                 type="button"
-                onClick={() => isAvailable && setActiveTab(tab)}
+                onClick={() => {
+                  if (isAvailable) {
+                    setActiveTab(tab);
+                  }
+                }}
                 disabled={!isAvailable}
                 className={`px-2 py-1.5 text-xs font-medium rounded-t transition-colors ${
                   isActive
@@ -634,14 +552,12 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
         </div>
       </div>
 
-      {/* Read-only badge */}
       <div className="border-b border-slate-100 bg-green-50 px-4 py-2">
         <div className="flex items-center gap-2 text-xs text-green-700">
           <span>Tryb wyników — tylko do odczytu</span>
         </div>
       </div>
 
-      {/* Tab Content */}
       <div className="p-0" data-testid="inspector-content">
         <TabContent tab={activeTab} selectedRow={selectedRow} />
       </div>
@@ -649,38 +565,6 @@ export function InspectorPanel({ selectedRow, onClose, className = '' }: Inspect
   );
 }
 
-// =============================================================================
-// InspectorPanelConnected - Connected to Selection Store
-// =============================================================================
-
-interface InspectorPanelConnectedProps {
-  /**
-   * Dane wyniku do wyświetlenia (przekazywane z kontekstu wyników).
-   * Komponent nasłuchuje na zmiany selection i aktualizuje się automatycznie.
-   */
-  resultData?: InspectorResultRow | null;
-
-  /**
-   * Callback wywoływany przy zamknięciu panelu.
-   */
-  onClose?: () => void;
-
-  /**
-   * Dodatkowe klasy CSS.
-   */
-  className?: string;
-}
-
-/**
- * InspectorPanel połączony z globalnym Selection Store.
- *
- * Automatycznie reaguje na zmiany selection z:
- * - Results Table
- * - SLD
- * - Project Tree
- *
- * Stabilne selection_id zapewnia deterministyczne zachowanie.
- */
 export function InspectorPanelConnected({
   resultData,
   onClose,
@@ -688,11 +572,10 @@ export function InspectorPanelConnected({
 }: InspectorPanelConnectedProps) {
   const selectElement = useSelectionStore((state) => state.selectElement);
 
-  // Callback do zamknięcia z czyszczeniem selection
   const handleClose = useCallback(() => {
     selectElement(null);
     onClose?.();
-  }, [selectElement, onClose]);
+  }, [onClose, selectElement]);
 
   return (
     <InspectorPanel

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
+    TraceArtifactV2,
     TraceEquationStep,
     TraceValue,
     build_trace_artifact_v2,
@@ -43,8 +44,7 @@ def _artifact(
     steps: list[TraceEquationStep] | None = None,
     inputs: dict[str, TraceValue] | None = None,
     outputs: dict[str, TraceValue] | None = None,
-) -> "TraceArtifactV2":
-    from domain.trace_v2.artifact import TraceArtifactV2
+) -> TraceArtifactV2:
     return build_trace_artifact_v2(
         trace_id=trace_id,
         analysis_type=AnalysisTypeV2.SC,
@@ -120,6 +120,7 @@ class TestDiffStableJson:
         diff2 = TraceDiffEngine.diff(a, b)
 
         import json
+
         j1 = json.dumps(diff1.to_dict(), sort_keys=True)
         j2 = json.dumps(diff2.to_dict(), sort_keys=True)
         assert j1 == j2

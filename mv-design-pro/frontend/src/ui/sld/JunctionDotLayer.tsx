@@ -9,7 +9,7 @@
 import React from 'react';
 import type { CanonicalAnnotationsV1 } from './core/layoutResult';
 import { JunctionDot } from './symbols/JunctionDot';
-import { ETAP_VOLTAGE_COLORS } from './sldEtapStyle';
+import { CANONICAL_VOLTAGE_COLORS } from './sldCanonicalStyle';
 
 export interface JunctionDotLayerProps {
   annotations: CanonicalAnnotationsV1;
@@ -19,8 +19,8 @@ export interface JunctionDotLayerProps {
 
 export const JunctionDotLayer: React.FC<JunctionDotLayerProps> = ({
   annotations,
-  colorSN = ETAP_VOLTAGE_COLORS.SN,
-  colorNN = ETAP_VOLTAGE_COLORS.nN,
+  colorSN = CANONICAL_VOLTAGE_COLORS.SN,
+  colorNN = CANONICAL_VOLTAGE_COLORS.nN,
 }) => {
   // Collect all junction dot positions from annotations
   const dots: Array<{ x: number; y: number; color: string; key: string }> = [];

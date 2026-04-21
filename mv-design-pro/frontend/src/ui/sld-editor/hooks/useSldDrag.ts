@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § E.1: Drag single/group symbols
- * - powerfactory_ui_parity.md: Drag = 1 undo operation (mouseDown → mouseUp)
+ * - ui_canonical_parity.md: Drag = 1 undo operation (mouseDown → mouseUp)
  * - P30a: UNDO/REDO integration via commands
  *
  * Hook for drag operations:

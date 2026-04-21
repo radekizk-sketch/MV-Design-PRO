@@ -9,7 +9,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - layout/types.ts: BusbarInput, FeederInput
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
  * - connectionRouting.ts: Connection types
  *
  * PUNKT INTEGRACJI:
@@ -33,7 +33,7 @@ import type {
 } from '../layout/types';
 import type { AnySldSymbol, NodeSymbol, Position } from '../../sld-editor/types';
 import { computeBusbarAutoLayout, segmentsToPolyline } from '../layout';
-import { ETAP_GEOMETRY } from '../sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../sldCanonicalStyle';
 
 // =============================================================================
 // TYPES
@@ -218,7 +218,7 @@ export function generateFeederOrderKey(
 }
 
 /**
- * Get busbar thickness from NodeSymbol or default from ETAP_GEOMETRY.
+ * Get busbar thickness from NodeSymbol or default from CANONICAL_GEOMETRY.
  *
  * DETERMINISTIC: Pure function
  */
@@ -227,9 +227,9 @@ export function getBusbarThickness(busSymbol: NodeSymbol, axis: 'H' | 'V'): numb
   // For vertical busbar, thickness is width
   const thickness = axis === 'H' ? busSymbol.height : busSymbol.width;
 
-  // If thickness is too small or zero, use ETAP default
+  // If thickness is too small or zero, use CANONICAL default
   if (thickness <= 0) {
-    return ETAP_GEOMETRY.busbar.height;
+    return CANONICAL_GEOMETRY.busbar.height;
   }
 
   return thickness;

@@ -3,9 +3,9 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 3: Complete Property Grid specs for each element type
- * - powerfactory_ui_parity.md § D: Property Grid rules
+ * - ui_canonical_parity.md § D: Property Grid rules
  *
- * DETERMINISTIC ORDER (per powerfactory_ui_parity.md § D.3):
+ * DETERMINISTIC ORDER (per ui_canonical_parity.md § D.3):
  * 1. Identyfikacja (ID, Nazwa, UUID)
  * 2. Stan (W eksploatacji, Cykl życia)
  * 3. Topologia (Szyna początkowa, końcowa)

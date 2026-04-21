@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # Rozdział 8 — Typ vs Instancja + Katalogi Typów (Type Library)
 
 **Wersja:** 1.1
@@ -740,7 +746,7 @@ White Box MUSI umieć odtworzyć pełny łańcuch per instancja:
 ## §8.A — Suplement v1.1: Domknięcie kontraktów TO-BE
 
 > **Cel:** Domknięcie kontraktów audytowych trybu eksperckiego i macierzy kompatybilności,
-> przygotowanie systemu do Etapu 10/18 (Study Cases & Scenarios).
+> przygotowanie systemu do benchmarku 10/18 (Study Cases & Scenarios).
 > **Status:** Kontrakty BINDING. NIE cofają ustaleń v1.0 — wyłącznie doprecyzowują.
 
 ---
@@ -948,3 +954,4 @@ Reguły nakładki:
 ---
 
 *Koniec Rozdziału 8*
+

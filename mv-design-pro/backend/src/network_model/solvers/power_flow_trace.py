@@ -3,9 +3,10 @@
 Ten moduł definiuje struktury dla pełnego śladu iteracji Newton-Raphson,
 umożliwiając ręczną weryfikację przebiegu obliczeń.
 """
+
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 # P20a: Solver version for trace compatibility
@@ -29,12 +30,15 @@ class PowerFlowIterationTrace:
         pv_to_pq_switches: Lista węzłów PV przełączonych na PQ (limit Q).
         cause_if_failed: Przyczyna błędu (jeśli iteracja zakończyła się błędem).
     """
+
     k: int
     mismatch_per_bus: dict[str, dict[str, float]]  # {bus_id: {delta_p_pu, delta_q_pu}}
     norm_mismatch: float
     max_mismatch_pu: float
     jacobian: dict[str, list[list[float]]] | None = None  # {J1_dP_dTheta, J2_dP_dV, ...}
-    delta_state: dict[str, dict[str, float]] | None = None  # {bus_id: {delta_theta_rad, delta_v_pu}}
+    delta_state: dict[
+        str, dict[str, float]
+    ] | None = None  # {bus_id: {delta_theta_rad, delta_v_pu}}
     state_next: dict[str, dict[str, float]] | None = None  # {bus_id: {v_pu, theta_rad}}
     damping_used: float = 1.0
     step_norm: float = 0.0
@@ -90,6 +94,7 @@ class PowerFlowTrace:
         converged: Czy obliczenia zbiegły.
         final_iterations_count: Liczba wykonanych iteracji.
     """
+
     solver_version: str
     input_hash: str
     snapshot_id: str | None

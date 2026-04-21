@@ -142,9 +142,7 @@ def export_snapshot_jsonl(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     if not isinstance(snapshot, dict):
-        raise ValueError(
-            f"snapshot must be a dict, got {type(snapshot).__name__}"
-        )
+        raise ValueError(f"snapshot must be a dict, got {type(snapshot).__name__}")
 
     lines: list[str] = []
 
@@ -208,7 +206,7 @@ def _serialize_single(value: Any) -> Any:
         return {"re": value.real, "im": value.imag}
     if isinstance(value, dict):
         return _serialize_values(value)
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return [_serialize_single(v) for v in value]
     if hasattr(value, "item"):  # numpy scalar
         return value.item()

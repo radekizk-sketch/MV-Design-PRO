@@ -9,6 +9,7 @@ from application.analyses.run_envelope import (
     fingerprint_envelope,
 )
 from application.analyses.run_index import index_run
+
 from tests.utils.determinism import assert_deterministic
 
 
@@ -28,7 +29,12 @@ def _seed_protection_run(uow_factory) -> str:
     inputs = InputsRef(
         base_snapshot_id="snapshot-1",
         spec_ref=None,
-        inline={"connection_node": {"id": "BoundaryNode-1", "label": "BoundaryNode – węzeł przyłączenia"}},
+        inline={
+            "connection_node": {
+                "id": "BoundaryNode-1",
+                "label": "BoundaryNode – węzeł przyłączenia",
+            }
+        },
     )
     artifacts = (ArtifactRef(type="protection_report_v0", id="protection_report_v0:seed"),)
     trace = TraceRef(type="white_box", id=None, inline={"steps": ["seed"]})

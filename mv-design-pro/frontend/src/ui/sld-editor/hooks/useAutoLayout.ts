@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SLD_AUTOLAYOUT_AUDIT_I_NAPRAWA.md: BINDING SPEC
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 5: Auto-Layout
- * - AUDYT_SLD_ETAP.md N-02: hierarchiczne auto-rozmieszczenie
+ * - AUDYT_SLD_CANONICAL.md N-02: hierarchiczne auto-rozmieszczenie
  *
  * ARCHITEKTURA (10/10 topological engine):
  * - JEDEN silnik: computeTopologicalLayout (topological-layout/)
@@ -28,10 +28,10 @@ import {
   DEFAULT_GEOMETRY_CONFIG,
 } from '../utils/topological-layout';
 import {
-  ETAP_GEOMETRY,
+  CANONICAL_GEOMETRY,
   resolveLabelCollisions,
   type LabelBoundingBox,
-} from '../../sld/sldEtapStyle';
+} from '../../sld/sldCanonicalStyle';
 
 // =============================================================================
 // TYPY
@@ -90,7 +90,7 @@ export interface UseAutoLayoutResult {
   clearOverrides: () => void;
   /** Informacje debugowe */
   debug: AutoLayoutState['debug'];
-  /** PR-SLD-ETAP-GEOMETRY-01: Label position adjustments for collision avoidance */
+  /** PR-SLD-CANONICAL-GEOMETRY-01: Label position adjustments for collision avoidance */
   labelAdjustments: Map<string, { x: number; y: number }>;
 }
 
@@ -114,14 +114,14 @@ export interface AutoLayoutConfig {
 }
 
 export const DEFAULT_LAYOUT_CONFIG: AutoLayoutConfig = {
-  gridSize: ETAP_GEOMETRY.layout.gridSize,
-  layerSpacing: ETAP_GEOMETRY.canonicalLayerSpacing,
-  nodeSpacing: ETAP_GEOMETRY.bay.spacing,
-  busMinWidth: ETAP_GEOMETRY.busbar.minWidth,
+  gridSize: CANONICAL_GEOMETRY.layout.gridSize,
+  layerSpacing: CANONICAL_GEOMETRY.canonicalLayerSpacing,
+  nodeSpacing: CANONICAL_GEOMETRY.bay.spacing,
+  busMinWidth: CANONICAL_GEOMETRY.busbar.minWidth,
   symbolWidth: 60,
   symbolHeight: 40,
   direction: 'top-down',
-  padding: ETAP_GEOMETRY.layout.padding,
+  padding: CANONICAL_GEOMETRY.layout.padding,
 };
 
 export interface CollisionConfig {
@@ -203,7 +203,7 @@ export function computeTopologyHash(symbols: AnySldSymbol[]): string {
 
 /**
  * Build label bounding boxes for collision detection.
- * Uses ETAP_GEOMETRY tokens for consistent clearances.
+ * Uses CANONICAL_GEOMETRY tokens for consistent clearances.
  */
 function buildLabelBoundingBoxes(
   symbols: AnySldSymbol[],
@@ -350,7 +350,7 @@ export function useAutoLayout(
     });
   }, [symbols, layoutState.finalPositions]);
 
-  // PR-SLD-ETAP-GEOMETRY-01: Calculate label position adjustments for collision avoidance
+  // PR-SLD-CANONICAL-GEOMETRY-01: Calculate label position adjustments for collision avoidance
   const labelAdjustments = useMemo<Map<string, { x: number; y: number }>>(() => {
     const labelBoxes = buildLabelBoundingBoxes(
       symbols,

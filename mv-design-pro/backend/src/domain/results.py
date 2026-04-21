@@ -21,7 +21,7 @@ COMPARISON RULES (BINDING):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID
@@ -29,12 +29,13 @@ from uuid import UUID
 
 class RunResultState(str, Enum):
     """
-    Result state for a Study Run (PowerFactory-grade).
+    Result state for a Study Run (industrial-grade).
 
     P10b: Canonical states aligned with StudyCaseResultStatus.
     """
-    NONE = "NONE"          # No results computed
-    FRESH = "FRESH"        # Results are current (valid)
+
+    NONE = "NONE"  # No results computed
+    FRESH = "FRESH"  # Results are current (valid)
     OUTDATED = "OUTDATED"  # Results need recomputation
 
 
@@ -44,6 +45,7 @@ RunResultStateLiteral = Literal["NONE", "FRESH", "OUTDATED"]
 # -----------------------------------------------------------------------------
 # Comparison DTOs — P10b
 # -----------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class NumericDelta:
@@ -59,6 +61,7 @@ class NumericDelta:
 
     INVARIANT: No physics interpretation, just numbers.
     """
+
     value_a: float
     value_b: float
     delta: float
@@ -115,6 +118,7 @@ class ComplexDelta:
 
     INVARIANT: No physics interpretation, just numbers.
     """
+
     re_a: float
     im_a: float
     re_b: float
@@ -183,11 +187,12 @@ class ShortCircuitComparison:
 
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
+
     ikss_delta: NumericDelta  # Ik'' [A]
-    sk_delta: NumericDelta    # Sk'' [MVA]
-    zth_delta: ComplexDelta   # Zth [Ohm]
-    ip_delta: NumericDelta    # Ip [A]
-    ith_delta: NumericDelta   # Ith [A]
+    sk_delta: NumericDelta  # Sk'' [MVA]
+    zth_delta: ComplexDelta  # Zth [Ohm]
+    ip_delta: NumericDelta  # Ip [A]
+    ith_delta: NumericDelta  # Ith [A]
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -210,6 +215,7 @@ class BusVoltageComparison:
     - u_kv_delta: Voltage magnitude [kV]
     - u_pu_delta: Voltage in per-unit
     """
+
     bus_id: str
     u_kv_delta: NumericDelta
     u_pu_delta: NumericDelta
@@ -238,6 +244,7 @@ class BranchPowerComparison:
     - p_mw_delta: Active power [MW]
     - q_mvar_delta: Reactive power [Mvar]
     """
+
     branch_id: str
     p_mw_delta: NumericDelta
     q_mvar_delta: NumericDelta
@@ -268,6 +275,7 @@ class PowerFlowComparison:
 
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
+
     total_losses_p_delta: NumericDelta
     total_losses_q_delta: NumericDelta
     slack_p_delta: NumericDelta
@@ -305,6 +313,7 @@ class ProtectionEvaluationComparison:
 
     INVARIANT: No normative interpretation, just state/value comparison.
     """
+
     element_id: str
     trip_state_a: str
     trip_state_b: str
@@ -342,6 +351,7 @@ class ProtectionComparison:
 
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
+
     evaluations: tuple[ProtectionEvaluationComparison, ...]
     trip_count_delta: NumericDelta
     no_trip_count_delta: NumericDelta
@@ -376,11 +386,12 @@ class RunComparisonResult:
 
     INVARIANT: 100% read-only, no mutations, no physics.
     """
+
     run_a_id: UUID
     run_b_id: UUID
     project_id: UUID
     analysis_type: str
-    compared_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    compared_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     short_circuit: ShortCircuitComparison | None = None
     power_flow: PowerFlowComparison | None = None
     protection: ProtectionComparison | None = None
@@ -405,31 +416,31 @@ class RunComparisonResult:
 
 class ComparisonError(Exception):
     """Base exception for comparison errors."""
+
     pass
 
 
 class ProjectMismatchError(ComparisonError):
     """Raised when runs belong to different projects."""
+
     def __init__(self, run_a_project: UUID, run_b_project: UUID):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(
-            f"Runs belong to different projects: {run_a_project} vs {run_b_project}"
-        )
+        super().__init__(f"Runs belong to different projects: {run_a_project} vs {run_b_project}")
 
 
 class AnalysisTypeMismatchError(ComparisonError):
     """Raised when runs have different analysis types."""
+
     def __init__(self, type_a: str, type_b: str):
         self.type_a = type_a
         self.type_b = type_b
-        super().__init__(
-            f"Runs have different analysis types: {type_a} vs {type_b}"
-        )
+        super().__init__(f"Runs have different analysis types: {type_a} vs {type_b}")
 
 
 class RunNotFoundError(ComparisonError):
     """Raised when a run is not found."""
+
     def __init__(self, run_id: UUID):
         self.run_id = run_id
         super().__init__(f"Run not found: {run_id}")
@@ -437,6 +448,7 @@ class RunNotFoundError(ComparisonError):
 
 class ResultNotFoundError(ComparisonError):
     """Raised when results are not found for a run."""
+
     def __init__(self, run_id: UUID, result_type: str):
         self.run_id = run_id
         self.result_type = result_type

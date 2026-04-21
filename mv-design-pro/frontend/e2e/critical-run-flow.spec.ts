@@ -6,6 +6,12 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 let opCounter = 0;
+let entityCounter = 0;
+
+function nextEntitySuffix(): string {
+  entityCounter += 1;
+  return String(entityCounter).padStart(4, '0');
+}
 
 type DomainOpResponse = {
   error?: string | null;
@@ -74,34 +80,84 @@ async function waitForAnalysisRunIndex(
   );
 }
 
-async function createCaseFromUi(page: Page): Promise<string> {
-  await page.goto('/', { waitUntil: 'commit' });
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+async function createProjectAndCase(
+  request: APIRequestContext,
+): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
+  const suffix = nextEntitySuffix();
+  const projectName = `E2E Krytyczny ${suffix}`;
+  const caseName = `Przypadek krytyczny ${suffix}`;
+
+  const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
+    data: {
+      name: projectName,
+      description: 'Test krytycznego flow V12.5',
+      mode: 'TO-BE',
+      voltage_level_kv: 15.0,
+      frequency_hz: 50.0,
+    },
   });
-  await page.reload({ waitUntil: 'commit' });
+  expect(projectResponse.ok()).toBeTruthy();
+  const project = (await projectResponse.json()) as { id: string };
+
+  const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+    data: {
+      project_id: project.id,
+      name: caseName,
+      description: '',
+      config: {},
+      set_active: true,
+    },
+  });
+  expect(caseResponse.ok()).toBeTruthy();
+  const studyCase = (await caseResponse.json()) as { id: string };
+
+  return {
+    projectId: project.id,
+    projectName,
+    caseId: studyCase.id,
+    caseName,
+  };
+}
+
+async function createCaseFromUi(page: Page, request: APIRequestContext): Promise<string> {
+  const { projectId, projectName, caseId, caseName } = await createProjectAndCase(request);
+
+  await page.addInitScript((seed) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: seed.projectId,
+          activeProjectName: seed.projectName,
+          activeCaseId: seed.caseId,
+          activeCaseName: seed.caseName,
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'NONE',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeRunId: null,
+          activeAnalysisType: 'SHORT_CIRCUIT',
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, {
+    projectId,
+    projectName,
+    caseId,
+    caseName,
+  });
+
+  await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-
-  const createCaseBtn = page.getByTestId('sld-empty-overlay-create-case');
-  await expect(createCaseBtn).toBeVisible();
-
-  const createCaseResponsePromise = page.waitForResponse(
-    (response) => response.url().includes('/api/study-cases') && response.request().method() === 'POST',
-  );
-
-  await createCaseBtn.click({ force: true });
-
-  const createCaseResponse = await createCaseResponsePromise;
-  expect(createCaseResponse.ok()).toBeTruthy();
-  const casePayload = (await createCaseResponse.json()) as { id: string };
   await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
-
-  return casePayload.id;
+  return caseId;
 }
 
 test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> White Box -> geometria bez zmian', async ({ page, request }) => {
-  const caseId = await createCaseFromUi(page);
+  const caseId = await createCaseFromUi(page, request);
 
   // Krok 1: GPZ
   let op = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
@@ -251,14 +307,19 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     runId = `legacy-sc-${caseId}`;
   }
 
-  await page.goto(`/#results?run=${runId}`, { waitUntil: 'commit' });
-  await expect(page).toHaveURL(new RegExp(`#results\\?run=${runId}`));
+  await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}`));
+  await expect(page.getByTestId('canonical-layout')).toBeVisible();
+  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 2, name: 'Poziom analityczny' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Wyniki analizy' })).toBeVisible();
   await expect(page.getByTestId('embedded-sld-workspace')).toBeVisible();
   await expect(page.getByTestId('embedded-sld-mode-run')).toBeVisible();
-  await expect(page.getByText('Osadzony widok techniczny')).toBeVisible();
 
   await page.getByRole('button', { name: 'White Box' }).click();
   await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
+  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Przebieg obliczeń analizy' })).toBeVisible();
 
   // Krok 8: Realne wyniki backend

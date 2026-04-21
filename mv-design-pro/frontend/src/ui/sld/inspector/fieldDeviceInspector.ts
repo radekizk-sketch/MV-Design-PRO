@@ -220,7 +220,7 @@ export function buildDeviceInspectorSections(
     paramFields.push({ key: 'rated_current', label: 'Prad znamionowy', value: p.ratedCurrentA, unit: 'A', source: 'instance' });
   }
   if (p.ctRatio !== null) {
-    paramFields.push({ key: 'ct_ratio', label: 'Przekladnia CT', value: p.ctRatio, source: 'instance' });
+    paramFields.push({ key: 'ct_ratio', label: 'Przekladnia przekladnika pradowego', value: p.ctRatio, source: 'instance' });
   }
   if (p.relaySettings !== null) {
     paramFields.push({ key: 'relay_settings', label: 'Nastawy zabezpieczenia', value: p.relaySettings, source: 'instance' });
@@ -259,7 +259,7 @@ export function buildDeviceInspectorSections(
   }
 
   if (device.logicalBindings.ctInputIds.length > 0) {
-    bindingFields.push({ key: 'ct_inputs', label: 'Wejscia CT', value: device.logicalBindings.ctInputIds.join(', ') });
+    bindingFields.push({ key: 'ct_inputs', label: 'Wejscia przekladnika pradowego', value: device.logicalBindings.ctInputIds.join(', ') });
   }
 
   if (bindingFields.length > 0) {
@@ -339,7 +339,7 @@ export function buildCatalogRefSection(
       fields.push({ key: 'cat_rated_voltage', label: 'Napiecie znamionowe', value: r.ratedVoltageKv, unit: 'kV' });
     }
     if (r.ctRatio !== null) {
-      fields.push({ key: 'cat_ct_ratio', label: 'Przekladnia CT', value: r.ctRatio });
+      fields.push({ key: 'cat_ct_ratio', label: 'Przekladnia przekladnika pradowego', value: r.ctRatio });
     }
   }
 

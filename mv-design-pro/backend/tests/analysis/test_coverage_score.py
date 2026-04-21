@@ -39,7 +39,6 @@ from analysis.voltage_profile.models import (
 )
 from application.proof_engine.types import ProofDocument, ProofHeader, ProofSummary, ProofType
 
-
 RUN_TS = datetime(2024, 4, 1, 12, 0, 0)
 
 
@@ -59,7 +58,7 @@ def _proof_doc(proof_type: ProofType, document_id: str) -> ProofDocument:
         proof_type=proof_type,
         title_pl="Doc",
         header=header,
-        steps=tuple(),
+        steps=(),
         summary=summary,
     )
 

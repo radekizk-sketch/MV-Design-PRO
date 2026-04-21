@@ -85,7 +85,7 @@
 - React Query dla danych serwera
 
 ### UI
-- PowerFactoryLayout — zawsze widoczny layout
+- CanonicalLayout — zawsze widoczny layout
 - 389 plików TypeScript/TSX
 - Tailwind CSS
 

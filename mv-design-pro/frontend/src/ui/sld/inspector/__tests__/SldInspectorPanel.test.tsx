@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § G.1: Inspector wyświetla właściwości wybranego elementu
- * - powerfactory_ui_parity.md: Property grid w stylu PowerFactory
+ * - ui_canonical_parity.md: Property grid w stylu Canonical
  *
  * TEST COVERAGE:
  * - Renderowanie pustego stanu
@@ -693,7 +693,7 @@ describe('SldInspectorPanel - Styling', () => {
     const { container } = render(<SldInspectorPanel />);
     const html = container.innerHTML;
 
-    // Should contain slate/gray colors (ETAP-grade professional)
+    // Should contain slate/gray colors (CANONICAL-grade professional)
     expect(html).toContain('slate');
     // No alarm colors (red/green) should appear in normal state
     // Read-only badge now uses slate instead of green

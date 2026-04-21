@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
 import hashlib
 import json
 import math
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
@@ -13,11 +13,18 @@ from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from enm.validator import ENMValidator
-from network_model.core.branch import LineBranch, TransformerBranch
+from infrastructure.persistence.repositories.canonical_run_repository import (
+    canonical_run_repository_scope,
+)
 from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
-from network_model.solvers.power_flow_types import PQSpec, PowerFlowInput, PowerFlowOptions, SlackSpec
+from network_model.solvers.power_flow_types import (
+    PowerFlowInput,
+    PowerFlowOptions,
+    PQSpec,
+    SlackSpec,
+)
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 
@@ -29,7 +36,9 @@ def _canonicalize(value: Any) -> Any:
     return value
 
 
-def _compute_input_hash(*, case_id: str, analysis_type: str, enm_hash: str, options: dict[str, Any]) -> str:
+def _compute_input_hash(
+    *, case_id: str, analysis_type: str, enm_hash: str, options: dict[str, Any]
+) -> str:
     payload = {
         "analysis_type": analysis_type,
         "case_id": case_id,
@@ -88,36 +97,36 @@ class CanonicalRun:
         }
 
 
-_runs: dict[UUID, CanonicalRun] = {}
-_case_runs: dict[str, list[UUID]] = {}
+def _save_run(run: CanonicalRun) -> None:
+    with canonical_run_repository_scope() as repository:
+        repository.save(run)
 
 
 def reset_canonical_runs() -> None:
-    _runs.clear()
-    _case_runs.clear()
+    with canonical_run_repository_scope() as repository:
+        repository.clear_all()
 
 
 def has_run(run_id: UUID) -> bool:
-    return run_id in _runs
+    with canonical_run_repository_scope() as repository:
+        return repository.exists(run_id)
 
 
 def get_run(run_id: UUID) -> CanonicalRun | None:
-    return _runs.get(run_id)
+    with canonical_run_repository_scope() as repository:
+        return repository.get(run_id)
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
-    run_ids = _case_runs.get(case_id, [])
-    runs = [_runs[run_id] for run_id in run_ids if run_id in _runs]
-    return sorted(runs, key=lambda run: run.created_at, reverse=True)
+    with canonical_run_repository_scope() as repository:
+        return repository.list_by_case(case_id)
 
 
-def list_runs_for_project(project_id: str, *, analysis_type: str | None = None) -> list[CanonicalRun]:
-    runs = [
-        run
-        for run in _runs.values()
-        if run.project_id == project_id and (analysis_type is None or run.analysis_type == analysis_type)
-    ]
-    return sorted(runs, key=lambda run: run.created_at, reverse=True)
+def list_runs_for_project(
+    project_id: str, *, analysis_type: str | None = None
+) -> list[CanonicalRun]:
+    with canonical_run_repository_scope() as repository:
+        return repository.list_by_project(project_id, analysis_type=analysis_type)
 
 
 def create_run(
@@ -151,7 +160,7 @@ def create_run(
         project_id=project_id,
         analysis_type=analysis_type,
         status="CREATED",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         snapshot_hash=enm_hash,
         input_hash=_compute_input_hash(
             case_id=case_id,
@@ -164,20 +173,22 @@ def create_run(
         readiness=readiness.model_dump(mode="json"),
         options=normalized_options,
     )
-    _runs[run.id] = run
-    _case_runs.setdefault(case_id, []).append(run.id)
+    with canonical_run_repository_scope() as repository:
+        repository.create(run)
     return run
 
 
 def execute_run(run_id: UUID) -> CanonicalRun:
-    run = _runs.get(run_id)
+    run = get_run(run_id)
     if run is None:
         raise ValueError(f"Run {run_id} not found")
     if run.status in {"FINISHED", "FAILED"}:
         return run
 
     run.status = "RUNNING"
-    run.started_at = datetime.now(timezone.utc)
+    run.started_at = datetime.now(UTC)
+    run.error_message = None
+    _save_run(run)
 
     try:
         if run.analysis_type == "PF":
@@ -187,16 +198,20 @@ def execute_run(run_id: UUID) -> CanonicalRun:
         else:
             raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
         run.status = "FINISHED"
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
+        _save_run(run)
         return run
     except Exception as exc:
         run.status = "FAILED"
         run.error_message = str(exc)
-        run.finished_at = datetime.now(timezone.utc)
+        run.finished_at = datetime.now(UTC)
+        _save_run(run)
         return run
 
 
-def run_short_circuit_now(*, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None) -> CanonicalRun:
+def run_short_circuit_now(
+    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
         analysis_type="short_circuit_sn",
@@ -206,7 +221,9 @@ def run_short_circuit_now(*, case_id: str, project_id: str | None = None, option
     return execute_run(run.id)
 
 
-def run_power_flow_now(*, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None) -> CanonicalRun:
+def run_power_flow_now(
+    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+) -> CanonicalRun:
     run = create_run(
         case_id=case_id,
         analysis_type="PF",
@@ -294,9 +311,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     graph_branches = graph_element_context.get("branches", {})
 
     slack_nodes = sorted(
-        node_id
-        for node_id, node in graph.nodes.items()
-        if node.node_type == NodeType.SLACK
+        node_id for node_id, node in graph.nodes.items() if node.node_type == NodeType.SLACK
     )
     if not slack_nodes:
         raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
@@ -433,7 +448,9 @@ def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
                 },
                 "result": {
                     "norm_mismatch": {
-                        "value": float(iteration.get("mismatch_norm", iteration.get("max_mismatch_pu", 0.0))),
+                        "value": float(
+                            iteration.get("mismatch_norm", iteration.get("max_mismatch_pu", 0.0))
+                        ),
                         "unit": "pu",
                     },
                 },
@@ -578,7 +595,9 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
         i_a = i_ka * 1000.0 if i_ka is not None else None
         s_mva = math.sqrt(item.get("p_from_mw", 0.0) ** 2 + item.get("q_from_mvar", 0.0) ** 2)
         rated_current_a = branch.get("rated_current_a")
-        loading_pct = (i_a / rated_current_a * 100.0) if i_a is not None and rated_current_a else None
+        loading_pct = (
+            (i_a / rated_current_a * 100.0) if i_a is not None and rated_current_a else None
+        )
         flags: list[str] = []
         if loading_pct is not None and loading_pct > 100.0:
             flags.append("OVERLOADED")
@@ -640,7 +659,9 @@ def _graph_id_from_ref(ref_id: str) -> str:
     return str(uuid5(NAMESPACE_DNS, ref_id))
 
 
-def _build_snapshot_graph_element_context(snapshot: dict[str, Any]) -> dict[str, dict[str, dict[str, Any]]]:
+def _build_snapshot_graph_element_context(
+    snapshot: dict[str, Any],
+) -> dict[str, dict[str, dict[str, Any]]]:
     node_context: dict[str, dict[str, Any]] = {}
     branch_context: dict[str, dict[str, Any]] = {}
 
@@ -729,11 +750,15 @@ def _build_snapshot_catalog_context(snapshot: dict[str, Any]) -> list[dict[str, 
             overrides = raw_element.get("overrides") or []
             parameter_origin = raw_element.get("parameter_source")
 
-            if not any((catalog_ref, catalog_namespace, materialized_params, overrides, parameter_origin)):
+            if not any(
+                (catalog_ref, catalog_namespace, materialized_params, overrides, parameter_origin)
+            ):
                 continue
 
             meta = raw_element.get("meta") or {}
-            catalog_item_version = raw_element.get("catalog_version") or meta.get("catalog_item_version")
+            catalog_item_version = raw_element.get("catalog_version") or meta.get(
+                "catalog_item_version"
+            )
             catalog_binding = {
                 "catalog_namespace": catalog_namespace,
                 "catalog_item_id": catalog_ref,
@@ -777,7 +802,9 @@ def _build_snapshot_catalog_context(snapshot: dict[str, Any]) -> list[dict[str, 
     return entries
 
 
-def _build_catalog_context_index(catalog_context: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+def _build_catalog_context_index(
+    catalog_context: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
     return {
         str(entry["element_id"]): dict(entry)
         for entry in catalog_context
@@ -852,13 +879,11 @@ def _enrich_trace_steps_with_catalog_context(
             enriched.setdefault("manual_override_count", catalog_entry.get("manual_override_count"))
             enriched.setdefault("has_manual_overrides", catalog_entry.get("has_manual_overrides"))
 
-        primary_element_ref = (
-            enriched.get("element_id")
-            or (catalog_entry.get("element_id") if catalog_entry is not None else None)
+        primary_element_ref = enriched.get("element_id") or (
+            catalog_entry.get("element_id") if catalog_entry is not None else None
         )
-        primary_element_type = (
-            enriched.get("element_type")
-            or (catalog_entry.get("element_type") if catalog_entry is not None else None)
+        primary_element_type = enriched.get("element_type") or (
+            catalog_entry.get("element_type") if catalog_entry is not None else None
         )
         related_elements: list[dict[str, Any]] = []
         seen_related: set[tuple[str, str]] = set()
@@ -867,6 +892,9 @@ def _enrich_trace_steps_with_catalog_context(
             element_ref: object | None,
             element_type: object | None,
             role: str,
+            *,
+            related_elements: list[dict[str, Any]] = related_elements,
+            seen_related: set[tuple[str, str]] = seen_related,
         ) -> None:
             if element_ref is None:
                 return
@@ -919,7 +947,9 @@ def _build_trace_selection_index(steps: list[dict[str, Any]]) -> dict[str, int]:
 
 def build_extended_trace(run: CanonicalRun) -> dict[str, Any]:
     catalog_context = _build_snapshot_catalog_context(run.snapshot or {})
-    enriched_steps = _enrich_trace_steps_with_catalog_context(list(run.white_box_trace), catalog_context)
+    enriched_steps = _enrich_trace_steps_with_catalog_context(
+        list(run.white_box_trace), catalog_context
+    )
     return {
         "run_id": str(run.id),
         "snapshot_id": run.snapshot_hash,
@@ -959,7 +989,7 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "analysis_type": "short_circuit_3f",
         }
     elif run.analysis_type == "PF":
-        result_v1 = ((run.raw_result or {}).get("result_v1") or {})
+        result_v1 = (run.raw_result or {}).get("result_v1") or {}
         for row in build_bus_results(run).get("rows", []):
             element_results.append(
                 {

@@ -1,14 +1,17 @@
 /**
- * SnapshotHistoryModal — Modal historii zmian modelu (snapshoty).
+ * SnapshotHistoryModal - Modal historii zmian modelu.
  *
- * Wyświetla chronologiczną listę operacji domenowych z timestampem,
- * typem operacji, elementem docelowym i statusem.
+ * Wyswietla chronologiczna liste operacji domenowych z timestampem,
+ * typem operacji, elementem docelowym i bilansem zmian.
  *
  * BINDING: 100% PL etykiety.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo, type KeyboardEvent } from 'react';
 import { clsx } from 'clsx';
+
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { isCanonicalOpName } from '../../types/domainOps';
 
 // =============================================================================
 // Types
@@ -18,10 +21,13 @@ export interface SnapshotHistoryEntry {
   id: string;
   timestamp: string;
   operation: string;
-  operationLabel: string;
+  operationLabel?: string | null;
   elementRef: string | null;
   elementName: string | null;
   status: 'success' | 'error' | 'pending';
+  createdElementIds?: string[];
+  updatedElementIds?: string[];
+  deletedElementIds?: string[];
 }
 
 export interface SnapshotHistoryModalProps {
@@ -33,7 +39,6 @@ export interface SnapshotHistoryModalProps {
 // Operation labels (PL)
 // =============================================================================
 
-/** Operation labels (PL) — used when history entries are populated. */
 export const OP_LABELS: Record<string, string> = {
   add_grid_source_sn: 'Dodanie źródła zasilania SN',
   continue_trunk_segment_sn: 'Kontynuacja magistrali SN',
@@ -43,8 +48,7 @@ export const OP_LABELS: Record<string, string> = {
   connect_secondary_ring_sn: 'Zamknięcie pierścienia / rezerwy',
   set_normal_open_point: 'Ustawienie punktu normalnie otwartego',
   add_transformer_sn_nn: 'Dodanie transformatora SN/nN',
-  add_pv_inverter_nn: 'Dodanie falownika PV',
-  add_bess_inverter_nn: 'Dodanie falownika BESS',
+  add_converter_source: 'Dodanie źródła przekształtnikowego',
   assign_catalog_to_element: 'Przypisanie typu katalogowego',
   update_element_parameters: 'Aktualizacja parametrów elementu',
   delete_element: 'Usunięcie elementu',
@@ -52,19 +56,49 @@ export const OP_LABELS: Record<string, string> = {
   create_case: 'Utworzenie przypadku obliczeniowego',
 };
 
+function normalizeOperation(operation: string): string {
+  return isCanonicalOpName(operation) ? operation : operation;
+}
+
+function resolveOperationLabel(operation: string, explicitLabel?: string | null): string {
+  if (typeof explicitLabel === 'string' && explicitLabel.trim().length > 0) {
+    return explicitLabel;
+  }
+  const normalized = normalizeOperation(operation);
+  return OP_LABELS[normalized] ?? OP_LABELS[operation] ?? operation;
+}
+
+function formatChangeSummary(entry: SnapshotHistoryEntry): string {
+  return `+${entry.createdElementIds?.length ?? 0} / ~${entry.updatedElementIds?.length ?? 0} / -${entry.deletedElementIds?.length ?? 0}`;
+}
+
 // =============================================================================
 // Component
 // =============================================================================
 
 export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalProps) {
-  // History entries will be populated when backend provides operation log.
-  // For now, render an empty state placeholder.
-  const entries: SnapshotHistoryEntry[] = [];
+  const operationHistory = useSnapshotStore(
+    (state) =>
+      (
+        (state as unknown as { operationHistory?: SnapshotHistoryEntry[] }).operationHistory ?? []
+      ) as SnapshotHistoryEntry[],
+  );
+
+  const entries = useMemo(
+    () =>
+      [...operationHistory]
+        .map((entry) => ({
+          ...entry,
+          operationLabel: resolveOperationLabel(entry.operation, entry.operationLabel),
+        }))
+        .sort((left, right) => right.timestamp.localeCompare(left.timestamp)),
+    [operationHistory],
+  );
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
         onClose();
       }
     },
@@ -80,12 +114,11 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
       onKeyDown={handleKeyDown}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-[640px] max-w-[95vw] h-[500px] max-h-[85vh] flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-lg shadow-2xl w-[720px] max-w-[95vw] h-[500px] max-h-[85vh] flex flex-col"
+        onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-label="Historia zmian"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
           <div>
             <h3 className="text-sm font-semibold text-gray-800">Historia zmian modelu</h3>
@@ -105,7 +138,6 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
           </button>
         </div>
 
-        {/* Table */}
         <div className="flex-1 overflow-y-auto">
           {entries.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -125,6 +157,7 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
                   <th className="px-3 py-1.5 text-left font-medium text-gray-500">Czas</th>
                   <th className="px-3 py-1.5 text-left font-medium text-gray-500">Operacja</th>
                   <th className="px-3 py-1.5 text-left font-medium text-gray-500">Element</th>
+                  <th className="px-3 py-1.5 text-left font-medium text-gray-500">Zmiany</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,13 +177,16 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
                       />
                     </td>
                     <td className="px-3 py-1.5 text-gray-400 font-mono text-[10px] whitespace-nowrap">
-                      {entry.timestamp ? formatTimestamp(entry.timestamp) : '—'}
+                      {entry.timestamp ? formatTimestamp(entry.timestamp) : '-'}
                     </td>
                     <td className="px-3 py-1.5 font-medium text-gray-700">
                       {entry.operationLabel}
                     </td>
                     <td className="px-3 py-1.5 text-gray-500">
-                      {entry.elementName ?? entry.elementRef ?? '—'}
+                      {entry.elementName ?? entry.elementRef ?? '-'}
+                    </td>
+                    <td className="px-3 py-1.5 text-gray-500 font-mono text-[10px] whitespace-nowrap">
+                      {formatChangeSummary(entry)}
                     </td>
                   </tr>
                 ))}
@@ -159,7 +195,6 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-5 py-2 border-t border-gray-100 bg-gray-50">
           <span className="text-[10px] text-gray-400">
             {entries.length} operacji
@@ -183,8 +218,8 @@ export function SnapshotHistoryModal({ isOpen, onClose }: SnapshotHistoryModalPr
 
 function formatTimestamp(ts: string): string {
   try {
-    const d = new Date(ts);
-    return d.toLocaleString('pl-PL', {
+    const date = new Date(ts);
+    return date.toLocaleString('pl-PL', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

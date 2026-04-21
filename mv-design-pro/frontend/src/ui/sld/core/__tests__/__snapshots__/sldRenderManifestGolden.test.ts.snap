@@ -58,7 +58,7 @@ exports[`SLD Render Manifest Golden (Step VII) > pv_bess: matches golden snapsho
       "totalLengthPx": 100,
     },
   ],
-  "layoutHash": "c6b5082f",
+  "layoutHash": "79509a33",
   "nodes": [
     {
       "elementType": "Bus",
@@ -167,7 +167,7 @@ exports[`SLD Render Manifest Golden (Step VII) > pv_bess: matches golden snapsho
   ],
   "scenarioId": "pv_bess",
   "specVersion": "1.0",
-  "styleTokenHash": "e53cef0fa145ad2db2e47172828930e2c81ef627ccf00c34a7e47d5350e170c1",
+  "styleTokenHash": "c2dbe38b15963ce9102c7e8eab3e939eb58ab8e31cb00ef04094800f01e1737d",
   "visualGraphHash": "65ac8dff",
   "visualTopologySummary": {
     "gpz": 1,
@@ -223,7 +223,7 @@ exports[`SLD Render Manifest Golden (Step VII) > radial: matches golden snapshot
       "totalLengthPx": 100,
     },
   ],
-  "layoutHash": "0ee0903a",
+  "layoutHash": "9f5d0bf6",
   "nodes": [
     {
       "elementType": "Bus",
@@ -306,7 +306,7 @@ exports[`SLD Render Manifest Golden (Step VII) > radial: matches golden snapshot
   ],
   "scenarioId": "radial",
   "specVersion": "1.0",
-  "styleTokenHash": "e53cef0fa145ad2db2e47172828930e2c81ef627ccf00c34a7e47d5350e170c1",
+  "styleTokenHash": "c2dbe38b15963ce9102c7e8eab3e939eb58ab8e31cb00ef04094800f01e1737d",
   "visualGraphHash": "97a8c332",
   "visualTopologySummary": {
     "gpz": 1,
@@ -389,7 +389,7 @@ exports[`SLD Render Manifest Golden (Step VII) > ring_nop: matches golden snapsh
       "totalLengthPx": 300,
     },
   ],
-  "layoutHash": "c701176b",
+  "layoutHash": "f835e0a7",
   "nodes": [
     {
       "elementType": "Bus",
@@ -485,7 +485,7 @@ exports[`SLD Render Manifest Golden (Step VII) > ring_nop: matches golden snapsh
   ],
   "scenarioId": "ring_nop",
   "specVersion": "1.0",
-  "styleTokenHash": "e53cef0fa145ad2db2e47172828930e2c81ef627ccf00c34a7e47d5350e170c1",
+  "styleTokenHash": "c2dbe38b15963ce9102c7e8eab3e939eb58ab8e31cb00ef04094800f01e1737d",
   "visualGraphHash": "85937d1f",
   "visualTopologySummary": {
     "gpz": 1,

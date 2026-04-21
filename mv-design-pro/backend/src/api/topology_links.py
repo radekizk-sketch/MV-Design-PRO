@@ -14,20 +14,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from domain.topology_links import (
     DuplicateLinkError,
     OrphanRelayError,
     TopologyLink,
     TopologyLinkError,
     build_topology_link_set,
-    resolve_cb_to_target,
-    resolve_relay_to_cb,
     resolve_relay_to_target,
 )
-
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(
     prefix="/api/topology-links",
@@ -103,9 +99,7 @@ class TopologyLinkSetResponse(BaseModel):
     deterministic_signature: str = Field(
         ..., description="Podpis SHA-256 zbioru (deterministyczny)"
     )
-    trace: dict[str, Any] = Field(
-        ..., description="Ślad WHITE BOX do audytu"
-    )
+    trace: dict[str, Any] = Field(..., description="Ślad WHITE BOX do audytu")
 
 
 class ResolveResponse(BaseModel):
@@ -113,9 +107,7 @@ class ResolveResponse(BaseModel):
 
     relay_id: str = Field(..., description="Identyfikator przekaźnika")
     cb_id: str = Field(..., description="Rozwiązany identyfikator wyłącznika")
-    target_ref: str = Field(
-        ..., description="Rozwiązany identyfikator elementu chronionego"
-    )
+    target_ref: str = Field(..., description="Rozwiązany identyfikator elementu chronionego")
     link_id: str = Field(..., description="Identyfikator powiązania źródłowego")
 
 
@@ -265,6 +257,7 @@ def resolve_relay(
 
     # Rebuild link set from stored data
     from domain.topology_links import TopologyLinkSet
+
     link_set = TopologyLinkSet.from_dict(stored)
 
     try:

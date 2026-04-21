@@ -9,10 +9,9 @@ Verifies:
 - Conflict detection (409)
 """
 
-from datetime import datetime
+from datetime import UTC
 
 import pytest
-
 from network_model.catalog.governance import (
     ImportMode,
     TypeLibraryExport,
@@ -206,7 +205,9 @@ def test_canonical_json_is_deterministic():
     json2 = export.to_canonical_json()
 
     assert json1 == json2
-    assert not _has_whitespace_outside_strings(json1)  # No structural whitespace outside JSON strings
+    assert not _has_whitespace_outside_strings(
+        json1
+    )  # No structural whitespace outside JSON strings
 
 
 def test_manifest_to_dict_preserves_order():
@@ -312,7 +313,8 @@ def test_export_import_round_trip(test_db_session):
 
     # Clear catalog
     with uow_factory() as uow:
-        from infrastructure.persistence.models import LineTypeORM, CableTypeORM
+        from infrastructure.persistence.models import CableTypeORM, LineTypeORM
+
         test_db_session.query(LineTypeORM).delete()
         test_db_session.query(CableTypeORM).delete()
         uow.commit()
@@ -382,7 +384,7 @@ def test_import_merge_skips_existing(test_db_session):
 
     assert report["success"] is True
     assert "line1" in report["skipped"]  # Existing type skipped
-    assert "line2" in report["added"]    # New type added
+    assert "line2" in report["added"]  # New type added
 
     # Verify original name preserved (not modified)
     with uow_factory() as uow:
@@ -394,11 +396,12 @@ def test_import_merge_skips_existing(test_db_session):
 @pytest.mark.integration
 def test_import_replace_blocked_when_types_in_use(test_db_session):
     """REPLACE mode blocked when types are referenced by instances."""
-    from application.catalog_governance.service import CatalogGovernanceService
-    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
-    from infrastructure.persistence.models import ProjectORM, NetworkBranchORM, NetworkNodeORM
+    from datetime import datetime
     from uuid import uuid4
-    from datetime import datetime, timezone
+
+    from application.catalog_governance.service import CatalogGovernanceService
+    from infrastructure.persistence.models import NetworkBranchORM, NetworkNodeORM, ProjectORM
+    from infrastructure.persistence.repositories.unit_of_work import UnitOfWorkFactory
 
     uow_factory = UnitOfWorkFactory(lambda: test_db_session)
     service = CatalogGovernanceService(uow_factory)
@@ -423,8 +426,8 @@ def test_import_replace_blocked_when_types_in_use(test_db_session):
             description="Test",
             schema_version="1.0",
             sources_jsonb=[],
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
         test_db_session.add(project)
 

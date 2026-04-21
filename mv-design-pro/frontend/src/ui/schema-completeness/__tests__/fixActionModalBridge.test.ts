@@ -1,156 +1,83 @@
-/**
- * FixAction Modal Bridge — tests
- *
- * Ensures:
- * - All known backend modal_type values are mapped
- * - resolveModalType returns valid MODAL_IDs
- * - resolveFixActionToOperation works correctly
- * - No unmapped modal types in production code
- */
-
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  BACKEND_MODAL_TYPE_MAP,
-  resolveModalType,
-  resolveFixActionToOperation,
-  getUnmappedModalTypes,
-} from '../fixActionModalBridge';
-import { MODAL_IDS, MODAL_REGISTRY } from '../../topology/modals/modalRegistry';
-import type { FixAction } from '../../types';
+  resolveFixActionSurface,
+  resolveWizardSurfaceStepId,
+} from '../../../types/fixActionSurface';
+import { getOperationSurfaceByOp } from '../../topology/modals/operationSurfaceRegistry';
 
-// ---------------------------------------------------------------------------
-// Known backend modal_type values (from backend validator.py + fix_actions)
-// ---------------------------------------------------------------------------
-
-const KNOWN_BACKEND_MODAL_TYPES = [
-  'SourceModal',
-  'NodeModal',
-  'BranchModal',
-  'TransformerModal',
-  'LoadModal',
-  'GeneratorModal',
-  'CatalogPicker',
-  'FieldDeviceModal',
-  'ProtectionBindingModal',
-  'StudyCaseSettings',
-  'Uzupełnij Z0',
-  'Uzupełnij Z2',
-  'Zmień tryb zwarcia',
-  'relay_settings',
-];
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe('FixAction Modal Bridge — mapping completeness', () => {
-  it('all known backend modal_type values are mapped', () => {
-    const unmapped = getUnmappedModalTypes(KNOWN_BACKEND_MODAL_TYPES);
-    expect(unmapped).toEqual([]);
-  });
-
-  it('BACKEND_MODAL_TYPE_MAP has at least 10 entries', () => {
-    expect(Object.keys(BACKEND_MODAL_TYPE_MAP).length).toBeGreaterThanOrEqual(10);
-  });
-
-  it('all mapped values are valid MODAL_IDs', () => {
-    const validIds = new Set(Object.values(MODAL_IDS));
-    for (const [backendType, modalId] of Object.entries(BACKEND_MODAL_TYPE_MAP)) {
-      expect(validIds.has(modalId)).toBe(true);
-    }
-  });
-
-  it('all mapped MODAL_IDs exist in MODAL_REGISTRY', () => {
-    const registryIds = new Set(MODAL_REGISTRY.map((e) => e.modalId));
-    for (const [, modalId] of Object.entries(BACKEND_MODAL_TYPE_MAP)) {
-      expect(registryIds.has(modalId)).toBe(true);
-    }
-  });
-});
-
-describe('resolveModalType', () => {
-  it('resolves SourceModal to MODAL_DODAJ_ZRODLO_SN', () => {
-    expect(resolveModalType('SourceModal')).toBe(MODAL_IDS.MODAL_DODAJ_ZRODLO_SN);
-  });
-
-  it('resolves NodeModal to MODAL_ZMIEN_PARAMETRY', () => {
-    expect(resolveModalType('NodeModal')).toBe(MODAL_IDS.MODAL_ZMIEN_PARAMETRY);
-  });
-
-  it('resolves TransformerModal to MODAL_DODAJ_TRANSFORMATOR', () => {
-    expect(resolveModalType('TransformerModal')).toBe(MODAL_IDS.MODAL_DODAJ_TRANSFORMATOR);
-  });
-
-  it('resolves CatalogPicker to MODAL_ZMIEN_TYP_Z_KATALOGU', () => {
-    expect(resolveModalType('CatalogPicker')).toBe(MODAL_IDS.MODAL_ZMIEN_TYP_Z_KATALOGU);
-  });
-
-  it('resolves Polish label modal types', () => {
-    expect(resolveModalType('Uzupełnij Z0')).toBe(MODAL_IDS.MODAL_ZMIEN_PARAMETRY);
-    expect(resolveModalType('Uzupełnij Z2')).toBe(MODAL_IDS.MODAL_ZMIEN_PARAMETRY);
-    expect(resolveModalType('Zmień tryb zwarcia')).toBe(MODAL_IDS.MODAL_ZMIEN_PARAMETRY);
-    expect(resolveModalType('relay_settings')).toBe(MODAL_IDS.MODAL_DODAJ_ZABEZPIECZENIE);
-  });
-
-  it('returns null for null input', () => {
-    expect(resolveModalType(null)).toBeNull();
-  });
-
-  it('returns null for unknown modal type', () => {
-    expect(resolveModalType('NonExistentModal')).toBeNull();
-  });
-});
-
-describe('resolveFixActionToOperation', () => {
-  it('resolves OPEN_MODAL fix action', () => {
-    const fixAction: FixAction = {
-      action_type: 'OPEN_MODAL',
+describe('Fix action surface resolution', () => {
+  it('maps SourceModal to the source operation form', () => {
+    const surface = resolveFixActionSurface({
+      code: 'missing_source',
+      action_type: 'ADD_MISSING_DEVICE',
       element_ref: 'source-1',
       modal_type: 'SourceModal',
       payload_hint: null,
-    };
-    const result = resolveFixActionToOperation(fixAction);
-    expect(result.actionType).toBe('OPEN_MODAL');
-    expect(result.modalId).toBe(MODAL_IDS.MODAL_DODAJ_ZRODLO_SN);
-    expect(result.elementRef).toBe('source-1');
+    });
+
+    expect(surface.kind).toBe('operation_form');
+    expect(surface.operation).toBe('add_grid_source_sn');
+    expect(getOperationSurfaceByOp(surface.operation!)).toBeDefined();
   });
 
-
-  it('resolves OPEN_MODAL relay_settings fix action', () => {
-    const fixAction: FixAction = {
+  it('maps NodeModal to the parameter surface', () => {
+    const surface = resolveFixActionSurface({
+      code: 'node.incomplete',
       action_type: 'OPEN_MODAL',
-      element_ref: 'cb-1',
+      element_ref: 'bus-1',
+      modal_type: 'NodeModal',
+      payload_hint: null,
+    });
+
+    expect(surface.operation).toBe('update_element_parameters');
+  });
+
+  it('maps AddTransformerModal to the transformer surface', () => {
+    const surface = resolveFixActionSurface({
+      code: 'station.nn_without_transformer',
+      action_type: 'ADD_MISSING_DEVICE',
+      element_ref: 'station-1',
+      modal_type: 'AddTransformerModal',
+      payload_hint: null,
+    });
+
+    expect(surface.operation).toBe('add_transformer_sn_nn');
+  });
+
+  it('maps relay_settings to the relay surface', () => {
+    const surface = resolveFixActionSurface({
+      code: 'protection.binding_missing',
+      action_type: 'OPEN_MODAL',
+      element_ref: 'bay-1',
       modal_type: 'relay_settings',
       payload_hint: null,
-    };
-    const result = resolveFixActionToOperation(fixAction);
-    expect(result.actionType).toBe('OPEN_MODAL');
-    expect(result.modalId).toBe(MODAL_IDS.MODAL_DODAJ_ZABEZPIECZENIE);
-    expect(result.elementRef).toBe('cb-1');
+    });
+
+    expect(surface.operation).toBe('add_relay');
   });
 
-  it('resolves SELECT_CATALOG fix action', () => {
-    const fixAction: FixAction = {
-      action_type: 'SELECT_CATALOG',
-      element_ref: 'gen-1',
-      modal_type: 'CatalogPicker',
-      payload_hint: null,
-    };
-    const result = resolveFixActionToOperation(fixAction);
-    expect(result.actionType).toBe('SELECT_CATALOG');
-    expect(result.modalId).toBe(MODAL_IDS.MODAL_ZMIEN_TYP_Z_KATALOGU);
-  });
-
-  it('resolves NAVIGATE_TO_ELEMENT fix action (no modal)', () => {
-    const fixAction: FixAction = {
-      action_type: 'NAVIGATE_TO_ELEMENT',
-      element_ref: 'bus-1',
+  it('keeps unresolved actions explicit', () => {
+    const surface = resolveFixActionSurface({
+      code: 'unknown.code',
+      action_type: 'UNKNOWN_ACTION',
+      element_ref: null,
       modal_type: null,
       payload_hint: null,
-    };
-    const result = resolveFixActionToOperation(fixAction);
-    expect(result.actionType).toBe('NAVIGATE_TO_ELEMENT');
-    expect(result.modalId).toBeNull();
-    expect(result.elementRef).toBe('bus-1');
+    });
+
+    expect(surface.kind).toBe('unresolved');
+    expect(surface.unresolved_reason_code).toContain('UNKNOWN_ACTION');
+  });
+});
+
+describe('Wizard step resolution', () => {
+  it('maps K1..K10 hints to canonical step identifiers', () => {
+    expect(resolveWizardSurfaceStepId('K1')).toBe('parametry-modelu');
+    expect(resolveWizardSurfaceStepId('K2')).toBe('punkt-zasilania-gpz');
+    expect(resolveWizardSurfaceStepId('K10')).toBe('uruchomienie-analiz');
+  });
+
+  it('returns null for unknown hints', () => {
+    expect(resolveWizardSurfaceStepId('step-legacy')).toBeNull();
   });
 });

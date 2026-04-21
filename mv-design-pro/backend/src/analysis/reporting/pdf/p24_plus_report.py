@@ -17,23 +17,30 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from io import BytesIO
 from importlib.util import find_spec
-from typing import Iterable, Sequence
+from io import BytesIO
 
+from analysis.coverage_score.models import CoverageScoreView
+from analysis.lf_sensitivity.models import (
+    LFSensitivityDriver,
+    LFSensitivityEntry,
+    LFSensitivityView,
+)
 from analysis.normative.models import NormativeItem, NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import (
     ProtectionInsightItem,
-    ProtectionInsightSummary,
     ProtectionInsightView,
     ProtectionSelectivityStatus,
 )
-from analysis.lf_sensitivity.models import LFSensitivityDriver, LFSensitivityEntry, LFSensitivityView
-from analysis.coverage_score.models import CoverageScoreView
-from analysis.recommendations.models import RecommendationEffect, RecommendationEntry, RecommendationView
+from analysis.recommendations.models import (
+    RecommendationEffect,
+    RecommendationEntry,
+    RecommendationView,
+)
 from analysis.scenario_comparison.models import ScenarioComparisonEntry, ScenarioComparisonView
 from analysis.sensitivity.models import (
     SensitivityDecision,
@@ -210,9 +217,7 @@ def export_p24_plus_report_pdf(
         draw_text("Brak danych P21.")
     else:
         draw_text("Top 5 najbardziej krytycznych BUS:", bold=True)
-        for rank, row in enumerate(
-            _top_critical_buses(voltage_profile.rows), start=1
-        ):
+        for rank, row in enumerate(_top_critical_buses(voltage_profile.rows), start=1):
             draw_wrapped(
                 "Rank {rank}: BUS {bus} | Δ%={delta} | Status={status}".format(
                     rank=rank,
@@ -423,18 +428,12 @@ def _report_hash(
 ) -> str:
     payload = {
         "voltage_profile": voltage_profile.to_dict() if voltage_profile else None,
-        "protection_insight": (
-            protection_insight.to_dict() if protection_insight else None
-        ),
-        "protection_curves_it": (
-            protection_curves_it.to_dict() if protection_curves_it else None
-        ),
+        "protection_insight": (protection_insight.to_dict() if protection_insight else None),
+        "protection_curves_it": (protection_curves_it.to_dict() if protection_curves_it else None),
         "sensitivity": sensitivity.to_dict() if sensitivity else None,
         "lf_sensitivity": lf_sensitivity.to_dict() if lf_sensitivity else None,
         "recommendations": recommendations.to_dict() if recommendations else None,
-        "scenario_comparison": (
-            scenario_comparison.to_dict() if scenario_comparison else None
-        ),
+        "scenario_comparison": (scenario_comparison.to_dict() if scenario_comparison else None),
         "coverage_score": coverage_score.to_dict() if coverage_score else None,
         "normative_report": normative_report.to_dict() if normative_report else None,
         "proof_metadata": [
@@ -449,7 +448,7 @@ def _sorted_proof_documents(
     proof_documents: Sequence[ProofDocument],
 ) -> list[ProofDocument]:
     return sorted(
-        list(proof_documents),
+        proof_documents,
         key=lambda doc: (doc.proof_type.value, doc.document_id.hex),
     )
 
@@ -629,15 +628,13 @@ def _build_top_risks(
             key=lambda item: item.primary_device_id,
         )
         for item in critical_sorted:
-            risks.append(
-                f"P22a {item.primary_device_id}: brak selektywności ({item.why_pl})"
-            )
+            risks.append(f"P22a {item.primary_device_id}: brak selektywności ({item.why_pl})")
     return risks[:3]
 
 
 def _top_critical_buses(rows: Iterable[VoltageProfileRow]) -> list[VoltageProfileRow]:
     return sorted(
-        list(rows),
+        rows,
         key=lambda row: (
             STATUS_ORDER[row.status],
             -(abs(row.delta_pct) if row.delta_pct is not None else -1.0),
@@ -772,21 +769,15 @@ def _build_missing_data_lines(
         for item in normative_report.items:
             if item.status == NormativeStatus.NOT_COMPUTED:
                 requires = ", ".join(item.requires) if item.requires else "—"
-                lines.append(
-                    f"P20 {item.rule_id} {item.target_id}: brak danych ({requires})."
-                )
+                lines.append(f"P20 {item.rule_id} {item.target_id}: brak danych ({requires}).")
     if voltage_profile is not None:
         for row in voltage_profile.rows:
             if row.status.value == "NOT_COMPUTED":
-                lines.append(
-                    f"P21 BUS {row.bus_id}: brak Unom/U (NOT COMPUTED)."
-                )
+                lines.append(f"P21 BUS {row.bus_id}: brak Unom/U (NOT COMPUTED).")
     if protection_insight is not None:
         for item in protection_insight.items:
             if item.selectivity_status == ProtectionSelectivityStatus.NOT_EVALUATED:
-                lines.append(
-                    f"P22a {item.primary_device_id}: brak oceny selektywności."
-                )
+                lines.append(f"P22a {item.primary_device_id}: brak oceny selektywności.")
     if protection_curves_it is not None and protection_curves_it.missing_data:
         for entry in protection_curves_it.missing_data:
             lines.append(f"P22 {protection_curves_it.primary_device_id}: {entry}.")
@@ -807,9 +798,7 @@ def _build_missing_data_lines(
         entries.extend(recommendations.alternatives)
         for entry in entries:
             if entry.expected_effect == RecommendationEffect.NOT_COMPUTED:
-                lines.append(
-                    f"P26 {entry.parameter_id} {entry.target_id}: {entry.confidence_note}"
-                )
+                lines.append(f"P26 {entry.parameter_id} {entry.target_id}: {entry.confidence_note}")
     return lines
 
 

@@ -1,12 +1,12 @@
 /**
- * geometriaSzyny.ts — Etap 4-5: Dynamiczne wymiarowanie szyny i rozmieszczenie pol.
+ * geometriaSzyny.ts — Krok 4-5: Dynamiczne wymiarowanie szyny i rozmieszczenie pol.
  *
  * ALGORYTM:
  * 1. Szerokosc szyny = max(MIN_SZEROKOSC, max_pola_pionowe * KROK_POLA + marginesy).
  * 2. Pola GORA/DOL rozmieszczone symetrycznie wzdluz szyny.
  * 3. Pola LEWO/PRAWO na dedykowanych portach bocznych.
- * 4. Aparatura rysowana sekwencyjnie w polu (Etap 6).
- * 5. Porty wyznaczane na koncach pol (Etap 7).
+ * 4. Aparatura rysowana sekwencyjnie w polu (Krok 6).
+ * 5. Porty wyznaczane na koncach pol (Krok 7).
  *
  * DETERMINIZM: identyczne grupy pol → identyczna geometria.
  */
@@ -30,7 +30,7 @@ import {
 import type { GrupyPol } from './sortowanieAntykrzyzowaniowe';
 
 // =============================================================================
-// § 1. STALE GEOMETRYCZNE (SIATKA ETAP)
+// § 1. STALE GEOMETRYCZNE (SIATKA CANONICAL)
 // =============================================================================
 
 /** Baza siatki — wszystkie wymiary wielokrotnoscia. */

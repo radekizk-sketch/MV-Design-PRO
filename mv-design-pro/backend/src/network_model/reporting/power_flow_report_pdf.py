@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 
 # Check for reportlab availability at import time
 try:
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -91,9 +91,7 @@ def export_power_flow_result_to_pdf(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create PDF canvas
     c = canvas.Canvas(str(output_path), pagesize=A4)
@@ -101,7 +99,7 @@ def export_power_flow_result_to_pdf(
 
     # Margins and layout
     left_margin = 25 * mm
-    right_margin = page_width - 25 * mm
+    page_width - 25 * mm
     top_margin = page_height - 25 * mm
     bottom_margin = 25 * mm
     line_height = 5 * mm
@@ -217,7 +215,12 @@ def export_power_flow_result_to_pdf(
     if bus_results:
         # Header
         bus_cols = [35 * mm, 25 * mm, 25 * mm, 30 * mm, 30 * mm]
-        draw_table_row(["ID szyny", "V [pu]", "Kat [deg]", "P_inj [MW]", "Q_inj [Mvar]"], bus_cols, left_margin, bold=True)
+        draw_table_row(
+            ["ID szyny", "V [pu]", "Kat [deg]", "P_inj [MW]", "Q_inj [Mvar]"],
+            bus_cols,
+            left_margin,
+            bold=True,
+        )
         y -= 2 * mm
 
         # Data rows (limit to 30 for readability)
@@ -256,7 +259,12 @@ def export_power_flow_result_to_pdf(
     if branch_results:
         # Header
         branch_cols = [35 * mm, 28 * mm, 28 * mm, 28 * mm, 28 * mm]
-        draw_table_row(["ID galezi", "P_from [MW]", "Q_from [Mvar]", "Straty P", "Straty Q"], branch_cols, left_margin, bold=True)
+        draw_table_row(
+            ["ID galezi", "P_from [MW]", "Q_from [Mvar]", "Straty P", "Straty Q"],
+            branch_cols,
+            left_margin,
+            bold=True,
+        )
         y -= 2 * mm
 
         # Data rows (limit to 30)
@@ -319,7 +327,12 @@ def export_power_flow_result_to_pdf(
             y -= 2 * mm
 
             iter_cols = [20 * mm, 40 * mm, 40 * mm, 40 * mm]
-            draw_table_row(["k", "Norma mismatch", "Max mismatch [pu]", "Status"], iter_cols, left_margin, bold=True)
+            draw_table_row(
+                ["k", "Norma mismatch", "Max mismatch [pu]", "Status"],
+                iter_cols,
+                left_margin,
+                bold=True,
+            )
             y -= 2 * mm
 
             for it in iterations:
@@ -370,16 +383,14 @@ def export_power_flow_comparison_to_pdf(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not isinstance(comparison, dict):
-        raise ValueError(
-            f"comparison must be a dict, got {type(comparison).__name__}"
-        )
+        raise ValueError(f"comparison must be a dict, got {type(comparison).__name__}")
 
     # Create PDF canvas
     c = canvas.Canvas(str(output_path), pagesize=A4)
     page_width, page_height = A4
 
     left_margin = 25 * mm
-    right_margin = page_width - 25 * mm
+    page_width - 25 * mm
     top_margin = page_height - 25 * mm
     bottom_margin = 25 * mm
     line_height = 5 * mm
@@ -463,7 +474,11 @@ def export_power_flow_comparison_to_pdf(
             c.drawString(left_margin, y, f"[{severity}] {issue.get('issue_code', '—')}")
             y -= line_height
             c.setFont("Helvetica", 9)
-            c.drawString(left_margin + 10 * mm, y, f"{issue.get('element_ref', '—')}: {issue.get('description_pl', '—')[:60]}")
+            c.drawString(
+                left_margin + 10 * mm,
+                y,
+                f"{issue.get('element_ref', '—')}: {issue.get('description_pl', '—')[:60]}",
+            )
             y -= line_height
 
         if len(ranking) > 20:

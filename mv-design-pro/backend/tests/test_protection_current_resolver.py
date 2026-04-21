@@ -12,27 +12,15 @@ Test coverage:
 
 from __future__ import annotations
 
-import json
 from uuid import uuid4
 
 import pytest
-
+from application.protection_current_resolver import ProtectionCurrentResolver
 from domain.execution import (
     ElementResult,
     ExecutionAnalysisType,
-    ResultSet,
     build_result_set,
     compute_solver_input_hash,
-)
-from domain.protection_engine_v1 import (
-    CTRatio,
-    Function50Settings,
-    Function51Settings,
-    IECCurveTypeV1,
-    ProtectionStudyInputV1,
-    RelayV1,
-    TestPoint,
-    execute_protection_v1,
 )
 from domain.protection_current_source import (
     AmbiguousMappingError,
@@ -46,8 +34,16 @@ from domain.protection_current_source import (
     SCRunNotFoundError,
     TargetRefMapping,
 )
-from application.protection_current_resolver import ProtectionCurrentResolver
-
+from domain.protection_engine_v1 import (
+    CTRatio,
+    Function50Settings,
+    Function51Settings,
+    IECCurveTypeV1,
+    ProtectionStudyInputV1,
+    RelayV1,
+    TestPoint,
+    execute_protection_v1,
+)
 
 # =============================================================================
 # FIXTURES
@@ -467,7 +463,9 @@ class TestDeterminism:
                 run_id="run-001",
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -477,7 +475,9 @@ class TestDeterminism:
                 run_id="run-001",
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -493,7 +493,9 @@ class TestDeterminism:
                 run_id="run-001",
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -508,7 +510,9 @@ class TestDeterminism:
                 run_id="run-001",
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         ).canonical_hash()
@@ -519,7 +523,9 @@ class TestDeterminism:
                 run_id="run-001",
                 quantity="ip_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         ).canonical_hash()
@@ -556,8 +562,12 @@ class TestDeterminism:
                 run_id=str(sc_result_set.run_id),
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
-                    TargetRefMapping(relay_id="relay-002", element_ref="bus-002", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
+                    TargetRefMapping(
+                        relay_id="relay-002", element_ref="bus-002", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -590,8 +600,12 @@ class TestPermutationInvariance:
                 run_id=str(sc_result_set.run_id),
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
-                    TargetRefMapping(relay_id="relay-002", element_ref="bus-002", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
+                    TargetRefMapping(
+                        relay_id="relay-002", element_ref="bus-002", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -619,8 +633,12 @@ class TestPermutationInvariance:
                 run_id=str(sc_result_set.run_id),
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
-                    TargetRefMapping(relay_id="relay-002", element_ref="bus-002", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
+                    TargetRefMapping(
+                        relay_id="relay-002", element_ref="bus-002", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -631,8 +649,12 @@ class TestPermutationInvariance:
                 run_id=str(sc_result_set.run_id),
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-002", element_ref="bus-002", element_type="bus"),
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-002", element_ref="bus-002", element_type="bus"
+                    ),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -703,8 +725,12 @@ class TestSerialization:
                 run_id="run-001",
                 quantity="ikss_a",
                 target_ref_mapping=(
-                    TargetRefMapping(relay_id="relay-001", element_ref="bus-001", element_type="bus"),
-                    TargetRefMapping(relay_id="relay-002", element_ref="bus-002", element_type="bus"),
+                    TargetRefMapping(
+                        relay_id="relay-001", element_ref="bus-001", element_type="bus"
+                    ),
+                    TargetRefMapping(
+                        relay_id="relay-002", element_ref="bus-002", element_type="bus"
+                    ),
                 ),
             ),
         )
@@ -809,5 +835,6 @@ class TestFullPipeline:
             result = execute_protection_v1(study_input)
             sigs.append(result.deterministic_signature)
 
-        assert all(s == sigs[0] for s in sigs), \
-            f"Determinism violation: signatures differ {set(sigs)}"
+        assert all(
+            s == sigs[0] for s in sigs
+        ), f"Determinism violation: signatures differ {set(sigs)}"

@@ -27,11 +27,10 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -107,21 +106,21 @@ class Run:
         """Transition to RUNNING status."""
         return self.with_status(
             RunStatus.RUNNING,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
 
     def mark_done(self) -> Run:
         """Transition to DONE status."""
         return self.with_status(
             RunStatus.DONE,
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
         )
 
     def mark_failed(self, error_message: str) -> Run:
         """Transition to FAILED status."""
         return self.with_status(
             RunStatus.FAILED,
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
             error_message=error_message,
         )
 
@@ -148,14 +147,10 @@ class Run:
             solver_input_hash=data["solver_input_hash"],
             status=RunStatus(data["status"]),
             started_at=(
-                datetime.fromisoformat(data["started_at"])
-                if data.get("started_at")
-                else None
+                datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None
             ),
             finished_at=(
-                datetime.fromisoformat(data["finished_at"])
-                if data.get("finished_at")
-                else None
+                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
             ),
             error_message=data.get("error_message"),
         )
@@ -256,8 +251,7 @@ class ResultSet:
             validation_snapshot=data.get("validation_snapshot", {}),
             readiness_snapshot=data.get("readiness_snapshot", {}),
             element_results=tuple(
-                ElementResult.from_dict(er)
-                for er in data.get("element_results", [])
+                ElementResult.from_dict(er) for er in data.get("element_results", [])
             ),
             global_results=data.get("global_results", {}),
             deterministic_signature=data.get("deterministic_signature", ""),
@@ -333,9 +327,7 @@ def build_result_set(
     Sorts element_results by element_ref for determinism.
     PR-19: Optionally includes fault scenario reference fields.
     """
-    sorted_results = tuple(
-        sorted(element_results, key=lambda er: er.element_ref)
-    )
+    sorted_results = tuple(sorted(element_results, key=lambda er: er.element_ref))
 
     # Build signature from canonical representation
     sig_data = {
@@ -383,10 +375,7 @@ _DETERMINISTIC_LIST_KEYS = {
 def _canonicalize(value: Any, *, current_key: str | None = None) -> Any:
     """Recursively canonicalize a JSON-like structure for deterministic hashing."""
     if isinstance(value, dict):
-        return {
-            key: _canonicalize(value[key], current_key=key)
-            for key in sorted(value.keys())
-        }
+        return {key: _canonicalize(value[key], current_key=key) for key in sorted(value.keys())}
     if isinstance(value, list):
         items = [_canonicalize(item, current_key=current_key) for item in value]
         if current_key in _DETERMINISTIC_LIST_KEYS:
@@ -398,8 +387,16 @@ def _canonicalize(value: Any, *, current_key: str | None = None) -> Any:
 def _stable_sort_key(item: Any) -> str:
     """Stable sort key for deterministic list ordering."""
     if isinstance(item, dict):
-        for key in ("ref_id", "id", "element_ref", "node_id", "branch_id",
-                     "relay_id", "point_id", "pair_id"):
+        for key in (
+            "ref_id",
+            "id",
+            "element_ref",
+            "node_id",
+            "branch_id",
+            "relay_id",
+            "point_id",
+            "pair_id",
+        ):
             if key in item and item[key] is not None:
                 return str(item[key])
     return str(item)

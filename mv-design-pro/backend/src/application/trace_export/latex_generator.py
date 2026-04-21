@@ -13,7 +13,7 @@ Output: LaTeX string
 
 from __future__ import annotations
 
-from domain.trace_v2.artifact import TraceArtifactV2, TraceEquationStep, TraceValue
+from domain.trace_v2.artifact import TraceArtifactV2
 from domain.trace_v2.equation_registry_v2 import EquationRegistryV2
 
 
@@ -47,20 +47,32 @@ class LaTeXGenerator:
         }
         title = analysis_labels.get(artifact.analysis_type.value, artifact.analysis_type.value)
         return (
-            r"\documentclass[a4paper,11pt]{article}" "\n"
-            r"\usepackage[utf8]{inputenc}" "\n"
-            r"\usepackage[T1]{fontenc}" "\n"
-            r"\usepackage[polish]{babel}" "\n"
-            r"\usepackage{amsmath,amssymb}" "\n"
-            r"\usepackage{booktabs}" "\n"
-            r"\usepackage{longtable}" "\n"
-            r"\usepackage[margin=20mm]{geometry}" "\n"
+            r"\documentclass[a4paper,11pt]{article}"
             "\n"
-            r"\begin{document}" "\n"
+            r"\usepackage[utf8]{inputenc}"
             "\n"
-            rf"\section*{{{title}}}" "\n"
-            rf"\textbf{{MathSpecVersion:}} {artifact.math_spec_version} \\"  "\n"
-            rf"\textbf{{Analiza:}} {artifact.analysis_type.value} \\"  "\n"
+            r"\usepackage[T1]{fontenc}"
+            "\n"
+            r"\usepackage[polish]{babel}"
+            "\n"
+            r"\usepackage{amsmath,amssymb}"
+            "\n"
+            r"\usepackage{booktabs}"
+            "\n"
+            r"\usepackage{longtable}"
+            "\n"
+            r"\usepackage[margin=20mm]{geometry}"
+            "\n"
+            "\n"
+            r"\begin{document}"
+            "\n"
+            "\n"
+            rf"\section*{{{title}}}"
+            "\n"
+            rf"\textbf{{MathSpecVersion:}} {artifact.math_spec_version} \\"
+            "\n"
+            rf"\textbf{{Analiza:}} {artifact.analysis_type.value} \\"
+            "\n"
             rf"\textbf{{Trace ID:}} \texttt{{{artifact.trace_id}}}"
         )
 
@@ -88,7 +100,9 @@ class LaTeXGenerator:
 
         used_eqs = self._registry.all_entries()
         for eq in sorted(used_eqs, key=lambda e: e.eq_id):
-            lines.append(rf"\paragraph{{{_escape_latex(eq.label_pl)} ({_escape_latex(eq.eq_id)})}}~\\")
+            lines.append(
+                rf"\paragraph{{{_escape_latex(eq.label_pl)} ({_escape_latex(eq.eq_id)})}}~\\"
+            )
             lines.append(rf"Źródło: {_escape_latex(eq.source_norm)} \\")
             lines.append(r"\begin{equation*}")
             lines.append(f"  {eq.latex_symbolic}")
@@ -103,9 +117,11 @@ class LaTeXGenerator:
         sorted_steps = sorted(artifact.equation_steps, key=lambda s: s.step_id)
         for idx, step in enumerate(sorted_steps, 1):
             lines.append(rf"\subsubsection*{{Krok {idx}: {_escape_latex(step.label_pl)}}}")
-            lines.append(rf"\textbf{{ID:}} \texttt{{{_escape_latex(step.step_id)}}}, "
-                         rf"\textbf{{Równanie:}} \texttt{{{_escape_latex(step.eq_id)}}}, "
-                         rf"\textbf{{Obiekt:}} \texttt{{{_escape_latex(step.subject_id)}}}")
+            lines.append(
+                rf"\textbf{{ID:}} \texttt{{{_escape_latex(step.step_id)}}}, "
+                rf"\textbf{{Równanie:}} \texttt{{{_escape_latex(step.eq_id)}}}, "
+                rf"\textbf{{Obiekt:}} \texttt{{{_escape_latex(step.subject_id)}}}"
+            )
             lines.append("")
 
             # Symbolic formula

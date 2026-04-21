@@ -1,14 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
 import io
 import zipfile
+from datetime import datetime
 from uuid import UUID
-
-_FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
-
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
 
 from api.dependencies import get_uow_factory
 from application.proof_engine.packs.sc_asymmetrical import (
@@ -22,6 +17,10 @@ from application.proof_engine.proof_pack import (
     resolve_mv_design_pro_version,
 )
 from application.proof_engine.serialization import proof_document_from_dict
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel
+
+_FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
 
 router = APIRouter(prefix="/api/proof", tags=["proof-pack"])
 
@@ -96,10 +95,7 @@ def download_proof_pack(
     )
     pack_bytes = ProofPackBuilder(context).build(proof_doc)
     proof_type = proof_pack_proof_type(proof_doc.proof_type)
-    filename = (
-        "mv-design-pro__proofpack__"
-        f"{proof_type}__{project_id}__{case_id}__{run_id}.zip"
-    )
+    filename = "mv-design-pro__proofpack__" f"{proof_type}__{project_id}__{case_id}__{run_id}.zip"
     headers = {"Content-Disposition": f'attachment; filename="{filename}"'}
     return Response(content=pack_bytes, media_type="application/zip", headers=headers)
 

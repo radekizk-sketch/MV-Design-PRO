@@ -16,17 +16,13 @@ Testy:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
-    ArchiveError,
-    ArchiveFingerprints,
-    ArchiveIntegrityError,
     ArchiveStructureError,
     ArchiveVersionError,
     CasesSection,
@@ -47,7 +43,6 @@ from domain.project_archive import (
     verify_archive_integrity,
 )
 
-
 # =============================================================================
 # Fixtures
 # =============================================================================
@@ -64,8 +59,8 @@ def sample_project_meta() -> ProjectMeta:
         active_network_snapshot_id="abc123def456",
         connection_node_id=str(uuid4()),
         sources=[{"type": "GRID", "ssc_mva": 100.0}],
-        created_at=datetime(2024, 1, 15, 10, 30, 0, tzinfo=timezone.utc).isoformat(),
-        updated_at=datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc).isoformat(),
+        created_at=datetime(2024, 1, 15, 10, 30, 0, tzinfo=UTC).isoformat(),
+        updated_at=datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC).isoformat(),
     )
 
 
@@ -77,8 +72,20 @@ def sample_network_model() -> NetworkModelSection:
 
     return NetworkModelSection(
         nodes=[
-            {"id": node1_id, "name": "BUS-1", "node_type": "BUS", "base_kv": 15.0, "attrs_jsonb": {}},
-            {"id": node2_id, "name": "BUS-2", "node_type": "BUS", "base_kv": 15.0, "attrs_jsonb": {}},
+            {
+                "id": node1_id,
+                "name": "BUS-1",
+                "node_type": "BUS",
+                "base_kv": 15.0,
+                "attrs_jsonb": {},
+            },
+            {
+                "id": node2_id,
+                "name": "BUS-2",
+                "node_type": "BUS",
+                "base_kv": 15.0,
+                "attrs_jsonb": {},
+            },
         ],
         branches=[
             {
@@ -138,8 +145,8 @@ def sample_cases_section() -> CasesSection:
                 "result_status": "NONE",
                 "result_refs_jsonb": [],
                 "revision": 1,
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
+                "updated_at": datetime.now(UTC).isoformat(),
             }
         ],
         operating_cases=[],
@@ -352,7 +359,9 @@ class TestRoundtrip:
 
         assert len(restored.cases.study_cases) == len(sample_archive.cases.study_cases)
         if sample_archive.cases.study_cases:
-            assert restored.cases.study_cases[0]["name"] == sample_archive.cases.study_cases[0]["name"]
+            assert (
+                restored.cases.study_cases[0]["name"] == sample_archive.cases.study_cases[0]["name"]
+            )
 
     def test_roundtrip_preserves_fingerprints(self, sample_archive):
         """Roundtrip should preserve fingerprints."""
@@ -360,7 +369,10 @@ class TestRoundtrip:
         restored = dict_to_archive(archive_dict)
 
         assert restored.fingerprints.archive_hash == sample_archive.fingerprints.archive_hash
-        assert restored.fingerprints.network_model_hash == sample_archive.fingerprints.network_model_hash
+        assert (
+            restored.fingerprints.network_model_hash
+            == sample_archive.fingerprints.network_model_hash
+        )
 
 
 # =============================================================================
@@ -574,8 +586,8 @@ class TestEdgeCases:
             active_network_snapshot_id=None,
             connection_node_id=None,
             sources=[],
-            created_at=datetime.now(timezone.utc).isoformat(),
-            updated_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
+            updated_at=datetime.now(UTC).isoformat(),
         )
 
         empty_network = NetworkModelSection(
@@ -584,9 +596,20 @@ class TestEdgeCases:
 
         fingerprints = compute_archive_fingerprints(
             project_meta={"id": empty_meta.id, "name": empty_meta.name},
-            network_model={"nodes": [], "branches": [], "sources": [], "loads": [], "snapshots": []},
+            network_model={
+                "nodes": [],
+                "branches": [],
+                "sources": [],
+                "loads": [],
+                "snapshots": [],
+            },
             sld={"diagrams": [], "node_symbols": [], "branch_symbols": [], "annotations": []},
-            cases={"study_cases": [], "operating_cases": [], "switching_states": [], "settings": None},
+            cases={
+                "study_cases": [],
+                "operating_cases": [],
+                "switching_states": [],
+                "settings": None,
+            },
             runs={"analysis_runs": [], "analysis_runs_index": [], "study_runs": []},
             results={"study_results": []},
             proofs={"design_specs": [], "design_proposals": [], "design_evidence": []},
@@ -626,8 +649,8 @@ class TestEdgeCases:
             active_network_snapshot_id=None,
             connection_node_id=None,
             sources=[],
-            created_at=datetime.now(timezone.utc).isoformat(),
-            updated_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
+            updated_at=datetime.now(UTC).isoformat(),
         )
 
         fingerprints = compute_archive_fingerprints(
@@ -670,7 +693,13 @@ class TestEdgeCases:
         """Should handle large networks efficiently."""
         # Create network with 100 nodes and 99 branches
         nodes = [
-            {"id": str(uuid4()), "name": f"BUS-{i}", "node_type": "BUS", "base_kv": 15.0, "attrs_jsonb": {}}
+            {
+                "id": str(uuid4()),
+                "name": f"BUS-{i}",
+                "node_type": "BUS",
+                "base_kv": 15.0,
+                "attrs_jsonb": {},
+            }
             for i in range(100)
         ]
 
@@ -697,7 +726,13 @@ class TestEdgeCases:
 
         fingerprints = compute_archive_fingerprints(
             project_meta={"id": "test", "name": "Large"},
-            network_model={"nodes": nodes, "branches": branches, "sources": [], "loads": [], "snapshots": []},
+            network_model={
+                "nodes": nodes,
+                "branches": branches,
+                "sources": [],
+                "loads": [],
+                "snapshots": [],
+            },
             sld={},
             cases={},
             runs={},
@@ -718,8 +753,8 @@ class TestEdgeCases:
                 active_network_snapshot_id=None,
                 connection_node_id=None,
                 sources=[],
-                created_at=datetime.now(timezone.utc).isoformat(),
-                updated_at=datetime.now(timezone.utc).isoformat(),
+                created_at=datetime.now(UTC).isoformat(),
+                updated_at=datetime.now(UTC).isoformat(),
             ),
             network_model=network,
             sld_diagrams=SldSection([], [], [], []),

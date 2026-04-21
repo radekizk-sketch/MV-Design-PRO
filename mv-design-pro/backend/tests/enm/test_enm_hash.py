@@ -1,7 +1,9 @@
 """Tests for ENM canonical JSON hashing — determinism, sort keys, hash stability."""
 
+from datetime import UTC
+
 from enm.hash import compute_enm_hash
-from enm.models import Bus, EnergyNetworkModel, ENMHeader, Source
+from enm.models import Bus, EnergyNetworkModel, ENMHeader
 
 
 def _make_enm(name: str = "Test", buses=None, sources=None) -> EnergyNetworkModel:
@@ -24,11 +26,11 @@ class TestENMHash:
         assert h1 != h2
 
     def test_hash_excludes_updated_at(self):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
         enm1 = _make_enm("X")
         enm2 = _make_enm("X")
-        enm2.header.updated_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        enm2.header.updated_at = datetime.now(UTC) + timedelta(hours=1)
         assert compute_enm_hash(enm1) == compute_enm_hash(enm2)
 
     def test_hash_excludes_hash_field(self):

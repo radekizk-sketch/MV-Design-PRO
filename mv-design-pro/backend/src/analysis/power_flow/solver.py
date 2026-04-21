@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Deprecated adapter for the Newton-Raphson power flow solver."""
+
+from __future__ import annotations
 
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 

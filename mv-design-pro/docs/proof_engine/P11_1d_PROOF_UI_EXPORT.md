@@ -1,14 +1,14 @@
-# P11.1d — Proof Inspector (Kanoniczny)
+﻿# P11.1d â€” Proof Inspector (Kanoniczny)
 
 **STATUS: CANONICAL & BINDING**
 **Version:** 2.0
-**Reference:** P11_OVERVIEW.md, PROOF_SCHEMAS.md, SYSTEM_SPEC.md § 19
+**Reference:** P11_OVERVIEW.md, PROOF_SCHEMAS.md, SYSTEM_SPEC.md Â§ 19
 
 ---
 
 ## 0. Dokument referencyjny
 
-Ten dokument definiuje **Proof Inspector** — kanoniczną warstwę prezentacyjno-dowodową systemu MV-DESIGN-PRO.
+Ten dokument definiuje **Proof Inspector** â€” kanonicznÄ… warstwÄ™ prezentacyjno-dowodowÄ… systemu MV-DESIGN-PRO.
 
 ### 0.1 Pozycja w hierarchii systemu
 
@@ -34,98 +34,98 @@ $$
 &\text{JEST:} \\
 &\quad \bullet \text{ Read-only viewer nad } \texttt{ProofDocument} \\
 &\quad \bullet \text{ Eksporter do JSON / LaTeX / PDF / DOCX} \\
-&\quad \bullet \text{ Narzędzie audytu (ślad obliczeń — White Box)} \\[8pt]
+&\quad \bullet \text{ NarzÄ™dzie audytu (Ĺ›lad obliczeĹ„ â€” White Box)} \\[8pt]
 &\text{NIE JEST:} \\
 &\quad \bullet \text{ Solverem (brak fizyki)} \\
 &\quad \bullet \text{ Analysis (brak interpretacji normowej)} \\
-&\quad \bullet \text{ Edytorem (dowód jest IMMUTABLE)}
+&\quad \bullet \text{ Edytorem (dowĂłd jest IMMUTABLE)}
 \end{aligned}
 }
 $$
 
-### 0.3 Wejścia i wyjścia (BINDING)
+### 0.3 WejĹ›cia i wyjĹ›cia (BINDING)
 
-| Kierunek | Źródło / Cel | Opis |
+| Kierunek | ĹąrĂłdĹ‚o / Cel | Opis |
 |----------|--------------|------|
-| **Wejście** | `ProofDocument` | Dokument dowodowy z generatora (JSON) |
-| **Wejście** | `TraceArtifact` | Kontekst uruchomienia (run_id, case_id, snapshot_id) |
-| **Wyjście** | Wyświetlenie UI | Proof Inspector w przeglądarce |
-| **Wyjście** | `proof.json` | Eksport 1:1 z ProofDocument |
-| **Wyjście** | `proof.tex` | Eksport LaTeX (blokowy, $$ only) |
-| **Wyjście** | `proof.pdf` | Dokument PDF (via LaTeX) |
-| **Wyjście** | `proof.docx` | Dokument Microsoft Word |
+| **WejĹ›cie** | `ProofDocument` | Dokument dowodowy z generatora (JSON) |
+| **WejĹ›cie** | `TraceArtifact` | Kontekst uruchomienia (run_id, case_id, snapshot_id) |
+| **WyjĹ›cie** | WyĹ›wietlenie UI | Proof Inspector w przeglÄ…darce |
+| **WyjĹ›cie** | `proof.json` | Eksport 1:1 z ProofDocument |
+| **WyjĹ›cie** | `proof.tex` | Eksport LaTeX (blokowy, $$ only) |
+| **WyjĹ›cie** | `proof.pdf` | Dokument PDF (via LaTeX) |
+| **WyjĹ›cie** | `proof.docx` | Dokument Microsoft Word |
 
 ---
 
 ## 1. Model mentalny (BINDING)
 
-### 1.1 Relacja przepływu danych
+### 1.1 Relacja przepĹ‚ywu danych
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ 1. SOLVER EXECUTION                                                      │
-│    Input: NetworkSnapshot + SolverConfig                                 │
-│    Output: SolverResult + WhiteBoxTrace                                  │
-│    (FROZEN — Proof Inspector NIE modyfikuje)                            │
-└────────────────────────────────┬────────────────────────────────────────┘
-                                 │ (READ-ONLY)
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│ 2. PROOF ENGINE (P11)                                                    │
-│    - Tworzy TraceArtifact (immutable)                                   │
-│    - Generuje ProofDocument (kroki + weryfikacja jednostek)             │
-│    - Mapuje wartości z trace → symbole matematyczne                     │
-└────────────────────────────────┬────────────────────────────────────────┘
-                                 │ (READ-ONLY)
-                                 ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│ 3. PROOF INSPECTOR (P11.1d) — TEN DOKUMENT                              │
-│    - Prezentuje ProofDocument użytkownikowi                             │
-│    - Eksportuje do formatów (JSON/LaTeX/PDF/DOCX)                       │
-│    - ZERO LOGIKI OBLICZENIOWEJ                                          │
-│    - ZERO INTERPRETACJI NORMOWEJ                                        │
-└─────────────────────────────────────────────────────────────────────────┘
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ 1. SOLVER EXECUTION                                                      â”‚
+â”‚    Input: NetworkSnapshot + SolverConfig                                 â”‚
+â”‚    Output: SolverResult + WhiteBoxTrace                                  â”‚
+â”‚    (FROZEN â€” Proof Inspector NIE modyfikuje)                            â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                                 â”‚ (READ-ONLY)
+                                 â–Ľ
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ 2. PROOF ENGINE (P11)                                                    â”‚
+â”‚    - Tworzy TraceArtifact (immutable)                                   â”‚
+â”‚    - Generuje ProofDocument (kroki + weryfikacja jednostek)             â”‚
+â”‚    - Mapuje wartoĹ›ci z trace â†’ symbole matematyczne                     â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                                 â”‚ (READ-ONLY)
+                                 â–Ľ
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ 3. PROOF INSPECTOR (P11.1d) â€” TEN DOKUMENT                              â”‚
+â”‚    - Prezentuje ProofDocument uĹĽytkownikowi                             â”‚
+â”‚    - Eksportuje do formatĂłw (JSON/LaTeX/PDF/DOCX)                       â”‚
+â”‚    - ZERO LOGIKI OBLICZENIOWEJ                                          â”‚
+â”‚    - ZERO INTERPRETACJI NORMOWEJ                                        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 ### 1.2 Czym Proof Inspector NIE JEST (BINDING)
 
 | NIE jest | Uzasadnienie | Gdzie ta funkcja? |
 |----------|--------------|-------------------|
-| Solverem | Nie wykonuje obliczeń fizycznych | Solver Layer |
-| Analysis | Nie interpretuje wyników (brak limitów, brak oceny) | Analysis Layer |
-| Edytorem | Dowód jest IMMUTABLE po wygenerowaniu | — |
-| Walidatorem | Nie sprawdza zgodności z normami | Analysis Layer |
-| Kalkulatorem | Nie przelicza wartości | Solver Layer |
-| Formatowaczem danych | Nie modyfikuje struktury ProofDocument | — |
+| Solverem | Nie wykonuje obliczeĹ„ fizycznych | Solver Layer |
+| Analysis | Nie interpretuje wynikĂłw (brak limitĂłw, brak oceny) | Analysis Layer |
+| Edytorem | DowĂłd jest IMMUTABLE po wygenerowaniu | â€” |
+| Walidatorem | Nie sprawdza zgodnoĹ›ci z normami | Analysis Layer |
+| Kalkulatorem | Nie przelicza wartoĹ›ci | Solver Layer |
+| Formatowaczem danych | Nie modyfikuje struktury ProofDocument | â€” |
 
-### 1.3 Zasada „Zero Intelligence"
+### 1.3 Zasada â€žZero Intelligence"
 
 $$
 \boxed{
-\textbf{Proof Inspector wyświetla dokładnie to, co otrzymał z ProofDocument.}
+\textbf{Proof Inspector wyĹ›wietla dokĹ‚adnie to, co otrzymaĹ‚ z ProofDocument.}
 }
 $$
 
-- Brak dodatkowych obliczeń
-- Brak decyzji logicznych (if/else na podstawie wartości)
-- Brak kolorowania „dobry/zły"
+- Brak dodatkowych obliczeĹ„
+- Brak decyzji logicznych (if/else na podstawie wartoĹ›ci)
+- Brak kolorowania â€ždobry/zĹ‚y"
 - Brak interpretacji normowej
-- Brak modyfikacji wartości
+- Brak modyfikacji wartoĹ›ci
 
 ---
 
 ## 2. Struktura widoku dowodu (BINDING)
 
-### 2.1 Nagłówek dowodu (ProofHeader)
+### 2.1 NagĹ‚Ăłwek dowodu (ProofHeader)
 
-Każdy dowód MUSI zawierać nagłówek z pełnymi metadanymi:
+KaĹĽdy dowĂłd MUSI zawieraÄ‡ nagĹ‚Ăłwek z peĹ‚nymi metadanymi:
 
 $$
 \begin{array}{|l|l|l|}
 \hline
-\textbf{Pole} & \textbf{Źródło} & \textbf{Przykład} \\
+\textbf{Pole} & \textbf{ĹąrĂłdĹ‚o} & \textbf{PrzykĹ‚ad} \\
 \hline
-\text{Typ analizy} & \texttt{proof\_type} & \text{Zwarcie trójfazowe IEC 60909} \\
+\text{Typ analizy} & \texttt{proof\_type} & \text{Zwarcie trĂłjfazowe IEC 60909} \\
 \text{Norma} & \texttt{standard\_ref} & \text{IEC 60909-0:2016} \\
 \text{Projekt} & \texttt{project\_name} & \text{Projekt SN-01} \\
 \text{Przypadek} & \texttt{case\_name} & \text{Zwarcie na szynie B2} \\
@@ -138,42 +138,42 @@ $$
 \end{array}
 $$
 
-### 2.2 Lista kroków (ProofStep) — sekwencja
+### 2.2 Lista krokĂłw (ProofStep) â€” sekwencja
 
-Kolejność kroków jest **ustalona przez Equation Registry** i **nie może być zmieniana** przez UI.
+KolejnoĹ›Ä‡ krokĂłw jest **ustalona przez Equation Registry** i **nie moĹĽe byÄ‡ zmieniana** przez UI.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│ SPIS KROKÓW (read-only, navigation)                             │
-├─────────────────────────────────────────────────────────────────┤
-│ 1. Napięcie z współczynnikiem c                                 │
-│ 2. Impedancja źródła                                            │
-│ 3. Impedancja zastępcza Thevenina                               │
-│ ► 4. Początkowy prąd zwarciowy I_k''                           │
-│ 5. Współczynnik udaru κ                                         │
-│ 6. Prąd udarowy i_p                                             │
-│ 7. Moc zwarciowa S_k''                                          │
-│ 8. Prąd cieplny równoważny I_th                                 │
-│ 9. Prąd dynamiczny I_dyn                                        │
-└─────────────────────────────────────────────────────────────────┘
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ SPIS KROKĂ“W (read-only, navigation)                             â”‚
+â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ 1. NapiÄ™cie z wspĂłĹ‚czynnikiem c                                 â”‚
+â”‚ 2. Impedancja ĹşrĂłdĹ‚a                                            â”‚
+â”‚ 3. Impedancja zastÄ™pcza Thevenina                               â”‚
+â”‚ â–ş 4. PoczÄ…tkowy prÄ…d zwarciowy I_k''                           â”‚
+â”‚ 5. WspĂłĹ‚czynnik udaru Îş                                         â”‚
+â”‚ 6. PrÄ…d udarowy i_p                                             â”‚
+â”‚ 7. Moc zwarciowa S_k''                                          â”‚
+â”‚ 8. PrÄ…d cieplny rĂłwnowaĹĽny I_th                                 â”‚
+â”‚ 9. PrÄ…d dynamiczny I_dyn                                        â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-### 2.3 Struktura pojedynczego kroku (5 sekcji — MANDATORY)
+### 2.3 Struktura pojedynczego kroku (5 sekcji â€” MANDATORY)
 
-Każdy krok dowodu MUSI zawierać dokładnie **5 sekcji** w tej kolejności:
+KaĹĽdy krok dowodu MUSI zawieraÄ‡ dokĹ‚adnie **5 sekcji** w tej kolejnoĹ›ci:
 
 $$
 \boxed{
-\textbf{KROK } n: \quad \underbrace{\text{WZÓR}}_{\text{1}} \to \underbrace{\text{DANE}}_{\text{2}} \to \underbrace{\text{PODSTAWIENIE}}_{\text{3}} \to \underbrace{\text{WYNIK}}_{\text{4}} \to \underbrace{\text{WERYFIKACJA JEDNOSTEK}}_{\text{5}}
+\textbf{KROK } n: \quad \underbrace{\text{WZĂ“R}}_{\text{1}} \to \underbrace{\text{DANE}}_{\text{2}} \to \underbrace{\text{PODSTAWIENIE}}_{\text{3}} \to \underbrace{\text{WYNIK}}_{\text{4}} \to \underbrace{\text{WERYFIKACJA JEDNOSTEK}}_{\text{5}}
 }
 $$
 
-#### 2.3.1 Sekcja WZÓR (formula)
+#### 2.3.1 Sekcja WZĂ“R (formula)
 
-- Równanie matematyczne w notacji LaTeX
-- Wyłącznie bloki `$$ ... $$` (brak inline)
-- ID równania z rejestru (np. `EQ_SC3F_004`)
-- Odniesienie do normy (bez cytowania treści)
+- RĂłwnanie matematyczne w notacji LaTeX
+- WyĹ‚Ä…cznie bloki `$$ ... $$` (brak inline)
+- ID rĂłwnania z rejestru (np. `EQ_SC3F_004`)
+- Odniesienie do normy (bez cytowania treĹ›ci)
 
 ```latex
 $$
@@ -183,22 +183,22 @@ $$
 
 #### 2.3.2 Sekcja DANE (input_values)
 
-- Lista wartości wejściowych z jednostkami
-- Format: `symbol = wartość jednostka`
-- Źródło każdej wartości (`source_key`)
+- Lista wartoĹ›ci wejĹ›ciowych z jednostkami
+- Format: `symbol = wartoĹ›Ä‡ jednostka`
+- ĹąrĂłdĹ‚o kaĹĽdej wartoĹ›ci (`source_key`)
 
-| Symbol | Wartość | Jednostka | Źródło |
+| Symbol | WartoĹ›Ä‡ | Jednostka | ĹąrĂłdĹ‚o |
 |--------|---------|-----------|--------|
-| $c$ | 1.100 | — | `c_factor` |
+| $c$ | 1.100 | â€” | `c_factor` |
 | $U_n$ | 15.00 | kV | `u_n_kv` |
-| $Z_{th}$ | 0.5000 + j2.000 | Ω | `z_thevenin_ohm` |
-| $\|Z_{th}\|$ | 2.062 | Ω | (obliczone) |
+| $Z_{th}$ | 0.5000 + j2.000 | Î© | `z_thevenin_ohm` |
+| $\|Z_{th}\|$ | 2.062 | Î© | (obliczone) |
 
 #### 2.3.3 Sekcja PODSTAWIENIE (substitution)
 
-- Wzór z podstawionymi wartościami liczbowymi
+- WzĂłr z podstawionymi wartoĹ›ciami liczbowymi
 - LaTeX blokowy
-- Wynik końcowy
+- Wynik koĹ„cowy
 
 ```latex
 $$
@@ -208,9 +208,9 @@ $$
 
 #### 2.3.4 Sekcja WYNIK (result)
 
-- Wartość końcowa z jednostką
-- Wyróżniona wizualnie
-- Powiązanie z `mapping_key`
+- WartoĹ›Ä‡ koĹ„cowa z jednostkÄ…
+- WyrĂłĹĽniona wizualnie
+- PowiÄ…zanie z `mapping_key`
 
 $$
 \boxed{I_k'' = 4.620\,\text{kA}}
@@ -218,124 +218,124 @@ $$
 
 #### 2.3.5 Sekcja WERYFIKACJA JEDNOSTEK (unit_check)
 
-- Status: ✓ PASS / ✗ FAIL
-- Ścieżka derywacji jednostek
+- Status: âś“ PASS / âś— FAIL
+- ĹšcieĹĽka derywacji jednostek
 - Jednostka oczekiwana vs obliczona
 
-| Pole | Wartość |
+| Pole | WartoĹ›Ä‡ |
 |------|---------|
-| Status | ✓ PASS |
+| Status | âś“ PASS |
 | Oczekiwana | kA |
 | Obliczona | kA |
-| Derywacja | kV / Ω = kA |
+| Derywacja | kV / Î© = kA |
 
 ### 2.4 Podsumowanie liczbowe (ProofSummary)
 
-Na końcu dowodu — tabela wyników **bez interpretacji normowej**:
+Na koĹ„cu dowodu â€” tabela wynikĂłw **bez interpretacji normowej**:
 
 $$
 \begin{array}{|l|c|c|c|}
 \hline
-\textbf{Wielkość} & \textbf{Symbol} & \textbf{Wartość} & \textbf{Jednostka} \\
+\textbf{WielkoĹ›Ä‡} & \textbf{Symbol} & \textbf{WartoĹ›Ä‡} & \textbf{Jednostka} \\
 \hline
-\text{Początkowy prąd zwarciowy} & I_k'' & 4.620 & \text{kA} \\
-\text{Prąd udarowy (szczytowy)} & i_p & 11.76 & \text{kA} \\
+\text{PoczÄ…tkowy prÄ…d zwarciowy} & I_k'' & 4.620 & \text{kA} \\
+\text{PrÄ…d udarowy (szczytowy)} & i_p & 11.76 & \text{kA} \\
 \text{Moc zwarciowa} & S_k'' & 120.0 & \text{MVA} \\
-\text{Współczynnik udaru} & \kappa & 1.80 & — \\
-\text{Prąd cieplny równoważny} & I_{th} & 5.23 & \text{kA} \\
-\text{Prąd dynamiczny} & I_{dyn} & 11.76 & \text{kA} \\
+\text{WspĂłĹ‚czynnik udaru} & \kappa & 1.80 & â€” \\
+\text{PrÄ…d cieplny rĂłwnowaĹĽny} & I_{th} & 5.23 & \text{kA} \\
+\text{PrÄ…d dynamiczny} & I_{dyn} & 11.76 & \text{kA} \\
 \hline
 \end{array}
 $$
 
-**UWAGA:** Brak granic normowych, brak oceny „spełnia/nie spełnia", brak kolorowania.
+**UWAGA:** Brak granic normowych, brak oceny â€žspeĹ‚nia/nie speĹ‚nia", brak kolorowania.
 
 ---
 
-## 3. Layout UI — Proof Inspector (PowerFactory-style)
+## 3. Layout UI â€” Proof Inspector (benchmark-style)
 
 ### 3.1 Lokalizacja w aplikacji
 
 ```
 Results (Wyniki)
-  └── [Wybrany Case]
-        └── [Wybrany Run]
-              ├── Wyniki (tabela) ← Analysis Layer
-              ├── Ślad obliczeń (TraceArtifact) ← raw trace
-              └── Dowód matematyczny ← PROOF INSPECTOR (TEN DOKUMENT)
+  â””â”€â”€ [Wybrany Case]
+        â””â”€â”€ [Wybrany Run]
+              â”śâ”€â”€ Wyniki (tabela) â† Analysis Layer
+              â”śâ”€â”€ Ĺšlad obliczeĹ„ (TraceArtifact) â† raw trace
+              â””â”€â”€ DowĂłd matematyczny â† PROOF INSPECTOR (TEN DOKUMENT)
 ```
 
-### 3.2 Layout główny (two-panel)
+### 3.2 Layout gĹ‚Ăłwny (two-panel)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│ ŚLAD OBLICZEŃ (White Box) — [Case Name] / [Run Timestamp]          [×]  │
-├─────────────────────────────────────────────────────────────────────────┤
-│ ┌───────────────────┐ ┌─────────────────────────────────────────────┐   │
-│ │ SPIS KROKÓW       │ │                                             │   │
-│ │                   │ │  KROK 4: Początkowy prąd zwarciowy          │   │
-│ │ 1. Napięcie c·U_n │ │  ─────────────────────────────────────────  │   │
-│ │ 2. Z źródła       │ │                                             │   │
-│ │ 3. Z Thevenina    │ │  ┌─────────────────────────────────────┐    │   │
-│ │►4. I_k''          │ │  │ WZÓR                        [EQ_SC3F_004] │   │
-│ │ 5. κ              │ │  │                                     │    │   │
-│ │ 6. i_p            │ │  │       c · U_n                       │    │   │
-│ │ 7. S_k''          │ │  │ I_k'' = ─────────────               │    │   │
-│ │ 8. I_th           │ │  │        √3 · |Z_th|                  │    │   │
-│ │ 9. I_dyn          │ │  │                                     │    │   │
-│ │                   │ │  │ IEC 60909-0:2016 eq. (29)           │    │   │
-│ │                   │ │  └─────────────────────────────────────┘    │   │
-│ │                   │ │                                             │   │
-│ │                   │ │  ┌─────────────────────────────────────┐    │   │
-│ │                   │ │  │ DANE                                │    │   │
-│ │                   │ │  │ c = 1.100 (—)                       │    │   │
-│ │                   │ │  │ U_n = 15.00 kV                      │    │   │
-│ │                   │ │  │ Z_th = 0.5000 + j2.000 Ω           │    │   │
-│ │                   │ │  │ |Z_th| = 2.062 Ω                    │    │   │
-│ │                   │ │  └─────────────────────────────────────┘    │   │
-│ │                   │ │                                             │   │
-│ │                   │ │  ┌─────────────────────────────────────┐    │   │
-│ │                   │ │  │ PODSTAWIENIE                        │    │   │
-│ │                   │ │  │         1.100 · 15.00               │    │   │
-│ │                   │ │  │ I_k'' = ───────────────  = 4.620 kA │    │   │
-│ │                   │ │  │         √3 · 2.062                  │    │   │
-│ │                   │ │  └─────────────────────────────────────┘    │   │
-│ │                   │ │                                             │   │
-│ │                   │ │  ┌─────────────────────────────────────┐    │   │
-│ │                   │ │  │ WYNIK                               │    │   │
-│ │                   │ │  │ ┌───────────────────────────────┐   │    │   │
-│ │                   │ │  │ │   I_k'' = 4.620 kA            │   │    │   │
-│ │                   │ │  │ └───────────────────────────────┘   │    │   │
-│ │                   │ │  └─────────────────────────────────────┘    │   │
-│ │                   │ │                                             │   │
-│ │                   │ │  ┌─────────────────────────────────────┐    │   │
-│ │                   │ │  │ WERYFIKACJA JEDNOSTEK          ✓   │    │   │
-│ │                   │ │  │ kV / Ω = kA                         │    │   │
-│ │                   │ │  └─────────────────────────────────────┘    │   │
-│ └───────────────────┘ └─────────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────────────────────────────┤
-│ [Eksportuj ▼]  [◄ Poprzedni]  [Następny ►]  [Podsumowanie]              │
-└─────────────────────────────────────────────────────────────────────────┘
+â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”‚ ĹšLAD OBLICZEĹ (White Box) â€” [Case Name] / [Run Timestamp]          [Ă—]  â”‚
+â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
+â”‚ â”‚ SPIS KROKĂ“W       â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  KROK 4: PoczÄ…tkowy prÄ…d zwarciowy          â”‚   â”‚
+â”‚ â”‚ 1. NapiÄ™cie cÂ·U_n â”‚ â”‚  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  â”‚   â”‚
+â”‚ â”‚ 2. Z ĹşrĂłdĹ‚a       â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚ 3. Z Thevenina    â”‚ â”‚  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚â–ş4. I_k''          â”‚ â”‚  â”‚ WZĂ“R                        [EQ_SC3F_004] â”‚   â”‚
+â”‚ â”‚ 5. Îş              â”‚ â”‚  â”‚                                     â”‚    â”‚   â”‚
+â”‚ â”‚ 6. i_p            â”‚ â”‚  â”‚       c Â· U_n                       â”‚    â”‚   â”‚
+â”‚ â”‚ 7. S_k''          â”‚ â”‚  â”‚ I_k'' = â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€               â”‚    â”‚   â”‚
+â”‚ â”‚ 8. I_th           â”‚ â”‚  â”‚        âš3 Â· |Z_th|                  â”‚    â”‚   â”‚
+â”‚ â”‚ 9. I_dyn          â”‚ â”‚  â”‚                                     â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ IEC 60909-0:2016 eq. (29)           â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ DANE                                â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ c = 1.100 (â€”)                       â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ U_n = 15.00 kV                      â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ Z_th = 0.5000 + j2.000 Î©           â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ |Z_th| = 2.062 Î©                    â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ PODSTAWIENIE                        â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚         1.100 Â· 15.00               â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ I_k'' = â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  = 4.620 kA â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚         âš3 Â· 2.062                  â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ WYNIK                               â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ â”‚   I_k'' = 4.620 kA            â”‚   â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚                                             â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ WERYFIKACJA JEDNOSTEK          âś“   â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â”‚ kV / Î© = kA                         â”‚    â”‚   â”‚
+â”‚ â”‚                   â”‚ â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â”‚   â”‚
+â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”‚
+â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+â”‚ [Eksportuj â–Ľ]  [â—„ Poprzedni]  [NastÄ™pny â–ş]  [Podsumowanie]              â”‚
+â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-### 3.3 Reguły nawigacji (BINDING)
+### 3.3 ReguĹ‚y nawigacji (BINDING)
 
 | Element | Akcja | Blokady |
 |---------|-------|---------|
-| Spis kroków (lewy panel) | Kliknięcie → przejście do kroku | Brak sortowania |
-| ◄ Poprzedni | Poprzedni krok w sekwencji | Niedostępny na kroku 1 |
-| Następny ► | Następny krok w sekwencji | Niedostępny na ostatnim |
-| Podsumowanie | Widok zbiorczy wyników | Zawsze dostępny |
+| Spis krokĂłw (lewy panel) | KlikniÄ™cie â†’ przejĹ›cie do kroku | Brak sortowania |
+| â—„ Poprzedni | Poprzedni krok w sekwencji | NiedostÄ™pny na kroku 1 |
+| NastÄ™pny â–ş | NastÄ™pny krok w sekwencji | NiedostÄ™pny na ostatnim |
+| Podsumowanie | Widok zbiorczy wynikĂłw | Zawsze dostÄ™pny |
 
-### 3.4 Skróty klawiszowe
+### 3.4 SkrĂłty klawiszowe
 
-| Skrót | Akcja |
+| SkrĂłt | Akcja |
 |-------|-------|
-| `←` / `→` | Poprzedni / następny krok |
+| `â†` / `â†’` | Poprzedni / nastÄ™pny krok |
 | `Home` | Pierwszy krok |
 | `End` | Podsumowanie |
 | `Esc` | Zamknij Proof Inspector |
-| `Ctrl+E` | Otwórz menu eksportu |
+| `Ctrl+E` | OtwĂłrz menu eksportu |
 
 ---
 
@@ -345,35 +345,35 @@ Results (Wyniki)
 
 | Akcja | Dozwolona | Uzasadnienie |
 |-------|-----------|--------------|
-| Przeglądanie kroków | ✓ TAK | Prezentacja |
-| Nawigacja między krokami | ✓ TAK | Nawigacja |
-| Kopiowanie wartości | ✓ TAK | Audit |
-| Eksport do pliku | ✓ TAK | Archiwizacja |
-| Drukowanie | ✓ TAK | Dokumentacja |
-| Zmiana języka (pl/en) | ✓ TAK | Lokalizacja |
+| PrzeglÄ…danie krokĂłw | âś“ TAK | Prezentacja |
+| Nawigacja miÄ™dzy krokami | âś“ TAK | Nawigacja |
+| Kopiowanie wartoĹ›ci | âś“ TAK | Audit |
+| Eksport do pliku | âś“ TAK | Archiwizacja |
+| Drukowanie | âś“ TAK | Dokumentacja |
+| Zmiana jÄ™zyka (pl/en) | âś“ TAK | Lokalizacja |
 
 ### 4.2 Niedozwolone akcje (ABSOLUTNE)
 
 | Akcja | Dozwolona | Uzasadnienie |
 |-------|-----------|--------------|
-| Edycja wartości | ✗ NIE | Dowód jest IMMUTABLE |
-| Dodawanie kroków | ✗ NIE | Struktura z generatora |
-| Usuwanie kroków | ✗ NIE | Struktura z generatora |
-| Zmiana kolejności kroków | ✗ NIE | Sequence from Equation Registry |
-| Ponowne obliczenie | ✗ NIE | Wymaga nowego Run |
-| Sortowanie listy kroków | ✗ NIE | Fixed order |
-| Filtrowanie kroków | ✗ NIE | Complete proof required |
+| Edycja wartoĹ›ci | âś— NIE | DowĂłd jest IMMUTABLE |
+| Dodawanie krokĂłw | âś— NIE | Struktura z generatora |
+| Usuwanie krokĂłw | âś— NIE | Struktura z generatora |
+| Zmiana kolejnoĹ›ci krokĂłw | âś— NIE | Sequence from Equation Registry |
+| Ponowne obliczenie | âś— NIE | Wymaga nowego Run |
+| Sortowanie listy krokĂłw | âś— NIE | Fixed order |
+| Filtrowanie krokĂłw | âś— NIE | Complete proof required |
 
 ---
 
-## 5. Eksport dowodu — kontrakty (BINDING)
+## 5. Eksport dowodu â€” kontrakty (BINDING)
 
 ### 5.1 Formaty eksportu
 
 | Format | Rozszerzenie | Opis | Przeznaczenie |
 |--------|--------------|------|---------------|
 | **JSON** | `.json` | 1:1 z ProofDocument | Archiwizacja, API |
-| **LaTeX** | `.tex` | Kod źródłowy LaTeX | Kompilacja, edycja |
+| **LaTeX** | `.tex` | Kod ĹşrĂłdĹ‚owy LaTeX | Kompilacja, edycja |
 | **PDF** | `.pdf` | Dokument PDF (via LaTeX) | Druk, audyt |
 | **DOCX** | `.docx` | Microsoft Word | Raportowanie |
 
@@ -381,15 +381,15 @@ Results (Wyniki)
 
 $$
 \boxed{
-\textbf{Eksport jest deterministyczny:} \quad \text{identyczne wejście} \Rightarrow \text{identyczny dokument}
+\textbf{Eksport jest deterministyczny:} \quad \text{identyczne wejĹ›cie} \Rightarrow \text{identyczny dokument}
 }
 $$
 
 | Aspekt | Gwarancja |
 |--------|-----------|
-| Kolejność kroków | Identyczna (z Equation Registry) |
-| Kolejność pól JSON | Sortowana alfabetycznie |
-| Formatowanie liczb | 4 miejsca znaczące |
+| KolejnoĹ›Ä‡ krokĂłw | Identyczna (z Equation Registry) |
+| KolejnoĹ›Ä‡ pĂłl JSON | Sortowana alfabetycznie |
+| Formatowanie liczb | 4 miejsca znaczÄ…ce |
 | Timestamp w dokumencie | Z ProofDocument, nie z momentu eksportu |
 | Hash dokumentu | SHA-256 fingerprint |
 
@@ -402,7 +402,7 @@ $$
   "artifact_id": "uuid",
   "created_at": "ISO8601",
   "proof_type": "SC3F_IEC60909",
-  "title_pl": "Dowód obliczeń zwarciowych IEC 60909",
+  "title_pl": "DowĂłd obliczeĹ„ zwarciowych IEC 60909",
   "header": { /* ProofHeader */ },
   "steps": [ /* ProofStep[] */ ],
   "summary": { /* ProofSummary */ },
@@ -419,27 +419,27 @@ $$
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 
-\title{Dowód obliczeń zwarciowych IEC 60909}
+\title{DowĂłd obliczeĹ„ zwarciowych IEC 60909}
 \author{MV-DESIGN-PRO v1.2.0}
 \date{2026-01-27}
 
 \begin{document}
 \maketitle
 
-\section*{Nagłówek dowodu}
+\section*{NagĹ‚Ăłwek dowodu}
 % ... header fields ...
 
 \section*{Kroki dowodu}
 
-\subsection*{Krok 1: Napięcie z współczynnikiem c}
-\textbf{Równanie:} (EQ\_SC3F\_001)
+\subsection*{Krok 1: NapiÄ™cie z wspĂłĹ‚czynnikiem c}
+\textbf{RĂłwnanie:} (EQ\_SC3F\_001)
 $$
 U_{eq} = c \cdot U_n
 $$
 
-\textbf{Dane wejściowe:}
+\textbf{Dane wejĹ›ciowe:}
 \begin{itemize}
-  \item $c = 1.100$ (—)
+  \item $c = 1.100$ (â€”)
   \item $U_n = 15.00\,\text{kV}$
 \end{itemize}
 
@@ -469,9 +469,9 @@ $$
 |---------|-----------|
 | Format strony | A4, marginesy 2.5 cm |
 | Czcionka | Times New Roman 11pt (tekst), LaTeX math |
-| Numeracja stron | Dolna, środkowa |
-| Spis treści | Automatyczny (dla PDF > 3 strony) |
-| Nagłówek strony | Tytuł dowodu + data |
+| Numeracja stron | Dolna, Ĺ›rodkowa |
+| Spis treĹ›ci | Automatyczny (dla PDF > 3 strony) |
+| NagĹ‚Ăłwek strony | TytuĹ‚ dowodu + data |
 | Stopka | Fingerprint + wersja systemu |
 
 ### 5.6 API eksportu
@@ -503,28 +503,28 @@ Response:
 
 ---
 
-## 6. UX — zgodność z PowerFactory (BINDING)
+## 6. UX â€” zgodnoĹ›Ä‡ z benchmark (BINDING)
 
 ### 6.1 Zasady interfejsu
 
 | Zasada | Opis |
 |--------|------|
 | **Brak trybu edycji** | Wszystkie pola read-only |
-| **Brak sortowania** | Kolejność kroków ustalona |
-| **Two-panel layout** | Lewa lista kroków → prawa treść |
+| **Brak sortowania** | KolejnoĹ›Ä‡ krokĂłw ustalona |
+| **Two-panel layout** | Lewa lista krokĂłw â†’ prawa treĹ›Ä‡ |
 | **Polish normative** | Nazewnictwo zgodne z normami PN-EN |
-| **White Box label** | Jasne oznaczenie: „Ślad obliczeń (White Box)" |
+| **White Box label** | Jasne oznaczenie: â€žĹšlad obliczeĹ„ (White Box)" |
 | **No interpretation** | Brak kolorowania, brak oceny |
 
 ### 6.2 Terminologia polska (BINDING)
 
 | Angielski | Polski (normowy) |
 |-----------|------------------|
-| Proof Inspector | Przeglądarka dowodu |
-| Trace | Ślad obliczeń |
+| Proof Inspector | PrzeglÄ…darka dowodu |
+| Trace | Ĺšlad obliczeĹ„ |
 | Step | Krok |
-| Formula | Wzór |
-| Input | Dane wejściowe |
+| Formula | WzĂłr |
+| Input | Dane wejĹ›ciowe |
 | Substitution | Podstawienie |
 | Result | Wynik |
 | Unit Check | Weryfikacja jednostek |
@@ -532,12 +532,12 @@ Response:
 | Export | Eksportuj |
 | Fingerprint | Odcisk (hash) |
 
-### 6.3 Zgodność z DIgSILENT PowerFactory
+### 6.3 ZgodnoĹ›Ä‡ z DIgSILENT benchmark
 
-| Aspekt PowerFactory | MV-DESIGN-PRO Equivalent |
+| Aspekt benchmark | MV-DESIGN-PRO Equivalent |
 |---------------------|--------------------------|
 | Calculation Report | Proof Inspector |
-| Result Browser | Results → Proof Inspector |
+| Result Browser | Results â†’ Proof Inspector |
 | Export to Word | Export DOCX |
 | Export to PDF | Export PDF |
 | White-box trace | TraceArtifact + ProofDocument |
@@ -551,11 +551,11 @@ Response:
 $$
 \boxed{
 \begin{aligned}
-&\text{❌ Brak interpretacji norm (to NIE Analysis)} \\
-&\text{❌ Brak kolorowania „dobry/zły" (pass/fail)} \\
-&\text{❌ Brak granic normowych w prezentacji} \\
-&\text{❌ Brak oceny „spełnia/nie spełnia"} \\
-&\text{❌ Brak warningów/errorów na podstawie wartości}
+&\text{âťŚ Brak interpretacji norm (to NIE Analysis)} \\
+&\text{âťŚ Brak kolorowania â€ždobry/zĹ‚y" (pass/fail)} \\
+&\text{âťŚ Brak granic normowych w prezentacji} \\
+&\text{âťŚ Brak oceny â€žspeĹ‚nia/nie speĹ‚nia"} \\
+&\text{âťŚ Brak warningĂłw/errorĂłw na podstawie wartoĹ›ci}
 \end{aligned}
 }
 $$
@@ -565,11 +565,11 @@ $$
 $$
 \boxed{
 \begin{aligned}
-&\text{❌ Brak skrótów matematycznych} \\
-&\text{❌ Brak inline LaTeX (tylko bloki } \$\$...\$\$ \text{)} \\
-&\text{❌ Brak uproszczonych wzorów} \\
-&\text{❌ Brak zaokrągleń pośrednich} \\
-&\text{❌ Brak pomijania kroków}
+&\text{âťŚ Brak skrĂłtĂłw matematycznych} \\
+&\text{âťŚ Brak inline LaTeX (tylko bloki } \$\$...\$\$ \text{)} \\
+&\text{âťŚ Brak uproszczonych wzorĂłw} \\
+&\text{âťŚ Brak zaokrÄ…gleĹ„ poĹ›rednich} \\
+&\text{âťŚ Brak pomijania krokĂłw}
 \end{aligned}
 }
 $$
@@ -579,11 +579,11 @@ $$
 $$
 \boxed{
 \begin{aligned}
-&\text{❌ Brak modyfikacji solverów} \\
-&\text{❌ Brak modyfikacji Result API} \\
-&\text{❌ Brak modyfikacji TraceArtifact po utworzeniu} \\
-&\text{❌ Brak modyfikacji ProofDocument po wygenerowaniu} \\
-&\text{❌ Brak cache'owania z modyfikacją}
+&\text{âťŚ Brak modyfikacji solverĂłw} \\
+&\text{âťŚ Brak modyfikacji Result API} \\
+&\text{âťŚ Brak modyfikacji TraceArtifact po utworzeniu} \\
+&\text{âťŚ Brak modyfikacji ProofDocument po wygenerowaniu} \\
+&\text{âťŚ Brak cache'owania z modyfikacjÄ…}
 \end{aligned}
 }
 $$
@@ -592,7 +592,7 @@ $$
 
 ## 8. Komponenty UI (specyfikacja implementacyjna)
 
-### 8.1 ProofInspector (główny komponent)
+### 8.1 ProofInspector (gĹ‚Ăłwny komponent)
 
 ```typescript
 interface ProofInspectorProps {
@@ -609,7 +609,7 @@ interface ProofInspectorState {
 }
 ```
 
-### 8.2 ProofHeader (nagłówek)
+### 8.2 ProofHeader (nagĹ‚Ăłwek)
 
 ```typescript
 interface ProofHeaderViewProps {
@@ -628,7 +628,7 @@ interface StepViewProps {
   totalSteps: number;
 }
 
-// Renderuje 5 sekcji: WZÓR, DANE, PODSTAWIENIE, WYNIK, WERYFIKACJA
+// Renderuje 5 sekcji: WZĂ“R, DANE, PODSTAWIENIE, WYNIK, WERYFIKACJA
 ```
 
 ### 8.4 SummaryView (podsumowanie)
@@ -655,38 +655,38 @@ type ExportFormat = "json" | "latex" | "pdf" | "docx";
 
 ---
 
-## 9. Dostępność (a11y)
+## 9. DostÄ™pnoĹ›Ä‡ (a11y)
 
 ### 9.1 Wymagania WCAG AA
 
 | Wymaganie | Implementacja |
 |-----------|---------------|
-| Nawigacja klawiaturą | Pełna obsługa bez myszy |
+| Nawigacja klawiaturÄ… | PeĹ‚na obsĹ‚uga bez myszy |
 | Screen reader | ARIA labels dla wszystkich sekcji |
 | Kontrast | Min 4.5:1 (WCAG AA) |
-| Focus visible | Wyraźny fokus na elementach |
-| Skip links | Przejście do treści głównej |
+| Focus visible | WyraĹşny fokus na elementach |
+| Skip links | PrzejĹ›cie do treĹ›ci gĹ‚Ăłwnej |
 
 ### 9.2 ARIA labels
 
 ```html
-<main role="main" aria-label="Przeglądarka dowodu matematycznego">
-  <nav role="navigation" aria-label="Spis kroków dowodu">
+<main role="main" aria-label="PrzeglÄ…darka dowodu matematycznego">
+  <nav role="navigation" aria-label="Spis krokĂłw dowodu">
     <ol>
-      <li aria-current="step">Krok 4: Początkowy prąd zwarciowy</li>
+      <li aria-current="step">Krok 4: PoczÄ…tkowy prÄ…d zwarciowy</li>
     </ol>
   </nav>
 
   <article role="article" aria-label="Krok dowodu 4 z 9">
     <section aria-labelledby="formula-heading">
-      <h2 id="formula-heading">Wzór</h2>
-      <math aria-label="I k prim prim równa się c razy U n dzielone przez pierwiastek z 3 razy moduł Z th">
+      <h2 id="formula-heading">WzĂłr</h2>
+      <math aria-label="I k prim prim rĂłwna siÄ™ c razy U n dzielone przez pierwiastek z 3 razy moduĹ‚ Z th">
         <!-- MathML or LaTeX -->
       </math>
     </section>
 
     <section aria-labelledby="data-heading">
-      <h2 id="data-heading">Dane wejściowe</h2>
+      <h2 id="data-heading">Dane wejĹ›ciowe</h2>
       <!-- ... -->
     </section>
 
@@ -699,12 +699,12 @@ type ExportFormat = "json" | "latex" | "pdf" | "docx";
 
 ## 10. Testy determinizmu (BINDING)
 
-### 10.1 Test identyczności eksportu
+### 10.1 Test identycznoĹ›ci eksportu
 
 ```python
 def test_export_determinism():
     """
-    Ten sam ProofDocument → identyczny eksport.
+    Ten sam ProofDocument â†’ identyczny eksport.
     """
     document = create_test_proof_document()
 
@@ -715,12 +715,12 @@ def test_export_determinism():
     assert sha256(export_1) == sha256(export_2)
 ```
 
-### 10.2 Test kolejności kroków
+### 10.2 Test kolejnoĹ›ci krokĂłw
 
 ```python
 def test_step_order_immutable():
     """
-    Kolejność kroków jest ustalona i nie może być zmieniona.
+    KolejnoĹ›Ä‡ krokĂłw jest ustalona i nie moĹĽe byÄ‡ zmieniona.
     """
     document = create_test_proof_document()
 
@@ -750,80 +750,80 @@ def test_fingerprint_stable():
 
 ## 11. Definition of Done (DoD)
 
-### 11.1 P11.1d — DoD
+### 11.1 P11.1d â€” DoD
 
 | Kryterium | Status |
 |-----------|--------|
-| Model mentalny (read-only, presentation-only) | SPEC ✓ |
-| Relacja Solver → ProofDocument → Inspector | SPEC ✓ |
-| Struktura kroku (5 sekcji mandatory) | SPEC ✓ |
-| Layout UI (two-panel, PF-style) | SPEC ✓ |
-| Nawigacja (sekwencyjna, bez sortowania) | SPEC ✓ |
-| Tryb read-only (dozwolone/niedozwolone akcje) | SPEC ✓ |
-| Kontrakty eksportu (JSON/LaTeX/PDF/DOCX) | SPEC ✓ |
-| Gwarancja determinizmu | SPEC ✓ |
-| Zakazy absolutne (interpretacja, inline, modyfikacja) | SPEC ✓ |
-| Zgodność z PowerFactory | SPEC ✓ |
-| Dostępność (WCAG AA) | SPEC ✓ |
-| Testy determinizmu | SPEC ✓ |
+| Model mentalny (read-only, presentation-only) | SPEC âś“ |
+| Relacja Solver â†’ ProofDocument â†’ Inspector | SPEC âś“ |
+| Struktura kroku (5 sekcji mandatory) | SPEC âś“ |
+| Layout UI (two-panel, PF-style) | SPEC âś“ |
+| Nawigacja (sekwencyjna, bez sortowania) | SPEC âś“ |
+| Tryb read-only (dozwolone/niedozwolone akcje) | SPEC âś“ |
+| Kontrakty eksportu (JSON/LaTeX/PDF/DOCX) | SPEC âś“ |
+| Gwarancja determinizmu | SPEC âś“ |
+| Zakazy absolutne (interpretacja, inline, modyfikacja) | SPEC âś“ |
+| ZgodnoĹ›Ä‡ z benchmark | SPEC âś“ |
+| DostÄ™pnoĹ›Ä‡ (WCAG AA) | SPEC âś“ |
+| Testy determinizmu | SPEC âś“ |
 
 ---
 
-## TODO — Proof Packs P14–P19 (FUTURE PACKS)
+## TODO â€” Proof Packs P14â€“P19 (FUTURE PACKS)
 
-### TODO-P14-001 (PLANNED) — P14: Power Flow Proof Pack (audit wyników PF) [FUTURE PACK]
+### TODO-P14-001 (PLANNED) â€” P14: Power Flow Proof Pack (audit wynikĂłw PF) [FUTURE PACK]
 - Priority: MUST
 - Inputs: TraceArtifact, PowerFlowResult
-- Output: ProofPack P14 (ProofDocument: Audit rozpływu mocy)
+- Output: ProofPack P14 (ProofDocument: Audit rozpĹ‚ywu mocy)
 - DoD:
-  - [ ] Dowód bilansu węzła dla mocy czynnej i biernej z mapowaniem do TraceArtifact.
+  - [ ] DowĂłd bilansu wÄ™zĹ‚a dla mocy czynnej i biernej z mapowaniem do TraceArtifact.
 
     $$
     \sum P = 0,\quad \sum Q = 0
     $$
 
-  - [ ] Bilans gałęzi dla mocy czynnej i biernej uwzględnia straty oraz spadek napięcia.
+  - [ ] Bilans gaĹ‚Ä™zi dla mocy czynnej i biernej uwzglÄ™dnia straty oraz spadek napiÄ™cia.
 
     $$
     P_{in} \rightarrow P_{out} + P_{loss},\quad Q_{in} \rightarrow Q_{out} + \Delta U
     $$
 
-  - [ ] Straty linii liczone jawnie z prądu i rezystancji.
+  - [ ] Straty linii liczone jawnie z prÄ…du i rezystancji.
 
     $$
     P_{loss} = I^{2} \cdot R
     $$
 
-  - [ ] Porównanie counterfactual Case A vs Case B z raportem różnic.
+  - [ ] PorĂłwnanie counterfactual Case A vs Case B z raportem rĂłĹĽnic.
 
     $$
     \Delta P,\ \Delta Q,\ \Delta U
     $$
 
-### TODO-P15-001 (PLANNED) — P15: Load Currents & Overload Proof Pack [FUTURE PACK]
+### TODO-P15-001 (PLANNED) â€” P15: Load Currents & Overload Proof Pack [FUTURE PACK]
 - Priority: MUST
 - Inputs: TraceArtifact, PowerFlowResult, Catalog
-- Output: ProofPack P15 (ProofDocument: Prądy robocze i przeciążenia)
+- Output: ProofPack P15 (ProofDocument: PrÄ…dy robocze i przeciÄ…ĹĽenia)
 - DoD:
-  - [ ] Prądy obciążenia linii/kabli wyprowadzone z mocy pozornej.
+  - [ ] PrÄ…dy obciÄ…ĹĽenia linii/kabli wyprowadzone z mocy pozornej.
 
     $$
     I = \frac{S}{\sqrt{3} \cdot U}
     $$
 
-  - [ ] Porównanie do prądu znamionowego z marginesem procentowym i statusem PASS/FAIL.
-  - [ ] Transformator: relacja obciążenia do mocy znamionowej i overload %.
+  - [ ] PorĂłwnanie do prÄ…du znamionowego z marginesem procentowym i statusem PASS/FAIL.
+  - [ ] Transformator: relacja obciÄ…ĹĽenia do mocy znamionowej i overload %.
 
     $$
     \frac{S}{S_n}
     $$
 
-### TODO-P16-001 (PLANNED) — P16: Losses & Energy Proof Pack [FUTURE PACK]
+### TODO-P16-001 (PLANNED) â€” P16: Losses & Energy Proof Pack [FUTURE PACK]
 - Priority: MUST
 - Inputs: TraceArtifact, PowerFlowResult, Catalog
 - Output: ProofPack P16 (ProofDocument: Straty mocy i energii)
 - DoD:
-  - [ ] Straty linii wyprowadzone z prądu i rezystancji.
+  - [ ] Straty linii wyprowadzone z prÄ…du i rezystancji.
 
     $$
     P_{loss,line} = I^{2} \cdot R
@@ -835,19 +835,20 @@ def test_fingerprint_stable():
     P_{loss,trafo} = P_{0} + P_{k}
     $$
 
-  - [ ] Energia strat z profilu obciążenia (integracja w czasie).
+  - [ ] Energia strat z profilu obciÄ…ĹĽenia (integracja w czasie).
 
     $$
     E_{loss} = \int P_{loss} \, dt
     $$
 
-### TODO-P19-001 (PLANNED) — P19: Earthing / Ground Fault Proof Pack (SN) [FUTURE PACK]
+### TODO-P19-001 (PLANNED) â€” P19: Earthing / Ground Fault Proof Pack (SN) [FUTURE PACK]
 - Priority: MUST
 - Inputs: TraceArtifact, Catalog
 - Output: ProofPack P19 (ProofDocument: Doziemienia / uziemienia SN)
 - DoD:
-  - [ ] Jeśli SN: prądy doziemne z uwzględnieniem impedancji uziemienia i rozdziału prądu.
-  - [ ] Tryb uproszczonych napięć dotykowych z wyraźnymi zastrzeżeniami.
-  - [ ] Terminologia w ProofDocument: 1F-Z, 2F, 2F-Z oraz BoundaryNode – węzeł przyłączenia.
+  - [ ] JeĹ›li SN: prÄ…dy doziemne z uwzglÄ™dnieniem impedancji uziemienia i rozdziaĹ‚u prÄ…du.
+  - [ ] Tryb uproszczonych napiÄ™Ä‡ dotykowych z wyraĹşnymi zastrzeĹĽeniami.
+  - [ ] Terminologia w ProofDocument: 1F-Z, 2F, 2F-Z oraz BoundaryNode â€“ wÄ™zeĹ‚ przyĹ‚Ä…czenia.
 
 **END OF P11.1d CANONICAL**
+

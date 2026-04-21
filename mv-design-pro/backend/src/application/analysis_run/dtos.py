@@ -161,6 +161,7 @@ class RunHeaderDTO:
 
     P11a: Provides essential run identification and state.
     """
+
     run_id: UUID
     project_id: UUID
     case_id: UUID
@@ -192,6 +193,7 @@ class ResultColumnDTO:
 
     P11a: Describes column name, unit, and display label (Polish).
     """
+
     key: str
     label_pl: str
     unit: str | None = None
@@ -213,6 +215,7 @@ class ResultTableMetaDTO:
 
     P11a: Provides table name, columns, and row count.
     """
+
     table_id: str
     label_pl: str
     row_count: int
@@ -234,6 +237,7 @@ class ResultsIndexDTO:
 
     P11a: Lists all tables + column metadata + units.
     """
+
     run_header: RunHeaderDTO
     tables: tuple[ResultTableMetaDTO, ...]
 
@@ -252,6 +256,7 @@ class BusResultsRowDTO:
     P11a: Deterministic, READ-ONLY, no physics.
     Fields from stored Power Flow / SC results only.
     """
+
     bus_id: str
     name: str
     un_kv: float  # Nominal voltage [kV]
@@ -279,6 +284,7 @@ class BusResultsDTO:
 
     P11a: Deterministically sorted by (name, bus_id).
     """
+
     run_id: UUID
     rows: tuple[BusResultsRowDTO, ...]
 
@@ -297,6 +303,7 @@ class BranchResultsRowDTO:
     P11a: Deterministic, READ-ONLY, no physics.
     Fields from stored Power Flow results only.
     """
+
     branch_id: str
     name: str
     from_bus: str
@@ -330,6 +337,7 @@ class BranchResultsDTO:
 
     P11a: Deterministically sorted by (name, branch_id).
     """
+
     run_id: UUID
     rows: tuple[BranchResultsRowDTO, ...]
 
@@ -348,6 +356,7 @@ class ShortCircuitRowDTO:
     P11a: Deterministic, READ-ONLY, no physics.
     Fields from stored Short-Circuit results only.
     """
+
     target_id: str  # Bus/node where fault was applied
     target_name: str | None = None
     ikss_ka: float | None = None  # Initial short-circuit current Ik'' [kA]
@@ -377,6 +386,7 @@ class ShortCircuitResultsDTO:
 
     P11a: Deterministically sorted by target_id.
     """
+
     run_id: UUID
     rows: tuple[ShortCircuitRowDTO, ...]
 
@@ -394,6 +404,7 @@ class ExtendedTraceDTO:
 
     P11a: Provides white_box_trace + run context for audit.
     """
+
     run_id: UUID
     snapshot_id: str | None
     input_hash: str
@@ -421,6 +432,7 @@ class SldOverlayBusDTO:
 
     P11a: Mapping only, no physics.
     """
+
     symbol_id: str  # SLD symbol ID
     bus_id: str  # Network bus ID
     u_pu: float | None = None
@@ -459,6 +471,7 @@ class SldOverlayBranchDTO:
 
     P11a: Mapping only, no physics.
     """
+
     symbol_id: str  # SLD symbol ID
     branch_id: str  # Network branch ID
     p_mw: float | None = None
@@ -489,6 +502,7 @@ class SldResultOverlayDTO:
 
     P11a: Mapping data only, does not mutate model or diagram.
     """
+
     diagram_id: UUID
     run_id: UUID
     result_status: str  # FRESH, OUTDATED, NONE

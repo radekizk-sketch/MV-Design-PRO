@@ -1,0 +1,5 @@
+# Historical documentation is allowed to mention legacy symbols.
+docs/archive/
+docs/spec/
+scripts/import_graph_guard.py
+scripts/docs_archive_guard.py

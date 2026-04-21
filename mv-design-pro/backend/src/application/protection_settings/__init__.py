@@ -1,12 +1,13 @@
 """Protection Settings Engine — automatyczny dobór nastaw zabezpieczeń nadprądowych."""
+
 from .engine import (
+    DelayedSettings,
+    InstantaneousSettings,
     ProtectionSettingsEngine,
     ProtectionSettingsInput,
     ProtectionSettingsResult,
-    DelayedSettings,
-    InstantaneousSettings,
-    ThermalWithstandResult,
     SPZAnalysisResult,
+    ThermalWithstandResult,
 )
 
 __all__ = [

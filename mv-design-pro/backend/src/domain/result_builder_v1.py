@@ -23,7 +23,7 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from domain.result_contract_v1 import (
@@ -42,7 +42,6 @@ from domain.result_contract_v1 import (
     ResultSetV1,
     compute_deterministic_signature,
 )
-
 
 # ---------------------------------------------------------------------------
 # Default Legend
@@ -405,7 +404,7 @@ def build_resultset_v1(
     )
 
     # ---- Build ResultSetV1 (without signature) ----
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
 
     partial = ResultSetV1(
         contract_version=RESULT_CONTRACT_VERSION,

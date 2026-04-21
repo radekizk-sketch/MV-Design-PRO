@@ -53,11 +53,15 @@ def build_catalog_context(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
             overrides = raw_element.get("overrides") or []
             parameter_origin = raw_element.get("parameter_source")
 
-            if not any((catalog_ref, catalog_namespace, materialized_params, overrides, parameter_origin)):
+            if not any(
+                (catalog_ref, catalog_namespace, materialized_params, overrides, parameter_origin)
+            ):
                 continue
 
             meta = raw_element.get("meta") or {}
-            catalog_item_version = raw_element.get("catalog_version") or meta.get("catalog_item_version")
+            catalog_item_version = raw_element.get("catalog_version") or meta.get(
+                "catalog_item_version"
+            )
             catalog_binding = _build_catalog_binding(
                 catalog_namespace=catalog_namespace,
                 catalog_ref=catalog_ref,

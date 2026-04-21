@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 1.2: Operating modes (MODEL_EDIT only)
- * - powerfactory_ui_parity.md § F: Transactional editing
+ * - ui_canonical_parity.md § F: Transactional editing
  *
  * INVARIANTS:
  * - Commands are immutable once created

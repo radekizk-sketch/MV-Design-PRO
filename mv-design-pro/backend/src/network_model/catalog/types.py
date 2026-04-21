@@ -25,9 +25,8 @@ Usage:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 from uuid import uuid4
-
 
 # =============================================================================
 # CATALOG NAMESPACE ENUM — kanoniczne nazwy przestrzeni nazw katalogu
@@ -119,12 +118,12 @@ def _normalize_source_reference(value: Any, *, default: str) -> str:
 
 
 def _catalog_metadata_kwargs(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     *,
     default_source_reference: str,
     default_verification_status: CatalogVerificationStatus,
     default_catalog_status: CatalogStatus,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "verification_status": _normalize_verification_status(
             data.get("verification_status"),
@@ -138,9 +137,7 @@ def _catalog_metadata_kwargs(
             data.get("catalog_status"),
             default=default_catalog_status,
         ),
-        "contract_version": str(
-            data.get("contract_version") or CATALOG_CONTRACT_VERSION
-        ),
+        "contract_version": str(data.get("contract_version") or CATALOG_CONTRACT_VERSION),
         "verification_note": (
             str(data.get("verification_note"))
             if data.get("verification_note") is not None
@@ -155,9 +152,9 @@ def _catalog_metadata_to_dict(
     source_reference: str,
     catalog_status: str,
     contract_version: str,
-    verification_note: Optional[str],
-) -> Dict[str, Any]:
-    payload: Dict[str, Any] = {
+    verification_note: str | None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
         "verification_status": verification_status,
         "source_reference": source_reference,
         "catalog_status": catalog_status,
@@ -186,7 +183,7 @@ class CatalogBinding:
     materialize: bool = True
     snapshot_mapping_version: str = "1.0"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "catalog_namespace": self.catalog_namespace,
             "catalog_item_id": self.catalog_item_id,
@@ -196,7 +193,7 @@ class CatalogBinding:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CatalogBinding":
+    def from_dict(cls, data: dict[str, Any]) -> "CatalogBinding":
         return cls(
             catalog_namespace=str(data.get("catalog_namespace", "")),
             catalog_item_id=str(data.get("catalog_item_id", "")),
@@ -220,16 +217,14 @@ class MaterializationContract:
     """
 
     namespace: str
-    solver_fields: Tuple[str, ...]
-    ui_fields: Tuple[Tuple[str, str, str], ...]
+    solver_fields: tuple[str, ...]
+    ui_fields: tuple[tuple[str, str, str], ...]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "namespace": self.namespace,
             "solver_fields": list(self.solver_fields),
-            "ui_fields": [
-                {"field": f, "label_pl": lbl, "unit": u} for f, lbl, u in self.ui_fields
-            ],
+            "ui_fields": [{"field": f, "label_pl": lbl, "unit": u} for f, lbl, u in self.ui_fields],
         }
 
 
@@ -259,29 +254,30 @@ class LineType:
         base_type_id: Reference to base type (for manufacturer types).
         trade_name: Trade/commercial designation (optional).
     """
+
     id: str
     name: str
     r_ohm_per_km: float
     x_ohm_per_km: float
     b_us_per_km: float = 0.0
     rated_current_a: float = 0.0
-    manufacturer: Optional[str] = None
-    standard: Optional[str] = None
+    manufacturer: str | None = None
+    standard: str | None = None
     max_temperature_c: float = 70.0
     voltage_rating_kv: float = 0.0
-    conductor_material: Optional[str] = None
+    conductor_material: str | None = None
     cross_section_mm2: float = 0.0
     # Thermal data for short-circuit analysis
-    ith_1s_a: Optional[float] = None
-    jth_1s_a_per_mm2: Optional[float] = None
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
     # Manufacturer type linking
-    base_type_id: Optional[str] = None
-    trade_name: Optional[str] = None
+    base_type_id: str | None = None
+    trade_name: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog linii i kabli MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
     @property
     def dane_cieplne_kompletne(self) -> bool:
@@ -302,7 +298,7 @@ class LineType:
             return True
         return False
 
-    def get_ith_1s(self) -> Optional[float]:
+    def get_ith_1s(self) -> float | None:
         """
         Get short-time thermal current Ith(1s) [A].
 
@@ -320,7 +316,7 @@ class LineType:
             return self.jth_1s_a_per_mm2 * self.cross_section_mm2
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -350,7 +346,7 @@ class LineType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LineType":
+    def from_dict(cls, data: dict[str, Any]) -> "LineType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -365,9 +361,7 @@ class LineType:
             voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
             conductor_material=data.get("conductor_material"),
             cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
-            ith_1s_a=(
-                float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None
-            ),
+            ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
                 float(data["jth_1s_a_per_mm2"])
                 if data.get("jth_1s_a_per_mm2") is not None
@@ -411,31 +405,32 @@ class CableType:
         base_type_id: Reference to base type (for manufacturer types).
         trade_name: Trade/commercial designation (optional).
     """
+
     id: str
     name: str
     r_ohm_per_km: float
     x_ohm_per_km: float
     c_nf_per_km: float = 0.0
     rated_current_a: float = 0.0
-    manufacturer: Optional[str] = None
+    manufacturer: str | None = None
     voltage_rating_kv: float = 0.0
-    insulation_type: Optional[str] = None
-    standard: Optional[str] = None
-    conductor_material: Optional[str] = None
+    insulation_type: str | None = None
+    standard: str | None = None
+    conductor_material: str | None = None
     cross_section_mm2: float = 0.0
     max_temperature_c: float = 90.0
     number_of_cores: int = 1
     # Thermal data for short-circuit analysis
-    ith_1s_a: Optional[float] = None
-    jth_1s_a_per_mm2: Optional[float] = None
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
     # Manufacturer type linking
-    base_type_id: Optional[str] = None
-    trade_name: Optional[str] = None
+    base_type_id: str | None = None
+    trade_name: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog linii i kabli MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
     @property
     def b_us_per_km(self) -> float:
@@ -466,7 +461,7 @@ class CableType:
             return True
         return False
 
-    def get_ith_1s(self) -> Optional[float]:
+    def get_ith_1s(self) -> float | None:
         """
         Get short-time thermal current Ith(1s) [A].
 
@@ -484,7 +479,7 @@ class CableType:
             return self.jth_1s_a_per_mm2 * self.cross_section_mm2
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -517,7 +512,7 @@ class CableType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CableType":
+    def from_dict(cls, data: dict[str, Any]) -> "CableType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -534,9 +529,7 @@ class CableType:
             cross_section_mm2=float(data.get("cross_section_mm2", 0.0)),
             max_temperature_c=float(data.get("max_temperature_c", 90.0)),
             number_of_cores=int(data.get("number_of_cores", 1)),
-            ith_1s_a=(
-                float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None
-            ),
+            ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
                 float(data["jth_1s_a_per_mm2"])
                 if data.get("jth_1s_a_per_mm2") is not None
@@ -577,6 +570,7 @@ class TransformerType:
         tap_max: Maximum tap position.
         tap_step_percent: Tap step size [%].
     """
+
     id: str
     name: str
     rated_power_mva: float
@@ -584,11 +578,11 @@ class TransformerType:
     voltage_lv_kv: float
     uk_percent: float
     pk_kw: float = 0.0
-    manufacturer: Optional[str] = None
+    manufacturer: str | None = None
     i0_percent: float = 0.0
     p0_kw: float = 0.0
     vector_group: str = "Dyn11"
-    cooling_class: Optional[str] = None
+    cooling_class: str | None = None
     tap_min: int = -5
     tap_max: int = 5
     tap_step_percent: float = 2.5
@@ -596,9 +590,9 @@ class TransformerType:
     source_reference: str = "Katalog transformatorow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -626,7 +620,7 @@ class TransformerType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TransformerType":
+    def from_dict(cls, data: dict[str, Any]) -> "TransformerType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -672,22 +666,23 @@ class SwitchEquipmentType:
         icw_ka: Short-time withstand current [kA] (for disconnectors).
         medium: Quenching medium (e.g., "SF6", "VACUUM").
     """
+
     id: str
     name: str
-    manufacturer: Optional[str] = None
+    manufacturer: str | None = None
     equipment_kind: str = "CIRCUIT_BREAKER"
     un_kv: float = 0.0
     in_a: float = 0.0
     ik_ka: float = 0.0
     icw_ka: float = 0.0
-    medium: Optional[str] = None
+    medium: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -709,7 +704,7 @@ class SwitchEquipmentType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SwitchEquipmentType":
+    def from_dict(cls, data: dict[str, Any]) -> "SwitchEquipmentType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -763,20 +758,20 @@ class ConverterType:
     un_kv: float
     sn_mva: float
     pmax_mw: float
-    qmin_mvar: Optional[float] = None
-    qmax_mvar: Optional[float] = None
-    cosphi_min: Optional[float] = None
-    cosphi_max: Optional[float] = None
-    e_kwh: Optional[float] = None
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
+    qmin_mvar: float | None = None
+    qmax_mvar: float | None = None
+    cosphi_min: float | None = None
+    cosphi_max: float | None = None
+    e_kwh: float | None = None
+    manufacturer: str | None = None
+    model: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -802,7 +797,7 @@ class ConverterType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConverterType":
+    def from_dict(cls, data: dict[str, Any]) -> "ConverterType":
         """Create from dictionary."""
         kind = data.get("kind") or data.get("converter_kind") or ConverterKind.PV.value
         if isinstance(kind, ConverterKind):
@@ -816,31 +811,15 @@ class ConverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(
-                float(data.get("qmin_mvar"))
-                if data.get("qmin_mvar") is not None
-                else None
-            ),
-            qmax_mvar=(
-                float(data.get("qmax_mvar"))
-                if data.get("qmax_mvar") is not None
-                else None
-            ),
+            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
+            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
             cosphi_min=(
-                float(data.get("cosphi_min"))
-                if data.get("cosphi_min") is not None
-                else None
+                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
             ),
             cosphi_max=(
-                float(data.get("cosphi_max"))
-                if data.get("cosphi_max") is not None
-                else None
+                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
             ),
-            e_kwh=(
-                float(data.get("e_kwh"))
-                if data.get("e_kwh") is not None
-                else None
-            ),
+            e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
             **_catalog_metadata_kwargs(
@@ -876,19 +855,19 @@ class InverterType:
     un_kv: float
     sn_mva: float
     pmax_mw: float
-    qmin_mvar: Optional[float] = None
-    qmax_mvar: Optional[float] = None
-    cosphi_min: Optional[float] = None
-    cosphi_max: Optional[float] = None
-    manufacturer: Optional[str] = None
-    model: Optional[str] = None
+    qmin_mvar: float | None = None
+    qmax_mvar: float | None = None
+    cosphi_min: float | None = None
+    cosphi_max: float | None = None
+    manufacturer: str | None = None
+    model: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -912,7 +891,7 @@ class InverterType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "InverterType":
+    def from_dict(cls, data: dict[str, Any]) -> "InverterType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -920,25 +899,13 @@ class InverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(
-                float(data.get("qmin_mvar"))
-                if data.get("qmin_mvar") is not None
-                else None
-            ),
-            qmax_mvar=(
-                float(data.get("qmax_mvar"))
-                if data.get("qmax_mvar") is not None
-                else None
-            ),
+            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
+            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
             cosphi_min=(
-                float(data.get("cosphi_min"))
-                if data.get("cosphi_min") is not None
-                else None
+                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
             ),
             cosphi_max=(
-                float(data.get("cosphi_max"))
-                if data.get("cosphi_max") is not None
-                else None
+                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
             ),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
@@ -976,18 +943,18 @@ class ProtectionDeviceType:
 
     id: str
     name_pl: str
-    vendor: Optional[str] = None
-    series: Optional[str] = None
-    revision: Optional[str] = None
-    rated_current_a: Optional[float] = None
-    notes_pl: Optional[str] = None
+    vendor: str | None = None
+    series: str | None = None
+    revision: str | None = None
+    rated_current_a: float | None = None
+    notes_pl: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog ochrony MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -1007,7 +974,7 @@ class ProtectionDeviceType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProtectionDeviceType":
+    def from_dict(cls, data: dict[str, Any]) -> "ProtectionDeviceType":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -1048,21 +1015,21 @@ class ProtectionCurve:
 
     id: str
     name_pl: str
-    standard: Optional[str] = None
-    curve_kind: Optional[str] = None
-    parameters: Dict[str, Any] = None
+    standard: str | None = None
+    curve_kind: str | None = None
+    parameters: dict[str, Any] = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog krzywych MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
     def __post_init__(self):
         """Ensure parameters is a dict (frozen dataclass workaround)."""
         if self.parameters is None:
             object.__setattr__(self, "parameters", {})
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -1080,7 +1047,7 @@ class ProtectionCurve:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProtectionCurve":
+    def from_dict(cls, data: dict[str, Any]) -> "ProtectionCurve":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -1116,21 +1083,21 @@ class ProtectionSettingTemplate:
 
     id: str
     name_pl: str
-    device_type_ref: Optional[str] = None
-    curve_ref: Optional[str] = None
-    setting_fields: list[Dict[str, Any]] = None
+    device_type_ref: str | None = None
+    curve_ref: str | None = None
+    setting_fields: list[dict[str, Any]] = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Szablony nastaw MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
     def __post_init__(self):
         """Ensure setting_fields is a list (frozen dataclass workaround)."""
         if self.setting_fields is None:
             object.__setattr__(self, "setting_fields", [])
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -1148,7 +1115,7 @@ class ProtectionSettingTemplate:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProtectionSettingTemplate":
+    def from_dict(cls, data: dict[str, Any]) -> "ProtectionSettingTemplate":
         """Create from dictionary."""
         return cls(
             id=str(data.get("id", str(uuid4()))),
@@ -1194,18 +1161,18 @@ class LVCableType:
     r_ohm_per_km: float
     x_ohm_per_km: float
     i_max_a: float = 0.0
-    manufacturer: Optional[str] = None
-    conductor_material: Optional[str] = None
-    insulation_type: Optional[str] = None
+    manufacturer: str | None = None
+    conductor_material: str | None = None
+    insulation_type: str | None = None
     cross_section_mm2: float = 0.0
     number_of_cores: int = 4
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog kabli nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1228,7 +1195,7 @@ class LVCableType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LVCableType":
+    def from_dict(cls, data: dict[str, Any]) -> "LVCableType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
@@ -1275,18 +1242,18 @@ class LoadType:
     name: str
     model: str = "PQ"
     p_kw: float = 0.0
-    q_kvar: Optional[float] = None
-    cos_phi: Optional[float] = None
+    q_kvar: float | None = None
+    cos_phi: float | None = None
     cos_phi_mode: str = "IND"
-    profile_id: Optional[str] = None
-    manufacturer: Optional[str] = None
+    profile_id: str | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog obciazen MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1307,18 +1274,14 @@ class LoadType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LoadType":
+    def from_dict(cls, data: dict[str, Any]) -> "LoadType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             model=str(data.get("model", "PQ")),
             p_kw=float(data.get("p_kw", 0.0)),
-            q_kvar=(
-                float(data["q_kvar"]) if data.get("q_kvar") is not None else None
-            ),
-            cos_phi=(
-                float(data["cos_phi"]) if data.get("cos_phi") is not None else None
-            ),
+            q_kvar=(float(data["q_kvar"]) if data.get("q_kvar") is not None else None),
+            cos_phi=(float(data["cos_phi"]) if data.get("cos_phi") is not None else None),
             cos_phi_mode=str(data.get("cos_phi_mode", "IND")),
             profile_id=data.get("profile_id"),
             manufacturer=data.get("manufacturer"),
@@ -1356,16 +1319,16 @@ class MVApparatusType:
     device_kind: str = "WYLACZNIK"
     u_n_kv: float = 0.0
     i_n_a: float = 0.0
-    breaking_capacity_ka: Optional[float] = None
-    making_capacity_ka: Optional[float] = None
-    manufacturer: Optional[str] = None
+    breaking_capacity_ka: float | None = None
+    making_capacity_ka: float | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1385,7 +1348,7 @@ class MVApparatusType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MVApparatusType":
+    def from_dict(cls, data: dict[str, Any]) -> "MVApparatusType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
@@ -1437,15 +1400,15 @@ class LVApparatusType:
     device_kind: str = "WYLACZNIK_GLOWNY"
     u_n_kv: float = 0.4
     i_n_a: float = 0.0
-    breaking_capacity_ka: Optional[float] = None
-    manufacturer: Optional[str] = None
+    breaking_capacity_ka: float | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog aparatury nN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1464,7 +1427,7 @@ class LVApparatusType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LVApparatusType":
+    def from_dict(cls, data: dict[str, Any]) -> "LVApparatusType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
@@ -1509,16 +1472,16 @@ class CTType:
     name: str
     ratio_primary_a: float
     ratio_secondary_a: float = 5.0
-    accuracy_class: Optional[str] = None
-    burden_va: Optional[float] = None
-    manufacturer: Optional[str] = None
+    accuracy_class: str | None = None
+    burden_va: float | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1537,16 +1500,14 @@ class CTType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CTType":
+    def from_dict(cls, data: dict[str, Any]) -> "CTType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             ratio_primary_a=float(data.get("ratio_primary_a", 0.0)),
             ratio_secondary_a=float(data.get("ratio_secondary_a", 5.0)),
             accuracy_class=data.get("accuracy_class"),
-            burden_va=(
-                float(data["burden_va"]) if data.get("burden_va") is not None else None
-            ),
+            burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
@@ -1579,15 +1540,15 @@ class VTType:
     name: str
     ratio_primary_v: float
     ratio_secondary_v: float = 100.0
-    accuracy_class: Optional[str] = None
-    manufacturer: Optional[str] = None
+    accuracy_class: str | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog VT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1605,7 +1566,7 @@ class VTType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "VTType":
+    def from_dict(cls, data: dict[str, Any]) -> "VTType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
@@ -1634,24 +1595,24 @@ class SourceSystemType:
     id: str
     name: str
     voltage_rating_kv: float
-    sk3_mva: Optional[float] = None
-    ik3_ka: Optional[float] = None
-    rx_ratio: Optional[float] = None
-    earthing_system: Optional[str] = None
+    sk3_mva: float | None = None
+    ik3_ka: float | None = None
+    rx_ratio: float | None = None
+    earthing_system: str | None = None
     short_circuit_model: str = "short_circuit_power"
-    operator_name: Optional[str] = None
-    supply_role: Optional[str] = None
-    manufacturer: Optional[str] = None
-    series: Optional[str] = None
-    catalog_number: Optional[str] = None
-    data_source: Optional[str] = None
+    operator_name: str | None = None
+    supply_role: str | None = None
+    manufacturer: str | None = None
+    series: str | None = None
+    catalog_number: str | None = None
+    data_source: str | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Warunki przylaczenia / standard OSD"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1677,20 +1638,14 @@ class SourceSystemType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SourceSystemType":
+    def from_dict(cls, data: dict[str, Any]) -> "SourceSystemType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             voltage_rating_kv=float(data.get("voltage_rating_kv", 0.0)),
-            sk3_mva=(
-                float(data["sk3_mva"]) if data.get("sk3_mva") is not None else None
-            ),
-            ik3_ka=(
-                float(data["ik3_ka"]) if data.get("ik3_ka") is not None else None
-            ),
-            rx_ratio=(
-                float(data["rx_ratio"]) if data.get("rx_ratio") is not None else None
-            ),
+            sk3_mva=(float(data["sk3_mva"]) if data.get("sk3_mva") is not None else None),
+            ik3_ka=(float(data["ik3_ka"]) if data.get("ik3_ka") is not None else None),
+            rx_ratio=(float(data["rx_ratio"]) if data.get("rx_ratio") is not None else None),
             earthing_system=data.get("earthing_system"),
             short_circuit_model=str(data.get("short_circuit_model", "short_circuit_power")),
             operator_name=data.get("operator_name"),
@@ -1733,18 +1688,18 @@ class PVInverterType:
     name: str
     s_n_kva: float
     p_max_kw: float
-    cos_phi_min: Optional[float] = None
-    cos_phi_max: Optional[float] = None
-    control_mode: Optional[str] = None
-    grid_code: Optional[str] = None
-    manufacturer: Optional[str] = None
+    cos_phi_min: float | None = None
+    cos_phi_max: float | None = None
+    control_mode: str | None = None
+    grid_code: str | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow PV MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1765,7 +1720,7 @@ class PVInverterType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PVInverterType":
+    def from_dict(cls, data: dict[str, Any]) -> "PVInverterType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
@@ -1813,15 +1768,15 @@ class BESSInverterType:
     p_charge_kw: float
     p_discharge_kw: float
     e_kwh: float
-    s_n_kva: Optional[float] = None
-    manufacturer: Optional[str] = None
+    s_n_kva: float | None = None
+    manufacturer: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow BESS MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
-    verification_note: Optional[str] = None
+    verification_note: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "name": self.name,
@@ -1840,16 +1795,14 @@ class BESSInverterType:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "BESSInverterType":
+    def from_dict(cls, data: dict[str, Any]) -> "BESSInverterType":
         return cls(
             id=str(data.get("id", str(uuid4()))),
             name=str(data.get("name", "")),
             p_charge_kw=float(data.get("p_charge_kw", 0.0)),
             p_discharge_kw=float(data.get("p_discharge_kw", 0.0)),
             e_kwh=float(data.get("e_kwh", 0.0)),
-            s_n_kva=(
-                float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None
-            ),
+            s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
             **_catalog_metadata_kwargs(
                 data,
@@ -1865,11 +1818,14 @@ class BESSInverterType:
 # =============================================================================
 
 
-MATERIALIZATION_CONTRACTS: Dict[str, MaterializationContract] = {
+MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     CatalogNamespace.KABEL_SN.value: MaterializationContract(
         namespace=CatalogNamespace.KABEL_SN.value,
         solver_fields=(
-            "r_ohm_per_km", "x_ohm_per_km", "rated_current_a", "c_nf_per_km",
+            "r_ohm_per_km",
+            "x_ohm_per_km",
+            "rated_current_a",
+            "c_nf_per_km",
             "voltage_rating_kv",
         ),
         ui_fields=(
@@ -1883,7 +1839,10 @@ MATERIALIZATION_CONTRACTS: Dict[str, MaterializationContract] = {
     CatalogNamespace.LINIA_SN.value: MaterializationContract(
         namespace=CatalogNamespace.LINIA_SN.value,
         solver_fields=(
-            "r_ohm_per_km", "x_ohm_per_km", "b_us_per_km", "rated_current_a",
+            "r_ohm_per_km",
+            "x_ohm_per_km",
+            "b_us_per_km",
+            "rated_current_a",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
@@ -1895,8 +1854,13 @@ MATERIALIZATION_CONTRACTS: Dict[str, MaterializationContract] = {
     CatalogNamespace.TRAFO_SN_NN.value: MaterializationContract(
         namespace=CatalogNamespace.TRAFO_SN_NN.value,
         solver_fields=(
-            "rated_power_mva", "voltage_hv_kv", "voltage_lv_kv",
-            "uk_percent", "p0_kw", "pk_kw", "vector_group",
+            "rated_power_mva",
+            "voltage_hv_kv",
+            "voltage_lv_kv",
+            "uk_percent",
+            "p0_kw",
+            "pk_kw",
+            "vector_group",
         ),
         ui_fields=(
             ("rated_power_mva", "Sn [MVA]", "MVA"),

@@ -14,10 +14,10 @@ CRITICAL from AGENTS.md:
 > Station is logical only (no physics)
 """
 
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
-import uuid
+from typing import Any
 
 
 class StationType(Enum):
@@ -27,10 +27,11 @@ class StationType(Enum):
     These are organizational categories, NOT electrical types.
     They have NO impact on calculations.
     """
-    MAIN_SUBSTATION = "GPZ"      # Główny Punkt Zasilający
-    DISTRIBUTION = "RPZ"         # Rozdzielnia
-    TRANSFORMER = "TRAFO"        # Stacja transformatorowa
-    SWITCHING = "SWITCHING"      # Punkt rozłącznikowy
+
+    MAIN_SUBSTATION = "GPZ"  # Główny Punkt Zasilający
+    DISTRIBUTION = "RPZ"  # Rozdzielnia
+    TRANSFORMER = "TRAFO"  # Stacja transformatorowa
+    SWITCHING = "SWITCHING"  # Punkt rozłącznikowy
 
 
 @dataclass
@@ -59,19 +60,20 @@ class Station:
         description: Optional description text.
         location: Optional location/address information.
     """
+
     id: str
     name: str
     station_type: StationType
     voltage_level_kv: float = 0.0
 
     # Element membership (IDs only - no direct references)
-    bus_ids: List[str] = field(default_factory=list)
-    branch_ids: List[str] = field(default_factory=list)
-    switch_ids: List[str] = field(default_factory=list)
+    bus_ids: list[str] = field(default_factory=list)
+    branch_ids: list[str] = field(default_factory=list)
+    switch_ids: list[str] = field(default_factory=list)
 
     # Metadata (informational only)
-    description: Optional[str] = None
-    location: Optional[str] = None
+    description: str | None = None
+    location: str | None = None
 
     def __post_init__(self) -> None:
         """Validate and convert enum values if needed."""
@@ -162,12 +164,12 @@ class Station:
             True if the element is a member of this station.
         """
         return (
-            element_id in self.bus_ids or
-            element_id in self.branch_ids or
-            element_id in self.switch_ids
+            element_id in self.bus_ids
+            or element_id in self.branch_ids
+            or element_id in self.switch_ids
         )
 
-    def get_all_element_ids(self) -> List[str]:
+    def get_all_element_ids(self) -> list[str]:
         """
         Get all element IDs in this station.
 
@@ -205,7 +207,7 @@ class Station:
             return False
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the station to a dictionary representation.
 
@@ -225,7 +227,7 @@ class Station:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Station":
+    def from_dict(cls, data: dict[str, Any]) -> "Station":
         """
         Create a Station instance from a dictionary.
 

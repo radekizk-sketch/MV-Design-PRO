@@ -2,7 +2,7 @@
 
 **Professional Medium Voltage Network Design System**
 
-Narzedzie do projektowania i analizy sieci sredniego napiecia zgodne z architektura DIgSILENT PowerFactory.
+Narzedzie do projektowania i analizy sieci sredniego napiecia zgodne z kanoniczna architektura referencyjna.
 
 ---
 
@@ -10,7 +10,7 @@ Narzedzie do projektowania i analizy sieci sredniego napiecia zgodne z architekt
 
 **Canonical specification:** see [`SYSTEM_SPEC.md`](./SYSTEM_SPEC.md) (executive overview) and [`docs/spec/`](./docs/spec/) (18 detailed chapters).
 
-System jest zbudowany zgodnie z zasadami PowerFactory:
+System jest zbudowany zgodnie z zasadami kanonicznej architektury referencyjnej:
 - **Jeden jawny model sieci** (NetworkModel)
 - **Wiele case'ow obliczeniowych** (Study Cases)
 - **Brak bytow umownych w solverze**

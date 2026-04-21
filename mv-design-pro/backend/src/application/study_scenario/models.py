@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Iterable
-from uuid import UUID, NAMESPACE_URL, uuid5
-
+from typing import Any
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 NAMESPACE_STUDY = uuid5(NAMESPACE_URL, "mv-design-pro:study")
 NAMESPACE_SCENARIO = uuid5(NAMESPACE_URL, "mv-design-pro:scenario")
@@ -89,16 +89,16 @@ def _hash_payload(payload: dict[str, Any]) -> str:
 
 def _normalize_assumptions(values: Iterable[str] | None) -> tuple[str, ...]:
     if values is None:
-        return tuple()
+        return ()
     return tuple(sorted(str(value) for value in values))
 
 
 def _ensure_utc(timestamp: datetime | None) -> datetime:
     if timestamp is None:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if timestamp.tzinfo is None:
-        return timestamp.replace(tzinfo=timezone.utc)
-    return timestamp.astimezone(timezone.utc)
+        return timestamp.replace(tzinfo=UTC)
+    return timestamp.astimezone(UTC)
 
 
 def create_study(

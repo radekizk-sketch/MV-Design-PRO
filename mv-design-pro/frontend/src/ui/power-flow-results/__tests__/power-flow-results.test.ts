@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md: RESULT_VIEW mode is READ-ONLY
- * - powerfactory_ui_parity.md: Deterministic sorting
+ * - ui_canonical_parity.md: Deterministic sorting
  * - sld_rules.md: Overlay as separate layer
  *
  * TEST COVERAGE:

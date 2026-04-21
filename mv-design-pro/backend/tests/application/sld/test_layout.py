@@ -33,9 +33,7 @@ def _node_payload(node_id: UUID, name: str, in_service: bool = True) -> dict:
     }
 
 
-def _branch_payload(
-    branch_id: UUID, from_id: UUID, to_id: UUID, in_service: bool = True
-) -> dict:
+def _branch_payload(branch_id: UUID, from_id: UUID, to_id: UUID, in_service: bool = True) -> dict:
     return {
         "id": branch_id,
         "name": "L",
@@ -78,8 +76,16 @@ def test_layout_is_deterministic() -> None:
     branch_ab = uuid4()
     branch_bc = uuid4()
 
-    nodes_order_a = [_node_payload(node_a, "A"), _node_payload(node_b, "B"), _node_payload(node_c, "C")]
-    nodes_order_b = [_node_payload(node_c, "C"), _node_payload(node_b, "B"), _node_payload(node_a, "A")]
+    nodes_order_a = [
+        _node_payload(node_a, "A"),
+        _node_payload(node_b, "B"),
+        _node_payload(node_c, "C"),
+    ]
+    nodes_order_b = [
+        _node_payload(node_c, "C"),
+        _node_payload(node_b, "B"),
+        _node_payload(node_a, "A"),
+    ]
     branches = [
         _branch_payload(branch_ab, node_a, node_b),
         _branch_payload(branch_bc, node_b, node_c),
@@ -142,7 +148,7 @@ def test_bijection_no_helper_nodes() -> None:
 def test_in_service_false_visible_in_sld() -> None:
     """
     SLD-INV-005: Elements with in_service=False are visible in SLD (grayed).
-    Per powerfactory_ui_parity.md § C.2: out-of-service elements MUST remain visible.
+    Per ui_canonical_parity.md § C.2: out-of-service elements MUST remain visible.
     """
     project_id = uuid4()
     node_a = uuid4()
@@ -182,7 +188,7 @@ def test_in_service_false_visible_in_sld() -> None:
 def test_switch_open_closed_state() -> None:
     """
     SLD-INV-005: Switch.OPEN interrupts topology; Switch.CLOSED connects nodes.
-    Per powerfactory_ui_parity.md § C.3: Switch.state affects topology differently than in_service.
+    Per ui_canonical_parity.md § C.3: Switch.state affects topology differently than in_service.
     """
     project_id = uuid4()
     node_a = uuid4()

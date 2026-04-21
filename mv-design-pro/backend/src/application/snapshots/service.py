@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
-from typing import Any, Callable
+from typing import Any
 
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core import (
@@ -70,22 +71,20 @@ class SnapshotService:
             failure_result: ActionResult | None = None
             for index, envelope in enumerate(envelopes):
                 result = validate_action_envelope(envelope, working_snapshot)
-                result = _enforce_parent_snapshot_match(
-                    result, envelope, parent_snapshot_id
-                )
+                result = _enforce_parent_snapshot_match(result, envelope, parent_snapshot_id)
                 if result.status != "accepted":
                     failure_index = index
                     failure_result = result
                     break
                 accepted_action = replace(envelope, status="accepted")
-                working_snapshot = apply_action_to_snapshot(
-                    working_snapshot, accepted_action
-                )
+                working_snapshot = apply_action_to_snapshot(working_snapshot, accepted_action)
             if failure_index is not None and failure_result is not None:
                 aborted_results = [
-                    failure_result
-                    if index == failure_index
-                    else _batch_aborted_result(envelope, parent_snapshot_id)
+                    (
+                        failure_result
+                        if index == failure_index
+                        else _batch_aborted_result(envelope, parent_snapshot_id)
+                    )
                     for index, envelope in enumerate(envelopes)
                 ]
                 return BatchActionResult(
@@ -168,9 +167,7 @@ def _enforce_parent_snapshot_match(
     )
 
 
-def _batch_aborted_result(
-    envelope: ActionEnvelope, parent_snapshot_id: str
-) -> ActionResult:
+def _batch_aborted_result(envelope: ActionEnvelope, parent_snapshot_id: str) -> ActionResult:
     return ActionResult(
         status="rejected",
         action_id=envelope.action_id,

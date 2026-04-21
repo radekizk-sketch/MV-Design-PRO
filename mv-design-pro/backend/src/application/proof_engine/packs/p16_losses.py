@@ -124,11 +124,7 @@ class P16LossesInput:
             )
 
         # Calculate total generation
-        p_gen = sum(
-            bus.p_injected_mw
-            for bus in result.bus_results
-            if bus.p_injected_mw > 0
-        )
+        p_gen = sum(bus.p_injected_mw for bus in result.bus_results if bus.p_injected_mw > 0)
 
         return cls(
             project_name=project_name,
@@ -229,14 +225,10 @@ class P16LossesProof:
 
         for branch in branches_to_show:
             step_number += 1
-            steps.append(
-                cls._create_branch_p_loss_step(step_number, branch)
-            )
+            steps.append(cls._create_branch_p_loss_step(step_number, branch))
 
             step_number += 1
-            steps.append(
-                cls._create_branch_q_loss_step(step_number, branch)
-            )
+            steps.append(cls._create_branch_q_loss_step(step_number, branch))
 
         if len(data.branches) > max_branch_steps:
             warnings.append(
@@ -246,26 +238,18 @@ class P16LossesProof:
 
         # Total losses steps
         step_number += 1
-        steps.append(
-            cls._create_total_p_loss_step(step_number, data)
-        )
+        steps.append(cls._create_total_p_loss_step(step_number, data))
 
         step_number += 1
-        steps.append(
-            cls._create_total_q_loss_step(step_number, data)
-        )
+        steps.append(cls._create_total_q_loss_step(step_number, data))
 
         # Percentage step
         step_number += 1
-        steps.append(
-            cls._create_loss_percent_step(step_number, data)
-        )
+        steps.append(cls._create_loss_percent_step(step_number, data))
 
         # Build summary
         p_loss_percent = (
-            100.0 * data.p_losses_total_mw / data.p_gen_total_mw
-            if data.p_gen_total_mw > 0
-            else 0.0
+            100.0 * data.p_losses_total_mw / data.p_gen_total_mw if data.p_gen_total_mw > 0 else 0.0
         )
 
         key_results = {
@@ -480,12 +464,9 @@ class P16LossesProof:
                 f"\\text{{ ({len(data.branches)} galezi)}}"
             )
         else:
-            branch_sum = " + ".join(
-                f"{b.p_loss_mw:.4f}" for b in data.branches
-            )
+            branch_sum = " + ".join(f"{b.p_loss_mw:.4f}" for b in data.branches)
             substitution = (
-                f"P_{{losses,total}} = {branch_sum} = "
-                f"{computed_total:.4f} \\text{{ MW}}"
+                f"P_{{losses,total}} = {branch_sum} = " f"{computed_total:.4f} \\text{{ MW}}"
             )
 
         result = ProofValue.create(
@@ -584,9 +565,7 @@ class P16LossesProof:
         equation = EQ_LOSS_005
 
         p_loss_percent = (
-            100.0 * data.p_losses_total_mw / data.p_gen_total_mw
-            if data.p_gen_total_mw > 0
-            else 0.0
+            100.0 * data.p_losses_total_mw / data.p_gen_total_mw if data.p_gen_total_mw > 0 else 0.0
         )
 
         input_values = (
@@ -611,9 +590,7 @@ class P16LossesProof:
                 f"{p_loss_percent:.4f} \\%"
             )
         else:
-            substitution = (
-                r"\eta_P = 0 \% \text{ (brak generacji)}"
-            )
+            substitution = r"\eta_P = 0 \% \text{ (brak generacji)}"
 
         result = ProofValue.create(
             r"\eta_P",

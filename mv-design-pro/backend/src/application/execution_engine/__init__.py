@@ -8,15 +8,15 @@ Canonical execution layer that ensures:
 - Full audit trail (solver_input_hash, deterministic_signature)
 """
 
-from .service import ExecutionEngineService
 from .errors import (
     ExecutionError,
+    ResultSetNotFoundError,
+    RunBlockedError,
     RunNotFoundError,
     RunNotReadyError,
-    RunBlockedError,
-    ResultSetNotFoundError,
     StudyCaseNotFoundError,
 )
+from .service import ExecutionEngineService
 
 __all__ = [
     "ExecutionEngineService",

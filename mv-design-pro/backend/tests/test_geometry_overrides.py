@@ -10,8 +10,6 @@ Covers:
 - 50× determinism
 """
 
-import pytest
-
 from src.domain.geometry_overrides import (
     OVERRIDES_VERSION,
     GeometryFixCode,
@@ -23,7 +21,6 @@ from src.domain.geometry_overrides import (
     compute_overrides_hash,
     validate_overrides,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -130,12 +127,8 @@ class TestHash:
         assert h1 == h2
 
     def test_differs_for_different_payload(self):
-        h1 = compute_overrides_hash(
-            make_overrides([make_item(payload={"dx": 10, "dy": 20})])
-        )
-        h2 = compute_overrides_hash(
-            make_overrides([make_item(payload={"dx": 10, "dy": 21})])
-        )
+        h1 = compute_overrides_hash(make_overrides([make_item(payload={"dx": 10, "dy": 20})]))
+        h2 = compute_overrides_hash(make_overrides([make_item(payload={"dx": 10, "dy": 21})]))
         assert h1 != h2
 
     def test_empty_overrides_stable(self):
@@ -157,9 +150,7 @@ class TestValidation:
         assert len(result.errors) == 0
 
     def test_valid_block_move_delta(self):
-        ov = make_overrides(
-            [make_item("station-GPZ", OverrideScopeV1.BLOCK)]
-        )
+        ov = make_overrides([make_item("station-GPZ", OverrideScopeV1.BLOCK)])
         result = validate_overrides(ov, KNOWN_NODES, KNOWN_BLOCKS)
         assert result.valid
 
@@ -184,9 +175,7 @@ class TestValidation:
         assert result.errors[0].code == "geometry.override_invalid_element"
 
     def test_rejects_unknown_block(self):
-        ov = make_overrides(
-            [make_item("unknown-block", OverrideScopeV1.BLOCK)]
-        )
+        ov = make_overrides([make_item("unknown-block", OverrideScopeV1.BLOCK)])
         result = validate_overrides(ov, KNOWN_NODES, KNOWN_BLOCKS)
         assert not result.valid
         assert result.errors[0].code == "geometry.override_invalid_element"
@@ -204,10 +193,7 @@ class TestValidation:
         )
         result = validate_overrides(ov, KNOWN_NODES, KNOWN_BLOCKS)
         assert not result.valid
-        assert (
-            result.errors[0].code
-            == "geometry.override_forbidden_for_station_type"
-        )
+        assert result.errors[0].code == "geometry.override_forbidden_for_station_type"
 
     def test_rejects_missing_payload_fields(self):
         ov = make_overrides([make_item(payload={})])  # missing dx, dy
@@ -275,14 +261,8 @@ class TestSerialization:
 
 class TestFixCodes:
     def test_all_codes_stable(self):
-        assert (
-            GeometryFixCode.OVERRIDE_INVALID_ELEMENT
-            == "geometry.override_invalid_element"
-        )
-        assert (
-            GeometryFixCode.OVERRIDE_CAUSES_COLLISION
-            == "geometry.override_causes_collision"
-        )
+        assert GeometryFixCode.OVERRIDE_INVALID_ELEMENT == "geometry.override_invalid_element"
+        assert GeometryFixCode.OVERRIDE_CAUSES_COLLISION == "geometry.override_causes_collision"
         assert (
             GeometryFixCode.OVERRIDE_BREAKS_PORT_CONSTRAINTS
             == "geometry.override_breaks_port_constraints"
@@ -291,10 +271,7 @@ class TestFixCodes:
             GeometryFixCode.OVERRIDE_FORBIDDEN_FOR_STATION_TYPE
             == "geometry.override_forbidden_for_station_type"
         )
-        assert (
-            GeometryFixCode.OVERRIDE_REQUIRES_UNLOCK
-            == "geometry.override_requires_unlock"
-        )
+        assert GeometryFixCode.OVERRIDE_REQUIRES_UNLOCK == "geometry.override_requires_unlock"
 
     def test_has_5_codes(self):
         assert len(GeometryFixCode) == 5

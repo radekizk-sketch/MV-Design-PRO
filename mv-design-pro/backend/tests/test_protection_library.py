@@ -10,9 +10,10 @@ Tests cover:
 - Reference validation (template→device_type, template→curve) (P14b)
 - Conflict detection (immutability) (P14b)
 """
+
+import sys
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-import sys
 
 import pytest
 
@@ -21,8 +22,8 @@ sys.path.insert(0, str(backend_src))
 
 from network_model.catalog import CatalogRepository
 from network_model.catalog.types import (
-    ProtectionDeviceType,
     ProtectionCurve,
+    ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
 
@@ -314,14 +315,11 @@ def test_protection_export_deterministic_fingerprint() -> None:
 def test_protection_import_merge_adds_new_skips_existing() -> None:
     """Test that MERGE mode adds new items and skips identical existing ones (P14b)."""
     from network_model.catalog.governance import (
-        ImportMode,
-        ProtectionImportReport,
         ProtectionLibraryExport,
-        ProtectionLibraryManifest,
     )
 
     # Create initial library
-    repo = CatalogRepository.from_records(
+    CatalogRepository.from_records(
         line_types=[],
         cable_types=[],
         transformer_types=[],
@@ -372,7 +370,7 @@ def test_protection_import_merge_detects_conflicts() -> None:
     )
 
     # Create library with existing device
-    repo = CatalogRepository.from_records(
+    CatalogRepository.from_records(
         line_types=[],
         cable_types=[],
         transformer_types=[],

@@ -1,11 +1,11 @@
 /**
- * NnSwitchgearCard — karta przeglądu rozdzielnicy nN stacji.
+ * NnSwitchgearCard â€” karta przeglÄ…du rozdzielnicy nN stacji.
  *
- * Wyświetla identyfikację stacji, pola nN (odbiorcy, szyny nN),
- * odbiorców (Load) przyłączonych do szyn nN oraz źródła OZE/BESS.
- * Akcje: Dodaj PV, Dodaj BESS, Dodaj obciążenie.
+ * WyĹ›wietla identyfikacjÄ™ stacji, pola nN (odbiorcy, szyny nN),
+ * odbiorcĂłw (Load) przyĹ‚Ä…czonych do szyn nN oraz ĹşrĂłdĹ‚a OZE/BESS.
+ * Akcje: Dodaj PV, Dodaj BESS, Dodaj obciÄ…ĹĽenie.
  *
- * Props: elementId — id Substation.
+ * Props: elementId â€” id Substation.
  * BINDING: 100% PL etykiety.
  */
 
@@ -13,10 +13,24 @@ import { useMemo, useCallback } from 'react';
 import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
+import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 
 // =============================================================================
 // Helpers
 // =============================================================================
+
+function buildConverterSourceContext(
+  stationRef: string,
+  busNnRef: string | null,
+  sourceTechnology: 'PV' | 'BESS' | 'FW',
+): Record<string, unknown> {
+  return {
+    station_ref: stationRef,
+    bus_nn_ref: busNnRef,
+    source_technology: sourceTechnology,
+    connection_variant: 'nn_side',
+  };
+}
 
 function connectionVariantLabel(variant: string | null | undefined): string {
   switch (variant) {
@@ -25,7 +39,7 @@ function connectionVariantLabel(variant: string | null | undefined): string {
     case 'block_transformer':
       return 'Transformator blokowy SN';
     default:
-      return variant ?? '—';
+      return variant ?? 'â€”';
   }
 }
 
@@ -112,7 +126,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       fields: [
         { key: 'id', label: 'ID stacji', value: station.id },
         { key: 'name', label: 'Nazwa', value: station.name },
-        { key: 'type', label: 'Typ', value: station.station_type },
+        { key: 'type', label: 'Typ topologiczny', value: formatStationTypeLabelPl(station.station_type) },
       ],
     };
 
@@ -120,7 +134,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
     const nNBusFields = nnBuses.map((bus) => ({
       key: `nn_bus_${bus.ref_id}`,
       label: bus.name,
-      value: `${bus.voltage_kv} kV — nN`,
+      value: `${bus.voltage_kv} kV â€” nN`,
     }));
 
     const nnSection: CardSection = {
@@ -147,7 +161,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               {
                 key: 'no_nn',
                 label: 'Brak szyn nN',
-                value: 'Stacja bez rozdzielnicy nN — wymagany transformator SN/nN',
+                value: 'Stacja bez rozdzielnicy nN â€” wymagany transformator SN/nN',
                 severity: 'warning' as const,
               },
             ],
@@ -171,13 +185,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           ? [
               {
                 key: 'load_count',
-                label: 'Liczba odbiorników',
+                label: 'Liczba odbiornikĂłw',
                 value: nnLoads.length,
                 unit: 'szt.',
               },
               {
                 key: 'total_load',
-                label: 'Łączna moc czynna',
+                label: 'ĹÄ…czna moc czynna',
                 value: totalLoadMw * 1000,
                 unit: 'kW',
                 source: 'calculated' as const,
@@ -187,45 +201,51 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_loads',
-                label: 'Brak odbiorców',
-                value: 'Brak obciążeń przyłączonych do szyn nN',
+                label: 'Brak odbiorcĂłw',
+                value: 'Brak obciÄ…ĹĽeĹ„ przyĹ‚Ä…czonych do szyn nN',
                 severity: 'warning' as const,
               },
             ],
     };
 
-    // Sources — PV, BESS, wind
+    // Sources â€” PV, BESS, wind
     const allSourceFields = [
       ...pvGenerators.map((g) => ({
         key: `pv_${g.ref_id}`,
         label: g.name,
-        value: `PV — P=${g.p_mw * 1000} kWp / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `PV â€” P=${g.p_mw * 1000} kWp / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
       ...bessGenerators.map((g) => ({
         key: `bess_${g.ref_id}`,
         label: g.name,
-        value: `BESS — P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `BESS â€” P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
       ...windGenerators.map((g) => ({
         key: `wind_${g.ref_id}`,
         label: g.name,
-        value: `Wiatr — P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `Wiatr â€” P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
     ];
 
+    const normalizedSourceFields = allSourceFields.map((field) =>
+      field.key.startsWith('wind_')
+        ? { ...field, value: String(field.value).replace('Wiatr', 'FW') }
+        : field,
+    );
+
     const totalGenMw = stationGenerators.reduce((acc, g) => acc + g.p_mw, 0);
 
     const sourcesSection: CardSection = {
       id: 'sources',
-      label: 'Źródła OZE / BESS',
+      label: 'ĹąrĂłdĹ‚a OZE / BESS',
       fields:
-        allSourceFields.length > 0
+        normalizedSourceFields.length > 0
           ? [
               {
                 key: 'pv_count',
@@ -240,22 +260,36 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
                 unit: 'szt.',
               },
               {
+                key: 'fw_count',
+                label: 'ĹąrĂłdĹ‚a FW',
+                value: windGenerators.length,
+                unit: 'szt.',
+              },
+              {
                 key: 'total_gen',
-                label: 'Łączna moc generacji',
+                label: 'ĹÄ…czna moc generacji',
                 value: totalGenMw * 1000,
                 unit: 'kWp',
                 source: 'calculated' as const,
               },
-              ...allSourceFields,
+              ...normalizedSourceFields,
             ]
           : [
               {
                 key: 'no_sources',
-                label: 'Brak źródeł OZE',
-                value: 'Nie zdefiniowano źródeł OZE/BESS',
+                label: 'Brak ĹşrĂłdeĹ‚ OZE',
+                value: 'Nie zdefiniowano ĹşrĂłdeĹ‚ OZE/BESS',
               },
             ],
     };
+    sourcesSection.label = 'ĹąrĂłdĹ‚a PV / BESS / FW';
+    if (normalizedSourceFields.length === 0) {
+      sourcesSection.fields[0] = {
+        key: 'no_sources',
+        label: 'Brak ĹşrĂłdeĹ‚',
+        value: 'Nie zdefiniowano ĹşrĂłdeĹ‚ PV, BESS ani FW',
+      };
+    }
 
     // Power balance section
     const balanceMw = totalGenMw - totalLoadMw;
@@ -272,14 +306,14 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'total_load',
-          label: 'Obciążenie P_load',
+          label: 'ObciÄ…ĹĽenie P_load',
           value: totalLoadMw * 1000,
           unit: 'kW',
           source: 'calculated',
         },
         {
           key: 'balance',
-          label: 'Nadwyżka / Deficyt',
+          label: 'NadwyĹĽka / Deficyt',
           value: balanceMw * 1000,
           unit: 'kW',
           source: 'calculated',
@@ -293,18 +327,26 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
 
   const handleAddPV = useCallback(() => {
     const nnBusRef = nnBuses[0]?.ref_id;
-    openOperationForm('add_pv_inverter_nn', {
-      station_ref: elementId,
-      bus_nn_ref: nnBusRef ?? null,
-    });
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBusRef ?? null, 'PV'),
+    );
   }, [openOperationForm, elementId, nnBuses]);
 
   const handleAddBESS = useCallback(() => {
     const nnBusRef = nnBuses[0]?.ref_id;
-    openOperationForm('add_bess_inverter_nn', {
-      station_ref: elementId,
-      bus_nn_ref: nnBusRef ?? null,
-    });
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBusRef ?? null, 'BESS'),
+    );
+  }, [openOperationForm, elementId, nnBuses]);
+
+  const handleAddFW = useCallback(() => {
+    const nnBusRef = nnBuses[0]?.ref_id;
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBusRef ?? null, 'FW'),
+    );
   }, [openOperationForm, elementId, nnBuses]);
 
   const handleAddLoad = useCallback(() => {
@@ -331,13 +373,20 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       disabled: nnBuses.length === 0,
     },
     {
-      id: 'add_load',
-      label: 'Dodaj obciążenie',
+      id: 'add_fw',
+      label: 'Dodaj FW',
+      variant: 'secondary',
+      onClick: handleAddFW,
+      disabled: nnBuses.length === 0,
+    },
+    {
+      id: 'add_nn_load',
+      label: 'Dodaj obciÄ…ĹĽenie',
       variant: 'secondary',
       onClick: handleAddLoad,
       disabled: nnBuses.length === 0,
     },
-  ], [handleAddPV, handleAddBESS, handleAddLoad, nnBuses.length]);
+  ], [handleAddPV, handleAddBESS, handleAddFW, handleAddLoad, nnBuses.length]);
 
   if (!station) return null;
 

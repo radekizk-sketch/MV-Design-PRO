@@ -28,10 +28,7 @@ class VoltageProfileBuilder:
         config: NormativeConfig,
     ) -> VoltageProfileView:
         node_ids = self._collect_node_ids(power_flow_result)
-        rows = [
-            self._build_row(node_id, power_flow_result, config)
-            for node_id in node_ids
-        ]
+        rows = [self._build_row(node_id, power_flow_result, config) for node_id in node_ids]
         rows_sorted = sorted(rows, key=_row_sort_key)
         summary = _build_summary(rows_sorted)
 
@@ -105,19 +102,14 @@ def _status_from_delta(
 
 def _build_summary(rows: list[VoltageProfileRow]) -> VoltageProfileSummary:
     pass_count = sum(1 for row in rows if row.status == VoltageProfileStatus.PASS)
-    warning_count = sum(
-        1 for row in rows if row.status == VoltageProfileStatus.WARNING
-    )
+    warning_count = sum(1 for row in rows if row.status == VoltageProfileStatus.WARNING)
     fail_count = sum(1 for row in rows if row.status == VoltageProfileStatus.FAIL)
-    not_computed_count = sum(
-        1 for row in rows if row.status == VoltageProfileStatus.NOT_COMPUTED
-    )
+    not_computed_count = sum(1 for row in rows if row.status == VoltageProfileStatus.NOT_COMPUTED)
 
     computed = [
         row
         for row in rows
-        if row.delta_pct is not None
-        and row.status != VoltageProfileStatus.NOT_COMPUTED
+        if row.delta_pct is not None and row.status != VoltageProfileStatus.NOT_COMPUTED
     ]
     worst_bus_id = None
     worst_delta_pct_abs = None

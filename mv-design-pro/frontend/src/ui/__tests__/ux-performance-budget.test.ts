@@ -8,7 +8,7 @@
  * - Context menu build: < 5ms
  * - Click action resolution: < 1ms
  * - Label layer build: < 5ms per symbol
- * - Modal registry lookup: < 1ms
+ * - Surface registry lookup: < 1ms
  * - Issue classification: < 1ms per issue
  * - Data gap classification: < 1ms per gap
  * - Operational mode transitions: < 1ms
@@ -29,13 +29,11 @@ import {
   buildSourceSNContextMenu,
 } from '../context-menu/actionMenuBuilders';
 
-// Modal registry
+// Operation surface registry
 import {
-  MODAL_REGISTRY,
-  getModalByOp,
-  getModalEntry,
-  MODAL_IDS,
-} from '../topology/modals/modalRegistry';
+  OPERATION_SURFACE_REGISTRY,
+  getOperationSurfaceByOp,
+} from '../topology/modals/operationSurfaceRegistry';
 
 // Mode interaction handler
 import { resolveClickAction } from '../sld/SldModeInteractionHandler';
@@ -175,22 +173,22 @@ describe('§14 Performance Budget: Context Menu Build', () => {
 });
 
 // ============================================================================
-// §14.2: Modal Registry Lookup Performance
+// §14.2: Operation Surface Registry Lookup Performance
 // ============================================================================
 
-describe('§14 Performance Budget: Modal Registry Lookup', () => {
-  it('looks up modal by canonical op within 1ms (100 iterations avg)', () => {
+describe('§14 Performance Budget: Operation Surface Registry Lookup', () => {
+  it('looks up surface by canonical op within 1ms (100 iterations avg)', () => {
     const [entry, avgMs] = measureAvg(
-      () => getModalByOp('update_element_parameters'),
+      () => getOperationSurfaceByOp('update_element_parameters'),
       100,
     );
     expect(entry).toBeDefined();
     expect(avgMs).toBeLessThan(1);
   });
 
-  it('looks up modal by ID within 1ms (100 iterations avg)', () => {
+  it('looks up another canonical surface within 1ms (100 iterations avg)', () => {
     const [entry, avgMs] = measureAvg(
-      () => getModalEntry(MODAL_IDS.MODAL_DODAJ_ODCINEK_SN),
+      () => getOperationSurfaceByOp('continue_trunk_segment_sn'),
       100,
     );
     expect(entry).toBeDefined();
@@ -199,7 +197,7 @@ describe('§14 Performance Budget: Modal Registry Lookup', () => {
 
   it('iterates full registry within 1ms', () => {
     const [count, avgMs] = measureAvg(
-      () => MODAL_REGISTRY.filter((e) => e.implemented).length,
+      () => OPERATION_SURFACE_REGISTRY.filter((e) => e.implemented).length,
       100,
     );
     expect(count).toBeGreaterThan(0);
@@ -417,9 +415,9 @@ describe('§14 Determinism: Same Input → Same Output (100x)', () => {
     }
   });
 
-  it('modal registry lookup is deterministic across 100 calls', () => {
+  it('operation surface lookup is deterministic across 100 calls', () => {
     const results = Array.from({ length: 100 }, () =>
-      getModalByOp('update_element_parameters'),
+      getOperationSurfaceByOp('update_element_parameters'),
     );
     const firstName = results[0]?.componentName;
     for (let i = 1; i < 100; i++) {

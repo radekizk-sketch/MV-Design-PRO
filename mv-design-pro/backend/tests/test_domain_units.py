@@ -1,4 +1,5 @@
 import math
+
 import pytest
 
 from src.domain.units import BaseQuantities, UnitSystem

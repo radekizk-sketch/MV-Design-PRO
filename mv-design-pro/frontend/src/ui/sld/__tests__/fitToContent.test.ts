@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fitToContent, ZOOM_MAX, ZOOM_MIN } from '../types';
 import type { AnySldSymbol } from '../../sld-editor/types';
-import { ETAP_GEOMETRY } from '../sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../sldCanonicalStyle';
 
 describe('fitToContent', () => {
   it('computes deterministic viewport for known symbol set', () => {
@@ -41,7 +41,7 @@ describe('fitToContent', () => {
       },
     ];
 
-    const viewport = fitToContent(symbols, 1000, 600, ETAP_GEOMETRY.view.fitPaddingPx);
+    const viewport = fitToContent(symbols, 1000, 600, CANONICAL_GEOMETRY.view.fitPaddingPx);
 
     expect(viewport.zoom).toBe(2.24);
     expect(viewport.offsetX).toBe(-94);
@@ -62,7 +62,7 @@ describe('fitToContent', () => {
       },
     ];
 
-    const viewport = fitToContent(symbols, 800, 600, ETAP_GEOMETRY.view.fitPaddingPx);
+    const viewport = fitToContent(symbols, 800, 600, CANONICAL_GEOMETRY.view.fitPaddingPx);
 
     expect(Number.isFinite(viewport.zoom)).toBe(true);
     expect(Number.isFinite(viewport.offsetX)).toBe(true);

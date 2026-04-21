@@ -42,8 +42,8 @@
 | Element sieci                    | "Edytuj parametry"              | **I**        | Edytuj parametry             | `update_element_parameters`     | (zalezy od kontekstu)                                   |
 | Szyna nN w stacji                | "Dodaj odplyw nN"               | **J**        | Dodaj odplyw nN              | `add_nn_outgoing_field`         | `nn.outgoing_catalog_missing`                           |
 | Szyna nN / odplyw nN             | "Dodaj odbior"                  | **K**        | Dodaj odbior nN              | `add_nn_load`                   | `nn.load_parameters_missing`                            |
-| Szyna nN                         | "Dodaj falownik PV"             | **L**        | Dodaj falownik PV            | `add_pv_inverter_nn`            | `pv.inverter_catalog_missing`, `pv.transformer_required` |
-| Szyna nN                         | "Dodaj magazyn energii"         | **M**        | Dodaj falownik BESS          | `add_bess_inverter_nn`          | `bess.inverter_catalog_missing`, `bess.energy_missing`  |
+| Szyna nN                         | "Dodaj falownik PV"             | **L**        | Dodaj falownik PV            | `add_converter_source`          | `pv.inverter_catalog_missing`, `pv.transformer_required` |
+| Szyna nN                         | "Dodaj magazyn energii"         | **M**        | Dodaj falownik BESS          | `add_converter_source`          | `bess.inverter_catalog_missing`, `bess.energy_missing`  |
 | Szyna nN                         | "Dodaj agregat"                 | **N**        | Dodaj agregat                | `add_genset_nn`                 | `source.operating_mode_missing`                         |
 | Szyna nN                         | "Dodaj UPS"                     | **O**        | Dodaj UPS                    | `add_ups_nn`                    | (brak BLOCKER-ow przy kompletnych danych)               |
 | Pole rozdzielcze SN/nN           | "Dodaj przekladnik"             | **P**        | Dodaj CT/VT                  | `add_ct` / `add_vt`            | `protection.ct_missing` -> usuniecie                    |
@@ -407,7 +407,7 @@ Pola dynamiczne -- zaleznie od typu elementu:
 |-------------------------------|-----------------------------------------------|
 | **Identyfikator dialogu**     | L                                             |
 | **Nazwa dialogu (PL)**       | Dodaj falownik PV                              |
-| **Operacja kanoniczna**       | `add_pv_inverter_nn`                           |
+| **Operacja kanoniczna**       | `add_converter_source`                         |
 | **Wyzwalacz**                 | Klikniecie szyny nN, menu: "Dodaj falownik PV" |
 
 #### Pola formularza
@@ -435,7 +435,7 @@ Pola dynamiczne -- zaleznie od typu elementu:
 |-------------------------------|-----------------------------------------------|
 | **Identyfikator dialogu**     | M                                             |
 | **Nazwa dialogu (PL)**       | Dodaj falownik BESS                            |
-| **Operacja kanoniczna**       | `add_bess_inverter_nn`                         |
+| **Operacja kanoniczna**       | `add_converter_source`                         |
 | **Wyzwalacz**                 | Klikniecie szyny nN, menu: "Dodaj magazyn energii" |
 
 #### Pola formularza
@@ -646,7 +646,7 @@ Kazde klikniecie przycisku "Zatwierdz" w dialogu:
 |-------------------------------------------------------|------------------------------------------------------------|--------------------------------|
 | Kontrakty operacji domenowych                         | `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md`           | Nazwy kanoniczne operacji       |
 | Kody gotowosci i akcje naprawcze                      | `docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`         | Slownik kodow gotowosci         |
-| Kontrakty kanoniczne systemu (Rozdzial 5)             | `docs/spec/SPEC_CHAPTER_05_SYSTEM_CANONICAL_CONTRACTS.md`  | Kreator, katalogi, stacje       |
+| Indeks kanoniczny V12.5                               | `docs/INDEX_KANONICZNY.md`                                  | Wejscie do wiazacych specyfikacji systemowych |
 | Kanon kreatora na zywo                                | `docs/ui/KANON_KREATOR_SN_NN_NA_ZYWO.md`                  | Budowa sieci na zywo            |
 | Kontrakty operacji i schematy JSON                    | `docs/domain/KONTRAKTY_OPERACJI_I_SCHEMATY_JSON.md`       | Schematy JSON                   |
 | Specyfikacja systemu (SYSTEM_SPEC)                    | `SYSTEM_SPEC.md`                                           | Architektura nadrzedna          |

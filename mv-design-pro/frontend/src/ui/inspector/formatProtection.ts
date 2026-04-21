@@ -1,10 +1,10 @@
 /**
- * P16c — Protection Function Formatting (PF/ETAP parity)
+ * P16c — Protection Function Formatting (PF/CANONICAL parity)
  *
  * CANONICAL ALIGNMENT:
  * - ANSI/IEEE C37.2: Device function numbers
- * - PowerFactory/ETAP: Protection visualization style
- * - powerfactory_ui_parity.md: UI consistency with PF
+ * - Canonical/CANONICAL: Protection visualization style
+ * - ui_canonical_parity.md: UI consistency with PF
  *
  * FORMAT:
  * - "50 I>>: 3×In (≈ 1509 A), T=0,1 s"
@@ -18,11 +18,11 @@
 import type { AnsiDeviceNumber, ProtectionFunctionSummary } from '../protection/settings-model';
 
 // =============================================================================
-// ANSI to Shortcut Mapping (PF/ETAP style)
+// ANSI to Shortcut Mapping (PF/CANONICAL style)
 // =============================================================================
 
 /**
- * Mapowanie numerow ANSI na skroty PF/ETAP.
+ * Mapowanie numerow ANSI na skroty PF/CANONICAL.
  */
 export const ANSI_TO_SHORTCUT: Record<AnsiDeviceNumber, string> = {
   '27': 'U<',
@@ -154,7 +154,7 @@ export interface FormattedProtectionFunction {
 }
 
 /**
- * Formatuje funkcje zabezpieczeniowa w stylu PF/ETAP.
+ * Formatuje funkcje zabezpieczeniowa w stylu PF/CANONICAL.
  *
  * FORMAT: "ANSI shortcut: setpoint (≈ computed), T=time s"
  *

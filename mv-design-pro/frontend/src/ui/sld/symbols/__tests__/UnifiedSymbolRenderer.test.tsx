@@ -1,16 +1,16 @@
 /**
  * UNIFIED SYMBOL RENDERER TESTS — Testy wspolnego renderera symboli
  *
- * PR-SLD-04: Unifikacja symboli w edytorze do standardu ETAP
+ * PR-SLD-04: Unifikacja symboli w edytorze do standardu CANONICAL
  *
  * CANONICAL ALIGNMENT:
- * - AUDYT_SLD_ETAP.md N-04: edytor używa tego samego renderera co podgląd
+ * - AUDYT_SLD_CANONICAL.md N-04: edytor używa tego samego renderera co podgląd
  * - sld_rules.md § A.2: Symbol types (Bus, Line, Transformer, etc.)
  * - SymbolResolver.ts: Mapowanie element → symbol
  *
  * TEST COVERAGE:
  * - Deterministycznosc renderowania (ten sam input -> identyczne SVG)
- * - Mapowanie typow elementow na symbole ETAP
+ * - Mapowanie typow elementow na symbole CANONICAL
  * - Fallback dla nieobsluzonych typow (Load, nieznane)
  * - Spojnosc portow z routingiem
  */
@@ -236,11 +236,11 @@ describe('UnifiedSymbolRenderer - Determinism', () => {
 });
 
 // =============================================================================
-// TESTY MAPOWANIA TYPÓW NA SYMBOLE ETAP
+// TESTY MAPOWANIA TYPÓW NA SYMBOLE CANONICAL
 // =============================================================================
 
-describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
-  it('should render Bus as ETAP busbar symbol', () => {
+describe('UnifiedSymbolRenderer - CANONICAL Symbol Mapping', () => {
+  it('should render Bus as CANONICAL busbar symbol', () => {
     const symbol = createBusSymbol();
 
     render(
@@ -250,11 +250,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'busbar');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'busbar');
     expect(symbolElement).toHaveAttribute('data-element-type', 'Bus');
   });
 
-  it('should render LineBranch (CABLE) as ETAP line_cable symbol', () => {
+  it('should render LineBranch (CABLE) as CANONICAL line_cable symbol', () => {
     const symbol = createLineBranchSymbol({ branchType: 'CABLE' });
 
     render(
@@ -264,11 +264,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'line_cable');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'line_cable');
     expect(symbolElement).toHaveAttribute('data-branch-type', 'CABLE');
   });
 
-  it('should render LineBranch (LINE) as ETAP line_overhead symbol', () => {
+  it('should render LineBranch (LINE) as CANONICAL line_overhead symbol', () => {
     const symbol = createLineBranchSymbol({ branchType: 'LINE' });
 
     render(
@@ -278,11 +278,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'line_overhead');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'line_overhead');
     expect(symbolElement).toHaveAttribute('data-branch-type', 'LINE');
   });
 
-  it('should render TransformerBranch as ETAP transformer_2w symbol', () => {
+  it('should render TransformerBranch as CANONICAL transformer_2w symbol', () => {
     const symbol = createTransformerSymbol();
 
     render(
@@ -292,11 +292,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'transformer_2w');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'transformer_2w');
     expect(symbolElement).toHaveAttribute('data-element-type', 'TransformerBranch');
   });
 
-  it('should render Switch (BREAKER) as ETAP circuit_breaker symbol', () => {
+  it('should render Switch (BREAKER) as CANONICAL circuit_breaker symbol', () => {
     const symbol = createSwitchSymbol({ switchType: 'BREAKER' });
 
     render(
@@ -306,11 +306,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'circuit_breaker');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'circuit_breaker');
     expect(symbolElement).toHaveAttribute('data-switch-type', 'BREAKER');
   });
 
-  it('should render Switch (DISCONNECTOR) as ETAP disconnector symbol', () => {
+  it('should render Switch (DISCONNECTOR) as CANONICAL disconnector symbol', () => {
     const symbol = createSwitchSymbol({ switchType: 'DISCONNECTOR' });
 
     render(
@@ -320,11 +320,11 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'disconnector');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'disconnector');
     expect(symbolElement).toHaveAttribute('data-switch-type', 'DISCONNECTOR');
   });
 
-  it('should render Source as ETAP utility_feeder symbol', () => {
+  it('should render Source as CANONICAL utility_feeder symbol', () => {
     const symbol = createSourceSymbol();
 
     render(
@@ -334,7 +334,7 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'utility_feeder');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'utility_feeder');
     expect(symbolElement).toHaveAttribute('data-element-type', 'Source');
   });
 });
@@ -344,7 +344,7 @@ describe('UnifiedSymbolRenderer - ETAP Symbol Mapping', () => {
 // =============================================================================
 
 describe('UnifiedSymbolRenderer - Fallback Handling', () => {
-  it('should render Load with fallback indicator (no ETAP symbol)', () => {
+  it('should render Load with fallback indicator (no CANONICAL symbol)', () => {
     const symbol = createLoadSymbol();
 
     render(
@@ -373,7 +373,7 @@ describe('UnifiedSymbolRenderer - Fallback Handling', () => {
     consoleSpy.mockRestore();
   });
 
-  it('should have data-etap-symbol attribute for Load', () => {
+  it('should have data-canonical-symbol attribute for Load', () => {
     const symbol = createLoadSymbol();
 
     render(
@@ -383,7 +383,7 @@ describe('UnifiedSymbolRenderer - Fallback Handling', () => {
     );
 
     const symbolElement = screen.getByTestId(`sld-symbol-${symbol.id}`);
-    expect(symbolElement).toHaveAttribute('data-etap-symbol', 'load');
+    expect(symbolElement).toHaveAttribute('data-canonical-symbol', 'load');
   });
 });
 
@@ -405,7 +405,7 @@ describe('UnifiedSymbolRenderer - Visual States', () => {
       </svg>
     );
 
-    // Selection should be reflected in SVG (ETAP blue-600 #2563EB)
+    // Selection should be reflected in SVG (CANONICAL blue-600 #2563EB)
     expect(container.innerHTML).toContain('#2563EB');
   });
 
@@ -422,7 +422,7 @@ describe('UnifiedSymbolRenderer - Visual States', () => {
       </svg>
     );
 
-    // De-energized should use gray color #6B7280 (ETAP gray-500)
+    // De-energized should use gray color #6B7280 (CANONICAL gray-500)
     expect(container.innerHTML).toContain('#6B7280');
   });
 

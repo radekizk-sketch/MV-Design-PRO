@@ -5,7 +5,6 @@ import hashlib
 import json
 
 import pytest
-
 from enm.domain_operations import execute_domain_operation
 
 

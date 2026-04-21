@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -21,10 +21,10 @@ class ValidationReport:
     def is_valid(self) -> bool:
         return not self.errors
 
-    def with_error(self, issue: ValidationIssue) -> "ValidationReport":
+    def with_error(self, issue: ValidationIssue) -> ValidationReport:
         return ValidationReport(errors=self.errors + (issue,), warnings=self.warnings)
 
-    def with_warning(self, issue: ValidationIssue) -> "ValidationReport":
+    def with_warning(self, issue: ValidationIssue) -> ValidationReport:
         return ValidationReport(errors=self.errors, warnings=self.warnings + (issue,))
 
     def to_dict(self) -> dict:

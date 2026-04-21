@@ -1,69 +1,70 @@
-# PDF_REPORT_SUPERIOR_CONTRACT (P24+) — ETAP+
+﻿# PDF_REPORT_SUPERIOR_CONTRACT (P24+) â€” benchmark+
 
 **Status:** CANONICAL  
-**Zakres:** P24+ ONLY (reporting superior to ETAP, bez zmian solverów)
+**Zakres:** P24+ ONLY (reporting superior to benchmark, bez zmian solverĂłw)
 
-## 1. Dlaczego raport jest lepszy niż ETAP
+## 1. Dlaczego raport jest lepszy niĹĽ benchmark
 
-1. **Jawna ścieżka decyzyjna (white-box dla wyników):**  
-   Dla każdej decyzji PASS/WARNING/FAIL raport pokazuje źródło danych, ID reguły,
-   wartość zmierzoną, limit, margines i decyzję. Bez „black box”.
+1. **Jawna Ĺ›cieĹĽka decyzyjna (white-box dla wynikĂłw):**  
+   Dla kaĹĽdej decyzji PASS/WARNING/FAIL raport pokazuje ĹşrĂłdĹ‚o danych, ID reguĹ‚y,
+   wartoĹ›Ä‡ zmierzonÄ…, limit, margines i decyzjÄ™. Bez â€žblack boxâ€ť.
 
-2. **NOT COMPUTED ≠ FAIL:**  
-   Braki danych są raportowane w osobnej sekcji, bez domysłów.
+2. **NOT COMPUTED â‰  FAIL:**  
+   Braki danych sÄ… raportowane w osobnej sekcji, bez domysĹ‚Ăłw.
 
 3. **Determinism (byte-identical PDF):**  
-   Te same wejścia → identyczny PDF, z jawnym hashem raportu i stopką
-   „Deterministic Report”.
+   Te same wejĹ›cia â†’ identyczny PDF, z jawnym hashem raportu i stopkÄ…
+   â€žDeterministic Reportâ€ť.
 
 4. **BUS-centric Voltage Profile + ranking ryzyka:**  
-   Jawny ranking TOP 5 najbardziej krytycznych BUS (ETAP nie pokazuje jawnie).
+   Jawny ranking TOP 5 najbardziej krytycznych BUS (benchmark nie pokazuje jawnie).
 
-5. **Protection Insight bez wykresów I–t:**  
-   Decyzja inżynierska + WHY w tabelach, bez konieczności interpretacji wykresów.
+5. **Protection Insight bez wykresĂłw Iâ€“t:**  
+   Decyzja inĹĽynierska + WHY w tabelach, bez koniecznoĹ›ci interpretacji wykresĂłw.
 
-## 2. Kanoniczny layout raportu (stała kolejność)
+## 2. Kanoniczny layout raportu (staĹ‚a kolejnoĹ›Ä‡)
 
-1. **Strona tytułowa**  
-   Projekt / Case / Run / Snapshot, zakres P11–P21, P22 skipped, P24+
+1. **Strona tytuĹ‚owa**  
+   Projekt / Case / Run / Snapshot, zakres P11â€“P21, P22 skipped, P24+
 2. **Executive Summary (1 strona)**  
    FAIL / WARNING / NOT COMPUTED + TOP 3 ryzyka
-3. **Voltage Profile — BUS-centric (P21)**  
-   Tabela + ranking krytyczności
-4. **Zabezpieczenia — decyzja inżynierska (P22a + P18 + P20)**  
-   Tabele + WHY (bez wykresów)
+3. **Voltage Profile â€” BUS-centric (P21)**  
+   Tabela + ranking krytycznoĹ›ci
+4. **Zabezpieczenia â€” decyzja inĹĽynierska (P22a + P18 + P20)**  
+   Tabele + WHY (bez wykresĂłw)
 5. **Ocena normatywna (P20)**  
-   Reguła → wynik → WHY
+   ReguĹ‚a â†’ wynik â†’ WHY
 6. **Jawne braki danych**  
-   NOT COMPUTED + brakujące dane
-7. **Ślad dowodowy**  
+   NOT COMPUTED + brakujÄ…ce dane
+7. **Ĺšlad dowodowy**  
    Referencje do ProofDocument (ID, hash)
-8. **Ograniczenia i zastrzeżenia**  
+8. **Ograniczenia i zastrzeĹĽenia**  
    Jawne, techniczne
 9. **Stopka deterministyczna**  
    Wersja systemu + hash raportu
 
-## 3. Mapa sekcji → Pxx
+## 3. Mapa sekcji â†’ Pxx
 
-| Sekcja | Źródło |
+| Sekcja | ĹąrĂłdĹ‚o |
 |---|---|
 | Executive Summary | P20 + P21 + P22a |
 | Voltage Profile | P21 (VoltageProfileView) |
 | Zabezpieczenia | P22a (ProtectionInsightView) + P18 |
 | Ocena normatywna | P20 (NormativeReport) |
-| Ślad dowodowy | P11–P19 (ProofDocument metadata) |
+| Ĺšlad dowodowy | P11â€“P19 (ProofDocument metadata) |
 
-## 4. Reguły determinismu (BINDING)
+## 4. ReguĹ‚y determinismu (BINDING)
 
 1. Brak losowych metadanych (timestamps, UUID) w rendererze.  
-2. Stałe czcionki i kolejność sekcji/tabel.  
-3. Sortowanie deterministyczne (status → margines → ID).  
-4. Jednolity format liczb w całym raporcie.  
-5. Stopka: „Deterministic Report” + hash raportu (SHA-256).
+2. StaĹ‚e czcionki i kolejnoĹ›Ä‡ sekcji/tabel.  
+3. Sortowanie deterministyczne (status â†’ margines â†’ ID).  
+4. Jednolity format liczb w caĹ‚ym raporcie.  
+5. Stopka: â€žDeterministic Reportâ€ť + hash raportu (SHA-256).
 
 ## 5. MUST NOT
 
-- Nie dodawać krzywych I–t.  
-- Nie zmieniać solverów ani Result API.  
-- Nie dodawać obliczeń fizycznych w warstwie raportowania.
+- Nie dodawaÄ‡ krzywych Iâ€“t.  
+- Nie zmieniaÄ‡ solverĂłw ani Result API.  
+- Nie dodawaÄ‡ obliczeĹ„ fizycznych w warstwie raportowania.
+
 

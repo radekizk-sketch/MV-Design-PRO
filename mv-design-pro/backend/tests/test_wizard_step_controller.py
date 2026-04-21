@@ -12,16 +12,15 @@ Covers:
 """
 
 import copy
+
 import pytest
+from application.network_wizard.schema import IssueSeverity
 from application.network_wizard.step_controller import (
-    STEP_ORDER,
     apply_step,
     can_proceed,
     postconditions,
     preconditions,
 )
-from application.network_wizard.schema import IssueSeverity
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -62,72 +61,82 @@ def _enm_with_name() -> dict:
 def _enm_with_source() -> dict:
     """ENM with K1+K2 complete (name + source bus + source)."""
     enm = _enm_with_name()
-    enm["buses"].append({
-        "id": "bus-1",
-        "ref_id": "bus_sn_main",
-        "name": "Szyna główna SN",
-        "voltage_kv": 15,
-        "tags": ["source"],
-        "meta": {},
-        "phase_system": "3ph",
-    })
-    enm["sources"].append({
-        "id": "src-1",
-        "ref_id": "source_grid",
-        "name": "Sieć zasilająca",
-        "bus_ref": "bus_sn_main",
-        "model": "short_circuit_power",
-        "sk3_mva": 250,
-        "rx_ratio": 0.1,
-        "tags": [],
-        "meta": {},
-    })
+    enm["buses"].append(
+        {
+            "id": "bus-1",
+            "ref_id": "bus_sn_main",
+            "name": "Szyna główna SN",
+            "voltage_kv": 15,
+            "tags": ["source"],
+            "meta": {},
+            "phase_system": "3ph",
+        }
+    )
+    enm["sources"].append(
+        {
+            "id": "src-1",
+            "ref_id": "source_grid",
+            "name": "Sieć zasilająca",
+            "bus_ref": "bus_sn_main",
+            "model": "short_circuit_power",
+            "sk3_mva": 250,
+            "rx_ratio": 0.1,
+            "tags": [],
+            "meta": {},
+        }
+    )
     return enm
 
 
 def _enm_with_buses() -> dict:
     """ENM with K1+K2+K3 (two buses)."""
     enm = _enm_with_source()
-    enm["buses"].append({
-        "id": "bus-2",
-        "ref_id": "bus_sn_1",
-        "name": "Szyna SN 1",
-        "voltage_kv": 15,
-        "tags": [],
-        "meta": {},
-        "phase_system": "3ph",
-    })
+    enm["buses"].append(
+        {
+            "id": "bus-2",
+            "ref_id": "bus_sn_1",
+            "name": "Szyna SN 1",
+            "voltage_kv": 15,
+            "tags": [],
+            "meta": {},
+            "phase_system": "3ph",
+        }
+    )
     return enm
 
 
 def _enm_full() -> dict:
     """ENM with all steps complete (K1-K7)."""
     enm = _enm_with_buses()
-    enm["branches"].append({
-        "id": "br-1",
-        "ref_id": "line_L01",
-        "name": "Linia L1",
-        "type": "line_overhead",
-        "from_bus_ref": "bus_sn_main",
-        "to_bus_ref": "bus_sn_1",
-        "status": "closed",
-        "length_km": 5,
-        "r_ohm_per_km": 0.443,
-        "x_ohm_per_km": 0.340,
-        "tags": [],
-        "meta": {},
-    })
-    enm["loads"].append({
-        "id": "ld-1",
-        "ref_id": "load_1",
-        "name": "Odbiór 1",
-        "bus_ref": "bus_sn_1",
-        "p_mw": 1.0,
-        "q_mvar": 0.3,
-        "model": "pq",
-        "tags": [],
-        "meta": {},
-    })
+    enm["branches"].append(
+        {
+            "id": "br-1",
+            "ref_id": "line_L01",
+            "name": "Linia L1",
+            "type": "line_overhead",
+            "from_bus_ref": "bus_sn_main",
+            "to_bus_ref": "bus_sn_1",
+            "status": "closed",
+            "length_km": 5,
+            "r_ohm_per_km": 0.443,
+            "x_ohm_per_km": 0.340,
+            "tags": [],
+            "meta": {},
+        }
+    )
+    enm["loads"].append(
+        {
+            "id": "ld-1",
+            "ref_id": "load_1",
+            "name": "Odbiór 1",
+            "bus_ref": "bus_sn_1",
+            "p_mw": 1.0,
+            "q_mvar": 0.3,
+            "model": "pq",
+            "tags": [],
+            "meta": {},
+        }
+    )
     return enm
 
 
@@ -226,12 +235,16 @@ class TestAtomicity:
     def test_apply_k2_success_after_k1(self):
         """K2 apply succeeds when K1 is complete."""
         enm = _enm_with_name()
-        result = apply_step(enm, "K2", {
-            "bus_name": "Szyna główna SN",
-            "voltage_kv": 15,
-            "sk3_mva": 250,
-            "rx_ratio": 0.1,
-        })
+        result = apply_step(
+            enm,
+            "K2",
+            {
+                "bus_name": "Szyna główna SN",
+                "voltage_kv": 15,
+                "sk3_mva": 250,
+                "rx_ratio": 0.1,
+            },
+        )
         assert result.success is True
         assert len(result.enm["buses"]) > 0
         assert len(result.enm["sources"]) > 0
@@ -241,22 +254,38 @@ class TestAtomicity:
         enm = _enm_with_name()
         original_buses_len = len(enm["buses"])
         # K6 on empty buses should fail precondition (no buses to assign loads)
-        result = apply_step(enm, "K6", {"add_loads": [
-            {"ref_id": "load_1", "bus_ref": "nonexistent", "p_mw": 1, "q_mvar": 0.3}
-        ]})
+        apply_step(
+            enm,
+            "K6",
+            {
+                "add_loads": [
+                    {"ref_id": "load_1", "bus_ref": "nonexistent", "p_mw": 1, "q_mvar": 0.3}
+                ]
+            },
+        )
         # Whether success or not, original must be unchanged
         assert len(enm["buses"]) == original_buses_len
 
     def test_apply_k3_adds_buses(self):
         """K3 apply adds new buses."""
         enm = _enm_with_source()
-        result = apply_step(enm, "K3", {
-            "add_buses": [{
-                "id": "bus-2", "ref_id": "bus_sn_1",
-                "name": "Szyna SN 1", "voltage_kv": 15,
-                "tags": [], "meta": {}, "phase_system": "3ph",
-            }]
-        })
+        result = apply_step(
+            enm,
+            "K3",
+            {
+                "add_buses": [
+                    {
+                        "id": "bus-2",
+                        "ref_id": "bus_sn_1",
+                        "name": "Szyna SN 1",
+                        "voltage_kv": 15,
+                        "tags": [],
+                        "meta": {},
+                        "phase_system": "3ph",
+                    }
+                ]
+            },
+        )
         assert result.success is True
         assert len(result.enm["buses"]) == 2
 
@@ -290,37 +319,63 @@ class TestDeterministicSequence:
         enm = r1.enm
 
         # K2: Add source
-        r2 = apply_step(enm, "K2", {
-            "bus_name": "Szyna główna SN",
-            "voltage_kv": 15,
-            "sk3_mva": 250,
-            "rx_ratio": 0.1,
-        })
+        r2 = apply_step(
+            enm,
+            "K2",
+            {
+                "bus_name": "Szyna główna SN",
+                "voltage_kv": 15,
+                "sk3_mva": 250,
+                "rx_ratio": 0.1,
+            },
+        )
         assert r2.success is True
         enm = r2.enm
 
         # K3: Add bus
-        r3 = apply_step(enm, "K3", {
-            "add_buses": [{
-                "id": "bus-2", "ref_id": "bus_sn_1",
-                "name": "Szyna SN 1", "voltage_kv": 15,
-                "tags": [], "meta": {}, "phase_system": "3ph",
-            }]
-        })
+        r3 = apply_step(
+            enm,
+            "K3",
+            {
+                "add_buses": [
+                    {
+                        "id": "bus-2",
+                        "ref_id": "bus_sn_1",
+                        "name": "Szyna SN 1",
+                        "voltage_kv": 15,
+                        "tags": [],
+                        "meta": {},
+                        "phase_system": "3ph",
+                    }
+                ]
+            },
+        )
         assert r3.success is True
         enm = r3.enm
 
         # K4: Add line
-        r4 = apply_step(enm, "K4", {
-            "add_branches": [{
-                "id": "br-1", "ref_id": "line_L01", "name": "Linia L1",
-                "type": "line_overhead",
-                "from_bus_ref": "bus_sn_main", "to_bus_ref": "bus_sn_1",
-                "status": "closed", "length_km": 5,
-                "r_ohm_per_km": 0.443, "x_ohm_per_km": 0.340,
-                "tags": [], "meta": {},
-            }]
-        })
+        r4 = apply_step(
+            enm,
+            "K4",
+            {
+                "add_branches": [
+                    {
+                        "id": "br-1",
+                        "ref_id": "line_L01",
+                        "name": "Linia L1",
+                        "type": "line_overhead",
+                        "from_bus_ref": "bus_sn_main",
+                        "to_bus_ref": "bus_sn_1",
+                        "status": "closed",
+                        "length_km": 5,
+                        "r_ohm_per_km": 0.443,
+                        "x_ohm_per_km": 0.340,
+                        "tags": [],
+                        "meta": {},
+                    }
+                ]
+            },
+        )
         assert r4.success is True
         enm = r4.enm
 
@@ -329,13 +384,24 @@ class TestDeterministicSequence:
         assert r5.success is True
 
         # K6: Add load
-        r6 = apply_step(enm, "K6", {
-            "add_loads": [{
-                "ref_id": "load_1", "name": "Odbiór 1",
-                "bus_ref": "bus_sn_1", "p_mw": 1.0, "q_mvar": 0.3,
-                "model": "pq", "tags": [], "meta": {},
-            }]
-        })
+        r6 = apply_step(
+            enm,
+            "K6",
+            {
+                "add_loads": [
+                    {
+                        "ref_id": "load_1",
+                        "name": "Odbiór 1",
+                        "bus_ref": "bus_sn_1",
+                        "p_mw": 1.0,
+                        "q_mvar": 0.3,
+                        "model": "pq",
+                        "tags": [],
+                        "meta": {},
+                    }
+                ]
+            },
+        )
         assert r6.success is True
         enm = r6.enm
 
@@ -348,14 +414,28 @@ class TestDeterministicSequence:
 
     def test_determinism(self):
         """Same sequence twice produces identical ENM."""
+
         def run_sequence():
             enm = _empty_enm()
             enm = apply_step(enm, "K1", {"name": "Det Test"}).enm
             enm = apply_step(enm, "K2", {"voltage_kv": 15, "sk3_mva": 250}).enm
-            enm = apply_step(enm, "K3", {"add_buses": [{
-                "id": "b2", "ref_id": "bus_1", "name": "Bus 1",
-                "voltage_kv": 15, "tags": [], "meta": {}, "phase_system": "3ph",
-            }]}).enm
+            enm = apply_step(
+                enm,
+                "K3",
+                {
+                    "add_buses": [
+                        {
+                            "id": "b2",
+                            "ref_id": "bus_1",
+                            "name": "Bus 1",
+                            "voltage_kv": 15,
+                            "tags": [],
+                            "meta": {},
+                            "phase_system": "3ph",
+                        }
+                    ]
+                },
+            ).enm
             return enm
 
         enm1 = run_sequence()

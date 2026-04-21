@@ -13,8 +13,8 @@
  * DETERMINIZM: Te same dane wejściowe → identyczny output
  *
  * CANONICAL ALIGNMENT:
- * - ETAP software visual standards
- * - PowerFactory layout principles
+ * - CANONICAL software visual standards
+ * - Canonical layout principles
  */
 
 import type {

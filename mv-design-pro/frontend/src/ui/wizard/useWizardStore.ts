@@ -21,6 +21,10 @@
 
 import { create } from 'zustand';
 import type { EnergyNetworkModel } from '../../types/enm';
+import {
+  resolveWizardSurfaceStepId,
+  type WizardSurfaceStepId,
+} from '../../types/fixActionSurface';
 import { computeWizardState } from './wizardStateMachine';
 import type { WizardState, StepIssue } from './wizardStateMachine';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -36,6 +40,7 @@ export interface WizardIssueApi {
   message_pl: string;
   element_ref?: string | null;
   wizard_step_hint?: string | null;
+  wizard_step_id?: WizardSurfaceStepId | null;
   suggested_fix?: string | null;
 }
 
@@ -152,6 +157,29 @@ function computeCanProceed(ws: WizardState, currentIdx: number): boolean {
   return currentStep.status !== 'error';
 }
 
+function normalizeWizardIssue(issue: WizardIssueApi): WizardIssueApi {
+  return {
+    ...issue,
+    wizard_step_hint: issue.wizard_step_hint ?? null,
+    wizard_step_id:
+      issue.wizard_step_id ?? resolveWizardSurfaceStepId(issue.wizard_step_hint ?? null),
+  };
+}
+
+function normalizeWizardIssues(issues: WizardIssueApi[]): WizardIssueApi[] {
+  return issues.map(normalizeWizardIssue);
+}
+
+function normalizeWizardStateApi(state: WizardStateApi): WizardStateApi {
+  return {
+    ...state,
+    steps: state.steps.map((step) => ({
+      ...step,
+      issues: normalizeWizardIssues(step.issues),
+    })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Custom event for Tree/SLD reactivity
 // ---------------------------------------------------------------------------
@@ -215,7 +243,11 @@ export const useWizardStore = create<WizardStoreState>()((set, get) => ({
         `${API_BASE}/api/cases/${caseId}/wizard/can-proceed?from_step=${fromStep}&to_step=${toStep}`,
       );
       if (!r.ok) return false;
-      const data: CanProceedResponse = await r.json();
+      const rawData: CanProceedResponse = await r.json();
+      const data: CanProceedResponse = {
+        ...rawData,
+        blocking_issues: normalizeWizardIssues(rawData.blocking_issues),
+      };
       set({
         canProceed: data.allowed,
         transitionBlockers: data.blocking_issues,
@@ -244,7 +276,15 @@ export const useWizardStore = create<WizardStoreState>()((set, get) => ({
         set({ isApplying: false, applyError: `Błąd serwera: ${r.status}` });
         return null;
       }
-      const resp: ApplyStepResponse = await r.json();
+      const rawResp: ApplyStepResponse = await r.json();
+      const resp: ApplyStepResponse = {
+        ...rawResp,
+        precondition_issues: normalizeWizardIssues(rawResp.precondition_issues),
+        postcondition_issues: normalizeWizardIssues(rawResp.postcondition_issues),
+        wizard_state: rawResp.wizard_state
+          ? normalizeWizardStateApi(rawResp.wizard_state)
+          : null,
+      };
 
       if (resp.success) {
         set({
@@ -278,7 +318,7 @@ export const useWizardStore = create<WizardStoreState>()((set, get) => ({
       const r = await fetch(`${API_BASE}/api/cases/${caseId}/wizard/state`);
       if (!r.ok) return null;
       const data: WizardStateApi = await r.json();
-      return data;
+      return normalizeWizardStateApi(data);
     } catch {
       return null;
     }

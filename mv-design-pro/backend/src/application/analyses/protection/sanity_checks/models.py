@@ -28,13 +28,18 @@ class SanityCheckSeverity(str, Enum):
     - WARN: Ostrzezenie — konfiguracja moze byc problematyczna
     - INFO: Informacja — brak danych do pelnej analizy
     """
+
     ERROR = "ERROR"
     WARN = "WARN"
     INFO = "INFO"
 
     def __lt__(self, other: SanityCheckSeverity) -> bool:
         """Porownanie dla sortowania: ERROR > WARN > INFO."""
-        order = {SanityCheckSeverity.ERROR: 0, SanityCheckSeverity.WARN: 1, SanityCheckSeverity.INFO: 2}
+        order = {
+            SanityCheckSeverity.ERROR: 0,
+            SanityCheckSeverity.WARN: 1,
+            SanityCheckSeverity.INFO: 2,
+        }
         return order[self] < order[other]
 
 
@@ -51,6 +56,7 @@ class SanityCheckCode(str, Enum):
     - PREFIX: typ reguly (VOLT_, FREQ_, OC_, SPZ_, GEN_)
     - SUFFIX: opis bledu (MISSING_UN, OVERLAP, etc.)
     """
+
     # Napieciowe (27/59)
     VOLT_MISSING_UN = "VOLT_MISSING_UN"
     VOLT_OVERLAP = "VOLT_OVERLAP"
@@ -113,6 +119,7 @@ class ProtectionSanityCheckResult:
         function_code: kod wewnetrzny (opcjonalny)
         evidence: dane wejsciowe jako dowod (opcjonalny)
     """
+
     severity: SanityCheckSeverity
     code: SanityCheckCode
     message_pl: str
@@ -156,26 +163,21 @@ SANITY_CHECK_CODE_LABELS_PL: dict[SanityCheckCode, str] = {
     SanityCheckCode.VOLT_OVERLAP: "Nakladalnie sie prog U< i U> (U< >= U>)",
     SanityCheckCode.VOLT_U_LT_TOO_LOW: "Prog U< zbyt niski (< 0,5×Un)",
     SanityCheckCode.VOLT_U_GT_TOO_HIGH: "Prog U> zbyt wysoki (> 1,2×Un)",
-
     # Czestotliwosciowe
     SanityCheckCode.FREQ_OVERLAP: "Nakladanie sie progow f< i f> (f< >= f>)",
     SanityCheckCode.FREQ_F_LT_TOO_LOW: "Prog f< zbyt niski (< 45 Hz)",
     SanityCheckCode.FREQ_F_GT_TOO_HIGH: "Prog f> zbyt wysoki (> 55 Hz)",
-
     # ROCOF
     SanityCheckCode.ROCOF_NON_POSITIVE: "df/dt nieadodatnie (<= 0)",
     SanityCheckCode.ROCOF_TOO_HIGH: "df/dt zbyt wysokie (> 10 Hz/s)",
-
     # Nadpradowe
     SanityCheckCode.OC_MISSING_IN: "Brak wartosci In dla nastawy pradowej",
     SanityCheckCode.OC_OVERLAP: "Nakladanie sie progow I> i I>> (I> >= I>>)",
     SanityCheckCode.OC_I_GT_TOO_LOW: "Prog I> zbyt niski (< 1,0×In)",
     SanityCheckCode.OC_I_INST_TOO_LOW: "Prog I>> zbyt niski (< 1,5×In)",
-
     # SPZ
     SanityCheckCode.SPZ_NO_TRIP_FUNCTION: "SPZ aktywne bez funkcji wyzwalajacej",
     SanityCheckCode.SPZ_MISSING_CYCLE_DATA: "Brak danych cyklu SPZ",
-
     # Ogolne
     SanityCheckCode.GEN_NEGATIVE_SETPOINT: "Nastawa niefizyczna (ujemna)",
     SanityCheckCode.GEN_PARTIAL_ANALYSIS: "Brak danych bazowych — analiza czesciowa",

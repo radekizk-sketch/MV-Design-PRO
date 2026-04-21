@@ -15,6 +15,7 @@ from pathlib import Path
 
 # Import functions from guard
 from no_codenames_guard import (
+    ALLOWED_TECHNICAL_TOKENS,
     find_codenames_in_strings,
     is_comment_line,
     scan_file,
@@ -48,6 +49,10 @@ class TestCodenamePattern:
         match = CODENAME_PATTERN.search(text)
         # p0 is excluded, but make sure no false match
         assert match is None or match.group() != "p0"
+
+    def test_allows_percentile_metrics(self):
+        """Should treat percentile metrics as technical tokens, not codenames."""
+        assert "p95" in ALLOWED_TECHNICAL_TOKENS
 
 
 class TestFindCodenamesInStrings:
@@ -84,6 +89,12 @@ class TestFindCodenamesInStrings:
         assert "P11" in matches
         assert "P14" in matches
         assert "P17" in matches
+
+    def test_ignores_percentile_metric_token(self):
+        """Should NOT flag percentile metrics like p95 inside strings."""
+        line = "const stats = `mean=10ms median=9ms p95=14ms`;"
+        matches = find_codenames_in_strings(line)
+        assert matches == []
 
 
 class TestIsCommentLine:

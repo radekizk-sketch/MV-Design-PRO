@@ -1,161 +1,122 @@
-/**
- * FixAction Completeness Guard — ensures every BLOCKER has a repair path.
- *
- * §5: Panel „Braki danych do obliczeń" musi prowadzić do naprawy 1-klik.
- *
- * This test verifies:
- * 1. Every BLOCKER readiness code has a fix_action
- * 2. Every fix_action with OPEN_MODAL points to an existing modal
- * 3. Every fix_action with NAVIGATE_TO_ELEMENT has element_ref
- * 4. FixAction bridge covers all known backend modal_type values
- */
-
-import { describe, it, expect } from 'vitest';
-import { BACKEND_MODAL_TYPE_MAP, getUnmappedModalTypes } from '../fixActionModalBridge';
-import { MODAL_REGISTRY, MODAL_IDS } from '../../topology/modals/modalRegistry';
+import { describe, expect, it } from 'vitest';
+import { resolveFixActionSurface } from '../../../types/fixActionSurface';
+import { getOperationSurfaceByOp } from '../../topology/modals/operationSurfaceRegistry';
 import type { ReadinessIssue, FixAction } from '../../types';
 
-// ---------------------------------------------------------------------------
-// Known BLOCKER codes from the backend (canonical list)
-// ---------------------------------------------------------------------------
+const KNOWN_FIX_ACTIONS = [
+  {
+    code: 'source.missing_short_circuit',
+    action_type: 'ADD_MISSING_DEVICE',
+    modal_type: 'SourceModal',
+    expected: 'add_grid_source_sn',
+  },
+  {
+    code: 'catalog.ref_missing',
+    action_type: 'SELECT_CATALOG',
+    modal_type: 'CatalogPicker',
+    expected: 'assign_catalog_to_element',
+  },
+  {
+    code: 'protection.binding_missing',
+    action_type: 'OPEN_MODAL',
+    modal_type: 'relay_settings',
+    expected: 'add_relay',
+  },
+  {
+    code: 'station.nn_without_transformer',
+    action_type: 'ADD_MISSING_DEVICE',
+    modal_type: 'AddTransformerModal',
+    expected: 'add_transformer_sn_nn',
+  },
+] as const;
 
-const KNOWN_BLOCKER_CODES_WITH_FIX_ACTION = [
-  // ENMValidator
-  'E001', 'E002', 'E004', 'E005', 'E006', 'E007',
-  'sources.no_short_circuit_params', 'E009', 'E010',
-  // Eligibility
-  'ELIG_SC3_MISSING_SOURCE', 'ELIG_SC3_MISSING_BUSES',
-  'ELIG_SC3_MISSING_CATALOG_REF', 'ELIG_SC3_MISSING_IMPEDANCE',
-  'ELIG_SC3_SOURCE_NO_SC_PARAMS', 'ELIG_SC1_MISSING_Z0',
-  'ELIG_LF_NO_LOADS_OR_GENERATORS', 'ELIG_LF_BUS_NO_VOLTAGE',
-];
+describe('Fix action completeness', () => {
+  it('resolves all known fix-action inputs to canonical operation surfaces', () => {
+    for (const fixture of KNOWN_FIX_ACTIONS) {
+      const surface = resolveFixActionSurface({
+        code: fixture.code,
+        action_type: fixture.action_type,
+        element_ref: 'element-1',
+        modal_type: fixture.modal_type,
+        payload_hint: {},
+      });
 
-const KNOWN_BACKEND_MODAL_TYPES = [
-  'SourceModal',
-  'NodeModal',
-  'BranchModal',
-  'TransformerModal',
-  'LoadModal',
-  'GeneratorModal',
-  'CatalogPicker',
-  'FieldDeviceModal',
-  'ProtectionBindingModal',
-  'StudyCaseSettings',
-];
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-describe('FixAction completeness — every BLOCKER has a fix path', () => {
-  it('BACKEND_MODAL_TYPE_MAP covers all known backend modal types', () => {
-    const unmapped = getUnmappedModalTypes(KNOWN_BACKEND_MODAL_TYPES);
-    expect(unmapped).toEqual([]);
-  });
-
-  it('every mapped modal_type resolves to a registered MODAL_ID', () => {
-    const registryIds = new Set(MODAL_REGISTRY.map((e) => e.modalId));
-    for (const [backendType, modalId] of Object.entries(BACKEND_MODAL_TYPE_MAP)) {
-      expect(registryIds.has(modalId)).toBe(true);
+      expect(surface.kind).toBe('operation_form');
+      expect(surface.operation).toBe(fixture.expected);
+      expect(getOperationSurfaceByOp(surface.operation!)).toBeDefined();
     }
   });
 
-  it('every MODAL_ID in the registry is implemented', () => {
-    for (const entry of MODAL_REGISTRY) {
-      expect(entry.implemented).toBe(true);
-    }
+  it('preserves catalog intent through the canonical descriptor', () => {
+    const surface = resolveFixActionSurface({
+      code: 'catalog.ref_missing',
+      action_type: 'SELECT_CATALOG',
+      element_ref: 'branch-1',
+      modal_type: 'CatalogPicker',
+      payload_hint: { catalog_namespace: 'KABEL_SN' },
+    });
+
+    expect(surface.kind).toBe('operation_form');
+    expect(surface.operation).toBe('assign_catalog_to_element');
+    expect(surface.context.catalog_namespace).toBe('KABEL_SN');
   });
 
-  it('fix_action OPEN_MODAL must have modal_type', () => {
-    const fixAction: FixAction = {
-      action_type: 'OPEN_MODAL',
-      element_ref: 'elem-1',
-      modal_type: 'SourceModal',
-      payload_hint: null,
-    };
-    expect(fixAction.modal_type).toBeTruthy();
-    expect(fixAction.modal_type).not.toBe('');
-  });
-
-  it('fix_action NAVIGATE_TO_ELEMENT must have element_ref', () => {
-    const fixAction: FixAction = {
+  it('resolves navigation-only actions without a second modal layer', () => {
+    const surface = resolveFixActionSurface({
+      code: 'navigate.example',
       action_type: 'NAVIGATE_TO_ELEMENT',
       element_ref: 'bus-1',
       modal_type: null,
       payload_hint: null,
-    };
-    expect(fixAction.element_ref).toBeTruthy();
+    });
+
+    expect(surface.kind).toBe('navigate_to_element');
+    expect(surface.element_ref).toBe('bus-1');
+    expect(surface.operation).toBeNull();
   });
 
-  it('fix_action ADD_MISSING_DEVICE must have modal_type', () => {
-    const fixAction: FixAction = {
-      action_type: 'ADD_MISSING_DEVICE',
+  it('falls back to unresolved only when no canonical surface exists', () => {
+    const surface = resolveFixActionSurface({
+      code: 'unknown.code',
+      action_type: 'UNKNOWN_ACTION' as FixAction['action_type'],
       element_ref: null,
-      modal_type: 'SourceModal',
-      payload_hint: { required: 'source' },
-    };
-    expect(fixAction.modal_type).toBeTruthy();
-  });
-
-  it('fix_action SELECT_CATALOG must have element_ref', () => {
-    const fixAction: FixAction = {
-      action_type: 'SELECT_CATALOG',
-      element_ref: 'branch-1',
-      modal_type: 'CatalogPicker',
+      modal_type: null,
       payload_hint: null,
-    };
-    expect(fixAction.element_ref).toBeTruthy();
+    });
+
+    expect(surface.kind).toBe('unresolved');
+    expect(surface.unresolved_reason_code).toBeTruthy();
   });
 });
 
-describe('SchemaCompletenessPanel — fix action integration', () => {
-  it('BLOCKER issue with fix_action shows Napraw button data', () => {
+describe('Readiness issue integration', () => {
+  it('BLOCKER issue with fix_action exposes a canonical surface path', () => {
     const issue: ReadinessIssue = {
-      code: 'E001',
+      code: 'source.missing_short_circuit',
       severity: 'BLOCKER',
       element_ref: 'source-1',
       element_refs: ['source-1'],
-      message_pl: 'Brak źródła zasilania w modelu sieci.',
+      message_pl: 'Brak danych zwarciowych źródła.',
       wizard_step_hint: 'K2',
-      suggested_fix: 'Dodaj źródło zasilania.',
+      wizard_step_id: 'punkt-zasilania-gpz',
+      suggested_fix: 'Uzupełnij parametry źródła.',
       fix_action: {
         action_type: 'ADD_MISSING_DEVICE',
-        element_ref: null,
+        element_ref: 'source-1',
         modal_type: 'SourceModal',
-        payload_hint: { required: 'source' },
+        payload_hint: null,
+        surface_descriptor: resolveFixActionSurface({
+          code: 'source.missing_short_circuit',
+          action_type: 'ADD_MISSING_DEVICE',
+          element_ref: 'source-1',
+          modal_type: 'SourceModal',
+          step_hint: 'K2',
+          payload_hint: null,
+        }),
       },
     };
 
-    expect(issue.fix_action).not.toBeNull();
-    expect(issue.fix_action!.action_type).toBe('ADD_MISSING_DEVICE');
-    // Bridge resolves modal_type
-    expect(BACKEND_MODAL_TYPE_MAP[issue.fix_action!.modal_type!]).toBeDefined();
-  });
-
-  it('BLOCKER issue without fix_action still has element_ref for navigation', () => {
-    const issue: ReadinessIssue = {
-      code: 'E003',
-      severity: 'BLOCKER',
-      element_ref: 'bus-island-1',
-      element_refs: ['bus-island-1', 'bus-island-2'],
-      message_pl: 'Wyspa sieci odcięta od źródła zasilania.',
-      wizard_step_hint: 'K4',
-      suggested_fix: 'Połącz odizolowane szyny.',
-      fix_action: null,
-    };
-
-    // Even without fix_action, element_ref enables "Przejdź" button
-    expect(issue.element_ref).toBeTruthy();
-  });
-
-  it('all severity levels are Polish', () => {
-    const severityLabels: Record<string, string> = {
-      BLOCKER: 'Blokujące',
-      IMPORTANT: 'Ważne',
-      INFO: 'Informacja',
-    };
-    expect(severityLabels.BLOCKER).not.toMatch(/^[A-Z][a-z]+$/); // Not English
-    expect(severityLabels.IMPORTANT).not.toBe('Important');
-    expect(severityLabels.INFO).not.toBe('Info');
+    expect(issue.fix_action?.surface_descriptor?.operation).toBe('add_grid_source_sn');
+    expect(getOperationSurfaceByOp(issue.fix_action!.surface_descriptor!.operation!)).toBeDefined();
   });
 });

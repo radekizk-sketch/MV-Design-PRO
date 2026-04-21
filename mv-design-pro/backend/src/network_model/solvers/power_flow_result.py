@@ -3,6 +3,7 @@
 Ten moduł definiuje struktury wyników Power Flow zgodne ze specyfikacją P20a.
 Po wprowadzeniu Result API jest zamrożone - wszelkie zmiany wymagają nowej wersji.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ class PowerFlowBusResult:
         p_injected_mw: Moc czynna wstrzyknięta [MW] (ujemna = pobór).
         q_injected_mvar: Moc bierna wstrzyknięta [Mvar] (ujemna = pobór).
     """
+
     bus_id: str
     v_pu: float
     angle_deg: float
@@ -52,6 +54,7 @@ class PowerFlowBranchResult:
         losses_p_mw: Straty mocy czynnej [MW].
         losses_q_mvar: Straty mocy biernej [Mvar].
     """
+
     branch_id: str
     p_from_mw: float
     q_from_mvar: float
@@ -84,6 +87,7 @@ class PowerFlowSummary:
         slack_p_mw: Moc czynna węzła bilansującego [MW].
         slack_q_mvar: Moc bierna węzła bilansującego [Mvar].
     """
+
     total_losses_p_mw: float
     total_losses_q_mvar: float
     min_v_pu: float
@@ -120,6 +124,7 @@ class PowerFlowResultV1:
         branch_results: Lista wyników dla gałęzi (deterministycznie posortowana).
         summary: Podsumowanie wyników.
     """
+
     result_version: str
     converged: bool
     iterations_count: int
@@ -215,8 +220,14 @@ def build_power_flow_result_v1(
     min_v = min(v_values) if v_values else 0.0
     max_v = max(v_values) if v_values else 0.0
     summary = PowerFlowSummary(
-        total_losses_p_mw=losses_total.real * base_mva if isinstance(losses_total, complex) else float(losses_total) * base_mva,
-        total_losses_q_mvar=losses_total.imag * base_mva if isinstance(losses_total, complex) else 0.0,
+        total_losses_p_mw=(
+            losses_total.real * base_mva
+            if isinstance(losses_total, complex)
+            else float(losses_total) * base_mva
+        ),
+        total_losses_q_mvar=(
+            losses_total.imag * base_mva if isinstance(losses_total, complex) else 0.0
+        ),
         min_v_pu=min_v,
         max_v_pu=max_v,
         slack_p_mw=slack_power_pu.real * base_mva,

@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # ROZDZIAŁ 5 — KONTRAKTY KANONICZNE SYSTEMU: KREATOR, KATALOGI, STACJE, ZABEZPIECZENIA, MODELE NIEDOZWOLONE
 
 **Wersja:** 1.1 SUPPLEMENT
@@ -403,7 +409,7 @@ class Station:
 
 **Plik źródłowy:** `network_model/core/station.py:36–262`
 
-**KLUCZOWE:** Station jest **WYŁĄCZNIE logiczna** — NIE ma wpływu na obliczenia. Odpowiednik PowerFactory Substation folder.
+**KLUCZOWE:** Station jest **WYŁĄCZNIE logiczna** — NIE ma wpływu na obliczenia. Odpowiednik benchmark Substation folder.
 
 ### 5.7.3 Typy stacji (BINDING)
 
@@ -704,7 +710,7 @@ Każdy parametr MUSI być oznaczony: `ParameterSource.TYPE_REF` / `ParameterSour
 
 **DOMENA KONTRAKTÓW KANONICZNYCH SYSTEMU (§5.1–§5.12) JEST ZAMKNIĘTA.**
 
-Sekcje §5.1–§5.12 definiują kompletny kanon kontraktów systemowych MV-DESIGN-PRO na poziomie ETAP/PowerFactory.
+Sekcje §5.1–§5.12 definiują kompletny kanon kontraktów systemowych MV-DESIGN-PRO na poziomie benchmark/benchmark.
 Sekcje §5.13–§5.19 (SUPPLEMENT v1.1) formalizują warstwę katalogów typów jako jedyne źródło parametrów znamionowych.
 
 Dalsze modyfikacje wymagają ADR i wpisu do Macierzy Decyzji (AUDIT §9).
@@ -791,7 +797,7 @@ Przekładniki prądowe (CT) i napięciowe (VT) są **niezbędne** do:
 - koordynacji zabezpieczeń (punkt pomiarowy, nasycenie CT),
 - analizy White Box Protection (§2.17 — „źródło sygnału: CT/VT"),
 - walidacji kompatybilności zabezpieczenie ↔ przekładnik,
-- raportów ETAP-grade (kolumna „Źródło sygnału" w tabeli zabezpieczeń, §2.18).
+- raportów benchmark-grade (kolumna „Źródło sygnału" w tabeli zabezpieczeń, §2.18).
 
 **Wymagane pola CT (TO-BE):**
 
@@ -821,7 +827,7 @@ Przekładniki prądowe (CT) i napięciowe (VT) są **niezbędne** do:
 | `burden_va` | float | Obciążalność znamionowa [VA] |
 | `voltage_factor` | float \| None | Współczynnik napięciowy (1.2/1.5/1.9) |
 
-**Stan AS-IS:** CT/VT istnieją WYŁĄCZNIE jako symbole SVG na schemacie SLD (`frontend/src/ui/sld/etap_symbols/ct.svg`, `vt.svg`) — brak jakiejkolwiek reprezentacji danych.
+**Stan AS-IS:** CT/VT istnieją WYŁĄCZNIE jako symbole SVG na schemacie SLD (`frontend/src/ui/sld/canonical_symbols/ct.svg`, `vt.svg`) — brak jakiejkolwiek reprezentacji danych.
 
 ### 5.14.3 Domena uzupełniająca: Odbiory / LoadType (TO-BE)
 
@@ -834,7 +840,7 @@ Load (`enm/models.py:200`) NIE posiada `catalog_ref` i NIE istnieje `LoadType` w
 W trybie standardowym odbiory MOGĄ nie posiadać katalogu typów, ponieważ:
 - parametry odbioru (`P`, `Q`, `cosφ`) są danymi projektowymi (bilans mocy), nie konstrukcyjnymi,
 - odbiory w sieciach SN są zazwyczaj agregowane (moc stacji transformatorowej), nie modelowane per urządzenie,
-- ETAP / PowerFactory modelują odbiory przez moc + model (PQ/ZIP), nie przez typ katalogowy.
+- benchmark / benchmark modelują odbiory przez moc + model (PQ/ZIP), nie przez typ katalogowy.
 
 Opcjonalny `LoadType` (TO-BE) jest dopuszczalny jako rozszerzenie — np. dla powtarzalnych profili odbiorów w projektach typowych.
 
@@ -874,7 +880,7 @@ Każdy typ w katalogu MUSI zawierać:
 | `status` | `Literal["active", "retired"]` | Status aktywności typu | ❌ BRAK — TO-BE |
 | `created_at` | str (ISO 8601) | Data wprowadzenia do katalogu | ❌ BRAK — TO-BE |
 
-**Uzasadnienie:** ETAP i PowerFactory posiadają zarządzanie wersjami typów. Typ „wycofany" (retired) pozostaje dostępny w istniejących projektach, ale NIE jest oferowany przy tworzeniu nowych instancji. Pozwala to na migrację bez utraty danych historycznych.
+**Uzasadnienie:** benchmark i benchmark posiadają zarządzanie wersjami typów. Typ „wycofany" (retired) pozostaje dostępny w istniejących projektach, ale NIE jest oferowany przy tworzeniu nowych instancji. Pozwala to na migrację bez utraty danych historycznych.
 
 ### 5.15.3 Pola domenowe — per kategoria (AS-IS)
 
@@ -1158,3 +1164,4 @@ Dalsze modyfikacje wymagają ADR i wpisu do Macierzy Decyzji (AUDIT §9).
 ---
 
 **KONIEC ROZDZIAŁU 5**
+

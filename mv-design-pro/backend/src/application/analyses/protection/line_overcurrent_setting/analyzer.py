@@ -43,26 +43,26 @@ METHODOLOGY (from lecture materials):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
 from .models import (
+    GenerationSourceType,
     LineOvercurrentSettingInput,
     LineOvercurrentSettingResult,
+    LineOvercurrentVerdict,
+    LocalGenerationDiagnostic,
     SelectivityCriterionResult,
     SensitivityCriterionResult,
-    ThermalCriterionResult,
-    SPZBlockingResult,
-    LocalGenerationDiagnostic,
     SettingWindow,
-    LineOvercurrentVerdict,
+    SPZBlockingResult,
     SPZMode,
-    GenerationSourceType,
+    ThermalCriterionResult,
 )
 from .spz_lookup import (
-    SPZLookupTable,
     SPZ_THRESHOLD_TABLE_DEFAULT,
+    SPZLookupTable,
     get_spz_blocking_decision,
 )
 
@@ -103,21 +103,23 @@ class LineOvercurrentSettingAnalyzer:
         trace_steps: list[dict[str, Any]] = []
 
         # Step 1: Log input data
-        trace_steps.append({
-            "step": "input_validation",
-            "description_pl": "Walidacja danych wejściowych",
-            "inputs": {
-                "line_id": input_data.line_id,
-                "line_name": input_data.line_name,
-                "ct_ratio": input_data.ct_ratio,
-                "ik_max_busbars_a": input_data.ik_max_busbars_a,
-                "ik_min_busbars_a": input_data.ik_min_busbars_a,
-                "ik_max_next_protection_a": input_data.ik_max_next_protection_a,
-            },
-            "outputs": {
-                "validation_passed": True,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "input_validation",
+                "description_pl": "Walidacja danych wejściowych",
+                "inputs": {
+                    "line_id": input_data.line_id,
+                    "line_name": input_data.line_name,
+                    "ct_ratio": input_data.ct_ratio,
+                    "ik_max_busbars_a": input_data.ik_max_busbars_a,
+                    "ik_min_busbars_a": input_data.ik_min_busbars_a,
+                    "ik_max_next_protection_a": input_data.ik_max_next_protection_a,
+                },
+                "outputs": {
+                    "validation_passed": True,
+                },
+            }
+        )
 
         # Step 2: Selectivity criterion
         selectivity = self._check_selectivity(input_data, trace_steps)
@@ -168,16 +170,18 @@ class LineOvercurrentSettingAnalyzer:
         )
 
         # Step 10: Finalize
-        trace_steps.append({
-            "step": "finalize",
-            "description_pl": "Finalizacja analizy nastaw I>>",
-            "inputs": {},
-            "outputs": {
-                "overall_verdict": overall_verdict.value,
-                "window_valid": setting_window.window_valid,
-                "recommendations_count": len(recommendations),
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "finalize",
+                "description_pl": "Finalizacja analizy nastaw I>>",
+                "inputs": {},
+                "outputs": {
+                    "overall_verdict": overall_verdict.value,
+                    "window_valid": setting_window.window_valid,
+                    "recommendations_count": len(recommendations),
+                },
+            }
+        )
 
         return LineOvercurrentSettingResult(
             run_id=run_id,
@@ -231,25 +235,27 @@ class LineOvercurrentSettingAnalyzer:
             verdict = LineOvercurrentVerdict.ERROR
             notes_pl = "Brak danych o prądzie zwarciowym w punkcie kolejnego zabezpieczenia"
 
-        trace_steps.append({
-            "step": "selectivity_criterion",
-            "description_pl": "Kryterium selektywności I>>",
-            "formula": "I_nast >= kb × Ik_max(next) / θi",
-            "inputs": {
-                "kb": kb,
-                "ik_max_next_protection_a": ik_max_next,
-                "ct_ratio": ct_ratio,
-            },
-            "calculation": {
-                "i_min_primary_a": i_min_primary,
-                "i_min_secondary_a": i_min_secondary,
-            },
-            "outputs": {
-                "i_nast_min_primary_a": i_min_primary,
-                "i_nast_min_secondary_a": i_min_secondary,
-                "verdict": verdict.value,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "selectivity_criterion",
+                "description_pl": "Kryterium selektywności I>>",
+                "formula": "I_nast >= kb × Ik_max(next) / θi",
+                "inputs": {
+                    "kb": kb,
+                    "ik_max_next_protection_a": ik_max_next,
+                    "ct_ratio": ct_ratio,
+                },
+                "calculation": {
+                    "i_min_primary_a": i_min_primary,
+                    "i_min_secondary_a": i_min_secondary,
+                },
+                "outputs": {
+                    "i_nast_min_primary_a": i_min_primary,
+                    "i_nast_min_secondary_a": i_min_secondary,
+                    "verdict": verdict.value,
+                },
+            }
+        )
 
         return SelectivityCriterionResult(
             i_min_secondary_a=i_min_secondary,
@@ -299,25 +305,27 @@ class LineOvercurrentSettingAnalyzer:
             verdict = LineOvercurrentVerdict.ERROR
             notes_pl = "Brak danych o minimalnym prądzie zwarciowym na szynach"
 
-        trace_steps.append({
-            "step": "sensitivity_criterion",
-            "description_pl": "Kryterium czułości I>>",
-            "formula": "I_nast <= Ik_min(busbars) / (kc × θi)",
-            "inputs": {
-                "kc": kc,
-                "ik_min_busbars_a": ik_min,
-                "ct_ratio": ct_ratio,
-            },
-            "calculation": {
-                "i_max_primary_a": i_max_primary,
-                "i_max_secondary_a": i_max_secondary,
-            },
-            "outputs": {
-                "i_nast_max_primary_a": i_max_primary,
-                "i_nast_max_secondary_a": i_max_secondary,
-                "verdict": verdict.value,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "sensitivity_criterion",
+                "description_pl": "Kryterium czułości I>>",
+                "formula": "I_nast <= Ik_min(busbars) / (kc × θi)",
+                "inputs": {
+                    "kc": kc,
+                    "ik_min_busbars_a": ik_min,
+                    "ct_ratio": ct_ratio,
+                },
+                "calculation": {
+                    "i_max_primary_a": i_max_primary,
+                    "i_max_secondary_a": i_max_secondary,
+                },
+                "outputs": {
+                    "i_nast_max_primary_a": i_max_primary,
+                    "i_nast_max_secondary_a": i_max_secondary,
+                    "verdict": verdict.value,
+                },
+            }
+        )
 
         return SensitivityCriterionResult(
             i_max_secondary_a=i_max_secondary,
@@ -378,29 +386,31 @@ class LineOvercurrentSettingAnalyzer:
             verdict = LineOvercurrentVerdict.ERROR
             notes_pl = "Brak danych o wytrzymałości cieplnej przewodu"
 
-        trace_steps.append({
-            "step": "thermal_criterion",
-            "description_pl": "Kryterium wytrzymałości cieplnej I>>",
-            "formula": "I_nast <= kbth × Ithn / (sqrt(tk) × θi)",
-            "inputs": {
-                "kbth": kbth,
-                "ithn_a": ithn,
-                "tk_s": tk,
-                "ct_ratio": ct_ratio,
-                "spz_mode": input_data.spz_config.mode.value,
-            },
-            "calculation": {
-                "sqrt_tk": math.sqrt(tk) if tk > 0 else 0,
-                "ithdop_a": ithdop,
-                "i_max_primary_a": i_max_primary,
-                "i_max_secondary_a": i_max_secondary,
-            },
-            "outputs": {
-                "i_nast_max_primary_a": i_max_primary,
-                "i_nast_max_secondary_a": i_max_secondary,
-                "verdict": verdict.value,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "thermal_criterion",
+                "description_pl": "Kryterium wytrzymałości cieplnej I>>",
+                "formula": "I_nast <= kbth × Ithn / (sqrt(tk) × θi)",
+                "inputs": {
+                    "kbth": kbth,
+                    "ithn_a": ithn,
+                    "tk_s": tk,
+                    "ct_ratio": ct_ratio,
+                    "spz_mode": input_data.spz_config.mode.value,
+                },
+                "calculation": {
+                    "sqrt_tk": math.sqrt(tk) if tk > 0 else 0,
+                    "ithdop_a": ithdop,
+                    "i_max_primary_a": i_max_primary,
+                    "i_max_secondary_a": i_max_secondary,
+                },
+                "outputs": {
+                    "i_nast_max_primary_a": i_max_primary,
+                    "i_nast_max_secondary_a": i_max_secondary,
+                    "verdict": verdict.value,
+                },
+            }
+        )
 
         return ThermalCriterionResult(
             i_max_secondary_a=i_max_secondary,
@@ -454,24 +464,26 @@ class LineOvercurrentSettingAnalyzer:
             notes_pl = f"SPZ dozwolone: {reason}"
             blocking_reason = None
 
-        trace_steps.append({
-            "step": "spz_blocking_check",
-            "description_pl": "Analiza blokady SPZ od I>>",
-            "inputs": {
-                "i_fault_start_a": i_fault_start,
-                "tk_single_s": tk_single,
-                "spz_mode": input_data.spz_config.mode.value,
-            },
-            "lookup": {
-                "table_name": lookup_table.name,
-                "threshold_ka": i_threshold / 1000.0,
-            },
-            "outputs": {
-                "block_spz": block_spz,
-                "reason_pl": reason,
-                "verdict": verdict.value,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "spz_blocking_check",
+                "description_pl": "Analiza blokady SPZ od I>>",
+                "inputs": {
+                    "i_fault_start_a": i_fault_start,
+                    "tk_single_s": tk_single,
+                    "spz_mode": input_data.spz_config.mode.value,
+                },
+                "lookup": {
+                    "table_name": lookup_table.name,
+                    "threshold_ka": i_threshold / 1000.0,
+                },
+                "outputs": {
+                    "block_spz": block_spz,
+                    "reason_pl": reason,
+                    "verdict": verdict.value,
+                },
+            }
+        )
 
         return SPZBlockingResult(
             spz_allowed=not block_spz,
@@ -515,12 +527,8 @@ class LineOvercurrentSettingAnalyzer:
                         f"Wkład E-L stanowi {el_ratio*100:.1f}% prądu zwarciowego - "
                         f"ryzyko niepożądanej blokady ZSZ"
                     )
-                    recommendations.append(
-                        "Rozważ zastosowanie blokady kierunkowej dla ZSZ"
-                    )
-                    recommendations.append(
-                        "Sprawdź nastawy ZSZ pod kątem wkładu od E-L"
-                    )
+                    recommendations.append("Rozważ zastosowanie blokady kierunkowej dla ZSZ")
+                    recommendations.append("Sprawdź nastawy ZSZ pod kątem wkładu od E-L")
 
         # Source-specific recommendations
         if el_config.source_type == GenerationSourceType.INVERTER:
@@ -528,12 +536,8 @@ class LineOvercurrentSettingAnalyzer:
                 "Źródło falownikowe - ograniczony wkład do prądów zwarciowych (typowo 1.1-1.5 In)"
             )
         elif el_config.source_type == GenerationSourceType.SYNCHRONOUS:
-            recommendations.append(
-                "Generator synchroniczny - znaczący wkład do prądów zwarciowych"
-            )
-            recommendations.append(
-                "Uwzględnij wkład E-L w analizie czułości zabezpieczeń"
-            )
+            recommendations.append("Generator synchroniczny - znaczący wkład do prądów zwarciowych")
+            recommendations.append("Uwzględnij wkład E-L w analizie czułości zabezpieczeń")
 
         # Determine verdict
         if zsz_risk:
@@ -552,26 +556,28 @@ class LineOvercurrentSettingAnalyzer:
             verdict = LineOvercurrentVerdict.PASS
             notes_pl = "Tryb E-L aktywny, ale brak wkładu od generacji lokalnej"
 
-        trace_steps.append({
-            "step": "local_generation_diagnostic",
-            "description_pl": "Diagnostyka trybu sieci z generacją lokalną (E-L)",
-            "inputs": {
-                "el_mode_active": el_config.enabled,
-                "source_type": el_config.source_type.value if el_config.source_type else None,
-                "ik_el_contribution_a": ik_el,
-                "zsz_blocking_risk_check": el_config.zsz_blocking_risk,
-            },
-            "calculation": {
-                "ik_system_a": ik_system,
-                "ik_total_a": ik_total,
-                "el_ratio": ik_el / ik_total if ik_total > 0 else 0,
-            },
-            "outputs": {
-                "zsz_risk": zsz_risk,
-                "recommendations_count": len(recommendations),
-                "verdict": verdict.value,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "local_generation_diagnostic",
+                "description_pl": "Diagnostyka trybu sieci z generacją lokalną (E-L)",
+                "inputs": {
+                    "el_mode_active": el_config.enabled,
+                    "source_type": el_config.source_type.value if el_config.source_type else None,
+                    "ik_el_contribution_a": ik_el,
+                    "zsz_blocking_risk_check": el_config.zsz_blocking_risk,
+                },
+                "calculation": {
+                    "ik_system_a": ik_system,
+                    "ik_total_a": ik_total,
+                    "el_ratio": ik_el / ik_total if ik_total > 0 else 0,
+                },
+                "outputs": {
+                    "zsz_risk": zsz_risk,
+                    "recommendations_count": len(recommendations),
+                    "verdict": verdict.value,
+                },
+            }
+        )
 
         return LocalGenerationDiagnostic(
             el_mode_active=el_config.enabled,
@@ -617,24 +623,26 @@ class LineOvercurrentSettingAnalyzer:
         # Check if window is valid
         window_valid = i_max_primary > i_min_primary
 
-        trace_steps.append({
-            "step": "setting_window_calculation",
-            "description_pl": "Wyznaczenie okna nastaw I>>",
-            "inputs": {
-                "selectivity_min_a": i_min_primary,
-                "sensitivity_max_a": sensitivity.i_max_primary_a,
-                "thermal_max_a": thermal.i_max_primary_a,
-            },
-            "calculation": {
-                "i_min_primary_a": i_min_primary,
-                "i_max_primary_a": i_max_primary,
-                "limiting_max": limiting_max,
-            },
-            "outputs": {
-                "window_valid": window_valid,
-                "window_width_a": i_max_primary - i_min_primary,
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "setting_window_calculation",
+                "description_pl": "Wyznaczenie okna nastaw I>>",
+                "inputs": {
+                    "selectivity_min_a": i_min_primary,
+                    "sensitivity_max_a": sensitivity.i_max_primary_a,
+                    "thermal_max_a": thermal.i_max_primary_a,
+                },
+                "calculation": {
+                    "i_min_primary_a": i_min_primary,
+                    "i_max_primary_a": i_max_primary,
+                    "limiting_max": limiting_max,
+                },
+                "outputs": {
+                    "window_valid": window_valid,
+                    "window_width_a": i_max_primary - i_min_primary,
+                },
+            }
+        )
 
         return SettingWindow(
             i_min_secondary_a=i_min_secondary,

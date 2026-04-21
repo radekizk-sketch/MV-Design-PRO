@@ -11,12 +11,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
-from pydantic import BaseModel
-
 from api.dependencies import get_uow_factory
 from application.project_archive.service import ProjectArchiveService
 from domain.project_archive import ArchiveError
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/projects", tags=["project-archive"])
 
@@ -110,9 +109,7 @@ def export_project(
     return Response(
         content=archive_bytes,
         media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="projekt_{project_id}.mvdp.zip"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="projekt_{project_id}.mvdp.zip"'},
     )
 
 

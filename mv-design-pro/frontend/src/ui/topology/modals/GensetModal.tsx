@@ -35,9 +35,11 @@ export interface GensetFormData {
   source_name: string | null;
 }
 
-interface GensetModalProps {
+export interface GensetModalProps {
   isOpen: boolean;
   mode: 'create' | 'edit';
+  embedded?: boolean;
+  hideHeader?: boolean;
   initialData?: Partial<GensetFormData>;
   fieldOptions: Array<{ ref_id: string; name: string; kind: string }>;
   catalogEntries?: CatalogEntry[];
@@ -102,7 +104,7 @@ const EMPTY_FORM: GensetFormData = {
 };
 
 export function GensetModal({
-  isOpen, mode, initialData, fieldOptions = [],
+  isOpen, mode, embedded: _embedded = false, hideHeader: _hideHeader = false, initialData, fieldOptions = [],
   catalogEntries = [], switchCatalogEntries: _switchCatalogEntries = [],
   onSubmit, onCancel,
 }: GensetModalProps) {

@@ -23,26 +23,22 @@ NOT SUPPORTED (P15b+):
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from typing import Any
 
 from domain.protection_analysis import (
     ProtectionEvaluation,
     ProtectionResult,
-    ProtectionResultSummary,
     ProtectionTrace,
     ProtectionTraceStep,
     TripState,
     compute_result_summary,
 )
-from domain.study_case import ProtectionConfig
 from network_model.catalog.types import (
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
 )
-
 
 # =============================================================================
 # CURVE COEFFICIENTS (IEC 60255-151:2009)
@@ -88,6 +84,7 @@ class ProtectionDevice:
     - source_reference: Datasheet/catalog reference
     - verification_status: VERIFIED, UNVERIFIED, DEPRECATED
     """
+
     device_id: str
     device_type_ref: str | None
     protected_element_ref: str  # bus_id or branch_id
@@ -100,7 +97,7 @@ class ProtectionDevice:
     manufacturer: str | None = None
     vendor_curve_code: str | None = None
     curve_origin: str | None = None  # IEC_STANDARD, DERIVED_VENDOR, VENDOR_NATIVE
-    iec_variant: str | None = None   # SI, VI, EI, LTI
+    iec_variant: str | None = None  # SI, VI, EI, LTI
     source_reference: str | None = None
     verification_status: str | None = None  # VERIFIED, UNVERIFIED, DEPRECATED
 
@@ -136,6 +133,7 @@ class FaultPoint:
     """
     Fault point from SC analysis results.
     """
+
     fault_id: str  # Fault location ID (typically bus_id)
     i_fault_a: float  # Initial short-circuit current Ik'' [A]
     fault_type: str  # 3F, 1F, 2F, 2F+G
@@ -153,6 +151,7 @@ class ProtectionEvaluationInput:
     """
     Complete input for protection evaluation.
     """
+
     run_id: str
     sc_run_id: str
     protection_case_id: str
@@ -213,7 +212,7 @@ def compute_iec_inverse_time(
         return None  # No trip - current below pickup
 
     ratio = i_fault_a / i_pickup_a
-    denominator = (ratio ** b) - 1.0
+    denominator = (ratio**b) - 1.0
 
     if denominator <= 0:
         return None
@@ -278,12 +277,14 @@ class ProtectionEvaluationEngine:
     Evaluates protection devices against fault currents using curve characteristics.
     """
 
-    SUPPORTED_CURVE_KINDS = frozenset([
-        "inverse",
-        "very_inverse",
-        "extremely_inverse",
-        "definite_time",
-    ])
+    SUPPORTED_CURVE_KINDS = frozenset(
+        [
+            "inverse",
+            "very_inverse",
+            "extremely_inverse",
+            "definite_time",
+        ]
+    )
 
     def evaluate(
         self,
@@ -301,18 +302,20 @@ class ProtectionEvaluationEngine:
         trace_steps: list[ProtectionTraceStep] = []
 
         # Step 1: Log input validation
-        trace_steps.append(ProtectionTraceStep(
-            step="input_validation",
-            description_pl="Walidacja danych wejściowych",
-            inputs={
-                "sc_run_id": evaluation_input.sc_run_id,
-                "protection_case_id": evaluation_input.protection_case_id,
-                "template_ref": evaluation_input.template_ref,
-                "device_count": len(evaluation_input.devices),
-                "fault_count": len(evaluation_input.faults),
-            },
-            outputs={"status": "VALID"},
-        ))
+        trace_steps.append(
+            ProtectionTraceStep(
+                step="input_validation",
+                description_pl="Walidacja danych wejściowych",
+                inputs={
+                    "sc_run_id": evaluation_input.sc_run_id,
+                    "protection_case_id": evaluation_input.protection_case_id,
+                    "template_ref": evaluation_input.template_ref,
+                    "device_count": len(evaluation_input.devices),
+                    "fault_count": len(evaluation_input.faults),
+                },
+                outputs={"status": "VALID"},
+            )
+        )
 
         # Step 2: Evaluate each device against each fault
         evaluations: list[ProtectionEvaluation] = []
@@ -327,12 +330,14 @@ class ProtectionEvaluationEngine:
         evaluations_tuple = tuple(evaluations)
         summary = compute_result_summary(evaluations_tuple)
 
-        trace_steps.append(ProtectionTraceStep(
-            step="summary_computation",
-            description_pl="Obliczenie podsumowania wyników",
-            inputs={"evaluation_count": len(evaluations_tuple)},
-            outputs=summary.to_dict(),
-        ))
+        trace_steps.append(
+            ProtectionTraceStep(
+                step="summary_computation",
+                description_pl="Obliczenie podsumowania wyników",
+                inputs={"evaluation_count": len(evaluations_tuple)},
+                outputs=summary.to_dict(),
+            )
+        )
 
         # Build result
         result = ProtectionResult(
@@ -628,8 +633,8 @@ def _resolve_effective_settings(
     """
     effective = {}
 
-    for field in template.setting_fields or []:
-        field_name = field.get("name", "")
+    for setting_field in template.setting_fields or []:
+        field_name = setting_field.get("name", "")
         if not field_name:
             continue
 
@@ -637,15 +642,17 @@ def _resolve_effective_settings(
         if field_name in overrides:
             override_data = overrides[field_name]
             if isinstance(override_data, dict):
-                effective[field_name] = override_data.get("value", field.get("default", field.get("min", 0)))
+                effective[field_name] = override_data.get(
+                    "value", setting_field.get("default", setting_field.get("min", 0))
+                )
             else:
                 effective[field_name] = override_data
         # Fall back to default
-        elif "default" in field:
-            effective[field_name] = field["default"]
+        elif "default" in setting_field:
+            effective[field_name] = setting_field["default"]
         # Fall back to minimum
-        elif "min" in field:
-            effective[field_name] = field["min"]
+        elif "min" in setting_field:
+            effective[field_name] = setting_field["min"]
 
     return effective
 
@@ -703,7 +710,6 @@ def build_device_from_vendor_curve(
     """
     from domain.protection_vendors import (
         VENDOR_CURVE_REGISTRY,
-        VendorCurveDefinition,
         resolve_vendor_to_iec_params,
     )
 
@@ -767,4 +773,5 @@ def list_supported_vendor_curves() -> list[str]:
         List of vendor curve codes (e.g., ["ABB_SI", "ABB_VI", ...])
     """
     from domain.protection_vendors import VENDOR_CURVE_REGISTRY
+
     return list(VENDOR_CURVE_REGISTRY.keys())

@@ -1,5 +1,5 @@
 /**
- * trasowanieOrtogonalne.ts — Etap 8: Ortogonalne trasowanie polaczen (Manhattan routing).
+ * trasowanieOrtogonalne.ts — Krok 8: Ortogonalne trasowanie polaczen (Manhattan routing).
  *
  * ALGORYTM:
  * 1. Dla kazdego polaczenia: znajdz port poczatkowy i koncowy.

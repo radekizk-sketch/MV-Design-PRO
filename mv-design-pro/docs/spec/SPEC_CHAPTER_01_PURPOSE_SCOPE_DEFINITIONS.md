@@ -1,3 +1,9 @@
+> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # SPECYFIKACJA KANONICZNA MV-DESIGN-PRO
 # ROZDZIAŁ 1: CEL, ZAKRES I DEFINICJE KANONICZNE
 
@@ -32,7 +38,7 @@ Rozdział ten:
 
 ### 1.2.1 Definicja kanoniczna
 
-MV-DESIGN-PRO jest profesjonalnym narzędziem inżynierskim klasy **ETAP / DIgSILENT PowerFactory**, przeznaczonym do:
+MV-DESIGN-PRO jest profesjonalnym narzędziem inżynierskim klasy **benchmark / DIgSILENT benchmark**, przeznaczonym do:
 
 1. **Modelowania fizycznego sieci elektroenergetycznych** na poziomach napięcia SN (średnie napięcie), nn (niskie napięcie) oraz transformacji WN/SN (wysokie napięcie / średnie napięcie).
 
@@ -60,9 +66,9 @@ MV-DESIGN-PRO jest profesjonalnym narzędziem inżynierskim klasy **ETAP / DIgSI
 
 ### 1.2.2 Zgodność architektoniczna
 
-System jest architektonicznie zgodny z wzorcem **DIgSILENT PowerFactory**:
+System jest architektonicznie zgodny z wzorcem **DIgSILENT benchmark**:
 
-| Zasada PowerFactory | Odpowiednik w MV-DESIGN-PRO |
+| Zasada benchmark | Odpowiednik w MV-DESIGN-PRO |
 |---|---|
 | Jeden jawny model sieci per projekt | ENM (EnergyNetworkModel) — singleton |
 | Wiele przypadków obliczeniowych | Study Case — scenariusze obliczeniowe |
@@ -364,7 +370,7 @@ instancja ENM = TYP(katalog) + parametry_zmienne(kreator) + [override(tryb_ekspe
 
 **Czego Bus NIE zawiera:** `node_type`, `voltage_magnitude_pu`, `voltage_angle_rad`, `active_power_mw`, `reactive_power_mvar` — to parametry solverowe, przypisywane po mapowaniu ENM → NetworkGraph.
 
-**Odpowiednik PowerFactory:** Terminal.
+**Odpowiednik benchmark:** Terminal.
 
 ---
 
@@ -614,3 +620,4 @@ Niezgodność dowolnego rozdziału szczegółowego z Rozdziałem 1 unieważnia s
 ---
 
 *Dokument kanoniczny. Wersja 1.0. Zatwierdzenie wymagane przed przejściem do kolejnych rozdziałów.*
+

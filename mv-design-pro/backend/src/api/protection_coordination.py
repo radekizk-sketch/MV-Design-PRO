@@ -21,28 +21,25 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
-
 from application.analyses.protection.coordination import (
-    OvercurrentCoordinationAnalyzer,
-    CoordinationInput,
     CoordinationConfig,
+    CoordinationInput,
+    OvercurrentCoordinationAnalyzer,
 )
 from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
 from domain.protection_device import (
-    ProtectionDevice,
-    ProtectionDeviceType,
+    CurveStandard,
     OvercurrentProtectionSettings,
     OvercurrentStageSettings,
     ProtectionCurveSettings,
-    CurveStandard,
+    ProtectionDevice,
+    ProtectionDeviceType,
 )
-
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/protection-coordination", tags=["protection-coordination"])
 
@@ -123,7 +120,9 @@ class CoordinationConfigRequest(BaseModel):
     relay_overtravel_s: float = Field(0.05, ge=0, description="Overtravel [s]")
     safety_factor_s: float = Field(0.1, ge=0, description="Safety factor [s]")
     sensitivity_margin_pass: float = Field(1.5, ge=1.0, description="Sensitivity PASS threshold")
-    sensitivity_margin_marginal: float = Field(1.2, ge=1.0, description="Sensitivity MARGINAL threshold")
+    sensitivity_margin_marginal: float = Field(
+        1.2, ge=1.0, description="Sensitivity MARGINAL threshold"
+    )
     overload_margin_pass: float = Field(1.2, ge=1.0, description="Overload PASS threshold")
     overload_margin_marginal: float = Field(1.1, ge=1.0, description="Overload MARGINAL threshold")
 

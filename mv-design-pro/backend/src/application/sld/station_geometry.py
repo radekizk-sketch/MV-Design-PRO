@@ -11,12 +11,11 @@ Czyste funkcje: ENM + TopologyGraph → StationGeometry (deterministyczne).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 from enm.models import EnergyNetworkModel
-from enm.topology import TopologyGraph, TrunkSegment
-
+from enm.topology import TopologyGraph
 
 # ---------------------------------------------------------------------------
 # Dataclasses
@@ -177,17 +176,19 @@ def _compute_station_boxes(
         final_x = cx - width / 2
         final_y = cy - height / 2
 
-        boxes.append(StationBoundingBox(
-            substation_ref=sub.ref_id,
-            station_name=sub.name,
-            station_type=sub.station_type,
-            x=round(final_x, 1),
-            y=round(final_y, 1),
-            width=round(width, 1),
-            height=round(height, 1),
-            bus_refs=tuple(sorted(sub.bus_refs)),
-            bay_count=bay_counts.get(sub.ref_id, 0),
-        ))
+        boxes.append(
+            StationBoundingBox(
+                substation_ref=sub.ref_id,
+                station_name=sub.name,
+                station_type=sub.station_type,
+                x=round(final_x, 1),
+                y=round(final_y, 1),
+                width=round(width, 1),
+                height=round(height, 1),
+                bus_refs=tuple(sorted(sub.bus_refs)),
+                bay_count=bay_counts.get(sub.ref_id, 0),
+            )
+        )
 
     return boxes
 
@@ -204,18 +205,20 @@ def _compute_trunk_path(
         to_pos = bus_positions.get(trunk.to_bus_ref)
 
         if from_pos and to_pos:
-            segments.append(TrunkPathSegment(
-                branch_ref=trunk.branch_ref,
-                from_bus_ref=trunk.from_bus_ref,
-                to_bus_ref=trunk.to_bus_ref,
-                order=trunk.order,
-                from_x=round(from_pos[0], 1),
-                from_y=round(from_pos[1], 1),
-                to_x=round(to_pos[0], 1),
-                to_y=round(to_pos[1], 1),
-                length_km=trunk.length_km,
-                is_highlighted=True,
-            ))
+            segments.append(
+                TrunkPathSegment(
+                    branch_ref=trunk.branch_ref,
+                    from_bus_ref=trunk.from_bus_ref,
+                    to_bus_ref=trunk.to_bus_ref,
+                    order=trunk.order,
+                    from_x=round(from_pos[0], 1),
+                    from_y=round(from_pos[1], 1),
+                    to_x=round(to_pos[0], 1),
+                    to_y=round(to_pos[1], 1),
+                    length_km=trunk.length_km,
+                    is_highlighted=True,
+                )
+            )
 
     return segments
 
@@ -241,13 +244,15 @@ def _compute_entry_points(
         entry_x = round(box.x + box.width / 2, 1)
         entry_y = round(box.y, 1)
 
-        markers.append(EntryPointMarker(
-            substation_ref=sub.ref_id,
-            bus_ref=sub.entry_point_ref,
-            entry_side="top",
-            x=entry_x,
-            y=entry_y,
-            label=f"Wejście: {sub.name}",
-        ))
+        markers.append(
+            EntryPointMarker(
+                substation_ref=sub.ref_id,
+                bus_ref=sub.entry_point_ref,
+                entry_side="top",
+                x=entry_x,
+                y=entry_y,
+                label=f"Wejście: {sub.name}",
+            )
+        )
 
     return markers

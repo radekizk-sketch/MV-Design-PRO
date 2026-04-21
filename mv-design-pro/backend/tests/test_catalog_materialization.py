@@ -10,15 +10,10 @@ Covers:
 - Error handling for missing items
 """
 
-import hashlib
-import json
-
 import pytest
-
 from network_model.catalog.materialization import (
-    MaterializationResult,
-    materialize_catalog_binding,
     materialization_hash,
+    materialize_catalog_binding,
     validate_catalog_binding,
 )
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
@@ -26,9 +21,7 @@ from network_model.catalog.types import (
     MATERIALIZATION_CONTRACTS,
     CatalogBinding,
     CatalogNamespace,
-    TransformerType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -55,9 +48,9 @@ class TestMaterializationContracts:
         for ns in CatalogNamespace:
             if ns.value in exempt:
                 continue
-            assert ns.value in MATERIALIZATION_CONTRACTS, (
-                f"Missing MaterializationContract for {ns.value}"
-            )
+            assert (
+                ns.value in MATERIALIZATION_CONTRACTS
+            ), f"Missing MaterializationContract for {ns.value}"
 
     def test_trafo_sn_nn_includes_voltage_fields(self) -> None:
         """TRAFO_SN_NN contract MUST include voltage_hv_kv and voltage_lv_kv."""
@@ -79,16 +72,12 @@ class TestMaterializationContracts:
     def test_contracts_have_nonempty_solver_fields(self) -> None:
         """Every contract has at least one solver field."""
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
-            assert len(contract.solver_fields) > 0, (
-                f"Contract for {ns} has empty solver_fields"
-            )
+            assert len(contract.solver_fields) > 0, f"Contract for {ns} has empty solver_fields"
 
     def test_contracts_have_ui_fields(self) -> None:
         """Every contract has at least one UI field."""
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
-            assert len(contract.ui_fields) > 0, (
-                f"Contract for {ns} has empty ui_fields"
-            )
+            assert len(contract.ui_fields) > 0, f"Contract for {ns} has empty ui_fields"
 
 
 # ---------------------------------------------------------------------------
@@ -277,9 +266,7 @@ class TestMaterializationDeterminism:
         for i in range(99):
             result = materialize_catalog_binding(binding, catalog)
             h = materialization_hash(result.solver_fields)
-            assert h == first_hash, (
-                f"Materialization not deterministic at iteration {i + 2}"
-            )
+            assert h == first_hash, f"Materialization not deterministic at iteration {i + 2}"
 
     def test_hash_stability(self) -> None:
         """Materialization hash is stable for known input."""
@@ -297,9 +284,7 @@ class TestMaterializationDeterminism:
 class TestTransformerVoltageEnforcement:
     """Transformer types MUST have voltage_lv_kv > 0."""
 
-    def test_all_catalog_transformers_have_voltage_lv(
-        self, catalog: CatalogRepository
-    ) -> None:
+    def test_all_catalog_transformers_have_voltage_lv(self, catalog: CatalogRepository) -> None:
         """Every transformer in catalog has voltage_lv_kv > 0."""
         for trafo in catalog.list_transformer_types():
             assert trafo.voltage_lv_kv > 0, (
@@ -307,9 +292,7 @@ class TestTransformerVoltageEnforcement:
                 f"has voltage_lv_kv={trafo.voltage_lv_kv}"
             )
 
-    def test_all_catalog_transformers_have_voltage_hv(
-        self, catalog: CatalogRepository
-    ) -> None:
+    def test_all_catalog_transformers_have_voltage_hv(self, catalog: CatalogRepository) -> None:
         """Every transformer in catalog has voltage_hv_kv > 0."""
         for trafo in catalog.list_transformer_types():
             assert trafo.voltage_hv_kv > 0, (
@@ -317,9 +300,7 @@ class TestTransformerVoltageEnforcement:
                 f"has voltage_hv_kv={trafo.voltage_hv_kv}"
             )
 
-    def test_materialized_trafo_has_voltage_lv(
-        self, catalog: CatalogRepository
-    ) -> None:
+    def test_materialized_trafo_has_voltage_lv(self, catalog: CatalogRepository) -> None:
         """Materialized transformer solver_fields include voltage_lv_kv."""
         for trafo in catalog.list_transformer_types()[:3]:
             binding = CatalogBinding(

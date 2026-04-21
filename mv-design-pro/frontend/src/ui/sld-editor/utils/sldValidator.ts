@@ -3,32 +3,32 @@
  *
  * CANONICAL ALIGNMENT:
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 8: Walidacja
- * - AUDYT_SLD_ETAP.md: Wymagania naprawcze
- * - PR-SLD-ETAP-GEOMETRY-FULL: NO FLOATING SYMBOL validation
- * - PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL: ETAP/PowerFactory-grade topology validation
+ * - AUDYT_SLD_CANONICAL.md: Wymagania naprawcze
+ * - PR-SLD-CANONICAL-GEOMETRY-FULL: NO FLOATING SYMBOL validation
+ * - PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL: CANONICAL/Canonical-grade topology validation
  *
  * REGUŁY WALIDACJI:
  *
  * TOPOLOGICZNE:
  * - V-01: Każdy symbol ma elementId (brak orphan symbols)
- * - V-01b: Brak zduplikowanych elementId (N-03 ETAP)
+ * - V-01b: Brak zduplikowanych elementId (N-03 CANONICAL)
  * - V-02: Każdy element ma symbol (brak hidden elements)
  * - V-03: Połączenia port↔port są poprawne
  * - V-04: Brak izolowanych wysp bez źródła
  * - V-05: Minimum 1 źródło
- * - V-06: ETAP — Każde odgałęzienie SN MUSI mieć łącznik (wyłącznik/rozłącznik/reklozer)
- * - V-07: ETAP — Transformator SN/nn MUSI mieć wyłącznik SN przed transformatorem
+ * - V-06: CANONICAL — Każde odgałęzienie SN MUSI mieć łącznik (wyłącznik/rozłącznik/reklozer)
+ * - V-07: CANONICAL — Transformator SN/nn MUSI mieć wyłącznik SN przed transformatorem
  *
  * GEOMETRYCZNE:
  * - G-01: Symbole nie nakładają się
  * - G-02: Połączenia nie przechodzą przez symbole (opcjonalne)
  * - G-03: Pozycje na siatce
- * - G-04: NO FLOATING SYMBOL — żaden symbol nie może wisieć w powietrzu (ETAP rule)
+ * - G-04: NO FLOATING SYMBOL — żaden symbol nie może wisieć w powietrzu (CANONICAL rule)
  */
 
 import type { AnySldSymbol, BranchSymbol, SwitchSymbol } from '../types';
 import { getSymbolBoundingBox, doBoundingBoxesIntersect } from './geometry';
-import { ETAP_GEOMETRY } from '../../sld/sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../../sld/sldCanonicalStyle';
 
 // =============================================================================
 // TYPY
@@ -70,7 +70,7 @@ export interface ValidationResult {
 export interface ValidationOptions {
   /** Sprawdzaj orphan symbols (V-01) */
   checkOrphanSymbols?: boolean;
-  /** Sprawdzaj duplikaty elementId (V-01b) — N-03 ETAP */
+  /** Sprawdzaj duplikaty elementId (V-01b) — N-03 CANONICAL */
   checkDuplicateElementIds?: boolean;
   /** Sprawdzaj hidden elements (V-02) */
   checkHiddenElements?: boolean;
@@ -80,17 +80,17 @@ export interface ValidationOptions {
   checkIslands?: boolean;
   /** Sprawdzaj źródła (V-05) */
   checkSources?: boolean;
-  /** PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL: Sprawdzaj łączniki odgałęzień SN (V-06) */
+  /** PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL: Sprawdzaj łączniki odgałęzień SN (V-06) */
   checkSnBranchSwitching?: boolean;
-  /** PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL: Sprawdzaj wyłączniki transformatorów (V-07) */
+  /** PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL: Sprawdzaj wyłączniki transformatorów (V-07) */
   checkTransformerBreakers?: boolean;
   /** Sprawdzaj kolizje (G-01) */
   checkCollisions?: boolean;
   /** Sprawdzaj pozycje na siatce (G-03) */
   checkGridAlignment?: boolean;
-  /** PR-SLD-ETAP-GEOMETRY-FULL: Sprawdzaj floating symbols (G-04) */
+  /** PR-SLD-CANONICAL-GEOMETRY-FULL: Sprawdzaj floating symbols (G-04) */
   checkFloatingSymbols?: boolean;
-  /** PR-SLD-ETAP-GEOMETRY-FULL: Lista floating symbols z layout engine */
+  /** PR-SLD-CANONICAL-GEOMETRY-FULL: Lista floating symbols z layout engine */
   floatingSymbolIds?: string[];
   /** Rozmiar siatki dla G-03 */
   gridSize?: number;
@@ -106,11 +106,11 @@ const DEFAULT_OPTIONS: ValidationOptions = {
   checkConnections: true,
   checkIslands: true,
   checkSources: true,
-  checkSnBranchSwitching: true, // V-06: ETAP — odgałęzienia SN muszą mieć łącznik
-  checkTransformerBreakers: true, // V-07: ETAP — transformatory muszą mieć wyłącznik
+  checkSnBranchSwitching: true, // V-06: CANONICAL — odgałęzienia SN muszą mieć łącznik
+  checkTransformerBreakers: true, // V-07: CANONICAL — transformatory muszą mieć wyłącznik
   checkCollisions: true,
   checkGridAlignment: true,
-  checkFloatingSymbols: ETAP_GEOMETRY.validation.noFloatingSymbol, // PR-SLD-ETAP-GEOMETRY-FULL
+  checkFloatingSymbols: CANONICAL_GEOMETRY.validation.noFloatingSymbol, // PR-SLD-CANONICAL-GEOMETRY-FULL
   gridSize: 20,
 };
 
@@ -137,7 +137,7 @@ export function validateSld(
     issues.push(...checkOrphanSymbols(symbols));
   }
 
-  // V-01b: Duplicate elementIds (N-03 ETAP)
+  // V-01b: Duplicate elementIds (N-03 CANONICAL)
   if (opts.checkDuplicateElementIds) {
     issues.push(...checkDuplicateElementIds(symbols));
   }
@@ -162,12 +162,12 @@ export function validateSld(
     issues.push(...checkSources(symbols));
   }
 
-  // V-06: Odgałęzienia SN muszą mieć łącznik (PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL)
+  // V-06: Odgałęzienia SN muszą mieć łącznik (PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL)
   if (opts.checkSnBranchSwitching) {
     issues.push(...checkSnBranchSwitching(symbols));
   }
 
-  // V-07: Transformatory SN/nn muszą mieć wyłącznik SN (PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL)
+  // V-07: Transformatory SN/nn muszą mieć wyłącznik SN (PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL)
   if (opts.checkTransformerBreakers) {
     issues.push(...checkTransformerBreakers(symbols));
   }
@@ -182,7 +182,7 @@ export function validateSld(
     issues.push(...checkGridAlignment(symbols, opts.gridSize));
   }
 
-  // G-04: Floating symbols (PR-SLD-ETAP-GEOMETRY-FULL)
+  // G-04: Floating symbols (PR-SLD-CANONICAL-GEOMETRY-FULL)
   if (opts.checkFloatingSymbols) {
     issues.push(...checkFloatingSymbols(symbols, opts.floatingSymbolIds));
   }
@@ -230,13 +230,13 @@ function checkOrphanSymbols(symbols: AnySldSymbol[]): ValidationIssue[] {
 }
 
 // =============================================================================
-// V-01b: DUPLICATE ELEMENT IDS (N-03 ETAP)
+// V-01b: DUPLICATE ELEMENT IDS (N-03 CANONICAL)
 // =============================================================================
 
 /**
  * Sprawdź czy są zduplikowane elementId (bijection violation).
  *
- * N-03 ETAP: Kopiowanie/wklejanie musi tworzyć NOWE elementy modelu,
+ * N-03 CANONICAL: Kopiowanie/wklejanie musi tworzyć NOWE elementy modelu,
  * nie duplikować referencje do istniejących.
  */
 function checkDuplicateElementIds(symbols: AnySldSymbol[]): ValidationIssue[] {
@@ -504,11 +504,11 @@ function checkSources(symbols: AnySldSymbol[]): ValidationIssue[] {
 }
 
 // =============================================================================
-// V-06: ODGAŁĘZIENIA SN MUSZĄ MIEĆ ŁĄCZNIK (PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL)
+// V-06: ODGAŁĘZIENIA SN MUSZĄ MIEĆ ŁĄCZNIK (PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL)
 // =============================================================================
 
 /**
- * Voltage level type for ETAP topology validation.
+ * Voltage level type for CANONICAL topology validation.
  */
 type VoltageLevel = 'WN' | 'SN' | 'nN' | 'unknown';
 
@@ -550,9 +550,9 @@ function detectBusVoltageLevel(symbol: AnySldSymbol): VoltageLevel {
 }
 
 /**
- * PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL: Sprawdź czy każde odgałęzienie SN ma łącznik.
+ * PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL: Sprawdź czy każde odgałęzienie SN ma łącznik.
  *
- * ETAP RULE: Każde odgałęzienie od linii lub szyny SN MUSI mieć łącznik
+ * CANONICAL RULE: Każde odgałęzienie od linii lub szyny SN MUSI mieć łącznik
  * (wyłącznik / rozłącznik / reklozer). Brak łącznika = ERROR.
  */
 function checkSnBranchSwitching(symbols: AnySldSymbol[]): ValidationIssue[] {
@@ -638,13 +638,13 @@ function checkSnBranchSwitching(symbols: AnySldSymbol[]): ValidationIssue[] {
 }
 
 // =============================================================================
-// V-07: TRANSFORMATORY SN/nn MUSZĄ MIEĆ WYŁĄCZNIK SN (PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL)
+// V-07: TRANSFORMATORY SN/nn MUSZĄ MIEĆ WYŁĄCZNIK SN (PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL)
 // =============================================================================
 
 /**
- * PR-SLD-ETAP-TOPOLOGY-LAYOUT-FINAL: Sprawdź czy transformatory SN/nn mają wyłącznik SN.
+ * PR-SLD-CANONICAL-TOPOLOGY-LAYOUT-FINAL: Sprawdź czy transformatory SN/nn mają wyłącznik SN.
  *
- * ETAP RULE: Transformator SN/nn bez wyłącznika SN = ERROR.
+ * CANONICAL RULE: Transformator SN/nn bez wyłącznika SN = ERROR.
  * Każda stacja SN/nn (PV, BESS, FW, odbiorcza) MUSI zawierać wyłącznik SN transformatora.
  */
 function checkTransformerBreakers(symbols: AnySldSymbol[]): ValidationIssue[] {
@@ -707,7 +707,7 @@ function checkTransformerBreakers(symbols: AnySldSymbol[]): ValidationIssue[] {
       const connectsToTrafo =
         sw.fromNodeId === trafo.elementId || sw.toNodeId === trafo.elementId;
 
-      // For ETAP rule: breaker should be between SN bus and transformer
+      // For CANONICAL rule: breaker should be between SN bus and transformer
       // This means the switch should connect the SN bus to an intermediate node
       // that the transformer also connects to
 
@@ -795,13 +795,13 @@ function checkGridAlignment(symbols: AnySldSymbol[], gridSize: number): Validati
 }
 
 // =============================================================================
-// G-04: FLOATING SYMBOLS (PR-SLD-ETAP-GEOMETRY-FULL)
+// G-04: FLOATING SYMBOLS (PR-SLD-CANONICAL-GEOMETRY-FULL)
 // =============================================================================
 
 /**
- * PR-SLD-ETAP-GEOMETRY-FULL: Sprawdź czy są symbole "wiszące w powietrzu".
+ * PR-SLD-CANONICAL-GEOMETRY-FULL: Sprawdź czy są symbole "wiszące w powietrzu".
  *
- * ETAP RULE: Żaden symbol nie może wisieć — każdy musi być połączony
+ * CANONICAL RULE: Żaden symbol nie może wisieć — każdy musi być połączony
  * do głównej topologii (szyny, transformatora, źródła).
  *
  * This function checks:
@@ -829,7 +829,7 @@ function checkFloatingSymbols(
     issues.push({
       ruleId: 'G-04',
       severity: 'WARNING',
-      message: `Wykryto ${floatingSymbolIds.length} symboli wiszących w powietrzu (ETAP violation): ${floatingNames}`,
+      message: `Wykryto ${floatingSymbolIds.length} symboli wiszących w powietrzu (CANONICAL violation): ${floatingNames}`,
       symbolIds: floatingSymbolIds,
       suggestion: 'Połącz symbole z główną topologią (szyną, transformatorem lub źródłem) lub usuń je',
     });

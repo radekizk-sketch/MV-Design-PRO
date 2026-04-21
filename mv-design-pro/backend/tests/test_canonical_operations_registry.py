@@ -1,7 +1,7 @@
 """Tests for canonical operations registry.
 
 Ensures:
-- All 39 canonical operations are registered
+- All canonical operations are registered after unifying converter sources
 - Alias mapping works correctly
 - Readiness codes are complete (24+ codes)
 - Response contract structure is correct
@@ -10,27 +10,26 @@ Ensures:
 - Priority ordering is deterministic
 - Polish messages present for all codes
 """
-import pytest
+
 from domain.canonical_operations import (
-    CANONICAL_OPERATIONS,
     CANONICAL_OP_NAMES,
-    ALIAS_MAP,
+    CANONICAL_OPERATIONS,
     READINESS_CODES,
-    ReadinessLevel,
-    ReadinessArea,
     OperationCategory,
-    resolve_operation_name,
-    is_canonical_operation,
-    validate_operation_payload,
+    ReadinessArea,
+    ReadinessLevel,
     get_blockers_for_analysis,
+    is_canonical_operation,
+    resolve_operation_name,
+    validate_operation_payload,
 )
 
 
 class TestCanonicalOperationsRegistry:
     """Test canonical operations completeness."""
 
-    def test_minimum_39_operations(self):
-        assert len(CANONICAL_OPERATIONS) >= 39
+    def test_minimum_38_operations(self):
+        assert len(CANONICAL_OPERATIONS) >= 38
 
     def test_canonical_op_names_frozen(self):
         assert isinstance(CANONICAL_OP_NAMES, frozenset)
@@ -38,6 +37,7 @@ class TestCanonicalOperationsRegistry:
     def test_all_sn_operations_present(self):
         sn_ops = {
             "add_grid_source_sn",
+            "add_sn_bay",
             "continue_trunk_segment_sn",
             "insert_station_on_segment_sn",
             "start_branch_segment_sn",
@@ -50,8 +50,7 @@ class TestCanonicalOperationsRegistry:
 
     def test_all_oze_operations_present(self):
         oze_ops = {
-            "add_pv_inverter_nn",
-            "add_bess_inverter_nn",
+            "add_converter_source",
             "add_genset_nn",
             "add_ups_nn",
         }
@@ -60,9 +59,13 @@ class TestCanonicalOperationsRegistry:
 
     def test_all_protection_operations_present(self):
         prot_ops = {
-            "add_ct", "add_vt", "add_relay",
-            "update_relay_settings", "link_relay_to_field",
-            "calculate_tcc_curve", "validate_selectivity",
+            "add_ct",
+            "add_vt",
+            "add_relay",
+            "update_relay_settings",
+            "link_relay_to_field",
+            "calculate_tcc_curve",
+            "validate_selectivity",
         }
         for op in prot_ops:
             assert op in CANONICAL_OP_NAMES, f"Missing protection operation: {op}"
@@ -70,7 +73,8 @@ class TestCanonicalOperationsRegistry:
     def test_all_study_case_operations_present(self):
         case_ops = {
             "create_study_case",
-            "run_short_circuit", "run_power_flow",
+            "run_short_circuit",
+            "run_power_flow",
             "compare_study_cases",
         }
         for op in case_ops:
@@ -94,34 +98,32 @@ class TestCanonicalOperationsRegistry:
 
     def test_each_operation_has_required_fields(self):
         for name, spec in CANONICAL_OPERATIONS.items():
-            assert isinstance(spec.required_fields, tuple), f"Op {name}: required_fields must be tuple"
+            assert isinstance(
+                spec.required_fields, tuple
+            ), f"Op {name}: required_fields must be tuple"
 
     def test_each_operation_has_category(self):
         for name, spec in CANONICAL_OPERATIONS.items():
             assert isinstance(spec.category, OperationCategory), f"Op {name}: invalid category"
 
 
-class TestAliasMapping:
-    """Test alias resolution."""
-
-    def test_aliases_resolve_to_canonical(self):
-        for alias, canonical in ALIAS_MAP.items():
-            assert canonical in CANONICAL_OP_NAMES, f"Alias {alias} resolves to non-canonical: {canonical}"
+class TestCanonicalNameResolution:
+    """Test canonical-only operation resolution."""
 
     def test_resolve_canonical_is_identity(self):
         for name in CANONICAL_OP_NAMES:
             assert resolve_operation_name(name) == name
 
-    def test_resolve_alias(self):
-        for alias, canonical in ALIAS_MAP.items():
-            assert resolve_operation_name(alias) == canonical
-
-    def test_is_canonical_with_alias(self):
-        for alias in ALIAS_MAP:
-            assert is_canonical_operation(alias)
-
     def test_is_not_canonical_unknown(self):
         assert not is_canonical_operation("nonexistent_operation_xyz")
+
+    def test_removed_alias_patterns_do_not_return_to_canonical_registry(self):
+        for name in CANONICAL_OP_NAMES:
+            assert not name.endswith("_inverter_nn")
+            assert "source_field" not in name
+            assert name != "add_trunk_segment_sn"
+            assert name != "connect_ring_sn"
+            assert name != "add_nn_feeder"
 
 
 class TestReadinessCodes:
@@ -132,17 +134,27 @@ class TestReadinessCodes:
 
     def test_all_required_codes_present(self):
         required = {
-            "source.voltage_invalid", "source.sk3_invalid",
-            "trunk.terminal_missing", "trunk.segment_missing",
-            "trunk.segment_length_missing", "trunk.segment_length_invalid",
+            "source.voltage_invalid",
+            "source.sk3_invalid",
+            "trunk.terminal_missing",
+            "trunk.segment_missing",
+            "trunk.segment_length_missing",
+            "trunk.segment_length_invalid",
             "trunk.catalog_missing",
-            "station.type_invalid", "station.voltage_missing",
-            "station.nn_outgoing_min_1", "station.required_field_missing",
-            "transformer.catalog_missing", "transformer.connection_missing",
-            "nn.bus_missing", "nn.main_breaker_missing",
-            "oze.transformer_required", "oze.nn_bus_required",
-            "ring.endpoints_missing", "ring.nop_required",
-            "protection.ct_required", "protection.vt_required",
+            "station.type_invalid",
+            "station.voltage_missing",
+            "station.nn_outgoing_min_1",
+            "station.required_field_missing",
+            "transformer.catalog_missing",
+            "transformer.connection_missing",
+            "nn.bus_missing",
+            "nn.main_breaker_missing",
+            "oze.transformer_required",
+            "oze.nn_bus_required",
+            "ring.endpoints_missing",
+            "ring.nop_required",
+            "protection.ct_required",
+            "protection.vt_required",
             "protection.settings_incomplete",
             "study_case.missing_base_snapshot",
             "analysis.blocked_by_readiness",
@@ -171,15 +183,12 @@ class TestReadinessCodes:
                 area_priorities[area] = []
             area_priorities[area].append((spec.priority, code))
         # Sorted by priority should be stable
-        for area, items in area_priorities.items():
+        for _area, items in area_priorities.items():
             sorted_items = sorted(items, key=lambda x: (x[0], x[1]))
             assert sorted_items == sorted(items, key=lambda x: (x[0], x[1]))
 
     def test_priority_ordering_deterministic(self):
-        sorted_codes = sorted(
-            READINESS_CODES.items(),
-            key=lambda x: (x[1].priority, x[1].code)
-        )
+        sorted_codes = sorted(READINESS_CODES.items(), key=lambda x: (x[1].priority, x[1].code))
         assert len(sorted_codes) == len(READINESS_CODES)
 
     def test_all_areas_covered(self):
@@ -218,17 +227,23 @@ class TestPayloadValidation:
     """Test payload validation helpers."""
 
     def test_valid_add_grid_source(self):
-        errors = validate_operation_payload("add_grid_source_sn", {
-            "source_name": "GPZ Główny",
-            "sn_voltage_kv": 15.0,
-            "sk3_mva": 250.0,
-        })
+        errors = validate_operation_payload(
+            "add_grid_source_sn",
+            {
+                "source_name": "GPZ Główny",
+                "sn_voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+            },
+        )
         assert len(errors) == 0
 
     def test_missing_required_field(self):
-        errors = validate_operation_payload("add_grid_source_sn", {
-            "source_name": "GPZ",
-        })
+        errors = validate_operation_payload(
+            "add_grid_source_sn",
+            {
+                "source_name": "GPZ",
+            },
+        )
         assert len(errors) > 0
         assert any("sn_voltage_kv" in e for e in errors)
 
@@ -237,9 +252,7 @@ class TestPayloadValidation:
         assert len(errors) == 1
         assert "Nieznana operacja" in errors[0]
 
-    def test_alias_resolves_in_validation(self):
-        errors = validate_operation_payload("add_inverter_nn_pv", {
-            "target_nn_bus_ref": "bus_nn_01",
-            "inverter_spec": {},
-        })
-        assert len(errors) == 0
+    def test_removed_legacy_alias_is_rejected_in_validation(self):
+        errors = validate_operation_payload("add_inverter_nn_pv", {})
+        assert len(errors) == 1
+        assert "Nieznana operacja" in errors[0]

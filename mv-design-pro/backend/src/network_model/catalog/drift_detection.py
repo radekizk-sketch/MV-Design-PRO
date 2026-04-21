@@ -24,14 +24,15 @@ import hashlib
 import json
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class DriftSeverity(str, Enum):
     """Severity of catalog drift."""
-    BREAKING = "BREAKING"      # solver_fields changed — results invalid
+
+    BREAKING = "BREAKING"  # solver_fields changed — results invalid
     INFORMATIONAL = "INFORMATIONAL"  # ui_fields changed — cosmetic only
-    REMOVED = "REMOVED"        # catalog item no longer exists
+    REMOVED = "REMOVED"  # catalog item no longer exists
 
 
 @dataclass(frozen=True)
@@ -49,17 +50,18 @@ class CatalogDriftEntry:
         changed_solver_fields: Tuple of solver field names that changed.
         changed_ui_fields: Tuple of UI field names that changed.
     """
+
     element_id: str
     element_label: str
     namespace: str
     catalog_item_id: str
     bound_version: str
-    current_version: Optional[str]
+    current_version: str | None
     severity: DriftSeverity
-    changed_solver_fields: Tuple[str, ...] = ()
-    changed_ui_fields: Tuple[str, ...] = ()
+    changed_solver_fields: tuple[str, ...] = ()
+    changed_ui_fields: tuple[str, ...] = ()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "element_id": self.element_id,
             "element_label": self.element_label,
@@ -83,8 +85,9 @@ class DriftReport:
         has_breaking_drifts: True if any BREAKING drifts exist.
         report_hash: SHA-256 hash of the report for determinism verification.
     """
+
     total_bindings_checked: int
-    drifts: Tuple[CatalogDriftEntry, ...]
+    drifts: tuple[CatalogDriftEntry, ...]
     has_breaking_drifts: bool
     report_hash: str
 
@@ -104,7 +107,7 @@ class DriftReport:
     def removed_count(self) -> int:
         return sum(1 for d in self.drifts if d.severity == DriftSeverity.REMOVED)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_bindings_checked": self.total_bindings_checked,
             "drifts": [d.to_dict() for d in self.drifts],
@@ -130,15 +133,16 @@ class ElementBinding:
         catalog_item_version: Version at materialization time.
         materialized_values: Dict of solver_field values at materialization time.
     """
+
     element_id: str
     element_label: str
     namespace: str
     catalog_item_id: str
     catalog_item_version: str
-    materialized_values: Dict[str, Any]
+    materialized_values: dict[str, Any]
 
 
-def extract_bindings_from_snapshot(snapshot_dict: Dict[str, Any]) -> List[ElementBinding]:
+def extract_bindings_from_snapshot(snapshot_dict: dict[str, Any]) -> list[ElementBinding]:
     """Extract all catalog bindings from a snapshot dict.
 
     Scans all elements in the graph for 'catalog_binding' field.
@@ -146,7 +150,7 @@ def extract_bindings_from_snapshot(snapshot_dict: Dict[str, Any]) -> List[Elemen
     Returns:
         List of ElementBinding records, sorted by element_id for determinism.
     """
-    bindings: List[ElementBinding] = []
+    bindings: list[ElementBinding] = []
     graph = snapshot_dict.get("graph", {})
 
     for collection_key in ("nodes", "branches", "inverter_sources", "switches"):
@@ -169,7 +173,7 @@ def extract_bindings_from_snapshot(snapshot_dict: Dict[str, Any]) -> List[Elemen
     return bindings
 
 
-def _compute_item_version_hash(item_dict: Dict[str, Any]) -> str:
+def _compute_item_version_hash(item_dict: dict[str, Any]) -> str:
     """Compute a deterministic version hash from a catalog item dict.
 
     Uses canonical JSON serialization (sorted keys, no indent).
@@ -179,10 +183,10 @@ def _compute_item_version_hash(item_dict: Dict[str, Any]) -> str:
 
 
 def detect_drift(
-    bindings: List[ElementBinding],
-    catalog_items: Dict[str, Dict[str, Any]],
-    solver_fields_by_namespace: Dict[str, Tuple[str, ...]],
-    ui_fields_by_namespace: Dict[str, Tuple[str, ...]],
+    bindings: list[ElementBinding],
+    catalog_items: dict[str, dict[str, Any]],
+    solver_fields_by_namespace: dict[str, tuple[str, ...]],
+    ui_fields_by_namespace: dict[str, tuple[str, ...]],
 ) -> DriftReport:
     """Detect catalog drift for a set of element bindings.
 
@@ -196,7 +200,7 @@ def detect_drift(
     Returns:
         Frozen DriftReport with all detected drifts.
     """
-    drifts: List[CatalogDriftEntry] = []
+    drifts: list[CatalogDriftEntry] = []
 
     for binding in bindings:
         lookup_key = f"{binding.namespace}:{binding.catalog_item_id}"
@@ -226,8 +230,8 @@ def detect_drift(
         solver_fields = solver_fields_by_namespace.get(binding.namespace, ())
         ui_only_fields = ui_fields_by_namespace.get(binding.namespace, ())
 
-        changed_solver: List[str] = []
-        changed_ui: List[str] = []
+        changed_solver: list[str] = []
+        changed_ui: list[str] = []
 
         materialized = binding.materialized_values
         for field_name in solver_fields:
@@ -243,10 +247,7 @@ def detect_drift(
                 if old_val != new_val:
                     changed_ui.append(field_name)
 
-        severity = (
-            DriftSeverity.BREAKING if changed_solver
-            else DriftSeverity.INFORMATIONAL
-        )
+        severity = DriftSeverity.BREAKING if changed_solver else DriftSeverity.INFORMATIONAL
 
         drifts.append(
             CatalogDriftEntry(

@@ -1,137 +1,149 @@
-/**
- * P11b — Results Inspector API Client
- *
- * CANONICAL ALIGNMENT:
- * - Consumes P11a backend endpoints
- * - READ-ONLY: No mutations, no physics
- * - Deterministic: Same inputs → same outputs
- *
- * ENDPOINTS (P11a Backend):
- * - GET /analysis-runs/{run_id}/results/index
- * - GET /analysis-runs/{run_id}/results/buses
- * - GET /analysis-runs/{run_id}/results/branches
- * - GET /analysis-runs/{run_id}/results/short-circuit
- * - GET /analysis-runs/{run_id}/results/trace
- * - GET /analysis-runs/{run_id}/overlay?diagram_id={diagram_id}
- */
-
 import type {
   BranchResults,
   BusResults,
   ExtendedTrace,
-  ResultsRunSnapshot,
   ResultsIndex,
+  ResultsRunSnapshot,
   ShortCircuitResults,
   SldResultOverlay,
 } from './types';
 import type { EnergyNetworkModel } from '../../types/enm';
+import { mergeAnalysisCaseContexts } from './analysisCaseContextView';
 
 const API_BASE = '/api';
 
-/**
- * Fetch results index for a run.
- *
- * Returns available tables with column metadata.
- */
+export type AnalysisRunExportFormat = 'json' | 'docx' | 'pdf';
+
+export interface AnalysisRunReportOptions {
+  profile: string;
+  detailLevel: string;
+  scope: string;
+  sections: string[];
+  focusTable?: string;
+}
+
+function inferFilename(contentDisposition: string | null, fallback: string): string {
+  if (!contentDisposition) {
+    return fallback;
+  }
+
+  const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    return decodeURIComponent(utf8Match[1]);
+  }
+
+  const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+  if (plainMatch?.[1]) {
+    return plainMatch[1];
+  }
+
+  return fallback;
+}
+
+async function readError(response: Response, fallback: string): Promise<string> {
+  try {
+    const payload = await response.json();
+    if (typeof payload?.detail === 'string' && payload.detail.trim()) {
+      return payload.detail;
+    }
+  } catch {
+    // fall back to generic message
+  }
+
+  return fallback;
+}
+
+function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+function normalizeResultsIndex(payload: ResultsIndex): ResultsIndex {
+  const analysisCaseContext = mergeAnalysisCaseContexts(
+    payload.analysis_case_context,
+    payload.run_header.analysis_case_context,
+  );
+
+  return {
+    ...payload,
+    analysis_case_context: analysisCaseContext,
+    run_header: {
+      ...payload.run_header,
+      analysis_case_context: analysisCaseContext,
+    },
+  };
+}
+
 export async function fetchResultsIndex(runId: string): Promise<ResultsIndex> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/index`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania indeksu wyników: ${response.statusText}`);
+    throw new Error(`Blad pobierania indeksu wynikow: ${response.statusText}`);
   }
-  return response.json();
+  return normalizeResultsIndex(await response.json());
 }
 
-/**
- * Fetch bus/node results for a run.
- *
- * Results are deterministically sorted by (name, bus_id).
- */
 export async function fetchBusResults(runId: string): Promise<BusResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/buses`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania wyników węzłowych: ${response.statusText}`);
+    throw new Error(`Blad pobierania wynikow wezlowych: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch branch results for a run.
- *
- * Results are deterministically sorted by (name, branch_id).
- */
 export async function fetchBranchResults(runId: string): Promise<BranchResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/branches`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania wyników gałęziowych: ${response.statusText}`);
+    throw new Error(`Blad pobierania wynikow galeziowych: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch short-circuit results for a run.
- *
- * Only available for short_circuit_sn analysis type.
- * Results are deterministically sorted by target_id.
- */
 export async function fetchShortCircuitResults(runId: string): Promise<ShortCircuitResults> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/short-circuit`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania wyników zwarciowych: ${response.statusText}`);
+    throw new Error(`Blad pobierania wynikow zwarciowych: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch extended trace (white_box_trace) for a run.
- *
- * Returns trace with run context for audit.
- */
 export async function fetchExtendedTrace(runId: string): Promise<ExtendedTrace> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/trace`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania śladu obliczeń: ${response.statusText}`);
+    throw new Error(`Blad pobierania sladu obliczen: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch canonical snapshot used for the run.
- */
 export async function fetchRunSnapshot(runId: string): Promise<ResultsRunSnapshot> {
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/snapshot`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania migawki uruchomienia: ${response.statusText}`);
+    throw new Error(`Blad pobierania migawki uruchomienia: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch current ENM snapshot for the active case.
- */
 export async function fetchCurrentCaseSnapshot(caseId: string): Promise<EnergyNetworkModel> {
   const response = await fetch(`${API_BASE}/cases/${caseId}/enm`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania bieżącego modelu: ${response.statusText}`);
+    throw new Error(`Blad pobierania biezacego modelu: ${response.statusText}`);
   }
   return response.json();
 }
 
-/**
- * Fetch SLD result overlay for a diagram.
- *
- * Maps analysis results to SLD symbols for visualization.
- * READ-ONLY: Does not mutate model or diagram.
- */
 export async function fetchSldOverlay(
   _projectId: string,
   diagramId: string,
-  runId: string
+  runId: string,
 ): Promise<SldResultOverlay> {
-  const response = await fetch(
-    `${API_BASE}/analysis-runs/${runId}/overlay?diagram_id=${diagramId}`
-  );
+  const response = await fetch(`${API_BASE}/analysis-runs/${runId}/overlay?diagram_id=${diagramId}`);
   if (!response.ok) {
-    throw new Error(`Błąd pobierania nakładki SLD: ${response.statusText}`);
+    throw new Error(`Blad pobierania nakladki SLD: ${response.statusText}`);
   }
   const payload = await response.json();
 
@@ -149,4 +161,62 @@ export async function fetchSldOverlay(
     buses: nodes,
     branches,
   };
+}
+
+export async function downloadAnalysisRunExport(
+  projectId: string,
+  runId: string,
+  format: AnalysisRunExportFormat,
+): Promise<void> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/analysis-runs/${runId}/export/${format}`);
+  if (!response.ok) {
+    throw new Error(
+      await readError(
+        response,
+        `Blad pobierania eksportu uruchomienia ${format.toUpperCase()}: ${response.statusText}`,
+      ),
+    );
+  }
+
+  const blob = await response.blob();
+  downloadBlob(
+    blob,
+    inferFilename(response.headers.get('content-disposition'), `analysis_run_${runId}.${format}`),
+  );
+}
+
+export async function downloadAnalysisRunReport(
+  projectId: string,
+  runId: string,
+  format: AnalysisRunExportFormat,
+  options: AnalysisRunReportOptions,
+): Promise<void> {
+  const params = new URLSearchParams({
+    profile: options.profile,
+    detail_level: options.detailLevel,
+    scope: options.scope,
+    sections: options.sections.join(','),
+  });
+
+  if (options.focusTable) {
+    params.set('focus_table', options.focusTable);
+  }
+
+  const response = await fetch(
+    `${API_BASE}/projects/${projectId}/analysis-runs/${runId}/report/${format}?${params.toString()}`,
+  );
+  if (!response.ok) {
+    throw new Error(
+      await readError(
+        response,
+        `Blad pobierania raportu ${format.toUpperCase()}: ${response.statusText}`,
+      ),
+    );
+  }
+
+  const blob = await response.blob();
+  downloadBlob(
+    blob,
+    inferFilename(response.headers.get('content-disposition'), `analysis_report_${runId}.${format}`),
+  );
 }

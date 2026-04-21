@@ -6,7 +6,7 @@
  * Proces zaczyna się od GPZ — punkt zasilania (K2) jest kluczowy.
  *
  * Każdy krok edytuje EnergyNetworkModel (ENM) — autosave via PUT.
- * Integracja: wizardStateMachine (gate logic) + WizardSldPreview (live SLD).
+ * Integracja: wizardStateMachine (gate logic) + kanoniczny preview SLD.
  *
  * BINDING: Etykiety po polsku, brak kodów projektowych.
  */
@@ -32,6 +32,11 @@ import type { WizardIssueApi } from './useWizardStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { TypePicker } from '../catalog/TypePicker';
 import type { TypeCategory } from '../catalog/types';
+import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
+import {
+  resolveWizardSurfaceStepId,
+  type WizardSurfaceStepId,
+} from '../../types/fixActionSurface';
 import { clsx } from 'clsx';
 
 // ---------------------------------------------------------------------------
@@ -60,6 +65,43 @@ const WIZARD_STEPS: WizardStep[] = [
   { id: 'K9', number: 9, title: 'Schemat jednokreskowy', description: 'Podgląd SLD z referencjami ENM' },
   { id: 'K10', number: 10, title: 'Uruchom analizy', description: 'Zwarcia 3F, rozpływ mocy' },
 ];
+
+const WIZARD_STEP_INDEX_BY_SURFACE_ID: Record<WizardSurfaceStepId, number> = {
+  'parametry-modelu': 0,
+  'punkt-zasilania-gpz': 1,
+  'struktura-szyn-i-sekcji': 2,
+  'galezie-linie-kable': 3,
+  transformatory: 4,
+  'odbiorniki-i-zrodla': 5,
+  'uziemienia-i-skladowe-zerowe': 6,
+  walidacja: 7,
+  'schemat-jednokreskowy': 8,
+  'uruchomienie-analiz': 9,
+};
+
+function resolveWizardIssueStepId(
+  issue: Pick<WizardIssueApi, 'wizard_step_id' | 'wizard_step_hint'>,
+): WizardSurfaceStepId | null {
+  return issue.wizard_step_id ?? resolveWizardSurfaceStepId(issue.wizard_step_hint ?? null);
+}
+
+function getWizardStepByIssue(
+  issue: Pick<WizardIssueApi, 'wizard_step_id' | 'wizard_step_hint'>,
+): WizardStep | null {
+  const surfaceStepId = resolveWizardIssueStepId(issue);
+  if (!surfaceStepId) {
+    return null;
+  }
+  const stepIndex = WIZARD_STEP_INDEX_BY_SURFACE_ID[surfaceStepId];
+  return WIZARD_STEPS[stepIndex] ?? null;
+}
+
+function getWizardStepLabelByIssue(
+  issue: Pick<WizardIssueApi, 'wizard_step_id' | 'wizard_step_hint'>,
+): string | null {
+  const step = getWizardStepByIssue(issue);
+  return step ? `Krok ${step.number}: ${step.title}` : null;
+}
 
 function createDefaultENM(): EnergyNetworkModel {
   return {
@@ -676,10 +718,10 @@ function StepK6({ enm, onChange }: StepProps) {
   const updLoad = (ref: string, p: Partial<Load>) => onChange({ ...enm, loads: enm.loads.map((l) => l.ref_id === ref ? { ...l, ...p } : l) });
   const rmLoad = (ref: string) => onChange({ ...enm, loads: enm.loads.filter((l) => l.ref_id !== ref) });
 
-  // --- Generators (OZE) ---
+  // --- Zrodla przeksztaltnikowe i synchroniczne ---
   const addGen = (genType: Generator['gen_type']) => {
     const n = enm.generators.length + 1;
-    const labels: Record<string, string> = { pv_inverter: 'PV', wind_inverter: 'Wiatr', bess: 'BESS', synchronous: 'Gen. synchr.' };
+    const labels: Record<string, string> = { pv_inverter: 'PV', wind_inverter: 'FW', bess: 'BESS', synchronous: 'Generator synchroniczny' };
     const label = labels[genType ?? ''] ?? 'Generator';
     const gen: Generator = { id: crypto.randomUUID(), ref_id: `gen_${Date.now()}`, name: `${label} ${n}`, tags: [], meta: {}, bus_ref: refs[refs.length - 1] ?? '', p_mw: 0.5, q_mvar: 0, gen_type: genType ?? 'pv_inverter', connection_variant: genType === 'synchronous' ? null : 'nn_side' };
     onChange({ ...enm, generators: [...enm.generators, gen] });
@@ -714,9 +756,9 @@ function StepK6({ enm, onChange }: StepProps) {
   };
 
   const GEN_TYPES: { value: NonNullable<Generator['gen_type']>; label: string }[] = [
-    { value: 'pv_inverter', label: 'Fotowoltaika (PV)' },
-    { value: 'wind_inverter', label: 'Turbina wiatrowa' },
-    { value: 'bess', label: 'Magazyn energii (BESS)' },
+    { value: 'pv_inverter', label: 'Zrodlo przeksztaltnikowe PV' },
+    { value: 'wind_inverter', label: 'Zrodlo przeksztaltnikowe FW' },
+    { value: 'bess', label: 'Zrodlo przeksztaltnikowe BESS' },
     { value: 'synchronous', label: 'Generator synchroniczny' },
   ];
 
@@ -773,15 +815,15 @@ function StepK6({ enm, onChange }: StepProps) {
       </div>
       <AddButton onClick={addLoad} label="Dodaj odbiór" />
 
-      <SectionTitle>Źródła rozproszone (OZE / BESS)</SectionTitle>
-      <HelpText>Generatory, instalacje PV, turbiny wiatrowe i magazyny energii. Dla każdego źródła określ wariant przyłączenia do sieci SN.</HelpText>
+      <SectionTitle>Zrodla przeksztaltnikowe i synchroniczne</SectionTitle>
+      <HelpText>Dodaj zrodla PV, FW, BESS i generatory synchroniczne. Dla kazdego zrodla okresl wariant przylaczenia do sieci SN.</HelpText>
       <div className="space-y-3">
         {enm.generators.map((g) => (
           <div key={g.ref_id} className="wizard-card">
             <div className="wizard-card-header">
               <span className="text-sm font-semibold text-ind-800">{g.name}</span>
               <div className="flex items-center gap-1">
-                {g.gen_type && <span className="ind-badge ind-badge-info text-[10px]">{g.gen_type === 'pv_inverter' ? 'PV' : g.gen_type === 'wind_inverter' ? 'Wiatr' : g.gen_type === 'bess' ? 'BESS' : 'Synchr.'}</span>}
+                {g.gen_type && <span className="ind-badge ind-badge-info text-[10px]">{formatGeneratorTypeShortLabelPl(g.gen_type)}</span>}
                 <RemoveButton onClick={() => rmGen(g.ref_id)} />
               </div>
             </div>
@@ -1053,7 +1095,6 @@ function StepK7({ enm, onChange }: StepProps) {
 
 function StepK8({ validation, onGoToStep }: { validation: ValidationResult | null; onGoToStep: (s: number) => void }) {
   if (!validation) return <div className="text-sm text-chrome-400">Ładowanie walidacji...</div>;
-  const sm: Record<string, number> = { K1: 0, K2: 1, K3: 2, K4: 3, K5: 4, K6: 5, K7: 6 };
   return (
     <div>
       {/* Dostępność analiz */}
@@ -1097,11 +1138,17 @@ function StepK8({ validation, onGoToStep }: { validation: ValidationResult | nul
                   </td>
                   <td className="px-3 py-2 text-chrome-700">{i.message_pl}</td>
                   <td className="px-3 py-2">
-                    {i.wizard_step_hint && sm[i.wizard_step_hint] !== undefined && (
-                      <button onClick={() => onGoToStep(sm[i.wizard_step_hint])} className="ind-btn text-ind-600 bg-ind-50 hover:bg-ind-100 border border-ind-200 text-[11px]">
-                        {i.wizard_step_hint}
-                      </button>
-                    )}
+                    {(() => {
+                      const step = getWizardStepByIssue(i);
+                      if (!step) {
+                        return null;
+                      }
+                      return (
+                        <button onClick={() => onGoToStep(step.number - 1)} className="ind-btn text-ind-600 bg-ind-50 hover:bg-ind-100 border border-ind-200 text-[11px]">
+                          {getWizardStepLabelByIssue(i)}
+                        </button>
+                      );
+                    })()}
                   </td>
                 </tr>
               ))}
@@ -1116,7 +1163,7 @@ function StepK8({ validation, onGoToStep }: { validation: ValidationResult | nul
 function StepK9({ enm }: { enm: EnergyNetworkModel }) {
   return (
     <div>
-      <HelpText>Podgląd schematu jednokreskowego (SLD). Układ generowany automatycznie przez silnik topologiczny.</HelpText>
+      <HelpText>Podglad schematu jednokreskowego (SLD) renderowanego przez ten sam kanoniczny pipeline co aktywny widok produktu.</HelpText>
       <WizardSldPreview enm={enm} />
       <div className="mt-3 flex gap-3 text-xs text-chrome-400">
         <span>{enm.buses.length} szyn</span>
@@ -1408,7 +1455,10 @@ function BlockerBanner({ issues }: { issues: WizardIssueApi[] }) {
       </div>
       <ul className="ml-6 text-xs text-red-700 list-disc space-y-0.5">
         {blockers.map((b, i) => (
-          <li key={i}>{b.message_pl}{b.wizard_step_hint ? ` (${b.wizard_step_hint})` : ''}</li>
+          <li key={i}>
+            {b.message_pl}
+            {getWizardStepLabelByIssue(b) ? ` (${getWizardStepLabelByIssue(b)})` : ''}
+          </li>
         ))}
       </ul>
     </div>

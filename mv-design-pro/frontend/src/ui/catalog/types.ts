@@ -246,6 +246,21 @@ export interface SourceSystemCatalogType extends CatalogType {
   data_source?: string;
 }
 
+/**
+ * Branch Point Type (słup rozgałęźny / ZKSN).
+ * Source: backend mv_branch_point_catalog.py.
+ */
+export interface BranchPointCatalogType extends CatalogType {
+  kind: 'BRANCH_POLE' | 'ZKSN';
+  medium: 'LINE_OVERHEAD' | 'CABLE';
+  series?: string;
+  switch_device_kind?: string;
+  switch_rated_current_a?: number;
+  branch_ports_count: number;
+  topology_role?: string;
+  catalog_namespace?: 'mv_branch_points';
+}
+
 export interface MVApparatusCatalogType extends CatalogType {
   device_kind: string;
   u_n_kv: number;
@@ -285,7 +300,8 @@ export type CatalogNamespace =
   | 'ZABEZPIECZENIE'
   | 'NASTAWY_ZABEZPIECZEN'
   | 'CONVERTER'
-  | 'INVERTER';
+  | 'INVERTER'
+  | 'mv_branch_points';
 
 /**
  * Union of all catalog type categories.
@@ -293,7 +309,8 @@ export type CatalogNamespace =
 export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
-  | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE';
+  | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
+  | 'BRANCH_POLE' | 'ZKSN';
 
 /**
  * Type reference in element (points to catalog).

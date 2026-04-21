@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -156,7 +156,7 @@ def build_export_manifest(
     Raises:
         FileNotFoundError: If any file does not exist.
     """
-    timestamp = created_at if created_at else datetime.now(timezone.utc)
+    timestamp = created_at if created_at else datetime.now(UTC)
 
     export_files: list[ExportFile] = []
     file_hashes: list[str] = []

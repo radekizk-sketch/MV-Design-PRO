@@ -12,16 +12,15 @@ Weryfikuje:
 from __future__ import annotations
 
 import pytest
-
+from domain.readiness_fix_actions import KNOWN_BLOCKER_CODES, resolve_fix_action
+from enm.domain_operations import execute_domain_operation
 from enm.models import (
     BranchPointSN,
     BranchPointSNPorts,
     EnergyNetworkModel,
-    ENMHeader,
     ENMDefaults,
+    ENMHeader,
 )
-from enm.domain_operations import execute_domain_operation
-from domain.readiness_fix_actions import resolve_fix_action, KNOWN_BLOCKER_CODES
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 
@@ -48,7 +47,13 @@ def _seed_with_overhead_segment() -> tuple[dict, str]:
     s2 = execute_domain_operation(
         s1,
         "continue_trunk_segment_sn",
-        {"segment": {"rodzaj": "LINIA_NAPOWIETRZNA", "dlugosc_m": 1000, "catalog_ref": "line-base-al-st-70"}},
+        {
+            "segment": {
+                "rodzaj": "LINIA_NAPOWIETRZNA",
+                "dlugosc_m": 1000,
+                "catalog_ref": "line-base-al-st-70",
+            }
+        },
     )["snapshot"]
     seg_id = next(b["ref_id"] for b in s2["branches"] if b["type"] == "line_overhead")
     return s2, seg_id
@@ -125,12 +130,18 @@ class TestBranchPointSNModel:
 
     def test_branch_pole_and_zksn_are_distinct_types(self) -> None:
         bp_pole = BranchPointSN(
-            ref_id="bp-pole", name="Słup", branch_point_type="branch_pole",
-            parent_segment_id="seg", bus_ref="bus",
+            ref_id="bp-pole",
+            name="Słup",
+            branch_point_type="branch_pole",
+            parent_segment_id="seg",
+            bus_ref="bus",
         )
         bp_zksn = BranchPointSN(
-            ref_id="bp-zksn", name="ZKSN", branch_point_type="zksn",
-            parent_segment_id="seg", bus_ref="bus",
+            ref_id="bp-zksn",
+            name="ZKSN",
+            branch_point_type="zksn",
+            parent_segment_id="seg",
+            bus_ref="bus",
         )
         assert bp_pole.branch_point_type != bp_zksn.branch_point_type
         assert bp_pole.branch_point_type == "branch_pole"
@@ -148,7 +159,9 @@ class TestBranchPointSNModel:
             catalog_version="1.0",
             source_mode="KATALOG",
             switch_state="open",
-            ports=BranchPointSNPorts(MAIN_IN="bus-rt-in", MAIN_OUT="bus-rt-out", BRANCH=["bus-rt-br"]),
+            ports=BranchPointSNPorts(
+                MAIN_IN="bus-rt-in", MAIN_OUT="bus-rt-out", BRANCH=["bus-rt-br"]
+            ),
             completeness_status="KOMPLETNY",
             runtime_inputs={"branch_ports_count": 1, "insert_at": {"mode": "RATIO", "value": 0.5}},
         )
@@ -315,18 +328,21 @@ class TestDomainOperationsBranchPointSchemaValid:
 
 
 class TestBranchPointFixActions:
-    @pytest.mark.parametrize("code", [
-        "branch_point.invalid_parent_medium",
-        "branch_point.catalog_ref_missing",
-        "branch_point.switch_state_missing",
-        "branch_point.branch_port_occupied",
-        "branch_point.required_port_missing",
-        "zksn.branch_count_invalid",
-        "branch_connection.invalid_source_port",
-        "branch_connection.source_not_branch_capable",
-        "oze.transformer_required",
-        "bess.transformer_required",
-    ])
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "branch_point.invalid_parent_medium",
+            "branch_point.catalog_ref_missing",
+            "branch_point.switch_state_missing",
+            "branch_point.branch_port_occupied",
+            "branch_point.required_port_missing",
+            "zksn.branch_count_invalid",
+            "branch_connection.invalid_source_port",
+            "branch_connection.source_not_branch_capable",
+            "oze.transformer_required",
+            "bess.transformer_required",
+        ],
+    )
     def test_fix_action_exists_for_code(self, code: str) -> None:
         fa = resolve_fix_action(code, element_id="bp-test-001")
         assert fa is not None, f"No FixAction for code: {code}"

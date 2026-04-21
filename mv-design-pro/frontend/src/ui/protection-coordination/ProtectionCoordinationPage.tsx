@@ -1,7 +1,7 @@
 /**
  * FIX-12B — Protection Coordination Page
  *
- * Main page for protection coordination analysis with PowerFactory parity UX.
+ * Main page for protection coordination analysis with Canonical parity UX.
  *
  * FEATURES:
  * - Device management (add, remove, clone, apply template)

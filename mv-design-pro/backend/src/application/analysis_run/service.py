@@ -4,8 +4,9 @@ import hashlib
 import json
 import logging
 import math
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from analysis.power_flow import PowerFlowSolver
@@ -16,12 +17,12 @@ from application.active_case import (
     ActiveCaseNotSetError,
     ActiveCaseService,
 )
-from application.network_wizard.dtos import ConverterSetpoint, InverterSetpoint
 from application.network_model import (
     build_network_graph,
     ensure_snapshot_matches_project,
     network_model_id_for_project,
 )
+from application.network_wizard.dtos import ConverterSetpoint, InverterSetpoint
 from application.sld.overlay import ResultSldOverlayBuilder
 from domain.analysis_run import AnalysisRun, new_analysis_run
 from domain.project_design_mode import ProjectDesignMode
@@ -31,9 +32,9 @@ from network_model.catalog import CatalogRepository
 from network_model.catalog.types import ConverterKind
 from network_model.core import InverterSource, NetworkGraph, create_network_snapshot
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
-from network_model.validation import NetworkValidator as ModelNetworkValidator, Severity as ModelSeverity
 from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
-
+from network_model.validation import NetworkValidator as ModelNetworkValidator
+from network_model.validation import Severity as ModelSeverity
 
 DETERMINISTIC_LIST_KEYS = {"nodes", "branches", "sources", "loads"}
 logger = logging.getLogger(__name__)
@@ -41,10 +42,7 @@ logger = logging.getLogger(__name__)
 
 def canonicalize(value: Any, *, current_key: str | None = None) -> Any:
     if isinstance(value, dict):
-        return {
-            key: canonicalize(value[key], current_key=key)
-            for key in sorted(value.keys())
-        }
+        return {key: canonicalize(value[key], current_key=key) for key in sorted(value.keys())}
     if isinstance(value, list):
         items = [canonicalize(item, current_key=current_key) for item in value]
         if current_key in DETERMINISTIC_LIST_KEYS:
@@ -111,8 +109,9 @@ class AnalysisRunService:
 
             # If existing FINISHED run found, copy results (result dedup)
             if existing is not None and existing.status == "FINISHED":
-                from datetime import datetime, timezone
-                now = datetime.now(timezone.utc)
+                from datetime import datetime
+
+                now = datetime.now(UTC)
                 # Build dedup trace info
                 dedup_trace = {
                     "dedup_source_run_id": str(existing.id),
@@ -236,14 +235,10 @@ class AnalysisRunService:
             diagram.get("payload"), result_payload
         )
 
-    def _resolve_operating_case_id(
-        self, project_id: UUID, operating_case_id: UUID | None
-    ) -> UUID:
+    def _resolve_operating_case_id(self, project_id: UUID, operating_case_id: UUID | None) -> UUID:
         active_case_id = ActiveCaseService(self._uow_factory).get_active_case_id(project_id)
         if active_case_id is None:
-            raise ActiveCaseNotSetError(
-                f"ActiveCase is not set for project {project_id}"
-            )
+            raise ActiveCaseNotSetError(f"ActiveCase is not set for project {project_id}")
         if operating_case_id is not None and operating_case_id != active_case_id:
             raise ActiveCaseMismatchError(
                 f"OperatingCase {operating_case_id} is not the Active Case for project {project_id}"
@@ -271,7 +266,7 @@ class AnalysisRunService:
         if not report.is_valid:
             return self._fail_run(uow, run, report)
 
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         run = uow.analysis_runs.update_status(run.id, "RUNNING", started_at=started_at)
         try:
             result = PowerFlowSolver().solve(pf_input)
@@ -292,7 +287,7 @@ class AnalysisRunService:
             "node_u_pu": payload.get("node_u_mag_pu", {}),
         }
         trace_json = payload.get("white_box_trace")
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return uow.analysis_runs.update_status(
             run.id,
             "FINISHED",
@@ -339,7 +334,7 @@ class AnalysisRunService:
         if not report.is_valid:
             return self._fail_run(uow, run, report)
 
-        started_at = datetime.now(timezone.utc)
+        started_at = datetime.now(UTC)
         run = uow.analysis_runs.update_status(run.id, "RUNNING", started_at=started_at)
         try:
             result = self._solve_short_circuit(sc_input)
@@ -361,7 +356,7 @@ class AnalysisRunService:
             "connection_node_id": sc_input["connection_node_id"],
         }
         white_box_trace = payload.get("white_box_trace")
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return uow.analysis_runs.update_status(
             run.id,
             "FINISHED",
@@ -391,7 +386,7 @@ class AnalysisRunService:
             error_message = json.dumps(message.to_dict(), sort_keys=True)
         else:
             error_message = str(message)
-        finished_at = datetime.now(timezone.utc)
+        finished_at = datetime.now(UTC)
         return uow.analysis_runs.update_status(
             run.id,
             "FAILED",
@@ -520,17 +515,23 @@ class AnalysisRunService:
         return {
             "snapshot_id": snapshot_id,
             "base_mva": base_mva,
-            "connection_node_id": str(settings.get("connection_node_id"))
-            if settings.get("connection_node_id")
-            else None,
+            "connection_node_id": (
+                str(settings.get("connection_node_id"))
+                if settings.get("connection_node_id")
+                else None
+            ),
             "fault_spec": {
                 "fault_type": fault_spec.get("fault_type"),
-                "node_id": str(fault_spec.get("node_id"))
-                if fault_spec.get("node_id") is not None
-                else None,
-                "branch_id": str(fault_spec.get("branch_id"))
-                if fault_spec.get("branch_id") is not None
-                else None,
+                "node_id": (
+                    str(fault_spec.get("node_id"))
+                    if fault_spec.get("node_id") is not None
+                    else None
+                ),
+                "branch_id": (
+                    str(fault_spec.get("branch_id"))
+                    if fault_spec.get("branch_id") is not None
+                    else None
+                ),
                 "position_percent": fault_spec.get("position_percent"),
                 "c_factor": fault_spec.get("c_factor"),
                 "tk_s": fault_spec.get("tk_s"),
@@ -637,9 +638,7 @@ class AnalysisRunService:
                 contributes_negative_sequence=bool(
                     payload.get("contributes_negative_sequence", False)
                 ),
-                contributes_zero_sequence=bool(
-                    payload.get("contributes_zero_sequence", False)
-                ),
+                contributes_zero_sequence=bool(payload.get("contributes_zero_sequence", False)),
                 in_service=bool(source.get("in_service", True)),
             )
             if inverter.node_id in graph.nodes:
@@ -841,9 +840,7 @@ class AnalysisRunService:
             )
         return report
 
-    def _validate_project_design_mode(
-        self, uow: UnitOfWork, run: AnalysisRun
-    ) -> ValidationReport:
+    def _validate_project_design_mode(self, uow: UnitOfWork, run: AnalysisRun) -> ValidationReport:
         if run.analysis_type not in {"short_circuit_sn", "fault_loop_nn"}:
             return ValidationReport()
         case = uow.cases.get_operating_case(run.operating_case_id)
@@ -900,7 +897,7 @@ class AnalysisRunService:
                 return snapshot_id_str
 
         graph = self._build_network_graph(project_id, case.id)
-        settings = uow.wizard.get_settings(project_id)
+        uow.wizard.get_settings(project_id)
         # NOTE: BoundaryNode – węzeł przyłączenia is no longer stored in NetworkGraph.
         # BoundaryNode is an interpretation, not a model property. The connection_node_id hint
         # remains in wizard settings for use by analysis/interpretation layer.
@@ -921,9 +918,7 @@ class AnalysisRunService:
                 contributes_negative_sequence=bool(
                     payload.get("contributes_negative_sequence", False)
                 ),
-                contributes_zero_sequence=bool(
-                    payload.get("contributes_zero_sequence", False)
-                ),
+                contributes_zero_sequence=bool(payload.get("contributes_zero_sequence", False)),
                 in_service=bool(source.get("in_service", True)),
             )
             if inverter.node_id in graph.nodes:
@@ -943,8 +938,10 @@ class AnalysisRunService:
         fault_type = self._map_fault_type(fault_spec.get("fault_type"))
         fault_node_id = self._resolve_fault_node_id(graph, fault_spec)
         include_branch = bool((sc_input.get("options") or {}).get("include_branch"))
+
         def _fallback(value: Any, default: float) -> float:
             return float(default if value is None else value)
+
         if fault_type == ShortCircuitType.THREE_PHASE:
             c_factor = _fallback(fault_spec.get("c_factor"), 1.0)
             tk_s = _fallback(fault_spec.get("tk_s"), 1.0)
@@ -1025,17 +1022,11 @@ class AnalysisRunService:
             position_value = float(position)
         except (TypeError, ValueError) as exc:
             raise ValueError("Fault position must be numeric") from exc
-        return (
-            str(branch.from_node_id)
-            if position_value <= 50.0
-            else str(branch.to_node_id)
-        )
+        return str(branch.from_node_id) if position_value <= 50.0 else str(branch.to_node_id)
 
     def _select_slack_node_id(self, nodes: list[dict]) -> UUID | None:
         slack_nodes = [
-            node
-            for node in nodes
-            if self._normalize_node_type(node["node_type"]) == "SLACK"
+            node for node in nodes if self._normalize_node_type(node["node_type"]) == "SLACK"
         ]
         if not slack_nodes:
             return None
@@ -1056,9 +1047,7 @@ class AnalysisRunService:
             return "PQ"
         return None
 
-    def _lookup_node_attrs(
-        self, nodes: list[dict], node_id: UUID | None
-    ) -> dict[str, Any]:
+    def _lookup_node_attrs(self, nodes: list[dict], node_id: UUID | None) -> dict[str, Any]:
         if node_id is None:
             return {}
         for node in nodes:
@@ -1103,9 +1092,7 @@ class AnalysisRunService:
 
         return mapped
 
-    def _build_network_graph(
-        self, project_id: UUID, case_id: UUID | None
-    ) -> NetworkGraph:
+    def _build_network_graph(self, project_id: UUID, case_id: UUID | None) -> NetworkGraph:
         with self._uow_factory() as uow:
             nodes = uow.network.list_nodes(project_id)
             branches = uow.network.list_branches(project_id)
@@ -1224,16 +1211,8 @@ class AnalysisRunService:
                 raise ValueError("Inverter setpoint requires p_mw")
             setpoint = InverterSetpoint(
                 p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(
-                    float(data.get("q_mvar"))
-                    if data.get("q_mvar") is not None
-                    else None
-                ),
-                cosphi=(
-                    float(data.get("cosphi"))
-                    if data.get("cosphi") is not None
-                    else None
-                ),
+                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
+                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
                 mode=str(data.get("mode", "PQ")),
             )
             self._validate_inverter_setpoint(setpoint)
@@ -1261,16 +1240,8 @@ class AnalysisRunService:
                 raise ValueError("Converter setpoint requires p_mw")
             setpoint = ConverterSetpoint(
                 p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(
-                    float(data.get("q_mvar"))
-                    if data.get("q_mvar") is not None
-                    else None
-                ),
-                cosphi=(
-                    float(data.get("cosphi"))
-                    if data.get("cosphi") is not None
-                    else None
-                ),
+                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
+                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
                 mode=str(data.get("mode", "PQ")),
             )
             self._validate_converter_setpoint(setpoint)

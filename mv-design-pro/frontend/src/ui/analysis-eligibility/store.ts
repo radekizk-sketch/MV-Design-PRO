@@ -16,6 +16,7 @@ import type {
   AnalysisEligibilityResult,
   EligibilityAnalysisType,
 } from '../types';
+import { normalizeAnalysisEligibilityResponse } from '../shared/fixActionSurfaceNormalizer';
 
 // =============================================================================
 // API Client
@@ -28,7 +29,7 @@ async function fetchAnalysisEligibility(
   if (!response.ok) {
     throw new Error(`Nie udało się pobrać macierzy eligibility: ${response.statusText}`);
   }
-  return response.json();
+  return normalizeAnalysisEligibilityResponse(await response.json());
 }
 
 // =============================================================================

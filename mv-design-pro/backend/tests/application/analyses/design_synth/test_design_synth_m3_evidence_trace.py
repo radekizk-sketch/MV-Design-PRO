@@ -11,6 +11,7 @@ sys.path.insert(0, str(backend_src))
 from application.analyses.design_synth.pipeline import run_connection_study
 from application.analyses.design_synth.service import DesignSynthService
 from application.network_wizard.service import NetworkWizardService
+
 from tests.utils.determinism import assert_deterministic
 
 

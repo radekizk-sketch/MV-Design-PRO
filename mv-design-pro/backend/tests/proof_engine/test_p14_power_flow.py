@@ -10,7 +10,6 @@ from datetime import datetime
 from uuid import UUID
 
 import pytest
-
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.packs.p14_power_flow import (
     P14PowerFlowInput,

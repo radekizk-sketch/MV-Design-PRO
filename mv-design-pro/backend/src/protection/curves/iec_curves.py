@@ -15,10 +15,10 @@ where:
 WHITE BOX: All intermediate values are exposed for auditability.
 """
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-import math
 
 
 class IECCurveType(str, Enum):
@@ -82,9 +82,7 @@ class IECCurveParams:
             IECCurveType.DEFINITE_TIME: (0.0, 0.0, 0.0),  # Fixed time curve
         }
 
-        a, b, c = STANDARD_PARAMS.get(
-            curve_type, (0.14, 0.02, 0.0)  # Default to SI
-        )
+        a, b, c = STANDARD_PARAMS.get(curve_type, (0.14, 0.02, 0.0))  # Default to SI
         return cls(curve_type=curve_type, a=a, b=b, c=c)
 
     def to_dict(self) -> dict[str, Any]:

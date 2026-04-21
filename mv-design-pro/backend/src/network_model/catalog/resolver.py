@@ -11,10 +11,9 @@ This module provides backward compatibility adapters for models without type_ref
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from network_model.catalog.repository import CatalogRepository
-from network_model.catalog.types import CableType, LineType, TransformerType
+from network_model.catalog.types import CableType, LineType
 
 
 class ParameterSource(Enum):
@@ -54,18 +53,18 @@ class ResolvedThermalParams:
         base_type_id: ID of the base type (if manufacturer type)
     """
 
-    ith_1s_a: Optional[float]
-    jth_1s_a_per_mm2: Optional[float]
+    ith_1s_a: float | None
+    jth_1s_a_per_mm2: float | None
     cross_section_mm2: float
-    conductor_material: Optional[str]
+    conductor_material: str | None
     dane_cieplne_kompletne: bool
     source: ParameterSource
-    type_id: Optional[str] = None
-    type_name: Optional[str] = None
+    type_id: str | None = None
+    type_name: str | None = None
     is_manufacturer_type: bool = False
-    base_type_id: Optional[str] = None
+    base_type_id: str | None = None
 
-    def get_ith_1s(self) -> Optional[float]:
+    def get_ith_1s(self) -> float | None:
         """
         Get Ith(1s) [A] from direct value or calculated from density.
 
@@ -135,15 +134,15 @@ def _get_b_us_per_km(type_data: LineType | CableType) -> float:
 
 def resolve_line_params(
     *,
-    type_ref: Optional[str],
+    type_ref: str | None,
     is_cable: bool,
-    impedance_override: Optional[dict],
+    impedance_override: dict | None,
     length_km: float,
     instance_r_ohm_per_km: float,
     instance_x_ohm_per_km: float,
     instance_b_us_per_km: float,
     instance_rated_current_a: float,
-    catalog: Optional[CatalogRepository],
+    catalog: CatalogRepository | None,
 ) -> ResolvedLineParams:
     """
     Resolve Line/Cable electrical parameters with canonical precedence.
@@ -219,7 +218,7 @@ def resolve_line_params(
 
 def resolve_transformer_params(
     *,
-    type_ref: Optional[str],
+    type_ref: str | None,
     instance_rated_power_mva: float,
     instance_voltage_hv_kv: float,
     instance_voltage_lv_kv: float,
@@ -228,7 +227,7 @@ def resolve_transformer_params(
     instance_i0_percent: float,
     instance_p0_kw: float,
     instance_vector_group: str,
-    catalog: Optional[CatalogRepository],
+    catalog: CatalogRepository | None,
 ) -> ResolvedTransformerParams:
     """
     Resolve Transformer nameplate parameters with canonical precedence.
@@ -282,10 +281,10 @@ def resolve_transformer_params(
 
 def resolve_thermal_params(
     *,
-    type_ref: Optional[str],
+    type_ref: str | None,
     is_cable: bool,
-    catalog: Optional[CatalogRepository],
-) -> Optional[ResolvedThermalParams]:
+    catalog: CatalogRepository | None,
+) -> ResolvedThermalParams | None:
     """
     Resolve thermal parameters from catalog type reference.
 

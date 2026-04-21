@@ -29,12 +29,8 @@ def rule_e_d01_no_source(graph: NetworkGraph) -> list[DiagnosticIssue]:
     """E-D01: Brak źródła zasilania (SLACK lub falownik)."""
     from network_model.core.node import NodeType
 
-    has_slack = any(
-        n.node_type == NodeType.SLACK for n in graph.nodes.values()
-    )
-    has_inverter = bool(
-        hasattr(graph, "inverter_sources") and graph.inverter_sources
-    )
+    has_slack = any(n.node_type == NodeType.SLACK for n in graph.nodes.values())
+    has_inverter = bool(hasattr(graph, "inverter_sources") and graph.inverter_sources)
 
     if not has_slack and not has_inverter:
         return [
@@ -145,8 +141,7 @@ def rule_e_d04_transformer_missing_sides(graph: NetworkGraph) -> list[Diagnostic
                         code="E-D04",
                         severity=DiagnosticSeverity.BLOCKER,
                         message_pl=(
-                            f"Transformator '{branch.name}' — brak: "
-                            f"{', '.join(missing_sides)}"
+                            f"Transformator '{branch.name}' — brak: " f"{', '.join(missing_sides)}"
                         ),
                         affected_refs=(branch_id,),
                         hints=("Uzupełnij brakujące parametry transformatora",),
@@ -294,9 +289,7 @@ def rule_w_d01_no_zero_sequence_data(graph: NetworkGraph) -> list[DiagnosticIssu
                     f"Analiza zwarcia jednofazowego może być niedostępna"
                 ),
                 affected_refs=tuple(sorted(refs)),
-                hints=(
-                    "Uzupełnij dane Z0 lub przypisz typy z katalogu",
-                ),
+                hints=("Uzupełnij dane Z0 lub przypisz typy z katalogu",),
             )
         ]
     return []
@@ -361,9 +354,7 @@ def rule_w_d03_multiple_sources(graph: NetworkGraph) -> list[DiagnosticIssue]:
     """W-D03: Nadmiar źródeł bez koordynacji."""
     from network_model.core.node import NodeType
 
-    slack_count = sum(
-        1 for n in graph.nodes.values() if n.node_type == NodeType.SLACK
-    )
+    slack_count = sum(1 for n in graph.nodes.values() if n.node_type == NodeType.SLACK)
     inverter_count = len(graph.inverter_sources) if hasattr(graph, "inverter_sources") else 0
     total_sources = slack_count + inverter_count
 
@@ -412,14 +403,10 @@ def rule_i_d02_topology_type(graph: NetworkGraph) -> list[DiagnosticIssue]:
         return []
 
     node_count = len(graph.nodes)
-    edge_count = len(
-        [b for b in graph.branches.values() if getattr(b, "in_service", True)]
-    )
+    edge_count = len([b for b in graph.branches.values() if getattr(b, "in_service", True)])
     switch_edges = 0
     if hasattr(graph, "switches"):
-        switch_edges = len(
-            [s for s in graph.switches.values() if s.is_closed and s.in_service]
-        )
+        switch_edges = len([s for s in graph.switches.values() if s.is_closed and s.in_service])
     total_edges = edge_count + switch_edges
 
     # Radial: edges == nodes - 1; Mesh: edges > nodes - 1
@@ -433,8 +420,7 @@ def rule_i_d02_topology_type(graph: NetworkGraph) -> list[DiagnosticIssue]:
             code="I-D02",
             severity=DiagnosticSeverity.INFO,
             message_pl=(
-                f"Topologia sieci: {topology} "
-                f"({node_count} szyn, {total_edges} połączeń)"
+                f"Topologia sieci: {topology} " f"({node_count} szyn, {total_edges} połączeń)"
             ),
         )
     ]

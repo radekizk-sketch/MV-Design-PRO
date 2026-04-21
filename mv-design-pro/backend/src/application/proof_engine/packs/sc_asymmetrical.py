@@ -144,9 +144,7 @@ class SCAsymmetricalProofPack:
                 m_factor=data.m_factor,
                 n_factor=data.n_factor,
             )
-            proofs[fault_type] = ProofGenerator.generate_sc1_proof(
-                sc1_input, artifact_id
-            )
+            proofs[fault_type] = ProofGenerator.generate_sc1_proof(sc1_input, artifact_id)
 
         all_passed = all(p.summary.unit_check_passed for p in proofs.values())
 

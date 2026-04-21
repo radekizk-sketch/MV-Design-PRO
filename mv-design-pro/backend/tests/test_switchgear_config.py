@@ -12,31 +12,26 @@ RUN #3I COMMIT 1:
 import random
 
 import pytest
-
-from domain.switchgear_config import (
-    SWITCHGEAR_CONFIG_VERSION,
-    CatalogBindingV1,
-    ConfigFixActionV1,
-    ConfigIssueSeverity,
-    ConfigValidationIssueV1,
-    DeviceConfigV1,
-    FieldConfigV1,
-    FixActionType,
-    ProtectionBindingV1,
-    SwitchgearConfigV1,
-    SwitchgearConfigValidationCode,
-    SwitchgearConfigValidationResultV1,
-    canonicalize_config,
-    compute_config_hash,
-    validate_switchgear_config,
-)
 from domain.field_device import (
     AparatTypeV1,
     DeviceTypeV1,
     FieldRoleV1,
     PoleTypeV1,
 )
-
+from domain.switchgear_config import (
+    SWITCHGEAR_CONFIG_VERSION,
+    CatalogBindingV1,
+    ConfigIssueSeverity,
+    DeviceConfigV1,
+    FieldConfigV1,
+    FixActionType,
+    ProtectionBindingV1,
+    SwitchgearConfigV1,
+    SwitchgearConfigValidationCode,
+    canonicalize_config,
+    compute_config_hash,
+    validate_switchgear_config,
+)
 
 # =============================================================================
 # HELPERS
@@ -412,12 +407,8 @@ class TestCanonicalization:
         config = SwitchgearConfigV1(
             station_id="s1",
             catalog_bindings=(
-                CatalogBindingV1(
-                    device_id="dev_z", catalog_id="c1", catalog_name="Z"
-                ),
-                CatalogBindingV1(
-                    device_id="dev_a", catalog_id="c2", catalog_name="A"
-                ),
+                CatalogBindingV1(device_id="dev_z", catalog_id="c1", catalog_name="Z"),
+                CatalogBindingV1(device_id="dev_a", catalog_id="c2", catalog_name="A"),
             ),
         )
         canonical = canonicalize_config(config)
@@ -455,10 +446,7 @@ class TestValidation:
         config = _make_transformer_config_with_relay()
         result = validate_switchgear_config(config)
         assert result.valid is True
-        blocker_issues = [
-            i for i in result.issues
-            if i.severity == ConfigIssueSeverity.BLOCKER
-        ]
+        blocker_issues = [i for i in result.issues if i.severity == ConfigIssueSeverity.BLOCKER]
         assert len(blocker_issues) == 0
 
     def test_catalog_ref_missing(self) -> None:
@@ -491,19 +479,18 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         catalog_issues = [
-            i for i in result.issues
-            if i.code == SwitchgearConfigValidationCode.CATALOG_REF_MISSING
+            i for i in result.issues if i.code == SwitchgearConfigValidationCode.CATALOG_REF_MISSING
         ]
         assert len(catalog_issues) == 2  # One per device
         # FixActions present
         catalog_fixes = [
-            fa for fa in result.fix_actions
+            fa
+            for fa in result.fix_actions
             if fa.code == SwitchgearConfigValidationCode.CATALOG_REF_MISSING
         ]
         assert len(catalog_fixes) == 2
         assert all(
-            fa.action == FixActionType.NAVIGATE_TO_WIZARD_CATALOG_PICKER
-            for fa in catalog_fixes
+            fa.action == FixActionType.NAVIGATE_TO_WIZARD_CATALOG_PICKER for fa in catalog_fixes
         )
 
     def test_field_missing_required_device(self) -> None:
@@ -522,7 +509,8 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         missing_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.code == SwitchgearConfigValidationCode.FIELD_MISSING_REQUIRED_DEVICE
         ]
         # LINE_IN requires CB + CABLE_HEAD
@@ -603,7 +591,8 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         prot_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.code == SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING
         ]
         assert len(prot_issues) == 1
@@ -658,9 +647,7 @@ class TestValidation:
                     catalog_id=f"c_{did}",
                     catalog_name=f"Cat {did}",
                 )
-                for did in [
-                    "dev_cb", "dev_ct", "dev_relay", "dev_pv", "dev_ch"
-                ]
+                for did in ["dev_cb", "dev_ct", "dev_relay", "dev_pv", "dev_ch"]
             ),
             protection_bindings=(
                 ProtectionBindingV1(
@@ -673,14 +660,16 @@ class TestValidation:
         # Should now be invalid (BLOCKER)
         assert result.valid is False
         pv_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.code == SwitchgearConfigValidationCode.PV_BESS_TRANSFORMER_MISSING
         ]
         assert len(pv_issues) == 1
         assert pv_issues[0].severity == ConfigIssueSeverity.BLOCKER
         # FixAction present
         pv_fixes = [
-            fa for fa in result.fix_actions
+            fa
+            for fa in result.fix_actions
             if fa.code == SwitchgearConfigValidationCode.PV_BESS_TRANSFORMER_MISSING
         ]
         assert len(pv_fixes) == 1
@@ -703,8 +692,7 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         orphan_issues = [
-            i for i in result.issues
-            if i.code == SwitchgearConfigValidationCode.DEVICE_ORPHAN
+            i for i in result.issues if i.code == SwitchgearConfigValidationCode.DEVICE_ORPHAN
         ]
         assert len(orphan_issues) == 1
 
@@ -728,8 +716,7 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         dup_issues = [
-            i for i in result.issues
-            if i.code == SwitchgearConfigValidationCode.FIELD_DUPLICATE_ID
+            i for i in result.issues if i.code == SwitchgearConfigValidationCode.FIELD_DUPLICATE_ID
         ]
         assert len(dup_issues) == 1
 
@@ -762,8 +749,7 @@ class TestValidation:
         result = validate_switchgear_config(config)
         assert result.valid is False
         dup_issues = [
-            i for i in result.issues
-            if i.code == SwitchgearConfigValidationCode.DEVICE_DUPLICATE_ID
+            i for i in result.issues if i.code == SwitchgearConfigValidationCode.DEVICE_DUPLICATE_ID
         ]
         assert len(dup_issues) == 1
 
@@ -782,7 +768,8 @@ class TestValidation:
         result = validate_switchgear_config(config)
         # No blockers (no devices to validate)
         orphan_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.code == SwitchgearConfigValidationCode.CATALOG_BINDING_ORPHAN
         ]
         assert len(orphan_issues) == 1
@@ -801,7 +788,8 @@ class TestValidation:
         )
         result = validate_switchgear_config(config)
         orphan_issues = [
-            i for i in result.issues
+            i
+            for i in result.issues
             if i.code == SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN
         ]
         assert len(orphan_issues) == 2  # Both relay and cb are orphans
@@ -835,8 +823,7 @@ class TestValidation:
         )
         result = validate_switchgear_config(config)
         blocker_catalog = [
-            i for i in result.issues
-            if i.code == SwitchgearConfigValidationCode.CATALOG_REF_MISSING
+            i for i in result.issues if i.code == SwitchgearConfigValidationCode.CATALOG_REF_MISSING
         ]
         assert len(blocker_catalog) == 2
         # Should be sorted by element_id

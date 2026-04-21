@@ -15,22 +15,19 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from domain.protection_engine_v1 import (
     CTRatio,
     Function50Settings,
     Function51Settings,
     IECCurveTypeV1,
-    ProtectionResultSetV1,
     ProtectionStudyInputV1,
     RelayV1,
     TestPoint,
     execute_protection_v1,
     iec_curve_time_seconds,
 )
-
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(
     prefix="/api/protection-engine/v1",
@@ -185,19 +182,21 @@ def calculate_curve_time(request: CurveTimeRequest) -> dict[str, Any]:
 )
 def list_curve_types() -> dict[str, Any]:
     """List available IEC curve types with Polish labels and parameters."""
-    from domain.protection_engine_v1 import IEC_CURVE_PARAMS, IEC_CURVE_LABELS_PL
+    from domain.protection_engine_v1 import IEC_CURVE_LABELS_PL, IEC_CURVE_PARAMS
 
     curves = []
     for ct in IECCurveTypeV1:
         A, B = IEC_CURVE_PARAMS[ct]
-        curves.append({
-            "value": ct.value,
-            "label_pl": IEC_CURVE_LABELS_PL[ct],
-            "A": A,
-            "B": B,
-            "formula": "t = TMS * A / (M^B - 1)",
-            "standard": "IEC 60255-151:2009",
-        })
+        curves.append(
+            {
+                "value": ct.value,
+                "label_pl": IEC_CURVE_LABELS_PL[ct],
+                "A": A,
+                "B": B,
+                "formula": "t = TMS * A / (M^B - 1)",
+                "standard": "IEC 60255-151:2009",
+            }
+        )
 
     return {"curves": curves}
 
@@ -224,67 +223,77 @@ def validate_input(request: ExecuteProtectionRequest) -> dict[str, Any]:
     for relay in request.relays:
         # CT ratio validation
         if relay.ct_ratio.primary_a <= 0 or relay.ct_ratio.secondary_a <= 0:
-            issues.append({
-                "code": "protection.relay_missing_ct_ratio",
-                "relay_id": relay.relay_id,
-                "message_pl": f"Przekaźnik {relay.relay_id}: nieprawidłowa przekładnia CT",
-                "severity": "BLOCKER",
-                "fix_action": {
-                    "action_type": "NAVIGATE_TO_ELEMENT",
-                    "element_ref": relay.attached_cb_id,
-                    "description_pl": "Uzupełnij przekładnię CT",
-                },
-            })
+            issues.append(
+                {
+                    "code": "protection.relay_missing_ct_ratio",
+                    "relay_id": relay.relay_id,
+                    "message_pl": f"Przekaźnik {relay.relay_id}: nieprawidłowa przekładnia CT",
+                    "severity": "BLOCKER",
+                    "fix_action": {
+                        "action_type": "NAVIGATE_TO_ELEMENT",
+                        "element_ref": relay.attached_cb_id,
+                        "description_pl": "Uzupełnij przekładnię CT",
+                    },
+                }
+            )
 
         # Curve type validation
         try:
             IECCurveTypeV1(relay.f51.curve_type)
         except ValueError:
-            issues.append({
-                "code": "protection.curve_invalid_params",
-                "relay_id": relay.relay_id,
-                "message_pl": (
-                    f"Przekaźnik {relay.relay_id}: "
-                    f"nieprawidłowy typ krzywej '{relay.f51.curve_type}'"
-                ),
-                "severity": "BLOCKER",
-                "fix_action": {
-                    "action_type": "OPEN_MODAL",
-                    "element_ref": relay.attached_cb_id,
-                    "modal_type": "relay_settings",
-                    "description_pl": "Wybierz prawidłowy typ krzywej IEC",
-                },
-            })
+            issues.append(
+                {
+                    "code": "protection.curve_invalid_params",
+                    "relay_id": relay.relay_id,
+                    "message_pl": (
+                        f"Przekaźnik {relay.relay_id}: "
+                        f"nieprawidłowy typ krzywej '{relay.f51.curve_type}'"
+                    ),
+                    "severity": "BLOCKER",
+                    "fix_action": {
+                        "action_type": "OPEN_MODAL",
+                        "element_ref": relay.attached_cb_id,
+                        "modal_type": "relay_settings",
+                        "description_pl": "Wybierz prawidłowy typ krzywej IEC",
+                    },
+                }
+            )
 
         # TMS validation
         if relay.f51.tms <= 0:
-            issues.append({
-                "code": "protection.curve_invalid_params",
-                "relay_id": relay.relay_id,
-                "message_pl": f"Przekaźnik {relay.relay_id}: TMS musi być dodatni",
-                "severity": "BLOCKER",
-            })
+            issues.append(
+                {
+                    "code": "protection.curve_invalid_params",
+                    "relay_id": relay.relay_id,
+                    "message_pl": f"Przekaźnik {relay.relay_id}: TMS musi być dodatni",
+                    "severity": "BLOCKER",
+                }
+            )
 
     # Test point validation
     if not request.test_points:
-        issues.append({
-            "code": "protection.test_point_missing_current",
-            "message_pl": "Brak punktów testowych prądu",
-            "severity": "BLOCKER",
-            "fix_action": {
-                "action_type": "ADD_MISSING_DEVICE",
-                "description_pl": "Dodaj punkt testowy prądu",
-            },
-        })
+        issues.append(
+            {
+                "code": "protection.test_point_missing_current",
+                "message_pl": "Brak punktów testowych prądu",
+                "severity": "BLOCKER",
+                "fix_action": {
+                    "action_type": "ADD_MISSING_DEVICE",
+                    "description_pl": "Dodaj punkt testowy prądu",
+                },
+            }
+        )
 
     for tp in request.test_points:
         if tp.i_a_primary <= 0:
-            issues.append({
-                "code": "protection.test_point_missing_current",
-                "point_id": tp.point_id,
-                "message_pl": f"Punkt testowy {tp.point_id}: prąd musi być dodatni",
-                "severity": "BLOCKER",
-            })
+            issues.append(
+                {
+                    "code": "protection.test_point_missing_current",
+                    "point_id": tp.point_id,
+                    "message_pl": f"Punkt testowy {tp.point_id}: prąd musi być dodatni",
+                    "severity": "BLOCKER",
+                }
+            )
 
     valid = len([i for i in issues if i.get("severity") == "BLOCKER"]) == 0
 

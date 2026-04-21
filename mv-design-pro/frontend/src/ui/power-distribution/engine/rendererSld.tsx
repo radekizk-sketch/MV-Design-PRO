@@ -1,12 +1,12 @@
 /**
- * rendererSld.tsx — Etap 9: Renderer SVG schematu SLD.
+ * rendererSld.tsx — Krok 9: Renderer SVG schematu SLD.
  *
  * ARCHITEKTURA: Warstwa PREZENTACJI — czysty render bez logiki biznesowej.
  *
  * ZASADY:
  * - Konsumuje WYLACZNIE WynikUkladuSld (wynik pipeline'u).
  * - ZERO fizyki, ZERO mutacji modelu.
- * - Style z ETAP_STROKE / ETAP_VOLTAGE_COLORS (import z sldEtapStyle).
+ * - Style z CANONICAL_STROKE / CANONICAL_VOLTAGE_COLORS (import z sldCanonicalStyle).
  * - Determinizm: ten sam WynikUkladuSld → identyczny SVG.
  * - Etykiety po polsku.
  */
@@ -20,20 +20,20 @@ import type {
   TrasaPolaczenia,
   PunktLamania,
 } from './sldContracts';
-import { ETAP_STROKE, ETAP_VOLTAGE_COLORS, ETAP_STATE_COLORS } from '../../sld/sldEtapStyle';
+import { CANONICAL_STROKE, CANONICAL_VOLTAGE_COLORS, CANONICAL_STATE_COLORS } from '../../sld/sldCanonicalStyle';
 
 // =============================================================================
 // § 1. STALE STYLOW
 // =============================================================================
 
 /** Kolor szyny zbiorczej SN. */
-const KOLOR_SZYNY = ETAP_VOLTAGE_COLORS.SN;
+const KOLOR_SZYNY = CANONICAL_VOLTAGE_COLORS.SN;
 
 /** Kolor linii (feeder). */
-const KOLOR_LINII = ETAP_VOLTAGE_COLORS.SN;
+const KOLOR_LINII = CANONICAL_VOLTAGE_COLORS.SN;
 
 /** Kolor linii NOP (normalnie otwartej). */
-const KOLOR_NOP = ETAP_STATE_COLORS.deenergized;
+const KOLOR_NOP = CANONICAL_STATE_COLORS.deenergized;
 
 /** Kolor tla obiektu (stacji). */
 const KOLOR_TLA_OBIEKTU = '#F8FAFC';
@@ -74,7 +74,7 @@ const SzynaSvg: React.FC<SzynaProps> = ({ szyna }) => (
         x2={sekcja.x2}
         y2={szyna.y + szyna.wysokosc / 2}
         stroke={KOLOR_SZYNY}
-        strokeWidth={ETAP_STROKE.busbar}
+        strokeWidth={CANONICAL_STROKE.busbar}
         strokeLinecap="round"
       />
     ))}
@@ -114,7 +114,7 @@ function renderujAparat(
         height={rozmiar.wys}
         fill={KOLOR_TLA_APARATU}
         stroke={KOLOR_SZYNY}
-        strokeWidth={ETAP_STROKE.symbol}
+        strokeWidth={CANONICAL_STROKE.symbol}
         rx={2}
       />
       {/* Krzyzyk wewnatrz symbolu (wylacznik) */}
@@ -147,7 +147,7 @@ const PoleSvg: React.FC<PoleProps> = ({ pole, szynaY }) => (
       x2={pole.koniecToru.x}
       y2={pole.koniecToru.y}
       stroke={KOLOR_LINII}
-      strokeWidth={ETAP_STROKE.feeder}
+      strokeWidth={CANONICAL_STROKE.feeder}
     />
     {/* Kropka polaczenia z szyna */}
     <circle
@@ -249,7 +249,7 @@ const TrasaSvg: React.FC<TrasaProps> = ({ trasa }) => {
         d={budujSciezkeSvg(trasa.punkty)}
         fill="none"
         stroke={kolor}
-        strokeWidth={ETAP_STROKE.feeder}
+        strokeWidth={CANONICAL_STROKE.feeder}
         strokeDasharray={styl}
         strokeLinecap="round"
         strokeLinejoin="round"

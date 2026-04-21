@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 2.4: Property Grid editing
- * - powerfactory_ui_parity.md § D.3: Deterministic field ordering
+ * - ui_canonical_parity.md § D.3: Deterministic field ordering
  *
  * Command for editing element properties in Property Grid.
  * Supports undo/redo of field value changes.

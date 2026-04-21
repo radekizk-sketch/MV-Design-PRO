@@ -2,7 +2,7 @@
  * Data Manager Component (PF-style Menedżer Danych)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § B: Data Manager table
+ * - ui_canonical_parity.md § B: Data Manager table
  * - wizard_screens.md § 2: Element lists
  * - sld_rules.md § G.2: Selection sync
  *
@@ -1118,11 +1118,11 @@ function renderCellValue(row: DataManagerRow, col: DataManagerColumn): React.Rea
 function getModeLabel(mode: OperatingMode): string {
   switch (mode) {
     case 'MODEL_EDIT':
-      return 'Tryb: Edycja modelu';
+      return 'Tryb: Model sieci';
     case 'CASE_CONFIG':
-      return 'Tryb: Konfiguracja (tylko odczyt modelu)';
+      return 'Tryb: Model sieci';
     case 'RESULT_VIEW':
-      return 'Tryb: Wyniki (tylko odczyt)';
+      return 'Tryb: Analiza i wyniki';
     default:
       return mode;
   }

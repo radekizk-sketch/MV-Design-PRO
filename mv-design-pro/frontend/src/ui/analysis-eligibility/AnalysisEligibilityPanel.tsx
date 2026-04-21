@@ -3,14 +3,7 @@
  *
  * Panel macierzy zdolności uruchomienia analiz.
  * Wyświetla status ELIGIBLE/INELIGIBLE dla każdego typu analizy
- * z listą blockerów, ostrzeżeń i fix_actions.
- *
- * INVARIANTS:
- * - No auto-mutations
- * - No physics
- * - No solver calls
- * - 100% Polish labels
- * - Deterministic rendering (sorted by AnalysisType, issues by code)
+ * z listą blokad, ostrzeżeń i działań naprawczych.
  */
 
 import React, { useMemo, useState } from 'react';
@@ -27,10 +20,6 @@ import {
   ELIGIBILITY_ANALYSIS_LABELS,
   ELIGIBILITY_STATUS_LABELS,
 } from '../types';
-
-// =============================================================================
-// Constants (Polish labels)
-// =============================================================================
 
 const STATUS_BADGE: Record<EligibilityStatus, string> = {
   ELIGIBLE: 'bg-green-600 text-white',
@@ -54,17 +43,12 @@ const ISSUE_SEVERITY_LABELS: Record<string, string> = {
   INFO: 'Informacja',
 };
 
-// Deterministic sort order for analysis types
 const ANALYSIS_TYPE_ORDER: EligibilityAnalysisType[] = [
   'SC_3F',
   'SC_2F',
   'SC_1F',
   'LOAD_FLOW',
 ];
-
-// =============================================================================
-// Issue Item Component
-// =============================================================================
 
 interface EligibilityIssueItemProps {
   issue: AnalysisEligibilityIssue;
@@ -92,28 +76,28 @@ const EligibilityIssueItem: React.FC<EligibilityIssueItemProps> = ({
   return (
     <div
       className={clsx(
-        'p-2 border-l-4 mb-1 rounded-r text-sm',
+        'mb-1 rounded-r border-l-4 p-2 text-sm',
         ISSUE_SEVERITY_COLORS[issue.severity],
       )}
       data-testid={`eligibility-issue-${issue.code}`}
     >
-      <div className="flex items-center gap-2 mb-1">
+      <div className="mb-1 flex items-center gap-2">
         <span className="text-xs font-bold">
           {ISSUE_SEVERITY_LABELS[issue.severity] ?? issue.severity}
         </span>
-        <span className="text-xs font-mono text-gray-600">{issue.code}</span>
+        <span className="font-mono text-xs text-gray-600">{issue.code}</span>
       </div>
       <div className="text-sm">{issue.message_pl}</div>
       {issue.element_ref && (
-        <div className="text-xs text-gray-600 mt-1">
+        <div className="mt-1 text-xs text-gray-600">
           Element: <span className="font-mono font-semibold">{issue.element_ref}</span>
         </div>
       )}
-      <div className="flex gap-2 mt-1">
+      <div className="mt-1 flex gap-2">
         {issue.element_ref && (
           <button
             onClick={handleNavigate}
-            className="px-2 py-0.5 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50"
+            className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium hover:bg-gray-50"
             data-testid={`eligibility-navigate-${issue.code}`}
           >
             Przejdź
@@ -122,7 +106,7 @@ const EligibilityIssueItem: React.FC<EligibilityIssueItemProps> = ({
         {issue.fix_action && (
           <button
             onClick={handleFix}
-            className="px-2 py-0.5 text-xs font-medium rounded border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            className="rounded border border-blue-300 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
             data-testid={`eligibility-fix-${issue.code}`}
           >
             Napraw
@@ -132,10 +116,6 @@ const EligibilityIssueItem: React.FC<EligibilityIssueItemProps> = ({
     </div>
   );
 };
-
-// =============================================================================
-// Analysis Entry Component
-// =============================================================================
 
 interface AnalysisEntryProps {
   result: AnalysisEligibilityResult;
@@ -161,15 +141,14 @@ const AnalysisEntry: React.FC<AnalysisEntryProps> = ({
 
   return (
     <div
-      className={clsx('border rounded mb-3', STATUS_BORDER[result.status])}
+      className={clsx('mb-3 rounded border', STATUS_BORDER[result.status])}
       data-testid={`eligibility-entry-${result.analysis_type}`}
     >
-      {/* Header row */}
       <div className="flex items-center justify-between p-3">
         <div className="flex items-center gap-3">
           <span
             className={clsx(
-              'px-2 py-0.5 text-xs font-bold rounded',
+              'rounded px-2 py-0.5 text-xs font-bold',
               STATUS_BADGE[result.status],
             )}
             data-testid={`eligibility-status-${result.analysis_type}`}
@@ -180,14 +159,14 @@ const AnalysisEntry: React.FC<AnalysisEntryProps> = ({
         </div>
         <div className="flex items-center gap-2">
           {blockerCount > 0 && (
-            <span className="text-xs text-red-600 font-medium">
+            <span className="text-xs font-medium text-red-600">
               {blockerCount} {blockerCount === 1 ? 'blokada' : 'blokad'}
             </span>
           )}
           {allIssues.length > 0 && (
             <button
               onClick={() => setExpanded((prev) => !prev)}
-              className="px-2 py-1 text-xs font-medium rounded border border-gray-300 bg-white hover:bg-gray-50"
+              className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium hover:bg-gray-50"
               data-testid={`eligibility-toggle-${result.analysis_type}`}
             >
               {expanded ? 'Zwiń' : 'Pokaż wymagania'}
@@ -196,7 +175,6 @@ const AnalysisEntry: React.FC<AnalysisEntryProps> = ({
         </div>
       </div>
 
-      {/* Expanded issue list */}
       {expanded && allIssues.length > 0 && (
         <div className="px-3 pb-3">
           {allIssues.map((issue) => (
@@ -213,10 +191,6 @@ const AnalysisEntry: React.FC<AnalysisEntryProps> = ({
   );
 };
 
-// =============================================================================
-// Main Panel Component
-// =============================================================================
-
 export interface AnalysisEligibilityPanelProps {
   matrix: AnalysisEligibilityResult[];
   overall: EligibilityOverall;
@@ -230,9 +204,8 @@ export const AnalysisEligibilityPanel: React.FC<AnalysisEligibilityPanelProps> =
   onNavigate,
   onFix,
 }) => {
-  // Sort matrix by deterministic order
   const sortedMatrix = useMemo(() => {
-    const orderMap = new Map(ANALYSIS_TYPE_ORDER.map((t, i) => [t, i]));
+    const orderMap = new Map(ANALYSIS_TYPE_ORDER.map((type, index) => [type, index]));
     return [...matrix].sort(
       (a, b) =>
         (orderMap.get(a.analysis_type) ?? 99) -
@@ -242,23 +215,19 @@ export const AnalysisEligibilityPanel: React.FC<AnalysisEligibilityPanelProps> =
 
   return (
     <div className="bg-white" data-testid="analysis-eligibility-panel">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-800">
-          Zdolność analiz
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
+      <div className="border-b border-gray-200 p-4">
+        <h3 className="text-sm font-semibold text-gray-800">Zdolność analiz</h3>
+        <p className="mt-1 text-xs text-gray-500">
           Macierz dostępności typów analiz obliczeniowych
         </p>
       </div>
 
-      {/* Summary */}
       <div
         className={clsx(
-          'px-4 py-2 border-b text-xs',
+          'border-b px-4 py-2 text-xs',
           overall.eligible_all
-            ? 'text-green-700 bg-green-50'
-            : 'text-amber-700 bg-amber-50',
+            ? 'bg-green-50 text-green-700'
+            : 'bg-amber-50 text-amber-700',
         )}
         data-testid="eligibility-summary"
       >
@@ -269,7 +238,6 @@ export const AnalysisEligibilityPanel: React.FC<AnalysisEligibilityPanelProps> =
             : `Wszystkie analizy zablokowane (${overall.blockers_total} blokad)`}
       </div>
 
-      {/* Matrix entries */}
       <div className="p-4">
         {sortedMatrix.map((result) => (
           <AnalysisEntry

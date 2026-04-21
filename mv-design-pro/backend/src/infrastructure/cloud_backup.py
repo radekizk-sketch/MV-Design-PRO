@@ -17,14 +17,12 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import os
-import shutil
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any
 
 logger = logging.getLogger("mv_design_pro.cloud_backup")
 
@@ -111,13 +109,9 @@ class CloudBackupConfig:
 
     def __post_init__(self) -> None:
         if not self.bucket_name:
-            raise CloudBackupConfigError(
-                "Nazwa bucket'a nie może być pusta."
-            )
+            raise CloudBackupConfigError("Nazwa bucket'a nie może być pusta.")
         if self.backend == CloudBackendType.S3 and not self.region:
-            raise CloudBackupConfigError(
-                "Region jest wymagany dla backendu S3."
-            )
+            raise CloudBackupConfigError("Region jest wymagany dla backendu S3.")
 
 
 # ============================================================================
@@ -297,7 +291,7 @@ class CloudBackupProvider(ABC):
         """Utwórz timestamp ISO 8601 (UTC)."""
         if timestamp is not None:
             return timestamp
-        return datetime.now(timezone.utc).isoformat()
+        return datetime.now(UTC).isoformat()
 
     def _verify_hash(
         self,
@@ -332,9 +326,7 @@ class LocalBackupProvider(CloudBackupProvider):
 
     def __init__(self, config: CloudBackupConfig) -> None:
         if config.backend != CloudBackendType.LOCAL:
-            raise CloudBackupConfigError(
-                "LocalBackupProvider wymaga backendu LOCAL."
-            )
+            raise CloudBackupConfigError("LocalBackupProvider wymaga backendu LOCAL.")
         self._config = config
         self._root = Path(config.bucket_name)
 
@@ -371,13 +363,9 @@ class LocalBackupProvider(CloudBackupProvider):
             file_path.parent.mkdir(parents=True, exist_ok=True)
             file_path.write_bytes(archive_bytes)
         except PermissionError as exc:
-            raise CloudBackupPermissionError(
-                f"Brak uprawnień do zapisu: {file_path}"
-            ) from exc
+            raise CloudBackupPermissionError(f"Brak uprawnień do zapisu: {file_path}") from exc
         except OSError as exc:
-            raise CloudBackupUploadError(
-                f"Błąd zapisu pliku kopii zapasowej: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd zapisu pliku kopii zapasowej: {exc}") from exc
 
         # Weryfikuj hash po zapisie
         written_data = file_path.read_bytes()
@@ -386,6 +374,7 @@ class LocalBackupProvider(CloudBackupProvider):
         # Zapisz metadane jako sidecar JSON
         if metadata:
             import json
+
             meta_path = file_path.with_suffix(".meta.json")
             meta_path.write_text(
                 json.dumps(metadata, ensure_ascii=False, indent=2),
@@ -412,21 +401,16 @@ class LocalBackupProvider(CloudBackupProvider):
         key = self._find_key(backup_id, project_id)
         if key is None:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona: "
-                f"project={project_id}, backup={backup_id}"
+                f"Kopia zapasowa nie znaleziona: " f"project={project_id}, backup={backup_id}"
             )
         file_path = self._root / key
 
         try:
             data = file_path.read_bytes()
         except PermissionError as exc:
-            raise CloudBackupPermissionError(
-                f"Brak uprawnień do odczytu: {file_path}"
-            ) from exc
+            raise CloudBackupPermissionError(f"Brak uprawnień do odczytu: {file_path}") from exc
         except OSError as exc:
-            raise CloudBackupDownloadError(
-                f"Błąd odczytu pliku kopii zapasowej: {exc}"
-            ) from exc
+            raise CloudBackupDownloadError(f"Błąd odczytu pliku kopii zapasowej: {exc}") from exc
 
         logger.info(
             "Kopia zapasowa pobrana: project=%s, backup=%s",
@@ -441,13 +425,9 @@ class LocalBackupProvider(CloudBackupProvider):
             return []
 
         entries: list[CloudBackupEntry] = []
-        for file_path in sorted(
-            project_dir.glob("*.mvdp.zip"), reverse=True
-        ):
+        for file_path in sorted(project_dir.glob("*.mvdp.zip"), reverse=True):
             stat = file_path.stat()
-            key = _normalize_key(
-                str(file_path.relative_to(self._root))
-            )
+            key = _normalize_key(str(file_path.relative_to(self._root)))
             backup_id = extract_backup_id_from_key(key)
 
             # Odczytaj hash z nazwy pliku
@@ -461,9 +441,7 @@ class LocalBackupProvider(CloudBackupProvider):
                     backup_id=backup_id,
                     project_id=project_id,
                     archive_hash=archive_hash_short,
-                    timestamp=ts_part.replace("-", ":", 2).replace(
-                        "p", "+"
-                    ),
+                    timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
                     size_bytes=stat.st_size,
                     url=f"file://{file_path.resolve()}",
                     key=key,
@@ -472,27 +450,20 @@ class LocalBackupProvider(CloudBackupProvider):
 
         return entries
 
-    def delete_backup(
-        self, backup_id: str, project_id: str
-    ) -> CloudBackupResult:
+    def delete_backup(self, backup_id: str, project_id: str) -> CloudBackupResult:
         key = self._find_key(backup_id, project_id)
         if key is None:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona: "
-                f"project={project_id}, backup={backup_id}"
+                f"Kopia zapasowa nie znaleziona: " f"project={project_id}, backup={backup_id}"
             )
         file_path = self._root / key
 
         try:
             file_path.unlink()
         except PermissionError as exc:
-            raise CloudBackupPermissionError(
-                f"Brak uprawnień do usunięcia: {file_path}"
-            ) from exc
+            raise CloudBackupPermissionError(f"Brak uprawnień do usunięcia: {file_path}") from exc
         except OSError as exc:
-            raise CloudBackupUploadError(
-                f"Błąd usuwania pliku kopii zapasowej: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd usuwania pliku kopii zapasowej: {exc}") from exc
 
         # Usuń sidecar metadanych jeśli istnieje
         meta_path = file_path.with_suffix(".meta.json")
@@ -507,12 +478,10 @@ class LocalBackupProvider(CloudBackupProvider):
 
         return CloudBackupResult(
             success=True,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
-    def _find_key(
-        self, backup_id: str, project_id: str
-    ) -> str | None:
+    def _find_key(self, backup_id: str, project_id: str) -> str | None:
         """Znajdź klucz pliku na podstawie backup_id.
 
         Akceptuje backup_id z separatorem '\\' lub '/' (przenośność Windows/Linux).
@@ -521,9 +490,7 @@ class LocalBackupProvider(CloudBackupProvider):
         # Normalizuj wejście — na Windows list_backups może zwrócić backslashe
         backup_id = _normalize_key(backup_id)
 
-        project_dir = (
-            self._root / self._config.prefix / project_id
-        )
+        project_dir = self._root / self._config.prefix / project_id
         if not project_dir.exists():
             return None
 
@@ -553,9 +520,7 @@ class S3BackupProvider(CloudBackupProvider):
         s3_client: Any | None = None,
     ) -> None:
         if config.backend != CloudBackendType.S3:
-            raise CloudBackupConfigError(
-                "S3BackupProvider wymaga backendu S3."
-            )
+            raise CloudBackupConfigError("S3BackupProvider wymaga backendu S3.")
         self._config = config
 
         if s3_client is not None:
@@ -569,8 +534,7 @@ class S3BackupProvider(CloudBackupProvider):
             import boto3
         except ImportError as exc:
             raise CloudBackupConfigError(
-                "Biblioteka boto3 jest wymagana dla backendu S3. "
-                "Zainstaluj: pip install boto3"
+                "Biblioteka boto3 jest wymagana dla backendu S3. " "Zainstaluj: pip install boto3"
             ) from exc
 
         kwargs: dict[str, Any] = {
@@ -624,23 +588,16 @@ class S3BackupProvider(CloudBackupProvider):
                 **extra_args,
             )
         except self._client.exceptions.NoSuchBucket:
-            raise CloudBackupNotFoundError(
-                f"Bucket nie istnieje: {self._config.bucket_name}"
-            )
+            raise CloudBackupNotFoundError(f"Bucket nie istnieje: {self._config.bucket_name}")
         except Exception as exc:
             exc_name = type(exc).__name__
             if "AccessDenied" in exc_name or "Forbidden" in str(exc):
                 raise CloudBackupPermissionError(
-                    f"Brak uprawnień do bucket'a: "
-                    f"{self._config.bucket_name}"
+                    f"Brak uprawnień do bucket'a: " f"{self._config.bucket_name}"
                 ) from exc
-            raise CloudBackupUploadError(
-                f"Błąd przesyłania do S3: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd przesyłania do S3: {exc}") from exc
 
-        url = (
-            f"s3://{self._config.bucket_name}/{key}"
-        )
+        url = f"s3://{self._config.bucket_name}/{key}"
 
         logger.info(
             "Kopia zapasowa S3: project=%s, key=%s",
@@ -667,13 +624,10 @@ class S3BackupProvider(CloudBackupProvider):
             data = response["Body"].read()
         except self._client.exceptions.NoSuchKey:
             raise CloudBackupNotFoundError(
-                f"Kopia zapasowa nie znaleziona w S3: "
-                f"project={project_id}, backup={backup_id}"
+                f"Kopia zapasowa nie znaleziona w S3: " f"project={project_id}, backup={backup_id}"
             )
         except Exception as exc:
-            raise CloudBackupDownloadError(
-                f"Błąd pobierania z S3: {exc}"
-            ) from exc
+            raise CloudBackupDownloadError(f"Błąd pobierania z S3: {exc}") from exc
 
         return data
 
@@ -686,9 +640,7 @@ class S3BackupProvider(CloudBackupProvider):
                 Prefix=list_prefix,
             )
         except Exception as exc:
-            raise CloudBackupDownloadError(
-                f"Błąd listowania kopii S3: {exc}"
-            ) from exc
+            raise CloudBackupDownloadError(f"Błąd listowania kopii S3: {exc}") from exc
 
         entries: list[CloudBackupEntry] = []
         for obj in response.get("Contents", []):
@@ -698,21 +650,15 @@ class S3BackupProvider(CloudBackupProvider):
 
             backup_id = extract_backup_id_from_key(key)
             parts = backup_id.rsplit("_", maxsplit=1)
-            archive_hash_short = (
-                parts[-1] if len(parts) >= 2 else ""
-            )
-            ts_part = (
-                parts[0] if len(parts) >= 2 else backup_id
-            )
+            archive_hash_short = parts[-1] if len(parts) >= 2 else ""
+            ts_part = parts[0] if len(parts) >= 2 else backup_id
 
             entries.append(
                 CloudBackupEntry(
                     backup_id=backup_id,
                     project_id=project_id,
                     archive_hash=archive_hash_short,
-                    timestamp=ts_part.replace("-", ":", 2).replace(
-                        "p", "+"
-                    ),
+                    timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
                     size_bytes=obj.get("Size", 0),
                     url=f"s3://{self._config.bucket_name}/{key}",
                     key=key,
@@ -723,9 +669,7 @@ class S3BackupProvider(CloudBackupProvider):
         entries.sort(key=lambda e: e.timestamp, reverse=True)
         return entries
 
-    def delete_backup(
-        self, backup_id: str, project_id: str
-    ) -> CloudBackupResult:
+    def delete_backup(self, backup_id: str, project_id: str) -> CloudBackupResult:
         key = self._build_key_from_id(backup_id, project_id)
 
         try:
@@ -734,23 +678,16 @@ class S3BackupProvider(CloudBackupProvider):
                 Key=key,
             )
         except Exception as exc:
-            raise CloudBackupUploadError(
-                f"Błąd usuwania z S3: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd usuwania z S3: {exc}") from exc
 
         return CloudBackupResult(
             success=True,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
-    def _build_key_from_id(
-        self, backup_id: str, project_id: str
-    ) -> str:
+    def _build_key_from_id(self, backup_id: str, project_id: str) -> str:
         """Zbuduj klucz S3 z backup_id."""
-        return (
-            f"{self._config.prefix}/{project_id}/"
-            f"{backup_id}.mvdp.zip"
-        )
+        return f"{self._config.prefix}/{project_id}/" f"{backup_id}.mvdp.zip"
 
 
 # ============================================================================
@@ -772,9 +709,7 @@ class GCSBackupProvider(CloudBackupProvider):
         storage_client: Any | None = None,
     ) -> None:
         if config.backend != CloudBackendType.GCS:
-            raise CloudBackupConfigError(
-                "GCSBackupProvider wymaga backendu GCS."
-            )
+            raise CloudBackupConfigError("GCSBackupProvider wymaga backendu GCS.")
         self._config = config
 
         if storage_client is not None:
@@ -797,9 +732,7 @@ class GCSBackupProvider(CloudBackupProvider):
 
         kwargs: dict[str, Any] = {}
         if self._config.credentials_path:
-            kwargs["credentials"] = (
-                self._config.credentials_path
-            )
+            kwargs["credentials"] = self._config.credentials_path
 
         return storage.Client(**kwargs)
 
@@ -845,21 +778,15 @@ class GCSBackupProvider(CloudBackupProvider):
             exc_str = str(exc)
             if "403" in exc_str or "Forbidden" in exc_str:
                 raise CloudBackupPermissionError(
-                    f"Brak uprawnień do bucket'a GCS: "
-                    f"{self._config.bucket_name}"
+                    f"Brak uprawnień do bucket'a GCS: " f"{self._config.bucket_name}"
                 ) from exc
             if "404" in exc_str or "Not Found" in exc_str:
                 raise CloudBackupNotFoundError(
-                    f"Bucket GCS nie istnieje: "
-                    f"{self._config.bucket_name}"
+                    f"Bucket GCS nie istnieje: " f"{self._config.bucket_name}"
                 ) from exc
-            raise CloudBackupUploadError(
-                f"Błąd przesyłania do GCS: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd przesyłania do GCS: {exc}") from exc
 
-        url = (
-            f"gs://{self._config.bucket_name}/{key}"
-        )
+        url = f"gs://{self._config.bucket_name}/{key}"
 
         logger.info(
             "Kopia zapasowa GCS: project=%s, key=%s",
@@ -888,9 +815,7 @@ class GCSBackupProvider(CloudBackupProvider):
                     f"Kopia zapasowa nie znaleziona w GCS: "
                     f"project={project_id}, backup={backup_id}"
                 )
-            raise CloudBackupDownloadError(
-                f"Błąd pobierania z GCS: {exc}"
-            ) from exc
+            raise CloudBackupDownloadError(f"Błąd pobierania z GCS: {exc}") from exc
 
         return data
 
@@ -903,9 +828,7 @@ class GCSBackupProvider(CloudBackupProvider):
                 prefix=list_prefix,
             )
         except Exception as exc:
-            raise CloudBackupDownloadError(
-                f"Błąd listowania kopii GCS: {exc}"
-            ) from exc
+            raise CloudBackupDownloadError(f"Błąd listowania kopii GCS: {exc}") from exc
 
         entries: list[CloudBackupEntry] = []
         for blob in blobs:
@@ -915,21 +838,15 @@ class GCSBackupProvider(CloudBackupProvider):
 
             backup_id = extract_backup_id_from_key(key)
             parts = backup_id.rsplit("_", maxsplit=1)
-            archive_hash_short = (
-                parts[-1] if len(parts) >= 2 else ""
-            )
-            ts_part = (
-                parts[0] if len(parts) >= 2 else backup_id
-            )
+            archive_hash_short = parts[-1] if len(parts) >= 2 else ""
+            ts_part = parts[0] if len(parts) >= 2 else backup_id
 
             entries.append(
                 CloudBackupEntry(
                     backup_id=backup_id,
                     project_id=project_id,
                     archive_hash=archive_hash_short,
-                    timestamp=ts_part.replace("-", ":", 2).replace(
-                        "p", "+"
-                    ),
+                    timestamp=ts_part.replace("-", ":", 2).replace("p", "+"),
                     size_bytes=blob.size or 0,
                     url=f"gs://{self._config.bucket_name}/{key}",
                     key=key,
@@ -940,9 +857,7 @@ class GCSBackupProvider(CloudBackupProvider):
         entries.sort(key=lambda e: e.timestamp, reverse=True)
         return entries
 
-    def delete_backup(
-        self, backup_id: str, project_id: str
-    ) -> CloudBackupResult:
+    def delete_backup(self, backup_id: str, project_id: str) -> CloudBackupResult:
         key = self._build_key_from_id(backup_id, project_id)
 
         try:
@@ -955,23 +870,16 @@ class GCSBackupProvider(CloudBackupProvider):
                     f"Kopia zapasowa nie znaleziona w GCS: "
                     f"project={project_id}, backup={backup_id}"
                 )
-            raise CloudBackupUploadError(
-                f"Błąd usuwania z GCS: {exc}"
-            ) from exc
+            raise CloudBackupUploadError(f"Błąd usuwania z GCS: {exc}") from exc
 
         return CloudBackupResult(
             success=True,
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
-    def _build_key_from_id(
-        self, backup_id: str, project_id: str
-    ) -> str:
+    def _build_key_from_id(self, backup_id: str, project_id: str) -> str:
         """Zbuduj klucz GCS z backup_id."""
-        return (
-            f"{self._config.prefix}/{project_id}/"
-            f"{backup_id}.mvdp.zip"
-        )
+        return f"{self._config.prefix}/{project_id}/" f"{backup_id}.mvdp.zip"
 
 
 # ============================================================================
@@ -1006,6 +914,4 @@ def create_backup_provider(
     elif config.backend == CloudBackendType.GCS:
         return GCSBackupProvider(config, storage_client=gcs_client)
     else:
-        raise CloudBackupConfigError(
-            f"Nieobsługiwany typ backendu: {config.backend}"
-        )
+        raise CloudBackupConfigError(f"Nieobsługiwany typ backendu: {config.backend}")

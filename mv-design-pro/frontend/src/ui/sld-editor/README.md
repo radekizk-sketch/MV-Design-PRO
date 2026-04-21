@@ -1,4 +1,4 @@
-# P30b — SLD Editor (≥110% PowerFactory)
+# P30b — SLD Editor (≥110% Canonical)
 
 **Status:** ✅ COMPLETE
 **Branch:** `claude/rola-binding-sld-editor-ONwsG`
@@ -6,7 +6,7 @@
 
 ## Cel
 
-Podnieść edytor SLD do poziomu **≥110% PowerFactory** przez wdrożenie krytycznych braków edycyjnych:
+Podnieść edytor SLD do poziomu **≥110% Canonical** przez wdrożenie krytycznych braków edycyjnych:
 - ✅ Multi-select (Shift+klik, Ctrl+klik, lasso)
 - ✅ Move/drag (single + grupa, snap-to-grid)
 - ✅ Copy/paste/duplicate (Ctrl+C/V/D)

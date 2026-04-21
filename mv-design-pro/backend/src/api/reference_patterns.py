@@ -16,24 +16,18 @@ NO CODENAMES IN UI.
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
-
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from application.reference_patterns import (
     PATTERN_ID,
     PATTERN_NAME_PL,
-    PATTERN_A_FIXTURES_SUBDIR,
     ReferencePatternResult,
-    run_pattern_a,
-    load_fixture,
-    fixture_to_input,
     get_pattern_a_fixtures_dir,
+    run_pattern_a,
 )
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 router = APIRouter(
     prefix="/api/reference-patterns",
@@ -282,13 +276,14 @@ async def export_pattern_result_pdf(fixture_file: str):
     Returns:
         PDF file as attachment
     """
-    from fastapi.responses import Response
     import io
 
+    from fastapi.responses import Response
+
     try:
-        from reportlab.pdfgen import canvas
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
+        from reportlab.pdfgen import canvas
     except ImportError:
         raise HTTPException(
             status_code=501,
@@ -440,13 +435,14 @@ async def export_pattern_result_docx(fixture_file: str):
     Returns:
         DOCX file as attachment
     """
-    from fastapi.responses import Response
     import io
+
+    from fastapi.responses import Response
 
     try:
         from docx import Document
-        from docx.shared import Pt
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Pt
     except ImportError:
         raise HTTPException(
             status_code=501,
@@ -538,9 +534,13 @@ async def export_pattern_result_docx(fixture_file: str):
             else:
                 row[1].text = f"{value} {unit}".strip()
 
-    add_artifact_row(thermal_table, "Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s")
+    add_artifact_row(
+        thermal_table, "Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"
+    )
     add_artifact_row(thermal_table, "Prad znamionowy cieplny (Ithn)", artifacts.get("ithn_a"), "A")
-    add_artifact_row(thermal_table, "Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A")
+    add_artifact_row(
+        thermal_table, "Prad dopuszczalny cieplnie (Ithdop)", artifacts.get("ithdop_a"), "A"
+    )
 
     doc.add_paragraph()
 
@@ -556,12 +556,30 @@ async def export_pattern_result_docx(fixture_file: str):
             for r in p.runs:
                 r.bold = True
 
-    add_artifact_row(window_table, "I_min (selektywnosc, pierwotna)", artifacts.get("window_i_min_primary_a"), "A")
-    add_artifact_row(window_table, "I_max (okno, pierwotna)", artifacts.get("window_i_max_primary_a"), "A")
-    add_artifact_row(window_table, "Zalecana nastawa (wtorna)", artifacts.get("recommended_setting_secondary_a"), "A")
-    add_artifact_row(window_table, "Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie")
-    add_artifact_row(window_table, "Kryterium limitujace I_min", artifacts.get("limiting_criterion_min"))
-    add_artifact_row(window_table, "Kryterium limitujace I_max", artifacts.get("limiting_criterion_max"))
+    add_artifact_row(
+        window_table,
+        "I_min (selektywnosc, pierwotna)",
+        artifacts.get("window_i_min_primary_a"),
+        "A",
+    )
+    add_artifact_row(
+        window_table, "I_max (okno, pierwotna)", artifacts.get("window_i_max_primary_a"), "A"
+    )
+    add_artifact_row(
+        window_table,
+        "Zalecana nastawa (wtorna)",
+        artifacts.get("recommended_setting_secondary_a"),
+        "A",
+    )
+    add_artifact_row(
+        window_table, "Okno nastaw prawidlowe", "Tak" if artifacts.get("window_valid") else "Nie"
+    )
+    add_artifact_row(
+        window_table, "Kryterium limitujace I_min", artifacts.get("limiting_criterion_min")
+    )
+    add_artifact_row(
+        window_table, "Kryterium limitujace I_max", artifacts.get("limiting_criterion_max")
+    )
 
     doc.add_paragraph()
 

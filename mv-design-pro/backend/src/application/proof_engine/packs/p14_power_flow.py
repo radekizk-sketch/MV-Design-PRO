@@ -33,7 +33,6 @@ from application.proof_engine.types import (
     ProofValue,
     UnitCheckResult,
 )
-from application.proof_engine.unit_verifier import UnitVerifier
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
@@ -417,10 +416,7 @@ class P14PowerFlowProof:
             ),
         )
 
-        balance_check = abs(
-            data.p_gen_total_mw - data.p_load_total_mw - data.p_losses_total_mw
-        )
-        passed = balance_check < 0.01  # 10 kW tolerance
+        balance_check = abs(data.p_gen_total_mw - data.p_load_total_mw - data.p_losses_total_mw)
 
         substitution = (
             f"{data.p_gen_total_mw:.4f} = {data.p_load_total_mw:.4f} + "
@@ -496,7 +492,6 @@ class P14PowerFlowProof:
         balance_check = abs(
             data.q_gen_total_mvar - data.q_load_total_mvar - data.q_losses_total_mvar
         )
-        passed = balance_check < 0.01  # 10 kvar tolerance
 
         substitution = (
             f"{data.q_gen_total_mvar:.4f} = {data.q_load_total_mvar:.4f} + "

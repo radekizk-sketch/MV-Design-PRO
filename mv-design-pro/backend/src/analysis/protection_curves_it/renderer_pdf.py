@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from io import BytesIO
 from importlib.util import find_spec
+from io import BytesIO
 
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 

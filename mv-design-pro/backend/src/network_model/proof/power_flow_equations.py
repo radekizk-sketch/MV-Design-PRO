@@ -10,6 +10,7 @@ CANONICAL ALIGNMENT:
 - POLISH: Nazwy i opisy po polsku
 - STABLE: Kolejność kroków jest ustalona
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -26,6 +27,7 @@ class SymbolDefinition:
         description_pl: Opis po polsku.
         mapping_key: Klucz w trace/result.
     """
+
     symbol: str
     unit: str
     description_pl: str
@@ -52,6 +54,7 @@ class EquationEntry:
         symbols: Lista symboli użytych w równaniu.
         category: Kategoria równania.
     """
+
     equation_id: str
     latex: str
     name_pl: str
@@ -229,7 +232,9 @@ EQ_NR_009_LINEAR_SYSTEM = EquationEntry(
     name_pl="Układ równań liniowych NR",
     description_pl="Rozwiązanie układu równań liniowych dla poprawek stanu.",
     symbols=(
-        SymbolDefinition(r"\Delta \boldsymbol{\theta}", "rad", "Wektor poprawek kątów", "delta_theta_rad"),
+        SymbolDefinition(
+            r"\Delta \boldsymbol{\theta}", "rad", "Wektor poprawek kątów", "delta_theta_rad"
+        ),
         SymbolDefinition(r"\Delta \mathbf{V}", "p.u.", "Wektor poprawek napięć", "delta_v_pu"),
         SymbolDefinition(r"\mathbf{J}^{-1}", "—", "Odwrotność Jacobiego", "jacobian_inv"),
         SymbolDefinition(r"\Delta \mathbf{P}", "p.u.", "Wektor mismatch P", "delta_p_vec"),
@@ -244,11 +249,17 @@ EQ_NR_010_STATE_UPDATE = EquationEntry(
     name_pl="Aktualizacja stanu",
     description_pl="Aktualizacja kątów i napięć z uwzględnieniem współczynnika tłumienia α.",
     symbols=(
-        SymbolDefinition(r"\theta_i^{(k+1)}", "rad", "Kąt napięcia po aktualizacji", "theta_next_rad"),
-        SymbolDefinition(r"\theta_i^{(k)}", "rad", "Kąt napięcia przed aktualizacją", "theta_current_rad"),
+        SymbolDefinition(
+            r"\theta_i^{(k+1)}", "rad", "Kąt napięcia po aktualizacji", "theta_next_rad"
+        ),
+        SymbolDefinition(
+            r"\theta_i^{(k)}", "rad", "Kąt napięcia przed aktualizacją", "theta_current_rad"
+        ),
         SymbolDefinition(r"\Delta \theta_i^{(k)}", "rad", "Poprawka kąta", "delta_theta_rad"),
         SymbolDefinition(r"|V_i|^{(k+1)}", "p.u.", "Moduł napięcia po aktualizacji", "v_next_pu"),
-        SymbolDefinition(r"|V_i|^{(k)}", "p.u.", "Moduł napięcia przed aktualizacją", "v_current_pu"),
+        SymbolDefinition(
+            r"|V_i|^{(k)}", "p.u.", "Moduł napięcia przed aktualizacją", "v_current_pu"
+        ),
         SymbolDefinition(r"\Delta |V_i|^{(k)}", "p.u.", "Poprawka modułu napięcia", "delta_v_pu"),
         SymbolDefinition(r"\alpha", "—", "Współczynnik tłumienia (damping)", "damping_used"),
     ),
@@ -265,7 +276,12 @@ EQ_CONV_001_NORM = EquationEntry(
     name_pl="Kryterium zbieżności (norma nieskończoność)",
     description_pl="Zbieżność osiągnięta gdy maksymalny mismatch jest mniejszy od tolerancji.",
     symbols=(
-        SymbolDefinition(r"\|\mathbf{f}\|_{\infty}", "p.u.", "Norma nieskończoność wektora mismatch", "max_mismatch_pu"),
+        SymbolDefinition(
+            r"\|\mathbf{f}\|_{\infty}",
+            "p.u.",
+            "Norma nieskończoność wektora mismatch",
+            "max_mismatch_pu",
+        ),
         SymbolDefinition(r"|\Delta P_i|", "p.u.", "Wartość bezwzględna mismatch P", "abs_delta_p"),
         SymbolDefinition(r"|\Delta Q_i|", "p.u.", "Wartość bezwzględna mismatch Q", "abs_delta_q"),
         SymbolDefinition(r"\varepsilon", "p.u.", "Tolerancja zbieżności", "tolerance"),
@@ -335,13 +351,13 @@ POWER_FLOW_PROOF_STEP_ORDER: tuple[str, ...] = (
     "PFPROOF_DEF_001",  # Definicja sieci
     "PFPROOF_DEF_002",  # Moc bazowa i węzły
     # Sekcja: Równania rozpływu mocy
-    "PFPROOF_EQ_001",   # Równanie P(θ,V)
-    "PFPROOF_EQ_002",   # Równanie Q(θ,V)
+    "PFPROOF_EQ_001",  # Równanie P(θ,V)
+    "PFPROOF_EQ_002",  # Równanie Q(θ,V)
     # Sekcja: Metoda NR
-    "PFPROOF_NR_001",   # Opis metody NR
-    "PFPROOF_NR_002",   # Jacobian - struktura
+    "PFPROOF_NR_001",  # Opis metody NR
+    "PFPROOF_NR_002",  # Jacobian - struktura
     # Sekcja: Stan początkowy
-    "PFPROOF_INIT_001", # Stan początkowy V₀, θ₀
+    "PFPROOF_INIT_001",  # Stan początkowy V₀, θ₀
     # Sekcja: Iteracje (dynamiczne)
     # PFPROOF_ITER_{k}_MISMATCH
     # PFPROOF_ITER_{k}_NORM
@@ -350,11 +366,11 @@ POWER_FLOW_PROOF_STEP_ORDER: tuple[str, ...] = (
     # PFPROOF_ITER_{k}_UPDATE
     # PFPROOF_ITER_{k}_CONV
     # Sekcja: Kryterium zbieżności
-    "PFPROOF_CONV_001", # Kryterium zbieżności
+    "PFPROOF_CONV_001",  # Kryterium zbieżności
     # Sekcja: Stan końcowy
     "PFPROOF_FINAL_001",  # Stan końcowy V, θ
     "PFPROOF_FINAL_002",  # Bilans mocy
     # Sekcja: Weryfikacja
-    "PFPROOF_VERIFY_001", # Spójność jednostek
-    "PFPROOF_VERIFY_002", # Brak sprzeczności energetycznych
+    "PFPROOF_VERIFY_001",  # Spójność jednostek
+    "PFPROOF_VERIFY_002",  # Brak sprzeczności energetycznych
 )

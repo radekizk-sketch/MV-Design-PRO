@@ -1,4 +1,10 @@
-# Rozdział 13 — Raportowanie Formalne, Eksporty, Ślady Audytowe (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 13 — Raportowanie Formalne, Eksporty, Ślady Audytowe (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -240,5 +246,6 @@ Raport audytowy (typ 6) MUSI umożliwiać:
 - [ ] Pełny ślad audytowy: ENM → raport z łańcuchem hashy.
 - [ ] White Box w raporcie obowiązkowy.
 - [ ] CI: automatyczne generowanie i porównanie raportów.
-- [ ] Parytet ETAP osiągnięty (raport = artefakt „do podpisu").
+- [ ] Parytet benchmark osiągnięty (raport = artefakt „do podpisu").
 - [ ] Decyzje #102–#107 zapisane w AUDIT_SPEC_VS_CODE.md.
+

@@ -205,9 +205,9 @@ describe('useSelectionStore', () => {
   // ===========================================================================
 
   describe('setMode', () => {
-    it('should set operating mode', () => {
+    it('should normalize compatibility mode to runtime model mode', () => {
       useSelectionStore.getState().setMode('CASE_CONFIG');
-      expect(useSelectionStore.getState().mode).toBe('CASE_CONFIG');
+      expect(useSelectionStore.getState().mode).toBe('MODEL_EDIT');
     });
 
     it('should set resultStatus to OUTDATED when entering MODEL_EDIT', () => {
@@ -215,9 +215,9 @@ describe('useSelectionStore', () => {
       expect(useSelectionStore.getState().resultStatus).toBe('OUTDATED');
     });
 
-    it('should set resultStatus to NONE when entering other modes', () => {
+    it('should keep runtime edit status for compatibility alias and clear it for result mode', () => {
       useSelectionStore.getState().setMode('CASE_CONFIG');
-      expect(useSelectionStore.getState().resultStatus).toBe('NONE');
+      expect(useSelectionStore.getState().resultStatus).toBe('OUTDATED');
 
       useSelectionStore.getState().setMode('RESULT_VIEW');
       expect(useSelectionStore.getState().resultStatus).toBe('NONE');

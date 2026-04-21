@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # ROZDZIAŁ 4 — LINIE I KABLE SN: MODELOWANIE, PARAMETRY, MAGISTRALE, RINGI
 
 **Wersja:** 1.1 SUPPLEMENT
@@ -796,14 +802,14 @@ Oba symbole posiadają dwa porty (left, right) w viewBox `0 0 100 100`:
 
 | Stan | Kolor | Źródło |
 |------|-------|--------|
-| Domyślny | `ETAP_TYPOGRAPHY.labelColor` | `ConnectionRenderer.tsx` |
-| Wyłączony | `ETAP_STATE_COLORS.deenergized` | `ConnectionRenderer.tsx` |
-| Zaznaczony | `ETAP_STATE_COLORS.selected` | `ConnectionRenderer.tsx` |
-| Hover | `ETAP_STATE_COLORS.info` | `ConnectionRenderer.tsx` |
+| Domyślny | `benchmark_TYPOGRAPHY.labelColor` | `ConnectionRenderer.tsx` |
+| Wyłączony | `benchmark_STATE_COLORS.deenergized` | `ConnectionRenderer.tsx` |
+| Zaznaczony | `benchmark_STATE_COLORS.selected` | `ConnectionRenderer.tsx` |
+| Hover | `benchmark_STATE_COLORS.info` | `ConnectionRenderer.tsx` |
 
 ### 4.13.4 Grubość linii
 
-Linie/kable SN mają grubość `ETAP_STROKE.feeder` — cieńszą od szyny zbiorczej (busbar), zgodnie z hierarchią wizualną ETAP-style.
+Linie/kable SN mają grubość `benchmark_STROKE.feeder` — cieńszą od szyny zbiorczej (busbar), zgodnie z hierarchią wizualną benchmark-style.
 
 ---
 
@@ -849,7 +855,7 @@ Dalsze modyfikacje wymagają ADR i wpisu do Macierzy Decyzji (AUDIT §9).
 
 ### 4.15.1 Uzasadnienie normowe
 
-W praktyce ETAP / PowerFactory / OSD linia SN **nigdy nie istnieje „sama"** — jest zawsze przyłączona poprzez **pole liniowe (Bay)**, które pełni rolę:
+W praktyce benchmark / benchmark / OSD linia SN **nigdy nie istnieje „sama"** — jest zawsze przyłączona poprzez **pole liniowe (Bay)**, które pełni rolę:
 - punktu przyłączenia do szyny (Bus SN),
 - punktu pomiarowego (przekładniki CT/VT),
 - nośnika zabezpieczeń (ProtectionDevice).
@@ -1092,3 +1098,4 @@ Sekcje §4.1–§4.14 + §4.15–§4.19 definiują kompletny kanon modelowania l
 ---
 
 **KONIEC ROZDZIAŁU 4**
+

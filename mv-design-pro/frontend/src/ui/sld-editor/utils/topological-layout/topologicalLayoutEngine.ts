@@ -82,7 +82,7 @@ export function deepFreezeSymbols<T extends object>(symbols: readonly T[]): read
  * approach where coordinates are OUTPUT, not INPUT.
  *
  * @param symbols - SLD symbols to layout
- * @param config - Geometry configuration (optional, uses ETAP defaults)
+ * @param config - Geometry configuration (optional, uses CANONICAL defaults)
  * @param orientation - Global orientation (default: 'top-down')
  * @returns Complete layout result with positions, roles, skeleton, collisions
  */

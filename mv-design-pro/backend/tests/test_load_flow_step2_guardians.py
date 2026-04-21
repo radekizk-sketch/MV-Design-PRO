@@ -22,7 +22,13 @@ from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.solvers import PowerFlowNewtonSolver
-from network_model.solvers.power_flow_types import PQSpec, PVSpec, PowerFlowInput, PowerFlowOptions, SlackSpec
+from network_model.solvers.power_flow_types import (
+    PowerFlowInput,
+    PowerFlowOptions,
+    PQSpec,
+    PVSpec,
+    SlackSpec,
+)
 
 
 def _sha(payload: dict) -> str:
@@ -37,8 +43,14 @@ def _serialize_solution(solution) -> dict:
         "max_mismatch": float(solution.max_mismatch),
         "node_u_mag": {k: float(v) for k, v in sorted(solution.node_u_mag.items())},
         "node_angle": {k: float(v) for k, v in sorted(solution.node_angle.items())},
-        "slack_power": {"re": float(solution.slack_power.real), "im": float(solution.slack_power.imag)},
-        "losses_total": {"re": float(solution.losses_total.real), "im": float(solution.losses_total.imag)},
+        "slack_power": {
+            "re": float(solution.slack_power.real),
+            "im": float(solution.slack_power.imag),
+        },
+        "losses_total": {
+            "re": float(solution.losses_total.real),
+            "im": float(solution.losses_total.imag),
+        },
     }
 
 

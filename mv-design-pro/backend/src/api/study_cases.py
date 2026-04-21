@@ -12,15 +12,13 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel, Field
-
 from api.dependencies import get_uow_factory
 from application.study_case import (
-    StudyCaseService,
     StudyCaseNotFoundError,
-    ActiveCaseRequiredError,
+    StudyCaseService,
 )
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/study-cases", tags=["study-cases"])
 
@@ -32,6 +30,7 @@ router = APIRouter(prefix="/api/study-cases", tags=["study-cases"])
 
 class CreateStudyCaseRequest(BaseModel):
     """Request to create a new study case."""
+
     project_id: str = Field(..., description="ID projektu")
     name: str = Field(..., min_length=1, max_length=255, description="Nazwa przypadku")
     description: str = Field("", max_length=1000, description="Opis")
@@ -41,6 +40,7 @@ class CreateStudyCaseRequest(BaseModel):
 
 class UpdateStudyCaseRequest(BaseModel):
     """Request to update a study case."""
+
     name: str | None = Field(None, min_length=1, max_length=255, description="Nowa nazwa")
     description: str | None = Field(None, max_length=1000, description="Nowy opis")
     config: dict[str, Any] | None = Field(None, description="Nowa konfiguracja")
@@ -48,23 +48,27 @@ class UpdateStudyCaseRequest(BaseModel):
 
 class CloneStudyCaseRequest(BaseModel):
     """Request to clone a study case."""
+
     new_name: str | None = Field(None, min_length=1, max_length=255, description="Nazwa klonu")
 
 
 class SetActiveRequest(BaseModel):
     """Request to set active case."""
+
     project_id: str = Field(..., description="ID projektu")
     case_id: str = Field(..., description="ID przypadku do aktywacji")
 
 
 class CompareRequest(BaseModel):
     """Request to compare two cases."""
+
     case_a_id: str = Field(..., description="ID pierwszego przypadku")
     case_b_id: str = Field(..., description="ID drugiego przypadku")
 
 
 class StudyCaseResponse(BaseModel):
     """Study case response model."""
+
     id: str
     project_id: str
     name: str
@@ -80,6 +84,7 @@ class StudyCaseResponse(BaseModel):
 
 class StudyCaseListItemResponse(BaseModel):
     """Study case list item response."""
+
     id: str
     name: str
     description: str
@@ -91,6 +96,7 @@ class StudyCaseListItemResponse(BaseModel):
 
 class StudyCaseComparisonResponse(BaseModel):
     """Study case comparison response."""
+
     case_a_id: str
     case_b_id: str
     case_a_name: str
@@ -102,20 +108,25 @@ class StudyCaseComparisonResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     """Error response model."""
+
     detail: str
     code: str | None = None
 
 
 class ProtectionConfigRequest(BaseModel):
     """Request to update protection configuration (P14c)."""
+
     template_ref: str | None = Field(None, description="ID szablonu nastaw zabezpieczeń")
     template_fingerprint: str | None = Field(None, description="Fingerprint szablonu (dla audytu)")
-    library_manifest_ref: dict[str, Any] | None = Field(None, description="Referencja do manifestu biblioteki")
+    library_manifest_ref: dict[str, Any] | None = Field(
+        None, description="Referencja do manifestu biblioteki"
+    )
     overrides: dict[str, Any] = Field(default_factory=dict, description="Nadpisane wartości nastaw")
 
 
 class ProtectionConfigResponse(BaseModel):
     """Protection configuration response (P14c)."""
+
     template_ref: str | None
     template_fingerprint: str | None
     library_manifest_ref: dict[str, Any] | None
@@ -270,7 +281,9 @@ def delete_study_case(
 # =============================================================================
 
 
-@router.post("/{case_id}/clone", response_model=StudyCaseResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{case_id}/clone", response_model=StudyCaseResponse, status_code=status.HTTP_201_CREATED
+)
 def clone_study_case(
     case_id: str,
     request: CloneStudyCaseRequest | None = None,

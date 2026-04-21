@@ -1,4 +1,4 @@
-# SLD REPO HYGIENE I SIMPLIFY
+﻿# SLD REPO HYGIENE I SIMPLIFY
 
 **Data:** 2026-03-14
 **Wersja:** 1.0
@@ -8,16 +8,16 @@
 
 ## 1. CEL
 
-Agresywne uproszczenie architektury i kodu obszaru SLD. Eliminacja chaosu bez utraty semantyki. Docelowo: jeden model, jeden silnik geometrii, jedna biblioteka symboli, jeden zestaw stylów.
+Agresywne uproszczenie architektury i kodu obszaru SLD. Eliminacja chaosu bez utraty semantyki. Docelowo: jeden model, jeden silnik geometrii, jedna biblioteka symboli, jeden zestaw stylĂłw.
 
 ---
 
 ## 2. PLIKI DO USUNIECIA
 
-| Plik | Powód | Status |
+| Plik | PowĂłd | Status |
 |------|-------|--------|
 | `core/topologyAdapter.ts` (V1) | Zastapiony przez topologyAdapterV2 | DO USUNIECIA |
-| `docs/sld/EXEC_PROMPT_CANONICAL_SLD_ETAP.md` | Prompt, nie spec | DO USUNIECIA |
+| `docs/sld/EXEC_PROMPT_CANONICAL_SLD_benchmark.md` | Prompt, nie spec | DO USUNIECIA |
 | `docs/sld/SLD_RUN3B_ROADMAP.md` | Stary roadmap | DO USUNIECIA |
 | `docs/sld/SLD_REPO_GAP_AUDIT.md` | Zastapiony przez AUDYT_SLD_SPEC_VS_CODE_GLOBALNY | DO USUNIECIA |
 | `docs/sld/SLD_PIPELINE_CANONICAL_STATUS.md` | Zastapiony przez nowe dokumenty | DO USUNIECIA |
@@ -27,7 +27,7 @@ Agresywne uproszczenie architektury i kodu obszaru SLD. Eliminacja chaosu bez ut
 
 ## 3. PLIKI DO SCALENIA
 
-| Pliki zródlowe | Plik docelowy | Opis |
+| Pliki zrĂłdlowe | Plik docelowy | Opis |
 |---------------|--------------|------|
 | SLD_ALGORITHM_LAYOUT_SPEC.md + GEOMETRIA_ESTETYKA_PRZEMYSLOWA.md | SLD_GEOMETRIA_KANONICZNA.md | Pelna spec geometrii |
 | SLD_SYMBOLS_CANONICAL.md (stary) | SLD_SYMBOLIKA_KANONICZNA.md (nowy) | Pelna spec symboli |
@@ -35,47 +35,47 @@ Agresywne uproszczenie architektury i kodu obszaru SLD. Eliminacja chaosu bez ut
 
 ## 4. PLIKI DO PRZEPISANIA
 
-| Plik | Powód | Cel |
+| Plik | PowĂłd | Cel |
 |------|-------|-----|
-| sldEtapStyle.ts (1939 linii) | Za duzy, monolityczny | Podzial na: sldColors.ts, sldGeometry.ts, sldTypography.ts, sldHelpers.ts |
+| sldCanonicalStyle.ts (1939 linii) | Za duzy, monolityczny | Podzial na: sldColors.ts, sldGeometry.ts, sldTypography.ts, sldHelpers.ts |
 
-## 5. DOCELOWA STRUKTURA MODULÓW SLD
+## 5. DOCELOWA STRUKTURA MODULĂ“W SLD
 
 ```
 frontend/src/ui/sld/
   core/
-    sldSemanticModel.ts          # NOWY — typy SldSemanticModelV1
-    sldSemanticAdapter.ts        # NOWY — Snapshot -> SldSemanticModel
-    sldSemanticValidator.ts      # NOWY — walidator kontraktów per typ stacji
-    topologyAdapterV2.ts         # ISTNIEJACY — BFS segmentacja (uzywany przez adapter)
-    stationBlockBuilder.ts       # ISTNIEJACY — budowa pól (uzywany przez adapter)
-    layoutPipeline.ts            # ISTNIEJACY — 6-fazowy layout
-    visualGraph.ts               # ISTNIEJACY — typy wizualne
-    layoutResult.ts              # ISTNIEJACY — wynik layoutu
+    sldSemanticModel.ts          # NOWY â€” typy SldSemanticModelV1
+    sldSemanticAdapter.ts        # NOWY â€” Snapshot -> SldSemanticModel
+    sldSemanticValidator.ts      # NOWY â€” walidator kontraktĂłw per typ stacji
+    topologyAdapterV2.ts         # ISTNIEJACY â€” BFS segmentacja (uzywany przez adapter)
+    stationBlockBuilder.ts       # ISTNIEJACY â€” budowa pĂłl (uzywany przez adapter)
+    layoutPipeline.ts            # ISTNIEJACY â€” 6-fazowy layout
+    visualGraph.ts               # ISTNIEJACY â€” typy wizualne
+    layoutResult.ts              # ISTNIEJACY â€” wynik layoutu
     __tests__/
       sldSemanticModel.test.ts   # NOWY
       sldSemanticAdapter.test.ts # NOWY
       sldSemanticValidator.test.ts # NOWY
-      stationContracts.test.ts   # NOWY — testy kontraktów per typ stacji
+      stationContracts.test.ts   # NOWY â€” testy kontraktĂłw per typ stacji
       ...existing tests...
   symbols/
-    etapSymbols.tsx              # ISTNIEJACY — kanoniczny renderer IEC 60617
+    etapSymbols.tsx              # ISTNIEJACY â€” kanoniczny renderer IEC 60617
   styles/
-    sldColors.ts                 # NOWY (z sldEtapStyle)
-    sldGeometry.ts               # NOWY (z sldEtapStyle + IndustrialAesthetics)
-    sldTypography.ts             # NOWY (z sldEtapStyle)
-    sldHelpers.ts                # NOWY (z sldEtapStyle)
+    sldColors.ts                 # NOWY (z sldbenchmarkStyle)
+    sldGeometry.ts               # NOWY (z sldbenchmarkStyle + IndustrialAesthetics)
+    sldTypography.ts             # NOWY (z sldbenchmarkStyle)
+    sldHelpers.ts                # NOWY (z sldbenchmarkStyle)
     sld-canonical.css            # ISTNIEJACY
   renderers/
     TrunkSpineRenderer.tsx       # ISTNIEJACY
-    StationFieldRenderer.tsx     # ISTNIEJACY (uproszczony po SldSemanticModel)
+    FieldBlockRenderer.tsx       # ISTNIEJACY (kanoniczny renderer pola/stacji)
     BranchRenderer.tsx           # ISTNIEJACY
-    EtapSymbolRenderer.tsx       # ISTNIEJACY
+    CanonicalSymbolRenderer.tsx       # ISTNIEJACY
   overlay/
     ...overlay components...     # ISTNIEJACE (read-only)
 ```
 
-## 6. DOCELOWY ZESTAW DOKUMENTÓW SLD
+## 6. DOCELOWY ZESTAW DOKUMENTĂ“W SLD
 
 | Dokument | Status | Zawartosc |
 |----------|--------|-----------|
@@ -83,16 +83,16 @@ frontend/src/ui/sld/
 | SLD_GENERAL_MODEL_V1.md | WIAZACY | Ontologia, segmentacja, embedding, invarianty |
 | SLD_GEOMETRIA_KANONICZNA.md | WIAZACY | Parametry, algorytmy, warstwy, style |
 | SLD_TYPY_STACJI_KANONICZNE.md | WIAZACY | Typologia: inline, branch, sectional, terminal |
-| SLD_STACJA_PRZELOTOWA_KONTRAKT_WIAZACY.md | WIAZACY | Kontrakt szczególowy stacji przelotowej |
+| SLD_STACJA_PRZELOTOWA_KONTRAKT_WIAZACY.md | WIAZACY | Kontrakt szczegĂłlowy stacji przelotowej |
 | SLD_SYMBOLIKA_KANONICZNA.md | WIAZACY | Biblioteka symboli IEC 60617 |
 | SLD_MODEL_SEMANTYCZNY_ADAPTERY_I_WALIDACJA.md | WIAZACY | SldSemanticModel, adapter, walidator |
 | SLD_REPO_HYGIENE_I_SIMPLIFY.md | WIAZACY | Higiena repo, czyszczenie |
-| SLD_TEST_MATRIX.md | WIAZACY | Macierz testów |
+| SLD_TEST_MATRIX.md | WIAZACY | Macierz testĂłw |
 | SLD_REPO_HYGIENE_RULES.md | WIAZACY | Reguly higieny |
 | SLD_STYL_WIZUALNY_KANONICZNY.md | WIAZACY | Kolory, typografia, stale |
 
-**Usuniete z kanonicznych (7 dokumentów):**
-- EXEC_PROMPT_CANONICAL_SLD_ETAP.md
+**Usuniete z kanonicznych (7 dokumentĂłw):**
+- EXEC_PROMPT_CANONICAL_SLD_benchmark.md
 - SLD_RUN3B_ROADMAP.md
 - SLD_REPO_GAP_AUDIT.md
 - SLD_PIPELINE_CANONICAL_STATUS.md
@@ -106,7 +106,8 @@ frontend/src/ui/sld/
 ## 7. ZAKAZY
 
 - Zostawiania starych sciezek "na wszelki wypadek"
-- Utrzymywania równoleglego starego i nowego modelu (po migracji)
-- Dlugów ukrytych pod warstwa renderu
-- Eksperymentalnych komponentów w sciezce produkcyjnej
-- Dokumentów eksperymentalnych jako kanonicznych
+- Utrzymywania rĂłwnoleglego starego i nowego modelu (po migracji)
+- DlugĂłw ukrytych pod warstwa renderu
+- Eksperymentalnych komponentĂłw w sciezce produkcyjnej
+- DokumentĂłw eksperymentalnych jako kanonicznych
+

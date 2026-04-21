@@ -6,7 +6,9 @@ Data: **2026-03-30**
 ## 1. Reguła migracji
 
 - **Jeden plan operacyjny:** `PLANS.md`.
-- **Jedno źródło specyfikacji:** `docs/spec/`.
+- **Aktywny kanon dokumentacji:** `docs/INDEX.md` i `docs/INDEX_KANONICZNY.md`.
+- **Wiążące specyfikacje systemowe:** `docs/system/*`.
+- `docs/spec/` i `docs/archive/` pozostają materiałem historycznym / kontekstowym.
 - Dokumenty historyczne przenoszone do archiwum albo usuwane, jeśli dublują aktywny kanon.
 
 ## 2. Migracje wykonane
@@ -22,7 +24,7 @@ Data: **2026-03-30**
 |---|---|
 | Kontrakty domenowe ENM_OP + readiness/fix_actions | `docs/domain/OPERACJE_DOMENOWE_V1.md`, `docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md` |
 | Kontrakt semantyka→layout→render SLD | `docs/sld/SLD_CONTRACT_FLOW_V1.md`, `docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md` |
-| Architektura globalna systemu | `SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `docs/spec/*` |
+| Architektura globalna systemu | `SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `docs/INDEX_KANONICZNY.md`, `docs/system/*` |
 
 ## 4. Polityka na kolejne etapy
 

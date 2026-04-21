@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
-from typing import Callable
+from collections.abc import Callable, Iterable
 
 from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
@@ -16,9 +15,12 @@ from analysis.sensitivity.models import (
     SensitivityView,
     compute_sensitivity_id,
 )
-from analysis.voltage_profile.models import VoltageProfileRow, VoltageProfileStatus, VoltageProfileView
+from analysis.voltage_profile.models import (
+    VoltageProfileRow,
+    VoltageProfileStatus,
+    VoltageProfileView,
+)
 from application.proof_engine.types import ProofDocument
-
 
 DEFAULT_DELTA_PCT = 5.0
 DEFAULT_TOP_N = 5
@@ -221,7 +223,7 @@ def _entry_from_observed_limit(
             delta_pct=delta_pct,
         )
 
-    if not isinstance(observed, (int, float)) or limit is None:
+    if not isinstance(observed, int | float) or limit is None:
         return _build_entry(
             parameter_id=parameter_id,
             parameter_label=parameter_label,

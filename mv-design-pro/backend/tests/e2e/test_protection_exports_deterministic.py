@@ -18,11 +18,11 @@ CANONICAL ALIGNMENT:
 - Tylko weryfikacja deterministyczności eksportów
 - 100% Polish labels w raportach
 """
+
 from __future__ import annotations
 
 import hashlib
 import tempfile
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -32,8 +32,8 @@ import pytest
 # Check for optional dependencies
 try:
     from network_model.reporting.protection_report_pdf import (
-        export_protection_coordination_to_pdf,
         _PDF_AVAILABLE,
+        export_protection_coordination_to_pdf,
     )
 except ImportError:
     _PDF_AVAILABLE = False
@@ -41,8 +41,8 @@ except ImportError:
 
 try:
     from network_model.reporting.protection_report_docx import (
-        export_protection_coordination_to_docx,
         _DOCX_AVAILABLE,
+        export_protection_coordination_to_docx,
     )
 except ImportError:
     _DOCX_AVAILABLE = False
@@ -267,8 +267,7 @@ class TestProtectionDOCXExportDeterminism:
             hash_2 = _compute_file_hash(path_2)
 
             assert hash_1 == hash_2, (
-                f"DOCX export nie deterministyczny\n"
-                f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+                f"DOCX export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
     def test_docx_export_without_metadata_deterministic(self) -> None:
@@ -353,8 +352,7 @@ class TestProtectionPDFExportDeterminism:
             hash_2 = _compute_file_hash(path_2)
 
             assert hash_1 == hash_2, (
-                f"PDF export nie deterministyczny\n"
-                f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+                f"PDF export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
     def test_pdf_export_without_metadata_deterministic(self) -> None:
@@ -432,9 +430,7 @@ class TestProtectionDOCXContentValidation:
             ]
 
             for section in required_sections:
-                assert section in full_text, (
-                    f"Brak sekcji '{section}' w raporcie DOCX"
-                )
+                assert section in full_text, f"Brak sekcji '{section}' w raporcie DOCX"
 
     def test_no_codenames_in_docx(self) -> None:
         """Raport DOCX nie zawiera nazw kodowych projektu."""
@@ -452,9 +448,9 @@ class TestProtectionDOCXContentValidation:
             # Forbidden codenames
             forbidden = ["P7", "P11", "P14", "P17", "P20", "FIX-12"]
             for codename in forbidden:
-                assert codename not in full_text, (
-                    f"Znaleziono niedozwoloną nazwę kodową '{codename}' w raporcie"
-                )
+                assert (
+                    codename not in full_text
+                ), f"Znaleziono niedozwoloną nazwę kodową '{codename}' w raporcie"
 
 
 @pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
@@ -488,8 +484,7 @@ class TestProtectionExportFullWorkflow:
     """E2E: Pełny workflow eksportu obu formatów."""
 
     @pytest.mark.skipif(
-        not (_PDF_AVAILABLE and _DOCX_AVAILABLE),
-        reason="reportlab or python-docx not installed"
+        not (_PDF_AVAILABLE and _DOCX_AVAILABLE), reason="reportlab or python-docx not installed"
     )
     def test_both_exports_from_same_result(self) -> None:
         """PDF i DOCX z tego samego wyniku są deterministyczne."""
@@ -509,22 +504,21 @@ class TestProtectionExportFullWorkflow:
             export_protection_coordination_to_docx(result, docx_2, deterministic=True)
 
             # Verify all exports are deterministic
-            assert _compute_file_hash(pdf_1) == _compute_file_hash(pdf_2), (
-                "PDF export nie deterministyczny"
-            )
-            assert _compute_file_hash(docx_1) == _compute_file_hash(docx_2), (
-                "DOCX export nie deterministyczny"
-            )
+            assert _compute_file_hash(pdf_1) == _compute_file_hash(
+                pdf_2
+            ), "PDF export nie deterministyczny"
+            assert _compute_file_hash(docx_1) == _compute_file_hash(
+                docx_2
+            ), "DOCX export nie deterministyczny"
 
             # Verify files are different formats (not accidentally same)
-            assert _compute_file_hash(pdf_1) != _compute_file_hash(docx_1), (
-                "PDF i DOCX mają ten sam hash - to niemożliwe"
-            )
+            assert _compute_file_hash(pdf_1) != _compute_file_hash(
+                docx_1
+            ), "PDF i DOCX mają ten sam hash - to niemożliwe"
 
     @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
     def test_sorted_order_in_checks(self) -> None:
         """Sprawdzenia są sortowane deterministycznie po device_id."""
-        from docx import Document as DocxDocument
 
         # Create result with unsorted checks
         result = _create_deterministic_protection_result()
@@ -546,6 +540,4 @@ class TestProtectionExportFullWorkflow:
             hash_1 = _compute_file_hash(path_1)
             hash_2 = _compute_file_hash(path_2)
 
-            assert hash_1 == hash_2, (
-                "Eksport z różną kolejnością wejściową daje różne wyniki"
-            )
+            assert hash_1 == hash_2, "Eksport z różną kolejnością wejściową daje różne wyniki"

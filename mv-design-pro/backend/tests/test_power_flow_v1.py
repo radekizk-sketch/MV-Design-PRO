@@ -1,7 +1,6 @@
 import pytest
-
 from analysis.power_flow import PowerFlowOptions, PowerFlowSolver
-from analysis.power_flow.types import PQSpec, PowerFlowInput, SlackSpec
+from analysis.power_flow.types import PowerFlowInput, PQSpec, SlackSpec
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -68,9 +67,7 @@ def test_two_bus_converges_and_voltage_drops() -> None:
     graph.add_node(_make_pq_node("B"))
     _add_line(graph, "L1", "A", "B")
 
-    pf_input = _solve_power_flow(
-        graph, [PQSpec(node_id="B", p_mw=2.0, q_mvar=1.0)]
-    )
+    pf_input = _solve_power_flow(graph, [PQSpec(node_id="B", p_mw=2.0, q_mvar=1.0)])
     result = PowerFlowSolver().solve(pf_input)
 
     assert result.converged is True
@@ -181,9 +178,7 @@ def test_power_flow_results_are_deterministic() -> None:
     graph.add_node(_make_pq_node("B"))
     _add_line(graph, "L1", "A", "B")
 
-    pf_input = _solve_power_flow(
-        graph, [PQSpec(node_id="B", p_mw=1.5, q_mvar=0.7)]
-    )
+    pf_input = _solve_power_flow(graph, [PQSpec(node_id="B", p_mw=1.5, q_mvar=0.7)])
 
     result1 = PowerFlowSolver().solve(pf_input)
     result2 = PowerFlowSolver().solve(pf_input)

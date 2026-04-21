@@ -3,12 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from domain.models import StudyRun
 from infrastructure.persistence.models import StudyRunORM
 from infrastructure.persistence.time_utils import ensure_utc
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 class StudyRunRepository:
@@ -83,9 +82,7 @@ class StudyRunRepository:
         ]
 
     # P10a: Result invalidation support
-    def invalidate_runs_for_snapshot(
-        self, network_snapshot_id: str, *, commit: bool = True
-    ) -> int:
+    def invalidate_runs_for_snapshot(self, network_snapshot_id: str, *, commit: bool = True) -> int:
         """
         P10a: Mark all runs for a given snapshot as OUTDATED.
 
@@ -107,9 +104,7 @@ class StudyRunRepository:
 
     def list_by_snapshot(self, network_snapshot_id: str) -> list[StudyRun]:
         """P10a: List all runs for a specific network snapshot."""
-        stmt = select(StudyRunORM).where(
-            StudyRunORM.network_snapshot_id == network_snapshot_id
-        )
+        stmt = select(StudyRunORM).where(StudyRunORM.network_snapshot_id == network_snapshot_id)
         rows = self._session.execute(stmt).scalars().all()
         return [
             StudyRun(

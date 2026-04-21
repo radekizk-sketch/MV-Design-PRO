@@ -40,8 +40,8 @@
 | RingCloseModal | `topology/modals/RingCloseModal.tsx` | OK | connect_secondary_ring_sn | OK |
 | NodeModal | `topology/modals/NodeModal.tsx` | OK | update_element_parameters | OK |
 | LoadDERModal | `topology/modals/LoadDERModal.tsx` | OK | add_nn_load | OK |
-| PVInverterModal | `topology/modals/PVInverterModal.tsx` | OK | add_pv_inverter_nn | OK |
-| BESSInverterModal | `topology/modals/BESSInverterModal.tsx` | OK | add_bess_inverter_nn | OK |
+| PVInverterModal | `topology/modals/PVInverterModal.tsx` | OK | add_converter_source | OK |
+| BESSInverterModal | `topology/modals/BESSInverterModal.tsx` | OK | add_converter_source | OK |
 | GensetModal | `topology/modals/GensetModal.tsx` | OK | add_genset_nn | OK |
 | UPSModal | `topology/modals/UPSModal.tsx` | OK | add_ups_nn | OK |
 | ProtectionModal | `topology/modals/ProtectionModal.tsx` | OK | add_relay | OK |
@@ -57,7 +57,7 @@
 |-----------|----------|--------|
 | SN_NETWORK (7) | add_grid_source_sn, continue_trunk_segment_sn, insert_station_on_segment_sn, start_branch_segment_sn, insert_section_switch_sn, connect_secondary_ring_sn, set_normal_open_point | OK |
 | STATION_NN (3) | add_transformer_sn_nn, add_nn_outgoing_field, add_nn_load | OK |
-| OZE_NN (6) | add_pv_inverter_nn, add_bess_inverter_nn, add_genset_nn, add_ups_nn, set_source_operating_mode, set_dynamic_profile | OK |
+| OZE_NN (5) | add_converter_source, add_genset_nn, add_ups_nn, set_source_operating_mode, set_dynamic_profile | OK |
 | PROTECTION (8) | add_ct, add_vt, add_relay, update_relay_settings, link_relay_to_field, calculate_tcc_curve, validate_selectivity, run_protection_study | OK |
 | STUDY_CASE (9) | create_study_case, set_case_switch_state, set_case_normal_state, set_case_source_mode, set_case_time_profile, run_short_circuit, run_power_flow, run_time_series_power_flow, compare_study_cases | OK |
 | UNIVERSAL (6) | assign_catalog_to_element, update_element_parameters, delete_element, rename_element, set_label, export_project_artifacts | OK |

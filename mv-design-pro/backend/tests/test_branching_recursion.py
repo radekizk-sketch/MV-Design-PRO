@@ -10,17 +10,12 @@ Validates:
 
 from __future__ import annotations
 
-import copy
-
-import pytest
-
 from enm.topology_ops import (
     compute_topology_summary,
     create_branch,
     create_device,
     create_node,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture: build a real MV network step by step
@@ -45,48 +40,63 @@ def _build_real_mv_network() -> dict:
     """
     enm: dict = {
         "header": {
-            "enm_version": "1.0", "name": "Sieć testowa SN", "revision": 1,
-            "hash_sha256": "", "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
+            "enm_version": "1.0",
+            "name": "Sieć testowa SN",
+            "revision": 1,
+            "hash_sha256": "",
+            "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
         },
-        "buses": [], "branches": [], "transformers": [], "sources": [],
-        "loads": [], "generators": [], "substations": [], "bays": [],
-        "junctions": [], "corridors": [], "measurements": [],
+        "buses": [],
+        "branches": [],
+        "transformers": [],
+        "sources": [],
+        "loads": [],
+        "generators": [],
+        "substations": [],
+        "bays": [],
+        "junctions": [],
+        "corridors": [],
+        "measurements": [],
         "protection_assignments": [],
     }
 
     # Create buses (Level 0 - GPZ)
-    result = create_node(enm, {"ref_id": "bus_gpz", "name": "Szyna GPZ", "voltage_kv": 15.0,
-                                "tags": ["source"]})
+    result = create_node(
+        enm, {"ref_id": "bus_gpz", "name": "Szyna GPZ", "voltage_kv": 15.0, "tags": ["source"]}
+    )
     assert result.success
     enm = result.enm
 
     # Level 1 - Main trunk
     for i in range(1, 4):
-        result = create_node(enm, {"ref_id": f"bus_t{i}", "name": f"Szyna T{i}",
-                                    "voltage_kv": 15.0})
+        result = create_node(
+            enm, {"ref_id": f"bus_t{i}", "name": f"Szyna T{i}", "voltage_kv": 15.0}
+        )
         assert result.success
         enm = result.enm
 
     # Level 2 - Lateral from T1
-    result = create_node(enm, {"ref_id": "bus_l1_1", "name": "Odgałęzienie L1.1",
-                                "voltage_kv": 15.0})
+    result = create_node(
+        enm, {"ref_id": "bus_l1_1", "name": "Odgałęzienie L1.1", "voltage_kv": 15.0}
+    )
     assert result.success
     enm = result.enm
 
-    result = create_node(enm, {"ref_id": "bus_l1_2", "name": "Odgałęzienie L1.2",
-                                "voltage_kv": 15.0})
+    result = create_node(
+        enm, {"ref_id": "bus_l1_2", "name": "Odgałęzienie L1.2", "voltage_kv": 15.0}
+    )
     assert result.success
     enm = result.enm
 
     # Level 3 - Sub-lateral from L1.1
-    result = create_node(enm, {"ref_id": "bus_sl_1", "name": "Pododgałęzienie SL1",
-                                "voltage_kv": 15.0})
+    result = create_node(
+        enm, {"ref_id": "bus_sl_1", "name": "Pododgałęzienie SL1", "voltage_kv": 15.0}
+    )
     assert result.success
     enm = result.enm
 
     # LV bus for transformer
-    result = create_node(enm, {"ref_id": "bus_nn_1", "name": "Szyna nn TR1",
-                                "voltage_kv": 0.4})
+    result = create_node(enm, {"ref_id": "bus_nn_1", "name": "Szyna nn TR1", "voltage_kv": 0.4})
     assert result.success
     enm = result.enm
 
@@ -97,80 +107,149 @@ def _build_real_mv_network() -> dict:
         ("line_t2_t3", "Linia T2-T3", "bus_t2", "bus_t3"),
     ]
     for ref, name, fr, to in trunk_branches:
-        result = create_branch(enm, {
-            "ref_id": ref, "name": name, "type": "line_overhead",
-            "from_bus_ref": fr, "to_bus_ref": to,
-            "length_km": 3.0, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.35,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": ref,
+                "name": name,
+                "type": "line_overhead",
+                "from_bus_ref": fr,
+                "to_bus_ref": to,
+                "length_km": 3.0,
+                "r_ohm_per_km": 0.3,
+                "x_ohm_per_km": 0.35,
+            },
+        )
         assert result.success, f"Failed: {ref}: {result.issues}"
         enm = result.enm
 
     # Lateral branches from T1
-    result = create_branch(enm, {
-        "ref_id": "line_t1_l11", "name": "Lateral T1→L1.1", "type": "cable",
-        "from_bus_ref": "bus_t1", "to_bus_ref": "bus_l1_1",
-        "length_km": 1.5, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.1,
-    })
+    result = create_branch(
+        enm,
+        {
+            "ref_id": "line_t1_l11",
+            "name": "Lateral T1→L1.1",
+            "type": "cable",
+            "from_bus_ref": "bus_t1",
+            "to_bus_ref": "bus_l1_1",
+            "length_km": 1.5,
+            "r_ohm_per_km": 0.2,
+            "x_ohm_per_km": 0.1,
+        },
+    )
     assert result.success
     enm = result.enm
 
-    result = create_branch(enm, {
-        "ref_id": "line_l11_l12", "name": "Lateral L1.1→L1.2", "type": "cable",
-        "from_bus_ref": "bus_l1_1", "to_bus_ref": "bus_l1_2",
-        "length_km": 0.8, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.1,
-    })
+    result = create_branch(
+        enm,
+        {
+            "ref_id": "line_l11_l12",
+            "name": "Lateral L1.1→L1.2",
+            "type": "cable",
+            "from_bus_ref": "bus_l1_1",
+            "to_bus_ref": "bus_l1_2",
+            "length_km": 0.8,
+            "r_ohm_per_km": 0.2,
+            "x_ohm_per_km": 0.1,
+        },
+    )
     assert result.success
     enm = result.enm
 
     # Sub-lateral from L1.1
-    result = create_branch(enm, {
-        "ref_id": "line_l11_sl1", "name": "Sub-lateral L1.1→SL1", "type": "cable",
-        "from_bus_ref": "bus_l1_1", "to_bus_ref": "bus_sl_1",
-        "length_km": 0.5, "r_ohm_per_km": 0.25, "x_ohm_per_km": 0.12,
-    })
+    result = create_branch(
+        enm,
+        {
+            "ref_id": "line_l11_sl1",
+            "name": "Sub-lateral L1.1→SL1",
+            "type": "cable",
+            "from_bus_ref": "bus_l1_1",
+            "to_bus_ref": "bus_sl_1",
+            "length_km": 0.5,
+            "r_ohm_per_km": 0.25,
+            "x_ohm_per_km": 0.12,
+        },
+    )
     assert result.success
     enm = result.enm
 
     # Breaker at GPZ
-    result = create_branch(enm, {
-        "ref_id": "brk_gpz", "name": "Wyłącznik GPZ", "type": "breaker",
-        "from_bus_ref": "bus_gpz", "to_bus_ref": "bus_t1",
-    })
+    result = create_branch(
+        enm,
+        {
+            "ref_id": "brk_gpz",
+            "name": "Wyłącznik GPZ",
+            "type": "breaker",
+            "from_bus_ref": "bus_gpz",
+            "to_bus_ref": "bus_t1",
+        },
+    )
     assert result.success
     enm = result.enm
 
     # Source
-    result = create_device(enm, {
-        "device_type": "source", "ref_id": "src_grid", "name": "Sieć zasilająca",
-        "bus_ref": "bus_gpz", "model": "short_circuit_power",
-        "sk3_mva": 250, "rx_ratio": 0.1,
-    })
+    result = create_device(
+        enm,
+        {
+            "device_type": "source",
+            "ref_id": "src_grid",
+            "name": "Sieć zasilająca",
+            "bus_ref": "bus_gpz",
+            "model": "short_circuit_power",
+            "sk3_mva": 250,
+            "rx_ratio": 0.1,
+        },
+    )
     assert result.success
     enm = result.enm
 
     # Transformer TR1 at T2 → nn
-    result = create_device(enm, {
-        "device_type": "transformer", "ref_id": "trafo_1", "name": "TR1 15/0.4",
-        "hv_bus_ref": "bus_t2", "lv_bus_ref": "bus_nn_1",
-        "sn_mva": 0.63, "uhv_kv": 15.0, "ulv_kv": 0.4,
-        "uk_percent": 6.0, "pk_kw": 7.5, "vector_group": "Dyn5",
-    })
+    result = create_device(
+        enm,
+        {
+            "device_type": "transformer",
+            "ref_id": "trafo_1",
+            "name": "TR1 15/0.4",
+            "hv_bus_ref": "bus_t2",
+            "lv_bus_ref": "bus_nn_1",
+            "sn_mva": 0.63,
+            "uhv_kv": 15.0,
+            "ulv_kv": 0.4,
+            "uk_percent": 6.0,
+            "pk_kw": 7.5,
+            "vector_group": "Dyn5",
+        },
+    )
     assert result.success
     enm = result.enm
 
     # Load at nn
-    result = create_device(enm, {
-        "device_type": "load", "ref_id": "load_1", "name": "Odbiór ST1",
-        "bus_ref": "bus_nn_1", "p_mw": 0.3, "q_mvar": 0.1,
-    })
+    result = create_device(
+        enm,
+        {
+            "device_type": "load",
+            "ref_id": "load_1",
+            "name": "Odbiór ST1",
+            "bus_ref": "bus_nn_1",
+            "p_mw": 0.3,
+            "q_mvar": 0.1,
+        },
+    )
     assert result.success
     enm = result.enm
 
     # PV at lateral end
-    result = create_device(enm, {
-        "device_type": "generator", "ref_id": "pv_1", "name": "PV L1.2",
-        "bus_ref": "bus_l1_2", "p_mw": 0.5, "gen_type": "pv_inverter",
-    })
+    result = create_device(
+        enm,
+        {
+            "device_type": "generator",
+            "ref_id": "pv_1",
+            "name": "PV L1.2",
+            "bus_ref": "bus_l1_2",
+            "p_mw": 0.5,
+            "gen_type": "pv_inverter",
+        },
+    )
     assert result.success
     enm = result.enm
 
@@ -273,14 +352,21 @@ class TestBranchingRecursion:
         assert summary.is_radial is True
 
         # Add a branch that creates a cycle: bus_t3 → bus_l1_2
-        result = create_node(enm, {"ref_id": "bus_bridge", "name": "Bridge",
-                                    "voltage_kv": 15.0})
+        result = create_node(enm, {"ref_id": "bus_bridge", "name": "Bridge", "voltage_kv": 15.0})
         # Actually, just add direct cycle branch
-        result = create_branch(enm, {
-            "ref_id": "line_cycle", "name": "Cycle line", "type": "line_overhead",
-            "from_bus_ref": "bus_t3", "to_bus_ref": "bus_l1_2",
-            "length_km": 1.0, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.3,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "line_cycle",
+                "name": "Cycle line",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_t3",
+                "to_bus_ref": "bus_l1_2",
+                "length_km": 1.0,
+                "r_ohm_per_km": 0.3,
+                "x_ohm_per_km": 0.3,
+            },
+        )
         assert result.success is True  # Should succeed with cycle warning
 
         enm_with_cycle = result.enm
@@ -296,12 +382,23 @@ class TestMultiLevelRecursion:
         """Build a 5-level deep branching structure."""
         enm: dict = {
             "header": {
-                "enm_version": "1.0", "name": "Deep network", "revision": 1,
-                "hash_sha256": "", "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
+                "enm_version": "1.0",
+                "name": "Deep network",
+                "revision": 1,
+                "hash_sha256": "",
+                "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
             },
-            "buses": [], "branches": [], "transformers": [], "sources": [],
-            "loads": [], "generators": [], "substations": [], "bays": [],
-            "junctions": [], "corridors": [], "measurements": [],
+            "buses": [],
+            "branches": [],
+            "transformers": [],
+            "sources": [],
+            "loads": [],
+            "generators": [],
+            "substations": [],
+            "bays": [],
+            "junctions": [],
+            "corridors": [],
+            "measurements": [],
             "protection_assignments": [],
         }
 
@@ -314,29 +411,48 @@ class TestMultiLevelRecursion:
         for level in range(5):
             for branch_idx in range(2):  # 2 branches per node
                 bus_ref = f"bus_L{level}_B{branch_idx}"
-                result = create_node(enm, {
-                    "ref_id": bus_ref, "name": f"Bus L{level} B{branch_idx}",
-                    "voltage_kv": 15,
-                })
+                result = create_node(
+                    enm,
+                    {
+                        "ref_id": bus_ref,
+                        "name": f"Bus L{level} B{branch_idx}",
+                        "voltage_kv": 15,
+                    },
+                )
                 assert result.success
                 enm = result.enm
 
                 line_ref = f"line_L{level}_B{branch_idx}"
-                result = create_branch(enm, {
-                    "ref_id": line_ref, "name": f"Line L{level} B{branch_idx}",
-                    "type": "cable", "from_bus_ref": prev_ref, "to_bus_ref": bus_ref,
-                    "length_km": 1.0, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.1,
-                })
+                result = create_branch(
+                    enm,
+                    {
+                        "ref_id": line_ref,
+                        "name": f"Line L{level} B{branch_idx}",
+                        "type": "cable",
+                        "from_bus_ref": prev_ref,
+                        "to_bus_ref": bus_ref,
+                        "length_km": 1.0,
+                        "r_ohm_per_km": 0.2,
+                        "x_ohm_per_km": 0.1,
+                    },
+                )
                 assert result.success
                 enm = result.enm
 
             prev_ref = f"bus_L{level}_B0"  # Follow first branch to next level
 
         # Add source
-        result = create_device(enm, {
-            "device_type": "source", "ref_id": "src", "name": "Grid",
-            "bus_ref": "root", "model": "short_circuit_power", "sk3_mva": 200,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "source",
+                "ref_id": "src",
+                "name": "Grid",
+                "bus_ref": "root",
+                "model": "short_circuit_power",
+                "sk3_mva": 200,
+            },
+        )
         assert result.success
         enm = result.enm
 
@@ -364,12 +480,23 @@ class TestMultiLevelRecursion:
         """Helper: build deterministic deep network."""
         enm: dict = {
             "header": {
-                "enm_version": "1.0", "name": "Deep", "revision": 1,
-                "hash_sha256": "", "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
+                "enm_version": "1.0",
+                "name": "Deep",
+                "revision": 1,
+                "hash_sha256": "",
+                "defaults": {"frequency_hz": 50.0, "unit_system": "SI"},
             },
-            "buses": [], "branches": [], "transformers": [], "sources": [],
-            "loads": [], "generators": [], "substations": [], "bays": [],
-            "junctions": [], "corridors": [], "measurements": [],
+            "buses": [],
+            "branches": [],
+            "transformers": [],
+            "sources": [],
+            "loads": [],
+            "generators": [],
+            "substations": [],
+            "bays": [],
+            "junctions": [],
+            "corridors": [],
+            "measurements": [],
             "protection_assignments": [],
         }
         result = create_node(enm, {"ref_id": "r", "name": "R", "voltage_kv": 15})
@@ -380,17 +507,32 @@ class TestMultiLevelRecursion:
             ref = f"n{i}"
             result = create_node(enm, {"ref_id": ref, "name": ref, "voltage_kv": 15})
             enm = result.enm
-            result = create_branch(enm, {
-                "ref_id": f"b{i}", "name": f"b{i}", "type": "cable",
-                "from_bus_ref": prev, "to_bus_ref": ref,
-                "length_km": 1, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.1,
-            })
+            result = create_branch(
+                enm,
+                {
+                    "ref_id": f"b{i}",
+                    "name": f"b{i}",
+                    "type": "cable",
+                    "from_bus_ref": prev,
+                    "to_bus_ref": ref,
+                    "length_km": 1,
+                    "r_ohm_per_km": 0.2,
+                    "x_ohm_per_km": 0.1,
+                },
+            )
             enm = result.enm
             prev = ref
 
-        result = create_device(enm, {
-            "device_type": "source", "ref_id": "s", "name": "S",
-            "bus_ref": "r", "model": "short_circuit_power", "sk3_mva": 200,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "source",
+                "ref_id": "s",
+                "name": "S",
+                "bus_ref": "r",
+                "model": "short_circuit_power",
+                "sk3_mva": 200,
+            },
+        )
         enm = result.enm
         return enm

@@ -5,10 +5,9 @@ RUN #3I COMMIT 2.
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from api.main import app
 from api.switchgear_config import _config_store
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
@@ -157,7 +156,12 @@ class TestValidate:
                 {"field_id": "f1", "pole_type": "POLE_LINIOWE_SN", "field_role": "LINE_IN"},
             ],
             "devices": [
-                {"device_id": "d1", "field_id": "f1", "device_type": "CB", "aparat_type": "WYLACZNIK"},
+                {
+                    "device_id": "d1",
+                    "field_id": "f1",
+                    "device_type": "CB",
+                    "aparat_type": "WYLACZNIK",
+                },
             ],
             "catalog_bindings": [],
             "protection_bindings": [],
@@ -169,10 +173,7 @@ class TestValidate:
         catalog_issues = [i for i in data["issues"] if i["code"] == "catalog.ref_missing"]
         assert len(catalog_issues) >= 1
 
-        catalog_fixes = [
-            fa for fa in data["fix_actions"]
-            if fa["code"] == "catalog.ref_missing"
-        ]
+        catalog_fixes = [fa for fa in data["fix_actions"] if fa["code"] == "catalog.ref_missing"]
         assert len(catalog_fixes) >= 1
         assert catalog_fixes[0]["action"] == "NAVIGATE_TO_WIZARD_CATALOG_PICKER"
 

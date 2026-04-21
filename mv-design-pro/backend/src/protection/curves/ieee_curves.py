@@ -16,10 +16,10 @@ where:
 WHITE BOX: All intermediate values are exposed for auditability.
 """
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-import math
 
 
 class IEEECurveType(str, Enum):
@@ -85,9 +85,7 @@ class IEEECurveParams:
             IEEECurveType.DEFINITE_TIME: (0.0, 0.0, 0.0),
         }
 
-        a, b, p = STANDARD_PARAMS.get(
-            curve_type, (0.0515, 0.114, 0.02)  # Default to MI
-        )
+        a, b, p = STANDARD_PARAMS.get(curve_type, (0.0515, 0.114, 0.02))  # Default to MI
         return cls(curve_type=curve_type, a=a, b=b, p=p)
 
     def to_dict(self) -> dict[str, Any]:

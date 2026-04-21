@@ -1,5 +1,5 @@
 /**
- * polaEfektywne.ts — Etap 2: Wyznaczanie pol efektywnych.
+ * polaEfektywne.ts — Krok 2: Wyznaczanie pol efektywnych.
  *
  * Scala pola jawne (z modelu) z polami niejawnymi (z topologii/polaczen).
  *

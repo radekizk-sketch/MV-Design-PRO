@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - P30a: Command pattern infrastructure
  * - sld_rules.md § A.1: Bijection (symbols ↔ model elements)
- * - powerfactory_ui_parity.md: Paste = 1 undo operation
+ * - ui_canonical_parity.md: Paste = 1 undo operation
  *
  * Command for paste/duplicate operations.
  * Creates new symbols on canvas.

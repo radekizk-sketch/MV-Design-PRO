@@ -2,7 +2,7 @@
  * P30b — Geometry Utilities for SLD Editor
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: ≥110% PowerFactory align/distribute
+ * - ui_canonical_parity.md: ≥110% Canonical align/distribute
  * - Deterministic algorithms (no randomness, stable sorting)
  *
  * FEATURES:

@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 1.2: Operating modes (UNDO/REDO only in MODEL_EDIT)
- * - powerfactory_ui_parity.md § F: Transactional editing
+ * - ui_canonical_parity.md § F: Transactional editing
  *
  * React hooks for integrating UNDO/REDO with components.
  * Includes mode gating (UNDO/REDO blocked in CASE_CONFIG and RESULT_VIEW).
