@@ -20,8 +20,27 @@ import type {
   PowerFlowTrace,
   PowerFlowInterpretation,
 } from './types';
+import { mergeAnalysisCaseContexts } from '../results-inspector/analysisCaseContextView';
 
 const API_BASE = '/api';
+
+function normalizePowerFlowRunHeader(payload: PowerFlowRunHeader): PowerFlowRunHeader {
+  const analysisCaseContext = mergeAnalysisCaseContexts(
+    payload.analysis_case_context,
+    payload.input_metadata?.analysis_case_context,
+  );
+
+  return {
+    ...payload,
+    analysis_case_context: analysisCaseContext,
+    input_metadata: payload.input_metadata
+      ? {
+          ...payload.input_metadata,
+          analysis_case_context: analysisCaseContext,
+        }
+      : payload.input_metadata,
+  };
+}
 
 /**
  * Fetch list of power flow runs for a project.
@@ -54,20 +73,7 @@ export async function fetchPowerFlowRunHeader(runId: string): Promise<PowerFlowR
   if (!response.ok) {
     throw new Error(`Blad pobierania metadanych run: ${response.statusText}`);
   }
-  const data = await response.json();
-  // Map API response to PowerFlowRunHeader
-  return {
-    id: data.id,
-    project_id: data.project_id,
-    operating_case_id: data.operating_case_id,
-    status: data.status,
-    result_status: data.result_status,
-    created_at: data.created_at,
-    finished_at: data.finished_at,
-    input_hash: data.input_hash,
-    converged: data.converged,
-    iterations: data.iterations,
-  };
+  return normalizePowerFlowRunHeader(await response.json());
 }
 
 /**

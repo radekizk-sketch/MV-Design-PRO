@@ -1,5 +1,5 @@
 /**
- * App State Module — P12a Data Manager Parity + POWERFACTORY_LAYOUT
+ * App State Module — P12a Data Manager Parity + canonical layout
  *
  * Global application state for active project, case, mode, and run.
  */
@@ -16,9 +16,8 @@ export {
   useResultStatusLabel,
   useHasActiveCase,
   useCanCalculate,
-  useCaseManagerOpen,
-  useIssuePanelOpen, // P30d
-  // UI_INTEGRATION_E2E + POWERFACTORY_LAYOUT:
+  useIssuePanelOpen,
+  // UI_INTEGRATION_E2E + canonical layout:
   useActiveSnapshotId,
   useActiveAnalysisType,
   useActiveAnalysisTypeLabel,

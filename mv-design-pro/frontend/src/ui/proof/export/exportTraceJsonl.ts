@@ -2,7 +2,7 @@
  * Export Trace to JSONL — Eksport śladu obliczeń do formatu JSONL
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Export deterministyczny, read-only
+ * - ui_canonical_parity.md: Export deterministyczny, read-only
  * - SYSTEM_SPEC.md: Audit trail export
  *
  * BINDING:

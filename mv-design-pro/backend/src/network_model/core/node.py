@@ -6,10 +6,10 @@ węzeł w modelu sieci elektroenergetycznej używanym w obliczeniach
 rozpływu mocy.
 """
 
+import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional
-import uuid
+from typing import Any
 
 
 class NodeType(Enum):
@@ -21,6 +21,7 @@ class NodeType(Enum):
     - PQ (obciążeniowy): węzeł z zadaną mocą czynną i bierną
     - PV (generatorowy): węzeł z zadaną mocą czynną i amplitudą napięcia
     """
+
     SLACK = "SLACK"
     PQ = "PQ"
     PV = "PV"
@@ -48,14 +49,15 @@ class Node:
     Raises:
         ValueError: Gdy parametry węzła są niezgodne z jego typem.
     """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = field(default="")
     node_type: NodeType = field(default=NodeType.PQ)
     voltage_level: float = field(default=0.0)
-    voltage_magnitude: Optional[float] = field(default=None)
-    voltage_angle: Optional[float] = field(default=None)
-    active_power: Optional[float] = field(default=None)
-    reactive_power: Optional[float] = field(default=None)
+    voltage_magnitude: float | None = field(default=None)
+    voltage_angle: float | None = field(default=None)
+    active_power: float | None = field(default=None)
+    reactive_power: float | None = field(default=None)
 
     def __post_init__(self) -> None:
         """
@@ -96,8 +98,7 @@ class Node:
         elif self.node_type == NodeType.PQ:
             if self.active_power is None:
                 raise ValueError(
-                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej "
-                    f"mocy czynnej (active_power)."
+                    f"Węzeł PQ '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
                 )
             if self.reactive_power is None:
                 raise ValueError(
@@ -108,8 +109,7 @@ class Node:
         elif self.node_type == NodeType.PV:
             if self.active_power is None:
                 raise ValueError(
-                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej "
-                    f"mocy czynnej (active_power)."
+                    f"Węzeł PV '{self.name}' wymaga zdefiniowanej " f"mocy czynnej (active_power)."
                 )
             if self.voltage_magnitude is None:
                 raise ValueError(
@@ -155,6 +155,7 @@ class Node:
             # Walidacja kąta napięcia (powinien być w zakresie -π do π)
             if self.voltage_angle is not None:
                 import math
+
                 if not (-math.pi <= self.voltage_angle <= math.pi):
                     return False
 
@@ -163,7 +164,7 @@ class Node:
         except ValueError:
             return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Konwertuje węzeł do słownika.
 
@@ -199,7 +200,7 @@ class Node:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Node":
+    def from_dict(cls, data: dict[str, Any]) -> "Node":
         """
         Tworzy obiekt węzła ze słownika.
 

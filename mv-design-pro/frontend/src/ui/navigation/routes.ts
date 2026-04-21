@@ -1,226 +1,294 @@
-/**
- * Navigation Routes — UI_INTEGRATION_E2E
- *
- * CANONICAL ALIGNMENT:
- * - UI_CORE_ARCHITECTURE.md § 4.1: Navigation structure
- * - PROOF_UI_ARCHITECTURE.md § 7.6: Polish terminology binding
- *
- * BINDING: All route labels in Polish, no project codes (e.g., P11) in UX.
- *
- * Routes:
- * - Schemat jednokreskowy (SLD)
- * - Przegląd wyników (Results Browser)
- * - Ślad obliczeń (Proof/White Box)
- */
+import {
+  ANALYSIS_ROUTE_DEFAULT_TAB,
+  type AnalysisRouteTabId,
+} from '../workspace/types';
 
-/**
- * Route definition.
- */
+export type { AnalysisRouteTabId } from '../workspace/types';
+
 export interface RouteDefinition {
-  /** Hash route (e.g., '#sld', '#results') */
   hash: string;
-  /** Polish label for display */
   label: string;
-  /** Short description */
   description: string;
-  /** Icon (emoji or icon class) */
   icon: string;
-  /** Required mode (if any) */
-  requiredMode?: 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
+  requiredMode?: 'MODEL_EDIT' | 'RESULT_VIEW';
 }
 
-/**
- * Application routes with Polish labels.
- * CANONICAL: No project codes (P11, etc.) in UX — Polish only.
- */
-export const ROUTES: Record<string, RouteDefinition> = {
+export const ROUTES = {
   SLD: {
-    hash: '',
+    hash: '#sld',
     label: 'Schemat jednokreskowy',
     description: 'Edycja schematu sieci',
     icon: 'SLD',
-    requiredMode: undefined, // Available in all modes
   },
   SLD_VIEW: {
     hash: '#sld-view',
     label: 'Podglad schematu',
     description: 'Podglad schematu jednokreskowego (tylko odczyt)',
     icon: 'VIEW',
-    requiredMode: undefined, // Available in all modes (read-only)
   },
-  RESULTS: {
-    hash: '#results',
-    label: 'Przeglad wynikow',
-    description: 'Tabele wynikow obliczen',
-    icon: 'RES',
+  ANALYSIS: {
+    hash: '#analysis',
+    label: 'Poziom analityczny',
+    description: 'Analityka E-24 w glownym shellu',
+    icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
-  PROOF: {
-    hash: '#proof',
-    label: 'Slad obliczen',
-    description: 'Przebieg obliczen dla aktywnego uruchomienia analizy',
-    icon: 'TRACE',
+  REPORT: {
+    hash: '#report',
+    label: 'Generator raportu',
+    description: 'Konfiguracja i podglad raportu technicznego',
+    icon: 'RPT',
     requiredMode: 'RESULT_VIEW',
   },
-  PROTECTION_RESULTS: {
-    hash: '#protection-results',
-    label: 'Wyniki zabezpieczen',
-    description: 'Koordynacja zabezpieczen',
-    icon: 'PROT',
-    requiredMode: 'RESULT_VIEW',
+  VARIANTS: {
+    hash: '#variants',
+    label: 'Warianty i uruchomienia',
+    description: 'Helper wyboru wariantow i uruchomien',
+    icon: 'VAR',
+    requiredMode: 'MODEL_EDIT',
   },
-  POWER_FLOW_RESULTS: {
-    hash: '#power-flow-results',
-    label: 'Wyniki rozplywu',
-    description: 'Rozplyw mocy',
-    icon: 'PF',
-    requiredMode: 'RESULT_VIEW',
-  },
-  COMPARE: {
-    hash: '#compare',
-    label: 'Porownanie przypadkow',
-    description: 'Porownanie wynikow i diagnostyki miedzy przypadkami',
-    icon: 'CMP',
-    requiredMode: 'RESULT_VIEW',
-  },
-  REFERENCE_PATTERNS: {
-    hash: '#reference-patterns',
-    label: 'Wzorce odniesienia',
-    description: 'Walidacja wzorcow referencyjnych dla metodyki zabezpieczen',
-    icon: 'REF',
-    requiredMode: 'RESULT_VIEW',
-  },
-  NETWORK_BUILD: {
-    hash: '#network-build',
-    label: 'Budowa sieci',
-    description: 'Kanoniczny ekran modelowania sieci SN od GPZ w widoku SLD',
-    icon: 'BLD',
+  SWITCHGEAR: {
+    hash: '#switchgear',
+    label: 'Kreator rozdzielnicy',
+    description: 'Kontekst rozdzielnicy w kanonicznym shellu',
+    icon: 'SWG',
     requiredMode: 'MODEL_EDIT',
   },
   CASE_CONFIG: {
     hash: '#case-config',
-    label: 'Konfiguracja przypadku',
-    description: 'Parametry przypadku obliczeniowego',
+    label: 'Kontekst przypadku',
+    description: 'Helper kontekstu przypadku w glownym shellu',
     icon: 'CFG',
-    requiredMode: 'CASE_CONFIG',
-  },
-  PROTECTION_SETTINGS: {
-    hash: '#protection-settings',
-    label: 'Nastawy zabezpieczen',
-    description: 'Dobor nastaw zabezpieczen nadpradowych I>/I>>',
-    icon: 'SET',
-    requiredMode: 'RESULT_VIEW',
+    requiredMode: 'MODEL_EDIT',
   },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
     description: 'Diagnostyka inzynierska modelu sieci ENM',
     icon: 'INS',
-    requiredMode: undefined,
   },
   FAULT_SCENARIOS: {
     hash: '#fault-scenarios',
     label: 'Scenariusze zwarciowe',
-    description: 'Zarzadzanie scenariuszami zwarc i uruchamianie analiz',
+    description: 'Zarzadzanie scenariuszami zwarc i analiz',
     icon: 'SCN',
-    requiredMode: undefined,
-  },
-  SWITCHGEAR: {
-    hash: '#switchgear',
-    label: 'Rozdzielnica: pola i aparaty',
-    description: 'Kreator definicji pol i aparatow rozdzielnic SN/nN',
-    icon: 'SWG',
-    requiredMode: 'MODEL_EDIT',
   },
   CATALOG: {
     hash: '#catalog',
     label: 'Biblioteka typow',
-    description: 'Przegladanie i zarzadzanie katalogiem typow elementow sieci',
+    description: 'Helper katalogowy shell-a',
     icon: 'CAT',
-    requiredMode: undefined,
   },
-  POWER_DISTRIBUTION: {
-    hash: '#power-distribution',
-    label: 'Architektura rozdzialu mocy',
-    description: 'Kreator pol i aparatow rozdzielnic SN/nN z wizualizacja ETAP',
-    icon: 'PWR',
-    requiredMode: 'MODEL_EDIT',
-  },
+} satisfies Record<string, RouteDefinition>;
+
+type RouteKey = keyof typeof ROUTES;
+
+export const ANALYSIS_ROUTE_ALIASES: Readonly<Record<string, AnalysisRouteTabId>> = {
+  '#results': ANALYSIS_ROUTE_DEFAULT_TAB,
+  '#proof': 'trace',
+  '#protection-results': 'protection',
+  '#power-flow-results': 'power-flow',
+  '#compare': 'compare',
 };
 
-/**
- * Get route by hash.
- * NAVIGATION_SELECTOR_UI: Strips query params before matching.
- */
-export function getRouteByHash(hash: string): RouteDefinition | null {
-  // Strip query params from hash for matching
+interface RouteContextOptions {
+  runId?: string | null;
+  selectionId?: string | null;
+  caseId?: string | null;
+  snapshotId?: string | null;
+}
+
+function getHashParams(hash: string): URLSearchParams {
   const queryIndex = hash.indexOf('?');
-  const cleanHash = queryIndex !== -1 ? hash.slice(0, queryIndex) : hash;
+  return new URLSearchParams(queryIndex >= 0 ? hash.slice(queryIndex + 1) : '');
+}
+
+function getRouteHashOnly(hash: string): string {
+  const queryIndex = hash.indexOf('?');
+  return queryIndex >= 0 ? hash.slice(0, queryIndex) : hash;
+}
+
+export function isAnalysisRouteAlias(hash: string): boolean {
+  const cleanHash = getRouteHashOnly(hash);
+  return cleanHash in ANALYSIS_ROUTE_ALIASES;
+}
+
+export function resolveAnalysisRouteAliasTab(hash: string): AnalysisRouteTabId | null {
+  const cleanHash = getRouteHashOnly(hash);
+  return ANALYSIS_ROUTE_ALIASES[cleanHash] ?? null;
+}
+
+function buildHashWithParams(hash: string, mutate?: (params: URLSearchParams) => void): string {
+  const params = typeof window === 'undefined' ? new URLSearchParams() : getHashParams(window.location.hash);
+  mutate?.(params);
+  const query = params.toString();
+  return query ? `${hash}?${query}` : hash;
+}
+
+function navigateToHash(hash: string, mutate?: (params: URLSearchParams) => void): void {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  window.location.hash = buildHashWithParams(hash, (params) => {
+    if (hash !== ROUTES.ANALYSIS.hash) {
+      params.delete('tab');
+    }
+    mutate?.(params);
+  });
+}
+
+function assignRouteContext(params: URLSearchParams, options: RouteContextOptions = {}): void {
+  const entries: Array<[keyof RouteContextOptions, string]> = [
+    ['runId', 'run'],
+    ['selectionId', 'sel'],
+    ['caseId', 'case'],
+    ['snapshotId', 'snapshot'],
+  ];
+
+  for (const [optionKey, paramKey] of entries) {
+    const value = options[optionKey];
+    if (value === undefined) {
+      continue;
+    }
+    if (value === null || value === '') {
+      params.delete(paramKey);
+      continue;
+    }
+    params.set(paramKey, value);
+  }
+}
+
+export function navigateToAnalysisRoute({
+  tabId = ANALYSIS_ROUTE_DEFAULT_TAB,
+  ...context
+}: RouteContextOptions & { tabId?: AnalysisRouteTabId }): void {
+  navigateToHash(ROUTES.ANALYSIS.hash, (params) => {
+    assignRouteContext(params, context);
+    if (tabId === ANALYSIS_ROUTE_DEFAULT_TAB) {
+      params.delete('tab');
+      return;
+    }
+    params.set('tab', tabId);
+  });
+}
+
+export function navigateToReportRoute(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.REPORT.hash, (params) => {
+    assignRouteContext(params, context);
+  });
+}
+
+export function getRouteByHash(hash: string): RouteDefinition | null {
+  const cleanHash = getRouteHashOnly(hash);
+  if (cleanHash === '' || cleanHash === ROUTES.SLD.hash) {
+    return ROUTES.SLD;
+  }
 
   for (const route of Object.values(ROUTES)) {
-    if (route.hash === cleanHash || route.hash === cleanHash.replace('#', '')) {
+    if (route.hash === cleanHash) {
       return route;
     }
   }
+
   return null;
 }
 
-/**
- * Get current route from window.location.hash.
- * NAVIGATION_SELECTOR_UI: Uses getRouteByHash which handles query params.
- */
-export function getCurrentRoute(): RouteDefinition {
+export function getCurrentRoute(): RouteDefinition | null {
   const hash = typeof window !== 'undefined' ? window.location.hash : '';
-  return getRouteByHash(hash) ?? ROUTES.SLD;
+  return getRouteByHash(hash);
 }
 
-/**
- * Navigate to route.
- * NAVIGATION_SELECTOR_UI: Preserves selection query params during navigation.
- */
-export function navigateTo(route: RouteDefinition | string): void {
+export function navigateTo(route: RouteDefinition | RouteKey): void {
   const targetRoute = typeof route === 'string' ? ROUTES[route] : route;
-  if (targetRoute && typeof window !== 'undefined') {
-    // Preserve query params (selection state) during navigation
-    const currentHash = window.location.hash;
-    const queryIndex = currentHash.indexOf('?');
-    const queryPart = queryIndex !== -1 ? currentHash.slice(queryIndex) : '';
-
-    window.location.hash = targetRoute.hash + queryPart;
+  if (!targetRoute) {
+    return;
   }
+  navigateToHash(targetRoute.hash);
 }
 
-/**
- * Navigate to SLD (Schemat jednokreskowy).
- */
 export function navigateToSld(): void {
   navigateTo(ROUTES.SLD);
 }
 
-/**
- * Navigate to Results (Przegląd wyników).
- */
-export function navigateToResults(): void {
-  navigateTo(ROUTES.RESULTS);
+export function navigateToResults(context: RouteContextOptions = {}): void {
+  navigateToAnalysisRoute(context);
 }
 
-/**
- * Navigate to Proof (Ślad obliczeń).
- */
-export function navigateToProof(): void {
-  navigateTo(ROUTES.PROOF);
+export function navigateToProof(context: RouteContextOptions = {}): void {
+  navigateToHash('#proof', (params) => {
+    params.delete('tab');
+    assignRouteContext(params, context);
+  });
 }
 
-/**
- * Navigate to Compare (Porównanie przypadków).
- */
-export function navigateToCompare(): void {
-  navigateTo(ROUTES.COMPARE);
+export function navigateToCompare(context: RouteContextOptions = {}): void {
+  navigateToHash('#compare', (params) => {
+    params.delete('tab');
+    assignRouteContext(params, context);
+  });
 }
 
-/**
- * Navigate to Switchgear wizard (Rozdzielnica: pola i aparaty).
- */
+export function navigateToSldView(): void {
+  navigateTo(ROUTES.SLD_VIEW);
+}
+
+export function navigateToResultsProtection(context: RouteContextOptions = {}): void {
+  navigateToHash('#protection-results', (params) => {
+    params.delete('tab');
+    assignRouteContext(params, context);
+  });
+}
+
+export function navigateToResultsPowerFlow(context: RouteContextOptions = {}): void {
+  navigateToHash('#power-flow-results', (params) => {
+    params.delete('tab');
+    assignRouteContext(params, context);
+  });
+}
+
+export function navigateToNetworkBuild(): void {
+  navigateTo(ROUTES.SLD);
+}
+
 export function navigateToSwitchgear(): void {
   navigateTo(ROUTES.SWITCHGEAR);
+}
+
+export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
+    params.delete('run');
+    assignRouteContext(params, context);
+  });
+}
+
+export function navigateToAnalysis(context: RouteContextOptions = {}): void {
+  navigateToAnalysisRoute(context);
+}
+
+export function navigateToReport(context: RouteContextOptions = {}): void {
+  navigateToReportRoute(context);
+}
+
+export function navigateToVariants(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.VARIANTS.hash, (params) => {
+    params.delete('run');
+    assignRouteContext(params, context);
+  });
+}
+
+export function navigateToEnmInspector(): void {
+  navigateTo(ROUTES.ENM_INSPECTOR);
+}
+
+export function navigateToFaultScenarios(): void {
+  navigateTo(ROUTES.FAULT_SCENARIOS);
+}
+
+export function navigateToCatalog(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.CATALOG.hash, (params) => {
+    params.delete('run');
+    params.delete('case');
+    params.delete('snapshot');
+    assignRouteContext(params, context);
+  });
 }

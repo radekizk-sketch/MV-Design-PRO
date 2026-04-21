@@ -189,15 +189,30 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
   const handleSetSwitchState = useCallback(() => {
     if (!activeCaseId || !branchPoint) return;
     openOperationForm('update_element_parameters', {
-      element_id: branchPoint.ref_id,
+      element_ref: branchPoint.ref_id,
       element_type: 'branch_point',
     });
   }, [activeCaseId, branchPoint, openOperationForm]);
 
+  const handleEditZksn = useCallback(() => {
+    if (!branchPoint) return;
+    openOperationForm('update_element_parameters', {
+      element_ref: branchPoint.ref_id,
+      element_type: 'branch_point',
+    });
+  }, [branchPoint, openOperationForm]);
+
   const actions: CardAction[] = useMemo(() => {
     if (!branchPoint) return [];
 
-    const acts: CardAction[] = [];
+    const acts: CardAction[] = [
+      {
+        id: 'edit_zksn',
+        label: 'Edytuj ZKSN',
+        variant: 'secondary',
+        onClick: handleEditZksn,
+      },
+    ];
 
     // Add branch action for each free port
     branchPorts.forEach((port) => {
@@ -225,7 +240,7 @@ export function ZksnCard({ elementId, onClose }: ZksnCardProps) {
     });
 
     return acts;
-  }, [branchPoint, branchPorts, handleAddBranchFromPort, handleSetSwitchState, handleAssignCatalog]);
+  }, [branchPoint, branchPorts, handleAddBranchFromPort, handleAssignCatalog, handleEditZksn, handleSetSwitchState]);
 
   if (!branchPoint) {
     return (

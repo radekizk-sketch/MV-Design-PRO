@@ -30,12 +30,11 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Protocol
 from uuid import uuid4
-
 
 # =============================================================================
 # Enums
@@ -48,10 +47,11 @@ class ScenarioType(str, Enum):
 
     Aligned with IEC 60909 fault types and power flow analysis.
     """
-    SC_3F = "SC_3F"            # Three-phase short circuit
-    SC_1F = "SC_1F"            # Single-phase to ground
-    SC_2F = "SC_2F"            # Phase-to-phase short circuit
-    LOAD_FLOW = "LOAD_FLOW"    # Power flow analysis
+
+    SC_3F = "SC_3F"  # Three-phase short circuit
+    SC_1F = "SC_1F"  # Single-phase to ground
+    SC_2F = "SC_2F"  # Phase-to-phase short circuit
+    LOAD_FLOW = "LOAD_FLOW"  # Power flow analysis
     PROTECTION = "PROTECTION"  # Protection coordination
 
 
@@ -61,23 +61,26 @@ class OperatingMode(str, Enum):
 
     Defines the network topology state used for calculations.
     """
-    NORMAL = "NORMAL"          # Normal operating conditions
-    N_1 = "N_1"                # N-1 contingency analysis
+
+    NORMAL = "NORMAL"  # Normal operating conditions
+    N_1 = "N_1"  # N-1 contingency analysis
     MAINTENANCE = "MAINTENANCE"  # Maintenance outage scenario
 
 
 class ResultStatus(str, Enum):
-    """Result status for a study case (PowerFactory-grade)."""
-    NONE = "NONE"              # No calculations performed
-    FRESH = "FRESH"            # Results are current
-    OUTDATED = "OUTDATED"      # Results need recalculation
+    """Result status for a study case (industrial-grade)."""
+
+    NONE = "NONE"  # No calculations performed
+    FRESH = "FRESH"  # Results are current
+    OUTDATED = "OUTDATED"  # Results need recalculation
 
 
 class ComparisonVerdict(str, Enum):
     """Verdict from comparing two runs."""
-    IDENTICAL = "IDENTICAL"       # No meaningful difference
-    MINOR_DIFF = "MINOR_DIFF"     # Small differences within tolerance
-    MAJOR_DIFF = "MAJOR_DIFF"     # Significant differences
+
+    IDENTICAL = "IDENTICAL"  # No meaningful difference
+    MINOR_DIFF = "MINOR_DIFF"  # Small differences within tolerance
+    MAJOR_DIFF = "MAJOR_DIFF"  # Significant differences
 
 
 # =============================================================================
@@ -93,6 +96,7 @@ class StudyCaseConfig:
     Contains ONLY calculation parameters, NOT network topology.
     Immutable — changes create new config instances.
     """
+
     # Short-circuit analysis parameters
     c_factor_max: float = 1.10
     c_factor_min: float = 0.95
@@ -138,14 +142,15 @@ class StudyCase:
     - snapshot_ref and scenario_type are immutable after creation
     - Results belong to the case, not to the model
     """
+
     study_case_id: str
-    snapshot_ref: str                    # Hash of network snapshot (immutable)
-    scenario_type: ScenarioType          # Type of calculation (immutable)
-    mode: OperatingMode                  # Operating mode
-    catalog_version_lock: str            # Catalog version at creation time
-    config: StudyCaseConfig              # Calculation parameters
-    status: ResultStatus                 # Current result status
-    created_at: datetime                 # Timestamp of creation
+    snapshot_ref: str  # Hash of network snapshot (immutable)
+    scenario_type: ScenarioType  # Type of calculation (immutable)
+    mode: OperatingMode  # Operating mode
+    catalog_version_lock: str  # Catalog version at creation time
+    config: StudyCaseConfig  # Calculation parameters
+    status: ResultStatus  # Current result status
+    created_at: datetime  # Timestamp of creation
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for API responses."""
@@ -177,6 +182,7 @@ class StudyCaseRunResult:
     - white_box_trace stores all calculation steps for audit
     - results dict contains the full solver output
     """
+
     run_id: str
     case_id: str
     snapshot_hash: str
@@ -210,6 +216,7 @@ class DeltaValue:
 
     INVARIANT: Pure numeric comparison, no physics interpretation.
     """
+
     metric_name: str
     value_a: float
     value_b: float
@@ -242,6 +249,7 @@ class ComparisonResult:
     - Pure function output from compare_runs
     - verdict derived deterministically from delta_values
     """
+
     run_a_id: str
     run_b_id: str
     delta_values: tuple[DeltaValue, ...]
@@ -322,7 +330,7 @@ def _canonicalize_for_hash(value: Any) -> Any:
     """
     if isinstance(value, dict):
         return {k: _canonicalize_for_hash(v) for k, v in sorted(value.items())}
-    elif isinstance(value, (list, tuple)):
+    elif isinstance(value, list | tuple):
         return [_canonicalize_for_hash(item) for item in value]
     elif isinstance(value, float):
         rounded = round(value, 10)
@@ -392,7 +400,7 @@ class StudyCaseEngine:
             catalog_version_lock=catalog_version_lock,
             config=config or StudyCaseConfig(),
             status=ResultStatus.NONE,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     def execute_case(self, case: StudyCase) -> StudyCaseRunResult:
@@ -423,7 +431,7 @@ class StudyCaseEngine:
             snapshot_hash=case.snapshot_ref,
             results=results,
             white_box_trace=tuple(trace),
-            executed_at=datetime.now(timezone.utc),
+            executed_at=datetime.now(UTC),
             determinism_hash=determinism_hash,
         )
 
@@ -431,7 +439,7 @@ class StudyCaseEngine:
         """
         Clone a study case with new ID and NONE status.
 
-        CLONING RULES (PowerFactory-style):
+        CLONING RULES (canonical-style):
         - Configuration is copied (including mode, scenario_type)
         - snapshot_ref is copied (same snapshot binding)
         - catalog_version_lock is copied
@@ -452,7 +460,7 @@ class StudyCaseEngine:
             catalog_version_lock=case.catalog_version_lock,
             config=case.config,
             status=ResultStatus.NONE,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     @staticmethod
@@ -495,13 +503,15 @@ class StudyCaseEngine:
             else:
                 rel_diff_pct = (abs_diff / abs(val_a)) * 100.0
 
-            deltas.append(DeltaValue(
-                metric_name=key,
-                value_a=val_a,
-                value_b=val_b,
-                abs_diff=abs_diff,
-                rel_diff_pct=rel_diff_pct,
-            ))
+            deltas.append(
+                DeltaValue(
+                    metric_name=key,
+                    value_a=val_a,
+                    value_b=val_b,
+                    abs_diff=abs_diff,
+                    rel_diff_pct=rel_diff_pct,
+                )
+            )
 
         verdict = _determine_verdict(
             deltas, tolerance=tolerance, minor_threshold_pct=minor_threshold_pct
@@ -569,7 +579,7 @@ def _flatten_numeric(
     result: dict[str, float] = {}
     for key, value in sorted(data.items()):
         full_key = f"{prefix}.{key}" if prefix else key
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if isinstance(value, int | float) and not isinstance(value, bool):
             result[full_key] = float(value)
         elif isinstance(value, dict):
             result.update(_flatten_numeric(value, full_key))

@@ -124,7 +124,7 @@ describe('referenceTopologies', () => {
     });
   });
 
-  describe('terrain — sieć SN terenowa 12 stacji (referencja ETAP)', () => {
+  describe('terrain — sieć SN terenowa 12 stacji (referencja CANONICAL)', () => {
     it('buduje sieć z 6 segmentami magistrali, 4 odgałęzieniami, ringiem i NOP', () => {
       const result = buildReferenceScenario('terrain');
       const lv = result.input.logicalViews;

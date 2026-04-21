@@ -19,7 +19,8 @@ USAGE:
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
 from domain.results import (
@@ -118,13 +119,9 @@ class ComparisonService:
                     results_a, results_b, run_a_id, run_b_id
                 )
             elif run_a.analysis_type in ("power_flow", "pf", "load_flow"):
-                power_flow_comp = self._compare_power_flow(
-                    results_a, results_b, run_a_id, run_b_id
-                )
+                power_flow_comp = self._compare_power_flow(results_a, results_b, run_a_id, run_b_id)
             elif run_a.analysis_type in ("protection", "protection_analysis"):
-                protection_comp = self._compare_protection(
-                    results_a, results_b, run_a_id, run_b_id
-                )
+                protection_comp = self._compare_protection(results_a, results_b, run_a_id, run_b_id)
 
             return RunComparisonResult(
                 run_a_id=run_a_id,
@@ -243,11 +240,13 @@ class ComparisonService:
             u_pu_val_a = float(pu_a.get(node_id, 0.0))
             u_pu_val_b = float(pu_b.get(node_id, 0.0))
 
-            comparisons.append(BusVoltageComparison(
-                bus_id=node_id,
-                u_kv_delta=NumericDelta.compute(u_kv_val_a, u_kv_val_b),
-                u_pu_delta=NumericDelta.compute(u_pu_val_a, u_pu_val_b),
-            ))
+            comparisons.append(
+                BusVoltageComparison(
+                    bus_id=node_id,
+                    u_kv_delta=NumericDelta.compute(u_kv_val_a, u_kv_val_b),
+                    u_pu_delta=NumericDelta.compute(u_pu_val_a, u_pu_val_b),
+                )
+            )
 
         return comparisons
 
@@ -264,11 +263,13 @@ class ComparisonService:
             s_a = self._parse_complex(s_from_a.get(branch_id, {"re": 0.0, "im": 0.0}))
             s_b = self._parse_complex(s_from_b.get(branch_id, {"re": 0.0, "im": 0.0}))
 
-            comparisons.append(BranchPowerComparison(
-                branch_id=branch_id,
-                p_mw_delta=NumericDelta.compute(s_a.real, s_b.real),
-                q_mvar_delta=NumericDelta.compute(s_a.imag, s_b.imag),
-            ))
+            comparisons.append(
+                BranchPowerComparison(
+                    branch_id=branch_id,
+                    p_mw_delta=NumericDelta.compute(s_a.real, s_b.real),
+                    q_mvar_delta=NumericDelta.compute(s_a.imag, s_b.imag),
+                )
+            )
 
         return comparisons
 
@@ -414,7 +415,7 @@ class ComparisonService:
         """
         if isinstance(value, complex):
             return value
-        if isinstance(value, (int, float)):
+        if isinstance(value, int | float):
             return complex(value, 0.0)
         if isinstance(value, dict):
             return complex(

@@ -1,9 +1,15 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # SLD Topological Layout Engine — Specyfikacja Kanoniczna
 
 **Status:** BINDING
 **Wersja:** 1.0
 **Data:** 2026-02-06
-**Referencje:** SLD_AUTOLAYOUT_AUDIT_I_NAPRAWA.md, AUDYT_SLD_ETAP.md
+**Referencje:** SLD_AUTOLAYOUT_AUDIT_I_NAPRAWA.md, AUDYT_SLD_benchmark.md
 
 ---
 
@@ -89,7 +95,7 @@ L12 — Odbiornik/Falownik
 
 ## 6. Konfiguracja Geometrii
 
-Wszystkie parametry z `ETAP_GEOMETRY` tokens:
+Wszystkie parametry z `benchmark_GEOMETRY` tokens:
 
 | Parametr | Wartość | Opis |
 |----------|---------|------|
@@ -205,3 +211,4 @@ deepFreezeSymbols(symbols); // Freezes input for mutation detection
 | `autoLayout.ts` | **USUNIĘTY** | Legacy dual-engine, zastąpiony topological |
 | `useTopologicalLayout.ts` | **USUNIĘTY** | Nieużywany alternatywny hook |
 | Feature flag V1 | **USUNIĘTY** | Layout zawsze włączony |
+

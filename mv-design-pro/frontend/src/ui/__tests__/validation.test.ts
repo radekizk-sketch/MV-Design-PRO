@@ -2,7 +2,7 @@
  * Property Grid Validation Tests — P12b
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § D.4: Inline validation
+ * - ui_canonical_parity.md § D.4: Inline validation
  * - AGENTS.md: Frontend = NOT-A-SOLVER (syntactic validation only)
  *
  * Tests client-side syntactic validation rules.

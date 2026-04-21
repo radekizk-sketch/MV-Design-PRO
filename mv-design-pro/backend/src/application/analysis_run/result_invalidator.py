@@ -45,21 +45,15 @@ class ResultInvalidator:
 
         # 1. Invalidate all analysis runs
         if uow.analysis_runs is not None:
-            affected += uow.analysis_runs.mark_results_outdated(
-                project_id, commit=False
-            )
+            affected += uow.analysis_runs.mark_results_outdated(project_id, commit=False)
 
         # 2. Invalidate all study cases (FRESH → OUTDATED, NONE stays NONE)
         if uow.cases is not None:
-            affected += uow.cases.mark_all_cases_outdated(
-                project_id, commit=False
-            )
+            affected += uow.cases.mark_all_cases_outdated(project_id, commit=False)
 
         return affected
 
-    def invalidate_case_results(
-        self, uow: UnitOfWork, project_id: UUID, case_id: UUID
-    ) -> int:
+    def invalidate_case_results(self, uow: UnitOfWork, project_id: UUID, case_id: UUID) -> int:
         """
         Invalidate results for a single case after config/protection change.
 

@@ -2,7 +2,7 @@
  * TraceSearchBar — Pasek wyszukiwania i filtrów śladu obliczeń
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF-like nawigacja i wyszukiwanie
+ * - ui_canonical_parity.md: PF-like nawigacja i wyszukiwanie
  * - wizard_screens.md: RESULT_VIEW mode, Polish labels
  *
  * FEATURES:

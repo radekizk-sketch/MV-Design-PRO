@@ -20,18 +20,18 @@ OPERATIONS:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from domain.study_case import (
+    ProtectionConfig,
     StudyCase,
     StudyCaseComparison,
     StudyCaseConfig,
     StudyCaseResult,
-    StudyCaseResultStatus,
-    ProtectionConfig,
     compare_study_cases,
     new_study_case,
 )
@@ -39,7 +39,6 @@ from domain.study_case import (
 from .errors import (
     ActiveCaseRequiredError,
     CaseConfigurationError,
-    OperationNotAllowedError,
     StudyCaseNotFoundError,
 )
 
@@ -47,6 +46,7 @@ from .errors import (
 @dataclass
 class StudyCaseListItem:
     """Summary item for listing study cases."""
+
     id: str
     name: str
     description: str
@@ -430,7 +430,7 @@ class StudyCaseService:
             result_ref = StudyCaseResult(
                 analysis_run_id=analysis_run_id,
                 analysis_type=analysis_type,
-                calculated_at=datetime.now(timezone.utc),
+                calculated_at=datetime.now(UTC),
                 input_hash=input_hash,
             )
             return repo.mark_case_fresh(case_id, result_ref)
@@ -530,7 +530,7 @@ class StudyCaseService:
             # For now, we trust the frontend validation
 
             # Create new ProtectionConfig
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             new_config = ProtectionConfig(
                 template_ref=template_ref,
                 template_fingerprint=template_fingerprint,

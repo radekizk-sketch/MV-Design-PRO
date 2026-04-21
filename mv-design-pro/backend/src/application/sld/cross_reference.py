@@ -9,8 +9,7 @@ Czysta funkcja: ENM + SldDiagram → CrossReferenceTable (deterministyczna).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal
+from dataclasses import dataclass
 
 from domain.sld import SldDiagram
 from enm.models import EnergyNetworkModel
@@ -75,91 +74,107 @@ def build_cross_reference_table(
 
     # Szyny → sekcja "Topologia"
     for bus in sorted(enm.buses, key=lambda b: b.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=bus.ref_id,
-            enm_element_type="bus",
-            enm_element_name=bus.name,
-            sld_symbol_id=sld_map.get(str(bus.id)),
-            wizard_step_hint="K3",
-            report_section="Topologia sieci",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=bus.ref_id,
+                enm_element_type="bus",
+                enm_element_name=bus.name,
+                sld_symbol_id=sld_map.get(str(bus.id)),
+                wizard_step_hint="K3",
+                report_section="Topologia sieci",
+            )
+        )
 
     # Źródła → sekcja "Zasilanie"
     for src in sorted(enm.sources, key=lambda s: s.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=src.ref_id,
-            enm_element_type="source",
-            enm_element_name=src.name,
-            sld_symbol_id=sld_map.get(str(src.id)),
-            wizard_step_hint="K2",
-            report_section="Zasilanie",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=src.ref_id,
+                enm_element_type="source",
+                enm_element_name=src.name,
+                sld_symbol_id=sld_map.get(str(src.id)),
+                wizard_step_hint="K2",
+                report_section="Zasilanie",
+            )
+        )
 
     # Gałęzie → sekcja "Linie i kable"
     for branch in sorted(enm.branches, key=lambda b: b.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=branch.ref_id,
-            enm_element_type="branch",
-            enm_element_name=branch.name,
-            sld_symbol_id=sld_map.get(str(branch.id)),
-            wizard_step_hint="K4",
-            report_section="Linie i kable",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=branch.ref_id,
+                enm_element_type="branch",
+                enm_element_name=branch.name,
+                sld_symbol_id=sld_map.get(str(branch.id)),
+                wizard_step_hint="K4",
+                report_section="Linie i kable",
+            )
+        )
 
     # Transformatory → sekcja "Transformatory"
     for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=trafo.ref_id,
-            enm_element_type="transformer",
-            enm_element_name=trafo.name,
-            sld_symbol_id=sld_map.get(str(trafo.id)),
-            wizard_step_hint="K5",
-            report_section="Transformatory",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=trafo.ref_id,
+                enm_element_type="transformer",
+                enm_element_name=trafo.name,
+                sld_symbol_id=sld_map.get(str(trafo.id)),
+                wizard_step_hint="K5",
+                report_section="Transformatory",
+            )
+        )
 
     # Odbiorniki → sekcja "Odbiory"
-    for load in sorted(enm.loads, key=lambda l: l.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=load.ref_id,
-            enm_element_type="load",
-            enm_element_name=load.name,
-            sld_symbol_id=sld_map.get(str(load.id)),
-            wizard_step_hint="K6",
-            report_section="Odbiory",
-        ))
+    for load in sorted(enm.loads, key=lambda load_item: load_item.ref_id):
+        entries.append(
+            CrossReference(
+                enm_ref_id=load.ref_id,
+                enm_element_type="load",
+                enm_element_name=load.name,
+                sld_symbol_id=sld_map.get(str(load.id)),
+                wizard_step_hint="K6",
+                report_section="Odbiory",
+            )
+        )
 
     # Generatory → sekcja "Generacja"
     for gen in sorted(enm.generators, key=lambda g: g.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=gen.ref_id,
-            enm_element_type="generator",
-            enm_element_name=gen.name,
-            sld_symbol_id=sld_map.get(str(gen.id)),
-            wizard_step_hint="K6",
-            report_section="Generacja",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=gen.ref_id,
+                enm_element_type="generator",
+                enm_element_name=gen.name,
+                sld_symbol_id=sld_map.get(str(gen.id)),
+                wizard_step_hint="K6",
+                report_section="Generacja",
+            )
+        )
 
     # Stacje → sekcja "Stacje"
     for sub in sorted(enm.substations, key=lambda s: s.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=sub.ref_id,
-            enm_element_type="substation",
-            enm_element_name=sub.name,
-            sld_symbol_id=None,  # Substations are not SLD symbols
-            wizard_step_hint="K3",
-            report_section="Stacje",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=sub.ref_id,
+                enm_element_type="substation",
+                enm_element_name=sub.name,
+                sld_symbol_id=None,  # Substations are not SLD symbols
+                wizard_step_hint="K3",
+                report_section="Stacje",
+            )
+        )
 
     # Magistrale → sekcja "Magistrale"
     for corr in sorted(enm.corridors, key=lambda c: c.ref_id):
-        entries.append(CrossReference(
-            enm_ref_id=corr.ref_id,
-            enm_element_type="corridor",
-            enm_element_name=corr.name,
-            sld_symbol_id=None,  # Corridors are not SLD symbols
-            wizard_step_hint="K4",
-            report_section="Magistrale",
-        ))
+        entries.append(
+            CrossReference(
+                enm_ref_id=corr.ref_id,
+                enm_element_type="corridor",
+                enm_element_name=corr.name,
+                sld_symbol_id=None,  # Corridors are not SLD symbols
+                wizard_step_hint="K4",
+                report_section="Magistrale",
+            )
+        )
 
     total = len(entries)
     mapped = sum(1 for e in entries if e.sld_symbol_id is not None)

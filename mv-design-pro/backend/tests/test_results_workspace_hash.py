@@ -15,27 +15,18 @@ INVARIANTS VERIFIED:
 - No None in fields where not explicitly allowed
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-import pytest
-
-from domain.execution import Run, RunStatus, ExecutionAnalysisType
-from domain.batch_job import BatchJob, BatchJobStatus
 from application.read_models.results_workspace_projection import (
+    PROJECTION_VERSION,
+    ProjectionMetadata,
+    _compute_content_hash,
     build_workspace_projection,
     compute_projection_hash,
-    map_run_to_summary,
-    map_batch_to_summary,
-    _compute_content_hash,
-    RunSummary,
-    BatchSummary,
-    ComparisonSummary,
-    ResultsWorkspaceProjection,
-    ProjectionMetadata,
-    PROJECTION_VERSION,
 )
-
+from domain.batch_job import BatchJob, BatchJobStatus
+from domain.execution import ExecutionAnalysisType, Run, RunStatus
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -57,7 +48,7 @@ def _make_run(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         status=status,
-        started_at=started_at or datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+        started_at=started_at or datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC),
         finished_at=finished_at,
     )
 
@@ -80,7 +71,7 @@ def _make_batch(
         scenario_ids=scenario_ids,
         batch_input_hash="batch_hash_123",
         status=status,
-        created_at=created_at or datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+        created_at=created_at or datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC),
         run_ids=run_ids,
         result_set_ids=(),
         errors=(),
@@ -115,7 +106,7 @@ class TestHashDeterminism:
         r1 = _make_run(
             run_id=UUID("00000000-0000-0000-0000-000000000001"),
             study_case_id=case_id,
-            started_at=datetime(2025, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
+            started_at=datetime(2025, 1, 15, 10, 0, 0, tzinfo=UTC),
         )
 
         proj_a = build_workspace_projection(case_id, [r1], [], [])
@@ -137,12 +128,12 @@ class TestHashDeterminism:
         r1 = _make_run(
             run_id=UUID("00000000-0000-0000-0000-000000000001"),
             study_case_id=case_id,
-            started_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+            started_at=datetime(2025, 1, 10, tzinfo=UTC),
         )
         r2 = _make_run(
             run_id=UUID("00000000-0000-0000-0000-000000000002"),
             study_case_id=case_id,
-            started_at=datetime(2025, 1, 20, tzinfo=timezone.utc),
+            started_at=datetime(2025, 1, 20, tzinfo=UTC),
         )
 
         proj_a = build_workspace_projection(case_id, [r1, r2], [], [])
@@ -155,12 +146,12 @@ class TestHashDeterminism:
         b1 = _make_batch(
             batch_id=UUID("00000000-0000-0000-0000-000000000011"),
             study_case_id=case_id,
-            created_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+            created_at=datetime(2025, 1, 10, tzinfo=UTC),
         )
         b2 = _make_batch(
             batch_id=UUID("00000000-0000-0000-0000-000000000012"),
             study_case_id=case_id,
-            created_at=datetime(2025, 1, 20, tzinfo=timezone.utc),
+            created_at=datetime(2025, 1, 20, tzinfo=UTC),
         )
 
         proj_a = build_workspace_projection(case_id, [], [b1, b2], [])
@@ -252,12 +243,12 @@ class TestSourceIds:
         r1 = _make_run(
             run_id=UUID("00000000-0000-0000-0000-000000000003"),
             study_case_id=case_id,
-            started_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+            started_at=datetime(2025, 1, 10, tzinfo=UTC),
         )
         r2 = _make_run(
             run_id=UUID("00000000-0000-0000-0000-000000000001"),
             study_case_id=case_id,
-            started_at=datetime(2025, 1, 20, tzinfo=timezone.utc),
+            started_at=datetime(2025, 1, 20, tzinfo=UTC),
         )
 
         proj = build_workspace_projection(case_id, [r1, r2], [], [])
@@ -271,12 +262,12 @@ class TestSourceIds:
         b1 = _make_batch(
             batch_id=UUID("00000000-0000-0000-0000-000000000022"),
             study_case_id=case_id,
-            created_at=datetime(2025, 1, 10, tzinfo=timezone.utc),
+            created_at=datetime(2025, 1, 10, tzinfo=UTC),
         )
         b2 = _make_batch(
             batch_id=UUID("00000000-0000-0000-0000-000000000011"),
             study_case_id=case_id,
-            created_at=datetime(2025, 1, 20, tzinfo=timezone.utc),
+            created_at=datetime(2025, 1, 20, tzinfo=UTC),
         )
 
         proj = build_workspace_projection(case_id, [], [b1, b2], [])

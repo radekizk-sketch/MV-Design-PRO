@@ -5,6 +5,7 @@ Regression coverage:
 - POST /api/projects → 201
 - POST /api/study-cases → 201 (no 500 when UoW session is required)
 """
+
 from __future__ import annotations
 
 import pytest
@@ -18,10 +19,13 @@ def test_create_study_case_after_project_creation(app_client) -> None:
     assert project_resp.status_code == 201
     project_id = project_resp.json()["id"]
 
-    case_resp = app_client.post("/api/study-cases", json={
-        "project_id": project_id,
-        "name": "Przypadek bazowy",
-    })
+    case_resp = app_client.post(
+        "/api/study-cases",
+        json={
+            "project_id": project_id,
+            "name": "Przypadek bazowy",
+        },
+    )
     assert case_resp.status_code == 201
     payload = case_resp.json()
     assert payload["project_id"] == project_id

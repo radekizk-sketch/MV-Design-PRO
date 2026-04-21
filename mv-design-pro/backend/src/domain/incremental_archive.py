@@ -19,21 +19,18 @@ import io
 import json
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
 from domain.project_archive import (
-    ArchiveFingerprints,
     ArchiveError,
+    ArchiveFingerprints,
     ProjectArchive,
     archive_to_dict,
     canonicalize,
-    compute_archive_fingerprints,
-    compute_hash,
     dict_to_archive,
 )
-
 
 # ============================================================================
 # STAŁE
@@ -86,8 +83,7 @@ class BaseHashMismatchError(IncrementalArchiveError):
         self.expected = expected
         self.got = got
         super().__init__(
-            f"Hash bazowego archiwum nie zgadza się: "
-            f"oczekiwano {expected}, otrzymano {got}"
+            f"Hash bazowego archiwum nie zgadza się: " f"oczekiwano {expected}, otrzymano {got}"
         )
 
 
@@ -95,9 +91,7 @@ class IncrementalStructureError(IncrementalArchiveError):
     """Błąd struktury archiwum przyrostowego."""
 
     def __init__(self, message: str) -> None:
-        super().__init__(
-            f"Błąd struktury archiwum przyrostowego: {message}"
-        )
+        super().__init__(f"Błąd struktury archiwum przyrostowego: {message}")
 
 
 class IncrementalVersionError(IncrementalArchiveError):
@@ -192,21 +186,15 @@ class IncrementalExportResult:
 # ============================================================================
 
 
-def _get_fingerprint_hash(
-    fingerprints: ArchiveFingerprints, section_name: str
-) -> str:
+def _get_fingerprint_hash(fingerprints: ArchiveFingerprints, section_name: str) -> str:
     """Pobierz hash sekcji z ArchiveFingerprints."""
     field_name = _FINGERPRINT_FIELD_MAP.get(section_name)
     if field_name is None:
-        raise IncrementalArchiveError(
-            f"Nieznana nazwa sekcji: {section_name}"
-        )
+        raise IncrementalArchiveError(f"Nieznana nazwa sekcji: {section_name}")
     return getattr(fingerprints, field_name, "")
 
 
-def _get_section_data(
-    archive_dict: dict[str, Any], section_name: str
-) -> dict[str, Any]:
+def _get_section_data(archive_dict: dict[str, Any], section_name: str) -> dict[str, Any]:
     """Pobierz dane sekcji z archiwum jako dict."""
     return archive_dict.get(section_name, {})
 
@@ -345,18 +333,12 @@ def build_incremental_archive(
         IncrementalArchive z deltami tylko dla zmienionych sekcji.
     """
     if base_timestamp is None:
-        base_timestamp = datetime.now(timezone.utc).isoformat()
+        base_timestamp = datetime.now(UTC).isoformat()
 
     deltas = compute_section_deltas(base_fingerprints, current_archive)
 
-    changed = [
-        d for d in deltas if d.status != SectionChangeStatus.UNCHANGED
-    ]
-    export_type = (
-        IncrementalExportType.DELTA
-        if changed
-        else IncrementalExportType.FULL
-    )
+    changed = [d for d in deltas if d.status != SectionChangeStatus.UNCHANGED]
+    export_type = IncrementalExportType.DELTA if changed else IncrementalExportType.FULL
     # Nawet jeśli brak zmian, typ to DELTA (puste delta)
     export_type = IncrementalExportType.DELTA
 
@@ -417,9 +399,7 @@ def apply_incremental_archive(
                 base_dict[delta.section_name] = delta.data
         elif delta.status == SectionChangeStatus.REMOVED:
             # Sekcje usunięte — wstawienie pustych danych
-            base_dict[delta.section_name] = _empty_section_data(
-                delta.section_name
-            )
+            base_dict[delta.section_name] = _empty_section_data(delta.section_name)
 
     # Uaktualnij fingerprints w zrekonstruowanym słowniku
     base_dict["fingerprints"] = {
@@ -521,9 +501,7 @@ def _incremental_to_dict(archive: IncrementalArchive) -> dict[str, Any]:
                 "runs_hash": archive.fingerprints.runs_hash,
                 "results_hash": archive.fingerprints.results_hash,
                 "proofs_hash": archive.fingerprints.proofs_hash,
-                "interpretations_hash": (
-                    archive.fingerprints.interpretations_hash
-                ),
+                "interpretations_hash": (archive.fingerprints.interpretations_hash),
                 "issues_hash": archive.fingerprints.issues_hash,
             },
             "deterministic_signature": archive.deterministic_signature,
@@ -546,14 +524,10 @@ def _dict_to_incremental(data: dict[str, Any]) -> IncrementalArchive:
     ]
     for key in required_keys:
         if key not in data:
-            raise IncrementalStructureError(
-                f"Brak wymaganego pola: {key}"
-            )
+            raise IncrementalStructureError(f"Brak wymaganego pola: {key}")
 
     if data["format_id"] != INCREMENTAL_FORMAT_ID:
-        raise IncrementalStructureError(
-            f"Nieprawidłowy identyfikator formatu: {data['format_id']}"
-        )
+        raise IncrementalStructureError(f"Nieprawidłowy identyfikator formatu: {data['format_id']}")
 
     version = data["schema_version"]
     if not _is_compatible_version(version):
@@ -610,9 +584,7 @@ def serialize_incremental(archive: IncrementalArchive) -> bytes:
         Bajty pliku ZIP.
     """
     archive_dict = _incremental_to_dict(archive)
-    json_str = json.dumps(
-        archive_dict, sort_keys=True, indent=2, ensure_ascii=False
-    )
+    json_str = json.dumps(archive_dict, sort_keys=True, indent=2, ensure_ascii=False)
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -637,21 +609,15 @@ def deserialize_incremental(data: bytes) -> IncrementalArchive:
         buf = io.BytesIO(data)
         with zipfile.ZipFile(buf, "r") as zf:
             if "incremental.json" not in zf.namelist():
-                raise IncrementalStructureError(
-                    "Brak pliku incremental.json w archiwum ZIP"
-                )
+                raise IncrementalStructureError("Brak pliku incremental.json w archiwum ZIP")
             json_str = zf.read("incremental.json").decode("utf-8")
     except zipfile.BadZipFile:
-        raise IncrementalStructureError(
-            "Plik nie jest prawidłowym archiwum ZIP"
-        )
+        raise IncrementalStructureError("Plik nie jest prawidłowym archiwum ZIP")
 
     try:
         archive_dict = json.loads(json_str)
     except json.JSONDecodeError as e:
-        raise IncrementalStructureError(
-            f"Nieprawidłowy JSON w archiwum: {e}"
-        )
+        raise IncrementalStructureError(f"Nieprawidłowy JSON w archiwum: {e}")
 
     return _dict_to_incremental(archive_dict)
 
@@ -691,24 +657,14 @@ def compute_export_result(
     Returns:
         IncrementalExportResult z metrykami.
     """
-    changed = sum(
-        1
-        for d in incremental.deltas
-        if d.status != SectionChangeStatus.UNCHANGED
-    )
-    unchanged = sum(
-        1
-        for d in incremental.deltas
-        if d.status == SectionChangeStatus.UNCHANGED
-    )
+    archive_dict = archive_to_dict(full_archive)
+    tracked_sections = sum(1 for section_name in SECTION_NAMES if section_name in archive_dict)
+    changed = sum(1 for d in incremental.deltas if d.status != SectionChangeStatus.UNCHANGED)
+    unchanged = max(tracked_sections - changed, 0)
 
     size_full = len(full_bytes)
     size_delta = len(delta_bytes)
-    savings = (
-        ((size_full - size_delta) / size_full * 100.0)
-        if size_full > 0
-        else 0.0
-    )
+    savings = ((size_full - size_delta) / size_full * 100.0) if size_full > 0 else 0.0
 
     return IncrementalExportResult(
         success=True,

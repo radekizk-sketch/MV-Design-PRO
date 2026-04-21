@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from application.designer.actions import Action, ActionType
 from application.designer.context import ProjectContext
 from application.designer.engine import run

@@ -20,7 +20,7 @@ describe('SLD industrial hierarchy gates', () => {
   });
 
   it('stacja SN/nN ma jawne sekcje funkcjonalne SN i nN', () => {
-    const stationRenderer = read('src/ui/sld/StationFieldRenderer.tsx');
+    const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
     expect(stationRenderer.includes('data-sld-role="station-sn-section"')).toBe(true);
     expect(stationRenderer.includes('data-sld-role="station-nn-section"')).toBe(true);
   });
@@ -31,19 +31,39 @@ describe('SLD industrial hierarchy gates', () => {
     expect(css.includes('.sld-info-secondary')).toBe(true);
     expect(css.includes('.sld-info-tertiary')).toBe(true);
 
-    const trunkRenderer = read('src/ui/sld/TrunkSpineRenderer.tsx');
+    const canvasRenderer = read('src/ui/sld/SLDViewCanvas.tsx');
     const branchRenderer = read('src/ui/sld/BranchRenderer.tsx');
-    const stationRenderer = read('src/ui/sld/StationFieldRenderer.tsx');
+    const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
+    const inlineObjectRenderer = read('src/ui/sld/InlineBranchObjectRenderer.tsx');
 
-    expect(trunkRenderer.includes('showTechnicalLabels &&')).toBe(true);
+    expect(canvasRenderer.includes('showTechnicalCanonicalLabels')).toBe(true);
     expect(branchRenderer.includes('showTechnicalLabels &&')).toBe(true);
     expect(stationRenderer.includes('showTechnicalLabels &&')).toBe(true);
+    expect(inlineObjectRenderer.includes('showTechnicalLabels &&')).toBe(true);
+  });
+
+  it('aktywne rendery pola SN uzywaja wspolnego bloku schematu', () => {
+    const branchRenderer = read('src/ui/sld/BranchRenderer.tsx');
+    const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
+    const gpzFieldBlockSource = read('src/ui/sld/GpzFieldBlockRenderer.tsx');
+    const baySvgRenderer = read('src/ui/power-distribution/BaySvgRenderer.tsx');
+
+    expect(branchRenderer.includes('StationBlockLayoutSvg')).toBe(true);
+    expect(stationRenderer.includes('StationBlockLayoutSvg')).toBe(true);
+    expect(gpzFieldBlockSource.includes('CanonicalFieldBlockSvg')).toBe(true);
+    expect(baySvgRenderer.includes('StationBlockLayoutSvg')).toBe(true);
   });
 
   it.each(SCENARIOS)('czytelność przy normalnym dopasowaniu dla %s', (scenarioId) => {
     const scenario = buildReferenceScenario(scenarioId);
     const viewport = fitToContent(scenario.symbols, 1000, 600, 40, 0.9);
     expect(viewport.zoom).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it.each(SCENARIOS)('scenariusz %s dostarcza kanoniczne połączenia z pipeline layoutu', (scenarioId) => {
+    const scenario = buildReferenceScenario(scenarioId);
+    expect(scenario.connections.length).toBeGreaterThan(0);
+    expect(scenario.connections.every((connection) => connection.path.length >= 2)).toBe(true);
   });
 
 
@@ -57,12 +77,20 @@ describe('SLD industrial hierarchy gates', () => {
   });
 
   it('etykiety poziomu 1 i 2 są zakotwiczone do geometrii obiektów', () => {
-    const trunkRenderer = read('src/ui/sld/TrunkSpineRenderer.tsx');
     const branchRenderer = read('src/ui/sld/BranchRenderer.tsx');
-    const stationRenderer = read('src/ui/sld/StationFieldRenderer.tsx');
+    const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
+    const inlineObjectRenderer = read('src/ui/sld/InlineBranchObjectRenderer.tsx');
 
-    expect(trunkRenderer.includes('x={trunkX')).toBe(true);
-    expect(branchRenderer.includes('x={position.x')).toBe(true);
+    expect(branchRenderer.includes('bay.cableExitPoint')).toBe(true);
     expect(stationRenderer.includes('x={baseX')).toBe(true);
+    expect(inlineObjectRenderer.includes('textAnchor="middle"')).toBe(true);
+  });
+
+  it('GPZ ma jawny renderer pola liniowego między szyną i początkiem magistrali', () => {
+    const canvasRenderer = read('src/ui/sld/SLDViewCanvas.tsx');
+    const gpzFieldBlockSource = read('src/ui/sld/GpzFieldBlockRenderer.tsx');
+    expect(canvasRenderer.includes('GpzFieldBlockRenderer')).toBe(true);
+    expect(gpzFieldBlockSource.includes('data-sld-role="gpz-feeder-field"')).toBe(true);
+    expect(gpzFieldBlockSource.includes('field.segmentStart')).toBe(true);
   });
 });

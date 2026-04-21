@@ -1,7 +1,9 @@
 ﻿/**
- * Typy operacji domenowych â€” budowa sieci SN od GPZ.
+ * Typy operacji domenowych — budowa sieci SN od GPZ.
  * Lustrzane odbicie backend domain_ops_models.py.
  */
+
+import type { FixActionSurfaceDescriptor } from './fixActionSurface';
 
 // --- Envelope ---
 export interface DomainOpEnvelope {
@@ -17,6 +19,7 @@ export interface DomainOpEnvelope {
 // --- Canonical operation names ---
 export type CanonicalOpName =
   | 'add_grid_source_sn'
+  | 'add_sn_bay'
   | 'continue_trunk_segment_sn'
   | 'insert_station_on_segment_sn'
   | 'insert_branch_pole_on_segment_sn'
@@ -28,25 +31,66 @@ export type CanonicalOpName =
   | 'add_transformer_sn_nn'
   | 'assign_catalog_to_element'
   | 'update_element_parameters'
-  // Operacje nN / ĹşrĂłdĹ‚a
-  | 'add_nn_source_field'
-  | 'add_pv_inverter_nn'
-  | 'add_bess_inverter_nn'
+  // Operacje nN / źródła
+  | 'add_nn_outgoing_field'
+  | 'add_converter_source'
   | 'add_genset_nn'
   | 'add_ups_nn'
   | 'add_nn_load'
+  | 'add_ct'
+  | 'add_vt'
+  | 'add_relay'
   | 'delete_element'
   | 'refresh_snapshot';
 
-export const ALIAS_MAP: Record<string, CanonicalOpName> = {
-  add_trunk_segment_sn: 'continue_trunk_segment_sn',
-  add_branch_segment_sn: 'start_branch_segment_sn',
-  insert_branch_pole: 'insert_branch_pole_on_segment_sn',
-  insert_zksn: 'insert_zksn_on_segment_sn',
-  start_branch_from_port: 'start_branch_segment_sn',
-  insert_station_on_trunk_segment_sn: 'insert_station_on_segment_sn',
-  connect_ring_sn: 'connect_secondary_ring_sn',
-};
+export const CANONICAL_OPERATION_NAMES = [
+  'add_grid_source_sn',
+  'add_sn_bay',
+  'continue_trunk_segment_sn',
+  'insert_station_on_segment_sn',
+  'insert_branch_pole_on_segment_sn',
+  'insert_zksn_on_segment_sn',
+  'start_branch_segment_sn',
+  'insert_section_switch_sn',
+  'connect_secondary_ring_sn',
+  'set_normal_open_point',
+  'add_transformer_sn_nn',
+  'assign_catalog_to_element',
+  'update_element_parameters',
+  'add_nn_outgoing_field',
+  'add_converter_source',
+  'add_genset_nn',
+  'add_ups_nn',
+  'add_nn_load',
+  'add_ct',
+  'add_vt',
+  'add_relay',
+  'delete_element',
+  'refresh_snapshot',
+] as const satisfies readonly CanonicalOpName[];
+
+const CANONICAL_OPERATION_SET = new Set<string>(CANONICAL_OPERATION_NAMES);
+
+export function isCanonicalOpName(name: string): name is CanonicalOpName {
+  return CANONICAL_OPERATION_SET.has(name);
+}
+
+export function assertCanonicalOpName(name: string): CanonicalOpName {
+  if (!isCanonicalOpName(name)) {
+    throw new Error(`Niekanoniczna nazwa operacji: ${name}`);
+  }
+  return name;
+}
+
+export function canonicalOperationInput<T extends CanonicalOpName>(
+  name: T,
+  context?: Record<string, unknown>,
+): {
+  canonicalOp: T;
+  context?: Record<string, unknown>;
+} {
+  return { canonicalOp: name, context };
+}
 
 // --- Response ---
 export interface DomainOpResponse {
@@ -101,9 +145,12 @@ export interface FixActionItem {
   code: string;
   action_type: 'OPEN_MODAL' | 'NAVIGATE_TO_ELEMENT' | 'SELECT_CATALOG' | 'ADD_MISSING_DEVICE';
   element_ref: string | null;
+  modal_type: string | null;
   panel: string | null;
   step: string | null;
   focus: string | null;
+  payload_hint?: Record<string, unknown> | null;
+  surface_descriptor?: FixActionSurfaceDescriptor | null;
   message_pl: string;
 }
 
@@ -166,7 +213,7 @@ export interface SegmentSpec {
   dlugosc_m: number;
   name: string | null;
   catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilnoĹ›ci; kanonicznie uĹĽywaj catalog_binding. */
+  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
   catalog_ref?: string | null;
 }
 
@@ -179,7 +226,7 @@ export interface CatalogBindingPayload {
 }
 
 // --- Station ---
-export type StationType = 'A' | 'B' | 'C' | 'D';
+export type StationType = 'inline' | 'branch' | 'terminal' | 'sectional';
 
 export interface StationSpec {
   station_type: StationType;
@@ -194,7 +241,6 @@ export type SNFieldRole = 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATO
 
 export interface SNFieldSpec {
   field_role: SNFieldRole;
-  apparatus_plan: string[];
   catalog_bindings: CatalogBindings | null;
 }
 
@@ -209,14 +255,21 @@ export interface CatalogBindings {
 export interface TransformerSpec {
   create: true;
   catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilnoĹ›ci; kanonicznie uĹĽywaj catalog_binding. */
+  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
   transformer_catalog_ref?: string | null;
   model_type: 'DWU_UZWOJENIOWY';
   tap_changer_present: boolean;
 }
 
 // --- NN Block ---
-export type NNFeederRole = 'ODPLYW_NN' | 'ODPLYW_REZERWOWY' | 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'ZRODLO_NN_AGREGAT' | 'ZRODLO_NN_UPS';
+export type NNFeederRole =
+  | 'ODPLYW_NN'
+  | 'ODPLYW_REZERWOWY'
+  | 'ZRODLO_NN_PV'
+  | 'ZRODLO_NN_BESS'
+  | 'ZRODLO_NN_FW'
+  | 'ZRODLO_NN_AGREGAT'
+  | 'ZRODLO_NN_UPS';
 
 export interface NNFeederSpec {
   feeder_role: NNFeederRole;
@@ -230,9 +283,9 @@ export interface NNBlockSpec {
   outgoing_feeders_nn: NNFeederSpec[];
 }
 
-// --- SourceNN Types (FAZA 5: model danych ĹşrĂłdeĹ‚ nN) ---
+// --- SourceNN Types (FAZA 5: model danych źródeł nN) ---
 
-export type NNSourceType = 'PV_INVERTER' | 'BESS_INVERTER' | 'GENSET' | 'UPS';
+export type NNSourceType = 'PV_INVERTER' | 'BESS_INVERTER' | 'FW_INVERTER' | 'GENSET' | 'UPS';
 
 export type NNSwitchKind = 'WYLACZNIK' | 'ROZLACZNIK' | 'BEZPIECZNIK';
 export type NNSwitchState = 'OTWARTY' | 'ZAMKNIETY';
@@ -243,7 +296,7 @@ export interface NNSwitchSpec {
   catalog_binding: CatalogBindingPayload | null;
 }
 
-export type SourceFieldKind = 'PV' | 'BESS' | 'AGREGAT' | 'UPS';
+export type SourceFieldKind = 'PV' | 'BESS' | 'FW' | 'AGREGAT' | 'UPS';
 
 export interface NNSourceFieldSpec {
   source_field_kind: SourceFieldKind;
@@ -256,42 +309,10 @@ export interface NNSourceFieldSpec {
 export type PVControlMode = 'STALY_COS_PHI' | 'Q_OD_U' | 'P_OD_U' | 'WYLACZONE';
 export type PVMeasurementPoint = 'UTWORZ_NOWY' | 'UZYJ_ISTNIEJACEGO' | 'BRAK';
 
-export interface PVInverterSpec {
-  catalog_item_id: string | null;
-  catalog_item_version: string | null;
-  rated_power_ac_kw: number;
-  max_power_kw: number;
-  control_mode: PVControlMode;
-  cos_phi: number | null;
-  generation_limit_pmax_kw: number | null;
-  generation_limit_q_kvar: number | null;
-  disconnect_required: boolean;
-  measurement_point: PVMeasurementPoint | null;
-  existing_measurement_ref: string | null;
-  source_name: string | null;
-  source_label: string | null;
-  work_profile_ref: string | null;
-}
-
 export type BESSOperationMode = 'TYLKO_GENERACJA' | 'TYLKO_MAGAZYNOWANIE' | 'DWUKIERUNKOWY' | 'WYLACZONE';
 export type BESSControlStrategy = 'STALA_MOC' | 'PROFIL' | 'REGULACJA_NAPIECIA' | 'REGULACJA_MOCY_BIERNEJ';
-
-export interface BESSInverterSpec {
-  inverter_catalog_id: string | null;
-  inverter_catalog_version: string | null;
-  storage_catalog_id: string | null;
-  storage_catalog_version: string | null;
-  usable_capacity_kwh: number;
-  charge_power_kw: number;
-  discharge_power_kw: number;
-  operation_mode: BESSOperationMode;
-  control_strategy: BESSControlStrategy;
-  soc_min_percent: number;
-  soc_max_percent: number;
-  source_name: string | null;
-  source_label: string | null;
-  time_profile_ref: string | null;
-}
+export type ConverterSourceTechnology = 'PV' | 'BESS' | 'FW';
+export type ConverterConnectionVariant = 'nn_side' | 'block_transformer';
 
 export type GensetOperationMode = 'PRACA_CIAGLA' | 'PRACA_AWARYJNA' | 'PRACA_SZCZYTOWA' | 'WYLACZONE';
 
@@ -354,28 +375,30 @@ export interface SourceNN {
 
 export type SourcePlacement = 'NEW_FIELD' | 'EXISTING_FIELD';
 
-export interface AddNNSourceFieldPayload {
+export interface AddConverterSourcePayload {
+  source_technology: ConverterSourceTechnology;
+  connection_variant: ConverterConnectionVariant;
   bus_nn_ref: string;
   station_ref: string;
-  source_field: NNSourceFieldSpec;
-}
-
-export interface AddPVInverterNNPayload {
-  bus_nn_ref: string;
-  station_ref: string;
-  placement: SourcePlacement;
+  placement: SourcePlacement | null;
   existing_field_ref: string | null;
-  source_field: NNSourceFieldSpec | null;
-  pv_spec: PVInverterSpec;
-}
-
-export interface AddBESSInverterNNPayload {
-  bus_nn_ref: string;
-  station_ref: string;
-  placement: SourcePlacement;
-  existing_field_ref: string | null;
-  source_field: NNSourceFieldSpec | null;
-  bess_spec: BESSInverterSpec;
+  source_field: {
+    source_field_kind: ConverterSourceTechnology;
+    field_name: string | null;
+    catalog_binding: CatalogBindingPayload | null;
+  } | null;
+  source_name: string | null;
+  quantity: number | null;
+  control_mode: string | null;
+  power_setpoint_mw: number | null;
+  q_min_mvar: number | null;
+  q_max_mvar: number | null;
+  bess_mode: string | null;
+  soc_min_percent: number | null;
+  soc_max_percent: number | null;
+  blocking_transformer_ref: string | null;
+  catalog_binding: CatalogBindingPayload | null;
+  materialized_params: Record<string, unknown> | null;
 }
 
 export interface AddGensetNNPayload {
@@ -421,8 +444,18 @@ export interface AddGridSourceSNPayload {
   ik3_ka?: number;
   rx_ratio?: number;
   catalog_binding?: CatalogBindingPayload | null;
-  /** @deprecated Pole kompatybilnoĹ›ci; kanonicznie uĹĽywaj catalog_binding. */
+  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
   catalog_ref?: string | null;
+}
+
+export interface AddSnBayPayload {
+  bus_ref: string;
+  station_ref?: string | null;
+  bay_role?: 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
+  field_name?: string | null;
+  apparatus_kind?: 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT' | null;
+  gpz_section_id?: string | null;
+  catalog_binding?: CatalogBindingPayload | null;
 }
 
 export interface ContinueTrunkSegmentSNPayload {

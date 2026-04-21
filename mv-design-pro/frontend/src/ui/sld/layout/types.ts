@@ -7,9 +7,9 @@
  * FEATURE FLAG: SLD_AUTO_LAYOUT_V1 (domyślnie OFF)
  *
  * CANONICAL ALIGNMENT:
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
- * - autoLayout.ts: ETAP-grade hierarchiczny layout
- * - connectionRouting.ts: ETAP routing rules
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
+ * - autoLayout.ts: CANONICAL-grade hierarchiczny layout
+ * - connectionRouting.ts: CANONICAL routing rules
  */
 
 // =============================================================================

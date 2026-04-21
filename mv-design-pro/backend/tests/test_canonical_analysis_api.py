@@ -3,9 +3,9 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from api.main import app
 from fastapi.testclient import TestClient
 
-from api.main import app
 from tests.catalog_test_helpers import gpz_payload, gpz_source_record
 
 
@@ -178,15 +178,42 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     index_payload = results_index.json()
     assert index_payload["run_header"]["snapshot_id"] == snapshot_hash
     assert index_payload["run_header"]["input_hash"] == input_hash
+    assert index_payload["analysis_case_context"]["case_ref"] == case_id
+    assert index_payload["analysis_case_context"]["rodzaj_przypadku"] == "ZWARCIOWY_MAKS"
+    assert index_payload["analysis_case_context"]["completeness"] == "complete"
+    assert index_payload["analysis_case_context"]["proof_pack_ref"].startswith("proof-pack:")
+    assert (
+        index_payload["analysis_case_context"]["reproducibility"]["results_contract_version"]
+        == "V12.5"
+    )
+    assert index_payload["run_header"]["analysis_case_context"]["snapshot_ref"] == snapshot_hash
+    assert index_payload["proof_pack_ref"].startswith("proof-pack:")
+    assert index_payload["export_artifact"]["export_kind"] == "json"
+    assert index_payload["export_artifact"]["proof_pack_ref"].startswith("proof-pack:")
+    assert index_payload["export_policy"]["carries_analysis_case_context"] is True
+    assert index_payload["export_policy"]["carries_proof_pack_ref"] is True
 
     api_results_index = client.get(f"/api/analysis-runs/{run_id}/results/index")
     assert api_results_index.status_code == 200
     assert api_results_index.json() == index_payload
 
+    detail_response = client.get(f"/analysis-runs/{run_id}")
+    assert detail_response.status_code == 200
+    detail_payload = detail_response.json()
+    assert detail_payload["id"] == run_id
+    assert detail_payload["proof_pack_ref"].startswith("proof-pack:")
+    assert detail_payload["export_artifact"]["export_kind"] == "json"
+    assert detail_payload["export_artifact"]["proof_pack_ref"].startswith("proof-pack:")
+    assert detail_payload["export_policy"]["carries_analysis_case_context"] is True
+    assert detail_payload["input_metadata"]["analysis_case_context"]["proof_pack_ref"].startswith(
+        "proof-pack:"
+    )
+
     short_circuit = client.get(f"/analysis-runs/{run_id}/results/short-circuit")
     assert short_circuit.status_code == 200
     short_circuit_payload = short_circuit.json()
     assert short_circuit_payload["run_id"] == run_id
+    assert short_circuit_payload["analysis_case_context"]["case_ref"] == case_id
     assert short_circuit_payload["rows"]
     assert all("element_id" in row for row in short_circuit_payload["rows"])
 
@@ -196,6 +223,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert trace_payload["run_id"] == run_id
     assert trace_payload["snapshot_id"] == snapshot_hash
     assert trace_payload["input_hash"] == input_hash
+    assert trace_payload["analysis_case_context"]["quality_gate"] in {"G1", "G2", "G3", "G4"}
     assert trace_payload["white_box_trace"]
     assert "selection_index" in trace_payload
     assert trace_payload["selection_index"]
@@ -230,7 +258,10 @@ def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -
     )
 
     assert response.status_code == 409
-    assert "model" in response.json()["detail"].lower() or "analiza" in response.json()["detail"].lower()
+    assert (
+        "model" in response.json()["detail"].lower()
+        or "analiza" in response.json()["detail"].lower()
+    )
 
 
 def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClient) -> None:
@@ -248,6 +279,21 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert header_payload["id"] == run_id
     assert header_payload["input_hash"] == run_payload["input_hash"]
     assert header_payload["input_metadata"]["snapshot_hash"] == run_payload["enm_hash"]
+    assert header_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
+    assert header_payload["analysis_case_context"]["completeness"] == "complete"
+    assert (
+        header_payload["analysis_case_context"]["reproducibility"]["solver_family"]
+        == "power_flow_newton"
+    )
+    assert (
+        header_payload["input_metadata"]["analysis_case_context"]["snapshot_ref"]
+        == run_payload["enm_hash"]
+    )
+    assert header_payload["proof_pack_ref"].startswith("proof-pack:")
+    assert header_payload["export_artifact"]["export_kind"] == "json"
+    assert header_payload["export_artifact"]["proof_pack_ref"].startswith("proof-pack:")
+    assert header_payload["export_policy"]["carries_analysis_case_context"] is True
+    assert header_payload["export_policy"]["carries_proof_pack_ref"] is True
 
     result_response = client.get(f"/power-flow-runs/{run_id}/results")
     assert result_response.status_code == 200
@@ -268,6 +314,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     bus_results_response = client.get(f"/analysis-runs/{run_id}/results/buses")
     assert bus_results_response.status_code == 200
     bus_results_payload = bus_results_response.json()
+    assert bus_results_payload["analysis_case_context"]["case_ref"] == case_id
     assert {"bus-load", "bus-main"}.issubset(
         {row["element_id"] for row in bus_results_payload["rows"]}
     )
@@ -275,13 +322,23 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     branch_results_response = client.get(f"/analysis-runs/{run_id}/results/branches")
     assert branch_results_response.status_code == 200
     branch_results_payload = branch_results_response.json()
+    assert branch_results_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
     assert "branch-load" in {row["element_id"] for row in branch_results_payload["rows"]}
 
     export_response = client.get(f"/power-flow-runs/{run_id}/export/json")
     assert export_response.status_code == 200
     export_payload = export_response.json()
+    assert export_payload["analysis_case_context"]["case_ref"] == case_id
+    assert export_payload["export_artifact"]["export_kind"] == "json"
+    assert export_payload["export_artifact"]["completeness_status"] == "complete"
+    assert export_payload["export_policy"]["carries_analysis_case_context"] is True
     assert export_payload["metadata"]["run_id"] == run_id
     assert export_payload["metadata"]["snapshot_hash"] == run_payload["enm_hash"]
+    assert export_payload["metadata"]["proof_pack_ref"].startswith("proof-pack:")
+    assert (
+        export_payload["metadata"]["reproducibility"]["quality_gate_policy_version"]
+        == "v12_5_quality_gate"
+    )
     assert export_payload["trace_summary"]["input_hash"] == run_payload["input_hash"]
     assert export_payload["trace_summary"]["converged"] is True
     assert export_payload["metadata"]["catalog_context_count"] >= 2
@@ -294,7 +351,44 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert export_payload["white_box_trace"]
 
 
-def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(client: TestClient) -> None:
+def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    from enm.canonical_analysis import create_run, execute_run, reset_canonical_runs
+    from infrastructure.persistence.repositories.canonical_run_repository import (
+        canonical_run_repository_scope,
+    )
+
+    run = create_run(case_id=case_id, analysis_type="PF")
+
+    with canonical_run_repository_scope() as repository:
+        stored_created = repository.get(run.id)
+
+    assert stored_created is not None
+    assert stored_created.status == "CREATED"
+    assert stored_created.case_id == case_id
+    assert stored_created.input_hash == run.input_hash
+
+    execute_run(run.id)
+
+    with canonical_run_repository_scope() as repository:
+        stored_finished = repository.get(run.id)
+
+    assert stored_finished is not None
+    assert stored_finished.status == "FINISHED"
+    assert stored_finished.raw_result is not None
+    assert stored_finished.power_flow_trace is not None
+
+    reset_canonical_runs()
+
+    with canonical_run_repository_scope() as repository:
+        assert repository.get(run.id) is None
+
+
+def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(
+    client: TestClient,
+) -> None:
     case_id = str(uuid4())
 
     assert client.get("/snapshots/snap-1").status_code == 404

@@ -1,7 +1,7 @@
 /**
  * SLD Symbols Module — Unified symbol rendering for editor and viewer
  *
- * PR-SLD-04: Unifikacja symboli w edytorze do standardu ETAP
+ * PR-SLD-04: Unifikacja symboli w edytorze do standardu CANONICAL
  *
  * This module provides:
  * - UnifiedSymbolRenderer: Main component for rendering symbols

@@ -20,11 +20,12 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 class VariantDeltaKind(str, Enum):
     """Kind of variant difference."""
+
     CONFIG = "CONFIG"
     TOPOLOGY = "TOPOLOGY"
     RESULT_SC = "RESULT_SC"
@@ -34,6 +35,7 @@ class VariantDeltaKind(str, Enum):
 
 class DeltaDirection(str, Enum):
     """Direction of a numeric change."""
+
     INCREASED = "INCREASED"
     DECREASED = "DECREASED"
     UNCHANGED = "UNCHANGED"
@@ -51,13 +53,14 @@ class VariantConfigDelta:
         value_b: Value in variant B.
         unit: Unit of the field (optional).
     """
+
     field_name: str
     label_pl: str
-    value_a: Any
-    value_b: Any
+    value_a: object | None
+    value_b: object | None
     unit: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "field_name": self.field_name,
             "label_pl": self.label_pl,
@@ -68,7 +71,7 @@ class VariantConfigDelta:
 
 
 # Polish labels for StudyCaseConfig fields
-CONFIG_FIELD_LABELS: Dict[str, Tuple[str, str]] = {
+CONFIG_FIELD_LABELS: dict[str, tuple[str, str]] = {
     "c_factor_max": ("Współczynnik c (max)", ""),
     "c_factor_min": ("Współczynnik c (min)", ""),
     "base_mva": ("Moc bazowa", "MVA"),
@@ -94,16 +97,17 @@ class VariantResultDelta:
         delta_abs: Absolute difference |B - A|.
         delta_percent: Percentage difference ((B-A)/A * 100).
     """
+
     metric_name: str
     label_pl: str
-    value_a: Optional[float]
-    value_b: Optional[float]
+    value_a: float | None
+    value_b: float | None
     unit: str = ""
     direction: DeltaDirection = DeltaDirection.NOT_COMPARABLE
-    delta_abs: Optional[float] = None
-    delta_percent: Optional[float] = None
+    delta_abs: float | None = None
+    delta_percent: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "metric_name": self.metric_name,
             "label_pl": self.label_pl,
@@ -128,14 +132,15 @@ class VariantTopologySummary:
         removed_element_ids: Tuple of removed element IDs.
         modified_element_ids: Tuple of modified element IDs.
     """
+
     elements_added: int = 0
     elements_removed: int = 0
     elements_modified: int = 0
-    added_element_ids: Tuple[str, ...] = ()
-    removed_element_ids: Tuple[str, ...] = ()
-    modified_element_ids: Tuple[str, ...] = ()
+    added_element_ids: tuple[str, ...] = ()
+    removed_element_ids: tuple[str, ...] = ()
+    modified_element_ids: tuple[str, ...] = ()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "elements_added": self.elements_added,
             "elements_removed": self.elements_removed,
@@ -163,13 +168,14 @@ class VariantComparisonResult:
         result_deltas: Result metric differences.
         comparison_hash: SHA-256 hash for determinism verification.
     """
+
     case_a_id: str
     case_b_id: str
     case_a_name: str
     case_b_name: str
-    config_deltas: Tuple[VariantConfigDelta, ...] = ()
+    config_deltas: tuple[VariantConfigDelta, ...] = ()
     topology_summary: VariantTopologySummary = field(default_factory=VariantTopologySummary)
-    result_deltas: Tuple[VariantResultDelta, ...] = ()
+    result_deltas: tuple[VariantResultDelta, ...] = ()
     comparison_hash: str = ""
 
     @property
@@ -191,7 +197,7 @@ class VariantComparisonResult:
             for d in self.result_deltas
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "case_a_id": self.case_a_id,
             "case_b_id": self.case_b_id,
@@ -208,15 +214,15 @@ class VariantComparisonResult:
 
 
 def compute_config_deltas(
-    config_a: Dict[str, Any],
-    config_b: Dict[str, Any],
-) -> Tuple[VariantConfigDelta, ...]:
+    config_a: dict[str, Any],
+    config_b: dict[str, Any],
+) -> tuple[VariantConfigDelta, ...]:
     """Compare two study case configurations.
 
     Returns tuple of VariantConfigDelta for each differing field.
     Deterministic: sorted by field_name.
     """
-    deltas: List[VariantConfigDelta] = []
+    deltas: list[VariantConfigDelta] = []
     all_keys = sorted(set(config_a.keys()) | set(config_b.keys()))
 
     for key in all_keys:
@@ -240,8 +246,8 @@ def compute_config_deltas(
 def compute_result_delta(
     metric_name: str,
     label_pl: str,
-    value_a: Optional[float],
-    value_b: Optional[float],
+    value_a: float | None,
+    value_b: float | None,
     unit: str = "",
 ) -> VariantResultDelta:
     """Compute a single result metric delta.
@@ -285,9 +291,9 @@ def build_variant_comparison(
     case_b_id: str,
     case_a_name: str,
     case_b_name: str,
-    config_deltas: Tuple[VariantConfigDelta, ...],
+    config_deltas: tuple[VariantConfigDelta, ...],
     topology_summary: VariantTopologySummary,
-    result_deltas: Tuple[VariantResultDelta, ...],
+    result_deltas: tuple[VariantResultDelta, ...],
 ) -> VariantComparisonResult:
     """Build a complete variant comparison with deterministic hash.
 

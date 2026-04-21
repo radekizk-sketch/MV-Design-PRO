@@ -2,7 +2,7 @@
  * TraceDiffList — Lista kroków porównania ze statusem diff
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Lista zmian z filtrowaniem
+ * - ui_canonical_parity.md: Lista zmian z filtrowaniem
  * - wizard_screens.md: Polish labels
  * - SYSTEM_SPEC.md: READ-ONLY display
  *

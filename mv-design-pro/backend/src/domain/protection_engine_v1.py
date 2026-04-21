@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # =============================================================================
 # ENUMS
 # =============================================================================
@@ -30,6 +29,7 @@ from typing import Any
 
 class IECCurveTypeV1(str, Enum):
     """IEC 60255-151 IDMT curve types for Protection Engine v1."""
+
     STANDARD_INVERSE = "IEC_STANDARD_INVERSE"
     VERY_INVERSE = "IEC_VERY_INVERSE"
     EXTREMELY_INVERSE = "IEC_EXTREMELY_INVERSE"
@@ -37,8 +37,9 @@ class IECCurveTypeV1(str, Enum):
 
 class ProtectionFunctionType(str, Enum):
     """ANSI protection function types supported in v1."""
-    F50 = "50"   # Instantaneous overcurrent (I>>)
-    F51 = "51"   # Time overcurrent IDMT (I>)
+
+    F50 = "50"  # Instantaneous overcurrent (I>>)
+    F51 = "51"  # Time overcurrent IDMT (I>)
 
 
 # =============================================================================
@@ -74,6 +75,7 @@ class CTRatio:
         primary_a: Primary current [A]
         secondary_a: Secondary current [A] (typically 1 or 5)
     """
+
     primary_a: float
     secondary_a: float
 
@@ -121,6 +123,7 @@ class Function50Settings:
         pickup_a_secondary: Pickup current on CT secondary side [A]
         t_trip_s: Trip time [s] (if set; instantaneous if None)
     """
+
     enabled: bool
     pickup_a_secondary: float
     t_trip_s: float | None = None
@@ -156,6 +159,7 @@ class Function51Settings:
         tms: Time Multiplier Setting
         max_time_s: Maximum trip time clamp [s] (None = no clamp)
     """
+
     curve_type: IECCurveTypeV1
     pickup_a_secondary: float
     tms: float
@@ -195,6 +199,7 @@ class RelayV1:
         f51: Function 51 settings (required in v1)
         f50: Function 50 settings (optional)
     """
+
     relay_id: str
     attached_cb_id: str
     ct_ratio: CTRatio
@@ -269,6 +274,7 @@ class ProtectionStudyInputV1:
         relays: Tuple of relay configurations
         test_points: Tuple of test currents to evaluate
     """
+
     relays: tuple[RelayV1, ...]
     test_points: tuple[TestPoint, ...]
 
@@ -287,9 +293,7 @@ class ProtectionStudyInputV1:
 
     def canonical_hash(self) -> str:
         """Compute deterministic SHA-256 hash of input."""
-        payload = json.dumps(
-            self.to_dict(), sort_keys=True, separators=(",", ":")
-        )
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -301,6 +305,7 @@ class ProtectionStudyInputV1:
 @dataclass(frozen=True)
 class Function50Result:
     """Result of function 50 evaluation for a test point."""
+
     picked_up: bool
     t_trip_s: float | None = None
 
@@ -318,6 +323,7 @@ class Function50Result:
 @dataclass(frozen=True)
 class Function51Result:
     """Result of function 51 evaluation for a test point."""
+
     t_trip_s: float
     curve_type: str
     pickup_a_secondary: float
@@ -395,9 +401,7 @@ class TestPointResult:
         return cls(
             point_id=str(data["point_id"]),
             i_a_secondary=float(data["i_a_secondary"]),
-            function_results=TestPointFunctionResults.from_dict(
-                data["function_results"]
-            ),
+            function_results=TestPointFunctionResults.from_dict(data["function_results"]),
             trace=data.get("trace", {}),
         )
 
@@ -410,6 +414,7 @@ class TestPointResult:
 @dataclass(frozen=True)
 class RelayResultV1:
     """Complete result for one relay across all test points."""
+
     relay_id: str
     attached_cb_id: str
     per_test_point: tuple[TestPointResult, ...]
@@ -427,8 +432,7 @@ class RelayResultV1:
             relay_id=str(data["relay_id"]),
             attached_cb_id=str(data["attached_cb_id"]),
             per_test_point=tuple(
-                TestPointResult.from_dict(tp)
-                for tp in data.get("per_test_point", [])
+                TestPointResult.from_dict(tp) for tp in data.get("per_test_point", [])
             ),
         )
 
@@ -448,6 +452,7 @@ class ProtectionResultSetV1:
     - per_test_point sorted by point_id lexicographically
     - Deterministic signature = SHA-256 of canonical JSON
     """
+
     analysis_type: str = "PROTECTION"
     relay_results: tuple[RelayResultV1, ...] = field(default_factory=tuple)
     deterministic_signature: str = ""
@@ -464,8 +469,7 @@ class ProtectionResultSetV1:
         return cls(
             analysis_type=str(data.get("analysis_type", "PROTECTION")),
             relay_results=tuple(
-                RelayResultV1.from_dict(rr)
-                for rr in data.get("relay_results", [])
+                RelayResultV1.from_dict(rr) for rr in data.get("relay_results", [])
             ),
             deterministic_signature=str(data.get("deterministic_signature", "")),
         )
@@ -583,15 +587,15 @@ def function_50_evaluate(
         t_trip = settings.t_trip_s
         trace["t_trip_s"] = t_trip
         trace["result"] = "TRIP"
-        trace["notes_pl"] = (
-            f"Prąd {i_a_secondary:.3f} A > nastawa {settings.pickup_a_secondary:.3f} A"
-        )
+        trace[
+            "notes_pl"
+        ] = f"Prąd {i_a_secondary:.3f} A > nastawa {settings.pickup_a_secondary:.3f} A"
         return Function50Result(picked_up=True, t_trip_s=t_trip), trace
     else:
         trace["result"] = "NO_TRIP"
-        trace["notes_pl"] = (
-            f"Prąd {i_a_secondary:.3f} A <= nastawa {settings.pickup_a_secondary:.3f} A"
-        )
+        trace[
+            "notes_pl"
+        ] = f"Prąd {i_a_secondary:.3f} A <= nastawa {settings.pickup_a_secondary:.3f} A"
         return Function50Result(picked_up=False), trace
 
 
@@ -692,21 +696,25 @@ def execute_protection_v1(
                 f51=f51_result,
             )
 
-            test_point_results.append(TestPointResult(
-                point_id=tp.point_id,
-                i_a_secondary=round(i_secondary, 6),
-                function_results=func_results,
-                trace=trace,
-            ))
+            test_point_results.append(
+                TestPointResult(
+                    point_id=tp.point_id,
+                    i_a_secondary=round(i_secondary, 6),
+                    function_results=func_results,
+                    trace=trace,
+                )
+            )
 
         # Sort test point results by point_id
         sorted_tp_results = sorted(test_point_results, key=lambda t: t.point_id)
 
-        relay_results.append(RelayResultV1(
-            relay_id=relay.relay_id,
-            attached_cb_id=relay.attached_cb_id,
-            per_test_point=tuple(sorted_tp_results),
-        ))
+        relay_results.append(
+            RelayResultV1(
+                relay_id=relay.relay_id,
+                attached_cb_id=relay.attached_cb_id,
+                per_test_point=tuple(sorted_tp_results),
+            )
+        )
 
     # Sort relay results by relay_id
     sorted_relay_results = sorted(relay_results, key=lambda r: r.relay_id)

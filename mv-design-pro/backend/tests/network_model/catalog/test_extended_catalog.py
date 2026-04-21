@@ -9,31 +9,43 @@ Validates:
 5. Deterministic sorting for new types
 """
 
+from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import (
+    MATERIALIZATION_CONTRACTS,
     BESSInverterType,
-    CTType,
     CatalogBinding,
     CatalogNamespace,
+    CTType,
+    LoadType,
     LVApparatusType,
     LVCableType,
-    LoadType,
-    MATERIALIZATION_CONTRACTS,
-    MVApparatusType,
     MaterializationContract,
+    MVApparatusType,
     PVInverterType,
     SourceSystemType,
     VTType,
 )
-from network_model.catalog.repository import CatalogRepository
 
 
 class TestCatalogNamespace:
     def test_all_namespaces_defined(self):
         expected = {
-            "KABEL_SN", "LINIA_SN", "TRAFO_SN_NN", "APARAT_SN", "APARAT_NN",
-            "KABEL_NN", "CT", "VT", "OBCIAZENIE", "ZRODLO_NN_PV", "ZRODLO_NN_BESS",
+            "KABEL_SN",
+            "LINIA_SN",
+            "TRAFO_SN_NN",
+            "APARAT_SN",
+            "APARAT_NN",
+            "KABEL_NN",
+            "CT",
+            "VT",
+            "OBCIAZENIE",
+            "ZRODLO_NN_PV",
+            "ZRODLO_NN_BESS",
             "ZRODLO_SN",
-            "ZABEZPIECZENIE", "NASTAWY_ZABEZPIECZEN", "CONVERTER", "INVERTER",
+            "ZABEZPIECZENIE",
+            "NASTAWY_ZABEZPIECZEN",
+            "CONVERTER",
+            "INVERTER",
         }
         actual = {ns.value for ns in CatalogNamespace}
         assert actual == expected
@@ -63,7 +75,7 @@ class TestCatalogBinding:
         )
         try:
             binding.catalog_item_id = "other"  # type: ignore[misc]
-            assert False, "Should raise FrozenInstanceError"
+            raise AssertionError("Should raise FrozenInstanceError")
         except AttributeError:
             pass
 
@@ -88,13 +100,15 @@ class TestLVCableType:
         assert d["r_ohm_per_km"] == 0.253
 
     def test_from_dict(self):
-        t = LVCableType.from_dict({
-            "id": "test",
-            "name": "Test LV Cable",
-            "u_n_kv": 0.4,
-            "r_ohm_per_km": 0.1,
-            "x_ohm_per_km": 0.05,
-        })
+        t = LVCableType.from_dict(
+            {
+                "id": "test",
+                "name": "Test LV Cable",
+                "u_n_kv": 0.4,
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.05,
+            }
+        )
         assert t.name == "Test LV Cable"
 
 
@@ -207,9 +221,20 @@ class TestMaterializationContracts:
     def test_all_namespaces_have_contracts(self):
         """Every non-legacy namespace must have a materialization contract."""
         required = {
-            "KABEL_SN", "LINIA_SN", "TRAFO_SN_NN", "APARAT_SN", "APARAT_NN",
-            "KABEL_NN", "CT", "VT", "OBCIAZENIE", "ZRODLO_SN", "ZRODLO_NN_PV", "ZRODLO_NN_BESS",
-            "ZABEZPIECZENIE", "NASTAWY_ZABEZPIECZEN",
+            "KABEL_SN",
+            "LINIA_SN",
+            "TRAFO_SN_NN",
+            "APARAT_SN",
+            "APARAT_NN",
+            "KABEL_NN",
+            "CT",
+            "VT",
+            "OBCIAZENIE",
+            "ZRODLO_SN",
+            "ZRODLO_NN_PV",
+            "ZRODLO_NN_BESS",
+            "ZABEZPIECZENIE",
+            "NASTAWY_ZABEZPIECZEN",
         }
         actual = set(MATERIALIZATION_CONTRACTS.keys())
         missing = required - actual
@@ -254,27 +279,50 @@ class TestExtendedCatalogRepository:
             cable_types=[],
             transformer_types=[],
             lv_cable_types=[
-                {"id": "lv1", "name": "YAKY 4x120", "params": {
-                    "u_n_kv": 0.4, "r_ohm_per_km": 0.253, "x_ohm_per_km": 0.069,
-                }},
+                {
+                    "id": "lv1",
+                    "name": "YAKY 4x120",
+                    "params": {
+                        "u_n_kv": 0.4,
+                        "r_ohm_per_km": 0.253,
+                        "x_ohm_per_km": 0.069,
+                    },
+                },
             ],
             load_types=[
                 {"id": "ld1", "name": "Obciążenie 15 kW", "params": {"p_kw": 15.0}},
             ],
             mv_apparatus_types=[
-                {"id": "cb1", "name": "Wyłącznik SN 630A", "params": {
-                    "device_kind": "WYLACZNIK", "u_n_kv": 15.0, "i_n_a": 630.0,
-                }},
+                {
+                    "id": "cb1",
+                    "name": "Wyłącznik SN 630A",
+                    "params": {
+                        "device_kind": "WYLACZNIK",
+                        "u_n_kv": 15.0,
+                        "i_n_a": 630.0,
+                    },
+                },
             ],
             ct_types=[
-                {"id": "ct1", "name": "CT 400/5", "params": {
-                    "ratio_primary_a": 400.0, "ratio_secondary_a": 5.0,
-                }},
+                {
+                    "id": "ct1",
+                    "name": "CT 400/5",
+                    "params": {
+                        "ratio_primary_a": 400.0,
+                        "ratio_secondary_a": 5.0,
+                    },
+                },
             ],
             source_system_types=[
-                {"id": "src1", "name": "GPZ 15 kV / 250 MVA", "params": {
-                    "voltage_rating_kv": 15.0, "sk3_mva": 250.0, "rx_ratio": 0.1,
-                }},
+                {
+                    "id": "src1",
+                    "name": "GPZ 15 kV / 250 MVA",
+                    "params": {
+                        "voltage_rating_kv": 15.0,
+                        "sk3_mva": 250.0,
+                        "rx_ratio": 0.1,
+                    },
+                },
             ],
         )
         assert len(repo.list_lv_cable_types()) == 1
@@ -289,9 +337,14 @@ class TestExtendedCatalogRepository:
             cable_types=[],
             transformer_types=[],
             pv_inverter_types=[
-                {"id": "pv1", "name": "PV 50kVA", "params": {
-                    "s_n_kva": 50.0, "p_max_kw": 50.0,
-                }},
+                {
+                    "id": "pv1",
+                    "name": "PV 50kVA",
+                    "params": {
+                        "s_n_kva": 50.0,
+                        "p_max_kw": 50.0,
+                    },
+                },
             ],
         )
         pv = repo.get_pv_inverter_type("pv1")
@@ -305,9 +358,21 @@ class TestExtendedCatalogRepository:
             cable_types=[],
             transformer_types=[],
             lv_cable_types=[
-                {"id": "c", "name": "Zebra", "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.05}},
-                {"id": "a", "name": "Alpha", "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.06}},
-                {"id": "b", "name": "Alpha", "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.07}},
+                {
+                    "id": "c",
+                    "name": "Zebra",
+                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.05},
+                },
+                {
+                    "id": "a",
+                    "name": "Alpha",
+                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.06},
+                },
+                {
+                    "id": "b",
+                    "name": "Alpha",
+                    "params": {"u_n_kv": 0.4, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.07},
+                },
             ],
         )
         types = repo.list_lv_cable_types()

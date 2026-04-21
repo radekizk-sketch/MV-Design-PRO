@@ -1,7 +1,7 @@
 /**
  * Batch Edit Preview Dialog (P9.2)
  *
- * PowerFactory-style diff preview przed zatwierdzeniem zmian zbiorczych.
+ * Canonical-style diff preview przed zatwierdzeniem zmian zbiorczych.
  *
  * Features:
  * - Lista zmian: obiekt, pole, wartość przed → po

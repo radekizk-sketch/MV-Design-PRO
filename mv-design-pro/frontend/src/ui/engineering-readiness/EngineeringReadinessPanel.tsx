@@ -1,7 +1,7 @@
 /**
  * Engineering Readiness Panel — PR-13
  *
- * Inżynierski panel gotowości modelu (ETAP-grade UX).
+ * Inżynierski panel gotowości modelu (CANONICAL-grade UX).
  * Prezentuje BLOCKER/IMPORTANT/INFO z walidacji + readiness.
  * Każdy wpis: kod, opis, element, [Przejdź] [Napraw]
  *
@@ -16,6 +16,7 @@
 import React, { useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import type { FixAction, ReadinessIssue, ReadinessSeverity } from '../types';
+import type { ReadinessWorkspaceBlockState } from './ReadinessLivePanel';
 
 // =============================================================================
 // Constants (Polish labels)
@@ -156,6 +157,7 @@ export interface EngineeringReadinessPanelProps {
   onFix: (fixAction: FixAction) => void;
   /** PR-17: Optional eligibility section rendered below readiness issues. */
   eligibilitySection?: React.ReactNode;
+  workspaceBlockState?: ReadinessWorkspaceBlockState | null;
 }
 
 export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps> = ({
@@ -166,6 +168,7 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
   onNavigate,
   onFix,
   eligibilitySection,
+  workspaceBlockState = null,
 }) => {
   const [severityFilter, setSeverityFilter] = useState<ReadinessSeverity | null>(null);
 
@@ -190,6 +193,44 @@ export const EngineeringReadinessPanel: React.FC<EngineeringReadinessPanelProps>
   const toggleFilter = (severity: ReadinessSeverity) => {
     setSeverityFilter((prev) => (prev === severity ? null : severity));
   };
+
+  if (workspaceBlockState) {
+    return (
+      <div
+        className="h-full flex flex-col bg-white"
+        data-testid="engineering-readiness-panel"
+      >
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Gotowość inżynieryjna
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Walidacja modelu sieci i gotowość do obliczeń
+          </p>
+        </div>
+
+        <div className="p-4">
+          <div
+            className="rounded-lg border border-amber-200 bg-amber-50 p-4"
+            data-testid="engineering-readiness-blocked"
+          >
+            <div className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+              Blokada warsztatowa
+            </div>
+            <div className="mt-2 text-sm font-semibold text-amber-950">
+              {workspaceBlockState.title}
+            </div>
+            <div className="mt-1 text-sm text-amber-900">
+              {workspaceBlockState.description}
+            </div>
+            <div className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900">
+              Następny krok: {workspaceBlockState.nextStep}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col bg-white" data-testid="engineering-readiness-panel">

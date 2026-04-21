@@ -13,7 +13,7 @@
  * - NO physics calculations.
  * - NO model mutation.
  *
- * ETAP-GRADE bay layout algorithm:
+ * CANONICAL-GRADE bay layout algorithm:
  * - Fields sorted by canonical role priority.
  * - Devices placed vertically within bay by powerPathPosition.
  * - OFF_PATH devices offset horizontally.
@@ -27,16 +27,16 @@ import type {
   StationBlockDetailV1,
   FieldV1,
   DeviceV1,
-  FieldRoleV1,
   EmbeddingRoleV1,
 } from './fieldDeviceContracts';
 import {
   DevicePowerPathPositionV1,
   DeviceElectricalRoleV1,
   DeviceTypeV1,
+  FieldRoleV1,
 } from './fieldDeviceContracts';
 import type { PointV1, RectangleV1 } from './layoutResult';
-import type { EtapSymbolId } from '../SymbolResolver';
+import type { CanonicalSymbolId } from '../SymbolResolver';
 
 // =============================================================================
 // GEOMETRY CONSTANTS
@@ -55,14 +55,14 @@ const BLOCK_MARGIN = 10;
 const DEVICE_Y_FROM_BUSBAR = 20;
 
 /** Vertical step between sequential power-path devices. */
-const DEVICE_VERTICAL_STEP = 30;
+const DEVICE_VERTICAL_STEP = 34;
 
 /** Horizontal offset for OFF_PATH devices (relative to bay center). */
-const OFF_PATH_X_OFFSET = 25;
+const OFF_PATH_X_OFFSET = 36;
 
 /** Default device size in pixels. */
-const DEVICE_DEFAULT_WIDTH = 20;
-const DEVICE_DEFAULT_HEIGHT = 20;
+const DEVICE_DEFAULT_WIDTH = 24;
+const DEVICE_DEFAULT_HEIGHT = 24;
 
 /** Larger device size for transformers and generators. */
 const DEVICE_LARGE_WIDTH = 28;
@@ -75,22 +75,24 @@ const DEVICE_LARGE_HEIGHT = 28;
 /**
  * Canonical sort order for field roles within a bay layout.
  *
- * Follows ETAP convention: primary supply bays on the left, then
+ * Follows CANONICAL convention: primary supply bays on the left, then
  * transformers, then source bays, then couplers/ties, then LV bays.
  */
 const FIELD_ROLE_PRIORITY: Record<string, number> = {
   LINE_IN: 0,
   LINE_OUT: 1,
   TRANSFORMER_SN_NN: 2,
-  COUPLER_SN: 3,
-  LINE_BRANCH: 4,
-  PV_SN: 5,
-  BESS_SN: 6,
-  BUS_TIE: 7,
-  MAIN_NN: 8,
-  FEEDER_NN: 9,
-  PV_NN: 10,
-  BESS_NN: 11,
+  MEASUREMENT_SN: 3,
+  COUPLER_SN: 4,
+  LINE_BRANCH: 5,
+  PV_SN: 6,
+  BESS_SN: 7,
+  FW_SN: 8,
+  BUS_TIE: 9,
+  MAIN_NN: 10,
+  FEEDER_NN: 11,
+  PV_NN: 12,
+  BESS_NN: 13,
 };
 
 // =============================================================================
@@ -103,6 +105,17 @@ const FIELD_ROLE_PRIORITY: Record<string, number> = {
  */
 function deviceSize(deviceType: DeviceTypeV1): { width: number; height: number } {
   switch (deviceType) {
+    case DeviceTypeV1.CB:
+    case DeviceTypeV1.DS:
+    case DeviceTypeV1.ES:
+    case DeviceTypeV1.LOAD_SWITCH:
+    case DeviceTypeV1.CABLE_HEAD:
+      return { width: 28, height: 28 };
+    case DeviceTypeV1.FUSE:
+      return { width: 16, height: 28 };
+    case DeviceTypeV1.CT:
+    case DeviceTypeV1.VT:
+      return { width: 24, height: 24 };
     case DeviceTypeV1.TRANSFORMER_DEVICE:
     case DeviceTypeV1.GENERATOR_PV:
     case DeviceTypeV1.GENERATOR_BESS:
@@ -130,16 +143,16 @@ function deviceRotation(deviceType: DeviceTypeV1): number {
 }
 
 // =============================================================================
-// DEVICE TYPE → ETAP SYMBOL ID MAPPING
+// DEVICE TYPE → CANONICAL SYMBOL ID MAPPING
 // =============================================================================
 
 /**
- * Maps DeviceTypeV1 to EtapSymbolId.
+ * Maps DeviceTypeV1 to CanonicalSymbolId.
  *
  * BINDING: every DeviceTypeV1 must have a canonical symbol.
  * Fallback: 'circuit_breaker' for unrecognised types.
  */
-export function mapDeviceTypeToSymbolId(deviceType: DeviceTypeV1): EtapSymbolId {
+export function mapDeviceTypeToSymbolId(deviceType: DeviceTypeV1): CanonicalSymbolId {
   switch (deviceType) {
     case DeviceTypeV1.CB:
       return 'circuit_breaker';
@@ -161,10 +174,12 @@ export function mapDeviceTypeToSymbolId(deviceType: DeviceTypeV1): EtapSymbolId 
       return 'pv';
     case DeviceTypeV1.GENERATOR_BESS:
       return 'bess';
+    case DeviceTypeV1.GENERATOR_FW:
+      return 'fw';
     case DeviceTypeV1.ACB:
       return 'circuit_breaker';
     case DeviceTypeV1.CABLE_HEAD:
-      return 'ground';
+      return 'cable_head';
     case DeviceTypeV1.PCS:
       return 'inverter';
     case DeviceTypeV1.BATTERY:
@@ -188,14 +203,20 @@ export interface BayDeviceGeometryV1 {
   readonly deviceId: string;
   /** Device type. */
   readonly deviceType: DeviceTypeV1;
-  /** ETAP symbol ID resolved from deviceType. */
-  readonly symbolId: EtapSymbolId;
+  /** CANONICAL symbol ID resolved from deviceType. */
+  readonly symbolId: CanonicalSymbolId;
   /** Center position of the device within the bay (world coords). */
   readonly position: PointV1;
   /** Rendered size of the device symbol. */
   readonly size: { readonly width: number; readonly height: number };
   /** Rotation in degrees (0 = vertical, 90 = horizontal). */
   readonly rotation: number;
+  /** Rola elektryczna urządzenia. */
+  readonly electricalRole: DeviceElectricalRoleV1;
+  /** Pozycja urządzenia w torze mocy. */
+  readonly powerPathPosition: DevicePowerPathPositionV1;
+  /** Slot układu pola wykorzystywany przez renderer SVG. */
+  readonly layoutSlot: 'MAIN' | 'SIDE_RIGHT' | 'SIDE_LEFT' | 'MEASUREMENT_MAIN' | 'COUPLER_LEFT' | 'COUPLER_RIGHT';
   /**
    * Whether this device is on the main power path.
    * POWER_PATH, MEASUREMENT, and TERMINATION roles = true.
@@ -210,6 +231,12 @@ export interface BayDeviceGeometryV1 {
     readonly top: PointV1;
     readonly bottom: PointV1;
   };
+}
+
+export interface BayAuxiliaryConnectionV1 {
+  readonly from: PointV1;
+  readonly to: PointV1;
+  readonly kind: 'BUS_TAP' | 'MAIN_EXIT' | 'SIDE_BRANCH' | 'COUPLER_LINK';
 }
 
 /**
@@ -302,6 +329,8 @@ export interface StationBayLayoutV1 {
    * within each bay. Sorted by from.x, then from.y for determinism.
    */
   readonly internalConnections: readonly { readonly from: PointV1; readonly to: PointV1 }[];
+  /** Dodatkowe połączenia: doprowadzenie z szyny, odgałęzienia boczne, U sprzęgła. */
+  readonly auxiliaryConnections: readonly BayAuxiliaryConnectionV1[];
 }
 
 // =============================================================================
@@ -351,6 +380,14 @@ function isDeviceOnPowerPath(device: DeviceV1): boolean {
   );
 }
 
+function isCouplerFieldRole(fieldRole: FieldRoleV1): boolean {
+  return fieldRole === FieldRoleV1.COUPLER_SN || fieldRole === FieldRoleV1.BUS_TIE;
+}
+
+function isMeasurementFieldRole(fieldRole: FieldRoleV1): boolean {
+  return fieldRole === FieldRoleV1.MEASUREMENT_SN;
+}
+
 /**
  * Build BayDeviceGeometryV1 for all devices in a single field.
  *
@@ -363,6 +400,7 @@ function isDeviceOnPowerPath(device: DeviceV1): boolean {
  * All positions are world coordinates within the station block.
  */
 function buildBayDevices(
+  fieldRole: FieldRoleV1,
   fieldDevices: readonly DeviceV1[],
   bayCenterX: number,
   busbarY: number,
@@ -376,75 +414,82 @@ function buildBayDevices(
   });
 
   const devices: BayDeviceGeometryV1[] = [];
+  const baseY = busbarY + DEVICE_Y_FROM_BUSBAR + 2;
+  const onPathDevices = sorted.filter((device) => device.powerPathPosition !== DevicePowerPathPositionV1.OFF_PATH);
+  const offPathDevices = sorted.filter((device) => device.powerPathPosition === DevicePowerPathPositionV1.OFF_PATH);
 
-  // Track the current Y for sequential on-path devices.
-  let currentPathY = busbarY + DEVICE_Y_FROM_BUSBAR;
-  // Track the MIDSTREAM Y for OFF_PATH alignment (off-path uses the midstream slot y).
-  const midstreamY = busbarY + DEVICE_Y_FROM_BUSBAR + DEVICE_VERTICAL_STEP;
-
-  // Pre-scan to find the midstream Y slot for OFF_PATH devices.
-  // If there is a MIDSTREAM device, use its computed Y; otherwise use the slot.
-  let upstreamFound = false;
-  let midstreamFound = false;
-  let computedMidstreamY = midstreamY;
-  let tempY = busbarY + DEVICE_Y_FROM_BUSBAR;
-  for (const d of sorted) {
-    if (d.powerPathPosition === DevicePowerPathPositionV1.UPSTREAM) {
-      if (!upstreamFound) {
-        upstreamFound = true;
-        computedMidstreamY = tempY + DEVICE_VERTICAL_STEP;
-        tempY += DEVICE_VERTICAL_STEP;
-      }
-    } else if (d.powerPathPosition === DevicePowerPathPositionV1.MIDSTREAM) {
-      if (!midstreamFound) {
-        midstreamFound = true;
-        computedMidstreamY = tempY;
-        tempY += DEVICE_VERTICAL_STEP;
-      }
-    } else if (d.powerPathPosition === DevicePowerPathPositionV1.DOWNSTREAM) {
-      tempY += DEVICE_VERTICAL_STEP;
-    }
-  }
-
-  // Reset and build actual device geometry.
-  currentPathY = busbarY + DEVICE_Y_FROM_BUSBAR;
-
-  for (const device of sorted) {
-    const sym = mapDeviceTypeToSymbolId(device.deviceType);
-    const sz = deviceSize(device.deviceType);
-    const rot = deviceRotation(device.deviceType);
-    const onPath = isDeviceOnPowerPath(device);
-
-    let cx: number;
-    let cy: number;
-
-    if (device.powerPathPosition === DevicePowerPathPositionV1.OFF_PATH) {
-      // OFF_PATH: placed to the right of the bay center at the midstream Y level.
-      cx = bayCenterX + OFF_PATH_X_OFFSET;
-      cy = computedMidstreamY;
-    } else {
-      // On-path: placed centered in bay, stepped down.
-      cx = bayCenterX;
-      cy = currentPathY;
-      currentPathY += DEVICE_VERTICAL_STEP;
-    }
-
+  const pushGeometry = (
+    device: DeviceV1,
+    cx: number,
+    cy: number,
+    layoutSlot: BayDeviceGeometryV1['layoutSlot'],
+  ) => {
+    const size = deviceSize(device.deviceType);
     const position: PointV1 = { x: cx, y: cy };
-
-    const connectionPoints = {
-      top: { x: cx, y: cy - sz.height / 2 },
-      bottom: { x: cx, y: cy + sz.height / 2 },
-    };
 
     devices.push({
       deviceId: device.id,
       deviceType: device.deviceType,
-      symbolId: sym,
+      symbolId: mapDeviceTypeToSymbolId(device.deviceType),
       position,
-      size: sz,
-      rotation: rot,
-      isOnPowerPath: onPath,
-      connectionPoints,
+      size,
+      rotation: deviceRotation(device.deviceType),
+      electricalRole: device.electricalRole,
+      powerPathPosition: device.powerPathPosition,
+      layoutSlot,
+      isOnPowerPath: isDeviceOnPowerPath(device),
+      connectionPoints: {
+        top: { x: cx, y: cy - size.height / 2 },
+        bottom: { x: cx, y: cy + size.height / 2 },
+      },
+    });
+  };
+
+  if (isCouplerFieldRole(fieldRole)) {
+    const leftX = bayCenterX - OFF_PATH_X_OFFSET / 1.35;
+    const rightX = bayCenterX + OFF_PATH_X_OFFSET / 1.35;
+    const leftChainCount = onPathDevices.length >= 3 ? 2 : 1;
+    const leftChain = onPathDevices.slice(0, leftChainCount);
+    const rightChain = onPathDevices.slice(leftChainCount);
+
+    leftChain.forEach((device, index) => {
+      pushGeometry(device, leftX, baseY + index * DEVICE_VERTICAL_STEP, 'COUPLER_LEFT');
+    });
+
+    rightChain.forEach((device, index) => {
+      pushGeometry(device, rightX, baseY + index * DEVICE_VERTICAL_STEP, 'COUPLER_RIGHT');
+    });
+
+    offPathDevices.forEach((device, index) => {
+      pushGeometry(
+        device,
+        rightX + OFF_PATH_X_OFFSET * 0.85,
+        baseY + index * DEVICE_VERTICAL_STEP,
+        'SIDE_RIGHT',
+      );
+    });
+  } else {
+    onPathDevices.forEach((device, index) => {
+      pushGeometry(
+        device,
+        bayCenterX,
+        baseY + index * DEVICE_VERTICAL_STEP,
+        isMeasurementFieldRole(fieldRole) ? 'MEASUREMENT_MAIN' : 'MAIN',
+      );
+    });
+
+    const branchBaseY =
+      baseY
+      + Math.max(onPathDevices.length - 1, 0) * DEVICE_VERTICAL_STEP
+      + Math.max(DEVICE_VERTICAL_STEP * 0.65, 18);
+
+    offPathDevices.forEach((device, index) => {
+      pushGeometry(
+        device,
+        bayCenterX + OFF_PATH_X_OFFSET,
+        branchBaseY + index * DEVICE_VERTICAL_STEP,
+        'SIDE_RIGHT',
+      );
     });
   }
 
@@ -459,23 +504,127 @@ function buildBayDevices(
  * both devices are on the power path, ordered by powerPathPosition.
  */
 function buildInternalConnections(
+  fieldRole: FieldRoleV1,
   bayDevices: readonly BayDeviceGeometryV1[],
 ): readonly { readonly from: PointV1; readonly to: PointV1 }[] {
-  // Filter to on-path devices only, sort by Y (top-to-bottom).
-  const onPath = [...bayDevices]
-    .filter(d => d.isOnPowerPath)
-    .sort((a, b) => a.position.y - b.position.y);
-
   const connections: { from: PointV1; to: PointV1 }[] = [];
 
-  for (let i = 0; i < onPath.length - 1; i++) {
-    const from = onPath[i].connectionPoints.bottom;
-    const to = onPath[i + 1].connectionPoints.top;
-    // Only add connection if there is an actual vertical gap.
-    if (to.y > from.y) {
-      connections.push({ from, to });
+  const chains = isCouplerFieldRole(fieldRole)
+    ? [
+        bayDevices
+          .filter((device) => device.layoutSlot === 'COUPLER_LEFT')
+          .sort((left, right) => left.position.y - right.position.y),
+        bayDevices
+          .filter((device) => device.layoutSlot === 'COUPLER_RIGHT')
+          .sort((left, right) => left.position.y - right.position.y),
+      ]
+    : [
+        bayDevices
+          .filter((device) => device.layoutSlot === 'MAIN' || device.layoutSlot === 'MEASUREMENT_MAIN')
+          .sort((left, right) => left.position.y - right.position.y),
+      ];
+
+  for (const chain of chains) {
+    for (let index = 0; index < chain.length - 1; index += 1) {
+      const from = chain[index].connectionPoints.bottom;
+      const to = chain[index + 1].connectionPoints.top;
+      if (to.y > from.y) {
+        connections.push({ from, to });
+      }
     }
   }
+
+  return connections;
+}
+
+function buildAuxiliaryConnections(
+  fieldRole: FieldRoleV1,
+  bayCenterX: number,
+  busbarY: number,
+  cableExitPoint: PointV1,
+  bayDevices: readonly BayDeviceGeometryV1[],
+): readonly BayAuxiliaryConnectionV1[] {
+  const connections: BayAuxiliaryConnectionV1[] = [];
+
+  if (isCouplerFieldRole(fieldRole)) {
+    const leftChain = bayDevices
+      .filter((device) => device.layoutSlot === 'COUPLER_LEFT')
+      .sort((left, right) => left.position.y - right.position.y);
+    const rightChain = bayDevices
+      .filter((device) => device.layoutSlot === 'COUPLER_RIGHT')
+      .sort((left, right) => left.position.y - right.position.y);
+
+    if (leftChain[0]) {
+      connections.push({
+        from: { x: leftChain[0].position.x, y: busbarY },
+        to: leftChain[0].connectionPoints.top,
+        kind: 'BUS_TAP',
+      });
+    }
+    if (rightChain[0]) {
+      connections.push({
+        from: { x: rightChain[0].position.x, y: busbarY },
+        to: rightChain[0].connectionPoints.top,
+        kind: 'BUS_TAP',
+      });
+    }
+
+    const leftBottom = leftChain[leftChain.length - 1]?.connectionPoints.bottom ?? null;
+    const rightBottom = rightChain[rightChain.length - 1]?.connectionPoints.bottom ?? null;
+    if (leftBottom && rightBottom) {
+      const uBottomY = Math.max(leftBottom.y, rightBottom.y) + 18;
+      connections.push(
+        { from: leftBottom, to: { x: leftBottom.x, y: uBottomY }, kind: 'COUPLER_LINK' },
+        { from: { x: leftBottom.x, y: uBottomY }, to: { x: rightBottom.x, y: uBottomY }, kind: 'COUPLER_LINK' },
+        { from: { x: rightBottom.x, y: uBottomY }, to: rightBottom, kind: 'COUPLER_LINK' },
+      );
+    }
+
+    return connections;
+  }
+
+  const mainChain = bayDevices
+    .filter((device) => device.layoutSlot === 'MAIN' || device.layoutSlot === 'MEASUREMENT_MAIN')
+    .sort((left, right) => left.position.y - right.position.y);
+  const sideDevices = bayDevices
+    .filter((device) => device.layoutSlot === 'SIDE_RIGHT' || device.layoutSlot === 'SIDE_LEFT')
+    .sort((left, right) => left.position.y - right.position.y);
+
+  const firstMain = mainChain[0];
+  const lastMain = mainChain[mainChain.length - 1];
+
+  if (firstMain) {
+    connections.push({
+      from: { x: firstMain.position.x, y: busbarY },
+      to: firstMain.connectionPoints.top,
+      kind: 'BUS_TAP',
+    });
+  }
+
+  if (lastMain) {
+    connections.push({
+      from: lastMain.connectionPoints.bottom,
+      to: cableExitPoint,
+      kind: 'MAIN_EXIT',
+    });
+  }
+
+  sideDevices.forEach((device) => {
+    const branchY = device.connectionPoints.top.y - 8;
+    const trunkX = lastMain?.position.x ?? bayCenterX;
+    connections.push(
+      {
+        from: { x: trunkX, y: branchY },
+        to: { x: device.position.x, y: branchY },
+        kind: 'SIDE_BRANCH',
+      },
+      {
+        from: { x: device.position.x, y: branchY },
+        to: device.connectionPoints.top,
+        kind: 'SIDE_BRANCH',
+      },
+    );
+  });
 
   return connections;
 }
@@ -517,7 +666,7 @@ function resolveBayPorts(
 /**
  * Compute the full bay layout for a station block.
  *
- * Algorithm (deterministic, ETAP-grade):
+ * Algorithm (deterministic, CANONICAL-grade):
  *
  * 1. Sort fields by role priority (LINE_IN, LINE_OUT, TRANSFORMER_SN_NN, ...).
  * 2. Compute bay width = blockBounds.width / max(fields.length, 1), min 60px.
@@ -575,7 +724,7 @@ export function computeBayLayout(
       .map(id => deviceById.get(id))
       .filter((d): d is DeviceV1 => d !== undefined);
 
-    const deviceGeometries = buildBayDevices(fieldDevices, bayCenterX, busbarY);
+    const deviceGeometries = buildBayDevices(field.fieldRole, fieldDevices, bayCenterX, busbarY);
 
     const cableExitPoint: PointV1 = { x: bayCenterX, y: cableExitY };
 
@@ -588,9 +737,8 @@ export function computeBayLayout(
     );
 
     // Internal connections for this bay.
-    const bayConnections = buildInternalConnections(deviceGeometries);
+    const bayConnections = buildInternalConnections(field.fieldRole, deviceGeometries);
     allInternalConnections.push(...bayConnections);
-
     bays.push({
       bayId: field.id,
       stationId: detail.blockId,
@@ -675,6 +823,20 @@ export function computeBayLayout(
     if (a.from.x !== b.from.x) return a.from.x - b.from.x;
     return a.from.y - b.from.y;
   });
+  const auxiliaryConnections = sortedFields
+    .flatMap((field) => {
+      const bay = bays.find((candidate) => candidate.bayId === field.id);
+      if (!bay) {
+        return [];
+      }
+      return buildAuxiliaryConnections(field.fieldRole, bay.bounds.x + bay.bounds.width / 2, busbarY, bay.cableExitPoint, bay.devices);
+    })
+    .sort((left, right) => {
+      if (left.from.x !== right.from.x) return left.from.x - right.from.x;
+      if (left.from.y !== right.from.y) return left.from.y - right.from.y;
+      if (left.to.x !== right.to.x) return left.to.x - right.to.x;
+      return left.to.y - right.to.y;
+    });
 
   return {
     stationId: detail.blockId,
@@ -684,5 +846,6 @@ export function computeBayLayout(
     bays: sortedBays,
     couplerGeometry,
     internalConnections: sortedConnections,
+    auxiliaryConnections,
   };
 }

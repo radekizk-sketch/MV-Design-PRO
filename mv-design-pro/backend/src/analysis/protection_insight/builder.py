@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from application.proof_engine.types import ProofDocument, ProofValue
-
-from analysis.normative.models import NormativeItem, NormativeReport, NormativeSeverity, NormativeStatus
+from analysis.normative.models import (
+    NormativeItem,
+    NormativeReport,
+    NormativeSeverity,
+    NormativeStatus,
+)
 from analysis.protection_insight.models import (
     ProtectionInsightContext,
     ProtectionInsightItem,
@@ -12,6 +15,7 @@ from analysis.protection_insight.models import (
     ProtectionInsightView,
     ProtectionSelectivityStatus,
 )
+from application.proof_engine.types import ProofDocument, ProofValue
 
 
 class ProtectionInsightBuilder:
@@ -21,7 +25,7 @@ class ProtectionInsightBuilder:
         report_p20: NormativeReport,
     ) -> ProtectionInsightView:
         proofs_sorted = sorted(
-            list(proofs_p18),
+            proofs_p18,
             key=lambda proof: (
                 _target_id(proof),
                 proof.document_id.hex,
@@ -29,9 +33,7 @@ class ProtectionInsightBuilder:
         )
 
         selectivity_items = _selectivity_index(report_p20.items)
-        items_with_bucket = [
-            _build_item(proof, selectivity_items) for proof in proofs_sorted
-        ]
+        items_with_bucket = [_build_item(proof, selectivity_items) for proof in proofs_sorted]
 
         items_sorted = sorted(
             items_with_bucket,
@@ -66,11 +68,7 @@ def _build_context(report: NormativeReport) -> ProtectionInsightContext | None:
 
 
 def _selectivity_index(items: Iterable[NormativeItem]) -> dict[str, NormativeItem]:
-    return {
-        item.target_id: item
-        for item in items
-        if item.rule_id == "NR_P18_004"
-    }
+    return {item.target_id: item for item in items if item.rule_id == "NR_P18_004"}
 
 
 def _build_item(
@@ -165,7 +163,7 @@ def _numeric_value(
     value = key_results.get(key)
     if value is None:
         return None
-    if isinstance(value.value, (int, float)):
+    if isinstance(value.value, int | float):
         return float(value.value)
     return None
 

@@ -46,14 +46,13 @@ from pathlib import Path
 from typing import Any
 
 from .base import (
-    ReferenceVerdict,
-    ReferencePatternResult,
     CheckStatus,
+    ReferencePatternResult,
+    ReferenceVerdict,
     build_check,
     build_trace_step,
     stable_sort_dict,
 )
-
 
 # =============================================================================
 # STAŁE
@@ -179,9 +178,7 @@ def load_fixture_c(filename: str) -> dict[str, Any]:
         with open(pattern_c_path, encoding="utf-8") as f:
             return json.load(f)
 
-    raise FileNotFoundError(
-        f"Fixture '{filename}' nie znaleziony. Sprawdzono: {pattern_c_path}"
-    )
+    raise FileNotFoundError(f"Fixture '{filename}' nie znaleziony. Sprawdzono: {pattern_c_path}")
 
 
 def fixture_to_input_c(fixture: dict[str, Any]) -> WzorzecCInput:
@@ -499,9 +496,9 @@ class WzorzecCGeneracjaLokalna:
             details={
                 "wklad_generacji_a": wklad_generacji,
                 "prog_blokady_szyn_a": prog_blokady,
-                "stosunek_do_progu_pct": round((wklad_generacji / prog_blokady) * 100, 2)
-                if prog_blokady > 0
-                else 0,
+                "stosunek_do_progu_pct": (
+                    round((wklad_generacji / prog_blokady) * 100, 2) if prog_blokady > 0 else 0
+                ),
                 "ryzyko_blokady": ryzyko_blokady,
             },
         )

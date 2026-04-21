@@ -12,39 +12,21 @@ import { useMemo, useCallback } from 'react';
 import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
+import {
+  formatGeneratorTypeLabelPl,
+  formatGeneratorTypeShortLabelPl,
+} from '../../shared/generatorTypeLabels';
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
 function genTypeLabel(genType: string | null | undefined): string {
-  switch (genType) {
-    case 'pv_inverter':
-      return 'Inwerter fotowoltaiczny (PV)';
-    case 'bess':
-      return 'Magazyn energii (BESS)';
-    case 'wind_inverter':
-      return 'Inwerter wiatrowy';
-    case 'synchronous':
-      return 'Generator synchroniczny';
-    default:
-      return genType ?? 'Źródło OZE';
-  }
+  return formatGeneratorTypeLabelPl(genType);
 }
 
 function genTypeShort(genType: string | null | undefined): string {
-  switch (genType) {
-    case 'pv_inverter':
-      return 'PV';
-    case 'bess':
-      return 'BESS';
-    case 'wind_inverter':
-      return 'Wiatrak';
-    case 'synchronous':
-      return 'Synchroniczny';
-    default:
-      return 'OZE';
-  }
+  return formatGeneratorTypeShortLabelPl(genType);
 }
 
 function connectionVariantLabel(variant: string | null | undefined): string {
@@ -248,7 +230,10 @@ export function RenewableSourceCard({ elementId }: { elementId: string }) {
           key: 'station_ref',
           label: 'Stacja',
           value: parentStation?.name ?? generator.station_ref ?? '—',
-          severity: !generator.station_ref ? 'warning' : undefined,
+          severity:
+            generator.connection_variant === 'nn_side' && !generator.station_ref
+              ? 'warning'
+              : undefined,
         },
         ...(generator.connection_variant === 'block_transformer'
           ? [

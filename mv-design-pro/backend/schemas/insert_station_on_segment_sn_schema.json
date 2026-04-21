@@ -69,7 +69,11 @@
     "station_spec": {
       "type": "object",
       "properties": {
-        "station_type": { "type": "string", "enum": ["A", "B", "C", "D"] },
+        "station_type": {
+          "type": "string",
+          "description": "Kanonicznie: terminal/inline/branch/sectional. Kody A/B/C/D pozostają tylko dla zgodności wstecznej.",
+          "enum": ["terminal", "inline", "branch", "sectional", "A", "B", "C", "D"]
+        },
         "station_role": { "type": "string" },
         "station_name": { "type": "string" },
         "sn_voltage_kv": { "type": "number", "exclusiveMinimum": 0 },
@@ -97,17 +101,6 @@
             "properties": {
               "field_key": { "type": "string" },
               "field_role": { "type": "string", "enum": ["LINIA_IN", "LINIA_OUT", "LINIA_ODG", "TRANSFORMATOROWE", "SPRZEGLO"] },
-              "apparatus_plan": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "kind": { "type": "string" },
-                    "catalog_binding": { "oneOf": [{ "$ref": "catalog_binding_schema.json" }, { "type": "null" }] }
-                  },
-                  "required": ["kind"]
-                }
-              },
               "ct_plan": {
                 "type": "object",
                 "properties": {

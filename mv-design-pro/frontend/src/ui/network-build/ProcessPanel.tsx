@@ -1,37 +1,21 @@
-/**
- * ProcessPanel — Lewy panel procesowy budowy sieci SN.
- *
- * Zastępuje ProjectTree w trybie MODEL_EDIT.
- * 8 sekcji odpowiadających etapom procesu inżynierskiego:
- * 1. Źródło zasilania (GPZ)
- * 2. Magistrale
- * 3. Stacje
- * 4. Odgałęzienia
- * 5. Sekcjonowanie i ringi
- * 6. Transformatory i nN
- * 7. Źródła OZE / BESS
- * 8. Gotowość do analizy
- *
- * DETERMINIZM: Ten sam snapshot → ten sam widok panelu.
- * BINDING: 100% PL etykiety.
- */
-
 import { useCallback } from 'react';
 import { clsx } from 'clsx';
+
 import {
   useNetworkBuildStore,
   useNetworkBuildDerived,
 } from './networkBuildStore';
 import type {
+  OzeSourceSummary,
   StationSummary,
   TransformerSummary,
-  OzeSourceSummary,
 } from './networkBuildStore';
-import type { TerminalRef, TrunkViewV1, BranchViewV1 } from '../../types/enm';
+import type { BranchViewV1, TerminalRef, TrunkViewV1 } from '../../types/enm';
+import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
+import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
+import { formatStationTypeShortLabelPl } from '../shared/stationTypeLabels';
 
-// =============================================================================
-// Icons (inline SVG)
-// =============================================================================
+type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
 
 function IconChevronDown({ className }: { className?: string }) {
   return (
@@ -49,12 +33,6 @@ function IconChevronRight({ className }: { className?: string }) {
   );
 }
 
-// =============================================================================
-// Status Indicator
-// =============================================================================
-
-type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
-
 function StatusDot({ level }: { level: StatusLevel }) {
   const colors: Record<StatusLevel, string> = {
     done: 'bg-eng-green',
@@ -62,17 +40,9 @@ function StatusDot({ level }: { level: StatusLevel }) {
     empty: 'bg-chrome-300',
     error: 'bg-eng-red',
   };
-  return (
-    <span
-      className={clsx('inline-block w-2.5 h-2.5 rounded-full flex-shrink-0', colors[level])}
-      aria-hidden="true"
-    />
-  );
-}
 
-// =============================================================================
-// Section Header
-// =============================================================================
+  return <span className={clsx('inline-block w-2.5 h-2.5 rounded-full flex-shrink-0', colors[level])} aria-hidden="true" />;
+}
 
 interface SectionHeaderProps {
   id: string;
@@ -102,10 +72,6 @@ function SectionHeader({ id, label, status, badge, collapsed, onToggle }: Sectio
   );
 }
 
-// =============================================================================
-// Action Button (wewnątrz sekcji)
-// =============================================================================
-
 interface ActionButtonProps {
   label: string;
   onClick: () => void;
@@ -133,12 +99,8 @@ function ActionButton({ label, onClick, variant = 'secondary', testId, disabled 
   );
 }
 
-// =============================================================================
-// Section 1: Źródło zasilania
-// =============================================================================
-
 function SourceSection({ sourceCount }: { sourceCount: number }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddSource = useCallback(() => {
     openForm('add_grid_source_sn');
@@ -147,9 +109,11 @@ function SourceSection({ sourceCount }: { sourceCount: number }) {
   if (sourceCount === 0) {
     return (
       <div className="px-3 py-2">
-        <p className="text-[11px] text-chrome-500 mb-2">Brak zdefiniowanego źródła zasilania.</p>
+        <p className="text-[11px] text-chrome-500 mb-2">
+          Brak GPZ. Najpierw utworz GPZ z sekcjami i polami liniowymi, dopiero potem wyprowadz ciag glowny.
+        </p>
         <ActionButton
-          label="+ Dodaj źródło GPZ"
+          label="+ Dodaj GPZ"
           onClick={handleAddSource}
           variant="primary"
           testId="btn-add-gpz"
@@ -162,20 +126,16 @@ function SourceSection({ sourceCount }: { sourceCount: number }) {
     <div className="px-3 py-2">
       <div className="flex items-center gap-2 text-[11px] text-chrome-700">
         <StatusDot level="done" />
-        <span>Źródło zdefiniowane ({sourceCount})</span>
+        <span>GPZ zdefiniowany ({sourceCount})</span>
       </div>
       <ActionButton
-        label="Edytuj źródło"
+        label="Edytuj GPZ i pola SN"
         onClick={handleAddSource}
         testId="btn-edit-source"
       />
     </div>
   );
 }
-
-// =============================================================================
-// Section 2: Magistrale
-// =============================================================================
 
 function TrunksSection({
   trunks,
@@ -184,7 +144,7 @@ function TrunksSection({
   trunks: TrunkViewV1[];
   openTerminals: TerminalRef[];
 }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleContinueTrunk = useCallback(
     (terminal: TerminalRef) => {
@@ -204,30 +164,22 @@ function TrunksSection({
     [openForm],
   );
 
-  const handleInsertBranchPole = useCallback(() => {
-    openForm('insert_branch_pole_on_segment_sn');
-  }, [openForm]);
-
-  const handleInsertZksn = useCallback(() => {
-    openForm('insert_zksn_on_segment_sn');
-  }, [openForm]);
-
   return (
     <div className="px-3 py-2 space-y-2">
       {trunks.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">Brak magistral. Dodaj pierwszy segment po zdefiniowaniu źródła.</p>
+        <p className="text-[11px] text-chrome-500">
+          Brak magistral. Po dodaniu GPZ utworz pole liniowe GPZ i dopiero z tego pola wyprowadz pierwszy odcinek.
+        </p>
       ) : (
         <div className="space-y-1">
-          {trunks.map((trunk, i) => (
+          {trunks.map((trunk, index) => (
             <div
               key={trunk.corridor_ref}
               className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
             >
-              <span className="font-medium">M{i + 1}</span>
+              <span className="font-medium">M{index + 1}</span>
               <span className="text-chrome-500">{trunk.segments.length} segm.</span>
-              {trunk.no_point_ref && (
-                <span className="text-eng-amber text-[10px]">NOP</span>
-              )}
+              {trunk.no_point_ref && <span className="text-eng-amber text-[10px]">NOP</span>}
               <button
                 type="button"
                 onClick={() => handleInsertStation(trunk.corridor_ref)}
@@ -243,52 +195,31 @@ function TrunksSection({
       {openTerminals.length > 0 && (
         <div className="border-t border-chrome-100 pt-2 space-y-1">
           <p className="text-[10px] text-chrome-500 font-medium uppercase">Otwarte końce</p>
-          {openTerminals.map((t) => (
+          {openTerminals.map((terminal) => (
             <button
-              key={`${t.element_id}-${t.port_id}`}
+              key={`${terminal.element_id}-${terminal.port_id}`}
               type="button"
-              onClick={() => handleContinueTrunk(t)}
+              onClick={() => handleContinueTrunk(terminal)}
               className="w-full text-left text-[11px] text-ind-700 hover:bg-ind-50 px-2 py-1 rounded"
-              data-testid={`btn-continue-${t.element_id}`}
+              data-testid={`btn-continue-${terminal.element_id}`}
             >
-              Kontynuuj z {t.element_id}
+              Kontynuuj z {terminal.element_id}
             </button>
           ))}
         </div>
       )}
 
-      <div className="border-t border-chrome-100 pt-2 space-y-1">
-        <p className="text-[10px] text-chrome-500 font-medium uppercase">Wstaw obiekt w odcinek SN</p>
-        <ActionButton
-          label="+ Wstaw stację"
-          onClick={() => openForm('insert_station_on_segment_sn')}
-          testId="btn-insert-object-station"
-        />
-        <ActionButton
-          label="+ Wstaw słup rozgałęźny"
-          onClick={handleInsertBranchPole}
-          testId="btn-insert-object-branch-pole"
-        />
-        <ActionButton
-          label="+ Wstaw ZKSN"
-          onClick={handleInsertZksn}
-          testId="btn-insert-object-zksn"
-        />
+      <div className="border-t border-chrome-100 pt-2">
+        <p className="text-[10px] text-chrome-500">
+          ZKSN i slup rozgalezny wstawiaj z menu odcinka SN albo z karty magistrali, nigdy bez wskazania segmentu.
+        </p>
       </div>
     </div>
   );
 }
 
-// =============================================================================
-// Section 3: Stacje
-// =============================================================================
-
 function StationsSection({ stations }: { stations: StationSummary[] }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
-
-  const handleInsertStation = useCallback(() => {
-    openForm('insert_station_on_segment_sn');
-  }, [openForm]);
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleStartBranch = useCallback(
     (stationId: string) => {
@@ -300,26 +231,30 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
   return (
     <div className="px-3 py-2 space-y-2">
       {stations.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">Brak stacji. Wstaw stację w segment magistrali.</p>
+        <p className="text-[11px] text-chrome-500">
+          Brak stacji. Najpierw wyprowadz odcinek z pola GPZ, potem wstaw stacje w segment.
+        </p>
       ) : (
         <div className="space-y-1">
-          {stations.map((s) => (
+          {stations.map((station) => (
             <div
-              key={s.id}
+              key={station.id}
               className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
             >
-              <span className={clsx(
-                'text-[10px] font-bold px-1 rounded',
-                s.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
-              )}>
-                {s.stationType.toUpperCase()}
+              <span
+                className={clsx(
+                  'text-[10px] font-bold px-1 rounded',
+                  station.readinessOk ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-amber/20 text-eng-amber',
+                )}
+              >
+                {formatStationTypeShortLabelPl(station.stationType)}
               </span>
-              <span className="flex-1 truncate">{s.name}</span>
-              {s.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
-              {s.freeBranchPorts > 0 && (
+              <span className="flex-1 truncate">{station.name}</span>
+              {station.hasTransformer && <span className="text-[10px] text-chrome-400">TR</span>}
+              {station.freeBranchPorts > 0 && (
                 <button
                   type="button"
-                  onClick={() => handleStartBranch(s.id)}
+                  onClick={() => handleStartBranch(station.id)}
                   className="text-[10px] text-ind-600 hover:text-ind-800"
                 >
                   [Odg.]
@@ -329,65 +264,38 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
           ))}
         </div>
       )}
-
-      <ActionButton
-        label="+ Wstaw stację w segment"
-        onClick={handleInsertStation}
-        testId="btn-insert-station"
-      />
     </div>
   );
 }
 
-// =============================================================================
-// Section 4: Odgałęzienia
-// =============================================================================
-
 function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
-
-  const handleStartBranch = useCallback(() => {
-    openForm('start_branch_segment_sn');
-  }, [openForm]);
-
   return (
     <div className="px-3 py-2 space-y-2">
       {branches.length === 0 ? (
         <p className="text-[11px] text-chrome-500">Brak odgałęzień.</p>
       ) : (
         <div className="space-y-1">
-          {branches.map((b, i) => (
+          {branches.map((branch, index) => (
             <div
-              key={b.from_element_id + '-' + i}
+              key={`${branch.from_element_id}-${index}`}
               className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
             >
-              <span className="font-medium">O{i + 1}</span>
-              <span className="text-chrome-500">z {b.from_element_id}</span>
-              <span className="text-chrome-400">{b.segments.length} segm.</span>
+              <span className="font-medium">O{index + 1}</span>
+              <span className="text-chrome-500">z {branch.from_element_id}</span>
+              <span className="text-chrome-400">{branch.segments.length} segm.</span>
             </div>
           ))}
         </div>
       )}
-
-      <ActionButton
-        label="+ Rozpocznij odgałęzienie"
-        onClick={handleStartBranch}
-        testId="btn-start-branch"
-      />
+      <p className="text-[10px] text-chrome-500">
+        Nowe odgalezienie rozpocznij z portu BRANCH_OUT pola, ZKSN albo slupa rozgaleznego.
+      </p>
     </div>
   );
 }
 
-// =============================================================================
-// Section 5: Sekcjonowanie i ringi
-// =============================================================================
-
-function SectioningSection({
-  ringCandidateCount,
-}: {
-  ringCandidateCount: number;
-}) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+function SectioningSection({ ringCandidateCount }: { ringCandidateCount: number }) {
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleInsertSwitch = useCallback(() => {
     openForm('insert_section_switch_sn');
@@ -423,12 +331,8 @@ function SectioningSection({
   );
 }
 
-// =============================================================================
-// Section 6: Transformatory i nN
-// =============================================================================
-
 function TransformersSection({ transformers }: { transformers: TransformerSummary[] }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddTransformer = useCallback(() => {
     openForm('add_transformer_sn_nn');
@@ -440,14 +344,14 @@ function TransformersSection({ transformers }: { transformers: TransformerSummar
         <p className="text-[11px] text-chrome-500">Brak transformatorów SN/nN.</p>
       ) : (
         <div className="space-y-1">
-          {transformers.map((t) => (
+          {transformers.map((transformer) => (
             <div
-              key={t.id}
+              key={transformer.id}
               className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
             >
-              <span className="truncate flex-1">{t.name}</span>
-              <span className="text-chrome-400">{t.snKva} kVA</span>
-              {t.catalogRef ? (
+              <span className="truncate flex-1">{transformer.name}</span>
+              <span className="text-chrome-400">{transformer.snKva} kVA</span>
+              {transformer.catalogRef ? (
                 <span className="text-[10px] text-eng-green">KAT</span>
               ) : (
                 <span className="text-[10px] text-eng-amber">RĘCZ</span>
@@ -466,19 +370,19 @@ function TransformersSection({ transformers }: { transformers: TransformerSummar
   );
 }
 
-// =============================================================================
-// Section 7: Źródła OZE / BESS
-// =============================================================================
-
 function OzeSection({ sources }: { sources: OzeSourceSummary[] }) {
-  const openForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddPV = useCallback(() => {
-    openForm('add_pv_inverter_nn');
+    openForm('add_converter_source', buildConverterSourceOperationContext('PV'));
   }, [openForm]);
 
   const handleAddBESS = useCallback(() => {
-    openForm('add_bess_inverter_nn');
+    openForm('add_converter_source', buildConverterSourceOperationContext('BESS'));
+  }, [openForm]);
+
+  const handleAddFW = useCallback(() => {
+    openForm('add_converter_source', buildConverterSourceOperationContext('FW'));
   }, [openForm]);
 
   return (
@@ -487,19 +391,21 @@ function OzeSection({ sources }: { sources: OzeSourceSummary[] }) {
         <p className="text-[11px] text-chrome-500">Brak źródeł OZE/BESS.</p>
       ) : (
         <div className="space-y-1">
-          {sources.map((s) => (
+          {sources.map((source) => (
             <div
-              key={s.id}
+              key={source.id}
               className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
             >
-              <span className={clsx(
-                'text-[10px] font-bold px-1 rounded',
-                s.hasTransformer ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-red/20 text-eng-red',
-              )}>
-                {s.genType === 'pv_inverter' ? 'PV' : s.genType === 'bess' ? 'BESS' : 'GEN'}
+              <span
+                className={clsx(
+                  'text-[10px] font-bold px-1 rounded',
+                  source.hasTransformer ? 'bg-eng-green/20 text-eng-green' : 'bg-eng-red/20 text-eng-red',
+                )}
+              >
+                {formatGeneratorTypeShortLabelPl(source.genType)}
               </span>
-              <span className="truncate flex-1">{s.name}</span>
-              <span className="text-chrome-400">{(s.pMw * 1000).toFixed(0)} kW</span>
+              <span className="truncate flex-1">{source.name}</span>
+              <span className="text-chrome-400">{(source.pMw * 1000).toFixed(0)} kW</span>
             </div>
           ))}
         </div>
@@ -508,14 +414,11 @@ function OzeSection({ sources }: { sources: OzeSourceSummary[] }) {
       <div className="flex gap-2">
         <ActionButton label="+ PV" onClick={handleAddPV} testId="btn-add-pv" />
         <ActionButton label="+ BESS" onClick={handleAddBESS} testId="btn-add-bess" />
+        <ActionButton label="+ FW" onClick={handleAddFW} testId="btn-add-fw" />
       </div>
     </div>
   );
 }
-
-// =============================================================================
-// Section 8: Gotowość do analizy
-// =============================================================================
 
 function ReadinessSection({
   isReady,
@@ -528,10 +431,7 @@ function ReadinessSection({
     <div className="px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <StatusDot level={isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial'} />
-        <span className={clsx(
-          'text-xs font-semibold',
-          isReady ? 'text-eng-green' : 'text-chrome-700',
-        )}>
+        <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : 'text-chrome-700')}>
           {isReady ? 'Gotowy do analizy' : `${blockersByCategory.total} blokad`}
         </span>
       </div>
@@ -556,34 +456,30 @@ function ReadinessSection({
   );
 }
 
-// =============================================================================
-// ProcessPanel (Main Component)
-// =============================================================================
-
 export interface ProcessPanelProps {
   className?: string;
 }
 
 export function ProcessPanel({ className }: ProcessPanelProps) {
-  const collapsedSections = useNetworkBuildStore((s) => s.collapsedSections);
-  const toggleSection = useNetworkBuildStore((s) => s.toggleSection);
+  const collapsedSections = useNetworkBuildStore((state) => state.collapsedSections);
+  const toggleSection = useNetworkBuildStore((state) => state.toggleSection);
 
   const {
-    buildPhaseLabel: phaseLabel,
-    logicalViews,
-    openTerminals,
-    ringCandidates,
-    stationSummaries,
-    transformerSummaries,
-    ozeSourceSummaries,
     blockersByCategory,
-    sourceCount,
-    trunkCount,
     branchCount,
-    stationCount,
-    transformerCount,
+    buildPhaseLabel,
     generatorCount,
     isReady,
+    logicalViews,
+    openTerminals,
+    ozeSourceSummaries,
+    ringCandidates,
+    sourceCount,
+    stationCount,
+    stationSummaries,
+    transformerCount,
+    transformerSummaries,
+    trunkCount,
   } = useNetworkBuildDerived();
 
   const trunks = logicalViews?.trunks ?? [];
@@ -604,18 +500,12 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
   const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
 
   return (
-    <div
-      className={clsx('flex flex-col h-full overflow-hidden', className)}
-      data-testid="process-panel"
-    >
-      {/* Phase banner */}
+    <div className={clsx('flex flex-col h-full overflow-hidden', className)} data-testid="process-panel">
       <div className="px-3 py-2 bg-ind-50 border-b border-ind-200">
-        <p className="text-[11px] font-semibold text-ind-800">{phaseLabel}</p>
+        <p className="text-[11px] font-semibold text-ind-800">{buildPhaseLabel}</p>
       </div>
 
-      {/* Scrollable sections */}
       <div className="flex-1 overflow-y-auto">
-        {/* 1. Źródło zasilania */}
         <SectionHeader
           id="source"
           label="Źródło zasilania"
@@ -626,7 +516,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
         />
         {!isSectionCollapsed('source') && <SourceSection sourceCount={sourceCount} />}
 
-        {/* 2. Magistrale */}
         <SectionHeader
           id="trunks"
           label="Magistrale"
@@ -639,7 +528,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           <TrunksSection trunks={trunks} openTerminals={openTerminals} />
         )}
 
-        {/* 3. Stacje */}
         <SectionHeader
           id="stations"
           label="Stacje"
@@ -650,7 +538,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
         />
         {!isSectionCollapsed('stations') && <StationsSection stations={stationSummaries} />}
 
-        {/* 4. Odgałęzienia */}
         <SectionHeader
           id="branches"
           label="Odgałęzienia"
@@ -661,7 +548,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
         />
         {!isSectionCollapsed('branches') && <BranchesSection branches={branches} />}
 
-        {/* 5. Sekcjonowanie i ringi */}
         <SectionHeader
           id="sectioning"
           label="Sekcjonowanie i ringi"
@@ -673,7 +559,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           <SectioningSection ringCandidateCount={ringCandidates.length} />
         )}
 
-        {/* 6. Transformatory i nN */}
         <SectionHeader
           id="transformers"
           label="Transformatory i nN"
@@ -686,7 +571,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           <TransformersSection transformers={transformerSummaries} />
         )}
 
-        {/* 7. Źródła OZE / BESS */}
         <SectionHeader
           id="oze"
           label="Źródła OZE / BESS"
@@ -697,7 +581,6 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
         />
         {!isSectionCollapsed('oze') && <OzeSection sources={ozeSourceSummaries} />}
 
-        {/* 8. Gotowość do analizy */}
         <SectionHeader
           id="readiness"
           label="Gotowość do analizy"

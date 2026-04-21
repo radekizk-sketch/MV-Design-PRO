@@ -19,46 +19,9 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from application.proof_engine.equation_registry import (
-    AntiDoubleCountingAudit,
-    EquationRegistry,
-    EQ_LF_001,
-    EQ_LF_002,
-    EQ_LF_003,
-    EQ_LF_004,
-    EQ_LF_005,
-    EQ_LF_006,
-    EQ_LF_007,
-    EQ_SC3F_003,
-    EQ_SC3F_004,
-    EQ_SC3F_005,
-    EQ_SC3F_006,
-    EQ_SC3F_007,
-    EQ_SC3F_008,
-    EQ_SC3F_008a,
-    EQ_SC1_001,
-    EQ_SC1_002,
-    EQ_SC1_003,
-    EQ_SC1_004,
-    EQ_SC1_005,
-    EQ_SC1_006,
-    EQ_SC1_007,
-    EQ_SC1_008,
-    EQ_SC1_009,
-    EQ_SC1_010,
-    EQ_SC1_011,
-    EQ_SC1_012,
-    EQ_VDROP_001,
-    EQ_VDROP_002,
-    EQ_VDROP_003,
-    EQ_VDROP_004,
-    EQ_VDROP_005,
-    EQ_VDROP_006,
-    EQ_VDROP_007,
-    EQ_QU_001,
-    EQ_QU_002,
-    EQ_QU_003,
-    EQ_QU_004,
-    EQ_QU_005,  # P11.1c: VDROP link
+    EQ_EARTH_001,
+    EQ_EARTH_002,
+    EQ_EARTH_003,
     EQ_LC_001,
     EQ_LC_002,
     EQ_LC_003,
@@ -69,29 +32,62 @@ from application.proof_engine.equation_registry import (
     EQ_LE_002,
     EQ_LE_003,
     EQ_LE_004,
+    EQ_LF_001,
+    EQ_LF_002,
+    EQ_LF_003,
+    EQ_LF_004,
+    EQ_LF_005,
+    EQ_LF_006,
+    EQ_LF_007,
     EQ_PR_001,
     EQ_PR_002,
     EQ_PR_003,
     EQ_PR_004,
-    EQ_EARTH_001,
-    EQ_EARTH_002,
-    EQ_EARTH_003,
+    EQ_QU_001,
+    EQ_QU_002,
+    EQ_QU_003,
+    EQ_QU_004,
+    EQ_QU_005,  # P11.1c: VDROP link
+    EQ_SC1_001,
+    EQ_SC1_002,
+    EQ_SC1_006,
+    EQ_SC1_007,
+    EQ_SC1_008,
+    EQ_SC1_009,
+    EQ_SC1_010,
+    EQ_SC1_011,
+    EQ_SC1_012,
+    EQ_SC3F_003,
+    EQ_SC3F_004,
+    EQ_SC3F_005,
+    EQ_SC3F_006,
+    EQ_SC3F_007,
+    EQ_SC3F_008,
+    EQ_VDROP_001,
+    EQ_VDROP_002,
+    EQ_VDROP_003,
+    EQ_VDROP_004,
+    EQ_VDROP_005,
+    EQ_VDROP_006,
+    EQ_VDROP_007,
+    AntiDoubleCountingAudit,
+    EQ_SC3F_008a,
+    EquationRegistry,
 )
 from application.proof_engine.types import (
     EarthingGroundFaultInput,
-    EquationDefinition,
     LoadCurrentsCounterfactualInput,
     LoadCurrentsInput,
     LoadElementKind,
     LossesEnergyInput,
-    ProtectionProofInput,
-    ProtectionSelectivityInput,
     ProofDocument,
     ProofHeader,
     ProofStep,
     ProofSummary,
     ProofType,
     ProofValue,
+    ProtectionProofInput,
+    ProtectionSelectivityInput,
     QUCounterfactualInput,
     QUInput,
     UnitCheckResult,
@@ -333,7 +329,7 @@ class ProofGenerator:
 
             s_mva = None
             if resolved.p_mw is not None and resolved.q_mvar is not None:
-                s_mva = math.sqrt(resolved.p_mw ** 2 + resolved.q_mvar ** 2)
+                s_mva = math.sqrt(resolved.p_mw**2 + resolved.q_mvar**2)
 
             i_ka = None
             u_ll_kv = resolved.u_ll_kv or resolved.u_nom_kv
@@ -931,7 +927,7 @@ class ProofGenerator:
         i2: complex,
     ) -> tuple[complex, complex, complex]:
         a = a_operator
-        a2 = a ** 2
+        a2 = a**2
         ia = i0 + i1 + i2
         ib = i0 + a2 * i1 + a * i2
         ic = i0 + a * i1 + a2 * i2
@@ -1127,9 +1123,7 @@ class ProofGenerator:
         """Step: I_dyn (dynamic current — MANDATORY)."""
         equation = EQ_SC1_012
 
-        input_values = (
-            ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),
-        )
+        input_values = (ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),)
 
         substitution = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
 
@@ -1266,10 +1260,7 @@ class ProofGenerator:
     ) -> ProofStep:
         equation = EQ_SC1_002
         input_values: tuple[ProofValue, ...] = ()
-        substitution = (
-            r"a = e^{j 120^\circ} = "
-            f"{cls._format_complex_latex(a_operator, '—')}"
-        )
+        substitution = r"a = e^{j 120^\circ} = " f"{cls._format_complex_latex(a_operator, '—')}"
         result = ProofValue.create("a", a_operator, "—", "a_operator")
         unit_check = UnitVerifier.verify_step(
             equation.equation_id,
@@ -1520,9 +1511,7 @@ class ProofGenerator:
 
         z_abs = abs(z_thevenin_ohm)
 
-        input_values = (
-            ProofValue.create("Z_{th}", z_thevenin_ohm, "Ω", "z_thevenin_ohm"),
-        )
+        input_values = (ProofValue.create("Z_{th}", z_thevenin_ohm, "Ω", "z_thevenin_ohm"),)
 
         substitution = (
             f"Z_{{th}} = {r_th:.4f} + j{x_th:.4f}\\,\\Omega, "
@@ -1705,9 +1694,7 @@ class ProofGenerator:
         """Krok 5: Prąd dynamiczny I_dyn (OBOWIĄZKOWY)."""
         equation = EQ_SC3F_008a
 
-        input_values = (
-            ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),
-        )
+        input_values = (ProofValue.create("i_p", ip_ka, "kA", "ip_ka"),)
 
         substitution = f"I_{{dyn}} = i_p = {idyn_ka:.4f}\\,\\text{{kA}}"
 
@@ -1866,8 +1853,8 @@ class ProofGenerator:
 
         r_ohm = segment.r_ohm_per_km * segment.length_km
         x_ohm = segment.x_ohm_per_km * segment.length_km
-        delta_u_r = (r_ohm * segment.p_mw) / (segment.u_n_kv ** 2) * 100
-        delta_u_x = (x_ohm * segment.q_mvar) / (segment.u_n_kv ** 2) * 100
+        delta_u_r = (r_ohm * segment.p_mw) / (segment.u_n_kv**2) * 100
+        delta_u_x = (x_ohm * segment.q_mvar) / (segment.u_n_kv**2) * 100
         delta_u = delta_u_r + delta_u_x
         segment_drops = [delta_u]
         delta_u_total = sum(segment_drops)
@@ -1984,9 +1971,7 @@ class ProofGenerator:
             ProofValue.create("l", length_km, "km", "length_km"),
         )
 
-        substitution = (
-            f"R = {r_per_km:.4f} \\cdot {length_km:.4f} = {r_ohm:.4f}\\,\\Omega"
-        )
+        substitution = f"R = {r_per_km:.4f} \\cdot {length_km:.4f} = {r_ohm:.4f}\\,\\Omega"
 
         result = ProofValue.create("R", r_ohm, "Ω", "r_ohm")
 
@@ -2025,9 +2010,7 @@ class ProofGenerator:
             ProofValue.create("l", length_km, "km", "length_km"),
         )
 
-        substitution = (
-            f"X = {x_per_km:.4f} \\cdot {length_km:.4f} = {x_ohm:.4f}\\,\\Omega"
-        )
+        substitution = f"X = {x_per_km:.4f} \\cdot {length_km:.4f} = {x_ohm:.4f}\\,\\Omega"
 
         result = ProofValue.create("X", x_ohm, "Ω", "x_ohm")
 
@@ -2164,9 +2147,7 @@ class ProofGenerator:
             ProofValue.create("\\Delta U_X", delta_u_x, "%", "delta_u_x_percent"),
         )
 
-        substitution = (
-            f"\\Delta U = {delta_u_r:.4f} + {delta_u_x:.4f} = {delta_u:.4f}\\%"
-        )
+        substitution = f"\\Delta U = {delta_u_r:.4f} + {delta_u_x:.4f} = {delta_u:.4f}\\%"
 
         result = ProofValue.create("\\Delta U", delta_u, "%", "delta_u_percent")
 
@@ -2208,13 +2189,9 @@ class ProofGenerator:
         )
 
         drops_str = " + ".join(f"{d:.4f}" for d in segment_drops)
-        substitution = (
-            f"\\Delta U_{{total}} = {drops_str} = {delta_u_total:.4f}\\%"
-        )
+        substitution = f"\\Delta U_{{total}} = {drops_str} = {delta_u_total:.4f}\\%"
 
-        result = ProofValue.create(
-            "\\Delta U_{total}", delta_u_total, "%", "delta_u_total_percent"
-        )
+        result = ProofValue.create("\\Delta U_{total}", delta_u_total, "%", "delta_u_total_percent")
 
         unit_check = UnitVerifier.verify_equation(
             equation.equation_id,
@@ -2231,7 +2208,10 @@ class ProofGenerator:
             substitution_latex=substitution,
             result=result,
             unit_check=unit_check,
-            source_keys={"ΔU_i": "delta_u_segments", "ΔU_total": "delta_u_total_percent"},
+            source_keys={
+                "ΔU_i": "delta_u_segments",
+                "ΔU_total": "delta_u_total_percent",
+            },
         )
 
     @classmethod
@@ -2328,38 +2308,46 @@ class ProofGenerator:
         steps: list[ProofStep] = []
 
         # Krok 1: ΔU
-        steps.append(cls._create_qu_step_delta_u(
-            step_number=1,
-            u_meas_kv=data.u_meas_kv,
-            u_ref_kv=data.u_ref_kv,
-            delta_u_kv=delta_u_kv,
-        ))
+        steps.append(
+            cls._create_qu_step_delta_u(
+                step_number=1,
+                u_meas_kv=data.u_meas_kv,
+                u_ref_kv=data.u_ref_kv,
+                delta_u_kv=delta_u_kv,
+            )
+        )
 
         # Krok 2: s(U) deadband
-        steps.append(cls._create_qu_step_deadband(
-            step_number=2,
-            delta_u_kv=delta_u_kv,
-            u_dead_kv=data.u_dead_kv,
-            s_u_kv=s_u_kv,
-            deadband_branch=deadband_branch,
-        ))
+        steps.append(
+            cls._create_qu_step_deadband(
+                step_number=2,
+                delta_u_kv=delta_u_kv,
+                u_dead_kv=data.u_dead_kv,
+                s_u_kv=s_u_kv,
+                deadband_branch=deadband_branch,
+            )
+        )
 
         # Krok 3: Q_raw
-        steps.append(cls._create_qu_step_q_raw(
-            step_number=3,
-            k_q_mvar_per_kv=data.k_q_mvar_per_kv,
-            s_u_kv=s_u_kv,
-            q_raw_mvar=q_raw_mvar,
-        ))
+        steps.append(
+            cls._create_qu_step_q_raw(
+                step_number=3,
+                k_q_mvar_per_kv=data.k_q_mvar_per_kv,
+                s_u_kv=s_u_kv,
+                q_raw_mvar=q_raw_mvar,
+            )
+        )
 
         # Krok 4: Q_cmd z limitami
-        steps.append(cls._create_qu_step_q_cmd(
-            step_number=4,
-            q_raw_mvar=q_raw_mvar,
-            q_min_mvar=data.q_min_mvar,
-            q_max_mvar=data.q_max_mvar,
-            q_cmd_mvar=q_cmd_mvar,
-        ))
+        steps.append(
+            cls._create_qu_step_q_cmd(
+                step_number=4,
+                q_raw_mvar=q_raw_mvar,
+                q_min_mvar=data.q_min_mvar,
+                q_max_mvar=data.q_max_mvar,
+                q_cmd_mvar=q_cmd_mvar,
+            )
+        )
 
         # Krok 5: P11.1c — Wpływ Q_cmd na napięcie U (VDROP link)
         # Tylko jeśli podano dane VDROP (opcjonalne)
@@ -2370,13 +2358,15 @@ class ProofGenerator:
         )
 
         if has_vdrop_link:
-            steps.append(cls._create_qu_step_vdrop_link(
-                step_number=5,
-                q_cmd_mvar=q_cmd_mvar,
-                delta_u_x_percent=data.vdrop_delta_u_x_percent,
-                delta_u_percent=data.vdrop_delta_u_percent,
-                u_kv=data.vdrop_u_kv,
-            ))
+            steps.append(
+                cls._create_qu_step_vdrop_link(
+                    step_number=5,
+                    q_cmd_mvar=q_cmd_mvar,
+                    delta_u_x_percent=data.vdrop_delta_u_x_percent,
+                    delta_u_percent=data.vdrop_delta_u_percent,
+                    u_kv=data.vdrop_u_kv,
+                )
+            )
 
         # Podsumowanie
         unit_checks_passed = all(s.unit_check.passed for s in steps)
@@ -2391,14 +2381,15 @@ class ProofGenerator:
         # P11.1c: Dodaj wyniki VDROP do key_results jeśli dostępne
         if has_vdrop_link:
             key_results["vdrop_delta_u_x_percent"] = ProofValue.create(
-                "\\Delta U_X", data.vdrop_delta_u_x_percent, "%", "vdrop_delta_u_x_percent"
+                "\\Delta U_X",
+                data.vdrop_delta_u_x_percent,
+                "%",
+                "vdrop_delta_u_x_percent",
             )
             key_results["vdrop_delta_u_percent"] = ProofValue.create(
                 "\\Delta U", data.vdrop_delta_u_percent, "%", "vdrop_delta_u_percent"
             )
-            key_results["vdrop_u_kv"] = ProofValue.create(
-                "U", data.vdrop_u_kv, "kV", "vdrop_u_kv"
-            )
+            key_results["vdrop_u_kv"] = ProofValue.create("U", data.vdrop_u_kv, "kV", "vdrop_u_kv")
 
         summary = ProofSummary(
             key_results=key_results,
@@ -2652,7 +2643,9 @@ class ProofGenerator:
                     )
                 )
 
-            e_loss = sum(step.result.value for step in steps if step.equation.equation_id == "EQ_LE_002")
+            e_loss = sum(
+                step.result.value for step in steps if step.equation.equation_id == "EQ_LE_002"
+            )
             step_number += 1
             steps.append(
                 cls._create_le_step_sum(
@@ -2779,18 +2772,10 @@ class ProofGenerator:
             ),
         }
 
-        key_results["ikss_ka"] = cls._value_or_missing(
-            "I_k''", data.ikss_ka, "kA", "ikss_ka"
-        )
-        key_results["icu_ka"] = cls._value_or_missing(
-            "I_{cu}", data.icu_ka, "kA", "icu_ka"
-        )
-        key_results["ip_ka"] = cls._value_or_missing(
-            "i_p", data.ip_ka, "kA", "ip_ka"
-        )
-        key_results["idyn_ka"] = cls._value_or_missing(
-            "I_{dyn}", data.idyn_ka, "kA", "idyn_ka"
-        )
+        key_results["ikss_ka"] = cls._value_or_missing("I_k''", data.ikss_ka, "kA", "ikss_ka")
+        key_results["icu_ka"] = cls._value_or_missing("I_{cu}", data.icu_ka, "kA", "icu_ka")
+        key_results["ip_ka"] = cls._value_or_missing("i_p", data.ip_ka, "kA", "ip_ka")
+        key_results["idyn_ka"] = cls._value_or_missing("I_{dyn}", data.idyn_ka, "kA", "idyn_ka")
         key_results["i2t_ka2s"] = cls._value_or_missing(
             "\\int i^{2} dt", fault_i2t, "kA²s", "i2t_ka2s"
         )
@@ -2893,9 +2878,7 @@ class ProofGenerator:
 
         i_earth_from_voltage = None
         if data.u0_v is None or data.z_e_ohm is None:
-            warnings.append(
-                "Brak danych do obliczenia prądu doziemnego (U_0 lub Z_E)."
-            )
+            warnings.append("Brak danych do obliczenia prądu doziemnego (U_0 lub Z_E).")
         elif data.z_e_ohm == 0:
             warnings.append("Impedancja uziemienia Z_E = 0 Ω — brak obliczeń I_E.")
         else:
@@ -2903,9 +2886,7 @@ class ProofGenerator:
 
         i_earth_from_distribution = None
         if data.i_u_a is None or data.i_p_a is None:
-            warnings.append(
-                "Brak danych do rozdziału prądu doziemnego (I_u lub I_p)."
-            )
+            warnings.append("Brak danych do rozdziału prądu doziemnego (I_u lub I_p).")
         else:
             i_earth_from_distribution = data.i_u_a + data.i_p_a
 
@@ -2935,14 +2916,10 @@ class ProofGenerator:
 
         u_touch = None
         if data.i_u_a is None or data.r_u_ohm is None:
-            warnings.append(
-                "Brak danych do obliczenia napięcia dotykowego (I_u lub R_u)."
-            )
+            warnings.append("Brak danych do obliczenia napięcia dotykowego (I_u lub R_u).")
         else:
             u_touch = data.i_u_a * data.r_u_ohm
-            warnings.append(
-                "Napięcie dotykowe obliczone w trybie UPROSZCZONYM (informacyjnie)."
-            )
+            warnings.append("Napięcie dotykowe obliczone w trybie UPROSZCZONYM (informacyjnie).")
             step_number += 1
             steps.append(
                 cls._create_earth_touch_step(
@@ -3006,7 +2983,7 @@ class ProofGenerator:
             return data.i2t_ka2s
         if data.ith_ka is None or data.tk_s is None:
             return None
-        return data.ith_ka ** 2 * data.tk_s
+        return data.ith_ka**2 * data.tk_s
 
     @classmethod
     def _resolve_device_i2t(cls, data: ProtectionProofInput) -> float | None:
@@ -3014,7 +2991,7 @@ class ProofGenerator:
             return data.ith_limit_ka2s
         if data.ith_device_ka is None or data.t_th_s is None:
             return None
-        return data.ith_device_ka ** 2 * data.t_th_s
+        return data.ith_device_ka**2 * data.t_th_s
 
     @classmethod
     def _compare_limit(
@@ -3041,10 +3018,7 @@ class ProofGenerator:
         if selectivity.downstream_max_s is None or selectivity.upstream_min_s is None:
             warnings.append("Selektywność: brak granic czasowych t_down/t_up.")
             return "NOT_EVALUATED", None
-        margin = (
-            selectivity.upstream_min_s
-            - (selectivity.downstream_max_s + selectivity.margin_s)
-        )
+        margin = selectivity.upstream_min_s - (selectivity.downstream_max_s + selectivity.margin_s)
         return ("OK" if margin >= 0 else "NOT_OK"), margin
 
     @classmethod
@@ -3235,9 +3209,7 @@ class ProofGenerator:
             cls._value_or_missing(
                 "t_{down,max}", downstream_max, "s", "selectivity_downstream_max_s"
             ),
-            cls._value_or_missing(
-                "t_{up,min}", upstream_min, "s", "selectivity_upstream_min_s"
-            ),
+            cls._value_or_missing("t_{up,min}", upstream_min, "s", "selectivity_upstream_min_s"),
             cls._value_or_missing(
                 "\\Delta t",
                 margin_s,
@@ -3248,9 +3220,7 @@ class ProofGenerator:
         substitution = cls._protection_substitution(
             "OK_{selectivity}",
             "t_{down,max}+\\Delta t",
-            None
-            if downstream_max is None or margin_s is None
-            else downstream_max + margin_s,
+            (None if downstream_max is None or margin_s is None else downstream_max + margin_s),
             "t_{up,min}",
             upstream_min,
             status,
@@ -3313,9 +3283,7 @@ class ProofGenerator:
             ProofValue.create("t_{i-1}", t_prev, "h", "t_h"),
         )
 
-        substitution = (
-            f"\\Delta t_i = {t_curr:.4f} - {t_prev:.4f} = {delta_t:.4f}\\,\\text{{h}}"
-        )
+        substitution = f"\\Delta t_i = {t_curr:.4f} - {t_prev:.4f} = {delta_t:.4f}\\,\\text{{h}}"
 
         result = ProofValue.create("\\Delta t_i", delta_t, "h", "delta_t_h")
 
@@ -3356,9 +3324,7 @@ class ProofGenerator:
             ProofValue.create("\\Delta t_i", delta_t, "h", "delta_t_h"),
         )
 
-        substitution = (
-            f"E_i = {p_loss:.4f}\\cdot {delta_t:.4f} = {e_i:.4f}\\,\\text{{kWh}}"
-        )
+        substitution = f"E_i = {p_loss:.4f}\\cdot {delta_t:.4f} = {e_i:.4f}\\,\\text{{kWh}}"
 
         result = ProofValue.create("E_i", e_i, "kWh", "e_i_kwh")
 
@@ -3398,9 +3364,7 @@ class ProofGenerator:
         )
 
         sum_terms = " + ".join(f"{value:.4f}" for value in e_values)
-        substitution = (
-            f"E_{{loss}} = \\sum_i E_i = {sum_terms} = {e_loss:.4f}\\,\\text{{kWh}}"
-        )
+        substitution = f"E_{{loss}} = \\sum_i E_i = {sum_terms} = {e_loss:.4f}\\,\\text{{kWh}}"
 
         result = ProofValue.create("E_{loss}", e_loss, "kWh", "e_loss_kwh")
 
@@ -3503,22 +3467,16 @@ class ProofGenerator:
         if data.p_mw is None or data.q_mvar is None:
             raise ValueError("Brak mocy czynnej/biernej p_mw/q_mvar.")
 
-        s_mva = math.sqrt(data.p_mw ** 2 + data.q_mvar ** 2)
+        s_mva = math.sqrt(data.p_mw**2 + data.q_mvar**2)
 
         compute_current = (
             data.element_kind in (LoadElementKind.LINE, LoadElementKind.CABLE)
             or data.in_a is not None
         )
-        i_ka = (
-            s_mva / (math.sqrt(3) * data.u_ll_kv)
-            if compute_current
-            else None
-        )
+        i_ka = s_mva / (math.sqrt(3) * data.u_ll_kv) if compute_current else None
         in_ka = data.in_a / 1000.0 if data.in_a is not None else None
 
-        k_i_percent = (
-            100.0 * (i_ka / in_ka) if i_ka is not None and in_ka is not None else None
-        )
+        k_i_percent = 100.0 * (i_ka / in_ka) if i_ka is not None and in_ka is not None else None
 
         if i_ka is None or in_ka is None:
             m_i_percent = None
@@ -3527,11 +3485,7 @@ class ProofGenerator:
         else:
             m_i_percent = 100.0 * ((in_ka / i_ka) - 1.0)
 
-        k_s_percent = (
-            100.0 * (s_mva / data.sn_mva)
-            if data.sn_mva is not None
-            else None
-        )
+        k_s_percent = 100.0 * (s_mva / data.sn_mva) if data.sn_mva is not None else None
 
         if data.sn_mva is None:
             m_s_percent = None
@@ -3614,9 +3568,7 @@ class ProofGenerator:
         if i_ka is not None:
             key_results["i_ka"] = ProofValue.create("I", i_ka, "kA", "i_ka")
         if k_i_percent is not None:
-            key_results["k_i_percent"] = ProofValue.create(
-                "k_I", k_i_percent, "%", "k_i_percent"
-            )
+            key_results["k_i_percent"] = ProofValue.create("k_I", k_i_percent, "%", "k_i_percent")
         if m_i_percent is not None:
             key_results["m_i_percent"] = cls._proof_value_from_maybe_string(
                 symbol="m_I",
@@ -3625,9 +3577,7 @@ class ProofGenerator:
                 source_key="m_i_percent",
             )
         if k_s_percent is not None:
-            key_results["k_s_percent"] = ProofValue.create(
-                "k_S", k_s_percent, "%", "k_s_percent"
-            )
+            key_results["k_s_percent"] = ProofValue.create("k_S", k_s_percent, "%", "k_s_percent")
         if m_s_percent is not None:
             key_results["m_s_percent"] = cls._proof_value_from_maybe_string(
                 symbol="m_S",
@@ -3723,14 +3673,14 @@ class ProofGenerator:
             val_b = proof_b.summary.key_results.get(key)
             if not val_a or not val_b:
                 return
-            key_results[f"{key}_a"] = cls._clone_proof_value(
-                val_a, f"{symbol}_A", f"{key}_a"
-            )
-            key_results[f"{key}_b"] = cls._clone_proof_value(
-                val_b, f"{symbol}_B", f"{key}_b"
-            )
+            key_results[f"{key}_a"] = cls._clone_proof_value(val_a, f"{symbol}_A", f"{key}_a")
+            key_results[f"{key}_b"] = cls._clone_proof_value(val_b, f"{symbol}_B", f"{key}_b")
             delta = cls._numeric_diff_value(
-                val_a.value, val_b.value, f"\\Delta {symbol}", val_a.unit, f"delta_{key}"
+                val_a.value,
+                val_b.value,
+                f"\\Delta {symbol}",
+                val_a.unit,
+                f"delta_{key}",
             )
             if delta is not None:
                 counterfactual_diff[f"delta_{key}"] = delta
@@ -3811,7 +3761,7 @@ class ProofGenerator:
         unit: str,
         source_key: str,
     ) -> ProofValue | None:
-        if isinstance(value_a, (int, float)) and isinstance(value_b, (int, float)):
+        if isinstance(value_a, int | float) and isinstance(value_b, int | float):
             return ProofValue.create(symbol, value_b - value_a, unit, source_key)
         return None
 
@@ -3918,9 +3868,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (element {element.element_id})",
             equation=equation,
@@ -3972,9 +3920,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (element {element.element_id})",
             equation=equation,
@@ -4025,9 +3971,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (element {element.element_id})",
             equation=equation,
@@ -4079,9 +4023,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (element {element.element_id})",
             equation=equation,
@@ -4122,8 +4064,7 @@ class ProofGenerator:
             result = cls._value_or_missing("\\Delta U", None, "kV", "delta_u_kv")
         else:
             substitution = (
-                f"\\Delta U = {delta_u_r:.4f} + {delta_u_x:.4f}"
-                f" = {delta_u:.4f}\\,\\text{{kV}}"
+                f"\\Delta U = {delta_u_r:.4f} + {delta_u_x:.4f}" f" = {delta_u:.4f}\\,\\text{{kV}}"
             )
             result = ProofValue.create("\\Delta U", delta_u, "kV", "delta_u_kv")
 
@@ -4134,9 +4075,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (element {element.element_id})",
             equation=equation,
@@ -4186,9 +4125,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
             equation=equation,
@@ -4219,9 +4156,7 @@ class ProofGenerator:
         )
 
         if bus.u_ll_kv is None or not bus.u_nom_kv:
-            substitution = (
-                r"\delta_{U} = 100\cdot\frac{U - U_{n}}{U_{n}}\quad\text{(brak danych)}"
-            )
+            substitution = r"\delta_{U} = 100\cdot\frac{U - U_{n}}{U_{n}}\quad\text{(brak danych)}"
             result = cls._value_or_missing("\\delta_{U}", None, "%", "delta_pct")
         else:
             substitution = (
@@ -4237,9 +4172,7 @@ class ProofGenerator:
         )
 
         return ProofStep(
-            step_id=ProofStep.generate_step_id(
-                ProofType.LOAD_FLOW_VOLTAGE.value, step_number
-            ),
+            step_id=ProofStep.generate_step_id(ProofType.LOAD_FLOW_VOLTAGE.value, step_number),
             step_number=step_number,
             title_pl=f"{equation.name_pl} (BUS {bus.bus_id})",
             equation=equation,
@@ -4298,8 +4231,7 @@ class ProofGenerator:
                 r"\quad\text{(brak danych)}"
             )
         return (
-            f"{result_symbol} = ({left_value:.4f} \\le {right_value:.4f})"
-            rf" = \text{{{status}}}"
+            f"{result_symbol} = ({left_value:.4f} \\le {right_value:.4f})" rf" = \text{{{status}}}"
         )
 
     @classmethod
@@ -4322,8 +4254,7 @@ class ProofGenerator:
             result = cls._value_or_missing("I_{E}", None, "A", "i_earth_a")
         else:
             substitution = (
-                f"I_{{E}} = \\frac{{{u0_v:.4f}}}{{{z_e_ohm:.4f}}}"
-                f" = {i_earth:.4f}\\,\\text{{A}}"
+                f"I_{{E}} = \\frac{{{u0_v:.4f}}}{{{z_e_ohm:.4f}}}" f" = {i_earth:.4f}\\,\\text{{A}}"
             )
             result = ProofValue.create("I_{E}", i_earth, "A", "i_earth_a")
 
@@ -4370,10 +4301,7 @@ class ProofGenerator:
             substitution = r"I_{E} = I_{u} + I_{p}\quad\text{(brak danych)}"
             result = cls._value_or_missing("I_{E}", None, "A", "i_earth_a")
         else:
-            substitution = (
-                f"I_{{E}} = {i_u_a:.4f} + {i_p_a:.4f}"
-                f" = {i_earth:.4f}\\,\\text{{A}}"
-            )
+            substitution = f"I_{{E}} = {i_u_a:.4f} + {i_p_a:.4f}" f" = {i_earth:.4f}\\,\\text{{A}}"
             result = ProofValue.create("I_{E}", i_earth, "A", "i_earth_a")
 
         unit_check = UnitVerifier.verify_step(
@@ -4462,8 +4390,7 @@ class ProofGenerator:
         )
 
         substitution = (
-            f"S = \\sqrt{{{p_mw:.4f}^{{2}} + {q_mvar:.4f}^{{2}}}} = "
-            f"{s_mva:.4f}\\,\\text{{MVA}}"
+            f"S = \\sqrt{{{p_mw:.4f}^{{2}} + {q_mvar:.4f}^{{2}}}} = " f"{s_mva:.4f}\\,\\text{{MVA}}"
         )
 
         result = ProofValue.create("S", s_mva, "MVA", "s_mva")
@@ -4734,7 +4661,7 @@ class ProofGenerator:
             calc_text = f"s(U) = {delta_u_kv:.4f} + {u_dead_kv:.4f} = {s_u_kv:.4f}\\,\\text{{kV}}"
         else:  # inside
             branch_text = f"|\\Delta U| = {abs(delta_u_kv):.4f} \\le U_{{dead}} = {u_dead_kv:.4f}"
-            calc_text = f"s(U) = 0\\,\\text{{kV}}"
+            calc_text = "s(U) = 0\\,\\text{kV}"
 
         substitution = f"\\text{{Branch: }} {branch_text}, \\quad {calc_text}"
 
@@ -4880,16 +4807,16 @@ class ProofGenerator:
         """
         equation = EQ_QU_005
 
-        input_values = (
-            ProofValue.create("Q_{cmd}", q_cmd_mvar, "Mvar", "q_cmd_mvar"),
-        )
+        input_values = (ProofValue.create("Q_{cmd}", q_cmd_mvar, "Mvar", "q_cmd_mvar"),)
 
         # Prezentacja wyników VDROP (read-only, nie obliczamy)
         substitution = (
             f"Q_{{cmd}} = {q_cmd_mvar:.4f}\\,\\text{{Mvar}} "
             f"\\xrightarrow{{\\text{{EQ\\_VDROP\\_004}}}} "
             f"\\Delta U_X = {delta_u_x_percent:.4f}\\% "
-            f"\\xrightarrow{{\\text{{EQ\\_VDROP\\_005..007}}}} "
+            f"\\xrightarrow{{\\text{{EQ\\_VDROP\\_005..006}}}} "
+            f"\\Delta U = {delta_u_percent:.4f}\\% "
+            f"\\xrightarrow{{\\text{{EQ\\_VDROP\\_007}}}} "
             f"U = {u_kv:.4f}\\,\\text{{kV}}"
         )
 

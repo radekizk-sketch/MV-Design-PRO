@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from analysis.energy_validation.models import EnergyValidationView
@@ -32,11 +32,9 @@ def to_run_envelope(
         inline=inputs_inline or (result.config.to_dict() if result.config else None),
     )
     trace = (
-        TraceRef(type="energy_validation", id=None, inline=trace_inline)
-        if trace_inline
-        else None
+        TraceRef(type="energy_validation", id=None, inline=trace_inline) if trace_inline else None
     )
-    created_at_utc = datetime.now(timezone.utc).isoformat()
+    created_at_utc = datetime.now(UTC).isoformat()
 
     envelope_dict = {
         "schema_version": "v0",

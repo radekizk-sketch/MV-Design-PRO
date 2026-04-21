@@ -20,10 +20,20 @@
 import { defineConfig, devices } from '@playwright/test';
 import { resolveChromiumExecutable } from './scripts/playwright-env.mjs';
 
+function withTrailingSlash(url: string): string {
+  return url.endsWith('/') ? url : `${url}/`;
+}
+
 const resolvedExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ?? resolveChromiumExecutable() ?? undefined;
 
 const useRealBackend = process.env.PLAYWRIGHT_REAL_BACKEND === '1';
 const backendUrl = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
+const backendHealthUrl = process.env.PLAYWRIGHT_BACKEND_HEALTH_URL
+  ?? new URL('/ready', withTrailingSlash(backendUrl)).toString();
+const frontendUrl = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
+const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER
+  ? 'echo "skip webserver"'
+  : 'npm run dev:e2e';
 const backendServerCommand = process.platform === 'win32'
   ? 'powershell -NoProfile -Command "Set-Location ..\\backend; poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"'
   : 'bash -lc "cd ../backend && poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"';
@@ -57,8 +67,8 @@ export default defineConfig({
   },
 
   use: {
-    // Base URL for the app (matches Vite dev server default)
-    baseURL: 'http://localhost:5173',
+    // Base URL for the app (deterministic loopback for Playwright webServer)
+    baseURL: frontendUrl,
 
     // Action timeout (clicks, fills, etc.)
     actionTimeout: 10000,
@@ -104,15 +114,15 @@ export default defineConfig({
     ? [
       {
         command: backendServerCommand,
-        url: backendUrl,
+        url: backendHealthUrl,
         reuseExistingServer: true,
         timeout: 120000,
         stdout: 'pipe',
         stderr: 'pipe',
       },
       {
-        command: process.env.PLAYWRIGHT_DISABLE_WEBSERVER ? 'echo "skip webserver"' : 'npm run dev',
-        url: 'http://localhost:5173',
+        command: frontendServerCommand,
+        url: frontendUrl,
         reuseExistingServer: true,
         timeout: 120000,
         stdout: 'pipe',
@@ -120,8 +130,8 @@ export default defineConfig({
       },
     ]
     : {
-      command: process.env.PLAYWRIGHT_DISABLE_WEBSERVER ? 'echo "skip webserver"' : 'npm run dev',
-      url: 'http://localhost:5173',
+      command: frontendServerCommand,
+      url: frontendUrl,
       reuseExistingServer: true,
       timeout: 120000,
       // Capture server output for debugging

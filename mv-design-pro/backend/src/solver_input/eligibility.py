@@ -10,18 +10,17 @@ NO physics calculations. NO heuristics. NO default values.
 
 from __future__ import annotations
 
+from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
-from network_model.catalog.repository import CatalogRepository
-
 from solver_input.contracts import (
+    AnalysisEligibilityEntry,
+    EligibilityMap,
     EligibilityResult,
     SolverAnalysisType,
     SolverInputIssue,
     SolverInputIssueSeverity,
-    AnalysisEligibilityEntry,
-    EligibilityMap,
 )
 
 
@@ -34,9 +33,7 @@ def _check_common_blockers(
     warnings: list[SolverInputIssue] = []
 
     # E-D01: At least one source (SLACK node) required
-    slack_nodes = [
-        n for n in graph.nodes.values() if n.node_type == NodeType.SLACK
-    ]
+    slack_nodes = [n for n in graph.nodes.values() if n.node_type == NodeType.SLACK]
     if not slack_nodes:
         blockers.append(
             SolverInputIssue(

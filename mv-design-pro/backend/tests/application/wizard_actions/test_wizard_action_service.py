@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,7 +12,11 @@ sys.path.insert(0, str(backend_src))
 from application.wizard_actions import WizardActionService
 from domain.models import OperatingCase, Project
 from infrastructure.persistence.db import create_engine_from_url, create_session_factory, init_db
-from infrastructure.persistence.repositories import CaseRepository, ProjectRepository, SnapshotRepository
+from infrastructure.persistence.repositories import (
+    CaseRepository,
+    ProjectRepository,
+    SnapshotRepository,
+)
 from infrastructure.persistence.unit_of_work import build_uow_factory
 from network_model.core import NetworkGraph, Node, NodeType
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta
@@ -48,9 +52,7 @@ def _build_service(tmp_path):
 
     project = Project(id=uuid4(), name="Wizard Project")
     network_model_id = str(project.id)
-    snapshot = _build_snapshot(
-        "snap-1", "2024-01-01T00:00:00+00:00", network_model_id
-    )
+    snapshot = _build_snapshot("snap-1", "2024-01-01T00:00:00+00:00", network_model_id)
     case = OperatingCase(
         id=uuid4(),
         project_id=project.id,
@@ -80,7 +82,7 @@ def test_build_action_is_deterministic_for_same_payload(tmp_path) -> None:
             "active_power": 1.0,
             "reactive_power": 0.5,
         },
-        "created_at": datetime(2024, 1, 3, tzinfo=timezone.utc).isoformat(),
+        "created_at": datetime(2024, 1, 3, tzinfo=UTC).isoformat(),
     }
 
     first = service.build_action(case.id, payload)
@@ -103,7 +105,7 @@ def test_submit_batch_persists_snapshot_and_updates_case(tmp_path) -> None:
             "active_power": 1.0,
             "reactive_power": 0.5,
         },
-        "created_at": datetime(2024, 1, 3, tzinfo=timezone.utc).isoformat(),
+        "created_at": datetime(2024, 1, 3, tzinfo=UTC).isoformat(),
     }
 
     result = service.submit_batch(case.id, [payload])

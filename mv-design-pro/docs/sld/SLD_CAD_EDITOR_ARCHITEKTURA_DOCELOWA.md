@@ -26,7 +26,7 @@ Data: **2026-03-30**
 | Dodaj odgałęzienie | `start_branch_segment_sn` |
 | Połącz ring | `connect_secondary_ring_sn` |
 | Ustaw NOP | `set_normal_open_point` |
-| Dodaj PV/BESS | `add_pv_inverter_nn` / `add_bess_inverter_nn` |
+| Dodaj PV/BESS | `add_converter_source` |
 | Edytuj właściwości | `update_element_parameters` |
 | Usuń element | `delete_element` |
 

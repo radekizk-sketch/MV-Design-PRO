@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # Rozdział 7 — Model Źródeł, Generatorów i Odbiorów (Source / Generator / Load)
 
 **Wersja:** 1.1
@@ -105,7 +111,7 @@ gdzie $G$ = zbiór generatorów na danym Bus, $L$ = zbiór odbiorów na danym Bu
 
 Source modeluje **punkt zasilania z sieci nadrzędnej** (external grid). W terminologii IEC 60909 jest to **zastępcze źródło napięciowe** o impedancji $Z_Q$ wyznaczonej z mocy zwarciowej $S''_k$ lub bezpośrednio z $R + jX$.
 
-**Odpowiednik PowerFactory:** External Grid (ElmXnet)
+**Odpowiednik benchmark:** External Grid (ElmXnet)
 
 ### §7.2.2 Kontrakt Pydantic v2 — AS-IS
 
@@ -259,7 +265,7 @@ Source jest mapowany na **dwa elementy** modelu obliczeniowego:
 
 Generator modeluje **wewnętrzne źródło generacji** przyłączone do sieci. Obejmuje zarówno maszyny synchroniczne jak i źródła energoelektroniczne (falownikowe).
 
-**Odpowiednik PowerFactory:** Synchronous Machine (ElmSym) / Static Generator (ElmGenstat)
+**Odpowiednik benchmark:** Synchronous Machine (ElmSym) / Static Generator (ElmGenstat)
 
 ### §7.3.2 Kontrakt Pydantic v2 — AS-IS
 
@@ -573,7 +579,7 @@ Obecny walidator NIE posiada dedykowanych reguł walidacji generatora.
 
 Load modeluje **odbiór mocy czynnej i biernej** z sieci. W terminologii IEC jest to odbiór o znanej mocy znamionowej ($P$, $Q$) przyłączony do szyny.
 
-**Odpowiednik PowerFactory:** General Load (ElmLod)
+**Odpowiednik benchmark:** General Load (ElmLod)
 
 ### §7.4.2 Kontrakt Pydantic v2 — AS-IS
 
@@ -936,7 +942,7 @@ Source posiada pola `c_max` i `c_min` ale mapper ich NIE używa. Współczynnik 
 ## §7.A — Suplement v1.1: Domknięcie kontraktów TO-BE
 
 > **Cel:** Domknięcie brakujących kontraktów zidentyfikowanych w §7.10.2 (GAP-y),
-> przygotowanie systemu do Etapu 10/18 (Study Cases & Scenarios).
+> przygotowanie systemu do benchmarku 10/18 (Study Cases & Scenarios).
 > **Status:** Kontrakty BINDING. NIE cofają ustaleń v1.0 — wyłącznie doprecyzowują.
 
 ---
@@ -1176,3 +1182,4 @@ Kanonicalizacja (`application/analysis_run/service.py`):
 ---
 
 *Koniec Rozdziału 7*
+

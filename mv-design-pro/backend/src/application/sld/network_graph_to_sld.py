@@ -18,7 +18,6 @@ from typing import Any
 from uuid import UUID, uuid5
 
 from network_model.core.graph import NetworkGraph
-from network_model.core.node import NodeType
 
 # Fixed namespace UUID for deterministic string -> UUID mapping.
 _SLD_NAMESPACE = UUID("a3f12b4c-6d78-9e01-2345-6789abcdef01")
@@ -63,38 +62,44 @@ def convert_graph_to_sld_payload(
     # Convert nodes with voltage metadata for tier-aware layout.
     nodes: list[dict[str, Any]] = []
     for node in sorted(graph.nodes.values(), key=lambda n: n.id):
-        nodes.append({
-            "id": id_map[node.id],
-            "name": node.name,
-            "node_type": node.node_type.value,
-            "voltage_kv": node.voltage_level,
-            "in_service": True,
-        })
+        nodes.append(
+            {
+                "id": id_map[node.id],
+                "name": node.name,
+                "node_type": node.node_type.value,
+                "voltage_kv": node.voltage_level,
+                "in_service": True,
+            }
+        )
 
     # Convert branches with type metadata.
     branches: list[dict[str, Any]] = []
     for branch in sorted(graph.branches.values(), key=lambda b: b.id):
-        branches.append({
-            "id": id_map[branch.id],
-            "name": branch.name,
-            "branch_type": branch.branch_type.value,
-            "from_node_id": id_map[branch.from_node_id],
-            "to_node_id": id_map[branch.to_node_id],
-            "in_service": branch.in_service,
-        })
+        branches.append(
+            {
+                "id": id_map[branch.id],
+                "name": branch.name,
+                "branch_type": branch.branch_type.value,
+                "from_node_id": id_map[branch.from_node_id],
+                "to_node_id": id_map[branch.to_node_id],
+                "in_service": branch.in_service,
+            }
+        )
 
     # Convert switches preserving type and state.
     switches: list[dict[str, Any]] = []
     for switch in sorted(graph.switches.values(), key=lambda s: s.id):
-        switches.append({
-            "id": id_map[switch.id],
-            "name": switch.name,
-            "from_node_id": id_map[switch.from_node_id],
-            "to_node_id": id_map[switch.to_node_id],
-            "switch_type": switch.switch_type.value,
-            "state": switch.state.value,
-            "in_service": switch.in_service,
-        })
+        switches.append(
+            {
+                "id": id_map[switch.id],
+                "name": switch.name,
+                "from_node_id": id_map[switch.from_node_id],
+                "to_node_id": id_map[switch.to_node_id],
+                "switch_type": switch.switch_type.value,
+                "state": switch.state.value,
+                "in_service": switch.in_service,
+            }
+        )
 
     # Root node = SLACK (infinite bus reference).
     connection_node_id: UUID | None = None

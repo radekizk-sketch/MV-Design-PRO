@@ -16,6 +16,14 @@ import { useEngineeringReadinessStore } from './store';
 import { useSldEditorStore } from '../sld-editor/SldEditorStore';
 import { useSelectionStore } from '../selection/store';
 import type { FixAction } from '../types';
+import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { notify } from '../notifications/store';
+import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
+import {
+  countWorkspaceSymbols,
+  resolveWorkspaceBlockState,
+} from '../sld/workspaceReadiness';
 
 // =============================================================================
 // Container Component
@@ -31,19 +39,27 @@ export const EngineeringReadinessPanelContainer: React.FC<
   const { data, loading, error, load, clear } = useEngineeringReadinessStore();
   const sldStore = useSldEditorStore();
   const selectionStore = useSelectionStore();
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const workspaceBlockState = resolveWorkspaceBlockState({
+    hasActiveCase: caseId !== null,
+    hasSnapshot: snapshot !== null,
+    sourceCount: snapshot?.sources?.length ?? 0,
+    symbolCount: countWorkspaceSymbols(snapshot),
+  });
 
   // Fetch data when case changes
   useEffect(() => {
-    if (!caseId) {
+    if (!caseId || workspaceBlockState) {
       clear();
       return;
     }
     load(caseId);
-  }, [caseId, load, clear]);
+  }, [caseId, clear, load, workspaceBlockState]);
 
   // Listen for model-updated events to refresh
   useEffect(() => {
-    if (!caseId) return;
+    if (!caseId || workspaceBlockState) return;
 
     const handleModelUpdated = () => {
       load(caseId);
@@ -53,7 +69,7 @@ export const EngineeringReadinessPanelContainer: React.FC<
     return () => {
       window.removeEventListener('model-updated', handleModelUpdated);
     };
-  }, [caseId, load]);
+  }, [caseId, load, workspaceBlockState]);
 
   /**
    * Navigate to element: highlight on SLD + select in tree.
@@ -80,44 +96,39 @@ export const EngineeringReadinessPanelContainer: React.FC<
    */
   const handleFix = useCallback(
     (fixAction: FixAction) => {
-      switch (fixAction.action_type) {
-        case 'OPEN_MODAL':
-        case 'SELECT_CATALOG':
-        case 'ADD_MISSING_DEVICE': {
-          // Navigate to the element first (if exists)
-          if (fixAction.element_ref) {
-            sldStore.highlightSymbols([fixAction.element_ref], 'HIGH');
-            selectionStore.selectElement({
-              id: fixAction.element_ref,
-              type: 'Bus',
-              name: fixAction.element_ref,
-            });
-            selectionStore.centerSldOnElement(fixAction.element_ref);
-          }
+      const highlightRef =
+        fixAction.surface_descriptor?.focus_ref ??
+        fixAction.surface_descriptor?.element_ref ??
+        fixAction.element_ref;
 
-          // Dispatch custom event for modal system to handle
-          const event = new CustomEvent('open-fix-modal', {
-            detail: {
-              modalType: fixAction.modal_type,
-              elementRef: fixAction.element_ref,
-              payloadHint: fixAction.payload_hint,
-              actionType: fixAction.action_type,
-            },
-          });
-          window.dispatchEvent(event);
-          break;
-        }
-
-        case 'NAVIGATE_TO_ELEMENT': {
-          if (fixAction.element_ref) {
-            handleNavigate(fixAction.element_ref);
-          }
-          break;
-        }
+      if (highlightRef) {
+        sldStore.highlightSymbols([highlightRef], 'HIGH');
       }
+
+      executeFixActionSurface(fixAction, {
+        snapshot,
+        openOperationForm,
+        selectElement: selectionStore.selectElement,
+        centerSldOnElement: selectionStore.centerSldOnElement,
+        notify,
+      });
     },
-    [sldStore, selectionStore, handleNavigate],
+    [openOperationForm, selectionStore, sldStore, snapshot],
   );
+
+  if (workspaceBlockState) {
+    return (
+      <EngineeringReadinessPanel
+        issues={[]}
+        status="FAIL"
+        ready={false}
+        bySeverity={{ BLOCKER: 0, IMPORTANT: 0, INFO: 0 }}
+        onNavigate={handleNavigate}
+        onFix={handleFix}
+        workspaceBlockState={workspaceBlockState}
+      />
+    );
+  }
 
   // Loading state
   if (loading) {
@@ -158,6 +169,7 @@ export const EngineeringReadinessPanelContainer: React.FC<
       bySeverity={data.by_severity}
       onNavigate={handleNavigate}
       onFix={handleFix}
+      workspaceBlockState={workspaceBlockState}
     />
   );
 };

@@ -22,9 +22,7 @@ def entry_to_dict(entry: RecommendationEntry) -> dict[str, Any]:
         "parameter_label": entry.parameter_label,
         "target_id": entry.target_id,
         "source": entry.source,
-        "current_value": (
-            float(entry.current_value) if entry.current_value is not None else None
-        ),
+        "current_value": (float(entry.current_value) if entry.current_value is not None else None),
         "current_unit": entry.current_unit,
         "required_delta": (
             float(entry.required_delta) if entry.required_delta is not None else None

@@ -15,9 +15,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-
+from domain.field_device import (
+    AparatTypeV1,
+    DeviceTypeV1,
+    FieldRoleV1,
+    PoleTypeV1,
+)
 from domain.switchgear_config import (
     CatalogBindingV1,
     DeviceConfigV1,
@@ -28,12 +31,8 @@ from domain.switchgear_config import (
     compute_config_hash,
     validate_switchgear_config,
 )
-from domain.field_device import (
-    AparatTypeV1,
-    DeviceTypeV1,
-    FieldRoleV1,
-    PoleTypeV1,
-)
+from fastapi import APIRouter
+from pydantic import BaseModel
 
 router = APIRouter(
     prefix="/api/switchgear",

@@ -29,9 +29,7 @@ _KIND_TO_ANALYSIS_TYPE: dict[AnalysisKind, str] = {
     AnalysisKind.PROTECTION: "protection",
 }
 
-_ANALYSIS_TYPE_TO_KIND: dict[str, AnalysisKind] = {
-    v: k for k, v in _KIND_TO_ANALYSIS_TYPE.items()
-}
+_ANALYSIS_TYPE_TO_KIND: dict[str, AnalysisKind] = {v: k for k, v in _KIND_TO_ANALYSIS_TYPE.items()}
 
 
 def kind_to_analysis_type(kind: AnalysisKind) -> str:

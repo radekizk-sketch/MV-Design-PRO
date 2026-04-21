@@ -1,11 +1,11 @@
-/**
- * Case Manager Panel — P12a Data Manager Parity
+﻿/**
+ * Case Manager Panel â€” P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 8: Case management screens
- * - powerfactory_ui_parity.md § A: Mode-based gating
+ * - wizard_screens.md Â§ 8: Case management screens
+ * - ui_canonical_parity.md Â§ A: Mode-based gating
  *
- * PowerFactory-style case management panel with:
+ * Canonical-style case management panel with:
  * - List of cases with deterministic sort (name, then id)
  * - Create ShortCircuit / PowerFlow cases
  * - Clone, Rename, Delete, Activate actions
@@ -163,14 +163,14 @@ export function CaseManager({
         pid = project.id;
         setActiveProject(pid, project.name);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Nie udało się utworzyć projektu';
-        console.error('[CaseManager] Błąd tworzenia projektu:', message);
-        // Kontynuuj mimo błędu - store pokaże błąd przy tworzeniu przypadku
+        const message = err instanceof Error ? err.message : 'Nie udaĹ‚o siÄ™ utworzyÄ‡ projektu';
+        console.error('[CaseManager] BĹ‚Ä…d tworzenia projektu:', message);
+        // Kontynuuj mimo bĹ‚Ä™du - store pokaĹĽe bĹ‚Ä…d przy tworzeniu przypadku
       }
     }
 
     if (!pid) {
-      console.error('[CaseManager] Brak project_id po próbie utworzenia projektu');
+      console.error('[CaseManager] Brak project_id po prĂłbie utworzenia projektu');
       return;
     }
 
@@ -190,7 +190,7 @@ export function CaseManager({
       setIsCreating(false);
       setNewCaseName('');
 
-      // POWERFACTORY_FLOW: After creating a case, close the panel
+      // CANONICAL_FLOW: After creating a case, close the panel
       // User is automatically taken to SLD view (default route) with the new active case
       onClose?.();
 
@@ -237,7 +237,7 @@ export function CaseManager({
         setActiveCase(activated.id, activated.name, kind, activated.result_status);
         onCaseSelected?.(caseId);
 
-        // POWERFACTORY_FLOW: After activating a case, close the panel
+        // CANONICAL_FLOW: After activating a case, close the panel
         // User is automatically taken to SLD view (default route) with the activated case
         onClose?.();
 
@@ -300,7 +300,7 @@ export function CaseManager({
             onClick={onClose}
             className="p-1 text-gray-400 hover:text-gray-600 rounded"
           >
-            ✕
+            âś•
           </button>
         )}
       </div>
@@ -349,9 +349,9 @@ export function CaseManager({
               ? 'bg-green-600 hover:bg-green-700 text-white'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           )}
-          title={getBlockedReason('create') || 'Nowy przypadek rozpływowy'}
+          title={getBlockedReason('create') || 'Nowy przypadek rozpĹ‚ywowy'}
         >
-          + Rozpływowy
+          + RozpĹ‚ywowy
         </button>
 
         <div className="flex-1" />
@@ -376,7 +376,7 @@ export function CaseManager({
           >
             Nazwa
             {sortField === 'name' && (
-              <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              <span>{sortDirection === 'asc' ? 'â†‘' : 'â†“'}</span>
             )}
           </button>
           <button
@@ -385,7 +385,7 @@ export function CaseManager({
           >
             Status
             {sortField === 'result_status' && (
-              <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              <span>{sortDirection === 'asc' ? 'â†‘' : 'â†“'}</span>
             )}
           </button>
           <button
@@ -394,7 +394,7 @@ export function CaseManager({
           >
             Aktualizacja
             {sortField === 'updated_at' && (
-              <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+              <span>{sortDirection === 'asc' ? 'â†‘' : 'â†“'}</span>
             )}
           </button>
           <div className="w-32 text-center">Akcje</div>
@@ -404,8 +404,8 @@ export function CaseManager({
         {filteredCases.length === 0 ? (
           <div className="p-8 text-center text-gray-400">
             {searchQuery
-              ? 'Brak przypadków pasujących do wyszukiwania'
-              : 'Brak przypadków obliczeniowych. Utwórz pierwszy przypadek.'}
+              ? 'Brak przypadkĂłw pasujÄ…cych do wyszukiwania'
+              : 'Brak przypadkĂłw obliczeniowych. UtwĂłrz pierwszy przypadek.'}
           </div>
         ) : (
           filteredCases.map((caseItem) => (
@@ -599,7 +599,7 @@ function CaseRow({
               disabled={isDeleting}
               className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
             >
-              {isDeleting ? '...' : 'Usuń'}
+              {isDeleting ? '...' : 'UsuĹ„'}
             </button>
             <button
               onClick={(e) => {
@@ -664,7 +664,7 @@ function CaseRow({
                   ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   : 'bg-gray-50 text-gray-400 cursor-not-allowed'
               )}
-              title={getBlockedReason('rename') || 'Zmień nazwę'}
+              title={getBlockedReason('rename') || 'ZmieĹ„ nazwÄ™'}
             >
               Ed
             </button>
@@ -682,7 +682,7 @@ function CaseRow({
               )}
               title={getBlockedReason('clone') || 'Klonuj'}
             >
-              {isCloning ? '...' : '⎘'}
+              {isCloning ? '...' : 'âŽ'}
             </button>
             <button
               onClick={(e) => {
@@ -696,9 +696,9 @@ function CaseRow({
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
                   : 'bg-gray-50 text-gray-400 cursor-not-allowed'
               )}
-              title={getBlockedReason('delete') || 'Usuń'}
+              title={getBlockedReason('delete') || 'UsuĹ„'}
             >
-              ✕
+              âś•
             </button>
           </>
         )}
@@ -729,7 +729,7 @@ function CreateCaseDialog({
   onCancel,
 }: CreateCaseDialogProps) {
   const kindLabel =
-    kind === 'ShortCircuitCase' ? 'zwarciowy' : 'rozpływowy';
+    kind === 'ShortCircuitCase' ? 'zwarciowy' : 'rozpĹ‚ywowy';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -771,7 +771,7 @@ function CreateCaseDialog({
                 : 'bg-blue-300 cursor-not-allowed'
             )}
           >
-            {isCreating ? 'Tworzenie...' : 'Utwórz'}
+            {isCreating ? 'Tworzenie...' : 'UtwĂłrz'}
           </button>
         </div>
       </div>
@@ -780,3 +780,4 @@ function CreateCaseDialog({
 }
 
 export default CaseManager;
+

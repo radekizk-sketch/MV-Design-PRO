@@ -1,14 +1,14 @@
-# SLD Single Source of Truth Map
+﻿# SLD Single Source of Truth Map
 
 **Status:** KANONICZNY | **Wersja:** 1.1 | **Data:** 2026-02-13
-**Kontekst:** RUN #3A PR-3A-01 + RUN #3C (topology hardening) — Mapa pojedynczych zrodel prawdy dla kazdego podsystemu SLD
+**Kontekst:** RUN #3A PR-3A-01 + RUN #3C (topology hardening) â€” Mapa pojedynczych zrodel prawdy dla kazdego podsystemu SLD
 
 ---
 
 ## 1. Cel dokumentu
 
 Wskazanie jednego entrypointa (single source of truth) dla kazdego podsystemu SLD.
-Jezeli istnieja duplikaty — wskazanie ktore sa legacy i plan usuniecia.
+Jezeli istnieja duplikaty â€” wskazanie ktore sa legacy i plan usuniecia.
 
 ---
 
@@ -20,61 +20,61 @@ Jezeli istnieja duplikaty — wskazanie ktore sa legacy i plan usuniecia.
 |--------|------------------------|---------|
 | **Topologiczny layout (pozycjonowanie symboli)** | `computeTopologicalLayout()` | `frontend/src/ui/sld-editor/utils/topological-layout/topologicalLayoutEngine.ts` |
 | **Busbar feeder routing (sciezki feederow)** | `computeBusbarAutoLayout()` | `frontend/src/ui/sld/layout/orthogonalPath.ts` |
-| **Role assignment (topologia → role)** | `assignTopologicalRoles()` | `frontend/src/ui/sld-editor/utils/topological-layout/roleAssigner.ts` |
+| **Role assignment (topologia â†’ role)** | `assignTopologicalRoles()` | `frontend/src/ui/sld-editor/utils/topological-layout/roleAssigner.ts` |
 | **Geometric skeleton (tiers, busbars, slots)** | `buildGeometricSkeleton()` | `frontend/src/ui/sld-editor/utils/topological-layout/geometricSkeleton.ts` |
 | **Collision detection** | `detectSymbolCollisions()` | `frontend/src/ui/sld-editor/utils/topological-layout/collisionGuard.ts` |
 | **Backend layout (BFS)** | `build_auto_layout_diagram()` | `backend/src/application/sld/layout.py` |
-| **Geometry config (ETAP tokens)** | `DEFAULT_GEOMETRY_CONFIG` | `frontend/src/ui/sld-editor/utils/topological-layout/types.ts` |
+| **Geometry config (benchmark tokens)** | `DEFAULT_GEOMETRY_CONFIG` | `frontend/src/ui/sld-editor/utils/topological-layout/types.ts` |
 
-**Uwaga — dwa pipeline'y layoutu:**
+**Uwaga â€” dwa pipeline'y layoutu:**
 
 ```
 Pipeline A: Topological Layout Engine (frontend)
-  computeTopologicalLayout() → TopologicalLayoutResult
-  Odpowiada za: pozycjonowanie symboli w layerach (L0–L12)
+  computeTopologicalLayout() â†’ TopologicalLayoutResult
+  Odpowiada za: pozycjonowanie symboli w layerach (L0â€“L12)
 
 Pipeline B: Busbar Feeder Auto-Layout (frontend)
-  computeBusbarAutoLayout() → AutoLayoutResult
+  computeBusbarAutoLayout() â†’ AutoLayoutResult
   Odpowiada za: routing sciezek feederow wzdluz szyny
 
 Pipeline C: Backend Layout (backend)
-  build_auto_layout_diagram() → SldDiagram
+  build_auto_layout_diagram() â†’ SldDiagram
   Odpowiada za: inicjalny layout BFS przy tworzeniu diagramu
 ```
 
 **Status duplikacji:**
 - Pipeline A i B sa **komplementarne** (nie konkurencyjne): A pozycjonuje, B routuje.
-- Pipeline C (backend) jest niezalezny — generuje pozycje dla nowych diagramow.
+- Pipeline C (backend) jest niezalezny â€” generuje pozycje dla nowych diagramow.
 - **Brak jednego orkiestratora** laczacego A+B. Potrzebny w 3B.
-- `SLD_AUTO_LAYOUT_V1` feature flag w Pipeline B — rozwazyc deprecation w 3B.
+- `SLD_AUTO_LAYOUT_V1` feature flag w Pipeline B â€” rozwazyc deprecation w 3B.
 
-### 2.2 Topology Adapter — DOMAIN-DRIVEN (RUN #3C)
+### 2.2 Topology Adapter â€” DOMAIN-DRIVEN (RUN #3C)
 
 | Aspekt | Single Source of Truth | Sciezka |
 |--------|------------------------|---------|
 | **Kontrakt wejsciowy adaptera** | `TopologyInputV1` (typ) | `frontend/src/ui/sld/core/topologyInputReader.ts` |
-| **Czytnik domeny: ENM → TopologyInput** | `readTopologyFromENM()` | `frontend/src/ui/sld/core/topologyInputReader.ts` |
-| **Bridge migracyjny: symbole → TopologyInput** | `readTopologyFromSymbols()` | `frontend/src/ui/sld/core/topologyInputReader.ts` |
-| **Adapter V2: TopologyInput → VisualGraphV1** | `buildVisualGraphFromTopology()` | `frontend/src/ui/sld/core/topologyAdapterV2.ts` |
+| **Czytnik domeny: ENM â†’ TopologyInput** | `readTopologyFromENM()` | `frontend/src/ui/sld/core/topologyInputReader.ts` |
+| **Bridge migracyjny: symbole â†’ TopologyInput** | `readTopologyFromSymbols()` | `frontend/src/ui/sld/core/topologyInputReader.ts` |
+| **Adapter V2: TopologyInput â†’ VisualGraphV1** | `buildVisualGraphFromTopology()` | `frontend/src/ui/sld/core/topologyAdapterV2.ts` |
 | **Adapter V1 (deleguje do V2)** | `convertToVisualGraph()` | `frontend/src/ui/sld/core/topologyAdapterV1.ts` |
-| **Backend: graph → SLD payload** | `convert_graph_to_sld_payload()` | `backend/src/application/sld/network_graph_to_sld.py` |
-| **Backend: snapshot → SLD elements** | `project_snapshot_to_sld()` | `backend/src/network_model/sld_projection.py` |
+| **Backend: graph â†’ SLD payload** | `convert_graph_to_sld_payload()` | `backend/src/application/sld/network_graph_to_sld.py` |
+| **Backend: snapshot â†’ SLD elements** | `project_snapshot_to_sld()` | `backend/src/network_model/sld_projection.py` |
 
 **Zmiana RUN #3C:** Frontend adapter jest teraz **domain-driven** (NetworkGraph/ENM), nie symbol-driven.
-- Sciezka glowna: `readTopologyFromENM()` → `buildVisualGraphFromTopology()`
-- Sciezka bridge: `readTopologyFromSymbols()` → `buildVisualGraphFromTopology()`
+- Sciezka glowna: `readTopologyFromENM()` â†’ `buildVisualGraphFromTopology()`
+- Sciezka bridge: `readTopologyFromSymbols()` â†’ `buildVisualGraphFromTopology()`
 - Legacy `assignTopologicalRoles()` jest nadal uzywane w topologicalLayoutEngine, ale topologia pochodzi z adaptera V2.
-- AdapterV1 deleguje w calosci do V2 pipeline — zero legacy kodu.
+- AdapterV1 deleguje w calosci do V2 pipeline â€” zero legacy kodu.
 
 ### 2.3 Symbol Registry
 
 | Aspekt | Single Source of Truth | Sciezka |
 |--------|------------------------|---------|
-| **Mapowanie ElementType → EtapSymbolId** | `SymbolResolver.ts` | `frontend/src/ui/sld/SymbolResolver.ts` |
-| **Symbole SVG** | `etap_symbols/*.svg` | `frontend/src/ui/sld/etap_symbols/` |
-| **Definicje portow** | `ports.json` | `frontend/src/ui/sld/etap_symbols/ports.json` |
+| **Mapowanie ElementType â†’ benchmarkSymbolId** | `SymbolResolver.ts` | `frontend/src/ui/sld/SymbolResolver.ts` |
+| **Symbole SVG** | `canonical_symbols/*.svg` | `frontend/src/ui/sld/canonical_symbols/` |
+| **Definicje portow** | `ports.json` | `frontend/src/ui/sld/canonical_symbols/ports.json` |
 | **Rendering unifikowany** | `UnifiedSymbolRenderer.tsx` | `frontend/src/ui/sld/symbols/UnifiedSymbolRenderer.tsx` |
-| **Style ETAP** | `sldEtapStyle.ts` | `frontend/src/ui/sld/sldEtapStyle.ts` |
+| **Style benchmark** | `sldCanonicalStyle.ts` | `frontend/src/ui/sld/sldCanonicalStyle.ts` |
 
 **Status:** Brak duplikatow. Jedno zrodlo prawdy per aspekt.
 
@@ -86,7 +86,7 @@ Pipeline C: Backend Layout (backend)
 | **fitToContent()** | `types.ts` | `frontend/src/ui/sld/types.ts` |
 | **Obsluga zoom/pan** | `SLDView.tsx` | `frontend/src/ui/sld/SLDView.tsx` |
 
-**Status:** Jedno zrodlo. Camera jest transformacja afiniczna — brak reflow.
+**Status:** Jedno zrodlo. Camera jest transformacja afiniczna â€” brak reflow.
 
 ### 2.5 Overlay
 
@@ -146,7 +146,7 @@ Pipeline C: Backend Layout (backend)
 
 **Status (RUN #3C):** Frontend ma 2 zestawy golden fixtures:
 - VisualGraph: GN-SLD-01..02, GN-OZE-01..03, GN-STRESS-500 (RUN #3A)
-- TopologyAdapterV2: GN-DOM-01..07 (RUN #3C) — 7 golden domain networks
+- TopologyAdapterV2: GN-DOM-01..07 (RUN #3C) â€” 7 golden domain networks
 
 ### 2.10 Dokumentacja kanoniczna
 
@@ -169,7 +169,7 @@ Pipeline C: Backend Layout (backend)
 | Problem | Pliki | Plan |
 |---------|-------|------|
 | Dwa pipeline'y layoutu bez orkiestratora | topologicalLayoutEngine.ts + orthogonalPath.ts | 3B: Unified layout orchestrator |
-| Backend layout niezalezny od frontend | backend/layout.py vs frontend/topologicalLayoutEngine.ts | Akceptowalne — rozne etapy pipeline. Backend: initial, Frontend: interactive. |
+| Backend layout niezalezny od frontend | backend/layout.py vs frontend/topologicalLayoutEngine.ts | Akceptowalne â€” rozne etapy pipeline. Backend: initial, Frontend: interactive. |
 | `SLD_AUTO_LAYOUT_V1` feature flag | sld/layout/index.ts | PR-3A-03: Guard, 3B: Deprecation/rename |
 
 ### 3.2 Brak duplikatow (potwierdzone)
@@ -178,13 +178,13 @@ Pipeline C: Backend Layout (backend)
 - Camera: ViewportState jest jedynym typem
 - Overlay Engine: OverlayEngine.ts jest jedynym silnikiem
 - Editor Store: SldEditorStore.ts jest jedynym store'em edytora
-- Style ETAP: sldEtapStyle.ts jest jedynym zrodlem (voltageColors.ts oznaczony jako legacy — prefer sldEtapStyle)
+- Style benchmark: sldCanonicalStyle.ts jest jedynym zrodlem (voltageColors.ts oznaczony jako legacy â€” prefer sldbenchmarkStyle)
 
 ### 3.3 Legacy do monitorowania
 
 | Element | Status | Uwagi |
 |---------|--------|-------|
-| `voltageColors.ts` | Legacy (prefer sldEtapStyle.ts) | Nie usuwac jeszcze — moze byc w uzyciu |
+| `voltageColors.ts` | Legacy (prefer sldCanonicalStyle.ts) | Nie usuwac jeszcze â€” moze byc w uzyciu |
 | `SLD_AUTO_LAYOUT_V1` flag | Active (default OFF) | Rozwazyc deprecation w 3B |
 
 ---
@@ -193,51 +193,52 @@ Pipeline C: Backend Layout (backend)
 
 ```
 NetworkModel (backend)
-       │
-       ▼
+       â”‚
+       â–Ľ
    Snapshot (frozen, fingerprint SHA-256)
-       │
-       ├──────────────────────────────────────────────┐
-       ▼                                              ▼
+       â”‚
+       â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+       â–Ľ                                              â–Ľ
    EnergyNetworkModel (API)                 AnySldSymbol[] (editor)
-       │                                              │
-       ▼                                              ▼
+       â”‚                                              â”‚
+       â–Ľ                                              â–Ľ
    readTopologyFromENM()              readTopologyFromSymbols()
    (sciezka glowna)                   (bridge migracyjny)
-       │                                              │
-       └──────────────┬───────────────────────────────┘
-                      ▼
+       â”‚                                              â”‚
+       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                      â–Ľ
               TopologyInputV1 (kanoniczny kontrakt)
-                      │
-                      ▼
-          buildVisualGraphFromTopology()  ← TopologyAdapterV2
+                      â”‚
+                      â–Ľ
+          buildVisualGraphFromTopology()  â† TopologyAdapterV2
           - ZERO self-edges (throw Error)
           - ZERO string heuristics
           - BFS spanning tree segmentacja
           - Stacje A/B/C/D z domeny
           - PV/BESS z GeneratorKind
-                      │
-                      ▼
+                      â”‚
+                      â–Ľ
               VisualGraphV1 (zamrozony kontrakt)
-                      │
-                      ▼
+                      â”‚
+                      â–Ľ
    Layout Engine (single orchestrator)
-   VisualGraphV1 → LayoutResult (positions, paths)
-       │
-       ├─ Phase 1: Role Assignment
-       ├─ Phase 2-4: Geometric Skeleton
-       ├─ Phase 5: Busbar Feeder Routing
-       └─ Phase 6: Collision Guard
-       │
-       ▼
+   VisualGraphV1 â†’ LayoutResult (positions, paths)
+       â”‚
+       â”śâ”€ Phase 1: Role Assignment
+       â”śâ”€ Phase 2-4: Geometric Skeleton
+       â”śâ”€ Phase 5: Busbar Feeder Routing
+       â””â”€ Phase 6: Collision Guard
+       â”‚
+       â–Ľ
    Camera (affine transform, no-reflow)
-       │
-       ▼
+       â”‚
+       â–Ľ
    Renderer (thin, topology-unaware)
-       │
-       ▼
+       â”‚
+       â–Ľ
    Overlay (token-only, geometry-preserving)
-       │
-       ▼
+       â”‚
+       â–Ľ
    Export (SVG/PDF/PNG, world coords)
 ```
+

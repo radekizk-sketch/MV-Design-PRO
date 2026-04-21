@@ -69,7 +69,7 @@ Dla kazdego kodu zdefiniowano:
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Fix Action ID | Fix Navigation |
 |-----|--------|-----------|--------|--------------|---------------|----------------|
 | `station.required_field_missing` | STATIONS | 3 | BLOCKER | Stacja nie ma wymaganego pola SN | `fix_station_field` | panel: `inspector`, tab: `pola`, modal: `add_field` |
-| `station.transformer_required` | STATIONS | 2 | BLOCKER | Stacja SN/nN wymaga transformatora | `fix_station_transformer` | panel: `inspector`, tab: `transformator`, modal: `add_transformer` |
+| `station.transformer_required` | STATIONS | 2 | BLOCKER | Stacja SN/nN wymaga transformatora | `fix_station_transformer` | panel: `inspector`, tab: `transformator`, modal: `add_transformer_sn_nn` |
 | `station.nn_bus_required` | STATIONS | 2 | BLOCKER | Stacja nie ma szyny nN | `fix_station_nn_bus` | panel: `inspector`, tab: `nn`, modal: `add_nn_bus` |
 | `station.nn_outgoing_min_1` | STATIONS | 4 | WARNING | Stacja powinna miec co najmniej 1 odplyw nN | `fix_station_outgoing` | panel: `inspector`, tab: `nn`, modal: `add_nn_outgoing` |
 
@@ -77,7 +77,7 @@ Dla kazdego kodu zdefiniowano:
 
 | Kod | Obszar | Priorytet | Poziom | Komunikat PL | Fix Action ID | Fix Navigation |
 |-----|--------|-----------|--------|--------------|---------------|----------------|
-| `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierscien SN wymaga punktu normalnie otwartego (NOP) | `fix_ring_nop` | panel: `sld`, modal: `set_nop` |
+| `ring.nop_required` | TOPOLOGY | 3 | BLOCKER | Pierscien SN wymaga punktu normalnie otwartego (NOP) | `fix_ring_nop` | panel: `sld`, modal: `set_normal_open_point` |
 | `terminal.not_open` | TOPOLOGY | 5 | INFO | Terminal magistrali jest zajety | `null` | `null` |
 | `ring.endpoints_invalid` | TOPOLOGY | 2 | BLOCKER | Punkty koncowe pierscienia sa nieprawidlowe | `fix_ring_endpoints` | panel: `sld` |
 

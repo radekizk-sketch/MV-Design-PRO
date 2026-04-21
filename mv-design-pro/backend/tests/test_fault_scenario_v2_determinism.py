@@ -12,20 +12,18 @@ These tests serve as machine-verifiable determinism proofs.
 
 import hashlib
 import json
-import pytest
-from uuid import UUID, uuid4
+from uuid import UUID
 
+import pytest
 from domain.fault_scenario import (
     FaultImpedance,
     FaultLocation,
     FaultMode,
     FaultScenario,
     FaultType,
-    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
 )
-
 
 FIXED_CASE_ID = UUID("12345678-1234-1234-1234-123456789abc")
 
@@ -125,9 +123,7 @@ class TestDeterminismProofSortedKeys:
             "analysis_type": s.analysis_type.value,
             "arc_params": s.arc_params,
             "config": s.config.to_dict(),
-            "fault_impedance": (
-                s.fault_impedance.to_dict() if s.fault_impedance else None
-            ),
+            "fault_impedance": (s.fault_impedance.to_dict() if s.fault_impedance else None),
             "fault_impedance_type": s.fault_impedance_type.value,
             "fault_mode": s.fault_mode.value,
             "fault_type": s.fault_type.value,
@@ -187,7 +183,9 @@ class TestV2FieldsInHash:
             fault_mode=FaultMode.IMPEDANCE,
             fault_impedance=FaultImpedance(r_ohm=1.0, x_ohm=2.0),
         )
-        assert compute_scenario_content_hash(s_metallic) != compute_scenario_content_hash(s_impedance)
+        assert compute_scenario_content_hash(s_metallic) != compute_scenario_content_hash(
+            s_impedance
+        )
 
     def test_fault_impedance_r_changes_hash(self):
         s1 = new_fault_scenario(
@@ -228,13 +226,17 @@ class TestV2FieldsInHash:
             study_case_id=FIXED_CASE_ID,
             name="Alpha test",
             fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="line-1", location_type="BRANCH_POINT", position=0.3),
+            location=FaultLocation(
+                element_ref="line-1", location_type="BRANCH_POINT", position=0.3
+            ),
         )
         s2 = new_fault_scenario(
             study_case_id=FIXED_CASE_ID,
             name="Alpha test",
             fault_type=FaultType.SC_3F,
-            location=FaultLocation(element_ref="line-1", location_type="BRANCH_POINT", position=0.7),
+            location=FaultLocation(
+                element_ref="line-1", location_type="BRANCH_POINT", position=0.7
+            ),
         )
         assert compute_scenario_content_hash(s1) != compute_scenario_content_hash(s2)
 
@@ -251,7 +253,9 @@ class TestGrepZeroPCC:
 
     def test_no_pcc_in_fault_scenario_domain(self):
         import inspect
+
         import domain.fault_scenario as module
+
         source = inspect.getsource(module)
         # Allow 'PCC' only inside comments about this prohibition itself
         lines = source.split("\n")
@@ -277,10 +281,10 @@ class TestSolverUntouched:
     def test_solver_imports_unchanged(self):
         """Verify solver can be imported and has expected public API."""
         from network_model.solvers.short_circuit_iec60909 import (
-            ShortCircuitIEC60909Solver,
-            ShortCircuitResult,
             EXPECTED_SHORT_CIRCUIT_RESULT_KEYS,
+            ShortCircuitIEC60909Solver,
         )
+
         # Verify expected API exists
         assert hasattr(ShortCircuitIEC60909Solver, "compute_3ph_short_circuit")
         assert hasattr(ShortCircuitIEC60909Solver, "compute_1ph_short_circuit")
@@ -291,7 +295,6 @@ class TestSolverUntouched:
         """Verify binding function signature is unchanged."""
         from application.solvers.short_circuit_binding import (
             execute_short_circuit,
-            ShortCircuitBindingResult,
-            ShortCircuitBindingError,
         )
+
         assert callable(execute_short_circuit)

@@ -1,13 +1,13 @@
 """Tests for ENM topology and readiness endpoints."""
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from api.enm import router as enm_router
 from enm.canonical_analysis import reset_canonical_runs
 from enm.models import EnergyNetworkModel
 from enm.store import reset_enm_store, set_enm
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 from tests.catalog_test_helpers import gpz_source_record
 
 

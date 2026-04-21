@@ -23,13 +23,23 @@ PR-24 FIX: All calls pass required `name` parameter.
 
 from __future__ import annotations
 
-import copy
 from uuid import uuid4
 
 import numpy as np
 import pytest
-
+from application.execution_engine.service import ExecutionEngineService
+from application.fault_scenario_service import (
+    FaultScenarioDuplicateError,
+    FaultScenarioNotFoundError,
+    FaultScenarioService,
+)
+from domain.execution import (
+    ExecutionAnalysisType,
+    ResultSet,
+    RunStatus,
+)
 from domain.fault_scenario import (
+    FAULT_TYPE_TO_ANALYSIS,
     FaultLocation,
     FaultScenario,
     FaultScenarioValidationError,
@@ -37,29 +47,13 @@ from domain.fault_scenario import (
     ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
-    validate_fault_scenario,
-    FAULT_TYPE_TO_ANALYSIS,
-)
-from domain.execution import (
-    ExecutionAnalysisType,
-    ResultSet,
-    RunStatus,
 )
 from domain.study_case import StudyCaseConfig, new_study_case
-from application.fault_scenario_service import (
-    FaultScenarioDuplicateError,
-    FaultScenarioNotFoundError,
-    FaultScenarioService,
-)
-from application.execution_engine.service import ExecutionEngineService
-from application.execution_engine.errors import RunBlockedError
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
-
 
 # =============================================================================
 # Fixtures
@@ -76,52 +70,114 @@ def _create_golden_graph() -> NetworkGraph:
     """Golden MV network for testing (same as PR-18)."""
     graph = NetworkGraph()
 
-    graph.add_node(Node(
-        id="SLACK", name="Stacja 110kV", node_type=NodeType.PQ,
-        voltage_level=110.0, active_power=0.0, reactive_power=0.0,
-    ))
-    graph.add_node(Node(
-        id="BUS_MV", name="Szyna SN 20kV", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=5.0, reactive_power=2.0,
-    ))
-    graph.add_node(Node(
-        id="BUS_LOAD", name="Szyna odbiorcza 20kV", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=10.0, reactive_power=4.0,
-    ))
-    graph.add_node(Node(
-        id="GND", name="Uziemienie", node_type=NodeType.PQ,
-        voltage_level=20.0, active_power=0.0, reactive_power=0.0,
-    ))
+    graph.add_node(
+        Node(
+            id="SLACK",
+            name="Stacja 110kV",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="BUS_MV",
+            name="Szyna SN 20kV",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="BUS_LOAD",
+            name="Szyna odbiorcza 20kV",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=10.0,
+            reactive_power=4.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="GND",
+            name="Uziemienie",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
 
-    graph.add_branch(TransformerBranch(
-        id="T1", name="Transformator T1", branch_type=BranchType.TRANSFORMER,
-        from_node_id="SLACK", to_node_id="BUS_MV", in_service=True,
-        rated_power_mva=25.0, voltage_hv_kv=110.0, voltage_lv_kv=20.0,
-        uk_percent=10.0, pk_kw=120.0, i0_percent=0.5, p0_kw=25.0,
-        vector_group="Dyn11", tap_position=0, tap_step_percent=2.5,
-        type_ref="TRAFO_110_20_25MVA",
-    ))
+    graph.add_branch(
+        TransformerBranch(
+            id="T1",
+            name="Transformator T1",
+            branch_type=BranchType.TRANSFORMER,
+            from_node_id="SLACK",
+            to_node_id="BUS_MV",
+            in_service=True,
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=10.0,
+            pk_kw=120.0,
+            i0_percent=0.5,
+            p0_kw=25.0,
+            vector_group="Dyn11",
+            tap_position=0,
+            tap_step_percent=2.5,
+            type_ref="TRAFO_110_20_25MVA",
+        )
+    )
 
-    graph.add_branch(LineBranch(
-        id="C1", name="Kabel C1", branch_type=BranchType.CABLE,
-        from_node_id="BUS_MV", to_node_id="BUS_LOAD", in_service=True,
-        r_ohm_per_km=0.125, x_ohm_per_km=0.08, b_us_per_km=260.0,
-        length_km=5.0, rated_current_a=400.0, type_ref="YAKY_3x240",
-    ))
+    graph.add_branch(
+        LineBranch(
+            id="C1",
+            name="Kabel C1",
+            branch_type=BranchType.CABLE,
+            from_node_id="BUS_MV",
+            to_node_id="BUS_LOAD",
+            in_service=True,
+            r_ohm_per_km=0.125,
+            x_ohm_per_km=0.08,
+            b_us_per_km=260.0,
+            length_km=5.0,
+            rated_current_a=400.0,
+            type_ref="YAKY_3x240",
+        )
+    )
 
-    graph.add_branch(LineBranch(
-        id="REF", name="Ref GND", branch_type=BranchType.LINE,
-        from_node_id="BUS_LOAD", to_node_id="GND", in_service=True,
-        r_ohm_per_km=1e9, x_ohm_per_km=0.0, b_us_per_km=0.0,
-        length_km=1.0, rated_current_a=1.0,
-    ))
+    graph.add_branch(
+        LineBranch(
+            id="REF",
+            name="Ref GND",
+            branch_type=BranchType.LINE,
+            from_node_id="BUS_LOAD",
+            to_node_id="GND",
+            in_service=True,
+            r_ohm_per_km=1e9,
+            x_ohm_per_km=0.0,
+            b_us_per_km=0.0,
+            length_km=1.0,
+            rated_current_a=1.0,
+        )
+    )
 
-    graph.add_inverter_source(InverterSource(
-        id="INV1", name="Falownik PV 1", node_id="BUS_LOAD",
-        in_rated_a=100.0, k_sc=1.1,
-        contributes_negative_sequence=False,
-        contributes_zero_sequence=False, in_service=True,
-    ))
+    graph.add_inverter_source(
+        InverterSource(
+            id="INV1",
+            name="Falownik PV 1",
+            node_id="BUS_LOAD",
+            in_rated_a=100.0,
+            k_sc=1.1,
+            contributes_negative_sequence=False,
+            contributes_zero_sequence=False,
+            in_service=True,
+        )
+    )
 
     return graph
 
@@ -246,14 +302,18 @@ class TestContentHashDeterminism:
         cfg = ShortCircuitConfig(c_factor=1.10)
 
         s1 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name="Hash test",
+            study_case_id=MOCK_CASE_ID,
+            name="Hash test",
             fault_type=FaultType.SC_3F,
-            location=loc, config=cfg,
+            location=loc,
+            config=cfg,
         )
         s2 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name="Hash test",
+            study_case_id=MOCK_CASE_ID,
+            name="Hash test",
             fault_type=FaultType.SC_3F,
-            location=loc, config=cfg,
+            location=loc,
+            config=cfg,
         )
         assert s1.content_hash == s2.content_hash
 
@@ -261,12 +321,14 @@ class TestContentHashDeterminism:
         """Different fault_type → different content_hash."""
         loc = FaultLocation(element_ref="BUS_1", location_type="BUS")
         s1 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=loc,
         )
         s2 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_2F,
             location=loc,
         )
@@ -275,12 +337,14 @@ class TestContentHashDeterminism:
     def test_different_location_different_hash(self):
         """Different location → different content_hash."""
         s1 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
         )
         s2 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_2", location_type="BUS"),
         )
@@ -290,21 +354,26 @@ class TestContentHashDeterminism:
         """Different config → different content_hash."""
         loc = FaultLocation(element_ref="BUS_1", location_type="BUS")
         s1 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
-            location=loc, config=ShortCircuitConfig(c_factor=1.10),
+            location=loc,
+            config=ShortCircuitConfig(c_factor=1.10),
         )
         s2 = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
-            location=loc, config=ShortCircuitConfig(c_factor=1.05),
+            location=loc,
+            config=ShortCircuitConfig(c_factor=1.05),
         )
         assert s1.content_hash != s2.content_hash
 
     def test_hash_is_sha256(self):
         """Content hash is a valid SHA-256 hex string."""
         scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
         )
@@ -314,7 +383,8 @@ class TestContentHashDeterminism:
     def test_hash_recompute_matches(self):
         """Recomputed hash matches stored hash."""
         scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
         )
@@ -324,12 +394,16 @@ class TestContentHashDeterminism:
         """study_case_id does NOT affect content_hash (same physics)."""
         loc = FaultLocation(element_ref="B1", location_type="BUS")
         s1 = new_fault_scenario(
-            study_case_id=uuid4(), name=DEFAULT_NAME,
-            fault_type=FaultType.SC_3F, location=loc,
+            study_case_id=uuid4(),
+            name=DEFAULT_NAME,
+            fault_type=FaultType.SC_3F,
+            location=loc,
         )
         s2 = new_fault_scenario(
-            study_case_id=uuid4(), name=DEFAULT_NAME,
-            fault_type=FaultType.SC_3F, location=loc,
+            study_case_id=uuid4(),
+            name=DEFAULT_NAME,
+            fault_type=FaultType.SC_3F,
+            location=loc,
         )
         assert s1.content_hash == s2.content_hash
 
@@ -346,7 +420,8 @@ class TestValidation:
         """SC_1F without z0_bus_data raises FaultScenarioValidationError."""
         with pytest.raises(FaultScenarioValidationError, match="impedancji zerowej"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_1F,
                 location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
             )
@@ -354,7 +429,8 @@ class TestValidation:
     def test_sc_1f_with_z0_passes(self):
         """SC_1F with z0_bus_data passes validation."""
         scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_1F,
             location=FaultLocation(element_ref="BUS_1", location_type="BUS"),
             z0_bus_data={"z0_11": 1.0},
@@ -366,7 +442,8 @@ class TestValidation:
         """BUS location with position raises."""
         with pytest.raises(FaultScenarioValidationError, match="BUS nie może mieć pozycji"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS", position=0.5),
             )
@@ -375,7 +452,8 @@ class TestValidation:
         """BRANCH location without position raises."""
         with pytest.raises(FaultScenarioValidationError, match="wymaga pozycji"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH"),
             )
@@ -384,7 +462,8 @@ class TestValidation:
         """BRANCH position outside (0,1) raises."""
         with pytest.raises(FaultScenarioValidationError, match="zakresie"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH", position=0.0),
             )
@@ -393,7 +472,8 @@ class TestValidation:
         """BRANCH position = 1.0 raises (must be strictly < 1)."""
         with pytest.raises(FaultScenarioValidationError, match="zakresie"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="C1", location_type="BRANCH", position=1.0),
             )
@@ -401,7 +481,8 @@ class TestValidation:
     def test_branch_valid_position_passes(self):
         """BRANCH location with valid position passes."""
         scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="C1", location_type="BRANCH", position=0.5),
         )
@@ -411,7 +492,8 @@ class TestValidation:
         """Negative c_factor raises."""
         with pytest.raises(FaultScenarioValidationError, match="c_factor"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS"),
                 config=ShortCircuitConfig(c_factor=-1.0),
@@ -421,7 +503,8 @@ class TestValidation:
         """Zero thermal_time_seconds raises."""
         with pytest.raises(FaultScenarioValidationError, match="thermal_time"):
             new_fault_scenario(
-                study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+                study_case_id=MOCK_CASE_ID,
+                name=DEFAULT_NAME,
                 fault_type=FaultType.SC_3F,
                 location=FaultLocation(element_ref="B1", location_type="BUS"),
                 config=ShortCircuitConfig(thermal_time_seconds=0.0),
@@ -430,7 +513,8 @@ class TestValidation:
     def test_sc_3f_no_z0_passes(self):
         """SC_3F does not require z0_bus_data."""
         scenario = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name=DEFAULT_NAME,
+            study_case_id=MOCK_CASE_ID,
+            name=DEFAULT_NAME,
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="B1", location_type="BUS"),
         )
@@ -694,12 +778,16 @@ class TestExecutionEngineScenarioIntegration:
         )
 
         _, rs_a = engine_a.execute_run_by_scenario(
-            run_a.id, fault_scenario=scenario, graph=graph,
+            run_a.id,
+            fault_scenario=scenario,
+            graph=graph,
             readiness_snapshot={"ready": True},
             validation_snapshot={"is_valid": True},
         )
         _, rs_b = engine_b.execute_run_by_scenario(
-            run_b.id, fault_scenario=scenario, graph=graph,
+            run_b.id,
+            fault_scenario=scenario,
+            graph=graph,
             readiness_snapshot={"ready": True},
             validation_snapshot={"is_valid": True},
         )
@@ -711,12 +799,14 @@ class TestExecutionEngineScenarioIntegration:
         graph = _create_golden_graph()
 
         scenario_3f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name="Porównanie 3F",
+            study_case_id=MOCK_CASE_ID,
+            name="Porównanie 3F",
             fault_type=FaultType.SC_3F,
             location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
         )
         scenario_2f = new_fault_scenario(
-            study_case_id=MOCK_CASE_ID, name="Porównanie 2F",
+            study_case_id=MOCK_CASE_ID,
+            name="Porównanie 2F",
             fault_type=FaultType.SC_2F,
             location=FaultLocation(element_ref="BUS_MV", location_type="BUS"),
         )
@@ -736,12 +826,16 @@ class TestExecutionEngineScenarioIntegration:
         )
 
         _, rs_3f = engine_3f.execute_run_by_scenario(
-            run_3f.id, fault_scenario=scenario_3f, graph=graph,
+            run_3f.id,
+            fault_scenario=scenario_3f,
+            graph=graph,
             readiness_snapshot={"ready": True},
             validation_snapshot={"is_valid": True},
         )
         _, rs_2f = engine_2f.execute_run_by_scenario(
-            run_2f.id, fault_scenario=scenario_2f, graph=graph,
+            run_2f.id,
+            fault_scenario=scenario_2f,
+            graph=graph,
             readiness_snapshot={"ready": True},
             validation_snapshot={"is_valid": True},
         )
@@ -759,14 +853,16 @@ class TestFaultScenarioApi:
 
     @pytest.fixture
     def client(self):
-        from fastapi.testclient import TestClient
         from api.main import app
+        from fastapi.testclient import TestClient
+
         return TestClient(app)
 
     @pytest.fixture(autouse=True)
     def reset_service(self):
         """Reset service state between tests."""
         from api.fault_scenarios import get_fault_scenario_service
+
         service = get_fault_scenario_service()
         service._scenarios.clear()
         service._case_scenarios.clear()
@@ -944,7 +1040,7 @@ class TestResultSetExtension:
 
     def test_resultset_without_scenario_fields(self):
         """Existing ResultSet works without fault_scenario fields."""
-        from domain.execution import build_result_set, ElementResult
+        from domain.execution import build_result_set
 
         rs = build_result_set(
             run_id=uuid4(),

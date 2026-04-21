@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results as Overlay (never modifies model)
  * - sld_rules.md § C.2: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Loading colors (green/yellow/red)
+ * - ui_canonical_parity.md: Loading colors (green/yellow/red)
  * - AGENTS.md: NOT-A-SOLVER, no physics in UI
  *
  * FEATURES:

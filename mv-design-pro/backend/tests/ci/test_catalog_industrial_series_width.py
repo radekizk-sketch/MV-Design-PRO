@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogStatus, CatalogVerificationStatus
 
@@ -42,7 +41,9 @@ def test_bess_catalog_has_industrial_series_width(catalog):
 def test_source_and_converter_records_expose_quality_metadata(catalog):
     for item in catalog.list_source_system_types():
         data = item.to_dict()
-        assert data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+        assert (
+            data["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+        )
         assert data["catalog_status"] == CatalogStatus.PRODUKCYJNY_V1.value
         assert data["source_reference"]
         assert data["contract_version"]

@@ -18,7 +18,6 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -40,8 +39,9 @@ from application.proof_engine.types import (
 @dataclass
 class QUCharacteristicPoint:
     """Point on Q(U) characteristic curve."""
-    u_pu: float       # Voltage [p.u.]
-    q_pu: float       # Reactive power [p.u.]
+
+    u_pu: float  # Voltage [p.u.]
+    q_pu: float  # Reactive power [p.u.]
 
 
 @dataclass
@@ -64,18 +64,16 @@ class QURegulationProofInput:
     qu_characteristic: list[QUCharacteristicPoint]
 
     # Dead-band parameters (NC RfG)
-    u_deadband_low_pu: float = 0.98    # Lower dead-band limit
-    u_deadband_high_pu: float = 1.02   # Upper dead-band limit
-    q_slope_pu_per_pu: float = 4.0     # Slope outside dead-band
+    u_deadband_low_pu: float = 0.98  # Lower dead-band limit
+    u_deadband_high_pu: float = 1.02  # Upper dead-band limit
+    q_slope_pu_per_pu: float = 4.0  # Slope outside dead-band
 
     # Voltage limits (operator requirements)
-    u_min_pu: float = 0.95    # Minimum voltage ±5% Un
-    u_max_pu: float = 1.05    # Maximum voltage ±5% Un
+    u_min_pu: float = 0.95  # Minimum voltage ±5% Un
+    u_max_pu: float = 1.05  # Maximum voltage ±5% Un
 
     # Simulation results at various generation levels
-    generation_levels: list[float] = field(
-        default_factory=lambda: [0.0, 0.25, 0.5, 0.75, 1.0]
-    )
+    generation_levels: list[float] = field(default_factory=lambda: [0.0, 0.25, 0.5, 0.75, 1.0])
     voltages_at_oze_pu: list[float] = field(default_factory=list)
     q_injected_mvar: list[float] = field(default_factory=list)
     voltages_at_buses_pu: list[list[float]] = field(default_factory=list)
@@ -110,7 +108,10 @@ def _pv(symbol: str, value: float, unit: str, source_key: str) -> ProofValue:
 def _sym(symbol: str, unit: str, desc: str, key: str) -> SymbolDefinition:
     """Shorthand to create a SymbolDefinition."""
     return SymbolDefinition(
-        symbol=symbol, unit=unit, description_pl=desc, mapping_key=key,
+        symbol=symbol,
+        unit=unit,
+        description_pl=desc,
+        mapping_key=key,
     )
 
 
@@ -151,10 +152,8 @@ class QURegulationProofPack:
             symbols=(
                 _sym("Q", "Mvar", "Moc bierna regulatora", "q_mvar"),
                 _sym("U", "p.u.", "Napięcie w punkcie przyłączenia", "u_pu"),
-                _sym("U_{db,low}", "p.u.", "Dolna granica strefy martwej",
-                     "u_deadband_low_pu"),
-                _sym("U_{db,high}", "p.u.", "Górna granica strefy martwej",
-                     "u_deadband_high_pu"),
+                _sym("U_{db,low}", "p.u.", "Dolna granica strefy martwej", "u_deadband_low_pu"),
+                _sym("U_{db,high}", "p.u.", "Górna granica strefy martwej", "u_deadband_high_pu"),
                 _sym("Q_{max}", "Mvar", "Maksymalna moc bierna", "q_max_mvar"),
             ),
         )
@@ -167,30 +166,26 @@ class QURegulationProofPack:
         )
         unit_checks.append(uc_qu)
 
-        qu_desc_parts = [
-            f"({p.u_pu:.3f}, {p.q_pu:.3f})"
-            for p in data.qu_characteristic
-        ]
+        qu_desc_parts = [f"({p.u_pu:.3f}, {p.q_pu:.3f})" for p in data.qu_characteristic]
         qu_desc = ", ".join(qu_desc_parts) if qu_desc_parts else "brak danych"
 
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("QU", 1),
-            step_number=1,
-            title_pl="Charakterystyka Q(U) zadana",
-            equation=eq_qu,
-            input_values=(
-                _pv("U_{db,low}", data.u_deadband_low_pu, "p.u.",
-                     "u_deadband_low_pu"),
-                _pv("U_{db,high}", data.u_deadband_high_pu, "p.u.",
-                     "u_deadband_high_pu"),
-                _pv("k_{slope}", data.q_slope_pu_per_pu, "p.u./p.u.",
-                     "q_slope_pu_per_pu"),
-                _pv("Q_{max}", data.q_max_mvar, "Mvar", "q_max_mvar"),
-            ),
-            substitution_latex=f"Punkty: {qu_desc}",
-            result=_pv("Q_{max}", data.q_max_mvar, "Mvar", "q_max_mvar"),
-            unit_check=uc_qu,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("QU", 1),
+                step_number=1,
+                title_pl="Charakterystyka Q(U) zadana",
+                equation=eq_qu,
+                input_values=(
+                    _pv("U_{db,low}", data.u_deadband_low_pu, "p.u.", "u_deadband_low_pu"),
+                    _pv("U_{db,high}", data.u_deadband_high_pu, "p.u.", "u_deadband_high_pu"),
+                    _pv("k_{slope}", data.q_slope_pu_per_pu, "p.u./p.u.", "q_slope_pu_per_pu"),
+                    _pv("Q_{max}", data.q_max_mvar, "Mvar", "q_max_mvar"),
+                ),
+                substitution_latex=f"Punkty: {qu_desc}",
+                result=_pv("Q_{max}", data.q_max_mvar, "Mvar", "q_max_mvar"),
+                unit_check=uc_qu,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Steps 2..N: Voltage analysis at various generation levels
@@ -202,10 +197,8 @@ class QURegulationProofPack:
             standard_ref="NC RfG / IRiESD",
             symbols=(
                 _sym("U_{OZE}", "p.u.", "Napięcie w punkcie OZE", "u_oze_pu"),
-                _sym("U_{min}", "p.u.", "Minimalne dopuszczalne napięcie",
-                     "u_min_pu"),
-                _sym("U_{max}", "p.u.", "Maksymalne dopuszczalne napięcie",
-                     "u_max_pu"),
+                _sym("U_{min}", "p.u.", "Minimalne dopuszczalne napięcie", "u_min_pu"),
+                _sym("U_{max}", "p.u.", "Maksymalne dopuszczalne napięcie", "u_max_pu"),
             ),
         )
 
@@ -213,16 +206,8 @@ class QURegulationProofPack:
         qu_compliant = True
 
         for i, gen_level in enumerate(data.generation_levels):
-            u_oze = (
-                data.voltages_at_oze_pu[i]
-                if i < len(data.voltages_at_oze_pu)
-                else 1.0
-            )
-            q_inj = (
-                data.q_injected_mvar[i]
-                if i < len(data.q_injected_mvar)
-                else 0.0
-            )
+            u_oze = data.voltages_at_oze_pu[i] if i < len(data.voltages_at_oze_pu) else 1.0
+            q_inj = data.q_injected_mvar[i] if i < len(data.q_injected_mvar) else 0.0
 
             within = data.u_min_pu <= u_oze <= data.u_max_pu
             if not within:
@@ -246,28 +231,29 @@ class QURegulationProofPack:
             )
             unit_checks.append(uc_v)
 
-            steps.append(ProofStep(
-                step_id=ProofStep.generate_step_id("QU", 2 + i),
-                step_number=2 + i,
-                title_pl=f"Punkt pracy: generacja {gen_level*100:.0f}% P_n",
-                equation=eq_voltage,
-                input_values=(
-                    _pv("P/P_n", gen_level, "-", "gen_level"),
-                    _pv("U_{OZE}", u_oze, "p.u.", "u_oze_pu"),
-                    _pv("Q_{inj}", q_inj, "Mvar", "q_injected_mvar"),
-                ),
-                substitution_latex=(
-                    f"$${data.u_min_pu} \\leq {u_oze:.4f} "
-                    f"\\leq {data.u_max_pu}$$"
-                ),
-                result=_pv(
-                    "\\mathrm{within\\_limits}",
-                    1.0 if within else 0.0,
-                    "-",
-                    "within_limits",
-                ),
-                unit_check=uc_v,
-            ))
+            steps.append(
+                ProofStep(
+                    step_id=ProofStep.generate_step_id("QU", 2 + i),
+                    step_number=2 + i,
+                    title_pl=f"Punkt pracy: generacja {gen_level*100:.0f}% P_n",
+                    equation=eq_voltage,
+                    input_values=(
+                        _pv("P/P_n", gen_level, "-", "gen_level"),
+                        _pv("U_{OZE}", u_oze, "p.u.", "u_oze_pu"),
+                        _pv("Q_{inj}", q_inj, "Mvar", "q_injected_mvar"),
+                    ),
+                    substitution_latex=(
+                        f"$${data.u_min_pu} \\leq {u_oze:.4f} " f"\\leq {data.u_max_pu}$$"
+                    ),
+                    result=_pv(
+                        "\\mathrm{within\\_limits}",
+                        1.0 if within else 0.0,
+                        "-",
+                        "within_limits",
+                    ),
+                    unit_check=uc_v,
+                )
+            )
 
         # ------------------------------------------------------------------
         # Final step: Summary
@@ -284,28 +270,32 @@ class QURegulationProofPack:
             ),
         )
         uc_sum = UnitCheckResult(
-            passed=True, expected_unit="-", computed_unit="-",
+            passed=True,
+            expected_unit="-",
+            computed_unit="-",
         )
         unit_checks.append(uc_sum)
 
-        steps.append(ProofStep(
-            step_id=ProofStep.generate_step_id("QU", 2 + n_gen),
-            step_number=2 + n_gen,
-            title_pl="Podsumowanie regulacji Q(U)",
-            equation=eq_summary,
-            input_values=(
-                _pv("U_{min}", data.u_min_pu, "p.u.", "u_min_pu"),
-                _pv("U_{max}", data.u_max_pu, "p.u.", "u_max_pu"),
-            ),
-            substitution_latex="",
-            result=_pv(
-                "\\mathrm{compliance}",
-                1.0 if (all_within_limits and qu_compliant) else 0.0,
-                "-",
-                "compliance",
-            ),
-            unit_check=uc_sum,
-        ))
+        steps.append(
+            ProofStep(
+                step_id=ProofStep.generate_step_id("QU", 2 + n_gen),
+                step_number=2 + n_gen,
+                title_pl="Podsumowanie regulacji Q(U)",
+                equation=eq_summary,
+                input_values=(
+                    _pv("U_{min}", data.u_min_pu, "p.u.", "u_min_pu"),
+                    _pv("U_{max}", data.u_max_pu, "p.u.", "u_max_pu"),
+                ),
+                substitution_latex="",
+                result=_pv(
+                    "\\mathrm{compliance}",
+                    1.0 if (all_within_limits and qu_compliant) else 0.0,
+                    "-",
+                    "compliance",
+                ),
+                unit_check=uc_sum,
+            )
+        )
 
         # ------------------------------------------------------------------
         # Assemble document
@@ -326,32 +316,37 @@ class QURegulationProofPack:
             unit_check_passed=all_uc_passed,
             key_results={
                 "voltages_within_limits": _pv(
-                    "V_{OK}", 1.0 if all_within_limits else 0.0, "-",
+                    "V_{OK}",
+                    1.0 if all_within_limits else 0.0,
+                    "-",
                     "voltages_within_limits",
                 ),
                 "qu_compliance": _pv(
-                    "QU_{OK}", 1.0 if qu_compliant else 0.0, "-",
+                    "QU_{OK}",
+                    1.0 if qu_compliant else 0.0,
+                    "-",
                     "qu_compliance",
                 ),
                 "p_nominal_mw": _pv(
-                    "P_n", data.p_nominal_mw, "MW", "p_nominal_mw",
+                    "P_n",
+                    data.p_nominal_mw,
+                    "MW",
+                    "p_nominal_mw",
                 ),
                 "q_max_mvar": _pv(
-                    "Q_{max}", data.q_max_mvar, "Mvar", "q_max_mvar",
+                    "Q_{max}",
+                    data.q_max_mvar,
+                    "Mvar",
+                    "q_max_mvar",
                 ),
             },
-            overall_status=(
-                "PASS" if (all_within_limits and qu_compliant) else "FAIL"
-            ),
+            overall_status=("PASS" if (all_within_limits and qu_compliant) else "FAIL"),
         )
 
         proof = ProofDocument.create(
             artifact_id=artifact_id,
             proof_type=ProofType.Q_U_REGULATION,
-            title_pl=(
-                f"Dowód regulacji mocy biernej Q(U) — "
-                f"{data.oze_name}"
-            ),
+            title_pl=(f"Dowód regulacji mocy biernej Q(U) — " f"{data.oze_name}"),
             header=header,
             steps=steps,
             summary=summary,

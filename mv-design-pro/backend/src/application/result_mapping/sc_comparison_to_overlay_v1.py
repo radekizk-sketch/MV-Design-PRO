@@ -44,7 +44,6 @@ from domain.sc_comparison import (
     ShortCircuitComparison,
 )
 
-
 # ---------------------------------------------------------------------------
 # Delta-specific legend entries (Polish, backend-authoritative)
 # ---------------------------------------------------------------------------

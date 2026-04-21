@@ -1,19 +1,12 @@
 """Tests for ENM Pydantic v2 models — schema validation, discriminated union, required fields."""
 
-import pytest
-from pydantic import ValidationError
-
 from enm.models import (
     Bus,
     Cable,
     EnergyNetworkModel,
-    ENMDefaults,
     ENMHeader,
     FuseBranch,
-    Generator,
-    GenLimits,
     GroundingConfig,
-    Load,
     OverheadLine,
     Source,
     SwitchBranch,
@@ -93,11 +86,19 @@ class TestBranches:
             header=ENMHeader(name="test"),
             branches=[
                 OverheadLine(
-                    ref_id="line_1", name="L1", from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3,
+                    ref_id="line_1",
+                    name="L1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    length_km=5,
+                    r_ohm_per_km=0.4,
+                    x_ohm_per_km=0.3,
                 ),
                 SwitchBranch(
-                    ref_id="sw_1", name="Q1", from_bus_ref="b1", to_bus_ref="b2",
+                    ref_id="sw_1",
+                    name="Q1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
                     type="breaker",
                 ),
             ],
@@ -153,7 +154,11 @@ class TestENM:
         enm = EnergyNetworkModel(
             header=ENMHeader(name="Test"),
             buses=[Bus(ref_id="b1", name="Bus 1", voltage_kv=15)],
-            sources=[Source(ref_id="s1", name="Src", bus_ref="b1", model="short_circuit_power", sk3_mva=200)],
+            sources=[
+                Source(
+                    ref_id="s1", name="Src", bus_ref="b1", model="short_circuit_power", sk3_mva=200
+                )
+            ],
         )
         data = enm.model_dump(mode="json")
         restored = EnergyNetworkModel.model_validate(data)

@@ -36,7 +36,6 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-
 # =============================================================================
 # ERRORS
 # =============================================================================
@@ -213,13 +212,8 @@ class TopologyLinkSet:
     def from_dict(cls, data: dict[str, Any]) -> TopologyLinkSet:
         """Deserialize from dictionary."""
         return cls(
-            links=tuple(
-                TopologyLink.from_dict(link)
-                for link in data.get("links", [])
-            ),
-            deterministic_signature=str(
-                data.get("deterministic_signature", "")
-            ),
+            links=tuple(TopologyLink.from_dict(link) for link in data.get("links", [])),
+            deterministic_signature=str(data.get("deterministic_signature", "")),
             trace=data.get("trace", {}),
         )
 
@@ -263,17 +257,19 @@ def validate_topology_links(
     for link in links:
         key = (link.relay_id, link.cb_id)
         if key in seen_relay_cb:
-            issues.append({
-                "code": "topology.duplicate_relay_cb_mapping",
-                "relay_id": link.relay_id,
-                "cb_id": link.cb_id,
-                "link_id": link.link_id,
-                "message_pl": (
-                    f"Zduplikowane mapowanie przekaźnik→wyłącznik: "
-                    f"relay={link.relay_id}, cb={link.cb_id} "
-                    f"(powiązanie {link.link_id})."
-                ),
-            })
+            issues.append(
+                {
+                    "code": "topology.duplicate_relay_cb_mapping",
+                    "relay_id": link.relay_id,
+                    "cb_id": link.cb_id,
+                    "link_id": link.link_id,
+                    "message_pl": (
+                        f"Zduplikowane mapowanie przekaźnik→wyłącznik: "
+                        f"relay={link.relay_id}, cb={link.cb_id} "
+                        f"(powiązanie {link.link_id})."
+                    ),
+                }
+            )
         seen_relay_cb.add(key)
 
     return issues
@@ -321,9 +317,7 @@ def build_topology_link_set(
     relay_ids = sorted({link.relay_id for link in sorted_links})
     cb_ids = sorted({link.cb_id for link in sorted_links})
     target_refs = sorted({link.target_ref for link in sorted_links})
-    station_ids = sorted(
-        {link.station_id for link in sorted_links if link.station_id}
-    )
+    station_ids = sorted({link.station_id for link in sorted_links if link.station_id})
 
     trace: dict[str, Any] = {
         "total_links": len(sorted_links),
@@ -441,7 +435,4 @@ def get_links_by_station(
     Returns:
         Tuple of TopologyLink objects belonging to the station.
     """
-    return tuple(
-        link for link in link_set.links
-        if link.station_id == station_id
-    )
+    return tuple(link for link in link_set.links if link.station_id == station_id)

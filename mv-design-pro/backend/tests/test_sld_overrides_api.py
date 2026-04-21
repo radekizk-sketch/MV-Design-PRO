@@ -11,10 +11,9 @@ Covers:
 """
 
 import pytest
-from fastapi.testclient import TestClient
-
 from api.main import app
 from api.sld_overrides import _overrides_store
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture(autouse=True)
@@ -106,8 +105,18 @@ class TestPutOverrides:
         body = {
             "snapshot_hash": "snap",
             "items": [
-                {"element_id": "z-node", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 0, "dy": 0}},
-                {"element_id": "a-block", "scope": "BLOCK", "operation": "MOVE_DELTA", "payload": {"dx": 0, "dy": 0}},
+                {
+                    "element_id": "z-node",
+                    "scope": "NODE",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 0, "dy": 0},
+                },
+                {
+                    "element_id": "a-block",
+                    "scope": "BLOCK",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 0, "dy": 0},
+                },
             ],
         }
         resp = client.put("/api/study-cases/case-1/sld-overrides", json=body)
@@ -120,7 +129,12 @@ class TestPutOverrides:
         body = {
             "snapshot_hash": "snap",
             "items": [
-                {"element_id": "node-1", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 40, "dy": 20}},
+                {
+                    "element_id": "node-1",
+                    "scope": "NODE",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 40, "dy": 20},
+                },
             ],
         }
         r1 = client.put("/api/study-cases/case-1/sld-overrides", json=body)
@@ -134,13 +148,27 @@ class TestPutOverrides:
 
     def test_hash_permutation_invariant(self, client: TestClient):
         items_a = [
-            {"element_id": "node-1", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 10, "dy": 20}},
-            {"element_id": "node-2", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 30, "dy": 40}},
+            {
+                "element_id": "node-1",
+                "scope": "NODE",
+                "operation": "MOVE_DELTA",
+                "payload": {"dx": 10, "dy": 20},
+            },
+            {
+                "element_id": "node-2",
+                "scope": "NODE",
+                "operation": "MOVE_DELTA",
+                "payload": {"dx": 30, "dy": 40},
+            },
         ]
         items_b = list(reversed(items_a))
 
-        r1 = client.put("/api/study-cases/case-1/sld-overrides", json={"snapshot_hash": "s", "items": items_a})
-        r2 = client.put("/api/study-cases/case-2/sld-overrides", json={"snapshot_hash": "s", "items": items_b})
+        r1 = client.put(
+            "/api/study-cases/case-1/sld-overrides", json={"snapshot_hash": "s", "items": items_a}
+        )
+        r2 = client.put(
+            "/api/study-cases/case-2/sld-overrides", json={"snapshot_hash": "s", "items": items_b}
+        )
 
         assert r1.json()["overrides_hash"] == r2.json()["overrides_hash"]
 
@@ -148,7 +176,12 @@ class TestPutOverrides:
         body = {
             "snapshot_hash": "snap",
             "items": [
-                {"element_id": "n", "scope": "INVALID", "operation": "MOVE_DELTA", "payload": {"dx": 0, "dy": 0}},
+                {
+                    "element_id": "n",
+                    "scope": "INVALID",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 0, "dy": 0},
+                },
             ],
         }
         resp = client.put("/api/study-cases/case-1/sld-overrides", json=body)
@@ -175,7 +208,12 @@ class TestValidateOverrides:
         body = {
             "snapshot_hash": "snap",
             "items": [
-                {"element_id": "node-1", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 20, "dy": 0}},
+                {
+                    "element_id": "node-1",
+                    "scope": "NODE",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 20, "dy": 0},
+                },
             ],
             "known_node_ids": ["node-1", "node-2"],
             "known_block_ids": [],
@@ -190,7 +228,12 @@ class TestValidateOverrides:
         body = {
             "snapshot_hash": "snap",
             "items": [
-                {"element_id": "unknown", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 0, "dy": 0}},
+                {
+                    "element_id": "unknown",
+                    "scope": "NODE",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 0, "dy": 0},
+                },
             ],
             "known_node_ids": ["node-1"],
             "known_block_ids": [],
@@ -214,7 +257,12 @@ class TestResetOverrides:
             json={
                 "snapshot_hash": "snap",
                 "items": [
-                    {"element_id": "node-1", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 20, "dy": 0}},
+                    {
+                        "element_id": "node-1",
+                        "scope": "NODE",
+                        "operation": "MOVE_DELTA",
+                        "payload": {"dx": 20, "dy": 0},
+                    },
                 ],
             },
         )
@@ -240,8 +288,18 @@ class TestHashStability:
         body = {
             "snapshot_hash": "snap-stable",
             "items": [
-                {"element_id": "node-1", "scope": "NODE", "operation": "MOVE_DELTA", "payload": {"dx": 40, "dy": -20}},
-                {"element_id": "station-GPZ", "scope": "BLOCK", "operation": "MOVE_DELTA", "payload": {"dx": 60, "dy": 0}},
+                {
+                    "element_id": "node-1",
+                    "scope": "NODE",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 40, "dy": -20},
+                },
+                {
+                    "element_id": "station-GPZ",
+                    "scope": "BLOCK",
+                    "operation": "MOVE_DELTA",
+                    "payload": {"dx": 60, "dy": 0},
+                },
             ],
         }
 

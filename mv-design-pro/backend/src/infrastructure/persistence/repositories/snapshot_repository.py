@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from sqlalchemy import desc, select
-from sqlalchemy.orm import Session
+from datetime import UTC, datetime
 
 from infrastructure.persistence.models import NetworkSnapshotORM
 from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta
+from sqlalchemy import desc, select
+from sqlalchemy.orm import Session
 
 
 class SnapshotRepository:
@@ -65,9 +64,7 @@ class SnapshotRepository:
         lineage: list[SnapshotMeta] = []
         current_id: str | None = snapshot_id
         while current_id is not None:
-            stmt = select(NetworkSnapshotORM).where(
-                NetworkSnapshotORM.snapshot_id == current_id
-            )
+            stmt = select(NetworkSnapshotORM).where(NetworkSnapshotORM.snapshot_id == current_id)
             row = self._session.execute(stmt).scalar_one_or_none()
             if row is None:
                 break
@@ -85,9 +82,9 @@ class SnapshotRepository:
 
     def find_by_fingerprint(self, fingerprint: str) -> NetworkSnapshot | None:
         """P10a: Find a snapshot by its fingerprint (for deduplication)."""
-        stmt = select(NetworkSnapshotORM).where(
-            NetworkSnapshotORM.fingerprint == fingerprint
-        ).limit(1)
+        stmt = (
+            select(NetworkSnapshotORM).where(NetworkSnapshotORM.fingerprint == fingerprint).limit(1)
+        )
         row = self._session.execute(stmt).scalar_one_or_none()
         if row is None:
             return None
@@ -99,9 +96,9 @@ def _parse_created_at(value: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError:
-        parsed = datetime.now(timezone.utc)
+        parsed = datetime.now(UTC)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return parsed
 
 

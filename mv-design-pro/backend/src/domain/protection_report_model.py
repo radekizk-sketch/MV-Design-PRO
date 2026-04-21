@@ -22,7 +22,6 @@ from dataclasses import dataclass, field
 from typing import Any
 from uuid import uuid4
 
-
 # =============================================================================
 # REPORT SUMMARY TYPES
 # =============================================================================
@@ -40,6 +39,7 @@ class RelayReportSummary:
         f51_summary: F51 summary (e.g., "SI, TMS=0.3, I> = 1.0 A sec")
         test_point_results: Per-point trip results
     """
+
     relay_id: str
     attached_cb_id: str
     ct_ratio_label: str
@@ -81,6 +81,7 @@ class CoordinationReportSummary:
         max_margin_s: Maximum margin [s]
         margin_points_count: Number of margin evaluation points
     """
+
     pair_id: str
     upstream_label: str
     downstream_label: str
@@ -105,12 +106,10 @@ class CoordinationReportSummary:
             upstream_label=str(data["upstream_label"]),
             downstream_label=str(data["downstream_label"]),
             min_margin_s=(
-                float(data["min_margin_s"])
-                if data.get("min_margin_s") is not None else None
+                float(data["min_margin_s"]) if data.get("min_margin_s") is not None else None
             ),
             max_margin_s=(
-                float(data["max_margin_s"])
-                if data.get("max_margin_s") is not None else None
+                float(data["max_margin_s"]) if data.get("max_margin_s") is not None else None
             ),
             margin_points_count=int(data.get("margin_points_count", 0)),
         )
@@ -131,6 +130,7 @@ class ProtectionReportModel:
     - coordination_summaries sorted by pair_id (if present)
     - deterministic_signature = SHA-256 of canonical report JSON
     """
+
     report_id: str
     run_id: str
     analysis_type: str = "PROTECTION"
@@ -151,9 +151,7 @@ class ProtectionReportModel:
             "deterministic_signature": self.deterministic_signature,
         }
         if self.coordination_summaries is not None:
-            result["coordination_summaries"] = [
-                cs.to_dict() for cs in self.coordination_summaries
-            ]
+            result["coordination_summaries"] = [cs.to_dict() for cs in self.coordination_summaries]
         return result
 
     @classmethod
@@ -161,8 +159,7 @@ class ProtectionReportModel:
         coord = None
         if "coordination_summaries" in data:
             coord = tuple(
-                CoordinationReportSummary.from_dict(cs)
-                for cs in data["coordination_summaries"]
+                CoordinationReportSummary.from_dict(cs) for cs in data["coordination_summaries"]
             )
         return cls(
             report_id=str(data["report_id"]),
@@ -170,14 +167,11 @@ class ProtectionReportModel:
             analysis_type=str(data.get("analysis_type", "PROTECTION")),
             current_source_summary=data.get("current_source_summary", {}),
             relay_summaries=tuple(
-                RelayReportSummary.from_dict(rs)
-                for rs in data.get("relay_summaries", [])
+                RelayReportSummary.from_dict(rs) for rs in data.get("relay_summaries", [])
             ),
             coordination_summaries=coord,
             trace_summary=data.get("trace_summary", {}),
-            deterministic_signature=str(
-                data.get("deterministic_signature", "")
-            ),
+            deterministic_signature=str(data.get("deterministic_signature", "")),
         )
 
 
@@ -233,9 +227,7 @@ def build_protection_report(
         "relay_summaries": [rs.to_dict() for rs in relay_summaries],
     }
     if coord_summaries is not None:
-        sig_data["coordination_summaries"] = [
-            cs.to_dict() for cs in coord_summaries
-        ]
+        sig_data["coordination_summaries"] = [cs.to_dict() for cs in coord_summaries]
     sig_json = json.dumps(sig_data, sort_keys=True, separators=(",", ":"))
     signature = hashlib.sha256(sig_json.encode("utf-8")).hexdigest()
 
@@ -305,14 +297,16 @@ def _build_relay_summaries(
             if ct:
                 ct_label = f"{ct.get('primary_a', '?')}/{ct.get('secondary_a', '?')} A"
 
-        summaries.append(RelayReportSummary(
-            relay_id=rr.relay_id,
-            attached_cb_id=rr.attached_cb_id,
-            ct_ratio_label=ct_label,
-            f50_summary=f50_summary,
-            f51_summary=f51_summary,
-            test_point_results=tuple(tp_results),
-        ))
+        summaries.append(
+            RelayReportSummary(
+                relay_id=rr.relay_id,
+                attached_cb_id=rr.attached_cb_id,
+                ct_ratio_label=ct_label,
+                f50_summary=f50_summary,
+                f51_summary=f51_summary,
+                test_point_results=tuple(tp_results),
+            )
+        )
 
     return tuple(sorted(summaries, key=lambda s: s.relay_id))
 
@@ -324,23 +318,21 @@ def _build_coordination_summaries(
     summaries: list[CoordinationReportSummary] = []
 
     for pair in coordination_result.pairs:
-        margins_with_value = [
-            mp.margin_s
-            for mp in pair.margin_points
-            if mp.margin_s is not None
-        ]
+        margins_with_value = [mp.margin_s for mp in pair.margin_points if mp.margin_s is not None]
 
         min_margin = min(margins_with_value) if margins_with_value else None
         max_margin = max(margins_with_value) if margins_with_value else None
 
-        summaries.append(CoordinationReportSummary(
-            pair_id=pair.pair_id,
-            upstream_label=pair.upstream_relay_id,
-            downstream_label=pair.downstream_relay_id,
-            min_margin_s=round(min_margin, 3) if min_margin is not None else None,
-            max_margin_s=round(max_margin, 3) if max_margin is not None else None,
-            margin_points_count=len(pair.margin_points),
-        ))
+        summaries.append(
+            CoordinationReportSummary(
+                pair_id=pair.pair_id,
+                upstream_label=pair.upstream_relay_id,
+                downstream_label=pair.downstream_relay_id,
+                min_margin_s=round(min_margin, 3) if min_margin is not None else None,
+                max_margin_s=round(max_margin, 3) if max_margin is not None else None,
+                margin_points_count=len(pair.margin_points),
+            )
+        )
 
     return tuple(sorted(summaries, key=lambda s: s.pair_id))
 
@@ -352,10 +344,7 @@ def _build_trace_summary(
 ) -> dict[str, Any]:
     """Build trace summary for report."""
     total_relays = len(protection_result.relay_results)
-    total_test_points = sum(
-        len(rr.per_test_point)
-        for rr in protection_result.relay_results
-    )
+    total_test_points = sum(len(rr.per_test_point) for rr in protection_result.relay_results)
 
     summary: dict[str, Any] = {
         "total_relays": total_relays,
@@ -365,8 +354,6 @@ def _build_trace_summary(
 
     if coordination_result is not None:
         summary["total_pairs"] = len(coordination_result.pairs)
-        summary["coordination_signature"] = (
-            coordination_result.deterministic_signature
-        )
+        summary["coordination_signature"] = coordination_result.deterministic_signature
 
     return summary

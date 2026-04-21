@@ -1,17 +1,17 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Any, Iterable
+from typing import Any
 
 import numpy as np
-
 from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_types import (
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
+    PVSpec,
     ShuntSpec,
 )
 
@@ -33,26 +33,17 @@ def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
 
     duplicate_pq = _find_duplicates(pq_ids)
     if duplicate_pq:
-        errors.append(
-            "duplicate PQSpec.node_id entries: " + ", ".join(sorted(duplicate_pq))
-        )
+        errors.append("duplicate PQSpec.node_id entries: " + ", ".join(sorted(duplicate_pq)))
 
     duplicate_pv = _find_duplicates(pv_ids)
     if duplicate_pv:
-        errors.append(
-            "duplicate PVSpec.node_id entries: " + ", ".join(sorted(duplicate_pv))
-        )
+        errors.append("duplicate PVSpec.node_id entries: " + ", ".join(sorted(duplicate_pv)))
 
     duplicate_shunts = _find_duplicates([spec.node_id for spec in pf_input.shunts])
     if duplicate_shunts:
-        errors.append(
-            "duplicate ShuntSpec.node_id entries: "
-            + ", ".join(sorted(duplicate_shunts))
-        )
+        errors.append("duplicate ShuntSpec.node_id entries: " + ", ".join(sorted(duplicate_shunts)))
 
-    duplicate_bus_limits = _find_duplicates(
-        [spec.node_id for spec in pf_input.bus_limits]
-    )
+    duplicate_bus_limits = _find_duplicates([spec.node_id for spec in pf_input.bus_limits])
     if duplicate_bus_limits:
         errors.append(
             "duplicate BusVoltageLimitSpec.node_id entries: "
@@ -62,13 +53,10 @@ def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
     duplicate_taps = _find_duplicates([spec.branch_id for spec in pf_input.taps])
     if duplicate_taps:
         errors.append(
-            "duplicate TransformerTapSpec.branch_id entries: "
-            + ", ".join(sorted(duplicate_taps))
+            "duplicate TransformerTapSpec.branch_id entries: " + ", ".join(sorted(duplicate_taps))
         )
 
-    duplicate_branch_limits = _find_duplicates(
-        [spec.branch_id for spec in pf_input.branch_limits]
-    )
+    duplicate_branch_limits = _find_duplicates([spec.branch_id for spec in pf_input.branch_limits])
     if duplicate_branch_limits:
         errors.append(
             "duplicate BranchLimitSpec.branch_id entries: "
@@ -82,27 +70,20 @@ def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
     overlap = pq_set.intersection(pv_set)
     if overlap:
         errors.append(
-            "node_id cannot be specified as both PQ and PV: "
-            + ", ".join(sorted(overlap))
+            "node_id cannot be specified as both PQ and PV: " + ", ".join(sorted(overlap))
         )
 
     for spec in pf_input.pv:
         if spec.q_min_mvar > spec.q_max_mvar:
-            errors.append(
-                f"PVSpec '{spec.node_id}' q_min_mvar must be <= q_max_mvar"
-            )
+            errors.append(f"PVSpec '{spec.node_id}' q_min_mvar must be <= q_max_mvar")
 
     for spec in pf_input.bus_limits:
         if spec.u_min_pu >= spec.u_max_pu:
-            errors.append(
-                f"BusVoltageLimitSpec '{spec.node_id}' requires u_min_pu < u_max_pu"
-            )
+            errors.append(f"BusVoltageLimitSpec '{spec.node_id}' requires u_min_pu < u_max_pu")
 
     for spec in pf_input.branch_limits:
         if spec.s_max_mva is None and spec.i_max_ka is None:
-            errors.append(
-                f"BranchLimitSpec '{spec.branch_id}' requires s_max_mva or i_max_ka"
-            )
+            errors.append(f"BranchLimitSpec '{spec.branch_id}' requires s_max_mva or i_max_ka")
 
     for spec in pf_input.taps:
         if spec.branch_id not in graph.branches:
@@ -110,25 +91,19 @@ def validate_input(pf_input: PowerFlowInput) -> tuple[list[str], list[str]]:
             continue
         branch = graph.branches[spec.branch_id]
         if not isinstance(branch, TransformerBranch):
-            errors.append(
-                f"TransformerTapSpec '{spec.branch_id}' must reference a transformer"
-            )
+            errors.append(f"TransformerTapSpec '{spec.branch_id}' must reference a transformer")
 
     for spec in pf_input.branch_limits:
         if spec.branch_id not in graph.branches:
             errors.append(f"BranchLimitSpec '{spec.branch_id}' not in graph")
 
     if pf_input.slack.u_pu < 0.8 or pf_input.slack.u_pu > 1.2:
-        warnings.append(
-            "slack.u_pu outside typical range [0.8, 1.2]"
-        )
+        warnings.append("slack.u_pu outside typical range [0.8, 1.2]")
 
     return warnings, errors
 
 
-def build_slack_island(
-    graph: NetworkGraph, slack_node_id: str
-) -> tuple[list[str], list[str]]:
+def build_slack_island(graph: NetworkGraph, slack_node_id: str) -> tuple[list[str], list[str]]:
     islands = graph.find_islands()
     slack_island: list[str] = []
     for island in islands:
@@ -161,7 +136,7 @@ def build_ybus_pu(
     ybus_source = "network_model.solvers.power_flow_newton_internal.build_ybus_pu"
 
     if slack_voltage_kv and slack_voltage_kv > 0:
-        z_base = (slack_voltage_kv ** 2) / base_mva
+        z_base = (slack_voltage_kv**2) / base_mva
         ybus_pu_full = ybus_ohm * z_base
     else:
         ybus_note = "Slack node voltage_level missing or zero; Ybus treated as per-unit."
@@ -170,9 +145,7 @@ def build_ybus_pu(
     island_nodes_sorted = sorted(slack_island_nodes)
     island_indices = [node_id_to_index_full[node_id] for node_id in island_nodes_sorted]
     ybus_pu = ybus_pu_full[np.ix_(island_indices, island_indices)]
-    node_id_to_index = {
-        node_id: idx for idx, node_id in enumerate(island_nodes_sorted)
-    }
+    node_id_to_index = {node_id: idx for idx, node_id in enumerate(island_nodes_sorted)}
 
     applied_shunts = _apply_shunts_pu(ybus_pu, node_id_to_index, shunts)
 
@@ -300,18 +273,10 @@ def build_jacobian(
             else:
                 sin_t = np.sin(theta)
                 cos_t = np.cos(theta)
-                j11[row, col] = v_mag[i] * v_mag[k] * (
-                    g[i, k] * sin_t - b[i, k] * cos_t
-                )
-                j21[row, col] = -v_mag[i] * v_mag[k] * (
-                    g[i, k] * cos_t + b[i, k] * sin_t
-                )
-                j12[row, col] = v_mag[i] * (
-                    g[i, k] * cos_t + b[i, k] * sin_t
-                )
-                j22[row, col] = v_mag[i] * (
-                    g[i, k] * sin_t - b[i, k] * cos_t
-                )
+                j11[row, col] = v_mag[i] * v_mag[k] * (g[i, k] * sin_t - b[i, k] * cos_t)
+                j21[row, col] = -v_mag[i] * v_mag[k] * (g[i, k] * cos_t + b[i, k] * sin_t)
+                j12[row, col] = v_mag[i] * (g[i, k] * cos_t + b[i, k] * sin_t)
+                j22[row, col] = v_mag[i] * (g[i, k] * sin_t - b[i, k] * cos_t)
 
     top = np.hstack([j11, j12])
     bottom = np.hstack([j21, j22])
@@ -346,9 +311,7 @@ def build_jacobian_v2(
             else:
                 sin_t = np.sin(theta)
                 cos_t = np.cos(theta)
-                j11[row, col] = v_mag[i] * v_mag[k] * (
-                    g[i, k] * sin_t - b[i, k] * cos_t
-                )
+                j11[row, col] = v_mag[i] * v_mag[k] * (g[i, k] * sin_t - b[i, k] * cos_t)
 
     for row, i in enumerate(non_slack_indices):
         for col, k in enumerate(pq_indices):
@@ -358,9 +321,7 @@ def build_jacobian_v2(
             else:
                 sin_t = np.sin(theta)
                 cos_t = np.cos(theta)
-                j12[row, col] = v_mag[i] * (
-                    g[i, k] * cos_t + b[i, k] * sin_t
-                )
+                j12[row, col] = v_mag[i] * (g[i, k] * cos_t + b[i, k] * sin_t)
 
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(non_slack_indices):
@@ -370,9 +331,7 @@ def build_jacobian_v2(
             else:
                 sin_t = np.sin(theta)
                 cos_t = np.cos(theta)
-                j21[row, col] = -v_mag[i] * v_mag[k] * (
-                    g[i, k] * cos_t + b[i, k] * sin_t
-                )
+                j21[row, col] = -v_mag[i] * v_mag[k] * (g[i, k] * cos_t + b[i, k] * sin_t)
 
     for row, i in enumerate(pq_indices):
         for col, k in enumerate(pq_indices):
@@ -382,9 +341,7 @@ def build_jacobian_v2(
             else:
                 sin_t = np.sin(theta)
                 cos_t = np.cos(theta)
-                j22[row, col] = v_mag[i] * (
-                    g[i, k] * sin_t - b[i, k] * cos_t
-                )
+                j22[row, col] = v_mag[i] * (g[i, k] * sin_t - b[i, k] * cos_t)
 
     top = np.hstack([j11, j12])
     bottom = np.hstack([j21, j22])
@@ -428,7 +385,7 @@ def newton_raphson_solve(
         mismatch_per_bus: dict[str, dict[str, float]] | None = None
         if full_trace:
             mismatch_per_bus = {}
-            for i, idx in enumerate(sorted(pq_indices)):
+            for _i, idx in enumerate(sorted(pq_indices)):
                 node_id = node_index_to_id.get(idx, str(idx))
                 mismatch_per_bus[node_id] = {
                     "delta_p_pu": float(d_p[pq_indices.index(idx)]) if idx in pq_indices else 0.0,
@@ -491,7 +448,7 @@ def newton_raphson_solve(
         if full_trace:
             delta_state = {}
             n_pq = len(pq_indices)
-            for i, idx in enumerate(sorted(pq_indices)):
+            for _i, idx in enumerate(sorted(pq_indices)):
                 node_id = node_index_to_id.get(idx, str(idx))
                 pq_pos = pq_indices.index(idx)
                 delta_state[node_id] = {
@@ -532,7 +489,9 @@ def newton_raphson_solve(
     return v, converged, iteration, max_mismatch, trace
 
 
-def _build_state_dict(v: np.ndarray, node_index_to_id: dict[int, str]) -> dict[str, dict[str, float]]:
+def _build_state_dict(
+    v: np.ndarray, node_index_to_id: dict[int, str]
+) -> dict[str, dict[str, float]]:
     """P20a: Build deterministic state dict from voltage vector."""
     state = {}
     for idx in sorted(node_index_to_id.keys()):
@@ -724,7 +683,10 @@ def newton_raphson_solve_v2(
                 if node_id in delta_state:
                     delta_state[node_id]["delta_v_pu"] = float(step[n_p + i])
                 else:
-                    delta_state[node_id] = {"delta_theta_rad": 0.0, "delta_v_pu": float(step[n_p + i])}
+                    delta_state[node_id] = {
+                        "delta_theta_rad": 0.0,
+                        "delta_v_pu": float(step[n_p + i]),
+                    }
 
         v_mag = np.abs(v)
         v_ang = np.angle(v)
@@ -762,7 +724,9 @@ def newton_raphson_solve_v2(
     return v, converged, iteration, max_mismatch, trace, pv_to_pq_switches
 
 
-def _serialize_jacobian_blocks_v2(jacobian: np.ndarray, n_p: int, n_q: int) -> dict[str, list[list[float]]]:
+def _serialize_jacobian_blocks_v2(
+    jacobian: np.ndarray, n_p: int, n_q: int
+) -> dict[str, list[list[float]]]:
     """P20a: Serialize Jacobian blocks for v2 solver (with PV buses).
 
     Structure: [[J1 (n_p x n_p), J2 (n_p x n_q)], [J3 (n_q x n_p), J4 (n_q x n_q)]]
@@ -799,7 +763,7 @@ def compute_branch_flows(
         note = "Branch flow calculation skipped: slack voltage_level missing."
         return branch_current_pu, branch_s_from_pu, branch_s_to_pu, losses_total_pu, note
 
-    z_base = (slack_voltage_kv ** 2) / base_mva
+    z_base = (slack_voltage_kv**2) / base_mva
 
     for branch_id, branch in graph.branches.items():
         if not branch.in_service:
@@ -820,7 +784,7 @@ def compute_branch_flows(
         v_to = node_voltage[branch.to_node_id]
 
         if isinstance(branch, TransformerBranch) and tap_ratio != 1.0:
-            i_from = (v_from / (tap_ratio ** 2)) * y_series - (v_to / tap_ratio) * y_series
+            i_from = (v_from / (tap_ratio**2)) * y_series - (v_to / tap_ratio) * y_series
             i_to = -(v_from / tap_ratio) * y_series + v_to * y_series
         else:
             y_shunt_val = y_shunt if y_shunt is not None else 0j
@@ -838,9 +802,7 @@ def compute_branch_flows(
     return branch_current_pu, branch_s_from_pu, branch_s_to_pu, losses_total_pu, ""
 
 
-def _branch_admittance_pu(
-    branch: Branch, z_base: float
-) -> tuple[complex | None, complex | None]:
+def _branch_admittance_pu(branch: Branch, z_base: float) -> tuple[complex | None, complex | None]:
     if isinstance(branch, LineBranch):
         y_series = branch.get_series_admittance() * z_base
         y_shunt = branch.get_shunt_admittance_per_end() * z_base
@@ -914,7 +876,7 @@ def _build_ybus_ohm(
             )
 
         if tap_ratio != 1.0 and isinstance(branch, TransformerBranch):
-            y_bus[from_idx, from_idx] += y_series / (tap_ratio ** 2)
+            y_bus[from_idx, from_idx] += y_series / (tap_ratio**2)
             y_bus[from_idx, to_idx] += -y_series / tap_ratio
             y_bus[to_idx, from_idx] += -y_series / tap_ratio
             y_bus[to_idx, to_idx] += y_series
@@ -934,9 +896,7 @@ def _get_branch_admittances_ohm(branch: Branch) -> tuple[complex, complex]:
     if isinstance(branch, TransformerBranch):
         impedance = branch.get_short_circuit_impedance_ohm_lv()
         if impedance == 0:
-            raise ZeroDivisionError(
-                "Cannot compute transformer admittance: impedance is zero"
-            )
+            raise ZeroDivisionError("Cannot compute transformer admittance: impedance is zero")
         return 1.0 / impedance, 0.0 + 0.0j
     raise ValueError(f"Unsupported branch type: {branch.branch_type}")
 

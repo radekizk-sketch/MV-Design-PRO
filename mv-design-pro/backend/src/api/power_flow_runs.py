@@ -5,26 +5,37 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
-
+from api.analysis_run_exports import export_run_json_response
 from api.canonical_run_views import (
     build_power_flow_export_bundle,
     build_power_flow_interpretation,
     build_power_flow_run_header,
+)
+from api.canonical_run_views import (
     get_power_flow_result as get_canonical_power_flow_result,
+)
+from api.canonical_run_views import (
     get_power_flow_trace as get_canonical_power_flow_trace,
 )
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
 from enm.canonical_analysis import (
     CanonicalRun,
+)
+from enm.canonical_analysis import (
     create_run as create_canonical_run,
+)
+from enm.canonical_analysis import (
     execute_run as execute_canonical_run,
+)
+from enm.canonical_analysis import (
     get_run as get_canonical_run,
+)
+from enm.canonical_analysis import (
     list_runs_for_project as list_canonical_runs_for_project,
 )
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["power-flow"])
 
@@ -107,7 +118,7 @@ def _truncate_catalog_params(value: Any, max_chars: int = 220) -> str:
         return "—"
     payload = canonicalize_json(value)
     text = str(payload)
-    if isinstance(payload, (dict, list)):
+    if isinstance(payload, dict | list):
         import json
 
         text = json.dumps(payload, ensure_ascii=False, sort_keys=True)
@@ -202,7 +213,7 @@ def create_power_flow_run(
 def execute_power_flow_run(run_id: UUID) -> dict[str, Any]:
     _require_canonical_run(run_id)
     run = execute_canonical_run(run_id)
-    result_v1 = ((run.raw_result or {}).get("result_v1") or {})
+    result_v1 = (run.raw_result or {}).get("result_v1") or {}
     return canonicalize_json(
         {
             "id": str(run.id),
@@ -249,11 +260,11 @@ def get_power_flow_trace(run_id: UUID) -> dict[str, Any]:
 
 @router.get("/power-flow-runs/{run_id}/export/json")
 def export_power_flow_run_json(run_id: UUID):
-    from fastapi.responses import Response
-    import json
-
     try:
-        bundle = _build_export_bundle(run_id)
+        return export_run_json_response(
+            _require_canonical_run(run_id),
+            filename_stem="power_flow_run",
+        )
     except HTTPException:
         raise
     except ValueError as exc:
@@ -262,36 +273,13 @@ def export_power_flow_run_json(run_id: UUID):
             detail=str(exc),
         ) from exc
 
-    export_payload = {
-        "report_type": "power_flow_result",
-        "report_version": "1.1.0",
-        "metadata": bundle["metadata"],
-        "result": bundle["result"],
-        "bus_results": bundle.get("bus_results", {}),
-        "branch_results": bundle.get("branch_results", {}),
-        "results_index": bundle.get("results_index", {}),
-        "catalog_context": bundle.get("catalog_context", []),
-        "white_box_trace": bundle.get("white_box_trace", []),
-        "trace_summary": {
-            "solver_version": bundle["trace"].get("solver_version"),
-            "input_hash": bundle["trace"].get("input_hash"),
-            "converged": bundle["trace"].get("converged"),
-            "final_iterations_count": bundle["trace"].get("final_iterations_count"),
-        },
-    }
-    json_content = json.dumps(export_payload, indent=2, ensure_ascii=False, sort_keys=True)
-    return Response(
-        content=json_content,
-        media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.json"'},
-    )
-
 
 @router.get("/power-flow-runs/{run_id}/export/docx")
 def export_power_flow_run_docx(run_id: UUID):
-    from fastapi.responses import Response
-    import json
     import io
+    import json
+
+    from fastapi.responses import Response
 
     try:
         from docx import Document
@@ -414,9 +402,10 @@ def export_power_flow_run_docx(run_id: UUID):
 
 @router.get("/power-flow-runs/{run_id}/export/pdf")
 def export_power_flow_run_pdf(run_id: UUID):
-    from fastapi.responses import Response
-    import json
     import io
+    import json
+
+    from fastapi.responses import Response
 
     try:
         from reportlab.lib.pagesizes import A4

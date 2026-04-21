@@ -16,9 +16,9 @@ if TYPE_CHECKING:
 
 # Check for reportlab availability at import time
 try:
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -117,9 +117,7 @@ def export_short_circuit_result_to_pdf(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create PDF canvas
     c = canvas.Canvas(str(output_path), pagesize=A4)
@@ -151,9 +149,7 @@ def export_short_circuit_result_to_pdf(
         c.drawString(x, y, text)
         y -= line_height
 
-    def draw_wrapped_text(
-        text: str, x: float, max_width: float, font_size: int = 10
-    ) -> None:
+    def draw_wrapped_text(text: str, x: float, max_width: float, font_size: int = 10) -> None:
         """Draw text with wrapping at current y position."""
         nonlocal y
         c.setFont("Helvetica", font_size)
@@ -337,9 +333,7 @@ def _add_white_box_step(
         c.drawString(left_margin, y, "Podstawienie:")
         y -= line_height
         c.setFont("Helvetica", 9)
-        _draw_wrapped_line(
-            c, str(substitution), left_margin + 5 * mm, y, max_width - 5 * mm, 9
-        )
+        _draw_wrapped_line(c, str(substitution), left_margin + 5 * mm, y, max_width - 5 * mm, 9)
         y -= line_height
 
     # Result
@@ -381,10 +375,7 @@ def _draw_wrapped_line(
     c.setFont("Helvetica", font_size)
     if c.stringWidth(text, "Helvetica", font_size) > max_width:
         # Truncate with ellipsis
-        while (
-            c.stringWidth(text + "...", "Helvetica", font_size) > max_width
-            and len(text) > 0
-        ):
+        while c.stringWidth(text + "...", "Helvetica", font_size) > max_width and len(text) > 0:
             text = text[:-1]
         text = text + "..."
     c.drawString(x, y, text)

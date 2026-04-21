@@ -15,21 +15,16 @@ from __future__ import annotations
 import io
 import json
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
-
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from domain.project_archive import (
     ARCHIVE_FORMAT_ID,
     ARCHIVE_SCHEMA_VERSION,
     ArchiveError,
-    ArchiveFingerprints,
     ArchiveImportResult,
     ArchiveImportStatus,
-    ArchiveIntegrityError,
     CasesSection,
     InterpretationsSection,
     IssuesSection,
@@ -41,12 +36,13 @@ from domain.project_archive import (
     RunsSection,
     SldSection,
     archive_to_dict,
-    canonicalize,
     compute_archive_fingerprints,
     compute_hash,
     dict_to_archive,
     verify_archive_integrity,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
     pass
@@ -128,7 +124,7 @@ class ProjectArchiveService:
                 "format_id": ARCHIVE_FORMAT_ID,
                 "schema_version": ARCHIVE_SCHEMA_VERSION,
                 "project_name": project.name,
-                "exported_at": datetime.now(timezone.utc).isoformat(),
+                "exported_at": datetime.now(UTC).isoformat(),
                 "archive_hash": archive.fingerprints.archive_hash,
             }
             zf.writestr(
@@ -149,7 +145,9 @@ class ProjectArchiveService:
             "description": project.description,
             "schema_version": project.schema_version,
             "active_network_snapshot_id": project.active_network_snapshot_id,
-            "connection_node_id": str(project.connection_node_id) if project.connection_node_id else None,
+            "connection_node_id": (
+                str(project.connection_node_id) if project.connection_node_id else None
+            ),
             "sources": project.sources_jsonb,
             "created_at": project.created_at.isoformat(),
             "updated_at": project.updated_at.isoformat(),
@@ -202,7 +200,9 @@ class ProjectArchiveService:
                 description=project.description,
                 schema_version=project.schema_version,
                 active_network_snapshot_id=project.active_network_snapshot_id,
-                connection_node_id=str(project.connection_node_id) if project.connection_node_id else None,
+                connection_node_id=(
+                    str(project.connection_node_id) if project.connection_node_id else None
+                ),
                 sources=project.sources_jsonb,
                 created_at=project.created_at.isoformat(),
                 updated_at=project.updated_at.isoformat(),
@@ -324,9 +324,7 @@ class ProjectArchiveService:
         ]
 
         # Snapshots
-        snapshots_query = select(NetworkSnapshotORM).order_by(
-            NetworkSnapshotORM.created_at
-        )
+        snapshots_query = select(NetworkSnapshotORM).order_by(NetworkSnapshotORM.created_at)
         snapshots = self._session.execute(snapshots_query).scalars().all()
         # Filtruj snapshoty należące do tego projektu (sprawdzając network_model_id)
         snapshots_data = [
@@ -516,8 +514,14 @@ class ProjectArchiveService:
         settings_data = None
         if settings_orm:
             settings_data = {
-                "connection_node_id": str(settings_orm.connection_node_id) if settings_orm.connection_node_id else None,
-                "active_case_id": str(settings_orm.active_case_id) if settings_orm.active_case_id else None,
+                "connection_node_id": (
+                    str(settings_orm.connection_node_id)
+                    if settings_orm.connection_node_id
+                    else None
+                ),
+                "active_case_id": (
+                    str(settings_orm.active_case_id) if settings_orm.active_case_id else None
+                ),
                 "grounding_jsonb": settings_orm.grounding_jsonb,
                 "limits_jsonb": settings_orm.limits_jsonb,
             }
@@ -640,10 +644,7 @@ class ProjectArchiveService:
         operating_cases_query = select(OperatingCaseORM.id).where(
             OperatingCaseORM.project_id == project_id
         )
-        operating_case_ids = [
-            row[0]
-            for row in self._session.execute(operating_cases_query).all()
-        ]
+        operating_case_ids = [row[0] for row in self._session.execute(operating_cases_query).all()]
 
         design_specs_data = []
         design_proposals_data = []
@@ -735,7 +736,6 @@ class ProjectArchiveService:
             Wynik importu z informacjami o statusie
         """
         warnings: list[str] = []
-        errors: list[str] = []
 
         try:
             # Rozpakuj ZIP
@@ -819,9 +819,7 @@ class ProjectArchiveService:
                 errors=["Nieprawidłowy format archiwum ZIP"],
             )
 
-    def _restore_project(
-        self, archive: ProjectArchive, new_project_name: str | None
-    ) -> UUID:
+    def _restore_project(self, archive: ProjectArchive, new_project_name: str | None) -> UUID:
         """Przywróć projekt z archiwum do bazy danych."""
         # Mapowanie starych ID na nowe (dla zachowania referencji)
         id_map: dict[str, UUID] = {}
@@ -830,7 +828,7 @@ class ProjectArchiveService:
         new_project_id = uuid4()
         id_map[archive.project_meta.id] = new_project_id
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # 1. Projekt
         project_orm = ProjectORM(
@@ -937,9 +935,11 @@ class ProjectArchiveService:
 
             snapshot_orm = NetworkSnapshotORM(
                 snapshot_id=new_snapshot_id,
-                parent_snapshot_id=snapshot_id_map.get(snapshot_data["parent_snapshot_id"])
-                if snapshot_data["parent_snapshot_id"]
-                else None,
+                parent_snapshot_id=(
+                    snapshot_id_map.get(snapshot_data["parent_snapshot_id"])
+                    if snapshot_data["parent_snapshot_id"]
+                    else None
+                ),
                 created_at=now,
                 schema_version=snapshot_data["schema_version"],
                 network_model_id=str(new_project_id),
@@ -988,9 +988,11 @@ class ProjectArchiveService:
                 project_id=new_project_id,
                 name=sc_data["name"],
                 description=sc_data["description"],
-                network_snapshot_id=snapshot_id_map.get(sc_data["network_snapshot_id"])
-                if sc_data["network_snapshot_id"]
-                else None,
+                network_snapshot_id=(
+                    snapshot_id_map.get(sc_data["network_snapshot_id"])
+                    if sc_data["network_snapshot_id"]
+                    else None
+                ),
                 study_jsonb=sc_data["study_jsonb"],
                 is_active=sc_data["is_active"],
                 result_status=sc_data["result_status"],
@@ -1022,12 +1024,16 @@ class ProjectArchiveService:
             settings = archive.cases.settings
             settings_orm = ProjectSettingsORM(
                 project_id=new_project_id,
-                connection_node_id=id_map.get(settings["connection_node_id"])
-                if settings.get("connection_node_id")
-                else None,
-                active_case_id=id_map.get(settings["active_case_id"])
-                if settings.get("active_case_id")
-                else None,
+                connection_node_id=(
+                    id_map.get(settings["connection_node_id"])
+                    if settings.get("connection_node_id")
+                    else None
+                ),
+                active_case_id=(
+                    id_map.get(settings["active_case_id"])
+                    if settings.get("active_case_id")
+                    else None
+                ),
                 grounding_jsonb=settings.get("grounding_jsonb", {}),
                 limits_jsonb=settings.get("limits_jsonb", {}),
             )
@@ -1117,16 +1123,20 @@ class ProjectArchiveService:
                 case_id=id_map.get(sr_data["case_id"], UUID(sr_data["case_id"])),
                 analysis_type=sr_data["analysis_type"],
                 input_hash=sr_data["input_hash"],
-                network_snapshot_id=snapshot_id_map.get(sr_data["network_snapshot_id"])
-                if sr_data.get("network_snapshot_id")
-                else None,
+                network_snapshot_id=(
+                    snapshot_id_map.get(sr_data["network_snapshot_id"])
+                    if sr_data.get("network_snapshot_id")
+                    else None
+                ),
                 solver_version_hash=sr_data.get("solver_version_hash"),
                 result_state=sr_data["result_state"],
                 status=sr_data["status"],
                 started_at=datetime.fromisoformat(sr_data["started_at"]),
-                finished_at=datetime.fromisoformat(sr_data["finished_at"])
-                if sr_data.get("finished_at")
-                else None,
+                finished_at=(
+                    datetime.fromisoformat(sr_data["finished_at"])
+                    if sr_data.get("finished_at")
+                    else None
+                ),
             )
             self._session.add(sr_orm)
 
@@ -1148,12 +1158,16 @@ class ProjectArchiveService:
                 status=ar_data["status"],
                 result_status=ar_data["result_status"],
                 created_at=datetime.fromisoformat(ar_data["created_at"]),
-                started_at=datetime.fromisoformat(ar_data["started_at"])
-                if ar_data.get("started_at")
-                else None,
-                finished_at=datetime.fromisoformat(ar_data["finished_at"])
-                if ar_data.get("finished_at")
-                else None,
+                started_at=(
+                    datetime.fromisoformat(ar_data["started_at"])
+                    if ar_data.get("started_at")
+                    else None
+                ),
+                finished_at=(
+                    datetime.fromisoformat(ar_data["finished_at"])
+                    if ar_data.get("finished_at")
+                    else None
+                ),
                 input_snapshot=ar_data["input_snapshot"],
                 input_hash=ar_data["input_hash"],
                 result_summary=ar_data["result_summary"],
@@ -1174,12 +1188,16 @@ class ProjectArchiveService:
             idx_orm = AnalysisRunIndexORM(
                 run_id=new_run_id,
                 analysis_type=idx_data["analysis_type"],
-                case_id=str(id_map.get(idx_data["case_id"], idx_data["case_id"]))
-                if idx_data.get("case_id")
-                else None,
-                base_snapshot_id=snapshot_id_map.get(idx_data["base_snapshot_id"])
-                if idx_data.get("base_snapshot_id")
-                else None,
+                case_id=(
+                    str(id_map.get(idx_data["case_id"], idx_data["case_id"]))
+                    if idx_data.get("case_id")
+                    else None
+                ),
+                base_snapshot_id=(
+                    snapshot_id_map.get(idx_data["base_snapshot_id"])
+                    if idx_data.get("base_snapshot_id")
+                    else None
+                ),
                 primary_artifact_type=idx_data["primary_artifact_type"],
                 primary_artifact_id=idx_data["primary_artifact_id"],
                 fingerprint=idx_data["fingerprint"],
@@ -1269,6 +1287,7 @@ class ProjectArchiveService:
         self, snapshot_json: dict[str, Any], id_map: dict[str, UUID]
     ) -> dict[str, Any]:
         """Przemapuj ID w snapshot_json na nowe wartości."""
+
         # Głęboka kopia i podmiana ID
         def remap_value(value: Any) -> Any:
             if isinstance(value, str):
@@ -1299,9 +1318,9 @@ class ProjectArchiveService:
             zip_buffer = io.BytesIO(archive_bytes)
             with zipfile.ZipFile(zip_buffer, "r") as zf:
                 if "manifest.json" in zf.namelist():
-                    manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+                    json.loads(zf.read("manifest.json").decode("utf-8"))
                 else:
-                    manifest = {}
+                    pass
 
                 if "project.json" not in zf.namelist():
                     return {

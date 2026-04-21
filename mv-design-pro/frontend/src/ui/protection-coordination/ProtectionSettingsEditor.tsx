@@ -256,7 +256,7 @@ function StageEditor({ label, stage, onChange, showCurve = true }: StageEditorPr
               {/* Time Multiplier (TMS/TD) */}
               <div>
                 <label className="mb-1 block text-sm text-slate-600">
-                  {curveStandard === 'IEEE' ? 'TD (Time Dial)' : LABELS.settings.tms}
+                  {curveStandard === 'IEEE' ? 'TD (nastawa czasowa)' : LABELS.settings.tms}
                 </label>
                 <input
                   type="number"
@@ -315,7 +315,7 @@ function StageEditor({ label, stage, onChange, showCurve = true }: StageEditorPr
                 disabled
               />
               <span>{LABELS.settings.directional}</span>
-              <span className="text-xs text-slate-400">(niedostepne)</span>
+              <span className="text-xs text-slate-400">(niedostępne)</span>
             </label>
           </div>
         </div>

@@ -12,6 +12,8 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { canonicalRoleLabel } from '../../field/fieldLabels';
+import { useFieldReadModel } from '../../field/useFieldReadModel';
 
 // =============================================================================
 // Helpers
@@ -39,6 +41,25 @@ function statusDotFromReadiness(
   return hasBlocker ? 'error' : 'ok';
 }
 
+function resolveGpzFieldBusName(
+  station: { gpz_sections?: Array<{ section_id: string; bus_ref: string }> | null } | null,
+  snapshot: {
+    buses?: Array<{ ref_id: string; id?: string; name?: string | null }> | null;
+  } | null,
+  gpzSectionId: string | null | undefined,
+): string {
+  if (!gpzSectionId) {
+    return 'Brak szyny';
+  }
+
+  const busRef = station?.gpz_sections?.find((section) => section.section_id === gpzSectionId)?.bus_ref ?? null;
+  if (!busRef) {
+    return 'Brak szyny';
+  }
+
+  return snapshot?.buses?.find((item) => item.ref_id === busRef || item.id === busRef)?.name ?? busRef;
+}
+
 // =============================================================================
 // Component
 // =============================================================================
@@ -47,8 +68,10 @@ export function SourceCard({ elementId }: { elementId: string }) {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const readiness = useSnapshotStore((s) => s.readiness);
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const openObjectCard = useNetworkBuildStore((s) => s.openObjectCard);
   const closeObjectCard = useNetworkBuildStore((s) => s.closeObjectCard);
   const activeMode = useAppStateStore((s) => s.activeMode);
+  const fieldReadModel = useFieldReadModel();
 
   const source = useMemo(
     () => snapshot?.sources?.find((src) => src.ref_id === elementId),
@@ -59,6 +82,39 @@ export function SourceCard({ elementId }: { elementId: string }) {
     () => snapshot?.buses?.find((b) => b.ref_id === source?.bus_ref),
     [snapshot, source],
   );
+  const stationRef = source?.substation_ref ?? null;
+  const parentStation = useMemo(
+    () => snapshot?.substations?.find((station) => station.ref_id === stationRef) ?? null,
+    [snapshot, stationRef],
+  );
+
+  const gpzFields = useMemo(() => {
+    if (!source || !snapshot) return [];
+
+    if (!stationRef) return [];
+
+    return fieldReadModel.data.fields
+      .filter((item) => item.canonical_model.base_model.substation_ref === stationRef)
+      .map((item) => ({
+        ref_id: item.bay_ref,
+        name: item.bay_name,
+        role_label: canonicalRoleLabel(item.canonical_model.base_model.bay_role),
+        bus_name: resolveGpzFieldBusName(
+          parentStation,
+          snapshot,
+          item.canonical_model.base_model.gpz_section_id,
+        ),
+        gpz_section_id: item.canonical_model.base_model.gpz_section_id,
+      }))
+      .sort((left, right) => {
+      const leftMatchesSection = left.gpz_section_id === source.gpz_section_id;
+      const rightMatchesSection = right.gpz_section_id === source.gpz_section_id;
+      if (leftMatchesSection !== rightMatchesSection) {
+        return leftMatchesSection ? -1 : 1;
+      }
+      return left.name.localeCompare(right.name);
+    });
+  }, [fieldReadModel.data.fields, parentStation, snapshot, source, stationRef]);
 
   const sections = useMemo((): CardSection[] => {
     if (!source) return [];
@@ -156,6 +212,28 @@ export function SourceCard({ elementId }: { elementId: string }) {
       ],
     };
 
+    const fieldSection: CardSection = {
+      id: 'gpz_fields',
+      label: 'Pola GPZ',
+      fields:
+        gpzFields.length > 0
+          ? gpzFields.map((field) => ({
+              key: `field_${field.ref_id}`,
+              label: field.name,
+              value: `${field.role_label} / ${field.bus_name}`,
+            }))
+          : [
+              {
+                key: 'no_gpz_fields',
+                label: 'Stan pol GPZ',
+                value: fieldReadModel.isLoading
+                  ? 'Ladowanie read-modelu pola...'
+                  : 'Brak aktywnego pola GPZ w kanonicznym modelu',
+                severity: 'warning' as const,
+              },
+            ],
+    };
+
     const catalogSection: CardSection = {
       id: 'catalog',
       label: 'Katalog',
@@ -168,7 +246,7 @@ export function SourceCard({ elementId }: { elementId: string }) {
       ],
     };
 
-    const result: CardSection[] = [identSection, paramSection, busSection, catalogSection];
+    const result: CardSection[] = [identSection, paramSection, busSection, fieldSection, catalogSection];
 
     if (activeMode === 'RESULT_VIEW') {
       result.push({
@@ -185,20 +263,34 @@ export function SourceCard({ elementId }: { elementId: string }) {
     }
 
     return result;
-  }, [source, bus, activeMode]);
+  }, [activeMode, bus, fieldReadModel.isLoading, gpzFields, source]);
 
   const handleEditParams = useCallback(() => {
     openOperationForm('update_element_parameters', { element_ref: elementId, element_type: 'source' });
   }, [openOperationForm, elementId]);
 
-  const actions = useMemo((): CardAction[] => [
-    {
-      id: 'edit_params',
-      label: 'Edytuj parametry',
-      variant: 'primary',
-      onClick: handleEditParams,
-    },
-  ], [handleEditParams]);
+  const openGpzField = useCallback((fieldRef: string) => {
+    openObjectCard({ kind: 'bay', elementId: fieldRef });
+  }, [openObjectCard]);
+
+  const actions = useMemo((): CardAction[] => {
+    const fieldActions: CardAction[] = gpzFields.map((field, index) => ({
+      id: `open_field_${field.ref_id}`,
+      label: gpzFields.length === 1 ? 'Otworz pole GPZ' : `Otworz ${field.name}`,
+      variant: index === 0 ? 'primary' : 'secondary',
+      onClick: () => openGpzField(field.ref_id),
+    }));
+
+    return [
+      ...fieldActions,
+      {
+        id: 'edit_params',
+        label: 'Edytuj parametry',
+        variant: fieldActions.length === 0 ? 'primary' : 'secondary',
+        onClick: handleEditParams,
+      },
+    ];
+  }, [gpzFields, handleEditParams, openGpzField]);
 
   if (!source) return null;
 

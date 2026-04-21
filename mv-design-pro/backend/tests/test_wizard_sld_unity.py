@@ -21,7 +21,7 @@ No database or HTTP mocking is required.
 
 import sys
 from pathlib import Path
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import pytest
 
@@ -29,22 +29,20 @@ import pytest
 backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
-from network_model.core.graph import NetworkGraph
-from network_model.core.node import Node, NodeType
-from network_model.core.branch import BranchType, LineBranch
-from network_model.core.switch import Switch, SwitchState, SwitchType
-from network_model.core.inverter import InverterSource
-from network_model.core.snapshot import NetworkSnapshot, SnapshotMeta, create_network_snapshot
-from network_model.validation import NetworkValidator, validate_network
-from network_model.sld_projection import project_snapshot_to_sld, SldBusElement
-
 from application.network_model import (
-    network_model_id_for_project,
-    build_network_graph,
     MultipleNetworkModelsError,
+    build_network_graph,
+    network_model_id_for_project,
 )
 from application.network_model.identity import ensure_snapshot_matches_project
-
+from network_model.core.branch import BranchType, LineBranch
+from network_model.core.graph import NetworkGraph
+from network_model.core.inverter import InverterSource
+from network_model.core.node import Node, NodeType
+from network_model.core.snapshot import create_network_snapshot
+from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.sld_projection import SldBusElement, project_snapshot_to_sld
+from network_model.validation import NetworkValidator, validate_network
 
 # =============================================================================
 # Helper functions for creating test objects
@@ -162,7 +160,7 @@ class TestSingleModelPerProject:
     def test_snapshot_must_match_project(self) -> None:
         """ensure_snapshot_matches_project raises when snapshot has wrong model ID."""
         project_id = UUID("12345678-1234-1234-1234-123456789abc")
-        expected_model_id = network_model_id_for_project(project_id)
+        network_model_id_for_project(project_id)
 
         # Create snapshot with wrong model ID
         graph = NetworkGraph(network_model_id="wrong-model-id")
@@ -294,9 +292,7 @@ class TestModelMutationInvalidatesCaseResults:
 
         # Create a new graph with an additional node (model mutation)
         graph_after = create_simple_network()
-        graph_after.add_node(
-            create_pq_node(node_id="pq-2", name="Stacja SN-2")
-        )
+        graph_after.add_node(create_pq_node(node_id="pq-2", name="Stacja SN-2"))
         graph_after.add_branch(
             create_line_branch(
                 branch_id="line-2",
@@ -434,8 +430,7 @@ class TestWizardSldRoundTripNodeCreation:
 
         # SLD must contain a bus element for our node
         bus_elements = [
-            e for e in sld.elements
-            if isinstance(e, SldBusElement) and e.node_id == "slack-1"
+            e for e in sld.elements if isinstance(e, SldBusElement) and e.node_id == "slack-1"
         ]
         assert len(bus_elements) == 1
         assert bus_elements[0].node_id == "slack-1"
@@ -452,16 +447,14 @@ class TestWizardSldRoundTripNodeCreation:
 
         # Every node must be in the SLD
         for node_id in graph.nodes:
-            assert node_id in sld_identities, (
-                f"Node '{node_id}' missing from SLD projection"
-            )
+            assert node_id in sld_identities, f"Node '{node_id}' missing from SLD projection"
 
         # Every active branch must be in the SLD
         for branch_id, branch in graph.branches.items():
             if getattr(branch, "in_service", True):
-                assert branch_id in sld_identities, (
-                    f"Branch '{branch_id}' missing from SLD projection"
-                )
+                assert (
+                    branch_id in sld_identities
+                ), f"Branch '{branch_id}' missing from SLD projection"
 
     def test_sld_bijection_no_extra_elements(self) -> None:
         """SLD has no extra elements beyond what the model contains."""
@@ -518,7 +511,7 @@ class TestDeterministicGraphBuild:
 
         # Element order is deterministic (sorted by type, then identity)
         assert len(sld_a.elements) == len(sld_b.elements)
-        for elem_a, elem_b in zip(sld_a.elements, sld_b.elements):
+        for elem_a, elem_b in zip(sld_a.elements, sld_b.elements, strict=False):
             assert elem_a.element_type == elem_b.element_type
             assert elem_a.identity == elem_b.identity
 

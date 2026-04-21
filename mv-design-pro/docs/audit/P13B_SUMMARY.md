@@ -267,7 +267,7 @@ DoD complete:
 - ✓ UI: Import/Export buttons with ImportReport dialog
 - ✓ Integration tests (4 new tests)
 
-Refs: SYSTEM_SPEC.md § 4, POWERFACTORY_COMPLIANCE.md CT-*, P13B_SUMMARY.md
+Refs: SYSTEM_SPEC.md § 4, CANONICAL_COMPLIANCE.md CT-*, P13B_SUMMARY.md
 
 https://claude.ai/code/session_01WU4xBDb2ntJhzwSY1CV6Sm
 ```

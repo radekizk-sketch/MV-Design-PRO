@@ -1,7 +1,7 @@
-# Protection Element Assignment Contract (P16a)
+﻿# Protection Element Assignment Contract (P16a)
 
 **STATUS:** KONTRAKT (read-only, bez solvera)
-**PARITY:** DIgSILENT PowerFactory - przypisanie zabezpieczen do elementow
+**PARITY:** DIgSILENT benchmark - przypisanie zabezpieczen do elementow
 
 ---
 
@@ -27,15 +27,15 @@ Obecny model:
 
 ```
 ProtectionSldOverlay
-  └── wymaga run_id (wynik solvera)
-  └── dane pochodza z analizy zabezpieczen
+  â””â”€â”€ wymaga run_id (wynik solvera)
+  â””â”€â”€ dane pochodza z analizy zabezpieczen
 
 ProtectionCaseConfigPanel
-  └── konfiguruje szablon nastaw na poziomie CASE
-  └── NIE przypisuje zabezpieczen do konkretnych elementow
+  â””â”€â”€ konfiguruje szablon nastaw na poziomie CASE
+  â””â”€â”€ NIE przypisuje zabezpieczen do konkretnych elementow
 ```
 
-**BRAK:** Statycznego przypisania `element → protection_device`
+**BRAK:** Statycznego przypisania `element â†’ protection_device`
 
 ---
 
@@ -128,7 +128,7 @@ interface Switch {
 }
 ```
 
-**Zalety:** Zgodnosc z bijection SldSymbol ↔ Model
+**Zalety:** Zgodnosc z bijection SldSymbol â†” Model
 **Wady:** Wymaga migracji modelu
 
 ### Opcja B: Osobny endpoint API
@@ -176,7 +176,8 @@ interface ProtectionConfig {
 
 ## 9. POWIAZANE DOKUMENTY
 
-- `powerfactory_ui_parity.md` - Parity z PowerFactory
+- `ui_canonical_parity.md` - Parity z benchmark
 - `sld_rules.md` - Reguly SLD
 - `PROTECTION_INSIGHT_CONTRACT.md` - Analiza zabezpieczen
 - `protection/element-assignment.ts` - Typy (kod)
+

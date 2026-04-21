@@ -10,9 +10,6 @@ Covers:
 """
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from api.enm import router as enm_router
 from application.eligibility_service import EligibilityService
 from domain.eligibility_models import (
@@ -35,8 +32,10 @@ from enm.models import (
 )
 from enm.store import reset_enm_store, set_enm
 from enm.validator import ENMValidator, ReadinessResult
-from tests.catalog_test_helpers import gpz_materialized_params, gpz_source_record
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
+from tests.catalog_test_helpers import gpz_materialized_params, gpz_source_record
 
 # ===========================================================================
 # Fixtures: ENM variants
@@ -256,38 +255,22 @@ class TestEligibilityModels:
 
     def test_determinism_different_input(self):
         """Different inputs must produce different content_hash."""
-        b1 = AnalysisEligibilityIssue(
-            code="ELIG_A", severity=IssueSeverity.BLOCKER, message_pl="A"
-        )
-        b2 = AnalysisEligibilityIssue(
-            code="ELIG_B", severity=IssueSeverity.BLOCKER, message_pl="B"
-        )
-        r1 = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[b1]
-        )
-        r2 = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[b2]
-        )
+        b1 = AnalysisEligibilityIssue(code="ELIG_A", severity=IssueSeverity.BLOCKER, message_pl="A")
+        b2 = AnalysisEligibilityIssue(code="ELIG_B", severity=IssueSeverity.BLOCKER, message_pl="B")
+        r1 = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[b1])
+        r2 = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[b2])
         assert r1.content_hash != r2.content_hash
 
     def test_matrix_build_and_hash(self):
-        r1 = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[]
-        )
-        r2 = build_eligibility_result(
-            analysis_type=AnalysisType.LOAD_FLOW, blockers=[]
-        )
-        matrix = build_eligibility_matrix(
-            case_id="case-1", enm_revision=1, results=[r1, r2]
-        )
+        r1 = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[])
+        r2 = build_eligibility_result(analysis_type=AnalysisType.LOAD_FLOW, blockers=[])
+        matrix = build_eligibility_matrix(case_id="case-1", enm_revision=1, results=[r1, r2])
         assert matrix.content_hash != ""
         assert matrix.overall["eligible_any"] is True
         assert matrix.overall["blockers_total"] == 0
 
     def test_to_dict_contract(self):
-        result = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[]
-        )
+        result = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[])
         d = result.to_dict()
         assert d["analysis_type"] == "SC_3F"
         assert d["status"] == "ELIGIBLE"
@@ -298,12 +281,8 @@ class TestEligibilityModels:
         assert "content_hash" in d
 
     def test_matrix_to_dict_contract(self):
-        result = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[]
-        )
-        matrix = build_eligibility_matrix(
-            case_id="c1", enm_revision=1, results=[result]
-        )
+        result = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[])
+        matrix = build_eligibility_matrix(case_id="c1", enm_revision=1, results=[result])
         d = matrix.to_dict()
         assert d["case_id"] == "c1"
         assert d["enm_revision"] == 1
@@ -314,16 +293,18 @@ class TestEligibilityModels:
     def test_issues_sorted_deterministically(self):
         """Issues must be sorted by code, then element_ref."""
         b1 = AnalysisEligibilityIssue(
-            code="ELIG_B", severity=IssueSeverity.BLOCKER, message_pl="B",
+            code="ELIG_B",
+            severity=IssueSeverity.BLOCKER,
+            message_pl="B",
             element_ref="elem_2",
         )
         b2 = AnalysisEligibilityIssue(
-            code="ELIG_A", severity=IssueSeverity.BLOCKER, message_pl="A",
+            code="ELIG_A",
+            severity=IssueSeverity.BLOCKER,
+            message_pl="A",
             element_ref="elem_1",
         )
-        result = build_eligibility_result(
-            analysis_type=AnalysisType.SC_3F, blockers=[b1, b2]
-        )
+        result = build_eligibility_result(analysis_type=AnalysisType.SC_3F, blockers=[b1, b2])
         assert result.blockers[0].code == "ELIG_A"
         assert result.blockers[1].code == "ELIG_B"
 
@@ -342,9 +323,7 @@ class TestEligibilityServiceReadyNetwork:
         assert readiness.ready is True
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
         assert sc3f.status == EligibilityStatus.ELIGIBLE
@@ -354,9 +333,7 @@ class TestEligibilityServiceReadyNetwork:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         lf = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.LOAD_FLOW)
         assert lf.status == EligibilityStatus.INELIGIBLE
@@ -368,9 +345,7 @@ class TestEligibilityServiceReadyNetwork:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         lf = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.LOAD_FLOW)
         assert lf.status == EligibilityStatus.ELIGIBLE
@@ -381,9 +356,7 @@ class TestEligibilityServiceReadyNetwork:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc2f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_2F)
         assert sc2f.status == EligibilityStatus.INELIGIBLE
@@ -396,9 +369,7 @@ class TestEligibilityServiceReadyNetwork:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc1f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
         assert sc1f.status == EligibilityStatus.INELIGIBLE
@@ -411,9 +382,7 @@ class TestEligibilityServiceReadyNetwork:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc1f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
         assert sc1f.status == EligibilityStatus.ELIGIBLE
@@ -427,9 +396,7 @@ class TestEligibilityServiceMissingSource:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         for result in matrix.matrix:
             assert result.status == EligibilityStatus.INELIGIBLE
@@ -444,14 +411,10 @@ class TestEligibilityServiceMissingSource:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
-        source_blocker = next(
-            b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_SOURCE"
-        )
+        source_blocker = next(b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_SOURCE")
         assert source_blocker.fix_action is not None
         assert source_blocker.fix_action.action_type == "ADD_MISSING_DEVICE"
 
@@ -464,9 +427,7 @@ class TestEligibilityServiceMissingCatalog:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
         assert sc3f.status == EligibilityStatus.INELIGIBLE
@@ -478,14 +439,10 @@ class TestEligibilityServiceMissingCatalog:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
-        catalog_blocker = next(
-            b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_CATALOG_REF"
-        )
+        catalog_blocker = next(b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_CATALOG_REF")
         assert catalog_blocker.fix_action is not None
         assert catalog_blocker.fix_action.action_type == "SELECT_CATALOG"
         assert catalog_blocker.fix_action.element_ref == "line_1"
@@ -495,19 +452,13 @@ class TestEligibilityServiceMissingCatalog:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         sc3f = next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_3F)
         assert sc3f.status == EligibilityStatus.INELIGIBLE
-        catalog_blockers = [
-            b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_CATALOG_REF"
-        ]
+        catalog_blockers = [b for b in sc3f.blockers if b.code == "ELIG_SC3_MISSING_CATALOG_REF"]
         assert len(catalog_blockers) >= 1
-        trafo_blocker = next(
-            (b for b in catalog_blockers if b.element_ref == "tr_1"), None
-        )
+        trafo_blocker = next((b for b in catalog_blockers if b.element_ref == "tr_1"), None)
         assert trafo_blocker is not None
 
 
@@ -519,9 +470,7 @@ class TestEligibilityServiceReadinessFalse:
         enm = _ready_enm()
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="case-1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="case-1")
 
         for result in matrix.matrix:
             assert result.status == EligibilityStatus.INELIGIBLE
@@ -561,9 +510,7 @@ class TestEligibilityDeterminism:
         readiness = _validate_and_readiness(enm)
 
         service = EligibilityService()
-        matrix = service.compute_matrix(
-            enm=enm, readiness=readiness, case_id="c1"
-        )
+        matrix = service.compute_matrix(enm=enm, readiness=readiness, case_id="c1")
 
         types = [r.analysis_type.value for r in matrix.matrix]
         assert types == sorted(types)
@@ -637,32 +584,42 @@ class TestEligibilityAPI:
     def test_valid_enm_sc3f_eligible(self, client):
         enm = {
             "header": {
-                "name": "Elig Test", "enm_version": "1.0",
+                "name": "Elig Test",
+                "enm_version": "1.0",
                 "defaults": {"frequency_hz": 50, "unit_system": "SI"},
                 "created_at": "2024-01-01T00:00:00Z",
                 "updated_at": "2024-01-01T00:00:00Z",
-                "revision": 1, "hash_sha256": "",
+                "revision": 1,
+                "hash_sha256": "",
             },
-            "buses": [{
-                "id": "00000000-0000-0000-0000-000000000001",
-                "ref_id": "b1", "name": "B1",
-                "tags": [], "meta": {},
-                "voltage_kv": 15, "phase_system": "3ph",
-            }],
+            "buses": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000001",
+                    "ref_id": "b1",
+                    "name": "B1",
+                    "tags": [],
+                    "meta": {},
+                    "voltage_kv": 15,
+                    "phase_system": "3ph",
+                }
+            ],
             "branches": [],
             "transformers": [],
-            "sources": [{
-                "id": "00000000-0000-0000-0000-000000000002",
-                "tags": [], "meta": {},
-                **gpz_source_record(
-                    ref_id="s1",
-                    name="S1",
-                    bus_ref="b1",
-                    voltage_kv=15.0,
-                    sk3_mva=200.0,
-                    rx_ratio=0.10,
-                ),
-            }],
+            "sources": [
+                {
+                    "id": "00000000-0000-0000-0000-000000000002",
+                    "tags": [],
+                    "meta": {},
+                    **gpz_source_record(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        voltage_kv=15.0,
+                        sk3_mva=200.0,
+                        rx_ratio=0.10,
+                    ),
+                }
+            ],
             "loads": [],
             "generators": [],
         }
@@ -670,9 +627,7 @@ class TestEligibilityAPI:
         resp = client.get("/api/cases/elig-test-4/analysis-eligibility")
         data = resp.json()
 
-        sc3f = next(
-            e for e in data["matrix"] if e["analysis_type"] == "SC_3F"
-        )
+        sc3f = next(e for e in data["matrix"] if e["analysis_type"] == "SC_3F")
         assert sc3f["status"] == "ELIGIBLE"
 
     def test_empty_enm_all_ineligible(self, client):
@@ -701,8 +656,9 @@ class TestEligibilityAPI:
 class TestExecutionEngineEligibilityGating:
     def test_run_blocked_when_ineligible(self):
         from uuid import uuid4
-        from application.execution_engine.service import ExecutionEngineService
+
         from application.execution_engine.errors import RunBlockedError
+        from application.execution_engine.service import ExecutionEngineService
         from domain.execution import ExecutionAnalysisType
         from domain.study_case import StudyCase as DomainStudyCase
 
@@ -739,6 +695,7 @@ class TestExecutionEngineEligibilityGating:
 
     def test_run_allowed_when_eligible(self):
         from uuid import uuid4
+
         from application.execution_engine.service import ExecutionEngineService
         from domain.execution import ExecutionAnalysisType, RunStatus
         from domain.study_case import StudyCase as DomainStudyCase

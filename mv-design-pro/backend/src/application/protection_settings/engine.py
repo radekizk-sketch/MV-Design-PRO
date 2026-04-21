@@ -31,12 +31,12 @@ Thermal withstand tables (from Hoppel article):
 - Aluminium: j_thn = 94 A/mm² (for 1s)
 - ACSR (AlFe): j_thn = 87 A/mm² (for 1s)
 """
+
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
-
 
 # Thermal density values j_thn [A/mm²] for 1 second (IEC 60909/Hoppel Table 3-4)
 THERMAL_DENSITY = {
@@ -48,15 +48,16 @@ THERMAL_DENSITY = {
 
 # Default correction factor k_bth by line length ratio (Hoppel Table 7)
 K_BTH_TABLE = {
-    "short": 1.05,   # < 30% of total line
-    "medium": 1.10,   # 30-70% of total line
-    "long": 1.20,     # > 70% of total line
+    "short": 1.05,  # < 30% of total line
+    "medium": 1.10,  # 30-70% of total line
+    "long": 1.20,  # > 70% of total line
 }
 
 
 @dataclass(frozen=True)
 class ProtectionSettingsInput:
     """Input data for protection settings calculation."""
+
     line_id: str
     line_name: str
 
@@ -69,32 +70,33 @@ class ProtectionSettingsInput:
     # Short circuit currents (from SC solver)
     ik3_max_beginning_a: float  # I_k3_max at line beginning (c_max)
     ik3_min_beginning_a: float  # I_k3_min at line beginning (c_min)
-    ik3_max_end_a: float        # I_k3_max at line end
-    ik3_min_end_a: float        # I_k3_min at line end
-    ik2_min_end_a: float        # I_k2_min at line end (for sensitivity)
+    ik3_max_end_a: float  # I_k3_max at line end
+    ik3_min_end_a: float  # I_k3_min at line end
+    ik2_min_end_a: float  # I_k2_min at line end (for sensitivity)
 
     # Next downstream bus max SC current (for selectivity)
     ik_max_next_bus_a: float
 
     # Power flow results
-    i_load_max_a: float   # Maximum load current from PF
+    i_load_max_a: float  # Maximum load current from PF
 
     # Configuration
-    delta_t_s: float = 0.3       # Time grading step [s] (IRiESD)
-    k_b: float = 1.2             # Selectivity factor
-    k_bth: float = 1.1           # Thermal correction factor
-    t_upstream_s: float = 0.0    # Upstream protection time [s]
-    spz_enabled: bool = True     # Whether SPZ (auto-reclose) is considered
-    spz_pause_s: float = 0.5    # SPZ dead time [s]
+    delta_t_s: float = 0.3  # Time grading step [s] (IRiESD)
+    k_b: float = 1.2  # Selectivity factor
+    k_bth: float = 1.1  # Thermal correction factor
+    t_upstream_s: float = 0.0  # Upstream protection time [s]
+    spz_enabled: bool = True  # Whether SPZ (auto-reclose) is considered
+    spz_pause_s: float = 0.5  # SPZ dead time [s]
 
 
 @dataclass(frozen=True)
 class DelayedSettings:
     """Result for I> (delayed/time-graded) protection setting."""
-    i_setting_a: float        # Recommended setting [A]
-    t_setting_s: float        # Time delay [s]
-    i_load_max_a: float       # Max load current used
-    k_b: float                # Selectivity factor used
+
+    i_setting_a: float  # Recommended setting [A]
+    t_setting_s: float  # Time delay [s]
+    i_load_max_a: float  # Max load current used
+    k_b: float  # Selectivity factor used
     sensitivity_ratio: float  # I_k_min / I_setting (should be >= 1.5)
     is_valid: bool
     validation_notes: list[str]
@@ -104,11 +106,12 @@ class DelayedSettings:
 @dataclass(frozen=True)
 class InstantaneousSettings:
     """Result for I>> (instantaneous) protection setting."""
-    i_setting_a: float        # Recommended setting [A]
+
+    i_setting_a: float  # Recommended setting [A]
     i_min_selectivity_a: float  # Min from selectivity condition
-    i_max_thermal_a: float      # Max from thermal condition
+    i_max_thermal_a: float  # Max from thermal condition
     i_max_sensitivity_a: float  # Max from sensitivity condition
-    range_valid: bool           # Whether valid range exists
+    range_valid: bool  # Whether valid range exists
     k_b: float
     k_bth: float
     is_valid: bool
@@ -119,30 +122,33 @@ class InstantaneousSettings:
 @dataclass(frozen=True)
 class ThermalWithstandResult:
     """Thermal withstand check result."""
-    i_th_dop_a: float      # Allowable thermal current [A]
-    j_thn: float           # Thermal density [A/mm²]
+
+    i_th_dop_a: float  # Allowable thermal current [A]
+    j_thn: float  # Thermal density [A/mm²]
     cross_section_mm2: float
-    t_fault_s: float       # Total fault time [s]
-    ik_max_a: float        # Maximum fault current [A]
-    is_adequate: bool       # Whether cable withstands the fault
-    margin_percent: float   # Safety margin [%]
+    t_fault_s: float  # Total fault time [s]
+    ik_max_a: float  # Maximum fault current [A]
+    is_adequate: bool  # Whether cable withstands the fault
+    margin_percent: float  # Safety margin [%]
     trace: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
 class SPZAnalysisResult:
     """Auto-reclose (SPZ) analysis result."""
-    spz_allowed: bool          # Whether SPZ is allowed with I>>
+
+    spz_allowed: bool  # Whether SPZ is allowed with I>>
     total_fault_time_s: float  # Total thermal stress time
-    i_th_required_a: float     # Required thermal withstand
-    i_th_available_a: float    # Available thermal withstand
-    blocking_recommended: bool # Whether I>> should block SPZ
+    i_th_required_a: float  # Required thermal withstand
+    i_th_available_a: float  # Available thermal withstand
+    blocking_recommended: bool  # Whether I>> should block SPZ
     trace: list[dict[str, Any]]
 
 
 @dataclass(frozen=True)
 class ProtectionSettingsResult:
     """Complete result of protection settings calculation."""
+
     line_id: str
     line_name: str
     delayed: DelayedSettings
@@ -260,41 +266,47 @@ class ProtectionSettingsEngine:
 
         # Step 1: Calculate setting based on max load current
         i_setting = inp.k_b * inp.i_load_max_a
-        trace.append({
-            "step": "Obliczenie nastawy I>",
-            "formula": "I_{>} = k_b \\cdot I_{obc,max}",
-            "inputs": {"k_b": inp.k_b, "I_obc_max_A": inp.i_load_max_a},
-            "substitution": f"{inp.k_b} * {inp.i_load_max_a:.1f}",
-            "result": {"I_setting_A": round(i_setting, 1)},
-        })
+        trace.append(
+            {
+                "step": "Obliczenie nastawy I>",
+                "formula": "I_{>} = k_b \\cdot I_{obc,max}",
+                "inputs": {"k_b": inp.k_b, "I_obc_max_A": inp.i_load_max_a},
+                "substitution": f"{inp.k_b} * {inp.i_load_max_a:.1f}",
+                "result": {"I_setting_A": round(i_setting, 1)},
+            }
+        )
 
         # Step 2: Time grading
         t_setting = inp.t_upstream_s + inp.delta_t_s
-        trace.append({
-            "step": "Stopniowanie czasowe I>",
-            "formula": "t_{>} = t_{upstream} + \\Delta t",
-            "inputs": {
-                "t_upstream_s": inp.t_upstream_s,
-                "delta_t_s": inp.delta_t_s,
-            },
-            "substitution": f"{inp.t_upstream_s} + {inp.delta_t_s}",
-            "result": {"t_setting_s": round(t_setting, 2)},
-        })
+        trace.append(
+            {
+                "step": "Stopniowanie czasowe I>",
+                "formula": "t_{>} = t_{upstream} + \\Delta t",
+                "inputs": {
+                    "t_upstream_s": inp.t_upstream_s,
+                    "delta_t_s": inp.delta_t_s,
+                },
+                "substitution": f"{inp.t_upstream_s} + {inp.delta_t_s}",
+                "result": {"t_setting_s": round(t_setting, 2)},
+            }
+        )
 
         # Step 3: Sensitivity check
         sensitivity = inp.ik2_min_end_a / i_setting if i_setting > 0 else 0.0
-        trace.append({
-            "step": "Sprawdzenie czułości I>",
-            "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
-            "inputs": {
-                "I_k2_min_end_A": inp.ik2_min_end_a,
-                "I_setting_A": round(i_setting, 1),
-            },
-            "substitution": f"{inp.ik2_min_end_a:.1f} / {i_setting:.1f}",
-            "result": {"sensitivity_ratio": round(sensitivity, 2)},
-            "requirement": "k_cz >= 1.5",
-            "passed": sensitivity >= 1.5,
-        })
+        trace.append(
+            {
+                "step": "Sprawdzenie czułości I>",
+                "formula": "k_{cz} = I_{k2,min,end} / I_{>}",
+                "inputs": {
+                    "I_k2_min_end_A": inp.ik2_min_end_a,
+                    "I_setting_A": round(i_setting, 1),
+                },
+                "substitution": f"{inp.ik2_min_end_a:.1f} / {i_setting:.1f}",
+                "result": {"sensitivity_ratio": round(sensitivity, 2)},
+                "requirement": "k_cz >= 1.5",
+                "passed": sensitivity >= 1.5,
+            }
+        )
 
         notes: list[str] = []
         is_valid = True
@@ -302,8 +314,7 @@ class ProtectionSettingsEngine:
         if sensitivity < 1.5:
             is_valid = False
             notes.append(
-                f"Czułość zabezpieczenia I> niewystarczająca: "
-                f"k_cz = {sensitivity:.2f} < 1.5"
+                f"Czułość zabezpieczenia I> niewystarczająca: " f"k_cz = {sensitivity:.2f} < 1.5"
             )
 
         if i_setting > inp.i_nominal_a:
@@ -337,16 +348,18 @@ class ProtectionSettingsEngine:
 
         # Condition 1: Selectivity
         i_min_sel = inp.k_b * inp.ik_max_next_bus_a
-        trace.append({
-            "step": "Warunek selektywności I>>",
-            "formula": "I_{>>} \\geq k_b \\cdot I_{k,max,next}",
-            "inputs": {
-                "k_b": inp.k_b,
-                "I_k_max_next_A": inp.ik_max_next_bus_a,
-            },
-            "substitution": f"{inp.k_b} * {inp.ik_max_next_bus_a:.1f}",
-            "result": {"I_min_selectivity_A": round(i_min_sel, 1)},
-        })
+        trace.append(
+            {
+                "step": "Warunek selektywności I>>",
+                "formula": "I_{>>} \\geq k_b \\cdot I_{k,max,next}",
+                "inputs": {
+                    "k_b": inp.k_b,
+                    "I_k_max_next_A": inp.ik_max_next_bus_a,
+                },
+                "substitution": f"{inp.k_b} * {inp.ik_max_next_bus_a:.1f}",
+                "result": {"I_min_selectivity_A": round(i_min_sel, 1)},
+            }
+        )
 
         # Condition 2: Thermal withstand
         j_thn = THERMAL_DENSITY.get(inp.conductor_material, 94.0)
@@ -357,38 +370,42 @@ class ProtectionSettingsEngine:
             i_th_dop = float("inf")
 
         i_max_thermal = i_th_dop / inp.k_bth
-        trace.append({
-            "step": "Warunek wytrzymałości cieplnej I>>",
-            "formula": "I_{>>} \\leq \\frac{I_{th,dop}}{k_{bth}} = "
-                       "\\frac{s \\cdot j_{thn}}{k_{bth} \\cdot \\sqrt{t_k}}",
-            "inputs": {
-                "s_mm2": inp.cross_section_mm2,
-                "j_thn_A_mm2": j_thn,
-                "k_bth": inp.k_bth,
-                "t_fault_s": t_fault_inst,
-            },
-            "substitution": (
-                f"({inp.cross_section_mm2} * {j_thn}) / "
-                f"({inp.k_bth} * sqrt({t_fault_inst}))"
-            ),
-            "result": {
-                "I_th_dop_A": round(i_th_dop, 1),
-                "I_max_thermal_A": round(i_max_thermal, 1),
-            },
-        })
+        trace.append(
+            {
+                "step": "Warunek wytrzymałości cieplnej I>>",
+                "formula": "I_{>>} \\leq \\frac{I_{th,dop}}{k_{bth}} = "
+                "\\frac{s \\cdot j_{thn}}{k_{bth} \\cdot \\sqrt{t_k}}",
+                "inputs": {
+                    "s_mm2": inp.cross_section_mm2,
+                    "j_thn_A_mm2": j_thn,
+                    "k_bth": inp.k_bth,
+                    "t_fault_s": t_fault_inst,
+                },
+                "substitution": (
+                    f"({inp.cross_section_mm2} * {j_thn}) / "
+                    f"({inp.k_bth} * sqrt({t_fault_inst}))"
+                ),
+                "result": {
+                    "I_th_dop_A": round(i_th_dop, 1),
+                    "I_max_thermal_A": round(i_max_thermal, 1),
+                },
+            }
+        )
 
         # Condition 3: Sensitivity
         i_max_sensitivity = inp.ik3_min_beginning_a / inp.k_b
-        trace.append({
-            "step": "Warunek czułości I>>",
-            "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
-            "inputs": {
-                "I_k_min_bus_A": inp.ik3_min_beginning_a,
-                "k_b": inp.k_b,
-            },
-            "substitution": f"{inp.ik3_min_beginning_a:.1f} / {inp.k_b}",
-            "result": {"I_max_sensitivity_A": round(i_max_sensitivity, 1)},
-        })
+        trace.append(
+            {
+                "step": "Warunek czułości I>>",
+                "formula": "I_{>>} < \\frac{I_{k,min,bus}}{k_b}",
+                "inputs": {
+                    "I_k_min_bus_A": inp.ik3_min_beginning_a,
+                    "k_b": inp.k_b,
+                },
+                "substitution": f"{inp.ik3_min_beginning_a:.1f} / {inp.k_b}",
+                "result": {"I_max_sensitivity_A": round(i_max_sensitivity, 1)},
+            }
+        )
 
         # Determine valid range and recommended setting
         range_valid = i_min_sel <= min(i_max_thermal, i_max_sensitivity)
@@ -401,19 +418,21 @@ class ProtectionSettingsEngine:
             # No valid range — use selectivity minimum as best effort
             i_setting = i_min_sel
 
-        trace.append({
-            "step": "Wyznaczenie nastawy I>>",
-            "formula": "I_{min,sel} \\leq I_{>>} \\leq \\min(I_{max,th}, I_{max,cz})",
-            "inputs": {
-                "I_min_selectivity_A": round(i_min_sel, 1),
-                "I_max_thermal_A": round(i_max_thermal, 1),
-                "I_max_sensitivity_A": round(i_max_sensitivity, 1),
-            },
-            "result": {
-                "I_setting_A": round(i_setting, 1),
-                "range_valid": range_valid,
-            },
-        })
+        trace.append(
+            {
+                "step": "Wyznaczenie nastawy I>>",
+                "formula": "I_{min,sel} \\leq I_{>>} \\leq \\min(I_{max,th}, I_{max,cz})",
+                "inputs": {
+                    "I_min_selectivity_A": round(i_min_sel, 1),
+                    "I_max_thermal_A": round(i_max_thermal, 1),
+                    "I_max_sensitivity_A": round(i_max_sensitivity, 1),
+                },
+                "result": {
+                    "I_setting_A": round(i_setting, 1),
+                    "range_valid": range_valid,
+                },
+            }
+        )
 
         notes: list[str] = []
         is_valid = range_valid
@@ -440,7 +459,9 @@ class ProtectionSettingsEngine:
         )
 
     @staticmethod
-    def _check_thermal_withstand(inp: ProtectionSettingsInput) -> ThermalWithstandResult:
+    def _check_thermal_withstand(
+        inp: ProtectionSettingsInput,
+    ) -> ThermalWithstandResult:
         """
         Check thermal withstand of cable/line.
 
@@ -457,37 +478,39 @@ class ProtectionSettingsEngine:
 
         i_th_dop = inp.cross_section_mm2 * j_thn / math.sqrt(t_fault)
 
-        trace.append({
-            "step": "Obliczenie dopuszczalnego prądu cieplnego",
-            "formula": "I_{th,dop} = \\frac{s \\cdot j_{thn}}{\\sqrt{t_k}}",
-            "inputs": {
-                "s_mm2": inp.cross_section_mm2,
-                "j_thn_A_mm2": j_thn,
-                "material": inp.conductor_material,
-                "t_fault_s": round(t_fault, 3),
-            },
-            "substitution": (
-                f"{inp.cross_section_mm2} * {j_thn} / sqrt({t_fault:.3f})"
-            ),
-            "result": {"I_th_dop_A": round(i_th_dop, 1)},
-        })
+        trace.append(
+            {
+                "step": "Obliczenie dopuszczalnego prądu cieplnego",
+                "formula": "I_{th,dop} = \\frac{s \\cdot j_{thn}}{\\sqrt{t_k}}",
+                "inputs": {
+                    "s_mm2": inp.cross_section_mm2,
+                    "j_thn_A_mm2": j_thn,
+                    "material": inp.conductor_material,
+                    "t_fault_s": round(t_fault, 3),
+                },
+                "substitution": (f"{inp.cross_section_mm2} * {j_thn} / sqrt({t_fault:.3f})"),
+                "result": {"I_th_dop_A": round(i_th_dop, 1)},
+            }
+        )
 
         ik_max = inp.ik3_max_beginning_a
         is_adequate = ik_max <= i_th_dop
         margin = ((i_th_dop - ik_max) / i_th_dop * 100) if i_th_dop > 0 else 0.0
 
-        trace.append({
-            "step": "Sprawdzenie wytrzymałości cieplnej",
-            "formula": "I_{k,max} \\leq I_{th,dop}",
-            "inputs": {
-                "I_k_max_A": round(ik_max, 1),
-                "I_th_dop_A": round(i_th_dop, 1),
-            },
-            "result": {
-                "is_adequate": is_adequate,
-                "margin_percent": round(margin, 1),
-            },
-        })
+        trace.append(
+            {
+                "step": "Sprawdzenie wytrzymałości cieplnej",
+                "formula": "I_{k,max} \\leq I_{th,dop}",
+                "inputs": {
+                    "I_k_max_A": round(ik_max, 1),
+                    "I_th_dop_A": round(i_th_dop, 1),
+                },
+                "result": {
+                    "is_adequate": is_adequate,
+                    "margin_percent": round(margin, 1),
+                },
+            }
+        )
 
         return ThermalWithstandResult(
             i_th_dop_a=round(i_th_dop, 1),
@@ -521,47 +544,57 @@ class ProtectionSettingsEngine:
                 i_th_required_a=0.0,
                 i_th_available_a=thermal.i_th_dop_a,
                 blocking_recommended=False,
-                trace=[{
-                    "step": "SPZ wyłączone",
-                    "result": {"spz_enabled": False},
-                }],
+                trace=[
+                    {
+                        "step": "SPZ wyłączone",
+                        "result": {"spz_enabled": False},
+                    }
+                ],
             )
 
         # SPZ cycle: trip + pause + trip (if unsuccessful)
         t_trip = 0.05  # I>> instantaneous ~50ms
         t_total = t_trip + inp.spz_pause_s + t_trip
 
-        trace.append({
-            "step": "Czas cyklu SPZ",
-            "formula": "t_{total} = t_{trip} + t_{SPZ,pause} + t_{trip}",
-            "inputs": {
-                "t_trip_s": t_trip,
-                "t_spz_pause_s": inp.spz_pause_s,
-            },
-            "substitution": f"{t_trip} + {inp.spz_pause_s} + {t_trip}",
-            "result": {"t_total_s": round(t_total, 3)},
-        })
+        trace.append(
+            {
+                "step": "Czas cyklu SPZ",
+                "formula": "t_{total} = t_{trip} + t_{SPZ,pause} + t_{trip}",
+                "inputs": {
+                    "i_instantaneous_setting_a": inst.i_setting_a,
+                    "t_trip_s": t_trip,
+                    "t_spz_pause_s": inp.spz_pause_s,
+                },
+                "substitution": f"{t_trip} + {inp.spz_pause_s} + {t_trip}",
+                "result": {"t_total_s": round(t_total, 3)},
+            }
+        )
 
         # Thermal stress during SPZ cycle
         j_thn = THERMAL_DENSITY.get(inp.conductor_material, 94.0)
-        i_th_available = inp.cross_section_mm2 * j_thn / math.sqrt(t_total) if t_total > 0 else float("inf")
+        i_th_available = (
+            inp.cross_section_mm2 * j_thn / math.sqrt(t_total) if t_total > 0 else float("inf")
+        )
         i_th_required = inp.ik3_max_beginning_a
 
         spz_allowed = i_th_required <= i_th_available
         blocking_recommended = not spz_allowed
 
-        trace.append({
-            "step": "Sprawdzenie wytrzymałości cieplnej w cyklu SPZ",
-            "formula": "I_{k,max} \\leq \\frac{s \\cdot j_{thn}}{\\sqrt{t_{total}}}",
-            "inputs": {
-                "I_k_max_A": round(i_th_required, 1),
-                "I_th_available_A": round(i_th_available, 1),
-            },
-            "result": {
-                "spz_allowed": spz_allowed,
-                "blocking_recommended": blocking_recommended,
-            },
-        })
+        trace.append(
+            {
+                "step": "Sprawdzenie wytrzymałości cieplnej w cyklu SPZ",
+                "formula": "I_{k,max} \\leq \\frac{s \\cdot j_{thn}}{\\sqrt{t_{total}}}",
+                "inputs": {
+                    "I_k_max_A": round(i_th_required, 1),
+                    "I_th_available_A": round(i_th_available, 1),
+                    "I_instantaneous_setting_A": inst.i_setting_a,
+                },
+                "result": {
+                    "spz_allowed": spz_allowed,
+                    "blocking_recommended": blocking_recommended,
+                },
+            }
+        )
 
         return SPZAnalysisResult(
             spz_allowed=spz_allowed,

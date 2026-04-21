@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useNetworkBuildStore } from '../networkBuildStore';
+import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { normalizeCatalogBinding } from './catalogPayload';
 import type { CatalogNamespace } from '../../catalog/types';
 
 export function AssignCatalogForm() {
-  const context = useNetworkBuildStore((s) => s.activeOperationForm?.context);
+  const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);

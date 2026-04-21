@@ -14,10 +14,16 @@ Coverage:
 
 from __future__ import annotations
 
-from uuid import UUID, uuid4
+from uuid import uuid4
 
-import pytest
-
+from application.result_mapping.protection_to_overlay_v1 import (
+    PROTECTION_LEGEND_PL,
+    map_protection_to_overlay_v1,
+)
+from domain.protection_coordination_v1 import (
+    ProtectionSelectivityPair,
+    compute_coordination_v1,
+)
 from domain.protection_engine_v1 import (
     CTRatio,
     Function50Settings,
@@ -28,18 +34,6 @@ from domain.protection_engine_v1 import (
     TestPoint,
     execute_protection_v1,
 )
-from domain.protection_coordination_v1 import (
-    CoordinationResultV1,
-    ProtectionSelectivityPair,
-    SelectivityMarginPoint,
-    SelectivityPairResult,
-    compute_coordination_v1,
-)
-from application.result_mapping.protection_to_overlay_v1 import (
-    PROTECTION_LEGEND_PL,
-    map_protection_to_overlay_v1,
-)
-
 
 # =============================================================================
 # FIXTURES
@@ -81,8 +75,7 @@ def _make_relay(
 
 def _make_test_points(*currents: float) -> tuple[TestPoint, ...]:
     return tuple(
-        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c)
-        for i, c in enumerate(currents, 1)
+        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c) for i, c in enumerate(currents, 1)
     )
 
 
@@ -194,8 +187,11 @@ class TestTokens:
     def test_f50_pickup_gets_f50_token(self):
         """F50 pickup → protection_f50 color token."""
         relay = _make_relay(
-            "relay-001", "cb-001",
-            f50_enabled=True, f50_pickup=5.0, f50_trip_s=0.05,
+            "relay-001",
+            "cb-001",
+            f50_enabled=True,
+            f50_pickup=5.0,
+            f50_trip_s=0.05,
         )
         test_points = _make_test_points(5000.0)  # High current to trigger F50
         result = _run_protection((relay,), test_points)
@@ -213,9 +209,12 @@ class TestTokens:
     def test_no_trip_gets_inactive_token(self):
         """No trip → protection_inactive color token."""
         relay = _make_relay(
-            "relay-001", "cb-001",
-            ct_primary=400.0, ct_secondary=5.0,
-            f51_pickup=50.0, f51_tms=0.3,  # Very high pickup
+            "relay-001",
+            "cb-001",
+            ct_primary=400.0,
+            ct_secondary=5.0,
+            f51_pickup=50.0,
+            f51_tms=0.3,  # Very high pickup
         )
         test_points = _make_test_points(100.0)  # Low current, no trip
         result = _run_protection((relay,), test_points)
@@ -269,8 +268,11 @@ class TestBadges:
 
     def test_f50_trip_time_badge(self):
         relay = _make_relay(
-            "relay-001", "cb-001",
-            f50_enabled=True, f50_pickup=5.0, f50_trip_s=0.05,
+            "relay-001",
+            "cb-001",
+            f50_enabled=True,
+            f50_pickup=5.0,
+            f50_trip_s=0.05,
         )
         test_points = _make_test_points(5000.0)
         result = _run_protection((relay,), test_points)
@@ -300,7 +302,8 @@ class TestBadges:
 
     def test_no_trip_badges_are_none(self):
         relay = _make_relay(
-            "relay-001", "cb-001",
+            "relay-001",
+            "cb-001",
             f51_pickup=50.0,  # Very high pickup
         )
         test_points = _make_test_points(100.0)  # Low current
@@ -331,11 +334,10 @@ class TestCoordinationOverlay:
         test_points = _make_test_points(2000.0, 4000.0)
         prot_result = _run_protection((relay1, relay2), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
         coord_result = compute_coordination_v1(
-            pairs=pairs, protection_result=prot_result,
+            pairs=pairs,
+            protection_result=prot_result,
         )
 
         overlay = map_protection_to_overlay_v1(
@@ -377,7 +379,8 @@ class TestCoordinationOverlay:
             ProtectionSelectivityPair("pair-002", "relay-C", "relay-B"),
         )
         coord_result = compute_coordination_v1(
-            pairs=pairs, protection_result=prot_result,
+            pairs=pairs,
+            protection_result=prot_result,
         )
 
         # Filter to pair-001 only
@@ -408,10 +411,12 @@ class TestDeterminism:
         run_id = uuid4()
 
         overlay1 = map_protection_to_overlay_v1(
-            protection_result=result, run_id=run_id,
+            protection_result=result,
+            run_id=run_id,
         )
         overlay2 = map_protection_to_overlay_v1(
-            protection_result=result, run_id=run_id,
+            protection_result=result,
+            run_id=run_id,
         )
 
         assert overlay1.content_hash() == overlay2.content_hash()
@@ -424,7 +429,8 @@ class TestDeterminism:
         result = _run_protection((relay1, relay2), test_points)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
 
         refs = [el.element_ref for el in overlay.elements]
@@ -451,10 +457,12 @@ class TestPermutationInvariance:
         result_rev = _run_protection((relay2, relay1), test_points)
 
         overlay_fwd = map_protection_to_overlay_v1(
-            protection_result=result_fwd, run_id=run_id,
+            protection_result=result_fwd,
+            run_id=run_id,
         )
         overlay_rev = map_protection_to_overlay_v1(
-            protection_result=result_rev, run_id=run_id,
+            protection_result=result_rev,
+            run_id=run_id,
         )
 
         assert overlay_fwd.content_hash() == overlay_rev.content_hash()
@@ -474,14 +482,23 @@ class TestNoGeometryModification:
         result = _run_protection((relay,), test_points)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
 
         for el in overlay.elements:
             el_dict = el.model_dump()
             # No geometry-related fields
-            for forbidden_key in ("x", "y", "width", "height", "position",
-                                  "geometry", "coordinates", "path"):
+            for forbidden_key in (
+                "x",
+                "y",
+                "width",
+                "height",
+                "position",
+                "geometry",
+                "coordinates",
+                "path",
+            ):
                 assert forbidden_key not in el_dict
 
     def test_only_token_fields(self):
@@ -491,14 +508,19 @@ class TestNoGeometryModification:
         result = _run_protection((relay,), test_points)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
 
         for el in overlay.elements:
             el_dict = el.model_dump()
             allowed = {
-                "element_ref", "element_type", "visual_state",
-                "numeric_badges", "color_token", "stroke_token",
+                "element_ref",
+                "element_type",
+                "visual_state",
+                "numeric_badges",
+                "color_token",
+                "stroke_token",
                 "animation_token",
             }
             assert set(el_dict.keys()) == allowed
@@ -518,7 +540,8 @@ class TestLegend:
         result = _run_protection((relay,), test_points)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
 
         assert len(overlay.legend) == len(PROTECTION_LEGEND_PL)
@@ -530,14 +553,18 @@ class TestLegend:
         """Legend color tokens are a superset of element color tokens."""
         relay1 = _make_relay("relay-001", "cb-001")
         relay2 = _make_relay(
-            "relay-002", "cb-002",
-            f50_enabled=True, f50_pickup=5.0, f50_trip_s=0.05,
+            "relay-002",
+            "cb-002",
+            f50_enabled=True,
+            f50_pickup=5.0,
+            f50_trip_s=0.05,
         )
         test_points = _make_test_points(5000.0)
         result = _run_protection((relay1, relay2), test_points)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
 
         legend_tokens = {entry.color_token for entry in overlay.legend}

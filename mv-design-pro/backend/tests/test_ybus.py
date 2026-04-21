@@ -6,11 +6,10 @@ import math
 
 import numpy as np
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.core.ybus import AdmittanceMatrixBuilder, S_BASE_MVA
+from network_model.core.ybus import S_BASE_MVA, AdmittanceMatrixBuilder
 
 
 def create_pq_node(node_id: str) -> Node:
@@ -91,7 +90,7 @@ def test_ybus_single_line_between_two_nodes():
     builder = AdmittanceMatrixBuilder(graph)
     y_bus = builder.build()
 
-    z_base = 20.0 ** 2 / S_BASE_MVA
+    z_base = 20.0**2 / S_BASE_MVA
     y_series = line.get_series_admittance() * z_base
     y_shunt = line.get_shunt_admittance_per_end() * z_base
 
@@ -120,9 +119,11 @@ def test_ybus_parallel_lines_between_two_nodes():
     builder = AdmittanceMatrixBuilder(graph)
     y_bus = builder.build()
 
-    z_base = 20.0 ** 2 / S_BASE_MVA
+    z_base = 20.0**2 / S_BASE_MVA
     y_series_total = (line1.get_series_admittance() + line2.get_series_admittance()) * z_base
-    y_shunt_total = (line1.get_shunt_admittance_per_end() + line2.get_shunt_admittance_per_end()) * z_base
+    y_shunt_total = (
+        line1.get_shunt_admittance_per_end() + line2.get_shunt_admittance_per_end()
+    ) * z_base
 
     expected = np.array(
         [
@@ -149,7 +150,7 @@ def test_ybus_ignores_out_of_service_branch():
     builder = AdmittanceMatrixBuilder(graph)
     y_bus = builder.build()
 
-    z_base = 20.0 ** 2 / S_BASE_MVA
+    z_base = 20.0**2 / S_BASE_MVA
     y_series = active_line.get_series_admittance() * z_base
     y_shunt = active_line.get_shunt_admittance_per_end() * z_base
 
@@ -221,7 +222,7 @@ def test_transformer_impedance_ohm_lv():
     zk_pu = transformer.uk_percent / 100.0
     rk_pu = (transformer.pk_kw / 1000.0) / transformer.rated_power_mva
     xk_pu = math.sqrt(max(zk_pu * zk_pu - rk_pu * rk_pu, 0.0))
-    z_base_lv = (transformer.voltage_lv_kv ** 2) / transformer.rated_power_mva
+    z_base_lv = (transformer.voltage_lv_kv**2) / transformer.rated_power_mva
     z_expected = complex(rk_pu, xk_pu) * z_base_lv
 
     assert transformer.get_short_circuit_impedance_ohm_lv() == z_expected

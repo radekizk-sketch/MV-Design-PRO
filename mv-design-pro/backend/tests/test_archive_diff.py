@@ -21,30 +21,10 @@ Pokrycie:
 
 from __future__ import annotations
 
-import copy
 import json
 
 import pytest
-
-from domain.project_archive import (
-    ARCHIVE_FORMAT_ID,
-    ARCHIVE_SCHEMA_VERSION,
-    ArchiveFingerprints,
-    CasesSection,
-    InterpretationsSection,
-    IssuesSection,
-    NetworkModelSection,
-    ProjectArchive,
-    ProjectMeta,
-    ProofsSection,
-    ResultsSection,
-    RunsSection,
-    SldSection,
-    archive_to_dict,
-    compute_archive_fingerprints,
-)
 from domain.archive_diff import (
-    ArchiveDiffResult,
     DiffStatus,
     ElementDiff,
     FieldChange,
@@ -55,7 +35,21 @@ from domain.archive_diff import (
     diff_summary,
     format_diff_report_pl,
 )
-
+from domain.project_archive import (
+    ARCHIVE_FORMAT_ID,
+    ARCHIVE_SCHEMA_VERSION,
+    CasesSection,
+    InterpretationsSection,
+    IssuesSection,
+    NetworkModelSection,
+    ProjectArchive,
+    ProjectMeta,
+    ProofsSection,
+    ResultsSection,
+    RunsSection,
+    SldSection,
+    compute_archive_fingerprints,
+)
 
 # ============================================================================
 # HELPER: tworzenie archiwum testowego
@@ -239,10 +233,7 @@ class TestModifiedProjectMeta:
         assert result.overall_status == DiffStatus.MODIFIED
 
         # Znajdz sekcje project_meta
-        pm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "project_meta"
-        ]
+        pm_diffs = [sd for sd in result.section_diffs if sd.section_name == "project_meta"]
         assert len(pm_diffs) == 1
         assert pm_diffs[0].status == DiffStatus.MODIFIED
 
@@ -263,17 +254,11 @@ class TestNetworkModelChanges:
         archive_b = _make_archive(nodes=nodes_b, branches=[])
         result = compare_archives(archive_a, archive_b)
 
-        nm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "network_model"
-        ]
+        nm_diffs = [sd for sd in result.section_diffs if sd.section_name == "network_model"]
         assert len(nm_diffs) == 1
         assert nm_diffs[0].elements_added == 1
 
-        added = [
-            ed for ed in nm_diffs[0].element_diffs
-            if ed.status == DiffStatus.ADDED
-        ]
+        added = [ed for ed in nm_diffs[0].element_diffs if ed.status == DiffStatus.ADDED]
         assert len(added) == 1
         assert added[0].element_id == "bus-2"
 
@@ -290,16 +275,10 @@ class TestNetworkModelChanges:
         archive_b = _make_archive(nodes=nodes_b, branches=[])
         result = compare_archives(archive_a, archive_b)
 
-        nm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "network_model"
-        ]
+        nm_diffs = [sd for sd in result.section_diffs if sd.section_name == "network_model"]
         assert nm_diffs[0].elements_removed == 1
 
-        removed = [
-            ed for ed in nm_diffs[0].element_diffs
-            if ed.status == DiffStatus.REMOVED
-        ]
+        removed = [ed for ed in nm_diffs[0].element_diffs if ed.status == DiffStatus.REMOVED]
         assert len(removed) == 1
         assert removed[0].element_id == "bus-2"
 
@@ -325,16 +304,13 @@ class TestNetworkModelChanges:
         archive_b = _make_archive(branches=branches_b)
         result = compare_archives(archive_a, archive_b)
 
-        nm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "network_model"
-        ]
+        nm_diffs = [sd for sd in result.section_diffs if sd.section_name == "network_model"]
         assert nm_diffs[0].elements_modified >= 1
 
         modified = [
-            ed for ed in nm_diffs[0].element_diffs
-            if ed.status == DiffStatus.MODIFIED
-            and ed.element_id == "br-1"
+            ed
+            for ed in nm_diffs[0].element_diffs
+            if ed.status == DiffStatus.MODIFIED and ed.element_id == "br-1"
         ]
         assert len(modified) == 1
         field_names = {fc.field_name for fc in modified[0].field_changes}
@@ -355,10 +331,7 @@ class TestEmptyVsNonEmpty:
         result = compare_archives(archive_a, archive_b)
         assert result.overall_status == DiffStatus.MODIFIED
 
-        nm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "network_model"
-        ]
+        nm_diffs = [sd for sd in result.section_diffs if sd.section_name == "network_model"]
         assert nm_diffs[0].elements_added == 1
 
     def test_nonempty_vs_empty_nodes(self):
@@ -370,10 +343,7 @@ class TestEmptyVsNonEmpty:
         archive_b = _make_archive(nodes=[], branches=[])
         result = compare_archives(archive_a, archive_b)
 
-        nm_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "network_model"
-        ]
+        nm_diffs = [sd for sd in result.section_diffs if sd.section_name == "network_model"]
         assert nm_diffs[0].elements_removed == 1
 
 
@@ -513,9 +483,7 @@ class TestMultipleSectionsChanged:
         assert result.overall_status == DiffStatus.MODIFIED
 
         modified_sections = [
-            sd.section_name
-            for sd in result.section_diffs
-            if sd.status == DiffStatus.MODIFIED
+            sd.section_name for sd in result.section_diffs if sd.status == DiffStatus.MODIFIED
         ]
         # project_meta (nazwa), network_model (nowy wezel), cases (nowy case)
         assert "project_meta" in modified_sections
@@ -672,10 +640,7 @@ class TestSldAndProofsChanges:
             node_symbols=[],
         )
         result = compare_archives(archive_a, archive_b)
-        sld_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "sld_diagrams"
-        ]
+        sld_diffs = [sd for sd in result.section_diffs if sd.section_name == "sld_diagrams"]
         assert len(sld_diffs) == 1
         assert sld_diffs[0].elements_added == 1
 
@@ -686,10 +651,7 @@ class TestSldAndProofsChanges:
             design_specs=[{"id": "spec-1", "title": "Specyfikacja 1"}],
         )
         result = compare_archives(archive_a, archive_b)
-        proofs_diffs = [
-            sd for sd in result.section_diffs
-            if sd.section_name == "proofs"
-        ]
+        proofs_diffs = [sd for sd in result.section_diffs if sd.section_name == "proofs"]
         assert len(proofs_diffs) == 1
         assert proofs_diffs[0].elements_added == 1
 

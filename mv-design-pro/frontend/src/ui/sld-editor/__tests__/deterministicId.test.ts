@@ -2,7 +2,7 @@
  * PR-SLD-03 — Testy deterministycznego generatora ID (N-07)
  *
  * CANONICAL ALIGNMENT:
- * - AUDYT_SLD_ETAP.md: N-07 (brak Date.now/Math.random)
+ * - AUDYT_SLD_CANONICAL.md: N-07 (brak Date.now/Math.random)
  *
  * TEST SCENARIOS:
  * 1. Hash jest deterministyczny

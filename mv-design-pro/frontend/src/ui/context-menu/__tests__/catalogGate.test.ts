@@ -35,14 +35,15 @@ describe('requiresCatalog', () => {
     expect(requiresCatalog('add_transformer_sn_nn')).toBe(true);
   });
 
-  it('returns true for action IDs mapped to canonical ops', () => {
-    expect(requiresCatalog('add_trunk_segment')).toBe(true);
-    expect(requiresCatalog('insert_station_a')).toBe(true);
-    expect(requiresCatalog('add_branch')).toBe(true);
-    expect(requiresCatalog('add_source')).toBe(true);
-    expect(requiresCatalog('add_source_field')).toBe(true);
-    expect(requiresCatalog('add_protection')).toBe(true);
-    expect(requiresCatalog('insert_switch')).toBe(true);
+  it('returns true for kanoniczne operacje tworzące lub nadal aktywne aliasy topologii', () => {
+    expect(requiresCatalog('continue_trunk_segment_sn')).toBe(true);
+    expect(requiresCatalog('insert_station_on_segment_sn')).toBe(true);
+    expect(requiresCatalog('start_branch_segment_sn')).toBe(true);
+    expect(requiresCatalog('add_grid_source_sn')).toBe(true);
+    expect(requiresCatalog('add_sn_bay')).toBe(true);
+    expect(requiresCatalog('add_nn_outgoing_field')).toBe(true);
+    expect(requiresCatalog('add_converter_source')).toBe(true);
+    expect(requiresCatalog('insert_section_switch_sn')).toBe(true);
   });
 
   it('returns false for non-catalog operations', () => {
@@ -54,7 +55,6 @@ describe('requiresCatalog', () => {
 
   it('returns true for GPZ/system source operations', () => {
     expect(requiresCatalog('add_grid_source_sn')).toBe(true);
-    expect(requiresCatalog('add_gpz')).toBe(true);
   });
 });
 
@@ -67,9 +67,7 @@ describe('catalogNamespace', () => {
     expect(catalogNamespace('continue_trunk_segment_sn')).toBe('KABEL_SN');
     expect(catalogNamespace('start_branch_segment_sn')).toBe('KABEL_SN');
     expect(catalogNamespace('connect_secondary_ring_sn')).toBe('KABEL_SN');
-    expect(catalogNamespace('add_trunk_segment')).toBe('KABEL_SN');
-    expect(catalogNamespace('add_line')).toBe('KABEL_SN');
-    expect(catalogNamespace('add_cable')).toBe('KABEL_SN');
+    expect(catalogNamespace('continue_trunk_segment_sn')).toBe('KABEL_SN');
   });
 
   it('maps transformer ops to TRAFO_SN_NN', () => {
@@ -79,19 +77,22 @@ describe('catalogNamespace', () => {
 
   it('maps GPZ op to ZRODLO_SN', () => {
     expect(catalogNamespace('add_grid_source_sn')).toBe('ZRODLO_SN');
-    expect(catalogNamespace('add_gpz')).toBe('ZRODLO_SN');
-    expect(catalogNamespace('add_source')).toBe('ZRODLO_SN');
   });
 
   it('maps nN source field ops to APARAT_NN', () => {
-    expect(catalogNamespace('add_nn_feeder')).toBe('APARAT_NN');
-    expect(catalogNamespace('add_feeder')).toBe('APARAT_NN');
-    expect(catalogNamespace('add_source_field')).toBe('APARAT_NN');
+    expect(catalogNamespace('add_nn_outgoing_field')).toBe('APARAT_NN');
+  });
+
+  it('maps SN bay creation ops to APARAT_SN', () => {
+    expect(catalogNamespace('add_sn_bay')).toBe('APARAT_SN');
+  });
+
+  it('maps converter source ops to CONVERTER', () => {
+    expect(catalogNamespace('add_converter_source')).toBe('CONVERTER');
   });
 
   it('maps protection ops to correct namespaces', () => {
     expect(catalogNamespace('add_relay')).toBe('ZABEZPIECZENIE');
-    expect(catalogNamespace('add_protection')).toBe('ZABEZPIECZENIE');
     expect(catalogNamespace('add_ct')).toBe('CT');
     expect(catalogNamespace('add_vt')).toBe('VT');
   });
@@ -108,7 +109,7 @@ describe('catalogNamespace', () => {
 
 describe('checkCatalogGate', () => {
   it('returns required=true with namespace for gated operations', () => {
-    const gate = checkCatalogGate('add_trunk_segment');
+    const gate = checkCatalogGate('continue_trunk_segment_sn');
     expect(gate.required).toBe(true);
     expect(gate.namespace).toBe('KABEL_SN');
     expect(gate.label).toBeDefined();
@@ -123,26 +124,26 @@ describe('checkCatalogGate', () => {
   });
 
   it('resolves action IDs to canonical operations', () => {
-    expect(checkCatalogGate('insert_station_a').canonicalOperation).toBe(
+    expect(checkCatalogGate('insert_station_on_segment_sn').canonicalOperation).toBe(
       'insert_station_on_segment_sn',
     );
-    expect(checkCatalogGate('insert_station_b').canonicalOperation).toBe(
-      'insert_station_on_segment_sn',
-    );
-    expect(checkCatalogGate('add_branch').canonicalOperation).toBe(
+    expect(checkCatalogGate('start_branch_segment_sn').canonicalOperation).toBe(
       'start_branch_segment_sn',
     );
+    expect(checkCatalogGate('add_converter_source').canonicalOperation).toBe('add_converter_source');
+    expect(checkCatalogGate('add_sn_bay').canonicalOperation).toBe('add_sn_bay');
   });
 
   it('provides Polish labels for all namespaces', () => {
     const gatedOps = [
-      'add_trunk_segment',
-      'insert_station_a',
-      'add_branch',
-      'add_gpz',
-      'add_source',
-      'add_source_field',
-      'insert_switch',
+      'continue_trunk_segment_sn',
+      'insert_station_on_segment_sn',
+      'start_branch_segment_sn',
+      'add_grid_source_sn',
+      'add_sn_bay',
+      'add_nn_outgoing_field',
+      'add_converter_source',
+      'insert_section_switch_sn',
       'add_relay',
       'add_ct',
       'add_vt',
@@ -166,6 +167,7 @@ describe('catalogNamespaceLabel', () => {
     expect(catalogNamespaceLabel('ZRODLO_SN')).toContain('Zasilanie');
     expect(catalogNamespaceLabel('KABEL_SN')).toContain('SN');
     expect(catalogNamespaceLabel('TRAFO_SN_NN')).toContain('Transformator');
+    expect(catalogNamespaceLabel('CONVERTER')).toContain('przekształtnikowe');
     expect(catalogNamespaceLabel('ZABEZPIECZENIE')).toContain('Zabezpieczenie');
     expect(catalogNamespaceLabel('CT')).toContain('adowy');
     expect(catalogNamespaceLabel('VT')).toContain('owy');
@@ -178,19 +180,20 @@ describe('catalogNamespaceLabel', () => {
 
 describe('resolveCanonicalOperation', () => {
   it('maps known action IDs to canonical operations', () => {
-    expect(resolveCanonicalOperation('add_trunk_segment')).toBe('continue_trunk_segment_sn');
-    expect(resolveCanonicalOperation('insert_station_a')).toBe('insert_station_on_segment_sn');
-    expect(resolveCanonicalOperation('add_branch')).toBe('start_branch_segment_sn');
-    expect(resolveCanonicalOperation('add_line')).toBe('start_branch_segment_sn');
-    expect(resolveCanonicalOperation('add_source')).toBe('add_grid_source_sn');
-    expect(resolveCanonicalOperation('add_source_field')).toBe('add_nn_outgoing_field');
-    expect(resolveCanonicalOperation('add_protection')).toBe('add_relay');
-    expect(resolveCanonicalOperation('insert_switch')).toBe('insert_section_switch_sn');
-    expect(resolveCanonicalOperation('start_secondary_link')).toBe('connect_secondary_ring_sn');
+    expect(resolveCanonicalOperation('continue_trunk_segment_sn')).toBe('continue_trunk_segment_sn');
+    expect(resolveCanonicalOperation('insert_station_on_segment_sn')).toBe('insert_station_on_segment_sn');
+    expect(resolveCanonicalOperation('start_branch_segment_sn')).toBe('start_branch_segment_sn');
+    expect(resolveCanonicalOperation('add_grid_source_sn')).toBe('add_grid_source_sn');
+    expect(resolveCanonicalOperation('add_sn_bay')).toBe('add_sn_bay');
+    expect(resolveCanonicalOperation('add_transformer_sn_nn')).toBe('add_transformer_sn_nn');
+    expect(resolveCanonicalOperation('add_nn_outgoing_field')).toBe('add_nn_outgoing_field');
+    expect(resolveCanonicalOperation('add_nn_load')).toBe('add_nn_load');
+    expect(resolveCanonicalOperation('add_converter_source')).toBe('add_converter_source');
+    expect(resolveCanonicalOperation('insert_section_switch_sn')).toBe('insert_section_switch_sn');
   });
 
   it('passes through unknown IDs as-is', () => {
     expect(resolveCanonicalOperation('some_custom_op')).toBe('some_custom_op');
-    expect(resolveCanonicalOperation('properties')).toBe('properties');
+    expect(resolveCanonicalOperation('properties')).toBe('update_element_parameters');
   });
 });

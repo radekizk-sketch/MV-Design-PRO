@@ -20,16 +20,16 @@ import pytest
 backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
-from network_model.core.station import Station, StationType
-from network_model.core.node import Node, NodeType
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
+from network_model.core.node import Node, NodeType
+from network_model.core.station import Station, StationType
 from network_model.core.switch import Switch, SwitchState
-
 
 # =============================================================================
 # Helper functions for creating test objects
 # =============================================================================
+
 
 def create_station(
     station_id: str,
@@ -101,6 +101,7 @@ def create_switch(
 # Test: Station creation and types
 # =============================================================================
 
+
 class TestStationCreation:
     """Testy tworzenia stacji."""
 
@@ -169,6 +170,7 @@ class TestStationCreation:
 # =============================================================================
 # Test: Station element management
 # =============================================================================
+
 
 class TestStationElementManagement:
     """Testy zarządzania elementami stacji."""
@@ -254,6 +256,7 @@ class TestStationElementManagement:
 # Test: Station contains element check
 # =============================================================================
 
+
 class TestStationContains:
     """Testy sprawdzania przynależności elementu do stacji."""
 
@@ -299,6 +302,7 @@ class TestStationContains:
 # Test: Station validation
 # =============================================================================
 
+
 class TestStationValidation:
     """Testy walidacji stacji."""
 
@@ -339,6 +343,7 @@ class TestStationValidation:
 # =============================================================================
 # Test: Station serialization
 # =============================================================================
+
 
 class TestStationSerialization:
     """Testy serializacji i deserializacji stacji."""
@@ -413,6 +418,7 @@ class TestStationSerialization:
 # =============================================================================
 # Test: NetworkGraph station integration
 # =============================================================================
+
 
 class TestNetworkGraphStationIntegration:
     """Testy integracji stacji z NetworkGraph."""
@@ -565,6 +571,7 @@ class TestNetworkGraphStationIntegration:
 # =============================================================================
 # Test: Station repr
 # =============================================================================
+
 
 class TestStationRepr:
     """Testy reprezentacji tekstowej stacji."""

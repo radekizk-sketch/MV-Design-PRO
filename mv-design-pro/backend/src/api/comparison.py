@@ -15,9 +15,6 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-
 from api.dependencies import get_uow_factory
 from application.comparison import ComparisonService
 from domain.results import (
@@ -26,6 +23,8 @@ from domain.results import (
     ResultNotFoundError,
     RunNotFoundError,
 )
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/comparison", tags=["comparison"])
 
@@ -37,12 +36,14 @@ router = APIRouter(prefix="/api/comparison", tags=["comparison"])
 
 class CompareRunsRequest(BaseModel):
     """Request to compare two study runs."""
+
     run_a_id: str = Field(..., description="UUID pierwszego Run (baseline)")
     run_b_id: str = Field(..., description="UUID drugiego Run (porównanie)")
 
 
 class NumericDeltaResponse(BaseModel):
     """Numeric delta response."""
+
     value_a: float
     value_b: float
     delta: float
@@ -52,6 +53,7 @@ class NumericDeltaResponse(BaseModel):
 
 class ComplexDeltaResponse(BaseModel):
     """Complex delta response."""
+
     re_a: float
     im_a: float
     re_b: float
@@ -66,6 +68,7 @@ class ComplexDeltaResponse(BaseModel):
 
 class ShortCircuitComparisonResponse(BaseModel):
     """Short circuit comparison response."""
+
     ikss_delta: NumericDeltaResponse
     sk_delta: NumericDeltaResponse
     zth_delta: ComplexDeltaResponse
@@ -75,6 +78,7 @@ class ShortCircuitComparisonResponse(BaseModel):
 
 class BusVoltageComparisonResponse(BaseModel):
     """Bus voltage comparison response."""
+
     bus_id: str
     u_kv_delta: NumericDeltaResponse
     u_pu_delta: NumericDeltaResponse
@@ -86,6 +90,7 @@ NodeVoltageComparisonResponse = BusVoltageComparisonResponse
 
 class BranchPowerComparisonResponse(BaseModel):
     """Branch power comparison response."""
+
     branch_id: str
     p_mw_delta: NumericDeltaResponse
     q_mvar_delta: NumericDeltaResponse
@@ -93,6 +98,7 @@ class BranchPowerComparisonResponse(BaseModel):
 
 class PowerFlowComparisonResponse(BaseModel):
     """Power flow comparison response."""
+
     total_losses_p_delta: NumericDeltaResponse
     total_losses_q_delta: NumericDeltaResponse
     slack_p_delta: NumericDeltaResponse
@@ -103,6 +109,7 @@ class PowerFlowComparisonResponse(BaseModel):
 
 class ProtectionEvaluationComparisonResponse(BaseModel):
     """Protection evaluation comparison response."""
+
     element_id: str
     trip_state_a: str
     trip_state_b: str
@@ -113,6 +120,7 @@ class ProtectionEvaluationComparisonResponse(BaseModel):
 
 class ProtectionComparisonResponse(BaseModel):
     """Protection comparison response."""
+
     evaluations: list[ProtectionEvaluationComparisonResponse]
     trip_count_delta: NumericDeltaResponse
     no_trip_count_delta: NumericDeltaResponse
@@ -125,6 +133,7 @@ class RunComparisonResponse(BaseModel):
 
     P10b/P15c: Top-level comparison result combining all analysis types.
     """
+
     run_a_id: str
     run_b_id: str
     project_id: str

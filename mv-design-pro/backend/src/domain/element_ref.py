@@ -26,7 +26,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
-
 # ---------------------------------------------------------------------------
 # ElementTypeV1 — canonical element type enum
 # ---------------------------------------------------------------------------
@@ -144,7 +143,4 @@ def build_element_ref_index(
     refs: list[ElementRefV1],
 ) -> dict[str, ElementRefV1]:
     """Build element_id -> ElementRefV1 index (sorted, deterministic)."""
-    return {
-        ref.element_id: ref
-        for ref in sorted(refs, key=lambda r: r.element_id)
-    }
+    return {ref.element_id: ref for ref in sorted(refs, key=lambda r: r.element_id)}

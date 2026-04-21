@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import pytest
-
 from enm.hash import compute_enm_hash
-from enm.models import Bus, ENMDefaults, ENMHeader, EnergyNetworkModel, Source
+from enm.models import Bus, EnergyNetworkModel, ENMDefaults, ENMHeader, Source
 from enm.store import get_enm, reset_enm_store, set_enm
 
 

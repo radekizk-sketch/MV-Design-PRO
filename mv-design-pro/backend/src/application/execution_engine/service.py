@@ -23,43 +23,42 @@ from __future__ import annotations
 
 import copy
 import logging
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
 import numpy as np
-
-from domain.execution import (
-    ExecutionAnalysisType,
-    Run,
-    RunStatus,
-    ResultSet,
-    ElementResult,
-    build_result_set,
-    compute_solver_input_hash,
-    new_run,
-)
-from domain.study_case import StudyCase as DomainStudyCase, StudyCaseConfig
-
-from application.solvers.short_circuit_binding import (
-    ShortCircuitBindingError,
-    execute_short_circuit,
+from application.execution_engine.load_flow_run_input import LoadFlowRunInput
+from application.result_mapping.load_flow_to_resultset_v1 import (
+    map_power_flow_to_resultset_v1,
 )
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
-from application.result_mapping.load_flow_to_resultset_v1 import (
-    map_power_flow_to_resultset_v1,
+from application.solvers.short_circuit_binding import (
+    ShortCircuitBindingError,
+    execute_short_circuit,
 )
-from application.execution_engine.load_flow_run_input import LoadFlowRunInput
+from domain.execution import (
+    ElementResult,
+    ExecutionAnalysisType,
+    ResultSet,
+    Run,
+    RunStatus,
+    build_result_set,
+    compute_solver_input_hash,
+    new_run,
+)
 from domain.fault_scenario import FaultScenario
+from domain.study_case import StudyCase as DomainStudyCase
+from domain.study_case import StudyCaseConfig
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 
 from .errors import (
+    ResultSetNotFoundError,
     RunBlockedError,
     RunNotFoundError,
     RunNotReadyError,
-    ResultSetNotFoundError,
     StudyCaseNotFoundError,
 )
 
@@ -100,15 +99,9 @@ class ExecutionEngineService:
             raise StudyCaseNotFoundError(str(case_id))
         return case
 
-    def list_study_cases_for_project(
-        self, project_id: UUID
-    ) -> list[DomainStudyCase]:
+    def list_study_cases_for_project(self, project_id: UUID) -> list[DomainStudyCase]:
         """List all study cases for a project."""
-        return [
-            case
-            for case in self._study_cases.values()
-            if case.project_id == project_id
-        ]
+        return [case for case in self._study_cases.values() if case.project_id == project_id]
 
     # =========================================================================
     # Run Creation
@@ -153,11 +146,14 @@ class ExecutionEngineService:
         # Gate 1: Readiness check
         if readiness is not None and not readiness.get("ready", False):
             issues = readiness.get("issues", [])
-            reason = "; ".join(
-                issue.get("message_pl", issue.get("message", "Nieznany problem"))
-                for issue in issues
-                if issue.get("severity") == "BLOCKER"
-            ) or "Sieć nie jest gotowa"
+            reason = (
+                "; ".join(
+                    issue.get("message_pl", issue.get("message", "Nieznany problem"))
+                    for issue in issues
+                    if issue.get("severity") == "BLOCKER"
+                )
+                or "Sieć nie jest gotowa"
+            )
             raise RunNotReadyError(reason)
 
         # Gate 2: Eligibility check (PR-17: AnalysisEligibilityResult dict)
@@ -174,9 +170,7 @@ class ExecutionEngineService:
                     for b in eligibility.get("blockers", [])
                 ]
                 if not blockers:
-                    blockers = [
-                        f"Analiza zablokowana (status: {elig_status})"
-                    ]
+                    blockers = [f"Analiza zablokowana (status: {elig_status})"]
                 raise RunBlockedError(blockers)
 
         # Freeze solver input (deep copy) and compute hash
@@ -291,14 +285,10 @@ class ExecutionEngineService:
         run = self._get_run(run_id)
 
         if run.status != RunStatus.PENDING:
-            raise RunBlockedError(
-                [f"Przebieg ma status {run.status.value} — wymagany PENDING"]
-            )
+            raise RunBlockedError([f"Przebieg ma status {run.status.value} — wymagany PENDING"])
 
         if run.analysis_type != ExecutionAnalysisType.LOAD_FLOW:
-            raise RunBlockedError(
-                [f"Typ analizy {run.analysis_type.value} nie jest LOAD_FLOW"]
-            )
+            raise RunBlockedError([f"Typ analizy {run.analysis_type.value} nie jest LOAD_FLOW"])
 
         run = self.start_run(run_id)
 
@@ -308,10 +298,16 @@ class ExecutionEngineService:
             node_p_injected_pu = {node.node_id: 0.0 for node in load_flow_input.nodes}
             node_q_injected_pu = {node.node_id: 0.0 for node in load_flow_input.nodes}
             for ld in load_flow_input.loads:
-                node_p_injected_pu[ld.node_id] = node_p_injected_pu.get(ld.node_id, 0.0) + (ld.p_mw / pf_input.base_mva)
-                node_q_injected_pu[ld.node_id] = node_q_injected_pu.get(ld.node_id, 0.0) + (ld.q_mvar / pf_input.base_mva)
+                node_p_injected_pu[ld.node_id] = node_p_injected_pu.get(ld.node_id, 0.0) + (
+                    ld.p_mw / pf_input.base_mva
+                )
+                node_q_injected_pu[ld.node_id] = node_q_injected_pu.get(ld.node_id, 0.0) + (
+                    ld.q_mvar / pf_input.base_mva
+                )
             for gen in load_flow_input.generators:
-                node_p_injected_pu[gen.node_id] = node_p_injected_pu.get(gen.node_id, 0.0) + (gen.p_mw / pf_input.base_mva)
+                node_p_injected_pu[gen.node_id] = node_p_injected_pu.get(gen.node_id, 0.0) + (
+                    gen.p_mw / pf_input.base_mva
+                )
             node_p_injected_pu[pf_input.slack.node_id] = float(np.real(solution.slack_power))
             node_q_injected_pu[pf_input.slack.node_id] = float(np.imag(solution.slack_power))
 
@@ -332,13 +328,9 @@ class ExecutionEngineService:
             )
 
             branch_topology = {
-                b.branch_id: (b.from_node_id, b.to_node_id)
-                for b in load_flow_input.branches
+                b.branch_id: (b.from_node_id, b.to_node_id) for b in load_flow_input.branches
             }
-            bus_voltage_bases = {
-                n.node_id: n.voltage_level_kv
-                for n in load_flow_input.nodes
-            }
+            bus_voltage_bases = {n.node_id: n.voltage_level_kv for n in load_flow_input.nodes}
 
             mapped = map_power_flow_to_resultset_v1(
                 pf_result=pf_result,
@@ -460,13 +452,13 @@ class ExecutionEngineService:
 
         # Gate: Run must be PENDING (no re-execution of DONE/FAILED/RUNNING)
         if run.status != RunStatus.PENDING:
-            raise RunBlockedError(
-                [f"Przebieg ma status {run.status.value} — wymagany PENDING"]
-            )
+            raise RunBlockedError([f"Przebieg ma status {run.status.value} — wymagany PENDING"])
 
         if run.analysis_type not in self._SC_ANALYSIS_TYPES:
             raise RunBlockedError(
-                [f"Typ analizy {run.analysis_type.value} nie jest obsługiwany przez solver zwarciowy"]
+                [
+                    f"Typ analizy {run.analysis_type.value} nie jest obsługiwany przez solver zwarciowy"
+                ]
             )
 
         # Transition PENDING → RUNNING
@@ -508,7 +500,7 @@ class ExecutionEngineService:
 
         except (ShortCircuitBindingError, Exception) as exc:
             error_msg = str(exc)
-            failed_run = self.fail_run(run_id, error_msg)
+            self.fail_run(run_id, error_msg)
             raise
 
     # =========================================================================
@@ -596,25 +588,21 @@ class ExecutionEngineService:
         Returns:
             Tuple of (completed Run in DONE status, ResultSet).
         """
+        from application.result_mapping.protection_to_resultset_v1 import (
+            map_protection_to_resultset_v1,
+        )
         from domain.protection_engine_v1 import (
             ProtectionStudyInputV1,
             execute_protection_v1,
-        )
-        from application.result_mapping.protection_to_resultset_v1 import (
-            map_protection_to_resultset_v1,
         )
 
         run = self._get_run(run_id)
 
         if run.status != RunStatus.PENDING:
-            raise RunBlockedError(
-                [f"Przebieg ma status {run.status.value} — wymagany PENDING"]
-            )
+            raise RunBlockedError([f"Przebieg ma status {run.status.value} — wymagany PENDING"])
 
         if run.analysis_type != ExecutionAnalysisType.PROTECTION:
-            raise RunBlockedError(
-                [f"Typ analizy {run.analysis_type.value} nie jest PROTECTION"]
-            )
+            raise RunBlockedError([f"Typ analizy {run.analysis_type.value} nie jest PROTECTION"])
 
         run = self.start_run(run_id)
 
@@ -695,9 +683,7 @@ class ExecutionEngineService:
         runs = self.list_runs_for_case(study_case_id)
         return runs[0] if runs else None
 
-    def get_latest_successful_run(
-        self, study_case_id: UUID
-    ) -> tuple[Run, ResultSet] | None:
+    def get_latest_successful_run(self, study_case_id: UUID) -> tuple[Run, ResultSet] | None:
         """Get the latest successful run and its result set."""
         for run in self.list_runs_for_case(study_case_id):
             if run.status == RunStatus.DONE:

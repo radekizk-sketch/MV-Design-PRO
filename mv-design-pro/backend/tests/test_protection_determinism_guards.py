@@ -19,17 +19,8 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
-from domain.protection_engine_v1 import (
-    CTRatio,
-    Function50Settings,
-    Function51Settings,
-    IECCurveTypeV1,
-    ProtectionStudyInputV1,
-    RelayV1,
-    TestPoint,
-    execute_protection_v1,
+from application.result_mapping.protection_to_overlay_v1 import (
+    map_protection_to_overlay_v1,
 )
 from domain.protection_coordination_v1 import (
     ProtectionSelectivityPair,
@@ -41,11 +32,17 @@ from domain.protection_current_source import (
     SCCurrentSelection,
     TargetRefMapping,
 )
-from domain.protection_report_model import build_protection_report
-from application.result_mapping.protection_to_overlay_v1 import (
-    map_protection_to_overlay_v1,
+from domain.protection_engine_v1 import (
+    CTRatio,
+    Function50Settings,
+    Function51Settings,
+    IECCurveTypeV1,
+    ProtectionStudyInputV1,
+    RelayV1,
+    TestPoint,
+    execute_protection_v1,
 )
-
+from domain.protection_report_model import build_protection_report
 
 # =============================================================================
 # FIXTURES
@@ -85,15 +82,12 @@ def _relay(
 
 def _tps(*currents: float) -> tuple[TestPoint, ...]:
     return tuple(
-        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c)
-        for i, c in enumerate(currents, 1)
+        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c) for i, c in enumerate(currents, 1)
     )
 
 
 def _run(relays, test_points):
-    return execute_protection_v1(
-        ProtectionStudyInputV1(relays=relays, test_points=test_points)
-    )
+    return execute_protection_v1(ProtectionStudyInputV1(relays=relays, test_points=test_points))
 
 
 def _test_points_source() -> ProtectionCurrentSource:
@@ -170,14 +164,16 @@ class TestBridgeHashDeterminism:
         s1 = ProtectionCurrentSource(
             source_type=CurrentSourceType.SC_RESULT,
             sc_selection=SCCurrentSelection(
-                run_id="run-1", quantity="ikss_a",
+                run_id="run-1",
+                quantity="ikss_a",
                 target_ref_mapping=(),
             ),
         )
         s2 = ProtectionCurrentSource(
             source_type=CurrentSourceType.SC_RESULT,
             sc_selection=SCCurrentSelection(
-                run_id="run-1", quantity="ip_a",
+                run_id="run-1",
+                quantity="ip_a",
                 target_ref_mapping=(),
             ),
         )
@@ -286,10 +282,12 @@ class TestCoordinationSign:
         pair_swapped = ProtectionSelectivityPair("p", "r1", "r2")
 
         coord_normal = compute_coordination_v1(
-            pairs=(pair_normal,), protection_result=result,
+            pairs=(pair_normal,),
+            protection_result=result,
         )
         coord_swapped = compute_coordination_v1(
-            pairs=(pair_swapped,), protection_result=result,
+            pairs=(pair_swapped,),
+            protection_result=result,
         )
 
         m_normal = coord_normal.pairs[0].margin_points[0].margin_s
@@ -297,9 +295,9 @@ class TestCoordinationSign:
 
         assert m_normal is not None
         assert m_swapped is not None
-        assert abs(m_normal + m_swapped) < 1e-9, (
-            "Swapping upstream/downstream should flip margin sign"
-        )
+        assert (
+            abs(m_normal + m_swapped) < 1e-9
+        ), "Swapping upstream/downstream should flip margin sign"
 
 
 # =============================================================================
@@ -318,10 +316,12 @@ class TestOverlayDeterminism:
         run_id = uuid4()
 
         h1 = map_protection_to_overlay_v1(
-            protection_result=result, run_id=run_id,
+            protection_result=result,
+            run_id=run_id,
         ).content_hash()
         h2 = map_protection_to_overlay_v1(
-            protection_result=result, run_id=run_id,
+            protection_result=result,
+            run_id=run_id,
         ).content_hash()
         assert h1 == h2
 
@@ -333,7 +333,8 @@ class TestOverlayDeterminism:
         result = _run((r1, r2, r3), tps)
 
         overlay = map_protection_to_overlay_v1(
-            protection_result=result, run_id=uuid4(),
+            protection_result=result,
+            run_id=uuid4(),
         )
         refs = [e.element_ref for e in overlay.elements]
         assert refs == sorted(refs)
@@ -345,10 +346,12 @@ class TestOverlayDeterminism:
         run_id = uuid4()
 
         h_fwd = map_protection_to_overlay_v1(
-            protection_result=_run((r1, r2), tps), run_id=run_id,
+            protection_result=_run((r1, r2), tps),
+            run_id=run_id,
         ).content_hash()
         h_rev = map_protection_to_overlay_v1(
-            protection_result=_run((r2, r1), tps), run_id=run_id,
+            protection_result=_run((r2, r1), tps),
+            run_id=run_id,
         ).content_hash()
         assert h_fwd == h_rev
 
@@ -369,10 +372,14 @@ class TestReportDeterminism:
         run_id = str(uuid4())
 
         sig1 = build_protection_report(
-            run_id=run_id, protection_result=result, current_source=source,
+            run_id=run_id,
+            protection_result=result,
+            current_source=source,
         ).deterministic_signature
         sig2 = build_protection_report(
-            run_id=run_id, protection_result=result, current_source=source,
+            run_id=run_id,
+            protection_result=result,
+            current_source=source,
         ).deterministic_signature
         assert sig1 == sig2
 
@@ -391,7 +398,7 @@ class TestReportDeterminism:
 
         for summary in report.relay_summaries:
             for tp in summary.test_point_results:
-                for key, val in tp.items():
+                for _key, val in tp.items():
                     if isinstance(val, float):
                         # Float should use dot, not comma
                         assert "," not in str(val)
@@ -421,12 +428,15 @@ class TestEndToEndPipeline:
         )
         coord1 = compute_coordination_v1(pairs=pairs, protection_result=prot1)
         overlay1 = map_protection_to_overlay_v1(
-            protection_result=prot1, run_id=run_id,
+            protection_result=prot1,
+            run_id=run_id,
             coordination_result=coord1,
         )
         report1 = build_protection_report(
-            run_id=str(run_id), protection_result=prot1,
-            current_source=source, coordination_result=coord1,
+            run_id=str(run_id),
+            protection_result=prot1,
+            current_source=source,
+            coordination_result=coord1,
         )
 
         # Run 2 (reversed relay order, reversed pair order)
@@ -437,12 +447,15 @@ class TestEndToEndPipeline:
         )
         coord2 = compute_coordination_v1(pairs=pairs_rev, protection_result=prot2)
         overlay2 = map_protection_to_overlay_v1(
-            protection_result=prot2, run_id=run_id,
+            protection_result=prot2,
+            run_id=run_id,
             coordination_result=coord2,
         )
         report2 = build_protection_report(
-            run_id=str(run_id), protection_result=prot2,
-            current_source=source, coordination_result=coord2,
+            run_id=str(run_id),
+            protection_result=prot2,
+            current_source=source,
+            coordination_result=coord2,
         )
 
         # All signatures must match

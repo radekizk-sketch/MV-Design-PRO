@@ -4,17 +4,14 @@ Test determinism of solver-input generation.
 INVARIANT: Identical ENM + identical catalog → identical solver-input JSON (hash).
 """
 
-import json
 import hashlib
+import json
 
-import pytest
-
-from network_model.core.node import Node, NodeType
+from domain.study_case import StudyCaseConfig
+from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
-from network_model.catalog.repository import CatalogRepository
-from domain.study_case import StudyCaseConfig
-
+from network_model.core.node import Node, NodeType
 from solver_input.builder import build_solver_input
 from solver_input.contracts import SolverAnalysisType
 
@@ -24,63 +21,73 @@ def _make_test_network() -> NetworkGraph:
     g = NetworkGraph(network_model_id="test-net-001")
 
     # SLACK node (grid supply)
-    g.add_node(Node(
-        id="bus_slack",
-        name="GPZ Slack",
-        node_type=NodeType.SLACK,
-        voltage_level=110.0,
-        voltage_magnitude=1.0,
-        voltage_angle=0.0,
-    ))
+    g.add_node(
+        Node(
+            id="bus_slack",
+            name="GPZ Slack",
+            node_type=NodeType.SLACK,
+            voltage_level=110.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
 
     # PQ nodes
-    g.add_node(Node(
-        id="bus_sn",
-        name="SN Bus",
-        node_type=NodeType.PQ,
-        voltage_level=15.0,
-        active_power=0.0,
-        reactive_power=0.0,
-    ))
-    g.add_node(Node(
-        id="bus_load",
-        name="Load Bus",
-        node_type=NodeType.PQ,
-        voltage_level=15.0,
-        active_power=2.0,
-        reactive_power=0.8,
-    ))
+    g.add_node(
+        Node(
+            id="bus_sn",
+            name="SN Bus",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="bus_load",
+            name="Load Bus",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=2.0,
+            reactive_power=0.8,
+        )
+    )
 
     # Transformer
-    g.add_branch(TransformerBranch(
-        id="trafo_1",
-        name="TR 25MVA",
-        branch_type=BranchType.TRANSFORMER,
-        from_node_id="bus_slack",
-        to_node_id="bus_sn",
-        rated_power_mva=25.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=15.0,
-        uk_percent=11.5,
-        pk_kw=150.0,
-        i0_percent=0.35,
-        p0_kw=25.0,
-        vector_group="Yd11",
-    ))
+    g.add_branch(
+        TransformerBranch(
+            id="trafo_1",
+            name="TR 25MVA",
+            branch_type=BranchType.TRANSFORMER,
+            from_node_id="bus_slack",
+            to_node_id="bus_sn",
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=15.0,
+            uk_percent=11.5,
+            pk_kw=150.0,
+            i0_percent=0.35,
+            p0_kw=25.0,
+            vector_group="Yd11",
+        )
+    )
 
     # Line
-    g.add_branch(LineBranch(
-        id="line_1",
-        name="AFL-70 Segment 1",
-        branch_type=BranchType.LINE,
-        from_node_id="bus_sn",
-        to_node_id="bus_load",
-        r_ohm_per_km=0.420,
-        x_ohm_per_km=0.377,
-        b_us_per_km=2.84,
-        length_km=3.5,
-        rated_current_a=210.0,
-    ))
+    g.add_branch(
+        LineBranch(
+            id="line_1",
+            name="AFL-70 Segment 1",
+            branch_type=BranchType.LINE,
+            from_node_id="bus_sn",
+            to_node_id="bus_load",
+            r_ohm_per_km=0.420,
+            x_ohm_per_km=0.377,
+            b_us_per_km=2.84,
+            length_km=3.5,
+            rated_current_a=210.0,
+        )
+    )
 
     return g
 
@@ -206,29 +213,83 @@ class TestSolverInputDeterminism:
     def test_bus_order_deterministic(self):
         """Buses are sorted by ref_id regardless of insertion order."""
         g1 = NetworkGraph()
-        g1.add_node(Node(id="z_bus", name="Z", node_type=NodeType.SLACK,
-                         voltage_level=15.0, voltage_magnitude=1.0, voltage_angle=0.0))
-        g1.add_node(Node(id="a_bus", name="A", node_type=NodeType.PQ,
-                         voltage_level=15.0, active_power=0.0, reactive_power=0.0))
-        g1.add_node(Node(id="m_bus", name="M", node_type=NodeType.PQ,
-                         voltage_level=15.0, active_power=0.0, reactive_power=0.0))
+        g1.add_node(
+            Node(
+                id="z_bus",
+                name="Z",
+                node_type=NodeType.SLACK,
+                voltage_level=15.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+            )
+        )
+        g1.add_node(
+            Node(
+                id="a_bus",
+                name="A",
+                node_type=NodeType.PQ,
+                voltage_level=15.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g1.add_node(
+            Node(
+                id="m_bus",
+                name="M",
+                node_type=NodeType.PQ,
+                voltage_level=15.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
 
         g2 = NetworkGraph()
-        g2.add_node(Node(id="m_bus", name="M", node_type=NodeType.PQ,
-                         voltage_level=15.0, active_power=0.0, reactive_power=0.0))
-        g2.add_node(Node(id="a_bus", name="A", node_type=NodeType.PQ,
-                         voltage_level=15.0, active_power=0.0, reactive_power=0.0))
-        g2.add_node(Node(id="z_bus", name="Z", node_type=NodeType.SLACK,
-                         voltage_level=15.0, voltage_magnitude=1.0, voltage_angle=0.0))
+        g2.add_node(
+            Node(
+                id="m_bus",
+                name="M",
+                node_type=NodeType.PQ,
+                voltage_level=15.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g2.add_node(
+            Node(
+                id="a_bus",
+                name="A",
+                node_type=NodeType.PQ,
+                voltage_level=15.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        g2.add_node(
+            Node(
+                id="z_bus",
+                name="Z",
+                node_type=NodeType.SLACK,
+                voltage_level=15.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+            )
+        )
 
         catalog = _make_empty_catalog()
 
         env1 = build_solver_input(
-            graph=g1, catalog=catalog, case_id="c", enm_revision="r",
+            graph=g1,
+            catalog=catalog,
+            case_id="c",
+            enm_revision="r",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
         env2 = build_solver_input(
-            graph=g2, catalog=catalog, case_id="c", enm_revision="r",
+            graph=g2,
+            catalog=catalog,
+            case_id="c",
+            enm_revision="r",
             analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
         )
 

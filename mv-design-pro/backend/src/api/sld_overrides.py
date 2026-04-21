@@ -15,10 +15,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-
-from api.dependencies import get_uow_factory
 from domain.geometry_overrides import (
     OVERRIDES_VERSION,
     GeometryOverrideItemV1,
@@ -29,6 +25,8 @@ from domain.geometry_overrides import (
     compute_overrides_hash,
     validate_overrides,
 )
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(
     prefix="/api/study-cases",
@@ -46,9 +44,7 @@ class OverrideItemRequest(BaseModel):
 
     element_id: str = Field(..., description="ID elementu")
     scope: str = Field(..., description="Zakres: NODE|BLOCK|FIELD|LABEL|EDGE_CHANNEL")
-    operation: str = Field(
-        ..., description="Operacja: MOVE_DELTA|REORDER_FIELD|MOVE_LABEL"
-    )
+    operation: str = Field(..., description="Operacja: MOVE_DELTA|REORDER_FIELD|MOVE_LABEL")
     payload: dict[str, Any] = Field(..., description="Dane operacji")
 
 
@@ -56,24 +52,16 @@ class PutOverridesRequest(BaseModel):
     """Request to save geometry overrides."""
 
     snapshot_hash: str = Field(..., description="Hash snapshotu ENM")
-    items: list[OverrideItemRequest] = Field(
-        default_factory=list, description="Lista nadpisan"
-    )
+    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisan")
 
 
 class ValidateOverridesRequest(BaseModel):
     """Request to validate overrides without saving."""
 
     snapshot_hash: str = Field(..., description="Hash snapshotu ENM")
-    items: list[OverrideItemRequest] = Field(
-        default_factory=list, description="Lista nadpisan"
-    )
-    known_node_ids: list[str] = Field(
-        default_factory=list, description="Znane ID wezlow"
-    )
-    known_block_ids: list[str] = Field(
-        default_factory=list, description="Znane ID blokow"
-    )
+    items: list[OverrideItemRequest] = Field(default_factory=list, description="Lista nadpisan")
+    known_node_ids: list[str] = Field(default_factory=list, description="Znane ID wezlow")
+    known_block_ids: list[str] = Field(default_factory=list, description="Znane ID blokow")
 
 
 class OverrideItemResponse(BaseModel):
@@ -127,9 +115,7 @@ def _get_overrides(case_id: str) -> ProjectGeometryOverridesV1:
     return ProjectGeometryOverridesV1(study_case_id=case_id)
 
 
-def _save_overrides(
-    case_id: str, overrides: ProjectGeometryOverridesV1
-) -> None:
+def _save_overrides(case_id: str, overrides: ProjectGeometryOverridesV1) -> None:
     """Save overrides for a case."""
     _overrides_store[case_id] = overrides
 
@@ -171,9 +157,7 @@ def _parse_items(
     )
 
 
-def _to_response(
-    overrides: ProjectGeometryOverridesV1, overrides_hash: str
-) -> OverridesResponse:
+def _to_response(overrides: ProjectGeometryOverridesV1, overrides_hash: str) -> OverridesResponse:
     """Convert domain model to response."""
     return OverridesResponse(
         overrides_version=overrides.overrides_version,

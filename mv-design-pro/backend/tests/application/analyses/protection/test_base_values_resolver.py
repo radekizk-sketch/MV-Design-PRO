@@ -17,7 +17,10 @@ from __future__ import annotations
 import math
 
 import pytest
-
+from application.analyses.protection.base_values.compute import (
+    compute_from_setpoint,
+    enrich_with_computed,
+)
 from application.analyses.protection.base_values.models import (
     BaseValues,
     BaseValueSourceIn,
@@ -31,11 +34,6 @@ from application.analyses.protection.base_values.models import (
     TransformerSide,
 )
 from application.analyses.protection.base_values.resolver import resolve_base_values
-from application.analyses.protection.base_values.compute import (
-    compute_from_setpoint,
-    enrich_with_computed,
-)
-
 
 # =============================================================================
 # Test: Linia — IN znane → computed dla 3×In
@@ -448,7 +446,7 @@ class TestComputedFromRequired:
 
         enriched = enrich_with_computed(setpoints, base)
 
-        for sp, computed in enriched:
+        for _sp, computed in enriched:
             if computed is not None:
                 assert computed.computed_from != ""
                 assert len(computed.computed_from) > 0

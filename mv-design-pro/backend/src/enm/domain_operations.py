@@ -19,62 +19,44 @@ from typing import Any
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
 
+from .models import EnergyNetworkModel
 from .topology_ops import (
-    TopologyOpResult,
     create_branch,
     create_device,
     create_node,
     delete_branch,
-    update_branch,
 )
 from .validator import ENMValidator
-from .models import EnergyNetworkModel
-
 
 # ---------------------------------------------------------------------------
-# Canonical operation names and alias mapping
+# Canonical operation names
 # ---------------------------------------------------------------------------
 
-CANONICAL_OPS = frozenset({
-    "add_grid_source_sn",
-    "continue_trunk_segment_sn",
-    "insert_station_on_segment_sn",
-    "insert_branch_pole_on_segment_sn",
-    "insert_zksn_on_segment_sn",
-    "start_branch_segment_sn",
-    "insert_section_switch_sn",
-    "connect_secondary_ring_sn",
-    "set_normal_open_point",
-    "add_transformer_sn_nn",
-    "assign_catalog_to_element",
-    "update_element_parameters",
-    "add_nn_source_field",
-    "add_pv_inverter_nn",
-    "add_bess_inverter_nn",
-    "add_genset_nn",
-    "add_ups_nn",
-    "add_nn_load",
-    "delete_element",
-    "refresh_snapshot",
-})
+CANONICAL_OPS = frozenset(
+    {
+        "add_grid_source_sn",
+        "add_sn_bay",
+        "continue_trunk_segment_sn",
+        "insert_station_on_segment_sn",
+        "insert_branch_pole_on_segment_sn",
+        "insert_zksn_on_segment_sn",
+        "start_branch_segment_sn",
+        "insert_section_switch_sn",
+        "connect_secondary_ring_sn",
+        "set_normal_open_point",
+        "add_transformer_sn_nn",
+        "assign_catalog_to_element",
+        "update_element_parameters",
+        "add_converter_source",
+        "add_genset_nn",
+        "add_ups_nn",
+        "add_nn_load",
+        "delete_element",
+        "refresh_snapshot",
+    }
+)
 
-ALIAS_MAP: dict[str, str] = {
-    "add_trunk_segment_sn": "continue_trunk_segment_sn",
-    "continue_trunk_segment_sn_from_catalog": "continue_trunk_segment_sn",
-    "add_branch_segment_sn": "start_branch_segment_sn",
-    "add_branch_segment_sn_from_catalog": "start_branch_segment_sn",
-    "start_branch_from_port": "start_branch_segment_sn",
-    "insert_station_on_trunk_segment_sn": "insert_station_on_segment_sn",
-    "insert_station_on_trunk_segment": "insert_station_on_segment_sn",
-    "insert_branch_pole": "insert_branch_pole_on_segment_sn",
-    "insert_zksn": "insert_zksn_on_segment_sn",
-    "add_transformer_sn_nn_from_catalog": "add_transformer_sn_nn",
-    "add_switch_from_catalog": "insert_section_switch_sn",
-    "connect_ring_sn": "connect_secondary_ring_sn",
-    "connect_secondary_ring": "connect_secondary_ring_sn",
-    "connect_ring": "connect_secondary_ring_sn",
-}
-
+LEGACY_FIELD_COLLECTIONS = frozenset({"bays", "measurements", "protection_assignments"})
 
 # ---------------------------------------------------------------------------
 # Helpers — deterministic ID generation
@@ -167,6 +149,56 @@ def _apply_catalog_metadata(
         target.setdefault("meta", {})["catalog_item_version"] = version
 
 
+def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Znormalizuj jawne sekcje GPZ z payloadu formularza."""
+    raw_sections = payload.get("gpz_sections")
+    candidate_sections: list[dict[str, Any]] = []
+
+    if isinstance(raw_sections, list) and raw_sections:
+        candidate_sections = [section for section in raw_sections if isinstance(section, dict)]
+
+    if not candidate_sections:
+        candidate_sections = [
+            {
+                "order": 0,
+                "name": payload.get("gpz_section_name"),
+                "line_field_name": payload.get("gpz_line_field_name"),
+            }
+        ]
+
+    normalized: list[dict[str, Any]] = []
+    for index, entry in enumerate(candidate_sections):
+        raw_order = entry.get("order")
+        try:
+            order = int(raw_order) if raw_order is not None else index
+        except (TypeError, ValueError):
+            order = index
+
+        section_name = entry.get("name")
+        if not isinstance(section_name, str) or not section_name.strip():
+            section_name = None
+
+        bus_name = entry.get("bus_name")
+        if not isinstance(bus_name, str) or not bus_name.strip():
+            bus_name = None
+
+        line_field_name = entry.get("line_field_name")
+        if not isinstance(line_field_name, str) or not line_field_name.strip():
+            line_field_name = None
+
+        normalized.append(
+            {
+                "order": order,
+                "name": section_name,
+                "bus_name": bus_name,
+                "line_field_name": line_field_name,
+            }
+        )
+
+    normalized.sort(key=lambda item: (item["order"], item["name"] or ""))
+    return normalized
+
+
 def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
     """Wyznacz namespace katalogu na podstawie typu elementu snapshotu."""
     explicit = element.get("catalog_namespace")
@@ -209,13 +241,107 @@ def _resolve_catalog_ref(catalog_ref: Any, catalog_binding: Any) -> str | None:
 
 def _find_element(enm: dict[str, Any], ref_id: str) -> tuple[str, int] | None:
     """Znajdź element po ref_id, zwróć (kolekcja, indeks)."""
-    for key in ("buses", "branches", "transformers", "sources", "loads",
-                "generators", "substations", "bays", "junctions",
-                "corridors", "measurements", "protection_assignments", "branch_points"):
+    for key in (
+        "buses",
+        "branches",
+        "transformers",
+        "sources",
+        "loads",
+        "generators",
+        "substations",
+        "junctions",
+        "corridors",
+        "branch_points",
+    ):
         for i, elem in enumerate(enm.get(key, [])):
             if elem.get("ref_id") == ref_id:
                 return (key, i)
     return None
+
+
+def _find_legacy_field_element_collection(enm: dict[str, Any], ref_id: str) -> str | None:
+    """Zwróć legacy kolekcję pola, jeśli ref_id wskazuje na wycofany write-path."""
+    for key in LEGACY_FIELD_COLLECTIONS:
+        for elem in enm.get(key, []):
+            if elem.get("ref_id") == ref_id:
+                return key
+    return None
+
+
+def _error_legacy_field_write_disabled(ref_id: str, collection: str) -> dict[str, Any]:
+    collection_label = {
+        "bays": "legacy pola SN",
+        "measurements": "legacy pomiaru pola",
+        "protection_assignments": "legacy przypisania zabezpieczenia pola",
+    }.get(collection, "legacy pola")
+    return _error_response(
+        (
+            f"Zapis do '{collection_label}' dla '{ref_id}' jest wyłączony w backendzie V11. "
+            "Użyj kanonicznego read-modelu pola zamiast mutowania legacy snapshotu."
+        ),
+        "field.legacy_write_disabled",
+    )
+
+
+def _build_field_spec(
+    *,
+    field_ref: str,
+    name: str,
+    bay_role: str,
+    bus_ref: str,
+    gpz_section_id: str | None = None,
+    equipment_refs: list[str] | None = None,
+    protection_ref: str | None = None,
+    tags: list[str] | None = None,
+    meta: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    spec: dict[str, Any] = {
+        "field_ref": field_ref,
+        "name": name,
+        "bay_role": bay_role,
+        "bus_ref": bus_ref,
+        "equipment_refs": list(equipment_refs or []),
+        "protection_ref": protection_ref,
+        "tags": list(tags or []),
+        "meta": copy.deepcopy(meta or {}),
+    }
+    if gpz_section_id:
+        spec["gpz_section_id"] = gpz_section_id
+    return spec
+
+
+def _substation_meta(substation: dict[str, Any]) -> dict[str, Any]:
+    meta = substation.get("meta")
+    if not isinstance(meta, dict):
+        meta = {}
+        substation["meta"] = meta
+    return meta
+
+
+def _field_specs_for_substation(substation: dict[str, Any]) -> list[dict[str, Any]]:
+    meta = substation.get("meta")
+    if not isinstance(meta, dict):
+        return []
+    raw_specs = meta.get("field_specs")
+    if not isinstance(raw_specs, list):
+        return []
+    return [spec for spec in raw_specs if isinstance(spec, dict)]
+
+
+def _sn_bus_refs_for_substation(enm: dict[str, Any], substation: dict[str, Any]) -> list[str]:
+    bus_index = {bus.get("ref_id"): bus for bus in enm.get("buses", [])}
+    bus_refs = [ref for ref in substation.get("bus_refs", []) if isinstance(ref, str)]
+    sn_bus_refs: list[str] = []
+    for bus_ref in bus_refs:
+        bus = bus_index.get(bus_ref)
+        if bus is None:
+            continue
+        voltage = bus.get("voltage_kv")
+        if isinstance(voltage, int | float) and float(voltage) >= 1.0:
+            sn_bus_refs.append(bus_ref)
+    if sn_bus_refs:
+        return sn_bus_refs
+    return bus_refs[:1]
 
 
 def _find_branch(enm: dict[str, Any], ref_id: str) -> dict[str, Any] | None:
@@ -307,28 +433,32 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
         # Domain-level check: PV/BESS generators without transformer
         for gen in enm.get("generators", []):
             gen_type = (gen.get("gen_type") or "").lower()
-            if ("pv" in gen_type or "bess" in gen_type or "inverter" in gen_type):
+            if "pv" in gen_type or "bess" in gen_type or "inverter" in gen_type:
                 has_trafo = bool(gen.get("blocking_transformer_ref"))
                 cv = gen.get("connection_variant") or ""
                 if not has_trafo and "direct" not in cv.lower():
-                    blockers.append({
-                        "code": "pv_bess.transformer_required",
-                        "message_pl": (
-                            f"Generator OZE '{gen.get('name', gen.get('ref_id'))}' "
-                            f"typu {gen_type} wymaga transformatora w ścieżce."
-                        ),
-                        "element_ref": gen.get("ref_id"),
-                        "severity": "BLOKUJACE",
-                    })
-                    fix_actions.append({
-                        "code": "pv_bess.transformer_required",
-                        "action_type": "add_transformer",
-                        "element_ref": gen.get("ref_id"),
-                        "panel": "transformer_panel",
-                        "step": None,
-                        "focus": gen.get("ref_id"),
-                        "message_pl": "Dodaj transformator dla generatora OZE.",
-                    })
+                    blockers.append(
+                        {
+                            "code": "pv_bess.transformer_required",
+                            "message_pl": (
+                                f"Generator OZE '{gen.get('name', gen.get('ref_id'))}' "
+                                f"typu {gen_type} wymaga transformatora w ścieżce."
+                            ),
+                            "element_ref": gen.get("ref_id"),
+                            "severity": "BLOKUJACE",
+                        }
+                    )
+                    fix_actions.append(
+                        {
+                            "code": "pv_bess.transformer_required",
+                            "action_type": "add_transformer_sn_nn",
+                            "element_ref": gen.get("ref_id"),
+                            "panel": "transformer_panel",
+                            "step": None,
+                            "focus": gen.get("ref_id"),
+                            "message_pl": "Dodaj transformator dla generatora OZE.",
+                        }
+                    )
 
         # Domain-level check: branch points (slup rozgałęźny / ZKSN)
         for bp in enm.get("branch_points", []):
@@ -341,92 +471,112 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
 
             parent = _find_branch(enm, parent_segment_id) if parent_segment_id else None
             if not parent:
-                blockers.append({
-                    "code": "branch_point.invalid_parent_medium",
-                    "message_pl": f"Punkt rozgałęzienia '{bp_ref}' nie ma poprawnego segmentu nadrzędnego.",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                })
+                blockers.append(
+                    {
+                        "code": "branch_point.invalid_parent_medium",
+                        "message_pl": f"Punkt rozgałęzienia '{bp_ref}' nie ma poprawnego segmentu nadrzędnego.",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
             else:
                 if bp_type == "branch_pole" and parent.get("type") != "line_overhead":
-                    blockers.append({
-                        "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"Słup rozgałęźny '{bp_ref}' może być osadzony tylko na linii napowietrznej.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    })
+                    blockers.append(
+                        {
+                            "code": "branch_point.invalid_parent_medium",
+                            "message_pl": f"Słup rozgałęźny '{bp_ref}' może być osadzony tylko na linii napowietrznej.",
+                            "element_ref": bp_ref,
+                            "severity": "BLOKUJACE",
+                        }
+                    )
                 if bp_type == "zksn" and parent.get("type") != "cable":
-                    blockers.append({
-                        "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"ZKSN '{bp_ref}' może być osadzony tylko na kablu.",
-                        "element_ref": bp_ref,
-                        "severity": "BLOKUJACE",
-                    })
+                    blockers.append(
+                        {
+                            "code": "branch_point.invalid_parent_medium",
+                            "message_pl": f"ZKSN '{bp_ref}' może być osadzony tylko na kablu.",
+                            "element_ref": bp_ref,
+                            "severity": "BLOKUJACE",
+                        }
+                    )
 
             if not main_in or not main_out:
-                blockers.append({
-                    "code": "branch_point.required_port_missing",
-                    "message_pl": f"Punkt '{bp_ref}' nie ma wymaganych portów MAIN_IN/MAIN_OUT.",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                })
+                blockers.append(
+                    {
+                        "code": "branch_point.required_port_missing",
+                        "message_pl": f"Punkt '{bp_ref}' nie ma wymaganych portów MAIN_IN/MAIN_OUT.",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
 
             if not bp.get("catalog_ref"):
-                blockers.append({
-                    "code": "branch_point.catalog_ref_missing",
-                    "message_pl": f"Punkt '{bp_ref}' nie ma przypisanej referencji katalogowej.",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                })
-                fix_actions.append({
-                    "code": "branch_point.catalog_ref_missing",
-                    "action_type": "SELECT_CATALOG",
-                    "element_ref": bp_ref,
-                    "panel": "catalog",
-                    "step": "branch_point",
-                    "focus": bp_ref,
-                    "message_pl": "Wybierz pozycję katalogową dla punktu rozgałęzienia.",
-                })
+                blockers.append(
+                    {
+                        "code": "branch_point.catalog_ref_missing",
+                        "message_pl": f"Punkt '{bp_ref}' nie ma przypisanej referencji katalogowej.",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
+                fix_actions.append(
+                    {
+                        "code": "branch_point.catalog_ref_missing",
+                        "action_type": "SELECT_CATALOG",
+                        "element_ref": bp_ref,
+                        "panel": "catalog",
+                        "step": "branch_point",
+                        "focus": bp_ref,
+                        "message_pl": "Wybierz pozycję katalogową dla punktu rozgałęzienia.",
+                    }
+                )
 
             if bp_type == "zksn" and len(branch_ports) not in (1, 2):
-                blockers.append({
-                    "code": "zksn.branch_count_invalid",
-                    "message_pl": f"ZKSN '{bp_ref}' ma niepoprawną liczbę portów odgałęźnych.",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                })
+                blockers.append(
+                    {
+                        "code": "zksn.branch_count_invalid",
+                        "message_pl": f"ZKSN '{bp_ref}' ma niepoprawną liczbę portów odgałęźnych.",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
 
             if bp_type == "zksn" and not bp.get("switch_state"):
-                blockers.append({
-                    "code": "branch_point.switch_state_missing",
-                    "message_pl": f"ZKSN '{bp_ref}' nie ma stanu łącznika (switch_state).",
-                    "element_ref": bp_ref,
-                    "severity": "BLOKUJACE",
-                })
+                blockers.append(
+                    {
+                        "code": "branch_point.switch_state_missing",
+                        "message_pl": f"ZKSN '{bp_ref}' nie ma stanu łącznika (switch_state).",
+                        "element_ref": bp_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
 
         # Domain-level check: switches/breakers without catalog_ref
         for b in enm.get("branches", []):
             b_type = b.get("type", "")
             if b_type in ("switch", "breaker") and not b.get("catalog_ref"):
                 b_ref = b.get("ref_id", "")
-                blockers.append({
-                    "code": "switch.catalog_ref_missing",
-                    "message_pl": (
-                        f"Łącznik '{b.get('name', b_ref)}' "
-                        "nie ma przypisanej referencji katalogowej."
-                    ),
-                    "element_ref": b_ref,
-                    "severity": "BLOKUJACE",
-                })
-                fix_actions.append({
-                    "code": "switch.catalog_ref_missing",
-                    "action_type": "SELECT_CATALOG",
-                    "element_ref": b_ref,
-                    "panel": "catalog",
-                    "step": "switch",
-                    "focus": b_ref,
-                    "message_pl": "Wybierz pozycję katalogową dla łącznika.",
-                })
+                blockers.append(
+                    {
+                        "code": "switch.catalog_ref_missing",
+                        "message_pl": (
+                            f"Łącznik '{b.get('name', b_ref)}' "
+                            "nie ma przypisanej referencji katalogowej."
+                        ),
+                        "element_ref": b_ref,
+                        "severity": "BLOKUJACE",
+                    }
+                )
+                fix_actions.append(
+                    {
+                        "code": "switch.catalog_ref_missing",
+                        "action_type": "SELECT_CATALOG",
+                        "element_ref": b_ref,
+                        "panel": "catalog",
+                        "step": "switch",
+                        "focus": b_ref,
+                        "message_pl": "Wybierz pozycję katalogową dla łącznika.",
+                    }
+                )
 
         has_any_blocker = len(blockers) > 0
         return {
@@ -445,12 +595,8 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
     """
     corridors = enm.get("corridors", [])
     branches = enm.get("branches", [])
-    buses = enm.get("buses", [])
-
     # Index branches by ref_id
     branch_idx = {b.get("ref_id"): b for b in branches}
-    bus_refs = {b.get("ref_id") for b in buses}
-
     # Collect all segment refs that belong to corridors
     corridor_segment_refs: set[str] = set()
     for c in corridors:
@@ -472,26 +618,30 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                 start_bus = first_seg.get("from_bus_ref", "")
                 # Check if start bus has other connections (ZAJETY) or is open
                 start_status = _terminal_status(enm, start_bus, c.get("ref_id"))
-                terminals.append({
-                    "element_id": start_bus,
-                    "port_id": "trunk_start",
-                    "trunk_id": c.get("ref_id"),
-                    "branch_id": None,
-                    "status": start_status,
-                })
+                terminals.append(
+                    {
+                        "element_id": start_bus,
+                        "port_id": "trunk_start",
+                        "trunk_id": c.get("ref_id"),
+                        "branch_id": None,
+                        "status": start_status,
+                    }
+                )
 
             # End terminal: to_bus of last segment
             last_seg = branch_idx.get(segments[-1])
             if last_seg:
                 end_bus = last_seg.get("to_bus_ref", "")
                 end_status = _terminal_status(enm, end_bus, c.get("ref_id"))
-                terminals.append({
-                    "element_id": end_bus,
-                    "port_id": "trunk_end",
-                    "trunk_id": c.get("ref_id"),
-                    "branch_id": None,
-                    "status": end_status,
-                })
+                terminals.append(
+                    {
+                        "element_id": end_bus,
+                        "port_id": "trunk_end",
+                        "trunk_id": c.get("ref_id"),
+                        "branch_id": None,
+                        "status": end_status,
+                    }
+                )
 
         embedded_objects: list[dict[str, Any]] = []
         for seg_ref in segments:
@@ -502,22 +652,26 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                 bp = branch_points.get(seg.get(side, ""))
                 if not bp:
                     continue
-                embedded_objects.append({
-                    "object_id": bp.get("ref_id"),
-                    "object_type": bp.get("branch_point_type"),
-                    "segment_id": seg_ref,
-                    "parent_segment_id": bp.get("parent_segment_id"),
-                    "ports": bp.get("ports", {}),
-                })
+                embedded_objects.append(
+                    {
+                        "object_id": bp.get("ref_id"),
+                        "object_type": bp.get("branch_point_type"),
+                        "segment_id": seg_ref,
+                        "parent_segment_id": bp.get("parent_segment_id"),
+                        "ports": bp.get("ports", {}),
+                    }
+                )
 
-        trunks.append({
-            "corridor_ref": c.get("ref_id"),
-            "corridor_type": c.get("corridor_type", "radial"),
-            "segments": segments,
-            "no_point_ref": c.get("no_point_ref"),
-            "terminals": terminals,
-            "embedded_objects": sorted(embedded_objects, key=lambda x: x.get("object_id", "")),
-        })
+        trunks.append(
+            {
+                "corridor_ref": c.get("ref_id"),
+                "corridor_type": c.get("corridor_type", "radial"),
+                "segments": segments,
+                "no_point_ref": c.get("no_point_ref"),
+                "terminals": terminals,
+                "embedded_objects": sorted(embedded_objects, key=lambda x: x.get("object_id", "")),
+            }
+        )
 
     # Collect all corridor bus refs for ring detection (needed before branch classification)
     corridor_bus_refs: set[str] = set()
@@ -544,27 +698,33 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
 
         # Ring closure: both ends connect to corridor buses → secondary connector
         if from_ref in corridor_bus_refs and to_ref in corridor_bus_refs:
-            secondary_connectors.append({
-                "connector_id": ref,
-                "from_element_id": from_ref,
-                "to_element_id": to_ref,
-                "segment_ref": ref,
-            })
+            secondary_connectors.append(
+                {
+                    "connector_id": ref,
+                    "from_element_id": from_ref,
+                    "to_element_id": to_ref,
+                    "segment_ref": ref,
+                }
+            )
         else:
             # Lateral branch segment
-            branch_views.append({
-                "branch_id": ref,
-                "from_element_id": from_ref,
-                "from_port_id": "branch_start",
-                "segments": [ref],
-                "terminals": [{
-                    "element_id": to_ref,
-                    "port_id": "branch_end",
-                    "trunk_id": None,
+            branch_views.append(
+                {
                     "branch_id": ref,
-                    "status": _terminal_status(enm, to_ref, None),
-                }],
-            })
+                    "from_element_id": from_ref,
+                    "from_port_id": "branch_start",
+                    "segments": [ref],
+                    "terminals": [
+                        {
+                            "element_id": to_ref,
+                            "port_id": "branch_end",
+                            "trunk_id": None,
+                            "branch_id": ref,
+                            "status": _terminal_status(enm, to_ref, None),
+                        }
+                    ],
+                }
+            )
 
     # Aggregate all terminals
     all_terminals = []
@@ -581,9 +741,7 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _terminal_status(
-    enm: dict[str, Any], bus_ref: str, corridor_ref: str | None
-) -> str:
+def _terminal_status(enm: dict[str, Any], bus_ref: str, corridor_ref: str | None) -> str:
     """Określ status terminala na podstawie topologii.
 
     OTWARTY — bus ma wolne porty (< 2 połączenia kablowe).
@@ -631,16 +789,26 @@ def _resolve_branch_from_ref(enm: dict[str, Any], from_ref: str) -> tuple[str | 
             return None, "branch_connection.source_not_branch_capable"
         if port_id != "BRANCH":
             return None, "branch_connection.invalid_source_port"
+        feeder_spec = next(
+            (spec for spec in _field_specs_for_substation(sub) if spec.get("bay_role") == "FEEDER"),
+            None,
+        )
+        if feeder_spec and feeder_spec.get("bus_ref"):
+            return feeder_spec.get("bus_ref"), None
         feeder_bay = next(
             (
-                bay for bay in enm.get("bays", [])
+                bay
+                for bay in enm.get("bays", [])
                 if bay.get("substation_ref") == element_ref and bay.get("bay_role") == "FEEDER"
             ),
             None,
         )
-        if not feeder_bay:
-            return None, "branch_connection.source_not_branch_capable"
-        return feeder_bay.get("bus_ref"), None
+        if feeder_bay and feeder_bay.get("bus_ref"):
+            return feeder_bay.get("bus_ref"), None
+        sn_bus_refs = _sn_bus_refs_for_substation(enm, sub)
+        if sn_bus_refs:
+            return sn_bus_refs[0], None
+        return None, "branch_connection.source_not_branch_capable"
 
     if element_ref.startswith("bus/"):
         if port_id != "BRANCH":
@@ -699,9 +867,14 @@ def _lookup_branch_from_ref_for_bus(
         sub_ref = sub.get("ref_id")
         if not sub_ref:
             continue
+        field_specs = _field_specs_for_substation(sub)
+        if any(spec.get("bus_ref") == from_bus_ref for spec in field_specs):
+            structured_candidates.append(f"{sub_ref}.BRANCH")
+            continue
         feeder_bay = next(
             (
-                bay for bay in enm.get("bays", [])
+                bay
+                for bay in enm.get("bays", [])
                 if bay.get("substation_ref") == sub_ref
                 and bay.get("bay_role") == "FEEDER"
                 and bay.get("bus_ref") == from_bus_ref
@@ -717,7 +890,9 @@ def _lookup_branch_from_ref_for_bus(
         if not bp_ref:
             continue
         if bp.get("branch_point_type") == "branch_pole":
-            branch_bus = ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
+            branch_bus = (
+                ports.get("BRANCH", [None])[0] if isinstance(ports.get("BRANCH"), list) else None
+            )
             if branch_bus == from_bus_ref:
                 structured_candidates.append(f"{bp_ref}.BRANCH")
         if bp.get("branch_point_type") == "zksn":
@@ -742,6 +917,7 @@ def _get_catalog_safe():
     """Załaduj katalog MV (bezpieczne — zwraca None przy braku)."""
     try:
         from network_model.catalog import get_default_mv_catalog
+
         return get_default_mv_catalog()
     except Exception:
         return None
@@ -757,14 +933,10 @@ def _build_catalog_binding_payload(
     """Znormalizuj binding do jednego kanonicznego kontraktu."""
     binding = catalog_binding if isinstance(catalog_binding, dict) else {}
     return {
-        "catalog_namespace": (
-            _extract_catalog_binding_namespace(binding) or default_namespace
-        ),
+        "catalog_namespace": (_extract_catalog_binding_namespace(binding) or default_namespace),
         "catalog_item_id": catalog_ref,
         "catalog_item_version": (
-            _extract_catalog_binding_version(binding)
-            or default_version
-            or "legacy"
+            _extract_catalog_binding_version(binding) or default_version or "legacy"
         ),
         "materialize": bool(binding.get("materialize", True)),
         "snapshot_mapping_version": str(binding.get("snapshot_mapping_version", "1.0")),
@@ -928,15 +1100,14 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             r_ohm_per_km = b.get("r_ohm_per_km")
             x_ohm_per_km = b.get("x_ohm_per_km")
             i_max_a = (
-                (b.get("rating") or {}).get("in_a")
-                if isinstance(b.get("rating"), dict)
-                else None
+                (b.get("rating") or {}).get("in_a") if isinstance(b.get("rating"), dict) else None
             )
 
             if catalog:
                 is_cable = btype == "cable"
                 type_data = (
-                    catalog.get_cable_type(catalog_ref) if is_cable
+                    catalog.get_cable_type(catalog_ref)
+                    if is_cable
                     else catalog.get_line_type(catalog_ref)
                 )
                 if type_data:
@@ -946,9 +1117,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 
         lines_sn[b["ref_id"]] = {
             "catalog_item_id": catalog_ref,
-            "catalog_item_version": b.get("meta", {}).get(
-                "catalog_item_version"
-            ),
+            "catalog_item_version": b.get("meta", {}).get("catalog_item_version"),
             "r_ohm_per_km": r_ohm_per_km,
             "x_ohm_per_km": x_ohm_per_km,
             "i_max_a": i_max_a,
@@ -968,7 +1137,9 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             s_n_kva = (
                 float(rated_power_mva) * 1000
                 if rated_power_mva is not None
-                else (t.get("sn_mva") or 0) * 1000 if t.get("sn_mva") else None
+                else (t.get("sn_mva") or 0) * 1000
+                if t.get("sn_mva")
+                else None
             )
         else:
             uk_percent = t.get("uk_percent")
@@ -986,9 +1157,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 
         transformers_sn_nn[t["ref_id"]] = {
             "catalog_item_id": catalog_ref,
-            "catalog_item_version": t.get("meta", {}).get(
-                "catalog_item_version"
-            ),
+            "catalog_item_version": t.get("meta", {}).get("catalog_item_version"),
             "u_k_percent": uk_percent,
             "p0_kw": p0_kw,
             "pk_kw": pk_kw,
@@ -1012,7 +1181,9 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
             ik3_ka = s.get("ik3_ka")
             rx_ratio = s.get("rx_ratio")
             if catalog:
-                type_data = getattr(catalog, "get_source_system_type", lambda _id: None)(catalog_ref)
+                type_data = getattr(catalog, "get_source_system_type", lambda _id: None)(
+                    catalog_ref
+                )
                 if type_data:
                     voltage_rating_kv = type_data.voltage_rating_kv
                     sk3_mva = type_data.sk3_mva
@@ -1038,9 +1209,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 def _compute_layout_hash(enm: dict[str, Any]) -> str:
     """Oblicz deterministyczny hash układu topologicznego."""
     layout_data = {
-        "buses": sorted(
-            [b.get("ref_id", "") for b in enm.get("buses", [])]
-        ),
+        "buses": sorted([b.get("ref_id", "") for b in enm.get("buses", [])]),
         "branches": sorted(
             [
                 f"{b.get('from_bus_ref', '')}→{b.get('to_bus_ref', '')}"
@@ -1091,11 +1260,15 @@ def _response(
             "updated_element_ids": updated or [],
             "deleted_element_ids": deleted or [],
         },
-        "selection_hint": {
-            "element_id": selection_id,
-            "element_type": selection_type,
-            "zoom_to": True,
-        } if selection_id else None,
+        "selection_hint": (
+            {
+                "element_id": selection_id,
+                "element_type": selection_type,
+                "zoom_to": True,
+            }
+            if selection_id
+            else None
+        ),
         "audit_trail": audit or [],
         "domain_events": events or [],
         "materialized_params": materialized_params,
@@ -1115,7 +1288,11 @@ def _error_response(message: str, code: str = "UNKNOWN") -> dict[str, Any]:
         "logical_views": {},
         "readiness": {"ready": False, "blockers": [], "warnings": []},
         "fix_actions": [],
-        "changes": {"created_element_ids": [], "updated_element_ids": [], "deleted_element_ids": []},
+        "changes": {
+            "created_element_ids": [],
+            "updated_element_ids": [],
+            "deleted_element_ids": [],
+        },
         "selection_hint": None,
         "audit_trail": [],
         "domain_events": [],
@@ -1150,6 +1327,119 @@ def _require_catalog_ref(
     return _error_response(error_message, "catalog.ref_required")
 
 
+def _resolve_manual_source_equivalent(
+    payload: dict[str, Any],
+) -> dict[str, Any] | None | dict[str, Any]:
+    manual = payload.get("manual_equivalent")
+    if manual is None:
+        return None
+    if not isinstance(manual, dict):
+        return _error_response(
+            "Ręczna umowa równoważna źródła GPZ ma nieprawidłowy format.",
+            "source.manual_equivalent_invalid",
+        )
+
+    def _as_positive_number(value: Any) -> float | None:
+        if not isinstance(value, int | float):
+            return None
+        normalized = float(value)
+        if normalized <= 0:
+            return None
+        return normalized
+
+    def _as_non_negative_number(value: Any) -> float | None:
+        if not isinstance(value, int | float):
+            return None
+        normalized = float(value)
+        if normalized < 0:
+            return None
+        return normalized
+
+    voltage_kv = _as_positive_number(manual.get("voltage_kv", payload.get("voltage_kv")))
+    short_circuit_mode = (
+        str(
+            manual.get(
+                "short_circuit_mode", payload.get("short_circuit_mode", "SHORT_CIRCUIT_POWER")
+            )
+        )
+        .strip()
+        .upper()
+    )
+    ik3_ka = _as_positive_number(manual.get("ik3_ka", payload.get("ik3_ka")))
+
+    if voltage_kv is None:
+        return _error_response(
+            "Ręczna umowa równoważna GPZ wymaga dodatniego napięcia znamionowego SN.",
+            "source.manual_equivalent_incomplete",
+        )
+
+    resolved: dict[str, Any] = {
+        "voltage_kv": voltage_kv,
+        "manual_equivalent": True,
+        "short_circuit_mode": short_circuit_mode,
+    }
+
+    if short_circuit_mode == "IMPEDANCE":
+        r_ohm = _as_non_negative_number(manual.get("r_ohm", payload.get("r_ohm")))
+        x_ohm = _as_positive_number(manual.get("x_ohm", payload.get("x_ohm")))
+        if r_ohm is None or x_ohm is None:
+            return _error_response(
+                "Ręczna umowa równoważna GPZ w trybie impedancyjnym wymaga parametrów R i X.",
+                "source.manual_equivalent_incomplete",
+            )
+
+        z_abs = math.hypot(r_ohm, x_ohm)
+        if z_abs <= 0:
+            return _error_response(
+                "Impedancja zastępcza GPZ musi być dodatnia.",
+                "source.manual_equivalent_incomplete",
+            )
+
+        resolved.update(
+            {
+                "r_ohm": r_ohm,
+                "x_ohm": x_ohm,
+                "sk3_mva": (voltage_kv * voltage_kv) / z_abs,
+                "rx_ratio": r_ohm / x_ohm if x_ohm > 0 else 0.0,
+                "short_circuit_model": "thevenin",
+            }
+        )
+    else:
+        sk3_mva = _as_positive_number(manual.get("sk3_mva", payload.get("sk3_mva")))
+        rx_ratio = _as_positive_number(manual.get("rx_ratio", payload.get("rx_ratio")))
+        if sk3_mva is None:
+            return _error_response(
+                "Ręczna umowa równoważna GPZ wymaga dodatniej mocy zwarciowej Sk3.",
+                "source.manual_equivalent_incomplete",
+            )
+        if rx_ratio is None:
+            return _error_response(
+                "Ręczna umowa równoważna GPZ wymaga dodatniego stosunku R/X.",
+                "source.manual_equivalent_incomplete",
+            )
+
+        resolved.update(
+            {
+                "sk3_mva": sk3_mva,
+                "rx_ratio": rx_ratio,
+                "short_circuit_model": "short_circuit_power",
+            }
+        )
+
+    r0_ohm = manual.get("r0_ohm", payload.get("r0_ohm"))
+    x0_ohm = manual.get("x0_ohm", payload.get("x0_ohm"))
+    z0_z1_ratio = manual.get("z0_z1_ratio", payload.get("z0_z1_ratio"))
+    if isinstance(r0_ohm, int | float):
+        resolved["r0_ohm"] = float(r0_ohm)
+    if isinstance(x0_ohm, int | float):
+        resolved["x0_ohm"] = float(x0_ohm)
+    if isinstance(z0_z1_ratio, int | float) and float(z0_z1_ratio) > 0:
+        resolved["z0_z1_ratio"] = float(z0_z1_ratio)
+    if ik3_ka is not None:
+        resolved["ik3_ka"] = ik3_ka
+    return resolved
+
+
 # ---------------------------------------------------------------------------
 # 1. add_grid_source_sn
 # ---------------------------------------------------------------------------
@@ -1158,6 +1448,29 @@ def _require_catalog_ref(
 def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj źródło zasilania (GPZ) — pierwszy krok budowy sieci SN."""
     voltage_kv = payload.get("voltage_kv")
+    manual_equivalent = _resolve_manual_source_equivalent(payload)
+    if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
+        return manual_equivalent
+    manual_source_mode = isinstance(manual_equivalent, dict)
+    gpz_section_entries = _normalize_gpz_section_entries(payload)
+    sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
+    if len(gpz_section_entries) != sections_count:
+        gpz_section_entries = [
+            {
+                "order": index,
+                "name": f"Sekcja {index + 1}",
+                "bus_name": None,
+                "line_field_name": None,
+            }
+            for index in range(sections_count)
+        ]
+    if sections_count < 1 or sections_count > 4:
+        return _error_response(
+            "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
+            "source.invalid_sections_count",
+        )
+    if manual_source_mode and (voltage_kv is None or voltage_kv <= 0):
+        voltage_kv = manual_equivalent["voltage_kv"]
     if voltage_kv is None or voltage_kv <= 0:
         # Pobierz napięcie z jawnych ustawień projektu (ENM defaults)
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
@@ -1175,24 +1488,88 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "source.already_exists",
         )
 
+    allowed_grounding_types = {
+        "isolated",
+        "petersen_coil",
+        "directly_grounded",
+        "resistor_grounded",
+    }
+    grounding_payload = payload.get("grounding")
+    grounding_config = None
+    if grounding_payload is not None:
+        if not isinstance(grounding_payload, dict):
+            return _error_response(
+                "Konfiguracja uziemienia GPZ ma nieprawidłowy format.",
+                "source.invalid_grounding",
+            )
+        grounding_type = grounding_payload.get("type")
+        if grounding_type not in allowed_grounding_types:
+            return _error_response(
+                "Typ uziemienia GPZ jest nieprawidłowy.",
+                "source.invalid_grounding",
+            )
+        grounding_config = {"type": grounding_type}
+        if isinstance(grounding_payload.get("r_ohm"), int | float):
+            grounding_config["r_ohm"] = float(grounding_payload["r_ohm"])
+        if isinstance(grounding_payload.get("x_ohm"), int | float):
+            grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
+
+    zero_sequence_payload = payload.get("zero_sequence")
+    zero_sequence_config = None
+    if zero_sequence_payload is not None:
+        if not isinstance(zero_sequence_payload, dict):
+            return _error_response(
+                "Parametry składowej zerowej GPZ mają nieprawidłowy format.",
+                "source.invalid_zero_sequence",
+            )
+        zero_sequence_config = {"enabled": bool(zero_sequence_payload.get("enabled", False))}
+        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
+            if isinstance(zero_sequence_payload.get(key), int | float):
+                zero_sequence_config[key] = float(zero_sequence_payload[key])
+
     catalog_binding = payload.get("catalog_binding")
-    catalog_ref_required = _require_catalog_ref(
-        payload.get("catalog_ref"),
-        catalog_binding,
-        "Źródło systemowe GPZ",
-    )
-    if isinstance(catalog_ref_required, dict):
-        return catalog_ref_required
-    catalog_ref = catalog_ref_required
-    materialization = _materialize_catalog_payload(
-        catalog_ref=catalog_ref,
-        catalog_binding=catalog_binding,
-        default_namespace="ZRODLO_SN",
-    )
-    if isinstance(materialization, dict):
-        return materialization
-    binding_payload, materialized_params = materialization
-    if (voltage_kv is None or voltage_kv <= 0) and materialized_params.get("voltage_rating_kv") is not None:
+    binding_payload = None
+    if manual_source_mode:
+        catalog_ref = None
+        materialized_params = {
+            "voltage_rating_kv": manual_equivalent["voltage_kv"],
+            "sk3_mva": manual_equivalent["sk3_mva"],
+            "rx_ratio": manual_equivalent["rx_ratio"],
+            "short_circuit_model": manual_equivalent["short_circuit_model"],
+            "short_circuit_mode": manual_equivalent["short_circuit_mode"],
+            "manual_equivalent": True,
+        }
+        if manual_equivalent.get("ik3_ka") is not None:
+            materialized_params["ik3_ka"] = manual_equivalent["ik3_ka"]
+        for key in ("r_ohm", "x_ohm", "r0_ohm", "x0_ohm", "z0_z1_ratio"):
+            if manual_equivalent.get(key) is not None:
+                materialized_params[key] = manual_equivalent[key]
+    else:
+        catalog_ref_required = _require_catalog_ref(
+            payload.get("catalog_ref"),
+            catalog_binding,
+            "Źródło systemowe GPZ",
+        )
+        if isinstance(catalog_ref_required, dict):
+            return catalog_ref_required
+        catalog_ref = catalog_ref_required
+        materialization = _materialize_catalog_payload(
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            default_namespace="ZRODLO_SN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        binding_payload, materialized_params = materialization
+        materialized_params.setdefault("short_circuit_model", "short_circuit_power")
+        materialized_params.setdefault("short_circuit_mode", "SHORT_CIRCUIT_POWER")
+    if zero_sequence_config:
+        for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
+            if zero_sequence_config.get(key) is not None:
+                materialized_params[key] = zero_sequence_config[key]
+    if (voltage_kv is None or voltage_kv <= 0) and materialized_params.get(
+        "voltage_rating_kv"
+    ) is not None:
         voltage_kv = materialized_params["voltage_rating_kv"]
     if voltage_kv is None or voltage_kv <= 0:
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
@@ -1207,12 +1584,40 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "op": "add_grid_source_sn",
             "catalog_ref": catalog_ref,
             "voltage_kv": voltage_kv,
+            "sections_count": sections_count,
+            "manual_equivalent": manual_equivalent or None,
+            "grounding": grounding_config,
+            "zero_sequence": zero_sequence_config,
         }
     )
-    bus_ref = _make_id("gpz", seed, "bus_sn")
-    source_ref = _make_id("gpz", seed, "source")
+    source_ref = _make_id("gpz", seed, "source/main")
     substation_ref = _make_id("gpz", seed, "substation")
     corridor_ref = _make_id("gpz", seed, "corridor_01")
+    gpz_sections: list[dict[str, Any]] = []
+    gpz_section_bus_refs: list[str] = []
+    gpz_section_bus_names: list[str] = []
+    gpz_section_line_field_names: list[str | None] = []
+    for idx, entry in enumerate(gpz_section_entries):
+        order = idx + 1
+        section_ref = _make_id("gpz", seed, f"section/{order:03d}")
+        section_bus_ref = _make_id("gpz", seed, f"section/{order:03d}/bus_sn")
+        section_bus_name = entry.get("bus_name") or f"Szyna GPZ S{order} {voltage_kv} kV"
+        section_name = entry.get("name") or f"Sekcja {idx + 1}"
+        gpz_sections.append(
+            {
+                "section_id": section_ref,
+                "order": idx,
+                "name": section_name,
+                "line_field_name": entry.get("line_field_name"),
+                "bus_ref": section_bus_ref,
+                "incoming_source_ref": source_ref if idx == 0 else None,
+                "left_coupler_ref": None,
+                "right_coupler_ref": None,
+            }
+        )
+        gpz_section_bus_refs.append(section_bus_ref)
+        gpz_section_bus_names.append(section_bus_name)
+        gpz_section_line_field_names.append(entry.get("line_field_name"))
 
     new_enm = copy.deepcopy(enm)
     created = []
@@ -1220,88 +1625,192 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     audit = []
     ev_seq = 0
 
-    # Create GPZ bus
-    bus_name = payload.get("bus_name") or f"Szyna GPZ {voltage_kv} kV"
-    result = create_node(new_enm, {
-        "ref_id": bus_ref,
-        "name": bus_name,
-        "voltage_kv": voltage_kv,
-        "zone": "GPZ",
-    })
-    if not result.success:
-        return _error_response(
-            f"Nie udało się utworzyć szyny GPZ: {result.issues[0].message_pl if result.issues else '?'}",
-            "source.bus_creation_failed",
+    # Create GPZ sections (SN buses)
+    for idx, section in enumerate(gpz_sections):
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": section["bus_ref"],
+                "name": gpz_section_bus_names[idx],
+                "voltage_kv": voltage_kv,
+                "zone": "GPZ",
+                "grounding": grounding_config,
+                "meta": {
+                    "gpz_section_id": section["section_id"],
+                    "gpz_section_order": section["order"],
+                    "gpz_substation_ref": substation_ref,
+                },
+            },
         )
-    new_enm = result.enm
-    created.append(bus_ref)
-    ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": bus_ref})
-    audit.append({"step": ev_seq, "action": "Utworzono szynę GPZ", "element_id": bus_ref})
+        if not result.success:
+            return _error_response(
+                f"Nie udalo sie utworzyc sekcji GPZ: {result.issues[0].message_pl if result.issues else '?'}",
+                "source.bus_creation_failed",
+            )
+        new_enm = result.enm
+        created.append(section["bus_ref"])
+        ev_seq += 1
+        events.append(
+            {
+                "event_seq": ev_seq,
+                "event_type": "BUS_CREATED",
+                "element_id": section["bus_ref"],
+            }
+        )
+        audit.append(
+            {
+                "step": ev_seq,
+                "action": f"Utworzono sekcje GPZ {idx + 1}",
+                "element_id": section["bus_ref"],
+            }
+        )
 
     # Create source
     source_data = {
         "device_type": "source",
         "ref_id": source_ref,
-        "name": payload.get("source_name") or f"Źródło GPZ {voltage_kv} kV",
-        "bus_ref": bus_ref,
-        "model": "short_circuit_power",
+        "name": payload.get("source_name") or f"?r?d?o GPZ {voltage_kv} kV",
+        "bus_ref": gpz_section_bus_refs[0],
+        "substation_ref": substation_ref,
+        "gpz_section_id": gpz_sections[0]["section_id"] if gpz_sections else None,
+        "model": materialized_params.get("short_circuit_model", "short_circuit_power"),
         "catalog_ref": catalog_ref,
         "materialized_params": materialized_params,
     }
-    _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
+    if binding_payload is not None:
+        _apply_catalog_metadata(source_data, binding_payload, default_namespace="ZRODLO_SN")
+    elif manual_source_mode:
+        source_data["source_mode"] = payload.get("source_mode") or "EKSPERCKI_RECZNY"
+        source_data["parameter_source"] = payload.get("parameter_source") or "MANUAL_EQUIVALENT"
     if payload.get("source_mode"):
         source_data["source_mode"] = payload["source_mode"]
     if payload.get("parameter_source"):
         source_data["parameter_source"] = payload["parameter_source"]
     if isinstance(payload.get("overrides"), list):
         source_data["overrides"] = payload["overrides"]
-    if materialized_params.get("sk3_mva") is not None:
-        source_data["sk3_mva"] = materialized_params["sk3_mva"]
-    if materialized_params.get("ik3_ka") is not None:
-        source_data["ik3_ka"] = materialized_params["ik3_ka"]
-    if materialized_params.get("rx_ratio") is not None:
-        source_data["rx_ratio"] = materialized_params["rx_ratio"]
+    for key in (
+        "sk3_mva",
+        "ik3_ka",
+        "rx_ratio",
+        "r_ohm",
+        "x_ohm",
+        "r0_ohm",
+        "x0_ohm",
+        "z0_z1_ratio",
+        "c_max",
+        "c_min",
+    ):
+        if materialized_params.get(key) is not None:
+            source_data[key] = materialized_params[key]
 
     result = create_device(new_enm, source_data)
     if not result.success:
         return _error_response(
-            f"Nie udało się utworzyć źródła: {result.issues[0].message_pl if result.issues else '?'}",
+            f"Nie uda?o si? utworzy? ?r?d?a: {result.issues[0].message_pl if result.issues else '?'}",
             "source.creation_failed",
         )
     new_enm = result.enm
     created.append(source_ref)
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "SOURCE_CREATED", "element_id": source_ref})
-    audit.append({"step": ev_seq, "action": "Utworzono źródło zasilania", "element_id": source_ref})
+    audit.append({"step": ev_seq, "action": "Utworzono ?r?d?o zasilania", "element_id": source_ref})
+
+    for idx in range(1, len(gpz_sections)):
+        left_section = gpz_sections[idx - 1]
+        right_section = gpz_sections[idx]
+        coupler_ref = _make_id("gpz", seed, f"coupler/{idx:03d}")
+        coupler_name = payload.get("gpz_coupler_name") or f"Sprz?g?o sekcji GPZ {idx}?{idx + 1}"
+        new_enm.setdefault("branches", []).append(
+            {
+                "ref_id": coupler_ref,
+                "name": coupler_name,
+                "type": "bus_coupler",
+                "from_bus_ref": left_section["bus_ref"],
+                "to_bus_ref": right_section["bus_ref"],
+                "status": "closed",
+                "catalog_ref": None,
+                "catalog_namespace": None,
+                "parameter_source": None,
+                "source_mode": None,
+                "materialized_params": None,
+                "overrides": [],
+                "r_ohm": None,
+                "x_ohm": None,
+            }
+        )
+        left_section["right_coupler_ref"] = coupler_ref
+        right_section["left_coupler_ref"] = coupler_ref
+        created.append(coupler_ref)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": coupler_ref}
+        )
+        audit.append(
+            {"step": ev_seq, "action": "Utworzono sprz?g?o sekcyjne GPZ", "element_id": coupler_ref}
+        )
+
+    field_specs = []
+    for idx, section in enumerate(gpz_sections):
+        bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}")
+        bay_name = gpz_section_line_field_names[idx] or f"Pole liniowe GPZ {idx + 1}"
+        field_specs.append(
+            _build_field_spec(
+                field_ref=bay_ref,
+                name=bay_name,
+                bay_role="FEEDER",
+                bus_ref=section["bus_ref"],
+                gpz_section_id=section["section_id"],
+                tags=["gpz_line_field"],
+                meta={
+                    "gpz_section_id": section["section_id"],
+                    "gpz_section_order": section["order"],
+                },
+            )
+        )
 
     # Create substation (GPZ)
-    new_enm.setdefault("substations", []).append({
-        "ref_id": substation_ref,
-        "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
-        "station_type": "gpz",
-        "bus_refs": [bus_ref],
-        "transformer_refs": [],
-        "tags": [],
-        "meta": {},
-    })
+    new_enm.setdefault("substations", []).append(
+        {
+            "ref_id": substation_ref,
+            "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
+            "station_type": "gpz",
+            "bus_refs": gpz_section_bus_refs,
+            "transformer_refs": [],
+            "entry_point_ref": gpz_section_bus_refs[0],
+            "gpz_sections": gpz_sections,
+            "tags": [],
+            "meta": {
+                "gpz_section_count": len(gpz_sections),
+                "grounding": grounding_config,
+                "zero_sequence": zero_sequence_config,
+                "short_circuit_mode": materialized_params.get("short_circuit_mode"),
+                "field_specs": field_specs,
+            },
+        }
+    )
     created.append(substation_ref)
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": substation_ref})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": substation_ref}
+    )
 
     # Create corridor (trunk)
-    new_enm.setdefault("corridors", []).append({
-        "ref_id": corridor_ref,
-        "name": f"Magistrala 01",
-        "corridor_type": "radial",
-        "ordered_segment_refs": [],
-        "no_point_ref": None,
-        "tags": [],
-        "meta": {},
-    })
+    new_enm.setdefault("corridors", []).append(
+        {
+            "ref_id": corridor_ref,
+            "name": "Magistrala 01",
+            "corridor_type": "radial",
+            "ordered_segment_refs": [],
+            "no_point_ref": None,
+            "tags": [],
+            "meta": {},
+        }
+    )
     created.append(corridor_ref)
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": corridor_ref})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": corridor_ref}
+    )
 
     return _response(
         new_enm,
@@ -1329,7 +1838,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         from_terminal_id = _auto_detect_trunk_end(enm, trunk_id)
 
     if not from_terminal_id:
-        return _error_response("Brak identyfikatora terminala źródłowego.", "trunk.from_terminal_missing")
+        return _error_response(
+            "Brak identyfikatora terminala źródłowego.", "trunk.from_terminal_missing"
+        )
 
     # Validate from_terminal exists
     from_bus = None
@@ -1347,8 +1858,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
     if dlugosc_m <= 0:
         return _error_response(
-            "Brak długości odcinka magistrali (dlugosc_m). "
-            "Podaj jawną wartość > 0.",
+            "Brak długości odcinka magistrali (dlugosc_m). Podaj jawną wartość > 0.",
             "trunk.dlugosc_missing",
         )
 
@@ -1362,13 +1872,15 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         return catalog_ref
     segment_name = segment.get("name")
 
-    seed = _compute_seed({
-        "op": "continue_trunk",
-        "trunk_id": trunk_id or "",
-        "from": from_terminal_id,
-        "rodzaj": rodzaj,
-        "dlugosc_m": dlugosc_m,
-    })
+    seed = _compute_seed(
+        {
+            "op": "continue_trunk",
+            "trunk_id": trunk_id or "",
+            "from": from_terminal_id,
+            "rodzaj": rodzaj,
+            "dlugosc_m": dlugosc_m,
+        }
+    )
     new_bus_ref = f"bus/{seed}/downstream"
     branch_ref = f"seg/{seed}/segment"
 
@@ -1378,21 +1890,31 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     audit = []
     ev_seq = 0
 
-    # Create downstream bus — napięcie z szyny źródłowej (topologiczne)
+    # Create downstream bus ? napiecie z szyny zrodlowej (topologiczne)
     voltage_kv = from_bus.get("voltage_kv")
     if not voltage_kv or voltage_kv <= 0:
         return _error_response(
-            f"Szyna źródłowa '{from_terminal_id}' nie ma napięcia znamionowego.",
+            f"Szyna zrodlowa '{from_terminal_id}' nie ma napiecia znamionowego.",
             "trunk.from_bus_voltage_missing",
         )
-    result = create_node(new_enm, {
-        "ref_id": new_bus_ref,
-        "name": segment_name or f"Szyna {new_bus_ref[-8:]}",
-        "voltage_kv": voltage_kv,
-    })
+
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": new_bus_ref,
+            "name": segment_name or f"Szyna {new_bus_ref[-8:]}",
+            "voltage_kv": voltage_kv,
+            "tags": ["helper_bus", "topology_terminal"],
+            "meta": {
+                "visual_role": "INLINE_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+            },
+        },
+    )
     if not result.success:
         return _error_response(
-            f"Nie udało się utworzyć szyny: {result.issues[0].message_pl if result.issues else '?'}",
+            f"Nie udalo sie utworzyc szyny: {result.issues[0].message_pl if result.issues else '?'}",
             "trunk.bus_creation_failed",
         )
     new_enm = result.enm
@@ -1439,7 +1961,9 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     created.append(branch_ref)
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": branch_ref})
-    audit.append({"step": ev_seq, "action": "Utworzono odcinek magistrali", "element_id": branch_ref})
+    audit.append(
+        {"step": ev_seq, "action": "Utworzono odcinek magistrali", "element_id": branch_ref}
+    )
 
     # Update corridor (auto-detect if not specified)
     effective_trunk_id = trunk_id
@@ -1454,7 +1978,13 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 c.setdefault("ordered_segment_refs", []).append(branch_ref)
                 break
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": effective_trunk_id})
+    events.append(
+        {
+            "event_seq": ev_seq,
+            "event_type": "LOGICAL_VIEWS_UPDATED",
+            "element_id": effective_trunk_id,
+        }
+    )
 
     return _response(
         new_enm,
@@ -1525,13 +2055,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
 
     # Accept station_type from station dict OR root payload.
     # Supports both legacy shorthand (A/B/C/D) and semantic labels.
-    _SEMANTIC_TO_LEGACY: dict[str, str] = {
-        "inline": "B",       # Stacja przelotowa → typ B (IN+OUT+TR)
-        "branch": "C",       # Stacja odgałęźna → typ C (IN+OUT+BRANCH+TR)
-        "terminal": "A",     # Stacja końcowa → typ A (liść)
-        "sectional": "D",    # Stacja sekcyjna → typ D (ze sprzęgłem)
+    semantic_to_legacy: dict[str, str] = {
+        "inline": "B",  # Stacja przelotowa → typ B (IN+OUT+TR)
+        "branch": "C",  # Stacja odgałęźna → typ C (IN+OUT+BRANCH+TR)
+        "terminal": "A",  # Stacja końcowa → typ A (liść)
+        "sectional": "D",  # Stacja sekcyjna → typ D (ze sprzęgłem)
     }
-    _SUBSTATION_TYPE_MAP: dict[str, str] = {
+    substation_type_map: dict[str, str] = {
         "A": "mv_lv",
         "B": "inline",
         "C": "branch",
@@ -1543,7 +2073,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     }
     station_type_raw = station.get("station_type") or payload.get("station_type", "")
     # Map semantic → legacy for internal logic
-    station_type = _SEMANTIC_TO_LEGACY.get(station_type_raw, station_type_raw)
+    station_type = semantic_to_legacy.get(station_type_raw, station_type_raw)
     if station_type not in ("A", "B", "C", "D"):
         return _error_response(
             f"Typ stacji '{station_type_raw}' jest nieprawidłowy. "
@@ -1551,7 +2081,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "station.insert.station_type_invalid",
         )
     # The semantic station_type stored in substation record
-    substation_semantic_type = _SUBSTATION_TYPE_MAP.get(station_type_raw, "mv_lv")
+    substation_semantic_type = substation_type_map.get(station_type_raw, "mv_lv")
 
     # Validate insert_at
     insert_mode = insert_at.get("mode", "RATIO")
@@ -1606,11 +2136,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     )
 
     # --- Compute deterministic seed ---
-    station_seed = _compute_seed({
-        "segment_id": segment_id,
-        "insert_at": {"mode": insert_mode, "value": insert_value},
-        "station_type": station_type,
-    })
+    station_seed = _compute_seed(
+        {
+            "segment_id": segment_id,
+            "insert_at": {"mode": insert_mode, "value": insert_value},
+            "station_type": station_type,
+        }
+    )
 
     # --- Element IDs ---
     stn_id = _make_id("stn", station_seed, "station")
@@ -1624,7 +2156,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     new_enm = copy.deepcopy(enm)
     created = []
     deleted = []
-    updated = []
     events = []
     audit = []
     ev_seq = 0
@@ -1654,11 +2185,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     events.append({"event_seq": ev_seq, "event_type": "SEGMENT_SPLIT", "element_id": segment_id})
 
     # Create SN bus (insertion point)
-    result = create_node(new_enm, {
-        "ref_id": sn_bus_id,
-        "name": station.get("station_name") or f"Szyna SN stacji",
-        "voltage_kv": sn_voltage_kv,
-    })
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": sn_bus_id,
+            "name": station.get("station_name") or "Szyna SN stacji",
+            "voltage_kv": sn_voltage_kv,
+        },
+    )
     if not result.success:
         return _error_response(
             f"Nie udało się utworzyć szyny SN: {result.issues[0].message_pl if result.issues else '?'}",
@@ -1701,7 +2235,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     result = create_branch(new_enm, left_data)
     if not result.success:
         return _error_response(
-            "Nie udało się utworzyć lewego odcinka.", "station.insert.left_segment_failed")
+            "Nie udało się utworzyć lewego odcinka.", "station.insert.left_segment_failed"
+        )
     new_enm = result.enm
     created.append(seg_left_id)
 
@@ -1737,7 +2272,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     result = create_branch(new_enm, right_data)
     if not result.success:
         return _error_response(
-            "Nie udało się utworzyć prawego odcinka.", "station.insert.right_segment_failed")
+            "Nie udało się utworzyć prawego odcinka.", "station.insert.right_segment_failed"
+        )
     new_enm = result.enm
     created.append(seg_right_id)
 
@@ -1747,61 +2283,88 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "STATION_CREATED", "element_id": stn_id})
 
+    role_map = {
+        "LINIA_IN": "IN",
+        "LINIA_OUT": "OUT",
+        "LINIA_ODG": "FEEDER",
+        "TRANSFORMATOROWE": "TR",
+        "SPRZEGLO": "COUPLER",
+    }
+    field_specs = [
+        _build_field_spec(
+            field_ref=_make_id("stn", station_seed, f"sn_field/{idx:03d}"),
+            name=f"Pole {field_spec.get('field_role', '')} {idx + 1}",
+            bay_role=role_map.get(field_spec.get("field_role", ""), "FEEDER"),
+            bus_ref=sn_bus_id,
+        )
+        for idx, field_spec in enumerate(sorted(sn_fields, key=lambda f: f.get("field_role", "")))
+    ]
+
+    feeders = nn_block.get("outgoing_feeders_nn", [])
+    feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
+    nn_field_specs = [
+        _build_field_spec(
+            field_ref=nn_main_id,
+            name="Wyłącznik główny nN",
+            bay_role="IN",
+            bus_ref=nn_bus_id,
+            tags=["nn_main_breaker"],
+        )
+    ]
+    for idx in range(max(feeder_count, len(feeders))):
+        feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
+        feeder_spec = feeders[idx] if idx < len(feeders) else {}
+        nn_field_specs.append(
+            _build_field_spec(
+                field_ref=feeder_ref,
+                name=f"Odpływ nN {idx + 1}",
+                bay_role="FEEDER",
+                bus_ref=nn_bus_id,
+                meta={"feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN")},
+            )
+        )
+
     # Create Substation — use semantic type (inline/branch/terminal/sectional/mv_lv)
-    new_enm.setdefault("substations", []).append({
-        "ref_id": stn_id,
-        "name": station.get("station_name") or payload.get("name") or f"Stacja {station_type_raw or station_type}",
-        "station_type": substation_semantic_type,
-        "bus_refs": [sn_bus_id],
-        "transformer_refs": [],
-        "tags": [],
-        "meta": {"station_type_sn": station_type, "station_type_semantic": station_type_raw},
-    })
+    new_enm.setdefault("substations", []).append(
+        {
+            "ref_id": stn_id,
+            "name": station.get("station_name")
+            or payload.get("name")
+            or f"Stacja {station_type_raw or station_type}",
+            "station_type": substation_semantic_type,
+            "bus_refs": [sn_bus_id],
+            "transformer_refs": [],
+            "tags": [],
+            "meta": {
+                "station_type_sn": station_type,
+                "station_type_semantic": station_type_raw,
+                "field_specs": field_specs,
+                "nn_field_specs": nn_field_specs,
+            },
+        }
+    )
     created.append(stn_id)
 
-    # Create SN Bays (fields)
+    # Register field adapter hints for canonical read-model
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "PORTS_CREATED", "element_id": stn_id})
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "FIELDS_CREATED_SN", "element_id": stn_id})
 
-    bay_ids = []
-    for idx, field_spec in enumerate(sorted(sn_fields, key=lambda f: f.get("field_role", ""))):
-        bay_ref = _make_id("stn", station_seed, f"sn_field/{idx:03d}")
-        role_map = {
-            "LINIA_IN": "IN",
-            "LINIA_OUT": "OUT",
-            "LINIA_ODG": "FEEDER",
-            "TRANSFORMATOROWE": "TR",
-            "SPRZEGLO": "COUPLER",
-        }
-        bay_role = role_map.get(field_spec.get("field_role", ""), "FEEDER")
-        new_enm.setdefault("bays", []).append({
-            "ref_id": bay_ref,
-            "name": f"Pole {field_spec.get('field_role', '')} {idx + 1}",
-            "bay_role": bay_role,
-            "substation_ref": stn_id,
-            "bus_ref": sn_bus_id,
-            "equipment_refs": [],
-            "protection_ref": None,
-            "tags": [],
-            "meta": {"apparatus_plan": field_spec.get("apparatus_plan", [])},
-        })
-        bay_ids.append(bay_ref)
-        created.append(bay_ref)
-
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "DEVICES_CREATED_SN", "element_id": stn_id})
 
     # --- Create nN bus ---
-    result = create_node(new_enm, {
-        "ref_id": nn_bus_id,
-        "name": f"Szyna nN stacji",
-        "voltage_kv": nn_voltage_kv,
-    })
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": nn_bus_id,
+            "name": "Szyna nN stacji",
+            "voltage_kv": nn_voltage_kv,
+        },
+    )
     if not result.success:
-        return _error_response(
-            "Nie udało się utworzyć szyny nN.", "station.insert.nn_bus_failed")
+        return _error_response("Nie udało się utworzyć szyny nN.", "station.insert.nn_bus_failed")
     new_enm = result.enm
     created.append(nn_bus_id)
 
@@ -1816,7 +2379,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
 
     # --- Create Transformer ---
     if transformer.get("create", True):
-        transformer_catalog_binding = transformer.get("catalog_binding") or payload.get("catalog_binding")
+        transformer_catalog_binding = transformer.get("catalog_binding") or payload.get(
+            "catalog_binding"
+        )
         tr_catalog = _require_catalog_ref(
             payload_ref=transformer.get("transformer_catalog_ref"),
             payload_binding=transformer_catalog_binding,
@@ -1827,7 +2392,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         tr_data = {
             "device_type": "transformer",
             "ref_id": tr_id,
-            "name": f"Transformator SN/nN",
+            "name": "Transformator SN/nN",
             "hv_bus_ref": sn_bus_id,
             "lv_bus_ref": nn_bus_id,
             "sn_mva": 0.001,  # Wartosc inicjalna — materializacja z katalogu
@@ -1855,7 +2420,8 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         result = create_device(new_enm, tr_data)
         if not result.success:
             return _error_response(
-                "Nie udało się utworzyć transformatora.", "station.insert.transformer_failed")
+                "Nie udało się utworzyć transformatora.", "station.insert.transformer_failed"
+            )
         new_enm = result.enm
         created.append(tr_id)
 
@@ -1863,6 +2429,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         for sub in new_enm.get("substations", []):
             if sub.get("ref_id") == stn_id:
                 sub["transformer_refs"].append(tr_id)
+                for field_spec in _field_specs_for_substation(sub):
+                    if field_spec.get("bay_role") == "TR":
+                        field_spec["equipment_refs"] = [tr_id]
                 break
 
         ev_seq += 1
@@ -1872,50 +2441,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "FIELDS_CREATED_NN", "element_id": nn_bus_id})
 
-    # Main breaker nN
-    nn_main_data: dict[str, Any] = {
-        "ref_id": nn_main_id,
-        "name": "Wyłącznik główny nN",
-        "type": "breaker",
-        "from_bus_ref": nn_bus_id,
-        "to_bus_ref": nn_bus_id,
-        "status": "closed",
-    }
-    # NOTE: Self-loop breaker is modeled as a bay, not a branch
-    new_enm.setdefault("bays", []).append({
-        "ref_id": nn_main_id,
-        "name": "Wyłącznik główny nN",
-        "bay_role": "IN",
-        "substation_ref": stn_id,
-        "bus_ref": nn_bus_id,
-        "equipment_refs": [],
-        "protection_ref": None,
-        "tags": ["nn_main_breaker"],
-        "meta": {},
-    })
-    created.append(nn_main_id)
-
-    # Outgoing feeders nN
-    feeders = nn_block.get("outgoing_feeders_nn", [])
-    feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
-    for idx in range(max(feeder_count, len(feeders))):
-        feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
-        feeder_spec = feeders[idx] if idx < len(feeders) else {}
-        new_enm.setdefault("bays", []).append({
-            "ref_id": feeder_ref,
-            "name": f"Odpływ nN {idx + 1}",
-            "bay_role": "FEEDER",
-            "substation_ref": stn_id,
-            "bus_ref": nn_bus_id,
-            "equipment_refs": [],
-            "protection_ref": None,
-            "tags": [],
-            "meta": {"feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN")},
-        })
-        created.append(feeder_ref)
-
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "DEVICES_CREATED_NN", "element_id": nn_bus_id})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "DEVICES_CREATED_NN", "element_id": nn_bus_id}
+    )
 
     # --- Krok 4: Aktualizacja magistrali ---
     corridor = _find_corridor_for_segment(enm, segment_id)
@@ -1925,15 +2454,19 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 segments = c.get("ordered_segment_refs", [])
                 if segment_id in segments:
                     idx = segments.index(segment_id)
-                    segments[idx:idx + 1] = [seg_left_id, seg_right_id]
+                    segments[idx : idx + 1] = [seg_left_id, seg_right_id]
                 break
 
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "RECONNECTED_GRAPH", "element_id": stn_id})
     ev_seq += 1
-    events.append({"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": stn_id})
+    events.append(
+        {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": stn_id}
+    )
 
-    audit.append({"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id})
+    audit.append(
+        {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
+    )
 
     return _response(
         new_enm,
@@ -1963,7 +2496,9 @@ def _insert_branch_point_on_segment_sn(
 
     segment = _find_branch(enm, segment_id)
     if not segment:
-        return _error_response(f"Odcinek '{segment_id}' nie istnieje.", "branch_point.segment_not_found")
+        return _error_response(
+            f"Odcinek '{segment_id}' nie istnieje.", "branch_point.segment_not_found"
+        )
 
     seg_type = segment.get("type")
     if branch_point_type == "branch_pole" and seg_type != "line_overhead":
@@ -1992,12 +2527,16 @@ def _insert_branch_point_on_segment_sn(
         ratio = float(insert_at.get("value", 0.0)) / (length_km * 1000.0) if length_km > 0 else 0.5
     ratio = _quantize_ratio(max(0.0, min(1.0, ratio)))
 
-    seed = _compute_seed({
-        "op": f"insert_{branch_point_type}",
-        "segment_id": segment_id,
-        "ratio": ratio,
-        "branch_ports_count": payload.get("branch_ports_count", 2 if branch_point_type == "zksn" else 1),
-    })
+    seed = _compute_seed(
+        {
+            "op": f"insert_{branch_point_type}",
+            "segment_id": segment_id,
+            "ratio": ratio,
+            "branch_ports_count": payload.get(
+                "branch_ports_count", 2 if branch_point_type == "zksn" else 1
+            ),
+        }
+    )
     bp_ref = _make_id("bp", seed, branch_point_type)
     bp_bus_ref = _make_id("bp", seed, "bus")
     seg_left_id = f"{segment_id}_L_{branch_point_type}"
@@ -2014,7 +2553,9 @@ def _insert_branch_point_on_segment_sn(
 
     del_result = delete_branch(new_enm, segment_id)
     if not del_result.success:
-        return _error_response("Nie udało się podzielić odcinka.", "branch_point.segment_split_failed")
+        return _error_response(
+            "Nie udało się podzielić odcinka.", "branch_point.segment_split_failed"
+        )
     new_enm = del_result.enm
     deleted.append(segment_id)
 
@@ -2024,15 +2565,23 @@ def _insert_branch_point_on_segment_sn(
             bus_voltage = b.get("voltage_kv")
             break
     if not bus_voltage:
-        return _error_response("Nie można ustalić napięcia punktu rozgałęzienia.", "branch_point.voltage_missing")
+        return _error_response(
+            "Nie można ustalić napięcia punktu rozgałęzienia.", "branch_point.voltage_missing"
+        )
 
-    node_res = create_node(new_enm, {
-        "ref_id": bp_bus_ref,
-        "name": payload.get("name") or ("Słup rozgałęźny" if branch_point_type == "branch_pole" else "ZKSN"),
-        "voltage_kv": bus_voltage,
-    })
+    node_res = create_node(
+        new_enm,
+        {
+            "ref_id": bp_bus_ref,
+            "name": payload.get("name")
+            or ("Słup rozgałęźny" if branch_point_type == "branch_pole" else "ZKSN"),
+            "voltage_kv": bus_voltage,
+        },
+    )
     if not node_res.success:
-        return _error_response("Nie udało się utworzyć punktu rozgałęzienia.", "branch_point.bus_creation_failed")
+        return _error_response(
+            "Nie udało się utworzyć punktu rozgałęzienia.", "branch_point.bus_creation_failed"
+        )
     new_enm = node_res.enm
     created.append(bp_bus_ref)
 
@@ -2054,59 +2603,71 @@ def _insert_branch_point_on_segment_sn(
         }
         branch_res = create_branch(new_enm, seg_data)
         if not branch_res.success:
-            return _error_response("Nie udało się odtworzyć geometrii segmentu.", "branch_point.segment_rebuild_failed")
+            return _error_response(
+                "Nie udało się odtworzyć geometrii segmentu.", "branch_point.segment_rebuild_failed"
+            )
         new_enm = branch_res.enm
         created.append(seg_id)
 
-    branch_ports_count = int(payload.get("branch_ports_count", 2 if branch_point_type == "zksn" else 1))
+    branch_ports_count = int(
+        payload.get("branch_ports_count", 2 if branch_point_type == "zksn" else 1)
+    )
     branch_port_bus_refs: list[str] = []
     for idx in range(branch_ports_count):
-        port_bus = _make_id("bp", seed, f"branch_bus_{idx+1}")
-        port_res = create_node(new_enm, {
-            "ref_id": port_bus,
-            "name": f"Port odgałęźny {idx+1}",
-            "voltage_kv": bus_voltage,
-        })
+        port_bus = _make_id("bp", seed, f"branch_bus_{idx + 1}")
+        port_res = create_node(
+            new_enm,
+            {
+                "ref_id": port_bus,
+                "name": f"Port odgałęźny {idx + 1}",
+                "voltage_kv": bus_voltage,
+            },
+        )
         if not port_res.success:
-            return _error_response("Nie udało się utworzyć portu BRANCH.", "branch_point.required_port_missing")
+            return _error_response(
+                "Nie udało się utworzyć portu BRANCH.", "branch_point.required_port_missing"
+            )
         new_enm = port_res.enm
         created.append(port_bus)
         branch_port_bus_refs.append(port_bus)
 
     # bp_catalog_ref already validated above (cannot be None here)
     completeness = "KOMPLETNY"
-    new_enm.setdefault("branch_points", []).append({
-        "ref_id": bp_ref,
-        "name": payload.get("name") or ("Słup rozgałęźny SN" if branch_point_type == "branch_pole" else "ZKSN SN"),
-        "branch_point_type": branch_point_type,
-        "parent_segment_id": segment_id,
-        "bus_ref": bp_bus_ref,
-        "catalog_ref": bp_catalog_ref,
-        "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
-        "catalog_version": payload.get("catalog_version"),
-        "source_mode": payload.get("source_mode") or "KATALOG",
-        "ports": {
-            "MAIN_IN": from_bus_ref,
-            "MAIN_OUT": to_bus_ref,
-            "BRANCH": branch_port_bus_refs,
-        },
-        "branch_occupied": {},
-        "switch_state": payload.get("switch_state"),
-        "materialized_params": payload.get("materialized_params"),
-        "completeness_status": completeness,
-        "runtime_inputs": {
-            "name": payload.get("name"),
-            "branch_ports_count": branch_ports_count,
-            "insert_at": insert_at,
-        },
-    })
+    new_enm.setdefault("branch_points", []).append(
+        {
+            "ref_id": bp_ref,
+            "name": payload.get("name")
+            or ("Słup rozgałęźny SN" if branch_point_type == "branch_pole" else "ZKSN SN"),
+            "branch_point_type": branch_point_type,
+            "parent_segment_id": segment_id,
+            "bus_ref": bp_bus_ref,
+            "catalog_ref": bp_catalog_ref,
+            "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
+            "catalog_version": payload.get("catalog_version"),
+            "source_mode": payload.get("source_mode") or "KATALOG",
+            "ports": {
+                "MAIN_IN": from_bus_ref,
+                "MAIN_OUT": to_bus_ref,
+                "BRANCH": branch_port_bus_refs,
+            },
+            "branch_occupied": {},
+            "switch_state": payload.get("switch_state"),
+            "materialized_params": payload.get("materialized_params"),
+            "completeness_status": completeness,
+            "runtime_inputs": {
+                "name": payload.get("name"),
+                "branch_ports_count": branch_ports_count,
+                "insert_at": insert_at,
+            },
+        }
+    )
     created.append(bp_ref)
 
     for c in new_enm.get("corridors", []):
         refs = c.get("ordered_segment_refs", [])
         if segment_id in refs:
             idx = refs.index(segment_id)
-            c["ordered_segment_refs"] = refs[:idx] + [seg_left_id, seg_right_id] + refs[idx + 1:]
+            c["ordered_segment_refs"] = refs[:idx] + [seg_left_id, seg_right_id] + refs[idx + 1 :]
             break
 
     return _response(
@@ -2119,7 +2680,9 @@ def _insert_branch_point_on_segment_sn(
     )
 
 
-def insert_branch_pole_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+def insert_branch_pole_on_segment_sn(
+    enm: dict[str, Any], payload: dict[str, Any]
+) -> dict[str, Any]:
     return _insert_branch_point_on_segment_sn(enm, payload, branch_point_type="branch_pole")
 
 
@@ -2182,8 +2745,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     dlugosc_m = segment.get("dlugosc_m") or payload.get("dlugosc_m") or 0
     if dlugosc_m <= 0:
         return _error_response(
-            "Brak długości odcinka odgałęzienia (dlugosc_m). "
-            "Podaj jawną wartość > 0.",
+            "Brak długości odcinka odgałęzienia (dlugosc_m). Podaj jawną wartość > 0.",
             "branch.dlugosc_missing",
         )
 
@@ -2196,12 +2758,14 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     if isinstance(branch_catalog_ref, dict):
         return branch_catalog_ref
 
-    seed = _compute_seed({
-        "op": "start_branch",
-        "from": from_bus_ref,
-        "rodzaj": rodzaj,
-        "dlugosc_m": dlugosc_m,
-    })
+    seed = _compute_seed(
+        {
+            "op": "start_branch",
+            "from": from_bus_ref,
+            "rodzaj": rodzaj,
+            "dlugosc_m": dlugosc_m,
+        }
+    )
     new_bus_ref = f"bus/{seed}/branch_end"
     branch_ref = f"seg/{seed}/branch_segment"
 
@@ -2216,11 +2780,20 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
             f"Szyna źródłowa '{from_bus_ref}' nie ma napięcia znamionowego.",
             "branch.from_bus_voltage_missing",
         )
-    result = create_node(new_enm, {
-        "ref_id": new_bus_ref,
-        "name": f"Szyna odgałęzienia",
-        "voltage_kv": voltage_kv,
-    })
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": new_bus_ref,
+            "name": "Szyna odgałęzienia",
+            "voltage_kv": voltage_kv,
+            "tags": ["helper_bus", "topology_terminal"],
+            "meta": {
+                "visual_role": "INLINE_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+            },
+        },
+    )
     if not result.success:
         return _error_response("Nie udało się utworzyć szyny.", "branch.bus_creation_failed")
     new_enm = result.enm
@@ -2231,7 +2804,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     branch_type = "cable" if rodzaj == "KABEL" else "line_overhead"
     branch_data: dict[str, Any] = {
         "ref_id": branch_ref,
-        "name": f"Odgałęzienie",
+        "name": "Odgałęzienie",
         "type": branch_type,
         "from_bus_ref": from_bus_ref,
         "to_bus_ref": new_bus_ref,
@@ -2271,8 +2844,9 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": branch_ref})
 
-    return _response(new_enm, created=created, selection_id=new_bus_ref,
-                      selection_type="bus", events=events)
+    return _response(
+        new_enm, created=created, selection_id=new_bus_ref, selection_type="bus", events=events
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2309,15 +2883,19 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     insert_mode = insert_at.get("mode", "RATIO")
     insert_value = float(insert_at.get("value", 0.5))
-    ratio = insert_value if insert_mode == "RATIO" else (
-        insert_value / (length_km * 1000) if length_km > 0 else 0.5
+    ratio = (
+        insert_value
+        if insert_mode == "RATIO"
+        else (insert_value / (length_km * 1000) if length_km > 0 else 0.5)
     )
 
-    seed = _compute_seed({
-        "op": "insert_switch",
-        "segment_id": segment_id,
-        "ratio": ratio,
-    })
+    seed = _compute_seed(
+        {
+            "op": "insert_switch",
+            "segment_id": segment_id,
+            "ratio": ratio,
+        }
+    )
     switch_bus_ref = f"bus/{seed}/switch_node"
     switch_ref = f"sw/{seed}/switch"
     seg_left_id = f"{segment_id}_SL"
@@ -2348,11 +2926,20 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "switch.from_bus_voltage_missing",
         )
 
-    result = create_node(new_enm, {
-        "ref_id": switch_bus_ref,
-        "name": f"Węzeł łącznika",
-        "voltage_kv": voltage_kv,
-    })
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": switch_bus_ref,
+            "name": "Węzeł łącznika",
+            "voltage_kv": voltage_kv,
+            "tags": ["helper_bus", "topology_terminal"],
+            "meta": {
+                "visual_role": "INLINE_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+            },
+        },
+    )
     if not result.success:
         return _error_response("Nie udało się utworzyć węzła.", "switch.bus_creation_failed")
     new_enm = result.enm
@@ -2362,73 +2949,94 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     # Left segment
     left_length = length_km * ratio
-    result = create_branch(new_enm, {
-        "ref_id": seg_left_id,
-        "name": f"Odcinek {seg_left_id}",
-        "type": seg_type,
-        "from_bus_ref": from_bus_ref,
-        "to_bus_ref": switch_bus_ref,
-        "length_km": left_length,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
-        "catalog_ref": segment.get("catalog_ref"),
-        "status": "closed",
-    })
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": seg_left_id,
+            "name": f"Odcinek {seg_left_id}",
+            "type": seg_type,
+            "from_bus_ref": from_bus_ref,
+            "to_bus_ref": switch_bus_ref,
+            "length_km": left_length,
+            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+            "catalog_ref": segment.get("catalog_ref"),
+            "status": "closed",
+        },
+    )
     new_enm = result.enm
     created.append(seg_left_id)
 
     # Switch branch
     sw_type = "breaker" if switch_type == "WYLACZNIK" else "switch"
-    result = create_branch(new_enm, {
-        "ref_id": switch_ref,
-        "name": payload.get("switch_name") or "Łącznik sekcyjny",
-        "type": sw_type,
-        "from_bus_ref": switch_bus_ref,
-        "to_bus_ref": switch_bus_ref,
-        "status": normal_state,
-    })
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": switch_ref,
+            "name": payload.get("switch_name") or "Łącznik sekcyjny",
+            "type": sw_type,
+            "from_bus_ref": switch_bus_ref,
+            "to_bus_ref": switch_bus_ref,
+            "status": normal_state,
+        },
+    )
     # Note: switch connecting same bus is a conceptual model
     # Actually switch connects between two adjacent nodes
     # Let's create another bus
     switch_bus2_ref = f"bus/{seed}/switch_node_2"
-    result = create_node(new_enm, {
-        "ref_id": switch_bus2_ref,
-        "name": f"Węzeł łącznika 2",
-        "voltage_kv": voltage_kv,
-    })
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": switch_bus2_ref,
+            "name": "Węzeł łącznika 2",
+            "voltage_kv": voltage_kv,
+            "tags": ["helper_bus", "topology_terminal"],
+            "meta": {
+                "visual_role": "INLINE_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+            },
+        },
+    )
     new_enm = result.enm
     created.append(switch_bus2_ref)
 
     # Redo: switch between two buses
-    result = create_branch(new_enm, {
-        "ref_id": switch_ref,
-        "name": payload.get("switch_name") or "Łącznik sekcyjny",
-        "type": sw_type,
-        "from_bus_ref": switch_bus_ref,
-        "to_bus_ref": switch_bus2_ref,
-        "status": normal_state,
-        "source_mode": "KATALOG",
-        "catalog_namespace": "APARAT_SN",
-        "catalog_ref": switch_catalog_ref,
-    })
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": switch_ref,
+            "name": payload.get("switch_name") or "Łącznik sekcyjny",
+            "type": sw_type,
+            "from_bus_ref": switch_bus_ref,
+            "to_bus_ref": switch_bus2_ref,
+            "status": normal_state,
+            "source_mode": "KATALOG",
+            "catalog_namespace": "APARAT_SN",
+            "catalog_ref": switch_catalog_ref,
+        },
+    )
     if result.success:
         new_enm = result.enm
         created.append(switch_ref)
 
     # Right segment
     right_length = length_km * (1.0 - ratio)
-    result = create_branch(new_enm, {
-        "ref_id": seg_right_id,
-        "name": f"Odcinek {seg_right_id}",
-        "type": seg_type,
-        "from_bus_ref": switch_bus2_ref,
-        "to_bus_ref": to_bus_ref,
-        "length_km": right_length,
-        "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
-        "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
-        "catalog_ref": segment.get("catalog_ref"),
-        "status": "closed",
-    })
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": seg_right_id,
+            "name": f"Odcinek {seg_right_id}",
+            "type": seg_type,
+            "from_bus_ref": switch_bus2_ref,
+            "to_bus_ref": to_bus_ref,
+            "length_km": right_length,
+            "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
+            "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
+            "catalog_ref": segment.get("catalog_ref"),
+            "status": "closed",
+        },
+    )
     new_enm = result.enm
     created.append(seg_right_id)
 
@@ -2440,11 +3048,17 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
                 segments = c.get("ordered_segment_refs", [])
                 if segment_id in segments:
                     idx_seg = segments.index(segment_id)
-                    segments[idx_seg:idx_seg + 1] = [seg_left_id, switch_ref, seg_right_id]
+                    segments[idx_seg : idx_seg + 1] = [seg_left_id, switch_ref, seg_right_id]
                 break
 
-    return _response(new_enm, created=created, deleted=deleted,
-                      selection_id=switch_ref, selection_type="switch", events=events)
+    return _response(
+        new_enm,
+        created=created,
+        deleted=deleted,
+        selection_id=switch_ref,
+        selection_type="switch",
+        events=events,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2469,8 +3083,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         )
     if not to_bus_ref:
         return _error_response(
-            "Brak szyny końcowej pierścienia (to_bus_ref). "
-            "Kliknij dwa końce magistrali w SLD.",
+            "Brak szyny końcowej pierścienia (to_bus_ref). Kliknij dwa końce magistrali w SLD.",
             "ring.to_bus_missing",
         )
 
@@ -2480,7 +3093,9 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if to_bus_ref not in bus_refs:
         return _error_response(f"Szyna '{to_bus_ref}' nie istnieje.", "ring.to_not_found")
 
-    seed = _compute_seed({"op": "connect_ring", "from": from_bus_ref, "to": to_bus_ref})
+    seed = _compute_seed(
+        {"op": "connect_secondary_ring_sn", "from": from_bus_ref, "to": to_bus_ref}
+    )
     ring_ref = f"seg/{seed}/ring_closure"
 
     new_enm = copy.deepcopy(enm)
@@ -2492,8 +3107,7 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     dlugosc_m = segment.get("dlugosc_m") or 0
     if dlugosc_m <= 0:
         return _error_response(
-            "Brak długości segmentu zamknięcia pierścienia (dlugosc_m). "
-            "Podaj jawną wartość > 0.",
+            "Brak długości segmentu zamknięcia pierścienia (dlugosc_m). Podaj jawną wartość > 0.",
             "ring.dlugosc_missing",
         )
 
@@ -2547,8 +3161,9 @@ def connect_secondary_ring_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         c["corridor_type"] = "ring"
         break  # First corridor becomes ring
 
-    return _response(new_enm, created=created, selection_id=ring_ref,
-                      selection_type="branch", events=events)
+    return _response(
+        new_enm, created=created, selection_id=ring_ref, selection_type="branch", events=events
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2597,8 +3212,9 @@ def set_normal_open_point(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "NOP_SET", "element_id": switch_ref})
 
-    return _response(new_enm, updated=updated, selection_id=switch_ref,
-                      selection_type="switch", events=events)
+    return _response(
+        new_enm, updated=updated, selection_id=switch_ref, selection_type="switch", events=events
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2622,7 +3238,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if isinstance(standalone_catalog, dict):
         return standalone_catalog
 
-    seed = _compute_seed({"op": "add_transformer", "hv": hv_bus_ref, "lv": lv_bus_ref})
+    seed = _compute_seed({"op": "add_transformer_sn_nn", "hv": hv_bus_ref, "lv": lv_bus_ref})
     tr_ref = f"tr/{seed}/transformer"
 
     new_enm = copy.deepcopy(enm)
@@ -2685,8 +3301,9 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "TRANSFORMER_CREATED", "element_id": tr_ref})
 
-    return _response(new_enm, created=created, selection_id=tr_ref,
-                      selection_type="transformer", events=events)
+    return _response(
+        new_enm, created=created, selection_id=tr_ref, selection_type="transformer", events=events
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -2697,6 +3314,7 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Przypisz katalog do elementu."""
     element_ref = payload.get("element_ref")
+    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
     clear_catalog = "catalog_item_id" in payload and payload.get("catalog_item_id") is None
     catalog_binding = payload.get("catalog_binding")
     catalog_item_id_raw = payload.get("catalog_item_id")
@@ -2711,9 +3329,14 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
     if not clear_catalog and not catalog_item_id:
         return _error_response("Brak identyfikatora katalogu.", "catalog.item_missing")
 
+    if legacy_field_collection is not None:
+        return _error_legacy_field_write_disabled(element_ref, legacy_field_collection)
+
     loc = _find_element(enm, element_ref)
     if not loc:
-        return _error_response(f"Element '{element_ref}' nie znaleziony.", "catalog.element_not_found")
+        return _error_response(
+            f"Element '{element_ref}' nie znaleziony.", "catalog.element_not_found"
+        )
 
     new_enm = copy.deepcopy(enm)
     coll, idx = loc
@@ -2752,9 +3375,8 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if catalog_namespace:
             target_element["catalog_namespace"] = catalog_namespace
 
-        catalog_item_version = (
-            _extract_catalog_binding_version(catalog_binding)
-            or payload.get("catalog_item_version")
+        catalog_item_version = _extract_catalog_binding_version(catalog_binding) or payload.get(
+            "catalog_item_version"
         )
         effective_catalog_version = (
             catalog_item_version.strip()
@@ -2762,9 +3384,15 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             else target_element.get("meta", {}).get("catalog_item_version")
         )
         if effective_catalog_version:
-            target_element.setdefault("meta", {})["catalog_item_version"] = effective_catalog_version
+            target_element.setdefault("meta", {})[
+                "catalog_item_version"
+            ] = effective_catalog_version
 
-        if coll == "branches" and target_element.get("type") in {"cable", "line_overhead"} and catalog_namespace:
+        if (
+            coll == "branches"
+            and target_element.get("type") in {"cable", "line_overhead"}
+            and catalog_namespace
+        ):
             materialization = _materialize_catalog_payload(
                 catalog_ref=catalog_item_id,
                 catalog_binding={
@@ -2777,7 +3405,9 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if isinstance(materialization, dict):
                 return materialization
             binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(target_element, binding_payload, default_namespace=catalog_namespace)
+            _apply_catalog_metadata(
+                target_element, binding_payload, default_namespace=catalog_namespace
+            )
             _apply_materialized_branch_fields(target_element, materialized_params)
 
         if coll == "transformers" and catalog_namespace:
@@ -2793,18 +3423,22 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if isinstance(materialization, dict):
                 return materialization
             binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(target_element, binding_payload, default_namespace=catalog_namespace)
+            _apply_catalog_metadata(
+                target_element, binding_payload, default_namespace=catalog_namespace
+            )
             _apply_materialized_transformer_fields(target_element, materialized_params)
 
     return _response(
         new_enm,
         updated=[element_ref],
         selection_id=element_ref,
-        events=[{
-            "event_seq": 1,
-            "event_type": "CATALOG_CLEARED" if clear_catalog else "CATALOG_ASSIGNED",
-            "element_id": element_ref,
-        }],
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "CATALOG_CLEARED" if clear_catalog else "CATALOG_ASSIGNED",
+                "element_id": element_ref,
+            }
+        ],
     )
 
 
@@ -2817,34 +3451,46 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
     """Aktualizuj parametry elementu."""
     element_ref = payload.get("element_ref")
     parameters = payload.get("parameters", {})
+    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
 
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "params.element_missing")
     if not parameters:
         return _error_response("Brak parametrów do aktualizacji.", "params.empty")
 
+    if legacy_field_collection is not None:
+        return _error_legacy_field_write_disabled(element_ref, legacy_field_collection)
+
     loc = _find_element(enm, element_ref)
     if not loc:
-        return _error_response(f"Element '{element_ref}' nie znaleziony.", "params.element_not_found")
+        return _error_response(
+            f"Element '{element_ref}' nie znaleziony.", "params.element_not_found"
+        )
 
     coll, idx = loc
     current_element = enm[coll][idx]
 
     generator_type = str(current_element.get("gen_type") or "").upper()
-    generator_requires_catalog = (
-        coll == "generators"
-        and generator_type in {"PV_INVERTER", "WIND_INVERTER", "BESS", "BESS_INVERTER"}
-    )
+    generator_requires_catalog = coll == "generators" and generator_type in {
+        "PV_INVERTER",
+        "WIND_INVERTER",
+        "BESS",
+        "BESS_INVERTER",
+    }
     catalog_guard_collections = {"branches", "transformers", "branch_points"}
     guarded_catalog_binding = coll in catalog_guard_collections or generator_requires_catalog
     if guarded_catalog_binding:
         if "catalog_ref" in parameters:
             catalog_ref = parameters.get("catalog_ref")
             if catalog_ref is None or (isinstance(catalog_ref, str) and not catalog_ref.strip()):
-                return _error_response("Element fizyczny wymaga przypiętego katalogu.", "catalog.ref_required")
+                return _error_response(
+                    "Element fizyczny wymaga przypiętego katalogu.", "catalog.ref_required"
+                )
 
         effective_source_mode = parameters.get("source_mode", current_element.get("source_mode"))
-        effective_namespace = parameters.get("catalog_namespace", current_element.get("catalog_namespace"))
+        effective_namespace = parameters.get(
+            "catalog_namespace", current_element.get("catalog_namespace")
+        )
         if effective_source_mode is not None or effective_namespace is not None:
             if effective_source_mode == "KATALOG" and not effective_namespace:
                 return _error_response(
@@ -2872,34 +3518,92 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                         "catalog.ref_required",
                     )
 
-    if coll in {"branches", "transformers", "branch_points", "generators"}:
+    if coll in {"branches", "transformers", "branch_points", "generators", "substations"}:
         immutable_keys = {"ref_id", "id", "type"}
         allowlist_by_collection = {
             "branches": {
-                "name", "status", "length_km", "r_ohm_per_km", "x_ohm_per_km",
-                "b_siemens_per_km", "r0_ohm_per_km", "x0_ohm_per_km", "b0_siemens_per_km",
-                "rating", "insulation", "catalog_ref", "parameter_source", "overrides",
-                "meta", "source_mode", "catalog_namespace", "materialized_params",
+                "name",
+                "status",
+                "length_km",
+                "r_ohm_per_km",
+                "x_ohm_per_km",
+                "b_siemens_per_km",
+                "r0_ohm_per_km",
+                "x0_ohm_per_km",
+                "b0_siemens_per_km",
+                "rating",
+                "insulation",
+                "catalog_ref",
+                "parameter_source",
+                "overrides",
+                "meta",
+                "source_mode",
+                "catalog_namespace",
+                "materialized_params",
             },
             "transformers": {
-                "name", "sn_mva", "uhv_kv", "ulv_kv", "uk_percent", "pk_kw", "p0_kw",
-                "i0_percent", "vector_group", "hv_neutral", "lv_neutral", "tap_position",
-                "tap_min", "tap_max", "tap_step_percent", "catalog_ref", "parameter_source",
-                "overrides", "meta", "source_mode", "catalog_namespace", "materialized_params",
+                "name",
+                "sn_mva",
+                "uhv_kv",
+                "ulv_kv",
+                "uk_percent",
+                "pk_kw",
+                "p0_kw",
+                "i0_percent",
+                "vector_group",
+                "hv_neutral",
+                "lv_neutral",
+                "tap_position",
+                "tap_min",
+                "tap_max",
+                "tap_step_percent",
+                "catalog_ref",
+                "parameter_source",
+                "overrides",
+                "meta",
+                "source_mode",
+                "catalog_namespace",
+                "materialized_params",
             },
             "branch_points": {
-                "name", "switch_state", "catalog_ref", "catalog_namespace", "catalog_version",
-                "source_mode", "materialized_params", "completeness_status", "runtime_inputs",
-                "branch_occupied", "ports", "meta",
+                "name",
+                "switch_state",
+                "catalog_ref",
+                "catalog_namespace",
+                "catalog_version",
+                "source_mode",
+                "materialized_params",
+                "completeness_status",
+                "runtime_inputs",
+                "branch_occupied",
+                "ports",
+                "meta",
             },
             "generators": {
-                "name", "p_mw", "q_mvar", "catalog_ref", "quantity", "n_parallel",
-                "parameter_source", "overrides", "limits", "connection_variant",
-                "blocking_transformer_ref", "station_ref", "meta", "in_service",
+                "name",
+                "p_mw",
+                "q_mvar",
+                "catalog_ref",
+                "quantity",
+                "n_parallel",
+                "parameter_source",
+                "overrides",
+                "limits",
+                "connection_variant",
+                "blocking_transformer_ref",
+                "station_ref",
+                "meta",
+                "in_service",
+            },
+            "substations": {
+                "name",
+                "entry_point_ref",
+                "meta",
             },
         }
         illegal_keys = sorted(
-            key for key in parameters
+            key
+            for key in parameters
             if key not in immutable_keys and key not in allowlist_by_collection[coll]
         )
         if illegal_keys:
@@ -2929,12 +3633,17 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
 def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Usuń element z modelu ENM wraz z deterministycznym cleanupem zależności."""
     element_ref = payload.get("element_ref")
+    legacy_field_collection = _find_legacy_field_element_collection(enm, element_ref or "")
     if not element_ref:
         return _error_response("Brak identyfikatora elementu.", "delete.element_missing")
+    if legacy_field_collection is not None:
+        return _error_legacy_field_write_disabled(element_ref, legacy_field_collection)
 
     loc = _find_element(enm, element_ref)
     if not loc:
-        return _error_response(f"Element '{element_ref}' nie znaleziony.", "delete.element_not_found")
+        return _error_response(
+            f"Element '{element_ref}' nie znaleziony.", "delete.element_not_found"
+        )
 
     new_enm = copy.deepcopy(enm)
     coll, idx = loc
@@ -2974,16 +3683,13 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
 
     deleted_set = set(deleted_ids)
     deleted_branch_refs = {
-        ref for ref in deleted_set
-        if ref in {b.get("ref_id") for b in enm.get("branches", [])}
+        ref for ref in deleted_set if ref in {b.get("ref_id") for b in enm.get("branches", [])}
     }
     deleted_bus_refs = {
-        ref for ref in deleted_set
-        if ref in {b.get("ref_id") for b in enm.get("buses", [])}
+        ref for ref in deleted_set if ref in {b.get("ref_id") for b in enm.get("buses", [])}
     }
     deleted_transformer_refs = {
-        ref for ref in deleted_set
-        if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
+        ref for ref in deleted_set if ref in {t.get("ref_id") for t in enm.get("transformers", [])}
     }
 
     # Corridor cleanup for removed branches.
@@ -2991,10 +3697,37 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
         for corridor in new_enm.get("corridors", []):
             ordered = corridor.get("ordered_segment_refs")
             if isinstance(ordered, list):
-                corridor["ordered_segment_refs"] = [seg for seg in ordered if seg not in deleted_branch_refs]
+                corridor["ordered_segment_refs"] = [
+                    seg for seg in ordered if seg not in deleted_branch_refs
+                ]
             no_point_ref = corridor.get("no_point_ref")
             if isinstance(no_point_ref, str) and no_point_ref in deleted_branch_refs:
                 corridor["no_point_ref"] = None
+
+    if deleted_branch_refs or deleted_bus_refs or deleted_transformer_refs:
+        for sub in new_enm.get("substations", []):
+            meta = sub.get("meta")
+            if not isinstance(meta, dict):
+                continue
+            for key in ("field_specs", "nn_field_specs"):
+                raw_specs = meta.get(key)
+                if not isinstance(raw_specs, list):
+                    continue
+                filtered_specs: list[dict[str, Any]] = []
+                for spec in raw_specs:
+                    if not isinstance(spec, dict):
+                        continue
+                    if spec.get("bus_ref") in deleted_bus_refs:
+                        continue
+                    equipment_refs = [
+                        ref
+                        for ref in spec.get("equipment_refs", [])
+                        if ref not in deleted_branch_refs and ref not in deleted_transformer_refs
+                    ]
+                    next_spec = copy.deepcopy(spec)
+                    next_spec["equipment_refs"] = equipment_refs
+                    filtered_specs.append(next_spec)
+                meta[key] = filtered_specs
 
     # Cleanup references in station and branch-point structures.
     if deleted_bus_refs or deleted_transformer_refs:
@@ -3010,11 +3743,13 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
 
         if substations_to_delete:
             new_enm["substations"] = [
-                sub for sub in new_enm.get("substations", [])
+                sub
+                for sub in new_enm.get("substations", [])
                 if sub.get("ref_id") not in substations_to_delete
             ]
             new_enm["bays"] = [
-                bay for bay in new_enm.get("bays", [])
+                bay
+                for bay in new_enm.get("bays", [])
                 if bay.get("substation_ref") not in substations_to_delete
             ]
             deleted_set.update(substations_to_delete)
@@ -3034,13 +3769,15 @@ def delete_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, An
             branch_occupied = bp.get("branch_occupied")
             if isinstance(branch_occupied, dict):
                 bp["branch_occupied"] = {
-                    key: value for key, value in branch_occupied.items()
+                    key: value
+                    for key, value in branch_occupied.items()
                     if value not in deleted_branch_refs
                 }
 
         if branch_points_to_delete:
             new_enm["branch_points"] = [
-                bp for bp in new_enm.get("branch_points", [])
+                bp
+                for bp in new_enm.get("branch_points", [])
                 if bp.get("ref_id") not in branch_points_to_delete
             ]
             deleted_set.update(branch_points_to_delete)
@@ -3099,12 +3836,11 @@ def execute_domain_operation(
     op_name: str,
     payload: dict[str, Any],
 ) -> dict[str, Any]:
-    """Główny punkt wejścia — rozwiąż aliasy, wywołaj handler.
+    """Główny punkt wejścia — wywołaj handler kanonicznej operacji.
 
     Kanoniczne nazwy: patrz CANONICAL_OPS.
-    Aliasy: patrz ALIAS_MAP.
     """
-    canonical_name = ALIAS_MAP.get(op_name, op_name)
+    canonical_name = op_name
 
     if canonical_name not in _HANDLERS:
         return _error_response(

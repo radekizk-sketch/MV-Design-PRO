@@ -14,7 +14,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
-
 # ---------------------------------------------------------------------------
 # Konfiguracja bazowa — frozen dla wszystkich modeli
 # ---------------------------------------------------------------------------
@@ -342,7 +341,7 @@ class CatalogBindings(_FrozenBase):
 class SNFieldSpec(_FrozenBase):
     """Specyfikacja pola SN (średniego napięcia).
 
-    Opisuje rolę pola, plan aparatury oraz powiązania katalogowe.
+    Opisuje rolę pola i powiązania katalogowe.
     """
 
     field_role: Literal[
@@ -353,9 +352,6 @@ class SNFieldSpec(_FrozenBase):
         "SPRZEGLO",
     ]
     """Rola pola SN w rozdzielnicy."""
-
-    apparatus_plan: list[str]
-    """Plan aparatury pola (np. ['LACZNIK_GLOWNY_SN', 'PRZEKLADNIK_PRADOWY'])."""
 
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
@@ -425,8 +421,10 @@ class NNBlockSpec(_FrozenBase):
 
 class NNSourceType:
     """Typy źródeł w rozdzielni nN (stałe, nie enum — Pydantic-frozen)."""
+
     PV_INVERTER = "PV_INVERTER"
     BESS_INVERTER = "BESS_INVERTER"
+    FW_INVERTER = "FW_INVERTER"
     GENSET = "GENSET"
     UPS = "UPS"
 
@@ -454,7 +452,7 @@ class NNSourceFieldSpec(_FrozenBase):
     i port przyłączeniowy źródła.
     """
 
-    source_field_kind: Literal["PV", "BESS", "AGREGAT", "UPS"]
+    source_field_kind: Literal["PV", "BESS", "AGREGAT", "UPS", "FW"]
     """Rodzaj pola źródłowego (PL)."""
 
     switch_spec: NNSwitchSpec
@@ -468,119 +466,6 @@ class NNSourceFieldSpec(_FrozenBase):
 
     field_label: str | None = None
     """Opcjonalne oznaczenie pola."""
-
-
-class PVInverterSpec(_FrozenBase):
-    """Specyfikacja falownika PV w rozdzielni nN.
-
-    Wszystkie parametry jawne — brak domyślnych wartości liczbowych.
-    """
-
-    catalog_item_id: str | None = None
-    """Identyfikator pozycji katalogowej falownika PV."""
-
-    catalog_item_version: str | None = None
-    """Wersja pozycji katalogowej."""
-
-    rated_power_ac_kw: float
-    """Moc znamionowa AC (kW) — >0, jawnie."""
-
-    max_power_kw: float
-    """Moc maksymalna (kW) — >= rated_power_ac_kw, jawnie."""
-
-    control_mode: Literal[
-        "STALY_COS_PHI",
-        "Q_OD_U",
-        "P_OD_U",
-        "WYLACZONE",
-    ]
-    """Tryb regulacji — jawnie, bez domyślnego."""
-
-    cos_phi: float | None = None
-    """Cos φ — wymagany przy trybie STALY_COS_PHI."""
-
-    generation_limit_pmax_kw: float | None = None
-    """Ograniczenie generacji Pmax (kW)."""
-
-    generation_limit_q_kvar: float | None = None
-    """Ograniczenie generacji Q (kvar)."""
-
-    disconnect_required: bool = True
-    """Wymóg aparatu odłączającego."""
-
-    measurement_point: Literal["UTWORZ_NOWY", "UZYJ_ISTNIEJACEGO", "BRAK"] | None = None
-    """Punkt pomiaru energii — jawnie."""
-
-    existing_measurement_ref: str | None = None
-    """Referencja do istniejącego punktu pomiaru (gdy UZYJ_ISTNIEJACEGO)."""
-
-    source_name: str | None = None
-    """Opcjonalna nazwa źródła."""
-
-    source_label: str | None = None
-    """Opcjonalne oznaczenie."""
-
-    work_profile_ref: str | None = None
-    """Opcjonalna referencja do profilu pracy."""
-
-
-class BESSInverterSpec(_FrozenBase):
-    """Specyfikacja falownika BESS w rozdzielni nN.
-
-    Obejmuje falownik + moduł magazynu energii.
-    """
-
-    inverter_catalog_id: str | None = None
-    """Identyfikator pozycji katalogowej falownika BESS."""
-
-    inverter_catalog_version: str | None = None
-    """Wersja pozycji katalogowej falownika."""
-
-    storage_catalog_id: str | None = None
-    """Identyfikator pozycji katalogowej modułu magazynu."""
-
-    storage_catalog_version: str | None = None
-    """Wersja pozycji katalogowej modułu magazynu."""
-
-    usable_capacity_kwh: float
-    """Pojemność użyteczna (kWh) — >0."""
-
-    charge_power_kw: float
-    """Moc ładowania (kW) — >0."""
-
-    discharge_power_kw: float
-    """Moc rozładowania (kW) — >0."""
-
-    operation_mode: Literal[
-        "TYLKO_GENERACJA",
-        "TYLKO_MAGAZYNOWANIE",
-        "DWUKIERUNKOWY",
-        "WYLACZONE",
-    ]
-    """Tryb pracy — jawnie, bez domyślnego."""
-
-    control_strategy: Literal[
-        "STALA_MOC",
-        "PROFIL",
-        "REGULACJA_NAPIECIA",
-        "REGULACJA_MOCY_BIERNEJ",
-    ]
-    """Strategia sterowania — jawnie, bez domyślnego."""
-
-    soc_min_percent: float
-    """Minimalny SOC (%) — jawnie."""
-
-    soc_max_percent: float
-    """Maksymalny SOC (%) — jawnie."""
-
-    source_name: str | None = None
-    """Opcjonalna nazwa źródła."""
-
-    source_label: str | None = None
-    """Opcjonalne oznaczenie."""
-
-    time_profile_ref: str | None = None
-    """Opcjonalna referencja do profilu czasowego."""
 
 
 class GensetSpec(_FrozenBase):
@@ -674,7 +559,7 @@ class SourceNN(_FrozenBase):
     element_id: str
     """Deterministyczny identyfikator źródła."""
 
-    source_type: Literal["PV_INVERTER", "BESS_INVERTER", "GENSET", "UPS"]
+    source_type: Literal["PV_INVERTER", "BESS_INVERTER", "FW_INVERTER", "GENSET", "UPS"]
     """Typ źródła."""
 
     field_id: str
@@ -760,6 +645,12 @@ class AddGridSourceSNPayload(_FrozenBase):
     pozycja_widokowa: dict[str, Any] | None = None
     """Pozycja elementu na schemacie jednokreskowym (SLD)."""
 
+    catalog_binding: dict[str, Any] | None = None
+    """Kanoniczne powiazanie katalogowe z typem zrodla systemowego."""
+
+    manual_equivalent: dict[str, Any] | None = None
+    """Reczna umowa rownowazna dla zrodla GPZ, gdy katalog nie jest uzywany."""
+
 
 class SegmentSpec(_FrozenBase):
     """Specyfikacja segmentu linii/kabla.
@@ -808,7 +699,7 @@ class StationSpec(_FrozenBase):
     Opisuje typ, rolę, nazwę oraz napięcia stacji.
     """
 
-    station_type: Literal["A", "B", "C", "D"]
+    station_type: Literal["A", "B", "C", "D", "inline", "branch", "terminal", "sectional"]
     """Typ stacji (A/B/C/D wg klasyfikacji)."""
 
     station_role: Literal["STACJA_SN_NN"] = "STACJA_SN_NN"
@@ -1017,50 +908,61 @@ class UpdateElementParametersPayload(_FrozenBase):
 # ===========================================================================
 
 
-class AddNNSourceFieldPayload(_FrozenBase):
-    """Payload: add_nn_source_field — dodaje pole źródłowe nN."""
+class AddSnBayPayload(_FrozenBase):
+    """Payload: add_sn_bay — dodaje pole SN do istniejącej rozdzielnicy."""
 
-    bus_nn_ref: str
-    """Referencja szyny nN, do której dodawane jest pole."""
+    bus_ref: str
+    """Referencja szyny SN, do której przypinane jest pole."""
 
+    station_ref: str | None = None
+    """Opcjonalna referencja stacji/GPZ/ZKSN zawierającej szynę."""
+
+    bay_role: Literal["IN", "OUT", "FEEDER", "TR", "COUPLER", "MEASUREMENT", "OZE"] = "FEEDER"
+    """Rola pola w kontrakcie ENM."""
+
+    field_name: str | None = None
+    """Opcjonalna nazwa pola."""
+
+    apparatus_kind: Literal["BREAKER", "DISCONNECTOR", "LOAD_SWITCH", "MEASUREMENT"] | None = None
+    """Jawny wariant aparatu głównego pola."""
+
+    gpz_section_id: str | None = None
+    """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
+
+    catalog_binding: dict[str, Any] | None = None
+    """Kanoniczne powiązanie katalogowe aparatu SN."""
+
+
+class ConverterSourceFieldPayload(_FrozenBase):
+    """Minimalny kontrakt pola źródłowego dla kanonicznego add_converter_source."""
+
+    source_field_kind: Literal["PV", "BESS", "FW"]
+    field_name: str | None = None
+    catalog_binding: dict[str, Any] | None = None
+
+
+class AddConverterSourcePayload(_FrozenBase):
+    """Payload: add_converter_source — kanoniczne źródło przekształtnikowe."""
+
+    source_technology: Literal["PV", "BESS", "FW"]
+    connection_variant: Literal["nn_side", "block_transformer"]
     station_ref: str
-    """Referencja stacji SN/nN."""
-
-    source_field: NNSourceFieldSpec
-    """Specyfikacja pola źródłowego."""
-
-
-class AddPVInverterNNPayload(_FrozenBase):
-    """Payload: add_pv_inverter_nn — dodaje falownik PV do rozdzielni nN."""
-
     bus_nn_ref: str
-    """Referencja szyny nN."""
-
-    station_ref: str
-    """Referencja stacji SN/nN."""
-
-    placement: Literal["NEW_FIELD", "EXISTING_FIELD"]
-    """Sposób osadzenia: nowe pole lub istniejące."""
-
+    placement: Literal["NEW_FIELD", "EXISTING_FIELD"] | None = None
     existing_field_ref: str | None = None
-    """Referencja istniejącego pola (gdy EXISTING_FIELD)."""
-
-    source_field: NNSourceFieldSpec | None = None
-    """Specyfikacja nowego pola (gdy NEW_FIELD)."""
-
-    pv_spec: PVInverterSpec
-    """Pełna specyfikacja falownika PV."""
-
-
-class AddBESSInverterNNPayload(_FrozenBase):
-    """Payload: add_bess_inverter_nn — dodaje falownik BESS do rozdzielni nN."""
-
-    bus_nn_ref: str
-    station_ref: str
-    placement: Literal["NEW_FIELD", "EXISTING_FIELD"]
-    existing_field_ref: str | None = None
-    source_field: NNSourceFieldSpec | None = None
-    bess_spec: BESSInverterSpec
+    source_field: ConverterSourceFieldPayload | None = None
+    source_name: str | None = None
+    quantity: int | None = None
+    control_mode: str | None = None
+    power_setpoint_mw: float | None = None
+    q_min_mvar: float | None = None
+    q_max_mvar: float | None = None
+    bess_mode: str | None = None
+    soc_min_percent: float | None = None
+    soc_max_percent: float | None = None
+    blocking_transformer_ref: str | None = None
+    catalog_binding: dict[str, Any] | None = None
+    materialized_params: dict[str, Any] | None = None
 
 
 class AddGensetNNPayload(_FrozenBase):
@@ -1124,6 +1026,7 @@ class AddNNLoadPayload(_FrozenBase):
 CANONICAL_OPS: set[str] = {
     # V1 — budowa SN
     "add_grid_source_sn",
+    "add_sn_bay",
     "continue_trunk_segment_sn",
     "insert_station_on_segment_sn",
     "start_branch_segment_sn",
@@ -1133,9 +1036,7 @@ CANONICAL_OPS: set[str] = {
     "add_transformer_sn_nn",
     "assign_catalog_to_element",
     "update_element_parameters",
-    "add_nn_source_field",
-    "add_pv_inverter_nn",
-    "add_bess_inverter_nn",
+    "add_converter_source",
     "add_genset_nn",
     "add_ups_nn",
     "add_nn_load",
@@ -1168,25 +1069,6 @@ CANONICAL_OPS: set[str] = {
 """Zbiór kanonicznych nazw operacji domenowych."""
 
 
-ALIAS_MAP: dict[str, str] = {
-    "add_trunk_segment_sn": "continue_trunk_segment_sn",
-    "add_branch_segment_sn": "start_branch_segment_sn",
-    "start_branch_from_port": "start_branch_segment_sn",
-    "insert_station_on_trunk_segment_sn": "insert_station_on_segment_sn",
-    "insert_station_on_trunk_segment": "insert_station_on_segment_sn",
-    "connect_ring_sn": "connect_secondary_ring_sn",
-    "connect_secondary_ring": "connect_secondary_ring_sn",
-    # Phase 2 — prompt-canonical aliases
-    "add_nn_feeder": "add_nn_outgoing_field",
-    "add_nn_source_pv": "add_pv_inverter_nn",
-    "add_nn_source_bess": "add_bess_inverter_nn",
-    "attach_protection_to_cb": "add_relay",
-    "update_protection_settings": "update_relay_settings",
-    "add_load_to_feeder_nn": "add_nn_load",
-}
-"""Mapa aliasów operacji — mapowanie alternatywnych nazw na kanoniczne."""
-
-
 DOMAIN_EVENT_TYPES: list[str] = [
     "SEGMENT_SPLIT",
     "CUT_NODE_CREATED",
@@ -1212,6 +1094,7 @@ DOMAIN_EVENT_TYPES: list[str] = [
     "NN_SOURCE_FIELD_CREATED",
     "PV_INVERTER_CREATED",
     "BESS_INVERTER_CREATED",
+    "FW_INVERTER_CREATED",
     "GENSET_CREATED",
     "UPS_CREATED",
     "NN_LOAD_CREATED",

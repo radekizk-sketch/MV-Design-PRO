@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SYSTEM_SPEC.md: READ-ONLY result display
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic sorting
+ * - ui_canonical_parity.md: Deterministic sorting
  *
  * RULES (BINDING):
  * - These types are READ-ONLY views of backend data

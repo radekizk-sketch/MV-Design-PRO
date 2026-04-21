@@ -1,4 +1,4 @@
-# Karty obiektow -- hardening inzynierski
+﻿# Karty obiektow -- hardening inzynierski
 
 | Pole            | Wartosc                                                                      |
 |-----------------|------------------------------------------------------------------------------|
@@ -69,7 +69,7 @@ Tryby wyswietlania (`viewMode`):
 | Sekcje bazowe   | Identyfikacja (nazwa, typ: breaker/disconnector/switch), Stan (otwarty/zamkniety, NOP: tak/nie), Parametry (I_n [A], I_dyn [kA] jesli z katalogu) |
 | Dodane sekcje   | **Wyniki analizy** (RESULT_VIEW): I_przeplywajacy [A], zdolnosc laczeniowa -- wystarczajaca/niewystarczajaca |
 | Akcje           | Przelacz stan, Oznacz jako NOP, Edytuj parametry                             |
-| Uwagi           | Lacznik bez impedancji -- model idealny (Z = 0). Zgodne z PowerFactory.      |
+| Uwagi           | Lacznik bez impedancji -- model idealny (Z = 0). Zgodne z benchmark.      |
 
 ### 5. StationCard
 
@@ -160,3 +160,4 @@ Tryby wyswietlania (`viewMode`):
 - CI: frontend-checks workflow -- green
 
 **Status: ZAMKNIETY**
+

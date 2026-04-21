@@ -6,12 +6,14 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
-
 from application.proof_engine.equation_registry import AntiDoubleCountingAudit
-from application.proof_engine.packs.sc_asymmetrical import SCAsymmetricalPackInput, SCAsymmetricalProofPack
-from application.proof_engine.serialization import proof_document_from_dict
+from application.proof_engine.packs.sc_asymmetrical import (
+    SCAsymmetricalPackInput,
+    SCAsymmetricalProofPack,
+)
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
 from application.proof_engine.proof_inspector.exporters import export_to_tex
+from application.proof_engine.serialization import proof_document_from_dict
 from application.proof_engine.unit_verifier import UnitVerifier
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -97,7 +99,9 @@ def test_matches_golden_artifacts(case_key: str):
 
 @pytest.mark.parametrize("fault_type", ["ONE_PHASE_TO_GROUND", "TWO_PHASE", "TWO_PHASE_TO_GROUND"])
 def test_mandatory_outputs_present_and_not_none(fault_type: str):
-    proof = ProofGenerator.generate_sc1_proof(SC1Input(fault_type=fault_type, case_name="Mandatory outputs", **_base_kwargs()))
+    proof = ProofGenerator.generate_sc1_proof(
+        SC1Input(fault_type=fault_type, case_name="Mandatory outputs", **_base_kwargs())
+    )
     for key in ("ikss_ka", "kappa", "ip_ka", "ith_ka", "idyn_ka"):
         assert key in proof.summary.key_results
         assert proof.summary.key_results[key].value is not None
@@ -122,5 +126,9 @@ def test_verify_sc1_fails_if_c_is_outside_eq_sc1_008(monkeypatch):
 
 
 def test_pack_completeness_for_all_fault_types():
-    result = SCAsymmetricalProofPack.generate(SCAsymmetricalPackInput(case_name="Pack", **{k:v for k,v in _base_kwargs().items() if k != "fault_type"}))
+    result = SCAsymmetricalProofPack.generate(
+        SCAsymmetricalPackInput(
+            case_name="Pack", **{k: v for k, v in _base_kwargs().items() if k != "fault_type"}
+        )
+    )
     assert SCAsymmetricalProofPack.validate_completeness(result) == []

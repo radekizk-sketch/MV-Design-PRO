@@ -28,7 +28,6 @@ from domain.readiness import (
     ReadinessPriority,
 )
 
-
 # ---------------------------------------------------------------------------
 # Station field data model (input)
 # ---------------------------------------------------------------------------
@@ -36,6 +35,7 @@ from domain.readiness import (
 
 class FieldDeviceRequirement(str, Enum):
     """Whether a device is required, optional, or required conditionally."""
+
     REQUIRED = "REQUIRED"
     REQUIRED_IF = "REQUIRED_IF"
     OPTIONAL = "OPTIONAL"
@@ -44,6 +44,7 @@ class FieldDeviceRequirement(str, Enum):
 @dataclass(frozen=True)
 class StationFieldV1:
     """A field in a station with its devices."""
+
     field_id: str
     field_name: str
     pole_type: str
@@ -57,6 +58,7 @@ class StationFieldV1:
 @dataclass(frozen=True)
 class FieldDeviceV1:
     """A device in a field."""
+
     device_id: str
     aparat_type: str
     device_type: str
@@ -66,6 +68,7 @@ class FieldDeviceV1:
 @dataclass(frozen=True)
 class DeviceBindingV1:
     """A logical binding between devices."""
+
     binding_id: str
     source_device_id: str
     source_device_type: str
@@ -77,6 +80,7 @@ class DeviceBindingV1:
 @dataclass(frozen=True)
 class StationValidationInputV1:
     """Input for station field validation."""
+
     station_id: str
     station_name: str
     has_nn_bus: bool
@@ -121,19 +125,21 @@ def validate_station_fields(
 
     # Rule: station with nN bus must have transformer field
     if station.has_nn_bus and not station.has_transformer_field:
-        issues.append(ReadinessIssueV1(
-            code="station.nn_without_transformer",
-            area=ReadinessAreaV1.STATIONS,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl=(
-                f"Stacja '{station.station_name}' ({station.station_id}): "
-                f"posiada szynę nN, ale brak pola transformatorowego SN/nN"
-            ),
-            element_id=station.station_id,
-            element_type="STATION",
-            fix_hint_pl="Dodaj pole transformatorowe SN/nN w kreatorze rozdzielnicy",
-            wizard_step="switchgear",
-        ))
+        issues.append(
+            ReadinessIssueV1(
+                code="station.nn_without_transformer",
+                area=ReadinessAreaV1.STATIONS,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl=(
+                    f"Stacja '{station.station_name}' ({station.station_id}): "
+                    f"posiada szynę nN, ale brak pola transformatorowego SN/nN"
+                ),
+                element_id=station.station_id,
+                element_type="STATION",
+                fix_hint_pl="Dodaj pole transformatorowe SN/nN w kreatorze rozdzielnicy",
+                wizard_step="switchgear",
+            )
+        )
 
     for field in sorted(station.fields, key=lambda f: f.field_id):
         issues.extend(_validate_single_field(field))
@@ -151,59 +157,62 @@ def _validate_single_field(field: StationFieldV1) -> list[ReadinessIssueV1]:
 
     for req_type in required:
         if req_type not in existing_types:
-            issues.append(ReadinessIssueV1(
-                code=f"field.device_missing.{req_type.lower()}",
-                area=ReadinessAreaV1.STATIONS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=(
-                    f"Pole '{field.field_name}' ({field.field_id}): "
-                    f"brak wymaganego aparatu typu {req_type}"
-                ),
-                element_id=field.field_id,
-                element_type="FIELD",
-                fix_hint_pl=f"Dodaj aparat {req_type} w polu {field.field_name}",
-                wizard_step="switchgear",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code=f"field.device_missing.{req_type.lower()}",
+                    area=ReadinessAreaV1.STATIONS,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=(
+                        f"Pole '{field.field_name}' ({field.field_id}): "
+                        f"brak wymaganego aparatu typu {req_type}"
+                    ),
+                    element_id=field.field_id,
+                    element_type="FIELD",
+                    fix_hint_pl=f"Dodaj aparat {req_type} w polu {field.field_name}",
+                    wizard_step="switchgear",
+                )
+            )
 
     # Check catalog refs
     for device in field.devices:
         if not device.catalog_ref:
-            issues.append(ReadinessIssueV1(
-                code="catalog.ref_missing",
-                area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=(
-                    f"Aparat '{device.aparat_type}' ({device.device_id}) "
-                    f"w polu '{field.field_name}': brak referencji katalogowej"
-                ),
-                element_id=device.device_id,
-                element_type="DEVICE",
-                fix_hint_pl="Przypisz pozycję katalogową do aparatu",
-                wizard_step="switchgear",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code="catalog.ref_missing",
+                    area=ReadinessAreaV1.CATALOGS,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=(
+                        f"Aparat '{device.aparat_type}' ({device.device_id}) "
+                        f"w polu '{field.field_name}': brak referencji katalogowej"
+                    ),
+                    element_id=device.device_id,
+                    element_type="DEVICE",
+                    fix_hint_pl="Przypisz pozycję katalogową do aparatu",
+                    wizard_step="switchgear",
+                )
+            )
 
     # Check protection bindings: CB with relay requires binding
     has_cb = any(d.device_type in ("CB", "ACB") for d in field.devices)
     has_relay = any(d.device_type == "RELAY" for d in field.devices)
     if has_cb and has_relay:
-        relay_bound = any(
-            b.binding_type == "RELAY_TO_CB"
-            for b in field.bindings
-        )
+        relay_bound = any(b.binding_type == "RELAY_TO_CB" for b in field.bindings)
         if not relay_bound:
-            issues.append(ReadinessIssueV1(
-                code="protection.binding_missing",
-                area=ReadinessAreaV1.PROTECTION,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=(
-                    f"Pole '{field.field_name}' ({field.field_id}): "
-                    f"zabezpieczenie nie powiązane z wyłącznikiem"
-                ),
-                element_id=field.field_id,
-                element_type="FIELD",
-                fix_hint_pl="Ustaw powiązanie zabezpieczenie→wyłącznik w edytorze pola",
-                wizard_step="switchgear",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code="protection.binding_missing",
+                    area=ReadinessAreaV1.PROTECTION,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=(
+                        f"Pole '{field.field_name}' ({field.field_id}): "
+                        f"zabezpieczenie nie powiązane z wyłącznikiem"
+                    ),
+                    element_id=field.field_id,
+                    element_type="FIELD",
+                    fix_hint_pl="Ustaw powiązanie zabezpieczenie→wyłącznik w edytorze pola",
+                    wizard_step="switchgear",
+                )
+            )
 
     return issues
 
@@ -222,22 +231,24 @@ def validate_pv_bess_variant_a(
     issues: list[ReadinessIssueV1] = []
 
     if station_id and not station_has_transformer:
-        issues.append(ReadinessIssueV1(
-            code="generator.nn_variant_requires_station_transformer",
-            area=ReadinessAreaV1.GENERATORS,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl=(
-                f"Generator '{generator_name}' ({generator_id}): "
-                f"wariant A (nN) wymaga transformatora stacyjnego w stacji '{station_id}'"
-            ),
-            element_id=generator_id,
-            element_type="GENERATOR",
-            fix_hint_pl=(
-                "Dodaj pole transformatorowe SN/nN w stacji "
-                "lub zmień wariant na B (transformator blokowy)"
-            ),
-            wizard_step="switchgear",
-        ))
+        issues.append(
+            ReadinessIssueV1(
+                code="generator.nn_variant_requires_station_transformer",
+                area=ReadinessAreaV1.GENERATORS,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl=(
+                    f"Generator '{generator_name}' ({generator_id}): "
+                    f"wariant A (nN) wymaga transformatora stacyjnego w stacji '{station_id}'"
+                ),
+                element_id=generator_id,
+                element_type="GENERATOR",
+                fix_hint_pl=(
+                    "Dodaj pole transformatorowe SN/nN w stacji "
+                    "lub zmień wariant na B (transformator blokowy)"
+                ),
+                wizard_step="switchgear",
+            )
+        )
 
     return issues
 
@@ -256,32 +267,36 @@ def validate_pv_bess_variant_b(
     issues: list[ReadinessIssueV1] = []
 
     if not blocking_transformer_ref:
-        issues.append(ReadinessIssueV1(
-            code="generator.block_variant_requires_block_transformer",
-            area=ReadinessAreaV1.GENERATORS,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl=(
-                f"Generator '{generator_name}' ({generator_id}): "
-                f"wariant B wymaga transformatora blokowego"
-            ),
-            element_id=generator_id,
-            element_type="GENERATOR",
-            fix_hint_pl="Wskaż transformator blokowy w kreatorze",
-            wizard_step="switchgear",
-        ))
+        issues.append(
+            ReadinessIssueV1(
+                code="generator.block_variant_requires_block_transformer",
+                area=ReadinessAreaV1.GENERATORS,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl=(
+                    f"Generator '{generator_name}' ({generator_id}): "
+                    f"wariant B wymaga transformatora blokowego"
+                ),
+                element_id=generator_id,
+                element_type="GENERATOR",
+                fix_hint_pl="Wskaż transformator blokowy w kreatorze",
+                wizard_step="switchgear",
+            )
+        )
     elif not blocking_transformer_has_catalog:
-        issues.append(ReadinessIssueV1(
-            code="generator.block_transformer_catalog_missing",
-            area=ReadinessAreaV1.CATALOGS,
-            priority=ReadinessPriority.BLOCKER,
-            message_pl=(
-                f"Generator '{generator_name}' ({generator_id}): "
-                f"transformator blokowy '{blocking_transformer_ref}' bez katalogu"
-            ),
-            element_id=generator_id,
-            element_type="GENERATOR",
-            fix_hint_pl="Przypisz katalog do transformatora blokowego",
-            wizard_step="switchgear",
-        ))
+        issues.append(
+            ReadinessIssueV1(
+                code="generator.block_transformer_catalog_missing",
+                area=ReadinessAreaV1.CATALOGS,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl=(
+                    f"Generator '{generator_name}' ({generator_id}): "
+                    f"transformator blokowy '{blocking_transformer_ref}' bez katalogu"
+                ),
+                element_id=generator_id,
+                element_type="GENERATOR",
+                fix_hint_pl="Przypisz katalog do transformatora blokowego",
+                wizard_step="switchgear",
+            )
+        )
 
     return issues

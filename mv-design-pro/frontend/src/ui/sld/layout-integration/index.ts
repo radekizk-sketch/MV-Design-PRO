@@ -15,7 +15,7 @@
  * CANONICAL ALIGNMENT:
  * - layout/index.ts: algorytm auto-layout
  * - connectionRouting.ts: generowanie połączeń
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
  */
 
 // Re-export feature flag controls from layout module (kept for test compatibility)

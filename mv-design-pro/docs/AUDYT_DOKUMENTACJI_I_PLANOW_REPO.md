@@ -1,8 +1,12 @@
 # AUDYT DOKUMENTACJI I PLANÓW REPO
 
-Status: **KANONICZNY AUDYT OPERACYJNY**  
+Status: **HISTORYCZNY AUDYT OPERACYJNY**  
 Data: **2026-03-30**  
 Zakres: pełny skan dokumentacji i planów dla przebudowy edytora SLD/CAD pod realną sieć SN.
+
+> **Historical note (V12.5)**  
+> Ten audyt jest snapshotem z 2026-03-30 i nie stanowi bieżącego źródła prawdy.  
+> Aktywny kanon V12.5 prowadzi przez `docs/INDEX.md`, `docs/INDEX_KANONICZNY.md` oraz wiążące specyfikacje w `docs/system/`. `docs/spec/` ma status historyczny.
 
 ## 1. Podsumowanie RECON
 
@@ -22,7 +26,8 @@ Najważniejsze obserwacje po skanie kodu i dokumentów:
 - `ARCHITECTURE.md`
 - `AGENTS.md`
 - `PLANS.md`
-- `docs/spec/*` (pełne źródło prawdy)
+- `docs/INDEX.md` i `docs/INDEX_KANONICZNY.md` (wejście do bieżącego kanonu V12.5)
+- `docs/system/*` (wiążące specyfikacje systemowe V12.5)
 - `docs/domain/OPERACJE_DOMENOWE_V1.md`
 - `docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`
 - `docs/sld/SLD_CONTRACT_FLOW_V1.md`

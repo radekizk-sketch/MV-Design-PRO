@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - SLD_AUTOLAYOUT_AUDIT_I_NAPRAWA.md: BINDING SPEC
- * - AUDYT_SLD_ETAP.md N-02: hierarchiczne auto-rozmieszczenie
+ * - AUDYT_SLD_CANONICAL.md N-02: hierarchiczne auto-rozmieszczenie
  *
  * TEST COVERAGE:
  * - Determinizm: ten sam model -> identyczne wspolrzedne

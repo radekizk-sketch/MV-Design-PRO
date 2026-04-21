@@ -17,20 +17,16 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import sys
-import os
 import math
-
-import pytest
+import os
+import sys
 
 # Ensure backend/src is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from domain.protection_engine_v1 import (
     CTRatio,
-    Function50Result,
     Function50Settings,
-    Function51Result,
     Function51Settings,
     IECCurveTypeV1,
     ProtectionResultSetV1,
@@ -41,9 +37,7 @@ from domain.protection_engine_v1 import (
     function_50_evaluate,
     function_51_evaluate,
     iec_curve_time_seconds,
-    IEC_CURVE_PARAMS,
 )
-
 
 # =============================================================================
 # GOLDEN POINTS — IEC 60255-151:2009
@@ -207,9 +201,21 @@ class TestWhiteBoxTrace:
             curve_type=IECCurveTypeV1.STANDARD_INVERSE,
         )
         required_keys = [
-            "formula", "standard", "curve_type", "curve_label_pl",
-            "A", "B", "TMS", "I_secondary", "I_pickup_secondary", "M",
-            "M_power_B", "denominator", "base_time_s", "trip_time_s", "result",
+            "formula",
+            "standard",
+            "curve_type",
+            "curve_label_pl",
+            "A",
+            "B",
+            "TMS",
+            "I_secondary",
+            "I_pickup_secondary",
+            "M",
+            "M_power_B",
+            "denominator",
+            "base_time_s",
+            "trip_time_s",
+            "result",
         ]
         for key in required_keys:
             assert key in trace, f"Missing trace key: {key}"
@@ -391,10 +397,7 @@ class TestProtectionEngineV1:
 
         # CT ratio: 400/5 = 80
         # tp-01: 1000A primary → 12.5A secondary
-        tp1 = next(
-            tp for tp in result.relay_results[0].per_test_point
-            if tp.point_id == "tp-01"
-        )
+        tp1 = next(tp for tp in result.relay_results[0].per_test_point if tp.point_id == "tp-01")
         assert abs(tp1.i_a_secondary - 12.5) < 1e-6
 
     def test_function_50_triggers_above_threshold(self):
@@ -403,10 +406,7 @@ class TestProtectionEngineV1:
         result = execute_protection_v1(study_input)
 
         # tp-02: 4000A primary → 50A secondary > 25A pickup → should trip
-        tp2 = next(
-            tp for tp in result.relay_results[0].per_test_point
-            if tp.point_id == "tp-02"
-        )
+        tp2 = next(tp for tp in result.relay_results[0].per_test_point if tp.point_id == "tp-02")
         assert tp2.function_results.f50 is not None
         assert tp2.function_results.f50.picked_up is True
         assert tp2.function_results.f50.t_trip_s == 0.05
@@ -417,10 +417,7 @@ class TestProtectionEngineV1:
         result = execute_protection_v1(study_input)
 
         # tp-03: 200A primary → 2.5A secondary < 25A pickup → no trip
-        tp3 = next(
-            tp for tp in result.relay_results[0].per_test_point
-            if tp.point_id == "tp-03"
-        )
+        tp3 = next(tp for tp in result.relay_results[0].per_test_point if tp.point_id == "tp-03")
         assert tp3.function_results.f50 is not None
         assert tp3.function_results.f50.picked_up is False
 
@@ -430,10 +427,7 @@ class TestProtectionEngineV1:
         result = execute_protection_v1(study_input)
 
         # tp-01: 1000A primary → 12.5A secondary > 1.0A pickup → should have time
-        tp1 = next(
-            tp for tp in result.relay_results[0].per_test_point
-            if tp.point_id == "tp-01"
-        )
+        tp1 = next(tp for tp in result.relay_results[0].per_test_point if tp.point_id == "tp-01")
         assert tp1.function_results.f51 is not None
         assert tp1.function_results.f51.t_trip_s > 0
 
@@ -600,9 +594,7 @@ class TestSerialization:
                     ),
                 ),
             ),
-            test_points=(
-                TestPoint(point_id="t1", i_a_primary=1000.0),
-            ),
+            test_points=(TestPoint(point_id="t1", i_a_primary=1000.0),),
         )
         d = study_input.to_dict()
         study_input2 = ProtectionStudyInputV1.from_dict(d)
@@ -622,9 +614,7 @@ class TestSerialization:
                     ),
                 ),
             ),
-            test_points=(
-                TestPoint(point_id="t1", i_a_primary=1000.0),
-            ),
+            test_points=(TestPoint(point_id="t1", i_a_primary=1000.0),),
         )
         result = execute_protection_v1(study_input)
         d = result.to_dict()
@@ -650,7 +640,8 @@ class TestMultiRelay:
             ct_ratio=CTRatio(primary_a=400.0, secondary_a=5.0),
             f51=Function51Settings(
                 curve_type=IECCurveTypeV1.STANDARD_INVERSE,
-                pickup_a_secondary=1.0, tms=0.3,
+                pickup_a_secondary=1.0,
+                tms=0.3,
             ),
         )
         relay_a = RelayV1(
@@ -659,7 +650,8 @@ class TestMultiRelay:
             ct_ratio=CTRatio(primary_a=400.0, secondary_a=5.0),
             f51=Function51Settings(
                 curve_type=IECCurveTypeV1.VERY_INVERSE,
-                pickup_a_secondary=2.0, tms=0.5,
+                pickup_a_secondary=2.0,
+                tms=0.5,
             ),
         )
         study_input = ProtectionStudyInputV1(
@@ -680,7 +672,8 @@ class TestMultiRelay:
             ct_ratio=CTRatio(primary_a=400.0, secondary_a=5.0),
             f51=Function51Settings(
                 curve_type=IECCurveTypeV1.STANDARD_INVERSE,
-                pickup_a_secondary=1.0, tms=1.0,
+                pickup_a_secondary=1.0,
+                tms=1.0,
             ),
         )
         relay_ei = RelayV1(
@@ -689,7 +682,8 @@ class TestMultiRelay:
             ct_ratio=CTRatio(primary_a=400.0, secondary_a=5.0),
             f51=Function51Settings(
                 curve_type=IECCurveTypeV1.EXTREMELY_INVERSE,
-                pickup_a_secondary=1.0, tms=1.0,
+                pickup_a_secondary=1.0,
+                tms=1.0,
             ),
         )
         study_input = ProtectionStudyInputV1(

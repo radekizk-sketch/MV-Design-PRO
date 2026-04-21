@@ -20,7 +20,6 @@ from pathlib import Path
 
 from domain.result_contract_v1 import ResultSetV1
 
-
 # Schema lock file location (relative to backend/src/)
 _SCHEMA_DIR = Path(__file__).parent.parent.parent / "schemas"
 _SCHEMA_FILENAME = "resultset_v1_schema.json"
@@ -70,8 +69,7 @@ def verify_schema_lock() -> bool:
     path = get_locked_schema_path()
     if not path.exists():
         raise FileNotFoundError(
-            f"Schema lock file not found: {path}. "
-            "Run write_locked_schema() to create it."
+            f"Schema lock file not found: {path}. " "Run write_locked_schema() to create it."
         )
     locked = json.loads(path.read_text(encoding="utf-8"))
     current = generate_schema()

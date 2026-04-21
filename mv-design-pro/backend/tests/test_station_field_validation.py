@@ -7,7 +7,6 @@ BINDING: any failure blocks merge.
 """
 
 import pytest
-
 from domain.readiness import (
     ReadinessAreaV1,
     ReadinessGateError,
@@ -26,13 +25,14 @@ from domain.station_field_validation import (
     validate_station_fields,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_device(device_id: str, device_type: str, catalog_ref: str | None = "cat_001") -> FieldDeviceV1:
+def _make_device(
+    device_id: str, device_type: str, catalog_ref: str | None = "cat_001"
+) -> FieldDeviceV1:
     return FieldDeviceV1(
         device_id=device_id,
         aparat_type=device_type,

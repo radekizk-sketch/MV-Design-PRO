@@ -4,7 +4,6 @@ import math
 
 import numpy as np
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
@@ -113,9 +112,7 @@ def create_inverter_source(
 
 
 def find_contribution(contributions, source_id: str):
-    return next(
-        contrib for contrib in contributions if contrib.source_id == source_id
-    )
+    return next(contrib for contrib in contributions if contrib.source_id == source_id)
 
 
 def build_transformer_only_graph(
@@ -317,11 +314,7 @@ def test_post_processing_quantities_match_ikss_formula():
         tb_s=tb_s,
     )
 
-    rx_ratio = (
-        math.inf
-        if result.zkk_ohm.imag == 0
-        else result.zkk_ohm.real / result.zkk_ohm.imag
-    )
+    rx_ratio = math.inf if result.zkk_ohm.imag == 0 else result.zkk_ohm.real / result.zkk_ohm.imag
     kappa = 1.02 + 0.98 * math.exp(-3.0 * rx_ratio)
     ip_expected = kappa * math.sqrt(2.0) * result.ikss_a
     ith_expected = result.ikss_a * math.sqrt(tk_s)
@@ -523,7 +516,14 @@ def test_white_box_trace_has_expected_steps():
         keys = [step["key"] for step in result.white_box_trace[:7]]
         assert keys == ["Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"]
         for step in result.white_box_trace[:7]:
-            assert {"key", "title", "formula_latex", "inputs", "substitution", "result"} <= step.keys()
+            assert {
+                "key",
+                "title",
+                "formula_latex",
+                "inputs",
+                "substitution",
+                "result",
+            } <= step.keys()
 
 
 def test_2ph_ground_depends_on_z0_and_requires_it():
@@ -644,9 +644,7 @@ def test_inverter_zero_sequence_controls_1ph_and_2ph_ground():
 
     expected_inv = inverter_zero.k_sc * inverter_zero.in_rated_a
     assert res_1ph_zero.ik_inverters_a == pytest.approx(expected_inv, rel=1e-12, abs=0.0)
-    assert res_2phg_zero.ik_inverters_a == pytest.approx(
-        expected_inv, rel=1e-12, abs=0.0
-    )
+    assert res_2phg_zero.ik_inverters_a == pytest.approx(expected_inv, rel=1e-12, abs=0.0)
 
 
 def test_inverter_contribution_is_deterministic():

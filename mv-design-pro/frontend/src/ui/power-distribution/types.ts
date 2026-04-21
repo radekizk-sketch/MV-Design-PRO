@@ -1,16 +1,11 @@
 /**
- * PowerDistributionTypes — Typy danych architektury rozdzialu mocy.
+ * PowerDistributionTypes - typy danych architektury rozdzialu mocy.
  *
  * CANONICAL CONTRACT (BINDING):
  * - Immutable (readonly).
  * - Deterministic (sorted by id).
  * - 100% POLISH labels in UI.
  * - Integrates with fieldDeviceContracts.ts and switchgearConfig.ts.
- *
- * ARCHITECTURE:
- * - APPLICATION LAYER: no physics calculations.
- * - No model mutation.
- * - Uses existing domain types (FieldRoleV1, DeviceTypeV1, etc.).
  */
 
 import type {
@@ -22,7 +17,7 @@ import type {
 } from '../sld/core/fieldDeviceContracts';
 
 // =============================================================================
-// POLE TYPE LABELS (POLISH — CANONICAL)
+// POLE TYPE LABELS (POLISH - CANONICAL)
 // =============================================================================
 
 export const FIELD_ROLE_LABELS_PL: Record<FieldRoleV1, string> = {
@@ -30,8 +25,10 @@ export const FIELD_ROLE_LABELS_PL: Record<FieldRoleV1, string> = {
   LINE_OUT: 'Pole liniowe wyjsciowe',
   LINE_BRANCH: 'Pole odgalezieniowe',
   TRANSFORMER_SN_NN: 'Pole transformatorowe SN/nN',
+  MEASUREMENT_SN: 'Pole pomiarowe SN',
   PV_SN: 'Pole przylaczeniowe PV (SN)',
   BESS_SN: 'Pole przylaczeniowe BESS (SN)',
+  FW_SN: 'Pole przylaczeniowe FW (SN)',
   COUPLER_SN: 'Pole sprzegla sekcyjnego SN',
   BUS_TIE: 'Lacznik szyn',
   MAIN_NN: 'Pole glowne nN',
@@ -53,6 +50,7 @@ export const DEVICE_TYPE_LABELS_PL: Record<DeviceTypeV1, string> = {
   TRANSFORMER_DEVICE: 'Transformator',
   GENERATOR_PV: 'Generator PV',
   GENERATOR_BESS: 'Magazyn energii BESS',
+  GENERATOR_FW: 'Generator FW',
   PCS: 'Falownik PCS',
   BATTERY: 'Bateria',
   ACB: 'Wylacznik powietrzny ACB',
@@ -80,15 +78,9 @@ export const POWER_PATH_POSITION_LABELS_PL: Record<DevicePowerPathPositionV1, st
 };
 
 // =============================================================================
-// BAY TEMPLATE — Canonical device sequences per field role
+// BAY TEMPLATE
 // =============================================================================
 
-/**
- * Szablon pola — kanoniczny zestaw urzadzen dla danej roli pola.
- *
- * Uzywany przez kreator pol do generowania kanonicznej struktury.
- * Kolejnosc urzadzen wyznacza pozycje na torze mocy (UPSTREAM → DOWNSTREAM).
- */
 export interface BayTemplateDevice {
   readonly deviceType: DeviceTypeV1;
   readonly electricalRole: DeviceElectricalRoleV1;
@@ -109,9 +101,6 @@ export interface BayTemplate {
 // STATION CONFIGURATION
 // =============================================================================
 
-/**
- * Konfiguracja stacji do wizualizacji.
- */
 export interface StationConfig {
   readonly stationId: string;
   readonly stationName: string;
@@ -132,6 +121,9 @@ export interface DeviceConfig {
   readonly deviceType: DeviceTypeV1;
   readonly electricalRole: DeviceElectricalRoleV1;
   readonly powerPathPosition: DevicePowerPathPositionV1;
+  readonly label?: string;
+  readonly switchState?: 'OPEN' | 'CLOSED' | 'UNKNOWN';
+  readonly stateTone?: 'open' | 'closed' | 'unknown' | 'fault' | 'normal';
 }
 
 // =============================================================================

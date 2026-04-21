@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.design_synth.result import DesignSynthRunResult
@@ -62,15 +62,13 @@ def to_run_envelope(
     )
 
 
-def _resolve_created_at_utc(
-    created_at: datetime, evidence_payload: dict[str, Any] | None
-) -> str:
+def _resolve_created_at_utc(created_at: datetime, evidence_payload: dict[str, Any] | None) -> str:
     if evidence_payload:
         meta = evidence_payload.get("meta")
         if isinstance(meta, dict) and meta.get("created_at_utc"):
             return str(meta["created_at_utc"])
     if created_at.tzinfo is None:
-        created_at = created_at.replace(tzinfo=timezone.utc)
+        created_at = created_at.replace(tzinfo=UTC)
     else:
-        created_at = created_at.astimezone(timezone.utc)
+        created_at = created_at.astimezone(UTC)
     return created_at.isoformat()

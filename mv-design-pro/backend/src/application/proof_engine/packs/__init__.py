@@ -24,11 +24,6 @@ from application.proof_engine.packs.p16_losses import (
     P16LossesInput,
     P16LossesProof,
 )
-from application.proof_engine.packs.sc_asymmetrical import (
-    SCAsymmetricalPackInput,
-    SCAsymmetricalPackResult,
-    SCAsymmetricalProofPack,
-)
 from application.proof_engine.packs.protection_settings import (
     ProtectionSettingsProofInput,
     ProtectionSettingsProofPack,
@@ -39,6 +34,11 @@ from application.proof_engine.packs.qu_regulation import (
     QURegulationProofInput,
     QURegulationProofPack,
     QURegulationProofResult,
+)
+from application.proof_engine.packs.sc_asymmetrical import (
+    SCAsymmetricalPackInput,
+    SCAsymmetricalPackResult,
+    SCAsymmetricalProofPack,
 )
 
 __all__ = [

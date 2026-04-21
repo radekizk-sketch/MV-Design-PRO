@@ -5,10 +5,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 import numpy as np
-
 from network_model.core.graph import NetworkGraph
 from network_model.core.ybus import AdmittanceMatrixBuilder
-
 
 OMEGA_50HZ = 2.0 * math.pi * 50.0
 

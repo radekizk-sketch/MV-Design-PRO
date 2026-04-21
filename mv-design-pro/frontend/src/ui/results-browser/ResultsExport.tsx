@@ -2,7 +2,7 @@
  * FIX-03 — Results Export Component
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Export functionality like PowerFactory
+ * - ui_canonical_parity.md: Export functionality like Canonical
  * - wizard_screens.md: RESULT_VIEW mode
  * - 100% Polish UI
  *
@@ -134,7 +134,7 @@ function PrintPreview<T>({
               <span className="font-medium">Data eksportu:</span> {formatDate(new Date().toISOString())}
             </div>
             <div>
-              <span className="font-medium">Run ID:</span>{' '}
+              <span className="font-medium">Identyfikator uruchomienia:</span>{' '}
               <span className="font-mono">{runId.substring(0, 8)}</span>
             </div>
           </div>

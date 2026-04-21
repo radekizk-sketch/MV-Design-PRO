@@ -2,8 +2,8 @@
  * PR-SLD-03 — Testy kopiowania/wklejania (N-03, N-07)
  *
  * CANONICAL ALIGNMENT:
- * - AUDYT_SLD_ETAP.md: N-03 (nowe elementy modelu przy wklejeniu)
- * - AUDYT_SLD_ETAP.md: N-07 (deterministyczne identyfikatory)
+ * - AUDYT_SLD_CANONICAL.md: N-03 (nowe elementy modelu przy wklejeniu)
+ * - AUDYT_SLD_CANONICAL.md: N-07 (deterministyczne identyfikatory)
  *
  * TEST SCENARIOS:
  * 1. Wklejenie pojedynczego symbolu → nowy elementId, nowy symbolId

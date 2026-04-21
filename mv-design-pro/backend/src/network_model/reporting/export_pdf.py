@@ -16,15 +16,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
     from network_model.solvers.power_flow_result import PowerFlowResultV1
     from network_model.solvers.power_flow_trace import PowerFlowTrace
+    from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
 # Check for reportlab availability at import time
 try:
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -203,9 +203,7 @@ def generate_sc_report_pdf(
 
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     c = canvas.Canvas(str(out), pagesize=A4)
     lay = _PDFLayout(c)
@@ -261,9 +259,7 @@ def generate_sc_report_pdf(
         if branches:
             lay.draw_text("Galezi:", bold=True)
             br_cols = [30 * mm, 25 * mm, 25 * mm, 25 * mm, 30 * mm]
-            lay.draw_table_row(
-                ["ID", "Typ", "Od", "Do", "Impedancja"], br_cols, bold=True
-            )
+            lay.draw_table_row(["ID", "Typ", "Od", "Do", "Impedancja"], br_cols, bold=True)
             for br in branches[:20]:
                 z_info = br.get("z_ohm") or br.get("uk_percent", "\u2014")
                 lay.draw_table_row(
@@ -345,7 +341,7 @@ def generate_sc_report_pdf(
         )
         for contrib in contributions:
             share = contrib.get("share")
-            share_str = f"{share * 100:.2f}" if isinstance(share, (int, float)) else "\u2014"
+            share_str = f"{share * 100:.2f}" if isinstance(share, int | float) else "\u2014"
             lay.draw_table_row(
                 [
                     str(contrib.get("source_id", "\u2014"))[:12],
@@ -448,9 +444,7 @@ def generate_pf_report_pdf(
 
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     c = canvas.Canvas(str(out), pagesize=A4)
     lay = _PDFLayout(c)

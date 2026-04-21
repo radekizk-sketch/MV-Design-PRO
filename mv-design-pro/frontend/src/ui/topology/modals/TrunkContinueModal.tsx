@@ -32,7 +32,12 @@ interface TrunkContinueModalProps {
   mode: 'create' | 'edit';
   trunkId: string;
   terminalId: string;
+  terminalPortId?: string;
+  terminalName?: string;
+  terminalVoltageLabel?: string;
   initialData?: Partial<TrunkContinueFormData>;
+  submitDisabled?: boolean;
+  submitDisabledReason?: string | null;
   onSubmit: (data: TrunkContinueFormData) => void;
   onCancel: () => void;
 }
@@ -108,7 +113,12 @@ export function TrunkContinueModal({
   mode,
   trunkId,
   terminalId,
+  terminalPortId = '',
+  terminalName = '',
+  terminalVoltageLabel = '',
   initialData,
+  submitDisabled = false,
+  submitDisabledReason = null,
   onSubmit,
   onCancel,
 }: TrunkContinueModalProps) {
@@ -153,15 +163,68 @@ export function TrunkContinueModal({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            {mode === 'create' ? 'Kontynuuj magistralę' : 'Edycja odcinka magistrali'}
+            {mode === 'create' ? 'Kontynuuj magistrale z terminala pola' : 'Edycja odcinka magistrali'}
           </h2>
           <p className="mt-1 text-xs text-gray-500">
-            Magistrala: {trunkId} &middot; Terminal: {terminalId}
+            Magistrala: {trunkId || 'pierwszy odcinek'} &middot; Terminal pola: {terminalId}
           </p>
         </div>
 
         {/* Body */}
         <div className="px-6 py-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Kontekst pola
+            </h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Magistrala</label>
+                <input
+                  type="text"
+                  value={trunkId}
+                  readOnly={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Terminal pola</label>
+                <input
+                  type="text"
+                  value={terminalId}
+                  readOnly={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Port terminala</label>
+                <input
+                  type="text"
+                  value={terminalPortId}
+                  readOnly={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Napiecie odniesienia</label>
+                <input
+                  type="text"
+                  value={terminalVoltageLabel}
+                  readOnly={true}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                />
+              </div>
+            </div>
+            {terminalName && (
+              <p className="mt-2 text-xs text-gray-500">Pole startowe: {terminalName}</p>
+            )}
+          </div>
+
+          {submitDisabledReason && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              {submitDisabledReason}
+            </div>
+          )}
+
           {/* === SEKCJA: Dane wymagane === */}
           <div>
             <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
@@ -314,9 +377,10 @@ export function TrunkContinueModal({
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+            disabled={submitDisabled}
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
           >
-            Zatwierdź
+            {mode === 'create' ? 'Dodaj odcinek' : 'Zapisz zmiany'}
           </button>
         </div>
       </div>

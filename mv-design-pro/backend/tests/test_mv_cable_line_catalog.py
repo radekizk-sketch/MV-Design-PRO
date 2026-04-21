@@ -9,8 +9,8 @@ Weryfikuje:
 5. Wykrywanie typów niekompletnych
 """
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -18,24 +18,19 @@ backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
 from network_model.catalog import (
-    CableType,
-    CatalogRepository,
-    LineType,
+    ParameterSource,
     get_default_mv_catalog,
     resolve_thermal_params,
-    ResolvedThermalParams,
-    ParameterSource,
 )
 from network_model.catalog.mv_cable_line_catalog import (
+    JTH_AL_ST_OHL,
+    JTH_AL_XLPE,
     get_all_cable_types,
     get_all_line_types,
     get_base_cable_type_ids,
     get_base_line_type_ids,
-    get_manufacturer_cable_type_ids,
     get_catalog_statistics,
-    JTH_CU_XLPE,
-    JTH_AL_XLPE,
-    JTH_AL_ST_OHL,
+    get_manufacturer_cable_type_ids,
 )
 
 
@@ -98,13 +93,13 @@ class TestThermalDataCompleteness:
         for cable_id in base_ids:
             cable = catalog.get_cable_type(cable_id)
             assert cable is not None, f"Brak typu bazowego kabla: {cable_id}"
-            assert cable.dane_cieplne_kompletne, (
-                f"Typ bazowy kabla {cable_id} ma niekompletne dane cieplne"
-            )
+            assert (
+                cable.dane_cieplne_kompletne
+            ), f"Typ bazowy kabla {cable_id} ma niekompletne dane cieplne"
             # Sprawdź czy jth jest ustawione (bazowe używają jth)
-            assert cable.jth_1s_a_per_mm2 is not None and cable.jth_1s_a_per_mm2 > 0, (
-                f"Typ bazowy kabla {cable_id}: brak jth_1s_a_per_mm2"
-            )
+            assert (
+                cable.jth_1s_a_per_mm2 is not None and cable.jth_1s_a_per_mm2 > 0
+            ), f"Typ bazowy kabla {cable_id}: brak jth_1s_a_per_mm2"
 
     def test_base_line_types_have_thermal_data(self) -> None:
         """Typy bazowe linii mają kompletne dane cieplne."""
@@ -114,13 +109,13 @@ class TestThermalDataCompleteness:
         for line_id in base_ids:
             line = catalog.get_line_type(line_id)
             assert line is not None, f"Brak typu bazowego linii: {line_id}"
-            assert line.dane_cieplne_kompletne, (
-                f"Typ bazowy linii {line_id} ma niekompletne dane cieplne"
-            )
+            assert (
+                line.dane_cieplne_kompletne
+            ), f"Typ bazowy linii {line_id} ma niekompletne dane cieplne"
             # Sprawdź czy jth jest ustawione (bazowe używają jth)
-            assert line.jth_1s_a_per_mm2 is not None and line.jth_1s_a_per_mm2 > 0, (
-                f"Typ bazowy linii {line_id}: brak jth_1s_a_per_mm2"
-            )
+            assert (
+                line.jth_1s_a_per_mm2 is not None and line.jth_1s_a_per_mm2 > 0
+            ), f"Typ bazowy linii {line_id}: brak jth_1s_a_per_mm2"
 
     def test_manufacturer_cable_types_have_thermal_data(self) -> None:
         """Typy producentów kabli mają kompletne dane cieplne."""
@@ -130,9 +125,9 @@ class TestThermalDataCompleteness:
         for cable_id in manufacturer_ids:
             cable = catalog.get_cable_type(cable_id)
             assert cable is not None, f"Brak typu producenta kabla: {cable_id}"
-            assert cable.dane_cieplne_kompletne, (
-                f"Typ producenta kabla {cable_id} ma niekompletne dane cieplne"
-            )
+            assert (
+                cable.dane_cieplne_kompletne
+            ), f"Typ producenta kabla {cable_id} ma niekompletne dane cieplne"
 
     def test_incomplete_types_detected(self) -> None:
         """Typy niekompletne są poprawnie wykrywane."""
@@ -141,22 +136,22 @@ class TestThermalDataCompleteness:
         # Typ niekompletny kabla
         incomplete_cable = catalog.get_cable_type("cable-incomplete-test")
         assert incomplete_cable is not None, "Brak typu testowego niekompletnego kabla"
-        assert not incomplete_cable.dane_cieplne_kompletne, (
-            "Typ niekompletny kabla powinien mieć dane_cieplne_kompletne=False"
-        )
-        assert incomplete_cable.ith_1s_a is None, (
-            "Typ niekompletny kabla powinien mieć ith_1s_a=None"
-        )
-        assert incomplete_cable.jth_1s_a_per_mm2 is None, (
-            "Typ niekompletny kabla powinien mieć jth_1s_a_per_mm2=None"
-        )
+        assert (
+            not incomplete_cable.dane_cieplne_kompletne
+        ), "Typ niekompletny kabla powinien mieć dane_cieplne_kompletne=False"
+        assert (
+            incomplete_cable.ith_1s_a is None
+        ), "Typ niekompletny kabla powinien mieć ith_1s_a=None"
+        assert (
+            incomplete_cable.jth_1s_a_per_mm2 is None
+        ), "Typ niekompletny kabla powinien mieć jth_1s_a_per_mm2=None"
 
         # Typ niekompletny linii
         incomplete_line = catalog.get_line_type("line-incomplete-test")
         assert incomplete_line is not None, "Brak typu testowego niekompletnej linii"
-        assert not incomplete_line.dane_cieplne_kompletne, (
-            "Typ niekompletny linii powinien mieć dane_cieplne_kompletne=False"
-        )
+        assert (
+            not incomplete_line.dane_cieplne_kompletne
+        ), "Typ niekompletny linii powinien mieć dane_cieplne_kompletne=False"
 
     def test_ith_calculation_from_jth(self) -> None:
         """Ith jest poprawnie obliczane z jth × przekrój."""
@@ -190,38 +185,29 @@ class TestManufacturerTypeMapping:
         for cable_id in manufacturer_ids:
             cable = catalog.get_cable_type(cable_id)
             assert cable is not None, f"Brak typu producenta: {cable_id}"
-            assert cable.base_type_id is not None, (
-                f"Typ producenta {cable_id} nie ma base_type_id"
-            )
+            assert cable.base_type_id is not None, f"Typ producenta {cable_id} nie ma base_type_id"
             # Sprawdź czy base_type_id wskazuje na istniejący typ bazowy
             base_type = catalog.get_cable_type(cable.base_type_id)
-            assert base_type is not None, (
-                f"Typ bazowy {cable.base_type_id} dla {cable_id} nie istnieje"
-            )
+            assert (
+                base_type is not None
+            ), f"Typ bazowy {cable.base_type_id} dla {cable_id} nie istnieje"
 
     def test_nkt_cable_types_exist(self) -> None:
         """Typy kabli NKT są dostępne w katalogu."""
         catalog = get_default_mv_catalog()
 
-        nkt_types = [
-            c for c in catalog.list_cable_types() if c.manufacturer == "NKT"
-        ]
+        nkt_types = [c for c in catalog.list_cable_types() if c.manufacturer == "NKT"]
         assert len(nkt_types) >= 2, "Brak wystarczającej liczby typów NKT"
 
         for nkt in nkt_types:
             assert nkt.trade_name is not None, f"Typ NKT {nkt.id} bez trade_name"
-            assert nkt.dane_cieplne_kompletne, (
-                f"Typ NKT {nkt.id} ma niekompletne dane cieplne"
-            )
+            assert nkt.dane_cieplne_kompletne, f"Typ NKT {nkt.id} ma niekompletne dane cieplne"
 
     def test_telefonika_cable_types_exist(self) -> None:
         """Typy kabli Tele-Fonika są dostępne w katalogu."""
         catalog = get_default_mv_catalog()
 
-        tfk_types = [
-            c for c in catalog.list_cable_types()
-            if c.manufacturer == "Tele-Fonika Kable"
-        ]
+        tfk_types = [c for c in catalog.list_cable_types() if c.manufacturer == "Tele-Fonika Kable"]
         assert len(tfk_types) >= 2, "Brak wystarczającej liczby typów Tele-Fonika"
 
         for tfk in tfk_types:
@@ -246,8 +232,8 @@ class TestCatalogDeterminism:
         catalog1 = get_default_mv_catalog()
         catalog2 = get_default_mv_catalog()
 
-        lines1 = [l.id for l in catalog1.list_line_types()]
-        lines2 = [l.id for l in catalog2.list_line_types()]
+        lines1 = [line.id for line in catalog1.list_line_types()]
+        lines2 = [line.id for line in catalog2.list_line_types()]
 
         assert lines1 == lines2, "Kolejność linii nie jest deterministyczna"
 
@@ -261,7 +247,7 @@ class TestCatalogDeterminism:
         lines1 = get_all_line_types()
         lines2 = get_all_line_types()
 
-        assert [l["id"] for l in lines1] == [l["id"] for l in lines2]
+        assert [line["id"] for line in lines1] == [line["id"] for line in lines2]
 
 
 class TestCatalogStatistics:
@@ -273,19 +259,19 @@ class TestCatalogStatistics:
 
         # Typy bazowe kabli: 7 przekrojów × (Cu + Al) × (1C + 3C) × XLPE = 28
         # + EPR typy (mniejszy zakres) = dodatkowe
-        assert stats["liczba_kabli_bazowych"] >= 28, (
-            f"Za mało typów bazowych kabli: {stats['liczba_kabli_bazowych']}"
-        )
+        assert (
+            stats["liczba_kabli_bazowych"] >= 28
+        ), f"Za mało typów bazowych kabli: {stats['liczba_kabli_bazowych']}"
 
         # Typy bazowe linii: 7 przekrojów × 2 materiały = 14
-        assert stats["liczba_linii_bazowych"] >= 14, (
-            f"Za mało typów bazowych linii: {stats['liczba_linii_bazowych']}"
-        )
+        assert (
+            stats["liczba_linii_bazowych"] >= 14
+        ), f"Za mało typów bazowych linii: {stats['liczba_linii_bazowych']}"
 
         # Typy producentów
-        assert stats["liczba_kabli_producentow"] >= 3, (
-            f"Za mało typów producentów: {stats['liczba_kabli_producentow']}"
-        )
+        assert (
+            stats["liczba_kabli_producentow"] >= 3
+        ), f"Za mało typów producentów: {stats['liczba_kabli_producentow']}"
 
         # Typy niekompletne (do testów)
         assert stats["liczba_kabli_niekompletnych"] >= 1

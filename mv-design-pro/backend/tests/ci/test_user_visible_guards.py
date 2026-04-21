@@ -40,7 +40,7 @@ def test_no_project_codenames_in_user_visible_proof_docs_and_ui():
         if not target.exists():
             continue
         for path in _iter_files(target, (".md", ".ts", ".tsx", ".json")):
-            if "/__tests__/" in str(path).replace('\\', '/'):
+            if "/__tests__/" in str(path).replace("\\", "/"):
                 continue
             text = path.read_text(encoding="utf-8")
             if pattern.search(text):

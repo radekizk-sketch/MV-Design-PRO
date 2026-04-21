@@ -1,24 +1,24 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 from .types import (
     BESSInverterType,
     CableType,
-    CTType,
     ConverterKind,
     ConverterType,
+    CTType,
     InverterType,
-    LVApparatusType,
-    LVCableType,
     LineType,
     LoadType,
+    LVApparatusType,
+    LVCableType,
     MVApparatusType,
-    PVInverterType,
     ProtectionCurve,
     ProtectionDeviceType,
     ProtectionSettingTemplate,
+    PVInverterType,
     SourceSystemType,
     SwitchEquipmentType,
     TransformerType,
@@ -182,7 +182,7 @@ class CatalogRepository:
         source_system_types: Iterable[dict] | None = None,
         pv_inverter_types: Iterable[dict] | None = None,
         bess_inverter_types: Iterable[dict] | None = None,
-    ) -> "CatalogRepository":
+    ) -> CatalogRepository:
         def _build_line_type(record: dict) -> LineType:
             data = {"id": record.get("id"), "name": record.get("name")}
             data.update(record.get("params") or {})
@@ -320,40 +320,29 @@ class CatalogRepository:
                 )
             },
             lv_cable_types={
-                str(item.id): item
-                for item in map(_build_lv_cable_type, list(lv_cable_types or []))
+                str(item.id): item for item in map(_build_lv_cable_type, list(lv_cable_types or []))
             },
             load_types={
-                str(item.id): item
-                for item in map(_build_load_type, list(load_types or []))
+                str(item.id): item for item in map(_build_load_type, list(load_types or []))
             },
             mv_apparatus_types={
-                str(item.id): item
-                for item in map(_build_mv_apparatus_type, mv_apparatus_records)
+                str(item.id): item for item in map(_build_mv_apparatus_type, mv_apparatus_records)
             },
             lv_apparatus_types={
                 str(item.id): item
                 for item in map(_build_lv_apparatus_type, list(lv_apparatus_types or []))
             },
-            ct_types={
-                str(item.id): item
-                for item in map(_build_ct_type, list(ct_types or []))
-            },
-            vt_types={
-                str(item.id): item
-                for item in map(_build_vt_type, list(vt_types or []))
-            },
+            ct_types={str(item.id): item for item in map(_build_ct_type, list(ct_types or []))},
+            vt_types={str(item.id): item for item in map(_build_vt_type, list(vt_types or []))},
             source_system_types={
                 str(item.id): item
                 for item in map(_build_source_system_type, list(source_system_types or []))
             },
             pv_inverter_types={
-                str(item.id): item
-                for item in map(_build_pv_inverter_type, pv_records)
+                str(item.id): item for item in map(_build_pv_inverter_type, pv_records)
             },
             bess_inverter_types={
-                str(item.id): item
-                for item in map(_build_bess_inverter_type, bess_records)
+                str(item.id): item for item in map(_build_bess_inverter_type, bess_records)
             },
         )
 

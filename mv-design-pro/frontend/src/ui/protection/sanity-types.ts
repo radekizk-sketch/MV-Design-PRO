@@ -12,7 +12,7 @@
 import type { ElementType } from '../types';
 
 // =============================================================================
-// Severity — poziom waznosci
+// Severity - poziom waznosci
 // =============================================================================
 
 /**
@@ -24,8 +24,8 @@ export type SanityCheckSeverity = 'ERROR' | 'WARN' | 'INFO';
  * Polskie etykiety severity.
  */
 export const SEVERITY_LABELS_PL: Record<SanityCheckSeverity, string> = {
-  ERROR: 'Blad',
-  WARN: 'Ostrzezenie',
+  ERROR: 'Błąd',
+  WARN: 'Ostrzeżenie',
   INFO: 'Informacja',
 };
 
@@ -68,7 +68,7 @@ export const SEVERITY_ORDER: Record<SanityCheckSeverity, number> = {
 };
 
 // =============================================================================
-// Sanity Check Codes — stabilne kody regul
+// Sanity Check Codes - stabilne kody regul
 // =============================================================================
 
 /**
@@ -105,32 +105,32 @@ export type SanityCheckCode =
  */
 export const SANITY_CHECK_CODE_LABELS_PL: Record<SanityCheckCode, string> = {
   // Napieciowe
-  VOLT_MISSING_UN: 'Brak wartosci Un dla nastawy napieciowej',
-  VOLT_OVERLAP: 'Nakladanie sie progow U< i U> (U< >= U>)',
-  VOLT_U_LT_TOO_LOW: 'Prog U< zbyt niski (< 0,5×Un)',
-  VOLT_U_GT_TOO_HIGH: 'Prog U> zbyt wysoki (> 1,2×Un)',
+  VOLT_MISSING_UN: 'Brak wartości Un dla nastawy napięciowej',
+  VOLT_OVERLAP: 'Nakładanie się progów U< i U> (U< >= U>)',
+  VOLT_U_LT_TOO_LOW: 'Próg U< zbyt niski (< 0,5×Un)',
+  VOLT_U_GT_TOO_HIGH: 'Próg U> zbyt wysoki (> 1,2×Un)',
   // Czestotliwosciowe
-  FREQ_OVERLAP: 'Nakladanie sie progow f< i f> (f< >= f>)',
-  FREQ_F_LT_TOO_LOW: 'Prog f< zbyt niski (< 45 Hz)',
-  FREQ_F_GT_TOO_HIGH: 'Prog f> zbyt wysoki (> 55 Hz)',
+  FREQ_OVERLAP: 'Nakładanie się progów f< i f> (f< >= f>)',
+  FREQ_F_LT_TOO_LOW: 'Próg f< zbyt niski (< 45 Hz)',
+  FREQ_F_GT_TOO_HIGH: 'Próg f> zbyt wysoki (> 55 Hz)',
   // ROCOF
-  ROCOF_NON_POSITIVE: 'df/dt nieadodatnie (<= 0)',
+  ROCOF_NON_POSITIVE: 'df/dt niedodatnie (<= 0)',
   ROCOF_TOO_HIGH: 'df/dt zbyt wysokie (> 10 Hz/s)',
   // Nadpradowe
-  OC_MISSING_IN: 'Brak wartosci In dla nastawy pradowej',
-  OC_OVERLAP: 'Nakladanie sie progow I> i I>> (I> >= I>>)',
-  OC_I_GT_TOO_LOW: 'Prog I> zbyt niski (< 1,0×In)',
-  OC_I_INST_TOO_LOW: 'Prog I>> zbyt niski (< 1,5×In)',
+  OC_MISSING_IN: 'Brak wartości In dla nastawy prądowej',
+  OC_OVERLAP: 'Nakładanie się progów I> i I>> (I> >= I>>)',
+  OC_I_GT_TOO_LOW: 'Próg I> zbyt niski (< 1,0×In)',
+  OC_I_INST_TOO_LOW: 'Próg I>> zbyt niski (< 1,5×In)',
   // SPZ
-  SPZ_NO_TRIP_FUNCTION: 'SPZ aktywne bez funkcji wyzwalajacej',
+  SPZ_NO_TRIP_FUNCTION: 'SPZ aktywne bez funkcji wyzwalającej',
   SPZ_MISSING_CYCLE_DATA: 'Brak danych cyklu SPZ',
   // Ogolne
   GEN_NEGATIVE_SETPOINT: 'Nastawa niefizyczna (ujemna)',
-  GEN_PARTIAL_ANALYSIS: 'Brak danych bazowych — analiza czesciowa',
+  GEN_PARTIAL_ANALYSIS: 'Brak danych bazowych — analiza częściowa',
 };
 
 // =============================================================================
-// ProtectionSanityCheckResult — wynik walidacji
+// ProtectionSanityCheckResult - wynik walidacji
 // =============================================================================
 
 /**
@@ -165,7 +165,7 @@ export interface ProtectionSanityCheckResult {
 }
 
 // =============================================================================
-// Diagnostics Filter — filtr severity
+// Diagnostics Filter - filtr severity
 // =============================================================================
 
 /**
@@ -181,8 +181,8 @@ export type DiagnosticsSeverityFilter =
  */
 export const SEVERITY_FILTER_LABELS_PL: Record<DiagnosticsSeverityFilter, string> = {
   ALL: 'Wszystkie',
-  ERRORS_ONLY: 'Tylko bledy',
-  ERRORS_WARNS: 'Bledy + ostrzezenia',
+  ERRORS_ONLY: 'Tylko błędy',
+  ERRORS_WARNS: 'Błędy + ostrzeżenia',
 };
 
 /**
@@ -205,7 +205,7 @@ export function matchesSeverityFilter(
 }
 
 // =============================================================================
-// Aggregation — grupowanie po elemencie
+// Aggregation - grupowanie po elemencie
 // =============================================================================
 
 /**
@@ -261,7 +261,6 @@ export function groupResultsByElement(
 
     entry.results.push(result);
 
-    // Update counts
     switch (result.severity) {
       case 'ERROR':
         entry.error_count++;
@@ -274,13 +273,11 @@ export function groupResultsByElement(
         break;
     }
 
-    // Update max_severity (ERROR > WARN > INFO)
     if (SEVERITY_ORDER[result.severity] < SEVERITY_ORDER[entry.max_severity]) {
       entry.max_severity = result.severity;
     }
   }
 
-  // Sort results within each element by severity
   for (const entry of map.values()) {
     entry.results.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   }

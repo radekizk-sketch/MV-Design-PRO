@@ -21,13 +21,18 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from domain.eligibility_models import (
+    AnalysisEligibilityIssue,
+    AnalysisEligibilityResult,
+    AnalysisType,
+    IssueSeverity,
+    build_eligibility_result,
+)
 from domain.fault_scenario import (
     FaultImpedance,
-    FaultImpedanceType,
     FaultLocation,
     FaultMode,
     FaultScenario,
-    FaultScenarioValidationError,
     FaultType,
     ShortCircuitConfig,
     _now_utc_iso,
@@ -36,14 +41,6 @@ from domain.fault_scenario import (
     validate_fault_scenario,
 )
 from enm.fix_actions import FixAction
-from domain.eligibility_models import (
-    AnalysisEligibilityIssue,
-    AnalysisEligibilityResult,
-    AnalysisType,
-    EligibilityStatus,
-    IssueSeverity,
-    build_eligibility_result,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +78,7 @@ class FaultScenarioHasRunsError(FaultScenarioServiceError):
     """Raised when trying to delete a scenario that has associated runs."""
 
     def __init__(self, scenario_id: str) -> None:
-        super().__init__(
-            f"Nie można usunąć scenariusza z powiązanymi przebiegami: {scenario_id}"
-        )
+        super().__init__(f"Nie można usunąć scenariusza z powiązanymi przebiegami: {scenario_id}")
         self.scenario_id = scenario_id
 
 
@@ -232,14 +227,8 @@ class FaultScenarioService:
         Sorted deterministically by (fault_type, element_ref).
         """
         scenario_ids = self._case_scenarios.get(study_case_id, [])
-        scenarios = [
-            self._scenarios[sid]
-            for sid in scenario_ids
-            if sid in self._scenarios
-        ]
-        scenarios.sort(
-            key=lambda s: (s.fault_type.value, s.location.element_ref)
-        )
+        scenarios = [self._scenarios[sid] for sid in scenario_ids if sid in self._scenarios]
+        scenarios.sort(key=lambda s: (s.fault_type.value, s.location.element_ref))
         return scenarios
 
     def update_scenario(
@@ -412,9 +401,7 @@ class FaultScenarioService:
         scenario = self.get_scenario(scenario_id)
         return compute_scenario_content_hash(scenario)
 
-    def check_scenario_eligibility(
-        self, scenario_id: UUID
-    ) -> AnalysisEligibilityResult:
+    def check_scenario_eligibility(self, scenario_id: UUID) -> AnalysisEligibilityResult:
         """
         Check eligibility of a fault scenario for execution.
 
@@ -563,7 +550,10 @@ class FaultScenarioService:
         }
 
         # v2: BRANCH_POINT — include alpha for visual positioning
-        if scenario.location.location_type == "BRANCH_POINT" and scenario.location.position is not None:
+        if (
+            scenario.location.location_type == "BRANCH_POINT"
+            and scenario.location.position is not None
+        ):
             overlay_element["branch_point_alpha"] = scenario.location.position
 
         # v2: IMPEDANCE mode — include Zf in overlay metadata

@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 2.4, § 3: Siatka Właściwości specification
- * - powerfactory_ui_parity.md § D: Property Grid rules
+ * - ui_canonical_parity.md § D: Property Grid rules
  *
  * Features:
  * - Deterministic section and field ordering
@@ -16,7 +16,8 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
-import type { ElementType, OperatingMode, PropertyField, PropertySection as PropertySectionType, ValidationMessage } from '../types';
+import type { ElementType, PropertyField, PropertySection as PropertySectionType, ValidationMessage } from '../types';
+import { type RuntimeOperatingMode } from '../operatingMode';
 import { getFieldDefinitionsForMode, SECTION_LABELS } from './field-definitions';
 import { useSelectionStore, useCanEdit } from '../selection';
 import { ValidationBadge, ValidationSummary, ValidationIcon } from './ValidationBadge';
@@ -164,8 +165,6 @@ export function PropertyGrid({
     switch (mode) {
       case 'MODEL_EDIT':
         return 'Edycja';
-      case 'CASE_CONFIG':
-        return 'Konfiguracja';
       case 'RESULT_VIEW':
         return 'Wyniki';
       default:
@@ -190,7 +189,6 @@ export function PropertyGrid({
             className={clsx(
               'text-xs px-2 py-1 rounded',
               mode === 'MODEL_EDIT' && 'bg-blue-100 text-blue-800',
-              mode === 'CASE_CONFIG' && 'bg-yellow-100 text-yellow-800',
               mode === 'RESULT_VIEW' && 'bg-green-100 text-green-800'
             )}
           >
@@ -279,7 +277,7 @@ interface PropertySectionProps {
   collapsed: boolean;
   onToggle: () => void;
   onFieldChange: (fieldKey: string, value: unknown) => void;
-  mode: OperatingMode;
+  mode: RuntimeOperatingMode;
   canEdit: boolean;
   elementType: ElementType;
 }
@@ -344,7 +342,7 @@ function PropertySection({
 interface PropertyFieldRowProps {
   field: PropertyField;
   onFieldChange: (fieldKey: string, value: unknown) => void;
-  mode: OperatingMode;
+  mode: RuntimeOperatingMode;
   canEdit: boolean;
   elementType: ElementType;
 }

@@ -1,6 +1,6 @@
 from analysis.power_flow import PowerFlowOptions, PowerFlowSolver
 from analysis.power_flow.analysis import assemble_power_flow_result
-from analysis.power_flow.types import PQSpec, PowerFlowInput, SlackSpec
+from analysis.power_flow.types import PowerFlowInput, PQSpec, SlackSpec
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType

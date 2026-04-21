@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import UUID, uuid4
 
@@ -47,7 +47,7 @@ def _build_export_service() -> tuple[AnalysisRunExportService, dict[str, UUID]]:
     )
     CaseRepository(session).add_operating_case(case)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     run_id = uuid4()
     node_id = uuid4()
     node_id_str = str(node_id)
@@ -146,7 +146,12 @@ def test_export_bundle_exposes_catalog_context_and_step_provenance() -> None:
         "manual_override_element_count": 1,
         "manual_override_count": 1,
     }
-    assert bundle["catalog_context_by_element"][str(bundle["catalog_context"][0]["element_id"])]["source_catalog_label"] == "ZRODLO_SN:src-gpz-15kv-250mva-rx010@2026.04"
+    assert (
+        bundle["catalog_context_by_element"][str(bundle["catalog_context"][0]["element_id"])][
+            "source_catalog_label"
+        ]
+        == "ZRODLO_SN:src-gpz-15kv-250mva-rx010@2026.04"
+    )
     assert bundle["white_box_trace"][0]["target_id"] == bundle["catalog_context"][0]["element_id"]
     assert bundle["white_box_trace"][0]["catalog_context_entry"]["materialized_params"] == {
         "sk3_mva": 250.0,

@@ -38,6 +38,21 @@ import { useState } from 'react';
 import { VerdictBadge } from '../protection-coordination/ResultsTables';
 import type { CoordinationVerdict } from '../protection-coordination/types';
 import { NormativeLabels } from '../shared/normativeLabels';
+import {
+  formatProofPackRef,
+  getAnalysisCaseLabel,
+  getCompletenessDisplayLabel,
+  getCompletenessTone,
+  getReproducibilitySummary,
+  mergeAnalysisCaseContexts,
+} from '../results-inspector/analysisCaseContextView';
+import {
+  ANALYSIS_COMPLETENESS_BADGE_CLASS,
+  ANALYSIS_COMPLETENESS_LABELS,
+  QUALITY_GATE_BADGE_CLASS,
+  QUALITY_GATE_LABELS,
+  type AnalysisCaseContext,
+} from '../shared/analysisCaseContext';
 
 // =============================================================================
 // P20d: Export Types and Component
@@ -301,12 +316,125 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
+function ContextBadge({ label, tone }: { label: string; tone: string }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
+      {label}
+    </span>
+  );
+}
+
+function ContextField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 break-all text-sm text-slate-800">{value}</div>
+    </div>
+  );
+}
+
+function AnalysisCaseContextPanel({
+  context,
+}: {
+  context: AnalysisCaseContext | null | undefined;
+}) {
+  if (!context) {
+    return null;
+  }
+
+  const reproducibility = context.reproducibility ?? {};
+  const completenessLabel =
+    ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
+  const completenessTone =
+    ANALYSIS_COMPLETENESS_BADGE_CLASS[context.completeness] ??
+    ANALYSIS_COMPLETENESS_BADGE_CLASS.partial;
+  const qualityGateLabel = QUALITY_GATE_LABELS[context.quality_gate] ?? context.quality_gate;
+  const qualityGateTone =
+    QUALITY_GATE_BADGE_CLASS[context.quality_gate] ?? QUALITY_GATE_BADGE_CLASS.G2;
+  const applicability =
+    context.applicability_scope.length > 0
+      ? context.applicability_scope.join(', ')
+      : 'Brak zakresu';
+
+  return (
+    <section className="mt-4 space-y-4 rounded border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            analysis_case_context
+          </div>
+          <h2 className="mt-1 text-sm font-semibold text-slate-900">
+            Kontekst uruchomienia rozpływu
+          </h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ContextBadge label={`Kompletnosc: ${completenessLabel}`} tone={completenessTone} />
+          <ContextBadge label={qualityGateLabel} tone={qualityGateTone} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ContextField
+          label="Rodzaj przypadku"
+          value={context.rodzaj_przypadku ?? context.case_kind ?? 'Brak'}
+        />
+        <ContextField label="Case ref" value={context.case_ref} />
+        <ContextField label="Run ref" value={context.run_ref} />
+        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
+        <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref} />
+        <ContextField label="Zakres" value={applicability} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ContextField label="Solver" value={reproducibility.solver_family ?? 'Brak'} />
+        <ContextField
+          label="Wersja solvera"
+          value={reproducibility.solver_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Kontrakt wynikow"
+          value={reproducibility.results_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Kontrakt pola"
+          value={reproducibility.bay_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Snapshot katalogow"
+          value={reproducibility.catalog_snapshot_ref ?? 'Brak'}
+        />
+        <ContextField
+          label="Schemat katalogow"
+          value={reproducibility.catalog_schema_version ?? 'Brak'}
+        />
+      </div>
+
+      {context.missing_prerequisites.length > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="font-semibold">Brakujace warunki wejsciowe</div>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {context.missing_prerequisites.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // =============================================================================
 // Result Status Bar
 // =============================================================================
 
 function ResultStatusBar() {
   const { runHeader, results, selectedRunId } = usePowerFlowResultsStore();
+  const analysisCaseContext = mergeAnalysisCaseContexts(
+    runHeader?.analysis_case_context,
+    runHeader?.input_metadata?.analysis_case_context,
+  );
 
   // Hooks must precede early return (Rules of Hooks)
   const formattedDate = useMemo(() => {
@@ -337,6 +465,11 @@ function ResultStatusBar() {
 
   const statusLabel = RESULT_STATUS_LABELS[runHeader.result_status] ?? runHeader.result_status;
   const severity = RESULT_STATUS_SEVERITY[runHeader.result_status] ?? 'info';
+  const caseLabel = getAnalysisCaseLabel(analysisCaseContext);
+  const completenessLabel = getCompletenessDisplayLabel(analysisCaseContext);
+  const completenessTone = getCompletenessTone(analysisCaseContext?.completeness ?? completenessLabel);
+  const proofPackRef = formatProofPackRef(analysisCaseContext?.proof_pack_ref ?? null);
+  const reproducibilitySummary = getReproducibilitySummary(analysisCaseContext);
   const convergedLabel = results?.converged
     ? NormativeLabels.common.powerFlowLabels.converged
     : results?.converged === false
@@ -346,27 +479,62 @@ function ResultStatusBar() {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-slate-200 bg-white p-3">
-      <div className="flex items-center gap-4">
-        <span
-          className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(severity)}`}
-        >
-          {statusLabel}
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">{NormativeLabels.common.powerFlowLabels.analysisType}:</span> {NormativeLabels.common.powerFlowLabels.powerFlow}
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">{NormativeLabels.common.powerFlowLabels.convergenceStatus}:</span>{' '}
-          <span className={results?.converged ? 'text-emerald-600' : 'text-rose-600'}>
-            {convergedLabel}
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <span
+            className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(severity)}`}
+          >
+            {statusLabel}
           </span>
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">{NormativeLabels.common.powerFlowLabels.iterations}:</span> {iterationsLabel}
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">{NormativeLabels.common.powerFlowLabels.run}:</span> {runHeader.id.substring(0, 8)}...
-        </span>
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">{NormativeLabels.common.powerFlowLabels.analysisType}:</span>{' '}
+            {NormativeLabels.common.powerFlowLabels.powerFlow}
+          </span>
+          {caseLabel && (
+            <span className="text-sm text-slate-600" data-testid="power-flow-status-case-context">
+              <span className="font-medium">Przypadek:</span> {caseLabel}
+            </span>
+          )}
+          {completenessLabel && (
+            <span
+              className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(completenessTone)}`}
+              data-testid="power-flow-status-completeness"
+            >
+              Kompletnosc: {completenessLabel}
+            </span>
+          )}
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">{NormativeLabels.common.powerFlowLabels.convergenceStatus}:</span>{' '}
+            <span className={results?.converged ? 'text-emerald-600' : 'text-rose-600'}>
+              {convergedLabel}
+            </span>
+          </span>
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">{NormativeLabels.common.powerFlowLabels.iterations}:</span>{' '}
+            {iterationsLabel}
+          </span>
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">{NormativeLabels.common.powerFlowLabels.run}:</span>{' '}
+            {runHeader.id.substring(0, 8)}...
+          </span>
+        </div>
+        {(proofPackRef || reproducibilitySummary) && (
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+            {proofPackRef && (
+              <span data-testid="power-flow-status-proof-pack">
+                <span className="font-medium text-slate-600">Pakiet uzasadnienia:</span> {proofPackRef}
+              </span>
+            )}
+            {reproducibilitySummary && (
+              <span data-testid="power-flow-status-reproducibility">
+                <span className="font-medium text-slate-600">
+                  {reproducibilitySummary.label}:
+                </span>{' '}
+                {reproducibilitySummary.value}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-4">
         <span className="text-sm text-slate-500">{formattedDate}</span>
@@ -1205,13 +1373,19 @@ export function PowerFlowResultsInspectorPage() {
     setActiveTab,
     overlayVisible,
     toggleOverlay,
+    runHeader,
   } = usePowerFlowResultsStore();
+  const analysisCaseContext = mergeAnalysisCaseContexts(
+    runHeader?.analysis_case_context,
+    runHeader?.input_metadata?.analysis_case_context,
+  );
 
   const isLoading = useIsAnyLoading();
 
   return (
     <div className="flex h-full flex-col bg-slate-50 p-4">
       <ResultStatusBar />
+      <AnalysisCaseContextPanel context={analysisCaseContext} />
 
       <div className="mt-4 flex items-center justify-between">
         <div className="flex gap-2">

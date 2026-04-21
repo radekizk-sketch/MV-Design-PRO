@@ -26,23 +26,17 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from network_model.solvers.protection_iec60255 import (
-    DEFAULT_REQUIRED_MARGIN_S,
-    IEC60255CurveType,
     PROTECTION_IEC60255_SOLVER_VERSION,
-    CurveTripTimeResult,
-    I2tThermalResult,
+    IEC60255CurveType,
     ProtectionCoordinationResult,
     RelaySettings,
-    SelectivityPairResult,
     SelectivityVerdict,
     check_selectivity_pair,
     compute_curve_trip_time,
     compute_i2t_thermal_energy,
     run_protection_coordination,
 )
-
 
 # =============================================================================
 # HELPERS
@@ -588,7 +582,7 @@ class TestI2tThermalEnergy:
             i_fault_a=10000.0,
             t_trip_s=0.05,
         )
-        expected = 10000.0 ** 2 * 0.05
+        expected = 10000.0**2 * 0.05
         assert abs(result.i2t_a2s - expected) < 1.0
 
     def test_i2t_negative_current_raises(self) -> None:

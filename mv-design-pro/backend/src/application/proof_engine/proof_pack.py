@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import io
 import json
-from pathlib import Path
 import sys
 import zipfile
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 from application.proof_engine.proof_inspector.exporters import (
     export_to_json,
@@ -99,9 +99,7 @@ class ProofPackBuilder:
                 "canonical_json": True,
                 "sorted_zip_entries": True,
                 "stable_newlines": "LF",
-                "notes_pl": (
-                    "Pakiet jest deterministyczny dla identycznych wejść i toolchain."
-                ),
+                "notes_pl": ("Pakiet jest deterministyczny dla identycznych wejść i toolchain."),
             },
         }
 
@@ -232,9 +230,9 @@ def _format_datetime_utc(value: datetime | None) -> str:
     if value is None:
         return "1970-01-01T00:00:00Z"
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
+        value = value.replace(tzinfo=UTC)
     else:
-        value = value.astimezone(timezone.utc)
+        value = value.astimezone(UTC)
     return value.isoformat().replace("+00:00", "Z")
 
 

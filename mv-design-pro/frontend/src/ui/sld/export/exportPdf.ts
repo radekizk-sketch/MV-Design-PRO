@@ -2,7 +2,7 @@
  * SLD PDF Export Utility
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF/ETAP-grade PDF export
+ * - ui_canonical_parity.md: PF/CANONICAL-grade PDF export
  * - SLD_UI_ARCHITECTURE.md: Layer visibility for export
  *
  * FEATURES:

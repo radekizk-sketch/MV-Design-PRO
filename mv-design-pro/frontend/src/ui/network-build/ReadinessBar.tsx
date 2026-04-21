@@ -1,28 +1,12 @@
-/**
- * ReadinessBar — Dolny pasek gotowości do analizy.
- *
- * Persistent bar widoczny w MODEL_EDIT pokazujący stan gotowości sieci
- * z szybkim dostępem do napraw i nawigacją do problematycznych elementów.
- *
- * INTEGRACJA:
- * - readiness.blockers + readiness.warnings z snapshotStore
- * - fixActions z snapshotStore → nawigacja do elementu / otwieranie modali
- * - selectionStore → podświetlanie elementu na SLD
- * - networkBuildStore.openOperationForm → otwieranie formularzy naprawczych
- *
- * BINDING: 100% PL etykiety.
- */
-
 import { useCallback, useState } from 'react';
 import { clsx } from 'clsx';
-import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
-import { useSelectionStore } from '../selection';
-import { resolveModalType } from '../schema-completeness/fixActionModalBridge';
-import type { FixAction } from '../../types/enm';
 
-// =============================================================================
-// Category filter
-// =============================================================================
+import type { FixAction } from '../../types/enm';
+import { notify } from '../notifications/store';
+import { useSelectionStore } from '../selection';
+import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { useNetworkBuildDerived, useNetworkBuildStore } from './networkBuildStore';
 
 type FilterCategory = 'all' | 'topologia' | 'katalogi' | 'eksploatacja' | 'analiza';
 
@@ -37,75 +21,37 @@ const CATEGORY_LABELS: Record<FilterCategory, string> = {
 function categorizeBlocker(code: string): FilterCategory {
   const lc = code.toLowerCase();
   if (
-    lc.includes('topology') || lc.includes('island') || lc.includes('disconnected') ||
-    lc.includes('voltage_mismatch') || lc.includes('grounding') || lc.includes('isolated')
+    lc.includes('topology')
+    || lc.includes('island')
+    || lc.includes('disconnected')
+    || lc.includes('voltage_mismatch')
+    || lc.includes('grounding')
+    || lc.includes('isolated')
   ) {
     return 'topologia';
   }
   if (
-    lc.includes('catalog') || lc.includes('missing_type') || lc.includes('no_catalog') ||
-    lc.includes('impedance') || lc.includes('zero_seq') || lc.includes('missing_rating')
+    lc.includes('catalog')
+    || lc.includes('missing_type')
+    || lc.includes('no_catalog')
+    || lc.includes('impedance')
+    || lc.includes('zero_seq')
+    || lc.includes('missing_rating')
   ) {
     return 'katalogi';
   }
   if (
-    lc.includes('switch_state') || lc.includes('nop') || lc.includes('normal_state') ||
-    lc.includes('coupler') || lc.includes('tap_position') || lc.includes('operating')
+    lc.includes('switch_state')
+    || lc.includes('nop')
+    || lc.includes('normal_state')
+    || lc.includes('coupler')
+    || lc.includes('tap_position')
+    || lc.includes('operating')
   ) {
     return 'eksploatacja';
   }
   return 'analiza';
 }
-
-// =============================================================================
-// Fix action resolution — uses canonical FixActionType values from backend
-// =============================================================================
-
-/**
- * Blocker code → fallback modal_type when backend doesn't send modal_type.
- * Used only for OPEN_MODAL actions where modal_type is null.
- */
-const CODE_TO_MODAL_TYPE: Record<string, string> = {
-  missing_source: 'SourceModal',
-  'network.no_source': 'SourceModal',
-  'source.missing_short_circuit': 'SourceModal',
-  no_source: 'SourceModal',
-  missing_transformer: 'TransformerModal',
-  'transformer.missing_uk_percent': 'TransformerModal',
-  no_transformer: 'TransformerModal',
-  missing_catalog: 'CatalogPicker',
-  'line.missing_catalog': 'CatalogPicker',
-  'line.missing_impedance': 'CatalogPicker',
-  no_catalog: 'CatalogPicker',
-  missing_protection: 'ProtectionBindingModal',
-  no_protection: 'ProtectionBindingModal',
-  missing_load: 'LoadModal',
-  missing_generator: 'GeneratorModal',
-  missing_field_device: 'FieldDeviceModal',
-  'switch.missing_normal_state': 'FieldDeviceModal',
-  missing_bay: 'FieldDeviceModal',
-};
-
-
-const CODE_TO_OPERATION: Array<{ pattern: RegExp; op: 'assign_catalog_to_element' | 'update_element_parameters' | 'add_transformer_sn_nn' | 'set_normal_open_point' | 'insert_branch_pole_on_segment_sn' | 'insert_zksn_on_segment_sn' }> = [
-  { pattern: /catalog|missing_type|impedance|zero_seq|missing_rating|line\.missing_impedance|transformer\.missing_uk_percent/i, op: 'assign_catalog_to_element' },
-  { pattern: /tap_position|operating|switch_state|normal_state|grounding|network\.grounding|switch\.missing_normal_state/i, op: 'update_element_parameters' },
-  { pattern: /branch_point\.invalid_parent_medium|branch_connection\.source_not_branch_capable/i, op: 'insert_branch_pole_on_segment_sn' },
-  { pattern: /zksn\.branch_count_invalid|branch_connection\.invalid_source_port|branch_point\.branch_port_occupied/i, op: 'insert_zksn_on_segment_sn' },
-  { pattern: /transformer|oze\.missing_transformer|bess\.missing_transformer/i, op: 'add_transformer_sn_nn' },
-  { pattern: /ring|nop/i, op: 'set_normal_open_point' },
-];
-
-function resolveOperationForCode(code: string): 'assign_catalog_to_element' | 'update_element_parameters' | 'add_transformer_sn_nn' | 'set_normal_open_point' | 'insert_branch_pole_on_segment_sn' | 'insert_zksn_on_segment_sn' | null {
-  for (const candidate of CODE_TO_OPERATION) {
-    if (candidate.pattern.test(code)) return candidate.op;
-  }
-  return null;
-}
-
-// =============================================================================
-// ReadinessBar
-// =============================================================================
 
 export interface ReadinessBarProps {
   className?: string;
@@ -113,99 +59,60 @@ export interface ReadinessBarProps {
 
 export function ReadinessBar({ className }: ReadinessBarProps) {
   const { readiness, blockersByCategory, isReady, fixActions } = useNetworkBuildDerived();
-  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
-  const selectElement = useSelectionStore((s) => s.selectElement);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const selectElement = useSelectionStore((state) => state.selectElement);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('all');
   const [expanded, setExpanded] = useState(false);
 
   const blockers = readiness?.blockers ?? [];
   const warnings = readiness?.warnings ?? [];
-
-  const filteredBlockers = activeFilter === 'all'
-    ? blockers
-    : blockers.filter((b) => categorizeBlocker(b.code) === activeFilter);
+  const filteredBlockers =
+    activeFilter === 'all'
+      ? blockers
+      : blockers.filter((blocker) => categorizeBlocker(blocker.code) === activeFilter);
 
   const handleNavigateToElement = useCallback(
     (elementRef: string) => {
-      if (elementRef) {
-        selectElement({ id: elementRef, type: 'Bus', name: elementRef });
-        window.dispatchEvent(new CustomEvent('sld:center-on-element', { detail: { elementId: elementRef } }));
+      if (!elementRef) {
+        return;
       }
+      selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+      centerSldOnElement(elementRef);
     },
-    [selectElement],
+    [centerSldOnElement, selectElement],
   );
 
   const handleFixAction = useCallback(
     (action: FixAction) => {
-      const payload = action.element_ref ? { element_ref: action.element_ref } : {};
-
-      switch (action.action_type) {
-        case 'NAVIGATE_TO_ELEMENT': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          break;
-        }
-        case 'OPEN_MODAL': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          const modalType = action.modal_type ?? CODE_TO_MODAL_TYPE[action.code] ?? null;
-          const modalId = resolveModalType(modalType);
-          if (modalId) {
-            window.dispatchEvent(
-              new CustomEvent('modal:open', { detail: { modalId, context: payload } }),
-            );
-          } else {
-            const fallbackOp = resolveOperationForCode(action.code) ?? 'update_element_parameters';
-            openOperationForm(fallbackOp, payload);
-          }
-          break;
-        }
-        case 'SELECT_CATALOG': {
-          if (action.element_ref) {
-            handleNavigateToElement(action.element_ref);
-          }
-          openOperationForm('assign_catalog_to_element', payload);
-          break;
-        }
-        case 'ADD_MISSING_DEVICE': {
-          const devModalType = action.modal_type ?? CODE_TO_MODAL_TYPE[action.code] ?? null;
-          const devModalId = resolveModalType(devModalType);
-          if (devModalId) {
-            window.dispatchEvent(
-              new CustomEvent('modal:open', { detail: { modalId: devModalId, context: payload } }),
-            );
-          } else {
-            const op = resolveOperationForCode(action.code) ?? 'update_element_parameters';
-            openOperationForm(op, payload);
-          }
-          break;
-        }
-        default:
-          break;
-      }
+      executeFixActionSurface(action, {
+        snapshot,
+        openOperationForm,
+        selectElement,
+        centerSldOnElement,
+        notify,
+      });
     },
-    [handleNavigateToElement, openOperationForm],
+    [centerSldOnElement, openOperationForm, selectElement, snapshot],
   );
 
-  if (!readiness) return null;
+  if (!readiness) {
+    return null;
+  }
 
-  // Compact mode when ready
   if (isReady) {
     return (
       <div
         className={clsx(
-          'flex items-center gap-3 px-4 py-1.5 bg-green-50 border-t border-green-200',
+          'flex items-center gap-3 border-t border-green-200 bg-green-50 px-4 py-1.5',
           className,
         )}
         data-testid="readiness-bar"
         data-ready="true"
       >
-        <span className="inline-block w-2.5 h-2.5 rounded-full bg-green-500" />
-        <span className="text-[11px] font-semibold text-green-700">
-          Gotowy do analizy
-        </span>
+        <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-500" />
+        <span className="text-[11px] font-semibold text-green-700">Gotowy do analizy</span>
         <span className="text-[10px] text-gray-500">
           {warnings.length > 0 ? `${warnings.length} ostrzeżeń` : 'Brak zastrzeżeń'}
         </span>
@@ -219,17 +126,15 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
       data-testid="readiness-bar"
       data-ready="false"
     >
-      {/* Top row: summary + category filters */}
       <div className="flex items-center gap-3 px-4 py-1.5">
-        {/* Expand toggle */}
         <button
           type="button"
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setExpanded((prev) => !prev)}
           className="text-gray-400 hover:text-gray-600"
           aria-label={expanded ? 'Zwiń pasek gotowości' : 'Rozwiń pasek gotowości'}
         >
           <svg
-            className={clsx('w-3.5 h-3.5 transition-transform', expanded && 'rotate-180')}
+            className={clsx('h-3.5 w-3.5 transition-transform', expanded && 'rotate-180')}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -239,8 +144,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
           </svg>
         </button>
 
-        {/* Counters */}
-        <div className="flex items-center gap-3 flex-shrink-0">
+        <div className="flex flex-shrink-0 items-center gap-3">
           {blockersByCategory.total > 0 && (
             <span className="text-[11px] font-semibold text-red-600">
               {blockersByCategory.total} blokad
@@ -253,29 +157,30 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
           )}
         </div>
 
-        {/* Separator */}
-        <div className="w-px h-4 bg-gray-200" />
+        <div className="h-4 w-px bg-gray-200" />
 
-        {/* Category chips */}
-        <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-          {(Object.keys(CATEGORY_LABELS) as FilterCategory[]).map((cat) => {
-            const count = cat === 'all'
-              ? blockersByCategory.total
-              : blockersByCategory[cat as keyof typeof blockersByCategory] as number;
-            if (cat !== 'all' && count === 0) return null;
+        <div className="flex flex-1 items-center gap-1 overflow-x-auto">
+          {(Object.keys(CATEGORY_LABELS) as FilterCategory[]).map((category) => {
+            const count =
+              category === 'all'
+                ? blockersByCategory.total
+                : (blockersByCategory[category as keyof typeof blockersByCategory] as number);
+            if (category !== 'all' && count === 0) {
+              return null;
+            }
             return (
               <button
-                key={cat}
+                key={category}
                 type="button"
-                onClick={() => setActiveFilter(cat)}
+                onClick={() => setActiveFilter(category)}
                 className={clsx(
-                  'px-2 py-0.5 text-[10px] rounded-full transition-colors whitespace-nowrap',
-                  activeFilter === cat
-                    ? 'bg-blue-100 text-blue-800 font-medium'
+                  'whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] transition-colors',
+                  activeFilter === category
+                    ? 'bg-blue-100 font-medium text-blue-800'
                     : 'text-gray-500 hover:bg-gray-100',
                 )}
               >
-                {CATEGORY_LABELS[cat]}
+                {CATEGORY_LABELS[category]}
                 {count > 0 && ` (${count})`}
               </button>
             );
@@ -283,31 +188,27 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
         </div>
       </div>
 
-      {/* Blocker list (compact: top 3, expanded: all + fix actions) */}
       {filteredBlockers.length > 0 && (
-        <div className="px-4 pb-1.5 space-y-0.5">
-          {filteredBlockers.slice(0, expanded ? undefined : 3).map((b, i) => {
+        <div className="space-y-0.5 px-4 pb-1.5">
+          {filteredBlockers.slice(0, expanded ? undefined : 3).map((blocker, index) => {
             const matchingFix = fixActions.find(
-              (f) => f.element_ref === b.element_ref && f.code === b.code,
+              (fixAction) => fixAction.element_ref === blocker.element_ref && fixAction.code === blocker.code,
             );
             return (
-              <div
-                key={`${b.code}-${i}`}
-                className="flex items-center gap-2 group"
-              >
-                <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />
+              <div key={`${blocker.code}-${index}`} className="group flex items-center gap-2">
+                <span className="inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-red-400" />
                 <span
-                  className="text-[10px] text-red-700 truncate max-w-[220px] cursor-pointer hover:underline"
-                  title={b.message_pl}
-                  onClick={() => b.element_ref && handleNavigateToElement(b.element_ref)}
+                  className="max-w-[220px] cursor-pointer truncate text-[10px] text-red-700 hover:underline"
+                  title={blocker.message_pl}
+                  onClick={() => blocker.element_ref && handleNavigateToElement(blocker.element_ref)}
                 >
-                  {b.message_pl}
+                  {blocker.message_pl}
                 </span>
-                {b.element_ref && (
+                {blocker.element_ref && (
                   <button
                     type="button"
-                    onClick={() => handleNavigateToElement(b.element_ref!)}
-                    className="text-[9px] text-blue-500 hover:text-blue-700 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => handleNavigateToElement(blocker.element_ref!)}
+                    className="text-[9px] text-blue-500 opacity-0 transition-opacity group-hover:opacity-100 hover:text-blue-700"
                     title="Pokaż na SLD"
                   >
                     ⊕
@@ -317,7 +218,7 @@ export function ReadinessBar({ className }: ReadinessBarProps) {
                   <button
                     type="button"
                     onClick={() => handleFixAction(matchingFix)}
-                    className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="rounded bg-blue-50 px-1.5 py-0.5 text-[9px] text-blue-600 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-blue-100"
                     title={matchingFix.message_pl}
                   >
                     Napraw

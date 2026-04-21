@@ -5,11 +5,10 @@ results with the Newton-Raphson solver to ensure consistency.
 
 FIX-09: FDLF solver with WHITE-BOX trace support.
 """
+
 import json
 
-import numpy as np
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -23,10 +22,10 @@ from network_model.solvers.power_flow_newton import (
     solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_types import (
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
+    PVSpec,
     SlackSpec,
 )
 

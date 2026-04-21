@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from application.proof_engine.types import ProofDocument, ProofValue
-
 from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import (
     ITCurveSeries,
@@ -13,6 +11,7 @@ from analysis.protection_curves_it.models import (
     ProtectionCurvesITView,
 )
 from analysis.protection_insight.models import ProtectionInsightItem, ProtectionInsightView
+from application.proof_engine.types import ProofDocument, ProofValue
 
 _P18_RULE_IDS = (
     "NR_P18_001",
@@ -212,10 +211,7 @@ def _build_why(
 ) -> str:
     base = item.why_pl if item is not None else "Brak danych selektywności do oceny."
     rules = ", ".join(_P18_RULE_IDS)
-    return (
-        f"Reguły: {rules}. Status: {normative_status.value}. "
-        f"WHY: {base}"
-    )
+    return f"Reguły: {rules}. Status: {normative_status.value}. " f"WHY: {base}"
 
 
 def _sort_series(series_sources: list[ITCurveSeries]) -> tuple[ITCurveSeries, ...]:
@@ -304,7 +300,7 @@ def _numeric_value(
     value = key_results.get(key)
     if value is None:
         return None
-    if isinstance(value.value, (int, float)):
+    if isinstance(value.value, int | float):
         return float(value.value)
     return None
 

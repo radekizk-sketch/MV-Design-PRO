@@ -1,7 +1,7 @@
 /**
  * SLD INDUSTRIAL AESTHETICS — Kontrakt estetyki przemysłowej
  *
- * Implementacja reguł wizualnych DIgSILENT/ABB/ETAP dla schematów SLD.
+ * Implementacja reguł wizualnych DIgSILENT/ABB/CANONICAL dla schematów SLD.
  *
  * ZASADA NADRZĘDNA:
  * - Deterministyczność: Ten sam Snapshot → identyczne współrzędne (piksel w piksel)
@@ -11,7 +11,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - docs/sld/SLD_LAYOUT_AESTHETIC_CONTRACT.md — pełna specyfikacja
- * - sldEtapStyle.ts — referencje do tych stałych
+ * - sldCanonicalStyle.ts — referencje do tych stałych
  *
  * ZAKAZ:
  * - Niecałkowite współrzędne (x % GRID_BASE !== 0)
@@ -401,7 +401,7 @@ export function ringPath(
 
 /**
  * Y szyny GPZ (górna krawedź schematu) [px].
- * GPZ ZAWSZE u góry — styl ABB/PowerFactory.
+ * GPZ ZAWSZE u góry — styl ABB/Canonical.
  */
 export const Y_GPZ = 60 as const;  // 3 * GRID_BASE
 
@@ -541,7 +541,7 @@ export function deterministicBranchSide(elementId: string): 1 | -1 {
  * Zwraca true jeśli wszystkie niezmienniki są spełnione.
  */
 // =============================================================================
-// § 1.9 STYL KANONICZNY SLD — ETAP/IEC
+// § 1.9 STYL KANONICZNY SLD — CANONICAL/IEC
 // =============================================================================
 
 /** Grubość toru głównego magistrali [px]. Dominujący — najgrubszy element. */

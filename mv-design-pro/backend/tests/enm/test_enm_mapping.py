@@ -1,20 +1,16 @@
 """Tests for ENM → NetworkGraph mapping and roundtrip to solver."""
 
-import pytest
-
+from enm.mapping import map_enm_to_network_graph
 from enm.models import (
     Bus,
-    Cable,
     EnergyNetworkModel,
     ENMHeader,
-    FuseBranch,
     Load,
     OverheadLine,
     Source,
     SwitchBranch,
     Transformer,
 )
-from enm.mapping import map_enm_to_network_graph
 from network_model.core.node import NodeType
 
 
@@ -41,7 +37,11 @@ class TestBasicMapping:
     def test_source_bus_is_slack(self):
         enm = _make_enm(
             buses=[Bus(ref_id="b1", name="Bus 1", voltage_kv=15)],
-            sources=[Source(ref_id="s1", name="Grid", bus_ref="b1", model="short_circuit_power", sk3_mva=200)],
+            sources=[
+                Source(
+                    ref_id="s1", name="Grid", bus_ref="b1", model="short_circuit_power", sk3_mva=200
+                )
+            ],
         )
         graph = map_enm_to_network_graph(enm)
         node = list(graph.nodes.values())[0]
@@ -55,8 +55,15 @@ class TestBasicMapping:
                 Bus(ref_id="b2", name="B2", voltage_kv=15),
             ],
             branches=[
-                OverheadLine(ref_id="ln_1", name="L1", from_bus_ref="b1", to_bus_ref="b2",
-                             length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3),
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    length_km=5,
+                    r_ohm_per_km=0.4,
+                    x_ohm_per_km=0.3,
+                ),
             ],
         )
         graph = map_enm_to_network_graph(enm)
@@ -73,8 +80,14 @@ class TestBasicMapping:
                 Bus(ref_id="b2", name="B2", voltage_kv=15),
             ],
             branches=[
-                SwitchBranch(ref_id="sw_1", name="Q1", from_bus_ref="b1", to_bus_ref="b2",
-                             type="breaker", status="closed"),
+                SwitchBranch(
+                    ref_id="sw_1",
+                    name="Q1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    type="breaker",
+                    status="closed",
+                ),
             ],
         )
         graph = map_enm_to_network_graph(enm)
@@ -89,8 +102,14 @@ class TestBasicMapping:
                 Bus(ref_id="b2", name="B2", voltage_kv=15),
             ],
             branches=[
-                SwitchBranch(ref_id="sw_1", name="Q1", from_bus_ref="b1", to_bus_ref="b2",
-                             type="breaker", status="open"),
+                SwitchBranch(
+                    ref_id="sw_1",
+                    name="Q1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    type="breaker",
+                    status="open",
+                ),
             ],
         )
         graph = map_enm_to_network_graph(enm)
@@ -104,12 +123,21 @@ class TestBasicMapping:
                 Bus(ref_id="b2", name="LV", voltage_kv=15),
             ],
             transformers=[
-                Transformer(ref_id="t1", name="T1", hv_bus_ref="b1", lv_bus_ref="b2",
-                            sn_mva=25, uhv_kv=110, ulv_kv=15, uk_percent=12, pk_kw=120),
+                Transformer(
+                    ref_id="t1",
+                    name="T1",
+                    hv_bus_ref="b1",
+                    lv_bus_ref="b2",
+                    sn_mva=25,
+                    uhv_kv=110,
+                    ulv_kv=15,
+                    uk_percent=12,
+                    pk_kw=120,
+                ),
             ],
         )
         graph = map_enm_to_network_graph(enm)
-        trafo_branches = [b for b in graph.branches.values() if hasattr(b, 'rated_power_mva')]
+        trafo_branches = [b for b in graph.branches.values() if hasattr(b, "rated_power_mva")]
         assert len(trafo_branches) == 1
         assert trafo_branches[0].rated_power_mva == 25.0
 
@@ -133,8 +161,15 @@ class TestDeterminism:
                 Bus(ref_id="b2", name="B2", voltage_kv=15),
             ],
             branches=[
-                OverheadLine(ref_id="ln_1", name="L1", from_bus_ref="b1", to_bus_ref="b2",
-                             length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3),
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    length_km=5,
+                    r_ohm_per_km=0.4,
+                    x_ohm_per_km=0.3,
+                ),
             ],
         )
         g1 = map_enm_to_network_graph(enm)
@@ -152,12 +187,27 @@ class TestSolverRoundtrip:
                 Bus(ref_id="bus_nn", name="Szyna nN", voltage_kv=0.4),
             ],
             sources=[
-                Source(ref_id="src_grid", name="Sieć", bus_ref="bus_sn",
-                       model="short_circuit_power", sk3_mva=220, rx_ratio=0.1),
+                Source(
+                    ref_id="src_grid",
+                    name="Sieć",
+                    bus_ref="bus_sn",
+                    model="short_circuit_power",
+                    sk3_mva=220,
+                    rx_ratio=0.1,
+                ),
             ],
             transformers=[
-                Transformer(ref_id="trafo_T1", name="T1", hv_bus_ref="bus_sn", lv_bus_ref="bus_nn",
-                            sn_mva=0.63, uhv_kv=15, ulv_kv=0.4, uk_percent=4, pk_kw=6.5),
+                Transformer(
+                    ref_id="trafo_T1",
+                    name="T1",
+                    hv_bus_ref="bus_sn",
+                    lv_bus_ref="bus_nn",
+                    sn_mva=0.63,
+                    uhv_kv=15,
+                    ulv_kv=0.4,
+                    uk_percent=4,
+                    pk_kw=6.5,
+                ),
             ],
         )
         graph = map_enm_to_network_graph(enm)

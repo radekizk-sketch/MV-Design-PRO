@@ -2,7 +2,7 @@
 
 **Version:** 4.0
 **Status:** CANONICAL & BINDING
-**Architecture Model:** DIgSILENT PowerFactory (Conceptual Alignment)
+**Architecture Model:** Canonical Reference Architecture
 
 This document is the **executive overview and navigation hub** for MV-DESIGN-PRO.
 The detailed specification lives in `docs/spec/` (18 chapters + supplements).
@@ -52,7 +52,7 @@ The full system specification is maintained in **`docs/spec/`**:
 
 ## 1. Architectural Principles
 
-The system is aligned with DIgSILENT PowerFactory:
+The system follows the canonical reference architecture:
 - One explicit NetworkModel per project (singleton)
 - Multiple Study Cases (calculation scenarios)
 - No fictional entities in solvers
@@ -204,7 +204,7 @@ SC3F (IEC 60909), VDROP, Equipment, Power Flow, Losses & Energy, Protection Over
 
 ## 8. Validation Layer
 
-NetworkValidator runs BEFORE any solver execution (13 PowerFactory-grade rules).
+NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 
 > **Detail:** see Chapter 12 (Validation & QA).
 
@@ -222,7 +222,7 @@ NetworkValidator runs BEFORE any solver execution (13 PowerFactory-grade rules).
 
 ## 10. Canonical Terminology
 
-| Term | Definition | PowerFactory Equivalent |
+| Term | Definition | Reference Equivalent |
 |------|------------|------------------------|
 | Bus | Electrical node (single potential) | Terminal |
 | Branch | Physical connection with impedance | Line/Cable/Trafo |
@@ -272,7 +272,7 @@ NetworkValidator runs BEFORE any solver execution (13 PowerFactory-grade rules).
 | Protection Determinism Guards | [`docs/analysis/PROTECTION_DETERMINISM_GUARDS.md`](docs/analysis/PROTECTION_DETERMINISM_GUARDS.md) |
 | Protection AS-IS Map | [`docs/analysis/PROTECTION_ASIS_MAP.md`](docs/analysis/PROTECTION_ASIS_MAP.md) |
 | Analysis Specs | [`docs/analysis/*.md`](docs/analysis/) |
-| PowerFactory Compliance | [`POWERFACTORY_COMPLIANCE.md`](POWERFACTORY_COMPLIANCE.md) |
+| Canonical Compliance | [`CANONICAL_COMPLIANCE.md`](CANONICAL_COMPLIANCE.md) |
 | Documentation Index | [`docs/INDEX.md`](docs/INDEX.md) |
 | Historical ExecPlans (archive) | [`docs/audit/historical_execplans/`](docs/audit/historical_execplans/) |
 

@@ -2,7 +2,7 @@
 Application-level helpers for enforcing NetworkModel invariants.
 """
 
-from .errors import NetworkModelInvariantError, MultipleNetworkModelsError
+from .errors import MultipleNetworkModelsError, NetworkModelInvariantError
 from .graph_builder import build_network_graph
 from .identity import (
     ensure_snapshot_matches_project,

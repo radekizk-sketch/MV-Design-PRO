@@ -10,18 +10,25 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field
-
 from application.execution_engine import ExecutionEngineService
 from domain.execution import ExecutionAnalysisType
 from enm.canonical_analysis import (
     build_execution_result_set,
+)
+from enm.canonical_analysis import (
     create_run as create_canonical_run,
+)
+from enm.canonical_analysis import (
     execute_run as execute_canonical_run,
+)
+from enm.canonical_analysis import (
     get_run as get_canonical_run,
+)
+from enm.canonical_analysis import (
     list_runs_for_case as list_canonical_runs_for_case,
 )
+from fastapi import APIRouter, HTTPException, Request, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["execution-runs"])
 

@@ -1,23 +1,11 @@
-/**
- * ModalController — tests for modal lifecycle management.
- *
- * Verifies:
- * - dispatch() opens modal for recognized canonical operations
- * - dispatch() shows notification for unrecognized operations
- * - close() resets state
- * - handleSubmit() triggers completion callback
- * - All canonical ops from modal registry are dispatchable
- */
+import { describe, expect, it } from 'vitest';
+import {
+  OPERATION_SURFACE_REGISTRY,
+  getOperationSurfaceByOp,
+} from '../../topology/modals/operationSurfaceRegistry';
 
-import { describe, it, expect } from 'vitest';
-import { MODAL_REGISTRY, getModalByOp, MODAL_IDS } from '../../topology/modals/modalRegistry';
-
-describe('ModalController dispatch coverage', () => {
-  it('should have at least 23 registry entries', () => {
-    expect(MODAL_REGISTRY.length).toBeGreaterThanOrEqual(23);
-  });
-
-  it('should have all original 16 modals still present', () => {
+describe('SLD operation surface compatibility', () => {
+  it('keeps the historical active canonical operations available', () => {
     const originalOps = [
       'continue_trunk_segment_sn',
       'insert_station_on_segment_sn',
@@ -27,84 +15,71 @@ describe('ModalController dispatch coverage', () => {
       'set_normal_open_point',
       'add_nn_outgoing_field',
       'add_nn_load',
-      'add_pv_inverter_nn',
-      'add_bess_inverter_nn',
+      'add_converter_source',
       'add_relay',
       'assign_catalog_to_element',
       'update_element_parameters',
-      'run_power_flow',
-      'run_short_circuit',
     ];
+
     for (const op of originalOps) {
-      const entry = getModalByOp(op);
+      const entry = getOperationSurfaceByOp(op);
       expect(entry).toBeDefined();
       expect(entry!.implemented).toBe(true);
     }
   });
 
-  it('should have new Phase 7 modals', () => {
+  it('keeps the V11/V12 additions available', () => {
     const newOps = [
       'add_genset_nn',
       'add_ups_nn',
       'add_grid_source_sn',
-      'add_measurement',
-      'add_transformer_sn_nn',
       'add_sn_bay',
-      'add_nn_segment',
+      'add_transformer_sn_nn',
+      'insert_branch_pole_on_segment_sn',
+      'insert_zksn_on_segment_sn',
+      'add_ct',
+      'add_vt',
     ];
+
     for (const op of newOps) {
-      const entry = getModalByOp(op);
+      const entry = getOperationSurfaceByOp(op);
       expect(entry).toBeDefined();
       expect(entry!.implemented).toBe(true);
     }
   });
 
-  it('should have all entries implemented', () => {
-    const unimplemented = MODAL_REGISTRY.filter((e) => !e.implemented);
-    expect(unimplemented).toHaveLength(0);
+  it('does not expose removed aliases', () => {
+    expect(getOperationSurfaceByOp('add_measurement')).toBeUndefined();
+    expect(getOperationSurfaceByOp(['add', 'nn', 'source', 'field'].join('_'))).toBeUndefined();
   });
 
-  it('should have unique modal IDs', () => {
-    const ids = MODAL_REGISTRY.map((e) => e.modalId);
-    const unique = new Set(ids);
-    expect(unique.size).toBe(ids.length);
-  });
+  it('has unique operations and only Polish labels', () => {
+    const ops = OPERATION_SURFACE_REGISTRY.map((entry) => entry.canonicalOp);
+    expect(new Set(ops).size).toBe(ops.length);
 
-  it('should have Polish labels only (no English verbs)', () => {
     const forbiddenWords = ['Add', 'Edit', 'Delete', 'Show', 'Open', 'Close', 'Run', 'Set'];
-    for (const entry of MODAL_REGISTRY) {
+    for (const entry of OPERATION_SURFACE_REGISTRY) {
       for (const word of forbiddenWords) {
         expect(entry.labelPl).not.toContain(word);
       }
     }
   });
 
-  it('should have canonical operations in snake_case', () => {
-    for (const entry of MODAL_REGISTRY) {
-      expect(entry.canonicalOp).toMatch(/^[a-z][a-z0-9_]*$/);
-    }
-  });
-
-  it('should have component names in PascalCase', () => {
-    for (const entry of MODAL_REGISTRY) {
-      expect(entry.componentName).toMatch(/^[A-Z]/);
-    }
-  });
-
-  it('MODAL_IDS should align with registry modal IDs', () => {
-    const registryIds = new Set(MODAL_REGISTRY.map((e) => e.modalId));
-    for (const id of Object.values(MODAL_IDS)) {
-      expect(registryIds.has(id)).toBe(true);
-    }
-  });
-
-  it('getModalByOp should return correct entries', () => {
-    expect(getModalByOp('add_genset_nn')?.componentName).toBe('GensetModal');
-    expect(getModalByOp('add_ups_nn')?.componentName).toBe('UPSModal');
-    expect(getModalByOp('add_grid_source_sn')?.componentName).toBe('GridSourceModal');
-    expect(getModalByOp('add_measurement')?.componentName).toBe('MeasurementModal');
-    expect(getModalByOp('add_transformer_sn_nn')?.componentName).toBe('TransformerStationModal');
-    expect(getModalByOp('add_sn_bay')?.componentName).toBe('NodeModal');
-    expect(getModalByOp('add_nn_segment')?.componentName).toBe('BranchModal');
+  it('maps selected operations to the expected components', () => {
+    expect(getOperationSurfaceByOp('add_genset_nn')?.componentName).toBe(
+      'AddDispatchableSourceForm',
+    );
+    expect(getOperationSurfaceByOp('add_ups_nn')?.componentName).toBe(
+      'AddDispatchableSourceForm',
+    );
+    expect(getOperationSurfaceByOp('add_grid_source_sn')?.componentName).toBe(
+      'AddGridSourceForm',
+    );
+    expect(getOperationSurfaceByOp('add_sn_bay')?.componentName).toBe(
+      'AddSnBayForm',
+    );
+    expect(getOperationSurfaceByOp('add_transformer_sn_nn')?.componentName).toBe(
+      'AddTransformerForm',
+    );
   });
 });

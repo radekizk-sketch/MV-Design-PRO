@@ -16,27 +16,21 @@ INVARIANTS:
 - Polish labels required
 """
 
-import hashlib
-import json
-
 import pytest
-
-from network_model.catalog.types import (
-    CatalogBinding,
-    CatalogNamespace,
-    MATERIALIZATION_CONTRACTS,
-)
-from network_model.catalog.drift_detection import (
-    DriftSeverity,
-    ElementBinding,
-    detect_drift,
-)
 from domain.variant_comparison import (
-    DeltaDirection,
     VariantTopologySummary,
     build_variant_comparison,
     compute_config_deltas,
     compute_result_delta,
+)
+from network_model.catalog.drift_detection import (
+    ElementBinding,
+    detect_drift,
+)
+from network_model.catalog.types import (
+    MATERIALIZATION_CONTRACTS,
+    CatalogBinding,
+    CatalogNamespace,
 )
 
 # Import golden network data
@@ -179,9 +173,7 @@ class TestGoldenCatalogBindings:
         ],
     )
     def test_binding_has_version(self, step_name, binding):
-        assert binding.catalog_item_version, (
-            f"Step {step_name}: missing catalog_item_version"
-        )
+        assert binding.catalog_item_version, f"Step {step_name}: missing catalog_item_version"
 
     @pytest.mark.parametrize(
         "step_name,binding",
@@ -198,12 +190,10 @@ class TestGoldenCatalogBindings:
         ],
     )
     def test_binding_has_item_id(self, step_name, binding):
-        assert binding.catalog_item_id, (
-            f"Step {step_name}: missing catalog_item_id"
-        )
+        assert binding.catalog_item_id, f"Step {step_name}: missing catalog_item_id"
 
     def test_binding_round_trip(self):
-        for step_name, binding in get_all_golden_bindings():
+        for _step_name, binding in get_all_golden_bindings():
             d = binding.to_dict()
             reconstructed = CatalogBinding.from_dict(d)
             assert reconstructed.catalog_namespace == binding.catalog_namespace
@@ -232,29 +222,21 @@ class TestMaterializationContractCoverage:
     def test_all_golden_namespaces_have_contracts(self):
         for ns in self.GOLDEN_NAMESPACES:
             assert ns in MATERIALIZATION_CONTRACTS, (
-                f"Namespace '{ns}' used in golden network but "
-                f"has no MaterializationContract"
+                f"Namespace '{ns}' used in golden network but " f"has no MaterializationContract"
             )
 
     def test_contracts_have_solver_fields(self):
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
-            assert len(contract.solver_fields) > 0, (
-                f"Contract for '{ns}' has no solver_fields"
-            )
+            assert len(contract.solver_fields) > 0, f"Contract for '{ns}' has no solver_fields"
 
     def test_contracts_have_ui_fields(self):
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
-            assert len(contract.ui_fields) > 0, (
-                f"Contract for '{ns}' has no ui_fields"
-            )
+            assert len(contract.ui_fields) > 0, f"Contract for '{ns}' has no ui_fields"
 
     def test_ui_fields_have_polish_labels(self):
         for ns, contract in MATERIALIZATION_CONTRACTS.items():
-            for field_name, label_pl, unit in contract.ui_fields:
-                assert label_pl, (
-                    f"Contract '{ns}', field '{field_name}': "
-                    f"empty Polish label"
-                )
+            for field_name, label_pl, _unit in contract.ui_fields:
+                assert label_pl, f"Contract '{ns}', field '{field_name}': " f"empty Polish label"
 
 
 class TestGoldenDriftDetection:
@@ -276,14 +258,12 @@ class TestGoldenDriftDetection:
 
         # Build catalog items dict with matching versions
         catalog_items = {}
-        for step_name, binding in get_all_golden_bindings():
+        for _step_name, binding in get_all_golden_bindings():
             key = f"{binding.catalog_namespace}:{binding.catalog_item_id}"
             catalog_items[key] = {"version": binding.catalog_item_version}
 
         report = detect_drift(bindings, catalog_items, {}, {})
-        assert report.is_clean, (
-            f"Expected clean drift report, got {len(report.drifts)} drifts"
-        )
+        assert report.is_clean, f"Expected clean drift report, got {len(report.drifts)} drifts"
 
     def test_drift_detected_on_version_bump(self):
         """Version bump on one item should produce exactly one drift entry."""
@@ -337,12 +317,8 @@ class TestGoldenVariantComparison:
         )
 
         result_deltas = (
-            compute_result_delta(
-                "ik3f_max_ka", "Ik'' maks (GPZ)", 12.5, 12.8, "kA"
-            ),
-            compute_result_delta(
-                "v_min_pu", "U min (koniec mag.)", 0.94, 0.96, "pu"
-            ),
+            compute_result_delta("ik3f_max_ka", "Ik'' maks (GPZ)", 12.5, 12.8, "kA"),
+            compute_result_delta("v_min_pu", "U min (koniec mag.)", 0.94, 0.96, "pu"),
         )
 
         comparison = build_variant_comparison(
@@ -362,22 +338,23 @@ class TestGoldenVariantComparison:
 
     def test_comparison_determinism_100_runs(self):
         """Same comparison computed 100 times must produce identical hash."""
-        config_deltas = compute_config_deltas(
-            {"c_factor_max": 1.10}, {"c_factor_max": 1.05}
-        )
+        config_deltas = compute_config_deltas({"c_factor_max": 1.10}, {"c_factor_max": 1.05})
         topology = VariantTopologySummary(elements_added=1, added_element_ids=("pv_1",))
-        result_deltas = (
-            compute_result_delta("ik3f_max_ka", "Ik''", 10.0, 11.0, "kA"),
-        )
+        result_deltas = (compute_result_delta("ik3f_max_ka", "Ik''", 10.0, 11.0, "kA"),)
 
         hashes = set()
         for _ in range(100):
             r = build_variant_comparison(
-                "a", "b", "A", "B",
-                config_deltas, topology, result_deltas,
+                "a",
+                "b",
+                "A",
+                "B",
+                config_deltas,
+                topology,
+                result_deltas,
             )
             hashes.add(r.comparison_hash)
 
-        assert len(hashes) == 1, (
-            f"Non-deterministic: got {len(hashes)} different hashes in 100 runs"
-        )
+        assert (
+            len(hashes) == 1
+        ), f"Non-deterministic: got {len(hashes)} different hashes in 100 runs"

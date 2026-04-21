@@ -92,9 +92,7 @@ def test_network_wizard_happy_path() -> None:
             payload={"name": "Load", "p_mw": 1.0, "q_mvar": 0.5},
         ),
     )
-    operating_case = service.create_operating_case(
-        project.id, "Normal", {"base_mva": 100.0}
-    )
+    operating_case = service.create_operating_case(project.id, "Normal", {"base_mva": 100.0})
 
     report = service.validate_network(project.id, operating_case.id)
     assert report.is_valid
@@ -151,12 +149,12 @@ def test_network_wizard_import_csv() -> None:
 
     nodes_csv = (
         "id,name,node_type,base_kv,attrs_json\n"
-        f"{node_id},Slack,SLACK,15.0,{{\"voltage_magnitude_pu\":1.0,\"voltage_angle_rad\":0.0}}\n"
-        " ,Load,PQ,15.0,{\"active_power_mw\":5.0,\"reactive_power_mvar\":2.0}\n"
+        f'{node_id},Slack,SLACK,15.0,{{"voltage_magnitude_pu":1.0,"voltage_angle_rad":0.0}}\n'
+        ' ,Load,PQ,15.0,{"active_power_mw":5.0,"reactive_power_mvar":2.0}\n'
     )
     branches_csv = (
         "id,name,branch_type,from_node_id,to_node_id,in_service,params_json\n"
-        f",Line-1,LINE,{node_id},{node_id},true,{{\"r_ohm_per_km\":0.1,\"x_ohm_per_km\":0.2,\"length_km\":1.0}}\n"
+        f',Line-1,LINE,{node_id},{node_id},true,{{"r_ohm_per_km":0.1,"x_ohm_per_km":0.2,"length_km":1.0}}\n'
     )
 
     report = service.import_nodes_branches_from_csv(project.id, nodes_csv, branches_csv)
@@ -165,9 +163,13 @@ def test_network_wizard_import_csv() -> None:
 
     updated_nodes_csv = (
         "id,name,node_type,base_kv,attrs_json\n"
-        f"{node_id},Slack-Updated,SLACK,15.0,{{\"voltage_magnitude_pu\":1.0,\"voltage_angle_rad\":0.0}}\n"
+        f'{node_id},Slack-Updated,SLACK,15.0,{{"voltage_magnitude_pu":1.0,"voltage_angle_rad":0.0}}\n'
     )
-    update_report = service.import_nodes_branches_from_csv(project.id, updated_nodes_csv, "id,name,branch_type,from_node_id,to_node_id,in_service,params_json\n")
+    update_report = service.import_nodes_branches_from_csv(
+        project.id,
+        updated_nodes_csv,
+        "id,name,branch_type,from_node_id,to_node_id,in_service,params_json\n",
+    )
     assert update_report.updated.get("nodes") == 1
 
 

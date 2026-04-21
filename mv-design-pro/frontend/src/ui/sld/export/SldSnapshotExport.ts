@@ -2,7 +2,7 @@
  * SLD Snapshot Export Orchestrator
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF/ETAP-grade export workflow
+ * - ui_canonical_parity.md: PF/CANONICAL-grade export workflow
  * - SLD_UI_ARCHITECTURE.md: Viewport and layer management
  *
  * RESPONSIBILITIES:

@@ -18,7 +18,6 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.proof_generator import (
     ProofGenerator,
@@ -36,7 +35,6 @@ from application.proof_engine.types import (
     QUInput,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
-
 
 # =============================================================================
 # Fixtures
@@ -171,9 +169,7 @@ def lc_transformer_input() -> LoadCurrentsInput:
 class TestSC3FProofGenerator:
     """Testy generatora dowodów SC3F."""
 
-    def test_generate_sc3f_proof_returns_proof_document(
-        self, sc3f_test_input: SC3FInput
-    ):
+    def test_generate_sc3f_proof_returns_proof_document(self, sc3f_test_input: SC3FInput):
         """Generuje ProofDocument dla danych SC3F."""
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
 
@@ -206,13 +202,9 @@ class TestSC3FProofGenerator:
         # Weryfikacja kroków obowiązkowych
         assert any("thevenin" in t for t in step_titles)
         assert any(
-            "i_k''" in t or "początkowy prąd zwarciowy symetryczny" in t
-            for t in step_titles
+            "i_k''" in t or "początkowy prąd zwarciowy symetryczny" in t for t in step_titles
         )
-        assert any(
-            "κ" in t or "kappa" in t or "współczynnik udaru" in t
-            for t in step_titles
-        )
+        assert any("κ" in t or "kappa" in t or "współczynnik udaru" in t for t in step_titles)
         assert any("i_p" in t or "prąd udarowy" in t for t in step_titles)
         assert any("i_dyn" in t or "prąd dynamiczny" in t for t in step_titles)
         assert any("i_th" in t or "prąd cieplny" in t for t in step_titles)
@@ -267,9 +259,7 @@ class TestSC3FProofGenerator:
 class TestVDROPProofGenerator:
     """Testy generatora dowodów VDROP."""
 
-    def test_generate_vdrop_proof_returns_proof_document(
-        self, vdrop_test_input: VDROPInput
-    ):
+    def test_generate_vdrop_proof_returns_proof_document(self, vdrop_test_input: VDROPInput):
         """Generuje ProofDocument dla danych VDROP."""
         proof = ProofGenerator.generate_vdrop_proof(vdrop_test_input)
 
@@ -549,8 +539,13 @@ class TestEquationRegistry:
         sc3f_eqs = EquationRegistry.get_sc3f_equations()
 
         required_ids = [
-            "EQ_SC3F_002", "EQ_SC3F_003", "EQ_SC3F_004", "EQ_SC3F_005",
-            "EQ_SC3F_006", "EQ_SC3F_007", "EQ_SC3F_008",
+            "EQ_SC3F_002",
+            "EQ_SC3F_003",
+            "EQ_SC3F_004",
+            "EQ_SC3F_005",
+            "EQ_SC3F_006",
+            "EQ_SC3F_007",
+            "EQ_SC3F_008",
             "EQ_SC3F_008a",
         ]
 
@@ -562,8 +557,12 @@ class TestEquationRegistry:
         vdrop_eqs = EquationRegistry.get_vdrop_equations()
 
         required_ids = [
-            "EQ_VDROP_001", "EQ_VDROP_002", "EQ_VDROP_003",
-            "EQ_VDROP_004", "EQ_VDROP_005", "EQ_VDROP_006",
+            "EQ_VDROP_001",
+            "EQ_VDROP_002",
+            "EQ_VDROP_003",
+            "EQ_VDROP_004",
+            "EQ_VDROP_005",
+            "EQ_VDROP_006",
             "EQ_VDROP_007",
         ]
 
@@ -852,9 +851,7 @@ def qu_counterfactual_input_with_vdrop(
 class TestP11_1c_QU_VDROP_Link:
     """Testy P11.1c — Q(U) × VDROP (LINK-ONLY)."""
 
-    def test_qu_vdrop_link_step_present(
-        self, qu_test_input_with_vdrop: QUInput
-    ):
+    def test_qu_vdrop_link_step_present(self, qu_test_input_with_vdrop: QUInput):
         """
         P11.1c: Krok EQ_QU_005 (VDROP link) jest obecny gdy podano dane VDROP.
 
@@ -888,8 +885,12 @@ class TestP11_1c_QU_VDROP_Link:
 
         # Sprawdź że wszystkie oryginalne są obecne
         expected_ids = [
-            "EQ_VDROP_001", "EQ_VDROP_002", "EQ_VDROP_003",
-            "EQ_VDROP_004", "EQ_VDROP_005", "EQ_VDROP_006",
+            "EQ_VDROP_001",
+            "EQ_VDROP_002",
+            "EQ_VDROP_003",
+            "EQ_VDROP_004",
+            "EQ_VDROP_005",
+            "EQ_VDROP_006",
             "EQ_VDROP_007",
         ]
         for eq_id in expected_ids:
@@ -906,9 +907,7 @@ class TestP11_1c_QU_VDROP_Link:
         """
         P11.1c: Counterfactual zawiera U_A, U_B, ΔU gdy podano dane VDROP.
         """
-        proof = ProofGenerator.generate_qu_counterfactual(
-            qu_counterfactual_input_with_vdrop
-        )
+        proof = ProofGenerator.generate_qu_counterfactual(qu_counterfactual_input_with_vdrop)
 
         key_results = proof.summary.key_results
 
@@ -957,12 +956,10 @@ class TestP11_1c_QU_VDROP_Link:
         # Sprawdź że mapping_key odnosi się do istniejących kluczy VDROP
         mapping_keys = [s.mapping_key for s in eq.symbols]
         assert "delta_u_x_percent" in mapping_keys  # z EQ_VDROP_004
-        assert "delta_u_percent" in mapping_keys    # z EQ_VDROP_005
-        assert "u_kv" in mapping_keys               # z EQ_VDROP_007
+        assert "delta_u_percent" in mapping_keys  # z EQ_VDROP_005
+        assert "u_kv" in mapping_keys  # z EQ_VDROP_007
 
-    def test_latex_renders_vdrop_link_section(
-        self, qu_test_input_with_vdrop: QUInput
-    ):
+    def test_latex_renders_vdrop_link_section(self, qu_test_input_with_vdrop: QUInput):
         """
         P11.1c: LaTeX zawiera sekcję "Wpływ Q na U" gdy podano dane VDROP.
         """
@@ -976,15 +973,22 @@ class TestP11_1c_QU_VDROP_Link:
         assert "Q_{cmd}" in latex
         assert "Delta U_X" in latex or "\\Delta U_X" in latex
 
+    def test_qu_vdrop_link_latex_contains_delta_u(self, qu_test_input_with_vdrop: QUInput):
+        """P11.1c: krok link-only pokazuje takze posrednie Delta U z VDROP."""
+        proof = ProofGenerator.generate_qu_proof(qu_test_input_with_vdrop)
+
+        last_step = sorted(proof.steps, key=lambda s: s.step_number)[-1]
+
+        assert "\\Delta U = 0.6700\\%" in last_step.substitution_latex
+        assert "\\text{EQ\\_VDROP\\_007}" in last_step.substitution_latex
+
     def test_latex_renders_counterfactual_u_table(
         self, qu_counterfactual_input_with_vdrop: QUCounterfactualInput
     ):
         """
         P11.1c: LaTeX counterfactual zawiera wiersz U w tabeli A/B/Δ.
         """
-        proof = ProofGenerator.generate_qu_counterfactual(
-            qu_counterfactual_input_with_vdrop
-        )
+        proof = ProofGenerator.generate_qu_counterfactual(qu_counterfactual_input_with_vdrop)
         latex = proof.latex_representation
 
         # Tabela A/B/Δ

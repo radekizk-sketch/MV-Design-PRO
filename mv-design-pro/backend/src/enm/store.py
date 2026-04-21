@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from enm.hash import compute_enm_hash
-from enm.models import ENMDefaults, ENMHeader, EnergyNetworkModel
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 _enm_store: dict[str, EnergyNetworkModel] = {}
 
@@ -33,7 +33,7 @@ def set_enm(case_id: str, enm: EnergyNetworkModel) -> EnergyNetworkModel:
 
     old_rev = existing.header.revision if existing else 0
     enm.header.revision = old_rev + 1
-    enm.header.updated_at = datetime.now(timezone.utc)
+    enm.header.updated_at = datetime.now(UTC)
     enm.header.hash_sha256 = compute_enm_hash(enm)
     _enm_store[case_id] = enm
     return enm

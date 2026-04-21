@@ -1,12 +1,12 @@
 """XLSX Import API — import sieci z pliku Excel."""
+
 from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
-
 from api.dependencies import get_uow_factory
 from application.xlsx_import import XlsxNetworkImporter
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 

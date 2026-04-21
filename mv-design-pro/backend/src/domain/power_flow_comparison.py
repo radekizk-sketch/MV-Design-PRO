@@ -20,14 +20,13 @@ NOT IN SCOPE:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-import hashlib
-import json
-
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -40,12 +39,13 @@ class PowerFlowIssueCode(str, Enum):
 
     Technical, factual issue classification without normative interpretation.
     """
+
     NON_CONVERGENCE_CHANGE = "NON_CONVERGENCE_CHANGE"  # One run converged, other did not
-    VOLTAGE_DELTA_HIGH = "VOLTAGE_DELTA_HIGH"          # Large voltage magnitude change
-    ANGLE_SHIFT_HIGH = "ANGLE_SHIFT_HIGH"              # Large angle change
-    LOSSES_INCREASED = "LOSSES_INCREASED"              # Significant losses increase
-    LOSSES_DECREASED = "LOSSES_DECREASED"              # Significant losses decrease
-    SLACK_POWER_CHANGED = "SLACK_POWER_CHANGED"        # Slack bus power significantly changed
+    VOLTAGE_DELTA_HIGH = "VOLTAGE_DELTA_HIGH"  # Large voltage magnitude change
+    ANGLE_SHIFT_HIGH = "ANGLE_SHIFT_HIGH"  # Large angle change
+    LOSSES_INCREASED = "LOSSES_INCREASED"  # Significant losses increase
+    LOSSES_DECREASED = "LOSSES_DECREASED"  # Significant losses decrease
+    SLACK_POWER_CHANGED = "SLACK_POWER_CHANGED"  # Slack bus power significantly changed
 
 
 class PowerFlowIssueSeverity(int, Enum):
@@ -58,6 +58,7 @@ class PowerFlowIssueSeverity(int, Enum):
     4 = Major (action required)
     5 = Critical (immediate action required)
     """
+
     INFORMATIONAL = 1
     MINOR = 2
     MODERATE = 3
@@ -136,6 +137,7 @@ class PowerFlowBusDiffRow:
         delta_p_mw: Active power delta (B - A) [MW]
         delta_q_mvar: Reactive power delta (B - A) [Mvar]
     """
+
     bus_id: str
     v_pu_a: float
     v_pu_b: float
@@ -221,6 +223,7 @@ class PowerFlowBranchDiffRow:
         delta_losses_p_mw: Losses active power delta (B - A) [MW]
         delta_losses_q_mvar: Losses reactive power delta (B - A) [Mvar]
     """
+
     branch_id: str
     p_from_mw_a: float
     p_from_mw_b: float
@@ -310,6 +313,7 @@ class PowerFlowRankingIssue:
         description_pl: Polish technical description
         evidence_ref: Index of row supporting this issue
     """
+
     issue_code: PowerFlowIssueCode
     severity: PowerFlowIssueSeverity
     element_ref: str
@@ -348,6 +352,7 @@ class PowerFlowComparisonSummary:
     """
     Summary statistics for power flow comparison.
     """
+
     total_buses: int
     total_branches: int
     converged_a: bool
@@ -427,6 +432,7 @@ class PowerFlowComparisonResult:
         input_hash: SHA-256 hash of inputs for caching
         created_at: Comparison timestamp
     """
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -436,7 +442,7 @@ class PowerFlowComparisonResult:
     ranking: tuple[PowerFlowRankingIssue, ...]
     summary: PowerFlowComparisonSummary
     input_hash: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -462,11 +468,17 @@ class PowerFlowComparisonResult:
             run_b_id=str(data["run_b_id"]),
             project_id=str(data["project_id"]),
             bus_diffs=tuple(PowerFlowBusDiffRow.from_dict(r) for r in data.get("bus_diffs", [])),
-            branch_diffs=tuple(PowerFlowBranchDiffRow.from_dict(r) for r in data.get("branch_diffs", [])),
+            branch_diffs=tuple(
+                PowerFlowBranchDiffRow.from_dict(r) for r in data.get("branch_diffs", [])
+            ),
             ranking=tuple(PowerFlowRankingIssue.from_dict(i) for i in data.get("ranking", [])),
             summary=PowerFlowComparisonSummary.from_dict(data["summary"]),
             input_hash=str(data["input_hash"]),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -482,6 +494,7 @@ class PowerFlowComparisonTraceStep:
 
     Records intermediate operations for audit purposes.
     """
+
     step: str
     description_pl: str
     inputs: dict[str, Any]
@@ -527,6 +540,7 @@ class PowerFlowComparisonTrace:
         steps: Sequence of comparison steps
         created_at: Trace creation timestamp
     """
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -537,7 +551,7 @@ class PowerFlowComparisonTrace:
     solver_version: str
     ranking_thresholds: dict[str, float]
     steps: tuple[PowerFlowComparisonTraceStep, ...]
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -569,7 +583,11 @@ class PowerFlowComparisonTrace:
             solver_version=str(data.get("solver_version", "")),
             ranking_thresholds=data.get("ranking_thresholds", {}),
             steps=tuple(PowerFlowComparisonTraceStep.from_dict(s) for s in data.get("steps", [])),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -580,6 +598,7 @@ class PowerFlowComparisonTrace:
 
 class PowerFlowComparisonStatus(str, Enum):
     """Status of a power flow comparison."""
+
     CREATED = "CREATED"
     COMPUTING = "COMPUTING"
     FINISHED = "FINISHED"
@@ -607,6 +626,7 @@ class PowerFlowComparison:
         created_at: Creation timestamp
         finished_at: Completion timestamp
     """
+
     id: UUID
     project_id: UUID
     run_a_id: str
@@ -616,7 +636,7 @@ class PowerFlowComparison:
     result_json: dict[str, Any] | None = None
     trace_json: dict[str, Any] | None = None
     error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -648,8 +668,14 @@ class PowerFlowComparison:
             result_json=data.get("result_json"),
             trace_json=data.get("trace_json"),
             error_message=data.get("error_message"),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
-            finished_at=datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None,
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
+            finished_at=(
+                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
+            ),
         )
 
 
@@ -669,10 +695,13 @@ def compute_pf_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
     Returns:
         SHA-256 hash string
     """
-    canonical_input = json.dumps({
-        "run_a_id": str(run_a_id),
-        "run_b_id": str(run_b_id),
-    }, sort_keys=True)
+    canonical_input = json.dumps(
+        {
+            "run_a_id": str(run_a_id),
+            "run_b_id": str(run_b_id),
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(canonical_input.encode()).hexdigest()
 
 
@@ -728,11 +757,13 @@ def get_ranking_thresholds() -> dict[str, float]:
 
 class PowerFlowComparisonError(Exception):
     """Base exception for power flow comparison errors."""
+
     pass
 
 
 class PowerFlowRunNotFoundError(PowerFlowComparisonError):
     """Raised when a power flow run is not found."""
+
     def __init__(self, run_id: str):
         self.run_id = run_id
         super().__init__(f"Power flow run nie znaleziony: {run_id}")
@@ -740,6 +771,7 @@ class PowerFlowRunNotFoundError(PowerFlowComparisonError):
 
 class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
     """Raised when a power flow run is not finished."""
+
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
@@ -748,16 +780,16 @@ class PowerFlowRunNotFinishedError(PowerFlowComparisonError):
 
 class PowerFlowProjectMismatchError(PowerFlowComparisonError):
     """Raised when runs belong to different projects."""
+
     def __init__(self, run_a_project: str, run_b_project: str):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(
-            f"Runs naleza do roznych projektow: {run_a_project} vs {run_b_project}"
-        )
+        super().__init__(f"Runs naleza do roznych projektow: {run_a_project} vs {run_b_project}")
 
 
 class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
     """Raised when a comparison is not found."""
+
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
         super().__init__(f"Power flow comparison nie znalezione: {comparison_id}")
@@ -765,6 +797,7 @@ class PowerFlowComparisonNotFoundError(PowerFlowComparisonError):
 
 class PowerFlowResultNotFoundError(PowerFlowComparisonError):
     """Raised when power flow results are not found for a run."""
+
     def __init__(self, run_id: str):
         self.run_id = run_id
         super().__init__(f"Wyniki power flow nie znalezione dla run: {run_id}")

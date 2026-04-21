@@ -9,7 +9,6 @@ from analysis.voltage_profile.models import VoltageProfileContext, VoltageProfil
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 
-
 RUN_TS = datetime(2024, 2, 1, 10, 0, 0)
 
 

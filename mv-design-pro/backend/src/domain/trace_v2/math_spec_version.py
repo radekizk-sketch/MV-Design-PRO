@@ -15,7 +15,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-
 _SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 
 CURRENT_MATH_SPEC_VERSION = "1.0.0"
@@ -30,6 +29,7 @@ class MathSpecVersion:
         minor: New equations or equation modifications
         patch: Parameter changes, formatting changes
     """
+
     major: int
     minor: int
     patch: int

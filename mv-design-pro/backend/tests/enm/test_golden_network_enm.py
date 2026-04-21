@@ -15,16 +15,14 @@ INVARIANTS testowane:
 from __future__ import annotations
 
 import pytest
-
-from enm.models import EnergyNetworkModel
-from enm.hash import compute_enm_hash
-from enm.validator import ENMValidator
-from enm.topology import build_topology_graph
-from application.sld.station_geometry import build_station_geometry
 from application.sld.cross_reference import build_cross_reference_table
+from application.sld.station_geometry import build_station_geometry
+from enm.hash import compute_enm_hash
+from enm.models import EnergyNetworkModel
+from enm.topology import build_topology_graph
+from enm.validator import ENMValidator
 
 from .golden_network_fixture import build_golden_network
-
 
 # ---------------------------------------------------------------------------
 # Fixture
@@ -133,7 +131,7 @@ class TestGoldenNetworkDeterminism:
         assert len(topo1.trunk_segments) == len(topo2.trunk_segments)
         assert topo1.stats == topo2.stats
 
-        for n1, n2 in zip(topo1.nodes, topo2.nodes):
+        for n1, n2 in zip(topo1.nodes, topo2.nodes, strict=False):
             assert n1.bus_ref == n2.bus_ref
             assert n1.voltage_kv == n2.voltage_kv
 
@@ -150,8 +148,12 @@ class TestGoldenNetworkReferenceIntegrity:
         """Wszystkie gałęzie odwołują się do istniejących szyn."""
         bus_refs = {b.ref_id for b in golden_enm.buses}
         for branch in golden_enm.branches:
-            assert branch.from_bus_ref in bus_refs, f"{branch.ref_id}: from_bus_ref={branch.from_bus_ref} nie istnieje"
-            assert branch.to_bus_ref in bus_refs, f"{branch.ref_id}: to_bus_ref={branch.to_bus_ref} nie istnieje"
+            assert (
+                branch.from_bus_ref in bus_refs
+            ), f"{branch.ref_id}: from_bus_ref={branch.from_bus_ref} nie istnieje"
+            assert (
+                branch.to_bus_ref in bus_refs
+            ), f"{branch.ref_id}: to_bus_ref={branch.to_bus_ref} nie istnieje"
 
     def test_transformer_bus_refs(self, golden_enm: EnergyNetworkModel) -> None:
         """Wszystkie transformatory odwołują się do istniejących szyn."""
@@ -252,9 +254,17 @@ class TestGoldenNetworkValidation:
 
         # Verify sort order: severity rank ascending, then code, then element_ref
         severity_rank = {"BLOCKER": 0, "IMPORTANT": 1, "INFO": 2}
-        for prev, curr in zip(result1.issues, result1.issues[1:]):
-            prev_key = (severity_rank[prev.severity], prev.code, prev.element_refs[0] if prev.element_refs else "")
-            curr_key = (severity_rank[curr.severity], curr.code, curr.element_refs[0] if curr.element_refs else "")
+        for prev, curr in zip(result1.issues, result1.issues[1:], strict=False):
+            prev_key = (
+                severity_rank[prev.severity],
+                prev.code,
+                prev.element_refs[0] if prev.element_refs else "",
+            )
+            curr_key = (
+                severity_rank[curr.severity],
+                curr.code,
+                curr.element_refs[0] if curr.element_refs else "",
+            )
             assert prev_key <= curr_key, f"Nieposortowane: {prev.code} > {curr.code}"
 
     def test_json_roundtrip(self, golden_enm: EnergyNetworkModel) -> None:
@@ -329,8 +339,7 @@ class TestGoldenNetworkStationGeometry:
         topo = build_topology_graph(golden_enm)
         # Symuluj pozycje szyn
         bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120))
-            for i, bus in enumerate(golden_enm.buses)
+            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
         }
         geom = build_station_geometry(golden_enm, topo, bus_positions)
         assert len(geom.station_boxes) > 0
@@ -340,13 +349,12 @@ class TestGoldenNetworkStationGeometry:
         """Station geometry jest deterministyczna."""
         topo = build_topology_graph(golden_enm)
         bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120))
-            for i, bus in enumerate(golden_enm.buses)
+            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
         }
         geom1 = build_station_geometry(golden_enm, topo, bus_positions)
         geom2 = build_station_geometry(golden_enm, topo, bus_positions)
         assert len(geom1.station_boxes) == len(geom2.station_boxes)
-        for b1, b2 in zip(geom1.station_boxes, geom2.station_boxes):
+        for b1, b2 in zip(geom1.station_boxes, geom2.station_boxes, strict=False):
             assert b1.substation_ref == b2.substation_ref
             assert b1.x == b2.x
             assert b1.y == b2.y
@@ -355,8 +363,7 @@ class TestGoldenNetworkStationGeometry:
         """Entry points exist for stations with entry_point_ref."""
         topo = build_topology_graph(golden_enm)
         bus_positions = {
-            bus.ref_id: (float(i * 200), float(i * 120))
-            for i, bus in enumerate(golden_enm.buses)
+            bus.ref_id: (float(i * 200), float(i * 120)) for i, bus in enumerate(golden_enm.buses)
         }
         geom = build_station_geometry(golden_enm, topo, bus_positions)
         subs_with_entry = [s for s in golden_enm.substations if s.entry_point_ref]
@@ -405,6 +412,6 @@ class TestGoldenNetworkCrossReference:
         xref1 = build_cross_reference_table(golden_enm)
         xref2 = build_cross_reference_table(golden_enm)
         assert xref1.total_elements == xref2.total_elements
-        for e1, e2 in zip(xref1.entries, xref2.entries):
+        for e1, e2 in zip(xref1.entries, xref2.entries, strict=False):
             assert e1.enm_ref_id == e2.enm_ref_id
             assert e1.report_section == e2.report_section

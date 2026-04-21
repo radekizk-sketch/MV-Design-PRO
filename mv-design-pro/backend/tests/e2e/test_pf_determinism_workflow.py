@@ -17,38 +17,37 @@ CANONICAL ALIGNMENT:
 - NOT-A-SOLVER: Testy nie modyfikuja solvera, tylko weryfikuja deterministycznosc
 - WHITE BOX: Sprawdza deterministycznosc trace
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.solvers.power_flow_newton import (
-    PowerFlowNewtonSolution,
-    PowerFlowNewtonSolver,
-    solve_power_flow_physics,
+from network_model.solvers.power_flow_fast_decoupled import (
+    FastDecoupledOptions,
+    solve_power_flow_fast_decoupled,
 )
 from network_model.solvers.power_flow_gauss_seidel import (
     GaussSeidelOptions,
     solve_power_flow_gauss_seidel,
 )
-from network_model.solvers.power_flow_fast_decoupled import (
-    FastDecoupledOptions,
-    solve_power_flow_fast_decoupled,
+from network_model.solvers.power_flow_newton import (
+    PowerFlowNewtonSolution,
+    solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_types import (
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
+    PVSpec,
     SlackSpec,
 )
-
 
 # =============================================================================
 # Test Network Fixtures
@@ -212,9 +211,7 @@ def _serialize_result(solution: PowerFlowNewtonSolution) -> str:
         "iterations": solution.iterations,
         "max_mismatch": float(solution.max_mismatch),
         "solver_method": solution.solver_method,
-        "node_voltage": {
-            k: _complex_to_dict(v) for k, v in sorted(solution.node_voltage.items())
-        },
+        "node_voltage": {k: _complex_to_dict(v) for k, v in sorted(solution.node_voltage.items())},
         "node_u_mag": {k: float(v) for k, v in sorted(solution.node_u_mag.items())},
         "node_angle": {k: float(v) for k, v in sorted(solution.node_angle.items())},
         "losses_total": _complex_to_dict(solution.losses_total),
@@ -273,9 +270,7 @@ class TestPFDeterminismAllMethods:
     """E2E: Deterministycznosc wynikow PF dla wszystkich metod."""
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_two_bus_same_result_twice(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_two_bus_same_result_twice(self, method_name: str, solver_func: SolverFunc) -> None:
         """2x wykonanie na tej samej sieci 2-wezlowej -> identyczny wynik."""
         graph = _create_simple_two_bus_network()
         pf_input = _create_pf_input_simple(graph)
@@ -294,8 +289,7 @@ class TestPFDeterminismAllMethods:
         assert result_1.converged is True, f"{method_name}: nie zbiezne (run 1)"
         assert result_2.converged is True, f"{method_name}: nie zbiezne (run 2)"
         assert hash_1 == hash_2, (
-            f"{method_name}: wyniki nie sa identyczne\n"
-            f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+            f"{method_name}: wyniki nie sa identyczne\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
         )
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
@@ -319,9 +313,7 @@ class TestPFDeterminismAllMethods:
         assert hash_1 == hash_2, f"{method_name}: wyniki rozne dla sieci ring"
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_pv_network_same_result_twice(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_pv_network_same_result_twice(self, method_name: str, solver_func: SolverFunc) -> None:
         """2x wykonanie na sieci z wezlem PV -> identyczny wynik."""
         graph = _create_three_bus_pv_network()
         pf_input = _create_pf_input_pv(graph)
@@ -343,9 +335,7 @@ class TestPFTraceDeterminism:
     """E2E: Deterministycznosc trace dla wszystkich metod."""
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_trace_identical_twice(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_trace_identical_twice(self, method_name: str, solver_func: SolverFunc) -> None:
         """2x wykonanie -> identyczny trace."""
         graph = _create_simple_two_bus_network()
         pf_input = _create_pf_input_simple(graph)
@@ -362,14 +352,12 @@ class TestPFTraceDeterminism:
             f"{method_name}: trace nie identyczny\n"
             f"Hash 1: {trace_hash_1}\nHash 2: {trace_hash_2}"
         )
-        assert len(result_1.nr_trace) == len(result_2.nr_trace), (
-            f"{method_name}: rozna liczba iteracji w trace"
-        )
+        assert len(result_1.nr_trace) == len(
+            result_2.nr_trace
+        ), f"{method_name}: rozna liczba iteracji w trace"
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_init_state_identical_twice(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_init_state_identical_twice(self, method_name: str, solver_func: SolverFunc) -> None:
         """2x wykonanie -> identyczny init_state."""
         graph = _create_simple_two_bus_network()
         pf_input = _create_pf_input_simple(graph)
@@ -380,18 +368,14 @@ class TestPFTraceDeterminism:
         init_json_1 = json.dumps(result_1.init_state, sort_keys=True)
         init_json_2 = json.dumps(result_2.init_state, sort_keys=True)
 
-        assert init_json_1 == init_json_2, (
-            f"{method_name}: init_state nie identyczny"
-        )
+        assert init_json_1 == init_json_2, f"{method_name}: init_state nie identyczny"
 
 
 class TestPFMultipleRunsDeterminism:
     """E2E: Deterministycznosc przy wielokrotnych uruchomieniach."""
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_ten_runs_identical(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_ten_runs_identical(self, method_name: str, solver_func: SolverFunc) -> None:
         """10x wykonanie -> wszystkie wyniki identyczne."""
         graph = _create_three_bus_ring_network()
         pf_input = _create_pf_input_ring(graph)
@@ -399,25 +383,21 @@ class TestPFMultipleRunsDeterminism:
         hashes: list[str] = []
         for i in range(10):
             result = solver_func(pf_input)
-            assert result.converged is True, (
-                f"{method_name}: run {i} nie zbiezny"
-            )
+            assert result.converged is True, f"{method_name}: run {i} nie zbiezny"
             json_str = _serialize_result(result)
             hashes.append(_compute_hash(json_str))
 
         unique_hashes = set(hashes)
-        assert len(unique_hashes) == 1, (
-            f"{method_name}: wykryto {len(unique_hashes)} roznych wynikow w 10 uruchomieniach"
-        )
+        assert (
+            len(unique_hashes) == 1
+        ), f"{method_name}: wykryto {len(unique_hashes)} roznych wynikow w 10 uruchomieniach"
 
 
 class TestPFConvergenceAllMethods:
     """E2E: Zbieznosc wszystkich metod dla roznych topologii."""
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_all_methods_converge_two_bus(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_all_methods_converge_two_bus(self, method_name: str, solver_func: SolverFunc) -> None:
         """Wszystkie metody zbiegaja dla sieci 2-wezlowej."""
         graph = _create_simple_two_bus_network()
         pf_input = _create_pf_input_simple(graph)
@@ -425,17 +405,13 @@ class TestPFConvergenceAllMethods:
         result = solver_func(pf_input)
 
         assert result.converged is True, f"{method_name}: nie zbieglo"
-        assert result.iterations < 50, (
-            f"{method_name}: zbyt duzo iteracji ({result.iterations})"
-        )
-        assert result.max_mismatch < 1e-6, (
-            f"{method_name}: zbyt duzy mismatch ({result.max_mismatch})"
-        )
+        assert result.iterations < 50, f"{method_name}: zbyt duzo iteracji ({result.iterations})"
+        assert (
+            result.max_mismatch < 1e-6
+        ), f"{method_name}: zbyt duzy mismatch ({result.max_mismatch})"
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_all_methods_converge_ring(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_all_methods_converge_ring(self, method_name: str, solver_func: SolverFunc) -> None:
         """Wszystkie metody zbiegaja dla sieci pierscienowej."""
         graph = _create_three_bus_ring_network()
         pf_input = _create_pf_input_ring(graph)
@@ -443,14 +419,12 @@ class TestPFConvergenceAllMethods:
         result = solver_func(pf_input)
 
         assert result.converged is True, f"{method_name}: nie zbieglo (ring)"
-        assert result.iterations < 100, (
-            f"{method_name}: zbyt duzo iteracji dla ring ({result.iterations})"
-        )
+        assert (
+            result.iterations < 100
+        ), f"{method_name}: zbyt duzo iteracji dla ring ({result.iterations})"
 
     @pytest.mark.parametrize("method_name,solver_func", SOLVER_METHODS)
-    def test_all_methods_converge_pv(
-        self, method_name: str, solver_func: SolverFunc
-    ) -> None:
+    def test_all_methods_converge_pv(self, method_name: str, solver_func: SolverFunc) -> None:
         """Wszystkie metody zbiegaja dla sieci z wezlem PV."""
         graph = _create_three_bus_pv_network()
         pf_input = _create_pf_input_pv(graph)
@@ -459,9 +433,9 @@ class TestPFConvergenceAllMethods:
 
         assert result.converged is True, f"{method_name}: nie zbieglo (PV)"
         # Sprawdz, czy napiecie na wezle PV jest bliskie zadanemu
-        assert abs(result.node_u_mag["BUS_B"] - 1.02) < 0.02, (
-            f"{method_name}: napiecie PV odbieglo od setpoint"
-        )
+        assert (
+            abs(result.node_u_mag["BUS_B"] - 1.02) < 0.02
+        ), f"{method_name}: napiecie PV odbieglo od setpoint"
 
 
 class TestPFSolverMethodField:
@@ -514,12 +488,12 @@ class TestPFResultParity:
             v_gs = result_gs.node_u_mag[node_id]
             v_fd = result_fd.node_u_mag[node_id]
 
-            assert abs(v_nr - v_gs) < 1e-3, (
-                f"NR vs GS: roznica napiecia na {node_id}: {abs(v_nr - v_gs)}"
-            )
-            assert abs(v_nr - v_fd) < 1e-3, (
-                f"NR vs FD: roznica napiecia na {node_id}: {abs(v_nr - v_fd)}"
-            )
+            assert (
+                abs(v_nr - v_gs) < 1e-3
+            ), f"NR vs GS: roznica napiecia na {node_id}: {abs(v_nr - v_gs)}"
+            assert (
+                abs(v_nr - v_fd) < 1e-3
+            ), f"NR vs FD: roznica napiecia na {node_id}: {abs(v_nr - v_fd)}"
 
     def test_all_methods_give_similar_losses(self) -> None:
         """Wszystkie metody daja podobne straty (tolerancja 1e-3)."""
@@ -534,9 +508,9 @@ class TestPFResultParity:
         losses_gs = result_gs.losses_total.real
         losses_fd = result_fd.losses_total.real
 
-        assert abs(losses_nr - losses_gs) < 1e-3, (
-            f"NR vs GS: roznica strat: {abs(losses_nr - losses_gs)}"
-        )
-        assert abs(losses_nr - losses_fd) < 1e-3, (
-            f"NR vs FD: roznica strat: {abs(losses_nr - losses_fd)}"
-        )
+        assert (
+            abs(losses_nr - losses_gs) < 1e-3
+        ), f"NR vs GS: roznica strat: {abs(losses_nr - losses_gs)}"
+        assert (
+            abs(losses_nr - losses_fd) < 1e-3
+        ), f"NR vs FD: roznica strat: {abs(losses_nr - losses_fd)}"

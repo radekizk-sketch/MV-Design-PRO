@@ -10,14 +10,12 @@ and verifies it has not changed.
 
 import json
 
-import pytest
-
 from solver_input.contracts import (
     SOLVER_INPUT_CONTRACT_VERSION,
-    ShortCircuitPayload,
-    LoadFlowPayload,
-    SolverInputEnvelope,
     EligibilityMap,
+    LoadFlowPayload,
+    ShortCircuitPayload,
+    SolverInputEnvelope,
 )
 
 
@@ -67,9 +65,7 @@ class TestSchemaLock:
             "include_inverter_contribution",
         ]
         for field in required_fields:
-            assert field in props, (
-                f"Missing field '{field}' in ShortCircuitPayload schema"
-            )
+            assert field in props, f"Missing field '{field}' in ShortCircuitPayload schema"
 
     def test_load_flow_payload_schema_fields(self):
         """LoadFlowPayload schema has all required fields."""
@@ -87,9 +83,7 @@ class TestSchemaLock:
             "tolerance",
         ]
         for field in required_fields:
-            assert field in props, (
-                f"Missing field '{field}' in LoadFlowPayload schema"
-            )
+            assert field in props, f"Missing field '{field}' in LoadFlowPayload schema"
 
     def test_envelope_schema_stability(self):
         """Envelope schema must not change without version bump."""

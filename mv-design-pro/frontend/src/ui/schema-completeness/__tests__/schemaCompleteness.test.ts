@@ -11,6 +11,7 @@
 
 import { describe, it, expect } from 'vitest';
 import type { ReadinessIssue, FixAction } from '../../types';
+import { resolveFixActionSurface } from '../../../types/fixActionSurface';
 
 // ---------------------------------------------------------------------------
 // Categorization logic (replicated from SchemaCompletenessPanel for unit test)
@@ -148,7 +149,13 @@ describe('SchemaCompletenessPanel fix actions', () => {
     const fixAction: FixAction = {
       action_type: 'OPEN_MODAL',
       element_ref: 'elem-1',
-      modal_type: 'MODAL_DODAJ_AGREGAT_NN',
+      modal_type: null,
+      surface_descriptor: resolveFixActionSurface({
+        code: 'genset.missing_device',
+        action_type: 'ADD_MISSING_DEVICE',
+        element_ref: 'elem-1',
+        payload_hint: null,
+      }),
       payload_hint: {},
     };
     expect(validTypes).toContain(fixAction.action_type);
@@ -158,7 +165,14 @@ describe('SchemaCompletenessPanel fix actions', () => {
     const issue = makeIssue('source.missing_sk3', 'BLOCKER', 'Brak Sk3', {
       action_type: 'OPEN_MODAL',
       element_ref: 'source-1',
-      modal_type: 'MODAL_ZMIEN_PARAMETRY',
+      modal_type: null,
+      surface_descriptor: resolveFixActionSurface({
+        code: 'source.missing_sk3',
+        action_type: 'OPEN_MODAL',
+        element_ref: 'source-1',
+        modal_type: 'NodeModal',
+        payload_hint: null,
+      }),
       payload_hint: null,
     });
     expect(issue.fix_action).not.toBeNull();

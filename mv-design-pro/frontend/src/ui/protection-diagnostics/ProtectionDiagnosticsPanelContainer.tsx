@@ -11,22 +11,21 @@
 
 import React from 'react';
 import { ProtectionDiagnosticsPanel } from './ProtectionDiagnosticsPanel';
+import { useProtectionReadModel } from '../protection';
 import {
   useProtectionDiagnosticsStore,
-  useFilteredDiagnostics,
-  useIsLoading,
-  useDiagnosticsError,
   useSeverityFilter,
 } from './store';
 
 export const ProtectionDiagnosticsPanelContainer: React.FC = () => {
-  const results = useFilteredDiagnostics();
-  const isLoading = useIsLoading();
-  const error = useDiagnosticsError();
+  const { data, isLoading, error } = useProtectionReadModel();
   const activeSeverities = useSeverityFilter();
   const toggleSeverityFilter = useProtectionDiagnosticsStore(
     (state) => state.toggleSeverityFilter
   );
+  const results = activeSeverities.length === 0
+    ? data.diagnostics
+    : data.diagnostics.filter((result) => activeSeverities.includes(result.severity));
 
   return (
     <ProtectionDiagnosticsPanel

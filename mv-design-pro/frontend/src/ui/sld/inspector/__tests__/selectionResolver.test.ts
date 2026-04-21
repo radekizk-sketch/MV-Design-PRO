@@ -263,12 +263,12 @@ describe('resolveSelectionRef', () => {
       expect(trafoResult).not.toBeNull();
       expect(loadResult).not.toBeNull();
 
-      // All should have wizard_step_hint
-      expect(busResult!.selectionRef.wizard_step_hint).toBeTruthy();
-      expect(srcResult!.selectionRef.wizard_step_hint).toBeTruthy();
-      expect(branchResult!.selectionRef.wizard_step_hint).toBeTruthy();
-      expect(trafoResult!.selectionRef.wizard_step_hint).toBeTruthy();
-      expect(loadResult!.selectionRef.wizard_step_hint).toBeTruthy();
+      // All should have canonical wizard step ids
+      expect(busResult!.selectionRef.wizard_step_id).toBeTruthy();
+      expect(srcResult!.selectionRef.wizard_step_id).toBeTruthy();
+      expect(branchResult!.selectionRef.wizard_step_id).toBeTruthy();
+      expect(trafoResult!.selectionRef.wizard_step_id).toBeTruthy();
+      expect(loadResult!.selectionRef.wizard_step_id).toBeTruthy();
     });
   });
 });

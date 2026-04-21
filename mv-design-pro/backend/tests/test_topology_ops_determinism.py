@@ -10,11 +10,7 @@ from __future__ import annotations
 import copy
 import json
 
-import pytest
-
 from enm.topology_ops import (
-    TopologyOpResult,
-    attach_protection,
     compute_topology_summary,
     create_branch,
     create_device,
@@ -24,12 +20,8 @@ from enm.topology_ops import (
     delete_device,
     delete_measurement,
     delete_node,
-    detach_protection,
-    update_branch,
     update_node,
-    update_protection,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -65,12 +57,30 @@ def _enm_with_buses() -> dict:
     """ENM with 3 buses."""
     enm = _base_enm()
     enm["buses"] = [
-        {"ref_id": "bus_1", "name": "Szyna 1", "voltage_kv": 15.0, "phase_system": "3ph",
-         "tags": ["source"], "meta": {}},
-        {"ref_id": "bus_2", "name": "Szyna 2", "voltage_kv": 15.0, "phase_system": "3ph",
-         "tags": [], "meta": {}},
-        {"ref_id": "bus_3", "name": "Szyna 3", "voltage_kv": 0.4, "phase_system": "3ph",
-         "tags": [], "meta": {}},
+        {
+            "ref_id": "bus_1",
+            "name": "Szyna 1",
+            "voltage_kv": 15.0,
+            "phase_system": "3ph",
+            "tags": ["source"],
+            "meta": {},
+        },
+        {
+            "ref_id": "bus_2",
+            "name": "Szyna 2",
+            "voltage_kv": 15.0,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {},
+        },
+        {
+            "ref_id": "bus_3",
+            "name": "Szyna 3",
+            "voltage_kv": 0.4,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {},
+        },
     ]
     return enm
 
@@ -80,38 +90,66 @@ def _enm_with_network() -> dict:
     enm = _enm_with_buses()
     enm["branches"] = [
         {
-            "ref_id": "line_1", "name": "Linia 1", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "status": "closed", "length_km": 5.0,
-            "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.35,
-            "tags": [], "meta": {},
+            "ref_id": "line_1",
+            "name": "Linia 1",
+            "type": "line_overhead",
+            "from_bus_ref": "bus_1",
+            "to_bus_ref": "bus_2",
+            "status": "closed",
+            "length_km": 5.0,
+            "r_ohm_per_km": 0.3,
+            "x_ohm_per_km": 0.35,
+            "tags": [],
+            "meta": {},
         },
         {
-            "ref_id": "breaker_1", "name": "Wyłącznik 1", "type": "breaker",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "status": "closed", "tags": [], "meta": {},
+            "ref_id": "breaker_1",
+            "name": "Wyłącznik 1",
+            "type": "breaker",
+            "from_bus_ref": "bus_1",
+            "to_bus_ref": "bus_2",
+            "status": "closed",
+            "tags": [],
+            "meta": {},
         },
     ]
     enm["transformers"] = [
         {
-            "ref_id": "trafo_1", "name": "TR 1", "hv_bus_ref": "bus_2",
-            "lv_bus_ref": "bus_3", "sn_mva": 0.63, "uhv_kv": 15.0,
-            "ulv_kv": 0.4, "uk_percent": 6.0, "pk_kw": 7.5,
-            "tags": [], "meta": {},
+            "ref_id": "trafo_1",
+            "name": "TR 1",
+            "hv_bus_ref": "bus_2",
+            "lv_bus_ref": "bus_3",
+            "sn_mva": 0.63,
+            "uhv_kv": 15.0,
+            "ulv_kv": 0.4,
+            "uk_percent": 6.0,
+            "pk_kw": 7.5,
+            "tags": [],
+            "meta": {},
         },
     ]
     enm["sources"] = [
         {
-            "ref_id": "source_1", "name": "Sieć", "bus_ref": "bus_1",
-            "model": "short_circuit_power", "sk3_mva": 250, "rx_ratio": 0.1,
-            "tags": [], "meta": {},
+            "ref_id": "source_1",
+            "name": "Sieć",
+            "bus_ref": "bus_1",
+            "model": "short_circuit_power",
+            "sk3_mva": 250,
+            "rx_ratio": 0.1,
+            "tags": [],
+            "meta": {},
         },
     ]
     enm["loads"] = [
         {
-            "ref_id": "load_1", "name": "Odbiór 1", "bus_ref": "bus_3",
-            "p_mw": 0.3, "q_mvar": 0.1, "model": "pq",
-            "tags": [], "meta": {},
+            "ref_id": "load_1",
+            "name": "Odbiór 1",
+            "bus_ref": "bus_3",
+            "p_mw": 0.3,
+            "q_mvar": 0.1,
+            "model": "pq",
+            "tags": [],
+            "meta": {},
         },
     ]
     return enm
@@ -144,9 +182,14 @@ class TestDeterminism:
         """create_branch z identycznym wejściem daje identyczny ENM."""
         enm = _enm_with_buses()
         data = {
-            "ref_id": "line_new", "name": "Linia nowa", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "length_km": 3.0, "r_ohm_per_km": 0.5, "x_ohm_per_km": 0.4,
+            "ref_id": "line_new",
+            "name": "Linia nowa",
+            "type": "line_overhead",
+            "from_bus_ref": "bus_1",
+            "to_bus_ref": "bus_2",
+            "length_km": 3.0,
+            "r_ohm_per_km": 0.5,
+            "x_ohm_per_km": 0.4,
         }
         r1 = create_branch(copy.deepcopy(enm), data)
         r2 = create_branch(copy.deepcopy(enm), data)
@@ -176,11 +219,19 @@ class TestDeterminism:
         ops = [
             ("create_node", {"ref_id": "b1", "name": "S1", "voltage_kv": 15}),
             ("create_node", {"ref_id": "b2", "name": "S2", "voltage_kv": 15}),
-            ("create_branch", {
-                "ref_id": "l1", "name": "L1", "type": "line_overhead",
-                "from_bus_ref": "b1", "to_bus_ref": "b2",
-                "length_km": 2.0, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.35,
-            }),
+            (
+                "create_branch",
+                {
+                    "ref_id": "l1",
+                    "name": "L1",
+                    "type": "line_overhead",
+                    "from_bus_ref": "b1",
+                    "to_bus_ref": "b2",
+                    "length_km": 2.0,
+                    "r_ohm_per_km": 0.3,
+                    "x_ohm_per_km": 0.35,
+                },
+            ),
         ]
 
         def apply_ops(enm_):
@@ -265,59 +316,105 @@ class TestNodeOperations:
 class TestBranchOperations:
     def test_create_line_branch(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "line_1", "name": "L1", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "length_km": 5.0, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.35,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "line_1",
+                "name": "L1",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_2",
+                "length_km": 5.0,
+                "r_ohm_per_km": 0.3,
+                "x_ohm_per_km": 0.35,
+            },
+        )
         assert result.success is True
         assert len(result.enm["branches"]) == 1
 
     def test_create_cable_branch(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "cable_1", "name": "K1", "type": "cable",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "length_km": 2.0, "r_ohm_per_km": 0.2, "x_ohm_per_km": 0.1,
-            "insulation": "XLPE",
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "cable_1",
+                "name": "K1",
+                "type": "cable",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_2",
+                "length_km": 2.0,
+                "r_ohm_per_km": 0.2,
+                "x_ohm_per_km": 0.1,
+                "insulation": "XLPE",
+            },
+        )
         assert result.success is True
 
     def test_create_breaker_branch(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "brk_1", "name": "W1", "type": "breaker",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "brk_1",
+                "name": "W1",
+                "type": "breaker",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_2",
+            },
+        )
         assert result.success is True
 
     def test_create_branch_self_loop(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "loop_1", "name": "Loop", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_1",
-            "length_km": 1.0, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.1,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "loop_1",
+                "name": "Loop",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_1",
+                "length_km": 1.0,
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.1,
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_SELF_LOOP" for i in result.issues)
 
     def test_create_branch_nonexistent_bus(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "l1", "name": "L1", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_nonexistent",
-            "length_km": 1.0, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.1,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "l1",
+                "name": "L1",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_nonexistent",
+                "length_km": 1.0,
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.1,
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_TO_NOT_FOUND" for i in result.issues)
 
     def test_create_branch_zero_length(self):
         enm = _enm_with_buses()
-        result = create_branch(enm, {
-            "ref_id": "l1", "name": "L1", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "length_km": 0, "r_ohm_per_km": 0.1, "x_ohm_per_km": 0.1,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "l1",
+                "name": "L1",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_2",
+                "length_km": 0,
+                "r_ohm_per_km": 0.1,
+                "x_ohm_per_km": 0.1,
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_LENGTH_INVALID" for i in result.issues)
 
@@ -331,18 +428,35 @@ class TestBranchOperations:
         """Dodanie gałęzi tworzacej cykl generuje WARNING."""
         enm = _enm_with_buses()
         # Create a path: bus_1 -> bus_2
-        enm["branches"] = [{
-            "ref_id": "l1", "type": "line_overhead",
-            "from_bus_ref": "bus_1", "to_bus_ref": "bus_2",
-            "status": "closed", "length_km": 2, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.3,
-            "name": "L1", "tags": [], "meta": {},
-        }]
+        enm["branches"] = [
+            {
+                "ref_id": "l1",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_1",
+                "to_bus_ref": "bus_2",
+                "status": "closed",
+                "length_km": 2,
+                "r_ohm_per_km": 0.3,
+                "x_ohm_per_km": 0.3,
+                "name": "L1",
+                "tags": [],
+                "meta": {},
+            }
+        ]
         # Now add bus_2 -> bus_1 to close the cycle
-        result = create_branch(enm, {
-            "ref_id": "l2", "name": "L2", "type": "line_overhead",
-            "from_bus_ref": "bus_2", "to_bus_ref": "bus_1",
-            "length_km": 3, "r_ohm_per_km": 0.3, "x_ohm_per_km": 0.3,
-        })
+        result = create_branch(
+            enm,
+            {
+                "ref_id": "l2",
+                "name": "L2",
+                "type": "line_overhead",
+                "from_bus_ref": "bus_2",
+                "to_bus_ref": "bus_1",
+                "length_km": 3,
+                "r_ohm_per_km": 0.3,
+                "x_ohm_per_km": 0.3,
+            },
+        )
         # Should succeed but with cycle warning
         assert result.success is True
         assert any(i.code == "OP_CYCLE_DETECTED" for i in result.issues)
@@ -356,60 +470,104 @@ class TestBranchOperations:
 class TestDeviceOperations:
     def test_create_transformer(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "transformer", "ref_id": "tr_1", "name": "TR1",
-            "hv_bus_ref": "bus_2", "lv_bus_ref": "bus_3",
-            "sn_mva": 0.63, "uhv_kv": 15.0, "ulv_kv": 0.4,
-            "uk_percent": 6.0, "pk_kw": 7.5,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "transformer",
+                "ref_id": "tr_1",
+                "name": "TR1",
+                "hv_bus_ref": "bus_2",
+                "lv_bus_ref": "bus_3",
+                "sn_mva": 0.63,
+                "uhv_kv": 15.0,
+                "ulv_kv": 0.4,
+                "uk_percent": 6.0,
+                "pk_kw": 7.5,
+            },
+        )
         assert result.success is True
         assert len(result.enm["transformers"]) == 1
 
     def test_create_transformer_same_bus(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "transformer", "ref_id": "tr_bad", "name": "TR Bad",
-            "hv_bus_ref": "bus_1", "lv_bus_ref": "bus_1",
-            "sn_mva": 0.63, "uk_percent": 6.0,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "transformer",
+                "ref_id": "tr_bad",
+                "name": "TR Bad",
+                "hv_bus_ref": "bus_1",
+                "lv_bus_ref": "bus_1",
+                "sn_mva": 0.63,
+                "uk_percent": 6.0,
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_HV_EQ_LV" for i in result.issues)
 
     def test_create_load(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "load", "ref_id": "ld_1", "name": "O1",
-            "bus_ref": "bus_3", "p_mw": 0.3, "q_mvar": 0.1,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "load",
+                "ref_id": "ld_1",
+                "name": "O1",
+                "bus_ref": "bus_3",
+                "p_mw": 0.3,
+                "q_mvar": 0.1,
+            },
+        )
         assert result.success is True
         assert len(result.enm["loads"]) == 1
 
     def test_create_generator_pv(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "generator", "ref_id": "pv_1", "name": "PV1",
-            "bus_ref": "bus_3", "p_mw": 0.5, "gen_type": "pv_inverter",
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "generator",
+                "ref_id": "pv_1",
+                "name": "PV1",
+                "bus_ref": "bus_3",
+                "p_mw": 0.5,
+                "gen_type": "pv_inverter",
+            },
+        )
         assert result.success is True
         gen = result.enm["generators"][0]
         assert gen["gen_type"] == "pv_inverter"
 
     def test_create_generator_bess(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "generator", "ref_id": "bess_1", "name": "BESS1",
-            "bus_ref": "bus_3", "p_mw": 1.0, "gen_type": "bess",
-            "limits": {"p_min_mw": -1.0, "p_max_mw": 1.0},
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "generator",
+                "ref_id": "bess_1",
+                "name": "BESS1",
+                "bus_ref": "bus_3",
+                "p_mw": 1.0,
+                "gen_type": "bess",
+                "limits": {"p_min_mw": -1.0, "p_max_mw": 1.0},
+            },
+        )
         assert result.success is True
 
     def test_create_source(self):
         enm = _enm_with_buses()
-        result = create_device(enm, {
-            "device_type": "source", "ref_id": "src_1", "name": "Sieć",
-            "bus_ref": "bus_1", "model": "short_circuit_power",
-            "sk3_mva": 250, "rx_ratio": 0.1,
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "source",
+                "ref_id": "src_1",
+                "name": "Sieć",
+                "bus_ref": "bus_1",
+                "model": "short_circuit_power",
+                "sk3_mva": 250,
+                "rx_ratio": 0.1,
+            },
+        )
         assert result.success is True
 
     def test_delete_device(self):
@@ -420,9 +578,13 @@ class TestDeviceOperations:
 
     def test_unknown_device_type(self):
         enm = _base_enm()
-        result = create_device(enm, {
-            "device_type": "unknown", "ref_id": "x",
-        })
+        result = create_device(
+            enm,
+            {
+                "device_type": "unknown",
+                "ref_id": "x",
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_UNKNOWN_DEVICE" for i in result.issues)
 
@@ -435,57 +597,89 @@ class TestDeviceOperations:
 class TestMeasurementOperations:
     def test_create_ct(self):
         enm = _enm_with_buses()
-        result = create_measurement(enm, {
-            "ref_id": "ct_1", "name": "CT1", "measurement_type": "CT",
-            "bus_ref": "bus_1",
-            "rating": {"ratio_primary": 200, "ratio_secondary": 5},
-        })
+        result = create_measurement(
+            enm,
+            {
+                "ref_id": "ct_1",
+                "name": "CT1",
+                "measurement_type": "CT",
+                "bus_ref": "bus_1",
+                "rating": {"ratio_primary": 200, "ratio_secondary": 5},
+            },
+        )
         assert result.success is True
         assert len(result.enm["measurements"]) == 1
 
     def test_create_vt(self):
         enm = _enm_with_buses()
-        result = create_measurement(enm, {
-            "ref_id": "vt_1", "name": "VT1", "measurement_type": "VT",
-            "bus_ref": "bus_1",
-            "rating": {"ratio_primary": 15000, "ratio_secondary": 100},
-        })
+        result = create_measurement(
+            enm,
+            {
+                "ref_id": "vt_1",
+                "name": "VT1",
+                "measurement_type": "VT",
+                "bus_ref": "bus_1",
+                "rating": {"ratio_primary": 15000, "ratio_secondary": 100},
+            },
+        )
         assert result.success is True
 
     def test_create_measurement_invalid_type(self):
         enm = _enm_with_buses()
-        result = create_measurement(enm, {
-            "ref_id": "x_1", "name": "X1", "measurement_type": "XX",
-            "bus_ref": "bus_1",
-            "rating": {"ratio_primary": 100, "ratio_secondary": 5},
-        })
+        result = create_measurement(
+            enm,
+            {
+                "ref_id": "x_1",
+                "name": "X1",
+                "measurement_type": "XX",
+                "bus_ref": "bus_1",
+                "rating": {"ratio_primary": 100, "ratio_secondary": 5},
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_INVALID_MTYPE" for i in result.issues)
 
     def test_create_measurement_missing_ratio(self):
         enm = _enm_with_buses()
-        result = create_measurement(enm, {
-            "ref_id": "ct_bad", "name": "CT Bad", "measurement_type": "CT",
-            "bus_ref": "bus_1",
-            "rating": {},
-        })
+        result = create_measurement(
+            enm,
+            {
+                "ref_id": "ct_bad",
+                "name": "CT Bad",
+                "measurement_type": "CT",
+                "bus_ref": "bus_1",
+                "rating": {},
+            },
+        )
         assert result.success is False
         assert any(i.code == "OP_RATING_MISSING" for i in result.issues)
 
     def test_delete_ct_in_use(self):
         enm = _enm_with_network()
-        enm["measurements"] = [{
-            "ref_id": "ct_1", "name": "CT1", "measurement_type": "CT",
-            "bus_ref": "bus_1",
-            "rating": {"ratio_primary": 200, "ratio_secondary": 5},
-            "tags": [], "meta": {},
-        }]
-        enm["protection_assignments"] = [{
-            "ref_id": "pa_1", "name": "PA1", "breaker_ref": "breaker_1",
-            "ct_ref": "ct_1", "device_type": "overcurrent",
-            "settings": [], "is_enabled": True,
-            "tags": [], "meta": {},
-        }]
+        enm["measurements"] = [
+            {
+                "ref_id": "ct_1",
+                "name": "CT1",
+                "measurement_type": "CT",
+                "bus_ref": "bus_1",
+                "rating": {"ratio_primary": 200, "ratio_secondary": 5},
+                "tags": [],
+                "meta": {},
+            }
+        ]
+        enm["protection_assignments"] = [
+            {
+                "ref_id": "pa_1",
+                "name": "PA1",
+                "breaker_ref": "breaker_1",
+                "ct_ref": "ct_1",
+                "device_type": "overcurrent",
+                "settings": [],
+                "is_enabled": True,
+                "tags": [],
+                "meta": {},
+            }
+        ]
         result = delete_measurement(enm, "ct_1")
         assert result.success is False
         assert any(i.code == "OP_CT_IN_USE" for i in result.issues)

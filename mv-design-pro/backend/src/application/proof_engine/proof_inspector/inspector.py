@@ -33,8 +33,7 @@ if TYPE_CHECKING:
         ProofValue,
     )
 
-from application.proof_engine.types import ProofType, SEMANTIC_ALIASES
-
+from application.proof_engine.types import SEMANTIC_ALIASES, ProofType
 
 # =============================================================================
 # Completeness Requirements — P11.1e
@@ -266,8 +265,7 @@ class ProofInspector:
 
         # Build step views
         step_views = tuple(
-            self._build_step_view(step)
-            for step in sorted(doc.steps, key=lambda s: s.step_number)
+            self._build_step_view(step) for step in sorted(doc.steps, key=lambda s: s.step_number)
         )
 
         # Build summary view
@@ -309,8 +307,7 @@ class ProofInspector:
     def _build_step_view(self, step: ProofStep) -> StepView:
         """Buduje StepView z ProofStep."""
         input_views = tuple(
-            self._build_value_view(val)
-            for val in sorted(step.input_values, key=lambda v: v.symbol)
+            self._build_value_view(val) for val in sorted(step.input_values, key=lambda v: v.symbol)
         )
 
         result_view = self._build_value_view(step.result)
@@ -336,9 +333,7 @@ class ProofInspector:
             source_keys=dict(sorted(step.source_keys.items())),
         )
 
-    def _build_value_view(
-        self, val: ProofValue, alias_pl: str | None = None
-    ) -> ValueView:
+    def _build_value_view(self, val: ProofValue, alias_pl: str | None = None) -> ValueView:
         """Buduje ValueView z ProofValue."""
         return ValueView(
             symbol=val.symbol,
@@ -443,12 +438,8 @@ class ProofInspector:
         rows.append(
             ProtectionComparisonRow(
                 name="Selektywność",
-                left=_value_or_placeholder(
-                    "selectivity_downstream_max_s", "t_{down,max}", "s"
-                ),
-                right=_value_or_placeholder(
-                    "selectivity_upstream_min_s", "t_{up,min}", "s"
-                ),
+                left=_value_or_placeholder("selectivity_downstream_max_s", "t_{down,max}", "s"),
+                right=_value_or_placeholder("selectivity_upstream_min_s", "t_{up,min}", "s"),
                 margin=kr.get("selectivity_margin_s")
                 and self._build_value_view(kr["selectivity_margin_s"]),
                 status=_status_value("selectivity_ok"),
@@ -475,7 +466,7 @@ class ProofInspector:
             diff = summary.counterfactual_diff
 
             def _coerce_float(value: object) -> float | None:
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     return float(value)
                 return None
 
@@ -490,14 +481,16 @@ class ProofInspector:
                 delta = _coerce_float(diff[key_d].value)
                 if value_a is None or value_b is None or delta is None:
                     return
-                rows.append(CounterfactualRow(
-                    name=key,
-                    symbol_latex=symbol_latex,
-                    unit=unit,
-                    value_a=value_a,
-                    value_b=value_b,
-                    delta=delta,
-                ))
+                rows.append(
+                    CounterfactualRow(
+                        name=key,
+                        symbol_latex=symbol_latex,
+                        unit=unit,
+                        value_a=value_a,
+                        value_b=value_b,
+                        delta=delta,
+                    )
+                )
 
             _add_row("s_mva", r"S", "MVA")
             _add_row("i_ka", r"I", "kA")
@@ -514,11 +507,7 @@ class ProofInspector:
             return False, None
 
         # Check for counterfactual markers
-        is_cf = (
-            "delta_k_q" in kr
-            and "delta_q_raw" in kr
-            and "delta_q_cmd" in kr
-        )
+        is_cf = "delta_k_q" in kr and "delta_q_raw" in kr and "delta_q_cmd" in kr
 
         if not is_cf:
             return False, None
@@ -530,34 +519,34 @@ class ProofInspector:
             q_a = kr["q_cmd_a"].value
             q_b = kr["q_cmd_b"].value
             delta_q = kr["delta_q_cmd"].value
-            rows.append(CounterfactualRow(
-                name="Q_cmd",
-                symbol_latex=r"Q_{cmd}",
-                unit="Mvar",
-                value_a=float(q_a) if isinstance(q_a, (int, float)) else 0.0,
-                value_b=float(q_b) if isinstance(q_b, (int, float)) else 0.0,
-                delta=float(delta_q) if isinstance(delta_q, (int, float)) else 0.0,
-            ))
+            rows.append(
+                CounterfactualRow(
+                    name="Q_cmd",
+                    symbol_latex=r"Q_{cmd}",
+                    unit="Mvar",
+                    value_a=float(q_a) if isinstance(q_a, int | float) else 0.0,
+                    value_b=float(q_b) if isinstance(q_b, int | float) else 0.0,
+                    delta=float(delta_q) if isinstance(delta_q, int | float) else 0.0,
+                )
+            )
 
         # Check for VDROP data (P11.1c)
-        has_vdrop = (
-            "u_a_kv" in kr
-            and "u_b_kv" in kr
-            and "delta_u_voltage_kv" in kr
-        )
+        has_vdrop = "u_a_kv" in kr and "u_b_kv" in kr and "delta_u_voltage_kv" in kr
 
         if has_vdrop:
             u_a = kr["u_a_kv"].value
             u_b = kr["u_b_kv"].value
             delta_u = kr["delta_u_voltage_kv"].value
-            rows.append(CounterfactualRow(
-                name="U",
-                symbol_latex=r"U",
-                unit="kV",
-                value_a=float(u_a) if isinstance(u_a, (int, float)) else 0.0,
-                value_b=float(u_b) if isinstance(u_b, (int, float)) else 0.0,
-                delta=float(delta_u) if isinstance(delta_u, (int, float)) else 0.0,
-            ))
+            rows.append(
+                CounterfactualRow(
+                    name="U",
+                    symbol_latex=r"U",
+                    unit="kV",
+                    value_a=float(u_a) if isinstance(u_a, int | float) else 0.0,
+                    value_b=float(u_b) if isinstance(u_b, int | float) else 0.0,
+                    delta=float(delta_u) if isinstance(delta_u, int | float) else 0.0,
+                )
+            )
 
         cf_view = CounterfactualView(
             rows=tuple(rows),

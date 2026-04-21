@@ -9,26 +9,21 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import pytest
-
-from enm.models import (
-    EnergyNetworkModel,
-    ENMHeader,
-    Bus,
-    Cable,
-    Transformer,
-    Source,
-    Load,
-    Generator,
-    Substation,
-    Corridor,
-)
 from application.sld.cross_reference import (
     build_cross_reference_table,
-    CrossReferenceTable,
-    CrossReference,
 )
-
+from enm.models import (
+    Bus,
+    Cable,
+    Corridor,
+    EnergyNetworkModel,
+    ENMHeader,
+    Generator,
+    Load,
+    Source,
+    Substation,
+    Transformer,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -44,38 +39,60 @@ def _make_enm() -> EnergyNetworkModel:
         ],
         branches=[
             Cable(
-                ref_id="cab_1", name="Kabel 1",
-                from_bus_ref="bus_1", to_bus_ref="bus_2",
-                type="cable", length_km=1.0,
-                r_ohm_per_km=0.2, x_ohm_per_km=0.07,
+                ref_id="cab_1",
+                name="Kabel 1",
+                from_bus_ref="bus_1",
+                to_bus_ref="bus_2",
+                type="cable",
+                length_km=1.0,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.07,
             ),
         ],
         transformers=[
             Transformer(
-                ref_id="tr_1", name="TR 1",
-                hv_bus_ref="bus_1", lv_bus_ref="bus_2",
-                sn_mva=25.0, uhv_kv=110.0, ulv_kv=15.0,
-                uk_percent=10.5, pk_kw=120.0,
+                ref_id="tr_1",
+                name="TR 1",
+                hv_bus_ref="bus_1",
+                lv_bus_ref="bus_2",
+                sn_mva=25.0,
+                uhv_kv=110.0,
+                ulv_kv=15.0,
+                uk_percent=10.5,
+                pk_kw=120.0,
             ),
         ],
         sources=[
-            Source(ref_id="src_1", name="Źródło 1", bus_ref="bus_1",
-                   model="short_circuit_power", sk3_mva=3000.0),
+            Source(
+                ref_id="src_1",
+                name="Źródło 1",
+                bus_ref="bus_1",
+                model="short_circuit_power",
+                sk3_mva=3000.0,
+            ),
         ],
         loads=[
             Load(ref_id="load_1", name="Odbiór 1", bus_ref="bus_2", p_mw=0.5, q_mvar=0.15),
         ],
         generators=[
-            Generator(ref_id="gen_1", name="Generator PV", bus_ref="bus_2",
-                      p_mw=0.5, gen_type="pv_inverter"),
+            Generator(
+                ref_id="gen_1",
+                name="Generator PV",
+                bus_ref="bus_2",
+                p_mw=0.5,
+                gen_type="pv_inverter",
+            ),
         ],
         substations=[
-            Substation(ref_id="sub_1", name="Stacja 1", station_type="mv_lv",
-                       bus_refs=["bus_1"]),
+            Substation(ref_id="sub_1", name="Stacja 1", station_type="mv_lv", bus_refs=["bus_1"]),
         ],
         corridors=[
-            Corridor(ref_id="corr_1", name="Magistrala 1",
-                     corridor_type="radial", ordered_segment_refs=["cab_1"]),
+            Corridor(
+                ref_id="corr_1",
+                name="Magistrala 1",
+                corridor_type="radial",
+                ordered_segment_refs=["cab_1"],
+            ),
         ],
     )
 
@@ -86,11 +103,12 @@ def _make_enm() -> EnergyNetworkModel:
 
 
 class TestCrossReferenceTable:
-
     def test_total_elements(self) -> None:
         enm = _make_enm()
         xref = build_cross_reference_table(enm)
-        expected = 2 + 1 + 1 + 1 + 1 + 1 + 1 + 1  # buses + branches + trafo + src + load + gen + sub + corr
+        expected = (
+            2 + 1 + 1 + 1 + 1 + 1 + 1 + 1
+        )  # buses + branches + trafo + src + load + gen + sub + corr
         assert xref.total_elements == expected
 
     def test_coverage_without_sld(self) -> None:
@@ -129,7 +147,7 @@ class TestCrossReferenceTable:
         xref1 = build_cross_reference_table(enm)
         xref2 = build_cross_reference_table(enm)
         assert xref1.total_elements == xref2.total_elements
-        for e1, e2 in zip(xref1.entries, xref2.entries):
+        for e1, e2 in zip(xref1.entries, xref2.entries, strict=False):
             assert e1.enm_ref_id == e2.enm_ref_id
             assert e1.enm_element_type == e2.enm_element_type
             assert e1.report_section == e2.report_section

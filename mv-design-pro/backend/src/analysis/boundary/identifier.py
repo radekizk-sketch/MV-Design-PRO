@@ -9,11 +9,10 @@ PowerFactory alignment:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping, Optional
 
 from network_model.core.snapshot import NetworkSnapshot, snapshot_read_only_guard
-
 
 EXTERNAL_GRID_SOURCE_TYPES = {"GRID", "EXTERNAL_GRID"}
 
@@ -30,8 +29,8 @@ class BoundaryResult:
         diagnostics: Diagnostics and reason codes if no unique BoundaryNode.
     """
 
-    connection_node_id: Optional[str]
-    method: Optional[str]
+    connection_node_id: str | None
+    method: str | None
     confidence: float
     diagnostics: list[str] = field(default_factory=list)
 

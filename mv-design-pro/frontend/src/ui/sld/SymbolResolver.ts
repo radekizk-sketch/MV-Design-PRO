@@ -1,9 +1,9 @@
 /**
- * SymbolResolver — Mapowanie elementów SLD na symbole ETAP
+ * SymbolResolver — Mapowanie elementów SLD na symbole CANONICAL
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A.2: Symbol types mapping
- * - etap_symbols/ports.json: Port definitions for ETAP-parity SLD symbols
+ * - canonical_symbols/ports.json: Port definitions for CANONICAL-parity SLD symbols
  *
  * BINDING CONTRACT:
  * - Bus → busbar
@@ -12,8 +12,8 @@
  * - TransformerBranch → transformer_2w
  * - Switch (BREAKER) → circuit_breaker
  * - Switch (DISCONNECTOR) → disconnector
- * - Source → utility_feeder (fallback, brak rozróżnienia PV/FW/BESS)
- * - Load → fallback (brak symbolu w bibliotece ETAP)
+ * - Source SYSTEM_SOURCE → utility_feeder
+ * - Load → fallback (brak symbolu w bibliotece CANONICAL)
  */
 
 import type {
@@ -39,9 +39,9 @@ function warnOnce(message: string): void {
 }
 
 /**
- * Symbol ID z biblioteki ETAP.
+ * Symbol ID z biblioteki CANONICAL.
  */
-export type EtapSymbolId =
+export type CanonicalSymbolId =
   | 'busbar'
   | 'circuit_breaker'
   | 'disconnector'
@@ -49,11 +49,15 @@ export type EtapSymbolId =
   | 'line_cable'
   | 'transformer_2w'
   | 'transformer_3w'
-  | 'generator'
+ | 'generator'
   | 'pv'
   | 'fw'
   | 'bess'
+  | 'system_source'
   | 'utility_feeder'
+  | 'branch_pole'
+  | 'zksn'
+  | 'cable_head'
   | 'ground'
   | 'ct'
   | 'vt'
@@ -106,11 +110,11 @@ export interface SymbolStyle {
 }
 
 /**
- * Resolved symbol z biblioteki ETAP.
+ * Resolved symbol z biblioteki CANONICAL.
  */
 export interface ResolvedSymbol {
-  /** ID symbolu ETAP */
-  symbolId: EtapSymbolId;
+  /** ID symbolu CANONICAL */
+  symbolId: CanonicalSymbolId;
   /** viewBox dla SVG (zawsze "0 0 100 100") */
   viewBox: string;
   /** Porty do łączenia */
@@ -126,10 +130,10 @@ export interface ResolvedSymbol {
 }
 
 /**
- * Port definitions z biblioteki ETAP (ports.json).
+ * Port definitions z biblioteki CANONICAL (ports.json).
  * Zdefiniowane inline dla determinizmu (bez dynamicznego importu JSON).
  */
-const SYMBOL_DEFINITIONS: Record<EtapSymbolId, Omit<ResolvedSymbol, 'symbolId'>> = {
+const SYMBOL_DEFINITIONS: Record<CanonicalSymbolId, Omit<ResolvedSymbol, 'symbolId'>> = {
   busbar: {
     description: 'Szyna zbiorcza / Busbar',
     viewBox: '0 0 100 100',
@@ -245,13 +249,51 @@ const SYMBOL_DEFINITIONS: Record<EtapSymbolId, Omit<ResolvedSymbol, 'symbolId'>>
     allowedRotations: [0, 180],
     defaultRotation: 0,
   },
-  utility_feeder: {
-    description: 'Zasilanie z sieci / Utility Feeder',
+  system_source: {
+    description: 'Źródło systemowe GPZ / External Grid System Source',
     viewBox: '0 0 100 100',
     ports: {
       bottom: { x: 50, y: 100 },
     },
     allowedRotations: [0],
+    defaultRotation: 0,
+  },
+  utility_feeder: {
+    description: 'Zasilanie z sieci',
+    viewBox: '0 0 100 100',
+    ports: {
+      bottom: { x: 50, y: 100 },
+    },
+    allowedRotations: [0],
+    defaultRotation: 0,
+  },
+  branch_pole: {
+    description: 'Slup rozgalezny',
+    viewBox: '0 0 100 100',
+    ports: {
+      left: { x: 0, y: 50 },
+      right: { x: 100, y: 50 },
+    },
+    allowedRotations: [0, 180],
+    defaultRotation: 0,
+  },
+  zksn: {
+    description: 'ZKSN / Zlacze kablowe SN',
+    viewBox: '0 0 100 100',
+    ports: {
+      left: { x: 0, y: 50 },
+      right: { x: 100, y: 50 },
+    },
+    allowedRotations: [0, 180],
+    defaultRotation: 0,
+  },
+  cable_head: {
+    description: 'Glowica kablowa / Cable Head',
+    viewBox: '0 0 100 100',
+    ports: {
+      top: { x: 50, y: 0 },
+    },
+    allowedRotations: [0, 180],
     defaultRotation: 0,
   },
   ground: {
@@ -294,7 +336,7 @@ const SYMBOL_DEFINITIONS: Record<EtapSymbolId, Omit<ResolvedSymbol, 'symbolId'>>
   },
   // Canonical SLD symbols (IEC 60617/61082)
   overcurrent_relay: {
-    description: 'Zabezpieczenie nadpradowe / Overcurrent Relay (51)',
+    description: 'Zabezpieczenie nadprądowe / Overcurrent Relay (51)',
     viewBox: '0 0 100 100',
     ports: {
       left: { x: 10, y: 50 },
@@ -427,7 +469,7 @@ const SYMBOL_DEFINITIONS: Record<EtapSymbolId, Omit<ResolvedSymbol, 'symbolId'>>
     defaultRotation: 0,
   },
   study_case: {
-    description: 'Przypadek obliczeniowy / Study Case',
+    description: 'Przypadek obliczeniowy',
     viewBox: '0 0 100 100',
     ports: {},
     allowedRotations: [0],
@@ -462,12 +504,16 @@ interface ExtendedBranchSymbol extends BranchSymbol {
  * Align: GeneratorKind z topologyInputReader.
  */
 export type GeneratorSymbolType = 'PV' | 'WIND' | 'BESS' | 'SYNCHRONOUS';
+export type SourceSymbolType = 'SYSTEM_SOURCE';
 
 /**
  * Interfejs dla Source z opcjonalnym rozróżnieniem typu generatora.
  */
 interface ExtendedSourceSymbol extends SourceSymbol {
   generatorType?: GeneratorSymbolType;
+  sourceType?: SourceSymbolType;
+  slackBus?: boolean;
+  sourceModel?: 'thevenin' | 'short_circuit_power' | 'external_grid' | null;
 }
 
 /**
@@ -485,9 +531,9 @@ interface ExtendedMeasurementSymbol extends MeasurementSymbol {
 }
 
 /**
- * Mapowanie GeneratorSymbolType na EtapSymbolId.
+ * Mapowanie GeneratorSymbolType na CanonicalSymbolId.
  */
-const GENERATOR_TYPE_TO_SYMBOL: Record<GeneratorSymbolType, EtapSymbolId> = {
+const GENERATOR_TYPE_TO_SYMBOL: Record<GeneratorSymbolType, CanonicalSymbolId> = {
   PV: 'pv',
   WIND: 'fw',
   BESS: 'bess',
@@ -495,7 +541,7 @@ const GENERATOR_TYPE_TO_SYMBOL: Record<GeneratorSymbolType, EtapSymbolId> = {
 };
 
 /**
- * Rozwiąż symbol ETAP dla elementu SLD.
+ * Rozwiąż symbol CANONICAL dla elementu SLD.
  *
  * BINDING CONTRACT:
  * - Zwraca ResolvedSymbol dla znanych typów
@@ -546,12 +592,18 @@ export function resolveSymbol(symbol: AnySldSymbol): ResolvedSymbol | null {
     }
 
     case 'Source': {
-      // Source z opcjonalnym rozróżnieniem PV/FW/BESS/generator
+      // Source z jawnie oznaczonym źródłem systemowym GPZ lub z rozróżnieniem PV/FW/BESS/generator
       const sourceSymbol = symbol as ExtendedSourceSymbol;
       if (sourceSymbol.generatorType) {
         return getSymbolDefinition(GENERATOR_TYPE_TO_SYMBOL[sourceSymbol.generatorType]);
       }
-      // Fallback → utility_feeder (zasilanie z sieci)
+      if (sourceSymbol.sourceType === 'SYSTEM_SOURCE' || sourceSymbol.slackBus === true) {
+        return getSymbolDefinition('system_source');
+      }
+      if (sourceSymbol.sourceModel) {
+        return getSymbolDefinition('system_source');
+      }
+      // Fallback dla starych symboli bez jawnej klasyfikacji źródła.
       return getSymbolDefinition('utility_feeder');
     }
 
@@ -593,10 +645,10 @@ export function resolveSymbol(symbol: AnySldSymbol): ResolvedSymbol | null {
 /**
  * Pobierz definicję symbolu po ID.
  *
- * @param symbolId - ID symbolu ETAP
+ * @param symbolId - ID symbolu CANONICAL
  * @returns ResolvedSymbol
  */
-export function getSymbolDefinition(symbolId: EtapSymbolId): ResolvedSymbol {
+export function getSymbolDefinition(symbolId: CanonicalSymbolId): ResolvedSymbol {
   const definition = SYMBOL_DEFINITIONS[symbolId];
   return {
     symbolId,
@@ -605,22 +657,22 @@ export function getSymbolDefinition(symbolId: EtapSymbolId): ResolvedSymbol {
 }
 
 /**
- * Sprawdź czy symbol jest obsługiwany przez bibliotekę ETAP.
+ * Sprawdź czy symbol jest obsługiwany przez bibliotekę CANONICAL.
  *
  * @param symbol - Symbol SLD
- * @returns true jeśli ma mapping w bibliotece ETAP
+ * @returns true jeśli ma mapping w bibliotece CANONICAL
  */
-export function hasEtapSymbol(symbol: AnySldSymbol): boolean {
+export function hasCanonicalSymbol(symbol: AnySldSymbol): boolean {
   return resolveSymbol(symbol) !== null;
 }
 
 /**
- * Pobierz wszystkie dostępne ID symboli ETAP.
+ * Pobierz wszystkie dostępne ID symboli CANONICAL.
  *
  * @returns Lista wszystkich symbol ID
  */
-export function getAllSymbolIds(): EtapSymbolId[] {
-  return Object.keys(SYMBOL_DEFINITIONS) as EtapSymbolId[];
+export function getAllSymbolIds(): CanonicalSymbolId[] {
+  return Object.keys(SYMBOL_DEFINITIONS) as CanonicalSymbolId[];
 }
 
 /**
@@ -652,11 +704,11 @@ export function transformPort(port: SymbolPort, rotation: number): SymbolPort {
 /**
  * Pobierz transformowane porty dla symbolu z obrotem.
  *
- * @param symbolId - ID symbolu ETAP
+ * @param symbolId - ID symbolu CANONICAL
  * @param rotation - Obrót w stopniach
  * @returns Transformowane porty
  */
-export function getTransformedPorts(symbolId: EtapSymbolId, rotation: number): SymbolPorts {
+export function getTransformedPorts(symbolId: CanonicalSymbolId, rotation: number): SymbolPorts {
   const definition = SYMBOL_DEFINITIONS[symbolId];
   const { ports } = definition;
 

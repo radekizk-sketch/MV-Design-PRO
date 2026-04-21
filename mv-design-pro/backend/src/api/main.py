@@ -1,37 +1,36 @@
 """Main FastAPI application entry point."""
 
 import logging
-from contextlib import asynccontextmanager
 import os
+from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-
-from api.exception_handlers import register_exception_handlers
-from api.middleware import RequestIdMiddleware
 from api.analysis_runs import router as analysis_runs_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
 from api.diagnostics import router as diagnostics_router
+from api.enm import production_router as enm_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
+from api.exception_handlers import register_exception_handlers
+from api.execution_runs import router as execution_runs_router
+from api.fault_scenarios import router as fault_scenarios_router
 from api.health import router as health_router
+from api.middleware import RequestIdMiddleware
 from api.power_flow_comparisons import router as power_flow_comparisons_router
 from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
 from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_comparisons import router as protection_comparisons_router
-from api.reference_patterns import router as reference_patterns_router
-from api.sld import router as sld_router
-from api.study_cases import router as study_cases_router
-from api.xlsx_import import router as xlsx_import_router
-from api.enm import production_router as enm_router
-from api.execution_runs import router as execution_runs_router
-from api.result_contract_v1 import router as result_contract_v1_router
-from api.fault_scenarios import router as fault_scenarios_router
 from api.protection_engine_v1 import router as protection_engine_v1_router
+from api.reference_patterns import router as reference_patterns_router
+from api.result_contract_v1 import router as result_contract_v1_router
+from api.sld import router as sld_router
 from api.sld_overrides import router as sld_overrides_router
+from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
+from api.xlsx_import import router as xlsx_import_router
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
     create_engine_from_url,
     create_session_factory,

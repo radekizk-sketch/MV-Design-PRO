@@ -17,7 +17,7 @@ def study_to_dict(study: Study) -> dict[str, Any]:
         "description": study.description,
         "created_at": study.created_at.isoformat(),
         "created_by": study.created_by,
-        "assumptions": list(sorted(study.assumptions)),
+        "assumptions": sorted(study.assumptions),
         "normative_profile_id": study.normative_profile_id,
         "hash": study.hash,
     }
@@ -44,11 +44,9 @@ def run_to_dict(run: Run) -> dict[str, Any]:
         "run_id": str(run.run_id),
         "scenario_id": str(run.scenario_id),
         "created_at": run.created_at.isoformat(),
-        "input_snapshot_id": str(run.input_snapshot_id)
-        if run.input_snapshot_id
-        else None,
+        "input_snapshot_id": str(run.input_snapshot_id) if run.input_snapshot_id else None,
         "solver_versions": dict(sorted(run.solver_versions.items())),
-        "proof_set_ids": list(sorted(run.proof_set_ids)),
+        "proof_set_ids": sorted(run.proof_set_ids),
         "normative_report_id": run.normative_report_id,
         "voltage_profile_view_id": run.voltage_profile_view_id,
         "protection_insight_view_id": run.protection_insight_view_id,

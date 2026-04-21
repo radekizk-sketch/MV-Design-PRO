@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from uuid import UUID, uuid4, uuid5
+from uuid import UUID, uuid5
 
 backend_src = Path(__file__).parents[3] / "src"
 sys.path.insert(0, str(backend_src))
@@ -20,7 +20,9 @@ def _build_service() -> NetworkWizardService:
     return NetworkWizardService(build_uow_factory(session_factory))
 
 
-def _create_basic_network(service: NetworkWizardService, project_id: UUID) -> tuple[dict, dict, dict]:
+def _create_basic_network(
+    service: NetworkWizardService, project_id: UUID
+) -> tuple[dict, dict, dict]:
     slack_node = service.add_node(
         project_id,
         NodePayload(

@@ -46,12 +46,8 @@ Równania pomocnicze (NIE używane bezpośrednio w dowodzie):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any
-
 from application.proof_engine.registries.ls_equations import LS_EQUATIONS
 from application.proof_engine.types import EquationDefinition, SymbolDefinition
-
 
 # =============================================================================
 # SC3F IEC 60909 — Kanoniczne równania (BINDING)
@@ -94,7 +90,7 @@ EQ_SC3F_002 = EquationDefinition(
     ),
     unit_derivation="kV² / MVA = Ω",
     notes="POMOCNICZY: używany przez solver do przeliczenia mocy zwarciowej na impedancję. "
-          "NIE używany bezpośrednio w dowodzie — c jest już uwzględnione w EQ_SC3F_004.",
+    "NIE używany bezpośrednio w dowodzie — c jest już uwzględnione w EQ_SC3F_004.",
 )
 
 EQ_SC3F_002a = EquationDefinition(
@@ -239,7 +235,7 @@ EQ_SC3F_003 = EquationDefinition(
     ),
     unit_derivation="Ω + Ω + Ω = Ω",
     notes="Dla sieci promieniowych suma szeregowa. Dla sieci złożonych: redukcja metodą Thevenina. "
-          "AUDIT: c NIE występuje w tym równaniu.",
+    "AUDIT: c NIE występuje w tym równaniu.",
 )
 
 EQ_SC3F_004 = EquationDefinition(
@@ -420,7 +416,7 @@ EQ_SC3F_008a = EquationDefinition(
     ),
     unit_derivation="kA = kA",
     notes="Prąd dynamiczny służy do wymiarowania aparatury na wytrzymałość elektrodynamiczną. "
-          "AUDIT: c NIE występuje.",
+    "AUDIT: c NIE występuje.",
 )
 
 
@@ -1238,9 +1234,7 @@ EQ_PR_004 = EquationDefinition(
     equation_id="EQ_PR_004",
     name_pl="Selektywność (granice charakterystyk)",
     standard_ref="IEC 60255 / praktyka inżynierska (P18)",
-    latex=(
-        r"\text{OK}_{selectivity} = (t_{down,max} + \Delta t \le t_{up,min})"
-    ),
+    latex=(r"\text{OK}_{selectivity} = (t_{down,max} + \Delta t \le t_{up,min})"),
     symbols=(
         SymbolDefinition(
             symbol=r"\text{OK}_{selectivity}",
@@ -1765,9 +1759,7 @@ EQ_QU_005 = EquationDefinition(
     equation_id="EQ_QU_005",
     name_pl="Wpływ Q_cmd na napięcie U (referencja VDROP)",
     standard_ref="Q(U) regulation → VDROP link",
-    latex=(
-        r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"
-    ),
+    latex=(r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"),
     symbols=(
         SymbolDefinition(
             symbol="Q_{cmd}",
@@ -2308,21 +2300,21 @@ class AntiDoubleCountingAudit:
 
     # Równania dowodowe SC3F z audytem c
     PROOF_EQUATIONS_AUDIT: dict[str, bool] = {
-        "EQ_SC3F_003": False,   # Impedancja Thevenina — c NIE występuje
-        "EQ_SC3F_004": True,    # Prąd I_k'' — c WYSTĘPUJE (jedyne miejsce)
-        "EQ_SC3F_005": False,   # Współczynnik κ — c NIE występuje
-        "EQ_SC3F_006": False,   # Prąd udarowy — c NIE występuje
-        "EQ_SC3F_007": False,   # Moc S_k'' — c NIE występuje
-        "EQ_SC3F_008": False,   # Prąd cieplny — c NIE występuje
+        "EQ_SC3F_003": False,  # Impedancja Thevenina — c NIE występuje
+        "EQ_SC3F_004": True,  # Prąd I_k'' — c WYSTĘPUJE (jedyne miejsce)
+        "EQ_SC3F_005": False,  # Współczynnik κ — c NIE występuje
+        "EQ_SC3F_006": False,  # Prąd udarowy — c NIE występuje
+        "EQ_SC3F_007": False,  # Moc S_k'' — c NIE występuje
+        "EQ_SC3F_008": False,  # Prąd cieplny — c NIE występuje
         "EQ_SC3F_008a": False,  # Prąd dynamiczny — c NIE występuje
     }
 
     # Równania pomocnicze (solver-only)
     HELPER_EQUATIONS_AUDIT: dict[str, bool] = {
-        "EQ_SC3F_002": True,    # Z_Q z S_kQ'' — c występuje (solver only)
+        "EQ_SC3F_002": True,  # Z_Q z S_kQ'' — c występuje (solver only)
         "EQ_SC3F_002a": False,  # Rozkład R/X — c NIE występuje
-        "EQ_SC3F_009": False,   # Impedancja transformatora — c NIE występuje
-        "EQ_SC3F_010": False,   # Impedancja linii — c NIE występuje
+        "EQ_SC3F_009": False,  # Impedancja transformatora — c NIE występuje
+        "EQ_SC3F_010": False,  # Impedancja linii — c NIE występuje
     }
 
     @classmethod
@@ -2342,18 +2334,18 @@ class AntiDoubleCountingAudit:
 
     # Równania dowodowe SC1 z audytem c (§4.1 blocker resolution)
     SC1_PROOF_EQUATIONS_AUDIT: dict[str, bool] = {
-        "EQ_SC1_001": False,   # Impedancje składowe — c NIE występuje
-        "EQ_SC1_002": False,   # Operator Fortescue — c NIE występuje
-        "EQ_SC1_003": False,   # Z_k dla 1F–Z — c NIE występuje
-        "EQ_SC1_004": False,   # Z_k dla 2F — c NIE występuje
-        "EQ_SC1_005": False,   # Z_k dla 2F–Z — c NIE występuje
-        "EQ_SC1_006": False,   # Prądy składowe — c NIE występuje (używa U_f, nie c·Un)
-        "EQ_SC1_007": False,   # Rekombinacja fazowa — c NIE występuje
-        "EQ_SC1_008": True,    # I″k asymetryczny — c WYSTĘPUJE (jedyne miejsce SC1)
-        "EQ_SC1_009": False,   # Współczynnik κ — c NIE występuje
-        "EQ_SC1_010": False,   # Prąd udarowy ip — c NIE występuje
-        "EQ_SC1_011": False,   # Prąd cieplny I_th — c NIE występuje
-        "EQ_SC1_012": False,   # Prąd dynamiczny I_dyn — c NIE występuje
+        "EQ_SC1_001": False,  # Impedancje składowe — c NIE występuje
+        "EQ_SC1_002": False,  # Operator Fortescue — c NIE występuje
+        "EQ_SC1_003": False,  # Z_k dla 1F–Z — c NIE występuje
+        "EQ_SC1_004": False,  # Z_k dla 2F — c NIE występuje
+        "EQ_SC1_005": False,  # Z_k dla 2F–Z — c NIE występuje
+        "EQ_SC1_006": False,  # Prądy składowe — c NIE występuje (używa U_f, nie c·Un)
+        "EQ_SC1_007": False,  # Rekombinacja fazowa — c NIE występuje
+        "EQ_SC1_008": True,  # I″k asymetryczny — c WYSTĘPUJE (jedyne miejsce SC1)
+        "EQ_SC1_009": False,  # Współczynnik κ — c NIE występuje
+        "EQ_SC1_010": False,  # Prąd udarowy ip — c NIE występuje
+        "EQ_SC1_011": False,  # Prąd cieplny I_th — c NIE występuje
+        "EQ_SC1_012": False,  # Prąd dynamiczny I_dyn — c NIE występuje
     }
 
     SC1_C_FACTOR_EQUATION = "EQ_SC1_008"
@@ -2559,7 +2551,7 @@ SC3F_PROOF_STEP_ORDER: list[str] = [
     "EQ_SC3F_004",  # Prąd zwarciowy I_k'' (c TUTAJ)
     "EQ_SC3F_005",  # Współczynnik udaru κ
     "EQ_SC3F_006",  # Prąd udarowy i_p
-    "EQ_SC3F_008a", # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
+    "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
     "EQ_SC3F_007",  # Moc zwarciowa S_k''
 ]
@@ -2699,43 +2691,106 @@ FROZEN_IDS: dict[str, list[str]] = {
     "loss_equations": list(LOSS_EQUATIONS.keys()),
     "mapping_keys": [
         # SC3F
-        "ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "sk_mva",
-        "kappa", "z_thevenin_ohm", "r_thevenin_ohm", "x_thevenin_ohm",
-        "c_factor", "u_n_kv",
+        "ikss_ka",
+        "ip_ka",
+        "ith_ka",
+        "idyn_ka",
+        "sk_mva",
+        "kappa",
+        "z_thevenin_ohm",
+        "r_thevenin_ohm",
+        "x_thevenin_ohm",
+        "c_factor",
+        "u_n_kv",
         # VDROP
-        "r_ohm", "x_ohm", "p_mw", "q_mvar",
-        "delta_u_r_percent", "delta_u_x_percent",
-        "delta_u_percent", "delta_u_total_percent",
+        "r_ohm",
+        "x_ohm",
+        "p_mw",
+        "q_mvar",
+        "delta_u_r_percent",
+        "delta_u_x_percent",
+        "delta_u_percent",
+        "delta_u_total_percent",
         # P32
-        "u_nom_kv", "u_pu", "delta_pct",
-        "delta_u_r_kv", "delta_u_x_kv", "delta_u_kv",
+        "u_nom_kv",
+        "u_pu",
+        "delta_pct",
+        "delta_u_r_kv",
+        "delta_u_x_kv",
+        "delta_u_kv",
         # SC1
-        "z1_ohm", "z2_ohm", "z0_ohm", "z_equiv_ohm",
+        "z1_ohm",
+        "z2_ohm",
+        "z0_ohm",
+        "z_equiv_ohm",
         "u_prefault_kv",
-        "i1_ka", "i2_ka", "i0_ka",
-        "ia_ka", "ib_ka", "ic_ka",
+        "i1_ka",
+        "i2_ka",
+        "i0_ka",
+        "ia_ka",
+        "ib_ka",
+        "ic_ka",
         "a_operator",
-        "r_equiv_ohm", "x_equiv_ohm",
+        "r_equiv_ohm",
+        "x_equiv_ohm",
         # P15
-        "u_ll_kv", "p_mw", "q_mvar", "s_mva", "i_ka", "in_a",
-        "k_i_percent", "m_i_percent", "sn_mva", "k_s_percent", "m_s_percent",
+        "u_ll_kv",
+        "p_mw",
+        "q_mvar",
+        "s_mva",
+        "i_ka",
+        "in_a",
+        "k_i_percent",
+        "m_i_percent",
+        "sn_mva",
+        "k_s_percent",
+        "m_s_percent",
         # P17
-        "t_h", "p_loss_kw", "delta_t_h", "e_i_kwh", "e_loss_kwh",
+        "t_h",
+        "p_loss_kw",
+        "delta_t_h",
+        "e_i_kwh",
+        "e_loss_kwh",
         # P18
-        "breaking_ok", "dynamic_ok", "thermal_ok", "selectivity_ok",
-        "icu_ka", "idyn_ka", "i2t_ka2s", "ith_limit_ka2s",
-        "selectivity_downstream_max_s", "selectivity_upstream_min_s",
+        "breaking_ok",
+        "dynamic_ok",
+        "thermal_ok",
+        "selectivity_ok",
+        "icu_ka",
+        "idyn_ka",
+        "i2t_ka2s",
+        "ith_limit_ka2s",
+        "selectivity_downstream_max_s",
+        "selectivity_upstream_min_s",
         "selectivity_margin_setting_s",
         # P19
-        "u0_v", "z_e_ohm", "i_earth_a", "i_u_a", "i_p_a", "r_u_ohm", "u_touch_v",
+        "u0_v",
+        "z_e_ohm",
+        "i_earth_a",
+        "i_u_a",
+        "i_p_a",
+        "r_u_ohm",
+        "u_touch_v",
         # P14 (Power Flow)
-        "converged", "max_mismatch_pu", "tolerance",
-        "p_gen_total_mw", "p_load_total_mw", "p_losses_total_mw",
-        "q_gen_total_mvar", "q_load_total_mvar", "q_losses_total_mvar",
-        "v_min_pu", "v_max_pu",
+        "converged",
+        "max_mismatch_pu",
+        "tolerance",
+        "p_gen_total_mw",
+        "p_load_total_mw",
+        "p_losses_total_mw",
+        "q_gen_total_mvar",
+        "q_load_total_mvar",
+        "q_losses_total_mvar",
+        "v_min_pu",
+        "v_max_pu",
         # P16 (Losses)
-        "p_loss_mw", "q_loss_mvar", "p_from_mw", "p_to_mw",
-        "q_from_mvar", "q_to_mvar", "p_loss_percent",
+        "p_loss_mw",
+        "q_loss_mvar",
+        "p_from_mw",
+        "p_to_mw",
+        "q_from_mvar",
+        "q_to_mvar",
+        "p_loss_percent",
     ],
 }
 

@@ -1,54 +1,54 @@
 /**
- * CONNECTION RENDERER — Komponent renderowania polaczen SLD (ETAP-style)
+ * CONNECTION RENDERER — Komponent renderowania polaczen SLD (CANONICAL-style)
  *
- * PR-SLD-ETAP-STYLE-02: ETAP 1:1 Visual Parity
+ * PR-SLD-CANONICAL-STYLE-02: CANONICAL 1:1 Visual Parity
  *
  * CANONICAL ALIGNMENT:
- * - sldEtapStyle.ts: Single source of truth for visual styling
+ * - sldCanonicalStyle.ts: Single source of truth for visual styling
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 4: Polaczenia
- * - AUDYT_SLD_ETAP.md: N-01, N-05
+ * - AUDYT_SLD_CANONICAL.md: N-01, N-05
  *
  * FEATURES:
  * - Renderowanie polaczen jako polyline SVG
- * - Styl ETAP: hierarchia grubosci (feeder stroke)
+ * - Styl CANONICAL: hierarchia grubosci (feeder stroke)
  * - Podswietlenie przy kliknieciu
  * - Powiekszona strefa klikniecia (hitbox)
  *
  * STROKE HIERARCHY:
- * - Connections use ETAP_STROKE.feeder (subordinate to busbar)
+ * - Connections use CANONICAL_STROKE.feeder (subordinate to busbar)
  */
 
 import React, { useCallback, useMemo } from 'react';
 import type { Connection, Position } from '../sld-editor/types';
 import {
-  ETAP_STROKE,
-  ETAP_STROKE_SELECTED,
-  ETAP_STATE_COLORS,
-  ETAP_TYPOGRAPHY,
-  ETAP_LINE_LABEL,
+  CANONICAL_STROKE,
+  CANONICAL_STROKE_SELECTED,
+  CANONICAL_STATE_COLORS,
+  CANONICAL_TYPOGRAPHY,
+  CANONICAL_LINE_LABEL,
   calculateLineLabelPosition,
-} from './sldEtapStyle';
+} from './sldCanonicalStyle';
 import { RING_DASH_ARRAY, RING_STROKE_WIDTH } from './IndustrialAesthetics';
 
 // =============================================================================
-// STALE STYLIZACJI — using ETAP tokens
+// STALE STYLIZACJI — using CANONICAL tokens
 // =============================================================================
 
-/** Grubosc linii polaczenia (px) — uses ETAP feeder stroke */
-const CONNECTION_STROKE_WIDTH = ETAP_STROKE.feeder;
+/** Grubosc linii polaczenia (px) — uses CANONICAL feeder stroke */
+const CONNECTION_STROKE_WIDTH = CANONICAL_STROKE.feeder;
 
-/** Grubosc linii podswietlonej (px) — uses ETAP selected feeder stroke */
-const CONNECTION_STROKE_WIDTH_SELECTED = ETAP_STROKE_SELECTED.feeder;
+/** Grubosc linii podswietlonej (px) — uses CANONICAL selected feeder stroke */
+const CONNECTION_STROKE_WIDTH_SELECTED = CANONICAL_STROKE_SELECTED.feeder;
 
 /** Grubosc niewidocznej strefy klikniecia (px) */
 const HITBOX_STROKE_WIDTH = 12;
 
-/** Kolory polaczen — using ETAP state colors */
+/** Kolory polaczen — using CANONICAL state colors */
 const CONNECTION_COLORS = {
-  default: ETAP_TYPOGRAPHY.labelColor,     // same as symbol default
-  deenergized: ETAP_STATE_COLORS.deenergized,
-  selected: ETAP_STATE_COLORS.selected,
-  hover: ETAP_STATE_COLORS.info,
+  default: CANONICAL_TYPOGRAPHY.labelColor,     // same as symbol default
+  deenergized: CANONICAL_STATE_COLORS.deenergized,
+  selected: CANONICAL_STATE_COLORS.selected,
+  hover: CANONICAL_STATE_COLORS.info,
 } as const;
 
 // =============================================================================
@@ -83,7 +83,7 @@ function pathToPoints(path: Position[]): string {
 
 /**
  * Komponent renderowania polaczenia.
- * PR-SLD-ETAP-LABELS-01: Etykiety na linii z halo/white-box.
+ * PR-SLD-CANONICAL-LABELS-01: Etykiety na linii z halo/white-box.
  */
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   connection,
@@ -96,6 +96,8 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   onMouseLeave,
 }) => {
   const { id, path, connectionType, connectionStyle } = connection;
+  const connectionRef = connection.elementId ?? id;
+  const connectionTypeAttr = connectionType ?? 'unknown';
 
   // Ring detection — kontrakt §1.7: ring = 2px przerywana
   const isRing = connectionStyle === 'ring';
@@ -156,12 +158,14 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
 
   // Szacowana szerokosc etykiety (7px na znak — przemyslowy standard)
   const estimatedLabelWidth = label ? Math.max(30, label.length * 7) : 0;
-  const labelHeight = ETAP_TYPOGRAPHY.fontSize.medium;
+  const labelHeight = CANONICAL_TYPOGRAPHY.fontSize.medium;
 
   return (
     <g
       data-testid={`sld-connection-${id}`}
-      data-connection-type={connectionType}
+      data-connection-type={connectionTypeAttr}
+      data-connection-ref={connectionRef}
+      data-element-id={connection.elementId ?? undefined}
       data-connection-selected={selected}
       data-connection-energized={energized}
       data-has-label={!!(showLabel && label && labelPosition)}
@@ -204,12 +208,12 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         >
           {/* Halo/white-box — tlo dla czytelnosci */}
           <rect
-            x={labelPosition.position.x - estimatedLabelWidth / 2 - ETAP_LINE_LABEL.haloPadding}
-            y={labelPosition.position.y - labelHeight / 2 - ETAP_LINE_LABEL.haloPadding}
-            width={estimatedLabelWidth + ETAP_LINE_LABEL.haloPadding * 2}
-            height={labelHeight + ETAP_LINE_LABEL.haloPadding * 2}
-            fill={ETAP_LINE_LABEL.haloColor}
-            opacity={ETAP_LINE_LABEL.haloOpacity}
+            x={labelPosition.position.x - estimatedLabelWidth / 2 - CANONICAL_LINE_LABEL.haloPadding}
+            y={labelPosition.position.y - labelHeight / 2 - CANONICAL_LINE_LABEL.haloPadding}
+            width={estimatedLabelWidth + CANONICAL_LINE_LABEL.haloPadding * 2}
+            height={labelHeight + CANONICAL_LINE_LABEL.haloPadding * 2}
+            fill={CANONICAL_LINE_LABEL.haloColor}
+            opacity={CANONICAL_LINE_LABEL.haloOpacity}
             rx={1}
             ry={1}
             style={{ pointerEvents: 'none' }}
@@ -221,10 +225,10 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
             y={labelPosition.position.y}
             textAnchor={labelPosition.textAnchor}
             dominantBaseline="central"
-            fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-            fontSize={ETAP_TYPOGRAPHY.fontSize.medium}
-            fontWeight={selected ? ETAP_TYPOGRAPHY.fontWeight.semibold : ETAP_TYPOGRAPHY.fontWeight.normal}
-            fill={ETAP_TYPOGRAPHY.labelColor}
+            fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+            fontSize={CANONICAL_TYPOGRAPHY.fontSize.medium}
+            fontWeight={selected ? CANONICAL_TYPOGRAPHY.fontWeight.semibold : CANONICAL_TYPOGRAPHY.fontWeight.normal}
+            fill={CANONICAL_TYPOGRAPHY.labelColor}
             style={{ pointerEvents: 'none' }}
           >
             {label}
@@ -259,7 +263,7 @@ export interface ConnectionsLayerProps {
 /**
  * Warstwa renderowania wszystkich polaczen.
  * Polaczenia sa renderowane pod symbolami.
- * PR-SLD-ETAP-LABELS-01: Etykiety na liniach z halo.
+ * PR-SLD-CANONICAL-LABELS-01: Etykiety na liniach z halo.
  */
 export const ConnectionsLayer: React.FC<ConnectionsLayerProps> = ({
   connections,

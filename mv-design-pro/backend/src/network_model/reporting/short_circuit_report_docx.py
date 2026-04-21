@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 # Check for python-docx availability at import time
 try:
     from docx import Document
-    from docx.shared import Pt, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     _DOCX_AVAILABLE = True
 except ImportError:
@@ -122,9 +122,7 @@ def export_short_circuit_result_to_docx(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create document
     doc = Document()

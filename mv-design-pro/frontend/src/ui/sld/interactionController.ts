@@ -4,11 +4,13 @@ import { CREATOR_TOOLS } from '../topology/editorPalette';
 import type { CanonicalOpName } from '../../types/domainOps';
 import { checkCatalogGate } from '../context-menu/catalogGate';
 import type { CatalogNamespace } from '../context-menu/catalogGate';
+import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
 
 export type ToolRuntimeStatus = 'DZIALA' | 'ZABLOKOWANE' | 'MAPOWANIE';
 
 export interface InteractionContextState {
   hasSource: boolean;
+  hasCanonicalTrunkStart?: boolean;
   hasRing: boolean;
   activeCaseId: string | null;
 }
@@ -38,14 +40,14 @@ export interface InteractionTargetContext {
 const TOOL_STATUS: Record<Exclude<CreatorTool, null>, ToolRuntimeStatus> = {
   select: 'DZIALA',
   move: 'DZIALA',
-  add_gpz: 'DZIALA',
-  continue_trunk: 'DZIALA',
-  insert_station: 'DZIALA',
-  start_branch: 'DZIALA',
-  connect_ring: 'DZIALA',
-  set_nop: 'DZIALA',
-  add_pv: 'DZIALA',
-  add_bess: 'DZIALA',
+  add_grid_source_sn: 'DZIALA',
+  continue_trunk_segment_sn: 'DZIALA',
+  insert_station_on_segment_sn: 'DZIALA',
+  start_branch_segment_sn: 'DZIALA',
+  connect_secondary_ring_sn: 'DZIALA',
+  set_normal_open_point: 'DZIALA',
+  add_converter_source_pv: 'DZIALA',
+  add_converter_source_bess: 'DZIALA',
   edit_properties: 'DZIALA',
   assign_catalog: 'DZIALA',
   delete_element: 'DZIALA',
@@ -65,7 +67,7 @@ function buildContinueTrunkPayload(
     trunk_id: ref,
     terminal_id: ref,
     from_terminal_id:
-      interaction.kind === 'port' || target.type === 'Bus' || target.type === 'Source' || target.type === 'Terminal'
+      interaction.kind === 'port' || target.type === 'Terminal'
         ? ref
         : undefined,
   };
@@ -180,7 +182,17 @@ export function resolveToolAction(
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
       payload: {},
-      reasonPl: 'Najpierw dodaj GPZ lub źródło SN.',
+      reasonPl: 'Najpierw dodaj GPZ jako źródło zasilania sieci SN.',
+      catalogRequired: false,
+    };
+  }
+
+  if (def.requiresTrunkStart && !ctx.hasCanonicalTrunkStart) {
+    return {
+      mode: 'BLOCKED',
+      canonicalOp: def.canonicalOp,
+      payload: {},
+      reasonPl: 'Najpierw utworz pole liniowe GPZ albo wybierz otwarty terminal magistrali.',
       catalogRequired: false,
     };
   }
@@ -196,14 +208,14 @@ export function resolveToolAction(
   }
 
   const allowedTargets: Partial<Record<Exclude<CreatorTool, null>, InteractionTargetContext['kind'][]>> = {
-    add_gpz: ['canvas'],
-    continue_trunk: ['port', 'element'],
-    insert_station: ['element'],
-    start_branch: ['port'],
-    connect_ring: ['port'],
-    set_nop: ['element', 'port'],
-    add_pv: ['port', 'element'],
-    add_bess: ['port', 'element'],
+    add_grid_source_sn: ['canvas'],
+    continue_trunk_segment_sn: ['port', 'element'],
+    insert_station_on_segment_sn: ['element'],
+    start_branch_segment_sn: ['port'],
+    connect_secondary_ring_sn: ['port'],
+    set_normal_open_point: ['element', 'port'],
+    add_converter_source_pv: ['port', 'element'],
+    add_converter_source_bess: ['port', 'element'],
     edit_properties: ['element'],
     assign_catalog: ['element'],
     delete_element: ['element', 'port'],
@@ -225,7 +237,7 @@ export function resolveToolAction(
     };
   }
 
-  if (tool === 'start_branch' && interaction.kind === 'port' && interaction.portRole !== 'BRANCH_OUT') {
+  if (tool === 'start_branch_segment_sn' && interaction.kind === 'port' && interaction.portRole !== 'BRANCH_OUT') {
     return {
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
@@ -236,22 +248,34 @@ export function resolveToolAction(
   }
 
   if (
-    tool === 'continue_trunk'
+    tool === 'continue_trunk_segment_sn'
     && interaction.kind === 'element'
-    && target.type !== 'Bus'
-    && target.type !== 'Source'
     && target.type !== 'Terminal'
   ) {
     return {
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
       payload: {},
-      reasonPl: 'Kontynuacja magistrali wymaga portu albo elementu GPZ lub szyny.',
+      reasonPl: 'Kontynuacja magistrali wymaga portu pola liniowego GPZ albo terminala magistrali.',
       catalogRequired: false,
     };
   }
 
-  if (tool === 'connect_ring' && interaction.kind === 'port' && interaction.portRole !== 'RING') {
+  if (
+    tool === 'continue_trunk_segment_sn'
+    && interaction.kind === 'port'
+    && interaction.portRole !== 'TRUNK_OUT'
+  ) {
+    return {
+      mode: 'BLOCKED',
+      canonicalOp: def.canonicalOp,
+      payload: {},
+      reasonPl: 'Kontynuacja magistrali wymaga portu wyjscia TRUNK_OUT pola liniowego.',
+      catalogRequired: false,
+    };
+  }
+
+  if (tool === 'connect_secondary_ring_sn' && interaction.kind === 'port' && interaction.portRole !== 'RING') {
     return {
       mode: 'BLOCKED',
       canonicalOp: def.canonicalOp,
@@ -285,28 +309,40 @@ export function resolveToolAction(
   > = {
     select: () => ({}),
     move: () => ({}),
-    add_gpz: () => ({ source: 'sld_tool' }),
-    continue_trunk: (ref, currentTarget, currentInteraction) => (
+    add_grid_source_sn: () => ({ source: 'sld_tool' }),
+    continue_trunk_segment_sn: (ref, currentTarget, currentInteraction) => (
       buildContinueTrunkPayload(ref, currentTarget, currentInteraction)
     ),
-    insert_station: (ref) => buildInsertStationPayload(ref),
-    start_branch: (ref, _currentTarget, currentInteraction) => (
+    insert_station_on_segment_sn: (ref) => buildInsertStationPayload(ref),
+    start_branch_segment_sn: (ref, _currentTarget, currentInteraction) => (
       buildStartBranchPayload(ref, currentInteraction)
     ),
-    connect_ring: (ref, currentTarget) => ({
+    connect_secondary_ring_sn: (ref, currentTarget) => ({
       source: 'sld_tool',
       terminalA_id: ref,
       terminal_a_id: ref,
       terminalA_label: currentTarget.name ?? ref,
     }),
-    set_nop: (ref, currentTarget, currentInteraction) => ({
+    set_normal_open_point: (ref, currentTarget, currentInteraction) => ({
       source: 'sld_tool',
       ...(currentInteraction.kind === 'port' ? { switch_ref: ref } : { segment_ref: ref }),
       element_ref: ref,
       element_name: currentTarget.name ?? ref,
     }),
-    add_pv: (ref) => ({ source: 'sld_tool', element_ref: ref, station_ref: ref, node_ref: ref }),
-    add_bess: (ref) => ({ source: 'sld_tool', element_ref: ref, station_ref: ref, node_ref: ref }),
+    add_converter_source_pv: (ref) => ({
+      source: 'sld_tool',
+      element_ref: ref,
+      station_ref: ref,
+      node_ref: ref,
+      ...buildConverterSourceOperationContext('PV'),
+    }),
+    add_converter_source_bess: (ref) => ({
+      source: 'sld_tool',
+      element_ref: ref,
+      station_ref: ref,
+      node_ref: ref,
+      ...buildConverterSourceOperationContext('BESS'),
+    }),
     edit_properties: (ref, currentTarget) => ({
       source: 'sld_tool',
       element_ref: ref,

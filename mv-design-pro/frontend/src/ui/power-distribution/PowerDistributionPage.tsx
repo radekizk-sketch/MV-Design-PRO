@@ -5,9 +5,9 @@
  *
  * CANONICAL ALIGNMENT:
  * - fieldDeviceContracts.ts: FieldV1, DeviceV1, BayTemplate
- * - bayRenderer.ts: computeBayLayout() (ETAP-grade geometry)
+ * - bayRenderer.ts: computeBayLayout() (CANONICAL-grade geometry)
  * - switchgearConfig.ts: REQUIRED_DEVICES
- * - sldEtapStyle.ts: ETAP visual style system
+ * - sldCanonicalStyle.ts: CANONICAL visual style system
  *
  * ARCHITECTURE:
  * - APPLICATION / PRESENTATION LAYER: no physics, no model mutation.
@@ -16,7 +16,7 @@
  * - All labels 100% POLISH.
  *
  * FEATURES:
- * - Interactive SVG bay visualization (ETAP-grade).
+ * - Interactive SVG bay visualization (CANONICAL-grade).
  * - Field (bay) creation from canonical templates.
  * - Device management within fields.
  * - Real-time validation (missing required devices).
@@ -25,7 +25,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { BaySvgRenderer } from './BaySvgRenderer';
+import { CanonicalFieldRenderer } from '../field/CanonicalFieldRenderer';
 import {
   usePowerDistributionStore,
   useStation,
@@ -433,8 +433,9 @@ export function PowerDistributionPage(): JSX.Element {
 
         {/* Center: SVG bay renderer */}
         <div className="flex-1 flex items-center justify-center p-4 bg-white overflow-auto">
-          <BaySvgRenderer
+          <CanonicalFieldRenderer
             config={station}
+            renderContext="widok_pelny"
             width={Math.max(600, station.fields.length * 100 + 200)}
             height={420}
             selectedFieldId={selectedFieldId}

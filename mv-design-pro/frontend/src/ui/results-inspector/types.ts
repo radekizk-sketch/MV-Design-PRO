@@ -5,7 +5,7 @@
  * - Matches backend DTOs from application/analysis_run/dtos.py
  * - SYSTEM_SPEC.md: READ-ONLY result display
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic sorting
+ * - ui_canonical_parity.md: Deterministic sorting
  *
  * RULES (BINDING):
  * - These types are READ-ONLY views of backend data
@@ -14,6 +14,10 @@
  */
 
 import type { EnergyNetworkModel } from '../../types/enm';
+import type {
+  AnalysisCaseContext,
+  ExportArtifact,
+} from '../shared/analysisCaseContext';
 import type { ResultStatus as _ResultStatus } from '../types';
 
 // =============================================================================
@@ -33,6 +37,22 @@ export interface RunHeader {
   result_state: string; // VALID, OUTDATED, NONE
   solver_kind: string; // PF, short_circuit_sn
   input_hash: string;
+  analysis_case_context?: AnalysisCaseContext | null;
+}
+
+export interface ExportPolicy {
+  export_kind: ExportArtifact['export_kind'];
+  allows_partial: boolean;
+  requires_confirmation: boolean;
+  carries_analysis_case_context: boolean;
+  carries_proof_pack_ref: boolean;
+  carries_result_hash: boolean;
+  carries_input_hash: boolean;
+  carries_generated_at: boolean;
+  carries_generated_by_version: boolean;
+  null_rendering: 'dash' | 'empty_cell' | 'null';
+  not_applicable_rendering: 'label' | 'empty_cell';
+  partial_rendering: string;
 }
 
 // =============================================================================
@@ -64,6 +84,10 @@ export interface ResultTableMeta {
 export interface ResultsIndex {
   run_header: RunHeader;
   tables: ResultTableMeta[];
+  analysis_case_context?: AnalysisCaseContext | null;
+  proof_pack_ref?: string | null;
+  export_artifact?: ExportArtifact | null;
+  export_policy?: ExportPolicy | null;
 }
 
 // =============================================================================
@@ -90,6 +114,7 @@ export interface BusResultRow {
 export interface BusResults {
   run_id: string;
   rows: BusResultRow[];
+  analysis_case_context?: AnalysisCaseContext | null;
 }
 
 // =============================================================================
@@ -119,6 +144,7 @@ export interface BranchResultRow {
 export interface BranchResults {
   run_id: string;
   rows: BranchResultRow[];
+  analysis_case_context?: AnalysisCaseContext | null;
 }
 
 // =============================================================================
@@ -146,6 +172,7 @@ export interface ShortCircuitRow {
 export interface ShortCircuitResults {
   run_id: string;
   rows: ShortCircuitRow[];
+  analysis_case_context?: AnalysisCaseContext | null;
 }
 
 // =============================================================================
@@ -323,6 +350,7 @@ export interface ExtendedTrace {
     manual_override_element_count?: number;
     manual_override_count?: number;
   };
+  analysis_case_context?: AnalysisCaseContext | null;
 }
 
 // =============================================================================
@@ -443,3 +471,4 @@ export const SOLVER_KIND_LABELS: Record<string, string> = {
   short_circuit_sn: 'Zwarcie SN',
   power_flow: 'Rozpływ mocy',
 };
+

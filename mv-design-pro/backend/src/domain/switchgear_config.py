@@ -32,7 +32,6 @@ from .field_device import (
     PoleTypeV1,
 )
 
-
 # =============================================================================
 # VERSION
 # =============================================================================
@@ -289,18 +288,13 @@ class SwitchgearConfigV1:
         return SwitchgearConfigV1(
             config_version=data.get("config_version", SWITCHGEAR_CONFIG_VERSION),
             station_id=data.get("station_id", ""),
-            fields=tuple(
-                FieldConfigV1.from_dict(f) for f in data.get("fields", [])
-            ),
-            devices=tuple(
-                DeviceConfigV1.from_dict(d) for d in data.get("devices", [])
-            ),
+            fields=tuple(FieldConfigV1.from_dict(f) for f in data.get("fields", [])),
+            devices=tuple(DeviceConfigV1.from_dict(d) for d in data.get("devices", [])),
             catalog_bindings=tuple(
                 CatalogBindingV1.from_dict(b) for b in data.get("catalog_bindings", [])
             ),
             protection_bindings=tuple(
-                ProtectionBindingV1.from_dict(p)
-                for p in data.get("protection_bindings", [])
+                ProtectionBindingV1.from_dict(p) for p in data.get("protection_bindings", [])
             ),
         )
 
@@ -324,9 +318,7 @@ def canonicalize_config(config: SwitchgearConfigV1) -> SwitchgearConfigV1:
         station_id=config.station_id,
         fields=tuple(sorted(config.fields, key=lambda f: f.field_id)),
         devices=tuple(sorted(config.devices, key=lambda d: d.device_id)),
-        catalog_bindings=tuple(
-            sorted(config.catalog_bindings, key=lambda b: b.device_id)
-        ),
+        catalog_bindings=tuple(sorted(config.catalog_bindings, key=lambda b: b.device_id)),
         protection_bindings=tuple(
             sorted(
                 config.protection_bindings,
@@ -387,15 +379,9 @@ _VALIDATION_MESSAGES_PL: dict[str, str] = {
     SwitchgearConfigValidationCode.PV_BESS_TRANSFORMER_MISSING: (
         "Pole {field_id} ({pole_type}): generator PV/BESS wymaga transformatora"
     ),
-    SwitchgearConfigValidationCode.FIELD_DUPLICATE_ID: (
-        "Zduplikowane ID pola: {field_id}"
-    ),
-    SwitchgearConfigValidationCode.DEVICE_DUPLICATE_ID: (
-        "Zduplikowane ID aparatu: {device_id}"
-    ),
-    SwitchgearConfigValidationCode.DEVICE_ORPHAN: (
-        "Aparat {device_id}: brak pola o ID {field_id}"
-    ),
+    SwitchgearConfigValidationCode.FIELD_DUPLICATE_ID: ("Zduplikowane ID pola: {field_id}"),
+    SwitchgearConfigValidationCode.DEVICE_DUPLICATE_ID: ("Zduplikowane ID aparatu: {device_id}"),
+    SwitchgearConfigValidationCode.DEVICE_ORPHAN: ("Aparat {device_id}: brak pola o ID {field_id}"),
     SwitchgearConfigValidationCode.CATALOG_BINDING_ORPHAN: (
         "Powiazanie katalogowe: brak aparatu o ID {device_id}"
     ),
@@ -548,9 +534,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.DEVICE_ORPHAN,
                     severity=ConfigIssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Aparat {d.device_id}: brak pola o ID {d.field_id}"
-                    ),
+                    message_pl=(f"Aparat {d.device_id}: brak pola o ID {d.field_id}"),
                     element_id=d.device_id,
                     field_id=d.field_id,
                     device_id=d.device_id,
@@ -578,8 +562,7 @@ def validate_switchgear_config(
                     code=SwitchgearConfigValidationCode.CATALOG_REF_MISSING,
                     action=FixActionType.NAVIGATE_TO_WIZARD_CATALOG_PICKER,
                     message_pl=(
-                        f"Przypisz katalog do aparatu {d.device_id} "
-                        f"({d.device_type.value})"
+                        f"Przypisz katalog do aparatu {d.device_id} " f"({d.device_type.value})"
                     ),
                     station_id=config.station_id,
                     field_id=d.field_id,
@@ -610,18 +593,14 @@ def validate_switchgear_config(
                     ConfigFixActionV1(
                         code=SwitchgearConfigValidationCode.FIELD_MISSING_REQUIRED_DEVICE,
                         action=FixActionType.NAVIGATE_TO_WIZARD_FIELD,
-                        message_pl=(
-                            f"Dodaj aparat {req_type.value} do pola {f.field_id}"
-                        ),
+                        message_pl=(f"Dodaj aparat {req_type.value} do pola {f.field_id}"),
                         station_id=config.station_id,
                         field_id=f.field_id,
                     )
                 )
 
     # --- Rule 5: Relay must have protection binding ---
-    relay_devices = [
-        d for d in config.devices if d.device_type == DeviceTypeV1.RELAY
-    ]
+    relay_devices = [d for d in config.devices if d.device_type == DeviceTypeV1.RELAY]
     for relay in relay_devices:
         if relay.device_id not in relay_bound_ids:
             issues.append(
@@ -629,8 +608,7 @@ def validate_switchgear_config(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING,
                     severity=ConfigIssueSeverity.BLOCKER,
                     message_pl=(
-                        f"Zabezpieczenie {relay.device_id}: "
-                        f"brak powiazania z wylacznikiem (CB)"
+                        f"Zabezpieczenie {relay.device_id}: " f"brak powiazania z wylacznikiem (CB)"
                     ),
                     element_id=relay.device_id,
                     field_id=relay.field_id,
@@ -641,10 +619,7 @@ def validate_switchgear_config(
                 ConfigFixActionV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_MISSING,
                     action=FixActionType.NAVIGATE_TO_WIZARD_PROTECTION,
-                    message_pl=(
-                        f"Przypisz zabezpieczenie {relay.device_id} "
-                        f"do wylacznika CB"
-                    ),
+                    message_pl=(f"Przypisz zabezpieczenie {relay.device_id} " f"do wylacznika CB"),
                     station_id=config.station_id,
                     field_id=relay.field_id,
                     device_id=relay.device_id,
@@ -657,8 +632,7 @@ def validate_switchgear_config(
         if f.field_role in pv_bess_sn_roles:
             field_devices = [d for d in config.devices if d.field_id == f.field_id]
             has_transformer = any(
-                d.device_type == DeviceTypeV1.TRANSFORMER_DEVICE
-                for d in field_devices
+                d.device_type == DeviceTypeV1.TRANSFORMER_DEVICE for d in field_devices
             )
             if not has_transformer:
                 issues.append(
@@ -678,9 +652,7 @@ def validate_switchgear_config(
                     ConfigFixActionV1(
                         code=SwitchgearConfigValidationCode.PV_BESS_TRANSFORMER_MISSING,
                         action=FixActionType.NAVIGATE_TO_WIZARD_FIELD,
-                        message_pl=(
-                            f"Dodaj transformator do pola {f.field_id}"
-                        ),
+                        message_pl=(f"Dodaj transformator do pola {f.field_id}"),
                         station_id=config.station_id,
                         field_id=f.field_id,
                     )
@@ -693,9 +665,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.CATALOG_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(
-                        f"Powiazanie katalogowe: brak aparatu o ID {b.device_id}"
-                    ),
+                    message_pl=(f"Powiazanie katalogowe: brak aparatu o ID {b.device_id}"),
                     element_id=b.device_id,
                     device_id=b.device_id,
                 )
@@ -708,10 +678,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(
-                        f"Powiazanie ochronne: brak aparatu o ID "
-                        f"{p.relay_device_id}"
-                    ),
+                    message_pl=(f"Powiazanie ochronne: brak aparatu o ID " f"{p.relay_device_id}"),
                     element_id=p.relay_device_id,
                     device_id=p.relay_device_id,
                 )
@@ -721,10 +688,7 @@ def validate_switchgear_config(
                 ConfigValidationIssueV1(
                     code=SwitchgearConfigValidationCode.PROTECTION_BINDING_ORPHAN,
                     severity=ConfigIssueSeverity.WARNING,
-                    message_pl=(
-                        f"Powiazanie ochronne: brak aparatu o ID "
-                        f"{p.cb_device_id}"
-                    ),
+                    message_pl=(f"Powiazanie ochronne: brak aparatu o ID " f"{p.cb_device_id}"),
                     element_id=p.cb_device_id,
                     device_id=p.cb_device_id,
                 )
@@ -756,9 +720,7 @@ def validate_switchgear_config(
         )
     )
 
-    has_blockers = any(
-        i.severity == ConfigIssueSeverity.BLOCKER for i in sorted_issues
-    )
+    has_blockers = any(i.severity == ConfigIssueSeverity.BLOCKER for i in sorted_issues)
 
     return SwitchgearConfigValidationResultV1(
         valid=not has_blockers,

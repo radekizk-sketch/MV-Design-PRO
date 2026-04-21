@@ -16,13 +16,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
-
 from api.dependencies import get_uow_factory
 from application.protection_analysis import ProtectionAnalysisService
 from domain.protection_analysis import ProtectionRunStatus
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 
 router = APIRouter(tags=["protection-analysis"])
 
@@ -34,12 +32,14 @@ router = APIRouter(tags=["protection-analysis"])
 
 class CreateProtectionRunRequest(BaseModel):
     """Request to create a new protection analysis run."""
+
     sc_run_id: str
     protection_case_id: str
 
 
 class ProtectionRunResponse(BaseModel):
     """Response for protection run metadata."""
+
     id: str
     project_id: str
     sc_run_id: str
@@ -54,6 +54,7 @@ class ProtectionRunResponse(BaseModel):
 
 class ProtectionResultResponse(BaseModel):
     """Response for protection result."""
+
     run_id: str
     sc_run_id: str
     protection_case_id: str
@@ -66,6 +67,7 @@ class ProtectionResultResponse(BaseModel):
 
 class ProtectionTraceResponse(BaseModel):
     """Response for protection trace."""
+
     run_id: str
     sc_run_id: str
     snapshot_id: str | None
@@ -357,13 +359,15 @@ def get_protection_sld_overlay(
     # For now, return evaluations directly with element_id = protected_element_ref
     elements = []
     for evaluation in result.evaluations:
-        elements.append({
-            "symbol_id": evaluation.protected_element_ref,  # TODO: Map to actual symbol
-            "element_id": evaluation.protected_element_ref,
-            "trip_state": evaluation.trip_state.value,
-            "t_trip_s": evaluation.t_trip_s,
-            "margin_percent": evaluation.margin_percent,
-        })
+        elements.append(
+            {
+                "symbol_id": evaluation.protected_element_ref,  # TODO: Map to actual symbol
+                "element_id": evaluation.protected_element_ref,
+                "trip_state": evaluation.trip_state.value,
+                "t_trip_s": evaluation.t_trip_s,
+                "margin_percent": evaluation.margin_percent,
+            }
+        )
 
     # Sort deterministically by element_id
     elements.sort(key=lambda x: x["element_id"])

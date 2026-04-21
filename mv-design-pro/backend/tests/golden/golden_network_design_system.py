@@ -10,7 +10,7 @@ Steps:
 6. connect_secondary_ring_sn — ring closure
 7. set_normal_open_point — NOP on ring switch
 8. add_nn_load — 15 kW load on feeder nN
-9. add_pv_inverter_nn — 50 kVA PV on nN
+9. add_converter_source — 50 kVA PV on nN
 10. attach_protection_to_cb — relay on station CB
 11. run_short_circuit / run_power_flow (analysis)
 
@@ -19,17 +19,16 @@ This fixture provides canonical catalog bindings for all steps.
 
 from network_model.catalog.types import (
     BESSInverterType,
-    CTType,
     CatalogBinding,
     CatalogNamespace,
+    CTType,
+    LoadType,
     LVApparatusType,
     LVCableType,
-    LoadType,
     MVApparatusType,
     PVInverterType,
     VTType,
 )
-
 
 # =============================================================================
 # CANONICAL CATALOG DATA for golden network

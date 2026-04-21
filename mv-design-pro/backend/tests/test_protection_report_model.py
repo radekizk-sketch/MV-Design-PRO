@@ -15,8 +15,16 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
+from domain.protection_coordination_v1 import (
+    ProtectionSelectivityPair,
+    compute_coordination_v1,
+)
+from domain.protection_current_source import (
+    CurrentSourceType,
+    ProtectionCurrentSource,
+    SCCurrentSelection,
+    TargetRefMapping,
+)
 from domain.protection_engine_v1 import (
     CTRatio,
     Function50Settings,
@@ -27,24 +35,12 @@ from domain.protection_engine_v1 import (
     TestPoint,
     execute_protection_v1,
 )
-from domain.protection_coordination_v1 import (
-    CoordinationResultV1,
-    ProtectionSelectivityPair,
-    compute_coordination_v1,
-)
-from domain.protection_current_source import (
-    CurrentSourceType,
-    ProtectionCurrentSource,
-    SCCurrentSelection,
-    TargetRefMapping,
-)
 from domain.protection_report_model import (
     CoordinationReportSummary,
     ProtectionReportModel,
     RelayReportSummary,
     build_protection_report,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -82,15 +78,12 @@ def _make_relay(
 
 def _make_test_points(*currents: float) -> tuple[TestPoint, ...]:
     return tuple(
-        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c)
-        for i, c in enumerate(currents, 1)
+        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c) for i, c in enumerate(currents, 1)
     )
 
 
 def _run_protection(relays, test_points):
-    return execute_protection_v1(
-        ProtectionStudyInputV1(relays=relays, test_points=test_points)
-    )
+    return execute_protection_v1(ProtectionStudyInputV1(relays=relays, test_points=test_points))
 
 
 def _make_test_points_source() -> ProtectionCurrentSource:
@@ -204,8 +197,11 @@ class TestReportBasic:
 
     def test_relay_summary_has_f50_summary(self):
         relay = _make_relay(
-            "relay-001", "cb-001",
-            f50_enabled=True, f50_pickup=5.0, f50_trip_s=0.05,
+            "relay-001",
+            "cb-001",
+            f50_enabled=True,
+            f50_pickup=5.0,
+            f50_trip_s=0.05,
         )
         test_points = _make_test_points(5000.0)
         prot_result = _run_protection((relay,), test_points)
@@ -291,11 +287,10 @@ class TestCoordinationInReport:
         prot_result = _run_protection((relay1, relay2), test_points)
         source = _make_test_points_source()
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
         coord_result = compute_coordination_v1(
-            pairs=pairs, protection_result=prot_result,
+            pairs=pairs,
+            protection_result=prot_result,
         )
 
         report = build_protection_report(
@@ -365,7 +360,8 @@ class TestSorting:
             ProtectionSelectivityPair("pair-AAA", "relay-B", "relay-A"),
         )
         coord_result = compute_coordination_v1(
-            pairs=pairs, protection_result=prot_result,
+            pairs=pairs,
+            protection_result=prot_result,
         )
 
         report = build_protection_report(
@@ -464,9 +460,7 @@ class TestSerialization:
             ct_ratio_label="400/5 A",
             f50_summary="I>> = 25.0 A sec, t = 0.05 s",
             f51_summary="SI, TMS=0.3, I> = 1.0 A sec",
-            test_point_results=(
-                {"point_id": "tp-01", "f51_t_trip_s": 1.302},
-            ),
+            test_point_results=({"point_id": "tp-01", "f51_t_trip_s": 1.302},),
         )
         restored = RelayReportSummary.from_dict(rs.to_dict())
         assert restored.relay_id == rs.relay_id
@@ -560,11 +554,10 @@ class TestTraceSummary:
         prot_result = _run_protection((relay1, relay2), test_points)
         source = _make_test_points_source()
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
         coord_result = compute_coordination_v1(
-            pairs=pairs, protection_result=prot_result,
+            pairs=pairs,
+            protection_result=prot_result,
         )
 
         report = build_protection_report(

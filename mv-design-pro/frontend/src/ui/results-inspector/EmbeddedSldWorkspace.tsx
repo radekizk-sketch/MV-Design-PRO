@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../types/enm';
 import { useAppStateStore } from '../app-state';
+import { navigateToNetworkBuild, navigateToProof } from '../navigation';
 import { encodeSelectionToParams } from '../navigation/urlState';
 import { useSelectionStore } from '../selection/store';
-import { enmSnapshotToSldSymbols, SLDView } from '../sld';
+import { projectEnmSnapshotToSld, SLDView } from '../sld';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { fetchCurrentCaseSnapshot } from './api';
 import { useResultsInspectorStore } from './store';
@@ -138,10 +139,11 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
   const displayedSnapshotId =
     effectiveMode === 'CURRENT_MODEL' ? currentModelSnapshotId : runSnapshot?.snapshot_id ?? runHeader.snapshot_id;
 
-  const symbols = useMemo(
-    () => enmSnapshotToSldSymbols((displayedSnapshot ?? null) as Record<string, unknown> | null),
+  const projection = useMemo(
+    () => projectEnmSnapshotToSld((displayedSnapshot ?? null) as Record<string, unknown> | null),
     [displayedSnapshot],
   );
+  const symbols = projection.symbols;
 
   useEffect(() => {
     setActiveSnapshot(displayedSnapshotId ?? null);
@@ -161,17 +163,17 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
   );
 
   const handleOpenProof = useCallback(() => {
-    window.location.hash = buildHashWithCurrentSelection(`#proof?run=${runHeader.run_id}`);
+    navigateToProof({ runId: runHeader.run_id });
   }, [runHeader.run_id]);
 
   const handleOpenModel = useCallback(() => {
-    window.location.hash = buildHashWithCurrentSelection('#network-build');
+    navigateToNetworkBuild();
   }, []);
 
   const handleReturnToResults = useCallback(() => {
     const snapshotMode = encodeResultsSnapshotMode(effectiveMode);
     window.location.hash = buildHashWithCurrentSelection(
-      `#results?run=${runHeader.run_id}&snapshot=${snapshotMode}`,
+      `#analysis?tab=results&run=${runHeader.run_id}&snapshot=${snapshotMode}`,
     );
   }, [effectiveMode, runHeader.run_id]);
 
@@ -277,6 +279,8 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
         ) : (
           <SLDView
             symbols={symbols}
+            connections={projection.connections}
+            canonicalAnnotations={projection.canonicalAnnotations}
             selectedElement={selectedElement}
             width={canvasSize.width}
             height={canvasSize.height}

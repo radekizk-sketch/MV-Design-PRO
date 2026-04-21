@@ -9,19 +9,20 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from domain.trace_v2.artifact import TraceArtifactV2, TraceEquationStep, TraceValue
-
 
 # ---------------------------------------------------------------------------
 # Diff structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class TraceDiffEntry:
     """Difference in a single key-value pair."""
+
     key: str
     value_a: str | None
     value_b: str | None
@@ -39,6 +40,7 @@ class TraceDiffEntry:
 @dataclass(frozen=True)
 class TraceStepDiff:
     """Difference in a single equation step."""
+
     step_id: str
     status: str  # UNCHANGED | CHANGED | ADDED | REMOVED
     field_diffs: tuple[TraceDiffEntry, ...]
@@ -54,6 +56,7 @@ class TraceStepDiff:
 @dataclass(frozen=True)
 class TraceDiffSummary:
     """Summary of differences."""
+
     total_steps: int
     unchanged_count: int
     changed_count: int
@@ -73,6 +76,7 @@ class TraceDiffSummary:
 @dataclass(frozen=True)
 class TraceDiffResult:
     """Complete diff result between two TraceArtifactV2."""
+
     trace_a_id: str
     trace_b_id: str
     input_diffs: tuple[TraceDiffEntry, ...]
@@ -94,6 +98,7 @@ class TraceDiffResult:
 # ---------------------------------------------------------------------------
 # Engine
 # ---------------------------------------------------------------------------
+
 
 class TraceDiffEngine:
     """Pure, deterministic diff engine for TraceArtifactV2.
@@ -143,6 +148,7 @@ class TraceDiffEngine:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _value_to_str(tv: TraceValue) -> str:
     """Convert TraceValue to string for comparison."""
     v = tv.value
@@ -169,10 +175,14 @@ def _diff_trace_values(
             status = "UNCHANGED" if sa == sb else "CHANGED"
             result.append(TraceDiffEntry(key=key, value_a=sa, value_b=sb, status=status))
         elif va is not None:
-            result.append(TraceDiffEntry(key=key, value_a=_value_to_str(va), value_b=None, status="REMOVED"))
+            result.append(
+                TraceDiffEntry(key=key, value_a=_value_to_str(va), value_b=None, status="REMOVED")
+            )
         else:
             assert vb is not None
-            result.append(TraceDiffEntry(key=key, value_a=None, value_b=_value_to_str(vb), status="ADDED"))
+            result.append(
+                TraceDiffEntry(key=key, value_a=None, value_b=_value_to_str(vb), status="ADDED")
+            )
 
     return result
 
@@ -195,7 +205,9 @@ def _diff_steps(
             field_diffs = _diff_step_fields(sa, sb)
             has_changes = any(d.status != "UNCHANGED" for d in field_diffs)
             status = "CHANGED" if has_changes else "UNCHANGED"
-            result.append(TraceStepDiff(step_id=step_id, status=status, field_diffs=tuple(field_diffs)))
+            result.append(
+                TraceStepDiff(step_id=step_id, status=status, field_diffs=tuple(field_diffs))
+            )
         elif sa is not None:
             result.append(TraceStepDiff(step_id=step_id, status="REMOVED", field_diffs=()))
         else:
@@ -225,11 +237,13 @@ def _diff_step_fields(a: TraceEquationStep, b: TraceEquationStep) -> list[TraceD
     # Diff intermediate values
     iv_diffs = _diff_trace_values(a.intermediate_values, b.intermediate_values)
     for d in iv_diffs:
-        result.append(TraceDiffEntry(
-            key=f"intermediate.{d.key}",
-            value_a=d.value_a,
-            value_b=d.value_b,
-            status=d.status,
-        ))
+        result.append(
+            TraceDiffEntry(
+                key=f"intermediate.{d.key}",
+                value_a=d.value_a,
+                value_b=d.value_b,
+                status=d.status,
+            )
+        )
 
     return result

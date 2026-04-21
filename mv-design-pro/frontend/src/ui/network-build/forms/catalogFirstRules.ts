@@ -1,12 +1,18 @@
 /**
- * Reguly Catalog-First dla aktywnych operacji tworzenia elementow technicznych.
+ * Reguły Catalog-First dla aktywnych operacji tworzenia elementów technicznych.
  *
- * Formularze FE maja emitowac kanoniczne payloady:
+ * Formularze FE mają emitować kanoniczne payloady:
  * - segmenty: segment.catalog_binding
  * - stacje na odcinku: transformer.catalog_binding
- * - transformatory, laczniki i GPZ: payload.catalog_binding
- * - PV/BESS: pv_spec.catalog_item_id oraz bess_spec.inverter_catalog_id/storage_catalog_id
+ * - transformatory, łączniki i GPZ: payload.catalog_binding
+ * - źródła przekształtnikowe: kanonicznie add_converter_source
+ *
+ * Kompatybilność:
+ * - stare payloady PV/BESS nadal są rozpoznawane przy imporcie historii lub
+ *   przy otwieraniu starszych snapshotów, ale NIE stanowią już osobnych ścieżek UI
  */
+
+import { isCanonicalOpName } from '../../../types/domainOps';
 
 type Payload = Record<string, unknown>;
 
@@ -30,25 +36,75 @@ function hasCatalogBinding(value: unknown): boolean {
   return isNonEmptyString(record.catalog_item_id);
 }
 
-function hasCatalogInSegment(payload: Payload): boolean {
-  const segment = asPayload(payload.segment);
-  return (
-    segment !== null
-    && hasCatalogBinding(segment.catalog_binding)
-  );
+function hasManualGridSourceEquivalent(payload: Payload): boolean {
+  const manualEquivalent = asPayload(payload.manual_equivalent);
+  if (manualEquivalent === null) {
+    return false;
+  }
+
+  const positive = (value: unknown): boolean =>
+    typeof value === 'number' && Number.isFinite(value) && value > 0;
+  const nonNegative = (value: unknown): boolean =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0;
+  const voltageKv = manualEquivalent.voltage_kv ?? payload.voltage_kv;
+  const shortCircuitMode =
+    typeof (manualEquivalent.short_circuit_mode ?? payload.short_circuit_mode) === 'string'
+      ? String(manualEquivalent.short_circuit_mode ?? payload.short_circuit_mode)
+          .trim()
+          .toUpperCase()
+      : 'SHORT_CIRCUIT_POWER';
+
+  if (!positive(voltageKv)) {
+    return false;
+  }
+
+  if (shortCircuitMode === 'IMPEDANCE') {
+    const rOhm = manualEquivalent.r_ohm ?? payload.r_ohm;
+    const xOhm = manualEquivalent.x_ohm ?? payload.x_ohm;
+    return nonNegative(rOhm) && positive(xOhm);
+  }
+
+  const sk3Mva = manualEquivalent.sk3_mva ?? payload.sk3_mva;
+  const rxRatio = manualEquivalent.rx_ratio ?? payload.rx_ratio;
+  return positive(sk3Mva) && positive(rxRatio);
 }
 
-function hasPvCatalog(payload: Payload): boolean {
+function hasCatalogInSegment(payload: Payload): boolean {
+  const segment = asPayload(payload.segment);
+  return segment !== null && hasCatalogBinding(segment.catalog_binding);
+}
+
+function hasLegacyPvCatalog(payload: Payload): boolean {
   const pvSpec = asPayload(payload.pv_spec);
   return pvSpec !== null && isNonEmptyString(pvSpec.catalog_item_id);
 }
 
-function hasBessCatalog(payload: Payload): boolean {
+function hasLegacyBessCatalog(payload: Payload): boolean {
   const bessSpec = asPayload(payload.bess_spec);
   return (
     bessSpec !== null
     && isNonEmptyString(bessSpec.inverter_catalog_id)
     && isNonEmptyString(bessSpec.storage_catalog_id)
+  );
+}
+
+function hasConverterCatalog(payload: Payload): boolean {
+  return (
+    isNonEmptyString(payload.converter_catalog_id)
+    || isNonEmptyString(payload.catalog_ref)
+    || isNonEmptyString(payload.catalog_item_id)
+    || hasCatalogBinding(payload.catalog_binding)
+    || hasLegacyPvCatalog(payload)
+    || hasLegacyBessCatalog(payload)
+  );
+}
+
+function hasRelayCatalog(payload: Payload): boolean {
+  const protection = asPayload(payload.protection);
+  return (
+    (protection !== null && isNonEmptyString(protection.catalog_item_id))
+    || isNonEmptyString(payload.catalog_item_id)
+    || isNonEmptyString(payload.catalog_ref)
   );
 }
 
@@ -59,46 +115,61 @@ const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   insert_branch_pole_on_segment_sn: 'Wybierz typ słupa rozgałęźnego z katalogu przed wstawieniem.',
   insert_zksn_on_segment_sn: 'Wybierz typ ZKSN z katalogu przed wstawieniem.',
   add_transformer_sn_nn: 'Wybierz transformator z katalogu przed dodaniem do stacji.',
-  insert_section_switch_sn: 'Wybierz aparat z katalogu przed wstawieniem lacznika.',
-  connect_secondary_ring_sn: 'Wybierz typ kabla lub linii pierscienia z katalogu przed domknieciem petli.',
-  add_grid_source_sn: 'Wybierz zrodlo systemowe z katalogu przed utworzeniem zasilania GPZ.',
-  add_pv_inverter_nn: 'Wybierz falownik PV z katalogu przed dodaniem zrodla.',
-  add_bess_inverter_nn: 'Wybierz falownik i magazyn BESS z katalogu przed dodaniem zrodla.',
+  insert_section_switch_sn: 'Wybierz aparat z katalogu przed wstawieniem łącznika.',
+  connect_secondary_ring_sn: 'Wybierz typ kabla lub linii pierścienia z katalogu przed domknięciem pętli.',
+  add_grid_source_sn: 'Wybierz źródło systemowe z katalogu przed utworzeniem zasilania GPZ.',
+  add_converter_source: 'Wybierz typ źródła przekształtnikowego z katalogu przed dodaniem źródła.',
+  add_ct: 'Wybierz przekładnik prądowy z katalogu przed dodaniem go do pola SN.',
+  add_vt: 'Wybierz przekładnik napięciowy z katalogu przed dodaniem go do pola SN.',
+  add_relay: 'Wybierz zabezpieczenie z katalogu przed dodaniem go do pola SN.',
 };
 
+function normalizeCatalogFirstOperation(op: string): string {
+  return isCanonicalOpName(op) ? op : op;
+}
+
 /**
- * Zwraca komunikat bledu walidacji Catalog-First albo null.
+ * Zwraca komunikat błędu walidacji Catalog-First albo null.
  */
 export function validateCatalogFirst(op: string, payload: Payload): string | null {
-  switch (op) {
+  const normalizedOp = normalizeCatalogFirstOperation(op);
+
+  switch (normalizedOp) {
     case 'continue_trunk_segment_sn':
     case 'start_branch_segment_sn':
     case 'connect_secondary_ring_sn':
-      return hasCatalogInSegment(payload) ? null : REQUIRED_CATALOG_MESSAGE[op];
+      return hasCatalogInSegment(payload) ? null : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     case 'insert_station_on_segment_sn': {
       const transformer = asPayload(payload.transformer);
-      return (
-        transformer !== null
-        && hasCatalogBinding(transformer.catalog_binding)
-      )
+      return transformer !== null && hasCatalogBinding(transformer.catalog_binding)
         ? null
-        : REQUIRED_CATALOG_MESSAGE[op];
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     }
     case 'insert_branch_pole_on_segment_sn':
     case 'insert_zksn_on_segment_sn':
     case 'insert_section_switch_sn':
-    case 'add_grid_source_sn':
       return hasCatalogBinding(payload.catalog_binding)
         ? null
-        : REQUIRED_CATALOG_MESSAGE[op];
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_grid_source_sn':
+      return hasCatalogBinding(payload.catalog_binding) || hasManualGridSourceEquivalent(payload)
+        ? null
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     case 'add_transformer_sn_nn':
       return hasCatalogBinding(payload.catalog_binding)
         ? null
-        : REQUIRED_CATALOG_MESSAGE[op];
-    case 'add_pv_inverter_nn':
-      return hasPvCatalog(payload) ? null : REQUIRED_CATALOG_MESSAGE[op];
-    case 'add_bess_inverter_nn':
-      return hasBessCatalog(payload) ? null : REQUIRED_CATALOG_MESSAGE[op];
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_converter_source':
+      return hasConverterCatalog(payload) ? null : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_ct':
+    case 'add_vt':
+      return hasCatalogBinding(payload.catalog_binding)
+        || isNonEmptyString(payload.catalog_ref)
+        || isNonEmptyString(payload.catalog_item_id)
+        ? null
+        : REQUIRED_CATALOG_MESSAGE[normalizedOp];
+    case 'add_relay':
+      return hasRelayCatalog(payload) ? null : REQUIRED_CATALOG_MESSAGE[normalizedOp];
     default:
       return null;
   }

@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SYSTEM_SPEC.md: READ-ONLY result display, no physics
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic result tables
+ * - ui_canonical_parity.md: Deterministic result tables
  * - sld_rules.md: Overlay as separate layer
  *
  * STATE MANAGEMENT:
@@ -140,6 +140,17 @@ interface ResultsInspectorState {
   loadRunSnapshot: () => Promise<void>;
   loadSldOverlay: (projectId: string, diagramId: string) => Promise<void>;
   setSldOverlay: (overlay: SldResultOverlay | null) => void;
+  hydrateResultsView: (payload: {
+    runId: string;
+    resultsIndex: ResultsIndex;
+    busResults: BusResults | null;
+    branchResults: BranchResults | null;
+    shortCircuitResults: ShortCircuitResults | null;
+    extendedTrace: ExtendedTrace | null;
+    runSnapshot: ResultsRunSnapshot | null;
+    sldOverlay: SldResultOverlay | null;
+    overlayVisible: boolean;
+  }) => void;
   reset: () => void;
 }
 
@@ -376,6 +387,40 @@ export const useResultsInspectorStore = create<ResultsInspectorState>((set, get)
 
   setSldOverlay: (overlay) => {
     set({ sldOverlay: overlay });
+  },
+
+  hydrateResultsView: (payload) => {
+    const resultState = payload.resultsIndex.run_header.result_state;
+    const derivedOverlay = buildDerivedSldOverlay(
+      payload.runId,
+      resultState,
+      payload.busResults,
+      payload.branchResults,
+      payload.shortCircuitResults,
+    );
+    const hasShortCircuit = payload.resultsIndex.tables.some((table) => table.table_id === 'short-circuit');
+    const hasBuses = payload.resultsIndex.tables.some((table) => table.table_id === 'buses');
+
+    set({
+      selectedRunId: payload.runId,
+      resultsIndex: payload.resultsIndex,
+      busResults: payload.busResults,
+      branchResults: payload.branchResults,
+      shortCircuitResults: payload.shortCircuitResults,
+      extendedTrace: payload.extendedTrace,
+      runSnapshot: payload.runSnapshot,
+      sldOverlay: payload.sldOverlay ?? derivedOverlay,
+      overlayVisible: payload.overlayVisible,
+      activeTab: hasShortCircuit ? 'SHORT_CIRCUIT' : hasBuses ? 'BUSES' : 'BRANCHES',
+      isLoadingIndex: false,
+      isLoadingBuses: false,
+      isLoadingBranches: false,
+      isLoadingShortCircuit: false,
+      isLoadingTrace: false,
+      isLoadingOverlay: false,
+      isLoadingRunSnapshot: false,
+      error: null,
+    });
   },
 
   /**

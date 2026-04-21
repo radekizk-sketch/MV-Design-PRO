@@ -82,9 +82,7 @@ def test_protection_catalog_has_industrial_series_width_and_semantic_split() -> 
         "ACME_REX700_v1",
     }
 
-    etango_device_ids = {
-        data["id"] for data in device_dicts if data["vendor"] == "ELEKTROMETAL"
-    }
+    etango_device_ids = {data["id"] for data in device_dicts if data["vendor"] == "ELEKTROMETAL"}
     assert etango_device_ids == {
         "EM_ETANGO_400_V0",
         "EM_ETANGO_600_V0",

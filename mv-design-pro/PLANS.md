@@ -25,7 +25,7 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 | Phase | Description | Status |
 |-------|-------------|--------|
 | Phase 1: Documentation | Canonical docs (SYSTEM_SPEC, ARCHITECTURE, AGENTS, PLANS) | DONE |
-| Phase 1.x: PF UI/UX Parity | PowerFactory alignment docs | DONE |
+| Phase 1.x: UI/UX Parity | canonical alignment docs | DONE |
 | Phase 1.y: UI Contracts | SLD, Results, Inspector contracts | DONE |
 | Phase 1.z: UI Exploration | Results/Inspector exploration docs | DONE |
 | Phase 2: NetworkModel Core | Core elements, graph, snapshot | DONE (code) |
@@ -262,7 +262,7 @@ Progress:
 | Item | Description | Status |
 |------|-------------|--------|
 | Phase 6: Wizard/SLD Unity | Formal verification that Wizard and SLD operate on same model | DONE |
-| NetworkValidator Extension | Full PowerFactory-grade validation rules (13 rules, 29 tests) | DONE |
+| NetworkValidator Extension | Full industrial-grade validation rules (13 rules, 29 tests) | DONE |
 | Bus Terminology Completion | Finish Node -> Bus rename in all code paths | DONE |
 | SC Asymmetrical Proofs | 1F, 2F, 2F-Z fault proof packs (IEC 60909) | DONE |
 | Normative Completion Pack (IEC 60909 §4.1) | Domknięcie mapowania norma→dowód + golden proofs + CI gates | DONE |

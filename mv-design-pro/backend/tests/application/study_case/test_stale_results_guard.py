@@ -16,11 +16,11 @@ accessible to users after invalidation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
+from application.study_case.errors import StaleResultsError
 from domain.analysis_run import AnalysisRun, new_analysis_run
 from domain.study_case import (
     StudyCaseConfig,
@@ -28,7 +28,6 @@ from domain.study_case import (
     StudyCaseResultStatus,
     new_study_case,
 )
-from application.study_case.errors import StaleResultsError
 
 
 class TestStaleResultsGuard:
@@ -108,7 +107,7 @@ class TestStaleResultsGuard:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash1",
         )
         fresh = case.mark_as_fresh(ref)
@@ -133,7 +132,7 @@ class TestStaleResultsGuard:
             ref = StudyCaseResult(
                 analysis_run_id=uuid4(),
                 analysis_type="PF",
-                calculated_at=datetime.now(timezone.utc),
+                calculated_at=datetime.now(UTC),
                 input_hash=f"hash-{i}",
             )
             cases.append(case.mark_as_fresh(ref))
@@ -154,7 +153,7 @@ class TestStaleResultsGuard:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash",
         )
         fresh = fresh.mark_as_fresh(ref)
@@ -183,7 +182,7 @@ class TestStaleResultsGuard:
         ref1 = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash1",
         )
         case = case.mark_as_fresh(ref1)
@@ -197,7 +196,7 @@ class TestStaleResultsGuard:
         ref2 = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash2",
         )
         case = case.mark_as_fresh(ref2)

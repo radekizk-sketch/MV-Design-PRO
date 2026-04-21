@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Add backend/src to path for imports
@@ -49,12 +49,8 @@ def _build_service(tmp_path):
 
     project = new_project(name="Wizard Project")
     network_model_id = str(project.id)
-    snapshot_one = _build_snapshot(
-        "snap-1", "2024-01-01T00:00:00+00:00", network_model_id
-    )
-    snapshot_two = _build_snapshot(
-        "snap-2", "2024-01-02T00:00:00+00:00", network_model_id
-    )
+    snapshot_one = _build_snapshot("snap-1", "2024-01-01T00:00:00+00:00", network_model_id)
+    snapshot_two = _build_snapshot("snap-2", "2024-01-02T00:00:00+00:00", network_model_id)
 
     with uow_factory() as uow:
         uow.projects.add(project, commit=False)
@@ -89,7 +85,7 @@ def test_submit_action_and_commit_persists_snapshot(tmp_path) -> None:
             "active_power": 1.0,
             "reactive_power": 0.5,
         },
-        created_at=datetime(2024, 1, 3, tzinfo=timezone.utc).isoformat(),
+        created_at=datetime(2024, 1, 3, tzinfo=UTC).isoformat(),
     )
 
     result = service.submit_action(session.wizard_session_id, envelope)

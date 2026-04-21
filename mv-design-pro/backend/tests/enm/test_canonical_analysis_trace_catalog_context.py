@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from enm.canonical_analysis import CanonicalRun, build_extended_trace
@@ -13,7 +13,7 @@ def test_build_extended_trace_uses_snapshot_catalog_context_without_fabrication(
         project_id="project-001",
         analysis_type="PF",
         status="FINISHED",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         snapshot_hash="snap-001",
         input_hash="input-001",
         snapshot={
@@ -160,4 +160,7 @@ def test_build_extended_trace_uses_snapshot_catalog_context_without_fabrication(
         "manual_override_element_count": 1,
         "manual_override_count": 1,
     }
-    assert payload["catalog_context_by_element"]["line-002"]["source_catalog_label"] == "mv_cables:cable-120@2026.04"
+    assert (
+        payload["catalog_context_by_element"]["line-002"]["source_catalog_label"]
+        == "mv_cables:cable-120@2026.04"
+    )

@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § E.1: Selection patterns (deterministic)
- * - powerfactory_ui_parity.md: ≥110% PowerFactory UX
+ * - ui_canonical_parity.md: ≥110% Canonical UX
  *
  * TEST SCENARIOS (MINIMUM 5):
  * 1. Multi-select: Shift+click adds to selection

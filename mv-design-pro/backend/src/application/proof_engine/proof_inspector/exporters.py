@@ -15,7 +15,6 @@ Inspector TYLKO wywoluje istniejace renderery.
 
 from __future__ import annotations
 
-import json
 import subprocess
 import tempfile
 from dataclasses import dataclass

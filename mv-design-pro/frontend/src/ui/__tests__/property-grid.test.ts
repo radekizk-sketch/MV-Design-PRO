@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 3: Property Grid specifications
- * - powerfactory_ui_parity.md § D: Property Grid rules
+ * - ui_canonical_parity.md § D: Property Grid rules
  *
  * Tests:
  * - Deterministic field ordering

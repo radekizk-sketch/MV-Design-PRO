@@ -19,8 +19,8 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 import hashlib
+from importlib.util import find_spec
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import pytest
 
@@ -32,12 +32,7 @@ try:
 except ImportError:
     _DOCX_AVAILABLE = False
 
-try:
-    import reportlab
-
-    _PDF_AVAILABLE = True
-except ImportError:
-    _PDF_AVAILABLE = False
+_PDF_AVAILABLE = find_spec("reportlab") is not None
 
 
 # =============================================================================
@@ -106,9 +101,7 @@ def _get_docx_text(path: Path) -> str:
 class TestDocxWzorzecA:
     """Testy DOCX dla wzorca A."""
 
-    def test_docx_creates_file(
-        self, pattern_a_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_docx_creates_file(self, pattern_a_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje utworzenie pliku DOCX."""
         from application.reference_patterns import export_reference_pattern_to_docx
 
@@ -174,9 +167,7 @@ class TestDocxWzorzecA:
         # Werdykt (jeden z trzech)
         assert any(v in text for v in ["ZGODNE", "GRANICZNE", "NIEZGODNE"])
 
-    def test_docx_without_trace(
-        self, pattern_a_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_docx_without_trace(self, pattern_a_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje generowanie DOCX bez śladu obliczeń."""
         from application.reference_patterns import export_reference_pattern_to_docx
 
@@ -201,9 +192,7 @@ class TestDocxWzorzecA:
 class TestDocxWzorzecC:
     """Testy DOCX dla wzorca C."""
 
-    def test_docx_creates_file(
-        self, pattern_c_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_docx_creates_file(self, pattern_c_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje utworzenie pliku DOCX."""
         from application.reference_patterns import export_reference_pattern_to_docx
 
@@ -277,9 +266,7 @@ class TestDocxWzorzecC:
 class TestPdfWzorzecA:
     """Testy PDF dla wzorca A."""
 
-    def test_pdf_creates_file(
-        self, pattern_a_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_pdf_creates_file(self, pattern_a_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje utworzenie pliku PDF."""
         from application.reference_patterns import export_reference_pattern_to_pdf
 
@@ -292,9 +279,7 @@ class TestPdfWzorzecA:
         assert returned_path == output_file
         assert output_file.stat().st_size > 0
 
-    def test_pdf_has_valid_header(
-        self, pattern_a_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_pdf_has_valid_header(self, pattern_a_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje poprawny nagłówek PDF."""
         from application.reference_patterns import export_reference_pattern_to_pdf
 
@@ -366,9 +351,7 @@ class TestPdfWzorzecA:
 class TestPdfWzorzecC:
     """Testy PDF dla wzorca C."""
 
-    def test_pdf_creates_file(
-        self, pattern_c_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_pdf_creates_file(self, pattern_c_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje utworzenie pliku PDF."""
         from application.reference_patterns import export_reference_pattern_to_pdf
 
@@ -381,9 +364,7 @@ class TestPdfWzorzecC:
         assert returned_path == output_file
         assert output_file.stat().st_size > 0
 
-    def test_pdf_has_valid_header(
-        self, pattern_c_result, report_metadata, tmp_path: Path
-    ) -> None:
+    def test_pdf_has_valid_header(self, pattern_c_result, report_metadata, tmp_path: Path) -> None:
         """Weryfikuje poprawny nagłówek PDF."""
         from application.reference_patterns import export_reference_pattern_to_pdf
 
@@ -491,9 +472,7 @@ class TestDeterminismMultipleRuns:
         hashes = []
         for i in range(5):
             output_file = tmp_path / f"wzorzec_a_run_{i}.docx"
-            export_reference_pattern_to_docx(
-                pattern_a_result, output_file, report_metadata
-            )
+            export_reference_pattern_to_docx(pattern_a_result, output_file, report_metadata)
             hashes.append(_compute_sha256(output_file))
 
         # Wszystkie hashe powinny być identyczne
@@ -512,9 +491,7 @@ class TestDeterminismMultipleRuns:
         hashes = []
         for i in range(5):
             output_file = tmp_path / f"wzorzec_c_run_{i}.docx"
-            export_reference_pattern_to_docx(
-                pattern_c_result, output_file, report_metadata
-            )
+            export_reference_pattern_to_docx(pattern_c_result, output_file, report_metadata)
             hashes.append(_compute_sha256(output_file))
 
         # Wszystkie hashe powinny być identyczne

@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 @dataclass(frozen=True)
@@ -78,7 +78,7 @@ def build_export_manifest(
     """
     sorted_ids = tuple(sorted(set(element_ids)))
     sorted_types = tuple(sorted(set(analysis_types)))
-    created_at = datetime.now(timezone.utc).isoformat()
+    created_at = datetime.now(UTC).isoformat()
 
     # Canonical JSON for hashing (deterministic key order)
     canonical = json.dumps(

@@ -12,13 +12,11 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 from network_model.reporting.power_flow_export import (
+    export_power_flow_comparison_to_json,
     export_power_flow_result_to_json,
     export_power_flow_results_to_jsonl,
-    export_power_flow_comparison_to_json,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -333,7 +331,10 @@ class TestNotASolverCompliance:
         original = result.to_dict()
         assert content["result"]["converged"] == original["converged"]
         assert content["result"]["iterations_count"] == original["iterations_count"]
-        assert content["result"]["summary"]["total_losses_p_mw"] == original["summary"]["total_losses_p_mw"]
+        assert (
+            content["result"]["summary"]["total_losses_p_mw"]
+            == original["summary"]["total_losses_p_mw"]
+        )
 
     def test_export_preserves_bus_results(self, tmp_path: Path):
         """Verify bus results are preserved without recalculation."""

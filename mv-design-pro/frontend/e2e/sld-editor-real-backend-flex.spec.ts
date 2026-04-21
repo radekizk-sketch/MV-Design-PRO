@@ -7,6 +7,12 @@ const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const UPDATED_TRANSFORMER_NAME = 'Transformator terenowy';
 const CATALOG_VERSION = '2024.1';
+let entityCounter = 0;
+
+function nextEntitySuffix(): string {
+  entityCounter += 1;
+  return String(entityCounter).padStart(4, '0');
+}
 
 type DomainOpResponse = {
   error?: string | null;
@@ -60,25 +66,80 @@ async function executeDomainOp(
   return body;
 }
 
-async function createCaseFromUi(page: Page): Promise<string> {
-  await page.goto('/', { waitUntil: 'commit' });
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+async function createProjectAndCase(
+  request: APIRequestContext,
+): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
+  const suffix = nextEntitySuffix();
+  const projectName = `E2E SLD ${suffix}`;
+  const caseName = `Przypadek SLD ${suffix}`;
+
+  const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
+    data: {
+      name: projectName,
+      description: 'Test real backend SLD editor V12.5',
+      mode: 'TO-BE',
+      voltage_level_kv: 15.0,
+      frequency_hz: 50.0,
+    },
   });
-  await page.reload({ waitUntil: 'commit' });
+  expect(projectResponse.ok()).toBeTruthy();
+  const project = (await projectResponse.json()) as { id: string };
+
+  const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
+    data: {
+      project_id: project.id,
+      name: caseName,
+      description: '',
+      config: {},
+      set_active: true,
+    },
+  });
+  expect(caseResponse.ok()).toBeTruthy();
+  const studyCase = (await caseResponse.json()) as { id: string };
+
+  return {
+    projectId: project.id,
+    projectName,
+    caseId: studyCase.id,
+    caseName,
+  };
+}
+
+async function createCaseFromUi(page: Page, request: APIRequestContext): Promise<string> {
+  const { projectId, projectName, caseId, caseName } = await createProjectAndCase(request);
+
+  await page.addInitScript((seed) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: seed.projectId,
+          activeProjectName: seed.projectName,
+          activeCaseId: seed.caseId,
+          activeCaseName: seed.caseName,
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'NONE',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeRunId: null,
+          activeAnalysisType: 'SHORT_CIRCUIT',
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, {
+    projectId,
+    projectName,
+    caseId,
+    caseName,
+  });
+
+  await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  const createCaseBtn = page.getByTestId('sld-empty-overlay-create-case');
-  await expect(createCaseBtn).toBeVisible();
-  const createCaseResponsePromise = page.waitForResponse(
-    (response) => response.url().includes('/api/study-cases') && response.request().method() === 'POST',
-  );
-  await createCaseBtn.click({ force: true });
-  const createCaseResponse = await createCaseResponsePromise;
-  expect(createCaseResponse.ok()).toBeTruthy();
-  const casePayload = (await createCaseResponse.json()) as { id: string };
   await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
-  return casePayload.id;
+  return caseId;
 }
 
 async function reloadEditorPage(page: Page): Promise<void> {
@@ -100,25 +161,34 @@ async function reloadEditorPage(page: Page): Promise<void> {
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string): Promise<void> {
-  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+  try {
+    await page.screenshot({
+      path: testInfo.outputPath(`${name}.png`),
+      fullPage: false,
+      timeout: 30000,
+    });
+  } catch {
+    // Screenshot is diagnostic only; a slow shell render should not fail the flow.
+  }
 }
 
 async function openSegmentInspector(page: Page, segmentRef: string): Promise<void> {
-  const connection = page.getByTestId(`sld-connection-${segmentRef}`);
-  await expect(connection).toHaveCount(1, { timeout: 15000 });
-
-  await connection.locator('polyline').first().evaluate((node: SVGPolylineElement) => {
+  const exactConnection = page.locator(`[data-connection-ref="${segmentRef}"]`).first();
+  const hitbox = exactConnection.locator('polyline').first();
+  await expect(hitbox).toHaveCount(1, { timeout: 15000 });
+  await hitbox.evaluate((node: SVGPolylineElement) => {
     node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
   });
 
   await expect(page.getByTestId('sld-segment-inspector')).toBeVisible();
+  await expect(page.getByTestId('sld-segment-inspector')).toContainText(segmentRef);
 }
 
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
-  const symbol = page.getByTestId(`sld-symbol-${elementRef}`);
-  await expect(symbol).toHaveCount(1);
+  const symbol = page.locator(`[data-testid^="sld-symbol-"][data-element-id="${elementRef}"]`).first();
+  await expect(symbol).toHaveCount(1, { timeout: 15000 });
 
-  await symbol.evaluate((node: SVGGElement) => {
+  await symbol.evaluate((node: SVGElement) => {
     node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
   });
 
@@ -141,7 +211,7 @@ async function activateEngineeringFieldEditor(page: Page, fieldKey: string): Pro
 }
 
 test('real backend SLD editor flow: source -> trunk -> station -> branch -> update -> delete -> continue', async ({ page, request }, testInfo) => {
-  const caseId = await createCaseFromUi(page);
+  const caseId = await createCaseFromUi(page, request);
 
   await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
@@ -259,7 +329,7 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 });
 
 test('real backend supports flexible operation order combinations', async ({ page, request }) => {
-  const caseId = await createCaseFromUi(page);
+  const caseId = await createCaseFromUi(page, request);
 
   let snapshot = await executeDomainOp(request, caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,

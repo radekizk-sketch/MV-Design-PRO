@@ -32,9 +32,9 @@ Kanoniczne payloady FE:
 - `insert_section_switch_sn`: `segment_id`, `insert_at`, `switch_type`, `normal_state`, `catalog_binding`,
 - `connect_secondary_ring_sn`: `from_bus_ref`, `to_bus_ref`, `segment`, a punkt NOP jest ustawiany osobna operacja `set_normal_open_point` z `switch_ref`,
 - `add_transformer_sn_nn`: `hv_bus_ref`, `lv_bus_ref`, `catalog_binding`,
-- `add_pv_inverter_nn` i `add_bess_inverter_nn`: `bus_nn_ref`, `station_ref`, `placement` oraz odpowiednio `pv_spec` lub `bess_spec`.
+- `add_converter_source`: `bus_nn_ref`, `station_ref`, `placement`, `source_technology` oraz kanoniczny `catalog_binding`.
 
 Granice aktualnego stanu:
-- backend utrzymuje aliasy starych nazw operacji, wiec kreator nie jest jeszcze jedynym slownikiem nazw domenowych,
+- backend i frontend uzywaja jednego zbioru nazw kanonicznych operacji, wiec kreator jest zgodny ze slownikiem domenowym V11,
 - `insert_section_switch_sn` nie daje tak kompletnej materializacji jak operacje odcinkow i transformatorow,
 - kreator nie ma jeszcze osobnego widoku kompletosci katalogowej i konfliktow dla wszystkich klas elementow.

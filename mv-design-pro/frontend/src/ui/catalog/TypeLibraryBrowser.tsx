@@ -14,14 +14,6 @@ import type {
   TypeCategory,
 } from './types';
 
-/**
- * Type Library Browser (Biblioteka typow)
- *
- * Aktywna przegladarka wszystkich wspieranych kategorii katalogowych.
- * Dla kategorii bez wyspecjalizowanego widoku parametrow pokazuje
- * generyczny panel szczegolow oparty o jawne pola rekordu katalogowego.
- */
-
 interface TabDefinition {
   id: TypeCategory;
   label: string;
@@ -29,22 +21,22 @@ interface TabDefinition {
 }
 
 const TAB_DEFINITIONS: readonly TabDefinition[] = [
-  { id: 'LINE', label: 'Typy linii napowietrznych', icon: '[LN]' },
-  { id: 'CABLE', label: 'Typy kabli SN', icon: '[CB]' },
-  { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '[ZS]' },
-  { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '[TR]' },
-  { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '[SW]' },
-  { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '[MS]' },
-  { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '[LS]' },
-  { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '[LV]' },
-  { id: 'LOAD', label: 'Typy obciazen', icon: '[LD]' },
-  { id: 'CT', label: 'Typy przekladnikow pradowych', icon: '[CT]' },
-  { id: 'VT', label: 'Typy przekladnikow napieciowych', icon: '[VT]' },
-  { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekladnikow pomiarowych', icon: '[MT]' },
-  { id: 'PV_INVERTER', label: 'Typy falownikow PV', icon: '[PV]' },
-  { id: 'BESS_INVERTER', label: 'Typy falownikow BESS', icon: '[BS]' },
-  { id: 'CONVERTER', label: 'Typy konwerterow', icon: '[CV]' },
-  { id: 'PROTECTION_DEVICE', label: 'Typy zabezpieczen', icon: '[PR]' },
+  { id: 'LINE', label: 'Typy linii napowietrznych', icon: '≋' },
+  { id: 'CABLE', label: 'Typy kabli SN', icon: '⟂' },
+  { id: 'SYSTEM_SOURCE', label: 'Typy zasilania systemowego SN', icon: '⚡' },
+  { id: 'TRANSFORMER', label: 'Typy transformatorów SN/nN', icon: '⬍' },
+  { id: 'SWITCH_EQUIPMENT', label: 'Typy aparatury łączeniowej SN', icon: '⎆' },
+  { id: 'MV_APPARATUS', label: 'Typy aparatury SN', icon: '◫' },
+  { id: 'LV_APPARATUS', label: 'Typy aparatury nN', icon: '▥' },
+  { id: 'LV_CABLE', label: 'Typy kabli nN', icon: '⟃' },
+  { id: 'LOAD', label: 'Typy obciążeń', icon: '◔' },
+  { id: 'CT', label: 'Typy przekładników prądowych', icon: '◎' },
+  { id: 'VT', label: 'Typy przekładników napięciowych', icon: '◌' },
+  { id: 'MEASUREMENT_TRANSFORMER', label: 'Typy przekładników pomiarowych', icon: '◍' },
+  { id: 'PV_INVERTER', label: 'Typy falowników źródeł fotowoltaicznych', icon: '☀' },
+  { id: 'BESS_INVERTER', label: 'Typy falowników magazynów energii', icon: '▣' },
+  { id: 'CONVERTER', label: 'Typy konwerterów', icon: '⟲' },
+  { id: 'PROTECTION_DEVICE', label: 'Typy zabezpieczeń', icon: '🛡' },
 ] as const;
 
 const CATEGORY_LABELS: Record<TypeCategory, string> = Object.fromEntries(
@@ -57,38 +49,38 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   model: 'Model',
   series: 'Seria',
   equipment_kind: 'Rodzaj aparatu',
-  device_kind: 'Rodzaj urzadzenia',
-  measurement_kind: 'Rodzaj przekladnika',
-  source_catalog: 'Zrodlo katalogu',
+  device_kind: 'Rodzaj urządzenia',
+  measurement_kind: 'Rodzaj przekładnika',
+  source_catalog: 'Źródło katalogu',
   operator_name: 'Operator',
   supply_role: 'Rola zasilania',
   short_circuit_model: 'Model zwarciowy',
-  earthing_system: 'Uklad uziemienia',
+  earthing_system: 'Układ uziemienia',
   notes_pl: 'Uwagi',
   standard: 'Norma',
   control_mode: 'Tryb sterowania',
-  grid_code: 'Grid code',
+  grid_code: 'Wymagania przyłączeniowe',
   model_type: 'Model',
-  functions_supported: 'Funkcje obslugiwane',
-  curves_supported: 'Krzywe obslugiwane',
+  functions_supported: 'Funkcje obsługiwane',
+  curves_supported: 'Krzywe obsługiwane',
   unverified: 'Niezweryfikowane',
   unverified_ranges: 'Zakresy niezweryfikowane',
-  voltage_rating_kv: 'Napiecie znamionowe [kV]',
+  voltage_rating_kv: 'Napięcie znamionowe [kV]',
   sk3_mva: 'Moc zwarciowa Sk3 [MVA]',
-  ik3_ka: 'Prad zwarciowy Ik3 [kA]',
+  ik3_ka: 'Prąd zwarciowy Ik3 [kA]',
   rx_ratio: 'Stosunek R/X',
-  u_n_kv: 'Napiecie znamionowe [kV]',
-  i_n_a: 'Prad znamionowy [A]',
-  breaking_capacity_ka: 'Zdolnosc wylaczalna [kA]',
-  making_capacity_ka: 'Zdolnosc zalaczalna [kA]',
-  cross_section_mm2: 'Przekroj [mm2]',
-  number_of_cores: 'Liczba zyl',
-  ratio_primary_a: 'Przekladnia pierwotna [A]',
-  ratio_secondary_a: 'Przekladnia wtornika [A]',
-  ratio_primary_v: 'Przekladnia pierwotna [V]',
-  ratio_secondary_v: 'Przekladnia wtornika [V]',
-  accuracy_class: 'Klasa dokladnosci',
-  burden_va: 'Moc obciazeniowa [VA]',
+  u_n_kv: 'Napięcie znamionowe [kV]',
+  i_n_a: 'Prąd znamionowy [A]',
+  breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
+  making_capacity_ka: 'Zdolność załączalna [kA]',
+  cross_section_mm2: 'Przekrój [mm2]',
+  number_of_cores: 'Liczba żył',
+  ratio_primary_a: 'Przekładnia pierwotna [A]',
+  ratio_secondary_a: 'Przekładnia wtórna [A]',
+  ratio_primary_v: 'Przekładnia pierwotna [V]',
+  ratio_secondary_v: 'Przekładnia wtórna [V]',
+  accuracy_class: 'Klasa dokładności',
+  burden_va: 'Moc obciążeniowa [VA]',
   p_kw: 'Moc czynna P [kW]',
   q_kvar: 'Moc bierna Q [kvar]',
   cos_phi: 'cos phi',
@@ -96,10 +88,10 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   profile_id: 'Profil',
   s_n_kva: 'Moc znamionowa S [kVA]',
   p_max_kw: 'Moc maksymalna Pmax [kW]',
-  p_charge_kw: 'Moc ladowania [kW]',
-  p_discharge_kw: 'Moc rozladowania [kW]',
-  e_kwh: 'Pojemnosc energii [kWh]',
-  rated_current_a: 'Prad znamionowy [A]',
+  p_charge_kw: 'Moc ładowania [kW]',
+  p_discharge_kw: 'Moc rozładowania [kW]',
+  e_kwh: 'Pojemność energii [kWh]',
+  rated_current_a: 'Prąd znamionowy [A]',
   catalog_number: 'Numer katalogowy',
 };
 
@@ -230,7 +222,7 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'LV_APPARATUS':
       return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Icw=${formatDetailValue(record.breaking_capacity_ka)} kA`;
     case 'LV_CABLE':
-      return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} zyl · ${formatDetailValue(record.i_max_a)} A`;
+      return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':
       return `P=${formatDetailValue(record.p_kw)} kW · cos phi=${formatDetailValue(record.cos_phi)} · model=${formatDetailValue(record.model)}`;
     case 'CT':
@@ -248,7 +240,7 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
     case 'PROTECTION_DEVICE':
       return `${formatDetailValue(record.series)} · funkcje=${Array.isArray(record.functions_supported) ? record.functions_supported.length : 0} · krzywe=${Array.isArray(record.curves_supported) ? record.curves_supported.length : 0}`;
     default:
-      return 'Brak zdefiniowanego skrotu parametrow.';
+      return 'Brak zdefiniowanego skrótu parametrów.';
   }
 }
 
@@ -298,7 +290,7 @@ export function TypeLibraryBrowser({
       })
       .catch((err: unknown) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : 'Blad pobierania typow.');
+        setError(err instanceof Error ? err.message : 'Błąd pobierania typów.');
         setLoading(false);
       });
 
@@ -351,7 +343,7 @@ export function TypeLibraryBrowser({
       URL.revokeObjectURL(url);
       setLoading(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Blad eksportu biblioteki.');
+      setError(err instanceof Error ? err.message : 'Błąd eksportu biblioteki.');
       setLoading(false);
     }
   };
@@ -379,7 +371,7 @@ export function TypeLibraryBrowser({
       setTypes(fetchedTypes);
       setLoading(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Blad importu biblioteki.');
+      setError(err instanceof Error ? err.message : 'Błąd importu biblioteki.');
       setLoading(false);
     } finally {
       if (fileInputRef.current) {
@@ -392,9 +384,9 @@ export function TypeLibraryBrowser({
     <div className="flex h-full flex-col bg-gray-50">
       <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-800">Biblioteka typow</h1>
+          <h1 className="text-2xl font-semibold text-gray-800">Biblioteka typów</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Przegladanie aktywnych katalogow technicznych elementow sieci.
+            Przeglądanie aktywnych katalogów technicznych elementów sieci.
           </p>
         </div>
         <div className="flex gap-3">
@@ -403,14 +395,14 @@ export function TypeLibraryBrowser({
             disabled={loading}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Eksportuj biblioteke typow
+            Eksportuj bibliotekę typów
           </button>
           <button
             onClick={handleImportClick}
             disabled={loading}
             className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
-            Importuj biblioteke typow
+            Importuj bibliotekę typów
           </button>
           <input
             ref={fileInputRef}
@@ -465,13 +457,13 @@ export function TypeLibraryBrowser({
         <div className="w-1/2 overflow-y-auto border-r border-gray-200 bg-white">
           {loading ? (
             <div className="flex h-32 items-center justify-center">
-              <p className="text-gray-500">Ladowanie typow...</p>
+              <p className="text-gray-500">Ładowanie typów...</p>
             </div>
           ) : null}
 
           {error ? (
             <div className="flex h-32 flex-col items-center justify-center text-red-600">
-              <p className="font-semibold">Blad</p>
+              <p className="font-semibold">Błąd</p>
               <p className="text-sm">{error}</p>
             </div>
           ) : null}
@@ -479,7 +471,7 @@ export function TypeLibraryBrowser({
           {!loading && !error && filteredTypes.length === 0 ? (
             <div className="flex h-32 items-center justify-center">
               <p className="text-gray-500">
-                {searchQuery ? 'Brak wynikow dla zapytania.' : 'Brak typow w katalogu.'}
+                {searchQuery ? 'Brak wyników dla zapytania.' : 'Brak typów w katalogu.'}
               </p>
             </div>
           ) : null}
@@ -513,7 +505,7 @@ export function TypeLibraryBrowser({
                     >
                       <td className="px-4 py-3">
                         <div className="text-sm font-medium text-gray-900">{type.name}</div>
-                        <div className="text-xs font-mono text-gray-500">{type.id}</div>
+                        <div className="font-mono text-xs text-gray-500">{type.id}</div>
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-700">
                         {getCatalogManufacturer(type) ?? '—'}
@@ -532,7 +524,7 @@ export function TypeLibraryBrowser({
         <div className="w-1/2 overflow-y-auto bg-white p-6">
           {!selectedType ? (
             <div className="flex h-full items-center justify-center text-gray-500">
-              Wybierz typ z listy, aby zobaczyc szczegoly
+              Wybierz typ z listy, aby zobaczyć szczegóły
             </div>
           ) : (
             <TypeDetailsPanel type={selectedType} category={activeTab} />
@@ -564,11 +556,9 @@ function ImportReportDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl">
         <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-xl font-semibold text-gray-800">
-            Raport importu biblioteki typow
-          </h2>
+          <h2 className="text-xl font-semibold text-gray-800">Raport importu biblioteki typów</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Tryb: {report.mode === 'merge' ? 'MERGE (dodaj nowe)' : 'REPLACE (zamien)'}
+            Tryb: {report.mode === 'merge' ? 'MERGE (dodaj nowe)' : 'REPLACE (zamień)'}
           </p>
         </div>
 
@@ -580,7 +570,7 @@ function ImportReportDialog({
             )}
           >
             <p className={clsx('font-medium', report.success ? 'text-green-800' : 'text-red-800')}>
-              {report.success ? 'Import zakonczony sukcesem' : 'Import zakonczony bledami'}
+              {report.success ? 'Import zakończony sukcesem' : 'Import zakończony błędami'}
             </p>
           </div>
 
@@ -602,7 +592,7 @@ function ImportReportDialog({
           {report.skipped.length > 0 ? (
             <div>
               <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-gray-700">
-                Pominieto ({report.skipped.length})
+                Pominięto ({report.skipped.length})
               </h3>
               <ul className="space-y-1">
                 {report.skipped.map((typeId) => (
@@ -690,11 +680,9 @@ function TypeDetailsPanel({
 
       <div className="space-y-3">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-700">
-          Instancje uzywajace tego typu
+          Instancje używające tego typu
         </h3>
-        <p className="text-sm text-gray-500">
-          Brak instancji (funkcja w przyszlej wersji)
-        </p>
+        <p className="text-sm text-gray-500">Brak instancji (funkcja w przyszłej wersji)</p>
       </div>
     </div>
   );
@@ -708,7 +696,7 @@ function GenericTypeDetailsPanel({
   if (entries.length === 0) {
     return (
       <div className="col-span-2 rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-        Brak jawnych pol szczegolowych dla tej kategorii.
+        Brak jawnych pól szczegółowych dla tej kategorii.
       </div>
     );
   }
@@ -752,11 +740,11 @@ function renderLineParams(type: LineType) {
       <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
       <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
       <DetailField label="Susceptancja B" value={type.b_us_per_km.toFixed(3)} unit="uS/km" />
-      <DetailField label="Prad znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napiecie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Material przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekroj" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
-      <DetailField label="Max temperatura" value={type.max_temperature_c.toFixed(0)} unit="C" />
+      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
+      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
+      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
+      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
+      <DetailField label="Maks. temperatura" value={type.max_temperature_c.toFixed(0)} unit="C" />
     </>
   );
 }
@@ -766,12 +754,12 @@ function renderCableParams(type: CableType) {
     <>
       <DetailField label="Rezystancja R" value={type.r_ohm_per_km.toFixed(3)} unit="Ohm/km" />
       <DetailField label="Reaktancja X" value={type.x_ohm_per_km.toFixed(3)} unit="Ohm/km" />
-      <DetailField label="Pojemnosc C" value={type.c_nf_per_km.toFixed(0)} unit="nF/km" />
-      <DetailField label="Prad znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
-      <DetailField label="Napiecie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
+      <DetailField label="Pojemność C" value={type.c_nf_per_km.toFixed(0)} unit="nF/km" />
+      <DetailField label="Prąd znamionowy" value={type.rated_current_a.toFixed(0)} unit="A" />
+      <DetailField label="Napięcie znamionowe" value={type.voltage_rating_kv.toFixed(1)} unit="kV" />
       <DetailField label="Izolacja" value={type.insulation_type ?? '—'} />
-      <DetailField label="Material przewodu" value={type.conductor_material ?? '—'} />
-      <DetailField label="Przekroj" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
+      <DetailField label="Materiał przewodu" value={type.conductor_material ?? '—'} />
+      <DetailField label="Przekrój" value={type.cross_section_mm2.toFixed(0)} unit="mm2" />
     </>
   );
 }
@@ -780,15 +768,15 @@ function renderTransformerParams(type: TransformerType) {
   return (
     <>
       <DetailField label="Moc znamionowa" value={type.rated_power_mva.toFixed(1)} unit="MVA" />
-      <DetailField label="Napiecie HV" value={type.voltage_hv_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Napiecie LV" value={type.voltage_lv_kv.toFixed(1)} unit="kV" />
+      <DetailField label="Napięcie HV" value={type.voltage_hv_kv.toFixed(1)} unit="kV" />
+      <DetailField label="Napięcie LV" value={type.voltage_lv_kv.toFixed(1)} unit="kV" />
       <DetailField label="uk" value={type.uk_percent.toFixed(2)} unit="%" />
       <DetailField label="Straty zwarcia Pk" value={type.pk_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Prad jalowy i0" value={type.i0_percent.toFixed(2)} unit="%" />
-      <DetailField label="Straty jalowe P0" value={type.p0_kw.toFixed(1)} unit="kW" />
-      <DetailField label="Grupa polaczen" value={type.vector_group} />
-      <DetailField label="Chlodzenie" value={type.cooling_class ?? '—'} />
-      <DetailField label="Zakres zaczepow" value={`${type.tap_min} ... ${type.tap_max}`} />
+      <DetailField label="Prąd jałowy i0" value={type.i0_percent.toFixed(2)} unit="%" />
+      <DetailField label="Straty jałowe P0" value={type.p0_kw.toFixed(1)} unit="kW" />
+      <DetailField label="Grupa połączeń" value={type.vector_group} />
+      <DetailField label="Chłodzenie" value={type.cooling_class ?? '—'} />
+      <DetailField label="Zakres zaczepów" value={`${type.tap_min} ... ${type.tap_max}`} />
     </>
   );
 }
@@ -797,11 +785,11 @@ function renderSwitchParams(type: SwitchEquipmentType) {
   return (
     <>
       <DetailField label="Rodzaj aparatu" value={type.equipment_kind} />
-      <DetailField label="Napiecie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
-      <DetailField label="Prad znamionowy" value={type.in_a.toFixed(0)} unit="A" />
-      <DetailField label="Prad wylaczalny Ik" value={type.ik_ka.toFixed(1)} unit="kA" />
-      <DetailField label="Prad wytrzymalosci Icw" value={type.icw_ka.toFixed(1)} unit="kA" />
-      <DetailField label="Osrodek gaszacy" value={type.medium ?? '—'} />
+      <DetailField label="Napięcie znamionowe" value={type.un_kv.toFixed(1)} unit="kV" />
+      <DetailField label="Prąd znamionowy" value={type.in_a.toFixed(0)} unit="A" />
+      <DetailField label="Prąd wyłączalny Ik" value={type.ik_ka.toFixed(1)} unit="kA" />
+      <DetailField label="Prąd wytrzymałości Icw" value={type.icw_ka.toFixed(1)} unit="kA" />
+      <DetailField label="Ośrodek gaszący" value={type.medium ?? '—'} />
     </>
   );
 }

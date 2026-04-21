@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
-
-from sqlalchemy.orm import Session
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from domain.models import OperatingCase, Project, StudyCase, StudyRun
 from infrastructure.persistence.db import (
@@ -19,6 +17,7 @@ from infrastructure.persistence.repositories import (
     SldRepository,
     StudyRunRepository,
 )
+from sqlalchemy.orm import Session
 
 
 def _setup_session() -> Session:
@@ -45,7 +44,7 @@ def test_project_repository_roundtrip() -> None:
         description="Updated",
         schema_version="1.1",
         created_at=project.created_at,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     repo.update(updated)
     reloaded = repo.get(project.id)
@@ -161,7 +160,7 @@ def test_study_runs_and_results() -> None:
     run_repo = StudyRunRepository(session)
     run_repo.add(run)
 
-    finished = datetime.now(timezone.utc)
+    finished = datetime.now(UTC)
     run_repo.update_status(run.id, "done", finished_at=finished)
     updated = run_repo.get(run.id)
 

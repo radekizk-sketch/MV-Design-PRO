@@ -1,8 +1,8 @@
 /**
- * StationCard — karta obiektu stacji elektroenergetycznej (SN/nN).
+ * StationCard â€” karta obiektu stacji elektroenergetycznej (SN/nN).
  *
- * Wyświetla identyfikację, strukturę logiczną stacji (pola SN, transformatory, szyny),
- * listę pól z rolami oraz listę transformatorów.
+ * WyĹ›wietla identyfikacjÄ™, strukturÄ™ logicznÄ… stacji (pola SN, transformatory, szyny),
+ * listÄ™ pĂłl z rolami oraz listÄ™ transformatorĂłw.
  *
  * BINDING: 100% PL etykiety.
  */
@@ -12,50 +12,41 @@ import { ObjectCard, type CardSection, type CardAction } from './ObjectCard';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
+import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 
 // =============================================================================
 // Helpers
 // =============================================================================
 
-function stationTypeLabel(stationType: string): string {
-  switch (stationType) {
-    case 'gpz':
-      return 'GPZ (Główny Punkt Zasilania)';
-    case 'mv_lv':
-      return 'Stacja SN/nN';
-    case 'switching':
-      return 'Stacja rozdzielcza SN';
-    case 'customer':
-      return 'Stacja odbiorcy';
-    case 'inline':
-      return 'Stacja przelotowa';
-    case 'branch':
-      return 'Stacja odgałęźna';
-    case 'terminal':
-      return 'Stacja końcowa';
-    case 'sectional':
-      return 'Stacja sekcyjna';
-    default:
-      return stationType;
-  }
+function buildConverterSourceContext(
+  stationRef: string,
+  busNnRef: string | null,
+  sourceTechnology: 'PV' | 'BESS' | 'FW',
+): Record<string, unknown> {
+  return {
+    station_ref: stationRef,
+    bus_nn_ref: busNnRef,
+    source_technology: sourceTechnology,
+    connection_variant: 'nn_side',
+  };
 }
 
 function bayRoleLabel(role: string): string {
   switch (role) {
     case 'IN':
-      return 'Zasilające (wejście)';
+      return 'ZasilajÄ…ce (wejĹ›cie)';
     case 'OUT':
-      return 'Odgałęźne (wyjście)';
+      return 'OdgaĹ‚Ä™Ĺşne (wyjĹ›cie)';
     case 'TR':
       return 'Transformatorowe';
     case 'COUPLER':
-      return 'Sprzęgło sekcji';
+      return 'SprzÄ™gĹ‚o sekcji';
     case 'FEEDER':
-      return 'Zasilające odgałęźne';
+      return 'ZasilajÄ…ce odgaĹ‚Ä™Ĺşne';
     case 'MEASUREMENT':
       return 'Pomiarowe';
     case 'OZE':
-      return 'OZE / źródło';
+      return 'OZE / ĹşrĂłdĹ‚o';
     default:
       return role;
   }
@@ -126,13 +117,13 @@ export function StationCard({ elementId }: { elementId: string }) {
         { key: 'name', label: 'Nazwa', value: station.name },
         {
           key: 'station_type',
-          label: 'Typ stacji',
-          value: stationTypeLabel(station.station_type),
+          label: 'Typ topologiczny',
+          value: formatStationTypeLabelPl(station.station_type),
         },
         {
           key: 'entry_point',
-          label: 'Punkt wejścia',
-          value: station.entry_point_ref ?? '—',
+          label: 'Punkt wejĹ›cia',
+          value: station.entry_point_ref ?? 'â€”',
         },
       ],
     };
@@ -170,7 +161,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       ],
     };
 
-    // Pola SN — każde pole jako wiersz
+    // Pola SN â€” kaĹĽde pole jako wiersz
     const bayFields = stationBays.map((bay) => ({
       key: `bay_${bay.id}`,
       label: bay.name,
@@ -183,7 +174,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         bayFields.length > 0
           ? bayFields
-          : [{ key: 'no_bays', label: 'Brak pól', value: 'Nie zdefiniowano pól SN', severity: 'warning' as const }],
+          : [{ key: 'no_bays', label: 'Brak pĂłl', value: 'Nie zdefiniowano pĂłl SN', severity: 'warning' as const }],
     };
 
     // Transformer-to-bay assignment enrichment (via equipment_refs)
@@ -191,7 +182,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       const trBay = stationBays.find((bay) =>
         bay.bay_role === 'TR' && bay.equipment_refs?.includes(tr.ref_id),
       );
-      const bayInfo = trBay ? ` → Pole: ${trBay.name}` : '';
+      const bayInfo = trBay ? ` â†’ Pole: ${trBay.name}` : '';
       return {
         key: `tr_${tr.ref_id}`,
         label: tr.name,
@@ -216,11 +207,11 @@ export function StationCard({ elementId }: { elementId: string }) {
         id: 'analysis',
         label: 'Wyniki analizy',
         fields: [
-          { key: 'u_bus_pu', label: 'Napięcie U szyny', value: null, unit: 'pu', source: 'calculated' },
-          { key: 'ik3', label: 'Prąd zwarciowy Ik₃', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'ik1', label: 'Prąd zwarciowy Ik₁', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
+          { key: 'u_bus_pu', label: 'NapiÄ™cie U szyny', value: null, unit: 'pu', source: 'calculated' },
+          { key: 'ik3', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik1', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'max_tr_loading', label: 'Maks. obciÄ…ĹĽenie trafo', value: null, unit: '%', source: 'calculated' },
+          { key: 'no_results', label: 'Status', value: 'Brak wynikĂłw â€” uruchom analizÄ™', severity: 'warning' },
         ],
       });
     }
@@ -232,18 +223,44 @@ export function StationCard({ elementId }: { elementId: string }) {
     openOperationForm('add_transformer_sn_nn', { station_ref: elementId });
   }, [openOperationForm, elementId]);
 
-  const handleAddPV = useCallback(() => {
-    openOperationForm('add_pv_inverter_nn', { station_ref: elementId });
+  const handleEditStation = useCallback(() => {
+    openOperationForm('update_element_parameters', {
+      element_ref: elementId,
+      element_type: 'substation',
+    });
   }, [openOperationForm, elementId]);
 
+  const handleAddPV = useCallback(() => {
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBuses[0]?.ref_id ?? null, 'PV'),
+    );
+  }, [openOperationForm, elementId, nnBuses]);
+
   const handleAddBESS = useCallback(() => {
-    openOperationForm('add_bess_inverter_nn', { station_ref: elementId });
-  }, [openOperationForm, elementId]);
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBuses[0]?.ref_id ?? null, 'BESS'),
+    );
+  }, [openOperationForm, elementId, nnBuses]);
+
+  const handleAddFW = useCallback(() => {
+    openOperationForm(
+      'add_converter_source',
+      buildConverterSourceContext(elementId, nnBuses[0]?.ref_id ?? null, 'FW'),
+    );
+  }, [openOperationForm, elementId, nnBuses]);
 
   const actions = useMemo((): CardAction[] => {
     const acts: CardAction[] = [
       {
-        id: 'add_transformer',
+        id: 'edit_station',
+        label: 'Edytuj stację',
+        variant: 'secondary',
+        onClick: handleEditStation,
+      },
+      {
+        id: 'add_transformer_sn_nn',
         label: 'Dodaj transformator',
         variant: 'primary',
         onClick: handleAddTransformer,
@@ -263,10 +280,16 @@ export function StationCard({ elementId }: { elementId: string }) {
         variant: 'secondary',
         onClick: handleAddBESS,
       });
+      acts.push({
+        id: 'add_fw',
+        label: 'Dodaj FW',
+        variant: 'secondary',
+        onClick: handleAddFW,
+      });
     }
 
     return acts;
-  }, [handleAddTransformer, handleAddPV, handleAddBESS, stationTransformers.length]);
+  }, [handleAddTransformer, handleAddBESS, handleAddFW, handleAddPV, handleEditStation, stationTransformers.length]);
 
   if (!station) return null;
 
@@ -275,7 +298,7 @@ export function StationCard({ elementId }: { elementId: string }) {
   return (
     <ObjectCard
       elementName={station.name}
-      elementType={stationTypeLabel(station.station_type)}
+      elementType={formatStationTypeLabelPl(station.station_type)}
       elementId={elementId}
       statusDot={dot}
       sections={sections}

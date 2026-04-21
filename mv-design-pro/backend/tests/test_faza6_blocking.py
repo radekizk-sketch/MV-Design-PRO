@@ -12,19 +12,16 @@ Testy wymuszają invarianty:
 
 BINDING: Nieprzejście jakiegokolwiek testu blokuje merge.
 """
+
 from __future__ import annotations
 
-import copy
-import json
-
 import pytest
-
-from enm.models import EnergyNetworkModel, ENMHeader, ENMDefaults
-from enm.hash import compute_enm_hash
 from enm.domain_operations import (
     CANONICAL_OPS,
     execute_domain_operation,
 )
+from enm.hash import compute_enm_hash
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 
@@ -166,15 +163,15 @@ class TestSnapshotChangesAfterOperation:
         enm = _enm_with_source()
         fp_before = _snapshot_fingerprint(enm)
         result = execute_domain_operation(
-        enm,
-        "continue_trunk_segment_sn",
-        {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 500,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
-            }
-        },
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                }
+            },
         )
         fp_after = _snapshot_fingerprint(result["snapshot"])
         assert fp_before != fp_after, "Fingerprint musi się zmienić po dodaniu odcinka"
@@ -195,7 +192,9 @@ class TestSnapshotChangesAfterOperation:
             {"voltage_kv": 15.0, "sk3_mva": 250.0, "catalog_ref": CATALOG_ZRODLO_SN},
         )
         changes = result.get("changes", {})
-        assert len(changes.get("created_element_ids", [])) > 0, "Muszą być nowe elementy po dodaniu GPZ"
+        assert (
+            len(changes.get("created_element_ids", [])) > 0
+        ), "Muszą być nowe elementy po dodaniu GPZ"
 
 
 # ---------------------------------------------------------------------------
@@ -253,14 +252,16 @@ class TestSolverRunsMinimalNetwork:
 
     def test_power_flow_solver_import(self) -> None:
         """Moduł Newton-Raphson musi być importowalny."""
-        from network_model.solvers.power_flow_types import PowerFlowOptions
         from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+        from network_model.solvers.power_flow_types import PowerFlowOptions
+
         assert PowerFlowOptions is not None
         assert PowerFlowNewtonSolver is not None
 
     def test_power_flow_has_trace(self) -> None:
         """Solver rozpływu musi generować ślad (trace)."""
         from network_model.solvers.power_flow_types import PowerFlowOptions
+
         opts = PowerFlowOptions(trace_level="full")
         assert opts.trace_level == "full"
 
@@ -278,6 +279,7 @@ class TestShortCircuitRunsMinimalNetwork:
             ShortCircuitIEC60909Solver,
             ShortCircuitResult,
         )
+
         assert ShortCircuitIEC60909Solver is not None
         assert ShortCircuitResult is not None
 
@@ -286,11 +288,14 @@ class TestShortCircuitRunsMinimalNetwork:
         from network_model.solvers.short_circuit_iec60909 import (
             EXPECTED_SHORT_CIRCUIT_RESULT_KEYS,
         )
+
         assert "ip_a" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, "ip_a (I_dyn) jest obowiązkowe"
         assert "ith_a" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, "ith_a (I_th) jest obowiązkowe"
         assert "ikss_a" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, "ikss_a (Ik'') jest obowiązkowe"
         assert "sk_mva" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, "sk_mva (Sk'') jest obowiązkowe"
-        assert "white_box_trace" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS, "white_box_trace jest obowiązkowy"
+        assert (
+            "white_box_trace" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
+        ), "white_box_trace jest obowiązkowy"
 
 
 # ---------------------------------------------------------------------------
@@ -329,10 +334,14 @@ class TestNoUnhandledException:
     def test_invalid_element_ref_returns_error(self) -> None:
         """Operacja z nieistniejącym elementem musi zwrócić error."""
         enm = _enm_with_source()
-        result = execute_domain_operation(enm, "update_element_parameters", {
-            "element_ref": "NONEXISTENT_REF_12345",
-            "parameters": {"name": "test"},
-        })
+        result = execute_domain_operation(
+            enm,
+            "update_element_parameters",
+            {
+                "element_ref": "NONEXISTENT_REF_12345",
+                "parameters": {"name": "test"},
+            },
+        )
         assert "error" in result
 
     def test_refresh_snapshot_never_crashes(self) -> None:
@@ -356,19 +365,21 @@ class TestWhiteboxCompleteTrace:
         from network_model.solvers.short_circuit_iec60909 import (
             EXPECTED_SHORT_CIRCUIT_RESULT_KEYS,
         )
-        expected_in_trace = {"Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"}
+
         # Trace keys are validated in solver test — here we verify the expectation
         assert "white_box_trace" in EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
 
     def test_power_flow_trace_options(self) -> None:
         """PowerFlowOptions musi obsługiwać trace_level='full'."""
         from network_model.solvers.power_flow_types import PowerFlowOptions
+
         opts = PowerFlowOptions(trace_level="full")
         assert opts.trace_level == "full"
 
     def test_power_flow_solver_has_ybus(self) -> None:
         """Solver rozpływu musi eksponować Y-bus w ślad."""
         from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+
         # Verify the solver class has the build/solve structure
         assert hasattr(PowerFlowNewtonSolver, "solve") or hasattr(PowerFlowNewtonSolver, "__init__")
 
@@ -396,13 +407,17 @@ class TestFullDesignPath:
     def test_step2_add_trunk_segment(self) -> None:
         """Krok 2: Dodaj odcinek SN."""
         enm = _enm_with_source()
-        result = execute_domain_operation(enm, "continue_trunk_segment_sn", {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 500,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+        result = execute_domain_operation(
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
-        })
+        )
         assert result.get("snapshot") is not None
         snapshot = result["snapshot"]
         assert len(snapshot.get("branches", [])) >= 1 or len(snapshot.get("buses", [])) > 1
@@ -411,13 +426,17 @@ class TestFullDesignPath:
         """Krok 3: Wstaw stację SN/nN (jeśli dostępny segment)."""
         enm = _enm_with_source()
         # Dodaj odcinek, potem wstaw stację
-        r1 = execute_domain_operation(enm, "continue_trunk_segment_sn", {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 500,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+        r1 = execute_domain_operation(
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
-        })
+        )
         if r1.get("snapshot") is None:
             pytest.skip("Brak snapshot po dodaniu odcinka")
         snapshot = r1["snapshot"]
@@ -425,9 +444,13 @@ class TestFullDesignPath:
         if not branches:
             pytest.skip("Brak gałęzi do wstawienia stacji")
         branch_ref = branches[0].get("ref_id")
-        r2 = execute_domain_operation(snapshot, "insert_station_on_segment_sn", {
-            "branch_ref": branch_ref,
-        })
+        r2 = execute_domain_operation(
+            snapshot,
+            "insert_station_on_segment_sn",
+            {
+                "branch_ref": branch_ref,
+            },
+        )
         # Albo sukces, albo error z powodu brakujących danych — nie crash
         assert "snapshot" in r2 or "error" in r2
 

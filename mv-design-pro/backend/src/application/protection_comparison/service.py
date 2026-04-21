@@ -18,8 +18,8 @@ INVARIANTS (BINDING):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
 from uuid import UUID
 
 from domain.protection_analysis import (
@@ -30,19 +30,18 @@ from domain.protection_analysis import (
     TripState,
 )
 from domain.protection_comparison import (
-    IssueCode,
-    IssueSeverity,
     ISSUE_DESCRIPTIONS_PL,
     ISSUE_SEVERITY_MAP,
+    IssueCode,
+    IssueSeverity,
     ProtectionComparison,
+    ProtectionComparisonNotFoundError,
     ProtectionComparisonResult,
     ProtectionComparisonRow,
     ProtectionComparisonStatus,
     ProtectionComparisonSummary,
     ProtectionComparisonTrace,
     ProtectionComparisonTraceStep,
-    ProtectionComparisonError,
-    ProtectionComparisonNotFoundError,
     ProtectionProjectMismatchError,
     ProtectionResultNotFoundError,
     ProtectionRunNotFinishedError,
@@ -50,10 +49,8 @@ from domain.protection_comparison import (
     RankingIssue,
     StateChange,
     compute_comparison_input_hash,
-    new_protection_comparison,
 )
 from infrastructure.persistence.unit_of_work import UnitOfWork
-
 
 # =============================================================================
 # THRESHOLDS FOR ISSUE DETECTION
@@ -135,15 +132,17 @@ class ProtectionComparisonService:
             trace_steps: list[ProtectionComparisonTraceStep] = []
 
             # 6. Step 1: Match evaluations by (protected_element_ref, fault_target_id)
-            trace_steps.append(ProtectionComparisonTraceStep(
-                step="MATCH_EVALUATIONS",
-                description_pl="Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)",
-                inputs={
-                    "evaluations_a_count": len(result_a.evaluations),
-                    "evaluations_b_count": len(result_b.evaluations),
-                },
-                outputs={},
-            ))
+            trace_steps.append(
+                ProtectionComparisonTraceStep(
+                    step="MATCH_EVALUATIONS",
+                    description_pl="Dopasowanie ewaluacji po (element chroniony, punkt zwarcia)",
+                    inputs={
+                        "evaluations_a_count": len(result_a.evaluations),
+                        "evaluations_b_count": len(result_b.evaluations),
+                    },
+                    outputs={},
+                )
+            )
 
             rows, matched_count = self._match_evaluations(
                 result_a.evaluations,
@@ -164,12 +163,14 @@ class ProtectionComparisonService:
             )
 
             # 7. Step 2: Compute deltas and classify changes
-            trace_steps.append(ProtectionComparisonTraceStep(
-                step="COMPUTE_DELTAS",
-                description_pl="Obliczanie różnic czasów i prądów",
-                inputs={"row_count": len(rows)},
-                outputs={},
-            ))
+            trace_steps.append(
+                ProtectionComparisonTraceStep(
+                    step="COMPUTE_DELTAS",
+                    description_pl="Obliczanie różnic czasów i prądów",
+                    inputs={"row_count": len(rows)},
+                    outputs={},
+                )
+            )
 
             rows = self._compute_deltas(rows)
 
@@ -182,24 +183,28 @@ class ProtectionComparisonService:
             )
 
             # 8. Step 3: Classify state changes
-            trace_steps.append(ProtectionComparisonTraceStep(
-                step="CLASSIFY_CHANGES",
-                description_pl="Klasyfikacja zmian stanów (TRIP_TO_NO_TRIP, NO_TRIP_TO_TRIP, itd.)",
-                inputs={"row_count": len(rows)},
-                outputs=state_change_counts,
-            ))
+            trace_steps.append(
+                ProtectionComparisonTraceStep(
+                    step="CLASSIFY_CHANGES",
+                    description_pl="Klasyfikacja zmian stanów (TRIP_TO_NO_TRIP, NO_TRIP_TO_TRIP, itd.)",
+                    inputs={"row_count": len(rows)},
+                    outputs=state_change_counts,
+                )
+            )
 
             # 9. Step 4: Generate issue ranking
-            trace_steps.append(ProtectionComparisonTraceStep(
-                step="RANK_ISSUES",
-                description_pl="Generowanie rankingu problemów wg severity (5→1)",
-                inputs={
-                    "row_count": len(rows),
-                    "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,
-                    "margin_threshold_percent": MARGIN_CHANGE_THRESHOLD_PERCENT,
-                },
-                outputs={},
-            ))
+            trace_steps.append(
+                ProtectionComparisonTraceStep(
+                    step="RANK_ISSUES",
+                    description_pl="Generowanie rankingu problemów wg severity (5→1)",
+                    inputs={
+                        "row_count": len(rows),
+                        "delay_threshold_s": DELAY_CHANGE_THRESHOLD_S,
+                        "margin_threshold_percent": MARGIN_CHANGE_THRESHOLD_PERCENT,
+                    },
+                    outputs={},
+                )
+            )
 
             ranking = self._generate_ranking(rows)
 
@@ -282,9 +287,7 @@ class ProtectionComparisonService:
     # PRIVATE METHODS
     # =========================================================================
 
-    def _get_protection_run(
-        self, uow: UnitOfWork, run_id: str
-    ) -> ProtectionAnalysisRun:
+    def _get_protection_run(self, uow: UnitOfWork, run_id: str) -> ProtectionAnalysisRun:
         """
         Get a protection analysis run by ID.
         """
@@ -298,18 +301,14 @@ class ProtectionComparisonService:
             pass
         raise ProtectionRunNotFoundError(run_id)
 
-    def _validate_run_status(
-        self, run: ProtectionAnalysisRun, run_id: str
-    ) -> None:
+    def _validate_run_status(self, run: ProtectionAnalysisRun, run_id: str) -> None:
         """
         Validate that run is FINISHED.
         """
         if run.status != ProtectionRunStatus.FINISHED:
             raise ProtectionRunNotFinishedError(run_id, run.status.value)
 
-    def _get_protection_result(
-        self, uow: UnitOfWork, run_id: str
-    ) -> ProtectionResult:
+    def _get_protection_result(self, uow: UnitOfWork, run_id: str) -> ProtectionResult:
         """
         Get ProtectionResult for a run.
         """
@@ -369,7 +368,11 @@ class ProtectionComparisonService:
         Store comparison result and trace.
         """
         comparison = ProtectionComparison(
-            id=UUID(result.comparison_id) if self._is_valid_uuid(result.comparison_id) else UUID(int=hash(result.comparison_id) % (2**128)),
+            id=(
+                UUID(result.comparison_id)
+                if self._is_valid_uuid(result.comparison_id)
+                else UUID(int=hash(result.comparison_id) % (2**128))
+            ),
             project_id=project_id,
             run_a_id=run_a_id,
             run_b_id=run_b_id,
@@ -377,7 +380,7 @@ class ProtectionComparisonService:
             input_hash=input_hash,
             result_json=result.to_dict(),
             trace_json=trace.to_dict(),
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
         )
 
         uow.results.add_result(
@@ -446,7 +449,8 @@ class ProtectionComparisonService:
                 i_fault_a_a=eval_a.i_fault_a if eval_a else 0.0,
                 i_fault_a_b=eval_b.i_fault_a if eval_b else 0.0,
                 delta_t_s=None,  # Computed in next step
-                delta_i_fault_a=(eval_b.i_fault_a if eval_b else 0.0) - (eval_a.i_fault_a if eval_a else 0.0),
+                delta_i_fault_a=(eval_b.i_fault_a if eval_b else 0.0)
+                - (eval_a.i_fault_a if eval_a else 0.0),
                 margin_percent_a=eval_a.margin_percent if eval_a else None,
                 margin_percent_b=eval_b.margin_percent if eval_b else None,
                 state_change=state_change,
@@ -483,9 +487,7 @@ class ProtectionComparisonService:
 
         return StateChange.INVALID_CHANGE
 
-    def _compute_deltas(
-        self, rows: list[ProtectionComparisonRow]
-    ) -> list[ProtectionComparisonRow]:
+    def _compute_deltas(self, rows: list[ProtectionComparisonRow]) -> list[ProtectionComparisonRow]:
         """
         Compute time deltas for rows where both states are TRIPS.
         """
@@ -524,9 +526,7 @@ class ProtectionComparisonService:
 
         return updated_rows
 
-    def _count_state_changes(
-        self, rows: list[ProtectionComparisonRow]
-    ) -> dict[str, int]:
+    def _count_state_changes(self, rows: list[ProtectionComparisonRow]) -> dict[str, int]:
         """
         Count state changes by type.
         """
@@ -549,9 +549,7 @@ class ProtectionComparisonService:
 
         return counts
 
-    def _generate_ranking(
-        self, rows: list[ProtectionComparisonRow]
-    ) -> list[RankingIssue]:
+    def _generate_ranking(self, rows: list[ProtectionComparisonRow]) -> list[RankingIssue]:
         """
         Generate deterministic issue ranking.
 
@@ -571,74 +569,86 @@ class ProtectionComparisonService:
         for idx, row in enumerate(rows):
             # TRIP_LOST
             if row.state_change == StateChange.TRIP_TO_NO_TRIP:
-                issues.append(self._create_issue(
-                    IssueCode.TRIP_LOST,
-                    row.protected_element_ref,
-                    row.fault_target_id,
-                    (idx,),
-                ))
+                issues.append(
+                    self._create_issue(
+                        IssueCode.TRIP_LOST,
+                        row.protected_element_ref,
+                        row.fault_target_id,
+                        (idx,),
+                    )
+                )
 
             # TRIP_GAINED
             elif row.state_change == StateChange.NO_TRIP_TO_TRIP:
-                issues.append(self._create_issue(
-                    IssueCode.TRIP_GAINED,
-                    row.protected_element_ref,
-                    row.fault_target_id,
-                    (idx,),
-                ))
+                issues.append(
+                    self._create_issue(
+                        IssueCode.TRIP_GAINED,
+                        row.protected_element_ref,
+                        row.fault_target_id,
+                        (idx,),
+                    )
+                )
 
             # INVALID_STATE
             elif row.state_change == StateChange.INVALID_CHANGE:
-                issues.append(self._create_issue(
-                    IssueCode.INVALID_STATE,
-                    row.protected_element_ref,
-                    row.fault_target_id,
-                    (idx,),
-                ))
+                issues.append(
+                    self._create_issue(
+                        IssueCode.INVALID_STATE,
+                        row.protected_element_ref,
+                        row.fault_target_id,
+                        (idx,),
+                    )
+                )
 
             # DELAY changes (only for NO_CHANGE state where both trip)
             elif row.state_change == StateChange.NO_CHANGE and row.delta_t_s is not None:
                 if row.delta_t_s > DELAY_CHANGE_THRESHOLD_S:
-                    issues.append(self._create_issue(
-                        IssueCode.DELAY_INCREASED,
-                        row.protected_element_ref,
-                        row.fault_target_id,
-                        (idx,),
-                        extra_info=f"Δt = {row.delta_t_s:.3f} s",
-                    ))
+                    issues.append(
+                        self._create_issue(
+                            IssueCode.DELAY_INCREASED,
+                            row.protected_element_ref,
+                            row.fault_target_id,
+                            (idx,),
+                            extra_info=f"Δt = {row.delta_t_s:.3f} s",
+                        )
+                    )
                 elif row.delta_t_s < -DELAY_CHANGE_THRESHOLD_S:
-                    issues.append(self._create_issue(
-                        IssueCode.DELAY_DECREASED,
-                        row.protected_element_ref,
-                        row.fault_target_id,
-                        (idx,),
-                        extra_info=f"Δt = {row.delta_t_s:.3f} s",
-                    ))
+                    issues.append(
+                        self._create_issue(
+                            IssueCode.DELAY_DECREASED,
+                            row.protected_element_ref,
+                            row.fault_target_id,
+                            (idx,),
+                            extra_info=f"Δt = {row.delta_t_s:.3f} s",
+                        )
+                    )
 
             # MARGIN changes
             if row.margin_percent_a is not None and row.margin_percent_b is not None:
                 margin_delta = row.margin_percent_b - row.margin_percent_a
                 if margin_delta < -MARGIN_CHANGE_THRESHOLD_PERCENT:
-                    issues.append(self._create_issue(
-                        IssueCode.MARGIN_DECREASED,
-                        row.protected_element_ref,
-                        row.fault_target_id,
-                        (idx,),
-                        extra_info=f"Δmargin = {margin_delta:.1f}%",
-                    ))
+                    issues.append(
+                        self._create_issue(
+                            IssueCode.MARGIN_DECREASED,
+                            row.protected_element_ref,
+                            row.fault_target_id,
+                            (idx,),
+                            extra_info=f"Δmargin = {margin_delta:.1f}%",
+                        )
+                    )
                 elif margin_delta > MARGIN_CHANGE_THRESHOLD_PERCENT:
-                    issues.append(self._create_issue(
-                        IssueCode.MARGIN_INCREASED,
-                        row.protected_element_ref,
-                        row.fault_target_id,
-                        (idx,),
-                        extra_info=f"Δmargin = +{margin_delta:.1f}%",
-                    ))
+                    issues.append(
+                        self._create_issue(
+                            IssueCode.MARGIN_INCREASED,
+                            row.protected_element_ref,
+                            row.fault_target_id,
+                            (idx,),
+                            extra_info=f"Δmargin = +{margin_delta:.1f}%",
+                        )
+                    )
 
         # Sort by severity DESC, then issue_code, then element_ref
-        issues.sort(
-            key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref)
-        )
+        issues.sort(key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref))
 
         return issues
 
@@ -665,9 +675,7 @@ class ProtectionComparisonService:
             evidence_refs=evidence_refs,
         )
 
-    def _count_severities(
-        self, ranking: list[RankingIssue]
-    ) -> dict[str, int]:
+    def _count_severities(self, ranking: list[RankingIssue]) -> dict[str, int]:
         """
         Count issues by severity.
         """

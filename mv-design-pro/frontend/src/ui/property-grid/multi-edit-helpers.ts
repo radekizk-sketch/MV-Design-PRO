@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - P30c: Multi-edit with common fields and "— (różne)" placeholder
- * - powerfactory_ui_parity.md § D: Property Grid ≥110% PF UX
+ * - ui_canonical_parity.md § D: Property Grid ≥110% PF UX
  *
  * Helper functions for multi-edit logic:
  * - Finding common fields across multiple elements

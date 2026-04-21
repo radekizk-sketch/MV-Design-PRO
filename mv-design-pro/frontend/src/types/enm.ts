@@ -198,6 +198,8 @@ export interface Transformer extends ENMElement {
 export interface Source extends ENMElement {
   bus_ref: string;
   model: 'thevenin' | 'short_circuit_power' | 'external_grid';
+  substation_ref?: string | null;
+  gpz_section_id?: string | null;
   sk3_mva?: number | null;
   ik3_ka?: number | null;
   r_ohm?: number | null;
@@ -272,11 +274,23 @@ export interface Generator extends ENMElement {
 // Substation (stacja SN/nn — kontener logiczny z rozdzielnicami)
 // ---------------------------------------------------------------------------
 
+export interface GPZSection {
+  section_id: string;
+  order: number;
+  name?: string | null;
+  line_field_name?: string | null;
+  bus_ref: string;
+  incoming_source_ref?: string | null;
+  left_coupler_ref?: string | null;
+  right_coupler_ref?: string | null;
+}
+
 export interface Substation extends ENMElement {
-  station_type: 'gpz' | 'mv_lv' | 'switching' | 'customer';
+  station_type: 'gpz' | 'mv_lv' | 'switching' | 'customer' | 'inline' | 'branch' | 'terminal' | 'sectional';
   bus_refs: string[];
   transformer_refs: string[];
   entry_point_ref?: string | null;
+  gpz_sections?: GPZSection[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -287,8 +301,402 @@ export interface Bay extends ENMElement {
   bay_role: 'IN' | 'OUT' | 'TR' | 'COUPLER' | 'FEEDER' | 'MEASUREMENT' | 'OZE';
   substation_ref: string;
   bus_ref: string;
+  gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;
+}
+
+import type {
+  FixActionSurfaceDescriptor,
+  WizardSurfaceStepId,
+} from './fixActionSurface';
+
+// ---------------------------------------------------------------------------
+// Bay canonical model V10 (read-model contract)
+// ---------------------------------------------------------------------------
+
+export type BayCanonicalRole =
+  | 'LINIA_IN'
+  | 'LINIA_OUT'
+  | 'TRANSFORMATOROWE'
+  | 'LINIA_ODG'
+  | 'SPRZEGLO'
+  | 'POMIAROWE'
+  | 'PV_SN'
+  | 'BESS_SN'
+  | 'FW_SN';
+
+export type BayDeviceState =
+  | 'zamkniety'
+  | 'otwarty'
+  | 'zamkniety_naped_rozbrojony'
+  | 'otwarty_naped_rozbrojony'
+  | 'nieznany'
+  | 'awaria';
+
+export type BayControlMode =
+  | 'miejscowe'
+  | 'zdalne'
+  | 'lokalne_zablokowane'
+  | 'odstawione';
+
+export interface BaySwitchState {
+  actual_state: BayDeviceState;
+  commanded_state?: 'zamknij' | 'otworz' | null;
+  control_mode: BayControlMode;
+  armed_for_close?: boolean | null;
+  armed_for_open?: boolean | null;
+  communication_ok: boolean;
+  interlock_blocked: boolean;
+  cause_code?: string | null;
+  last_state_change_at?: string | null;
+  last_command_at?: string | null;
+}
+
+export interface BayOperatingState {
+  normal_position: 'zamkniety' | 'otwarty';
+  current_position: 'zamkniety' | 'otwarty' | 'nieznany';
+  discrepancy_alarm: boolean;
+}
+
+export type BayPrimaryDeviceKind =
+  | 'CB'
+  | 'LOAD_SWITCH'
+  | 'DS'
+  | 'ES'
+  | 'CT'
+  | 'VT'
+  | 'CABLE_HEAD'
+  | 'TRANSFORMER_DEVICE'
+  | 'FUSE'
+  | 'GENERATOR_PV'
+  | 'GENERATOR_BESS'
+  | 'GENERATOR_FW'
+  | 'PCS'
+  | 'BATTERY';
+
+export type BayPrimaryPlacement =
+  | 'UPSTREAM'
+  | 'MIDSTREAM'
+  | 'DOWNSTREAM'
+  | 'OFF_PATH'
+  | 'GROUND_BRANCH';
+
+export interface BayPrimaryDevice {
+  device_ref: string;
+  linked_ref?: string | null;
+  catalog_ref?: string | null;
+  symbol_ref: string;
+  kind: BayPrimaryDeviceKind;
+  placement: BayPrimaryPlacement;
+  section_side?: 'LEFT' | 'CENTER' | 'RIGHT' | null;
+  is_controllable: boolean;
+  render_variant?: string | null;
+  switch_state?: BaySwitchState | null;
+  operating_state?: BayOperatingState | null;
+}
+
+export interface BayMeasurements {
+  ia_a?: number | null;
+  ib_a?: number | null;
+  ic_a?: number | null;
+  zero_sequence_current_a?: number | null;
+  uab_kv?: number | null;
+  ubc_kv?: number | null;
+  uca_kv?: number | null;
+  zero_sequence_voltage_kv?: number | null;
+  active_power_mw?: number | null;
+  reactive_power_mvar?: number | null;
+  apparent_power_mva?: number | null;
+  current_a?: number | null;
+  power_factor?: number | null;
+  frequency_hz?: number | null;
+}
+
+export interface BayMeasurementSet {
+  side: 'pole' | 'strona_szyn' | 'strona_odplywu' | 'strona_lewa' | 'strona_prawa';
+  values: BayMeasurements;
+}
+
+export interface BayMeasurementChain {
+  chain_ref: string;
+  ct_refs: string[];
+  vt_refs: string[];
+  uses_3i0: boolean;
+  uses_3u0: boolean;
+  zero_sequence_current_source: 'suma_ct' | 'przekladnik_ferrantiego' | 'zewnetrzne' | 'brak';
+  zero_sequence_voltage_source: 'otwarty_trojkat_vt' | 'uzwojenie_resztkowe_vt' | 'obliczone' | 'brak';
+  topology: 'ct_only' | 'ct_vt' | 'ct_vt_3u0' | 'vt_only';
+  measurement_sets: BayMeasurementSet[];
+}
+
+export interface BaySecondaryUnitRef {
+  unit_ref: string;
+  unit_kind: 'zabezpieczenie' | 'sterownik' | 'pomiar' | 'rejestrator';
+  shared_with_bay_refs: string[];
+}
+
+export interface BaySecondaryArchitecture {
+  type:
+    | 'zintegrowane_zabezpieczenie_i_sterownik'
+    | 'oddzielne_zabezpieczenie_i_sterownik'
+    | 'tylko_zabezpieczenie'
+    | 'tylko_sterownik'
+    | 'brak_urzadzenia_wtornego';
+  measurement_provider:
+    | 'zabezpieczenie'
+    | 'sterownik'
+    | 'osobny_uklad_pomiarowy'
+    | 'mieszany'
+    | 'brak';
+}
+
+export interface ProtectionSettingValue {
+  key: string;
+  value?: number | string | boolean | null;
+  unit?: string | null;
+  quality: 'obliczone' | 'reczne' | 'domyslne';
+}
+
+export interface ProtectionFunctionState {
+  code: string;
+  available: boolean;
+  enabled: boolean;
+  picked_up: boolean;
+  tripped: boolean;
+  blocked: boolean;
+  required_inputs: ('ct' | 'vt' | '3i0' | '3u0')[];
+  optional_inputs: ('ct' | 'vt' | '3i0' | '3u0')[];
+  missing_input_policy:
+    | 'blokada_zapisu'
+    | 'blokada_obliczen'
+    | 'ostrzezenie'
+    | 'degradacja_funkcji'
+    | 'wynik_czesciowy';
+  settings_ref?: string | null;
+  settings: ProtectionSettingValue[];
+  execution_mode: 'tylko_alarm' | 'pobudzenie' | 'wyzwolenie';
+  execution_device_ref?: string | null;
+  starts_spz: boolean;
+  blocks_reclose: boolean;
+  operator_ack_required_after_trip: boolean;
+}
+
+export interface SpzState {
+  bound_breaker_ref: string;
+  enabled: boolean;
+  fast_attempts_max: number;
+  slow_attempts_max: number;
+  attempts_done: number;
+  fast_time_s?: number | null;
+  slow_time_s?: number | null;
+  blocked: boolean;
+  blocked_reason?: string | null;
+  state: 'gotowe' | 'w_trakcie' | 'zakonczone' | 'odstawione';
+}
+
+export interface AlarmEntry {
+  code: string;
+  active: boolean;
+  acknowledged: boolean;
+  severity: 'informacja' | 'ostrzezenie' | 'alarm' | 'awaria';
+  timestamp: string;
+  message_pl: string;
+}
+
+export interface EventEntry {
+  code: string;
+  timestamp: string;
+  source: 'sterowanie' | 'ochrona' | 'pomiar' | 'komunikacja' | 'system';
+  message_pl: string;
+}
+
+export interface DisturbanceRecorderState {
+  available: boolean;
+  last_record_at?: string | null;
+  records_count: number;
+}
+
+export interface TrendState {
+  available: boolean;
+  channels: string[];
+}
+
+export interface BayProtectionControlUnit {
+  unit_ref: string;
+  manufacturer?: string | null;
+  model?: string | null;
+  functions: ProtectionFunctionState[];
+  measurement_inputs: Record<string, boolean>;
+  automation_features: Record<string, boolean>;
+  spz?: SpzState | null;
+  alarms: AlarmEntry[];
+  events: EventEntry[];
+  disturbance_recorder: DisturbanceRecorderState;
+  trends: TrendState;
+  settings_mode: 'automatyczne' | 'reczne';
+  settings_ref?: string | null;
+}
+
+export interface InterlockEntry {
+  code: string;
+  active: boolean;
+  reason: string;
+  blocking_device_refs: string[];
+}
+
+export interface BayInterlockSet {
+  entries: InterlockEntry[];
+}
+
+export interface BayControlSurface {
+  controllable_device_refs: string[];
+  open_requires_confirmation: boolean;
+  close_requires_confirmation: boolean;
+  kas_available: boolean;
+  local_remote_transfer_supported: boolean;
+}
+
+export interface BayCommandExecutionState {
+  command_ref: string;
+  target_device_ref: string;
+  command: 'zamknij' | 'otworz' | 'kas';
+  state: 'oczekuje' | 'przyjete' | 'odrzucone' | 'wykonane' | 'przeterminowane';
+  rejected_reason?: string | null;
+  created_at: string;
+  finished_at?: string | null;
+}
+
+export interface BayEnergizationSafetyState {
+  energized_from_bus_side: boolean;
+  energized_from_feeder_side: boolean;
+  grounded: boolean;
+  visible_isolation_gap: boolean;
+  safe_to_work: boolean;
+  unsafe_reason_pl?: string | null;
+}
+
+export interface BayRuntimeState {
+  secondary_communication_status: 'ok' | 'degraded' | 'offline';
+  last_good_update_at?: string | null;
+  control_availability: 'dostepne' | 'czesciowo_dostepne' | 'niedostepne';
+  measurement_availability: 'dostepne' | 'czesciowe' | 'niedostepne';
+  primary_device_states: Record<string, BaySwitchState>;
+  active_alarms: AlarmEntry[];
+  pending_command?: BayCommandExecutionState | null;
+  energization_and_safety: BayEnergizationSafetyState;
+}
+
+export interface BayScenarioState {
+  scenario_ref: string;
+  overridden_position?: 'zamkniety' | 'otwarty' | 'nieznany' | null;
+  source: 'bazowy' | 'wariant' | 'symulacja_przelaczen' | 'ruch';
+}
+
+export interface BaySourceEndpoint {
+  source_kind: 'PV' | 'BESS' | 'FW';
+  inverter_ref?: string | null;
+  storage_ref?: string | null;
+  turbine_ref?: string | null;
+  block_transformer_ref?: string | null;
+  requires_vt: boolean;
+  requires_synchrocheck: boolean;
+  operating_mode: 'praca_sieciowa' | 'ladowanie' | 'rozladowanie' | 'gotowosc' | 'odstawione';
+}
+
+export interface BayBaseModel {
+  bay_ref: string;
+  bay_role: BayCanonicalRole;
+  specialization: 'BRAK' | 'POTRZEBY_WLASNE';
+  substation_ref: string;
+  gpz_section_id?: string | null;
+  primary_devices: BayPrimaryDevice[];
+  measurement_chain?: BayMeasurementChain | null;
+  secondary_units: BaySecondaryUnitRef[];
+  secondary_architecture: BaySecondaryArchitecture;
+  protection_config?: BayProtectionControlUnit | null;
+  control_surface: BayControlSurface;
+  interlocks: BayInterlockSet;
+  source_endpoint?: BaySourceEndpoint | null;
+}
+
+export interface BayShortCircuitSourceContribution {
+  source_ref: string;
+  source_kind: 'GPZ' | 'TRANSFORMATOR' | 'PV' | 'BESS' | 'FW' | 'INNE';
+  reference_point: string;
+  fault_type: '3F' | '2F' | '1F' | '1F_ZIEMIA';
+  ikss_ka?: number | null;
+  ip_ka?: number | null;
+  ith_ka?: number | null;
+  percent_share?: number | null;
+  zero_sequence_share_percent?: number | null;
+  direction: 'do_pola' | 'od_pola';
+}
+
+export interface BayPowerFlowSourceContribution {
+  source_ref: string;
+  source_kind: 'GPZ' | 'TRANSFORMATOR' | 'PV' | 'BESS' | 'FW' | 'INNE';
+  reference_point: string;
+  p_mw?: number | null;
+  q_mvar?: number | null;
+  s_mva?: number | null;
+  i_a?: number | null;
+  percent_share_p?: number | null;
+  percent_share_q?: number | null;
+  direction: 'do_odplywu' | 'do_szyn';
+}
+
+export interface BayEarthFaultPath {
+  neutral_grounding_mode: 'izolowany' | 'cewka_petersena' | 'rezystor' | 'bezposrednio_uziemiony' | 'nieznany';
+  zero_sequence_current_source: 'suma_ct' | 'przekladnik_ferrantiego' | 'zewnetrzne' | 'brak';
+  zero_sequence_voltage_source: 'otwarty_trojkat_vt' | 'uzwojenie_resztkowe_vt' | 'obliczone' | 'brak';
+  closure_path_elements: string[];
+  transformer_contribution_ref?: string | null;
+  grounding_device_ref?: string | null;
+}
+
+export interface BayVerificationResult {
+  continuous_current_ok?: boolean | null;
+  thermal_withstand_ok?: boolean | null;
+  dynamic_withstand_ok?: boolean | null;
+  ct_ok?: boolean | null;
+  vt_ok?: boolean | null;
+  cable_head_ok?: boolean | null;
+  main_switch_ok?: boolean | null;
+  whole_power_path_ok?: boolean | null;
+}
+
+export interface BayProofBinding {
+  proof_ref: string;
+  primary_result_refs: string[];
+  secondary_result_refs: string[];
+  source_contribution_refs: string[];
+  formula_refs: string[];
+  input_data_refs: string[];
+}
+
+export interface BayProjectResults {
+  run_ref: string;
+  result_state: 'pelny' | 'czesciowy' | 'bledny';
+  result_message_pl?: string | null;
+  main_short_circuit_results_ref?: string | null;
+  main_power_flow_results_ref?: string | null;
+  source_contributions_sc: BayShortCircuitSourceContribution[];
+  source_contributions_pf: BayPowerFlowSourceContribution[];
+  verification: BayVerificationResult;
+  earth_fault_path?: BayEarthFaultPath | null;
+  proof_binding: BayProofBinding;
+}
+
+export interface BayCanonicalModel {
+  schema_version: 'v10.bay.1';
+  created_from: 'szablon' | 'recznie' | 'migracja' | 'przebudowa';
+  integrity_status: 'kompletny' | 'po_migracji' | 'wymaga_uzupelnienia';
+  audit_trail_ref?: string | null;
+  base_model: BayBaseModel;
+  runtime_state?: BayRuntimeState | null;
+  scenario_state?: BayScenarioState | null;
+  project_results_ref?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -401,7 +809,8 @@ export interface ValidationIssue {
   severity: 'BLOCKER' | 'WARNING' | 'INFO';
   message_pl: string;
   element_refs: string[];
-  wizard_step_hint: string;
+  wizard_step_hint: string | null;
+  wizard_step_id?: WizardSurfaceStepId | null;
   suggested_fix?: string | null;
 }
 
@@ -486,7 +895,8 @@ export interface SelectionRef {
     | 'substation' | 'bay' | 'junction' | 'corridor'
     | 'measurement' | 'protection_assignment';
   /** Krok kreatora powiązany z elementem */
-  wizard_step_hint: string;
+  wizard_step_hint: string | null;
+  wizard_step_id?: WizardSurfaceStepId | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -646,6 +1056,8 @@ export interface FixAction {
   panel: string | null;
   step: string | null;
   focus: string | null;
+  payload_hint?: Record<string, unknown> | null;
+  surface_descriptor?: FixActionSurfaceDescriptor | null;
   message_pl: string;
 }
 

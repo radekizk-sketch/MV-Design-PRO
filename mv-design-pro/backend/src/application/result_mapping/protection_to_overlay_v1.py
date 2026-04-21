@@ -35,17 +35,15 @@ BADGE MAPPING:
 
 from __future__ import annotations
 
-from typing import Any
 from uuid import UUID
 
+from domain.protection_coordination_v1 import CoordinationResultV1
+from domain.protection_engine_v1 import ProtectionResultSetV1, RelayResultV1
 from domain.result_set import (
     OverlayElement,
     OverlayLegendEntry,
     OverlayPayloadV1,
 )
-from domain.protection_engine_v1 import ProtectionResultSetV1, RelayResultV1
-from domain.protection_coordination_v1 import CoordinationResultV1
-
 
 # ---------------------------------------------------------------------------
 # Protection-specific legend entries (Polish, backend-authoritative)
@@ -227,9 +225,7 @@ def _build_margin_lookup(
             continue
 
         margins_with_value = [
-            mp.margin_s
-            for mp in pair_result.margin_points
-            if mp.margin_s is not None
+            mp.margin_s for mp in pair_result.margin_points if mp.margin_s is not None
         ]
 
         if not margins_with_value:

@@ -12,7 +12,6 @@ from typing import Any
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-
 _DEFAULT_SOURCE_REFERENCE = "Warunki przylaczenia / standard OSD / matryca katalogowa MV-DESIGN-PRO"
 _DEFAULT_VERIFICATION_STATUS = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
 _DEFAULT_CATALOG_STATUS = CatalogStatus.PRODUKCYJNY_V1.value
@@ -367,7 +366,11 @@ SOURCE_SYSTEM_TYPES.extend(
 
 for _source_type in SOURCE_SYSTEM_TYPES:
     _params = _source_type.setdefault("params", {})
-    if _params.get("ik3_ka") is None and _params.get("sk3_mva") and _params.get("voltage_rating_kv"):
+    if (
+        _params.get("ik3_ka") is None
+        and _params.get("sk3_mva")
+        and _params.get("voltage_rating_kv")
+    ):
         _params["ik3_ka"] = round(
             float(_params["sk3_mva"]) / (sqrt(3.0) * float(_params["voltage_rating_kv"])),
             2,
@@ -399,5 +402,7 @@ def get_source_catalog_statistics() -> dict[str, Any]:
         "napiecia_kv": voltages,
         "sk3_mva": sk3_values,
         "verification_statuses": statuses,
-        "catalog_status": sorted({item["params"]["catalog_status"] for item in SOURCE_SYSTEM_TYPES}),
+        "catalog_status": sorted(
+            {item["params"]["catalog_status"] for item in SOURCE_SYSTEM_TYPES}
+        ),
     }

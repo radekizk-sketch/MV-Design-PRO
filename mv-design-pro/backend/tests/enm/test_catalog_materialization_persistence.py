@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from enm.domain_operations import execute_domain_operation
-from enm.models import ENMDefaults, ENMHeader, EnergyNetworkModel
-
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 CATALOG_KABEL_SN = "cable-tfk-yakxs-3x120"
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
@@ -10,7 +9,9 @@ CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
 
 def _empty_enm() -> dict:
     enm = EnergyNetworkModel(
-        header=ENMHeader(name="test_catalog_materialization", defaults=ENMDefaults(sn_nominal_kv=15.0)),
+        header=ENMHeader(
+            name="test_catalog_materialization", defaults=ENMDefaults(sn_nominal_kv=15.0)
+        ),
     )
     return enm.model_dump(mode="json")
 
@@ -59,7 +60,8 @@ class TestCatalogMaterializationPersistence:
         snapshot = _add_segment_with_catalog(snapshot)
 
         branch = next(
-            branch for branch in snapshot.get("branches", [])
+            branch
+            for branch in snapshot.get("branches", [])
             if branch.get("type") in ("cable", "line_overhead")
         )
         assert branch.get("materialized_params") is not None

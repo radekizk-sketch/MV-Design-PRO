@@ -1,26 +1,26 @@
 /**
  * P30b — SLD Canvas Component (SVG Rendering)
  *
- * PR-SLD-04: Unifikacja symboli w edytorze do standardu ETAP
+ * PR-SLD-04: Unifikacja symboli w edytorze do standardu CANONICAL
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A.2: Symbol types (Bus, Line, Transformer, etc.)
  * - sld_rules.md § D.1: Visual state encoding (in_service, selected, hover)
- * - powerfactory_ui_parity.md: ≥110% PowerFactory symbol rendering
- * - AUDYT_SLD_ETAP.md N-02: hierarchiczne auto-rozmieszczenie
- * - AUDYT_SLD_ETAP.md N-04: edytor używa tego samego renderera co podgląd (ETAP)
+ * - ui_canonical_parity.md: ≥110% Canonical symbol rendering
+ * - AUDYT_SLD_CANONICAL.md N-02: hierarchiczne auto-rozmieszczenie
+ * - AUDYT_SLD_CANONICAL.md N-04: edytor używa tego samego renderera co podgląd (CANONICAL)
  *
  * FEATURES:
- * - SVG rendering of all SLD symbols using ETAP standard
+ * - SVG rendering of all SLD symbols using CANONICAL standard
  * - Grid background (when enabled)
  * - Lasso selection (drag rectangle)
  * - Drag handles for selected symbols
  * - Mouse interactions (click, drag, lasso)
  * - AUTOMATYCZNE auto-rozmieszczenie (bez przycisku)
  *
- * ETAP PARITY (N-04):
+ * CANONICAL PARITY (N-04):
  * - Edytor i podgląd używają tego samego UnifiedSymbolRenderer
- * - Symbole ETAP zamiast uproszczonych kształtów
+ * - Symbole CANONICAL zamiast uproszczonych kształtów
  * - Porty spójne z definicjami w SymbolResolver.ts
  */
 
@@ -51,9 +51,9 @@ import { featureFlags } from '../config/featureFlags';
 import { computeTopologyHash } from './hooks/useAutoLayout';
 
 /**
- * Symbol rendering component using unified ETAP renderer.
+ * Symbol rendering component using unified CANONICAL renderer.
  *
- * PR-SLD-04: Replaces simplified shapes with ETAP symbols.
+ * PR-SLD-04: Replaces simplified shapes with CANONICAL symbols.
  */
 interface SymbolRendererProps {
   symbol: AnySldSymbol;
@@ -184,7 +184,7 @@ const LassoRectangle: React.FC<LassoRectangleProps> = ({ startX, startY, endX, e
  * - Deterministyczny (ten sam model -> ten sam uklad)
  * - Stabilny (mala zmiana nie powoduje "przeskoku")
  *
- * PR-SLD-05: Interakcja ETAP
+ * PR-SLD-05: Interakcja CANONICAL
  * - Snap do portow przy przeciaganiu
  * - Tworzenie polaczen przez klikniecie port -> port
  * - Brak swobodnego rysowania linii

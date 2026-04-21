@@ -4,7 +4,7 @@
  * PR-SLD-08: Tryb porównania elementów (multi-selection, read-only)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie właściwości (120% ETAP)
+ * - ui_canonical_parity.md: Porównanie właściwości (120% CANONICAL)
  * - sld_rules.md § G.1: Multi-selection w inspektorze
  *
  * FEATURES:

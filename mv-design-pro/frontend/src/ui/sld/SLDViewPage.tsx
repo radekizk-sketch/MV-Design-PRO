@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md: SLD ↔ selection synchronization
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
+ * - ui_canonical_parity.md: Canonical-like presentation
  *
  * PAGE INTEGRATION:
  * - Uses symbols from SldEditorStore (shared with SldEditor)

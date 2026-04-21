@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
-
 from api.schemas.equipment_proof import EquipmentProofRequest
 from application.equipment_proof.proof_pack import build_equipment_proof_pack
 from application.equipment_proof.types import DeviceRating, EquipmentProofInput
+from fastapi import APIRouter, Response
 
 router = APIRouter(prefix="/api/equipment-proof", tags=["equipment-proof"])
 

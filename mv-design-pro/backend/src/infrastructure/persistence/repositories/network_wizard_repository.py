@@ -2,9 +2,6 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
-
 from infrastructure.persistence.models import (
     CableTypeORM,
     InverterTypeORM,
@@ -21,6 +18,8 @@ from infrastructure.persistence.models import (
     SwitchingStateORM,
     TransformerTypeORM,
 )
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 
 class NetworkWizardRepository:
@@ -76,7 +75,9 @@ class NetworkWizardRepository:
         if commit:
             self._session.commit()
 
-    def set_connection_node(self, project_id: UUID, node_id: UUID | None, *, commit: bool = True) -> None:
+    def set_connection_node(
+        self, project_id: UUID, node_id: UUID | None, *, commit: bool = True
+    ) -> None:
         settings = self.get_settings(project_id)
         self.upsert_settings(
             project_id,
@@ -222,9 +223,7 @@ class NetworkWizardRepository:
             self._session.commit()
 
     def delete_loads_by_project(self, project_id: UUID, *, commit: bool = True) -> None:
-        self._session.query(NetworkLoadORM).filter(
-            NetworkLoadORM.project_id == project_id
-        ).delete()
+        self._session.query(NetworkLoadORM).filter(NetworkLoadORM.project_id == project_id).delete()
         if commit:
             self._session.commit()
 
@@ -239,9 +238,7 @@ class NetworkWizardRepository:
         return [{"id": row.id, "name": row.name, "params": row.params_jsonb} for row in rows]
 
     def list_transformer_types(self) -> list[dict]:
-        stmt = select(TransformerTypeORM).order_by(
-            TransformerTypeORM.name, TransformerTypeORM.id
-        )
+        stmt = select(TransformerTypeORM).order_by(TransformerTypeORM.name, TransformerTypeORM.id)
         rows = self._session.execute(stmt).scalars().all()
         return [{"id": row.id, "name": row.name, "params": row.params_jsonb} for row in rows]
 
@@ -384,9 +381,7 @@ class NetworkWizardRepository:
             self._session.commit()
 
     def upsert_switch_equipment_type(self, payload: dict, *, commit: bool = True) -> None:
-        stmt = select(SwitchEquipmentTypeORM).where(
-            SwitchEquipmentTypeORM.id == payload["id"]
-        )
+        stmt = select(SwitchEquipmentTypeORM).where(SwitchEquipmentTypeORM.id == payload["id"])
         row = self._session.execute(stmt).scalar_one_or_none()
         if row is None:
             self._session.add(
@@ -416,9 +411,7 @@ class NetworkWizardRepository:
             self._session.commit()
 
     def upsert_protection_device_type(self, payload: dict, *, commit: bool = True) -> None:
-        stmt = select(ProtectionDeviceTypeORM).where(
-            ProtectionDeviceTypeORM.id == payload["id"]
-        )
+        stmt = select(ProtectionDeviceTypeORM).where(ProtectionDeviceTypeORM.id == payload["id"])
         row = self._session.execute(stmt).scalar_one_or_none()
         if row is None:
             self._session.add(

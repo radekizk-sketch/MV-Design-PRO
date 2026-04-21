@@ -15,22 +15,18 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel, Field
-
 from api.dependencies import get_uow_factory
 from application.project_archive.service import ProjectArchiveService
 from domain.archive_diff import (
     ArchiveDiffResult,
-    DiffStatus,
     compare_archives,
-    diff_summary,
     format_diff_report_pl,
 )
 from domain.project_archive import (
     ArchiveError,
-    dict_to_archive,
 )
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/archives", tags=["archive-diff"])
 
@@ -117,22 +113,26 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
                 )
                 for fc in ed.field_changes
             ]
-            element_diffs.append(ElementDiffResponse(
-                element_id=ed.element_id,
-                element_type=ed.element_type,
-                status=ed.status.value,
-                field_changes=field_changes,
-            ))
-        section_diffs.append(SectionDiffResponse(
-            section_name=sd.section_name,
-            status=sd.status.value,
-            hash_a=sd.hash_a,
-            hash_b=sd.hash_b,
-            elements_added=sd.elements_added,
-            elements_removed=sd.elements_removed,
-            elements_modified=sd.elements_modified,
-            element_diffs=element_diffs,
-        ))
+            element_diffs.append(
+                ElementDiffResponse(
+                    element_id=ed.element_id,
+                    element_type=ed.element_type,
+                    status=ed.status.value,
+                    field_changes=field_changes,
+                )
+            )
+        section_diffs.append(
+            SectionDiffResponse(
+                section_name=sd.section_name,
+                status=sd.status.value,
+                hash_a=sd.hash_a,
+                hash_b=sd.hash_b,
+                elements_added=sd.elements_added,
+                elements_removed=sd.elements_removed,
+                elements_modified=sd.elements_modified,
+                element_diffs=element_diffs,
+            )
+        )
 
     summary = result.summary
     report_pl = format_diff_report_pl(result)
@@ -148,9 +148,7 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
             sections_modified=summary.get("sections_modified", 0),
             total_elements_added=summary.get("total_elements_added", 0),
             total_elements_removed=summary.get("total_elements_removed", 0),
-            total_elements_modified=summary.get(
-                "total_elements_modified", 0
-            ),
+            total_elements_modified=summary.get("total_elements_modified", 0),
         ),
         deterministic_signature=result.deterministic_signature,
         report_pl=report_pl,
@@ -164,12 +162,8 @@ def _to_response(result: ArchiveDiffResult) -> ArchiveDiffResponse:
 
 @router.post("/diff", response_model=ArchiveDiffResponse)
 async def compare_archive_files(
-    file_a: UploadFile = File(
-        description="Archiwum A (ZIP) — bazowe"
-    ),
-    file_b: UploadFile = File(
-        description="Archiwum B (ZIP) — porownywane"
-    ),
+    file_a: UploadFile = File(description="Archiwum A (ZIP) — bazowe"),
+    file_b: UploadFile = File(description="Archiwum B (ZIP) — porownywane"),
     uow_factory: Any = Depends(get_uow_factory),
 ) -> ArchiveDiffResponse:
     """
@@ -188,15 +182,11 @@ async def compare_archive_files(
     """
     # Walidacja rozszerzen
     for label, f in [("A", file_a), ("B", file_b)]:
-        if not f.filename or not (
-            f.filename.endswith(".zip")
-            or f.filename.endswith(".mvdp.zip")
-        ):
+        if not f.filename or not (f.filename.endswith(".zip") or f.filename.endswith(".mvdp.zip")):
             raise HTTPException(
                 status_code=400,
                 detail=(
-                    f"Nieprawidlowe rozszerzenie pliku {label}. "
-                    f"Oczekiwano .zip lub .mvdp.zip"
+                    f"Nieprawidlowe rozszerzenie pliku {label}. " f"Oczekiwano .zip lub .mvdp.zip"
                 ),
             )
 

@@ -23,11 +23,9 @@ THERMAL CAPACITY:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
-import math
-
 
 # =============================================================================
 # ENUMS
@@ -147,9 +145,7 @@ class ConductorData:
             return self.ithn_a
 
         # Use provided jthn or material default
-        jthn = self.jthn_a_mm2 if self.jthn_a_mm2 else MATERIAL_JTHN.get(
-            self.material, 94.0
-        )
+        jthn = self.jthn_a_mm2 if self.jthn_a_mm2 else MATERIAL_JTHN.get(self.material, 94.0)
         return self.cross_section_mm2 * jthn
 
     def to_dict(self) -> dict[str, Any]:
@@ -658,7 +654,7 @@ class LineOvercurrentSettingResult:
     overall_verdict: LineOvercurrentVerdict
     recommendations_pl: tuple[str, ...]
     trace_steps: tuple[dict[str, Any], ...]
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -672,7 +668,9 @@ class LineOvercurrentSettingResult:
                 "sensitivity": self.sensitivity.to_dict(),
                 "thermal": self.thermal.to_dict(),
                 "spz_blocking": self.spz_blocking.to_dict() if self.spz_blocking else None,
-                "local_generation": self.local_generation.to_dict() if self.local_generation else None,
+                "local_generation": (
+                    self.local_generation.to_dict() if self.local_generation else None
+                ),
             },
             "setting_window": self.setting_window.to_dict(),
             "overall_verdict": self.overall_verdict.value,

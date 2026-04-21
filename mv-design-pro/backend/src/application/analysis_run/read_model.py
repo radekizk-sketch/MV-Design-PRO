@@ -18,10 +18,7 @@ def build_deterministic_id(run: AnalysisRun) -> str:
 
 def canonicalize_json(value: Any, *, current_key: str | None = None) -> Any:
     if isinstance(value, dict):
-        return {
-            key: canonicalize_json(value[key], current_key=key)
-            for key in sorted(value.keys())
-        }
+        return {key: canonicalize_json(value[key], current_key=key) for key in sorted(value.keys())}
     if isinstance(value, list):
         items = [canonicalize_json(item, current_key=current_key) for item in value]
         if current_key in DETERMINISTIC_LIST_KEYS:

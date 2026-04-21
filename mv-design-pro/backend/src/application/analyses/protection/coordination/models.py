@@ -12,7 +12,7 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -235,7 +235,7 @@ class CoordinationAnalysisResult:
     # Metadata
     pf_run_id: str | None = None
     sc_run_id: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

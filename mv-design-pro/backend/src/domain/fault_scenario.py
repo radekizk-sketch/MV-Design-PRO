@@ -24,14 +24,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -157,9 +156,7 @@ class ShortCircuitConfig:
         return cls(
             c_factor=data.get("c_factor", 1.10),
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
-            include_branch_contributions=data.get(
-                "include_branch_contributions", False
-            ),
+            include_branch_contributions=data.get("include_branch_contributions", False),
         )
 
 
@@ -255,18 +252,14 @@ class FaultScenario:
                 if fault_impedance_type is not None
                 else self.fault_impedance_type
             ),
-            fault_mode=(
-                fault_mode if fault_mode is not None else self.fault_mode
-            ),
+            fault_mode=(fault_mode if fault_mode is not None else self.fault_mode),
             fault_impedance=(
                 fault_impedance
                 if not isinstance(fault_impedance, _SentinelType)
                 else self.fault_impedance
             ),
             arc_params=(
-                arc_params
-                if not isinstance(arc_params, _SentinelType)
-                else self.arc_params
+                arc_params if not isinstance(arc_params, _SentinelType) else self.arc_params
             ),
             z0_bus_data=(
                 z0_bus_data if not isinstance(z0_bus_data, _SentinelType) else self.z0_bus_data
@@ -288,9 +281,7 @@ class FaultScenario:
             "config": self.config.to_dict(),
             "fault_impedance_type": self.fault_impedance_type.value,
             "fault_mode": self.fault_mode.value,
-            "fault_impedance": (
-                self.fault_impedance.to_dict() if self.fault_impedance else None
-            ),
+            "fault_impedance": (self.fault_impedance.to_dict() if self.fault_impedance else None),
             "arc_params": self.arc_params,
             "z0_bus_data": self.z0_bus_data,
             "created_at": self.created_at,
@@ -311,9 +302,7 @@ class FaultScenario:
             fault_type=FaultType(data["fault_type"]),
             location=FaultLocation.from_dict(data["location"]),
             config=ShortCircuitConfig.from_dict(data.get("config", {})),
-            fault_impedance_type=FaultImpedanceType(
-                data.get("fault_impedance_type", "METALLIC")
-            ),
+            fault_impedance_type=FaultImpedanceType(data.get("fault_impedance_type", "METALLIC")),
             fault_mode=FaultMode(data.get("fault_mode", "METALLIC")),
             fault_impedance=fault_impedance,
             arc_params=data.get("arc_params"),
@@ -355,9 +344,7 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
     - arc_params must be None (unsupported in v2)
     """
     if not scenario.name or not scenario.name.strip():
-        raise FaultScenarioValidationError(
-            "Nazwa scenariusza jest wymagana"
-        )
+        raise FaultScenarioValidationError("Nazwa scenariusza jest wymagana")
 
     loc = scenario.location
 
@@ -374,9 +361,7 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
 
     if loc.location_type == "BRANCH":
         if loc.position is None:
-            raise FaultScenarioValidationError(
-                "Lokalizacja BRANCH wymaga pozycji (position)"
-            )
+            raise FaultScenarioValidationError("Lokalizacja BRANCH wymaga pozycji (position)")
         if not (0.0 < loc.position < 1.0):
             raise FaultScenarioValidationError(
                 f"Pozycja na gałęzi musi być w zakresie (0, 1), otrzymano: {loc.position}"
@@ -421,14 +406,10 @@ def validate_fault_scenario(scenario: FaultScenario) -> None:
         )
 
     if scenario.config.c_factor <= 0:
-        raise FaultScenarioValidationError(
-            "Współczynnik napięciowy c_factor musi być > 0"
-        )
+        raise FaultScenarioValidationError("Współczynnik napięciowy c_factor musi być > 0")
 
     if scenario.config.thermal_time_seconds <= 0:
-        raise FaultScenarioValidationError(
-            "Czas cieplny thermal_time_seconds musi być > 0"
-        )
+        raise FaultScenarioValidationError("Czas cieplny thermal_time_seconds musi być > 0")
 
 
 # ---------------------------------------------------------------------------
@@ -464,7 +445,7 @@ def compute_scenario_content_hash(scenario: FaultScenario) -> str:
 
 def _now_utc_iso() -> str:
     """Deterministic UTC timestamp as ISO string."""
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def new_fault_scenario(

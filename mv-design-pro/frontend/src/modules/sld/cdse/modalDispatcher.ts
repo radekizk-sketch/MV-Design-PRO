@@ -13,7 +13,7 @@
 import type { CdseContextType, CdseResolvedContext } from './contextResolver';
 
 /**
- * Canonical modal identifiers — match modalRegistry.ts entries.
+ * Canonical surface identifiers — match operationSurfaceRegistry entries.
  */
 export type CdseModalId =
   | 'AddTrunkSegmentModal'

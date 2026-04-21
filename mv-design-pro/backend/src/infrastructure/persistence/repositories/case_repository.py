@@ -18,11 +18,8 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
-
-from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 
 from domain.models import OperatingCase
 from domain.project_design_mode import ProjectDesignMode
@@ -33,6 +30,8 @@ from domain.study_case import (
     StudyCaseResultStatus,
 )
 from infrastructure.persistence.models import OperatingCaseORM, StudyCaseORM
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
 
 
 class CaseRepository:
@@ -46,9 +45,9 @@ class CaseRepository:
                 project_id=case.project_id,
                 name=case.name,
                 case_jsonb=case.case_payload,
-                project_design_mode=case.project_design_mode.value
-                if case.project_design_mode is not None
-                else None,
+                project_design_mode=(
+                    case.project_design_mode.value if case.project_design_mode is not None else None
+                ),
                 created_at=case.created_at,
                 updated_at=case.updated_at,
             )
@@ -66,9 +65,9 @@ class CaseRepository:
             project_id=row.project_id,
             name=row.name,
             case_payload=row.case_jsonb,
-            project_design_mode=ProjectDesignMode(row.project_design_mode)
-            if row.project_design_mode
-            else None,
+            project_design_mode=(
+                ProjectDesignMode(row.project_design_mode) if row.project_design_mode else None
+            ),
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
@@ -82,9 +81,9 @@ class CaseRepository:
                 project_id=row.project_id,
                 name=row.name,
                 case_payload=row.case_jsonb,
-                project_design_mode=ProjectDesignMode(row.project_design_mode)
-                if row.project_design_mode
-                else None,
+                project_design_mode=(
+                    ProjectDesignMode(row.project_design_mode) if row.project_design_mode else None
+                ),
                 created_at=row.created_at,
                 updated_at=row.updated_at,
             )
@@ -110,10 +109,7 @@ class CaseRepository:
     def _row_to_study_case(self, row: StudyCaseORM) -> StudyCase:
         """Convert ORM row to StudyCase domain entity (P10a)."""
         config = StudyCaseConfig.from_dict(row.study_jsonb)
-        result_refs = tuple(
-            StudyCaseResult.from_dict(ref)
-            for ref in (row.result_refs_jsonb or [])
-        )
+        result_refs = tuple(StudyCaseResult.from_dict(ref) for ref in (row.result_refs_jsonb or []))
         return StudyCase(
             id=row.id,
             project_id=row.project_id,
@@ -267,7 +263,7 @@ class CaseRepository:
             return None
 
         row.is_active = True
-        row.updated_at = datetime.now(timezone.utc)
+        row.updated_at = datetime.now(UTC)
 
         if commit:
             self._session.commit()
@@ -296,7 +292,7 @@ class CaseRepository:
             .where(StudyCaseORM.result_status == "FRESH")
             .values(
                 result_status="OUTDATED",
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
         result = self._session.execute(stmt)
@@ -318,7 +314,7 @@ class CaseRepository:
 
         if row.result_status == "FRESH":
             row.result_status = "OUTDATED"
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(UTC)
             if commit:
                 self._session.commit()
             return True
@@ -346,7 +342,7 @@ class CaseRepository:
         refs = list(row.result_refs_jsonb or [])
         refs.append(result_ref.to_dict())
         row.result_refs_jsonb = refs
-        row.updated_at = datetime.now(timezone.utc)
+        row.updated_at = datetime.now(UTC)
 
         if commit:
             self._session.commit()
@@ -362,9 +358,7 @@ class CaseRepository:
 
     def delete_study_cases_by_project(self, project_id: UUID, *, commit: bool = True) -> None:
         """Delete all StudyCases for a project."""
-        self._session.query(StudyCaseORM).filter(
-            StudyCaseORM.project_id == project_id
-        ).delete()
+        self._session.query(StudyCaseORM).filter(StudyCaseORM.project_id == project_id).delete()
         if commit:
             self._session.commit()
 
@@ -376,9 +370,7 @@ class CaseRepository:
     # P10a: Snapshot-based operations
     def list_cases_by_snapshot(self, network_snapshot_id: str) -> list[StudyCase]:
         """P10a: List all StudyCases bound to a specific network snapshot."""
-        stmt = select(StudyCaseORM).where(
-            StudyCaseORM.network_snapshot_id == network_snapshot_id
-        )
+        stmt = select(StudyCaseORM).where(StudyCaseORM.network_snapshot_id == network_snapshot_id)
         rows = self._session.execute(stmt).scalars().all()
         return [self._row_to_study_case(row) for row in rows]
 
@@ -397,7 +389,7 @@ class CaseRepository:
             .where(StudyCaseORM.result_status == "FRESH")
             .values(
                 result_status="OUTDATED",
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
         )
         result = self._session.execute(stmt)
@@ -427,7 +419,7 @@ class CaseRepository:
                 .where(StudyCaseORM.network_snapshot_id.is_(None))
                 .values(
                     network_snapshot_id=new_snapshot_id,
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 )
             )
         else:
@@ -439,7 +431,7 @@ class CaseRepository:
                 .values(
                     network_snapshot_id=new_snapshot_id,
                     result_status="OUTDATED",
-                    updated_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(UTC),
                 )
             )
         result = self._session.execute(stmt)

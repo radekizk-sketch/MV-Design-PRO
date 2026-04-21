@@ -2,7 +2,7 @@
  * Type Catalog Tests (P8.2)
  *
  * CANONICAL ALIGNMENT:
- * - P8.2: UI Assign/Clear Type (PowerFactory Type Library parity)
+ * - P8.2: UI Assign/Clear Type (Canonical Type Library parity)
  * - Deterministic ordering: manufacturer → name → id
  * - Mode gating: MODEL_EDIT only for mutations
  */

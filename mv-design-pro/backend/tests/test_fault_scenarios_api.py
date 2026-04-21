@@ -5,11 +5,11 @@ API contract tests using FastAPI TestClient.
 All assertions use Polish error messages where applicable.
 """
 
-import pytest
 from uuid import uuid4
 
-from fastapi.testclient import TestClient
+import pytest
 from api.main import app
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 
@@ -21,6 +21,7 @@ BASE_URL = "/api/execution"
 def _reset_service():
     """Reset the fault scenario service between tests."""
     from api.fault_scenarios import get_fault_scenario_service
+
     service = get_fault_scenario_service()
     service._scenarios.clear()
     service._case_scenarios.clear()

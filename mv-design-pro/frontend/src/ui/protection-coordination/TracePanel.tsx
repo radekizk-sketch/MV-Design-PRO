@@ -82,10 +82,9 @@ function TraceStepItem({ step, index, isExpanded, onToggle }: TraceStepItemProps
       >
         <div className="flex-1">
           <div className="flex items-center gap-2">
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs text-slate-600">
-              {step.step}
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-600">
+              Krok {index + 1}
             </span>
-            <span className="text-xs text-slate-400">#{index + 1}</span>
           </div>
           <p className="mt-1 text-sm font-medium text-slate-900">
             {step.description_pl}

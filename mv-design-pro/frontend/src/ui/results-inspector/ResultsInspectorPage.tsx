@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md: RESULT_VIEW mode, Polish labels
- * - powerfactory_ui_parity.md: Deterministic tables, result freshness
+ * - ui_canonical_parity.md: Deterministic tables, result freshness
  * - sld_rules.md: Result overlay as separate layer
  * - AGENTS.md: NOT-A-SOLVER, no physics in UI
  *
@@ -13,7 +13,7 @@
  * - Tabs: Szyny, Gałęzie, Zwarcia (SC only), Ślad obliczeń
  * - Sortable, filterable tables
  * - SLD overlay toggle
- * - Inspector panel (read-only property grid) - PowerFactory parity
+ * - Inspector panel (read-only property grid) - Canonical parity
  *
  * 100% POLISH UI
  */
@@ -42,6 +42,21 @@ import { ResultsExport } from './ResultsExport';
 import { EmbeddedSldWorkspace } from './EmbeddedSldWorkspace';
 import { resolveAvailableResultsTabs } from './viewState';
 import { TraceViewerContainer } from '../proof';
+import {
+  formatProofPackRef,
+  getAnalysisCaseLabel,
+  getCompletenessDisplayLabel,
+  getCompletenessTone,
+  getReproducibilitySummary,
+  mergeAnalysisCaseContexts,
+} from './analysisCaseContextView';
+import {
+  ANALYSIS_COMPLETENESS_BADGE_CLASS,
+  ANALYSIS_COMPLETENESS_LABELS,
+  QUALITY_GATE_BADGE_CLASS,
+  QUALITY_GATE_LABELS,
+  type AnalysisCaseContext,
+} from '../shared/analysisCaseContext';
 
 // =============================================================================
 // Helper Functions
@@ -80,12 +95,24 @@ interface ResultStatusBarProps {
   solverKind: string;
   runId: string;
   createdAt: string;
+  analysisCaseContext?: AnalysisCaseContext | null;
 }
 
-function ResultStatusBar({ resultState, solverKind, runId, createdAt }: ResultStatusBarProps) {
+function ResultStatusBar({
+  resultState,
+  solverKind,
+  runId,
+  createdAt,
+  analysisCaseContext,
+}: ResultStatusBarProps) {
   const statusLabel = RESULT_STATUS_LABELS[resultState] ?? resultState;
   const severity = RESULT_STATUS_SEVERITY[resultState] ?? 'info';
   const solverLabel = SOLVER_KIND_LABELS[solverKind] ?? solverKind;
+  const caseLabel = getAnalysisCaseLabel(analysisCaseContext);
+  const completenessLabel = getCompletenessDisplayLabel(analysisCaseContext);
+  const completenessTone = getCompletenessTone(analysisCaseContext?.completeness ?? completenessLabel);
+  const proofPackRef = formatProofPackRef(analysisCaseContext?.proof_pack_ref ?? null);
+  const reproducibilitySummary = getReproducibilitySummary(analysisCaseContext);
 
   const formattedDate = useMemo(() => {
     try {
@@ -97,18 +124,50 @@ function ResultStatusBar({ resultState, solverKind, runId, createdAt }: ResultSt
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded border border-slate-200 bg-white p-3">
-      <div className="flex items-center gap-4">
-        <span
-          className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(severity)}`}
-        >
-          {statusLabel}
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">Typ analizy:</span> {solverLabel}
-        </span>
-        <span className="text-sm text-slate-600">
-          <span className="font-medium">Run:</span> {runId.substring(0, 8)}...
-        </span>
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-4">
+          <span
+            className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(severity)}`}
+          >
+            {statusLabel}
+          </span>
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">Typ analizy:</span> {solverLabel}
+          </span>
+          {caseLabel && (
+            <span className="text-sm text-slate-600" data-testid="results-status-case-context">
+              <span className="font-medium">Przypadek:</span> {caseLabel}
+            </span>
+          )}
+          {completenessLabel && (
+            <span
+              className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(completenessTone)}`}
+              data-testid="results-status-completeness"
+            >
+              Kompletnosc: {completenessLabel}
+            </span>
+          )}
+          <span className="text-sm text-slate-600">
+            <span className="font-medium">Uruchomienie:</span> {runId.substring(0, 8)}...
+          </span>
+        </div>
+        {(proofPackRef || reproducibilitySummary) && (
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+            {proofPackRef && (
+              <span data-testid="results-status-proof-pack">
+                <span className="font-medium text-slate-600">Pakiet uzasadnienia:</span> {proofPackRef}
+              </span>
+            )}
+            {reproducibilitySummary && (
+              <span data-testid="results-status-reproducibility">
+                <span className="font-medium text-slate-600">
+                  {reproducibilitySummary.label}:
+                </span>{' '}
+                {reproducibilitySummary.value}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <span className="text-sm text-slate-500">{formattedDate}</span>
     </div>
@@ -129,6 +188,124 @@ function EmptyState({ message }: { message: string }) {
     <div className="flex flex-col items-center justify-center p-8 text-slate-500">
       <p>{message}</p>
     </div>
+  );
+}
+
+function ContextBadge({ label, tone }: { label: string; tone: string }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone}`}>
+      {label}
+    </span>
+  );
+}
+
+function ContextField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-slate-200 bg-slate-50 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 break-all text-sm text-slate-800">{value}</div>
+    </div>
+  );
+}
+
+function AnalysisCaseContextPanel({
+  context,
+}: {
+  context: AnalysisCaseContext | null | undefined;
+}) {
+  if (!context) {
+    return null;
+  }
+
+  const completenessLabel =
+    ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
+  const completenessTone =
+    ANALYSIS_COMPLETENESS_BADGE_CLASS[context.completeness] ??
+    ANALYSIS_COMPLETENESS_BADGE_CLASS.partial;
+  const qualityGateLabel = QUALITY_GATE_LABELS[context.quality_gate] ?? context.quality_gate;
+  const qualityGateTone =
+    QUALITY_GATE_BADGE_CLASS[context.quality_gate] ?? QUALITY_GATE_BADGE_CLASS.G2;
+  const reproducibility = context.reproducibility ?? {};
+  const applicability =
+    context.applicability_scope.length > 0
+      ? context.applicability_scope.join(', ')
+      : 'Brak zakresu';
+
+  return (
+    <section className="mt-4 space-y-4 rounded border border-slate-200 bg-white p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            analysis_case_context
+          </div>
+          <h2 className="mt-1 text-sm font-semibold text-slate-900">
+            Kontekst przypadku obliczeniowego
+          </h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ContextBadge label={`Kompletnosc: ${completenessLabel}`} tone={completenessTone} />
+          <ContextBadge label={qualityGateLabel} tone={qualityGateTone} />
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ContextField
+          label="Rodzaj przypadku"
+          value={context.rodzaj_przypadku ?? context.case_kind ?? 'Brak'}
+        />
+        <ContextField label="Case ref" value={context.case_ref} />
+        <ContextField label="Run ref" value={context.run_ref} />
+        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
+        <ContextField label="Proof pack" value={context.proof_pack_ref} />
+        <ContextField label="Zakres" value={applicability} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ContextField label="Solver" value={reproducibility.solver_family ?? 'Brak'} />
+        <ContextField
+          label="Wersja solvera"
+          value={reproducibility.solver_version ?? 'Brak'}
+        />
+        <ContextField label="Metoda" value={reproducibility.method_version ?? 'Brak'} />
+        <ContextField
+          label="Kontrakt wynikow"
+          value={reproducibility.results_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Kontrakt pola"
+          value={reproducibility.bay_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Snapshot katalogow"
+          value={reproducibility.catalog_snapshot_ref ?? 'Brak'}
+        />
+        <ContextField
+          label="Schemat katalogow"
+          value={reproducibility.catalog_schema_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Polityka tolerancji"
+          value={reproducibility.tolerance_policy_ref ?? 'Brak'}
+        />
+        <ContextField
+          label="Polityka zaokraglen"
+          value={reproducibility.rounding_policy_ref ?? 'Brak'}
+        />
+      </div>
+
+      {context.missing_prerequisites.length > 0 && (
+        <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <div className="font-semibold">Brakujace warunki wejsciowe</div>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            {context.missing_prerequisites.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -765,6 +942,10 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
   }
 
   const { run_header } = resultsIndex;
+  const analysisCaseContext = mergeAnalysisCaseContexts(
+    resultsIndex.analysis_case_context,
+    run_header.analysis_case_context,
+  );
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -816,7 +997,9 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
           solverKind={run_header.solver_kind}
           runId={run_header.run_id}
           createdAt={run_header.created_at}
+          analysisCaseContext={analysisCaseContext}
         />
+        <AnalysisCaseContextPanel context={analysisCaseContext} />
 
         {/* Overlay toggle */}
         <div className="mt-4 flex items-center gap-4">
@@ -886,7 +1069,7 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
             )}
           </div>
 
-          {/* Inspector panel (PowerFactory-style read-only property grid) */}
+          {/* Inspector panel (Canonical-style read-only property grid) */}
           <div className="lg:col-span-1" data-testid="results-inspector-container">
             <InspectorPanel
               selectedRow={mapResultRowToInspectorData(selectedResultRow)}

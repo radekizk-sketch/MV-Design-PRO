@@ -14,6 +14,7 @@ PRINCIPLES:
 - Returns structured validation report
 - Creates NetworkGraph compatible with existing solvers
 """
+
 from __future__ import annotations
 
 import io
@@ -21,9 +22,9 @@ import math
 from dataclasses import dataclass, field
 from typing import Any
 
+from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.core.branch import LineBranch, TransformerBranch, BranchType
 
 
 class XlsxValidationError(Exception):
@@ -119,9 +120,7 @@ class XlsxNetworkImporter:
             )
 
         try:
-            wb = openpyxl.load_workbook(
-                io.BytesIO(data), read_only=True, data_only=True
-            )
+            wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True)
         except Exception as e:
             return XlsxImportResult(
                 success=False,
@@ -147,21 +146,15 @@ class XlsxNetworkImporter:
 
         trafos: list[dict[str, Any]] = []
         if "Trafo" in sheet_names:
-            trafos = self._parse_sheet(
-                wb["Trafo"], self.TRAFO_COLUMNS, "Trafo", errors
-            )
+            trafos = self._parse_sheet(wb["Trafo"], self.TRAFO_COLUMNS, "Trafo", errors)
 
         sources: list[dict[str, Any]] = []
         if "Źródła" in sheet_names:
-            sources = self._parse_sheet(
-                wb["Źródła"], self.SOURCE_COLUMNS, "Źródła", errors
-            )
+            sources = self._parse_sheet(wb["Źródła"], self.SOURCE_COLUMNS, "Źródła", errors)
 
         loads: list[dict[str, Any]] = []
         if "Odbiory" in sheet_names:
-            loads = self._parse_sheet(
-                wb["Odbiory"], self.LOAD_COLUMNS, "Odbiory", errors
-            )
+            loads = self._parse_sheet(wb["Odbiory"], self.LOAD_COLUMNS, "Odbiory", errors)
 
         if errors:
             return XlsxImportResult(success=False, graph=None, errors=errors)
@@ -246,9 +239,7 @@ class XlsxNetworkImporter:
             warnings=warnings,
         )
 
-    def import_from_dict(
-        self, data: dict[str, list[dict[str, Any]]]
-    ) -> XlsxImportResult:
+    def import_from_dict(self, data: dict[str, list[dict[str, Any]]]) -> XlsxImportResult:
         """
         Import network from dict of sheet data (for testing without openpyxl).
 
@@ -279,13 +270,9 @@ class XlsxNetworkImporter:
 
         for i, line in enumerate(lines):
             if line.get("szyna_pocz") not in bus_ids:
-                errors.append(
-                    f"Linie wiersz {i + 2}: szyna_pocz nie istnieje w Szyny"
-                )
+                errors.append(f"Linie wiersz {i + 2}: szyna_pocz nie istnieje w Szyny")
             if line.get("szyna_kon") not in bus_ids:
-                errors.append(
-                    f"Linie wiersz {i + 2}: szyna_kon nie istnieje w Szyny"
-                )
+                errors.append(f"Linie wiersz {i + 2}: szyna_kon nie istnieje w Szyny")
 
         # Check numeric values
         for i, bus in enumerate(buses):
@@ -335,9 +322,7 @@ class XlsxNetworkImporter:
         # Check required columns
         for col_name in columns:
             if col_name not in headers:
-                errors.append(
-                    f"Arkusz '{sheet_name}': brak wymaganej kolumny '{col_name}'"
-                )
+                errors.append(f"Arkusz '{sheet_name}': brak wymaganej kolumny '{col_name}'")
 
         if any(col_name not in headers for col_name in columns):
             return []
@@ -500,8 +485,7 @@ class XlsxNetworkImporter:
         # Note: loads are already reflected in PQ node parameters above
         if loads:
             warnings.append(
-                f"Zaimportowano {len(loads)} odbiorów "
-                f"(dane dostępne w parametrach węzłów PQ)"
+                f"Zaimportowano {len(loads)} odbiorów " f"(dane dostępne w parametrach węzłów PQ)"
             )
 
         return graph

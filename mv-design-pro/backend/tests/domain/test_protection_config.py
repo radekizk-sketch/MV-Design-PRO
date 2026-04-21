@@ -7,20 +7,19 @@ Tests:
 - StudyCase integration
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from domain.study_case import (
-    StudyCase,
     ProtectionConfig,
+    StudyCase,
     new_study_case,
 )
 
 
 def test_protection_config_to_dict():
     """Test ProtectionConfig serialization."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     config = ProtectionConfig(
         template_ref="template-123",
         template_fingerprint="abc123",
@@ -40,7 +39,7 @@ def test_protection_config_to_dict():
 
 def test_protection_config_from_dict():
     """Test ProtectionConfig deserialization."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     data = {
         "template_ref": "template-123",
         "template_fingerprint": "abc123",
@@ -79,7 +78,7 @@ def test_study_case_with_protection_config():
     assert case.protection_config.overrides == {}
 
     # Update protection config
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     new_config = ProtectionConfig(
         template_ref="template-123",
         template_fingerprint="abc123",
@@ -101,7 +100,7 @@ def test_study_case_clone_copies_protection_config():
     project_id = uuid4()
     case = new_study_case(project_id, "Test Case")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     protection_config = ProtectionConfig(
         template_ref="template-123",
         template_fingerprint="abc123",
@@ -127,7 +126,7 @@ def test_study_case_serialization_with_protection_config():
     project_id = uuid4()
     case = new_study_case(project_id, "Test Case")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     protection_config = ProtectionConfig(
         template_ref="template-123",
         template_fingerprint="abc123",

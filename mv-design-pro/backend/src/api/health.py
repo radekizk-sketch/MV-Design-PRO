@@ -1,4 +1,5 @@
 """Health endpoint — rozszerzony status z informacjami o bazie, silnikach i solwerach."""
+
 from __future__ import annotations
 
 import time
@@ -51,7 +52,10 @@ async def health_check(request: Request) -> dict[str, Any]:
     # Engine check — verify solver imports
     engine_ok = False
     try:
-        from network_model.solvers import ShortCircuitIEC60909Solver, PowerFlowNewtonSolver  # noqa: F401
+        from network_model.solvers import (  # noqa: F401
+            PowerFlowNewtonSolver,
+            ShortCircuitIEC60909Solver,
+        )
 
         engine_ok = True
     except Exception:

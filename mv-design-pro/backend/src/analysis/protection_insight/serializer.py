@@ -28,13 +28,9 @@ def item_to_dict(item: ProtectionInsightItem) -> dict[str, Any]:
         "ith_ka2s": float(item.ith_ka2s) if item.ith_ka2s is not None else None,
         "icu_ka": float(item.icu_ka) if item.icu_ka is not None else None,
         "idyn_ka": float(item.idyn_ka) if item.idyn_ka is not None else None,
-        "ith_limit_ka2s": (
-            float(item.ith_limit_ka2s) if item.ith_limit_ka2s is not None else None
-        ),
+        "ith_limit_ka2s": (float(item.ith_limit_ka2s) if item.ith_limit_ka2s is not None else None),
         "breaking_margin_pct": (
-            float(item.breaking_margin_pct)
-            if item.breaking_margin_pct is not None
-            else None
+            float(item.breaking_margin_pct) if item.breaking_margin_pct is not None else None
         ),
         "dynamic_margin_pct": (
             float(item.dynamic_margin_pct) if item.dynamic_margin_pct is not None else None

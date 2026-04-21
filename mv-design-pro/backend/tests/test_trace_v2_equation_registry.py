@@ -33,8 +33,17 @@ class TestEquationRegistryImmutability:
     def test_sc_equations_present(self) -> None:
         r = EquationRegistryV2.default()
         required = [
-            "SC_ZK_3F", "SC_ZK_2F", "SC_ZK_1F", "SC_ZK_2FG",
-            "SC_IKSS", "SC_KAPPA", "SC_IP", "SC_IB", "SC_ITH", "SC_IDYN", "SC_SK",
+            "SC_ZK_3F",
+            "SC_ZK_2F",
+            "SC_ZK_1F",
+            "SC_ZK_2FG",
+            "SC_IKSS",
+            "SC_KAPPA",
+            "SC_IP",
+            "SC_IB",
+            "SC_ITH",
+            "SC_IDYN",
+            "SC_SK",
         ]
         for eq_id in required:
             assert r.contains(eq_id), f"Missing SC equation: {eq_id}"
@@ -42,7 +51,10 @@ class TestEquationRegistryImmutability:
     def test_protection_equations_present(self) -> None:
         r = EquationRegistryV2.default()
         required = [
-            "PROT_CT_CONVERSION", "PROT_MULTIPLE_M", "PROT_IEC_IDMT", "PROT_F50_TRIP",
+            "PROT_CT_CONVERSION",
+            "PROT_MULTIPLE_M",
+            "PROT_IEC_IDMT",
+            "PROT_F50_TRIP",
         ]
         for eq_id in required:
             assert r.contains(eq_id), f"Missing Protection equation: {eq_id}"
@@ -50,8 +62,12 @@ class TestEquationRegistryImmutability:
     def test_load_flow_equations_present(self) -> None:
         r = EquationRegistryV2.default()
         required = [
-            "LF_CONVERGENCE", "LF_POWER_BALANCE_P", "LF_POWER_BALANCE_Q",
-            "LF_BUS_VOLTAGE", "LF_BRANCH_FLOW", "LF_BRANCH_LOSSES",
+            "LF_CONVERGENCE",
+            "LF_POWER_BALANCE_P",
+            "LF_POWER_BALANCE_Q",
+            "LF_BUS_VOLTAGE",
+            "LF_BRANCH_FLOW",
+            "LF_BRANCH_LOSSES",
         ]
         for eq_id in required:
             assert r.contains(eq_id), f"Missing LF equation: {eq_id}"
@@ -109,5 +125,6 @@ class TestMathSpecVersion:
 
     def test_invalid_parse(self) -> None:
         import pytest
+
         with pytest.raises(ValueError):
             MathSpecVersion.parse("not_a_version")

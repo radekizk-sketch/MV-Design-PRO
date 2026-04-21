@@ -5,7 +5,6 @@ BINDING: any failure blocks merge.
 """
 
 import pytest
-
 from domain.readiness import (
     ReadinessAreaV1,
     ReadinessGateError,

@@ -255,7 +255,7 @@ Kazda akcja naprawcza (fix_action) posiada nastepujaca strukture:
     "screen": "sld",
     "panel": "inspector",
     "tab": "transformator",
-    "modal": "add_transformer",
+    "modal": "add_transformer_sn_nn",
     "step": null,
     "focus": null
   }
@@ -605,7 +605,7 @@ Elementy z wartosciami poza zakresem dopuszczalnym sa oznaczane:
 | Kontrakty operacji domenowych                         | `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md`           | Nazwy kanoniczne operacji       |
 | Kontrakty operacji i schematy JSON                    | `docs/domain/KONTRAKTY_OPERACJI_I_SCHEMATY_JSON.md`       | Schematy JSON odpowiedzi        |
 | Specyfikacja systemu (SYSTEM_SPEC)                    | `SYSTEM_SPEC.md`                                           | Architektura nadrzedna, zamrozone API |
-| Kontrakty kanoniczne systemu (Rozdzial 5)             | `docs/spec/SPEC_CHAPTER_05_SYSTEM_CANONICAL_CONTRACTS.md`  | Brama obliczeniowa, walidacja   |
+| Indeks kanoniczny V12.5                               | `docs/INDEX_KANONICZNY.md`                                  | Wejscie do wiazacych specyfikacji systemowych |
 | Kanon kreatora na zywo                                | `docs/ui/KANON_KREATOR_SN_NN_NA_ZYWO.md`                  | Budowa sieci, render SLD        |
 | Macierz okien dialogowych i akcji                     | `docs/ui/MACIERZ_OKIEN_DIALOGOWYCH_I_AKCJI.md`            | Szczegoly dialogow              |
 | Kanoniczny system SLD                                 | `docs/KANON_SLD_SYSTEM.md`                                 | Architektura nakladek SLD       |

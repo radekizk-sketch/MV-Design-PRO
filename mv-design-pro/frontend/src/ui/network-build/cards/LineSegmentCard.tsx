@@ -325,14 +325,14 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
       onClick: handleAssignCatalog,
     },
     {
-      id: 'insert_station',
+      id: 'insert_station_on_segment_sn',
       label: 'Wstaw stację',
       variant: 'secondary',
       onClick: handleInsertStation,
     },
     ...(branch?.type === 'line_overhead'
       ? [{
-          id: 'insert_branch_pole',
+          id: 'insert_branch_pole_on_segment_sn',
           label: 'Wstaw słup rozgałęźny',
           variant: 'secondary' as const,
           onClick: handleInsertBranchPole,
@@ -340,14 +340,14 @@ export function LineSegmentCard({ elementId }: { elementId: string }) {
       : []),
     ...(branch?.type === 'cable'
       ? [{
-          id: 'insert_zksn',
+          id: 'insert_zksn_on_segment_sn',
           label: 'Wstaw ZKSN',
           variant: 'secondary' as const,
           onClick: handleInsertZksn,
         }]
       : []),
     {
-      id: 'insert_switch',
+      id: 'insert_section_switch_sn',
       label: 'Wstaw łącznik',
       variant: 'secondary',
       onClick: handleInsertSwitch,

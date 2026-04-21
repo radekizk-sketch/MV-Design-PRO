@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sys
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -22,7 +22,7 @@ from application.study_scenario.serializer import run_to_json, scenario_to_json,
 
 
 def test_deterministic_ids_and_hashes() -> None:
-    created_at = datetime(2025, 1, 5, 12, 0, tzinfo=timezone.utc)
+    created_at = datetime(2025, 1, 5, 12, 0, tzinfo=UTC)
     study_one = create_study(
         name="Study A",
         description="Primary study",
@@ -130,7 +130,7 @@ def test_binding_not_computed_and_immutability() -> None:
 
 
 def test_serialization_stability() -> None:
-    created_at = datetime(2025, 1, 6, 8, 30, tzinfo=timezone.utc)
+    created_at = datetime(2025, 1, 6, 8, 30, tzinfo=UTC)
     study = create_study(
         name="Study C",
         description="Serialization",

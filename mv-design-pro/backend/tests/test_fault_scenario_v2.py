@@ -13,23 +13,19 @@ Tests:
 - Eligibility gating for v2 (IMPEDANCE, BRANCH_POINT)
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
 from domain.fault_scenario import (
     FaultImpedance,
-    FaultImpedanceType,
     FaultLocation,
     FaultMode,
     FaultScenario,
     FaultScenarioValidationError,
     FaultType,
-    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
-    validate_fault_scenario,
 )
-
 
 FIXED_CASE_ID = uuid4()
 
@@ -373,7 +369,11 @@ class TestV2BackwardCompat:
             "name": "Legacy",
             "fault_type": "SC_3F",
             "location": {"element_ref": "bus-1", "location_type": "BUS", "position": None},
-            "config": {"c_factor": 1.10, "thermal_time_seconds": 1.0, "include_branch_contributions": False},
+            "config": {
+                "c_factor": 1.10,
+                "thermal_time_seconds": 1.0,
+                "include_branch_contributions": False,
+            },
             "fault_impedance_type": "METALLIC",
             "content_hash": "abc123",
             "created_at": "2025-01-01T00:00:00",

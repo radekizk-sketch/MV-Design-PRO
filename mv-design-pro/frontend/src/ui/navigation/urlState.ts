@@ -2,14 +2,14 @@
  * URL State Management — NAVIGATION_SELECTOR_UI
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § A.3: URL reflects navigation state
+ * - ui_canonical_parity.md § A.3: URL reflects navigation state
  * - UI_CORE_ARCHITECTURE.md § 4.3: Deterministic URL encoding
  *
  * BINDING: URL is single source of truth for navigation state.
  * Refresh preserves: route + selection (happy-path).
  *
  * URL Format:
- * - Hash: route (e.g., #results, #proof)
+ * - Hash: route (e.g., #analysis, #report)
  * - Search params: selection state (e.g., ?sel=bus_123&type=Bus)
  */
 
@@ -138,7 +138,7 @@ export function getCurrentSearchParams(): URLSearchParams {
   }
 
   // Hash-based routing: search params come after the hash
-  // e.g., #results?sel=bus_1&type=Bus
+  // e.g., #analysis?sel=bus_1&type=Bus
   const hash = window.location.hash;
   const queryIndex = hash.indexOf('?');
 

@@ -152,7 +152,7 @@ NetworkModel ──> NetworkValidator.validate() ──> VALID → Solver allowe
 
 Implementation: `network_model/validation/validator.py`
 
-13 PowerFactory-grade rules with suggested_fix diagnostics:
+13 industrial-grade rules with suggested_fix diagnostics:
 1. Empty network check
 2. Graph connectivity (single island)
 3. Source presence (SLACK or inverter)
@@ -499,7 +499,7 @@ UI contracts define presentation rules and are maintained separately from this a
 | Protection Insight | `docs/ui/PROTECTION_INSIGHT_CONTRACT.md` | Selectivity explainer |
 | PDF Report | `docs/ui/PDF_REPORT_SUPERIOR_CONTRACT.md` | Report generation |
 | Voltage Profile | `docs/ui/VOLTAGE_PROFILE_BUS_CONTRACT.md` | Bus voltage profiles |
-| PowerFactory Parity | `docs/ui/UI_ETAP_POWERFACTORY_PARITY.md` | Feature parity matrix |
+| Canonical Parity | `docs/ui/UI_CANONICAL_PARITY_MATRIX.md` | Feature parity matrix |
 
 ---
 

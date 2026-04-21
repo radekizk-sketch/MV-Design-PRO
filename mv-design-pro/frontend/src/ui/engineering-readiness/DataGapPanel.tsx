@@ -269,10 +269,11 @@ interface GroupedIssues {
 // =============================================================================
 
 export interface DataGapPanelProps {
+  workspaceBlockState?: unknown;
   /** Navigate to element on SLD (centerOnElement + highlight) */
   onNavigateToElement?: (elementId: string) => void;
   /** Execute quick fix action for element */
-  onQuickFix?: (elementId: string, fixAction: string) => void;
+  onQuickFix?: (issue: ReadinessIssue) => void;
   /** Compact mode (less padding, smaller text) */
   compact?: boolean;
 }
@@ -374,13 +375,8 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
 
   const handleQuickFix = useCallback(
     (issue: ReadinessIssue) => {
-      const ref = issue.element_ref ?? issue.element_refs[0];
-      if (!ref || !onQuickFix) return;
-
-      // Determine the fix action string from the issue's fix_action or code context
-      const fixLabel = resolveQuickFixLabel(issue);
-      const fixActionKey = issue.fix_action?.action_type ?? fixLabel;
-      onQuickFix(ref, fixActionKey);
+      if (!onQuickFix) return;
+      onQuickFix(issue);
     },
     [onQuickFix],
   );

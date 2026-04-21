@@ -21,6 +21,7 @@ import logging
 from typing import Any
 from uuid import UUID
 
+from application.execution_engine.service import ExecutionEngineService
 from domain.batch_job import (
     BatchJob,
     BatchJobStatus,
@@ -28,13 +29,6 @@ from domain.batch_job import (
 )
 from domain.execution import (
     ExecutionAnalysisType,
-    RunStatus,
-)
-from application.execution_engine.service import ExecutionEngineService
-from application.execution_engine.errors import (
-    ExecutionError,
-    RunNotFoundError,
-    StudyCaseNotFoundError,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,9 +52,7 @@ class BatchNotPendingError(BatchExecutionError):
     """BatchJob is not in PENDING status."""
 
     def __init__(self, batch_id: str, status: str) -> None:
-        super().__init__(
-            f"Batch {batch_id} ma status {status} — wymagany PENDING"
-        )
+        super().__init__(f"Batch {batch_id} ma status {status} — wymagany PENDING")
         self.batch_id = batch_id
         self.status = status
 
@@ -115,9 +107,7 @@ class BatchExecutionService:
         self._engine.get_study_case(study_case_id)
 
         if len(scenario_ids) != len(solver_inputs):
-            raise ValueError(
-                "scenario_ids i solver_inputs muszą mieć tę samą długość"
-            )
+            raise ValueError("scenario_ids i solver_inputs muszą mieć tę samą długość")
 
         batch = new_batch_job(
             study_case_id=study_case_id,
@@ -129,7 +119,7 @@ class BatchExecutionService:
         # Store solver inputs indexed by scenario_id for execution
         # Sort to match the sorted scenario_ids in the batch
         paired = sorted(
-            zip(scenario_ids, solver_inputs, scenario_content_hashes),
+            zip(scenario_ids, solver_inputs, scenario_content_hashes, strict=False),
             key=lambda p: str(p[0]),
         )
         self._solver_inputs: dict[UUID, dict[UUID, dict[str, Any]]] = getattr(
@@ -142,9 +132,7 @@ class BatchExecutionService:
             self, "_batch_eligibility", {}
         )
 
-        self._solver_inputs[batch.batch_id] = {
-            p[0]: p[1] for p in paired
-        }
+        self._solver_inputs[batch.batch_id] = {p[0]: p[1] for p in paired}
         self._batch_readiness[batch.batch_id] = readiness
         self._batch_eligibility[batch.batch_id] = eligibility
 
@@ -278,11 +266,7 @@ class BatchExecutionService:
     def list_batches(self, study_case_id: UUID) -> list[BatchJob]:
         """List all batches for a study case, newest first."""
         batch_ids = self._case_batches.get(study_case_id, [])
-        batches = [
-            self._batches[bid]
-            for bid in batch_ids
-            if bid in self._batches
-        ]
+        batches = [self._batches[bid] for bid in batch_ids if bid in self._batches]
         return list(reversed(batches))
 
     def _get_batch(self, batch_id: UUID) -> BatchJob:

@@ -13,6 +13,7 @@ KANON (BINDING):
 - 100% jezyk polski w description_pl
 - Brak norm, brak "OK / VIOLATION" - tylko severity (INFO / WARN / HIGH)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ class FindingSeverity(str, Enum):
     - WARN: 2-5%
     - HIGH: >5%
     """
+
     INFO = "INFO"
     WARN = "WARN"
     HIGH = "HIGH"
@@ -51,6 +53,7 @@ class VoltageFinding:
         description_pl: Opis w jezyku polskim
         evidence_ref: Referencja do zrodla danych
     """
+
     bus_id: str
     v_pu: float
     deviation_pct: float
@@ -77,6 +80,7 @@ class BranchLoadingFinding:
         description_pl: Opis w jezyku polskim
         evidence_ref: Referencja do zrodla danych
     """
+
     branch_id: str
     loading_pct: float | None
     losses_p_mw: float
@@ -97,6 +101,7 @@ class InterpretationRankedItem:
 
     Ranking deterministyczny: severity + magnitude (odchylenie/obciazenie).
     """
+
     rank: int
     element_type: str  # "voltage" | "branch_loading"
     element_id: str
@@ -117,6 +122,7 @@ class InterpretationSummary:
         info_count: Liczba obserwacji INFO
         top_issues: Top N najistotniejszych problemow (deterministyczny ranking)
     """
+
     total_voltage_findings: int
     total_branch_findings: int
     high_count: int
@@ -136,6 +142,7 @@ class InterpretationThresholds:
 
     BINDING: Te progi sa jawne i stale.
     """
+
     voltage_info_max_pct: float  # |V - 1.0| < 2% -> INFO
     voltage_warn_max_pct: float  # 2-5% -> WARN
     # >5% -> HIGH (implicit)
@@ -158,6 +165,7 @@ class InterpretationTrace:
         data_sources: Zrodla danych
         interpretation_version: Wersja algorytmu interpretacji
     """
+
     interpretation_id: str
     power_flow_run_id: str
     created_at: datetime
@@ -182,6 +190,7 @@ class InterpretationContext:
         run_timestamp: Timestamp wykonania rozplywu
         snapshot_id: ID snapshotu sieci
     """
+
     project_name: str | None
     case_name: str | None
     run_timestamp: datetime | None
@@ -218,6 +227,7 @@ class PowerFlowInterpretationResult:
         summary: Podsumowanie z rankingiem
         trace: Slad interpretacji dla audytowalnosci
     """
+
     context: InterpretationContext | None
     voltage_findings: tuple[VoltageFinding, ...]
     branch_findings: tuple[BranchLoadingFinding, ...]
@@ -226,4 +236,5 @@ class PowerFlowInterpretationResult:
 
     def to_dict(self) -> dict[str, Any]:
         from analysis.power_flow_interpretation.serializer import result_to_dict
+
         return result_to_dict(self)

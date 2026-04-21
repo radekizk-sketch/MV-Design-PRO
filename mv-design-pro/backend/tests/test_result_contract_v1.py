@@ -22,8 +22,7 @@ import json
 from uuid import uuid4
 
 import pytest
-from tests.catalog_test_helpers import gpz_source_record
-
+from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1 import (
     RESULT_CONTRACT_VERSION,
     ElementResultV1,
@@ -39,13 +38,13 @@ from domain.result_contract_v1 import (
     compute_deterministic_signature,
     to_canonical_json,
 )
-from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1_schema import (
     generate_schema,
     get_locked_schema_path,
     verify_schema_lock,
 )
 
+from tests.catalog_test_helpers import gpz_source_record
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -645,8 +644,9 @@ class TestResultContractV1Api:
 
     @pytest.fixture
     def client(self):
-        from fastapi.testclient import TestClient
         from api.main import app
+        from fastapi.testclient import TestClient
+
         _reset_canonical_backend_state()
         return TestClient(app)
 

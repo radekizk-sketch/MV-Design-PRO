@@ -2,7 +2,7 @@
 SLD PowerFactory Parity Tests.
 
 Tests verifying compliance with PowerFactory alignment requirements
-per sld_rules.md, powerfactory_ui_parity.md, SYSTEM_SPEC.md.
+per sld_rules.md, ui_canonical_parity.md, SYSTEM_SPEC.md.
 
 Test coverage:
 - SLD-INV-001: Single Model Rule
@@ -62,7 +62,7 @@ class TestSldResultStatus:
     """Tests for SLD-INV-004: Overlay lifecycle (FRESH/OUTDATED)."""
 
     def test_result_status_enum_values(self) -> None:
-        """Result status values match powerfactory_ui_parity.md § B.2."""
+        """Result status values match ui_canonical_parity.md § B.2."""
         assert SldResultStatus.NONE.value == "NONE"
         assert SldResultStatus.FRESH.value == "FRESH"
         assert SldResultStatus.OUTDATED.value == "OUTDATED"
@@ -127,9 +127,7 @@ class TestSldSymbolsInService:
 
     def test_node_symbol_in_service_false_serialized(self) -> None:
         """in_service=False is serialized for frontend graying."""
-        node = SldNodeSymbolDTO(
-            id=uuid4(), node_id=uuid4(), x=0, y=0, in_service=False
-        )
+        node = SldNodeSymbolDTO(id=uuid4(), node_id=uuid4(), x=0, y=0, in_service=False)
         payload = node.to_dict()
         assert payload["in_service"] is False
 

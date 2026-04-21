@@ -110,14 +110,14 @@ Ponizej kompletna lista obiektow klikalnych na schemacie SLD warstwy nN. Obiekty
 | Nr | Obiekt klikalny                  | Opis                                                        | Typ elementu ENM         | Operacje dostepne z menu kontekstowego                                    |
 |----|----------------------------------|-------------------------------------------------------------|--------------------------|---------------------------------------------------------------------------|
 | 1  | Transformator SN/nN              | Transformator rozdzielczy SN/0,4 kV                          | Transformer              | `add_transformer_sn_nn`, `assign_catalog_to_element`, `update_element_parameters` |
-| 2  | Szyna nN                         | Szyna zbiorcza strony dolnej 0,4 kV                          | Bus (nN)                 | `add_nn_outgoing_field`, `add_pv_inverter_nn`, `add_bess_inverter_nn`, `add_genset_nn`, `add_ups_nn`, `update_nn_bus_sections` |
+| 2  | Szyna nN                         | Szyna zbiorcza strony dolnej 0,4 kV                          | Bus (nN)                 | `add_nn_outgoing_field`, `add_converter_source`, `add_genset_nn`, `add_ups_nn`, `update_nn_bus_sections` |
 | 3  | Sekcja szyny nN                  | Wydzielona sekcja szyny zbiorczej nN                         | Bus (sekcja)             | `update_nn_bus_sections`, `update_element_parameters`                     |
 | 4  | Sprzeglo szyn nN                 | Lacznik szyn (sprzeglo) laczacy sekcje nN                    | Switch (coupler)         | `update_nn_coupler_state`, `update_element_parameters`                    |
-| 5  | Pole glowne nN                   | Pole zasilajace szyne nN od strony transformatora             | Bay (SOURCE)             | `add_nn_source_field`, `update_element_parameters`                        |
+| 5  | Pole glowne nN                   | Pole zasilajace szyne nN od strony transformatora             | Bay (SOURCE)             | `add_nn_outgoing_field`, `update_element_parameters`                      |
 | 6  | Odplyw nN                        | Pole odplywowe niskiego napiecia                              | Bay (FEEDER)             | `add_nn_outgoing_field`, `add_nn_load`, `assign_catalog_to_element`       |
 | 7  | Odbior nN                        | Odbiorca energii na szynie nN                                 | Load                     | `add_nn_load`, `update_element_parameters`                                |
-| 8  | Falownik PV                      | Falownik fotowoltaiczny podlaczony do szyny nN               | Generator (PV Inverter)  | `add_pv_inverter_nn`, `assign_catalog_to_element`, `update_element_parameters`, `set_source_operating_mode` |
-| 9  | Falownik BESS                    | Falownik magazynu energii podlaczony do szyny nN             | Generator (BESS)         | `add_bess_inverter_nn`, `assign_catalog_to_element`, `update_element_parameters`, `set_source_operating_mode` |
+| 8  | Falownik PV                      | Falownik fotowoltaiczny podlaczony do szyny nN               | Generator (PV Inverter)  | `add_converter_source`, `assign_catalog_to_element`, `update_element_parameters`, `set_source_operating_mode` |
+| 9  | Falownik BESS                    | Falownik magazynu energii podlaczony do szyny nN             | Generator (BESS)         | `add_converter_source`, `assign_catalog_to_element`, `update_element_parameters`, `set_source_operating_mode` |
 | 10 | Agregat                          | Zespol pradotworczy (generator synchroniczny)                 | Generator (Genset)       | `add_genset_nn`, `assign_catalog_to_element`, `update_element_parameters`, `set_source_operating_mode` |
 | 11 | UPS                              | Zasilacz awaryjny UPS                                         | Generator (UPS)          | `add_ups_nn`, `update_element_parameters`                                 |
 | 12 | Licznik                          | Urzadzenie pomiarowe energii                                  | MeteringDevice           | `update_element_parameters`                                               |
@@ -280,7 +280,7 @@ Wymagane: najpierw dodanie transformatora SN/nN w stacji ST-01.
 | Parametr          | Wartosc                              |
 |-------------------|--------------------------------------|
 | Dzialanie         | Klikniecie szyny nN, menu: "Dodaj falownik PV" |
-| Operacja          | `add_pv_inverter_nn`                 |
+| Operacja          | `add_converter_source`               |
 | Dane wejsciowe    | Falownik PV dach B1, SMA Sunny Tripower 50 kW, Pmax=49,9 kW, Sn=50 kVA |
 | Zrzut wyjsciowy   | S11 -> S12                           |
 | Zdarzenia         | NN_SOURCE_CREATED, DEVICES_CREATED_NN |
@@ -291,7 +291,7 @@ Wymagane: najpierw dodanie transformatora SN/nN w stacji ST-01.
 | Parametr          | Wartosc                              |
 |-------------------|--------------------------------------|
 | Dzialanie         | Klikniecie szyny nN, menu: "Dodaj magazyn energii" |
-| Operacja          | `add_bess_inverter_nn`               |
+| Operacja          | `add_converter_source`               |
 | Dane wejsciowe    | BESS ST-01, BYD HVS 10 kWh, Pmax=10 kW, Sn=10 kVA, pojemnosc=10,24 kWh |
 | Zrzut wyjsciowy   | S12 -> S13                           |
 | Zdarzenia         | NN_SOURCE_CREATED, DEVICES_CREATED_NN |
@@ -327,8 +327,8 @@ Wymagane: najpierw dodanie transformatora SN/nN w stacji ST-01.
 | 7    | `connect_secondary_ring_sn`      | S8 -> S9       | Branch, Switch (NOP)     |
 | 8    | `set_normal_open_point`          | S9 -> S10      | (zmiana stanu)           |
 | 9a   | `add_transformer_sn_nn`          | S10 -> S11     | Transformer, Bus nN      |
-| 9b   | `add_pv_inverter_nn`             | S11 -> S12     | Generator PV             |
-| 9c   | `add_bess_inverter_nn`           | S12 -> S13     | Generator BESS           |
+| 9b   | `add_converter_source`           | S11 -> S12     | Generator PV             |
+| 9c   | `add_converter_source`           | S12 -> S13     | Generator BESS           |
 | 10   | `run_short_circuit` + `run_power_flow` | S13 (odczyt) | Wyniki obliczen    |
 
 ---
@@ -421,7 +421,7 @@ Nastepujace operacje NIE sa dostepne bezposrednio z SLD -- wymagaja dedykowanego
 | Kontrakty operacji domenowych                         | `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md`           | Nazwy kanoniczne operacji       |
 | Kody gotowosci i akcje naprawcze                      | `docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`         | Slownik kodow gotowosci         |
 | Kanoniczny system SLD                                 | `docs/KANON_SLD_SYSTEM.md`                                 | Architektura SLD                |
-| Kontrakty kanoniczne systemu (Rozdzial 5)             | `docs/spec/SPEC_CHAPTER_05_SYSTEM_CANONICAL_CONTRACTS.md`  | Kreator, katalogi, stacje       |
+| Indeks kanoniczny V12.5                               | `docs/INDEX_KANONICZNY.md`                                  | Wejscie do wiazacych specyfikacji systemowych |
 | Specyfikacja systemu (SYSTEM_SPEC)                    | `SYSTEM_SPEC.md`                                           | Architektura nadrzedna          |
 | Macierz okien dialogowych i akcji                     | `docs/ui/MACIERZ_OKIEN_DIALOGOWYCH_I_AKCJI.md`            | Szczegoly dialogow              |
 | Kontrakty operacji i schematy JSON                    | `docs/domain/KONTRAKTY_OPERACJI_I_SCHEMATY_JSON.md`       | Schematy JSON                   |

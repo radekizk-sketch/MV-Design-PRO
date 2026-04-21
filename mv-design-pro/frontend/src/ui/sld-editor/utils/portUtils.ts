@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 3: Porty elektryczne
- * - etap_symbols/ports.json: Definicje portow
+ * - canonical_symbols/ports.json: Definicje portow
  *
  * FEATURES:
  * - Wyznaczanie punktow portow dla symboli
@@ -17,7 +17,7 @@ import type { AnySldSymbol, BranchSymbol, Position, SwitchSymbol } from '../type
 // STALE KONFIGURACYJNE
 // =============================================================================
 
-/** ViewBox symboli ETAP (100x100) */
+/** ViewBox symboli CANONICAL (100x100) */
 const VIEWBOX_SIZE = 100;
 
 /** Rozmiary symboli (px) */

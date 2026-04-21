@@ -1,13 +1,13 @@
-/**
- * Empty Inspector Panel — "Brak zaznaczenia" State
+﻿/**
+ * Empty Inspector Panel â€” "Brak zaznaczenia" State
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Inspector ZAWSZE widoczny
- * - wizard_screens.md § 2.4: Stan domyślny inspektora
+ * - ui_canonical_parity.md: Inspector ZAWSZE widoczny
+ * - wizard_screens.md Â§ 2.4: Stan domyĹ›lny inspektora
  *
- * POWERFACTORY/ETAP RULE:
+ * CANONICAL RULE:
  * > Inspector Panel jest ZAWSZE renderowany
- * > Stan domyślny: "Brak zaznaczenia"
+ * > Stan domyĹ›lny: "Brak zaznaczenia"
  *
  * FEATURES:
  * - Shows selection info when element selected
@@ -24,13 +24,13 @@ import type { SelectedElement, ElementType } from '../types';
 // =============================================================================
 
 const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
-  // Istniejące typy SN (A–L)
+  // IstniejÄ…ce typy SN (Aâ€“L)
   Bus: 'Szyna',
   LineBranch: 'Linia',
   TransformerBranch: 'Transformator',
-  Switch: 'Łącznik',
-  Source: 'Źródło',
-  Load: 'Odbiór',
+  Switch: 'ĹÄ…cznik',
+  Source: 'ĹąrĂłdĹ‚o',
+  Load: 'OdbiĂłr',
   Generator: 'Generator',
   Measurement: 'Pomiar',
   ProtectionAssignment: 'Zabezpieczenie',
@@ -38,51 +38,53 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Terminal: 'Terminal',
   PortBranch: 'Port',
   Station: 'Stacja',
+  BranchPole: 'Slup rozgalezny',
+  ZKSN: 'ZKSN',
   BaySN: 'Pole SN',
-  Relay: 'Przekaźnik',
-  SecondaryLink: 'Połączenie wtórne',
+  Relay: 'PrzekaĹşnik',
+  SecondaryLink: 'PoĹ‚Ä…czenie wtĂłrne',
   NOP: 'Punkt normalnie otwarty',
-  // Typy nN (M–O, R–AP)
+  // Typy nN (Mâ€“O, Râ€“AP)
   BusNN: 'Szyna nN',
-  MainBreakerNN: 'Wyłącznik główny nN',
-  FeederNN: 'Odpływ nN',
+  MainBreakerNN: 'WyĹ‚Ä…cznik gĹ‚Ăłwny nN',
+  FeederNN: 'OdpĹ‚yw nN',
   SegmentNN: 'Segment nN',
-  LoadNN: 'Odbiór nN',
+  LoadNN: 'OdbiĂłr nN',
   SwitchboardNN: 'Rozdzielnica nN',
-  SourceFieldNN: 'Pole źródłowe nN',
-  // Źródła nN (V–Z)
+  SourceFieldNN: 'Pole ĹşrĂłdĹ‚owe nN',
+  // ĹąrĂłdĹ‚a nN (Vâ€“Z)
   PVInverter: 'Falownik PV',
   BESSInverter: 'Falownik BESS',
   EnergyStorage: 'Magazyn energii',
-  Genset: 'Agregat prądotwórczy',
+  Genset: 'Agregat prÄ…dotwĂłrczy',
   UPS: 'UPS',
-  // Pomiary i zabezpieczenia nN (AA–AE)
+  // Pomiary i zabezpieczenia nN (AAâ€“AE)
   EnergyMeter: 'Licznik energii',
-  PowerQualityMeter: 'Miernik jakości',
-  SurgeArresterNN: 'Ogranicznik przepięć',
+  PowerQualityMeter: 'Miernik jakoĹ›ci',
+  SurgeArresterNN: 'Ogranicznik przepiÄ™Ä‡',
   Earthing: 'Uziemienie',
   MeasurementNN: 'Pomiar nN',
-  // Infrastruktura szyn nN (AF–AR)
+  // Infrastruktura szyn nN (AFâ€“AR)
   AuxBus: 'Szyna pomocnicza',
-  ConnectionPoint: 'Punkt przyłączenia',
-  SwitchNN: 'Łącznik nN',
+  ConnectionPoint: 'Punkt przyĹ‚Ä…czenia',
+  SwitchNN: 'ĹÄ…cznik nN',
   ProtectionNN: 'Zabezpieczenie nN',
-  SourceController: 'Sterownik źródła',
-  InternalJunction: 'Węzeł wewnętrzny',
-  CableJointNN: 'Złącze kablowe',
-  FaultCurrentLimiter: 'Ogr. prądu zwarciowego',
+  SourceController: 'Sterownik ĹşrĂłdĹ‚a',
+  InternalJunction: 'WÄ™zeĹ‚ wewnÄ™trzny',
+  CableJointNN: 'ZĹ‚Ä…cze kablowe',
+  FaultCurrentLimiter: 'Ogr. prÄ…du zwarciowego',
   FilterCompensator: 'Filtr/kompensator',
-  TelecontrolDevice: 'Urządzenie telesterowania',
+  TelecontrolDevice: 'UrzÄ…dzenie telesterowania',
   BusSectionNN: 'Sekcja szyn nN',
-  BusCouplerNN: 'Sprzęgło szyn nN',
-  ReserveLink: 'Łącznik rezerwowy',
-  // Parametry logiczne źródeł (AS–AZ)
-  SourceDisconnect: 'Odłącznik źródła',
+  BusCouplerNN: 'SprzÄ™gĹ‚o szyn nN',
+  ReserveLink: 'ĹÄ…cznik rezerwowy',
+  // Parametry logiczne ĹşrĂłdeĹ‚ (ASâ€“AZ)
+  SourceDisconnect: 'OdĹ‚Ä…cznik ĹşrĂłdĹ‚a',
   PowerLimit: 'Ograniczenie mocy',
   WorkProfile: 'Profil pracy',
   OperatingMode: 'Tryb pracy',
-  ConnectionConstraints: 'Warunki przyłączenia',
-  MeteringBlock: 'Układ pomiarowy',
+  ConnectionConstraints: 'Warunki przyĹ‚Ä…czenia',
+  MeteringBlock: 'UkĹ‚ad pomiarowy',
   SyncPoint: 'Punkt synchronizacji',
   DescriptiveElement: 'Element opisowy',
 };
@@ -209,7 +211,7 @@ export function EmptyInspectorPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span>Tryb wynikow — tylko do odczytu</span>
+              <span>Tryb wynikow â€” tylko do odczytu</span>
             </div>
           </div>
         )}
@@ -261,7 +263,7 @@ export function EmptyInspectorPanel({
           <div className="flex justify-between items-start">
             <span className="text-xs text-gray-500">Nazwa</span>
             <span className="text-xs text-gray-700 text-right max-w-[180px] truncate" title={selectedElement.name}>
-              {selectedElement.name || '—'}
+              {selectedElement.name || 'â€”'}
             </span>
           </div>
 
@@ -275,7 +277,7 @@ export function EmptyInspectorPanel({
         {/* Loading indicator for full properties */}
         <div className="mt-6 pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-400 text-center">
-            Szczegółowe właściwości ładują się...
+            SzczegĂłĹ‚owe wĹ‚aĹ›ciwoĹ›ci Ĺ‚adujÄ… siÄ™...
           </p>
         </div>
       </div>
@@ -287,7 +289,7 @@ export function EmptyInspectorPanel({
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <span>Tryb wyników — tylko do odczytu</span>
+            <span>Tryb wynikĂłw â€” tylko do odczytu</span>
           </div>
         </div>
       )}
@@ -296,3 +298,4 @@ export function EmptyInspectorPanel({
 }
 
 export default EmptyInspectorPanel;
+

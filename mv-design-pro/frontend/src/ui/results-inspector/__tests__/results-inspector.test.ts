@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md: RESULT_VIEW mode is READ-ONLY
- * - powerfactory_ui_parity.md: Deterministic sorting
+ * - ui_canonical_parity.md: Deterministic sorting
  * - sld_rules.md: Overlay as separate layer
  *
  * TEST COVERAGE:
@@ -175,6 +175,79 @@ describe('Results Inspector Store', () => {
       expect(state.activeTab).toBe('BUSES');
       expect(state.searchQuery).toBe('');
       expect(state.overlayVisible).toBe(true);
+    });
+  });
+
+  describe('V12.5 analysis_case_context', () => {
+    it('preserves analysis_case_context in hydrated results view', () => {
+      const store = useResultsInspectorStore.getState();
+
+      act(() => {
+        store.hydrateResultsView({
+          runId: 'run-v125',
+          resultsIndex: {
+            run_header: {
+              run_id: 'run-v125',
+              project_id: 'project-1',
+              case_id: 'case-1',
+              snapshot_id: 'snapshot-1',
+              created_at: '2026-04-20T08:00:00Z',
+              status: 'FINISHED',
+              result_state: 'VALID',
+              solver_kind: 'PF',
+              input_hash: 'hash-1',
+              analysis_case_context: {
+                case_ref: 'case-1',
+                rodzaj_przypadku: 'ROZPLYW_MAX_OBC',
+                snapshot_ref: 'snapshot-1',
+                run_ref: 'run-v125',
+                proof_pack_ref: 'proof-pack:run-v125',
+                quality_gate: 'G4',
+                applicability_scope: ['PF', 'REPORT'],
+                completeness: 'complete',
+                missing_prerequisites: [],
+                reproducibility: {
+                  solver_family: 'power_flow_newton',
+                  solver_version: '1.0.0',
+                  results_contract_version: 'V12.5',
+                },
+              },
+            },
+            tables: [],
+            analysis_case_context: {
+              case_ref: 'case-1',
+              rodzaj_przypadku: 'ROZPLYW_MAX_OBC',
+              snapshot_ref: 'snapshot-1',
+              run_ref: 'run-v125',
+              proof_pack_ref: 'proof-pack:run-v125',
+              quality_gate: 'G4',
+              applicability_scope: ['PF', 'REPORT'],
+              completeness: 'complete',
+              missing_prerequisites: [],
+              reproducibility: {
+                solver_family: 'power_flow_newton',
+                solver_version: '1.0.0',
+                results_contract_version: 'V12.5',
+              },
+            },
+          },
+          busResults: null,
+          branchResults: null,
+          shortCircuitResults: null,
+          extendedTrace: null,
+          runSnapshot: null,
+          sldOverlay: null,
+          overlayVisible: true,
+        });
+      });
+
+      expect(
+        useResultsInspectorStore.getState().resultsIndex?.analysis_case_context?.proof_pack_ref,
+      ).toBe('proof-pack:run-v125');
+      expect(
+        useResultsInspectorStore.getState().resultsIndex?.run_header.analysis_case_context
+          ?.reproducibility.results_contract_version,
+      ).toBe('V12.5');
     });
   });
 });

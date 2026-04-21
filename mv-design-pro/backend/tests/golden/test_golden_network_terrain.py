@@ -11,16 +11,15 @@ Sprawdza:
 import math
 
 import pytest
+from network_model.core.branch import LineBranch, TransformerBranch
+from network_model.core.node import NodeType
+from network_model.core.switch import SwitchState, SwitchType
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 from tests.golden.golden_network_terrain import (
     build_terrain_network,
     get_terrain_network_statistics,
 )
-from network_model.core.branch import LineBranch, TransformerBranch
-from network_model.core.switch import SwitchType, SwitchState
-from network_model.core.node import NodeType
-from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
-
 
 # =============================================================================
 # TESTY KOMPLETNOSCI TOPOLOGICZNEJ
@@ -80,9 +79,10 @@ class TestTerrainNetworkCompleteness:
     def test_voltage_levels_correct(self, gn):
         """Wezly maja poprawne poziomy napiec (15 kV lub 0.4 kV)."""
         for node in gn.nodes.values():
-            assert node.voltage_level in (15.0, 0.4), (
-                f"Node {node.id}: unexpected voltage {node.voltage_level} kV"
-            )
+            assert node.voltage_level in (
+                15.0,
+                0.4,
+            ), f"Node {node.id}: unexpected voltage {node.voltage_level} kV"
 
     def test_has_nop_switch(self, gn):
         """Siec ma lacznik NOP (normalnie otwarty)."""
@@ -126,22 +126,14 @@ class TestTerrainNetworkTopology:
     def test_no_dangling_branches(self, gn):
         """Wszystkie galezi maja wezly w grafie."""
         for b in gn.branches.values():
-            assert b.from_node_id in gn.nodes, (
-                f"Branch {b.id}: from_node {b.from_node_id} missing"
-            )
-            assert b.to_node_id in gn.nodes, (
-                f"Branch {b.id}: to_node {b.to_node_id} missing"
-            )
+            assert b.from_node_id in gn.nodes, f"Branch {b.id}: from_node {b.from_node_id} missing"
+            assert b.to_node_id in gn.nodes, f"Branch {b.id}: to_node {b.to_node_id} missing"
 
     def test_no_dangling_switches(self, gn):
         """Wszystkie laczniki maja wezly w grafie."""
         for s in gn.switches.values():
-            assert s.from_node_id in gn.nodes, (
-                f"Switch {s.id}: from_node {s.from_node_id} missing"
-            )
-            assert s.to_node_id in gn.nodes, (
-                f"Switch {s.id}: to_node {s.to_node_id} missing"
-            )
+            assert s.from_node_id in gn.nodes, f"Switch {s.id}: from_node {s.from_node_id} missing"
+            assert s.to_node_id in gn.nodes, f"Switch {s.id}: to_node {s.to_node_id} missing"
 
     def test_no_self_loops_branches(self, gn):
         """Brak petli (from == to) w galeziach."""
@@ -172,9 +164,9 @@ class TestTerrainNetworkTopology:
         """Transformatory maja Uhv > Ulv."""
         for b in gn.branches.values():
             if isinstance(b, TransformerBranch):
-                assert b.voltage_hv_kv > b.voltage_lv_kv, (
-                    f"Transformer {b.id}: Uhv={b.voltage_hv_kv} <= Ulv={b.voltage_lv_kv}"
-                )
+                assert (
+                    b.voltage_hv_kv > b.voltage_lv_kv
+                ), f"Transformer {b.id}: Uhv={b.voltage_hv_kv} <= Ulv={b.voltage_lv_kv}"
 
     def test_line_impedances_positive(self, gn):
         """Linie maja R > 0 i X > 0."""
@@ -275,21 +267,21 @@ class TestTerrainNetworkShortCircuit:
         result_s2 = self._sc3f(gn, "bus-s2-sn")
         result_b1 = self._sc3f(gn, "bus-b1-sn")
         result_b2 = self._sc3f(gn, "bus-b2-sn")
-        assert result_b1.ikss_a < result_s2.ikss_a, (
-            f"Ik'' at B1 ({result_b1.ikss_a:.0f} A) should be < S2 ({result_s2.ikss_a:.0f} A)"
-        )
-        assert result_b2.ikss_a < result_b1.ikss_a, (
-            f"Ik'' at B2 ({result_b2.ikss_a:.0f} A) should be < B1 ({result_b1.ikss_a:.0f} A)"
-        )
+        assert (
+            result_b1.ikss_a < result_s2.ikss_a
+        ), f"Ik'' at B1 ({result_b1.ikss_a:.0f} A) should be < S2 ({result_s2.ikss_a:.0f} A)"
+        assert (
+            result_b2.ikss_a < result_b1.ikss_a
+        ), f"Ik'' at B2 ({result_b2.ikss_a:.0f} A) should be < B1 ({result_b1.ikss_a:.0f} A)"
 
     def test_ip_at_gpz(self, gn):
         """Prad udarowy na GPZ: ip >= Ik'' * sqrt(2)."""
         result = self._sc3f(gn, "bus-gpz-out")
         ip_a = result.ip_a
         ik_a = result.ikss_a
-        assert ip_a >= ik_a * math.sqrt(2) * 0.95, (
-            f"ip = {ip_a:.0f} A should be >= sqrt(2) * Ik'' = {ik_a * math.sqrt(2):.0f} A"
-        )
+        assert (
+            ip_a >= ik_a * math.sqrt(2) * 0.95
+        ), f"ip = {ip_a:.0f} A should be >= sqrt(2) * Ik'' = {ik_a * math.sqrt(2):.0f} A"
 
     def test_sk_at_gpz(self, gn):
         """Moc zwarciowa na GPZ: Sk'' = sqrt(3) * Un * Ik''."""

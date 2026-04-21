@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - P13a: Deterministic type ordering
- * - powerfactory_ui_parity.md § F.1: Determinism requirements
+ * - ui_canonical_parity.md § F.1: Determinism requirements
  *
  * Tests deterministic sorting in fetchTypesByCategory:
  * - Sort order: manufacturer (ascending, nulls last) → name → id

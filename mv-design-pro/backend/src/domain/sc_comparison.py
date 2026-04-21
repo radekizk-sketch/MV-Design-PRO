@@ -21,8 +21,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -109,9 +109,7 @@ class ShortCircuitComparison:
             "other_scenario_id": str(self.other_scenario_id),
             "created_at": self.created_at.isoformat(),
             "input_hash": self.input_hash,
-            "deltas_global": {
-                k: v.to_dict() for k, v in self.deltas_global.items()
-            },
+            "deltas_global": {k: v.to_dict() for k, v in self.deltas_global.items()},
             "deltas_by_source": list(self.deltas_by_source),
             "deltas_by_branch": list(self.deltas_by_branch),
         }
@@ -127,10 +125,7 @@ class ShortCircuitComparison:
             other_scenario_id=UUID(data["other_scenario_id"]),
             created_at=datetime.fromisoformat(data["created_at"]),
             input_hash=data["input_hash"],
-            deltas_global={
-                k: NumericDelta.from_dict(v)
-                for k, v in data["deltas_global"].items()
-            },
+            deltas_global={k: NumericDelta.from_dict(v) for k, v in data["deltas_global"].items()},
             deltas_by_source=tuple(data.get("deltas_by_source", [])),
             deltas_by_branch=tuple(data.get("deltas_by_branch", [])),
         )
@@ -232,14 +227,12 @@ def build_comparison(
             continue
 
         element_deltas: dict[str, Any] = {"element_ref": ref}
-        common_keys = sorted(
-            set(base_er.values.keys()) & set(other_er.values.keys())
-        )
+        common_keys = sorted(set(base_er.values.keys()) & set(other_er.values.keys()))
         value_deltas = {}
         for vk in common_keys:
             bv = base_er.values[vk]
             ov = other_er.values[vk]
-            if isinstance(bv, (int, float)) and isinstance(ov, (int, float)):
+            if isinstance(bv, int | float) and isinstance(ov, int | float):
                 value_deltas[vk] = compute_numeric_delta(float(bv), float(ov)).to_dict()
         element_deltas["deltas"] = value_deltas
 
@@ -261,7 +254,7 @@ def build_comparison(
         analysis_type=analysis_type,
         base_scenario_id=base_scenario_id,
         other_scenario_id=other_scenario_id,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         input_hash=input_hash,
         deltas_global=deltas_global,
         deltas_by_source=tuple(deltas_by_source),

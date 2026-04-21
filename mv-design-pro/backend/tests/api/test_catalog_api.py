@@ -73,12 +73,8 @@ def test_switchgear_catalog_api_exposes_quality_metadata(
     assert isinstance(payload, list)
     assert payload
 
-    breaker = next(
-        item for item in payload if item["id"] == "sw-cb-abb-vd4-12kv-630a"
-    )
-    earth_switch = next(
-        item for item in payload if item["id"] == "sw-es-generic-12kv"
-    )
+    breaker = next(item for item in payload if item["id"] == "sw-cb-abb-vd4-12kv-630a")
+    earth_switch = next(item for item in payload if item["id"] == "sw-es-generic-12kv")
 
     assert breaker["verification_status"] == "ZWERYFIKOWANY"
     assert breaker["catalog_status"] == "PRODUKCYJNY_V1"

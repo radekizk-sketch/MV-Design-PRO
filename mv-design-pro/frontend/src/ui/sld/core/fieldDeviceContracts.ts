@@ -1,5 +1,5 @@
 /**
- * Field & Device Modeling Contracts V1 — ETAP-grade pole/aparat/stacja.
+ * Field & Device Modeling Contracts V1 — CANONICAL-grade pole/aparat/stacja.
  *
  * CANONICAL CONTRACT (BINDING):
  * - Wersja: V1
@@ -13,7 +13,7 @@
  * - Field/Device sa w LayoutResultV1.SwitchgearBlockV1 (anchor mapping).
  * - Overlay/Inspector korzystaja z anchorId → elementId.
  *
- * RUN #3D: ETAP-grade device & field modeling + formal trunk↔station embedding binding.
+ * RUN #3D: CANONICAL-grade device & field modeling + formal trunk↔station embedding binding.
  */
 
 // =============================================================================
@@ -35,10 +35,14 @@ export const FieldRoleV1 = {
   LINE_BRANCH: 'LINE_BRANCH',
   /** Pole transformatorowe SN/nN */
   TRANSFORMER_SN_NN: 'TRANSFORMER_SN_NN',
+  /** Pole pomiarowe SN */
+  MEASUREMENT_SN: 'MEASUREMENT_SN',
   /** Pole przylaczeniowe PV na SN */
   PV_SN: 'PV_SN',
   /** Pole przylaczeniowe BESS na SN */
   BESS_SN: 'BESS_SN',
+  /** Pole przylaczeniowe FW na SN */
+  FW_SN: 'FW_SN',
   /** Pole sprzegla sekcyjnego SN */
   COUPLER_SN: 'COUPLER_SN',
   /** Pole lacznika szyn (jesli modelowane inaczej niz COUPLER_SN) */
@@ -157,6 +161,7 @@ export const DeviceTypeV1 = {
   TRANSFORMER_DEVICE: 'TRANSFORMER_DEVICE',
   GENERATOR_PV: 'GENERATOR_PV',
   GENERATOR_BESS: 'GENERATOR_BESS',
+  GENERATOR_FW: 'GENERATOR_FW',
   PCS: 'PCS',
   BATTERY: 'BATTERY',
   ACB: 'ACB',
@@ -281,9 +286,9 @@ export interface DeviceV1 {
  * Powiazania logiczne urzadzenia.
  */
 export interface DeviceLogicalBindingsV1 {
-  /** ID wylacznika do ktorego przypisany jest relay (mandatory dla RELAY) */
+  /** ID wyłącznika do którego przypisany jest relay (mandatory dla RELAY) */
   readonly boundCbId: string | null;
-  /** ID przekladnikow pradowych (CT) — deterministycznie posortowane */
+  /** ID przekładników prądowych (CT) — deterministycznie posortowane */
   readonly ctInputIds: readonly string[];
 }
 
@@ -293,11 +298,11 @@ export interface DeviceLogicalBindingsV1 {
  * Brak danych → null (nie "domyslny"). Brak wymaganego parametru → FixAction.
  */
 export interface DeviceParametersV1 {
-  /** Przekladnik: ratio (np. "100/5") */
+  /** Przekładnik: ratio (np. "100/5") */
   readonly ctRatio: string | null;
-  /** Wylacznik: zdolnosc wylaczania [kA] */
+  /** Wyłącznik: zdolność wyłączania [kA] */
   readonly breakingCapacityKa: number | null;
-  /** Wylacznik: prad znamionowy [A] */
+  /** Wyłącznik: prąd znamionowy [A] */
   readonly ratedCurrentA: number | null;
   /** Relay: krzywa/nastawienia (z ProtectionBinding) */
   readonly relaySettings: string | null;
@@ -439,13 +444,13 @@ export const CatalogCategoryV1 = {
 export type CatalogCategoryV1 = (typeof CatalogCategoryV1)[keyof typeof CatalogCategoryV1];
 
 export interface CatalogRatingsV1 {
-  /** Zdolnosc wylaczania [kA] (CB) */
+  /** Zdolność wyłączania [kA] (CB) */
   readonly breakingCapacityKa: number | null;
-  /** Prad znamionowy [A] */
+  /** Prąd znamionowy [A] */
   readonly ratedCurrentA: number | null;
   /** Moc znamionowa [MVA] (TR) */
   readonly ratedPowerMva: number | null;
-  /** Napiecie znamionowe [kV] */
+  /** Napięcie znamionowe [kV] */
   readonly ratedVoltageKv: number | null;
   /** Przekladnik: ratio */
   readonly ctRatio: string | null;
@@ -593,6 +598,14 @@ export const DEVICE_REQUIREMENT_SETS: Record<FieldRoleV1, DeviceRequirementSetV1
       req(D.CABLE_HEAD, R.REQUIRED, E.TERMINATION, P.DOWNSTREAM),
     ],
   },
+  [FieldRoleV1.MEASUREMENT_SN]: {
+    fieldRole: FieldRoleV1.MEASUREMENT_SN,
+    requirements: [
+      req(D.VT, R.REQUIRED, E.MEASUREMENT, P.OFF_PATH),
+      req(D.CT, R.OPTIONAL, E.MEASUREMENT, P.MIDSTREAM),
+      req(D.CABLE_HEAD, R.OPTIONAL, E.TERMINATION, P.DOWNSTREAM),
+    ],
+  },
   [FieldRoleV1.PV_SN]: {
     fieldRole: FieldRoleV1.PV_SN,
     requirements: [
@@ -615,19 +628,33 @@ export const DEVICE_REQUIREMENT_SETS: Record<FieldRoleV1, DeviceRequirementSetV1
       req(D.CABLE_HEAD, R.REQUIRED, E.TERMINATION, P.DOWNSTREAM),
     ],
   },
+  [FieldRoleV1.FW_SN]: {
+    fieldRole: FieldRoleV1.FW_SN,
+    requirements: [
+      req(D.CB, R.REQUIRED, E.POWER_PATH, P.UPSTREAM),
+      req(D.CT, R.REQUIRED, E.MEASUREMENT, P.MIDSTREAM),
+      req(D.VT, R.REQUIRED_IF, E.MEASUREMENT, P.OFF_PATH, 'pole wymaga toru VT'),
+      req(D.RELAY, R.REQUIRED, E.PROTECTION, P.OFF_PATH),
+      req(D.TRANSFORMER_DEVICE, R.REQUIRED_IF, E.POWER_PATH, P.MIDSTREAM, 'domena wskazuje TR blokowy'),
+      req(D.GENERATOR_FW, R.REQUIRED, E.POWER_PATH, P.DOWNSTREAM),
+      req(D.CABLE_HEAD, R.REQUIRED, E.TERMINATION, P.DOWNSTREAM),
+    ],
+  },
   [FieldRoleV1.COUPLER_SN]: {
     fieldRole: FieldRoleV1.COUPLER_SN,
     requirements: [
+      req(D.DS, R.REQUIRED, E.POWER_PATH, P.UPSTREAM),
       req(D.CB, R.REQUIRED, E.POWER_PATH, P.MIDSTREAM),
-      req(D.CT, R.OPTIONAL, E.MEASUREMENT, P.MIDSTREAM),
+      req(D.DS, R.REQUIRED, E.POWER_PATH, P.DOWNSTREAM),
       req(D.RELAY, R.OPTIONAL, E.PROTECTION, P.OFF_PATH),
     ],
   },
   [FieldRoleV1.BUS_TIE]: {
     fieldRole: FieldRoleV1.BUS_TIE,
     requirements: [
+      req(D.DS, R.REQUIRED, E.POWER_PATH, P.UPSTREAM),
       req(D.CB, R.REQUIRED, E.POWER_PATH, P.MIDSTREAM),
-      req(D.CT, R.OPTIONAL, E.MEASUREMENT, P.MIDSTREAM),
+      req(D.DS, R.REQUIRED, E.POWER_PATH, P.DOWNSTREAM),
     ],
   },
 
@@ -699,9 +726,9 @@ export function validateFieldDevices(
     if (requirement.level === DeviceRequirementLevel.REQUIRED && !isPresent) {
       fixActions.push({
         code: deviceTypeToFixCode(requirement.deviceType),
-        message: `Pole ${field.id} (${field.fieldRole}): brak wymaganego urzadzenia ${requirement.deviceType}`,
+        message: `Pole ${field.id} (${field.fieldRole}): brak wymaganego urządzenia ${requirement.deviceType}`,
         elementId: field.id,
-        fixHint: `Dodaj urzadzenie ${requirement.deviceType} do pola ${field.id}`,
+        fixHint: `Dodaj urządzenie ${requirement.deviceType} do pola ${field.id}`,
       });
     }
 
@@ -719,7 +746,7 @@ export function validateFieldDevices(
           code: deviceTypeToFixCode(requirement.deviceType),
           message: `Pole ${field.id} (${field.fieldRole}): brak urzadzenia ${requirement.deviceType} (warunek: ${requirement.condition})`,
           elementId: field.id,
-          fixHint: `Dodaj urzadzenie ${requirement.deviceType} do pola ${field.id}`,
+          fixHint: `Dodaj urządzenie ${requirement.deviceType} do pola ${field.id}`,
         });
       }
     }
@@ -730,9 +757,9 @@ export function validateFieldDevices(
     if (device.deviceType === DeviceTypeV1.RELAY && device.logicalBindings.boundCbId === null) {
       fixActions.push({
         code: FieldDeviceFixCodes.PROTECTION_RELAY_CB_MISSING,
-        message: `Relay ${device.id}: brak powiazania z wylacznikiem (boundCbId)`,
+        message: `Relay ${device.id}: brak powiązania z wyłącznikiem (boundCbId)`,
         elementId: device.id,
-        fixHint: `Przypisz relay ${device.id} do wylacznika CB w polu ${field.id}`,
+        fixHint: `Przypisz relay ${device.id} do wyłącznika CB w polu ${field.id}`,
       });
     }
 
@@ -742,7 +769,7 @@ export function validateFieldDevices(
         code: FieldDeviceFixCodes.CATALOG_REF_MISSING,
         message: `Urzadzenie ${device.id} (${device.deviceType}): brak referencji katalogowej`,
         elementId: device.id,
-        fixHint: `Przypisz typ z katalogu do urzadzenia ${device.id}`,
+        fixHint: `Przypisz typ z katalogu do urządzenia ${device.id}`,
       });
     }
   }
@@ -771,16 +798,18 @@ function deviceTypeToFixCode(deviceType: DeviceTypeV1): string {
 /**
  * Typ pola rozdzielczego — polska taksonomia OSD.
  *
- * Kazdy PoleTypeV1 mapuje 1:1 na FieldRoleV1 (bridge backwards-compatible).
- * PoleTypeV1 zawiera informacje o napieciu (SN/nN) i funkcji pola.
+  * Każdy PoleTypeV1 mapuje 1:1 na FieldRoleV1 (bridge backwards-compatible).
+  * PoleTypeV1 zawiera informacje o napięciu (SN/nN) i funkcji pola.
  */
 export const PoleTypeV1 = {
   // --- SN ---
   POLE_LINIOWE_SN: 'POLE_LINIOWE_SN',
   POLE_TRANSFORMATOROWE_SN_NN: 'POLE_TRANSFORMATOROWE_SN_NN',
+  POLE_POMIAROWE_SN: 'POLE_POMIAROWE_SN',
   POLE_SPRZEGLOWE_SN: 'POLE_SPRZEGLOWE_SN',
   POLE_ZRODLA_PV_SN: 'POLE_ZRODLA_PV_SN',
   POLE_ZRODLA_BESS_SN: 'POLE_ZRODLA_BESS_SN',
+  POLE_ZRODLA_FW_SN: 'POLE_ZRODLA_FW_SN',
   POLE_LACZNIKA_SZYN_SN: 'POLE_LACZNIKA_SZYN_SN',
   // --- nN ---
   POLE_GLOWNE_NN: 'POLE_GLOWNE_NN',
@@ -797,9 +826,11 @@ export type PoleTypeV1 = (typeof PoleTypeV1)[keyof typeof PoleTypeV1];
 export const POLE_TO_FIELD_ROLE: Record<PoleTypeV1, FieldRoleV1> = {
   [PoleTypeV1.POLE_LINIOWE_SN]: FieldRoleV1.LINE_IN,
   [PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN]: FieldRoleV1.TRANSFORMER_SN_NN,
+  [PoleTypeV1.POLE_POMIAROWE_SN]: FieldRoleV1.MEASUREMENT_SN,
   [PoleTypeV1.POLE_SPRZEGLOWE_SN]: FieldRoleV1.COUPLER_SN,
   [PoleTypeV1.POLE_ZRODLA_PV_SN]: FieldRoleV1.PV_SN,
   [PoleTypeV1.POLE_ZRODLA_BESS_SN]: FieldRoleV1.BESS_SN,
+  [PoleTypeV1.POLE_ZRODLA_FW_SN]: FieldRoleV1.FW_SN,
   [PoleTypeV1.POLE_LACZNIKA_SZYN_SN]: FieldRoleV1.BUS_TIE,
   [PoleTypeV1.POLE_GLOWNE_NN]: FieldRoleV1.MAIN_NN,
   [PoleTypeV1.POLE_ODPLYWOWE_NN]: FieldRoleV1.FEEDER_NN,
@@ -816,8 +847,10 @@ export const FIELD_ROLE_TO_POLE: Record<FieldRoleV1, PoleTypeV1> = {
   [FieldRoleV1.LINE_OUT]: PoleTypeV1.POLE_LINIOWE_SN,
   [FieldRoleV1.LINE_BRANCH]: PoleTypeV1.POLE_LINIOWE_SN,
   [FieldRoleV1.TRANSFORMER_SN_NN]: PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN,
+  [FieldRoleV1.MEASUREMENT_SN]: PoleTypeV1.POLE_POMIAROWE_SN,
   [FieldRoleV1.PV_SN]: PoleTypeV1.POLE_ZRODLA_PV_SN,
   [FieldRoleV1.BESS_SN]: PoleTypeV1.POLE_ZRODLA_BESS_SN,
+  [FieldRoleV1.FW_SN]: PoleTypeV1.POLE_ZRODLA_FW_SN,
   [FieldRoleV1.COUPLER_SN]: PoleTypeV1.POLE_SPRZEGLOWE_SN,
   [FieldRoleV1.BUS_TIE]: PoleTypeV1.POLE_LACZNIKA_SZYN_SN,
   [FieldRoleV1.MAIN_NN]: PoleTypeV1.POLE_GLOWNE_NN,
@@ -844,6 +877,7 @@ export const AparatTypeV1 = {
   GLOWICA_KABLOWA: 'GLOWICA_KABLOWA',
   GENERATOR_PV: 'GENERATOR_PV',
   GENERATOR_BESS: 'GENERATOR_BESS',
+  GENERATOR_FW: 'GENERATOR_FW',
   PCS: 'PCS',
   BATERIA: 'BATERIA',
   ACB: 'ACB',
@@ -867,6 +901,7 @@ export const APARAT_TO_DEVICE_TYPE: Record<AparatTypeV1, DeviceTypeV1> = {
   [AparatTypeV1.GLOWICA_KABLOWA]: DeviceTypeV1.CABLE_HEAD,
   [AparatTypeV1.GENERATOR_PV]: DeviceTypeV1.GENERATOR_PV,
   [AparatTypeV1.GENERATOR_BESS]: DeviceTypeV1.GENERATOR_BESS,
+  [AparatTypeV1.GENERATOR_FW]: DeviceTypeV1.GENERATOR_FW,
   [AparatTypeV1.PCS]: DeviceTypeV1.PCS,
   [AparatTypeV1.BATERIA]: DeviceTypeV1.BATTERY,
   [AparatTypeV1.ACB]: DeviceTypeV1.ACB,
@@ -888,6 +923,7 @@ export const DEVICE_TYPE_TO_APARAT: Record<DeviceTypeV1, AparatTypeV1> = {
   [DeviceTypeV1.CABLE_HEAD]: AparatTypeV1.GLOWICA_KABLOWA,
   [DeviceTypeV1.GENERATOR_PV]: AparatTypeV1.GENERATOR_PV,
   [DeviceTypeV1.GENERATOR_BESS]: AparatTypeV1.GENERATOR_BESS,
+  [DeviceTypeV1.GENERATOR_FW]: AparatTypeV1.GENERATOR_FW,
   [DeviceTypeV1.PCS]: AparatTypeV1.PCS,
   [DeviceTypeV1.BATTERY]: AparatTypeV1.BATERIA,
   [DeviceTypeV1.ACB]: AparatTypeV1.ACB,
@@ -899,6 +935,7 @@ export const DEVICE_TYPE_TO_APARAT: Record<DeviceTypeV1, AparatTypeV1> = {
 export const POLE_TYPE_LABELS_PL: Record<PoleTypeV1, string> = {
   [PoleTypeV1.POLE_LINIOWE_SN]: 'Pole liniowe SN',
   [PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN]: 'Pole transformatorowe SN/nN',
+  [PoleTypeV1.POLE_POMIAROWE_SN]: 'Pole pomiarowe SN',
   [PoleTypeV1.POLE_SPRZEGLOWE_SN]: 'Pole sprzęgła sekcyjnego SN',
   [PoleTypeV1.POLE_ZRODLA_PV_SN]: 'Pole źródła PV (SN)',
   [PoleTypeV1.POLE_ZRODLA_BESS_SN]: 'Pole źródła BESS (SN)',
@@ -907,8 +944,8 @@ export const POLE_TYPE_LABELS_PL: Record<PoleTypeV1, string> = {
   [PoleTypeV1.POLE_ODPLYWOWE_NN]: 'Pole odpływowe nN',
   [PoleTypeV1.POLE_ZRODLA_PV_NN]: 'Pole źródła PV (nN)',
   [PoleTypeV1.POLE_ZRODLA_BESS_NN]: 'Pole źródła BESS (nN)',
+  [PoleTypeV1.POLE_ZRODLA_FW_SN]: 'Pole zrodla FW (SN)',
 };
-
 /**
  * Polish labels for AparatTypeV1 (UI display).
  */
@@ -925,6 +962,7 @@ export const APARAT_TYPE_LABELS_PL: Record<AparatTypeV1, string> = {
   [AparatTypeV1.GLOWICA_KABLOWA]: 'Głowica kablowa',
   [AparatTypeV1.GENERATOR_PV]: 'Generator PV',
   [AparatTypeV1.GENERATOR_BESS]: 'Generator BESS',
+  [AparatTypeV1.GENERATOR_FW]: 'Generator FW',
   [AparatTypeV1.PCS]: 'PCS (power conversion system)',
   [AparatTypeV1.BATERIA]: 'Bateria',
   [AparatTypeV1.ACB]: 'Wyłącznik nN (ACB)',
@@ -950,11 +988,11 @@ export const SldSymbolTypeV1 = {
   SYMBOL_FUSE: 'SYMBOL_FUSE',
   /** Uziemnik (ES) — IEC symbol: linia do ziemi */
   SYMBOL_ES: 'SYMBOL_ES',
-  /** Przekladnik pradowy (CT) — IEC symbol: okrag z punktem na torze mocy */
+  /** Przekładnik prądowy (CT) — IEC symbol: okrąg z punktem na torze mocy */
   SYMBOL_CT: 'SYMBOL_CT',
-  /** Przekladnik napieciowy (VT) — IEC symbol: okrag z punktem boczny */
+  /** Przekładnik napięciowy (VT) — IEC symbol: okrąg z punktem bocznym */
   SYMBOL_VT: 'SYMBOL_VT',
-  /** Zabezpieczenie (RELAY) — IEC symbol: prostokat z R poza torem mocy */
+  /** Zabezpieczenie (RELAY) — IEC symbol: prostokąt z R poza torem mocy */
   SYMBOL_RELAY: 'SYMBOL_RELAY',
   /** Transformator — IEC symbol: dwa okregi */
   SYMBOL_TRANSFORMER: 'SYMBOL_TRANSFORMER',
@@ -964,6 +1002,8 @@ export const SldSymbolTypeV1 = {
   SYMBOL_GENERATOR_PV: 'SYMBOL_GENERATOR_PV',
   /** Generator BESS — symbol baterii */
   SYMBOL_GENERATOR_BESS: 'SYMBOL_GENERATOR_BESS',
+  /** Generator FW — symbol farmy wiatrowej */
+  SYMBOL_GENERATOR_FW: 'SYMBOL_GENERATOR_FW',
   /** ACB (nN) — IEC symbol: dwa X (mniejszy) */
   SYMBOL_ACB: 'SYMBOL_ACB',
   /** Szyna zbiorcza — gruba linia */
@@ -988,6 +1028,7 @@ export const DEVICE_TO_SYMBOL: Record<DeviceTypeV1, SldSymbolTypeV1> = {
   [DeviceTypeV1.CABLE_HEAD]: SldSymbolTypeV1.SYMBOL_CABLE_HEAD,
   [DeviceTypeV1.GENERATOR_PV]: SldSymbolTypeV1.SYMBOL_GENERATOR_PV,
   [DeviceTypeV1.GENERATOR_BESS]: SldSymbolTypeV1.SYMBOL_GENERATOR_BESS,
+  [DeviceTypeV1.GENERATOR_FW]: SldSymbolTypeV1.SYMBOL_GENERATOR_FW,
   [DeviceTypeV1.PCS]: SldSymbolTypeV1.SYMBOL_GENERATOR_BESS,
   [DeviceTypeV1.BATTERY]: SldSymbolTypeV1.SYMBOL_GENERATOR_BESS,
   [DeviceTypeV1.ACB]: SldSymbolTypeV1.SYMBOL_ACB,

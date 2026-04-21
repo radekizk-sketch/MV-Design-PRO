@@ -6,35 +6,29 @@ Testy:
 3. failure - przypadek nie zbieżny → converged = false, trace kompletny
 4. permutacje wejścia - zmiana kolejności elementów → identyczny wynik
 """
+
 from __future__ import annotations
 
-import copy
-import json
 import hashlib
-import math
+import json
 
-import numpy as np
 import pytest
-
+from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.core.branch import LineBranch, BranchType
 from network_model.solvers import (
-    PowerFlowNewtonSolver,
-    PowerFlowNewtonSolution,
     POWER_FLOW_SOLVER_VERSION,
-    PowerFlowTrace,
-    build_power_flow_trace,
-    PowerFlowResultV1,
+    PowerFlowNewtonSolution,
+    PowerFlowNewtonSolver,
     build_power_flow_result_v1,
+    build_power_flow_trace,
 )
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
     PowerFlowOptions,
-    SlackSpec,
     PQSpec,
+    SlackSpec,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -205,7 +199,9 @@ class TestPowerFlowDeterminism:
         trace_json_2 = _serialize_trace(result_2.nr_trace)
         trace_hash_2 = _compute_hash(trace_json_2)
 
-        assert trace_hash_1 == trace_hash_2, "Trace powinien być identyczny dla identycznego wejścia"
+        assert (
+            trace_hash_1 == trace_hash_2
+        ), "Trace powinien być identyczny dla identycznego wejścia"
         assert len(result_1.nr_trace) == len(result_2.nr_trace)
 
     def test_multiple_runs_determinism(self):
@@ -222,7 +218,9 @@ class TestPowerFlowDeterminism:
             hashes.append(_compute_hash(json_str))
 
         # Wszystkie hashe powinny być identyczne
-        assert len(set(hashes)) == 1, f"Wykryto {len(set(hashes))} różnych wyników w 10 uruchomieniach"
+        assert (
+            len(set(hashes)) == 1
+        ), f"Wykryto {len(set(hashes))} różnych wyników w 10 uruchomieniach"
 
 
 # =============================================================================
@@ -242,8 +240,12 @@ class TestPowerFlowConvergence:
         result = solver.solve(pf_input)
 
         assert result.converged is True, "Prosta sieć powinna zbiec"
-        assert result.iterations < 10, f"Prosta sieć nie powinna wymagać więcej niż 10 iteracji (faktycznie: {result.iterations})"
-        assert result.max_mismatch < 1e-6, f"Mismatch powinien być bardzo mały (faktycznie: {result.max_mismatch})"
+        assert (
+            result.iterations < 10
+        ), f"Prosta sieć nie powinna wymagać więcej niż 10 iteracji (faktycznie: {result.iterations})"
+        assert (
+            result.max_mismatch < 1e-6
+        ), f"Mismatch powinien być bardzo mały (faktycznie: {result.max_mismatch})"
 
     def test_convergence_with_full_trace(self):
         """Zbieżność z pełnym trace - trace zawiera init_state."""
@@ -286,7 +288,9 @@ class TestPowerFlowConvergence:
                 # PQ bus powinien mieć mismatch
                 break
         else:
-            pytest.skip("Trace nie zawiera mismatch_per_bus (może być pominięty dla szybkiej zbieżności)")
+            pytest.skip(
+                "Trace nie zawiera mismatch_per_bus (może być pominięty dla szybkiej zbieżności)"
+            )
 
     def test_trace_has_jacobian(self):
         """Trace zawiera Jacobian dla trace_level=full."""
@@ -404,8 +408,8 @@ class TestPowerFlowFailure:
         last_trace = result.nr_trace[-1]
         if not result.converged:
             assert (
-                "cause_if_failed_optional" in last_trace or
-                last_trace.get("iter", 0) >= options.max_iter
+                "cause_if_failed_optional" in last_trace
+                or last_trace.get("iter", 0) >= options.max_iter
             ), "Brak zbieżności powinien mieć przyczynę w trace"
 
 
@@ -424,12 +428,36 @@ class TestPowerFlowInputPermutations:
         graph2 = NetworkGraph()
 
         nodes = [
-            Node(id="bus_a", name="Bus A", node_type=NodeType.SLACK, voltage_level=110.0,
-                 voltage_magnitude=1.0, voltage_angle=0.0, active_power=0.0, reactive_power=0.0),
-            Node(id="bus_b", name="Bus B", node_type=NodeType.PQ, voltage_level=110.0,
-                 voltage_magnitude=1.0, voltage_angle=0.0, active_power=-10.0, reactive_power=-5.0),
-            Node(id="bus_c", name="Bus C", node_type=NodeType.PQ, voltage_level=110.0,
-                 voltage_magnitude=1.0, voltage_angle=0.0, active_power=-8.0, reactive_power=-4.0),
+            Node(
+                id="bus_a",
+                name="Bus A",
+                node_type=NodeType.SLACK,
+                voltage_level=110.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            ),
+            Node(
+                id="bus_b",
+                name="Bus B",
+                node_type=NodeType.PQ,
+                voltage_level=110.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+                active_power=-10.0,
+                reactive_power=-5.0,
+            ),
+            Node(
+                id="bus_c",
+                name="Bus C",
+                node_type=NodeType.PQ,
+                voltage_level=110.0,
+                voltage_magnitude=1.0,
+                voltage_angle=0.0,
+                active_power=-8.0,
+                reactive_power=-4.0,
+            ),
         ]
 
         # Graf 1: kolejność A, B, C
@@ -442,12 +470,30 @@ class TestPowerFlowInputPermutations:
 
         # Te same linie dla obu grafów
         lines = [
-            LineBranch(id="line_ab", name="Line A-B", branch_type=BranchType.LINE,
-                       from_node_id="bus_a", to_node_id="bus_b", in_service=True,
-                       length_km=10.0, r_ohm_per_km=0.1, x_ohm_per_km=0.4, b_us_per_km=2.5),
-            LineBranch(id="line_bc", name="Line B-C", branch_type=BranchType.LINE,
-                       from_node_id="bus_b", to_node_id="bus_c", in_service=True,
-                       length_km=15.0, r_ohm_per_km=0.1, x_ohm_per_km=0.4, b_us_per_km=2.5),
+            LineBranch(
+                id="line_ab",
+                name="Line A-B",
+                branch_type=BranchType.LINE,
+                from_node_id="bus_a",
+                to_node_id="bus_b",
+                in_service=True,
+                length_km=10.0,
+                r_ohm_per_km=0.1,
+                x_ohm_per_km=0.4,
+                b_us_per_km=2.5,
+            ),
+            LineBranch(
+                id="line_bc",
+                name="Line B-C",
+                branch_type=BranchType.LINE,
+                from_node_id="bus_b",
+                to_node_id="bus_c",
+                in_service=True,
+                length_km=15.0,
+                r_ohm_per_km=0.1,
+                x_ohm_per_km=0.4,
+                b_us_per_km=2.5,
+            ),
         ]
 
         for line in lines:
@@ -461,8 +507,26 @@ class TestPowerFlowInputPermutations:
             PQSpec(node_id="bus_c", p_mw=-8.0, q_mvar=-4.0),
         ]
 
-        pf_input1 = PowerFlowInput(graph=graph1, base_mva=100.0, options=options, slack=slack, pq=pq, pv=[], shunts=[], taps=[])
-        pf_input2 = PowerFlowInput(graph=graph2, base_mva=100.0, options=options, slack=slack, pq=pq, pv=[], shunts=[], taps=[])
+        pf_input1 = PowerFlowInput(
+            graph=graph1,
+            base_mva=100.0,
+            options=options,
+            slack=slack,
+            pq=pq,
+            pv=[],
+            shunts=[],
+            taps=[],
+        )
+        pf_input2 = PowerFlowInput(
+            graph=graph2,
+            base_mva=100.0,
+            options=options,
+            slack=slack,
+            pq=pq,
+            pv=[],
+            shunts=[],
+            taps=[],
+        )
 
         solver = PowerFlowNewtonSolver()
         result1 = solver.solve(pf_input1)
@@ -521,8 +585,26 @@ class TestPowerFlowInputPermutations:
             PQSpec(node_id="bus_pq", p_mw=-10.0, q_mvar=-5.0),
         ]
 
-        pf_input1 = PowerFlowInput(graph=graph, base_mva=100.0, options=options, slack=slack, pq=pq_order1, pv=[], shunts=[], taps=[])
-        pf_input2 = PowerFlowInput(graph=graph, base_mva=100.0, options=options, slack=slack, pq=pq_order2, pv=[], shunts=[], taps=[])
+        pf_input1 = PowerFlowInput(
+            graph=graph,
+            base_mva=100.0,
+            options=options,
+            slack=slack,
+            pq=pq_order1,
+            pv=[],
+            shunts=[],
+            taps=[],
+        )
+        pf_input2 = PowerFlowInput(
+            graph=graph,
+            base_mva=100.0,
+            options=options,
+            slack=slack,
+            pq=pq_order2,
+            pv=[],
+            shunts=[],
+            taps=[],
+        )
 
         solver = PowerFlowNewtonSolver()
         result1 = solver.solve(pf_input1)
@@ -599,7 +681,10 @@ class TestPowerFlowTraceBuilder:
             snapshot_id="snap1",
             case_id="case1",
             run_id="run1",
-            init_state={"bus_b": {"v_pu": 1.0, "theta_rad": 0.0}, "bus_a": {"v_pu": 1.0, "theta_rad": 0.0}},
+            init_state={
+                "bus_b": {"v_pu": 1.0, "theta_rad": 0.0},
+                "bus_a": {"v_pu": 1.0, "theta_rad": 0.0},
+            },
             init_method="flat",
             tolerance=1e-8,
             max_iterations=30,

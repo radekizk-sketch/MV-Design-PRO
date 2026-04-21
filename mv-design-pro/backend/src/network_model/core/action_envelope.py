@@ -58,7 +58,7 @@ class ActionEnvelope:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionEnvelope":
+    def from_dict(cls, data: dict[str, Any]) -> ActionEnvelope:
         return cls(
             action_id=str(data["action_id"]),
             parent_snapshot_id=str(data["parent_snapshot_id"]),
@@ -85,7 +85,7 @@ class ActionIssue:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionIssue":
+    def from_dict(cls, data: dict[str, Any]) -> ActionIssue:
         return cls(
             code=str(data["code"]),
             message=str(data["message"]),
@@ -111,15 +111,13 @@ class ActionResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ActionResult":
+    def from_dict(cls, data: dict[str, Any]) -> ActionResult:
         return cls(
             status=str(data["status"]),
             action_id=str(data["action_id"]),
             parent_snapshot_id=str(data["parent_snapshot_id"]),
             errors=[ActionIssue.from_dict(err) for err in data.get("errors", [])],
-            warnings=[
-                ActionIssue.from_dict(warn) for warn in data.get("warnings", [])
-            ],
+            warnings=[ActionIssue.from_dict(warn) for warn in data.get("warnings", [])],
         )
 
 
@@ -141,22 +139,19 @@ class BatchActionResult:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BatchActionResult":
+    def from_dict(cls, data: dict[str, Any]) -> BatchActionResult:
         return cls(
             status=str(data["status"]),
             parent_snapshot_id=str(data["parent_snapshot_id"]),
             new_snapshot_id=data.get("new_snapshot_id"),
             action_results=[
-                ActionResult.from_dict(result)
-                for result in data.get("action_results", [])
+                ActionResult.from_dict(result) for result in data.get("action_results", [])
             ],
             errors=[ActionIssue.from_dict(err) for err in data.get("errors", [])],
         )
 
 
-def validate_action_envelope(
-    envelope: ActionEnvelope, snapshot: NetworkSnapshot
-) -> ActionResult:
+def validate_action_envelope(envelope: ActionEnvelope, snapshot: NetworkSnapshot) -> ActionResult:
     errors: list[ActionIssue] = []
 
     _validate_envelope_fields(envelope, errors)
@@ -166,8 +161,7 @@ def validate_action_envelope(
             ActionIssue(
                 code="unknown_action_type",
                 message=(
-                    "Unrecognized action_type. "
-                    f"Expected one of: {', '.join(ACTION_TYPES)}."
+                    "Unrecognized action_type. " f"Expected one of: {', '.join(ACTION_TYPES)}."
                 ),
                 path="action_type",
             )
@@ -188,9 +182,7 @@ def validate_action_envelope(
     )
 
 
-def _validate_envelope_fields(
-    envelope: ActionEnvelope, errors: list[ActionIssue]
-) -> None:
+def _validate_envelope_fields(envelope: ActionEnvelope, errors: list[ActionIssue]) -> None:
     required_fields = [
         ("action_id", envelope.action_id, str),
         ("parent_snapshot_id", envelope.parent_snapshot_id, str),
@@ -213,9 +205,7 @@ def _validate_envelope_fields(
             errors.append(
                 ActionIssue(
                     code="invalid_type",
-                    message=(
-                        f"Expected {field_name} to be {expected_type.__name__}."
-                    ),
+                    message=(f"Expected {field_name} to be {expected_type.__name__}."),
                     path=field_name,
                 )
             )
@@ -229,9 +219,7 @@ def _validate_envelope_fields(
             )
         )
 
-    if envelope.schema_version is not None and not isinstance(
-        envelope.schema_version, (str, int)
-    ):
+    if envelope.schema_version is not None and not isinstance(envelope.schema_version, str | int):
         errors.append(
             ActionIssue(
                 code="invalid_type",
@@ -344,9 +332,7 @@ def _validate_referential_integrity(
             errors.append(
                 ActionIssue(
                     code="unknown_node",
-                    message=(
-                        f"from_node_id '{from_node_id}' does not exist in snapshot."
-                    ),
+                    message=(f"from_node_id '{from_node_id}' does not exist in snapshot."),
                     path="payload.from_node_id",
                 )
             )

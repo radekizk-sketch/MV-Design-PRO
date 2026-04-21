@@ -13,7 +13,6 @@ from analysis.sensitivity.models import (
     SensitivityView,
 )
 
-
 RUN_TS = datetime(2024, 2, 1, 12, 0, 0)
 
 

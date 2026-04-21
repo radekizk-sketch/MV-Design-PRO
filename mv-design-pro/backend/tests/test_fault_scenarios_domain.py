@@ -10,21 +10,18 @@ Tests:
 - Serialization round-trip
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
 from domain.fault_scenario import (
     FaultImpedanceType,
     FaultLocation,
     FaultScenario,
     FaultScenarioValidationError,
     FaultType,
-    ShortCircuitConfig,
     compute_scenario_content_hash,
     new_fault_scenario,
-    validate_fault_scenario,
 )
-
 
 FIXED_CASE_ID = uuid4()
 
@@ -169,7 +166,5 @@ class TestFaultScenarioDomain:
                 study_case_id=FIXED_CASE_ID,
                 name="Bus test",
                 fault_type=FaultType.SC_3F,
-                location=FaultLocation(
-                    element_ref="bus-1", location_type="BUS", position=0.5
-                ),
+                location=FaultLocation(element_ref="bus-1", location_type="BUS", position=0.5),
             )

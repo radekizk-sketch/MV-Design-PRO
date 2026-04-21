@@ -4,8 +4,8 @@
  * 12-step integration test exercising the complete UX pipeline:
  *   1. Open SLD → context menu on Bus
  *   2. Context menu returns correct actions for Bus type
- *   3. Select action → modal opens (via modalRegistry)
- *   4. Modal form validates catalog binding
+ *   3. Select action → otwiera kanoniczny surface operacji
+ *   4. Surface formularza waliduje wymagania katalogowe
  *   5. Inspector shows selected element data (zero empty fields)
  *   6. Readiness panel classifies issues by group
  *   7. Data gap panel resolves quick-fix labels
@@ -13,7 +13,7 @@
  *   9. Mode interaction handler resolves correct click actions per mode
  *  10. Label layer builds correct labels per mode
  *  11. Results access panel structures data correctly
- *  12. All modal registry entries are implemented
+ *  12. All operation surfaces are implemented
  *
  * INVARIANTS:
  * - Pure logic tests — no React rendering
@@ -33,8 +33,8 @@ import {
   buildFeederNNContextMenu,
 } from '../context-menu/actionMenuBuilders';
 
-// §6 Modal Registry
-import { MODAL_REGISTRY } from '../topology/modals/modalRegistry';
+// §6 Operation Surface Registry
+import { OPERATION_SURFACE_REGISTRY } from '../topology/modals/operationSurfaceRegistry';
 
 // §9 Data Gap Panel
 import {
@@ -133,11 +133,11 @@ describe('§17 E2E Golden Scenario — UX 10/10', () => {
       }
     });
 
-    it('Segment context menu includes SC analysis action', () => {
+    it('Segment context menu in result view includes canonical results action', () => {
       const actions = buildSegmentSNContextMenu('RESULT_VIEW', nopHandlers());
-      const scAction = actions.find((a) => a.id === 'run_sc_analysis');
-      expect(scAction).toBeDefined();
-      expect(scAction!.label).toContain('zwarciow');
+      const resultsAction = actions.find((a) => a.id === 'show_results');
+      expect(resultsAction).toBeDefined();
+      expect(resultsAction!.label).toContain('wyniki');
     });
 
     it('Station context menu in edit mode returns actions', () => {
@@ -157,26 +157,26 @@ describe('§17 E2E Golden Scenario — UX 10/10', () => {
   });
 
   // -------------------------------------------------------------------------
-  // STEP 3+4: Modal registry — all entries implemented
+  // STEP 3+4: Operation surface registry — all entries implemented
   // -------------------------------------------------------------------------
 
-  describe('Step 3–4: Modal registry completeness', () => {
-    it('all modal registry entries have implemented: true', () => {
-      for (const entry of MODAL_REGISTRY) {
-        expect(entry.implemented, `Modal ${entry.modalId} not implemented`).toBe(true);
+  describe('Step 3–4: Operation surface registry completeness', () => {
+    it('all operation surface entries have implemented: true', () => {
+      for (const entry of OPERATION_SURFACE_REGISTRY) {
+        expect(entry.implemented, `Surface ${entry.canonicalOp} not implemented`).toBe(true);
       }
     });
 
-    it('every modal entry has a Polish label', () => {
-      for (const entry of MODAL_REGISTRY) {
-        expect(entry.labelPl, `Modal ${entry.modalId} has no Polish label`).toBeTruthy();
+    it('every surface entry has a Polish label', () => {
+      for (const entry of OPERATION_SURFACE_REGISTRY) {
+        expect(entry.labelPl, `Surface ${entry.canonicalOp} has no Polish label`).toBeTruthy();
         expect(entry.labelPl.length).toBeGreaterThan(0);
       }
     });
 
-    it('every modal entry has a canonical operation', () => {
-      for (const entry of MODAL_REGISTRY) {
-        expect(entry.canonicalOp, `Modal ${entry.modalId} has no operation`).toBeTruthy();
+    it('every surface entry has a canonical operation', () => {
+      for (const entry of OPERATION_SURFACE_REGISTRY) {
+        expect(entry.canonicalOp, `Surface without operation`).toBeTruthy();
       }
     });
   });

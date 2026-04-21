@@ -20,6 +20,18 @@ Eksporty:
 - proof.pdf (jesli pipeline istnieje)
 """
 
+from application.proof_engine.proof_inspector.exporters import (
+    ExportResult,
+    InspectorExporter,
+    export_to_json,
+    export_to_pdf,
+    export_to_tex,
+    is_pdf_export_available,
+)
+from application.proof_engine.proof_inspector.inspector import (
+    ProofInspector,
+    inspect,
+)
 from application.proof_engine.proof_inspector.types import (
     CounterfactualRow,
     CounterfactualView,
@@ -31,18 +43,6 @@ from application.proof_engine.proof_inspector.types import (
     SummaryView,
     UnitCheckView,
     ValueView,
-)
-from application.proof_engine.proof_inspector.inspector import (
-    ProofInspector,
-    inspect,
-)
-from application.proof_engine.proof_inspector.exporters import (
-    ExportResult,
-    InspectorExporter,
-    export_to_json,
-    export_to_pdf,
-    export_to_tex,
-    is_pdf_export_available,
 )
 
 __all__ = [

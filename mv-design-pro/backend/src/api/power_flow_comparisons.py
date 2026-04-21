@@ -24,9 +24,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-
 from api.dependencies import get_uow_factory
 from application.power_flow_comparison import PowerFlowComparisonService
 from domain.power_flow_comparison import (
@@ -37,7 +34,8 @@ from domain.power_flow_comparison import (
     PowerFlowRunNotFinishedError,
     PowerFlowRunNotFoundError,
 )
-
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])
 
@@ -49,6 +47,7 @@ router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-compariso
 
 class CreatePowerFlowComparisonRequest(BaseModel):
     """Request to create a power flow comparison."""
+
     power_flow_run_id_a: str = Field(
         ...,
         description="UUID pierwszego PowerFlowRun (baseline)",
@@ -61,6 +60,7 @@ class CreatePowerFlowComparisonRequest(BaseModel):
 
 class BusDiffRowResponse(BaseModel):
     """Single bus diff row."""
+
     bus_id: str
     v_pu_a: float
     v_pu_b: float
@@ -78,6 +78,7 @@ class BusDiffRowResponse(BaseModel):
 
 class BranchDiffRowResponse(BaseModel):
     """Single branch diff row."""
+
     branch_id: str
     p_from_mw_a: float
     p_from_mw_b: float
@@ -101,6 +102,7 @@ class BranchDiffRowResponse(BaseModel):
 
 class RankingIssueResponse(BaseModel):
     """Single ranking issue."""
+
     issue_code: str
     severity: int
     element_ref: str
@@ -110,6 +112,7 @@ class RankingIssueResponse(BaseModel):
 
 class ComparisonSummaryResponse(BaseModel):
     """Comparison summary statistics."""
+
     total_buses: int
     total_branches: int
     converged_a: bool
@@ -128,6 +131,7 @@ class ComparisonSummaryResponse(BaseModel):
 
 class PowerFlowComparisonResultResponse(BaseModel):
     """Full comparison result response."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -142,6 +146,7 @@ class PowerFlowComparisonResultResponse(BaseModel):
 
 class TraceStepResponse(BaseModel):
     """Single trace step."""
+
     step: str
     description_pl: str
     inputs: dict[str, Any]
@@ -150,6 +155,7 @@ class TraceStepResponse(BaseModel):
 
 class PowerFlowComparisonTraceResponse(BaseModel):
     """Full comparison trace response."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -165,6 +171,7 @@ class PowerFlowComparisonTraceResponse(BaseModel):
 
 class PowerFlowComparisonMetadataResponse(BaseModel):
     """Comparison metadata (without full results)."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -369,8 +376,9 @@ def export_power_flow_comparison_json(
     uow_factory=Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to JSON file."""
-    from fastapi.responses import Response
     import json
+
+    from fastapi.responses import Response
 
     service = _build_service(uow_factory)
 
@@ -395,7 +403,9 @@ def export_power_flow_comparison_json(
     return Response(
         content=json_content,
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.json"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.json"'
+        },
     )
 
 
@@ -408,13 +418,14 @@ def export_power_flow_comparison_docx(
     uow_factory=Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to DOCX file."""
-    from fastapi.responses import Response
     import io
+
+    from fastapi.responses import Response
 
     try:
         from docx import Document
-        from docx.shared import Pt
         from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Pt
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -521,7 +532,9 @@ def export_power_flow_comparison_docx(
     return Response(
         content=buffer.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.docx"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.docx"'
+        },
     )
 
 
@@ -534,13 +547,14 @@ def export_power_flow_comparison_pdf(
     uow_factory=Depends(get_uow_factory),
 ):
     """P20d: Export power flow comparison to PDF file."""
-    from fastapi.responses import Response
     import io
 
+    from fastapi.responses import Response
+
     try:
-        from reportlab.pdfgen import canvas
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
+        from reportlab.pdfgen import canvas
     except ImportError:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
@@ -612,7 +626,9 @@ def export_power_flow_comparison_pdf(
     c.setFont("Helvetica", 9)
     for issue in ranking[:15]:
         severity = severity_labels.get(issue.get("severity", 1), "?")
-        text = f"[{severity}] {issue.get('issue_code', '—')}: {issue.get('description_pl', '—')[:50]}"
+        text = (
+            f"[{severity}] {issue.get('issue_code', '—')}: {issue.get('description_pl', '—')[:50]}"
+        )
         c.drawString(left_margin, y, text)
         y -= line_height
         if y < 30 * mm:
@@ -629,5 +645,7 @@ def export_power_flow_comparison_pdf(
     return Response(
         content=buffer.getvalue(),
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="power_flow_comparison_{comparison_id}.pdf"'
+        },
     )

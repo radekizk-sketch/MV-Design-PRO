@@ -3,12 +3,12 @@
 **CANONICAL ALIGNMENT:**
 - `CATALOG_BROWSER_CONTRACT.md`: Type Library Browser specification
 - `SYSTEM_SPEC.md § 4`: Type Catalog (Library)
-- `POWERFACTORY_COMPLIANCE.md § 14`: Type Catalog UI compliance
+- `CANONICAL_COMPLIANCE.md § 14`: Type Catalog UI compliance
 
 ## Components
 
 ### TypeLibraryBrowser (P13a)
-Przeglądarka biblioteki typów w stylu PowerFactory.
+Przeglądarka biblioteki typów w stylu Canonical.
 
 **Features:**
 - 4 zakładki: Typy linii, Typy kabli, Typy transformatorów, Typy aparatury łączeniowej

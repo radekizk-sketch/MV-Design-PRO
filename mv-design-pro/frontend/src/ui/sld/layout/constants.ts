@@ -13,11 +13,11 @@
  * - gapElbow: minimalny odstęp przy łuku (elbow)
  *
  * CANONICAL ALIGNMENT:
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
- * - ETAP software visual standards
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
+ * - CANONICAL software visual standards
  */
 
-import { ETAP_GEOMETRY } from '../sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../sldCanonicalStyle';
 
 // =============================================================================
 // ANCHOR LAYOUT CONSTANTS
@@ -96,10 +96,10 @@ export const GAP_ELBOW = 4;
 // =============================================================================
 
 /**
- * Grid size for snapping (from ETAP_GEOMETRY).
+ * Grid size for snapping (from CANONICAL_GEOMETRY).
  * All positions should snap to this grid for consistency.
  */
-export const GRID_SIZE = ETAP_GEOMETRY.layout.gridSize;
+export const GRID_SIZE = CANONICAL_GEOMETRY.layout.gridSize;
 
 /**
  * Snap a value to grid.
@@ -137,29 +137,29 @@ export const SIDE_DIRECTION: Record<'TOP' | 'BOTTOM' | 'LEFT' | 'RIGHT', -1 | 1>
  * Default auto-layout configuration.
  *
  * Te wartości są używane gdy brak overrides w opcjach.
- * Oparte na ETAP_GEOMETRY tokens.
+ * Oparte na CANONICAL_GEOMETRY tokens.
  */
 export const DEFAULT_AUTO_LAYOUT_CONFIG = {
   /**
    * Default busbar thickness (używany do obliczeń M, Smin, stubLen).
-   * Wartość z ETAP_GEOMETRY.busbar.height.
+   * Wartość z CANONICAL_GEOMETRY.busbar.height.
    */
-  defaultThickness: ETAP_GEOMETRY.busbar.height,
+  defaultThickness: CANONICAL_GEOMETRY.busbar.height,
 
   /**
    * Default margin M (calculated from default thickness).
    */
-  defaultMargin: calculateMargin(ETAP_GEOMETRY.busbar.height),
+  defaultMargin: calculateMargin(CANONICAL_GEOMETRY.busbar.height),
 
   /**
    * Default minimum spacing Smin (calculated from default thickness).
    */
-  defaultMinSpacing: calculateMinSpacing(ETAP_GEOMETRY.busbar.height),
+  defaultMinSpacing: calculateMinSpacing(CANONICAL_GEOMETRY.busbar.height),
 
   /**
    * Default stub length (calculated from default thickness).
    */
-  defaultStubLength: calculateStubLength(ETAP_GEOMETRY.busbar.height),
+  defaultStubLength: calculateStubLength(CANONICAL_GEOMETRY.busbar.height),
 
   /**
    * Default lane pitch.

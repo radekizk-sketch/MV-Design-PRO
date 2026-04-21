@@ -7,6 +7,7 @@ INVARIANTS:
 - Wszystkie kolekcje posortowane po ID
 - Float z pelna precyzja (nie zaokraglamy)
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -22,7 +23,6 @@ from analysis.power_flow_interpretation.models import (
     PowerFlowInterpretationResult,
     VoltageFinding,
 )
-
 
 # =============================================================================
 # Severity ordering for deterministic ranking
@@ -140,12 +140,8 @@ def result_to_dict(result: PowerFlowInterpretationResult) -> dict[str, Any]:
     """
     return {
         "context": context_to_dict(result.context),
-        "voltage_findings": [
-            voltage_finding_to_dict(f) for f in result.voltage_findings
-        ],
-        "branch_findings": [
-            branch_finding_to_dict(f) for f in result.branch_findings
-        ],
+        "voltage_findings": [voltage_finding_to_dict(f) for f in result.voltage_findings],
+        "branch_findings": [branch_finding_to_dict(f) for f in result.branch_findings],
         "summary": summary_to_dict(result.summary),
         "trace": trace_to_dict(result.trace),
     }

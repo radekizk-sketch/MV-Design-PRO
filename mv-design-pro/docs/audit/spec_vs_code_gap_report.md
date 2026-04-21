@@ -1,7 +1,7 @@
 # Spec vs Code Gap Report (PowerFactory-Aligned)
 
 **Scope:** Canonical spec alignment audit against code and documentation.
-**Canonical references:** `SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `AGENTS.md`, `PLANS.md`, `POWERFACTORY_COMPLIANCE.md`.
+**Canonical references:** `SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `AGENTS.md`, `PLANS.md`, `CANONICAL_COMPLIANCE.md`.
 
 ## 1) Compliance Matrix (Spec → Docs → Code)
 
@@ -10,7 +10,7 @@
 | Single NetworkModel per project (no shadow models) | `SYSTEM_SPEC.md` §2.1, §13; `AGENTS.md` §2.3 | `NetworkGraph` exists but multiple builders create new instances from persistence; no explicit single-model enforcement | **PENDING** | `backend/src/network_model/core/graph.py`, `backend/src/application/network_wizard/service.py`, `backend/src/application/analysis_run/service.py` | Add explicit “single model” invariant checks (one active graph per project) and document enforcement in application layer. |
 | BoundaryNode is **NOT** in NetworkModel; BoundaryNode is interpretation-only | `SYSTEM_SPEC.md` §2.1, §18.3.4; `AGENTS.md` §2.5 | `NetworkGraph` contains no BoundaryNode field; BoundaryNode is stored as application settings hint and used in analysis/wizard | **PASS** | `backend/src/network_model/core/graph.py`, `backend/src/application/network_wizard/service.py`, `backend/src/application/analyses/boundary.py` | No change required. |
 | Case cannot mutate NetworkModel; cases only store parameters | `SYSTEM_SPEC.md` §3; `AGENTS.md` §2.4 | Operating/study cases stored separately; graph built from persistence with case overlays (switching states) | **PENDING** | `backend/src/domain/models.py`, `backend/src/application/network_wizard/service.py` | Add explicit immutability enforcement (e.g., snapshot usage + write guards) and document overlay boundaries. |
-| Validation must gate solver execution (NetworkValidator) | `SYSTEM_SPEC.md` §7; `POWERFACTORY_COMPLIANCE.md` §5 | `NetworkValidator` exists but analysis run path uses custom validation; no direct NetworkValidator call before solver | **FAIL** | `backend/src/network_model/validation/validator.py`, `backend/src/application/analysis_run/service.py` | Wire `NetworkValidator` into analysis execution paths (PF + SC) before solving. |
+| Validation must gate solver execution (NetworkValidator) | `SYSTEM_SPEC.md` §7; `CANONICAL_COMPLIANCE.md` §5 | `NetworkValidator` exists but analysis run path uses custom validation; no direct NetworkValidator call before solver | **FAIL** | `backend/src/network_model/validation/validator.py`, `backend/src/application/analysis_run/service.py` | Wire `NetworkValidator` into analysis execution paths (PF + SC) before solving. |
 | Switch has NO impedance and is topology-only | `SYSTEM_SPEC.md` §2.4; `ARCHITECTURE.md` §2.1 | `Switch` class exists with no impedance fields; not integrated into NetworkGraph yet | **PENDING** | `backend/src/network_model/core/switch.py`, `backend/src/network_model/core/graph.py` | Add switches to graph topology (OPEN/CLOSED) without impedance fields. |
 | Bus terminology (Bus ≠ Node) | `SYSTEM_SPEC.md` §2.2, §12 | Bus alias implemented for PF terminology; Node remains legacy | **PASS** | `backend/src/network_model/core/bus.py` | Full rename planned for a future major version. |
 | Solver-only physics (analysis is interpretation) | `SYSTEM_SPEC.md` §5–6; `AGENTS.md` §2.1 | Power flow solver currently implemented under `analysis/power_flow/` | **PENDING** | `backend/src/analysis/power_flow/solver.py` | Move solver to `network_model/solvers/` or create clear solver module boundary per spec. |

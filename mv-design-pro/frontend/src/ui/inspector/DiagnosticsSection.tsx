@@ -2,7 +2,7 @@
  * Diagnostics Section Component (READ-ONLY)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PowerFactory-like diagnostics visualization
+ * - ui_canonical_parity.md: Canonical-like diagnostics visualization
  * - sld_rules.md § G.1: Synchronizacja selection SLD ↔ Tree ↔ Inspector
  *
  * FEATURES:

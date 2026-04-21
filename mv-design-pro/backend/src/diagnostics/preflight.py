@@ -8,7 +8,7 @@ Brak „magii" — wszystko z DiagnosticEngine.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .engine import DiagnosticEngine
 from .models import (
@@ -115,7 +115,7 @@ def _build_preflight_from_report(report: DiagnosticReport) -> PreflightReport:
             )
         )
 
-    any_blocked = any(c.status == AnalysisAvailability.BLOCKED.value for c in checks)
+    any(c.status == AnalysisAvailability.BLOCKED.value for c in checks)
 
     return PreflightReport(
         ready=report.status != DiagnosticStatus.FAIL,

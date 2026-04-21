@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 1.2: Operating modes
  * - wizard_screens.md § 1.3: Active case awareness
- * - powerfactory_ui_parity.md § A: Mode-based gating
+ * - ui_canonical_parity.md § A: Mode-based gating
  *
  * Tests:
  * - Active project/case management
@@ -130,7 +130,7 @@ describe('App State Store', () => {
       const store = useAppStateStore.getState();
 
       store.setActiveMode('CASE_CONFIG');
-      expect(useAppStateStore.getState().activeMode).toBe('CASE_CONFIG');
+      expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
 
       store.setActiveMode('RESULT_VIEW');
       expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
@@ -161,36 +161,6 @@ describe('App State Store', () => {
     });
   });
 
-  describe('Case Manager Panel', () => {
-    it('should be closed by default', () => {
-      const state = useAppStateStore.getState();
-      expect(state.caseManagerOpen).toBe(false);
-    });
-
-    it('should toggle visibility', () => {
-      const store = useAppStateStore.getState();
-
-      store.toggleCaseManager();
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      store.toggleCaseManager();
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
-    });
-
-    it('should set specific state', () => {
-      const store = useAppStateStore.getState();
-
-      store.toggleCaseManager(true);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      store.toggleCaseManager(true);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(true);
-
-      store.toggleCaseManager(false);
-      expect(useAppStateStore.getState().caseManagerOpen).toBe(false);
-    });
-  });
-
   describe('Computed Helpers', () => {
     describe('hasActiveCase', () => {
       it('should return false when no case is active', () => {
@@ -216,7 +186,7 @@ describe('App State Store', () => {
         const store = useAppStateStore.getState();
         store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'NONE');
         store.setActiveMode('CASE_CONFIG');
-        expect(store.canCalculate()).toBe(false);
+        expect(store.canCalculate()).toBe(true);
 
         store.setActiveMode('RESULT_VIEW');
         expect(store.canCalculate()).toBe(false);
@@ -266,7 +236,7 @@ describe('App State Store', () => {
         const store = useAppStateStore.getState();
 
         store.setActiveMode('CASE_CONFIG');
-        expect(store.isModelEditable()).toBe(false);
+        expect(store.isModelEditable()).toBe(true);
 
         store.setActiveMode('RESULT_VIEW');
         expect(store.isModelEditable()).toBe(false);
@@ -274,7 +244,7 @@ describe('App State Store', () => {
     });
 
     describe('isCaseConfigEditable', () => {
-      it('should return true in MODEL_EDIT and CASE_CONFIG modes', () => {
+      it('should return true in MODEL_EDIT and after CASE_CONFIG compatibility input', () => {
         const store = useAppStateStore.getState();
 
         store.setActiveMode('MODEL_EDIT');
@@ -318,7 +288,6 @@ describe('App State Store', () => {
       store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'FRESH');
       store.setActiveMode('RESULT_VIEW');
       store.setActiveRun('run-123');
-      store.toggleCaseManager(true);
 
       store.reset();
 
@@ -327,7 +296,6 @@ describe('App State Store', () => {
       expect(state.activeCaseId).toBeNull();
       expect(state.activeMode).toBe('MODEL_EDIT');
       expect(state.activeRunId).toBeNull();
-      expect(state.caseManagerOpen).toBe(false);
     });
   });
 });

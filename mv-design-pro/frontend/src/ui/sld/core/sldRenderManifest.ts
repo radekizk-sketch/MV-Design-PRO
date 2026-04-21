@@ -1,7 +1,7 @@
 import { computeLayoutResultHash, type LayoutResultV1, type NodePlacementV1, type EdgeRouteV1 } from './layoutResult';
 import { computeVisualGraphHash, type VisualGraphV1 } from './visualGraph';
 import type { VisualTopologyContractV1 } from './visualTopologyContract';
-import { ETAP_STROKE, ETAP_VOLTAGE_COLORS, ETAP_VOLTAGE_MAP, getVisualHierarchyLevel, VISUAL_HIERARCHY } from '../sldEtapStyle';
+import { CANONICAL_STROKE, CANONICAL_VOLTAGE_COLORS, CANONICAL_VOLTAGE_MAP, getVisualHierarchyLevel, VISUAL_HIERARCHY } from '../sldCanonicalStyle';
 
 function syncHashHex(input: string): string {
   let h0 = 0x6a09e667;
@@ -83,9 +83,9 @@ function round3(x: number): number {
 }
 
 function resolveVoltageColor(voltageKv: number | null | undefined): string {
-  if (voltageKv == null) return ETAP_VOLTAGE_COLORS.default;
-  const key = ETAP_VOLTAGE_MAP[String(voltageKv)] ?? 'default';
-  return ETAP_VOLTAGE_COLORS[key];
+  if (voltageKv == null) return CANONICAL_VOLTAGE_COLORS.default;
+  const key = CANONICAL_VOLTAGE_MAP[String(voltageKv)] ?? 'default';
+  return CANONICAL_VOLTAGE_COLORS[key];
 }
 
 function computeEdgeLength(route: EdgeRouteV1): number {
@@ -99,16 +99,16 @@ function computeEdgeLength(route: EdgeRouteV1): number {
 }
 
 function edgeStrokeWidth(edgeType: string): number {
-  if (edgeType === 'BUS_COUPLER') return ETAP_STROKE.busbar;
-  if (edgeType === 'SECONDARY_CONNECTOR') return ETAP_STROKE.aux;
-  return ETAP_STROKE.feeder;
+  if (edgeType === 'BUS_COUPLER') return CANONICAL_STROKE.busbar;
+  if (edgeType === 'SECONDARY_CONNECTOR') return CANONICAL_STROKE.aux;
+  return CANONICAL_STROKE.feeder;
 }
 
 function buildStyleTokenHash(): string {
   return syncHashHex(JSON.stringify({
-    ETAP_STROKE,
+    CANONICAL_STROKE,
     VISUAL_HIERARCHY,
-    ETAP_VOLTAGE_COLORS,
+    CANONICAL_VOLTAGE_COLORS,
   }));
 }
 

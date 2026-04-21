@@ -17,7 +17,6 @@ BINDING RULE SET:
 from __future__ import annotations
 
 import pytest
-
 from application.analyses.protection.base_values.models import (
     BaseValues,
     BaseValueSourceIn,
@@ -27,14 +26,13 @@ from application.analyses.protection.base_values.models import (
     ProtectionSetpointOperator,
 )
 from application.analyses.protection.sanity_checks import (
-    run_sanity_checks,
-    ProtectionFunctionSummary,
     ElementContext,
+    ProtectionFunctionSummary,
     ProtectionSanityCheckResult,
     SanityCheckCode,
     SanityCheckSeverity,
+    run_sanity_checks,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -89,7 +87,9 @@ def _setpoint_in(multiplier: float) -> ProtectionSetpoint:
     )
 
 
-def _setpoint_un(multiplier: float, operator: ProtectionSetpointOperator = ProtectionSetpointOperator.LT) -> ProtectionSetpoint:
+def _setpoint_un(
+    multiplier: float, operator: ProtectionSetpointOperator = ProtectionSetpointOperator.LT
+) -> ProtectionSetpoint:
     """Setpoint UN-based."""
     display = f"{multiplier}".replace(".", ",") + "×Un"
     return ProtectionSetpoint(
@@ -1129,7 +1129,7 @@ class TestDeterminism:
         results2 = run_sanity_checks(functions, _base_values_full(), _element_context())
 
         assert len(results1) == len(results2)
-        for r1, r2 in zip(results1, results2):
+        for r1, r2 in zip(results1, results2, strict=False):
             assert r1.to_dict() == r2.to_dict()
 
 

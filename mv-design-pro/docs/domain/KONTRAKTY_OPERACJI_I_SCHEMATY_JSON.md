@@ -7,7 +7,7 @@
 | Data       | 2026-02-17                         |
 
 > **Referencja**: Dokument `ENM_OP_CONTRACTS_CANONICAL_FULL.md` jest JEDYNYM ZRODLEM PRAWDY
-> dla nazw operacji domenowych, mapowania aliasow oraz pelnych schematow Pydantic.
+> dla nazw operacji domenowych, pelnych schematow Pydantic i aktywnego kontraktu V11.
 > Niniejszy dokument opisuje **kontrakt odpowiedzi**, **kontrakt magistrali**,
 > **przyklady payload JSON** oraz **reguly kanonizacji i identyfikatorow deterministycznych**.
 
@@ -101,7 +101,7 @@ Zamiar osadzenia -- opisuje co zostanie wstawione w punkcie podzialu:
 ## 3. Przyklady payload JSON
 
 Kazdy przyklad zawiera kompletny obiekt JSON z realistycznymi danymi.
-Nazwy operacji sa **kanoniczne** (aliasy rozwiazywane przez dispatcher przed walidacja).
+Nazwy operacji sa **kanoniczne** i stanowia jedyny aktywny kontrakt V11.
 
 ### 3.1 `add_grid_source_sn`
 
@@ -305,11 +305,11 @@ Nazwy operacji sa **kanoniczne** (aliasy rozwiazywane przez dispatcher przed wal
 }
 ```
 
-### 3.6 `add_pv_inverter_nn` (falownik PV do rozdzielnicy nN)
+### 3.6 `add_converter_source` (źródło przekształtnikowe do rozdzielnicy nN)
 
 ```json
 {
-  "operation": "add_pv_inverter_nn",
+  "operation": "add_converter_source",
   "meta": {
     "snapshot_in": "S9",
     "idempotency_key": "3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e",
@@ -333,11 +333,11 @@ Nazwy operacji sa **kanoniczne** (aliasy rozwiazywane przez dispatcher przed wal
 }
 ```
 
-### 3.7 `add_bess_inverter_nn` (magazyn BESS do rozdzielnicy nN)
+### 3.7 `add_converter_source` (źródło przekształtnikowe do rozdzielnicy nN)
 
 ```json
 {
-  "operation": "add_bess_inverter_nn",
+  "operation": "add_converter_source",
   "meta": {
     "snapshot_in": "S10",
     "idempotency_key": "4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f",
@@ -479,9 +479,9 @@ Gdzie:
 
 | Dokument                                              | Sciezka                                                    | Rola                           |
 |-------------------------------------------------------|------------------------------------------------------------|--------------------------------|
-| Kontrakty operacji domenowych (ZRODLO PRAWDY)         | `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md`           | Nazwy kanoniczne, aliasy, payloady, zdarzenia |
+| Kontrakty operacji domenowych (ZRODLO PRAWDY)         | `docs/domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md`           | Nazwy kanoniczne, payloady, zdarzenia |
 | Kody gotowosci i akcje naprawcze                      | `docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`         | Slownik kodow gotowosci         |
-| Kontrakty kanoniczne systemu                          | `docs/spec/SPEC_CHAPTER_05_SYSTEM_CANONICAL_CONTRACTS.md`  | Kreator, katalogi, stacje       |
+| Indeks kanoniczny V12.5                               | `docs/INDEX_KANONICZNY.md`                                  | Wejscie do wiazacych specyfikacji systemowych |
 | Specyfikacja systemu                                  | `SYSTEM_SPEC.md`                                           | Architektura nadrzedna          |
 | Modele Pydantic                                       | `backend/src/domain/domain_ops_models.py`                  | Schematy danych backendowe      |
 

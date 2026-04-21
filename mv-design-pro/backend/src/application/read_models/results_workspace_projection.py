@@ -31,12 +31,12 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
-from domain.execution import ExecutionAnalysisType, Run, RunStatus
 from domain.batch_job import BatchJob, BatchJobStatus
+from domain.execution import ExecutionAnalysisType, Run, RunStatus
 
 # Projection contract version — bump on breaking schema changes only
 PROJECTION_VERSION = "1.0.0"
@@ -204,11 +204,17 @@ def map_run_to_summary(run: Run) -> RunSummary:
 
     return RunSummary(
         run_id=str(run.id),
-        analysis_type=run.analysis_type.value if isinstance(run.analysis_type, ExecutionAnalysisType) else str(run.analysis_type),
+        analysis_type=(
+            run.analysis_type.value
+            if isinstance(run.analysis_type, ExecutionAnalysisType)
+            else str(run.analysis_type)
+        ),
         status=run.status.value if isinstance(run.status, RunStatus) else str(run.status),
         solver_input_hash=run.solver_input_hash,
         created_at=created_at_str,
-        finished_at=run.finished_at.isoformat() if hasattr(run, "finished_at") and run.finished_at else None,
+        finished_at=(
+            run.finished_at.isoformat() if hasattr(run, "finished_at") and run.finished_at else None
+        ),
         error_message=run.error_message if hasattr(run, "error_message") else None,
     )
 
@@ -217,12 +223,22 @@ def map_batch_to_summary(batch: BatchJob) -> BatchSummary:
     """Map domain BatchJob to BatchSummary DTO."""
     return BatchSummary(
         batch_id=str(batch.batch_id),
-        analysis_type=batch.analysis_type.value if isinstance(batch.analysis_type, ExecutionAnalysisType) else str(batch.analysis_type),
-        status=batch.status.value if isinstance(batch.status, BatchJobStatus) else str(batch.status),
+        analysis_type=(
+            batch.analysis_type.value
+            if isinstance(batch.analysis_type, ExecutionAnalysisType)
+            else str(batch.analysis_type)
+        ),
+        status=(
+            batch.status.value if isinstance(batch.status, BatchJobStatus) else str(batch.status)
+        ),
         batch_input_hash=batch.batch_input_hash,
         scenario_count=len(batch.scenario_ids),
         run_count=len(batch.run_ids),
-        created_at=batch.created_at.isoformat() if hasattr(batch, "created_at") and batch.created_at else "",
+        created_at=(
+            batch.created_at.isoformat()
+            if hasattr(batch, "created_at") and batch.created_at
+            else ""
+        ),
         errors=tuple(batch.errors) if hasattr(batch, "errors") and batch.errors else (),
     )
 
@@ -340,7 +356,7 @@ def build_workspace_projection(
     )
 
     # PR-23: Metadata with deterministic timestamp
-    now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now_utc = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     metadata = ProjectionMetadata(
         projection_version=PROJECTION_VERSION,
         created_utc=now_utc,

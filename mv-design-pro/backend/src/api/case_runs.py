@@ -24,15 +24,14 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 from uuid import UUID, uuid4
 
+from api.dependencies import get_uow_factory
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-
-from api.dependencies import get_uow_factory
 
 logger = logging.getLogger("mv_design_pro.case_runs")
 
@@ -247,7 +246,7 @@ def _compute_input_hash(params: dict[str, Any]) -> str:
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _store_run(
@@ -529,11 +528,7 @@ def list_case_runs(
     case_id_str = str(parsed_case_id)
 
     # Filter runs belonging to this case
-    matching = [
-        record
-        for record in _case_runs_store.values()
-        if record["case_id"] == case_id_str
-    ]
+    matching = [record for record in _case_runs_store.values() if record["case_id"] == case_id_str]
 
     # Apply optional filters
     if analysis_type is not None:

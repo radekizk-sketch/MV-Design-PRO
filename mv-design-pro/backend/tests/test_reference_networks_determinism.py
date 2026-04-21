@@ -7,7 +7,7 @@ Zgodnie z wymaganiami:
 - stabilnosc identyfikatorow
 - stabilnosc snapshot_hash
 """
-import pytest
+
 import hashlib
 import json
 from typing import Any
@@ -33,9 +33,9 @@ class TestGoldenNetworkDeterminism:
 
         for i in range(99):
             result = build_gn01_sn_promieniowa()
-            assert result["snapshot_hash"] == first_hash, (
-                f"GN_01 snapshot_hash mismatch on iteration {i+2}"
-            )
+            assert (
+                result["snapshot_hash"] == first_hash
+            ), f"GN_01 snapshot_hash mismatch on iteration {i+2}"
 
     def test_gn02_determinism_100x(self):
         """GN_02 produces identical snapshot_hash across 100 builds."""
@@ -46,9 +46,9 @@ class TestGoldenNetworkDeterminism:
 
         for i in range(99):
             result = build_gn02_sn_odgalezienie()
-            assert result["snapshot_hash"] == first_hash, (
-                f"GN_02 snapshot_hash mismatch on iteration {i+2}"
-            )
+            assert (
+                result["snapshot_hash"] == first_hash
+            ), f"GN_02 snapshot_hash mismatch on iteration {i+2}"
 
     def test_gn03_determinism_100x(self):
         """GN_03 produces identical snapshot_hash across 100 builds."""
@@ -59,9 +59,9 @@ class TestGoldenNetworkDeterminism:
 
         for i in range(99):
             result = build_gn03_sn_pierscien()
-            assert result["snapshot_hash"] == first_hash, (
-                f"GN_03 snapshot_hash mismatch on iteration {i+2}"
-            )
+            assert (
+                result["snapshot_hash"] == first_hash
+            ), f"GN_03 snapshot_hash mismatch on iteration {i+2}"
 
     def test_gn04_determinism_100x(self):
         """GN_04 produces identical snapshot_hash across 100 builds."""
@@ -72,9 +72,9 @@ class TestGoldenNetworkDeterminism:
 
         for i in range(99):
             result = build_gn04_sn_nn_oze()
-            assert result["snapshot_hash"] == first_hash, (
-                f"GN_04 snapshot_hash mismatch on iteration {i+2}"
-            )
+            assert (
+                result["snapshot_hash"] == first_hash
+            ), f"GN_04 snapshot_hash mismatch on iteration {i+2}"
 
     def test_gn05_determinism_100x(self):
         """GN_05 produces identical snapshot_hash across 100 builds."""
@@ -85,9 +85,9 @@ class TestGoldenNetworkDeterminism:
 
         for i in range(99):
             result = build_gn05_sn_nn_oze_ochrona()
-            assert result["snapshot_hash"] == first_hash, (
-                f"GN_05 snapshot_hash mismatch on iteration {i+2}"
-            )
+            assert (
+                result["snapshot_hash"] == first_hash
+            ), f"GN_05 snapshot_hash mismatch on iteration {i+2}"
 
 
 class TestGoldenNetworkCompleteness:
@@ -95,6 +95,7 @@ class TestGoldenNetworkCompleteness:
 
     def test_gn01_has_correct_elements(self):
         from tests.reference_networks.builders import build_gn01_sn_promieniowa
+
         gn = build_gn01_sn_promieniowa()
         enm = gn["enm"]
         assert len(enm["sources"]) >= 1, "GN_01 must have at least 1 source"
@@ -103,6 +104,7 @@ class TestGoldenNetworkCompleteness:
 
     def test_gn02_has_branch(self):
         from tests.reference_networks.builders import build_gn02_sn_odgalezienie
+
         gn = build_gn02_sn_odgalezienie()
         enm = gn["enm"]
         assert len(enm["sources"]) >= 1
@@ -110,32 +112,37 @@ class TestGoldenNetworkCompleteness:
 
     def test_gn03_has_ring_structure(self):
         from tests.reference_networks.builders import build_gn03_sn_pierscien
+
         gn = build_gn03_sn_pierscien()
         enm = gn["enm"]
         assert len(enm["buses"]) >= 4
 
     def test_gn04_has_oze(self):
         from tests.reference_networks.builders import build_gn04_sn_nn_oze
+
         gn = build_gn04_sn_nn_oze()
         enm = gn["enm"]
         # Should have nN sources (PV, BESS) stored as generators
-        generators = enm.get("generators", [])
+        enm.get("generators", [])
         # May be stored in different location depending on implementation
         assert gn["operations_count"] == 5
 
     def test_gn05_has_protection(self):
         from tests.reference_networks.builders import build_gn05_sn_nn_oze_ochrona
+
         gn = build_gn05_sn_nn_oze_ochrona()
         assert gn["operations_count"] == 8
 
     def test_all_networks_have_unique_hashes(self):
         from tests.reference_networks.builders import build_all_golden_networks
+
         networks = build_all_golden_networks()
         hashes = [n["snapshot_hash"] for n in networks]
         assert len(set(hashes)) == len(hashes), "Golden networks must have unique hashes"
 
     def test_all_networks_have_names(self):
         from tests.reference_networks.builders import build_all_golden_networks
+
         networks = build_all_golden_networks()
         names = [n["name"] for n in networks]
         expected = [

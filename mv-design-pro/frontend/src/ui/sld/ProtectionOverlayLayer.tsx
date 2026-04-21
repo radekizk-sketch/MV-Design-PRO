@@ -5,7 +5,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Warstwa nakladkowa jako osobna warstwa (nie modyfikuje modelu)
- * - powerfactory_ui_parity.md: Prezentacja nastaw zabezpieczen
+ * - ui_canonical_parity.md: Prezentacja nastaw zabezpieczen
  *
  * CECHY:
  * - Etykiety nastaw nadpradowych (I>, I>>, czas)

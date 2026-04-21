@@ -16,17 +16,6 @@ Coverage:
 from __future__ import annotations
 
 import pytest
-
-from domain.protection_engine_v1 import (
-    CTRatio,
-    Function50Settings,
-    Function51Settings,
-    IECCurveTypeV1,
-    ProtectionStudyInputV1,
-    RelayV1,
-    TestPoint,
-    execute_protection_v1,
-)
 from domain.protection_coordination_v1 import (
     CoordinationResultV1,
     DuplicatePairIdError,
@@ -37,7 +26,16 @@ from domain.protection_coordination_v1 import (
     SelectivityPairResult,
     compute_coordination_v1,
 )
-
+from domain.protection_engine_v1 import (
+    CTRatio,
+    Function50Settings,
+    Function51Settings,
+    IECCurveTypeV1,
+    ProtectionStudyInputV1,
+    RelayV1,
+    TestPoint,
+    execute_protection_v1,
+)
 
 # =============================================================================
 # FIXTURES
@@ -81,8 +79,7 @@ def _make_relay(
 def _make_test_points(*currents: float) -> tuple[TestPoint, ...]:
     """Create test points from primary currents."""
     return tuple(
-        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c)
-        for i, c in enumerate(currents, 1)
+        TestPoint(point_id=f"tp-{i:02d}", i_a_primary=c) for i, c in enumerate(currents, 1)
     )
 
 
@@ -300,14 +297,20 @@ class TestEdgeCases:
     def test_no_trip_both_relays(self):
         """Current below both pickups → no trip → margin is None."""
         relay1 = _make_relay(
-            "relay-001", "cb-001",
-            ct_primary=400.0, ct_secondary=5.0,
-            f51_pickup=10.0, f51_tms=0.3,  # Very high pickup
+            "relay-001",
+            "cb-001",
+            ct_primary=400.0,
+            ct_secondary=5.0,
+            f51_pickup=10.0,
+            f51_tms=0.3,  # Very high pickup
         )
         relay2 = _make_relay(
-            "relay-002", "cb-002",
-            ct_primary=400.0, ct_secondary=5.0,
-            f51_pickup=10.0, f51_tms=0.5,  # Very high pickup
+            "relay-002",
+            "cb-002",
+            ct_primary=400.0,
+            ct_secondary=5.0,
+            f51_pickup=10.0,
+            f51_tms=0.5,  # Very high pickup
         )
         # Very low current → secondary will be below pickup
         test_points = _make_test_points(100.0)
@@ -336,15 +339,21 @@ class TestEdgeCases:
         """Upstream trips, downstream doesn't → margin is None."""
         # Downstream has very high pickup
         downstream = _make_relay(
-            "relay-001", "cb-001",
-            ct_primary=400.0, ct_secondary=5.0,
-            f51_pickup=50.0, f51_tms=0.3,
+            "relay-001",
+            "cb-001",
+            ct_primary=400.0,
+            ct_secondary=5.0,
+            f51_pickup=50.0,
+            f51_tms=0.3,
         )
         # Upstream has normal pickup
         upstream = _make_relay(
-            "relay-002", "cb-002",
-            ct_primary=400.0, ct_secondary=5.0,
-            f51_pickup=1.0, f51_tms=0.3,
+            "relay-002",
+            "cb-002",
+            ct_primary=400.0,
+            ct_secondary=5.0,
+            f51_pickup=1.0,
+            f51_tms=0.3,
         )
         test_points = _make_test_points(2000.0)
 
@@ -371,12 +380,16 @@ class TestEdgeCases:
     def test_f50_trip_used_when_faster(self):
         """F50 trip time is used when faster than F51."""
         relay1 = _make_relay(
-            "relay-001", "cb-001",
+            "relay-001",
+            "cb-001",
             f51_tms=0.3,
-            f50_enabled=True, f50_pickup=5.0, f50_trip_s=0.05,
+            f50_enabled=True,
+            f50_pickup=5.0,
+            f50_trip_s=0.05,
         )
         relay2 = _make_relay(
-            "relay-002", "cb-002",
+            "relay-002",
+            "cb-002",
             f51_tms=0.5,
             f50_enabled=False,
         )
@@ -613,9 +626,7 @@ class TestPermutationInvariance:
         result_fwd = _run_protection((relay1, relay2), test_points)
         result_rev = _run_protection((relay2, relay1), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
 
         coord_fwd = compute_coordination_v1(pairs=pairs, protection_result=result_fwd)
         coord_rev = compute_coordination_v1(pairs=pairs, protection_result=result_rev)
@@ -639,13 +650,11 @@ class TestNoVerdicts:
 
         result = _run_protection((relay1, relay2), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
 
         coord = compute_coordination_v1(pairs=pairs, protection_result=result)
         result_dict = coord.to_dict()
-        result_json = str(result_dict).lower()
+        str(result_dict).lower()
 
         # No verdict keywords
         forbidden = ["verdict", "status", "pass", "fail", "ok", "warning", "critical"]
@@ -653,9 +662,9 @@ class TestNoVerdicts:
             # Check in pair results (not in trace metadata)
             for pair in result_dict["pairs"]:
                 for mp_dict in pair["margin_points"]:
-                    assert word not in str(mp_dict).lower(), (
-                        f"Forbidden word '{word}' found in margin_points"
-                    )
+                    assert (
+                        word not in str(mp_dict).lower()
+                    ), f"Forbidden word '{word}' found in margin_points"
 
     def test_margin_point_has_only_numerical_fields(self):
         """SelectivityMarginPoint contains only numerical data."""
@@ -666,9 +675,7 @@ class TestNoVerdicts:
             margin_s=0.7,
         )
         d = mp.to_dict()
-        assert set(d.keys()) == {
-            "i_a_primary", "t_upstream_s", "t_downstream_s", "margin_s"
-        }
+        assert set(d.keys()) == {"i_a_primary", "t_upstream_s", "t_downstream_s", "margin_s"}
 
 
 # =============================================================================
@@ -727,9 +734,7 @@ class TestSerialization:
                     pair_id="pair-001",
                     upstream_relay_id="relay-002",
                     downstream_relay_id="relay-001",
-                    margin_points=(
-                        SelectivityMarginPoint(2000.0, 1.302, 0.801, 0.501),
-                    ),
+                    margin_points=(SelectivityMarginPoint(2000.0, 1.302, 0.801, 0.501),),
                 ),
             ),
             deterministic_signature="a" * 64,
@@ -755,9 +760,7 @@ class TestWhiteBoxTrace:
 
         result = _run_protection((relay1, relay2), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
 
         coord = compute_coordination_v1(pairs=pairs, protection_result=result)
         trace = coord.pairs[0].trace
@@ -774,9 +777,7 @@ class TestWhiteBoxTrace:
 
         result = _run_protection((relay1, relay2), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
 
         coord = compute_coordination_v1(pairs=pairs, protection_result=result)
         trace = coord.pairs[0].trace
@@ -794,9 +795,7 @@ class TestWhiteBoxTrace:
 
         result = _run_protection((relay1, relay2), test_points)
 
-        pairs = (
-            ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),
-        )
+        pairs = (ProtectionSelectivityPair("pair-001", "relay-002", "relay-001"),)
 
         coord = compute_coordination_v1(pairs=pairs, protection_result=result)
         trace = coord.pairs[0].trace

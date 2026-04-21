@@ -7,15 +7,15 @@ Zgodnie z architektura CLAUDE.md:
 - Nie wykonuje obliczen fizycznych
 - Uzywa gotowych wynikow Power Flow
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
-    from network_model.core.snapshot import NetworkSnapshot
 
 
 class ViolationType(Enum):
@@ -44,13 +44,13 @@ class VoltageViolation:
     bus_id: str
     bus_name: str
     voltage_pu: float
-    voltage_kv: Optional[float]
+    voltage_kv: float | None
     limit_min_pu: float
     limit_max_pu: float
     violation_type: ViolationType
     deviation_percent: float
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializacja do JSON."""
         return {
             "bus_id": self.bus_id,
@@ -83,12 +83,12 @@ class VoltageViolationsResult:
     violations_count: int
     undervoltage_count: int
     overvoltage_count: int
-    violations: Tuple[VoltageViolation, ...]
-    worst_undervoltage: Optional[VoltageViolation]
-    worst_overvoltage: Optional[VoltageViolation]
+    violations: tuple[VoltageViolation, ...]
+    worst_undervoltage: VoltageViolation | None
+    worst_overvoltage: VoltageViolation | None
     all_within_limits: bool
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializacja do JSON."""
         return {
             "total_buses": self.total_buses,
@@ -97,14 +97,10 @@ class VoltageViolationsResult:
             "overvoltage_count": self.overvoltage_count,
             "violations": [v.to_dict() for v in self.violations],
             "worst_undervoltage": (
-                self.worst_undervoltage.to_dict()
-                if self.worst_undervoltage
-                else None
+                self.worst_undervoltage.to_dict() if self.worst_undervoltage else None
             ),
             "worst_overvoltage": (
-                self.worst_overvoltage.to_dict()
-                if self.worst_overvoltage
-                else None
+                self.worst_overvoltage.to_dict() if self.worst_overvoltage else None
             ),
             "all_within_limits": self.all_within_limits,
         }
@@ -124,9 +120,9 @@ class BusInfo:
 
     bus_id: str
     bus_name: str
-    u_nom_kv: Optional[float] = None
-    u_min_pu: Optional[float] = None
-    u_max_pu: Optional[float] = None
+    u_nom_kv: float | None = None
+    u_min_pu: float | None = None
+    u_max_pu: float | None = None
 
 
 class VoltageViolationsDetector:
@@ -161,9 +157,9 @@ class VoltageViolationsDetector:
 
     def detect(
         self,
-        pf_result: "PowerFlowResultV1",
-        bus_info: Optional[Dict[str, BusInfo]] = None,
-        custom_limits: Optional[Dict[str, Tuple[float, float]]] = None,
+        pf_result: PowerFlowResultV1,
+        bus_info: dict[str, BusInfo] | None = None,
+        custom_limits: dict[str, tuple[float, float]] | None = None,
     ) -> VoltageViolationsResult:
         """
         Sprawdza naruszenia napiec.
@@ -182,7 +178,7 @@ class VoltageViolationsDetector:
         Returns:
             VoltageViolationsResult z lista naruszen.
         """
-        violations: List[VoltageViolation] = []
+        violations: list[VoltageViolation] = []
 
         for bus in pf_result.bus_results:
             umin, umax = self._get_limits(bus.bus_id, bus_info, custom_limits)
@@ -220,9 +216,9 @@ class VoltageViolationsDetector:
 
     def detect_from_dict(
         self,
-        bus_voltages: Dict[str, float],
-        bus_info: Optional[Dict[str, BusInfo]] = None,
-        custom_limits: Optional[Dict[str, Tuple[float, float]]] = None,
+        bus_voltages: dict[str, float],
+        bus_info: dict[str, BusInfo] | None = None,
+        custom_limits: dict[str, tuple[float, float]] | None = None,
     ) -> VoltageViolationsResult:
         """
         Alternatywna metoda - sprawdza naruszenia z surowego slownika napiec.
@@ -237,7 +233,7 @@ class VoltageViolationsDetector:
         Returns:
             VoltageViolationsResult z lista naruszen.
         """
-        violations: List[VoltageViolation] = []
+        violations: list[VoltageViolation] = []
 
         for bus_id, v_pu in sorted(bus_voltages.items()):
             umin, umax = self._get_limits(bus_id, bus_info, custom_limits)
@@ -277,9 +273,9 @@ class VoltageViolationsDetector:
     def _get_limits(
         self,
         bus_id: str,
-        bus_info: Optional[Dict[str, BusInfo]],
-        custom_limits: Optional[Dict[str, Tuple[float, float]]],
-    ) -> Tuple[float, float]:
+        bus_info: dict[str, BusInfo] | None,
+        custom_limits: dict[str, tuple[float, float]] | None,
+    ) -> tuple[float, float]:
         """Pobiera limity dla wezla.
 
         Priorytet: custom_limits > bus_info > default
@@ -300,7 +296,7 @@ class VoltageViolationsDetector:
     def _get_bus_name(
         self,
         bus_id: str,
-        bus_info: Optional[Dict[str, BusInfo]],
+        bus_info: dict[str, BusInfo] | None,
     ) -> str:
         """Pobiera nazwe wezla."""
         if bus_info and bus_id in bus_info:
@@ -311,8 +307,8 @@ class VoltageViolationsDetector:
         self,
         bus_id: str,
         v_pu: float,
-        bus_info: Optional[Dict[str, BusInfo]],
-    ) -> Optional[float]:
+        bus_info: dict[str, BusInfo] | None,
+    ) -> float | None:
         """Oblicza napiecie w kV jesli znane U_nom."""
         if bus_info and bus_id in bus_info:
             info = bus_info[bus_id]
@@ -322,8 +318,8 @@ class VoltageViolationsDetector:
 
     def _build_result(
         self,
-        pf_result: "PowerFlowResultV1",
-        violations: List[VoltageViolation],
+        pf_result: PowerFlowResultV1,
+        violations: list[VoltageViolation],
     ) -> VoltageViolationsResult:
         """Buduje wynikowy obiekt."""
         total_buses = len(pf_result.bus_results)
@@ -332,18 +328,14 @@ class VoltageViolationsDetector:
     def _build_result_from_violations(
         self,
         total_buses: int,
-        violations: List[VoltageViolation],
+        violations: list[VoltageViolation],
     ) -> VoltageViolationsResult:
         """Buduje VoltageViolationsResult z listy naruszen."""
-        undervoltages = [
-            v for v in violations if v.violation_type == ViolationType.UNDERVOLTAGE
-        ]
-        overvoltages = [
-            v for v in violations if v.violation_type == ViolationType.OVERVOLTAGE
-        ]
+        undervoltages = [v for v in violations if v.violation_type == ViolationType.UNDERVOLTAGE]
+        overvoltages = [v for v in violations if v.violation_type == ViolationType.OVERVOLTAGE]
 
-        worst_under: Optional[VoltageViolation] = None
-        worst_over: Optional[VoltageViolation] = None
+        worst_under: VoltageViolation | None = None
+        worst_over: VoltageViolation | None = None
 
         if undervoltages:
             worst_under = min(undervoltages, key=lambda v: v.voltage_pu)

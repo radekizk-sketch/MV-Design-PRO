@@ -5,8 +5,8 @@
  * - sld_rules.md SS A.1: Bijection: Symbol <-> Model Object
  * - sld_rules.md SS E.1: Selection patterns (deterministic ordering)
  * - sld_rules.md SS G.1: SLD <-> Wizard synchronization
- * - wizard_screens.md SS 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
- * - powerfactory_ui_parity.md SS A: Mode-based gating
+ * - wizard_screens.md SS 1.2: Operating modes (MODEL_EDIT, RESULT_VIEW)
+ * - ui_canonical_parity.md SS A: Mode-based gating
  * - UI_CORE_ARCHITECTURE.md SS 4.3: Deterministic URL encoding
  *
  * These tests verify the FRONTEND ARCHITECTURE INVARIANTS:
@@ -342,25 +342,26 @@ describe('Wizard/SLD Unity: Mode Gating', () => {
     expect(state.isCaseConfigEditable()).toBe(false);
   });
 
-  it('CASE_CONFIG mode blocks model edits but allows case config', () => {
+  it('CASE_CONFIG compatibility input normalizes to MODEL_EDIT runtime', () => {
     const store = useAppStateStore.getState();
     store.setActiveMode('CASE_CONFIG');
 
     const state = useAppStateStore.getState();
-    expect(state.isModelEditable()).toBe(false);
+    expect(state.activeMode).toBe('MODEL_EDIT');
+    expect(state.isModelEditable()).toBe(true);
     expect(state.isCaseConfigEditable()).toBe(true);
     expect(state.isReadOnly()).toBe(false);
   });
 
-  it('mode transitions work correctly through all modes', () => {
+  it('mode transitions work correctly through compatibility input and runtime modes', () => {
     const store = useAppStateStore.getState();
 
     // Start in MODEL_EDIT (default)
     expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
 
-    // Transition to CASE_CONFIG
+    // Compatibility input normalizes to MODEL_EDIT
     store.setActiveMode('CASE_CONFIG');
-    expect(useAppStateStore.getState().activeMode).toBe('CASE_CONFIG');
+    expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
 
     // Transition to RESULT_VIEW
     store.setActiveMode('RESULT_VIEW');
@@ -382,7 +383,7 @@ describe('Wizard/SLD Unity: Mode Gating', () => {
     expect(useSelectionStore.getState().mode).toBe('RESULT_VIEW');
 
     selStore.setMode('CASE_CONFIG');
-    expect(useSelectionStore.getState().mode).toBe('CASE_CONFIG');
+    expect(useSelectionStore.getState().mode).toBe('MODEL_EDIT');
   });
 
   it('entering MODEL_EDIT sets result status to OUTDATED', () => {

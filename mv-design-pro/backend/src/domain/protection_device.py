@@ -26,11 +26,10 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-
 
 # =============================================================================
 # ENUMS
@@ -241,10 +240,26 @@ class OvercurrentProtectionSettings:
         """Deserialize from dictionary."""
         return cls(
             stage_51=OvercurrentStageSettings.from_dict(data["stage_51"]),
-            stage_50=OvercurrentStageSettings.from_dict(data["stage_50"]) if data.get("stage_50") else None,
-            stage_50_high=OvercurrentStageSettings.from_dict(data["stage_50_high"]) if data.get("stage_50_high") else None,
-            stage_51n=OvercurrentStageSettings.from_dict(data["stage_51n"]) if data.get("stage_51n") else None,
-            stage_50n=OvercurrentStageSettings.from_dict(data["stage_50n"]) if data.get("stage_50n") else None,
+            stage_50=(
+                OvercurrentStageSettings.from_dict(data["stage_50"])
+                if data.get("stage_50")
+                else None
+            ),
+            stage_50_high=(
+                OvercurrentStageSettings.from_dict(data["stage_50_high"])
+                if data.get("stage_50_high")
+                else None
+            ),
+            stage_51n=(
+                OvercurrentStageSettings.from_dict(data["stage_51n"])
+                if data.get("stage_51n")
+                else None
+            ),
+            stage_50n=(
+                OvercurrentStageSettings.from_dict(data["stage_50n"])
+                if data.get("stage_50n")
+                else None
+            ),
         )
 
 
@@ -285,7 +300,7 @@ class ProtectionDevice:
     location_description: str | None = None
     ct_ratio: str | None = None
     rated_current_a: float | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -317,7 +332,11 @@ class ProtectionDevice:
             settings=OvercurrentProtectionSettings.from_dict(data["settings"]),
             ct_ratio=data.get("ct_ratio"),
             rated_current_a=float(data["rated_current_a"]) if data.get("rated_current_a") else None,
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -518,7 +537,7 @@ class ProtectionCoordinationResult:
     overload_checks: tuple[OverloadCheck, ...]
     overall_verdict: CoordinationVerdict
     summary: dict[str, Any]
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -530,7 +549,9 @@ class ProtectionCoordinationResult:
             "selectivity_checks": [c.to_dict() for c in self.selectivity_checks],
             "overload_checks": [c.to_dict() for c in self.overload_checks],
             "overall_verdict": self.overall_verdict.value,
-            "overall_verdict_pl": VERDICT_LABELS_PL.get(self.overall_verdict.value, self.overall_verdict.value),
+            "overall_verdict_pl": VERDICT_LABELS_PL.get(
+                self.overall_verdict.value, self.overall_verdict.value
+            ),
             "summary": self.summary,
             "created_at": self.created_at.isoformat(),
         }
@@ -580,7 +601,11 @@ class ProtectionCoordinationResult:
             ),
             overall_verdict=CoordinationVerdict(data["overall_verdict"]),
             summary=data.get("summary", {}),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 

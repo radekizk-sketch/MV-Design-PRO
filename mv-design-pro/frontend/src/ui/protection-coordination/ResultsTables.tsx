@@ -6,7 +6,7 @@
  * CANONICAL ALIGNMENT:
  * - 100% Polish labels
  * - READ-ONLY views of backend data
- * - PowerFactory parity UX
+ * - Canonical parity UX
  *
  * UWAGA: Komunikaty werdyktów UI:
  * - PASS → "Zgodne"

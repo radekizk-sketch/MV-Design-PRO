@@ -1,4 +1,10 @@
-# Rozdział 12 — Walidacje Systemowe, QA, Reguły Blokujące (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 12 — Walidacje Systemowe, QA, Reguły Blokujące (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -36,9 +42,9 @@ Walidacja:
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### §12.0.3 Parytet ETAP / PowerFactory
+### §12.0.3 Parytet benchmark / benchmark
 
-| Funkcja | ETAP | PowerFactory | MV-DESIGN-PRO |
+| Funkcja | benchmark | benchmark | MV-DESIGN-PRO |
 |---------|------|--------------|---------------|
 | Pre-solver validation gate | ✓ | ✓ (Check Network Data) | ✓ (ENMValidator + NetworkValidator) |
 | Severity levels | 3 | 3 | 3 (BLOCKER/IMPORTANT/INFO) |
@@ -800,5 +806,6 @@ kanoniczne mapowanie:
 - [ ] API: 5 endpointów AS-IS, 3 TO-BE (wyraźnie oznaczone).
 - [ ] Inwarianty INV-VAL-01..12, zakazy Z-VAL-01..05.
 - [ ] Mapowanie na kod: 30+ komponentów z pełnymi ścieżkami.
-- [ ] Parytet ETAP / PowerFactory osiągnięty.
+- [ ] Parytet benchmark / benchmark osiągnięty.
 - [ ] Decyzje #94–#101 zapisane w AUDIT_SPEC_VS_CODE.md.
+

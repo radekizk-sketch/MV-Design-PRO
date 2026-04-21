@@ -1,45 +1,45 @@
-# Application Layer — Orkiestracja i Workflow
+﻿# Application Layer â€” Orkiestracja i Workflow
 
 ## 1. Lokalizacja
 
 ```
 backend/src/application/
-├── network_wizard/
-│   ├── service.py              # NetworkWizardService
-│   ├── dtos.py                 # DTO (payloads, inputs)
-│   ├── errors.py               # NotFound, Conflict, ValidationFailed
-│   ├── importers/              # JSON/CSV importers
-│   └── exporters/              # JSON exporter
-│
-├── analysis_run/
-│   └── service.py              # AnalysisRunService
-│
-└── sld/
-    ├── layout.py               # Auto-layout SLD
-    └── overlay.py              # Budowanie nakładek wyników
+â”śâ”€â”€ network_wizard/
+â”‚   â”śâ”€â”€ service.py              # NetworkWizardService
+â”‚   â”śâ”€â”€ dtos.py                 # DTO (payloads, inputs)
+â”‚   â”śâ”€â”€ errors.py               # NotFound, Conflict, ValidationFailed
+â”‚   â”śâ”€â”€ importers/              # JSON/CSV importers
+â”‚   â””â”€â”€ exporters/              # JSON exporter
+â”‚
+â”śâ”€â”€ analysis_run/
+â”‚   â””â”€â”€ service.py              # AnalysisRunService
+â”‚
+â””â”€â”€ sld/
+    â”śâ”€â”€ layout.py               # Auto-layout SLD
+    â””â”€â”€ overlay.py              # Budowanie nakĹ‚adek wynikĂłw
 ```
 
 ## 2. Zasady Warstwy Application
 
-### 2.1 Odpowiedzialność
+### 2.1 OdpowiedzialnoĹ›Ä‡
 
-- **Orkiestracja** - koordynacja operacji między warstwami
+- **Orkiestracja** - koordynacja operacji miÄ™dzy warstwami
 - **Workflow** - sekwencje operacji biznesowych
 - **CRUD** - tworzenie, odczyt, aktualizacja, usuwanie encji
-- **Import/Export** - wymiana danych z zewnętrznymi systemami
-- **Walidacja biznesowa** - sprawdzenie kompletności danych
+- **Import/Export** - wymiana danych z zewnÄ™trznymi systemami
+- **Walidacja biznesowa** - sprawdzenie kompletnoĹ›ci danych
 
 ### 2.2 Zakazy
 
-- **Brak obliczeń fizycznych** - delegowane do solverów
-- **Brak bezpośredniego SQL** - przez UnitOfWork/Repositories
-- **Brak logiki HTTP** - to należy do API layer
+- **Brak obliczeĹ„ fizycznych** - delegowane do solverĂłw
+- **Brak bezpoĹ›redniego SQL** - przez UnitOfWork/Repositories
+- **Brak logiki HTTP** - to naleĹĽy do API layer
 
 ## 3. NetworkWizardService
 
 ### 3.1 Rola
 
-`NetworkWizardService` to główny serwis orkiestracyjny dla zarządzania siecią elektroenergetyczną.
+`NetworkWizardService` to gĹ‚Ăłwny serwis orkiestracyjny dla zarzÄ…dzania sieciÄ… elektroenergetycznÄ….
 
 ### 3.2 Operacje CRUD
 
@@ -52,21 +52,21 @@ update_project(project_id, patch) -> Project
 delete_project(project_id) -> None
 ```
 
-#### Węzły
+#### WÄ™zĹ‚y
 ```python
 add_node(project_id, payload) -> dict
 update_node(project_id, node_id, patch) -> dict
 remove_node(project_id, node_id) -> None
 ```
 
-#### Gałęzie
+#### GaĹ‚Ä™zie
 ```python
 add_branch(project_id, payload) -> dict
 update_branch(project_id, branch_id, patch) -> dict
 remove_branch(project_id, branch_id) -> None
 ```
 
-#### Sources (Źródła)
+#### Sources (ĹąrĂłdĹ‚a)
 ```python
 add_source(project_id, payload) -> dict
 update_source(project_id, source_id, patch) -> dict
@@ -75,7 +75,7 @@ get_sources(project_id) -> list[SourcePayload]
 set_sources(project_id, sources) -> None
 ```
 
-#### Loads (Obciążenia)
+#### Loads (ObciÄ…ĹĽenia)
 ```python
 add_load(project_id, payload) -> dict
 update_load(project_id, load_id, patch) -> dict
@@ -103,12 +103,12 @@ set_limits(project_id, payload) -> None
 get_limits(project_id) -> LimitsPayload
 ```
 
-> **WAŻNE (PowerFactory Alignment):** `set_connection_node()` i `get_connection_node()` obsługują **hint użytkownika**
-> przechowywany w ustawieniach aplikacji/projektu. BoundaryNode – węzeł przyłączenia **NIE**
-> jest przechowywany w NetworkModel/NetworkGraph. Faktyczna identyfikacja BoundaryNode – punktu wspólnego
-> przyłączenia jest wykonywana przez BoundaryIdentifier w warstwie analysis, która może użyć
-> tego hintu jako wejścia.
-> Zobacz SYSTEM_SPEC.md § 18.3.4.
+> **WAĹ»NE (benchmark Alignment):** `set_connection_node()` i `get_connection_node()` obsĹ‚ugujÄ… **hint uĹĽytkownika**
+> przechowywany w ustawieniach aplikacji/projektu. BoundaryNode â€“ wÄ™zeĹ‚ przyĹ‚Ä…czenia **NIE**
+> jest przechowywany w NetworkModel/NetworkGraph. Faktyczna identyfikacja BoundaryNode â€“ punktu wspĂłlnego
+> przyĹ‚Ä…czenia jest wykonywana przez BoundaryIdentifier w warstwie analysis, ktĂłra moĹĽe uĹĽyÄ‡
+> tego hintu jako wejĹ›cia.
+> Zobacz SYSTEM_SPEC.md Â§ 18.3.4.
 
 ### 3.3 Walidacja
 
@@ -117,12 +117,12 @@ validate_network(project_id, case_id=None) -> ValidationReport
 ```
 
 Sprawdza:
-- Istnienie węzłów i gałęzi
-- Poprawność BoundaryNode hint (czy wskazany węzeł istnieje w projekcie)
-- Kompletność sources
-- Kompletność loads
-- Poprawność parametrów gałęzi
-- Istnienie węzła SLACK
+- Istnienie wÄ™zĹ‚Ăłw i gaĹ‚Ä™zi
+- PoprawnoĹ›Ä‡ BoundaryNode hint (czy wskazany wÄ™zeĹ‚ istnieje w projekcie)
+- KompletnoĹ›Ä‡ sources
+- KompletnoĹ›Ä‡ loads
+- PoprawnoĹ›Ä‡ parametrĂłw gaĹ‚Ä™zi
+- Istnienie wÄ™zĹ‚a SLACK
 
 ### 3.4 Budowanie Modelu
 
@@ -133,10 +133,10 @@ build_short_circuit_input(project_id, case_id, fault_spec, options) -> ShortCirc
 ```
 
 Metody te:
-1. Walidują sieć
-2. Pobierają dane z persystencji
-3. Tworzą obiekty core (NetworkGraph)
-4. Stosują specyfikacje nakładek (stany łączeniowe, limity)
+1. WalidujÄ… sieÄ‡
+2. PobierajÄ… dane z persystencji
+3. TworzÄ… obiekty core (NetworkGraph)
+4. StosujÄ… specyfikacje nakĹ‚adek (stany Ĺ‚Ä…czeniowe, limity)
 
 ### 3.5 Import/Export
 
@@ -152,8 +152,8 @@ import_nodes_branches_from_csv(project_id, nodes_csv, branches_csv, mode) -> Imp
 ```
 
 **Tryby importu:**
-- `merge` - łączy z istniejącymi danymi
-- `replace` - zastępuje wszystkie dane
+- `merge` - Ĺ‚Ä…czy z istniejÄ…cymi danymi
+- `replace` - zastÄ™puje wszystkie dane
 
 ### 3.6 SLD
 
@@ -171,14 +171,14 @@ import_sld(project_id, payload) -> UUID
 
 Orkiestracja tworzenia i wykonywania analiz (Power Flow, Short Circuit).
 
-### 4.2 Tworzenie Runów
+### 4.2 Tworzenie RunĂłw
 
 ```python
 create_power_flow_run(project_id, operating_case_id, options) -> AnalysisRun
 create_short_circuit_run(project_id, operating_case_id, fault_spec, options) -> AnalysisRun
 ```
 
-**Determinizm:** Jeśli run z tym samym `input_hash` już istnieje, zwracany jest istniejący.
+**Determinizm:** JeĹ›li run z tym samym `input_hash` juĹĽ istnieje, zwracany jest istniejÄ…cy.
 
 ### 4.3 Wykonywanie
 
@@ -187,14 +187,14 @@ execute_run(run_id) -> AnalysisRun
 ```
 
 Logika:
-1. Sprawdź status (nie wykonuj jeśli już RUNNING/FINISHED/FAILED)
-2. Zwaliduj dane wejściowe
+1. SprawdĹş status (nie wykonuj jeĹ›li juĹĽ RUNNING/FINISHED/FAILED)
+2. Zwaliduj dane wejĹ›ciowe
 3. Ustaw status RUNNING
-4. Wywołaj odpowiedni solver
+4. WywoĹ‚aj odpowiedni solver
 5. Zapisz wyniki
 6. Ustaw status FINISHED lub FAILED
 
-### 4.4 Odczyt Wyników
+### 4.4 Odczyt WynikĂłw
 
 ```python
 get_run(run_id) -> AnalysisRun
@@ -261,43 +261,43 @@ class ShortCircuitInput:
 ```
 
 > **Uwaga:** `connection_node_id` w ShortCircuitInput to parametr warstwy application
-> (hint użytkownika z ustawień projektu), a nie pole z NetworkGraph.
-> NetworkGraph NIE zawiera BoundaryNode – punktu wspólnego przyłączenia (zobacz SYSTEM_SPEC.md § 18.3.4).
+> (hint uĹĽytkownika z ustawieĹ„ projektu), a nie pole z NetworkGraph.
+> NetworkGraph NIE zawiera BoundaryNode â€“ punktu wspĂłlnego przyĹ‚Ä…czenia (zobacz SYSTEM_SPEC.md Â§ 18.3.4).
 
-> **Terminology:** Bus to kanoniczny termin PowerFactory. `NodePayload` pozostaje
-> kompatybilnym aliasem wewnętrznym, a API akceptuje zarówno `bus_type`, jak i `node_type`.
-> Pola `node_id` / `from_node_id` / `to_node_id` pozostają bez zmian dla kompatybilności.
+> **Terminology:** Bus to kanoniczny termin benchmark. `NodePayload` pozostaje
+> kompatybilnym aliasem wewnÄ™trznym, a API akceptuje zarĂłwno `bus_type`, jak i `node_type`.
+> Pola `node_id` / `from_node_id` / `to_node_id` pozostajÄ… bez zmian dla kompatybilnoĹ›ci.
 
-## 6. Błędy
+## 6. BĹ‚Ä™dy
 
 ### 6.1 Lokalizacja
 
 `application/network_wizard/errors.py`
 
-### 6.2 Typy Błędów
+### 6.2 Typy BĹ‚Ä™dĂłw
 
 ```python
 class NotFound(Exception):
-    """Zasób nie znaleziony"""
+    """ZasĂłb nie znaleziony"""
     pass
 
 class Conflict(Exception):
-    """Konflikt operacji (np. usuwanie węzła z gałęziami)"""
+    """Konflikt operacji (np. usuwanie wÄ™zĹ‚a z gaĹ‚Ä™ziami)"""
     pass
 
 class ValidationFailed(Exception):
-    """Walidacja nie powiodła się"""
+    """Walidacja nie powiodĹ‚a siÄ™"""
     def __init__(self, report: ValidationReport):
         self.report = report
 ```
 
-## 7. Workflow - Przykłady
+## 7. Workflow - PrzykĹ‚ady
 
 ### 7.1 Tworzenie Sieci
 
 ```python
-# 1. Utwórz projekt
-project = service.create_project("Sieć SN Centrum")
+# 1. UtwĂłrz projekt
+project = service.create_project("SieÄ‡ SN Centrum")
 
 # 2. Dodaj busy (legacy: nodes)
 slack = service.add_node(project.id, BusPayload(
@@ -307,7 +307,7 @@ slack = service.add_node(project.id, BusPayload(
     attrs={"voltage_magnitude_pu": 1.0, "voltage_angle_rad": 0.0}
 ))
 
-# 3. Dodaj gałęzie
+# 3. Dodaj gaĹ‚Ä™zie
 line = service.add_branch(project.id, BranchPayload(
     name="Linia 110kV",
     branch_type="LINE",
@@ -316,7 +316,7 @@ line = service.add_branch(project.id, BranchPayload(
     params={"r_ohm_per_km": 0.05, "x_ohm_per_km": 0.4, "length_km": 50}
 ))
 
-# 4. Ustaw hint BoundaryNode – punktu wspólnego przyłączenia (warstwa application, NIE w NetworkModel)
+# 4. Ustaw hint BoundaryNode â€“ punktu wspĂłlnego przyĹ‚Ä…czenia (warstwa application, NIE w NetworkModel)
 service.set_connection_node(project.id, slack["id"])  # Stores hint in project settings
 
 # 5. Dodaj source
@@ -333,12 +333,12 @@ report = service.validate_network(project.id)
 ### 7.2 Wykonanie Analizy
 
 ```python
-# 1. Utwórz operating case
+# 1. UtwĂłrz operating case
 case = service.create_operating_case(project.id, "Przypadek bazowy", {
     "base_mva": 100.0
 })
 
-# 2. Utwórz run
+# 2. UtwĂłrz run
 run = analysis_service.create_power_flow_run(
     project.id,
     case.id,
@@ -352,23 +352,24 @@ run = analysis_service.execute_run(run.id)
 results = analysis_service.get_results(run.id)
 ```
 
-## 8. Granice Odpowiedzialności
+## 8. Granice OdpowiedzialnoĹ›ci
 
-| Funkcjonalność           | Application (TAK)    | Application (NIE)       |
+| FunkcjonalnoĹ›Ä‡           | Application (TAK)    | Application (NIE)       |
 |--------------------------|----------------------|------------------------|
-| CRUD encji               | ✓                    |                        |
-| Walidacja biznesowa      | ✓                    |                        |
-| Orkiestracja workflow    | ✓                    |                        |
-| Import/Export            | ✓                    |                        |
-| Budowanie NetworkGraph   | ✓                    |                        |
-| Obliczenia fizyczne      |                      | ✗ (Solvers)            |
-| SQL/ORM                  |                      | ✗ (Infrastructure)     |
-| HTTP/REST                |                      | ✗ (API)                |
-| Logika OSD               |                      | ✗ (nie zaimplementowane)|
+| CRUD encji               | âś“                    |                        |
+| Walidacja biznesowa      | âś“                    |                        |
+| Orkiestracja workflow    | âś“                    |                        |
+| Import/Export            | âś“                    |                        |
+| Budowanie NetworkGraph   | âś“                    |                        |
+| Obliczenia fizyczne      |                      | âś— (Solvers)            |
+| SQL/ORM                  |                      | âś— (Infrastructure)     |
+| HTTP/REST                |                      | âś— (API)                |
+| Logika OSD               |                      | âś— (nie zaimplementowane)|
 
-## 9. Powiązane Dokumenty
+## 9. PowiÄ…zane Dokumenty
 
 - [01-Core.md](./01-Core.md) - model budowany przez application
-- [02-Solvers.md](./02-Solvers.md) - solvery wywoływane przez application
+- [02-Solvers.md](./02-Solvers.md) - solvery wywoĹ‚ywane przez application
 - [03-Analyses.md](./03-Analyses.md) - logika analityczna
 - [ADR-002](./adr/ADR-002-network-wizard-service.md) - uzasadnienie architektury
+

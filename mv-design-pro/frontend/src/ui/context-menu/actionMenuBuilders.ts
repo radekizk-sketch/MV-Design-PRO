@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rich Action Menu Builders — pełne menu kontekstowe A–AZ.
  *
  * CANONICAL ALIGNMENT:
@@ -13,6 +13,7 @@
  * - Brak domyślnych wartości liczbowych.
  */
 
+import { normalizeOperatingMode } from '../operatingMode';
 import type { ContextMenuAction, OperatingMode } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -26,15 +27,23 @@ function sep(id: string): ContextMenuAction {
 function action(
   id: string,
   label: string,
-  opts: { enabled?: boolean; handler?: () => void; submenu?: ContextMenuAction[] } = {},
+  opts: {
+    actionKey?: string;
+    enabled?: boolean;
+    handler?: () => void;
+    submenu?: ContextMenuAction[];
+    initialFormData?: Record<string, unknown>;
+  } = {},
 ): ContextMenuAction {
   return {
     id,
+    actionKey: opts.actionKey,
     label,
     enabled: opts.enabled ?? true,
     visible: true,
     handler: opts.handler,
     submenu: opts.submenu,
+    initialFormData: opts.initialFormData,
   };
 }
 
@@ -51,6 +60,7 @@ export function buildSourceSNContextMenu(
   return [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości...', { handler: handlers.onProperties }),
     sep('s1'),
+    action('open_gpz_fields', 'Otwórz pola GPZ i dodaj pole SN...', { handler: handlers.onOpenGpzFields }),
     action('edit_sk3', 'Zmień moc zwarciową Sk″ (MVA)...', { enabled: edit, handler: handlers.onEditSk3 }),
     action('edit_voltage', 'Zmień napięcie zasilania (kV)...', { enabled: edit, handler: handlers.onEditVoltage }),
     action('edit_rx', 'Zmień stosunek R/X...', { enabled: edit, handler: handlers.onEditRx }),
@@ -59,7 +69,7 @@ export function buildSourceSNContextMenu(
     sep('s2'),
     action('show_readiness', 'Pokaż gotowość źródła...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki na źródle...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s3'),
@@ -74,6 +84,65 @@ export function buildSourceSNContextMenu(
 // B) Szyna SN — buildBusSNContextMenu (rozszerzony)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// G2/G3) Obiekty pośrednie SN — słup rozgałęźny i ZKSN
+// ---------------------------------------------------------------------------
+
+export function buildBranchPoleContextMenu(
+  mode: OperatingMode,
+  handlers: Record<string, (() => void) | undefined> = {},
+): ContextMenuAction[] {
+  const edit = mode === 'MODEL_EDIT';
+  const result = mode === 'RESULT_VIEW';
+  return [
+    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości słupa rozgałęźnego...', { handler: handlers.onProperties }),
+    sep('s1'),
+    action('start_branch_segment_sn', 'Rozpocznij odgałęzienie...', {
+      enabled: edit,
+      handler: handlers.onAddBranch,
+      actionKey: 'branch_pole_add_branch',
+    }),
+    action('assign_catalog', 'Przypisz katalog słupa lub aparatu...', { enabled: edit, handler: handlers.onAssignCatalog }),
+    sep('s2'),
+    action('show_readiness', 'Pokaż gotowość słupa...', { handler: handlers.onShowReadiness }),
+    action('show_results', 'Pokaż wyniki słupa...', { enabled: result, handler: handlers.onShowResults }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
+    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
+    sep('s3'),
+    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
+    sep('s4'),
+    action('delete', 'Usuń słup rozgałęźny...', { enabled: edit, handler: handlers.onDelete }),
+  ];
+}
+
+export function buildZksnContextMenu(
+  mode: OperatingMode,
+  handlers: Record<string, (() => void) | undefined> = {},
+): ContextMenuAction[] {
+  const edit = mode === 'MODEL_EDIT';
+  const result = mode === 'RESULT_VIEW';
+  return [
+    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości ZKSN...', { handler: handlers.onProperties }),
+    sep('s1'),
+    action('start_branch_segment_sn', 'Rozpocznij odgałęzienie z portu bocznego...', {
+      enabled: edit,
+      handler: handlers.onAddBranch,
+      actionKey: 'zksn_add_branch',
+    }),
+    action('assign_catalog', 'Przypisz katalog ZKSN...', { enabled: edit, handler: handlers.onAssignCatalog }),
+    sep('s2'),
+    action('show_readiness', 'Pokaż gotowość ZKSN...', { handler: handlers.onShowReadiness }),
+    action('show_results', 'Pokaż wyniki ZKSN...', { enabled: result, handler: handlers.onShowResults }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
+    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
+    sep('s3'),
+    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
+    sep('s4'),
+    action('delete', 'Usuń ZKSN...', { enabled: edit, handler: handlers.onDelete }),
+  ];
+}
 export function buildBusSNContextMenu(
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
@@ -83,12 +152,16 @@ export function buildBusSNContextMenu(
   return [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości...', { handler: handlers.onProperties }),
     sep('s1'),
-    action('add_line', 'Dodaj linię/kabel...', { enabled: edit, handler: handlers.onAddLine }),
-    action('add_transformer', 'Dodaj transformator...', { enabled: edit, handler: handlers.onAddTransformer }),
-    action('add_breaker', 'Dodaj wyłącznik...', { enabled: edit, handler: handlers.onAddBreaker }),
-    action('add_disconnector', 'Dodaj rozłącznik...', { enabled: edit, handler: handlers.onAddDisconnector }),
-    action('add_source', 'Dodaj źródło...', { enabled: edit, handler: handlers.onAddSource }),
-    action('add_load', 'Dodaj odbiornik...', { enabled: edit, handler: handlers.onAddLoad }),
+    action('add_sn_bay', 'Dodaj pole SN z wyłącznikiem...', {
+      enabled: edit,
+      handler: handlers.onAddBreaker,
+      actionKey: 'bus_sn_add_breaker',
+    }),
+    action('add_sn_bay', 'Dodaj pole SN z rozłącznikiem...', {
+      enabled: edit,
+      handler: handlers.onAddDisconnector,
+      actionKey: 'bus_sn_add_disconnector',
+    }),
     action('add_ct', 'Dodaj przekładnik prądowy...', { enabled: edit, handler: handlers.onAddCT }),
     action('add_vt', 'Dodaj przekładnik napięciowy...', { enabled: edit, handler: handlers.onAddVT }),
     sep('s2'),
@@ -98,7 +171,7 @@ export function buildBusSNContextMenu(
     sep('s3'),
     action('show_readiness', 'Pokaż gotowość szyny...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki na szynie...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s4'),
@@ -123,12 +196,31 @@ export function buildStationContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości stacji...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Pola SN (1-6) ---
-    action('add_sn_field_in', 'Dodaj pole SN liniowe IN...', { enabled: edit, handler: handlers.onAddSNFieldIN }),
-    action('add_sn_field_out', 'Dodaj pole SN liniowe OUT...', { enabled: edit, handler: handlers.onAddSNFieldOUT }),
-    action('add_sn_field_branch', 'Dodaj pole SN odgałęźne...', { enabled: edit, handler: handlers.onAddSNFieldBranch }),
-    action('add_sn_field_tr', 'Dodaj pole transformatorowe...', { enabled: edit, handler: handlers.onAddSNFieldTR }),
-    action('add_sn_bus_section', 'Dodaj sekcję szyn SN...', { enabled: edit, handler: handlers.onAddSNBusSection }),
-    action('add_sn_coupler', 'Dodaj sprzęgło SN...', { enabled: edit, handler: handlers.onAddSNCoupler }),
+    action('add_sn_bay', 'Dodaj pole SN liniowe IN...', {
+      enabled: edit,
+      handler: handlers.onAddSNFieldIN,
+      actionKey: 'station_add_sn_field_in',
+    }),
+    action('add_sn_bay', 'Dodaj pole SN liniowe OUT...', {
+      enabled: edit,
+      handler: handlers.onAddSNFieldOUT,
+      actionKey: 'station_add_sn_field_out',
+    }),
+    action('add_sn_bay', 'Dodaj pole SN odgałęźne...', {
+      enabled: edit,
+      handler: handlers.onAddSNFieldBranch,
+      actionKey: 'station_add_sn_field_branch',
+    }),
+    action('add_sn_bay', 'Dodaj pole transformatorowe...', {
+      enabled: edit,
+      handler: handlers.onAddSNFieldTR,
+      actionKey: 'station_add_sn_field_tr',
+    }),
+    action('add_sn_bay', 'Dodaj sprzęgło SN...', {
+      enabled: edit,
+      handler: handlers.onAddSNCoupler,
+      actionKey: 'station_add_sn_coupler',
+    }),
     sep('s2'),
     // --- Ochrona (7-12) ---
     action('add_ct', 'Dodaj CT do pola...', { enabled: edit, handler: handlers.onAddCT }),
@@ -139,31 +231,73 @@ export function buildStationContextMenu(
     action('check_selectivity', 'Sprawdź selektywność...', { handler: handlers.onCheckSelectivity }),
     sep('s3'),
     // --- Transformator i nN (13-20) ---
-    action('add_transformer', 'Dodaj transformator SN/nN...', { enabled: edit, handler: handlers.onAddTransformer }),
+    action('add_transformer_sn_nn', 'Dodaj transformator SN/nN...', { enabled: edit, handler: handlers.onAddTransformer }),
     action('assign_tr_catalog', 'Przypisz katalog transformatora...', { enabled: edit, handler: handlers.onAssignTRCatalog }),
-    action('add_nn_bus', 'Dodaj szynę nN...', { enabled: edit, handler: handlers.onAddNNBus }),
-    action('add_nn_main', 'Dodaj pole główne nN...', { enabled: edit, handler: handlers.onAddNNMain }),
-    action('add_nn_feeder', 'Dodaj odpływ nN...', { enabled: edit, handler: handlers.onAddNNFeeder }),
-    action('add_nn_bus_section', 'Dodaj sekcję szyn nN...', { enabled: edit, handler: handlers.onAddNNBusSection }),
-    action('add_nn_coupler', 'Dodaj sprzęgło nN...', { enabled: edit, handler: handlers.onAddNNCoupler }),
+    action('add_nn_outgoing_field', 'Dodaj szynę nN...', {
+      enabled: edit,
+      handler: handlers.onAddNNBus,
+      actionKey: 'station_add_nn_bus',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj pole główne nN...', {
+      enabled: edit,
+      handler: handlers.onAddNNMain,
+      actionKey: 'station_add_nn_main',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj odpływ nN...', {
+      enabled: edit,
+      handler: handlers.onAddNnOutgoingField,
+      actionKey: 'station_add_feeder',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj sekcję szyn nN...', {
+      enabled: edit,
+      handler: handlers.onAddNNBusSection,
+      actionKey: 'station_add_nn_bus_section',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj sprzęgło nN...', {
+      enabled: edit,
+      handler: handlers.onAddNNCoupler,
+      actionKey: 'station_add_nn_coupler',
+    }),
     action('add_nn_load', 'Dodaj odbiór nN...', { enabled: edit, handler: handlers.onAddNNLoad }),
     sep('s4'),
     // --- Źródła nN (21-26) ---
-    action('add_source_field_nn', 'Dodaj źródło nN (pole źródłowe)...', { enabled: edit, handler: handlers.onAddSourceFieldNN }),
-    action('add_pv', 'Dodaj falownik PV...', { enabled: edit, handler: handlers.onAddPV }),
-    action('add_bess', 'Dodaj falownik BESS...', { enabled: edit, handler: handlers.onAddBESS }),
-    action('add_bess_energy', 'Dodaj BESS (energia)...', { enabled: edit, handler: handlers.onAddBESSEnergy }),
-    action('add_genset', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
-    action('add_ups', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
+    action('add_nn_outgoing_field', 'Dodaj źródło nN (pole źródłowe)...', {
+      enabled: edit,
+      actionKey: 'station_source_field',
+      handler: handlers.onAddNnOutgoingFieldSource,
+      initialFormData: { field_role: 'SOURCE' },
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe PV...', {
+      enabled: edit,
+      handler: handlers.onAddPV,
+      actionKey: 'station_add_converter_source_pv',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS...', {
+      enabled: edit,
+      handler: handlers.onAddBESS,
+      actionKey: 'station_add_converter_source_bess',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe FW...', {
+      enabled: edit,
+      handler: handlers.onAddFW,
+      actionKey: 'station_add_converter_source_fw',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS (magazyn energii)...', {
+      enabled: edit,
+      handler: handlers.onAddBESSEnergy,
+      actionKey: 'station_add_converter_source_bess_energy',
+    }),
+    action('add_genset_nn', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
+    action('add_ups_nn', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
     action('set_source_mode', 'Ustaw tryb pracy źródeł (StudyCase)...', { enabled: edit, handler: handlers.onSetSourceMode }),
     sep('s5'),
     // --- Gotowość, wyniki, eksport (27-30) ---
     action('show_readiness', 'Pokaż gotowość stacji...', { handler: handlers.onShowReadiness }),
     action('fix_issues', 'Napraw braki (działania naprawcze)...', { handler: handlers.onFixIssues }),
-    action('show_results', 'Wyniki + ślad obliczeń + eksport raportu stacji...', { enabled: result, handler: handlers.onShowResults }),
+    action('show_results', 'Wyniki, wywód obliczeń i eksport raportu stacji...', { enabled: result, handler: handlers.onShowResults }),
     sep('s6'),
     action('edit_name', 'Zmień nazwę stacji...', { enabled: edit, handler: handlers.onEditName }),
-    action('edit_type', 'Zmień typ stacji (A/B/C/D)...', { enabled: edit, handler: handlers.onEditType }),
+    action('edit_type', 'Zmień funkcję topologiczną stacji...', { enabled: edit, handler: handlers.onEditType }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     action('export_data', 'Eksportuj dane stacji...', { handler: handlers.onExport }),
@@ -186,12 +320,19 @@ export function buildBaySNContextMenu(
   return [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości pola SN...', { handler: handlers.onProperties }),
     sep('s1'),
-    action('add_breaker', 'Dodaj wyłącznik...', { enabled: edit, handler: handlers.onAddBreaker }),
-    action('add_disconnector', 'Dodaj rozłącznik...', { enabled: edit, handler: handlers.onAddDisconnector }),
-    action('add_earth_switch', 'Dodaj odłącznik uziemiający...', { enabled: edit, handler: handlers.onAddEarthSwitch }),
+    action('add_sn_bay', 'Dodaj wyłącznik...', {
+      enabled: edit,
+      handler: handlers.onAddBreaker,
+      actionKey: 'bay_sn_add_breaker',
+    }),
+    action('add_sn_bay', 'Dodaj rozłącznik...', {
+      enabled: edit,
+      handler: handlers.onAddDisconnector,
+      actionKey: 'bay_sn_add_disconnector',
+    }),
     action('add_ct', 'Dodaj przekładnik prądowy (CT)...', { enabled: edit, handler: handlers.onAddCT }),
     action('add_vt', 'Dodaj przekładnik napięciowy (VT)...', { enabled: edit, handler: handlers.onAddVT }),
-    action('add_protection', 'Dodaj zabezpieczenie...', { enabled: edit, handler: handlers.onAddProtection }),
+    action('add_relay', 'Dodaj zabezpieczenie...', { enabled: edit, handler: handlers.onAddProtection }),
     sep('s2'),
     action('change_role', 'Zmień rolę pola...', { enabled: edit, handler: handlers.onChangeRole }),
     action('assign_catalog', 'Przypisz katalog aparatów...', { enabled: edit, handler: handlers.onAssignCatalog }),
@@ -224,18 +365,22 @@ export function buildSwitchSNContextMenu(
     sep('s1'),
     action('toggle_switch', stateLabel, { enabled: edit, handler: handlers.onToggleSwitch }),
     action('set_normal_state', 'Ustaw stan normalny...', { enabled: edit, handler: handlers.onSetNormalState }),
-    action('set_as_nop', 'Ustaw jako punkt normalnie otwarty...', { enabled: edit, handler: handlers.onSetAsNOP }),
+    action('set_normal_open_point', 'Ustaw jako punkt normalnie otwarty...', {
+      enabled: edit,
+      handler: handlers.onSetAsNOP,
+      actionKey: 'switch_set_nop',
+    }),
     sep('s2'),
     action('assign_catalog', 'Przypisz katalog łącznika...', { enabled: edit, handler: handlers.onAssignCatalog }),
     action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
     sep('s3'),
-    action('add_protection', 'Dodaj zabezpieczenie...', { enabled: edit, handler: handlers.onAddProtection }),
+    action('add_relay', 'Dodaj zabezpieczenie...', { enabled: edit, handler: handlers.onAddProtection }),
     action('add_ct', 'Dodaj przekładnik prądowy...', { enabled: edit, handler: handlers.onAddCT }),
     action('add_vt', 'Dodaj przekładnik napięciowy...', { enabled: edit, handler: handlers.onAddVT }),
     sep('s4'),
     action('show_readiness', 'Pokaż gotowość łącznika...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki łącznika...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s5'),
@@ -266,7 +411,7 @@ export function buildTransformerContextMenu(
     sep('s2'),
     action('show_readiness', 'Pokaż gotowość transformatora...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki transformatora...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s3'),
@@ -291,21 +436,51 @@ export function buildBusNNContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości szyny nN...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Odpływy i źródła ---
-    action('add_feeder', 'Dodaj odpływ nN...', { enabled: edit, handler: handlers.onAddFeeder }),
-    action('add_source_field', 'Dodaj pole źródłowe nN...', { enabled: edit, handler: handlers.onAddSourceField }),
-    action('add_pv', 'Dodaj falownik PV...', { enabled: edit, handler: handlers.onAddPV }),
-    action('add_bess', 'Dodaj falownik BESS...', { enabled: edit, handler: handlers.onAddBESS }),
-    action('add_genset', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
-    action('add_ups', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
+    action('add_nn_outgoing_field', 'Dodaj odpływ nN...', {
+      enabled: edit,
+      handler: handlers.onAddFeeder,
+      actionKey: 'bus_nn_add_feeder',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj pole źródłowe nN...', {
+      enabled: edit,
+      actionKey: 'bus_nn_source_field',
+      handler: handlers.onAddNnOutgoingFieldSource,
+      initialFormData: { field_role: 'SOURCE' },
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe PV...', {
+      enabled: edit,
+      handler: handlers.onAddPV,
+      actionKey: 'bus_nn_add_converter_source_pv',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS...', {
+      enabled: edit,
+      handler: handlers.onAddBESS,
+      actionKey: 'bus_nn_add_converter_source_bess',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe FW...', {
+      enabled: edit,
+      handler: handlers.onAddFW,
+      actionKey: 'bus_nn_add_converter_source_fw',
+    }),
+    action('add_genset_nn', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
+    action('add_ups_nn', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
     sep('s2'),
     // --- Infrastruktura szyny ---
-    action('add_bus_section', 'Dodaj sekcję szyn nN...', { enabled: edit, handler: handlers.onAddBusSection }),
-    action('add_bus_coupler', 'Dodaj sprzęgło szyn nN...', { enabled: edit, handler: handlers.onAddBusCoupler }),
-    action('add_energy_meter', 'Dodaj pomiar energii...', { enabled: edit, handler: handlers.onAddEnergyMeter }),
-    action('add_quality_meter', 'Dodaj pomiar jakości energii...', { enabled: edit, handler: handlers.onAddQualityMeter }),
-    action('add_surge_arrester', 'Dodaj ogranicznik przepięć nN...', { enabled: edit, handler: handlers.onAddSurgeArrester }),
-    action('add_load', 'Dodaj odbiór zbiorczy...', { enabled: edit, handler: handlers.onAddLoad }),
-    action('add_segment', 'Dodaj segment nN (odcinek)...', { enabled: edit, handler: handlers.onAddSegment }),
+    action('add_nn_outgoing_field', 'Dodaj sekcję szyn nN...', {
+      enabled: edit,
+      handler: handlers.onAddBusSection,
+      actionKey: 'bus_nn_add_bus_section',
+    }),
+    action('add_nn_outgoing_field', 'Dodaj sprzęgło szyn nN...', {
+      enabled: edit,
+      handler: handlers.onAddBusCoupler,
+      actionKey: 'bus_nn_add_bus_coupler',
+    }),
+    action('add_nn_load', 'Dodaj odbiór zbiorczy...', {
+      enabled: edit,
+      handler: handlers.onAddLoad,
+      actionKey: 'bus_nn_add_load',
+    }),
     sep('s3'),
     // --- Edycja parametrów ---
     action('edit_voltage', 'Zmień napięcie nN (kV)...', { enabled: edit, handler: handlers.onEditVoltage }),
@@ -315,7 +490,7 @@ export function buildBusNNContextMenu(
     // --- Widoki i diagnostyka ---
     action('show_readiness', 'Pokaż gotowość szyny...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki na szynie...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s5'),
@@ -340,34 +515,54 @@ export function buildFeederNNContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości odpływu nN...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Zmiana roli i topologia ---
-    action('change_role', 'Zmień rolę odpływu (odbiór/rezerwa/źródło PV/źródło BESS)...', { enabled: edit, handler: handlers.onChangeRole }),
-    action('add_load', 'Dodaj odbiór...', { enabled: edit, handler: handlers.onAddLoad }),
-    action('add_pv', 'Dodaj źródło PV na odpływie...', { enabled: edit, handler: handlers.onAddPV }),
-    action('add_bess', 'Dodaj źródło BESS na odpływie...', { enabled: edit, handler: handlers.onAddBESS }),
+    action('change_role', 'Zmień rolę odpływu (odbiór/rezerwa/źródło PV/źródło BESS/źródło FW)...', { enabled: edit, handler: handlers.onChangeRole }),
+    action('add_nn_load', 'Dodaj odbiór...', {
+      enabled: edit,
+      handler: handlers.onAddLoad,
+      actionKey: 'feeder_nn_add_load',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe PV na odpływie...', {
+      enabled: edit,
+      handler: handlers.onAddPV,
+      actionKey: 'feeder_nn_add_converter_source_pv',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS na odpływie...', {
+      enabled: edit,
+      handler: handlers.onAddBESS,
+      actionKey: 'feeder_nn_add_converter_source_bess',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe FW na odpływie...', {
+      enabled: edit,
+      handler: handlers.onAddFW,
+      actionKey: 'feeder_nn_add_converter_source_fw',
+    }),
     sep('s2'),
     // --- Aparatura ---
-    action('add_fuse', 'Dodaj bezpiecznik...', { enabled: edit, handler: handlers.onAddFuse }),
-    action('add_breaker', 'Dodaj wyłącznik...', { enabled: edit, handler: handlers.onAddBreaker }),
-    action('add_disconnector', 'Dodaj rozłącznik...', { enabled: edit, handler: handlers.onAddDisconnector }),
+    action('add_sn_bay', 'Dodaj wyłącznik...', {
+      enabled: edit,
+      handler: handlers.onAddBreaker,
+      actionKey: 'feeder_nn_add_breaker',
+    }),
+    action('add_sn_bay', 'Dodaj rozłącznik...', {
+      enabled: edit,
+      handler: handlers.onAddDisconnector,
+      actionKey: 'feeder_nn_add_disconnector',
+    }),
     action('toggle_switch', 'Zmień stan aparatu...', { enabled: edit, handler: handlers.onToggleSwitch }),
     action('set_normal_state', 'Ustaw stan normalny...', { enabled: edit, handler: handlers.onSetNormalState }),
     action('assign_switch_catalog', 'Przypisz katalog aparatu...', { enabled: edit, handler: handlers.onAssignSwitchCatalog }),
     action('assign_cable_catalog', 'Przypisz katalog przewodu...', { enabled: edit, handler: handlers.onAssignCableCatalog }),
     sep('s3'),
     // --- Segment ---
-    action('add_segment', 'Dodaj segment nN...', { enabled: edit, handler: handlers.onAddSegment }),
     action('edit_segment_length', 'Zmień długość segmentu...', { enabled: edit, handler: handlers.onEditSegmentLength }),
     sep('s4'),
     // --- Pomiary i zabezpieczenia ---
-    action('add_energy_meter', 'Dodaj licznik energii...', { enabled: edit, handler: handlers.onAddEnergyMeter }),
-    action('add_quality_meter', 'Dodaj pomiar jakości...', { enabled: edit, handler: handlers.onAddQualityMeter }),
-    action('add_surge_arrester', 'Dodaj ogranicznik przepięć...', { enabled: edit, handler: handlers.onAddSurgeArrester }),
-    action('add_protection', 'Dodaj zabezpieczenie (logiczne)...', { enabled: edit, handler: handlers.onAddProtection }),
+    action('add_relay', 'Dodaj zabezpieczenie (logiczne)...', { enabled: edit, handler: handlers.onAddProtection }),
     sep('s5'),
     // --- Widoki i diagnostyka ---
     action('show_readiness', 'Pokaż gotowość odpływu...', { handler: handlers.onShowReadiness }),
     action('show_results', 'Pokaż wyniki odpływu...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s6'),
@@ -392,11 +587,28 @@ export function buildSourceFieldNNContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości pola źródłowego nN...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Źródła (1-5) ---
-    action('add_pv', 'Dodaj falownik PV...', { enabled: edit, handler: handlers.onAddPV }),
-    action('add_bess', 'Dodaj falownik BESS...', { enabled: edit, handler: handlers.onAddBESS }),
-    action('add_bess_energy', 'Dodaj BESS (energia)...', { enabled: edit, handler: handlers.onAddBESSEnergy }),
-    action('add_genset', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
-    action('add_ups', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe PV...', {
+      enabled: edit,
+      handler: handlers.onAddPV,
+      actionKey: 'source_field_nn_add_converter_source_pv',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS...', {
+      enabled: edit,
+      handler: handlers.onAddBESS,
+      actionKey: 'source_field_nn_add_converter_source_bess',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe FW...', {
+      enabled: edit,
+      handler: handlers.onAddFW,
+      actionKey: 'source_field_nn_add_converter_source_fw',
+    }),
+    action('add_converter_source', 'Dodaj źródło przekształtnikowe BESS (magazyn energii)...', {
+      enabled: edit,
+      handler: handlers.onAddBESSEnergy,
+      actionKey: 'source_field_nn_add_converter_source_bess_energy',
+    }),
+    action('add_genset_nn', 'Dodaj agregat...', { enabled: edit, handler: handlers.onAddGenset }),
+    action('add_ups_nn', 'Dodaj UPS...', { enabled: edit, handler: handlers.onAddUPS }),
     sep('s2'),
     // --- Konfiguracja (6-11) ---
     action('set_operating_mode', 'Ustaw tryb pracy (SIEĆ/LOKALNE/WYSPA)...', { enabled: edit, handler: handlers.onSetOperatingMode }),
@@ -411,7 +623,7 @@ export function buildSourceFieldNNContextMenu(
     action('show_readiness', 'Pokaż gotowość pola...', { handler: handlers.onShowReadiness }),
     action('fix_issues', 'Napraw braki...', { handler: handlers.onFixIssues }),
     action('show_results', 'Pokaż wyniki pola...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
@@ -419,15 +631,13 @@ export function buildSourceFieldNNContextMenu(
     // --- Eksport i geometria (19-20) ---
     action('export_json', 'Eksport JSON...', { handler: handlers.onExportJSON }),
     action('export_report', 'Eksport raportu...', { handler: handlers.onExportReport }),
-    action('edit_geometry', 'Edytuj geometrię widoku...', { enabled: edit, handler: handlers.onEditGeometry }),
-    action('reset_geometry', 'Reset geometrii widoku', { enabled: edit, handler: handlers.onResetGeometry }),
     sep('s5'),
     action('delete', 'Usuń pole źródłowe nN...', { enabled: edit, handler: handlers.onDelete }),
   ];
 }
 
 // ---------------------------------------------------------------------------
-// V) Falownik PV — buildPVInverterContextMenu
+// V) Źródło przekształtnikowe PV — buildPVInverterContextMenu
 // ---------------------------------------------------------------------------
 
 export function buildPVInverterContextMenu(
@@ -437,9 +647,9 @@ export function buildPVInverterContextMenu(
   const edit = mode === 'MODEL_EDIT';
   const result = mode === 'RESULT_VIEW';
   return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości falownika PV...', { handler: handlers.onProperties }),
+    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości źródła przekształtnikowego PV...', { handler: handlers.onProperties }),
     sep('s1'),
-    action('assign_catalog', 'Przypisz katalog falownika PV...', { enabled: edit, handler: handlers.onAssignCatalog }),
+    action('assign_catalog', 'Przypisz katalog źródła przekształtnikowego PV...', { enabled: edit, handler: handlers.onAssignCatalog }),
     action('edit_power', 'Zmień moc znamionową/maksymalną...', { enabled: edit, handler: handlers.onEditPower }),
     action('edit_control', 'Zmień tryb regulacji (cos φ / Q(U) / P(U))...', { enabled: edit, handler: handlers.onEditControl }),
     action('edit_limits', 'Zmień ograniczenia generacji...', { enabled: edit, handler: handlers.onEditLimits }),
@@ -448,21 +658,21 @@ export function buildPVInverterContextMenu(
     action('set_profile', 'Przypisz profil pracy...', { enabled: edit, handler: handlers.onSetProfile }),
     action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
     sep('s2'),
-    action('show_readiness', 'Pokaż gotowość falownika PV...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki falownika PV...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_readiness', 'Pokaż gotowość źródła przekształtnikowego PV...', { handler: handlers.onShowReadiness }),
+    action('show_results', 'Pokaż wyniki źródła przekształtnikowego PV...', { enabled: result, handler: handlers.onShowResults }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s3'),
-    action('export_data', 'Eksportuj dane falownika PV...', { handler: handlers.onExport }),
+    action('export_data', 'Eksportuj dane źródła przekształtnikowego PV...', { handler: handlers.onExport }),
     action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
     sep('s4'),
-    action('delete', 'Usuń falownik PV...', { enabled: edit, handler: handlers.onDelete }),
+    action('delete', 'Usuń źródło PV...', { enabled: edit, handler: handlers.onDelete }),
   ];
 }
 
 // ---------------------------------------------------------------------------
-// W) Falownik BESS — buildBESSInverterContextMenu
+// W) Źródło przekształtnikowe BESS — buildBESSInverterContextMenu
 // ---------------------------------------------------------------------------
 
 export function buildBESSInverterContextMenu(
@@ -472,9 +682,9 @@ export function buildBESSInverterContextMenu(
   const edit = mode === 'MODEL_EDIT';
   const result = mode === 'RESULT_VIEW';
   return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości falownika BESS...', { handler: handlers.onProperties }),
+    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości źródła przekształtnikowego BESS...', { handler: handlers.onProperties }),
     sep('s1'),
-    action('assign_inverter_catalog', 'Przypisz katalog falownika BESS...', { enabled: edit, handler: handlers.onAssignInverterCatalog }),
+    action('assign_inverter_catalog', 'Przypisz katalog źródła przekształtnikowego BESS...', { enabled: edit, handler: handlers.onAssignInverterCatalog }),
     action('assign_storage_catalog', 'Przypisz katalog magazynu energii...', { enabled: edit, handler: handlers.onAssignStorageCatalog }),
     action('edit_capacity', 'Zmień pojemność użyteczną (kWh)...', { enabled: edit, handler: handlers.onEditCapacity }),
     action('edit_power', 'Zmień moc ładowania/rozładowania (kW)...', { enabled: edit, handler: handlers.onEditPower }),
@@ -484,16 +694,16 @@ export function buildBESSInverterContextMenu(
     action('set_profile', 'Przypisz profil czasowy...', { enabled: edit, handler: handlers.onSetProfile }),
     action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
     sep('s2'),
-    action('show_readiness', 'Pokaż gotowość falownika BESS...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki falownika BESS...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_readiness', 'Pokaż gotowość źródła przekształtnikowego BESS...', { handler: handlers.onShowReadiness }),
+    action('show_results', 'Pokaż wyniki źródła przekształtnikowego BESS...', { enabled: result, handler: handlers.onShowResults }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     sep('s3'),
-    action('export_data', 'Eksportuj dane falownika BESS...', { handler: handlers.onExport }),
+    action('export_data', 'Eksportuj dane źródła przekształtnikowego BESS...', { handler: handlers.onExport }),
     action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
     sep('s4'),
-    action('delete', 'Usuń falownik BESS...', { enabled: edit, handler: handlers.onDelete }),
+    action('delete', 'Usuń źródło BESS...', { enabled: edit, handler: handlers.onDelete }),
   ];
 }
 
@@ -667,13 +877,26 @@ export function buildSegmentSNContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości segmentu...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Budowa (1-8) ---
-    action('insert_station_a', 'Wstaw stację SN/nN (A)...', { enabled: edit, handler: handlers.onInsertStationA }),
-    action('insert_station_b', 'Wstaw stację SN/nN (B)...', { enabled: edit, handler: handlers.onInsertStationB }),
-    action('insert_station_c', 'Wstaw stację SN/nN (C)...', { enabled: edit, handler: handlers.onInsertStationC }),
-    action('insert_station_d', 'Wstaw stację SN/nN (D)...', { enabled: edit, handler: handlers.onInsertStationD }),
-    action('insert_section_switch', 'Wstaw łącznik sekcyjny...', { enabled: edit, handler: handlers.onInsertSwitch }),
-    action('insert_disconnector', 'Wstaw rozłącznik...', { enabled: edit, handler: handlers.onInsertDisconnector }),
-    action('insert_earthing', 'Wstaw uziemnik...', { enabled: edit, handler: handlers.onInsertEarthing }),
+    action('insert_station_on_segment_sn', 'Wstaw stację SN/nN...', {
+      enabled: edit,
+      handler: handlers.onAddStation,
+      actionKey: 'segment_insert_station',
+    }),
+    action('insert_section_switch_sn', 'Wstaw łącznik sekcyjny...', {
+      enabled: edit,
+      handler: handlers.onInsertSwitch,
+      actionKey: 'segment_insert_section_switch',
+    }),
+    action('insert_section_switch_sn', 'Wstaw rozłącznik...', {
+      enabled: edit,
+      handler: handlers.onInsertDisconnector,
+      actionKey: 'segment_insert_disconnector',
+    }),
+    action('insert_section_switch_sn', 'Wstaw uziemnik...', {
+      enabled: edit,
+      handler: handlers.onInsertEarthing,
+      actionKey: 'segment_insert_earthing',
+    }),
     sep('s2'),
     // --- Aparaty i pomiary (8-9) ---
     action('add_ct', 'Dodaj pomiar prądu (CT)...', { enabled: edit, handler: handlers.onAddCT }),
@@ -691,23 +914,17 @@ export function buildSegmentSNContextMenu(
     // --- Gotowość i wyniki (16-20) ---
     action('show_readiness', 'Pokaż gotowość odcinka...', { handler: handlers.onShowReadiness }),
     action('fix_issues', 'Napraw braki odcinka...', { handler: handlers.onFixIssues }),
-    action('run_sc_analysis', 'Uruchom analizę zwarciową w tym punkcie...', { enabled: result || edit, handler: handlers.onRunScAnalysis }),
     action('show_results', 'Pokaż wyniki (z ostatniej analizy)...', { enabled: result, handler: handlers.onShowResults }),
     action('show_comparison', 'Pokaż porównanie wyników...', { enabled: result, handler: handlers.onShowComparison }),
-    action('show_whitebox', 'Pokaż ślad obliczeń dla odcinka...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń dla odcinka...', { enabled: result, handler: handlers.onShowWhitebox }),
     sep('s5'),
     // --- Historia i porównania (21-25) ---
     action('history', 'Pokaż historię zmian (zdarzenia)...', { handler: handlers.onShowHistory }),
-    action('undo_snapshot', 'Cofnij do poprzedniego Snapshot...', { enabled: edit, handler: handlers.onUndoSnapshot }),
-    action('compare_snapshots', 'Porównaj Snapshot...', { handler: handlers.onCompareSnapshots }),
+    action('compare_snapshots', 'Porównaj migawkę...', { handler: handlers.onCompareSnapshots }),
     action('export_json', 'Eksportuj dane odcinka (JSON)...', { handler: handlers.onExportJSON }),
     action('export_report', 'Eksportuj fragment raportu (PDF/DOCX)...', { handler: handlers.onExportReport }),
     sep('s6'),
     // --- Geometria widoku (26-30) ---
-    action('edit_geometry', 'Edytuj geometrię widoku odcinka (łamania)...', { enabled: edit, handler: handlers.onEditGeometry }),
-    action('snap_to_grid', 'Wyrównaj do siatki (tylko widok)', { enabled: edit, handler: handlers.onSnapToGrid }),
-    action('reset_geometry', 'Reset geometrii widoku (tylko widok)', { enabled: edit, handler: handlers.onResetGeometry }),
-    action('check_collisions', 'Sprawdź kolizje i odstępy...', { handler: handlers.onCheckCollisions }),
     sep('s7'),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
@@ -733,8 +950,6 @@ export function buildRelaySNContextMenu(
     action('edit_settings', 'Zmień nastawy zabezpieczenia...', { enabled: edit, handler: handlers.onEditSettings }),
     action('edit_curve', 'Zmień charakterystykę czasową...', { enabled: edit, handler: handlers.onEditCurve }),
     action('edit_type', 'Zmień typ zabezpieczenia...', { enabled: edit, handler: handlers.onEditType }),
-    action('assign_ct', 'Przypisz przekładnik prądowy (CT)...', { enabled: edit, handler: handlers.onAssignCT }),
-    action('assign_vt', 'Przypisz przekładnik napięciowy (VT)...', { enabled: edit, handler: handlers.onAssignVT }),
     action('toggle_enabled', 'Włącz/Wyłącz zabezpieczenie...', { enabled: edit, handler: handlers.onToggleEnabled }),
     sep('s2'),
     action('show_readiness', 'Pokaż gotowość zabezpieczenia...', { handler: handlers.onShowReadiness }),
@@ -788,8 +1003,16 @@ export function buildNOPContextMenu(
   return [
     action('properties', 'Właściwości punktu normalnie otwartego...', { handler: handlers.onProperties }),
     sep('s1'),
-    action('clear_nop', 'Usuń oznaczenie punktu normalnie otwartego...', { enabled: edit, handler: handlers.onClearNOP }),
-    action('move_nop', 'Przenieś punkt normalnie otwarty na inny łącznik...', { enabled: edit, handler: handlers.onMoveNOP }),
+    action('set_normal_open_point', 'Usuń oznaczenie punktu normalnie otwartego...', {
+      enabled: edit,
+      handler: handlers.onClearNOP,
+      actionKey: 'nop_clear',
+    }),
+    action('set_normal_open_point', 'Przenieś punkt normalnie otwarty na inny łącznik...', {
+      enabled: edit,
+      handler: handlers.onMoveNOP,
+      actionKey: 'nop_move',
+    }),
     action('toggle_switch', 'Zmień stan łącznika...', { enabled: edit, handler: handlers.onToggleSwitch }),
     sep('s2'),
     action('show_readiness', 'Pokaż gotowość...', { handler: handlers.onShowReadiness }),
@@ -842,20 +1065,22 @@ export function buildEnergyStorageContextMenu(
 export const ACTION_MENU_MINIMUM_OPTIONS: Record<string, number> = {
   // SN
   Source: 14,
-  Bus: 20,
+  Bus: 16,
   Station: 30,
+  BranchPole: 9,
+  ZKSN: 9,
   BaySN: 15,
   Switch: 17,
   TransformerBranch: 13,
-  LineBranch: 30,
-  Relay: 14,
+  LineBranch: 26,
+  Relay: 12,
   Measurement: 11,
   NOP: 9,
   Terminal: 20,
   SecondaryLink: 10,
   // nN
-  BusNN: 25,
-  FeederNN: 25,
+  BusNN: 22,
+  FeederNN: 22,
   SourceFieldNN: 20,
   PVInverter: 17,
   BESSInverter: 18,
@@ -886,11 +1111,16 @@ export function buildTerminalSNContextMenu(
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości terminala...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Budowa ---
-    action('add_trunk_segment', 'Dodaj odcinek magistrali...', { enabled: edit && isOpen, handler: handlers.onAddTrunkSegment }),
-    action('reserve_ring', 'Zarezerwuj do ring...', { enabled: edit && isOpen, handler: handlers.onReserveRing }),
-    action('release_ring', 'Zwolnij rezerwację ring...', { enabled: edit && terminalStatus === 'ZAREZERWOWANY_DLA_RINGU', handler: handlers.onReleaseRing }),
-    action('start_secondary_link', 'Rozpocznij łączenie wtórne...', { enabled: edit && isOpen, handler: handlers.onStartSecondaryLink }),
-    action('set_nop_candidate', 'Ustaw jako kandydat NOP...', { enabled: edit, handler: handlers.onSetNOPCandidate }),
+    action('continue_trunk_segment_sn', 'Kontynuuj magistralę z otwartego terminala...', {
+      enabled: edit && isOpen,
+      handler: handlers.onAddTrunkSegment,
+      actionKey: 'terminal_continue_trunk',
+    }),
+    action('set_normal_open_point', 'Ustaw jako kandydat NOP...', {
+      enabled: edit,
+      handler: handlers.onSetNOPCandidate,
+      actionKey: 'terminal_set_nop_candidate',
+    }),
     sep('s2'),
     // --- Katalog i parametry ---
     action('assign_catalog', 'Przypisz katalog do następnego odcinka...', { enabled: edit, handler: handlers.onAssignCatalog }),
@@ -900,7 +1130,7 @@ export function buildTerminalSNContextMenu(
     action('show_readiness', 'Pokaż gotowość terminala...', { handler: handlers.onShowReadiness }),
     action('fix_issues', 'Napraw braki...', { handler: handlers.onFixIssues }),
     action('show_results', 'Pokaż wyniki w punkcie...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
     sep('s4'),
     // --- Nawigacja ---
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
@@ -909,10 +1139,10 @@ export function buildTerminalSNContextMenu(
     action('show_secondary_links', 'Pokaż logiczne połączenia wtórne...', { handler: handlers.onShowSecondaryLinks }),
     action('check_ring', 'Sprawdź możliwość ring...', { handler: handlers.onCheckRing }),
     action('check_nop', 'Sprawdź możliwość NOP...', { handler: handlers.onCheckNOP }),
+    action('reserve_ring', 'Zarezerwuj terminal dla domknięcia pierścienia...', { enabled: edit, handler: handlers.onReserveRing }),
+    action('release_ring', 'Usuń rezerwację pierścienia...', { enabled: edit, handler: handlers.onReleaseRing }),
     sep('s5'),
     // --- Widok i eksport ---
-    action('edit_geometry', 'Edytuj geometrię widoku...', { enabled: edit, handler: handlers.onEditGeometry }),
-    action('reset_geometry', 'Reset geometrii widoku', { enabled: edit, handler: handlers.onResetGeometry }),
     action('export_data', 'Eksport danych terminala...', { handler: handlers.onExport }),
     action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
     sep('s6'),
@@ -929,7 +1159,7 @@ export function buildStudyCaseContextMenu(
   caseStatus: 'NONE' | 'FRESH' | 'OUTDATED' | undefined,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const edit = mode === 'MODEL_EDIT' || mode === 'CASE_CONFIG';
+  const edit = normalizeOperatingMode(mode) === 'MODEL_EDIT';
   const hasFresh = caseStatus === 'FRESH';
   return [
     action('properties', 'Właściwości Study Case...', { handler: handlers.onProperties }),
@@ -941,25 +1171,23 @@ export function buildStudyCaseContextMenu(
     action('set_source_modes', 'Ustaw tryby pracy źródeł...', { enabled: edit, handler: handlers.onSetSourceModes }),
     action('set_time_profile', 'Przypisz profil czasowy...', { enabled: edit, handler: handlers.onSetTimeProfile }),
     action('set_analysis_settings', 'Ustaw parametry analizy...', { enabled: edit, handler: handlers.onSetAnalysisSettings }),
+    action('show_readiness', 'Pokaż gotowość przypadku...', { handler: handlers.onShowReadiness }),
+    action('fix_issues', 'Pokaż braki i działania naprawcze...', { handler: handlers.onFixIssues }),
     sep('s2'),
     // --- Uruchomienia ---
-    action('run_sc_3f', 'Uruchom zwarcie 3F...', { handler: handlers.onRunSC3F }),
-    action('run_sc_2f', 'Uruchom zwarcie 2F...', { handler: handlers.onRunSC2F }),
-    action('run_sc_1f', 'Uruchom zwarcie 1F...', { handler: handlers.onRunSC1F }),
-    action('run_sc_2f_rf', 'Uruchom zwarcie 2F z Rf...', { handler: handlers.onRunSC2FRf }),
-    action('run_power_flow', 'Uruchom przepływ mocy...', { handler: handlers.onRunPowerFlow }),
-    action('run_time_series', 'Uruchom serię czasową...', { handler: handlers.onRunTimeSeries }),
     sep('s3'),
     // --- Wyniki ---
     action('show_results', 'Pokaż wyniki...', { enabled: hasFresh, handler: handlers.onShowResults }),
-    action('compare_cases', 'Porównaj z innym Study Case...', { handler: handlers.onCompareCases }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { enabled: hasFresh, handler: handlers.onShowWhitebox }),
+    action('compare_cases', 'Porównaj z innym przypadkiem obliczeniowym...', { handler: handlers.onCompareCases }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: hasFresh, handler: handlers.onShowWhitebox }),
     action('validate_selectivity', 'Sprawdź selektywność ochrony...', { enabled: hasFresh, handler: handlers.onValidateSelectivity }),
     sep('s4'),
     // --- Klonowanie i eksport ---
     action('clone_case', 'Klonuj Study Case...', { handler: handlers.onCloneCase }),
     action('export_results', 'Eksportuj wyniki (PDF/DOCX)...', { enabled: hasFresh, handler: handlers.onExportResults }),
     action('export_json', 'Eksportuj wyniki (JSON)...', { enabled: hasFresh, handler: handlers.onExportJSON }),
+    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
+    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
     action('history', 'Historia uruchomień...', { handler: handlers.onHistory }),
     sep('s5'),
     action('delete', 'Usuń Study Case...', { enabled: edit, handler: handlers.onDelete }),
@@ -984,7 +1212,7 @@ export function buildAnalysisResultContextMenu(
     action('show_summary', 'Pokaż podsumowanie wyników...', { handler: handlers.onShowSummary }),
     action('show_per_element', 'Pokaż wyniki po elementach...', { handler: handlers.onShowPerElement }),
     action('show_overlay', 'Pokaż overlay na SLD...', { handler: handlers.onShowOverlay }),
-    action('show_whitebox', 'Pokaż ślad obliczeń...', { handler: handlers.onShowWhitebox }),
+    action('show_whitebox', 'Pokaż wywód obliczeń...', { handler: handlers.onShowWhitebox }),
     sep('s2'),
     // --- Zwarcia ---
     action('show_ik', 'Pokaż prądy zwarciowe Ik″...', { enabled: isSC, handler: handlers.onShowIk }),
@@ -1005,9 +1233,10 @@ export function buildAnalysisResultContextMenu(
     action('export_pdf', 'Eksportuj raport (PDF)...', { handler: handlers.onExportPDF }),
     action('export_docx', 'Eksportuj raport (DOCX)...', { handler: handlers.onExportDOCX }),
     action('export_json', 'Eksportuj dane (JSON)...', { handler: handlers.onExportJSON }),
-    action('export_whitebox', 'Eksportuj ślad obliczeń (LaTeX)...', { handler: handlers.onExportWhitebox }),
+    action('export_whitebox', 'Eksportuj wywód obliczeń (LaTeX)...', { handler: handlers.onExportWhitebox }),
     sep('s5'),
     action('history', 'Historia uruchomień...', { handler: handlers.onHistory }),
     action('delete', 'Usuń wynik analizy...', { handler: handlers.onDelete }),
   ];
 }
+

@@ -15,7 +15,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -228,9 +227,7 @@ class TestExportShortCircuitResultToJson:
         zkk_ohm = data["zkk_ohm"]
 
         # zkk_ohm should be a dict (not raw complex or string)
-        assert isinstance(zkk_ohm, dict), (
-            f"zkk_ohm should be dict, got {type(zkk_ohm).__name__}"
-        )
+        assert isinstance(zkk_ohm, dict), f"zkk_ohm should be dict, got {type(zkk_ohm).__name__}"
         assert "re" in zkk_ohm, "zkk_ohm should have 're' key"
         assert "im" in zkk_ohm, "zkk_ohm should have 'im' key"
         assert isinstance(zkk_ohm["re"], float), "zkk_ohm['re'] should be float"
@@ -313,9 +310,7 @@ class TestExportShortCircuitResultsToJsonl:
         )
 
         output_file = tmp_path / "results.jsonl"
-        returned_path = export_short_circuit_results_to_jsonl(
-            [result_3f, result_2f], output_file
-        )
+        returned_path = export_short_circuit_results_to_jsonl([result_3f, result_2f], output_file)
 
         assert output_file.exists()
         assert returned_path == output_file
@@ -473,5 +468,6 @@ class TestExportErrorHandling:
 
         with pytest.raises(ValueError, match="Record 1"):
             export_short_circuit_results_to_jsonl(
-                [result, BadResult()], output_file  # type: ignore
+                [result, BadResult()],
+                output_file,  # type: ignore
             )

@@ -2,8 +2,8 @@
  * P9: Project Tree & Data Manager Tests
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § A: Project Tree structure
- * - powerfactory_ui_parity.md § B: Data Manager table
+ * - ui_canonical_parity.md § A: Project Tree structure
+ * - ui_canonical_parity.md § B: Data Manager table
  * - sld_rules.md § G.1: 4-way sync (Tree ↔ DM ↔ Grid ↔ SLD)
  *
  * Tests:
@@ -17,6 +17,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useSelectionStore } from '../selection/store';
 import { useDataManagerUIStore } from '../data-manager/store';
+import { normalizeOperatingMode } from '../operatingMode';
 import type {
   TreeNode,
   TreeNodeType,
@@ -499,14 +500,15 @@ describe('Blokada Trybu', () => {
       expect(canBatchEdit).toBe(true);
     });
 
-    it('should NOT allow batch edit in CASE_CONFIG mode', () => {
+    it('should normalize CASE_CONFIG to editable runtime mode', () => {
       const store = useSelectionStore.getState();
       store.setMode('CASE_CONFIG');
 
       const state = useSelectionStore.getState();
       const canBatchEdit = state.mode === 'MODEL_EDIT';
 
-      expect(canBatchEdit).toBe(false);
+      expect(state.mode).toBe('MODEL_EDIT');
+      expect(canBatchEdit).toBe(true);
     });
 
     it('should NOT allow batch edit in RESULT_VIEW mode', () => {
@@ -526,19 +528,20 @@ describe('Blokada Trybu', () => {
       store.setMode('RESULT_VIEW');
 
       const state = useSelectionStore.getState();
-      const isReadOnly = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
+      const isReadOnly = state.mode === 'RESULT_VIEW';
 
       expect(isReadOnly).toBe(true);
     });
 
-    it('should be read-only for model in CASE_CONFIG', () => {
+    it('should keep model writable after CASE_CONFIG compatibility input', () => {
       const store = useSelectionStore.getState();
       store.setMode('CASE_CONFIG');
 
       const state = useSelectionStore.getState();
-      const isModelReadOnly = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
+      const isModelReadOnly = state.mode === 'RESULT_VIEW';
 
-      expect(isModelReadOnly).toBe(true);
+      expect(state.mode).toBe('MODEL_EDIT');
+      expect(isModelReadOnly).toBe(false);
     });
 
     it('should allow editing in MODEL_EDIT', () => {
@@ -546,7 +549,7 @@ describe('Blokada Trybu', () => {
       store.setMode('MODEL_EDIT');
 
       const state = useSelectionStore.getState();
-      const isReadOnly = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
+      const isReadOnly = state.mode === 'RESULT_VIEW';
 
       expect(isReadOnly).toBe(false);
     });
@@ -592,12 +595,12 @@ describe('Synchronizacja 4-kierunkowa (Drzewo ↔ MD ↔ Siatka ↔ SLD)', () =>
     // Select in MODEL_EDIT
     store.selectElement({ id: 'bus-001', type: 'Bus', name: 'Szyna 1' });
 
-    // Change to CASE_CONFIG
+    // Change to CASE_CONFIG compatibility input
     store.setMode('CASE_CONFIG');
 
     const state = useSelectionStore.getState();
     expect(state.selectedElement?.id).toBe('bus-001');
-    expect(state.mode).toBe('CASE_CONFIG');
+    expect(state.mode).toBe('MODEL_EDIT');
   });
 
   it('should use single source of truth (Selection Store)', () => {
@@ -650,11 +653,11 @@ describe('Operacje edycji zbiorczej', () => {
     const modes: OperatingMode[] = ['MODEL_EDIT', 'CASE_CONFIG', 'RESULT_VIEW'];
 
     modes.forEach((mode) => {
-      const canBatchEdit = mode === 'MODEL_EDIT';
-      if (mode === 'MODEL_EDIT') {
-        expect(canBatchEdit).toBe(true);
-      } else {
+      const canBatchEdit = normalizeOperatingMode(mode) === 'MODEL_EDIT';
+      if (mode === 'RESULT_VIEW') {
         expect(canBatchEdit).toBe(false);
+      } else {
+        expect(canBatchEdit).toBe(true);
       }
     });
   });
@@ -955,11 +958,11 @@ describe('Szybkie akcje', () => {
     const modes: OperatingMode[] = ['MODEL_EDIT', 'CASE_CONFIG', 'RESULT_VIEW'];
 
     modes.forEach((mode) => {
-      const canQuickAction = mode === 'MODEL_EDIT';
-      if (mode === 'MODEL_EDIT') {
-        expect(canQuickAction).toBe(true);
-      } else {
+      const canQuickAction = normalizeOperatingMode(mode) === 'MODEL_EDIT';
+      if (mode === 'RESULT_VIEW') {
         expect(canQuickAction).toBe(false);
+      } else {
+        expect(canQuickAction).toBe(true);
       }
     });
   });

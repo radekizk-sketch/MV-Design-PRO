@@ -18,6 +18,7 @@ import type {
   ReadinessSeverity,
 } from '../types';
 import type { ReadinessGroup } from './ReadinessLivePanel';
+import { normalizeEngineeringReadinessResponse } from '../shared/fixActionSurfaceNormalizer';
 
 // =============================================================================
 // API Client
@@ -30,7 +31,7 @@ async function fetchReadinessLive(
   if (!response.ok) {
     throw new Error(`Readiness fetch failed: ${response.statusText}`);
   }
-  return response.json();
+  return normalizeEngineeringReadinessResponse(await response.json());
 }
 
 // =============================================================================

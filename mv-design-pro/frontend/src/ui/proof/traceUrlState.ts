@@ -2,7 +2,7 @@
  * Trace URL State — Deep linking dla śladu obliczeń
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: URL reflects trace navigation state
+ * - ui_canonical_parity.md: URL reflects trace navigation state
  * - UI_CORE_ARCHITECTURE.md: Deterministic URL encoding
  *
  * BINDING: URL params zachowują stan śladu po refresh.

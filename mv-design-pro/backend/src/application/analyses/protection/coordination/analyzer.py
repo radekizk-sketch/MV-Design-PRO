@@ -30,38 +30,37 @@ LAYER BOUNDARY:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
 from domain.protection_device import (
-    ProtectionDevice,
-    ProtectionCurveSettings,
-    OvercurrentStageSettings,
-    CoordinationVerdict,
-    SensitivityCheck,
-    SelectivityCheck,
-    OverloadCheck,
-    CurveStandard,
     VERDICT_LABELS_PL,
+    CoordinationVerdict,
+    CurveStandard,
+    OverloadCheck,
+    SelectivityCheck,
+    SensitivityCheck,
 )
 from protection.curves.curve_calculator import (
     CurveDefinition,
-    CurveStandard as CurveCurveStandard,
-    calculate_trip_time,
     calculate_curve_points,
+    calculate_trip_time,
 )
+from protection.curves.curve_calculator import (
+    CurveStandard as CurveCurveStandard,
+)
+
 from .models import (
-    CoordinationInput,
-    CoordinationConfig,
     CoordinationAnalysisResult,
+    CoordinationConfig,
+    CoordinationInput,
     FaultCurrentData,
+    FaultMarker,
     OperatingCurrentData,
     TCCCurve,
     TCCPoint,
-    FaultMarker,
 )
-
 
 # Color palette for TCC curves
 CURVE_COLORS = [
@@ -108,15 +107,17 @@ class OvercurrentCoordinationAnalyzer:
         trace_steps: list[dict[str, Any]] = []
 
         # Step 1: Index currents by location
-        trace_steps.append({
-            "step": "index_currents",
-            "description_pl": "Indeksowanie prądów według lokalizacji",
-            "inputs": {
-                "fault_locations": len(input_data.fault_currents),
-                "operating_locations": len(input_data.operating_currents),
-            },
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "index_currents",
+                "description_pl": "Indeksowanie prądów według lokalizacji",
+                "inputs": {
+                    "fault_locations": len(input_data.fault_currents),
+                    "operating_locations": len(input_data.operating_currents),
+                },
+                "outputs": {},
+            }
+        )
 
         fault_by_location = {f.location_id: f for f in input_data.fault_currents}
         operating_by_location = {o.location_id: o for o in input_data.operating_currents}
@@ -170,15 +171,19 @@ class OvercurrentCoordinationAnalyzer:
             overall_verdict=overall_verdict,
         )
 
-        trace_steps.append({
-            "step": "finalize",
-            "description_pl": "Finalizacja wyników analizy",
-            "inputs": {},
-            "outputs": {
-                "overall_verdict": overall_verdict,
-                "total_checks": len(sensitivity_checks) + len(selectivity_checks) + len(overload_checks),
-            },
-        })
+        trace_steps.append(
+            {
+                "step": "finalize",
+                "description_pl": "Finalizacja wyników analizy",
+                "inputs": {},
+                "outputs": {
+                    "overall_verdict": overall_verdict,
+                    "total_checks": len(sensitivity_checks)
+                    + len(selectivity_checks)
+                    + len(overload_checks),
+                },
+            }
+        )
 
         return CoordinationAnalysisResult(
             run_id=run_id,
@@ -193,7 +198,7 @@ class OvercurrentCoordinationAnalyzer:
             trace_steps=tuple(trace_steps),
             pf_run_id=input_data.pf_run_id,
             sc_run_id=input_data.sc_run_id,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
         )
 
     def _check_sensitivity(
@@ -209,12 +214,14 @@ class OvercurrentCoordinationAnalyzer:
         """
         checks: list[SensitivityCheck] = []
 
-        trace_steps.append({
-            "step": "check_sensitivity_start",
-            "description_pl": "Rozpoczęcie sprawdzania czułości zabezpieczeń",
-            "inputs": {"device_count": len(devices)},
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "check_sensitivity_start",
+                "description_pl": "Rozpoczęcie sprawdzania czułości zabezpieczeń",
+                "inputs": {"device_count": len(devices)},
+                "outputs": {},
+            }
+        )
 
         for device in devices:
             device_id = str(device.id)
@@ -223,14 +230,16 @@ class OvercurrentCoordinationAnalyzer:
             # Get fault current at device location
             fault_data = fault_currents.get(location_id)
             if fault_data is None:
-                checks.append(SensitivityCheck(
-                    device_id=device_id,
-                    i_fault_min_a=0.0,
-                    i_pickup_a=device.settings.stage_51.pickup_current_a,
-                    margin_percent=0.0,
-                    verdict=CoordinationVerdict.ERROR,
-                    notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {location_id}",
-                ))
+                checks.append(
+                    SensitivityCheck(
+                        device_id=device_id,
+                        i_fault_min_a=0.0,
+                        i_pickup_a=device.settings.stage_51.pickup_current_a,
+                        margin_percent=0.0,
+                        verdict=CoordinationVerdict.ERROR,
+                        notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {location_id}",
+                    )
+                )
                 continue
 
             # Get pickup current from stage 51 (I>)
@@ -256,28 +265,32 @@ class OvercurrentCoordinationAnalyzer:
                 verdict = CoordinationVerdict.FAIL
                 notes_pl = f"Niewystarczająca czułość: I_min/I_pickup = {ratio:.2f} < {self.config.sensitivity_margin_marginal}"
 
-            checks.append(SensitivityCheck(
-                device_id=device_id,
-                i_fault_min_a=i_fault_min,
-                i_pickup_a=i_pickup,
-                margin_percent=margin_percent,
-                verdict=verdict,
-                notes_pl=notes_pl,
-            ))
+            checks.append(
+                SensitivityCheck(
+                    device_id=device_id,
+                    i_fault_min_a=i_fault_min,
+                    i_pickup_a=i_pickup,
+                    margin_percent=margin_percent,
+                    verdict=verdict,
+                    notes_pl=notes_pl,
+                )
+            )
 
-            trace_steps.append({
-                "step": f"sensitivity_{device_id[:8]}",
-                "description_pl": f"Sprawdzenie czułości: {device.name}",
-                "inputs": {
-                    "i_fault_min_a": i_fault_min,
-                    "i_pickup_a": i_pickup,
-                },
-                "outputs": {
-                    "ratio": ratio,
-                    "margin_percent": margin_percent,
-                    "verdict": verdict.value,
-                },
-            })
+            trace_steps.append(
+                {
+                    "step": f"sensitivity_{device_id[:8]}",
+                    "description_pl": f"Sprawdzenie czułości: {device.name}",
+                    "inputs": {
+                        "i_fault_min_a": i_fault_min,
+                        "i_pickup_a": i_pickup,
+                    },
+                    "outputs": {
+                        "ratio": ratio,
+                        "margin_percent": margin_percent,
+                        "verdict": verdict.value,
+                    },
+                }
+            )
 
         return checks
 
@@ -294,12 +307,14 @@ class OvercurrentCoordinationAnalyzer:
         """
         checks: list[OverloadCheck] = []
 
-        trace_steps.append({
-            "step": "check_overload_start",
-            "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
-            "inputs": {"device_count": len(devices)},
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "check_overload_start",
+                "description_pl": "Rozpoczęcie sprawdzania przeciążalności",
+                "inputs": {"device_count": len(devices)},
+                "outputs": {},
+            }
+        )
 
         for device in devices:
             device_id = str(device.id)
@@ -308,14 +323,16 @@ class OvercurrentCoordinationAnalyzer:
             # Get operating current at device location
             operating_data = operating_currents.get(location_id)
             if operating_data is None:
-                checks.append(OverloadCheck(
-                    device_id=device_id,
-                    i_operating_a=0.0,
-                    i_pickup_a=device.settings.stage_51.pickup_current_a,
-                    margin_percent=0.0,
-                    verdict=CoordinationVerdict.ERROR,
-                    notes_pl=f"Brak danych o prądzie roboczym dla lokalizacji {location_id}",
-                ))
+                checks.append(
+                    OverloadCheck(
+                        device_id=device_id,
+                        i_operating_a=0.0,
+                        i_pickup_a=device.settings.stage_51.pickup_current_a,
+                        margin_percent=0.0,
+                        verdict=CoordinationVerdict.ERROR,
+                        notes_pl=f"Brak danych o prądzie roboczym dla lokalizacji {location_id}",
+                    )
+                )
                 continue
 
             # Get pickup current from stage 51 (I>)
@@ -341,28 +358,32 @@ class OvercurrentCoordinationAnalyzer:
                 verdict = CoordinationVerdict.FAIL
                 notes_pl = f"Ryzyko fałszywego zadziałania: I_pickup/I_rob = {ratio:.2f} < {self.config.overload_margin_marginal}"
 
-            checks.append(OverloadCheck(
-                device_id=device_id,
-                i_operating_a=i_operating,
-                i_pickup_a=i_pickup,
-                margin_percent=margin_percent,
-                verdict=verdict,
-                notes_pl=notes_pl,
-            ))
+            checks.append(
+                OverloadCheck(
+                    device_id=device_id,
+                    i_operating_a=i_operating,
+                    i_pickup_a=i_pickup,
+                    margin_percent=margin_percent,
+                    verdict=verdict,
+                    notes_pl=notes_pl,
+                )
+            )
 
-            trace_steps.append({
-                "step": f"overload_{device_id[:8]}",
-                "description_pl": f"Sprawdzenie przeciążalności: {device.name}",
-                "inputs": {
-                    "i_operating_a": i_operating,
-                    "i_pickup_a": i_pickup,
-                },
-                "outputs": {
-                    "ratio": ratio if ratio != float("inf") else "inf",
-                    "margin_percent": margin_percent,
-                    "verdict": verdict.value,
-                },
-            })
+            trace_steps.append(
+                {
+                    "step": f"overload_{device_id[:8]}",
+                    "description_pl": f"Sprawdzenie przeciążalności: {device.name}",
+                    "inputs": {
+                        "i_operating_a": i_operating,
+                        "i_pickup_a": i_pickup,
+                    },
+                    "outputs": {
+                        "ratio": ratio if ratio != float("inf") else "inf",
+                        "margin_percent": margin_percent,
+                        "verdict": verdict.value,
+                    },
+                }
+            )
 
         return checks
 
@@ -381,20 +402,24 @@ class OvercurrentCoordinationAnalyzer:
         checks: list[SelectivityCheck] = []
 
         if len(devices) < 2:
-            trace_steps.append({
-                "step": "check_selectivity_skip",
-                "description_pl": "Pominięto sprawdzenie selektywności (mniej niż 2 urządzenia)",
-                "inputs": {"device_count": len(devices)},
-                "outputs": {},
-            })
+            trace_steps.append(
+                {
+                    "step": "check_selectivity_skip",
+                    "description_pl": "Pominięto sprawdzenie selektywności (mniej niż 2 urządzenia)",
+                    "inputs": {"device_count": len(devices)},
+                    "outputs": {},
+                }
+            )
             return checks
 
-        trace_steps.append({
-            "step": "check_selectivity_start",
-            "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
-            "inputs": {"device_count": len(devices)},
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "check_selectivity_start",
+                "description_pl": "Rozpoczęcie sprawdzania selektywności czasowej",
+                "inputs": {"device_count": len(devices)},
+                "outputs": {},
+            }
+        )
 
         min_cti = self.config.get_minimum_grading_margin_s()
 
@@ -411,17 +436,19 @@ class OvercurrentCoordinationAnalyzer:
             fault_data = fault_currents.get(downstream_location)
 
             if fault_data is None:
-                checks.append(SelectivityCheck(
-                    upstream_device_id=upstream_id,
-                    downstream_device_id=downstream_id,
-                    analysis_current_a=0.0,
-                    t_upstream_s=0.0,
-                    t_downstream_s=0.0,
-                    margin_s=0.0,
-                    required_margin_s=min_cti,
-                    verdict=CoordinationVerdict.ERROR,
-                    notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {downstream_location}",
-                ))
+                checks.append(
+                    SelectivityCheck(
+                        upstream_device_id=upstream_id,
+                        downstream_device_id=downstream_id,
+                        analysis_current_a=0.0,
+                        t_upstream_s=0.0,
+                        t_downstream_s=0.0,
+                        margin_s=0.0,
+                        required_margin_s=min_cti,
+                        verdict=CoordinationVerdict.ERROR,
+                        notes_pl=f"Brak danych o prądzie zwarciowym dla lokalizacji {downstream_location}",
+                    )
+                )
                 continue
 
             # Use maximum fault current for selectivity analysis
@@ -453,32 +480,36 @@ class OvercurrentCoordinationAnalyzer:
                     verdict = CoordinationVerdict.FAIL
                     notes_pl = f"Brak selektywności! Zabezpieczenie nadrzędne zadziała przed podrzędnym (Δt = {margin_s:.3f}s)"
 
-            checks.append(SelectivityCheck(
-                upstream_device_id=upstream_id,
-                downstream_device_id=downstream_id,
-                analysis_current_a=analysis_current,
-                t_upstream_s=t_upstream if t_upstream != float("inf") else 999.999,
-                t_downstream_s=t_downstream if t_downstream != float("inf") else 999.999,
-                margin_s=margin_s if margin_s != float("inf") else 999.999,
-                required_margin_s=min_cti,
-                verdict=verdict,
-                notes_pl=notes_pl,
-            ))
+            checks.append(
+                SelectivityCheck(
+                    upstream_device_id=upstream_id,
+                    downstream_device_id=downstream_id,
+                    analysis_current_a=analysis_current,
+                    t_upstream_s=t_upstream if t_upstream != float("inf") else 999.999,
+                    t_downstream_s=t_downstream if t_downstream != float("inf") else 999.999,
+                    margin_s=margin_s if margin_s != float("inf") else 999.999,
+                    required_margin_s=min_cti,
+                    verdict=verdict,
+                    notes_pl=notes_pl,
+                )
+            )
 
-            trace_steps.append({
-                "step": f"selectivity_{downstream_id[:8]}_{upstream_id[:8]}",
-                "description_pl": f"Selektywność: {downstream.name} → {upstream.name}",
-                "inputs": {
-                    "analysis_current_a": analysis_current,
-                    "min_cti_s": min_cti,
-                },
-                "outputs": {
-                    "t_downstream_s": t_downstream if t_downstream != float("inf") else "inf",
-                    "t_upstream_s": t_upstream if t_upstream != float("inf") else "inf",
-                    "margin_s": margin_s if margin_s != float("inf") else "inf",
-                    "verdict": verdict.value,
-                },
-            })
+            trace_steps.append(
+                {
+                    "step": f"selectivity_{downstream_id[:8]}_{upstream_id[:8]}",
+                    "description_pl": f"Selektywność: {downstream.name} → {upstream.name}",
+                    "inputs": {
+                        "analysis_current_a": analysis_current,
+                        "min_cti_s": min_cti,
+                    },
+                    "outputs": {
+                        "t_downstream_s": t_downstream if t_downstream != float("inf") else "inf",
+                        "t_upstream_s": t_upstream if t_upstream != float("inf") else "inf",
+                        "margin_s": margin_s if margin_s != float("inf") else "inf",
+                        "verdict": verdict.value,
+                    },
+                }
+            )
 
         return checks
 
@@ -539,12 +570,14 @@ class OvercurrentCoordinationAnalyzer:
         """
         curves: list[TCCCurve] = []
 
-        trace_steps.append({
-            "step": "generate_tcc_curves",
-            "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",
-            "inputs": {"device_count": len(devices)},
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "generate_tcc_curves",
+                "description_pl": "Generowanie krzywych czasowo-prądowych (TCC)",
+                "inputs": {"device_count": len(devices)},
+                "outputs": {},
+            }
+        )
 
         for idx, device in enumerate(devices):
             stage_51 = device.settings.stage_51
@@ -584,15 +617,17 @@ class OvercurrentCoordinationAnalyzer:
                 for p in points
             )
 
-            curves.append(TCCCurve(
-                device_id=str(device.id),
-                device_name=device.name,
-                curve_type=f"{curve_settings.standard.value}_{curve_settings.variant}",
-                pickup_current_a=curve_settings.pickup_current_a,
-                time_multiplier=curve_settings.time_multiplier,
-                points=tcc_points,
-                color=CURVE_COLORS[idx % len(CURVE_COLORS)],
-            ))
+            curves.append(
+                TCCCurve(
+                    device_id=str(device.id),
+                    device_name=device.name,
+                    curve_type=f"{curve_settings.standard.value}_{curve_settings.variant}",
+                    pickup_current_a=curve_settings.pickup_current_a,
+                    time_multiplier=curve_settings.time_multiplier,
+                    points=tcc_points,
+                    color=CURVE_COLORS[idx % len(CURVE_COLORS)],
+                )
+            )
 
         return curves
 
@@ -606,41 +641,49 @@ class OvercurrentCoordinationAnalyzer:
         """
         markers: list[FaultMarker] = []
 
-        trace_steps.append({
-            "step": "generate_fault_markers",
-            "description_pl": "Generowanie znaczników prądów zwarciowych",
-            "inputs": {"location_count": len(fault_currents)},
-            "outputs": {},
-        })
+        trace_steps.append(
+            {
+                "step": "generate_fault_markers",
+                "description_pl": "Generowanie znaczników prądów zwarciowych",
+                "inputs": {"location_count": len(fault_currents)},
+                "outputs": {},
+            }
+        )
 
         for fault_data in fault_currents:
             # Maximum 3-phase fault
-            markers.append(FaultMarker(
-                id=f"{fault_data.location_id}_ik_max_3f",
-                label_pl=f"Ik\"max 3F ({fault_data.location_id})",
-                current_a=fault_data.ik_max_3f_a,
-                fault_type="3F",
-                location=fault_data.location_id,
-            ))
+            markers.append(
+                FaultMarker(
+                    id=f"{fault_data.location_id}_ik_max_3f",
+                    label_pl=f'Ik"max 3F ({fault_data.location_id})',
+                    current_a=fault_data.ik_max_3f_a,
+                    fault_type="3F",
+                    location=fault_data.location_id,
+                )
+            )
 
             # Minimum 3-phase fault
-            markers.append(FaultMarker(
-                id=f"{fault_data.location_id}_ik_min_3f",
-                label_pl=f"Ik\"min 3F ({fault_data.location_id})",
-                current_a=fault_data.ik_min_3f_a,
-                fault_type="3F",
-                location=fault_data.location_id,
-            ))
+            markers.append(
+                FaultMarker(
+                    id=f"{fault_data.location_id}_ik_min_3f",
+                    label_pl=f'Ik"min 3F ({fault_data.location_id})',
+                    current_a=fault_data.ik_min_3f_a,
+                    fault_type="3F",
+                    location=fault_data.location_id,
+                )
+            )
 
             # Minimum 1-phase fault if available
             if fault_data.ik_min_1f_a:
-                markers.append(FaultMarker(
-                    id=f"{fault_data.location_id}_ik_min_1f",
-                    label_pl=f"Ik\"min 1F ({fault_data.location_id})",
-                    current_a=fault_data.ik_min_1f_a,
-                    fault_type="1F",
-                    location=fault_data.location_id,
-                ))
+                markers.append(
+                    FaultMarker(
+                        id=f"{fault_data.location_id}_ik_min_1f",
+                        label_pl=f'Ik"min 1F ({fault_data.location_id})',
+                        current_a=fault_data.ik_min_1f_a,
+                        fault_type="1F",
+                        location=fault_data.location_id,
+                    )
+                )
 
         return markers
 
@@ -682,6 +725,7 @@ class OvercurrentCoordinationAnalyzer:
         """
         Build summary statistics.
         """
+
         def count_verdicts(checks: list) -> dict[str, int]:
             return {
                 "pass": sum(1 for c in checks if c.verdict == CoordinationVerdict.PASS),
@@ -692,7 +736,9 @@ class OvercurrentCoordinationAnalyzer:
 
         return {
             "total_devices": len(devices),
-            "total_checks": len(sensitivity_checks) + len(selectivity_checks) + len(overload_checks),
+            "total_checks": len(sensitivity_checks)
+            + len(selectivity_checks)
+            + len(overload_checks),
             "sensitivity": count_verdicts(sensitivity_checks),
             "selectivity": count_verdicts(selectivity_checks),
             "overload": count_verdicts(overload_checks),

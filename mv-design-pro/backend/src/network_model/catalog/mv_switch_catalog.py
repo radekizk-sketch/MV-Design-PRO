@@ -45,7 +45,6 @@ TYPOSZEREG PRZEMYSLOWY (36 rekordow):
 from collections import Counter
 from typing import Any
 
-
 # =============================================================================
 # WYLACZNIKI SN (CIRCUIT_BREAKER) — prozniowe i SF6
 # Zrodlo: ABB VD4 katalog / Siemens 3AH5 / Eaton W-VACi
@@ -751,12 +750,10 @@ def get_reclosers() -> list[dict[str, Any]]:
 
 def _collect_quality_counts(all_types: list[dict[str, Any]]) -> dict[str, Any]:
     verification_counts = Counter(
-        str(item["params"].get("verification_status", "")).strip()
-        for item in all_types
+        str(item["params"].get("verification_status", "")).strip() for item in all_types
     )
     catalog_counts = Counter(
-        str(item["params"].get("catalog_status", "")).strip()
-        for item in all_types
+        str(item["params"].get("catalog_status", "")).strip() for item in all_types
     )
     manufacturers = sorted(
         {

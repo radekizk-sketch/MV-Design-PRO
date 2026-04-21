@@ -2,7 +2,7 @@
  * P16a/P16b/P16c — Protection Section Component (READ-ONLY)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PowerFactory-like protection visualization
+ * - ui_canonical_parity.md: Canonical-like protection visualization
  * - sld_rules.md § G.1: Synchronizacja selection SLD ↔ Tree ↔ Inspector
  * - ANSI/IEEE C37.2: Device function numbers
  *
@@ -10,7 +10,7 @@
  * - Wyswietla przypisane zabezpieczenia dla wybranego elementu
  * - SETPOINT jako zrodlo prawdy (np. "3×In", "0,8×Un")
  * - COMPUTED (A/V) tylko gdy dostepne dane bazowe
- * - Format PF/ETAP: "50 I>>: 3×In (≈ 1509 A), T=0,1 s"
+ * - Format PF/CANONICAL: "50 I>>: 3×In (≈ 1509 A), T=0,1 s"
  * - Read-only: brak edycji
  * - Zwijalna sekcja
  *
@@ -217,7 +217,7 @@ function SettingsSummaryView({ summary }: SettingsSummaryViewProps) {
 }
 
 // =============================================================================
-// FunctionSummaryRow Component (PF/ETAP style)
+// FunctionSummaryRow Component (PF/CANONICAL style)
 // =============================================================================
 
 interface FunctionSummaryRowProps {
@@ -225,7 +225,7 @@ interface FunctionSummaryRowProps {
 }
 
 /**
- * Wiersz funkcji zabezpieczeniowej w stylu PF/ETAP.
+ * Wiersz funkcji zabezpieczeniowej w stylu PF/CANONICAL.
  *
  * FORMAT: "ANSI shortcut: setpoint (≈ computed), T=time s"
  *
@@ -237,7 +237,7 @@ interface FunctionSummaryRowProps {
  * "79 SPZ: Wlaczone, T=600 s"
  */
 function FunctionSummaryRow({ func }: FunctionSummaryRowProps) {
-  // Formatuj funkcje w stylu PF/ETAP
+  // Formatuj funkcje w stylu PF/CANONICAL
   const formatted = useMemo(() => formatProtectionFunction(func), [func]);
 
   return (

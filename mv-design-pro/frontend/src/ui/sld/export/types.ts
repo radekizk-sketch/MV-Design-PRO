@@ -2,7 +2,7 @@
  * SLD Snapshot Export Types
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF/ETAP-grade export options
+ * - ui_canonical_parity.md: PF/CANONICAL-grade export options
  * - SLD_UI_ARCHITECTURE.md: Layer visibility controls
  *
  * FEATURES:

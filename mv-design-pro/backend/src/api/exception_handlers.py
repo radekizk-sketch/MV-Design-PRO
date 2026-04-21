@@ -20,7 +20,10 @@ def register_exception_handlers(app: FastAPI) -> None:
         tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
         logger.error(
             "Unhandled exception rid=%s path=%s: %s\n%s",
-            request_id, request.url.path, str(exc), "".join(tb),
+            request_id,
+            request.url.path,
+            str(exc),
+            "".join(tb),
         )
         return JSONResponse(
             status_code=500,
@@ -37,7 +40,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
             "ValueError rid=%s path=%s: %s",
-            request_id, request.url.path, str(exc),
+            request_id,
+            request.url.path,
+            str(exc),
         )
         return JSONResponse(
             status_code=422,
@@ -54,7 +59,9 @@ def register_exception_handlers(app: FastAPI) -> None:
         request_id = getattr(request.state, "request_id", "unknown")
         logger.warning(
             "KeyError rid=%s path=%s: %s",
-            request_id, request.url.path, str(exc),
+            request_id,
+            request.url.path,
+            str(exc),
         )
         return JSONResponse(
             status_code=404,

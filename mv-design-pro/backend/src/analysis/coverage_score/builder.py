@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from analysis.coverage_score.models import CoverageScoreContext, CoverageScoreView, compute_coverage_id
+from analysis.coverage_score.models import (
+    CoverageScoreContext,
+    CoverageScoreView,
+    compute_coverage_id,
+)
 from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import ProtectionInsightView, ProtectionSelectivityStatus
@@ -10,7 +14,6 @@ from analysis.recommendations.models import RecommendationView
 from analysis.sensitivity.models import SensitivityView
 from analysis.voltage_profile.models import VoltageProfileStatus, VoltageProfileView
 from application.proof_engine.types import ProofDocument, ProofType
-
 
 _PROOF_WEIGHTS: tuple[tuple[str, ProofType, float], ...] = (
     ("P11: SC3F", ProofType.SC3F_IEC60909, 15.0),
@@ -45,9 +48,7 @@ class CoverageScoreBuilder:
                 missing_items.append(f"Brak dowodu: {label}.")
                 score -= weight
                 if proof_type == ProofType.EARTHING_GROUND_FAULT_SN:
-                    critical_gaps.append(
-                        "P14-GAP-001: brak pakietu P19 (earthing SN)."
-                    )
+                    critical_gaps.append("P14-GAP-001: brak pakietu P19 (earthing SN).")
 
         if normative_report is None:
             missing_items.append("Brak P20 (raport normatywny).")
@@ -61,9 +62,7 @@ class CoverageScoreBuilder:
         if protection_curves_it is None:
             missing_items.append("Brak P22 (krzywe I–t).")
             score -= 3.0
-            critical_gaps.append(
-                "P14-GAP-002: selektywność bez pełnych krzywych I–t."
-            )
+            critical_gaps.append("P14-GAP-002: selektywność bez pełnych krzywych I–t.")
         if sensitivity is None:
             missing_items.append("Brak P25 (wrażliwość).")
             score -= 5.0

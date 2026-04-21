@@ -6,7 +6,7 @@
  * with SLD delta overlay.
  *
  * 100% Polish UI. No project codenames.
- * ETAP-grade: consistent badges, number formatting, delta arrows.
+ * CANONICAL-grade: consistent badges, number formatting, delta arrows.
  */
 
 import React, { useEffect, useCallback, useMemo } from 'react';

@@ -1,28 +1,29 @@
 from .dtos import (
     AnalysisRunDetailDTO,
     AnalysisRunSummaryDTO,
+    BranchResultsDTO,
+    BranchResultsRowDTO,
+    BusResultsDTO,
+    BusResultsRowDTO,
+    ExtendedTraceDTO,
     OverlayDTO,
-    ResultListDTO,
+    ResultColumnDTO,
     ResultItemDTO,
-    TraceDTO,
-    TraceSummaryDTO,
+    ResultListDTO,
+    ResultsIndexDTO,
+    ResultTableMetaDTO,
     # P11a — Results Inspector DTOs
     RunHeaderDTO,
-    ResultColumnDTO,
-    ResultTableMetaDTO,
-    ResultsIndexDTO,
-    BusResultsRowDTO,
-    BusResultsDTO,
-    BranchResultsRowDTO,
-    BranchResultsDTO,
-    ShortCircuitRowDTO,
     ShortCircuitResultsDTO,
-    ExtendedTraceDTO,
+    ShortCircuitRowDTO,
+    SldOverlayBranchDTO,
     SldOverlayBusDTO,
     SldOverlayNodeDTO,  # backward-compatible alias
-    SldOverlayBranchDTO,
     SldResultOverlayDTO,
+    TraceDTO,
+    TraceSummaryDTO,
 )
+from .export_service import AnalysisRunExportService
 from .read_model import (
     build_deterministic_id,
     build_input_metadata,
@@ -31,9 +32,8 @@ from .read_model import (
     get_run_trace,
     minimize_summary,
 )
-from .service import AnalysisRunService
-from .export_service import AnalysisRunExportService
 from .results_inspector import ResultsInspectorService
+from .service import AnalysisRunService
 
 __all__ = [
     "AnalysisRunDetailDTO",

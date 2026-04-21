@@ -10,7 +10,6 @@ from analysis.voltage_profile.models import (
     VoltageProfileView,
 )
 
-
 STATUS_ORDER: dict[VoltageProfileStatus, int] = {
     VoltageProfileStatus.FAIL: 0,
     VoltageProfileStatus.WARNING: 1,
@@ -39,9 +38,7 @@ def summary_to_dict(summary: VoltageProfileSummary) -> dict[str, Any]:
     return {
         "worst_bus_id": summary.worst_bus_id,
         "worst_delta_pct_abs": (
-            float(summary.worst_delta_pct_abs)
-            if summary.worst_delta_pct_abs is not None
-            else None
+            float(summary.worst_delta_pct_abs) if summary.worst_delta_pct_abs is not None else None
         ),
         "pass_count": int(summary.pass_count),
         "warning_count": int(summary.warning_count),

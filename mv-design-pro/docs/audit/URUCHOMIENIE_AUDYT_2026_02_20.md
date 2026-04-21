@@ -67,8 +67,8 @@ Operacje tworzące elementy techniczne MUSZĄ zawierać `catalog_binding`:
 - `insert_station_on_segment_sn`
 - `add_transformer_sn_nn`
 - `add_nn_load`
-- `add_pv_inverter_nn`
-- `add_bess_inverter_nn`
+- `add_converter_source`
+- `add_converter_source`
 - `add_relay`
 - `add_ct`, `add_vt`
 - `add_nn_outgoing_field`

@@ -38,28 +38,45 @@ def _golden_enm() -> EnergyNetworkModel:
         ],
         sources=[
             Source(
-                ref_id="src_1", name="Sieć", bus_ref="bus_1",
-                model="short_circuit_power", sk3_mva=250,
-                r0_ohm=0.01, x0_ohm=0.1, z0_z1_ratio=1.0,
-                catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN",
-                parameter_source="CATALOG", source_mode="KATALOG",
+                ref_id="src_1",
+                name="Sieć",
+                bus_ref="bus_1",
+                model="short_circuit_power",
+                sk3_mva=250,
+                r0_ohm=0.01,
+                x0_ohm=0.1,
+                z0_z1_ratio=1.0,
+                catalog_ref="SRC_TEST",
+                catalog_namespace="ZRODLO_SN",
+                parameter_source="CATALOG",
+                source_mode="KATALOG",
             ),
         ],
         branches=[
             OverheadLine(
-                ref_id="ln_1", name="Linia SN",
-                from_bus_ref="bus_1", to_bus_ref="bus_2",
-                length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3,
-                r0_ohm_per_km=1.2, x0_ohm_per_km=0.9,
+                ref_id="ln_1",
+                name="Linia SN",
+                from_bus_ref="bus_1",
+                to_bus_ref="bus_2",
+                length_km=5,
+                r_ohm_per_km=0.4,
+                x_ohm_per_km=0.3,
+                r0_ohm_per_km=1.2,
+                x0_ohm_per_km=0.9,
                 catalog_ref="CAT-LN-001",
             ),
         ],
         transformers=[
             Transformer(
-                ref_id="trafo_1", name="Transformator T1",
-                hv_bus_ref="bus_1", lv_bus_ref="bus_2",
-                sn_mva=0.63, uhv_kv=15, ulv_kv=0.4,
-                uk_percent=6, pk_kw=7.6,
+                ref_id="trafo_1",
+                name="Transformator T1",
+                hv_bus_ref="bus_1",
+                lv_bus_ref="bus_2",
+                sn_mva=0.63,
+                uhv_kv=15,
+                ulv_kv=0.4,
+                uk_percent=6,
+                pk_kw=7.6,
                 vector_group="Dyn11",
                 catalog_ref="CAT-TR-001",
             ),
@@ -94,7 +111,12 @@ class TestFixActionModel:
         assert data["payload_hint"] is None
 
     def test_fix_action_all_types(self):
-        for action_type in ["OPEN_MODAL", "NAVIGATE_TO_ELEMENT", "SELECT_CATALOG", "ADD_MISSING_DEVICE"]:
+        for action_type in [
+            "OPEN_MODAL",
+            "NAVIGATE_TO_ELEMENT",
+            "SELECT_CATALOG",
+            "ADD_MISSING_DEVICE",
+        ]:
             fa = FixAction(action_type=action_type)
             assert fa.action_type == action_type
 
@@ -104,22 +126,41 @@ class TestFixActionOnBlockers:
 
     def test_e009_trafo_no_catalog_ref(self):
         """Transformator bez catalog_ref → BLOCKER + fix_action SELECT_CATALOG."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=110),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=1000, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            transformers=[
-                Transformer(
-                    ref_id="trafo_1", name="T1",
-                    hv_bus_ref="b1", lv_bus_ref="b2",
-                    sn_mva=25, uhv_kv=110, ulv_kv=15,
-                    uk_percent=12, pk_kw=120,
-                    # NO catalog_ref → BLOCKER E009
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=110),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=1000,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                transformers=[
+                    Transformer(
+                        ref_id="trafo_1",
+                        name="T1",
+                        hv_bus_ref="b1",
+                        lv_bus_ref="b2",
+                        sn_mva=25,
+                        uhv_kv=110,
+                        ulv_kv=15,
+                        uk_percent=12,
+                        pk_kw=120,
+                        # NO catalog_ref → BLOCKER E009
+                    ),
+                ],
+            )
+        )
         e009_issues = [i for i in result.issues if i.code == "E009"]
         assert len(e009_issues) >= 1
         issue = e009_issues[0]
@@ -132,21 +173,39 @@ class TestFixActionOnBlockers:
 
     def test_e009_branch_no_catalog_ref(self):
         """Gałąź bez catalog_ref → BLOCKER + fix_action SELECT_CATALOG."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=15),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=220, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            branches=[
-                Cable(
-                    ref_id="cab_1", name="C1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=1, r_ohm_per_km=0.2, x_ohm_per_km=0.08,
-                    # NO catalog_ref
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=15),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=220,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                branches=[
+                    Cable(
+                        ref_id="cab_1",
+                        name="C1",
+                        from_bus_ref="b1",
+                        to_bus_ref="b2",
+                        length_km=1,
+                        r_ohm_per_km=0.2,
+                        x_ohm_per_km=0.08,
+                        # NO catalog_ref
+                    ),
+                ],
+            )
+        )
         e009_issues = [i for i in result.issues if i.code == "E009"]
         assert len(e009_issues) >= 1
         issue = e009_issues[0]
@@ -157,9 +216,11 @@ class TestFixActionOnBlockers:
 
     def test_e001_no_sources_fix_action(self):
         """Brak źródeł → BLOCKER + fix_action ADD_MISSING_DEVICE."""
-        result = ENMValidator().validate(_enm(
-            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            )
+        )
         e001_issues = [i for i in result.issues if i.code == "E001"]
         assert len(e001_issues) == 1
         assert e001_issues[0].fix_action is not None
@@ -168,10 +229,24 @@ class TestFixActionOnBlockers:
 
     def test_e004_zero_voltage_fix_action(self):
         """Szyna z voltage_kv=0 → BLOCKER + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[Bus(ref_id="b1", name="B1", voltage_kv=0)],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=100, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[Bus(ref_id="b1", name="B1", voltage_kv=0)],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=100,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+            )
+        )
         e004_issues = [i for i in result.issues if i.code == "E004"]
         assert len(e004_issues) == 1
         issue = e004_issues[0]
@@ -182,20 +257,38 @@ class TestFixActionOnBlockers:
 
     def test_e005_zero_impedance_fix_action(self):
         """Gałąź z zerową impedancją → BLOCKER + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=15),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=100, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            branches=[
-                OverheadLine(
-                    ref_id="ln_1", name="L1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=5, r_ohm_per_km=0, x_ohm_per_km=0,
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=15),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=100,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                branches=[
+                    OverheadLine(
+                        ref_id="ln_1",
+                        name="L1",
+                        from_bus_ref="b1",
+                        to_bus_ref="b2",
+                        length_km=5,
+                        r_ohm_per_km=0,
+                        x_ohm_per_km=0,
+                    ),
+                ],
+            )
+        )
         e005_issues = [i for i in result.issues if i.code == "E005"]
         assert len(e005_issues) == 1
         assert e005_issues[0].fix_action is not None
@@ -204,21 +297,40 @@ class TestFixActionOnBlockers:
 
     def test_e006_trafo_no_uk_fix_action(self):
         """Transformator bez uk% → BLOCKER + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=110),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=1000, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            transformers=[
-                Transformer(
-                    ref_id="t1", name="T1",
-                    hv_bus_ref="b1", lv_bus_ref="b2",
-                    sn_mva=25, uhv_kv=110, ulv_kv=15,
-                    uk_percent=0, pk_kw=120,
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=110),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=1000,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                transformers=[
+                    Transformer(
+                        ref_id="t1",
+                        name="T1",
+                        hv_bus_ref="b1",
+                        lv_bus_ref="b2",
+                        sn_mva=25,
+                        uhv_kv=110,
+                        ulv_kv=15,
+                        uk_percent=0,
+                        pk_kw=120,
+                    ),
+                ],
+            )
+        )
         e006_issues = [i for i in result.issues if i.code == "E006"]
         assert len(e006_issues) == 1
         assert e006_issues[0].fix_action is not None
@@ -228,10 +340,23 @@ class TestFixActionOnBlockers:
 
     def test_e008_source_no_params_fix_action(self):
         """Źródło bez parametrów zwarciowych → BLOCKER + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+            )
+        )
         e008_issues = [i for i in result.issues if i.code == "sources.no_short_circuit_params"]
         assert len(e008_issues) == 1
         assert e008_issues[0].fix_action is not None
@@ -245,21 +370,39 @@ class TestFixActionOnWarnings:
 
     def test_w001_line_no_z0_fix_action(self):
         """Gałąź bez Z₀ → IMPORTANT + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=15),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=220, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            branches=[
-                OverheadLine(
-                    ref_id="ln_1", name="L1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3,
-                    catalog_ref="CAT-LN-001",
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=15),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=220,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                branches=[
+                    OverheadLine(
+                        ref_id="ln_1",
+                        name="L1",
+                        from_bus_ref="b1",
+                        to_bus_ref="b2",
+                        length_km=5,
+                        r_ohm_per_km=0.4,
+                        x_ohm_per_km=0.3,
+                        catalog_ref="CAT-LN-001",
+                    ),
+                ],
+            )
+        )
         w001_issues = [i for i in result.issues if i.code == "W001"]
         assert len(w001_issues) >= 1
         assert w001_issues[0].fix_action is not None
@@ -269,29 +412,45 @@ class TestFixActionOnWarnings:
 
     def test_w004_trafo_no_vector_group_fix_action(self):
         """Transformator bez vector_group → IMPORTANT + fix_action OPEN_MODAL."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=110),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(
-                ref_id="s1", name="S1", bus_ref="b1",
-                model="short_circuit_power", sk3_mva=1000,
-                r0_ohm=0.01, x0_ohm=0.1, z0_z1_ratio=1.0,
-                catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN",
-                parameter_source="CATALOG", source_mode="KATALOG",
-            )],
-            transformers=[
-                Transformer(
-                    ref_id="t1", name="T1",
-                    hv_bus_ref="b1", lv_bus_ref="b2",
-                    sn_mva=25, uhv_kv=110, ulv_kv=15,
-                    uk_percent=12, pk_kw=120,
-                    catalog_ref="CAT-TR-001",
-                    # NO vector_group
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=110),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=1000,
+                        r0_ohm=0.01,
+                        x0_ohm=0.1,
+                        z0_z1_ratio=1.0,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                transformers=[
+                    Transformer(
+                        ref_id="t1",
+                        name="T1",
+                        hv_bus_ref="b1",
+                        lv_bus_ref="b2",
+                        sn_mva=25,
+                        uhv_kv=110,
+                        ulv_kv=15,
+                        uk_percent=12,
+                        pk_kw=120,
+                        catalog_ref="CAT-TR-001",
+                        # NO vector_group
+                    ),
+                ],
+            )
+        )
         w004_issues = [i for i in result.issues if i.code == "W004"]
         assert len(w004_issues) == 1
         assert w004_issues[0].fix_action is not None
@@ -305,23 +464,41 @@ class TestNoFixActionForStructuralErrors:
 
     def test_e003_island_no_fix_action(self):
         """Wyspa (odcięta od źródła) → BLOCKER but no fix_action."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=15),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-                Bus(ref_id="b3", name="B3", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=220, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            branches=[
-                OverheadLine(
-                    ref_id="ln_1", name="L1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=5, r_ohm_per_km=0.4, x_ohm_per_km=0.3,
-                    catalog_ref="CAT-LN-001",
-                ),
-                # b3 is isolated (island)
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=15),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                    Bus(ref_id="b3", name="B3", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        sk3_mva=220,
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                branches=[
+                    OverheadLine(
+                        ref_id="ln_1",
+                        name="L1",
+                        from_bus_ref="b1",
+                        to_bus_ref="b2",
+                        length_km=5,
+                        r_ohm_per_km=0.4,
+                        x_ohm_per_km=0.3,
+                        catalog_ref="CAT-LN-001",
+                    ),
+                    # b3 is isolated (island)
+                ],
+            )
+        )
         e003_issues = [i for i in result.issues if i.code == "E003"]
         assert len(e003_issues) >= 1
         # Structural issues should NOT have fix_action
@@ -340,7 +517,8 @@ class TestGoldenNetworkNoBlockerFixActions:
     def test_golden_no_blocker_fix_actions(self):
         result = ENMValidator().validate(_golden_enm())
         blocker_fix_actions = [
-            i.fix_action for i in result.issues
+            i.fix_action
+            for i in result.issues
             if i.severity == "BLOCKER" and i.fix_action is not None
         ]
         assert len(blocker_fix_actions) == 0
@@ -356,12 +534,28 @@ class TestDeterminism:
                 Bus(ref_id="b1", name="B1", voltage_kv=15),
                 Bus(ref_id="b2", name="B2", voltage_kv=15),
             ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", sk3_mva=100, catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
+            sources=[
+                Source(
+                    ref_id="s1",
+                    name="S1",
+                    bus_ref="b1",
+                    model="short_circuit_power",
+                    sk3_mva=100,
+                    catalog_ref="SRC_TEST",
+                    catalog_namespace="ZRODLO_SN",
+                    parameter_source="CATALOG",
+                    source_mode="KATALOG",
+                )
+            ],
             branches=[
                 Cable(
-                    ref_id="cab_1", name="C1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=1, r_ohm_per_km=0.2, x_ohm_per_km=0.08,
+                    ref_id="cab_1",
+                    name="C1",
+                    from_bus_ref="b1",
+                    to_bus_ref="b2",
+                    length_km=1,
+                    r_ohm_per_km=0.2,
+                    x_ohm_per_km=0.08,
                 ),
             ],
         )
@@ -375,26 +569,51 @@ class TestDeterminism:
 
     def test_sorting_by_severity_then_code_then_element(self):
         """Issues are sorted: severity_rank → code → element_ref."""
-        result = ENMValidator().validate(_enm(
-            buses=[
-                Bus(ref_id="b1", name="B1", voltage_kv=0),
-                Bus(ref_id="b2", name="B2", voltage_kv=15),
-            ],
-            sources=[Source(ref_id="s1", name="S1", bus_ref="b1", model="short_circuit_power", catalog_ref="SRC_TEST", catalog_namespace="ZRODLO_SN", parameter_source="CATALOG", source_mode="KATALOG")],
-            branches=[
-                Cable(
-                    ref_id="cab_1", name="C1",
-                    from_bus_ref="b1", to_bus_ref="b2",
-                    length_km=1, r_ohm_per_km=0.2, x_ohm_per_km=0.08,
-                ),
-            ],
-        ))
+        result = ENMValidator().validate(
+            _enm(
+                buses=[
+                    Bus(ref_id="b1", name="B1", voltage_kv=0),
+                    Bus(ref_id="b2", name="B2", voltage_kv=15),
+                ],
+                sources=[
+                    Source(
+                        ref_id="s1",
+                        name="S1",
+                        bus_ref="b1",
+                        model="short_circuit_power",
+                        catalog_ref="SRC_TEST",
+                        catalog_namespace="ZRODLO_SN",
+                        parameter_source="CATALOG",
+                        source_mode="KATALOG",
+                    )
+                ],
+                branches=[
+                    Cable(
+                        ref_id="cab_1",
+                        name="C1",
+                        from_bus_ref="b1",
+                        to_bus_ref="b2",
+                        length_km=1,
+                        r_ohm_per_km=0.2,
+                        x_ohm_per_km=0.08,
+                    ),
+                ],
+            )
+        )
         severity_rank = {"BLOCKER": 0, "IMPORTANT": 1, "INFO": 2}
         for i in range(len(result.issues) - 1):
             a = result.issues[i]
             b = result.issues[i + 1]
-            rank_a = (severity_rank[a.severity], a.code, a.element_refs[0] if a.element_refs else "")
-            rank_b = (severity_rank[b.severity], b.code, b.element_refs[0] if b.element_refs else "")
+            rank_a = (
+                severity_rank[a.severity],
+                a.code,
+                a.element_refs[0] if a.element_refs else "",
+            )
+            rank_b = (
+                severity_rank[b.severity],
+                b.code,
+                b.element_refs[0] if b.element_refs else "",
+            )
             assert rank_a <= rank_b, f"Issues not sorted: {a.code} vs {b.code}"
 
 

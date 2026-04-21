@@ -30,7 +30,6 @@ from typing import Any
 
 from enm.fix_actions import FixAction
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
@@ -87,11 +86,7 @@ class AnalysisEligibilityIssue:
             "message_pl": self.message_pl,
             "element_ref": self.element_ref,
             "element_type": self.element_type,
-            "fix_action": (
-                self.fix_action.model_dump(mode="json")
-                if self.fix_action
-                else None
-            ),
+            "fix_action": (self.fix_action.model_dump(mode="json") if self.fix_action else None),
         }
 
 
@@ -181,9 +176,7 @@ def _sort_issues(
     issues: list[AnalysisEligibilityIssue],
 ) -> tuple[AnalysisEligibilityIssue, ...]:
     """Sort issues deterministically by code, then element_ref."""
-    return tuple(
-        sorted(issues, key=lambda i: (i.code, i.element_ref or ""))
-    )
+    return tuple(sorted(issues, key=lambda i: (i.code, i.element_ref or "")))
 
 
 def compute_eligibility_result_hash(result_dict: dict[str, Any]) -> str:
@@ -208,11 +201,7 @@ def build_eligibility_result(
     sorted_warnings = _sort_issues(warnings or [])
     sorted_info = _sort_issues(info or [])
 
-    status = (
-        EligibilityStatus.INELIGIBLE
-        if sorted_blockers
-        else EligibilityStatus.ELIGIBLE
-    )
+    status = EligibilityStatus.INELIGIBLE if sorted_blockers else EligibilityStatus.ELIGIBLE
 
     # Build hash from canonical dict (without hash field)
     sig_data = {
@@ -244,9 +233,7 @@ def build_eligibility_matrix(
 
     Results sorted by AnalysisType.value for determinism.
     """
-    sorted_results = tuple(
-        sorted(results, key=lambda r: r.analysis_type.value)
-    )
+    sorted_results = tuple(sorted(results, key=lambda r: r.analysis_type.value))
 
     # Build hash from canonical dict (without top-level hash)
     sig_data = {

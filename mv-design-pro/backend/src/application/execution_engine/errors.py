@@ -46,7 +46,5 @@ class StudyCaseNotFoundError(ExecutionError):
     """Study case does not exist."""
 
     def __init__(self, case_id: str) -> None:
-        super().__init__(
-            f"Przypadek obliczeniowy nie istnieje: {case_id}"
-        )
+        super().__init__(f"Przypadek obliczeniowy nie istnieje: {case_id}")
         self.case_id = case_id

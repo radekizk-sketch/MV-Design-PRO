@@ -84,15 +84,17 @@ def _build_element_results(
                 tp_summary["f50_t_trip_s"] = fr.f50.t_trip_s
             test_point_summaries.append(tp_summary)
 
-        results.append(ElementResult(
-            element_ref=relay_result.relay_id,
-            element_type="relay",
-            values={
-                "attached_cb_id": relay_result.attached_cb_id,
-                "test_point_count": len(relay_result.per_test_point),
-                "test_points": test_point_summaries,
-            },
-        ))
+        results.append(
+            ElementResult(
+                element_ref=relay_result.relay_id,
+                element_type="relay",
+                values={
+                    "attached_cb_id": relay_result.attached_cb_id,
+                    "test_point_count": len(relay_result.per_test_point),
+                    "test_points": test_point_summaries,
+                },
+            )
+        )
 
     return results
 

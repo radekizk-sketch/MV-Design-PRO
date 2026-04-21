@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results/diagnostics as overlay
- * - powerfactory_ui_parity.md § A.3: URL reflects navigation state
+ * - ui_canonical_parity.md § A.3: URL reflects navigation state
  * - 100% POLISH UI
  *
  * Store for diagnostics overlay state:

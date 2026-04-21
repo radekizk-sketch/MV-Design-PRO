@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 import re
+from datetime import UTC, datetime
 from typing import Any
 
 from application.proof_engine.types import (
@@ -15,7 +15,6 @@ from application.proof_engine.types import (
     SymbolDefinition,
     UnitCheckResult,
 )
-
 
 _COMPLEX_PATTERN = re.compile(r"^\s*(-?\d+(?:\.\d+)?)\+j(-?\d+(?:\.\d+)?)\s*$")
 
@@ -51,8 +50,7 @@ def _proof_header_from_dict(payload: dict[str, Any]) -> ProofHeader:
 
 def _proof_summary_from_dict(payload: dict[str, Any]) -> ProofSummary:
     key_results = {
-        key: _proof_value_from_dict(value)
-        for key, value in payload.get("key_results", {}).items()
+        key: _proof_value_from_dict(value) for key, value in payload.get("key_results", {}).items()
     }
     counterfactual_diff = {
         key: _proof_value_from_dict(value)
@@ -87,9 +85,7 @@ def _proof_step_from_dict(payload: dict[str, Any]) -> ProofStep:
 
 
 def _equation_from_dict(payload: dict[str, Any]) -> EquationDefinition:
-    symbols = tuple(
-        _symbol_from_dict(symbol) for symbol in payload.get("symbols", [])
-    )
+    symbols = tuple(_symbol_from_dict(symbol) for symbol in payload.get("symbols", []))
     return EquationDefinition(
         equation_id=str(payload.get("equation_id", "")),
         latex=str(payload.get("latex", "")),
@@ -143,7 +139,7 @@ def _parse_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):
         return value
     if not value:
-        return datetime(1970, 1, 1, tzinfo=timezone.utc)
+        return datetime(1970, 1, 1, tzinfo=UTC)
     text = str(value)
     if text.endswith("Z"):
         text = text[:-1] + "+00:00"
@@ -153,7 +149,7 @@ def _parse_datetime(value: Any) -> datetime:
 def _parse_complex(value: Any) -> float | complex | str:
     if isinstance(value, complex):
         return value
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     if isinstance(value, str):
         match = _COMPLEX_PATTERN.match(value)

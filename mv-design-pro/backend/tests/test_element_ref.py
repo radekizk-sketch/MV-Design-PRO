@@ -1,7 +1,6 @@
 """Tests for ElementRefV1 + ReadinessProfileV1 + ResultJoinV1 (KROK 1)."""
 
 import pytest
-
 from domain.element_ref import (
     CatalogRefV1,
     ElementRefV1,
@@ -13,17 +12,12 @@ from domain.readiness import (
     ReadinessAreaV1,
     ReadinessIssueV1,
     ReadinessPriority,
-    ReadinessProfileV1,
     build_readiness_profile,
 )
 from domain.result_join import (
-    InspectorFactV1,
     OverlayTokenKindV1,
-    ResultJoinV1,
-    SldOverlayTokenV1,
     join_results,
 )
-
 
 # ---------------------------------------------------------------------------
 # ElementRefV1
@@ -153,23 +147,44 @@ class TestReadinessProfileV1:
     def test_determinism(self) -> None:
         issues = [
             ReadinessIssueV1(
-                code="b_issue", area=ReadinessAreaV1.SOURCES,
-                priority=ReadinessPriority.BLOCKER, message_pl="B",
+                code="b_issue",
+                area=ReadinessAreaV1.SOURCES,
+                priority=ReadinessPriority.BLOCKER,
+                message_pl="B",
             ),
             ReadinessIssueV1(
-                code="a_issue", area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.WARNING, message_pl="A",
+                code="a_issue",
+                area=ReadinessAreaV1.CATALOGS,
+                priority=ReadinessPriority.WARNING,
+                message_pl="A",
             ),
         ]
         p1 = build_readiness_profile(snapshot_id="s", snapshot_fingerprint="f", issues=issues)
-        p2 = build_readiness_profile(snapshot_id="s", snapshot_fingerprint="f", issues=list(reversed(issues)))
+        p2 = build_readiness_profile(
+            snapshot_id="s", snapshot_fingerprint="f", issues=list(reversed(issues))
+        )
         assert p1.content_hash == p2.content_hash
 
     def test_by_area_grouping(self) -> None:
         issues = [
-            ReadinessIssueV1(code="a", area=ReadinessAreaV1.TOPOLOGY, priority=ReadinessPriority.INFO, message_pl="x"),
-            ReadinessIssueV1(code="b", area=ReadinessAreaV1.CATALOGS, priority=ReadinessPriority.INFO, message_pl="y"),
-            ReadinessIssueV1(code="c", area=ReadinessAreaV1.TOPOLOGY, priority=ReadinessPriority.WARNING, message_pl="z"),
+            ReadinessIssueV1(
+                code="a",
+                area=ReadinessAreaV1.TOPOLOGY,
+                priority=ReadinessPriority.INFO,
+                message_pl="x",
+            ),
+            ReadinessIssueV1(
+                code="b",
+                area=ReadinessAreaV1.CATALOGS,
+                priority=ReadinessPriority.INFO,
+                message_pl="y",
+            ),
+            ReadinessIssueV1(
+                code="c",
+                area=ReadinessAreaV1.TOPOLOGY,
+                priority=ReadinessPriority.WARNING,
+                message_pl="z",
+            ),
         ]
         profile = build_readiness_profile(snapshot_id="s", snapshot_fingerprint="f", issues=issues)
         by_area = profile.by_area
@@ -198,7 +213,9 @@ class TestResultJoinV1:
             {"element_ref": "bus_1", "element_type": "Bus", "values": {"v_pu": 1.02, "u_kv": 15.3}},
             {"element_ref": "branch_1", "element_type": "Branch", "values": {"i_a": 120.5}},
         ]
-        join = join_results(snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW")
+        join = join_results(
+            snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW"
+        )
         assert len(join.sld_tokens) == 3  # 2 for bus_1 + 1 for branch_1
         assert len(join.inspector_facts) == 3
         assert len(join.orphan_element_ids) == 0
@@ -209,19 +226,29 @@ class TestResultJoinV1:
         results = [
             {"element_ref": "unknown_1", "element_type": "Bus", "values": {"v_pu": 1.0}},
         ]
-        join = join_results(snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW")
+        join = join_results(
+            snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW"
+        )
         assert len(join.orphan_element_ids) == 1
         assert join.orphan_element_ids[0] == "unknown_1"
         # Orphan token generated
-        orphan_tokens = [t for t in join.sld_tokens if t.token_kind == OverlayTokenKindV1.ORPHAN_RESULT]
+        orphan_tokens = [
+            t for t in join.sld_tokens if t.token_kind == OverlayTokenKindV1.ORPHAN_RESULT
+        ]
         assert len(orphan_tokens) == 1
 
     def test_sc_classification(self) -> None:
         idx = {"bus_1": ElementRefV1(element_id="bus_1", element_type=ElementTypeV1.NODE)}
         results = [
-            {"element_ref": "bus_1", "element_type": "Bus", "values": {"ikss_ka": 12.5, "ip_ka": 31.8}},
+            {
+                "element_ref": "bus_1",
+                "element_type": "Bus",
+                "values": {"ikss_ka": 12.5, "ip_ka": 31.8},
+            },
         ]
-        join = join_results(snapshot_element_ids=idx, element_results=results, analysis_type="SC_3F")
+        join = join_results(
+            snapshot_element_ids=idx, element_results=results, analysis_type="SC_3F"
+        )
         sc_tokens = [t for t in join.sld_tokens if t.token_kind == OverlayTokenKindV1.SHORT_CIRCUIT]
         assert len(sc_tokens) == 2
 
@@ -231,8 +258,14 @@ class TestResultJoinV1:
             {"element_ref": "branch_1", "element_type": "Branch", "values": {"i_a": 100}},
             {"element_ref": "bus_1", "element_type": "Bus", "values": {"v_pu": 1.0}},
         ]
-        j1 = join_results(snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW")
-        j2 = join_results(snapshot_element_ids=idx, element_results=list(reversed(results)), analysis_type="LOAD_FLOW")
+        j1 = join_results(
+            snapshot_element_ids=idx, element_results=results, analysis_type="LOAD_FLOW"
+        )
+        j2 = join_results(
+            snapshot_element_ids=idx,
+            element_results=list(reversed(results)),
+            analysis_type="LOAD_FLOW",
+        )
         assert j1.content_hash == j2.content_hash
 
     def test_empty_results(self) -> None:

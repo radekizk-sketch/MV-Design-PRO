@@ -4,7 +4,7 @@
  * P14a: Protection Library (FOUNDATION, READ-ONLY)
  * P14b: Protection Library Governance (manifest+fingerprint, export/import, UI controls)
  *
- * Przeglądarka biblioteki zabezpieczeń w stylu PowerFactory z 3 zakładkami:
+ * Przeglądarka biblioteki zabezpieczeń w stylu Canonical z 3 zakładkami:
  * - Urządzenia (Device Types)
  * - Krzywe (Curves)
  * - Szablony nastaw (Setting Templates)

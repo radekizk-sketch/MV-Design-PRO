@@ -15,7 +15,6 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-
 # ---------------------------------------------------------------------------
 # Contract version
 # ---------------------------------------------------------------------------
@@ -254,9 +253,7 @@ class SolverInputEnvelope(BaseModel):
     enm_revision: str
     analysis_type: SolverAnalysisType
     eligibility: EligibilityResult
-    provenance_summary: ProvenanceSummarySchema = Field(
-        default_factory=ProvenanceSummarySchema
-    )
+    provenance_summary: ProvenanceSummarySchema = Field(default_factory=ProvenanceSummarySchema)
     payload: dict[str, Any] = Field(
         default_factory=dict,
         description="Analysis-specific payload (strict schema per analysis_type)",

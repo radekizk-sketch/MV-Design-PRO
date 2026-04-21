@@ -3,13 +3,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
 from application.sld_projection import SldProjectionService
 from application.wizard_actions import WizardActionService
 from application.wizard_actions.service import InvalidActionPayload
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter()
 

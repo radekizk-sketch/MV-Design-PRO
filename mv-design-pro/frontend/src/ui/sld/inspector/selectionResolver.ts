@@ -1,15 +1,18 @@
 /**
- * Selection Resolver — mapowanie selekcji SLD → ENM SelectionRef.
+ * Selection Resolver â€” mapowanie selekcji SLD â†’ ENM SelectionRef.
  *
- * Funkcja resolveSelectionRef() tworzy SelectionRef z klikniętego symbolu SLD,
- * umożliwiając nawigację do odpowiedniego elementu i wyświetlenie
- * właściwości ENM w inspektorze.
+ * Funkcja resolveSelectionRef() tworzy SelectionRef z klikniÄ™tego symbolu SLD,
+ * umoĹĽliwiajÄ…c nawigacjÄ™ do odpowiedniego elementu i wyĹ›wietlenie
+ * wĹ‚aĹ›ciwoĹ›ci ENM w inspektorze.
  *
- * DETERMINIZM: Ten sam symbol + ENM → identyczny SelectionRef.
+ * DETERMINIZM: Ten sam symbol + ENM â†’ identyczny SelectionRef.
  * BINDING: Etykiety PL, bez nazw kodowych.
  */
 
 import type { SelectionRef, EnergyNetworkModel } from '../../../types/enm';
+import type { WizardSurfaceStepId } from '../../../types/fixActionSurface';
+import { formatGeneratorTypeLabelPl } from '../../shared/generatorTypeLabels';
+import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { isConnectionNodeLikeId } from '../../common/connectionNode';
 
 // =============================================================================
@@ -17,7 +20,7 @@ import { isConnectionNodeLikeId } from '../../common/connectionNode';
 // =============================================================================
 
 /**
- * Typ elementu SLD — używany przez inspektor.
+ * Typ elementu SLD â€” uĹĽywany przez inspektor.
  */
 export type SldElementType =
   | 'Bus'
@@ -30,7 +33,7 @@ export type SldElementType =
   | 'GENERATOR';
 
 /**
- * Rozszerzone dane selekcji z powiązaniem do ENM.
+ * Rozszerzone dane selekcji z powiÄ…zaniem do ENM.
  */
 export interface ResolvedSelection {
   /** Referencja do elementu ENM */
@@ -42,38 +45,38 @@ export interface ResolvedSelection {
   /** Nazwa elementu (z ENM, nie z SLD) */
   enmName: string | null;
 
-  /** Sekcje właściwości ENM do wyświetlenia */
+  /** Sekcje wĹ‚aĹ›ciwoĹ›ci ENM do wyĹ›wietlenia */
   enmProperties: EnmPropertySection[];
 }
 
 /**
- * Sekcja właściwości z ENM.
+ * Sekcja wĹ‚aĹ›ciwoĹ›ci z ENM.
  */
 export interface EnmPropertySection {
   /** ID sekcji */
   id: string;
   /** Etykieta (PL) */
   label: string;
-  /** Pola właściwości */
+  /** Pola wĹ‚aĹ›ciwoĹ›ci */
   fields: EnmPropertyField[];
 }
 
 /**
- * Pole właściwości z ENM.
+ * Pole wĹ‚aĹ›ciwoĹ›ci z ENM.
  */
 export interface EnmPropertyField {
   /** Klucz pola */
   key: string;
   /** Etykieta (PL) */
   label: string;
-  /** Wartość */
+  /** WartoĹ›Ä‡ */
   value: string | number | boolean | null;
   /** Jednostka (opcjonalna) */
   unit?: string;
 }
 
 // =============================================================================
-// MAPOWANIE SLD → ENM element_type
+// MAPOWANIE SLD â†’ ENM element_type
 // =============================================================================
 
 
@@ -89,44 +92,65 @@ const SLD_TO_ENM_TYPE: Record<SldElementType, SelectionRef['element_type']> = {
   GENERATOR: 'generator',
 };
 
+const BUILD_CATEGORY_TO_WIZARD_STEP_ID: Partial<Record<string, WizardSurfaceStepId>> = {
+  source: 'punkt-zasilania-gpz',
+  trunk: 'galezie-linie-kable',
+  station: 'struktura-szyn-i-sekcji',
+  transformer: 'transformatory',
+  switch: 'struktura-szyn-i-sekcji',
+  load: 'odbiorniki-i-zrodla',
+  oze: 'odbiorniki-i-zrodla',
+};
+
 /**
- * Etykiety typów elementów ENM po polsku.
+ * Etykiety typĂłw elementĂłw ENM po polsku.
  */
 export const ENM_ELEMENT_TYPE_LABELS_PL: Record<SelectionRef['element_type'], string> = {
   bus: 'Szyna',
-  branch: 'Gałąź',
+  branch: 'GaĹ‚Ä…Ĺş',
   transformer: 'Transformator',
-  source: 'Źródło',
+  source: 'ĹąrĂłdĹ‚o',
   load: 'Odbiornik',
   generator: 'Generator',
   substation: 'Stacja',
   bay: 'Pole',
-  junction: 'Węzeł T',
+  junction: 'WÄ™zeĹ‚ T',
   corridor: 'Magistrala',
   measurement: 'Pomiar',
   protection_assignment: 'Przypisanie zabezpieczenia',
 };
 
+function connectionVariantLabel(connectionVariant: string | null | undefined): string {
+  switch (connectionVariant) {
+    case 'nn_side':
+      return 'Strona nN stacji';
+    case 'block_transformer':
+      return 'Transformator blokowy';
+    default:
+      return connectionVariant ?? 'â€”';
+  }
+}
+
 // =============================================================================
-// GŁÓWNA FUNKCJA
+// GĹĂ“WNA FUNKCJA
 // =============================================================================
 
 /**
- * Rozwiąż selekcję SLD na referencję ENM.
+ * RozwiÄ…ĹĽ selekcjÄ™ SLD na referencjÄ™ ENM.
  *
- * Mapuje symbol SLD → element ENM → krok kreatora → właściwości ENM.
+ * Mapuje symbol SLD â†’ element ENM â†’ krok kreatora â†’ wĹ‚aĹ›ciwoĹ›ci ENM.
  *
  * @param elementId - ID elementu z symbolu SLD (symbol.elementId)
  * @param sldElementType - Typ elementu SLD (symbol.elementType)
  * @param enm - EnergyNetworkModel
- * @returns ResolvedSelection z powiązaniem do ENM, lub null jeśli brak mapowania
+ * @returns ResolvedSelection z powiÄ…zaniem do ENM, lub null jeĹ›li brak mapowania
  */
 export function resolveSelectionRef(
   elementId: string,
   sldElementType: SldElementType,
   enm: EnergyNetworkModel
 ): ResolvedSelection | null {
-  // BoundaryNode nie może być eksponowane w SLD/inspektorze.
+  // BoundaryNode nie moĹĽe byÄ‡ eksponowane w SLD/inspektorze.
   if (isConnectionNodeLikeId(elementId)) {
     if (sldElementType === 'Source') {
       const fallbackSource =
@@ -138,14 +162,14 @@ export function resolveSelectionRef(
     return null;
   }
 
-  // 1. Znajdź ref_id elementu w ENM
+  // 1. ZnajdĹş ref_id elementu w ENM
   const enmRefId = findEnmRefId(elementId, sldElementType, enm);
   if (!enmRefId || isConnectionNodeLikeId(enmRefId)) return null;
 
   // 2. Mapuj na typ ENM
   const enmType = SLD_TO_ENM_TYPE[sldElementType];
 
-  // 3. Mapuj kategorię budowy
+  // 3. Mapuj kategoriÄ™ budowy
   const buildCategoryHint = mapElementToBuildCategory(sldElementType);
 
   // 4. Zbuduj SelectionRef
@@ -153,12 +177,15 @@ export function resolveSelectionRef(
     elementId: enmRefId,
     element_type: enmType,
     wizard_step_hint: buildCategoryHint,
+    wizard_step_id: buildCategoryHint
+      ? BUILD_CATEGORY_TO_WIZARD_STEP_ID[buildCategoryHint] ?? null
+      : null,
   };
 
-  // 5. Pobierz nazwę z ENM
+  // 5. Pobierz nazwÄ™ z ENM
   const enmName = findEnmElementName(enmRefId, enm);
 
-  // 6. Zbuduj właściwości ENM
+  // 6. Zbuduj wĹ‚aĹ›ciwoĹ›ci ENM
   const enmProperties = buildEnmProperties(enmRefId, sldElementType, enm);
 
   return {
@@ -170,8 +197,8 @@ export function resolveSelectionRef(
 }
 
 /**
- * Mapuje typ elementu SLD na kategorię procesu budowy sieci.
- * Deterministyczne: ten sam typ → ta sama kategoria.
+ * Mapuje typ elementu SLD na kategoriÄ™ procesu budowy sieci.
+ * Deterministyczne: ten sam typ â†’ ta sama kategoria.
  */
 function mapElementToBuildCategory(sldElementType: SldElementType): string {
   switch (sldElementType) {
@@ -200,14 +227,14 @@ function mapElementToBuildCategory(sldElementType: SldElementType): string {
 // =============================================================================
 
 /**
- * Znajdź ref_id elementu ENM po ID symbolu SLD.
+ * ZnajdĹş ref_id elementu ENM po ID symbolu SLD.
  */
 function findEnmRefId(
   elementId: string,
   sldElementType: SldElementType,
   enm: EnergyNetworkModel
 ): string | null {
-  // Szukaj po elementId (który może być ref_id lub id)
+  // Szukaj po elementId (ktĂłry moĹĽe byÄ‡ ref_id lub id)
   switch (sldElementType) {
     case 'Bus': {
       const bus = enm.buses.find((b) => b.ref_id === elementId || b.id === elementId);
@@ -244,7 +271,7 @@ function findEnmRefId(
 }
 
 /**
- * Znajdź nazwę elementu ENM.
+ * ZnajdĹş nazwÄ™ elementu ENM.
  */
 function findEnmElementName(refId: string, enm: EnergyNetworkModel): string | null {
   for (const collection of [
@@ -266,7 +293,7 @@ function findEnmElementName(refId: string, enm: EnergyNetworkModel): string | nu
 }
 
 /**
- * Zbuduj sekcje właściwości ENM dla inspektora.
+ * Zbuduj sekcje wĹ‚aĹ›ciwoĹ›ci ENM dla inspektora.
  */
 function buildEnmProperties(
   refId: string,
@@ -284,9 +311,9 @@ function buildEnmProperties(
         label: 'Parametry szyny (ENM)',
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: bus.ref_id },
-          { key: 'voltage_kv', label: 'Napięcie znamionowe', value: bus.voltage_kv, unit: 'kV' },
-          { key: 'phase_system', label: 'Układ fazowy', value: bus.phase_system },
-          { key: 'zone', label: 'Strefa', value: bus.zone ?? '—' },
+          { key: 'voltage_kv', label: 'NapiÄ™cie znamionowe', value: bus.voltage_kv, unit: 'kV' },
+          { key: 'phase_system', label: 'UkĹ‚ad fazowy', value: bus.phase_system },
+          { key: 'zone', label: 'Strefa', value: bus.zone ?? 'â€”' },
         ],
       });
       break;
@@ -298,18 +325,18 @@ function buildEnmProperties(
         { key: 'ref_id', label: 'Identyfikator', value: branch.ref_id },
         { key: 'from_bus_ref', label: 'Szyna od', value: branch.from_bus_ref },
         { key: 'to_bus_ref', label: 'Szyna do', value: branch.to_bus_ref },
-        { key: 'status', label: 'Stan', value: branch.status === 'closed' ? 'Zamknięta' : 'Otwarta' },
+        { key: 'status', label: 'Stan', value: branch.status === 'closed' ? 'ZamkniÄ™ta' : 'Otwarta' },
       ];
       if ('length_km' in branch) {
-        fields.push({ key: 'length_km', label: 'Długość', value: (branch as any).length_km, unit: 'km' });
+        fields.push({ key: 'length_km', label: 'DĹ‚ugoĹ›Ä‡', value: (branch as any).length_km, unit: 'km' });
       }
       if ('r_ohm_per_km' in branch) {
-        fields.push({ key: 'r_ohm_per_km', label: 'Rezystancja', value: (branch as any).r_ohm_per_km, unit: 'Ω/km' });
+        fields.push({ key: 'r_ohm_per_km', label: 'Rezystancja', value: (branch as any).r_ohm_per_km, unit: 'Î©/km' });
       }
       if ('x_ohm_per_km' in branch) {
-        fields.push({ key: 'x_ohm_per_km', label: 'Reaktancja', value: (branch as any).x_ohm_per_km, unit: 'Ω/km' });
+        fields.push({ key: 'x_ohm_per_km', label: 'Reaktancja', value: (branch as any).x_ohm_per_km, unit: 'Î©/km' });
       }
-      sections.push({ id: 'enm_branch', label: 'Parametry gałęzi (ENM)', fields });
+      sections.push({ id: 'enm_branch', label: 'Parametry gaĹ‚Ä™zi (ENM)', fields });
       break;
     }
     case 'TransformerBranch': {
@@ -321,11 +348,11 @@ function buildEnmProperties(
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: trafo.ref_id },
           { key: 'sn_mva', label: 'Moc znamionowa', value: trafo.sn_mva, unit: 'MVA' },
-          { key: 'uhv_kv', label: 'Napięcie WN', value: trafo.uhv_kv, unit: 'kV' },
-          { key: 'ulv_kv', label: 'Napięcie nN', value: trafo.ulv_kv, unit: 'kV' },
-          { key: 'uk_percent', label: 'Napięcie zwarcia', value: trafo.uk_percent, unit: '%' },
-          { key: 'pk_kw', label: 'Straty obciążeniowe', value: trafo.pk_kw, unit: 'kW' },
-          { key: 'vector_group', label: 'Grupa połączeń', value: trafo.vector_group ?? '—' },
+          { key: 'uhv_kv', label: 'NapiÄ™cie WN', value: trafo.uhv_kv, unit: 'kV' },
+          { key: 'ulv_kv', label: 'NapiÄ™cie nN', value: trafo.ulv_kv, unit: 'kV' },
+          { key: 'uk_percent', label: 'NapiÄ™cie zwarcia', value: trafo.uk_percent, unit: '%' },
+          { key: 'pk_kw', label: 'Straty obciÄ…ĹĽeniowe', value: trafo.pk_kw, unit: 'kW' },
+          { key: 'vector_group', label: 'Grupa poĹ‚Ä…czeĹ„', value: trafo.vector_group ?? 'â€”' },
         ],
       });
       break;
@@ -342,12 +369,12 @@ function buildEnmProperties(
         fields.push({ key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: src.sk3_mva, unit: 'MVA' });
       }
       if (src.r_ohm != null) {
-        fields.push({ key: 'r_ohm', label: 'Rezystancja', value: src.r_ohm, unit: 'Ω' });
+        fields.push({ key: 'r_ohm', label: 'Rezystancja', value: src.r_ohm, unit: 'Î©' });
       }
       if (src.x_ohm != null) {
-        fields.push({ key: 'x_ohm', label: 'Reaktancja', value: src.x_ohm, unit: 'Ω' });
+        fields.push({ key: 'x_ohm', label: 'Reaktancja', value: src.x_ohm, unit: 'Î©' });
       }
-      sections.push({ id: 'enm_source', label: 'Parametry źródła (ENM)', fields });
+      sections.push({ id: 'enm_source', label: 'Parametry ĹşrĂłdĹ‚a (ENM)', fields });
       break;
     }
     case 'Load': {
@@ -374,7 +401,7 @@ function buildEnmProperties(
         label: 'Parametry stacji (ENM)',
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: sub.ref_id },
-          { key: 'station_type', label: 'Typ stacji', value: sub.station_type },
+          { key: 'station_type', label: 'Typ topologiczny', value: formatStationTypeLabelPl(sub.station_type) },
           { key: 'bus_count', label: 'Liczba szyn', value: sub.bus_refs.length },
           { key: 'transformer_count', label: 'Liczba transformatorow', value: sub.transformer_refs.length },
         ],
@@ -388,10 +415,12 @@ function buildEnmProperties(
         { key: 'ref_id', label: 'Identyfikator', value: gen.ref_id },
         { key: 'bus_ref', label: 'Szyna', value: gen.bus_ref },
         { key: 'p_mw', label: 'Moc czynna', value: gen.p_mw, unit: 'MW' },
-        { key: 'gen_type', label: 'Typ generatora', value: gen.gen_type ?? '—' },
+        { key: 'gen_type', label: 'Typ generatora', value: gen.gen_type ?? 'â€”' },
       ];
+      fields[3] = { key: 'gen_type', label: 'Rodzaj ĹşrĂłdĹ‚a', value: formatGeneratorTypeLabelPl(gen.gen_type) };
       if (gen.connection_variant) {
         fields.push({ key: 'connection_variant', label: 'Wariant przylaczenia', value: gen.connection_variant });
+        fields[fields.length - 1] = { key: 'connection_variant', label: 'Wariant przyĹ‚Ä…czenia', value: connectionVariantLabel(gen.connection_variant) };
       }
       sections.push({ id: 'enm_generator', label: 'Parametry generatora (ENM)', fields });
       break;

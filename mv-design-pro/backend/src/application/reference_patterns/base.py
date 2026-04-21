@@ -24,7 +24,6 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-
 # =============================================================================
 # VERDICT TYPES
 # =============================================================================
@@ -125,7 +124,7 @@ def stable_sort_dict(obj: Any) -> Any:
     """
     if isinstance(obj, dict):
         return {k: stable_sort_dict(v) for k, v in sorted(obj.items())}
-    if isinstance(obj, (list, tuple)):
+    if isinstance(obj, list | tuple):
         return [stable_sort_dict(item) for item in obj]
     return obj
 

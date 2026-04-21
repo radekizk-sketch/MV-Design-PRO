@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 from uuid import UUID
 
 from application.analysis_run.catalog_context import (
@@ -21,6 +22,7 @@ from application.sld.overlay import ResultSldOverlayBuilder
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.analysis_run_report_docx import export_analysis_run_to_docx
 from network_model.reporting.analysis_run_report_pdf import export_analysis_run_to_pdf
+
 
 class AnalysisRunExportService:
     def __init__(self, uow_factory: Callable[[], UnitOfWork]) -> None:
@@ -100,9 +102,7 @@ class AnalysisRunExportService:
             payload = result.get("payload") or {}
             payload_canonical = canonicalize_json(payload)
             payload_size = len(
-                json.dumps(payload_canonical, sort_keys=True, separators=(",", ":")).encode(
-                    "utf-8"
-                )
+                json.dumps(payload_canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
             )
             items.append(
                 {
@@ -155,7 +155,9 @@ class AnalysisRunExportService:
             return []
         if isinstance(trace_payload, list):
             enriched_steps = enrich_trace_steps_with_catalog_context(trace_payload, catalog_context)
-            return [self._normalize_trace_step(step, index=i) for i, step in enumerate(enriched_steps)]
+            return [
+                self._normalize_trace_step(step, index=i) for i, step in enumerate(enriched_steps)
+            ]
         steps = []
         for key in sorted(trace_payload.keys()):
             value = trace_payload[key]

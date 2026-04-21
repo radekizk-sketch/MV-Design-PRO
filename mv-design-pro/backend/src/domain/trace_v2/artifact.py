@@ -14,14 +14,14 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Canonical float policy
 # ---------------------------------------------------------------------------
+
 
 def canonical_float(x: float, precision: int = 10) -> float:
     """Canonical float normalization — single function for entire system.
@@ -37,8 +37,10 @@ def canonical_float(x: float, precision: int = 10) -> float:
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class AnalysisTypeV2(str, Enum):
     """Analysis types for Trace v2."""
+
     SC = "SC"
     PROTECTION = "PROTECTION"
     LOAD_FLOW = "LOAD_FLOW"
@@ -47,6 +49,7 @@ class AnalysisTypeV2(str, Enum):
 # ---------------------------------------------------------------------------
 # TraceValue
 # ---------------------------------------------------------------------------
+
 
 @dataclass(frozen=True)
 class TraceValue:
@@ -58,6 +61,7 @@ class TraceValue:
         unit: SI unit or "—" for dimensionless
         label_pl: Polish label for UI display
     """
+
     name: str
     value: float | str
     unit: str
@@ -88,6 +92,7 @@ class TraceValue:
 # TraceEquationStep
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class TraceEquationStep:
     """Single equation step in the trace.
@@ -105,6 +110,7 @@ class TraceEquationStep:
         origin: "input" | "solver" | "adapter"
         derived_in_adapter: True only when origin="adapter"
     """
+
     step_id: str
     subject_id: str
     eq_id: str
@@ -125,7 +131,7 @@ class TraceEquationStep:
             "label_pl": self.label_pl,
             "symbolic_latex": self.symbolic_latex,
             "substituted_latex": self.substituted_latex,
-            "inputs_used": list(sorted(self.inputs_used)),
+            "inputs_used": sorted(self.inputs_used),
             "intermediate_values": {
                 k: self.intermediate_values[k].to_dict()
                 for k in sorted(self.intermediate_values.keys())
@@ -159,6 +165,7 @@ class TraceEquationStep:
 # TraceArtifactV2
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class TraceArtifactV2:
     """Canonical, immutable trace artifact (PR-33).
@@ -168,6 +175,7 @@ class TraceArtifactV2:
     - trace_signature depends on full canonical serialization
     - All collections sorted for determinism
     """
+
     trace_id: str
     analysis_type: AnalysisTypeV2
     math_spec_version: str
@@ -185,18 +193,11 @@ class TraceArtifactV2:
             "math_spec_version": self.math_spec_version,
             "snapshot_hash": self.snapshot_hash,
             "run_hash": self.run_hash,
-            "inputs": {
-                k: self.inputs[k].to_dict()
-                for k in sorted(self.inputs.keys())
-            },
+            "inputs": {k: self.inputs[k].to_dict() for k in sorted(self.inputs.keys())},
             "equation_steps": [
-                step.to_dict()
-                for step in sorted(self.equation_steps, key=lambda s: s.step_id)
+                step.to_dict() for step in sorted(self.equation_steps, key=lambda s: s.step_id)
             ],
-            "outputs": {
-                k: self.outputs[k].to_dict()
-                for k in sorted(self.outputs.keys())
-            },
+            "outputs": {k: self.outputs[k].to_dict() for k in sorted(self.outputs.keys())},
             "trace_signature": self.trace_signature,
         }
 
@@ -208,18 +209,11 @@ class TraceArtifactV2:
             "math_spec_version": self.math_spec_version,
             "snapshot_hash": self.snapshot_hash,
             "run_hash": self.run_hash,
-            "inputs": {
-                k: self.inputs[k].to_dict()
-                for k in sorted(self.inputs.keys())
-            },
+            "inputs": {k: self.inputs[k].to_dict() for k in sorted(self.inputs.keys())},
             "equation_steps": [
-                step.to_dict()
-                for step in sorted(self.equation_steps, key=lambda s: s.step_id)
+                step.to_dict() for step in sorted(self.equation_steps, key=lambda s: s.step_id)
             ],
-            "outputs": {
-                k: self.outputs[k].to_dict()
-                for k in sorted(self.outputs.keys())
-            },
+            "outputs": {k: self.outputs[k].to_dict() for k in sorted(self.outputs.keys())},
         }
 
     @classmethod
@@ -230,17 +224,12 @@ class TraceArtifactV2:
             math_spec_version=data["math_spec_version"],
             snapshot_hash=data["snapshot_hash"],
             run_hash=data["run_hash"],
-            inputs={
-                k: TraceValue.from_dict(v)
-                for k, v in sorted(data.get("inputs", {}).items())
-            },
+            inputs={k: TraceValue.from_dict(v) for k, v in sorted(data.get("inputs", {}).items())},
             equation_steps=tuple(
-                TraceEquationStep.from_dict(s)
-                for s in data.get("equation_steps", [])
+                TraceEquationStep.from_dict(s) for s in data.get("equation_steps", [])
             ),
             outputs={
-                k: TraceValue.from_dict(v)
-                for k, v in sorted(data.get("outputs", {}).items())
+                k: TraceValue.from_dict(v) for k, v in sorted(data.get("outputs", {}).items())
             },
             trace_signature=data["trace_signature"],
         )
@@ -249,6 +238,7 @@ class TraceArtifactV2:
 # ---------------------------------------------------------------------------
 # Hash computation
 # ---------------------------------------------------------------------------
+
 
 def _canonical_json(data: Any) -> str:
     """Canonical JSON serialization for hashing."""
@@ -277,16 +267,14 @@ def compute_trace_signature(artifact_canonical_dict: dict[str, Any]) -> str:
 
     INVARIANT: Depends on full trace content including substituted_latex.
     """
-    return hashlib.sha256(
-        _canonical_json(artifact_canonical_dict).encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256(_canonical_json(artifact_canonical_dict).encode("utf-8")).hexdigest()
 
 
 def _canonicalize_for_hash(value: Any) -> Any:
     """Recursively canonicalize a JSON-like structure for deterministic hashing."""
     if isinstance(value, dict):
         return {k: _canonicalize_for_hash(v) for k, v in sorted(value.items())}
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return [_canonicalize_for_hash(item) for item in value]
     if isinstance(value, float):
         return canonical_float(value)
@@ -298,6 +286,7 @@ def _canonicalize_for_hash(value: Any) -> Any:
 # ---------------------------------------------------------------------------
 # Builder
 # ---------------------------------------------------------------------------
+
 
 def build_trace_artifact_v2(
     *,

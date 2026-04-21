@@ -39,6 +39,7 @@ FILE_EXTENSIONS = {".ts", ".tsx", ".css", ".html"}
 # Regex for codenames: P1, P7, P11, P20, p14, etc.
 # Excludes P0 (technical parameter for transformer no-load losses)
 CODENAME_PATTERN = re.compile(r"\b[pP](?!0\b)\d+\b")
+ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
 # Regex for string literals (single, double, or template)
 STRING_LITERAL_PATTERN = re.compile(
@@ -84,8 +85,19 @@ def find_codenames_in_strings(line: str) -> list[str]:
     for string_match in STRING_LITERAL_PATTERN.finditer(line):
         string_content = string_match.group("string")
         for codename_match in CODENAME_PATTERN.finditer(string_content):
-            matches.append(codename_match.group())
+            token = codename_match.group()
+            if token.lower() in ALLOWED_TECHNICAL_TOKENS:
+                continue
+            matches.append(token)
     return matches
+
+
+def format_violation_path(file_path: Path) -> str:
+    """Render a stable path for diagnostics, also for temp files outside the repo."""
+    try:
+        return str(file_path.relative_to(REPO_ROOT)).replace("\\", "/")
+    except ValueError:
+        return str(file_path)
 
 
 def scan_file(file_path: Path) -> list[Violation]:
@@ -123,7 +135,7 @@ def scan_file(file_path: Path) -> list[Violation]:
         for codename in codenames:
             violations.append(
                 Violation(
-                    file_path=str(file_path.relative_to(REPO_ROOT)),
+                    file_path=format_violation_path(file_path),
                     line_number=line_num,
                     line_content=trimmed,
                     match=codename,

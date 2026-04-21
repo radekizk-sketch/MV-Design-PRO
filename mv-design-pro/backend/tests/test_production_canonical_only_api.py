@@ -4,12 +4,12 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-
 from api.main import app
 from domain.analysis_run import AnalysisRun, new_analysis_run
 from domain.models import OperatingCase, Project
 from domain.project_design_mode import ProjectDesignMode
+from fastapi.testclient import TestClient
+
 from tests.catalog_test_helpers import gpz_payload
 
 
@@ -136,20 +136,29 @@ def test_sld_overlay_rejects_legacy_run_ids(client: TestClient) -> None:
 
 
 def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> None:
-    assert client.post(
-        "/analyses/design-synth/connection-study",
-        json={"case_id": str(uuid4()), "base_snapshot_id": "snap-1", "spec_payload": {}},
-    ).status_code == 404
-    assert client.post(
-        f"/projects/{uuid4()}/protection-runs",
-        json={"sc_run_id": str(uuid4()), "protection_case_id": str(uuid4())},
-    ).status_code == 404
+    assert (
+        client.post(
+            "/analyses/design-synth/connection-study",
+            json={"case_id": str(uuid4()), "base_snapshot_id": "snap-1", "spec_payload": {}},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/projects/{uuid4()}/protection-runs",
+            json={"sc_run_id": str(uuid4()), "protection_case_id": str(uuid4())},
+        ).status_code
+        == 404
+    )
     assert client.get(f"/api/results-workspace/{uuid4()}").status_code == 404
     assert client.get(f"/api/issues/study-cases/{uuid4()}/issues").status_code == 404
-    assert client.post(
-        "/api/v1/domain-ops/execute",
-        json={"operation": "add_grid_source_sn", "payload": {}, "meta": {}},
-    ).status_code == 404
+    assert (
+        client.post(
+            "/api/v1/domain-ops/execute",
+            json={"operation": "add_grid_source_sn", "payload": {}, "meta": {}},
+        ).status_code
+        == 404
+    )
 
 
 def test_production_enm_has_single_public_write_path(client: TestClient) -> None:
@@ -175,32 +184,56 @@ def test_production_enm_has_single_public_write_path(client: TestClient) -> None
         f"/api/cases/{case_id}/enm/ops",
         json={"op": "create_node", "data": {}},
     ).status_code in {404, 405}
-    assert client.post(
-        f"/api/cases/{case_id}/enm/ops/batch",
-        json={"operations": []},
-    ).status_code == 404
-    assert client.post(
-        f"/api/cases/{case_id}/wizard/apply-step",
-        json={"step_id": "K1", "data": {}},
-    ).status_code == 404
-    assert client.post(
-        f"/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref",
-        json={"type_id": str(uuid4())},
-    ).status_code == 404
-    assert client.post(
-        f"/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref",
-        json={"type_id": str(uuid4())},
-    ).status_code == 404
-    assert client.post(
-        f"/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type",
-        json={"type_id": str(uuid4())},
-    ).status_code == 404
-    assert client.delete(
-        f"/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref",
-    ).status_code == 404
-    assert client.delete(
-        f"/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref",
-    ).status_code == 404
-    assert client.delete(
-        f"/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type",
-    ).status_code == 404
+    assert (
+        client.post(
+            f"/api/cases/{case_id}/enm/ops/batch",
+            json={"operations": []},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/cases/{case_id}/wizard/apply-step",
+            json={"step_id": "K1", "data": {}},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref",
+            json={"type_id": str(uuid4())},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref",
+            json={"type_id": str(uuid4())},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type",
+            json={"type_id": str(uuid4())},
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            f"/api/catalog/projects/{project_id}/branches/{branch_id}/type-ref",
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            f"/api/catalog/projects/{project_id}/transformers/{transformer_id}/type-ref",
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(
+            f"/api/catalog/projects/{project_id}/switches/{switch_id}/equipment-type",
+        ).status_code
+        == 404
+    )

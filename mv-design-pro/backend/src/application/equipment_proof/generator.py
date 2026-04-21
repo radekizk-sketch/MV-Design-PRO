@@ -60,9 +60,7 @@ class EquipmentProofGenerator:
         )
 
     @classmethod
-    def _check_u(
-        cls, device: DeviceRating, required: dict[str, Any]
-    ) -> EquipmentProofCheckResult:
+    def _check_u(cls, device: DeviceRating, required: dict[str, Any]) -> EquipmentProofCheckResult:
         device_val = device.u_m_kv
         required_val = _as_float(required.get("u_kv"))
         if device_val is None or required_val is None:
@@ -158,7 +156,12 @@ class EquipmentProofGenerator:
         device_time = device.t_th_s
         required_val = _as_float(required.get("ith_ka"))
         required_time = _as_float(required.get("tk_s"))
-        if device_val is None or device_time is None or required_val is None or required_time is None:
+        if (
+            device_val is None
+            or device_time is None
+            or required_val is None
+            or required_time is None
+        ):
             return EquipmentProofCheckResult(
                 name="Ith",
                 status=STATUS_FAIL,
@@ -246,7 +249,9 @@ class EquipmentProofGenerator:
                 "icu_ok": _status_value("I_{cu,ok}", result.key_results["icu_ok"], "icu_ok"),
                 "idyn_ok": _status_value("I_{dyn,ok}", result.key_results["idyn_ok"], "idyn_ok"),
                 "ith_ok": _status_value("I_{th,ok}", result.key_results["ith_ok"], "ith_ok"),
-                "overall_ok": _status_value("OK_{overall}", result.key_results["overall_ok"], "overall_ok"),
+                "overall_ok": _status_value(
+                    "OK_{overall}", result.key_results["overall_ok"], "overall_ok"
+                ),
             },
             unit_check_passed=True,
             total_steps=len(steps),
@@ -359,7 +364,9 @@ class EquipmentProofGenerator:
         )
         input_values = (
             _value_or_missing("U_m", check.device_value, "kV", "device.u_m_kv"),
-            _value_or_missing("U_{req}", check.required_value, "kV", check.required_source_key or "u_kv"),
+            _value_or_missing(
+                "U_{req}", check.required_value, "kV", check.required_source_key or "u_kv"
+            ),
         )
         substitution = _substitution_from_values(input_values)
         return _check_step(
@@ -410,12 +417,19 @@ class EquipmentProofGenerator:
             "PN-EN 60909 (P12)",
             (
                 _symbol("I_{dyn}", "kA", "Wytrzymałość dynamiczna", "device.i_dyn_ka"),
-                _symbol("I_{dyn,req}", "kA", "Prąd dynamiczny wymagany", check.required_source_key or "idyn_ka"),
+                _symbol(
+                    "I_{dyn,req}",
+                    "kA",
+                    "Prąd dynamiczny wymagany",
+                    check.required_source_key or "idyn_ka",
+                ),
             ),
         )
         input_values = (
             _value_or_missing("I_{dyn}", check.device_value, "kA", "device.i_dyn_ka"),
-            _value_or_missing("I_{dyn,req}", check.required_value, "kA", check.required_source_key or "idyn_ka"),
+            _value_or_missing(
+                "I_{dyn,req}", check.required_value, "kA", check.required_source_key or "idyn_ka"
+            ),
         )
         substitution = _substitution_from_values(input_values)
         return _check_step(
@@ -470,26 +484,20 @@ class EquipmentProofGenerator:
 def _as_float(value: Any) -> float | None:
     if value is None:
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return float(value)
     return None
 
 
-def _status_from_checks(
-    checks: tuple[EquipmentProofCheckResult, ...], name: str
-) -> str:
+def _status_from_checks(checks: tuple[EquipmentProofCheckResult, ...], name: str) -> str:
     for check in checks:
         if check.name == name:
             return check.status
     return STATUS_FAIL
 
 
-def _compare_message(
-    check_name: str, device_val: float, required_val: float, status: str
-) -> str:
-    return (
-        f"P12 MVP: {check_name} {device_val:.4f} >= {required_val:.4f} → {status}."
-    )
+def _compare_message(check_name: str, device_val: float, required_val: float, status: str) -> str:
+    return f"P12 MVP: {check_name} {device_val:.4f} >= {required_val:.4f} → {status}."
 
 
 def _deterministic_uuid(proof_input: EquipmentProofInput, suffix: str) -> UUID:
@@ -574,7 +582,7 @@ def _value_or_missing(
 def _substitution_from_values(values: tuple[ProofValue, ...]) -> str:
     parts = []
     for val in values:
-        if isinstance(val.value, (int, float)):
+        if isinstance(val.value, int | float):
             value_str = f"{val.value:.4f}\\,\\text{{{val.unit}}}"
         else:
             value_str = f"\\text{{{val.value}}}\\,\\text{{{val.unit}}}"

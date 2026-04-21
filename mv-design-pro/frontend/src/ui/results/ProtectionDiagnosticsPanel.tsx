@@ -2,7 +2,7 @@
  * Protection Diagnostics Panel
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PowerFactory-like diagnostics list
+ * - ui_canonical_parity.md: Canonical-like diagnostics list
  * - sld_rules.md § G.1: Synchronizacja SLD ↔ Inspector
  *
  * FEATURES:

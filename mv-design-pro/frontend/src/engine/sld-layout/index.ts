@@ -9,7 +9,7 @@
  * - DETERMINIZM 100% — ten sam model → identyczny pixel output
  * - INCREMENTAL — małe zmiany nie resetują całego schematu
  *
- * PIPELINE (5 faz, inspiracja Sugiyama + ETAP + PowerFactory):
+ * PIPELINE (5 faz, inspiracja Sugiyama + CANONICAL + Canonical):
  * 1. Voltage Band Assignment — pasma napięciowe z MODELU
  * 2. Bay Detection — wykrywanie feeder bays od busbarów
  * 3. Crossing Minimization — porządek bayów (barycenter heuristic)
@@ -69,8 +69,8 @@ export { DEFAULT_LAYOUT_CONFIG } from './types';
 
 export {
   DEFAULT_VOLTAGE_COLOR_MAP,
-  ETAP_STYLE_COLORS,
-  POWERFACTORY_STYLE_COLORS,
+  CANONICAL_STYLE_COLORS,
+  REFERENCE_STYLE_COLORS,
   MONOCHROME_COLORS,
   getVoltageColor,
   getVoltageCategory,

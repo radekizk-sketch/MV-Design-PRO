@@ -3,12 +3,12 @@
  *
  * ARCHITEKTURA:
  *   Snapshot/dane wejsciowe
- *     → Etap 1: Adapter semantyczny (zbudujSiecSld)
- *     → Etap 2: Pola efektywne (uzupelnijPolaEfektywne)
- *     → Etap 3: Sortowanie antykrzyzowaniowe (sortujPolaCalejSieci)
- *     → Etap 4-7: Geometria szyny + pola + aparatura + porty (obliczGeometrieObiektu)
- *     → Etap 8: Trasowanie ortogonalne (trasujWszystkiePolaczenia)
- *     → Etap 9: Wynik (WynikUkladuSld) → renderer SVG
+ *     → Krok 1: Adapter semantyczny (zbudujSiecSld)
+ *     → Krok 2: Pola efektywne (uzupelnijPolaEfektywne)
+ *     → Krok 3: Sortowanie antykrzyzowaniowe (sortujPolaCalejSieci)
+ *     → Krok 4-7: Geometria szyny + pola + aparatura + porty (obliczGeometrieObiektu)
+ *     → Krok 8: Trasowanie ortogonalne (trasujWszystkiePolaczenia)
+ *     → Krok 9: Wynik (WynikUkladuSld) → renderer SVG
  *
  * DETERMINIZM: identyczne dane wejsciowe → identyczny WynikUkladuSld (hash).
  * BRAK EFEKTOW UBOCZNYCH: czyste funkcje, brak mutacji, brak stanu.
@@ -162,19 +162,19 @@ function obliczHashWyniku(
  * DETERMINIZM: identyczne dane → identyczny wynik (bit-for-bit).
  */
 export function uruchomPipelineSld(dane: DaneWejsciowe): WynikUkladuSld {
-  // Etap 1: Adapter semantyczny
+  // Krok 1: Adapter semantyczny
   const siecSurowa = zbudujSiecSld(dane);
 
-  // Etap 2: Pola efektywne
+  // Krok 2: Pola efektywne
   const siecZPolami = uzupelnijPolaEfektywne(siecSurowa);
 
-  // Etap 2.5: Przydziel pozycje bazowe (jesli brak)
+  // Krok 2.5: Przydziel pozycje bazowe (jesli brak)
   const siecZPozycjami = przydzielPozycjeBazowe(siecZPolami);
 
-  // Etap 3: Sortowanie antykrzyzowaniowe
+  // Krok 3: Sortowanie antykrzyzowaniowe
   const grupyMap = sortujPolaCalejSieci(siecZPozycjami);
 
-  // Etap 4-7: Geometria obiektow (szyna + pola + aparatura + porty)
+  // Krok 4-7: Geometria obiektow (szyna + pola + aparatura + porty)
   const geometrie: GeometriaObiektu[] = [];
   for (const obiekt of siecZPozycjami.obiekty) {
     const grupy = grupyMap.get(obiekt.id);
@@ -187,10 +187,10 @@ export function uruchomPipelineSld(dane: DaneWejsciowe): WynikUkladuSld {
   // Sortuj geometrie po obiektId
   geometrie.sort((a, b) => a.obiektId.localeCompare(b.obiektId));
 
-  // Etap 8: Trasowanie ortogonalne
+  // Krok 8: Trasowanie ortogonalne
   const trasy = trasujWszystkiePolaczenia(siecZPozycjami.polaczenia, geometrie);
 
-  // Etap 9: Zloz wynik
+  // Krok 9: Zloz wynik
   const obrysCalkowity = obliczObrysCalkwity(geometrie);
   const hash = obliczHashWyniku(geometrie, trasy.length);
 

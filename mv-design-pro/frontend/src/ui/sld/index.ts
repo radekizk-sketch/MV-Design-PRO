@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md: SLD ↔ selection synchronization
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
+ * - ui_canonical_parity.md: Canonical-like presentation
  *
  * Exports read-only SLD viewer components.
  * For editing, use sld-editor module instead.
@@ -64,7 +64,7 @@ export {
   fitToContent,
   calculateSymbolsBounds,
 } from './types';
-export { enmSnapshotToSldSymbols } from './enmSnapshotToSldSymbols';
+export { enmSnapshotToSldSymbols, projectEnmSnapshotToSld } from './enmSnapshotToSldSymbols';
 
 // Overlay utilities
 export {
@@ -85,11 +85,11 @@ export {
 export { LegendPanel } from './LegendPanel';
 export type { LegendPanelProps } from './LegendPanel';
 
-// Empty state overlay (PowerFactory/ETAP style)
+// Empty state overlay (Canonical/CANONICAL style)
 export { SldEmptyOverlay } from './SldEmptyOverlay';
 export type { SldEmptyOverlayProps, SldEmptyState } from './SldEmptyOverlay';
 
-// Diagnostics panel (ETAP-grade topology diagnostics)
+// Diagnostics panel (CANONICAL-grade topology diagnostics)
 export { SldDiagnosticsPanel } from './SldDiagnosticsPanel';
 export type { SldDiagnosticsPanelProps } from './SldDiagnosticsPanel';
 
@@ -107,7 +107,7 @@ export {
 } from './scale';
 export type { ValueRange, OverlayRanges } from './scale';
 
-// Voltage colors (PLANS STYLE) — legacy, prefer sldEtapStyle
+// Voltage colors (PLANS STYLE) — legacy, prefer sldCanonicalStyle
 export {
   VOLTAGE_COLORS,
   DEFAULT_VOLTAGE_COLOR,
@@ -119,40 +119,40 @@ export {
   getVoltageLevelLabel,
 } from './voltageColors';
 
-// PR-SLD-ETAP-STYLE-02: ETAP Visual Style System (canonical)
+// PR-SLD-CANONICAL-STYLE-02: CANONICAL Visual Style System (canonical)
 export {
-  ETAP_STROKE,
-  ETAP_STROKE_SELECTED,
-  ETAP_VOLTAGE_COLORS,
-  ETAP_VOLTAGE_MAP,
-  ETAP_STATE_COLORS,
-  ETAP_FILL_COLORS,
-  ETAP_TYPOGRAPHY,
-  ETAP_LABEL_ANCHORS,
-  ETAP_LINE_LABEL,
-  ETAP_CALLOUT,
-  ETAP_CALLOUT_ANCHORS,
-  ETAP_SYMBOL_SIZES,
-  ETAP_CANVAS,
-  ETAP_GRID,
-  getEtapVoltageColor,
-  getEtapStrokeColor,
-  getEtapFillColor,
-  getEtapOpacity,
-  getEtapLabelAnchor,
-  getEtapSymbolSize,
-  getEtapStrokeWidth,
-} from './sldEtapStyle';
-export type { EtapLabelAnchor } from './sldEtapStyle';
+  CANONICAL_STROKE,
+  CANONICAL_STROKE_SELECTED,
+  CANONICAL_VOLTAGE_COLORS,
+  CANONICAL_VOLTAGE_MAP,
+  CANONICAL_STATE_COLORS,
+  CANONICAL_FILL_COLORS,
+  CANONICAL_TYPOGRAPHY,
+  CANONICAL_LABEL_ANCHORS,
+  CANONICAL_LINE_LABEL,
+  CANONICAL_CALLOUT,
+  CANONICAL_CALLOUT_ANCHORS,
+  CANONICAL_SYMBOL_SIZES,
+  CANONICAL_CANVAS,
+  CANONICAL_GRID,
+  getCanonicalVoltageColor,
+  getCanonicalStrokeColor,
+  getCanonicalFillColor,
+  getCanonicalOpacity,
+  getCanonicalLabelAnchor,
+  getCanonicalSymbolSize,
+  getCanonicalStrokeWidth,
+} from './sldCanonicalStyle';
+export type { CanonicalLabelAnchor } from './sldCanonicalStyle';
 
-// PR-SLD-ETAP-STYLE-02: ETAP Callout Components
-export { EtapCallout, EtapCalloutLayer } from './EtapCallout';
+// PR-SLD-CANONICAL-STYLE-02: CANONICAL Callout Components
+export { CanonicalCallout, CanonicalCalloutLayer } from './CanonicalCallout';
 export type {
   CalloutResultData,
   CalloutPosition,
-  EtapCalloutProps,
-  EtapCalloutLayerProps,
-} from './EtapCallout';
+  CanonicalCalloutProps,
+  CanonicalCalloutLayerProps,
+} from './CanonicalCallout';
 
 // UX 10/10: Operational mode store (NORMALNY/AWARYJNY/ZWARCIE)
 export {

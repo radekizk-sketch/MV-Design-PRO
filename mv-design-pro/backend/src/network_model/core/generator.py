@@ -11,11 +11,11 @@ Wszystkie modele są FROZEN (immutable) zgodnie z konwencją PowerFactory.
 Wkład do zwarcia modelowany jako ograniczone źródło prądowe IEC 60909.
 """
 
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Dict, List, Optional
 import math
 import uuid
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
 
 
 class GeneratorType(Enum):
@@ -30,6 +30,7 @@ class GeneratorType(Enum):
         UPS: Zasilacz bezprzerwowy.
         BIOGAS: Generator biogazowy.
     """
+
     PV = "PV"
     BESS = "BESS"
     WIND = "WIND"
@@ -47,6 +48,7 @@ class ControlMode(Enum):
         Q_OD_U: Regulacja Q w funkcji napięcia Q(U).
         P_OD_U: Regulacja P w funkcji napięcia P(U).
     """
+
     STALY_COS_PHI = "STALY_COS_PHI"
     Q_OD_U = "Q_OD_U"
     P_OD_U = "P_OD_U"
@@ -73,6 +75,7 @@ class GeneratorSN:
         k_sc: Współczynnik wkładu zwarciowego Ik = k_sc * In.
         in_service: Czy generator jest w eksploatacji.
     """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
     node_id: str = ""
@@ -80,7 +83,7 @@ class GeneratorSN:
     rated_power_mw: float = 0.0
     cos_phi: float = 0.9
     internal_impedance_pu: complex = complex(0.0, 0.0)
-    transformer_ref: Optional[str] = None
+    transformer_ref: str | None = None
     k_sc: float = 1.1
     in_service: bool = True
 
@@ -149,7 +152,7 @@ class GeneratorSN:
         """
         return self.k_sc * self.get_rated_current_a(voltage_kv)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializuje generator SN do słownika."""
         return {
             "id": self.id,
@@ -168,7 +171,7 @@ class GeneratorSN:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GeneratorSN":
+    def from_dict(cls, data: dict[str, Any]) -> "GeneratorSN":
         """Deserializuje generator SN ze słownika."""
         # Parse impedance
         impedance_data = data.get("internal_impedance_pu")
@@ -177,7 +180,7 @@ class GeneratorSN:
                 float(impedance_data.get("real", 0.0)),
                 float(impedance_data.get("imag", 0.0)),
             )
-        elif isinstance(impedance_data, (int, float)):
+        elif isinstance(impedance_data, int | float):
             impedance = complex(0.0, float(impedance_data))
         elif isinstance(impedance_data, complex):
             impedance = impedance_data
@@ -226,6 +229,7 @@ class GeneratorNN:
         k_sc: Współczynnik wkładu zwarciowego Ik = k_sc * In.
         in_service: Czy generator jest w eksploatacji.
     """
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = ""
     node_id: str = ""
@@ -233,8 +237,8 @@ class GeneratorNN:
     rated_power_kw: float = 0.0
     inverter_rated_current_a: float = 0.0
     control_mode: ControlMode = ControlMode.STALY_COS_PHI
-    power_limit_kw: Optional[float] = None
-    profile_p_t: Optional[tuple] = None
+    power_limit_kw: float | None = None
+    profile_p_t: tuple | None = None
     k_sc: float = 1.1
     in_service: bool = True
 
@@ -254,7 +258,7 @@ class GeneratorNN:
             return min(self.rated_power_kw, self.power_limit_kw)
         return self.rated_power_kw
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serializuje generator nN do słownika."""
         return {
             "id": self.id,
@@ -271,7 +275,7 @@ class GeneratorNN:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "GeneratorNN":
+    def from_dict(cls, data: dict[str, Any]) -> "GeneratorNN":
         """Deserializuje generator nN ze słownika."""
         # Parse generator type
         gen_type_raw = data.get("generator_type", "PV")
@@ -300,9 +304,7 @@ class GeneratorNN:
             inverter_rated_current_a=float(data.get("inverter_rated_current_a", 0.0)),
             control_mode=ctrl_mode,
             power_limit_kw=(
-                float(data["power_limit_kw"])
-                if data.get("power_limit_kw") is not None
-                else None
+                float(data["power_limit_kw"]) if data.get("power_limit_kw") is not None else None
             ),
             profile_p_t=profile,
             k_sc=float(data.get("k_sc", 1.1)),
