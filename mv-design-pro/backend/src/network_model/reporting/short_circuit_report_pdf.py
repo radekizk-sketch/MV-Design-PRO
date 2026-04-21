@@ -1,4 +1,4 @@
-﻿"""
+"""
 Reporting/export layer - PDF report generator for ShortCircuitResult.
 
 This module provides functions to export IEC 60909 short-circuit calculation

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * App Root â€” CANONICAL_LAYOUT + UI_INTEGRATION_E2E + V12.5
  *
  * CANONICAL ALIGNMENT:

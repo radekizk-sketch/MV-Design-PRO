@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Empty Inspector Panel â€” "Brak zaznaczenia" State
  *
  * CANONICAL ALIGNMENT:

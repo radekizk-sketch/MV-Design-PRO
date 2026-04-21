@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Global Application State Store â€” P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
