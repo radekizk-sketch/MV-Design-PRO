@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SLD Editor Page â€” Canonical/CANONICAL Style Main Editor View
  *
  * CANONICAL ALIGNMENT:

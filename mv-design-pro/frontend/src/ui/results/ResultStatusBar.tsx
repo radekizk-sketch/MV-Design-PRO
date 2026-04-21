@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ResultStatusBar Component (Canonical-grade)
  *
  * CANONICAL ALIGNMENT:

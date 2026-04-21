@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Case Manager Panel â€” P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:

@@ -48,6 +48,7 @@ import type {
   TopologyInputV1,
   TopologyBranchV1,
   TopologyDeviceV1,
+  TopologyFieldSpecV1,
   TopologyStationV1,
   TopologyProtectionV1,
 } from './topologyInputReader';
@@ -199,6 +200,175 @@ function validateEmbeddingVsDomain(
   }
 }
 
+type ExplicitFieldSource = 'sn' | 'nn';
+
+function readMetaString(meta: Readonly<Record<string, unknown>>, keys: readonly string[]): string | null {
+  for (const key of keys) {
+    const value = meta[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function resolveExplicitFieldRole(
+  spec: TopologyFieldSpecV1,
+  station: TopologyStationV1,
+  source: ExplicitFieldSource,
+): FieldRoleV1 {
+  const bayRole = spec.bayRole.toUpperCase();
+  const sourceKind = readMetaString(spec.meta, ['source_field_kind'])?.toUpperCase() ?? null;
+  const feederRole = source === 'nn'
+    ? FieldRoleV1.FEEDER_NN
+    : (station.stationType === StationKind.MAIN_SUBSTATION ? FieldRoleV1.LINE_IN : FieldRoleV1.LINE_OUT);
+
+  if (bayRole === 'IN') return FieldRoleV1.LINE_IN;
+  if (bayRole === 'OUT') return source === 'nn' ? FieldRoleV1.FEEDER_NN : FieldRoleV1.LINE_OUT;
+  if (bayRole === 'TR') return FieldRoleV1.TRANSFORMER_SN_NN;
+  if (bayRole === 'COUPLER') return FieldRoleV1.COUPLER_SN;
+  if (bayRole === 'MEASUREMENT') return FieldRoleV1.MEASUREMENT_SN;
+
+  if (bayRole === 'OZE') {
+    if (sourceKind === 'BESS') return source === 'nn' ? FieldRoleV1.BESS_NN : FieldRoleV1.BESS_SN;
+    if (sourceKind === 'FW') return source === 'nn' ? FieldRoleV1.FEEDER_NN : FieldRoleV1.FW_SN;
+    return source === 'nn' ? FieldRoleV1.PV_NN : FieldRoleV1.PV_SN;
+  }
+
+  if (bayRole === 'FEEDER') {
+    return feederRole;
+  }
+
+  return feederRole;
+}
+
+function resolveExplicitFieldTerminals(
+  spec: TopologyFieldSpecV1,
+  fieldRole: FieldRoleV1,
+): FieldTerminalsV1 {
+  switch (fieldRole) {
+    case FieldRoleV1.LINE_IN:
+      return {
+        incomingNodeId: spec.busRef,
+        outgoingNodeId: null,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+    case FieldRoleV1.LINE_OUT:
+      return {
+        incomingNodeId: null,
+        outgoingNodeId: spec.busRef,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+    case FieldRoleV1.LINE_BRANCH:
+      return {
+        incomingNodeId: null,
+        outgoingNodeId: null,
+        branchNodeId: spec.busRef,
+        generatorNodeId: null,
+      };
+    case FieldRoleV1.TRANSFORMER_SN_NN:
+      return {
+        incomingNodeId: null,
+        outgoingNodeId: spec.busRef,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+    case FieldRoleV1.MEASUREMENT_SN:
+      return {
+        incomingNodeId: spec.busRef,
+        outgoingNodeId: null,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+    case FieldRoleV1.PV_SN:
+    case FieldRoleV1.BESS_SN:
+    case FieldRoleV1.FW_SN:
+    case FieldRoleV1.PV_NN:
+    case FieldRoleV1.BESS_NN:
+      return {
+        incomingNodeId: null,
+        outgoingNodeId: null,
+        branchNodeId: null,
+        generatorNodeId: spec.busRef,
+      };
+    case FieldRoleV1.FEEDER_NN:
+    case FieldRoleV1.MAIN_NN:
+      return {
+        incomingNodeId: spec.busRef,
+        outgoingNodeId: null,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+    default:
+      return {
+        incomingNodeId: spec.busRef,
+        outgoingNodeId: null,
+        branchNodeId: null,
+        generatorNodeId: null,
+      };
+  }
+}
+
+function buildFieldsFromExplicitSpecs(
+  station: TopologyStationV1,
+  specs: readonly TopologyFieldSpecV1[],
+  stationDevices: readonly TopologyDeviceV1[],
+  source: ExplicitFieldSource,
+  protectionByBreaker: ReadonlyMap<string, TopologyProtectionV1>,
+  fixActions: FieldDeviceFixActionV1[],
+): { fields: FieldV1[]; devices: DeviceV1[] } {
+  const fields: FieldV1[] = [];
+  const devices: DeviceV1[] = [];
+  const assignedDeviceIds = new Set<string>();
+  const sortedSpecs = [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
+
+  for (const spec of sortedSpecs) {
+    const fieldRole = resolveExplicitFieldRole(spec, station, source);
+    const fieldId = spec.fieldRef;
+    const terminals = resolveExplicitFieldTerminals(spec, fieldRole);
+    const matchedDevices = stationDevices
+      .filter((device) => {
+        if (assignedDeviceIds.has(device.id)) {
+          return false;
+        }
+        if (device.bayRef !== null && device.bayRef !== undefined && device.bayRef === spec.fieldRef) {
+          return true;
+        }
+        if (spec.equipmentRefs.includes(device.id)) {
+          return true;
+        }
+        return device.kind === DeviceKind.CT
+          || device.kind === DeviceKind.VT
+          ? device.nodeId === spec.busRef && fieldRole === FieldRoleV1.MEASUREMENT_SN
+          : false;
+      })
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const fieldDeviceIds: string[] = [];
+    for (const dev of matchedDevices) {
+      const device = buildDeviceFromDomain(dev, fieldId, protectionByBreaker, fixActions);
+      devices.push(device);
+      fieldDeviceIds.push(device.id);
+      assignedDeviceIds.add(dev.id);
+    }
+
+    fields.push({
+      id: fieldId,
+      stationId: station.id,
+      busSectionId: spec.gpzSectionId ?? (station.busIds[0] ?? station.id),
+      fieldRole,
+      terminals,
+      requiredDevices: DEVICE_REQUIREMENT_SETS[fieldRole],
+      deviceIds: fieldDeviceIds.sort(),
+      catalogRef: null,
+    });
+  }
+
+  return { fields, devices };
+}
+
 // =============================================================================
 // FIELD BUILDER
 // =============================================================================
@@ -239,6 +409,35 @@ function buildFieldsForStation(
   const protectionByBreaker = new Map<string, TopologyProtectionV1>();
   for (const pb of input.protectionBindings) {
     protectionByBreaker.set(pb.breakerRef, pb);
+  }
+
+  const explicitSnSpecs = station.fieldSpecs ?? [];
+  const explicitNnSpecs = station.nnFieldSpecs ?? [];
+  if (explicitSnSpecs.length > 0 || explicitNnSpecs.length > 0) {
+    const snExplicit = buildFieldsFromExplicitSpecs(
+      station,
+      explicitSnSpecs,
+      stationDevices,
+      'sn',
+      protectionByBreaker,
+      fixActions,
+    );
+    const nnExplicit = buildFieldsFromExplicitSpecs(
+      station,
+      explicitNnSpecs,
+      stationDevices,
+      'nn',
+      protectionByBreaker,
+      fixActions,
+    );
+
+    const explicitFields = [...snExplicit.fields, ...nnExplicit.fields]
+      .sort((a, b) => a.id.localeCompare(b.id));
+    const explicitDevices = [...new Map(
+      [...snExplicit.devices, ...nnExplicit.devices].map(device => [device.id, device] as const),
+    ).values()].sort((a, b) => a.id.localeCompare(b.id));
+
+    return { fields: explicitFields, devices: explicitDevices };
   }
 
   let fieldIndex = 0;

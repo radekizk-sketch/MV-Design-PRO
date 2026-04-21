@@ -1,4 +1,4 @@
-﻿/**
+/**
  * UI Types for MV-DESIGN-PRO
  *
  * CANONICAL ALIGNMENT:
