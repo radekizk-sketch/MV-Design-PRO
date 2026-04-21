@@ -13,19 +13,19 @@ Persistencja SQLAlchemy z pełnym docelowym schematem:
 - frequency_hz: Częstotliwość sieci (50/60 Hz)
 - Soft delete (deleted_at)
 """
+
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from enum import Enum
-from typing import Callable
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
 
 from api.dependencies import get_uow_factory
 from domain.models import new_project
+from fastapi import APIRouter, Depends, HTTPException, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from pydantic import BaseModel, Field, field_validator
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
@@ -37,21 +37,19 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 class ProjectMode(str, Enum):
     """Tryb projektu - AS-IS (weryfikacja) vs TO-BE (projektowanie)."""
+
     AS_IS = "AS-IS"
     TO_BE = "TO-BE"
 
 
 class ProjectCreate(BaseModel):
     """Request body for POST /api/projects"""
+
     name: str = Field(..., min_length=1, max_length=255, description="Nazwa projektu")
     description: str | None = Field(None, max_length=1000, description="Opis projektu")
     mode: ProjectMode = Field(default=ProjectMode.AS_IS, description="Tryb projektu")
-    voltage_level_kv: float = Field(
-        default=15.0, gt=0, description="Poziom napięcia sieci [kV]"
-    )
-    frequency_hz: float = Field(
-        default=50.0, description="Częstotliwość sieci [Hz]"
-    )
+    voltage_level_kv: float = Field(default=15.0, gt=0, description="Poziom napięcia sieci [kV]")
+    frequency_hz: float = Field(default=50.0, description="Częstotliwość sieci [Hz]")
 
     @field_validator("frequency_hz")
     @classmethod
@@ -70,6 +68,7 @@ class ProjectCreate(BaseModel):
 
 class ProjectResponse(BaseModel):
     """Response body — pojedynczy projekt"""
+
     id: UUID
     name: str
     description: str | None = None
@@ -87,6 +86,7 @@ class ProjectResponse(BaseModel):
 
 class ProjectListResponse(BaseModel):
     """Response body — lista projektów"""
+
     projects: list[ProjectResponse]
     total: int
 
@@ -98,6 +98,7 @@ class ProjectListResponse(BaseModel):
 
 class ProjectNotFoundError(Exception):
     """Projekt nie został znaleziony."""
+
     def __init__(self, project_id: UUID):
         self.project_id = project_id
         super().__init__(f"Projekt {project_id} nie został znaleziony")
@@ -105,6 +106,7 @@ class ProjectNotFoundError(Exception):
 
 class ProjectHasDependenciesError(Exception):
     """Projekt ma zależne obiekty i nie może być usunięty."""
+
     def __init__(self, project_id: UUID):
         self.project_id = project_id
         super().__init__(
@@ -242,7 +244,7 @@ def delete_project(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Projekt {project_id} posiada zależne obiekty "
-                       f"(warianty/przypadki/obliczenia). Usuń je najpierw.",
+                f"(warianty/przypadki/obliczenia). Usuń je najpierw.",
             )
 
         # Soft delete

@@ -22,9 +22,6 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from application.fault_scenario_service import (
     FaultScenarioDuplicateError,
     FaultScenarioHasRunsError,
@@ -32,10 +29,12 @@ from application.fault_scenario_service import (
     FaultScenarioService,
 )
 from domain.fault_scenario import (
+    FaultMode,
     FaultScenarioValidationError,
     FaultType,
-    FaultMode,
 )
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["fault-scenarios"])
 
@@ -57,9 +56,7 @@ class FaultLocationRequest(BaseModel):
     """Fault location in the network."""
 
     element_ref: str = Field(..., description="Identyfikator elementu sieci")
-    location_type: str = Field(
-        ..., description="Typ lokalizacji: BUS lub BRANCH"
-    )
+    location_type: str = Field(..., description="Typ lokalizacji: BUS lub BRANCH")
     position: float | None = Field(
         None, description="Pozycja na gałęzi (0..1), wymagane dla BRANCH"
     )
@@ -77,23 +74,15 @@ class ShortCircuitConfigRequest(BaseModel):
 
     c_factor: float = Field(1.10, description="Współczynnik napięciowy c (IEC 60909)")
     thermal_time_seconds: float = Field(1.0, description="Czas cieplny [s]")
-    include_branch_contributions: bool = Field(
-        False, description="Dołącz wkłady gałęziowe"
-    )
+    include_branch_contributions: bool = Field(False, description="Dołącz wkłady gałęziowe")
 
 
 class CreateFaultScenarioRequest(BaseModel):
     """Request to create a new fault scenario (v1 + v2)."""
 
-    name: str = Field(
-        ..., description="Nazwa scenariusza zwarcia (PL)"
-    )
-    fault_type: str = Field(
-        ..., description="Typ zwarcia: SC_3F, SC_2F, SC_1F"
-    )
-    location: FaultLocationRequest = Field(
-        ..., description="Lokalizacja zwarcia"
-    )
+    name: str = Field(..., description="Nazwa scenariusza zwarcia (PL)")
+    fault_type: str = Field(..., description="Typ zwarcia: SC_3F, SC_2F, SC_1F")
+    location: FaultLocationRequest = Field(..., description="Lokalizacja zwarcia")
     config: ShortCircuitConfigRequest | None = Field(
         None, description="Konfiguracja obliczeń (opcjonalna)"
     )
@@ -116,24 +105,16 @@ class UpdateFaultScenarioRequest(BaseModel):
 
     name: str | None = Field(None, description="Nowa nazwa scenariusza")
     fault_type: str | None = Field(None, description="Nowy typ zwarcia")
-    location: FaultLocationRequest | None = Field(
-        None, description="Nowa lokalizacja zwarcia"
-    )
-    config: ShortCircuitConfigRequest | None = Field(
-        None, description="Nowa konfiguracja obliczeń"
-    )
-    fault_mode: str | None = Field(
-        None, description="Nowy tryb zwarcia: METALLIC lub IMPEDANCE"
-    )
+    location: FaultLocationRequest | None = Field(None, description="Nowa lokalizacja zwarcia")
+    config: ShortCircuitConfigRequest | None = Field(None, description="Nowa konfiguracja obliczeń")
+    fault_mode: str | None = Field(None, description="Nowy tryb zwarcia: METALLIC lub IMPEDANCE")
     fault_impedance: FaultImpedanceRequest | None = Field(
         None, description="Nowa impedancja zwarcia Zf [Ω]"
     )
     arc_params: dict[str, Any] | None = Field(
         None, description="Parametry łuku (zarezerwowane — nieobsługiwane)"
     )
-    z0_bus_data: dict[str, Any] | None = Field(
-        None, description="Nowe dane impedancji zerowej"
-    )
+    z0_bus_data: dict[str, Any] | None = Field(None, description="Nowe dane impedancji zerowej")
 
 
 class FaultScenarioResponse(BaseModel):

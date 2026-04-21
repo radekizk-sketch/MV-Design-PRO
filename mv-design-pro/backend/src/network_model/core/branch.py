@@ -17,7 +17,7 @@ Units:
 import math
 from dataclasses import dataclass, replace
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from network_model.catalog import (
     CatalogRepository,
@@ -25,7 +25,7 @@ from network_model.catalog import (
     resolve_line_params,
     resolve_transformer_params,
 )
-from network_model.catalog.types import CableType, LineType, TransformerType
+from network_model.catalog.types import TransformerType
 
 
 class BranchType(Enum):
@@ -36,7 +36,7 @@ class BranchType(Enum):
     TRANSFORMER = "TRANSFORMER"
 
 
-def _get_node_id(data: Dict[str, Any], preferred_key: str, legacy_key: str) -> str:
+def _get_node_id(data: dict[str, Any], preferred_key: str, legacy_key: str) -> str:
     """
     Extract node ID from data with backward compatibility.
 
@@ -55,9 +55,7 @@ def _get_node_id(data: Dict[str, Any], preferred_key: str, legacy_key: str) -> s
         return str(data[preferred_key])
     if legacy_key in data:
         return str(data[legacy_key])
-    raise ValueError(
-        f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')"
-    )
+    raise ValueError(f"Missing required key: '{preferred_key}' (or legacy '{legacy_key}')")
 
 
 @dataclass
@@ -82,7 +80,7 @@ class Branch:
     in_service: bool = True
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Branch":
+    def from_dict(cls, data: dict[str, Any]) -> "Branch":
         """
         Create a Branch instance from a dictionary.
 
@@ -112,8 +110,7 @@ class Branch:
             except ValueError:
                 valid_types = [bt.value for bt in BranchType]
                 raise ValueError(
-                    f"Unknown branch_type: '{raw_type}'. "
-                    f"Valid types are: {valid_types}"
+                    f"Unknown branch_type: '{raw_type}'. " f"Valid types are: {valid_types}"
                 )
         else:
             raise ValueError(
@@ -161,7 +158,7 @@ class Branch:
 
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the branch to a dictionary representation.
 
@@ -192,7 +189,7 @@ class LineImpedanceOverride:
     x_total_ohm: float
     b_total_us: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "r_total_ohm": self.r_total_ohm,
             "x_total_ohm": self.x_total_ohm,
@@ -200,7 +197,7 @@ class LineImpedanceOverride:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LineImpedanceOverride":
+    def from_dict(cls, data: dict[str, Any]) -> "LineImpedanceOverride":
         return cls(
             r_total_ohm=float(data.get("r_total_ohm", 0.0)),
             x_total_ohm=float(data.get("x_total_ohm", 0.0)),
@@ -234,11 +231,11 @@ class LineBranch(Branch):
     b_us_per_km: float = 0.0
     length_km: float = 0.0
     rated_current_a: float = 0.0
-    type_ref: Optional[str] = None
-    impedance_override: Optional[LineImpedanceOverride] = None
+    type_ref: str | None = None
+    impedance_override: LineImpedanceOverride | None = None
 
     @classmethod
-    def _from_dict(cls, data: Dict[str, Any], branch_type: BranchType) -> "LineBranch":
+    def _from_dict(cls, data: dict[str, Any], branch_type: BranchType) -> "LineBranch":
         """
         Create a LineBranch from dictionary data.
 
@@ -341,7 +338,7 @@ class LineBranch(Branch):
 
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the line branch to a dictionary.
 
@@ -351,14 +348,16 @@ class LineBranch(Branch):
             Dictionary representation of the line branch.
         """
         result = super().to_dict()
-        result.update({
-            "r_ohm_per_km": self.r_ohm_per_km,
-            "x_ohm_per_km": self.x_ohm_per_km,
-            "b_us_per_km": self.b_us_per_km,
-            "length_km": self.length_km,
-            "rated_current_a": self.rated_current_a,
-            "type_ref": self.type_ref,
-        })
+        result.update(
+            {
+                "r_ohm_per_km": self.r_ohm_per_km,
+                "x_ohm_per_km": self.x_ohm_per_km,
+                "b_us_per_km": self.b_us_per_km,
+                "length_km": self.length_km,
+                "rated_current_a": self.rated_current_a,
+                "type_ref": self.type_ref,
+            }
+        )
         if self.impedance_override is not None:
             result["impedance_override"] = self.impedance_override.to_dict()
         return result
@@ -512,10 +511,10 @@ class TransformerBranch(Branch):
     vector_group: str = "Dyn11"
     tap_position: int = 0
     tap_step_percent: float = 2.5
-    type_ref: Optional[str] = None
+    type_ref: str | None = None
 
     @classmethod
-    def _from_dict(cls, data: Dict[str, Any]) -> "TransformerBranch":
+    def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
         """
         Create a TransformerBranch from dictionary data.
 
@@ -675,7 +674,7 @@ class TransformerBranch(Branch):
             Complex short-circuit impedance in ohms on LV side.
         """
         self._validate_short_circuit_inputs()
-        z_base_lv = (self.voltage_lv_kv ** 2) / self.rated_power_mva
+        z_base_lv = (self.voltage_lv_kv**2) / self.rated_power_mva
         return self.get_short_circuit_impedance_pu() * z_base_lv
 
     def get_voltage_factor_c_max(self) -> float:
@@ -747,7 +746,7 @@ class TransformerBranch(Branch):
         """
         return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the transformer branch to a dictionary.
 
@@ -757,19 +756,21 @@ class TransformerBranch(Branch):
             Dictionary representation of the transformer branch.
         """
         result = super().to_dict()
-        result.update({
-            "rated_power_mva": self.rated_power_mva,
-            "voltage_hv_kv": self.voltage_hv_kv,
-            "voltage_lv_kv": self.voltage_lv_kv,
-            "uk_percent": self.uk_percent,
-            "pk_kw": self.pk_kw,
-            "i0_percent": self.i0_percent,
-            "p0_kw": self.p0_kw,
-            "vector_group": self.vector_group,
-            "tap_position": self.tap_position,
-            "tap_step_percent": self.tap_step_percent,
-            "type_ref": self.type_ref,
-        })
+        result.update(
+            {
+                "rated_power_mva": self.rated_power_mva,
+                "voltage_hv_kv": self.voltage_hv_kv,
+                "voltage_lv_kv": self.voltage_lv_kv,
+                "uk_percent": self.uk_percent,
+                "pk_kw": self.pk_kw,
+                "i0_percent": self.i0_percent,
+                "p0_kw": self.p0_kw,
+                "vector_group": self.vector_group,
+                "tap_position": self.tap_position,
+                "tap_step_percent": self.tap_step_percent,
+                "type_ref": self.type_ref,
+            }
+        )
         return result
 
     def get_impedance_pu(self, base_mva: float = 100.0) -> complex:
@@ -877,9 +878,7 @@ class TransformerBranch(Branch):
             vector_group=resolved.vector_group,
         )
 
-    def computed_equivalent_pu(
-        self, catalog: CatalogRepository | None = None
-    ) -> complex:
+    def computed_equivalent_pu(self, catalog: CatalogRepository | None = None) -> complex:
         nameplate = self.resolve_nameplate(catalog)
         return _compute_transformer_impedance_pu(
             rated_power_mva=nameplate.rated_power_mva,
@@ -912,14 +911,14 @@ class TransformerBranch(Branch):
         )
 
 
-def _parse_type_ref(data: Dict[str, Any]) -> Optional[str]:
+def _parse_type_ref(data: dict[str, Any]) -> str | None:
     type_ref = data.get("type_ref") or data.get("type_id")
     if type_ref is None:
         return None
     return str(type_ref)
 
 
-def _parse_impedance_override(data: Dict[str, Any]) -> Optional[LineImpedanceOverride]:
+def _parse_impedance_override(data: dict[str, Any]) -> LineImpedanceOverride | None:
     override = data.get("impedance_override")
     if override is None:
         return None

@@ -6,69 +6,117 @@ Porównanie techniczne snapshotów na poziomie encji i parametrów.
 
 from __future__ import annotations
 
-import pytest
-
+from diagnostics.diff import DiffChangeType, compute_enm_diff
+from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.core.branch import LineBranch, BranchType
 from network_model.core.snapshot import create_network_snapshot
-
-from diagnostics.diff import compute_enm_diff, DiffChangeType
 
 
 def _make_graph_a() -> NetworkGraph:
     """Base graph for diff testing."""
     g = NetworkGraph(network_model_id="test-model")
-    g.add_node(Node(
-        id="bus-1", name="Szyna A", node_type=NodeType.SLACK,
-        voltage_level=110.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
-    g.add_node(Node(
-        id="bus-2", name="Szyna B", node_type=NodeType.PQ,
-        voltage_level=110.0, active_power=10.0, reactive_power=5.0,
-    ))
-    g.add_branch(LineBranch(
-        id="line-1", name="Linia L1", branch_type=BranchType.LINE,
-        from_node_id="bus-1", to_node_id="bus-2",
-        r_ohm_per_km=0.12, x_ohm_per_km=0.39, length_km=10.0,
-        rated_current_a=400.0,
-    ))
+    g.add_node(
+        Node(
+            id="bus-1",
+            name="Szyna A",
+            node_type=NodeType.SLACK,
+            voltage_level=110.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="bus-2",
+            name="Szyna B",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=10.0,
+            reactive_power=5.0,
+        )
+    )
+    g.add_branch(
+        LineBranch(
+            id="line-1",
+            name="Linia L1",
+            branch_type=BranchType.LINE,
+            from_node_id="bus-1",
+            to_node_id="bus-2",
+            r_ohm_per_km=0.12,
+            x_ohm_per_km=0.39,
+            length_km=10.0,
+            rated_current_a=400.0,
+        )
+    )
     return g
 
 
 def _make_graph_b_modified() -> NetworkGraph:
     """Modified graph: bus-2 renamed + line-1 length changed."""
     g = NetworkGraph(network_model_id="test-model")
-    g.add_node(Node(
-        id="bus-1", name="Szyna A", node_type=NodeType.SLACK,
-        voltage_level=110.0, voltage_magnitude=1.0, voltage_angle=0.0,
-    ))
-    g.add_node(Node(
-        id="bus-2", name="Szyna B (zmieniona)", node_type=NodeType.PQ,
-        voltage_level=110.0, active_power=15.0, reactive_power=7.0,
-    ))
-    g.add_branch(LineBranch(
-        id="line-1", name="Linia L1", branch_type=BranchType.LINE,
-        from_node_id="bus-1", to_node_id="bus-2",
-        r_ohm_per_km=0.12, x_ohm_per_km=0.39, length_km=15.0,  # changed
-        rated_current_a=400.0,
-    ))
+    g.add_node(
+        Node(
+            id="bus-1",
+            name="Szyna A",
+            node_type=NodeType.SLACK,
+            voltage_level=110.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="bus-2",
+            name="Szyna B (zmieniona)",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=15.0,
+            reactive_power=7.0,
+        )
+    )
+    g.add_branch(
+        LineBranch(
+            id="line-1",
+            name="Linia L1",
+            branch_type=BranchType.LINE,
+            from_node_id="bus-1",
+            to_node_id="bus-2",
+            r_ohm_per_km=0.12,
+            x_ohm_per_km=0.39,
+            length_km=15.0,  # changed
+            rated_current_a=400.0,
+        )
+    )
     return g
 
 
 def _make_graph_c_added() -> NetworkGraph:
     """Graph with extra node and branch added."""
     g = _make_graph_a()
-    g.add_node(Node(
-        id="bus-3", name="Szyna C", node_type=NodeType.PQ,
-        voltage_level=110.0, active_power=5.0, reactive_power=2.0,
-    ))
-    g.add_branch(LineBranch(
-        id="line-2", name="Linia L2", branch_type=BranchType.LINE,
-        from_node_id="bus-2", to_node_id="bus-3",
-        r_ohm_per_km=0.1, x_ohm_per_km=0.3, length_km=8.0,
-        rated_current_a=350.0,
-    ))
+    g.add_node(
+        Node(
+            id="bus-3",
+            name="Szyna C",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    g.add_branch(
+        LineBranch(
+            id="line-2",
+            name="Linia L2",
+            branch_type=BranchType.LINE,
+            from_node_id="bus-2",
+            to_node_id="bus-3",
+            r_ohm_per_km=0.1,
+            x_ohm_per_km=0.3,
+            length_km=8.0,
+            rated_current_a=350.0,
+        )
+    )
     return g
 
 
@@ -92,7 +140,8 @@ class TestEnmDiff:
         assert diff.summary["modified"] > 0
         # bus-2 was modified (name, active_power, reactive_power)
         bus2_changes = [
-            c for c in diff.changes
+            c
+            for c in diff.changes
             if c.entity_id == "bus-2" and c.change_type == DiffChangeType.MODIFIED
         ]
         assert len(bus2_changes) == 1

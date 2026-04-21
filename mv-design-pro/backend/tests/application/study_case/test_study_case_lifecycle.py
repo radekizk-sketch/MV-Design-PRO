@@ -16,11 +16,10 @@ All tests use Polish error messages per P10 requirements.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-
 from domain.study_case import (
     StudyCase,
     StudyCaseConfig,
@@ -41,7 +40,6 @@ from network_model.core.snapshot import (
     snapshot_read_only_guard,
 )
 from network_model.sld_projection import project_snapshot_to_sld
-
 
 # =============================================================================
 # Domain Model Tests
@@ -284,7 +282,7 @@ class TestStudyCaseImmutability:
             parent_snapshot_id=snapshot.meta.snapshot_id,
             action_type="set_in_service",
             payload={"entity_id": "branch-1", "in_service": False},
-            created_at=datetime.now(timezone.utc).isoformat(),
+            created_at=datetime.now(UTC).isoformat(),
             status="accepted",
         )
         new_snapshot = apply_action_to_snapshot(snapshot, action)
@@ -315,11 +313,13 @@ class TestStudyCaseCompare:
         """Comparing different c_factor shows difference."""
         project_id = uuid4()
         case_a = new_study_case(
-            project_id, "Case A",
+            project_id,
+            "Case A",
             config=StudyCaseConfig(c_factor_max=1.10),
         )
         case_b = new_study_case(
-            project_id, "Case B",
+            project_id,
+            "Case B",
             config=StudyCaseConfig(c_factor_max=1.05),
         )
 

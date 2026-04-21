@@ -23,7 +23,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-
 # ============================================================================
 # STAŁE WERSJI
 # ============================================================================
@@ -84,7 +83,9 @@ class ArchiveImportStatus(str, Enum):
     SUCCESS = "SUCCESS"
     PARTIAL = "PARTIAL"  # Częściowy import (np. starsza wersja)
     FAILED = "FAILED"
-    CATALOG_MAPPING_REQUIRED = "CATALOG_MAPPING_REQUIRED"  # Import OK, ale wymagane mapowanie katalogowe
+    CATALOG_MAPPING_REQUIRED = (
+        "CATALOG_MAPPING_REQUIRED"  # Import OK, ale wymagane mapowanie katalogowe
+    )
 
 
 # ============================================================================
@@ -416,9 +417,7 @@ def dict_to_archive(data: dict[str, Any]) -> ProjectArchive:
 
     # Walidacja format_id
     if data["format_id"] != ARCHIVE_FORMAT_ID:
-        raise ArchiveStructureError(
-            f"Nieprawidłowy identyfikator formatu: {data['format_id']}"
-        )
+        raise ArchiveStructureError(f"Nieprawidłowy identyfikator formatu: {data['format_id']}")
 
     # Walidacja wersji (obsługujemy migracje)
     schema_version = data["schema_version"]
@@ -553,12 +552,14 @@ def verify_archive_integrity(archive: ProjectArchive) -> list[str]:
     # Opcjonalne sekcje (mogą mieć pusty hash w starszych wersjach)
     if archive.fingerprints.interpretations_hash:
         checks.append(
-            ("interpretations", computed.interpretations_hash, archive.fingerprints.interpretations_hash)
+            (
+                "interpretations",
+                computed.interpretations_hash,
+                archive.fingerprints.interpretations_hash,
+            )
         )
     if archive.fingerprints.issues_hash:
-        checks.append(
-            ("issues", computed.issues_hash, archive.fingerprints.issues_hash)
-        )
+        checks.append(("issues", computed.issues_hash, archive.fingerprints.issues_hash))
 
     for section, computed_hash, stored_hash in checks:
         if computed_hash != stored_hash:

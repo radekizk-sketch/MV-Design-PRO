@@ -12,19 +12,20 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from domain.trace_v2.math_spec_version import CURRENT_MATH_SPEC_VERSION
-
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class EquationVariable:
     """Variable used in an equation."""
+
     name: str
     unit: str
     meaning_pl: str
@@ -46,6 +47,7 @@ class EquationEntryV2:
         source_norm: Normative reference (IEC 60909, etc.)
         valid_from_math_spec: MathSpecVersion semver
     """
+
     eq_id: str
     label_pl: str
     description_pl: str
@@ -69,6 +71,7 @@ class EquationEntryV2:
 # ---------------------------------------------------------------------------
 # Registry
 # ---------------------------------------------------------------------------
+
 
 class EquationRegistryV2:
     """Immutable equation registry (single source of truth).

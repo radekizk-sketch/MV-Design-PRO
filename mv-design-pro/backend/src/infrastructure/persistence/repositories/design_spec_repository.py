@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from application.analyses.design_synth.models import DesignSpec
 from infrastructure.persistence.models import DesignSpecORM
 from infrastructure.persistence.time_utils import ensure_utc
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 class DesignSpecRepository:

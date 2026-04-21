@@ -82,7 +82,7 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz Run —</option>
+        <option value="">— Wybierz uruchomienie —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           return (
@@ -533,12 +533,12 @@ export function ProtectionComparisonPage({
 
   const handleCompare = useCallback(async () => {
     if (!runAId || !runBId) {
-      setError('Wybierz oba Runy (A i B) aby wykonać porównanie.');
+      setError('Wybierz oba uruchomienia (A i B), aby wykonac porownanie.');
       return;
     }
 
     if (runAId === runBId) {
-      setError('Run A i Run B muszą być różne.');
+      setError('Uruchomienie A i uruchomienie B musza byc rozne.');
       return;
     }
 
@@ -611,17 +611,17 @@ export function ProtectionComparisonPage({
         {/* Run Selectors */}
         <div className="rounded border border-slate-200 bg-white p-4">
           <h2 className="mb-4 text-lg font-semibold text-slate-900">
-            Wybierz Runy do porównania
+            Wybierz uruchomienia do porownania
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             <RunSelector
-              label="Run A (baseline)"
+              label="Uruchomienie A (wzorzec)"
               runs={protectionRuns}
               selectedRunId={runAId}
               onChange={setRunAId}
             />
             <RunSelector
-              label="Run B (porównanie)"
+              label="Uruchomienie B (porownanie)"
               runs={protectionRuns}
               selectedRunId={runBId}
               onChange={setRunBId}

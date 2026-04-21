@@ -14,7 +14,6 @@ from application.proof_engine.types import (
     ProofValue,
 )
 
-
 RUN_TS = datetime(2024, 1, 1, 12, 0, 0)
 
 
@@ -120,11 +119,7 @@ def test_p15_thresholds_and_missing_keys() -> None:
     ]
     evaluator = NormativeEvaluator()
     report = evaluator.evaluate(proofs, NormativeConfig())
-    p15_items = {
-        item.target_id: item
-        for item in report.items
-        if item.rule_id == "NR_P15_001"
-    }
+    p15_items = {item.target_id: item for item in report.items if item.rule_id == "NR_P15_001"}
 
     assert p15_items["L_FAIL"].status == NormativeStatus.FAIL
     assert p15_items["L_WARN"].status == NormativeStatus.WARNING
@@ -157,11 +152,7 @@ def test_p18_boolean_statuses() -> None:
     ]
     evaluator = NormativeEvaluator()
     report = evaluator.evaluate(proofs, NormativeConfig())
-    p18_items = {
-        item.target_id: item
-        for item in report.items
-        if item.rule_id == "NR_P18_001"
-    }
+    p18_items = {item.target_id: item for item in report.items if item.rule_id == "NR_P18_001"}
 
     assert p18_items["SW_FAIL"].status == NormativeStatus.FAIL
     assert p18_items["SW_MISSING"].status == NormativeStatus.NOT_COMPUTED
@@ -179,9 +170,7 @@ def test_p19_limits_and_not_evaluated() -> None:
     evaluator = NormativeEvaluator()
 
     report_no_limits = evaluator.evaluate([proof], NormativeConfig())
-    item_no_limits = next(
-        item for item in report_no_limits.items if item.rule_id == "NR_P19_001"
-    )
+    item_no_limits = next(item for item in report_no_limits.items if item.rule_id == "NR_P19_001")
     assert item_no_limits.status == NormativeStatus.NOT_EVALUATED
 
     report_warn = evaluator.evaluate(
@@ -235,8 +224,6 @@ def test_sorting_is_deterministic() -> None:
     order_values = [STATUS_ORDER[item.status] for item in report.items]
     assert order_values == sorted(order_values)
 
-    same_status_items = [
-        item for item in report.items if item.status == report.items[-1].status
-    ]
+    same_status_items = [item for item in report.items if item.status == report.items[-1].status]
     rule_ids = [item.rule_id for item in same_status_items]
     assert rule_ids == sorted(rule_ids)

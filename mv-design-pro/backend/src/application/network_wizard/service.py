@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 import math
+from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4, uuid5
 
 from analysis.power_flow.types import (
@@ -36,18 +37,16 @@ from network_model.core.branch import Branch, LineBranch, TransformerBranch
 
 from .dtos import (
     BranchPayload,
-    FaultSpecPayload,
+    ConverterSetpoint,
     GroundingPayload,
     ImportReport,
+    InverterSetpoint,
     LimitsPayload,
     LoadPayload,
     NodePayload,
     ShortCircuitInput,
     SourcePayload,
-    SwitchingStatePayload,
     TypePayload,
-    ConverterSetpoint,
-    InverterSetpoint,
 )
 from .errors import Conflict, NotFound, ValidationFailed
 from .exporters.json_exporter import export_network_payload
@@ -88,7 +87,7 @@ class NetworkWizardService:
                 description=patch.get("description", project.description),
                 schema_version=patch.get("schema_version", project.schema_version),
                 created_at=project.created_at,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
             uow.projects.update(updated, commit=False)
         return updated
@@ -100,9 +99,7 @@ class NetworkWizardService:
                 raise NotFound(f"Project {project_id} not found")
             if uow.network.list_nodes(project_id) or uow.network.list_branches(project_id):
                 raise Conflict("Cannot delete project with network elements")
-            if uow.cases.list_operating_cases(project_id) or uow.cases.list_study_cases(
-                project_id
-            ):
+            if uow.cases.list_operating_cases(project_id) or uow.cases.list_study_cases(project_id):
                 raise Conflict("Cannot delete project with cases")
             uow.projects.delete(project_id, commit=False)
 
@@ -199,9 +196,7 @@ class NetworkWizardService:
             if branch is not None:
                 if branch["project_id"] != project_id:
                     raise NotFound(f"Branch {element_id} not found")
-                uow.network.update_branch(
-                    element_id, {"in_service": in_service}, commit=False
-                )
+                uow.network.update_branch(element_id, {"in_service": in_service}, commit=False)
                 self._mark_sld_dirty(uow, project_id)
                 self._invalidate_results(uow, project_id)
                 return
@@ -467,7 +462,7 @@ class NetworkWizardService:
         normalized = []
         for record in records:
             params = record.get("params") or {}
-            record_kind = (params.get("kind") or params.get("converter_kind") or "PV")
+            record_kind = params.get("kind") or params.get("converter_kind") or "PV"
             if str(record_kind).upper() == str(kind).upper():
                 normalized.append(record)
         return normalized
@@ -574,9 +569,7 @@ class NetworkWizardService:
     ) -> None:
         with self._uow_factory() as uow:
             self._ensure_project(uow, project_id)
-            uow.wizard.assign_switch_equipment_type(
-                project_id, switch_id, type_id, commit=False
-            )
+            uow.wizard.assign_switch_equipment_type(project_id, switch_id, type_id, commit=False)
 
     def clear_type_ref_from_branch(self, project_id: UUID, branch_id: UUID) -> dict:
         """Clear type_ref from branch (set to None) - P8.2 HOTFIX"""
@@ -632,9 +625,7 @@ class NetworkWizardService:
             )
             self._invalidate_results(uow, case.project_id)
 
-    def get_effective_in_service(
-        self, project_id: UUID, case_id: UUID, element_id: UUID
-    ) -> bool:
+    def get_effective_in_service(self, project_id: UUID, case_id: UUID, element_id: UUID) -> bool:
         with self._uow_factory() as uow:
             self._ensure_project(uow, project_id)
             case = uow.cases.get_operating_case(case_id)
@@ -683,7 +674,7 @@ class NetworkWizardService:
                     patch.get("project_design_mode", existing.project_design_mode)
                 ),
                 created_at=existing.created_at,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
             uow.cases.update_operating_case(updated, commit=False)
         return updated
@@ -722,7 +713,7 @@ class NetworkWizardService:
                 case_payload=payload,
                 project_design_mode=case.project_design_mode,
                 created_at=case.created_at,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
             uow.cases.update_operating_case(updated, commit=False)
             return updated
@@ -761,7 +752,7 @@ class NetworkWizardService:
                 case_payload=payload,
                 project_design_mode=case.project_design_mode,
                 created_at=case.created_at,
-                updated_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(UTC),
             )
             uow.cases.update_operating_case(updated, commit=False)
             return updated
@@ -771,9 +762,7 @@ class NetworkWizardService:
             self._ensure_project(uow, project_id)
             return uow.cases.list_operating_cases(project_id)
 
-    def clone_operating_case(
-        self, project_id: UUID, case_id: UUID, new_name: str
-    ) -> OperatingCase:
+    def clone_operating_case(self, project_id: UUID, case_id: UUID, new_name: str) -> OperatingCase:
         with self._uow_factory() as uow:
             self._ensure_project(uow, project_id)
             existing = uow.cases.get_operating_case(case_id)
@@ -813,9 +802,7 @@ class NetworkWizardService:
             loads = uow.wizard.list_loads(project_id)
             line_types = {item["id"]: item for item in uow.wizard.list_line_types()}
             cable_types = {item["id"]: item for item in uow.wizard.list_cable_types()}
-            transformer_types = {
-                item["id"]: item for item in uow.wizard.list_transformer_types()
-            }
+            transformer_types = {item["id"]: item for item in uow.wizard.list_transformer_types()}
             if case_id is not None:
                 case = uow.cases.get_operating_case(case_id)
                 if case is None or case.project_id != project_id:
@@ -853,7 +840,9 @@ class NetworkWizardService:
                 branch, node_ids, report, line_types, cable_types, transformer_types, nodes
             )
 
-        slack_nodes = [node for node in nodes if self._normalize_node_type(node["node_type"]) == "SLACK"]
+        slack_nodes = [
+            node for node in nodes if self._normalize_node_type(node["node_type"]) == "SLACK"
+        ]
         if not slack_nodes:
             report = report.with_error(
                 ValidationIssue(code="pf.slack_missing", message="No SLACK node defined")
@@ -1216,7 +1205,9 @@ class NetworkWizardService:
                     diagram_id=uuid4(),
                 )
             else:
-                diagram = self._build_manual_sld(project_id, name, nodes, branches, connection_node_id)
+                diagram = self._build_manual_sld(
+                    project_id, name, nodes, branches, connection_node_id
+                )
 
             uow.sld.save(
                 project_id=project_id,
@@ -1270,9 +1261,7 @@ class NetworkWizardService:
             self._ensure_project(uow, project_id)
             return uow.sld.save(project_id=project_id, name=name, payload=payload)
 
-    def import_network(
-        self, project_id: UUID, payload: dict, mode: str = "merge"
-    ) -> ImportReport:
+    def import_network(self, project_id: UUID, payload: dict, mode: str = "merge") -> ImportReport:
         if mode not in {"merge", "replace"}:
             raise Conflict(f"Unsupported import mode: {mode}")
 
@@ -1393,7 +1382,9 @@ class NetworkWizardService:
                     errors.append(str(exc))
                     skipped["operating_cases"] = skipped.get("operating_cases", 0) + 1
                 else:
-                    created, updated = self._bump_counts(result, created, updated, "operating_cases")
+                    created, updated = self._bump_counts(
+                        result, created, updated, "operating_cases"
+                    )
 
             for case_data in parsed["study_cases"]:
                 try:
@@ -1407,7 +1398,9 @@ class NetworkWizardService:
             connection_node_id = parsed.get("connection_node_id")
             if connection_node_id:
                 try:
-                    uow.wizard.set_connection_node(project_id, UUID(str(connection_node_id)), commit=False)
+                    uow.wizard.set_connection_node(
+                        project_id, UUID(str(connection_node_id)), commit=False
+                    )
                 except ValueError as exc:
                     errors.append(str(exc))
 
@@ -1461,9 +1454,7 @@ class NetworkWizardService:
                     record = self._type_record_from_dict(item)
                     uow.wizard.upsert_transformer_type(record, commit=False)
                     result = (
-                        "updated"
-                        if record["id"] in existing_transformer_type_ids
-                        else "created"
+                        "updated" if record["id"] in existing_transformer_type_ids else "created"
                     )
                     created, updated = self._bump_counts(
                         result, created, updated, "transformer_types"
@@ -1475,12 +1466,8 @@ class NetworkWizardService:
                 try:
                     record = self._type_record_from_dict(item)
                     uow.wizard.upsert_inverter_type(record, commit=False)
-                    result = (
-                        "updated" if record["id"] in existing_inverter_type_ids else "created"
-                    )
-                    created, updated = self._bump_counts(
-                        result, created, updated, "inverter_types"
-                    )
+                    result = "updated" if record["id"] in existing_inverter_type_ids else "created"
+                    created, updated = self._bump_counts(result, created, updated, "inverter_types")
                 except ValueError as exc:
                     errors.append(str(exc))
 
@@ -1612,7 +1599,7 @@ class NetworkWizardService:
             name=name,
             nodes=tuple(node_symbols),
             branches=tuple(branch_symbols),
-            annotations=tuple(),
+            annotations=(),
             dirty_flag=False,
         )
 
@@ -1920,7 +1907,7 @@ class NetworkWizardService:
                         field=field,
                     )
                 )
-            elif isinstance(value, (int, float)) and value <= 0:
+            elif isinstance(value, int | float) and value <= 0:
                 report = report.with_error(
                     ValidationIssue(
                         code="branch.param_positive",
@@ -2026,7 +2013,9 @@ class NetworkWizardService:
             node_id = UUID(str(node_id))
         else:
             node_id = self._deterministic_uuid(project_id, node_data)
-        attrs = self._normalize_node_attrs(node_data.get("node_type", ""), node_data.get("attrs") or {})
+        attrs = self._normalize_node_attrs(
+            node_data.get("node_type", ""), node_data.get("attrs") or {}
+        )
         existing = uow.network.get_node(node_id)
         payload = {
             "id": node_id,
@@ -2109,7 +2098,7 @@ class NetworkWizardService:
             name=name,
             case_payload=payload,
             project_design_mode=project_design_mode or existing.project_design_mode,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         uow.cases.update_operating_case(updated, commit=False)
         return "updated"
@@ -2140,7 +2129,7 @@ class NetworkWizardService:
             existing,
             name=name,
             study_payload=payload,
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
         )
         uow.cases.update_study_case(updated, commit=False)
         return "updated"
@@ -2320,16 +2309,8 @@ class NetworkWizardService:
                 raise ValueError("Inverter setpoint requires p_mw")
             setpoint = InverterSetpoint(
                 p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(
-                    float(data.get("q_mvar"))
-                    if data.get("q_mvar") is not None
-                    else None
-                ),
-                cosphi=(
-                    float(data.get("cosphi"))
-                    if data.get("cosphi") is not None
-                    else None
-                ),
+                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
+                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
                 mode=str(data.get("mode", "PQ")),
             )
             self._validate_inverter_setpoint(setpoint)
@@ -2396,16 +2377,8 @@ class NetworkWizardService:
                 raise ValueError("Converter setpoint requires p_mw")
             setpoint = ConverterSetpoint(
                 p_mw=float(data.get("p_mw", 0.0)),
-                q_mvar=(
-                    float(data.get("q_mvar"))
-                    if data.get("q_mvar") is not None
-                    else None
-                ),
-                cosphi=(
-                    float(data.get("cosphi"))
-                    if data.get("cosphi") is not None
-                    else None
-                ),
+                q_mvar=(float(data.get("q_mvar")) if data.get("q_mvar") is not None else None),
+                cosphi=(float(data.get("cosphi")) if data.get("cosphi") is not None else None),
                 mode=str(data.get("mode", "PQ")),
             )
             self._validate_converter_setpoint(setpoint)

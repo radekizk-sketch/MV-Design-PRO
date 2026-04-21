@@ -1,7 +1,7 @@
 /**
  * PortRenderer — Renderowanie aktywnych portow symboli SLD
  *
- * PR-SLD-05: Interakcja ETAP — snap do portow + tworzenie polaczen
+ * PR-SLD-05: Interakcja CANONICAL — snap do portow + tworzenie polaczen
  *
  * FEATURES:
  * - Niewidoczny hitbox dla kazdego portu (aktywny obszar klikniec)
@@ -9,7 +9,7 @@
  * - Identyfikacja logiczna (elementId + portName)
  * - Porty NIE sa renderowane jako stale kropki (chyba ze w trybie debug)
  *
- * ETAP PARITY:
+ * CANONICAL PARITY:
  * - Porty sa aktywnymi punktami przylaczenia
  * - Snap do portow przy przeciaganiu
  * - Tworzenie polaczen przez klikniecie port -> port

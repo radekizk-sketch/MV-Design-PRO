@@ -52,7 +52,7 @@ export function NotificationToast() {
             className="flex-shrink-0 ml-1 opacity-60 hover:opacity-100"
             aria-label="Zamknij"
           >
-            \u00D7
+            {"\u00D7"}
           </button>
         </div>
       ))}

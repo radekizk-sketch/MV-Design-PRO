@@ -20,14 +20,13 @@ NOT IN SCOPE:
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID, uuid4
-import hashlib
-import json
-
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -40,10 +39,11 @@ class StateChange(str, Enum):
 
     Describes how the trip state changed for a given element/fault pair.
     """
-    NO_CHANGE = "NO_CHANGE"              # Same state in both runs
+
+    NO_CHANGE = "NO_CHANGE"  # Same state in both runs
     TRIP_TO_NO_TRIP = "TRIP_TO_NO_TRIP"  # Was TRIPS in A, NO_TRIP in B (REGRESSION)
     NO_TRIP_TO_TRIP = "NO_TRIP_TO_TRIP"  # Was NO_TRIP in A, TRIPS in B (IMPROVEMENT)
-    INVALID_CHANGE = "INVALID_CHANGE"    # One or both states are INVALID
+    INVALID_CHANGE = "INVALID_CHANGE"  # One or both states are INVALID
 
 
 class IssueCode(str, Enum):
@@ -52,11 +52,12 @@ class IssueCode(str, Enum):
 
     Technical, factual issue classification without normative interpretation.
     """
-    TRIP_LOST = "TRIP_LOST"                # Device no longer trips (was TRIPS, now NO_TRIP)
-    TRIP_GAINED = "TRIP_GAINED"            # Device now trips (was NO_TRIP, now TRIPS)
-    DELAY_INCREASED = "DELAY_INCREASED"    # Trip time increased significantly
-    DELAY_DECREASED = "DELAY_DECREASED"    # Trip time decreased significantly
-    INVALID_STATE = "INVALID_STATE"        # Invalid evaluation state in one or both
+
+    TRIP_LOST = "TRIP_LOST"  # Device no longer trips (was TRIPS, now NO_TRIP)
+    TRIP_GAINED = "TRIP_GAINED"  # Device now trips (was NO_TRIP, now TRIPS)
+    DELAY_INCREASED = "DELAY_INCREASED"  # Trip time increased significantly
+    DELAY_DECREASED = "DELAY_DECREASED"  # Trip time decreased significantly
+    INVALID_STATE = "INVALID_STATE"  # Invalid evaluation state in one or both
     MARGIN_DECREASED = "MARGIN_DECREASED"  # Safety margin decreased
     MARGIN_INCREASED = "MARGIN_INCREASED"  # Safety margin increased
 
@@ -71,6 +72,7 @@ class IssueSeverity(int, Enum):
     4 = Major (action required)
     5 = Critical (immediate action required)
     """
+
     INFORMATIONAL = 1
     MINOR = 2
     MODERATE = 3
@@ -130,6 +132,7 @@ class ProtectionComparisonRow:
         margin_percent_b: Margin from Run B [%]
         state_change: Classification of state change
     """
+
     protected_element_ref: str
     fault_target_id: str
     device_id_a: str
@@ -182,8 +185,16 @@ class ProtectionComparisonRow:
             i_fault_a_b=float(data["i_fault_a_b"]),
             delta_t_s=float(data["delta_t_s"]) if data.get("delta_t_s") is not None else None,
             delta_i_fault_a=float(data["delta_i_fault_a"]),
-            margin_percent_a=float(data["margin_percent_a"]) if data.get("margin_percent_a") is not None else None,
-            margin_percent_b=float(data["margin_percent_b"]) if data.get("margin_percent_b") is not None else None,
+            margin_percent_a=(
+                float(data["margin_percent_a"])
+                if data.get("margin_percent_a") is not None
+                else None
+            ),
+            margin_percent_b=(
+                float(data["margin_percent_b"])
+                if data.get("margin_percent_b") is not None
+                else None
+            ),
             state_change=StateChange(data["state_change"]),
         )
 
@@ -208,6 +219,7 @@ class RankingIssue:
         description_pl: Polish technical description
         evidence_refs: Indices of rows supporting this issue
     """
+
     issue_code: IssueCode
     severity: IssueSeverity
     element_ref: str
@@ -249,6 +261,7 @@ class ProtectionComparisonSummary:
     """
     Summary statistics for protection comparison.
     """
+
     total_rows: int
     no_change_count: int
     trip_to_no_trip_count: int
@@ -315,6 +328,7 @@ class ProtectionComparisonResult:
         input_hash: SHA-256 hash of inputs for caching
         created_at: Comparison timestamp
     """
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -323,7 +337,7 @@ class ProtectionComparisonResult:
     ranking: tuple[RankingIssue, ...]
     summary: ProtectionComparisonSummary
     input_hash: str
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -351,7 +365,11 @@ class ProtectionComparisonResult:
             ranking=tuple(RankingIssue.from_dict(i) for i in data.get("ranking", [])),
             summary=ProtectionComparisonSummary.from_dict(data["summary"]),
             input_hash=str(data["input_hash"]),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -367,6 +385,7 @@ class ProtectionComparisonTraceStep:
 
     Records intermediate operations for audit purposes.
     """
+
     step: str
     description_pl: str
     inputs: dict[str, Any]
@@ -408,13 +427,14 @@ class ProtectionComparisonTrace:
         steps: Sequence of comparison steps
         created_at: Trace creation timestamp
     """
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
     library_fingerprint_a: str | None
     library_fingerprint_b: str | None
     steps: tuple[ProtectionComparisonTraceStep, ...]
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -438,7 +458,11 @@ class ProtectionComparisonTrace:
             library_fingerprint_a=data.get("library_fingerprint_a"),
             library_fingerprint_b=data.get("library_fingerprint_b"),
             steps=tuple(ProtectionComparisonTraceStep.from_dict(s) for s in data.get("steps", [])),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -449,6 +473,7 @@ class ProtectionComparisonTrace:
 
 class ProtectionComparisonStatus(str, Enum):
     """Status of a protection comparison."""
+
     CREATED = "CREATED"
     COMPUTING = "COMPUTING"
     FINISHED = "FINISHED"
@@ -476,6 +501,7 @@ class ProtectionComparison:
         created_at: Creation timestamp
         finished_at: Completion timestamp
     """
+
     id: UUID
     project_id: UUID
     run_a_id: str
@@ -485,7 +511,7 @@ class ProtectionComparison:
     result_json: dict[str, Any] | None = None
     trace_json: dict[str, Any] | None = None
     error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
@@ -517,8 +543,14 @@ class ProtectionComparison:
             result_json=data.get("result_json"),
             trace_json=data.get("trace_json"),
             error_message=data.get("error_message"),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
-            finished_at=datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None,
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
+            finished_at=(
+                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
+            ),
         )
 
 
@@ -538,10 +570,13 @@ def compute_comparison_input_hash(run_a_id: str, run_b_id: str) -> str:
     Returns:
         SHA-256 hash string
     """
-    canonical_input = json.dumps({
-        "run_a_id": str(run_a_id),
-        "run_b_id": str(run_b_id),
-    }, sort_keys=True)
+    canonical_input = json.dumps(
+        {
+            "run_a_id": str(run_a_id),
+            "run_b_id": str(run_b_id),
+        },
+        sort_keys=True,
+    )
     return hashlib.sha256(canonical_input.encode()).hexdigest()
 
 
@@ -580,11 +615,13 @@ def new_protection_comparison(
 
 class ProtectionComparisonError(Exception):
     """Base exception for protection comparison errors."""
+
     pass
 
 
 class ProtectionRunNotFoundError(ProtectionComparisonError):
     """Raised when a protection run is not found."""
+
     def __init__(self, run_id: str):
         self.run_id = run_id
         super().__init__(f"Protection run nie znaleziony: {run_id}")
@@ -592,6 +629,7 @@ class ProtectionRunNotFoundError(ProtectionComparisonError):
 
 class ProtectionRunNotFinishedError(ProtectionComparisonError):
     """Raised when a protection run is not finished."""
+
     def __init__(self, run_id: str, status: str):
         self.run_id = run_id
         self.status = status
@@ -600,16 +638,16 @@ class ProtectionRunNotFinishedError(ProtectionComparisonError):
 
 class ProtectionProjectMismatchError(ProtectionComparisonError):
     """Raised when runs belong to different projects."""
+
     def __init__(self, run_a_project: str, run_b_project: str):
         self.run_a_project = run_a_project
         self.run_b_project = run_b_project
-        super().__init__(
-            f"Runs należą do różnych projektów: {run_a_project} vs {run_b_project}"
-        )
+        super().__init__(f"Runs należą do różnych projektów: {run_a_project} vs {run_b_project}")
 
 
 class ProtectionComparisonNotFoundError(ProtectionComparisonError):
     """Raised when a comparison is not found."""
+
     def __init__(self, comparison_id: str):
         self.comparison_id = comparison_id
         super().__init__(f"Protection comparison nie znalezione: {comparison_id}")
@@ -617,6 +655,7 @@ class ProtectionComparisonNotFoundError(ProtectionComparisonError):
 
 class ProtectionResultNotFoundError(ProtectionComparisonError):
     """Raised when protection results are not found for a run."""
+
     def __init__(self, run_id: str):
         self.run_id = run_id
         super().__init__(f"Wyniki protection nie znalezione dla run: {run_id}")

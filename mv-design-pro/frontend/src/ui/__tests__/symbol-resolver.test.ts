@@ -3,10 +3,10 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A.2: Symbol types mapping
- * - etap_symbols/ports.json: Port definitions
+ * - canonical_symbols/ports.json: Port definitions
  *
  * Tests:
- * - Element type to ETAP symbol mapping
+ * - Element type to CANONICAL symbol mapping
  * - Fallback for unknown types
  * - Port definitions and transformations
  * - Branch type (LINE vs CABLE) distinction
@@ -17,11 +17,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   resolveSymbol,
   getSymbolDefinition,
-  hasEtapSymbol,
+  hasCanonicalSymbol,
   getAllSymbolIds,
   transformPort,
   getTransformedPorts,
-  type EtapSymbolId,
+  type CanonicalSymbolId,
 } from '../sld/SymbolResolver';
 import type {
   NodeSymbol,
@@ -267,7 +267,7 @@ describe('SymbolResolver', () => {
     });
   });
 
-  describe('hasEtapSymbol', () => {
+  describe('hasCanonicalSymbol', () => {
     it('should return true for Bus', () => {
       const busSymbol: NodeSymbol = {
         id: 'bus-1',
@@ -280,7 +280,7 @@ describe('SymbolResolver', () => {
         height: 10,
       };
 
-      expect(hasEtapSymbol(busSymbol)).toBe(true);
+      expect(hasCanonicalSymbol(busSymbol)).toBe(true);
     });
 
     it('should return true for Load', () => {
@@ -294,13 +294,13 @@ describe('SymbolResolver', () => {
         connectedToNodeId: 'bus-1',
       };
 
-      expect(hasEtapSymbol(loadSymbol)).toBe(true);
+      expect(hasCanonicalSymbol(loadSymbol)).toBe(true);
     });
   });
 
   describe('getSymbolDefinition', () => {
     it('should return correct definition for each symbol ID', () => {
-      const symbolIds: EtapSymbolId[] = [
+      const symbolIds: CanonicalSymbolId[] = [
         'busbar',
         'circuit_breaker',
         'disconnector',
@@ -331,11 +331,11 @@ describe('SymbolResolver', () => {
   });
 
   describe('getAllSymbolIds', () => {
-    it('should return all 33 ETAP symbol IDs', () => {
+    it('should return all published CANONICAL symbol IDs', () => {
       const ids = getAllSymbolIds();
 
-      expect(ids).toHaveLength(33);
-      // Core SLD symbols (15)
+      expect(ids).toHaveLength(37);
+      // Core SLD symbols
       expect(ids).toContain('busbar');
       expect(ids).toContain('circuit_breaker');
       expect(ids).toContain('disconnector');
@@ -347,16 +347,20 @@ describe('SymbolResolver', () => {
       expect(ids).toContain('pv');
       expect(ids).toContain('fw');
       expect(ids).toContain('bess');
+      expect(ids).toContain('system_source');
       expect(ids).toContain('utility_feeder');
+      expect(ids).toContain('branch_pole');
+      expect(ids).toContain('zksn');
+      expect(ids).toContain('cable_head');
       expect(ids).toContain('ground');
       expect(ids).toContain('ct');
       expect(ids).toContain('vt');
-      // Canonical SLD symbols (4)
+      // Canonical SLD symbols
       expect(ids).toContain('overcurrent_relay');
       expect(ids).toContain('directional_relay');
       expect(ids).toContain('earthing_switch');
       expect(ids).toContain('load_arrow');
-      // Industrial canonical SLD symbols (6)
+      // Industrial canonical SLD symbols
       expect(ids).toContain('fuse');
       expect(ids).toContain('surge_arrester');
       expect(ids).toContain('capacitor');
@@ -364,7 +368,7 @@ describe('SymbolResolver', () => {
       expect(ids).toContain('inverter');
       expect(ids).toContain('metering_cubicle');
       expect(ids).toContain('motor');
-      // Tree-specific symbols (6)
+      // Tree-specific symbols
       expect(ids).toContain('load');
       expect(ids).toContain('project');
       expect(ids).toContain('catalog');
@@ -427,7 +431,7 @@ describe('SymbolResolver', () => {
   });
 });
 
-describe('ETAP Symbol Library Verification', () => {
+describe('CANONICAL Symbol Library Verification', () => {
   it('should have distinct symbols for line_overhead and line_cable', () => {
     const overhead = getSymbolDefinition('line_overhead');
     const cable = getSymbolDefinition('line_cable');

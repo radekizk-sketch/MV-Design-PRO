@@ -22,35 +22,30 @@ CANONICAL ALIGNMENT:
 - NOT-A-SOLVER: Testy nie modyfikuja solvera ani eksporterow
 - Tylko weryfikacja deterministycznosci eksportow
 """
+
 from __future__ import annotations
 
 import hashlib
 import tempfile
 from pathlib import Path
-from typing import Any, Callable
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.solvers.power_flow_newton import (
-    PowerFlowNewtonSolution,
-    solve_power_flow_physics,
-)
-from network_model.solvers.power_flow_gauss_seidel import (
-    GaussSeidelOptions,
-    solve_power_flow_gauss_seidel,
+from network_model.reporting.power_flow_export import (
+    export_power_flow_result_to_json,
 )
 from network_model.solvers.power_flow_fast_decoupled import (
     FastDecoupledOptions,
     solve_power_flow_fast_decoupled,
 )
-from network_model.solvers.power_flow_types import (
-    PQSpec,
-    PowerFlowInput,
-    PowerFlowOptions,
-    SlackSpec,
+from network_model.solvers.power_flow_gauss_seidel import (
+    GaussSeidelOptions,
+    solve_power_flow_gauss_seidel,
+)
+from network_model.solvers.power_flow_newton import (
+    solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_result import (
     PowerFlowResultV1,
@@ -60,15 +55,18 @@ from network_model.solvers.power_flow_trace import (
     PowerFlowTrace,
     build_power_flow_trace,
 )
-from network_model.reporting.power_flow_export import (
-    export_power_flow_result_to_json,
+from network_model.solvers.power_flow_types import (
+    PowerFlowInput,
+    PowerFlowOptions,
+    PQSpec,
+    SlackSpec,
 )
 
 # Check for optional dependencies
 try:
     from network_model.reporting.power_flow_report_pdf import (
-        export_power_flow_result_to_pdf,
         _PDF_AVAILABLE,
+        export_power_flow_result_to_pdf,
     )
 except ImportError:
     _PDF_AVAILABLE = False
@@ -76,8 +74,8 @@ except ImportError:
 
 try:
     from network_model.reporting.power_flow_report_docx import (
-        export_power_flow_result_to_docx,
         _DOCX_AVAILABLE,
+        export_power_flow_result_to_docx,
     )
 except ImportError:
     _DOCX_AVAILABLE = False
@@ -259,8 +257,7 @@ class TestJSONExportDeterminism:
             hash_2 = _compute_file_hash(path_2)
 
             assert hash_1 == hash_2, (
-                f"JSON export nie deterministyczny\n"
-                f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+                f"JSON export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
     def test_json_export_all_solvers_deterministic(self) -> None:
@@ -271,7 +268,10 @@ class TestJSONExportDeterminism:
         solvers = [
             ("newton-raphson", solve_power_flow_physics),
             ("gauss-seidel", lambda x: solve_power_flow_gauss_seidel(x, GaussSeidelOptions())),
-            ("fast-decoupled", lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions())),
+            (
+                "fast-decoupled",
+                lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions()),
+            ),
         ]
 
         for method_name, solver_func in solvers:
@@ -304,9 +304,7 @@ class TestJSONExportDeterminism:
                 hash_1 = _compute_file_hash(path_1)
                 hash_2 = _compute_file_hash(path_2)
 
-                assert hash_1 == hash_2, (
-                    f"{method_name}: JSON export nie deterministyczny"
-                )
+                assert hash_1 == hash_2, f"{method_name}: JSON export nie deterministyczny"
 
 
 # =============================================================================
@@ -366,8 +364,7 @@ class TestPDFExportDeterminism:
             hash_2 = _compute_file_hash(path_2)
 
             assert hash_1 == hash_2, (
-                f"PDF export nie deterministyczny\n"
-                f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+                f"PDF export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
     @pytest.mark.xfail(reason=PDF_XFAIL_REASON, strict=False)
@@ -398,7 +395,10 @@ class TestPDFExportDeterminism:
         solvers = [
             ("newton-raphson", solve_power_flow_physics),
             ("gauss-seidel", lambda x: solve_power_flow_gauss_seidel(x, GaussSeidelOptions())),
-            ("fast-decoupled", lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions())),
+            (
+                "fast-decoupled",
+                lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions()),
+            ),
         ]
 
         for method_name, solver_func in solvers:
@@ -431,9 +431,7 @@ class TestPDFExportDeterminism:
                 hash_1 = _compute_file_hash(path_1)
                 hash_2 = _compute_file_hash(path_2)
 
-                assert hash_1 == hash_2, (
-                    f"{method_name}: PDF export nie deterministyczny"
-                )
+                assert hash_1 == hash_2, f"{method_name}: PDF export nie deterministyczny"
 
 
 # =============================================================================
@@ -478,8 +476,7 @@ class TestDOCXExportDeterminism:
             hash_2 = _compute_file_hash(path_2)
 
             assert hash_1 == hash_2, (
-                f"DOCX export nie deterministyczny\n"
-                f"Hash 1: {hash_1}\nHash 2: {hash_2}"
+                f"DOCX export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
     def test_docx_export_without_trace_deterministic(self) -> None:
@@ -508,7 +505,10 @@ class TestDOCXExportDeterminism:
         solvers = [
             ("newton-raphson", solve_power_flow_physics),
             ("gauss-seidel", lambda x: solve_power_flow_gauss_seidel(x, GaussSeidelOptions())),
-            ("fast-decoupled", lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions())),
+            (
+                "fast-decoupled",
+                lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions()),
+            ),
         ]
 
         for method_name, solver_func in solvers:
@@ -541,9 +541,7 @@ class TestDOCXExportDeterminism:
                 hash_1 = _compute_file_hash(path_1)
                 hash_2 = _compute_file_hash(path_2)
 
-                assert hash_1 == hash_2, (
-                    f"{method_name}: DOCX export nie deterministyczny"
-                )
+                assert hash_1 == hash_2, f"{method_name}: DOCX export nie deterministyczny"
 
 
 # =============================================================================
@@ -562,7 +560,10 @@ class TestFullWorkflowDeterminism:
         solvers = [
             ("newton-raphson", solve_power_flow_physics),
             ("gauss-seidel", lambda x: solve_power_flow_gauss_seidel(x, GaussSeidelOptions())),
-            ("fast-decoupled", lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions())),
+            (
+                "fast-decoupled",
+                lambda x: solve_power_flow_fast_decoupled(x, FastDecoupledOptions()),
+            ),
         ]
 
         for method_name, solver_func in solvers:
@@ -667,9 +668,7 @@ class TestFullWorkflowDeterminism:
             hash_1 = _compute_file_hash(path_1)
             hash_2 = _compute_file_hash(path_2)
 
-            assert hash_1 == hash_2, (
-                "NR: pelny workflow (PF + PDF) nie deterministyczny"
-            )
+            assert hash_1 == hash_2, "NR: pelny workflow (PF + PDF) nie deterministyczny"
 
     @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
     def test_full_workflow_docx_newton_raphson(self) -> None:
@@ -725,6 +724,4 @@ class TestFullWorkflowDeterminism:
             hash_1 = _compute_file_hash(path_1)
             hash_2 = _compute_file_hash(path_2)
 
-            assert hash_1 == hash_2, (
-                "NR: pelny workflow (PF + DOCX) nie deterministyczny"
-            )
+            assert hash_1 == hash_2, "NR: pelny workflow (PF + DOCX) nie deterministyczny"

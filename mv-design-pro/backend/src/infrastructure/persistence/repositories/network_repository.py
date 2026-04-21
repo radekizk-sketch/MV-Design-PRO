@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 from uuid import UUID
 
+from infrastructure.persistence.models import NetworkBranchORM, NetworkNodeORM
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
-
-from infrastructure.persistence.models import NetworkBranchORM, NetworkNodeORM
 
 
 class NetworkRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def replace_nodes(self, project_id: UUID, nodes: Iterable[dict], *, commit: bool = True) -> None:
+    def replace_nodes(
+        self, project_id: UUID, nodes: Iterable[dict], *, commit: bool = True
+    ) -> None:
         self._session.execute(delete(NetworkNodeORM).where(NetworkNodeORM.project_id == project_id))
         for node in nodes:
             self._session.add(

@@ -4,8 +4,6 @@ test_wizard_validator — wizard state machine backend tests.
 Determinism: same ENM dict → identical WizardStateResponse.
 """
 
-import pytest
-
 from application.network_wizard.validator import validate_wizard_state
 
 
@@ -34,12 +32,28 @@ def _minimal_enm() -> dict:
     enm = _empty_enm()
     enm["header"]["name"] = "GPZ Test"
     enm["buses"] = [
-        {"id": "1", "ref_id": "bus_sn_main", "name": "Szyna SN", "tags": ["source"],
-         "meta": {}, "voltage_kv": 15, "phase_system": "3ph"},
+        {
+            "id": "1",
+            "ref_id": "bus_sn_main",
+            "name": "Szyna SN",
+            "tags": ["source"],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        },
     ]
     enm["sources"] = [
-        {"id": "2", "ref_id": "src_grid", "name": "Siec", "tags": [], "meta": {},
-         "bus_ref": "bus_sn_main", "model": "short_circuit_power", "sk3_mva": 250, "rx_ratio": 0.1},
+        {
+            "id": "2",
+            "ref_id": "src_grid",
+            "name": "Siec",
+            "tags": [],
+            "meta": {},
+            "bus_ref": "bus_sn_main",
+            "model": "short_circuit_power",
+            "sk3_mva": 250,
+            "rx_ratio": 0.1,
+        },
     ]
     return enm
 
@@ -47,17 +61,44 @@ def _minimal_enm() -> dict:
 def _complete_enm() -> dict:
     enm = _minimal_enm()
     enm["buses"].append(
-        {"id": "3", "ref_id": "bus_sn_2", "name": "Szyna SN 2", "tags": [],
-         "meta": {}, "voltage_kv": 15, "phase_system": "3ph"},
+        {
+            "id": "3",
+            "ref_id": "bus_sn_2",
+            "name": "Szyna SN 2",
+            "tags": [],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        },
     )
     enm["branches"] = [
-        {"id": "4", "ref_id": "line_L01", "name": "Linia L1", "tags": [], "meta": {},
-         "type": "line_overhead", "from_bus_ref": "bus_sn_main", "to_bus_ref": "bus_sn_2",
-         "status": "closed", "length_km": 5, "r_ohm_per_km": 0.443, "x_ohm_per_km": 0.34},
+        {
+            "id": "4",
+            "ref_id": "line_L01",
+            "name": "Linia L1",
+            "tags": [],
+            "meta": {},
+            "type": "line_overhead",
+            "from_bus_ref": "bus_sn_main",
+            "to_bus_ref": "bus_sn_2",
+            "status": "closed",
+            "length_km": 5,
+            "r_ohm_per_km": 0.443,
+            "x_ohm_per_km": 0.34,
+        },
     ]
     enm["loads"] = [
-        {"id": "5", "ref_id": "load_1", "name": "Odbior 1", "tags": [], "meta": {},
-         "bus_ref": "bus_sn_2", "p_mw": 1, "q_mvar": 0.3, "model": "pq"},
+        {
+            "id": "5",
+            "ref_id": "load_1",
+            "name": "Odbior 1",
+            "tags": [],
+            "meta": {},
+            "bus_ref": "bus_sn_2",
+            "p_mw": 1,
+            "q_mvar": 0.3,
+            "model": "pq",
+        },
     ]
     return enm
 

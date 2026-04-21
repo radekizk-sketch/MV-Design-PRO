@@ -10,6 +10,7 @@ CANONICAL ALIGNMENT:
 - UTF-8: Wszystkie pliki w UTF-8
 - POLISH: 100% język polski
 """
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,6 @@ if TYPE_CHECKING:
     from network_model.proof.power_flow_proof_document import (
         IterationProofSection,
         PowerFlowProofDocument,
-        ProofStep,
     )
 
 # =============================================================================
@@ -289,13 +289,16 @@ def _build_initial_state_section(proof: PowerFlowProofDocument) -> str:
         v_pu = state.get("v_pu", 1.0)
         theta_rad = state.get("theta_rad", 0.0)
         import math
+
         theta_deg = math.degrees(theta_rad)
         state_rows.append(
             f"{_escape_latex(bus_id)} & {_format_float_latex(v_pu)} & {_format_float_latex(theta_deg)} \\\\"
         )
 
     if len(init.init_state) > 10:
-        state_rows.append(f"\\multicolumn{{3}}{{c}}{{... ({len(init.init_state)} węzłów łącznie)}} \\\\")
+        state_rows.append(
+            f"\\multicolumn{{3}}{{c}}{{... ({len(init.init_state)} węzłów łącznie)}} \\\\"
+        )
 
     return f"""
 \\section{{Stan początkowy}}
@@ -345,7 +348,7 @@ def _build_single_iteration(iteration: IterationProofSection) -> str:
 
     # Mismatch step
     mismatch = iteration.mismatch_step
-    parts.append(f"\\subsubsection{{Mismatch $\\Delta P$, $\\Delta Q$}}")
+    parts.append("\\subsubsection{Mismatch $\\Delta P$, $\\Delta Q$}")
     parts.append("")
     parts.append(f"$${mismatch.substitution_latex}$$")
     parts.append("")
@@ -354,7 +357,7 @@ def _build_single_iteration(iteration: IterationProofSection) -> str:
 
     # Norm step
     norm = iteration.norm_step
-    parts.append(f"\\subsubsection{{Norma błędu}}")
+    parts.append("\\subsubsection{Norma błędu}")
     parts.append("")
     parts.append(f"$${norm.substitution_latex}$$")
     parts.append("")
@@ -362,7 +365,7 @@ def _build_single_iteration(iteration: IterationProofSection) -> str:
     # Jacobian step (optional)
     if iteration.jacobian_step:
         jac = iteration.jacobian_step
-        parts.append(f"\\subsubsection{{Macierz Jacobiego}}")
+        parts.append("\\subsubsection{Macierz Jacobiego}")
         parts.append("")
         parts.append(f"$${jac.substitution_latex}$$")
         parts.append("")
@@ -370,7 +373,7 @@ def _build_single_iteration(iteration: IterationProofSection) -> str:
     # Delta step (optional)
     if iteration.delta_step:
         delta = iteration.delta_step
-        parts.append(f"\\subsubsection{{Poprawki $\\Delta\\theta$, $\\Delta V$}}")
+        parts.append("\\subsubsection{Poprawki $\\Delta\\theta$, $\\Delta V$}")
         parts.append("")
         parts.append(f"$${delta.substitution_latex}$$")
         parts.append("")
@@ -380,14 +383,14 @@ def _build_single_iteration(iteration: IterationProofSection) -> str:
     # State update (optional)
     if iteration.state_update_step:
         update = iteration.state_update_step
-        parts.append(f"\\subsubsection{{Aktualizacja stanu}}")
+        parts.append("\\subsubsection{Aktualizacja stanu}")
         parts.append("")
         parts.append(f"$${update.substitution_latex}$$")
         parts.append("")
 
     # Convergence check
     conv = iteration.convergence_check
-    parts.append(f"\\subsubsection{{Sprawdzenie zbieżności}}")
+    parts.append("\\subsubsection{Sprawdzenie zbieżności}")
     parts.append("")
     parts.append(f"$${conv.substitution_latex}$$")
     parts.append("")
@@ -429,6 +432,7 @@ def _build_final_state_section(proof: PowerFlowProofDocument) -> str:
     for bus_id, state in sorted(final.final_state.items())[:15]:
         v_pu = state.get("v_pu", 1.0)
         import math
+
         theta_deg = math.degrees(state.get("theta_rad", 0.0))
         p_mw = state.get("p_mw", 0.0)
         q_mvar = state.get("q_mvar", 0.0)
@@ -550,6 +554,7 @@ Weryfikacja jednostek & {'PASS' if summary.unit_check_passed else 'FAIL'} \\\\
 # JSON EXPORT
 # =============================================================================
 
+
 def export_proof_to_json(
     proof: PowerFlowProofDocument,
     path: str | Path,
@@ -595,6 +600,7 @@ def export_proof_to_json(
 # PDF EXPORT (via LaTeX)
 # =============================================================================
 
+
 def export_proof_to_pdf(
     proof: PowerFlowProofDocument,
     path: str | Path,
@@ -639,7 +645,8 @@ def export_proof_to_pdf(
                     [
                         latex_engine,
                         "-interaction=nonstopmode",
-                        "-output-directory", str(tmpdir_path),
+                        "-output-directory",
+                        str(tmpdir_path),
                         str(tex_file),
                     ],
                     capture_output=True,
@@ -659,6 +666,7 @@ def export_proof_to_pdf(
             pdf_in_tmp = tmpdir_path / "proof.pdf"
             if pdf_in_tmp.exists():
                 import shutil
+
                 shutil.move(str(pdf_in_tmp), str(output_path))
             else:
                 raise RuntimeError("PDF file was not created")
@@ -670,8 +678,7 @@ def export_proof_to_pdf(
 
         except FileNotFoundError:
             raise RuntimeError(
-                f"LaTeX engine '{latex_engine}' not found. "
-                "Please install TeX Live or MiKTeX."
+                f"LaTeX engine '{latex_engine}' not found. " "Please install TeX Live or MiKTeX."
             )
         except subprocess.TimeoutExpired:
             raise RuntimeError("LaTeX compilation timed out after 120 seconds.")
@@ -698,7 +705,7 @@ def export_proof_to_pdf_simple(
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib.units import cm
         from reportlab.platypus import (
             Paragraph,
@@ -728,7 +735,7 @@ def export_proof_to_pdf_simple(
     styles = getSampleStyleSheet()
     title_style = styles["Title"]
     heading_style = styles["Heading1"]
-    heading2_style = styles["Heading2"]
+    styles["Heading2"]
     normal_style = styles["Normal"]
 
     story: list[Any] = []
@@ -748,11 +755,15 @@ def export_proof_to_pdf_simple(
         ["Tolerancja", f"{proof.header.tolerance} p.u."],
     ]
     header_table = Table(header_data, colWidths=[5 * cm, 10 * cm])
-    header_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-    ]))
+    header_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ]
+        )
+    )
     story.append(header_table)
     story.append(Spacer(1, 0.5 * cm))
 
@@ -766,11 +777,15 @@ def export_proof_to_pdf_simple(
         ["Liczba kroków", str(summary.total_steps)],
     ]
     summary_table = Table(summary_data, colWidths=[5 * cm, 10 * cm])
-    summary_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-    ]))
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ]
+        )
+    )
     story.append(summary_table)
     story.append(Spacer(1, 0.5 * cm))
 
@@ -784,11 +799,15 @@ def export_proof_to_pdf_simple(
         ["Ogólny wynik", "PASS" if ver.all_checks_passed else "FAIL"],
     ]
     ver_table = Table(ver_data, colWidths=[5 * cm, 10 * cm])
-    ver_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-    ]))
+    ver_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
+                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ]
+        )
+    )
     story.append(ver_table)
     story.append(Spacer(1, 0.5 * cm))
 
@@ -797,28 +816,40 @@ def export_proof_to_pdf_simple(
     iter_data = [["k", "max|Δf|", "Status"]]
     for it in proof.iterations:
         status = "✓" if it.convergence_check.result.value == "ZBIEŻNE" else "→"
-        iter_data.append([
-            str(it.iteration_number),
-            f"{it.mismatch_step.result.value:.6f}" if isinstance(it.mismatch_step.result.value, float) else str(it.mismatch_step.result.value),
-            status,
-        ])
+        iter_data.append(
+            [
+                str(it.iteration_number),
+                (
+                    f"{it.mismatch_step.result.value:.6f}"
+                    if isinstance(it.mismatch_step.result.value, float)
+                    else str(it.mismatch_step.result.value)
+                ),
+                status,
+            ]
+        )
     iter_table = Table(iter_data, colWidths=[2 * cm, 5 * cm, 3 * cm])
-    iter_table.setStyle(TableStyle([
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-    ]))
+    iter_table.setStyle(
+        TableStyle(
+            [
+                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ]
+        )
+    )
     story.append(iter_table)
 
     # Footer
     story.append(Spacer(1, 1 * cm))
-    story.append(Paragraph(
-        f"Dokument wygenerowany przez MV-Design PRO. "
-        f"Wersja dowodu: {proof.proof_version}. "
-        f"ID: {proof.document_id[:8]}...",
-        normal_style,
-    ))
+    story.append(
+        Paragraph(
+            f"Dokument wygenerowany przez MV-Design PRO. "
+            f"Wersja dowodu: {proof.proof_version}. "
+            f"ID: {proof.document_id[:8]}...",
+            normal_style,
+        )
+    )
 
     doc.build(story)
     return output_path

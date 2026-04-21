@@ -26,9 +26,8 @@ from network_model.reporting.docx_determinism import make_docx_bytes_determinist
 # Check for python-docx availability
 try:
     from docx import Document
-    from docx.shared import Pt, Inches, Cm, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.shared import Pt, RGBColor
 
     _DOCX_AVAILABLE = True
 except ImportError:
@@ -67,7 +66,6 @@ def _format_value(value: Any) -> str:
     return str(value)
 
 
-
 def export_protection_coordination_to_docx(
     result: dict[str, Any],
     path: str | Path,
@@ -93,9 +91,7 @@ def export_protection_coordination_to_docx(
         ImportError: If python-docx is not installed
     """
     if not _DOCX_AVAILABLE:
-        raise ImportError(
-            "DOCX export requires python-docx. Install with: pip install python-docx"
-        )
+        raise ImportError("DOCX export requires python-docx. Install with: pip install python-docx")
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -256,7 +252,7 @@ def export_protection_coordination_to_docx(
         # Sort by (downstream_device_id, upstream_device_id) for deterministic order
         sorted_sel_checks = sorted(
             selectivity_checks,
-            key=lambda c: (c.get("downstream_device_id", ""), c.get("upstream_device_id", ""))
+            key=lambda c: (c.get("downstream_device_id", ""), c.get("upstream_device_id", "")),
         )
 
         sel_table = doc.add_table(rows=1, cols=6)

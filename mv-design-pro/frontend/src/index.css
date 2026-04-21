@@ -4,7 +4,7 @@
 
 /* =========================================================================
  * MV-DESIGN-PRO — Industrial Design System Base
- * PowerFactory/ETAP Grade UI Foundation
+ * Canonical/CANONICAL Grade UI Foundation
  * ========================================================================= */
 
 @layer base {
@@ -194,7 +194,7 @@
   .ind-dot-none { @apply ind-dot bg-status-none; }
 
   /* =========================================================================
-   * Canonical SLD Typography — ETAP/IEC
+   * Canonical SLD Typography — CANONICAL/IEC
    * ========================================================================= */
 
   .sld-node-label {

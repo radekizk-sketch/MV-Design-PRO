@@ -1,4 +1,10 @@
-# Rozdział 17 — Testy Systemowe, Weryfikacja, Odbiór Inżynierski (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 17 — Testy Systemowe, Weryfikacja, Odbiór Inżynierski (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -18,9 +24,9 @@
 - Każda zmiana w solverze wymaga aktualizacji golden testów.
 - Testy NIE zawierają logiki obliczeniowej — są konsumentami wyników.
 
-### §17.0.2 Parytet z ETAP / PowerFactory
+### §17.0.2 Parytet z benchmark / benchmark
 
-| Aspekt | ETAP | PowerFactory | MV-DESIGN-PRO |
+| Aspekt | benchmark | benchmark | MV-DESIGN-PRO |
 |--------|------|--------------|---------------|
 | Testy jednostkowe solverów | Wewnętrzne (zamknięte) | Wewnętrzne (zamknięte) | ✓ Otwarte, audytowalne |
 | Golden tests (regresja) | Partial (QA lab) | Partial (reference cases) | ✓ W repo, CI-enforced |
@@ -639,3 +645,4 @@ AS-IS: `conftest.py` → `pytest_ignore_collect()` pomija testy jeśli brak `sql
 - [ ] Komendy testowe: backend (10) + frontend (7).
 - [ ] Inwarianty INV-TST-01..10, zakazy Z-TST-01..03.
 - [ ] Decyzje #127–#133 zapisane w AUDIT_SPEC_VS_CODE.md.
+

@@ -12,10 +12,11 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { getModalByOp } from '../topology/modals/modalRegistry';
+import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { notify } from '../notifications/store';
 import type { ElementType } from '../types';
 import { requiresCatalog } from '../context-menu/catalogGate';
+import { assertCanonicalOpName, canonicalOperationInput } from '../../types/domainOps';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,6 +43,24 @@ const CLOSED_STATE: ModalControllerState = {
   initialFormData: {},
 };
 
+function normalizeModalDispatch(
+  canonicalOp: string,
+  initialFormData?: Record<string, unknown>,
+): { canonicalOp: string; initialFormData: Record<string, unknown> } {
+  const normalized = canonicalOperationInput(assertCanonicalOpName(canonicalOp), initialFormData);
+  return {
+    canonicalOp: normalized.canonicalOp,
+    initialFormData: normalized.context ?? {},
+  };
+}
+
+function requiresCatalogBinding(canonicalOp: string | null): boolean {
+  if (!canonicalOp) {
+    return false;
+  }
+  return canonicalOp === 'add_converter_source' || requiresCatalog(canonicalOp);
+}
+
 /**
  * Polish labels for domain operation results.
  */
@@ -56,8 +75,7 @@ const OP_RESULT_LABELS: Record<string, string> = {
   set_normal_open_point: 'Punkt normalnie otwarty ustawiony',
   add_nn_outgoing_field: 'Odpływ nN dodany',
   add_nn_load: 'Odbiór nN dodany',
-  add_pv_inverter_nn: 'Źródło PV dodane',
-  add_bess_inverter_nn: 'Źródło BESS dodane',
+  add_converter_source: 'Źródło przekształtnikowe dodane',
   add_genset_nn: 'Agregat dodany',
   add_ups_nn: 'UPS dodany',
   add_relay: 'Zabezpieczenie dodane',
@@ -65,9 +83,6 @@ const OP_RESULT_LABELS: Record<string, string> = {
   add_measurement: 'Przekładnik dodany',
   add_transformer_sn_nn: 'Transformator SN/nN dodany',
   add_sn_bay: 'Pole SN dodane',
-  add_nn_segment: 'Segment nN dodany',
-  run_power_flow: 'Rozpływ mocy uruchomiony',
-  run_short_circuit: 'Obliczenia zwarciowe uruchomione',
 };
 
 // ---------------------------------------------------------------------------
@@ -106,20 +121,21 @@ export function useModalController(
       elementType: ElementType,
       initialFormData?: Record<string, unknown>,
     ) => {
-      const entry = getModalByOp(canonicalOp);
+      const normalized = normalizeModalDispatch(canonicalOp, initialFormData);
+      const entry = getOperationSurfaceByOp(normalized.canonicalOp);
       if (entry) {
         setState({
           isOpen: true,
-          canonicalOp,
+          canonicalOp: normalized.canonicalOp,
           elementId,
           elementType,
           modalComponentName: entry.componentName,
           labelPl: entry.labelPl,
-          initialFormData: initialFormData ?? {},
+          initialFormData: normalized.initialFormData,
         });
       } else {
         // Operation recognized but no modal — show notification
-        const label = OP_RESULT_LABELS[canonicalOp] ?? canonicalOp;
+        const label = OP_RESULT_LABELS[normalized.canonicalOp] ?? normalized.canonicalOp;
         notify(`${label} — ${elementType} (${elementId})`, 'info');
       }
     },
@@ -148,7 +164,8 @@ export function useModalController(
       // Merge initialFormData (np. catalog_binding z bramki katalogowej)
       // z danymi formularza — formData nadpisuje initialFormData
       const mergedData = { ...state.initialFormData, ...formData };
-      const missingCatalogBinding = requiresCatalog(state.canonicalOp) && !mergedData.catalog_binding;
+      const missingCatalogBinding =
+        requiresCatalogBinding(state.canonicalOp) && !mergedData.catalog_binding;
 
       if (missingCatalogBinding) {
         notify('Ta operacja wymaga jawnego wyboru typu z katalogu przed zapisem.', 'warning');
@@ -234,13 +251,6 @@ const OPERATION_FORMS: Record<string, ModalFormField[]> = {
     { key: 'p_kw', label: 'Moc czynna', type: 'number', unit: 'kW', defaultValue: null, min: 0, step: 1 },
     { key: 'cos_phi', label: 'cos φ', type: 'number', defaultValue: null, min: 0.1, step: 0.01 },
   ],
-  add_pv_inverter_nn: [
-    { key: 'p_kw', label: 'Moc szczytowa', type: 'number', unit: 'kWp', defaultValue: null, min: 0, step: 1 },
-  ],
-  add_bess_inverter_nn: [
-    { key: 'p_kw', label: 'Moc', type: 'number', unit: 'kW', defaultValue: null, min: 0, step: 1 },
-    { key: 'e_kwh', label: 'Pojemność', type: 'number', unit: 'kWh', defaultValue: null, min: 0, step: 10 },
-  ],
 };
 
 /**
@@ -250,6 +260,39 @@ const OPERATION_FORMS: Record<string, ModalFormField[]> = {
  * Parametry z katalogu (catalog_binding) są pokazane read-only jeśli obecne.
  * Inżynier wypełnia tylko brakujące dane (długość, moc, cos φ).
  */
+const CONVERTER_OPERATION_FORMS: Record<'PV' | 'BESS' | 'FW', ModalFormField[]> = {
+  PV: [
+    { key: 'p_kw', label: 'Moc szczytowa', type: 'number', unit: 'kWp', defaultValue: null, min: 0, step: 1 },
+  ],
+  BESS: [
+    { key: 'p_kw', label: 'Moc', type: 'number', unit: 'kW', defaultValue: null, min: 0, step: 1 },
+    { key: 'e_kwh', label: 'Pojemność', type: 'number', unit: 'kWh', defaultValue: null, min: 0, step: 10 },
+  ],
+  FW: [
+    { key: 'p_kw', label: 'Moc znamionowa', type: 'number', unit: 'kW', defaultValue: null, min: 0, step: 1 },
+  ],
+};
+
+function normalizeConverterTechnology(value: unknown): 'PV' | 'BESS' | 'FW' | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'PV' || normalized === 'BESS' || normalized === 'FW') {
+    return normalized;
+  }
+  return null;
+}
+
+function getOperationFormFields(
+  canonicalOp: string | null,
+  initialFormData: Record<string, unknown>,
+): ModalFormField[] {
+  if (canonicalOp === 'add_converter_source') {
+    const technology = normalizeConverterTechnology(initialFormData.source_technology) ?? 'PV';
+    return CONVERTER_OPERATION_FORMS[technology];
+  }
+  return OPERATION_FORMS[canonicalOp ?? ''] ?? [];
+}
+
 export const ModalOverlay: React.FC<{
   state: ModalControllerState;
   onClose: () => void;
@@ -261,23 +304,23 @@ export const ModalOverlay: React.FC<{
   // Reset form values when modal opens with new operation
   React.useEffect(() => {
     if (state.isOpen && state.canonicalOp) {
-      const fields = OPERATION_FORMS[state.canonicalOp] ?? [];
+      const fields = getOperationFormFields(state.canonicalOp, state.initialFormData);
       const defaults: Record<string, unknown> = {};
       for (const field of fields) {
         defaults[field.key] = field.defaultValue;
       }
       setFormValues(defaults);
     }
-  }, [state.isOpen, state.canonicalOp]);
+  }, [state.isOpen, state.canonicalOp, state.initialFormData]);
 
   if (!state.isOpen || !state.labelPl) return null;
 
-  const fields = OPERATION_FORMS[state.canonicalOp ?? ''] ?? [];
+  const fields = getOperationFormFields(state.canonicalOp, state.initialFormData);
   const catalogBinding = state.initialFormData.catalog_binding as
     | { name?: string; namespace?: string }
     | undefined;
   const catalogBindingMissing =
-    Boolean(state.canonicalOp) && requiresCatalog(state.canonicalOp ?? '') && !catalogBinding;
+    requiresCatalogBinding(state.canonicalOp) && !catalogBinding;
 
   const handleFieldChange = (key: string, value: unknown) => {
     setFormValues((prev) => ({ ...prev, [key]: value }));

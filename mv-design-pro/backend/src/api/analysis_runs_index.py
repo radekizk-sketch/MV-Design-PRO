@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-
 from api.dependencies import get_uow_factory
+from fastapi import APIRouter, Depends, Query
 
 router = APIRouter(prefix="/analysis-runs", tags=["analysis-runs"])
 
@@ -32,9 +31,9 @@ def list_analysis_runs_index(
 def _index_entry_to_dict(entry) -> dict[str, Any]:
     created_at = entry.created_at_utc
     created_at_utc = (
-        created_at.astimezone(timezone.utc).isoformat()
+        created_at.astimezone(UTC).isoformat()
         if created_at.tzinfo
-        else created_at.replace(tzinfo=timezone.utc).isoformat()
+        else created_at.replace(tzinfo=UTC).isoformat()
     )
     return {
         "run_id": entry.run_id,

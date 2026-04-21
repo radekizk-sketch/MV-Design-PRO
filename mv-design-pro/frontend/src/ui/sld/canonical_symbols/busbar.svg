@@ -1,0 +1,8 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Busbar / Szyna zbiorcza - benchmark parity -->
+  <!-- Horizontal thick bar representing electrical busbar -->
+  <rect x="5" y="45" width="90" height="10" fill="none" stroke="#000000" stroke-width="3"/>
+  <!-- Port markers (invisible, for reference) -->
+  <!-- left: (0, 50), right: (100, 50) -->
+</svg>
+

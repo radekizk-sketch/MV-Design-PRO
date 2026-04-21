@@ -9,6 +9,15 @@ from analysis.power_flow_interpretation import (
     InterpretationContext,
     PowerFlowInterpretationBuilder,
 )
+from api.analysis_case_context import build_analysis_case_context
+from api.v125_contracts import (
+    ExportArtifactKind,
+    build_analysis_case_reproducibility,
+    build_export_artifact,
+    build_export_policy,
+    infer_completeness_status,
+    resolve_proof_pack_ref,
+)
 from application.analysis_run import build_trace_summary
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -28,7 +37,25 @@ def build_run_trace_payload(run: CanonicalRun) -> dict[str, Any] | list[dict[str
     return None
 
 
+def _build_export_contract(
+    run: CanonicalRun,
+    *,
+    export_kind: ExportArtifactKind = "json",
+) -> dict[str, Any]:
+    generated_at = run.finished_at or run.created_at
+    return {
+        "proof_pack_ref": resolve_proof_pack_ref(run),
+        "export_artifact": build_export_artifact(
+            run,
+            export_kind=export_kind,
+            generated_at=generated_at,
+        ),
+        "export_policy": build_export_policy(export_kind),
+    }
+
+
 def build_analysis_run_summary(run: CanonicalRun) -> dict[str, Any]:
+    analysis_case_context = build_analysis_case_context(run)
     trace_payload = build_run_trace_payload(run)
     trace_summary = build_trace_summary(trace_payload) if trace_payload is not None else None
     return {
@@ -41,12 +68,15 @@ def build_analysis_run_summary(run: CanonicalRun) -> dict[str, Any]:
         "created_at": run.created_at.isoformat(),
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "input_hash": run.input_hash,
+        "analysis_case_context": analysis_case_context,
         "summary_json": build_run_summary_json(run),
         "trace_summary": trace_summary,
+        **_build_export_contract(run),
     }
 
 
 def build_analysis_run_detail(run: CanonicalRun) -> dict[str, Any]:
+    analysis_case_context = build_analysis_case_context(run)
     detail = build_analysis_run_summary(run)
     detail["input_metadata"] = {
         "snapshot_hash": run.snapshot_hash,
@@ -54,24 +84,21 @@ def build_analysis_run_detail(run: CanonicalRun) -> dict[str, Any]:
         "project_id": run.project_id,
         "element_counts": _build_element_counts(run),
         "options": dict(run.options),
+        "analysis_case_context": analysis_case_context,
     }
     return detail
 
 
 def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type == "PF":
-        result_v1 = ((run.raw_result or {}).get("result_v1") or {})
+        result_v1 = (run.raw_result or {}).get("result_v1") or {}
         return {
             "converged": result_v1.get("converged"),
             "iterations": result_v1.get("iterations_count"),
             "summary": result_v1.get("summary", {}),
         }
-    rows = ((run.raw_result or {}).get("results") or [])
-    ikss_values = [
-        float(row["ikss_a"]) / 1000.0
-        for row in rows
-        if row.get("ikss_a") is not None
-    ]
+    rows = (run.raw_result or {}).get("results") or []
+    ikss_values = [float(row["ikss_a"]) / 1000.0 for row in rows if row.get("ikss_a") is not None]
     return {
         "row_count": len(rows),
         "max_ikss_ka": max(ikss_values) if ikss_values else None,
@@ -79,21 +106,25 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
 
 
 def build_result_items(run: CanonicalRun) -> dict[str, Any]:
+    analysis_case_context = build_analysis_case_context(run)
     result_type = "power_flow" if run.analysis_type == "PF" else "short_circuit_sn"
     payload_summary = build_run_summary_json(run)
     return {
+        "analysis_case_context": analysis_case_context,
         "results": [
             {
                 "result_type": result_type,
                 "payload_summary": payload_summary,
                 "reference": {
                     "id": str(run.id),
-                    "created_at": run.finished_at.isoformat()
-                    if run.finished_at
-                    else run.created_at.isoformat(),
+                    "created_at": (
+                        run.finished_at.isoformat()
+                        if run.finished_at
+                        else run.created_at.isoformat()
+                    ),
                 },
             }
-        ]
+        ],
     }
 
 
@@ -103,18 +134,9 @@ def build_sld_overlay(
     diagram_id: UUID,
     sld_payload: dict[str, Any],
 ) -> dict[str, Any]:
-    bus_rows = {
-        row["bus_id"]: row
-        for row in build_bus_results(run).get("rows", [])
-    }
-    branch_rows = {
-        row["branch_id"]: row
-        for row in build_branch_results(run).get("rows", [])
-    }
-    sc_rows = {
-        row["target_id"]: row
-        for row in build_short_circuit_results(run).get("rows", [])
-    }
+    bus_rows = {row["bus_id"]: row for row in build_bus_results(run).get("rows", [])}
+    branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
+    sc_rows = {row["target_id"]: row for row in build_short_circuit_results(run).get("rows", [])}
 
     node_symbols = list(sld_payload.get("nodes", []))
     if not node_symbols:
@@ -170,8 +192,11 @@ def build_sld_overlay(
 
 
 def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
-    result_v1 = ((run.raw_result or {}).get("result_v1") or {})
-    trace_summary = build_trace_summary(run.power_flow_trace or {}) if run.power_flow_trace else None
+    analysis_case_context = build_analysis_case_context(run)
+    result_v1 = (run.raw_result or {}).get("result_v1") or {}
+    trace_summary = (
+        build_trace_summary(run.power_flow_trace or {}) if run.power_flow_trace else None
+    )
     return {
         "id": str(run.id),
         "deterministic_id": run.input_hash,
@@ -184,6 +209,7 @@ def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
         "started_at": run.started_at.isoformat() if run.started_at else None,
         "finished_at": run.finished_at.isoformat() if run.finished_at else None,
         "input_hash": run.input_hash,
+        "analysis_case_context": analysis_case_context,
         "converged": result_v1.get("converged"),
         "iterations": result_v1.get("iterations_count"),
         "trace_summary": trace_summary,
@@ -191,7 +217,9 @@ def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
             "snapshot_hash": run.snapshot_hash,
             "case_id": run.case_id,
             "options": dict(run.options),
+            "analysis_case_context": analysis_case_context,
         },
+        **_build_export_contract(run),
     }
 
 
@@ -200,7 +228,7 @@ def get_power_flow_result(run: CanonicalRun) -> dict[str, Any]:
         raise ValueError("Przebieg nie jest rozpływem mocy")
     if run.status != "FINISHED":
         raise ValueError(f"Przebieg {run.id} nie jest zakończony (status={run.status})")
-    result_v1 = ((run.raw_result or {}).get("result_v1") or None)
+    result_v1 = (run.raw_result or {}).get("result_v1") or None
     if result_v1 is None:
         raise ValueError(f"Wyniki rozpływu mocy nie są dostępne dla przebiegu {run.id}")
     return result_v1
@@ -216,7 +244,9 @@ def get_power_flow_trace(run: CanonicalRun) -> dict[str, Any]:
     trace = dict(run.power_flow_trace)
     extended_trace = build_extended_trace(run)
     trace.setdefault("catalog_context", extended_trace.get("catalog_context", []))
-    trace.setdefault("catalog_context_by_element", extended_trace.get("catalog_context_by_element", {}))
+    trace.setdefault(
+        "catalog_context_by_element", extended_trace.get("catalog_context_by_element", {})
+    )
     trace.setdefault("catalog_context_summary", extended_trace.get("catalog_context_summary", {}))
     return trace
 
@@ -233,13 +263,9 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
         max_mismatch_pu=0.0,
         base_mva=float(result_v1.get("base_mva", 100.0)),
         slack_node_id=str(result_v1.get("slack_bus_id", "")),
-        node_u_mag_pu={
-            str(row["bus_id"]): float(row.get("v_pu", 0.0))
-            for row in bus_results
-        },
+        node_u_mag_pu={str(row["bus_id"]): float(row.get("v_pu", 0.0)) for row in bus_results},
         node_angle_rad={
-            str(row["bus_id"]): radians(float(row.get("angle_deg", 0.0)))
-            for row in bus_results
+            str(row["bus_id"]): radians(float(row.get("angle_deg", 0.0))) for row in bus_results
         },
         branch_s_from_mva={
             str(row["branch_id"]): complex(
@@ -272,8 +298,10 @@ def build_power_flow_interpretation(run: CanonicalRun) -> dict[str, Any]:
 
 
 def build_power_flow_export_bundle(run: CanonicalRun) -> dict[str, Any]:
+    analysis_case_context = build_analysis_case_context(run)
     extended_trace = build_extended_trace(run)
     return {
+        "analysis_case_context": analysis_case_context,
         "result": get_power_flow_result(run),
         "trace": get_power_flow_trace(run),
         "white_box_trace": extended_trace.get("white_box_trace", []),
@@ -291,29 +319,47 @@ def build_power_flow_export_bundle(run: CanonicalRun) -> dict[str, Any]:
             "input_hash": run.input_hash,
             "snapshot_hash": run.snapshot_hash,
             "catalog_context_count": len(extended_trace.get("catalog_context", [])),
-            "manual_override_count": (extended_trace.get("catalog_context_summary", {}) or {}).get("manual_override_count", 0),
+            "manual_override_count": (extended_trace.get("catalog_context_summary", {}) or {}).get(
+                "manual_override_count", 0
+            ),
+            "analysis_case_context": analysis_case_context,
+            "proof_pack_ref": resolve_proof_pack_ref(run),
+            "completeness_status": infer_completeness_status(run),
+            "reproducibility": build_analysis_case_reproducibility(run),
         },
     }
 
 
 def build_results_index_response(run: CanonicalRun) -> dict[str, Any]:
-    return build_results_index(run)
+    payload = build_results_index(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    payload.setdefault("run_header", {})["analysis_case_context"] = build_analysis_case_context(run)
+    payload.update(_build_export_contract(run))
+    return payload
 
 
 def build_bus_results_response(run: CanonicalRun) -> dict[str, Any]:
-    return build_bus_results(run)
+    payload = build_bus_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
 
 
 def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
-    return build_branch_results(run)
+    payload = build_branch_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
 
 
 def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
-    return build_short_circuit_results(run)
+    payload = build_short_circuit_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
 
 
 def build_extended_trace_response(run: CanonicalRun) -> dict[str, Any]:
-    return build_extended_trace(run)
+    payload = build_extended_trace(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
 
 
 def _build_element_counts(run: CanonicalRun) -> dict[str, int]:

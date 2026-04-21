@@ -3,12 +3,13 @@
 BINDING CONTRACT (RUN #2A): All fields mandatory, zero defaults.
 Missing fields → ValidationError + FixActions.
 """
+
 from __future__ import annotations
 
 import enum
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -53,9 +54,7 @@ class DistributedSlackDefinition:
     def __post_init__(self) -> None:
         total = sum(c.weight for c in self.contributors)
         if abs(total - 1.0) > 1e-9:
-            raise ValueError(
-                f"Suma wag distributed slack = {total}, wymagane = 1.0"
-            )
+            raise ValueError(f"Suma wag distributed slack = {total}, wymagane = 1.0")
 
 
 @dataclass(frozen=True)
@@ -81,6 +80,7 @@ class SolverOptions:
 @dataclass(frozen=True)
 class LoadSpec:
     """Explicit P+Q for a single load. NO auto-cosφ."""
+
     load_id: str
     node_id: str
     p_mw: float
@@ -111,6 +111,7 @@ class LoadFlowRunInput:
     ALL fields mandatory. Missing = validation error + FixAction.
     ZERO defaults on critical parameters.
     """
+
     slack_definition: SlackDefinition
     start_mode: StartMode
     convergence: ConvergenceParams
@@ -207,7 +208,10 @@ class LoadFlowRunInput:
 # =========================================================================
 
 _DETERMINISTIC_LIST_KEYS = {
-    "loads", "generators", "custom_initial_voltages", "contributors",
+    "loads",
+    "generators",
+    "custom_initial_voltages",
+    "contributors",
 }
 
 

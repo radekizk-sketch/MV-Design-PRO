@@ -14,11 +14,10 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, Request
-
+from diagnostics.diff import compute_enm_diff
 from diagnostics.engine import DiagnosticEngine
 from diagnostics.preflight import build_preflight_from_diagnostic_report
-from diagnostics.diff import compute_enm_diff
+from fastapi import APIRouter, HTTPException, Query, Request
 from network_model.core.graph import NetworkGraph
 from network_model.core.snapshot import NetworkSnapshot
 
@@ -51,7 +50,8 @@ def _get_graph_for_case(request: Request, case_id: str) -> NetworkGraph:
         except Exception as exc:
             logger.warning(
                 "Nie udało się załadować grafu z UoW dla case_id=%s: %s",
-                case_id, exc,
+                case_id,
+                exc,
             )
 
     raise HTTPException(
@@ -77,7 +77,8 @@ def _get_snapshot_for_case(request: Request, case_id: str) -> NetworkSnapshot:
         except Exception as exc:
             logger.warning(
                 "Nie udało się załadować snapshotu dla case_id=%s: %s",
-                case_id, exc,
+                case_id,
+                exc,
             )
 
     raise HTTPException(

@@ -83,7 +83,7 @@ describe('Selection Store', () => {
       expect(useSelectionStore.getState().mode).toBe('RESULT_VIEW');
 
       store.setMode('CASE_CONFIG');
-      expect(useSelectionStore.getState().mode).toBe('CASE_CONFIG');
+      expect(useSelectionStore.getState().mode).toBe('MODEL_EDIT');
     });
 
     it('should set result status to OUTDATED when entering MODEL_EDIT', () => {
@@ -229,11 +229,11 @@ describe('Selection Store Hooks', () => {
       expect(isBlocked).toBe(true);
     });
 
-    it('should return true in CASE_CONFIG mode', async () => {
+    it('should return false in CASE_CONFIG compatibility alias', async () => {
       useSelectionStore.getState().setMode('CASE_CONFIG');
       const state = useSelectionStore.getState();
-      const isBlocked = state.mode === 'RESULT_VIEW' || state.mode === 'CASE_CONFIG';
-      expect(isBlocked).toBe(true);
+      const isBlocked = state.mode === 'RESULT_VIEW';
+      expect(isBlocked).toBe(false);
     });
   });
 });

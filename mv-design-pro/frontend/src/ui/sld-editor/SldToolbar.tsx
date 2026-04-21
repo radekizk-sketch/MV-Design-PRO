@@ -2,7 +2,7 @@
  * P30b — SLD Toolbar Component
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: ≥110% PowerFactory toolbar UX
+ * - ui_canonical_parity.md: ≥110% Canonical toolbar UX
  * - 100% Polish labels
  *
  * FEATURES:

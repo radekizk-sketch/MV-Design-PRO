@@ -312,7 +312,7 @@ export function SwitchCard({ elementId }: { elementId: string }) {
       branch?.type === 'disconnector'
     ) {
       acts.push({
-        id: 'set_nop',
+        id: 'set_normal_open_point',
         label: isNop ? 'Usuń oznaczenie NPO' : 'Ustaw jako NPO',
         variant: isNop ? 'danger' : 'secondary',
         onClick: handleSetNop,

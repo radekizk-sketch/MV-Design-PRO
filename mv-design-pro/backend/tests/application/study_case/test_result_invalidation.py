@@ -19,10 +19,8 @@ SPEC REFERENCES:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
-
-import pytest
 
 from domain.analysis_run import AnalysisRun, new_analysis_run
 from domain.study_case import (
@@ -33,7 +31,6 @@ from domain.study_case import (
     StudyCaseResultStatus,
     new_study_case,
 )
-
 
 # =============================================================================
 # 1. results_valid Property Tests
@@ -55,7 +52,7 @@ class TestStudyCaseResultsValid:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="abc123",
         )
         fresh = case.mark_as_fresh(ref)
@@ -68,7 +65,7 @@ class TestStudyCaseResultsValid:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="abc123",
         )
         fresh = case.mark_as_fresh(ref)
@@ -86,7 +83,7 @@ class TestStudyCaseResultsValid:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="abc123",
         )
         fresh_data = case.mark_as_fresh(ref).to_dict()
@@ -195,7 +192,7 @@ class TestInvalidationMatrix:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="abc123",
         )
         return case.mark_as_fresh(ref)
@@ -255,7 +252,7 @@ class TestInvalidationMatrix:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="def456",
         )
         fresh = case.mark_as_fresh(ref)
@@ -313,7 +310,7 @@ class TestFullLifecycle:
         ref1 = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash1",
         )
         case = case.mark_as_fresh(ref1)
@@ -330,7 +327,7 @@ class TestFullLifecycle:
         ref2 = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="short_circuit_sn",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash2",
         )
         case = case.mark_as_fresh(ref2)
@@ -349,7 +346,7 @@ class TestFullLifecycle:
             ref = StudyCaseResult(
                 analysis_run_id=uuid4(),
                 analysis_type="PF",
-                calculated_at=datetime.now(timezone.utc),
+                calculated_at=datetime.now(UTC),
                 input_hash=f"hash-{i}",
             )
             case = case.mark_as_fresh(ref)
@@ -407,7 +404,7 @@ class TestInvalidationDeterminism:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="same-hash",
         )
 
@@ -427,7 +424,7 @@ class TestInvalidationDeterminism:
         ref = StudyCaseResult(
             analysis_run_id=uuid4(),
             analysis_type="PF",
-            calculated_at=datetime.now(timezone.utc),
+            calculated_at=datetime.now(UTC),
             input_hash="hash",
         )
         fresh = case.mark_as_fresh(ref)

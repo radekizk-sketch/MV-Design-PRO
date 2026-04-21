@@ -48,6 +48,11 @@ import {
   buildVisualTopologyContract,
   type VisualTopologyContractV1,
 } from './visualTopologyContract';
+import {
+  registerBranchPointDetailsForGraph,
+  registerStationBlockDetailsForGraph,
+} from './layoutDetailRegistry';
+import { buildStationBlockDetailForBranchRef } from './canonicalFieldDetail';
 
 // =============================================================================
 // EXTENDED LOGICAL VIEWS
@@ -1073,8 +1078,20 @@ export function buildVisualGraphFromTopology(
     });
   }
 
+  const canonicalGraph = canonicalizeVisualGraph(graph);
+  registerStationBlockDetailsForGraph(canonicalGraph, stationBlockDetails);
+  registerBranchPointDetailsForGraph(
+    canonicalGraph,
+    new Map(
+      canonicalGraph.edges
+        .filter((edge) => edge.edgeType === EdgeTypeV1.BRANCH)
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map((edge) => [edge.id, buildStationBlockDetailForBranchRef(edge.id)] as const),
+    ),
+  );
+
   return {
-    graph: canonicalizeVisualGraph(graph),
+    graph: canonicalGraph,
     fixActions: [...fixActions].sort(
       (a, b) => a.code.localeCompare(b.code) || (a.elementRef ?? '').localeCompare(b.elementRef ?? ''),
     ),

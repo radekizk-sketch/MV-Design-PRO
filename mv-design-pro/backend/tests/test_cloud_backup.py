@@ -15,10 +15,8 @@ Wyłącznie LocalBackupProvider (zero chmury w testach).
 
 from __future__ import annotations
 
-import hashlib
-import os
 import sys
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -31,22 +29,17 @@ from infrastructure.cloud_backup import (
     CloudBackendType,
     CloudBackupConfig,
     CloudBackupConfigError,
-    CloudBackupDownloadError,
     CloudBackupEntry,
-    CloudBackupIntegrityError,
     CloudBackupNotFoundError,
-    CloudBackupPermissionError,
     CloudBackupResult,
-    CloudBackupUploadError,
+    GCSBackupProvider,
     LocalBackupProvider,
     S3BackupProvider,
-    GCSBackupProvider,
     compute_file_hash,
     create_backup_provider,
     extract_backup_id_from_key,
     generate_backup_key,
 )
-
 
 # ============================================================================
 # FIXTURES
@@ -110,10 +103,7 @@ class TestKeyGeneration:
             timestamp="2026-01-15T10:30:00+00:00",
             archive_hash="aabbccddee112233445566778899aabb",
         )
-        assert key == (
-            "backups/proj-abc/"
-            "2026-01-15T10-30-00p00-00_aabbccddee11.mvdp.zip"
-        )
+        assert key == ("backups/proj-abc/" "2026-01-15T10-30-00p00-00_aabbccddee11.mvdp.zip")
 
     def test_generate_backup_key_deterministic(self) -> None:
         """Ten sam input = ten sam klucz."""
@@ -136,9 +126,7 @@ class TestKeyGeneration:
             "archive_hash": "aabb" * 16,
         }
         key_a = generate_backup_key(**base)
-        key_b = generate_backup_key(
-            **{**base, "project_id": "proj-456"}
-        )
+        key_b = generate_backup_key(**{**base, "project_id": "proj-456"})
         assert key_a != key_b
 
     def test_extract_backup_id_from_key(self) -> None:
@@ -296,8 +284,7 @@ class TestLocalProviderUpload:
         result = local_provider.upload(
             archive_bytes=sample_archive,
             project_id=sample_project_id,
-            archive_hash="0000000000000000000000000000000000000000"
-            "000000000000000000000000",
+            archive_hash="0000000000000000000000000000000000000000" "000000000000000000000000",
         )
         assert result.success is False
         assert result.error_pl is not None
@@ -326,9 +313,7 @@ class TestLocalProviderUpload:
             timestamp=fixed_timestamp,
             archive_hash=sample_hash,
         )
-        meta_path = (
-            Path(local_config.bucket_name) / key
-        ).with_suffix(".meta.json")
+        meta_path = (Path(local_config.bucket_name) / key).with_suffix(".meta.json")
         assert meta_path.exists()
 
 
@@ -574,9 +559,7 @@ class TestCreateBackupProvider:
         class MockS3Client:
             pass
 
-        provider = create_backup_provider(
-            config, s3_client=MockS3Client()
-        )
+        provider = create_backup_provider(config, s3_client=MockS3Client())
         assert isinstance(provider, S3BackupProvider)
 
     def test_create_gcs_provider_with_mock_client(self) -> None:
@@ -593,14 +576,10 @@ class TestCreateBackupProvider:
             def bucket(self, name: str) -> MockBucket:
                 return MockBucket()
 
-        provider = create_backup_provider(
-            config, gcs_client=MockGCSClient()
-        )
+        provider = create_backup_provider(config, gcs_client=MockGCSClient())
         assert isinstance(provider, GCSBackupProvider)
 
-    def test_wrong_backend_for_local_raises(
-        self, tmp_path: Path
-    ) -> None:
+    def test_wrong_backend_for_local_raises(self, tmp_path: Path) -> None:
         """LocalBackupProvider odrzuca konfigurację S3."""
         config = CloudBackupConfig(
             backend=CloudBackendType.S3,
@@ -685,10 +664,7 @@ class TestRoundtrip:
             )
             downloaded_hash = compute_file_hash(downloaded)
             # Znajdź oryginalne archiwum
-            originals = [
-                (d, h) for d, h, _ in archives
-                if h[:12] == entry.archive_hash
-            ]
+            originals = [(d, h) for d, h, _ in archives if h[:12] == entry.archive_hash]
             assert len(originals) == 1
             assert downloaded == originals[0][0]
             assert downloaded_hash == originals[0][1]

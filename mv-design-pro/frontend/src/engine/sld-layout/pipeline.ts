@@ -297,7 +297,7 @@ function validateLayoutResult(result: LayoutResult): void {
   // Sprawdź floating symbols
   if (result.debug.floatingSymbols.length > 0) {
     console.warn(
-      `[SLD-Layout] ${result.debug.floatingSymbols.length} floating symbols (ETAP violation):`,
+      `[SLD-Layout] ${result.debug.floatingSymbols.length} floating symbols (CANONICAL violation):`,
       result.debug.floatingSymbols
     );
   }

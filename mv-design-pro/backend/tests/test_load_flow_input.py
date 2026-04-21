@@ -1,5 +1,5 @@
 """Tests for LoadFlowRunInput: hash stability, validation, FixActions."""
-import pytest
+
 from domain.load_flow_input import (
     ConvergenceParams,
     LoadFlowRunInput,
@@ -16,8 +16,8 @@ from domain.load_flow_validation import validate_load_flow_input
 
 
 def _make_valid_input(**overrides) -> LoadFlowRunInput:
-    defaults = dict(
-        slack_definition=SlackDefinition(
+    defaults = {
+        "slack_definition": SlackDefinition(
             slack_type=SlackType.SINGLE,
             single=SingleSlackDefinition(
                 slack_node_id="bus-001",
@@ -25,20 +25,20 @@ def _make_valid_input(**overrides) -> LoadFlowRunInput:
                 angle_rad=0.0,
             ),
         ),
-        start_mode=StartMode.FLAT_START,
-        convergence=ConvergenceParams(tolerance=1e-6, iteration_limit=50),
-        modeling_mode=ModelingMode.AC_POWER_FLOW,
-        solver_options=SolverOptions(
+        "start_mode": StartMode.FLAT_START,
+        "convergence": ConvergenceParams(tolerance=1e-6, iteration_limit=50),
+        "modeling_mode": ModelingMode.AC_POWER_FLOW,
+        "solver_options": SolverOptions(
             solver_method=SolverMethod.NEWTON_RAPHSON,
             damping=1.0,
             trace_level="summary",
         ),
-        loads=(
+        "loads": (
             LoadSpec(load_id="load-001", node_id="bus-002", p_mw=2.0, q_mvar=0.8),
             LoadSpec(load_id="load-002", node_id="bus-003", p_mw=1.5, q_mvar=0.6),
         ),
-        base_mva=100.0,
-    )
+        "base_mva": 100.0,
+    }
     defaults.update(overrides)
     return LoadFlowRunInput(**defaults)
 
@@ -60,12 +60,8 @@ class TestHashStability:
         assert inp_a.canonical_hash() == inp_b.canonical_hash()
 
     def test_different_tolerance_different_hash(self):
-        inp_a = _make_valid_input(
-            convergence=ConvergenceParams(tolerance=1e-6, iteration_limit=50)
-        )
-        inp_b = _make_valid_input(
-            convergence=ConvergenceParams(tolerance=1e-8, iteration_limit=50)
-        )
+        inp_a = _make_valid_input(convergence=ConvergenceParams(tolerance=1e-6, iteration_limit=50))
+        inp_b = _make_valid_input(convergence=ConvergenceParams(tolerance=1e-8, iteration_limit=50))
         assert inp_a.canonical_hash() != inp_b.canonical_hash()
 
 
@@ -87,17 +83,13 @@ class TestValidation:
         assert "LF_SLACK_SINGLE_EMPTY_NODE_ID" in codes
 
     def test_negative_tolerance(self):
-        inp = _make_valid_input(
-            convergence=ConvergenceParams(tolerance=-1e-6, iteration_limit=50)
-        )
+        inp = _make_valid_input(convergence=ConvergenceParams(tolerance=-1e-6, iteration_limit=50))
         errors = validate_load_flow_input(inp)
         codes = [e.code for e in errors]
         assert "LF_CONVERGENCE_TOLERANCE_INVALID" in codes
 
     def test_zero_iteration_limit(self):
-        inp = _make_valid_input(
-            convergence=ConvergenceParams(tolerance=1e-6, iteration_limit=0)
-        )
+        inp = _make_valid_input(convergence=ConvergenceParams(tolerance=1e-6, iteration_limit=0))
         errors = validate_load_flow_input(inp)
         codes = [e.code for e in errors]
         assert "LF_CONVERGENCE_ITER_LIMIT_INVALID" in codes

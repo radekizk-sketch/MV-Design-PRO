@@ -2,7 +2,7 @@
  * ValidationBadge Component (PF-style)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § D.4: Inline validation display
+ * - ui_canonical_parity.md § D.4: Inline validation display
  *
  * Displays validation messages with appropriate styling:
  * - ERROR: Red background/text with E-* code

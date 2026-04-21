@@ -1,78 +1,45 @@
 /**
- * Mode Gate Component — P12a Data Manager Parity
+ * Declarative runtime gating for the single public shell.
  *
- * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 1.2: Operating modes
- * - powerfactory_ui_parity.md § A: Mode-based gating
- *
- * Component for declarative mode-based UI gating.
- * Shows children only when mode conditions are met.
- * Optionally shows blocked message when conditions fail.
- *
- * HARD BLOCKS (Polish messages):
- * - MODEL_EDIT: model mutable
- * - CASE_CONFIG: model read-only, case config mutable
- * - RESULT_VIEW: everything read-only
+ * Public runtime exposes only two effective shell states:
+ * - MODEL_EDIT
+ * - RESULT_VIEW
  */
 
 import { type ReactNode } from 'react';
 import { clsx } from 'clsx';
 import { useActiveMode } from '../app-state';
+import { normalizeOperatingMode, type RuntimeOperatingMode } from '../operatingMode';
 import { notify } from '../notifications/store';
 import type { OperatingMode } from '../types';
 
-// =============================================================================
-// Types
-// =============================================================================
-
 interface ModeGateProps {
-  /** Modes in which children are shown */
-  allowedModes: OperatingMode[];
-  /** Children to render when allowed */
+  allowedModes: Array<OperatingMode | RuntimeOperatingMode>;
   children: ReactNode;
-  /** Fallback to render when blocked (optional) */
   fallback?: ReactNode;
-  /** Show blocked message instead of hiding (optional) */
   showBlockedMessage?: boolean;
-  /** Custom blocked message (Polish) */
   blockedMessage?: string;
 }
 
 interface BlockedOverlayProps {
-  /** Children to overlay */
   children: ReactNode;
-  /** Whether to show blocked state */
   blocked: boolean;
-  /** Custom message for blocked state */
   message?: string;
-  /** Click handler when blocked (shows message) */
   onBlockedClick?: () => void;
 }
 
-// =============================================================================
-// Default Messages (Polish)
-// =============================================================================
+function normalizeAllowedModes(
+  modes: Array<OperatingMode | RuntimeOperatingMode>,
+): RuntimeOperatingMode[] {
+  return Array.from(new Set(modes.map(normalizeOperatingMode)));
+}
 
-const DEFAULT_BLOCKED_MESSAGES: Record<OperatingMode, string> = {
-  MODEL_EDIT: '', // Never blocked in MODEL_EDIT for model operations
-  CASE_CONFIG: 'Edycja modelu zablokowana w trybie konfiguracji przypadku',
-  RESULT_VIEW: 'Akcja niedostępna w trybie wyników',
-};
+function getDefaultBlockedMessage(mode: RuntimeOperatingMode): string {
+  return mode === 'RESULT_VIEW'
+    ? 'Akcja niedostepna w analizie i wynikach'
+    : '';
+}
 
-// =============================================================================
-// ModeGate Component
-// =============================================================================
-
-/**
- * Conditionally render children based on operating mode.
- *
- * @example
- * ```tsx
- * <ModeGate allowedModes={['MODEL_EDIT']}>
- *   <EditButton />
- * </ModeGate>
- * ```
- */
 export function ModeGate({
   allowedModes,
   children,
@@ -81,17 +48,16 @@ export function ModeGate({
   blockedMessage,
 }: ModeGateProps) {
   const mode = useActiveMode();
-  const isAllowed = allowedModes.includes(mode);
+  const isAllowed = normalizeAllowedModes(allowedModes).includes(mode);
 
   if (isAllowed) {
     return <>{children}</>;
   }
 
   if (showBlockedMessage) {
-    const message = blockedMessage || DEFAULT_BLOCKED_MESSAGES[mode];
     return (
-      <div className="p-2 bg-gray-50 border border-gray-200 rounded text-sm text-gray-500 italic">
-        {message}
+      <div className="rounded border border-gray-200 bg-gray-50 p-2 text-sm italic text-gray-500">
+        {blockedMessage || getDefaultBlockedMessage(mode)}
       </div>
     );
   }
@@ -99,32 +65,21 @@ export function ModeGate({
   return <>{fallback}</>;
 }
 
-// =============================================================================
-// BlockedOverlay Component
-// =============================================================================
-
-/**
- * Overlay component that disables interactions and shows blocked state.
- *
- * @example
- * ```tsx
- * <BlockedOverlay blocked={mode !== 'MODEL_EDIT'} message="Edycja zablokowana">
- *   <Form />
- * </BlockedOverlay>
- * ```
- */
 export function BlockedOverlay({
   children,
   blocked,
-  message = 'Akcja niedostępna w trybie wyników',
+  message = 'Akcja niedostepna w analizie i wynikach',
   onBlockedClick,
 }: BlockedOverlayProps) {
   const handleClick = () => {
-    if (blocked && onBlockedClick) {
-      onBlockedClick();
-    } else if (blocked) {
-      notify(message, 'warning');
+    if (!blocked) {
+      return;
     }
+    if (onBlockedClick) {
+      onBlockedClick();
+      return;
+    }
+    notify(message, 'warning');
   };
 
   return (
@@ -134,13 +89,12 @@ export function BlockedOverlay({
         <div
           onClick={handleClick}
           className={clsx(
-            'absolute inset-0 z-10',
-            'bg-gray-100/60 cursor-not-allowed',
-            'flex items-center justify-center'
+            'absolute inset-0 z-10 flex cursor-not-allowed items-center justify-center',
+            'bg-gray-100/60'
           )}
           title={message}
         >
-          <span className="px-3 py-1.5 bg-white/90 border border-gray-300 rounded shadow-sm text-xs text-gray-600 text-center max-w-[90%] pointer-events-none select-none">
+          <span className="pointer-events-none max-w-[90%] select-none rounded border border-gray-300 bg-white/90 px-3 py-1.5 text-center text-xs text-gray-600 shadow-sm">
             {message}
           </span>
         </div>
@@ -149,14 +103,6 @@ export function BlockedOverlay({
   );
 }
 
-// =============================================================================
-// Specialized Gate Components
-// =============================================================================
-
-/**
- * Gate for model editing operations.
- * Only shows children in MODEL_EDIT mode.
- */
 export function ModelEditGate({
   children,
   fallback,
@@ -167,17 +113,13 @@ export function ModelEditGate({
       allowedModes={['MODEL_EDIT']}
       fallback={fallback}
       showBlockedMessage={showBlockedMessage}
-      blockedMessage="Edycja modelu zablokowana. Przejdź do trybu edycji modelu."
+      blockedMessage="Edycja modelu zablokowana. Wroc do powierzchni modelu sieci."
     >
       {children}
     </ModeGate>
   );
 }
 
-/**
- * Gate for case configuration operations.
- * Shows children in MODEL_EDIT and CASE_CONFIG modes.
- */
 export function CaseConfigGate({
   children,
   fallback,
@@ -185,29 +127,21 @@ export function CaseConfigGate({
 }: Omit<ModeGateProps, 'allowedModes'>) {
   return (
     <ModeGate
-      allowedModes={['MODEL_EDIT', 'CASE_CONFIG']}
+      allowedModes={['MODEL_EDIT']}
       fallback={fallback}
       showBlockedMessage={showBlockedMessage}
-      blockedMessage="Konfiguracja przypadku zablokowana w trybie wyników."
+      blockedMessage="Kontekst przypadku jest niedostepny w analizie i wynikach."
     >
       {children}
     </ModeGate>
   );
 }
 
-/**
- * Gate for result viewing operations.
- * Only shows children in RESULT_VIEW mode.
- */
 export function ResultViewGate({
   children,
   fallback,
 }: Omit<ModeGateProps, 'allowedModes' | 'showBlockedMessage'>) {
-  return (
-    <ModeGate allowedModes={['RESULT_VIEW']} fallback={fallback}>
-      {children}
-    </ModeGate>
-  );
+  return <ModeGate allowedModes={['RESULT_VIEW']} fallback={fallback}>{children}</ModeGate>;
 }
 
 export default ModeGate;

@@ -8,9 +8,7 @@ from application.analyses.design_synth.models import DesignProposal, DesignSpec
 BoundaryNode_SECTION_TITLE = "BoundaryNode – węzeł przyłączenia"
 
 
-def build_connection_study_report(
-    spec: DesignSpec, proposal: DesignProposal
-) -> dict[str, Any]:
+def build_connection_study_report(spec: DesignSpec, proposal: DesignProposal) -> dict[str, Any]:
     connection_payload = _extract_connection_node(spec.spec_json)
     report_body: dict[str, Any] = {
         "report_type": "connection_study",
@@ -30,4 +28,3 @@ def _extract_connection_node(spec_json: dict[str, Any]) -> dict[str, Any]:
     if "BoundaryNode" in spec_json:
         return spec_json["BoundaryNode"]
     return {}
-

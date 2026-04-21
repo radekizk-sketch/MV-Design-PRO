@@ -20,14 +20,6 @@ ARCHITECTURE:
 
 from __future__ import annotations
 
-from enm.fix_actions import FixAction
-from enm.models import (
-    Cable,
-    EnergyNetworkModel,
-    OverheadLine,
-)
-from enm.validator import ReadinessResult
-
 from domain.eligibility_models import (
     AnalysisEligibilityIssue,
     AnalysisEligibilityMatrix,
@@ -36,6 +28,13 @@ from domain.eligibility_models import (
     build_eligibility_matrix,
     build_eligibility_result,
 )
+from enm.fix_actions import FixAction
+from enm.models import (
+    Cable,
+    EnergyNetworkModel,
+    OverheadLine,
+)
+from enm.validator import ReadinessResult
 
 
 class EligibilityService:
@@ -249,39 +248,43 @@ class EligibilityService:
 
         # E6: Loads or generators must exist for meaningful load flow
         if not enm.loads and not enm.generators:
-            blockers.append(AnalysisEligibilityIssue(
-                code="ELIG_LF_NO_LOADS_OR_GENERATORS",
-                severity=IssueSeverity.BLOCKER,
-                message_pl=(
-                    "Brak odbiorów i generatorów w modelu. "
-                    "Rozpływ mocy wymaga co najmniej jednego odbioru lub generatora."
-                ),
-                fix_action=FixAction(
-                    action_type="ADD_MISSING_DEVICE",
-                    modal_type="LoadModal",
-                    payload_hint={"required": "load_or_generator"},
-                ),
-            ))
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_LF_NO_LOADS_OR_GENERATORS",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Brak odbiorów i generatorów w modelu. "
+                        "Rozpływ mocy wymaga co najmniej jednego odbioru lub generatora."
+                    ),
+                    fix_action=FixAction(
+                        action_type="ADD_MISSING_DEVICE",
+                        modal_type="LoadModal",
+                        payload_hint={"required": "load_or_generator"},
+                    ),
+                )
+            )
 
         # E7: Bus voltage > 0 (already validated but explicit for eligibility)
         for bus in enm.buses:
             if bus.voltage_kv <= 0:
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_LF_BUS_NO_VOLTAGE",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Szyna '{bus.ref_id}' nie ma napięcia znamionowego "
-                        f"(voltage_kv <= 0). Rozpływ mocy wymaga napięć na wszystkich szynach."
-                    ),
-                    element_ref=bus.ref_id,
-                    element_type="bus",
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_LF_BUS_NO_VOLTAGE",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Szyna '{bus.ref_id}' nie ma napięcia znamionowego "
+                            f"(voltage_kv <= 0). Rozpływ mocy wymaga napięć na wszystkich szynach."
+                        ),
                         element_ref=bus.ref_id,
-                        modal_type="NodeModal",
-                        payload_hint={"required": "voltage_kv"},
-                    ),
-                ))
+                        element_type="bus",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=bus.ref_id,
+                            modal_type="NodeModal",
+                            payload_hint={"required": "voltage_kv"},
+                        ),
+                    )
+                )
 
         return build_eligibility_result(
             analysis_type=AnalysisType.LOAD_FLOW,
@@ -299,19 +302,21 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         if not enm.sources:
-            blockers.append(AnalysisEligibilityIssue(
-                code="ELIG_SC3_MISSING_SOURCE",
-                severity=IssueSeverity.BLOCKER,
-                message_pl=(
-                    "Brak źródła zasilania w modelu sieci. "
-                    "Dodaj źródło (sieć zewnętrzna lub generator)."
-                ),
-                fix_action=FixAction(
-                    action_type="ADD_MISSING_DEVICE",
-                    modal_type="SourceModal",
-                    payload_hint={"required": "source"},
-                ),
-            ))
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC3_MISSING_SOURCE",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Brak źródła zasilania w modelu sieci. "
+                        "Dodaj źródło (sieć zewnętrzna lub generator)."
+                    ),
+                    fix_action=FixAction(
+                        action_type="ADD_MISSING_DEVICE",
+                        modal_type="SourceModal",
+                        payload_hint={"required": "source"},
+                    ),
+                )
+            )
 
     @staticmethod
     def _check_buses_present(
@@ -319,19 +324,20 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         if not enm.buses:
-            blockers.append(AnalysisEligibilityIssue(
-                code="ELIG_SC3_MISSING_BUSES",
-                severity=IssueSeverity.BLOCKER,
-                message_pl=(
-                    "Brak szyn (węzłów) w modelu sieci. "
-                    "Dodaj co najmniej jedną szynę."
-                ),
-                fix_action=FixAction(
-                    action_type="ADD_MISSING_DEVICE",
-                    modal_type="NodeModal",
-                    payload_hint={"required": "bus"},
-                ),
-            ))
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC3_MISSING_BUSES",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Brak szyn (węzłów) w modelu sieci. " "Dodaj co najmniej jedną szynę."
+                    ),
+                    fix_action=FixAction(
+                        action_type="ADD_MISSING_DEVICE",
+                        modal_type="NodeModal",
+                        payload_hint={"required": "bus"},
+                    ),
+                )
+            )
 
     @staticmethod
     def _check_catalog_refs(
@@ -339,42 +345,46 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for branch in enm.branches:
-            if isinstance(branch, (OverheadLine, Cable)) and not branch.catalog_ref:
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_SC3_MISSING_CATALOG_REF",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Gałąź '{branch.ref_id}' nie ma referencji katalogowej (catalog_ref). "
-                        f"Przypisz element z katalogu."
-                    ),
-                    element_ref=branch.ref_id,
-                    element_type="branch",
-                    fix_action=FixAction(
-                        action_type="SELECT_CATALOG",
+            if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_CATALOG_REF",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Gałąź '{branch.ref_id}' nie ma referencji katalogowej (catalog_ref). "
+                            f"Przypisz element z katalogu."
+                        ),
                         element_ref=branch.ref_id,
-                        modal_type="BranchModal",
-                        payload_hint={"required": "catalog_ref"},
-                    ),
-                ))
+                        element_type="branch",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=branch.ref_id,
+                            modal_type="BranchModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
 
         for trafo in enm.transformers:
             if not trafo.catalog_ref:
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_SC3_MISSING_CATALOG_REF",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Transformator '{trafo.ref_id}' nie ma referencji katalogowej (catalog_ref). "
-                        f"Przypisz transformator z katalogu."
-                    ),
-                    element_ref=trafo.ref_id,
-                    element_type="transformer",
-                    fix_action=FixAction(
-                        action_type="SELECT_CATALOG",
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_CATALOG_REF",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Transformator '{trafo.ref_id}' nie ma referencji katalogowej (catalog_ref). "
+                            f"Przypisz transformator z katalogu."
+                        ),
                         element_ref=trafo.ref_id,
-                        modal_type="TransformerModal",
-                        payload_hint={"required": "catalog_ref"},
-                    ),
-                ))
+                        element_type="transformer",
+                        fix_action=FixAction(
+                            action_type="SELECT_CATALOG",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "catalog_ref"},
+                        ),
+                    )
+                )
 
     @staticmethod
     def _check_branch_impedance(
@@ -382,24 +392,26 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for branch in enm.branches:
-            if isinstance(branch, (OverheadLine, Cable)):
+            if isinstance(branch, OverheadLine | Cable):
                 if branch.r_ohm_per_km == 0 and branch.x_ohm_per_km == 0:
-                    blockers.append(AnalysisEligibilityIssue(
-                        code="ELIG_SC3_MISSING_IMPEDANCE",
-                        severity=IssueSeverity.BLOCKER,
-                        message_pl=(
-                            f"Gałąź '{branch.ref_id}' ma zerową impedancję "
-                            f"(R=0, X=0 Ω/km). Wprowadź parametry impedancji."
-                        ),
-                        element_ref=branch.ref_id,
-                        element_type="branch",
-                        fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                    blockers.append(
+                        AnalysisEligibilityIssue(
+                            code="ELIG_SC3_MISSING_IMPEDANCE",
+                            severity=IssueSeverity.BLOCKER,
+                            message_pl=(
+                                f"Gałąź '{branch.ref_id}' ma zerową impedancję "
+                                f"(R=0, X=0 Ω/km). Wprowadź parametry impedancji."
+                            ),
                             element_ref=branch.ref_id,
-                            modal_type="BranchModal",
-                            payload_hint={"required": "impedance"},
-                        ),
-                    ))
+                            element_type="branch",
+                            fix_action=FixAction(
+                                action_type="OPEN_MODAL",
+                                element_ref=branch.ref_id,
+                                modal_type="BranchModal",
+                                payload_hint={"required": "impedance"},
+                            ),
+                        )
+                    )
 
     @staticmethod
     def _check_transformer_uk(
@@ -408,22 +420,24 @@ class EligibilityService:
     ) -> None:
         for trafo in enm.transformers:
             if trafo.uk_percent <= 0:
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_SC3_MISSING_IMPEDANCE",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Transformator '{trafo.ref_id}' nie ma napięcia zwarcia "
-                        f"(uk% <= 0). Wprowadź uk%."
-                    ),
-                    element_ref=trafo.ref_id,
-                    element_type="transformer",
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_MISSING_IMPEDANCE",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Transformator '{trafo.ref_id}' nie ma napięcia zwarcia "
+                            f"(uk% <= 0). Wprowadź uk%."
+                        ),
                         element_ref=trafo.ref_id,
-                        modal_type="TransformerModal",
-                        payload_hint={"required": "uk_percent"},
-                    ),
-                ))
+                        element_type="transformer",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=trafo.ref_id,
+                            modal_type="TransformerModal",
+                            payload_hint={"required": "uk_percent"},
+                        ),
+                    )
+                )
 
     @staticmethod
     def _check_source_sc_params(
@@ -439,22 +453,24 @@ class EligibilityService:
             )
             has_ik = source.ik3_ka is not None and source.ik3_ka > 0
             if not (has_sk or has_rx or has_ik):
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Źródło '{source.ref_id}' nie ma parametrów zwarciowych "
-                        f"(brak Sk'', Ik'' lub R/X). Wprowadź dane."
-                    ),
-                    element_ref=source.ref_id,
-                    element_type="source",
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC3_SOURCE_NO_SC_PARAMS",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}' nie ma parametrów zwarciowych "
+                            f"(brak Sk'', Ik'' lub R/X). Wprowadź dane."
+                        ),
                         element_ref=source.ref_id,
-                        modal_type="SourceModal",
-                        payload_hint={"required": "short_circuit_params"},
-                    ),
-                ))
+                        element_type="source",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "short_circuit_params"},
+                        ),
+                    )
+                )
 
     # ------------------------------------------------------------------
     # SC_1F specific checks
@@ -466,24 +482,26 @@ class EligibilityService:
         blockers: list[AnalysisEligibilityIssue],
     ) -> None:
         for branch in enm.branches:
-            if isinstance(branch, (OverheadLine, Cable)):
+            if isinstance(branch, OverheadLine | Cable):
                 if branch.r0_ohm_per_km is None and branch.x0_ohm_per_km is None:
-                    blockers.append(AnalysisEligibilityIssue(
-                        code="ELIG_SC1_MISSING_Z0",
-                        severity=IssueSeverity.BLOCKER,
-                        message_pl=(
-                            f"Gałąź '{branch.ref_id}' nie ma danych składowej zerowej (Z₀). "
-                            f"Zwarcie jednofazowe wymaga R₀/X₀."
-                        ),
-                        element_ref=branch.ref_id,
-                        element_type="branch",
-                        fix_action=FixAction(
-                            action_type="OPEN_MODAL",
+                    blockers.append(
+                        AnalysisEligibilityIssue(
+                            code="ELIG_SC1_MISSING_Z0",
+                            severity=IssueSeverity.BLOCKER,
+                            message_pl=(
+                                f"Gałąź '{branch.ref_id}' nie ma danych składowej zerowej (Z₀). "
+                                f"Zwarcie jednofazowe wymaga R₀/X₀."
+                            ),
                             element_ref=branch.ref_id,
-                            modal_type="BranchModal",
-                            payload_hint={"required": "zero_sequence"},
-                        ),
-                    ))
+                            element_type="branch",
+                            fix_action=FixAction(
+                                action_type="OPEN_MODAL",
+                                element_ref=branch.ref_id,
+                                modal_type="BranchModal",
+                                payload_hint={"required": "zero_sequence"},
+                            ),
+                        )
+                    )
 
     @staticmethod
     def _check_source_z0(
@@ -492,26 +510,27 @@ class EligibilityService:
     ) -> None:
         for source in enm.sources:
             has_z0 = (
-                (source.r0_ohm is not None and source.x0_ohm is not None)
-                or source.z0_z1_ratio is not None
-            )
+                source.r0_ohm is not None and source.x0_ohm is not None
+            ) or source.z0_z1_ratio is not None
             if not has_z0:
-                blockers.append(AnalysisEligibilityIssue(
-                    code="ELIG_SC1_MISSING_Z0",
-                    severity=IssueSeverity.BLOCKER,
-                    message_pl=(
-                        f"Źródło '{source.ref_id}' nie ma danych składowej zerowej (Z₀). "
-                        f"Zwarcie jednofazowe wymaga R₀/X₀ lub stosunku Z₀/Z₁."
-                    ),
-                    element_ref=source.ref_id,
-                    element_type="source",
-                    fix_action=FixAction(
-                        action_type="OPEN_MODAL",
+                blockers.append(
+                    AnalysisEligibilityIssue(
+                        code="ELIG_SC1_MISSING_Z0",
+                        severity=IssueSeverity.BLOCKER,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}' nie ma danych składowej zerowej (Z₀). "
+                            f"Zwarcie jednofazowe wymaga R₀/X₀ lub stosunku Z₀/Z₁."
+                        ),
                         element_ref=source.ref_id,
-                        modal_type="SourceModal",
-                        payload_hint={"required": "zero_sequence"},
-                    ),
-                ))
+                        element_type="source",
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "zero_sequence"},
+                        ),
+                    )
+                )
 
     @staticmethod
     def _check_earthing_model(
@@ -531,15 +550,17 @@ class EligibilityService:
         )
 
         if not has_grounding and not has_trafo_neutral and enm.buses:
-            info.append(AnalysisEligibilityIssue(
-                code="ELIG_SC1_EARTHING_MODEL_NOT_AVAILABLE_YET",
-                severity=IssueSeverity.INFO,
-                message_pl=(
-                    "Model uziemienia nie jest jeszcze skonfigurowany. "
-                    "Zwarcie jednofazowe może wymagać danych uziemienia "
-                    "w przyszłych wersjach. Funkcja w przygotowaniu."
-                ),
-            ))
+            info.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC1_EARTHING_MODEL_NOT_AVAILABLE_YET",
+                    severity=IssueSeverity.INFO,
+                    message_pl=(
+                        "Model uziemienia nie jest jeszcze skonfigurowany. "
+                        "Zwarcie jednofazowe może wymagać danych uziemienia "
+                        "w przyszłych wersjach. Funkcja w przygotowaniu."
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # SC_2F specific checks
@@ -556,20 +577,19 @@ class EligibilityService:
         Per the spec: no heuristics (do NOT assume Z2=Z1).
         Emit CONTRACT_NOT_READY if any line/cable branches exist.
         """
-        has_line_branches = any(
-            isinstance(branch, (OverheadLine, Cable))
-            for branch in enm.branches
-        )
+        has_line_branches = any(isinstance(branch, OverheadLine | Cable) for branch in enm.branches)
         if has_line_branches:
-            blockers.append(AnalysisEligibilityIssue(
-                code="ELIG_SC2_CONTRACT_NOT_READY",
-                severity=IssueSeverity.BLOCKER,
-                message_pl=(
-                    "Kontrakt solver-input nie zawiera pól składowej ujemnej (Z₂) "
-                    "dla gałęzi. Zwarcie dwufazowe wymaga rozszerzenia kontraktu danych. "
-                    "Zostanie udostępnione w przyszłej aktualizacji."
-                ),
-            ))
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC2_CONTRACT_NOT_READY",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Kontrakt solver-input nie zawiera pól składowej ujemnej (Z₂) "
+                        "dla gałęzi. Zwarcie dwufazowe wymaga rozszerzenia kontraktu danych. "
+                        "Zostanie udostępnione w przyszłej aktualizacji."
+                    ),
+                )
+            )
 
     @staticmethod
     def _check_source_z2(
@@ -581,11 +601,13 @@ class EligibilityService:
         Sources also lack explicit Z2 fields in current model.
         """
         if enm.sources:
-            blockers.append(AnalysisEligibilityIssue(
-                code="ELIG_SC2_MISSING_Z2",
-                severity=IssueSeverity.BLOCKER,
-                message_pl=(
-                    "Źródła nie posiadają danych składowej ujemnej (Z₂). "
-                    "Zwarcie dwufazowe wymaga parametrów Z₂ dla źródeł."
-                ),
-            ))
+            blockers.append(
+                AnalysisEligibilityIssue(
+                    code="ELIG_SC2_MISSING_Z2",
+                    severity=IssueSeverity.BLOCKER,
+                    message_pl=(
+                        "Źródła nie posiadają danych składowej ujemnej (Z₂). "
+                        "Zwarcie dwufazowe wymaga parametrów Z₂ dla źródeł."
+                    ),
+                )
+            )

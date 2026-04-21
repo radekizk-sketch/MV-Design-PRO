@@ -10,15 +10,14 @@ Tests:
 - Serialization
 - PDF Report generation
 """
+
 from __future__ import annotations
 
 import json
 import tempfile
 from pathlib import Path
-from typing import Dict, Tuple
 
 import pytest
-
 from analysis.power_flow.violations import (
     BusInfo,
     ViolationType,
@@ -32,11 +31,9 @@ from analysis.power_flow.violations_report import (
 )
 from network_model.solvers.power_flow_result import (
     PowerFlowBusResult,
-    PowerFlowBranchResult,
     PowerFlowResultV1,
     PowerFlowSummary,
 )
-
 
 # =============================================================================
 # Test Fixtures
@@ -44,7 +41,7 @@ from network_model.solvers.power_flow_result import (
 
 
 def _make_pf_result(
-    bus_voltages: Dict[str, float],
+    bus_voltages: dict[str, float],
     converged: bool = True,
 ) -> PowerFlowResultV1:
     """Helper to create PowerFlowResultV1 from voltage dict."""
@@ -85,30 +82,34 @@ def _make_pf_result(
 @pytest.fixture
 def sample_pf_result_all_ok() -> PowerFlowResultV1:
     """PowerFlowResultV1 with all voltages within default limits (0.95-1.05 pu)."""
-    return _make_pf_result({
-        "bus_a": 1.00,
-        "bus_b": 0.98,
-        "bus_c": 1.02,
-        "bus_d": 0.96,
-        "bus_e": 1.04,
-    })
+    return _make_pf_result(
+        {
+            "bus_a": 1.00,
+            "bus_b": 0.98,
+            "bus_c": 1.02,
+            "bus_d": 0.96,
+            "bus_e": 1.04,
+        }
+    )
 
 
 @pytest.fixture
 def sample_pf_result_with_violations() -> PowerFlowResultV1:
     """PowerFlowResultV1 with undervoltage and overvoltage violations."""
-    return _make_pf_result({
-        "bus_ok_1": 1.00,    # OK
-        "bus_ok_2": 0.98,    # OK
-        "bus_under_1": 0.90, # Undervoltage (below 0.95)
-        "bus_under_2": 0.92, # Undervoltage (below 0.95)
-        "bus_over_1": 1.08,  # Overvoltage (above 1.05)
-        "bus_over_2": 1.12,  # Overvoltage (above 1.05)
-    })
+    return _make_pf_result(
+        {
+            "bus_ok_1": 1.00,  # OK
+            "bus_ok_2": 0.98,  # OK
+            "bus_under_1": 0.90,  # Undervoltage (below 0.95)
+            "bus_under_2": 0.92,  # Undervoltage (below 0.95)
+            "bus_over_1": 1.08,  # Overvoltage (above 1.05)
+            "bus_over_2": 1.12,  # Overvoltage (above 1.05)
+        }
+    )
 
 
 @pytest.fixture
-def sample_bus_info() -> Dict[str, BusInfo]:
+def sample_bus_info() -> dict[str, BusInfo]:
     """Sample BusInfo dictionary with names and nominal voltages."""
     return {
         "bus_ok_1": BusInfo(bus_id="bus_ok_1", bus_name="Szyna Glowna", u_nom_kv=20.0),
@@ -155,8 +156,7 @@ class TestVoltageViolationsBasic:
 
         assert result.undervoltage_count == 2
         undervoltages = [
-            v for v in result.violations
-            if v.violation_type == ViolationType.UNDERVOLTAGE
+            v for v in result.violations if v.violation_type == ViolationType.UNDERVOLTAGE
         ]
         assert len(undervoltages) == 2
 
@@ -175,8 +175,7 @@ class TestVoltageViolationsBasic:
 
         assert result.overvoltage_count == 2
         overvoltages = [
-            v for v in result.violations
-            if v.violation_type == ViolationType.OVERVOLTAGE
+            v for v in result.violations if v.violation_type == ViolationType.OVERVOLTAGE
         ]
         assert len(overvoltages) == 2
 
@@ -209,15 +208,17 @@ class TestCustomLimits:
     def test_custom_limits_per_bus(self) -> None:
         """Test: rozne limity dla roznych wezlow."""
         # Create PF result with borderline voltages
-        pf_result = _make_pf_result({
-            "bus_normal": 0.96,  # OK with default (0.95-1.05)
-            "bus_strict": 0.96,  # Should violate strict limits (0.98-1.02)
-            "bus_loose": 0.85,   # OK with loose limits (0.80-1.10)
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_normal": 0.96,  # OK with default (0.95-1.05)
+                "bus_strict": 0.96,  # Should violate strict limits (0.98-1.02)
+                "bus_loose": 0.85,  # OK with loose limits (0.80-1.10)
+            }
+        )
 
-        custom_limits: Dict[str, Tuple[float, float]] = {
+        custom_limits: dict[str, tuple[float, float]] = {
             "bus_strict": (0.98, 1.02),  # Strict limits
-            "bus_loose": (0.80, 1.10),   # Loose limits
+            "bus_loose": (0.80, 1.10),  # Loose limits
         }
 
         detector = VoltageViolationsDetector()
@@ -230,10 +231,12 @@ class TestCustomLimits:
 
     def test_bus_info_limits_used(self) -> None:
         """Test: limity z BusInfo sa uzywane."""
-        pf_result = _make_pf_result({
-            "bus_a": 0.92,  # Should be OK with BusInfo limits (0.90-1.10)
-            "bus_b": 0.92,  # Should be violation with default limits (0.95-1.05)
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_a": 0.92,  # Should be OK with BusInfo limits (0.90-1.10)
+                "bus_b": 0.92,  # Should be violation with default limits (0.95-1.05)
+            }
+        )
 
         bus_info = {
             "bus_a": BusInfo(
@@ -254,9 +257,11 @@ class TestCustomLimits:
 
     def test_custom_limits_override_bus_info(self) -> None:
         """Test: custom_limits maja priorytet nad BusInfo."""
-        pf_result = _make_pf_result({
-            "bus_a": 0.96,
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_a": 0.96,
+            }
+        )
 
         bus_info = {
             "bus_a": BusInfo(
@@ -317,10 +322,12 @@ class TestWorstViolation:
 
     def test_deviation_percent_correct(self) -> None:
         """Test: poprawne obliczenie odchylenia procentowego."""
-        pf_result = _make_pf_result({
-            "bus_under": 0.90,  # 5.26% below 0.95
-            "bus_over": 1.10,   # 4.76% above 1.05
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_under": 0.90,  # 5.26% below 0.95
+                "bus_over": 1.10,  # 4.76% above 1.05
+            }
+        )
 
         detector = VoltageViolationsDetector()
         result = detector.detect(pf_result)
@@ -330,7 +337,7 @@ class TestWorstViolation:
 
         # Deviation = (limit - actual) / limit * 100
         expected_under_dev = (0.95 - 0.90) / 0.95 * 100  # ~5.26%
-        expected_over_dev = (1.10 - 1.05) / 1.05 * 100   # ~4.76%
+        expected_over_dev = (1.10 - 1.05) / 1.05 * 100  # ~4.76%
 
         assert abs(under.deviation_percent - expected_under_dev) < 0.01
         assert abs(over.deviation_percent - expected_over_dev) < 0.01
@@ -347,7 +354,7 @@ class TestBusInfo:
     def test_bus_name_from_bus_info(
         self,
         sample_pf_result_with_violations: PowerFlowResultV1,
-        sample_bus_info: Dict[str, BusInfo],
+        sample_bus_info: dict[str, BusInfo],
     ) -> None:
         """Test: nazwa szyny pobierana z BusInfo."""
         detector = VoltageViolationsDetector()
@@ -359,7 +366,7 @@ class TestBusInfo:
     def test_voltage_kv_calculated(
         self,
         sample_pf_result_with_violations: PowerFlowResultV1,
-        sample_bus_info: Dict[str, BusInfo],
+        sample_bus_info: dict[str, BusInfo],
     ) -> None:
         """Test: napiecie kV obliczane z U_nom."""
         detector = VoltageViolationsDetector()
@@ -560,10 +567,12 @@ class TestEdgeCases:
 
     def test_voltage_exactly_at_limit(self) -> None:
         """Test: napiecie dokladnie na limicie."""
-        pf_result = _make_pf_result({
-            "bus_min": 0.95,  # Exactly at min limit
-            "bus_max": 1.05,  # Exactly at max limit
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_min": 0.95,  # Exactly at min limit
+                "bus_max": 1.05,  # Exactly at max limit
+            }
+        )
 
         detector = VoltageViolationsDetector()
         result = detector.detect(pf_result)
@@ -574,9 +583,11 @@ class TestEdgeCases:
 
     def test_voltage_just_below_limit(self) -> None:
         """Test: napiecie minimalnie ponizej limitu."""
-        pf_result = _make_pf_result({
-            "bus_under": 0.9499999,  # Just below 0.95
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_under": 0.9499999,  # Just below 0.95
+            }
+        )
 
         detector = VoltageViolationsDetector()
         result = detector.detect(pf_result)
@@ -586,9 +597,11 @@ class TestEdgeCases:
 
     def test_voltage_just_above_limit(self) -> None:
         """Test: napiecie minimalnie powyzej limitu."""
-        pf_result = _make_pf_result({
-            "bus_over": 1.0500001,  # Just above 1.05
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_over": 1.0500001,  # Just above 1.05
+            }
+        )
 
         detector = VoltageViolationsDetector()
         result = detector.detect(pf_result)
@@ -621,9 +634,11 @@ class TestEdgeCases:
 
     def test_custom_default_limits(self) -> None:
         """Test: niestandardowe domyslne limity."""
-        pf_result = _make_pf_result({
-            "bus_1": 0.92,  # Violation with 0.95-1.05, OK with 0.90-1.10
-        })
+        pf_result = _make_pf_result(
+            {
+                "bus_1": 0.92,  # Violation with 0.95-1.05, OK with 0.90-1.10
+            }
+        )
 
         # Default limits: 0.95-1.05
         detector_strict = VoltageViolationsDetector()
@@ -661,14 +676,8 @@ class TestViolationType:
         detector = VoltageViolationsDetector()
         result = detector.detect(sample_pf_result_with_violations)
 
-        under_types = {
-            v.violation_type for v in result.violations
-            if v.voltage_pu < 0.95
-        }
-        over_types = {
-            v.violation_type for v in result.violations
-            if v.voltage_pu > 1.05
-        }
+        under_types = {v.violation_type for v in result.violations if v.voltage_pu < 0.95}
+        over_types = {v.violation_type for v in result.violations if v.voltage_pu > 1.05}
 
         assert under_types == {ViolationType.UNDERVOLTAGE}
         assert over_types == {ViolationType.OVERVOLTAGE}

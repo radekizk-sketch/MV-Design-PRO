@@ -25,8 +25,8 @@ if TYPE_CHECKING:
 # Check for python-docx availability at import time
 try:
     from docx import Document
-    from docx.shared import Pt, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     _DOCX_AVAILABLE = True
 except ImportError:
@@ -96,9 +96,7 @@ def export_power_flow_result_to_docx(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create document
     doc = Document()
@@ -206,7 +204,9 @@ def export_power_flow_result_to_docx(
             row[4].text = _format_value(bus.get("q_injected_mvar"))
 
         if len(bus_results) > 50:
-            doc.add_paragraph(f"... oraz {len(bus_results) - 50} dodatkowych wezlow (patrz pelny eksport JSON)")
+            doc.add_paragraph(
+                f"... oraz {len(bus_results) - 50} dodatkowych wezlow (patrz pelny eksport JSON)"
+            )
     else:
         doc.add_paragraph("Brak wynikow wezlowych.")
 
@@ -242,7 +242,9 @@ def export_power_flow_result_to_docx(
             row[4].text = _format_value(branch.get("losses_q_mvar"))
 
         if len(branch_results) > 50:
-            doc.add_paragraph(f"... oraz {len(branch_results) - 50} dodatkowych galezi (patrz pelny eksport JSON)")
+            doc.add_paragraph(
+                f"... oraz {len(branch_results) - 50} dodatkowych galezi (patrz pelny eksport JSON)"
+            )
     else:
         doc.add_paragraph("Brak wynikow galeziowych.")
 
@@ -345,9 +347,7 @@ def export_power_flow_comparison_to_docx(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not isinstance(comparison, dict):
-        raise ValueError(
-            f"comparison must be a dict, got {type(comparison).__name__}"
-        )
+        raise ValueError(f"comparison must be a dict, got {type(comparison).__name__}")
 
     # Create document
     doc = Document()
@@ -429,7 +429,13 @@ def export_power_flow_comparison_to_docx(
                 for r in p.runs:
                     r.bold = True
 
-        severity_labels = {5: "Krytyczny", 4: "Powazny", 3: "Sredni", 2: "Drobny", 1: "Informacyjny"}
+        severity_labels = {
+            5: "Krytyczny",
+            4: "Powazny",
+            3: "Sredni",
+            2: "Drobny",
+            1: "Informacyjny",
+        }
         for issue in ranking[:30]:  # Limit to 30
             row = rank_table.add_row().cells
             row[0].text = severity_labels.get(issue.get("severity", 1), "?")
@@ -450,7 +456,9 @@ def export_power_flow_comparison_to_docx(
     bus_diffs = comparison.get("bus_diffs", [])
     if bus_diffs:
         # Sort by absolute delta_v_pu descending
-        sorted_diffs = sorted(bus_diffs, key=lambda x: abs(x.get("delta_v_pu", 0)), reverse=True)[:20]
+        sorted_diffs = sorted(bus_diffs, key=lambda x: abs(x.get("delta_v_pu", 0)), reverse=True)[
+            :20
+        ]
 
         diff_table = doc.add_table(rows=1, cols=5)
         diff_table.style = "Table Grid"

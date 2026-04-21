@@ -1,7 +1,7 @@
 /**
  * Type Catalog Module (Public Exports)
  *
- * P8.2: UI Assign/Clear Type (PowerFactory Type Library parity)
+ * P8.2: UI Assign/Clear Type (Canonical Type Library parity)
  * P13a: Type Library Browser (4 tabs: Line, Cable, Transformer, Switch)
  * elementCatalogRegistry: Single source of truth for Element ↔ Catalog mapping
  * useCatalogAssignment: Reusable hook for catalog assignment flow

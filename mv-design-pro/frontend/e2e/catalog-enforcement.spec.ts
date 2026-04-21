@@ -35,12 +35,16 @@ function buildCatalogBinding(catalogNamespace: string, catalogItemId: string) {
   };
 }
 
-async function createProjectAndCase(request: APIRequestContext): Promise<{ projectId: string; caseId: string }> {
+async function createProjectAndCase(
+  request: APIRequestContext,
+): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = nextEntitySuffix();
+  const projectName = `E2E Katalog ${suffix}`;
+  const caseName = `Przypadek katalog ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
-      name: `E2E Katalog ${suffix}`,
+      name: projectName,
       description: 'Test katalog-first',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
@@ -53,7 +57,7 @@ async function createProjectAndCase(request: APIRequestContext): Promise<{ proje
   const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
     data: {
       project_id: project.id,
-      name: `Przypadek katalog ${suffix}`,
+      name: caseName,
       description: '',
       config: {},
       set_active: true,
@@ -64,34 +68,47 @@ async function createProjectAndCase(request: APIRequestContext): Promise<{ proje
 
   return {
     projectId: project.id,
+    projectName,
     caseId: studyCase.id,
+    caseName,
   };
 }
 
-async function createCaseFromUi(page: Page): Promise<string> {
-  await page.goto('/', { waitUntil: 'commit' });
-  await page.evaluate(() => {
-    localStorage.clear();
-    sessionStorage.clear();
+async function createCaseFromUi(page: Page, request: APIRequestContext): Promise<string> {
+  const { projectId, projectName, caseId, caseName } = await createProjectAndCase(request);
+
+  await page.addInitScript((seed) => {
+    localStorage.setItem(
+      'mv-design-app-state',
+      JSON.stringify({
+        state: {
+          activeProjectId: seed.projectId,
+          activeProjectName: seed.projectName,
+          activeCaseId: seed.caseId,
+          activeCaseName: seed.caseName,
+          activeCaseKind: 'ShortCircuitCase',
+          activeCaseResultStatus: 'NONE',
+          activeSnapshotId: null,
+          activeMode: 'MODEL_EDIT',
+          activeRunId: null,
+          activeAnalysisType: 'SHORT_CIRCUIT',
+          caseManagerOpen: false,
+          issuePanelOpen: false,
+        },
+        version: 1,
+      }),
+    );
+  }, {
+    projectId,
+    projectName,
+    caseId,
+    caseName,
   });
-  await page.reload({ waitUntil: 'commit' });
+
+  await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-
-  const createCaseBtn = page.getByTestId('sld-empty-overlay-create-case');
-  await expect(createCaseBtn).toBeVisible();
-
-  const createCaseResponsePromise = page.waitForResponse(
-    (response) => response.url().includes('/api/study-cases') && response.request().method() === 'POST',
-  );
-
-  await createCaseBtn.click({ force: true });
-
-  const createCaseResponse = await createCaseResponsePromise;
-  expect(createCaseResponse.ok()).toBeTruthy();
-  const casePayload = (await createCaseResponse.json()) as { id: string };
   await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
-
-  return casePayload.id;
+  return caseId;
 }
 
 async function reloadEditorPage(page: Page): Promise<void> {
@@ -200,50 +217,40 @@ async function expectInlineCatalogError(container: ReturnType<Page['getByTestId'
   await expect(error).toContainText(/katalog/i);
 }
 
-test.describe('Catalog-First Enforcement — realny backend', () => {
+test.describe('Catalog-First Enforcement - realny backend', () => {
   test.skip(process.env.PLAYWRIGHT_REAL_BACKEND !== '1', 'Ten pakiet wymaga realnego backendu.');
 
-  test('formularz słupa rozgałęźnego blokuje wstawienie bez katalogu', async ({ page }) => {
-    await createCaseFromUi(page);
-
-    await page.getByTestId('btn-insert-object-branch-pole').click();
-    const form = page.getByTestId('insert-branch-pole-form');
-    await expect(form).toBeVisible();
-    await form.locator('button[type="submit"]').click();
-
-    await expectInlineCatalogError(form);
+  test('frontend nie wystawia bezposrednich przyciskow branch point i ZKSN bez kontekstu segmentu', async ({ page, request }) => {
+    await createCaseFromUi(page, request);
+    await page.getByTestId('left-panel-mode-readiness').click();
+    await expect(page.getByTestId('process-panel')).toBeVisible();
+    await expect(page.getByTestId('btn-insert-object-branch-pole')).toHaveCount(0);
+    await expect(page.getByTestId('btn-insert-object-zksn')).toHaveCount(0);
+    await expect(page.getByText(/nigdy bez wskazania segmentu/i)).toBeVisible();
   });
 
-  test('formularz ZKSN blokuje wstawienie bez katalogu', async ({ page }) => {
-    await createCaseFromUi(page);
-
-    await page.getByTestId('btn-insert-object-zksn').click();
-    const form = page.getByTestId('insert-zksn-form');
-    await expect(form).toBeVisible();
-    await form.locator('button[type="submit"]').click();
-
-    await expectInlineCatalogError(form);
-  });
-
-  test('formularz łącznika sekcyjnego blokuje wstawienie bez katalogu', async ({ page }) => {
-    await createCaseFromUi(page);
+  test('formularz lacznika sekcyjnego blokuje wstawienie bez katalogu', async ({ page, request }) => {
+    await createCaseFromUi(page, request);
+    await page.getByTestId('left-panel-mode-readiness').click();
+    await expect(page.getByTestId('process-panel')).toBeVisible();
 
     await page.getByTestId('btn-insert-switch').click();
     const form = page.getByTestId('insert-section-switch-form');
     await expect(form).toBeVisible();
 
     await page.getByPlaceholder('np. SW-001').fill('SW-E2E-001');
-    await page.getByPlaceholder('np. Łącznik sekcyjny S1').fill('Łącznik testowy');
+    await page.getByPlaceholder(/sekcyjny/i).fill('Lacznik testowy');
     await page.getByRole('button', { name: 'Zastosuj' }).click();
 
     await expectInlineCatalogError(form);
   });
 
-  test('przycisk domknięcia pierścienia jest nieaktywny bez kandydatów ringu', async ({ page, request }) => {
-    const caseId = await createCaseFromUi(page);
+  test('przycisk domkniecia pierscienia jest nieaktywny bez kandydatow ringu', async ({ page, request }) => {
+    const caseId = await createCaseFromUi(page, request);
     await addGridSource(request, caseId);
     await addCableSegment(request, caseId, 240);
     await reloadEditorPage(page);
+    await page.getByTestId('left-panel-mode-readiness').click();
 
     await expect(page.getByTestId('btn-connect-ring')).toBeDisabled();
   });
@@ -255,7 +262,7 @@ test.describe('Catalog-First Enforcement — realny backend', () => {
 
     const response = await executeDomainOp(request, caseId, 'insert_branch_pole_on_segment_sn', {
       segment_id: segmentRef,
-      name: 'Słup testowy',
+      name: 'Slup testowy',
       insert_at: { mode: 'RATIO', value: 0.5 },
     });
 
@@ -285,7 +292,7 @@ test.describe('Catalog-First Enforcement — realny backend', () => {
 
     const response = await executeDomainOp(request, caseId, 'insert_section_switch_sn', {
       segment_id: segmentRef,
-      switch_name: 'Łącznik testowy',
+      switch_name: 'Lacznik testowy',
       switch_type: 'ROZLACZNIK',
       normal_state: 'closed',
       insert_at: { mode: 'RATIO', value: 0.5 },

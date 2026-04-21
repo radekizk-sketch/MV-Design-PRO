@@ -59,7 +59,7 @@ Voltage levels are detected from element names:
 
 - Busbars are horizontal lines at their canonical layer Y position
 - Width = `max(minBusbarWidth, slotCount * baySpacing + 2 * padding)`
-- `minBusbarWidth` = 200px (from ETAP_GEOMETRY)
+- `minBusbarWidth` = 200px (from CANONICAL_GEOMETRY)
 - `baySpacing` = 100px between feeder slots
 - Busbars are centered at `padding + busbarWidth / 2`
 
@@ -173,9 +173,9 @@ Layout must fit within export format boundaries:
 
 Margin = 40px from each edge.
 
-## 14. Geometry Constants (ETAP_GEOMETRY Source)
+## 14. Geometry Constants (CANONICAL_GEOMETRY Source)
 
-All geometry values are sourced from `sldEtapStyle.ts` ETAP_GEOMETRY tokens:
+All geometry values are sourced from `sldCanonicalStyle.ts` CANONICAL_GEOMETRY tokens:
 
 ```
 gridSize = 20

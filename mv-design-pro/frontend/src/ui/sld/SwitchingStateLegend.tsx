@@ -3,12 +3,12 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § D: Visual state encoding
- * - ETAP parity: switching states and energization visualization
+ * - CANONICAL parity: switching states and energization visualization
  *
  * FEATURES:
  * - Shows legend for switch states (OPEN/CLOSED/UNKNOWN)
  * - Shows legend for energization states (energized/not energized)
- * - ETAP-like symbol previews
+ * - CANONICAL-like symbol previews
  * - Polish labels and terminology
  *
  * RULES:

@@ -13,17 +13,16 @@ Struktura:
 Dane zgodne z Wykladami 01-20, normami PN-EN 60909, metodologia Hoppel.
 """
 
-from network_model.core.node import Node, NodeType
 from network_model.core.branch import (
     BranchType,
     LineBranch,
     TransformerBranch,
 )
-from network_model.core.switch import Switch, SwitchType, SwitchState
-from network_model.core.station import Station, StationType
-from network_model.core.inverter import InverterSource, ConverterKind
 from network_model.core.graph import NetworkGraph
-
+from network_model.core.inverter import ConverterKind, InverterSource
+from network_model.core.node import Node, NodeType
+from network_model.core.station import Station, StationType
+from network_model.core.switch import Switch, SwitchState, SwitchType
 
 # =============================================================================
 # PARAMETRY SIECI (STALE)
@@ -35,8 +34,8 @@ RX_SYS = 0.1
 
 # Napiecia znamionowe
 UN_WN = 110.0  # kV
-UN_SN = 15.0   # kV
-UN_NN = 0.4    # kV
+UN_SN = 15.0  # kV
+UN_NN = 0.4  # kV
 
 # Wspolczynnik napiecia (IEC 60909, siec > 1 kV, prad max)
 C_FACTOR = 1.1
@@ -138,8 +137,12 @@ def _mk_trafo(
 def _mk_pq(nid: str, name: str, vl: float = UN_SN) -> Node:
     """Tworzy wezel PQ (szyna, wejscie, rozgalezienie) z P=Q=0."""
     return Node(
-        id=nid, name=name, node_type=NodeType.PQ,
-        voltage_level=vl, active_power=0.0, reactive_power=0.0,
+        id=nid,
+        name=name,
+        node_type=NodeType.PQ,
+        voltage_level=vl,
+        active_power=0.0,
+        reactive_power=0.0,
     )
 
 
@@ -179,16 +182,18 @@ def build_golden_network() -> NetworkGraph:
     # =========================================================================
 
     # Wezel referencyjny systemu (szyna nieskonczona)
-    g.add_node(Node(
-        id="bus-system-ref",
-        name="System 110 kV (szyna nieskonczona)",
-        node_type=NodeType.SLACK,
-        voltage_level=UN_WN,
-        voltage_magnitude=1.0,
-        voltage_angle=0.0,
-        active_power=0.0,
-        reactive_power=0.0,
-    ))
+    g.add_node(
+        Node(
+            id="bus-system-ref",
+            name="System 110 kV (szyna nieskonczona)",
+            node_type=NodeType.SLACK,
+            voltage_level=UN_WN,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
 
     # Szyna WN 110 kV GPZ
     g.add_node(_mk_pq("bus-wn-110", "Szyna 110 kV GPZ", vl=UN_WN))
@@ -196,14 +201,23 @@ def build_golden_network() -> NetworkGraph:
     # Impedancja systemu: Zsys = Un^2 / Sk_sys = 110^2 / 4000 = 3.025 Ohm
     # R/X = 0.1 → X = 3.025/sqrt(1.01), R = 0.1*X
     import math as _math
-    _zsys = UN_WN ** 2 / SK_SYS_MVA  # 3.025 Ohm
-    _xsys = _zsys / _math.sqrt(1.0 + RX_SYS ** 2)
+
+    _zsys = UN_WN**2 / SK_SYS_MVA  # 3.025 Ohm
+    _xsys = _zsys / _math.sqrt(1.0 + RX_SYS**2)
     _rsys = RX_SYS * _xsys
-    g.add_branch(_mk_line(
-        "line-system", "Impedancja systemu 110 kV",
-        "bus-system-ref", "bus-wn-110",
-        r=_rsys, x=_xsys, b=0.0, length=1.0, rated_i=10000.0,
-    ))
+    g.add_branch(
+        _mk_line(
+            "line-system",
+            "Impedancja systemu 110 kV",
+            "bus-system-ref",
+            "bus-wn-110",
+            r=_rsys,
+            x=_xsys,
+            b=0.0,
+            length=1.0,
+            rated_i=10000.0,
+        )
+    )
 
     # Szyny SN — 2 sekcje
     g.add_node(_mk_pq("bus-sn-s1", "Szyna SN sekcja I"))
@@ -214,29 +228,49 @@ def build_golden_network() -> NetworkGraph:
     g.add_node(_mk_pq("bus-tr2-sn", "TR2 strona SN"))
 
     # Transformatory WN/SN
-    g.add_branch(_mk_trafo(
-        "tr-gpz-1", "TR1 110/15 kV 25 MVA",
-        "bus-wn-110", "bus-tr1-sn",
-        sn_mva=25.0, uhv=UN_WN, ulv=UN_SN, uk_pct=11.0, pk_kw=120.0,
-    ))
-    g.add_branch(_mk_trafo(
-        "tr-gpz-2", "TR2 110/15 kV 25 MVA",
-        "bus-wn-110", "bus-tr2-sn",
-        sn_mva=25.0, uhv=UN_WN, ulv=UN_SN, uk_pct=11.0, pk_kw=120.0,
-    ))
+    g.add_branch(
+        _mk_trafo(
+            "tr-gpz-1",
+            "TR1 110/15 kV 25 MVA",
+            "bus-wn-110",
+            "bus-tr1-sn",
+            sn_mva=25.0,
+            uhv=UN_WN,
+            ulv=UN_SN,
+            uk_pct=11.0,
+            pk_kw=120.0,
+        )
+    )
+    g.add_branch(
+        _mk_trafo(
+            "tr-gpz-2",
+            "TR2 110/15 kV 25 MVA",
+            "bus-wn-110",
+            "bus-tr2-sn",
+            sn_mva=25.0,
+            uhv=UN_WN,
+            ulv=UN_SN,
+            uk_pct=11.0,
+            pk_kw=120.0,
+        )
+    )
 
     # Wylaczniki pol transformatorowych
     g.add_switch(_mk_sw("sw-tr1-cb", "Q TR1", "bus-tr1-sn", "bus-sn-s1"))
     g.add_switch(_mk_sw("sw-tr2-cb", "Q TR2", "bus-tr2-sn", "bus-sn-s2"))
 
     # Sprzeglo sekcyjne (normalnie otwarte)
-    g.add_switch(_mk_sw(
-        "sw-coupler", "Sprzeglo sekcyjne",
-        "bus-sn-s1", "bus-sn-s2",
-        st=SwitchType.BREAKER,
-        state=SwitchState.OPEN,
-        rated_i=1250.0,
-    ))
+    g.add_switch(
+        _mk_sw(
+            "sw-coupler",
+            "Sprzeglo sekcyjne",
+            "bus-sn-s1",
+            "bus-sn-s2",
+            st=SwitchType.BREAKER,
+            state=SwitchState.OPEN,
+            rated_i=1250.0,
+        )
+    )
 
     # =========================================================================
     # POLA LINIOWE — wezly wyjsciowe na szynie
@@ -290,72 +324,122 @@ def _build_magistrala_a(g: NetworkGraph) -> None:
 
     # A1: AFL-6 70 → punkt sekcjonowania 1
     g.add_node(_mk_pq("bus-a1", "Punkt sekc. A1"))
-    g.add_branch(_mk_line("line-a1", "Odcinek A1", prev, "bus-a1", AFL70_R, AFL70_X, AFL70_B, 2.5, AFL70_I))
-    g.add_switch(_mk_sw("sw-sekc-a1", "DS sekcjonowanie A1", prev, "bus-a1", SwitchType.DISCONNECTOR))
+    g.add_branch(
+        _mk_line("line-a1", "Odcinek A1", prev, "bus-a1", AFL70_R, AFL70_X, AFL70_B, 2.5, AFL70_I)
+    )
+    g.add_switch(
+        _mk_sw("sw-sekc-a1", "DS sekcjonowanie A1", prev, "bus-a1", SwitchType.DISCONNECTOR)
+    )
     prev = "bus-a1"
 
     # A2: AFL-6 70 → rozgalezienie → Stacja 01 (slupowa, 160 kVA)
     g.add_node(_mk_pq("bus-a2", "Rozgalezienie A2"))
-    g.add_branch(_mk_line("line-a2", "Odcinek A2", prev, "bus-a2", AFL70_R, AFL70_X, AFL70_B, 1.8, AFL70_I))
+    g.add_branch(
+        _mk_line("line-a2", "Odcinek A2", prev, "bus-a2", AFL70_R, AFL70_X, AFL70_B, 1.8, AFL70_I)
+    )
     _add_station(g, "st01", "Stacja 01", "bus-a2", StationType.TRANSFORMER, 0.160, "Dyn11")
     prev = "bus-a2"
 
     # A3: AFL-6 70 → Stacja 02 (kontenerowa, 400 kVA)
     g.add_node(_mk_pq("bus-a3", "Stacja 02 wejscie"))
-    g.add_branch(_mk_line("line-a3", "Odcinek A3", prev, "bus-a3", AFL70_R, AFL70_X, AFL70_B, 3.2, AFL70_I))
+    g.add_branch(
+        _mk_line("line-a3", "Odcinek A3", prev, "bus-a3", AFL70_R, AFL70_X, AFL70_B, 3.2, AFL70_I)
+    )
     _add_station(g, "st02", "Stacja 02", "bus-a3", StationType.TRANSFORMER, 0.400, "Dyn11")
     prev = "bus-a3"
 
     # A4: AFL-6 50 → punkt sekcjonowania 2
     g.add_node(_mk_pq("bus-a4", "Punkt sekc. A4"))
-    g.add_branch(_mk_line("line-a4", "Odcinek A4", prev, "bus-a4", AFL50_R, AFL50_X, AFL50_B, 2.0, AFL50_I))
-    g.add_switch(_mk_sw("sw-sekc-a4", "DS sekcjonowanie A4", prev, "bus-a4", SwitchType.DISCONNECTOR))
+    g.add_branch(
+        _mk_line("line-a4", "Odcinek A4", prev, "bus-a4", AFL50_R, AFL50_X, AFL50_B, 2.0, AFL50_I)
+    )
+    g.add_switch(
+        _mk_sw("sw-sekc-a4", "DS sekcjonowanie A4", prev, "bus-a4", SwitchType.DISCONNECTOR)
+    )
     prev = "bus-a4"
 
     # A5: AFL-6 50 → rozgalezienie → Stacja 03 (wnetrzowa, 630 kVA)
     g.add_node(_mk_pq("bus-a5", "Rozgalezienie A5"))
-    g.add_branch(_mk_line("line-a5", "Odcinek A5", prev, "bus-a5", AFL50_R, AFL50_X, AFL50_B, 4.5, AFL50_I))
+    g.add_branch(
+        _mk_line("line-a5", "Odcinek A5", prev, "bus-a5", AFL50_R, AFL50_X, AFL50_B, 4.5, AFL50_I)
+    )
     _add_station(g, "st03", "Stacja 03", "bus-a5", StationType.TRANSFORMER, 0.630, "Dyn11")
     prev = "bus-a5"
 
     # A6: AFL-6 50 → Stacja 04 (slupowa, 100 kVA)
     g.add_node(_mk_pq("bus-a6", "Stacja 04 wejscie"))
-    g.add_branch(_mk_line("line-a6", "Odcinek A6", prev, "bus-a6", AFL50_R, AFL50_X, AFL50_B, 1.5, AFL50_I))
+    g.add_branch(
+        _mk_line("line-a6", "Odcinek A6", prev, "bus-a6", AFL50_R, AFL50_X, AFL50_B, 1.5, AFL50_I)
+    )
     _add_station(g, "st04", "Stacja 04", "bus-a6", StationType.TRANSFORMER, 0.100, "Dyn11")
     prev = "bus-a6"
 
     # A7: AFL-6 35 → rozgalezienie → Stacja 05 (kontenerowa, 250 kVA)
     g.add_node(_mk_pq("bus-a7", "Rozgalezienie A7"))
-    g.add_branch(_mk_line("line-a7", "Odcinek A7", prev, "bus-a7", AFL35_R, AFL35_X, AFL35_B, 3.0, AFL35_I))
+    g.add_branch(
+        _mk_line("line-a7", "Odcinek A7", prev, "bus-a7", AFL35_R, AFL35_X, AFL35_B, 3.0, AFL35_I)
+    )
     _add_station(g, "st05", "Stacja 05", "bus-a7", StationType.TRANSFORMER, 0.250, "Dyn11")
     prev = "bus-a7"
 
     # A8: AFL-6 35 → Stacja 06 (slupowa, 160 kVA)
     g.add_node(_mk_pq("bus-a8", "Stacja 06 wejscie"))
-    g.add_branch(_mk_line("line-a8", "Odcinek A8", prev, "bus-a8", AFL35_R, AFL35_X, AFL35_B, 2.8, AFL35_I))
+    g.add_branch(
+        _mk_line("line-a8", "Odcinek A8", prev, "bus-a8", AFL35_R, AFL35_X, AFL35_B, 2.8, AFL35_I)
+    )
     _add_station(g, "st06", "Stacja 06", "bus-a8", StationType.TRANSFORMER, 0.160, "Dyn11")
     prev = "bus-a8"
 
     # A9: AFL-6 35 → Stacja 07 (slupowa, 63 kVA)
     g.add_node(_mk_pq("bus-a9", "Stacja 07 wejscie"))
-    g.add_branch(_mk_line("line-a9", "Odcinek A9", prev, "bus-a9", AFL35_R, AFL35_X, AFL35_B, 1.2, AFL35_I))
+    g.add_branch(
+        _mk_line("line-a9", "Odcinek A9", prev, "bus-a9", AFL35_R, AFL35_X, AFL35_B, 1.2, AFL35_I)
+    )
     _add_station(g, "st07", "Stacja 07", "bus-a9", StationType.TRANSFORMER, 0.063, "Dyn11")
     prev = "bus-a9"
 
     # A10: AFL-6 35 → Stacja 08 (kontenerowa, 400 kVA) — koncowa
     g.add_node(_mk_pq("bus-a10", "Stacja 08 wejscie"))
-    g.add_branch(_mk_line("line-a10", "Odcinek A10", prev, "bus-a10", AFL35_R, AFL35_X, AFL35_B, 4.0, AFL35_I))
+    g.add_branch(
+        _mk_line(
+            "line-a10", "Odcinek A10", prev, "bus-a10", AFL35_R, AFL35_X, AFL35_B, 4.0, AFL35_I
+        )
+    )
     _add_station(g, "st08", "Stacja 08", "bus-a10", StationType.TRANSFORMER, 0.400, "Dyn11")
 
     # Sub-branch od rozgalezienia A5
     # A11: AFL-6 50 → Stacja 09 (wnetrzowa, 250 kVA)
     g.add_node(_mk_pq("bus-a11", "Stacja 09 wejscie"))
-    g.add_branch(_mk_line("line-a11", "Odcinek A11 (sub-branch)", "bus-a5", "bus-a11", AFL50_R, AFL50_X, AFL50_B, 2.5, AFL50_I))
+    g.add_branch(
+        _mk_line(
+            "line-a11",
+            "Odcinek A11 (sub-branch)",
+            "bus-a5",
+            "bus-a11",
+            AFL50_R,
+            AFL50_X,
+            AFL50_B,
+            2.5,
+            AFL50_I,
+        )
+    )
     _add_station(g, "st09", "Stacja 09", "bus-a11", StationType.TRANSFORMER, 0.250, "Dyn11")
 
     # A12: AFL-6 35 → Stacja 10 (slupowa, 100 kVA) — koncowa sub
     g.add_node(_mk_pq("bus-a12", "Stacja 10 wejscie"))
-    g.add_branch(_mk_line("line-a12", "Odcinek A12 (sub-branch)", "bus-a11", "bus-a12", AFL35_R, AFL35_X, AFL35_B, 1.0, AFL35_I))
+    g.add_branch(
+        _mk_line(
+            "line-a12",
+            "Odcinek A12 (sub-branch)",
+            "bus-a11",
+            "bus-a12",
+            AFL35_R,
+            AFL35_X,
+            AFL35_B,
+            1.0,
+            AFL35_I,
+        )
+    )
     _add_station(g, "st10", "Stacja 10", "bus-a12", StationType.TRANSFORMER, 0.100, "Dyn11")
 
 
@@ -366,68 +450,138 @@ def _build_magistrala_b(g: NetworkGraph) -> None:
 
     # B1: kabel XRUHAKXS 240 — wyprowadzenie kablowe z GPZ
     g.add_node(_mk_pq("bus-b1", "B1 RS-1 wejscie"))
-    g.add_branch(_mk_line("line-b1", "Odcinek B1 kabel", prev, "bus-b1", XR240_R, XR240_X, XR240_B, 1.2, XR240_I))
+    g.add_branch(
+        _mk_line(
+            "line-b1", "Odcinek B1 kabel", prev, "bus-b1", XR240_R, XR240_X, XR240_B, 1.2, XR240_I
+        )
+    )
     prev = "bus-b1"
 
     # B2: kabel XRUHAKXS 240 → RS-1 (rozdzielnica sieciowa)
     g.add_node(_mk_pq("bus-b2", "RS-1"))
-    g.add_branch(_mk_line("line-b2", "Odcinek B2 kabel", prev, "bus-b2", XR240_R, XR240_X, XR240_B, 0.8, XR240_I))
+    g.add_branch(
+        _mk_line(
+            "line-b2", "Odcinek B2 kabel", prev, "bus-b2", XR240_R, XR240_X, XR240_B, 0.8, XR240_I
+        )
+    )
     prev = "bus-b2"
 
     # B3: przejscie OHL↔kabel (mufa) + OHL AFL-6 70 → Stacja 11 (630 kVA)
     g.add_node(_mk_pq("bus-b3-mufa", "Mufa B3"))
     # Krotki odcinek kablowy do mufy
-    g.add_branch(_mk_line("line-b3-cable", "Odcinek B3 kabel->mufa", prev, "bus-b3-mufa", XR240_R, XR240_X, XR240_B, 0.05, XR240_I))
+    g.add_branch(
+        _mk_line(
+            "line-b3-cable",
+            "Odcinek B3 kabel->mufa",
+            prev,
+            "bus-b3-mufa",
+            XR240_R,
+            XR240_X,
+            XR240_B,
+            0.05,
+            XR240_I,
+        )
+    )
     # OHL od mufy
     g.add_node(_mk_pq("bus-b3", "Stacja 11 wejscie"))
-    g.add_branch(_mk_line("line-b3", "Odcinek B3 OHL", "bus-b3-mufa", "bus-b3", AFL70_R, AFL70_X, AFL70_B, 5.0, AFL70_I))
+    g.add_branch(
+        _mk_line(
+            "line-b3",
+            "Odcinek B3 OHL",
+            "bus-b3-mufa",
+            "bus-b3",
+            AFL70_R,
+            AFL70_X,
+            AFL70_B,
+            5.0,
+            AFL70_I,
+        )
+    )
     _add_station(g, "st11", "Stacja 11", "bus-b3", StationType.TRANSFORMER, 0.630, "Dyn11")
     prev = "bus-b3"
 
     # B4: AFL-6 70 → rozgalezienie → Stacja 12 (400 kVA)
     g.add_node(_mk_pq("bus-b4", "Rozgalezienie B4"))
-    g.add_branch(_mk_line("line-b4", "Odcinek B4", prev, "bus-b4", AFL70_R, AFL70_X, AFL70_B, 3.5, AFL70_I))
+    g.add_branch(
+        _mk_line("line-b4", "Odcinek B4", prev, "bus-b4", AFL70_R, AFL70_X, AFL70_B, 3.5, AFL70_I)
+    )
     _add_station(g, "st12", "Stacja 12", "bus-b4", StationType.TRANSFORMER, 0.400, "Dyn11")
     prev = "bus-b4"
 
     # B5: AFL-6 50 → Stacja 13 (250 kVA)
     g.add_node(_mk_pq("bus-b5", "Stacja 13 wejscie"))
-    g.add_branch(_mk_line("line-b5", "Odcinek B5", prev, "bus-b5", AFL50_R, AFL50_X, AFL50_B, 4.0, AFL50_I))
+    g.add_branch(
+        _mk_line("line-b5", "Odcinek B5", prev, "bus-b5", AFL50_R, AFL50_X, AFL50_B, 4.0, AFL50_I)
+    )
     _add_station(g, "st13", "Stacja 13", "bus-b5", StationType.TRANSFORMER, 0.250, "Dyn11")
     prev = "bus-b5"
 
     # B6: AFL-6 50 → Reklozer R1
     g.add_node(_mk_pq("bus-b6", "Reklozer R1"))
-    g.add_branch(_mk_line("line-b6", "Odcinek B6", prev, "bus-b6", AFL50_R, AFL50_X, AFL50_B, 2.5, AFL50_I))
+    g.add_branch(
+        _mk_line("line-b6", "Odcinek B6", prev, "bus-b6", AFL50_R, AFL50_X, AFL50_B, 2.5, AFL50_I)
+    )
     g.add_switch(_mk_sw("sw-recloser-b6", "Reklozer R1", prev, "bus-b6", SwitchType.RECLOSER))
     prev = "bus-b6"
 
     # B7: AFL-6 50 → Stacja 14 (400 kVA)
     g.add_node(_mk_pq("bus-b7", "Stacja 14 wejscie"))
-    g.add_branch(_mk_line("line-b7", "Odcinek B7", prev, "bus-b7", AFL50_R, AFL50_X, AFL50_B, 3.0, AFL50_I))
+    g.add_branch(
+        _mk_line("line-b7", "Odcinek B7", prev, "bus-b7", AFL50_R, AFL50_X, AFL50_B, 3.0, AFL50_I)
+    )
     _add_station(g, "st14", "Stacja 14", "bus-b7", StationType.TRANSFORMER, 0.400, "Dyn11")
     prev = "bus-b7"
 
     # B8: AFL-6 35 → Stacja 15 (100 kVA) — punkt NO
     g.add_node(_mk_pq("bus-b8", "Stacja 15 wejscie / punkt NO"))
-    g.add_branch(_mk_line("line-b8", "Odcinek B8", prev, "bus-b8", AFL35_R, AFL35_X, AFL35_B, 2.0, AFL35_I))
+    g.add_branch(
+        _mk_line("line-b8", "Odcinek B8", prev, "bus-b8", AFL35_R, AFL35_X, AFL35_B, 2.0, AFL35_I)
+    )
     _add_station(g, "st15", "Stacja 15", "bus-b8", StationType.TRANSFORMER, 0.100, "Dyn11")
 
     # Ring: B8 → bus-bay-e (sekcja II) — lacznik NO
     g.add_node(_mk_pq("bus-b9", "Odcinek powrotny B9"))
-    g.add_branch(_mk_line("line-b9", "Odcinek B9 (ring)", "bus-b8", "bus-b9", AFL35_R, AFL35_X, AFL35_B, 1.5, AFL35_I))
-    g.add_switch(_mk_sw(
-        "sw-no-ring", "Lacznik NO ring B",
-        "bus-b9", "bus-bay-e",
-        st=SwitchType.LOAD_SWITCH,
-        state=SwitchState.OPEN,
-        rated_i=400.0,
-    ))
+    g.add_branch(
+        _mk_line(
+            "line-b9",
+            "Odcinek B9 (ring)",
+            "bus-b8",
+            "bus-b9",
+            AFL35_R,
+            AFL35_X,
+            AFL35_B,
+            1.5,
+            AFL35_I,
+        )
+    )
+    g.add_switch(
+        _mk_sw(
+            "sw-no-ring",
+            "Lacznik NO ring B",
+            "bus-b9",
+            "bus-bay-e",
+            st=SwitchType.LOAD_SWITCH,
+            state=SwitchState.OPEN,
+            rated_i=400.0,
+        )
+    )
 
     # Sub-branch od B4
     # B10: AFL-6 50 → Stacja 16 (160 kVA)
     g.add_node(_mk_pq("bus-b10", "Stacja 16 wejscie"))
-    g.add_branch(_mk_line("line-b10", "Odcinek B10 (sub-branch)", "bus-b4", "bus-b10", AFL50_R, AFL50_X, AFL50_B, 2.0, AFL50_I))
+    g.add_branch(
+        _mk_line(
+            "line-b10",
+            "Odcinek B10 (sub-branch)",
+            "bus-b4",
+            "bus-b10",
+            AFL50_R,
+            AFL50_X,
+            AFL50_B,
+            2.0,
+            AFL50_I,
+        )
+    )
     _add_station(g, "st16", "Stacja 16", "bus-b10", StationType.TRANSFORMER, 0.160, "Dyn11")
 
 
@@ -438,79 +592,139 @@ def _build_magistrala_c(g: NetworkGraph) -> None:
 
     # C1: kabel XRUHAKXS 240 → RS-2
     g.add_node(_mk_pq("bus-c1", "RS-2"))
-    g.add_branch(_mk_line("line-c1", "Odcinek C1 kabel", prev, "bus-c1", XR240_R, XR240_X, XR240_B, 2.0, XR240_I))
+    g.add_branch(
+        _mk_line(
+            "line-c1", "Odcinek C1 kabel", prev, "bus-c1", XR240_R, XR240_X, XR240_B, 2.0, XR240_I
+        )
+    )
     prev = "bus-c1"
 
     # C2: kabel XRUHAKXS 120 → Stacja 17 (630 kVA, przemyslowa)
     g.add_node(_mk_pq("bus-c2", "Stacja 17 wejscie"))
-    g.add_branch(_mk_line("line-c2", "Odcinek C2 kabel", prev, "bus-c2", XR120_R, XR120_X, XR120_B, 1.5, XR120_I))
+    g.add_branch(
+        _mk_line(
+            "line-c2", "Odcinek C2 kabel", prev, "bus-c2", XR120_R, XR120_X, XR120_B, 1.5, XR120_I
+        )
+    )
     _add_station(g, "st17", "Stacja 17", "bus-c2", StationType.TRANSFORMER, 0.630, "Dyn11")
     prev = "bus-c2"
 
     # C3: kabel XRUHAKXS 120 → Stacja 18 (400 kVA)
     g.add_node(_mk_pq("bus-c3", "Stacja 18 wejscie"))
-    g.add_branch(_mk_line("line-c3", "Odcinek C3 kabel", prev, "bus-c3", XR120_R, XR120_X, XR120_B, 1.0, XR120_I))
+    g.add_branch(
+        _mk_line(
+            "line-c3", "Odcinek C3 kabel", prev, "bus-c3", XR120_R, XR120_X, XR120_B, 1.0, XR120_I
+        )
+    )
     _add_station(g, "st18", "Stacja 18", "bus-c3", StationType.TRANSFORMER, 0.400, "Dyn11")
     prev = "bus-c3"
 
     # C4: kabel XRUHAKXS 120 → odgalezienie OZE
     g.add_node(_mk_pq("bus-c4", "Odgalezienie OZE"))
-    g.add_branch(_mk_line("line-c4", "Odcinek C4 kabel", prev, "bus-c4", XR120_R, XR120_X, XR120_B, 2.5, XR120_I))
+    g.add_branch(
+        _mk_line(
+            "line-c4", "Odcinek C4 kabel", prev, "bus-c4", XR120_R, XR120_X, XR120_B, 2.5, XR120_I
+        )
+    )
     prev_oze = "bus-c4"
 
     # C5: kabel → Farma PV 2 MW
     g.add_node(_mk_pq("bus-c5-pv", "Farma PV 2 MW"))
-    g.add_branch(_mk_line("line-c5", "Odcinek C5 kabel OZE", prev_oze, "bus-c5-pv", XR120_R, XR120_X, XR120_B, 0.5, XR120_I))
-    g.add_inverter_source(InverterSource(
-        id="inv-pv-2mw",
-        name="Inwerter PV 2 MW",
-        node_id="bus-c5-pv",
-        converter_kind=ConverterKind.PV,
-        in_rated_a=77.0,  # 2 MW / (sqrt(3) * 15 kV)
-        k_sc=1.1,
-        contributes_negative_sequence=False,
-        contributes_zero_sequence=False,
-        in_service=True,
-    ))
+    g.add_branch(
+        _mk_line(
+            "line-c5",
+            "Odcinek C5 kabel OZE",
+            prev_oze,
+            "bus-c5-pv",
+            XR120_R,
+            XR120_X,
+            XR120_B,
+            0.5,
+            XR120_I,
+        )
+    )
+    g.add_inverter_source(
+        InverterSource(
+            id="inv-pv-2mw",
+            name="Inwerter PV 2 MW",
+            node_id="bus-c5-pv",
+            converter_kind=ConverterKind.PV,
+            in_rated_a=77.0,  # 2 MW / (sqrt(3) * 15 kV)
+            k_sc=1.1,
+            contributes_negative_sequence=False,
+            contributes_zero_sequence=False,
+            in_service=True,
+        )
+    )
 
     # C6: kabel → BESS 1 MW / 2 MWh
     g.add_node(_mk_pq("bus-c6-bess", "BESS 1 MW"))
-    g.add_branch(_mk_line("line-c6", "Odcinek C6 kabel BESS", prev_oze, "bus-c6-bess", XR120_R, XR120_X, XR120_B, 0.3, XR120_I))
-    g.add_inverter_source(InverterSource(
-        id="inv-bess-1mw",
-        name="Inwerter BESS 1 MW",
-        node_id="bus-c6-bess",
-        converter_kind=ConverterKind.BESS,
-        in_rated_a=38.5,  # 1 MW / (sqrt(3) * 15 kV)
-        k_sc=1.0,
-        contributes_negative_sequence=False,
-        contributes_zero_sequence=False,
-        in_service=True,
-    ))
+    g.add_branch(
+        _mk_line(
+            "line-c6",
+            "Odcinek C6 kabel BESS",
+            prev_oze,
+            "bus-c6-bess",
+            XR120_R,
+            XR120_X,
+            XR120_B,
+            0.3,
+            XR120_I,
+        )
+    )
+    g.add_inverter_source(
+        InverterSource(
+            id="inv-bess-1mw",
+            name="Inwerter BESS 1 MW",
+            node_id="bus-c6-bess",
+            converter_kind=ConverterKind.BESS,
+            in_rated_a=38.5,  # 1 MW / (sqrt(3) * 15 kV)
+            k_sc=1.0,
+            contributes_negative_sequence=False,
+            contributes_zero_sequence=False,
+            in_service=True,
+        )
+    )
 
     # Kontynuacja magistrali C od odgalezienia OZE
     prev = "bus-c4"
 
     # C7: kabel XRUHAKXS 120 → Stacja 19 (250 kVA)
     g.add_node(_mk_pq("bus-c7", "Stacja 19 wejscie"))
-    g.add_branch(_mk_line("line-c7", "Odcinek C7 kabel", prev, "bus-c7", XR120_R, XR120_X, XR120_B, 1.8, XR120_I))
+    g.add_branch(
+        _mk_line(
+            "line-c7", "Odcinek C7 kabel", prev, "bus-c7", XR120_R, XR120_X, XR120_B, 1.8, XR120_I
+        )
+    )
     _add_station(g, "st19", "Stacja 19", "bus-c7", StationType.TRANSFORMER, 0.250, "Dyn11")
     prev = "bus-c7"
 
     # C8: kabel XRUHAKXS 120 → punkt rezerwy (DS normalnie otwarty)
     g.add_node(_mk_pq("bus-c8", "Punkt rezerwy C8"))
-    g.add_branch(_mk_line("line-c8", "Odcinek C8 kabel", prev, "bus-c8", XR120_R, XR120_X, XR120_B, 2.0, XR120_I))
-    g.add_switch(_mk_sw(
-        "sw-rezerwa-c8", "DS rezerwa C8",
-        prev, "bus-c8",
-        st=SwitchType.DISCONNECTOR,
-        state=SwitchState.OPEN,
-    ))
+    g.add_branch(
+        _mk_line(
+            "line-c8", "Odcinek C8 kabel", prev, "bus-c8", XR120_R, XR120_X, XR120_B, 2.0, XR120_I
+        )
+    )
+    g.add_switch(
+        _mk_sw(
+            "sw-rezerwa-c8",
+            "DS rezerwa C8",
+            prev,
+            "bus-c8",
+            st=SwitchType.DISCONNECTOR,
+            state=SwitchState.OPEN,
+        )
+    )
     prev = "bus-c8"
 
     # C9: kabel XRUHAKXS 120 → Stacja 20 (160 kVA) — koncowa
     g.add_node(_mk_pq("bus-c9", "Stacja 20 wejscie"))
-    g.add_branch(_mk_line("line-c9", "Odcinek C9 kabel", prev, "bus-c9", XR120_R, XR120_X, XR120_B, 1.2, XR120_I))
+    g.add_branch(
+        _mk_line(
+            "line-c9", "Odcinek C9 kabel", prev, "bus-c9", XR120_R, XR120_X, XR120_B, 1.2, XR120_I
+        )
+    )
     _add_station(g, "st20", "Stacja 20", "bus-c9", StationType.TRANSFORMER, 0.160, "Dyn11")
 
 
@@ -527,17 +741,18 @@ def _add_station(
 
     nn_bus = f"bus-{station_id}-nn"
     tr_id = f"tr-{station_id}"
-    load_id = f"load-{station_id}"
 
     # Wezel nN w stacji
-    g.add_node(Node(
-        id=nn_bus,
-        name=f"{station_name} szyna nN",
-        node_type=NodeType.PQ,
-        voltage_level=UN_NN,
-        active_power=sn_kva_mva * 0.85,  # cos_phi=0.85 typowy
-        reactive_power=sn_kva_mva * 0.53,  # sin(arccos(0.85)) ≈ 0.527
-    ))
+    g.add_node(
+        Node(
+            id=nn_bus,
+            name=f"{station_name} szyna nN",
+            node_type=NodeType.PQ,
+            voltage_level=UN_NN,
+            active_power=sn_kva_mva * 0.85,  # cos_phi=0.85 typowy
+            reactive_power=sn_kva_mva * 0.53,  # sin(arccos(0.85)) ≈ 0.527
+        )
+    )
 
     # Transformator SN/nN
     # uk% zalezy od mocy: 4% (do 160 kVA), 4.5% (250-400 kVA), 5% (630 kVA), 6% (1000 kVA)
@@ -554,25 +769,33 @@ def _add_station(
         uk = 6.0
         pk = sn_kva_mva * 1000 * 0.011
 
-    g.add_branch(_mk_trafo(
-        tr_id, f"{station_name} TR {int(sn_kva_mva * 1000)} kVA",
-        entry_bus, nn_bus,
-        sn_mva=sn_kva_mva,
-        uhv=UN_SN, ulv=UN_NN,
-        uk_pct=uk, pk_kw=pk,
-        vg=vector_group,
-    ))
+    g.add_branch(
+        _mk_trafo(
+            tr_id,
+            f"{station_name} TR {int(sn_kva_mva * 1000)} kVA",
+            entry_bus,
+            nn_bus,
+            sn_mva=sn_kva_mva,
+            uhv=UN_SN,
+            ulv=UN_NN,
+            uk_pct=uk,
+            pk_kw=pk,
+            vg=vector_group,
+        )
+    )
 
     # Stacja logiczna
-    g.add_station(Station(
-        id=f"station-{station_id}",
-        name=station_name,
-        station_type=station_type,
-        voltage_level_kv=UN_SN,
-        bus_ids=[entry_bus, nn_bus],
-        branch_ids=[tr_id],
-        switch_ids=[],
-    ))
+    g.add_station(
+        Station(
+            id=f"station-{station_id}",
+            name=station_name,
+            station_type=station_type,
+            voltage_level_kv=UN_SN,
+            bus_ids=[entry_bus, nn_bus],
+            branch_ids=[tr_id],
+            switch_ids=[],
+        )
+    )
 
 
 # =============================================================================

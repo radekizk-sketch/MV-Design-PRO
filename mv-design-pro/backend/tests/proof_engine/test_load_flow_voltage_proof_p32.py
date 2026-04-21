@@ -5,7 +5,6 @@ from datetime import datetime
 from uuid import UUID
 
 import pytest
-
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.proof_generator import (
     LoadFlowBusInput,

@@ -2,7 +2,7 @@
  * FIX-03 — Results Filters Component
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Filterable tables
+ * - ui_canonical_parity.md: Filterable tables
  * - wizard_screens.md: RESULT_VIEW mode
  * - 100% Polish UI
  *

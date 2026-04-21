@@ -2,7 +2,7 @@
  * FIX-03 — Results Table Component
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Deterministic sorting, filterable tables
+ * - ui_canonical_parity.md: Deterministic sorting, filterable tables
  * - wizard_screens.md: RESULT_VIEW mode
  * - 100% Polish UI
  *

@@ -1,9 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from contextlib import AbstractContextManager
-from typing import Callable
-
-from sqlalchemy.orm import Session, sessionmaker
 
 from infrastructure.persistence.repositories.analysis_run_index_repository import (
     AnalysisRunIndexRepository,
@@ -23,9 +21,10 @@ from infrastructure.persistence.repositories.network_wizard_repository import (
 )
 from infrastructure.persistence.repositories.project_repository import ProjectRepository
 from infrastructure.persistence.repositories.result_repository import ResultRepository
-from infrastructure.persistence.repositories.snapshot_repository import SnapshotRepository
 from infrastructure.persistence.repositories.sld_repository import SldRepository
+from infrastructure.persistence.repositories.snapshot_repository import SnapshotRepository
 from infrastructure.persistence.repositories.study_run_repository import StudyRunRepository
+from sqlalchemy.orm import Session, sessionmaker
 
 
 class UnitOfWork(AbstractContextManager["UnitOfWork"]):
@@ -52,7 +51,7 @@ class UnitOfWork(AbstractContextManager["UnitOfWork"]):
         self.design_proposals: DesignProposalRepository | None = None
         self.design_evidence: DesignEvidenceRepository | None = None
 
-    def __enter__(self) -> "UnitOfWork":
+    def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
         self.projects = ProjectRepository(self.session)
         self.network = NetworkRepository(self.session)

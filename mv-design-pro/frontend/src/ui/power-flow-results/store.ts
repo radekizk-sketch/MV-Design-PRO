@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SYSTEM_SPEC.md: READ-ONLY result display, no physics
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic result tables
+ * - ui_canonical_parity.md: Deterministic result tables
  * - sld_rules.md: Overlay as separate layer
  *
  * STATE MANAGEMENT:

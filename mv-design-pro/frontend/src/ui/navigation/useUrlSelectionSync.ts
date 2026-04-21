@@ -2,7 +2,7 @@
  * URL Selection Sync Hook — NAVIGATION_SELECTOR_UI
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § A.3: URL reflects selection state
+ * - ui_canonical_parity.md § A.3: URL reflects selection state
  * - UI_CORE_ARCHITECTURE.md § 10.3: Selection synchronization
  *
  * BINDING: Bidirectional sync between Selection Store and URL.

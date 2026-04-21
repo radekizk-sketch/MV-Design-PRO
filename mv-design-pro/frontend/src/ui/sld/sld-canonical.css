@@ -1,5 +1,5 @@
 /**
- * SLD CANONICAL STYLESHEET — ABB / IEC 61082 / ETAP / DIgSILENT
+ * SLD CANONICAL STYLESHEET — ABB / IEC 61082 / CANONICAL / DIgSILENT
  *
  * Professional industrial SLD typography and visual classes.
  * Imported once in SLDViewCanvas — applies to all canonical layers.
@@ -16,7 +16,7 @@
  *
  * RULES:
  * - All sizes in px (no rem/em — SVG coordinate space)
- * - All colors reference ABB/ETAP voltage palette
+ * - All colors reference ABB/CANONICAL voltage palette
  * - No !important — specificity via data-sld-role selectors
  */
 
@@ -173,7 +173,7 @@
    § 5 SYMBOL HOVER / INTERACTIVE
    ========================================================================== */
 
-[data-etap-symbol]:hover {
+[data-canonical-symbol]:hover {
   filter: brightness(1.06);
   cursor: pointer;
 }

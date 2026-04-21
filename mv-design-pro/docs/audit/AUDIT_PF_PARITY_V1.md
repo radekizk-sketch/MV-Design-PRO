@@ -161,7 +161,7 @@
 | Docs | SYSTEM_SPEC.md | **DONE** | 1038 linii, kanoniczny | **PRZEWAGA** |
 | Docs | AGENTS.md | **DONE** | 15 KB, role zdefiniowane | **PRZEWAGA** |
 | Docs | PLANS.md | **DONE** | 148 KB, wszystkie ExecPlany | **PRZEWAGA** |
-| Docs | POWERFACTORY_COMPLIANCE.md | **DONE** | 1065 linii, checklisty | **PRZEWAGA** |
+| Docs | CANONICAL_COMPLIANCE.md | **DONE** | 1065 linii, checklisty | **PRZEWAGA** |
 | Docs | Proof Engine docs (P11) | **DONE** | 14 plików w `docs/proof_engine/` | **PRZEWAGA** |
 | Docs | UI contracts | **DONE** | 18 plików w `docs/ui/` | **PRZEWAGA** |
 
@@ -517,13 +517,13 @@ frontend/src/ui/sld-editor/SldEditor.tsx
 frontend/src/ui/project-tree/ProjectTree.tsx
 frontend/src/ui/data-manager/DataManager.tsx
 mv-design-pro/SYSTEM_SPEC.md
-mv-design-pro/POWERFACTORY_COMPLIANCE.md
+mv-design-pro/CANONICAL_COMPLIANCE.md
 ```
 
 ### H.2 Dokumenty referencyjne
 
 - SYSTEM_SPEC.md (1038 linii)
-- POWERFACTORY_COMPLIANCE.md (1065 linii)
+- CANONICAL_COMPLIANCE.md (1065 linii)
 - PLANS.md (148 KB)
 - docs/proof_engine/*.md (14 plików)
 - docs/ui/*.md (18 plików)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import asdict
-from typing import Iterable
 from uuid import UUID
 
 from application.study_scenario.models import Run, Scenario, Snapshot, Study
@@ -63,9 +63,7 @@ class StudyScenarioRepository:
 
     def list_scenarios(self, study_id: UUID) -> list[Scenario]:
         scenarios = [
-            scenario
-            for scenario in self._scenarios.values()
-            if scenario.study_id == study_id
+            scenario for scenario in self._scenarios.values() if scenario.study_id == study_id
         ]
         return sorted(
             scenarios,
@@ -81,7 +79,9 @@ class StudyScenarioRepository:
         return sorted(runs, key=lambda run: (run.created_at, run.run_id))
 
     def list_snapshots(self) -> list[Snapshot]:
-        return sorted(self._snapshots.values(), key=lambda snap: (snap.created_at, snap.snapshot_id))
+        return sorted(
+            self._snapshots.values(), key=lambda snap: (snap.created_at, snap.snapshot_id)
+        )
 
     def export_state(self) -> dict[str, list[dict]]:
         return {

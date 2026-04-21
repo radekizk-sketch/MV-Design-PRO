@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § D: Visual state encoding
- * - ETAP parity: energized vs de-energized visualization
+ * - CANONICAL parity: energized vs de-energized visualization
  *
  * ALGORITHM:
  * - BFS traversal from source nodes
@@ -33,7 +33,7 @@ export interface EnergizationState {
 
 /**
  * Source element types that provide energy to the network.
- * Per ETAP parity: utility_feeder, generator, pv, fw, bess
+ * Per CANONICAL parity: utility_feeder, generator, pv, fw, bess
  */
 const SOURCE_ELEMENT_NAMES = ['utility_feeder', 'generator', 'pv', 'fw', 'bess', 'grid', 'siec'];
 

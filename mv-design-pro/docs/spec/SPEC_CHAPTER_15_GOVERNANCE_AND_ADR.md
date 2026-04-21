@@ -1,4 +1,10 @@
-# Rozdział 15 — Governance, ADR, Zarządzanie Zmianą i Zatwierdzenia (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 15 — Governance, ADR, Zarządzanie Zmianą i Zatwierdzenia (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -263,3 +269,4 @@ AnalysisRun.id. TO-BE: odniesienia do ADR w metadanych.
 - [ ] CI: walidacja governance, wersjonowanie.
 - [ ] Inwarianty INV-GOV-01..08.
 - [ ] Decyzje #115–#120 zapisane w AUDIT_SPEC_VS_CODE.md.
+

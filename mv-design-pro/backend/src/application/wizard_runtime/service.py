@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
 from uuid import UUID, uuid4, uuid5
 
 from application.network_model import (
@@ -93,9 +93,7 @@ class WizardService:
         failure_index: int | None = None
         for index, envelope in enumerate(actions):
             result = validate_action_envelope(envelope, staged_snapshot)
-            result = _enforce_parent_snapshot_match(
-                result, envelope, session.base_snapshot_id
-            )
+            result = _enforce_parent_snapshot_match(result, envelope, session.base_snapshot_id)
             action_results.append(result)
             if result.status != "accepted":
                 failure_result = result
@@ -105,9 +103,11 @@ class WizardService:
             staged_snapshot = apply_action_to_snapshot(staged_snapshot, accepted_action)
         if failure_result is not None and failure_index is not None:
             aborted_results = [
-                failure_result
-                if index == failure_index
-                else _batch_aborted_result(envelope, session.base_snapshot_id)
+                (
+                    failure_result
+                    if index == failure_index
+                    else _batch_aborted_result(envelope, session.base_snapshot_id)
+                )
                 for index, envelope in enumerate(actions)
             ]
             return BatchActionResult(
@@ -141,7 +141,7 @@ class WizardService:
             session.base_snapshot_id,
             session.action_ids,
         )
-        created_at = session.last_action_created_at or datetime.now(timezone.utc).isoformat()
+        created_at = session.last_action_created_at or datetime.now(UTC).isoformat()
         new_snapshot = create_network_snapshot(
             working_snapshot.graph,
             parent_snapshot_id=session.base_snapshot_id,
@@ -173,17 +173,13 @@ class WizardService:
 
     def _ensure_open(self, session: WizardSession) -> None:
         if session.status != WizardSessionStatus.OPEN:
-            raise SessionClosed(
-                f"Wizard session {session.wizard_session_id} is not open"
-            )
+            raise SessionClosed(f"Wizard session {session.wizard_session_id} is not open")
 
     def _load_base_snapshot(self, session: WizardSession) -> NetworkSnapshot:
         with self._uow_factory() as uow:
             snapshot = uow.snapshots.get_snapshot(session.base_snapshot_id)
         if snapshot is None:
-            raise NotFound(
-                f"Base snapshot {session.base_snapshot_id} not found for wizard session"
-            )
+            raise NotFound(f"Base snapshot {session.base_snapshot_id} not found for wizard session")
         return snapshot
 
 
@@ -223,9 +219,7 @@ def _enforce_parent_snapshot_match(
     )
 
 
-def _batch_aborted_result(
-    envelope: ActionEnvelope, parent_snapshot_id: str
-) -> ActionResult:
+def _batch_aborted_result(envelope: ActionEnvelope, parent_snapshot_id: str) -> ActionResult:
     return ActionResult(
         status="rejected",
         action_id=envelope.action_id,

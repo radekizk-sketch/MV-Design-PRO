@@ -28,8 +28,7 @@ MAPPING: operation -> expected modal
   update_element_parameters -> PropertyGrid (existing)
   add_nn_outgoing_field   -> NodeModal or dedicated
   add_nn_load             -> LoadDERModal (existing)
-  add_pv_inverter_nn      -> PVInverterModal (existing)
-  add_bess_inverter_nn    -> BESSInverterModal (existing)
+  add_converter_source    -> LoadDERModal / PVInverterModal / BESSInverterModal (existing)
   add_genset_nn           -> GensetModal (existing)
   add_ups_nn              -> UPSModal (existing)
   add_ct                  -> MeasurementModal (existing)
@@ -64,8 +63,7 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "assign_catalog_to_element": ["CatalogPicker", "Catalog"],
     "add_nn_outgoing_field": ["NodeModal", "OutgoingField", "NNField"],
     "add_nn_load": ["LoadDER", "LoadModal", "NNLoad"],
-    "add_pv_inverter_nn": ["PVInverter", "PV"],
-    "add_bess_inverter_nn": ["BESSInverter", "BESS"],
+    "add_converter_source": ["LoadDER", "PVInverter", "BESSInverter", "Converter"],
     "add_genset_nn": ["Genset", "GensetModal"],
     "add_ups_nn": ["UPS", "UPSModal"],
     "add_ct": ["Measurement", "CTModal"],

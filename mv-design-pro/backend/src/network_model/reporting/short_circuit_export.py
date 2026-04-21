@@ -56,9 +56,7 @@ def export_short_circuit_result_to_json(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Attempt JSON serialization with validation
     try:
@@ -69,9 +67,7 @@ def export_short_circuit_result_to_json(
             sort_keys=True,
         )
     except (TypeError, ValueError) as e:
-        raise ValueError(
-            f"Failed to serialize ShortCircuitResult to JSON: {e}"
-        ) from e
+        raise ValueError(f"Failed to serialize ShortCircuitResult to JSON: {e}") from e
 
     # Write to file with UTF-8 encoding
     output_path.write_text(json_content, encoding="utf-8")
@@ -116,8 +112,7 @@ def export_short_circuit_results_to_jsonl(
         data = result.to_dict()
         if not isinstance(data, dict):
             raise ValueError(
-                f"Record {idx}: result.to_dict() must return a dict, "
-                f"got {type(data).__name__}"
+                f"Record {idx}: result.to_dict() must return a dict, " f"got {type(data).__name__}"
             )
 
         # Attempt JSON serialization with validation

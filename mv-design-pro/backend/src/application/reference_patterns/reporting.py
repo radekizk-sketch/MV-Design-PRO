@@ -20,17 +20,16 @@ DETERMINIZM:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
 from typing import Any
 
-from .base import ReferencePatternResult, VERDICT_DESCRIPTIONS_PL
+from .base import VERDICT_DESCRIPTIONS_PL, ReferencePatternResult
 
 # DOCX availability check
 try:
     from docx import Document
-    from docx.shared import Pt, Inches, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Pt
 
     _DOCX_AVAILABLE = True
 except ImportError:
@@ -38,9 +37,9 @@ except ImportError:
 
 # PDF availability check
 try:
-    from reportlab.pdfgen import canvas
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -48,7 +47,6 @@ except ImportError:
 
 # Import DOCX determinism utilities
 from network_model.reporting.docx_determinism import make_docx_deterministic
-
 
 # =============================================================================
 # METADATA TYPES
@@ -93,7 +91,7 @@ def _format_value(value: Any) -> str:
             return f"{value:.2f}"
     if isinstance(value, bool):
         return "Tak" if value else "Nie"
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         return f"[{len(value)} elementów]"
     if isinstance(value, dict):
         return f"{{słownik, {len(value)} kluczy}}"
@@ -148,8 +146,7 @@ def export_reference_pattern_to_docx(
     """
     if not _DOCX_AVAILABLE:
         raise ImportError(
-            "python-docx jest wymagany do eksportu DOCX. "
-            "Zainstaluj: pip install python-docx"
+            "python-docx jest wymagany do eksportu DOCX. " "Zainstaluj: pip install python-docx"
         )
 
     output_path = Path(path)
@@ -277,9 +274,7 @@ def _add_docx_input_data_section(
     ]
 
     input_data = [
-        (k, result.artifacts.get(k))
-        for k in input_keys
-        if result.artifacts.get(k) is not None
+        (k, result.artifacts.get(k)) for k in input_keys if result.artifacts.get(k) is not None
     ]
 
     if not input_data:
@@ -370,9 +365,7 @@ def _add_docx_artifacts_section(
     ]
 
     artifacts_to_show = [
-        (k, result.artifacts.get(k))
-        for k in numeric_keys
-        if result.artifacts.get(k) is not None
+        (k, result.artifacts.get(k)) for k in numeric_keys if result.artifacts.get(k) is not None
     ]
 
     if not artifacts_to_show:
@@ -549,8 +542,7 @@ def export_reference_pattern_to_pdf(
     """
     if not _PDF_AVAILABLE:
         raise ImportError(
-            "reportlab jest wymagany do eksportu PDF. "
-            "Zainstaluj: pip install reportlab"
+            "reportlab jest wymagany do eksportu PDF. " "Zainstaluj: pip install reportlab"
         )
 
     output_path = Path(path)
@@ -584,18 +576,14 @@ def export_reference_pattern_to_pdf(
             return top_margin
         return y
 
-    def draw_text(
-        text: str, x: float, font_size: int = 10, bold: bool = False
-    ) -> None:
+    def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         nonlocal y
         font_name = "Helvetica-Bold" if bold else "Helvetica"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
 
-    def draw_wrapped_text(
-        text: str, x: float, max_width: float, font_size: int = 10
-    ) -> None:
+    def draw_wrapped_text(text: str, x: float, max_width: float, font_size: int = 10) -> None:
         nonlocal y
         c.setFont("Helvetica", font_size)
         words = text.split()

@@ -1,4 +1,10 @@
-# Rozdział 14 — Determinizm, Wersjonowanie, Reprodukowalność (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 14 — Determinizm, Wersjonowanie, Reprodukowalność (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -17,9 +23,9 @@
 
 Każde odstępstwo od tej zasady jest **BŁĘDEM SYSTEMOWYM**.
 
-### §14.0.2 Przewaga nad ETAP / PowerFactory
+### §14.0.2 Przewaga nad benchmark / benchmark
 
-| Aspekt | ETAP | PowerFactory | MV-DESIGN-PRO |
+| Aspekt | benchmark | benchmark | MV-DESIGN-PRO |
 |--------|------|--------------|---------------|
 | Determinizm solvera | Częściowy | Częściowy | ✓ PEŁNY (gwarantowany) |
 | Hash chain | ✗ | ✗ | ✓ (ENM→Result→Report→ProofPack) |
@@ -285,5 +291,6 @@ per test case i commit. Regresja = zmiana hash bez zmiany inputów.
 - [ ] Każdy wynik ma komplet hashy (hash_enm, case_hash, input_hash, result_hash, report_hash).
 - [ ] White Box umożliwia pełną reprodukcję krok po kroku.
 - [ ] CI: golden tests, hash regression, ProofPack archiwizacja.
-- [ ] Parytet ETAP osiągnięty, White Box = przewaga.
+- [ ] Parytet benchmark osiągnięty, White Box = przewaga.
 - [ ] Decyzje #108–#114 zapisane w AUDIT_SPEC_VS_CODE.md.
+

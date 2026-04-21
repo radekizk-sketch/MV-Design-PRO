@@ -18,65 +18,62 @@ NO CODENAMES IN UI/PROOF.
 """
 
 from .base import (
-    # Types
-    ReferenceVerdict,
     CheckStatus,
     # Result class
     ReferencePatternResult,
-    # Helpers
-    stable_sort_dict,
-    stable_json,
-    compare_results_deterministic,
+    # Types
+    ReferenceVerdict,
     build_check,
     build_trace_step,
+    compare_results_deterministic,
+    stable_json,
+    # Helpers
+    stable_sort_dict,
 )
-
 from .pattern_line_i_doubleprime_thermal_spz import (
+    NARROW_WINDOW_THRESHOLD,
+    PATTERN_A_FIXTURES_SUBDIR,
     # Constants
     PATTERN_ID,
     PATTERN_NAME_PL,
-    NARROW_WINDOW_THRESHOLD,
-    PATTERN_A_FIXTURES_SUBDIR,
     # Validator
     LineIDoublePrimeReferencePattern,
-    # Public API
-    run_pattern_a,
-    # Fixture utilities
-    load_fixture,
     fixture_to_input,
     get_pattern_a_fixtures_dir,
-)
-
-from .wzorzec_c_generacja_lokalna import (
-    # Constants
-    PATTERN_C_ID,
-    PATTERN_C_NAME_PL,
-    PATTERN_C_FIXTURES_SUBDIR,
-    PROG_INFORMACYJNY_PCT,
-    PROG_GRANICZNY_PCT,
-    PROG_REZERWY_SELEKTYWNOSCI_PCT,
-    # Types
-    TypGeneracji,
-    ZrodloGeneracji,
-    DaneZwarciowePunktuZabezpieczenia,
-    NastawyZabezpieczen,
-    WzorzecCInput,
-    # Validator
-    WzorzecCGeneracjaLokalna,
-    # Public API
-    run_pattern_c,
     # Fixture utilities
-    load_fixture_c,
-    fixture_to_input_c,
-    get_pattern_c_fixtures_dir,
+    load_fixture,
+    # Public API
+    run_pattern_a,
 )
-
 from .reporting import (
+    # Metadata type
+    ReportMetadata,
     # Report generators
     export_reference_pattern_to_docx,
     export_reference_pattern_to_pdf,
-    # Metadata type
-    ReportMetadata,
+)
+from .wzorzec_c_generacja_lokalna import (
+    PATTERN_C_FIXTURES_SUBDIR,
+    # Constants
+    PATTERN_C_ID,
+    PATTERN_C_NAME_PL,
+    PROG_GRANICZNY_PCT,
+    PROG_INFORMACYJNY_PCT,
+    PROG_REZERWY_SELEKTYWNOSCI_PCT,
+    DaneZwarciowePunktuZabezpieczenia,
+    NastawyZabezpieczen,
+    # Types
+    TypGeneracji,
+    # Validator
+    WzorzecCGeneracjaLokalna,
+    WzorzecCInput,
+    ZrodloGeneracji,
+    fixture_to_input_c,
+    get_pattern_c_fixtures_dir,
+    # Fixture utilities
+    load_fixture_c,
+    # Public API
+    run_pattern_c,
 )
 
 __all__ = [

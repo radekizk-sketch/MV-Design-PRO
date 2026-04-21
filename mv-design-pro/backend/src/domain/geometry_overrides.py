@@ -19,7 +19,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # =============================================================================
 # VERSION
 # =============================================================================
@@ -229,10 +228,7 @@ def validate_overrides(
                 )
                 continue
         elif item.scope == OverrideScopeV1.LABEL:
-            if (
-                item.element_id not in known_node_ids
-                and item.element_id not in known_block_ids
-            ):
+            if item.element_id not in known_node_ids and item.element_id not in known_block_ids:
                 errors.append(
                     OverrideValidationErrorV1(
                         element_id=item.element_id,

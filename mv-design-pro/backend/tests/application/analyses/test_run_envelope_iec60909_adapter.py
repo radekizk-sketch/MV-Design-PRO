@@ -3,6 +3,7 @@ from __future__ import annotations
 from application.analyses.iec60909.envelope_adapter import to_run_envelope
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+
 from tests.utils.determinism import assert_deterministic
 
 

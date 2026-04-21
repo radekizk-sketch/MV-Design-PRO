@@ -91,13 +91,19 @@ function getVisibleActions(
 describe('EngineeringContextMenu — §2 UX 10/10', () => {
   describe('Handler name mapping', () => {
     it('preserves acronyms in handler -> action ID conversion', () => {
-      expect(handlerNameToActionId('onAddNNFeeder')).toBe('add_nn_feeder');
-      expect(handlerNameToActionId('onAddPV')).toBe('add_pv');
-      expect(handlerNameToActionId('onAddBESS')).toBe('add_bess');
+      expect(handlerNameToActionId('onAddNnOutgoingField')).toBe('add_nn_outgoing_field');
+      expect(handlerNameToActionId('onAddPV')).toBe('add_converter_source');
+      expect(handlerNameToActionId('onAddBESS')).toBe('add_converter_source');
+      expect(handlerNameToActionId('onAddFW')).toBe('add_converter_source');
+      expect(handlerNameToActionId('onAddGenset')).toBe('add_genset_nn');
+      expect(handlerNameToActionId('onAddUPS')).toBe('add_ups_nn');
+      expect(handlerNameToActionId('onAddBreaker')).toBe('add_sn_bay');
+      expect(handlerNameToActionId('onAddSNFieldOUT')).toBe('add_sn_bay');
       expect(handlerNameToActionId('onAddCT')).toBe('add_ct');
       expect(handlerNameToActionId('onAddVT')).toBe('add_vt');
+      expect(handlerNameToActionId('onAddProtection')).toBe('add_relay');
       expect(handlerNameToActionId('onAssignTRCatalog')).toBe('assign_tr_catalog');
-      expect(handlerNameToActionId('onInsertSwitch')).toBe('insert_switch');
+      expect(handlerNameToActionId('onInsertSwitch')).toBe('insert_section_switch_sn');
     });
   });
 

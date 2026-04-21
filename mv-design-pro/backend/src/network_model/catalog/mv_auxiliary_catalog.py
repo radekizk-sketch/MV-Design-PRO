@@ -578,9 +578,7 @@ def get_all_ct_types() -> list[dict]:
         }
 
     source_reference = "Katalog CT MV-DESIGN-PRO / IEC 61869 / dane referencyjne"
-    verification_note = (
-        "Rekord referencyjny do doboru CT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
-    )
+    verification_note = "Rekord referencyjny do doboru CT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
     return [
         {
             "id": "ct_50_1_0_5_5va_arteche",
@@ -806,9 +804,7 @@ def get_all_vt_types() -> list[dict]:
         }
 
     source_reference = "Katalog VT MV-DESIGN-PRO / IEC 61869 / dane referencyjne"
-    verification_note = (
-        "Rekord referencyjny do doboru VT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
-    )
+    verification_note = "Rekord referencyjny do doboru VT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
     return [
         {
             "id": "vt_10kv_100v_05_abb",
@@ -975,12 +971,8 @@ def get_all_protection_device_types() -> list[dict]:
 
     abb_source_reference = "ABB REX / dane referencyjne MV-DESIGN-PRO"
     etango_source_reference = "Elektrometal e2TANGO / dane referencyjne MV-DESIGN-PRO"
-    abb_note = (
-        "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta."
-    )
-    etango_note = (
-        "Rekord analityczny; zakresy i warianty wymagaja weryfikacji producenta przed uzyciem produkcyjnym."
-    )
+    abb_note = "Rekord czesciowo zweryfikowany; zakres funkcji i parametrow wymaga potwierdzenia w karcie producenta."
+    etango_note = "Rekord analityczny; zakresy i warianty wymagaja weryfikacji producenta przed uzyciem produkcyjnym."
     return [
         {
             "id": "ACME_REX500_v1",

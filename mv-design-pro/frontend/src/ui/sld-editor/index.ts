@@ -2,7 +2,7 @@
  * P30b — SLD Editor Module Exports
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: ≥110% PowerFactory editing experience
+ * - ui_canonical_parity.md: ≥110% Canonical editing experience
  * - P30a: Full UNDO/REDO integration
  */
 

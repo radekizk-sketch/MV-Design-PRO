@@ -2,6 +2,7 @@ from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
 )
+from enm.domain_ops_models import InsertStationOnSegmentSNPayload
 
 
 def test_extract_catalog_binding_prefers_nested_transformer_contract_over_root_binding():
@@ -26,34 +27,88 @@ def test_extract_catalog_binding_prefers_nested_transformer_contract_over_root_b
     assert binding["catalog_item_id"] == "tr-sn-nn-15-04-630kva-dyn11"
 
 
-def test_extract_catalog_binding_supports_nested_pv_spec_catalog_item_id():
+def test_extract_catalog_binding_supports_canonical_converter_binding_for_pv():
     binding = extract_catalog_binding(
-        "add_pv_inverter_nn",
+        "add_converter_source",
         {
-            "pv_spec": {
+            "source_technology": "PV",
+            "catalog_binding": {
+                "catalog_namespace": "CONVERTER",
                 "catalog_item_id": "conv-pv-1mw-15kv",
-            }
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
         },
     )
 
     assert binding is not None
-    assert binding["catalog_namespace"] == "ZRODLO_NN_PV"
+    assert binding["catalog_namespace"] == "CONVERTER"
     assert binding["catalog_item_id"] == "conv-pv-1mw-15kv"
 
 
-def test_extract_catalog_binding_supports_nested_bess_spec_inverter_catalog_id():
-    binding = extract_catalog_binding(
-        "add_bess_inverter_nn",
+def test_extract_catalog_binding_rejects_legacy_nested_converter_payload_shapes():
+    pv_binding = extract_catalog_binding(
+        "add_converter_source",
         {
+            "source_technology": "PV",
+            "pv_spec": {
+                "catalog_item_id": "conv-pv-1mw-15kv",
+            },
+        },
+    )
+    bess_binding = extract_catalog_binding(
+        "add_converter_source",
+        {
+            "source_technology": "BESS",
             "bess_spec": {
                 "inverter_catalog_id": "conv-bess-1mw-2mwh-15kv",
-            }
+            },
+        },
+    )
+
+    assert pv_binding is None
+    assert bess_binding is None
+
+
+def test_extract_catalog_binding_supports_canonical_converter_source_binding():
+    binding = extract_catalog_binding(
+        "add_converter_source",
+        {
+            "source_technology": "FW",
+            "catalog_binding": {
+                "catalog_namespace": "CONVERTER",
+                "catalog_item_id": "conv-fw-3mw-15kv",
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
         },
     )
 
     assert binding is not None
-    assert binding["catalog_namespace"] == "ZRODLO_NN_BESS"
-    assert binding["catalog_item_id"] == "conv-bess-1mw-2mwh-15kv"
+    assert binding["catalog_namespace"] == "CONVERTER"
+    assert binding["catalog_item_id"] == "conv-fw-3mw-15kv"
+
+
+def test_extract_catalog_binding_supports_add_sn_bay_catalog_binding():
+    binding = extract_catalog_binding(
+        "add_sn_bay",
+        {
+            "bus_ref": "bus-sn-1",
+            "catalog_binding": {
+                "catalog_namespace": "APARAT_SN",
+                "catalog_item_id": "cb-24kv-1250a",
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
+        },
+    )
+
+    assert binding is not None
+    assert binding["catalog_namespace"] == "APARAT_SN"
+    assert binding["catalog_item_id"] == "cb-24kv-1250a"
 
 
 def test_validate_and_materialize_catalog_binding_accepts_segment_catalog_ref_without_explicit_binding():
@@ -84,3 +139,44 @@ def test_validate_and_materialize_catalog_binding_accepts_transformer_catalog_re
     assert error is None
     assert solver_fields["rated_power_mva"] is not None
     assert solver_fields["uk_percent"] is not None
+
+
+def test_insert_station_payload_accepts_topological_station_type():
+    payload = InsertStationOnSegmentSNPayload.model_validate(
+        {
+            "segment_id": "seg-1",
+            "insert_at": {"mode": "RATIO", "value": 0.5},
+            "station": {
+                "station_type": "branch",
+                "station_role": "STACJA_SN_NN",
+                "station_name": "ST-1",
+                "sn_voltage_kv": 15.0,
+                "nn_voltage_kv": 0.4,
+            },
+            "sn_fields": [
+                {"field_role": "LINIA_IN", "catalog_bindings": None},
+                {"field_role": "LINIA_OUT", "catalog_bindings": None},
+                {"field_role": "LINIA_ODG", "catalog_bindings": None},
+            ],
+            "transformer": {
+                "create": True,
+                "model_type": "DWU_UZWOJENIOWY",
+                "tap_changer_present": False,
+            },
+            "nn_block": {
+                "create_nn_bus": True,
+                "main_breaker_nn": True,
+                "outgoing_feeders_nn_count": 1,
+                "outgoing_feeders_nn": [
+                    {"feeder_role": "ODPLYW_NN", "catalog_bindings": None},
+                ],
+            },
+            "options": {
+                "create_transformer_field": True,
+                "create_default_fields": True,
+                "create_nn_bus": True,
+            },
+        }
+    )
+
+    assert payload.station.station_type == "branch"

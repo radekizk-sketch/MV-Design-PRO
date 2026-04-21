@@ -14,8 +14,20 @@ const BUS_TARGET: SelectedElement = {
   name: 'Szyna 001',
 };
 
+const SOURCE_TARGET: SelectedElement = {
+  id: 'source-001',
+  type: 'Source',
+  name: 'GPZ 001',
+};
+
+const TERMINAL_TARGET: SelectedElement = {
+  id: 'terminal-001',
+  type: 'Terminal',
+  name: 'Terminal pola GPZ',
+};
+
 describe('interactionController', () => {
-  it('zwraca tabelę statusów z delete_element ustawionym jako DZIALA', () => {
+  it('zwraca tabelÄ™ statusĂłw z delete_element ustawionym jako DZIALA', () => {
     const table = getToolStatusTable();
     const deleteRow = table.find((row) => row.tool === 'delete_element');
 
@@ -24,9 +36,10 @@ describe('interactionController', () => {
     expect(deleteRow?.canonicalOp).toBe('delete_element');
   });
 
-  it('blokuje akcję, gdy brak aktywnego case', () => {
-    const resolved = resolveToolAction('continue_trunk', TARGET, {
+  it('blokuje akcjÄ™, gdy brak aktywnego case', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', TARGET, {
       hasSource: true,
+      hasCanonicalTrunkStart: true,
       hasRing: false,
       activeCaseId: null,
     });
@@ -36,7 +49,7 @@ describe('interactionController', () => {
   });
 
   it('buduje minimalny kanoniczny kontekst dla insert_station_on_segment_sn', () => {
-    const resolved = resolveToolAction('insert_station', TARGET, {
+    const resolved = resolveToolAction('insert_station_on_segment_sn', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
@@ -80,8 +93,8 @@ describe('interactionController', () => {
     expect(resolved.payload).toEqual({ element_ref: 'seg-001' });
   });
 
-  it('pozwala otworzyć formularz add_gpz po kliknięciu płótna', () => {
-    const resolved = resolveToolAction('add_gpz', TARGET, {
+  it('pozwala otworzyÄ‡ formularz add_grid_source_sn po klikniÄ™ciu pĹ‚Ăłtna', () => {
+    const resolved = resolveToolAction('add_grid_source_sn', TARGET, {
       hasSource: false,
       hasRing: false,
       activeCaseId: 'case-1',
@@ -94,8 +107,8 @@ describe('interactionController', () => {
     expect(resolved.catalogNamespace).toBe('ZRODLO_SN');
   });
 
-  it('blokuje start_branch na porcie innym niż BRANCH_OUT', () => {
-    const resolved = resolveToolAction('start_branch', TARGET, {
+  it('blokuje start_branch na porcie innym niĹĽ BRANCH_OUT', () => {
+    const resolved = resolveToolAction('start_branch_segment_sn', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
@@ -105,8 +118,8 @@ describe('interactionController', () => {
     expect(resolved.reasonPl).toContain('BRANCH_OUT');
   });
 
-  it('buduje payload start_branch wyłącznie z kanonicznym from_ref', () => {
-    const resolved = resolveToolAction('start_branch', TARGET, {
+  it('buduje payload start_branch wyĹ‚Ä…cznie z kanonicznym from_ref', () => {
+    const resolved = resolveToolAction('start_branch_segment_sn', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
@@ -123,8 +136,8 @@ describe('interactionController', () => {
     expect(resolved.catalogNamespace).toBe('KABEL_SN');
   });
 
-  it('blokuje narzędzie wymagające elementu, gdy kliknięto płótno', () => {
-    const resolved = resolveToolAction('insert_station', TARGET, {
+  it('blokuje narzÄ™dzie wymagajÄ…ce elementu, gdy klikniÄ™to pĹ‚Ăłtno', () => {
+    const resolved = resolveToolAction('insert_station_on_segment_sn', TARGET, {
       hasSource: true,
       hasRing: false,
       activeCaseId: 'case-1',
@@ -134,7 +147,7 @@ describe('interactionController', () => {
     expect(resolved.reasonPl).toContain('elementu');
   });
 
-  it('obsługuje elastyczną kolejność: edycja -> delete -> blokada trunk bez poprawnego kontekstu', () => {
+  it('obsĹ‚uguje elastycznÄ… kolejnoĹ›Ä‡: edycja -> delete -> blokada trunk bez poprawnego kontekstu', () => {
     const edit = resolveToolAction('edit_properties', TARGET, {
       hasSource: true,
       hasRing: false,
@@ -145,8 +158,9 @@ describe('interactionController', () => {
       hasRing: false,
       activeCaseId: 'case-1',
     }, { kind: 'element' });
-    const trunk = resolveToolAction('continue_trunk', TARGET, {
+    const trunk = resolveToolAction('continue_trunk_segment_sn', TARGET, {
       hasSource: true,
+      hasCanonicalTrunkStart: true,
       hasRing: false,
       activeCaseId: 'case-1',
     }, { kind: 'element' });
@@ -162,21 +176,117 @@ describe('interactionController', () => {
     expect(trunk.reasonPl).toContain('Kontynuacja magistrali');
   });
 
-  it('pozwala otworzyć kontynuację magistrali z poprawnego kontekstu szyny', () => {
-    const resolved = resolveToolAction('continue_trunk', BUS_TARGET, {
+  it('blokuje kontynuacje magistrali z samej szyny GPZ', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', BUS_TARGET, {
       hasSource: true,
+      hasCanonicalTrunkStart: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'element' });
+
+    expect(resolved.mode).toBe('BLOCKED');
+    expect(resolved.reasonPl).toContain('Kontynuacja magistrali');
+  });
+
+  it('blokuje kontynuacje magistrali bezposrednio z obiektu zrodla GPZ', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', SOURCE_TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'element' });
+
+    expect(resolved.mode).toBe('BLOCKED');
+    expect(resolved.reasonPl).toContain('pola liniowego GPZ');
+  });
+
+  it('pozwala kontynuowac magistrale z portu TRUNK_OUT pola liniowego', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'port', portRole: 'TRUNK_OUT' });
+
+    expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.canonicalOp).toBe('continue_trunk_segment_sn');
+    expect(resolved.payload).toMatchObject({
+      source: 'sld_tool',
+      trunk_id: 'seg-001',
+      terminal_id: 'seg-001',
+      from_terminal_id: 'seg-001',
+    });
+  });
+
+  it('pozwala kontynuowac magistrale z terminala magistrali', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', TERMINAL_TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: true,
       hasRing: false,
       activeCaseId: 'case-1',
     }, { kind: 'element' });
 
     expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.canonicalOp).toBe('continue_trunk_segment_sn');
     expect(resolved.payload).toMatchObject({
       source: 'sld_tool',
-      trunk_id: 'bus-001',
-      terminal_id: 'bus-001',
-      from_terminal_id: 'bus-001',
+      trunk_id: 'terminal-001',
+      terminal_id: 'terminal-001',
+      from_terminal_id: 'terminal-001',
     });
-    expect(resolved.catalogRequired).toBe(true);
-    expect(resolved.catalogNamespace).toBe('KABEL_SN');
+  });
+
+  it('blokuje kontynuacje magistrali z portu innego niz TRUNK_OUT', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'port', portRole: 'BRANCH_OUT' });
+
+    expect(resolved.mode).toBe('BLOCKED');
+    expect(resolved.reasonPl).toContain('TRUNK_OUT');
+  });
+
+  it('blokuje continue_trunk bez jawnego portu pola GPZ albo otwartego terminala', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: false,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'port', portRole: 'TRUNK_OUT' });
+
+    expect(resolved.mode).toBe('BLOCKED');
+    expect(resolved.reasonPl).toContain('Najpierw utworz pole liniowe GPZ');
+  });
+  it('buduje kanoniczny payload add_converter_source dla PV i BESS', () => {
+    const pv = resolveToolAction('add_converter_source_pv', TARGET, {
+      hasSource: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'element' });
+    const bess = resolveToolAction('add_converter_source_bess', TARGET, {
+      hasSource: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'element' });
+
+    expect(pv.mode).toBe('DOMAIN_OP');
+    expect(pv.canonicalOp).toBe('add_converter_source');
+    expect(pv.payload).toMatchObject({
+      source: 'sld_tool',
+      element_ref: 'seg-001',
+      station_ref: 'seg-001',
+      node_ref: 'seg-001',
+      source_technology: 'PV',
+      connection_variant: 'nn_side',
+    });
+
+    expect(bess.mode).toBe('DOMAIN_OP');
+    expect(bess.canonicalOp).toBe('add_converter_source');
+    expect(bess.payload).toMatchObject({
+      source_technology: 'BESS',
+      connection_variant: 'nn_side',
+    });
   });
 });

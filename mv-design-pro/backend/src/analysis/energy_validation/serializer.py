@@ -12,7 +12,6 @@ from analysis.energy_validation.models import (
     EnergyValidationView,
 )
 
-
 STATUS_ORDER: dict[EnergyValidationStatus, int] = {
     EnergyValidationStatus.FAIL: 0,
     EnergyValidationStatus.WARNING: 1,
@@ -26,19 +25,11 @@ def item_to_dict(item: EnergyValidationItem) -> dict[str, Any]:
         "check_type": item.check_type.value,
         "target_id": item.target_id,
         "target_name": item.target_name,
-        "observed_value": (
-            float(item.observed_value) if item.observed_value is not None else None
-        ),
+        "observed_value": (float(item.observed_value) if item.observed_value is not None else None),
         "unit": item.unit,
-        "limit_warn": (
-            float(item.limit_warn) if item.limit_warn is not None else None
-        ),
-        "limit_fail": (
-            float(item.limit_fail) if item.limit_fail is not None else None
-        ),
-        "margin_pct": (
-            float(item.margin_pct) if item.margin_pct is not None else None
-        ),
+        "limit_warn": (float(item.limit_warn) if item.limit_warn is not None else None),
+        "limit_fail": (float(item.limit_fail) if item.limit_fail is not None else None),
+        "margin_pct": (float(item.margin_pct) if item.margin_pct is not None else None),
         "status": item.status.value,
         "why_pl": item.why_pl,
     }

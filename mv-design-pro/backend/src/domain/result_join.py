@@ -29,7 +29,6 @@ from typing import Any
 
 from domain.element_ref import ElementRefV1, ElementTypeV1
 
-
 # ---------------------------------------------------------------------------
 # SLD Overlay Token (output for SLD renderer)
 # ---------------------------------------------------------------------------
@@ -181,13 +180,15 @@ def join_results(
         ref = snapshot_element_ids.get(element_ref)
         if ref is None:
             orphan_ids.append(element_ref)
-            sld_tokens.append(SldOverlayTokenV1(
-                element_id=element_ref,
-                element_type=ElementTypeV1.NODE,
-                token_kind=OverlayTokenKindV1.ORPHAN_RESULT,
-                label_pl=f"Wynik bez elementu w modelu: {element_ref}",
-                severity="WARNING",
-            ))
+            sld_tokens.append(
+                SldOverlayTokenV1(
+                    element_id=element_ref,
+                    element_type=ElementTypeV1.NODE,
+                    token_kind=OverlayTokenKindV1.ORPHAN_RESULT,
+                    label_pl=f"Wynik bez elementu w modelu: {element_ref}",
+                    severity="WARNING",
+                )
+            )
             continue
 
         matched_snapshot_ids.add(element_ref)
@@ -197,29 +198,30 @@ def join_results(
             token_kind = _classify_token_kind(key, analysis_type)
             unit = _infer_unit(key)
 
-            sld_tokens.append(SldOverlayTokenV1(
-                element_id=element_ref,
-                element_type=ref.element_type,
-                token_kind=token_kind,
-                label_pl=_label_pl(key),
-                value=val,
-                unit=unit,
-            ))
+            sld_tokens.append(
+                SldOverlayTokenV1(
+                    element_id=element_ref,
+                    element_type=ref.element_type,
+                    token_kind=token_kind,
+                    label_pl=_label_pl(key),
+                    value=val,
+                    unit=unit,
+                )
+            )
 
-            inspector_facts.append(InspectorFactV1(
-                element_id=element_ref,
-                element_type=ref.element_type,
-                key=key,
-                label_pl=_label_pl(key),
-                value=val,
-                unit=unit,
-                source=InspectorFactSourceV1.SOLVER,
-            ))
+            inspector_facts.append(
+                InspectorFactV1(
+                    element_id=element_ref,
+                    element_type=ref.element_type,
+                    key=key,
+                    label_pl=_label_pl(key),
+                    value=val,
+                    unit=unit,
+                    source=InspectorFactSourceV1.SOLVER,
+                )
+            )
 
-    unmatched = sorted(
-        eid for eid in snapshot_element_ids
-        if eid not in matched_snapshot_ids
-    )
+    unmatched = sorted(eid for eid in snapshot_element_ids if eid not in matched_snapshot_ids)
 
     sorted_tokens = tuple(sorted(sld_tokens, key=lambda t: (t.element_id, t.token_kind.value)))
     sorted_facts = tuple(sorted(inspector_facts, key=lambda f: (f.element_id, f.key)))

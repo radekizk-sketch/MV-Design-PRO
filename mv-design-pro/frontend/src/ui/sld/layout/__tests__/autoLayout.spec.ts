@@ -14,8 +14,8 @@
  * 5. Determinism → dwa uruchomienia identyczne
  *
  * CANONICAL ALIGNMENT:
- * - sldEtapStyle.ts: ETAP_GEOMETRY tokens
- * - ETAP software visual standards
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY tokens
+ * - CANONICAL software visual standards
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';

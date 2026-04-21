@@ -17,10 +17,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
-
 from domain.execution import ExecutionAnalysisType
 from domain.study_case import StudyCaseConfig
 from network_model.core.graph import NetworkGraph
@@ -136,9 +134,7 @@ def execute_short_circuit(
             )
 
         else:
-            raise ShortCircuitBindingError(
-                f"Nieobsługiwany typ analizy: {analysis_type.value}"
-            )
+            raise ShortCircuitBindingError(f"Nieobsługiwany typ analizy: {analysis_type.value}")
 
     except (ValueError, ZeroDivisionError, np.linalg.LinAlgError) as exc:
         raise ShortCircuitBindingError(

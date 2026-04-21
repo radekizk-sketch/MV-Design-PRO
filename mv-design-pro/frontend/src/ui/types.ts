@@ -1,99 +1,106 @@
-/**
+﻿/**
  * UI Types for MV-DESIGN-PRO
  *
  * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
- * - powerfactory_ui_parity.md § B.2: Result freshness (NONE, FRESH, OUTDATED)
- * - sld_rules.md § A.2: Element types and symbol mapping
+ * - wizard_screens.md § 1.2: internal operating context compatibility layer
+ * - ui_canonical_parity.md Â§ B.2: Result freshness (NONE, FRESH, OUTDATED)
+ * - sld_rules.md Â§ A.2: Element types and symbol mapping
  *
  * These types are used across Property Grid, Context Menu, and Selection components.
  */
 
-/**
- * Operating mode (per wizard_screens.md § 1.2).
- * Controls what actions are allowed in the UI.
- */
-export type OperatingMode = 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
+import type {
+  FixActionSurfaceDescriptor,
+  WizardSurfaceStepId,
+} from '../types/fixActionSurface';
 
 /**
- * Result freshness status (per powerfactory_ui_parity.md § B.2).
+ * Internal operating context.
+ * Publiczny kanon V12.5.1 nie wystawia tych nazw do UI; sa zachowane
+ * wylacznie jako warstwa zgodnosci dla starszych reducerow i selektorow.
+ */
+export type OperatingMode = 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
+/**
+ * Result freshness status (per ui_canonical_parity.md Â§ B.2).
  */
 export type ResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
 
 /**
- * Element type in the network model — rozszerzenie A–AZ.
- * Maps 1:1 to SLD symbols (bijection per sld_rules.md § A.1).
+ * Element type in the network model â€” rozszerzenie Aâ€“AZ.
+ * Maps 1:1 to SLD symbols (bijection per sld_rules.md Â§ A.1).
  */
 export type ElementType =
-  // Istniejące typy SN (A–L)
+  // IstniejÄ…ce typy SN (Aâ€“L)
   | 'Bus'                    // A-B: Szyna SN / GPZ
-  | 'LineBranch'             // D-E: Segment magistrali/odgałęzienia
+  | 'LineBranch'             // D-E: Segment magistrali/odgaĹ‚Ä™zienia
   | 'TransformerBranch'      // L: Transformator SN/nN
-  | 'Switch'                 // I: Aparat SN (wyłącznik/rozłącznik)
-  | 'Source'                 // A: GPZ / Źródło SN
-  | 'Load'                   // S: Odbiór
-  | 'Generator'              // Istniejący typ generatora
+  | 'Switch'                 // I: Aparat SN (wyĹ‚Ä…cznik/rozĹ‚Ä…cznik)
+  | 'Source'                 // A: GPZ / ĹąrĂłdĹ‚o SN
+  | 'Load'                   // S: OdbiĂłr
+  | 'Generator'              // IstniejÄ…cy typ generatora
   | 'Measurement'            // K: CT SN / VT SN
-  | 'ProtectionAssignment'   // J: Przekaźnik SN
+  | 'ProtectionAssignment'   // J: PrzekaĹşnik SN
   // Nowe typy infrastruktury SN
   | 'Terminal'               // C: Terminal magistrali SN
   | 'PortBranch'             // F: Port BRANCH SN
   | 'Station'                // G: Stacja SN/nN (blok)
+  | 'BranchPole'             // G2: Slup rozgalezny SN
+  | 'ZKSN'                   // G3: ZKSN
   | 'BaySN'                  // H: Pole SN
-  | 'Relay'                  // J: Przekaźnik SN (logiczny)
-  | 'SecondaryLink'          // P: Połączenie wtórne (pierścień)
+  | 'Relay'                  // J: PrzekaĹşnik SN (logiczny)
+  | 'SecondaryLink'          // P: PoĹ‚Ä…czenie wtĂłrne (pierĹ›cieĹ„)
   | 'NOP'                    // Q: Punkt normalnie otwarty
-  // Typy nN (M–O, R–AP)
+  // Typy nN (Mâ€“O, Râ€“AP)
   | 'BusNN'                  // M: Szyna nN
-  | 'MainBreakerNN'          // N: Pole główne nN (wyłącznik główny)
-  | 'FeederNN'               // O: Odpływ nN (pole odpływowe)
+  | 'MainBreakerNN'          // N: Pole gĹ‚Ăłwne nN (wyĹ‚Ä…cznik gĹ‚Ăłwny)
+  | 'FeederNN'               // O: OdpĹ‚yw nN (pole odpĹ‚ywowe)
   | 'SegmentNN'              // R: Segment nN (odcinek linii/kabla)
-  | 'LoadNN'                 // S: Odbiór nN
+  | 'LoadNN'                 // S: OdbiĂłr nN
   | 'SwitchboardNN'          // T: Rozdzielnica nN
-  | 'SourceFieldNN'          // U: Pole źródłowe nN
-  // Źródła nN (V–Z)
+  | 'SourceFieldNN'          // U: Pole ĹşrĂłdĹ‚owe nN
+  // ĹąrĂłdĹ‚a nN (Vâ€“Z)
   | 'PVInverter'             // V: Falownik PV
   | 'BESSInverter'           // W: Falownik BESS
-  | 'EnergyStorage'          // X: Magazyn energii (moduł BESS)
-  | 'Genset'                 // Y: Zespół prądotwórczy / agregat
+  | 'EnergyStorage'          // X: Magazyn energii (moduĹ‚ BESS)
+  | 'Genset'                 // Y: ZespĂłĹ‚ prÄ…dotwĂłrczy / agregat
   | 'UPS'                    // Z: UPS
-  // Pomiary i zabezpieczenia nN (AA–AE)
+  // Pomiary i zabezpieczenia nN (AAâ€“AE)
   | 'EnergyMeter'            // AA: Licznik energii
-  | 'PowerQualityMeter'      // AB: Pomiar jakości energii
-  | 'SurgeArresterNN'        // AC: Ogranicznik przepięć nN
+  | 'PowerQualityMeter'      // AB: Pomiar jakoĹ›ci energii
+  | 'SurgeArresterNN'        // AC: Ogranicznik przepiÄ™Ä‡ nN
   | 'Earthing'               // AD: Uziemienie
-  | 'MeasurementNN'          // AE: Przekładnik nN (CT/VT)
-  // Infrastruktura szyn nN (AF–AR)
+  | 'MeasurementNN'          // AE: PrzekĹ‚adnik nN (CT/VT)
+  // Infrastruktura szyn nN (AFâ€“AR)
   | 'AuxBus'                 // AF: Szyna pomocnicza
-  | 'ConnectionPoint'        // AG: Punkt przyłączenia odbiorcy
-  | 'SwitchNN'               // AH: Urządzenie łączeniowe nN
+  | 'ConnectionPoint'        // AG: Punkt przyĹ‚Ä…czenia odbiorcy
+  | 'SwitchNN'               // AH: UrzÄ…dzenie Ĺ‚Ä…czeniowe nN
   | 'ProtectionNN'           // AI: Zabezpieczenie nN (logiczne)
-  | 'SourceController'       // AJ: Regulator/sterownik źródła
-  | 'InternalJunction'       // AK: Punkt wspólny w rozdzielnicy
-  | 'CableJointNN'           // AL: Złącze kablowe nN
-  | 'FaultCurrentLimiter'    // AM: Ogranicznik prądu zwarciowego
+  | 'SourceController'       // AJ: Regulator/sterownik ĹşrĂłdĹ‚a
+  | 'InternalJunction'       // AK: Punkt wspĂłlny w rozdzielnicy
+  | 'CableJointNN'           // AL: ZĹ‚Ä…cze kablowe nN
+  | 'FaultCurrentLimiter'    // AM: Ogranicznik prÄ…du zwarciowego
   | 'FilterCompensator'      // AN: Filtr/kompensator
-  | 'TelecontrolDevice'      // AO: Urządzenie komunikacyjne
+  | 'TelecontrolDevice'      // AO: UrzÄ…dzenie komunikacyjne
   | 'BusSectionNN'           // AP: Sekcja szyn nN
-  | 'BusCouplerNN'           // AQ: Sprzęgło szyn nN
-  | 'ReserveLink'            // AR: Zworka/łącznik rezerwowy nN
-  // Parametry logiczne źródeł (AS–AZ)
-  | 'SourceDisconnect'       // AS: Punkt odłączenia źródła
-  | 'PowerLimit'             // AT: Ograniczenie mocy źródła
-  | 'WorkProfile'            // AU: Profil pracy źródła
+  | 'BusCouplerNN'           // AQ: SprzÄ™gĹ‚o szyn nN
+  | 'ReserveLink'            // AR: Zworka/Ĺ‚Ä…cznik rezerwowy nN
+  // Parametry logiczne ĹşrĂłdeĹ‚ (ASâ€“AZ)
+  | 'SourceDisconnect'       // AS: Punkt odĹ‚Ä…czenia ĹşrĂłdĹ‚a
+  | 'PowerLimit'             // AT: Ograniczenie mocy ĹşrĂłdĹ‚a
+  | 'WorkProfile'            // AU: Profil pracy ĹşrĂłdĹ‚a
   | 'OperatingMode'          // AV: Tryb pracy
-  | 'ConnectionConstraints'  // AW: Ograniczenia przyłączeniowe
-  | 'MeteringBlock'          // AX: Układ pomiarowo-rozliczeniowy
-  | 'SyncPoint'              // AY: Punkt synchronizacji źródła
+  | 'ConnectionConstraints'  // AW: Ograniczenia przyĹ‚Ä…czeniowe
+  | 'MeteringBlock'          // AX: UkĹ‚ad pomiarowo-rozliczeniowy
+  | 'SyncPoint'              // AY: Punkt synchronizacji ĹşrĂłdĹ‚a
   | 'DescriptiveElement';    // AZ: Elementy opisowe
 
 /**
- * Switch state (per SYSTEM_SPEC.md § 2.4).
+ * Switch state (per SYSTEM_SPEC.md Â§ 2.4).
  */
 export type SwitchState = 'OPEN' | 'CLOSED';
 
 /**
- * Switch type (per sld_rules.md § A.2).
+ * Switch type (per sld_rules.md Â§ A.2).
  */
 export type SwitchType = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'FUSE';
 
@@ -139,7 +146,7 @@ export interface MultiSelection {
 
 /**
  * Property field definition for Property Grid.
- * Deterministic ordering per powerfactory_ui_parity.md § D.3.
+ * Deterministic ordering per ui_canonical_parity.md Â§ D.3.
  */
 export interface PropertyField {
   key: string;
@@ -161,7 +168,7 @@ export interface PropertyField {
 
 /**
  * Property section definition (grouped fields).
- * Sections appear in deterministic order per wizard_screens.md § 3.
+ * Sections appear in deterministic order per wizard_screens.md Â§ 3.
  */
 export interface PropertySection {
   id: string;
@@ -193,7 +200,7 @@ export type MultiEditFieldValue =
  * P30c: Draft state for Property Grid (Apply/Cancel).
  */
 export interface PropertyGridDraft {
-  /** Draft changes (field → new value) */
+  /** Draft changes (field â†’ new value) */
   changes: Map<string, unknown>;
   /** Has any unsaved changes */
   isDirty: boolean;
@@ -204,6 +211,7 @@ export interface PropertyGridDraft {
  */
 export interface ContextMenuAction {
   id: string;
+  actionKey?: string;
   label: string;
   icon?: string;
   enabled: boolean;
@@ -211,6 +219,7 @@ export interface ContextMenuAction {
   separator?: boolean;
   submenu?: ContextMenuAction[];
   handler?: () => void;
+  initialFormData?: Record<string, unknown>;
 }
 
 /**
@@ -309,7 +318,7 @@ export interface DataManagerColumn {
   sortable: boolean;
   width?: number;
   // P9.2: Inline editing metadata
-  editable?: boolean; // Can be edited inline (only in MODEL_EDIT, only instance fields)
+  editable?: boolean; // Can be edited inline only in writable model context, only for instance fields
   source?: 'instance' | 'type' | 'calculated'; // Source of the value
   enumOptions?: string[]; // For enum type fields
   validation?: (value: unknown) => string | null; // Inline validation function
@@ -341,7 +350,7 @@ export interface DataManagerFilter {
 
 /**
  * Column view preset types.
- * P9.1: PowerFactory-like column view presets.
+ * P9.1: Canonical-like column view presets.
  */
 export type ColumnViewPreset = 'BASIC' | 'TECHNICAL' | 'OPERATIONAL';
 
@@ -503,7 +512,7 @@ export interface IssueFilter {
 // ============================================================================
 
 /**
- * FixAction — deterministic fix suggestion (no mutation, no auto-fix).
+ * FixAction â€” deterministic fix suggestion (no mutation, no auto-fix).
  */
 export type FixActionType =
   | 'OPEN_MODAL'
@@ -514,8 +523,12 @@ export type FixActionType =
 export interface FixAction {
   action_type: FixActionType;
   element_ref: string | null;
-  modal_type: string | null;
+  modal_type?: string | null;
+  panel?: string | null;
+  step?: string | null;
+  focus?: string | null;
   payload_hint: Record<string, unknown> | null;
+  surface_descriptor?: FixActionSurfaceDescriptor | null;
 }
 
 /**
@@ -532,7 +545,8 @@ export interface ReadinessIssue {
   element_ref: string | null;
   element_refs: string[];
   message_pl: string;
-  wizard_step_hint: string;
+  wizard_step_hint: string | null;
+  wizard_step_id?: WizardSurfaceStepId | null;
   suggested_fix: string | null;
   fix_action: FixAction | null;
 }

@@ -5,13 +5,17 @@
  * - Matches backend DTOs from P20a power_flow_runs.py
  * - SYSTEM_SPEC.md: READ-ONLY result display
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic sorting
+ * - ui_canonical_parity.md: Deterministic sorting
  *
  * RULES (BINDING):
  * - These types are READ-ONLY views of backend data
  * - No physics calculations in frontend
  * - Polish labels for UI display
  */
+
+import type { AnalysisCaseContext, ExportArtifact } from '../shared/analysisCaseContext';
+import type { AnalysisInputMetadata } from '../results-inspector/analysisCaseContextView';
+import type { ExportPolicy } from '../results-inspector/types';
 
 // =============================================================================
 // Run Header
@@ -31,6 +35,11 @@ export interface PowerFlowRunHeader {
   input_hash: string;
   converged: boolean | null;
   iterations: number | null;
+  analysis_case_context?: AnalysisCaseContext | null;
+  proof_pack_ref?: string | null;
+  export_artifact?: ExportArtifact | null;
+  export_policy?: ExportPolicy | null;
+  input_metadata?: AnalysisInputMetadata | null;
 }
 
 /**

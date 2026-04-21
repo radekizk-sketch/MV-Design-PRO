@@ -18,9 +18,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
-
 from api.domain_ops_policy import (
     extract_catalog_binding,
     validate_and_materialize_catalog_binding,
@@ -30,12 +27,13 @@ from domain.canonical_operations import (
     resolve_operation_name,
     validate_operation_payload,
 )
+from fastapi import APIRouter, HTTPException
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
     validate_catalog_binding,
 )
-from network_model.catalog.readiness_checker import check_snapshot_readiness
 from network_model.catalog.types import CatalogBinding
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger("mv_design_pro.domain_ops")
 
@@ -51,7 +49,7 @@ class DomainOperationRequest(BaseModel):
 
     operation: str = Field(
         ...,
-        description="Canonical operation name (or alias)",
+        description="Kanoniczna nazwa operacji",
         examples=["continue_trunk_segment_sn"],
     )
     payload: dict[str, Any] = Field(
@@ -116,10 +114,9 @@ async def execute_domain_operation(
 ) -> DomainOperationResponse:
     """Execute a canonical domain operation.
 
-    Resolves aliases, validates payload, enforces catalog binding for
-    technical elements, and returns the operation result.
+    Waliduje payload, wymusza catalog binding dla elementów technicznych
+    i zwraca wynik operacji.
     """
-    # Resolve operation name
     resolved_name = resolve_operation_name(request.operation)
     spec = CANONICAL_OPERATIONS.get(resolved_name)
 
@@ -147,9 +144,7 @@ async def execute_domain_operation(
 
     # Enforce catalog binding for operations creating technical elements
     if spec.creates_elements:
-        policy_error, _ = validate_and_materialize_catalog_binding(
-            resolved_name, request.payload
-        )
+        policy_error, _ = validate_and_materialize_catalog_binding(resolved_name, request.payload)
         if policy_error:
             raise HTTPException(
                 status_code=422,
@@ -167,7 +162,7 @@ async def execute_domain_operation(
 
     # Process materialization if catalog binding present
     materialized_params: dict[str, Any] = {}
-    binding_data = _extract_catalog_binding(request.payload)
+    binding_data = extract_catalog_binding(resolved_name, request.payload)
     if binding_data:
         from network_model.catalog.repository import get_default_mv_catalog
 
@@ -181,9 +176,7 @@ async def execute_domain_operation(
                 status_code=422,
                 detail={
                     "code": mat_result.error_code or "catalog.materialization_failed",
-                    "message_pl": (
-                        mat_result.error_message_pl or "Błąd materializacji parametrów"
-                    ),
+                    "message_pl": (mat_result.error_message_pl or "Błąd materializacji parametrów"),
                 },
             )
 
@@ -288,11 +281,11 @@ def _infer_namespace(operation: str) -> str:
         "insert_station_on_segment_sn": "TRAFO_SN_NN",
         "add_transformer_sn_nn": "TRAFO_SN_NN",
         "add_nn_load": "OBCIAZENIE",
-        "add_pv_inverter_nn": "ZRODLO_NN_PV",
-        "add_bess_inverter_nn": "ZRODLO_NN_BESS",
+        "add_converter_source": "CONVERTER",
         "add_relay": "ZABEZPIECZENIE",
         "add_ct": "CT",
         "add_vt": "VT",
+        "add_sn_bay": "APARAT_SN",
         "add_nn_outgoing_field": "APARAT_NN",
         "insert_section_switch_sn": "APARAT_SN",
     }

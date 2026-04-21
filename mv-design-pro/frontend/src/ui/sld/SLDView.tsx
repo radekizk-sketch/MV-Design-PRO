@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md: SLD ↔ selection synchronization
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
+ * - ui_canonical_parity.md: Canonical-like presentation
  *
  * FEATURES:
  * - Read-only rendering of network topology
@@ -15,7 +15,7 @@
  * NO EDITING: This is a presentation-only view.
  */
 
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { SLDViewCanvas } from './SLDViewCanvas';
 import { ResultsOverlay } from './ResultsOverlay';
 import { DiagnosticsOverlay } from './DiagnosticsOverlay';
@@ -33,6 +33,8 @@ import {
   type ViewportState,
   type SLDViewProps,
 } from './types';
+import type { AnySldSymbol } from '../sld-editor/types';
+import type { EnergyNetworkModel } from '../../types/enm';
 import type { ElementType, SelectedElement } from '../types';
 import { useSelectionStore } from '../selection/store';
 import { useResultsInspectorStore } from '../results-inspector/store';
@@ -56,18 +58,39 @@ import { useOverlayRuntime, OverlayLegend } from '../sld-overlay';
 import { SldTechLabelsLayer } from './SldTechLabelsLayer';
 import { useCanCalculate, useAppStateStore } from '../app-state';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import {
+  useNetworkBuildStore,
+  type ActiveObjectCard,
+  type NetworkBuildOperationName,
+} from '../network-build/networkBuildStore';
+import { supportsOperationForm } from '../network-build/OperationFormRouter';
+import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { buildOperationContext } from '../network-build/operationContext';
+import { resolveObjectCardKind } from '../network-build/contextMenuIntegration';
 import { resolveClickAction } from './SldModeInteractionHandler';
 import { useOperationalModeStore } from './operationalModeStore';
 import { EngineeringContextMenu } from '../context-menu/EngineeringContextMenu';
 import type { EngineeringContextMenuState, CatalogGateRequest } from '../context-menu/EngineeringContextMenu';
-import type { CatalogNamespace as GateCatalogNamespace } from '../context-menu/catalogGate';
+import {
+  CONTEXT_ACTION_TO_OPERATION,
+  NAVIGATION_ACTIONS,
+  TOGGLE_ACTIONS,
+} from '../context-menu/actionRouting';
 import { useLabelModeStore } from './labelModeStore';
 import { notify } from '../notifications/store';
-import { useModalController, ModalOverlay } from './ModalController';
 import { TypePicker } from '../catalog/TypePicker';
 import { buildCatalogBinding } from '../catalog/catalogBinding';
 import { NAMESPACE_TO_PICKER_CATEGORY } from '../catalog/elementCatalogRegistry';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
+import {
+  buildConverterSourceOperationContext,
+  resolveConverterSourceTechnologyFromActionId,
+} from '../shared/converterSourceContext';
+import type { CanonicalAnnotationsV1 } from './core/layoutResult';
+import {
+  preserveViewportCenterOnResize,
+  zoomViewportByStep,
+} from './interactionMath';
 
 /**
  * Default canvas dimensions.
@@ -87,242 +110,105 @@ const CONTEXT_MENU_CLOSED: EngineeringContextMenuState = {
   elementName: '',
 };
 
-/**
- * Context menu action ID → canonical operation mapping.
- * Bridges context menu builder proxy IDs to modalRegistry canonical operations.
- */
-const CONTEXT_MENU_OP_MAP: Record<string, string> = {
-  // Properties / parameter editing
-  properties: 'update_element_parameters',
-  edit_sk3: 'update_element_parameters',
-  edit_voltage: 'update_element_parameters',
-  edit_rx: 'update_element_parameters',
-  edit_impedance: 'update_element_parameters',
-  edit_length: 'update_element_parameters',
-  edit_load_power: 'update_element_parameters',
-  edit_transformer_ratio: 'update_element_parameters',
-  edit_parameters: 'update_element_parameters',
-  edit_tap: 'update_element_parameters',
-  edit_vector_group: 'update_element_parameters',
-  edit_power: 'update_element_parameters',
-  edit_reactive: 'update_element_parameters',
-  edit_kind: 'update_element_parameters',
-  edit_connection: 'update_element_parameters',
-  edit_control: 'update_element_parameters',
-  edit_limits: 'update_element_parameters',
-  edit_disconnect: 'update_element_parameters',
-  edit_measurement: 'update_element_parameters',
-  edit_capacity: 'update_element_parameters',
-  edit_soc: 'update_element_parameters',
-  edit_mode: 'update_element_parameters',
-  edit_strategy: 'update_element_parameters',
-  edit_pf: 'update_element_parameters',
-  edit_fuel: 'update_element_parameters',
-  edit_backup_time: 'update_element_parameters',
-  edit_battery: 'update_element_parameters',
-  edit_switch: 'update_element_parameters',
-  edit_rating: 'update_element_parameters',
-  edit_purpose: 'update_element_parameters',
-  edit_accuracy: 'update_element_parameters',
-  edit_ratio: 'update_element_parameters',
-  edit_settings: 'update_element_parameters',
-  edit_curve: 'update_element_parameters',
-  edit_type: 'update_element_parameters',
-  edit_name: 'update_element_parameters',
-  edit_description: 'update_element_parameters',
-  edit_label: 'update_element_parameters',
-  edit_source_params: 'update_element_parameters',
-  edit_segment_length: 'update_element_parameters',
-  edit_cycles: 'update_element_parameters',
-  edit_chemistry: 'update_element_parameters',
-  rename: 'update_element_parameters',
-  set_normal_state: 'update_element_parameters',
-  set_operating_mode: 'update_element_parameters',
-  set_time_profile: 'update_element_parameters',
-  set_profile: 'update_element_parameters',
-  set_source_mode: 'update_element_parameters',
-  change_role: 'update_element_parameters',
-  change_kind: 'update_element_parameters',
-  // Catalog operations
-  assign_catalog: 'assign_catalog_to_element',
-  assign_tr_catalog: 'assign_catalog_to_element',
-  assign_bus_catalog: 'assign_catalog_to_element',
-  assign_inverter_catalog: 'assign_catalog_to_element',
-  assign_storage_catalog: 'assign_catalog_to_element',
-  assign_switch_catalog: 'assign_catalog_to_element',
-  assign_cable_catalog: 'assign_catalog_to_element',
-  // Topology operations — SN
-  add_line: 'start_branch_segment_sn',
-  add_cable: 'start_branch_segment_sn',
-  add_branch: 'start_branch_segment_sn',
-  add_station: 'insert_station_on_segment_sn',
-  insert_station_a: 'insert_station_on_segment_sn',
-  insert_station_b: 'insert_station_on_segment_sn',
-  insert_station_c: 'insert_station_on_segment_sn',
-  insert_station_d: 'insert_station_on_segment_sn',
-  insert_branch_pole: 'insert_branch_pole_on_segment_sn',
-  insert_zksn: 'insert_zksn_on_segment_sn',
-  add_section_switch: 'insert_section_switch_sn',
-  insert_section_switch: 'insert_section_switch_sn',
-  insert_disconnector: 'insert_section_switch_sn',
-  insert_earthing: 'insert_section_switch_sn',
-  connect_ring: 'connect_secondary_ring_sn',
-  set_nop: 'set_normal_open_point',
-  set_as_nop: 'set_normal_open_point',
-  clear_nop: 'set_normal_open_point',
-  move_nop: 'set_normal_open_point',
-  set_nop_candidate: 'set_normal_open_point',
-  // Element addition — SN
-  add_source: 'add_grid_source_sn',
-  add_transformer: 'add_transformer_sn_nn',
-  add_breaker: 'add_sn_bay',
-  add_disconnector: 'add_sn_bay',
-  add_earth_switch: 'add_sn_bay',
-  add_sn_field_in: 'add_sn_bay',
-  add_sn_field_out: 'add_sn_bay',
-  add_sn_field_branch: 'add_sn_bay',
-  add_sn_field_tr: 'add_sn_bay',
-  add_sn_bus_section: 'add_sn_bay',
-  add_sn_coupler: 'add_sn_bay',
-  // Measurement — CT/VT
-  add_ct: 'add_measurement',
-  add_vt: 'add_measurement',
-  assign_ct: 'add_measurement',
-  assign_vt: 'add_measurement',
-  // Protection
-  add_relay: 'add_relay',
-  add_protection: 'add_relay',
-  edit_relay_settings: 'add_relay',
-  // Element addition — nN
-  add_nn_load: 'add_nn_load',
-  add_load: 'add_nn_load',
-  add_pv: 'add_pv_inverter_nn',
-  add_bess: 'add_bess_inverter_nn',
-  add_bess_energy: 'add_bess_inverter_nn',
-  add_genset: 'add_genset_nn',
-  add_ups: 'add_ups_nn',
-  add_nn_outgoing_field: 'add_nn_outgoing_field',
-  add_feeder: 'add_nn_outgoing_field',
-  add_nn_feeder: 'add_nn_outgoing_field',
-  add_nn_bus: 'add_nn_outgoing_field',
-  add_nn_main: 'add_nn_outgoing_field',
-  add_nn_bus_section: 'add_nn_outgoing_field',
-  add_nn_coupler: 'add_nn_outgoing_field',
-  add_source_field: 'add_nn_outgoing_field',
-  add_source_field_nn: 'add_nn_outgoing_field',
-  add_bus_section: 'add_nn_outgoing_field',
-  add_bus_coupler: 'add_nn_outgoing_field',
-  add_segment: 'add_nn_segment',
-  add_fuse: 'add_sn_bay',
-  add_energy_meter: 'add_measurement',
-  add_quality_meter: 'add_measurement',
-  add_surge_arrester: 'add_measurement',
-  // Calculations
-  run_power_flow: 'run_power_flow',
-  run_short_circuit: 'run_short_circuit',
-  run_sc_analysis: 'run_short_circuit',
-  run_sc_3f: 'run_short_circuit',
-  run_sc_2f: 'run_short_circuit',
-  run_sc_1f: 'run_short_circuit',
-  run_sc_2f_rf: 'run_short_circuit',
-  run_time_series: 'run_power_flow',
-  // StudyCase operations
-  set_switch_states: 'update_element_parameters',
-  set_normal_states: 'update_element_parameters',
-  set_source_modes: 'update_element_parameters',
-  set_analysis_settings: 'update_element_parameters',
-  clone_case: 'update_element_parameters',
-  // Validation / readiness
-  validate_transformer: 'update_element_parameters',
-};
+const CONTEXT_MENU_OP_MAP = CONTEXT_ACTION_TO_OPERATION;
 
-/**
- * Navigation/info action IDs — these don't map to domain operations.
- */
-const NAVIGATION_ACTIONS = new Set([
-  'show_results',
-  'show_whitebox',
-  'show_readiness',
-  'show_tree',
-  'show_diagram',
-  'show_on_diagram',
-  'show_topology',
-  'show_secondary_links',
-  'show_coordination',
-  'show_summary',
-  'show_per_element',
-  'show_overlay',
-  'show_ik',
-  'show_ip',
-  'show_ith',
-  'show_idyn',
-  'show_voltages',
-  'show_currents',
-  'show_powers',
-  'show_losses',
-  'show_comparison',
-  'show_delta_overlay',
-  'export_data',
-  'export_json',
-  'export_report',
-  'export_pdf',
-  'export_docx',
-  'export_results',
-  'export_whitebox',
-  'history',
-  'fix_issues',
-  'check_ring',
-  'check_nop',
-  'check_selectivity',
-  'check_collisions',
-  'calc_tcc',
-  'validate_selectivity',
-  'compare_cases',
-  'compare_with',
-  'compare_snapshots',
-  'add_trunk_segment',
-  'reserve_ring',
-  'release_ring',
-  'start_secondary_link',
-]);
-
-/**
- * Direct toggle actions — handled in-place without modals.
- */
-const TOGGLE_ACTIONS = new Set([
-  'toggle_switch',
-  'toggle_service',
-  'toggle_enabled',
-  'delete',
-  'delete_element',
-  'disconnect',
-  'disconnect_element',
-  'edit_geometry',
-  'snap_to_grid',
-  'reset_geometry',
-  'undo_snapshot',
-]);
-
-function mapSelectionHintElementType(rawType: string): ElementType {
-  const normalized = rawType.trim().toLowerCase();
-  const map: Record<string, ElementType> = {
-    bus: 'Bus',
-    branch: 'LineBranch',
-    transformer: 'TransformerBranch',
-    source: 'Source',
-    load: 'Load',
-    generator: 'Generator',
-    substation: 'Station',
-    bay: 'BaySN',
-    measurement: 'Measurement',
-    protection_assignment: 'ProtectionAssignment',
-    switch: 'Switch',
-  };
-  return map[normalized] ?? 'Bus';
+function collectBusIdsFromSingleCanonicalGpzSection(
+  canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
+): Set<string> {
+  const sections = (canonicalAnnotations?.gpzSections ?? []).filter(
+    (section) => typeof section.rootBusId === 'string' && section.rootBusId.length > 0,
+  );
+  if (sections.length === 1) {
+    return new Set([sections[0].rootBusId]);
+  }
+  return new Set<string>();
 }
 
-function isCatalogNamespace(value: unknown): value is CatalogNamespace {
-  return typeof value === 'string' && value in NAMESPACE_TO_PICKER_CATEGORY;
+export function resolveAttachedSystemSourceBusIds(
+  snapshot: EnergyNetworkModel | null,
+  symbols: AnySldSymbol[] = [],
+  canonicalAnnotations: CanonicalAnnotationsV1 | null = null,
+): Set<string> {
+  const canonicalRootBusIds = collectBusIdsFromSingleCanonicalGpzSection(canonicalAnnotations);
+  if (canonicalRootBusIds.size > 0) {
+    return canonicalRootBusIds;
+  }
+
+  const busIds = new Set<string>();
+  for (const source of snapshot?.sources ?? []) {
+    if (typeof source.bus_ref === 'string' && source.bus_ref.length > 0) {
+      busIds.add(source.bus_ref);
+    }
+  }
+
+  if (busIds.size === 1) {
+    return busIds;
+  }
+
+  if (busIds.size > 1) {
+    return new Set<string>();
+  }
+
+  const renderedSourceBusIds = new Set(
+    symbols
+      .filter(
+        (symbol) =>
+          symbol.elementType === 'Source'
+          && 'sourceType' in symbol
+          && symbol.sourceType === 'SYSTEM_SOURCE'
+          && 'connectedToNodeId' in symbol
+          && typeof symbol.connectedToNodeId === 'string'
+          && symbol.connectedToNodeId.length > 0,
+      )
+      .map((symbol) => ('connectedToNodeId' in symbol ? symbol.connectedToNodeId : null))
+      .filter((busId): busId is string => typeof busId === 'string' && busId.length > 0),
+  );
+
+  if (renderedSourceBusIds.size === 1) {
+    return renderedSourceBusIds;
+  }
+
+  return new Set<string>();
+}
+
+export function resolveOperationalRootBusContext(
+  snapshot: EnergyNetworkModel | null,
+  symbols: AnySldSymbol[] = [],
+  canonicalAnnotations: CanonicalAnnotationsV1 | null = null,
+): { rootBusId: string | null; rootBusName: string | null } {
+  const sections = (canonicalAnnotations?.gpzSections ?? []).filter(
+    (section) => typeof section.rootBusId === 'string' && section.rootBusId.length > 0,
+  );
+
+  if (sections.length === 1) {
+    const [section] = sections;
+    return {
+      rootBusId: section.rootBusId,
+      rootBusName: section.rootBusName ?? null,
+    };
+  }
+
+  if (sections.length > 1) {
+    return { rootBusId: null, rootBusName: null };
+  }
+
+  const attachedBusIds = [...resolveAttachedSystemSourceBusIds(snapshot, symbols, canonicalAnnotations)];
+  if (attachedBusIds.length !== 1) {
+    return { rootBusId: null, rootBusName: null };
+  }
+
+  const [rootBusId] = attachedBusIds;
+  const rootBus = (snapshot?.buses ?? []).find((bus) => bus.ref_id === rootBusId || bus.id === rootBusId);
+  return {
+    rootBusId,
+    rootBusName: rootBus?.name ?? null,
+  };
+}
+
+function isPickerCatalogNamespace(
+  value: string,
+): value is CatalogNamespace {
+  return value in NAMESPACE_TO_PICKER_CATEGORY;
 }
 
 /**
@@ -330,6 +216,7 @@ function isCatalogNamespace(value: unknown): value is CatalogNamespace {
  */
 export const SLDView: React.FC<SLDViewProps> = ({
   symbols,
+  connections = [],
   selectedElement: externalSelectedElement,
   onElementClick,
   onCanvasClick,
@@ -340,8 +227,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
   onSegmentHover,
   interactionPreview = null,
   showGrid = true,
-  width = DEFAULT_WIDTH,
-  height = DEFAULT_HEIGHT,
+  width,
+  height,
   initialZoom = 1.0,
   fitOnMount = true,
   onCalculateClick,
@@ -349,64 +236,76 @@ export const SLDView: React.FC<SLDViewProps> = ({
   fitPadding,
   canonicalAnnotations = null,
 }) => {
-  // Viewport state (pan/zoom)
+  const hasExplicitCanvasSize = typeof width === 'number' && typeof height === 'number';
+  const fallbackCanvasWidth = width ?? DEFAULT_WIDTH;
+  const fallbackCanvasHeight = height ?? DEFAULT_HEIGHT;
   const [viewport, setViewport] = useState<ViewportState>(() => ({
     ...DEFAULT_VIEWPORT,
     zoom: initialZoom,
   }));
-
-  // Focus pulse state (for marker click visual feedback)
-  // Cleared via CSS animationend event (no setTimeout for deterministic E2E)
+  const [measuredCanvasSize, setMeasuredCanvasSize] = useState({
+    width: fallbackCanvasWidth,
+    height: fallbackCanvasHeight,
+  });
   const [focusPulseElementId, setFocusPulseElementId] = useState<string | null>(null);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string | null>(null);
-
-  // BLOK 7 — etykiety techniczne (load%, NOP, napięcie)
   const [techLabelsVisible, setTechLabelsVisible] = useState(false);
-
-  // Label mode store integration — tech labels also respond to label mode store
-  const labelModeVisible = useLabelModeStore((state) => state.visible);
-
-  // Derived: tech labels visible when either local toggle OR label mode store says visible
-  const effectiveTechLabelsVisible = techLabelsVisible || labelModeVisible;
-
-  // Context menu state for EngineeringContextMenu
   const [contextMenuState, setContextMenuState] = useState<EngineeringContextMenuState>(
     CONTEXT_MENU_CLOSED,
   );
+  const [catalogPickerState, setCatalogPickerState] = useState<{
+    isOpen: boolean;
+    category: TypeCategory | null;
+    namespace: CatalogNamespace | null;
+    pendingOp: CatalogGateRequest | null;
+  }>({ isOpen: false, category: null, namespace: null, pendingOp: null });
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [legendVisible, setLegendVisible] = useState(false);
+  const [cursorStyle, setCursorStyle] = useState<'default' | 'grabbing'>('default');
 
-  // Operational mode store integration (mode-aware click handling)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isPanning = useRef(false);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  const pendingDeleteElementRef = useRef<string | null>(null);
+  const previousCanvasSizeRef = useRef({
+    width: fallbackCanvasWidth,
+    height: fallbackCanvasHeight,
+  });
+  const autoFitSignatureRef = useRef<string>('');
+
+  const labelModeVisible = useLabelModeStore((state) => state.visible);
+  const effectiveTechLabelsVisible = techLabelsVisible || labelModeVisible;
+
   const operationalMode = useOperationalModeStore((state) => state.mode);
 
-  // App state for export metadata (project/case names)
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
 
-  // BLOK 8 — przycisk uruchomienia obliczeń
-  const { allowed: canCalculate } = useCanCalculate();
+  const { allowed: canCalculate, reason: calculateBlockedReason } = useCanCalculate();
 
-  // Selection store integration
   const selectElement = useSelectionStore((state) => state.selectElement);
   const storeSelectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const sldCenterOnElement = useSelectionStore((state) => state.sldCenterOnElement);
 
-  // Results overlay store integration
   const overlayVisible = useResultsInspectorStore((state) => state.overlayVisible);
   const sldOverlay = useResultsInspectorStore((state) => state.sldOverlay);
   const toggleOverlay = useResultsInspectorStore((state) => state.toggleOverlay);
   const hasResults = sldOverlay !== null;
 
-  // Diagnostics overlay store integration
   const diagnosticsVisible = useDiagnosticsStore((state) => state.diagnosticsVisible);
   const diagnosticsFilter = useDiagnosticsStore((state) => state.diagnosticsFilter);
   const toggleDiagnostics = useDiagnosticsStore((state) => state.toggleDiagnostics);
   const setDiagnosticsFilter = useDiagnosticsStore((state) => state.setDiagnosticsFilter);
 
-  // Check if there are any diagnostics results (fixture for now)
-  const { hasResults: hasDiagnostics } = useSanityChecks('demo-project', 'demo-diagram');
+  const { hasResults: hasDiagnostics } = useSanityChecks(
+    activeProjectId ?? 'aktywny-projekt',
+    activeCaseId ?? 'aktywny-przypadek',
+  );
 
-  // SLD mode store integration (PR-SLD-06, PR-SLD-09)
   const sldMode = useSldModeStore((state) => state.mode);
   const diagnosticLayerVisible = useSldModeStore((state) => state.diagnosticLayerVisible);
   const protectionLayerVisible = useSldModeStore((state) => state.protectionLayerVisible);
@@ -417,208 +316,258 @@ export const SLDView: React.FC<SLDViewProps> = ({
   const isProtectionMode = sldMode === 'ZABEZPIECZENIA';
   const isReadOnlyMode = isResultsMode || isProtectionMode;
 
-  // PR-SLD-09: Protection statistics
   const protectionStats = useProtectionStatistics();
   const hasProtectionData = protectionStats.total > 0;
 
-  // PR-16: Overlay Runtime Engine
   const overlayRuntime = useOverlayRuntime(symbols);
 
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
 
-  // Modal controller for context menu → modal dispatch + domain operation
-  const modalController = useModalController(async (canonicalOp, elementId, formData) => {
-    if (!activeCaseId) {
-      notify('Brak aktywnego Study Case — nie można wykonać operacji.', 'error');
-      return false;
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const openInspectorPanelInStore = useNetworkBuildStore((state) => state.openInspectorPanel);
+  const openObjectCard = useNetworkBuildStore((state) => state.openObjectCard);
+
+  const selectedElement =
+    externalSelectedElement !== undefined ? externalSelectedElement : storeSelectedElement;
+
+  const canvasWidth = hasExplicitCanvasSize ? fallbackCanvasWidth : measuredCanvasSize.width;
+  const canvasHeight = hasExplicitCanvasSize ? fallbackCanvasHeight : measuredCanvasSize.height;
+
+  useLayoutEffect(() => {
+    if (hasExplicitCanvasSize) {
+      setMeasuredCanvasSize({
+        width: fallbackCanvasWidth,
+        height: fallbackCanvasHeight,
+      });
+      previousCanvasSizeRef.current = {
+        width: fallbackCanvasWidth,
+        height: fallbackCanvasHeight,
+      };
+      return;
     }
 
-    const response = await executeDomainOperation(activeCaseId, canonicalOp, {
-      element_ref: elementId,
-      source: 'sld_modal',
-      ...formData,
-    });
-
-    if (!response || response.error) {
-      return false;
+    const container = containerRef.current;
+    if (!container) {
+      return;
     }
 
-    const hint = response.selection_hint;
-    if (hint?.element_id && hint?.element_type) {
-      const hintedType = mapSelectionHintElementType(hint.element_type);
-      selectElement({ id: hint.element_id, type: hintedType, name: hint.element_id });
-      updateUrlWithSelection({ id: hint.element_id, type: hintedType, name: hint.element_id });
-      centerSldOnElement(hint.element_id);
-    }
+    const applyCanvasSize = (nextWidth: number, nextHeight: number) => {
+      const previousSize = previousCanvasSizeRef.current;
 
-    return true;
-  });
-
-  // ---------------------------------------------------------------------------
-  // Bramka katalogowa — stan pickera typu
-  // ---------------------------------------------------------------------------
-  const [catalogPickerState, setCatalogPickerState] = useState<{
-    isOpen: boolean;
-    category: TypeCategory | null;
-    namespace: CatalogNamespace | null;
-    pendingOp: CatalogGateRequest | null;
-  }>({ isOpen: false, category: null, namespace: null, pendingOp: null });
-
-  /**
-   * Callback bramki katalogowej: operacja wymaga typu z katalogu.
-   * Zamiast otwierać modal od razu, najpierw otwiera TypePicker.
-   * Po wyborze typu → dispatch do ModalController z catalog_binding.
-   */
-  const handleCatalogRequired = useCallback(
-    (request: CatalogGateRequest) => {
-      // Zamknij menu kontekstowe
-      setContextMenuState(CONTEXT_MENU_CLOSED);
-
-      const ns = request.namespace as CatalogNamespace;
-      const category = NAMESPACE_TO_PICKER_CATEGORY[ns] ?? null;
-
-      if (!category) {
-        notify(`Nieznany namespace katalogu: ${request.namespace}`, 'error');
+      if (previousSize.width === nextWidth && previousSize.height === nextHeight) {
         return;
       }
 
-      setCatalogPickerState({
-        isOpen: true,
-        category,
-        namespace: ns,
-        pendingOp: request,
-      });
+      previousCanvasSizeRef.current = { width: nextWidth, height: nextHeight };
+      setMeasuredCanvasSize({ width: nextWidth, height: nextHeight });
+      setViewport((prev) => preserveViewportCenterOnResize(prev, previousSize, { width: nextWidth, height: nextHeight }));
+    };
+
+    const rect = container.getBoundingClientRect();
+    applyCanvasSize(Math.max(Math.round(rect.width), 1), Math.max(Math.round(rect.height), 1));
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+
+      applyCanvasSize(
+        Math.max(Math.round(entry.contentRect.width), 1),
+        Math.max(Math.round(entry.contentRect.height), 1),
+      );
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [fallbackCanvasHeight, fallbackCanvasWidth, hasExplicitCanvasSize]);
+
+  const resolveContainerAnchor = useCallback(
+    (clientX?: number, clientY?: number) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) {
+        return { x: canvasWidth / 2, y: canvasHeight / 2 };
+      }
+
+      if (typeof clientX === 'number' && typeof clientY === 'number') {
+        return {
+          x: clientX - rect.left,
+          y: clientY - rect.top,
+        };
+      }
+
+      return {
+        x: rect.width / 2,
+        y: rect.height / 2,
+      };
     },
+    [canvasHeight, canvasWidth],
+  );
+
+  const busIdsWithAttachedSources = useMemo(
+    () => resolveAttachedSystemSourceBusIds(snapshot, symbols, canonicalAnnotations),
+    [canonicalAnnotations, snapshot, symbols],
+  );
+
+  const resolveCanvasContextMenuState = useCallback(
+    (x: number, y: number): EngineeringContextMenuState => ({
+      isOpen: true,
+      x,
+      y,
+      elementId: '',
+      elementType: 'Source',
+      elementName: '',
+      scope: 'canvas',
+      canvasMode: 'NEUTRAL',
+      headerText: 'Puste płótno schematu',
+    }),
     [],
   );
 
-  /**
-   * Użytkownik wybrał typ z katalogu — teraz otwieramy modal operacji
-   * z catalog_binding wstrzykniętym do danych początkowych.
-   */
+  const openInspectorPanel = useCallback(
+    (
+      kind: Parameters<typeof openInspectorPanelInStore>[0],
+      elementId: string,
+      elementType: ElementType,
+    ) => {
+      selectElement({ id: elementId, type: elementType, name: elementId });
+      openInspectorPanelInStore(kind, elementId, elementType);
+    },
+    [openInspectorPanelInStore, selectElement],
+  );
+
+  const openInlineOperation = useCallback(
+    (
+      canonicalOp: NetworkBuildOperationName,
+      elementId?: string,
+      elementType?: ElementType,
+      extraContext?: Record<string, unknown>,
+    ) => {
+      const context =
+        elementId && elementType
+          ? buildOperationContext({
+              canonicalOp,
+              elementId,
+              elementType,
+              snapshot,
+              logicalViews,
+              extraContext,
+            })
+          : (extraContext ?? {});
+
+      if (elementId && elementType) {
+        selectElement({ id: elementId, type: elementType, name: elementId });
+      }
+
+      openOperationForm(canonicalOp, context);
+    },
+    [logicalViews, openOperationForm, selectElement, snapshot],
+  );
+
+  const openPrimarySurfaceForElement = useCallback(
+    (elementId: string, elementType: ElementType, elementName: string) => {
+      const element: SelectedElement = {
+        id: elementId,
+        type: elementType,
+        name: elementName,
+      };
+
+      setSelectedConnectionId(null);
+      selectElement(element);
+      updateUrlWithSelection(element);
+
+      const cardKind = resolveObjectCardKind(elementType);
+      if (cardKind) {
+        const card = (
+          cardKind === 'trunk'
+            ? { kind: 'trunk', corridorRef: elementId }
+            : { kind: cardKind, elementId }
+        ) as Exclude<ActiveObjectCard, null>;
+        openObjectCard(card);
+        return;
+      }
+
+      openInlineOperation('update_element_parameters', elementId, elementType);
+    },
+    [openInlineOperation, openObjectCard, selectElement],
+  );
+
+  const handleCatalogRequired = useCallback((request: CatalogGateRequest) => {
+    setContextMenuState(CONTEXT_MENU_CLOSED);
+
+    if (!isPickerCatalogNamespace(request.namespace)) {
+      notify(
+        `Namespace katalogu nie ma przypisanej przeglądarki typu: ${request.namespace}`,
+        'error',
+      );
+      return;
+    }
+
+    const category = NAMESPACE_TO_PICKER_CATEGORY[request.namespace] ?? null;
+    if (!category) {
+      notify(`Nieznany namespace katalogu: ${request.namespace}`, 'error');
+      return;
+    }
+
+    setCatalogPickerState({
+      isOpen: true,
+      category,
+      namespace: request.namespace,
+      pendingOp: request,
+    });
+  }, []);
+
   const handleCatalogTypeSelected = useCallback(
     (typeId: string, typeName: string) => {
       const pending = catalogPickerState.pendingOp;
       const namespace = catalogPickerState.namespace;
       if (!pending || !namespace) return;
 
-      // Zamknij TypePicker
       setCatalogPickerState({ isOpen: false, category: null, namespace: null, pendingOp: null });
 
-      // Zaznacz element na SLD
-      selectElement({
-        id: pending.elementId,
-        type: pending.elementType,
-        name: pending.elementId,
-      });
+      if (!supportsOperationForm(pending.operationId)) {
+        throw new Error(`Brak formularza dla operacji katalogowej: ${pending.operationId}`);
+      }
 
-      // Dispatch do ModalController z kanonicznym catalog_ref w initialFormData
-      modalController.dispatch(
+      openInlineOperation(
         pending.operationId,
         pending.elementId,
         pending.elementType,
         {
+          ...(pending.initialFormData ?? {}),
           catalog_binding: buildCatalogBinding(namespace, typeId),
           catalog_name: typeName,
           source_mode: 'KATALOG',
         },
       );
     },
-    [catalogPickerState, selectElement, modalController],
+    [catalogPickerState, openInlineOperation],
   );
 
   const handleCatalogPickerClose = useCallback(() => {
     setCatalogPickerState({ isOpen: false, category: null, namespace: null, pendingOp: null });
   }, []);
 
-  // Export dialog state
-  const [exportDialogOpen, setExportDialogOpen] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-
-  // Legend visibility state (hidden by default, toggleable)
-  const [legendVisible, setLegendVisible] = useState(false);
-
-  // Use external selection if provided, otherwise use store
-  const selectedElement = externalSelectedElement !== undefined ? externalSelectedElement : storeSelectedElement;
-
-  // Ref for container (for mouse events)
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isPanning = useRef(false);
-  const lastMousePos = useRef({ x: 0, y: 0 });
-
-  // State for cursor visual (refs don't trigger re-renders)
-  const [cursorStyle, setCursorStyle] = useState<'default' | 'grabbing'>('default');
-
-  /**
-   * Nasłuchuj zdarzenia 'open-fix-modal' z ReadinessPanel — otwórz TypePicker.
-   * Zdarzenie jest emitowane przez EngineeringReadinessPanelContainer
-   * kiedy inżynier klika [Napraw] przy brakującym katalogu.
-   */
-  useEffect(() => {
-    const handleFixModal = (e: Event) => {
-      const detail = (e as CustomEvent).detail as {
-        actionType?: string;
-        elementRef?: string;
-        payloadHint?: Record<string, unknown>;
-      };
-
-      if (detail.actionType === 'SELECT_CATALOG') {
-        const namespaceCandidate = detail.payloadHint?.catalog_namespace;
-        if (!isCatalogNamespace(namespaceCandidate)) {
-          notify('Działanie naprawcze nie zawiera jawnego namespace katalogu.', 'error');
-          return;
-        }
-
-        const hintedElementType =
-          typeof detail.payloadHint?.element_type === 'string'
-            ? mapSelectionHintElementType(detail.payloadHint.element_type)
-            : null;
-        const elementType =
-          selectedElement && selectedElement.id === detail.elementRef
-            ? selectedElement.type
-            : hintedElementType;
-
-        if (!detail.elementRef || !elementType) {
-          notify('Działanie naprawcze nie wskazuje jawnie elementu do przypisania katalogu.', 'error');
-          return;
-        }
-
-        const ns = namespaceCandidate;
-        const category = NAMESPACE_TO_PICKER_CATEGORY[ns] ?? null;
-
-        if (category) {
-          setCatalogPickerState({
-            isOpen: true,
-            category,
-            namespace: ns,
-            pendingOp: {
-              operationId: 'assign_catalog_to_element',
-              elementId: detail.elementRef,
-              elementType,
-              namespace: ns as GateCatalogNamespace,
-              label: '',
-            },
-          });
-          return;
-        }
-
-        notify('Nie udało się otworzyć katalogu dla działania naprawczego.', 'error');
-      }
-    };
-
-    window.addEventListener('open-fix-modal', handleFixModal);
-    return () => window.removeEventListener('open-fix-modal', handleFixModal);
-  }, [selectedElement]);
-
   /**
    * Fit to content on mount if enabled.
    */
   useEffect(() => {
-    if (fitOnMount && symbols.length > 0) {
-      const fittedViewport = fitToContent(symbols, width, height, fitPadding, minFitZoom);
+    if (!fitOnMount || symbols.length === 0 || canvasWidth <= 0 || canvasHeight <= 0) {
+      return;
+    }
+
+    const signature = symbols
+      .map((symbol) => `${symbol.id}:${symbol.position.x}:${symbol.position.y}`)
+      .join('|');
+
+    if (autoFitSignatureRef.current !== signature) {
+      autoFitSignatureRef.current = signature;
+      const fittedViewport = fitToContent(symbols, canvasWidth, canvasHeight, fitPadding, minFitZoom);
       setViewport(fittedViewport);
     }
-  }, [fitOnMount, symbols, width, height, minFitZoom, fitPadding]);
+  }, [canvasHeight, canvasWidth, fitOnMount, fitPadding, minFitZoom, symbols]);
 
   /**
    * Center on element when requested by store.
@@ -633,8 +582,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
         // Center viewport on symbol
         setViewport((prev) => ({
           ...prev,
-          offsetX: width / 2 - symbol.position.x * prev.zoom,
-          offsetY: height / 2 - symbol.position.y * prev.zoom,
+          offsetX: canvasWidth / 2 - symbol.position.x * prev.zoom,
+          offsetY: canvasHeight / 2 - symbol.position.y * prev.zoom,
         }));
         // Trigger focus pulse for visual feedback (no timeout - CSS handles duration)
         setFocusPulseElementId(sldCenterOnElement);
@@ -642,7 +591,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       // Clear the center request
       centerSldOnElement(null);
     }
-  }, [sldCenterOnElement, symbols, width, height, centerSldOnElement]);
+  }, [canvasHeight, canvasWidth, sldCenterOnElement, symbols, centerSldOnElement]);
 
   /**
    * Handle symbol click — mode-aware click handling via SldModeInteractionHandler.
@@ -691,6 +640,15 @@ export const SLDView: React.FC<SLDViewProps> = ({
       }
     },
     [symbols, selectElement, onElementClick, operationalMode]
+  );
+
+  const handleSymbolDoubleClick = useCallback(
+    (symbolId: string, elementType: ElementType, elementName: string) => {
+      const symbol = symbols.find((candidate) => candidate.id === symbolId);
+      const elementId = symbol?.elementId || symbolId;
+      openPrimarySurfaceForElement(elementId, elementType, elementName);
+    },
+    [openPrimarySurfaceForElement, symbols],
   );
 
   const handleSymbolHover = useCallback(
@@ -750,29 +708,25 @@ export const SLDView: React.FC<SLDViewProps> = ({
    * Handle zoom in.
    */
   const handleZoomIn = useCallback(() => {
-    setViewport((prev) => ({
-      ...prev,
-      zoom: Math.min(prev.zoom + ZOOM_STEP, ZOOM_MAX),
-    }));
-  }, []);
+    const anchor = resolveContainerAnchor();
+    setViewport((prev) => zoomViewportByStep(prev, ZOOM_STEP, anchor));
+  }, [resolveContainerAnchor]);
 
   /**
    * Handle zoom out.
    */
   const handleZoomOut = useCallback(() => {
-    setViewport((prev) => ({
-      ...prev,
-      zoom: Math.max(prev.zoom - ZOOM_STEP, ZOOM_MIN),
-    }));
-  }, []);
+    const anchor = resolveContainerAnchor();
+    setViewport((prev) => zoomViewportByStep(prev, -ZOOM_STEP, anchor));
+  }, [resolveContainerAnchor]);
 
   /**
    * Handle fit to content.
    */
   const handleFitToContent = useCallback(() => {
-    const fittedViewport = fitToContent(symbols, width, height, fitPadding, minFitZoom);
+    const fittedViewport = fitToContent(symbols, canvasWidth, canvasHeight, fitPadding, minFitZoom);
     setViewport(fittedViewport);
-  }, [symbols, width, height, minFitZoom, fitPadding]);
+  }, [canvasHeight, canvasWidth, fitPadding, minFitZoom, symbols]);
 
   /**
    * Handle reset view (100%).
@@ -838,22 +792,19 @@ export const SLDView: React.FC<SLDViewProps> = ({
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
-      setViewport((prev) => ({
-        ...prev,
-        zoom: Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, prev.zoom + delta)),
-      }));
+      const anchor = resolveContainerAnchor(e.clientX, e.clientY);
+      setViewport((prev) => zoomViewportByStep(prev, delta, anchor));
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
     return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
+  }, [resolveContainerAnchor]);
 
   /**
    * Handle mouse down (start pan).
    */
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    // Only pan with middle mouse button or when holding space (simulated via right-click)
-    if (e.button === 1 || e.button === 2) {
+    if (e.button === 1) {
       e.preventDefault();
       isPanning.current = true;
       setCursorStyle('grabbing');
@@ -866,6 +817,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
    */
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isPanning.current) {
+      e.preventDefault();
       const dx = e.clientX - lastMousePos.current.x;
       const dy = e.clientY - lastMousePos.current.y;
       lastMousePos.current = { x: e.clientX, y: e.clientY };
@@ -886,37 +838,38 @@ export const SLDView: React.FC<SLDViewProps> = ({
     setCursorStyle('default');
   }, []);
 
-  /**
-   * Handle context menu — open EngineeringContextMenu on right-click.
-   * Detects the clicked element via data attributes on the SLD symbol DOM.
-   */
-  const handleContextMenu = useCallback(
+  const handleOperationalContextMenu = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
 
-      // Attempt to find the closest SLD symbol element with data attributes
+      if (isPanning.current) {
+        return;
+      }
+
       const target = e.target as HTMLElement;
       const symbolEl = target.closest<HTMLElement>('[data-element-id]');
 
-      if (symbolEl) {
-        const elementId = symbolEl.getAttribute('data-element-id') ?? '';
-        const elementType = (symbolEl.getAttribute('data-element-type') ?? 'Bus') as ElementType;
-        const elementName = symbolEl.getAttribute('data-element-name') ?? elementId;
-
-        setContextMenuState({
-          isOpen: true,
-          x: e.clientX,
-          y: e.clientY,
-          elementId,
-          elementType,
-          elementName,
-        });
-      } else {
-        // Close context menu if right-clicking on empty canvas
-        setContextMenuState(CONTEXT_MENU_CLOSED);
+      if (!symbolEl) {
+        setContextMenuState(resolveCanvasContextMenuState(e.clientX, e.clientY));
+        return;
       }
+
+      const elementId = symbolEl.getAttribute('data-element-id') ?? '';
+      const elementType = (symbolEl.getAttribute('data-element-type') ?? 'Bus') as ElementType;
+      const elementName = symbolEl.getAttribute('data-element-name') ?? elementId;
+
+      setContextMenuState({
+        isOpen: true,
+        x: e.clientX,
+        y: e.clientY,
+        elementId,
+        elementType,
+        elementName,
+        scope: 'element',
+        hasAttachedSource: elementType === 'Bus' && busIdsWithAttachedSources.has(elementId),
+      });
     },
-    [],
+    [busIdsWithAttachedSources, resolveCanvasContextMenuState],
   );
 
   /**
@@ -1016,106 +969,234 @@ export const SLDView: React.FC<SLDViewProps> = ({
    * Closes the menu after the operation is dispatched.
    */
   const handleContextMenuOperation = useCallback(
-    (operationId: string, elementId: string, elementType: ElementType) => {
+    (
+      operationId: string,
+      elementId: string,
+      elementType: ElementType,
+      initialFormData?: Record<string, unknown>,
+    ) => {
+      const currentMenuScope = contextMenuState.scope ?? 'element';
       // Close menu immediately
       setContextMenuState(CONTEXT_MENU_CLOSED);
 
-      // 1. Check for canonical domain operation → open modal via ModalController
-      const canonicalOp = CONTEXT_MENU_OP_MAP[operationId];
-      if (canonicalOp) {
-        // Select element for context
-        selectElement({ id: elementId, type: elementType, name: elementId });
-        // Dispatch to modal controller — opens the appropriate modal
-        modalController.dispatch(canonicalOp, elementId, elementType);
-        console.debug(
-          `[SLDView] Dispatch: ${operationId} → ${canonicalOp}`,
+      if (operationId !== 'delete' && operationId !== 'delete_element') {
+        pendingDeleteElementRef.current = null;
+      }
+
+      if (operationId === 'properties') {
+        openPrimarySurfaceForElement(
+          elementId,
+          elementType,
+          contextMenuState.elementName || elementId,
         );
         return;
       }
 
+      if (operationId === 'open_gpz_fields') {
+        selectElement({ id: elementId, type: elementType, name: elementId });
+        openObjectCard({ kind: 'source', elementId });
+        return;
+      }
+
+      if (currentMenuScope === 'canvas' && operationId === 'add_grid_source_sn') {
+        openOperationForm('add_grid_source_sn');
+        return;
+      }
+
+      // 1. Check for canonical domain operation → open canonical form in right panel
+      const canonicalOp = CONTEXT_MENU_OP_MAP[operationId];
+      if (canonicalOp) {
+        if (supportsOperationForm(canonicalOp)) {
+          const sourceTechnology = resolveConverterSourceTechnologyFromActionId(operationId);
+          openInlineOperation(
+            canonicalOp as NetworkBuildOperationName,
+            elementId,
+            elementType,
+            {
+              ...(sourceTechnology
+                ? buildConverterSourceOperationContext(sourceTechnology)
+                : {}),
+              ...(initialFormData ?? {}),
+            },
+          );
+          return;
+        }
+
+        throw new Error(`Brak formularza dla kanonicznej operacji: ${canonicalOp}`);
+      }
+
       // 2. Navigation/info actions — select + notify + navigate
+      if (
+        operationId === 'show_results'
+        || operationId === 'show_whitebox'
+        || operationId === 'show_readiness'
+        || operationId === 'export_report'
+        || operationId === 'export_results'
+        || operationId === 'export_whitebox'
+        || operationId === 'fix_issues'
+        || operationId === 'history'
+      ) {
+        selectElement({ id: elementId, type: elementType, name: elementId });
+        const panelKind =
+          operationId === 'show_results' || operationId === 'export_results'
+            ? 'results'
+            : operationId === 'show_whitebox' || operationId === 'export_whitebox'
+              ? 'trace'
+              : operationId === 'show_readiness' || operationId === 'fix_issues'
+                ? 'readiness'
+                : operationId === 'history'
+                  ? 'history'
+                  : 'report';
+        openInspectorPanel(panelKind, elementId, elementType);
+        return;
+      }
       if (NAVIGATION_ACTIONS.has(operationId)) {
         selectElement({ id: elementId, type: elementType, name: elementId });
-        const labels: Record<string, string> = {
-          show_results: 'Przejście do wyników',
-          show_whitebox: 'Otwarcie śladu obliczeń',
-          show_readiness: 'Gotowość elementu',
-          show_tree: 'Zaznaczono w drzewie projektu',
-          show_diagram: 'Wycentrowano na schemacie',
-          show_on_diagram: 'Wycentrowano na schemacie',
-          show_topology: 'Informacje topologiczne',
-          show_secondary_links: 'Połączenia wtórne',
-          show_coordination: 'Koordynacja zabezpieczeń',
-          show_summary: 'Podsumowanie wyników',
-          show_per_element: 'Wyniki po elementach',
-          show_overlay: 'Nakładka wyników na SLD',
-          show_ik: 'Prądy zwarciowe Ik″',
-          show_ip: 'Prądy udarowe ip',
-          show_ith: 'Prądy cieplne Ith',
-          show_idyn: 'Prądy dynamiczne Idyn',
-          show_voltages: 'Napięcia węzłowe',
-          show_currents: 'Prądy gałęziowe',
-          show_powers: 'Moce gałęziowe',
-          show_losses: 'Straty mocy',
-          show_comparison: 'Porównanie wyników',
-          show_delta_overlay: 'Nakładka delta',
-          export_data: 'Eksport danych elementu',
-          export_json: 'Eksport JSON',
-          export_report: 'Eksport raportu',
-          export_pdf: 'Eksport PDF',
-          export_docx: 'Eksport DOCX',
-          export_results: 'Eksport wyników',
-          export_whitebox: 'Eksport śladu obliczeń',
-          history: 'Historia zdarzeń elementu',
-          fix_issues: 'Otwieranie działań naprawczych',
-          check_ring: 'Sprawdzanie możliwości ring',
-          check_nop: 'Sprawdzanie możliwości NOP',
-          check_selectivity: 'Sprawdzanie selektywności',
-          check_collisions: 'Sprawdzanie kolizji',
-          calc_tcc: 'Obliczanie krzywych TCC',
-          validate_selectivity: 'Walidacja selektywności',
-          compare_cases: 'Porównanie Study Case',
-          compare_with: 'Porównanie wyników',
-          compare_snapshots: 'Porównanie Snapshot',
-          add_trunk_segment: 'Dodawanie odcinka magistrali',
-          reserve_ring: 'Rezerwacja do ring',
-          release_ring: 'Zwolnienie rezerwacji ring',
-          start_secondary_link: 'Rozpoczęcie łączenia wtórnego',
-        };
-        notify(labels[operationId] ?? operationId, 'info');
 
-        // Center on element for navigation actions
         if (operationId === 'show_diagram' || operationId === 'show_on_diagram') {
           centerSldOnElement(elementId);
+          return;
         }
-        return;
+
+        if (operationId === 'show_tree') {
+          return;
+        }
+
+        if (operationId === 'show_overlay') {
+          if (!hasResults) {
+            notify('Brak aktywnej nakładki wynikowej dla wybranego elementu.', 'warning');
+            return;
+          }
+          toggleOverlay(true);
+          return;
+        }
+
+        const panelKindByAction: Partial<Record<string, 'results' | 'trace' | 'readiness' | 'report' | 'history' | 'topology' | 'secondary_links' | 'coordination'>> = {
+          show_topology: 'topology',
+          show_secondary_links: 'secondary_links',
+          show_coordination: 'coordination',
+          show_summary: 'results',
+          show_per_element: 'results',
+          show_ik: 'results',
+          show_ip: 'results',
+          show_ith: 'results',
+          show_idyn: 'results',
+          show_voltages: 'results',
+          show_currents: 'results',
+          show_powers: 'results',
+          show_losses: 'results',
+          show_comparison: 'history',
+          show_delta_overlay: 'history',
+          check_ring: 'topology',
+          check_nop: 'topology',
+          check_selectivity: 'coordination',
+          calc_tcc: 'coordination',
+          validate_selectivity: 'coordination',
+          compare_cases: 'history',
+          compare_with: 'history',
+          compare_snapshots: 'history',
+          export_data: 'report',
+          export_json: 'report',
+          export_pdf: 'report',
+          export_docx: 'report',
+        };
+        const panelKind = panelKindByAction[operationId];
+        if (panelKind) {
+          openInspectorPanel(panelKind, elementId, elementType);
+          if (panelKind === 'results' && hasResults) {
+            toggleOverlay(true);
+          }
+          return;
+        }
+
+        throw new Error(`Brak kanonicznej obslugi akcji w widoku SLD: ${operationId}`);
       }
 
       // 3. Toggle actions — direct state change + notify
       if (TOGGLE_ACTIONS.has(operationId)) {
         selectElement({ id: elementId, type: elementType, name: elementId });
-        const labels: Record<string, string> = {
-          toggle_switch: 'Przełączono stan łącznika',
-          toggle_service: 'Zmieniono stan eksploatacji',
-          toggle_enabled: 'Zmieniono stan aktywności',
-          delete: 'Usunięcie elementu wymaga potwierdzenia',
-          delete_element: 'Usunięcie elementu wymaga potwierdzenia',
-          disconnect: 'Odłączenie elementu',
-          disconnect_element: 'Odłączenie elementu',
-          edit_geometry: 'Edycja geometrii widoku',
-          snap_to_grid: 'Wyrównano do siatki',
-          reset_geometry: 'Zresetowano geometrię widoku',
-          undo_snapshot: 'Cofnięto do poprzedniego Snapshot',
+        if (operationId === 'toggle_switch') {
+          openInlineOperation('update_element_parameters', elementId, elementType, { field: 'state' });
+          return;
+        }
+
+        if (
+          operationId === 'toggle_service'
+          || operationId === 'toggle_enabled'
+          || operationId === 'disconnect'
+          || operationId === 'disconnect_element'
+        ) {
+          openInlineOperation('update_element_parameters', elementId, elementType, {
+            field: operationId === 'toggle_enabled' ? 'enabled' : 'in_service',
+          });
+          return;
+        }
+
+        if (operationId === 'delete' || operationId === 'delete_element') {
+          if (!activeCaseId) {
+            notify('Brak aktywnego Study Case - nie można usunąć elementu.', 'error');
+            return;
+          }
+
+          if (pendingDeleteElementRef.current !== elementId) {
+            pendingDeleteElementRef.current = elementId;
+            notify(
+              'Powtórz usunięcie tego samego elementu, aby potwierdzić operację.',
+              'warning',
+            );
+            return;
+          }
+
+          pendingDeleteElementRef.current = null;
+
+          void executeDomainOperation(activeCaseId, 'delete_element', {
+            element_ref: elementId,
+            source: 'sld_context_menu',
+          })
+            .then((response) => {
+              if (!response || response.error) {
+                notify(response?.error ?? 'Nie udało się usunąć elementu.', 'error');
+                return;
+              }
+              notify('Element został usunięty z modelu.', 'success');
+            })
+            .catch((error) => {
+              notify(error instanceof Error ? error.message : 'Nie udało się usunąć elementu.', 'error');
+            });
+          return;
+        }
+        const blockedToggleLabels: Partial<Record<string, string>> = {
+          edit_geometry: 'edycja geometrii',
+          snap_to_grid: 'wyrównanie do siatki',
+          reset_geometry: 'reset geometrii',
+          undo_snapshot: 'cofnięcie migawki',
         };
-        notify(labels[operationId] ?? operationId, 'info');
+        if (blockedToggleLabels[operationId]) {
+          notify(`Akcja "${blockedToggleLabels[operationId]}" nie jest obsługiwana z menu kontekstowego SLD. Użyj dedykowanego narzędzia geometrii.`, 'warning');
+          return;
+        }
+
+        notify(`Akcja "${operationId}" nie ma przypisanego kanonicznego wykonania.`, 'warning');
         return;
       }
 
       // 4. Unknown operation — log warning + generic notification
       console.warn(`[SLDView] Nieznana operacja kontekstowa: ${operationId}`);
-      notify(`Operacja: ${operationId}`, 'info');
+      notify(`Nieznana operacja kontekstowa: ${operationId}`, 'warning');
     },
-    [selectElement, modalController, centerSldOnElement],
+    [
+      activeCaseId,
+      centerSldOnElement,
+      contextMenuState.elementName,
+      contextMenuState.scope,
+      executeDomainOperation,
+      openInlineOperation,
+      openInspectorPanel,
+      openPrimarySurfaceForElement,
+      openOperationForm,
+      openObjectCard,
+      selectElement,
+    ],
   );
 
   /**
@@ -1173,8 +1254,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
             containerElement,
             symbols,
             currentViewport: viewport,
-            canvasWidth: width,
-            canvasHeight: height,
+            canvasWidth,
+            canvasHeight,
           },
           exportOptions
         );
@@ -1188,7 +1269,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
         setIsExporting(false);
       }
     },
-    [symbols, viewport, width, height, sldOverlay, activeProjectName, activeCaseName]
+    [symbols, viewport, canvasWidth, canvasHeight, sldOverlay, activeProjectName, activeCaseName]
   );
 
   /**
@@ -1216,26 +1297,31 @@ export const SLDView: React.FC<SLDViewProps> = ({
   // ---------------------------------------------------------------------------
   // Wire D: Readiness blockers → SLD symbol highlighting
   // ---------------------------------------------------------------------------
-  const readiness = useSnapshotStore((state) => state.readiness);
+  const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const highlightedElements = useMemo(() => {
     const map = new Map<string, 'HIGH' | 'WARN' | 'INFO'>();
-    if (!readiness) return map;
+    if (readinessIssues.length === 0) return map;
 
-    // Blockery = czerwona obwódka (HIGH)
-    for (const blocker of readiness.blockers) {
-      if (blocker.element_ref) {
-        map.set(blocker.element_ref, 'HIGH');
+    for (const issue of readinessIssues) {
+      const refs = new Set<string>();
+      if (issue.element_ref) {
+        refs.add(issue.element_ref);
       }
-    }
-    // Ostrzeżenia = pomarańczowa obwódka (WARN)
-    for (const warning of readiness.warnings) {
-      if (warning.element_ref && !map.has(warning.element_ref)) {
-        map.set(warning.element_ref, 'WARN');
+      for (const ref of issue.element_refs) {
+        refs.add(ref);
+      }
+
+      for (const ref of refs) {
+        if (issue.severity === 'BLOCKER') {
+          map.set(ref, 'HIGH');
+        } else if (!map.has(ref)) {
+          map.set(ref, 'WARN');
+        }
       }
     }
 
     return map;
-  }, [readiness]);
+  }, [readinessIssues]);
 
   // Zoom percentage for display
   const zoomPercent = Math.round(viewport.zoom * 100);
@@ -1273,7 +1359,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
             <h3 className="text-sm font-semibold text-chrome-100 tracking-wide">Schemat jednokreskowy</h3>
           </div>
           <span className="text-xs text-chrome-400 font-medium">
-            SLD
+            Widok schematu
           </span>
           {/* PR-SLD-06: Mode indicator */}
           <span
@@ -1291,7 +1377,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Zoom controls — ETAP-grade */}
+          {/* Zoom controls — CANONICAL-grade */}
           <div className="flex items-center bg-chrome-700 rounded overflow-hidden">
             <button
               type="button"
@@ -1327,7 +1413,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
           <div className="w-px h-5 bg-chrome-600 mx-1" />
 
-          {/* Fit & Reset — ETAP-grade buttons */}
+          {/* Fit & Reset — CANONICAL-grade buttons */}
           <button
             type="button"
             onClick={handleFitToContent}
@@ -1345,7 +1431,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
             title="Resetuj widok"
             data-testid="sld-reset-view"
           >
-            Reset
+            Resetuj
           </button>
 
           {/* Results overlay toggle */}
@@ -1405,7 +1491,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
             </>
           )}
 
-          {/* PR-SLD-06, PR-SLD-09: Mode selector — ETAP-grade tab bar */}
+          {/* PR-SLD-06, PR-SLD-09: Mode selector — CANONICAL-grade tab bar */}
           <div className="w-px h-5 bg-chrome-600 mx-2" />
           <div className="flex items-center bg-chrome-700 rounded overflow-hidden" data-testid="sld-mode-selector">
             <button
@@ -1495,7 +1581,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
                 ? 'bg-teal-600 text-white'
                 : 'text-chrome-300 hover:text-chrome-100 hover:bg-chrome-700'
             }`}
-            title={techLabelsVisible ? 'Ukryj etykiety techniczne' : 'Pokaż etykiety techniczne (load%, NOP, U)'}
+            title={techLabelsVisible ? 'Ukryj etykiety techniczne' : 'Pokaż etykiety techniczne (obciążenie, NOP, U)'}
             data-testid="sld-tech-labels-toggle"
           >
             Etykiety
@@ -1514,7 +1600,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
                     ? 'bg-green-600 hover:bg-green-500 text-white'
                     : 'bg-chrome-600 text-chrome-400 cursor-not-allowed'
                 }`}
-                title={canCalculate ? 'Uruchom obliczenia' : 'Brak aktywnego przypadku'}
+                title={canCalculate ? 'Uruchom obliczenia' : calculateBlockedReason ?? 'Obliczenia są zablokowane'}
                 data-testid="sld-calculate-btn"
               >
                 ▶ Oblicz
@@ -1546,13 +1632,15 @@ export const SLDView: React.FC<SLDViewProps> = ({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        onContextMenu={handleContextMenu}
+        onContextMenu={handleOperationalContextMenu}
         style={{ cursor: cursorStyle }}
       >
         <SLDViewCanvas
           symbols={symbols}
+          connections={connections}
           selectedId={selectedElement?.id ?? null}
           onSymbolClick={handleSymbolClick}
+          onSymbolDoubleClick={handleSymbolDoubleClick}
           onSymbolHover={handleSymbolHover}
           onCanvasClick={handleCanvasBackgroundClick}
           onPortClick={handlePortClick}
@@ -1563,8 +1651,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
           interactionPreview={interactionPreview}
           viewport={viewport}
           showGrid={showGrid}
-          width={width}
-          height={height}
+          width={canvasWidth}
+          height={canvasHeight}
           canonicalAnnotations={canonicalAnnotations}
           highlightedElements={highlightedElements}
         />
@@ -1608,7 +1696,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
           </div>
         </div>
 
-        {/* Focus indicator (for jump-to-element visual feedback) — ETAP-grade */}
+        {/* Focus indicator (for jump-to-element visual feedback) — CANONICAL-grade */}
         {focusIndicatorPosition && (
           <div
             data-testid={`sld-focus-${focusIndicatorPosition.elementId}`}
@@ -1649,15 +1737,15 @@ export const SLDView: React.FC<SLDViewProps> = ({
           visible={diagnosticsVisible}
           filter={diagnosticsFilter}
           onMarkerClick={handleDiagnosticsMarkerClick}
-          projectId="demo-project"
-          diagramId="demo-diagram"
+          projectId={activeProjectId}
+          diagramId={activeCaseId}
           showLegend={true}
         />
 
         {/* Switching state & energization legend (toggled via button) */}
         <SwitchingStateLegend visible={legendVisible} />
 
-        {/* Legend toggle button (bottom-left corner) — ETAP-grade */}
+        {/* Legend toggle button (bottom-left corner) — CANONICAL-grade */}
         <button
           type="button"
           onClick={() => setLegendVisible((prev) => !prev)}
@@ -1699,13 +1787,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
         <SldTechLabelsLayer
           symbols={symbols}
           viewport={viewport}
-          width={width}
-          height={height}
+          width={canvasWidth}
+          height={canvasHeight}
           visible={effectiveTechLabelsVisible}
         />
       </div>
 
-      {/* Status bar — ETAP-grade professional */}
+      {/* Status bar — CANONICAL-grade professional */}
       <div
         data-testid="sld-view-status"
         className="flex items-center justify-between px-4 py-1.5 bg-chrome-800 border-t border-chrome-700 text-xs"
@@ -1741,7 +1829,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
             </span>
           )}
           <span className="text-chrome-500">
-            Prawy przycisk: przesuwanie • Scroll/+/−: zoom • F: dopasuj • 0: reset
+            Srodkowy przycisk: przesuwanie | Prawy przycisk: menu | Kolko/+/-: powiekszenie | F: dopasuj | 0: reset widoku
           </span>
         </div>
       </div>
@@ -1765,13 +1853,6 @@ export const SLDView: React.FC<SLDViewProps> = ({
         onClose={handleContextMenuClose}
         onOperation={handleContextMenuOperation}
         onCatalogRequired={handleCatalogRequired}
-      />
-
-      {/* Modal overlay — opened by context menu dispatch */}
-      <ModalOverlay
-        state={modalController.state}
-        onClose={modalController.close}
-        onSubmit={modalController.handleSubmit}
       />
 
       {/* Bramka katalogowa — TypePicker otwarty PRZED modalem operacji */}

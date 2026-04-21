@@ -1,10 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4, uuid5
-
-from sqlalchemy import delete, select
-from sqlalchemy.orm import Session
 
 from infrastructure.persistence.models import (
     SldAnnotationORM,
@@ -12,6 +9,8 @@ from infrastructure.persistence.models import (
     SldDiagramORM,
     SldNodeSymbolORM,
 )
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
 
 
 class SldRepository:
@@ -31,7 +30,7 @@ class SldRepository:
         commit: bool = True,
     ) -> UUID:
         sld_id = sld_id or uuid4()
-        created_at = created_at or datetime.now(timezone.utc)
+        created_at = created_at or datetime.now(UTC)
         updated_at = updated_at or created_at
         normalized = self._normalize_payload(
             payload, name=name, dirty_flag=dirty_flag, diagram_id=sld_id
@@ -100,7 +99,7 @@ class SldRepository:
         )
         row.sld_jsonb = normalized
         row.dirty_flag = normalized.get("dirty_flag", row.dirty_flag)
-        row.updated_at = datetime.now(timezone.utc)
+        row.updated_at = datetime.now(UTC)
         self._sync_symbols(diagram_id, normalized)
         if commit:
             self._session.commit()
@@ -113,7 +112,7 @@ class SldRepository:
             payload["dirty_flag"] = True
             row.sld_jsonb = payload
             row.dirty_flag = True
-            row.updated_at = datetime.now(timezone.utc)
+            row.updated_at = datetime.now(UTC)
         if commit:
             self._session.commit()
         return len(rows)
@@ -173,9 +172,11 @@ class SldRepository:
                 SldNodeSymbolORM(
                     id=UUID(node["id"]) if isinstance(node.get("id"), str) else node["id"],
                     diagram_id=diagram_id,
-                    node_id=UUID(node["node_id"])
-                    if isinstance(node.get("node_id"), str)
-                    else node["node_id"],
+                    node_id=(
+                        UUID(node["node_id"])
+                        if isinstance(node.get("node_id"), str)
+                        else node["node_id"]
+                    ),
                     x=float(node.get("x", 0.0)),
                     y=float(node.get("y", 0.0)),
                     label=node.get("label"),
@@ -187,28 +188,34 @@ class SldRepository:
         for branch in payload.get("branches", []):
             self._session.add(
                 SldBranchSymbolORM(
-                    id=UUID(branch["id"])
-                    if isinstance(branch.get("id"), str)
-                    else branch["id"],
+                    id=UUID(branch["id"]) if isinstance(branch.get("id"), str) else branch["id"],
                     diagram_id=diagram_id,
-                    branch_id=UUID(branch["branch_id"])
-                    if isinstance(branch.get("branch_id"), str)
-                    else branch["branch_id"],
-                    from_node_id=UUID(branch["from_node_id"])
-                    if isinstance(branch.get("from_node_id"), str)
-                    else branch["from_node_id"],
-                    to_node_id=UUID(branch["to_node_id"])
-                    if isinstance(branch.get("to_node_id"), str)
-                    else branch["to_node_id"],
+                    branch_id=(
+                        UUID(branch["branch_id"])
+                        if isinstance(branch.get("branch_id"), str)
+                        else branch["branch_id"]
+                    ),
+                    from_node_id=(
+                        UUID(branch["from_node_id"])
+                        if isinstance(branch.get("from_node_id"), str)
+                        else branch["from_node_id"]
+                    ),
+                    to_node_id=(
+                        UUID(branch["to_node_id"])
+                        if isinstance(branch.get("to_node_id"), str)
+                        else branch["to_node_id"]
+                    ),
                     points_jsonb=list(branch.get("points") or []),
                 )
             )
         for annotation in payload.get("annotations", []):
             self._session.add(
                 SldAnnotationORM(
-                    id=UUID(annotation["id"])
-                    if isinstance(annotation.get("id"), str)
-                    else annotation["id"],
+                    id=(
+                        UUID(annotation["id"])
+                        if isinstance(annotation.get("id"), str)
+                        else annotation["id"]
+                    ),
                     diagram_id=diagram_id,
                     text=str(annotation.get("text", "")),
                     x=float(annotation.get("x", 0.0)),

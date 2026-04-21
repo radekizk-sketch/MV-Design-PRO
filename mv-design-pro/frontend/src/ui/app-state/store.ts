@@ -1,10 +1,10 @@
-/**
- * Global Application State Store — P12a Data Manager Parity
+﻿/**
+ * Global Application State Store â€” P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
- * - wizard_screens.md § 1.3: Active case awareness
- * - powerfactory_ui_parity.md § A: Mode-based gating
+ * - wizard_screens.md Â§ 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
+ * - wizard_screens.md Â§ 1.3: Active case awareness
+ * - ui_canonical_parity.md Â§ A: Mode-based gating
  *
  * SINGLE SOURCE OF TRUTH for:
  * - Active project ID
@@ -14,7 +14,7 @@
  *
  * INVARIANTS:
  * - Exactly ONE active case per project
- * - No activeCaseId → [Oblicz] button DISABLED
+ * - No activeCaseId â†’ [Oblicz] button DISABLED
  * - MODEL_EDIT: model mutable, results invalidated on change
  * - CASE_CONFIG: model read-only, case config mutable
  * - RESULT_VIEW: everything read-only
@@ -23,6 +23,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { OperatingMode, ResultStatus } from '../types';
+import {
+  getOperatingModeLabel,
+  normalizeOperatingMode,
+  type RuntimeOperatingMode,
+} from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
 /**
@@ -32,7 +37,7 @@ export type CaseKind = 'ShortCircuitCase' | 'PowerFlowCase';
 
 /**
  * Analysis type for UI Context.
- * CANONICAL: UI_CORE_ARCHITECTURE.md § 5.2 — Analysis type in Context Bar hierarchy
+ * CANONICAL: UI_CORE_ARCHITECTURE.md Â§ 5.2 â€” Analysis type in Context Bar hierarchy
  */
 export type AnalysisType = 'SHORT_CIRCUIT' | 'LOAD_FLOW' | 'PROTECTION' | null;
 
@@ -54,8 +59,8 @@ interface AppState {
   // UI_INTEGRATION_E2E: Snapshot context
   activeSnapshotId: string | null;
 
-  // Operating mode (controls UI gating)
-  activeMode: OperatingMode;
+  // Runtime shell mode (controls UI gating)
+  activeMode: RuntimeOperatingMode;
 
   // Results context (only in RESULT_VIEW)
   activeRunId: string | null;
@@ -64,7 +69,6 @@ interface AppState {
   activeAnalysisType: AnalysisType;
 
   // UI state
-  caseManagerOpen: boolean;
   issuePanelOpen: boolean; // P30d: Issue Panel toggle
 
   // Actions
@@ -76,11 +80,10 @@ interface AppState {
     resultStatus?: ResultStatus
   ) => void;
   setActiveCaseResultStatus: (status: ResultStatus) => void;
-  setActiveMode: (mode: OperatingMode) => void;
+  setActiveMode: (mode: OperatingMode | RuntimeOperatingMode) => void;
   setActiveRun: (runId: string | null) => void;
   setActiveSnapshot: (snapshotId: string | null) => void; // UI_INTEGRATION_E2E
   setActiveAnalysisType: (analysisType: AnalysisType) => void; // UI_INTEGRATION_E2E
-  toggleCaseManager: (open?: boolean) => void;
   toggleIssuePanel: (open?: boolean) => void; // P30d
 
   // Computed helpers
@@ -105,10 +108,9 @@ const initialState = {
   activeCaseKind: null,
   activeCaseResultStatus: 'NONE' as ResultStatus,
   activeSnapshotId: null, // UI_INTEGRATION_E2E
-  activeMode: 'MODEL_EDIT' as OperatingMode,
+  activeMode: 'MODEL_EDIT' as RuntimeOperatingMode,
   activeRunId: null,
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
-  caseManagerOpen: false,
   issuePanelOpen: false, // P30d
 };
 
@@ -173,9 +175,10 @@ export const useAppStateStore = create<AppState>()(
        * Set operating mode.
        */
       setActiveMode: (mode) => {
-        set({ activeMode: mode });
+        const normalizedMode = normalizeOperatingMode(mode);
+        set({ activeMode: normalizedMode });
         // Clear run if exiting RESULT_VIEW
-        if (mode !== 'RESULT_VIEW') {
+        if (normalizedMode !== 'RESULT_VIEW') {
           set({ activeRunId: null });
         }
       },
@@ -199,15 +202,6 @@ export const useAppStateStore = create<AppState>()(
        */
       setActiveAnalysisType: (analysisType) => {
         set({ activeAnalysisType: analysisType });
-      },
-
-      /**
-       * Toggle Case Manager panel visibility.
-       */
-      toggleCaseManager: (open) => {
-        set((state) => ({
-          caseManagerOpen: open !== undefined ? open : !state.caseManagerOpen,
-        }));
       },
 
       /**
@@ -252,8 +246,7 @@ export const useAppStateStore = create<AppState>()(
        * Check if case config is editable (MODEL_EDIT or CASE_CONFIG).
        */
       isCaseConfigEditable: () => {
-        const mode = get().activeMode;
-        return mode === 'MODEL_EDIT' || mode === 'CASE_CONFIG';
+        return normalizeOperatingMode(get().activeMode) === 'MODEL_EDIT';
       },
 
       /**
@@ -325,7 +318,7 @@ export function useActiveCaseKind(): CaseKind | null {
 /**
  * Hook: Get active mode.
  */
-export function useActiveMode(): OperatingMode {
+export function useActiveMode(): RuntimeOperatingMode {
   return useAppStateStore((state) => state.activeMode);
 }
 
@@ -333,17 +326,7 @@ export function useActiveMode(): OperatingMode {
  * Hook: Get active mode label in Polish.
  */
 export function useActiveModeLabel(): string {
-  const mode = useAppStateStore((state) => state.activeMode);
-  switch (mode) {
-    case 'MODEL_EDIT':
-      return 'Edycja modelu';
-    case 'CASE_CONFIG':
-      return 'Konfiguracja przypadku';
-    case 'RESULT_VIEW':
-      return 'Przeglądanie wyników';
-    default:
-      return mode;
-  }
+  return getOperatingModeLabel(useAppStateStore((state) => state.activeMode));
 }
 
 /**
@@ -356,7 +339,7 @@ export function useCaseKindLabel(): string | null {
     case 'ShortCircuitCase':
       return 'Przypadek zwarciowy';
     case 'PowerFlowCase':
-      return 'Przypadek rozpływowy';
+      return 'Przypadek rozplywu mocy';
     default:
       return kind;
   }
@@ -369,7 +352,7 @@ export function useResultStatusLabel(): string {
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   switch (status) {
     case 'NONE':
-      return 'Brak wyników';
+      return 'Brak wynikow';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':
@@ -402,7 +385,7 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   if (activeMode !== 'MODEL_EDIT') {
     return {
       allowed: false,
-      reason: 'Obliczenia dozwolone tylko w trybie Edycja modelu',
+      reason: 'Obliczenia sa dozwolone tylko w trybie Model sieci',
     };
   }
 
@@ -410,25 +393,18 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     const blocker = readiness.blockers?.[0];
     return {
       allowed: false,
-      reason: blocker?.message_pl ?? 'Model nie jest gotowy do analizy — usuń blokery',
+      reason: blocker?.message_pl ?? 'Model nie jest gotowy do analizy - usun blokery',
     };
   }
 
   if (resultStatus === 'FRESH') {
     return {
       allowed: false,
-      reason: 'Wyniki są aktualne — brak potrzeby przeliczania',
+      reason: 'Wyniki sa aktualne - brak potrzeby ponownego uruchomienia obliczen',
     };
   }
 
   return { allowed: true, reason: null };
-}
-
-/**
- * Hook: Check if Case Manager panel is open.
- */
-export function useCaseManagerOpen(): boolean {
-  return useAppStateStore((state) => state.caseManagerOpen);
 }
 
 /**
@@ -461,7 +437,7 @@ export function useActiveAnalysisType(): AnalysisType {
 
 /**
  * Hook: Get active analysis type label in Polish.
- * CANONICAL: PROOF_UI_ARCHITECTURE.md § 7.6 — Polish terminology in UI
+ * CANONICAL: PROOF_UI_ARCHITECTURE.md Â§ 7.6 â€” Polish terminology in UI
  */
 export function useActiveAnalysisTypeLabel(): string | null {
   const analysisType = useAppStateStore((state) => state.activeAnalysisType);
@@ -470,9 +446,9 @@ export function useActiveAnalysisTypeLabel(): string | null {
     case 'SHORT_CIRCUIT':
       return 'Analiza zwarciowa';
     case 'LOAD_FLOW':
-      return 'Rozpływ mocy';
+      return 'RozpĹ‚yw mocy';
     case 'PROTECTION':
-      return 'Koordynacja zabezpieczeń';
+      return 'Koordynacja zabezpieczeĹ„';
     default:
       return analysisType;
   }
@@ -487,7 +463,7 @@ export function useActiveRunId(): string | null {
 
 /**
  * Hook: Get complete UI context for Context Bar.
- * UI_INTEGRATION_E2E: Single source of truth per UI_CORE_ARCHITECTURE.md § 5.2
+ * UI_INTEGRATION_E2E: Single source of truth per UI_CORE_ARCHITECTURE.md Â§ 5.2
  */
 export function useUIContext() {
   return useAppStateStore((state) => ({

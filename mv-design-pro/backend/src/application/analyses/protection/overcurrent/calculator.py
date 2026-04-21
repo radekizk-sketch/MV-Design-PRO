@@ -68,12 +68,8 @@ def compute_overcurrent_settings(
         warnings.append("fallback_inst_50n_a_missing_ik_min_1ph")
 
     computed_points = {
-        "phase": _build_curve_points(
-            curve=config.curve, pickup=i_pickup_51_a, tms=config.tms
-        ),
-        "earth": _build_curve_points(
-            curve=config.curve, pickup=i_pickup_51n_a, tms=config.tms
-        ),
+        "phase": _build_curve_points(curve=config.curve, pickup=i_pickup_51_a, tms=config.tms),
+        "earth": _build_curve_points(curve=config.curve, pickup=i_pickup_51n_a, tms=config.tms),
     }
 
     return OvercurrentSettingsV0(

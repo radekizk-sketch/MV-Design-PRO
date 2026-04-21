@@ -34,9 +34,11 @@ export interface UPSFormData {
   source_name: string | null;
 }
 
-interface UPSModalProps {
+export interface UPSModalProps {
   isOpen: boolean;
   mode: 'create' | 'edit';
+  embedded?: boolean;
+  hideHeader?: boolean;
   initialData?: Partial<UPSFormData>;
   fieldOptions: Array<{ ref_id: string; name: string; kind: string }>;
   catalogEntries?: CatalogEntry[];
@@ -99,7 +101,7 @@ const EMPTY_FORM: UPSFormData = {
 };
 
 export function UPSModal({
-  isOpen, mode, initialData, fieldOptions = [],
+  isOpen, mode, embedded: _embedded = false, hideHeader: _hideHeader = false, initialData, fieldOptions = [],
   catalogEntries = [], switchCatalogEntries: _switchCatalogEntries = [],
   onSubmit, onCancel,
 }: UPSModalProps) {

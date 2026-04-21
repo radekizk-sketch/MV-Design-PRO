@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-
 from api.dependencies import get_uow_factory
 from api.schemas.design_synth import (
     ConnectionStudyRequest,
@@ -12,6 +10,7 @@ from api.schemas.design_synth import (
 from application.analyses.design_synth.envelope_adapter import to_run_envelope
 from application.analyses.design_synth.pipeline import run_connection_study
 from application.analyses.run_index import index_run
+from fastapi import APIRouter, Depends, HTTPException, status
 
 router = APIRouter(prefix="/analyses/design-synth", tags=["design-synth"])
 

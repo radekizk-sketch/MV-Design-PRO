@@ -14,27 +14,19 @@ Steps:
 7. Run readiness check (full)
 """
 
-import hashlib
-import json
-
 import pytest
-
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
-    materialization_hash,
 )
 from network_model.catalog.readiness_checker import check_snapshot_readiness
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, CatalogNamespace
-from network_model.core.branch import Branch, BranchType, LineBranch
+from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.snapshot import (
-    NetworkSnapshot,
-    compute_fingerprint,
     create_network_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -153,7 +145,9 @@ class TestProductionScenario:
 
         for seg_id, from_n, to_n in segments:
             branch = _build_line_branch(
-                seg_id, from_n, to_n,
+                seg_id,
+                from_n,
+                to_n,
                 catalog_item_id=cable.id,
                 r_ohm_per_km=cable.r_ohm_per_km,
                 x_ohm_per_km=cable.x_ohm_per_km,
@@ -215,9 +209,7 @@ class TestProductionScenario:
         assert result.success
         assert result.solver_fields["r_ohm_per_km"] == cable.r_ohm_per_km
 
-    def test_step06_transformer_voltage_from_catalog(
-        self, catalog: CatalogRepository
-    ) -> None:
+    def test_step06_transformer_voltage_from_catalog(self, catalog: CatalogRepository) -> None:
         """Step 6: Transformer U_dolne comes ONLY from catalog."""
         trafo_types = catalog.list_transformer_types()
         if not trafo_types:
@@ -319,9 +311,7 @@ class TestProductionScenario:
             g.add_node(_build_source_node())
             g.add_node(_build_pq_node("BUS_001"))
             g.add_branch(
-                _build_line_branch(
-                    "SEG_1", "GPZ_BUS_001", "BUS_001", "test", length_km=0.5
-                )
+                _build_line_branch("SEG_1", "GPZ_BUS_001", "BUS_001", "test", length_km=0.5)
             )
 
             snap = create_network_snapshot(
@@ -330,9 +320,7 @@ class TestProductionScenario:
                 snapshot_id="SNAP_100X",
                 created_at="2026-02-20T12:00:00Z",
             )
-            assert snap.fingerprint == reference_fp, (
-                f"Fingerprint mismatch at iteration {i + 2}"
-            )
+            assert snap.fingerprint == reference_fp, f"Fingerprint mismatch at iteration {i + 2}"
 
     def test_step11_readiness_profile_hash_determinism(self) -> None:
         """Step 11: Readiness profile content_hash is stable 100×."""
@@ -351,9 +339,9 @@ class TestProductionScenario:
 
         for i in range(99):
             profile = check_snapshot_readiness(snapshot)
-            assert profile.content_hash == reference_hash, (
-                f"Readiness hash mismatch at iteration {i + 2}"
-            )
+            assert (
+                profile.content_hash == reference_hash
+            ), f"Readiness hash mismatch at iteration {i + 2}"
 
     def test_step12_no_500_errors(self, catalog: CatalogRepository) -> None:
         """Step 12: No internal errors in canonical path."""

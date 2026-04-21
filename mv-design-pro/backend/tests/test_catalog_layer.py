@@ -1,6 +1,6 @@
+import sys
 from dataclasses import FrozenInstanceError
 from pathlib import Path
-import sys
 
 import pytest
 
@@ -8,8 +8,19 @@ backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
 from network_model.catalog import CatalogRepository
-from network_model.catalog.types import ConverterKind, ConverterType, InverterType, LineType, TransformerType
-from network_model.core.branch import BranchType, LineBranch, LineImpedanceOverride, TransformerBranch
+from network_model.catalog.types import (
+    ConverterKind,
+    ConverterType,
+    InverterType,
+    LineType,
+    TransformerType,
+)
+from network_model.core.branch import (
+    BranchType,
+    LineBranch,
+    LineImpedanceOverride,
+    TransformerBranch,
+)
 from network_model.core.switch import Switch, SwitchState
 
 

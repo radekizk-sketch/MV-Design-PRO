@@ -4,7 +4,7 @@
  * Narzędzia do porównywania pól elementów w inspektorze SLD.
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Porównanie właściwości (120% ETAP)
+ * - ui_canonical_parity.md: Porównanie właściwości (120% CANONICAL)
  * - sld_rules.md § G.1: Deterministyczne porównanie
  *
  * FEATURES:

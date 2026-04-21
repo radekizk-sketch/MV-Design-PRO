@@ -8,19 +8,16 @@ Endpoints:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Path, Query
-from pydantic import BaseModel, Field
 from typing import Any
 
+from domain.study_case import StudyCaseConfig
+from fastapi import APIRouter, HTTPException, Path
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.core.graph import NetworkGraph
-from domain.study_case import StudyCaseConfig
-
+from pydantic import BaseModel
 from solver_input.builder import build_solver_input
 from solver_input.contracts import (
-    EligibilityMap,
     SolverAnalysisType,
-    SolverInputEnvelope,
 )
 from solver_input.eligibility import build_eligibility_map
 

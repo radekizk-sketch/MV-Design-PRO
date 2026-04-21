@@ -15,7 +15,6 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -115,6 +114,7 @@ class ProjectORM(Base):
     - frequency_hz: Częstotliwość sieci (50 lub 60 Hz)
     - deleted_at: Soft delete (null = aktywny)
     """
+
     __tablename__ = "projects"
 
     # Primary key
@@ -130,17 +130,14 @@ class ProjectORM(Base):
 
     # Point of Common Coupling (wymagany dla TO-BE z OZE, NC RfG)
     connection_node_id: Mapped[UUID | None] = mapped_column(
-        GUID(), ForeignKey("network_nodes.id", use_alter=True, name="fk_projects_connection_node_node")
+        GUID(),
+        ForeignKey("network_nodes.id", use_alter=True, name="fk_projects_connection_node_node"),
     )
     connection_description: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Network parameters
-    voltage_level_kv: Mapped[float] = mapped_column(
-        Numeric(6, 2), nullable=False, default=15.0
-    )
-    frequency_hz: Mapped[float] = mapped_column(
-        Numeric(4, 1), nullable=False, default=50.0
-    )
+    voltage_level_kv: Mapped[float] = mapped_column(Numeric(6, 2), nullable=False, default=15.0)
+    frequency_hz: Mapped[float] = mapped_column(Numeric(4, 1), nullable=False, default=50.0)
 
     # Ownership (nullable - FK to users added in future PR)
     owner_id: Mapped[UUID | None] = mapped_column(GUID(), nullable=True)
@@ -179,6 +176,7 @@ class NetworkSnapshotORM(Base):
 
     P10a: Snapshot has deterministic fingerprint for change detection.
     """
+
     __tablename__ = "network_snapshots"
 
     snapshot_id: Mapped[str] = mapped_column(String(64), primary_key=True)
@@ -194,11 +192,10 @@ class NetworkSnapshotORM(Base):
 class ProjectSettingsORM(Base):
     __tablename__ = "project_settings"
 
-    project_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("projects.id"), primary_key=True
-    )
+    project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), primary_key=True)
     connection_node_id: Mapped[UUID | None] = mapped_column(
-        GUID(), ForeignKey("network_nodes.id", use_alter=True, name="fk_settings_connection_node_node")
+        GUID(),
+        ForeignKey("network_nodes.id", use_alter=True, name="fk_settings_connection_node_node"),
     )
     active_case_id: Mapped[UUID | None] = mapped_column(
         GUID(),
@@ -370,6 +367,7 @@ class StudyCaseORM(Base):
     - result_refs_jsonb: References to calculation results
     - network_snapshot_id: P10a binding to specific network snapshot
     """
+
     __tablename__ = "study_cases"
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
@@ -402,9 +400,7 @@ class ScenarioORM(Base):
 
 class AnalysisRunORM(Base):
     __tablename__ = "analysis_runs"
-    __table_args__ = (
-        Index("ix_analysis_runs_input_hash", "input_hash"),
-    )
+    __table_args__ = (Index("ix_analysis_runs_input_hash", "input_hash"),)
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
     project_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("projects.id"), nullable=False)
@@ -422,6 +418,17 @@ class AnalysisRunORM(Base):
     result_summary: Mapped[dict[str, Any]] = mapped_column(
         DeterministicJSON(), nullable=False, default=dict
     )
+    analysis_case_context: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    reproducibility_json: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    proof_pack_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    completeness_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    export_artifacts_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
     trace_json: Mapped[dict[str, Any] | list[dict[str, Any]] | None] = mapped_column(
         DeterministicJSON(), nullable=True
     )
@@ -429,6 +436,50 @@ class AnalysisRunORM(Base):
         DeterministicJSON(), nullable=True
     )
     error_message: Mapped[str | None] = mapped_column(Text)
+
+
+class CanonicalRunORM(Base):
+    __tablename__ = "canonical_runs"
+    __table_args__ = (
+        Index("ix_canonical_runs_case_id_created_at", "case_id", "created_at"),
+        Index("ix_canonical_runs_project_id_created_at", "project_id", "created_at"),
+        Index("ix_canonical_runs_analysis_type", "analysis_type"),
+        Index("ix_canonical_runs_input_hash", "input_hash"),
+    )
+
+    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    project_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    analysis_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    result_status: Mapped[str] = mapped_column(String(20), nullable=False, default="VALID")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    snapshot_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    input_hash: Mapped[str] = mapped_column(String(128), nullable=False)
+    snapshot_json: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    validation_json: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    readiness_json: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    options_json: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_result_json: Mapped[dict[str, Any] | None] = mapped_column(
+        DeterministicJSON(), nullable=True
+    )
+    white_box_trace_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
+    power_flow_trace_json: Mapped[dict[str, Any] | None] = mapped_column(
+        DeterministicJSON(), nullable=True
+    )
 
 
 class AnalysisRunIndexORM(Base):
@@ -450,9 +501,7 @@ class AnalysisRunIndexORM(Base):
     fingerprint: Mapped[str] = mapped_column(String(128), nullable=False)
     created_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
-    meta_json: Mapped[dict[str, Any] | None] = mapped_column(
-        DeterministicJSON(), nullable=True
-    )
+    meta_json: Mapped[dict[str, Any] | None] = mapped_column(DeterministicJSON(), nullable=True)
 
 
 class StudyRunORM(Base):
@@ -464,6 +513,7 @@ class StudyRunORM(Base):
     - solver_version_hash: Ensures reproducibility
     - result_state: VALID / OUTDATED validity tracking
     """
+
     __tablename__ = "study_runs"
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
@@ -545,9 +595,7 @@ class DesignSpecORM(Base):
     __table_args__ = (Index("ix_design_specs_case_id", "case_id"),)
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("operating_cases.id"), nullable=False
-    )
+    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
     base_snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
     spec_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -559,13 +607,9 @@ class DesignProposalORM(Base):
     __table_args__ = (Index("ix_design_proposals_case_id", "case_id"),)
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("operating_cases.id"), nullable=False
-    )
+    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
     input_snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    proposal_json: Mapped[dict[str, Any]] = mapped_column(
-        DeterministicJSON(), nullable=False
-    )
+    proposal_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -576,11 +620,7 @@ class DesignEvidenceORM(Base):
     __table_args__ = (Index("ix_design_evidence_case_id", "case_id"),)
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
-    case_id: Mapped[UUID] = mapped_column(
-        GUID(), ForeignKey("operating_cases.id"), nullable=False
-    )
+    case_id: Mapped[UUID] = mapped_column(GUID(), ForeignKey("operating_cases.id"), nullable=False)
     snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
-    evidence_json: Mapped[dict[str, Any]] = mapped_column(
-        DeterministicJSON(), nullable=False
-    )
+    evidence_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

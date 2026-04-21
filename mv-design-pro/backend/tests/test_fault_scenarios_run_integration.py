@@ -8,9 +8,9 @@ Golden fixture with SC_3F/SC_1F/SC_2F scenarios.
 from uuid import uuid4
 
 import pytest
+from api.main import app
 from fastapi.testclient import TestClient
 
-from api.main import app
 from tests.catalog_test_helpers import gpz_source_record
 
 client = TestClient(app)
@@ -200,7 +200,9 @@ class TestGoldenFixture:
 
     def test_golden_sc3f_run_creates(self):
         _seed_valid_enm(CASE_ID)
-        scenario = _create_scenario(name="Golden run 3F", fault_type="SC_3F", element_ref="bus-main")
+        scenario = _create_scenario(
+            name="Golden run 3F", fault_type="SC_3F", element_ref="bus-main"
+        )
         sid = scenario["scenario_id"]
         response = client.post(f"{BASE_URL}/fault-scenarios/{sid}/runs", json={})
         assert response.status_code == 201

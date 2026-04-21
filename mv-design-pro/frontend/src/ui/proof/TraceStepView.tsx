@@ -2,7 +2,7 @@
  * TraceStepView — Widok szczegółów kroku obliczeniowego (środkowy panel)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Wzór → Dane → Podstawienie → Wynik
+ * - ui_canonical_parity.md: Wzór → Dane → Podstawienie → Wynik
  * - wizard_screens.md: RESULT_VIEW mode, Polish labels
  *
  * FEATURES:

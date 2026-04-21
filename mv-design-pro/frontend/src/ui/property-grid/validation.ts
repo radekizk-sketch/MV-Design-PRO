@@ -2,7 +2,7 @@
  * Property Grid Validation Rules (Client-side Syntactic)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § D.4: Inline validation
+ * - ui_canonical_parity.md § D.4: Inline validation
  * - AGENTS.md: Frontend = NOT-A-SOLVER (no physics calculations)
  *
  * IMPORTANT: This module provides SYNTACTIC validation only.

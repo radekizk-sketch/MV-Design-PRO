@@ -13,23 +13,22 @@ Verifies:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.solvers.short_circuit_iec60909 import (
-    ShortCircuitIEC60909Solver,
-    ShortCircuitResult,
-)
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
     PowerFlowBusResult,
     PowerFlowResultV1,
     PowerFlowSummary,
+)
+from network_model.solvers.short_circuit_iec60909 import (
+    ShortCircuitIEC60909Solver,
+    ShortCircuitResult,
 )
 
 # Check for optional dependencies
@@ -51,6 +50,7 @@ except ImportError:
 # =============================================================================
 # Test Helpers
 # =============================================================================
+
 
 def _create_pq_node(node_id: str, voltage_level: float) -> Node:
     return Node(
@@ -293,6 +293,7 @@ def _get_docx_text(doc: Document) -> str:
 # SC DOCX Tests
 # =============================================================================
 
+
 @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
 class TestSCDocxGeneration:
     """test_sc_docx_generation: verify file created, non-empty, correct content."""
@@ -389,6 +390,7 @@ class TestSCDocxGeneration:
 # PF DOCX Tests
 # =============================================================================
 
+
 @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx not installed")
 class TestPFDocxGeneration:
     """test_pf_docx_generation: verify PF DOCX report."""
@@ -456,6 +458,7 @@ class TestPFDocxGeneration:
 # =============================================================================
 # SC PDF Tests
 # =============================================================================
+
 
 @pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
 class TestSCPDFGeneration:
@@ -526,6 +529,7 @@ class TestSCPDFGeneration:
 # PF PDF Tests
 # =============================================================================
 
+
 @pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
 class TestPFPDFGeneration:
     """test_pf_pdf_generation: verify PF PDF report."""
@@ -566,6 +570,7 @@ class TestPFPDFGeneration:
 # =============================================================================
 # JSONL Trace Export Tests
 # =============================================================================
+
 
 class TestJSONLTraceExport:
     """test_jsonl_trace_export: verify JSONL trace export."""
@@ -730,6 +735,7 @@ class TestJSONLTraceExport:
 # Export Manifest Determinism Tests
 # =============================================================================
 
+
 class TestExportManifestDeterminism:
     """test_export_manifest_determinism: same inputs produce identical export_id."""
 
@@ -765,7 +771,7 @@ class TestExportManifestDeterminism:
         f2 = tmp_path / "data.jsonl"
         f2.write_text('{"test": true}\n')
 
-        ts = datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        ts = datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         manifest_a = build_export_manifest(
             files=[f1, f2],
@@ -794,7 +800,7 @@ class TestExportManifestDeterminism:
         f2 = tmp_path / "b.txt"
         f2.write_text("content B")
 
-        ts = datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        ts = datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         manifest_a = build_export_manifest(
             files=[f1],
@@ -892,13 +898,9 @@ class TestExportManifestDeterminism:
         f2 = tmp_path / "beta.txt"
         f2.write_text("beta")
 
-        ts = datetime(2025, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
+        ts = datetime(2025, 6, 1, 0, 0, 0, tzinfo=UTC)
 
-        m1 = build_export_manifest(
-            files=[f1, f2], snapshot_hash="h", run_id="r", created_at=ts
-        )
-        m2 = build_export_manifest(
-            files=[f2, f1], snapshot_hash="h", run_id="r", created_at=ts
-        )
+        m1 = build_export_manifest(files=[f1, f2], snapshot_hash="h", run_id="r", created_at=ts)
+        m2 = build_export_manifest(files=[f2, f1], snapshot_hash="h", run_id="r", created_at=ts)
 
         assert m1.export_id == m2.export_id

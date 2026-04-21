@@ -34,7 +34,7 @@ describe('Protection Coordination Types', () => {
       expect(LABELS.tabs).toBeDefined();
     });
 
-    it('should have PowerFactory-style verdict labels', () => {
+    it('should have Canonical-style verdict labels', () => {
       expect(LABELS.verdict.PASS).toBe('Zgodne');
       expect(LABELS.verdict.MARGINAL).toBe('Na granicy dopuszczalności');
       expect(LABELS.verdict.FAIL).toBe('Wymaga korekty');

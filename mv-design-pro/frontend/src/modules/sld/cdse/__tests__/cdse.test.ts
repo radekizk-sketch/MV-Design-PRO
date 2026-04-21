@@ -621,7 +621,7 @@ describe('SLD Event Router', () => {
       () => {},
     );
 
-    expect(result.action).toBe('MODAL_OPENED');
+    expect(result.action).toBe('SURFACE_OPENED');
     expect(openedModal).not.toBeNull();
     expect(openedModal!.modalId).toBe('AddTrunkSegmentModal');
   });

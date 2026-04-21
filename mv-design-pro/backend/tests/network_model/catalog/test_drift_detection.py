@@ -10,11 +10,7 @@ Covers:
 - Empty bindings edge case
 """
 
-import pytest
-
 from network_model.catalog.drift_detection import (
-    CatalogDriftEntry,
-    DriftReport,
     DriftSeverity,
     ElementBinding,
     detect_drift,

@@ -16,6 +16,7 @@ import type {
   ReadinessIssue,
   ReadinessSeverity,
 } from '../types';
+import { normalizeEngineeringReadinessResponse } from '../shared/fixActionSurfaceNormalizer';
 
 // =============================================================================
 // API Client
@@ -28,7 +29,7 @@ async function fetchEngineeringReadiness(
   if (!response.ok) {
     throw new Error(`Failed to fetch engineering readiness: ${response.statusText}`);
   }
-  return response.json();
+  return normalizeEngineeringReadinessResponse(await response.json());
 }
 
 // =============================================================================

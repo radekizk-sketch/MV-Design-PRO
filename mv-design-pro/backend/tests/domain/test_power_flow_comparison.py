@@ -8,26 +8,23 @@ Tests for:
 - Ranking generation determinism
 """
 
-import pytest
-from datetime import datetime, timezone
-from uuid import UUID
+from datetime import UTC, datetime
 
 from domain.power_flow_comparison import (
-    PowerFlowBusDiffRow,
+    ANGLE_DELTA_THRESHOLD_DEG,
+    ISSUE_DESCRIPTIONS_PL,
+    ISSUE_SEVERITY_MAP,
+    VOLTAGE_DELTA_THRESHOLD_PU,
     PowerFlowBranchDiffRow,
-    PowerFlowRankingIssue,
-    PowerFlowComparisonSummary,
+    PowerFlowBusDiffRow,
     PowerFlowComparisonResult,
+    PowerFlowComparisonStatus,
+    PowerFlowComparisonSummary,
     PowerFlowComparisonTrace,
     PowerFlowComparisonTraceStep,
-    PowerFlowComparison,
-    PowerFlowComparisonStatus,
     PowerFlowIssueCode,
     PowerFlowIssueSeverity,
-    ISSUE_SEVERITY_MAP,
-    ISSUE_DESCRIPTIONS_PL,
-    VOLTAGE_DELTA_THRESHOLD_PU,
-    ANGLE_DELTA_THRESHOLD_DEG,
+    PowerFlowRankingIssue,
     compute_pf_comparison_input_hash,
     get_ranking_thresholds,
     new_power_flow_comparison,
@@ -132,19 +129,25 @@ class TestPowerFlowComparisonResult:
             run_a_id="run-a",
             run_b_id="run-b",
             project_id="project-1",
-            bus_diffs=tuple([
+            bus_diffs=(
                 PowerFlowBusDiffRow(
                     bus_id="BUS_001",
-                    v_pu_a=1.0, v_pu_b=0.98,
-                    angle_deg_a=0.0, angle_deg_b=-2.0,
-                    p_injected_mw_a=0.0, p_injected_mw_b=0.0,
-                    q_injected_mvar_a=0.0, q_injected_mvar_b=0.0,
-                    delta_v_pu=-0.02, delta_angle_deg=-2.0,
-                    delta_p_mw=0.0, delta_q_mvar=0.0,
+                    v_pu_a=1.0,
+                    v_pu_b=0.98,
+                    angle_deg_a=0.0,
+                    angle_deg_b=-2.0,
+                    p_injected_mw_a=0.0,
+                    p_injected_mw_b=0.0,
+                    q_injected_mvar_a=0.0,
+                    q_injected_mvar_b=0.0,
+                    delta_v_pu=-0.02,
+                    delta_angle_deg=-2.0,
+                    delta_p_mw=0.0,
+                    delta_q_mvar=0.0,
                 ),
-            ]),
-            branch_diffs=tuple([]),
-            ranking=tuple([
+            ),
+            branch_diffs=(),
+            ranking=(
                 PowerFlowRankingIssue(
                     issue_code=PowerFlowIssueCode.VOLTAGE_DELTA_HIGH,
                     severity=PowerFlowIssueSeverity.MAJOR,
@@ -152,7 +155,7 @@ class TestPowerFlowComparisonResult:
                     description_pl="Duza zmiana napiecia",
                     evidence_ref=0,
                 ),
-            ]),
+            ),
             summary=PowerFlowComparisonSummary(
                 total_buses=1,
                 total_branches=0,
@@ -183,36 +186,50 @@ class TestPowerFlowComparisonResult:
 
     def test_determinism_same_inputs_same_json(self):
         """Same inputs must produce identical JSON."""
+
         def create_result():
             return PowerFlowComparisonResult(
                 comparison_id="det-test",
                 run_a_id="run-a",
                 run_b_id="run-b",
                 project_id="proj-1",
-                bus_diffs=tuple([
+                bus_diffs=(
                     PowerFlowBusDiffRow(
                         bus_id="B1",
-                        v_pu_a=1.0, v_pu_b=0.99,
-                        angle_deg_a=0.0, angle_deg_b=-1.0,
-                        p_injected_mw_a=0.0, p_injected_mw_b=0.0,
-                        q_injected_mvar_a=0.0, q_injected_mvar_b=0.0,
-                        delta_v_pu=-0.01, delta_angle_deg=-1.0,
-                        delta_p_mw=0.0, delta_q_mvar=0.0,
+                        v_pu_a=1.0,
+                        v_pu_b=0.99,
+                        angle_deg_a=0.0,
+                        angle_deg_b=-1.0,
+                        p_injected_mw_a=0.0,
+                        p_injected_mw_b=0.0,
+                        q_injected_mvar_a=0.0,
+                        q_injected_mvar_b=0.0,
+                        delta_v_pu=-0.01,
+                        delta_angle_deg=-1.0,
+                        delta_p_mw=0.0,
+                        delta_q_mvar=0.0,
                     ),
-                ]),
-                branch_diffs=tuple([]),
-                ranking=tuple([]),
+                ),
+                branch_diffs=(),
+                ranking=(),
                 summary=PowerFlowComparisonSummary(
-                    total_buses=1, total_branches=0,
-                    converged_a=True, converged_b=True,
-                    total_losses_p_mw_a=0.0, total_losses_p_mw_b=0.0,
+                    total_buses=1,
+                    total_branches=0,
+                    converged_a=True,
+                    converged_b=True,
+                    total_losses_p_mw_a=0.0,
+                    total_losses_p_mw_b=0.0,
                     delta_total_losses_p_mw=0.0,
-                    max_delta_v_pu=0.01, max_delta_angle_deg=1.0,
-                    total_issues=0, critical_issues=0,
-                    major_issues=0, moderate_issues=0, minor_issues=0,
+                    max_delta_v_pu=0.01,
+                    max_delta_angle_deg=1.0,
+                    total_issues=0,
+                    critical_issues=0,
+                    major_issues=0,
+                    moderate_issues=0,
+                    minor_issues=0,
                 ),
                 input_hash="hash-123",
-                created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+                created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
             )
 
         result1 = create_result()
@@ -220,6 +237,7 @@ class TestPowerFlowComparisonResult:
 
         # Both to_dict() calls must produce identical output
         import json
+
         json1 = json.dumps(result1.to_dict(), sort_keys=True)
         json2 = json.dumps(result2.to_dict(), sort_keys=True)
 
@@ -241,14 +259,14 @@ class TestPowerFlowComparisonTrace:
             input_hash_b="hash-b",
             solver_version="1.0.0",
             ranking_thresholds=get_ranking_thresholds(),
-            steps=tuple([
+            steps=(
                 PowerFlowComparisonTraceStep(
                     step="MATCH_BUSES",
                     description_pl="Dopasowanie szyn",
                     inputs={"buses_a_count": 10},
                     outputs={"matched_buses": 10},
                 ),
-            ]),
+            ),
         )
 
         data = trace.to_dict()
@@ -301,11 +319,17 @@ class TestIssueSeverityMap:
 
     def test_non_convergence_is_critical(self):
         """NON_CONVERGENCE_CHANGE must be CRITICAL (severity 5)."""
-        assert ISSUE_SEVERITY_MAP[PowerFlowIssueCode.NON_CONVERGENCE_CHANGE] == PowerFlowIssueSeverity.CRITICAL
+        assert (
+            ISSUE_SEVERITY_MAP[PowerFlowIssueCode.NON_CONVERGENCE_CHANGE]
+            == PowerFlowIssueSeverity.CRITICAL
+        )
 
     def test_voltage_delta_high_is_major(self):
         """VOLTAGE_DELTA_HIGH must be MAJOR (severity 4)."""
-        assert ISSUE_SEVERITY_MAP[PowerFlowIssueCode.VOLTAGE_DELTA_HIGH] == PowerFlowIssueSeverity.MAJOR
+        assert (
+            ISSUE_SEVERITY_MAP[PowerFlowIssueCode.VOLTAGE_DELTA_HIGH]
+            == PowerFlowIssueSeverity.MAJOR
+        )
 
 
 class TestThresholds:
@@ -365,28 +389,49 @@ class TestDeterminismContract:
         """Bus diffs must be sorted by bus_id for determinism."""
         bus_diffs = [
             PowerFlowBusDiffRow(
-                bus_id="BUS_C", v_pu_a=1.0, v_pu_b=1.0,
-                angle_deg_a=0.0, angle_deg_b=0.0,
-                p_injected_mw_a=0.0, p_injected_mw_b=0.0,
-                q_injected_mvar_a=0.0, q_injected_mvar_b=0.0,
-                delta_v_pu=0.0, delta_angle_deg=0.0,
-                delta_p_mw=0.0, delta_q_mvar=0.0,
+                bus_id="BUS_C",
+                v_pu_a=1.0,
+                v_pu_b=1.0,
+                angle_deg_a=0.0,
+                angle_deg_b=0.0,
+                p_injected_mw_a=0.0,
+                p_injected_mw_b=0.0,
+                q_injected_mvar_a=0.0,
+                q_injected_mvar_b=0.0,
+                delta_v_pu=0.0,
+                delta_angle_deg=0.0,
+                delta_p_mw=0.0,
+                delta_q_mvar=0.0,
             ),
             PowerFlowBusDiffRow(
-                bus_id="BUS_A", v_pu_a=1.0, v_pu_b=1.0,
-                angle_deg_a=0.0, angle_deg_b=0.0,
-                p_injected_mw_a=0.0, p_injected_mw_b=0.0,
-                q_injected_mvar_a=0.0, q_injected_mvar_b=0.0,
-                delta_v_pu=0.0, delta_angle_deg=0.0,
-                delta_p_mw=0.0, delta_q_mvar=0.0,
+                bus_id="BUS_A",
+                v_pu_a=1.0,
+                v_pu_b=1.0,
+                angle_deg_a=0.0,
+                angle_deg_b=0.0,
+                p_injected_mw_a=0.0,
+                p_injected_mw_b=0.0,
+                q_injected_mvar_a=0.0,
+                q_injected_mvar_b=0.0,
+                delta_v_pu=0.0,
+                delta_angle_deg=0.0,
+                delta_p_mw=0.0,
+                delta_q_mvar=0.0,
             ),
             PowerFlowBusDiffRow(
-                bus_id="BUS_B", v_pu_a=1.0, v_pu_b=1.0,
-                angle_deg_a=0.0, angle_deg_b=0.0,
-                p_injected_mw_a=0.0, p_injected_mw_b=0.0,
-                q_injected_mvar_a=0.0, q_injected_mvar_b=0.0,
-                delta_v_pu=0.0, delta_angle_deg=0.0,
-                delta_p_mw=0.0, delta_q_mvar=0.0,
+                bus_id="BUS_B",
+                v_pu_a=1.0,
+                v_pu_b=1.0,
+                angle_deg_a=0.0,
+                angle_deg_b=0.0,
+                p_injected_mw_a=0.0,
+                p_injected_mw_b=0.0,
+                q_injected_mvar_a=0.0,
+                q_injected_mvar_b=0.0,
+                delta_v_pu=0.0,
+                delta_angle_deg=0.0,
+                delta_p_mw=0.0,
+                delta_q_mvar=0.0,
             ),
         ]
 
@@ -425,8 +470,7 @@ class TestDeterminismContract:
 
         # Sort by severity DESC, then issue_code, then element_ref
         sorted_issues = sorted(
-            issues,
-            key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref)
+            issues, key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref)
         )
 
         # CRITICAL (5) should be first

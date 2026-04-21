@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 from application.analyses.design_synth.envelope_adapter import (
     to_run_envelope as design_synth_to_run_envelope,
 )
+from application.analyses.energy_validation.envelope_adapter import (
+    to_run_envelope as energy_validation_to_run_envelope,
+)
 from application.analyses.iec60909.envelope_adapter import (
     to_run_envelope as iec60909_to_run_envelope,
-)
-from application.analyses.protection.overcurrent.envelope_adapter import (
-    to_run_envelope as protection_overcurrent_to_run_envelope,
 )
 from application.analyses.protection.catalog.envelope_adapter import (
     to_run_envelope as protection_device_mapping_to_run_envelope,
 )
-from application.analyses.energy_validation.envelope_adapter import (
-    to_run_envelope as energy_validation_to_run_envelope,
+from application.analyses.protection.overcurrent.envelope_adapter import (
+    to_run_envelope as protection_overcurrent_to_run_envelope,
 )
 from application.analyses.run_envelope import AnalysisRunEnvelope
 

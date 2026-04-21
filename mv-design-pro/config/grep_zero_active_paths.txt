@@ -1,0 +1,14 @@
+# Active V12.5 documentation and owned guards.
+docs/INDEX.md
+docs/INDEX_KANONICZNY.md
+docs/analysis/P26_AUTO_RECOMMENDATIONS_CANONICAL_PLUS.md
+docs/analysis/P27_SCENARIO_COMPARISON_CANONICAL_PLUS.md
+docs/analysis/P33_LF_SENSITIVITY_CANONICAL_KILLER.md
+docs/analysis/SENSITIVITY_ANALYSIS_CANONICAL_PLUS.md
+docs/architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md
+docs/audit/REPO_HYGIENE_PO_FAZIE_KATALOG_FIRST.md
+docs/ui/UI_CANONICAL_PARITY_MATRIX.md
+docs/ui/ui_canonical_parity.md
+scripts/import_graph_guard.py
+scripts/grep_zero_guard.py
+scripts/docs_archive_guard.py

@@ -11,23 +11,22 @@ TESTS:
 7. Edge cases (zero values, identical values)
 """
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from domain.results import (
-    NumericDelta,
-    ComplexDelta,
-    ShortCircuitComparison,
-    BusVoltageComparison,
-    BranchPowerComparison,
-    PowerFlowComparison,
-    RunComparisonResult,
-    RunResultState,
-    ProjectMismatchError,
     AnalysisTypeMismatchError,
-    RunNotFoundError,
+    BusVoltageComparison,
+    ComplexDelta,
+    NumericDelta,
+    PowerFlowComparison,
+    ProjectMismatchError,
     ResultNotFoundError,
+    RunComparisonResult,
+    RunNotFoundError,
+    RunResultState,
+    ShortCircuitComparison,
 )
 
 
@@ -347,7 +346,7 @@ class TestDeterminismRequirements:
         run_a_id = uuid4()
         run_b_id = uuid4()
         project_id = uuid4()
-        fixed_time = datetime(2025, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+        fixed_time = datetime(2025, 1, 15, 12, 0, 0, tzinfo=UTC)
 
         sc_comp = ShortCircuitComparison(
             ikss_delta=NumericDelta.compute(10000.0, 12000.0),

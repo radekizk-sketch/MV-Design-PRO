@@ -1,10 +1,10 @@
 from analysis.power_flow import (
     BusVoltageLimitSpec,
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
     PowerFlowSolver,
+    PQSpec,
+    PVSpec,
     ShuntSpec,
     SlackSpec,
     TransformerTapSpec,
@@ -71,9 +71,7 @@ def _add_line(graph: NetworkGraph, branch_id: str, from_node: str, to_node: str)
     )
 
 
-def _add_transformer(
-    graph: NetworkGraph, branch_id: str, from_node: str, to_node: str
-) -> None:
+def _add_transformer(graph: NetworkGraph, branch_id: str, from_node: str, to_node: str) -> None:
     graph.add_branch(
         TransformerBranch(
             id=branch_id,
@@ -161,12 +159,8 @@ def test_pv_q_limits_trigger_pv_to_pq_switch() -> None:
 
     assert result.converged is True
     assert result.iterations <= pf_input.options.max_iter
-    assert any(
-        switch["node_id"] == "B" for switch in result.pv_to_pq_switches
-    )
-    assert any(
-        entry.get("pv_to_pq_optional") for entry in result.white_box_trace["nr_iterations"]
-    )
+    assert any(switch["node_id"] == "B" for switch in result.pv_to_pq_switches)
+    assert any(entry.get("pv_to_pq_optional") for entry in result.white_box_trace["nr_iterations"])
     assert result.white_box_trace["v2_feature_flags"]["pv_enabled"] is True
     _assert_basic_trace(result)
 

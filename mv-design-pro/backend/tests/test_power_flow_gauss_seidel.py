@@ -3,9 +3,8 @@
 This module tests the Gauss-Seidel solver implementation and compares
 results with the Newton-Raphson solver to ensure consistency.
 """
-import numpy as np
-import pytest
 
+import pytest
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -15,14 +14,13 @@ from network_model.solvers.power_flow_gauss_seidel import (
     solve_power_flow_gauss_seidel,
 )
 from network_model.solvers.power_flow_newton import (
-    PowerFlowNewtonSolver,
     solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_types import (
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
+    PVSpec,
     SlackSpec,
 )
 

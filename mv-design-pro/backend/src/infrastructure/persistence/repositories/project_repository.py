@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
-
-from sqlalchemy import func, select
-from sqlalchemy.exc import OperationalError, ProgrammingError
-from sqlalchemy.orm import Session
 
 from domain.models import Project
 from infrastructure.persistence.models import (
+    AnalysisRunORM,
+    OperatingCaseORM,
     ProjectORM,
     StudyCaseORM,
-    OperatingCaseORM,
-    AnalysisRunORM,
 )
+from sqlalchemy import func, select
+from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.orm import Session
 
 
 class ProjectRepository:
@@ -130,7 +129,7 @@ class ProjectRepository:
         row = self._session.execute(stmt).scalar_one_or_none()
         if row is None:
             return False
-        row.deleted_at = datetime.now(timezone.utc)
+        row.deleted_at = datetime.now(UTC)
         if commit:
             self._session.commit()
         return True
@@ -144,38 +143,29 @@ class ProjectRepository:
         """
         try:
             # Check study cases
-            study_case_count = (
-                self._session.execute(
-                    select(func.count())
-                    .select_from(StudyCaseORM)
-                    .where(StudyCaseORM.project_id == project_id)
-                )
-                .scalar_one()
-            )
+            study_case_count = self._session.execute(
+                select(func.count())
+                .select_from(StudyCaseORM)
+                .where(StudyCaseORM.project_id == project_id)
+            ).scalar_one()
             if study_case_count > 0:
                 return True
 
             # Check operating cases
-            operating_case_count = (
-                self._session.execute(
-                    select(func.count())
-                    .select_from(OperatingCaseORM)
-                    .where(OperatingCaseORM.project_id == project_id)
-                )
-                .scalar_one()
-            )
+            operating_case_count = self._session.execute(
+                select(func.count())
+                .select_from(OperatingCaseORM)
+                .where(OperatingCaseORM.project_id == project_id)
+            ).scalar_one()
             if operating_case_count > 0:
                 return True
 
             # Check analysis runs
-            analysis_run_count = (
-                self._session.execute(
-                    select(func.count())
-                    .select_from(AnalysisRunORM)
-                    .where(AnalysisRunORM.project_id == project_id)
-                )
-                .scalar_one()
-            )
+            analysis_run_count = self._session.execute(
+                select(func.count())
+                .select_from(AnalysisRunORM)
+                .where(AnalysisRunORM.project_id == project_id)
+            ).scalar_one()
             if analysis_run_count > 0:
                 return True
 
@@ -193,7 +183,9 @@ class ProjectRepository:
         )
         return self._session.execute(stmt).scalar_one_or_none()
 
-    def set_connection_node(self, project_id: UUID, node_id: UUID | None, *, commit: bool = True) -> None:
+    def set_connection_node(
+        self, project_id: UUID, node_id: UUID | None, *, commit: bool = True
+    ) -> None:
         """Set BoundaryNode node ID for a project."""
         stmt = select(ProjectORM).where(
             ProjectORM.id == project_id,
@@ -213,9 +205,7 @@ class ProjectRepository:
         result = self._session.execute(stmt).scalar_one_or_none()
         return list(result or [])
 
-    def set_sources(
-        self, project_id: UUID, sources: list[dict], *, commit: bool = True
-    ) -> None:
+    def set_sources(self, project_id: UUID, sources: list[dict], *, commit: bool = True) -> None:
         """Set sources JSON for a project."""
         stmt = select(ProjectORM).where(
             ProjectORM.id == project_id,

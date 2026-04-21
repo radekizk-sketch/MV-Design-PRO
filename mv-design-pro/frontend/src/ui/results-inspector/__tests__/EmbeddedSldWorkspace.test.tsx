@@ -8,7 +8,7 @@ import { EmbeddedSldWorkspace } from '../EmbeddedSldWorkspace';
 import type { EnergyNetworkModel } from '../../../types/enm';
 
 const fetchCurrentCaseSnapshotMock = vi.fn();
-const enmSnapshotToSldSymbolsMock = vi.fn();
+const projectEnmSnapshotToSldMock = vi.fn();
 
 vi.mock('../api', () => ({
   fetchCurrentCaseSnapshot: (...args: unknown[]) => fetchCurrentCaseSnapshotMock(...args),
@@ -18,7 +18,7 @@ vi.mock('../../sld', () => ({
   SLDView: ({ symbols }: { symbols: unknown[] }) => (
     <div data-testid="mock-sld-view" data-symbol-count={symbols.length} />
   ),
-  enmSnapshotToSldSymbols: (...args: unknown[]) => enmSnapshotToSldSymbolsMock(...args),
+  projectEnmSnapshotToSld: (...args: unknown[]) => projectEnmSnapshotToSldMock(...args),
 }));
 
 function createSnapshot(hash: string, busCount: number): EnergyNetworkModel {
@@ -63,7 +63,7 @@ describe('EmbeddedSldWorkspace', () => {
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
     fetchCurrentCaseSnapshotMock.mockReset();
-    enmSnapshotToSldSymbolsMock.mockReset();
+    projectEnmSnapshotToSldMock.mockReset();
     window.history.replaceState(null, '', '/#results?run=run-1&snapshot=run');
   });
 
@@ -95,12 +95,20 @@ describe('EmbeddedSldWorkspace', () => {
       },
     });
 
-    enmSnapshotToSldSymbolsMock.mockImplementation((snapshot: EnergyNetworkModel | null) => {
+    projectEnmSnapshotToSldMock.mockImplementation((snapshot: EnergyNetworkModel | null) => {
       const hash = snapshot?.header.hash_sha256;
       if (hash === 'current-hash-002') {
-        return [{ id: 'current-symbol-1' }, { id: 'current-symbol-2' }];
+        return {
+          symbols: [{ id: 'current-symbol-1' }, { id: 'current-symbol-2' }],
+          connections: [],
+          canonicalAnnotations: null,
+        };
       }
-      return [{ id: 'run-symbol-1' }];
+      return {
+        symbols: [{ id: 'run-symbol-1' }],
+        connections: [],
+        canonicalAnnotations: null,
+      };
     });
     useSnapshotStore.setState({ snapshot: currentSnapshot });
 

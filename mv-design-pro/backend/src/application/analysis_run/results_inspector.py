@@ -16,7 +16,8 @@ RULES (BINDING):
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
 from application.analysis_run.catalog_context import (
@@ -43,7 +44,6 @@ from application.analysis_run.dtos import (
 )
 from domain.analysis_run import AnalysisRun
 from infrastructure.persistence.unit_of_work import UnitOfWork
-
 
 # =============================================================================
 # Column Definitions (Polish labels, units)
@@ -159,9 +159,7 @@ class ResultsInspectorService:
         if run.analysis_type == "PF":
             pf_result = self._find_result_by_type(results, "power_flow")
             if pf_result:
-                branch_results = (pf_result.get("payload") or {}).get(
-                    "branch_results", {}
-                )
+                branch_results = (pf_result.get("payload") or {}).get("branch_results", {})
                 branch_count = len(branch_results)
                 tables.append(
                     ResultTableMetaDTO(

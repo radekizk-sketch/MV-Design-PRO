@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import sys
-
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_DIR = PROJECT_ROOT / "scripts"
@@ -32,7 +31,9 @@ def test_docs_guard_required_binding_inventory_exists_in_repo():
 
 
 def test_root_docs_guard_workflow_runs_docs_guard():
-    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "docs-guard.yml").read_text(encoding="utf-8")
+    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "docs-guard.yml").read_text(
+        encoding="utf-8"
+    )
     assert "python mv-design-pro/scripts/docs_guard.py" in workflow
 
 
@@ -57,13 +58,17 @@ def test_catalog_metadata_guard_preserves_frozen_metadata_and_widths():
 
 
 def test_root_arch_guard_workflow_runs_repo_hygiene_guard():
-    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "arch-guard.yml").read_text(encoding="utf-8")
+    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "arch-guard.yml").read_text(
+        encoding="utf-8"
+    )
     assert "python mv-design-pro/scripts/arch_guard.py" in workflow
     assert "python mv-design-pro/scripts/repo_hygiene_guard.py" in workflow
 
 
 def test_root_python_workflow_runs_catalog_first_backend_guards():
-    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "python-tests.yml").read_text(encoding="utf-8")
+    workflow = (PROJECT_ROOT.parent / ".github" / "workflows" / "python-tests.yml").read_text(
+        encoding="utf-8"
+    )
     for command in (
         "python scripts/catalog_binding_guard.py",
         "poetry run python ../scripts/catalog_enforcement_guard.py",
@@ -83,9 +88,7 @@ def test_repo_hygiene_guard_detects_legacy_active_route_and_skips_comment(tmp_pa
     app_file = tmp_path / "frontend" / "src" / "App.tsx"
     app_file.parent.mkdir(parents=True, exist_ok=True)
     app_file.write_text(
-        "if (route === '#results-workspace') {\n"
-        "  window.location.hash = '#results';\n"
-        "}\n",
+        "if (route === '#results-workspace') {\n" "  window.location.hash = '#results';\n" "}\n",
         encoding="utf-8",
     )
 
@@ -107,8 +110,7 @@ def test_repo_hygiene_guard_detects_legacy_backend_mount(tmp_path: Path):
     main_file = tmp_path / "backend" / "src" / "api" / "main.py"
     main_file.parent.mkdir(parents=True, exist_ok=True)
     main_file.write_text(
-        "from api import issues\n"
-        "app.include_router(issues.router)\n",
+        "from api import issues\n" "app.include_router(issues.router)\n",
         encoding="utf-8",
     )
 
@@ -135,7 +137,9 @@ def test_repo_hygiene_guard_detects_legacy_design_synth_mount(tmp_path: Path):
 
 
 def test_repo_hygiene_guard_detects_todo_in_critical_path(tmp_path: Path):
-    form_file = tmp_path / "frontend" / "src" / "ui" / "network-build" / "forms" / "ContinueTrunkForm.tsx"
+    form_file = (
+        tmp_path / "frontend" / "src" / "ui" / "network-build" / "forms" / "ContinueTrunkForm.tsx"
+    )
     form_file.parent.mkdir(parents=True, exist_ok=True)
     form_file.write_text("// TODO: remove legacy fallback\n", encoding="utf-8")
 
@@ -174,7 +178,9 @@ def test_repo_hygiene_guard_detects_catalog_guessing_in_sld(tmp_path: Path):
 
 
 def test_repo_hygiene_guard_detects_catalog_guessing_in_active_modal(tmp_path: Path):
-    modal_file = tmp_path / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx"
+    modal_file = (
+        tmp_path / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx"
+    )
     modal_file.parent.mkdir(parents=True, exist_ok=True)
     modal_file.write_text(
         "const binding = inferCatalogNamespaceFromElement(element);\n",
@@ -192,9 +198,7 @@ def test_repo_hygiene_guard_detects_legacy_catalog_payload_alias_in_types(tmp_pa
     types_file = tmp_path / "frontend" / "src" / "types" / "domainOps.ts"
     types_file.parent.mkdir(parents=True, exist_ok=True)
     types_file.write_text(
-        "export interface SegmentSpec {\n"
-        "  catalog_ref: string | null;\n"
-        "}\n",
+        "export interface SegmentSpec {\n" "  catalog_ref: string | null;\n" "}\n",
         encoding="utf-8",
     )
 
@@ -219,7 +223,9 @@ def test_repo_hygiene_guard_scans_e2e_specs_for_legacy_payload_aliases(tmp_path:
     violations = repo_hygiene_guard.check_legacy_catalog_payloads(tmp_path)
 
     assert len(violations) == 2
-    assert all(violation.path == "frontend/e2e/catalog-enforcement.spec.ts" for violation in violations)
+    assert all(
+        violation.path == "frontend/e2e/catalog-enforcement.spec.ts" for violation in violations
+    )
 
 
 def test_docs_guard_detects_missing_repo_reference_in_stage_doc(tmp_path: Path):
@@ -231,8 +237,7 @@ def test_docs_guard_detects_missing_repo_reference_in_stage_doc(tmp_path: Path):
 
     target_doc = docs_dir / "qa" / "MACIERZ_TESTOW_GLOBALNYCH.md"
     target_doc.write_text(
-        "# MACIERZ\n"
-        "- `frontend/src/ui/sld/__tests__/ghost.test.ts`\n",
+        "# MACIERZ\n" "- `frontend/src/ui/sld/__tests__/ghost.test.ts`\n",
         encoding="utf-8",
     )
 

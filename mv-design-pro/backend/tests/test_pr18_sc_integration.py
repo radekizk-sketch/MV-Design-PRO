@@ -22,38 +22,33 @@ from uuid import uuid4
 
 import numpy as np
 import pytest
-
-from domain.execution import (
-    ElementResult,
-    ExecutionAnalysisType,
-    ResultSet,
-    RunStatus,
-    build_result_set,
-    compute_result_signature,
-    compute_solver_input_hash,
-)
-from domain.study_case import StudyCaseConfig, new_study_case
-from application.execution_engine.service import ExecutionEngineService
 from application.execution_engine.errors import (
     RunBlockedError,
-    RunNotFoundError,
     RunNotReadyError,
     StudyCaseNotFoundError,
+)
+from application.execution_engine.service import ExecutionEngineService
+from application.result_mapping.short_circuit_to_resultset_v1 import (
+    map_short_circuit_to_resultset_v1,
 )
 from application.solvers.short_circuit_binding import (
     ShortCircuitBindingError,
     ShortCircuitBindingResult,
     execute_short_circuit,
 )
-from application.result_mapping.short_circuit_to_resultset_v1 import (
-    map_short_circuit_to_resultset_v1,
+from domain.execution import (
+    ExecutionAnalysisType,
+    ResultSet,
+    RunStatus,
+    compute_result_signature,
+    compute_solver_input_hash,
 )
+from domain.study_case import StudyCaseConfig, new_study_case
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
 from network_model.core.ybus import AdmittanceMatrixBuilder
-
 
 # =============================================================================
 # Fixtures: Golden network (production-grade MV network)
@@ -77,103 +72,119 @@ def _create_golden_graph() -> NetworkGraph:
     graph = NetworkGraph()
 
     # Nodes
-    graph.add_node(Node(
-        id="SLACK",
-        name="Stacja 110kV",
-        node_type=NodeType.PQ,
-        voltage_level=110.0,
-        active_power=0.0,
-        reactive_power=0.0,
-    ))
-    graph.add_node(Node(
-        id="BUS_MV",
-        name="Szyna SN 20kV",
-        node_type=NodeType.PQ,
-        voltage_level=20.0,
-        active_power=5.0,
-        reactive_power=2.0,
-    ))
-    graph.add_node(Node(
-        id="BUS_LOAD",
-        name="Szyna odbiorcza 20kV",
-        node_type=NodeType.PQ,
-        voltage_level=20.0,
-        active_power=10.0,
-        reactive_power=4.0,
-    ))
+    graph.add_node(
+        Node(
+            id="SLACK",
+            name="Stacja 110kV",
+            node_type=NodeType.PQ,
+            voltage_level=110.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="BUS_MV",
+            name="Szyna SN 20kV",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=5.0,
+            reactive_power=2.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="BUS_LOAD",
+            name="Szyna odbiorcza 20kV",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=10.0,
+            reactive_power=4.0,
+        )
+    )
     # Reference node for Y-bus invertibility
-    graph.add_node(Node(
-        id="GND",
-        name="Uziemienie",
-        node_type=NodeType.PQ,
-        voltage_level=20.0,
-        active_power=0.0,
-        reactive_power=0.0,
-    ))
+    graph.add_node(
+        Node(
+            id="GND",
+            name="Uziemienie",
+            node_type=NodeType.PQ,
+            voltage_level=20.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
 
     # Transformer: 110/20 kV, 25 MVA, uk=10%, pk=120 kW
-    graph.add_branch(TransformerBranch(
-        id="T1",
-        name="Transformator T1",
-        branch_type=BranchType.TRANSFORMER,
-        from_node_id="SLACK",
-        to_node_id="BUS_MV",
-        in_service=True,
-        rated_power_mva=25.0,
-        voltage_hv_kv=110.0,
-        voltage_lv_kv=20.0,
-        uk_percent=10.0,
-        pk_kw=120.0,
-        i0_percent=0.5,
-        p0_kw=25.0,
-        vector_group="Dyn11",
-        tap_position=0,
-        tap_step_percent=2.5,
-        type_ref="TRAFO_110_20_25MVA",
-    ))
+    graph.add_branch(
+        TransformerBranch(
+            id="T1",
+            name="Transformator T1",
+            branch_type=BranchType.TRANSFORMER,
+            from_node_id="SLACK",
+            to_node_id="BUS_MV",
+            in_service=True,
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=10.0,
+            pk_kw=120.0,
+            i0_percent=0.5,
+            p0_kw=25.0,
+            vector_group="Dyn11",
+            tap_position=0,
+            tap_step_percent=2.5,
+            type_ref="TRAFO_110_20_25MVA",
+        )
+    )
 
     # Cable: BUS_MV -> BUS_LOAD (YAKY 3x240, 5 km)
-    graph.add_branch(LineBranch(
-        id="C1",
-        name="Kabel C1",
-        branch_type=BranchType.CABLE,
-        from_node_id="BUS_MV",
-        to_node_id="BUS_LOAD",
-        in_service=True,
-        r_ohm_per_km=0.125,
-        x_ohm_per_km=0.08,
-        b_us_per_km=260.0,
-        length_km=5.0,
-        rated_current_a=400.0,
-        type_ref="YAKY_3x240",
-    ))
+    graph.add_branch(
+        LineBranch(
+            id="C1",
+            name="Kabel C1",
+            branch_type=BranchType.CABLE,
+            from_node_id="BUS_MV",
+            to_node_id="BUS_LOAD",
+            in_service=True,
+            r_ohm_per_km=0.125,
+            x_ohm_per_km=0.08,
+            b_us_per_km=260.0,
+            length_km=5.0,
+            rated_current_a=400.0,
+            type_ref="YAKY_3x240",
+        )
+    )
 
     # Reference branch to GND (for Y-bus invertibility)
-    graph.add_branch(LineBranch(
-        id="REF",
-        name="Ref GND",
-        branch_type=BranchType.LINE,
-        from_node_id="BUS_LOAD",
-        to_node_id="GND",
-        in_service=True,
-        r_ohm_per_km=1e9,
-        x_ohm_per_km=0.0,
-        b_us_per_km=0.0,
-        length_km=1.0,
-        rated_current_a=1.0,
-    ))
+    graph.add_branch(
+        LineBranch(
+            id="REF",
+            name="Ref GND",
+            branch_type=BranchType.LINE,
+            from_node_id="BUS_LOAD",
+            to_node_id="GND",
+            in_service=True,
+            r_ohm_per_km=1e9,
+            x_ohm_per_km=0.0,
+            b_us_per_km=0.0,
+            length_km=1.0,
+            rated_current_a=1.0,
+        )
+    )
 
     # Inverter source (PV, 100 A rated, k_sc=1.1)
-    graph.add_inverter_source(InverterSource(
-        id="INV1",
-        name="Falownik PV 1",
-        node_id="BUS_LOAD",
-        in_rated_a=100.0,
-        k_sc=1.1,
-        contributes_negative_sequence=False,
-        contributes_zero_sequence=False,
-        in_service=True,
-    ))
+    graph.add_inverter_source(
+        InverterSource(
+            id="INV1",
+            name="Falownik PV 1",
+            node_id="BUS_LOAD",
+            in_rated_a=100.0,
+            k_sc=1.1,
+            contributes_negative_sequence=False,
+            contributes_zero_sequence=False,
+            in_service=True,
+        )
+    )
 
     return graph
 
@@ -532,12 +543,26 @@ class TestContractShape:
         )
 
         expected_keys = {
-            "analysis_type", "short_circuit_type", "fault_node_id",
-            "c_factor", "un_v", "zkk_ohm", "tk_s", "tb_s",
-            "ikss_a", "ip_a", "ith_a", "ib_a", "sk_mva",
-            "ik_thevenin_a", "ik_inverters_a", "ik_total_a",
-            "kappa", "rx_ratio",
-            "contributions_count", "white_box_steps_count",
+            "analysis_type",
+            "short_circuit_type",
+            "fault_node_id",
+            "c_factor",
+            "un_v",
+            "zkk_ohm",
+            "tk_s",
+            "tb_s",
+            "ikss_a",
+            "ip_a",
+            "ith_a",
+            "ib_a",
+            "sk_mva",
+            "ik_thevenin_a",
+            "ik_inverters_a",
+            "ik_total_a",
+            "kappa",
+            "rx_ratio",
+            "contributions_count",
+            "white_box_steps_count",
         }
         assert expected_keys.issubset(set(rs.global_results.keys()))
 
@@ -848,8 +873,7 @@ class TestGoldenFixtures:
 
         # Check source contributions are present in element results
         contrib_refs = {
-            er.element_ref for er in rs.element_results
-            if er.element_type == "source_contribution"
+            er.element_ref for er in rs.element_results if er.element_type == "source_contribution"
         }
         assert "THEVENIN_GRID" in contrib_refs
         assert "INV1" in contrib_refs
@@ -1292,9 +1316,7 @@ class TestHardeningInvariants:
 
         for er in rs.element_results:
             if er.element_type == "source_contribution":
-                assert er.values["i_contrib_a"] >= 0, (
-                    f"Negative contribution from {er.element_ref}"
-                )
+                assert er.values["i_contrib_a"] >= 0, f"Negative contribution from {er.element_ref}"
 
     def test_white_box_trace_count_nonzero(self):
         """SC_3F result has non-zero white-box trace steps (auditability)."""

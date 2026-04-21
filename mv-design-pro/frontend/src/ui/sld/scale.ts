@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results as Overlay (never modifies model)
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
+ * - ui_canonical_parity.md: Canonical-like presentation
  *
  * FEATURES:
  * - Calculates min/max ranges from overlay data

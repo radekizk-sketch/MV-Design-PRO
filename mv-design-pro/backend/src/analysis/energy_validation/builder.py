@@ -20,7 +20,7 @@ from analysis.energy_validation.models import (
 )
 from analysis.energy_validation.serializer import STATUS_ORDER
 from analysis.power_flow.result import PowerFlowResult
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 
 
@@ -39,12 +39,8 @@ class EnergyValidationBuilder:
     ) -> EnergyValidationView:
         items: list[EnergyValidationItem] = []
         items.extend(self._check_branch_loading(power_flow_result, graph, config))
-        items.extend(
-            self._check_transformer_loading(power_flow_result, graph, config)
-        )
-        items.extend(
-            self._check_voltage_deviation(power_flow_result, graph, config)
-        )
+        items.extend(self._check_transformer_loading(power_flow_result, graph, config))
+        items.extend(self._check_voltage_deviation(power_flow_result, graph, config))
         items.extend(self._check_loss_budget(power_flow_result, graph, config))
         items.extend(self._check_reactive_balance(power_flow_result, graph))
 
@@ -110,8 +106,11 @@ class EnergyValidationBuilder:
 
             loading_pct = (abs(i_ka) / rated_ka) * 100.0
             status, why = _threshold_check(
-                loading_pct, config.loading_warn_pct, config.loading_fail_pct,
-                "Obciazenie", "%",
+                loading_pct,
+                config.loading_warn_pct,
+                config.loading_fail_pct,
+                "Obciazenie",
+                "%",
             )
             margin = loading_pct - config.loading_fail_pct
 
@@ -189,8 +188,11 @@ class EnergyValidationBuilder:
 
             loading_pct = (s_mva / branch.rated_power_mva) * 100.0
             status, why = _threshold_check(
-                loading_pct, config.loading_warn_pct, config.loading_fail_pct,
-                "Obciazenie", "%",
+                loading_pct,
+                config.loading_warn_pct,
+                config.loading_fail_pct,
+                "Obciazenie",
+                "%",
             )
             margin = loading_pct - config.loading_fail_pct
 
@@ -241,8 +243,11 @@ class EnergyValidationBuilder:
 
             delta_pct = abs((u_kv - u_nom_kv) / u_nom_kv) * 100.0
             status, why = _threshold_check(
-                delta_pct, config.voltage_warn_pct, config.voltage_fail_pct,
-                "Odchylenie napieciowe", "%",
+                delta_pct,
+                config.voltage_warn_pct,
+                config.voltage_fail_pct,
+                "Odchylenie napieciowe",
+                "%",
             )
             margin = delta_pct - config.voltage_fail_pct
 
@@ -289,8 +294,11 @@ class EnergyValidationBuilder:
 
         loss_pct = abs(p_loss_pu / p_slack_pu) * 100.0
         status, why = _threshold_check(
-            loss_pct, config.loss_warn_pct, config.loss_fail_pct,
-            "Straty sieciowe", "%",
+            loss_pct,
+            config.loss_warn_pct,
+            config.loss_fail_pct,
+            "Straty sieciowe",
+            "%",
         )
         margin = loss_pct - config.loss_fail_pct
 
@@ -341,16 +349,10 @@ class EnergyValidationBuilder:
             why = f"cos(phi) = {cos_phi:.3f} >= 0.9 — bilans mocy biernej prawidlowy."
         elif cos_phi >= 0.8:
             status = EnergyValidationStatus.WARNING
-            why = (
-                f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej "
-                "na granicy akceptowalnosci."
-            )
+            why = f"cos(phi) = {cos_phi:.3f} — bilans mocy biernej " "na granicy akceptowalnosci."
         else:
             status = EnergyValidationStatus.FAIL
-            why = (
-                f"cos(phi) = {cos_phi:.3f} < 0.8 — "
-                "nadmierny pobor mocy biernej z sieci."
-            )
+            why = f"cos(phi) = {cos_phi:.3f} < 0.8 — " "nadmierny pobor mocy biernej z sieci."
 
         return [
             EnergyValidationItem(
@@ -402,18 +404,10 @@ def _item_sort_key(
 def _build_summary(
     items: list[EnergyValidationItem],
 ) -> EnergyValidationSummary:
-    pass_count = sum(
-        1 for i in items if i.status == EnergyValidationStatus.PASS
-    )
-    warning_count = sum(
-        1 for i in items if i.status == EnergyValidationStatus.WARNING
-    )
-    fail_count = sum(
-        1 for i in items if i.status == EnergyValidationStatus.FAIL
-    )
-    not_computed_count = sum(
-        1 for i in items if i.status == EnergyValidationStatus.NOT_COMPUTED
-    )
+    pass_count = sum(1 for i in items if i.status == EnergyValidationStatus.PASS)
+    warning_count = sum(1 for i in items if i.status == EnergyValidationStatus.WARNING)
+    fail_count = sum(1 for i in items if i.status == EnergyValidationStatus.FAIL)
+    not_computed_count = sum(1 for i in items if i.status == EnergyValidationStatus.NOT_COMPUTED)
 
     worst_id: str | None = None
     worst_margin: float | None = None

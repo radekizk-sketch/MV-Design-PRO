@@ -9,7 +9,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results as Overlay (never modifies model)
- * - powerfactory_ui_parity.md: Industrial-grade results access
+ * - ui_canonical_parity.md: Industrial-grade results access
  * - SYSTEM_SPEC.md: READ-ONLY result display, Polish labels
  *
  * INVARIANTS:

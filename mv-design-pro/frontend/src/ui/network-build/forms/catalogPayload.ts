@@ -1,5 +1,16 @@
 import type { CatalogBinding, CatalogNamespace } from '../../catalog/types';
 import { CANONICAL_CATALOG_VERSION } from '../../catalog/catalogBinding';
+import {
+  normalizeTopologicalStationKind,
+  type TopologicalStationKind,
+} from '../../shared/stationTypeLabels';
+
+export type ManualSourceShortCircuitMode = 'SHORT_CIRCUIT_POWER' | 'IMPEDANCE';
+export type GpzGroundingType =
+  | 'isolated'
+  | 'resistor_grounded'
+  | 'petersen_coil'
+  | 'solid_grounded';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -102,26 +113,6 @@ export function normalizeSwitchState(value: unknown): 'open' | 'closed' {
   return 'closed';
 }
 
-export function normalizeStationType(value: unknown): 'A' | 'B' | 'C' | 'D' {
-  if (value === 'A' || value === 'B' || value === 'C' || value === 'D') {
-    return value;
-  }
-
-  if (!isNonEmptyString(value)) {
-    return 'B';
-  }
-
-  switch (value.trim().toLowerCase()) {
-    case 'terminal':
-    case 'mv_lv':
-      return 'A';
-    case 'inline':
-      return 'B';
-    case 'branch':
-      return 'C';
-    case 'sectional':
-      return 'D';
-    default:
-      return 'B';
-  }
+export function normalizeStationType(value: unknown): TopologicalStationKind {
+  return normalizeTopologicalStationKind(value);
 }

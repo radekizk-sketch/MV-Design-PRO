@@ -348,6 +348,7 @@ export interface TrunkSegmentAnnotationV1 {
  */
 export interface BranchPointV1 {
   readonly branchId: string;
+  readonly sourceEdgeId: string;
   readonly trunkNodeId: string;
   readonly physicalLocation: 'ZK' | 'SO';
   readonly physicalLocationId: string;
@@ -368,12 +369,13 @@ export interface BranchPointV1 {
   };
   readonly targetStationId: string;
   readonly position: PointV1;
+  readonly detail?: StationBlockDetailV1 | null;
 }
 
 /**
- * Łańcuch aparatów stacyjnych (QS -> Q -> CT -> T -> BUS NN -> feeders).
+ * Adnotacja renderująca pole stacji (SN -> trafo -> szyna nN -> feeders).
  */
-export interface StationApparatusChainV1 {
+export interface StationFieldAnnotationV1 {
   readonly stationId: string;
   readonly stationType: 'TYPE_A' | 'TYPE_B' | 'TYPE_C' | 'TYPE_D';
   readonly hasOZE: boolean;
@@ -384,6 +386,7 @@ export interface StationApparatusChainV1 {
     readonly feeders: readonly NNFeederV1[];
   };
   readonly protection: readonly ProtectionRelayV1[];
+  readonly detail?: StationBlockDetailV1 | null;
 }
 
 /**
@@ -436,6 +439,32 @@ export interface InlineBranchObjectV1 {
   readonly branchPortCount: number;
 }
 
+export interface GpzSectionV1 {
+  readonly sectionId: string;
+  readonly rootBusId: string;
+  readonly rootBusName?: string | null;
+  readonly order: number;
+  readonly bounds: RectangleV1;
+  readonly busbar: Readonly<{ x: number; y: number; width: number; height: number }>;
+  readonly centerX: number;
+  readonly fieldIds: readonly string[];
+  readonly sourceNodeIds: readonly string[];
+  readonly leftCouplerEdgeId: string | null;
+  readonly rightCouplerEdgeId: string | null;
+}
+
+export interface GpzFieldAnnotationV1 {
+  readonly fieldId: string;
+  readonly feederNodeId: string;
+  readonly rootBusId: string;
+  readonly designation: string;
+  readonly axisX: number;
+  readonly busTap: PointV1;
+  readonly segmentStart: PointV1;
+  readonly headCenter?: PointV1;
+  readonly detail?: StationBlockDetailV1 | null;
+}
+
 /**
  * Kontener adnotacji kanonicznego SLD (Phase 7 output).
  * Immutable, sorted, deterministic.
@@ -444,7 +473,9 @@ export interface CanonicalAnnotationsV1 {
   readonly trunkNodes: readonly TrunkNodeAnnotationV1[];
   readonly trunkSegments: readonly TrunkSegmentAnnotationV1[];
   readonly branchPoints: readonly BranchPointV1[];
-  readonly stationChains: readonly StationApparatusChainV1[];
+  readonly stationChains: readonly StationFieldAnnotationV1[];
+  readonly gpzSections?: readonly GpzSectionV1[];
+  readonly gpzFeederFields?: readonly GpzFieldAnnotationV1[];
   /** Obiekty wbudowane na torze: słup rozgałęźny SN i ZKSN. Opcjonalne dla wstecznej zgodności. */
   readonly inlineBranchObjects?: readonly InlineBranchObjectV1[];
 }
@@ -457,6 +488,36 @@ export interface CanonicalAnnotationsV1 {
  * Kanonizuje LayoutResultV1 — sortuje wszystkie tablice deterministycznie.
  */
 export function canonicalizeLayoutResult(result: LayoutResultV1): LayoutResultV1 {
+  const canonicalAnnotations = result.canonicalAnnotations
+    ? {
+        ...result.canonicalAnnotations,
+        gpzSections: result.canonicalAnnotations.gpzSections
+          ? [...result.canonicalAnnotations.gpzSections]
+              .map((section) => ({
+                ...section,
+                fieldIds: [...section.fieldIds].sort((left, right) => left.localeCompare(right)),
+                sourceNodeIds: [...section.sourceNodeIds].sort((left, right) => left.localeCompare(right)),
+              }))
+              .sort((left, right) => {
+                if (left.order !== right.order) {
+                  return left.order - right.order;
+                }
+                return left.sectionId.localeCompare(right.sectionId);
+              })
+          : undefined,
+        gpzFeederFields: result.canonicalAnnotations.gpzFeederFields
+          ? [...result.canonicalAnnotations.gpzFeederFields].sort((left, right) =>
+              left.fieldId.localeCompare(right.fieldId),
+            )
+          : undefined,
+        inlineBranchObjects: result.canonicalAnnotations.inlineBranchObjects
+          ? [...result.canonicalAnnotations.inlineBranchObjects].sort((left, right) =>
+              left.nodeId.localeCompare(right.nodeId),
+            )
+          : undefined,
+      }
+    : null;
+
   return {
     version: result.version,
     nodePlacements: [...result.nodePlacements].sort((a, b) => a.nodeId.localeCompare(b.nodeId)),
@@ -467,7 +528,7 @@ export function canonicalizeLayoutResult(result: LayoutResultV1): LayoutResultV1
     validationErrors: [...result.validationErrors].sort((a, b) => (a.nodeId ?? '').localeCompare(b.nodeId ?? '')),
     bounds: result.bounds,
     hash: result.hash,
-    canonicalAnnotations: result.canonicalAnnotations,
+    canonicalAnnotations,
   };
 }
 
@@ -512,6 +573,27 @@ export function computeLayoutResultHash(result: LayoutResultV1): string {
       x: b.bounds.x, y: b.bounds.y,
       w: b.bounds.width, h: b.bounds.height,
     })),
+    gpzSections: canonical.canonicalAnnotations?.gpzSections?.map((section) => ({
+      sectionId: section.sectionId,
+      rootBusId: section.rootBusId,
+      order: section.order,
+      centerX: section.centerX,
+      bounds: section.bounds,
+      busbar: section.busbar,
+      fieldIds: section.fieldIds,
+      sourceNodeIds: section.sourceNodeIds,
+      leftCouplerEdgeId: section.leftCouplerEdgeId,
+      rightCouplerEdgeId: section.rightCouplerEdgeId,
+    })) ?? [],
+    gpzFeederFields: canonical.canonicalAnnotations?.gpzFeederFields?.map((field) => ({
+      fieldId: field.fieldId,
+      feederNodeId: field.feederNodeId,
+      rootBusId: field.rootBusId,
+      designation: field.designation,
+      axisX: field.axisX,
+      busTap: field.busTap,
+      segmentStart: field.segmentStart,
+    })) ?? [],
     bounds: canonical.bounds,
   };
 

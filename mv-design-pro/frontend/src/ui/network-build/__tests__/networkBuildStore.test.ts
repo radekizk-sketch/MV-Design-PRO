@@ -13,10 +13,12 @@ import {
   computeBuildPhase,
   selectOpenTerminals,
   selectBlockersByCategory,
+  selectActiveOperationForm,
   buildPhaseLabel,
   useNetworkBuildStore,
 } from '../networkBuildStore';
 import type { EnergyNetworkModel, LogicalViewsV1, ReadinessInfo } from '../../../types/enm';
+import { ANALYSIS_SURFACE_SCREEN_CODE } from '../../workspace/types';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -66,7 +68,7 @@ describe('computeBuildPhase', () => {
   });
 
   it('returns READY when readiness.ready is true', () => {
-    const enm = { ...enmWithSource(), substations: [{ id: 's1', name: 'S1', station_type: 'A', transformer_refs: [], bus_refs: [] }] } as unknown as EnergyNetworkModel;
+    const enm = { ...enmWithSource(), substations: [{ id: 's1', name: 'S1', station_type: 'terminal', transformer_refs: [], bus_refs: [] }] } as unknown as EnergyNetworkModel;
     const lv = { trunks: [{ id: 't1' }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     const readiness = { ready: true, blockers: [] } as ReadinessInfo;
     expect(computeBuildPhase(enm, lv, readiness)).toBe('READY');
@@ -135,8 +137,8 @@ describe('selectBlockersByCategory', () => {
 describe('buildPhaseLabel', () => {
   it('returns Polish labels for all phases', () => {
     expect(buildPhaseLabel('NO_SOURCE')).toContain('Brak');
-    expect(buildPhaseLabel('HAS_SOURCE')).toContain('Źródło');
-    expect(buildPhaseLabel('HAS_TRUNKS')).toContain('Magistrale');
+    expect(buildPhaseLabel('HAS_SOURCE')).toContain('GPZ');
+    expect(buildPhaseLabel('HAS_TRUNKS')).toContain('Magistrala');
     expect(buildPhaseLabel('HAS_STATIONS')).toContain('Stacje');
     expect(buildPhaseLabel('READY')).toContain('Gotowy');
   });
@@ -151,13 +153,13 @@ describe('useNetworkBuildStore', () => {
     useNetworkBuildStore.getState().reset();
   });
 
-  it('starts with null activeOperationForm', () => {
-    expect(useNetworkBuildStore.getState().activeOperationForm).toBeNull();
+  it('starts with null active operation form projection', () => {
+    expect(selectActiveOperationForm(useNetworkBuildStore.getState())).toBeNull();
   });
 
   it('openOperationForm sets the form', () => {
     useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn', { bus_ref: 'b1' });
-    const form = useNetworkBuildStore.getState().activeOperationForm;
+    const form = selectActiveOperationForm(useNetworkBuildStore.getState());
     expect(form).not.toBeNull();
     expect(form!.op).toBe('add_grid_source_sn');
   });
@@ -165,7 +167,7 @@ describe('useNetworkBuildStore', () => {
   it('closeOperationForm clears the form', () => {
     useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn');
     useNetworkBuildStore.getState().closeOperationForm();
-    expect(useNetworkBuildStore.getState().activeOperationForm).toBeNull();
+    expect(selectActiveOperationForm(useNetworkBuildStore.getState())).toBeNull();
   });
 
   it('toggleSection adds/removes from collapsedSections', () => {
@@ -173,5 +175,48 @@ describe('useNetworkBuildStore', () => {
     expect(useNetworkBuildStore.getState().collapsedSections.has('section-1')).toBe(true);
     useNetworkBuildStore.getState().toggleSection('section-1');
     expect(useNetworkBuildStore.getState().collapsedSections.has('section-1')).toBe(false);
+  });
+
+  it('builds a canonical surface stack for nested object and technical surfaces', () => {
+    useNetworkBuildStore.getState().openObjectCard({ kind: 'station', elementId: 'station-1' });
+    useNetworkBuildStore.getState().openObjectCard({ kind: 'bay', elementId: 'bay-1' });
+    useNetworkBuildStore.getState().openInspectorPanel('field_protection', 'relay-1', 'Switch');
+
+    const state = useNetworkBuildStore.getState();
+    expect(state.surfaceStack).toHaveLength(3);
+    expect(state.surfaceStack[0]?.screenCode).toBe('E-13');
+    expect(state.surfaceStack[1]?.screenCode).toBe('E-14');
+    expect(state.surfaceStack[2]?.screenCode).toBe('E-14');
+
+    state.closeActiveSurface();
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-14');
+  });
+
+  it('opens canonical route-managed analysis surface and clears it without touching shell state', () => {
+    useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, { tabId: 'compare' });
+
+    let state = useNetworkBuildStore.getState();
+    expect(state.activeSurface?.surfaceKind).toBe('analityczny');
+    expect(state.activeSurface?.screenCode).toBe(ANALYSIS_SURFACE_SCREEN_CODE);
+    expect(state.activeSurface?.routeState.route).toBe('analysis');
+    expect(state.activeSurface?.tabId).toBe('compare');
+
+    useNetworkBuildStore.getState().clearRouteManagedSurface();
+    state = useNetworkBuildStore.getState();
+    expect(state.activeSurface).toBeNull();
+    expect(state.surfaceStack).toEqual([]);
+  });
+
+  it('collapses stack to selected breadcrumb target', () => {
+    useNetworkBuildStore.getState().openObjectCard({ kind: 'station', elementId: 'station-1' });
+    useNetworkBuildStore.getState().openObjectCard({ kind: 'bay', elementId: 'bay-1' });
+
+    const stationSurfaceId = useNetworkBuildStore.getState().surfaceStack[0]?.surfaceId;
+    expect(stationSurfaceId).toBeTruthy();
+
+    useNetworkBuildStore.getState().collapseSurfaceStackTo(stationSurfaceId ?? null);
+    const state = useNetworkBuildStore.getState();
+    expect(state.surfaceStack).toHaveLength(1);
+    expect(state.activeSurface?.surfaceId).toBe(stationSurfaceId);
   });
 });

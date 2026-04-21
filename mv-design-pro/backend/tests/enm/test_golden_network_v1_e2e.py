@@ -17,17 +17,16 @@ Sekwencja V1:
   7. connect_secondary_ring_sn
   8. set_normal_open_point
 """
+
 from __future__ import annotations
 
 import copy
 
-import pytest
-
-from enm.models import EnergyNetworkModel, ENMHeader, ENMDefaults
-from enm.hash import compute_enm_hash
 from enm.domain_operations import execute_domain_operation
-from tests.catalog_test_helpers import gpz_payload
+from enm.hash import compute_enm_hash
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
+from tests.catalog_test_helpers import gpz_payload
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -141,9 +140,9 @@ def _assert_step_ok(result: dict, step_label: str, expect_created: bool = True) 
     layout = result.get("layout")
     assert layout is not None, f"[{step_label}] Brak layout"
     layout_hash = layout.get("layout_hash", "")
-    assert layout_hash.startswith("sha256:"), (
-        f"[{step_label}] layout_hash nie zaczyna sie od 'sha256:': {layout_hash}"
-    )
+    assert layout_hash.startswith(
+        "sha256:"
+    ), f"[{step_label}] layout_hash nie zaczyna sie od 'sha256:': {layout_hash}"
 
     # readiness present
     readiness = result.get("readiness")
@@ -153,9 +152,9 @@ def _assert_step_ok(result: dict, step_label: str, expect_created: bool = True) 
     if expect_created:
         changes = result.get("changes", {})
         created_ids = changes.get("created_element_ids", [])
-        assert len(created_ids) > 0, (
-            f"[{step_label}] changes.created_element_ids powinno byc niepuste"
-        )
+        assert (
+            len(created_ids) > 0
+        ), f"[{step_label}] changes.created_element_ids powinno byc niepuste"
 
 
 # ---------------------------------------------------------------------------
@@ -207,7 +206,10 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT"],
-            "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            },
         },
     )
     _assert_step_ok(r3, "Krok 3: insert_station_on_segment_sn (B)")
@@ -227,13 +229,10 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
     #   Jawny from_bus_ref — szyna SN wstawionej stacji.
     # -----------------------------------------------------------------------
     # Znajdz szyne SN stacji B (sn_bus w ref_id)
-    station_sn_buses = [
-        b for b in s.get("buses", [])
-        if "sn_bus" in b.get("ref_id", "")
-    ]
-    assert len(station_sn_buses) >= 1, (
-        "Brak szyny SN stacji B w snapshot (oczekiwano ref_id z 'sn_bus')"
-    )
+    station_sn_buses = [b for b in s.get("buses", []) if "sn_bus" in b.get("ref_id", "")]
+    assert (
+        len(station_sn_buses) >= 1
+    ), "Brak szyny SN stacji B w snapshot (oczekiwano ref_id z 'sn_bus')"
     branch_from_bus_ref = station_sn_buses[0]["ref_id"]
 
     r5 = execute_domain_operation(
@@ -241,7 +240,11 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
         op_name="start_branch_segment_sn",
         payload={
             "from_bus_ref": branch_from_bus_ref,
-            "segment": {"rodzaj": "KABEL", "dlugosc_m": 210, "catalog_ref": "cable-tfk-yakxs-3x120"},
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 210,
+                "catalog_ref": "cable-tfk-yakxs-3x120",
+            },
         },
     )
     _assert_step_ok(r5, "Krok 5: start_branch_segment_sn")
@@ -253,9 +256,9 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
     #   Jawny segment_ref — drugi segment korytarza (po split z kroku 3).
     # -----------------------------------------------------------------------
     corridor_segs_now = _get_corridor_segment_refs(s)
-    assert len(corridor_segs_now) >= 2, (
-        f"Oczekiwano >= 2 segmentow w magistrali, jest {len(corridor_segs_now)}"
-    )
+    assert (
+        len(corridor_segs_now) >= 2
+    ), f"Oczekiwano >= 2 segmentow w magistrali, jest {len(corridor_segs_now)}"
     second_segment_ref = corridor_segs_now[1]
 
     r6 = execute_domain_operation(
@@ -267,7 +270,10 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT", "FEEDER"],
-            "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            },
         },
     )
     _assert_step_ok(r6, "Krok 6: insert_station_on_segment_sn (C)")
@@ -287,7 +293,11 @@ def _run_full_v1_sequence() -> tuple[list[dict], dict]:
         payload={
             "from_bus_ref": last_bus_ref,
             "to_bus_ref": first_bus_ref,
-            "segment": {"rodzaj": "KABEL", "dlugosc_m": 140, "catalog_ref": "cable-tfk-yakxs-3x120"},
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 140,
+                "catalog_ref": "cable-tfk-yakxs-3x120",
+            },
         },
     )
     _assert_step_ok(r7, "Krok 7: connect_secondary_ring_sn")
@@ -372,16 +382,10 @@ class TestGoldenNetworkV1E2E:
 
         v = len(bus_refs)
         e = len(edge_set)
-        assert e >= v, (
-            f"Ring topology: oczekiwano E >= V (cykl), "
-            f"jest edges={e}, vertices={v}"
-        )
+        assert e >= v, f"Ring topology: oczekiwano E >= V (cykl), " f"jest edges={e}, vertices={v}"
 
         # At least one "open" branch (NOP set)
-        open_branches = [
-            b for b in s.get("branches", [])
-            if b.get("status") == "open"
-        ]
+        open_branches = [b for b in s.get("branches", []) if b.get("status") == "open"]
         assert len(open_branches) >= 1, "Oczekiwano >= 1 branch z status='open' (NOP)"
 
         # materialized_params present in last result
@@ -398,9 +402,7 @@ class TestGoldenNetworkV1E2E:
         for i, r in enumerate(results):
             lv = r.get("logical_views", {})
             trunks = lv.get("trunks")
-            assert trunks is not None, (
-                f"Krok {i}: brak trunks w logical_views"
-            )
+            assert trunks is not None, f"Krok {i}: brak trunks w logical_views"
 
     def test_each_step_has_layout_hash(self) -> None:
         """Kazdy krok V1 ma layout.layout_hash zaczynajacy sie od 'sha256:'."""
@@ -408,9 +410,9 @@ class TestGoldenNetworkV1E2E:
         for i, r in enumerate(results):
             layout = r.get("layout", {})
             lh = layout.get("layout_hash", "")
-            assert lh.startswith("sha256:"), (
-                f"Krok {i}: layout_hash nie zaczyna sie od 'sha256:': {lh}"
-            )
+            assert lh.startswith(
+                "sha256:"
+            ), f"Krok {i}: layout_hash nie zaczyna sie od 'sha256:': {lh}"
 
     def test_each_step_has_readiness(self) -> None:
         """Kazdy krok V1 ma readiness."""
@@ -429,9 +431,7 @@ class TestGoldenNetworkV1E2E:
         for i, r in enumerate(results[:-1]):
             changes = r.get("changes", {})
             created = changes.get("created_element_ids", [])
-            assert len(created) > 0, (
-                f"Krok {i}: changes.created_element_ids powinno byc niepuste"
-            )
+            assert len(created) > 0, f"Krok {i}: changes.created_element_ids powinno byc niepuste"
 
     def test_final_substations_count(self) -> None:
         """Po pelnej sekwencji: >= 3 substations (GPZ + B + C)."""
@@ -456,8 +456,7 @@ class TestGoldenNetworkV1E2E:
         _, s = _run_full_v1_sequence()
         corridors = s.get("corridors", [])
         has_nop = any(
-            c.get("no_point_ref") is not None and c.get("no_point_ref") != ""
-            for c in corridors
+            c.get("no_point_ref") is not None and c.get("no_point_ref") != "" for c in corridors
         )
         assert has_nop, "Oczekiwano no_point_ref w korytarzu po set_normal_open_point"
 
@@ -487,9 +486,7 @@ class TestGoldenNetworkV1E2E:
 
         v = len(bus_refs)
         e = len(edge_set)
-        assert e >= v, (
-            f"Ring topology: edges={e} < vertices={v}, brak cyklu"
-        )
+        assert e >= v, f"Ring topology: edges={e} < vertices={v}, brak cyklu"
 
 
 # ===========================================================================
@@ -509,9 +506,7 @@ class TestLogicalViewsDeterministic:
 
             # Zbierz logical_views z ostatniego kroku
             last_lv = results[-1].get("logical_views")
-            assert last_lv is not None, (
-                f"Run {run_idx}: brak logical_views w ostatnim kroku"
-            )
+            assert last_lv is not None, f"Run {run_idx}: brak logical_views w ostatnim kroku"
 
             if reference_lv is None:
                 reference_lv = copy.deepcopy(last_lv)
@@ -533,12 +528,9 @@ class TestLogicalViewsDeterministic:
             if run_idx == 0:
                 ref_views = [copy.deepcopy(v) for v in step_views]
             else:
-                for step_idx, (ref_v, cur_v) in enumerate(
-                    zip(ref_views, step_views)
-                ):
+                for step_idx, (ref_v, cur_v) in enumerate(zip(ref_views, step_views, strict=False)):
                     assert cur_v == ref_v, (
-                        f"Run {run_idx}, krok {step_idx}: "
-                        f"logical_views rozni sie od referencji"
+                        f"Run {run_idx}, krok {step_idx}: " f"logical_views rozni sie od referencji"
                     )
 
 
@@ -560,9 +552,9 @@ class TestLayoutHashDeterministic:
             # Zbierz layout_hash z ostatniego kroku
             last_layout = results[-1].get("layout", {})
             last_hash = last_layout.get("layout_hash", "")
-            assert last_hash.startswith("sha256:"), (
-                f"Run {run_idx}: layout_hash nie zaczyna sie od 'sha256:'"
-            )
+            assert last_hash.startswith(
+                "sha256:"
+            ), f"Run {run_idx}: layout_hash nie zaczyna sie od 'sha256:'"
 
             if reference_hash is None:
                 reference_hash = last_hash
@@ -579,16 +571,13 @@ class TestLayoutHashDeterministic:
 
         for run_idx in range(10):
             results, _ = _run_full_v1_sequence()
-            step_hashes = [
-                r.get("layout", {}).get("layout_hash", "")
-                for r in results
-            ]
+            step_hashes = [r.get("layout", {}).get("layout_hash", "") for r in results]
 
             if run_idx == 0:
                 ref_hashes = list(step_hashes)
             else:
                 for step_idx, (ref_h, cur_h) in enumerate(
-                    zip(ref_hashes, step_hashes)
+                    zip(ref_hashes, step_hashes, strict=False)
                 ):
                     assert cur_h == ref_h, (
                         f"Run {run_idx}, krok {step_idx}: "

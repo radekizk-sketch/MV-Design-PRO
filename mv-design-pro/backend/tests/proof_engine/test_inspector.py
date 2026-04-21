@@ -18,44 +18,33 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from application.proof_engine.proof_generator import (
     ProofGenerator,
     SC3FInput,
     VDROPInput,
     VDROPSegmentInput,
 )
-from application.proof_engine.types import (
-    ProofDocument,
-    ProofType,
-    QUCounterfactualInput,
-    QUInput,
-    LoadCurrentsCounterfactualInput,
-    LoadCurrentsInput,
-    LoadElementKind,
-)
 from application.proof_engine.proof_inspector import (
     CounterfactualView,
-    ExportResult,
-    HeaderView,
     InspectorExporter,
     InspectorView,
     ProofInspector,
-    StepView,
-    SummaryView,
-    ValueView,
     export_to_json,
     export_to_tex,
     inspect,
     is_pdf_export_available,
 )
 from application.proof_engine.types import (
-    ProofHeader,
-    ProofSummary,
-    ProofValue,
     SEMANTIC_ALIASES,
+    LoadCurrentsCounterfactualInput,
+    LoadCurrentsInput,
+    LoadElementKind,
+    ProofDocument,
+    ProofSummary,
+    ProofType,
+    QUCounterfactualInput,
+    QUInput,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -234,9 +223,7 @@ class TestInspectorReadOnly:
         # Sprawdz ze JSON sie nie zmienil
         assert sc3f_proof.json_representation == original_json
 
-    def test_inspector_returns_same_view_on_multiple_calls(
-        self, sc3f_proof: ProofDocument
-    ):
+    def test_inspector_returns_same_view_on_multiple_calls(self, sc3f_proof: ProofDocument):
         """Wielokrotne wywolanie get_view zwraca ten sam obiekt."""
         inspector = ProofInspector(sc3f_proof)
 
@@ -432,7 +419,7 @@ class TestInspectorExports:
                 continue
             # Sprawdzamy czy nie ma pojedynczych $
             # (uproszczone - ignorujemy escape \$)
-            stripped = line.replace(r"\$", "")
+            line.replace(r"\$", "")
             # Pojedynczy $ (nie podwojny) moze wystapic tylko w tabelach
             # lub jako escape, wiec ta heurystyka jest przyblizona
 
@@ -494,9 +481,7 @@ class TestInspectorCounterfactualView:
         assert not inspector.is_counterfactual()
         assert inspector.get_counterfactual_table() is None
 
-    def test_counterfactual_is_detected(
-        self, qu_counterfactual_proof: ProofDocument
-    ):
+    def test_counterfactual_is_detected(self, qu_counterfactual_proof: ProofDocument):
         """Dowod counterfactual jest wykrywany."""
         inspector = ProofInspector(qu_counterfactual_proof)
 
@@ -505,9 +490,7 @@ class TestInspectorCounterfactualView:
         assert cf_table is not None
         assert isinstance(cf_table, CounterfactualView)
 
-    def test_counterfactual_p15_is_detected(
-        self, lc_counterfactual_proof: ProofDocument
-    ):
+    def test_counterfactual_p15_is_detected(self, lc_counterfactual_proof: ProofDocument):
         """Counterfactual P15 jest wykrywany."""
         inspector = ProofInspector(lc_counterfactual_proof)
 
@@ -516,9 +499,7 @@ class TestInspectorCounterfactualView:
         assert cf_table is not None
         assert any(row.name == "s_mva" for row in cf_table.rows)
 
-    def test_counterfactual_table_has_rows(
-        self, qu_counterfactual_proof: ProofDocument
-    ):
+    def test_counterfactual_table_has_rows(self, qu_counterfactual_proof: ProofDocument):
         """Tabela counterfactual zawiera wiersze."""
         inspector = ProofInspector(qu_counterfactual_proof)
         cf_table = inspector.get_counterfactual_table()
@@ -531,9 +512,7 @@ class TestInspectorCounterfactualView:
         assert q_row.name == "Q_cmd"
         assert q_row.unit == "Mvar"
 
-    def test_counterfactual_delta_values(
-        self, qu_counterfactual_proof: ProofDocument
-    ):
+    def test_counterfactual_delta_values(self, qu_counterfactual_proof: ProofDocument):
         """Delta w counterfactual jest obliczane poprawnie (B - A)."""
         inspector = ProofInspector(qu_counterfactual_proof)
         cf_table = inspector.get_counterfactual_table()
@@ -543,9 +522,7 @@ class TestInspectorCounterfactualView:
             expected_delta = row.value_b - row.value_a
             assert abs(row.delta - expected_delta) < 0.0001
 
-    def test_counterfactual_view_to_dict(
-        self, qu_counterfactual_proof: ProofDocument
-    ):
+    def test_counterfactual_view_to_dict(self, qu_counterfactual_proof: ProofDocument):
         """CounterfactualView.to_dict() zwraca poprawny slownik."""
         inspector = ProofInspector(qu_counterfactual_proof)
         cf_table = inspector.get_counterfactual_table()
@@ -602,9 +579,7 @@ class TestInspectorMappingKeys:
             for val in step.input_values:
                 if val.symbol in step.source_keys:
                     # mapping_key powinien odpowiadac
-                    assert val.mapping_key == step.source_keys.get(
-                        val.symbol, val.mapping_key
-                    )
+                    assert val.mapping_key == step.source_keys.get(val.symbol, val.mapping_key)
 
 
 # =============================================================================
@@ -673,9 +648,7 @@ class TestInspectorViewSerialization:
         assert "run_timestamp" in d
         assert "solver_version" in d
 
-    def test_header_view_contains_target_for_p15(
-        self, lc_line_input: LoadCurrentsInput
-    ):
+    def test_header_view_contains_target_for_p15(self, lc_line_input: LoadCurrentsInput):
         """Nagłówek P15 zawiera identyfikator i typ elementu."""
         proof = ProofGenerator.generate_load_currents_proof(lc_line_input)
         view = inspect(proof)
@@ -713,9 +686,7 @@ class TestInspectorCompleteness:
         assert passed is True
         assert missing == ()
 
-    def test_completeness_reports_missing_keys(
-        self, sc3f_test_input: SC3FInput
-    ):
+    def test_completeness_reports_missing_keys(self, sc3f_test_input: SC3FInput):
         """Walidacja zgłasza brakujące klucze gdy key_results jest niepełne."""
         # Generate a valid proof first
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
@@ -764,9 +735,7 @@ class TestInspectorCompleteness:
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
 
         # Create key_results without idyn_ka but with ip_ka
-        key_results_no_idyn = {
-            k: v for k, v in proof.summary.key_results.items() if k != "idyn_ka"
-        }
+        key_results_no_idyn = {k: v for k, v in proof.summary.key_results.items() if k != "idyn_ka"}
 
         # Make sure ip_ka is present (should be from original)
         assert "ip_ka" in key_results_no_idyn
@@ -809,9 +778,7 @@ class TestInspectorSemanticAliases:
     Sprawdza czy aliasy są poprawnie przypisywane do key_results.
     """
 
-    def test_semantic_aliases_present_in_sc3f_summary_view(
-        self, sc3f_proof: ProofDocument
-    ):
+    def test_semantic_aliases_present_in_sc3f_summary_view(self, sc3f_proof: ProofDocument):
         """SC3F summary zawiera aliasy semantyczne dla kluczowych wyników."""
         inspector = ProofInspector(sc3f_proof)
         summary = inspector.get_summary()
@@ -841,9 +808,7 @@ class TestInspectorSemanticAliases:
         sk = summary.key_results["sk_mva"]
         assert sk.alias_pl == "moc zwarciowa"
 
-    def test_semantic_aliases_not_present_for_non_aliased_keys(
-        self, sc3f_proof: ProofDocument
-    ):
+    def test_semantic_aliases_not_present_for_non_aliased_keys(self, sc3f_proof: ProofDocument):
         """Klucze bez zdefiniowanych aliasów mają alias_pl = None."""
         inspector = ProofInspector(sc3f_proof)
         summary = inspector.get_summary()
@@ -864,9 +829,7 @@ class TestInspectorSemanticAliases:
         assert "alias_pl" in ikss_dict
         assert ikss_dict["alias_pl"] == "prąd wyłączalny"
 
-    def test_semantic_aliases_not_in_to_dict_when_none(
-        self, vdrop_proof: ProofDocument
-    ):
+    def test_semantic_aliases_not_in_to_dict_when_none(self, vdrop_proof: ProofDocument):
         """alias_pl nie pojawia się w to_dict() gdy jest None."""
         inspector = ProofInspector(vdrop_proof)
         summary = inspector.get_summary()

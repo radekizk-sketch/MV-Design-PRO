@@ -2,7 +2,7 @@
  * P30b — Keyboard Shortcuts Hook
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Standard shortcuts (Ctrl+C/V/D/Z/Y, Esc, Del)
+ * - ui_canonical_parity.md: Standard shortcuts (Ctrl+C/V/D/Z/Y, Esc, Del)
  * - P30a: UNDO/REDO integration (Ctrl+Z, Ctrl+Y)
  *
  * Keyboard shortcuts for SLD editor:

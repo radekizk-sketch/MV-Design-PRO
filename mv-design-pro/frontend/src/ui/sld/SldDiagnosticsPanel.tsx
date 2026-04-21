@@ -1,10 +1,10 @@
 /**
  * SLD Diagnostics Panel — Professional Topology Diagnostics
  *
- * ETAP/PowerFactory-grade panel diagnostyczny schematu.
+ * CANONICAL/Canonical-grade panel diagnostyczny schematu.
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Panel diagnostyczny jak w ETAP
+ * - ui_canonical_parity.md: Panel diagnostyczny jak w CANONICAL
  * - sld_rules.md: Diagnostyka topologii i naruszeń
  *
  * FEATURES:
@@ -32,7 +32,7 @@ import { useSanityChecks } from '../protection';
 import type { SelectedElement, ElementType } from '../types';
 
 // =============================================================================
-// ETAP-grade panel styling tokens
+// CANONICAL-grade panel styling tokens
 // =============================================================================
 
 const PANEL_STYLE = {
@@ -66,6 +66,8 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Terminal: 'Terminal',
   PortBranch: 'Port',
   Station: 'Stacja',
+  BranchPole: 'Slup rozgalezny',
+  ZKSN: 'ZKSN',
   BaySN: 'Pole SN',
   Relay: 'Przekaźnik',
   SecondaryLink: 'Połączenie wtórne',

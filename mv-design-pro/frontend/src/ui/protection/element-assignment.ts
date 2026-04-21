@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A: Bijection Symbol ↔ Model Object
- * - powerfactory_ui_parity.md: PowerFactory-like protection visualization
+ * - ui_canonical_parity.md: Canonical-like protection visualization
  *
  * KONTRAKT DANYCH:
  * Definiuje strukturę przypisania urządzeń zabezpieczeniowych do elementów SLD.
@@ -25,7 +25,7 @@ import type { ElementType } from '../types';
 // =============================================================================
 
 /**
- * Typ urządzenia zabezpieczeniowego (zgodny z PowerFactory).
+ * Typ urządzenia zabezpieczeniowego (zgodny z Canonical).
  */
 export type ProtectionDeviceKind =
   | 'RELAY_OVERCURRENT' // Przekaźnik nadprądowy (I>, I>>)
@@ -163,10 +163,10 @@ export interface ProtectionAssignmentAdapter {
 // =============================================================================
 
 export const PROTECTION_DEVICE_KIND_LABELS: Record<ProtectionDeviceKind, string> = {
-  RELAY_OVERCURRENT: 'Przekaznik nadpradowy',
-  RELAY_DISTANCE: 'Przekaznik odleglosciowy',
-  RELAY_DIFFERENTIAL: 'Przekaznik roznicowy',
-  RELAY_EARTH_FAULT: 'Przekaznik ziemnozwarciowy',
+  RELAY_OVERCURRENT: 'Przekaźnik nadprądowy',
+  RELAY_DISTANCE: 'Przekaźnik odległościowy',
+  RELAY_DIFFERENTIAL: 'Przekaźnik różnicowy',
+  RELAY_EARTH_FAULT: 'Przekaźnik ziemnozwarciowy',
   FUSE: 'Bezpiecznik',
   RECLOSER: 'Reklozer',
   SECTIONALIZER: 'Sekcjonalizer',
@@ -214,7 +214,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
     element_id: 'switch-001',
     element_type: 'Switch',
     device_id: 'relay-oc-001',
-    device_name_pl: 'Przekaznik nadpradowy (F1)',
+    device_name_pl: 'Przekaźnik nadprądowy (F1)',
     device_kind: 'RELAY_OVERCURRENT',
     status: 'ACTIVE',
     settings_summary: {
@@ -223,7 +223,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
         {
           code: 'OVERCURRENT_TIME',
           ansi: ['51'],
-          label_pl: 'Nadpradowa czasowa (I>)',
+          label_pl: 'Nadprądowa czasowa (I>)',
           setpoint: createInMultiplierSetpoint(1.2, 'GT'),
           time_delay_s: 1.0,
           curve_type: 'IEC SI',
@@ -233,7 +233,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
         {
           code: 'OVERCURRENT_INST',
           ansi: ['50'],
-          label_pl: 'Nadpradowa zwarciowa (I>>)',
+          label_pl: 'Nadprądowa zwarciowa (I>>)',
           setpoint: createInMultiplierSetpoint(3.0, 'GT'),
           time_delay_s: 0.1,
           // computed: brak — bo nie ma base_values.i_rated_a
@@ -247,7 +247,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
     element_id: 'switch-002',
     element_type: 'Switch',
     device_id: 'relay-oc-002',
-    device_name_pl: 'Przekaznik nadpradowy (F2)',
+    device_name_pl: 'Przekaźnik nadprądowy (F2)',
     device_kind: 'RELAY_OVERCURRENT',
     status: 'ACTIVE',
     settings_summary: {
@@ -264,7 +264,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
     element_id: 'trafo-001',
     element_type: 'TransformerBranch',
     device_id: 'relay-diff-001',
-    device_name_pl: 'Przekaznik roznicowy (T1)',
+    device_name_pl: 'Przekaźnik różnicowy (T1)',
     device_kind: 'RELAY_DIFFERENTIAL',
     status: 'ACTIVE',
     settings_summary: {
@@ -293,7 +293,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
         {
           code: 'UNDERVOLTAGE',
           ansi: ['27'],
-          label_pl: 'Podnapieciowa (U<)',
+          label_pl: 'Podnapięciowa (U<)',
           setpoint: createUnMultiplierSetpoint(0.8, 'LT'),
           time_delay_s: 5.0,
         },
@@ -301,7 +301,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
         {
           code: 'OVERVOLTAGE',
           ansi: ['59'],
-          label_pl: 'Nadnapieciowa (U>)',
+          label_pl: 'Nadnapięciowa (U>)',
           setpoint: createUnMultiplierSetpoint(1.15, 'GT'),
           time_delay_s: 0.3,
         },
@@ -355,7 +355,7 @@ export const PROTECTION_ASSIGNMENT_FIXTURES: ElementProtectionAssignment[] = [
     element_id: 'line-001',
     element_type: 'LineBranch',
     device_id: 'relay-dist-001',
-    device_name_pl: 'Przekaznik odleglosciowy (L1)',
+    device_name_pl: 'Przekaźnik odległościowy (L1)',
     device_kind: 'RELAY_DISTANCE',
     status: 'BLOCKED',
     // brak settings_summary — urządzenie zablokowane
@@ -373,7 +373,7 @@ function createOvercurrentFunctionsWithComputed(i_rated_a: number): ProtectionFu
     {
       code: 'OVERCURRENT_TIME',
       ansi: ['51'],
-      label_pl: 'Nadpradowa czasowa (I>)',
+      label_pl: 'Nadprądowa czasowa (I>)',
       setpoint: setpointTime,
       computed: computeFromSetpoint(setpointTime, i_rated_a, 'A', 'In'),
       time_delay_s: 1.0,
@@ -382,7 +382,7 @@ function createOvercurrentFunctionsWithComputed(i_rated_a: number): ProtectionFu
     {
       code: 'OVERCURRENT_INST',
       ansi: ['50'],
-      label_pl: 'Nadpradowa zwarciowa (I>>)',
+      label_pl: 'Nadprądowa zwarciowa (I>>)',
       setpoint: setpointInst,
       computed: computeFromSetpoint(setpointInst, i_rated_a, 'A', 'In'),
       time_delay_s: 0.1,

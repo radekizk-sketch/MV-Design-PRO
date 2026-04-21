@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 import type { CatalogListItem } from './api';
-import { fetchTypesByCategory } from './api';
+import { fetchTypesByCategory, getCatalogErrorMessage } from './api';
 import type { TypeCategory } from './types';
 
 interface TypePickerProps {
@@ -29,6 +29,8 @@ const CATEGORY_LABELS: Partial<Record<TypeCategory, string>> = {
   PROTECTION_DEVICE: 'Zabezpieczenia',
   SYSTEM_SOURCE: 'Zasilanie systemowe SN',
   CONVERTER: 'Konwertery',
+  BRANCH_POLE: 'Slupy rozgalezne SN',
+  ZKSN: 'ZKSN',
 };
 
 function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
@@ -62,6 +64,9 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
       return `${record.vendor ?? record.manufacturer ?? '-'}, ${record.series ?? '-'}, In=${record.rated_current_a ?? '-'} A`;
     case 'SYSTEM_SOURCE':
       return `${record.voltage_rating_kv ?? '-'} kV, Sk3=${record.sk3_mva ?? '-'} MVA, R/X=${record.rx_ratio ?? '-'}`;
+    case 'BRANCH_POLE':
+    case 'ZKSN':
+      return `${record.switch_device_kind ?? '-'}, ${record.switch_rated_current_a ?? '-'} A, porty BRANCH=${record.branch_ports_count ?? '-'}`;
     case 'MEASUREMENT_TRANSFORMER':
     case 'CONVERTER':
     default:
@@ -81,11 +86,7 @@ export function TypePicker({
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
-
+  const loadTypes = useCallback(() => {
     setLoading(true);
     setError(null);
 
@@ -95,10 +96,19 @@ export function TypePicker({
         setLoading(false);
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Blad pobierania typow.');
+        setTypes([]);
+        setError(getCatalogErrorMessage(err));
         setLoading(false);
       });
-  }, [category, isOpen]);
+  }, [category]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    loadTypes();
+  }, [isOpen, loadTypes]);
 
   const filteredTypes = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -162,8 +172,17 @@ export function TypePicker({
 
           {error ? (
             <div className="py-8 text-center text-red-600">
-              <p className="font-semibold">Blad</p>
-              <p className="text-sm">{error}</p>
+              <p className="font-semibold">Nie udalo sie pobrac typow katalogowych</p>
+              <p className="mt-2 text-sm">{error}</p>
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={loadTypes}
+                  className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-700"
+                >
+                  Ponow
+                </button>
+              </div>
             </div>
           ) : null}
 

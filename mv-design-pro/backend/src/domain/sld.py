@@ -1,7 +1,7 @@
 """
 SLD Domain Models.
 
-PowerFactory Alignment (per SYSTEM_SPEC.md § 9, sld_rules.md):
+Canonical Alignment (per SYSTEM_SPEC.md § 9, sld_rules.md):
 - Bijection: Each symbol corresponds to exactly ONE NetworkModel object
 - No helper objects or virtual symbols
 - in_service: visual state for grayed/dashed rendering
@@ -63,7 +63,7 @@ class SldSwitchSymbol:
     """
     Switch symbol (bijection: 1 symbol ↔ 1 Switch).
 
-    PowerFactory Alignment (per SYSTEM_SPEC.md § 2.4, sld_rules.md § A.2, § D.2):
+    Canonical Alignment (per SYSTEM_SPEC.md § 2.4, sld_rules.md § A.2, § D.2):
     - switch_type: BREAKER, DISCONNECTOR, LOAD_SWITCH, FUSE
     - state: OPEN (disconnected) or CLOSED (connected)
     - in_service: False = element excluded from calculations but visible (grayed)

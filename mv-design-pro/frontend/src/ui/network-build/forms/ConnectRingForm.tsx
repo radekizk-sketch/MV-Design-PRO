@@ -14,7 +14,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { RingCloseModal, type RingCloseFormData } from '../../topology/modals/RingCloseModal';
 import { NOPModal, type NOPFormData, type NOPCandidate } from '../../topology/modals/NOPModal';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useNetworkBuildStore } from '../networkBuildStore';
+import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { validateCatalogFirst } from './catalogFirstRules';
 import {
@@ -26,7 +26,7 @@ import {
 type FormStage = 'ring' | 'nop';
 
 export function ConnectRingForm() {
-  const context = useNetworkBuildStore((s) => s.activeOperationForm?.context);
+  const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);

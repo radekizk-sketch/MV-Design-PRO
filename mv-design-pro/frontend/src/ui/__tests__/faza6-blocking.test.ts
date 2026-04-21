@@ -24,6 +24,8 @@ import { useTopologyStore } from '../topology/store';
 import {
   useNetworkBuildStore,
   computeBuildPhase,
+  selectActiveObjectCard,
+  selectActiveOperationForm,
   selectStationSummaries,
   selectBlockersByCategory,
   buildPhaseLabel,
@@ -364,14 +366,14 @@ describe('FAZA 6: Network build store has correct actions', () => {
   it('network build store openOperationForm sets form', () => {
     useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn', { test: true });
     const state = useNetworkBuildStore.getState();
-    expect(state.activeOperationForm).not.toBeNull();
-    expect(state.activeOperationForm?.op).toBe('add_grid_source_sn');
+    expect(selectActiveOperationForm(state)).not.toBeNull();
+    expect(selectActiveOperationForm(state)?.op).toBe('add_grid_source_sn');
   });
 
   it('network build store initial state is clean', () => {
     const state = useNetworkBuildStore.getState();
-    expect(state.activeOperationForm).toBeNull();
-    expect(state.activeObjectCard).toBeNull();
+    expect(selectActiveOperationForm(state)).toBeNull();
+    expect(selectActiveObjectCard(state)).toBeNull();
     expect(state.collapsedSections.size).toBe(0);
   });
 });

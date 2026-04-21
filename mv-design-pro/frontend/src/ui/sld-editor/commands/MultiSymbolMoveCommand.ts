@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - P30a: Command pattern infrastructure
  * - sld_rules.md § E.1: Multi-symbol drag
- * - powerfactory_ui_parity.md: Group move = 1 undo operation
+ * - ui_canonical_parity.md: Group move = 1 undo operation
  *
  * Command for moving multiple symbols on SLD diagram.
  * Entire drag (mouseDown → mouseUp) = 1 command.

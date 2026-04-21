@@ -3,9 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
-
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
+from network_model.solvers.short_circuit_contributions import (
+    ShortCircuitBranchContribution,
+    ShortCircuitSourceContribution,
+    SourceType,
+)
 from network_model.solvers.short_circuit_core import (
     OMEGA_50HZ,
     ShortCircuitPostProcessResult,
@@ -15,13 +19,7 @@ from network_model.solvers.short_circuit_core import (
     compute_post_fault_quantities,
     voltage_factor_for_fault,
 )
-from network_model.solvers.short_circuit_contributions import (
-    ShortCircuitBranchContribution,
-    ShortCircuitSourceContribution,
-    SourceType,
-)
 from network_model.whitebox.tracer import WhiteBoxTracer
-
 
 C_MIN: float = 0.95
 C_MAX: float = 1.10
@@ -378,8 +376,7 @@ class ShortCircuitIEC60909Solver:
             key="Ib",
             title="Prąd zwarciowy do obliczeń cieplnych",
             formula_latex=(
-                "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1)"
-                " \\cdot e^{-t_b/t_a})^2}"
+                "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1)" " \\cdot e^{-t_b/t_a})^2}"
             ),
             inputs={
                 "ikss_a": ikss_a,

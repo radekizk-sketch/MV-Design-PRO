@@ -18,19 +18,16 @@ from datetime import datetime
 from uuid import uuid4
 
 import pytest
-
 from application.proof_engine.equation_registry import (
     AntiDoubleCountingAudit,
     EquationRegistry,
 )
 from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
-    SCAsymmetricalPackResult,
     SCAsymmetricalProofPack,
 )
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
 from application.proof_engine.types import ProofType
-
 
 # =============================================================================
 # Test Fixtures
@@ -52,46 +49,46 @@ SOLVER_VERSION = "1.0.0-test"
 
 
 def _make_sc1_input(fault_type: str, **kwargs) -> SC1Input:
-    defaults = dict(
-        project_name="Test Project §4.1",
-        case_name=f"Test Case {fault_type}",
-        fault_node_id="B1",
-        fault_type=fault_type,
-        run_timestamp=FIXED_TIMESTAMP,
-        solver_version=SOLVER_VERSION,
-        u_n_kv=U_N_KV,
-        c_factor=C_FACTOR,
-        u_prefault_kv=U_PREFAULT_KV,
-        z1_ohm=Z1,
-        z2_ohm=Z2,
-        z0_ohm=Z0,
-        a_operator=A_OPERATOR,
-        tk_s=1.0,
-        m_factor=1.0,
-        n_factor=0.0,
-    )
+    defaults = {
+        "project_name": "Test Project §4.1",
+        "case_name": f"Test Case {fault_type}",
+        "fault_node_id": "B1",
+        "fault_type": fault_type,
+        "run_timestamp": FIXED_TIMESTAMP,
+        "solver_version": SOLVER_VERSION,
+        "u_n_kv": U_N_KV,
+        "c_factor": C_FACTOR,
+        "u_prefault_kv": U_PREFAULT_KV,
+        "z1_ohm": Z1,
+        "z2_ohm": Z2,
+        "z0_ohm": Z0,
+        "a_operator": A_OPERATOR,
+        "tk_s": 1.0,
+        "m_factor": 1.0,
+        "n_factor": 0.0,
+    }
     defaults.update(kwargs)
     return SC1Input(**defaults)
 
 
 def _make_pack_input(**kwargs) -> SCAsymmetricalPackInput:
-    defaults = dict(
-        project_name="Test Project §4.1",
-        case_name="Full Pack Test",
-        fault_node_id="B1",
-        run_timestamp=FIXED_TIMESTAMP,
-        solver_version=SOLVER_VERSION,
-        u_n_kv=U_N_KV,
-        c_factor=C_FACTOR,
-        u_prefault_kv=U_PREFAULT_KV,
-        z1_ohm=Z1,
-        z2_ohm=Z2,
-        z0_ohm=Z0,
-        a_operator=A_OPERATOR,
-        tk_s=1.0,
-        m_factor=1.0,
-        n_factor=0.0,
-    )
+    defaults = {
+        "project_name": "Test Project §4.1",
+        "case_name": "Full Pack Test",
+        "fault_node_id": "B1",
+        "run_timestamp": FIXED_TIMESTAMP,
+        "solver_version": SOLVER_VERSION,
+        "u_n_kv": U_N_KV,
+        "c_factor": C_FACTOR,
+        "u_prefault_kv": U_PREFAULT_KV,
+        "z1_ohm": Z1,
+        "z2_ohm": Z2,
+        "z0_ohm": Z0,
+        "a_operator": A_OPERATOR,
+        "tk_s": 1.0,
+        "m_factor": 1.0,
+        "n_factor": 0.0,
+    }
     defaults.update(kwargs)
     return SCAsymmetricalPackInput(**defaults)
 
@@ -111,7 +108,7 @@ class TestMathematicalCorrectness:
         i2 = i1
         i0 = i1
         a = A_OPERATOR
-        a2 = a ** 2
+        a2 = a**2
         ia = i0 + i1 + i2
         ib = i0 + a2 * i1 + a * i2
         ic = i0 + a * i1 + a2 * i2
@@ -129,7 +126,7 @@ class TestMathematicalCorrectness:
         i2 = -i1
         i0 = 0.0
         a = A_OPERATOR
-        a2 = a ** 2
+        a2 = a**2
         ia = i0 + i1 + i2
         ib = i0 + a2 * i1 + a * i2
         ic = i0 + a * i1 + a2 * i2
@@ -148,7 +145,7 @@ class TestMathematicalCorrectness:
         i2 = -(Z0 / denom) * i1
         i0 = -(Z2 / denom) * i1
         a = A_OPERATOR
-        a2 = a ** 2
+        a2 = a**2
         ia = i0 + i1 + i2
         ib = i0 + a2 * i1 + a * i2
         ic = i0 + a * i1 + a2 * i2
@@ -174,8 +171,7 @@ class TestMathematicalCorrectness:
 
         ikss_proof = proof.summary.key_results["ikss_ka"].value
         assert abs(ikss_proof - ikss_manual) < 1e-8, (
-            f"I''k mismatch for {fault_type}: "
-            f"proof={ikss_proof:.8f}, manual={ikss_manual:.8f}"
+            f"I''k mismatch for {fault_type}: " f"proof={ikss_proof:.8f}, manual={ikss_manual:.8f}"
         )
 
     @pytest.mark.parametrize(
@@ -193,8 +189,7 @@ class TestMathematicalCorrectness:
 
         ip_proof = proof.summary.key_results["ip_ka"].value
         assert abs(ip_proof - ip_manual) < 1e-8, (
-            f"ip mismatch for {fault_type}: "
-            f"proof={ip_proof:.8f}, manual={ip_manual:.8f}"
+            f"ip mismatch for {fault_type}: " f"proof={ip_proof:.8f}, manual={ip_manual:.8f}"
         )
 
     @pytest.mark.parametrize(
@@ -212,8 +207,7 @@ class TestMathematicalCorrectness:
 
         ith_proof = proof.summary.key_results["ith_ka"].value
         assert abs(ith_proof - ith_manual) < 1e-8, (
-            f"I_th mismatch for {fault_type}: "
-            f"proof={ith_proof:.8f}, manual={ith_manual:.8f}"
+            f"I_th mismatch for {fault_type}: " f"proof={ith_proof:.8f}, manual={ith_manual:.8f}"
         )
 
     @pytest.mark.parametrize(
@@ -249,9 +243,9 @@ class TestAntiDoubleCountingC:
         """c appears in exactly ONE SC1 equation: EQ_SC1_008."""
         audit = AntiDoubleCountingAudit.SC1_PROOF_EQUATIONS_AUDIT
         c_equations = [eq_id for eq_id, has_c in audit.items() if has_c]
-        assert c_equations == ["EQ_SC1_008"], (
-            f"c should appear in EQ_SC1_008 only, but found in: {c_equations}"
-        )
+        assert c_equations == [
+            "EQ_SC1_008"
+        ], f"c should appear in EQ_SC1_008 only, but found in: {c_equations}"
 
     def test_sc3f_audit_still_passes(self):
         """SC3F anti-double-counting audit still = PASS."""
@@ -278,9 +272,9 @@ class TestAntiDoubleCountingC:
         for step in proof.steps:
             if "c" in step.source_keys and step.source_keys.get("c") == "c_factor":
                 c_steps.append(step.equation.equation_id)
-        assert c_steps == ["EQ_SC1_008"], (
-            f"c_factor should only be in EQ_SC1_008, found in: {c_steps}"
-        )
+        assert c_steps == [
+            "EQ_SC1_008"
+        ], f"c_factor should only be in EQ_SC1_008, found in: {c_steps}"
 
 
 # =============================================================================
@@ -341,9 +335,7 @@ class TestCompleteness:
     def test_step_count_is_10(self, fault_type):
         """Each proof has exactly 10 steps (7 original + 5 new)."""
         proof = ProofGenerator.generate_sc1_proof(_make_sc1_input(fault_type))
-        assert len(proof.steps) == 10, (
-            f"Expected 10 steps for {fault_type}, got {len(proof.steps)}"
-        )
+        assert len(proof.steps) == 10, f"Expected 10 steps for {fault_type}, got {len(proof.steps)}"
 
     @pytest.mark.parametrize(
         "fault_type",
@@ -353,9 +345,7 @@ class TestCompleteness:
         """Sequence currents (i1, i2, i0) present in key_results."""
         proof = ProofGenerator.generate_sc1_proof(_make_sc1_input(fault_type))
         for key in ["i1_ka", "i2_ka", "i0_ka"]:
-            assert key in proof.summary.key_results, (
-                f"Missing {key} for {fault_type}"
-            )
+            assert key in proof.summary.key_results, f"Missing {key} for {fault_type}"
 
 
 # =============================================================================
@@ -500,9 +490,9 @@ class TestNormativeReferences:
         proof = ProofGenerator.generate_sc1_proof(_make_sc1_input(fault_type))
         for step in proof.steps:
             ref = step.equation.standard_ref
-            assert "IEC 60909" in ref, (
-                f"Missing IEC 60909 reference in {step.equation.equation_id}: {ref}"
-            )
+            assert (
+                "IEC 60909" in ref
+            ), f"Missing IEC 60909 reference in {step.equation.equation_id}: {ref}"
 
     @pytest.mark.parametrize(
         "fault_type",
@@ -533,24 +523,51 @@ class TestStepOrder:
     @pytest.mark.parametrize(
         "fault_type,expected_eq_ids",
         [
-            ("ONE_PHASE_TO_GROUND", [
-                "EQ_SC1_001", "EQ_SC1_002", "EQ_SC1_003",
-                "EQ_SC1_006", "EQ_SC1_007",
-                "EQ_SC1_008", "EQ_SC1_009", "EQ_SC1_010",
-                "EQ_SC1_012", "EQ_SC1_011",
-            ]),
-            ("TWO_PHASE", [
-                "EQ_SC1_001", "EQ_SC1_002", "EQ_SC1_004",
-                "EQ_SC1_006", "EQ_SC1_007",
-                "EQ_SC1_008", "EQ_SC1_009", "EQ_SC1_010",
-                "EQ_SC1_012", "EQ_SC1_011",
-            ]),
-            ("TWO_PHASE_TO_GROUND", [
-                "EQ_SC1_001", "EQ_SC1_002", "EQ_SC1_005",
-                "EQ_SC1_006", "EQ_SC1_007",
-                "EQ_SC1_008", "EQ_SC1_009", "EQ_SC1_010",
-                "EQ_SC1_012", "EQ_SC1_011",
-            ]),
+            (
+                "ONE_PHASE_TO_GROUND",
+                [
+                    "EQ_SC1_001",
+                    "EQ_SC1_002",
+                    "EQ_SC1_003",
+                    "EQ_SC1_006",
+                    "EQ_SC1_007",
+                    "EQ_SC1_008",
+                    "EQ_SC1_009",
+                    "EQ_SC1_010",
+                    "EQ_SC1_012",
+                    "EQ_SC1_011",
+                ],
+            ),
+            (
+                "TWO_PHASE",
+                [
+                    "EQ_SC1_001",
+                    "EQ_SC1_002",
+                    "EQ_SC1_004",
+                    "EQ_SC1_006",
+                    "EQ_SC1_007",
+                    "EQ_SC1_008",
+                    "EQ_SC1_009",
+                    "EQ_SC1_010",
+                    "EQ_SC1_012",
+                    "EQ_SC1_011",
+                ],
+            ),
+            (
+                "TWO_PHASE_TO_GROUND",
+                [
+                    "EQ_SC1_001",
+                    "EQ_SC1_002",
+                    "EQ_SC1_005",
+                    "EQ_SC1_006",
+                    "EQ_SC1_007",
+                    "EQ_SC1_008",
+                    "EQ_SC1_009",
+                    "EQ_SC1_010",
+                    "EQ_SC1_012",
+                    "EQ_SC1_011",
+                ],
+            ),
         ],
     )
     def test_step_order_matches_proof(self, fault_type, expected_eq_ids):
@@ -591,15 +608,11 @@ class TestPhysicalSanity:
         """1.0 < κ ≤ 2.0 (physical range per IEC 60909)."""
         proof = ProofGenerator.generate_sc1_proof(_make_sc1_input(fault_type))
         kappa = proof.summary.key_results["kappa"].value
-        assert 1.0 < kappa <= 2.0, (
-            f"κ = {kappa} out of physical range for {fault_type}"
-        )
+        assert 1.0 < kappa <= 2.0, f"κ = {kappa} out of physical range for {fault_type}"
 
     def test_1fz_ikss_uses_sqrt3_factor(self):
         """1F-Z: I''k = √3·c·Un / |Zk| (voltage factor √3)."""
-        proof = ProofGenerator.generate_sc1_proof(
-            _make_sc1_input("ONE_PHASE_TO_GROUND")
-        )
+        proof = ProofGenerator.generate_sc1_proof(_make_sc1_input("ONE_PHASE_TO_GROUND"))
         z_equiv = Z1 + Z2 + Z0
         expected = math.sqrt(3) * C_FACTOR * U_N_KV / abs(z_equiv)
         actual = proof.summary.key_results["ikss_ka"].value
@@ -607,9 +620,7 @@ class TestPhysicalSanity:
 
     def test_2f_ikss_uses_unity_factor(self):
         """2F: I''k = c·Un / |Zk| (voltage factor 1.0)."""
-        proof = ProofGenerator.generate_sc1_proof(
-            _make_sc1_input("TWO_PHASE")
-        )
+        proof = ProofGenerator.generate_sc1_proof(_make_sc1_input("TWO_PHASE"))
         z_equiv = Z1 + Z2
         expected = C_FACTOR * U_N_KV / abs(z_equiv)
         actual = proof.summary.key_results["ikss_ka"].value
@@ -617,9 +628,7 @@ class TestPhysicalSanity:
 
     def test_2fz_ikss_uses_unity_factor(self):
         """2F-Z: I''k = c·Un / |Zk|."""
-        proof = ProofGenerator.generate_sc1_proof(
-            _make_sc1_input("TWO_PHASE_TO_GROUND")
-        )
+        proof = ProofGenerator.generate_sc1_proof(_make_sc1_input("TWO_PHASE_TO_GROUND"))
         z_equiv = Z1 + (Z2 * Z0) / (Z2 + Z0)
         expected = C_FACTOR * U_N_KV / abs(z_equiv)
         actual = proof.summary.key_results["ikss_ka"].value

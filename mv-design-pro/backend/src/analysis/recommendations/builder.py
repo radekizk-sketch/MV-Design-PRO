@@ -210,7 +210,7 @@ def _required_limit_delta_pct(
 ) -> float | None:
     if limit is None or limit == 0:
         return None
-    if not isinstance(observed, (int, float)):
+    if not isinstance(observed, int | float):
         return None
     return (float(observed) - float(limit)) / float(limit) * 100.0
 

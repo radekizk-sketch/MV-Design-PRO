@@ -1,5 +1,5 @@
 /**
- * sortowanieAntykrzyzowaniowe.ts — Etap 3: Sortowanie pol zapobiegajace krzyzowaniu tras.
+ * sortowanieAntykrzyzowaniowe.ts — Krok 3: Sortowanie pol zapobiegajace krzyzowaniu tras.
  *
  * ALGORYTM:
  * 1. Podziel pola na grupy: GORA, DOL, LEWO, PRAWO.

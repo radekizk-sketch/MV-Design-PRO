@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from application.analyses.design_synth.canonical import canonicalize_json
@@ -46,7 +47,7 @@ def run_connection_study(
     )
 
     evidence_id = uuid4()
-    created_at = datetime.now(timezone.utc)
+    created_at = datetime.now(UTC)
     evidence_payload = build_evidence_payload(
         case_id=str(case_id),
         base_snapshot_id=base_snapshot_id,
@@ -60,9 +61,7 @@ def run_connection_study(
         report_fingerprint=report_fingerprint,
         created_at_utc_iso=created_at.isoformat(),
     )
-    service.create_evidence(
-        case_id, base_snapshot_id, evidence_payload, evidence_id=evidence_id
-    )
+    service.create_evidence(case_id, base_snapshot_id, evidence_payload, evidence_id=evidence_id)
 
     return DesignSynthRunResult(
         case_id=case_id,

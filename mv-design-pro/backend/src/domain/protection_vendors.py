@@ -17,10 +17,9 @@ SUPPORTED MANUFACTURERS (Open list):
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Literal
-
+from typing import Any
 
 # =============================================================================
 # ENUMS
@@ -29,6 +28,7 @@ from typing import Any, Literal
 
 class Manufacturer(str, Enum):
     """Protection device manufacturers (open list)."""
+
     ABB = "ABB"
     SIEMENS = "SIEMENS"
     SCHNEIDER = "SCHNEIDER"
@@ -41,35 +41,39 @@ class Manufacturer(str, Enum):
     NOJA = "NOJA"
     ORMAZABAL = "ORMAZABAL"
     GENERIC = "GENERIC"  # For IEC standard curves without specific manufacturer
-    OTHER = "OTHER"      # For manufacturers not explicitly listed
+    OTHER = "OTHER"  # For manufacturers not explicitly listed
 
 
 class CurveOrigin(str, Enum):
     """Origin/source of the protection curve definition."""
-    IEC_STANDARD = "IEC_STANDARD"      # Pure IEC 60255-151 curve
+
+    IEC_STANDARD = "IEC_STANDARD"  # Pure IEC 60255-151 curve
     DERIVED_VENDOR = "DERIVED_VENDOR"  # Vendor curve that maps to IEC
-    VENDOR_NATIVE = "VENDOR_NATIVE"    # Vendor-specific formula (non-IEC)
+    VENDOR_NATIVE = "VENDOR_NATIVE"  # Vendor-specific formula (non-IEC)
 
 
 class FormulaKind(str, Enum):
     """Formula type used for trip time calculation."""
-    IEC = "IEC"       # Standard IEC formula: t = TMS * A / (M^B - 1)
+
+    IEC = "IEC"  # Standard IEC formula: t = TMS * A / (M^B - 1)
     VENDOR = "VENDOR"  # Vendor-specific formula (documented separately)
 
 
 class IecVariant(str, Enum):
     """IEC 60255-151 curve variants."""
-    SI = "SI"    # Standard Inverse (A=0.14, B=0.02)
-    VI = "VI"    # Very Inverse (A=13.5, B=1.0)
-    EI = "EI"    # Extremely Inverse (A=80.0, B=2.0)
+
+    SI = "SI"  # Standard Inverse (A=0.14, B=0.02)
+    VI = "VI"  # Very Inverse (A=13.5, B=1.0)
+    EI = "EI"  # Extremely Inverse (A=80.0, B=2.0)
     LTI = "LTI"  # Long-Time Inverse (A=120, B=1.0) — per IEEE C37.112
 
 
 class VerificationStatus(str, Enum):
     """Verification status of curve parameters."""
-    VERIFIED = "VERIFIED"          # Parameters verified against datasheet/standard
-    UNVERIFIED = "UNVERIFIED"      # Parameters not verified — use with caution
-    DEPRECATED = "DEPRECATED"      # Curve is deprecated, newer version available
+
+    VERIFIED = "VERIFIED"  # Parameters verified against datasheet/standard
+    UNVERIFIED = "UNVERIFIED"  # Parameters not verified — use with caution
+    DEPRECATED = "DEPRECATED"  # Curve is deprecated, newer version available
 
 
 # =============================================================================
@@ -98,6 +102,7 @@ class VendorCurveDefinition:
         verification_status: Verification status of parameters
         notes: Optional notes about the curve
     """
+
     curve_code: str
     manufacturer: Manufacturer
     display_name: str

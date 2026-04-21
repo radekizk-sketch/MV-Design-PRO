@@ -6,7 +6,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § G.1: Synchronizacja selection SLD ↔ Tree ↔ Inspector
- * - powerfactory_ui_parity.md: Inspector jako property grid (read-only)
+ * - ui_canonical_parity.md: Inspector jako property grid (read-only)
  *
  * FEATURES:
  * - Subskrypcja na globalny Selection Store

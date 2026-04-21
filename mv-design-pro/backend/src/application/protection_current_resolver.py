@@ -15,13 +15,10 @@ INVARIANTS:
 
 from __future__ import annotations
 
-from typing import Any
-from uuid import UUID
-
 from domain.execution import (
+    ElementResult,
     ExecutionAnalysisType,
     ResultSet,
-    ElementResult,
 )
 from domain.protection_current_source import (
     AmbiguousMappingError,
@@ -78,9 +75,7 @@ class ProtectionCurrentResolver:
                 sc_result_set=sc_result_set,
             )
         else:
-            raise ValueError(
-                f"Nieobsługiwany typ źródła prądu: {current_source.source_type}"
-            )
+            raise ValueError(f"Nieobsługiwany typ źródła prądu: {current_source.source_type}")
 
     def _resolve_test_points(
         self,
@@ -89,6 +84,7 @@ class ProtectionCurrentResolver:
         """Pass through user-defined test points (sorted for determinism)."""
         if test_points is None or len(test_points) == 0:
             from domain.protection_current_source import CurrentSourceError
+
             raise CurrentSourceError(
                 code="protection.test_points_empty",
                 message_pl="Brak punktów testowych prądu. Dodaj co najmniej jeden punkt testowy.",
@@ -106,6 +102,7 @@ class ProtectionCurrentResolver:
         """Resolve currents from SC ResultSet using explicit mapping."""
         if sc_selection is None:
             from domain.protection_current_source import CurrentSourceError
+
             raise CurrentSourceError(
                 code="protection.sc_selection_missing",
                 message_pl="Brak konfiguracji źródła prądu SC. Wybierz przebieg SC i mapowanie.",
@@ -127,6 +124,7 @@ class ProtectionCurrentResolver:
         }
         if sc_result_set.analysis_type not in sc_types:
             from domain.protection_current_source import CurrentSourceError
+
             raise CurrentSourceError(
                 code="protection.sc_result_wrong_type",
                 message_pl=(
@@ -155,10 +153,12 @@ class ProtectionCurrentResolver:
                 quantity=sc_selection.quantity,
                 element_lookup=element_lookup,
             )
-            resolved.append(TestPoint(
-                point_id=f"sc_{mapping.relay_id}_{sc_selection.quantity}",
-                i_a_primary=current_a,
-            ))
+            resolved.append(
+                TestPoint(
+                    point_id=f"sc_{mapping.relay_id}_{sc_selection.quantity}",
+                    i_a_primary=current_a,
+                )
+            )
 
         # Sort for determinism
         return tuple(sorted(resolved, key=lambda tp: tp.point_id))
@@ -220,8 +220,7 @@ class ProtectionCurrentResolver:
                     "element_ref": er.element_ref,
                     "element_type": er.element_type,
                     "available_values": {
-                        k: v for k, v in sorted(er.values.items())
-                        if isinstance(v, (int, float))
+                        k: v for k, v in sorted(er.values.items()) if isinstance(v, int | float)
                     },
                 }
                 for er in sorted(
@@ -241,6 +240,7 @@ class ProtectionCurrentResolver:
         value = element.values.get(quantity)
         if value is None:
             from domain.protection_current_source import CurrentSourceError
+
             raise CurrentSourceError(
                 code="protection.sc_quantity_not_in_element",
                 message_pl=(
@@ -249,8 +249,9 @@ class ProtectionCurrentResolver:
                 ),
             )
 
-        if not isinstance(value, (int, float)):
+        if not isinstance(value, int | float):
             from domain.protection_current_source import CurrentSourceError
+
             raise CurrentSourceError(
                 code="protection.sc_quantity_not_numeric",
                 message_pl=(

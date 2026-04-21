@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § E.1: Selection patterns (deterministic ordering)
- * - powerfactory_ui_parity.md: ≥110% PowerFactory UX
+ * - ui_canonical_parity.md: ≥110% Canonical UX
  *
  * SINGLE SOURCE OF TRUTH for:
  * - All SLD symbols (nodes, branches, switches, sources, loads)
@@ -616,7 +616,7 @@ export const useSldEditorStore = create<SldEditorState>()((set, get) => ({
   /**
    * Kopiuj zaznaczenie do schowka.
    *
-   * N-03 ETAP-STANDARD:
+   * N-03 CANONICAL-STANDARD:
    * - Schowek przechowuje "snapshot" symboli (bez referencji do istniejących elementów modelu)
    * - Pozycje są przechowywane względnie (względem punktu odniesienia)
    * - Połączenia wewnętrzne (między skopiowanymi elementami) są zachowane
@@ -668,7 +668,7 @@ export const useSldEditorStore = create<SldEditorState>()((set, get) => ({
   /**
    * Wklej ze schowka.
    *
-   * N-03 ETAP-STANDARD:
+   * N-03 CANONICAL-STANDARD:
    * - Tworzy NOWE elementy modelu (nowe elementId)
    * - Tworzy NOWE symbole SLD (nowe id)
    * - Odtwarza połączenia WEWNĘTRZNE (między wklejanymi elementami)
@@ -1518,7 +1518,7 @@ function createNewSymbol(
  * Mapuje oryginalne elementId na nowe elementId dla połączeń wewnętrznych.
  * Połączenia zewnętrzne (do elementów spoza zestawu) pozostają puste.
  *
- * ETAP-STANDARD:
+ * CANONICAL-STANDARD:
  * - Połączenia WEWNĘTRZNE (oba końce w zestawie) są odtwarzane automatycznie
  * - Połączenia ZEWNĘTRZNE (jeden koniec spoza zestawu) pozostają puste
  *

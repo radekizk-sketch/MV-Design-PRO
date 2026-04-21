@@ -206,14 +206,14 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
 
   const actions = useMemo((): CardAction[] => [
     {
-      id: 'continue_trunk',
+      id: 'continue_trunk_segment_sn',
       label: 'Kontynuuj magistralę',
       variant: 'primary',
       onClick: handleContinueTrunk,
       disabled: !hasOpenTerminal,
     },
     {
-      id: 'insert_station',
+      id: 'insert_station_on_segment_sn',
       label: 'Wstaw stację',
       variant: 'secondary',
       onClick: handleInsertStation,

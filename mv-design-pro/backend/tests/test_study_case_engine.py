@@ -17,11 +17,10 @@ BINDING: All tests are unit tests, no DB, no network I/O.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
-
 from domain.study_case_engine import (
     ComparisonResult,
     ComparisonVerdict,
@@ -35,7 +34,6 @@ from domain.study_case_engine import (
     StudyCaseRunResult,
     compute_determinism_hash,
 )
-
 
 # =============================================================================
 # Stub Solver (deterministic, for testing)
@@ -225,13 +223,11 @@ class TestCreateCase:
             )
             assert case.mode == om
 
-    def test_create_case_has_created_at_timestamp(
-        self, engine: StudyCaseEngine
-    ) -> None:
+    def test_create_case_has_created_at_timestamp(self, engine: StudyCaseEngine) -> None:
         """Created case must have a created_at timestamp."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         case = engine.create_case("snap", ScenarioType.SC_3F)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         assert before <= case.created_at <= after
 
@@ -319,22 +315,18 @@ class TestExecuteCaseDeterminism:
         assert isinstance(result.white_box_trace, tuple)
         assert result.white_box_trace[0]["key"] == "zth_calc"
 
-    def test_execute_unique_run_ids(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_execute_unique_run_ids(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Each execution must produce a unique run_id."""
         result_a = engine.execute_case(sample_case)
         result_b = engine.execute_case(sample_case)
 
         assert result_a.run_id != result_b.run_id
 
-    def test_execute_has_timestamp(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_execute_has_timestamp(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Execution result must have executed_at timestamp."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
         result = engine.execute_case(sample_case)
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         assert before <= result.executed_at <= after
 
@@ -355,9 +347,7 @@ class TestExecuteCaseDeterminism:
 
         assert compute_determinism_hash(data_a) == compute_determinism_hash(data_b)
 
-    def test_run_result_to_dict(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_run_result_to_dict(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """RunResult.to_dict must produce complete serialization."""
         result = engine.execute_case(sample_case)
         data = result.to_dict()
@@ -378,17 +368,13 @@ class TestExecuteCaseDeterminism:
 class TestCloneCaseNoneStatus:
     """Clone must have NONE status, no results, new ID."""
 
-    def test_clone_has_none_status(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_clone_has_none_status(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Cloned case must have NONE status."""
         cloned = engine.clone_case(sample_case)
 
         assert cloned.status == ResultStatus.NONE
 
-    def test_clone_has_new_id(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_clone_has_new_id(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Cloned case must have a different ID."""
         cloned = engine.clone_case(sample_case)
 
@@ -410,26 +396,20 @@ class TestCloneCaseNoneStatus:
 
         assert cloned.scenario_type == sample_case.scenario_type
 
-    def test_clone_copies_mode(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_clone_copies_mode(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Clone must preserve operating mode."""
         cloned = engine.clone_case(sample_case)
 
         assert cloned.mode == sample_case.mode
 
-    def test_clone_copies_config(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_clone_copies_config(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Clone must preserve config values."""
         cloned = engine.clone_case(sample_case)
 
         assert cloned.config.c_factor_max == sample_case.config.c_factor_max
         assert cloned.config.base_mva == sample_case.config.base_mva
 
-    def test_clone_copies_catalog_version_lock(
-        self, engine: StudyCaseEngine
-    ) -> None:
+    def test_clone_copies_catalog_version_lock(self, engine: StudyCaseEngine) -> None:
         """Clone must preserve catalog_version_lock."""
         case = engine.create_case(
             snapshot_ref="snap",
@@ -458,9 +438,7 @@ class TestCloneCaseNoneStatus:
 class TestCompareRunsIdentical:
     """Identical runs must produce IDENTICAL verdict."""
 
-    def test_identical_runs_verdict(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_identical_runs_verdict(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """Two runs with same solver output must be IDENTICAL."""
         run_a = engine.execute_case(sample_case)
         run_b = engine.execute_case(sample_case)
@@ -496,13 +474,13 @@ class TestCompareRunsIdentical:
 
         assert comp_1.verdict == comp_2.verdict
         assert len(comp_1.delta_values) == len(comp_2.delta_values)
-        for dv1, dv2 in zip(comp_1.delta_values, comp_2.delta_values):
+        for dv1, dv2 in zip(comp_1.delta_values, comp_2.delta_values, strict=False):
             assert dv1.metric_name == dv2.metric_name
             assert dv1.abs_diff == dv2.abs_diff
 
     def test_empty_results_identical(self) -> None:
         """Runs with empty results must be IDENTICAL."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -538,7 +516,7 @@ class TestCompareRunsDifferent:
 
     def test_major_difference(self) -> None:
         """Large difference must produce MAJOR_DIFF verdict."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -563,9 +541,7 @@ class TestCompareRunsDifferent:
         assert comparison.verdict == ComparisonVerdict.MAJOR_DIFF
 
         # Check delta values
-        ik3_delta = next(
-            dv for dv in comparison.delta_values if dv.metric_name == "ik3_ka"
-        )
+        ik3_delta = next(dv for dv in comparison.delta_values if dv.metric_name == "ik3_ka")
         assert ik3_delta.value_a == 10.0
         assert ik3_delta.value_b == 15.0
         assert ik3_delta.abs_diff == 5.0
@@ -574,7 +550,7 @@ class TestCompareRunsDifferent:
 
     def test_minor_difference(self) -> None:
         """Small difference must produce MINOR_DIFF verdict."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -600,7 +576,7 @@ class TestCompareRunsDifferent:
 
     def test_nested_results_comparison(self) -> None:
         """Nested result structures must be flattened and compared."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -608,9 +584,7 @@ class TestCompareRunsDifferent:
             results={"zth": {"r_ohm": 0.5, "x_ohm": 1.2}},
             white_box_trace=(),
             executed_at=now,
-            determinism_hash=compute_determinism_hash(
-                {"zth": {"r_ohm": 0.5, "x_ohm": 1.2}}
-            ),
+            determinism_hash=compute_determinism_hash({"zth": {"r_ohm": 0.5, "x_ohm": 1.2}}),
         )
         run_b = StudyCaseRunResult(
             run_id="run-b",
@@ -619,29 +593,23 @@ class TestCompareRunsDifferent:
             results={"zth": {"r_ohm": 0.6, "x_ohm": 1.2}},
             white_box_trace=(),
             executed_at=now,
-            determinism_hash=compute_determinism_hash(
-                {"zth": {"r_ohm": 0.6, "x_ohm": 1.2}}
-            ),
+            determinism_hash=compute_determinism_hash({"zth": {"r_ohm": 0.6, "x_ohm": 1.2}}),
         )
 
         comparison = StudyCaseEngine.compare_runs(run_a, run_b)
 
         # Find the r_ohm delta
-        r_delta = next(
-            dv for dv in comparison.delta_values if dv.metric_name == "zth.r_ohm"
-        )
+        r_delta = next(dv for dv in comparison.delta_values if dv.metric_name == "zth.r_ohm")
         assert r_delta.abs_diff == pytest.approx(0.1)
         assert r_delta.rel_diff_pct == pytest.approx(20.0)
 
         # x_ohm should have zero delta
-        x_delta = next(
-            dv for dv in comparison.delta_values if dv.metric_name == "zth.x_ohm"
-        )
+        x_delta = next(dv for dv in comparison.delta_values if dv.metric_name == "zth.x_ohm")
         assert x_delta.abs_diff == 0.0
 
     def test_missing_metric_in_one_run(self) -> None:
         """Missing metrics in one run must use 0.0 as default."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -663,16 +631,14 @@ class TestCompareRunsDifferent:
 
         comparison = StudyCaseEngine.compare_runs(run_a, run_b)
 
-        ip_delta = next(
-            dv for dv in comparison.delta_values if dv.metric_name == "ip_ka"
-        )
+        ip_delta = next(dv for dv in comparison.delta_values if dv.metric_name == "ip_ka")
         assert ip_delta.value_a == 25.0
         assert ip_delta.value_b == 0.0
         assert ip_delta.abs_diff == 25.0
 
     def test_comparison_to_dict(self) -> None:
         """ComparisonResult.to_dict must serialize correctly."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="run-a",
             case_id="case-1",
@@ -710,9 +676,7 @@ class TestCompareRunsDifferent:
 class TestCaseImmutability:
     """Frozen dataclasses must prevent mutation after creation."""
 
-    def test_study_case_is_frozen(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_study_case_is_frozen(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """StudyCase must be frozen — cannot modify attributes."""
         with pytest.raises((AttributeError, FrozenInstanceError)):
             sample_case.snapshot_ref = "new_snap"  # type: ignore
@@ -737,9 +701,7 @@ class TestCaseImmutability:
         with pytest.raises((AttributeError, FrozenInstanceError)):
             config.c_factor_max = 2.0  # type: ignore
 
-    def test_run_result_is_frozen(
-        self, engine: StudyCaseEngine, sample_case: StudyCase
-    ) -> None:
+    def test_run_result_is_frozen(self, engine: StudyCaseEngine, sample_case: StudyCase) -> None:
         """StudyCaseRunResult must be frozen."""
         result = engine.execute_case(sample_case)
 
@@ -810,16 +772,20 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_all_metrics(self) -> None:
         """Delta overlay must cover all metrics from both runs."""
-        solver_a = StubSolver(results={
-            "ik3_ka": 12.5,
-            "ip_ka": 30.2,
-            "sk_mva": 250.0,
-        })
-        solver_b = StubSolver(results={
-            "ik3_ka": 13.0,
-            "ip_ka": 31.0,
-            "sk_mva": 260.0,
-        })
+        solver_a = StubSolver(
+            results={
+                "ik3_ka": 12.5,
+                "ip_ka": 30.2,
+                "sk_mva": 250.0,
+            }
+        )
+        solver_b = StubSolver(
+            results={
+                "ik3_ka": 13.0,
+                "ip_ka": 31.0,
+                "sk_mva": 260.0,
+            }
+        )
 
         engine_a = StudyCaseEngine(solver=solver_a)
         engine_b = StudyCaseEngine(solver=solver_b)
@@ -837,7 +803,7 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_sorted_metrics(self) -> None:
         """Metrics in delta overlay must be deterministically sorted."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         results_a = {"z_val": 1.0, "a_val": 2.0, "m_val": 3.0}
         results_b = {"z_val": 1.1, "a_val": 2.1, "m_val": 3.1}
 
@@ -867,7 +833,7 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_relative_percentages(self) -> None:
         """Relative differences must be calculated correctly."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="a",
             case_id="c",
@@ -895,7 +861,7 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_zero_value_a(self) -> None:
         """When value_a is zero, rel_diff_pct must be None."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="a",
             case_id="c",
@@ -923,7 +889,7 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_nested_structures(self) -> None:
         """Nested result dicts must be flattened with dotted keys."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         results = {
             "bus_1": {"u_kv": 20.0, "u_pu": 1.0},
             "bus_2": {"u_kv": 19.5, "u_pu": 0.975},
@@ -957,7 +923,7 @@ class TestStudyCaseDeltaOverlay:
 
     def test_delta_overlay_deterministic_100x(self) -> None:
         """Delta overlay must produce identical output 100 times."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         run_a = StudyCaseRunResult(
             run_id="a",
             case_id="c",
@@ -987,7 +953,7 @@ class TestStudyCaseDeltaOverlay:
             comparison = StudyCaseEngine.compare_runs(run_a, run_b)
             assert comparison.verdict == reference.verdict
             assert len(comparison.delta_values) == len(reference.delta_values)
-            for dv_ref, dv in zip(reference.delta_values, comparison.delta_values):
+            for dv_ref, dv in zip(reference.delta_values, comparison.delta_values, strict=False):
                 assert dv.metric_name == dv_ref.metric_name
                 assert dv.abs_diff == dv_ref.abs_diff
 
@@ -1052,9 +1018,7 @@ class TestModelChangeInvalidatesCase:
 
         assert result.status == ResultStatus.OUTDATED
 
-    def test_invalidation_preserves_all_fields(
-        self, engine: StudyCaseEngine
-    ) -> None:
+    def test_invalidation_preserves_all_fields(self, engine: StudyCaseEngine) -> None:
         """Invalidation must preserve snapshot_ref, scenario_type, config, mode."""
         custom_config = StudyCaseConfig(c_factor_max=1.05, base_mva=50.0)
         case = engine.create_case(

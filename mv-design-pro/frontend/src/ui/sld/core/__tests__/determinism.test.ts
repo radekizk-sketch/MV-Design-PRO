@@ -1,5 +1,5 @@
 /**
- * Determinism Suite — ETAP-grade determinism guards.
+ * Determinism Suite — CANONICAL-grade determinism guards.
  *
  * Testy:
  * 1. Hash stability: 100x layout → identyczny hash

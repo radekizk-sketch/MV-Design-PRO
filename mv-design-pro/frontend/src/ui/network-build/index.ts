@@ -35,7 +35,7 @@ export type {
   OzeSourceSummary,
 } from './networkBuildStore';
 
-// Etap V — Context menu, visual modes, catalog, search, mass review, modals
+// Krok V — Context menu, visual modes, catalog, search, mass review, modals
 export { buildContextMenuForElement, getContextMenuTitle } from './contextMenuIntegration';
 export type { ContextMenuRequest, ContextMenuHandlers } from './contextMenuIntegration';
 export { SldVisualModes } from './SldVisualModes';

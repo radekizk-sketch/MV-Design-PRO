@@ -16,8 +16,6 @@ Aligned with PowerFactory "Check Network Data" diagnostic style.
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add backend/src to path for imports
 backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
@@ -34,7 +32,6 @@ from network_model.validation.validator import (
     ValidationReport,
     validate_network,
 )
-
 
 # =============================================================================
 # Helper factories
@@ -641,14 +638,14 @@ class TestTransformerPolarityReversedWarning:
         graph = NetworkGraph()
         # HV side node has LOWER voltage_level than LV side node
         slack = _slack_node(node_id="s1", voltage_level=15.0)  # Low voltage bus
-        pq = _pq_node(node_id="pq-1", voltage_level=110.0)    # High voltage bus
+        pq = _pq_node(node_id="pq-1", voltage_level=110.0)  # High voltage bus
         graph.nodes["s1"] = slack
         graph.nodes["pq-1"] = pq
         trafo = _transformer_branch(
             branch_id="trafo-rev",
             name="Reversed Trafo",
-            from_node_id="s1",      # from_node (HV side) at 15 kV
-            to_node_id="pq-1",      # to_node (LV side) at 110 kV
+            from_node_id="s1",  # from_node (HV side) at 15 kV
+            to_node_id="pq-1",  # to_node (LV side) at 110 kV
             voltage_hv_kv=110.0,
             voltage_lv_kv=15.0,
         )
@@ -740,12 +737,8 @@ class TestSuggestedFixPresent:
         graph = NetworkGraph()
         report = validate_network(graph)
         for issue in report.issues:
-            assert issue.suggested_fix is not None, (
-                f"Issue '{issue.code}' has no suggested_fix"
-            )
-            assert len(issue.suggested_fix) > 0, (
-                f"Issue '{issue.code}' has empty suggested_fix"
-            )
+            assert issue.suggested_fix is not None, f"Issue '{issue.code}' has no suggested_fix"
+            assert len(issue.suggested_fix) > 0, f"Issue '{issue.code}' has empty suggested_fix"
 
     def test_suggested_fix_present_on_warnings(self):
         """Trigger warnings and verify suggested_fix."""
@@ -772,16 +765,11 @@ class TestSuggestedFixPresent:
 
         warnings = report.warnings
         assert len(warnings) >= 2, (
-            f"Expected at least 2 warnings, got {len(warnings)}: "
-            f"{[w.code for w in warnings]}"
+            f"Expected at least 2 warnings, got {len(warnings)}: " f"{[w.code for w in warnings]}"
         )
         for issue in warnings:
-            assert issue.suggested_fix is not None, (
-                f"Warning '{issue.code}' has no suggested_fix"
-            )
-            assert len(issue.suggested_fix) > 0, (
-                f"Warning '{issue.code}' has empty suggested_fix"
-            )
+            assert issue.suggested_fix is not None, f"Warning '{issue.code}' has no suggested_fix"
+            assert len(issue.suggested_fix) > 0, f"Warning '{issue.code}' has empty suggested_fix"
 
     def test_suggested_fix_present_across_all_rule_types(self):
         """Build a network that triggers many rules, verify all have suggested_fix."""
@@ -831,12 +819,8 @@ class TestSuggestedFixPresent:
 
         assert len(report.issues) > 0
         for issue in report.issues:
-            assert issue.suggested_fix is not None, (
-                f"Issue '{issue.code}' has no suggested_fix"
-            )
-            assert len(issue.suggested_fix) > 0, (
-                f"Issue '{issue.code}' has empty suggested_fix"
-            )
+            assert issue.suggested_fix is not None, f"Issue '{issue.code}' has no suggested_fix"
+            assert len(issue.suggested_fix) > 0, f"Issue '{issue.code}' has empty suggested_fix"
 
 
 # =============================================================================

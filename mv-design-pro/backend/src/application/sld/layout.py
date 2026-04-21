@@ -1,7 +1,7 @@
 """
 SLD Auto-Layout Algorithm.
 
-PowerFactory Alignment (per sld_rules.md § F.6, POWERFACTORY_COMPLIANCE.md):
+PowerFactory Alignment (per sld_rules.md § F.6, CANONICAL_COMPLIANCE.md):
 - Deterministic: Same input → identical layout
 - BFS-based hierarchical positioning from BoundaryNode/root
 - Switches affect topology when CLOSED and in_service
@@ -16,8 +16,8 @@ Layout modes:
 from __future__ import annotations
 
 from collections import deque
-from typing import Iterable
-from uuid import UUID, uuid4, uuid5
+from collections.abc import Iterable
+from uuid import UUID, uuid5
 
 from domain.sld import (
     SldAnnotation,
@@ -92,7 +92,7 @@ def build_auto_layout_diagram(
             adjacency[to_node_id].add(from_node_id)
 
     # Build adjacency from switches (CLOSED + in_service only for layout)
-    # Per powerfactory_ui_parity.md § C.3: Switch.OPEN interrupts topology
+    # Per ui_canonical_parity.md § C.3: Switch.OPEN interrupts topology
     for switch in switches_list:
         if not switch.get("in_service", True):
             continue
@@ -105,8 +105,12 @@ def build_auto_layout_diagram(
             adjacency[to_node_id].add(from_node_id)
 
     positions = _layout_positions(
-        adjacency, node_ids, connection_node_id,
-        x_spacing=x_spacing, y_spacing=y_spacing, vertical=vertical,
+        adjacency,
+        node_ids,
+        connection_node_id,
+        x_spacing=x_spacing,
+        y_spacing=y_spacing,
+        vertical=vertical,
     )
 
     # Create node symbols with in_service state

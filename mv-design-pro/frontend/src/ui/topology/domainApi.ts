@@ -9,7 +9,8 @@
 
 import type { DomainOpResponseV1 } from '../../types/enm';
 import type { DomainOpResponse } from '../../types/domainOps';
-import { ALIAS_MAP } from '../../types/domainOps';
+import { assertCanonicalOpName } from '../../types/domainOps';
+import { normalizeEnmFixAction } from '../shared/fixActionSurfaceNormalizer';
 
 const API_BASE = '/api/cases';
 
@@ -25,7 +26,7 @@ class DomainApiError extends Error {
 }
 
 function resolveCanonicalName(name: string): string {
-  return ALIAS_MAP[name] ?? name;
+  return assertCanonicalOpName(name);
 }
 
 function canonicalStringify(value: unknown): string {
@@ -147,10 +148,12 @@ function normalizeResponse(
       terminals: [],
     },
     readiness: response.readiness ?? { ready: false, blockers: [], warnings: [] },
-    fix_actions: (response.fix_actions ?? []).map((action) => ({
-      ...action,
-      modal_type: action.panel ?? null,
-    })),
+    fix_actions: (response.fix_actions ?? []).map((action) =>
+      normalizeEnmFixAction({
+        ...action,
+        modal_type: action.modal_type ?? action.panel ?? null,
+      }),
+    ),
     changes: response.changes ?? {
       created_element_ids: [],
       updated_element_ids: [],

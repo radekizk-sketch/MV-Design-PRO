@@ -13,8 +13,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
-from analysis.energy_validation.builder import EnergyValidationBuilder
 from analysis.energy_validation.models import (
     EnergyCheckType,
     EnergyValidationConfig,
@@ -25,15 +23,12 @@ from analysis.energy_validation.models import (
 )
 from analysis.power_flow.result import PowerFlowResult
 from application.sld.overlay_builder import (
-    OverlayBranch,
-    OverlayNode,
     SldOverlayData,
     build_sld_overlay,
 )
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-
 
 # =============================================================================
 # Test Fixtures
@@ -44,30 +39,36 @@ def _make_graph() -> NetworkGraph:
     """Build a minimal 3-bus network: slack -> line -> bus2, slack -> trafo -> bus3."""
     g = NetworkGraph()
 
-    g.add_node(Node(
-        id="bus1",
-        name="GPZ 15kV",
-        node_type=NodeType.SLACK,
-        voltage_level=15.0,
-        voltage_magnitude=1.0,
-        voltage_angle=0.0,
-    ))
-    g.add_node(Node(
-        id="bus2",
-        name="Szyna SN A",
-        node_type=NodeType.PQ,
-        voltage_level=15.0,
-        active_power=-2.0,
-        reactive_power=-0.5,
-    ))
-    g.add_node(Node(
-        id="bus3",
-        name="Szyna nN",
-        node_type=NodeType.PQ,
-        voltage_level=0.4,
-        active_power=-0.1,
-        reactive_power=-0.02,
-    ))
+    g.add_node(
+        Node(
+            id="bus1",
+            name="GPZ 15kV",
+            node_type=NodeType.SLACK,
+            voltage_level=15.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="bus2",
+            name="Szyna SN A",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=-2.0,
+            reactive_power=-0.5,
+        )
+    )
+    g.add_node(
+        Node(
+            id="bus3",
+            name="Szyna nN",
+            node_type=NodeType.PQ,
+            voltage_level=0.4,
+            active_power=-0.1,
+            reactive_power=-0.02,
+        )
+    )
 
     line = LineBranch(
         id="line1",
@@ -434,7 +435,10 @@ class TestEvStatusMapping:
         ev = _make_ev_view_pass()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         node_map = {n.node_id: n for n in overlay.nodes}
@@ -448,7 +452,10 @@ class TestEvStatusMapping:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         node_map = {n.node_id: n for n in overlay.nodes}
@@ -461,7 +468,10 @@ class TestEvStatusMapping:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         branch_map = {b.branch_id: b for b in overlay.branches}
@@ -473,7 +483,10 @@ class TestEvStatusMapping:
         pf = _make_pf_result()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=None,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=None,
         )
 
         for node in overlay.nodes:
@@ -488,7 +501,10 @@ class TestEvStatusMapping:
         ev = _make_ev_view_pass()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         node_map = {n.node_id: n for n in overlay.nodes}
@@ -505,7 +521,9 @@ class TestOverallEvStatus:
         ev = _make_ev_view_pass()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            ev_view=ev,
         )
 
         assert overlay.overall_ev_status == "PASS"
@@ -516,7 +534,9 @@ class TestOverallEvStatus:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            ev_view=ev,
         )
 
         assert overlay.overall_ev_status == "FAIL"
@@ -540,7 +560,10 @@ class TestSerialization:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         d = overlay.to_dict()
@@ -557,7 +580,10 @@ class TestSerialization:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         d = overlay.to_dict()
@@ -573,7 +599,10 @@ class TestSerialization:
         ev = _make_ev_view_mixed()
 
         overlay = build_sld_overlay(
-            run_id="r1", graph=graph, pf_result=pf, ev_view=ev,
+            run_id="r1",
+            graph=graph,
+            pf_result=pf,
+            ev_view=ev,
         )
 
         d = overlay.to_dict()

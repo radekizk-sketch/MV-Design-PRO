@@ -11,9 +11,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Iterable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from .branch import Branch
@@ -63,7 +64,7 @@ def compute_fingerprint(data: dict[str, Any]) -> str:
     return hashlib.sha256(json_str.encode("utf-8")).hexdigest()
 
 
-def runtime_fingerprint(snapshot: "NetworkSnapshot") -> str:
+def runtime_fingerprint(snapshot: NetworkSnapshot) -> str:
     """
     Compute the current fingerprint from graph content.
 
@@ -77,12 +78,12 @@ class SnapshotMutationError(RuntimeError):
 
 
 class SnapshotReadOnlyGuard:
-    def __init__(self, snapshot: "NetworkSnapshot", operation: str) -> None:
+    def __init__(self, snapshot: NetworkSnapshot, operation: str) -> None:
         self._snapshot = snapshot
         self._operation = operation
         self._fingerprint_before: str | None = None
 
-    def __enter__(self) -> "NetworkSnapshot":
+    def __enter__(self) -> NetworkSnapshot:
         self._fingerprint_before = runtime_fingerprint(self._snapshot)
         return self._snapshot
 
@@ -96,7 +97,7 @@ class SnapshotReadOnlyGuard:
         return False
 
 
-def snapshot_read_only_guard(snapshot: "NetworkSnapshot", *, operation: str) -> SnapshotReadOnlyGuard:
+def snapshot_read_only_guard(snapshot: NetworkSnapshot, *, operation: str) -> SnapshotReadOnlyGuard:
     """Create a guard that raises if snapshot graph mutates during an operation."""
     return SnapshotReadOnlyGuard(snapshot, operation=operation)
 
@@ -129,9 +130,9 @@ class SnapshotMeta:
         schema_version: str | None = None,
         network_model_id: str | None = None,
         fingerprint: str | None = None,
-    ) -> "SnapshotMeta":
+    ) -> SnapshotMeta:
         minted_snapshot_id = snapshot_id or str(uuid4())
-        timestamp = created_at or datetime.now(timezone.utc).isoformat()
+        timestamp = created_at or datetime.now(UTC).isoformat()
         return cls(
             snapshot_id=minted_snapshot_id,
             parent_snapshot_id=parent_snapshot_id,
@@ -152,7 +153,7 @@ class SnapshotMeta:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "SnapshotMeta":
+    def from_dict(cls, data: dict[str, Any]) -> SnapshotMeta:
         return cls(
             snapshot_id=str(data["snapshot_id"]),
             parent_snapshot_id=data.get("parent_snapshot_id"),
@@ -205,7 +206,7 @@ class NetworkSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "NetworkSnapshot":
+    def from_dict(cls, data: dict[str, Any]) -> NetworkSnapshot:
         meta_data = data.get("meta")
         if meta_data is None:
             meta_data = {

@@ -1,62 +1,70 @@
-/**
- * App Root — POWERFACTORY_LAYOUT + UI_INTEGRATION_E2E + PROJECT_TREE_PARITY_V1
+﻿/**
+ * App Root â€” CANONICAL_LAYOUT + UI_INTEGRATION_E2E + V12.5
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Layout narzędziowy ZAWSZE renderowany
- * - wizard_screens.md § 1.3: Active case bar (always visible)
- * - UI_CORE_ARCHITECTURE.md § 4.1: Navigation structure
+ * - ui_canonical_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
+ * - wizard_screens.md Â§ 1.3: Active case bar (always visible)
+ * - UI_CORE_ARCHITECTURE.md Â§ 4.1: Navigation structure
  *
- * POWERFACTORY/ETAP RULE:
- * > Layout narzędziowy ZAWSZE jest renderowany.
+ * CANONICAL RULE:
+ * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * Main application entry with:
- * - PowerFactoryLayout with ALWAYS visible Project Tree, Inspector, Status Bar
+ * - CanonicalLayout with one active workspace, one inspector and one status bar
  * - Hash-based routing with Polish labels
  * - Mode-aware page rendering
  * - Empty state overlays (NOT empty screens)
  *
  * Routes (Polish):
- * - "" / "#sld" → Schemat jednokreskowy (SLD Editor)
- * - "#sld-view" → Podglad schematu (SLD Read-Only Viewer)
- * - "#results" → Przegląd wyników (Results Browser)
- * - "#proof" → Ślad obliczeń
- * - "#protection-results" → Wyniki zabezpieczeń
- * - "#power-flow-results" → Wyniki rozpływu
- * - "#network-build" → Budowa sieci (ten sam ekran modelowania co SLD)
- * - "#protection-settings" → Nastawy zabezpieczeń
- * - "#catalog" → Biblioteka typów (Type Library Browser)
- * - "#case-config" → Konfiguracja przypadku obliczeniowego
+ * - "" / "#sld" â†’ Schemat jednokreskowy (SLD Editor)
+ * - "#sld-view" â†’ Podglad schematu (SLD Read-Only Viewer)
+ * - "#analysis" â†’ Poziom analityczny (E-24)
+ * - "#report" â†’ Generator raportu (E-25)
+ * - "#variants" / "#catalog" / "#case-config" â†’ Helpery shell-a
+ * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
+ *   â†’ aliasy prowadzÄ…ce do E-24
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 
-import { ProtectionResultsInspectorPage } from './ui/protection-results';
-import { PowerFlowResultsInspectorPage } from './ui/power-flow-results';
-import { ReferencePatternsPage } from './ui/reference-patterns';
-import { ResultsInspectorPage } from './ui/results-inspector';
-import { resolveResultsRunId } from './ui/results-inspector/viewState';
 import { SLDViewPage, SldEditorPage } from './ui/sld';
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
-import { PowerFactoryLayout } from './ui/layout';
+import { CanonicalLayout } from './ui/layout';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
 import type { ExecutionAnalysisType } from './ui/study-cases/types';
-import { ROUTES, useUrlSelectionSync, getCurrentHashRoute, getCurrentSearchParams } from './ui/navigation';
-import { useSelectionStore } from './ui/selection';
+import {
+  ROUTES,
+  getCurrentHashRoute,
+  getCurrentSearchParams,
+  getRouteByHash,
+  isAnalysisRouteAlias,
+  navigateToAnalysis,
+  navigateToCaseConfig,
+  navigateToCatalog,
+  navigateToCompare,
+  navigateToNetworkBuild,
+  navigateToProof,
+  navigateToReport,
+  navigateToResults,
+  navigateToResultsProtection,
+  navigateToVariants,
+  resolveAnalysisRouteAliasTab,
+  useUrlSelectionSync,
+} from './ui/navigation';
 import { NotificationToast } from './ui/notifications/NotificationToast';
 import { notify } from './ui/notifications/store';
-import type { TreeNode, TreeNodeType, ElementType } from './ui/types';
-import { TypeLibraryBrowser } from './ui/catalog';
-import { PowerDistributionPage } from './ui/power-distribution';
-import { CaseConfigPage } from './ui/study-cases/CaseConfigPage';
-import { ProtectionSettingsPage } from './ui/protection-engine-v1/ProtectionSettingsPage';
 import { InspectorResolver } from './ui/inspector-panel';
-import { useNetworkTreeElements, useNetworkStats } from './ui/topology/useNetworkTreeElements';
+import { useNetworkStats } from './ui/topology/useNetworkStats';
+import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
+import {
+  ANALYSIS_SURFACE_SCREEN_CODE,
+  REPORT_SURFACE_SCREEN_CODE,
+} from './ui/workspace/types';
 
-// PROJECT_TREE_PARITY_V1: Get active project name from store
 function useActiveProjectName(): string | null {
   const store = useAppStateStore();
   return (store as { activeProjectName?: string | null }).activeProjectName ?? null;
@@ -99,12 +107,31 @@ function mapAnalysisTypeToExecutionType(
 
 function isResultsRoute(route: string): boolean {
   return (
-    route === '#results' ||
-    route === '#proof' ||
-    route === '#protection-results' ||
-    route === '#power-flow-results' ||
-    route === '#reference-patterns' ||
-    route === '#protection-settings'
+    route === ROUTES.ANALYSIS.hash ||
+    route === ROUTES.REPORT.hash ||
+    isAnalysisRouteAlias(route)
+  );
+}
+
+function resolveAnalysisSurfaceTab(route: string, params: URLSearchParams): string {
+  const explicitTab = params.get('tab');
+  if (explicitTab) {
+    return explicitTab;
+  }
+  return resolveAnalysisRouteAliasTab(route) ?? 'results';
+}
+
+function UnknownRoutePage({ route }: { route: string }) {
+  return (
+    <div className="flex h-full items-center justify-center bg-slate-50">
+      <div className="max-w-lg rounded-lg border border-amber-300 bg-amber-50 px-6 py-5 text-slate-900 shadow-sm">
+        <h1 className="text-lg font-semibold">Nieznana trasa interfejsu</h1>
+        <p className="mt-2 text-sm leading-6">
+          Aktywna trasa <code>{route || '(pusta)'}</code> nie jest zmapowana do kanonicznego
+          surface&apos;u. PrzejdĹş do jednej z aktywnych sekcji albo popraw routing.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -117,12 +144,13 @@ function App() {
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const setActiveRun = useAppStateStore((state) => state.setActiveRun);
+  const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
   const readiness = useSnapshotStore((state) => state.readiness);
   const createAndExecuteRun = useExecutionRunsStore((state) => state.createAndExecuteRun);
   const appReady = useAppReady();
   const projectName = useActiveProjectName();
-  const selectElement = useSelectionStore((state) => state.selectElement);
-  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
 
   // NAVIGATION_SELECTOR_UI: Sync selection with URL (refresh preserves selection)
   useUrlSelectionSync();
@@ -141,12 +169,69 @@ function App() {
   useEffect(() => {
     if (isResultsRoute(route)) {
       setActiveMode('RESULT_VIEW');
-    } else if (route === '#case-config') {
-      setActiveMode('CASE_CONFIG');
     } else {
       setActiveMode('MODEL_EDIT');
     }
   }, [route, setActiveMode]);
+
+  useEffect(() => {
+    const params = getCurrentSearchParams();
+    const routeRunId = params.get('run');
+    if (
+      route === ROUTES.ANALYSIS.hash
+      || isAnalysisRouteAlias(route)
+    ) {
+      setActiveRun(routeRunId);
+      setExecutionActiveRun(routeRunId);
+      openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+        titlePl: 'Poziom analityczny',
+        tabId: resolveAnalysisSurfaceTab(route, params),
+        entityRef: params.get('sel'),
+        subjectKind: 'analysis_run',
+        subjectRef: routeRunId,
+        payload: {
+          runId: routeRunId,
+          legacyRoute: route,
+        },
+      });
+      return;
+    }
+    if (route === ROUTES.REPORT.hash) {
+      setActiveRun(routeRunId);
+      setExecutionActiveRun(routeRunId);
+      openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+        entityRef: params.get('sel'),
+        subjectKind: 'report',
+        subjectRef: routeRunId,
+        payload: {
+          runId: routeRunId,
+        },
+      });
+      return;
+    }
+    if (route === ROUTES.VARIANTS.hash) {
+      openRouteSurface('variants_runs', {
+        subjectKind: 'helper_context',
+        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'variants-context',
+      });
+      return;
+    }
+    if (route === ROUTES.CATALOG.hash) {
+      openRouteSurface('catalog_admin', {
+        subjectKind: 'helper_context',
+        subjectRef: params.get('sel') ?? 'catalog-root',
+      });
+      return;
+    }
+    if (route === ROUTES.CASE_CONFIG.hash) {
+      openRouteSurface('case_context', {
+        subjectKind: 'helper_context',
+        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
+      });
+      return;
+    }
+    clearRouteManagedSurface();
+  }, [clearRouteManagedSurface, hashVersion, openRouteSurface, route, setActiveRun, setExecutionActiveRun]);
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {
@@ -164,53 +249,21 @@ function App() {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
       const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Uruchomiono obliczenia. Przejdź do widoku wyników po zakończeniu.', 'success');
-      window.location.hash = ROUTES.RESULTS.hash;
+      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
+      navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Błąd uruchomienia obliczeń';
+      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
       notify(message, 'error');
     }
-  }, [activeAnalysisType, activeCaseId, createAndExecuteRun, readiness, setActiveRun]);
+  }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);
 
   /**
-   * Navigate to Results (Przegląd wyników).
-   * UI_INTEGRATION_E2E: Uses #results route.
+   * Navigate to canonical E-24 results surface.
    */
   const handleViewResults = useCallback(() => {
-    window.location.hash = ROUTES.RESULTS.hash;
-  }, []);
+    navigateToResults({ runId: activeRunId });
+  }, [activeRunId, navigateToResults]);
 
-  // PROJECT_TREE_PARITY_V1: Tree node click handler
-  // Updates selection → syncs URL → triggers Results Table / Inspector update
-  const handleTreeNodeClick = useCallback((node: TreeNode) => {
-    // Only handle element nodes (not categories)
-    if (node.nodeType === 'ELEMENT' && node.elementId && node.elementType) {
-      selectElement({
-        id: node.elementId,
-        type: node.elementType as ElementType,
-        name: node.label,
-      });
-      centerSldOnElement(node.elementId);
-    }
-  }, [selectElement, centerSldOnElement]);
-
-  // PROJECT_TREE_PARITY_V1: Tree category click handler
-  const handleTreeCategoryClick = useCallback((_nodeType: TreeNodeType, _elementType?: ElementType) => {
-    // Category navigation not yet implemented - silent no-op
-    // Filter by category will be available in future version
-    if (import.meta.env.DEV) {
-      console.debug('[handleTreeCategoryClick] Category click - filter not yet implemented');
-    }
-  }, []);
-
-  // PROJECT_TREE_PARITY_V1: Tree run click handler
-  const handleTreeRunClick = useCallback((runId: string) => {
-    // Navigate to results with run context
-    window.location.hash = `#results?run=${runId}`;
-  }, []);
-
-  // Network tree elements derived from ENM snapshot (replaces mock data)
-  const treeElements = useNetworkTreeElements();
   const networkStats = useNetworkStats();
 
   // E2E_STABILIZATION: Wrapper with app-ready indicator
@@ -232,33 +285,47 @@ function App() {
     return 'valid' as const;
   }, [readiness]);
 
-  const routeSearchParams = useMemo(() => getCurrentSearchParams(), [hashVersion]);
-  const effectiveRunId = resolveResultsRunId(routeSearchParams.get('run'), activeRunId) ?? undefined;
-
-  // Menu action handler — routes navigation from MainMenuBar
+  // Menu action handler â€” routes navigation from MainMenuBar
   const handleMenuAction = useCallback((actionId: string) => {
     switch (actionId) {
       case 'sld':
         window.location.hash = '';
         break;
       case 'network-build':
-        window.location.hash = '#network-build';
+        navigateToNetworkBuild();
+        break;
+      case 'switchgear':
+      case 'power-distribution':
+        navigateToNetworkBuild();
+        break;
+      case 'case-manager':
+        navigateToCaseConfig({ caseId: activeCaseId });
+        break;
+      case 'sld-view':
+        window.location.hash = ROUTES.SLD_VIEW.hash;
         break;
       case 'catalog':
-        window.location.hash = '#catalog';
+        navigateToCatalog();
         break;
       case 'results':
-        window.location.hash = '#results';
+      case 'analysis':
+        navigateToAnalysis({ runId: activeRunId });
+        break;
+      case 'compare':
+        navigateToCompare({ runId: activeRunId });
+        break;
+      case 'report':
+        navigateToReport({ runId: activeRunId });
+        break;
+      case 'variants':
+        navigateToVariants({ caseId: activeCaseId });
         break;
       case 'proof':
       case 'whitebox':
-        window.location.hash = '#proof';
+        navigateToProof({ runId: activeRunId });
         break;
       case 'protection':
-        window.location.hash = '#protection-settings';
-        break;
-      case 'case-manager':
-        useAppStateStore.getState().toggleCaseManager(true);
+        navigateToResultsProtection({ runId: activeRunId });
         break;
       case 'run-sc-3f':
       case 'run-sc-1f':
@@ -267,24 +334,33 @@ function App() {
         break;
       case 'navigator':
       case 'inspector':
-        // Toggle panels — handled by layout
+        // Toggle panels â€” handled by layout
         break;
       default:
         if (import.meta.env.DEV) {
           console.debug(`[handleMenuAction] Unhandled action: ${actionId}`);
         }
     }
-  }, [handleCalculate]);
+  }, [
+    activeCaseId,
+    activeRunId,
+    handleCalculate,
+    navigateToAnalysis,
+    navigateToCaseConfig,
+    navigateToCatalog,
+    navigateToCompare,
+    navigateToNetworkBuild,
+    navigateToProof,
+    navigateToReport,
+    navigateToResultsProtection,
+    navigateToVariants,
+  ]);
 
-  // Common layout props for PowerFactoryLayout
+  // Common layout props for CanonicalLayout
   const layoutProps = {
     onCalculate: handleCalculate,
     onViewResults: handleViewResults,
     projectName: projectName ?? 'Nowy projekt',
-    treeElements: treeElements,
-    onTreeNodeClick: handleTreeNodeClick,
-    onTreeCategoryClick: handleTreeCategoryClick,
-    onTreeRunClick: handleTreeRunClick,
     inspectorContent: <InspectorResolver />,
     validationStatus: validationStatus,
     validationWarnings: readiness?.warnings?.length ?? 0,
@@ -293,132 +369,53 @@ function App() {
     networkStats: networkStats,
   };
 
-  // UI_INTEGRATION_E2E + PROJECT_TREE_PARITY_V1: Przegląd wyników (Results Browser)
-  if (route === '#results') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <ResultsInspectorPage runId={effectiveRunId} />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Ślad obliczeń (pełny widok przebiegu analizy)
-  if (route === '#proof') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps} hideInspector={true}>
-        <ResultsInspectorPage runId={effectiveRunId} forcedTab="TRACE" />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Protection Results Inspector
-  if (route === '#protection-results') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <ProtectionResultsInspectorPage />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // P20b: Power Flow Results Inspector
-  if (route === '#power-flow-results') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <PowerFlowResultsInspectorPage />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Wzorce odniesienia (Reference Patterns)
-  if (route === '#reference-patterns') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps} hideInspector={true}>
-        <ReferencePatternsPage />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Budowa sieci (ten sam kanoniczny ekran modelowania co #sld)
-  if (route === '#network-build') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <SldEditorPage useDemo={false} />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Inspektor modelu ENM (v4.2 — diagnostyka inżynierska)
+  // Inspektor modelu ENM (v4.2 â€” diagnostyka inĹĽynierska)
   if (route === '#enm-inspector') {
     return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
+      <CanonicalLayout {...layoutProps}>
         <EnmInspectorPage />
-      </PowerFactoryLayout>
+      </CanonicalLayout>
     );
   }
 
   // PR-24: Scenariusze zwarciowe (Fault Scenarios)
   if (route === '#fault-scenarios') {
     return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
+      <CanonicalLayout {...layoutProps}>
         <div className="flex flex-col h-full">
           <FaultScenariosPanel studyCaseId={null} />
           <FaultScenarioModal />
         </div>
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Biblioteka typow (Catalog / Type Library Browser)
-  if (route === '#catalog') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps} hideInspector={true}>
-        <TypeLibraryBrowser />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Konfiguracja przypadku obliczeniowego
-  if (route === '#case-config') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <CaseConfigPage />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Nastawy zabezpieczen
-  if (route === '#protection-settings') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <ProtectionSettingsPage />
-      </PowerFactoryLayout>
-    );
-  }
-
-  // Architektura rozdzialu mocy (Power Distribution Architecture)
-  if (route === '#power-distribution') {
-    return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
-        <PowerDistributionPage />
-      </PowerFactoryLayout>
+      </CanonicalLayout>
     );
   }
 
   // SLD_READ_ONLY_UI: Podglad schematu jednokreskowego (tylko odczyt)
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
-      <PowerFactoryLayout {...layoutProps}>
+      <CanonicalLayout {...layoutProps}>
         <SLDViewPage useDemo={false} />
-      </PowerFactoryLayout>
+      </CanonicalLayout>
     );
   }
-  // POWERFACTORY_LAYOUT: Default — SLD Editor Page (ALWAYS shows tools)
-  // This replaces the old DesignerPage with proper PowerFactory-style layout
+
+  const isKnownRoute = getRouteByHash(route) !== null || isAnalysisRouteAlias(route);
+
+  if (!isKnownRoute) {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <UnknownRoutePage route={route} />
+      </CanonicalLayout>
+    );
+  }
+  // CANONICAL_LAYOUT: Default â€” SLD Editor Page (ALWAYS shows tools)
+  // This replaces the old DesignerPage with proper Canonical-style layout
   return wrapWithReadyIndicator(
-    <PowerFactoryLayout {...layoutProps}>
+    <CanonicalLayout {...layoutProps}>
       <SldEditorPage useDemo={false} />
-    </PowerFactoryLayout>
+    </CanonicalLayout>
   );
 }
 
 export default App;
+

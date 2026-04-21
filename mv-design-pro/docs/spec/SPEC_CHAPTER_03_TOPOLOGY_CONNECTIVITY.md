@@ -1,3 +1,9 @@
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
 # ROZDZIAŁ 3: TOPOLOGIA I ŁĄCZNOŚĆ SIECI
 
 **Dokument kanoniczny — MV-DESIGN-PRO**
@@ -527,7 +533,7 @@ Kreator MUSI walidować topologię na bieżąco (P0/P1) przed zatwierdzeniem:
 | 12 | Walidacje topologiczne: E-T01…I-T02 (14 reguł) | ✅ §3.8 |
 | 13 | Kontrakt topologia → solver: stan krawędzi, wyspy | ✅ §3.9 |
 | 14 | Relacja do kreatora: scenariusze K-TOP-1..3 | ✅ §3.10 |
-| 15 | Zgodność z ETAP / PowerFactory | ✅ pełna |
+| 15 | Zgodność z benchmark / benchmark | ✅ pełna |
 
 ### 3.11.2 Oświadczenie zamknięcia (BINDING)
 
@@ -545,3 +551,4 @@ Kreator MUSI walidować topologię na bieżąco (P0/P1) przed zatwierdzeniem:
 ---
 
 *Dokument kanoniczny. Wersja 1.0 FINAL. Topologia i łączność sieci.*
+

@@ -16,10 +16,9 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any
-
 
 # =============================================================================
 # ENUMS
@@ -28,8 +27,9 @@ from typing import Any
 
 class CurrentSourceType(str, Enum):
     """How protection test currents are sourced."""
-    TEST_POINTS = "TEST_POINTS"   # User-defined explicit test currents
-    SC_RESULT = "SC_RESULT"       # Resolved from SC ResultSet (read-only)
+
+    TEST_POINTS = "TEST_POINTS"  # User-defined explicit test currents
+    SC_RESULT = "SC_RESULT"  # Resolved from SC ResultSet (read-only)
 
 
 # =============================================================================
@@ -46,6 +46,7 @@ class TargetRefMapping:
         element_ref: SC ResultSet element_ref (fault node or contribution)
         element_type: SC element type ("bus", "source_contribution", "branch_contribution")
     """
+
     relay_id: str
     element_ref: str
     element_type: str
@@ -75,6 +76,7 @@ class SCCurrentSelection:
         quantity: SC field to extract ("ikss_a", "ip_a", "ith_a", "ik_total_a")
         target_ref_mapping: Explicit relay → SC element mapping
     """
+
     run_id: str
     quantity: str
     target_ref_mapping: tuple[TargetRefMapping, ...]
@@ -94,8 +96,7 @@ class SCCurrentSelection:
             run_id=str(data["run_id"]),
             quantity=str(data["quantity"]),
             target_ref_mapping=tuple(
-                TargetRefMapping.from_dict(m)
-                for m in data.get("target_ref_mapping", [])
+                TargetRefMapping.from_dict(m) for m in data.get("target_ref_mapping", [])
             ),
         )
 
@@ -114,6 +115,7 @@ class ProtectionCurrentSource:
     - If source_type == SC_RESULT: sc_selection must be non-None
     - Exactly one branch is active (XOR)
     """
+
     source_type: CurrentSourceType
     sc_selection: SCCurrentSelection | None = None
 
@@ -137,9 +139,7 @@ class ProtectionCurrentSource:
 
     def canonical_hash(self) -> str:
         """Compute deterministic SHA-256 of current source specification."""
-        payload = json.dumps(
-            self.to_dict(), sort_keys=True, separators=(",", ":")
-        )
+        payload = json.dumps(self.to_dict(), sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
@@ -151,7 +151,9 @@ class ProtectionCurrentSource:
 class CurrentSourceError(Exception):
     """Base error for current source resolution."""
 
-    def __init__(self, code: str, message_pl: str, fix_actions: list[dict[str, Any]] | None = None) -> None:
+    def __init__(
+        self, code: str, message_pl: str, fix_actions: list[dict[str, Any]] | None = None
+    ) -> None:
         super().__init__(message_pl)
         self.code = code
         self.message_pl = message_pl

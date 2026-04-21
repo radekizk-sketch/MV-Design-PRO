@@ -1,15 +1,15 @@
-# SLD Render Layers Contract
+﻿# SLD Render Layers Contract
 
 **Version:** 1.0  
 **Status:** CANONICAL  
 **Phase:** 2.x  
-**Standard:** DIgSILENT PowerFactory — **FULL PARITY**
+**Standard:** DIgSILENT benchmark â€” **FULL PARITY**
 
 ---
 
 ## 1. Cel dokumentu
 
-Definicja **dwóch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (runtime).
+Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (runtime).
 
 ---
 
@@ -20,20 +20,20 @@ Definicja **dwóch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (ru
 | Aspekt | Opis |
 |--------|------|
 | Cel | Schemat techniczny zgodny z IEC 61082, IEEE 315 |
-| Zawartość | Symbole, etykiety, parametry katalogowe |
+| ZawartoĹ›Ä‡ | Symbole, etykiety, parametry katalogowe |
 | Tryb | Wszystkie elementy widoczne (w tym out_of_service) |
-| Kolory | Czarno-biały lub paleta IEC |
-| Wydruk | ✓ TAK (PDF, DWG) |
+| Kolory | Czarno-biaĹ‚y lub paleta IEC |
+| Wydruk | âś“ TAK (PDF, DWG) |
 
 ### 2.2 SLD_SCADA_LAYER (Runtime)
 
 | Aspekt | Opis |
 |--------|------|
-| Cel | Monitoring, operacje łączeniowe |
-| Zawartość | Stany aparatów, wyniki, alarmy |
+| Cel | Monitoring, operacje Ĺ‚Ä…czeniowe |
+| ZawartoĹ›Ä‡ | Stany aparatĂłw, wyniki, alarmy |
 | Kolory | Semantyczne (czerwony=alarm, zielony=OK) |
-| Animacje | Przepływ mocy, miganie alarmów |
-| Wydruk | ✓ TAK (z legendą kolorów) |
+| Animacje | PrzepĹ‚yw mocy, miganie alarmĂłw |
+| Wydruk | âś“ TAK (z legendÄ… kolorĂłw) |
 
 ---
 
@@ -41,28 +41,29 @@ Definicja **dwóch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (ru
 
 | Tryb | CAD Layer | SCADA Layer |
 |------|-----------|-------------|
-| CAD Mode | ✓ WIDOCZNY | ✗ UKRYTY |
-| SCADA Mode | ✓ WIDOCZNY (tło) | ✓ WIDOCZNY (overlay) |
-| HYBRID Mode | ✓ WIDOCZNY | ✓ KONFIGUROWALNE nakładki |
+| CAD Mode | âś“ WIDOCZNY | âś— UKRYTY |
+| SCADA Mode | âś“ WIDOCZNY (tĹ‚o) | âś“ WIDOCZNY (overlay) |
+| HYBRID Mode | âś“ WIDOCZNY | âś“ KONFIGUROWALNE nakĹ‚adki |
 
 ---
 
 ## 4. FORBIDDEN
 
-- Mieszanie parametrów katalogowych w SCADA
+- Mieszanie parametrĂłw katalogowych w SCADA
 - Eksport SCADA bez CAD (wyniki bez schematu)
-- Brak legendy kolorów w PDF z SCADA
+- Brak legendy kolorĂłw w PDF z SCADA
 
 ---
 
-## 5. ETAP / PowerFactory Parity
+## 5. benchmark / benchmark Parity
 
-| Feature | ETAP | PowerFactory | MV-DESIGN-PRO | Status |
+| Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| CAD Layer | ✓ | ✓ | ✓ | ✅ FULL |
-| SCADA Layer | ✗ | ✓ | ✓ | ✅ FULL |
-| Hybrid Mode | ✗ | ✗ | ✓ | ➕ SUPERIOR |
+| CAD Layer | âś“ | âś“ | âś“ | âś… FULL |
+| SCADA Layer | âś— | âś“ | âś“ | âś… FULL |
+| Hybrid Mode | âś— | âś— | âś“ | âž• SUPERIOR |
 
 ---
 
 **KONIEC KONTRAKTU SLD RENDER LAYERS**
+

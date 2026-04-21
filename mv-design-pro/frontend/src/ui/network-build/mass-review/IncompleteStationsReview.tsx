@@ -1,34 +1,20 @@
 /**
- * IncompleteStationsReview — tabela stacji z oceną kompletności.
+ * IncompleteStationsReview â€” tabela stacji z ocenÄ… kompletnoĹ›ci.
  *
- * Kolumny: Nazwa | Typ | Transformatory | Pola SN | Pola nN | Gotowość.
- * Filtr na stacje z brakującymi elementami.
+ * Kolumny: Nazwa | Typ | Transformatory | Pola SN | Pola nN | GotowoĹ›Ä‡.
+ * Filtr na stacje z brakujÄ…cymi elementami.
  *
  * BINDING: 100% PL etykiety.
  */
 
 import { useCallback, useMemo } from 'react';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
 import { useSelectionStore } from '../../selection';
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function stationTypeLabel(stationType: string): string {
-  switch (stationType) {
-    case 'gpz':
-      return 'GPZ';
-    case 'mv_lv':
-      return 'SN/nN';
-    case 'switching':
-      return 'Rozdzielcza';
-    case 'customer':
-      return 'Odbiorcy';
-    default:
-      return stationType;
-  }
-}
 
 interface StationRow {
   id: string;
@@ -69,7 +55,7 @@ export function IncompleteStationsReview() {
       return {
         id: station.id,
         name: station.name,
-        stationType: stationTypeLabel(station.station_type),
+        stationType: formatStationTypeLabelPl(station.station_type),
         transformerCount: trCount,
         snBayCount: bayCount,
         nnBusCount: nnCount,
@@ -117,7 +103,7 @@ export function IncompleteStationsReview() {
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Pola SN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Szyny nN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Blokery</th>
-            <th className="px-3 py-2 font-medium text-gray-600">Gotowość</th>
+            <th className="px-3 py-2 font-medium text-gray-600">GotowoĹ›Ä‡</th>
           </tr>
         </thead>
         <tbody>

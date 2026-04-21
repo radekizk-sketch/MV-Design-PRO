@@ -6,7 +6,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
   data-testid="creator-toolbar"
 >
   <div
-    class="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide font-semibold text-gray-500"
+    class="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
   >
     Narzędzia edytora
   </div>
@@ -15,10 +15,9 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
   >
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
       data-testid="creator-tool-select"
       title="Wybór elementu i przejście do inspektora."
@@ -26,7 +25,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
       <span
         class="text-sm"
       >
-        🖱
+        ⌖
       </span>
       <span>
         Wybierz
@@ -34,10 +33,9 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
       data-testid="creator-tool-move"
       title="Przesuwanie geometrii z użyciem portów i snapowania."
@@ -53,13 +51,12 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
       data-testid="creator-tool-edit_properties"
-      title="Edycja parametrów elementu przez ENM_OP update."
+      title="Edycja parametrów elementu przez operację domenową."
     >
       <span
         class="text-sm"
@@ -72,10 +69,9 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
       data-testid="creator-tool-delete_element"
       title="Usunięcie elementu z modelu przez operację domenową."
@@ -91,10 +87,9 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
       data-testid="creator-tool-assign_catalog"
       title="Przypisanie typu katalogowego do wskazanego elementu."
@@ -110,7 +105,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
   </div>
   <div
-    class="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wide font-semibold text-gray-500 border-t border-gray-200"
+    class="border-t border-gray-200 px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
   >
     Budowa sieci SN
   </div>
@@ -119,13 +114,12 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
   >
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-blue-100 border-blue-400 text-blue-800 shadow-sm
+              border-blue-400 bg-blue-100 text-blue-800 shadow-sm
             "
-      data-testid="creator-tool-continue_trunk"
-      title="Kontynuuje trunk od aktywnego terminala magistrali."
+      data-testid="creator-tool-continue_trunk_segment_sn"
+      title="Kontynuuje ciąg główny wyłącznie z portu pola liniowego GPZ albo z otwartego terminala magistrali."
     >
       <span
         class="text-sm"
@@ -138,18 +132,17 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-insert_station"
+      data-testid="creator-tool-insert_station_on_segment_sn"
       title="Wstawia stację SN/nN na wskazanym segmencie magistrali."
     >
       <span
         class="text-sm"
       >
-        ▣
+        ■
       </span>
       <span>
         Wstaw stację w odcinek
@@ -157,13 +150,12 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-start_branch"
-      title="Tworzy branch z poprawnego portu semantycznego."
+      data-testid="creator-tool-start_branch_segment_sn"
+      title="Tworzy odgałęzienie z poprawnego portu semantycznego."
     >
       <span
         class="text-sm"
@@ -176,18 +168,17 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-connect_ring"
-      title="Łączy dwa terminale secondary ring."
+      data-testid="creator-tool-connect_secondary_ring_sn"
+      title="Łączy dwa terminale pierścienia pomocniczego."
     >
       <span
         class="text-sm"
       >
-        ◌
+        ○
       </span>
       <span>
         Połącz ring
@@ -195,13 +186,12 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-set_nop"
-      title="Ustawia normalnie otwarty punkt na segmencie ring."
+      data-testid="creator-tool-set_normal_open_point"
+      title="Ustawia punkt normalnie otwarty na segmencie ring."
     >
       <span
         class="text-sm"
@@ -214,13 +204,12 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-add_pv"
-      title="Dodaje źródło PV po stronie nN."
+      data-testid="creator-tool-add_converter_source_pv"
+      title="Dodaje źródło fotowoltaiczne po stronie nN."
     >
       <span
         class="text-sm"
@@ -228,18 +217,17 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         ☀
       </span>
       <span>
-        Dodaj PV
+        Dodaj źródło fotowoltaiczne
       </span>
     </button>
     <button
       class="
-              flex items-center gap-1 px-2 py-1 text-xs font-medium rounded
-              border transition-colors
+              flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium transition-colors
               cursor-pointer
-              bg-white border-gray-300 text-gray-600 hover:bg-gray-100
+              border-gray-300 bg-white text-gray-600 hover:bg-gray-100
             "
-      data-testid="creator-tool-add_bess"
-      title="Dodaje magazyn energii BESS po stronie nN."
+      data-testid="creator-tool-add_converter_source_bess"
+      title="Dodaje magazyn energii po stronie nN."
     >
       <span
         class="text-sm"
@@ -247,23 +235,23 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         ▤
       </span>
       <span>
-        Dodaj BESS
+        Dodaj magazyn energii
       </span>
     </button>
   </div>
   <div
-    class="px-3 py-2 border-t border-gray-200 bg-white"
+    class="border-t border-gray-200 bg-white px-3 py-2"
   >
     <div
-      class="text-[10px] uppercase tracking-wide font-semibold text-gray-500 mb-1"
+      class="mb-1 text-[10px] font-semibold uppercase tracking-wide text-gray-500"
     >
       Paleta typów obiektów
     </div>
     <div
-      class="grid grid-cols-1 gap-1 max-h-40 overflow-auto"
+      class="grid max-h-40 grid-cols-1 gap-1 overflow-auto"
     >
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-GPZ"
       >
         <div
@@ -275,11 +263,11 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
           class="text-[10px] text-gray-500"
         >
           Porty: 
-          Magistrala
+          —
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-STACJA_KONCOWA"
       >
         <div
@@ -295,7 +283,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-STACJA_PRZELOTOWA"
       >
         <div
@@ -311,7 +299,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-STACJA_ODGALEZNA"
       >
         <div
@@ -327,7 +315,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-STACJA_SEKCYJNA"
       >
         <div
@@ -343,7 +331,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-ZKSN"
       >
         <div
@@ -359,7 +347,7 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-PUNKT_ROZGALEZNY"
       >
         <div
@@ -371,17 +359,17 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
           class="text-[10px] text-gray-500"
         >
           Porty: 
-          Wejście, Wyjście, Branch
+          Wejście, Wyjście, Odgałęzienie
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-PV"
       >
         <div
           class="font-medium"
         >
-          PV
+          Źródło fotowoltaiczne
         </div>
         <div
           class="text-[10px] text-gray-500"
@@ -391,13 +379,13 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
         </div>
       </div>
       <div
-        class="rounded border border-gray-200 px-2 py-1 text-[11px] text-gray-700 bg-gray-50"
+        class="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-700"
         data-testid="palette-object-BESS"
       >
         <div
           class="font-medium"
         >
-          BESS
+          Magazyn energii
         </div>
         <div
           class="text-[10px] text-gray-500"
@@ -409,9 +397,9 @@ exports[`CreatorToolbar V2 > render snapshot — evidence UI toolbar/palette 1`]
     </div>
   </div>
   <div
-    class="px-3 py-1 bg-blue-50/50 border-t border-gray-100 text-xs text-gray-600"
+    class="border-t border-gray-100 bg-blue-50/50 px-3 py-1 text-xs text-gray-600"
   >
-    Kontynuuje trunk od aktywnego terminala magistrali.
+    Kontynuuje ciąg główny wyłącznie z portu pola liniowego GPZ albo z otwartego terminala magistrali.
   </div>
 </div>
 `;

@@ -99,23 +99,33 @@ describe('buildContextMenuForElement', () => {
     expect(handlers.onOpenObjectCard).toHaveBeenCalledWith('source', 'test-id-001');
   });
 
-  it('kieruje add_line do bramki katalogowej z kanonicznym from_ref', () => {
-    const req = makeRequest('Bus', 'MODEL_EDIT');
+  it('eksponuje w GPZ jasne przejscie do pol GPZ i dodania pola SN', () => {
+    const req = makeRequest('Source', 'MODEL_EDIT');
     const handlers = makeHandlers();
     const result = buildContextMenuForElement(req, handlers)!;
 
-    const addLineAction = result.find((action) => action.id === 'add_line');
-    expect(addLineAction).toBeDefined();
+    const openGpzFieldsAction = result.find((action) => action.id === 'open_gpz_fields');
+    expect(openGpzFieldsAction).toBeDefined();
+    expect(openGpzFieldsAction?.label).toBe('Otwórz pola GPZ i dodaj pole SN...');
+  });
 
-    addLineAction!.handler?.();
+  it('kieruje add_transformer_sn_nn do bramki katalogowej z kanonicznym station_ref', () => {
+    const req = makeRequest('Station', 'MODEL_EDIT');
+    const handlers = makeHandlers();
+    const result = buildContextMenuForElement(req, handlers)!;
+
+    const addTransformerAction = result.find((action) => action.id === 'add_transformer_sn_nn');
+    expect(addTransformerAction).toBeDefined();
+
+    addTransformerAction!.handler?.();
     expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
-      operationId: 'start_branch_segment_sn',
+      operationId: 'add_transformer_sn_nn',
       elementId: 'test-id-001',
-      elementType: 'Bus',
-      namespace: 'KABEL_SN',
-      label: 'Kabel/linia SN',
+      elementType: 'Station',
+      namespace: 'TRAFO_SN_NN',
+      label: 'Transformator SN/nN',
       initialFormData: {
-        from_ref: 'test-id-001',
+        station_ref: 'test-id-001',
       },
     });
   });
@@ -143,6 +153,96 @@ describe('buildContextMenuForElement', () => {
       'assign_catalog_to_element',
       expect.anything(),
     );
+  });
+
+  it('kieruje Station add_sn_field_out do kanonicznego add_sn_bay', () => {
+    const req = makeRequest('Station', 'MODEL_EDIT');
+    const handlers = makeHandlers();
+    const result = buildContextMenuForElement(req, handlers)!;
+
+    const addSnFieldOutAction = result.find((action) => action.actionKey === 'station_add_sn_field_out');
+    expect(addSnFieldOutAction).toBeDefined();
+
+    addSnFieldOutAction!.handler?.();
+    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
+      operationId: 'add_sn_bay',
+      elementId: 'test-id-001',
+      elementType: 'Station',
+      namespace: 'APARAT_SN',
+      label: 'Aparat SN',
+      initialFormData: {
+        station_ref: 'test-id-001',
+        bay_role: 'OUT',
+      },
+    });
+  });
+
+  it('kieruje Bus add_breaker do kanonicznego add_sn_bay z wariantem aparatu', () => {
+    const req = makeRequest('Bus', 'MODEL_EDIT');
+    const handlers = makeHandlers();
+    const result = buildContextMenuForElement(req, handlers)!;
+
+    const addBreakerAction = result.find((action) => action.actionKey === 'bus_sn_add_breaker');
+    expect(addBreakerAction).toBeDefined();
+    expect(addBreakerAction?.label).toBe('Dodaj pole SN z wyłącznikiem...');
+
+    addBreakerAction!.handler?.();
+    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
+      operationId: 'add_sn_bay',
+      elementId: 'test-id-001',
+      elementType: 'Bus',
+      namespace: 'APARAT_SN',
+      label: 'Aparat SN',
+      initialFormData: {
+        bus_ref: 'test-id-001',
+        apparatus_kind: 'BREAKER',
+        bay_role: 'OUT',
+      },
+    });
+  });
+
+  it('kieruje BusNN add_nn_outgoing_field do kanonicznego add_nn_outgoing_field z jawna intencja SOURCE', () => {
+    const req = makeRequest('BusNN', 'MODEL_EDIT');
+    const handlers = makeHandlers();
+    const result = buildContextMenuForElement(req, handlers)!;
+
+    const addSourceFieldAction = result.find((action) => action.actionKey === 'bus_nn_source_field');
+    expect(addSourceFieldAction).toBeDefined();
+
+    addSourceFieldAction!.handler?.();
+    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
+      operationId: 'add_nn_outgoing_field',
+      elementId: 'test-id-001',
+      elementType: 'BusNN',
+      namespace: 'APARAT_NN',
+      label: 'Aparat nN',
+      initialFormData: {
+        bus_nn_ref: 'test-id-001',
+        field_role: 'SOURCE',
+      },
+    });
+  });
+
+  it('kieruje Station add_nn_outgoing_field do kanonicznego add_nn_outgoing_field z jawna intencja SOURCE', () => {
+    const req = makeRequest('Station', 'MODEL_EDIT');
+    const handlers = makeHandlers();
+    const result = buildContextMenuForElement(req, handlers)!;
+
+    const addSourceFieldAction = result.find((action) => action.actionKey === 'station_source_field');
+    expect(addSourceFieldAction).toBeDefined();
+
+    addSourceFieldAction!.handler?.();
+    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
+      operationId: 'add_nn_outgoing_field',
+      elementId: 'test-id-001',
+      elementType: 'Station',
+      namespace: 'APARAT_NN',
+      label: 'Aparat nN',
+      initialFormData: {
+        station_ref: 'test-id-001',
+        field_role: 'SOURCE',
+      },
+    });
   });
 });
 

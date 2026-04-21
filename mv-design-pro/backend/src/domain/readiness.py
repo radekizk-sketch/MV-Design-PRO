@@ -27,7 +27,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # ---------------------------------------------------------------------------
 # Readiness Area — logical grouping for FixActions
 # ---------------------------------------------------------------------------
@@ -121,8 +120,10 @@ class ReadinessProfileV1:
     def sld_issues(self) -> tuple[ReadinessIssueV1, ...]:
         """Issues blocking SLD readiness."""
         return tuple(
-            i for i in self.issues
-            if i.area in (
+            i
+            for i in self.issues
+            if i.area
+            in (
                 ReadinessAreaV1.TOPOLOGY,
                 ReadinessAreaV1.STATIONS,
                 ReadinessAreaV1.GENERATORS,
@@ -134,9 +135,11 @@ class ReadinessProfileV1:
     def short_circuit_issues(self) -> tuple[ReadinessIssueV1, ...]:
         """Issues blocking short circuit readiness."""
         return tuple(
-            i for i in self.issues
+            i
+            for i in self.issues
             if i.priority == ReadinessPriority.BLOCKER
-            and i.area in (
+            and i.area
+            in (
                 ReadinessAreaV1.TOPOLOGY,
                 ReadinessAreaV1.SOURCES,
                 ReadinessAreaV1.CATALOGS,
@@ -280,9 +283,7 @@ class ReadinessGateError(Exception):
         self.gate = gate
         self.blockers = blockers
         codes = ", ".join(b.code for b in blockers[:5])
-        super().__init__(
-            f"Readiness gate '{gate}' BLOCKED: {len(blockers)} blocker(s) [{codes}]"
-        )
+        super().__init__(f"Readiness gate '{gate}' BLOCKED: {len(blockers)} blocker(s) [{codes}]")
 
 
 def require_sld_ready(profile: ReadinessProfileV1) -> None:
@@ -290,9 +291,11 @@ def require_sld_ready(profile: ReadinessProfileV1) -> None:
     if profile.sld_ready:
         return
     blockers = [
-        i for i in profile.issues
+        i
+        for i in profile.issues
         if i.priority == ReadinessPriority.BLOCKER
-        and i.area in (
+        and i.area
+        in (
             ReadinessAreaV1.TOPOLOGY,
             ReadinessAreaV1.STATIONS,
             ReadinessAreaV1.GENERATORS,
@@ -306,9 +309,11 @@ def require_short_circuit_ready(profile: ReadinessProfileV1) -> None:
     if profile.short_circuit_ready:
         return
     blockers = [
-        i for i in profile.issues
+        i
+        for i in profile.issues
         if i.priority == ReadinessPriority.BLOCKER
-        and i.area in (
+        and i.area
+        in (
             ReadinessAreaV1.TOPOLOGY,
             ReadinessAreaV1.SOURCES,
             ReadinessAreaV1.CATALOGS,
@@ -322,9 +327,11 @@ def require_load_flow_ready(profile: ReadinessProfileV1) -> None:
     if profile.load_flow_ready:
         return
     blockers = [
-        i for i in profile.issues
+        i
+        for i in profile.issues
         if i.priority == ReadinessPriority.BLOCKER
-        and i.area in (
+        and i.area
+        in (
             ReadinessAreaV1.TOPOLOGY,
             ReadinessAreaV1.SOURCES,
             ReadinessAreaV1.CATALOGS,
@@ -335,10 +342,7 @@ def require_load_flow_ready(profile: ReadinessProfileV1) -> None:
 
 def require_export_ready(profile: ReadinessProfileV1) -> None:
     """Gate: Export requires ALL readiness flags=True (no BLOCKERs anywhere)."""
-    all_blockers = [
-        i for i in profile.issues
-        if i.priority == ReadinessPriority.BLOCKER
-    ]
+    all_blockers = [i for i in profile.issues if i.priority == ReadinessPriority.BLOCKER]
     if not all_blockers:
         return
     raise ReadinessGateError("export_ready", all_blockers)
@@ -355,9 +359,9 @@ def require_fields_complete(profile: ReadinessProfileV1) -> None:
     Blocks when any field.device_missing.* BLOCKER exists.
     """
     blockers = [
-        i for i in profile.issues
-        if i.priority == ReadinessPriority.BLOCKER
-        and i.code.startswith("field.device_missing.")
+        i
+        for i in profile.issues
+        if i.priority == ReadinessPriority.BLOCKER and i.code.startswith("field.device_missing.")
     ]
     if not blockers:
         return
@@ -370,12 +374,10 @@ def require_devices_parametrized(profile: ReadinessProfileV1) -> None:
     Blocks when any device.*.missing BLOCKER exists.
     """
     blockers = [
-        i for i in profile.issues
+        i
+        for i in profile.issues
         if i.priority == ReadinessPriority.BLOCKER
-        and (
-            i.code.startswith("device.")
-            or i.code == "catalog.ref_missing"
-        )
+        and (i.code.startswith("device.") or i.code == "catalog.ref_missing")
     ]
     if not blockers:
         return
@@ -388,9 +390,9 @@ def require_protection_bindings(profile: ReadinessProfileV1) -> None:
     Blocks when protection.relay_binding_missing or protection.relay_cb_binding_missing.
     """
     blockers = [
-        i for i in profile.issues
-        if i.priority == ReadinessPriority.BLOCKER
-        and i.code.startswith("protection.")
+        i
+        for i in profile.issues
+        if i.priority == ReadinessPriority.BLOCKER and i.code.startswith("protection.")
     ]
     if not blockers:
         return
@@ -405,9 +407,9 @@ def require_pv_bess_transformer_rule(profile: ReadinessProfileV1) -> None:
     or any other generator.* BLOCKER.
     """
     blockers = [
-        i for i in profile.issues
-        if i.priority == ReadinessPriority.BLOCKER
-        and i.code.startswith("generator.")
+        i
+        for i in profile.issues
+        if i.priority == ReadinessPriority.BLOCKER and i.code.startswith("generator.")
     ]
     if not blockers:
         return

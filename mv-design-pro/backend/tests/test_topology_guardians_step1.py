@@ -75,7 +75,7 @@ def _build_radial_with_segments(segment_count: int) -> dict:
                         "rodzaj": "KABEL",
                         "dlugosc_m": 100 + i,
                         "name": f"Segment {i+1}",
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+                        "catalog_ref": "cable-tfk-yakxs-3x120",
                     }
                 },
             ),
@@ -148,7 +148,11 @@ def test_topology_ring_8_stations_with_nop() -> None:
         "set_normal_open_point",
     )
 
-    opened_switches = [b for b in enm["branches"] if b.get("type") in ("switch", "breaker") and b.get("status") == "open"]
+    opened_switches = [
+        b
+        for b in enm["branches"]
+        if b.get("type") in ("switch", "breaker") and b.get("status") == "open"
+    ]
     assert opened_switches, "Brak łącznika ustawionego jako NOP (open)"
 
 
@@ -205,7 +209,9 @@ def test_topology_two_rings_two_sources() -> None:
         "rx_ratio": 0.1,
     }
     result = create_device(new_enm, extra_source)
-    assert result.success, f"create_device(source#2) failed: {[i.message_pl for i in result.issues]}"
+    assert (
+        result.success
+    ), f"create_device(source#2) failed: {[i.message_pl for i in result.issues]}"
     enm = result.enm
 
     assert len(enm["sources"]) == 2
@@ -249,4 +255,6 @@ def test_topology_split_insert_idempotent() -> None:
     hash1 = _snapshot_hash(run1["snapshot"])
     hash2 = _snapshot_hash(run2["snapshot"])
 
-    assert hash1 == hash2, "Split+insert nie jest deterministyczne dla identycznego snapshotu wejściowego"
+    assert (
+        hash1 == hash2
+    ), "Split+insert nie jest deterministyczne dla identycznego snapshotu wejściowego"

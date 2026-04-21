@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Final
 from uuid import UUID
 
@@ -21,7 +21,7 @@ class WizardSession:
     base_snapshot_id: str
     working_snapshot_id: str | None
     status: str = WizardSessionStatus.OPEN
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     working_snapshot: NetworkSnapshot | None = None
     action_ids: list[str] = field(default_factory=list)
     last_action_created_at: str | None = None

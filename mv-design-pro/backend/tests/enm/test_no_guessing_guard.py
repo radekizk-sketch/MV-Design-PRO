@@ -11,14 +11,13 @@ Testy mapuja sie 1:1 na reguly kanonu:
   - from/to_bus_ref dla pierscienia: wymagane jawnie (brak auto-detekcji)
   - logical_views / materialized_params / layout_hash: obecne w odpowiedzi
 """
+
 from __future__ import annotations
 
-import pytest
-
 from enm.domain_operations import execute_domain_operation
-from enm.models import EnergyNetworkModel, ENMHeader, ENMDefaults
-from tests.catalog_test_helpers import gpz_payload
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
+from tests.catalog_test_helpers import gpz_payload
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -46,7 +45,13 @@ def _build_gpz_plus_segments(n_segments=2):
         result = execute_domain_operation(
             enm_dict=snapshot,
             op_name="continue_trunk_segment_sn",
-            payload={"segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": "cable-tfk-yakxs-3x120"}},
+            payload={
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                }
+            },
         )
         snapshot = result["snapshot"]
     return result, snapshot
@@ -68,9 +73,9 @@ class TestNoDefaultLength:
         """
         enm = _empty_enm()
         gpz_result = _add_grid_source(enm)
-        assert gpz_result.get("snapshot") is not None, (
-            f"Prerequisite failed: {gpz_result.get('error')}"
-        )
+        assert (
+            gpz_result.get("snapshot") is not None
+        ), f"Prerequisite failed: {gpz_result.get('error')}"
         snapshot = gpz_result["snapshot"]
 
         # Call without dlugosc_m — canon says this must fail
@@ -117,9 +122,9 @@ class TestNoDefaultLengthBranch:
                 "nn_voltage_kv": 0.4,
             },
         )
-        assert station_result.get("snapshot") is not None, (
-            f"Prerequisite failed: {station_result.get('error')}"
-        )
+        assert (
+            station_result.get("snapshot") is not None
+        ), f"Prerequisite failed: {station_result.get('error')}"
         snapshot = station_result["snapshot"]
         sub_ref = snapshot.get("substations", [])[-1]["ref_id"]
 
@@ -161,7 +166,11 @@ class TestNoAutoDetectBranchSource:
             op_name="start_branch_segment_sn",
             payload={
                 # NO from_ref
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 300, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 300,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
@@ -229,7 +238,7 @@ class TestNoAutoDetectRingEndpoints:
     """connect_secondary_ring_sn BEZ from_bus_ref -> blad bus_missing."""
 
     def test_no_auto_detect_ring_endpoints(self):
-        """Call connect_secondary_ring_sn (alias: connect_ring) with NO from_bus_ref.
+        """Call connect_secondary_ring_sn with NO from_bus_ref.
 
         Canon rule: ring endpoints must be explicitly provided by the user.
         The system MUST NOT auto-detect trunk ends.
@@ -240,11 +249,15 @@ class TestNoAutoDetectRingEndpoints:
 
         result = execute_domain_operation(
             enm_dict=snapshot,
-            op_name="connect_ring",  # alias for connect_secondary_ring_sn
+            op_name="connect_secondary_ring_sn",
             payload={
                 # NO from_bus_ref
                 "to_bus_ref": buses[-1]["ref_id"],
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
@@ -308,25 +321,19 @@ class TestLogicalViewsPresent:
         enm = _empty_enm()
         result = _add_grid_source(enm)
 
-        assert result.get("snapshot") is not None, (
-            f"Prerequisite failed: {result.get('error')}"
-        )
+        assert result.get("snapshot") is not None, f"Prerequisite failed: {result.get('error')}"
 
         logical_views = result.get("logical_views")
-        assert logical_views is not None, (
-            "Response must contain 'logical_views' key"
-        )
-        assert isinstance(logical_views, dict), (
-            f"logical_views must be a dict, got {type(logical_views).__name__}"
-        )
+        assert logical_views is not None, "Response must contain 'logical_views' key"
+        assert isinstance(
+            logical_views, dict
+        ), f"logical_views must be a dict, got {type(logical_views).__name__}"
 
         trunks = logical_views.get("trunks")
-        assert trunks is not None, (
-            "logical_views must contain 'trunks' key"
-        )
-        assert isinstance(trunks, list), (
-            f"logical_views.trunks must be a list, got {type(trunks).__name__}"
-        )
+        assert trunks is not None, "logical_views must contain 'trunks' key"
+        assert isinstance(
+            trunks, list
+        ), f"logical_views.trunks must be a list, got {type(trunks).__name__}"
 
 
 # ===========================================================================
@@ -346,25 +353,19 @@ class TestMaterializedParamsPresent:
         enm = _empty_enm()
         result = _add_grid_source(enm)
 
-        assert result.get("snapshot") is not None, (
-            f"Prerequisite failed: {result.get('error')}"
-        )
+        assert result.get("snapshot") is not None, f"Prerequisite failed: {result.get('error')}"
 
         materialized_params = result.get("materialized_params")
-        assert materialized_params is not None, (
-            "Response must contain 'materialized_params' key"
-        )
-        assert isinstance(materialized_params, dict), (
-            f"materialized_params must be a dict, got {type(materialized_params).__name__}"
-        )
+        assert materialized_params is not None, "Response must contain 'materialized_params' key"
+        assert isinstance(
+            materialized_params, dict
+        ), f"materialized_params must be a dict, got {type(materialized_params).__name__}"
 
         lines_sn = materialized_params.get("lines_sn")
-        assert lines_sn is not None, (
-            "materialized_params must contain 'lines_sn' key"
-        )
-        assert isinstance(lines_sn, dict), (
-            f"materialized_params.lines_sn must be a dict, got {type(lines_sn).__name__}"
-        )
+        assert lines_sn is not None, "materialized_params must contain 'lines_sn' key"
+        assert isinstance(
+            lines_sn, dict
+        ), f"materialized_params.lines_sn must be a dict, got {type(lines_sn).__name__}"
 
 
 # ===========================================================================
@@ -384,28 +385,20 @@ class TestLayoutHashPresent:
         enm = _empty_enm()
         result = _add_grid_source(enm)
 
-        assert result.get("snapshot") is not None, (
-            f"Prerequisite failed: {result.get('error')}"
-        )
+        assert result.get("snapshot") is not None, f"Prerequisite failed: {result.get('error')}"
 
         layout = result.get("layout")
-        assert layout is not None, (
-            "Response must contain 'layout' key"
-        )
-        assert isinstance(layout, dict), (
-            f"layout must be a dict, got {type(layout).__name__}"
-        )
+        assert layout is not None, "Response must contain 'layout' key"
+        assert isinstance(layout, dict), f"layout must be a dict, got {type(layout).__name__}"
 
         layout_hash = layout.get("layout_hash")
-        assert layout_hash is not None, (
-            "layout must contain 'layout_hash' key"
-        )
-        assert isinstance(layout_hash, str), (
-            f"layout.layout_hash must be a string, got {type(layout_hash).__name__}"
-        )
-        assert layout_hash.startswith("sha256:"), (
-            f"layout.layout_hash must start with 'sha256:', got '{layout_hash}'"
-        )
+        assert layout_hash is not None, "layout must contain 'layout_hash' key"
+        assert isinstance(
+            layout_hash, str
+        ), f"layout.layout_hash must be a string, got {type(layout_hash).__name__}"
+        assert layout_hash.startswith(
+            "sha256:"
+        ), f"layout.layout_hash must start with 'sha256:', got '{layout_hash}'"
 
 
 # ===========================================================================
@@ -444,9 +437,7 @@ class TestCatalogMaterializationResolution:
             },
         )
 
-        assert result.get("snapshot") is not None, (
-            f"Prerequisite failed: {result.get('error')}"
-        )
+        assert result.get("snapshot") is not None, f"Prerequisite failed: {result.get('error')}"
 
         mat = result.get("materialized_params", {})
         lines_sn = mat.get("lines_sn", {})
@@ -458,15 +449,9 @@ class TestCatalogMaterializationResolution:
         entry = lines_sn[cable_ref]
         assert entry["catalog_item_id"] == catalog_id
         # Catalog-resolved params should be numeric (not None)
-        assert entry["r_ohm_per_km"] is not None, (
-            "r_ohm_per_km should be resolved from catalog"
-        )
-        assert entry["x_ohm_per_km"] is not None, (
-            "x_ohm_per_km should be resolved from catalog"
-        )
-        assert entry["i_max_a"] is not None, (
-            "i_max_a should be resolved from catalog"
-        )
+        assert entry["r_ohm_per_km"] is not None, "r_ohm_per_km should be resolved from catalog"
+        assert entry["x_ohm_per_km"] is not None, "x_ohm_per_km should be resolved from catalog"
+        assert entry["i_max_a"] is not None, "i_max_a should be resolved from catalog"
         # Catalog values should be > 0
         assert entry["r_ohm_per_km"] > 0, "r_ohm_per_km from catalog must be > 0"
         assert entry["i_max_a"] > 0, "i_max_a from catalog must be > 0"
@@ -496,19 +481,20 @@ class TestSecondaryConnectorDetection:
             payload={
                 "from_bus_ref": buses[-1]["ref_id"],
                 "to_bus_ref": buses[0]["ref_id"],
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
-        assert result.get("snapshot") is not None, (
-            f"Prerequisite failed: {result.get('error')}"
-        )
+        assert result.get("snapshot") is not None, f"Prerequisite failed: {result.get('error')}"
 
         lv = result.get("logical_views", {})
         secondary = lv.get("secondary_connectors", [])
         assert len(secondary) >= 1, (
-            "logical_views.secondary_connectors should have >= 1 entry "
-            "after ring closure"
+            "logical_views.secondary_connectors should have >= 1 entry " "after ring closure"
         )
 
         # Verify structure of each secondary connector
@@ -530,7 +516,11 @@ class TestSecondaryConnectorDetection:
             payload={
                 "from_bus_ref": buses[-1]["ref_id"],
                 "to_bus_ref": buses[0]["ref_id"],
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
@@ -541,13 +531,13 @@ class TestSecondaryConnectorDetection:
 
         # Check not in branch views
         for bv in lv.get("branches", []):
-            assert bv["branch_id"] not in secondary_ids, (
-                f"Ring closure {bv['branch_id']} should not appear in branches"
-            )
+            assert (
+                bv["branch_id"] not in secondary_ids
+            ), f"Ring closure {bv['branch_id']} should not appear in branches"
 
         # Check not in trunk segments
         for trunk in lv.get("trunks", []):
             for seg in trunk.get("segments", []):
-                assert seg not in secondary_ids, (
-                    f"Ring closure {seg} should not appear in trunk segments"
-                )
+                assert (
+                    seg not in secondary_ids
+                ), f"Ring closure {seg} should not appear in trunk segments"

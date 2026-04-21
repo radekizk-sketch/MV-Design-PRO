@@ -4,7 +4,7 @@
  * Weryfikuje:
  * 1. NodeTypeV1 zawiera dedykowane typy BRANCH_POLE i ZKSN_NODE
  * 2. Karty są eksportowane z barrel index
- * 3. catalogFirstRules blokuje insert_branch_pole/zksn bez catalog_binding
+ * 3. catalogFirstRules blokuje insert_branch_pole_on_segment_sn i insert_zksn_on_segment_sn bez catalog_binding
  */
 
 import { describe, expect, it } from 'vitest';

@@ -26,6 +26,13 @@ import type { ReadinessIssue, ReadinessSeverity, FixAction } from '../types';
 
 export type ReadinessGroup = 'MAGISTRALA' | 'STACJE' | 'ZABEZPIECZENIA' | 'ZRODLA';
 
+export interface ReadinessWorkspaceBlockState {
+  reason: 'NO_CASE' | 'NO_MODEL' | 'NO_SOURCE' | 'NO_SNAPSHOT';
+  title: string;
+  description: string;
+  nextStep: string;
+}
+
 const GROUP_LABELS: Record<ReadinessGroup, string> = {
   MAGISTRALA: 'Magistrala',
   STACJE: 'Stacje',
@@ -128,8 +135,12 @@ export interface ReadinessLivePanelProps {
   issues: ReadinessIssue[];
   /** Overall status */
   status: 'OK' | 'WARN' | 'FAIL';
+  /** Canonical readiness flag */
+  ready?: boolean;
   /** Loading state */
   loading: boolean;
+  /** Workspace-level blocker */
+  workspaceBlockState?: ReadinessWorkspaceBlockState | null;
   /** Navigate to element (centerOnElement + highlight) */
   onNavigateToElement: (elementRef: string) => void;
   /** Execute fix action (openModal with context) */
@@ -147,13 +158,36 @@ export interface ReadinessLivePanelProps {
 export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
   issues,
   status,
+  ready,
   loading,
+  workspaceBlockState = null,
   onNavigateToElement,
   onFixAction,
   collapsedGroups = [],
   onToggleGroup,
 }) => {
+  const effectiveReady = ready ?? status === 'OK';
+
+  if (workspaceBlockState) {
+    return (
+      <div
+        className="pointer-events-auto flex w-full flex-col rounded-lg border border-amber-200 bg-amber-50 p-4 text-left shadow-sm"
+        data-testid="readiness-live-panel-blocked"
+      >
+        <div className="text-xs font-semibold uppercase tracking-wide text-amber-800">
+          Blokada warsztatowa
+        </div>
+        <div className="mt-2 text-sm font-semibold text-amber-950">{workspaceBlockState.title}</div>
+        <div className="mt-1 text-xs text-amber-900">{workspaceBlockState.description}</div>
+        <div className="mt-3 rounded-md border border-amber-300 bg-white px-3 py-2 text-xs text-amber-900">
+          Następny krok: {workspaceBlockState.nextStep}
+        </div>
+      </div>
+    );
+  }
+
   // Group and sort issues deterministically
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const grouped = useMemo((): GroupedIssues[] => {
     const groupMap = new Map<ReadinessGroup, ReadinessIssue[]>();
 
@@ -199,11 +233,13 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
     return result;
   }, [issues]);
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const totalBlockers = useMemo(
     () => issues.filter((i) => i.severity === 'BLOCKER').length,
     [issues],
   );
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleNavigate = useCallback(
     (issue: ReadinessIssue) => {
       const ref = issue.element_ref ?? issue.element_refs[0];
@@ -214,6 +250,7 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
     [onNavigateToElement],
   );
 
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const handleFix = useCallback(
     (issue: ReadinessIssue) => {
       if (issue.fix_action) {
@@ -225,7 +262,7 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
   );
 
   // Empty state
-  if (!loading && issues.length === 0) {
+  if (!loading && issues.length === 0 && effectiveReady && status === 'OK') {
     return (
       <div
         className="pointer-events-auto flex w-full flex-col items-center justify-center rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm"

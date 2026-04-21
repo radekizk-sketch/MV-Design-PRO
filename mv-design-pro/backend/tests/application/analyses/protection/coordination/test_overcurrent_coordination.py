@@ -12,28 +12,27 @@ Tests cover:
 
 from __future__ import annotations
 
-import pytest
 from uuid import uuid4
 
-from domain.protection_device import (
-    ProtectionDevice,
-    ProtectionDeviceType,
-    OvercurrentProtectionSettings,
-    OvercurrentStageSettings,
-    ProtectionCurveSettings,
-    CurveStandard,
-    CoordinationVerdict,
-)
+import pytest
 from application.analyses.protection.coordination import (
-    OvercurrentCoordinationAnalyzer,
-    CoordinationInput,
     CoordinationConfig,
+    CoordinationInput,
+    OvercurrentCoordinationAnalyzer,
 )
 from application.analyses.protection.coordination.models import (
     FaultCurrentData,
     OperatingCurrentData,
 )
-
+from domain.protection_device import (
+    CoordinationVerdict,
+    CurveStandard,
+    OvercurrentProtectionSettings,
+    OvercurrentStageSettings,
+    ProtectionCurveSettings,
+    ProtectionDevice,
+    ProtectionDeviceType,
+)
 
 # =============================================================================
 # FIXTURES
@@ -545,7 +544,7 @@ class TestDeterminism:
         assert len(result1.overload_checks) == len(result2.overload_checks)
 
         # Check values match
-        for c1, c2 in zip(result1.sensitivity_checks, result2.sensitivity_checks):
+        for c1, c2 in zip(result1.sensitivity_checks, result2.sensitivity_checks, strict=False):
             assert c1.verdict == c2.verdict
             assert c1.i_fault_min_a == c2.i_fault_min_a
             assert c1.i_pickup_a == c2.i_pickup_a
@@ -679,7 +678,13 @@ class TestWhiteBoxTrace:
         result = analyzer.analyze(input_data)
 
         # Check for Polish words in descriptions
-        polish_indicators = ["Sprawdzenie", "czułości", "selektywności", "przeciążalności", "prądów"]
+        polish_indicators = [
+            "Sprawdzenie",
+            "czułości",
+            "selektywności",
+            "przeciążalności",
+            "prądów",
+        ]
 
         descriptions = [step["description_pl"] for step in result.trace_steps]
         combined = " ".join(descriptions)

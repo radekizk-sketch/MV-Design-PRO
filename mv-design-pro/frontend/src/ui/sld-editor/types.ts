@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A: Bijection: Symbol ↔ Model Object
  * - sld_rules.md § E: Interaction Patterns (selection, drag, etc.)
- * - powerfactory_ui_parity.md: ≥110% PowerFactory editing experience
+ * - ui_canonical_parity.md: ≥110% Canonical editing experience
  *
  * FEATURES:
  * - Multi-select (Shift+klik, Ctrl+klik, lasso)
@@ -265,7 +265,7 @@ export interface ClipboardInternalConnection {
 /**
  * Clipboard data (for copy/paste).
  *
- * ETAP-STANDARD (N-03):
+ * CANONICAL-STANDARD (N-03):
  * - Schowek przechowuje "snapshot" symboli (bez referencji do elementów modelu)
  * - Wklejenie tworzy NOWE elementy modelu + NOWE symbole
  * - Połączenia wewnętrzne są odtwarzane (między wklejanymi elementami)
@@ -312,7 +312,7 @@ export type ToolbarAction =
 // =============================================================================
 
 /**
- * Stan tworzenia polaczenia port-to-port (ETAP-style).
+ * Stan tworzenia polaczenia port-to-port (CANONICAL-style).
  *
  * PR-SLD-05: Polaczenia tworzy sie WYLACZNIE przez klikniecie port A -> port B.
  * Brak swobodnego rysowania linii.

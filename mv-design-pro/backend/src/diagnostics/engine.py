@@ -110,44 +110,54 @@ class DiagnosticEngine:
 
         # Common blockers that affect all analyses
         common_blockers = blocker_codes & {
-            "E-D01", "E-D03", "E-D04",
+            "E-D01",
+            "E-D03",
+            "E-D04",
         }
 
         entries: list[AnalysisMatrixEntry] = []
 
         # SC 3F
         sc3f_blockers = common_blockers | (blocker_codes & {"E-D05"})
-        entries.append(self._matrix_entry(
-            AnalysisType.SC_3F,
-            sc3f_blockers,
-            "Zwarcie trójfazowe zablokowane",
-        ))
+        entries.append(
+            self._matrix_entry(
+                AnalysisType.SC_3F,
+                sc3f_blockers,
+                "Zwarcie trójfazowe zablokowane",
+            )
+        )
 
         # SC 1F — also blocked by E-D06 (WARN-level, Z0 restriction)
         sc1f_blockers = common_blockers | (blocker_codes & {"E-D05"})
         if "E-D06" in all_codes:
             sc1f_blockers.add("E-D06")
-        entries.append(self._matrix_entry(
-            AnalysisType.SC_1F,
-            sc1f_blockers,
-            "Zwarcie jednofazowe zablokowane",
-        ))
+        entries.append(
+            self._matrix_entry(
+                AnalysisType.SC_1F,
+                sc1f_blockers,
+                "Zwarcie jednofazowe zablokowane",
+            )
+        )
 
         # LF (Load Flow)
         lf_blockers = common_blockers | (blocker_codes & {"E-D02", "E-D05"})
-        entries.append(self._matrix_entry(
-            AnalysisType.LF,
-            lf_blockers,
-            "Rozpływ mocy zablokowany",
-        ))
+        entries.append(
+            self._matrix_entry(
+                AnalysisType.LF,
+                lf_blockers,
+                "Rozpływ mocy zablokowany",
+            )
+        )
 
         # Protection
         protection_blockers = common_blockers | (blocker_codes & {"E-D05"})
-        entries.append(self._matrix_entry(
-            AnalysisType.PROTECTION,
-            protection_blockers,
-            "Koordynacja zabezpieczeń zablokowana",
-        ))
+        entries.append(
+            self._matrix_entry(
+                AnalysisType.PROTECTION,
+                protection_blockers,
+                "Koordynacja zabezpieczeń zablokowana",
+            )
+        )
 
         return AnalysisMatrix(entries=tuple(entries))
 

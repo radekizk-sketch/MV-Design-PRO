@@ -19,10 +19,25 @@ import type { CreatorTool } from './CreatorToolbar';
 import { ReadinessPanel } from './ReadinessPanel';
 import type { FixAction, LogicalViewsV1 } from '../../types/enm';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { useSelectionStore } from '../selection/store';
+import { notify } from '../notifications/store';
+import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+const DEFAULT_GGPZ_CATALOG_REF = 'src-gpz-15kv-200mva-rx010';
+const DEFAULT_GGPZ_SOURCE_CONTEXT = {
+  source_name: 'Zasilanie GPZ 15 kV / Sk3 200 MVA / R/X 0.10',
+  sn_voltage_kv: 15,
+  sk3_mva: 200,
+  rx_ratio: 0.1,
+  catalog_ref: DEFAULT_GGPZ_CATALOG_REF,
+  sections_count: 1,
+  gpz_section_name: 'Sekcja GPZ',
+  gpz_line_field_name: 'Pole liniowe GPZ',
+};
 
 interface CreatorPanelProps {
   caseId: string;
@@ -36,8 +51,12 @@ interface CreatorPanelProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function hasSourceInSnapshot(logicalViews: LogicalViewsV1 | null): boolean {
-  return (logicalViews?.trunks?.length ?? 0) > 0;
+function hasSourceInSnapshot(snapshot: { sources?: Array<unknown> } | null): boolean {
+  return (snapshot?.sources?.length ?? 0) > 0;
+}
+
+function hasCanonicalTrunkStartInSnapshot(logicalViews: LogicalViewsV1 | null): boolean {
+  return (logicalViews?.terminals ?? []).some((terminal) => terminal.status === 'OTWARTY');
 }
 
 function hasRingInSnapshot(logicalViews: LogicalViewsV1 | null): boolean {
@@ -64,12 +83,18 @@ export function CreatorPanel({
     clearError,
   } = useSnapshotStore();
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const selectElement = useSelectionStore((state) => state.selectElement);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
 
   const [activeTool, setActiveTool] = useState<CreatorTool>(null);
 
   // Derived state
   const hasSource = useMemo(
-    () => hasSourceInSnapshot(logicalViews),
+    () => hasSourceInSnapshot(snapshot),
+    [snapshot],
+  );
+  const hasCanonicalTrunkStart = useMemo(
+    () => hasCanonicalTrunkStartInSnapshot(logicalViews),
     [logicalViews],
   );
   const hasRing = useMemo(
@@ -90,11 +115,24 @@ export function CreatorPanel({
   // Fix action navigation
   const handleFixAction = useCallback(
     (action: FixAction) => {
-      if (action.focus) {
-        onNavigateToElement?.(action.focus);
+      executeFixActionSurface(action, {
+        snapshot,
+        openOperationForm,
+        selectElement,
+        centerSldOnElement,
+        notify,
+      });
+
+      const targetRef =
+        action.surface_descriptor?.focus_ref ??
+        action.surface_descriptor?.element_ref ??
+        action.focus ??
+        action.element_ref;
+      if (targetRef) {
+        onNavigateToElement?.(targetRef);
       }
     },
-    [onNavigateToElement],
+    [centerSldOnElement, onNavigateToElement, openOperationForm, selectElement, snapshot],
   );
 
   // Quick actions that don't need SLD context
@@ -102,6 +140,7 @@ export function CreatorPanel({
     openOperationForm('add_grid_source_sn', {
       source: 'creator_panel',
       case_id: caseId,
+      ...DEFAULT_GGPZ_SOURCE_CONTEXT,
     });
     setActiveTool(null);
   }, [caseId, openOperationForm]);
@@ -119,6 +158,7 @@ export function CreatorPanel({
         activeTool={activeTool}
         onToolChange={handleToolChange}
         hasSource={hasSource}
+        hasCanonicalTrunkStart={hasCanonicalTrunkStart}
         hasRing={hasRing}
         disabled={loading}
       />

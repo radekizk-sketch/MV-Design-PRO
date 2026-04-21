@@ -10,10 +10,10 @@ PowerFactory Alignment:
 - Only OPEN/CLOSED state
 """
 
+import uuid
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Optional
-import uuid
+from typing import Any
 
 
 class SwitchType(Enum):
@@ -28,6 +28,7 @@ class SwitchType(Enum):
     - RECLOSER: Auto-recloser (automatic re-closing after fault)
     - EARTH_SWITCH: Earthing switch (safety grounding)
     """
+
     BREAKER = "BREAKER"
     DISCONNECTOR = "DISCONNECTOR"
     LOAD_SWITCH = "LOAD_SWITCH"
@@ -43,6 +44,7 @@ class SwitchState(Enum):
     OPEN = disconnected (no current flow)
     CLOSED = connected (current can flow)
     """
+
     OPEN = "OPEN"
     CLOSED = "CLOSED"
 
@@ -75,6 +77,7 @@ class Switch:
         - Switches do NOT participate in power flow calculations
           (they only determine topology)
     """
+
     id: str
     name: str
     from_node_id: str
@@ -84,7 +87,7 @@ class Switch:
     in_service: bool = True
     rated_current_a: float = 0.0
     rated_voltage_kv: float = 0.0
-    equipment_type_ref: Optional[str] = None
+    equipment_type_ref: str | None = None
 
     def __post_init__(self) -> None:
         """Validate and convert enum values if needed."""
@@ -185,7 +188,7 @@ class Switch:
             return False
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert the switch to a dictionary representation.
 
@@ -206,7 +209,7 @@ class Switch:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Switch":
+    def from_dict(cls, data: dict[str, Any]) -> "Switch":
         """
         Create a Switch instance from a dictionary.
 

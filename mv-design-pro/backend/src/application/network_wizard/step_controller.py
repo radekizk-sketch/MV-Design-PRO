@@ -25,10 +25,8 @@ from .schema import (
     IssueSeverity,
     StepStatus,
     WizardIssue,
-    WizardStepRequest,
 )
 from .validator import validate_wizard_state
-
 
 # ---------------------------------------------------------------------------
 # Step ordering
@@ -92,12 +90,14 @@ def _preconditions_k2(enm: dict[str, Any]) -> list[WizardIssue]:
     header = enm.get("header", {})
     name = header.get("name", "")
     if not name or not name.strip():
-        issues.append(WizardIssue(
-            code="PRE_K2_NAME_MISSING",
-            severity=IssueSeverity.BLOCKER,
-            message_pl="Uzupełnij nazwę projektu (K1) przed konfiguracją zasilania",
-            wizard_step_hint="K1",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K2_NAME_MISSING",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Uzupełnij nazwę projektu (K1) przed konfiguracją zasilania",
+                wizard_step_hint="K1",
+            )
+        )
     return issues
 
 
@@ -107,12 +107,14 @@ def _preconditions_k3(enm: dict[str, Any]) -> list[WizardIssue]:
     buses = enm.get("buses", [])
     source_bus = next((b for b in buses if "source" in b.get("tags", [])), None)
     if not source_bus:
-        issues.append(WizardIssue(
-            code="PRE_K3_NO_SOURCE_BUS",
-            severity=IssueSeverity.BLOCKER,
-            message_pl="Zdefiniuj punkt zasilania (K2) przed dodaniem szyn",
-            wizard_step_hint="K2",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K3_NO_SOURCE_BUS",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Zdefiniuj punkt zasilania (K2) przed dodaniem szyn",
+                wizard_step_hint="K2",
+            )
+        )
     return issues
 
 
@@ -120,12 +122,14 @@ def _preconditions_k4(enm: dict[str, Any]) -> list[WizardIssue]:
     """K4 requires at least one bus (K3)."""
     issues: list[WizardIssue] = []
     if not enm.get("buses"):
-        issues.append(WizardIssue(
-            code="PRE_K4_NO_BUSES",
-            severity=IssueSeverity.BLOCKER,
-            message_pl="Dodaj szyny (K3) przed definiowaniem gałęzi",
-            wizard_step_hint="K3",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K4_NO_BUSES",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Dodaj szyny (K3) przed definiowaniem gałęzi",
+                wizard_step_hint="K3",
+            )
+        )
     return issues
 
 
@@ -134,12 +138,14 @@ def _preconditions_k5(enm: dict[str, Any]) -> list[WizardIssue]:
     issues: list[WizardIssue] = []
     buses = enm.get("buses", [])
     if len(buses) < 2:
-        issues.append(WizardIssue(
-            code="PRE_K5_FEW_BUSES",
-            severity=IssueSeverity.IMPORTANT,
-            message_pl="Transformatory wymagają min. 2 szyn (HV + LV)",
-            wizard_step_hint="K3",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K5_FEW_BUSES",
+                severity=IssueSeverity.IMPORTANT,
+                message_pl="Transformatory wymagają min. 2 szyn (HV + LV)",
+                wizard_step_hint="K3",
+            )
+        )
     return issues
 
 
@@ -147,12 +153,14 @@ def _preconditions_k6(enm: dict[str, Any]) -> list[WizardIssue]:
     """K6 requires buses to exist."""
     issues: list[WizardIssue] = []
     if not enm.get("buses"):
-        issues.append(WizardIssue(
-            code="PRE_K6_NO_BUSES",
-            severity=IssueSeverity.BLOCKER,
-            message_pl="Dodaj szyny (K3) przed definiowaniem odbiorów",
-            wizard_step_hint="K3",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K6_NO_BUSES",
+                severity=IssueSeverity.BLOCKER,
+                message_pl="Dodaj szyny (K3) przed definiowaniem odbiorów",
+                wizard_step_hint="K3",
+            )
+        )
     return issues
 
 
@@ -174,15 +182,19 @@ def _preconditions_k9(enm: dict[str, Any]) -> list[WizardIssue]:
 def _preconditions_k10(enm: dict[str, Any]) -> list[WizardIssue]:
     """K10 requires no BLOCKER in K1–K7."""
     ws = validate_wizard_state(enm)
-    blocker_steps = [s for s in ws.steps if s.status == StepStatus.ERROR and s.step_id not in ("K9", "K10")]
+    blocker_steps = [
+        s for s in ws.steps if s.status == StepStatus.ERROR and s.step_id not in ("K9", "K10")
+    ]
     issues: list[WizardIssue] = []
     if blocker_steps:
-        issues.append(WizardIssue(
-            code="PRE_K10_HAS_BLOCKERS",
-            severity=IssueSeverity.BLOCKER,
-            message_pl=f"Napraw blokery w krokach: {', '.join(s.step_id for s in blocker_steps)}",
-            wizard_step_hint="K8",
-        ))
+        issues.append(
+            WizardIssue(
+                code="PRE_K10_HAS_BLOCKERS",
+                severity=IssueSeverity.BLOCKER,
+                message_pl=f"Napraw blokery w krokach: {', '.join(s.step_id for s in blocker_steps)}",
+                wizard_step_hint="K8",
+            )
+        )
     return issues
 
 
@@ -275,7 +287,8 @@ def _apply_k3(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
         buses = [b for b in buses if b.get("ref_id") not in remove_refs]
         # Cascade: remove branches referencing removed buses
         branches = [
-            br for br in enm.get("branches", [])
+            br
+            for br in enm.get("branches", [])
             if br.get("from_bus_ref") not in remove_refs and br.get("to_bus_ref") not in remove_refs
         ]
         return {**enm, "buses": buses, "branches": branches}
@@ -321,16 +334,23 @@ def _apply_k6(enm: dict[str, Any], data: dict[str, Any]) -> dict[str, Any]:
     loads = list(enm.get("loads", []))
     gens = list(enm.get("generators", []))
     for ld in data.get("add_loads", []):
-        if not any(l.get("ref_id") == ld.get("ref_id") for l in loads):
+        if not any(existing_load.get("ref_id") == ld.get("ref_id") for existing_load in loads):
             loads.append(ld)
     for upd in data.get("update_loads", []):
         ref = upd.get("ref_id")
-        idx = next((i for i, l in enumerate(loads) if l.get("ref_id") == ref), None)
+        idx = next(
+            (i for i, existing_load in enumerate(loads) if existing_load.get("ref_id") == ref),
+            None,
+        )
         if idx is not None:
             loads[idx] = {**loads[idx], **upd}
     remove_load_refs = set(data.get("remove_load_refs", []))
     if remove_load_refs:
-        loads = [l for l in loads if l.get("ref_id") not in remove_load_refs]
+        loads = [
+            existing_load
+            for existing_load in loads
+            if existing_load.get("ref_id") not in remove_load_refs
+        ]
     for g in data.get("add_generators", []):
         if not any(x.get("ref_id") == g.get("ref_id") for x in gens):
             gens.append(g)

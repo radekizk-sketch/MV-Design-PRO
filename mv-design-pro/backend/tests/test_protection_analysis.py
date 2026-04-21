@@ -11,11 +11,8 @@ Test coverage:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
-from uuid import uuid4
 
 import pytest
-
 from application.protection_analysis.engine import (
     FaultPoint,
     ProtectionDevice,
@@ -34,7 +31,6 @@ from domain.protection_analysis import (
     TripState,
     compute_result_summary,
 )
-
 
 # =============================================================================
 # CURVE EVALUATION TESTS
@@ -372,8 +368,8 @@ class TestDeterminism:
         result2, trace2 = engine.evaluate(input_data)
 
         # Compare result JSON
-        result1_json = json.dumps(result1.to_dict(), sort_keys=True)
-        result2_json = json.dumps(result2.to_dict(), sort_keys=True)
+        json.dumps(result1.to_dict(), sort_keys=True)
+        json.dumps(result2.to_dict(), sort_keys=True)
 
         # Exclude created_at which is time-dependent
         result1_dict = result1.to_dict()
@@ -778,7 +774,7 @@ class TestIecInverseTimeGoldenPoints:
 
     def _expected_time(self, a: float, b: float, m: float) -> float:
         """Calculate expected time per canonical formula."""
-        return a / (m ** b - 1.0)
+        return a / (m**b - 1.0)
 
     # =========================================================================
     # Standard Inverse (SI) Golden Points
@@ -787,8 +783,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_si_golden_m2(self):
         """SI at M=2: t = 0.14 / (2^0.02 - 1)"""
         t = compute_iec_inverse_time(
-            i_fault_a=200.0, i_pickup_a=100.0, tms=1.0,
-            a=self.SI_A, b=self.SI_B,
+            i_fault_a=200.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.SI_A,
+            b=self.SI_B,
         )
         expected = self._expected_time(self.SI_A, self.SI_B, 2.0)
         assert t is not None
@@ -797,8 +796,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_si_golden_m5(self):
         """SI at M=5: t = 0.14 / (5^0.02 - 1)"""
         t = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=self.SI_A, b=self.SI_B,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.SI_A,
+            b=self.SI_B,
         )
         expected = self._expected_time(self.SI_A, self.SI_B, 5.0)
         assert t is not None
@@ -807,8 +809,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_si_golden_m10(self):
         """SI at M=10: t = 0.14 / (10^0.02 - 1)"""
         t = compute_iec_inverse_time(
-            i_fault_a=1000.0, i_pickup_a=100.0, tms=1.0,
-            a=self.SI_A, b=self.SI_B,
+            i_fault_a=1000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.SI_A,
+            b=self.SI_B,
         )
         expected = self._expected_time(self.SI_A, self.SI_B, 10.0)
         assert t is not None
@@ -821,8 +826,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_vi_golden_m2(self):
         """VI at M=2: t = 13.5 / (2^1 - 1) = 13.5"""
         t = compute_iec_inverse_time(
-            i_fault_a=200.0, i_pickup_a=100.0, tms=1.0,
-            a=self.VI_A, b=self.VI_B,
+            i_fault_a=200.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.VI_A,
+            b=self.VI_B,
         )
         expected = self._expected_time(self.VI_A, self.VI_B, 2.0)
         assert t is not None
@@ -832,8 +840,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_vi_golden_m5(self):
         """VI at M=5: t = 13.5 / (5^1 - 1) = 3.375"""
         t = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=self.VI_A, b=self.VI_B,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.VI_A,
+            b=self.VI_B,
         )
         expected = self._expected_time(self.VI_A, self.VI_B, 5.0)
         assert t is not None
@@ -843,8 +854,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_vi_golden_m10(self):
         """VI at M=10: t = 13.5 / (10^1 - 1) = 1.5"""
         t = compute_iec_inverse_time(
-            i_fault_a=1000.0, i_pickup_a=100.0, tms=1.0,
-            a=self.VI_A, b=self.VI_B,
+            i_fault_a=1000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.VI_A,
+            b=self.VI_B,
         )
         expected = self._expected_time(self.VI_A, self.VI_B, 10.0)
         assert t is not None
@@ -858,8 +872,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_ei_golden_m2(self):
         """EI at M=2: t = 80 / (2^2 - 1) = 26.666..."""
         t = compute_iec_inverse_time(
-            i_fault_a=200.0, i_pickup_a=100.0, tms=1.0,
-            a=self.EI_A, b=self.EI_B,
+            i_fault_a=200.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.EI_A,
+            b=self.EI_B,
         )
         expected = self._expected_time(self.EI_A, self.EI_B, 2.0)
         assert t is not None
@@ -869,8 +886,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_ei_golden_m5(self):
         """EI at M=5: t = 80 / (5^2 - 1) = 3.333..."""
         t = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=self.EI_A, b=self.EI_B,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.EI_A,
+            b=self.EI_B,
         )
         expected = self._expected_time(self.EI_A, self.EI_B, 5.0)
         assert t is not None
@@ -880,8 +900,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_ei_golden_m10(self):
         """EI at M=10: t = 80 / (10^2 - 1) = 0.808..."""
         t = compute_iec_inverse_time(
-            i_fault_a=1000.0, i_pickup_a=100.0, tms=1.0,
-            a=self.EI_A, b=self.EI_B,
+            i_fault_a=1000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.EI_A,
+            b=self.EI_B,
         )
         expected = self._expected_time(self.EI_A, self.EI_B, 10.0)
         assert t is not None
@@ -891,8 +914,11 @@ class TestIecInverseTimeGoldenPoints:
     def test_ei_golden_m20(self):
         """EI at M=20: t = 80 / (20^2 - 1) = 0.200..."""
         t = compute_iec_inverse_time(
-            i_fault_a=2000.0, i_pickup_a=100.0, tms=1.0,
-            a=self.EI_A, b=self.EI_B,
+            i_fault_a=2000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=self.EI_A,
+            b=self.EI_B,
         )
         expected = self._expected_time(self.EI_A, self.EI_B, 20.0)
         assert t is not None
@@ -924,16 +950,20 @@ class TestIecInverseTimeProperties:
         times = []
         for m in m_values:
             t = compute_iec_inverse_time(
-                i_fault_a=m * 100.0, i_pickup_a=100.0, tms=1.0,
-                a=0.14, b=0.02,
+                i_fault_a=m * 100.0,
+                i_pickup_a=100.0,
+                tms=1.0,
+                a=0.14,
+                b=0.02,
             )
             assert t is not None, f"SI should trip at M={m}"
             times.append(t)
 
         # Verify strictly decreasing
         for i in range(len(times) - 1):
-            assert times[i] > times[i + 1], \
-                f"SI monotonicity failed: t(M={m_values[i]})={times[i]} <= t(M={m_values[i+1]})={times[i+1]}"
+            assert (
+                times[i] > times[i + 1]
+            ), f"SI monotonicity failed: t(M={m_values[i]})={times[i]} <= t(M={m_values[i+1]})={times[i+1]}"
 
     def test_monotonicity_vi(self):
         """VI curve: t(M2) < t(M1) for M1 < M2."""
@@ -941,8 +971,11 @@ class TestIecInverseTimeProperties:
         times = []
         for m in m_values:
             t = compute_iec_inverse_time(
-                i_fault_a=m * 100.0, i_pickup_a=100.0, tms=1.0,
-                a=13.5, b=1.0,
+                i_fault_a=m * 100.0,
+                i_pickup_a=100.0,
+                tms=1.0,
+                a=13.5,
+                b=1.0,
             )
             assert t is not None
             times.append(t)
@@ -956,8 +989,11 @@ class TestIecInverseTimeProperties:
         times = []
         for m in m_values:
             t = compute_iec_inverse_time(
-                i_fault_a=m * 100.0, i_pickup_a=100.0, tms=1.0,
-                a=80.0, b=2.0,
+                i_fault_a=m * 100.0,
+                i_pickup_a=100.0,
+                tms=1.0,
+                a=80.0,
+                b=2.0,
             )
             assert t is not None
             times.append(t)
@@ -969,16 +1005,25 @@ class TestIecInverseTimeProperties:
         """TMS scales trip time linearly: t(TMS=k) = k * t(TMS=1)."""
         # Test for SI curve at M=5
         t1 = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=0.14, b=0.02,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=0.14,
+            b=0.02,
         )
         t2 = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=2.0,
-            a=0.14, b=0.02,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=2.0,
+            a=0.14,
+            b=0.02,
         )
         t3 = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=0.5,
-            a=0.14, b=0.02,
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=0.5,
+            a=0.14,
+            b=0.02,
         )
 
         assert t1 is not None and t2 is not None and t3 is not None
@@ -989,8 +1034,11 @@ class TestIecInverseTimeProperties:
         """M = 1 (I = Ip) → no trip (None)."""
         for a, b in [(0.14, 0.02), (13.5, 1.0), (80.0, 2.0)]:
             t = compute_iec_inverse_time(
-                i_fault_a=100.0, i_pickup_a=100.0, tms=1.0,
-                a=a, b=b,
+                i_fault_a=100.0,
+                i_pickup_a=100.0,
+                tms=1.0,
+                a=a,
+                b=b,
             )
             assert t is None, f"Should not trip at M=1 for curve (A={a}, B={b})"
 
@@ -999,8 +1047,11 @@ class TestIecInverseTimeProperties:
         for a, b in [(0.14, 0.02), (13.5, 1.0), (80.0, 2.0)]:
             for i_fault in [50.0, 80.0, 99.9]:
                 t = compute_iec_inverse_time(
-                    i_fault_a=i_fault, i_pickup_a=100.0, tms=1.0,
-                    a=a, b=b,
+                    i_fault_a=i_fault,
+                    i_pickup_a=100.0,
+                    tms=1.0,
+                    a=a,
+                    b=b,
                 )
                 assert t is None, f"Should not trip at I={i_fault}A < Ip=100A"
 
@@ -1008,8 +1059,11 @@ class TestIecInverseTimeProperties:
         """M = 1.0001 should give finite (large) time, not NaN/Inf."""
         for a, b, name in [(0.14, 0.02, "SI"), (13.5, 1.0, "VI"), (80.0, 2.0, "EI")]:
             t = compute_iec_inverse_time(
-                i_fault_a=100.01, i_pickup_a=100.0, tms=1.0,
-                a=a, b=b,
+                i_fault_a=100.01,
+                i_pickup_a=100.0,
+                tms=1.0,
+                a=a,
+                b=b,
             )
             assert t is not None, f"{name} should trip at M=1.0001"
             assert t > 0, f"{name} time should be positive"
@@ -1022,32 +1076,46 @@ class TestIecInverseTimeProperties:
         results = []
         for _ in range(10):
             t = compute_iec_inverse_time(
-                i_fault_a=500.0, i_pickup_a=100.0, tms=0.3,
-                a=0.14, b=0.02,
+                i_fault_a=500.0,
+                i_pickup_a=100.0,
+                tms=0.3,
+                a=0.14,
+                b=0.02,
             )
             results.append(t)
 
-        assert all(r == results[0] for r in results), \
-            f"Determinism failed: got different results {set(results)}"
+        assert all(
+            r == results[0] for r in results
+        ), f"Determinism failed: got different results {set(results)}"
 
     def test_curve_ordering_at_high_m(self):
         """At high M (e.g., 20), EI < VI < SI (EI is fastest)."""
         t_si = compute_iec_inverse_time(
-            i_fault_a=2000.0, i_pickup_a=100.0, tms=1.0,
-            a=0.14, b=0.02,
+            i_fault_a=2000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=0.14,
+            b=0.02,
         )
         t_vi = compute_iec_inverse_time(
-            i_fault_a=2000.0, i_pickup_a=100.0, tms=1.0,
-            a=13.5, b=1.0,
+            i_fault_a=2000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=13.5,
+            b=1.0,
         )
         t_ei = compute_iec_inverse_time(
-            i_fault_a=2000.0, i_pickup_a=100.0, tms=1.0,
-            a=80.0, b=2.0,
+            i_fault_a=2000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=80.0,
+            b=2.0,
         )
 
         assert t_si is not None and t_vi is not None and t_ei is not None
-        assert t_ei < t_vi < t_si, \
-            f"At M=20: expected EI < VI < SI, got EI={t_ei}, VI={t_vi}, SI={t_si}"
+        assert (
+            t_ei < t_vi < t_si
+        ), f"At M=20: expected EI < VI < SI, got EI={t_ei}, VI={t_vi}, SI={t_si}"
 
 
 # =============================================================================
@@ -1223,10 +1291,10 @@ class TestVendorIecParity:
     def test_abb_si_matches_iec_si(self):
         """ABB_SI must produce same result as IEC_SI."""
         from domain.protection_vendors import (
-            VENDOR_CURVE_REGISTRY,
-            resolve_vendor_to_iec_params,
-            IecVariant,
             IEC_CURVE_CONSTANTS,
+            VENDOR_CURVE_REGISTRY,
+            IecVariant,
+            resolve_vendor_to_iec_params,
         )
 
         abb_curve = VENDOR_CURVE_REGISTRY["ABB_SI"]
@@ -1239,12 +1307,18 @@ class TestVendorIecParity:
 
         # Trip times must match
         t_abb = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=abb_params["A"], b=abb_params["B"],
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=abb_params["A"],
+            b=abb_params["B"],
         )
         t_iec = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=iec_params["A"], b=iec_params["B"],
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=iec_params["A"],
+            b=iec_params["B"],
         )
 
         assert t_abb == t_iec, "ABB_SI must match IEC_SI"
@@ -1252,10 +1326,10 @@ class TestVendorIecParity:
     def test_siemens_vi_matches_iec_vi(self):
         """SIEMENS_VI must produce same result as IEC_VI."""
         from domain.protection_vendors import (
-            VENDOR_CURVE_REGISTRY,
-            resolve_vendor_to_iec_params,
-            IecVariant,
             IEC_CURVE_CONSTANTS,
+            VENDOR_CURVE_REGISTRY,
+            IecVariant,
+            resolve_vendor_to_iec_params,
         )
 
         siemens_curve = VENDOR_CURVE_REGISTRY["SIEMENS_VI"]
@@ -1266,12 +1340,18 @@ class TestVendorIecParity:
         assert siemens_params["B"] == iec_params["B"]
 
         t_siemens = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=siemens_params["A"], b=siemens_params["B"],
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=siemens_params["A"],
+            b=siemens_params["B"],
         )
         t_iec = compute_iec_inverse_time(
-            i_fault_a=500.0, i_pickup_a=100.0, tms=1.0,
-            a=iec_params["A"], b=iec_params["B"],
+            i_fault_a=500.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=iec_params["A"],
+            b=iec_params["B"],
         )
 
         assert t_siemens == t_iec, "SIEMENS_VI must match IEC_VI"
@@ -1279,10 +1359,10 @@ class TestVendorIecParity:
     def test_etango_ei_matches_iec_ei(self):
         """ETANGO_EI must produce same result as IEC_EI."""
         from domain.protection_vendors import (
-            VENDOR_CURVE_REGISTRY,
-            resolve_vendor_to_iec_params,
-            IecVariant,
             IEC_CURVE_CONSTANTS,
+            VENDOR_CURVE_REGISTRY,
+            IecVariant,
+            resolve_vendor_to_iec_params,
         )
 
         etango_curve = VENDOR_CURVE_REGISTRY["ETANGO_EI"]
@@ -1293,12 +1373,18 @@ class TestVendorIecParity:
         assert etango_params["B"] == iec_params["B"]
 
         t_etango = compute_iec_inverse_time(
-            i_fault_a=1000.0, i_pickup_a=100.0, tms=1.0,
-            a=etango_params["A"], b=etango_params["B"],
+            i_fault_a=1000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=etango_params["A"],
+            b=etango_params["B"],
         )
         t_iec = compute_iec_inverse_time(
-            i_fault_a=1000.0, i_pickup_a=100.0, tms=1.0,
-            a=iec_params["A"], b=iec_params["B"],
+            i_fault_a=1000.0,
+            i_pickup_a=100.0,
+            tms=1.0,
+            a=iec_params["A"],
+            b=iec_params["B"],
         )
 
         assert t_etango == t_iec, "ETANGO_EI must match IEC_EI"
@@ -1306,10 +1392,10 @@ class TestVendorIecParity:
     def test_all_derived_vendor_curves_match_iec(self):
         """All DERIVED_VENDOR curves must match their IEC variant."""
         from domain.protection_vendors import (
+            IEC_CURVE_CONSTANTS,
             VENDOR_CURVE_REGISTRY,
             CurveOrigin,
             resolve_vendor_to_iec_params,
-            IEC_CURVE_CONSTANTS,
         )
 
         for code, curve in VENDOR_CURVE_REGISTRY.items():
@@ -1568,4 +1654,3 @@ class TestListSupportedVendorCurves:
         assert len(supported) == len(VENDOR_CURVE_REGISTRY)
         for code in VENDOR_CURVE_REGISTRY:
             assert code in supported
-

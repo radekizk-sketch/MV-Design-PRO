@@ -9,6 +9,7 @@ from __future__ import annotations
 
 class StudyCaseError(Exception):
     """Base error for study case operations."""
+
     pass
 
 
@@ -25,9 +26,7 @@ class ActiveCaseRequiredError(StudyCaseError):
 
     def __init__(self, project_id: str):
         self.project_id = project_id
-        super().__init__(
-            f"Wymagany aktywny przypadek obliczeniowy dla projektu: {project_id}"
-        )
+        super().__init__(f"Wymagany aktywny przypadek obliczeniowy dla projektu: {project_id}")
 
 
 class CaseConfigurationError(StudyCaseError):
@@ -52,9 +51,7 @@ class OperationNotAllowedError(StudyCaseError):
     def __init__(self, operation: str, mode: str):
         self.operation = operation
         self.mode = mode
-        super().__init__(
-            f"Operacja '{operation}' niedozwolona w trybie '{mode}'"
-        )
+        super().__init__(f"Operacja '{operation}' niedozwolona w trybie '{mode}'")
 
 
 class StaleResultsError(StudyCaseError):

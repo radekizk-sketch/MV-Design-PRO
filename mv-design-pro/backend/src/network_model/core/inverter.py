@@ -2,8 +2,8 @@
 Definicje źródeł falownikowych (OZE) dla obliczeń zwarciowych IEC 60909.
 """
 
-from dataclasses import dataclass, field
 import uuid
+from dataclasses import dataclass, field
 
 from network_model.catalog.types import ConverterKind
 
@@ -69,9 +69,7 @@ class InverterSource:
             ),
             in_rated_a=float(data.get("in_rated_a", 0.0)),
             k_sc=float(data.get("k_sc", 1.1)),
-            contributes_negative_sequence=bool(
-                data.get("contributes_negative_sequence", False)
-            ),
+            contributes_negative_sequence=bool(data.get("contributes_negative_sequence", False)),
             contributes_zero_sequence=bool(data.get("contributes_zero_sequence", False)),
             in_service=bool(data.get("in_service", True)),
         )

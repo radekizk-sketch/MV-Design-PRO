@@ -24,10 +24,10 @@ from typing import Any
 # Check for reportlab availability at import time
 try:
     from reportlab import rl_config
-    from reportlab.pdfgen import canvas
+    from reportlab.lib.colors import HexColor
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import mm
-    from reportlab.lib.colors import HexColor
+    from reportlab.pdfgen import canvas
 
     _PDF_AVAILABLE = True
 except ImportError:
@@ -90,9 +90,7 @@ def export_protection_coordination_to_pdf(
         ImportError: If reportlab is not installed
     """
     if not _PDF_AVAILABLE:
-        raise ImportError(
-            "PDF export requires reportlab. Install with: pip install reportlab"
-        )
+        raise ImportError("PDF export requires reportlab. Install with: pip install reportlab")
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -113,7 +111,7 @@ def export_protection_coordination_to_pdf(
 
     # Margins and layout
     left_margin = 25 * mm
-    right_margin = page_width - 25 * mm
+    page_width - 25 * mm
     top_margin = page_height - 25 * mm
     bottom_margin = 25 * mm
     line_height = 5 * mm
@@ -189,7 +187,9 @@ def export_protection_coordination_to_pdf(
     # 2) OVERALL VERDICT
     # ==========================================================================
     overall_verdict = result.get("overall_verdict", "ERROR")
-    verdict_pl = result.get("summary", {}).get("overall_verdict_pl", VERDICT_LABELS_PL.get(overall_verdict, overall_verdict))
+    verdict_pl = result.get("summary", {}).get(
+        "overall_verdict_pl", VERDICT_LABELS_PL.get(overall_verdict, overall_verdict)
+    )
 
     c.setFont("Helvetica", 12)
     c.drawString(left_margin, y, "Wynik analizy:")
@@ -254,8 +254,7 @@ def export_protection_coordination_to_pdf(
         sorted_devices = sorted(devices, key=lambda d: d.get("name", d.get("id", "")))
         dev_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 25 * mm]
         draw_table_row(
-            ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"],
-            dev_cols, left_margin, bold=True
+            ["Nazwa", "Typ", "I_pickup [A]", "TMS", "Krzywa"], dev_cols, left_margin, bold=True
         )
         y -= 2 * mm
 
@@ -273,7 +272,8 @@ def export_protection_coordination_to_pdf(
                     _format_value(curve_settings.get("time_multiplier")),
                     curve_settings.get("variant", "—"),
                 ],
-                dev_cols, left_margin,
+                dev_cols,
+                left_margin,
             )
     else:
         c.setFont("Helvetica-Oblique", 10)
@@ -294,7 +294,9 @@ def export_protection_coordination_to_pdf(
         sens_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
             ["Urządzenie", "I_min [A]", "I_pickup [A]", "Margines [%]", "Werdykt"],
-            sens_cols, left_margin, bold=True
+            sens_cols,
+            left_margin,
+            bold=True,
         )
         y -= 2 * mm
 
@@ -312,7 +314,8 @@ def export_protection_coordination_to_pdf(
                     _format_value(check.get("margin_percent")),
                     verdict_pl,
                 ],
-                sens_cols, left_margin,
+                sens_cols,
+                left_margin,
                 colors=[None, None, None, None, verdict_color],
             )
     else:
@@ -334,7 +337,9 @@ def export_protection_coordination_to_pdf(
         sel_cols = [30 * mm, 30 * mm, 22 * mm, 22 * mm, 22 * mm, 25 * mm]
         draw_table_row(
             ["Podrzędne", "Nadrzędne", "t_pod [s]", "t_nad [s]", "Δt [s]", "Werdykt"],
-            sel_cols, left_margin, bold=True
+            sel_cols,
+            left_margin,
+            bold=True,
         )
         y -= 2 * mm
 
@@ -353,7 +358,8 @@ def export_protection_coordination_to_pdf(
                     _format_value(check.get("margin_s")),
                     verdict_pl,
                 ],
-                sel_cols, left_margin,
+                sel_cols,
+                left_margin,
                 colors=[None, None, None, None, None, verdict_color],
             )
     else:
@@ -367,7 +373,9 @@ def export_protection_coordination_to_pdf(
     # 7) OVERLOAD CHECKS
     # ==========================================================================
     y = check_page_break(30 * mm)
-    draw_text("Sprawdzenie przeciążalności (I_pickup / I_rob)", left_margin, font_size=14, bold=True)
+    draw_text(
+        "Sprawdzenie przeciążalności (I_pickup / I_rob)", left_margin, font_size=14, bold=True
+    )
     y -= 3 * mm
 
     overload_checks = result.get("overload_checks", [])
@@ -375,7 +383,9 @@ def export_protection_coordination_to_pdf(
         ovl_cols = [35 * mm, 25 * mm, 25 * mm, 25 * mm, 35 * mm]
         draw_table_row(
             ["Urządzenie", "I_rob [A]", "I_pickup [A]", "Margines [%]", "Werdykt"],
-            ovl_cols, left_margin, bold=True
+            ovl_cols,
+            left_margin,
+            bold=True,
         )
         y -= 2 * mm
 
@@ -393,7 +403,8 @@ def export_protection_coordination_to_pdf(
                     _format_value(check.get("margin_percent")),
                     verdict_pl,
                 ],
-                ovl_cols, left_margin,
+                ovl_cols,
+                left_margin,
                 colors=[None, None, None, None, verdict_color],
             )
     else:
@@ -414,8 +425,7 @@ def export_protection_coordination_to_pdf(
     if tcc_curves:
         tcc_cols = [40 * mm, 30 * mm, 30 * mm, 30 * mm]
         draw_table_row(
-            ["Urządzenie", "Typ krzywej", "I_pickup [A]", "TMS"],
-            tcc_cols, left_margin, bold=True
+            ["Urządzenie", "Typ krzywej", "I_pickup [A]", "TMS"], tcc_cols, left_margin, bold=True
         )
         y -= 2 * mm
 
@@ -428,7 +438,8 @@ def export_protection_coordination_to_pdf(
                     _format_value(curve.get("pickup_current_a")),
                     _format_value(curve.get("time_multiplier")),
                 ],
-                tcc_cols, left_margin,
+                tcc_cols,
+                left_margin,
             )
 
         y -= 3 * mm

@@ -18,11 +18,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Request
-
-from pydantic import BaseModel, Field
-
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from application.eligibility_service import EligibilityService
+from application.field_read_model import build_field_read_model
+from application.protection_read_model import build_protection_read_model
+from domain.canonical_operations import resolve_operation_name
 from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
@@ -46,22 +46,15 @@ from enm.topology_ops import (
     update_protection,
 )
 from enm.validator import ENMValidator
-
-from application.eligibility_service import EligibilityService
-from domain.canonical_operations import resolve_operation_name
-
-from application.network_wizard.schema import (
-    ApplyStepResponse,
-    CanProceedResponse,
-    WizardStepRequest,
-)
-from application.network_wizard.step_controller import (
-    apply_step as ctrl_apply_step,
-    can_proceed as ctrl_can_proceed,
-)
-from application.network_wizard.validator import validate_wizard_state
+from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/cases", tags=["enm"])
+
+
+class WizardStepRequestModel(BaseModel):
+    step_id: str
+    data: dict[str, Any] = Field(default_factory=dict)
 
 
 def _resolve_project_id(case_id: str, request: Request) -> str | None:
@@ -134,11 +127,8 @@ async def get_enm_readiness(case_id: str) -> dict[str, Any]:
     validation = validator.validate(enm)
     readiness = validator.readiness(validation)
 
-    has_protection_data = (
-        bool(enm.protection_assignments)
-        or (bool(enm.bays) and any(
-            b.protection_ref is not None for b in enm.bays
-        ))
+    has_protection_data = bool(enm.protection_assignments) or (
+        bool(enm.bays) and any(b.protection_ref is not None for b in enm.bays)
     )
 
     return {
@@ -175,6 +165,20 @@ async def get_enm_readiness(case_id: str) -> dict[str, Any]:
     }
 
 
+@router.get("/{case_id}/enm/protection-view")
+async def get_enm_protection_view(case_id: str) -> dict[str, Any]:
+    """Return read-only protection view derived directly from ENM."""
+    enm = _get_enm(case_id)
+    return build_protection_read_model(case_id, enm)
+
+
+@router.get("/{case_id}/enm/field-view")
+async def get_enm_field_view(case_id: str) -> dict[str, Any]:
+    """Return canonical bay field view derived directly from ENM."""
+    enm = _get_enm(case_id)
+    return build_field_read_model(case_id, enm)
+
+
 # ---------------------------------------------------------------------------
 # Engineering Readiness (aggregated UX endpoint)
 # ---------------------------------------------------------------------------
@@ -204,11 +208,7 @@ async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
             "message_pl": issue.message_pl,
             "wizard_step_hint": issue.wizard_step_hint,
             "suggested_fix": issue.suggested_fix,
-            "fix_action": (
-                issue.fix_action.model_dump(mode="json")
-                if issue.fix_action
-                else None
-            ),
+            "fix_action": (issue.fix_action.model_dump(mode="json") if issue.fix_action else None),
         }
         issues_out.append(item)
 
@@ -320,11 +320,15 @@ async def get_topology_summary(case_id: str) -> dict[str, Any]:
 
 class TopologyOpRequest(BaseModel):
     """Żądanie operacji topologicznej."""
-    op: str = Field(..., description="Typ operacji (create_node, update_node, delete_node, "
-                    "create_branch, update_branch, delete_branch, "
-                    "create_device, update_device, delete_device, "
-                    "create_measurement, delete_measurement, "
-                    "attach_protection, update_protection, detach_protection)")
+
+    op: str = Field(
+        ...,
+        description="Typ operacji (create_node, update_node, delete_node, "
+        "create_branch, update_branch, delete_branch, "
+        "create_device, update_device, delete_device, "
+        "create_measurement, delete_measurement, "
+        "attach_protection, update_protection, detach_protection)",
+    )
     data: dict[str, Any] = Field(default_factory=dict, description="Dane operacji")
 
 
@@ -338,7 +342,9 @@ _OP_DISPATCH = {
     "create_device": lambda enm, data: create_device(enm, data),
     "update_device": lambda enm, data: update_device(enm, data),
     "delete_device": lambda enm, data: delete_device(
-        enm, data.get("device_type", ""), data.get("ref_id", ""),
+        enm,
+        data.get("device_type", ""),
+        data.get("ref_id", ""),
     ),
     "create_measurement": lambda enm, data: create_measurement(enm, data),
     "delete_measurement": lambda enm, data: delete_measurement(enm, data.get("ref_id", "")),
@@ -361,7 +367,7 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
         raise HTTPException(
             status_code=400,
             detail=f"Nieznana operacja: '{req.op}'. "
-                   f"Dostępne: {', '.join(sorted(_OP_DISPATCH.keys()))}",
+            f"Dostępne: {', '.join(sorted(_OP_DISPATCH.keys()))}",
         )
 
     enm = _get_enm(case_id)
@@ -376,8 +382,12 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
             "op": req.op,
             "created_ref": result.created_ref,
             "issues": [
-                {"code": i.code, "severity": i.severity,
-                 "message_pl": i.message_pl, "element_ref": i.element_ref}
+                {
+                    "code": i.code,
+                    "severity": i.severity,
+                    "message_pl": i.message_pl,
+                    "element_ref": i.element_ref,
+                }
                 for i in result.issues
             ],
             "revision": saved.header.revision,
@@ -388,8 +398,12 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
         "op": req.op,
         "created_ref": None,
         "issues": [
-            {"code": i.code, "severity": i.severity,
-             "message_pl": i.message_pl, "element_ref": i.element_ref}
+            {
+                "code": i.code,
+                "severity": i.severity,
+                "message_pl": i.message_pl,
+                "element_ref": i.element_ref,
+            }
             for i in result.issues
         ],
         "revision": enm.header.revision,
@@ -398,6 +412,7 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
 
 class BatchOpsRequest(BaseModel):
     """Żądanie wielu operacji topologicznych (batch)."""
+
     operations: list[TopologyOpRequest] = Field(
         ..., description="Lista operacji do wykonania sekwencyjnie"
     )
@@ -432,8 +447,12 @@ async def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, An
             "success": result.success,
             "created_ref": result.created_ref,
             "issues": [
-                {"code": i.code, "severity": i.severity,
-                 "message_pl": i.message_pl, "element_ref": i.element_ref}
+                {
+                    "code": i.code,
+                    "severity": i.severity,
+                    "message_pl": i.message_pl,
+                    "element_ref": i.element_ref,
+                }
                 for i in result.issues
             ],
         }
@@ -548,6 +567,8 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
     Computes K1-K10 step states, readiness matrix, element counts.
     Used for restoring wizard state after refresh / deep-link.
     """
+    from application.network_wizard.validator import validate_wizard_state
+
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
     ws = validate_wizard_state(enm_dict)
@@ -555,13 +576,17 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
 
 
 @router.post("/{case_id}/wizard/apply-step")
-async def wizard_apply_step(case_id: str, req: WizardStepRequest) -> dict[str, Any]:
+async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.
     If postconditions fail → rollback, original ENM unchanged, success=False.
     On success → ENM saved with revision++, returns new wizard state.
     """
+    from application.network_wizard.schema import ApplyStepResponse
+    from application.network_wizard.step_controller import apply_step as ctrl_apply_step
+    from application.network_wizard.validator import validate_wizard_state
+
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
 
@@ -609,6 +634,9 @@ async def wizard_can_proceed(
     and no BLOCKER preconditions for target step.
     Backward transitions are always allowed.
     """
+    from application.network_wizard.schema import CanProceedResponse
+    from application.network_wizard.step_controller import can_proceed as ctrl_can_proceed
+
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
     result = ctrl_can_proceed(from_step, to_step, enm_dict)
@@ -627,6 +655,7 @@ async def wizard_can_proceed(
 
 class DomainOpPayloadModel(BaseModel):
     """Payload operacji domenowej."""
+
     name: str = Field(..., description="Kanoniczna nazwa operacji")
     idempotency_key: str = Field("", description="Klucz idempotencji")
     payload: dict[str, Any] = Field(default_factory=dict)
@@ -634,6 +663,7 @@ class DomainOpPayloadModel(BaseModel):
 
 class DomainOpEnvelopeModel(BaseModel):
     """Wspólny envelope wywołania operacji domenowej."""
+
     project_id: str = ""
     snapshot_base_hash: str = ""
     operation: DomainOpPayloadModel
@@ -650,7 +680,6 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
     set_normal_open_point, add_transformer_sn_nn,
     assign_catalog_to_element, update_element_parameters.
 
-    Aliasy (stare nazwy) są tłumaczone automatycznie na nazwy kanoniczne.
     Odpowiedź zawiera: snapshot, readiness, fix_actions, changes,
     selection_hint, audit_trail, domain_events.
     """
@@ -690,6 +719,13 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
         op_name=req.operation.name,
         payload=req.operation.payload,
     )
+
+    if result.get("adapter_only"):
+        if result.get("attach_field_view"):
+            result["field_view"] = build_field_read_model(case_id, enm)
+        if result.get("attach_protection_view"):
+            result["protection_view"] = build_protection_read_model(case_id, enm)
+        return result
 
     # Persist if operation succeeded (snapshot present and valid)
     if result.get("snapshot") and not result.get("error"):

@@ -10,18 +10,18 @@ DOCX files are ZIP archives containing XML files. Non-determinism comes from:
 
 This module addresses all three sources of non-determinism.
 """
+
 from __future__ import annotations
 
 import io
 import os
 import tempfile
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ElementTree
 import zipfile
 from pathlib import Path
-from typing import Dict, Tuple
 
 # Fixed timestamp for ZIP entries (minimum allowed: 1980-01-01 00:00:00)
-_FIXED_ZIP_DATETIME: Tuple[int, int, int, int, int, int] = (1980, 1, 1, 0, 0, 0)
+_FIXED_ZIP_DATETIME: tuple[int, int, int, int, int, int] = (1980, 1, 1, 0, 0, 0)
 
 # Fixed timestamp for XML metadata (ISO 8601 format)
 _FIXED_XML_TIMESTAMP: str = "2000-01-01T00:00:00Z"
@@ -30,7 +30,7 @@ _FIXED_XML_TIMESTAMP: str = "2000-01-01T00:00:00Z"
 _FIXED_REVISION: str = "1"
 
 # Namespaces used in docProps/core.xml
-_NAMESPACES: Dict[str, str] = {
+_NAMESPACES: dict[str, str] = {
     "cp": "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
     "dc": "http://purl.org/dc/elements/1.1/",
     "dcterms": "http://purl.org/dc/terms/",
@@ -50,9 +50,9 @@ def _normalize_core_xml(xml_bytes: bytes) -> bytes:
     """
     # Register namespaces to preserve prefixes during serialization
     for prefix, uri in _NAMESPACES.items():
-        ET.register_namespace(prefix, uri)
+        ElementTree.register_namespace(prefix, uri)
 
-    root = ET.fromstring(xml_bytes)
+    root = ElementTree.fromstring(xml_bytes)
 
     # Find and fix dcterms:created
     created = root.find("dcterms:created", _NAMESPACES)
@@ -71,7 +71,7 @@ def _normalize_core_xml(xml_bytes: bytes) -> bytes:
 
     # Serialize back to bytes with deterministic formatting
     # Use xml_declaration=True and encoding="UTF-8" for consistency
-    return ET.tostring(
+    return ElementTree.tostring(
         root,
         encoding="UTF-8",
         xml_declaration=True,
@@ -101,7 +101,7 @@ def make_docx_deterministic(path: Path | str) -> None:
         raise FileNotFoundError(f"DOCX file not found: {path}")
 
     # Read all entries from the original ZIP
-    entries: Dict[str, Tuple[bytes, zipfile.ZipInfo]] = {}
+    entries: dict[str, tuple[bytes, zipfile.ZipInfo]] = {}
 
     with zipfile.ZipFile(path, "r") as zf:
         for info in zf.infolist():
@@ -174,7 +174,7 @@ def make_docx_bytes_deterministic(docx_bytes: bytes) -> bytes:
         zipfile.BadZipFile: If the bytes are not a valid ZIP archive.
     """
     # Read all entries from the original ZIP
-    entries: Dict[str, Tuple[bytes, zipfile.ZipInfo]] = {}
+    entries: dict[str, tuple[bytes, zipfile.ZipInfo]] = {}
 
     with zipfile.ZipFile(io.BytesIO(docx_bytes), "r") as zf:
         for info in zf.infolist():

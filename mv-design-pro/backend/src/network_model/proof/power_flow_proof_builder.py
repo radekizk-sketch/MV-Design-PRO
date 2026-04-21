@@ -10,15 +10,15 @@ CANONICAL ALIGNMENT:
 - WHITE-BOX: Dane wprost z trace
 - NOT-A-SOLVER: Żadnych uproszczeń Jacobiego
 """
+
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from network_model.proof.power_flow_equations import (
     EQ_CONV_001_NORM,
     EQ_NR_001_MISMATCH_P,
-    EQ_NR_002_MISMATCH_Q,
     EQ_NR_003_JACOBIAN,
     EQ_NR_009_LINEAR_SYSTEM,
     EQ_NR_010_STATE_UPDATE,
@@ -262,31 +262,35 @@ class PowerFlowProofBuilder:
 
         # Równanie P(θ,V)
         step_num = self._next_step_number()
-        steps.append(ProofStep(
-            step_id=generate_step_id("PFPROOF", "EQ", 1),
-            step_number=step_num,
-            title_pl="Równanie mocy czynnej wstrzykiwanej do węzła",
-            equation=_equation_to_definition(EQ_PF_001_P_INJECTION),
-            input_values=(),
-            substitution_latex=EQ_PF_001_P_INJECTION.latex,
-            result=_build_proof_value("P_i", 0.0, "p.u.", "p_injected_pu"),
-            unit_check=_build_unit_check("p.u.", "p.u.", "bezwymiarowy"),
-            source_keys={},
-        ))
+        steps.append(
+            ProofStep(
+                step_id=generate_step_id("PFPROOF", "EQ", 1),
+                step_number=step_num,
+                title_pl="Równanie mocy czynnej wstrzykiwanej do węzła",
+                equation=_equation_to_definition(EQ_PF_001_P_INJECTION),
+                input_values=(),
+                substitution_latex=EQ_PF_001_P_INJECTION.latex,
+                result=_build_proof_value("P_i", 0.0, "p.u.", "p_injected_pu"),
+                unit_check=_build_unit_check("p.u.", "p.u.", "bezwymiarowy"),
+                source_keys={},
+            )
+        )
 
         # Równanie Q(θ,V)
         step_num = self._next_step_number()
-        steps.append(ProofStep(
-            step_id=generate_step_id("PFPROOF", "EQ", 2),
-            step_number=step_num,
-            title_pl="Równanie mocy biernej wstrzykiwanej do węzła",
-            equation=_equation_to_definition(EQ_PF_002_Q_INJECTION),
-            input_values=(),
-            substitution_latex=EQ_PF_002_Q_INJECTION.latex,
-            result=_build_proof_value("Q_i", 0.0, "p.u.", "q_injected_pu"),
-            unit_check=_build_unit_check("p.u.", "p.u.", "bezwymiarowy"),
-            source_keys={},
-        ))
+        steps.append(
+            ProofStep(
+                step_id=generate_step_id("PFPROOF", "EQ", 2),
+                step_number=step_num,
+                title_pl="Równanie mocy biernej wstrzykiwanej do węzła",
+                equation=_equation_to_definition(EQ_PF_002_Q_INJECTION),
+                input_values=(),
+                substitution_latex=EQ_PF_002_Q_INJECTION.latex,
+                result=_build_proof_value("Q_i", 0.0, "p.u.", "q_injected_pu"),
+                unit_check=_build_unit_check("p.u.", "p.u.", "bezwymiarowy"),
+                source_keys={},
+            )
+        )
 
         return tuple(steps)
 
@@ -391,30 +395,35 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             delta_p = mismatch.get("delta_p_pu", 0.0)
             delta_q = mismatch.get("delta_q_pu", 0.0)
 
-            input_values.append(_build_proof_value(
-                f"\\Delta P_{{{bus_id}}}",
-                delta_p,
-                "p.u.",
-                f"mismatch_per_bus.{bus_id}.delta_p_pu",
-            ))
-            input_values.append(_build_proof_value(
-                f"\\Delta Q_{{{bus_id}}}",
-                delta_q,
-                "p.u.",
-                f"mismatch_per_bus.{bus_id}.delta_q_pu",
-            ))
+            input_values.append(
+                _build_proof_value(
+                    f"\\Delta P_{{{bus_id}}}",
+                    delta_p,
+                    "p.u.",
+                    f"mismatch_per_bus.{bus_id}.delta_p_pu",
+                )
+            )
+            input_values.append(
+                _build_proof_value(
+                    f"\\Delta Q_{{{bus_id}}}",
+                    delta_q,
+                    "p.u.",
+                    f"mismatch_per_bus.{bus_id}.delta_q_pu",
+                )
+            )
 
             substitution_parts.append(
                 f"\\Delta P_{{{bus_id}}} = {_format_float(delta_p)}, "
                 f"\\Delta Q_{{{bus_id}}} = {_format_float(delta_q)}"
             )
 
-        substitution_latex = (
-            f"\\text{{Iteracja }} k={k}:\\quad " +
-            ", \\quad ".join(substitution_parts[:3])  # Limit dla czytelności
-        )
+        substitution_latex = f"\\text{{Iteracja }} k={k}:\\quad " + ", \\quad ".join(
+            substitution_parts[:3]
+        )  # Limit dla czytelności
         if len(substitution_parts) > 3:
-            substitution_latex += f", \\quad \\ldots \\quad (\\text{{{len(substitution_parts)} węzłów}})"
+            substitution_latex += (
+                f", \\quad \\ldots \\quad (\\text{{{len(substitution_parts)} węzłów}})"
+            )
 
         return ProofStep(
             step_id=generate_step_id("PFPROOF", f"ITER{k}_MISMATCH", k),
@@ -445,7 +454,9 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             equation=_equation_to_definition(EQ_CONV_001_NORM),
             input_values=(
                 _build_proof_value(r"\|\mathbf{f}\|_2", it.norm_mismatch, "p.u.", "norm_mismatch"),
-                _build_proof_value(r"\|\mathbf{f}\|_\infty", it.max_mismatch_pu, "p.u.", "max_mismatch_pu"),
+                _build_proof_value(
+                    r"\|\mathbf{f}\|_\infty", it.max_mismatch_pu, "p.u.", "max_mismatch_pu"
+                ),
             ),
             substitution_latex=(
                 f"\\|\\mathbf{{f}}\\|_2 = {_format_float(it.norm_mismatch)}, \\quad "
@@ -480,12 +491,14 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             if block and isinstance(block, list) and len(block) > 0:
                 rows = len(block)
                 cols = len(block[0]) if isinstance(block[0], list) else 1
-                input_values.append(_build_proof_value(
-                    f"\\dim({block_name.replace('_', ',')})",
-                    f"{rows}×{cols}",
-                    "—",
-                    f"jacobian.{block_name}.dimensions",
-                ))
+                input_values.append(
+                    _build_proof_value(
+                        f"\\dim({block_name.replace('_', ',')})",
+                        f"{rows}×{cols}",
+                        "—",
+                        f"jacobian.{block_name}.dimensions",
+                    )
+                )
                 dimensions_info.append(f"{block_name}: {rows}\\times{cols}")
 
         substitution_latex = (
@@ -530,18 +543,22 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             delta_theta = deltas.get("delta_theta_rad", 0.0)
             delta_v = deltas.get("delta_v_pu", 0.0)
 
-            input_values.append(_build_proof_value(
-                f"\\Delta\\theta_{{{bus_id}}}",
-                delta_theta,
-                "rad",
-                f"delta_state.{bus_id}.delta_theta_rad",
-            ))
-            input_values.append(_build_proof_value(
-                f"\\Delta V_{{{bus_id}}}",
-                delta_v,
-                "p.u.",
-                f"delta_state.{bus_id}.delta_v_pu",
-            ))
+            input_values.append(
+                _build_proof_value(
+                    f"\\Delta\\theta_{{{bus_id}}}",
+                    delta_theta,
+                    "rad",
+                    f"delta_state.{bus_id}.delta_theta_rad",
+                )
+            )
+            input_values.append(
+                _build_proof_value(
+                    f"\\Delta V_{{{bus_id}}}",
+                    delta_v,
+                    "p.u.",
+                    f"delta_state.{bus_id}.delta_v_pu",
+                )
+            )
 
             delta_theta_deg = math.degrees(delta_theta)
             substitution_parts.append(
@@ -549,12 +566,11 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
                 f"\\Delta V_{{{bus_id}}} = {_format_float(delta_v)}"
             )
 
-        substitution_latex = (
-            f"\\text{{Iteracja }} k={k}:\\quad " +
-            ", \\quad ".join(substitution_parts[:3])
+        substitution_latex = f"\\text{{Iteracja }} k={k}:\\quad " + ", \\quad ".join(
+            substitution_parts[:3]
         )
         if len(substitution_parts) > 3:
-            substitution_latex += f", \\quad \\ldots"
+            substitution_latex += ", \\quad \\ldots"
 
         return ProofStep(
             step_id=generate_step_id("PFPROOF", f"ITER{k}_DELTA", k),
@@ -591,30 +607,33 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             theta_rad = state.get("theta_rad", 0.0)
             theta_deg = math.degrees(theta_rad)
 
-            input_values.append(_build_proof_value(
-                f"V_{{{bus_id}}}^{{(k+1)}}",
-                v_pu,
-                "p.u.",
-                f"state_next.{bus_id}.v_pu",
-            ))
-            input_values.append(_build_proof_value(
-                f"\\theta_{{{bus_id}}}^{{(k+1)}}",
-                theta_rad,
-                "rad",
-                f"state_next.{bus_id}.theta_rad",
-            ))
+            input_values.append(
+                _build_proof_value(
+                    f"V_{{{bus_id}}}^{{(k+1)}}",
+                    v_pu,
+                    "p.u.",
+                    f"state_next.{bus_id}.v_pu",
+                )
+            )
+            input_values.append(
+                _build_proof_value(
+                    f"\\theta_{{{bus_id}}}^{{(k+1)}}",
+                    theta_rad,
+                    "rad",
+                    f"state_next.{bus_id}.theta_rad",
+                )
+            )
 
             substitution_parts.append(
                 f"V_{{{bus_id}}} = {_format_float(v_pu)}, "
                 f"\\theta_{{{bus_id}}} = {_format_float(theta_deg)}^\\circ"
             )
 
-        substitution_latex = (
-            f"\\alpha = {_format_float(damping)}:\\quad " +
-            ", \\quad ".join(substitution_parts[:3])
+        substitution_latex = f"\\alpha = {_format_float(damping)}:\\quad " + ", \\quad ".join(
+            substitution_parts[:3]
         )
         if len(substitution_parts) > 3:
-            substitution_latex += f", \\quad \\ldots"
+            substitution_latex += ", \\quad \\ldots"
 
         return ProofStep(
             step_id=generate_step_id("PFPROOF", f"ITER{k}_UPDATE", k),
@@ -649,12 +668,14 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         # Zamiast tego sprawdzamy:
         # 1. Czy to ostatnia iteracja?
         # 2. Czy trace.converged = True?
-        is_last_iteration = (k == self._trace.final_iterations_count)
+        is_last_iteration = k == self._trace.final_iterations_count
         converged_at_this_iteration = is_last_iteration and self._trace.converged
 
         if converged_at_this_iteration:
             result_text = "ZBIEŻNE"
-            check_latex = f"{_format_float(max_mismatch)} < {_format_float(tolerance)} \\quad \\checkmark"
+            check_latex = (
+                f"{_format_float(max_mismatch)} < {_format_float(tolerance)} \\quad \\checkmark"
+            )
         else:
             result_text = "KONTYNUUJ"
             check_latex = f"{_format_float(max_mismatch)} \\geq {_format_float(tolerance)} \\quad \\rightarrow k+1"
@@ -665,7 +686,9 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             title_pl=f"Iteracja {k}: Sprawdzenie zbieżności",
             equation=_equation_to_definition(EQ_CONV_001_NORM),
             input_values=(
-                _build_proof_value(r"\|\mathbf{f}\|_\infty", max_mismatch, "p.u.", "max_mismatch_pu"),
+                _build_proof_value(
+                    r"\|\mathbf{f}\|_\infty", max_mismatch, "p.u.", "max_mismatch_pu"
+                ),
                 _build_proof_value(r"\varepsilon", tolerance, "p.u.", "tolerance"),
             ),
             substitution_latex=check_latex,
@@ -691,9 +714,9 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
         iterations = self._trace.final_iterations_count
 
         if converged:
-            result_text = f"ZBIEŻNOŚĆ po {iterations} iteracjach"
+            pass
         else:
-            result_text = f"BRAK ZBIEŻNOŚCI po {iterations} iteracjach"
+            pass
 
         return ProofStep(
             step_id=generate_step_id("PFPROOF", "CONV", 1),
@@ -701,13 +724,16 @@ Metoda iteracyjna rozwiązywania równań rozpływu mocy:
             title_pl="Kryterium zbieżności",
             equation=_equation_to_definition(EQ_CONV_001_NORM),
             input_values=(
-                _build_proof_value(r"\|\mathbf{f}\|_\infty", final_mismatch, "p.u.", "final_max_mismatch"),
+                _build_proof_value(
+                    r"\|\mathbf{f}\|_\infty", final_mismatch, "p.u.", "final_max_mismatch"
+                ),
                 _build_proof_value(r"\varepsilon", self._trace.tolerance, "p.u.", "tolerance"),
                 _build_proof_value("k", iterations, "—", "iterations_count"),
             ),
             substitution_latex=(
                 f"\\|\\mathbf{{f}}\\|_\\infty = {_format_float(final_mismatch)} "
-                + ("<" if converged else "\\geq") + " "
+                + ("<" if converged else "\\geq")
+                + " "
                 + f"\\varepsilon = {_format_float(self._trace.tolerance)} \\quad "
                 f"\\text{{({iterations} iteracji)}}"
             ),

@@ -10,29 +10,20 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import pytest
-
-from enm.models import (
-    EnergyNetworkModel,
-    ENMHeader,
-    ENMDefaults,
-    Bus,
-    Cable,
-    Transformer,
-    Source,
-    Load,
-    Substation,
-    Bay,
-)
-from enm.topology import build_topology_graph
 from application.sld.station_geometry import (
     build_station_geometry,
-    StationBoundingBox,
-    TrunkPathSegment,
-    EntryPointMarker,
-    StationGeometry,
 )
-
+from enm.models import (
+    Bay,
+    Bus,
+    Cable,
+    EnergyNetworkModel,
+    ENMHeader,
+    Source,
+    Substation,
+    Transformer,
+)
+from enm.topology import build_topology_graph
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -50,47 +41,78 @@ def _make_simple_enm() -> EnergyNetworkModel:
         ],
         branches=[
             Cable(
-                ref_id="cab_01", name="Kabel GPZ-S01",
-                from_bus_ref="bus_gpz_15", to_bus_ref="bus_s01_15",
-                type="cable", length_km=2.1,
-                r_ohm_per_km=0.2, x_ohm_per_km=0.07,
+                ref_id="cab_01",
+                name="Kabel GPZ-S01",
+                from_bus_ref="bus_gpz_15",
+                to_bus_ref="bus_s01_15",
+                type="cable",
+                length_km=2.1,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.07,
             ),
         ],
         transformers=[
             Transformer(
-                ref_id="tr_gpz", name="TR GPZ",
-                hv_bus_ref="bus_gpz_110", lv_bus_ref="bus_gpz_15",
-                sn_mva=25.0, uhv_kv=110.0, ulv_kv=15.0,
-                uk_percent=10.5, pk_kw=120.0,
+                ref_id="tr_gpz",
+                name="TR GPZ",
+                hv_bus_ref="bus_gpz_110",
+                lv_bus_ref="bus_gpz_15",
+                sn_mva=25.0,
+                uhv_kv=110.0,
+                ulv_kv=15.0,
+                uk_percent=10.5,
+                pk_kw=120.0,
             ),
         ],
         sources=[
             Source(
-                ref_id="src_grid", name="Sieć 110 kV",
-                bus_ref="bus_gpz_110", model="short_circuit_power", sk3_mva=3000.0,
+                ref_id="src_grid",
+                name="Sieć 110 kV",
+                bus_ref="bus_gpz_110",
+                model="short_circuit_power",
+                sk3_mva=3000.0,
             ),
         ],
         loads=[],
         generators=[],
         substations=[
             Substation(
-                ref_id="sub_gpz", name="GPZ Miasto", station_type="gpz",
+                ref_id="sub_gpz",
+                name="GPZ Miasto",
+                station_type="gpz",
                 bus_refs=["bus_gpz_110", "bus_gpz_15"],
                 entry_point_ref="bus_gpz_110",
             ),
             Substation(
-                ref_id="sub_s01", name="Stacja S01", station_type="mv_lv",
+                ref_id="sub_s01",
+                name="Stacja S01",
+                station_type="mv_lv",
                 bus_refs=["bus_s01_15"],
                 entry_point_ref="bus_s01_15",
             ),
         ],
         bays=[
-            Bay(ref_id="bay_gpz_in", name="Pole IN GPZ", bay_role="IN",
-                substation_ref="sub_gpz", bus_ref="bus_gpz_110"),
-            Bay(ref_id="bay_gpz_tr", name="Pole TR GPZ", bay_role="TR",
-                substation_ref="sub_gpz", bus_ref="bus_gpz_15"),
-            Bay(ref_id="bay_s01_in", name="Pole IN S01", bay_role="IN",
-                substation_ref="sub_s01", bus_ref="bus_s01_15"),
+            Bay(
+                ref_id="bay_gpz_in",
+                name="Pole IN GPZ",
+                bay_role="IN",
+                substation_ref="sub_gpz",
+                bus_ref="bus_gpz_110",
+            ),
+            Bay(
+                ref_id="bay_gpz_tr",
+                name="Pole TR GPZ",
+                bay_role="TR",
+                substation_ref="sub_gpz",
+                bus_ref="bus_gpz_15",
+            ),
+            Bay(
+                ref_id="bay_s01_in",
+                name="Pole IN S01",
+                bay_role="IN",
+                substation_ref="sub_s01",
+                bus_ref="bus_s01_15",
+            ),
         ],
     )
 
@@ -129,8 +151,11 @@ class TestStationBoundingBox:
         enm = _make_simple_enm()
         topo = build_topology_graph(enm)
         geom = build_station_geometry(
-            enm, topo, _make_bus_positions(),
-            station_min_width=200.0, station_min_height=160.0,
+            enm,
+            topo,
+            _make_bus_positions(),
+            station_min_width=200.0,
+            station_min_height=160.0,
         )
         for box in geom.station_boxes:
             assert box.width >= 200.0
@@ -212,7 +237,7 @@ class TestDeterminism:
         assert len(g1.station_boxes) == len(g2.station_boxes)
         assert len(g1.trunk_path) == len(g2.trunk_path)
         assert len(g1.entry_points) == len(g2.entry_points)
-        for b1, b2 in zip(g1.station_boxes, g2.station_boxes):
+        for b1, b2 in zip(g1.station_boxes, g2.station_boxes, strict=False):
             assert b1.substation_ref == b2.substation_ref
             assert b1.x == b2.x
             assert b1.y == b2.y

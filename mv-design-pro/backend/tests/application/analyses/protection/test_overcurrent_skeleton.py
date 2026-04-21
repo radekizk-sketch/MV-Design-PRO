@@ -5,6 +5,7 @@ from application.analyses.protection.overcurrent.pipeline import run_overcurrent
 from application.analyses.run_index import index_run
 from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
+
 from tests.utils.determinism import assert_deterministic
 
 

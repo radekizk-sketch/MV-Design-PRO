@@ -1,7 +1,7 @@
 """
 SLD Data Transfer Objects.
 
-PowerFactory Alignment (per sld_rules.md, wizard_screens.md, powerfactory_ui_parity.md):
+PowerFactory Alignment (per sld_rules.md, wizard_screens.md, ui_canonical_parity.md):
 - Operating modes: MODEL_EDIT, CASE_CONFIG, RESULT_VIEW
 - Result freshness: NONE, FRESH, OUTDATED
 - Visual states: in_service (gray when False)
@@ -32,7 +32,7 @@ class SldOperatingMode(str, Enum):
 
 class SldResultStatus(str, Enum):
     """
-    Result freshness status (per powerfactory_ui_parity.md § B.2).
+    Result freshness status (per ui_canonical_parity.md § B.2).
 
     NONE: Never computed
     FRESH: Results current with model
@@ -156,7 +156,7 @@ class SldDiagramDTO:
     """
     Complete SLD diagram with mode and result status.
 
-    PowerFactory Alignment (per sld_rules.md § C, powerfactory_ui_parity.md § B):
+    PowerFactory Alignment (per sld_rules.md § C, ui_canonical_parity.md § B):
     - mode: Controls allowed actions (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
     - result_status: Controls overlay visibility (NONE, FRESH, OUTDATED)
 

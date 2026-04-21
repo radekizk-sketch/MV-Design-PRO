@@ -19,11 +19,12 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from uuid import UUID
 
 from application.analysis_dispatch.summary import AnalysisRunSummary
-from domain.analysis_kind import AnalysisKind, kind_to_analysis_type
+from domain.analysis_kind import AnalysisKind
 from domain.analysis_run import AnalysisRun
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
@@ -40,10 +41,7 @@ _DETERMINISTIC_LIST_KEYS = {"nodes", "branches", "sources", "loads"}
 def _canonicalize(value: Any, *, current_key: str | None = None) -> Any:
     """Recursively canonicalize a value for deterministic hashing."""
     if isinstance(value, dict):
-        return {
-            key: _canonicalize(value[key], current_key=key)
-            for key in sorted(value.keys())
-        }
+        return {key: _canonicalize(value[key], current_key=key) for key in sorted(value.keys())}
     if isinstance(value, list):
         items = [_canonicalize(item, current_key=current_key) for item in value]
         if current_key in _DETERMINISTIC_LIST_KEYS:
@@ -161,7 +159,10 @@ class AnalysisDispatchService:
 
         # Step 4: dedup lookup
         dedup_run = self._find_dedup_candidate(
-            project_id, resolved_case_id, "short_circuit_sn", dispatch_hash,
+            project_id,
+            resolved_case_id,
+            "short_circuit_sn",
+            dispatch_hash,
         )
         if dedup_run is not None:
             return self._build_summary_from_run(
@@ -215,7 +216,10 @@ class AnalysisDispatchService:
 
         # Dedup lookup
         dedup_run = self._find_dedup_candidate(
-            project_id, resolved_case_id, "PF", dispatch_hash,
+            project_id,
+            resolved_case_id,
+            "PF",
+            dispatch_hash,
         )
         if dedup_run is not None:
             return self._build_summary_from_run(
@@ -278,6 +282,7 @@ class AnalysisDispatchService:
 
         # Execute if not already finished (create_run may return cached)
         from domain.protection_analysis import ProtectionRunStatus
+
         if run.status not in {ProtectionRunStatus.FINISHED, ProtectionRunStatus.FAILED}:
             run = service.execute_run(run.id)
 
@@ -299,9 +304,7 @@ class AnalysisDispatchService:
     # Helpers
     # ------------------------------------------------------------------
 
-    def _resolve_case_id(
-        self, project_id: UUID, study_case_id: UUID | None
-    ) -> UUID:
+    def _resolve_case_id(self, project_id: UUID, study_case_id: UUID | None) -> UUID:
         """Resolve study_case_id using ActiveCaseService if None."""
         from application.active_case import ActiveCaseService
 
@@ -315,9 +318,7 @@ class AnalysisDispatchService:
             )
         return active
 
-    def _get_enm_hash(
-        self, project_id: UUID, study_case_id: UUID | None
-    ) -> str:
+    def _get_enm_hash(self, project_id: UUID, study_case_id: UUID | None) -> str:
         """Get the ENM snapshot hash for the current project state.
 
         Uses the active snapshot ID from the operating case as the ENM identity.

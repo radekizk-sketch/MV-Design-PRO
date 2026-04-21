@@ -24,7 +24,6 @@ from domain.readiness import (
     ReadinessIssueV1,
     ReadinessPriority,
 )
-from enm.fix_actions import FixAction
 
 # Generator types that REQUIRE connection_variant
 _OZE_GEN_TYPES = frozenset({"pv_inverter", "wind_inverter", "bess"})
@@ -60,16 +59,18 @@ def validate_generator_connections(
 
         # Catalog ref required for all generators
         if not catalog_ref:
-            issues.append(ReadinessIssueV1(
-                code="catalog.ref_missing",
-                area=ReadinessAreaV1.CATALOGS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=f"Generator '{name}' ({ref_id}): brak referencji katalogowej",
-                element_id=ref_id,
-                element_type="GENERATOR",
-                fix_hint_pl="Przypisz typ z katalogu do generatora",
-                wizard_step="K6",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code="catalog.ref_missing",
+                    area=ReadinessAreaV1.CATALOGS,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=f"Generator '{name}' ({ref_id}): brak referencji katalogowej",
+                    element_id=ref_id,
+                    element_type="GENERATOR",
+                    fix_hint_pl="Przypisz typ z katalogu do generatora",
+                    wizard_step="K6",
+                )
+            )
 
         # Synchronous generators don't need connection_variant
         if gen_type not in _OZE_GEN_TYPES:
@@ -77,96 +78,108 @@ def validate_generator_connections(
 
         # OZE generators MUST have connection_variant
         if not connection_variant:
-            issues.append(ReadinessIssueV1(
-                code="generator.connection_variant_missing",
-                area=ReadinessAreaV1.GENERATORS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=(
-                    f"Generator OZE '{name}' ({ref_id}): brak wariantu przylaczenia "
-                    f"(nn_side lub block_transformer)"
-                ),
-                element_id=ref_id,
-                element_type="GENERATOR",
-                fix_hint_pl="Wybierz wariant przylaczenia w kreatorze (krok K6)",
-                wizard_step="K6",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code="generator.connection_variant_missing",
+                    area=ReadinessAreaV1.GENERATORS,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=(
+                        f"Generator OZE '{name}' ({ref_id}): brak wariantu przylaczenia "
+                        f"(nn_side lub block_transformer)"
+                    ),
+                    element_id=ref_id,
+                    element_type="GENERATOR",
+                    fix_hint_pl="Wybierz wariant przylaczenia w kreatorze (krok K6)",
+                    wizard_step="K6",
+                )
+            )
             continue
 
         if connection_variant == "nn_side":
             # Variant A: must have station_ref
             if not station_ref:
-                issues.append(ReadinessIssueV1(
-                    code="generator.station_ref_missing",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): wariant 'po stronie nN' "
-                        f"wymaga wskazania stacji (station_ref)"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Wskazz stacje SN/nN w kreatorze (krok K6)",
-                    wizard_step="K6",
-                ))
+                issues.append(
+                    ReadinessIssueV1(
+                        code="generator.station_ref_missing",
+                        area=ReadinessAreaV1.GENERATORS,
+                        priority=ReadinessPriority.BLOCKER,
+                        message_pl=(
+                            f"Generator OZE '{name}' ({ref_id}): wariant 'po stronie nN' "
+                            f"wymaga wskazania stacji (station_ref)"
+                        ),
+                        element_id=ref_id,
+                        element_type="GENERATOR",
+                        fix_hint_pl="Wskazz stacje SN/nN w kreatorze (krok K6)",
+                        wizard_step="K6",
+                    )
+                )
             elif station_ref not in stations_by_ref:
-                issues.append(ReadinessIssueV1(
-                    code="generator.station_ref_invalid",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): stacja '{station_ref}' "
-                        f"nie istnieje w modelu"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Popraw referencje do stacji w kreatorze",
-                    wizard_step="K6",
-                ))
+                issues.append(
+                    ReadinessIssueV1(
+                        code="generator.station_ref_invalid",
+                        area=ReadinessAreaV1.GENERATORS,
+                        priority=ReadinessPriority.BLOCKER,
+                        message_pl=(
+                            f"Generator OZE '{name}' ({ref_id}): stacja '{station_ref}' "
+                            f"nie istnieje w modelu"
+                        ),
+                        element_id=ref_id,
+                        element_type="GENERATOR",
+                        fix_hint_pl="Popraw referencje do stacji w kreatorze",
+                        wizard_step="K6",
+                    )
+                )
 
         elif connection_variant == "block_transformer":
             # Variant B: must have blocking_transformer_ref
             if not blocking_tr_ref:
-                issues.append(ReadinessIssueV1(
-                    code="generator.block_transformer_missing",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): wariant 'transformator blokowy' "
-                        f"wymaga wskazania transformatora (blocking_transformer_ref)"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Wskazz transformator blokowy w kreatorze (krok K6)",
-                    wizard_step="K6",
-                ))
+                issues.append(
+                    ReadinessIssueV1(
+                        code="generator.block_transformer_missing",
+                        area=ReadinessAreaV1.GENERATORS,
+                        priority=ReadinessPriority.BLOCKER,
+                        message_pl=(
+                            f"Generator OZE '{name}' ({ref_id}): wariant 'transformator blokowy' "
+                            f"wymaga wskazania transformatora (blocking_transformer_ref)"
+                        ),
+                        element_id=ref_id,
+                        element_type="GENERATOR",
+                        fix_hint_pl="Wskazz transformator blokowy w kreatorze (krok K6)",
+                        wizard_step="K6",
+                    )
+                )
             elif blocking_tr_ref not in transformers_by_ref:
-                issues.append(ReadinessIssueV1(
-                    code="generator.block_transformer_invalid",
-                    area=ReadinessAreaV1.GENERATORS,
-                    priority=ReadinessPriority.BLOCKER,
-                    message_pl=(
-                        f"Generator OZE '{name}' ({ref_id}): transformator blokowy "
-                        f"'{blocking_tr_ref}' nie istnieje w modelu"
-                    ),
-                    element_id=ref_id,
-                    element_type="GENERATOR",
-                    fix_hint_pl="Dodaj transformator blokowy w kreatorze (krok K5)",
-                    wizard_step="K5",
-                ))
+                issues.append(
+                    ReadinessIssueV1(
+                        code="generator.block_transformer_invalid",
+                        area=ReadinessAreaV1.GENERATORS,
+                        priority=ReadinessPriority.BLOCKER,
+                        message_pl=(
+                            f"Generator OZE '{name}' ({ref_id}): transformator blokowy "
+                            f"'{blocking_tr_ref}' nie istnieje w modelu"
+                        ),
+                        element_id=ref_id,
+                        element_type="GENERATOR",
+                        fix_hint_pl="Dodaj transformator blokowy w kreatorze (krok K5)",
+                        wizard_step="K5",
+                    )
+                )
 
         else:
-            issues.append(ReadinessIssueV1(
-                code="generator.connection_variant_invalid",
-                area=ReadinessAreaV1.GENERATORS,
-                priority=ReadinessPriority.BLOCKER,
-                message_pl=(
-                    f"Generator OZE '{name}' ({ref_id}): nieznany wariant przylaczenia "
-                    f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
-                ),
-                element_id=ref_id,
-                element_type="GENERATOR",
-                fix_hint_pl="Popraw wariant przylaczenia w kreatorze",
-                wizard_step="K6",
-            ))
+            issues.append(
+                ReadinessIssueV1(
+                    code="generator.connection_variant_invalid",
+                    area=ReadinessAreaV1.GENERATORS,
+                    priority=ReadinessPriority.BLOCKER,
+                    message_pl=(
+                        f"Generator OZE '{name}' ({ref_id}): nieznany wariant przylaczenia "
+                        f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
+                    ),
+                    element_id=ref_id,
+                    element_type="GENERATOR",
+                    fix_hint_pl="Popraw wariant przylaczenia w kreatorze",
+                    wizard_step="K6",
+                )
+            )
 
     return issues

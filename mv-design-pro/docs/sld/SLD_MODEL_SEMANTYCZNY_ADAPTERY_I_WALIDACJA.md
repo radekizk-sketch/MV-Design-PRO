@@ -1,4 +1,4 @@
-# MODEL SEMANTYCZNY SLD — ADAPTERY I WALIDACJA
+﻿# MODEL SEMANTYCZNY SLD â€” ADAPTERY I WALIDACJA
 
 **Data:** 2026-03-14
 **Wersja:** 1.0
@@ -8,7 +8,7 @@
 
 ## 1. CEL
 
-Zdefiniowac jeden jawny model semantyczny SLD, który zastapi obecne 4 osobne obiekty (graph + stationBlockDetails + visualTopology + extendedLogicalViews) jednym spójnym modelem. Adapter buduje ten model z Snapshot/ENM. Walidator weryfikuje kontrakty per typ stacji przed renderingiem.
+Zdefiniowac jeden jawny model semantyczny SLD, ktĂłry zastapi obecne 4 osobne obiekty (graph + stationBlockDetails + visualTopology + extendedLogicalViews) jednym spĂłjnym modelem. Adapter buduje ten model z Snapshot/ENM. Walidator weryfikuje kontrakty per typ stacji przed renderingiem.
 
 ---
 
@@ -26,15 +26,15 @@ TopologyInputV1
     v
 +----------------------------------+
 | buildSldSemanticModel()          |
-| (NOWY adapter — zast. 4 obiekty)|
+| (NOWY adapter â€” zast. 4 obiekty)|
 |   1. BFS segmentacja             |
 |   2. Klasyfikacja stacji         |
-|   3. Budowa pól per stacja       |
+|   3. Budowa pĂłl per stacja       |
 |   4. Budowa SldSemanticModelV1   |
 +----------------------------------+
     |
     v
-SldSemanticModelV1 (NOWY — jeden jawny model)
+SldSemanticModelV1 (NOWY â€” jeden jawny model)
     |
     v
 +----------------------------------+
@@ -69,8 +69,8 @@ Renderery SVG (istniejace)
 
 **Problem:** Renderery musza laczyc te 4 obiekty, rekonstruujac semantyke. To prowadzi do:
 - Ukrytej topologii w JSX
-- Niejawnego inferowania typów stacji
-- Brakujacych walidacji kontraktów
+- Niejawnego inferowania typĂłw stacji
+- Brakujacych walidacji kontraktĂłw
 - Duplikacji logiki
 
 ---
@@ -97,13 +97,13 @@ export interface SldSemanticModelV1 {
 }
 ```
 
-Pelna definicja typów w: `SPEC_KONTRAKTY_SYSTEMOWE_SN.md` sekcja 1.
+Pelna definicja typĂłw w: `SPEC_KONTRAKTY_SYSTEMOWE_SN.md` sekcja 1.
 
 ### 4.2 Adapter
 
 ```typescript
 /**
- * buildSldSemanticModel — jedyny adapter Snapshot -> SldSemanticModel.
+ * buildSldSemanticModel â€” jedyny adapter Snapshot -> SldSemanticModel.
  *
  * Zastepuje dotychczasowe 4 osobne obiekty jednym modelem.
  * Logika z topologyAdapterV2 + stationBlockBuilder zostaje,
@@ -118,7 +118,7 @@ export function buildSldSemanticModel(
   // 2. Klasyfikacja stacji (z stationBlockBuilder.deriveEmbeddingRole)
   const stationKinds = classifyStations(input, segmentation);
 
-  // 3. Budowa pól per stacja (z stationBlockBuilder.buildFieldsForStation)
+  // 3. Budowa pĂłl per stacja (z stationBlockBuilder.buildFieldsForStation)
   const stationDetails = buildStationDetails(input, stationKinds);
 
   // 4. Budowa SldSemanticModelV1
@@ -203,11 +203,11 @@ export function validateSldSemanticModel(
 7. Renderery czytaja z SldSemanticModelV1
 8. Testy regresyjne: identyczny wynik wizualny
 
-### 5.3 Faza 3: Usuniecie starych obiektów
+### 5.3 Faza 3: Usuniecie starych obiektĂłw
 
 9. Usunac AdapterResultV1 (jesli juz nie uzywany)
 10. Usunac stary topologyAdapter.ts (V1)
-11. Skonsolidowac stale (IndustrialAesthetics + sldEtapStyle)
+11. Skonsolidowac stale (IndustrialAesthetics + sldbenchmarkStyle)
 
 ---
 
@@ -230,7 +230,7 @@ TEST parity_old_vs_new:
 TEST determinism_semantic_model:
   GIVEN: ten sam TopologyInputV1
   WHEN: 100x buildSldSemanticModel(input)
-  THEN: wszystkie 100 wyników sa identyczne (deep equal)
+  THEN: wszystkie 100 wynikĂłw sa identyczne (deep equal)
 ```
 
 ### 6.3 Test walidacji
@@ -241,3 +241,4 @@ TEST validation_catches_errors:
   WHEN: validateSldSemanticModel(model)
   THEN: errors zawiera SV01 (missing LINE_OUT)
 ```
+

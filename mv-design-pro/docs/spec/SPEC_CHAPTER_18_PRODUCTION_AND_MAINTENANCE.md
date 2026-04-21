@@ -1,4 +1,10 @@
-# Rozdział 18 — Wdrożenie Produkcyjne, Eksploatacja, Audyt i Utrzymanie (ETAP-GRADE)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 18 — Wdrożenie Produkcyjne, Eksploatacja, Audyt i Utrzymanie (benchmark-GRADE)
 
 **Wersja:** 1.0
 **Status:** AS-IS + TO-BE (jawnie oznaczone)
@@ -21,9 +27,9 @@
 - Monitoring: 3-tier health checks (basic, readiness, extended).
 - Logging: structured, request-ID correlation, severity-based routing.
 
-### §18.0.2 Parytet z ETAP / PowerFactory
+### §18.0.2 Parytet z benchmark / benchmark
 
-| Aspekt | ETAP | PowerFactory | MV-DESIGN-PRO |
+| Aspekt | benchmark | benchmark | MV-DESIGN-PRO |
 |--------|------|--------------|---------------|
 | Konteneryzacja | ✗ (desktop) | ✗ (desktop) | ✓ Docker + K8s |
 | Health checks | ✗ | ✗ | ✓ 3-tier |
@@ -638,3 +644,4 @@ AS-IS: `docs/GO-LIVE-CHECKLIST.md`.
 ---
 
 **SPECYFIKACJA ZAMKNIĘTA — Rozdziały 1–18 kompletne.**
+

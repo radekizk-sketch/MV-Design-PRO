@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useNetworkBuildStore, selectBlockersByCategory } from '../networkBuildStore';
+import { useNetworkBuildStore, selectActiveOperationForm, selectBlockersByCategory } from '../networkBuildStore';
 import type { ReadinessInfo } from '../../../types/enm';
 
 // ---------------------------------------------------------------------------
@@ -36,17 +36,15 @@ function readinessWithBlockers(codes: string[]): ReadinessInfo {
 
 describe('networkBuildStore form management', () => {
   beforeEach(() => {
-    useNetworkBuildStore.setState({
-      activeOperationForm: null,
-    });
+    useNetworkBuildStore.getState().reset();
   });
 
   it('openOperationForm sets active form', () => {
     const store = useNetworkBuildStore.getState();
     store.openOperationForm('add_grid_source_sn', { bus_ref: 'bus-1' });
     const after = useNetworkBuildStore.getState();
-    expect(after.activeOperationForm).not.toBeNull();
-    expect(after.activeOperationForm?.op).toBe('add_grid_source_sn');
+    expect(selectActiveOperationForm(after)).not.toBeNull();
+    expect(selectActiveOperationForm(after)?.op).toBe('add_grid_source_sn');
   });
 
   it('closeOperationForm clears active form', () => {
@@ -54,7 +52,7 @@ describe('networkBuildStore form management', () => {
     store.openOperationForm('add_grid_source_sn', {});
     store.closeOperationForm();
     const after = useNetworkBuildStore.getState();
-    expect(after.activeOperationForm).toBeNull();
+    expect(selectActiveOperationForm(after)).toBeNull();
   });
 
   it('consecutive openOperationForm replaces previous', () => {
@@ -62,7 +60,7 @@ describe('networkBuildStore form management', () => {
     store.openOperationForm('add_grid_source_sn', {});
     store.openOperationForm('add_transformer_sn_nn', { station_ref: 'st-1' });
     const after = useNetworkBuildStore.getState();
-    expect(after.activeOperationForm?.op).toBe('add_transformer_sn_nn');
+    expect(selectActiveOperationForm(after)?.op).toBe('add_transformer_sn_nn');
   });
 });
 
@@ -181,7 +179,7 @@ describe('fix action types', () => {
   });
 
   it('old fabricated keys are not in the valid set', () => {
-    const oldKeys = ['assign_catalog', 'add_transformer', 'set_nop', 'add_source', 'open_catalog', 'navigate'];
+    const oldKeys = ['assign_catalog', 'open_catalog', 'navigate', 'modal_open', 'jump_to_form', 'toggle_modal'];
     for (const key of oldKeys) {
       expect(validTypes).not.toContain(key);
     }

@@ -14,7 +14,13 @@ from typing import Any
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-from network_model.solvers.power_flow_types import PQSpec, PVSpec, PowerFlowInput, PowerFlowOptions, SlackSpec
+from network_model.solvers.power_flow_types import (
+    PowerFlowInput,
+    PowerFlowOptions,
+    PQSpec,
+    PVSpec,
+    SlackSpec,
+)
 
 
 @dataclass(frozen=True)
@@ -100,8 +106,7 @@ class LoadFlowRunInput:
                 for b in self.branches
             ],
             "loads": [
-                {"node_id": ld.node_id, "p_mw": ld.p_mw, "q_mvar": ld.q_mvar}
-                for ld in self.loads
+                {"node_id": ld.node_id, "p_mw": ld.p_mw, "q_mvar": ld.q_mvar} for ld in self.loads
             ],
             "generators": [
                 {

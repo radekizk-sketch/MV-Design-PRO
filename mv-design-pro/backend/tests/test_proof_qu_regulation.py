@@ -1,8 +1,8 @@
 """Tests for Q(U) Regulation Proof Pack."""
+
 from datetime import datetime
 
 import pytest
-
 from application.proof_engine.packs.qu_regulation import (
     QUCharacteristicPoint,
     QURegulationProofInput,
@@ -14,25 +14,25 @@ from application.proof_engine.types import ProofType
 
 def _make_input(**overrides) -> QURegulationProofInput:
     """Create default Q(U) proof input."""
-    defaults = dict(
-        project_name="Projekt OZE",
-        case_name="Przypadek bazowy",
-        oze_id="OZE1",
-        oze_name="PV Park Zachód",
-        run_timestamp=datetime(2024, 6, 15, 10, 0, 0),
-        solver_version="4.0.0",
-        p_nominal_mw=2.0,
-        q_max_mvar=1.0,
-        cos_phi_min=0.9,
-        qu_characteristic=[
+    defaults = {
+        "project_name": "Projekt OZE",
+        "case_name": "Przypadek bazowy",
+        "oze_id": "OZE1",
+        "oze_name": "PV Park Zachód",
+        "run_timestamp": datetime(2024, 6, 15, 10, 0, 0),
+        "solver_version": "4.0.0",
+        "p_nominal_mw": 2.0,
+        "q_max_mvar": 1.0,
+        "cos_phi_min": 0.9,
+        "qu_characteristic": [
             QUCharacteristicPoint(u_pu=0.95, q_pu=1.0),
             QUCharacteristicPoint(u_pu=0.98, q_pu=0.0),
             QUCharacteristicPoint(u_pu=1.02, q_pu=0.0),
             QUCharacteristicPoint(u_pu=1.05, q_pu=-1.0),
         ],
-        voltages_at_oze_pu=[1.00, 1.01, 1.02, 1.03, 1.04],
-        q_injected_mvar=[0.0, 0.0, 0.0, -0.04, -0.08],
-    )
+        "voltages_at_oze_pu": [1.00, 1.01, 1.02, 1.03, 1.04],
+        "q_injected_mvar": [0.0, 0.0, 0.0, -0.04, -0.08],
+    }
     defaults.update(overrides)
     return QURegulationProofInput(**defaults)
 
@@ -121,6 +121,7 @@ class TestQURegulationProofPack:
 
     def test_determinism_with_fixed_artifact_id(self):
         from uuid import UUID
+
         inp = _make_input()
         aid = UUID("abcdef01-2345-6789-abcd-ef0123456789")
         r1 = QURegulationProofPack.generate(inp, artifact_id=aid)

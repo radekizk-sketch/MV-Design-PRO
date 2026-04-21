@@ -3,7 +3,7 @@
 **Referencja:** SYSTEM_SPEC.md § 9 i § 18, **wizard_screens.md (KANONICZNY)**
 **Status:** KANONICZNY
 
-> **UWAGA:** Niniejszy dokument jest spójny z `wizard_screens.md` (wersja 2.0) i `powerfactory_ui_parity.md`.
+> **UWAGA:** Niniejszy dokument jest spójny z `wizard_screens.md` (wersja 2.0) i `ui_canonical_parity.md`.
 > Tryby pracy SLD są 1:1 zmapowane na tryby systemowe opisane w Wizard.
 
 ---

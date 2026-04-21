@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SYSTEM_SPEC.md: READ-ONLY result display
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Deterministic tables, result views
+ * - ui_canonical_parity.md: Deterministic tables, result views
  * - 100% Polish UI
  *
  * FEATURES:

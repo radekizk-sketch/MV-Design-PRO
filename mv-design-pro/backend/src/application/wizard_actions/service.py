@@ -1,15 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import replace
-from datetime import datetime, timezone
-from typing import Any, Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
+from application.analysis_run.result_invalidator import ResultInvalidator
 from application.network_model import (
     ensure_snapshot_matches_project,
     network_model_id_for_project,
 )
-from application.analysis_run.result_invalidator import ResultInvalidator
 from domain.models import OperatingCase
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.core import (
@@ -59,9 +60,7 @@ class WizardActionService:
         ensure_snapshot_matches_project(snapshot, case.project_id)
         return snapshot
 
-    def submit_batch(
-        self, case_id: UUID, actions: list[dict[str, Any]]
-    ) -> BatchActionResult:
+    def submit_batch(self, case_id: UUID, actions: list[dict[str, Any]]) -> BatchActionResult:
         with self._uow_factory() as uow:
             case = uow.cases.get_operating_case(case_id)
             if case is None:
@@ -84,30 +83,26 @@ class WizardActionService:
                         )
                     ],
                 )
-            envelopes = [
-                _build_envelope(payload, parent_snapshot_id) for payload in actions
-            ]
+            envelopes = [_build_envelope(payload, parent_snapshot_id) for payload in actions]
             working_snapshot = snapshot
             failure_index: int | None = None
             failure_action_result: ActionResult | None = None
             for index, envelope in enumerate(envelopes):
                 result = validate_action_envelope(envelope, working_snapshot)
-                result = _enforce_parent_snapshot_match(
-                    result, envelope, parent_snapshot_id
-                )
+                result = _enforce_parent_snapshot_match(result, envelope, parent_snapshot_id)
                 if result.status != "accepted":
                     failure_index = index
                     failure_action_result = result
                     break
                 accepted_action = replace(envelope, status="accepted")
-                working_snapshot = apply_action_to_snapshot(
-                    working_snapshot, accepted_action
-                )
+                working_snapshot = apply_action_to_snapshot(working_snapshot, accepted_action)
             if failure_index is not None and failure_action_result is not None:
                 aborted_results = [
-                    failure_action_result
-                    if index == failure_index
-                    else _batch_aborted_result(envelope, parent_snapshot_id)
+                    (
+                        failure_action_result
+                        if index == failure_index
+                        else _batch_aborted_result(envelope, parent_snapshot_id)
+                    )
                     for index, envelope in enumerate(envelopes)
                 ]
                 return BatchActionResult(
@@ -163,16 +158,14 @@ def _update_case_snapshot(case: OperatingCase, snapshot_id: str) -> OperatingCas
         project_design_mode=case.project_design_mode,
         revision=case.revision,
         created_at=case.created_at,
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
 
 
 def _build_envelope(payload: dict[str, Any], parent_snapshot_id: str) -> ActionEnvelope:
     payload_parent_id = _string_or_none(payload.get("parent_snapshot_id"))
     if payload_parent_id is not None and payload_parent_id != parent_snapshot_id:
-        raise InvalidActionPayload(
-            "Action parent_snapshot_id does not match case active snapshot."
-        )
+        raise InvalidActionPayload("Action parent_snapshot_id does not match case active snapshot.")
     return ActionEnvelope(
         action_id=_string_or_none(payload.get("action_id")),
         parent_snapshot_id=parent_snapshot_id,
@@ -218,9 +211,7 @@ def _enforce_parent_snapshot_match(
     )
 
 
-def _accepted_result(
-    envelope: ActionEnvelope, parent_snapshot_id: str
-) -> ActionResult:
+def _accepted_result(envelope: ActionEnvelope, parent_snapshot_id: str) -> ActionResult:
     return ActionResult(
         status="accepted",
         action_id=envelope.action_id,
@@ -230,9 +221,7 @@ def _accepted_result(
     )
 
 
-def _batch_aborted_result(
-    envelope: ActionEnvelope, parent_snapshot_id: str
-) -> ActionResult:
+def _batch_aborted_result(envelope: ActionEnvelope, parent_snapshot_id: str) -> ActionResult:
     return ActionResult(
         status="rejected",
         action_id=envelope.action_id,

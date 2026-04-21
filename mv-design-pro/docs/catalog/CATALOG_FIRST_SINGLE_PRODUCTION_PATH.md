@@ -5,7 +5,7 @@ Jedna ścieżka produkcyjna: tworzenie obiektów krytycznych przez katalog.
 
 ## Bieżące kroki cleanup
 - domknięte bramki formularzy krytycznych,
-- aliasy operacji `_from_catalog` mapowane do kanonicznych,
+- historyczne operacje `_from_catalog` usuniete z aktywnej powierzchni publicznej,
 - assign-after-create oznaczony jako migracja.
 
 ## Pozostałe kroki

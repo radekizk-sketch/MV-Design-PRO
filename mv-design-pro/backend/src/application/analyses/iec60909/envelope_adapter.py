@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.run_envelope import (
@@ -83,10 +83,10 @@ def _resolve_created_at_utc(result: ShortCircuitResult) -> str:
     created_at = getattr(result, "created_at", None) or getattr(result, "timestamp", None)
     if isinstance(created_at, datetime):
         if created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
+            created_at = created_at.replace(tzinfo=UTC)
         else:
-            created_at = created_at.astimezone(timezone.utc)
+            created_at = created_at.astimezone(UTC)
         return created_at.isoformat()
     if created_at is not None:
         return str(created_at)
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()

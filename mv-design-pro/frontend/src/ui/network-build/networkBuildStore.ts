@@ -1,44 +1,65 @@
-/**
- * Network Build Store — Zustand store dla procesu budowy sieci SN.
- *
- * KANONICZNA ROLA:
- * - Derywuje stan budowy z istniejącego snapshotStore (ZERO duplikacji danych)
- * - Zarządza aktywnym formularzem operacji domenowej
- * - Zapewnia selektory dla ProcessPanel, ReadinessBar, ActiveTerminals
- *
- * DETERMINIZM:
- * - Ten sam snapshot → ten sam buildPhase, te same listy
- * - Sortowanie po id na każdym etapie
- *
- * BINDING: 100% PL etykiety, brak kodów projektowych.
- */
-
 import { create } from 'zustand';
+
+import { useActiveCaseId } from '../app-state';
+import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
+import { isOperationalBus } from '../shared/enmVisibility';
+import { deriveOperationalWorkspaceBlockStateFromSnapshot } from '../topology/liveReadiness';
+import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import type { ElementType } from '../types';
+import type { ReadinessIssue } from '../types';
+import {
+  canonicalOperationInput,
+  type CanonicalOpName,
+  isCanonicalOpName,
+} from '../../types/domainOps';
 import type {
   EnergyNetworkModel,
   LogicalViewsV1,
   ReadinessInfo,
   TerminalRef,
 } from '../../types/enm';
-import type { CanonicalOpName } from '../../types/domainOps';
+import { buildBlockerCountsByElement } from './liveReadiness';
+import type {
+  EntityTypeCode,
+  HelperSurfaceCode,
+  SurfaceLifecycleState,
+  SurfaceStackInvariantViolation,
+  WorkspaceBreadcrumb,
+  WorkspaceOpenMode,
+  WorkspaceRouteKey,
+  WorkspaceScreenCode,
+  WorkspaceSurfaceCode,
+  WorkspaceSurfaceDescriptor,
+  WorkspaceSurfaceSession,
+  WorkspaceSurfaceStackLevel,
+} from '../workspace/types';
+import {
+  ANALYSIS_SURFACE_SCREEN_CODE,
+  REPORT_SURFACE_SCREEN_CODE,
+  createWorkspaceSurfaceSession,
+  HELPER_SURFACE_REGISTRY,
+  isHelperSurfaceCode,
+  ROUTE_MANAGED_ROUTE_KEYS,
+  SCREEN_MATRIX,
+  SURFACE_REGISTRY,
+  validateSurfaceStack,
+} from '../workspace/types';
 
-// =============================================================================
-// Types
-// =============================================================================
-
-/** Faza budowy sieci — deterministycznie obliczana ze snapshot. */
 export type BuildPhase =
-  | 'NO_SOURCE'        // Brak źródła zasilania
-  | 'HAS_SOURCE'       // Źródło zdefiniowane, brak magistral
-  | 'HAS_TRUNKS'       // Magistrale istnieją, brak stacji
-  | 'HAS_STATIONS'     // Stacje osadzone
-  | 'READY';           // Gotowość do analizy
+  | 'NO_SOURCE'
+  | 'HAS_SOURCE'
+  | 'HAS_TRUNKS'
+  | 'HAS_STATIONS'
+  | 'READY';
 
-/** Aktywny formularz operacji domenowej. */
+export type NetworkBuildOperationName = CanonicalOpName;
+
 export type ActiveOperationForm =
   | null
   | { op: 'add_grid_source_sn'; context?: Record<string, unknown> }
+  | { op: 'add_sn_bay'; context?: Record<string, unknown> }
   | { op: 'continue_trunk_segment_sn'; context?: Record<string, unknown> }
   | { op: 'insert_station_on_segment_sn'; context?: Record<string, unknown> }
   | { op: 'insert_branch_pole_on_segment_sn'; context?: Record<string, unknown> }
@@ -48,12 +69,18 @@ export type ActiveOperationForm =
   | { op: 'connect_secondary_ring_sn'; context?: Record<string, unknown> }
   | { op: 'set_normal_open_point'; context?: Record<string, unknown> }
   | { op: 'add_transformer_sn_nn'; context?: Record<string, unknown> }
-  | { op: 'add_pv_inverter_nn'; context?: Record<string, unknown> }
-  | { op: 'add_bess_inverter_nn'; context?: Record<string, unknown> }
+  | { op: 'add_nn_outgoing_field'; context?: Record<string, unknown> }
+  | { op: 'add_converter_source'; context?: Record<string, unknown> }
+  | { op: 'add_genset_nn'; context?: Record<string, unknown> }
+  | { op: 'add_ups_nn'; context?: Record<string, unknown> }
+  | { op: 'add_nn_load'; context?: Record<string, unknown> }
+  | { op: 'add_ct'; context?: Record<string, unknown> }
+  | { op: 'add_vt'; context?: Record<string, unknown> }
+  | { op: 'add_relay'; context?: Record<string, unknown> }
   | { op: 'assign_catalog_to_element'; context?: Record<string, unknown> }
-  | { op: 'update_element_parameters'; context?: Record<string, unknown> };
+  | { op: 'update_element_parameters'; context?: Record<string, unknown> }
+  | { op: 'refresh_snapshot'; context?: Record<string, unknown> };
 
-/** Aktywny widok karty obiektu. */
 export type ActiveObjectCard =
   | null
   | { kind: 'source'; elementId: string }
@@ -68,7 +95,639 @@ export type ActiveObjectCard =
   | { kind: 'branch_pole'; elementId: string }
   | { kind: 'zksn'; elementId: string };
 
-/** Port odgałęźny wolny do użycia. */
+export type ActiveInspectorPanel =
+  | null
+  | {
+      kind:
+        | 'results'
+        | 'trace'
+        | 'readiness'
+        | 'report'
+        | 'history'
+        | 'topology'
+        | 'secondary_links'
+        | 'coordination'
+        | 'field_measurements'
+        | 'field_control'
+        | 'field_protection'
+        | 'field_source_contributions'
+        | 'field_earth_fault'
+        | 'field_work_safety'
+        | 'field_compare';
+      elementId: string;
+      elementType: ElementType;
+    };
+
+export type SurfaceSessionPatch = Partial<WorkspaceSurfaceSession>;
+export type RouteSurfaceKind = WorkspaceSurfaceCode;
+
+export interface RouteSurfaceOptions {
+  tabId?: string | null;
+  entityRef?: string | null;
+  entityType?: EntityTypeCode | null;
+  subjectKind?: WorkspaceSurfaceDescriptor['subjectKind'];
+  subjectRef?: WorkspaceSurfaceDescriptor['subjectRef'];
+  titlePl?: string;
+  payload?: Record<string, unknown>;
+  screenCode?: WorkspaceSurfaceCode;
+  sizeClass?: 'B' | 'C';
+  stackLevel?: WorkspaceSurfaceStackLevel;
+  openMode?: WorkspaceOpenMode;
+  supportsMiniSld?: boolean;
+  parentSurfaceId?: string | null;
+  route?: WorkspaceRouteKey;
+}
+
+function normalizeOperationForm(
+  op: NetworkBuildOperationName,
+  context?: Record<string, unknown>,
+): ActiveOperationForm {
+  const normalized = canonicalOperationInput(op, context);
+  return {
+    op: normalized.canonicalOp as Exclude<ActiveOperationForm, null>['op'],
+    context: normalized.context,
+  };
+}
+
+function createSurfaceId(prefix: string, entityRef?: string | null): string {
+  return entityRef ? `${prefix}:${entityRef}` : `${prefix}:active`;
+}
+
+function mapElementTypeToEntityTypeCode(
+  elementType: ElementType | null | undefined,
+): EntityTypeCode | null {
+  switch (elementType) {
+    case 'Station':
+      return 'station';
+    case 'BaySN':
+      return 'sn_bay';
+    case 'BranchPole':
+      return 'branch_pole';
+    case 'ZKSN':
+      return 'zksn';
+    case 'Source':
+      return 'pv_source';
+    default:
+      return null;
+  }
+}
+
+function mapOperationToEntityTypeCode(op: NetworkBuildOperationName): EntityTypeCode | null {
+  switch (op) {
+    case 'add_grid_source_sn':
+      return 'gpz';
+    case 'add_sn_bay':
+      return 'sn_bay';
+    case 'continue_trunk_segment_sn':
+      return 'segment';
+    case 'insert_station_on_segment_sn':
+    case 'add_transformer_sn_nn':
+      return 'station';
+    case 'insert_branch_pole_on_segment_sn':
+      return 'branch_pole';
+    case 'insert_zksn_on_segment_sn':
+      return 'zksn';
+    case 'start_branch_segment_sn':
+      return 'branch';
+    case 'connect_secondary_ring_sn':
+      return 'ring';
+    case 'set_normal_open_point':
+      return 'nop';
+    case 'add_converter_source':
+      return 'pv_source';
+    default:
+      return null;
+  }
+}
+
+function inferRouteKey(target: WorkspaceSurfaceCode): WorkspaceRouteKey {
+  if (isHelperSurfaceCode(target)) {
+    switch (target) {
+      case 'variants_runs':
+        return 'variants';
+      case 'catalog_admin':
+      case 'catalog_picker':
+        return 'catalog';
+      case 'case_context':
+        return 'case-config';
+    }
+  }
+
+  switch (target) {
+    case ANALYSIS_SURFACE_SCREEN_CODE:
+    case 'E-04':
+    case 'E-28':
+    case 'E-29':
+    case 'E-30':
+    case 'E-31':
+    case 'E-32':
+    case 'E-33':
+    case 'E-34':
+      return 'analysis';
+    case REPORT_SURFACE_SCREEN_CODE:
+      return 'report';
+    default:
+      return 'sld';
+  }
+}
+
+function helperSurfaceDefaults(helperCode: HelperSurfaceCode): {
+  sizeClass: 'B' | 'C';
+  openMode: WorkspaceOpenMode;
+  supportsMiniSld: boolean;
+  route: WorkspaceRouteKey;
+} {
+  switch (helperCode) {
+    case 'variants_runs':
+      return {
+        sizeClass: 'C',
+        openMode: 'expand_workspace',
+        supportsMiniSld: true,
+        route: 'variants',
+      };
+    case 'catalog_admin':
+    case 'catalog_picker':
+      return {
+        sizeClass: 'B',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: false,
+        route: 'catalog',
+      };
+    case 'case_context':
+      return {
+        sizeClass: 'B',
+        openMode: 'replace_right_panel',
+        supportsMiniSld: false,
+        route: 'case-config',
+      };
+  }
+}
+
+function inferLifecycleState(
+  session: Partial<WorkspaceSurfaceSession>,
+): SurfaceLifecycleState {
+  if (session.blockState?.blocked) {
+    return 'blocked';
+  }
+  if (session.hasUnsavedChanges || session.isDirty) {
+    return 'dirty';
+  }
+  return session.lifecycleState ?? 'ready';
+}
+
+function buildSurfaceBreadcrumbs(
+  titlePl: string,
+  parent: WorkspaceSurfaceDescriptor | null,
+): WorkspaceBreadcrumb[] {
+  if (!parent) {
+    return [{ surfaceId: null, labelPl: 'Schemat' }, { surfaceId: null, labelPl: titlePl }];
+  }
+  return [...parent.breadcrumbs, { surfaceId: parent.surfaceId, labelPl: titlePl }];
+}
+
+function buildSurfaceSession(
+  overrides: Partial<WorkspaceSurfaceSession> = {},
+): WorkspaceSurfaceSession {
+  return createWorkspaceSurfaceSession(overrides);
+}
+
+function buildOperationSurfaceDescriptor(
+  op: NetworkBuildOperationName,
+  context?: Record<string, unknown>,
+  parentSurface: WorkspaceSurfaceDescriptor | null = null,
+): { descriptor: WorkspaceSurfaceDescriptor; session: WorkspaceSurfaceSession } {
+  const normalized = canonicalOperationInput(op, context);
+  const entry = getOperationSurfaceByOp(normalized.canonicalOp);
+  const screenCode = entry?.screenCode ?? 'E-10';
+  const screenMatrixEntry = SCREEN_MATRIX[screenCode];
+  const elementRef =
+    typeof normalized.context?.element_ref === 'string'
+      ? normalized.context.element_ref
+      : null;
+  const parentSurfaceId = parentSurface?.surfaceId ?? null;
+  const stackLevel = parentSurface
+    ? (Math.min(parentSurface.stackLevel + 1, 3) as WorkspaceSurfaceStackLevel)
+    : 1;
+  const titlePl = entry?.labelPl ?? normalized.canonicalOp;
+  const surfaceId = createSurfaceId(normalized.canonicalOp, elementRef);
+
+  return {
+    descriptor: {
+      surfaceId,
+      screenCode,
+      surfaceKind: screenMatrixEntry.surfaceKind,
+      sizeClass: entry?.sizeClass ?? screenMatrixEntry.sizeClass,
+      stackLevel,
+      entityType: mapOperationToEntityTypeCode(normalized.canonicalOp),
+      entityRef: elementRef ?? normalized.canonicalOp,
+      subjectKind: 'entity',
+      subjectRef: elementRef ?? normalized.canonicalOp,
+      parentSurfaceId,
+      tabId: entry?.defaultTab ?? screenMatrixEntry.defaultTabId,
+      titlePl,
+      breadcrumbs: buildSurfaceBreadcrumbs(titlePl, parentSurface),
+      supportsMiniSld: entry?.supportsMiniSld ?? screenMatrixEntry.supportsMiniSld,
+      openMode: entry?.openMode ?? 'replace_right_panel',
+      routeState: {
+        route: 'sld',
+        tabId: entry?.defaultTab ?? screenMatrixEntry.defaultTabId,
+        payload: {
+          delegate: 'operation_form',
+          operation: normalized.canonicalOp,
+          context: normalized.context,
+        },
+      },
+    },
+    session: buildSurfaceSession({
+      surfaceRef: surfaceId,
+      screenCode,
+      saveMode: entry?.saveMode ?? screenMatrixEntry.saveMode,
+      parentSurfaceRef: parentSurfaceId,
+      activeEntityRef: elementRef ?? normalized.canonicalOp,
+      activeTabId: entry?.defaultTab ?? screenMatrixEntry.defaultTabId,
+      leaveGuardPolicy: screenMatrixEntry.leaveGuardPolicy,
+      restorePolicy: screenMatrixEntry.restorePolicy,
+      draftKey: `${normalized.canonicalOp}:${elementRef ?? 'active'}`,
+      lifecycleState: 'editing',
+    }),
+  };
+}
+
+function buildObjectCardSurfaceDescriptor(
+  card: Exclude<ActiveObjectCard, null>,
+  parentSurface: WorkspaceSurfaceDescriptor | null = null,
+): { descriptor: WorkspaceSurfaceDescriptor; session: WorkspaceSurfaceSession } {
+  const entityRef = 'elementId' in card ? card.elementId : card.corridorRef;
+  const stackLevel = parentSurface
+    ? (Math.min(parentSurface.stackLevel + 1, 3) as WorkspaceSurfaceStackLevel)
+    : 1;
+  const titleMap: Record<Exclude<ActiveObjectCard, null>['kind'], string> = {
+    source: 'Zrodlo zasilania GPZ',
+    trunk: 'Ciag glowny',
+    station: 'Stacja SN/nN',
+    line_segment: 'Odcinek SN',
+    transformer: 'Transformator',
+    switch: 'Lacznik',
+    bay: 'Pole SN',
+    nn_switchgear: 'Rozdzielnica nN',
+    renewable_source: 'Zrodlo OZE',
+    branch_pole: 'Slup rozgalezny',
+    zksn: 'Zlacze kablowe SN',
+  };
+  const screenMap: Record<Exclude<ActiveObjectCard, null>['kind'], WorkspaceScreenCode> = {
+    source: 'E-10',
+    trunk: 'E-24',
+    station: 'E-13',
+    line_segment: 'E-24',
+    transformer: 'E-15',
+    switch: 'E-14',
+    bay: 'E-14',
+    nn_switchgear: 'E-16',
+    renewable_source: 'E-17',
+    branch_pole: 'E-20',
+    zksn: 'E-19',
+  };
+
+  const screenCode = screenMap[card.kind];
+  const screenMatrixEntry = SCREEN_MATRIX[screenCode];
+  const titlePl = titleMap[card.kind];
+  const surfaceId = createSurfaceId(`card:${card.kind}`, entityRef);
+  const entityType =
+    card.kind === 'station'
+      ? 'station'
+      : card.kind === 'switch'
+        ? 'sn_bay'
+        : card.kind === 'bay'
+          ? 'sn_bay'
+          : card.kind === 'zksn'
+            ? 'zksn'
+            : card.kind === 'branch_pole'
+              ? 'branch_pole'
+              : card.kind === 'nn_switchgear'
+                ? 'station_lv_side'
+                : card.kind === 'trunk' || card.kind === 'line_segment'
+                  ? 'segment'
+                  : 'pv_source';
+
+  return {
+    descriptor: {
+      surfaceId,
+      screenCode,
+      surfaceKind: screenMatrixEntry.surfaceKind,
+      sizeClass: screenMatrixEntry.sizeClass,
+      stackLevel,
+      entityType,
+      entityRef,
+      subjectKind: 'entity',
+      subjectRef: entityRef,
+      parentSurfaceId: parentSurface?.surfaceId ?? null,
+      tabId: screenMatrixEntry.defaultTabId,
+      titlePl,
+      breadcrumbs: buildSurfaceBreadcrumbs(titlePl, parentSurface),
+      supportsMiniSld: screenMatrixEntry.supportsMiniSld,
+      openMode: 'replace_right_panel',
+      routeState: {
+        route: 'sld',
+        payload: {
+          delegate: 'object_card',
+          card,
+        },
+      },
+    },
+    session: buildSurfaceSession({
+      surfaceRef: surfaceId,
+      screenCode,
+      parentSurfaceRef: parentSurface?.surfaceId ?? null,
+      activeEntityRef: entityRef,
+      saveMode: screenMatrixEntry.saveMode,
+      leaveGuardPolicy: screenMatrixEntry.leaveGuardPolicy,
+      restorePolicy: screenMatrixEntry.restorePolicy,
+      draftKey: `card:${card.kind}:${entityRef}`,
+    }),
+  };
+}
+
+function mapInspectorPanelMeta(
+  panel: Exclude<ActiveInspectorPanel, null>,
+): {
+  screenCode: WorkspaceSurfaceCode;
+  sizeClass: 'B' | 'C';
+  titlePl: string;
+  route: WorkspaceRouteKey;
+  openMode: WorkspaceOpenMode;
+  supportsMiniSld: boolean;
+  stackLevel: WorkspaceSurfaceStackLevel;
+} {
+  switch (panel.kind) {
+    case 'field_control':
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Sterowanie polem', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_protection':
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Zabezpieczenia pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_measurements':
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_source_contributions':
+      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_earth_fault':
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_work_safety':
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczenstwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+    case 'field_compare':
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porownanie pol', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
+    case 'report':
+      return { screenCode: REPORT_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Generator raportu', route: 'report', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+    case 'readiness':
+      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
+    case 'history':
+      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Warianty i uruchomienia', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+    case 'topology':
+    case 'secondary_links':
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
+    case 'results':
+    case 'trace':
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+    case 'coordination':
+      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczen', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+  }
+}
+
+function buildInspectorSurfaceDescriptor(
+  panel: Exclude<ActiveInspectorPanel, null>,
+  parentSurface: WorkspaceSurfaceDescriptor | null = null,
+): { descriptor: WorkspaceSurfaceDescriptor; session: WorkspaceSurfaceSession } {
+  const meta = mapInspectorPanelMeta(panel);
+  const screenCode = meta.screenCode;
+  const isHelper = isHelperSurfaceCode(screenCode);
+  const screenDefinition = isHelper ? null : SURFACE_REGISTRY[screenCode];
+  const screenMatrixEntry = isHelper ? null : SCREEN_MATRIX[screenCode];
+  const surfaceKind = isHelper ? 'pomocniczy' : screenDefinition!.surfaceKind;
+  const subjectKind = isHelper ? 'helper_context' : screenDefinition!.subjectKind;
+  const stackLevel = parentSurface
+    ? (Math.min(parentSurface.stackLevel + 1, 3) as WorkspaceSurfaceStackLevel)
+    : meta.stackLevel;
+  const surfaceId = createSurfaceId(`panel:${panel.kind}`, panel.elementId);
+
+  return {
+    descriptor: {
+      surfaceId,
+      screenCode,
+      surfaceKind,
+      sizeClass: meta.sizeClass,
+      stackLevel,
+      entityType: mapElementTypeToEntityTypeCode(panel.elementType),
+      entityRef: panel.elementId,
+      subjectKind,
+      subjectRef: panel.elementId,
+      parentSurfaceId: parentSurface?.surfaceId ?? null,
+      tabId: panel.kind,
+      titlePl: meta.titlePl,
+      breadcrumbs: buildSurfaceBreadcrumbs(meta.titlePl, parentSurface),
+      supportsMiniSld: meta.supportsMiniSld,
+      openMode: meta.openMode,
+      routeState: {
+        route: meta.route,
+        tabId: panel.kind,
+        payload: {
+          delegate: 'read_only_panel',
+          panel,
+        },
+      },
+    },
+    session: buildSurfaceSession({
+      surfaceRef: surfaceId,
+      screenCode,
+      parentSurfaceRef: parentSurface?.surfaceId ?? null,
+      activeEntityRef: panel.elementId,
+      activeTabId: panel.kind,
+      saveMode: panel.kind === 'field_control' ? 'auto' : screenMatrixEntry?.saveMode ?? 'read_only',
+      leaveGuardPolicy: screenMatrixEntry?.leaveGuardPolicy ?? 'free',
+      restorePolicy: screenMatrixEntry?.restorePolicy ?? 'none',
+      draftKey: `panel:${panel.kind}:${panel.elementId}`,
+      lifecycleState: panel.kind === 'field_control' ? 'editing' : 'ready',
+    }),
+  };
+}
+
+function buildRouteSurfaceDescriptor(
+  kind: RouteSurfaceKind,
+  options: RouteSurfaceOptions = {},
+): { descriptor: WorkspaceSurfaceDescriptor; session: WorkspaceSurfaceSession } {
+  const screenCode = options.screenCode ?? kind;
+  const isHelper = isHelperSurfaceCode(screenCode);
+  const helperDefaults = isHelper ? helperSurfaceDefaults(screenCode) : null;
+  const helperDefinition = isHelper ? HELPER_SURFACE_REGISTRY[screenCode] : null;
+  const screenDefinition = isHelper ? null : SURFACE_REGISTRY[screenCode];
+  const screenMatrixEntry = isHelper ? null : SCREEN_MATRIX[screenCode];
+  const titlePl = options.titlePl ?? (isHelper ? helperDefinition!.titlePl : screenDefinition!.titlePl);
+  const sizeClass = options.sizeClass ?? helperDefaults?.sizeClass ?? (isHelper ? 'B' : screenDefinition!.sizeClass);
+  const openMode =
+    options.openMode
+    ?? helperDefaults?.openMode
+    ?? (sizeClass === 'C' ? 'expand_workspace' : 'replace_right_panel');
+  const entityRef = options.entityRef ?? null;
+  const subjectKind = options.subjectKind ?? (isHelper ? 'helper_context' : screenDefinition!.subjectKind);
+  const subjectRef = options.subjectRef ?? entityRef;
+  const route = options.route ?? helperDefaults?.route ?? inferRouteKey(screenCode);
+  const resolvedTabId = options.tabId ?? (isHelper ? null : screenMatrixEntry!.defaultTabId);
+  const surfaceId = createSurfaceId(kind, entityRef ?? options.subjectRef ?? resolvedTabId);
+  const surfaceKind = isHelper ? 'pomocniczy' : screenDefinition!.surfaceKind;
+
+  return {
+    descriptor: {
+      surfaceId,
+      screenCode,
+      surfaceKind,
+      sizeClass,
+      stackLevel: options.stackLevel ?? 1,
+      entityType: options.entityType ?? screenMatrixEntry?.entityType ?? null,
+      entityRef,
+      subjectKind,
+      subjectRef,
+      parentSurfaceId: options.parentSurfaceId ?? null,
+      tabId: resolvedTabId,
+      titlePl,
+      breadcrumbs: buildSurfaceBreadcrumbs(titlePl, null),
+      supportsMiniSld: options.supportsMiniSld ?? helperDefaults?.supportsMiniSld ?? (isHelper ? false : screenDefinition!.supportsMiniSld),
+      openMode,
+      routeState: {
+        route,
+        tabId: resolvedTabId,
+        payload: options.payload,
+      },
+    },
+    session: buildSurfaceSession({
+      surfaceRef: surfaceId,
+      screenCode,
+      parentSurfaceRef: options.parentSurfaceId ?? null,
+      activeEntityRef: entityRef,
+      activeTabId: resolvedTabId,
+      saveMode: screenMatrixEntry?.saveMode ?? 'read_only',
+      leaveGuardPolicy: screenMatrixEntry?.leaveGuardPolicy ?? 'free',
+      restorePolicy: screenMatrixEntry?.restorePolicy ?? 'none',
+      draftKey: entityRef ? `${kind}:${entityRef}` : kind,
+      lifecycleState: inferLifecycleState({
+        screenCode,
+        saveMode: screenMatrixEntry?.saveMode ?? 'read_only',
+      }),
+    }),
+  };
+}
+
+function resolveActiveOperationFormFromSurface(
+  surface: WorkspaceSurfaceDescriptor | null,
+) : ActiveOperationForm {
+  if (!surface) {
+    return null;
+  }
+
+  const payload = surface.routeState.payload ?? {};
+  const delegate = payload.delegate;
+  if (delegate === 'operation_form') {
+    const operation = payload.operation;
+    if (typeof operation === 'string' && isCanonicalOpName(operation)) {
+      return normalizeOperationForm(
+        operation,
+        payload.context as Record<string, unknown> | undefined,
+      );
+    }
+  }
+
+  return null;
+}
+
+function resolveActiveObjectCardFromSurface(
+  surface: WorkspaceSurfaceDescriptor | null,
+): ActiveObjectCard {
+  if (!surface) {
+    return null;
+  }
+
+  const payload = surface.routeState.payload ?? {};
+  if (payload.delegate === 'object_card' && payload.card) {
+    return payload.card as ActiveObjectCard;
+  }
+
+  return null;
+}
+
+function resolveActiveInspectorPanelFromSurface(
+  surface: WorkspaceSurfaceDescriptor | null,
+): ActiveInspectorPanel {
+  if (!surface) {
+    return null;
+  }
+
+  const payload = surface.routeState.payload ?? {};
+  if (payload.delegate === 'read_only_panel' && payload.panel) {
+    return payload.panel as ActiveInspectorPanel;
+  }
+
+  return null;
+}
+
+function reduceSurfaceStack(
+  stack: WorkspaceSurfaceDescriptor[],
+  nextSurface: WorkspaceSurfaceDescriptor | null,
+): WorkspaceSurfaceDescriptor[] {
+  if (!nextSurface) {
+    return [];
+  }
+
+  if (nextSurface.stackLevel <= 1) {
+    return [nextSurface];
+  }
+
+  if (nextSurface.parentSurfaceId) {
+    const parentIndex = stack.findIndex((surface) => surface.surfaceId === nextSurface.parentSurfaceId);
+    if (parentIndex >= 0) {
+      return [...stack.slice(0, parentIndex + 1), nextSurface];
+    }
+  }
+
+  const preserved = stack.filter((surface) => surface.stackLevel < nextSurface.stackLevel);
+  return [...preserved, nextSurface];
+}
+
+const ROUTE_MANAGED_ROUTE_KEY_SET = new Set<WorkspaceRouteKey>(ROUTE_MANAGED_ROUTE_KEYS);
+
+function isRouteManagedDescriptor(
+  surface: WorkspaceSurfaceDescriptor | null | undefined,
+): boolean {
+  if (!surface) {
+    return false;
+  }
+  return ROUTE_MANAGED_ROUTE_KEY_SET.has(surface.routeState.route);
+}
+
+function hasDelegate(
+  surface: WorkspaceSurfaceDescriptor | null | undefined,
+  delegate: 'operation_form' | 'object_card' | 'read_only_panel',
+): boolean {
+  return surface?.routeState.payload?.delegate === delegate;
+}
+
+function buildInvariantErrorMessage(
+  violations: SurfaceStackInvariantViolation[],
+): string {
+  return violations[0]?.messagePl ?? 'Naruszono inwariant stosu powierzchni.';
+}
+
+function resolveValidatedStack(
+  previousStack: WorkspaceSurfaceDescriptor[],
+  nextStack: WorkspaceSurfaceDescriptor[],
+): {
+  stack: WorkspaceSurfaceDescriptor[];
+  violations: SurfaceStackInvariantViolation[];
+} {
+  const violations = validateSurfaceStack(nextStack);
+  if (violations.length > 0) {
+    return {
+      stack: previousStack,
+      violations,
+    };
+  }
+  return { stack: nextStack, violations: [] };
+}
+
 export interface AvailableBranchPort {
   stationId: string;
   stationName: string;
@@ -77,13 +736,11 @@ export interface AvailableBranchPort {
   busRef: string;
 }
 
-/** Para terminali kandydujących do ringu. */
 export interface RingCandidate {
   terminalA: TerminalRef;
   terminalB: TerminalRef;
 }
 
-/** Podsumowanie stacji dla ProcessPanel. */
 export interface StationSummary {
   id: string;
   name: string;
@@ -95,7 +752,6 @@ export interface StationSummary {
   readinessOk: boolean;
 }
 
-/** Podsumowanie transformatora. */
 export interface TransformerSummary {
   id: string;
   name: string;
@@ -106,7 +762,6 @@ export interface TransformerSummary {
   ukPercent: number;
 }
 
-/** Podsumowanie źródła OZE/BESS. */
 export interface OzeSourceSummary {
   id: string;
   name: string;
@@ -117,75 +772,243 @@ export interface OzeSourceSummary {
   hasTransformer: boolean;
 }
 
-// =============================================================================
-// Store State
-// =============================================================================
-
 export interface NetworkBuildState {
-  /** Aktywny formularz operacji. */
-  activeOperationForm: ActiveOperationForm;
-  /** Aktywna karta obiektu (modal). */
-  activeObjectCard: ActiveObjectCard;
-  /** Zwinięte sekcje w ProcessPanel. */
+  activeSurface: WorkspaceSurfaceDescriptor | null;
+  surfaceStack: WorkspaceSurfaceDescriptor[];
+  surfaceSessions: Record<string, WorkspaceSurfaceSession>;
   collapsedSections: Set<string>;
-
-  // Actions
-  setActiveOperationForm: (form: ActiveOperationForm) => void;
-  openOperationForm: (op: CanonicalOpName, context?: Record<string, unknown>) => void;
+  openSurface: (surface: WorkspaceSurfaceDescriptor, session?: WorkspaceSurfaceSession) => void;
+  closeActiveSurface: () => void;
+  collapseSurfaceStackTo: (surfaceId: string | null) => void;
+  openRouteSurface: (kind: RouteSurfaceKind, options?: RouteSurfaceOptions) => void;
+  clearRouteManagedSurface: () => void;
+  patchSurfaceSession: (surfaceId: string, patch: SurfaceSessionPatch) => void;
+  openOperationForm: (op: NetworkBuildOperationName, context?: Record<string, unknown>) => void;
   closeOperationForm: () => void;
-  setActiveObjectCard: (card: ActiveObjectCard) => void;
+  openObjectCard: (card: Exclude<ActiveObjectCard, null>) => void;
   closeObjectCard: () => void;
+  openInspectorPanel: (
+    kind: NonNullable<ActiveInspectorPanel>['kind'],
+    elementId: string,
+    elementType: ElementType,
+  ) => void;
+  closeInspectorPanel: () => void;
   toggleSection: (sectionId: string) => void;
   reset: () => void;
 }
 
-// =============================================================================
-// Store
-// =============================================================================
-
-export const useNetworkBuildStore = create<NetworkBuildState>((set) => ({
-  activeOperationForm: null,
-  activeObjectCard: null,
+export const useNetworkBuildStore = create<NetworkBuildState>((set, get) => ({
+  activeSurface: null,
+  surfaceStack: [],
+  surfaceSessions: {},
   collapsedSections: new Set<string>(),
 
-  setActiveOperationForm: (form) => set({ activeOperationForm: form }),
+  openSurface: (surface, session) =>
+    set((state) => {
+      const nextStackCandidate = reduceSurfaceStack(state.surfaceStack, surface);
+      const { stack: nextStack, violations } = resolveValidatedStack(state.surfaceStack, nextStackCandidate);
+      const blocked = violations.length > 0;
+      const nextSessions = {
+        ...state.surfaceSessions,
+        [surface.surfaceId]:
+          blocked
+            ? buildSurfaceSession({
+                ...(session ?? state.surfaceSessions[surface.surfaceId] ?? buildSurfaceSession()),
+                surfaceRef: surface.surfaceId,
+                screenCode: surface.screenCode,
+                blockState: {
+                  blocked: true,
+                  reason: 'invalid_route',
+                  messagePl: buildInvariantErrorMessage(violations),
+                  repairSurface: surface.parentSurfaceId ? state.activeSurface?.screenCode ?? null : null,
+                },
+                lifecycleState: 'blocked',
+              })
+            : (session ?? state.surfaceSessions[surface.surfaceId] ?? buildSurfaceSession({
+                surfaceRef: surface.surfaceId,
+                screenCode: surface.screenCode,
+              })),
+      };
 
-  openOperationForm: (op, context) =>
-    set({ activeOperationForm: { op, context } as ActiveOperationForm }),
+      if (blocked) {
+        return {
+          surfaceSessions: nextSessions,
+        };
+      }
 
-  closeOperationForm: () => set({ activeOperationForm: null }),
+      return {
+        activeSurface: surface,
+        surfaceStack: nextStack,
+        surfaceSessions: nextSessions,
+      };
+    }),
 
-  setActiveObjectCard: (card) => set({ activeObjectCard: card }),
+  closeActiveSurface: () =>
+    set((state) => {
+      const nextStackCandidate = state.surfaceStack.slice(0, -1);
+      const { stack: nextStack } = resolveValidatedStack(state.surfaceStack, nextStackCandidate);
+      const nextSurface = nextStack.length > 0 ? nextStack[nextStack.length - 1] : null;
+      return {
+        activeSurface: nextSurface,
+        surfaceStack: nextStack,
+      };
+    }),
 
-  closeObjectCard: () => set({ activeObjectCard: null }),
+  collapseSurfaceStackTo: (surfaceId) =>
+    set((state) => {
+      if (surfaceId === null) {
+        return {
+          activeSurface: null,
+          surfaceStack: [],
+        };
+      }
+
+      const targetIndex = state.surfaceStack.findIndex((surface) => surface.surfaceId === surfaceId);
+      if (targetIndex < 0) {
+        return {};
+      }
+
+      const nextStackCandidate = state.surfaceStack.slice(0, targetIndex + 1);
+      const { stack: nextStack } = resolveValidatedStack(state.surfaceStack, nextStackCandidate);
+      const nextSurface = nextStack[targetIndex] ?? nextStack[nextStack.length - 1] ?? null;
+      return {
+        activeSurface: nextSurface,
+        surfaceStack: nextStack,
+      };
+    }),
+
+  openRouteSurface: (kind, options) => {
+    const { descriptor, session } = buildRouteSurfaceDescriptor(kind, options);
+    get().openSurface(descriptor, session);
+  },
+
+  clearRouteManagedSurface: () =>
+    set((state) => {
+      if (!isRouteManagedDescriptor(state.activeSurface)) {
+        return {};
+      }
+
+      const nextStackCandidate = state.surfaceStack.filter((surface) => !isRouteManagedDescriptor(surface));
+      const { stack: nextStack } = resolveValidatedStack(state.surfaceStack, nextStackCandidate);
+      const nextSurface = nextStack.length > 0 ? nextStack[nextStack.length - 1] : null;
+      return {
+        activeSurface: nextSurface,
+        surfaceStack: nextStack,
+      };
+    }),
+
+  patchSurfaceSession: (surfaceId, patch) =>
+    set((state) => ({
+      surfaceSessions: {
+        ...state.surfaceSessions,
+        [surfaceId]: buildSurfaceSession({
+          ...(state.surfaceSessions[surfaceId] ?? buildSurfaceSession()),
+          ...patch,
+          lastInteractionAt: new Date().toISOString(),
+          lifecycleState: inferLifecycleState({
+            ...(state.surfaceSessions[surfaceId] ?? {}),
+            ...patch,
+          }),
+        }),
+      },
+    })),
+
+  openOperationForm: (op, context) => {
+    const { descriptor, session } = buildOperationSurfaceDescriptor(op, context, get().activeSurface);
+    get().openSurface(descriptor, session);
+  },
+
+  closeOperationForm: () => {
+    if (hasDelegate(get().activeSurface, 'operation_form')) {
+      get().closeActiveSurface();
+    }
+  },
+
+  openObjectCard: (card) => {
+    const { descriptor, session } = buildObjectCardSurfaceDescriptor(card, get().activeSurface);
+    get().openSurface(descriptor, session);
+  },
+
+  closeObjectCard: () => {
+    if (hasDelegate(get().activeSurface, 'object_card')) {
+      get().closeActiveSurface();
+    }
+  },
+
+  openInspectorPanel: (kind, elementId, elementType) => {
+    const { descriptor, session } = buildInspectorSurfaceDescriptor(
+      { kind, elementId, elementType },
+      get().activeSurface,
+    );
+    get().openSurface(descriptor, session);
+  },
+
+  closeInspectorPanel: () => {
+    if (hasDelegate(get().activeSurface, 'read_only_panel')) {
+      get().closeActiveSurface();
+    }
+  },
 
   toggleSection: (sectionId) =>
     set((state) => {
-      const next = new Set(state.collapsedSections);
-      if (next.has(sectionId)) {
-        next.delete(sectionId);
+      const collapsedSections = new Set(state.collapsedSections);
+      if (collapsedSections.has(sectionId)) {
+        collapsedSections.delete(sectionId);
       } else {
-        next.add(sectionId);
+        collapsedSections.add(sectionId);
       }
-      return { collapsedSections: next };
+      return { collapsedSections };
     }),
 
   reset: () =>
     set({
-      activeOperationForm: null,
-      activeObjectCard: null,
+      activeSurface: null,
+      surfaceStack: [],
+      surfaceSessions: {},
       collapsedSections: new Set<string>(),
     }),
 }));
 
-// =============================================================================
-// Pure Selectors (derived from snapshotStore — NO local state duplication)
-// =============================================================================
+export function selectActiveOperationForm(
+  state: Pick<NetworkBuildState, 'activeSurface'>,
+): ActiveOperationForm {
+  return resolveActiveOperationFormFromSurface(state.activeSurface);
+}
 
-/**
- * Oblicza fazę budowy sieci na podstawie snapshot.
- * Deterministyczne: ten sam snapshot → ta sama faza.
- */
+export function selectActiveOperationContext(
+  state: Pick<NetworkBuildState, 'activeSurface'>,
+): Record<string, unknown> | undefined {
+  return selectActiveOperationForm(state)?.context;
+}
+
+export function selectActiveObjectCard(
+  state: Pick<NetworkBuildState, 'activeSurface'>,
+): ActiveObjectCard {
+  return resolveActiveObjectCardFromSurface(state.activeSurface);
+}
+
+export function selectActiveInspectorPanel(
+  state: Pick<NetworkBuildState, 'activeSurface'>,
+): ActiveInspectorPanel {
+  return resolveActiveInspectorPanelFromSurface(state.activeSurface);
+}
+
+export function useActiveOperationForm() {
+  return useNetworkBuildStore(selectActiveOperationForm);
+}
+
+export function useActiveOperationContext() {
+  return useNetworkBuildStore(selectActiveOperationContext);
+}
+
+export function useActiveObjectCard() {
+  return useNetworkBuildStore(selectActiveObjectCard);
+}
+
+export function useActiveInspectorPanel() {
+  return useNetworkBuildStore(selectActiveInspectorPanel);
+}
+
 export function computeBuildPhase(
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
@@ -205,10 +1028,6 @@ export function computeBuildPhase(
   return 'HAS_STATIONS';
 }
 
-/**
- * Zwraca otwarte terminale magistral — punkty kontynuacji.
- * Sortowane deterministycznie po element_id.
- */
 export function selectOpenTerminals(logicalViews: LogicalViewsV1 | null): TerminalRef[] {
   if (!logicalViews?.terminals) return [];
   return logicalViews.terminals
@@ -216,9 +1035,6 @@ export function selectOpenTerminals(logicalViews: LogicalViewsV1 | null): Termin
     .sort((a, b) => a.element_id.localeCompare(b.element_id));
 }
 
-/**
- * Zwraca terminale zarezerwowane pod ring.
- */
 export function selectRingReservedTerminals(logicalViews: LogicalViewsV1 | null): TerminalRef[] {
   if (!logicalViews?.terminals) return [];
   return logicalViews.terminals
@@ -226,16 +1042,12 @@ export function selectRingReservedTerminals(logicalViews: LogicalViewsV1 | null)
     .sort((a, b) => a.element_id.localeCompare(b.element_id));
 }
 
-/**
- * Zwraca wolne porty odgałęźne z stacji (Bay role=ODG bez powiązanych branches).
- */
 export function selectAvailableBranchPorts(
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
 ): AvailableBranchPort[] {
   if (!snapshot) return [];
 
-  // Zbierz bus_ref_ids używane jako from_element w branches
   const usedBusRefs = new Set<string>();
   for (const branch of logicalViews?.branches ?? []) {
     usedBusRefs.add(branch.from_element_id);
@@ -244,8 +1056,6 @@ export function selectAvailableBranchPorts(
   const result: AvailableBranchPort[] = [];
   for (const bay of snapshot.bays ?? []) {
     if (bay.bay_role !== 'OUT' && bay.bay_role !== 'FEEDER' && bay.bay_role !== 'OZE') continue;
-
-    // Sprawdź czy port już użyty
     if (usedBusRefs.has(bay.bus_ref)) continue;
 
     const station = snapshot.substations?.find((s) => s.id === bay.substation_ref);
@@ -263,10 +1073,6 @@ export function selectAvailableBranchPorts(
   return result.sort((a, b) => a.stationId.localeCompare(b.stationId));
 }
 
-/**
- * Zwraca pary kandydatów do domknięcia ringu.
- * Para: dwa otwarte terminale na różnych trunk_id o tym samym napięciu.
- */
 export function selectRingCandidates(
   snapshot: EnergyNetworkModel | null,
   logicalViews: LogicalViewsV1 | null,
@@ -276,22 +1082,19 @@ export function selectRingCandidates(
   const openTerminals = selectOpenTerminals(logicalViews);
   if (openTerminals.length < 2) return [];
 
-  // Buduj mapę bus → voltage
   const busVoltage = new Map<string, number>();
-  for (const bus of snapshot.buses ?? []) {
+  for (const bus of (snapshot.buses ?? []).filter((entry) => isOperationalBus(entry))) {
     busVoltage.set(bus.ref_id, bus.voltage_kv);
   }
 
   const candidates: RingCandidate[] = [];
-  for (let i = 0; i < openTerminals.length; i++) {
-    for (let j = i + 1; j < openTerminals.length; j++) {
+  for (let i = 0; i < openTerminals.length; i += 1) {
+    for (let j = i + 1; j < openTerminals.length; j += 1) {
       const a = openTerminals[i];
       const b = openTerminals[j];
 
-      // Muszą być na różnych trunk'ach lub przynajmniej różnych gałęziach
       if (a.trunk_id && b.trunk_id && a.trunk_id === b.trunk_id) continue;
 
-      // Sprawdź zgodność napięciową
       const vA = busVoltage.get(a.element_id);
       const vB = busVoltage.get(b.element_id);
       if (vA !== undefined && vB !== undefined && vA === vB) {
@@ -303,19 +1106,11 @@ export function selectRingCandidates(
   return candidates;
 }
 
-/**
- * Zwraca podsumowania stacji dla ProcessPanel.
- */
 export function selectStationSummaries(
   snapshot: EnergyNetworkModel | null,
-  readiness: ReadinessInfo | null,
+  blockerCountsByElement: Map<string, number> | null,
 ): StationSummary[] {
   if (!snapshot) return [];
-
-  const blockerElements = new Set<string>();
-  for (const b of readiness?.blockers ?? []) {
-    if (b.element_ref) blockerElements.add(b.element_ref);
-  }
 
   return (snapshot.substations ?? [])
     .map((s) => {
@@ -325,7 +1120,7 @@ export function selectStationSummaries(
       );
       const hasTransformer = s.transformer_refs.length > 0;
       const nnBuses = (snapshot.buses ?? []).filter(
-        (bus) => bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
+        (bus) => isOperationalBus(bus) && bus.voltage_kv < 1 && s.bus_refs.includes(bus.ref_id),
       );
 
       return {
@@ -336,15 +1131,12 @@ export function selectStationSummaries(
         hasTransformer,
         hasNnPart: nnBuses.length > 0,
         freeBranchPorts: branchBays.length,
-        readinessOk: !blockerElements.has(s.id),
+        readinessOk: !blockerCountsByElement?.has(s.id),
       };
     })
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/**
- * Zwraca podsumowania transformatorów.
- */
 export function selectTransformerSummaries(
   snapshot: EnergyNetworkModel | null,
 ): TransformerSummary[] {
@@ -369,9 +1161,6 @@ export function selectTransformerSummaries(
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/**
- * Zwraca podsumowania źródeł OZE/BESS.
- */
 export function selectOzeSourceSummaries(
   snapshot: EnergyNetworkModel | null,
 ): OzeSourceSummary[] {
@@ -379,9 +1168,9 @@ export function selectOzeSourceSummaries(
 
   return (snapshot.generators ?? [])
     .filter((g) =>
-      g.gen_type === 'pv_inverter' ||
-      g.gen_type === 'wind_inverter' ||
-      g.gen_type === 'bess',
+      g.gen_type === 'pv_inverter'
+      || g.gen_type === 'wind_inverter'
+      || g.gen_type === 'bess',
     )
     .map((g) => ({
       id: g.ref_id,
@@ -395,10 +1184,9 @@ export function selectOzeSourceSummaries(
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-/**
- * Zwraca liczbę blokerów per kategoria.
- */
-export function selectBlockersByCategory(readiness: ReadinessInfo | null): {
+export function selectBlockersByCategory(
+  readinessOrIssues: ReadinessInfo | Pick<ReadinessIssue, 'code'>[] | null,
+): {
   topologia: number;
   katalogi: number;
   eksploatacja: number;
@@ -406,94 +1194,117 @@ export function selectBlockersByCategory(readiness: ReadinessInfo | null): {
   total: number;
 } {
   const result = { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
-  if (!readiness?.blockers) return result;
+  const blockers = Array.isArray(readinessOrIssues)
+    ? readinessOrIssues
+    : readinessOrIssues?.blockers ?? [];
+  if (blockers.length === 0) return result;
 
-  for (const b of readiness.blockers) {
+  for (const b of blockers) {
     const code = b.code.toLowerCase();
     if (
-      code.includes('topology') ||
-      code.includes('island') ||
-      code.includes('disconnected') ||
-      code.includes('voltage_mismatch') ||
-      code.includes('grounding') ||
-      code.includes('isolated')
+      code.includes('topology')
+      || code.includes('island')
+      || code.includes('disconnected')
+      || code.includes('voltage_mismatch')
+      || code.includes('grounding')
+      || code.includes('isolated')
     ) {
-      result.topologia++;
+      result.topologia += 1;
     } else if (
-      code.includes('catalog') ||
-      code.includes('missing_type') ||
-      code.includes('no_catalog') ||
-      code.includes('impedance') ||
-      code.includes('zero_seq') ||
-      code.includes('missing_rating')
+      code.includes('catalog')
+      || code.includes('missing_type')
+      || code.includes('no_catalog')
+      || code.includes('impedance')
+      || code.includes('zero_seq')
+      || code.includes('missing_rating')
     ) {
-      result.katalogi++;
+      result.katalogi += 1;
     } else if (
-      code.includes('switch_state') ||
-      code.includes('nop') ||
-      code.includes('normal_state') ||
-      code.includes('coupler') ||
-      code.includes('tap_position') ||
-      code.includes('operating')
+      code.includes('switch_state')
+      || code.includes('nop')
+      || code.includes('normal_state')
+      || code.includes('coupler')
+      || code.includes('tap_position')
+      || code.includes('operating')
     ) {
-      result.eksploatacja++;
+      result.eksploatacja += 1;
     } else {
-      result.analiza++;
+      result.analiza += 1;
     }
-    result.total++;
+    result.total += 1;
   }
 
   return result;
 }
 
-/**
- * Etykieta PL fazy budowy.
- */
 export function buildPhaseLabel(phase: BuildPhase): string {
   switch (phase) {
     case 'NO_SOURCE':
       return 'Brak źródła zasilania';
     case 'HAS_SOURCE':
-      return 'Źródło zdefiniowane — dodaj magistrale';
+      return 'GPZ zdefiniowany - dodaj pole SN GPZ i pierwszy odcinek';
     case 'HAS_TRUNKS':
-      return 'Magistrale zbudowane — osadź stacje';
+      return 'Magistrala wyprowadzona z pola GPZ - osadź stacje i ZKSN';
     case 'HAS_STATIONS':
-      return 'Stacje osadzone — uzupełnij dane';
+      return 'Stacje osadzone - uzupełnij dane';
     case 'READY':
       return 'Gotowy do analizy';
   }
 }
 
-// =============================================================================
-// Hook: useNetworkBuildDerived — derived data from snapshotStore
-// =============================================================================
-
-/**
- * Hook łączący dane ze snapshotStore w derywowane obiekty dla ProcessPanel.
- * Nie duplikuje danych — czyste selektory.
- */
 export function useNetworkBuildDerived() {
+  const activeCaseId = useActiveCaseId();
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
-  const readiness = useSnapshotStore((s) => s.readiness);
   const fixActions = useSnapshotStore((s) => s.fixActions);
+  const readinessIssues = useReadinessLiveStore((s) => s.issues);
+  const readinessStatus = useReadinessLiveStore((s) => s.status);
+  const readinessReady = useReadinessLiveStore((s) => s.ready);
+  const readinessLoading = useReadinessLiveStore((s) => s.loading);
+  const blockerCountsByElement = buildBlockerCountsByElement(readinessIssues);
 
-  const buildPhase = computeBuildPhase(snapshot, logicalViews, readiness);
+  const sourceCount = snapshot?.sources?.length ?? 0;
+  const trunkCount = logicalViews?.trunks?.length ?? 0;
+  const branchCount = logicalViews?.branches?.length ?? 0;
+  const stationCount = snapshot?.substations?.length ?? 0;
+  const transformerCount = snapshot?.transformers?.length ?? 0;
+  const generatorCount = snapshot?.generators?.length ?? 0;
+  const readinessBlockers = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
+  const workspaceBlockState = deriveOperationalWorkspaceBlockStateFromSnapshot(
+    snapshot,
+    activeCaseId !== null,
+  );
+  const readinessVisualState = resolveReadinessVisualState({
+    issues: readinessIssues,
+    status: readinessStatus,
+    ready: readinessReady,
+    loading: readinessLoading,
+    workspaceBlockState,
+  });
+
+  const buildPhase = readinessVisualState === 'ready' && sourceCount > 0
+    ? 'READY'
+    : computeBuildPhase(snapshot, logicalViews, null);
   const openTerminals = selectOpenTerminals(logicalViews);
   const ringReservedTerminals = selectRingReservedTerminals(logicalViews);
   const availableBranchPorts = selectAvailableBranchPorts(snapshot, logicalViews);
   const ringCandidates = selectRingCandidates(snapshot, logicalViews);
-  const stationSummaries = selectStationSummaries(snapshot, readiness);
+  const stationSummaries = selectStationSummaries(snapshot, blockerCountsByElement);
   const transformerSummaries = selectTransformerSummaries(snapshot);
   const ozeSourceSummaries = selectOzeSourceSummaries(snapshot);
-  const blockersByCategory = selectBlockersByCategory(readiness);
+  const blockersByCategory = selectBlockersByCategory(readinessBlockers);
+  const isReady = readinessVisualState === 'ready' && sourceCount > 0;
+  const readiness = {
+    ready: readinessReady,
+    blockers: readinessIssues.filter((issue) => issue.severity === 'BLOCKER'),
+    warnings: readinessIssues.filter((issue) => issue.severity !== 'BLOCKER'),
+  };
 
   return {
     buildPhase,
-    buildPhaseLabel: buildPhaseLabel(buildPhase),
+    buildPhaseLabel: workspaceBlockState?.title ?? buildPhaseLabel(buildPhase),
     snapshot,
     logicalViews,
-    readiness,
     fixActions,
     openTerminals,
     ringReservedTerminals,
@@ -503,12 +1314,15 @@ export function useNetworkBuildDerived() {
     transformerSummaries,
     ozeSourceSummaries,
     blockersByCategory,
-    sourceCount: snapshot?.sources?.length ?? 0,
-    trunkCount: logicalViews?.trunks?.length ?? 0,
-    branchCount: logicalViews?.branches?.length ?? 0,
-    stationCount: snapshot?.substations?.length ?? 0,
-    transformerCount: snapshot?.transformers?.length ?? 0,
-    generatorCount: snapshot?.generators?.length ?? 0,
-    isReady: readiness?.ready ?? false,
+    sourceCount,
+    trunkCount,
+    branchCount,
+    stationCount,
+    transformerCount,
+    generatorCount,
+    isReady,
+    readiness,
+    workspaceBlockState,
+    readinessLoading,
   };
 }

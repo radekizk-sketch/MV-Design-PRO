@@ -2,7 +2,7 @@
  * SLD Export View Presets
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: PF/ETAP-grade export profiles
+ * - ui_canonical_parity.md: PF/CANONICAL-grade export profiles
  * - SLD_UI_ARCHITECTURE.md: Layer visibility options
  *
  * FEATURES:

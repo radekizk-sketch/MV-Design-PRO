@@ -3,8 +3,6 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
 from api.canonical_run_views import (
     build_analysis_run_detail,
     build_analysis_run_summary,
@@ -18,13 +16,17 @@ from api.canonical_run_views import (
     build_sld_overlay,
 )
 from api.dependencies import get_uow_factory
-from application.analysis_run.read_model import canonicalize_json, build_trace_summary
+from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from enm.canonical_analysis import (
     CanonicalRun,
+)
+from enm.canonical_analysis import (
     get_run as get_canonical_run,
+)
+from enm.canonical_analysis import (
     list_runs_for_project as list_canonical_runs_for_project,
 )
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 router = APIRouter()
 
@@ -90,7 +92,7 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f"Wyniki przebiegu {run_id} są niedostępne (status={canonical_run.status})",
-    )
+        )
     return canonicalize_json(build_result_items(canonical_run))
 
 
@@ -205,9 +207,7 @@ def get_branch_results(run_id: UUID) -> dict[str, Any]:
 
 @router.get("/analysis-runs/{run_id}/results/short-circuit")
 def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
-    return canonicalize_json(
-        build_short_circuit_results_response(_require_canonical_run(run_id))
-    )
+    return canonicalize_json(build_short_circuit_results_response(_require_canonical_run(run_id)))
 
 
 @router.get("/analysis-runs/{run_id}/results/trace")

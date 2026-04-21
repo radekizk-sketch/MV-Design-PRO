@@ -40,7 +40,6 @@ TYPOSZEREG PRZEMYSLOWY:
 
 from typing import Any
 
-
 # =============================================================================
 # TRANSFORMATORY WN/SN (110/15 kV) — Yd11
 # Zrodlo: PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42
@@ -967,8 +966,12 @@ def get_transformer_catalog_statistics() -> dict[str, Any]:
 def get_transformer_catalog_quality_summary() -> dict[str, Any]:
     """Zwraca jawne metadane jakosci dla katalogu transformatorow."""
     all_types = get_all_transformer_types()
-    verified = sum(1 for item in all_types if item["params"]["verification_status"] == "ZWERYFIKOWANY")
-    unverified = sum(1 for item in all_types if item["params"]["verification_status"] == "NIEWERYFIKOWANY")
+    verified = sum(
+        1 for item in all_types if item["params"]["verification_status"] == "ZWERYFIKOWANY"
+    )
+    unverified = sum(
+        1 for item in all_types if item["params"]["verification_status"] == "NIEWERYFIKOWANY"
+    )
 
     return {
         "liczba_transformatorow_ogolem": len(all_types),

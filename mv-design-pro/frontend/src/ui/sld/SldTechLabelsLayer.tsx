@@ -6,7 +6,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results as Overlay (never modifies model)
- * - powerfactory_ui_parity.md: ETAP/PowerFactory-grade technical labels
+ * - ui_canonical_parity.md: CANONICAL/Canonical-grade technical labels
  *
  * ETYKIETY:
  * - LineBranch:        typ (CABLE/LINE) • obciążenie% (jeśli wyniki)

@@ -30,12 +30,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Contract version (FROZEN — bump = new file)
@@ -104,12 +102,8 @@ class OverlayMetricV1(BaseModel):
             "P_MW, Q_Mvar, LOADING_PCT, V_PU, ANGLE_DEG"
         ),
     )
-    value: float | int | str = Field(
-        ..., description="Metric value"
-    )
-    unit: str = Field(
-        ..., description="Physical unit string (kV, A, MVA, MW, Mvar, %, p.u.)"
-    )
+    value: float | int | str = Field(..., description="Metric value")
+    unit: str = Field(..., description="Physical unit string (kV, A, MVA, MW, Mvar, %, p.u.)")
     format_hint: str = Field(
         default="fixed2",
         description="UI format hint: fixed0, fixed2, fixed4, kilo, percent",
@@ -168,9 +162,7 @@ class OverlayWarningV1(BaseModel):
         description="Warning message (Polish)",
     )
     severity: OverlaySeverity = Field(default=OverlaySeverity.WARNING)
-    element_ref: str | None = Field(
-        default=None, description="Affected element ref_id (optional)"
-    )
+    element_ref: str | None = Field(default=None, description="Affected element ref_id (optional)")
 
     model_config = {"frozen": True}
 
@@ -185,9 +177,7 @@ class OverlayLegendEntryV1(BaseModel):
 
     severity: OverlaySeverity
     label: str = Field(..., description="Legend label (Polish)")
-    description: str = Field(
-        default="", description="Legend description (Polish)"
-    )
+    description: str = Field(default="", description="Legend description (Polish)")
 
     model_config = {"frozen": True}
 
@@ -218,9 +208,7 @@ class OverlayElementV1(BaseModel):
     """
 
     ref_id: str = Field(..., description="Element ref_id (matches ENM)")
-    kind: OverlayElementKind = Field(
-        ..., description="Element kind for rendering"
-    )
+    kind: OverlayElementKind = Field(..., description="Element kind for rendering")
     badges: list[OverlayBadgeV1] = Field(
         default_factory=list,
         description="Badges from readiness/validation",
@@ -279,9 +267,7 @@ class ElementResultV1(BaseModel):
     """
 
     element_ref: str = Field(..., description="Element ref_id")
-    element_type: str = Field(
-        ..., description="Element type (Bus, Branch, Transformer, etc.)"
-    )
+    element_type: str = Field(..., description="Element type (Bus, Branch, Transformer, etc.)")
     values: dict[str, Any] = Field(
         default_factory=dict,
         description="Analysis-specific result values",
@@ -354,27 +340,26 @@ class ResultSetV1(BaseModel):
 # Canonical JSON + Deterministic Signature
 # ---------------------------------------------------------------------------
 
-_DETERMINISTIC_LIST_KEYS = frozenset({
-    "buses",
-    "branches",
-    "transformers",
-    "inverter_sources",
-    "switches",
-    "element_results",
-    "entries",
-    "badges",
-    "warnings",
-    "evaluations",
-})
+_DETERMINISTIC_LIST_KEYS = frozenset(
+    {
+        "buses",
+        "branches",
+        "transformers",
+        "inverter_sources",
+        "switches",
+        "element_results",
+        "entries",
+        "badges",
+        "warnings",
+        "evaluations",
+    }
+)
 
 
 def _canonicalize(value: Any, *, current_key: str | None = None) -> Any:
     """Recursively canonicalize a JSON-like structure for deterministic hashing."""
     if isinstance(value, dict):
-        return {
-            key: _canonicalize(value[key], current_key=key)
-            for key in sorted(value.keys())
-        }
+        return {key: _canonicalize(value[key], current_key=key) for key in sorted(value.keys())}
     if isinstance(value, list):
         items = [_canonicalize(item, current_key=current_key) for item in value]
         if current_key in _DETERMINISTIC_LIST_KEYS:

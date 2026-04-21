@@ -1,8 +1,8 @@
-# SLD Auto-Layout Engine
+﻿# SLD Auto-Layout Engine
 
 ## Overview
 
-The SLD (Single Line Diagram) Auto-Layout Engine provides automatic positioning and routing for electrical network schematics. It generates professional-grade diagrams similar to ETAP and PowerFactory output.
+The SLD (Single Line Diagram) Auto-Layout Engine provides automatic positioning and routing for electrical network schematics. It generates professional-grade diagrams similar to benchmark and benchmark output.
 
 ## Key Features
 
@@ -13,7 +13,7 @@ The SLD (Single Line Diagram) Auto-Layout Engine provides automatic positioning 
 - **Orthogonal Routing**: Professional-grade edge routing
 - **Grid Alignment**: All positions snapped to configurable grid
 - **Incremental Layout**: Small changes don't reset entire schema
-- **Device & Field Modeling** (RUN #3D): ETAP-grade field/device details with
+- **Device & Field Modeling** (RUN #3D): benchmark-grade field/device details with
   embedding role derivation, device requirement validation, and anchor mapping.
   See [SLD_DEVICE_MODELING_SPEC.md](./SLD_DEVICE_MODELING_SPEC.md) for details.
 
@@ -154,15 +154,15 @@ const result = computeLayout({
 ```typescript
 import {
   DEFAULT_VOLTAGE_COLOR_MAP,
-  ETAP_STYLE_COLORS,
-  POWERFACTORY_STYLE_COLORS,
+  benchmark_STYLE_COLORS,
+  CANONICAL_STYLE_COLORS,
   getVoltageColor,
 } from '@/engine/sld-layout';
 
-// Use ETAP-style colors
+// Use benchmark-style colors
 const result = computeLayout({
   symbols,
-  voltageColorMap: ETAP_STYLE_COLORS,
+  voltageColorMap: benchmark_STYLE_COLORS,
 });
 
 // Custom color map
@@ -207,8 +207,8 @@ Port IDs are geometric (backward compatible) but resolved from semantic roles
 
 Voltages are read from the model, never fabricated:
 - `ConnectionNodeV1.voltageKv` is `number | null`
-- Missing voltage → FixAction `bus.voltage_missing` (not default 15kV)
-- `classifyBusType(null)` → `BUS_SN` (conservative fallback for rendering)
+- Missing voltage â†’ FixAction `bus.voltage_missing` (not default 15kV)
+- `classifyBusType(null)` â†’ `BUS_SN` (conservative fallback for rendering)
 
 ## Determinism Rules
 
@@ -233,9 +233,9 @@ const isDeterministic = verifyDeterminism({ symbols });
 
 The engine supports these common topologies:
 
-- **Pattern A**: Radial (SEE → TR → Loads)
+- **Pattern A**: Radial (SEE â†’ TR â†’ Loads)
 - **Pattern B**: Multi-feeder (busbar with multiple feeders)
-- **Pattern C**: Przyłącze SN/nN (most common - substation connection)
+- **Pattern C**: PrzyĹ‚Ä…cze SN/nN (most common - substation connection)
 - **Pattern D**: OZE/BESS (renewable energy integration)
 - **Pattern E**: Ring network
 - **Pattern F**: Dual-transformer SZR
@@ -303,10 +303,11 @@ Test coverage includes:
 ## Architecture Principles
 
 1. **DYNAMIC VOLTAGES**: Read from model, never hardcode 15kV/0.4kV
-2. **ZERO FABRICATION** (RUN #3D-FIX): Missing voltage → `null` + FixAction, never default
+2. **ZERO FABRICATION** (RUN #3D-FIX): Missing voltage â†’ `null` + FixAction, never default
 3. **NO AUTO-LAYOUT BUTTON**: Layout runs automatically on model changes
 4. **DETERMINISM**: Same model = identical pixel output (bit-for-bit, 154 tests)
 5. **INCREMENTAL**: Small changes don't reset entire schema
-6. **PROFESSIONAL OUTPUT**: ETAP/PowerFactory-grade diagrams
+6. **PROFESSIONAL OUTPUT**: benchmark/benchmark-grade diagrams
 7. **SEMANTIC PORTS** (RUN #3D-FIX): Port roles IN/OUT/BRANCH resolved via `resolvePortId`
 8. **ZERO STRING HEURISTICS** (RUN #3D-FIX): Typology from domain data, never from name parsing
+

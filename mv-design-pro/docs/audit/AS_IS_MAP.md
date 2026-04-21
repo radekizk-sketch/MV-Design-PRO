@@ -68,7 +68,7 @@
 | Phase 3: Crossing min | `frontend/src/engine/sld-layout/phase3-crossing-min.ts` | OK |
 | Phase 4: Coordinates | `frontend/src/engine/sld-layout/phase4-coordinates.ts` | OK |
 | Phase 5: Routing | `frontend/src/engine/sld-layout/phase5-routing.ts` | OK |
-| Symbol Renderer | `frontend/src/ui/sld/EtapSymbolRenderer.tsx` | OK |
+| Symbol Renderer | `frontend/src/ui/sld/CanonicalSymbolRenderer.tsx` | OK |
 | Symbol Resolver | `frontend/src/ui/sld/SymbolResolver.ts` | OK |
 | SLD View | `frontend/src/ui/sld/SLDView.tsx` | OK |
 | Results Overlay | `frontend/src/ui/sld/ResultsOverlay.tsx` | OK |

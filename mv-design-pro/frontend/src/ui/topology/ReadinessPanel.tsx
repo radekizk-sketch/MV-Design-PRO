@@ -1,35 +1,68 @@
-/**
- * ReadinessPanel — panel gotowości sieci do analizy.
- *
- * Konsumuje readiness + fix_actions ze SnapshotStore.
- * Wyświetla blokery, ostrzeżenia, i nawiguje do elementu wymagającego naprawy.
- *
- * BINDING: PL labels, no codenames.
- * DETERMINISTIC: sorted outputs, stable rendering.
- */
-
 import { useCallback } from 'react';
-import type { ReadinessInfo, FixAction } from '../../types/enm';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { useActiveCaseId } from '../app-state';
+import type { FixAction, ReadinessInfo } from '../../types/enm';
+import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useSnapshotStore } from './snapshotStore';
+import { deriveOperationalWorkspaceBlockStateFromSnapshot } from './liveReadiness';
 
 interface ReadinessPanelProps {
-  readiness: ReadinessInfo | null;
-  fixActions: FixAction[];
+  readiness?: ReadinessInfo | null;
+  fixActions?: FixAction[];
   onFixAction?: (action: FixAction) => void;
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+function buildReadinessFromIssues(
+  ready: boolean,
+  issues: Array<{
+    code: string;
+    severity: 'BLOCKER' | 'IMPORTANT' | 'INFO';
+    message_pl: string;
+    element_ref: string | null;
+  }>,
+): ReadinessInfo {
+  return {
+    ready,
+    blockers: issues
+      .filter((issue) => issue.severity === 'BLOCKER')
+      .map((issue) => ({
+        code: issue.code,
+        message_pl: issue.message_pl,
+        element_ref: issue.element_ref,
+        severity: 'BLOCKER',
+      })),
+    warnings: issues
+      .filter((issue) => issue.severity !== 'BLOCKER')
+      .map((issue) => ({
+        code: issue.code,
+        message_pl: issue.message_pl,
+        element_ref: issue.element_ref,
+        severity: issue.severity,
+      })),
+  };
+}
 
 export function ReadinessPanel({
-  readiness,
-  fixActions,
+  readiness: readinessProp,
+  fixActions: fixActionsProp,
   onFixAction,
-}: ReadinessPanelProps) {
+}: ReadinessPanelProps = {}) {
+  const activeCaseId = useActiveCaseId();
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const snapshotFixActions = useSnapshotStore((state) => state.fixActions);
+  const liveIssues = useReadinessLiveStore((state) => state.issues);
+  const liveReady = useReadinessLiveStore((state) => state.ready);
+
+  const workspaceBlockState = deriveOperationalWorkspaceBlockStateFromSnapshot(
+    snapshot,
+    activeCaseId !== null,
+  );
+
+  const readiness =
+    readinessProp
+    ?? buildReadinessFromIssues(liveReady, liveIssues);
+  const fixActions = fixActionsProp ?? snapshotFixActions;
+
   const handleFixClick = useCallback(
     (action: FixAction) => {
       onFixAction?.(action);
@@ -37,9 +70,17 @@ export function ReadinessPanel({
     [onFixAction],
   );
 
+  if (workspaceBlockState) {
+    return (
+      <div className="border-b border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+        <span className="font-bold">{workspaceBlockState.title}</span>
+      </div>
+    );
+  }
+
   if (!readiness) {
     return (
-      <div className="px-3 py-2 bg-gray-50 border-b text-xs text-gray-400">
+      <div className="border-b bg-gray-50 px-3 py-2 text-xs text-gray-400">
         Brak danych gotowości
       </div>
     );
@@ -50,7 +91,7 @@ export function ReadinessPanel({
 
   if (readiness.ready && blockerCount === 0 && warningCount === 0) {
     return (
-      <div className="px-3 py-2 bg-green-50 border-b border-green-200 text-xs text-green-800">
+      <div className="border-b border-green-200 bg-green-50 px-3 py-2 text-xs text-green-800">
         <span className="font-semibold">GOTOWA DO ANALIZY</span>
         <span className="ml-2 text-green-600">Brak blokerów i ostrzeżeń</span>
       </div>
@@ -59,12 +100,11 @@ export function ReadinessPanel({
 
   return (
     <div className="border-b border-gray-200">
-      {/* Status bar */}
       <div
-        className={`px-3 py-2 text-xs font-medium ${
+        className={`border-b px-3 py-2 text-xs font-medium ${
           blockerCount > 0
-            ? 'bg-red-50 text-red-800 border-b border-red-200'
-            : 'bg-amber-50 text-amber-800 border-b border-amber-200'
+            ? 'border-red-200 bg-red-50 text-red-800'
+            : 'border-amber-200 bg-amber-50 text-amber-800'
         }`}
       >
         {blockerCount > 0 ? (
@@ -85,21 +125,17 @@ export function ReadinessPanel({
         )}
       </div>
 
-      {/* Blockers list */}
       {blockerCount > 0 && (
-        <div className="px-3 py-1.5 bg-red-50/50 max-h-32 overflow-y-auto">
+        <div className="max-h-32 overflow-y-auto bg-red-50/50 px-3 py-1.5">
           {readiness.blockers.map((blocker, idx) => {
             const fixAction = fixActions.find((fa) => fa.code === blocker.code);
             return (
-              <div
-                key={`${blocker.code}-${idx}`}
-                className="flex items-start gap-2 py-1 text-xs"
-              >
-                <span className="text-red-500 flex-shrink-0 mt-0.5">&#x2718;</span>
+              <div key={`${blocker.code}-${idx}`} className="flex items-start gap-2 py-1 text-xs">
+                <span className="mt-0.5 flex-shrink-0 text-red-500">&#x2718;</span>
                 <span className="flex-1 text-red-700">{blocker.message_pl}</span>
                 {fixAction && (
                   <button
-                    className="text-blue-600 hover:underline flex-shrink-0"
+                    className="flex-shrink-0 text-blue-600 hover:underline"
                     onClick={() => handleFixClick(fixAction)}
                     title={fixAction.message_pl}
                   >
@@ -112,15 +148,11 @@ export function ReadinessPanel({
         </div>
       )}
 
-      {/* Warnings list */}
       {warningCount > 0 && (
-        <div className="px-3 py-1.5 bg-amber-50/50 max-h-24 overflow-y-auto">
+        <div className="max-h-24 overflow-y-auto bg-amber-50/50 px-3 py-1.5">
           {readiness.warnings.map((warning, idx) => (
-            <div
-              key={`${warning.code}-${idx}`}
-              className="flex items-start gap-2 py-0.5 text-xs"
-            >
-              <span className="text-amber-500 flex-shrink-0 mt-0.5">&#x26A0;</span>
+            <div key={`${warning.code}-${idx}`} className="flex items-start gap-2 py-0.5 text-xs">
+              <span className="mt-0.5 flex-shrink-0 text-amber-500">&#x26A0;</span>
               <span className="flex-1 text-amber-700">{warning.message_pl}</span>
             </div>
           ))}

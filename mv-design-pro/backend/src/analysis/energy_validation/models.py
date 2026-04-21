@@ -71,9 +71,7 @@ class EnergyValidationContext:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
-            "run_timestamp": (
-                self.run_timestamp.isoformat() if self.run_timestamp else None
-            ),
+            "run_timestamp": (self.run_timestamp.isoformat() if self.run_timestamp else None),
             "snapshot_id": self.snapshot_id,
             "trace_id": self.trace_id,
         }

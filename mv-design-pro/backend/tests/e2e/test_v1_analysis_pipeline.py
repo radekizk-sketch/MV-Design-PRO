@@ -18,12 +18,11 @@ Sekwencja odpowiada realnemu flow inżyniera OSD:
   KROK 4: start_branch_segment_sn
   ⟹ mapping → solver → results → verify
 """
+
 from __future__ import annotations
 
 import hashlib
 import json
-
-import pytest
 
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
@@ -33,16 +32,15 @@ from network_model.solvers.power_flow_newton import (
     solve_power_flow_physics,
 )
 from network_model.solvers.power_flow_types import (
-    PQSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
     SlackSpec,
 )
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -105,25 +103,33 @@ def _build_v1_network() -> dict:
     enm = _empty_enm()
 
     # KROK 1: GPZ
-    r = execute_domain_operation(enm, "add_grid_source_sn", {
-        "voltage_kv": 15.0,
-        "sk3_mva": 250.0,
-        "rx_ratio": 0.1,
-        "catalog_ref": "src-gpz-15kv-250mva-rx010",
-    })
+    r = execute_domain_operation(
+        enm,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+        },
+    )
     assert r.get("error") is None, f"GPZ: {r.get('error')}"
     enm = r["snapshot"]
 
     # KROK 2: 3 odcinki magistrali
     for i, length in enumerate([300, 250, 200], 1):
-        r = execute_domain_operation(enm, "continue_trunk_segment_sn", {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": length,
-                "name": f"Odcinek {i}",
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+        r = execute_domain_operation(
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": length,
+                    "name": f"Odcinek {i}",
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
-        })
+        )
         assert r.get("error") is None, f"Trunk {i}: {r.get('error')}"
         enm = r["snapshot"]
 
@@ -134,17 +140,21 @@ def _build_v1_network() -> dict:
     assert len(seg_refs) >= 1, "Brak segmentów w magistrali"
     last_seg = seg_refs[-1]
 
-    r = execute_domain_operation(enm, "insert_station_on_segment_sn", {
-        "segment_ref": last_seg,
-        "station_type": "B",
-        "insert_at": {"value": 0.5},
-        "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-        "sn_fields": ["IN", "OUT"],
-        "transformer": {
-            "create": True,
-            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+    r = execute_domain_operation(
+        enm,
+        "insert_station_on_segment_sn",
+        {
+            "segment_ref": last_seg,
+            "station_type": "B",
+            "insert_at": {"value": 0.5},
+            "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+            "sn_fields": ["IN", "OUT"],
+            "transformer": {
+                "create": True,
+                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            },
         },
-    })
+    )
     assert r.get("error") is None, f"Station B: {r.get('error')}"
     enm = r["snapshot"]
 
@@ -153,14 +163,18 @@ def _build_v1_network() -> dict:
     assert sn_buses, "Brak szyny SN stacji"
     branch_from = sn_buses[0]["ref_id"]
 
-    r = execute_domain_operation(enm, "start_branch_segment_sn", {
-        "from_bus_ref": branch_from,
-        "segment": {
-            "rodzaj": "KABEL",
-            "dlugosc_m": 180,
+    r = execute_domain_operation(
+        enm,
+        "start_branch_segment_sn",
+        {
+            "from_bus_ref": branch_from,
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 180,
                 "catalog_ref": "cable-tfk-yakxs-3x120",
+            },
         },
-    })
+    )
     assert r.get("error") is None, f"Branch: {r.get('error')}"
     enm = r["snapshot"]
 
@@ -258,9 +272,7 @@ class TestV1PowerFlowPipeline:
             f"PF nie zbieżny po {result.iterations} iteracjach, "
             f"max_mismatch={result.max_mismatch}"
         )
-        assert result.iterations <= 20, (
-            f"PF potrzebował zbyt dużo iteracji: {result.iterations}"
-        )
+        assert result.iterations <= 20, f"PF potrzebował zbyt dużo iteracji: {result.iterations}"
 
         # Napięcia powinny być zbliżone do 1.0 pu (brak dużych obciążeń)
         for nid, u_mag in result.node_u_mag.items():
@@ -272,9 +284,7 @@ class TestV1PowerFlowPipeline:
         enm = EnergyNetworkModel.model_validate(enm_dict)
         graph = map_enm_to_network_graph(enm)
 
-        slack_node_id = next(
-            nid for nid, n in graph.nodes.items() if n.node_type.value == "SLACK"
-        )
+        slack_node_id = next(nid for nid, n in graph.nodes.items() if n.node_type.value == "SLACK")
         pq_specs = [
             PQSpec(node_id=nid, p_mw=n.active_power or 0.0, q_mvar=n.reactive_power or 0.0)
             for nid, n in sorted(graph.nodes.items())
@@ -350,9 +360,7 @@ class TestV1ShortCircuitPipeline:
 
         # WHITE BOX trace musi istnieć
         assert sc.white_box_trace is not None, "Brak white_box_trace"
-        assert len(sc.white_box_trace) >= 3, (
-            f"Zbyt mało kroków trace: {len(sc.white_box_trace)}"
-        )
+        assert len(sc.white_box_trace) >= 3, f"Zbyt mało kroków trace: {len(sc.white_box_trace)}"
 
         # Sprawdź kluczowe kroki trace
         trace_keys = [step.get("key") for step in sc.white_box_trace]
@@ -392,18 +400,27 @@ class TestV1ReadinessPipeline:
     def test_readiness_ok_after_full_build(self) -> None:
         """Po pełnej budowie sieci: readiness nie ma blokerów krytycznych."""
         enm = _empty_enm()
-        r = execute_domain_operation(enm, "add_grid_source_sn", {
-            "voltage_kv": 15.0, "sk3_mva": 250.0,
-        })
+        r = execute_domain_operation(
+            enm,
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+            },
+        )
         enm = r["snapshot"]
 
-        r = execute_domain_operation(enm, "continue_trunk_segment_sn", {
-            "segment": {
-                "rodzaj": "KABEL",
-                "dlugosc_m": 300,
-                "catalog_ref": "cable-tfk-yakxs-3x120",
+        r = execute_domain_operation(
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 300,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
-        })
+        )
         enm = r["snapshot"]
         readiness = r.get("readiness", {})
 
@@ -413,18 +430,27 @@ class TestV1ReadinessPipeline:
     def test_missing_catalog_generates_blocker(self) -> None:
         """Brak katalogu → catalog.ref_required error."""
         enm = _empty_enm()
-        r = execute_domain_operation(enm, "add_grid_source_sn", {
-            "voltage_kv": 15.0, "sk3_mva": 250.0,
-        })
+        r = execute_domain_operation(
+            enm,
+            "add_grid_source_sn",
+            {
+                "voltage_kv": 15.0,
+                "sk3_mva": 250.0,
+            },
+        )
         enm = r["snapshot"]
 
         # Próba dodania segmentu BEZ catalog_ref
-        r = execute_domain_operation(enm, "continue_trunk_segment_sn", {
-            "segment": {"rodzaj": "KABEL", "dlugosc_m": 300},
-        })
-        assert r.get("error") is not None or r.get("error_code") == "catalog.ref_required", (
-            "Oczekiwano blokady catalog.ref_required"
+        r = execute_domain_operation(
+            enm,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {"rodzaj": "KABEL", "dlugosc_m": 300},
+            },
         )
+        assert (
+            r.get("error") is not None or r.get("error_code") == "catalog.ref_required"
+        ), "Oczekiwano blokady catalog.ref_required"
 
 
 # ---------------------------------------------------------------------------
@@ -444,9 +470,7 @@ class TestV1PipelineDeterminism:
             enm = EnergyNetworkModel.model_validate(enm_dict)
             graph = map_enm_to_network_graph(enm)
 
-            slack_id = next(
-                nid for nid, n in graph.nodes.items() if n.node_type.value == "SLACK"
-            )
+            slack_id = next(nid for nid, n in graph.nodes.items() if n.node_type.value == "SLACK")
             pq_specs = [
                 PQSpec(node_id=nid, p_mw=n.active_power or 0.0, q_mvar=n.reactive_power or 0.0)
                 for nid, n in sorted(graph.nodes.items())
@@ -467,9 +491,7 @@ class TestV1PipelineDeterminism:
             if reference_hash is None:
                 reference_hash = h
             else:
-                assert h == reference_hash, (
-                    f"Run {run_idx}: PF wynik różni się od referencji"
-                )
+                assert h == reference_hash, f"Run {run_idx}: PF wynik różni się od referencji"
 
     def test_short_circuit_determinism_10x(self) -> None:
         """10× SC na tej samej sieci → identyczne wyniki."""
@@ -492,9 +514,7 @@ class TestV1PipelineDeterminism:
             if reference_hash is None:
                 reference_hash = h
             else:
-                assert h == reference_hash, (
-                    f"Run {run_idx}: SC wynik różni się od referencji"
-                )
+                assert h == reference_hash, f"Run {run_idx}: SC wynik różni się od referencji"
 
     def test_mapping_determinism_10x(self) -> None:
         """10× mapowanie ENM → NetworkGraph → identyczna struktura."""
@@ -506,16 +526,18 @@ class TestV1PipelineDeterminism:
             graph = map_enm_to_network_graph(enm)
 
             # Kanoniczny opis grafu
-            desc = json.dumps({
-                "nodes": sorted(graph.nodes.keys()),
-                "branches": sorted(graph.branches.keys()),
-                "switches": sorted(graph.switches.keys()),
-            }, sort_keys=True, separators=(",", ":"))
+            desc = json.dumps(
+                {
+                    "nodes": sorted(graph.nodes.keys()),
+                    "branches": sorted(graph.branches.keys()),
+                    "switches": sorted(graph.switches.keys()),
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            )
             h = _sha256(desc)
 
             if reference is None:
                 reference = h
             else:
-                assert h == reference, (
-                    f"Run {run_idx}: mapping wynik różni się od referencji"
-                )
+                assert h == reference, f"Run {run_idx}: mapping wynik różni się od referencji"

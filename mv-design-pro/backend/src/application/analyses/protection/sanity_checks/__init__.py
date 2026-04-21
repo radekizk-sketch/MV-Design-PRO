@@ -18,18 +18,17 @@ from __future__ import annotations
 
 from application.analyses.protection.base_values.models import BaseValues
 from application.analyses.protection.sanity_checks.models import (
+    SANITY_CHECK_CODE_LABELS_PL,
+    SEVERITY_LABELS_PL,
     ProtectionSanityCheckResult,
     SanityCheckCode,
     SanityCheckSeverity,
-    SANITY_CHECK_CODE_LABELS_PL,
-    SEVERITY_LABELS_PL,
 )
 from application.analyses.protection.sanity_checks.rules import (
     ALL_RULES,
     ElementContext,
     ProtectionFunctionSummary,
 )
-
 
 __all__ = [
     # API

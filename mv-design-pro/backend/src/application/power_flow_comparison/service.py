@@ -18,8 +18,9 @@ INVARIANTS (BINDING):
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from domain.analysis_run import AnalysisRun
@@ -52,7 +53,6 @@ from domain.power_flow_comparison import (
     get_ranking_thresholds,
 )
 from infrastructure.persistence.unit_of_work import UnitOfWork
-
 
 # =============================================================================
 # POWER FLOW COMPARISON SERVICE
@@ -123,15 +123,17 @@ class PowerFlowComparisonService:
             trace_steps: list[PowerFlowComparisonTraceStep] = []
 
             # 6. Step 1: Match buses
-            trace_steps.append(PowerFlowComparisonTraceStep(
-                step="MATCH_BUSES",
-                description_pl="Dopasowanie szyn po bus_id",
-                inputs={
-                    "buses_a_count": len(result_a.get("bus_results", [])),
-                    "buses_b_count": len(result_b.get("bus_results", [])),
-                },
-                outputs={},
-            ))
+            trace_steps.append(
+                PowerFlowComparisonTraceStep(
+                    step="MATCH_BUSES",
+                    description_pl="Dopasowanie szyn po bus_id",
+                    inputs={
+                        "buses_a_count": len(result_a.get("bus_results", [])),
+                        "buses_b_count": len(result_b.get("bus_results", [])),
+                    },
+                    outputs={},
+                )
+            )
 
             bus_diffs = self._compute_bus_diffs(
                 result_a.get("bus_results", []),
@@ -151,15 +153,17 @@ class PowerFlowComparisonService:
             )
 
             # 7. Step 2: Match branches
-            trace_steps.append(PowerFlowComparisonTraceStep(
-                step="MATCH_BRANCHES",
-                description_pl="Dopasowanie galezi po branch_id",
-                inputs={
-                    "branches_a_count": len(result_a.get("branch_results", [])),
-                    "branches_b_count": len(result_b.get("branch_results", [])),
-                },
-                outputs={},
-            ))
+            trace_steps.append(
+                PowerFlowComparisonTraceStep(
+                    step="MATCH_BRANCHES",
+                    description_pl="Dopasowanie galezi po branch_id",
+                    inputs={
+                        "branches_a_count": len(result_a.get("branch_results", [])),
+                        "branches_b_count": len(result_b.get("branch_results", [])),
+                    },
+                    outputs={},
+                )
+            )
 
             branch_diffs = self._compute_branch_diffs(
                 result_a.get("branch_results", []),
@@ -184,16 +188,18 @@ class PowerFlowComparisonService:
             summary_a = result_a.get("summary", {})
             summary_b = result_b.get("summary", {})
 
-            trace_steps.append(PowerFlowComparisonTraceStep(
-                step="RANK_ISSUES",
-                description_pl="Generowanie rankingu problemow wg severity (5->1)",
-                inputs={
-                    "bus_diffs_count": len(bus_diffs),
-                    "branch_diffs_count": len(branch_diffs),
-                    "thresholds": get_ranking_thresholds(),
-                },
-                outputs={},
-            ))
+            trace_steps.append(
+                PowerFlowComparisonTraceStep(
+                    step="RANK_ISSUES",
+                    description_pl="Generowanie rankingu problemow wg severity (5->1)",
+                    inputs={
+                        "bus_diffs_count": len(bus_diffs),
+                        "branch_diffs_count": len(branch_diffs),
+                        "thresholds": get_ranking_thresholds(),
+                    },
+                    outputs={},
+                )
+            )
 
             ranking = self._generate_ranking(
                 bus_diffs=bus_diffs,
@@ -250,8 +256,12 @@ class PowerFlowComparisonService:
                 comparison_id=comparison_id,
                 run_a_id=run_a_id,
                 run_b_id=run_b_id,
-                snapshot_id_a=run_a.input_snapshot.get("snapshot_id") if run_a.input_snapshot else None,
-                snapshot_id_b=run_b.input_snapshot.get("snapshot_id") if run_b.input_snapshot else None,
+                snapshot_id_a=(
+                    run_a.input_snapshot.get("snapshot_id") if run_a.input_snapshot else None
+                ),
+                snapshot_id_b=(
+                    run_b.input_snapshot.get("snapshot_id") if run_b.input_snapshot else None
+                ),
                 input_hash_a=run_a.input_hash,
                 input_hash_b=run_b.input_hash,
                 solver_version="1.0.0",
@@ -296,9 +306,7 @@ class PowerFlowComparisonService:
     # PRIVATE METHODS
     # =========================================================================
 
-    def _get_power_flow_run(
-        self, uow: UnitOfWork, run_id: str
-    ) -> AnalysisRun:
+    def _get_power_flow_run(self, uow: UnitOfWork, run_id: str) -> AnalysisRun:
         """
         Get a power flow analysis run by ID.
         """
@@ -306,6 +314,7 @@ class PowerFlowComparisonService:
             run_uuid = UUID(run_id)
             # Try to get from analysis runs
             from application.analysis_run import AnalysisRunService
+
             service = AnalysisRunService(lambda: uow)
             run = service.get_run(run_uuid)
             if run.analysis_type != "PF":
@@ -316,18 +325,14 @@ class PowerFlowComparisonService:
         except Exception:
             raise PowerFlowRunNotFoundError(run_id)
 
-    def _validate_run_status(
-        self, run: AnalysisRun, run_id: str
-    ) -> None:
+    def _validate_run_status(self, run: AnalysisRun, run_id: str) -> None:
         """
         Validate that run is FINISHED.
         """
         if run.status != "FINISHED":
             raise PowerFlowRunNotFinishedError(run_id, run.status)
 
-    def _get_power_flow_result(
-        self, uow: UnitOfWork, run_id: str
-    ) -> dict[str, Any]:
+    def _get_power_flow_result(self, uow: UnitOfWork, run_id: str) -> dict[str, Any]:
         """
         Get PowerFlowResult for a run.
         """
@@ -365,13 +370,15 @@ class PowerFlowComparisonService:
             v_pu = node_u_mag.get(bus_id, 0.0)
             angle_rad = node_angle_rad.get(bus_id, 0.0)
             angle_deg = math.degrees(angle_rad)
-            bus_results.append({
-                "bus_id": bus_id,
-                "v_pu": v_pu,
-                "angle_deg": angle_deg,
-                "p_injected_mw": 0.0,
-                "q_injected_mvar": 0.0,
-            })
+            bus_results.append(
+                {
+                    "bus_id": bus_id,
+                    "v_pu": v_pu,
+                    "angle_deg": angle_deg,
+                    "p_injected_mw": 0.0,
+                    "q_injected_mvar": 0.0,
+                }
+            )
 
         # Branch results (deterministycznie posortowane)
         branch_s_from = payload.get("branch_s_from_mva", {})
@@ -380,21 +387,27 @@ class PowerFlowComparisonService:
         for branch_id in sorted(branch_s_from.keys()):
             s_from = branch_s_from.get(branch_id, {"re": 0.0, "im": 0.0})
             s_to = branch_s_to.get(branch_id, {"re": 0.0, "im": 0.0})
-            p_from = s_from.get("re", 0.0) if isinstance(s_from, dict) else getattr(s_from, 'real', 0.0)
-            q_from = s_from.get("im", 0.0) if isinstance(s_from, dict) else getattr(s_from, 'imag', 0.0)
-            p_to = s_to.get("re", 0.0) if isinstance(s_to, dict) else getattr(s_to, 'real', 0.0)
-            q_to = s_to.get("im", 0.0) if isinstance(s_to, dict) else getattr(s_to, 'imag', 0.0)
+            p_from = (
+                s_from.get("re", 0.0) if isinstance(s_from, dict) else getattr(s_from, "real", 0.0)
+            )
+            q_from = (
+                s_from.get("im", 0.0) if isinstance(s_from, dict) else getattr(s_from, "imag", 0.0)
+            )
+            p_to = s_to.get("re", 0.0) if isinstance(s_to, dict) else getattr(s_to, "real", 0.0)
+            q_to = s_to.get("im", 0.0) if isinstance(s_to, dict) else getattr(s_to, "imag", 0.0)
             losses_p = p_from + p_to
             losses_q = q_from + q_to
-            branch_results.append({
-                "branch_id": branch_id,
-                "p_from_mw": p_from,
-                "q_from_mvar": q_from,
-                "p_to_mw": p_to,
-                "q_to_mvar": q_to,
-                "losses_p_mw": losses_p,
-                "losses_q_mvar": losses_q,
-            })
+            branch_results.append(
+                {
+                    "branch_id": branch_id,
+                    "p_from_mw": p_from,
+                    "q_from_mvar": q_from,
+                    "p_to_mw": p_to,
+                    "q_to_mvar": q_to,
+                    "losses_p_mw": losses_p,
+                    "losses_q_mvar": losses_q,
+                }
+            )
 
         # Summary
         losses_total = payload.get("losses_total_pu", {"re": 0.0, "im": 0.0})
@@ -403,13 +416,30 @@ class PowerFlowComparisonService:
         min_v = min(v_values) if v_values else 0.0
         max_v = max(v_values) if v_values else 0.0
 
-        total_losses_p = (losses_total.get("re", 0.0) if isinstance(losses_total, dict) else getattr(losses_total, 'real', 0.0)) * base_mva
-        total_losses_q = (losses_total.get("im", 0.0) if isinstance(losses_total, dict) else getattr(losses_total, 'imag', 0.0)) * base_mva
-        slack_p = (slack_power.get("re", 0.0) if isinstance(slack_power, dict) else getattr(slack_power, 'real', 0.0)) * base_mva
-        slack_q = (slack_power.get("im", 0.0) if isinstance(slack_power, dict) else getattr(slack_power, 'imag', 0.0)) * base_mva
+        total_losses_p = (
+            losses_total.get("re", 0.0)
+            if isinstance(losses_total, dict)
+            else getattr(losses_total, "real", 0.0)
+        ) * base_mva
+        total_losses_q = (
+            losses_total.get("im", 0.0)
+            if isinstance(losses_total, dict)
+            else getattr(losses_total, "imag", 0.0)
+        ) * base_mva
+        slack_p = (
+            slack_power.get("re", 0.0)
+            if isinstance(slack_power, dict)
+            else getattr(slack_power, "real", 0.0)
+        ) * base_mva
+        slack_q = (
+            slack_power.get("im", 0.0)
+            if isinstance(slack_power, dict)
+            else getattr(slack_power, "imag", 0.0)
+        ) * base_mva
 
         # Get convergence from run
         from application.analysis_run import AnalysisRunService
+
         service = AnalysisRunService(lambda: uow)
         run = service.get_run(run_uuid)
         result_summary = run.result_summary or {}
@@ -478,7 +508,11 @@ class PowerFlowComparisonService:
         Store comparison result and trace.
         """
         comparison = PowerFlowComparison(
-            id=UUID(result.comparison_id) if self._is_valid_uuid(result.comparison_id) else UUID(int=hash(result.comparison_id) % (2**128)),
+            id=(
+                UUID(result.comparison_id)
+                if self._is_valid_uuid(result.comparison_id)
+                else UUID(int=hash(result.comparison_id) % (2**128))
+            ),
             project_id=project_id,
             run_a_id=run_a_id,
             run_b_id=run_b_id,
@@ -486,7 +520,7 @@ class PowerFlowComparisonService:
             input_hash=input_hash,
             result_json=result.to_dict(),
             trace_json=trace.to_dict(),
-            finished_at=datetime.now(timezone.utc),
+            finished_at=datetime.now(UTC),
         )
 
         uow.results.add_result(
@@ -654,38 +688,50 @@ class PowerFlowComparisonService:
 
         # Rule 1: Convergence change
         if converged_a != converged_b:
-            issues.append(self._create_issue(
-                PowerFlowIssueCode.NON_CONVERGENCE_CHANGE,
-                "system",
-                -1,  # No specific element
-                extra_info=f"A={converged_a}, B={converged_b}",
-            ))
+            issues.append(
+                self._create_issue(
+                    PowerFlowIssueCode.NON_CONVERGENCE_CHANGE,
+                    "system",
+                    -1,  # No specific element
+                    extra_info=f"A={converged_a}, B={converged_b}",
+                )
+            )
 
         # Rule 2: Top N largest |delta_v_pu|
-        voltage_deltas = [(idx, abs(bus.delta_v_pu), bus.bus_id) for idx, bus in enumerate(bus_diffs)]
-        voltage_deltas.sort(key=lambda x: (-x[1], x[2]))  # Sort by delta DESC, then bus_id for determinism
+        voltage_deltas = [
+            (idx, abs(bus.delta_v_pu), bus.bus_id) for idx, bus in enumerate(bus_diffs)
+        ]
+        voltage_deltas.sort(
+            key=lambda x: (-x[1], x[2])
+        )  # Sort by delta DESC, then bus_id for determinism
 
-        for rank, (idx, abs_delta, bus_id) in enumerate(voltage_deltas[:TOP_N_FOR_RANKING]):
+        for _rank, (idx, abs_delta, bus_id) in enumerate(voltage_deltas[:TOP_N_FOR_RANKING]):
             if abs_delta >= VOLTAGE_DELTA_THRESHOLD_PU:
-                issues.append(self._create_issue(
-                    PowerFlowIssueCode.VOLTAGE_DELTA_HIGH,
-                    bus_id,
-                    idx,
-                    extra_info=f"DeltaV = {bus_diffs[idx].delta_v_pu:.4f} pu",
-                ))
+                issues.append(
+                    self._create_issue(
+                        PowerFlowIssueCode.VOLTAGE_DELTA_HIGH,
+                        bus_id,
+                        idx,
+                        extra_info=f"DeltaV = {bus_diffs[idx].delta_v_pu:.4f} pu",
+                    )
+                )
 
         # Rule 3: Angle shift (top N largest |delta_angle_deg|)
-        angle_deltas = [(idx, abs(bus.delta_angle_deg), bus.bus_id) for idx, bus in enumerate(bus_diffs)]
+        angle_deltas = [
+            (idx, abs(bus.delta_angle_deg), bus.bus_id) for idx, bus in enumerate(bus_diffs)
+        ]
         angle_deltas.sort(key=lambda x: (-x[1], x[2]))
 
-        for rank, (idx, abs_delta, bus_id) in enumerate(angle_deltas[:TOP_N_FOR_RANKING]):
+        for _rank, (idx, abs_delta, bus_id) in enumerate(angle_deltas[:TOP_N_FOR_RANKING]):
             if abs_delta >= ANGLE_DELTA_THRESHOLD_DEG:
-                issues.append(self._create_issue(
-                    PowerFlowIssueCode.ANGLE_SHIFT_HIGH,
-                    bus_id,
-                    idx,
-                    extra_info=f"DeltaAngle = {bus_diffs[idx].delta_angle_deg:.2f} deg",
-                ))
+                issues.append(
+                    self._create_issue(
+                        PowerFlowIssueCode.ANGLE_SHIFT_HIGH,
+                        bus_id,
+                        idx,
+                        extra_info=f"DeltaAngle = {bus_diffs[idx].delta_angle_deg:.2f} deg",
+                    )
+                )
 
         # Rule 4: Total losses change
         total_losses_a = float(summary_a.get("total_losses_p_mw", 0.0))
@@ -693,19 +739,23 @@ class PowerFlowComparisonService:
         delta_losses = total_losses_b - total_losses_a
 
         if delta_losses > LOSSES_INCREASE_THRESHOLD_MW:
-            issues.append(self._create_issue(
-                PowerFlowIssueCode.LOSSES_INCREASED,
-                "system",
-                -1,
-                extra_info=f"DeltaLosses = +{delta_losses:.3f} MW",
-            ))
+            issues.append(
+                self._create_issue(
+                    PowerFlowIssueCode.LOSSES_INCREASED,
+                    "system",
+                    -1,
+                    extra_info=f"DeltaLosses = +{delta_losses:.3f} MW",
+                )
+            )
         elif delta_losses < -LOSSES_DECREASE_THRESHOLD_MW:
-            issues.append(self._create_issue(
-                PowerFlowIssueCode.LOSSES_DECREASED,
-                "system",
-                -1,
-                extra_info=f"DeltaLosses = {delta_losses:.3f} MW",
-            ))
+            issues.append(
+                self._create_issue(
+                    PowerFlowIssueCode.LOSSES_DECREASED,
+                    "system",
+                    -1,
+                    extra_info=f"DeltaLosses = {delta_losses:.3f} MW",
+                )
+            )
 
         # Rule 5: Slack power change
         slack_p_a = float(summary_a.get("slack_p_mw", 0.0))
@@ -713,17 +763,17 @@ class PowerFlowComparisonService:
         delta_slack = abs(slack_p_b - slack_p_a)
 
         if delta_slack > SLACK_POWER_CHANGE_THRESHOLD_MW:
-            issues.append(self._create_issue(
-                PowerFlowIssueCode.SLACK_POWER_CHANGED,
-                "slack",
-                -1,
-                extra_info=f"DeltaSlackP = {slack_p_b - slack_p_a:.3f} MW",
-            ))
+            issues.append(
+                self._create_issue(
+                    PowerFlowIssueCode.SLACK_POWER_CHANGED,
+                    "slack",
+                    -1,
+                    extra_info=f"DeltaSlackP = {slack_p_b - slack_p_a:.3f} MW",
+                )
+            )
 
         # Sort by severity DESC, then issue_code, then element_ref (deterministic)
-        issues.sort(
-            key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref)
-        )
+        issues.sort(key=lambda i: (-i.severity.value, i.issue_code.value, i.element_ref))
 
         return issues
 
@@ -748,9 +798,7 @@ class PowerFlowComparisonService:
             evidence_ref=evidence_ref,
         )
 
-    def _count_severities(
-        self, ranking: list[PowerFlowRankingIssue]
-    ) -> dict[str, int]:
+    def _count_severities(self, ranking: list[PowerFlowRankingIssue]) -> dict[str, int]:
         """
         Count issues by severity.
         """

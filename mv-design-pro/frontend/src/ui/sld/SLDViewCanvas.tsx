@@ -1,15 +1,15 @@
 /**
- * SLD View Canvas — Read-Only SVG Rendering with ETAP Symbols
+ * SLD View Canvas — Read-Only SVG Rendering with CANONICAL Symbols
  *
- * PR-SLD-04: Unifikacja symboli w edytorze do standardu ETAP
+ * PR-SLD-04: Unifikacja symboli w edytorze do standardu CANONICAL
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A.2: Symbol types (Bus, Line, Transformer, etc.)
  * - sld_rules.md § D.1: Visual state encoding (in_service, selected)
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
- * - etap_symbols/*: ETAP-parity symbol library
- * - AUDYT_SLD_ETAP.md N-02: hierarchiczne auto-rozmieszczenie
- * - AUDYT_SLD_ETAP.md N-04: edytor używa tego samego renderera co podgląd (ETAP)
+ * - ui_canonical_parity.md: Canonical-like presentation
+ * - canonical_symbols/*: CANONICAL-parity symbol library
+ * - AUDYT_SLD_CANONICAL.md N-02: hierarchiczne auto-rozmieszczenie
+ * - AUDYT_SLD_CANONICAL.md N-04: edytor używa tego samego renderera co podgląd (CANONICAL)
  *
  * READ-ONLY canvas:
  * - No drag/drop
@@ -18,7 +18,7 @@
  * - Click → selection only
  * - AUTOMATYCZNE auto-rozmieszczenie (bez przycisku)
  *
- * ETAP SYMBOL INTEGRATION (via UnifiedSymbolRenderer):
+ * CANONICAL SYMBOL INTEGRATION (via UnifiedSymbolRenderer):
  * - Bus → busbar
  * - LineBranch (LINE) → line_overhead (solid)
  * - LineBranch (CABLE) → line_cable (dashed)
@@ -26,23 +26,23 @@
  * - Switch (BREAKER) → circuit_breaker
  * - Switch (DISCONNECTOR) → disconnector
  * - Source → utility_feeder
- * - Load → fallback (trójkąt, brak symbolu ETAP)
+ * - Load → fallback (trójkąt, brak symbolu CANONICAL)
  */
 
 import React, { useCallback, useMemo } from 'react';
-import type { AnySldSymbol } from '../sld-editor/types';
+import type { AnySldSymbol, Connection as RenderConnection } from '../sld-editor/types';
+import { getPortPoint, type PortName } from '../sld-editor/utils/portUtils';
 import type { ElementType } from '../types';
 import type { InteractionPortRole, SLDViewCanvasProps, ViewportState } from './types';
 import { calculateEnergization } from './energization';
 import { ConnectionsLayer } from './ConnectionRenderer';
-import { generateConnections } from '../sld-editor/utils/connectionRouting';
 import { UnifiedSymbolRenderer, type SymbolVisualState, type SymbolInteractionHandlers } from './symbols';
-import { TrunkSpineRenderer } from './TrunkSpineRenderer';
 import { BranchRenderer } from './BranchRenderer';
-import { StationFieldRenderer } from './StationFieldRenderer';
+import { FieldBlockRenderer } from './FieldBlockRenderer';
 import { InlineBranchObjectRenderer } from './InlineBranchObjectRenderer';
+import { GpzFieldBlockRenderer } from './GpzFieldBlockRenderer';
 import { JunctionDotLayer } from './JunctionDotLayer';
-import { ETAP_GRID, ETAP_TYPOGRAPHY, ETAP_CANVAS } from './sldEtapStyle';
+import { CANONICAL_GRID, CANONICAL_TYPOGRAPHY, CANONICAL_CANVAS } from './sldCanonicalStyle';
 import './sld-canonical.css';
 
 /**
@@ -56,6 +56,7 @@ interface SymbolProps {
   symbol: AnySldSymbol;
   selected: boolean;
   onClick: (symbolId: string, elementType: ElementType, elementName: string) => void;
+  onDoubleClick?: (symbolId: string, elementType: ElementType, elementName: string) => void;
   onHover?: (symbolId: string | null, elementType?: ElementType, elementName?: string) => void;
   energized: boolean;
   /** Severity z readiness blockers — podświetla symbol kolorową obwódką */
@@ -63,9 +64,17 @@ interface SymbolProps {
 }
 
 /**
- * Main symbol component using unified ETAP symbols.
+ * Main symbol component using unified CANONICAL symbols.
  */
-const Symbol: React.FC<SymbolProps> = ({ symbol, selected, onClick, onHover, energized, readinessSeverity }) => {
+const Symbol: React.FC<SymbolProps> = ({
+  symbol,
+  selected,
+  onClick,
+  onDoubleClick,
+  onHover,
+  energized,
+  readinessSeverity,
+}) => {
   // Handle click - adapts the unified renderer's interface to viewer's onClick
   const handleClick = useCallback(
     (symbolId: string) => {
@@ -86,6 +95,9 @@ const Symbol: React.FC<SymbolProps> = ({ symbol, selected, onClick, onHover, ene
   // Build interaction handlers - viewer only needs onClick
   const handlers: SymbolInteractionHandlers = {
     onClick: handleClick,
+    onDoubleClick: onDoubleClick
+      ? (symbolId) => onDoubleClick(symbolId, symbol.elementType, symbol.elementName)
+      : undefined,
   };
 
   return (
@@ -105,12 +117,8 @@ const Symbol: React.FC<SymbolProps> = ({ symbol, selected, onClick, onHover, ene
 
 function getPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
   switch (symbol.elementType) {
-    case 'Source':
-      return ['TRUNK_OUT'];
     case 'Bus':
-      return ['TRUNK_IN', 'TRUNK_OUT', 'BRANCH_OUT', 'RING'];
-    case 'LineBranch':
-      return ['TRUNK_IN', 'TRUNK_OUT'];
+      return [];
     case 'TransformerBranch':
       return ['TRUNK_IN', 'NN_SOURCE'];
     case 'Generator':
@@ -120,25 +128,43 @@ function getPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
   }
 }
 
-function getPortPosition(symbol: AnySldSymbol, role: InteractionPortRole): { x: number; y: number } {
-  const { x, y } = symbol.position;
+function getPortLabel(role: InteractionPortRole): string {
   switch (role) {
     case 'TRUNK_IN':
-      return { x, y: y - 18 };
+      return 'Port wejścia magistrali';
     case 'TRUNK_OUT':
-      return { x, y: y + 18 };
+      return 'Port wyjścia magistrali';
     case 'BRANCH_OUT':
-      return { x: x + 18, y };
+      return 'Port odgałęzienia';
     case 'RING':
-      return { x: x - 18, y };
+      return 'Port pierścienia';
     case 'NN_SOURCE':
-      return { x: x + 18, y: y + 18 };
+      return 'Port źródła nN';
   }
+}
+
+function mapInteractionRoleToPortName(role: InteractionPortRole): PortName {
+  switch (role) {
+    case 'TRUNK_IN':
+      return 'top';
+    case 'TRUNK_OUT':
+      return 'bottom';
+    case 'BRANCH_OUT':
+      return 'right';
+    case 'RING':
+      return 'left';
+    case 'NN_SOURCE':
+      return 'bottom';
+  }
+}
+
+function inlineBranchElementType(objectType: 'branch_pole' | 'zksn'): ElementType {
+  return objectType === 'branch_pole' ? 'BranchPole' : 'ZKSN';
 }
 
 /**
  * Grid background for canvas.
- * ETAP style: subdued, not dominant. Major grid every N cells.
+ * CANONICAL style: subdued, not dominant. Major grid every N cells.
  * Technical drawing paper aesthetic — warm, professional.
  */
 interface GridProps {
@@ -166,7 +192,7 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
     const screenX = x + viewport.offsetX;
     if (screenX >= 0 && screenX <= width) {
       const gridIndex = getMajorIndex(x);
-      const isMajor = gridIndex % ETAP_GRID.majorEvery === 0;
+      const isMajor = gridIndex % CANONICAL_GRID.majorEvery === 0;
       const isAxis = gridIndex === 0;
       lines.push(
         <line
@@ -175,9 +201,9 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
           y1={0}
           x2={screenX}
           y2={height}
-          stroke={isAxis ? ETAP_GRID.axisColor : isMajor ? ETAP_GRID.majorColor : ETAP_GRID.minorColor}
-          strokeWidth={isAxis ? ETAP_GRID.axisStrokeWidth : isMajor ? ETAP_GRID.majorStrokeWidth : ETAP_GRID.minorStrokeWidth}
-          opacity={ETAP_GRID.opacity}
+          stroke={isAxis ? CANONICAL_GRID.axisColor : isMajor ? CANONICAL_GRID.majorColor : CANONICAL_GRID.minorColor}
+          strokeWidth={isAxis ? CANONICAL_GRID.axisStrokeWidth : isMajor ? CANONICAL_GRID.majorStrokeWidth : CANONICAL_GRID.minorStrokeWidth}
+          opacity={CANONICAL_GRID.opacity}
         />
       );
     }
@@ -188,7 +214,7 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
     const screenY = y + viewport.offsetY;
     if (screenY >= 0 && screenY <= height) {
       const gridIndex = getMajorIndex(y);
-      const isMajor = gridIndex % ETAP_GRID.majorEvery === 0;
+      const isMajor = gridIndex % CANONICAL_GRID.majorEvery === 0;
       const isAxis = gridIndex === 0;
       lines.push(
         <line
@@ -197,9 +223,9 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
           y1={screenY}
           x2={width}
           y2={screenY}
-          stroke={isAxis ? ETAP_GRID.axisColor : isMajor ? ETAP_GRID.majorColor : ETAP_GRID.minorColor}
-          strokeWidth={isAxis ? ETAP_GRID.axisStrokeWidth : isMajor ? ETAP_GRID.majorStrokeWidth : ETAP_GRID.minorStrokeWidth}
-          opacity={ETAP_GRID.opacity}
+          stroke={isAxis ? CANONICAL_GRID.axisColor : isMajor ? CANONICAL_GRID.majorColor : CANONICAL_GRID.minorColor}
+          strokeWidth={isAxis ? CANONICAL_GRID.axisStrokeWidth : isMajor ? CANONICAL_GRID.majorStrokeWidth : CANONICAL_GRID.minorStrokeWidth}
+          opacity={CANONICAL_GRID.opacity}
         />
       );
     }
@@ -209,7 +235,7 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
 };
 
 /**
- * Main SLD View Canvas component (read-only) with ETAP symbols.
+ * Main SLD View Canvas component (read-only) with CANONICAL symbols.
  *
  * AUTO-LAYOUT (N-02):
  * - Layout jest wyliczany AUTOMATYCZNIE przy kazdej zmianie topologii
@@ -219,8 +245,10 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
  */
 export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   symbols: inputSymbols,
+  connections: canonicalConnections = [],
   selectedId,
   onSymbolClick,
+  onSymbolDoubleClick,
   onSymbolHover,
   onCanvasClick,
   onPortClick,
@@ -240,18 +268,79 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   // Viewer nie uruchamia lokalnego engine layoutu. Używa wyłącznie geometrii
   // dostarczonej przez pipeline Snapshot -> SLD symbols.
   const symbols = inputSymbols;
+  const gpzFeederFields = canonicalAnnotations?.gpzFeederFields ?? [];
+  const stationChains = canonicalAnnotations?.stationChains ?? [];
+  const gpzFieldNodeIds = useMemo(
+    () => new Set(gpzFeederFields.map((field) => field.feederNodeId)),
+    [gpzFeederFields],
+  );
 
   // Sort symbols for deterministic rendering (by ID)
   const sortedSymbols = [...symbols].sort((a, b) => a.id.localeCompare(b.id));
+  const renderableSymbols = sortedSymbols.filter((symbol) => {
+    if (symbol.elementType === 'LineBranch') return false;
+    if (gpzFieldNodeIds.has(symbol.id)) return false;
+    if (symbol.elementId && gpzFieldNodeIds.has(symbol.elementId)) return false;
+    return true;
+  });
 
   // Calculate energization state (UI-only, deterministic)
   const energizationState = useMemo(() => calculateEnergization(symbols), [symbols]);
 
-  // Generate connections (N-01: port-to-port, N-05: orthogonal routing)
-  // DETERMINISM: Same symbols -> same connections
-  const connections = useMemo(() => generateConnections(symbols), [symbols]);
+  // Połączenia pochodzą wyłącznie z kanonicznego pipeline layoutu.
+  // Viewer nie rekonstruuje już routingu lokalną heurystyką.
+  const connections = canonicalConnections as RenderConnection[];
 
   const showTechnicalCanonicalLabels = viewport.zoom >= 1.35;
+  const canonicalFieldOverlays = useMemo(
+    () => [
+      ...gpzFeederFields.map((field) => (
+        <g
+          key={`gpz-field-${field.fieldId}`}
+          data-element-id={field.fieldId}
+          data-element-type="BaySN"
+          data-element-name={field.designation}
+          style={{ cursor: 'pointer' }}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSymbolClick(field.fieldId, 'BaySN', field.designation);
+          }}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            onSymbolDoubleClick?.(field.fieldId, 'BaySN', field.designation);
+          }}
+        >
+          <GpzFieldBlockRenderer
+            field={field}
+            showTechnicalLabels={showTechnicalCanonicalLabels}
+          />
+        </g>
+      )),
+      ...stationChains.map((chain) => (
+        <g
+          key={`station-field-${chain.stationId}`}
+          data-element-id={chain.stationId}
+          data-element-type="Station"
+          data-element-name={chain.stationId}
+          style={{ cursor: 'pointer' }}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSymbolClick(chain.stationId, 'Station', chain.stationId);
+          }}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            onSymbolDoubleClick?.(chain.stationId, 'Station', chain.stationId);
+          }}
+        >
+          <FieldBlockRenderer
+            field={chain}
+            showTechnicalLabels={showTechnicalCanonicalLabels}
+          />
+        </g>
+      )),
+    ],
+    [gpzFeederFields, onSymbolClick, onSymbolDoubleClick, showTechnicalCanonicalLabels, stationChains],
+  );
 
   // Build energization map for connections
   const connectionEnergizationMap = useMemo(() => {
@@ -266,6 +355,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   }, [connections, energizationState]);
 
   const toSegmentKind = useCallback((connection: (typeof connections)[number]): 'TRUNK' | 'BRANCH' | 'RING' | 'SECONDARY' => {
+    if (connection.connectionStyle === 'ring') return 'RING';
     if (connection.connectionType === 'branch') return 'BRANCH';
     if (connection.connectionType === 'source' || connection.connectionType === 'load' || connection.connectionType === 'switch') {
       return 'SECONDARY';
@@ -308,30 +398,29 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     >
       {/* Defs for gradients and patterns */}
       <defs>
-        {/* ETAP-style canvas background gradient (technical drawing paper) */}
-        <linearGradient id="etap-canvas-bg" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor={ETAP_CANVAS.gradientStart} />
-          <stop offset="100%" stopColor={ETAP_CANVAS.gradientEnd} />
+        {/* Kanoniczne tlo techniczne dla canvasa */}
+        <linearGradient id="canonical-canvas-bg" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={CANONICAL_CANVAS.gradientStart} />
+          <stop offset="100%" stopColor={CANONICAL_CANVAS.gradientEnd} />
         </linearGradient>
-        {/* Subtle inner shadow for depth */}
-        <filter id="etap-canvas-shadow" x="-5%" y="-5%" width="110%" height="110%">
-          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor={ETAP_CANVAS.shadowColor} floodOpacity="1" />
+        <filter id="canonical-canvas-shadow" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor={CANONICAL_CANVAS.shadowColor} floodOpacity="1" />
         </filter>
       </defs>
 
-      {/* Canvas background — ETAP technical drawing paper */}
+      {/* Canvas background — CANONICAL technical drawing paper */}
       <rect
         x={0}
         y={0}
         width={width}
         height={height}
-        fill="url(#etap-canvas-bg)"
+        fill="url(#canonical-canvas-bg)"
         data-testid="sld-canvas-background"
         onClick={onCanvasClick}
       />
 
-      {/* Grid background — ETAP subdued grid */}
-      {showGrid && <Grid width={width} height={height} gridSize={ETAP_GRID.size} viewport={viewport} />}
+      {/* Grid background — CANONICAL subdued grid */}
+      {showGrid && <Grid width={width} height={height} gridSize={CANONICAL_GRID.size} viewport={viewport} />}
 
       {/* Transformed content group */}
       <g
@@ -387,8 +476,14 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           />
         )}
 
+        {canonicalFieldOverlays.length > 0 && (
+          <g className="sld-canonical-fields">
+            {canonicalFieldOverlays}
+          </g>
+        )}
+
         {/* Render symbols with energization + readiness state */}
-        {sortedSymbols.map((symbol) => {
+        {renderableSymbols.map((symbol) => {
           const elementRef = symbol.elementId ?? symbol.id;
           const severity = highlightedElements?.get(elementRef)
             ?? highlightedElements?.get(symbol.id)
@@ -399,6 +494,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
               symbol={symbol}
               selected={symbol.id === selectedId || symbol.elementId === selectedId}
               onClick={onSymbolClick}
+              onDoubleClick={onSymbolDoubleClick}
               onHover={onSymbolHover}
               energized={energizationState.energizedElements.get(symbol.id) ?? true}
               readinessSeverity={severity}
@@ -406,11 +502,11 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           );
         })}
 
-        {sortedSymbols
+        {renderableSymbols
           .filter((symbol) => symbol.id === selectedId || symbol.elementId === selectedId)
           .flatMap((symbol) => getPortsForSymbol(symbol).map((role) => ({ symbol, role })))
           .map(({ symbol, role }) => {
-            const portPos = getPortPosition(symbol, role);
+            const portPos = getPortPoint(symbol, mapInteractionRoleToPortName(role));
             return (
               <g key={`${symbol.id}-${role}`} data-testid={`sld-port-${symbol.id}-${role}`}>
                 <circle
@@ -424,10 +520,9 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
                   onClick={() => onPortClick?.(symbol.id, symbol.elementType, symbol.elementName, role)}
                   onMouseEnter={() => onPortHover?.(symbol.id, symbol.elementType, symbol.elementName, role)}
                   onMouseLeave={() => onPortHover?.(null)}
-                />
-                <text x={portPos.x + 12} y={portPos.y + 3} fontSize={9} fill="#1d4ed8">
-                  {role}
-                </text>
+                >
+                  <title>{getPortLabel(role)}</title>
+                </circle>
               </g>
             );
           })}
@@ -435,21 +530,9 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
         {/* Canonical SLD layers (Phase 7) — pointerEvents: none to avoid blocking interaction */}
         {canonicalAnnotations && (
           <>
-            <g className="sld-trunk-spines" style={{ pointerEvents: 'none' }}>
-              <TrunkSpineRenderer
-                nodes={canonicalAnnotations.trunkNodes}
-                segments={canonicalAnnotations.trunkSegments}
-                showTechnicalLabels={showTechnicalCanonicalLabels}
-              />
-            </g>
             <g className="sld-branch-points" style={{ pointerEvents: 'none' }}>
               {canonicalAnnotations.branchPoints.map((bp) => (
                 <BranchRenderer key={bp.branchId} branch={bp} showTechnicalLabels={showTechnicalCanonicalLabels} />
-              ))}
-            </g>
-            <g className="sld-station-fields" style={{ pointerEvents: 'none' }}>
-              {canonicalAnnotations.stationChains.map((sc) => (
-                <StationFieldRenderer key={sc.stationId} chain={sc} showTechnicalLabels={showTechnicalCanonicalLabels} />
               ))}
             </g>
             {(canonicalAnnotations.inlineBranchObjects?.length ?? 0) > 0 && (
@@ -459,7 +542,8 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
                     key={obj.nodeId}
                     obj={obj}
                     selected={obj.nodeId === selectedId}
-                    onClick={(nodeId) => onSymbolClick(nodeId, 'Station', obj.label)}
+                    onClick={(nodeId) => onSymbolClick(nodeId, inlineBranchElementType(obj.objectType), obj.label)}
+                    onDoubleClick={(nodeId) => onSymbolDoubleClick?.(nodeId, inlineBranchElementType(obj.objectType), obj.label)}
                     showTechnicalLabels={showTechnicalCanonicalLabels}
                   />
                 ))}
@@ -472,18 +556,18 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
         )}
       </g>
 
-      {/* Empty state — ETAP typography */}
-      {symbols.length === 0 && (
+      {/* Empty state — CANONICAL typography */}
+        {symbols.length === 0 && (
         <text
           x={width / 2}
           y={height / 2}
           textAnchor="middle"
-          fontFamily={ETAP_TYPOGRAPHY.fontFamily}
-          fontSize={ETAP_TYPOGRAPHY.fontSize.large}
-          fill={ETAP_TYPOGRAPHY.secondaryColor}
+          fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+          fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
+          fill={CANONICAL_TYPOGRAPHY.secondaryColor}
           data-testid="sld-empty-state"
         >
-          Brak elementow do wyswietlenia
+          Brak elementów do wyświetlenia
         </text>
       )}
 

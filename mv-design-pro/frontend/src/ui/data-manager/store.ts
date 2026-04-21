@@ -1,7 +1,7 @@
 /**
  * Data Manager UI State Store
  *
- * P9.1: Persistent UI state for Data Manager (PowerFactory-grade ergonomics).
+ * P9.1: Persistent UI state for Data Manager (Canonical-grade ergonomics).
  *
  * Persists:
  * - Last selected element type

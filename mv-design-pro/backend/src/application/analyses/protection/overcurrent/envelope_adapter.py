@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from application.analyses.design_synth.fingerprint import fingerprint_json
@@ -41,7 +41,7 @@ def to_run_envelope(
         inline=input_payload,
     )
     trace = TraceRef(type="white_box", id=None, inline=trace_inline) if trace_inline else None
-    created_at_utc = created_at_utc or datetime.now(timezone.utc).isoformat()
+    created_at_utc = created_at_utc or datetime.now(UTC).isoformat()
 
     envelope_dict = {
         "schema_version": "v0",

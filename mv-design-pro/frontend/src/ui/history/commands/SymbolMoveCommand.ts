@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § E.1: Symbol positioning
- * - powerfactory_ui_parity.md § C: SLD editing
+ * - ui_canonical_parity.md § C: SLD editing
  *
  * Command for moving symbols on SLD diagram.
  * Supports undo/redo of position changes.

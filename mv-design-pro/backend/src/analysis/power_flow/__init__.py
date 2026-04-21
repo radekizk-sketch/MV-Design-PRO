@@ -5,10 +5,10 @@ from .solver import PowerFlowSolver, solve_power_flow
 from .types import (
     BranchLimitSpec,
     BusVoltageLimitSpec,
-    PQSpec,
-    PVSpec,
     PowerFlowInput,
     PowerFlowOptions,
+    PQSpec,
+    PVSpec,
     ShuntSpec,
     SlackSpec,
     TransformerTapSpec,

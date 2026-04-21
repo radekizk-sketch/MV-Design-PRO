@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from .repository import CatalogRepository
@@ -24,9 +24,7 @@ from .types import (
     MATERIALIZATION_CONTRACTS,
     CatalogBinding,
     CatalogNamespace,
-    MaterializationContract,
 )
-
 
 # ---------------------------------------------------------------------------
 # Materialization Result
@@ -152,15 +150,11 @@ def materialize_catalog_binding(
             ui_fields=[],
             audit=[],
             error_code="catalog.unknown_namespace",
-            error_message_pl=(
-                f"Nieznana kategoria katalogu: {binding.catalog_namespace}"
-            ),
+            error_message_pl=(f"Nieznana kategoria katalogu: {binding.catalog_namespace}"),
         )
 
     # Look up the catalog item
-    catalog_item = _lookup_catalog_item(
-        catalog, binding.catalog_namespace, binding.catalog_item_id
-    )
+    catalog_item = _lookup_catalog_item(catalog, binding.catalog_namespace, binding.catalog_item_id)
     if catalog_item is None:
         return MaterializationResult(
             success=False,

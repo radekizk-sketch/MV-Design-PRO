@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 1.2: Operating modes (UNDO/REDO only in MODEL_EDIT)
- * - powerfactory_ui_parity.md § F: Transactional editing
+ * - ui_canonical_parity.md § F: Transactional editing
  *
  * SINGLE SOURCE OF TRUTH for:
  * - Undo stack (past commands)

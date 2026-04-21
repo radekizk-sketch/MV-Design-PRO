@@ -62,9 +62,7 @@ def export_power_flow_result_to_json(
     # Validate that to_dict() returns a dict
     data = result.to_dict()
     if not isinstance(data, dict):
-        raise ValueError(
-            f"result.to_dict() must return a dict, got {type(data).__name__}"
-        )
+        raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Build export payload
     export_payload: dict[str, Any] = {
@@ -83,9 +81,7 @@ def export_power_flow_result_to_json(
     if trace is not None:
         trace_data = trace.to_dict()
         if not isinstance(trace_data, dict):
-            raise ValueError(
-                f"trace.to_dict() must return a dict, got {type(trace_data).__name__}"
-            )
+            raise ValueError(f"trace.to_dict() must return a dict, got {type(trace_data).__name__}")
         # Include summary only (without full Jacobian matrices)
         export_payload["trace_summary"] = {
             "solver_version": trace_data.get("solver_version"),
@@ -115,9 +111,7 @@ def export_power_flow_result_to_json(
             sort_keys=True,
         )
     except (TypeError, ValueError) as e:
-        raise ValueError(
-            f"Failed to serialize PowerFlowResult to JSON: {e}"
-        ) from e
+        raise ValueError(f"Failed to serialize PowerFlowResult to JSON: {e}") from e
 
     # Write to file with UTF-8 encoding
     output_path.write_text(json_content, encoding="utf-8")
@@ -165,8 +159,7 @@ def export_power_flow_results_to_jsonl(
         data = result.to_dict()
         if not isinstance(data, dict):
             raise ValueError(
-                f"Record {idx}: result.to_dict() must return a dict, "
-                f"got {type(data).__name__}"
+                f"Record {idx}: result.to_dict() must return a dict, " f"got {type(data).__name__}"
             )
 
         # Build line payload
@@ -228,9 +221,7 @@ def export_power_flow_comparison_to_json(
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     if not isinstance(comparison, dict):
-        raise ValueError(
-            f"comparison must be a dict, got {type(comparison).__name__}"
-        )
+        raise ValueError(f"comparison must be a dict, got {type(comparison).__name__}")
 
     # Build export payload
     export_payload: dict[str, Any] = {
@@ -248,9 +239,7 @@ def export_power_flow_comparison_to_json(
             sort_keys=True,
         )
     except (TypeError, ValueError) as e:
-        raise ValueError(
-            f"Failed to serialize PowerFlowComparison to JSON: {e}"
-        ) from e
+        raise ValueError(f"Failed to serialize PowerFlowComparison to JSON: {e}") from e
 
     # Write to file with UTF-8 encoding
     output_path.write_text(json_content, encoding="utf-8")

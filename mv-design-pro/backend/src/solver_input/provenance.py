@@ -9,11 +9,11 @@ All structures are JSON-serializable and deterministically sorted.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
-import hashlib
-import json
 
 
 class SourceKind(Enum):

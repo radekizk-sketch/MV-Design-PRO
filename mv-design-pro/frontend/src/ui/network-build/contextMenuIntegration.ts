@@ -8,6 +8,7 @@
  */
 
 import type { ContextMenuAction, OperatingMode, ElementType } from '../types';
+import type { ActiveObjectCard } from './networkBuildStore';
 import { checkCatalogGate } from '../context-menu/catalogGate';
 import type { CatalogNamespace } from '../context-menu/catalogGate';
 import {
@@ -33,6 +34,7 @@ import {
   buildEnergyStorageContextMenu,
   buildSourceFieldNNContextMenu,
 } from '../context-menu/actionMenuBuilders';
+import { sanitizeEngineeringActions } from '../context-menu/EngineeringContextMenu';
 
 // =============================================================================
 // Types
@@ -65,6 +67,72 @@ export interface ContextMenuHandlers {
   onCatalogRequired?: (request: ContextMenuCatalogGateRequest) => void;
 }
 
+function buildNnOutgoingFieldContext(
+  req: ContextMenuRequest,
+  fieldRole: 'FEEDER' | 'SOURCE',
+): Record<string, unknown> {
+  const baseContext: Record<string, unknown> = {
+    field_role: fieldRole,
+  };
+
+  if (req.elementType === 'BusNN') {
+    return {
+      ...baseContext,
+      bus_nn_ref: req.elementId,
+    };
+  }
+
+  return {
+    ...baseContext,
+    station_ref: req.elementId,
+  };
+}
+
+function buildNnLoadContext(req: ContextMenuRequest): Record<string, unknown> {
+  if (req.elementType === 'FeederNN') {
+    return {
+      feeder_ref: req.elementId,
+    };
+  }
+
+  if (req.elementType === 'BusNN') {
+    return {
+      bus_nn_ref: req.elementId,
+    };
+  }
+
+  return {
+    station_ref: req.elementId,
+  };
+}
+
+function normalizePublicActionId(action: ContextMenuAction): ContextMenuAction {
+  const actionKey = action.actionKey ?? '';
+
+  let normalizedId = action.id;
+  if (action.id === 'add_converter_source') {
+    if (actionKey.includes('_pv')) {
+      normalizedId = 'add_pv';
+    } else if (actionKey.includes('_bess_energy')) {
+      normalizedId = 'add_bess_energy';
+    } else if (actionKey.includes('_bess')) {
+      normalizedId = 'add_bess';
+    } else if (actionKey.includes('_fw')) {
+      normalizedId = 'add_fw';
+    }
+  }
+
+  return {
+    ...action,
+    id: normalizedId,
+    submenu: action.submenu?.map(normalizePublicActionId),
+  };
+}
+
+function normalizePublicActions(actions: ContextMenuAction[]): ContextMenuAction[] {
+  return actions.map(normalizePublicActionId);
+}
+
 // =============================================================================
 // Mapper: ElementType → builder
 // =============================================================================
@@ -79,7 +147,6 @@ function buildStandardHandlers(
 ): Record<string, (() => void) | undefined> {
   const openWithCatalogGate = (
     canonicalOp: string,
-    actionId: string,
     context?: Record<string, unknown>,
   ) => {
     const gate = checkCatalogGate(canonicalOp);
@@ -97,12 +164,21 @@ function buildStandardHandlers(
       return;
     }
 
-    handlers.onOpenOperationForm(gate.canonicalOperation || canonicalOp || actionId, context);
+    handlers.onOpenOperationForm(gate.canonicalOperation || canonicalOp, context);
   };
 
   return {
-    onProperties: () =>
-      handlers.onOpenObjectCard(elementTypeToCardKind(req.elementType), req.elementId),
+    onProperties: () => {
+      const cardKind = resolveObjectCardKind(req.elementType);
+      if (cardKind) {
+        handlers.onOpenObjectCard(cardKind, req.elementId);
+        return;
+      }
+      handlers.onOpenOperationForm('update_element_parameters', {
+        element_ref: req.elementId,
+        element_type: req.elementType,
+      });
+    },
     onAssignCatalog: () =>
       handlers.onOpenOperationForm('assign_catalog_to_element', {
         element_ref: req.elementId,
@@ -132,8 +208,14 @@ function buildStandardHandlers(
         element_type: req.elementType,
         field: 'in_service',
       }),
-    onShowReadiness: () =>
-      handlers.onOpenObjectCard(elementTypeToCardKind(req.elementType), req.elementId),
+    onShowReadiness: () => {
+      const cardKind = resolveObjectCardKind(req.elementType);
+      if (cardKind) {
+        handlers.onOpenObjectCard(cardKind, req.elementId);
+      }
+    },
+    onOpenGpzFields: () =>
+      handlers.onOpenObjectCard('source', req.elementId),
     onShowInTree: () =>
       handlers.onSelectElement(req.elementId, req.elementType, req.elementName),
     onShowOnDiagram: () => handlers.onCenterOnElement(req.elementId),
@@ -142,78 +224,109 @@ function buildStandardHandlers(
       : undefined,
     // Dodatkowe akcje przekazywane do konkretnych builderów
     onAddLine: () =>
-      openWithCatalogGate('start_branch_segment_sn', 'add_line', {
+      openWithCatalogGate('start_branch_segment_sn', {
         from_ref: req.elementId,
       }),
     onAddTransformer: () =>
-      openWithCatalogGate('add_transformer_sn_nn', 'add_transformer', {
+      openWithCatalogGate('add_transformer_sn_nn', {
         station_ref: req.elementId,
       }),
     onInsertSwitch: () =>
-      openWithCatalogGate('insert_section_switch_sn', 'insert_section_switch', {
+      openWithCatalogGate('insert_section_switch_sn', {
         bus_ref: req.elementId,
         switch_kind: 'BREAKER',
       }),
     onInsertDisconnector: () =>
-      openWithCatalogGate('insert_section_switch_sn', 'insert_disconnector', {
+      openWithCatalogGate('insert_section_switch_sn', {
         bus_ref: req.elementId,
         switch_kind: 'DISCONNECTOR',
       }),
     onAddSource: () =>
-      openWithCatalogGate('add_grid_source_sn', 'add_source', {
+      openWithCatalogGate('add_grid_source_sn', {
         bus_ref: req.elementId,
       }),
     onAddCT: () =>
-      openWithCatalogGate('add_ct', 'add_ct', {
+      openWithCatalogGate('add_ct', {
         element_ref: req.elementId,
       }),
     onAddVT: () =>
-      openWithCatalogGate('add_vt', 'add_vt', {
+      openWithCatalogGate('add_vt', {
         element_ref: req.elementId,
       }),
     onAddPV: () =>
-      openWithCatalogGate('add_pv_inverter_nn', 'add_pv', {
+      openWithCatalogGate('add_converter_source', {
         station_ref: req.elementId,
+        source_technology: 'PV',
+        connection_variant: 'nn_side',
       }),
     onAddBESS: () =>
-      openWithCatalogGate('add_bess_inverter_nn', 'add_bess', {
+      openWithCatalogGate('add_converter_source', {
         station_ref: req.elementId,
+        source_technology: 'BESS',
+        connection_variant: 'nn_side',
       }),
-    onAddNNFeeder: () =>
-      openWithCatalogGate('add_nn_outgoing_field', 'add_nn_feeder', {
-        station_ref: req.elementId,
-      }),
+    onAddNnOutgoingField: () =>
+      openWithCatalogGate(
+        'add_nn_outgoing_field',
+        buildNnOutgoingFieldContext(req, 'FEEDER'),
+      ),
     onAddFeeder: () =>
-      openWithCatalogGate('add_nn_outgoing_field', 'add_feeder', {
-        station_ref: req.elementId,
-      }),
-    onAddSourceField: () =>
-      openWithCatalogGate('add_nn_outgoing_field', 'add_source_field', {
-        station_ref: req.elementId,
-      }),
+      openWithCatalogGate(
+        'add_nn_outgoing_field',
+        buildNnOutgoingFieldContext(req, 'FEEDER'),
+      ),
+    onAddNnOutgoingFieldSource: () =>
+      openWithCatalogGate(
+        'add_nn_outgoing_field',
+        buildNnOutgoingFieldContext(req, 'SOURCE'),
+      ),
     onAddRelay: () =>
-      openWithCatalogGate('add_relay', 'add_relay', {
+      openWithCatalogGate('add_relay', {
         element_ref: req.elementId,
       }),
     onAddProtection: () =>
-      openWithCatalogGate('add_relay', 'add_protection', {
+      openWithCatalogGate('add_relay', {
         element_ref: req.elementId,
       }),
     onAddBreaker: () =>
-      handlers.onOpenOperationForm('add_sn_bay', {
+      openWithCatalogGate('add_sn_bay', {
         bus_ref: req.elementId,
-        bay_kind: 'BREAKER',
+        apparatus_kind: 'BREAKER',
+        bay_role: 'OUT',
       }),
     onAddDisconnector: () =>
-      handlers.onOpenOperationForm('add_sn_bay', {
+      openWithCatalogGate('add_sn_bay', {
         bus_ref: req.elementId,
-        bay_kind: 'DISCONNECTOR',
+        apparatus_kind: 'DISCONNECTOR',
+        bay_role: 'OUT',
+      }),
+    onAddSNFieldIN: () =>
+      openWithCatalogGate('add_sn_bay', {
+        station_ref: req.elementId,
+        bay_role: 'IN',
+      }),
+    onAddSNFieldOUT: () =>
+      openWithCatalogGate('add_sn_bay', {
+        station_ref: req.elementId,
+        bay_role: 'OUT',
+      }),
+    onAddSNFieldBranch: () =>
+      openWithCatalogGate('add_sn_bay', {
+        station_ref: req.elementId,
+        bay_role: 'FEEDER',
+      }),
+    onAddSNFieldTR: () =>
+      openWithCatalogGate('add_sn_bay', {
+        station_ref: req.elementId,
+        bay_role: 'TR',
+      }),
+    onAddSNCoupler: () =>
+      openWithCatalogGate('add_sn_bay', {
+        station_ref: req.elementId,
+        bay_role: 'COUPLER',
       }),
     onAddLoad: () =>
-      handlers.onOpenOperationForm('update_element_parameters', {
-        bus_ref: req.elementId,
-        element_type: 'Load',
-      }),
+      openWithCatalogGate('add_nn_load', buildNnLoadContext(req)),
     onToggleSwitchState: () =>
       handlers.onOpenOperationForm('update_element_parameters', {
         element_ref: req.elementId,
@@ -230,7 +343,9 @@ function buildStandardHandlers(
 /**
  * Mapuje ElementType na kind karty obiektu w networkBuildStore.
  */
-function elementTypeToCardKind(elementType: ElementType): string {
+export function resolveObjectCardKind(
+  elementType: ElementType,
+): Exclude<ActiveObjectCard, null>['kind'] | null {
   switch (elementType) {
     case 'Source':
       return 'source';
@@ -244,12 +359,24 @@ function elementTypeToCardKind(elementType: ElementType): string {
       return 'switch';
     case 'BaySN':
       return 'bay';
+    case 'BusNN':
+    case 'FeederNN':
+    case 'SourceFieldNN':
+    case 'SwitchNN':
+      return 'nn_switchgear';
     case 'Generator':
     case 'PVInverter':
     case 'BESSInverter':
+    case 'Genset':
+    case 'UPS':
+    case 'EnergyStorage':
       return 'renewable_source';
+    case 'BranchPole':
+      return 'branch_pole';
+    case 'ZKSN':
+      return 'zksn';
     default:
-      return 'source';
+      return null;
   }
 }
 
@@ -270,55 +397,57 @@ export function buildContextMenuForElement(
   handlers: ContextMenuHandlers,
 ): ContextMenuAction[] | null {
   const h = buildStandardHandlers(req, handlers);
+  const sanitize = (actions: ContextMenuAction[]) =>
+    normalizePublicActions(sanitizeEngineeringActions(actions, req.elementType));
 
   switch (req.elementType) {
     case 'Source':
-      return buildSourceSNContextMenu(req.mode, h);
+      return sanitize(buildSourceSNContextMenu(req.mode, h));
     case 'Bus':
-      return buildBusSNContextMenu(req.mode, h);
+      return sanitize(buildBusSNContextMenu(req.mode, h));
     case 'Station':
-      return buildStationContextMenu(req.mode, h);
+      return sanitize(buildStationContextMenu(req.mode, h));
     case 'BaySN':
-      return buildBaySNContextMenu(req.mode, h);
+      return sanitize(buildBaySNContextMenu(req.mode, h));
     case 'Switch':
-      return buildSwitchSNContextMenu(req.mode, undefined, h);
+      return sanitize(buildSwitchSNContextMenu(req.mode, undefined, h));
     case 'TransformerBranch':
-      return buildTransformerContextMenu(req.mode, h);
+      return sanitize(buildTransformerContextMenu(req.mode, h));
     case 'LineBranch':
-      return buildSegmentSNContextMenu(req.mode, h);
+      return sanitize(buildSegmentSNContextMenu(req.mode, h));
     case 'BusNN':
-      return buildBusNNContextMenu(req.mode, h);
+      return sanitize(buildBusNNContextMenu(req.mode, h));
     case 'PVInverter':
-      return buildPVInverterContextMenu(req.mode, h);
+      return sanitize(buildPVInverterContextMenu(req.mode, h));
     case 'BESSInverter':
-      return buildBESSInverterContextMenu(req.mode, h);
+      return sanitize(buildBESSInverterContextMenu(req.mode, h));
     case 'Generator':
-      return buildPVInverterContextMenu(req.mode, h);
+      return sanitize(buildPVInverterContextMenu(req.mode, h));
     case 'Load':
     case 'LoadNN':
-      return buildLoadNNContextMenu(req.mode, h);
+      return sanitize(buildLoadNNContextMenu(req.mode, h));
     case 'FeederNN':
-      return buildFeederNNContextMenu(req.mode, h);
+      return sanitize(buildFeederNNContextMenu(req.mode, h));
     case 'SwitchNN':
-      return buildSwitchNNContextMenu(req.mode, undefined, h);
+      return sanitize(buildSwitchNNContextMenu(req.mode, undefined, h));
     case 'NOP':
-      return buildNOPContextMenu(req.mode, h);
+      return sanitize(buildNOPContextMenu(req.mode, h));
     // Note: Terminal requires terminalStatus, but we don't have it here.
     // Skip Terminal in the generic dispatcher; it's handled by SLD with proper context.
     case 'Relay':
-      return buildRelaySNContextMenu(req.mode, h);
+      return sanitize(buildRelaySNContextMenu(req.mode, h));
     case 'Measurement':
-      return buildMeasurementSNContextMenu(req.mode, h);
+      return sanitize(buildMeasurementSNContextMenu(req.mode, h));
     case 'Genset':
-      return buildGensetContextMenu(req.mode, h);
+      return sanitize(buildGensetContextMenu(req.mode, h));
     case 'UPS':
-      return buildUPSContextMenu(req.mode, h);
+      return sanitize(buildUPSContextMenu(req.mode, h));
     case 'EnergyMeter':
-      return buildEnergyMeterContextMenu(req.mode, h);
+      return sanitize(buildEnergyMeterContextMenu(req.mode, h));
     case 'EnergyStorage':
-      return buildEnergyStorageContextMenu(req.mode, h);
+      return sanitize(buildEnergyStorageContextMenu(req.mode, h));
     case 'SourceFieldNN':
-      return buildSourceFieldNNContextMenu(req.mode, h);
+      return sanitize(buildSourceFieldNNContextMenu(req.mode, h));
     default:
       return null;
   }

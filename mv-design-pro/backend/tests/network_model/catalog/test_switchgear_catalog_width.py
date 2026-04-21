@@ -49,7 +49,16 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
     assert stats["liczba_nieweryfikowanych"] == 0
     assert stats["liczba_referencyjnych"] == 0
     assert len({item["params"]["un_kv"] for item in all_types}) == 4
-    assert len({item["params"]["manufacturer"] for item in all_types if item["params"].get("manufacturer")}) == 7
+    assert (
+        len(
+            {
+                item["params"]["manufacturer"]
+                for item in all_types
+                if item["params"].get("manufacturer")
+            }
+        )
+        == 7
+    )
     assert Counter(item["params"]["equipment_kind"] for item in all_types)["CIRCUIT_BREAKER"] == 12
 
 
@@ -69,4 +78,3 @@ def test_switchgear_catalog_has_explicit_quality_metadata() -> None:
         assert params["source_reference"].strip()
         if params["catalog_status"] == "PRODUKCYJNY_V1":
             assert params["verification_status"] == "ZWERYFIKOWANY"
-

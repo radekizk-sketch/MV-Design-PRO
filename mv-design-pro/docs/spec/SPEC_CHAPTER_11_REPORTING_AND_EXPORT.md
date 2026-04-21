@@ -1,4 +1,10 @@
-# Rozdział 11 — Raportowanie, Cross-Reference, Trace & Export (ETAP-Grade)
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 11 — Raportowanie, Cross-Reference, Trace & Export (benchmark-Grade)
 
 **Wersja:** 1.0
 **Data:** 2026-02-09
@@ -14,7 +20,7 @@
 
 ### §11.0.1 Cel
 
-Niniejszy rozdział definiuje **kanoniczny system raportowania MV-DESIGN-PRO** na poziomie ETAP-grade, obejmujący:
+Niniejszy rozdział definiuje **kanoniczny system raportowania MV-DESIGN-PRO** na poziomie benchmark-grade, obejmujący:
 - klasy raportów (PRIMARY, COMPARATIVE, AUDIT),
 - strukturę kanoniczną raportu (nagłówek, kontekst, wyniki, cross-reference),
 - architekturę Proof Pack (ProofDocument, ProofStep, ProofPackBuilder),
@@ -45,11 +51,11 @@ Solver → Results (frozen) → Warstwa raportowa → Artefakty eksportu
                            ENM + Case (read-only)   PDF / DOCX / JSON / LaTeX / CSV
 ```
 
-Etap 11 **NICZEGO nie zmienia w obliczeniach** — wyłącznie formalizuje, standaryzuje i rozszerza kontrakty raportowe.
+benchmark 11 **NICZEGO nie zmienia w obliczeniach** — wyłącznie formalizuje, standaryzuje i rozszerza kontrakty raportowe.
 
-### §11.0.4 Parytet ETAP / PowerFactory (BINDING)
+### §11.0.4 Parytet benchmark / benchmark (BINDING)
 
-| Cecha | ETAP | PowerFactory | MV-DESIGN-PRO | Status |
+| Cecha | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |-------|------|--------------|---------------|--------|
 | Hierarchiczne drzewo wyników | ✓ | ✓ | ✓ | ✅ FULL |
 | Widok wieloscenariuszowy (Multi-Case) | ✓ | ✓ | ✓ | ✅ FULL |
@@ -61,7 +67,7 @@ Etap 11 **NICZEGO nie zmienia w obliczeniach** — wyłącznie formalizuje, stan
 | White Box Trace w raporcie | ✗ | ✗ | ✓ (obowiązkowy) | ➕ SUPERIOR |
 | Deterministyczny eksport (byte-identical) | ✗ | ✗ | ✓ (SHA-256 weryfikowalny) | ➕ SUPERIOR |
 
-**Konkluzja:** MV-DESIGN-PRO Reporting ≥ ETAP ≥ PowerFactory.
+**Konkluzja:** MV-DESIGN-PRO Reporting ≥ benchmark ≥ benchmark.
 
 ---
 
@@ -612,7 +618,7 @@ Nazwa pliku: `proof_{proof_type}_{timestamp}.{ext}` (deterministyczna)
 
 ---
 
-## §11.6 — Formaty wyjścia (ETAP-Grade — Decyzja #92)
+## §11.6 — Formaty wyjścia (benchmark-Grade — Decyzja #92)
 
 ### §11.6.1 Matryca formatów (BINDING)
 
@@ -904,7 +910,7 @@ Overlay jest WYŁĄCZNIE wizualizacją — **nigdy nie zapisuje danych do modelu
 1. ✅ Każdy wynik obliczeniowy = raport (klasy PRIMARY zdefiniowane)
 2. ✅ Każdy raport = trace + cross-reference (łańcuch śladu + CrossReferenceTable)
 3. ✅ Każdy raport = reprodukowalny (deterministic export, hash chain)
-4. ✅ Parytet ETAP osiągnięty (feature matrix ≥ ETAP)
+4. ✅ Parytet benchmark osiągnięty (feature matrix ≥ benchmark)
 5. ✅ ProofPack architektura = AS-IS (ProofPackBuilder, manifest, signature)
 6. ✅ Formaty: JSON, JSONL, PDF, DOCX, LaTeX, CSV/XLSX
 7. ✅ Walidacje: E-RPT-01..05, W-RPT-01..03, I-RPT-01..02
@@ -914,3 +920,4 @@ Overlay jest WYŁĄCZNIE wizualizacją — **nigdy nie zapisuje danych do modelu
 11. ✅ Mapowanie na kod kompletne (21 komponentów)
 
 **DOMENA RAPORTOWANIA I EKSPORTU W ROZDZIALE 11 JEST ZAMKNIĘTA (v1.0).**
+

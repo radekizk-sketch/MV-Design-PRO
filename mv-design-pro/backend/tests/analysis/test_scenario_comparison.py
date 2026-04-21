@@ -29,7 +29,6 @@ from application.study_scenario.models import (
     create_study,
 )
 
-
 RUN_TS = datetime(2024, 3, 1, 12, 0, 0)
 
 

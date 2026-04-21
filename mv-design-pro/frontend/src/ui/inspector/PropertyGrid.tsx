@@ -2,7 +2,7 @@
  * Inspector Property Grid (READ-ONLY)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Property grid w stylu PowerFactory
+ * - ui_canonical_parity.md: Property grid w stylu Canonical
  * - wizard_screens.md § 2.4: Siatka właściwości (read-only)
  *
  * FORMAT: label | value | unit
@@ -175,7 +175,7 @@ interface PropertyGridProps {
 /**
  * Read-only Property Grid dla Inspector.
  *
- * Wyświetla sekcje z polami w formacie PowerFactory:
+ * Wyświetla sekcje z polami w formacie Canonical:
  * - Nagłówek sekcji (zwijany)
  * - Pola: label | value | unit
  * - Brak edycji, brak akcji

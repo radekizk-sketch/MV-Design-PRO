@@ -17,14 +17,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from uuid import UUID
 
 import pytest
 
 backend_src = Path(__file__).parents[3] / "src"
 sys.path.insert(0, str(backend_src))
 
-from application.sld.layout import build_auto_layout_diagram
 from application.sld.network_graph_to_sld import (
     _to_uuid,
     build_sld_from_network_graph,
@@ -35,7 +33,6 @@ from application.sld.network_graph_to_sld import (
 golden_dir = Path(__file__).parents[2] / "golden"
 sys.path.insert(0, str(golden_dir.parent))
 from golden.golden_network_sn import build_golden_network, get_golden_network_statistics
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -125,10 +122,7 @@ class TestAdapterConversion:
         """Switch state (OPEN/CLOSED) must be preserved in payload."""
         id_map = golden_payload["id_map"]
         for sw in golden_graph.switches.values():
-            payload_sw = next(
-                s for s in golden_payload["switches"]
-                if s["id"] == id_map[sw.id]
-            )
+            payload_sw = next(s for s in golden_payload["switches"] if s["id"] == id_map[sw.id])
             assert payload_sw["state"] == sw.state.value
             assert payload_sw["switch_type"] == sw.switch_type.value
 
@@ -168,15 +162,9 @@ class TestSldBijection:
     def test_no_helper_nodes(self, golden_graph, golden_sld):
         """Total symbols must equal total model objects (no helpers)."""
         total_model = (
-            len(golden_graph.nodes)
-            + len(golden_graph.branches)
-            + len(golden_graph.switches)
+            len(golden_graph.nodes) + len(golden_graph.branches) + len(golden_graph.switches)
         )
-        total_sld = (
-            len(golden_sld.nodes)
-            + len(golden_sld.branches)
-            + len(golden_sld.switches)
-        )
+        total_sld = len(golden_sld.nodes) + len(golden_sld.branches) + len(golden_sld.switches)
         assert total_sld == total_model
 
     def test_all_node_ids_referenced(self, golden_graph, golden_sld):
@@ -220,9 +208,7 @@ class TestSldTopology:
 
     def test_open_switches_present_in_sld(self, golden_graph, golden_sld):
         """OPEN switches must be visible in SLD (not filtered out)."""
-        open_switches_in_graph = [
-            s for s in golden_graph.switches.values() if s.is_open
-        ]
+        open_switches_in_graph = [s for s in golden_graph.switches.values() if s.is_open]
         assert len(open_switches_in_graph) >= 3  # coupler, NO ring, rezerwa C8
 
         id_map = convert_graph_to_sld_payload(golden_graph)["id_map"]
@@ -236,9 +222,7 @@ class TestSldTopology:
 
     def test_closed_switches_present_in_sld(self, golden_graph, golden_sld):
         """CLOSED switches must be visible in SLD."""
-        closed_switches_in_graph = [
-            s for s in golden_graph.switches.values() if s.is_closed
-        ]
+        closed_switches_in_graph = [s for s in golden_graph.switches.values() if s.is_closed]
         assert len(closed_switches_in_graph) >= 10
 
         id_map = convert_graph_to_sld_payload(golden_graph)["id_map"]
@@ -256,9 +240,7 @@ class TestSldTopology:
 
         # NO ring switch
         no_switch_uuid = id_map["sw-no-ring"]
-        sld_no_sw = next(
-            (s for s in golden_sld.switches if s.switch_id == no_switch_uuid), None
-        )
+        sld_no_sw = next((s for s in golden_sld.switches if s.switch_id == no_switch_uuid), None)
         assert sld_no_sw is not None
         assert sld_no_sw.state == "OPEN"
         assert sld_no_sw.switch_type == "LOAD_SWITCH"
@@ -276,9 +258,7 @@ class TestSldTopology:
 
         for line_id in ["line-a11", "line-a12", "line-b10"]:
             line_uuid = id_map[line_id]
-            sld_branch = next(
-                (b for b in golden_sld.branches if b.branch_id == line_uuid), None
-            )
+            sld_branch = next((b for b in golden_sld.branches if b.branch_id == line_uuid), None)
             assert sld_branch is not None, f"Sub-branch {line_id} missing from SLD"
 
     def test_oze_nodes_in_sld(self, golden_graph, golden_sld):
@@ -287,9 +267,7 @@ class TestSldTopology:
 
         for bus_id in ["bus-c5-pv", "bus-c6-bess"]:
             bus_uuid = id_map[bus_id]
-            sld_node = next(
-                (n for n in golden_sld.nodes if n.node_id == bus_uuid), None
-            )
+            sld_node = next((n for n in golden_sld.nodes if n.node_id == bus_uuid), None)
             assert sld_node is not None, f"OZE bus {bus_id} missing from SLD"
 
     def test_switch_types_preserved(self, golden_graph, golden_sld):
@@ -334,7 +312,8 @@ class TestSldPositions:
 
         def avg_y_for_voltage(vl_min: float, vl_max: float) -> float:
             matching = [
-                nid for nid, node in golden_graph.nodes.items()
+                nid
+                for nid, node in golden_graph.nodes.items()
                 if vl_min <= node.voltage_level <= vl_max
             ]
             if not matching:
@@ -347,9 +326,9 @@ class TestSldPositions:
                     y_values.append(sym.y)
             return sum(y_values) / len(y_values) if y_values else 0.0
 
-        avg_wn = avg_y_for_voltage(60.0, 200.0)   # WN: 110 kV
-        avg_sn = avg_y_for_voltage(1.1, 59.0)      # SN: 15 kV
-        avg_nn = avg_y_for_voltage(0.0, 1.0)        # nN: 0.4 kV
+        avg_wn = avg_y_for_voltage(60.0, 200.0)  # WN: 110 kV
+        avg_sn = avg_y_for_voltage(1.1, 59.0)  # SN: 15 kV
+        avg_nn = avg_y_for_voltage(0.0, 1.0)  # nN: 0.4 kV
 
         # WN should be above (lower Y) than SN
         assert avg_wn < avg_sn, f"WN avg_y={avg_wn} should be < SN avg_y={avg_sn}"
@@ -407,21 +386,15 @@ class TestSldScale:
             station_id = f"st{i:02d}"
             tr_id = f"tr-{station_id}"
             tr_uuid = id_map[tr_id]
-            sld_branch = next(
-                (b for b in golden_sld.branches if b.branch_id == tr_uuid), None
-            )
-            assert sld_branch is not None, (
-                f"Station {station_id} transformer missing from SLD"
-            )
+            sld_branch = next((b for b in golden_sld.branches if b.branch_id == tr_uuid), None)
+            assert sld_branch is not None, f"Station {station_id} transformer missing from SLD"
 
     def test_sld_contains_wn_sn_transformers(self, golden_graph, golden_sld):
         """Both GPZ WN/SN transformers must be in SLD."""
         id_map = convert_graph_to_sld_payload(golden_graph)["id_map"]
         for tr_id in ["tr-gpz-1", "tr-gpz-2"]:
             tr_uuid = id_map[tr_id]
-            sld_branch = next(
-                (b for b in golden_sld.branches if b.branch_id == tr_uuid), None
-            )
+            sld_branch = next((b for b in golden_sld.branches if b.branch_id == tr_uuid), None)
             assert sld_branch is not None, f"{tr_id} missing from SLD"
 
     def test_all_three_feeders_present(self, golden_graph, golden_sld):
@@ -429,9 +402,7 @@ class TestSldScale:
         id_map = convert_graph_to_sld_payload(golden_graph)["id_map"]
         for bay_id in ["bus-bay-a", "bus-bay-b", "bus-bay-c"]:
             bay_uuid = id_map[bay_id]
-            sld_node = next(
-                (n for n in golden_sld.nodes if n.node_id == bay_uuid), None
-            )
+            sld_node = next((n for n in golden_sld.nodes if n.node_id == bay_uuid), None)
             assert sld_node is not None, f"Feeder bay {bay_id} missing from SLD"
 
 

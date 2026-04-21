@@ -15,18 +15,17 @@ WHITE BOX: All calculation steps are exposed for auditability.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Literal
-import math
+from typing import Any
 
 from .iec_curves import (
-    IECCurveType,
     IECCurveParams,
+    IECCurveType,
     calculate_iec_tripping_time,
     generate_iec_curve_points,
 )
 from .ieee_curves import (
-    IEEECurveType,
     IEEECurveParams,
+    IEEECurveType,
     calculate_ieee_tripping_time,
     generate_ieee_curve_points,
 )
@@ -170,9 +169,7 @@ class CoordinationResult:
             "upstream_curve_id": self.upstream_curve_id,
             "downstream_curve_id": self.downstream_curve_id,
             "status": self.status.value,
-            "status_pl": COORDINATION_STATUS_LABELS_PL.get(
-                self.status.value, self.status.value
-            ),
+            "status_pl": COORDINATION_STATUS_LABELS_PL.get(self.status.value, self.status.value),
             "margin_s": self.margin_s,
             "margin_percent": self.margin_percent,
             "analysis": {

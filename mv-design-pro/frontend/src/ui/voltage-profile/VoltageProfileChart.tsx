@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - SYSTEM_SPEC.md: READ-ONLY result display (Analysis layer)
  * - wizard_screens.md: RESULT_VIEW mode
- * - powerfactory_ui_parity.md: Voltage profile visualization
+ * - ui_canonical_parity.md: Voltage profile visualization
  * - 100% Polish UI labels
  *
  * FEATURES:

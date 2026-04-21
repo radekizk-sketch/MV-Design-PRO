@@ -1,4 +1,4 @@
-# Audyt luk przebudowy UI -- realna siec SN
+﻿# Audyt luk przebudowy UI -- realna siec SN
 
 | Pole            | Wartosc                                                                      |
 |-----------------|------------------------------------------------------------------------------|
@@ -122,7 +122,7 @@ Odniesienie architektoniczne: `mv-design-pro/ARCHITECTURE.md` (v4.0),
 |----------------|------------------------------------------------------------------------------|
 | Komponent      | `ui/network-build/CatalogBrowser.tsx`                                        |
 | Problem        | CatalogBrowser nie pozwala na edycje typow katalogowych.                     |
-| Werdykt        | **Akceptowalne** -- design constraint. Typy katalogowe sa immutable (PowerFactory Type Library parity). Edycja typow nie jest dozwolona w warstwie UI. Zgodne z `POWERFACTORY_COMPLIANCE.md` i Catalog Binding Rule. |
+| Werdykt        | **Akceptowalne** -- design constraint. Typy katalogowe sa immutable (benchmark Type Library parity). Edycja typow nie jest dozwolona w warstwie UI. Zgodne z `CANONICAL_COMPLIANCE.md` i Catalog Binding Rule. |
 | Status         | AKCEPTOWALNE (by design)                                                     |
 
 ---
@@ -140,3 +140,4 @@ Wszystkie krytyczne i wazne luki zostaly zamkniete. Pozostale 2 pozycje sa swiad
 decyzjami projektowymi (deferred / by design).
 
 **Status audytu: ZAMKNIETY**
+

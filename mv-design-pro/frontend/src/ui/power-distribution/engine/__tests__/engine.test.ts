@@ -23,10 +23,10 @@ import {
 } from '../sieciKontrolne';
 
 // =============================================================================
-// § 1. ADAPTER SEMANTYCZNY (ETAP 1)
+// § 1. ADAPTER SEMANTYCZNY (CANONICAL 1)
 // =============================================================================
 
-describe('Etap 1: Adapter semantyczny', () => {
+describe('Krok 1: Adapter semantyczny', () => {
   it('buduje SiecSld z prostej magistrali', () => {
     const dane = siecProstaMagistrala();
     const siec = zbudujSiecSld(dane);
@@ -67,10 +67,10 @@ describe('Etap 1: Adapter semantyczny', () => {
 });
 
 // =============================================================================
-// § 2. POLA EFEKTYWNE (ETAP 2)
+// § 2. POLA EFEKTYWNE (CANONICAL 2)
 // =============================================================================
 
-describe('Etap 2: Pola efektywne', () => {
+describe('Krok 2: Pola efektywne', () => {
   it('uzupelnia pola niejawne z polaczen', () => {
     const dane = siecProstaMagistrala();
     const siec = zbudujSiecSld(dane);
@@ -95,10 +95,10 @@ describe('Etap 2: Pola efektywne', () => {
 });
 
 // =============================================================================
-// § 3. SORTOWANIE ANTYKRZYZOWANIOWE (ETAP 3)
+// § 3. SORTOWANIE ANTYKRZYZOWANIOWE (CANONICAL 3)
 // =============================================================================
 
-describe('Etap 3: Sortowanie antykrzyzowaniowe', () => {
+describe('Krok 3: Sortowanie antykrzyzowaniowe', () => {
   it('grupuje pola wg kierunku', () => {
     const dane = siecZGeneracjaOze();
     const siec = zbudujSiecSld(dane);
@@ -127,10 +127,10 @@ describe('Etap 3: Sortowanie antykrzyzowaniowe', () => {
 });
 
 // =============================================================================
-// § 4. GEOMETRIA SZYNY (ETAP 4-7)
+// § 4. GEOMETRIA SZYNY (CANONICAL 4-7)
 // =============================================================================
 
-describe('Etap 4-7: Geometria szyny i pol', () => {
+describe('Krok 4-7: Geometria szyny i pol', () => {
   it('oblicza szerokosc szyny na podstawie pol', () => {
     const dane = siecStacjaSekcyjna();
     const siec = zbudujSiecSld(dane);
@@ -150,7 +150,7 @@ describe('Etap 4-7: Geometria szyny i pol', () => {
 });
 
 // =============================================================================
-// § 5. PELNY PIPELINE (ETAPY 1-9)
+// § 5. PELNY PIPELINE (CANONICALY 1-9)
 // =============================================================================
 
 describe('Pelny pipeline SLD (etapy 1-9)', () => {

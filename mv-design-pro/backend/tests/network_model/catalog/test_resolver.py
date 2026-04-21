@@ -10,18 +10,16 @@ Tests validation (type_ref not found = error).
 """
 
 import pytest
-
 from network_model.catalog import (
+    CableType,
     CatalogRepository,
     LineType,
-    CableType,
-    TransformerType,
     ParameterSource,
+    TransformerType,
     TypeNotFoundError,
     resolve_line_params,
     resolve_transformer_params,
 )
-
 
 # ============================================================================
 # FIXTURES

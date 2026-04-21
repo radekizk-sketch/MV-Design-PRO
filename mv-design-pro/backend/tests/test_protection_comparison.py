@@ -13,23 +13,19 @@ CANONICAL ALIGNMENT:
 """
 
 import json
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from datetime import UTC, datetime
 
 import pytest
-
 from domain.protection_analysis import (
-    ProtectionAnalysisRun,
     ProtectionEvaluation,
     ProtectionResult,
     ProtectionResultSummary,
-    ProtectionRunStatus,
     TripState,
 )
 from domain.protection_comparison import (
+    ISSUE_SEVERITY_MAP,
     IssueCode,
     IssueSeverity,
-    ISSUE_SEVERITY_MAP,
     ProtectionComparisonResult,
     ProtectionComparisonRow,
     ProtectionComparisonSummary,
@@ -39,7 +35,6 @@ from domain.protection_comparison import (
     StateChange,
     compute_comparison_input_hash,
 )
-
 
 # =============================================================================
 # FIXTURES
@@ -262,7 +257,7 @@ class TestDeterminism:
                 minor_issues=0,
             ),
             input_hash="test_hash",
-            created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+            created_at=datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC),
         )
 
         # Serialize twice

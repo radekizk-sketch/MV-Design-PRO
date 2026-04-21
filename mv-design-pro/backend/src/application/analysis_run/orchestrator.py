@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from analysis.energy_validation.builder import EnergyValidationBuilder
@@ -50,9 +50,7 @@ class AnalysisBundle:
             "created_at_utc": self.created_at_utc,
             "energy_validation": self.energy_validation.to_dict(),
             "voltage_profile": (
-                self.voltage_profile.to_dict()
-                if self.voltage_profile is not None
-                else None
+                self.voltage_profile.to_dict() if self.voltage_profile is not None else None
             ),
             "overall_status": self.overall_status,
             "fingerprint": self.fingerprint,
@@ -73,7 +71,7 @@ class AnalysisOrchestrator:
         project_name: str | None = None,
         case_name: str | None = None,
     ) -> AnalysisBundle:
-        now_utc = datetime.now(timezone.utc)
+        now_utc = datetime.now(UTC)
         created_at = now_utc.isoformat()
         config = energy_config or EnergyValidationConfig()
 
@@ -110,9 +108,7 @@ class AnalysisOrchestrator:
         bundle_dict = {
             "run_id": run_id,
             "energy_validation": energy_validation.to_dict(),
-            "voltage_profile": (
-                voltage_profile.to_dict() if voltage_profile else None
-            ),
+            "voltage_profile": (voltage_profile.to_dict() if voltage_profile else None),
             "overall_status": overall_status,
         }
         fingerprint = _fingerprint(bundle_dict)

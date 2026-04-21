@@ -10,26 +10,20 @@ Uses golden network + synthetic PowerFlowResult data.
 from __future__ import annotations
 
 import json
-import math
+from datetime import UTC
 
 import pytest
-
 from analysis.energy_validation.builder import EnergyValidationBuilder
 from analysis.energy_validation.models import (
     EnergyCheckType,
     EnergyValidationConfig,
     EnergyValidationContext,
-    EnergyValidationItem,
     EnergyValidationStatus,
-    EnergyValidationSummary,
-    EnergyValidationView,
 )
-from analysis.energy_validation.serializer import view_to_dict
 from analysis.power_flow.result import PowerFlowResult
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
-
 
 # ============================================================================
 # Fixtures & helpers
@@ -60,9 +54,7 @@ def _mk_slack(nid: str, name: str, vl: float = 110.0) -> Node:
     )
 
 
-def _mk_line(
-    lid: str, fn: str, tn: str, rated_i: float = 200.0
-) -> LineBranch:
+def _mk_line(lid: str, fn: str, tn: str, rated_i: float = 200.0) -> LineBranch:
     return LineBranch(
         id=lid,
         name=f"Line {lid}",
@@ -78,9 +70,7 @@ def _mk_line(
     )
 
 
-def _mk_trafo(
-    tid: str, fn: str, tn: str, sn_mva: float = 25.0
-) -> TransformerBranch:
+def _mk_trafo(tid: str, fn: str, tn: str, sn_mva: float = 25.0) -> TransformerBranch:
     return TransformerBranch(
         id=tid,
         name=f"Trafo {tid}",
@@ -161,11 +151,7 @@ class TestBranchLoading:
             branch_current_ka={"line-1": 0.1},  # 100A of 500A rated → 20%
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        loading_items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        loading_items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert len(loading_items) == 1
         assert loading_items[0].status == EnergyValidationStatus.PASS
         assert loading_items[0].observed_value == pytest.approx(20.0)
@@ -176,11 +162,7 @@ class TestBranchLoading:
             branch_current_ka={"line-1": 0.45},  # 450A of 500A → 90%
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.WARNING
 
     def test_fail_when_above_fail(self):
@@ -189,11 +171,7 @@ class TestBranchLoading:
             branch_current_ka={"line-1": 0.6},  # 600A of 500A → 120%
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.FAIL
         assert items[0].observed_value == pytest.approx(120.0)
 
@@ -201,11 +179,7 @@ class TestBranchLoading:
         graph = _build_simple_graph()
         pf = _build_pf_result(branch_current_ka={})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.NOT_COMPUTED
 
     def test_ignores_transformers(self):
@@ -215,11 +189,7 @@ class TestBranchLoading:
             branch_current_ka={"line-1": 0.1, "tr-1": 0.5},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        bl_items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        bl_items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert all(i.target_id != "tr-1" for i in bl_items)
 
     def test_custom_thresholds(self):
@@ -232,11 +202,7 @@ class TestBranchLoading:
             loading_fail_pct=70.0,
         )
         view = EnergyValidationBuilder().build(pf, graph, strict_config)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
         assert items[0].status == EnergyValidationStatus.WARNING
 
 
@@ -254,11 +220,7 @@ class TestTransformerLoading:
             branch_s_from_mva={"tr-1": complex(10.0, 5.0)},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.TRANSFORMER_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
         assert len(items) == 1
         s_mva = abs(complex(10.0, 5.0))
         expected_pct = (s_mva / 25.0) * 100.0
@@ -271,11 +233,7 @@ class TestTransformerLoading:
             branch_s_from_mva={"tr-1": complex(20.0, 15.0)},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.TRANSFORMER_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
         assert items[0].status == EnergyValidationStatus.FAIL
 
     def test_uses_max_of_from_and_to(self):
@@ -286,11 +244,7 @@ class TestTransformerLoading:
             branch_s_to_mva={"tr-1": complex(22.0, 12.0)},
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.TRANSFORMER_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
         s_to = abs(complex(22.0, 12.0))
         expected_pct = (s_to / 25.0) * 100.0
         assert items[0].observed_value == pytest.approx(expected_pct, rel=1e-3)
@@ -300,11 +254,7 @@ class TestTransformerLoading:
         graph = _build_simple_graph()
         pf = _build_pf_result()
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.TRANSFORMER_LOADING
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
         assert items[0].status == EnergyValidationStatus.NOT_COMPUTED
 
 
@@ -326,15 +276,9 @@ class TestVoltageDeviation:
             },
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION]
         assert len(items) == 3
-        assert all(
-            i.status == EnergyValidationStatus.PASS for i in items
-        )
+        assert all(i.status == EnergyValidationStatus.PASS for i in items)
 
     def test_warning_moderate_deviation(self):
         graph = _build_simple_graph()
@@ -349,8 +293,7 @@ class TestVoltageDeviation:
         items = [
             i
             for i in view.items
-            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION
-            and i.target_id == "bus-a"
+            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION and i.target_id == "bus-a"
         ]
         assert items[0].status == EnergyValidationStatus.WARNING
         assert items[0].observed_value == pytest.approx(6.3636, rel=1e-2)
@@ -368,8 +311,7 @@ class TestVoltageDeviation:
         items = [
             i
             for i in view.items
-            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION
-            and i.target_id == "bus-b"
+            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION and i.target_id == "bus-b"
         ]
         assert items[0].status == EnergyValidationStatus.FAIL
         assert items[0].observed_value == pytest.approx(20.0)
@@ -378,14 +320,8 @@ class TestVoltageDeviation:
         graph = _build_simple_graph()
         pf = _build_pf_result(node_voltage_kv={})
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION
-        ]
-        assert all(
-            i.status == EnergyValidationStatus.NOT_COMPUTED for i in items
-        )
+        items = [i for i in view.items if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION]
+        assert all(i.status == EnergyValidationStatus.NOT_COMPUTED for i in items)
 
 
 # ============================================================================
@@ -403,11 +339,7 @@ class TestLossBudget:
             slack_power_pu=1.0 + 0.3j,
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.LOSS_BUDGET
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET]
         assert len(items) == 1
         # 0.01 / 1.0 * 100 = 1%
         assert items[0].observed_value == pytest.approx(1.0)
@@ -420,11 +352,7 @@ class TestLossBudget:
             slack_power_pu=1.0 + 0.3j,
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.LOSS_BUDGET
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET]
         assert items[0].status == EnergyValidationStatus.WARNING
 
     def test_fail_high_losses(self):
@@ -434,11 +362,7 @@ class TestLossBudget:
             slack_power_pu=1.0 + 0.3j,
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.LOSS_BUDGET
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET]
         assert items[0].status == EnergyValidationStatus.FAIL
 
     def test_not_computed_zero_slack(self):
@@ -448,11 +372,7 @@ class TestLossBudget:
             slack_power_pu=0.0 + 0.0j,
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.LOSS_BUDGET
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET]
         assert items[0].status == EnergyValidationStatus.NOT_COMPUTED
 
 
@@ -470,11 +390,7 @@ class TestReactiveBalance:
             slack_power_pu=1.0 + 0.2j,  # tan(phi) = 0.2, cos(phi) ≈ 0.98
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.REACTIVE_BALANCE
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.REACTIVE_BALANCE]
         assert len(items) == 1
         assert items[0].status == EnergyValidationStatus.PASS
 
@@ -484,11 +400,7 @@ class TestReactiveBalance:
             slack_power_pu=1.0 + 0.55j,  # tan(phi) = 0.55, cos(phi) ≈ 0.876
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.REACTIVE_BALANCE
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.REACTIVE_BALANCE]
         assert items[0].status == EnergyValidationStatus.WARNING
 
     def test_fail_low_cos_phi(self):
@@ -497,11 +409,7 @@ class TestReactiveBalance:
             slack_power_pu=1.0 + 2.0j,  # tan(phi) = 2.0, cos(phi) ≈ 0.447
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
-        items = [
-            i
-            for i in view.items
-            if i.check_type == EnergyCheckType.REACTIVE_BALANCE
-        ]
+        items = [i for i in view.items if i.check_type == EnergyCheckType.REACTIVE_BALANCE]
         assert items[0].status == EnergyValidationStatus.FAIL
 
 
@@ -560,16 +468,8 @@ class TestSortOrder:
         )
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         statuses = [i.status for i in view.items]
-        fail_indices = [
-            idx
-            for idx, s in enumerate(statuses)
-            if s == EnergyValidationStatus.FAIL
-        ]
-        pass_indices = [
-            idx
-            for idx, s in enumerate(statuses)
-            if s == EnergyValidationStatus.PASS
-        ]
+        fail_indices = [idx for idx, s in enumerate(statuses) if s == EnergyValidationStatus.FAIL]
+        pass_indices = [idx for idx, s in enumerate(statuses) if s == EnergyValidationStatus.PASS]
         if fail_indices and pass_indices:
             assert max(fail_indices) < min(pass_indices)
 
@@ -661,12 +561,12 @@ class TestContext:
     """Context propagation."""
 
     def test_context_passed_through(self):
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         ctx = EnergyValidationContext(
             project_name="Golden SN",
             case_name="Max load",
-            run_timestamp=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            run_timestamp=datetime(2024, 1, 1, tzinfo=UTC),
             snapshot_id="snap-001",
             trace_id="run-001",
         )
@@ -743,9 +643,7 @@ class TestGoldenNetworkIntegration:
 
     def test_all_checks_present(self, golden_graph, golden_pf_result):
         """All 5 check types should be present in the result."""
-        view = EnergyValidationBuilder().build(
-            golden_pf_result, golden_graph, DEFAULT_CONFIG
-        )
+        view = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
         check_types = {i.check_type for i in view.items}
         assert EnergyCheckType.BRANCH_LOADING in check_types
         assert EnergyCheckType.TRANSFORMER_LOADING in check_types
@@ -755,13 +653,9 @@ class TestGoldenNetworkIntegration:
 
     def test_item_count_matches_topology(self, golden_graph, golden_pf_result):
         """Number of items should match the network topology."""
-        view = EnergyValidationBuilder().build(
-            golden_pf_result, golden_graph, DEFAULT_CONFIG
-        )
+        view = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
         line_count = sum(
-            1
-            for b in golden_graph.branches.values()
-            if isinstance(b, LineBranch) and b.in_service
+            1 for b in golden_graph.branches.values() if isinstance(b, LineBranch) and b.in_service
         )
         trafo_count = sum(
             1
@@ -770,21 +664,11 @@ class TestGoldenNetworkIntegration:
         )
         node_count = len(golden_graph.nodes)
 
-        bl_items = [
-            i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING
-        ]
-        tl_items = [
-            i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING
-        ]
-        vd_items = [
-            i for i in view.items if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION
-        ]
-        lb_items = [
-            i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET
-        ]
-        rb_items = [
-            i for i in view.items if i.check_type == EnergyCheckType.REACTIVE_BALANCE
-        ]
+        bl_items = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING]
+        tl_items = [i for i in view.items if i.check_type == EnergyCheckType.TRANSFORMER_LOADING]
+        vd_items = [i for i in view.items if i.check_type == EnergyCheckType.VOLTAGE_DEVIATION]
+        lb_items = [i for i in view.items if i.check_type == EnergyCheckType.LOSS_BUDGET]
+        rb_items = [i for i in view.items if i.check_type == EnergyCheckType.REACTIVE_BALANCE]
 
         assert len(bl_items) == line_count
         assert len(tl_items) == trafo_count
@@ -794,18 +678,12 @@ class TestGoldenNetworkIntegration:
 
     def test_all_pass_at_nominal(self, golden_graph, golden_pf_result):
         """At 50% loading and 98% voltage, everything should pass."""
-        view = EnergyValidationBuilder().build(
-            golden_pf_result, golden_graph, DEFAULT_CONFIG
-        )
+        view = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
         assert view.summary.fail_count == 0
 
     def test_deterministic_output(self, golden_graph, golden_pf_result):
-        view1 = EnergyValidationBuilder().build(
-            golden_pf_result, golden_graph, DEFAULT_CONFIG
-        )
-        view2 = EnergyValidationBuilder().build(
-            golden_pf_result, golden_graph, DEFAULT_CONFIG
-        )
+        view1 = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
+        view2 = EnergyValidationBuilder().build(golden_pf_result, golden_graph, DEFAULT_CONFIG)
         j1 = json.dumps(view1.to_dict(), sort_keys=True)
         j2 = json.dumps(view2.to_dict(), sort_keys=True)
         assert j1 == j2
@@ -813,15 +691,12 @@ class TestGoldenNetworkIntegration:
     def test_overload_scenario(self, golden_graph):
         """With 200% line loading, fail items should appear."""
         node_voltage_kv = {
-            nid: node.voltage_level * 0.98
-            for nid, node in golden_graph.nodes.items()
+            nid: node.voltage_level * 0.98 for nid, node in golden_graph.nodes.items()
         }
         branch_current_ka = {}
         for bid, branch in golden_graph.branches.items():
             if isinstance(branch, LineBranch):
-                branch_current_ka[bid] = (
-                    branch.rated_current_a * 2.0 / 1000.0
-                )
+                branch_current_ka[bid] = branch.rated_current_a * 2.0 / 1000.0
 
         pf = _build_pf_result(
             node_voltage_kv=node_voltage_kv,

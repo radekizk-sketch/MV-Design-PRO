@@ -337,8 +337,8 @@ Handler UI → sprawdz czy operacja wymaga katalogu
 | `connect_secondary_ring_sn` | `KABEL_SN` |
 | `insert_section_switch_sn` | `APARAT_SN` |
 | `add_nn_outgoing_field` | `APARAT_NN` |
-| `add_pv_inverter_nn` | `ZRODLO_NN_PV` |
-| `add_bess_inverter_nn` | `ZRODLO_NN_BESS` |
+| `add_converter_source` | `CONVERTER` |
+| `add_converter_source` | `CONVERTER` |
 | `add_relay` | `ZABEZPIECZENIE` |
 | `add_ct` | `CT` |
 | `add_vt` | `VT` |

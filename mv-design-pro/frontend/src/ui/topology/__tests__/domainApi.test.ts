@@ -88,7 +88,7 @@ describe('executeDomainOp', () => {
       }),
     } as Response);
 
-    const response = await executeDomainOp('case-1', 'add_trunk_segment_sn', {
+    const response = await executeDomainOp('case-1', 'continue_trunk_segment_sn', {
       trunk_id: 'trunk-1',
       segment: { length_km: 1.2 },
     });

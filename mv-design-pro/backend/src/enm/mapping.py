@@ -101,7 +101,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
 
         branch_id = _ref_to_uuid(branch.ref_id)
 
-        if isinstance(branch, (OverheadLine, Cable)):
+        if isinstance(branch, OverheadLine | Cable):
             b_us_per_km = 0.0
             if branch.b_siemens_per_km is not None:
                 b_us_per_km = branch.b_siemens_per_km * 1e6  # S/km → μS/km
@@ -211,9 +211,9 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             x_ohm = source.x_ohm
         elif source.sk3_mva is not None and source.sk3_mva > 0:
             un_kv = bus_voltage_kv
-            z_abs = (un_kv ** 2) / source.sk3_mva  # Z = Un² / Sk'' [Ohm]
+            z_abs = (un_kv**2) / source.sk3_mva  # Z = Un² / Sk'' [Ohm]
             rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
-            x_ohm = z_abs / math.sqrt(1.0 + rx ** 2)
+            x_ohm = z_abs / math.sqrt(1.0 + rx**2)
             r_ohm = x_ohm * rx
 
         if r_ohm == 0 and x_ohm == 0:

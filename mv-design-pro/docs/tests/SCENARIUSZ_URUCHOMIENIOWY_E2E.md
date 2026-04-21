@@ -19,8 +19,8 @@ Test symuluje 15 kroków inżyniera OSD z asercjami Snapshot delta.
 | 8 | connect_secondary_ring_sn | corridors[0].corridor_type == "ring" |
 | 9 | set_normal_open_point | corridors[0].no_point_ref != null |
 | 10 | add_nn_load | snapshot.loads.length > 0 |
-| 11 | add_pv_inverter_nn | snapshot.generators.length > 0 |
-| 12 | add_bess_inverter_nn | generators += 1 |
+| 11 | add_converter_source | snapshot.generators.length > 0 |
+| 12 | add_converter_source | generators += 1 |
 | 13 | add_relay | snapshot.protection_assignments.length > 0 |
 | 14 | run_power_flow | wynik: napięcia + prądy (brak 500) |
 | 15 | run_short_circuit | wynik: Ik'' + ip + WhiteBox (brak 500) |

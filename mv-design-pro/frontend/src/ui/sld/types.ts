@@ -3,16 +3,16 @@
  *
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § A: Symbol ↔ Model bijection
- * - powerfactory_ui_parity.md: PowerFactory-like presentation
+ * - ui_canonical_parity.md: Canonical-like presentation
  *
  * READ-ONLY viewer types — no editing, no drag/drop.
  * Reuses core types from sld-editor for symbol definitions.
  */
 
 import type { ElementType, SelectedElement } from '../types';
-import type { AnySldSymbol, Position } from '../sld-editor/types';
+import type { AnySldSymbol, Connection as RenderConnection, Position } from '../sld-editor/types';
 import type { CanonicalAnnotationsV1 } from './core/layoutResult';
-import { ETAP_GEOMETRY } from './sldEtapStyle';
+import { CANONICAL_GEOMETRY } from './sldCanonicalStyle';
 
 export type InteractionPortRole = 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE';
 
@@ -50,6 +50,9 @@ export interface ViewportState {
 export interface SLDViewProps {
   /** Symbols to render */
   symbols: AnySldSymbol[];
+
+  /** Kanoniczne połączenia wynikające z pipeline layoutu. */
+  connections?: RenderConnection[];
 
   /** Currently selected element (from URL/store) */
   selectedElement?: SelectedElement | null;
@@ -111,11 +114,17 @@ export interface SLDViewCanvasProps {
   /** Symbols to render */
   symbols: AnySldSymbol[];
 
+  /** Kanoniczne połączenia wynikające z pipeline layoutu. */
+  connections?: RenderConnection[];
+
   /** Selected symbol ID */
   selectedId: string | null;
 
   /** Callback when symbol is clicked */
   onSymbolClick: (symbolId: string, elementType: ElementType, elementName: string) => void;
+
+  /** Callback when symbol is double-clicked */
+  onSymbolDoubleClick?: (symbolId: string, elementType: ElementType, elementName: string) => void;
 
   /** Callback when symbol is hovered */
   onSymbolHover?: (symbolId: string | null, elementType?: ElementType, elementName?: string) => void;
@@ -230,7 +239,7 @@ export function fitToContent(
   symbols: AnySldSymbol[],
   canvasWidth: number,
   canvasHeight: number,
-  padding: number = ETAP_GEOMETRY.view.fitPaddingPx,
+  padding: number = CANONICAL_GEOMETRY.view.fitPaddingPx,
   minZoom: number = ZOOM_MIN
 ): ViewportState {
   const bounds = calculateSymbolsBounds(symbols);

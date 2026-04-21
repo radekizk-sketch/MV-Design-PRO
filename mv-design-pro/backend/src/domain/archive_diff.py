@@ -28,7 +28,6 @@ from domain.project_archive import (
     compute_hash,
 )
 
-
 # ============================================================================
 # STALE
 # ============================================================================
@@ -227,9 +226,7 @@ def _field_label_pl(field_name: str) -> str:
     return labels.get(field_name, field_name)
 
 
-def _get_section_hash(
-    fingerprints: ArchiveFingerprints, section_name: str
-) -> str:
+def _get_section_hash(fingerprints: ArchiveFingerprints, section_name: str) -> str:
     """Pobierz hash sekcji z fingerprints."""
     attr_name = _SECTION_HASH_MAP.get(section_name)
     if attr_name is None:
@@ -288,12 +285,8 @@ def compare_element_lists(
     Returns:
         Lista ElementDiff posortowana wg element_id
     """
-    index_a: dict[str, dict[str, Any]] = {
-        str(el.get(id_field, "")): el for el in list_a
-    }
-    index_b: dict[str, dict[str, Any]] = {
-        str(el.get(id_field, "")): el for el in list_b
-    }
+    index_a: dict[str, dict[str, Any]] = {str(el.get(id_field, "")): el for el in list_a}
+    index_b: dict[str, dict[str, Any]] = {str(el.get(id_field, "")): el for el in list_b}
 
     all_ids = sorted(set(index_a.keys()) | set(index_b.keys()))
     diffs: list[ElementDiff] = []
@@ -304,32 +297,38 @@ def compare_element_lists(
 
         if in_a and not in_b:
             # Usuniety
-            diffs.append(ElementDiff(
-                element_id=eid,
-                element_type=element_type,
-                status=DiffStatus.REMOVED,
-                field_changes=(),
-            ))
+            diffs.append(
+                ElementDiff(
+                    element_id=eid,
+                    element_type=element_type,
+                    status=DiffStatus.REMOVED,
+                    field_changes=(),
+                )
+            )
         elif not in_a and in_b:
             # Dodany
-            diffs.append(ElementDiff(
-                element_id=eid,
-                element_type=element_type,
-                status=DiffStatus.ADDED,
-                field_changes=(),
-            ))
+            diffs.append(
+                ElementDiff(
+                    element_id=eid,
+                    element_type=element_type,
+                    status=DiffStatus.ADDED,
+                    field_changes=(),
+                )
+            )
         else:
             # Oba istnieja — porownaj pole po polu
             el_a = index_a[eid]
             el_b = index_b[eid]
             field_changes = _compare_fields(el_a, el_b)
             if field_changes:
-                diffs.append(ElementDiff(
-                    element_id=eid,
-                    element_type=element_type,
-                    status=DiffStatus.MODIFIED,
-                    field_changes=tuple(field_changes),
-                ))
+                diffs.append(
+                    ElementDiff(
+                        element_id=eid,
+                        element_type=element_type,
+                        status=DiffStatus.MODIFIED,
+                        field_changes=tuple(field_changes),
+                    )
+                )
 
     return diffs
 
@@ -351,12 +350,14 @@ def _compare_fields(
         canonical_b = canonicalize(val_b)
 
         if canonical_a != canonical_b:
-            changes.append(FieldChange(
-                field_name=key,
-                old_value=val_a,
-                new_value=val_b,
-                label_pl=_field_label_pl(key),
-            ))
+            changes.append(
+                FieldChange(
+                    field_name=key,
+                    old_value=val_a,
+                    new_value=val_b,
+                    label_pl=_field_label_pl(key),
+                )
+            )
 
     return changes
 
@@ -416,20 +417,12 @@ def compare_sections(
     for list_key, id_field in sorted(list_keys.items()):
         la = section_a_data.get(list_key, [])
         lb = section_b_data.get(list_key, [])
-        element_diffs = compare_element_lists(
-            la, lb, id_field=id_field, element_type=list_key
-        )
+        element_diffs = compare_element_lists(la, lb, id_field=id_field, element_type=list_key)
         all_element_diffs.extend(element_diffs)
 
-    elements_added = sum(
-        1 for d in all_element_diffs if d.status == DiffStatus.ADDED
-    )
-    elements_removed = sum(
-        1 for d in all_element_diffs if d.status == DiffStatus.REMOVED
-    )
-    elements_modified = sum(
-        1 for d in all_element_diffs if d.status == DiffStatus.MODIFIED
-    )
+    elements_added = sum(1 for d in all_element_diffs if d.status == DiffStatus.ADDED)
+    elements_removed = sum(1 for d in all_element_diffs if d.status == DiffStatus.REMOVED)
+    elements_modified = sum(1 for d in all_element_diffs if d.status == DiffStatus.MODIFIED)
 
     return SectionDiff(
         section_name=section_name,
@@ -512,9 +505,7 @@ def compare_archives(
 
     result_section_diffs = tuple(section_diffs_list)
     summary = _build_summary(result_section_diffs)
-    sig = _compute_deterministic_signature(
-        hash_a, hash_b, result_section_diffs
-    )
+    sig = _compute_deterministic_signature(hash_a, hash_b, result_section_diffs)
 
     return ArchiveDiffResult(
         archive_hash_a=hash_a,
@@ -533,17 +524,11 @@ def compare_archives(
 
 def _build_summary(section_diffs: tuple[SectionDiff, ...]) -> dict[str, Any]:
     """Zbuduj podsumowanie diff-a."""
-    sections_identical = sum(
-        1 for sd in section_diffs if sd.status == DiffStatus.IDENTICAL
-    )
-    sections_modified = sum(
-        1 for sd in section_diffs if sd.status == DiffStatus.MODIFIED
-    )
+    sections_identical = sum(1 for sd in section_diffs if sd.status == DiffStatus.IDENTICAL)
+    sections_modified = sum(1 for sd in section_diffs if sd.status == DiffStatus.MODIFIED)
     total_elements_added = sum(sd.elements_added for sd in section_diffs)
     total_elements_removed = sum(sd.elements_removed for sd in section_diffs)
-    total_elements_modified = sum(
-        sd.elements_modified for sd in section_diffs
-    )
+    total_elements_modified = sum(sd.elements_modified for sd in section_diffs)
 
     return {
         "sections_total": len(section_diffs),
@@ -574,12 +559,8 @@ def diff_summary(diff_result: ArchiveDiffResult) -> dict[str, Any]:
     return {
         "overall_status": diff_result.overall_status.value,
         "by_status": by_status,
-        "sections_identical": diff_result.summary.get(
-            "sections_identical", 0
-        ),
-        "sections_modified": diff_result.summary.get(
-            "sections_modified", 0
-        ),
+        "sections_identical": diff_result.summary.get("sections_identical", 0),
+        "sections_modified": diff_result.summary.get("sections_modified", 0),
     }
 
 
@@ -600,9 +581,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
     lines.append("")
     lines.append(f"Archiwum A: {diff_result.archive_hash_a[:16]}...")
     lines.append(f"Archiwum B: {diff_result.archive_hash_b[:16]}...")
-    lines.append(
-        f"Status ogolny: {_status_pl(diff_result.overall_status)}"
-    )
+    lines.append(f"Status ogolny: {_status_pl(diff_result.overall_status)}")
     lines.append("")
 
     if diff_result.overall_status == DiffStatus.IDENTICAL:
@@ -630,9 +609,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
         if sd.status == DiffStatus.IDENTICAL:
             continue
 
-        section_label = _SECTION_LABELS_PL.get(
-            sd.section_name, sd.section_name
-        )
+        section_label = _SECTION_LABELS_PL.get(sd.section_name, sd.section_name)
         lines.append(f"--- {section_label} ---")
         lines.append(f"  Status: {_status_pl(sd.status)}")
         if sd.elements_added:
@@ -643,10 +620,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
             lines.append(f"  Zmodyfikowane: {sd.elements_modified}")
 
         for ed in sd.element_diffs:
-            lines.append(
-                f"    [{_status_pl(ed.status)}] "
-                f"{ed.element_type} '{ed.element_id}'"
-            )
+            lines.append(f"    [{_status_pl(ed.status)}] " f"{ed.element_type} '{ed.element_id}'")
             for fc in ed.field_changes:
                 lines.append(
                     f"      {fc.label_pl}: "
@@ -655,9 +629,7 @@ def format_diff_report_pl(diff_result: ArchiveDiffResult) -> str:
                 )
         lines.append("")
 
-    lines.append(
-        f"Sygnatura: {diff_result.deterministic_signature[:16]}..."
-    )
+    lines.append(f"Sygnatura: {diff_result.deterministic_signature[:16]}...")
     lines.append("")
 
     return "\n".join(lines)
@@ -680,7 +652,7 @@ def _format_value(value: Any) -> str:
         return "(brak)"
     if isinstance(value, str) and len(value) > 50:
         return f'"{value[:47]}..."'
-    if isinstance(value, (list, dict)):
+    if isinstance(value, list | dict):
         s = json.dumps(value, ensure_ascii=False)
         if len(s) > 50:
             return f"{s[:47]}..."

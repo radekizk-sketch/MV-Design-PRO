@@ -11,10 +11,10 @@ Verifies:
 
 from __future__ import annotations
 
+from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
-
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -23,12 +23,7 @@ from network_model.solvers.short_circuit_iec60909 import (
 )
 
 # Check if reportlab is available for tests
-try:
-    import reportlab
-
-    _PDF_AVAILABLE = True
-except ImportError:
-    _PDF_AVAILABLE = False
+_PDF_AVAILABLE = find_spec("reportlab") is not None
 
 
 # -----------------------------------------------------------------------------
@@ -236,9 +231,7 @@ class TestExportShortCircuitResultToPdf:
 
         custom_title = "Custom Short-Circuit Report"
         output_file = tmp_path / "report.pdf"
-        returned_path = export_short_circuit_result_to_pdf(
-            result, output_file, title=custom_title
-        )
+        returned_path = export_short_circuit_result_to_pdf(result, output_file, title=custom_title)
 
         assert output_file.exists()
         assert returned_path == output_file
@@ -292,9 +285,7 @@ class TestExportPdfWithoutWhiteBox:
         assert output_file.exists()
         assert output_file.stat().st_size > 0
 
-    def test_export_without_white_box_has_valid_pdf_header(
-        self, tmp_path: Path
-    ) -> None:
+    def test_export_without_white_box_has_valid_pdf_header(self, tmp_path: Path) -> None:
         """Verify that PDF without white box has valid header."""
         from network_model.reporting.short_circuit_report_pdf import (
             export_short_circuit_result_to_pdf,

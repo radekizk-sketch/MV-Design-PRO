@@ -9,24 +9,22 @@ TESTS:
 5. Project active snapshot tracking
 """
 
-import pytest
 from uuid import uuid4
 
+import pytest
+from domain.models import new_project, new_study_run
+from domain.study_case import (
+    StudyCase,
+    StudyCaseResultStatus,
+    new_study_case,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.snapshot import (
     NetworkSnapshot,
-    SnapshotMeta,
+    _canonicalize_value,
     compute_fingerprint,
     create_network_snapshot,
-    _canonicalize_value,
-)
-from domain.models import Project, new_project, new_study_run
-from domain.study_case import (
-    StudyCase,
-    StudyCaseConfig,
-    StudyCaseResultStatus,
-    new_study_case,
 )
 
 
@@ -56,14 +54,16 @@ class TestDeterministicFingerprint:
         graph2 = _create_test_graph()
 
         # Modify graph2
-        graph2.add_node(Node(
-            id="node-extra",
-            node_type=NodeType.PQ,
-            name="Extra Bus",
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        ))
+        graph2.add_node(
+            Node(
+                id="node-extra",
+                node_type=NodeType.PQ,
+                name="Extra Bus",
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
 
         snapshot1 = create_network_snapshot(
             graph1,
@@ -80,42 +80,50 @@ class TestDeterministicFingerprint:
         """Fingerprint must not depend on element creation order."""
         graph1 = NetworkGraph()
         graph1.network_model_id = "test-model"
-        graph1.add_node(Node(
-            id="node-a",
-            node_type=NodeType.PQ,
-            name="A",
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        ))
-        graph1.add_node(Node(
-            id="node-b",
-            node_type=NodeType.PQ,
-            name="B",
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        ))
+        graph1.add_node(
+            Node(
+                id="node-a",
+                node_type=NodeType.PQ,
+                name="A",
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        graph1.add_node(
+            Node(
+                id="node-b",
+                node_type=NodeType.PQ,
+                name="B",
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
 
         graph2 = NetworkGraph()
         graph2.network_model_id = "test-model"
         # Add in reverse order
-        graph2.add_node(Node(
-            id="node-b",
-            node_type=NodeType.PQ,
-            name="B",
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        ))
-        graph2.add_node(Node(
-            id="node-a",
-            node_type=NodeType.PQ,
-            name="A",
-            voltage_level=20.0,
-            active_power=0.0,
-            reactive_power=0.0,
-        ))
+        graph2.add_node(
+            Node(
+                id="node-b",
+                node_type=NodeType.PQ,
+                name="B",
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
+        graph2.add_node(
+            Node(
+                id="node-a",
+                node_type=NodeType.PQ,
+                name="A",
+                voltage_level=20.0,
+                active_power=0.0,
+                reactive_power=0.0,
+            )
+        )
 
         snapshot1 = create_network_snapshot(graph1, network_model_id="test-model")
         snapshot2 = create_network_snapshot(graph2, network_model_id="test-model")
@@ -332,22 +340,26 @@ def _create_test_graph() -> NetworkGraph:
     graph.network_model_id = "test-model"
 
     # Add nodes - using correct Node API with NodeType and required fields
-    graph.add_node(Node(
-        id="node-1",
-        node_type=NodeType.SLACK,
-        name="Bus 1",
-        voltage_level=20.0,
-        voltage_magnitude=1.0,
-        voltage_angle=0.0,
-    ))
-    graph.add_node(Node(
-        id="node-2",
-        node_type=NodeType.PQ,
-        name="Bus 2",
-        voltage_level=0.4,
-        active_power=0.1,
-        reactive_power=0.05,
-    ))
+    graph.add_node(
+        Node(
+            id="node-1",
+            node_type=NodeType.SLACK,
+            name="Bus 1",
+            voltage_level=20.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    graph.add_node(
+        Node(
+            id="node-2",
+            node_type=NodeType.PQ,
+            name="Bus 2",
+            voltage_level=0.4,
+            active_power=0.1,
+            reactive_power=0.05,
+        )
+    )
 
     # Note: Not adding branches to keep test simple
     # Fingerprint test only needs to verify determinism, not full network structure

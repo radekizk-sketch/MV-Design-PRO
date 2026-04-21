@@ -1,41 +1,41 @@
-# SLD RUN 3B+ Roadmap
+﻿# SLD RUN 3B+ Roadmap
 
 **Status:** PLANOWANY | **Wersja:** 1.1 | **Data:** 2026-02-13
-**Kontekst:** RUN #3A + RUN #3C → mapa zaleznosci dla kolejnych etapow SLD ETAP-grade
+**Kontekst:** RUN #3A + RUN #3C â†’ mapa zaleznosci dla kolejnych etapow SLD benchmark-grade
 
 ---
 
 ## 1. Dependency Map
 
 ```
-RUN #3A (DONE — kontrakty + determinism)
-  ├─ PR-3A-01: docs (pipeline map, gap audit, SSOT)
-  ├─ PR-3A-02: VisualGraphV1 contract + TopologyAdapterV1
-  └─ PR-3A-03: determinism suite + guards + golden networks
-        │
-        ▼
-RUN #3C (DONE — topology hardening, domain-driven adapter)
-  ├─ TopologyInputReader (ENM + bridge)
-  ├─ TopologyAdapterV2 (domain-driven, zero self-edges)
-  ├─ Segmentacja trunk/branch/secondary (BFS spanning tree)
-  ├─ Stacje A/B/C/D z domeny (classifyStationType)
-  ├─ OZE PV/BESS z GeneratorKind (zero heurystyk)
-  ├─ Validations + FixActions (stable PL codes)
-  ├─ Migration: V1 deleguje do V2, grep-zero legacy
-  ├─ Tests: 7 golden domain networks, 100x hash, 50x permutation
-  └─ Guards: no-self-edges, no-string-typology, no-legacy
-        │
-        ▼
-RUN #3B (NEXT — embedded switchgear blocks + layout rendering)
-  ├─ Wymaga: VisualGraphV1 zamrozony (PR-3A-02) ✓
-  ├─ Wymaga: golden networks (PR-3A-03) ✓
-  ├─ Wymaga: domain-driven adapter (RUN #3C) ✓
-  └─ Wymaga: determinism suite passing (PR-3A-03) ✓
-        │
-        ▼
+RUN #3A (DONE â€” kontrakty + determinism)
+  â”śâ”€ PR-3A-01: docs (pipeline map, gap audit, SSOT)
+  â”śâ”€ PR-3A-02: VisualGraphV1 contract + TopologyAdapterV1
+  â””â”€ PR-3A-03: determinism suite + guards + golden networks
+        â”‚
+        â–Ľ
+RUN #3C (DONE â€” topology hardening, domain-driven adapter)
+  â”śâ”€ TopologyInputReader (ENM + bridge)
+  â”śâ”€ TopologyAdapterV2 (domain-driven, zero self-edges)
+  â”śâ”€ Segmentacja trunk/branch/secondary (BFS spanning tree)
+  â”śâ”€ Stacje A/B/C/D z domeny (classifyStationType)
+  â”śâ”€ OZE PV/BESS z GeneratorKind (zero heurystyk)
+  â”śâ”€ Validations + FixActions (stable PL codes)
+  â”śâ”€ Migration: V1 deleguje do V2, grep-zero legacy
+  â”śâ”€ Tests: 7 golden domain networks, 100x hash, 50x permutation
+  â””â”€ Guards: no-self-edges, no-string-typology, no-legacy
+        â”‚
+        â–Ľ
+RUN #3B (NEXT â€” embedded switchgear blocks + layout rendering)
+  â”śâ”€ Wymaga: VisualGraphV1 zamrozony (PR-3A-02) âś“
+  â”śâ”€ Wymaga: golden networks (PR-3A-03) âś“
+  â”śâ”€ Wymaga: domain-driven adapter (RUN #3C) âś“
+  â””â”€ Wymaga: determinism suite passing (PR-3A-03) âś“
+        â”‚
+        â–Ľ
 RUN #3D (Export E2E + CI artifacts + perf budgets)
-  ├─ Wymaga: stabilny layout z 3B
-  └─ Wymaga: golden network render artifacts z 3A/3C
+  â”śâ”€ Wymaga: stabilny layout z 3B
+  â””â”€ Wymaga: golden network render artifacts z 3A/3C
 ```
 
 ---
@@ -55,7 +55,7 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
   - Porty semantyczne: IN (zasilanie), OUT (odejscia nN), BRANCH (odgalezienia SN)
 - Pelna segmentacja trunk/branch/secondary w layoucie
   - TRUNK: magistrala wizualnie wyrozlniona (grubsza linia, kolor)
-  - BRANCH: odgalezienia od trunk (cieñsza linia)
+  - BRANCH: odgalezienia od trunk (cieĂ±sza linia)
   - SECONDARY_CONNECTOR: ring close, NOP (przerywana linia)
 - OZE PV/BESS z dedykowanymi portami w stacji wielofunkcyjnej
   - Pole OZE z wlasnym CB i zabezpieczeniem
@@ -95,27 +95,27 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
 - VisualGraphV1 (niezmieniony lub V1.1)
 
 ### 3.2 Wyjscie
-- **LayoutSpec** — deklaratywny opis layoutu (co uzytkownik chce)
+- **LayoutSpec** â€” deklaratywny opis layoutu (co uzytkownik chce)
   - Constraints (element A nad B, bus horizontal)
   - User overrides (reczne przesuniecia, CAD mode)
   - Auto-layout hints
-- **LayoutResult** — wynik obliczen layoutu (co engine produkuje)
+- **LayoutResult** â€” wynik obliczen layoutu (co engine produkuje)
   - Pozycje wszystkich symboli
   - Sciezki wszystkich polaczen
   - Collision report
   - Hash (dla cache i determinism)
-- **SldEditAction** — atomowe operacje edycji
+- **SldEditAction** â€” atomowe operacje edycji
   - MoveSymbol, ResizeSymbol, RoutePath
   - AddElement, RemoveElement
   - Batch operations
-- **Undo/Redo** — pelna historia edycji
+- **Undo/Redo** â€” pelna historia edycji
   - Integracja z istniejacym command pattern
   - Persistent undo stack (cross-session)
-- **Routing Bendpoints** — kontrolowane zalamanie sciezek
+- **Routing Bendpoints** â€” kontrolowane zalamanie sciezek
   - Uzytkownik moze dodac/usunac/przesunac bendpoints
   - Routing z uwzglednieniem bendpoints
-- **Incremental Auto-Layout** (bez przycisku "uporządkuj")
-  - Zmiana modelu → automatyczna aktualizacja layoutu
+- **Incremental Auto-Layout** (bez przycisku "uporzÄ…dkuj")
+  - Zmiana modelu â†’ automatyczna aktualizacja layoutu
   - Zachowanie user overrides
   - Brak przebudowy calego layoutu
 
@@ -123,12 +123,12 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
 | Ryzyko | Mitigacja |
 |--------|-----------|
 | User overrides lamiaca determinism | LayoutSpec hash niezalezny od override order |
-| Incremental layout diverguje od full layout | Test: incremental + full → identyczny result (dla tych samych constraints) |
+| Incremental layout diverguje od full layout | Test: incremental + full â†’ identyczny result (dla tych samych constraints) |
 | Undo/Redo zmienia hash | Hash oparty na LayoutSpec, nie historii |
 | Bendpoints tworza non-canonical routing | Canonical bendpoint serialization |
 
 ### 3.4 Testy i guardy
-- Test: LayoutSpec → LayoutResult jest deterministyczny
+- Test: LayoutSpec â†’ LayoutResult jest deterministyczny
 - Test: SldEditAction jest odwracalny (action + undo = identity)
 - Test: Incremental layout zachowuje user overrides
 - Guard: LayoutResult hash jest stabilny (100x)
@@ -182,26 +182,26 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
 ## 5. Timeline i zaleznosci
 
 ```
-RUN #3A ─────────────────────────────── DONE
-  │ kontrakty, determinism, guards
-  │
-  ▼
-RUN #3C ─────────────────────────────── DONE
-  │ topology hardening, domain-driven adapter
-  │ zero self-edges, zero heurystyk, segmentacja
-  │
-  ▼
-RUN #3B ─────────────────────────────── NEXT
-  │ embedded blocks, layout rendering, unified orchestrator
-  │ Zalezy od: RUN #3A (kontrakt), RUN #3C (adapter)
-  │
-  ▼
-RUN #3D ─────────────────────────────── PLANNED
-  │ LayoutSpec/Result, Undo/Redo, routing, incremental
-  │ Zalezy od: RUN #3B (blocks, orchestrator)
-  │
-  ▼
-RUN #3E ─────────────────────────────── PLANNED
+RUN #3A â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DONE
+  â”‚ kontrakty, determinism, guards
+  â”‚
+  â–Ľ
+RUN #3C â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ DONE
+  â”‚ topology hardening, domain-driven adapter
+  â”‚ zero self-edges, zero heurystyk, segmentacja
+  â”‚
+  â–Ľ
+RUN #3B â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ NEXT
+  â”‚ embedded blocks, layout rendering, unified orchestrator
+  â”‚ Zalezy od: RUN #3A (kontrakt), RUN #3C (adapter)
+  â”‚
+  â–Ľ
+RUN #3D â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PLANNED
+  â”‚ LayoutSpec/Result, Undo/Redo, routing, incremental
+  â”‚ Zalezy od: RUN #3B (blocks, orchestrator)
+  â”‚
+  â–Ľ
+RUN #3E â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ PLANNED
     Export E2E, CI artifacts, perf budgets
     Zalezy od: RUN #3D (stabilny layout)
 ```
@@ -233,3 +233,4 @@ RUN #3E ────────────────────────
 - [ ] SVG content hash stabilny
 - [ ] Perf budgets zdefiniowane i monitorowane (nightly)
 - [ ] Visual diff (opcjonalnie) dla golden networks
+

@@ -8,11 +8,11 @@ import json
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
-
 from domain.result_builder_v1 import build_resultset_v1
 from domain.result_contract_v1_schema import generate_schema
-from enm.canonical_analysis import build_execution_result_set, get_run as get_canonical_run
+from enm.canonical_analysis import build_execution_result_set
+from enm.canonical_analysis import get_run as get_canonical_run
+from fastapi import APIRouter, HTTPException, status
 
 router = APIRouter(tags=["result-contract-v1"])
 

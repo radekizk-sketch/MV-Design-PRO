@@ -1,26 +1,30 @@
 # SLD_TYPY_STACJI_KANONICZNE
 
-Status: wiazacy dla aktualnego mapowania typow stacji.
+Status: wiazacy dla aktywnego UI i aktywnego renderingu SLD.
 
 Kod:
 - `backend/src/enm/domain_operations.py`
-- `frontend/src/ui/sld/StationFieldRenderer.tsx`
+- `frontend/src/ui/sld/FieldBlockRenderer.tsx`
 - `frontend/src/ui/sld/core/stationBlockBuilder.ts`
 
-Wejscie backendowe:
-- `insert_station_on_segment_sn` przyjmuje typy `A`, `B`, `C`, `D` oraz aliasy semantyczne,
-- backend zapisuje semantyczny `station_type` oraz metadane `station_type_sn` i `station_type_semantic`.
-
-Mapowanie aktywne:
-- `A` -> `mv_lv`
-- `B` -> `inline`
-- `C` -> `branch`
-- `D` -> `sectional`
-
-Widok SLD:
-- renderer stacji utrzymuje etykiety `TYPE_A`, `TYPE_B`, `TYPE_C`, `TYPE_D`,
-- aktualne etykiety UI to odpowiednio stacja koncowa, przelotowa, odgalezna i sekcyjna.
+Klasyfikacja widoczna dla uzytkownika:
+- stacja koncowa,
+- stacja przelotowa,
+- stacja odgalezna,
+- stacja sekcyjna.
 
 Regula wiazaca:
-- dokumentacja musi wskazywac, ze backend przechowuje typ semantyczny, a czesc renderu nadal posluguje sie oznaczeniami `TYPE_A-D`,
-- nie wolno opisywac typologii stacji jako w pelni ujednoliconej we wszystkich warstwach, bo kod nadal utrzymuje oba poziomy nazewnictwa.
+- aktywne UI, SLD, formularze, karty i inspektory uzywaja wylacznie klasyfikacji topologicznej,
+- oznaczenia budowlane i techniczne nie moga wyciekac do warstwy uzytkownika,
+- wewnetrzne mapowania techniczne moga istniec wyłącznie jako implementacja backendu lub adaptera migracyjnego.
+
+Mapowanie techniczne:
+- `terminal` -> stacja koncowa,
+- `inline` -> stacja przelotowa,
+- `branch` -> stacja odgalezna,
+- `sectional` -> stacja sekcyjna.
+
+Zakazy:
+- nie wolno prezentowac uzytkownikowi typow `A/B/C/D`,
+- nie wolno prezentowac uzytkownikowi typow budowlanych jako kanonicznych nazw stacji,
+- nie wolno utrzymywac drugiej aktywnej prawdy typologii stacji w rendererze pola.

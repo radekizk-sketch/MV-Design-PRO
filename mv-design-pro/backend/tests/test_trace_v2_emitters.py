@@ -12,15 +12,15 @@ from __future__ import annotations
 import math
 
 from application.trace_emitters.deterministic_ids import deterministic_trace_id
-from application.trace_emitters.sc_emitter import TraceEmitterSC
-from application.trace_emitters.protection_emitter import TraceEmitterProtection
 from application.trace_emitters.load_flow_emitter import TraceEmitterLoadFlow
-from domain.trace_v2.artifact import AnalysisTypeV2, compute_trace_signature
-
+from application.trace_emitters.protection_emitter import TraceEmitterProtection
+from application.trace_emitters.sc_emitter import TraceEmitterSC
+from domain.trace_v2.artifact import AnalysisTypeV2
 
 # ===========================================================================
 # SC Emitter Tests
 # ===========================================================================
+
 
 def _sc_result_dict() -> dict:
     """Minimal SC result dict for testing."""
@@ -49,8 +49,12 @@ def _sc_result_dict() -> dict:
                 "key": "Zk",
                 "title": "Impedancja zastępcza w punkcie zwarcia",
                 "formula_latex": "Z_k = Z_1",
-                "inputs": {"z1_ohm": "1.5+j3.2", "z2_ohm": "1.5+j3.2",
-                           "fault_node_id": "bus_01", "short_circuit_type": "THREE_PHASE"},
+                "inputs": {
+                    "z1_ohm": "1.5+j3.2",
+                    "z2_ohm": "1.5+j3.2",
+                    "fault_node_id": "bus_01",
+                    "short_circuit_type": "THREE_PHASE",
+                },
                 "substitution": "1.5+j3.2",
                 "result": {"z_equiv_ohm": "1.5+j3.2"},
             },
@@ -58,7 +62,12 @@ def _sc_result_dict() -> dict:
                 "key": "Ikss",
                 "title": "Prąd zwarciowy początkowy symetryczny",
                 "formula_latex": "I_{k}'' = (c * U_n * k_U) / |Z_k|",
-                "inputs": {"c_factor": 1.1, "un_v": 20000.0, "voltage_factor": 1.0, "z_equiv_abs_ohm": 3.534},
+                "inputs": {
+                    "c_factor": 1.1,
+                    "un_v": 20000.0,
+                    "voltage_factor": 1.0,
+                    "z_equiv_abs_ohm": 3.534,
+                },
                 "substitution": "(1.1 * 20000 * 1.0) / 3.534",
                 "result": {"ikss_a": 3500.0},
             },
@@ -82,7 +91,13 @@ def _sc_result_dict() -> dict:
                 "key": "Ib",
                 "title": "Prąd zwarciowy do obliczeń cieplnych",
                 "formula_latex": "I_b = ...",
-                "inputs": {"ikss_a": 3500.0, "kappa": 1.72, "tb_s": 0.1, "ta_s": 0.02, "exp_factor": 0.006},
+                "inputs": {
+                    "ikss_a": 3500.0,
+                    "kappa": 1.72,
+                    "tb_s": 0.1,
+                    "ta_s": 0.02,
+                    "exp_factor": 0.006,
+                },
                 "substitution": "3500 * sqrt(1 + ((1.72-1)*0.006)^2)",
                 "result": {"ib_a": 3550.0},
             },
@@ -168,7 +183,7 @@ class TestTraceEmitterSC:
         assert a1.run_hash == a2.run_hash
 
         assert a1.trace_id == a2.trace_id
-        
+
     def test_anti_double_counting_c(self) -> None:
         """c_factor must appear in exactly one equation step (SC_IKSS)."""
         emitter = TraceEmitterSC()
@@ -177,10 +192,7 @@ class TestTraceEmitterSC:
             analysis_input={"fault_node_id": "bus_01"},
             sc_result_dict=_sc_result_dict(),
         )
-        steps_with_c = [
-            s for s in artifact.equation_steps
-            if "c_factor" in s.inputs_used
-        ]
+        steps_with_c = [s for s in artifact.equation_steps if "c_factor" in s.inputs_used]
         # c_factor appears in Ikss step as input (via white_box_trace)
         assert len(steps_with_c) == 1
         assert steps_with_c[0].eq_id == "SC_IKSS"
@@ -189,6 +201,7 @@ class TestTraceEmitterSC:
 # ===========================================================================
 # Protection Emitter Tests
 # ===========================================================================
+
 
 def _protection_result_dict() -> dict:
     """Minimal Protection ResultSetV1 dict for testing."""
@@ -299,6 +312,7 @@ class TestTraceEmitterProtection:
 # Load Flow Emitter Tests
 # ===========================================================================
 
+
 def _lf_trace_dict() -> dict:
     return {
         "solver_version": "1.0.0",
@@ -333,15 +347,30 @@ def _lf_result_dict() -> dict:
         "base_mva": 100.0,
         "slack_bus_id": "bus_1",
         "bus_results": [
-            {"bus_id": "bus_1", "v_pu": 1.0, "angle_deg": 0.0, "p_injected_mw": 5.0, "q_injected_mvar": 2.0},
-            {"bus_id": "bus_2", "v_pu": 0.98, "angle_deg": -1.5, "p_injected_mw": -3.0, "q_injected_mvar": -1.0},
+            {
+                "bus_id": "bus_1",
+                "v_pu": 1.0,
+                "angle_deg": 0.0,
+                "p_injected_mw": 5.0,
+                "q_injected_mvar": 2.0,
+            },
+            {
+                "bus_id": "bus_2",
+                "v_pu": 0.98,
+                "angle_deg": -1.5,
+                "p_injected_mw": -3.0,
+                "q_injected_mvar": -1.0,
+            },
         ],
         "branch_results": [
             {
                 "branch_id": "line_1",
-                "p_from_mw": 3.0, "q_from_mvar": 1.0,
-                "p_to_mw": -2.95, "q_to_mvar": -0.95,
-                "losses_p_mw": 0.05, "losses_q_mvar": 0.05,
+                "p_from_mw": 3.0,
+                "q_from_mvar": 1.0,
+                "p_to_mw": -2.95,
+                "q_to_mvar": -0.95,
+                "losses_p_mw": 0.05,
+                "losses_q_mvar": 0.05,
             },
         ],
         "summary": {

@@ -2,7 +2,7 @@
  * Inspector Types (READ-ONLY Property Grid)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Property grid jako read-only inspector
+ * - ui_canonical_parity.md: Property grid jako read-only inspector
  * - wizard_screens.md § 2.4: Inspector wyświetla właściwości wybranego elementu
  *
  * 100% POLISH UI

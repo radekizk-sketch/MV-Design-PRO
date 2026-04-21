@@ -1,4 +1,4 @@
-# Katalog -- przeplyw inzynierski
+﻿# Katalog -- przeplyw inzynierski
 
 | Pole            | Wartosc                                                                      |
 |-----------------|------------------------------------------------------------------------------|
@@ -113,8 +113,8 @@ Przegladarka katalogu renderowana inline w panelu inspektora (nie jako overlay m
 
 ### Readonly -- uzasadnienie
 
-Typy katalogowe sa **immutable** po opublikowaniu (PowerFactory Type Library parity,
-`POWERFACTORY_COMPLIANCE.md`). Edycja typow katalogowych nie jest dozwolona w warstwie
+Typy katalogowe sa **immutable** po opublikowaniu (benchmark Type Library parity,
+`CANONICAL_COMPLIANCE.md`). Edycja typow katalogowych nie jest dozwolona w warstwie
 UI. Zmiana parametrow elementu po przypisaniu katalogu wymaga:
 1. Odlaczenia biezacego typu (`clear_catalog_from_element`)
 2. Przypisania innego typu
@@ -132,7 +132,7 @@ Pelna przegladarka katalogu dostepna z menu glownego (P13a: Type Library Browser
 
 | Zakladka       | Namespace(s)                           | Kolumny                              |
 |----------------|----------------------------------------|--------------------------------------|
-| Linie          | `line_overhead`                        | Nazwa, R1, X1, B1, I_n, materiał    |
+| Linie          | `line_overhead`                        | Nazwa, R1, X1, B1, I_n, materiaĹ‚    |
 | Kable          | `cable_mv`, `cable_lv`                 | Nazwa, R1, X1, B1, I_n, przekroj    |
 | Transformatory | `transformer_2w`                       | Nazwa, S_n, U_HV/U_LV, u_k, P_Cu   |
 | Laczniki       | `switch_breaker`, `switch_disconnector`| Nazwa, I_n, I_dyn, U_n              |
@@ -164,7 +164,7 @@ w modelu, poniewaz:
    nadrzednego o znanych parametrach zwarciowych.
 2. IEC 60909 modeluje zrodlo zewnetrzne przez impedancje zastecza
    Z_Q = c * U_n^2 / S_kQ, nie przez typ katalogowy.
-3. PowerFactory rowniez nie uzywa Type Library dla External Grid.
+3. benchmark rowniez nie uzywa Type Library dla External Grid.
 
 Jest to swiadoma decyzja architektoniczna, nie luka.
 
@@ -199,11 +199,11 @@ NetworkValidator.validate()
 
 1. **Parametry per-km mnozene przez dlugosc** -- dla linii i kabli.
 2. **Transformatory: parametry bezposrednie** -- S_n, u_k, P_Cu, P_Fe z katalogu.
-3. **catalog_ref zapisywany** -- element "pamięta" skad pochodza parametry.
+3. **catalog_ref zapisywany** -- element "pamiÄ™ta" skad pochodza parametry.
 4. **Walidacja po materializacji** -- NetworkValidator sprawdza czy parametry sa
    kompletne i poprawne (np. R1 > 0, I_n > 0).
 5. **Zmiana katalogu invaluduje wyniki** -- zgodnie z Case Immutability Rule,
-   zmiana modelu unieważnia wyniki wszystkich Study Cases.
+   zmiana modelu uniewaĹĽnia wyniki wszystkich Study Cases.
 
 ---
 
@@ -224,7 +224,7 @@ Wszystkie guardy uruchamiane w CI (`python-tests.yml`) i lokalnie.
 
 | Komponent               | Status     | Uwagi                                        |
 |--------------------------|------------|----------------------------------------------|
-| elementCatalogRegistry   | KOMPLETNY  | 36 mapowań, SSOT, przetestowany              |
+| elementCatalogRegistry   | KOMPLETNY  | 36 mapowaĹ„, SSOT, przetestowany              |
 | CatalogBrowser           | KOMPLETNY  | Readonly by design, filtracja po namespace   |
 | TypeLibraryBrowser       | KOMPLETNY  | 4 zakladki, pelna przegladarka               |
 | useCatalogAssignment     | KOMPLETNY  | Hook: assign + clear + walidacja             |
@@ -234,3 +234,4 @@ Wszystkie guardy uruchamiane w CI (`python-tests.yml`) i lokalnie.
 | Guardy CI                | AKTYWNE    | 4 guardy, CI green                           |
 
 **Status: ZAMKNIETY**
+

@@ -22,4 +22,11 @@ describe('SLD canonical hygiene', () => {
     const canvas = read('src/ui/sld/SLDViewCanvas.tsx');
     expect(canvas.includes('useAutoLayout')).toBe(false);
   });
+
+  it('SLDView nie mapuje source field menu do legacy aliasu pola zrodlowego nN', () => {
+    const sldView = read('src/ui/sld/SLDView.tsx');
+    const legacySourceFieldOp = 'add_nn_source' + '_field';
+    expect(sldView.includes(`add_source_field: '${legacySourceFieldOp}'`)).toBe(false);
+    expect(sldView.includes(`add_source_field_nn: '${legacySourceFieldOp}'`)).toBe(false);
+  });
 });

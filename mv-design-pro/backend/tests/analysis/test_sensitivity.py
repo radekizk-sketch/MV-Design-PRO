@@ -26,7 +26,6 @@ from analysis.voltage_profile.models import (
     VoltageProfileView,
 )
 
-
 RUN_TS = datetime(2024, 2, 1, 12, 0, 0)
 
 
@@ -178,9 +177,7 @@ def test_sensitivity_margin_math_short_circuit() -> None:
         protection_curves_it=None,
     )
 
-    entry = next(
-        e for e in view.entries if e.parameter_id == "short_circuit_level"
-    )
+    entry = next(e for e in view.entries if e.parameter_id == "short_circuit_level")
 
     assert round(entry.base_margin or 0.0, 4) == round(16.6667, 4)
     assert round(entry.plus.margin or 0.0, 4) == round(8.3333, 4)

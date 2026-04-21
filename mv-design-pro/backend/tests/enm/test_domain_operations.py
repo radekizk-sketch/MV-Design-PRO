@@ -4,18 +4,15 @@ Testy operacji domenowych — budowa sieci SN od GPZ.
 Testy deterministyczne: ten sam wejściowy ENM + ta sama operacja → identyczny wynik.
 Brak heurystyk, brak domyślnych parametrów elektrycznych.
 """
+
 from __future__ import annotations
 
 import copy
 import itertools
-import json
 
-import pytest
-
-from enm.models import EnergyNetworkModel, ENMHeader, ENMDefaults
-from enm.hash import compute_enm_hash
 from enm.domain_operations import execute_domain_operation
-
+from enm.hash import compute_enm_hash
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -183,13 +180,12 @@ class TestAddGridSourceSNDuplicate:
         has_error = bool(result2.get("error"))
         has_no_snapshot = result2.get("snapshot") is None
         has_blockers = any(
-            b.get("severity") == "BLOCKER"
-            for b in result2.get("readiness", {}).get("blockers", [])
+            b.get("severity") == "BLOCKER" for b in result2.get("readiness", {}).get("blockers", [])
         )
 
-        assert has_error or has_no_snapshot or has_blockers, (
-            "Second add_grid_source_sn should fail (duplicate source)"
-        )
+        assert (
+            has_error or has_no_snapshot or has_blockers
+        ), "Second add_grid_source_sn should fail (duplicate source)"
 
 
 # ===========================================================================
@@ -296,17 +292,18 @@ class TestFullV1Sequence:
 
         # Step 5: start_branch_segment_sn — jawny from_bus_ref
         # Find the SN bus of the just-inserted station
-        stn_sn_buses = [
-            b for b in s4.get("buses", [])
-            if "sn_bus" in b.get("ref_id", "")
-        ]
+        stn_sn_buses = [b for b in s4.get("buses", []) if "sn_bus" in b.get("ref_id", "")]
         branch_bus_ref = stn_sn_buses[0]["ref_id"] if stn_sn_buses else s4["buses"][-1]["ref_id"]
         r5 = execute_domain_operation(
             enm_dict=s4,
             op_name="start_branch_segment_sn",
             payload={
                 "from_bus_ref": branch_bus_ref,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
         assert r5.get("snapshot") is not None, f"start_branch error: {r5.get('error')}"
@@ -327,7 +324,7 @@ class TestInsertStationCreatesStructure:
         Assert: station substation created.
         Assert: original segment deleted, 2 new segments created.
         Assert: sn_bus, nn_bus, transformer created.
-        Assert: bays created for sn_fields.
+        Assert: legacy bays are not created for sn_fields.
         """
         _, snapshot = _build_gpz_plus_segments(2)
         first_seg = _get_first_segment_ref(snapshot)
@@ -347,7 +344,10 @@ class TestInsertStationCreatesStructure:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
 
@@ -367,8 +367,248 @@ class TestInsertStationCreatesStructure:
         # Transformer created (SN/nn)
         assert _count(s, "transformers") > trafos_before
 
-        # Bays created for sn_fields
-        assert _count(s, "bays") > bays_before
+        # Legacy bays are no longer created; field specs live in substation meta.
+        assert _count(s, "bays") == bays_before
+        inserted_station = next(
+            sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+        )
+        field_roles = [
+            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+        ]
+        assert field_roles == ["IN", "OUT"]
+
+
+class TestNnFieldAdapters:
+    def test_add_sn_bay_uses_station_meta_instead_of_legacy_bays(self):
+        gpz_result = _add_grid_source(_empty_enm())
+        assert gpz_result.get("snapshot") is not None, f"Error: {gpz_result.get('error')}"
+
+        gpz_snapshot = gpz_result["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        bus_ref = substation["bus_refs"][0]
+        bays_before = copy.deepcopy(gpz_snapshot.get("bays", []))
+        field_specs_before = copy.deepcopy(substation.get("meta", {}).get("field_specs", []))
+
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": bus_ref,
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "field_name": "Pole odpływowe GPZ",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        updated = result["snapshot"]
+        assert updated.get("bays", []) == bays_before
+
+        substation_after = _find_by_ref(updated, "substations", substation["ref_id"])
+        assert substation_after is not None
+        field_specs_after = substation_after.get("meta", {}).get("field_specs", [])
+        assert len(field_specs_after) == len(field_specs_before) + 1
+        assert field_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
+        assert field_specs_after[-1]["bay_role"] == "OUT"
+        assert field_specs_after[-1]["meta"]["apparatus_kind"] == "BREAKER"
+
+    def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        inserted = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert inserted.get("snapshot") is not None, f"Error: {inserted.get('error')}"
+
+        station_snapshot = inserted["snapshot"]
+        inserted_station = next(
+            sub
+            for sub in station_snapshot.get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        bus_by_ref = {bus["ref_id"]: bus for bus in station_snapshot.get("buses", [])}
+        nn_bus_ref = next(
+            ref
+            for ref in inserted_station.get("bus_refs", [])
+            if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
+        )
+        bays_before = copy.deepcopy(station_snapshot.get("bays", []))
+        nn_specs_before = copy.deepcopy(inserted_station.get("meta", {}).get("nn_field_specs", []))
+
+        result = execute_domain_operation(
+            enm_dict=station_snapshot,
+            op_name="add_nn_outgoing_field",
+            payload={"bus_nn_ref": nn_bus_ref, "station_ref": inserted_station["ref_id"]},
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        updated = result["snapshot"]
+        assert updated.get("bays", []) == bays_before
+
+        station_after = _find_by_ref(updated, "substations", inserted_station["ref_id"])
+        assert station_after is not None
+        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
+        assert len(nn_specs_after) == len(nn_specs_before) + 1
+        assert nn_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
+        assert nn_specs_after[-1]["bay_role"] == "FEEDER"
+
+    def test_add_nn_outgoing_field_supports_source_field_role_without_legacy_alias(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        inserted = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert inserted.get("snapshot") is not None, f"Error: {inserted.get('error')}"
+
+        station_snapshot = inserted["snapshot"]
+        inserted_station = next(
+            sub
+            for sub in station_snapshot.get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        bus_by_ref = {bus["ref_id"]: bus for bus in station_snapshot.get("buses", [])}
+        nn_bus_ref = next(
+            ref
+            for ref in inserted_station.get("bus_refs", [])
+            if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
+        )
+
+        result = execute_domain_operation(
+            enm_dict=station_snapshot,
+            op_name="add_nn_outgoing_field",
+            payload={
+                "bus_nn_ref": nn_bus_ref,
+                "station_ref": inserted_station["ref_id"],
+                "field_role": "SOURCE",
+                "source_field_kind": "PV",
+                "field_name": "Pole PV nN",
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        station_after = _find_by_ref(result["snapshot"], "substations", inserted_station["ref_id"])
+        assert station_after is not None
+        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
+        assert nn_specs_after[-1]["bay_role"] == "OZE"
+        assert "nn_source_field" in nn_specs_after[-1]["tags"]
+        assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
+
+    def test_add_converter_source_uses_station_meta_instead_of_legacy_bays(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        inserted = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert inserted.get("snapshot") is not None, f"Error: {inserted.get('error')}"
+
+        station_snapshot = inserted["snapshot"]
+        inserted_station = next(
+            sub
+            for sub in station_snapshot.get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        bus_by_ref = {bus["ref_id"]: bus for bus in station_snapshot.get("buses", [])}
+        nn_bus_ref = next(
+            ref
+            for ref in inserted_station.get("bus_refs", [])
+            if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
+        )
+        bays_before = copy.deepcopy(station_snapshot.get("bays", []))
+        nn_specs_before = copy.deepcopy(inserted_station.get("meta", {}).get("nn_field_specs", []))
+
+        result = execute_domain_operation(
+            enm_dict=station_snapshot,
+            op_name="add_converter_source",
+            payload={
+                "source_technology": "PV",
+                "connection_variant": "nn_side",
+                "bus_nn_ref": nn_bus_ref,
+                "station_ref": inserted_station["ref_id"],
+                "placement": "NEW_FIELD",
+                "source_name": "PV na nowym polu",
+                "power_setpoint_mw": 0.5,
+                "source_field": {
+                    "source_field_kind": "PV",
+                    "field_name": "Pole PV nN",
+                    "catalog_binding": {
+                        "catalog_namespace": "APARAT_NN",
+                        "catalog_item_id": "ap-nn-630",
+                        "catalog_item_version": "2024.1",
+                        "materialize": True,
+                        "snapshot_mapping_version": "1.0",
+                    },
+                },
+                "catalog_binding": {
+                    "catalog_namespace": "CONVERTER",
+                    "catalog_item_id": "conv-pv-500",
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                    "snapshot_mapping_version": "1.0",
+                },
+                "materialized_params": {
+                    "catalog_item_id": "conv-pv-500",
+                    "catalog_item_version": "2024.1",
+                    "rated_power_ac_kw": 500.0,
+                    "max_power_kw": 500.0,
+                    "control_mode": "STALY_COS_PHI",
+                    "pmax_mw": 0.5,
+                    "sn_mva": 0.5,
+                },
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        updated = result["snapshot"]
+        assert updated.get("bays", []) == bays_before
+
+        station_after = _find_by_ref(updated, "substations", inserted_station["ref_id"])
+        assert station_after is not None
+        nn_specs_after = station_after.get("meta", {}).get("nn_field_specs", [])
+        assert len(nn_specs_after) == len(nn_specs_before) + 1
+        assert nn_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
+        assert nn_specs_after[-1]["bay_role"] == "OZE"
+        assert "nn_source_field" in nn_specs_after[-1]["tags"]
+        assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
 
 
 # ===========================================================================
@@ -424,7 +664,10 @@ class TestDeterministicIds100x:
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
             "sn_fields": ["IN", "OUT"],
-            "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+            "transformer": {
+                "create": True,
+                "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+            },
         }
 
         # Collect results from 100 runs
@@ -445,9 +688,18 @@ class TestDeterministicIds100x:
 
             # Collect all ref_ids from the snapshot
             all_refs: set[str] = set()
-            for coll in ("buses", "branches", "transformers", "sources",
-                         "loads", "generators", "substations", "bays",
-                         "junctions", "corridors"):
+            for coll in (
+                "buses",
+                "branches",
+                "transformers",
+                "sources",
+                "loads",
+                "generators",
+                "substations",
+                "bays",
+                "junctions",
+                "corridors",
+            ):
                 for elem in s.get(coll, []):
                     ref = elem.get("ref_id", "")
                     if ref:
@@ -502,7 +754,10 @@ class TestPermutationInvarianceSNFields:
                         "insert_at": {"value": 0.5},
                         "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                         "sn_fields": list(perm),
-                        "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                        "transformer": {
+                            "create": True,
+                            "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                        },
                     },
                 )
                 assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
@@ -511,9 +766,9 @@ class TestPermutationInvarianceSNFields:
             # All permutations should produce the same hash
             first_h = perm_hashes[0]
             for i, h in enumerate(perm_hashes[1:], start=1):
-                assert h == first_h, (
-                    f"Permutation {perms[i]} produced different hash: {h} != {first_h}"
-                )
+                assert (
+                    h == first_h
+                ), f"Permutation {perms[i]} produced different hash: {h} != {first_h}"
 
 
 # ===========================================================================
@@ -540,20 +795,27 @@ class TestPVBESSTransformerGate:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
         assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
         s = result_station["snapshot"]
 
         # Find a bus in the station (nn bus if present, otherwise sn bus)
-        station_buses = [b for b in s.get("buses", []) if "nn" in b.get("ref_id", "").lower()
-                         or "04" in b.get("ref_id", "")]
+        station_buses = [
+            b
+            for b in s.get("buses", [])
+            if "nn" in b.get("ref_id", "").lower() or "04" in b.get("ref_id", "")
+        ]
         if not station_buses:
             # Use any bus that is not the GPZ source bus
             source_bus_refs = {src.get("bus_ref") for src in s.get("sources", [])}
-            station_buses = [b for b in s.get("buses", [])
-                             if b.get("ref_id") not in source_bus_refs]
+            station_buses = [
+                b for b in s.get("buses", []) if b.get("ref_id") not in source_bus_refs
+            ]
 
         assert len(station_buses) > 0, "Need at least one non-source bus"
         target_bus_ref = station_buses[0]["ref_id"]
@@ -596,9 +858,9 @@ class TestPVBESSTransformerGate:
             or "pv" in blocker_messages.lower()
         )
 
-        assert has_pv_blocker, (
-            f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
-        )
+        assert (
+            has_pv_blocker
+        ), f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
 
 
 # ===========================================================================
@@ -622,9 +884,8 @@ class TestSetNormalOpenPoint:
 
         # Find the last bus in the corridor (end of trunk)
         corridors = snapshot.get("corridors", [])
-        seg_refs = []
         if corridors:
-            seg_refs = corridors[0].get("ordered_segment_refs", [])
+            corridors[0].get("ordered_segment_refs", [])
 
         # Get first and last bus for ring connection
         first_bus = buses[0].get("ref_id") if buses else None
@@ -633,11 +894,15 @@ class TestSetNormalOpenPoint:
         # Try to connect ring with explicit endpoints
         result_ring = execute_domain_operation(
             enm_dict=snapshot,
-            op_name="connect_ring",
+            op_name="connect_secondary_ring_sn",
             payload={
                 "from_bus_ref": last_bus,
                 "to_bus_ref": first_bus,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
@@ -770,9 +1035,9 @@ class TestSnapshotHashStability:
 
             hashes.append(_snapshot_hash(s3))
 
-        assert hashes[0] == hashes[1], (
-            f"Same operations should produce identical hashes: {hashes[0]} != {hashes[1]}"
-        )
+        assert (
+            hashes[0] == hashes[1]
+        ), f"Same operations should produce identical hashes: {hashes[0]} != {hashes[1]}"
 
 
 # ===========================================================================
@@ -805,18 +1070,24 @@ class TestStationTypeBPassthrough:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         s = result["snapshot"]
 
-        # Check for IN and OUT bays
-        bays = s.get("bays", [])
-        bay_roles = [b.get("bay_role") for b in bays]
-        assert "IN" in bay_roles, "Type B station should have IN bay"
-        assert "OUT" in bay_roles, "Type B station should have OUT bay"
+        inserted_station = next(
+            sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+        )
+        field_roles = [
+            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+        ]
+        assert "IN" in field_roles, "Type B station should have IN field spec"
+        assert "OUT" in field_roles, "Type B station should have OUT field spec"
 
         # Trunk continuity: there should be a path from orig_from to orig_to
         # through the station (via branches/transformers)
@@ -881,28 +1152,70 @@ class TestStationTypeCBranch:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT", "FEEDER"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         s = result["snapshot"]
 
-        # Check for IN, OUT and branch-capable bay (FEEDER or similar)
-        bays = s.get("bays", [])
-        bay_roles = [b.get("bay_role") for b in bays]
-
-        assert "IN" in bay_roles, "Type C station should have IN bay"
-        assert "OUT" in bay_roles, "Type C station should have OUT bay"
-
-        # Branch port: FEEDER, or an additional bay for lateral connection
-        has_branch_port = (
-            "FEEDER" in bay_roles
-            or len(bays) >= 3  # more than IN+OUT means branch capability
+        inserted_station = next(
+            sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
-        assert has_branch_port, (
-            f"Type C station should have branch port (FEEDER), got roles: {bay_roles}"
+        field_roles = [
+            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+        ]
+
+        assert "IN" in field_roles, "Type C station should have IN field spec"
+        assert "OUT" in field_roles, "Type C station should have OUT field spec"
+
+        has_branch_port = "FEEDER" in field_roles
+        assert (
+            has_branch_port
+        ), f"Type C station should have branch port (FEEDER), got roles: {field_roles}"
+
+    def test_station_type_branch_alias(self):
+        """Insert station with semantic alias 'branch'.
+
+        Assert: canonical topological alias is accepted end-to-end.
+        """
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "branch",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT", "FEEDER"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
         )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        s = result["snapshot"]
+
+        inserted_station = next(
+            sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+        )
+        assert inserted_station.get("station_type") == "branch"
+        assert inserted_station.get("meta", {}).get("station_type_sn") == "C"
+
+        field_roles = [
+            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+        ]
+        assert "IN" in field_roles
+        assert "OUT" in field_roles
+        assert "FEEDER" in field_roles
 
 
 # ===========================================================================
@@ -928,33 +1241,42 @@ class TestStationTypeDSectional:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT", "COUPLER"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         s = result["snapshot"]
 
-        # Check for COUPLER bay
-        bays = s.get("bays", [])
-        bay_roles = [b.get("bay_role") for b in bays]
-
-        assert "COUPLER" in bay_roles, (
-            f"Type D station should have COUPLER bay, got roles: {bay_roles}"
+        inserted_station = next(
+            sub for sub in s.get("substations", []) if sub.get("ref_id", "").startswith("stn/")
         )
+        field_roles = [
+            spec.get("bay_role") for spec in inserted_station.get("meta", {}).get("field_specs", [])
+        ]
+
+        assert (
+            "COUPLER" in field_roles
+        ), f"Type D station should have COUPLER field spec, got roles: {field_roles}"
 
         # Find the station that was just created
         # Type D maps to station_type="sectional" (semantic) — also accept legacy "mv_lv"/"switching"
-        new_subs = [sub for sub in s.get("substations", [])
-                    if sub.get("station_type") in ("mv_lv", "switching", "sectional")]
+        new_subs = [
+            sub
+            for sub in s.get("substations", [])
+            if sub.get("station_type") in ("mv_lv", "switching", "sectional")
+        ]
         assert len(new_subs) >= 1, "Type D station should create a substation"
 
         # The station should have at least 2 bus_refs (section buses)
         station = new_subs[-1]  # latest created station
         bus_refs = station.get("bus_refs", [])
-        assert len(bus_refs) >= 2, (
-            f"Type D station should have >= 2 section buses, got {len(bus_refs)}: {bus_refs}"
-        )
+        assert (
+            len(bus_refs) >= 2
+        ), f"Type D station should have >= 2 section buses, got {len(bus_refs)}: {bus_refs}"
 
 
 # ===========================================================================
@@ -996,9 +1318,9 @@ class TestInsertStationOnNonexistentSegment:
             or result.get("snapshot") is None
         )
 
-        assert has_segment_missing_error, (
-            f"Expected segment_missing error, got error={error}, codes={blocker_codes}"
-        )
+        assert (
+            has_segment_missing_error
+        ), f"Expected segment_missing error, got error={error}, codes={blocker_codes}"
 
 
 # ===========================================================================
@@ -1047,40 +1369,32 @@ class TestInsertAtRatioOutOfRange:
 
 
 # ===========================================================================
-# TEST 18: test_alias_resolution
+# TEST 18: test_legacy_alias_rejected
 # ===========================================================================
 
 
-class TestAliasResolution:
-    def test_alias_resolution(self):
-        """Call execute_domain_operation with alias name 'add_trunk_segment_sn'.
-
-        Assert: works correctly (resolves to continue_trunk_segment_sn).
-        """
+class TestLegacyAliasRejected:
+    def test_legacy_alias_rejected(self):
+        """Call execute_domain_operation with legacy alias name."""
         enm = _empty_enm()
         r1 = _add_grid_source(enm)
         assert r1.get("snapshot") is not None
         s1 = r1["snapshot"]
 
-        # Use the alias name with explicit segment params
         result = execute_domain_operation(
             enm_dict=s1,
             op_name="add_trunk_segment_sn",
             payload={
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 500,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
-        # Should succeed (alias resolved to continue_trunk_segment_sn)
-        assert result.get("snapshot") is not None, (
-            f"Alias 'add_trunk_segment_sn' should resolve to "
-            f"'continue_trunk_segment_sn', got error: {result.get('error')}"
-        )
-
-        snapshot = result["snapshot"]
-
-        # Should have created new elements (same behavior as continue_trunk_segment_sn)
-        assert _count(snapshot, "branches") > _count(s1, "branches")
+        assert result.get("snapshot") is None
+        assert result.get("error_code") == "dispatcher.unknown_operation"
 
 
 # ===========================================================================
@@ -1108,16 +1422,19 @@ class TestDomainEventsOrder:
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
                 "sn_fields": ["IN", "OUT"],
-                "transformer": {"create": True, "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11"},
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
             },
         )
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
 
         domain_events = result.get("domain_events", [])
-        assert len(domain_events) >= 2, (
-            f"Expected at least 2 domain events, got {len(domain_events)}"
-        )
+        assert (
+            len(domain_events) >= 2
+        ), f"Expected at least 2 domain events, got {len(domain_events)}"
 
         # Extract event types
         event_types = [e.get("type", e.get("event_type", "")) for e in domain_events]
@@ -1149,12 +1466,12 @@ class TestDomainEventsOrder:
 
 
 # ===========================================================================
-# TEST 20: test_connect_ring
+# TEST 20: test_connect_secondary_ring_sn
 # ===========================================================================
 
 
 class TestConnectRing:
-    def test_connect_ring(self):
+    def test_connect_secondary_ring_sn(self):
         """Build network with 2+ segments forming a path. Connect ring.
 
         Assert: cycle exists in topology.
@@ -1169,11 +1486,15 @@ class TestConnectRing:
 
         result = execute_domain_operation(
             enm_dict=snapshot,
-            op_name="connect_ring",
+            op_name="connect_secondary_ring_sn",
             payload={
                 "from_bus_ref": last_bus,
                 "to_bus_ref": first_bus,
-                "segment": {"rodzaj": "KABEL", "dlugosc_m": 200, "catalog_ref": "cable-tfk-yakxs-3x120"},
+                "segment": {
+                    "rodzaj": "KABEL",
+                    "dlugosc_m": 200,
+                    "catalog_ref": "cable-tfk-yakxs-3x120",
+                },
             },
         )
 
@@ -1201,7 +1522,7 @@ class TestConnectRing:
         v = len(bus_refs)
         e = len(edge_set)
         assert e >= v, (
-            f"Expected cycle after connect_ring: "
+            f"Expected cycle after connect_secondary_ring_sn: "
             f"edges={e}, vertices={v} (need edges >= vertices for cycle)"
         )
 
@@ -1209,6 +1530,6 @@ class TestConnectRing:
         corridors = s.get("corridors", [])
         ring_corridors = [c for c in corridors if c.get("corridor_type") == "ring"]
         assert len(ring_corridors) >= 1, (
-            f"Expected at least one ring corridor after connect_ring, "
+            f"Expected at least one ring corridor after connect_secondary_ring_sn, "
             f"got types: {[c.get('corridor_type') for c in corridors]}"
         )

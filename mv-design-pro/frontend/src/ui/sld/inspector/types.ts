@@ -2,7 +2,7 @@
  * SLD Inspector Types — PR-SLD-07
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md: Property grid w stylu PowerFactory
+ * - ui_canonical_parity.md: Property grid w stylu Canonical
  * - sld_rules.md § G.1: Inspector wyświetla właściwości wybranego elementu
  *
  * FEATURES:
@@ -151,6 +151,8 @@ export const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Terminal: 'Terminal',
   PortBranch: 'Port',
   Station: 'Stacja',
+  BranchPole: 'Slup rozgalezny',
+  ZKSN: 'ZKSN',
   BaySN: 'Pole SN',
   Relay: 'Przekaźnik',
   SecondaryLink: 'Połączenie wtórne',

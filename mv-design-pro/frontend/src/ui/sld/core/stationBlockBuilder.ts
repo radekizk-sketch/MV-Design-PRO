@@ -527,7 +527,7 @@ function buildDeviceFromDomain(
     if (!foundBinding) {
       fixActions.push({
         code: FieldDeviceFixCodes.PROTECTION_RELAY_BINDING_MISSING,
-        message: `Relay ${domainDevice.id} (${domainDevice.name}): brak powiazania z CB na wezle ${domainDevice.nodeId}`,
+        message: `Przekaznik ${domainDevice.id} (${domainDevice.name}): brak powiazania z wylacznikiem na wezle ${domainDevice.nodeId}`,
         elementId: domainDevice.id,
         fixHint: `Przypisz relay ${domainDevice.name} do ProtectionBinding z breakerRef na tym samym wezle`,
       });
@@ -558,7 +558,7 @@ function buildDeviceFromDomain(
   if (deviceType === DeviceTypeV1.CB) {
     fixActions.push({
       code: FieldDeviceFixCodes.DEVICE_CB_RATING_MISSING,
-      message: `CB ${domainDevice.id}: brak zdolnosci wylaczania (breakingCapacityKa) — wymagane do obliczen SC`,
+      message: `Wylacznik ${domainDevice.id}: brak zdolnosci wylaczania (breakingCapacityKa) - wymagane do obliczen zwarciowych`,
       elementId: domainDevice.id,
       fixHint: 'Uzupelnij zdolnosc wylaczania z katalogu lub recznie.',
     });
@@ -566,7 +566,7 @@ function buildDeviceFromDomain(
   if (deviceType === DeviceTypeV1.CT) {
     fixActions.push({
       code: FieldDeviceFixCodes.DEVICE_CT_RATIO_MISSING,
-      message: `CT ${domainDevice.id}: brak przekladni (ctRatio) — wymagane do konfiguracji zabezpieczen`,
+      message: `Przekladnik pradowy ${domainDevice.id}: brak przekladni (ctRatio) - wymagane do konfiguracji zabezpieczen`,
       elementId: domainDevice.id,
       fixHint: 'Uzupelnij przekladnie CT z katalogu lub recznie.',
     });

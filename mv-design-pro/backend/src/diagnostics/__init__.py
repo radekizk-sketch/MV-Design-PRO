@@ -13,6 +13,7 @@ Komponenty:
 - diff: Porównanie rewizji ENM (deterministyczny diff)
 """
 
+from .engine import DiagnosticEngine
 from .models import (
     AnalysisAvailability,
     AnalysisMatrix,
@@ -22,7 +23,6 @@ from .models import (
     DiagnosticSeverity,
     DiagnosticStatus,
 )
-from .engine import DiagnosticEngine
 
 __all__ = [
     "AnalysisAvailability",

@@ -13,13 +13,13 @@ import {
   type SectionSwitchFormData,
 } from '../../topology/modals/SectionSwitchModal';
 import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useNetworkBuildStore } from '../networkBuildStore';
+import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { validateCatalogFirst } from './catalogFirstRules';
 import { normalizeCatalogBinding, normalizeSwitchState } from './catalogPayload';
 
 export function InsertSectionSwitchForm() {
-  const context = useNetworkBuildStore((s) => s.activeOperationForm?.context);
+  const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);

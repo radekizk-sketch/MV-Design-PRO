@@ -34,12 +34,25 @@ REQUIRED_CATALOG_REQUIRED_OPERATIONS = frozenset({
     "insert_zksn_on_segment_sn",
     "insert_station_on_segment_sn",
     "add_transformer_sn_nn",
+    "add_nn_outgoing_field",
     "add_nn_load",
-    "add_pv_inverter_nn",
-    "add_bess_inverter_nn",
+    "add_converter_source",
     "insert_section_switch_sn",
     "connect_secondary_ring_sn",
 })
+
+BANNED_LEGACY_OPERATION_NAMES = frozenset({
+    "add_pv" "_inverter_nn",
+    "add_bess" "_inverter_nn",
+    "add_nn_source" "_field",
+})
+
+CANONICAL_SURFACE_DIRS = (
+    PROJECT_ROOT / "docs",
+    PROJECT_ROOT / "scripts",
+    PROJECT_ROOT / "backend" / "tests",
+    PROJECT_ROOT / "frontend" / "src",
+)
 
 
 def check_catalog_required_operations() -> list[str]:
@@ -84,15 +97,31 @@ def check_catalog_binding_extraction_paths() -> list[str]:
             "TRAFO_SN_NN_630",
         ),
         (
-            "add_pv_inverter_nn",
-            {"pv_spec": {"catalog_item_id": "PV_FALOWNIK_500"}},
-            "ZRODLO_NN_PV",
+            "add_converter_source",
+            {
+                "source_technology": "PV",
+                "catalog_binding": {
+                    "catalog_namespace": "CONVERTER",
+                    "catalog_item_id": "PV_FALOWNIK_500",
+                    "catalog_item_version": DEFAULT_CATALOG_VERSION,
+                    "materialize": True,
+                },
+            },
+            "CONVERTER",
             "PV_FALOWNIK_500",
         ),
         (
-            "add_bess_inverter_nn",
-            {"bess_spec": {"inverter_catalog_id": "BESS_FALOWNIK_250"}},
-            "ZRODLO_NN_BESS",
+            "add_converter_source",
+            {
+                "source_technology": "BESS",
+                "catalog_binding": {
+                    "catalog_namespace": "CONVERTER",
+                    "catalog_item_id": "BESS_FALOWNIK_250",
+                    "catalog_item_version": DEFAULT_CATALOG_VERSION,
+                    "materialize": True,
+                },
+            },
+            "CONVERTER",
             "BESS_FALOWNIK_250",
         ),
         (
@@ -257,6 +286,32 @@ def check_clear_catalog_protection() -> list[str]:
     return errors
 
 
+def check_no_legacy_operation_names_in_canonical_surface() -> list[str]:
+    """Check docs/scripts/tests no longer treat legacy NN alias operations as canonical."""
+    errors: list[str] = []
+    allowed_suffixes = {".md", ".py", ".ts", ".tsx", ".json", ".txt"}
+
+    for root in CANONICAL_SURFACE_DIRS:
+        if not root.exists():
+            continue
+        for path in root.rglob("*"):
+            if not path.is_file() or path.suffix not in allowed_suffixes:
+                continue
+            if "__pycache__" in path.parts:
+                continue
+            if root.name == "src" and "__tests__" not in path.parts:
+                continue
+            content = path.read_text(encoding="utf-8")
+            for legacy_name in BANNED_LEGACY_OPERATION_NAMES:
+                if legacy_name in content:
+                    rel_path = path.relative_to(PROJECT_ROOT)
+                    errors.append(
+                        f"FAIL: Legacy operation name '{legacy_name}' found in {rel_path}"
+                    )
+
+    return errors
+
+
 def main() -> int:
     print("=" * 60)
     print("GUARD: catalog_enforcement_guard")
@@ -272,6 +327,7 @@ def main() -> int:
         ("Checking catalog readiness codes coverage...", check_readiness_codes_coverage),
         ("Checking materialization accessor coverage...", check_namespace_accessor_coverage),
         ("Checking clear_catalog protection...", check_clear_catalog_protection),
+        ("Checking legacy operation names are absent in docs/scripts/tests...", check_no_legacy_operation_names_in_canonical_surface),
     ]
 
     for index, (label, check) in enumerate(checks, start=1):

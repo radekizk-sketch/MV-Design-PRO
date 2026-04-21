@@ -6,16 +6,25 @@ from network_model.catalog.mv_converter_catalog import (
     CONVERTER_WIND,
     get_converter_catalog_statistics,
 )
-from network_model.catalog.mv_source_catalog import SOURCE_SYSTEM_TYPES, get_source_catalog_statistics
+from network_model.catalog.mv_source_catalog import (
+    SOURCE_SYSTEM_TYPES,
+    get_source_catalog_statistics,
+)
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.catalog.types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
+from network_model.catalog.types import (
+    CATALOG_CONTRACT_VERSION,
+    CatalogStatus,
+    CatalogVerificationStatus,
+)
 
 
 def test_source_records_have_explicit_quality_metadata() -> None:
     assert len(SOURCE_SYSTEM_TYPES) >= 20
     for record in SOURCE_SYSTEM_TYPES:
         params = record["params"]
-        assert params["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+        assert (
+            params["verification_status"] == CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
+        )
         assert params["catalog_status"] == CatalogStatus.PRODUKCYJNY_V1.value
         assert params["source_reference"]
         assert params["contract_version"] == CATALOG_CONTRACT_VERSION

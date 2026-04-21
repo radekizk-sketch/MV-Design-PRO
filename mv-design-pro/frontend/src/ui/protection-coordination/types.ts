@@ -260,7 +260,7 @@ export interface DeviceTemplate {
 }
 
 // =============================================================================
-// Polish Labels (100% PL, PowerFactory parity)
+// Polish Labels (100% PL, Canonical parity)
 // =============================================================================
 
 export const LABELS = {
@@ -522,7 +522,7 @@ export const DEFAULT_STAGE_50: StageSettings = {
 };
 
 // =============================================================================
-// Device Templates (PowerFactory-style presets)
+// Device Templates (Canonical-style presets)
 // =============================================================================
 
 export const DEVICE_TEMPLATES: DeviceTemplate[] = [

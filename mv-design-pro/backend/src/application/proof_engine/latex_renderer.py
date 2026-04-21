@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from application.proof_engine.types import ProofDocument, ProofStep, ProofType
+    from application.proof_engine.types import ProofDocument, ProofStep
 
 
 class LaTeXRenderer:
@@ -152,26 +152,24 @@ class LaTeXRenderer:
         sorted_inputs = sorted(step.input_values, key=lambda v: v.symbol)
         for val in sorted_inputs:
             parts.append(r"  \item")
-            parts.append(cls._math_block(
-                f"{val.symbol} = {cls._format_value_latex(val)}"
-            ))
+            parts.append(cls._math_block(f"{val.symbol} = {cls._format_value_latex(val)}"))
 
-        parts.extend([
-            r"\end{itemize}",
-            "",
-            r"\textbf{Podstawienie:}",
-            cls._math_block(step.substitution_latex),
-            "",
-            r"\textbf{Wynik:}",
-            r"\begin{center}",
-            cls._math_block(
-                f"{step.result.symbol} = {cls._format_value_latex(step.result)}"
-            ),
-            r"\end{center}",
-            "",
-            r"\textbf{Weryfikacja jednostek:}",
-            cls._math_block(step.unit_check.derivation),
-        ])
+        parts.extend(
+            [
+                r"\end{itemize}",
+                "",
+                r"\textbf{Podstawienie:}",
+                cls._math_block(step.substitution_latex),
+                "",
+                r"\textbf{Wynik:}",
+                r"\begin{center}",
+                cls._math_block(f"{step.result.symbol} = {cls._format_value_latex(step.result)}"),
+                r"\end{center}",
+                "",
+                r"\textbf{Weryfikacja jednostek:}",
+                cls._math_block(step.unit_check.derivation),
+            ]
+        )
 
         return "\n".join(parts)
 
@@ -211,9 +209,7 @@ class LaTeXRenderer:
                 val = doc.summary.key_results[key]
                 value_str = cls._format_numeric_value(val.value)
                 lines.append(r"  \item")
-                lines.append(
-                    cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}")
-                )
+                lines.append(cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}"))
 
             lines.append(r"\end{itemize}")
         else:
@@ -225,21 +221,23 @@ class LaTeXRenderer:
                 val = doc.summary.key_results[key]
                 value_str = cls._format_numeric_value(val.value)
                 lines.append(r"  \item")
-                lines.append(
-                    cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}")
-                )
+                lines.append(cls._math_block(f"{val.symbol} = {value_str}\\,\\text{{{val.unit}}}"))
 
             lines.append(r"\end{itemize}")
 
-        lines.extend([
-            "",
-            rf"Liczba kroków: {doc.summary.total_steps}",
-            "",
-            r"Weryfikacja jednostek: " + (
-                r"\textcolor{green}{PASS}" if doc.summary.unit_check_passed
-                else r"\textcolor{red}{FAIL}"
-            ),
-        ])
+        lines.extend(
+            [
+                "",
+                rf"Liczba kroków: {doc.summary.total_steps}",
+                "",
+                r"Weryfikacja jednostek: "
+                + (
+                    r"\textcolor{green}{PASS}"
+                    if doc.summary.unit_check_passed
+                    else r"\textcolor{red}{FAIL}"
+                ),
+            ]
+        )
 
         if doc.summary.warnings:
             lines.append("")
@@ -303,11 +301,13 @@ class LaTeXRenderer:
                 rf"$$ {e_i:.4f}\,\text{{kWh}} $$ \\"
             )
 
-        lines.extend([
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{center}",
-        ])
+        lines.extend(
+            [
+                r"\bottomrule",
+                r"\end{tabular}",
+                r"\end{center}",
+            ]
+        )
 
         return "\n".join(lines)
 
@@ -333,48 +333,38 @@ class LaTeXRenderer:
         ]
 
         # Q_cmd row
-        lines.append(
-            rf"$Q_{{cmd}}$ [Mvar] & {q_cmd_a:.4f} & {q_cmd_b:.4f} & {delta_q_cmd:.4f} \\"
-        )
+        lines.append(rf"$Q_{{cmd}}$ [Mvar] & {q_cmd_a:.4f} & {q_cmd_b:.4f} & {delta_q_cmd:.4f} \\")
 
         # P11.1c: Dodaj wiersz U jeśli dane VDROP są dostępne
         if "u_a_kv" in kr and "u_b_kv" in kr and "delta_u_voltage_kv" in kr:
             u_a = kr["u_a_kv"].value
             u_b = kr["u_b_kv"].value
             delta_u = kr["delta_u_voltage_kv"].value
-            lines.append(
-                rf"$U$ [kV] & {u_a:.4f} & {u_b:.4f} & {delta_u:.4f} \\"
-            )
+            lines.append(rf"$U$ [kV] & {u_a:.4f} & {u_b:.4f} & {delta_u:.4f} \\")
 
-        lines.extend([
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{center}",
-            "",
-            r"\textbf{Różnice (counterfactual diff):}",
-            r"\begin{itemize}",
-        ])
+        lines.extend(
+            [
+                r"\bottomrule",
+                r"\end{tabular}",
+                r"\end{center}",
+                "",
+                r"\textbf{Różnice (counterfactual diff):}",
+                r"\begin{itemize}",
+            ]
+        )
 
         lines.append(r"  \item")
-        lines.append(cls._math_block(
-            f"\\Delta k_Q = {delta_k_q:.4f}\\,\\text{{Mvar/kV}}"
-        ))
+        lines.append(cls._math_block(f"\\Delta k_Q = {delta_k_q:.4f}\\,\\text{{Mvar/kV}}"))
         lines.append(r"  \item")
-        lines.append(cls._math_block(
-            f"\\Delta Q_{{raw}} = {delta_q_raw:.4f}\\,\\text{{Mvar}}"
-        ))
+        lines.append(cls._math_block(f"\\Delta Q_{{raw}} = {delta_q_raw:.4f}\\,\\text{{Mvar}}"))
         lines.append(r"  \item")
-        lines.append(cls._math_block(
-            f"\\Delta Q_{{cmd}} = {delta_q_cmd:.4f}\\,\\text{{Mvar}}"
-        ))
+        lines.append(cls._math_block(f"\\Delta Q_{{cmd}} = {delta_q_cmd:.4f}\\,\\text{{Mvar}}"))
 
         # P11.1c: Dodaj delta U jeśli dostępne
         if "delta_u_voltage_kv" in kr:
             delta_u = kr["delta_u_voltage_kv"].value
             lines.append(r"  \item")
-            lines.append(cls._math_block(
-                f"\\Delta U_{{(B-A)}} = {delta_u:.4f}\\,\\text{{kV}}"
-            ))
+            lines.append(cls._math_block(f"\\Delta U_{{(B-A)}} = {delta_u:.4f}\\,\\text{{kV}}"))
 
         lines.append(r"\end{itemize}")
 
@@ -454,19 +444,21 @@ class LaTeXRenderer:
                 rf"{_cell(entry.get('delta_pct'), percent_unit)} \\"
             )
 
-        lines.extend([
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{center}",
-            "",
-            r"\textbf{Tabela elementów:}",
-            "",
-            r"\begin{center}",
-            r"\begin{tabular}{lccccccc}",
-            r"\toprule",
-            r"$$\text{Element}$$ & $$\text{Typ}$$ & $$R$$ & $$X$$ & $$P$$ & $$Q$$ & $$\Delta U_{R}$$ & $$\Delta U_{X}$$ \\",
-            r"\midrule",
-        ])
+        lines.extend(
+            [
+                r"\bottomrule",
+                r"\end{tabular}",
+                r"\end{center}",
+                "",
+                r"\textbf{Tabela elementów:}",
+                "",
+                r"\begin{center}",
+                r"\begin{tabular}{lccccccc}",
+                r"\toprule",
+                r"$$\text{Element}$$ & $$\text{Typ}$$ & $$R$$ & $$X$$ & $$P$$ & $$Q$$ & $$\Delta U_{R}$$ & $$\Delta U_{X}$$ \\",
+                r"\midrule",
+            ]
+        )
 
         for element_id in sorted(element_rows.keys()):
             entry = element_rows[element_id]
@@ -481,34 +473,40 @@ class LaTeXRenderer:
                 rf"{_cell(entry.get('delta_u_x_kv'), 'kV')} \\"
             )
 
-        lines.extend([
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{center}",
-        ])
+        lines.extend(
+            [
+                r"\bottomrule",
+                r"\end{tabular}",
+                r"\end{center}",
+            ]
+        )
 
         if element_rows:
-            lines.extend([
-                "",
-                r"\textbf{Spadek całkowity elementów:}",
-                "",
-                r"\begin{center}",
-                r"\begin{tabular}{lc}",
-                r"\toprule",
-                r"$$\text{Element}$$ & $$\Delta U$$ \\",
-                r"\midrule",
-            ])
+            lines.extend(
+                [
+                    "",
+                    r"\textbf{Spadek całkowity elementów:}",
+                    "",
+                    r"\begin{center}",
+                    r"\begin{tabular}{lc}",
+                    r"\toprule",
+                    r"$$\text{Element}$$ & $$\Delta U$$ \\",
+                    r"\midrule",
+                ]
+            )
             for element_id in sorted(element_rows.keys()):
                 entry = element_rows[element_id]
                 lines.append(
                     rf"$$\text{{{cls._escape(element_id)}}}$$ & "
                     rf"{_cell(entry.get('delta_u_kv'), 'kV')} \\"
                 )
-            lines.extend([
-                r"\bottomrule",
-                r"\end{tabular}",
-                r"\end{center}",
-            ])
+            lines.extend(
+                [
+                    r"\bottomrule",
+                    r"\end{tabular}",
+                    r"\end{center}",
+                ]
+            )
 
         return "\n".join(lines)
 
@@ -550,20 +548,24 @@ class LaTeXRenderer:
         for label, a_val, b_val, d_val in rows:
             lines.append(rf"{label} & {a_val} & {b_val} & {d_val} \\")
 
-        lines.extend([
-            r"\bottomrule",
-            r"\end{tabular}",
-            r"\end{center}",
-            "",
-            r"\textbf{Różnice (counterfactual diff):}",
-            r"\begin{itemize}",
-        ])
+        lines.extend(
+            [
+                r"\bottomrule",
+                r"\end{tabular}",
+                r"\end{center}",
+                "",
+                r"\textbf{Różnice (counterfactual diff):}",
+                r"\begin{itemize}",
+            ]
+        )
 
-        for key, val in sorted(diff.items()):
+        for _key, val in sorted(diff.items()):
             lines.append(r"  \item")
-            lines.append(cls._math_block(
-                f"{val.symbol} = {cls._format_numeric_value(val.value)}\\,\\text{{{val.unit}}}"
-            ))
+            lines.append(
+                cls._math_block(
+                    f"{val.symbol} = {cls._format_numeric_value(val.value)}\\,\\text{{{val.unit}}}"
+                )
+            )
 
         lines.append(r"\end{itemize}")
 
@@ -588,9 +590,7 @@ class LaTeXRenderer:
             "",
             r"\textbf{Łańcuch zależności Q(U) → VDROP:}",
             "",
-            cls._math_block(
-                r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"
-            ),
+            cls._math_block(r"Q_{cmd} \xrightarrow{\text{VDROP}} \Delta U_X \to \Delta U \to U"),
             "",
             r"\begin{center}",
             r"\begin{tabular}{lcc}",
@@ -642,7 +642,7 @@ class LaTeXRenderer:
             i = val.value.imag
             sign = "+" if i >= 0 else "-"
             return rf"{r:.4f} {sign} j{abs(i):.4f}\,\text{{{val.unit}}}"
-        elif isinstance(val.value, (int, float)):
+        elif isinstance(val.value, int | float):
             return rf"{val.value:.4f}\,\text{{{val.unit}}}"
         else:
             return rf"{val.value}\,\text{{{val.unit}}}"
@@ -655,7 +655,7 @@ class LaTeXRenderer:
             i = value.imag
             sign = "+" if i >= 0 else "-"
             return f"{r:.4f} {sign} j{abs(i):.4f}"
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, int | float):
             return f"{value:.4f}"
         else:
             return str(value)

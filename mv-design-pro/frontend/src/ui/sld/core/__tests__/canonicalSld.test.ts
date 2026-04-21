@@ -1,5 +1,5 @@
 /**
- * Canonical SLD — ETAP/IEC Style Tests
+ * Canonical SLD — CANONICAL/IEC Style Tests
  *
  * Verifies canonical SLD rendering pipeline:
  * - Junction dots (IEC 61082)
@@ -18,9 +18,10 @@ import type {
   TrunkNodeAnnotationV1,
   TrunkSegmentAnnotationV1,
   BranchPointV1,
-  StationApparatusChainV1,
 } from '../layoutResult';
 import { convertToVisualGraph } from '../topologyAdapter';
+import { buildVisualGraphFromTopology } from '../topologyAdapterV2';
+import { BranchKind, StationKind, type TopologyInputV1 } from '../topologyInputReader';
 import { NodeTypeV1, EdgeTypeV1 } from '../visualGraph';
 import type { VisualGraphV1, VisualNodeV1, VisualEdgeV1 } from '../visualGraph';
 import type {
@@ -50,9 +51,9 @@ import {
   STATION_FIELD_OFFSET_X,
   NODE_LABEL_OFFSET_X,
 } from '../../IndustrialAesthetics';
-import { CANONICAL_SLD_STYLES, ETAP_VOLTAGE_COLORS, VISUAL_HIERARCHY } from '../../sldEtapStyle';
+import { CANONICAL_SLD_STYLES, CANONICAL_VOLTAGE_COLORS, VISUAL_HIERARCHY } from '../../sldCanonicalStyle';
 import { getAllSymbolIds, getSymbolDefinition } from '../../SymbolResolver';
-import type { EtapSymbolId } from '../../SymbolResolver';
+import type { CanonicalSymbolId } from '../../SymbolResolver';
 
 // =============================================================================
 // GOLDEN NETWORK BUILDERS
@@ -142,7 +143,7 @@ function layoutWithAnnotations(symbols: AnySldSymbol[]): CanonicalAnnotationsV1 
 // TESTS
 // =============================================================================
 
-describe('Canonical SLD — ETAP/IEC Style', () => {
+describe('Canonical SLD — CANONICAL/IEC Style', () => {
 
   describe('Constants', () => {
     it('JUNCTION_DOT_RADIUS is 4px', () => {
@@ -206,7 +207,54 @@ describe('Canonical SLD — ETAP/IEC Style', () => {
         expect(annotations.trunkSegments).toBeDefined();
         expect(annotations.branchPoints).toBeDefined();
         expect(annotations.stationChains).toBeDefined();
+        expect(annotations.stationChains.every((chain) => chain.detail != null)).toBe(true);
+        expect(annotations.branchPoints.every((branch) => branch.detail != null)).toBe(true);
       }
+    });
+
+    it('reuses canonical station block details cached on graph from adapter', () => {
+      const input: TopologyInputV1 = {
+        snapshotId: 'canonical-detail-cache',
+        snapshotFingerprint: 'canonical-detail-cache',
+        connectionNodes: [
+          { id: 'bus_gpz', name: 'Szyna SN GPZ', voltageKv: 15, inService: true },
+          { id: 'bus_sta', name: 'Szyna SN Stacji', voltageKv: 15, inService: true },
+        ],
+        branches: [
+          {
+            id: 'line_sta',
+            name: 'Linia do stacji',
+            kind: BranchKind.LINE,
+            fromNodeId: 'bus_gpz',
+            toNodeId: 'bus_sta',
+            lengthKm: 1.2,
+            isNormallyOpen: false,
+            inService: true,
+          },
+        ],
+        stations: [
+          {
+            id: 'sta_cache',
+            name: 'Stacja cache',
+            stationType: StationKind.DISTRIBUTION,
+            voltageKv: 15,
+            busIds: ['bus_sta'],
+            switchIds: [],
+            transformerIds: [],
+          },
+        ],
+        sources: [{ id: 'src_cache', name: 'GPZ', nodeId: 'bus_gpz', inService: true }],
+        generators: [],
+        loads: [],
+        devices: [],
+        protectionBindings: [],
+        fixActions: [],
+      };
+      const adapterResult = buildVisualGraphFromTopology(input);
+      const result = computeLayout(adapterResult.graph);
+      const switchgearBlocks = result.switchgearBlocks;
+      expect(switchgearBlocks.length).toBeGreaterThan(0);
+      expect(switchgearBlocks.every((block) => block.detail?.blockId === block.blockId)).toBe(true);
     });
   });
 
@@ -565,8 +613,8 @@ describe('Canonical SLD — ETAP/IEC Style', () => {
       expect(CANONICAL_SLD_STYLES.branchLine.cableDash).toBe('none');
     });
 
-    it('trunkSpine color is ETAP SN blue', () => {
-      expect(CANONICAL_SLD_STYLES.trunkSpine.color).toBe(ETAP_VOLTAGE_COLORS.SN);
+    it('trunkSpine color is CANONICAL SN blue', () => {
+      expect(CANONICAL_SLD_STYLES.trunkSpine.color).toBe(CANONICAL_VOLTAGE_COLORS.SN);
     });
   });
 
@@ -581,7 +629,7 @@ describe('Canonical SLD — ETAP/IEC Style', () => {
       expect(allIds.length).toBeGreaterThanOrEqual(28);
     });
 
-    const expectedIndustrialSymbols: EtapSymbolId[] = [
+    const expectedIndustrialSymbols: CanonicalSymbolId[] = [
       'fuse', 'surge_arrester', 'capacitor', 'reactor', 'inverter', 'metering_cubicle',
     ];
 
@@ -627,11 +675,11 @@ describe('Canonical SLD — ETAP/IEC Style', () => {
       expect(VISUAL_HIERARCHY.topology.labelFontSize).toBeGreaterThan(VISUAL_HIERARCHY.detail.labelFontSize);
     });
 
-    it('ETAP voltage colors are defined for WN, SN, nN', () => {
-      expect(ETAP_VOLTAGE_COLORS.WN).toBeTruthy();
-      expect(ETAP_VOLTAGE_COLORS.SN).toBeTruthy();
-      expect(ETAP_VOLTAGE_COLORS.nN).toBeTruthy();
-      expect(ETAP_VOLTAGE_COLORS.default).toBeTruthy();
+    it('CANONICAL voltage colors are defined for WN, SN, nN', () => {
+      expect(CANONICAL_VOLTAGE_COLORS.WN).toBeTruthy();
+      expect(CANONICAL_VOLTAGE_COLORS.SN).toBeTruthy();
+      expect(CANONICAL_VOLTAGE_COLORS.nN).toBeTruthy();
+      expect(CANONICAL_VOLTAGE_COLORS.default).toBeTruthy();
     });
   });
 });

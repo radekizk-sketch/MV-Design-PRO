@@ -16,9 +16,9 @@ CANONICAL ALIGNMENT:
 
 from .analyzer import OvercurrentCoordinationAnalyzer
 from .models import (
-    CoordinationInput,
-    CoordinationConfig,
     CoordinationAnalysisResult,
+    CoordinationConfig,
+    CoordinationInput,
 )
 
 __all__ = [

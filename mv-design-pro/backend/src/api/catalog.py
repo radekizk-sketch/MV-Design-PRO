@@ -14,19 +14,21 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
-from pydantic import BaseModel
-
 from api.dependencies import get_uow_factory
 from application.analyses.protection.catalog.catalog_store import (
     list_devices as list_analytical_protection_devices,
+)
+from application.analyses.protection.catalog.catalog_store import (
     load_device_capability,
 )
 from application.catalog_governance import CatalogGovernanceService
 from application.network_wizard import NetworkWizardService
 from application.network_wizard.service import NotFound
-from network_model.catalog.repository import get_default_mv_catalog
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from network_model.catalog.governance import ImportMode
+from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+from network_model.catalog.repository import get_default_mv_catalog
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
 
@@ -38,14 +40,12 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
     if source_ref:
         notes.append(str(source_ref))
     if meta.get("unverified"):
-        notes.append("Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie.")
+        notes.append(
+            "Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie."
+        )
     if meta.get("unverified_ranges"):
         notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
-    verification_status = (
-        "NIEWERYFIKOWANY"
-        if meta.get("unverified")
-        else "CZESCIOWO_ZWERYFIKOWANY"
-    )
+    verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
 
     return {
         "id": device.device_id,
@@ -64,7 +64,11 @@ def _serialize_analytical_protection_device(device: Any) -> dict[str, Any]:
             "verification_status": verification_status,
             "catalog_status": "ANALITYCZNY_V1",
             "contract_version": "2.0",
-            "verification_note": "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego." if meta.get("unverified") or meta.get("unverified_ranges") else "Rekord analityczny zachowany poza torem produkcyjnym.",
+            "verification_note": (
+                "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
+                if meta.get("unverified") or meta.get("unverified_ranges")
+                else "Rekord analityczny zachowany poza torem produkcyjnym."
+            ),
             "functions_supported": list(device.functions_supported),
             "curves_supported": list(device.curves_supported),
             "i_pickup_51_a_min": device.i_pickup_51_a_min,
@@ -280,6 +284,12 @@ def list_source_system_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_source_system_types()]
 
 
+@router.get("/branch-point-types")
+def list_branch_point_types(kind: str | None = None) -> list[dict[str, Any]]:
+    """List all branch point types for branch poles and ZKSN."""
+    return get_all_branch_point_types(kind)
+
+
 @router.get("/protection/device-types")
 def list_protection_device_types(
     uow_factory=Depends(get_uow_factory),
@@ -336,8 +346,9 @@ def get_protection_device_type(
 
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Typ urządzenia zabezpieczającego nie znaleziony: {device_type_id}",
-        )
+        detail=f"Typ urządzenia zabezpieczającego nie znaleziony: {device_type_id}",
+    )
+
 
 @router.get("/protection/curves/{curve_id}")
 def get_protection_curve(
@@ -484,9 +495,7 @@ def assign_type_to_branch(
     return Response(status_code=204)
 
 
-@router.post(
-    "/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204
-)
+@router.post("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
 def assign_type_to_transformer(
     project_id: str,
     transformer_id: str,
@@ -570,9 +579,7 @@ def clear_type_from_branch(
     return Response(status_code=204)
 
 
-@router.delete(
-    "/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204
-)
+@router.delete("/projects/{project_id}/transformers/{transformer_id}/type-ref", status_code=204)
 def clear_type_from_transformer(
     project_id: str,
     transformer_id: str,

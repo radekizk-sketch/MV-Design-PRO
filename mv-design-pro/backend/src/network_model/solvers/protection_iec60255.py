@@ -29,7 +29,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-
 # =============================================================================
 # SOLVER VERSION
 # =============================================================================
@@ -45,19 +44,19 @@ PROTECTION_IEC60255_SOLVER_VERSION = "1.0.0"
 class IEC60255CurveType(str, Enum):
     """IEC 60255-151 standard IDMT curve types."""
 
-    NI = "NI"   # Normal Inverse (Normalna odwrotna)
-    VI = "VI"   # Very Inverse (Bardzo odwrotna)
-    EI = "EI"   # Extremely Inverse (Ekstremalnie odwrotna)
-    RI = "RI"   # RI / Definite Inverse (Odwrotna RI / 120)
-    DT = "DT"   # Definite Time (Czas niezalezny)
+    NI = "NI"  # Normal Inverse (Normalna odwrotna)
+    VI = "VI"  # Very Inverse (Bardzo odwrotna)
+    EI = "EI"  # Extremely Inverse (Ekstremalnie odwrotna)
+    RI = "RI"  # RI / Definite Inverse (Odwrotna RI / 120)
+    DT = "DT"  # Definite Time (Czas niezalezny)
 
 
 class SelectivityVerdict(str, Enum):
     """Selectivity coordination verdict."""
 
-    PASS = "PASS"          # Margines >= 0.3 s
+    PASS = "PASS"  # Margines >= 0.3 s
     MARGINAL = "MARGINAL"  # 0.2 s <= margines < 0.3 s
-    FAIL = "FAIL"          # Margines < 0.2 s
+    FAIL = "FAIL"  # Margines < 0.2 s
 
 
 # =============================================================================
@@ -114,13 +113,9 @@ class RelaySettings:
 
     def __post_init__(self) -> None:
         if self.pickup_current_a <= 0:
-            raise ValueError(
-                f"Pickup current must be positive, got {self.pickup_current_a}"
-            )
+            raise ValueError(f"Pickup current must be positive, got {self.pickup_current_a}")
         if self.tms <= 0:
-            raise ValueError(
-                f"TMS must be positive, got {self.tms}"
-            )
+            raise ValueError(f"TMS must be positive, got {self.tms}")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -409,8 +404,7 @@ def compute_curve_trip_time(
 
     if not will_trip:
         substitution = (
-            f"M = {i_fault_a:.4f} / {is_pickup_a:.4f} = {M:.6f} <= 1.0, "
-            f"brak wyzwolenia"
+            f"M = {i_fault_a:.4f} / {is_pickup_a:.4f} = {M:.6f} <= 1.0, " f"brak wyzwolenia"
         )
         trace = {
             "step": f"IEC60255_{curve_type.value}",
@@ -745,13 +739,15 @@ def run_protection_coordination(
                 all_i2t.append(dn_i2t)
 
         # Trace for this pair
-        trace_steps.append({
-            "pair": [upstream.relay_id, downstream.relay_id],
-            "upstream_settings": upstream.to_dict(),
-            "downstream_settings": downstream.to_dict(),
-            "fault_currents_a": [round(f, 6) for f in fault_currents_a],
-            "selectivity_results": [r.to_dict() for r in pair_results],
-        })
+        trace_steps.append(
+            {
+                "pair": [upstream.relay_id, downstream.relay_id],
+                "upstream_settings": upstream.to_dict(),
+                "downstream_settings": downstream.to_dict(),
+                "fault_currents_a": [round(f, 6) for f in fault_currents_a],
+                "selectivity_results": [r.to_dict() for r in pair_results],
+            }
+        )
 
     # Determine overall verdict (worst case)
     verdicts = [r.verdict for r in all_selectivity]

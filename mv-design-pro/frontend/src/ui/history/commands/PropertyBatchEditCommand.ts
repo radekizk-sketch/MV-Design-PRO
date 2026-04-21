@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - P30c: Property Grid multi-edit with Apply/Cancel
  * - P30a: Command pattern for UNDO/REDO
- * - powerfactory_ui_parity.md § D: Property Grid ≥110% PF UX
+ * - ui_canonical_parity.md § D: Property Grid ≥110% PF UX
  *
  * Command for batch editing properties across multiple elements.
  * Single Apply → Single UNDO/REDO entry.

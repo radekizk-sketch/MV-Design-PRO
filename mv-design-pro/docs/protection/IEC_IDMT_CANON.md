@@ -1,4 +1,4 @@
-# IEC IDMT Curves — Canonical Specification
+﻿# IEC IDMT Curves â€” Canonical Specification
 
 **Status:** BINDING (normatywny)
 **Version:** 1.0
@@ -27,13 +27,13 @@ t = TMS \cdot \frac{A}{M^B - 1}
 $$
 
 Where:
-- **t** — Operating time [s]
-- **TMS** — Time Multiplier Setting (dimensionless, TMS > 0)
-- **A** — Curve constant (dimensionless)
-- **B** — Curve exponent (dimensionless)
-- **M** — Current multiple: $M = \frac{I}{I_p}$
-- **I** — Fault current [A]
-- **I_p** — Pickup current (threshold) [A]
+- **t** â€” Operating time [s]
+- **TMS** â€” Time Multiplier Setting (dimensionless, TMS > 0)
+- **A** â€” Curve constant (dimensionless)
+- **B** â€” Curve exponent (dimensionless)
+- **M** â€” Current multiple: $M = \frac{I}{I_p}$
+- **I** â€” Fault current [A]
+- **I_p** â€” Pickup current (threshold) [A]
 
 ### 2.2 Current Multiple
 
@@ -169,12 +169,12 @@ ProtectionTrace MUST include:
 
 ---
 
-## 8. PowerFactory Cross-Check
+## 8. benchmark Cross-Check
 
 The golden reference points in Section 6 have been verified against:
 
-**DIgSILENT PowerFactory 2023**
-- Protection → Overcurrent → IEC 60255 IDMT
+**DIgSILENT benchmark 2023**
+- Protection â†’ Overcurrent â†’ IEC 60255 IDMT
 - Relay type: Generic IEC IDMT
 - Curves: Standard Inverse, Very Inverse, Extremely Inverse
 
@@ -218,9 +218,9 @@ Any custom curves MUST either:
 
 ## 11. References
 
-1. IEC 60255-151:2009 — Measuring relays and protection equipment – Part 151: Functional requirements for over/under current protection
-2. IEC 60255-3:1989 (superseded) — Electrical relays – Part 3: Single input energizing quantity measuring relays with dependent or independent time
-3. IEEE C37.112-2018 — IEEE Standard for Inverse-Time Characteristics Equations for Overcurrent Relays
+1. IEC 60255-151:2009 â€” Measuring relays and protection equipment â€“ Part 151: Functional requirements for over/under current protection
+2. IEC 60255-3:1989 (superseded) â€” Electrical relays â€“ Part 3: Single input energizing quantity measuring relays with dependent or independent time
+3. IEEE C37.112-2018 â€” IEEE Standard for Inverse-Time Characteristics Equations for Overcurrent Relays
 
 ---
 
@@ -229,3 +229,4 @@ Any custom curves MUST either:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-30 | P15a Team | Initial BINDING specification |
+

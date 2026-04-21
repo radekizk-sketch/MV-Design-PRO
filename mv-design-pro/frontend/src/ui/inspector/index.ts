@@ -2,7 +2,7 @@
  * Inspector Module (READ-ONLY Property Grid)
  *
  * Eksportuje komponenty inspektora do przeglądania właściwości elementów
- * w trybie read-only, zgodnie z PowerFactory UI parity.
+ * w trybie read-only, zgodnie z Canonical UI parity.
  *
  * 100% POLISH UI
  */
@@ -13,7 +13,7 @@ export { PropertyGrid } from './PropertyGrid';
 export { ProtectionSection } from './ProtectionSection';
 export { DiagnosticsSection } from './DiagnosticsSection';
 
-// Protection formatting (PF/ETAP parity)
+// Protection formatting (PF/CANONICAL parity)
 export {
   formatProtectionFunction,
   formatAnsiCodes,

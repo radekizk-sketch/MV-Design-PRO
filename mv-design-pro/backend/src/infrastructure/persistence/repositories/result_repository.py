@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from infrastructure.persistence.models import StudyResultORM
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
-from infrastructure.persistence.models import StudyResultORM
 
 
 class ResultRepository:
@@ -24,7 +23,7 @@ class ResultRepository:
         created_at: datetime | None = None,
     ) -> UUID:
         result_id = result_id or uuid4()
-        created_at = created_at or datetime.now(timezone.utc)
+        created_at = created_at or datetime.now(UTC)
         self._session.add(
             StudyResultORM(
                 id=result_id,

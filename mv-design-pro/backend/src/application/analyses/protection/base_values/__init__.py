@@ -18,26 +18,26 @@ NIE jest to solver protection, NIE selektywność, NIE krzywe.
 UI pozostaje pasywne (tylko wyświetla, nic nie liczy).
 """
 
+from application.analyses.protection.base_values.compute import (
+    compute_from_setpoint,
+    enrich_with_computed,
+)
 from application.analyses.protection.base_values.models import (
     BaseValues,
-    BaseValueSourceUn,
     BaseValueSourceIn,
+    BaseValueSourceUn,
+    ProtectedElementContext,
+    ProtectedElementType,
+    ProtectionComputedUnit,
+    ProtectionComputedValue,
+    ProtectionSetpoint,
     ProtectionSetpointBasis,
     ProtectionSetpointOperator,
     ProtectionSetpointUnit,
-    ProtectionSetpoint,
-    ProtectionComputedUnit,
-    ProtectionComputedValue,
-    ProtectedElementContext,
-    ProtectedElementType,
     TransformerSide,
 )
 from application.analyses.protection.base_values.resolver import (
     resolve_base_values,
-)
-from application.analyses.protection.base_values.compute import (
-    compute_from_setpoint,
-    enrich_with_computed,
 )
 
 __all__ = [

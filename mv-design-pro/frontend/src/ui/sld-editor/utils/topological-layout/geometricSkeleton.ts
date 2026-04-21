@@ -30,27 +30,27 @@ import type {
   GeometricSkeleton,
   LayoutGeometryConfig,
 } from './types';
-import { ETAP_GEOMETRY } from '../../../sld/sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../../../sld/sldCanonicalStyle';
 
 // =============================================================================
 // DEFAULT GEOMETRY CONFIG
 // =============================================================================
 
 export const DEFAULT_GEOMETRY_CONFIG: LayoutGeometryConfig = {
-  gridSize: ETAP_GEOMETRY.layout.gridSize,
-  padding: ETAP_GEOMETRY.layout.padding,
-  tierSpacing: ETAP_GEOMETRY.canonicalLayerSpacing,
-  slotWidth: ETAP_GEOMETRY.bay.spacing,
-  slotGap: ETAP_GEOMETRY.bay.minSpacing - ETAP_GEOMETRY.bay.spacing,
-  sectionGap: ETAP_GEOMETRY.busbarSection.sectionGap,
-  minBusbarWidth: ETAP_GEOMETRY.busbar.minWidth,
-  sourceHeight: ETAP_GEOMETRY.source.symbolHeight,
-  sourceOffset: ETAP_GEOMETRY.source.offsetAboveBusbar,
-  transformerHeight: ETAP_GEOMETRY.transformer.symbolHeight,
-  transformerOffsetFromWN: ETAP_GEOMETRY.transformer.offsetFromWN,
-  transformerOffsetToSN: ETAP_GEOMETRY.transformer.offsetToSN,
-  busbarHeight: ETAP_GEOMETRY.busbar.height,
-  feederElementSpacing: ETAP_GEOMETRY.bay.elementSpacing,
+  gridSize: CANONICAL_GEOMETRY.layout.gridSize,
+  padding: CANONICAL_GEOMETRY.layout.padding,
+  tierSpacing: CANONICAL_GEOMETRY.canonicalLayerSpacing,
+  slotWidth: CANONICAL_GEOMETRY.bay.spacing,
+  slotGap: CANONICAL_GEOMETRY.bay.minSpacing - CANONICAL_GEOMETRY.bay.spacing,
+  sectionGap: CANONICAL_GEOMETRY.busbarSection.sectionGap,
+  minBusbarWidth: CANONICAL_GEOMETRY.busbar.minWidth,
+  sourceHeight: CANONICAL_GEOMETRY.source.symbolHeight,
+  sourceOffset: CANONICAL_GEOMETRY.source.offsetAboveBusbar,
+  transformerHeight: CANONICAL_GEOMETRY.transformer.symbolHeight,
+  transformerOffsetFromWN: CANONICAL_GEOMETRY.transformer.offsetFromWN,
+  transformerOffsetToSN: CANONICAL_GEOMETRY.transformer.offsetToSN,
+  busbarHeight: CANONICAL_GEOMETRY.busbar.height,
+  feederElementSpacing: CANONICAL_GEOMETRY.bay.elementSpacing,
   switchWidth: 40,
   switchHeight: 50,
   branchWidth: 60,
@@ -115,7 +115,7 @@ const LAYER_ORDER: CanonicalLayer[] = [
  * Get canonical Y offset for a layer.
  */
 function getLayerYOffset(layer: CanonicalLayer, config: LayoutGeometryConfig): number {
-  const layerConfig = ETAP_GEOMETRY.canonicalLayers;
+  const layerConfig = CANONICAL_GEOMETRY.canonicalLayers;
   const key = layer.replace('L2_TRANSFORMER', 'L2_WN_SN_TRANSFORMER')
     .replace('L4_SN_FEEDER_SWITCH', 'L4_SN_BAY')
     .replace('L5_SN_FEEDER_BRANCH', 'L5_SN_BRANCH_SWITCH')
@@ -146,8 +146,8 @@ function calculateBusbarWidth(
   config: LayoutGeometryConfig
 ): number {
   const minWidth = config.minBusbarWidth;
-  const sidePadding = ETAP_GEOMETRY.busbar.sidePadding;
-  const bayWidth = ETAP_GEOMETRY.busbar.bayWidthIncrement;
+  const sidePadding = CANONICAL_GEOMETRY.busbar.sidePadding;
+  const bayWidth = CANONICAL_GEOMETRY.busbar.bayWidthIncrement;
   return Math.max(minWidth, sidePadding * 2 + slotCount * bayWidth);
 }
 
@@ -297,7 +297,7 @@ function buildSlots(
 ): FeederSlot[] {
   if (feederChains.length === 0) return [];
 
-  const sidePadding = ETAP_GEOMETRY.busbar.sidePadding;
+  const sidePadding = CANONICAL_GEOMETRY.busbar.sidePadding;
   const usableWidth = sectionWidth - sidePadding * 2;
   const slotSpacing =
     feederChains.length > 1
@@ -478,7 +478,7 @@ export function buildGeometricSkeleton(
   // ==========================================
   if (transformers.length > 0) {
     const y = snap(getLayerYOffset('L2_TRANSFORMER', config), config.gridSize);
-    const trafoSpacing = ETAP_GEOMETRY.transformer.parallelSpacing;
+    const trafoSpacing = CANONICAL_GEOMETRY.transformer.parallelSpacing;
     const totalWidth = (transformers.length - 1) * trafoSpacing;
     const startX = spineX - totalWidth / 2;
 
@@ -538,7 +538,7 @@ export function buildGeometricSkeleton(
         for (const slot of section.slots) {
           allSlots.push(slot);
           const slotX = slot.busbarAxisPosition;
-          let currentY = y + ETAP_GEOMETRY.bay.verticalOffset;
+          let currentY = y + CANONICAL_GEOMETRY.bay.verticalOffset;
 
           for (const symbolId of slot.symbolIds) {
             const symbolType = sorted.find((s) => s.id === symbolId)?.elementType;
@@ -580,7 +580,7 @@ export function buildGeometricSkeleton(
 
   if (stationTrafos.length > 0) {
     const baseY = snap(getLayerYOffset('L9_STATION_TRANSFORMER', config), config.gridSize);
-    const stackSpacing = ETAP_GEOMETRY.stationStack.parallelStackSpacing;
+    const stackSpacing = CANONICAL_GEOMETRY.stationStack.parallelStackSpacing;
     const totalWidth = (stationTrafos.length - 1) * stackSpacing;
     const startX = spineX - totalWidth / 2;
 
@@ -601,7 +601,7 @@ export function buildGeometricSkeleton(
       if (nnBusId && !positions.has(nnBusId.id)) {
         positions.set(nnBusId.id, {
           x: stackX,
-          y: snap(baseY + ETAP_GEOMETRY.stationStack.transformerToNnBusbar, config.gridSize),
+          y: snap(baseY + CANONICAL_GEOMETRY.stationStack.transformerToNnBusbar, config.gridSize),
         });
       }
     });
@@ -638,7 +638,7 @@ export function buildGeometricSkeleton(
         maxY = Math.max(maxY, p.y);
       });
       const quarantineY = snap(
-        maxY + ETAP_GEOMETRY.quarantineZone.yOffsetFromLayout,
+        maxY + CANONICAL_GEOMETRY.quarantineZone.yOffsetFromLayout,
         config.gridSize
       );
 

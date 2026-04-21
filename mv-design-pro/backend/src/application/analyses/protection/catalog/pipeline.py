@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from application.analyses.design_synth.canonical import canonicalize_json
 from application.analyses.design_synth.fingerprint import fingerprint_json
@@ -15,13 +16,17 @@ from application.analyses.protection.catalog.models import (
 )
 from application.analyses.protection.catalog.vendors.abb_v0 import (
     VENDOR as ABB_VENDOR,
+)
+from application.analyses.protection.catalog.vendors.abb_v0 import (
     build_adapter as build_abb_adapter,
 )
+from application.analyses.protection.catalog.vendors.base import VendorAdapter
 from application.analyses.protection.catalog.vendors.elektrometal_etango_v0 import (
     VENDOR as ELEKTROMETAL_VENDOR,
+)
+from application.analyses.protection.catalog.vendors.elektrometal_etango_v0 import (
     build_adapter as build_elektrometal_adapter,
 )
-from application.analyses.protection.catalog.vendors.base import VendorAdapter
 from application.analyses.run_envelope import AnalysisRunEnvelope
 from application.analyses.run_index import index_run
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -33,9 +38,7 @@ def run_device_mapping_v0(
     device_id: str,
     uow_factory: Callable[[], UnitOfWork],
 ) -> AnalysisRunEnvelope:
-    protection_entry = _read_protection_index_entry(
-        protection_run_id, uow_factory=uow_factory
-    )
+    protection_entry = _read_protection_index_entry(protection_run_id, uow_factory=uow_factory)
     requirement = _extract_requirement(protection_entry.meta_json)
 
     capability = load_device_capability(device_id)
@@ -46,15 +49,11 @@ def run_device_mapping_v0(
             mapped_settings={},
             assumptions=("MAPPING_SKIPPED_NO_DEVICE",),
         )
-        vendor_mapping = _build_vendor_mapping(
-            mapping_result=mapping_result, capability=None
-        )
+        vendor_mapping = _build_vendor_mapping(mapping_result=mapping_result, capability=None)
         status = "FAILED"
     else:
         mapping_result = map_requirement_to_device(requirement, capability)
-        vendor_mapping = _build_vendor_mapping(
-            mapping_result=mapping_result, capability=capability
-        )
+        vendor_mapping = _build_vendor_mapping(mapping_result=mapping_result, capability=capability)
         if mapping_result.compatible and vendor_mapping["vendor_violations"]:
             status = "DEGRADED"
         else:
@@ -84,7 +83,7 @@ def run_device_mapping_v0(
         status=status,
     )
 
-    created_at_utc = datetime.now(timezone.utc).isoformat()
+    created_at_utc = datetime.now(UTC).isoformat()
     envelope = to_run_envelope(
         protection_run_id=protection_run_id,
         device_id=device_id,
@@ -117,9 +116,7 @@ def run_device_mapping_v0(
     return envelope
 
 
-def _read_protection_index_entry(
-    run_id: str, *, uow_factory: Callable[[], UnitOfWork]
-) -> Any:
+def _read_protection_index_entry(run_id: str, *, uow_factory: Callable[[], UnitOfWork]) -> Any:
     with uow_factory() as uow:
         entry = uow.analysis_runs_index.get(run_id)
     if entry is None:
@@ -221,9 +218,7 @@ def _build_trace_inline(
             "device_id": capability.get("device_id") if capability else None,
             "logical_keys": sorted(mapping.get("mapped_settings", {}).keys()),
             "vendor_violations": vendor_mapping.get("vendor_violations"),
-            "vendor_setting_keys": sorted(
-                vendor_mapping.get("vendor_settings", {}).keys()
-            ),
+            "vendor_setting_keys": sorted(vendor_mapping.get("vendor_settings", {}).keys()),
         },
         {
             "step": "build_report",

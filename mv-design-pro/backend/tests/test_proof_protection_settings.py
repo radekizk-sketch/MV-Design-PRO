@@ -1,8 +1,8 @@
 """Tests for Protection Settings Proof Pack."""
+
 from datetime import datetime
 
 import pytest
-
 from application.proof_engine.packs.protection_settings import (
     ProtectionSettingsProofInput,
     ProtectionSettingsProofPack,
@@ -13,30 +13,30 @@ from application.proof_engine.types import ProofType
 
 def _make_input(**overrides) -> ProtectionSettingsProofInput:
     """Create a default proof input."""
-    defaults = dict(
-        project_name="Projekt SN",
-        case_name="Przypadek bazowy",
-        line_id="L1",
-        line_name="Linia SN 15kV",
-        run_timestamp=datetime(2024, 6, 15, 10, 0, 0),
-        solver_version="4.0.0",
-        cross_section_mm2=120.0,
-        conductor_material="Al",
-        length_km=5.0,
-        i_nominal_a=300.0,
-        ik3_max_beginning_a=8000.0,
-        ik3_min_beginning_a=5000.0,
-        ik3_max_end_a=4000.0,
-        ik3_min_end_a=2500.0,
-        ik2_min_end_a=2100.0,
-        ik_max_next_bus_a=3000.0,
-        i_load_max_a=180.0,
-        i_delayed_a=216.0,
-        t_delayed_s=0.3,
-        i_instantaneous_a=4000.0,
-        i_th_dop_a=37000.0,
-        j_thn=94.0,
-    )
+    defaults = {
+        "project_name": "Projekt SN",
+        "case_name": "Przypadek bazowy",
+        "line_id": "L1",
+        "line_name": "Linia SN 15kV",
+        "run_timestamp": datetime(2024, 6, 15, 10, 0, 0),
+        "solver_version": "4.0.0",
+        "cross_section_mm2": 120.0,
+        "conductor_material": "Al",
+        "length_km": 5.0,
+        "i_nominal_a": 300.0,
+        "ik3_max_beginning_a": 8000.0,
+        "ik3_min_beginning_a": 5000.0,
+        "ik3_max_end_a": 4000.0,
+        "ik3_min_end_a": 2500.0,
+        "ik2_min_end_a": 2100.0,
+        "ik_max_next_bus_a": 3000.0,
+        "i_load_max_a": 180.0,
+        "i_delayed_a": 216.0,
+        "t_delayed_s": 0.3,
+        "i_instantaneous_a": 4000.0,
+        "i_th_dop_a": 37000.0,
+        "j_thn": 94.0,
+    }
     defaults.update(overrides)
     return ProtectionSettingsProofInput(**defaults)
 
@@ -109,13 +109,14 @@ class TestProtectionSettingsProofPack:
     def test_determinism(self):
         """Same input produces same proof structure (different UUIDs ok)."""
         from uuid import UUID
+
         inp = _make_input()
         aid = UUID("12345678-1234-1234-1234-123456789abc")
         r1 = ProtectionSettingsProofPack.generate(inp, artifact_id=aid)
         r2 = ProtectionSettingsProofPack.generate(inp, artifact_id=aid)
         assert r1.unit_check_passed == r2.unit_check_passed
         assert len(r1.proof.steps) == len(r2.proof.steps)
-        for s1, s2 in zip(r1.proof.steps, r2.proof.steps):
+        for s1, s2 in zip(r1.proof.steps, r2.proof.steps, strict=False):
             assert s1.step_id == s2.step_id
             assert s1.result.value == s2.result.value
 

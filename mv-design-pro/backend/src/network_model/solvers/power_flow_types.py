@@ -83,5 +83,5 @@ class PowerFlowInput:
     branch_limits: list[BranchLimitSpec] = field(default_factory=list)
     options: PowerFlowOptions = field(default_factory=PowerFlowOptions)
 
-    def typed_graph(self) -> "NetworkGraph":
+    def typed_graph(self) -> NetworkGraph:
         return self.graph

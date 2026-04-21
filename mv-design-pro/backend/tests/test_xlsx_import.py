@@ -1,10 +1,9 @@
 """Tests for XLSX Network Importer — Import sieci SN z arkuszy."""
-import pytest
 
+import pytest
 from application.xlsx_import.importer import (
-    XlsxNetworkImporter,
     XlsxImportResult,
-    XlsxValidationError,
+    XlsxNetworkImporter,
 )
 
 
@@ -125,9 +124,7 @@ class TestXlsxImporterWithOptionalSheets:
     def test_import_with_trafos(self):
         importer = XlsxNetworkImporter()
         data = _make_data()
-        data["Szyny"].append(
-            {"id": "B3", "nazwa": "Szyna nN", "napięcie_kV": 0.4}
-        )
+        data["Szyny"].append({"id": "B3", "nazwa": "Szyna nN", "napięcie_kV": 0.4})
         data["Trafo"] = [
             {
                 "id": "T1",
@@ -235,6 +232,7 @@ class TestXlsxGraphBuilding:
         result = importer.import_from_dict(data)
         assert result.graph is not None
         from network_model.core.node import NodeType
+
         b1 = result.graph.nodes["B1"]
         assert b1.node_type == NodeType.SLACK
 

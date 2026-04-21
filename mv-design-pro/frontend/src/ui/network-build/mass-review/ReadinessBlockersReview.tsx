@@ -1,20 +1,16 @@
 /**
- * ReadinessBlockersReview — tabela wszystkich blokerów gotowości.
+ * ReadinessBlockersReview - tabela wszystkich blokerów gotowości.
  *
  * Kolumny: Kod | Element | Kategoria | Komunikat | Akcja naprawcza.
- * Kliknięcie → nawigacja do elementu + highlight.
- *
- * BINDING: 100% PL etykiety.
+ * Kliknięcie prowadzi do elementu i centruje widok.
  */
 
 import { useCallback, useMemo } from 'react';
-import { useSnapshotStore } from '../../topology/snapshotStore';
-import { useSelectionStore } from '../../selection';
-import { useNetworkBuildStore } from '../networkBuildStore';
 
-// =============================================================================
-// Category helpers
-// =============================================================================
+import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import { useSelectionStore } from '../../selection';
+import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useNetworkBuildStore } from '../networkBuildStore';
 
 type BlockerCategory = 'topologia' | 'katalogi' | 'eksploatacja' | 'analiza';
 
@@ -26,55 +22,71 @@ const CATEGORY_LABELS: Record<BlockerCategory, string> = {
 };
 
 function categorizeBlocker(code: string): BlockerCategory {
-  const lc = code.toLowerCase();
+  const normalized = code.toLowerCase();
   if (
-    lc.includes('topology') || lc.includes('island') || lc.includes('disconnected') ||
-    lc.includes('voltage_mismatch') || lc.includes('grounding') || lc.includes('isolated')
+    normalized.includes('topology')
+    || normalized.includes('island')
+    || normalized.includes('disconnected')
+    || normalized.includes('voltage_mismatch')
+    || normalized.includes('grounding')
+    || normalized.includes('isolated')
   ) {
     return 'topologia';
   }
   if (
-    lc.includes('catalog') || lc.includes('missing_type') || lc.includes('no_catalog') ||
-    lc.includes('impedance') || lc.includes('zero_seq') || lc.includes('missing_rating')
+    normalized.includes('catalog')
+    || normalized.includes('missing_type')
+    || normalized.includes('no_catalog')
+    || normalized.includes('impedance')
+    || normalized.includes('zero_seq')
+    || normalized.includes('missing_rating')
   ) {
     return 'katalogi';
   }
   if (
-    lc.includes('switch_state') || lc.includes('nop') || lc.includes('normal_state') ||
-    lc.includes('coupler') || lc.includes('tap_position') || lc.includes('operating')
+    normalized.includes('switch_state')
+    || normalized.includes('nop')
+    || normalized.includes('normal_state')
+    || normalized.includes('coupler')
+    || normalized.includes('tap_position')
+    || normalized.includes('operating')
   ) {
     return 'eksploatacja';
   }
   return 'analiza';
 }
 
-// =============================================================================
-// Component
-// =============================================================================
-
 export function ReadinessBlockersReview() {
-  const readiness = useSnapshotStore((s) => s.readiness);
-  const fixActions = useSnapshotStore((s) => s.fixActions);
-  const selectElement = useSelectionStore((s) => s.selectElement);
-  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+  const fixActions = useSnapshotStore((state) => state.fixActions);
+  const readinessIssues = useReadinessLiveStore((state) => state.issues);
+  const selectElement = useSelectionStore((state) => state.selectElement);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const blockers = useMemo(() => {
-    const items = readiness?.blockers ?? [];
-    return items.map((b) => ({
-      ...b,
-      category: categorizeBlocker(b.code),
-      categoryLabel: CATEGORY_LABELS[categorizeBlocker(b.code)],
+    const issues = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
+    return issues.map((issue) => ({
+      ...issue,
+      category: categorizeBlocker(issue.code),
+      categoryLabel: CATEGORY_LABELS[categorizeBlocker(issue.code)],
       fix: fixActions.find(
-        (f) => f.element_ref === b.element_ref && f.code === b.code,
+        (action) =>
+          action.element_ref === issue.element_ref && action.code === issue.code,
       ),
     }));
-  }, [readiness, fixActions]);
+  }, [fixActions, readinessIssues]);
+
+  const warningsCount = useMemo(
+    () => readinessIssues.filter((issue) => issue.severity !== 'BLOCKER').length,
+    [readinessIssues],
+  );
 
   const handleNavigate = useCallback(
     (elementRef: string) => {
       selectElement({ id: elementRef, type: 'Bus', name: elementRef });
       window.dispatchEvent(
-        new CustomEvent('sld:center-on-element', { detail: { elementId: elementRef } }),
+        new CustomEvent('sld:center-on-element', {
+          detail: { elementId: elementRef },
+        }),
       );
     },
     [selectElement],
@@ -88,13 +100,20 @@ export function ReadinessBlockersReview() {
   );
 
   if (blockers.length === 0) {
+    const helperMessage =
+      warningsCount === 0
+        ? 'Sieć jest gotowa do analizy'
+        : warningsCount === 1
+          ? 'Pozostało 1 ostrzeżenie.'
+          : `Pozostały ${warningsCount} ostrzeżenia.`;
+
     return (
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex flex-1 items-center justify-center p-8">
         <div className="text-center">
-          <p className="text-sm font-medium text-green-600">Brak blokerów</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Sieć jest gotowa do analizy
+          <p className="text-sm font-medium text-green-600">
+            Brak blokerów gotowości
           </p>
+          <p className="mt-1 text-xs text-gray-500">{helperMessage}</p>
         </div>
       </div>
     );
@@ -109,43 +128,43 @@ export function ReadinessBlockersReview() {
             <th className="px-3 py-2 font-medium text-gray-600">Element</th>
             <th className="px-3 py-2 font-medium text-gray-600">Kategoria</th>
             <th className="px-3 py-2 font-medium text-gray-600">Komunikat</th>
-            <th className="px-3 py-2 font-medium text-gray-600 w-[120px]">Akcja</th>
+            <th className="w-[120px] px-3 py-2 font-medium text-gray-600">Akcja</th>
           </tr>
         </thead>
         <tbody>
-          {blockers.map((b, i) => (
+          {blockers.map((blocker, index) => (
             <tr
-              key={`${b.code}-${i}`}
-              className="border-b border-gray-100 hover:bg-blue-50/50 cursor-pointer"
-              onClick={() => b.element_ref && handleNavigate(b.element_ref)}
+              key={`${blocker.code}-${index}`}
+              className="cursor-pointer border-b border-gray-100 hover:bg-blue-50/50"
+              onClick={() => blocker.element_ref && handleNavigate(blocker.element_ref)}
             >
-              <td className="px-3 py-1.5 font-mono text-red-600 whitespace-nowrap">
-                {b.code}
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono text-red-600">
+                {blocker.code}
               </td>
-              <td className="px-3 py-1.5 text-gray-700 truncate max-w-[140px]">
-                {b.element_ref ?? '—'}
+              <td className="max-w-[140px] truncate px-3 py-1.5 text-gray-700">
+                {blocker.element_ref ?? '—'}
               </td>
               <td className="px-3 py-1.5">
-                <span className="px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[9px]">
-                  {b.categoryLabel}
+                <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[9px] text-gray-600">
+                  {blocker.categoryLabel}
                 </span>
               </td>
-              <td className="px-3 py-1.5 text-gray-800" title={b.message_pl}>
-                {b.message_pl}
+              <td className="px-3 py-1.5 text-gray-800" title={blocker.message_pl}>
+                {blocker.message_pl}
               </td>
               <td className="px-3 py-1.5">
-                {b.fix && b.element_ref && (
+                {blocker.fix && blocker.element_ref ? (
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFix(b.element_ref!);
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleFix(blocker.element_ref!);
                     }}
-                    className="px-2 py-0.5 text-[9px] bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                    className="rounded bg-blue-50 px-2 py-0.5 text-[9px] text-blue-600 hover:bg-blue-100"
                   >
                     Napraw
                   </button>
-                )}
+                ) : null}
               </td>
             </tr>
           ))}

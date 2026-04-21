@@ -1,7 +1,7 @@
 /**
  * Results Module Exports
  *
- * PowerFactory-grade results lifecycle management.
+ * Canonical-grade results lifecycle management.
  */
 
 export {

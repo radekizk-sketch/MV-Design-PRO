@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from application.analyses.run_index import AnalysisRunIndexEntry
 from infrastructure.persistence.models import AnalysisRunIndexORM
 from infrastructure.persistence.time_utils import ensure_utc
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 
 class AnalysisRunIndexRepository:

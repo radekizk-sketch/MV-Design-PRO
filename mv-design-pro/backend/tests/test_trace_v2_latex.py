@@ -12,6 +12,7 @@ from __future__ import annotations
 from application.trace_export.latex_generator import LaTeXGenerator
 from domain.trace_v2.artifact import (
     AnalysisTypeV2,
+    TraceArtifactV2,
     TraceEquationStep,
     TraceValue,
     build_trace_artifact_v2,
@@ -39,7 +40,7 @@ def _step(step_id: str) -> TraceEquationStep:
     )
 
 
-def _artifact() -> "TraceArtifactV2":
+def _artifact() -> TraceArtifactV2:
     return build_trace_artifact_v2(
         trace_id="test-trace-latex",
         analysis_type=AnalysisTypeV2.SC,
@@ -90,7 +91,8 @@ class TestLaTeXGenerator:
         latex = gen.generate(_artifact())
         # Signature section should not contain date/time patterns
         import re
-        sig_section = latex[latex.index("Podpisy"):]
+
+        sig_section = latex[latex.index("Podpisy") :]
         # No ISO timestamp pattern
         assert not re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}", sig_section)
 

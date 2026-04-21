@@ -7,7 +7,7 @@
  * CANONICAL ALIGNMENT:
  * - sld_rules.md § B: Results as Overlay (never modifies model)
  * - sld_rules.md § C.2: RESULT_VIEW mode
- * - powerfactory_ui_parity.md § A.3: URL reflects navigation state
+ * - ui_canonical_parity.md § A.3: URL reflects navigation state
  * - 100% POLISH UI
  *
  * Store dla trybu SLD:

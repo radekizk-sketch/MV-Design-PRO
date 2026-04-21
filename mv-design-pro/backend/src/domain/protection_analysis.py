@@ -15,11 +15,10 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any, Literal
 from uuid import UUID, uuid4
-
 
 # =============================================================================
 # ENUMS AND TYPES
@@ -28,13 +27,15 @@ from uuid import UUID, uuid4
 
 class TripState(str, Enum):
     """Protection device trip evaluation state."""
-    TRIPS = "TRIPS"          # Device will trip for given fault current
-    NO_TRIP = "NO_TRIP"      # Device will NOT trip (current below pickup)
-    INVALID = "INVALID"      # Evaluation could not complete (missing data, unsupported curve)
+
+    TRIPS = "TRIPS"  # Device will trip for given fault current
+    NO_TRIP = "NO_TRIP"  # Device will NOT trip (current below pickup)
+    INVALID = "INVALID"  # Evaluation could not complete (missing data, unsupported curve)
 
 
 class ProtectionRunStatus(str, Enum):
     """Status of a protection analysis run."""
+
     CREATED = "CREATED"
     RUNNING = "RUNNING"
     FINISHED = "FINISHED"
@@ -71,6 +72,7 @@ class ProtectionEvaluation:
         margin_percent: Safety margin as percentage (i_fault/i_pickup - 1) * 100
         notes_pl: Deterministic Polish notes explaining the result
     """
+
     device_id: str
     device_type_ref: str | None
     protected_element_ref: str
@@ -115,7 +117,9 @@ class ProtectionEvaluation:
             trip_state=TripState(data["trip_state"]),
             curve_ref=data.get("curve_ref"),
             curve_kind=data.get("curve_kind"),
-            margin_percent=float(data["margin_percent"]) if data.get("margin_percent") is not None else None,
+            margin_percent=(
+                float(data["margin_percent"]) if data.get("margin_percent") is not None else None
+            ),
             notes_pl=str(data.get("notes_pl", "")),
         )
 
@@ -127,6 +131,7 @@ class ProtectionResultSummary:
 
     Provides quick overview without iterating through all evaluations.
     """
+
     total_evaluations: int
     trips_count: int
     no_trip_count: int
@@ -153,8 +158,12 @@ class ProtectionResultSummary:
             trips_count=int(data["trips_count"]),
             no_trip_count=int(data["no_trip_count"]),
             invalid_count=int(data["invalid_count"]),
-            min_trip_time_s=float(data["min_trip_time_s"]) if data.get("min_trip_time_s") is not None else None,
-            max_trip_time_s=float(data["max_trip_time_s"]) if data.get("max_trip_time_s") is not None else None,
+            min_trip_time_s=(
+                float(data["min_trip_time_s"]) if data.get("min_trip_time_s") is not None else None
+            ),
+            max_trip_time_s=(
+                float(data["max_trip_time_s"]) if data.get("max_trip_time_s") is not None else None
+            ),
         )
 
 
@@ -177,6 +186,7 @@ class ProtectionResult:
         summary: Summary statistics
         created_at: Timestamp when result was created
     """
+
     run_id: str
     sc_run_id: str
     protection_case_id: str
@@ -185,7 +195,7 @@ class ProtectionResult:
     library_manifest_ref: dict[str, Any] | None
     evaluations: tuple[ProtectionEvaluation, ...]
     summary: ProtectionResultSummary
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -204,9 +214,7 @@ class ProtectionResult:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ProtectionResult:
         """Deserialize from dict."""
-        evaluations = tuple(
-            ProtectionEvaluation.from_dict(e) for e in data.get("evaluations", [])
-        )
+        evaluations = tuple(ProtectionEvaluation.from_dict(e) for e in data.get("evaluations", []))
         return cls(
             run_id=str(data["run_id"]),
             sc_run_id=str(data["sc_run_id"]),
@@ -216,7 +224,11 @@ class ProtectionResult:
             library_manifest_ref=data.get("library_manifest_ref"),
             evaluations=evaluations,
             summary=ProtectionResultSummary.from_dict(data["summary"]),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -232,6 +244,7 @@ class ProtectionTraceStep:
 
     Records intermediate values for audit purposes.
     """
+
     step: str
     description_pl: str
     inputs: dict[str, Any]
@@ -274,13 +287,14 @@ class ProtectionTrace:
         steps: Sequence of calculation steps
         created_at: Timestamp when trace was created
     """
+
     run_id: str
     sc_run_id: str
     snapshot_id: str | None
     template_ref: str | None
     overrides: dict[str, Any]
     steps: tuple[ProtectionTraceStep, ...]
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to JSON-compatible dict."""
@@ -297,9 +311,7 @@ class ProtectionTrace:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ProtectionTrace:
         """Deserialize from dict."""
-        steps = tuple(
-            ProtectionTraceStep.from_dict(s) for s in data.get("steps", [])
-        )
+        steps = tuple(ProtectionTraceStep.from_dict(s) for s in data.get("steps", []))
         return cls(
             run_id=str(data["run_id"]),
             sc_run_id=str(data["sc_run_id"]),
@@ -307,7 +319,11 @@ class ProtectionTrace:
             template_ref=data.get("template_ref"),
             overrides=data.get("overrides", {}),
             steps=steps,
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
         )
 
 
@@ -339,6 +355,7 @@ class ProtectionAnalysisRun:
         started_at: Execution start timestamp
         finished_at: Completion timestamp
     """
+
     id: UUID
     project_id: UUID
     sc_run_id: str
@@ -349,7 +366,7 @@ class ProtectionAnalysisRun:
     result_summary: dict[str, Any] = field(default_factory=dict)
     trace_json: dict[str, Any] | None = None
     error_message: str | None = None
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     finished_at: datetime | None = None
 
@@ -385,9 +402,17 @@ class ProtectionAnalysisRun:
             result_summary=data.get("result_summary", {}),
             trace_json=data.get("trace_json"),
             error_message=data.get("error_message"),
-            created_at=datetime.fromisoformat(data["created_at"]) if "created_at" in data else datetime.now(timezone.utc),
-            started_at=datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None,
-            finished_at=datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None,
+            created_at=(
+                datetime.fromisoformat(data["created_at"])
+                if "created_at" in data
+                else datetime.now(UTC)
+            ),
+            started_at=(
+                datetime.fromisoformat(data["started_at"]) if data.get("started_at") else None
+            ),
+            finished_at=(
+                datetime.fromisoformat(data["finished_at"]) if data.get("finished_at") else None
+            ),
         )
 
 
@@ -428,7 +453,9 @@ def new_protection_analysis_run(
 # =============================================================================
 
 
-def compute_result_summary(evaluations: tuple[ProtectionEvaluation, ...]) -> ProtectionResultSummary:
+def compute_result_summary(
+    evaluations: tuple[ProtectionEvaluation, ...],
+) -> ProtectionResultSummary:
     """
     Compute summary statistics from evaluations.
 

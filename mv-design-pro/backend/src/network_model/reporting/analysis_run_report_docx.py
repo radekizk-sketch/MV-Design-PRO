@@ -11,9 +11,11 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 import json
-from io import BytesIO
 from importlib.util import find_spec
+from io import BytesIO
 from typing import Any
+
+from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
 _DOCX_AVAILABLE = find_spec("docx") is not None
 
@@ -21,8 +23,6 @@ if _DOCX_AVAILABLE:
     from docx import Document
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Pt
-
-from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 
 
 def export_analysis_run_to_docx(bundle: dict[str, Any]) -> bytes:
@@ -168,9 +168,7 @@ def _add_overlay_section(doc: Document, bundle: dict[str, Any]) -> None:
         return
     diagram = overlay.get("diagram", {})
     summary = overlay.get("summary", {})
-    doc.add_paragraph(
-        f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})"
-    )
+    doc.add_paragraph(f"Diagram: {diagram.get('name') or '—'} ({diagram.get('id') or '—'})")
     doc.add_paragraph(
         f"Nodes: {summary.get('node_count', 0)} | Branches: {summary.get('branch_count', 0)}"
     )
@@ -212,7 +210,7 @@ def _format_value(value: Any) -> str:
         return "Tak" if value else "Nie"
     if isinstance(value, float):
         return f"{value:.6g}"
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict | list):
         return _truncate_json(value)
     return str(value)
 

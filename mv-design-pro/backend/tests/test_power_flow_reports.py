@@ -17,11 +17,11 @@ CANONICAL ALIGNMENT:
 
 from __future__ import annotations
 
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
 import pytest
-
 from network_model.solvers.power_flow_result import (
     PowerFlowBranchResult,
     PowerFlowBusResult,
@@ -34,20 +34,10 @@ from network_model.solvers.power_flow_trace import (
 )
 
 # Check if reportlab is available for PDF tests
-try:
-    import reportlab
-
-    _PDF_AVAILABLE = True
-except ImportError:
-    _PDF_AVAILABLE = False
+_PDF_AVAILABLE = find_spec("reportlab") is not None
 
 # Check if python-docx is available for DOCX tests
-try:
-    import docx
-
-    _DOCX_AVAILABLE = True
-except ImportError:
-    _DOCX_AVAILABLE = False
+_DOCX_AVAILABLE = find_spec("docx") is not None
 
 
 # -----------------------------------------------------------------------------
@@ -324,9 +314,7 @@ class TestExportPowerFlowResultToPdf:
         result = create_sample_power_flow_result()
         custom_title = "Raport testowy rozplywu mocy"
         output_file = tmp_path / "pf_report.pdf"
-        returned_path = export_power_flow_result_to_pdf(
-            result, output_file, title=custom_title
-        )
+        returned_path = export_power_flow_result_to_pdf(result, output_file, title=custom_title)
 
         assert output_file.exists()
         assert returned_path == output_file
@@ -512,9 +500,7 @@ class TestExportPowerFlowResultToDocx:
         result = create_sample_power_flow_result()
         custom_title = "Raport testowy rozplywu mocy"
         output_file = tmp_path / "pf_report.docx"
-        returned_path = export_power_flow_result_to_docx(
-            result, output_file, title=custom_title
-        )
+        returned_path = export_power_flow_result_to_docx(result, output_file, title=custom_title)
 
         assert output_file.exists()
         assert returned_path == output_file
@@ -709,16 +695,14 @@ class TestWhiteBoxTracePdf:
         output_no_trace = tmp_path / "pf_no_trace.pdf"
 
         export_power_flow_result_to_pdf(result, output_with_trace, trace=trace)
-        export_power_flow_result_to_pdf(
-            result, output_no_trace, include_trace=False
-        )
+        export_power_flow_result_to_pdf(result, output_no_trace, include_trace=False)
 
         # Report with trace should be larger
         size_with = output_with_trace.stat().st_size
         size_without = output_no_trace.stat().st_size
-        assert size_with > size_without, (
-            f"Expected PDF with trace to be larger: {size_with} <= {size_without}"
-        )
+        assert (
+            size_with > size_without
+        ), f"Expected PDF with trace to be larger: {size_with} <= {size_without}"
 
 
 @pytest.mark.skipif(not _DOCX_AVAILABLE, reason="python-docx is not installed")
@@ -738,16 +722,14 @@ class TestWhiteBoxTraceDocx:
         output_no_trace = tmp_path / "pf_no_trace.docx"
 
         export_power_flow_result_to_docx(result, output_with_trace, trace=trace)
-        export_power_flow_result_to_docx(
-            result, output_no_trace, include_trace=False
-        )
+        export_power_flow_result_to_docx(result, output_no_trace, include_trace=False)
 
         # Report with trace should be larger
         size_with = output_with_trace.stat().st_size
         size_without = output_no_trace.stat().st_size
-        assert size_with > size_without, (
-            f"Expected DOCX with trace to be larger: {size_with} <= {size_without}"
-        )
+        assert (
+            size_with > size_without
+        ), f"Expected DOCX with trace to be larger: {size_with} <= {size_without}"
 
 
 # -----------------------------------------------------------------------------

@@ -12,20 +12,11 @@ import { clsx } from 'clsx';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useSelectionStore } from '../../selection';
+import { formatGeneratorTypeShortLabelPl } from '../../shared/generatorTypeLabels';
 
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function genTypeLabel(genType: string | null | undefined): string {
-  switch (genType) {
-    case 'pv_inverter': return 'PV';
-    case 'bess': return 'BESS';
-    case 'wind_inverter': return 'Wiatrak';
-    case 'synchronous': return 'Synchroniczny';
-    default: return genType ?? 'OZE';
-  }
-}
 
 function connectionLabel(variant: string | null | undefined): string {
   switch (variant) {
@@ -170,7 +161,7 @@ export function OzeReview({ className }: OzeReviewProps) {
                           : 'bg-gray-100 text-gray-600',
                       )}
                     >
-                      {genTypeLabel(row.genType)}
+                  {formatGeneratorTypeShortLabelPl(row.genType)}
                     </span>
                   </td>
                   <td className="px-3 py-1.5 text-right text-gray-600">

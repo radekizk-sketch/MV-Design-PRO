@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from network_model.core.branch import LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
-
 from network_model.solvers.power_flow_newton_internal import options_to_trace
+
 from .result import PowerFlowResult
 from .types import PowerFlowInput, PowerFlowOptions
 

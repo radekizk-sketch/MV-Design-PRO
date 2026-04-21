@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from application.analyses.design_synth.canonical import canonicalize_json
 from application.analyses.design_synth.fingerprint import fingerprint_json
@@ -16,8 +17,13 @@ from application.analyses.protection.overcurrent.reporting import (
     build_overcurrent_report_v0,
 )
 from application.analyses.protection.overcurrent.settings import OvercurrentSettingsV0
-from application.analyses.run_envelope import AnalysisRunEnvelope
-from application.analyses.run_envelope import ArtifactRef, InputsRef, TraceRef, fingerprint_envelope
+from application.analyses.run_envelope import (
+    AnalysisRunEnvelope,
+    ArtifactRef,
+    InputsRef,
+    TraceRef,
+    fingerprint_envelope,
+)
 from application.analyses.run_index import AnalysisRunIndexEntry, index_run
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.solvers.short_circuit_core import ShortCircuitType
@@ -54,7 +60,7 @@ def run_overcurrent_skeleton(
         case_id=entry.case_id,
         base_snapshot_id=entry.base_snapshot_id,
         trace_inline=trace_inline,
-        created_at_utc=datetime.now(timezone.utc).isoformat(),
+        created_at_utc=datetime.now(UTC).isoformat(),
     )
     _persist_run_index(envelope, protection_input, uow_factory=uow_factory)
     return envelope
@@ -118,7 +124,7 @@ def run_overcurrent_v0(
         status=status,
     )
 
-    created_at_utc = datetime.now(timezone.utc).isoformat()
+    created_at_utc = datetime.now(UTC).isoformat()
     inputs = InputsRef(
         base_snapshot_id=entry.base_snapshot_id,
         spec_ref=None,
@@ -262,9 +268,7 @@ def _build_trace_overcurrent_v0(
     return {"steps": canonicalize_json(steps)}
 
 
-def _build_deterministic_run_id(
-    protection_input: ProtectionInput, outputs: dict[str, Any]
-) -> str:
+def _build_deterministic_run_id(protection_input: ProtectionInput, outputs: dict[str, Any]) -> str:
     payload = {
         "analysis_type": "protection.overcurrent.v0",
         "inputs": protection_input.to_dict(),

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import time
 import uuid
-from typing import Callable
+from collections.abc import Callable
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
@@ -34,17 +34,31 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         if status >= 500:
             logger.error(
                 "HTTP %s %s %s -> %d (%.1fms) rid=%s",
-                method, path, request.url.query, status, elapsed_ms, request_id,
+                method,
+                path,
+                request.url.query,
+                status,
+                elapsed_ms,
+                request_id,
             )
         elif status >= 400:
             logger.warning(
                 "HTTP %s %s %s -> %d (%.1fms) rid=%s",
-                method, path, request.url.query, status, elapsed_ms, request_id,
+                method,
+                path,
+                request.url.query,
+                status,
+                elapsed_ms,
+                request_id,
             )
         else:
             logger.info(
                 "HTTP %s %s -> %d (%.1fms) rid=%s",
-                method, path, status, elapsed_ms, request_id,
+                method,
+                path,
+                status,
+                elapsed_ms,
+                request_id,
             )
 
         return response

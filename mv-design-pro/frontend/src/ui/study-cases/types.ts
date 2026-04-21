@@ -6,7 +6,7 @@
  */
 
 /**
- * Study case result status (PowerFactory-grade).
+ * Study case result status (Canonical-grade).
  */
 export type StudyCaseResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
 

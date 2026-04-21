@@ -24,6 +24,8 @@ from infrastructure.persistence.db import create_engine_from_url, create_session
 from infrastructure.persistence.unit_of_work import build_uow_factory
 from network_model.validation import (
     ValidationIssue as ModelValidationIssue,
+)
+from network_model.validation import (
     ValidationReport as ModelValidationReport,
 )
 
@@ -36,9 +38,7 @@ def _build_services() -> tuple[NetworkWizardService, AnalysisRunService]:
     return NetworkWizardService(uow_factory), AnalysisRunService(uow_factory)
 
 
-def _create_basic_network(
-    wizard: NetworkWizardService, project_id: UUID
-) -> tuple[dict, dict]:
+def _create_basic_network(wizard: NetworkWizardService, project_id: UUID) -> tuple[dict, dict]:
     slack_node = wizard.add_node(
         project_id,
         NodePayload(
@@ -81,9 +81,7 @@ def _create_basic_network(
     return slack_node, pq_node
 
 
-def _add_grid_source(
-    wizard: NetworkWizardService, project_id: UUID, node_id: UUID
-) -> None:
+def _add_grid_source(wizard: NetworkWizardService, project_id: UUID, node_id: UUID) -> None:
     wizard.add_source(
         project_id,
         SourcePayload(
@@ -123,8 +121,17 @@ def test_analysis_run_lifecycle_pf() -> None:
 
     assert executed.status == "FINISHED"
     assert executed.result_status == "VALID"
+    assert executed.completeness_status == "complete"
+    assert executed.proof_pack_ref is not None
+    assert executed.analysis_case_context["case_ref"] == str(case.id)
+    assert executed.reproducibility["results_contract_version"] == "V12.5"
     assert executed.started_at is not None
     assert executed.finished_at is not None
+
+    persisted = service.get_run(run.id)
+    assert persisted.analysis_case_context["proof_pack_ref"] == executed.proof_pack_ref
+    assert persisted.reproducibility["input_hash"] == executed.input_hash
+    assert persisted.export_artifacts == []
 
     repeat = service.create_power_flow_run(project.id, case.id)
     assert repeat.id != run.id
@@ -155,6 +162,9 @@ def test_analysis_run_lifecycle_sc() -> None:
 
     assert executed.status == "FINISHED"
     assert executed.result_status == "VALID"
+    assert executed.completeness_status == "complete"
+    assert executed.analysis_case_context["rodzaj_przypadku"] == "ZWARCIOWY_MAKS"
+    assert executed.proof_pack_ref is not None
     assert executed.result_summary
     assert results
     assert run.input_snapshot["snapshot_id"] == case.case_payload["active_snapshot_id"]
@@ -412,9 +422,7 @@ def test_failed_run_sets_status(monkeypatch: pytest.MonkeyPatch) -> None:
     def _boom(self, pf_input):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        "analysis.power_flow.solver.PowerFlowSolver.solve", _boom, raising=True
-    )
+    monkeypatch.setattr("analysis.power_flow.solver.PowerFlowSolver.solve", _boom, raising=True)
 
     executed = service.execute_run(run.id)
 
@@ -579,9 +587,7 @@ def test_fault_loop_nn_deterministic_error_payload() -> None:
 
     assert first.status == "FAILED"
     assert second.status == "FAILED"
-    assert json.loads(first.error_message or "{}") == json.loads(
-        second.error_message or "{}"
-    )
+    assert json.loads(first.error_message or "{}") == json.loads(second.error_message or "{}")
 
 
 def test_missing_project_design_mode_fails() -> None:

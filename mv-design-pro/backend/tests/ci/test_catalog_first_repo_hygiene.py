@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 REQUIRED_STAGE_DOCS = [
@@ -89,11 +88,15 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
     ]
     for root in critical_roots:
         for path in _iter_source_files(root):
-            for line_no, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
+            for line_no, line in enumerate(
+                path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
+            ):
                 stripped = line.strip()
                 if "TODO" in stripped or "FIXME" in stripped:
                     violations.append(f"{path.relative_to(REPO_ROOT)}:{line_no}: {stripped}")
-    assert not violations, "Wykryto TODO/FIXME w krytycznych ścieżkach:\n" + "\n".join(violations[:20])
+    assert not violations, "Wykryto TODO/FIXME w krytycznych ścieżkach:\n" + "\n".join(
+        violations[:20]
+    )
 
 
 def test_catalog_optional_language_is_absent_in_active_modals() -> None:
@@ -104,13 +107,15 @@ def test_catalog_optional_language_is_absent_in_active_modals() -> None:
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "RingCloseModal.tsx",
     ]
     violations: list[str] = []
-    forbidden_fragments = ["placeholder=\"opcjonalnie\"", "Brak katalogu nie blokuje"]
+    forbidden_fragments = ['placeholder="opcjonalnie"', "Brak katalogu nie blokuje"]
     for path in targets:
         text = path.read_text(encoding="utf-8", errors="ignore")
         for fragment in forbidden_fragments:
             if fragment in text:
                 violations.append(f"{path.relative_to(REPO_ROOT)}: {fragment}")
-    assert not violations, f"W aktywnych modalach pozostał język niezgodny z katalog-first: {violations}"
+    assert (
+        not violations
+    ), f"W aktywnych modalach pozostał język niezgodny z katalog-first: {violations}"
 
 
 def test_legacy_catalog_first_routers_are_not_mounted_in_api_main() -> None:

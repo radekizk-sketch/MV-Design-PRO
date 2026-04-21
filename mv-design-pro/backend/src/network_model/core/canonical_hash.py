@@ -19,7 +19,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .snapshot import NetworkSnapshot
@@ -60,7 +60,7 @@ def _canonicalize_value(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: _canonicalize_value(value[key]) for key in sorted(value.keys())}
 
-    if isinstance(value, (list, tuple)):
+    if isinstance(value, list | tuple):
         items = [_canonicalize_value(item) for item in value]
         # Sort by 'id' field if all elements are dicts with 'id'
         if items and all(isinstance(item, dict) and "id" in item for item in items):

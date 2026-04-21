@@ -114,6 +114,7 @@ function makeStationD_Sectionalizing2T(): SwitchgearConfigV1 {
   const devices: DeviceConfigV1[] = [
     ...makeTrafoDevices('D_t1', 'D_f_t1'),
     ...makeTrafoDevices('D_t2', 'D_f_t2'),
+    { deviceId: 'D_ds_coupler', fieldId: 'D_f_coupler', deviceType: DeviceTypeV1.DS, aparatType: AparatTypeV1.ODLACZNIK },
     { deviceId: 'D_cb_coupler', fieldId: 'D_f_coupler', deviceType: DeviceTypeV1.CB, aparatType: AparatTypeV1.WYLACZNIK },
   ];
   const catalogBindings: CatalogBindingV1[] = devices.map(d => ({

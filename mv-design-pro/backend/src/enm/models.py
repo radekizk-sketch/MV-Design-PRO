@@ -7,12 +7,11 @@ Jedno źródło prawdy dla projektu (case-bound).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field
-
 
 # ---------------------------------------------------------------------------
 # Supporting types
@@ -45,6 +44,7 @@ class GenLimits(BaseModel):
 
 class MeasurementRating(BaseModel):
     """Parametry znamionowe przekładnika CT/VT."""
+
     ratio_primary: float
     ratio_secondary: float
     accuracy_class: str | None = None
@@ -53,10 +53,14 @@ class MeasurementRating(BaseModel):
 
 class ProtectionSetting(BaseModel):
     """Nastawa zabezpieczenia (stub — bez pełnego solvera ochrony)."""
+
     function_type: Literal[
-        "overcurrent_50", "overcurrent_51",
-        "earth_fault_50N", "earth_fault_51N",
-        "directional_67", "directional_67N",
+        "overcurrent_50",
+        "overcurrent_51",
+        "earth_fault_50N",
+        "earth_fault_51N",
+        "directional_67",
+        "directional_67N",
     ]
     threshold_a: float | None = None
     time_delay_s: float | None = None
@@ -71,6 +75,7 @@ class ProtectionSetting(BaseModel):
 
 class ParameterOverride(BaseModel):
     """Audytowalny override parametru katalogowego (tryb EKSPERT)."""
+
     key: str
     value: float | str
     reason: str | None = None
@@ -99,8 +104,8 @@ class ENMHeader(BaseModel):
     enm_version: Literal["1.0"] = "1.0"
     name: str
     description: str | None = None
-    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     revision: int = 1
     hash_sha256: str = ""
     defaults: ENMDefaults = Field(default_factory=ENMDefaults)
@@ -131,7 +136,7 @@ class BranchBase(ENMElement):
     status: Literal["closed", "open"] = "closed"
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
-    parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
+    parameter_source: Literal["CATALOG", "OVERRIDE", "MANUAL_EQUIVALENT"] | None = None
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
@@ -164,6 +169,7 @@ class Cable(BranchBase):
 
 class SwitchBranch(BranchBase):
     """Wyłącznik, rozłącznik, sprzęgło, sekcjoner."""
+
     type: Literal["switch", "breaker", "bus_coupler", "disconnector"]
     r_ohm: float | None = None
     x_ohm: float | None = None
@@ -219,9 +225,11 @@ class Transformer(ENMElement):
 class Source(ENMElement):
     bus_ref: str
     model: Literal["thevenin", "short_circuit_power", "external_grid"]
+    substation_ref: str | None = None
+    gpz_section_id: str | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
-    parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
+    parameter_source: Literal["CATALOG", "OVERRIDE", "MANUAL_EQUIVALENT"] | None = None
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
@@ -335,8 +343,12 @@ class ProtectionAssignment(ENMElement):
     ct_ref: str | None = None
     vt_ref: str | None = None
     device_type: Literal[
-        "overcurrent", "earth_fault", "directional_overcurrent",
-        "distance", "differential", "custom",
+        "overcurrent",
+        "earth_fault",
+        "directional_overcurrent",
+        "distance",
+        "differential",
+        "custom",
     ]
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
@@ -368,12 +380,36 @@ class Substation(ENMElement):
     """
 
     station_type: Literal[
-        "gpz", "mv_lv", "switching", "customer",
-        "inline", "branch", "terminal", "sectional",
+        "gpz",
+        "mv_lv",
+        "switching",
+        "customer",
+        "inline",
+        "branch",
+        "terminal",
+        "sectional",
     ]
     bus_refs: list[str] = []
     transformer_refs: list[str] = []
     entry_point_ref: str | None = None
+    gpz_sections: list[GPZSection] = []
+
+
+class GPZSection(BaseModel):
+    """Jawna sekcja szyny GPZ.
+
+    Sekcja GPZ jest prawdą domenową dla wielosekcyjnej rozdzielni źródłowej.
+    Nie jest wyliczana wyłącznie z layoutu SLD.
+    """
+
+    section_id: str
+    order: int
+    name: str | None = None
+    line_field_name: str | None = None
+    bus_ref: str
+    incoming_source_ref: str | None = None
+    left_coupler_ref: str | None = None
+    right_coupler_ref: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -387,8 +423,403 @@ class Bay(ENMElement):
     bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"]
     substation_ref: str
     bus_ref: str
+    gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Bay Canonical Model V10 (read-model contract)
+# ---------------------------------------------------------------------------
+
+
+class BaySwitchState(BaseModel):
+    actual_state: Literal[
+        "zamkniety",
+        "otwarty",
+        "zamkniety_naped_rozbrojony",
+        "otwarty_naped_rozbrojony",
+        "nieznany",
+        "awaria",
+    ]
+    commanded_state: Literal["zamknij", "otworz"] | None = None
+    control_mode: Literal["miejscowe", "zdalne", "lokalne_zablokowane", "odstawione"]
+    armed_for_close: bool | None = None
+    armed_for_open: bool | None = None
+    communication_ok: bool = False
+    interlock_blocked: bool = False
+    cause_code: str | None = None
+    last_state_change_at: datetime | None = None
+    last_command_at: datetime | None = None
+
+
+class BayOperatingState(BaseModel):
+    normal_position: Literal["zamkniety", "otwarty"]
+    current_position: Literal["zamkniety", "otwarty", "nieznany"]
+    discrepancy_alarm: bool = False
+
+
+class BayPrimaryDevice(BaseModel):
+    device_ref: str
+    linked_ref: str | None = None
+    catalog_ref: str | None = None
+    symbol_ref: str
+    kind: Literal[
+        "CB",
+        "LOAD_SWITCH",
+        "DS",
+        "ES",
+        "CT",
+        "VT",
+        "CABLE_HEAD",
+        "TRANSFORMER_DEVICE",
+        "FUSE",
+        "GENERATOR_PV",
+        "GENERATOR_BESS",
+        "GENERATOR_FW",
+        "PCS",
+        "BATTERY",
+    ]
+    placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
+    section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
+    is_controllable: bool = False
+    render_variant: str | None = None
+    switch_state: BaySwitchState | None = None
+    operating_state: BayOperatingState | None = None
+
+
+class BayMeasurements(BaseModel):
+    ia_a: float | None = None
+    ib_a: float | None = None
+    ic_a: float | None = None
+    zero_sequence_current_a: float | None = None
+    uab_kv: float | None = None
+    ubc_kv: float | None = None
+    uca_kv: float | None = None
+    zero_sequence_voltage_kv: float | None = None
+    active_power_mw: float | None = None
+    reactive_power_mvar: float | None = None
+    apparent_power_mva: float | None = None
+    current_a: float | None = None
+    power_factor: float | None = None
+    frequency_hz: float | None = None
+
+
+class BayMeasurementSet(BaseModel):
+    side: Literal["pole", "strona_szyn", "strona_odplywu", "strona_lewa", "strona_prawa"]
+    values: BayMeasurements = Field(default_factory=BayMeasurements)
+
+
+class BayMeasurementChain(BaseModel):
+    chain_ref: str
+    ct_refs: list[str] = []
+    vt_refs: list[str] = []
+    uses_3i0: bool = False
+    uses_3u0: bool = False
+    zero_sequence_current_source: Literal[
+        "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
+    ] = "brak"
+    zero_sequence_voltage_source: Literal[
+        "otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone", "brak"
+    ] = "brak"
+    topology: Literal["ct_only", "ct_vt", "ct_vt_3u0", "vt_only"] = "ct_only"
+    measurement_sets: list[BayMeasurementSet] = []
+
+
+class BaySecondaryUnitRef(BaseModel):
+    unit_ref: str
+    unit_kind: Literal["zabezpieczenie", "sterownik", "pomiar", "rejestrator"]
+    shared_with_bay_refs: list[str] = []
+
+
+class BaySecondaryArchitecture(BaseModel):
+    type: Literal[
+        "zintegrowane_zabezpieczenie_i_sterownik",
+        "oddzielne_zabezpieczenie_i_sterownik",
+        "tylko_zabezpieczenie",
+        "tylko_sterownik",
+        "brak_urzadzenia_wtornego",
+    ]
+    measurement_provider: Literal[
+        "zabezpieczenie",
+        "sterownik",
+        "osobny_uklad_pomiarowy",
+        "mieszany",
+        "brak",
+    ] = "brak"
+
+
+class ProtectionSettingValue(BaseModel):
+    key: str
+    value: float | str | bool | None = None
+    unit: str | None = None
+    quality: Literal["obliczone", "reczne", "domyslne"] = "domyslne"
+
+
+class ProtectionFunctionState(BaseModel):
+    code: str
+    available: bool = False
+    enabled: bool = False
+    picked_up: bool = False
+    tripped: bool = False
+    blocked: bool = False
+    required_inputs: list[Literal["ct", "vt", "3i0", "3u0"]] = []
+    optional_inputs: list[Literal["ct", "vt", "3i0", "3u0"]] = []
+    missing_input_policy: Literal[
+        "blokada_zapisu",
+        "blokada_obliczen",
+        "ostrzezenie",
+        "degradacja_funkcji",
+        "wynik_czesciowy",
+    ] = "ostrzezenie"
+    settings_ref: str | None = None
+    settings: list[ProtectionSettingValue] = []
+    execution_mode: Literal["tylko_alarm", "pobudzenie", "wyzwolenie"] = "tylko_alarm"
+    execution_device_ref: str | None = None
+    starts_spz: bool = False
+    blocks_reclose: bool = False
+    operator_ack_required_after_trip: bool = False
+
+
+class SpzState(BaseModel):
+    bound_breaker_ref: str
+    enabled: bool = False
+    fast_attempts_max: int = 0
+    slow_attempts_max: int = 0
+    attempts_done: int = 0
+    fast_time_s: float | None = None
+    slow_time_s: float | None = None
+    blocked: bool = False
+    blocked_reason: str | None = None
+    state: Literal["gotowe", "w_trakcie", "zakonczone", "odstawione"] = "odstawione"
+
+
+class AlarmEntry(BaseModel):
+    code: str
+    active: bool = False
+    acknowledged: bool = False
+    severity: Literal["informacja", "ostrzezenie", "alarm", "awaria"] = "informacja"
+    timestamp: datetime
+    message_pl: str
+
+
+class EventEntry(BaseModel):
+    code: str
+    timestamp: datetime
+    source: Literal["sterowanie", "ochrona", "pomiar", "komunikacja", "system"]
+    message_pl: str
+
+
+class DisturbanceRecorderState(BaseModel):
+    available: bool = False
+    last_record_at: datetime | None = None
+    records_count: int = 0
+
+
+class TrendState(BaseModel):
+    available: bool = False
+    channels: list[str] = []
+
+
+class BayProtectionControlUnit(BaseModel):
+    unit_ref: str
+    manufacturer: str | None = None
+    model: str | None = None
+    functions: list[ProtectionFunctionState] = []
+    measurement_inputs: dict[str, bool] = Field(default_factory=dict)
+    automation_features: dict[str, bool] = Field(default_factory=dict)
+    spz: SpzState | None = None
+    alarms: list[AlarmEntry] = []
+    events: list[EventEntry] = []
+    disturbance_recorder: DisturbanceRecorderState = Field(default_factory=DisturbanceRecorderState)
+    trends: TrendState = Field(default_factory=TrendState)
+    settings_mode: Literal["automatyczne", "reczne"] = "reczne"
+    settings_ref: str | None = None
+
+
+class InterlockEntry(BaseModel):
+    code: str
+    active: bool = False
+    reason: str
+    blocking_device_refs: list[str] = []
+
+
+class BayInterlockSet(BaseModel):
+    entries: list[InterlockEntry] = []
+
+
+class BayControlSurface(BaseModel):
+    controllable_device_refs: list[str] = []
+    open_requires_confirmation: bool = False
+    close_requires_confirmation: bool = True
+    kas_available: bool = False
+    local_remote_transfer_supported: bool = False
+
+
+class BayCommandExecutionState(BaseModel):
+    command_ref: str
+    target_device_ref: str
+    command: Literal["zamknij", "otworz", "kas"]
+    state: Literal["oczekuje", "przyjete", "odrzucone", "wykonane", "przeterminowane"]
+    rejected_reason: str | None = None
+    created_at: datetime
+    finished_at: datetime | None = None
+
+
+class BayEnergizationSafetyState(BaseModel):
+    energized_from_bus_side: bool = False
+    energized_from_feeder_side: bool = False
+    grounded: bool = False
+    visible_isolation_gap: bool = False
+    safe_to_work: bool = False
+    unsafe_reason_pl: str | None = None
+
+
+class BayRuntimeState(BaseModel):
+    secondary_communication_status: Literal["ok", "degraded", "offline"] = "offline"
+    last_good_update_at: datetime | None = None
+    control_availability: Literal["dostepne", "czesciowo_dostepne", "niedostepne"] = "niedostepne"
+    measurement_availability: Literal["dostepne", "czesciowe", "niedostepne"] = "niedostepne"
+    primary_device_states: dict[str, BaySwitchState] = {}
+    active_alarms: list[AlarmEntry] = []
+    pending_command: BayCommandExecutionState | None = None
+    energization_and_safety: BayEnergizationSafetyState = Field(
+        default_factory=BayEnergizationSafetyState
+    )
+
+
+class BayScenarioState(BaseModel):
+    scenario_ref: str
+    overridden_position: Literal["zamkniety", "otwarty", "nieznany"] | None = None
+    source: Literal["bazowy", "wariant", "symulacja_przelaczen", "ruch"] = "bazowy"
+
+
+class BaySourceEndpoint(BaseModel):
+    source_kind: Literal["PV", "BESS", "FW"]
+    inverter_ref: str | None = None
+    storage_ref: str | None = None
+    turbine_ref: str | None = None
+    block_transformer_ref: str | None = None
+    requires_vt: bool = False
+    requires_synchrocheck: bool = False
+    operating_mode: Literal[
+        "praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"
+    ] = "gotowosc"
+
+
+class BayBaseModel(BaseModel):
+    bay_ref: str
+    bay_role: Literal[
+        "LINIA_IN",
+        "LINIA_OUT",
+        "TRANSFORMATOROWE",
+        "LINIA_ODG",
+        "SPRZEGLO",
+        "POMIAROWE",
+        "PV_SN",
+        "BESS_SN",
+        "FW_SN",
+    ]
+    specialization: Literal["BRAK", "POTRZEBY_WLASNE"] = "BRAK"
+    substation_ref: str
+    gpz_section_id: str | None = None
+    primary_devices: list[BayPrimaryDevice] = []
+    measurement_chain: BayMeasurementChain | None = None
+    secondary_units: list[BaySecondaryUnitRef] = []
+    secondary_architecture: BaySecondaryArchitecture
+    protection_config: BayProtectionControlUnit | None = None
+    control_surface: BayControlSurface = Field(default_factory=BayControlSurface)
+    interlocks: BayInterlockSet = Field(default_factory=BayInterlockSet)
+    source_endpoint: BaySourceEndpoint | None = None
+
+
+class BayShortCircuitSourceContribution(BaseModel):
+    source_ref: str
+    source_kind: Literal["GPZ", "TRANSFORMATOR", "PV", "BESS", "FW", "INNE"]
+    reference_point: str
+    fault_type: Literal["3F", "2F", "1F", "1F_ZIEMIA"]
+    ikss_ka: float | None = None
+    ip_ka: float | None = None
+    ith_ka: float | None = None
+    percent_share: float | None = None
+    zero_sequence_share_percent: float | None = None
+    direction: Literal["do_pola", "od_pola"] = "do_pola"
+
+
+class BayPowerFlowSourceContribution(BaseModel):
+    source_ref: str
+    source_kind: Literal["GPZ", "TRANSFORMATOR", "PV", "BESS", "FW", "INNE"]
+    reference_point: str
+    p_mw: float | None = None
+    q_mvar: float | None = None
+    s_mva: float | None = None
+    i_a: float | None = None
+    percent_share_p: float | None = None
+    percent_share_q: float | None = None
+    direction: Literal["do_odplywu", "do_szyn"] = "do_odplywu"
+
+
+class BayEarthFaultPath(BaseModel):
+    neutral_grounding_mode: Literal[
+        "izolowany",
+        "cewka_petersena",
+        "rezystor",
+        "bezposrednio_uziemiony",
+        "nieznany",
+    ] = "nieznany"
+    zero_sequence_current_source: Literal[
+        "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
+    ] = "brak"
+    zero_sequence_voltage_source: Literal[
+        "otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone", "brak"
+    ] = "brak"
+    closure_path_elements: list[str] = []
+    transformer_contribution_ref: str | None = None
+    grounding_device_ref: str | None = None
+
+
+class BayVerificationResult(BaseModel):
+    continuous_current_ok: bool | None = None
+    thermal_withstand_ok: bool | None = None
+    dynamic_withstand_ok: bool | None = None
+    ct_ok: bool | None = None
+    vt_ok: bool | None = None
+    cable_head_ok: bool | None = None
+    main_switch_ok: bool | None = None
+    whole_power_path_ok: bool | None = None
+
+
+class BayProofBinding(BaseModel):
+    proof_ref: str
+    primary_result_refs: list[str] = []
+    secondary_result_refs: list[str] = []
+    source_contribution_refs: list[str] = []
+    formula_refs: list[str] = []
+    input_data_refs: list[str] = []
+
+
+class BayProjectResults(BaseModel):
+    run_ref: str
+    result_state: Literal["pelny", "czesciowy", "bledny"] = "pelny"
+    result_message_pl: str | None = None
+    main_short_circuit_results_ref: str | None = None
+    main_power_flow_results_ref: str | None = None
+    source_contributions_sc: list[BayShortCircuitSourceContribution] = []
+    source_contributions_pf: list[BayPowerFlowSourceContribution] = []
+    verification: BayVerificationResult = Field(default_factory=BayVerificationResult)
+    earth_fault_path: BayEarthFaultPath | None = None
+    proof_binding: BayProofBinding
+
+
+class BayCanonicalModel(BaseModel):
+    schema_version: Literal["v10.bay.1"] = "v10.bay.1"
+    created_from: Literal["szablon", "recznie", "migracja", "przebudowa"] = "migracja"
+    integrity_status: Literal["kompletny", "po_migracji", "wymaga_uzupelnienia"] = "po_migracji"
+    audit_trail_ref: str | None = None
+    base_model: BayBaseModel
+    runtime_state: BayRuntimeState | None = None
+    scenario_state: BayScenarioState | None = None
+    project_results_ref: str | None = None
 
 
 # ---------------------------------------------------------------------------

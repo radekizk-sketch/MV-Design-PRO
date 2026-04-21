@@ -20,9 +20,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
-
 from api.dependencies import get_uow_factory
 from application.protection_comparison import ProtectionComparisonService
 from domain.protection_comparison import (
@@ -33,7 +30,8 @@ from domain.protection_comparison import (
     ProtectionRunNotFinishedError,
     ProtectionRunNotFoundError,
 )
-
+from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/protection-comparisons", tags=["protection-comparison"])
 
@@ -45,6 +43,7 @@ router = APIRouter(prefix="/protection-comparisons", tags=["protection-compariso
 
 class CreateProtectionComparisonRequest(BaseModel):
     """Request to create a protection comparison."""
+
     protection_run_id_a: str = Field(
         ...,
         description="UUID pierwszego ProtectionRun (baseline)",
@@ -57,6 +56,7 @@ class CreateProtectionComparisonRequest(BaseModel):
 
 class ComparisonRowResponse(BaseModel):
     """Single comparison row."""
+
     protected_element_ref: str
     fault_target_id: str
     device_id_a: str
@@ -76,6 +76,7 @@ class ComparisonRowResponse(BaseModel):
 
 class RankingIssueResponse(BaseModel):
     """Single ranking issue."""
+
     issue_code: str
     severity: int
     element_ref: str
@@ -86,6 +87,7 @@ class RankingIssueResponse(BaseModel):
 
 class ComparisonSummaryResponse(BaseModel):
     """Comparison summary statistics."""
+
     total_rows: int
     no_change_count: int
     trip_to_no_trip_count: int
@@ -100,6 +102,7 @@ class ComparisonSummaryResponse(BaseModel):
 
 class ProtectionComparisonResultResponse(BaseModel):
     """Full comparison result response."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -113,6 +116,7 @@ class ProtectionComparisonResultResponse(BaseModel):
 
 class TraceStepResponse(BaseModel):
     """Single trace step."""
+
     step: str
     description_pl: str
     inputs: dict[str, Any]
@@ -121,6 +125,7 @@ class TraceStepResponse(BaseModel):
 
 class ProtectionComparisonTraceResponse(BaseModel):
     """Full comparison trace response."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str
@@ -132,6 +137,7 @@ class ProtectionComparisonTraceResponse(BaseModel):
 
 class ProtectionComparisonMetadataResponse(BaseModel):
     """Comparison metadata (without full results)."""
+
     comparison_id: str
     run_a_id: str
     run_b_id: str

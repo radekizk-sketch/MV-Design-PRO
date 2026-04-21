@@ -9,7 +9,7 @@ import {
   OVERHEAD_DASH_ARRAY,
   GRID_BASE,
 } from './IndustrialAesthetics';
-import { ETAP_VOLTAGE_COLORS } from './sldEtapStyle';
+import { CANONICAL_VOLTAGE_COLORS } from './sldCanonicalStyle';
 
 export interface TrunkSpineRendererProps {
   nodes: readonly TrunkNodeAnnotationV1[];
@@ -34,7 +34,7 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
   nodes,
   segments,
   trunkId = 'M1',
-  color = ETAP_VOLTAGE_COLORS.SN,
+  color = CANONICAL_VOLTAGE_COLORS.SN,
   showTechnicalLabels = false,
 }) => {
   if (nodes.length === 0) return null;

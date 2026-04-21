@@ -5,9 +5,9 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+from api.main import app
 from fastapi.testclient import TestClient
 
-from api.main import app
 from tests.catalog_test_helpers import gpz_source_record
 
 
@@ -181,7 +181,10 @@ class TestCreateRunEndpoint:
             },
         )
         assert response.status_code == 409
-        assert "model" in response.json()["detail"].lower() or "analiza" in response.json()["detail"].lower()
+        assert (
+            "model" in response.json()["detail"].lower()
+            or "analiza" in response.json()["detail"].lower()
+        )
 
     def test_create_run_ignores_legacy_readiness_payload(self, client, registered_case):
         response = client.post(
@@ -348,7 +351,10 @@ class TestDeterministicHashApi:
 
         assert response_first.status_code == 201
         assert response_second.status_code == 201
-        assert response_first.json()["solver_input_hash"] == response_second.json()["solver_input_hash"]
+        assert (
+            response_first.json()["solver_input_hash"]
+            == response_second.json()["solver_input_hash"]
+        )
 
     def test_different_input_different_hash(self, client, registered_case):
         response_first = client.post(
@@ -368,4 +374,7 @@ class TestDeterministicHashApi:
 
         assert response_first.status_code == 201
         assert response_second.status_code == 201
-        assert response_first.json()["solver_input_hash"] != response_second.json()["solver_input_hash"]
+        assert (
+            response_first.json()["solver_input_hash"]
+            != response_second.json()["solver_input_hash"]
+        )

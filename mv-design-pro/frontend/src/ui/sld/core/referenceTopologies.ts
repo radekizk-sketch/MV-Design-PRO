@@ -6,10 +6,20 @@ import { BranchKind, GeneratorKind, StationKind, type TopologyInputV1 } from './
 
 export type ReferenceScenarioId = 'leaf' | 'pass' | 'branch' | 'ring' | 'multi' | 'terrain' | 'sectional';
 
+export interface ReferenceScenarioConnection {
+  readonly id: string;
+  readonly elementType: BranchSymbol['elementType'];
+  readonly fromNodeId: string;
+  readonly toNodeId: string;
+  readonly path: readonly { x: number; y: number }[];
+  readonly branchType?: BranchSymbol['branchType'];
+}
+
 export interface ReferenceScenarioResult {
   readonly scenarioId: ReferenceScenarioId;
   readonly input: TopologyInputV1;
   readonly symbols: AnySldSymbol[];
+  readonly connections: readonly ReferenceScenarioConnection[];
   readonly canonicalAnnotations: CanonicalAnnotationsV1 | null;
 }
 
@@ -470,16 +480,34 @@ function createSymbols(input: TopologyInputV1, layout: ReturnType<typeof compute
   return [...buses, ...branches, ...sources, ...loads];
 }
 
+function createConnections(symbols: readonly AnySldSymbol[]): readonly ReferenceScenarioConnection[] {
+  return symbols
+    .filter((symbol): symbol is BranchSymbol =>
+      symbol.elementType === 'LineBranch' || symbol.elementType === 'TransformerBranch',
+    )
+    .map((symbol) => ({
+      id: symbol.id,
+      elementType: symbol.elementType,
+      fromNodeId: symbol.fromNodeId,
+      toNodeId: symbol.toNodeId,
+      path: symbol.points,
+      branchType: symbol.branchType,
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export function buildReferenceScenario(scenarioId: ReferenceScenarioId): ReferenceScenarioResult {
   const input = buildScenarioInput(scenarioId);
   const adapter = buildVisualGraphFromTopology(input);
   const layout = computeLayout(adapter.graph, DEFAULT_LAYOUT_CONFIG, adapter.stationBlockDetails);
   const symbols = createSymbols(input, layout);
+  const connections = createConnections(symbols);
 
   return {
     scenarioId,
     input,
     symbols,
+    connections,
     canonicalAnnotations: layout.canonicalAnnotations,
   };
 }

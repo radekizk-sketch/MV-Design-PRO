@@ -17,6 +17,7 @@ backend_src = Path(__file__).parent.parent / "src"
 sys.path.insert(0, str(backend_src))
 
 from enm.domain_operations import execute_domain_operation
+
 from tests.catalog_test_helpers import gpz_payload
 
 
@@ -56,13 +57,13 @@ def _build_base_network_with_line_catalog() -> dict:
     r = execute_domain_operation(
         enm,
         "continue_trunk_segment_sn",
-            {
-                "segment": {
-                    "rodzaj": "KABEL",
-                    "dlugosc_m": 120,
-                    "catalog_ref": "cable-tfk-yakxs-3x120",
-                }
-            },
+        {
+            "segment": {
+                "rodzaj": "KABEL",
+                "dlugosc_m": 120,
+                "catalog_ref": "cable-tfk-yakxs-3x120",
+            }
+        },
     )
     assert r.get("error") is None
     return r["snapshot"]

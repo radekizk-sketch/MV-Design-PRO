@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - P30a: Command pattern infrastructure
- * - powerfactory_ui_parity.md: Align/distribute = 1 undo operation
+ * - ui_canonical_parity.md: Align/distribute = 1 undo operation
  *
  * Command for align/distribute operations.
  * Updates multiple symbol positions in one operation.

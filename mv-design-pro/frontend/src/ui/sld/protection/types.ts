@@ -31,11 +31,11 @@ export type OvercurrentCharacteristicType =
  * Polskie etykiety charakterystyk.
  */
 export const OC_CHARACTERISTIC_LABELS_PL: Record<OvercurrentCharacteristicType, string> = {
-  DT: 'Staloczasowa',
+  DT: 'Stałoczasowa',
   SI: 'Odwrotnoczasowa (SI)',
   VI: 'Silnie odwrotnoczasowa (VI)',
   EI: 'Ekstremalnie odwrotnoczasowa (EI)',
-  LTI: 'Dlugoczasowa odwrotna (LTI)',
+  LTI: 'Długoczasowa odwrotna (LTI)',
 };
 
 // =============================================================================
@@ -54,8 +54,8 @@ export type ProtectionVerificationStatus =
  * Polskie etykiety statusu weryfikacji.
  */
 export const VERIFICATION_STATUS_LABELS_PL: Record<ProtectionVerificationStatus, string> = {
-  SPELNIONE: 'Spelnione',
-  NIESPELNIONE: 'Niespelnione',
+  SPELNIONE: 'Spełnione',
+  NIESPELNIONE: 'Niespełnione',
   BRAK_DANYCH: 'Brak danych',
 };
 

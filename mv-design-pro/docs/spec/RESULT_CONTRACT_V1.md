@@ -1,4 +1,10 @@
-# Result Contract v1 — Canonical ResultSet Specification
+> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Result Contract v1 � Canonical ResultSet Specification
 
 **Status**: FROZEN
 **Version**: 1.0
@@ -11,7 +17,7 @@
 
 ResultSetV1 defines the **single stable format** for all calculation results in MV-DESIGN-PRO. It serves as:
 
-- The canonical output of the execution pipeline (StudyCase → Run → ResultSetV1)
+- The canonical output of the execution pipeline (StudyCase � Run � ResultSetV1)
 - The **sole source** for SLD overlay data (PR-16)
 - The input for Proof Engine, reporting, and export
 - An auditable, deterministic result contract
@@ -20,7 +26,7 @@ ResultSetV1 defines the **single stable format** for all calculation results in 
 
 | Field | Value | Rule |
 |-------|-------|------|
-| `contract_version` | `"1.0"` | FROZEN — any structural change requires bump to `"2.0"` |
+| `contract_version` | `"1.0"` | FROZEN � any structural change requires bump to `"2.0"` |
 | Schema lock | `schemas/resultset_v1_schema.json` | Auto-generated from Pydantic model; test enforces match |
 
 ### Migration path
@@ -46,11 +52,11 @@ When v2 is needed:
 
 ### Stable sort keys (priority order)
 
-For list items: `ref_id` → `id` → `element_ref` → `code` → `label` → JSON dump fallback
+For list items: `ref_id` � `id` � `element_ref` � `code` � `label` � JSON dump fallback
 
 ### Guarantees
 
-- **Identical ENM + StudyCase + SolverInput → identical signature**
+- **Identical ENM + StudyCase + SolverInput � identical signature**
 - `created_at` does NOT affect the signature
 - `deterministic_signature` does NOT affect itself (excluded from computation)
 - Element ordering in input does NOT affect the signature (sorted before hashing)
@@ -59,51 +65,51 @@ For list items: `ref_id` → `id` → `element_ref` → `code` → `label` → J
 
 ```
 ResultSetV1
-├── contract_version: "1.0"
-├── run_id: str (UUID)
-├── analysis_type: str (SC_3F | SC_1F | LOAD_FLOW)
-├── solver_input_hash: str (SHA-256)
-├── created_at: str (UTC ISO, NOT in signature)
-├── deterministic_signature: str (SHA-256)
-├── global_results: dict[str, Any]
-├── element_results: list[ElementResultV1]
-│   └── ElementResultV1
-│       ├── element_ref: str
-│       ├── element_type: str
-│       └── values: dict[str, Any]
-└── overlay_payload: OverlayPayloadV1
-    ├── elements: dict[str, OverlayElementV1]
-    │   └── OverlayElementV1
-    │       ├── ref_id: str
-    │       ├── kind: OverlayElementKind
-    │       ├── badges: list[OverlayBadgeV1]
-    │       │   └── OverlayBadgeV1
-    │       │       ├── label: str (Polish)
-    │       │       ├── severity: OverlaySeverity
-    │       │       └── code: str
-    │       ├── metrics: dict[str, OverlayMetricV1]
-    │       │   └── OverlayMetricV1
-    │       │       ├── code: str
-    │       │       ├── value: float|int|str
-    │       │       ├── unit: str
-    │       │       ├── format_hint: str
-    │       │       └── source: "solver"|"validation"|"readiness"
-    │       └── severity: INFO|WARNING|IMPORTANT|BLOCKER
-    ├── legend: OverlayLegendV1
-    │   ├── title: str (Polish)
-    │   └── entries: list[OverlayLegendEntryV1]
-    └── warnings: list[OverlayWarningV1]
-        ├── code: str
-        ├── message: str (Polish)
-        ├── severity: OverlaySeverity
-        └── element_ref: str|null
++�� contract_version: "1.0"
++�� run_id: str (UUID)
++�� analysis_type: str (SC_3F | SC_1F | LOAD_FLOW)
++�� solver_input_hash: str (SHA-256)
++�� created_at: str (UTC ISO, NOT in signature)
++�� deterministic_signature: str (SHA-256)
++�� global_results: dict[str, Any]
++�� element_results: list[ElementResultV1]
+-   L�� ElementResultV1
+-       +�� element_ref: str
+-       +�� element_type: str
+-       L�� values: dict[str, Any]
+L�� overlay_payload: OverlayPayloadV1
+    +�� elements: dict[str, OverlayElementV1]
+    -   L�� OverlayElementV1
+    -       +�� ref_id: str
+    -       +�� kind: OverlayElementKind
+    -       +�� badges: list[OverlayBadgeV1]
+    -       -   L�� OverlayBadgeV1
+    -       -       +�� label: str (Polish)
+    -       -       +�� severity: OverlaySeverity
+    -       -       L�� code: str
+    -       +�� metrics: dict[str, OverlayMetricV1]
+    -       -   L�� OverlayMetricV1
+    -       -       +�� code: str
+    -       -       +�� value: float|int|str
+    -       -       +�� unit: str
+    -       -       +�� format_hint: str
+    -       -       L�� source: "solver"|"validation"|"readiness"
+    -       L�� severity: INFO|WARNING|IMPORTANT|BLOCKER
+    +�� legend: OverlayLegendV1
+    -   +�� title: str (Polish)
+    -   L�� entries: list[OverlayLegendEntryV1]
+    L�� warnings: list[OverlayWarningV1]
+        +�� code: str
+        +�� message: str (Polish)
+        +�� severity: OverlaySeverity
+        L�� element_ref: str|null
 ```
 
 ## 5. Overlay Payload as Sole SLD Source
 
 ### Rule
 
-**SLD overlay (PR-16) reads ONLY `overlay_payload`** — never raw solver output.
+**SLD overlay (PR-16) reads ONLY `overlay_payload`** � never raw solver output.
 
 ### Rationale
 
@@ -117,7 +123,7 @@ ResultSetV1
 Frontend provides `toOverlayMap(resultset: ResultSetV1) => OverlayMap`:
 - Converts `overlay_payload.elements` to a sorted `Map<ref_id, OverlayMapEntry>`
 - Flattens metrics dict to sorted array
-- Deterministic: same input → same output
+- Deterministic: same input � same output
 
 ## 6. Metric Codes
 
@@ -160,25 +166,25 @@ Standard metric codes used across all analysis types:
 ## 9. Files
 
 ### Backend
-- `backend/src/domain/result_contract_v1.py` — Pydantic v2 models (FROZEN)
-- `backend/src/domain/result_builder_v1.py` — Builder: solver+validation+readiness → ResultSetV1
-- `backend/src/domain/result_contract_v1_schema.py` — Schema lock utilities
-- `backend/src/api/result_contract_v1.py` — API endpoints
-- `backend/schemas/resultset_v1_schema.json` — Locked JSON schema
-- `backend/tests/test_result_contract_v1.py` — 34 tests
+- `backend/src/domain/result_contract_v1.py` � Pydantic v2 models (FROZEN)
+- `backend/src/domain/result_builder_v1.py` � Builder: solver+validation+readiness � ResultSetV1
+- `backend/src/domain/result_contract_v1_schema.py` � Schema lock utilities
+- `backend/src/api/result_contract_v1.py` � API endpoints
+- `backend/schemas/resultset_v1_schema.json` � Locked JSON schema
+- `backend/tests/test_result_contract_v1.py` � 34 tests
 
 ### Frontend
-- `frontend/src/ui/contracts/results.ts` — TypeScript types + toOverlayMap adapter
-- `frontend/src/ui/run-results-inspector/RunResultsInspector.tsx` — Minimal viewer
-- `frontend/src/ui/contracts/__tests__/results.test.ts` — Adapter tests (5)
-- `frontend/src/ui/run-results-inspector/__tests__/RunResultsInspector.test.tsx` — Component tests (7)
+- `frontend/src/ui/contracts/results.ts` � TypeScript types + toOverlayMap adapter
+- `frontend/src/ui/run-results-inspector/RunResultsInspector.tsx` � Minimal viewer
+- `frontend/src/ui/contracts/__tests__/results.test.ts` � Adapter tests (5)
+- `frontend/src/ui/run-results-inspector/__tests__/RunResultsInspector.test.tsx` � Component tests (7)
 
 ## 10. Invariants
 
-1. **ZERO changes to solvers** — builder reads existing output only
-2. **ZERO changes to catalogs** — no catalog mutations
-3. **overlay_payload works with sparse data** — badges + legend minimum
-4. **All UI labels in Polish** — no project codenames
-5. **Deterministic sorting everywhere** — keys, lists, metrics
-6. **Schema lock enforced by test** — changes require explicit decision
-7. **contract_version = "1.0"** — bump = new model file
+1. **ZERO changes to solvers** � builder reads existing output only
+2. **ZERO changes to catalogs** � no catalog mutations
+3. **overlay_payload works with sparse data** � badges + legend minimum
+4. **All UI labels in Polish** � no project codenames
+5. **Deterministic sorting everywhere** � keys, lists, metrics
+6. **Schema lock enforced by test** � changes require explicit decision
+7. **contract_version = "1.0"** � bump = new model file

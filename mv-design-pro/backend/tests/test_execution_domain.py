@@ -18,12 +18,9 @@ INVARIANTS UNDER TEST:
 from __future__ import annotations
 
 import copy
-import json
-from datetime import datetime, timezone
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import pytest
-
 from domain.execution import (
     ElementResult,
     ExecutionAnalysisType,
@@ -35,7 +32,6 @@ from domain.execution import (
     compute_solver_input_hash,
     new_run,
 )
-
 
 # =============================================================================
 # Fixtures
@@ -280,9 +276,7 @@ class TestRunHashDeterminism:
         """Nested dicts are also sorted canonically."""
         input_a = {"outer": {"z": 1, "a": 2}, "base_mva": 100}
         input_b = {"base_mva": 100, "outer": {"a": 2, "z": 1}}
-        assert compute_solver_input_hash(input_a) == compute_solver_input_hash(
-            input_b
-        )
+        assert compute_solver_input_hash(input_a) == compute_solver_input_hash(input_b)
 
     def test_non_deterministic_list_preserved(self):
         """Non-deterministic lists (not in key set) maintain order."""
@@ -332,14 +326,14 @@ class TestResultSetStructure:
     def test_identical_results_same_signature(self):
         """Two identical result sets produce the same signature."""
         run_id = uuid4()
-        kwargs = dict(
-            run_id=run_id,
-            analysis_type=ExecutionAnalysisType.SC_3F,
-            validation_snapshot={"is_valid": True},
-            readiness_snapshot={"ready": True},
-            element_results=_sample_element_results(),
-            global_results={"total_ikss_ka": 27.5},
-        )
+        kwargs = {
+            "run_id": run_id,
+            "analysis_type": ExecutionAnalysisType.SC_3F,
+            "validation_snapshot": {"is_valid": True},
+            "readiness_snapshot": {"ready": True},
+            "element_results": _sample_element_results(),
+            "global_results": {"total_ikss_ka": 27.5},
+        }
         rs1 = build_result_set(**kwargs)
         rs2 = build_result_set(**kwargs)
         assert rs1.deterministic_signature == rs2.deterministic_signature
@@ -465,9 +459,9 @@ class TestRunBlockedWhenNotReady:
 
     def test_readiness_gate_blocks_run(self):
         """Run creation blocked when readiness.ready == false."""
-        from application.execution_engine.service import ExecutionEngineService
         from application.execution_engine.errors import RunNotReadyError
-        from domain.study_case import new_study_case, StudyCaseConfig
+        from application.execution_engine.service import ExecutionEngineService
+        from domain.study_case import StudyCaseConfig, new_study_case
 
         engine = ExecutionEngineService()
 
@@ -497,9 +491,9 @@ class TestRunBlockedWhenNotReady:
 
     def test_eligibility_gate_blocks_run(self):
         """Run creation blocked when eligibility.eligible == false."""
-        from application.execution_engine.service import ExecutionEngineService
         from application.execution_engine.errors import RunBlockedError
-        from domain.study_case import new_study_case, StudyCaseConfig
+        from application.execution_engine.service import ExecutionEngineService
+        from domain.study_case import StudyCaseConfig, new_study_case
 
         engine = ExecutionEngineService()
         case = new_study_case(
@@ -527,7 +521,7 @@ class TestRunBlockedWhenNotReady:
     def test_readiness_none_allows_run(self):
         """Run creation allowed when readiness is None."""
         from application.execution_engine.service import ExecutionEngineService
-        from domain.study_case import new_study_case, StudyCaseConfig
+        from domain.study_case import StudyCaseConfig, new_study_case
 
         engine = ExecutionEngineService()
         case = new_study_case(
@@ -548,7 +542,7 @@ class TestRunBlockedWhenNotReady:
     def test_readiness_true_allows_run(self):
         """Run creation allowed when readiness.ready == true."""
         from application.execution_engine.service import ExecutionEngineService
-        from domain.study_case import new_study_case, StudyCaseConfig
+        from domain.study_case import StudyCaseConfig, new_study_case
 
         engine = ExecutionEngineService()
         case = new_study_case(
@@ -568,8 +562,8 @@ class TestRunBlockedWhenNotReady:
 
     def test_study_case_not_found_blocks_run(self):
         """Run creation blocked when study case doesn't exist."""
-        from application.execution_engine.service import ExecutionEngineService
         from application.execution_engine.errors import StudyCaseNotFoundError
+        from application.execution_engine.service import ExecutionEngineService
 
         engine = ExecutionEngineService()
         with pytest.raises(StudyCaseNotFoundError):
@@ -590,7 +584,7 @@ class TestExecutionLifecycle:
 
     def _create_engine_with_case(self):
         from application.execution_engine.service import ExecutionEngineService
-        from domain.study_case import new_study_case, StudyCaseConfig
+        from domain.study_case import StudyCaseConfig, new_study_case
 
         engine = ExecutionEngineService()
         case = new_study_case(
@@ -763,13 +757,9 @@ class TestComputeResultSignature:
     def test_dict_key_order_irrelevant(self):
         data_a = {"b": 2, "a": 1}
         data_b = {"a": 1, "b": 2}
-        assert compute_result_signature(data_a) == compute_result_signature(
-            data_b
-        )
+        assert compute_result_signature(data_a) == compute_result_signature(data_b)
 
     def test_different_data_different_signature(self):
         data_a = {"a": 1}
         data_b = {"a": 2}
-        assert compute_result_signature(data_a) != compute_result_signature(
-            data_b
-        )
+        assert compute_result_signature(data_a) != compute_result_signature(data_b)

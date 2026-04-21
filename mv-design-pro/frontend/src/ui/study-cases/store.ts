@@ -2,7 +2,7 @@
  * Study Cases Store (Zustand) — P10 FULL MAX
  *
  * CANONICAL ALIGNMENT:
- * - P10: Study Cases / Variants (PowerFactory-grade)
+ * - P10: Study Cases / Variants (Canonical-grade)
  * - SYSTEM_SPEC.md: Operating modes and result lifecycle
  *
  * STATE MANAGEMENT:

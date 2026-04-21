@@ -1,21 +1,21 @@
 /**
- * CONNECTION ROUTING — ETAP-grade algorytm prowadzenia polaczen
+ * CONNECTION ROUTING — CANONICAL-grade algorytm prowadzenia polaczen
  *
- * PR-SLD-ETAP-GEOMETRY-01: ETAP-grade geometria SLD
+ * PR-SLD-CANONICAL-GEOMETRY-01: CANONICAL-grade geometria SLD
  *
  * CANONICAL ALIGNMENT:
  * - SLD_KANONICZNA_SPECYFIKACJA.md § 4: Polaczenia
- * - sldEtapStyle.ts: ETAP_GEOMETRY (single source of truth)
- * - ETAP software visual standards
+ * - sldCanonicalStyle.ts: CANONICAL_GEOMETRY (single source of truth)
+ * - CANONICAL software visual standards
  *
  * FEATURES:
  * - Deterministyczny routing (ten sam input -> ta sama sciezka)
- * - ETAP STYLE: pola SN wychodzą PIONOWO z szyny
+ * - CANONICAL STYLE: pola SN wychodzą PIONOWO z szyny
  * - Brak ukosnych polaczen z szyn (busbar)
  * - Preferuj pion/poziom (I/L routes)
  * - Snap do siatki
  *
- * ETAP ROUTING RULES:
+ * CANONICAL ROUTING RULES:
  * 1. Connections FROM busbar → ALWAYS vertical first
  * 2. No diagonal segments from busbars
  * 3. Prefer straight vertical lines for feeders
@@ -25,7 +25,7 @@
 
 import type { AnySldSymbol, BranchSymbol, Position, SwitchSymbol, SourceSymbol, LoadSymbol, NodeSymbol } from '../types';
 import { getPortPoint, selectBestPorts, getSymbolBoundingBox, type PortName } from './portUtils';
-import { ETAP_GEOMETRY } from '../../sld/sldEtapStyle';
+import { CANONICAL_GEOMETRY } from '../../sld/sldCanonicalStyle';
 import {
   routeWithObstacles,
   type RoutingObstacle,
@@ -79,14 +79,14 @@ export interface RoutingConfig {
   gridSnap: number;
 }
 
-/** Centralna konfiguracja routingu (ETAP-grade, uses ETAP_GEOMETRY tokens) */
+/** Centralna konfiguracja routingu (CANONICAL-grade, uses CANONICAL_GEOMETRY tokens) */
 export const ROUTING_GEOMETRY_CONFIG: RoutingConfig = {
-  corridorOffsetFromSpine: ETAP_GEOMETRY.routing.corridorOffset,
-  corridorOffsetFromBusbar: ETAP_GEOMETRY.routing.minBusbarExitLength,
+  corridorOffsetFromSpine: CANONICAL_GEOMETRY.routing.corridorOffset,
+  corridorOffsetFromBusbar: CANONICAL_GEOMETRY.routing.minBusbarExitLength,
   obstacleMargin: 8,
   minBendLength: 18,
   maxStepOutAttempts: 6,
-  gridSnap: ETAP_GEOMETRY.layout.gridSize,
+  gridSnap: CANONICAL_GEOMETRY.layout.gridSize,
 };
 
 /** Domyslna konfiguracja routingu */
@@ -161,7 +161,7 @@ export function generateConnections(
 
   // =============================================================================
   // AUTO-LAYOUT V1: Pre-compute busbar feeder paths (DEFAULT ON)
-  // Busbar feeders always use auto-layout for ETAP-grade orthogonal routing.
+  // Busbar feeders always use auto-layout for CANONICAL-grade orthogonal routing.
   // AUTO-FALLBACK: If auto-layout fails for any edge, standard routing is used.
   // DETERMINISM: Busbars processed in sorted order to ensure consistent results.
   // =============================================================================
@@ -413,7 +413,7 @@ function createConnection(
 /**
  * Wygeneruj sciezke miedzy dwoma punktami.
  *
- * ETAP-GRADE ROUTING:
+ * CANONICAL-GRADE ROUTING:
  * - Polaczenia z szyny (busbar) → ZAWSZE pionowo najpierw
  * - Brak ukosnych polaczen z szyn
  * - Preferuj proste linie pionowe (feeders)
@@ -439,16 +439,16 @@ function routeOrthogonal(
     return [snapStart];
   }
 
-  // ETAP RULE: Check if connection involves a busbar
+  // CANONICAL RULE: Check if connection involves a busbar
   const fromIsBus = fromSymbol.elementType === 'Bus';
   const toIsBus = toSymbol.elementType === 'Bus';
   const involveBusbar = fromIsBus || toIsBus;
 
   const corridor = resolveCorridor(fromSymbol, toSymbol, snapStart, snapEnd, spineX, config);
 
-  // ETAP STYLE: For busbar connections, enforce vertical-first routing
+  // CANONICAL STYLE: For busbar connections, enforce vertical-first routing
   // This ensures feeders exit VERTICALLY from the busbar
-  if (involveBusbar && ETAP_GEOMETRY.routing.busbarOrthogonal) {
+  if (involveBusbar && CANONICAL_GEOMETRY.routing.busbarOrthogonal) {
     // If on same X axis → straight vertical line (PERFECT for feeders)
     if (snapStart.x === snapEnd.x) {
       const iPath = normalizePath([snapStart, snapEnd], config.gridSnap);
@@ -463,7 +463,7 @@ function routeOrthogonal(
     const otherEnd = fromIsBus ? snapEnd : snapStart;
 
     // Calculate intermediate point: vertical from busbar, then horizontal
-    const minVerticalLength = ETAP_GEOMETRY.routing.minBusbarExitLength;
+    const minVerticalLength = CANONICAL_GEOMETRY.routing.minBusbarExitLength;
     const verticalDirection = otherEnd.y > busbarEnd.y ? 1 : -1;
 
     // Intermediate point: same X as busbar, Y offset by minimum vertical length
@@ -525,7 +525,7 @@ function routeOrthogonal(
   // NON-BUSBAR CONNECTIONS: Standard routing logic
   // =============================================================================
   // OBSTACLE-AWARE A* ROUTING (DEFAULT ON for non-busbar connections)
-  // Provides PowerFactory/ETAP-grade orthogonal routing with obstacle avoidance.
+  // Provides Canonical/CANONICAL-grade orthogonal routing with obstacle avoidance.
   // FALLBACK: If A* fails, use standard L/Z routing below.
   // =============================================================================
   const excludeIds = new Set([fromSymbol.id, toSymbol.id]);
@@ -579,7 +579,7 @@ function routeOrthogonal(
 
   // Dla elementow na roznych osiach uzyj prostego L-route
   // Preferuj pion dla spine layout
-  const preferVertical = ETAP_GEOMETRY.routing.preferVertical;
+  const preferVertical = CANONICAL_GEOMETRY.routing.preferVertical;
   const lPath = normalizePath(
     tryLRoute(snapStart, snapEnd, preferVertical ? 'vertical' : 'horizontal', config.gridSnap),
     config.gridSnap
@@ -604,7 +604,7 @@ function routeOrthogonal(
   }
 
   // Ostateczny fallback: L-route (ignoruj kolizje dla czytelnosci)
-  // ETAP: NEVER use diagonal for busbar connections
+  // CANONICAL: NEVER use diagonal for busbar connections
   return normalizePath(
     tryLRoute(snapStart, snapEnd, 'vertical', config.gridSnap),
     config.gridSnap
@@ -984,7 +984,7 @@ function alignPathToEndpoints(
 /**
  * Ensure all segments in a path are orthogonal (horizontal or vertical).
  * Inserts intermediate L-bend points where consecutive points differ in both X and Y.
- * Uses vertical-first routing (ETAP standard: feeders exit busbar vertically).
+ * Uses vertical-first routing (CANONICAL standard: feeders exit busbar vertically).
  *
  * DETERMINISTIC: Pure function, vertical-first is consistent rule.
  */

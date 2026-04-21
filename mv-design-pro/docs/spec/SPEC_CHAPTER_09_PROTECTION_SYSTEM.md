@@ -1,4 +1,10 @@
-# Rozdział 9 — System Zabezpieczeń (Protection System) — ETAP-Grade
+﻿> **Historical note (V12.5)**
+> This file is preserved as historical reference only.
+> docs/spec/ is not an active source of truth.
+> Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
+> Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
+
+# Rozdział 9 — System Zabezpieczeń (Protection System) — benchmark-Grade
 
 **Wersja:** 1.1
 **Status:** AS-IS (z sekcjami TO-BE jawnie oznaczonymi)
@@ -13,7 +19,7 @@
 
 ### §9.0.1 Cel
 
-Niniejszy rozdział definiuje **kanoniczny system zabezpieczeń MV-DESIGN-PRO** na poziomie ETAP-grade, obejmujący:
+Niniejszy rozdział definiuje **kanoniczny system zabezpieczeń MV-DESIGN-PRO** na poziomie benchmark-grade, obejmujący:
 - model danych zabezpieczeń (ProtectionDevice, nastawy, krzywe),
 - podział na klasy: TECHNOLOGICZNE vs SIECIOWE,
 - koordynację czasowo-prądową (czułość, selektywność, przeciążalność),
@@ -43,7 +49,7 @@ Rozdział 2 definiuje **kompletny kanon architektoniczny zabezpieczeń** na pozi
 | #21 | Podział Technological vs Network | Rozdział 2 §2.15 |
 | #22 | Koordynacja falownik ↔ sieć | Rozdział 2 §2.16 |
 | #23 | White Box Protection | Rozdział 2 §2.17 |
-| #24 | UI nastaw ETAP-style | Rozdział 2 §2.18 |
+| #24 | UI nastaw benchmark-style | Rozdział 2 §2.18 |
 | #25 | ProtectionDevice jako byt logiczny | Rozdział 2 §2.20 |
 
 ---
@@ -716,7 +722,7 @@ Sanity checks walidują **konfigurację zabezpieczeń** przed uruchomieniem anal
 
 ---
 
-## §9.12 — UI nastaw (ETAP-Style) — kontrakt prezentacyjny
+## §9.12 — UI nastaw (benchmark-Style) — kontrakt prezentacyjny
 
 ### §9.12.1 Zasada: UI = projekcja ENM + Protection + Analysis (BINDING — Decyzja #24)
 
@@ -725,7 +731,7 @@ UI zabezpieczeń NIE posiada osobnego modelu danych. Jest **projekcją** danych 
 - Protection domain (urządzenia, nastawy),
 - Analysis (wyniki koordynacji, TCC).
 
-### §9.12.2 Tabela ETAP-style — 11 kolumn obowiązkowych (BINDING)
+### §9.12.2 Tabela benchmark-style — 11 kolumn obowiązkowych (BINDING)
 
 | # | Kolumna | Źródło danych |
 |---|---------|---------------|
@@ -803,7 +809,7 @@ System generuje raporty zabezpieczeń w formatach:
 | DOCX | `reporting/protection_report_docx.py` | ✅ AS-IS |
 
 Raporty zawierają:
-- tabelę nastaw (ETAP-style),
+- tabelę nastaw (benchmark-style),
 - wykresy TCC,
 - wyniki koordynacji (czułość, selektywność, przeciążalność),
 - White Box trace (łańcuch przyczynowy).
@@ -863,11 +869,11 @@ Raporty zawierają:
 | 15 | Sanity checks: 16 reguł (VOLT/FREQ/ROCOF/OC/SPZ/GEN) | ✅ |
 | 16 | Walidacje architektoniczne: E-P01..E-P04, W-P01..W-P04, I-P01..I-P02 | ✅ |
 | 17 | Koordynacja OZE: falownik = warunek brzegowy, 5 scenariuszy | ✅ |
-| 18 | UI ETAP-style: 11 kolumn, 2 tryby (standard/ekspercki), TCC | ✅ |
+| 18 | UI benchmark-style: 11 kolumn, 2 tryby (standard/ekspercki), TCC | ✅ |
 | 19 | API: 12 endpointów (runs, coordination, comparison) | ✅ |
 | 20 | Eksport: PDF + DOCX | ✅ |
 | 21 | 8 zakazów (Z-PROT-01..08) i 8 inwariantów (INV-PROT-01..08) | ✅ |
-| 22 | Parytet ETAP w modelu zabezpieczeń | ✅ |
+| 22 | Parytet benchmark w modelu zabezpieczeń | ✅ |
 | 23 | Sekcje TO-BE NIE blokują zatwierdzenia | ✅ |
 
 ### §9.17.2 Zidentyfikowane GAP-y (TO-BE)
@@ -1081,7 +1087,7 @@ class VTType:
 
 #### §9.A.3.3 Migracja ct_ratio (backward compatibility)
 
-| Etap | Opis |
+| benchmark | Opis |
 |------|------|
 | v1 (AS-IS) | `ct_ratio: str` na ProtectionDevice (np. "400/5") |
 | v2 (migracja) | `ct_type_ref: str \| None` (referencja do CTType) + `ct_ratio: str` (zachowany, read-only) |
@@ -1196,3 +1202,4 @@ class OvercurrentStageSettings:
 ---
 
 *Koniec Rozdziału 9*
+

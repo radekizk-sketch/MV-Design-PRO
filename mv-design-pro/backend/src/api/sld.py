@@ -12,13 +12,11 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-
 from api.canonical_run_views import build_sld_overlay
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
 from enm.canonical_analysis import get_run as get_canonical_run
-
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 router = APIRouter()
 

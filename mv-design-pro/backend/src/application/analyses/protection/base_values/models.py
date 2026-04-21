@@ -21,7 +21,6 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal
 
-
 # =============================================================================
 # Source Enums — skąd pochodzą wartości bazowe
 # =============================================================================
@@ -36,6 +35,7 @@ class BaseValueSourceUn(str, Enum):
     - BoundaryNode: z punktu wspólnego przyłączenia
     - UNKNOWN: brak danych (bez zgadywania)
     """
+
     BUS = "BUS"
     VT_PRIMARY = "VT_PRIMARY"
     BoundaryNode = "BoundaryNode"
@@ -52,6 +52,7 @@ class BaseValueSourceIn(str, Enum):
     - BoundaryNode: z danych przyłączeniowych BoundaryNode
     - UNKNOWN: brak danych (bez zgadywania)
     """
+
     LINE = "LINE"
     TRANSFORMER_SIDE = "TRANSFORMER_SIDE"
     BREAKER = "BREAKER"
@@ -68,6 +69,7 @@ class ProtectedElementType(str, Enum):
     """
     Typ elementu chronionego.
     """
+
     LINE = "LINE"
     CABLE = "CABLE"
     TRANSFORMER = "TRANSFORMER"
@@ -84,6 +86,7 @@ class TransformerSide(str, Enum):
     - HV: strona górnego napięcia (WN / SN)
     - LV: strona dolnego napięcia (nN)
     """
+
     HV = "HV"
     LV = "LV"
 
@@ -117,6 +120,7 @@ class ProtectedElementContext:
         # Dane BoundaryNode
         connection_rated_current_a: prąd znamionowy BoundaryNode [A] (jeśli dostępne)
     """
+
     element_type: ProtectedElementType
     element_id: str
 
@@ -178,6 +182,7 @@ class BaseValues:
         source_in: źródło wartości In
         notes_pl: notatki po polsku (dla audytu/debugowania)
     """
+
     un_kv: float | None
     in_a: float | None
     source_un: BaseValueSourceUn
@@ -234,6 +239,7 @@ class ProtectionSetpointBasis(str, Enum):
     - HZ: Częstotliwość jako baza (50 Hz / 60 Hz)
     - ABS: Wartość bezwzględna (np. 47.5 Hz, 2 Hz/s)
     """
+
     UN = "UN"
     IN = "IN"
     HZ = "HZ"
@@ -250,6 +256,7 @@ class ProtectionSetpointOperator(str, Enum):
     - LE: Less or Equal (<=)
     - EQ: Equal (=) - rzadko używane
     """
+
     LT = "LT"
     GT = "GT"
     GE = "GE"
@@ -277,6 +284,7 @@ class ProtectionSetpoint:
         unit: jednostka nastawy (pu dla UN/IN, A/V/Hz/etc dla ABS)
         display_pl: kanoniczny zapis polski (do wyświetlenia)
     """
+
     basis: ProtectionSetpointBasis
     operator: ProtectionSetpointOperator
     unit: ProtectionSetpointUnit
@@ -329,6 +337,7 @@ class ProtectionComputedValue:
         unit: jednostka wartości (A/V/kV/Hz/Hz/s)
         computed_from: opis źródła obliczenia (WYMAGANY — dla audytu)
     """
+
     value: float
     unit: ProtectionComputedUnit
     computed_from: str

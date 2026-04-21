@@ -36,15 +36,13 @@ from .types import (
 # =============================================================================
 
 JTH_CU_XLPE = 143.0  # Miedź + XLPE (θb=90°C → θk=250°C)
-JTH_AL_XLPE = 94.0   # Aluminium + XLPE (θb=90°C → θk=250°C)
-JTH_CU_EPR = 143.0   # Miedź + EPR (θb=90°C → θk=250°C)
-JTH_AL_EPR = 94.0    # Aluminium + EPR (θb=90°C → θk=250°C)
-JTH_AL_OHL = 94.0    # Aluminium linie napowietrzne (AAC)
-JTH_AL_ST_OHL = 88.0 # Aluminium-stal linie napowietrzne (ACSR/AFL)
+JTH_AL_XLPE = 94.0  # Aluminium + XLPE (θb=90°C → θk=250°C)
+JTH_CU_EPR = 143.0  # Miedź + EPR (θb=90°C → θk=250°C)
+JTH_AL_EPR = 94.0  # Aluminium + EPR (θb=90°C → θk=250°C)
+JTH_AL_OHL = 94.0  # Aluminium linie napowietrzne (AAC)
+JTH_AL_ST_OHL = 88.0  # Aluminium-stal linie napowietrzne (ACSR/AFL)
 
-LINE_SOURCE_REFERENCE = (
-    "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN"
-)
+LINE_SOURCE_REFERENCE = "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN"
 CABLE_BASE_SOURCE_REFERENCE = (
     "IEC 60502-2 / IEC 60949 / matryca bazowych kabli SN 12/20 kV MV-DESIGN-PRO"
 )
@@ -1778,9 +1776,7 @@ def get_line_catalog_quality_summary() -> dict[str, Any]:
     )
     return {
         "liczba_linii_ogolem": len(lines),
-        "liczba_linii_produkcyjnych": catalog_counter.get(
-            CatalogStatus.PRODUKCYJNY_V1.value, 0
-        ),
+        "liczba_linii_produkcyjnych": catalog_counter.get(CatalogStatus.PRODUKCYJNY_V1.value, 0),
         "liczba_linii_testowych": catalog_counter.get(CatalogStatus.TESTOWY.value, 0),
         "liczba_czesciowo_zweryfikowanych": verification_counter.get(
             CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value, 0
@@ -1820,9 +1816,7 @@ def get_cable_catalog_quality_summary() -> dict[str, Any]:
     )
     return {
         "liczba_kabli_ogolem": len(cables),
-        "liczba_kabli_produkcyjnych": catalog_counter.get(
-            CatalogStatus.PRODUKCYJNY_V1.value, 0
-        ),
+        "liczba_kabli_produkcyjnych": catalog_counter.get(CatalogStatus.PRODUKCYJNY_V1.value, 0),
         "liczba_kabli_testowych": catalog_counter.get(CatalogStatus.TESTOWY.value, 0),
         "liczba_zweryfikowanych": verification_counter.get(
             CatalogVerificationStatus.ZWERYFIKOWANY.value, 0
@@ -1845,14 +1839,10 @@ def get_cable_catalog_quality_summary() -> dict[str, Any]:
             }
         ),
         "liczba_typow_1z": sum(
-            1
-            for record in cables
-            if (record.get("params") or {}).get("number_of_cores") == 1
+            1 for record in cables if (record.get("params") or {}).get("number_of_cores") == 1
         ),
         "liczba_typow_3z": sum(
-            1
-            for record in cables
-            if (record.get("params") or {}).get("number_of_cores") == 3
+            1 for record in cables if (record.get("params") or {}).get("number_of_cores") == 3
         ),
         "statusy_weryfikacji": _status_list(cables, "verification_status"),
         "statusy_katalogowe": _status_list(cables, "catalog_status"),

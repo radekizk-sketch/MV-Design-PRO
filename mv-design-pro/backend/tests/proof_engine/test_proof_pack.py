@@ -8,8 +8,8 @@ from hashlib import sha256
 from uuid import UUID
 
 from application.proof_engine.proof_generator import ProofGenerator, SC3FInput
-from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
 from application.proof_engine.proof_inspector.exporters import is_pdf_export_available
+from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
 
 
 def _build_sc3f_proof():

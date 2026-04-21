@@ -1,20 +1,20 @@
-/**
- * Results Lifecycle Store (PowerFactory-grade)
+﻿/**
+ * Results Lifecycle Store (Canonical-grade)
  *
  * CANONICAL ALIGNMENT:
- * - powerfactory_ui_parity.md § B.2: Result freshness states
- * - SYSTEM_SPEC.md § 5: Result lifecycle management
+ * - ui_canonical_parity.md Â§ B.2: Result freshness states
+ * - SYSTEM_SPEC.md Â§ 5: Result lifecycle management
  *
  * STATE MACHINE:
- *   NONE → FRESH (po obliczeniach)
- *   FRESH → OUTDATED (mutacja modelu/topologii)
- *   OUTDATED → FRESH (po ponownych obliczeniach)
- *   Any → NONE (reset/nowy projekt)
+ *   NONE â†’ FRESH (po obliczeniach)
+ *   FRESH â†’ OUTDATED (mutacja modelu/topologii)
+ *   OUTDATED â†’ FRESH (po ponownych obliczeniach)
+ *   Any â†’ NONE (reset/nowy projekt)
  *
- * POWERFACTORY PARITY:
- * - Brak auto-run — jawny przycisk [Oblicz]
- * - Overlay wyników tylko dla FRESH
- * - Każda zmiana → OUTDATED
+ * CANONICAL PARITY:
+ * - Brak auto-run â€” jawny przycisk [Oblicz]
+ * - Overlay wynikĂłw tylko dla FRESH
+ * - KaĹĽda zmiana â†’ OUTDATED
  */
 
 import { create } from 'zustand';
@@ -95,7 +95,7 @@ export const useResultsStore = create<ResultsState>((set, _get) => ({
 
   /**
    * Mark results as FRESH after successful calculation.
-   * Transition: NONE|OUTDATED → FRESH
+   * Transition: NONE|OUTDATED â†’ FRESH
    */
   markFresh: (result) =>
     set(() => ({
@@ -106,8 +106,8 @@ export const useResultsStore = create<ResultsState>((set, _get) => ({
 
   /**
    * Mark results as OUTDATED after model mutation.
-   * Transition: FRESH → OUTDATED
-   * (NONE stays NONE — no results to invalidate)
+   * Transition: FRESH â†’ OUTDATED
+   * (NONE stays NONE â€” no results to invalidate)
    */
   markOutdated: () =>
     set((state) => ({
@@ -116,7 +116,7 @@ export const useResultsStore = create<ResultsState>((set, _get) => ({
 
   /**
    * Reset to initial state (new project, clear results).
-   * Transition: Any → NONE
+   * Transition: Any â†’ NONE
    */
   reset: () =>
     set(() => ({
@@ -234,3 +234,4 @@ export function useRunHistory(): RunHistoryEntry[] {
 export function useLastAnalysisType(): string | null {
   return useResultsStore((state) => state.lastResult?.analysisType ?? null);
 }
+

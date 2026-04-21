@@ -4,7 +4,7 @@
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 4: Menu Kontekstowe specifications
  * - sld_rules.md § E.2, § E.3: Context Menu (Edit Mode) and (Result Mode)
- * - powerfactory_ui_parity.md § A.1: Mode-based action gating
+ * - ui_canonical_parity.md § A.1: Mode-based action gating
  *
  * All labels are in Polish per wizard_screens.md.
  */
@@ -277,12 +277,7 @@ export function buildNetworkModelContextMenu(
   const isModelEdit = mode === 'MODEL_EDIT';
 
   const addSubmenu: ContextMenuAction[] = [
-    { id: 'add_bus', label: 'Szynę...', enabled: isModelEdit, visible: true, handler: options.onAddBus },
-    { id: 'add_line', label: 'Linię/kabel...', enabled: isModelEdit, visible: true, handler: options.onAddLine },
-    { id: 'add_transformer', label: 'Transformator 2-uzwojeniowy...', enabled: isModelEdit, visible: true, handler: options.onAddTransformer },
-    { id: 'add_switch', label: 'Wyłącznik...', enabled: isModelEdit, visible: true, handler: options.onAddSwitch },
-    { id: 'add_source', label: 'Źródło (sieć zewnętrzna)...', enabled: isModelEdit, visible: true, handler: options.onAddSource },
-    { id: 'add_load', label: 'Odbiornik...', enabled: isModelEdit, visible: true, handler: options.onAddLoad },
+    { id: 'add_grid_source_sn', label: 'Dodaj GPZ...', enabled: isModelEdit, visible: true, handler: options.onAddSource },
   ];
 
   return [
@@ -323,7 +318,7 @@ export function getContextMenuHeader(
     Bus: 'Szyna SN',
     LineBranch: 'Linia',
     TransformerBranch: 'Transformator',
-    Switch: 'Łącznik SN',
+    Switch: '\u0141\u0105cznik SN',
     Source: 'Źródło SN',
     Load: 'Odbiornik',
     Generator: 'Generator',
@@ -355,7 +350,7 @@ export function getContextMenuHeader(
     MeasurementNN: 'Przekładnik nN',
     AuxBus: 'Szyna pomocnicza',
     ConnectionPoint: 'Punkt przyłączenia',
-    SwitchNN: 'Łącznik nN',
+    SwitchNN: '\u0141\u0105cznik nN',
     ProtectionNN: 'Zabezpieczenie nN',
     SourceController: 'Sterownik źródła',
     InternalJunction: 'Punkt wspólny',
@@ -365,7 +360,7 @@ export function getContextMenuHeader(
     TelecontrolDevice: 'Telemechanika',
     BusSectionNN: 'Sekcja szyn nN',
     BusCouplerNN: 'Sprzęgło szyn nN',
-    ReserveLink: 'Łącznik rezerwowy',
+    ReserveLink: '\u0141\u0105cznik rezerwowy',
     SourceDisconnect: 'Punkt odłączenia',
     PowerLimit: 'Ograniczenie mocy',
     WorkProfile: 'Profil pracy',

@@ -21,7 +21,6 @@ Coverage:
 from __future__ import annotations
 
 import pytest
-
 from domain.topology_links import (
     DuplicateLinkError,
     EmptyIdError,
@@ -37,7 +36,6 @@ from domain.topology_links import (
     resolve_relay_to_target,
     validate_topology_links,
 )
-
 
 # =============================================================================
 # HELPERS
@@ -291,8 +289,10 @@ class TestResolveCBToTarget:
         """Existing CB resolves to correct target."""
         links = (
             _link(
-                link_id="link-001", relay_id="r1",
-                cb_id="cb-A", target_ref="branch-X",
+                link_id="link-001",
+                relay_id="r1",
+                cb_id="cb-A",
+                target_ref="branch-X",
             ),
         )
         link_set = build_topology_link_set(links)
@@ -319,8 +319,10 @@ class TestResolveRelayToTarget:
         """Relay resolves to (cb_id, target_ref) tuple."""
         links = (
             _link(
-                link_id="link-001", relay_id="r1",
-                cb_id="cb-A", target_ref="branch-X",
+                link_id="link-001",
+                relay_id="r1",
+                cb_id="cb-A",
+                target_ref="branch-X",
             ),
         )
         link_set = build_topology_link_set(links)
@@ -348,15 +350,21 @@ class TestGetLinksByStation:
         """Returns only links for given station."""
         links = (
             _link(
-                link_id="link-001", relay_id="r1", cb_id="cb1",
+                link_id="link-001",
+                relay_id="r1",
+                cb_id="cb1",
                 station_id="station-A",
             ),
             _link(
-                link_id="link-002", relay_id="r2", cb_id="cb2",
+                link_id="link-002",
+                relay_id="r2",
+                cb_id="cb2",
                 station_id="station-B",
             ),
             _link(
-                link_id="link-003", relay_id="r3", cb_id="cb3",
+                link_id="link-003",
+                relay_id="r3",
+                cb_id="cb3",
                 station_id="station-A",
             ),
         )
@@ -367,9 +375,7 @@ class TestGetLinksByStation:
 
     def test_no_links_for_station(self):
         """Returns empty tuple for non-existent station."""
-        links = (
-            _link(link_id="link-001", station_id="station-A"),
-        )
+        links = (_link(link_id="link-001", station_id="station-A"),)
         link_set = build_topology_link_set(links)
         result = get_links_by_station(link_set, "station-X")
         assert result == ()
@@ -378,16 +384,25 @@ class TestGetLinksByStation:
         """Station can contain multiple relay-CB-target mappings."""
         links = (
             _link(
-                link_id="link-001", relay_id="r1", cb_id="cb1",
-                target_ref="branch-1", station_id="station-A",
+                link_id="link-001",
+                relay_id="r1",
+                cb_id="cb1",
+                target_ref="branch-1",
+                station_id="station-A",
             ),
             _link(
-                link_id="link-002", relay_id="r2", cb_id="cb2",
-                target_ref="branch-2", station_id="station-A",
+                link_id="link-002",
+                relay_id="r2",
+                cb_id="cb2",
+                target_ref="branch-2",
+                station_id="station-A",
             ),
             _link(
-                link_id="link-003", relay_id="r3", cb_id="cb3",
-                target_ref="branch-3", station_id="station-A",
+                link_id="link-003",
+                relay_id="r3",
+                cb_id="cb3",
+                target_ref="branch-3",
+                station_id="station-A",
             ),
         )
         link_set = build_topology_link_set(links)
@@ -418,12 +433,8 @@ class TestDeterminism:
 
     def test_different_inputs_different_signature(self):
         """Different link data produces different signatures."""
-        links_a = (
-            _link(link_id="link-001", relay_id="r1", cb_id="cb1"),
-        )
-        links_b = (
-            _link(link_id="link-001", relay_id="r1", cb_id="cb2"),
-        )
+        links_a = (_link(link_id="link-001", relay_id="r1", cb_id="cb1"),)
+        links_b = (_link(link_id="link-001", relay_id="r1", cb_id="cb2"),)
         set_a = build_topology_link_set(links_a)
         set_b = build_topology_link_set(links_b)
         assert set_a.deterministic_signature != set_b.deterministic_signature
@@ -485,8 +496,12 @@ class TestSerialization:
         link = _link(station_id="station-A", label_pl="Pole")
         d = link.to_dict()
         expected_keys = {
-            "link_id", "relay_id", "cb_id",
-            "target_ref", "station_id", "label_pl",
+            "link_id",
+            "relay_id",
+            "cb_id",
+            "target_ref",
+            "station_id",
+            "label_pl",
         }
         assert set(d.keys()) == expected_keys
 
@@ -516,8 +531,10 @@ class TestWhiteBoxTrace:
         """Trace includes sorted ID lists."""
         links = (
             _link(
-                link_id="link-001", relay_id="r1",
-                cb_id="cb1", station_id="station-A",
+                link_id="link-001",
+                relay_id="r1",
+                cb_id="cb1",
+                station_id="station-A",
             ),
         )
         link_set = build_topology_link_set(links)
@@ -611,9 +628,7 @@ class TestErrorHierarchy:
 
     def test_all_errors_have_code_and_message_pl(self):
         """All error types store code and message_pl."""
-        err = TopologyLinkError(
-            code="topology.test", message_pl="Testowy komunikat"
-        )
+        err = TopologyLinkError(code="topology.test", message_pl="Testowy komunikat")
         assert err.code == "topology.test"
         assert err.message_pl == "Testowy komunikat"
         assert str(err) == "Testowy komunikat"

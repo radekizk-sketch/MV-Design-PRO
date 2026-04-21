@@ -3,12 +3,28 @@
  */
 export {
   ROUTES,
+  ANALYSIS_ROUTE_ALIASES,
   getCurrentRoute,
   getRouteByHash,
+  isAnalysisRouteAlias,
   navigateTo,
   navigateToSld,
+  navigateToSldView,
   navigateToResults,
+  navigateToAnalysis,
+  navigateToReport,
+  navigateToVariants,
+  navigateToResultsProtection,
+  navigateToResultsPowerFlow,
   navigateToProof,
+  navigateToCompare,
+  navigateToNetworkBuild,
+  navigateToCaseConfig,
+  navigateToEnmInspector,
+  navigateToFaultScenarios,
+  navigateToCatalog,
+  resolveAnalysisRouteAliasTab,
+  type AnalysisRouteTabId,
   type RouteDefinition,
 } from './routes';
 

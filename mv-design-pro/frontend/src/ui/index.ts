@@ -3,7 +3,7 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md: UI components follow Wizard specifications
- * - powerfactory_ui_parity.md: PF-style Property Grid and interactions
+ * - ui_canonical_parity.md: PF-style Property Grid and interactions
  * - sld_rules.md: SLD ↔ selection synchronization
  *
  * Components:
@@ -75,7 +75,7 @@ export type {
   ProtectionTypeUnion,
 } from './protection';
 
-// SLD Editor (P30b - ≥110% PowerFactory)
+// SLD Editor (P30b - ≥110% Canonical)
 export {
   SldEditor,
   useSldEditorStore,
@@ -120,7 +120,7 @@ export type {
 export { IssuePanel, IssuePanelContainer } from './issue-panel';
 export type { IssuePanelProps, IssuePanelContainerProps } from './issue-panel';
 
-// Inspector (READ-ONLY Property Grid - PowerFactory parity)
+// Inspector (READ-ONLY Property Grid - Canonical parity)
 export {
   InspectorPanel,
   InspectorPanelConnected,
@@ -137,7 +137,7 @@ export type {
   ShortCircuitResultData,
 } from './inspector';
 
-// SLD Read-Only Viewer (PowerFactory parity - presentation only)
+// SLD Read-Only Viewer (Canonical parity - presentation only)
 export {
   SLDView,
   SLDViewCanvas,

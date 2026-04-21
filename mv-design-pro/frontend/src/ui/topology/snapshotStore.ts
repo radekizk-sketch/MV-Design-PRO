@@ -56,6 +56,8 @@ export interface SnapshotState {
   lastChanges: ChangesInfo | null;
   /** Last domain events. */
   lastEvents: DomainEvent[];
+  /** History of domain operations for the snapshot timeline. */
+  operationHistory: SnapshotOperationHistoryEntry[];
   /** Loading state. */
   loading: boolean;
   /** Last error message (null = no error). */
@@ -128,6 +130,73 @@ export function selectBlockerCount(readiness: ReadinessInfo | null): number {
   return readiness?.blockers?.length ?? 0;
 }
 
+export interface SnapshotOperationHistoryEntry {
+  id: string;
+  timestamp: string;
+  operation: string;
+  operationLabel?: string | null;
+  elementRef: string | null;
+  elementName: string | null;
+  status: 'success' | 'error' | 'pending';
+  createdElementIds?: string[];
+  updatedElementIds?: string[];
+  deletedElementIds?: string[];
+}
+
+function resolveElementName(
+  snapshot: EnergyNetworkModel | null,
+  elementRef: string | null,
+): string | null {
+  if (!snapshot || !elementRef) {
+    return null;
+  }
+
+  const candidates = [
+    ...(snapshot.buses ?? []),
+    ...(snapshot.branches ?? []),
+    ...(snapshot.transformers ?? []),
+    ...(snapshot.sources ?? []),
+    ...(snapshot.loads ?? []),
+    ...(snapshot.generators ?? []),
+    ...(snapshot.substations ?? []),
+    ...(snapshot.bays ?? []),
+    ...(snapshot.junctions ?? []),
+    ...(snapshot.branch_points ?? []),
+    ...(snapshot.corridors ?? []),
+    ...(snapshot.measurements ?? []),
+    ...(snapshot.protection_assignments ?? []),
+  ];
+
+  const match = candidates.find((item) => item.ref_id === elementRef || item.id === elementRef);
+  return match?.name ?? null;
+}
+
+function createHistoryEntry(
+  operation: string,
+  payload: Record<string, unknown>,
+  response: DomainOpResponseV1 | null,
+  status: 'success' | 'error',
+): SnapshotOperationHistoryEntry {
+  const elementRef =
+    response?.selection_hint?.element_id
+    ?? (typeof payload.element_ref === 'string' ? payload.element_ref : null)
+    ?? (typeof payload.bus_ref === 'string' ? payload.bus_ref : null)
+    ?? response?.changes.created_element_ids?.[0]
+    ?? null;
+
+  return {
+    id: `${operation}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: new Date().toISOString(),
+    operation,
+    elementRef,
+    elementName: resolveElementName(response?.snapshot ?? null, elementRef),
+    status,
+    createdElementIds: response?.changes.created_element_ids ?? [],
+    updatedElementIds: response?.changes.updated_element_ids ?? [],
+    deletedElementIds: response?.changes.deleted_element_ids ?? [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
@@ -142,6 +211,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   selectionHint: null,
   lastChanges: null,
   lastEvents: [],
+  operationHistory: [],
   loading: false,
   error: null,
   errorCode: null,
@@ -162,6 +232,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
 
       if (response.error) {
         set({
+          operationHistory: [
+            createHistoryEntry(opName, payload, response, 'error'),
+            ...get().operationHistory,
+          ],
           loading: false,
           error: response.error,
           errorCode: response.error_code ?? null,
@@ -179,6 +253,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         selectionHint: response.selection_hint,
         lastChanges: response.changes,
         lastEvents: response.domain_events,
+        operationHistory: [
+          createHistoryEntry(opName, payload, response, 'success'),
+          ...get().operationHistory,
+        ],
         loading: false,
         error: null,
         errorCode: null,
@@ -187,7 +265,15 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       return response;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      set({ loading: false, error: errorMsg, errorCode: 'NETWORK_ERROR' });
+      set({
+        operationHistory: [
+          createHistoryEntry(opName, payload, null, 'error'),
+          ...get().operationHistory,
+        ],
+        loading: false,
+        error: errorMsg,
+        errorCode: 'NETWORK_ERROR',
+      });
       return null;
     }
   },
@@ -241,6 +327,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: response.selection_hint,
       lastChanges: response.changes,
       lastEvents: response.domain_events,
+      operationHistory: [],
     });
   },
 
@@ -257,6 +344,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: null,
       lastChanges: null,
       lastEvents: [],
+      operationHistory: [],
       loading: false,
       error: null,
       errorCode: null,

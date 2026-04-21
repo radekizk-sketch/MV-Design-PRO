@@ -11,6 +11,7 @@ CANONICAL ALIGNMENT:
 - LATEX-ONLY: Wszystkie wzory w notacji LaTeX
 - POLISH: 100% język polski
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -32,6 +33,7 @@ class ProofValue:
         source_key: Klucz źródłowy w trace/result.
         formatted: Sformatowana wartość z jednostką.
     """
+
     symbol: str
     value: float | str | complex
     unit: str
@@ -70,6 +72,7 @@ class UnitCheckResult:
         computed_unit: Jednostka obliczona z jednostek wejściowych.
         derivation: Ścieżka derywacji jednostek.
     """
+
     passed: bool
     expected_unit: str
     computed_unit: str
@@ -94,6 +97,7 @@ class EquationDefinition:
         name_pl: Nazwa równania po polsku.
         description_pl: Opis równania po polsku.
     """
+
     equation_id: str
     latex: str
     name_pl: str
@@ -123,6 +127,7 @@ class ProofStep:
         unit_check: Wynik weryfikacji jednostek.
         source_keys: Mapping: symbol → klucz w trace.
     """
+
     step_id: str
     step_number: int
     title_pl: str
@@ -161,6 +166,7 @@ class IterationProofSection:
         state_update_step: Krok aktualizacji stanu.
         convergence_check: Krok sprawdzenia zbieżności.
     """
+
     iteration_number: int
     title_pl: str
     mismatch_step: ProofStep
@@ -216,6 +222,7 @@ class ProofHeader:
         max_iterations: Maksymalna liczba iteracji.
         slack_bus_id: ID węzła bilansującego.
     """
+
     project_name: str
     case_name: str
     run_timestamp: str
@@ -257,6 +264,7 @@ class ProofSummary:
         total_steps: Całkowita liczba kroków.
         warnings: Lista ostrzeżeń.
     """
+
     converged: bool
     iterations_count: int
     final_max_mismatch: float
@@ -290,6 +298,7 @@ class NetworkDefinitionSection:
         bus_count: Liczba węzłów.
         ybus_description: Opis macierzy admitancji.
     """
+
     title_pl: str
     base_mva: float
     slack_bus_id: str
@@ -319,6 +328,7 @@ class InitialStateSection:
         init_method: Metoda inicjalizacji ('flat' lub 'last_solution').
         init_state: Stan początkowy per bus {bus_id: {v_pu, theta_rad}}.
     """
+
     title_pl: str
     init_method: str
     init_state: dict[str, dict[str, float]]
@@ -340,6 +350,7 @@ class FinalStateSection:
         final_state: Stan końcowy per bus {bus_id: {v_pu, theta_rad, p_mw, q_mvar}}.
         power_balance: Bilans mocy.
     """
+
     title_pl: str
     final_state: dict[str, dict[str, float]]
     power_balance: dict[str, float]
@@ -363,6 +374,7 @@ class VerificationSection:
         no_contradictions: Brak sprzeczności.
         all_checks_passed: Czy wszystkie testy przeszły.
     """
+
     title_pl: str
     unit_consistency: bool
     energy_balance: bool
@@ -398,6 +410,7 @@ class PowerFlowProofDocument:
     IMMUTABLE: Po utworzeniu dokument nie może być modyfikowany.
     DETERMINISTIC: Ten sam trace → identyczny dokument.
     """
+
     document_id: str
     artifact_id: str
     created_at: str

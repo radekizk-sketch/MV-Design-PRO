@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from uuid import UUID, uuid4
 
@@ -10,6 +10,7 @@ from domain.project_design_mode import ProjectDesignMode
 
 class ProjectMode(str, Enum):
     """Tryb projektu - AS-IS (weryfikacja) vs TO-BE (projektowanie)."""
+
     AS_IS = "AS-IS"
     TO_BE = "TO-BE"
 
@@ -35,6 +36,7 @@ class Project:
     - frequency_hz: Częstotliwość sieci (50 lub 60 Hz)
     - deleted_at: Soft delete (null = aktywny)
     """
+
     id: UUID
     name: str
     description: str | None = None
@@ -52,8 +54,8 @@ class Project:
     # P10a: Reference to the active (current) network snapshot
     active_network_snapshot_id: str | None = None
     # Timestamps
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     # Soft delete
     deleted_at: datetime | None = None
 
@@ -64,7 +66,7 @@ class Network:
     project_id: UUID
     name: str
     revision: int = 1
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -75,8 +77,8 @@ class OperatingCase:
     case_payload: dict
     project_design_mode: ProjectDesignMode | None = None
     revision: int = 1
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -86,8 +88,8 @@ class StudyCase:
     name: str
     study_payload: dict
     revision: int = 1
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -96,8 +98,8 @@ class Scenario:
     project_id: UUID
     name: str
     metadata: dict = field(default_factory=dict)
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass(frozen=True)
@@ -115,6 +117,7 @@ class StudyRun:
     - solver_version_hash ensures reproducibility
     - result_state tracks validity: VALID / OUTDATED
     """
+
     id: UUID
     project_id: UUID
     case_id: UUID
@@ -127,7 +130,7 @@ class StudyRun:
     # P10a: Result validity state (VALID, OUTDATED)
     result_state: str = "VALID"
     status: str = "pending"
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     finished_at: datetime | None = None
 
 

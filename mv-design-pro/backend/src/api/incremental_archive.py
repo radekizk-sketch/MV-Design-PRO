@@ -8,18 +8,14 @@ GET  /projects/{project_id}/export/history     — historia eksportów (timestam
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
-
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
-from pydantic import BaseModel, Field
 
 from api.dependencies import get_uow_factory
 from domain.incremental_archive import (
     BaseHashMismatchError,
     IncrementalArchiveError,
-    IncrementalExportType,
     IncrementalStructureError,
     SectionChangeStatus,
     apply_incremental_archive,
@@ -34,6 +30,8 @@ from domain.project_archive import (
     ProjectArchive,
     archive_to_dict,
 )
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/projects", tags=["incremental-archive"])
 
@@ -130,9 +128,7 @@ class ExportHistoryEntry:
 # ============================================================================
 
 
-def _get_project_archive_via_service(
-    project_id: UUID, uow_factory: Any
-) -> ProjectArchive:
+def _get_project_archive_via_service(project_id: UUID, uow_factory: Any) -> ProjectArchive:
     """
     Pobierz pełne archiwum projektu za pomocą ProjectArchiveService.
 
@@ -184,7 +180,7 @@ def _record_export(
         _export_history[project_id] = []
 
     entry = ExportHistoryEntry(
-        timestamp=datetime.now(timezone.utc).isoformat(),
+        timestamp=datetime.now(UTC).isoformat(),
         archive_hash=archive_hash,
         export_type=export_type,
         sections_changed=sections_changed,
@@ -229,10 +225,8 @@ def export_incremental(
         base_fp = current_archive.fingerprints
 
     # Zbuduj archiwum przyrostowe
-    now_ts = datetime.now(timezone.utc).isoformat()
-    incremental = build_incremental_archive(
-        base_fp, current_archive, base_timestamp=now_ts
-    )
+    now_ts = datetime.now(UTC).isoformat()
+    incremental = build_incremental_archive(base_fp, current_archive, base_timestamp=now_ts)
 
     # Serializuj
     delta_bytes = serialize_incremental(incremental)
@@ -242,17 +236,13 @@ def export_incremental(
     import json
     import zipfile
 
-    full_json = json.dumps(
-        archive_to_dict(current_archive), sort_keys=True, indent=2
-    )
+    full_json = json.dumps(archive_to_dict(current_archive), sort_keys=True, indent=2)
     full_buf = io.BytesIO()
     with zipfile.ZipFile(full_buf, "w", zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("archive.json", full_json)
     full_bytes = full_buf.getvalue()
 
-    export_result = compute_export_result(
-        current_archive, incremental, full_bytes, delta_bytes
-    )
+    export_result = compute_export_result(current_archive, incremental, full_bytes, delta_bytes)
 
     # Aktualizuj stan
     _last_fingerprints[pid] = current_archive.fingerprints
@@ -271,9 +261,7 @@ def export_incremental(
         content=delta_bytes,
         media_type="application/zip",
         headers={
-            "Content-Disposition": (
-                f'attachment; filename="delta_{project_id}.mvdp-delta.zip"'
-            ),
+            "Content-Disposition": (f'attachment; filename="delta_{project_id}.mvdp-delta.zip"'),
             "X-Export-Type": incremental.export_type.value,
             "X-Sections-Changed": str(export_result.sections_changed),
             "X-Sections-Unchanged": str(export_result.sections_unchanged),
@@ -290,9 +278,7 @@ def export_incremental(
 )
 async def import_incremental(
     project_id: UUID,
-    file: UploadFile = File(
-        description="Archiwum przyrostowe (ZIP z delta)"
-    ),
+    file: UploadFile = File(description="Archiwum przyrostowe (ZIP z delta)"),
     uow_factory: Any = Depends(get_uow_factory),
 ) -> IncrementalImportResponse:
     """
@@ -309,13 +295,11 @@ async def import_incremental(
 
     # Walidacja typu pliku
     if not file.filename or not (
-        file.filename.endswith(".zip")
-        or file.filename.endswith(".mvdp-delta.zip")
+        file.filename.endswith(".zip") or file.filename.endswith(".mvdp-delta.zip")
     ):
         raise HTTPException(
             status_code=400,
-            detail="Nieprawidłowe rozszerzenie pliku. "
-            "Oczekiwano .zip lub .mvdp-delta.zip",
+            detail="Nieprawidłowe rozszerzenie pliku. " "Oczekiwano .zip lub .mvdp-delta.zip",
         )
 
     # Odczytaj zawartość
@@ -338,9 +322,7 @@ async def import_incremental(
     # Pobierz bazowe archiwum
     base_archive = _last_full_archive.get(pid)
     if base_archive is None:
-        base_archive = _get_project_archive_via_service(
-            project_id, uow_factory
-        )
+        base_archive = _get_project_archive_via_service(project_id, uow_factory)
 
     # Nałóż deltę
     try:
@@ -356,9 +338,7 @@ async def import_incremental(
     _last_full_archive[pid] = result_archive
 
     sections_applied = sum(
-        1
-        for d in incremental.deltas
-        if d.status != SectionChangeStatus.UNCHANGED
+        1 for d in incremental.deltas if d.status != SectionChangeStatus.UNCHANGED
     )
 
     return IncrementalImportResponse(

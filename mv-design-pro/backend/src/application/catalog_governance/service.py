@@ -11,8 +11,6 @@ PowerFactory-grade type library management.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -44,14 +42,12 @@ def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str,
     if source_ref:
         notes.append(str(source_ref))
     if meta.get("unverified"):
-        notes.append("Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie.")
+        notes.append(
+            "Rekord analityczny: dane urzadzenia nie sa jeszcze zweryfikowane produkcyjnie."
+        )
     if meta.get("unverified_ranges"):
         notes.append("Zakresy nastaw pochodza z katalogu analitycznego i wymagaja weryfikacji.")
-    verification_status = (
-        "NIEWERYFIKOWANY"
-        if meta.get("unverified")
-        else "CZESCIOWO_ZWERYFIKOWANY"
-    )
+    verification_status = "NIEWERYFIKOWANY" if meta.get("unverified") else "CZESCIOWO_ZWERYFIKOWANY"
 
     return {
         "id": device.device_id,
@@ -70,7 +66,11 @@ def _serialize_analytical_protection_device_for_export(device: Any) -> dict[str,
             "verification_status": verification_status,
             "catalog_status": "ANALITYCZNY_V1",
             "contract_version": "2.0",
-            "verification_note": "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego." if meta.get("unverified") or meta.get("unverified_ranges") else "Rekord analityczny zachowany poza torem produkcyjnym.",
+            "verification_note": (
+                "Zakres ochrony pochodzi z katalogu analitycznego; rekord nie jest promowany do katalogu produkcyjnego."
+                if meta.get("unverified") or meta.get("unverified_ranges")
+                else "Rekord analityczny zachowany poza torem produkcyjnym."
+            ),
             "functions_supported": list(device.functions_supported),
             "curves_supported": list(device.curves_supported),
             "i_pickup_51_a_min": device.i_pickup_51_a_min,
@@ -323,6 +323,7 @@ class CatalogGovernanceService:
             # Check switch equipment assignments
             # Note: Using raw session query as wizard repository doesn't expose this
             from infrastructure.persistence.models import SwitchEquipmentAssignmentORM
+
             switch_assignments = (
                 uow.session.query(SwitchEquipmentAssignmentORM)
                 .filter(SwitchEquipmentAssignmentORM.project_id == project.id)

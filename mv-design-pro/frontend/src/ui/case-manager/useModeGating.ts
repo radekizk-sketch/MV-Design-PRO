@@ -1,26 +1,9 @@
-/**
- * Mode Gating Hook for Case Manager — P12a Data Manager Parity
- *
- * CANONICAL ALIGNMENT:
- * - wizard_screens.md § 1.2: Operating modes
- * - powerfactory_ui_parity.md § A: Mode-based gating
- *
- * HARD BLOCKS (Polish messages):
- * - MODEL_EDIT: Full CRUD allowed
- * - CASE_CONFIG: Only config edit allowed
- * - RESULT_VIEW: Read-only (all CRUD blocked)
- *
- * INVARIANT: Action blocked → Polish message displayed.
- */
+import { useCallback, useMemo } from 'react';
 
-import { useMemo, useCallback } from 'react';
 import { useActiveMode } from '../app-state';
 import { notify } from '../notifications/store';
-import type { OperatingMode } from '../types';
+import type { RuntimeOperatingMode } from '../operatingMode';
 
-/**
- * Case Manager actions that can be gated.
- */
 type CaseAction =
   | 'create'
   | 'rename'
@@ -30,10 +13,7 @@ type CaseAction =
   | 'edit_config'
   | 'calculate';
 
-/**
- * Mode permissions for Case Manager.
- */
-const MODE_PERMISSIONS: Record<OperatingMode, Record<CaseAction, boolean>> = {
+const MODE_PERMISSIONS: Record<RuntimeOperatingMode, Record<CaseAction, boolean>> = {
   MODEL_EDIT: {
     create: true,
     rename: true,
@@ -42,15 +22,6 @@ const MODE_PERMISSIONS: Record<OperatingMode, Record<CaseAction, boolean>> = {
     activate: true,
     edit_config: true,
     calculate: true,
-  },
-  CASE_CONFIG: {
-    create: false,
-    rename: false,
-    delete: false,
-    clone: false,
-    activate: false,
-    edit_config: true,
-    calculate: false,
   },
   RESULT_VIEW: {
     create: false,
@@ -63,56 +34,18 @@ const MODE_PERMISSIONS: Record<OperatingMode, Record<CaseAction, boolean>> = {
   },
 };
 
-/**
- * Polish blocked messages by action and mode.
- */
-const BLOCKED_MESSAGES: Record<CaseAction, Record<OperatingMode, string>> = {
-  create: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Tworzenie przypadków zablokowane w trybie konfiguracji',
-    RESULT_VIEW: 'Tworzenie przypadków zablokowane w trybie wyników',
-  },
-  rename: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Zmiana nazwy zablokowana w trybie konfiguracji',
-    RESULT_VIEW: 'Zmiana nazwy zablokowana w trybie wyników',
-  },
-  delete: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Usuwanie przypadków zablokowane w trybie konfiguracji',
-    RESULT_VIEW: 'Usuwanie przypadków zablokowane w trybie wyników',
-  },
-  clone: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Klonowanie przypadków zablokowane w trybie konfiguracji',
-    RESULT_VIEW: 'Klonowanie przypadków zablokowane w trybie wyników',
-  },
-  activate: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Aktywacja przypadków zablokowana w trybie konfiguracji',
-    RESULT_VIEW: 'Aktywacja przypadków zablokowana w trybie wyników',
-  },
-  edit_config: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: '',
-    RESULT_VIEW: 'Edycja konfiguracji zablokowana w trybie wyników',
-  },
-  calculate: {
-    MODEL_EDIT: '',
-    CASE_CONFIG: 'Obliczenia zablokowane w trybie konfiguracji',
-    RESULT_VIEW: 'Obliczenia zablokowane w trybie wyników',
-  },
+const BLOCKED_MESSAGES: Record<CaseAction, string> = {
+  create: 'Tworzenie przypadkow zablokowane w powierzchni analitycznej.',
+  rename: 'Zmiana nazwy przypadku jest zablokowana w powierzchni analitycznej.',
+  delete: 'Usuwanie przypadkow jest zablokowane w powierzchni analitycznej.',
+  clone: 'Klonowanie przypadkow jest zablokowane w powierzchni analitycznej.',
+  activate: 'Aktywacja przypadku jest zablokowana w powierzchni analitycznej.',
+  edit_config: 'Edycja kontekstu przypadku jest zablokowana w powierzchni analitycznej.',
+  calculate: 'Uruchomienie obliczen jest zablokowane w powierzchni analitycznej.',
 };
 
-/**
- * Hook for mode-based permission checking in Case Manager.
- *
- * Returns:
- * - Boolean flags for each action
- * - getBlockedReason() function for Polish messages
- */
 export function useModeGating(): {
-  mode: OperatingMode;
+  mode: RuntimeOperatingMode;
   canCreate: boolean;
   canRename: boolean;
   canDelete: boolean;
@@ -124,22 +57,21 @@ export function useModeGating(): {
   getBlockedReason: (action: CaseAction) => string | null;
 } {
   const mode = useActiveMode();
-
   const permissions = useMemo(() => MODE_PERMISSIONS[mode], [mode]);
 
   const isAllowed = useCallback(
-    (action: CaseAction): boolean => {
-      return permissions[action] ?? false;
-    },
-    [permissions]
+    (action: CaseAction): boolean => permissions[action] ?? false,
+    [permissions],
   );
 
   const getBlockedReason = useCallback(
     (action: CaseAction): string | null => {
-      if (permissions[action]) return null;
-      return BLOCKED_MESSAGES[action]?.[mode] || `Akcja niedostępna w trybie ${mode}`;
+      if (permissions[action]) {
+        return null;
+      }
+      return BLOCKED_MESSAGES[action] ?? 'Akcja niedostepna w biezacej powierzchni.';
     },
-    [permissions, mode]
+    [permissions],
   );
 
   return {
@@ -156,11 +88,6 @@ export function useModeGating(): {
   };
 }
 
-/**
- * Hook to check if a specific action is blocked and get the reason.
- *
- * Returns { blocked: boolean, reason: string | null }
- */
 export function useActionBlocked(action: CaseAction): {
   blocked: boolean;
   reason: string | null;
@@ -172,15 +99,10 @@ export function useActionBlocked(action: CaseAction): {
       blocked: !isAllowed(action),
       reason: getBlockedReason(action),
     }),
-    [isAllowed, getBlockedReason, action]
+    [action, getBlockedReason, isAllowed],
   );
 }
 
-/**
- * Hook to show blocked action toast/message.
- *
- * Returns a function that displays the blocked reason.
- */
 export function useBlockedActionHandler(): (action: CaseAction) => void {
   const { getBlockedReason } = useModeGating();
 
@@ -191,6 +113,6 @@ export function useBlockedActionHandler(): (action: CaseAction) => void {
         notify(reason, 'warning');
       }
     },
-    [getBlockedReason]
+    [getBlockedReason],
   );
 }

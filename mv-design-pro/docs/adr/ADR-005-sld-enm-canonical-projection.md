@@ -71,4 +71,4 @@ Każdy element w raporcie (PDF/DOCX) zawiera odniesienie do:
 
 - SYSTEM_SPEC.md § 9 (SLD)
 - sld_rules.md § G.1 (Inspector synchronization)
-- powerfactory_ui_parity.md (Property grid alignment)
+- ui_canonical_parity.md (Property grid alignment)

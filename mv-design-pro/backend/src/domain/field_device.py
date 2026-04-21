@@ -1,7 +1,7 @@
 """
 Field & Device Domain Contracts V1 — Polish taxonomy (PoleV1/AparatV1).
 
-RUN #3F: ETAP-grade fields and apparatus modeling.
+RUN #3F: industrial-grade fields and apparatus modeling.
 
 CANONICAL: Kontrakty pól i aparatów rozdzielni SN/nN — polska taksonomia OSD.
 ALIGNMENT: frontend/src/ui/sld/core/fieldDeviceContracts.ts
@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-
 
 # ---------------------------------------------------------------------------
 # PoleTypeV1 — Polish field type taxonomy
@@ -268,9 +267,7 @@ def validate_generator_field_connection(
                 station_ref=None,
                 is_valid=False,
                 fix_code="generator.station_ref_missing",
-                fix_message_pl=(
-                    f"Generator {generator_id} (nn_side): brak referencji do stacji"
-                ),
+                fix_message_pl=(f"Generator {generator_id} (nn_side): brak referencji do stacji"),
             )
 
     if connection_variant == "block_transformer":

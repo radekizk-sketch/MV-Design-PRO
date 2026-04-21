@@ -7,6 +7,7 @@ Weryfikuje:
 3. Brak obliczeń wtórnych: dane wprost z trace
 4. Stabilność mappingu: niezależność od kolejności elementów sieci
 """
+
 from __future__ import annotations
 
 import json
@@ -15,7 +16,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 
 # =============================================================================
 # Test fixtures - mock data
@@ -228,8 +228,9 @@ class TestProofDeterminism:
         )
 
         # document_id should be identical (sha256 deterministic)
-        assert proof_1.document_id == proof_2.document_id, \
-            "document_id must be deterministic (same trace → same ID)"
+        assert (
+            proof_1.document_id == proof_2.document_id
+        ), "document_id must be deterministic (same trace → same ID)"
 
         # Verify it's not empty/default
         assert len(proof_1.document_id) == 32, "document_id should be 32-char hex"
@@ -249,8 +250,9 @@ class TestProofDeterminism:
         )
 
         # created_at should match run_timestamp
-        assert proof.created_at == run_timestamp, \
-            "created_at must use run_timestamp from persistence, not datetime.now()"
+        assert (
+            proof.created_at == run_timestamp
+        ), "created_at must use run_timestamp from persistence, not datetime.now()"
 
     def test_same_trace_produces_byte_identical_json(self):
         """Ten sam trace + run_timestamp → identyczny JSON (byte-for-byte)."""
@@ -337,12 +339,14 @@ class TestProofDeterminism:
         )
 
         # document_id should still be identical (based on trace IDs only)
-        assert proof_1.document_id == proof_2.document_id, \
-            "document_id depends only on trace IDs, not timestamp"
+        assert (
+            proof_1.document_id == proof_2.document_id
+        ), "document_id depends only on trace IDs, not timestamp"
 
         # But created_at should differ
-        assert proof_1.created_at != proof_2.created_at, \
-            "Different run_timestamp should produce different created_at"
+        assert (
+            proof_1.created_at != proof_2.created_at
+        ), "Different run_timestamp should produce different created_at"
 
     def test_bus_order_independence(self):
         """Proof jest niezależny od kolejności busów w trace."""
@@ -575,7 +579,7 @@ class TestExports:
 
             assert path.exists()
 
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
 
             assert data["report_type"] == "power_flow_proof"
@@ -694,13 +698,13 @@ class TestEdgeCases:
     def test_unconverged_proof(self):
         """Proof dla niezbieżnych obliczeń."""
         from network_model.proof import build_power_flow_proof
-        from network_model.solvers.power_flow_trace import (
-            PowerFlowIterationTrace,
-            PowerFlowTrace,
-        )
         from network_model.solvers.power_flow_result import (
             PowerFlowResultV1,
             PowerFlowSummary,
+        )
+        from network_model.solvers.power_flow_trace import (
+            PowerFlowIterationTrace,
+            PowerFlowTrace,
         )
 
         # Create unconverged trace
@@ -761,11 +765,11 @@ class TestEdgeCases:
     def test_empty_iterations(self):
         """Proof z pustą listą iteracji (edge case)."""
         from network_model.proof import build_power_flow_proof
-        from network_model.solvers.power_flow_trace import PowerFlowTrace
         from network_model.solvers.power_flow_result import (
             PowerFlowResultV1,
             PowerFlowSummary,
         )
+        from network_model.solvers.power_flow_trace import PowerFlowTrace
 
         trace = PowerFlowTrace(
             solver_version="1.0.0",
@@ -832,8 +836,9 @@ class TestEquationRegistry:
 
     def test_equation_ids_follow_pattern(self):
         """ID równań spełniają wzorzec."""
-        from network_model.proof.power_flow_equations import POWER_FLOW_EQUATION_REGISTRY
         import re
+
+        from network_model.proof.power_flow_equations import POWER_FLOW_EQUATION_REGISTRY
 
         pattern = r"^EQ_[A-Z]+_\d{3}$"
         for eq in POWER_FLOW_EQUATION_REGISTRY:
