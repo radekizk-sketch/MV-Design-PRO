@@ -113,6 +113,19 @@ export interface TopologyDeviceV1 {
   readonly catalogRef: string | null;
   readonly state: 'OPEN' | 'CLOSED' | null;
   readonly inService: boolean;
+  readonly bayRef?: string | null;
+}
+
+export interface TopologyFieldSpecV1 {
+  readonly fieldRef: string;
+  readonly name: string;
+  readonly bayRole: string;
+  readonly busRef: string;
+  readonly equipmentRefs: readonly string[];
+  readonly protectionRef: string | null;
+  readonly gpzSectionId: string | null;
+  readonly tags: readonly string[];
+  readonly meta: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -130,6 +143,8 @@ export interface TopologyStationV1 {
   readonly branchIds: readonly string[];
   readonly switchIds: readonly string[];
   readonly transformerIds: readonly string[];
+  readonly fieldSpecs?: readonly TopologyFieldSpecV1[];
+  readonly nnFieldSpecs?: readonly TopologyFieldSpecV1[];
 }
 
 /**
@@ -298,6 +313,73 @@ function sortById<T extends { readonly id: string }>(arr: readonly T[]): T[] {
   return [...arr].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function firstString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map(item => item.trim());
+}
+
+function sortFieldSpecs(specs: readonly TopologyFieldSpecV1[]): TopologyFieldSpecV1[] {
+  return [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
+}
+
+function normalizeFieldSpec(raw: unknown): TopologyFieldSpecV1 | null {
+  if (!isRecord(raw)) return null;
+  const fieldRef = firstString(raw.field_ref ?? raw.fieldRef ?? raw.ref_id ?? raw.refId);
+  const busRef = firstString(raw.bus_ref ?? raw.busRef);
+  if (!fieldRef || !busRef) return null;
+  return {
+    fieldRef,
+    name: firstString(raw.name) ?? fieldRef,
+    bayRole: firstString(raw.bay_role ?? raw.bayRole) ?? 'FEEDER',
+    busRef,
+    equipmentRefs: stringList(raw.equipment_refs ?? raw.equipmentRefs),
+    protectionRef: firstString(raw.protection_ref ?? raw.protectionRef),
+    gpzSectionId: firstString(raw.gpz_section_id ?? raw.gpzSectionId),
+    tags: stringList(raw.tags),
+    meta: isRecord(raw.meta) ? { ...raw.meta } : {},
+  };
+}
+
+function readFieldSpecsFromMeta(meta: unknown, key: 'field_specs' | 'nn_field_specs'): TopologyFieldSpecV1[] {
+  if (!isRecord(meta)) return [];
+  const rawSpecs = meta[key];
+  if (!Array.isArray(rawSpecs)) return [];
+  return sortFieldSpecs(
+    rawSpecs
+      .map(normalizeFieldSpec)
+      .filter((spec): spec is TopologyFieldSpecV1 => spec !== null),
+  );
+}
+
+function synthesizeGpzFieldSpecs(substation: ENMSubstation): TopologyFieldSpecV1[] {
+  return sortFieldSpecs(
+    (substation.gpz_sections ?? []).map((section) => ({
+      fieldRef: `${substation.ref_id}:section:${section.section_id}:field`,
+      name: section.line_field_name || `Pole GPZ ${section.order + 1}`,
+      bayRole: 'FEEDER',
+      busRef: section.bus_ref,
+      equipmentRefs: [],
+      protectionRef: null,
+      gpzSectionId: section.section_id,
+      tags: ['gpz_line_field'],
+      meta: {
+        gpz_section_id: section.section_id,
+        gpz_section_order: section.order,
+      },
+    })),
+  );
+}
+
 /**
  * Mapuje ENM Branch.type na BranchKind.
  */
@@ -387,6 +469,9 @@ export function readTopologyFromENM(
     for (const busRef of sub.bus_refs) {
       stationBusMap.set(busRef, sub.ref_id);
     }
+    const meta = (sub as { meta?: unknown }).meta;
+    const fieldSpecs = readFieldSpecsFromMeta(meta, 'field_specs');
+    const nnFieldSpecs = readFieldSpecsFromMeta(meta, 'nn_field_specs');
     return {
       id: sub.ref_id,
       name: sub.name,
@@ -399,6 +484,10 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [...sub.transformer_refs].sort(),
+      fieldSpecs: fieldSpecs.length > 0
+        ? fieldSpecs
+        : (sub.gpz_sections?.length ? synthesizeGpzFieldSpecs(sub) : undefined),
+      nnFieldSpecs: nnFieldSpecs.length > 0 ? nnFieldSpecs : undefined,
     };
   });
 
@@ -414,6 +503,8 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [],
+      fieldSpecs: undefined,
+      nnFieldSpecs: undefined,
     });
     stationBusMap.set(bp.bus_ref, bp.ref_id);
   }
@@ -507,6 +598,7 @@ export function readTopologyFromENM(
       catalogRef: m.catalog_ref ?? null,
       state: null,
       inService: true,
+      bayRef: m.bay_ref ?? null,
     });
   }
 
