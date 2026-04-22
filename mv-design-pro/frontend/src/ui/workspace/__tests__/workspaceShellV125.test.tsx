@@ -226,11 +226,11 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Zakres i warunki obliczeń' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
     expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontekst przypadku' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Warunki obliczeń' })).toBeInTheDocument();
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {
@@ -352,12 +352,12 @@ describe('WorkspaceOperationalBar', () => {
 
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
     expect(activeSurface?.screenCode).toBe('E-31');
-    expect(activeSurface?.titlePl).toBe('Rejestr zalozen i jakosci danych');
+    expect(activeSurface?.titlePl).toBe('Rejestr założeń i jakości danych');
   });
 
   it('nie pokazuje technicznego jezyka runtime w pasku operacyjnym', () => {
     useNetworkBuildStore.getState().openRouteSurface('E-31', {
-      titlePl: 'Rejestr zalozen i jakosci danych',
+      titlePl: 'Rejestr założeń i jakości danych',
       sizeClass: 'B',
       subjectKind: 'analysis_case',
       subjectRef: 'case-1',
@@ -365,11 +365,8 @@ describe('WorkspaceOperationalBar', () => {
 
     render(<WorkspaceOperationalBar validationStatus="valid" />);
 
-    expect(screen.getByText(/Aktywny widok:/)).toBeInTheDocument();
+    expect(screen.getByText(/Widok:/)).toBeInTheDocument();
     expect(screen.queryByText(/Aktywny surface:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/surface/i)).not.toBeInTheDocument();
-    expect(
-      screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
-    ).toBeInTheDocument();
   });
 });

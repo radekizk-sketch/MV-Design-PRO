@@ -291,7 +291,7 @@ function renderMiniSldTarget(): () => void {
   useNetworkBuildStore.getState().openRouteSurface('variants_runs');
   render(<WorkspaceSurfaceRouter region="main" />);
   return () => {
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Zakres i warunki obliczeń' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
   };
 }

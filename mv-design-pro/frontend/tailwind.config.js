@@ -65,6 +65,32 @@ export default {
           'selection': '#3b82f6',
           'hover': '#60a5fa',
         },
+
+        /* === Dark SCADA Neon — Canonical Shell Theme === */
+        /* Operator/engineer workspace: dark background, white bus, neon accents */
+
+        'scada-bg':     '#0d1520',  /* primary dark background */
+        'scada-panel':  '#111e2d',  /* panel/surface background */
+        'scada-chrome': '#162232',  /* toolbar / bar chrome */
+        'scada-border': '#1f3347',  /* borders and dividers */
+
+        'scada-text':   '#e2e8f0',  /* primary text — light */
+        'scada-dim':    '#94a3b8',  /* secondary text — dimmed */
+        'scada-muted':  '#475569',  /* muted / disabled text */
+
+        /* Neon accent colors — SCADA/HMI grade */
+        'scada-accent':      '#3b82f6',  /* primary blue accent */
+        'scada-neon-green':  '#00e676',  /* neon green — OK / closed breaker */
+        'scada-neon-red':    '#ff1744',  /* neon red — FAULT / open breaker */
+        'scada-neon-amber':  '#ffc107',  /* neon amber — WARNING */
+        'scada-neon-cyan':   '#00e5ff',  /* neon cyan — MEASUREMENT */
+        'scada-neon-blue':   '#2979ff',  /* neon blue — INFO */
+        'scada-neon-purple': '#d500f9',  /* neon purple — PROTECTION */
+
+        /* SLD power bus */
+        'scada-bus':   '#ffffff',   /* white power bus line */
+        'scada-breaker-closed': '#00e676',
+        'scada-breaker-open':   '#ff1744',
       },
 
       fontFamily: {

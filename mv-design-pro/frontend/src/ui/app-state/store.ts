@@ -337,9 +337,9 @@ export function useCaseKindLabel(): string | null {
   if (!kind) return null;
   switch (kind) {
     case 'ShortCircuitCase':
-      return 'Przypadek zwarciowy';
+      return 'Analiza zwarciowa';
     case 'PowerFlowCase':
-      return 'Przypadek rozplywu mocy';
+      return 'Rozplyw mocy';
     default:
       return kind;
   }
@@ -379,13 +379,13 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const readiness = useSnapshotStore((state) => state.readiness);
 
   if (!activeCaseId) {
-    return { allowed: false, reason: 'Wybierz aktywny przypadek obliczeniowy' };
+    return { allowed: false, reason: 'Wybierz zakres obliczeń' };
   }
 
   if (activeMode !== 'MODEL_EDIT') {
     return {
       allowed: false,
-      reason: 'Obliczenia sa dozwolone tylko w trybie Model sieci',
+      reason: 'Obliczenia są dozwolone tylko w trybie edycji modelu',
     };
   }
 

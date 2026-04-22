@@ -22,10 +22,10 @@ interface WorkspaceOperationalBarProps {
 }
 
 const RUN_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Uruchomienie oczekuje',
-  RUNNING: 'Uruchomienie trwa',
-  DONE: 'Uruchomienie zakonczone',
-  FAILED: 'Uruchomienie nieudane',
+  PENDING: 'Obliczenia oczekują',
+  RUNNING: 'Obliczenia w toku',
+  DONE: 'Obliczenia zakończone',
+  FAILED: 'Obliczenia nieudane',
 };
 
 function shortId(value: string | null): string {
@@ -48,14 +48,14 @@ function SegmentButton({
 }) {
   const toneClass =
     tone === 'ok'
-      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+      ? 'border-scada-neon-green/30 bg-scada-neon-green/10 text-scada-neon-green'
       : tone === 'warn'
-        ? 'border-amber-200 bg-amber-50 text-amber-800'
+        ? 'border-scada-neon-amber/30 bg-scada-neon-amber/10 text-scada-neon-amber'
         : tone === 'error'
-          ? 'border-rose-200 bg-rose-50 text-rose-800'
+          ? 'border-scada-neon-red/30 bg-scada-neon-red/10 text-scada-neon-red'
           : tone === 'accent'
-            ? 'border-sky-200 bg-sky-50 text-sky-800'
-            : 'border-slate-200 bg-white text-slate-700';
+            ? 'border-scada-neon-cyan/30 bg-scada-neon-cyan/10 text-scada-neon-cyan'
+            : 'border-scada-border bg-scada-panel text-scada-dim';
 
   return (
     <button
@@ -63,11 +63,11 @@ function SegmentButton({
       onClick={onClick}
       data-testid={testId}
       className={clsx(
-        'flex min-w-[132px] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left shadow-sm transition-colors hover:bg-slate-50',
+        'flex min-w-[132px] flex-col items-start gap-0.5 rounded-lg border px-3 py-2 text-left transition-colors hover:bg-scada-chrome',
         toneClass,
       )}
     >
-      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">{label}</span>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-60">{label}</span>
       <span className="text-xs font-medium">{value}</span>
     </button>
   );
@@ -104,7 +104,7 @@ export function WorkspaceOperationalBar({
   return (
     <div
       data-testid="workspace-operational-bar"
-      className="grid gap-2 border-t border-slate-200 bg-slate-100 px-3 py-2 md:grid-cols-3 xl:grid-cols-9"
+      className="grid gap-2 border-t border-scada-border bg-scada-bg px-3 py-2 md:grid-cols-3 xl:grid-cols-9"
     >
       <SegmentButton
         label="Gotowosc obliczeniowa"
@@ -167,23 +167,23 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-results"
       />
       <SegmentButton
-        label="Stan uruchomienia"
-        value={activeRun ? RUN_STATUS_LABELS[activeRun.status] ?? activeRun.status : 'Brak aktywnego uruchomienia'}
+        label="Stan obliczeń"
+        value={activeRun ? RUN_STATUS_LABELS[activeRun.status] ?? activeRun.status : 'Brak aktywnych obliczeń'}
         tone={activeRun?.status === 'DONE' ? 'ok' : activeRun?.status === 'FAILED' ? 'error' : 'accent'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Aktywna migawka"
+        label="Wersja modelu"
         value={shortId(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
           openRouteSurface('E-31', {
-            titlePl: 'Rejestr zalozen i jakosci danych',
+            titlePl: 'Rejestr założeń i jakości danych',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
-            tabId: 'snapshot',
+            tabId: 'zalozenia',
             subjectKind: 'analysis_case',
             subjectRef: activeSnapshotId,
           })
@@ -191,8 +191,8 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-snapshot"
       />
       <SegmentButton
-        label="Aktywny wariant"
-        value={activeCaseName ?? 'Brak aktywnego wariantu'}
+        label="Zakres obliczeń"
+        value={activeCaseName ?? 'Nie wybrano zakresu'}
         tone={activeCaseName ? 'accent' : 'default'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-variant"
@@ -240,18 +240,13 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-errors"
       />
       {activeSurface && (
-        <div className="col-span-full px-1 pt-1 text-[11px] text-slate-500" data-testid="workspace-operational-active-surface">
-          Aktywny widok: {activeSurface.titlePl} / poziom {activeSurface.stackLevel}
+        <div className="col-span-full px-1 pt-1 text-[11px] text-scada-muted" data-testid="workspace-operational-active-surface">
+          Widok: {activeSurface.titlePl}
         </div>
       )}
       {networkStats && (
-        <div className="col-span-full px-1 text-[11px] text-slate-500">
-          Statystyka modelu: wezly {networkStats.nodeCount ?? 0}, galezie {networkStats.branchCount ?? 0}.
-        </div>
-      )}
-      {activeMode !== 'RESULT_VIEW' && (
-        <div className="col-span-full px-1 text-[11px] text-slate-500">
-          Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu. Przejscia otwieraja kolejne widoki bez opuszczania glownego okna roboczego.
+        <div className="col-span-full px-1 text-[11px] text-scada-muted">
+          Model: węzły {networkStats.nodeCount ?? 0} · gałęzie {networkStats.branchCount ?? 0}
         </div>
       )}
     </div>

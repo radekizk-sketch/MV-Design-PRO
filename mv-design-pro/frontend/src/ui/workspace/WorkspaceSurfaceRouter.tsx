@@ -809,35 +809,31 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   return (
     <div className="space-y-4">
       <MiniSldCard surface={surface} />
-      <SectionCard title="Warianty, przypadki i uruchomienia" eyebrow="variants_runs">
+      <SectionCard title="Zakres i warunki obliczeń" eyebrow="variants_runs">
         <div className="grid gap-4 xl:grid-cols-[minmax(340px,420px)_minmax(320px,420px)_1fr]">
           <div className="space-y-4">
             <SectionCard title="Aktywny kontekst wariantu">
               <KeyValueGrid
                 rows={[
                   { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
-                  { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
-                  { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
-                  { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+                  { label: 'Zakres obliczeń', value: activeCaseName ?? 'Nie wybrano zakresu' },
+                  { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak wersji modelu' },
+                  { label: 'Ostatnie obliczenia', value: activeRunId ?? 'Brak aktywnych obliczeń' },
                   {
                     label: 'Rola',
-                    value: 'Panel pomocniczy pozostaje w glownym oknie roboczym i otwiera tylko dozwolone widoki.',
-                  },
-                  {
-                    label: 'Status migracji',
-                    value: 'Panel zarzadzania przypadkami zostal wchloniety do jednej ramy aplikacji.',
+                    value: 'Panel pomocniczy otwiera kolejne widoki bez opuszczania okna roboczego.',
                   },
                 ]}
                 columns={2}
               />
             </SectionCard>
-            <SectionCard title="Szybkie przejscia pomocnicze">
+            <SectionCard title="Szybkie przejścia">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
-                  label="Kontekst przypadku"
+                  label="Warunki obliczeń"
                   onClick={() =>
                     openChildSurface('case_context', {
-                      titlePl: 'Kontekst przypadku',
+                      titlePl: 'Warunki obliczeń',
                       sizeClass: 'B',
                       openMode: 'replace_right_panel',
                       supportsMiniSld: false,

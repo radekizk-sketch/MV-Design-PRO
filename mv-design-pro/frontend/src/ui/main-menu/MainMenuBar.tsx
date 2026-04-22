@@ -112,7 +112,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'run-sc-1f', label: 'Zwarcia 1F (doziemne)' },
       { id: 'run-power-flow', label: 'Rozpływ mocy' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'variants', label: 'Warianty i uruchomienia' },
+      { id: 'variants', label: 'Zakres i warunki obliczeń' },
       { id: 'analysis', label: 'Poziom analityczny' },
       { id: 'report', label: 'Generator raportu' },
     ],
@@ -207,19 +207,20 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
       ref={menuBarRef}
       data-testid="main-menu-bar"
       className={clsx(
-        'flex items-center h-7 px-1 bg-chrome-50 border-b border-chrome-200 select-none',
+        'flex items-center h-7 px-1 bg-scada-bg border-b border-scada-border select-none',
         className
       )}
     >
       {/* Logo / Brand */}
       <div className="flex items-center gap-1.5 px-2 mr-1">
-        <svg className="w-4 h-4 text-ind-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+        <svg className="w-4 h-4 text-scada-neon-green" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
-        <span className="text-[11px] font-bold text-ind-800 tracking-wide">MV-DESIGN-PRO</span>
+        <span className="text-[11px] font-bold text-scada-text tracking-wide">MV-DESIGN-PRO</span>
+        <span className="text-[9px] text-scada-muted font-mono ml-0.5">v12</span>
       </div>
 
-      <div className="h-4 w-px bg-chrome-200 mr-1" />
+      <div className="h-4 w-px bg-scada-border mr-1" />
 
       {/* Menu groups */}
       {MENU_GROUPS.map((group) => (
@@ -231,8 +232,8 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
             className={clsx(
               'px-2.5 py-1 text-[11px] font-medium rounded-sm transition-colors',
               openMenuId === group.id
-                ? 'bg-ind-100 text-ind-800'
-                : 'text-chrome-600 hover:bg-chrome-100 hover:text-chrome-800'
+                ? 'bg-scada-chrome text-scada-text'
+                : 'text-scada-dim hover:bg-scada-panel hover:text-scada-text'
             )}
             data-testid={`menu-${group.id}`}
           >
@@ -242,12 +243,12 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
           {/* Dropdown */}
           {openMenuId === group.id && (
             <div
-              className="absolute top-full left-0 mt-0.5 min-w-[220px] bg-white border border-chrome-200 rounded-md shadow-overlay z-50 py-1"
+              className="absolute top-full left-0 mt-0.5 min-w-[220px] bg-scada-panel border border-scada-border rounded-md shadow-overlay shadow-black/50 z-50 py-1"
               data-testid={`menu-dropdown-${group.id}`}
             >
               {group.items.map((item) =>
                 item.separator ? (
-                  <div key={item.id} className="my-1 h-px bg-chrome-100 mx-2" />
+                  <div key={item.id} className="my-1 h-px bg-scada-border mx-2" />
                 ) : (
                   <button
                     key={item.id}
@@ -257,16 +258,16 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
                     className={clsx(
                       'w-full flex items-center justify-between px-3 py-1.5 text-[11px] transition-colors text-left',
                       item.disabled
-                        ? 'text-chrome-300 cursor-not-allowed'
+                        ? 'text-scada-muted cursor-not-allowed'
                         : item.danger
-                          ? 'text-red-700 hover:bg-red-50'
-                          : 'text-chrome-700 hover:bg-ind-50 hover:text-ind-800'
+                          ? 'text-scada-neon-red hover:bg-scada-neon-red/10'
+                          : 'text-scada-dim hover:bg-scada-chrome hover:text-scada-text'
                     )}
                     data-testid={`menu-action-${item.id}`}
                   >
                     <span>{item.label}</span>
                     {item.shortcut && (
-                      <span className="ml-4 text-[10px] text-chrome-400 font-mono">
+                      <span className="ml-4 text-[10px] text-scada-muted font-mono">
                         {item.shortcut}
                       </span>
                     )}

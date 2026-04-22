@@ -27,6 +27,7 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { navigateToCaseConfig, navigateToCatalog, navigateToVariants } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceOperationalBar, WorkspaceSurfaceRouter } from '../workspace';
+import { EngineerWorkspaceDock } from './EngineerWorkspaceDock';
 
 export interface CanonicalLayoutProps {
   children: ReactNode;
@@ -86,6 +87,7 @@ export function CanonicalLayout({
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
+  const [dockCollapsed, setDockCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [massReviewOpen, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
@@ -159,19 +161,19 @@ export function CanonicalLayout({
   }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   const stageClassName = clsx(
-    'flex h-full min-h-0 flex-1 overflow-hidden bg-slate-100',
-    mainSurfaceExpanded ? 'gap-0 p-0' : 'gap-3 p-3',
+    'flex h-full min-h-0 flex-1 overflow-hidden bg-scada-bg',
+    mainSurfaceExpanded ? 'gap-0 p-0' : 'gap-2 p-2',
   );
 
   const mainPaneClassName = clsx(
     'flex min-w-0 flex-1 flex-col overflow-hidden',
     mainSurfaceExpanded
       ? 'border-0 bg-transparent shadow-none'
-      : 'rounded-xl border border-slate-200 bg-white shadow-sm',
+      : 'rounded-lg border border-scada-border bg-scada-panel',
   );
 
   return (
-    <div className="flex h-screen flex-col bg-chrome-100" data-testid="canonical-layout">
+    <div className="flex h-screen flex-col bg-scada-bg" data-testid="canonical-layout">
       <MainMenuBar onAction={onMenuAction} />
 
       <ActiveCaseBar
@@ -194,9 +196,17 @@ export function CanonicalLayout({
       )}
 
       <div className={stageClassName}>
+        {/* Lewy dock inżynierski — panel prowadzenia pracy */}
+        {activeMode === 'MODEL_EDIT' && (
+          <EngineerWorkspaceDock
+            collapsed={dockCollapsed}
+            onToggleCollapse={() => setDockCollapsed((v) => !v)}
+          />
+        )}
+
         <section className={mainPaneClassName}>
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
-            <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="border-b border-scada-border bg-scada-chrome px-3 py-1.5">
               <SldVisualModes />
             </div>
           )}
@@ -209,8 +219,8 @@ export function CanonicalLayout({
         {!hideInspector && (
           <aside
             className={clsx(
-              'flex shrink-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-200 ease-in-out',
-              mainSurfaceExpanded ? 'rounded-none border-y-0 border-r-0 shadow-none' : 'rounded-xl',
+              'flex shrink-0 flex-col overflow-hidden border border-scada-border bg-scada-panel transition-all duration-200 ease-in-out',
+              mainSurfaceExpanded ? 'rounded-none border-y-0 border-r-0' : 'rounded-lg',
               inspectorWidthClass,
             )}
             data-testid="inspector-panel-sidebar"
@@ -221,16 +231,16 @@ export function CanonicalLayout({
                 type="button"
                 onClick={toggleInspector}
                 className={clsx(
-                  'flex h-6 w-6 items-center justify-center rounded-ind text-chrome-400 transition-colors hover:bg-chrome-200 hover:text-chrome-700',
+                  'flex h-6 w-6 items-center justify-center rounded-ind text-scada-dim transition-colors hover:bg-scada-border hover:text-scada-text',
                   inspectorCollapsed && 'mx-auto',
                 )}
-                aria-label={inspectorCollapsed ? 'Rozwin panel wlasciwosci' : 'Zwin panel wlasciwosci'}
-                title={inspectorCollapsed ? 'Rozwin panel wlasciwosci' : 'Zwin panel wlasciwosci'}
+                aria-label={inspectorCollapsed ? 'Rozwiń właściwości' : 'Zwiń właściwości'}
+                title={inspectorCollapsed ? 'Rozwiń właściwości' : 'Zwiń właściwości'}
                 data-testid="inspector-panel-toggle"
               >
                 {inspectorCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
               </button>
-              {!inspectorCollapsed && <span>Wlasciwosci</span>}
+              {!inspectorCollapsed && <span className="text-scada-dim">Właściwości</span>}
             </div>
 
             {!inspectorCollapsed && (
@@ -244,9 +254,9 @@ export function CanonicalLayout({
                 <button
                   type="button"
                   onClick={toggleInspector}
-                  className="flex h-8 w-8 items-center justify-center rounded-ind text-chrome-400 transition-colors hover:bg-chrome-100 hover:text-chrome-700"
-                  title="Otworz panel wlasciwosci"
-                  aria-label="Otworz panel wlasciwosci"
+                  className="flex h-8 w-8 items-center justify-center rounded-ind text-scada-dim transition-colors hover:bg-scada-border hover:text-scada-text"
+                  title="Otwórz właściwości"
+                  aria-label="Otwórz właściwości"
                 >
                   <IconClipboard />
                 </button>
@@ -256,7 +266,7 @@ export function CanonicalLayout({
         )}
 
         {issuePanelOpen && (
-          <aside className="w-inspector shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <aside className="w-inspector shrink-0 overflow-hidden rounded-lg border border-scada-border bg-scada-panel">
             <IssuePanelContainer caseId={activeCaseId} />
           </aside>
         )}

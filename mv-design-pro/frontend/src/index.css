@@ -14,34 +14,38 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    color-scheme: dark;
   }
 
   body {
-    @apply bg-canvas-bg text-gray-900;
+    background-color: #0d1520;
+    color: #e2e8f0;
     overflow: hidden;
   }
 
-  /* Scrollbar styling — industrial thin */
+  /* Scrollbar styling — dark SCADA thin */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   ::-webkit-scrollbar-track {
-    @apply bg-transparent;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-chrome-300 rounded-full;
+    background: #1f3347;
+    border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-chrome-400;
+    background: #2d4a63;
   }
 
   /* Selection color */
   ::selection {
-    @apply bg-blue-200 text-blue-900;
+    background: rgba(0, 230, 118, 0.2);
+    color: #00e676;
   }
 }
 
@@ -118,8 +122,8 @@
   .ind-panel-header {
     @apply flex items-center justify-between
            px-3 py-2
-           bg-chrome-50 border-b border-chrome-200
-           text-xs font-semibold text-chrome-600
+           bg-scada-chrome border-b border-scada-border
+           text-xs font-semibold text-scada-dim
            uppercase tracking-wider
            select-none;
   }
@@ -134,11 +138,11 @@
 
   .ind-input {
     @apply w-full px-2.5 py-1.5
-           text-sm text-gray-900
-           bg-white border border-chrome-200 rounded-ind
-           focus:outline-none focus:ring-1 focus:ring-ind-500 focus:border-ind-500
-           placeholder:text-chrome-300
-           disabled:bg-chrome-50 disabled:text-chrome-400;
+           text-sm text-scada-text
+           bg-scada-panel border border-scada-border rounded-ind
+           focus:outline-none focus:ring-1 focus:ring-scada-neon-green/50 focus:border-scada-neon-green/50
+           placeholder:text-scada-muted
+           disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .ind-select {
@@ -197,49 +201,50 @@
    * Canonical SLD Typography — CANONICAL/IEC
    * ========================================================================= */
 
+  /* SLD — dark SCADA neon typography */
   .sld-node-label {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 11px;
-    fill: #374151;
+    fill: #e2e8f0;
     font-weight: 600;
   }
 
   .sld-segment-label {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    fill: #1D4ED8;
+    fill: #00e5ff;
     font-weight: 500;
   }
 
   .sld-segment-params {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    fill: #6B7280;
+    fill: #94a3b8;
   }
 
   .sld-apparatus-label {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 10px;
-    fill: #374151;
+    fill: #cbd5e1;
   }
 
   .sld-apparatus-params {
     font-family: 'JetBrains Mono', monospace;
     font-size: 9px;
-    fill: #6B7280;
+    fill: #64748b;
   }
 
   .sld-station-title {
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 11px;
-    fill: #111827;
+    fill: #f1f5f9;
     font-weight: 700;
   }
 
   .sld-iec-designation {
     font-family: 'JetBrains Mono', monospace;
     font-size: 10px;
-    fill: #DC2626;
+    fill: #ff1744;
     font-weight: 600;
   }
 
@@ -260,11 +265,11 @@
   }
 
   .wizard-card {
-    @apply p-3 border border-chrome-200 rounded-md bg-white;
+    @apply p-3 border border-scada-border rounded-md bg-scada-panel;
   }
 
   .wizard-card-header {
-    @apply flex items-center justify-between mb-2 pb-2 border-b border-chrome-100;
+    @apply flex items-center justify-between mb-2 pb-2 border-b border-scada-border;
   }
 
   /* =========================================================================

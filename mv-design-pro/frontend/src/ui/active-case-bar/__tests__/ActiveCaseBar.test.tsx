@@ -82,7 +82,7 @@ describe('ActiveCaseBar', () => {
 
     expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wynikow');
     expect(screen.queryByText('Wyniki aktualne')).toBeNull();
-    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Uruchomienie: run-42');
+    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Wyniki: run-42');
   });
 
   it('ukrywa sekundarne akcje w menu i zachowuje ich działanie', () => {
@@ -124,8 +124,8 @@ describe('ActiveCaseBar', () => {
     fireEvent.click(screen.getByTestId('btn-secondary-actions'));
 
     expect(screen.getByTestId('secondary-actions-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Kontekst przypadku');
-    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podglad wynikow');
+    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Warunki obliczeń');
+    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podgląd wyników');
 
     fireEvent.click(screen.getByTestId('btn-configure'));
     expect(onConfigureClick).toHaveBeenCalledTimes(1);

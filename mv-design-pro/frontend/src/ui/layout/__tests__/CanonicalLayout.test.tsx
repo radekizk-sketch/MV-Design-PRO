@@ -7,6 +7,10 @@ const activeSurfaceState = {
   activeSurface: null,
 };
 
+vi.mock('../EngineerWorkspaceDock', () => ({
+  EngineerWorkspaceDock: () => <div data-testid="engineer-workspace-dock">dock</div>,
+}));
+
 vi.mock('../../main-menu', () => ({
   MainMenuBar: () => <div data-testid="main-menu-bar">menu</div>,
 }));

@@ -574,9 +574,9 @@ const SCREEN_DEFINITIONS: Record<WorkspaceScreenCode, WorkspaceSurfaceDefinition
   'E-04': { screenCode: 'E-04', titlePl: 'Gotowosc modelu i lista brakow', componentRef: 'ModelGapsSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-05': { screenCode: 'E-05', titlePl: 'Menu kontekstowe schematu', componentRef: 'SchematicContextMenuSurface', sizeClass: 'B', surfaceKind: 'pomocniczy', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: false, requiresSession: false },
   'E-06': { screenCode: 'E-06', titlePl: 'Nakladka wynikowa na schemacie', componentRef: 'AnalysisWorkspaceSurface', sizeClass: 'C', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
-  'E-07': { screenCode: 'E-07', titlePl: 'Przypadki obliczeniowe', componentRef: 'AnalysisCasesSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
+  'E-07': { screenCode: 'E-07', titlePl: 'Zakres i warunki obliczeń', componentRef: 'AnalysisCasesSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-08': { screenCode: 'E-08', titlePl: 'Warianty pracy i przelaczenia', componentRef: 'VariantSwitchingSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: true, supportsChildren: false, requiresSession: true },
-  'E-09': { screenCode: 'E-09', titlePl: 'Historia migawek modelu i uruchomien obliczen', componentRef: 'RunHistorySurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
+  'E-09': { screenCode: 'E-09', titlePl: 'Historia modelu i obliczeń', componentRef: 'RunHistorySurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-10': { screenCode: 'E-10', titlePl: 'Zrodlo zasilania GPZ', componentRef: 'GpzSupplySourceSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
   'E-11': { screenCode: 'E-11', titlePl: 'Nowy odcinek ciagu glownego', componentRef: 'MainTrunkSegmentSurface', sizeClass: 'A', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
   'E-12': { screenCode: 'E-12', titlePl: 'Stacja transformatorowa - kreator uproszczony', componentRef: 'StationSimpleSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
@@ -609,7 +609,7 @@ export const SURFACE_REGISTRY: Record<WorkspaceScreenCode, WorkspaceSurfaceDefin
 export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDefinition> = {
   variants_runs: {
     helperCode: 'variants_runs',
-    titlePl: 'Warianty i uruchomienia',
+    titlePl: 'Zakres i warunki obliczeń',
     componentRef: 'VariantsRunsHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -636,7 +636,7 @@ export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDef
   },
   case_context: {
     helperCode: 'case_context',
-    titlePl: 'Kontekst przypadku',
+    titlePl: 'Warunki obliczeń',
     componentRef: 'CaseContextHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -782,7 +782,7 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-06': screen('E-06', 'analysis_run', [...ANALYSIS_ROUTE_TAB_IDS], ANALYSIS_ROUTE_DEFAULT_TAB, ['analysis_case_context'], 'E-01'),
   'E-07': screen('E-07', 'analysis_case', ['lista', 'parametry', 'kompletnosc'], 'lista', [], 'E-01'),
   'E-08': screen('E-08', 'analysis_case', ['wariant', 'przelaczenia', 'n-1', 'punkt-normalnie-otwarty'], 'wariant', [], 'E-07'),
-  'E-09': screen('E-09', 'analysis_run', ['migawki', 'uruchomienia', 'historia'], 'migawki', [], 'E-07'),
+  'E-09': screen('E-09', 'analysis_run', ['wersje', 'obliczenia', 'historia'], 'wersje', [], 'E-07'),
   'E-10': screen('E-10', 'gpz', ['uproszczony', 'pelny', 'szyny-sn'], 'uproszczony', [], 'E-01'),
   'E-11': screen('E-11', 'segment', ['kabel-sn', 'linia-napowietrzna-sn'], 'kabel-sn', ['E-14'], 'E-14'),
   'E-12': screen('E-12', 'station', ['typ-topologiczny', 'ustawienia-podstawowe'], 'typ-topologiczny', ['E-11'], 'E-11'),
