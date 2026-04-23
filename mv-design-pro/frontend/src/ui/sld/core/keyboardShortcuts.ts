@@ -59,7 +59,7 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
 
   // Widoki
   { keys: 'Ctrl+1', description_pl: 'Widok: Model sieci', category: 'WIDOKI', action_id: 'mode_model_edit', required_mode: null },
-  { keys: 'Ctrl+2', description_pl: 'Otworz kontekst przypadku', category: 'WIDOKI', action_id: 'open_case_context', required_mode: null },
+  { keys: 'Ctrl+2', description_pl: 'Otworz warunki obliczen', category: 'WIDOKI', action_id: 'open_case_context', required_mode: null },
   { keys: 'Ctrl+3', description_pl: 'Widok: Analiza i wyniki', category: 'WIDOKI', action_id: 'mode_result_view', required_mode: null },
   { keys: 'Ctrl+G', description_pl: 'Tryb: Tylko gotowość (podświetl blokery)', category: 'WIDOKI', action_id: 'filter_readiness_only', required_mode: null },
   { keys: 'Ctrl+Shift+S', description_pl: 'Tryb: Tylko źródła (filtr wizualny)', category: 'WIDOKI', action_id: 'filter_sources_only', required_mode: null },

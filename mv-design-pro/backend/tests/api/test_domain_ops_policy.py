@@ -111,6 +111,22 @@ def test_extract_catalog_binding_supports_add_sn_bay_catalog_binding():
     assert binding["catalog_item_id"] == "cb-24kv-1250a"
 
 
+def test_validate_and_materialize_catalog_binding_accepts_topological_sn_bay_without_catalog():
+    error, solver_fields = validate_and_materialize_catalog_binding(
+        "add_sn_bay",
+        {
+            "bus_ref": "bus-sn-1",
+            "station_ref": "gpz-1",
+            "bay_role": "OUT",
+            "field_name": "Pole odplywowe SN",
+            "creation_mode": "TOPOLOGICAL_CONTAINER",
+        },
+    )
+
+    assert error is None
+    assert solver_fields == {}
+
+
 def test_validate_and_materialize_catalog_binding_accepts_segment_catalog_ref_without_explicit_binding():
     error, solver_fields = validate_and_materialize_catalog_binding(
         "continue_trunk_segment_sn",

@@ -21,7 +21,7 @@
  * - "#sld-view" â†’ Podglad schematu (SLD Read-Only Viewer)
  * - "#analysis" â†’ Poziom analityczny (E-24)
  * - "#report" â†’ Generator raportu (E-25)
- * - "#variants" / "#catalog" / "#case-config" â†’ Helpery shell-a
+ * - "#variants" / "#catalog" / "#warunki-obliczen" â†’ Helpery shell-a
  * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
  *   â†’ aliasy prowadzÄ…ce do E-24
  */
@@ -43,7 +43,7 @@ import {
   getRouteByHash,
   isAnalysisRouteAlias,
   navigateToAnalysis,
-  navigateToCaseConfig,
+  navigateToConditions,
   navigateToCatalog,
   navigateToCompare,
   navigateToNetworkBuild,
@@ -223,7 +223,7 @@ function App() {
       });
       return;
     }
-    if (route === ROUTES.CASE_CONFIG.hash) {
+    if (route === ROUTES.CONDITIONS.hash) {
       openRouteSurface('case_context', {
         subjectKind: 'helper_context',
         subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
@@ -299,7 +299,7 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'case-manager':
-        navigateToCaseConfig({ caseId: activeCaseId });
+        navigateToConditions({ caseId: activeCaseId });
         break;
       case 'sld-view':
         window.location.hash = ROUTES.SLD_VIEW.hash;
@@ -346,7 +346,7 @@ function App() {
     activeRunId,
     handleCalculate,
     navigateToAnalysis,
-    navigateToCaseConfig,
+    navigateToConditions,
     navigateToCatalog,
     navigateToCompare,
     navigateToNetworkBuild,

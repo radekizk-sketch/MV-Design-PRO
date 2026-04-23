@@ -41,7 +41,7 @@ test.describe('UI Integration E2E Happy Path', () => {
 
     await expect(page).toHaveURL(/#variants$/);
     await expect(page.locator('[data-testid="workspace-surface-main"]')).toBeVisible();
-    await expect(page.getByText('Warianty, przypadki i uruchomienia')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Zakresy obliczen i wyniki' }).first()).toBeVisible();
   });
 
   test('switches shell mode on canonical analytical routes', async ({ page }) => {

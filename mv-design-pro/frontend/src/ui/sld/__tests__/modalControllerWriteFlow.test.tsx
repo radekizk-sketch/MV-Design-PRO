@@ -58,7 +58,7 @@ describe('ModalController write-flow', () => {
     expect(result.current.state.canonicalOp).toBe('add_grid_source_sn');
   });
 
-  it('blokuje zapis operacji katalog-required bez jawnego catalog_binding', async () => {
+  it('dopuszcza topologiczne dodanie GPZ bez jawnego catalog_binding', async () => {
     const onDomainOpComplete = vi.fn(async () => true);
     const { result } = renderHook(() => useModalController(onDomainOpComplete));
 
@@ -70,9 +70,14 @@ describe('ModalController write-flow', () => {
       await result.current.handleSubmit({ voltage_kv: 15 });
     });
 
-    expect(onDomainOpComplete).not.toHaveBeenCalled();
-    expect(result.current.state.isOpen).toBe(true);
-    expect(result.current.state.canonicalOp).toBe('add_grid_source_sn');
+    expect(onDomainOpComplete).toHaveBeenCalledWith(
+      'add_grid_source_sn',
+      'src-1',
+      {
+        voltage_kv: 15,
+      },
+    );
+    expect(result.current.state.isOpen).toBe(false);
   });
 
   it('zachowuje jawny kontekst kanonicznego zrodla przeksztaltnikowego', async () => {

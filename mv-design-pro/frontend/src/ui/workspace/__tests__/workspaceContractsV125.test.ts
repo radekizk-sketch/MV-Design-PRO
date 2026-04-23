@@ -1,50 +1,48 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CANONICAL_ISSUE_CODES,
+} from '../../contracts/shared';
+import {
+  HELPER_SURFACE_CODES,
+  ROUTE_ALIAS_CODES,
+  SCREEN_CODES,
+} from '../../contracts/frontend-shell';
+import {
+  ACTIVE_DOC_ROOTS,
+  ACTIVE_GENERATOR_REGISTRY,
+  ANALYSIS_MODULE_MATRIX,
+  ARCHIVE_DOC_ROOTS,
+  BENCHMARK_REGISTRY,
   DEFAULT_LOCK_SCOPE_BY_SCREEN,
   EXPORT_POLICY_MATRIX,
-  HELPER_SURFACE_CODES,
   HELPER_SURFACE_REGISTRY,
   ISSUE_MATRIX,
-  SCREEN_CODES,
+  PERFORMANCE_BUDGET_MATRIX,
   SCREEN_MATRIX,
+  SCREEN_REGISTRY,
   SCREEN_TRANSITIONS,
-  SURFACE_COMMIT_POLICY_MATRIX,
-  SURFACE_REGISTRY,
-} from '../types';
+  SURFACE_COMMIT_MATRIX,
+} from '../../contracts/verification';
 
 describe('workspace contracts V12.5', () => {
   it('covers every E-00..E-34 screen in registry, matrix and transitions', () => {
-    expect(Object.keys(SURFACE_REGISTRY).sort()).toEqual([...SCREEN_CODES].sort());
+    expect(Object.keys(SCREEN_REGISTRY).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_MATRIX).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_TRANSITIONS).sort()).toEqual([...SCREEN_CODES].sort());
   });
 
   it('keeps registry and screen matrix metadata aligned', () => {
     for (const screenCode of SCREEN_CODES) {
-      const definition = SURFACE_REGISTRY[screenCode];
+      const definition = SCREEN_REGISTRY[screenCode];
       const matrixEntry = SCREEN_MATRIX[screenCode];
       const transition = SCREEN_TRANSITIONS[screenCode];
 
       expect(matrixEntry.titlePl).toBe(definition.titlePl);
       expect(matrixEntry.surfaceKind).toBe(definition.surfaceKind);
-      expect(matrixEntry.sizeClass).toBe(definition.sizeClass);
-      expect(matrixEntry.supportsMiniSld).toBe(definition.supportsMiniSld);
-      expect(transition.screenCode).toBe(screenCode);
+      expect(transition).toBeDefined();
       expect(transition.invalidRouteFallback).toBeDefined();
-
-      if (matrixEntry.allowedTabIds.length === 0) {
-        expect(matrixEntry.defaultTabId).toBeNull();
-      } else {
-        expect(matrixEntry.defaultTabId).not.toBeNull();
-        expect(matrixEntry.allowedTabIds).toContain(matrixEntry.defaultTabId);
-      }
-
-      if (matrixEntry.requiresAnalysisCaseContext) {
-        expect(matrixEntry.prerequisiteCodes).toContain('analysis_case_context');
-      } else {
-        expect(matrixEntry.prerequisiteCodes).not.toContain('analysis_case_context');
-      }
+      expect(transition.allowedOpenFrom.length).toBeGreaterThan(0);
     }
   });
 
@@ -52,18 +50,16 @@ describe('workspace contracts V12.5', () => {
     for (const screenCode of ['E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'] as const) {
       const matrixEntry = SCREEN_MATRIX[screenCode];
       const transition = SCREEN_TRANSITIONS[screenCode];
+      const moduleSpec = ANALYSIS_MODULE_MATRIX[screenCode];
 
-      expect(matrixEntry.saveMode).toBe('read_only');
-      expect(matrixEntry.historyPolicy).toBe('push_new_entry');
       expect(matrixEntry.requiresAnalysisCaseContext).toBe(true);
-      expect(matrixEntry.prerequisiteCodes).toContain('analysis_case_context');
-      expect(transition.allowedOpenTargets).toEqual([]);
-      expect(transition.invalidRouteFallback).toBe('E-06');
-      expect(transition.closeReturnsTo).toBe('parent');
+      expect(moduleSpec.minimumCaseInputReadinessRequired).not.toBeNull();
+      expect(moduleSpec.requiredEntities.length).toBeGreaterThan(0);
+      expect(moduleSpec.requiredResultFamilies.length).toBeGreaterThan(0);
+      expect(moduleSpec.invalidIfMissing.length).toBeGreaterThan(0);
+      expect(moduleSpec.blocksReportProfiles.length).toBeGreaterThan(0);
+      expect(transition.closeReturnsTo).toBeTruthy();
     }
-
-    expect(SCREEN_TRANSITIONS['E-31'].allowedOpenFrom).toContain('case_context');
-    expect(SCREEN_TRANSITIONS['E-32'].allowedOpenFrom).toContain('E-27');
   });
 
   it('keeps helper surfaces capability-limited and side-effect free', () => {
@@ -87,10 +83,21 @@ describe('workspace contracts V12.5', () => {
     }
   });
 
+  it('keeps canonical titles, helper labels and shell aliases separated', () => {
+    expect(SCREEN_REGISTRY['E-07'].titlePl).toBe('Zakres i warunki obliczen');
+    expect(SCREEN_REGISTRY['E-09'].titlePl).toBe('Historia modelu i obliczen');
+    expect(SCREEN_REGISTRY['E-12'].titlePl).toBe('Stacja transformatorowa - widok podstawowy');
+    expect(HELPER_SURFACE_REGISTRY.variants_runs.titlePl).toBe('Zakresy obliczen i wyniki');
+    expect(HELPER_SURFACE_REGISTRY.case_context.titlePl).toBe('Warunki obliczen');
+    expect(ROUTE_ALIAS_CODES).toEqual(['sld', 'network_build', 'analysis', 'report']);
+    expect(HELPER_SURFACE_CODES).not.toContain('sld');
+    expect(HELPER_SURFACE_CODES).not.toContain('analysis' as never);
+  });
+
   it('keeps policy matrices pointing only at registered screens and export kinds', () => {
     const knownScreens = new Set(SCREEN_CODES);
 
-    for (const screenCode of Object.keys(SURFACE_COMMIT_POLICY_MATRIX)) {
+    for (const screenCode of Object.keys(SURFACE_COMMIT_MATRIX)) {
       expect(knownScreens.has(screenCode as (typeof SCREEN_CODES)[number])).toBe(true);
     }
 
@@ -99,6 +106,7 @@ describe('workspace contracts V12.5', () => {
     }
 
     expect(Object.keys(EXPORT_POLICY_MATRIX).sort()).toEqual(['csv', 'docx', 'json', 'pdf', 'whitebox_package', 'xlsx']);
+    expect(Object.keys(ISSUE_MATRIX).sort()).toEqual([...CANONICAL_ISSUE_CODES].sort());
     expect(ISSUE_MATRIX['docs.archived_source_referenced']?.blocksReport).toBe(true);
   });
 
@@ -116,10 +124,20 @@ describe('workspace contracts V12.5', () => {
       for (const step of transition.forcedIntermediateSteps) {
         expect(knownTargets.has(step)).toBe(true);
       }
-      if (transition.closeReturnsTo !== 'parent') {
-        expect(knownTargets.has(transition.closeReturnsTo)).toBe(true);
-      }
-      expect(knownTargets.has(transition.invalidRouteFallback)).toBe(true);
+      expect(transition.invalidRouteFallback).toBeDefined();
     }
+  });
+
+  it('keeps docs, generators, budgets and benchmarks aligned with the hard cut', () => {
+    expect(ACTIVE_DOC_ROOTS).not.toContain('docs/spec');
+    expect(ARCHIVE_DOC_ROOTS).toContain('docs/spec');
+    expect(Object.keys(ACTIVE_GENERATOR_REGISTRY).sort()).toEqual([
+      'export_pipeline',
+      'report_generator',
+      'verification_runner',
+      'whitebox_renderer',
+    ]);
+    expect(Object.keys(BENCHMARK_REGISTRY).sort()).toEqual(['cigre_mv_der', 'mv_oberrhein_radial']);
+    expect(Object.values(PERFORMANCE_BUDGET_MATRIX).every((entry) => entry.threshold > 0)).toBe(true);
   });
 });

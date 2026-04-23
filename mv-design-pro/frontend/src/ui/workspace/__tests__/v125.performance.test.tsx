@@ -291,7 +291,7 @@ function renderMiniSldTarget(): () => void {
   useNetworkBuildStore.getState().openRouteSurface('variants_runs');
   render(<WorkspaceSurfaceRouter region="main" />);
   return () => {
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Zakresy obliczen i wyniki' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
   };
 }
@@ -354,12 +354,12 @@ describe('V12.5 performance harness', () => {
     );
   });
 
-  it('measures E-06 analysis surface mount', async () => {
+  it('measures E-24 analysis surface mount', async () => {
     await measureTarget(
-      'E-06',
-      'Nakladka wynikowa na schemacie',
+      'E-24',
+      'Poziom analityczny i wyniki inzynierskie',
       'mount',
-      () => renderSurfaceTarget('E-06', 'main', 'Nakladka wynikowa na schemacie'),
+      () => renderSurfaceTarget('E-24', 'main', 'Poziom analityczny i wyniki inzynierskie'),
     );
   });
 

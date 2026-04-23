@@ -19,7 +19,7 @@ export {
   navigateToProof,
   navigateToCompare,
   navigateToNetworkBuild,
-  navigateToCaseConfig,
+  navigateToConditions,
   navigateToEnmInspector,
   navigateToFaultScenarios,
   navigateToCatalog,

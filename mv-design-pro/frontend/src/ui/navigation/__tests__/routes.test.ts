@@ -4,7 +4,7 @@ import {
   ROUTES,
   getRouteByHash,
   isAnalysisRouteAlias,
-  navigateToCaseConfig,
+  navigateToConditions,
   navigateToCompare,
   navigateToNetworkBuild,
   navigateToProof,
@@ -86,9 +86,9 @@ describe('routes V12.5', () => {
   });
 
   it('maps legacy helper entrypoints onto canonical hashes', () => {
-    navigateToCaseConfig();
+    navigateToConditions();
     let location = getHashParts();
-    expect(location.hash).toBe('#case-config');
+    expect(location.hash).toBe('#warunki-obliczen');
     expect(location.params.has('tab')).toBe(false);
 
     navigateToNetworkBuild();

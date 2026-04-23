@@ -221,16 +221,16 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
   });
 
-  it('renderuje mini-SLD dla helper surface wariantow', () => {
+  it('renderuje mini-SLD dla helper surface zakresu obliczen', () => {
     useNetworkBuildStore.getState().openRouteSurface('variants_runs');
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Zakresy obliczen i wyniki' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst obliczen' })).toBeInTheDocument();
     expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontekst przypadku' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Warunki obliczen' })).toBeInTheDocument();
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {
@@ -315,7 +315,7 @@ describe('WorkspaceOperationalBar', () => {
     useReadinessLiveStore.getState().clear();
   });
 
-  it('otwiera surface E-31 po kliknieciu segmentu aktywnej migawki', async () => {
+  it('otwiera surface E-31 po kliknieciu segmentu wersji modelu', async () => {
     const user = userEvent.setup();
     useAppStateStore.getState().setActiveCase('case-1', 'Wariant A', 'PowerFlowCase', 'OUTDATED');
     useAppStateStore.getState().setActiveSnapshot('snapshot-001');
@@ -365,11 +365,46 @@ describe('WorkspaceOperationalBar', () => {
 
     render(<WorkspaceOperationalBar validationStatus="valid" />);
 
-    expect(screen.getByText(/Aktywny widok:/)).toBeInTheDocument();
+    expect(screen.getByText(/Widok:/)).toBeInTheDocument();
     expect(screen.queryByText(/Aktywny surface:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/surface/i)).not.toBeInTheDocument();
     expect(
       screen.getByText(/Rama aplikacji pozostaje wspolna dla edycji, analityki i raportu/i),
     ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['partial', 'Stan kontraktu: czesciowy'],
+    ['failed', 'Stan kontraktu: nieudany'],
+    ['not_applicable', 'Stan kontraktu: nie dotyczy'],
+  ] as const)('pokazuje stan kontraktu "%s" na ekranach analitycznych', async (completeness, expectedLabel) => {
+    const runId = `run-${completeness}`;
+    fetchMock.mockReset();
+    fetchMock.mockImplementation(() =>
+      mockJsonResponse({
+        ...mockAnalysisRunDetail,
+        id: runId,
+        analysis_case_context: {
+          ...mockAnalysisRunDetail.analysis_case_context,
+          run_ref: runId,
+          completeness,
+          missing_prerequisites: completeness === 'partial' ? ['Brak Z0'] : [],
+        },
+      }),
+    );
+
+    useAppStateStore.getState().setActiveRun(runId);
+    useNetworkBuildStore.getState().openRouteSurface('E-31', {
+      titlePl: 'Rejestr zalozen i jakosci danych',
+      sizeClass: 'B',
+      openMode: 'replace_right_panel',
+      supportsMiniSld: false,
+      subjectKind: 'analysis_case',
+      subjectRef: 'case-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="panel" />);
+
+    expect(await screen.findByTestId('analysis-contract-state')).toHaveTextContent(expectedLabel);
   });
 });

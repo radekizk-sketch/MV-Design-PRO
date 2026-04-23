@@ -29,7 +29,7 @@ export const ROUTES = {
   ANALYSIS: {
     hash: '#analysis',
     label: 'Poziom analityczny',
-    description: 'Analityka E-24 w glownym shellu',
+    description: 'Analityka w glownym shellu',
     icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
@@ -42,15 +42,15 @@ export const ROUTES = {
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Warianty i uruchomienia',
-    description: 'Helper wyboru wariantow i uruchomien',
+    label: 'Zakresy obliczen i wyniki',
+    description: 'Helper wyboru zakresu obliczen i wynikow',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
-  CASE_CONFIG: {
-    hash: '#case-config',
-    label: 'Kontekst przypadku',
-    description: 'Helper kontekstu przypadku w glownym shellu',
+  CONDITIONS: {
+    hash: '#warunki-obliczen',
+    label: 'Warunki obliczen',
+    description: 'Helper warunkow obliczen w glownym shellu',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
@@ -243,8 +243,8 @@ export function navigateToNetworkBuild(): void {
   navigateTo(ROUTES.SLD);
 }
 
-export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
-  navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
+export function navigateToConditions(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.CONDITIONS.hash, (params) => {
     params.delete('run');
     assignRouteContext(params, context);
   });

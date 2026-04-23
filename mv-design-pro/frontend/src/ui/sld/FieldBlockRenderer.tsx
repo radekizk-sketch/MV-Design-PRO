@@ -83,6 +83,36 @@ function formatParams(params: Record<string, string | number>): string {
     .join(' ');
 }
 
+function CornerBracketFrame({
+  x,
+  y,
+  width,
+  height,
+  stroke,
+  corner = 14,
+  dash = '5 4',
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  stroke: string;
+  corner?: number;
+  dash?: string;
+}) {
+  const x2 = x + width;
+  const y2 = y + height;
+
+  return (
+    <g opacity={0.85}>
+      <path d={`M ${x + corner} ${y} H ${x} V ${y + corner}`} fill="none" stroke={stroke} strokeWidth={1} strokeDasharray={dash} />
+      <path d={`M ${x2 - corner} ${y} H ${x2} V ${y + corner}`} fill="none" stroke={stroke} strokeWidth={1} strokeDasharray={dash} />
+      <path d={`M ${x + corner} ${y2} H ${x} V ${y2 - corner}`} fill="none" stroke={stroke} strokeWidth={1} strokeDasharray={dash} />
+      <path d={`M ${x2 - corner} ${y2} H ${x2} V ${y2 - corner}`} fill="none" stroke={stroke} strokeWidth={1} strokeDasharray={dash} />
+    </g>
+  );
+}
+
 export const FieldBlockRenderer: React.FC<FieldBlockRendererProps> = ({
   field,
   colorSN = CANONICAL_VOLTAGE_COLORS.SN,
@@ -112,8 +142,19 @@ export const FieldBlockRenderer: React.FC<FieldBlockRendererProps> = ({
     return null;
   }
   const nnY = snLayout.totalBounds.y + snLayout.totalBounds.height + 34;
-  const stationHeight = Math.max(nnY - (baseY - 48) + 86, 240);
-  const stationWidth = 320;
+  const snEnvelope = {
+    x: snBounds.x - 10,
+    y: snBounds.y - 10,
+    width: snBounds.width + 20,
+    height: snBounds.height + 20,
+  };
+  const nnEnvelope = {
+    x: baseX - NN_BUSBAR_WIDTH / 2 - 16,
+    y: nnY - 14,
+    width: NN_BUSBAR_WIDTH + 32,
+    height: 40,
+  };
+  const titleBandHalfWidth = Math.max(snEnvelope.width / 2 + 26, 108);
 
   return (
     <g
@@ -124,31 +165,27 @@ export const FieldBlockRenderer: React.FC<FieldBlockRendererProps> = ({
       data-element-type="Station"
       data-element-name={field.stationId}
     >
-      <rect
-        x={baseX - stationWidth / 2}
-        y={baseY - 48}
-        width={stationWidth}
-        height={stationHeight}
-        rx={6}
-        ry={6}
-        fill="rgba(248, 250, 252, 0.88)"
-        stroke="#94A3B8"
-        strokeWidth={1.2}
-      />
-
-      <rect
-        x={snBounds.x - 12}
-        y={snBounds.y - 8}
-        width={snBounds.width + 24}
-        height={snBounds.height + 16}
-        rx={4}
-        ry={4}
-        fill="rgba(255, 255, 255, 0.4)"
-        stroke="#94A3B8"
-        strokeWidth={0.7}
-        strokeDasharray="4 2"
-        data-sld-role="station-sn-section"
-      />
+      <g data-sld-role="station-title-band" opacity={0.9}>
+        <line
+          x1={baseX - titleBandHalfWidth}
+          y1={baseY - 40}
+          x2={baseX - 42}
+          y2={baseY - 40}
+          stroke="#94A3B8"
+          strokeWidth={1}
+          strokeDasharray="6 4"
+        />
+        <line
+          x1={baseX + 42}
+          y1={baseY - 40}
+          x2={baseX + titleBandHalfWidth}
+          y2={baseY - 40}
+          stroke="#94A3B8"
+          strokeWidth={1}
+          strokeDasharray="6 4"
+        />
+        <circle cx={baseX - titleBandHalfWidth - 10} cy={baseY - 40} r={3} fill={colorSN} />
+      </g>
 
       <text x={baseX} y={baseY - 30} textAnchor="middle" className="sld-label-station-title">
         {field.stationId}
@@ -157,11 +194,30 @@ export const FieldBlockRenderer: React.FC<FieldBlockRendererProps> = ({
         {stationTypeLabel}
       </text>
 
-      <CanonicalFieldBlockSvg
-        detail={block}
-        layout={snLayout}
-        color={colorSN}
-      />
+      <g data-sld-role="station-sn-section">
+        <CornerBracketFrame
+          x={snEnvelope.x}
+          y={snEnvelope.y}
+          width={snEnvelope.width}
+          height={snEnvelope.height}
+          stroke="#94A3B8"
+        />
+
+        <text
+          x={snEnvelope.x + snEnvelope.width + 8}
+          y={snEnvelope.y + 10}
+          className="sld-label-params"
+          opacity={0.8}
+        >
+          Sekcja SN
+        </text>
+
+        <CanonicalFieldBlockSvg
+          detail={block}
+          layout={snLayout}
+          color={colorSN}
+        />
+      </g>
 
       {showTechnicalLabels && (
         <>
@@ -191,27 +247,23 @@ export const FieldBlockRenderer: React.FC<FieldBlockRendererProps> = ({
       )}
 
       {field.nnBusbar && (
-        <g data-sld-role="nn-busbar">
-          <rect
-            x={baseX - NN_BUSBAR_WIDTH / 2 - 12}
-            y={nnY - 18}
-            width={NN_BUSBAR_WIDTH + 24}
-            height={44}
-            rx={3}
-            ry={3}
-            fill="rgba(255, 255, 255, 0.4)"
-            stroke="#94A3B8"
-            strokeWidth={0.7}
-            strokeDasharray="4 2"
-            data-sld-role="station-nn-section"
+        <g data-sld-role="station-nn-section">
+          <CornerBracketFrame
+            x={nnEnvelope.x}
+            y={nnEnvelope.y}
+            width={nnEnvelope.width}
+            height={nnEnvelope.height}
+            stroke={colorNN}
+            corner={10}
+            dash="4 3"
           />
           <text
-            x={baseX - NN_BUSBAR_WIDTH / 2}
-            y={nnY - 6}
+            x={nnEnvelope.x}
+            y={nnEnvelope.y - 6}
             className="sld-label-params"
-            opacity={0.7}
+            opacity={0.8}
           >
-            nN
+            Sekcja nN
           </text>
 
           <line

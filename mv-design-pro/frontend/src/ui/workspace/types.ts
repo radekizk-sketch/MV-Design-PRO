@@ -1,4 +1,4 @@
-export type WorkspaceScreenCode =
+﻿export type WorkspaceScreenCode =
   | 'E-00'
   | 'E-01'
   | 'E-02'
@@ -94,7 +94,7 @@ export type WorkspaceRestorePolicy = 'none' | 'restore_if_compatible' | 'restore
 export type WorkspaceOpenMode = 'replace_right_panel' | 'expand_workspace';
 export type RouteHistoryPolicy = 'push_new_entry' | 'replace_current_entry' | 'silent_internal_change';
 
-export const ANALYSIS_SURFACE_SCREEN_CODE = 'E-06';
+export const ANALYSIS_SURFACE_SCREEN_CODE = 'E-24';
 export const REPORT_SURFACE_SCREEN_CODE = 'E-27';
 
 export const ANALYSIS_ROUTE_TAB_IDS = [
@@ -114,7 +114,7 @@ export const ROUTE_MANAGED_ROUTE_KEYS = [
   'report',
   'variants',
   'catalog',
-  'case-config',
+  'conditions',
 ] as const;
 
 export type RouteManagedRouteKey = (typeof ROUTE_MANAGED_ROUTE_KEYS)[number];
@@ -573,13 +573,13 @@ const SCREEN_DEFINITIONS: Record<WorkspaceScreenCode, WorkspaceSurfaceDefinition
   'E-03': { screenCode: 'E-03', titlePl: 'Inspektor elementu', componentRef: 'ElementInspectorSurface', sizeClass: 'B', surfaceKind: 'obiektowy', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: true, requiresSession: false },
   'E-04': { screenCode: 'E-04', titlePl: 'Gotowosc modelu i lista brakow', componentRef: 'ModelGapsSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-05': { screenCode: 'E-05', titlePl: 'Menu kontekstowe schematu', componentRef: 'SchematicContextMenuSurface', sizeClass: 'B', surfaceKind: 'pomocniczy', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: false, requiresSession: false },
-  'E-06': { screenCode: 'E-06', titlePl: 'Nakladka wynikowa na schemacie', componentRef: 'AnalysisWorkspaceSurface', sizeClass: 'C', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
-  'E-07': { screenCode: 'E-07', titlePl: 'Przypadki obliczeniowe', componentRef: 'AnalysisCasesSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
+  'E-06': { screenCode: 'E-06', titlePl: 'Wybor rodziny odcinka SN', componentRef: 'SegmentFamilyChooserSurface', sizeClass: 'A', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
+  'E-07': { screenCode: 'E-07', titlePl: 'Zakres i warunki obliczen', componentRef: 'AnalysisCasesSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-08': { screenCode: 'E-08', titlePl: 'Warianty pracy i przelaczenia', componentRef: 'VariantSwitchingSurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_case', supportsMiniSld: true, supportsChildren: false, requiresSession: true },
-  'E-09': { screenCode: 'E-09', titlePl: 'Historia migawek modelu i uruchomien obliczen', componentRef: 'RunHistorySurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
+  'E-09': { screenCode: 'E-09', titlePl: 'Historia modelu i obliczen', componentRef: 'RunHistorySurface', sizeClass: 'B', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-10': { screenCode: 'E-10', titlePl: 'Zrodlo zasilania GPZ', componentRef: 'GpzSupplySourceSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
   'E-11': { screenCode: 'E-11', titlePl: 'Nowy odcinek ciagu glownego', componentRef: 'MainTrunkSegmentSurface', sizeClass: 'A', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
-  'E-12': { screenCode: 'E-12', titlePl: 'Stacja transformatorowa - kreator uproszczony', componentRef: 'StationSimpleSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
+  'E-12': { screenCode: 'E-12', titlePl: 'Stacja transformatorowa - widok podstawowy', componentRef: 'StationSimpleSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
   'E-13': { screenCode: 'E-13', titlePl: 'Stacja transformatorowa - konfigurator pelny', componentRef: 'StationAdvancedSurface', sizeClass: 'C', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
   'E-14': { screenCode: 'E-14', titlePl: 'Pole SN - aparatura, przekladniki i zabezpieczenia', componentRef: 'FieldWorkspaceSurface', sizeClass: 'C', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
   'E-15': { screenCode: 'E-15', titlePl: 'Transformator SN/nN', componentRef: 'TransformerSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
@@ -591,7 +591,7 @@ const SCREEN_DEFINITIONS: Record<WorkspaceScreenCode, WorkspaceSurfaceDefinition
   'E-21': { screenCode: 'E-21', titlePl: 'Odgalezienie', componentRef: 'BranchSurface', sizeClass: 'A', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-22': { screenCode: 'E-22', titlePl: 'Domkniecie pierscienia i punkt normalnie otwarty', componentRef: 'RingNopSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: true, requiresSession: true },
   'E-23': { screenCode: 'E-23', titlePl: 'Obciazenie nN', componentRef: 'NnLoadSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
-  'E-24': { screenCode: 'E-24', titlePl: 'Edycja parametrow elementu', componentRef: 'ElementParametersSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: true, supportsChildren: false, requiresSession: true },
+  'E-24': { screenCode: 'E-24', titlePl: 'Poziom analityczny i wyniki inzynierskie', componentRef: 'AnalysisWorkspaceSurface', sizeClass: 'C', surfaceKind: 'analityczny', subjectKind: 'analysis_run', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
   'E-25': { screenCode: 'E-25', titlePl: 'Potwierdzenie usuniecia i skutki topologiczne', componentRef: 'DestructiveTransactionSurface', sizeClass: 'B', surfaceKind: 'edycyjny', subjectKind: 'entity', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-26': { screenCode: 'E-26', titlePl: 'Katalogi techniczne', componentRef: 'CatalogAdminSurface', sizeClass: 'B', surfaceKind: 'pomocniczy', subjectKind: 'helper_context', supportsMiniSld: false, supportsChildren: false, requiresSession: true },
   'E-27': { screenCode: 'E-27', titlePl: 'Raporty i eksporty', componentRef: 'ReportWorkspaceSurface', sizeClass: 'C', surfaceKind: 'raportowy', subjectKind: 'report', supportsMiniSld: true, supportsChildren: true, requiresSession: true },
@@ -609,7 +609,7 @@ export const SURFACE_REGISTRY: Record<WorkspaceScreenCode, WorkspaceSurfaceDefin
 export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDefinition> = {
   variants_runs: {
     helperCode: 'variants_runs',
-    titlePl: 'Warianty i uruchomienia',
+    titlePl: 'Zakresy obliczen i wyniki',
     componentRef: 'VariantsRunsHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -618,7 +618,7 @@ export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDef
   },
   catalog_picker: {
     helperCode: 'catalog_picker',
-    titlePl: 'WybĂłr pozycji katalogowej',
+    titlePl: 'WybÄ‚Ĺ‚r pozycji katalogowej',
     componentRef: 'CatalogPickerHelperSurface',
     allowedCapabilities: ['read_context', 'pick_catalog_item', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -636,7 +636,7 @@ export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDef
   },
   case_context: {
     helperCode: 'case_context',
-    titlePl: 'Kontekst przypadku',
+    titlePl: 'Warunki obliczen',
     componentRef: 'CaseContextHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -652,8 +652,8 @@ const READ_ONLY_SCREENS = new Set<WorkspaceScreenCode>([
   'E-03',
   'E-04',
   'E-05',
-  'E-06',
   'E-09',
+  'E-24',
   'E-26',
   'E-27',
   'E-28',
@@ -779,12 +779,12 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-03': screen('E-03', null, ['tozsamosc-techniczna', 'dane-projektowe', 'dane-obliczeniowe', 'wyniki', 'uzasadnienie', 'pochodzenie', 'jakosc'], 'tozsamosc-techniczna', [], 'E-01'),
   'E-04': screen('E-04', 'analysis_case', ['braki', 'naprawy', 'gotowosc'], 'braki', [], 'E-01'),
   'E-05': screen('E-05', null, [], null, [], 'E-01'),
-  'E-06': screen('E-06', 'analysis_run', [...ANALYSIS_ROUTE_TAB_IDS], ANALYSIS_ROUTE_DEFAULT_TAB, ['analysis_case_context'], 'E-01'),
+  'E-06': screen('E-06', 'segment', ['wybor-rodziny'], 'wybor-rodziny', ['E-14'], 'E-14'),
   'E-07': screen('E-07', 'analysis_case', ['lista', 'parametry', 'kompletnosc'], 'lista', [], 'E-01'),
   'E-08': screen('E-08', 'analysis_case', ['wariant', 'przelaczenia', 'n-1', 'punkt-normalnie-otwarty'], 'wariant', [], 'E-07'),
-  'E-09': screen('E-09', 'analysis_run', ['migawki', 'uruchomienia', 'historia'], 'migawki', [], 'E-07'),
+  'E-09': screen('E-09', 'analysis_run', ['wersje-modelu', 'wyniki', 'historia-zmian'], 'wersje-modelu', [], 'E-07'),
   'E-10': screen('E-10', 'gpz', ['uproszczony', 'pelny', 'szyny-sn'], 'uproszczony', [], 'E-01'),
-  'E-11': screen('E-11', 'segment', ['kabel-sn', 'linia-napowietrzna-sn'], 'kabel-sn', ['E-14'], 'E-14'),
+  'E-11': screen('E-11', 'segment', ['kabel-sn', 'linia-napowietrzna-sn'], 'kabel-sn', ['E-06'], 'E-06'),
   'E-12': screen('E-12', 'station', ['typ-topologiczny', 'ustawienia-podstawowe'], 'typ-topologiczny', ['E-11'], 'E-11'),
   'E-13': screen('E-13', 'station', ['topologia', 'transformatory', 'rozdzielnia-sn', 'strona-nn'], 'topologia', ['E-12'], 'E-12'),
   'E-14': screen('E-14', 'sn_bay', ['identyfikacja', 'aparatura', 'przekladniki', 'zabezpieczenia'], 'identyfikacja', ['E-10'], 'E-10'),
@@ -797,17 +797,17 @@ export const SCREEN_MATRIX: Record<WorkspaceScreenCode, WorkspaceScreenMatrixEnt
   'E-21': screen('E-21', 'branch', ['rodzina-odgalezienia', 'parametry'], 'rodzina-odgalezienia', ['E-20'], 'E-20'),
   'E-22': screen('E-22', 'ring', ['domkniecie-pierscienia', 'punkt-normalnie-otwarty'], 'domkniecie-pierscienia', ['E-21'], 'E-21'),
   'E-23': screen('E-23', 'station_lv_side', ['obciazenie', 'profil', 'jakosc-danych'], 'obciazenie', ['E-16'], 'E-16'),
-  'E-24': screen('E-24', null, ['parametry', 'jakosc-danych', 'pochodzenie'], 'parametry', [], 'E-03'),
+  'E-24': screen('E-24', 'analysis_run', [...ANALYSIS_ROUTE_TAB_IDS], ANALYSIS_ROUTE_DEFAULT_TAB, ['analysis_case_context'], 'E-01'),
   'E-25': screen('E-25', null, ['potwierdzenie', 'skutki-topologiczne'], 'potwierdzenie', [], 'E-03'),
   'E-26': screen('E-26', null, ['katalogi', 'wyszukiwarka', 'powiazania'], 'katalogi', [], 'catalog_admin'),
-  'E-27': screen('E-27', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-06'),
-  'E-28': screen('E-28', 'analysis_run', ['tcc', 'nastawy', 'selektywnosc', 'spz', 'uzasadnienie'], 'tcc', ['analysis_case_context'], 'E-06'),
-  'E-29': screen('E-29', 'analysis_run', ['z1-z2-z0', 'siec-zerowa', 'petersen', '3i0-3u0', 'uzasadnienie'], 'z1-z2-z0', ['analysis_case_context'], 'E-06'),
-  'E-30': screen('E-30', 'analysis_run', ['reguly', 'p(f)', 'q(u)', 'frt', 'wynik'], 'reguly', ['analysis_case_context'], 'E-06'),
-  'E-31': screen('E-31', 'analysis_case', ['zalozenia', 'jakosc', 'pochodzenie'], 'zalozenia', ['analysis_case_context'], 'E-06'),
-  'E-32': screen('E-32', 'analysis_run', ['zrodla', 'wezly', 'galezie', 'pola', 'uzasadnienie'], 'zrodla', ['analysis_case_context'], 'E-06'),
-  'E-33': screen('E-33', 'analysis_run', ['tor', 'cieplna', 'dynamiczna', 'najsłabszy-element', 'uzasadnienie'], 'tor', ['analysis_case_context'], 'E-06'),
-  'E-34': screen('E-34', 'analysis_run', ['iteracje', 'pv-pq', 'q-limits', 'oltc', 'uzasadnienie'], 'iteracje', ['analysis_case_context'], 'E-06'),
+  'E-27': screen('E-27', 'report', ['zakres', 'podglad', 'eksport', 'uzasadnienia'], 'zakres', ['analysis_case_context'], 'E-24'),
+  'E-28': screen('E-28', 'analysis_run', ['tcc', 'nastawy', 'selektywnosc', 'spz', 'uzasadnienie'], 'tcc', ['analysis_case_context'], 'E-24'),
+  'E-29': screen('E-29', 'analysis_run', ['z1-z2-z0', 'siec-zerowa', 'petersen', '3i0-3u0', 'uzasadnienie'], 'z1-z2-z0', ['analysis_case_context'], 'E-24'),
+  'E-30': screen('E-30', 'analysis_run', ['reguly', 'p(f)', 'q(u)', 'frt', 'wynik'], 'reguly', ['analysis_case_context'], 'E-24'),
+  'E-31': screen('E-31', 'analysis_case', ['zalozenia', 'jakosc', 'pochodzenie'], 'zalozenia', ['analysis_case_context'], 'E-24'),
+  'E-32': screen('E-32', 'analysis_run', ['zrodla', 'wezly', 'galezie', 'pola', 'uzasadnienie'], 'zrodla', ['analysis_case_context'], 'E-24'),
+  'E-33': screen('E-33', 'analysis_run', ['tor', 'cieplna', 'dynamiczna', 'najsLabszy-element', 'uzasadnienie'], 'tor', ['analysis_case_context'], 'E-24'),
+  'E-34': screen('E-34', 'analysis_run', ['iteracje', 'pv-pq', 'q-limits', 'oltc', 'uzasadnienie'], 'iteracje', ['analysis_case_context'], 'E-24'),
 };
 
 const transition = (
@@ -830,18 +830,18 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-00': transition('E-00', ['E-00'], SCREEN_CODES.filter((code) => code !== 'E-00'), 'parent', 'E-00'),
   'E-01': transition('E-01', ['E-00'], ['E-02', 'E-03', 'E-04', 'E-07', 'E-08', 'E-09', 'E-10', 'E-26', 'variants_runs', 'catalog_admin', 'case_context'], 'E-00', 'E-00'),
   'E-02': transition('E-02', ['E-00', 'E-01'], ['E-03', 'E-10', 'E-12', 'E-13', 'E-14', 'E-15', 'E-16', 'E-17', 'E-18', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23', 'E-24', 'E-25'], 'parent', 'E-01'),
-  'E-03': transition('E-03', ['E-01', 'E-02', 'E-06'], ['E-14', 'E-24', 'E-25'], 'parent', 'E-01'),
-  'E-04': transition('E-04', ['E-01', 'E-02', 'E-06', 'case_context'], ['E-10', 'E-11', 'E-12', 'E-13', 'E-14', 'E-15', 'E-16', 'E-17', 'E-18', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23', 'E-26'], 'parent', 'E-01'),
+  'E-03': transition('E-03', ['E-01', 'E-02', 'E-24'], ['E-14', 'E-25'], 'parent', 'E-01'),
+  'E-04': transition('E-04', ['E-01', 'E-02', 'E-24', 'case_context'], ['E-10', 'E-11', 'E-12', 'E-13', 'E-14', 'E-15', 'E-16', 'E-17', 'E-18', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23', 'E-26'], 'parent', 'E-01'),
   'E-05': transition('E-05', ['E-01', 'E-02', 'E-03', 'E-14'], ['E-10', 'E-11', 'E-12', 'E-13', 'E-14', 'E-15', 'E-16', 'E-17', 'E-18', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23', 'E-24', 'E-25', 'E-26'], 'parent', 'E-01'),
-  'E-06': transition('E-06', ['E-01', 'E-07', 'E-08', 'E-09', 'variants_runs', 'case_context', 'E-27'], ['E-27', 'E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'], 'parent', 'E-01'),
-  'E-07': transition('E-07', ['E-00', 'E-01', 'case_context'], ['E-08', 'E-09', 'E-06', 'E-27'], 'parent', 'E-01'),
-  'E-08': transition('E-08', ['E-01', 'E-07', 'variants_runs'], ['E-06', 'E-09', 'E-27'], 'parent', 'E-07'),
-  'E-09': transition('E-09', ['E-01', 'E-07', 'E-08', 'variants_runs'], ['E-06', 'E-27'], 'parent', 'E-07'),
+  'E-06': transition('E-06', ['E-14'], ['E-11'], 'parent', 'E-14'),
+  'E-07': transition('E-07', ['E-00', 'E-01', 'case_context'], ['E-08', 'E-09', 'E-24', 'E-27'], 'parent', 'E-01'),
+  'E-08': transition('E-08', ['E-01', 'E-07', 'variants_runs'], ['E-09', 'E-24', 'E-27'], 'parent', 'E-07'),
+  'E-09': transition('E-09', ['E-01', 'E-07', 'E-08', 'variants_runs'], ['E-24', 'E-27'], 'parent', 'E-07'),
   'E-10': transition('E-10', ['E-01', 'E-02', 'E-04'], ['E-14'], 'parent', 'E-01'),
-  'E-11': transition('E-11', ['E-14'], ['E-12', 'E-13', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23'], 'parent', 'E-14'),
+  'E-11': transition('E-11', ['E-06'], ['E-12', 'E-13', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23'], 'parent', 'E-06'),
   'E-12': transition('E-12', ['E-11', 'E-02'], ['E-13', 'E-15', 'E-16', 'E-23'], 'parent', 'E-11'),
   'E-13': transition('E-13', ['E-12', 'E-02'], ['E-14', 'E-15', 'E-16', 'E-24', 'E-25'], 'parent', 'E-12'),
-  'E-14': transition('E-14', ['E-03', 'E-10', 'E-13'], ['E-11', 'E-24', 'E-28', 'E-29', 'E-32'], 'parent', 'E-10'),
+  'E-14': transition('E-14', ['E-03', 'E-10', 'E-13'], ['E-06', 'E-24', 'E-28', 'E-29', 'E-32'], 'parent', 'E-10'),
   'E-15': transition('E-15', ['E-12', 'E-13'], ['E-16', 'E-24', 'E-29', 'E-33', 'E-34'], 'parent', 'E-13'),
   'E-16': transition('E-16', ['E-12', 'E-13', 'E-15'], ['E-23', 'E-24'], 'parent', 'E-13'),
   'E-17': transition('E-17', ['E-01', 'E-02', 'E-16'], ['E-24', 'E-30', 'E-32'], 'parent', 'E-01'),
@@ -851,17 +851,17 @@ export const SCREEN_TRANSITIONS: Record<WorkspaceScreenCode, ScreenTransitionPol
   'E-21': transition('E-21', ['E-11', 'E-20', 'E-02'], ['E-24', 'E-25'], 'parent', 'E-11'),
   'E-22': transition('E-22', ['E-11', 'E-21', 'E-02'], ['E-08', 'E-24', 'E-25'], 'parent', 'E-11'),
   'E-23': transition('E-23', ['E-11', 'E-12', 'E-16', 'E-02'], ['E-24', 'E-25'], 'parent', 'E-16'),
-  'E-24': transition('E-24', ['E-02', 'E-03', 'E-11', 'E-12', 'E-13', 'E-14', 'E-15', 'E-16', 'E-17', 'E-18', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23'], ['E-06', 'E-25', 'E-26'], 'parent', 'E-01'),
+  'E-24': transition('E-24', ['E-01', 'E-03', 'E-07', 'E-08', 'E-09', 'E-14', 'E-15', 'E-17', 'E-18', 'variants_runs', 'case_context', 'E-27'], ['E-27', 'E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'], 'parent', 'E-01'),
   'E-25': transition('E-25', ['E-03', 'E-13', 'E-19', 'E-20', 'E-21', 'E-22', 'E-23', 'E-24'], ['E-02', 'E-04'], 'parent', 'E-01'),
   'E-26': transition('E-26', ['E-01', 'E-04', 'catalog_admin', 'catalog_picker'], ['catalog_picker', 'E-24'], 'parent', 'E-01'),
-  'E-27': transition('E-27', ['E-01', 'E-06', 'E-07', 'E-08', 'E-09', 'variants_runs', 'case_context'], ['E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'], 'parent', 'E-06'),
-  'E-28': transition('E-28', ['E-06', 'E-14', 'E-27'], [], 'parent', 'E-06'),
-  'E-29': transition('E-29', ['E-06', 'E-14', 'E-15', 'E-27'], [], 'parent', 'E-06'),
-  'E-30': transition('E-30', ['E-06', 'E-17', 'E-18', 'E-27'], [], 'parent', 'E-06'),
-  'E-31': transition('E-31', ['E-06', 'case_context', 'E-27'], [], 'parent', 'E-06'),
-  'E-32': transition('E-32', ['E-06', 'E-14', 'E-17', 'E-18', 'E-27'], [], 'parent', 'E-06'),
-  'E-33': transition('E-33', ['E-06', 'E-14', 'E-15', 'E-27'], [], 'parent', 'E-06'),
-  'E-34': transition('E-34', ['E-06', 'E-15', 'E-27'], [], 'parent', 'E-06'),
+  'E-27': transition('E-27', ['E-01', 'E-24', 'E-07', 'E-08', 'E-09', 'variants_runs', 'case_context'], ['E-28', 'E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'], 'parent', 'E-24'),
+  'E-28': transition('E-28', ['E-24', 'E-14', 'E-27'], [], 'parent', 'E-24'),
+  'E-29': transition('E-29', ['E-24', 'E-14', 'E-15', 'E-27'], [], 'parent', 'E-24'),
+  'E-30': transition('E-30', ['E-24', 'E-17', 'E-18', 'E-27'], [], 'parent', 'E-24'),
+  'E-31': transition('E-31', ['E-24', 'case_context', 'E-27'], [], 'parent', 'E-24'),
+  'E-32': transition('E-32', ['E-24', 'E-14', 'E-17', 'E-18', 'E-27'], [], 'parent', 'E-24'),
+  'E-33': transition('E-33', ['E-24', 'E-14', 'E-15', 'E-27'], [], 'parent', 'E-24'),
+  'E-34': transition('E-34', ['E-24', 'E-15', 'E-27'], [], 'parent', 'E-24'),
 };
 
 export const SURFACE_COMMIT_POLICY_MATRIX: Partial<Record<WorkspaceScreenCode, SurfaceCommitPolicy>> = {

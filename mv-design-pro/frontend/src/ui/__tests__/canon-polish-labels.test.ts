@@ -34,10 +34,10 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     }
   });
 
-  it('ma polskie etykiety w pasku aktywnego przypadku', () => {
+  it('ma polskie etykiety w pasku zakresu obliczen', () => {
     const { missing, fileExists } = fileContains('active-case-bar/ActiveCaseBar.tsx', [
-      'Zmien przypadek',
-      'Kontekst przypadku',
+      'Zmien zakres',
+      'Warunki obliczen',
       'Oblicz',
       'Podglad wynikow',
     ]);

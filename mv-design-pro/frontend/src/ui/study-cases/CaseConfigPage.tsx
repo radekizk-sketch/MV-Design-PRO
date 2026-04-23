@@ -115,7 +115,7 @@ export function CaseConfigPage() {
             Brak aktywnego przypadku
           </h2>
           <p className="text-sm text-gray-500">
-            Wybierz lub utworz przypadek obliczeniowy, aby skonfigurowac parametry analizy.
+            Wybierz lub utworz zakres obliczen, aby skonfigurowac warunki analizy.
           </p>
         </div>
       </div>
@@ -128,10 +128,10 @@ export function CaseConfigPage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">
-            Kontekst przypadku obliczeniowego
+          Warunki obliczen
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Przypadek: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
+          Zakres obliczen: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
           </p>
         </div>
 

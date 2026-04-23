@@ -136,7 +136,7 @@ function ResultStatusBar({
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="results-status-case-context">
-              <span className="font-medium">Przypadek:</span> {caseLabel}
+                <span className="font-medium">Zakres obliczen:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (
@@ -148,7 +148,7 @@ function ResultStatusBar({
             </span>
           )}
           <span className="text-sm text-slate-600">
-            <span className="font-medium">Uruchomienie:</span> {runId.substring(0, 8)}...
+                <span className="font-medium">Wyniki:</span> {runId.substring(0, 8)}...
           </span>
         </div>
         {(proofPackRef || reproducibilitySummary) && (
@@ -241,7 +241,7 @@ function AnalysisCaseContextPanel({
             analysis_case_context
           </div>
           <h2 className="mt-1 text-sm font-semibold text-slate-900">
-            Kontekst przypadku obliczeniowego
+          Warunki obliczen
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -257,7 +257,7 @@ function AnalysisCaseContextPanel({
         />
         <ContextField label="Case ref" value={context.case_ref} />
         <ContextField label="Run ref" value={context.run_ref} />
-        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
+                <ContextField label="Wersja modelu" value={context.snapshot_ref ?? 'Brak'} />
         <ContextField label="Proof pack" value={context.proof_pack_ref} />
         <ContextField label="Zakres" value={applicability} />
       </div>
@@ -920,7 +920,7 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
               Wyniki i ślad obliczeń
             </p>
             <h1 className="mt-2 text-xl font-semibold text-slate-900">
-              Brak wybranego uruchomienia
+          Brak wybranych wynikow
             </h1>
             <p className="mt-2 text-sm text-slate-600">
               Wybierz wykonane obliczenie w widoku wyników albo uruchom analizę dla aktywnego

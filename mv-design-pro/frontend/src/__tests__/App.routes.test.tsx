@@ -233,8 +233,8 @@ describe('App hash routes', () => {
     expect(await screen.findByTestId('results-comparison-page')).toBeInTheDocument();
   });
 
-  it('traktuje #case-config jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
-    window.location.hash = '#case-config?case=case-1';
+  it('traktuje #warunki-obliczen jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
+    window.location.hash = '#warunki-obliczen?case=case-1';
 
     render(<App />);
 

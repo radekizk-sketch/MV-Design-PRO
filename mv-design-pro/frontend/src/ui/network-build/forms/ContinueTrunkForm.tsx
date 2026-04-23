@@ -43,29 +43,39 @@ export function ContinueTrunkForm() {
   ).trim();
   const terminalName = ((context?.terminal_name as string) ?? '').trim();
   const terminalVoltageLabel = ((context?.terminal_voltage_label as string) ?? '').trim();
+  const segmentKind = (
+    typeof context?.segment_kind === 'string' ? context.segment_kind.trim().toUpperCase() : ''
+  ) as TrunkContinueFormData['segment_kind'] | '';
   const hasCanonicalTerminal = terminalId.length > 0;
+  const hasSegmentFamily =
+    segmentKind === 'KABEL_SN' || segmentKind === 'LINIA_NAPOWIETRZNA';
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const initialData = useMemo<Partial<TrunkContinueFormData>>(() => {
     if (!context) return {};
     const segmentContext = context.segment as Record<string, unknown> | undefined;
-    const segmentKind = context.segment_kind as TrunkContinueFormData['segment_kind'] | undefined;
-    const lengthM = typeof context.length_m === 'number' ? context.length_m : undefined;
+      const lengthM = typeof context.length_m === 'number' ? context.length_m : undefined;
     const catalogRef = (
       catalogRefFromInput(segmentContext?.catalog_binding)
       ?? catalogRefFromInput(context.catalog_binding)
       ?? undefined
     );
-    return {
-      ...(segmentKind ? { segment_kind: segmentKind } : {}),
+      return {
+      ...(hasSegmentFamily ? { segment_kind: segmentKind } : {}),
       ...(lengthM !== undefined ? { length_m: lengthM } : {}),
       ...(catalogRef !== undefined ? { catalog_ref: catalogRef } : {}),
     };
-  }, [context]);
+  }, [context, hasSegmentFamily, segmentKind]);
 
   const handleSubmit = useCallback(
     async (data: TrunkContinueFormData) => {
-      if (!activeCaseId || !hasCanonicalTerminal) return;
+      if (!activeCaseId || !hasCanonicalTerminal) {
+        return;
+      }
+      if (!hasSegmentFamily) {
+        setCatalogError('Najpierw wybierz rodzine odcinka SN w kroku E-06.');
+        return;
+      }
       const catalogNamespace = normalizeSegmentNamespace(data.segment_kind);
       const catalogBinding = normalizeCatalogBinding(data.catalog_ref, catalogNamespace);
       const payload = {
@@ -87,13 +97,23 @@ export function ContinueTrunkForm() {
       await executeDomainOperation(activeCaseId, 'continue_trunk_segment_sn', payload);
       closeForm();
     },
-    [activeCaseId, closeForm, executeDomainOperation, hasCanonicalTerminal, terminalId, trunkId],
+    [
+      activeCaseId,
+      closeForm,
+      executeDomainOperation,
+      hasCanonicalTerminal,
+      hasSegmentFamily,
+      terminalId,
+      trunkId,
+    ],
   );
 
   return (
-    <div className="h-full overflow-y-auto" data-testid="continue-trunk-form">
+    <div className="h-full overflow-y-auto bg-[#07141f]" data-testid="continue-trunk-form">
       {catalogError && (
-        <p className="px-4 py-2 text-xs text-red-600 bg-red-50 border-b border-red-200">{catalogError}</p>
+        <p className="border-b border-rose-500/30 bg-rose-950/40 px-4 py-2 text-xs text-rose-100">
+          {catalogError}
+        </p>
       )}
       <TrunkContinueModal
         isOpen={true}
@@ -104,8 +124,15 @@ export function ContinueTrunkForm() {
         terminalName={terminalName}
         terminalVoltageLabel={terminalVoltageLabel}
         initialData={initialData}
-        submitDisabled={!hasCanonicalTerminal}
-        submitDisabledReason={!hasCanonicalTerminal ? 'Brak jawnego terminala magistrali.' : null}
+        submitDisabled={!hasCanonicalTerminal || !hasSegmentFamily}
+        submitDisabledReason={
+          !hasCanonicalTerminal
+            ? 'Brak jawnego terminala magistrali.'
+            : !hasSegmentFamily
+              ? 'Najpierw wybierz rodzine odcinka SN.'
+              : null
+        }
+        lockSegmentKind={hasSegmentFamily}
         onSubmit={handleSubmit}
         onCancel={closeForm}
       />

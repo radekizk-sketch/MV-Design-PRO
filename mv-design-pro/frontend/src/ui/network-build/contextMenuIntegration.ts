@@ -8,7 +8,7 @@
  */
 
 import type { ContextMenuAction, OperatingMode, ElementType } from '../types';
-import type { ActiveObjectCard } from './networkBuildStore';
+import type { ActiveObjectCard } from './internal/legacySurfaceTypes';
 import { checkCatalogGate } from '../context-menu/catalogGate';
 import type { CatalogNamespace } from '../context-menu/catalogGate';
 import {
