@@ -80,11 +80,11 @@ describe('ActiveCaseBar', () => {
 
     render(<ActiveCaseBar />);
 
-    expect(screen.getByText('Zakres obliczen')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-change-case')).toHaveTextContent('Zmien zakres');
-    expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wynikow');
+    expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-change-case')).toHaveTextContent('Zmień zakres');
+    expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wyników');
     expect(screen.queryByText('Wyniki aktualne')).toBeNull();
-    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Aktywny przebieg');
+    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Ostatnie obliczenie');
     expect(screen.getByTestId('active-run-id')).toHaveTextContent('run-42');
   });
 
@@ -127,8 +127,8 @@ describe('ActiveCaseBar', () => {
     fireEvent.click(screen.getByTestId('btn-secondary-actions'));
 
     expect(screen.getByTestId('secondary-actions-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Warunki obliczen');
-    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podglad wynikow');
+    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Warunki obliczeń');
+    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podgląd wyników');
 
     fireEvent.click(screen.getByTestId('btn-configure'));
     expect(onConfigureClick).toHaveBeenCalledTimes(1);

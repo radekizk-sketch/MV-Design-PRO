@@ -112,7 +112,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       const cases = await api.listStudyCases(projectId);
       set({ cases, isLoading: false });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd ładowania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd ładowania zakresów obliczeń';
       set({ error: message, isLoading: false });
     }
   },
@@ -147,7 +147,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isCreating: false });
       return newCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd tworzenia przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd tworzenia zakresu obliczeń';
       set({ error: message, isCreating: false });
       throw err;
     }
@@ -169,7 +169,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       }
       return updatedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd aktualizacji przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd aktualizacji zakresu obliczeń';
       set({ error: message });
       throw err;
     }
@@ -192,7 +192,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isDeleting: false });
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd usuwania przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd usuwania zakresu obliczeń';
       set({ error: message, isDeleting: false });
       return false;
     }
@@ -212,7 +212,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isCloning: false });
       return clonedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd klonowania przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd klonowania zakresu obliczeń';
       set({ error: message, isCloning: false });
       throw err;
     }
@@ -234,7 +234,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ activeCase: activatedCase, isActivating: false });
       return activatedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd aktywacji przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd aktywacji zakresu obliczeń';
       set({ error: message, isActivating: false });
       throw err;
     }
@@ -250,7 +250,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ comparisonResult: comparison, isComparing: false });
       return comparison;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd porównywania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd porównywania zakresów obliczeń';
       set({ error: message, isComparing: false });
       throw err;
     }
@@ -276,7 +276,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       await get().loadCases(projectId);
       await get().loadActiveCase(projectId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd oznaczania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd oznaczania zakresów obliczeń';
       set({ error: message });
     }
   },

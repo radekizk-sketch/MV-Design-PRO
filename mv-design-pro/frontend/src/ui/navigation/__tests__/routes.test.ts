@@ -55,7 +55,7 @@ describe('routes V12.5', () => {
     expect(resolveAnalysisRouteAliasTab('#switchgear')).toBeNull();
   });
 
-  it('navigates analysis aliases through dedicated public alias hashes', () => {
+  it('navigates canonical analysis views without exposing technical proof alias', () => {
     navigateToResults();
 
     let location = getHashParts();
@@ -66,8 +66,8 @@ describe('routes V12.5', () => {
 
     navigateToProof();
     location = getHashParts();
-    expect(location.hash).toBe('#proof');
-    expect(location.params.has('tab')).toBe(false);
+    expect(location.hash).toBe('#analysis');
+    expect(location.params.get('tab')).toBe('trace');
 
     navigateToResultsProtection();
     location = getHashParts();

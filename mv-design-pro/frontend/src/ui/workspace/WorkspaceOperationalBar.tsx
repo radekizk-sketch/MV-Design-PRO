@@ -198,7 +198,7 @@ export function WorkspaceOperationalBar({
           testId="workspace-operational-report"
         />
         <SegmentButton
-          label="Stan wynikow"
+          label="Stan wynik?w"
           value={resultStatusLabel}
           tone={resultTone}
           onClick={() =>
@@ -224,7 +224,7 @@ export function WorkspaceOperationalBar({
           tone={activeSnapshotId ? 'accent' : 'default'}
           onClick={() =>
             openRouteSurface('E-31', {
-              titlePl: 'Rejestr zalozen i jakosci danych',
+              titlePl: 'Rejestr założeń i jakości danych',
               sizeClass: 'B',
               openMode: 'replace_right_panel',
               supportsMiniSld: false,

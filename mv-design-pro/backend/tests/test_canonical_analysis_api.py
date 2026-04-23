@@ -173,7 +173,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert execution_payload["validation_snapshot"] == readiness_payload["validation"]
     assert execution_payload["readiness_snapshot"] == readiness_payload["readiness"]
 
-    results_index = client.get(f"/analysis-runs/{run_id}/results/index")
+    results_index = client.get(f"/api/analysis-runs/{run_id}/results/index")
     assert results_index.status_code == 200
     index_payload = results_index.json()
     assert index_payload["run_header"]["snapshot_id"] == snapshot_hash
@@ -193,11 +193,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert index_payload["export_policy"]["carries_analysis_case_context"] is True
     assert index_payload["export_policy"]["carries_proof_pack_ref"] is True
 
-    api_results_index = client.get(f"/api/analysis-runs/{run_id}/results/index")
-    assert api_results_index.status_code == 200
-    assert api_results_index.json() == index_payload
-
-    detail_response = client.get(f"/analysis-runs/{run_id}")
+    detail_response = client.get(f"/api/analysis-runs/{run_id}")
     assert detail_response.status_code == 200
     detail_payload = detail_response.json()
     assert detail_payload["id"] == run_id
@@ -209,7 +205,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
         "proof-pack:"
     )
 
-    short_circuit = client.get(f"/analysis-runs/{run_id}/results/short-circuit")
+    short_circuit = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
     assert short_circuit.status_code == 200
     short_circuit_payload = short_circuit.json()
     assert short_circuit_payload["run_id"] == run_id
@@ -217,7 +213,7 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert short_circuit_payload["rows"]
     assert all("element_id" in row for row in short_circuit_payload["rows"])
 
-    trace_details = client.get(f"/analysis-runs/{run_id}/results/trace")
+    trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200
     trace_payload = trace_details.json()
     assert trace_payload["run_id"] == run_id
@@ -233,20 +229,23 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert any("primary_element_ref" in step for step in trace_payload["white_box_trace"])
     assert any("related_elements" in step for step in trace_payload["white_box_trace"])
 
-    trace_view = client.get(f"/analysis-runs/{run_id}/trace")
+    trace_view = client.get(f"/api/analysis-runs/{run_id}/trace")
     assert trace_view.status_code == 200
     assert trace_view.json()["trace"] == trace_payload["white_box_trace"]
 
-    snapshot_view = client.get(f"/analysis-runs/{run_id}/snapshot")
+    snapshot_view = client.get(f"/api/analysis-runs/{run_id}/snapshot")
     assert snapshot_view.status_code == 200
     snapshot_payload = snapshot_view.json()
     assert snapshot_payload["run_id"] == run_id
     assert snapshot_payload["snapshot_id"] == snapshot_hash
     assert snapshot_payload["snapshot"]["header"]["hash_sha256"] == snapshot_hash
 
-    api_snapshot_view = client.get(f"/api/analysis-runs/{run_id}/snapshot")
-    assert api_snapshot_view.status_code == 200
-    assert api_snapshot_view.json() == snapshot_payload
+    assert client.get(f"/analysis-runs/{run_id}/results/index").status_code == 404
+    assert client.get(f"/analysis-runs/{run_id}").status_code == 404
+    assert client.get(f"/analysis-runs/{run_id}/results/short-circuit").status_code == 404
+    assert client.get(f"/analysis-runs/{run_id}/results/trace").status_code == 404
+    assert client.get(f"/analysis-runs/{run_id}/trace").status_code == 404
+    assert client.get(f"/analysis-runs/{run_id}/snapshot").status_code == 404
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:
@@ -311,7 +310,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "catalog_context" in trace_payload
     assert any(entry["element_id"] == "branch-load" for entry in trace_payload["catalog_context"])
 
-    bus_results_response = client.get(f"/analysis-runs/{run_id}/results/buses")
+    bus_results_response = client.get(f"/api/analysis-runs/{run_id}/results/buses")
     assert bus_results_response.status_code == 200
     bus_results_payload = bus_results_response.json()
     assert bus_results_payload["analysis_case_context"]["case_ref"] == case_id
@@ -319,7 +318,7 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
         {row["element_id"] for row in bus_results_payload["rows"]}
     )
 
-    branch_results_response = client.get(f"/analysis-runs/{run_id}/results/branches")
+    branch_results_response = client.get(f"/api/analysis-runs/{run_id}/results/branches")
     assert branch_results_response.status_code == 200
     branch_results_payload = branch_results_response.json()
     assert branch_results_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"

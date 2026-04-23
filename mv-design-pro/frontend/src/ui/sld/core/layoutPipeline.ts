@@ -1348,7 +1348,7 @@ function phase6_enforce_invariants_and_finalize(
       });
       state.validationErrors.push({
         code: 'MISSING_CATALOG_REF',
-        message: `WÄ™zeĹ‚ ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
+        message: `Węzeł ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
         nodeId: node.id,
         fixAction: `Przypisz typ z katalogu ${category} do elementu ${node.attributes.elementName}`,
       });
@@ -1917,5 +1917,13 @@ export function computeLayout(
     },
   });
   return engine.compute(layoutInput, config, effectiveStationBlockDetails).layout;
+}
+
+export function computeActiveRuntimeLayout(
+  graph: VisualGraphV1,
+  config: LayoutGeometryConfigV1 = DEFAULT_LAYOUT_CONFIG,
+  stationBlockDetails?: StationBlockBuildResult,
+): LayoutResultV1 {
+  return computeLayout(graph, config, stationBlockDetails, { strategy: 'legacy' });
 }
 

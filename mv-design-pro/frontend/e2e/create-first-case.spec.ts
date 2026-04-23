@@ -93,7 +93,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
                 result_status: 'NONE',
                 updated_at: '2026-01-01T00:00:01Z',
               }]
-            : []
+            : [],
         ),
       });
       return;
@@ -137,14 +137,14 @@ test('tworzenie pierwszego przypadku jest deterministyczne i bez freeze', async 
     localStorage.clear();
   });
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached' });
 
   const createButton = page.getByTestId('sld-empty-overlay-create-case');
   await expect(createButton).toBeVisible();
   await createButton.click();
 
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres obliczen');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres obliczeń');
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres 1');
   await expect(createButton).toHaveCount(0);
 

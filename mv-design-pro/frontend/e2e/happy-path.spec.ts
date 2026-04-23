@@ -41,7 +41,7 @@ test.describe('UI Integration E2E Happy Path', () => {
 
     await expect(page).toHaveURL(/#variants$/);
     await expect(page.locator('[data-testid="workspace-surface-main"]')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Zakresy obliczen i wyniki' }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Zakresy obliczeń i wyniki' }).first()).toBeVisible();
   });
 
   test('switches shell mode on canonical analytical routes', async ({ page }) => {
@@ -49,7 +49,7 @@ test.describe('UI Integration E2E Happy Path', () => {
     await waitForAppReady(page);
     await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'RESULT_VIEW');
 
-    await page.goto('/#proof');
+    await page.goto('/#analysis?tab=trace');
     await waitForAppReady(page);
     await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'RESULT_VIEW');
 

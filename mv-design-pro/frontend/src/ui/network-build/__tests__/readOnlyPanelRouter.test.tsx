@@ -466,7 +466,7 @@ describe('ReadOnlyPanelRouter', () => {
     expect(screen.getByText(/Topologia elementu/i)).toBeInTheDocument();
     expect(screen.getByText(/Pole kanoniczne/i)).toBeInTheDocument();
     expect(screen.getByText(/Rola pola/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Pokaz na schemacie/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Pokaż na schemacie/i })).toBeInTheDocument();
   });
 
   it('renderuje koordynacje zabezpieczen z read-model ochrony', () => {
@@ -478,9 +478,9 @@ describe('ReadOnlyPanelRouter', () => {
 
     render(<ReadOnlyPanelRouter />);
 
-    expect(screen.getByText(/Koordynacja zabezpieczen/i)).toBeInTheDocument();
+    expect(screen.getByText(/Koordynacja zabezpieczeń/i)).toBeInTheDocument();
     expect(screen.getByText(/Analiza czesciowa/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Powiazania wtorne/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /Powiązania wtórne/i })).toHaveLength(2);
   });
 
   it('renderuje osobny surface pomiarow pola z jawnymi zrodlami 3I0 i 3U0', () => {
@@ -507,7 +507,7 @@ describe('ReadOnlyPanelRouter', () => {
 
     const { rerender } = render(<ReadOnlyPanelRouter />);
 
-    expect(screen.getAllByText(/Wklady zrodel/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Wkłady źródeł/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/proof-1/i)).toBeInTheDocument();
     expect(screen.getAllByText(/src-1/i).length).toBeGreaterThan(0);
 
@@ -518,7 +518,7 @@ describe('ReadOnlyPanelRouter', () => {
     };
     rerender(<ReadOnlyPanelRouter />);
 
-    expect(screen.getAllByText(/Bezpieczenstwo do pracy/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Bezpieczeństwo do pracy/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Pole nadal zasilone od strony szyn./i)).toBeInTheDocument();
     expect(screen.getAllByText(/^Nie$/).length).toBeGreaterThan(0);
   });
@@ -533,8 +533,9 @@ describe('ReadOnlyPanelRouter', () => {
 
     const { rerender } = render(<ReadOnlyPanelRouter />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Otworz pelne wyniki/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Otwórz pełny widok wyników obliczenia/i }));
     expect(window.location.hash).toBe('#analysis?run=run-1');
+    expect(screen.queryByRole('button', { name: /Otwórz pełne wyniki uruchomienia/i })).not.toBeInTheDocument();
 
     activeInspectorPanelMock = {
       kind: 'report',
@@ -543,7 +544,8 @@ describe('ReadOnlyPanelRouter', () => {
     };
     rerender(<ReadOnlyPanelRouter />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Otwórz pełny wywód uruchomienia/i }));
-    expect(window.location.hash).toBe('#proof?run=run-1');
+    fireEvent.click(screen.getByRole('button', { name: /Otwórz pełny wywód obliczenia/i }));
+    expect(window.location.hash).toBe('#analysis?run=run-1&tab=trace');
+    expect(screen.queryByRole('button', { name: /Otwórz pełny wywód uruchomienia/i })).not.toBeInTheDocument();
   });
 });

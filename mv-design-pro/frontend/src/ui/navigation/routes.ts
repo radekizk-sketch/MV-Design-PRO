@@ -22,54 +22,54 @@ export const ROUTES = {
   },
   SLD_VIEW: {
     hash: '#sld-view',
-    label: 'Podglad schematu',
-    description: 'Podglad schematu jednokreskowego (tylko odczyt)',
+    label: 'Podgląd schematu',
+    description: 'Podgląd schematu jednokreskowego (tylko odczyt)',
     icon: 'VIEW',
   },
   ANALYSIS: {
     hash: '#analysis',
     label: 'Poziom analityczny',
-    description: 'Analityka w glownym shellu',
+    description: 'Analityka w głównym shellu',
     icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
   REPORT: {
     hash: '#report',
     label: 'Generator raportu',
-    description: 'Konfiguracja i podglad raportu technicznego',
+    description: 'Konfiguracja i podgląd raportu technicznego',
     icon: 'RPT',
     requiredMode: 'RESULT_VIEW',
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Zakresy obliczen i wyniki',
-    description: 'Helper wyboru zakresu obliczen i wynikow',
+    label: 'Zakresy obliczeń i wyniki',
+    description: 'Panel wyboru zakresu obliczeń i wyników',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
   CONDITIONS: {
     hash: '#warunki-obliczen',
-    label: 'Warunki obliczen',
-    description: 'Helper warunkow obliczen w glownym shellu',
+    label: 'Warunki obliczeń',
+    description: 'Panel warunków obliczeń w głównym shellu',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
-    description: 'Diagnostyka inzynierska modelu sieci ENM',
+    description: 'Diagnostyka inżynierska modelu sieci ENM',
     icon: 'INS',
   },
   FAULT_SCENARIOS: {
     hash: '#fault-scenarios',
     label: 'Scenariusze zwarciowe',
-    description: 'Zarzadzanie scenariuszami zwarc i analiz',
+    description: 'Zarządzanie scenariuszami zwarć i analiz',
     icon: 'SCN',
   },
   CATALOG: {
     hash: '#catalog',
-    label: 'Biblioteka typow',
-    description: 'Helper katalogowy shell-a',
+    label: 'Biblioteka typów',
+    description: 'Panel katalogowy shell-a',
     icon: 'CAT',
   },
 } satisfies Record<string, RouteDefinition>;
@@ -208,9 +208,9 @@ export function navigateToResults(context: RouteContextOptions = {}): void {
 }
 
 export function navigateToProof(context: RouteContextOptions = {}): void {
-  navigateToHash('#proof', (params) => {
-    params.delete('tab');
-    assignRouteContext(params, context);
+  navigateToAnalysisRoute({
+    ...context,
+    tabId: 'trace',
   });
 }
 

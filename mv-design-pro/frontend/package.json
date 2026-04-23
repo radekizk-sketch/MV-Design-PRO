@@ -28,6 +28,7 @@
     "verify:v12.5.1:backend": "node ./scripts/run-python.mjs ../scripts/verify_v12_5_1.py --backend-only",
     "guard:codenames": "node ./scripts/run-python.mjs ../scripts/no_codenames_guard.py",
     "guard:ui-terminology": "node ./scripts/run-python.mjs ../scripts/ui_terminology_guard.py",
+    "guard:mojibake": "node ./scripts/run-python.mjs ../scripts/utf8_mojibake_guard.py",
     "guard:docs-archive": "node ./scripts/run-python.mjs ../scripts/docs_archive_guard.py",
     "guard:import-graph": "node ./scripts/run-python.mjs ../scripts/import_graph_guard.py",
     "guard:grep-zero": "node ./scripts/run-python.mjs ../scripts/grep_zero_guard.py",

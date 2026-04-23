@@ -84,11 +84,11 @@ describe('workspace contracts V12.5', () => {
   });
 
   it('keeps canonical titles, helper labels and shell aliases separated', () => {
-    expect(SCREEN_REGISTRY['E-07'].titlePl).toBe('Zakres i warunki obliczen');
-    expect(SCREEN_REGISTRY['E-09'].titlePl).toBe('Historia modelu i obliczen');
+    expect(SCREEN_REGISTRY['E-07'].titlePl).toBe('Zakres i warunki obliczeń');
+    expect(SCREEN_REGISTRY['E-09'].titlePl).toBe('Historia modelu i obliczeń');
     expect(SCREEN_REGISTRY['E-12'].titlePl).toBe('Stacja transformatorowa - widok podstawowy');
-    expect(HELPER_SURFACE_REGISTRY.variants_runs.titlePl).toBe('Zakresy obliczen i wyniki');
-    expect(HELPER_SURFACE_REGISTRY.case_context.titlePl).toBe('Warunki obliczen');
+    expect(HELPER_SURFACE_REGISTRY.variants_runs.titlePl).toBe('Zakresy obliczeń i wyniki');
+    expect(HELPER_SURFACE_REGISTRY.case_context.titlePl).toBe('Warunki obliczeń');
     expect(ROUTE_ALIAS_CODES).toEqual(['sld', 'network_build', 'analysis', 'report']);
     expect(HELPER_SURFACE_CODES).not.toContain('sld');
     expect(HELPER_SURFACE_CODES).not.toContain('analysis' as never);

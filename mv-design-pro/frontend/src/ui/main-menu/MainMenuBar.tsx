@@ -112,7 +112,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'run-sc-1f', label: 'Zwarcia 1F (doziemne)' },
       { id: 'run-power-flow', label: 'Rozpływ mocy' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'variants', label: 'Zakresy obliczen i wyniki' },
+      { id: 'variants', label: 'Zakresy obliczeń i wyniki' },
       { id: 'analysis', label: 'Poziom analityczny' },
       { id: 'report', label: 'Generator raportu' },
     ],

@@ -145,7 +145,7 @@ describe('ProtectionResultsInspectorPage', () => {
     expect(await screen.findByTestId('canonical-protection-diagnostics')).toBeInTheDocument();
   });
 
-  it('shows explicit trace guidance and opens proof trace view', async () => {
+  it('shows explicit trace guidance and opens the canonical analysis trace view', async () => {
     render(<ProtectionResultsInspectorPage runId="run-12345678" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Wywód' }));
@@ -155,7 +155,7 @@ describe('ProtectionResultsInspectorPage', () => {
     ).toBeInTheDocument();
     const traceButton = screen.getByRole('button', { name: 'Otwórz wywód obliczeń' });
     fireEvent.click(traceButton);
-    expect(window.location.hash).toBe('#proof?run=run-12345678');
+    expect(window.location.hash).toBe('#analysis?run=run-12345678&tab=trace');
   });
 
   it('maps raw element types to Polish labels in evaluations tab', async () => {

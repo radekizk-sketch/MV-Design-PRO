@@ -339,7 +339,7 @@ export function useCaseKindLabel(): string | null {
     case 'ShortCircuitCase':
       return 'Zakres zwarciowy';
     case 'PowerFlowCase':
-      return 'Zakres rozplywu mocy';
+      return 'Zakres rozpływu mocy';
     default:
       return kind;
   }
@@ -352,7 +352,7 @@ export function useResultStatusLabel(): string {
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   switch (status) {
     case 'NONE':
-      return 'Brak wynikow';
+      return 'Brak wyników';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':

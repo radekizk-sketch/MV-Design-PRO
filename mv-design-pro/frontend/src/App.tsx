@@ -235,7 +235,7 @@ function App() {
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {
-      notify('Brak aktywnego przypadku obliczeniowego.', 'error');
+      notify('Brak aktywnego zakresu obliczeń.', 'error');
       return;
     }
 
@@ -249,10 +249,10 @@ function App() {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
       const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
+      notify('Rozpoczęto obliczenia. Przejdź do widoku wyników po zakończeniu.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
+      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
       notify(message, 'error');
     }
   }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);

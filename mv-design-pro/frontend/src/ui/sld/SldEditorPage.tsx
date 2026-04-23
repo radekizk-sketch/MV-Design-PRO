@@ -95,7 +95,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'source_grid',
     elementId: 'source_grid',
     elementType: 'Source',
-    elementName: 'SieÄ‡ zasilajÄ…ca',
+    elementName: 'Sie? zasilaj?ca',
     position: { x: 400, y: 40 },
     inService: true,
     connectedToNodeId: 'bus_main',
@@ -900,7 +900,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         tone:
           resultStatusLabel === 'Wyniki aktualne'
             ? ('ok' as const)
-            : resultStatusLabel === 'Brak wynikow'
+            : resultStatusLabel === 'Brak wynik?w'
               ? ('warn' as const)
               : ('danger' as const),
       },
@@ -1122,7 +1122,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       }
 
       if (!projectId) {
-        notify('Nie moĹĽna utworzyÄ‡ przypadku: brak aktywnego projektu. OtwĂłrz MenedĹĽer przypadkĂłw i utwĂłrz projekt.', 'warning');
+        notify('Nie mo?na utworzy? zakresu oblicze?: brak aktywnego projektu. Otw?rz projekt i utw?rz zakres oblicze?.', 'warning');
         return;
       }
 
@@ -1138,12 +1138,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
       notify(`Utworzono i aktywowano zakres obliczen: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d';
+      const message = error instanceof Error ? error.message : 'Nieznany b??d';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). SprawdĹş poĹ‚Ä…czenie i sprĂłbuj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas tworzenia zakresu oblicze? (limit 15 s). Sprawd? po??czenie i spr?buj ponownie.', 'warning');
         return;
       }
-      notify(`Nie udaĹ‚o siÄ™ utworzyÄ‡ przypadku. SzczegĂłĹ‚y techniczne: ${message}`, 'error');
+      notify(`Nie uda?o si? utworzy? zakresu oblicze?. Szczeg??y techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
@@ -1226,7 +1226,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     ]);
 
     if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
+      const reason = resolved.reasonPl ?? 'Narz?dzie chwilowo niedost?pne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
@@ -1238,14 +1238,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           id: target.id,
           label: target.name ?? target.id,
         });
-        const msg = 'Wybierz drugi port ringu, aby otworzyÄ‡ formularz domkniÄ™cia pierĹ›cienia.';
+        const msg = 'Wybierz drugi port ringu, aby otworzy? formularz domkni?cia pier?cienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
       }
 
       if (pendingRingTerminal.id === target.id) {
-        const msg = 'WskaĹĽ drugi, rĂłĹĽny port ringu.';
+        const msg = 'Wska? drugi, r??ny port ringu.';
         setInteractionMessage(msg);
         notify(msg, 'warning');
         return;
@@ -1264,11 +1264,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         openToolCatalogPicker(
           'connect_secondary_ring_sn',
           ringPayload,
-          `${pendingRingTerminal.label} â†’ ${target.name ?? target.id}`,
+          `${pendingRingTerminal.label} ? ${target.name ?? target.id}`,
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domkniÄ™cia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domkni?cia ringu.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1335,7 +1335,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       notify(msg, 'success');
       setActiveTool('select');
     } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiodĹ‚a siÄ™.`;
+      const err = `Operacja ${resolved.canonicalOp} nie powiod?a si?.`;
       setInteractionMessage(err);
       notify(err, 'error');
     }
@@ -1429,12 +1429,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_grid_source_sn') {
               void runResolvedAction(
                 'add_grid_source_sn',
-                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'p??tna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
+            setInteractionMessage('Klikni?to t?o p??tna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -1597,7 +1597,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie uda?o si? przypisa? typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

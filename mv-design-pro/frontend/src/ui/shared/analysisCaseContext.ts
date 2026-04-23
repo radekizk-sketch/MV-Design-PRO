@@ -148,9 +148,9 @@ export function mapLegacyAnalysisCaseContextToCanonical(
 }
 
 export const ANALYSIS_COMPLETENESS_LABELS: Record<AnalysisCompletenessStatus, string> = {
-  complete: 'Pelny',
-  partial: 'Czesciowy',
-  failed: 'Nieudany',
+  complete: 'Kompletne',
+  partial: 'Częściowe',
+  failed: 'Błąd',
   not_applicable: 'Nie dotyczy',
 };
 
@@ -162,11 +162,11 @@ export const ANALYSIS_COMPLETENESS_BADGE_CLASS: Record<AnalysisCompletenessStatu
 };
 
 export const QUALITY_GATE_LABELS: Record<string, string> = {
-  G0: 'Gate G0',
-  G1: 'Gate G1',
-  G2: 'Gate G2',
-  G3: 'Gate G3',
-  G4: 'Gate G4',
+  G0: 'Dane zablokowane',
+  G1: 'Dane z krytycznymi brakami',
+  G2: 'Dane częściowe',
+  G3: 'Dane wymagają przeglądu',
+  G4: 'Dane zaakceptowane',
 };
 
 export const QUALITY_GATE_BADGE_CLASS: Record<string, string> = {

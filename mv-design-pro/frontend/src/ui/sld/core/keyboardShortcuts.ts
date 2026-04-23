@@ -25,7 +25,7 @@ export type KeyboardCategory =
   | 'EDYCJA_MODELU'
   | 'WIDOKI'
   | 'ANALIZA'
-  | 'NARZEDZIA';
+  | 'NARZĘDZIA';
 
 export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   // Nawigacja
@@ -59,7 +59,7 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
 
   // Widoki
   { keys: 'Ctrl+1', description_pl: 'Widok: Model sieci', category: 'WIDOKI', action_id: 'mode_model_edit', required_mode: null },
-  { keys: 'Ctrl+2', description_pl: 'Otworz warunki obliczen', category: 'WIDOKI', action_id: 'open_case_context', required_mode: null },
+  { keys: 'Ctrl+2', description_pl: 'Otwórz warunki obliczeń', category: 'WIDOKI', action_id: 'open_case_context', required_mode: null },
   { keys: 'Ctrl+3', description_pl: 'Widok: Analiza i wyniki', category: 'WIDOKI', action_id: 'mode_result_view', required_mode: null },
   { keys: 'Ctrl+G', description_pl: 'Tryb: Tylko gotowość (podświetl blokery)', category: 'WIDOKI', action_id: 'filter_readiness_only', required_mode: null },
   { keys: 'Ctrl+Shift+S', description_pl: 'Tryb: Tylko źródła (filtr wizualny)', category: 'WIDOKI', action_id: 'filter_sources_only', required_mode: null },
@@ -73,9 +73,9 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   { keys: 'Ctrl+E', description_pl: 'Eksportuj wyniki...', category: 'ANALIZA', action_id: 'export_results', required_mode: 'RESULT_VIEW' },
 
   // Narzędzia
-  { keys: 'Ctrl+V', description_pl: 'Waliduj model sieci', category: 'NARZEDZIA', action_id: 'validate_model', required_mode: null },
-  { keys: 'F1', description_pl: 'Pomoc: lista skrótów klawiaturowych', category: 'NARZEDZIA', action_id: 'show_shortcuts_help', required_mode: null },
-  { keys: 'Ctrl+Shift+E', description_pl: 'Eksportuj schemat SLD...', category: 'NARZEDZIA', action_id: 'export_sld', required_mode: null },
+  { keys: 'Ctrl+V', description_pl: 'Waliduj model sieci', category: 'NARZĘDZIA', action_id: 'validate_model', required_mode: null },
+  { keys: 'F1', description_pl: 'Pomoc: lista skrótów klawiaturowych', category: 'NARZĘDZIA', action_id: 'show_shortcuts_help', required_mode: null },
+  { keys: 'Ctrl+Shift+E', description_pl: 'Eksportuj schemat SLD...', category: 'NARZĘDZIA', action_id: 'export_sld', required_mode: null },
 ] as const;
 
 export type VisualFilterMode =
@@ -140,5 +140,5 @@ export const CATEGORY_LABELS: Record<KeyboardCategory, string> = {
   EDYCJA_MODELU: 'Edycja modelu',
   WIDOKI: 'Widoki i tryby',
   ANALIZA: 'Analiza i wyniki',
-  NARZEDZIA: 'Narzędzia',
+  NARZĘDZIA: 'Narzędzia',
 };

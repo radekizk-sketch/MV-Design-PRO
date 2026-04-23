@@ -100,12 +100,8 @@ function mockJsonResponse(payload: unknown) {
 fetchMock.mockImplementation(() => mockJsonResponse(mockAnalysisRunDetail));
 vi.stubGlobal('fetch', fetchMock);
 
-vi.mock('../../case-manager', () => ({
-  CaseManager: () => <div data-testid="perf-case-manager">Case manager</div>,
-}));
-
 vi.mock('../../study-cases/RunHistoryPanel', () => ({
-  RunHistoryPanel: () => <div data-testid="perf-run-history">Run history</div>,
+  RunHistoryPanel: () => <div data-testid="perf-run-history">Historia obliczeń</div>,
 }));
 
 vi.mock('../../results-inspector', () => ({
@@ -291,7 +287,7 @@ function renderMiniSldTarget(): () => void {
   useNetworkBuildStore.getState().openRouteSurface('variants_runs');
   render(<WorkspaceSurfaceRouter region="main" />);
   return () => {
-    expect(screen.getByRole('heading', { level: 2, name: 'Zakresy obliczen i wyniki' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Zakresy obliczeń i wyniki' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
   };
 }
@@ -357,9 +353,9 @@ describe('V12.5 performance harness', () => {
   it('measures E-24 analysis surface mount', async () => {
     await measureTarget(
       'E-24',
-      'Poziom analityczny i wyniki inzynierskie',
+      'Poziom analityczny i wyniki inżynierskie',
       'mount',
-      () => renderSurfaceTarget('E-24', 'main', 'Poziom analityczny i wyniki inzynierskie'),
+      () => renderSurfaceTarget('E-24', 'main', 'Poziom analityczny i wyniki inżynierskie'),
     );
   });
 
@@ -375,45 +371,45 @@ describe('V12.5 performance harness', () => {
   it('measures E-28 protection coordination surface mount', async () => {
     await measureTarget(
       'E-28',
-      'Koordynacja zabezpieczen',
+      'Koordynacja zabezpieczeń',
       'mount',
-      () => renderSurfaceTarget('E-28', 'main', 'Koordynacja zabezpieczen'),
+      () => renderSurfaceTarget('E-28', 'main', 'Koordynacja zabezpieczeń'),
     );
   });
 
   it('measures E-29 symmetrical components surface mount', async () => {
     await measureTarget(
       'E-29',
-      'Skladowe symetryczne i siec zerowa',
+      'Składowe symetryczne i sieć zerowa',
       'mount',
-      () => renderSurfaceTarget('E-29', 'main', 'Skladowe symetryczne i siec zerowa'),
+      () => renderSurfaceTarget('E-29', 'main', 'Składowe symetryczne i sieć zerowa'),
     );
   });
 
   it('measures E-30 compliance surface mount', async () => {
     await measureTarget(
       'E-30',
-      'Wymagania przylaczeniowe i kodeks sieciowy',
+      'Wymagania przyłączeniowe i kodeks sieciowy',
       'mount',
-      () => renderSurfaceTarget('E-30', 'main', 'Wymagania przylaczeniowe i kodeks sieciowy'),
+      () => renderSurfaceTarget('E-30', 'main', 'Wymagania przyłączeniowe i kodeks sieciowy'),
     );
   });
 
   it('measures E-33 thermal dynamic surface mount', async () => {
     await measureTarget(
       'E-33',
-      'Weryfikacja cieplna i dynamiczna toru pradowego',
+      'Weryfikacja cieplna i dynamiczna toru prądowego',
       'mount',
-      () => renderSurfaceTarget('E-33', 'main', 'Weryfikacja cieplna i dynamiczna toru pradowego'),
+      () => renderSurfaceTarget('E-33', 'main', 'Weryfikacja cieplna i dynamiczna toru prądowego'),
     );
   });
 
   it('measures E-34 convergence surface mount', async () => {
     await measureTarget(
       'E-34',
-      'Zbieznosc rozplywu mocy i regulacja zaczepow',
+      'Zbieżność rozpływu mocy i regulacja zaczepów',
       'mount',
-      () => renderSurfaceTarget('E-34', 'panel', 'Zbieznosc rozplywu mocy i regulacja zaczepow'),
+      () => renderSurfaceTarget('E-34', 'panel', 'Zbieżność rozpływu mocy i regulacja zaczepów'),
     );
   });
 });
