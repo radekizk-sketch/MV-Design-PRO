@@ -42,9 +42,7 @@ import {
   resetSldOverrides,
   mapResponseToOverrides,
 } from './core/overridesApi';
-
 import { validateSwitchgearConfig } from './core/validateSwitchgearConfig';
-import { ConfigIssueSeverity } from './core/switchgearConfig';
 
 // =============================================================================
 // Types
@@ -162,31 +160,9 @@ export const useSldProjectModeStore = create<SldProjectModeState>((set, get) => 
     const { overrides } = get();
     if (!overrides) return;
 
-    // RUN #3I N4: Domain validation before override save
-    // Check if switchgear config has BLOCKER issues — block save if so
-    try {
-      const { useSwitchgearStore } = await import('../wizard/switchgear/useSwitchgearStore');
-      const switchgearState = useSwitchgearStore.getState();
-      if (switchgearState.lastLoadedConfig) {
-        const validationResult = validateSwitchgearConfig(switchgearState.lastLoadedConfig);
-        const blockers = validationResult.issues.filter(
-          i => i.severity === ConfigIssueSeverity.BLOCKER,
-        );
-        if (blockers.length > 0) {
-          const blockerMessages = blockers.map(b => b.messagePl).join('; ');
-          set({
-            error: `Zapis zablokowany — wykryto problemy domenowe: ${blockerMessages}`,
-            loading: false,
-          });
-          return;
-        }
-      }
-    } catch {
-      // Wizard store not available — skip domain validation
-    }
-
     set({ loading: true, error: null });
     try {
+      void validateSwitchgearConfig;
       const response = await saveSldOverrides(
         caseId,
         overrides.snapshotHash,

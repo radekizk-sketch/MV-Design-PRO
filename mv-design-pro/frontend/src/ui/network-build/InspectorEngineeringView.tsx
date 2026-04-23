@@ -224,17 +224,17 @@ function buildBaySections(
         label: 'Tor pomiarowy',
         fields: [
           { key: 'chain_ref', label: 'Identyfikator toru', value: measurementChain?.chain_ref ?? null },
-          { key: 'ct_refs', label: 'Przekladniki pradowe', value: joinValues(measurementChain?.ct_refs) },
-          { key: 'vt_refs', label: 'Przekladniki napieciowe', value: joinValues(measurementChain?.vt_refs) },
-          { key: '3i0', label: 'Zrodlo 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
-          { key: '3u0', label: 'Zrodlo 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
+          { key: 'ct_refs', label: 'Przekładniki prądowe', value: joinValues(measurementChain?.ct_refs) },
+          { key: 'vt_refs', label: 'Przekładniki napięciowe', value: joinValues(measurementChain?.vt_refs) },
+          { key: '3i0', label: 'Źródło 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
+          { key: '3u0', label: 'Źródło 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
         ],
       },
       {
         id: 'protection',
         label: 'Zabezpieczenie pola',
         fields: [
-          { key: 'unit_ref', label: 'Jednostka wtora', value: protection?.unit_ref ?? null },
+          { key: 'unit_ref', label: 'Jednostka wtórna', value: protection?.unit_ref ?? null },
           { key: 'model', label: 'Model', value: protection?.model ?? null },
           {
             key: 'functions',
@@ -260,7 +260,7 @@ function buildBaySections(
           },
           {
             key: 'close_confirm',
-            label: 'Potwierdzenie zamkniecia',
+            label: 'Potwierdzenie zamknięcia',
             value: baseModel.control_surface.close_requires_confirmation,
           },
           {
@@ -273,10 +273,10 @@ function buildBaySections(
       ...(sourceEndpoint
         ? [{
             id: 'source',
-            label: 'Endpoint zrodlowy',
+            label: 'Endpoint źródłowy',
             fields: [
-              { key: 'source_kind', label: 'Rodzaj zrodla', value: sourceKindLabel(sourceEndpoint.source_kind) },
-              { key: 'requires_vt', label: 'Wymaga toru przekladnika napieciowego', value: sourceEndpoint.requires_vt },
+              { key: 'source_kind', label: 'Rodzaj źródła', value: sourceKindLabel(sourceEndpoint.source_kind) },
+              { key: 'requires_vt', label: 'Wymaga toru przekładnika napięciowego', value: sourceEndpoint.requires_vt },
               { key: 'requires_sync', label: 'Wymaga synchronizmu', value: sourceEndpoint.requires_synchrocheck },
               { key: 'operating_mode', label: 'Tryb pracy', value: sourceEndpoint.operating_mode },
             ],
@@ -286,17 +286,17 @@ function buildBaySections(
         id: 'results',
         label: 'Wyniki projektowe pola',
         fields: [
-          { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
-          { key: 'result_state', label: 'Stan wynikow', value: resultStateLabel(projectResults?.result_state) },
-          { key: 'result_message', label: 'Opis wynikow', value: projectResults?.result_message_pl ?? null },
+          { key: 'run_ref', label: 'Ostatnie obliczenie', value: projectResults?.run_ref ?? null },
+          { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
+          { key: 'result_message', label: 'Opis wyników', value: projectResults?.result_message_pl ?? null },
           {
             key: 'sc_contributions',
-            label: 'Wklady zrodel w zwarciu',
+            label: 'Wkłady źródeł w zwarciu',
             value: projectResults?.source_contributions_sc.length ?? null,
           },
           {
             key: 'pf_contributions',
-            label: 'Wklady zrodel w rozplywie',
+            label: 'Wkłady źródeł w rozpływie',
             value: projectResults?.source_contributions_pf.length ?? null,
           },
           {
@@ -306,24 +306,24 @@ function buildBaySections(
           },
           {
             key: 'whole_path',
-            label: 'Tor pola spelnia wymagania',
+            label: 'Tor pola spełnia wymagania',
             value: projectResults?.verification.whole_power_path_ok ?? null,
           },
         ],
       },
       {
         id: 'proof',
-        label: 'Wywod pola',
+        label: 'Uzasadnienie inżynierskie pola',
         fields: [
-          { key: 'proof_ref', label: 'Identyfikator wywodu', value: projectResults?.proof_binding.proof_ref ?? null },
+          { key: 'proof_ref', label: 'Identyfikator uzasadnienia', value: projectResults?.proof_binding.proof_ref ?? null },
           {
             key: 'input_refs',
-            label: 'Powiazane dane wejsciowe',
+            label: 'Powiązane dane wejściowe',
             value: projectResults?.proof_binding.input_data_refs.length ?? null,
           },
           {
             key: 'source_refs',
-            label: 'Powiazane wklady zrodel',
+            label: 'Powiązane wkłady źródeł',
             value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
           },
         ],

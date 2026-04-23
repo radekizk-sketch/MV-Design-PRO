@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { ProtectionResultsInspectorPage } from '../ProtectionResultsInspectorPage';
 
 const mockUseAppStateStore = vi.fn();
@@ -33,7 +34,7 @@ describe('ProtectionResultsInspectorPage', () => {
             element_type: 'LineBranch',
             element_name: 'Linia 001',
             verification_status: 'SPELNIONE',
-            verification_reason: 'Spełniono kryteria weryfikacji',
+            verification_reason: 'Spelniono kryteria weryfikacji',
             margin_pct: 12.4,
           },
         ],
@@ -46,7 +47,7 @@ describe('ProtectionResultsInspectorPage', () => {
               element_id: 'LINE_001',
               element_type: 'LineBranch',
               device_id: 'relay-1',
-              device_name_pl: 'Przekaźnik nadprądowy',
+              device_name_pl: 'Przekaznik nadpradowy',
               device_kind: 'RELAY_OVERCURRENT',
               status: 'ACTIVE',
             },
@@ -86,7 +87,7 @@ describe('ProtectionResultsInspectorPage', () => {
     render(<ProtectionResultsInspectorPage />);
 
     expect(
-      screen.getByText('Wybierz aktywny przypadek obliczeniowy, aby zobaczyć wyniki ochrony.'),
+      screen.getByText('Wybierz aktywny zakres obliczen, aby zobaczyc wyniki ochrony.'),
     ).toBeInTheDocument();
   });
 
@@ -95,7 +96,7 @@ describe('ProtectionResultsInspectorPage', () => {
 
     expect(screen.getByText('Źródło danych:')).toBeInTheDocument();
     expect(screen.getByText('Bieżący widok ochrony ENM')).toBeInTheDocument();
-    expect(screen.getByText('Uruchomienie referencyjne:')).toBeInTheDocument();
+    expect(screen.getByText('Wyniki referencyjne:')).toBeInTheDocument();
     expect(screen.getByText('Elementy z ochroną')).toBeInTheDocument();
     expect(screen.getByText(/Przypisania aktywne:/)).toBeInTheDocument();
     expect(screen.getByText('Weryfikacja i diagnostyka')).toBeInTheDocument();
@@ -144,7 +145,7 @@ describe('ProtectionResultsInspectorPage', () => {
     expect(await screen.findByTestId('canonical-protection-diagnostics')).toBeInTheDocument();
   });
 
-  it('shows explicit trace guidance and opens proof trace view', async () => {
+  it('shows explicit trace guidance and opens the canonical analysis trace view', async () => {
     render(<ProtectionResultsInspectorPage runId="run-12345678" />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Wywód' }));
@@ -154,7 +155,7 @@ describe('ProtectionResultsInspectorPage', () => {
     ).toBeInTheDocument();
     const traceButton = screen.getByRole('button', { name: 'Otwórz wywód obliczeń' });
     fireEvent.click(traceButton);
-    expect(window.location.hash).toBe('#proof?run=run-12345678');
+    expect(window.location.hash).toBe('#analysis?run=run-12345678&tab=trace');
   });
 
   it('maps raw element types to Polish labels in evaluations tab', async () => {

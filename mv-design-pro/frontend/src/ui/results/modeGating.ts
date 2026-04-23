@@ -34,7 +34,7 @@ export function useSafeModeTransition(): {
       const normalizedMode = normalizeOperatingMode(mode);
       if (normalizedMode === 'RESULT_VIEW' && resultStatus !== 'FRESH') {
         if (resultStatus === 'NONE') {
-          return 'Brak wynikow - najpierw uruchom obliczenia.';
+          return 'Brak wynik?w - najpierw uruchom obliczenia.';
         }
         return 'Wyniki sa nieaktualne - wymagane jest ponowne uruchomienie obliczen.';
       }
@@ -119,7 +119,7 @@ export function useOverlayVisibility(): {
   if (resultStatus === 'NONE') {
     return {
       visible: false,
-      hiddenReason: 'Brak wynikow - uruchom obliczenia.',
+      hiddenReason: 'Brak wynik?w - uruchom obliczenia.',
     };
   }
 

@@ -59,6 +59,8 @@ vi.mock('../../app-state', () => ({
   useIssuePanelOpen: () => false,
   useActiveCaseId: () => 'case-1',
   useActiveMode: () => 'MODEL_EDIT',
+  useAppStateStore: (selector: (state: { activeCaseName: string | null }) => unknown) =>
+    selector({ activeCaseName: 'Zakres podstawowy' }),
 }));
 
 vi.mock('../../selection', () => ({
@@ -68,7 +70,7 @@ vi.mock('../../selection', () => ({
 
 vi.mock('../../navigation/routes', () => ({
   navigateToCatalog: vi.fn(),
-  navigateToCaseConfig: vi.fn(),
+  navigateToConditions: vi.fn(),
   navigateToVariants: vi.fn(),
 }));
 

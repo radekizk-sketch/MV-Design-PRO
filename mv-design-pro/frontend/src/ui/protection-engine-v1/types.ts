@@ -230,7 +230,7 @@ export const LABELS = {
     tripTime: 'Czas zadziałania',
     picked: 'Zadziałał',
     notPicked: 'Nie zadziałał',
-    noData: 'Brak wynikow — uruchom analize',
+    noData: 'Brak wyników — uruchom analizę',
   },
 
   curveTypes: {

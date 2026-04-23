@@ -12,7 +12,7 @@ import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react
 import { clsx } from 'clsx';
 
 import { ActiveCaseBar } from '../active-case-bar';
-import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveCaseId, useActiveMode, useAppStateStore, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
 import { MainMenuBar } from '../main-menu';
@@ -24,7 +24,7 @@ import { SldVisualModes } from '../network-build/SldVisualModes';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { TopContextBar } from '../network-build/TopContextBar';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { navigateToCaseConfig, navigateToCatalog, navigateToVariants } from '../navigation/routes';
+import { navigateToConditions, navigateToCatalog, navigateToVariants } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceOperationalBar, WorkspaceSurfaceRouter } from '../workspace';
 
@@ -82,6 +82,7 @@ export function CanonicalLayout({
   const issuePanelOpen = useIssuePanelOpen();
   const activeCaseId = useActiveCaseId();
   const activeMode = useActiveMode();
+  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
 
@@ -129,7 +130,7 @@ export function CanonicalLayout({
   }, []);
 
   const handleConfigureClick = useCallback(() => {
-    navigateToCaseConfig();
+    navigateToConditions();
   }, []);
 
   const handleCalculateClick = useCallback(() => {
@@ -159,7 +160,7 @@ export function CanonicalLayout({
   }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   const stageClassName = clsx(
-    'flex h-full min-h-0 flex-1 overflow-hidden bg-slate-100',
+    'flex h-full min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,116,144,0.16),transparent_32%),linear-gradient(180deg,#06111a_0%,#07131c_44%,#08131d_100%)]',
     mainSurfaceExpanded ? 'gap-0 p-0' : 'gap-3 p-3',
   );
 
@@ -167,11 +168,11 @@ export function CanonicalLayout({
     'flex min-w-0 flex-1 flex-col overflow-hidden',
     mainSurfaceExpanded
       ? 'border-0 bg-transparent shadow-none'
-      : 'rounded-xl border border-slate-200 bg-white shadow-sm',
+      : 'scada-panel',
   );
 
   return (
-    <div className="flex h-screen flex-col bg-chrome-100" data-testid="canonical-layout">
+    <div className="flex h-screen flex-col bg-chrome-950" data-testid="canonical-layout">
       <MainMenuBar onAction={onMenuAction} />
 
       <ActiveCaseBar
@@ -184,7 +185,7 @@ export function CanonicalLayout({
       {activeMode === 'MODEL_EDIT' && (
         <TopContextBar
           projectName={projectName}
-          caseName={activeCaseId ?? undefined}
+          caseName={activeCaseName ?? activeCaseId ?? undefined}
           onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
           onOpenCatalogBrowser={navigateToCatalog}
           onOpenMassReview={() => setMassReviewOpen(true)}
@@ -196,7 +197,7 @@ export function CanonicalLayout({
       <div className={stageClassName}>
         <section className={mainPaneClassName}>
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
-            <div className="border-b border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="border-b border-[#1b2f40] bg-[rgba(7,19,28,0.92)] px-3 py-2">
               <SldVisualModes />
             </div>
           )}
@@ -209,8 +210,9 @@ export function CanonicalLayout({
         {!hideInspector && (
           <aside
             className={clsx(
-              'flex shrink-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-200 ease-in-out',
-              mainSurfaceExpanded ? 'rounded-none border-y-0 border-r-0 shadow-none' : 'rounded-xl',
+              'flex shrink-0 flex-col overflow-hidden transition-all duration-200 ease-in-out',
+              'border border-[#173041] bg-[linear-gradient(180deg,rgba(11,23,34,0.98)_0%,rgba(8,18,28,0.96)_100%)] shadow-[0_20px_50px_rgba(2,8,23,0.42),inset_0_1px_0_rgba(148,163,184,0.08)]',
+              mainSurfaceExpanded ? 'rounded-none border-y-0 border-r-0 shadow-none' : 'rounded-[18px]',
               inspectorWidthClass,
             )}
             data-testid="inspector-panel-sidebar"
@@ -256,7 +258,7 @@ export function CanonicalLayout({
         )}
 
         {issuePanelOpen && (
-          <aside className="w-inspector shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <aside className="w-inspector shrink-0 overflow-hidden rounded-[18px] border border-[#173041] bg-[linear-gradient(180deg,rgba(11,23,34,0.98)_0%,rgba(8,18,28,0.96)_100%)] shadow-[0_20px_50px_rgba(2,8,23,0.42),inset_0_1px_0_rgba(148,163,184,0.08)]">
             <IssuePanelContainer caseId={activeCaseId} />
           </aside>
         )}

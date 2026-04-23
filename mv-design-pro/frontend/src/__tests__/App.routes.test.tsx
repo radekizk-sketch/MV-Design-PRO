@@ -233,8 +233,8 @@ describe('App hash routes', () => {
     expect(await screen.findByTestId('results-comparison-page')).toBeInTheDocument();
   });
 
-  it('traktuje #case-config jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
-    window.location.hash = '#case-config?case=case-1';
+  it('traktuje #warunki-obliczen jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
+    window.location.hash = '#warunki-obliczen?case=case-1';
 
     render(<App />);
 
@@ -279,15 +279,6 @@ describe('App hash routes', () => {
     expect(window.location.hash).toBe('#sld');
   });
 
-  it('otwiera kanoniczna trase rozdzielnicy bez drugiej prawdy', async () => {
-    window.location.hash = '#switchgear';
-
-    render(<App />);
-
-    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
-    expect(window.location.hash).toBe('#switchgear');
-  });
-
   it('pokazuje jawny blad dla nieznanej trasy zamiast cichego fallbacku', async () => {
     window.location.hash = '#nieznana-trasa';
 
@@ -296,7 +287,7 @@ describe('App hash routes', () => {
     expect(await screen.findByText('Nieznana trasa interfejsu')).toBeInTheDocument();
   });
 
-  it.each(['#case-manager', '#network-build'])(
+  it.each(['#case-manager', '#network-build', '#switchgear'])(
     'odrzuca legacy public route %s i pokazuje blad kanoniczny',
     async (legacyRoute) => {
       window.location.hash = legacyRoute;

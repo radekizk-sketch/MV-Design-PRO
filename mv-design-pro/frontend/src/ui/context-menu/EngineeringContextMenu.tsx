@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Engineering Context Menu - UX 10/10.
  *
  * Warstwa CDSE-integrowanego menu kontekstowego.

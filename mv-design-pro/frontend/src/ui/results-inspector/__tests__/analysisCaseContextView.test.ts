@@ -54,12 +54,12 @@ describe('analysisCaseContextView', () => {
       proof_pack_ref: 'proof-pack:1234567890123456789012345678901234567890',
     });
 
-    expect(getAnalysisCaseLabel(context)).toBe('ROZPLYW_MAX_OBC');
-    expect(getCompletenessDisplayLabel(context)).toBe('Pelny');
+    expect(getAnalysisCaseLabel(context)).toBe('Rozpływ dla maksymalnego obciążenia');
+    expect(getCompletenessDisplayLabel(context)).toBe('Kompletne');
     expect(getCompletenessTone(context.completeness)).toBe('success');
     expect(formatProofPackRef(context.proof_pack_ref)).toBe('proof-pack:1234567890123456789012...');
     expect(getReproducibilitySummary(context)).toEqual({
-      label: 'Kontrakt',
+      label: 'Wersja kontraktu wyników',
       value: 'V12.5',
     });
   });

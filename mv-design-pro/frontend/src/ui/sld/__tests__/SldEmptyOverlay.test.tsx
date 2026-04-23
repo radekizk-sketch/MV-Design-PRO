@@ -17,7 +17,7 @@ describe('SldEmptyOverlay', () => {
     expect(screen.queryByRole('button')).toBeNull();
   });
 
-  it('pokazuje działania wyboru i utworzenia przypadku dla braku aktywnego przypadku', () => {
+  it('pokazuje działania wyboru i utworzenia zakresu dla braku aktywnego zakresu', () => {
     render(
       <SldEmptyOverlay
         state="NO_CASE"
@@ -28,7 +28,7 @@ describe('SldEmptyOverlay', () => {
       />,
     );
 
-    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Nie wybrano przypadku obliczeniowego');
+    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Nie wybrano zakresu i warunków obliczeń');
     expect(screen.getByTestId('sld-empty-overlay-select-case')).toBeInTheDocument();
     expect(screen.getByTestId('sld-empty-overlay-create-new')).toBeInTheDocument();
   });

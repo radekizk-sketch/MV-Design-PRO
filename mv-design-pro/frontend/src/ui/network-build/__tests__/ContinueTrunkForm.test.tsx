@@ -91,6 +91,9 @@ describe('ContinueTrunkForm', () => {
           },
         ],
       } as any,
+      extraContext: {
+        segment_kind: 'KABEL_SN',
+      },
     });
 
     activeOperationContextState.value = context;
@@ -131,6 +134,9 @@ describe('ContinueTrunkForm', () => {
           },
         ],
       } as any,
+      extraContext: {
+        segment_kind: 'KABEL_SN',
+      },
     });
 
     snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
@@ -145,7 +151,7 @@ describe('ContinueTrunkForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj odcinek' }));
 
     await waitFor(() => {
-      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
         'case-1',
         'continue_trunk_segment_sn',
         expect.objectContaining({

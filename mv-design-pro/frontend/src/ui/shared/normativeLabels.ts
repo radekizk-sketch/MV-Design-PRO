@@ -356,7 +356,7 @@ export const COMMON_UI_LABELS = {
     converged: 'Zbieżny',
     notConverged: 'Niezbieżny',
     iterations: 'Iteracje',
-    run: 'Run',
+    run: 'Ostatnie obliczenie',
     convergenceTitle: 'Status zbieżności',
     iterationsCount: 'Liczba iteracji',
     tolerance: 'Tolerancja',

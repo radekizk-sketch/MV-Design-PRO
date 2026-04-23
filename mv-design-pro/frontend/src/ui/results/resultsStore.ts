@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Results Lifecycle Store (Canonical-grade)
  *
  * CANONICAL ALIGNMENT:

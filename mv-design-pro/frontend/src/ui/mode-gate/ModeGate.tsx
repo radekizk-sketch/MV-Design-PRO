@@ -36,7 +36,7 @@ function normalizeAllowedModes(
 
 function getDefaultBlockedMessage(mode: RuntimeOperatingMode): string {
   return mode === 'RESULT_VIEW'
-    ? 'Akcja niedostepna w analizie i wynikach'
+    ? 'Akcja niedostępna w analizie i wynikach'
     : '';
 }
 
@@ -68,7 +68,7 @@ export function ModeGate({
 export function BlockedOverlay({
   children,
   blocked,
-  message = 'Akcja niedostepna w analizie i wynikach',
+  message = 'Akcja niedostępna w analizie i wynikach',
   onBlockedClick,
 }: BlockedOverlayProps) {
   const handleClick = () => {
@@ -113,7 +113,7 @@ export function ModelEditGate({
       allowedModes={['MODEL_EDIT']}
       fallback={fallback}
       showBlockedMessage={showBlockedMessage}
-      blockedMessage="Edycja modelu zablokowana. Wroc do powierzchni modelu sieci."
+      blockedMessage="Edycja modelu zablokowana. Wróć do powierzchni modelu sieci."
     >
       {children}
     </ModeGate>
@@ -130,7 +130,7 @@ export function CaseConfigGate({
       allowedModes={['MODEL_EDIT']}
       fallback={fallback}
       showBlockedMessage={showBlockedMessage}
-      blockedMessage="Kontekst przypadku jest niedostepny w analizie i wynikach."
+      blockedMessage="Warunki obliczeń są niedostępne w analizie i wynikach."
     >
       {children}
     </ModeGate>

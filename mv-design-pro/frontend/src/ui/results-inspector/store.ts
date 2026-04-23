@@ -363,7 +363,7 @@ export const useResultsInspectorStore = create<ResultsInspectorState>((set, get)
       const runSnapshot = await api.fetchRunSnapshot(selectedRunId);
       set({ runSnapshot, isLoadingRunSnapshot: false });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd ładowania migawki uruchomienia';
+      const message = err instanceof Error ? err.message : 'Błąd ładowania wersji modelu użytej do obliczeń';
       set({ error: message, isLoadingRunSnapshot: false });
     }
   },

@@ -11,8 +11,6 @@ import type { ElementType } from '../types';
 import type { ReadinessIssue } from '../types';
 import {
   canonicalOperationInput,
-  type CanonicalOpName,
-  isCanonicalOpName,
 } from '../../types/domainOps';
 import type {
   EnergyNetworkModel,
@@ -46,6 +44,11 @@ import {
   SURFACE_REGISTRY,
   validateSurfaceStack,
 } from '../workspace/types';
+import type {
+  ActiveInspectorPanel,
+  ActiveObjectCard,
+  NetworkBuildOperationName,
+} from './internal/legacySurfaceTypes';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -53,70 +56,6 @@ export type BuildPhase =
   | 'HAS_TRUNKS'
   | 'HAS_STATIONS'
   | 'READY';
-
-export type NetworkBuildOperationName = CanonicalOpName;
-
-export type ActiveOperationForm =
-  | null
-  | { op: 'add_grid_source_sn'; context?: Record<string, unknown> }
-  | { op: 'add_sn_bay'; context?: Record<string, unknown> }
-  | { op: 'continue_trunk_segment_sn'; context?: Record<string, unknown> }
-  | { op: 'insert_station_on_segment_sn'; context?: Record<string, unknown> }
-  | { op: 'insert_branch_pole_on_segment_sn'; context?: Record<string, unknown> }
-  | { op: 'insert_zksn_on_segment_sn'; context?: Record<string, unknown> }
-  | { op: 'start_branch_segment_sn'; context?: Record<string, unknown> }
-  | { op: 'insert_section_switch_sn'; context?: Record<string, unknown> }
-  | { op: 'connect_secondary_ring_sn'; context?: Record<string, unknown> }
-  | { op: 'set_normal_open_point'; context?: Record<string, unknown> }
-  | { op: 'add_transformer_sn_nn'; context?: Record<string, unknown> }
-  | { op: 'add_nn_outgoing_field'; context?: Record<string, unknown> }
-  | { op: 'add_converter_source'; context?: Record<string, unknown> }
-  | { op: 'add_genset_nn'; context?: Record<string, unknown> }
-  | { op: 'add_ups_nn'; context?: Record<string, unknown> }
-  | { op: 'add_nn_load'; context?: Record<string, unknown> }
-  | { op: 'add_ct'; context?: Record<string, unknown> }
-  | { op: 'add_vt'; context?: Record<string, unknown> }
-  | { op: 'add_relay'; context?: Record<string, unknown> }
-  | { op: 'assign_catalog_to_element'; context?: Record<string, unknown> }
-  | { op: 'update_element_parameters'; context?: Record<string, unknown> }
-  | { op: 'refresh_snapshot'; context?: Record<string, unknown> };
-
-export type ActiveObjectCard =
-  | null
-  | { kind: 'source'; elementId: string }
-  | { kind: 'trunk'; corridorRef: string }
-  | { kind: 'station'; elementId: string }
-  | { kind: 'line_segment'; elementId: string }
-  | { kind: 'transformer'; elementId: string }
-  | { kind: 'switch'; elementId: string }
-  | { kind: 'bay'; elementId: string }
-  | { kind: 'nn_switchgear'; elementId: string }
-  | { kind: 'renewable_source'; elementId: string }
-  | { kind: 'branch_pole'; elementId: string }
-  | { kind: 'zksn'; elementId: string };
-
-export type ActiveInspectorPanel =
-  | null
-  | {
-      kind:
-        | 'results'
-        | 'trace'
-        | 'readiness'
-        | 'report'
-        | 'history'
-        | 'topology'
-        | 'secondary_links'
-        | 'coordination'
-        | 'field_measurements'
-        | 'field_control'
-        | 'field_protection'
-        | 'field_source_contributions'
-        | 'field_earth_fault'
-        | 'field_work_safety'
-        | 'field_compare';
-      elementId: string;
-      elementType: ElementType;
-    };
 
 export type SurfaceSessionPatch = Partial<WorkspaceSurfaceSession>;
 export type RouteSurfaceKind = WorkspaceSurfaceCode;
@@ -136,17 +75,6 @@ export interface RouteSurfaceOptions {
   supportsMiniSld?: boolean;
   parentSurfaceId?: string | null;
   route?: WorkspaceRouteKey;
-}
-
-function normalizeOperationForm(
-  op: NetworkBuildOperationName,
-  context?: Record<string, unknown>,
-): ActiveOperationForm {
-  const normalized = canonicalOperationInput(op, context);
-  return {
-    op: normalized.canonicalOp as Exclude<ActiveOperationForm, null>['op'],
-    context: normalized.context,
-  };
 }
 
 function createSurfaceId(prefix: string, entityRef?: string | null): string {
@@ -209,7 +137,7 @@ function inferRouteKey(target: WorkspaceSurfaceCode): WorkspaceRouteKey {
       case 'catalog_picker':
         return 'catalog';
       case 'case_context':
-        return 'case-config';
+        return 'conditions';
     }
   }
 
@@ -258,7 +186,7 @@ function helperSurfaceDefaults(helperCode: HelperSurfaceCode): {
         sizeClass: 'B',
         openMode: 'replace_right_panel',
         supportsMiniSld: false,
-        route: 'case-config',
+        route: 'conditions',
       };
   }
 }
@@ -376,9 +304,9 @@ function buildObjectCardSurfaceDescriptor(
   };
   const screenMap: Record<Exclude<ActiveObjectCard, null>['kind'], WorkspaceScreenCode> = {
     source: 'E-10',
-    trunk: 'E-24',
+    trunk: 'E-03',
     station: 'E-13',
-    line_segment: 'E-24',
+    line_segment: 'E-03',
     transformer: 'E-15',
     switch: 'E-14',
     bay: 'E-14',
@@ -466,27 +394,27 @@ function mapInspectorPanelMeta(
     case 'field_measurements':
       return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
-      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wkłady źródeł', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
-      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Sieć zerowa i składowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_work_safety':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczenstwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczeństwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_compare':
-      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porownanie pol', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porównanie pól', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
     case 'report':
       return { screenCode: REPORT_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Generator raportu', route: 'report', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'readiness':
-      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
+      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowość modelu i lista braków', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
     case 'history':
-      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Warianty i uruchomienia', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Zakresy obliczeń i wyniki', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'topology':
     case 'secondary_links':
-      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Składowe symetryczne i sieć zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
     case 'results':
     case 'trace':
       return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'coordination':
-      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczen', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczeń', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
   }
 }
 
@@ -610,58 +538,6 @@ function buildRouteSurfaceDescriptor(
       }),
     }),
   };
-}
-
-function resolveActiveOperationFormFromSurface(
-  surface: WorkspaceSurfaceDescriptor | null,
-) : ActiveOperationForm {
-  if (!surface) {
-    return null;
-  }
-
-  const payload = surface.routeState.payload ?? {};
-  const delegate = payload.delegate;
-  if (delegate === 'operation_form') {
-    const operation = payload.operation;
-    if (typeof operation === 'string' && isCanonicalOpName(operation)) {
-      return normalizeOperationForm(
-        operation,
-        payload.context as Record<string, unknown> | undefined,
-      );
-    }
-  }
-
-  return null;
-}
-
-function resolveActiveObjectCardFromSurface(
-  surface: WorkspaceSurfaceDescriptor | null,
-): ActiveObjectCard {
-  if (!surface) {
-    return null;
-  }
-
-  const payload = surface.routeState.payload ?? {};
-  if (payload.delegate === 'object_card' && payload.card) {
-    return payload.card as ActiveObjectCard;
-  }
-
-  return null;
-}
-
-function resolveActiveInspectorPanelFromSurface(
-  surface: WorkspaceSurfaceDescriptor | null,
-): ActiveInspectorPanel {
-  if (!surface) {
-    return null;
-  }
-
-  const payload = surface.routeState.payload ?? {};
-  if (payload.delegate === 'read_only_panel' && payload.panel) {
-    return payload.panel as ActiveInspectorPanel;
-  }
-
-  return null;
 }
 
 function reduceSurfaceStack(
@@ -968,46 +844,6 @@ export const useNetworkBuildStore = create<NetworkBuildState>((set, get) => ({
       collapsedSections: new Set<string>(),
     }),
 }));
-
-export function selectActiveOperationForm(
-  state: Pick<NetworkBuildState, 'activeSurface'>,
-): ActiveOperationForm {
-  return resolveActiveOperationFormFromSurface(state.activeSurface);
-}
-
-export function selectActiveOperationContext(
-  state: Pick<NetworkBuildState, 'activeSurface'>,
-): Record<string, unknown> | undefined {
-  return selectActiveOperationForm(state)?.context;
-}
-
-export function selectActiveObjectCard(
-  state: Pick<NetworkBuildState, 'activeSurface'>,
-): ActiveObjectCard {
-  return resolveActiveObjectCardFromSurface(state.activeSurface);
-}
-
-export function selectActiveInspectorPanel(
-  state: Pick<NetworkBuildState, 'activeSurface'>,
-): ActiveInspectorPanel {
-  return resolveActiveInspectorPanelFromSurface(state.activeSurface);
-}
-
-export function useActiveOperationForm() {
-  return useNetworkBuildStore(selectActiveOperationForm);
-}
-
-export function useActiveOperationContext() {
-  return useNetworkBuildStore(selectActiveOperationContext);
-}
-
-export function useActiveObjectCard() {
-  return useNetworkBuildStore(selectActiveObjectCard);
-}
-
-export function useActiveInspectorPanel() {
-  return useNetworkBuildStore(selectActiveInspectorPanel);
-}
 
 export function computeBuildPhase(
   snapshot: EnergyNetworkModel | null,
@@ -1326,3 +1162,20 @@ export function useNetworkBuildDerived() {
     readinessLoading,
   };
 }
+
+export {
+  selectActiveInspectorPanel,
+  selectActiveObjectCard,
+  selectActiveOperationContext,
+  selectActiveOperationForm,
+  useActiveInspectorPanel,
+  useActiveObjectCard,
+  useActiveOperationContext,
+  useActiveOperationForm,
+} from './internal/legacySurfaceAdapters';
+export type {
+  ActiveInspectorPanel,
+  ActiveObjectCard,
+  ActiveOperationForm,
+  NetworkBuildOperationName,
+} from './internal/legacySurfaceTypes';

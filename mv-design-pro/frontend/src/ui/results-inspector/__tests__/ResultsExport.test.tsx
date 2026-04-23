@@ -40,7 +40,7 @@ describe('ResultsExport', () => {
     notifyMock.mockReset();
   });
 
-  it('renders CSV, report generator and run artifact exports for table tabs', () => {
+  it('renders CSV, report generator and calculation artifact exports for table tabs', () => {
     render(
       <ResultsExport
         exportData={{
@@ -61,7 +61,7 @@ describe('ResultsExport', () => {
     expect(screen.getByTestId('export-docx-btn')).toBeInTheDocument();
     expect(screen.getByTestId('export-pdf-btn')).toBeInTheDocument();
     expect(screen.getByText('Generator raportu końcowego')).toBeInTheDocument();
-    expect(screen.getByText('Pomocnicze artefakty uruchomienia')).toBeInTheDocument();
+    expect(screen.getByText('Pomocnicze artefakty obliczenia')).toBeInTheDocument();
   });
 
   it('keeps report generator available for trace tab without CSV', () => {
@@ -102,7 +102,7 @@ describe('ResultsExport', () => {
     await waitFor(() => {
       expect(downloadAnalysisRunExportMock).toHaveBeenCalledWith('project-1', 'run-1', 'pdf');
     });
-    expect(notifyMock).toHaveBeenCalledWith('Pobrano pomocniczy eksport uruchomienia (PDF).', 'success');
+    expect(notifyMock).toHaveBeenCalledWith('Pobrano pomocniczy eksport obliczenia (PDF).', 'success');
   });
 
   it('calls report generator with selected options', async () => {

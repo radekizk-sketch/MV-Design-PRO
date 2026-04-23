@@ -231,12 +231,12 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
     async (format: AnalysisRunExportFormat) => {
       try {
         await downloadAnalysisRunExport(runHeader.project_id, runHeader.run_id, format);
-        notify(`Pobrano pomocniczy eksport uruchomienia (${format.toUpperCase()}).`, 'success');
+        notify(`Pobrano pomocniczy eksport obliczenia (${format.toUpperCase()}).`, 'success');
       } catch (error) {
         notify(
           error instanceof Error
             ? error.message
-            : `Nie udalo sie pobrac pomocniczego eksportu uruchomienia (${format.toUpperCase()}).`,
+            : `Nie udalo sie pobrac pomocniczego eksportu obliczenia (${format.toUpperCase()}).`,
           'error',
         );
       }
@@ -338,7 +338,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
 
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div className="mb-3">
-          <h3 className="text-sm font-semibold text-slate-900">Pomocnicze artefakty uruchomienia</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Pomocnicze artefakty obliczenia</h3>
           <p className="mt-1 text-xs text-slate-500">
             Eksporty pomocnicze pozostaja dostepne dla diagnostyki, sladu i integracji zewnetrznych.
           </p>

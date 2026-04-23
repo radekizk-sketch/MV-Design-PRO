@@ -4,14 +4,13 @@ import {
   ROUTES,
   getRouteByHash,
   isAnalysisRouteAlias,
-  navigateToCaseConfig,
+  navigateToConditions,
   navigateToCompare,
   navigateToNetworkBuild,
   navigateToProof,
   navigateToResults,
   navigateToResultsPowerFlow,
   navigateToResultsProtection,
-  navigateToSwitchgear,
   resolveAnalysisRouteAliasTab,
 } from '../routes';
 
@@ -36,12 +35,9 @@ describe('routes V12.5', () => {
     expect(getRouteByHash('#results')).toBeNull();
     expect(getRouteByHash('#proof')).toBeNull();
     expect(getRouteByHash('#compare')).toBeNull();
+    expect(getRouteByHash('#switchgear')).toBeNull();
     expect(getRouteByHash('#network-build')).toBeNull();
     expect(getRouteByHash('#case-manager')).toBeNull();
-  });
-
-  it('exposes the canonical switchgear helper route', () => {
-    expect(getRouteByHash('#switchgear')).toEqual(ROUTES.SWITCHGEAR);
   });
 
   it('treats legacy result hashes only as aliases to the canonical E-24 route', () => {
@@ -59,7 +55,7 @@ describe('routes V12.5', () => {
     expect(resolveAnalysisRouteAliasTab('#switchgear')).toBeNull();
   });
 
-  it('navigates analysis aliases through dedicated public alias hashes', () => {
+  it('navigates canonical analysis views without exposing technical proof alias', () => {
     navigateToResults();
 
     let location = getHashParts();
@@ -70,8 +66,8 @@ describe('routes V12.5', () => {
 
     navigateToProof();
     location = getHashParts();
-    expect(location.hash).toBe('#proof');
-    expect(location.params.has('tab')).toBe(false);
+    expect(location.hash).toBe('#analysis');
+    expect(location.params.get('tab')).toBe('trace');
 
     navigateToResultsProtection();
     location = getHashParts();
@@ -90,19 +86,14 @@ describe('routes V12.5', () => {
   });
 
   it('maps legacy helper entrypoints onto canonical hashes', () => {
-    navigateToCaseConfig();
+    navigateToConditions();
     let location = getHashParts();
-    expect(location.hash).toBe('#case-config');
+    expect(location.hash).toBe('#warunki-obliczen');
     expect(location.params.has('tab')).toBe(false);
 
     navigateToNetworkBuild();
     location = getHashParts();
     expect(location.hash).toBe('#sld');
-    expect(location.params.has('tab')).toBe(false);
-
-    navigateToSwitchgear();
-    location = getHashParts();
-    expect(location.hash).toBe('#switchgear');
     expect(location.params.has('tab')).toBe(false);
   });
 });

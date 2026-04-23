@@ -199,7 +199,7 @@ export function ProtectionResultsInspectorPage({
   if (!activeCaseId) {
     return (
       <div className="rounded border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-600">
-        Wybierz aktywny przypadek obliczeniowy, aby zobaczyć wyniki ochrony.
+          Wybierz aktywny zakres obliczen, aby zobaczyc wyniki ochrony.
       </div>
     );
   }
@@ -231,7 +231,7 @@ export function ProtectionResultsInspectorPage({
               <span className="font-semibold">Stan widoku:</span> {resultStateLabel}
             </div>
             <div className="text-sm text-slate-700">
-              <span className="font-semibold">Uruchomienie referencyjne:</span> {runId ?? '—'}
+              <span className="font-semibold">Wyniki referencyjne:</span> {runId ?? '—'}
             </div>
             <div className="text-sm text-slate-700">
               <span className="font-semibold">Przypisania aktywne:</span> {formatCount(summary.active_assignments)} / {formatCount(summary.total_assignments)}

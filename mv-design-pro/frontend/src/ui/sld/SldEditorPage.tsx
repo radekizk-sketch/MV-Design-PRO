@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SLD Editor Page â€” Canonical/CANONICAL Style Main Editor View
  *
  * CANONICAL ALIGNMENT:
@@ -54,7 +54,7 @@ import { buildCatalogBinding } from '../catalog/catalogBinding';
 import { NAMESPACE_TO_PICKER_CATEGORY } from '../catalog/elementCatalogRegistry';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
 import { checkCatalogGate } from '../context-menu/catalogGate';
-import { navigateToVariants } from '../navigation/routes';
+import { navigateToConditions } from '../navigation/routes';
 import {
   readExplicitCatalogNamespace,
   readExplicitCatalogVersion,
@@ -95,7 +95,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'source_grid',
     elementId: 'source_grid',
     elementType: 'Source',
-    elementName: 'SieÄ‡ zasilajÄ…ca',
+    elementName: 'Sie? zasilaj?ca',
     position: { x: 400, y: 40 },
     inService: true,
     connectedToNodeId: 'bus_main',
@@ -753,21 +753,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           value={projectTreeQuery}
           onChange={(event) => setProjectTreeQuery(event.target.value)}
           placeholder="Filtruj elementy..."
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-[12px] border border-[#294153] bg-[#091721] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-[#5f778b] focus:border-cyan-400/35 focus:ring-2 focus:ring-cyan-500/10"
         />
         <div
           data-testid="project-tree"
           data-empty={filteredProjectTreeNodes.length === 0}
-          className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2"
+          className="max-h-[320px] space-y-3 overflow-y-auto rounded-[14px] border border-[#22384a] bg-[#08141d] p-2"
         >
           {filteredProjectTreeNodes.length === 0 ? (
-            <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-xs text-slate-500">
+            <div className="rounded-[12px] border border-dashed border-[#294153] bg-[#091721] px-3 py-4 text-xs text-[#8ea6ba]">
               Brak elementow pasujacych do filtra.
             </div>
           ) : (
             Object.entries(groupedNodes).map(([group, nodes]) => (
               <div key={group} className="space-y-1">
-                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6f8ca4]">
                   {group}
                 </div>
                 {nodes.map((node) => {
@@ -782,17 +782,17 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                         centerSldOnElement(node.id);
                         setInteractionMessage(`Wybrano element z drzewa modelu: ${node.label}.`);
                       }}
-                      className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${
+                      className={`flex w-full items-start justify-between gap-3 rounded-[12px] border px-3 py-2 text-left transition ${
                         isActive
-                          ? 'border-blue-300 bg-blue-50 text-blue-900'
-                          : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-100'
+                          ? 'border-cyan-400/35 bg-cyan-500/14 text-cyan-50'
+                          : 'border-[#274154] bg-[#0d1c29] text-slate-100 hover:bg-[#112433]'
                       }`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{node.label}</span>
-                        <span className="block truncate text-[11px] text-slate-500">{node.subtitle}</span>
+                        <span className="block truncate text-[11px] text-[#8ea6ba]">{node.subtitle}</span>
                       </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                      <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-[#6f8ca4]">
                         {node.type}
                       </span>
                     </button>
@@ -863,12 +863,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       onOpenCaseHelper();
       return;
     }
-    navigateToVariants();
+    navigateToConditions();
   }, [onOpenCaseHelper]);
 
   const openExecutionSurface = useCallback(() => {
     openCaseContextSurface();
-    notify('Otwarto menedzer przypadkow — wybierz przypadek i uruchom obliczenia.', 'info');
+    notify('Otwarto warunki obliczen — wybierz zakres i wykonaj obliczenia.', 'info');
   }, [openCaseContextSurface]);
 
   const dockContextItems = useMemo(
@@ -878,7 +878,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeProjectName ?? activeProjectId ?? 'Nie wybrano',
       },
       {
-        label: 'Przypadek',
+        label: 'Zakres obliczen',
         value: activeCaseName ?? activeCaseId ?? 'Nie wybrano',
         tone: hasActiveCase ? ('default' as const) : ('warn' as const),
       },
@@ -887,11 +887,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeVariant?.name ?? 'Brak',
       },
       {
-        label: 'Migawka modelu',
+        label: 'Wersja modelu',
         value: activeSnapshotId ?? 'Brak',
       },
       {
-        label: 'Uruchomienie',
+        label: 'Wyniki',
         value: activeRunId ?? 'Brak',
       },
       {
@@ -900,7 +900,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         tone:
           resultStatusLabel === 'Wyniki aktualne'
             ? ('ok' as const)
-            : resultStatusLabel === 'Brak wynikow'
+            : resultStatusLabel === 'Brak wynik?w'
               ? ('warn' as const)
               : ('danger' as const),
       },
@@ -934,7 +934,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockActionGroups = useMemo(() => {
     const toolDisabledReason = (toolId: Exclude<CreatorTool, null>): string | null => {
       if (!activeCaseId) {
-        return 'Najpierw wybierz aktywny przypadek obliczeniowy.';
+        return 'Najpierw wybierz aktywny zakres obliczen.';
       }
       if (toolId !== 'add_grid_source_sn' && !hasSource) {
         return 'Najpierw dodaj zrodlo zasilania GPZ.';
@@ -1010,10 +1010,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockNextStep = useMemo(() => {
     if (!hasActiveCase) {
       return {
-        title: 'Aktywuj przypadek obliczeniowy',
+        title: 'Aktywuj zakres obliczen',
         description:
-          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym przypadkiem obliczeniowym.',
-        actionLabel: 'Otworz kontekst przypadku',
+          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym zakresem obliczen.',
+        actionLabel: 'Otworz warunki obliczen',
         onAction: openCaseContextSurface,
       };
     }
@@ -1045,10 +1045,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
     if (enmReadiness?.ready && modelSummary.branches > 0) {
       return {
-        title: 'Uruchom analize dla aktywnego przypadku',
+        title: 'Wykonaj analize dla aktywnego zakresu',
         description:
-          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do wariantow i uruchomien.',
-        actionLabel: 'Otworz warianty i uruchomienia',
+          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do zakresow obliczen i wynikow.',
+        actionLabel: 'Otworz zakresy obliczen i wyniki',
         onAction: openExecutionSurface,
       };
     }
@@ -1122,28 +1122,28 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       }
 
       if (!projectId) {
-        notify('Nie moĹĽna utworzyÄ‡ przypadku: brak aktywnego projektu. OtwĂłrz MenedĹĽer przypadkĂłw i utwĂłrz projekt.', 'warning');
+        notify('Nie mo?na utworzy? zakresu oblicze?: brak aktywnego projektu. Otw?rz projekt i utw?rz zakres oblicze?.', 'warning');
         return;
       }
 
       const createdCase = await withTimeout(
         createCase({
           project_id: projectId,
-          name: 'Przypadek 1',
+          name: 'Zakres 1',
           description: '',
           set_active: true,
         })
       );
 
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
-      notify(`Utworzono i aktywowano przypadek: ${createdCase.name}.`, 'success');
+      notify(`Utworzono i aktywowano zakres obliczen: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d';
+      const message = error instanceof Error ? error.message : 'Nieznany b??d';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). SprawdĹş poĹ‚Ä…czenie i sprĂłbuj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas tworzenia zakresu oblicze? (limit 15 s). Sprawd? po??czenie i spr?buj ponownie.', 'warning');
         return;
       }
-      notify(`Nie udaĹ‚o siÄ™ utworzyÄ‡ przypadku. SzczegĂłĹ‚y techniczne: ${message}`, 'error');
+      notify(`Nie uda?o si? utworzy? zakresu oblicze?. Szczeg??y techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
@@ -1226,7 +1226,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     ]);
 
     if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
+      const reason = resolved.reasonPl ?? 'Narz?dzie chwilowo niedost?pne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
@@ -1238,14 +1238,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           id: target.id,
           label: target.name ?? target.id,
         });
-        const msg = 'Wybierz drugi port ringu, aby otworzyÄ‡ formularz domkniÄ™cia pierĹ›cienia.';
+        const msg = 'Wybierz drugi port ringu, aby otworzy? formularz domkni?cia pier?cienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
       }
 
       if (pendingRingTerminal.id === target.id) {
-        const msg = 'WskaĹĽ drugi, rĂłĹĽny port ringu.';
+        const msg = 'Wska? drugi, r??ny port ringu.';
         setInteractionMessage(msg);
         notify(msg, 'warning');
         return;
@@ -1264,11 +1264,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         openToolCatalogPicker(
           'connect_secondary_ring_sn',
           ringPayload,
-          `${pendingRingTerminal.label} â†’ ${target.name ?? target.id}`,
+          `${pendingRingTerminal.label} ? ${target.name ?? target.id}`,
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domkniÄ™cia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domkni?cia ringu.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1335,7 +1335,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       notify(msg, 'success');
       setActiveTool('select');
     } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiodĹ‚a siÄ™.`;
+      const err = `Operacja ${resolved.canonicalOp} nie powiod?a si?.`;
       setInteractionMessage(err);
       notify(err, 'error');
     }
@@ -1383,7 +1383,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   return (
     <div
       data-testid="sld-editor-page"
-      className="flex h-full w-full overflow-hidden rounded-xl bg-white"
+      className="flex h-full w-full overflow-hidden rounded-[20px] border border-[#173041] bg-[linear-gradient(180deg,#030b11_0%,#06111a_100%)] shadow-[0_24px_60px_rgba(2,8,23,0.44),inset_0_1px_0_rgba(148,163,184,0.06)]"
     >
       <SldWorkDock
         contextItems={dockContextItems}
@@ -1414,7 +1414,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       />
 
       {/* SLD View (main area) - ALWAYS rendered */}
-      <div className="relative flex-1 min-w-0 overflow-hidden bg-slate-100">
+      <div className="relative flex-1 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,116,144,0.12),transparent_28%),linear-gradient(180deg,#06111a_0%,#08131d_100%)]">
         <SLDView
           symbols={symbols}
           connections={enmProjection.connections}
@@ -1429,12 +1429,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_grid_source_sn') {
               void runResolvedAction(
                 'add_grid_source_sn',
-                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'p??tna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
+            setInteractionMessage('Klikni?to t?o p??tna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -1509,8 +1509,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
           data-testid="sld-bottom-right-toolbars"
         >
-          <LabelModeToolbar compact />
-          <OperationalModeToolbar />
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#1d3446] bg-[rgba(7,19,28,0.88)] px-2 py-2 shadow-[0_16px_32px_rgba(2,8,23,0.42),inset_0_1px_0_rgba(148,163,184,0.06)] backdrop-blur">
+            <LabelModeToolbar compact />
+            <OperationalModeToolbar />
+          </div>
         </div>
       </div>
 
@@ -1595,7 +1597,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie uda?o si? przypisa? typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

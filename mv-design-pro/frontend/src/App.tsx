@@ -1,4 +1,4 @@
-/**
+﻿/**
  * App Root â€” CANONICAL_LAYOUT + UI_INTEGRATION_E2E + V12.5
  *
  * CANONICAL ALIGNMENT:
@@ -21,7 +21,7 @@
  * - "#sld-view" â†’ Podglad schematu (SLD Read-Only Viewer)
  * - "#analysis" â†’ Poziom analityczny (E-24)
  * - "#report" â†’ Generator raportu (E-25)
- * - "#variants" / "#catalog" / "#case-config" â†’ Helpery shell-a
+ * - "#variants" / "#catalog" / "#warunki-obliczen" â†’ Helpery shell-a
  * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
  *   â†’ aliasy prowadzÄ…ce do E-24
  */
@@ -43,7 +43,7 @@ import {
   getRouteByHash,
   isAnalysisRouteAlias,
   navigateToAnalysis,
-  navigateToCaseConfig,
+  navigateToConditions,
   navigateToCatalog,
   navigateToCompare,
   navigateToNetworkBuild,
@@ -52,7 +52,6 @@ import {
   navigateToResults,
   navigateToResultsProtection,
   navigateToVariants,
-  navigateToSwitchgear,
   resolveAnalysisRouteAliasTab,
   useUrlSelectionSync,
 } from './ui/navigation';
@@ -224,7 +223,7 @@ function App() {
       });
       return;
     }
-    if (route === ROUTES.CASE_CONFIG.hash) {
+    if (route === ROUTES.CONDITIONS.hash) {
       openRouteSurface('case_context', {
         subjectKind: 'helper_context',
         subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
@@ -236,7 +235,7 @@ function App() {
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {
-      notify('Brak aktywnego przypadku obliczeniowego.', 'error');
+      notify('Brak aktywnego zakresu obliczeń.', 'error');
       return;
     }
 
@@ -250,10 +249,10 @@ function App() {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
       const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
+      notify('Rozpoczęto obliczenia. Przejdź do widoku wyników po zakończeniu.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
+      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
       notify(message, 'error');
     }
   }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);
@@ -296,13 +295,11 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'switchgear':
-        navigateToSwitchgear();
-        break;
       case 'power-distribution':
         navigateToNetworkBuild();
         break;
       case 'case-manager':
-        navigateToCaseConfig({ caseId: activeCaseId });
+        navigateToConditions({ caseId: activeCaseId });
         break;
       case 'sld-view':
         window.location.hash = ROUTES.SLD_VIEW.hash;
@@ -349,7 +346,7 @@ function App() {
     activeRunId,
     handleCalculate,
     navigateToAnalysis,
-    navigateToCaseConfig,
+    navigateToConditions,
     navigateToCatalog,
     navigateToCompare,
     navigateToNetworkBuild,

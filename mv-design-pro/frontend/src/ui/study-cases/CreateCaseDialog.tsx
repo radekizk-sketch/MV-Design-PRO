@@ -98,7 +98,7 @@ export function CreateCaseDialog({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">
-            Nowy przypadek obliczeniowy
+          Nowy zakres obliczen
           </h2>
         </div>
 
@@ -152,7 +152,7 @@ export function CreateCaseDialog({
                 className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
               />
               <label htmlFor="setActive" className="ml-2 text-sm text-gray-700">
-                Ustaw jako aktywny przypadek
+                Ustaw jako aktywny zakres
               </label>
             </div>
 
@@ -242,7 +242,7 @@ export function CreateCaseDialog({
                   : 'bg-gray-200 text-gray-500 cursor-not-allowed'
               )}
             >
-              {isCreating ? 'Tworzenie...' : 'Utwórz przypadek'}
+            {isCreating ? 'Tworzenie...' : 'Utworz zakres'}
             </button>
           </div>
         </form>

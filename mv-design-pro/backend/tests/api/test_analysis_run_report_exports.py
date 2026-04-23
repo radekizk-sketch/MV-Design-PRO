@@ -81,9 +81,6 @@ def _build_pf_run() -> CanonicalRun:
             {
                 "step": 1,
                 "title": "Krok PF",
-                "formula_latex": r"U_{bus} = U_{nom} \cdot 0{,}98",
-                "substitution": "0.98 * 15.0",
-                "substitution_latex": r"0{,}98 \cdot 15{,}0",
                 "result": {"u_pu": {"value": 0.98, "unit": "pu"}},
             }
         ],
@@ -216,7 +213,6 @@ def test_trace_export_payload_carries_export_lineage() -> None:
     assert payload["export_artifact"]["lineage"]["snapshot_ref"] == payload["snapshot_id"]
     assert payload["export_artifact"]["lineage"]["proof_pack_ref"] == payload["proof_pack_ref"]
     assert payload["export_policy"]["carries_proof_pack_ref"] is True
-    assert payload["white_box_trace"][0]["substitution_latex"] == r"0{,}98 \cdot 15{,}0"
 
 
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:

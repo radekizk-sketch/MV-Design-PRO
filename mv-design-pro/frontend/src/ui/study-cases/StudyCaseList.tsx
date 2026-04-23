@@ -114,7 +114,7 @@ export function StudyCaseList({
         <button
           onClick={onCreateCase}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-          title="Utwórz nowy przypadek"
+              title="Utworz nowy zakres obliczen"
         >
           + Nowy
         </button>
@@ -125,7 +125,7 @@ export function StudyCaseList({
         <div className="p-4 text-center text-gray-400 text-xs">
           Brak przypadków obliczeniowych.
           <br />
-          Utwórz pierwszy przypadek.
+              Utworz pierwszy zakres obliczen.
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
@@ -189,7 +189,7 @@ function StudyCaseListItem({
       {/* Active indicator */}
       <span className="w-4 text-center mr-2">
         {caseItem.is_active && (
-          <span className="text-blue-600 font-bold" title="Aktywny przypadek">
+                <span className="text-blue-600 font-bold" title="Aktywny zakres obliczen">
             &gt;
           </span>
         )}
@@ -265,7 +265,7 @@ function StudyCaseContextMenu({
         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
         onClick={() => onClone(caseId)}
       >
-        Klonuj przypadek
+                  Klonuj zakres
       </button>
 
       {/* Separator */}
@@ -276,7 +276,7 @@ function StudyCaseContextMenu({
         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
         onClick={() => onDelete(caseId)}
       >
-        Usun przypadek
+                  Usun zakres
       </button>
     </div>
   );
