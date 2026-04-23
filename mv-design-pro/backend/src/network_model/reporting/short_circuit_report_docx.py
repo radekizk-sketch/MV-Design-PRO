@@ -57,7 +57,7 @@ def _format_complex(value: dict | complex | str | Any) -> str:
 def _format_value(value: Any) -> str:
     """Format a value for display in the report."""
     if value is None:
-        return "—"
+        return "â€”"
     if isinstance(value, dict) and "re" in value and "im" in value:
         return _format_complex(value)
     if isinstance(value, complex):
@@ -67,7 +67,7 @@ def _format_value(value: Any) -> str:
     if isinstance(value, bool):
         return "Tak" if value else "Nie"
     if isinstance(value, list):
-        return f"[{len(value)} elementów]"
+        return f"[{len(value)} elementĂłw]"
     return str(value)
 
 
@@ -139,8 +139,8 @@ def export_short_circuit_result_to_docx(
 
     # Subtitle with fault parameters
     subtitle_parts = [
-        f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
-        f"Węzeł: {data.get('fault_node_id', '—')}",
+        f"Typ zwarcia: {data.get('short_circuit_type', 'â€”')}",
+        f"WÄ™zeĹ‚: {data.get('fault_node_id', 'â€”')}",
         f"Un: {_format_value(data.get('un_v'))} V",
         f"c: {_format_value(data.get('c_factor'))}",
         f"tk: {_format_value(data.get('tk_s'))} s",
@@ -161,7 +161,7 @@ def export_short_circuit_result_to_docx(
     # Header row
     hdr_cells = results_table.rows[0].cells
     hdr_cells[0].text = "Nazwa"
-    hdr_cells[1].text = "Wartość"
+    hdr_cells[1].text = "WartoĹ›Ä‡"
 
     # Make header bold
     for cell in hdr_cells:
@@ -176,9 +176,9 @@ def export_short_circuit_result_to_docx(
         ("Ib [A]", "ib_a"),
         ("Ith [A]", "ith_a"),
         ("Sk [MVA]", "sk_mva"),
-        ("κ [-]", "kappa"),
+        ("Îş [-]", "kappa"),
         ("R/X [-]", "rx_ratio"),
-        ("Zk [Ω]", "zkk_ohm"),
+        ("Zk [Î©]", "zkk_ohm"),
     ]
 
     for label, key in result_fields:
@@ -195,7 +195,7 @@ def export_short_circuit_result_to_docx(
         white_box_trace = data.get("white_box_trace", [])
 
         if not white_box_trace:
-            doc.add_paragraph("Brak śladu obliczeń.")
+            doc.add_paragraph("Brak Ĺ›ladu obliczeĹ„.")
         else:
             for step in white_box_trace:
                 _add_white_box_step(doc, step)
@@ -229,19 +229,19 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
     formula = step.get("formula_latex", "")
     if formula:
         p = doc.add_paragraph()
-        p.add_run("Wzór: ").bold = True
+        p.add_run("WzĂłr: ").bold = True
         p.add_run(formula)
 
     # Inputs table
     inputs = step.get("inputs", {})
     if inputs and isinstance(inputs, dict):
-        doc.add_paragraph().add_run("Dane wejściowe:").bold = True
+        doc.add_paragraph().add_run("Dane wejĹ›ciowe:").bold = True
         inputs_table = doc.add_table(rows=1, cols=2)
         inputs_table.style = "Table Grid"
 
         hdr = inputs_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "Wartość"
+        hdr[1].text = "WartoĹ›Ä‡"
 
         for k, v in inputs.items():
             row = inputs_table.add_row().cells
@@ -249,7 +249,7 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
             row[1].text = _format_value(v)
 
     # Substitution
-    substitution = step.get("substitution", "")
+    substitution = step.get("substitution_latex") or step.get("substitution", "")
     if substitution:
         p = doc.add_paragraph()
         p.add_run("Podstawienie: ").bold = True
@@ -264,7 +264,7 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
 
         hdr = result_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "Wartość"
+        hdr[1].text = "WartoĹ›Ä‡"
 
         for k, v in result_data.items():
             row = result_table.add_row().cells

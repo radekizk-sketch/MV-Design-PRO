@@ -136,7 +136,7 @@ export function ActiveCaseBar({
 
         {hasActiveCase ? (
           <div
-            data-testid="result-status"
+            data-testid="result-status-card"
             className={clsx(
               'rounded-[16px] border px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]',
               statusStyle.badge,
@@ -144,7 +144,7 @@ export function ActiveCaseBar({
             title={resultStatusLabel}
           >
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">Stan wyników</div>
-            <div className="mt-1 flex items-center gap-2 text-xs font-semibold">
+            <div data-testid="result-status" className="mt-1 flex items-center gap-2 text-xs font-semibold">
               <span className={statusStyle.dot} />
               <span>{resultStatusLabel}</span>
             </div>

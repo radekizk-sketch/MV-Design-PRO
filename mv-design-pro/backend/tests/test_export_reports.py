@@ -46,6 +46,13 @@ try:
 except ImportError:
     _PDF_AVAILABLE = False
 
+try:
+    import fitz  # type: ignore[import-not-found]
+
+    _PDF_TEXT_AVAILABLE = True
+except ImportError:
+    _PDF_TEXT_AVAILABLE = False
+
 
 # =============================================================================
 # Test Helpers
@@ -249,6 +256,7 @@ def _build_test_white_box_trace() -> list[dict]:
                 "fault_node_id": "B",
             },
             "substitution": "0.5+j1.2",
+            "substitution_latex": r"Z_1 = 0.5 + j\,1.2",
             "result": {"z_equiv_ohm": complex(0.5, 1.2)},
             "notes": None,
         },
@@ -262,6 +270,7 @@ def _build_test_white_box_trace() -> list[dict]:
                 "z_equiv_abs_ohm": 1.3,
             },
             "substitution": "(1.0 * 20000) / 1.3",
+            "substitution_latex": r"I_k'' = \frac{1.0 \cdot 20000}{1.3}",
             "result": {"ikss_a": 15384.6},
             "notes": None,
         },
@@ -271,6 +280,7 @@ def _build_test_white_box_trace() -> list[dict]:
             "formula_latex": "kappa = 1.02 + 0.98 * exp(-3*R/X)",
             "inputs": {"r_ohm": 0.5, "x_ohm": 1.2, "rx_ratio": 0.417},
             "substitution": "1.02 + 0.98 * exp(-3 * 0.417)",
+            "substitution_latex": r"\kappa = 1.02 + 0.98 \cdot e^{-3 \cdot 0.417}",
             "result": {"kappa": 1.296},
             "notes": None,
         },
@@ -497,6 +507,21 @@ class TestSCPDFGeneration:
         content = out.read_bytes()
         assert content[:5] == b"%PDF-"
 
+    @pytest.mark.skipif(not _PDF_TEXT_AVAILABLE, reason="PyMuPDF not installed")
+    def test_white_box_contains_latex_trace(self, tmp_path: Path) -> None:
+        """SC PDF white-box keeps full LaTeX text in the trace."""
+        from network_model.reporting.export_pdf import generate_sc_report_pdf
+
+        result = _build_sc_result()
+        out = tmp_path / "sc_report.pdf"
+        generate_sc_report_pdf(result, None, out)
+
+        doc = fitz.open(str(out))
+        text = "\n".join(page.get_text("text") for page in doc)
+        assert "White Box" in text
+        assert r"\cdot" in text
+        assert r"\sqrt" in text or r"\sqrt{" in text
+
     def test_creates_parent_dirs(self, tmp_path: Path) -> None:
         """Parent directories are created automatically."""
         from network_model.reporting.export_pdf import generate_sc_report_pdf
@@ -620,11 +645,31 @@ class TestJSONLTraceExport:
         export_trace_jsonl(trace, out)
 
         content = out.read_text(encoding="utf-8").strip()
-        required_fields = {"step_number", "step_name", "formula", "values", "result", "unit"}
+        required_fields = {
+            "step_number",
+            "step_name",
+            "formula",
+            "values",
+            "result",
+            "unit",
+            "substitution_latex",
+        }
 
         for line in content.split("\n"):
             parsed = json.loads(line)
             assert required_fields.issubset(set(parsed.keys()))
+
+    def test_substitution_latex_exported(self, tmp_path: Path) -> None:
+        """JSONL export prefers the LaTeX substitution field."""
+        from network_model.reporting.export_jsonl import export_trace_jsonl
+
+        trace = _build_test_white_box_trace()
+        out = tmp_path / "trace.jsonl"
+        export_trace_jsonl(trace, out)
+
+        content = out.read_text(encoding="utf-8").strip()
+        first_line = json.loads(content.split("\n")[0])
+        assert first_line["substitution_latex"] == r"Z_1 = 0.5 + j\,1.2"
 
     def test_chronological_order(self, tmp_path: Path) -> None:
         """Steps are numbered sequentially starting from 1."""

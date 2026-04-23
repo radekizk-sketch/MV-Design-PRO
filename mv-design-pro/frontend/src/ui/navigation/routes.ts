@@ -281,3 +281,4 @@ export function navigateToCatalog(context: RouteContextOptions = {}): void {
     assignRouteContext(params, context);
   });
 }
+
