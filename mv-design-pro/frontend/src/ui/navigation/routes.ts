@@ -74,6 +74,14 @@ export const ROUTES = {
   },
 } satisfies Record<string, RouteDefinition>;
 
+export const SWITCHGEAR = {
+  hash: '#switchgear',
+  label: 'Rozdzielnica',
+  description: 'Tryb zgodności dla kreatora rozdzielnicy',
+  icon: 'SWG',
+  requiredMode: 'MODEL_EDIT',
+} satisfies RouteDefinition;
+
 type RouteKey = keyof typeof ROUTES;
 
 export const ANALYSIS_ROUTE_ALIASES: Readonly<Record<string, AnalysisRouteTabId>> = {

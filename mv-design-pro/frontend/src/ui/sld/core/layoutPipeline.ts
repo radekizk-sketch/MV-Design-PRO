@@ -1919,11 +1919,4 @@ export function computeLayout(
   return engine.compute(layoutInput, config, effectiveStationBlockDetails).layout;
 }
 
-export function computeActiveRuntimeLayout(
-  graph: VisualGraphV1,
-  config: LayoutGeometryConfigV1 = DEFAULT_LAYOUT_CONFIG,
-  stationBlockDetails?: StationBlockBuildResult,
-): LayoutResultV1 {
-  return computeLayout(graph, config, stationBlockDetails, { strategy: 'legacy' });
-}
 

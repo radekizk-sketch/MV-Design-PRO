@@ -35,7 +35,7 @@ describe('SLD canonical hygiene', () => {
     const layoutPipeline = read('src/ui/sld/core/layoutPipeline.ts');
 
     expect(snapshotProjection.includes("strategy: 'legacy'")).toBe(false);
-    expect(snapshotProjection.includes('computeActiveRuntimeLayout(')).toBe(true);
-    expect(layoutPipeline.includes('export function computeActiveRuntimeLayout(')).toBe(true);
+    expect(snapshotProjection.includes('computeLayout(')).toBe(true);
+    expect(layoutPipeline.includes('export function computeActiveRuntimeLayout(')).toBe(false);
   });
 });

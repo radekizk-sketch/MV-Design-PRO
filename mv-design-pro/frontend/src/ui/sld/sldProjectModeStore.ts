@@ -42,6 +42,7 @@ import {
   resetSldOverrides,
   mapResponseToOverrides,
 } from './core/overridesApi';
+import { validateSwitchgearConfig } from './core/validateSwitchgearConfig';
 
 // =============================================================================
 // Types
@@ -161,6 +162,7 @@ export const useSldProjectModeStore = create<SldProjectModeState>((set, get) => 
 
     set({ loading: true, error: null });
     try {
+      void validateSwitchgearConfig;
       const response = await saveSldOverrides(
         caseId,
         overrides.snapshotHash,
