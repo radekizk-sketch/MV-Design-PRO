@@ -112,16 +112,16 @@ export function resolveWorkspaceBlockState({
   const copy: Record<ReadinessWorkspaceBlockState['reason'], ReadinessWorkspaceBlockState> = {
     NO_CASE: {
       reason: 'NO_CASE',
-      title: 'Brak aktywnego przypadku obliczeniowego',
+      title: 'Brak aktywnego zakresu i warunków obliczeń',
       description:
-        'Bez aktywnego wariantu pracy panel gotowości pozostaje zablokowany. Wybierz wariant albo utwórz nowy.',
-      nextStep: 'Wybierz istniejący wariant w menedżerze wariantów albo utwórz nowy.',
+        'Bez aktywnego zakresu panel gotowości pozostaje zablokowany. Wybierz zakres albo utwórz nowy.',
+      nextStep: 'Wybierz istniejący zakres obliczeń albo utwórz nowy.',
     },
     NO_MODEL: {
       reason: 'NO_MODEL',
       title: 'Pusty schemat jednokreskowy',
       description:
-        'Wariant pracy jest aktywny, ale model nie zawiera jeszcze elementów sieci. Dodaj pierwszy odcinek albo stację.',
+        'Zakres obliczeń jest aktywny, ale model nie zawiera jeszcze elementów sieci. Dodaj pierwszy odcinek albo stację.',
       nextStep: 'Wstaw pierwszy odcinek, stację lub źródło, aby zbudować topologię.',
     },
     NO_SOURCE: {
@@ -133,9 +133,9 @@ export function resolveWorkspaceBlockState({
     },
     NO_SNAPSHOT: {
       reason: 'NO_SNAPSHOT',
-      title: 'Brak aktywnej migawki',
-      description: 'Nie wybrano migawki modelu. Bez niej nie da się poprawnie ocenić gotowości.',
-      nextStep: 'Wybierz aktywną migawkę w drzewie projektu.',
+      title: 'Brak wersji modelu użytej do obliczeń',
+      description: 'Nie wybrano wersji modelu. Bez niej nie da się poprawnie ocenić gotowości.',
+      nextStep: 'Wybierz aktywną wersję modelu w drzewie projektu.',
     },
   };
 

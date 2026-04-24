@@ -85,7 +85,7 @@ async function createProjectAndCase(
 ): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = nextEntitySuffix();
   const projectName = `E2E Krytyczny ${suffix}`;
-  const caseName = `Wariant krytyczny ${suffix}`;
+  const caseName = `Zakres krytyczny ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
@@ -152,11 +152,11 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Wariant');
+  await expect(page.getByTestId('active-case-bar')).toContainText('Zakres obliczeń');
   return caseId;
 }
 
-test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> White Box -> geometria bez zmian', async ({ page, request }) => {
+test('krytyczny flow V1 na realnym backendzie: zakres -> GPZ -> magistrala -> stacja -> odgałęzienie -> katalogi -> gotowość -> obliczenie -> wyniki -> SLD -> ślad -> geometria bez zmian', async ({ page, request }) => {
   const caseId = await createCaseFromUi(page, request);
 
   // Krok 1: GPZ
@@ -235,7 +235,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     });
   }
 
-  // Krok 6: Readiness i ewentualne domknięcie blockerów katalogowych
+  // Krok 6: Gotowość i ewentualne domknięcie blokerów katalogowych
   let readiness: { ready: boolean; status: string; issues?: Array<{ code: string; element_ref?: string | null }> } | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const readinessResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`);
@@ -283,7 +283,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   const snapshotHashBefore = enmBefore.header?.hash_sha256;
   expect(snapshotHashBefore).toBeTruthy();
 
-  // Krok 7: Realny run + przejście do wyników
+  // Krok 7: Realne obliczenie + przejście do wyników
   const createRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
     { data: { analysis_type: 'SC_3F' } },
@@ -318,7 +318,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   await expect(page.getByTestId('embedded-sld-mode-run')).toBeVisible();
 
   await page.getByRole('button', { name: 'White Box' }).click();
-  await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
+  await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}(&|.*&)tab=trace$`));
   await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Przebieg obliczeń analizy' })).toBeVisible();
 

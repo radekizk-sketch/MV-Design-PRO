@@ -65,7 +65,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
         body: JSON.stringify({
           id: 'case-001',
           project_id: 'proj-001',
-          name: 'Wariant 1',
+          name: 'Zakres 1',
           description: '',
           case_type: 'ShortCircuitCase',
           is_active: true,
@@ -86,14 +86,14 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
           caseCreated
             ? [{
                 id: 'case-001',
-                name: 'Wariant 1',
+                name: 'Zakres 1',
                 description: '',
                 case_type: 'ShortCircuitCase',
                 is_active: true,
                 result_status: 'NONE',
                 updated_at: '2026-01-01T00:00:01Z',
               }]
-            : []
+            : [],
         ),
       });
       return;
@@ -107,7 +107,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
           ? JSON.stringify({
               id: 'case-001',
               project_id: 'proj-001',
-              name: 'Wariant 1',
+              name: 'Zakres 1',
               description: '',
               case_type: 'ShortCircuitCase',
               is_active: true,
@@ -137,15 +137,15 @@ test('tworzenie pierwszego przypadku jest deterministyczne i bez freeze', async 
     localStorage.clear();
   });
 
-  await page.goto('/');
+  await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached' });
 
   const createButton = page.getByTestId('sld-empty-overlay-create-case');
   await expect(createButton).toBeVisible();
   await createButton.click();
 
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Aktywny wariant pracy:');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wariant 1');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres obliczeń');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres 1');
   await expect(createButton).toHaveCount(0);
 
   const uniqueWarnCount = guards.warningCounts.size;

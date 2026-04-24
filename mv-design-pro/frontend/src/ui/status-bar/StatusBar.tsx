@@ -50,7 +50,7 @@ function getResultStatusLabel(status: ResultStatus): string {
       return 'Wyniki nieaktualne';
     case 'NONE':
     default:
-      return 'Brak wynikow';
+      return 'Brak wynik?w';
   }
 }
 

@@ -13,6 +13,8 @@ export interface LabeledValueRow {
   value: string;
 }
 
+export type PublicBadgeTone = 'info' | 'success' | 'warning';
+
 export interface AnalysisCaseContextContract {
   caseRef: string | null;
   caseKind: string | null;
@@ -69,54 +71,105 @@ const EXPORT_KINDS = ['pdf', 'docx', 'csv', 'xlsx', 'json', 'whitebox_package'] 
 
 const KEY_LABELS: Record<string, string> = {
   analysis_type: 'Typ analizy',
-  bay_contract_version: 'Bay contract',
-  case_id: 'Case',
-  case_kind: 'Rodzaj przypadku',
-  catalog_schema_version: 'Schema katalogu',
-  catalog_snapshot_ref: 'Stan katalogu',
-  completeness: 'Completeness',
-  converged: 'Zbieznosc',
-  count: 'Liczba krokow',
+  bay_contract_version: 'Wersja kontraktu pola',
+  case_id: 'Identyfikator zakresu obliczeń',
+  case_kind: 'Rodzaj obliczenia',
+  catalog_schema_version: 'Wersja schematu katalogu',
+  catalog_snapshot_ref: 'Wersja katalogu',
+  completeness: 'Kompletność wyników',
+  converged: 'Zbieżność',
+  count: 'Liczba kroków',
   created_at: 'Utworzono',
-  domain_model_version: 'Model domenowy',
+  domain_model_version: 'Wersja modelu domenowego',
   duration_ms: 'Czas trwania [ms]',
   first_step: 'Pierwszy krok',
-  formula_set_version: 'Formula set',
-  input_hash: 'Input hash',
-  iterations: 'Iteracje',
-  load_assumptions_ref: 'Zalozenia obciazen',
+  formula_set_version: 'Wersja zestawu wzorów',
+  input_hash: 'Hash wejścia',
+  iterations: 'Liczba iteracji',
+  load_assumptions_ref: 'Założenia obciążenia',
   max_ikss_ka: 'Maks. Ikss [kA]',
-  method_version: 'Method version',
-  proof_pack_ref: 'Proof pack',
-  proof_renderer_version: 'Proof renderer',
+  method_version: 'Wersja metody',
+  proof_pack_ref: 'Uzasadnienie inżynierskie',
+  proof_renderer_version: 'Wersja renderera uzasadnienia',
   project_ref: 'Projekt',
-  quality_gate: 'Quality gate',
-  quality_gate_policy_version: 'Polityka gate',
-  result_hash: 'Result hash',
-  results_contract_version: 'Results contract',
-  rounding_policy_ref: 'Polityka zaokraglen',
-  row_count: 'Liczba rekordow',
-  run_ref: 'Run',
-  snapshot_ref: 'Stan modelu',
-  solver_family: 'Rodzina solvera',
+  quality_gate: 'Ocena jakości danych',
+  quality_gate_policy_version: 'Wersja polityki jakości',
+  result_hash: 'Hash wyniku',
+  results_contract_version: 'Wersja kontraktu wyników',
+  rounding_policy_ref: 'Polityka zaokrągleń',
+  row_count: 'Liczba rekordów',
+  run_ref: 'Ostatnie obliczenie',
+  snapshot_ref: 'Wersja modelu użyta do obliczeń',
+  solver_family: 'Silnik obliczeń',
   solver_version: 'Wersja solvera',
-  source_assumptions_ref: 'Zalozenia zrodel',
+  source_assumptions_ref: 'Założenia źródeł',
   standard_basis_ref: 'Podstawa normatywna',
-  switching_state_ref: 'Stan lacznikow',
-  temperature_assumptions_ref: 'Zalozenia temperaturowe',
+  switching_state_ref: 'Stan łączników',
+  temperature_assumptions_ref: 'Założenia temperaturowe',
   tolerance_policy_ref: 'Polityka tolerancji',
   total_losses_p_mw: 'Straty P [MW]',
   total_losses_q_mvar: 'Straty Q [MVAr]',
-  transformer_tap_assumptions_ref: 'Zalozenia OLTC',
-  variant_ref: 'Wariant',
+  transformer_tap_assumptions_ref: 'Założenia OLTC',
+  variant_ref: 'Wariant pracy',
   summary: 'Podsumowanie',
-  grounding_assumptions_ref: 'Zalozenia uziemienia',
-  ibg_assumptions_ref: 'Zalozenia IBG / OZE',
-  max_v_pu: 'Max U [p.u.]',
-  min_v_pu: 'Min U [p.u.]',
-  slack_p_mw: 'Slack P [MW]',
-  slack_q_mvar: 'Slack Q [MVAr]',
-  warnings: 'Ostrzezenia',
+  grounding_assumptions_ref: 'Założenia uziemienia',
+  ibg_assumptions_ref: 'Założenia źródeł przekształtnikowych',
+  max_v_pu: 'Maks. U [p.u.]',
+  min_v_pu: 'Min. U [p.u.]',
+  slack_p_mw: 'Moc slack P [MW]',
+  slack_q_mvar: 'Moc slack Q [MVAr]',
+  warnings: 'Ostrzeżenia',
+};
+
+const CASE_KIND_LABELS: Record<string, string> = {
+  analysis_case: 'Zakres i warunki obliczeń',
+  pf_max_load: 'Rozpływ dla maksymalnego obciążenia',
+  pf_min_load: 'Rozpływ dla minimalnego obciążenia',
+  pf_max_generation: 'Rozpływ dla maksymalnej generacji',
+  pf_min_generation: 'Rozpływ dla minimalnej generacji',
+  load_flow_convergence: 'Zbieżność rozpływu',
+  sc_k3_max: 'Zwarcie trójfazowe maksymalne',
+  sc_k3_min: 'Zwarcie trójfazowe minimalne',
+  sc_k2_max: 'Zwarcie dwufazowe maksymalne',
+  sc_k2_min: 'Zwarcie dwufazowe minimalne',
+  sc_k1_max: 'Zwarcie jednofazowe maksymalne',
+  sc_k1_min: 'Zwarcie jednofazowe minimalne',
+  sc_k2e_max: 'Zwarcie dwufazowe doziemne maksymalne',
+  sc_k2e_min: 'Zwarcie dwufazowe doziemne minimalne',
+  ZWARCIOWY_MAKS: 'Zwarcie trójfazowe maksymalne',
+  ZWARCIOWY_MIN: 'Zwarcie trójfazowe minimalne',
+  ROZPLYW_MAX_OBC: 'Rozpływ dla maksymalnego obciążenia',
+  ROZPLYW_MIN_OBC: 'Rozpływ dla minimalnego obciążenia',
+  ROZPLYW_MAX_GEN: 'Rozpływ dla maksymalnej generacji',
+  ROZPLYW_MIN_GEN: 'Rozpływ dla minimalnej generacji',
+};
+
+const APPLICABILITY_SCOPE_LABELS: Record<string, string> = {
+  whole_case: 'Cały zakres obliczeń',
+  selected_feeder: 'Wybrany ciąg',
+  selected_field: 'Wybrane pole',
+  selected_path: 'Wybrana ścieżka',
+  selected_object: 'Wybrany obiekt',
+  report_bundle: 'Pakiet raportowy',
+  results: 'Wyniki',
+  trace: 'Wywód obliczeń',
+  report: 'Raport',
+};
+
+const QUALITY_GATE_LABELS: Record<string, string> = {
+  G0: 'Dane zablokowane',
+  G1: 'Dane z krytycznymi brakami',
+  G2: 'Dane częściowe',
+  G3: 'Dane wymagają przeglądu',
+  G4: 'Dane zaakceptowane',
+};
+
+const QUALITY_GATE_TONES: Record<string, string> = {
+  G0: 'border-rose-200 bg-rose-50 text-rose-700',
+  G1: 'border-rose-200 bg-rose-50 text-rose-700',
+  G2: 'border-amber-200 bg-amber-50 text-amber-700',
+  G3: 'border-sky-200 bg-sky-50 text-sky-700',
+  G4: 'border-emerald-200 bg-emerald-50 text-emerald-700',
 };
 
 function normalizeString(value: unknown): string | null {
@@ -578,14 +631,180 @@ export function buildRecordRows(
 export function formatCompletenessStatus(status: ResultCompletenessStatus | null): string {
   switch (status) {
     case 'complete':
-      return 'Kompletny';
+      return 'Kompletne';
     case 'partial':
-      return 'Czesciowy';
+      return 'Częściowe';
     case 'failed':
-      return 'Nieudany';
+      return 'Błąd';
     case 'not_applicable':
       return 'Nie dotyczy';
     default:
       return 'Brak danych';
   }
+}
+
+function humanizeIdentifier(value: string): string {
+  return value
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/(^|\s)(\S)/g, (match) => match.toUpperCase());
+}
+
+export function formatTechnicalReference(value: string | null | undefined): string | null {
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return null;
+  }
+  return normalized.length <= 36 ? normalized : `${normalized.slice(0, 33)}...`;
+}
+
+export function formatPublicCaseKind(value: string | null | undefined): string | null {
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return null;
+  }
+  return CASE_KIND_LABELS[normalized] ?? humanizeIdentifier(normalized);
+}
+
+export function formatPublicApplicabilityScope(values: string[]): string {
+  if (values.length === 0) {
+    return 'Brak zakresu';
+  }
+  return values
+    .map((value) => APPLICABILITY_SCOPE_LABELS[value] ?? humanizeIdentifier(value))
+    .join(', ');
+}
+
+export function formatPublicQualityGate(value: string | null | undefined): string {
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return 'Brak oceny';
+  }
+  return QUALITY_GATE_LABELS[normalized] ?? normalized;
+}
+
+export function getPublicQualityGateTone(value: string | null | undefined): string {
+  const normalized = normalizeString(value);
+  if (!normalized) {
+    return 'border-slate-200 bg-slate-100 text-slate-700';
+  }
+  return QUALITY_GATE_TONES[normalized] ?? 'border-slate-200 bg-slate-100 text-slate-700';
+}
+
+export function getPublicCompletenessTone(
+  status: ResultCompletenessStatus | string | null | undefined,
+): PublicBadgeTone {
+  switch (status) {
+    case 'complete':
+      return 'success';
+    case 'partial':
+    case 'failed':
+      return 'warning';
+    case 'not_applicable':
+    default:
+      return 'info';
+  }
+}
+
+export function buildAnalysisCasePrimaryRows(
+  context: AnalysisCaseContextContract | null | undefined,
+): LabeledValueRow[] {
+  if (!context) {
+    return [];
+  }
+
+  const rows: LabeledValueRow[] = [];
+  const caseKind = formatPublicCaseKind(context.caseKind);
+  if (caseKind) {
+    rows.push({ label: 'Rodzaj obliczenia', value: caseKind });
+  }
+
+  if (context.snapshotRef) {
+    rows.push({
+      label: 'Wersja modelu użyta do obliczeń',
+      value: context.snapshotRef,
+    });
+  }
+
+  if (context.runRef) {
+    rows.push({
+      label: 'Ostatnie obliczenie',
+      value: context.runRef,
+    });
+  }
+
+  if (context.proofPackRef) {
+    rows.push({
+      label: 'Uzasadnienie inżynierskie',
+      value: context.proofPackRef,
+    });
+  }
+
+  rows.push({
+    label: 'Zakres zastosowania',
+    value: formatPublicApplicabilityScope(context.applicabilityScope),
+  });
+
+  return rows;
+}
+
+export function buildAnalysisCaseDiagnosticRows(
+  context: AnalysisCaseContextContract | null | undefined,
+): LabeledValueRow[] {
+  if (!context) {
+    return [];
+  }
+
+  const rows: LabeledValueRow[] = [];
+  const pushIfValue = (label: string, value: unknown): void => {
+    const formatted = formatContractValue(value);
+    if (formatted === 'Brak danych') {
+      return;
+    }
+    rows.push({ label, value: formatted });
+  };
+
+  pushIfValue('Identyfikator zakresu obliczeń', context.caseRef);
+  pushIfValue('Identyfikator wariantu', context.variantRef);
+  pushIfValue('Kompatybilność przejściowa', context.completenessLegacy);
+  pushIfValue('Silnik obliczeń', context.reproducibility?.solverFamily);
+  pushIfValue('Wersja solvera', context.reproducibility?.solverVersion);
+  pushIfValue('Wersja metody', context.reproducibility?.methodVersion);
+  pushIfValue('Wersja zestawu wzorów', context.reproducibility?.formulaSetVersion);
+  pushIfValue('Wersja modelu domenowego', context.reproducibility?.domainModelVersion);
+  pushIfValue('Wersja kontraktu wyników', context.reproducibility?.resultsContractVersion);
+  pushIfValue('Wersja renderera uzasadnienia', context.reproducibility?.proofRendererVersion);
+  pushIfValue('Wersja katalogu', context.reproducibility?.catalogSnapshotRef);
+  pushIfValue('Wersja schematu katalogu', context.reproducibility?.catalogSchemaVersion);
+  pushIfValue('Polityka tolerancji', context.reproducibility?.tolerancePolicyRef);
+  pushIfValue('Polityka zaokrągleń', context.reproducibility?.roundingPolicyRef);
+  pushIfValue('Hash wejścia', context.reproducibility?.inputHash);
+  pushIfValue('Hash wyniku', context.reproducibility?.resultHash);
+
+  return rows;
+}
+
+export function getAnalysisCaseSummaryRow(
+  context: AnalysisCaseContextContract | null | undefined,
+): LabeledValueRow | null {
+  if (!context?.reproducibility) {
+    return null;
+  }
+
+  const preferredKeys: Array<[keyof AnalysisCaseContextReproducibility, string]> = [
+    ['resultsContractVersion', 'Wersja kontraktu wyników'],
+    ['solverFamily', 'Silnik obliczeń'],
+    ['solverVersion', 'Wersja solvera'],
+    ['proofRendererVersion', 'Wersja renderera uzasadnienia'],
+  ];
+
+  for (const [key, label] of preferredKeys) {
+    const value = normalizeString(context.reproducibility[key]);
+    if (value) {
+      return { label, value };
+    }
+  }
+
+  return null;
 }

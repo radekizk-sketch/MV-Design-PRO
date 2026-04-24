@@ -53,15 +53,15 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   report: 'Raport',
   history: 'Historia',
   topology: 'Topologia',
-  secondary_links: 'Powiazania wtorne',
+  secondary_links: 'Powiązania wtórne',
   coordination: 'Koordynacja',
   field_measurements: 'Pomiary pola',
-  field_control: 'Sterowanie lacznikami',
+  field_control: 'Sterowanie łącznikami',
   field_protection: 'Zabezpieczenie pola',
-  field_source_contributions: 'Wklady zrodel',
+  field_source_contributions: 'Wkłady źródeł',
   field_earth_fault: 'Tor ziemnozwarciowy',
-  field_work_safety: 'Bezpieczenstwo do pracy',
-  field_compare: 'Porownanie pol',
+  field_work_safety: 'Bezpieczeństwo do pracy',
+  field_compare: 'Porównanie pól',
 };
 
 const REPORT_TAB_LABELS: Record<ReportTab, string> = {
@@ -591,8 +591,8 @@ export function ReadOnlyPanelRouter() {
     }
 
     return [
-      { label: 'Obliczenia', value: projectResults.run_ref },
-      { label: 'Stan wynikow', value: projectResults.result_state },
+      { label: 'Ostatnie obliczenie', value: projectResults.run_ref },
+      { label: 'Stan wyników', value: projectResults.result_state },
       {
         label: 'Wklady w zwarciu',
         value: formatList(
@@ -709,7 +709,7 @@ export function ReadOnlyPanelRouter() {
   }, [selectedRunId]);
   const exportJsonl = useCallback(async () => {
     if (!selectedRunId) {
-      notify('Brak aktywnego uruchomienia do eksportu wywodu.', 'warning');
+      notify('Brak aktywnego obliczenia do eksportu wywodu.', 'warning');
       return;
     }
     try {
@@ -721,7 +721,7 @@ export function ReadOnlyPanelRouter() {
   }, [activeProjectId, selectedRunId]);
   const exportPdf = useCallback(async () => {
     if (!selectedRunId) {
-      notify('Brak aktywnego uruchomienia do eksportu wywodu.', 'warning');
+      notify('Brak aktywnego obliczenia do eksportu wywodu.', 'warning');
       return;
     }
     try {
@@ -732,7 +732,7 @@ export function ReadOnlyPanelRouter() {
     }
   }, [activeProjectId, selectedRunId]);
   const canOpenRunArtifacts = Boolean(selectedRunId);
-  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Brak aktywnego uruchomienia do otwarcia.';
+  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Brak aktywnego obliczenia do otwarcia.';
   const handleSelectHistoryRun = useCallback((runId: string) => {
     setActiveRun(runId);
     void selectRun(runId);
@@ -766,10 +766,10 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Wyniki powiązane z elementem</div>
-              <div className="text-xs text-slate-500">Wariant pracy: {activeCaseName ?? activeCaseId ?? 'brak'} • Projekt: {activeProjectName ?? activeProjectId ?? 'brak'}</div>
+              <div className="text-xs text-slate-500">Zakres i warunki obliczeń: {activeCaseName ?? activeCaseId ?? 'brak'} • Projekt: {activeProjectName ?? activeProjectId ?? 'brak'}</div>
             </div>
             {matchedBusRows.length === 0 && matchedBranchRows.length === 0 && matchedShortCircuitRows.length === 0 ? (
-              <Empty title="Brak dopasowanych wyników" text="W aktywnym uruchomieniu nie znaleziono wyników dla tego elementu." />
+              <Empty title="Brak dopasowanych wyników" text="W aktywnym obliczeniu nie znaleziono wyników dla tego elementu." />
             ) : (
               <div className="space-y-3">
                 {matchedBusRows.map((row) => <div key={row.bus_id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-start justify-between gap-3"><div><div className="text-sm font-semibold text-slate-900">{row.name}</div><div className="text-[11px] font-mono text-slate-500">{row.bus_id}</div></div><span className={clsx('rounded-full border px-2 py-0.5 text-[11px] font-medium', row.u_pu && row.u_pu >= 0.95 && row.u_pu <= 1.05 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-700')}>Węzeł</span></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-700"><div>Un: {formatNumber(row.un_kv, 1)} kV</div><div>U: {formatNumber(row.u_kv, 3)} kV</div><div>U: {formatNumber(row.u_pu, 4)} pu</div><div>Kąt: {formatNumber(row.angle_deg, 2)}°</div></div></div>)}
@@ -779,7 +779,7 @@ export function ReadOnlyPanelRouter() {
             )}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
-              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełne wyniki</button>
+              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny widok wyników obliczenia</button>
             </div>
           </div>
         )}
@@ -793,7 +793,7 @@ export function ReadOnlyPanelRouter() {
             {filteredTrace.length === 0 ? <Empty title="Brak wywodu dla elementu" text="Aktywny ślad nie zawiera kroków powiązanych z tym elementem." /> : <div className="space-y-3">{filteredTrace.map((step, index) => <TraceCard key={step.key ?? `${step.step ?? index}-${index}`} step={step} index={index} />)}</div>}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
-              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny wywód</button>
+              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny wywód obliczenia</button>
               <button type="button" onClick={() => void exportJsonl()} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Eksportuj JSONL wywodu</button>
               <button type="button" onClick={() => void exportPdf()} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Eksportuj PDF wywodu</button>
             </div>
@@ -819,12 +819,12 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Topologia elementu</div>
-              <div className="text-xs text-slate-500">Panel pokazuje powiazania topologiczne i referencje kanoniczne bez przebudowy geometrii SLD.</div>
+              <div className="text-xs text-slate-500">Panel pokazuje powiązania topologiczne i referencje kanoniczne bez przebudowy geometrii SLD.</div>
             </div>
             <KeyValueList rows={topologyRows} />
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('results')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Przejdz do wynikow</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('results')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Przejdź do wyników</button>
             </div>
           </div>
         )}
@@ -832,13 +832,13 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'secondary_links' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Powiazania wtorne</div>
-              <div className="text-xs text-slate-500">Widok pokazuje architekture wtórna, tory pomiarowe i przypisane jednostki zabezpieczeniowo-sterownicze.</div>
+              <div className="text-sm font-semibold text-slate-900">Powiązania wtórne</div>
+              <div className="text-xs text-slate-500">Widok pokazuje architekturę wtórną, tory pomiarowe i przypisane jednostki zabezpieczeniowo-sterownicze.</div>
             </div>
             <KeyValueList rows={secondaryRows} />
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('coordination')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Otworz koordynacje</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('coordination')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Otwórz koordynację</button>
             </div>
           </div>
         )}
@@ -846,8 +846,8 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'coordination' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Koordynacja zabezpieczen</div>
-              <div className="text-xs text-slate-500">Panel laczy kontrakt pola, przypisania ochrony i diagnostyke read-model bez lokalnych adapterow wynikowych.</div>
+              <div className="text-sm font-semibold text-slate-900">Koordynacja zabezpieczeń</div>
+              <div className="text-xs text-slate-500">Panel łączy kontrakt pola, przypisania ochrony i diagnostykę bez lokalnych adapterów wyników.</div>
             </div>
             <KeyValueList rows={coordinationRows} />
             {protectionDiagnostics.length > 0 && (
@@ -875,11 +875,11 @@ export function ReadOnlyPanelRouter() {
               </div>
             )}
             {coordinationRows.length === 0 && protectionDiagnostics.length === 0 && (
-              <Empty title="Brak danych koordynacyjnych" text="Dla wybranego elementu nie znaleziono przypisan ochrony ani diagnostyki read-model." />
+              <Empty title="Brak danych koordynacyjnych" text="Dla wybranego elementu nie znaleziono przypisań ochrony ani diagnostyki." />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('secondary_links')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Powiazania wtorne</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('secondary_links')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Powiązania wtórne</button>
             </div>
           </div>
         )}
@@ -888,7 +888,7 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Pomiary pola</div>
-              <div className="text-xs text-slate-500">Kanoniczny widok toru pomiarowego pola z jawnymi zrodlami 3I0 i 3U0.</div>
+              <div className="text-xs text-slate-500">Kanoniczny widok toru pomiarowego pola z jawnymi źródłami 3I0 i 3U0.</div>
             </div>
             {fieldMeasurementRows.length === 0 ? (
               <Empty title="Brak toru pomiarowego" text="Wybrane pole nie ma kompletnego kontraktu pomiarowego w read-modelu." />
@@ -896,8 +896,8 @@ export function ReadOnlyPanelRouter() {
               <KeyValueList rows={fieldMeasurementRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wklady zrodel</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wkłady źródeł</button>
             </div>
           </div>
         )}
@@ -905,8 +905,8 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'field_control' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Sterowanie lacznikami</div>
-              <div className="text-xs text-slate-500">Widok pokazuje gotowosc sterowania, blokady i cykl zycia ostatniego polecenia pola.</div>
+              <div className="text-sm font-semibold text-slate-900">Sterowanie łącznikami</div>
+              <div className="text-xs text-slate-500">Widok pokazuje gotowość sterowania, blokady i cykl życia ostatniego polecenia pola.</div>
             </div>
             {fieldControlRows.length === 0 ? (
               <Empty title="Brak danych sterowania" text="Wybrane pole nie ma kompletnego runtime sterowania w kanonicznym modelu." />
@@ -914,8 +914,8 @@ export function ReadOnlyPanelRouter() {
               <KeyValueList rows={fieldControlRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('field_work_safety')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Bezpieczenstwo do pracy</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('field_work_safety')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Bezpieczeństwo do pracy</button>
             </div>
           </div>
         )}
@@ -942,7 +942,7 @@ export function ReadOnlyPanelRouter() {
               </div>
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
               <button type="button" onClick={() => setActiveTab('coordination')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Koordynacja</button>
             </div>
           </div>
@@ -951,16 +951,16 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'field_source_contributions' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Wklady zrodel</div>
-              <div className="text-xs text-slate-500">Jedyny kanoniczny widok wkładow zrodel w zwarciu i rozplywie dla pola.</div>
+              <div className="text-sm font-semibold text-slate-900">Wkłady źródeł</div>
+              <div className="text-xs text-slate-500">Jedyny kanoniczny widok wkładów źródeł w zwarciu i rozpływie dla pola.</div>
             </div>
             {fieldSourceContributionRows.length === 0 ? (
-              <Empty title="Brak wynikow pola" text="Wybrane pole nie ma jeszcze przypietych wynikow projektowych lub wkładow zrodel." />
+              <Empty title="Brak wyników pola" text="Wybrane pole nie ma jeszcze przypiętych wyników projektowych lub wkładów źródeł." />
             ) : (
               <KeyValueList rows={fieldSourceContributionRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otworz pelne wyniki</button>
+              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny widok wyników obliczenia</button>
               <button type="button" onClick={() => setActiveTab('field_earth_fault')} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Tor ziemnozwarciowy</button>
             </div>
           </div>
@@ -978,8 +978,8 @@ export function ReadOnlyPanelRouter() {
               <KeyValueList rows={fieldEarthFaultRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wklady zrodel</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
+              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wkłady źródeł</button>
             </div>
           </div>
         )}
@@ -987,16 +987,16 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'field_work_safety' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Bezpieczenstwo do pracy</div>
-              <div className="text-xs text-slate-500">Widok energizacji, uziemienia i bezpieczenstwa do pracy bez mieszania runtime z geometria.</div>
+              <div className="text-sm font-semibold text-slate-900">Bezpieczeństwo do pracy</div>
+              <div className="text-xs text-slate-500">Widok energizacji, uziemienia i bezpieczeństwa do pracy bez mieszania runtime z geometrią.</div>
             </div>
             {fieldSafetyRows.length === 0 ? (
-              <Empty title="Brak danych bezpieczenstwa" text="Wybrane pole nie ma kompletnego runtime energizacji i bezpieczenstwa do pracy." />
+              <Empty title="Brak danych bezpieczeństwa" text="Wybrane pole nie ma kompletnego runtime energizacji i bezpieczeństwa do pracy." />
             ) : (
               <KeyValueList rows={fieldSafetyRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
               <button type="button" onClick={() => setActiveTab('field_control')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Sterowanie polem</button>
             </div>
           </div>
@@ -1005,16 +1005,16 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'field_compare' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Porownanie pol</div>
+              <div className="text-sm font-semibold text-slate-900">Porównanie pól</div>
               <div className="text-xs text-slate-500">Zestawienie bieżącego pola z innymi polami tej samej stacji bez lokalnej przebudowy modelu.</div>
             </div>
             {fieldCompareRows.length === 0 ? (
-              <Empty title="Brak pol do porownania" text="Dla wybranego pola nie znaleziono innych pol tej samej stacji w kanonicznym read-modelu." />
+              <Empty title="Brak pól do porównania" text="Dla wybranego pola nie znaleziono innych pól tej samej stacji w kanonicznym read-modelu." />
             ) : (
               <KeyValueList rows={fieldCompareRows} />
             )}
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
+              <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
               <button type="button" onClick={() => setActiveTab('topology')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Topologia pola</button>
             </div>
           </div>
@@ -1023,10 +1023,10 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'report' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Raport końcowy i eksporty uruchomienia</div>
+              <div className="text-sm font-semibold text-slate-900">Raport końcowy i eksporty obliczenia</div>
               <div className="text-xs text-slate-500">
-                Generator raportu końcowego jest kanoniczną ścieżką raportową dla aktywnego uruchomienia.
-                Pomocnicze artefakty uruchomienia pozostają dostępne podrzędnie dla diagnostyki i śladu.
+                Generator raportu końcowego jest kanoniczną ścieżką raportową dla aktywnego obliczenia.
+                Pomocnicze artefakty obliczenia pozostają dostępne podrzędnie dla diagnostyki i śladu.
               </div>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
@@ -1035,8 +1035,8 @@ export function ReadOnlyPanelRouter() {
             <ResultsExport exportData={{ activeTab: reportTab, busRows: matchedBusRows, branchRows: matchedBranchRows, shortCircuitRows: matchedShortCircuitRows, runHeader, projectName: activeProjectName ?? undefined, caseName: activeCaseName ?? undefined }} />
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
-              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny widok wyników uruchomienia</button>
-              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Otwórz pełny wywód uruchomienia</button>
+              <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny widok wyników obliczenia</button>
+              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Otwórz pełny wywód obliczenia</button>
             </div>
           </div>
         )}
@@ -1044,15 +1044,15 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'history' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Historia uruchomień</div>
+              <div className="text-sm font-semibold text-slate-900">Historia obliczeń</div>
               <div className="text-xs text-slate-500">
-                Wariant pracy: {activeCaseName ?? activeCaseId ?? 'brak'} - wybierz przebieg, aby otworzyć jego wyniki dla aktywnego elementu.
+                Zakres i warunki obliczeń: {activeCaseName ?? activeCaseId ?? 'brak'} - wybierz obliczenie, aby otworzyć jego wyniki dla aktywnego elementu.
               </div>
             </div>
             {runs.length === 0 ? (
               <Empty
-                title="Brak historii uruchomień"
-                text="Nie znaleziono przebiegów dla aktywnego przypadku. Uruchom analizę, aby zobaczyć historię."
+                title="Brak historii obliczeń"
+                text="Nie znaleziono obliczeń dla aktywnego zakresu. Uruchom analizę, aby zobaczyć historię."
               />
             ) : (
               <RunHistoryPanel

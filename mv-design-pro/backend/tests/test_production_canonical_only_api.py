@@ -89,13 +89,15 @@ def test_analysis_runs_router_ignores_legacy_analysis_run_rows(client: TestClien
         analysis_type="short_circuit_sn",
     )
 
-    list_response = client.get(f"/projects/{project_id}/analysis-runs")
+    list_response = client.get(f"/api/projects/{project_id}/analysis-runs")
     assert list_response.status_code == 200
     assert str(legacy_run.id) not in {item["id"] for item in list_response.json()["items"]}
+    assert client.get(f"/projects/{project_id}/analysis-runs").status_code == 404
 
-    detail_response = client.get(f"/analysis-runs/{legacy_run.id}")
+    detail_response = client.get(f"/api/analysis-runs/{legacy_run.id}")
     assert detail_response.status_code == 404
     assert detail_response.json()["detail"] == f"Run {legacy_run.id} not found"
+    assert client.get(f"/analysis-runs/{legacy_run.id}").status_code == 404
 
 
 def test_power_flow_router_ignores_legacy_analysis_run_rows(client: TestClient) -> None:

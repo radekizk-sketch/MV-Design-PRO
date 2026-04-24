@@ -172,6 +172,11 @@ def build_repo_guard_steps() -> list[Step]:
             command=[sys.executable, str(ROOT / "scripts/ui_terminology_guard.py")],
         ),
         Step(
+            name="UTF-8 mojibake guard",
+            cwd=ROOT,
+            command=[sys.executable, str(ROOT / "scripts/utf8_mojibake_guard.py")],
+        ),
+        Step(
             name="Docs archive guard",
             cwd=ROOT,
             command=[sys.executable, str(ROOT / "scripts/docs_archive_guard.py")],

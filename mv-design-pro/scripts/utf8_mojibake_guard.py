@@ -9,7 +9,10 @@ when UTF-8 Polish text is decoded with the wrong code page.
 from __future__ import annotations
 
 import sys
+import re
 from pathlib import Path
+
+from active_public_layer import collect_active_backend_api_files, collect_active_frontend_files
 
 SUSPICIOUS_FRAGMENTS: dict[str, str] = {
     "\u00c4\u2026": "\u0105 zapisane jako mojibake",
@@ -30,28 +33,16 @@ SUSPICIOUS_FRAGMENTS: dict[str, str] = {
     "\ufffd": "znak zastepczy Unicode",
 }
 
-EXEMPT_PATTERNS = [
-    "__tests__",
-    ".test.",
-    ".spec.",
-    "node_modules",
-    "dist",
-    "build",
-]
-
-SCAN_DIRS = [
-    Path("frontend") / "src",
-    Path("backend") / "src",
-    Path("docs"),
-    Path("scripts"),
-]
-
-SCAN_FILES = [
-    Path("AGENTS.md"),
-    Path("ARCHITECTURE.md"),
-    Path("SYSTEM_SPEC.md"),
-    Path("PLANS.md"),
-]
+EXEMPT_PATTERNS = ["__tests__", ".test.", ".spec.", "node_modules", "dist", "build"]
+QUOTED_FRAGMENT_PATTERN = re.compile(
+    r"""
+    (?P<quote>['"`])
+    (?P<content>.*?)
+    (?P=quote)
+    """,
+    re.VERBOSE,
+)
+JSX_TEXT_PATTERN = re.compile(r">(?P<content>[^<>{}][^<>{}]*)<")
 
 
 def is_exempt(path: Path) -> bool:
@@ -59,14 +50,26 @@ def is_exempt(path: Path) -> bool:
     return any(pattern in normalized for pattern in EXEMPT_PATTERNS)
 
 
-def iter_files(root: Path) -> list[Path]:
-    if not root.exists():
-        return []
-    return [path for path in root.rglob("*") if path.is_file()]
-
-
 def should_scan(path: Path) -> bool:
     return path.suffix.lower() in {".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".json", ".css"}
+
+
+def iter_active_files() -> list[Path]:
+    files = {
+        *collect_active_frontend_files(),
+        *collect_active_backend_api_files(),
+    }
+    return sorted(path for path in files if should_scan(path) and not is_exempt(path))
+
+
+def extract_fragments(line: str) -> list[str]:
+    fragments = [match.group("content") for match in QUOTED_FRAGMENT_PATTERN.finditer(line)]
+    fragments.extend(
+        match.group("content")
+        for match in JSX_TEXT_PATTERN.finditer(line)
+        if match.group("content").strip()
+    )
+    return [fragment for fragment in fragments if fragment.strip()]
 
 
 def main() -> int:
@@ -76,22 +79,39 @@ def main() -> int:
         sys.stderr.reconfigure(encoding="utf-8")
 
     root = Path(__file__).resolve().parents[1]
-    candidates = [path for scan_dir in SCAN_DIRS for path in iter_files(root / scan_dir)]
-    candidates.extend(root / path for path in SCAN_FILES if (root / path).exists())
+    candidates = iter_active_files()
 
     violations: list[tuple[str, int, str, str]] = []
 
     for path in candidates:
-        if is_exempt(path) or not should_scan(path):
-            continue
         try:
             text = path.read_text(encoding="utf-8")
-        except Exception:
+        except UnicodeDecodeError as error:
+            violations.append(
+                (
+                    str(path.relative_to(root)),
+                    error.start + 1,
+                    "<decode-error>",
+                    "blad dekodowania UTF-8",
+                )
+            )
+            continue
+        except OSError:
             continue
         for line_no, line in enumerate(text.splitlines(), start=1):
-            for fragment, reason in SUSPICIOUS_FRAGMENTS.items():
-                if fragment in line:
+            if "\ufffd" in line:
+                violations.append(
+                    (str(path.relative_to(root)), line_no, line.strip(), SUSPICIOUS_FRAGMENTS["\ufffd"])
+                )
+                continue
+            for content in extract_fragments(line):
+                for fragment, reason in SUSPICIOUS_FRAGMENTS.items():
+                    if fragment == "\ufffd":
+                        continue
+                    if fragment not in content:
+                        continue
                     violations.append((str(path.relative_to(root)), line_no, line.strip(), reason))
+                    break
 
     print("=" * 60)
     print("GUARD: utf8_mojibake_guard")

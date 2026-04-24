@@ -523,7 +523,6 @@ def test_white_box_trace_has_expected_steps():
                 "formula_latex",
                 "inputs",
                 "substitution",
-                "substitution_latex",
                 "result",
             } <= step.keys()
 

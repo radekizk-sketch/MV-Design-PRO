@@ -60,8 +60,8 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-amber-600',
   },
   NO_CASE: {
-    title: 'Nie wybrano wariantu pracy',
-    description: 'Wybierz istniejący lub utwórz nowy wariant pracy, aby wykonać obliczenia.',
+    title: 'Nie wybrano zakresu i warunków obliczeń',
+    description: 'Wybierz istniejący zakres albo utwórz nowy, aby uruchomić obliczenia.',
     bgColor: 'bg-slate-50/95',
     borderColor: 'border-slate-300',
     textColor: 'text-slate-800',
@@ -69,8 +69,8 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-blue-600',
   },
   NO_SNAPSHOT: {
-    title: 'Brak aktywnego snapshotu',
-    description: 'Wybierz snapshot w drzewie projektu lub utworz nowy.',
+    title: 'Brak wersji modelu użytej do obliczeń',
+    description: 'Wybierz wersję modelu w drzewie projektu lub utwórz nową.',
     bgColor: 'bg-violet-50/90',
     borderColor: 'border-violet-300',
     textColor: 'text-violet-900',
@@ -173,7 +173,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-select-case"
               >
-                Wybierz wariant
+                Wybierz zakres obliczeń
               </button>
             )}
             {!hasCases && onCreateCase && (
@@ -190,7 +190,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-create-case"
               >
-                {isCreatingCase ? 'Tworzenie wariantu...' : 'Utwórz pierwszy wariant'}
+                {isCreatingCase ? 'Tworzenie zakresu...' : 'Utwórz pierwszy zakres'}
               </button>
             )}
             {hasCases && onCreateCase && (
@@ -200,7 +200,7 @@ export function SldEmptyOverlay({
                 className="rounded-md border border-slate-300 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-150 hover:border-slate-400 hover:bg-white"
                 data-testid="sld-empty-overlay-create-new"
               >
-                Nowy wariant
+                Nowy zakres
               </button>
             )}
           </div>

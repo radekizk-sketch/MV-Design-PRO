@@ -357,7 +357,7 @@ function buildCanonicalProjection(snapshot: SnapshotLike | null | undefined): En
   const enm = normalizeSnapshotToEnm(snapshot);
   const topology = readTopologyFromENM(enm, enm.header.hash_sha256);
   const adapter = buildVisualGraphFromTopology(topology);
-  const layout = computeLayout(adapter.graph, undefined, adapter.stationBlockDetails, { strategy: 'legacy' });
+  const layout = computeLayout(adapter.graph, undefined, adapter.stationBlockDetails);
   const baseSymbols = buildBaseSymbols(enm, { includeHelperBuses: true });
   const placementByNodeId = new Map(layout.nodePlacements.map((placement) => [placement.nodeId, placement] as const));
   const edgeRouteById = new Map(layout.edgeRoutes.map((route) => [route.edgeId, route] as const));

@@ -224,17 +224,17 @@ function buildBaySections(
         label: 'Tor pomiarowy',
         fields: [
           { key: 'chain_ref', label: 'Identyfikator toru', value: measurementChain?.chain_ref ?? null },
-          { key: 'ct_refs', label: 'Przekladniki pradowe', value: joinValues(measurementChain?.ct_refs) },
-          { key: 'vt_refs', label: 'Przekladniki napieciowe', value: joinValues(measurementChain?.vt_refs) },
-          { key: '3i0', label: 'Zrodlo 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
-          { key: '3u0', label: 'Zrodlo 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
+          { key: 'ct_refs', label: 'Przekładniki prądowe', value: joinValues(measurementChain?.ct_refs) },
+          { key: 'vt_refs', label: 'Przekładniki napięciowe', value: joinValues(measurementChain?.vt_refs) },
+          { key: '3i0', label: 'Źródło 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
+          { key: '3u0', label: 'Źródło 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
         ],
       },
       {
         id: 'protection',
         label: 'Zabezpieczenie pola',
         fields: [
-          { key: 'unit_ref', label: 'Jednostka wtora', value: protection?.unit_ref ?? null },
+          { key: 'unit_ref', label: 'Jednostka wtórna', value: protection?.unit_ref ?? null },
           { key: 'model', label: 'Model', value: protection?.model ?? null },
           {
             key: 'functions',
@@ -260,7 +260,7 @@ function buildBaySections(
           },
           {
             key: 'close_confirm',
-            label: 'Potwierdzenie zamkniecia',
+            label: 'Potwierdzenie zamknięcia',
             value: baseModel.control_surface.close_requires_confirmation,
           },
           {
@@ -273,10 +273,10 @@ function buildBaySections(
       ...(sourceEndpoint
         ? [{
             id: 'source',
-            label: 'Endpoint zrodlowy',
+            label: 'Endpoint źródłowy',
             fields: [
-              { key: 'source_kind', label: 'Rodzaj zrodla', value: sourceKindLabel(sourceEndpoint.source_kind) },
-              { key: 'requires_vt', label: 'Wymaga toru przekladnika napieciowego', value: sourceEndpoint.requires_vt },
+              { key: 'source_kind', label: 'Rodzaj źródła', value: sourceKindLabel(sourceEndpoint.source_kind) },
+              { key: 'requires_vt', label: 'Wymaga toru przekładnika napięciowego', value: sourceEndpoint.requires_vt },
               { key: 'requires_sync', label: 'Wymaga synchronizmu', value: sourceEndpoint.requires_synchrocheck },
               { key: 'operating_mode', label: 'Tryb pracy', value: sourceEndpoint.operating_mode },
             ],
@@ -286,17 +286,17 @@ function buildBaySections(
         id: 'results',
         label: 'Wyniki projektowe pola',
         fields: [
-          { key: 'run_ref', label: 'Obliczenia', value: projectResults?.run_ref ?? null },
-          { key: 'result_state', label: 'Stan wynikow', value: resultStateLabel(projectResults?.result_state) },
-          { key: 'result_message', label: 'Opis wynikow', value: projectResults?.result_message_pl ?? null },
+          { key: 'run_ref', label: 'Ostatnie obliczenie', value: projectResults?.run_ref ?? null },
+          { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
+          { key: 'result_message', label: 'Opis wyników', value: projectResults?.result_message_pl ?? null },
           {
             key: 'sc_contributions',
-            label: 'Wklady zrodel w zwarciu',
+            label: 'Wkłady źródeł w zwarciu',
             value: projectResults?.source_contributions_sc.length ?? null,
           },
           {
             key: 'pf_contributions',
-            label: 'Wklady zrodel w rozplywie',
+            label: 'Wkłady źródeł w rozpływie',
             value: projectResults?.source_contributions_pf.length ?? null,
           },
           {
@@ -306,24 +306,24 @@ function buildBaySections(
           },
           {
             key: 'whole_path',
-            label: 'Tor pola spelnia wymagania',
+            label: 'Tor pola spełnia wymagania',
             value: projectResults?.verification.whole_power_path_ok ?? null,
           },
         ],
       },
       {
         id: 'proof',
-        label: 'Wywod pola',
+        label: 'Uzasadnienie inżynierskie pola',
         fields: [
-          { key: 'proof_ref', label: 'Identyfikator wywodu', value: projectResults?.proof_binding.proof_ref ?? null },
+          { key: 'proof_ref', label: 'Identyfikator uzasadnienia', value: projectResults?.proof_binding.proof_ref ?? null },
           {
             key: 'input_refs',
-            label: 'Powiazane dane wejsciowe',
+            label: 'Powiązane dane wejściowe',
             value: projectResults?.proof_binding.input_data_refs.length ?? null,
           },
           {
             key: 'source_refs',
-            label: 'Powiazane wklady zrodel',
+            label: 'Powiązane wkłady źródeł',
             value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
           },
         ],
@@ -352,35 +352,35 @@ function buildBaySections(
 
 const ELEMENT_TYPE_LABELS: Record<string, string> = {
   bus: 'Szyna',
-  branch: 'Gałąź',
+  branch: 'GaĹ‚Ä…Ĺş',
   line_overhead: 'Linia napowietrzna',
   cable: 'Kabel SN',
   transformer: 'Transformator',
-  source: 'Źródło zasilania',
-  load: 'Obciążenie',
-  switch: 'Łącznik',
-  breaker: 'Wyłącznik',
-  disconnector: 'Odłącznik',
+  source: 'ĹąrĂłdĹ‚o zasilania',
+  load: 'ObciÄ…ĹĽenie',
+  switch: 'ÄąÂĂ„â€¦cznik',
+  breaker: 'WyĹ‚Ä…cznik',
+  disconnector: 'OdĹ‚Ä…cznik',
   fuse: 'Bezpiecznik',
-  bus_coupler: 'Sprzęgło szynowe',
+  bus_coupler: 'SprzÄ™gĹ‚o szynowe',
   substation: 'Stacja',
   bay: 'Pole',
   generator: 'Generator',
-  pv_inverter: 'Źródło przekształtnikowe PV',
-  bess_inverter: 'Źródło przekształtnikowe BESS',
-  wind_inverter: 'Źródło przekształtnikowe FW',
+  pv_inverter: 'ĹąrĂłdĹ‚o przeksztaĹ‚tnikowe PV',
+  bess_inverter: 'ĹąrĂłdĹ‚o przeksztaĹ‚tnikowe BESS',
+  wind_inverter: 'ĹąrĂłdĹ‚o przeksztaĹ‚tnikowe FW',
   synchronous: 'Generator synchroniczny',
   genset: 'Agregat',
   ups: 'UPS',
-  ct: 'Przekładnik prądowy',
-  vt: 'Przekładnik napięciowy',
+  ct: 'PrzekĹ‚adnik prÄ…dowy',
+  vt: 'PrzekĹ‚adnik napiÄ™ciowy',
   relay: 'Zabezpieczenie',
-  branch_pole: 'Słup rozgałęźny SN',
+  branch_pole: 'SĹ‚up rozgaĹ‚Ä™Ĺşny SN',
   zksn: 'ZKSN SN',
 };
 
 function connectionVariantLabel(variant: string | null | undefined): string {
-  if (!variant) return '-';
+  if (!variant) return 'â€”';
   switch (variant) {
     case 'nn_side':
       return 'Po stronie nN stacji';
@@ -503,7 +503,7 @@ function buildSectionsForElement(
     });
     sections.push({
       id: 'electrical', label: 'Parametry elektryczne', fields: [
-        { key: 'voltage_kv', label: 'Napięcie znamionowe', value: bus.voltage_kv, unit: 'kV' },
+        { key: 'voltage_kv', label: 'NapiÄ™cie znamionowe', value: bus.voltage_kv, unit: 'kV' },
       ],
     });
   }
@@ -525,32 +525,32 @@ function buildSectionsForElement(
     const branchParent = findParentStation(elementId, snapshot);
     if (branchParent) {
       sections[sections.length - 1].fields.push(
-        { key: 'parent_station', label: 'Stacja nadrzędna', value: branchParent },
+        { key: 'parent_station', label: 'Stacja nadrzÄ™dna', value: branchParent },
       );
     }
     // Role context from logical views
     if (logicalViews) {
-      let roleLabel = '-';
+      let roleLabel = 'â€”';
       const isTrunk = logicalViews.trunks?.some((t) => t.segments?.includes(elementId));
       const isBranch = logicalViews.branches?.some((br) => br.segments?.includes(elementId));
       const isSecondary = logicalViews.secondary_connectors?.some((sc) => sc.segment_ref === elementId);
       if (isTrunk) roleLabel = 'Magistrala';
-      else if (isBranch) roleLabel = 'Odgałęzienie';
-      else if (isSecondary) roleLabel = 'Połączenie pierścieniowe';
+      else if (isBranch) roleLabel = 'OdgaĹ‚Ä™zienie';
+      else if (isSecondary) roleLabel = 'PoĹ‚Ä…czenie pierĹ›cieniowe';
       sections[sections.length - 1].fields.push(
         { key: 'role', label: 'Rola w sieci', value: roleLabel },
       );
     }
     sections.push({
       id: 'topology', label: 'Topologia', fields: [
-        { key: 'from_bus', label: 'Szyna początkowa', value: branch.from_bus_ref },
-        { key: 'to_bus', label: 'Szyna końcowa', value: branch.to_bus_ref },
+        { key: 'from_bus', label: 'Szyna poczÄ…tkowa', value: branch.from_bus_ref },
+        { key: 'to_bus', label: 'Szyna koĹ„cowa', value: branch.to_bus_ref },
       ],
     });
     if (isLineCable(branch)) {
       sections.push({
         id: 'electrical', label: 'Parametry elektryczne', fields: [
-          { key: 'length_km', label: 'Długość', value: branch.length_km, unit: 'km' },
+          { key: 'length_km', label: 'DĹ‚ugoĹ›Ä‡', value: branch.length_km, unit: 'km' },
           { key: 'r_ohm', label: 'Rezystancja R\'', value: branch.r_ohm_per_km, unit: 'Î©/km', source: 'catalog' },
           { key: 'x_ohm', label: 'Reaktancja X\'', value: branch.x_ohm_per_km, unit: 'Î©/km', source: 'catalog' },
           { key: 'rating', label: 'Obciążalność długotrwała', value: branch.rating?.in_a ?? null, unit: 'A', source: 'catalog' },
@@ -564,14 +564,14 @@ function buildSectionsForElement(
     });
     actions.push({ id: 'assign_catalog', label: 'Przypisz katalog', op: 'assign_catalog_to_element', context: { element_ref: branch.ref_id } });
     if (isLineCable(branch)) {
-      actions.push({ id: 'insert_station_on_segment_sn', label: 'Wstaw stację', op: 'insert_station_on_segment_sn', context: { segment_ref: branch.ref_id } });
+      actions.push({ id: 'insert_station_on_segment_sn', label: 'Wstaw stacjÄ™', op: 'insert_station_on_segment_sn', context: { segment_ref: branch.ref_id } });
       if (branch.type === 'line_overhead') {
-        actions.push({ id: 'insert_branch_pole_on_segment_sn', label: 'Wstaw słup rozgałęźny', op: 'insert_branch_pole_on_segment_sn', context: { segment_ref: branch.ref_id } });
+        actions.push({ id: 'insert_branch_pole_on_segment_sn', label: 'Wstaw sĹ‚up rozgaĹ‚Ä™Ĺşny', op: 'insert_branch_pole_on_segment_sn', context: { segment_ref: branch.ref_id } });
       }
       if (branch.type === 'cable') {
         actions.push({ id: 'insert_zksn_on_segment_sn', label: 'Wstaw ZKSN', op: 'insert_zksn_on_segment_sn', context: { segment_ref: branch.ref_id } });
       }
-      actions.push({ id: 'insert_section_switch_sn', label: 'Wstaw łącznik', op: 'insert_section_switch_sn', context: { segmentRef: branch.ref_id, segmentLabel: branch.name } });
+      actions.push({ id: 'insert_section_switch_sn', label: 'Wstaw Ĺ‚Ä…cznik', op: 'insert_section_switch_sn', context: { segmentRef: branch.ref_id, segmentLabel: branch.name } });
     }
   }
 
@@ -584,7 +584,7 @@ function buildSectionsForElement(
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'ref_id', label: 'Oznaczenie punktu rozgałęzienia', value: branchPoint.ref_id },
+        { key: 'ref_id', label: 'Oznaczenie punktu rozgaĹ‚Ä™zienia', value: branchPoint.ref_id },
         { key: 'name', label: 'Nazwa', value: branchPoint.name },
         { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS[branchPoint.branch_point_type] ?? branchPoint.branch_point_type },
       ],
@@ -593,7 +593,7 @@ function buildSectionsForElement(
       id: 'topology',
       label: 'Topologia',
       fields: [
-        { key: 'parent_segment_id', label: 'Segment nadrzędny', value: branchPoint.parent_segment_id },
+        { key: 'parent_segment_id', label: 'Segment nadrzÄ™dny', value: branchPoint.parent_segment_id },
         { key: 'main_in', label: 'Port główny wejściowy', value: branchPoint.ports?.MAIN_IN ?? '?' },
         { key: 'main_out', label: 'Port główny wyjściowy', value: branchPoint.ports?.MAIN_OUT ?? '?' },
         { key: 'branch_ports', label: 'Porty odgalezien', value: branchPoint.ports?.BRANCH?.join(', ') ?? '?' },
@@ -606,7 +606,7 @@ function buildSectionsForElement(
         { key: 'catalog_ref', label: 'Pozycja katalogowa', value: branchPoint.catalog_ref ?? '?' },
       ],
     });
-    actions.push({ id: 'start_branch_segment_sn', label: 'Dodaj odgałęzienie', op: 'start_branch_segment_sn' });
+    actions.push({ id: 'start_branch_segment_sn', label: 'Dodaj odgaĹ‚Ä™zienie', op: 'start_branch_segment_sn' });
   }
 
   // Try transformers
@@ -630,7 +630,7 @@ function buildSectionsForElement(
     sections.push({
       id: 'electrical', label: 'Parametry elektryczne', fields: [
         { key: 'sn_mva', label: 'Moc znamionowa', value: transformer.sn_mva, unit: 'MVA', source: 'catalog' },
-        { key: 'uk_percent', label: 'Napięcie zwarcia uk', value: transformer.uk_percent, unit: '%', source: 'catalog' },
+        { key: 'uk_percent', label: 'NapiÄ™cie zwarcia uk', value: transformer.uk_percent, unit: '%', source: 'catalog' },
         { key: 'pk_kw', label: 'Straty zwarciowe Pk', value: transformer.pk_kw, unit: 'kW', source: 'catalog' },
         { key: 'tap_position', label: 'Pozycja zaczepu', value: transformer.tap_position ?? 0 },
         { key: 'vector_group', label: 'Grupa wektorowa', value: transformer.vector_group ?? '?', source: 'catalog' },
@@ -665,16 +665,16 @@ function buildSectionsForElement(
     );
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła', value: source.ref_id },
+        { key: 'ref_id', label: 'Oznaczenie ĹşrĂłdĹ‚a', value: source.ref_id },
         { key: 'name', label: 'Nazwa', value: source.name },
         { key: 'type', label: 'Typ', value: ELEMENT_TYPE_LABELS.source },
-        { key: 'model', label: 'Model zastępczy', value: source.model },
+        { key: 'model', label: 'Model zastÄ™pczy', value: source.model },
       ],
     });
     sections.push({
       id: 'electrical', label: 'Parametry sieci', fields: [
         { key: 'bus_voltage_kv', label: 'Napięcie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
-        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
+        { key: 'sk3_mva', label: 'Moc zwarciowa SkĂ˘â€šÂ', value: source.sk3_mva ?? null, unit: 'MVA' },
         { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
         { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'Ω' },
         { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'Ω' },
@@ -715,9 +715,9 @@ function buildSectionsForElement(
       ],
     });
     actions.push({ id: 'create_transformer_sn_nn', label: 'Dodaj transformator', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
-    actions.push({ id: 'create_converter_source_pv', label: 'Dodaj źródło przekształtnikowe PV', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'PV' } });
-    actions.push({ id: 'create_converter_source_bess', label: 'Dodaj źródło przekształtnikowe BESS', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'BESS' } });
-    actions.push({ id: 'create_converter_source_fw', label: 'Dodaj źródło przekształtnikowe FW', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'FW' } });
+    actions.push({ id: 'create_converter_source_pv', label: 'Dodaj ĹşrĂłdĹ‚o przeksztaĹ‚tnikowe PV', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'PV' } });
+    actions.push({ id: 'create_converter_source_bess', label: 'Dodaj ĹşrĂłdĹ‚o przeksztaĹ‚tnikowe BESS', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'BESS' } });
+    actions.push({ id: 'create_converter_source_fw', label: 'Dodaj ĹşrĂłdĹ‚o przeksztaĹ‚tnikowe FW', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'FW' } });
   }
 
   // Try generators (PV/BESS)
@@ -727,7 +727,7 @@ function buildSectionsForElement(
     elementName = generator.name;
     sections.push({
       id: 'ident', label: 'Identyfikacja', fields: [
-        { key: 'ref_id', label: 'Oznaczenie źródła przekształtnikowego', value: generator.ref_id },
+        { key: 'ref_id', label: 'Oznaczenie ĹşrĂłdĹ‚a przeksztaĹ‚tnikowego', value: generator.ref_id },
         { key: 'name', label: 'Nazwa', value: generator.name },
         { key: 'gen_type', label: 'Typ', value: formatElementTypeLabel(generator.gen_type ?? '') },
       ],
@@ -736,7 +736,7 @@ function buildSectionsForElement(
       id: 'electrical', label: 'Parametry elektryczne', fields: [
         { key: 'p_mw', label: 'Moc czynna', value: generator.p_mw, unit: 'MW' },
         { key: 'q_mvar', label: 'Moc bierna', value: generator.q_mvar ?? null, unit: 'Mvar' },
-        { key: 'connection_variant', label: 'Wariant przyłączenia', value: connectionVariantLabel(generator.connection_variant) },
+        { key: 'connection_variant', label: 'Wariant przyĹ‚Ä…czenia', value: connectionVariantLabel(generator.connection_variant) },
       ],
     });
     sections.push({
@@ -778,7 +778,7 @@ function buildSectionsForElement(
   );
   if (elementBlockers.length > 0 || elementWarnings.length > 0) {
     sections.push({
-      id: 'readiness', label: 'Gotowość', fields: [
+      id: 'readiness', label: 'GotowoĹ›Ä‡', fields: [
         ...elementBlockers.map((b, i) => ({
           key: `blocker_${i}`,
           label: 'Blokada',
@@ -786,7 +786,7 @@ function buildSectionsForElement(
         })),
         ...elementWarnings.map((w, i) => ({
           key: `warning_${i}`,
-          label: 'Ostrzeżenie',
+          label: 'OstrzeĹĽenie',
           value: w.message_pl,
         })),
       ],
@@ -899,7 +899,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
           <div className="text-center">
             <p className="text-xs text-gray-500">Zaznacz element na SLD</p>
             <p className="text-[10px] text-gray-400 mt-1">
-              aby zobaczyć szczegóły inżynierskie
+              aby zobaczyÄ‡ szczegĂłĹ‚y inĹĽynierskie
             </p>
           </div>
         </div>
@@ -997,7 +997,7 @@ function SectionBlock({ section }: { section: PropertySection }) {
 }
 
 function formatValue(value: string | number | boolean | null): string {
-  if (value === null || value === undefined) return '-';
+  if (value === null || value === undefined) return 'â€”';
   if (typeof value === 'boolean') return value ? 'Tak' : 'Nie';
   if (typeof value === 'number') {
     return value.toLocaleString('pl-PL', { maximumFractionDigits: 4 });

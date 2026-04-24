@@ -23,20 +23,66 @@ export type CatalogNamespace =
   | 'VT'
   | 'OBCIAZENIE';
 
-const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
-  add_grid_source_sn: 'ZRODLO_SN',
-  add_sn_bay: 'APARAT_SN',
-  continue_trunk_segment_sn: 'KABEL_SN',
-  start_branch_segment_sn: 'KABEL_SN',
-  insert_station_on_segment_sn: 'TRAFO_SN_NN',
-  add_transformer_sn_nn: 'TRAFO_SN_NN',
-  connect_secondary_ring_sn: 'KABEL_SN',
-  insert_section_switch_sn: 'APARAT_SN',
-  add_nn_outgoing_field: 'APARAT_NN',
-  add_converter_source: 'CONVERTER',
-  add_relay: 'ZABEZPIECZENIE',
-  add_ct: 'CT',
-  add_vt: 'VT',
+export type CatalogGateMode = 'required' | 'topology_allowed_without_catalog' | 'optional';
+
+interface CatalogGateRule {
+  mode: CatalogGateMode;
+  namespace: CatalogNamespace;
+}
+
+const CATALOG_GATE_RULES: Record<string, CatalogGateRule> = {
+  add_grid_source_sn: {
+    mode: 'topology_allowed_without_catalog',
+    namespace: 'ZRODLO_SN',
+  },
+  add_sn_bay: {
+    mode: 'topology_allowed_without_catalog',
+    namespace: 'APARAT_SN',
+  },
+  continue_trunk_segment_sn: {
+    mode: 'required',
+    namespace: 'KABEL_SN',
+  },
+  start_branch_segment_sn: {
+    mode: 'required',
+    namespace: 'KABEL_SN',
+  },
+  insert_station_on_segment_sn: {
+    mode: 'required',
+    namespace: 'TRAFO_SN_NN',
+  },
+  add_transformer_sn_nn: {
+    mode: 'required',
+    namespace: 'TRAFO_SN_NN',
+  },
+  connect_secondary_ring_sn: {
+    mode: 'required',
+    namespace: 'KABEL_SN',
+  },
+  insert_section_switch_sn: {
+    mode: 'required',
+    namespace: 'APARAT_SN',
+  },
+  add_nn_outgoing_field: {
+    mode: 'required',
+    namespace: 'APARAT_NN',
+  },
+  add_converter_source: {
+    mode: 'required',
+    namespace: 'CONVERTER',
+  },
+  add_relay: {
+    mode: 'required',
+    namespace: 'ZABEZPIECZENIE',
+  },
+  add_ct: {
+    mode: 'required',
+    namespace: 'CT',
+  },
+  add_vt: {
+    mode: 'required',
+    namespace: 'VT',
+  },
 };
 
 function resolveCanonicalOperationName(operationId: string): CanonicalOpName | null {
@@ -49,7 +95,7 @@ export function requiresCatalog(operationId: string): boolean {
   if (canonicalOp === null) {
     return false;
   }
-  return canonicalOp in CATALOG_REQUIRED_OPERATIONS;
+  return CATALOG_GATE_RULES[canonicalOp]?.mode === 'required';
 }
 
 export function catalogNamespace(operationId: string): CatalogNamespace | undefined {
@@ -57,7 +103,15 @@ export function catalogNamespace(operationId: string): CatalogNamespace | undefi
   if (canonicalOp === null) {
     return undefined;
   }
-  return CATALOG_REQUIRED_OPERATIONS[canonicalOp];
+  return CATALOG_GATE_RULES[canonicalOp]?.namespace;
+}
+
+export function catalogGateMode(operationId: string): CatalogGateMode | undefined {
+  const canonicalOp = resolveCanonicalOperationName(operationId);
+  if (canonicalOp === null) {
+    return undefined;
+  }
+  return CATALOG_GATE_RULES[canonicalOp]?.mode;
 }
 
 export function catalogNamespaceLabel(ns: CatalogNamespace): string {
@@ -85,6 +139,7 @@ export function resolveCanonicalOperation(actionId: string): string {
 
 export interface CatalogGateResult {
   required: boolean;
+  mode: CatalogGateMode;
   namespace?: CatalogNamespace;
   label?: string;
   canonicalOperation: string;
@@ -92,16 +147,19 @@ export interface CatalogGateResult {
 
 export function checkCatalogGate(actionId: string): CatalogGateResult {
   const canonicalOperation = resolveCanonicalOperation(actionId);
+  const mode = catalogGateMode(actionId) ?? 'optional';
   const namespace = catalogNamespace(actionId);
   if (!namespace) {
     return {
       required: false,
+      mode,
       canonicalOperation,
     };
   }
 
   return {
-    required: true,
+    required: mode === 'required',
+    mode,
     namespace,
     label: catalogNamespaceLabel(namespace),
     canonicalOperation,

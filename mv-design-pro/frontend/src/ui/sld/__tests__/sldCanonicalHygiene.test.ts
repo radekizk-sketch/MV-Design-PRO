@@ -49,4 +49,13 @@ describe('SLD canonical hygiene', () => {
     expect(sldView.includes(`add_source_field: '${legacySourceFieldOp}'`)).toBe(false);
     expect(sldView.includes(`add_source_field_nn: '${legacySourceFieldOp}'`)).toBe(false);
   });
+
+  it('aktywny runtime SLD korzysta z jednej bramy ukladu bez bezposredniego wyboru legacy strategy', () => {
+    const snapshotProjection = read('src/ui/sld/enmSnapshotToSldSymbols.ts');
+    const layoutPipeline = read('src/ui/sld/core/layoutPipeline.ts');
+
+    expect(snapshotProjection.includes("strategy: 'legacy'")).toBe(false);
+    expect(snapshotProjection.includes('computeLayout(')).toBe(true);
+    expect(layoutPipeline.includes('export function computeActiveRuntimeLayout(')).toBe(false);
+  });
 });

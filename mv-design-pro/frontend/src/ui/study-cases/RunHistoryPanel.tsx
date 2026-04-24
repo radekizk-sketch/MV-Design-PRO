@@ -104,9 +104,9 @@ export const RunHistoryPanel: React.FC<RunHistoryPanelProps> = ({
   if (runs.length === 0) {
     return (
       <div className="p-4 text-sm text-gray-500 text-center">
-        Brak przebiegów obliczeniowych.
+        Brak wykonanych obliczeń.
         <br />
-        Uruchom obliczenie, aby zobaczyć historię.
+        Wykonaj obliczenie, aby zobaczyć historię.
       </div>
     );
   }
@@ -114,7 +114,7 @@ export const RunHistoryPanel: React.FC<RunHistoryPanelProps> = ({
   return (
     <div className="border rounded overflow-hidden">
       <div className="bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 border-b">
-        Historia przebiegów ({runs.length})
+        Historia obliczeń ({runs.length})
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -130,7 +130,7 @@ export const RunHistoryPanel: React.FC<RunHistoryPanelProps> = ({
                 Data
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
-                Hash
+                Ślad techniczny
               </th>
             </tr>
           </thead>

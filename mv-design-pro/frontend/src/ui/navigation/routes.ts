@@ -22,64 +22,65 @@ export const ROUTES = {
   },
   SLD_VIEW: {
     hash: '#sld-view',
-    label: 'Podglad schematu',
-    description: 'Podglad schematu jednokreskowego (tylko odczyt)',
+    label: 'Podgląd schematu',
+    description: 'Podgląd schematu jednokreskowego (tylko odczyt)',
     icon: 'VIEW',
   },
   ANALYSIS: {
     hash: '#analysis',
     label: 'Poziom analityczny',
-    description: 'Analityka E-24 w glownym shellu',
+    description: 'Analityka w głównym shellu',
     icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
   REPORT: {
     hash: '#report',
     label: 'Generator raportu',
-    description: 'Konfiguracja i podglad raportu technicznego',
+    description: 'Konfiguracja i podgląd raportu technicznego',
     icon: 'RPT',
     requiredMode: 'RESULT_VIEW',
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Warianty i uruchomienia',
-    description: 'Helper wyboru wariantow i uruchomien',
+    label: 'Zakresy obliczeń i wyniki',
+    description: 'Panel wyboru zakresu obliczeń i wyników',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
-  SWITCHGEAR: {
-    hash: '#switchgear',
-    label: 'Kreator rozdzielnicy',
-    description: 'Kontekst rozdzielnicy w kanonicznym shellu',
-    icon: 'SWG',
-    requiredMode: 'MODEL_EDIT',
-  },
-  CASE_CONFIG: {
-    hash: '#case-config',
-    label: 'Kontekst wariantu',
-    description: 'Helper kontekstu wariantu w głównym shellu',
+  CONDITIONS: {
+    hash: '#warunki-obliczen',
+    label: 'Warunki obliczeń',
+    description: 'Panel warunków obliczeń w głównym shellu',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
-    description: 'Diagnostyka inzynierska modelu sieci ENM',
+    description: 'Diagnostyka inżynierska modelu sieci ENM',
     icon: 'INS',
   },
   FAULT_SCENARIOS: {
     hash: '#fault-scenarios',
     label: 'Scenariusze zwarciowe',
-    description: 'Zarzadzanie scenariuszami zwarc i analiz',
+    description: 'Zarządzanie scenariuszami zwarć i analiz',
     icon: 'SCN',
   },
   CATALOG: {
     hash: '#catalog',
-    label: 'Biblioteka typow',
-    description: 'Helper katalogowy shell-a',
+    label: 'Biblioteka typów',
+    description: 'Panel katalogowy shell-a',
     icon: 'CAT',
   },
 } satisfies Record<string, RouteDefinition>;
+
+export const SWITCHGEAR = {
+  hash: '#switchgear',
+  label: 'Rozdzielnica',
+  description: 'Tryb zgodności dla kreatora rozdzielnicy',
+  icon: 'SWG',
+  requiredMode: 'MODEL_EDIT',
+} satisfies RouteDefinition;
 
 type RouteKey = keyof typeof ROUTES;
 
@@ -136,7 +137,6 @@ function navigateToHash(hash: string, mutate?: (params: URLSearchParams) => void
     mutate?.(params);
   });
 }
-
 function assignRouteContext(params: URLSearchParams, options: RouteContextOptions = {}): void {
   const entries: Array<[keyof RouteContextOptions, string]> = [
     ['runId', 'run'],
@@ -215,9 +215,9 @@ export function navigateToResults(context: RouteContextOptions = {}): void {
 }
 
 export function navigateToProof(context: RouteContextOptions = {}): void {
-  navigateToHash('#proof', (params) => {
-    params.delete('tab');
-    assignRouteContext(params, context);
+  navigateToAnalysisRoute({
+    ...context,
+    tabId: 'trace',
   });
 }
 
@@ -250,12 +250,8 @@ export function navigateToNetworkBuild(): void {
   navigateTo(ROUTES.SLD);
 }
 
-export function navigateToSwitchgear(): void {
-  navigateTo(ROUTES.SWITCHGEAR);
-}
-
-export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
-  navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
+export function navigateToConditions(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.CONDITIONS.hash, (params) => {
     params.delete('run');
     assignRouteContext(params, context);
   });

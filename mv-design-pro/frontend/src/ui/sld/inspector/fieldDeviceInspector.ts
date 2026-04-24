@@ -520,39 +520,39 @@ export function buildResultsSection(
   const fields: InspectorPropertyField[] = [];
 
   if (resultData.ikss_ka !== null) {
-    fields.push({ key: 'ikss', label: 'Prad zwarciowy Ik"', value: resultData.ikss_ka, unit: 'kA', source: 'calculated' });
+    fields.push({ key: 'ikss', label: 'Prąd zwarciowy Ik"', value: resultData.ikss_ka, unit: 'kA', source: 'calculated' });
   }
   if (resultData.ip_ka !== null) {
-    fields.push({ key: 'ip', label: 'Prad udarowy ip', value: resultData.ip_ka, unit: 'kA', source: 'calculated' });
+    fields.push({ key: 'ip', label: 'Prąd udarowy ip', value: resultData.ip_ka, unit: 'kA', source: 'calculated' });
   }
   if (resultData.current_a !== null) {
-    fields.push({ key: 'current', label: 'Prad obciazeniowy', value: resultData.current_a, unit: 'A', source: 'calculated' });
+    fields.push({ key: 'current', label: 'Prąd obciążeniowy', value: resultData.current_a, unit: 'A', source: 'calculated' });
   }
   if (resultData.loading_pct !== null) {
     const highlight = resultData.loading_pct > 100 ? 'error' as const
       : resultData.loading_pct > 80 ? 'warning' as const
       : undefined;
-    fields.push({ key: 'loading', label: 'Obciazenie', value: resultData.loading_pct, unit: '%', source: 'calculated', highlight });
+    fields.push({ key: 'loading', label: 'Obciążenie', value: resultData.loading_pct, unit: '%', source: 'calculated', highlight });
   }
   if (resultData.rated_current_a !== null) {
-    fields.push({ key: 'rated_current', label: 'Prad znamionowy', value: resultData.rated_current_a, unit: 'A', source: 'instance' });
+    fields.push({ key: 'rated_current', label: 'Prąd znamionowy', value: resultData.rated_current_a, unit: 'A', source: 'instance' });
   }
   if (resultData.breaking_capacity_ok !== null) {
     fields.push({
       key: 'breaking_ok',
-      label: 'Zdolnosc wylaczania',
-      value: resultData.breaking_capacity_ok ? 'OK' : 'NIEWYSTARCZAJACA',
+      label: 'Zdolność wyłączania',
+      value: resultData.breaking_capacity_ok ? 'OK' : 'NIEWYSTARCZAJĄCA',
       highlight: resultData.breaking_capacity_ok ? undefined : 'error',
     });
   }
 
   if (fields.length === 0) {
-    fields.push({ key: 'no_results', label: 'Wyniki', value: 'Brak wynikow dla tego elementu' });
+    fields.push({ key: 'no_results', label: 'Wyniki', value: 'Brak wyników dla tego elementu' });
   }
 
   return {
     id: 'element_results',
-    label: 'Wyniki obliczen',
+    label: 'Wyniki obliczeń',
     fields,
   };
 }

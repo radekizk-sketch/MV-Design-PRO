@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Global Application State Store â€” P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
@@ -337,9 +337,9 @@ export function useCaseKindLabel(): string | null {
   if (!kind) return null;
   switch (kind) {
     case 'ShortCircuitCase':
-      return 'Wariant zwarciowy';
+      return 'Zakres zwarciowy';
     case 'PowerFlowCase':
-      return 'Wariant rozpływu mocy';
+      return 'Zakres rozpływu mocy';
     default:
       return kind;
   }
@@ -352,7 +352,7 @@ export function useResultStatusLabel(): string {
   const status = useAppStateStore((state) => state.activeCaseResultStatus);
   switch (status) {
     case 'NONE':
-      return 'Brak wynikow';
+      return 'Brak wyników';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':
@@ -379,7 +379,7 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const readiness = useSnapshotStore((state) => state.readiness);
 
   if (!activeCaseId) {
-    return { allowed: false, reason: 'Wybierz aktywny wariant pracy' };
+    return { allowed: false, reason: 'Wybierz aktywny zakres obliczen' };
   }
 
   if (activeMode !== 'MODEL_EDIT') {
@@ -400,7 +400,7 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   if (resultStatus === 'FRESH') {
     return {
       allowed: false,
-      reason: 'Wyniki sa aktualne - brak potrzeby ponownego uruchomienia obliczen',
+      reason: 'Wyniki sa aktualne - brak potrzeby ponownego wykonania obliczen',
     };
   }
 
@@ -446,9 +446,9 @@ export function useActiveAnalysisTypeLabel(): string | null {
     case 'SHORT_CIRCUIT':
       return 'Analiza zwarciowa';
     case 'LOAD_FLOW':
-      return 'Rozpływ mocy';
+      return 'RozpĹ‚yw mocy';
     case 'PROTECTION':
-      return 'Koordynacja zabezpieczeń';
+      return 'Koordynacja zabezpieczeĹ„';
     default:
       return analysisType;
   }

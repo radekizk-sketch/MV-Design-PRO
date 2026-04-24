@@ -355,7 +355,8 @@ def _add_white_box_step(
         c.setFont("Helvetica-Bold", 10)
         c.drawString(left_margin, y, "Podstawienie:")
         y -= line_height
-        y = draw_wrapped_lines(str(substitution), left_margin + 5 * mm, y, max_width - 5 * mm, 9)
+        c.setFont("Helvetica", 9)
+        _draw_wrapped_line(c, str(substitution), left_margin + 5 * mm, y, max_width - 5 * mm, 9)
         y -= line_height
 
     # Result

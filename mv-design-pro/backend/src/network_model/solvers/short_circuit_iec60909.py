@@ -396,7 +396,9 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="Ib",
             title="Prąd zwarciowy do obliczeń cieplnych",
-            formula_latex=r"I_b = I_{k}'' \cdot \sqrt{1 + \left((\kappa - 1)\cdot e^{-t_b/t_a}\right)^2}",
+            formula_latex=(
+                "I_b = I_{k}'' \\cdot \\sqrt{1 + ((\\kappa - 1)" " \\cdot e^{-t_b/t_a})^2}"
+            ),
             inputs={
                 "ikss_a": ikss_a,
                 "kappa": post.kappa,

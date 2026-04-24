@@ -302,7 +302,7 @@ export function ProtectionDiagnosticsPanel({
                 </span>
               )}
               {!hasResults && (
-                <span className="text-gray-500 italic">Brak wynikow</span>
+                <span className="text-gray-500 italic">Brak wynik?w</span>
               )}
             </div>
           </div>
@@ -337,11 +337,11 @@ export function ProtectionDiagnosticsPanel({
           </div>
         ) : !hasResults ? (
           <div className="p-4 text-center text-gray-500 text-sm italic">
-            Brak wynikow diagnostyki
+            Brak wynik?w diagnostyki
           </div>
         ) : sortedResults.length === 0 ? (
           <div className="p-4 text-center text-gray-500 text-sm italic">
-            Brak wynikow dla wybranego filtru
+            Brak wynik?w dla wybranego filtru
           </div>
         ) : (
           <table className="w-full text-left">

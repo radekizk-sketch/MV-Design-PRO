@@ -343,16 +343,16 @@ describe('BayCard', () => {
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
     expect(screen.getByText('run-1')).toBeInTheDocument();
     expect(screen.getByText('Pelny')).toBeInTheDocument();
-    expect(screen.getByText('Wywod pola')).toBeInTheDocument();
+    expect(screen.getByText('Uzasadnienie inżynierskie pola')).toBeInTheDocument();
     expect(screen.getByText('proof:bay_ref_1:run-1')).toBeInTheDocument();
     expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pomiary pola' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sterowanie polem' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zabezpieczenie pola' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Wklady zrodel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Wkłady źródeł' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tor ziemnozwarciowy' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Bezpieczenstwo do pracy' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Porownaj pola' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bezpieczeństwo do pracy' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Porównanie pól' })).toBeInTheDocument();
   });
 
   it('obsluguje otwarcie pola po bay_ref bez legacy bay.id jako aktywnej sciezki wejscia', () => {

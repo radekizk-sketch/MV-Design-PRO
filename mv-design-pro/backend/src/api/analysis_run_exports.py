@@ -20,15 +20,6 @@ from application.analysis_run.read_model import build_trace_summary, canonicaliz
 from enm.canonical_analysis import CanonicalRun
 from fastapi.responses import Response
 
-
-def _trace_step_substitution_text(step: dict[str, Any]) -> str | None:
-    substitution = step.get("substitution_latex") or step.get("substitution")
-    if substitution is None:
-        return None
-    text = str(substitution).strip()
-    return text or None
-
-
 ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
 ReportScope = Literal["whole_run", "active_table"]
@@ -369,8 +360,6 @@ def _trace_jsonl_lines(trace_payload: dict[str, Any]) -> list[str]:
                         "formula_latex": step.get("formula_latex"),
                         "inputs": step.get("inputs"),
                         "substitution": step.get("substitution"),
-                        "substitution_latex": step.get("substitution_latex")
-                        or step.get("substitution"),
                         "result": step.get("result"),
                         "materialized_params": step.get("materialized_params")
                         or (step.get("catalog_context_entry") or {}).get("materialized_params"),
@@ -1112,10 +1101,9 @@ def export_run_trace_pdf_response(
                 max_chars=110,
                 line_height=4 * mm,
             )
-        substitution_text = _trace_step_substitution_text(step)
-        if substitution_text:
+        if step.get("substitution"):
             draw_wrapped(
-                f"Podstawienie: {substitution_text}",
+                f"Podstawienie: {step.get('substitution')}",
                 font_name="Helvetica",
                 font_size=8,
                 max_chars=110,

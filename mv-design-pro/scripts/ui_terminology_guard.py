@@ -13,10 +13,10 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
+from active_public_layer import collect_active_frontend_files
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCAN_DIRS = [REPO_ROOT / "frontend" / "src"]
-FILE_EXTENSIONS = {".ts", ".tsx"}
-SKIP_PARTS = ("__tests__", ".test.", ".spec.", ".snap")
+FILE_EXTENSIONS = {".ts", ".tsx", ".js", ".jsx"}
 
 UI_PROP_PATTERN = re.compile(
     r"""
@@ -36,11 +36,18 @@ IGNORE_PATTERN = re.compile(r"//\s*ui-terminology-ignore")
 
 BANNED_UI_TERMS: dict[str, re.Pattern[str]] = {
     "Feeder": re.compile(r"\bFeeder\b"),
-    "Branch": re.compile(r"\bBranch\b"),
-    "Case": re.compile(r"\bCase\b"),
+    "Branch": re.compile(r"\bBranch(?:es)?\b"),
+    "Case": re.compile(r"\bCase(?:\s+ref)?\b"),
     "Snapshot": re.compile(r"\bSnapshot\b"),
-    "Run": re.compile(r"\bRun\b"),
-    "Proof": re.compile(r"\bProof\b"),
+    "Run": re.compile(r"\bRun(?:\s+ref)?\b"),
+    "Proof": re.compile(r"\bProof(?:\s+pack)?\b"),
+    "analysis_case_context": re.compile(r"\banalysis_case_context\b"),
+    "Migawka": re.compile(r"\bMigawk\w*\b", re.IGNORECASE),
+    "Uruchomienie": re.compile(r"\bUruchomieni\w*\b", re.IGNORECASE),
+    "Przypadek": re.compile(r"\bPrzypad\w*\b", re.IGNORECASE),
+    "Wizard": re.compile(r"\bWizard\b", re.IGNORECASE),
+    "Legacy": re.compile(r"\blegacy\b", re.IGNORECASE),
+    "Fallback": re.compile(r"\bfallback\b", re.IGNORECASE),
     "CT": re.compile(r"\bCT\b"),
     "VT": re.compile(r"\bVT\b"),
     "PT": re.compile(r"\bPT\b"),
@@ -69,18 +76,11 @@ class Violation(NamedTuple):
 
 
 def iter_files() -> list[Path]:
-    files: list[Path] = []
-    for scan_dir in SCAN_DIRS:
-        if not scan_dir.exists():
-            continue
-        for path in scan_dir.rglob("*"):
-            if path.suffix not in FILE_EXTENSIONS:
-                continue
-            posix_path = path.as_posix()
-            if any(part in posix_path for part in SKIP_PARTS):
-                continue
-            files.append(path)
-    return sorted(set(files))
+    return [
+        path
+        for path in collect_active_frontend_files()
+        if path.suffix in FILE_EXTENSIONS
+    ]
 
 
 def normalize_path(path: Path) -> str:

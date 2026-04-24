@@ -604,7 +604,7 @@ describe('buildResultsSection', () => {
     };
     const section = buildResultsSection(data);
     const breaking = section.fields.find(f => f.key === 'breaking_ok');
-    expect(breaking!.value).toBe('NIEWYSTARCZAJACA');
+    expect(breaking!.value).toBe('NIEWYSTARCZAJĄCA');
     expect(breaking!.highlight).toBe('error');
   });
 
