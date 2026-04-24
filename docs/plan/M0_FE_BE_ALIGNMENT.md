@@ -11,6 +11,7 @@
 **Fixtures Scanned**:
 - No `canonical_gpz_sn_v2.json` found
 - No explicit "golden network" JSON exports
+- `switchgear_config_fixture_01.json` exists and is already mirrored with the frontend hash-parity fixture
 - Backend uses Python builders (not JSON-first)
 
 **Reference Networks** (Python code):
@@ -23,10 +24,11 @@ Files mentioning "canonical":
 **Implication**: Backend builds networks programmatically; does not export to JSON
 
 ### Frontend Fixtures
-**Location**: `./mv-design-pro/frontend/src/test/fixtures/`
+**Location**: `./mv-design-pro/frontend/src/ui/sld/core/__tests__/fixtures/`
 
 **Fixtures Scanned**:
 - No `canonical_gpz_sn_v2.json` found
+- `switchgear_config_fixture_01.json` exists for config hash parity
 - Frontend uses hardcoded builders in `referenceTopologies.ts`
 - Example: `GN_01_SN_PROSTA`, `GN_02_SN_ODGALEZIENIE`
 
@@ -38,7 +40,7 @@ Files mentioning "canonical":
 |-------|---------|----------|-------|
 | canonical_gpz_sn_v2 | ❌ Missing | ❌ Missing | ❌ NO |
 | referenceTopologies | (hardcoded Python) | ✅ TypeScript builders | ❌ MANUAL |
-| Hash parity fixture | (none yet) | ✅ switchgear_config_fixture_01.json | ⚠️ PARTIAL |
+| Hash parity fixture | ✅ switchgear_config_fixture_01.json | ✅ switchgear_config_fixture_01.json | ✅ YES |
 
 ## M4 Action Plan: Establish FE/BE Parity
 
@@ -75,17 +77,17 @@ python -m tests.reference_networks.canonical_gpz_sn_v2_builder > fixtures/canoni
 **Content**: Full ENM structure (devices, branches, catalog bindings, roles, etc.)
 
 ### Phase 3: Frontend Fixture Sync (M4)
-**File to create/update**: `./mv-design-pro/frontend/src/test/fixtures/canonical_gpz_sn_v2.json`
+**File to create/update**: `./mv-design-pro/frontend/src/ui/sld/core/__tests__/fixtures/canonical_gpz_sn_v2.json`
 
 **Purpose**:
 - Identical copy of backend JSON
 - Frontend loads via `import` or HTTP (mocked)
-- Enables parity test: `projectEnmSnapshotToSld(fixture) → SHA-256 stable`
+- Enables projection determinism test: `projectEnmSnapshotToSld(fixture) → SHA-256 stable`
 
 **Sync Strategy**: 
 1. Generate from backend builder
-2. Copy to frontend/src/test/fixtures/
-3. CI validates SHA-256 match (parity test)
+2. Copy to `frontend/src/ui/sld/core/__tests__/fixtures/`
+3. CI validates byte/hash identity of the backend and frontend fixture copies
 
 ## Current Hardcoded Reference Networks
 
@@ -114,14 +116,21 @@ python -m tests.reference_networks.canonical_gpz_sn_v2_builder > fixtures/canoni
 ```typescript
 // Frontend parity test (to be created in M4)
 describe('canonical_gpz_sn_v2 parity', () => {
-  it('BE JSON == FE projected SLD (SHA-256)', () => {
-    const beJson = require('../fixtures/canonical_gpz_sn_v2.json');
+  it('frontend fixture copy matches backend fixture hash', () => {
+    const beJson = loadJson('backend/tests/fixtures/canonical_gpz_sn_v2.json');
+    const feJson = loadJson('frontend/src/ui/sld/core/__tests__/fixtures/canonical_gpz_sn_v2.json');
     const beHash = sha256(JSON.stringify(beJson));
-    
-    const projected = projectEnmSnapshotToSld(beJson);
-    const feHash = sha256(JSON.stringify(projected));
-    
-    expect(feHash).toBe(beHash); // Both deterministic, hashes should match
+    const feFixtureHash = sha256(JSON.stringify(feJson));
+
+    expect(feFixtureHash).toBe(beHash);
+  });
+
+  it('projected SLD output is deterministic', () => {
+    const fixture = require('../fixtures/canonical_gpz_sn_v2.json');
+    const first = sha256(JSON.stringify(projectEnmSnapshotToSld(fixture)));
+    const second = sha256(JSON.stringify(projectEnmSnapshotToSld(fixture)));
+
+    expect(second).toBe(first);
   });
 });
 ```
@@ -143,13 +152,13 @@ def test_canonical_gpz_sn_v2_determinism():
 
 ## Risks & Dependencies
 
-| Risk | Level | Mitigation |
-|------|-------|-----------|
-| **FE/BE JSON mismatch** | **HIGH** | M4: SHA-256 parity test catches divergence |
-| **Manual fixture duplication** | **HIGH** | M4: automatic sync (CI validates) |
-| **Hardcoded reference nets abandoned** | **MEDIUM** | M1: document as examples; M4: retire in favor of canonical fixture |
-| **Determinism loss in export** | **MEDIUM** | M4: test builder 100× → verify hash stable |
-| **No shared fixture schema** | **MEDIUM** | M4: define canonical_gpz_sn_v2.schema.json |
+| Risk | Level | Confirmed fact | Future action |
+|------|-------|----------------|---------------|
+| **FE/BE JSON mismatch** | **HIGH** | Existing switchgear fixture is mirrored; canonical GPZ SN v2 is missing. | M4 validates byte/hash identity of BE and FE fixture copies. |
+| **Manual fixture duplication** | **HIGH** | Current mirrored fixture is duplicated manually. | M4 adds a repeatable sync/check path. |
+| **Hardcoded reference nets abandoned** | **MEDIUM** | `referenceTopologies.ts` remains TS-based and not shared with BE. | M1 documents examples; M4 retires or demotes them after canonical fixture creation. |
+| **Determinism loss in export** | **MEDIUM** | No canonical GPZ SN v2 export exists yet. | M4 tests builder JSON stability and FE projection stability independently. |
+| **No shared fixture schema** | **MEDIUM** | No schema for canonical GPZ SN v2 exists yet. | M4 defines `canonical_gpz_sn_v2.schema.json`. |
 
 ## Next Steps
 
@@ -158,7 +167,7 @@ def test_canonical_gpz_sn_v2_determinism():
 3. **M4 (CRITICAL)**:
    - Create `canonical_gpz_sn_v2_builder.py` (backend)
    - Generate `canonical_gpz_sn_v2.json` fixture
-   - Sync to frontend `src/test/fixtures/`
-   - Implement parity test (SHA-256)
+   - Sync to frontend `src/ui/sld/core/__tests__/fixtures/`
+   - Implement fixture identity and projection determinism tests (SHA-256)
    - Document fixture schema
 4. **M9**: Golden snapshot tests will depend on M4 fixture being stable

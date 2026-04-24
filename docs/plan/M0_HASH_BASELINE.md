@@ -10,6 +10,12 @@
 
 **Fixture**: `switchgear_config_fixture_01.json` (minimal LINE_IN configuration)
 
+**Confirmed locations**:
+- `./mv-design-pro/backend/tests/fixtures/switchgear_config_fixture_01.json`
+- `./mv-design-pro/frontend/src/ui/sld/core/__tests__/fixtures/switchgear_config_fixture_01.json`
+
+Both copies carry the same frozen `expectedHash`.
+
 **Baseline Expected Hash (SHA-256)**:
 ```
 6287381366bfcb8674551e1f138f61ec41fad5a22658ede6647b11e2d0eb018a
@@ -54,7 +60,8 @@
 
 | File | Purpose | Hash Value |
 |------|---------|-----------|
-| switchgear_config_fixture_01.json | Config parity test | 6287381366bfcb8... |
+| backend/tests/fixtures/switchgear_config_fixture_01.json | Backend fixture copy | 6287381366bfcb8... |
+| frontend/src/ui/sld/core/__tests__/fixtures/switchgear_config_fixture_01.json | Frontend config parity test | 6287381366bfcb8... |
 | Other fixtures (if any) | (to be discovered) | (to be baselined) |
 
 ## Hash Stability Rules (M3+)
@@ -76,12 +83,12 @@
 
 ## Risks & Dependencies
 
-| Risk | Level | Mitigation |
-|------|-------|-----------|
-| Hash parity test too strict | LOW | By design; allows for intentional versioning |
-| M3 symbol append breaks hash | LOW | Use append-only strategy; ports.json append not replace |
-| M4 fixture hash unknown | MEDIUM | Will establish new baseline during M4 implementation |
-| Backend fixture sync mismatch | MEDIUM | M4: parity test (SHA-256 JSON) will catch misalignment |
+| Risk | Level | Confirmed fact | Future action |
+|------|-------|----------------|---------------|
+| Hash parity test too strict | LOW | Current expected hash is frozen intentionally. | Update expected hash only when fixture content intentionally changes. |
+| M3 symbol append breaks hash | LOW | This config hash should not change for symbol-only additions. | If it changes, inspect config serialization before accepting it. |
+| M4 fixture hash unknown | MEDIUM | `canonical_gpz_sn_v2.json` does not exist yet. | Establish separate JSON fixture hash and projected-SLD hash baselines. |
+| Backend fixture sync mismatch | MEDIUM | Existing switchgear fixture is mirrored in BE and FE. | M4 should add identity checks for the new canonical fixture too. |
 
 ## Next Steps
 

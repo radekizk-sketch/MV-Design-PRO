@@ -2,12 +2,25 @@
 
 **Wersja**: 1.0  
 **Data**: 2026-04-24  
-**Status**: WIĄŻĄCY — Nadrzędny wobec komponentów React i renderera  
+**Status**: PROPOSED M1-M9 TARGET — dokument projektowy, nie nadrzędny kontrakt runtime
 **Odniesienia**:
 - `SLD_TYPY_STACJI_KANONICZNE.md` — typy stacji (LEAF/INLINE/BRANCH/SECTIONAL)
 - `SLD_SYMBOLIKA_KANONICZNA.md` — symbole IEC 60617
 - `SLD_STYL_WIZUALNY_KANONICZNY.md` — paleta kolorów i grubości linii
 - `SLD_SYSTEM_SPEC_CANONICAL.md` — architektura renderera
+
+## Current Contract Mapping (repo baseline)
+
+Ten dokument opisuje docelowy blueprint inżynierski. Aktualny kod runtime nie ma jeszcze formalnego typu `DeviceSlotPosition`; najbliższym istniejącym kontraktem jest `DevicePowerPathPositionV1` (`UPSTREAM`, `MIDSTREAM`, `DOWNSTREAM`, `OFF_PATH`) w `fieldDeviceContracts.ts`.
+
+| Blueprint term | Current repo contract |
+|----------------|-----------------------|
+| `DeviceSlotPosition` | Proposed M2 abstraction; map to `DevicePowerPathPositionV1` until extracted |
+| `TRANSFORMER_2W` / `TRANSFORMER_3W` | Runtime `DeviceTypeV1.TRANSFORMER_DEVICE`; winding count is symbol/model metadata |
+| `SWITCH_FUSE` | Not present in `DeviceTypeV1`; M3 must decide add-vs-map strategy |
+| `BUS` / `PORT` | Topological abstractions, not current `DeviceTypeV1` catalog devices |
+
+---
 
 ---
 
@@ -234,7 +247,9 @@ Pole źródłowe SN:
 
 ---
 
-## 6. DeviceSlotPosition — Katalog Pozycji
+## 6. DeviceSlotPosition — Docelowy katalog pozycji
+
+**Status kontraktu**: proposed M2 abstraction. Runtime currently uses `DevicePowerPathPositionV1`, so M1-M3 implementation notes must map these positions explicitly rather than assuming this type already exists.
 
 ```typescript
 type DeviceSlotPosition =
@@ -280,6 +295,7 @@ NOP (Normally Open Point):
 - FUSE, SWITCH_FUSE
 - RELAY (jeśli katalogowy przekaźnik)
 - TRANSFORMER_2W, TRANSFORMER_3W
+- Current repo mapping: `DeviceTypeV1.TRANSFORMER_DEVICE` plus transformer/symbol metadata
 - CABLE_HEAD (jeśli katalogowana)
 - SURGE_ARRESTER
 
@@ -321,7 +337,7 @@ NOP (Normally Open Point):
 
 ---
 
-## 11. Zakazy (IMMUTABLE)
+## 11. Zakazy (Proposed M1-M9 Target)
 
 1. Sprzęgło **NIGDY** nie ma transformatora
 2. NOP **NIGDY** nie jest DeviceTypeV1 katalogowym

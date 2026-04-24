@@ -3,6 +3,14 @@
 **Date**: 2026-04-24  
 **Status**: BASELINE AUDIT (risk assessment from M0 findings)
 
+## Evidence Boundary
+
+| Area | Confirmed repo fact | Future assumption/action |
+|------|---------------------|--------------------------|
+| `SWITCH_FUSE` | `DeviceTypeV1` currently has `FUSE` and `LOAD_SWITCH`, but no `SWITCH_FUSE`. | M3 must decide whether a separate `SWITCH_FUSE` type is required or whether existing types cover the apparatus. |
+| Fixture parity | `switchgear_config_fixture_01.json` already exists in both backend and frontend fixture trees. | `canonical_gpz_sn_v2.json` is still missing and needs a separate M4 builder/sync path. |
+| Symbol ports | `ports.json` exists, but runtime uses inline `SYMBOL_DEFINITIONS` in `SymbolResolver.ts`. | New symbols require updates in both metadata surfaces or a parity/generation mechanism. |
+
 ## Critical Risks (MUST ADDRESS IN M1-M9)
 
 ### R1: SWITCH_FUSE Missing from DeviceTypeV1
@@ -10,17 +18,17 @@
 **Component**: Frontend symbol inventory  
 **Issue**:
 - SWITCH_FUSE not in DeviceTypeV1 enum (fieldDeviceContracts.ts)
-- Required for STATION_TRANSFORMER_CUBICLE
-- Cannot render station transformer protection without it
+- Blueprint requires it for `STATION_TRANSFORMER_CUBICLE`, but runtime currently has `FUSE` and `LOAD_SWITCH`
+- M3 must validate whether a distinct switch-fuse device is needed before adding a new enum value
 
 **Impact**:
-- ST-01/ST-02/ST-03/ST-04 incomplete
-- M3 cannot proceed without adding SWITCH_FUSE
+- ST-01/ST-02/ST-03/ST-04 may be underspecified if switch-fuse is distinct in the target catalog
+- M3 cannot proceed without an explicit add-vs-map decision
 
 **Mitigation**:
-- **M3 Action**: Add SWITCH_FUSE to DeviceTypeV1
-- Create switch_fuse.svg symbol (if missing)
-- Append entry to ports.json (append-safe)
+- **M3 Action**: Decide add-vs-map strategy for SWITCH_FUSE
+- If adding: create switch_fuse.svg symbol (if missing)
+- If adding: append entry to ports.json and update SymbolResolver.ts inline definitions
 - Verify hash parity test still passes
 
 **Owner**: M3 (Symbol inventory cleanup)
@@ -32,7 +40,8 @@
 **Component**: canonical_gpz_sn_v2 fixture (missing)  
 **Issue**:
 - No canonical_gpz_sn_v2.json in backend fixtures
-- No canonical_gpz_sn_v2.json in frontend fixtures
+- No canonical_gpz_sn_v2.json in frontend SLD test fixtures
+- Existing `switchgear_config_fixture_01.json` is already mirrored in BE/FE and is not the missing canonical topology fixture
 - Frontend uses hardcoded `referenceTopologies.ts` (40KB)
 - Backend uses scattered Python builders
 
@@ -44,7 +53,7 @@
 **Mitigation**:
 - **M4 Action**: Create authoritative backend builder
 - Generate shared JSON fixture
-- Implement SHA-256 parity test
+- Implement BE/FE fixture identity test plus FE projection determinism test
 - Retire hardcoded builders
 
 **Owner**: M4 (Canonical fixture + parity)
@@ -74,21 +83,23 @@
 
 ---
 
-### R4: ports.json Append Strategy Not Enforced
+### R4: ports.json / SymbolResolver Sync Strategy Not Enforced
 **Severity**: 🟡 **HIGH**  
 **Component**: Symbol inventory management  
 **Issue**:
 - Hash parity test is strict (brittle)
-- Any modification to ports.json risks breaking hash
-- No tooling enforces "append-only" strategy
+- Any modification to ports.json risks metadata drift
+- Runtime symbol ports are currently inline in `SymbolResolver.ts`, not loaded directly from ports.json
+- No tooling enforces append-only or parity between these two surfaces
 
 **Impact**:
-- M3 symbol additions may break hash parity test
-- Developer may need to manually update expectedHash
+- M3 symbol additions may update ports.json but still fail to render because SymbolResolver.ts was not updated
+- Developer may need to manually update multiple symbol registries
 - Risk of accidental port coordinate changes
 
 **Mitigation**:
 - **M3 Strategy**: APPEND new symbols to end of ports.json
+- Update `CanonicalSymbolId`, `SYMBOL_DEFINITIONS`, and resolver mappings in SymbolResolver.ts
 - NEVER modify existing port coordinates
 - Run hash parity test immediately after changes
 - If hash changes unexpectedly, revert and investigate
@@ -162,7 +173,7 @@
 - **M3 Action**: Audit SymbolResolver.ts for test coverage
 - If missing: add tests before adding SWITCH_FUSE
 - Test: DeviceTypeV1 → symbol path resolution
-- Test: Port coordinate lookup from ports.json
+- Test: inline port definitions match ports.json for runtime symbols
 
 **Owner**: M3 (symbol resolver validation)
 
@@ -275,7 +286,7 @@
 | Milestone | Critical Risks | High Risks | Medium Risks |
 |-----------|---|---|---|
 | **M2** | — | R6 (templates) | — |
-| **M3** | R1 (SWITCH_FUSE) | R7 (symbol resolver) | R4 (append strategy) |
+| **M3** | R1 (SWITCH_FUSE) | R7 (symbol resolver) | R4 (ports/resolver sync) |
 | **M4** | R2 (FE/BE fixture) | — | R5 (layout determinism), R9 (PV/BESS direction) |
 | **M5-M6** | — | R8 (per-template rules) | — |
 | **M7a-M7b** | — | — | R10 (ActiveCaseBar), R11 (legacy bridge) |

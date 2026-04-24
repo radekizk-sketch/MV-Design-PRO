@@ -50,11 +50,13 @@ const DeviceTypeV1 = {
 - 23 SVG symbols in canonical_symbols/
 - 16 DeviceTypeV1 types
 - Missing DeviceTypeV1 for visual symbols (need to audit which SVG exist but have no enum)
+- Runtime resolution is not driven directly by `ports.json`; `SymbolResolver.ts` contains inline `SYMBOL_DEFINITIONS` copied from the canonical symbol metadata.
 
 **Recommendation**: M3 should audit:
 1. Each SVG file → verify it has entry in ports.json
-2. Each ports.json entry → verify DeviceTypeV1 enum exists
-3. Add SWITCH_FUSE to DeviceTypeV1 and create symbol if missing
+2. Each ports.json entry → verify matching inline definition in `SymbolResolver.ts`
+3. Each runtime device mapping → verify DeviceTypeV1 enum exists
+4. Add SWITCH_FUSE to DeviceTypeV1 and create symbol/ports/resolver entries if accepted for M3
 
 ## Ports.json Structure
 
@@ -89,6 +91,8 @@ const DeviceTypeV1 = {
 - pv
 - (+ 14 more)
 
+**Runtime registration note**: adding an entry to `ports.json` is not sufficient by itself. M3 must also update `CanonicalSymbolId`, `SYMBOL_DEFINITIONS`, and the relevant resolver/device mappings in `SymbolResolver.ts` or add a generated parity mechanism.
+
 ## Hash Parity & Determinism Tests
 
 **Test Files**:
@@ -100,12 +104,12 @@ const DeviceTypeV1 = {
 
 ## Risks & Dependencies
 
-| Risk | Level | Action |
-|------|-------|--------|
-| SWITCH_FUSE missing | **CRITICAL** | Add to DeviceTypeV1 + create SVG symbol (M3) |
-| NOP as DeviceTypeV1 | **HIGH** | NOP must remain topological marker only, NOT in enum |
-| ports.json sync with symbols | **MEDIUM** | M3: append-safe audit; ensure each SVG has port entry |
-| Symbol-to-DeviceType mismatch | **MEDIUM** | M3: verify 1-to-1 correspondence |
+| Risk | Level | Confirmed fact | Future action |
+|------|-------|----------------|---------------|
+| SWITCH_FUSE missing | **CRITICAL** | `DeviceTypeV1` has `FUSE` but no `SWITCH_FUSE`. | M3 decides whether to add a distinct type or map to existing `FUSE`/`LOAD_SWITCH`. |
+| NOP as DeviceTypeV1 | **HIGH** | NOP is not in `DeviceTypeV1`. | Keep it as topology marker; do not add catalog binding requirements. |
+| ports.json/runtime drift | **MEDIUM** | `ports.json` and `SymbolResolver.ts` can diverge because resolver definitions are inline. | M3 must update both or introduce a parity test/generator. |
+| Symbol-to-DeviceType mismatch | **MEDIUM** | SVG symbols outnumber `DeviceTypeV1` entries by design for non-device symbols. | Audit only symbols that represent runtime devices; document non-device symbols separately. |
 
 ## Files to Monitor/Modify (M3+)
 
@@ -114,12 +118,12 @@ const DeviceTypeV1 = {
 - `./mv-design-pro/frontend/src/ui/sld/canonical_symbols/ports.json`
   - APPEND (don't replace) new symbol entries
 - `./mv-design-pro/frontend/src/ui/sld/SymbolResolver.ts`
-  - Register new symbol mappings
+  - Register `CanonicalSymbolId`, inline `SYMBOL_DEFINITIONS`, and resolver mappings
 - SVG files in `canonical_symbols/` directory
   - Add switch_fuse.svg (if missing)
 
 ## Next Steps
 
-1. **M3 Audit**: Verify each SVG ↔ ports.json ↔ DeviceTypeV1 parity
+1. **M3 Audit**: Verify each runtime device SVG ↔ ports.json ↔ SymbolResolver.ts ↔ DeviceTypeV1 parity
 2. **M3 Addition**: Add SWITCH_FUSE symbol and type
 3. **M3 Tests**: Ensure `switchgearConfig.hashParity.test.ts` passes with append-safe changes

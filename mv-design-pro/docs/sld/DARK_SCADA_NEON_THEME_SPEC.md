@@ -2,7 +2,7 @@
 
 **Wersja**: 1.0  
 **Data**: 2026-04-24  
-**Status**: WIĄŻĄCY dla implementacji M7 (scadaDarkTokens.ts, ThemeProvider.tsx)  
+**Status**: PROPOSED M7 TARGET (scadaDarkTokens.ts, ThemeProvider.tsx)
 **Zależność**: Mapuje tokeny z `SLD_STYL_WIZUALNY_KANONICZNY.md` na wariant ciemny  
 **Zasada**: Dark theme **mapuje istniejące tokeny V12.5.1**, nie tworzy konkurencyjnego systemu
 
@@ -170,10 +170,10 @@ function resolveVoltageColor(
 }
 
 const SCADA_DARK_VOLTAGE_COLORS = {
-  HV_110kV: '#FFD700',  // złoty neon
-  MV_15kV: '#00D4FF',   // niebieski neon
-  LV_04kV: '#00FF7F',   // zielony neon
-  DC: '#FF8C00',         // pomarańczowy neon
+  WN: '#FFD700',       // WN / 110 kV+: złoty neon
+  SN: '#00D4FF',       // SN / 6-30 kV: niebieski neon
+  nN: '#00FF7F',       // nN / 0.4 kV: zielony neon
+  default: '#E8E8F0',  // fallback zgodny z CANONICAL_VOLTAGE_COLORS.default
 } as const;
 ```
 
@@ -234,8 +234,10 @@ function ThemeProvider({ children }: { children: ReactNode }) {
 
 ```javascript
 // tailwind.config.js (modyfikacja)
-module.exports = {
-  darkMode: 'class',  // klasa 'scada-dark' na <html>
+export default {
+  // Tailwind `darkMode: 'class'` targets `.dark`. For `html.scada-dark`,
+  // use Tailwind's explicit selector strategy.
+  darkMode: ['selector', 'html.scada-dark'],
   theme: {
     extend: {
       colors: {
@@ -252,6 +254,8 @@ module.exports = {
   }
 }
 ```
+
+**Uwaga zgodności**: samo `darkMode: 'class'` nie aktywuje wariantów Tailwind przez klasę `scada-dark`. Jeśli M7 chce pozostać przy `html.scada-dark`, konfiguracja musi używać strategii `selector` albo ThemeProvider musi dodawać standardową klasę `dark`.
 
 ---
 

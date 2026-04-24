@@ -15,7 +15,8 @@ enmSnapshotToSldSymbols()
 projectEnmSnapshotToSld(snapshot)
   (same file)
   ↓
-AnySldSymbol[]
+EnmProjectionResult
+  (symbols + connections + canonicalAnnotations)
   ↓
 SLDView.tsx (68KB)
   (./mv-design-pro/frontend/src/ui/sld/SLDView.tsx)
@@ -23,7 +24,7 @@ SLDView.tsx (68KB)
 SLDViewCanvas.tsx
   (./mv-design-pro/frontend/src/ui/sld/SLDViewCanvas.tsx)
   ↓
-SVG Rendering (SymbolResolver → ports.json)
+SVG Rendering (SymbolResolver inline definitions, audited against ports.json)
 ```
 
 ### Root Component Hierarchy
@@ -32,7 +33,7 @@ SldEditorPage.tsx (main entry point)
   └─ <SLDView />
       ├─ <SLDViewCanvas />
       │   ├─ <SymbolRenderer /> (via SymbolResolver.ts)
-      │   └─ Port-based layout (ports.json)
+      │   └─ Port-based layout (SymbolResolver.ts definitions; ports.json remains canonical audit input)
       ├─ <SldWorkDock />
       └─ <SldReadinessStack />
 ```
@@ -42,7 +43,7 @@ SldEditorPage.tsx (main entry point)
 - **Responsibility**: Maps `DeviceTypeV1` → SVG symbol path
 - **Input**: `DeviceTypeV1` enum value (e.g., 'CB', 'DS', 'FUSE')
 - **Output**: SVG component or filename
-- **Port lookup**: `canonical_symbols/ports.json`
+- **Port lookup**: current runtime uses inline `SYMBOL_DEFINITIONS` in `SymbolResolver.ts`; `canonical_symbols/ports.json` is the canonical parity/audit source and must be kept in sync.
 
 ### Layout Pipeline
 - **Primary**: `./mv-design-pro/frontend/src/ui/sld/core/layoutPipeline.ts` (67KB)
@@ -76,15 +77,15 @@ SldEditorPage.tsx (main entry point)
 
 ## Risks Identified
 
-| Risk | Severity | Note |
-|------|----------|------|
-| `projectEnmSnapshotToSld` hidden from public API | MEDIUM | Function exists but not exported; may need to be exposed for M4 testing |
-| Layout pipeline complexity (67KB layoutPipeline.ts) | LOW | Well-tested; no immediate action needed |
-| No `canonical_gpz_sn_v2` fixture yet | MEDIUM | Will be created in M4; currently using referenceTopologies.ts builders |
+| Risk | Severity | Confirmed fact | Future action |
+|------|----------|----------------|---------------|
+| Projection API availability | LOW | `projectEnmSnapshotToSld` is exported from `enmSnapshotToSldSymbols.ts`. | Use the existing export in M4 tests; no API exposure work is needed. |
+| Symbol definition drift | MEDIUM | Runtime port data is inline in `SymbolResolver.ts`, while `ports.json` exists as canonical audit data. | M3 must update both surfaces or add a parity test before new symbols are introduced. |
+| No `canonical_gpz_sn_v2` fixture yet | MEDIUM | No shared canonical GPZ SN v2 fixture exists today. | Create it in M4 and test fixture identity separately from projected SLD output. |
 
 ## Next Steps (M1+)
 
 - M1: Document canonical SN SLD blueprint (reference: `referenceTopologies.ts` and `bayRenderer.ts`)
 - M2: Extract and formalize `BayTemplate` and `DeviceSlotPosition` (partly in contracts, needs extraction)
-- M3: Audit symbol inventory against ports.json
+- M3: Audit symbol inventory against both `ports.json` and `SymbolResolver.ts` inline definitions
 - M4: Create backend `canonical_gpz_sn_v2_builder.py` and sync fixture with frontend
