@@ -24,6 +24,12 @@ import {
   FieldRoleV1,
   FieldDeviceFixCodes,
 } from './fieldDeviceContracts';
+import {
+  type SourceConnectionVariantInputV1,
+  isDedicatedMvConnectionVariant,
+  isLvBehindStationTransformerVariant,
+  isSourceConnectionStationVariant,
+} from './sourceConnectionVariant';
 
 // ---------------------------------------------------------------------------
 // Input types
@@ -38,7 +44,7 @@ export interface PvBessConnectionInputV1 {
   /** Generator type */
   readonly generatorType: 'PV' | 'BESS' | 'pv_inverter' | 'bess';
   /** Connection variant: nn_side or block_transformer (null = forbidden) */
-  readonly connectionVariant: 'nn_side' | 'block_transformer' | null;
+  readonly connectionVariant: SourceConnectionVariantInputV1 | null;
   /** Station ref (required for nn_side) */
   readonly stationRef: string | null;
   /** Blocking transformer ref (required for block_transformer) */
@@ -99,7 +105,10 @@ export function validatePvBessConnections(
     }
 
     // Rule 2: Variant A (nn_side)
-    if (gen.connectionVariant === 'nn_side') {
+    if (
+      isLvBehindStationTransformerVariant(gen.connectionVariant)
+      || isSourceConnectionStationVariant(gen.connectionVariant)
+    ) {
       if (!gen.stationRef) {
         fixActions.push({
           code: FieldDeviceFixCodes.GENERATOR_STATION_REF_MISSING,
@@ -126,7 +135,7 @@ export function validatePvBessConnections(
     }
 
     // Rule 3: Variant B (block_transformer)
-    if (gen.connectionVariant === 'block_transformer') {
+    if (isDedicatedMvConnectionVariant(gen.connectionVariant)) {
       if (!gen.blockingTransformerRef) {
         fixActions.push({
           code: FieldDeviceFixCodes.GENERATOR_BLOCK_VARIANT_REQUIRES_BLOCK_TR,

@@ -79,20 +79,21 @@ const DEVICE_LARGE_HEIGHT = 28;
  * transformers, then source bays, then couplers/ties, then LV bays.
  */
 const FIELD_ROLE_PRIORITY: Record<string, number> = {
-  LINE_IN: 0,
-  LINE_OUT: 1,
-  TRANSFORMER_SN_NN: 2,
-  MEASUREMENT_SN: 3,
-  COUPLER_SN: 4,
-  LINE_BRANCH: 5,
-  PV_SN: 6,
-  BESS_SN: 7,
-  FW_SN: 8,
-  BUS_TIE: 9,
-  MAIN_NN: 10,
-  FEEDER_NN: 11,
-  PV_NN: 12,
-  BESS_NN: 13,
+  GPZ_LINE_BAY: 0,
+  LINE_IN: 1,
+  LINE_OUT: 2,
+  TRANSFORMER_SN_NN: 3,
+  MEASUREMENT_SN: 4,
+  COUPLER_SN: 5,
+  LINE_BRANCH: 6,
+  PV_SN: 7,
+  BESS_SN: 8,
+  FW_SN: 9,
+  BUS_TIE: 10,
+  MAIN_NN: 11,
+  FEEDER_NN: 12,
+  PV_NN: 13,
+  BESS_NN: 14,
 };
 
 // =============================================================================
@@ -374,9 +375,12 @@ function powerPathOrder(pos: string): number {
  */
 function isDeviceOnPowerPath(device: DeviceV1): boolean {
   return (
-    device.electricalRole === DeviceElectricalRoleV1.POWER_PATH ||
-    device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT ||
-    device.electricalRole === DeviceElectricalRoleV1.TERMINATION
+    device.powerPathPosition !== DevicePowerPathPositionV1.OFF_PATH &&
+    (
+      device.electricalRole === DeviceElectricalRoleV1.POWER_PATH ||
+      device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT ||
+      device.electricalRole === DeviceElectricalRoleV1.TERMINATION
+    )
   );
 }
 
@@ -657,6 +661,9 @@ function resolveBayPorts(
     portOut = { x: bayCenterX, y: cableExitY };
   }
   if (field.fieldRole === 'LINE_BRANCH' && blockPorts.branchPort) {
+    portOut = { x: bayCenterX, y: cableExitY };
+  }
+  if (field.fieldRole === 'GPZ_LINE_BAY' && blockPorts.trunkOutPort) {
     portOut = { x: bayCenterX, y: cableExitY };
   }
 

@@ -58,7 +58,7 @@ function CaseSelector({
         }}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz przypadek —</option>
+        <option value="">— Wybierz wariant pracy —</option>
         {filteredCases.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} {c.is_active ? '(aktywny)' : ''}
@@ -163,19 +163,19 @@ function ComparisonControls() {
   return (
     <div className="rounded border border-slate-200 bg-white p-4">
       <h2 className="mb-4 text-lg font-semibold text-slate-900">
-        Porównaj: Przypadek A vs Przypadek B
+        Porównaj: wariant pracy A vs wariant pracy B
       </h2>
 
       <div className="grid gap-4 md:grid-cols-2">
         <CaseSelector
-          label="Przypadek A (bazowy)"
+          label="Wariant pracy A (bazowy)"
           selectedCaseId={caseAId}
           selectedCaseName={caseAName}
           onChange={setCaseA}
           excludeCaseId={caseBId}
         />
         <CaseSelector
-          label="Przypadek B (porównywany)"
+          label="Wariant pracy B (porównywany)"
           selectedCaseId={caseBId}
           selectedCaseName={caseBName}
           onChange={setCaseB}

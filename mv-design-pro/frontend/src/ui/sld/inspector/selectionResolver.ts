@@ -107,14 +107,14 @@ const BUILD_CATEGORY_TO_WIZARD_STEP_ID: Partial<Record<string, WizardSurfaceStep
  */
 export const ENM_ELEMENT_TYPE_LABELS_PL: Record<SelectionRef['element_type'], string> = {
   bus: 'Szyna',
-  branch: 'GaĹ‚Ä…Ĺş',
+  branch: 'Gałąź',
   transformer: 'Transformator',
-  source: 'ĹąrĂłdĹ‚o',
+  source: 'Źródło',
   load: 'Odbiornik',
   generator: 'Generator',
   substation: 'Stacja',
   bay: 'Pole',
-  junction: 'WÄ™zeĹ‚ T',
+  junction: 'Węzeł T',
   corridor: 'Magistrala',
   measurement: 'Pomiar',
   protection_assignment: 'Przypisanie zabezpieczenia',
@@ -127,7 +127,7 @@ function connectionVariantLabel(connectionVariant: string | null | undefined): s
     case 'block_transformer':
       return 'Transformator blokowy';
     default:
-      return connectionVariant ?? 'â€”';
+      return connectionVariant ?? '-';
   }
 }
 
@@ -311,9 +311,9 @@ function buildEnmProperties(
         label: 'Parametry szyny (ENM)',
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: bus.ref_id },
-          { key: 'voltage_kv', label: 'NapiÄ™cie znamionowe', value: bus.voltage_kv, unit: 'kV' },
-          { key: 'phase_system', label: 'UkĹ‚ad fazowy', value: bus.phase_system },
-          { key: 'zone', label: 'Strefa', value: bus.zone ?? 'â€”' },
+          { key: 'voltage_kv', label: 'Napięcie znamionowe', value: bus.voltage_kv, unit: 'kV' },
+          { key: 'phase_system', label: 'Układ fazowy', value: bus.phase_system },
+          { key: 'zone', label: 'Strefa', value: bus.zone ?? '-' },
         ],
       });
       break;
@@ -325,10 +325,10 @@ function buildEnmProperties(
         { key: 'ref_id', label: 'Identyfikator', value: branch.ref_id },
         { key: 'from_bus_ref', label: 'Szyna od', value: branch.from_bus_ref },
         { key: 'to_bus_ref', label: 'Szyna do', value: branch.to_bus_ref },
-        { key: 'status', label: 'Stan', value: branch.status === 'closed' ? 'ZamkniÄ™ta' : 'Otwarta' },
+        { key: 'status', label: 'Stan', value: branch.status === 'closed' ? 'Zamknięta' : 'Otwarta' },
       ];
       if ('length_km' in branch) {
-        fields.push({ key: 'length_km', label: 'DĹ‚ugoĹ›Ä‡', value: (branch as any).length_km, unit: 'km' });
+        fields.push({ key: 'length_km', label: 'Długość', value: (branch as any).length_km, unit: 'km' });
       }
       if ('r_ohm_per_km' in branch) {
         fields.push({ key: 'r_ohm_per_km', label: 'Rezystancja', value: (branch as any).r_ohm_per_km, unit: 'Î©/km' });
@@ -336,7 +336,7 @@ function buildEnmProperties(
       if ('x_ohm_per_km' in branch) {
         fields.push({ key: 'x_ohm_per_km', label: 'Reaktancja', value: (branch as any).x_ohm_per_km, unit: 'Î©/km' });
       }
-      sections.push({ id: 'enm_branch', label: 'Parametry gaĹ‚Ä™zi (ENM)', fields });
+      sections.push({ id: 'enm_branch', label: 'Parametry gałęzi (ENM)', fields });
       break;
     }
     case 'TransformerBranch': {
@@ -348,11 +348,11 @@ function buildEnmProperties(
         fields: [
           { key: 'ref_id', label: 'Identyfikator', value: trafo.ref_id },
           { key: 'sn_mva', label: 'Moc znamionowa', value: trafo.sn_mva, unit: 'MVA' },
-          { key: 'uhv_kv', label: 'NapiÄ™cie WN', value: trafo.uhv_kv, unit: 'kV' },
-          { key: 'ulv_kv', label: 'NapiÄ™cie nN', value: trafo.ulv_kv, unit: 'kV' },
-          { key: 'uk_percent', label: 'NapiÄ™cie zwarcia', value: trafo.uk_percent, unit: '%' },
-          { key: 'pk_kw', label: 'Straty obciÄ…ĹĽeniowe', value: trafo.pk_kw, unit: 'kW' },
-          { key: 'vector_group', label: 'Grupa poĹ‚Ä…czeĹ„', value: trafo.vector_group ?? 'â€”' },
+          { key: 'uhv_kv', label: 'Napięcie WN', value: trafo.uhv_kv, unit: 'kV' },
+          { key: 'ulv_kv', label: 'Napięcie nN', value: trafo.ulv_kv, unit: 'kV' },
+          { key: 'uk_percent', label: 'Napięcie zwarcia', value: trafo.uk_percent, unit: '%' },
+          { key: 'pk_kw', label: 'Straty obciążeniowe', value: trafo.pk_kw, unit: 'kW' },
+          { key: 'vector_group', label: 'Grupa połączeń', value: trafo.vector_group ?? '-' },
         ],
       });
       break;
@@ -374,7 +374,7 @@ function buildEnmProperties(
       if (src.x_ohm != null) {
         fields.push({ key: 'x_ohm', label: 'Reaktancja', value: src.x_ohm, unit: 'Î©' });
       }
-      sections.push({ id: 'enm_source', label: 'Parametry ĹşrĂłdĹ‚a (ENM)', fields });
+      sections.push({ id: 'enm_source', label: 'Parametry źródła (ENM)', fields });
       break;
     }
     case 'Load': {
@@ -415,12 +415,12 @@ function buildEnmProperties(
         { key: 'ref_id', label: 'Identyfikator', value: gen.ref_id },
         { key: 'bus_ref', label: 'Szyna', value: gen.bus_ref },
         { key: 'p_mw', label: 'Moc czynna', value: gen.p_mw, unit: 'MW' },
-        { key: 'gen_type', label: 'Typ generatora', value: gen.gen_type ?? 'â€”' },
+        { key: 'gen_type', label: 'Typ generatora', value: gen.gen_type ?? '-' },
       ];
-      fields[3] = { key: 'gen_type', label: 'Rodzaj ĹşrĂłdĹ‚a', value: formatGeneratorTypeLabelPl(gen.gen_type) };
+      fields[3] = { key: 'gen_type', label: 'Rodzaj źródła', value: formatGeneratorTypeLabelPl(gen.gen_type) };
       if (gen.connection_variant) {
         fields.push({ key: 'connection_variant', label: 'Wariant przylaczenia', value: gen.connection_variant });
-        fields[fields.length - 1] = { key: 'connection_variant', label: 'Wariant przyĹ‚Ä…czenia', value: connectionVariantLabel(gen.connection_variant) };
+        fields[fields.length - 1] = { key: 'connection_variant', label: 'Wariant przyłączenia', value: connectionVariantLabel(gen.connection_variant) };
       }
       sections.push({ id: 'enm_generator', label: 'Parametry generatora (ENM)', fields });
       break;

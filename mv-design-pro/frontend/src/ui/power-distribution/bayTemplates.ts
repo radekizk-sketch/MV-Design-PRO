@@ -64,6 +64,21 @@ const LINE_BRANCH_TEMPLATE: BayTemplate = {
   ],
 };
 
+const GPZ_LINE_BAY_TEMPLATE: BayTemplate = {
+  fieldRole: FR.GPZ_LINE_BAY,
+  labelPl: 'Pole liniowe GPZ',
+  descriptionPl: 'Kanoniczne pole odplywowe SN w GPZ: odlacznik, wylacznik, CT, uziemnik boczny, glowica kablowa i zabezpieczenie poza torem mocy',
+  voltageLevelPl: 'SN',
+  devices: [
+    { deviceType: DT.DS, electricalRole: ER.POWER_PATH, powerPathPosition: PP.UPSTREAM, required: true, labelPl: 'Odlacznik od strony szyn' },
+    { deviceType: DT.CB, electricalRole: ER.POWER_PATH, powerPathPosition: PP.MIDSTREAM, required: true, labelPl: 'Wylacznik SN' },
+    { deviceType: DT.CT, electricalRole: ER.MEASUREMENT, powerPathPosition: PP.MIDSTREAM, required: true, labelPl: 'Przekladnik pradowy' },
+    { deviceType: DT.CABLE_HEAD, electricalRole: ER.TERMINATION, powerPathPosition: PP.DOWNSTREAM, required: true, labelPl: 'Glowica kablowa' },
+    { deviceType: DT.ES, electricalRole: ER.POWER_PATH, powerPathPosition: PP.OFF_PATH, required: true, labelPl: 'Uziemnik boczny' },
+    { deviceType: DT.RELAY, electricalRole: ER.PROTECTION, powerPathPosition: PP.OFF_PATH, required: true, labelPl: 'Przekaznik zabezpieczeniowy' },
+  ],
+};
+
 const TRANSFORMER_SN_NN_TEMPLATE: BayTemplate = {
   fieldRole: FR.TRANSFORMER_SN_NN,
   labelPl: 'Pole transformatorowe SN/nN',
@@ -214,6 +229,7 @@ const BESS_NN_TEMPLATE: BayTemplate = {
 // =============================================================================
 
 export const BAY_TEMPLATES: ReadonlyMap<FieldRoleV1, BayTemplate> = new Map([
+  [FR.GPZ_LINE_BAY, GPZ_LINE_BAY_TEMPLATE],
   [FR.LINE_IN, LINE_IN_TEMPLATE],
   [FR.LINE_OUT, LINE_OUT_TEMPLATE],
   [FR.LINE_BRANCH, LINE_BRANCH_TEMPLATE],
@@ -231,6 +247,7 @@ export const BAY_TEMPLATES: ReadonlyMap<FieldRoleV1, BayTemplate> = new Map([
 ]);
 
 export const SN_TEMPLATES: readonly BayTemplate[] = [
+  GPZ_LINE_BAY_TEMPLATE,
   LINE_IN_TEMPLATE,
   LINE_OUT_TEMPLATE,
   LINE_BRANCH_TEMPLATE,

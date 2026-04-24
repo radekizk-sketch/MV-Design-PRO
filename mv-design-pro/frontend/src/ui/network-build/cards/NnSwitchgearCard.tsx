@@ -39,7 +39,7 @@ function connectionVariantLabel(variant: string | null | undefined): string {
     case 'block_transformer':
       return 'Transformator blokowy SN';
     default:
-      return variant ?? 'â€”';
+      return variant ?? '-';
   }
 }
 
@@ -134,7 +134,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
     const nNBusFields = nnBuses.map((bus) => ({
       key: `nn_bus_${bus.ref_id}`,
       label: bus.name,
-      value: `${bus.voltage_kv} kV â€” nN`,
+      value: `${bus.voltage_kv} kV - nN`,
     }));
 
     const nnSection: CardSection = {
@@ -161,7 +161,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               {
                 key: 'no_nn',
                 label: 'Brak szyn nN',
-                value: 'Stacja bez rozdzielnicy nN â€” wymagany transformator SN/nN',
+                value: 'Stacja bez rozdzielnicy nN - wymagany transformator SN/nN',
                 severity: 'warning' as const,
               },
             ],
@@ -185,13 +185,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           ? [
               {
                 key: 'load_count',
-                label: 'Liczba odbiornikĂłw',
+                label: 'Liczba odbiorników',
                 value: nnLoads.length,
                 unit: 'szt.',
               },
               {
                 key: 'total_load',
-                label: 'ĹÄ…czna moc czynna',
+                label: 'Łączna moc czynna',
                 value: totalLoadMw * 1000,
                 unit: 'kW',
                 source: 'calculated' as const,
@@ -201,8 +201,8 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_loads',
-                label: 'Brak odbiorcĂłw',
-                value: 'Brak obciÄ…ĹĽeĹ„ przyĹ‚Ä…czonych do szyn nN',
+                label: 'Brak odbiorców',
+                value: 'Brak obciążeń przyłączonych do szyn nN',
                 severity: 'warning' as const,
               },
             ],
@@ -213,21 +213,21 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
       ...pvGenerators.map((g) => ({
         key: `pv_${g.ref_id}`,
         label: g.name,
-        value: `PV â€” P=${g.p_mw * 1000} kWp / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `PV - P=${g.p_mw * 1000} kWp / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
       ...bessGenerators.map((g) => ({
         key: `bess_${g.ref_id}`,
         label: g.name,
-        value: `BESS â€” P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `BESS - P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
       ...windGenerators.map((g) => ({
         key: `wind_${g.ref_id}`,
         label: g.name,
-        value: `Wiatr â€” P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
+        value: `Wiatr - P=${g.p_mw * 1000} kW / ${connectionVariantLabel(g.connection_variant)}`,
         source: g.catalog_ref ? ('catalog' as const) : ('instance' as const),
         severity: !g.connection_variant ? ('warning' as const) : undefined,
       })),
@@ -243,7 +243,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
 
     const sourcesSection: CardSection = {
       id: 'sources',
-      label: 'ĹąrĂłdĹ‚a OZE / BESS',
+      label: 'Źródła OZE / BESS',
       fields:
         normalizedSourceFields.length > 0
           ? [
@@ -261,13 +261,13 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
               },
               {
                 key: 'fw_count',
-                label: 'ĹąrĂłdĹ‚a FW',
+                label: 'Źródła FW',
                 value: windGenerators.length,
                 unit: 'szt.',
               },
               {
                 key: 'total_gen',
-                label: 'ĹÄ…czna moc generacji',
+                label: 'Łączna moc generacji',
                 value: totalGenMw * 1000,
                 unit: 'kWp',
                 source: 'calculated' as const,
@@ -277,17 +277,17 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
           : [
               {
                 key: 'no_sources',
-                label: 'Brak ĹşrĂłdeĹ‚ OZE',
-                value: 'Nie zdefiniowano ĹşrĂłdeĹ‚ OZE/BESS',
+                label: 'Brak źródeł OZE',
+                value: 'Nie zdefiniowano źródeł OZE/BESS',
               },
             ],
     };
-    sourcesSection.label = 'ĹąrĂłdĹ‚a PV / BESS / FW';
+    sourcesSection.label = 'Źródła PV / BESS / FW';
     if (normalizedSourceFields.length === 0) {
       sourcesSection.fields[0] = {
         key: 'no_sources',
-        label: 'Brak ĹşrĂłdeĹ‚',
-        value: 'Nie zdefiniowano ĹşrĂłdeĹ‚ PV, BESS ani FW',
+        label: 'Brak źródeł',
+        value: 'Nie zdefiniowano źródeł PV, BESS ani FW',
       };
     }
 
@@ -306,14 +306,14 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'total_load',
-          label: 'ObciÄ…ĹĽenie P_load',
+          label: 'Obciążenie P_load',
           value: totalLoadMw * 1000,
           unit: 'kW',
           source: 'calculated',
         },
         {
           key: 'balance',
-          label: 'NadwyĹĽka / Deficyt',
+          label: 'Nadwyżka / Deficyt',
           value: balanceMw * 1000,
           unit: 'kW',
           source: 'calculated',
@@ -381,7 +381,7 @@ export function NnSwitchgearCard({ elementId }: { elementId: string }) {
     },
     {
       id: 'add_nn_load',
-      label: 'Dodaj obciÄ…ĹĽenie',
+      label: 'Dodaj obciążenie',
       variant: 'secondary',
       onClick: handleAddLoad,
       disabled: nnBuses.length === 0,

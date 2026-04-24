@@ -304,12 +304,12 @@ export const LABELS = {
   context: {
     title: 'Kontekst analizy',
     project: 'Projekt',
-    studyCase: 'Przypadek obliczeniowy',
-    snapshot: 'Migawka sieci',
+    studyCase: 'Wariant pracy',
+    snapshot: 'Stan modelu',
     run: 'Przebieg analizy',
     noContext: 'Wybierz kontekst',
-    selectCase: 'Wybierz przypadek',
-    selectSnapshot: 'Wybierz migawkę',
+    selectCase: 'Wybierz wariant pracy',
+    selectSnapshot: 'Wybierz stan modelu',
   },
 
   checks: {
@@ -415,8 +415,8 @@ export const LABELS = {
   },
 
   actions: {
-    run: 'Uruchom analizę',
-    runAnalysis: 'Uruchom analizę koordynacji',
+    run: 'Wykonaj analizę',
+    runAnalysis: 'Wykonaj analizę koordynacji',
     export: 'Eksportuj',
     exportPdf: 'Eksportuj PDF',
     exportDocx: 'Eksportuj DOCX',

@@ -48,7 +48,7 @@ describe('ReferencePatternsPage', () => {
   it('renders empty state when no result', () => {
     render(<ReferencePatternsPage />);
     expect(
-      screen.getByText(/Wybierz przypadek referencyjny/)
+      screen.getByText(/Wybierz wariant referencyjny/)
     ).toBeInTheDocument();
   });
 

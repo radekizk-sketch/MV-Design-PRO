@@ -33,6 +33,8 @@ export const FieldRoleV1 = {
   LINE_OUT: 'LINE_OUT',
   /** Pole odgalezieniowe (branch) */
   LINE_BRANCH: 'LINE_BRANCH',
+  /** Kanoniczne pole liniowe GPZ (wyjscie SN z rozdzielni GPZ) */
+  GPZ_LINE_BAY: 'GPZ_LINE_BAY',
   /** Pole transformatorowe SN/nN */
   TRANSFORMER_SN_NN: 'TRANSFORMER_SN_NN',
   /** Pole pomiarowe SN */
@@ -483,7 +485,10 @@ export interface FieldDeviceFixActionV1 {
 export const FieldDeviceFixCodes = {
   // Pola
   FIELD_DEVICE_MISSING_CB: 'field.device_missing.cb',
+  FIELD_DEVICE_MISSING_DS: 'field.device_missing.ds',
+  FIELD_DEVICE_MISSING_ES: 'field.device_missing.es',
   FIELD_DEVICE_MISSING_CT: 'field.device_missing.ct',
+  FIELD_DEVICE_MISSING_VT: 'field.device_missing.vt',
   FIELD_DEVICE_MISSING_RELAY: 'field.device_missing.relay',
   FIELD_DEVICE_MISSING_CABLE_HEAD: 'field.device_missing.cable_head',
   FIELD_DEVICE_MISSING_TRANSFORMER: 'field.device_missing.transformer',
@@ -495,6 +500,10 @@ export const FieldDeviceFixCodes = {
   STATION_TYPOLOGY_CONFLICT: 'station.typology_conflict',
   STATION_COUPLER_MISSING: 'station.coupler_missing',
   STATION_TRANSFORMER_MISSING: 'station.transformer_missing_for_sn_nn',
+  STATION_LINE_IN_MISSING: 'station.line_in_field_missing',
+  STATION_LINE_OUT_MISSING: 'station.line_out_field_missing',
+  STATION_BRANCH_FIELD_MISSING: 'station.branch_field_missing',
+  STATION_NN_SWITCHGEAR_MISSING: 'station.nn_switchgear_missing',
   STATION_MULTIPLE_BRANCHES: 'station.multiple_branches_requires_explicit_ports',
 
   // Katalogi
@@ -558,6 +567,17 @@ const D = DeviceTypeV1;
  * ZAKAZ: "jesli brak CT to dorysuj" — brak wymaganego urzadzenia → FixAction.
  */
 export const DEVICE_REQUIREMENT_SETS: Record<FieldRoleV1, DeviceRequirementSetV1> = {
+  [FieldRoleV1.GPZ_LINE_BAY]: {
+    fieldRole: FieldRoleV1.GPZ_LINE_BAY,
+    requirements: [
+      req(D.DS, R.REQUIRED, E.POWER_PATH, P.UPSTREAM),
+      req(D.CB, R.REQUIRED, E.POWER_PATH, P.MIDSTREAM),
+      req(D.CT, R.REQUIRED, E.MEASUREMENT, P.MIDSTREAM),
+      req(D.RELAY, R.REQUIRED, E.PROTECTION, P.OFF_PATH),
+      req(D.ES, R.REQUIRED, E.POWER_PATH, P.OFF_PATH),
+      req(D.CABLE_HEAD, R.REQUIRED, E.TERMINATION, P.DOWNSTREAM),
+    ],
+  },
   [FieldRoleV1.LINE_IN]: {
     fieldRole: FieldRoleV1.LINE_IN,
     requirements: [
@@ -780,7 +800,10 @@ export function validateFieldDevices(
 function deviceTypeToFixCode(deviceType: DeviceTypeV1): string {
   switch (deviceType) {
     case DeviceTypeV1.CB: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_CB;
+    case DeviceTypeV1.DS: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_DS;
+    case DeviceTypeV1.ES: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_ES;
     case DeviceTypeV1.CT: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_CT;
+    case DeviceTypeV1.VT: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_VT;
     case DeviceTypeV1.RELAY: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_RELAY;
     case DeviceTypeV1.CABLE_HEAD: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_CABLE_HEAD;
     case DeviceTypeV1.TRANSFORMER_DEVICE: return FieldDeviceFixCodes.FIELD_DEVICE_MISSING_TRANSFORMER;
@@ -843,6 +866,7 @@ export const POLE_TO_FIELD_ROLE: Record<PoleTypeV1, FieldRoleV1> = {
  * LINE_OUT / LINE_BRANCH map to POLE_LINIOWE_SN (same physical type).
  */
 export const FIELD_ROLE_TO_POLE: Record<FieldRoleV1, PoleTypeV1> = {
+  [FieldRoleV1.GPZ_LINE_BAY]: PoleTypeV1.POLE_LINIOWE_SN,
   [FieldRoleV1.LINE_IN]: PoleTypeV1.POLE_LINIOWE_SN,
   [FieldRoleV1.LINE_OUT]: PoleTypeV1.POLE_LINIOWE_SN,
   [FieldRoleV1.LINE_BRANCH]: PoleTypeV1.POLE_LINIOWE_SN,
@@ -1062,9 +1086,12 @@ export function buildApparatusSymbolBinding(device: DeviceV1): ApparatusSymbolBi
     electricalRole: device.electricalRole,
     powerPathPosition: device.powerPathPosition,
     labelPl: APARAT_TYPE_LABELS_PL[DEVICE_TYPE_TO_APARAT[device.deviceType]],
-    isOnPowerPath: device.electricalRole === DeviceElectricalRoleV1.POWER_PATH
-      || device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT
-      || device.electricalRole === DeviceElectricalRoleV1.TERMINATION,
+    isOnPowerPath: device.powerPathPosition !== DevicePowerPathPositionV1.OFF_PATH
+      && (
+        device.electricalRole === DeviceElectricalRoleV1.POWER_PATH
+        || device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT
+        || device.electricalRole === DeviceElectricalRoleV1.TERMINATION
+      ),
   };
 }
 
@@ -1202,6 +1229,11 @@ export function validateStationBlock(
   block: StationBlockDetailV1,
 ): readonly FieldDeviceFixActionV1[] {
   const fixActions: FieldDeviceFixActionV1[] = [];
+  const hasFieldRole = (role: FieldRoleV1): boolean =>
+    block.fields.some(field => field.fieldRole === role);
+  const hasAnyFieldRole = (roles: readonly FieldRoleV1[]): boolean =>
+    block.fields.some(field => roles.includes(field.fieldRole));
+  const isMainSubstationBlock = hasFieldRole(FieldRoleV1.GPZ_LINE_BAY);
 
   // BusSections non-empty
   if (block.busSections.length === 0) {
@@ -1279,6 +1311,77 @@ export function validateStationBlock(
         message: `Stacja LOCAL_SECTIONAL ${block.blockId}: brak trunkInPort lub trunkOutPort`,
         elementId: block.blockId,
         fixHint: `Przypisz trunkInPort i trunkOutPort do stacji sekcyjnej ${block.blockId}`,
+      });
+    }
+  }
+
+  // Station switchgear structure: renderer nie moze zredukowac stacji SN/nN do
+  // samego transformatora. Braki sa FixAction, nigdy auto-uzupelnieniem.
+  if (!isMainSubstationBlock) {
+    const requiresLineIn = embeddingRole === EmbeddingRoleV1.TRUNK_LEAF
+      || embeddingRole === EmbeddingRoleV1.TRUNK_INLINE
+      || embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH
+      || embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
+    const requiresLineOut = embeddingRole === EmbeddingRoleV1.TRUNK_INLINE
+      || embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH
+      || embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
+    const requiresBranchField = embeddingRole === EmbeddingRoleV1.TRUNK_BRANCH;
+    const requiresCouplerField = embeddingRole === EmbeddingRoleV1.LOCAL_SECTIONAL;
+
+    if (requiresLineIn && !hasFieldRole(FieldRoleV1.LINE_IN)) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_LINE_IN_MISSING,
+        message: `Stacja ${block.blockId}: brak pola liniowego wejsciowego SN`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole LINE_IN do rozdzielnicy SN stacji ${block.blockId}`,
+      });
+    }
+
+    if (requiresLineOut && !hasFieldRole(FieldRoleV1.LINE_OUT)) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_LINE_OUT_MISSING,
+        message: `Stacja ${block.blockId}: brak pola liniowego wyjsciowego SN`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole LINE_OUT do rozdzielnicy SN stacji ${block.blockId}`,
+      });
+    }
+
+    if (requiresBranchField && !hasFieldRole(FieldRoleV1.LINE_BRANCH)) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_BRANCH_FIELD_MISSING,
+        message: `Stacja ${block.blockId}: brak pola odgalezieniowego SN`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole LINE_BRANCH do stacji odgalezieniowej ${block.blockId}`,
+      });
+    }
+
+    if (requiresCouplerField && !hasFieldRole(FieldRoleV1.COUPLER_SN)) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_COUPLER_MISSING,
+        message: `Stacja sekcyjna ${block.blockId}: brak pola sekcyjnego`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole COUPLER_SN do stacji sekcyjnej ${block.blockId}`,
+      });
+    }
+
+    if (!hasFieldRole(FieldRoleV1.TRANSFORMER_SN_NN)) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_TRANSFORMER_MISSING,
+        message: `Stacja ${block.blockId}: brak pola transformatorowego SN/nN`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole TRANSFORMER_SN_NN z transformatorem stacyjnym do stacji ${block.blockId}`,
+      });
+    } else if (!hasAnyFieldRole([
+      FieldRoleV1.MAIN_NN,
+      FieldRoleV1.FEEDER_NN,
+      FieldRoleV1.PV_NN,
+      FieldRoleV1.BESS_NN,
+    ])) {
+      fixActions.push({
+        code: FieldDeviceFixCodes.STATION_NN_SWITCHGEAR_MISSING,
+        message: `Stacja ${block.blockId}: brak rozdzielnicy nN za transformatorem stacyjnym`,
+        elementId: block.blockId,
+        fixHint: `Dodaj pole MAIN_NN albo pola FEEDER_NN do rozdzielnicy nN stacji ${block.blockId}`,
       });
     }
   }

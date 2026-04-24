@@ -162,6 +162,17 @@ class TestGeneratorFieldValidation:
         assert result.is_valid is True
         assert result.fix_code is None
 
+    def test_pv_canonical_lv_behind_station_valid(self) -> None:
+        result = validate_generator_field_connection(
+            generator_id="gen_canonical_lv",
+            generator_type="pv_inverter",
+            connection_variant="LV_BEHIND_STATION_TRANSFORMER",
+            blocking_transformer_ref=None,
+            station_ref="station_001",
+        )
+        assert result.is_valid is True
+        assert result.fix_code is None
+
     def test_pv_block_transformer_valid(self) -> None:
         result = validate_generator_field_connection(
             generator_id="gen_002",
@@ -169,6 +180,28 @@ class TestGeneratorFieldValidation:
             connection_variant="block_transformer",
             blocking_transformer_ref="tr_block_001",
             station_ref=None,
+        )
+        assert result.is_valid is True
+        assert result.fix_code is None
+
+    def test_bess_canonical_dedicated_mv_connection_valid(self) -> None:
+        result = validate_generator_field_connection(
+            generator_id="bess_canonical_mv",
+            generator_type="BESS",
+            connection_variant="DEDICATED_MV_CONNECTION",
+            blocking_transformer_ref="tr_block_001",
+            station_ref=None,
+        )
+        assert result.is_valid is True
+        assert result.fix_code is None
+
+    def test_pv_canonical_source_connection_station_valid(self) -> None:
+        result = validate_generator_field_connection(
+            generator_id="pv_source_station",
+            generator_type="PV",
+            connection_variant="SOURCE_CONNECTION_STATION",
+            blocking_transformer_ref=None,
+            station_ref="station_src",
         )
         assert result.is_valid is True
         assert result.fix_code is None

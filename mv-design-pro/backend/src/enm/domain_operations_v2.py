@@ -1274,7 +1274,7 @@ def _append_converter_field_if_needed(
 ) -> tuple[str | None, list[str], list[dict[str, Any]]] | tuple[None, None, None]:
     placement = payload.get("placement")
     if not isinstance(placement, str):
-        placement = "NEW_FIELD" if connection_variant == "block_transformer" else "NEW_FIELD"
+        placement = "NEW_FIELD"
 
     if placement == "EXISTING_FIELD":
         existing_field_ref = payload.get("existing_field_ref")
@@ -1351,6 +1351,9 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
 
     connection_variant = payload.get("connection_variant")
     if not isinstance(connection_variant, str) or connection_variant not in {
+        "LV_BEHIND_STATION_TRANSFORMER",
+        "DEDICATED_MV_CONNECTION",
+        "SOURCE_CONNECTION_STATION",
         "nn_side",
         "block_transformer",
     }:
@@ -1361,7 +1364,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
 
     bus_nn_ref = payload.get("bus_nn_ref")
     blocking_transformer_ref = payload.get("blocking_transformer_ref")
-    if connection_variant == "block_transformer":
+    if connection_variant in {"block_transformer", "DEDICATED_MV_CONNECTION"}:
         if not isinstance(blocking_transformer_ref, str) or not blocking_transformer_ref.strip():
             return _error_response(
                 "Wariant block_transformer wymaga blocking_transformer_ref.",
@@ -1398,7 +1401,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=bus_nn_ref)
     if station is None:
         return _error_response("Nie znaleziono stacji dla szyny nN.", "nn.station_not_found")
-    if connection_variant == "nn_side" and not _has_transformer_in_path(enm, station):
+    if connection_variant in {"nn_side", "LV_BEHIND_STATION_TRANSFORMER", "SOURCE_CONNECTION_STATION"} and not _has_transformer_in_path(enm, station):
         return _error_response(
             f"Źródło {technology} wymaga transformatora w ścieżce zasilania stacji.",
             f"{technology.lower()}.transformer_required",

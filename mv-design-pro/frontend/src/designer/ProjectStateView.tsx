@@ -37,7 +37,7 @@ export function SnapshotView({ snapshot, loading, error }: Props) {
 
   return (
     <div className="p-4 border rounded bg-white">
-      <h2 className="text-lg font-semibold mb-4">Migawka modelu</h2>
+      <h2 className="text-lg font-semibold mb-4">Stan modelu</h2>
 
       <div className="space-y-4">
         <div>

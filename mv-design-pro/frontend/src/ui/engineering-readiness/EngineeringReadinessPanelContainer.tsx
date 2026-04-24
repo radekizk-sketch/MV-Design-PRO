@@ -153,7 +153,7 @@ export const EngineeringReadinessPanelContainer: React.FC<
     return (
       <div className="h-full flex items-center justify-center bg-white">
         <div className="text-gray-500 text-sm text-center">
-          Wybierz przypadek obliczeniowy
+          Wybierz wariant pracy
           <br />
           aby zobaczyć gotowość inżynieryjną.
         </div>

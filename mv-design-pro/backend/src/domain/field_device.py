@@ -31,6 +31,7 @@ class PoleTypeV1(str, Enum):
     # SN
     POLE_LINIOWE_SN = "POLE_LINIOWE_SN"
     POLE_TRANSFORMATOROWE_SN_NN = "POLE_TRANSFORMATOROWE_SN_NN"
+    POLE_POMIAROWE_SN = "POLE_POMIAROWE_SN"
     POLE_SPRZEGLOWE_SN = "POLE_SPRZEGLOWE_SN"
     POLE_ZRODLA_PV_SN = "POLE_ZRODLA_PV_SN"
     POLE_ZRODLA_BESS_SN = "POLE_ZRODLA_BESS_SN"
@@ -49,7 +50,9 @@ class FieldRoleV1(str, Enum):
     LINE_IN = "LINE_IN"
     LINE_OUT = "LINE_OUT"
     LINE_BRANCH = "LINE_BRANCH"
+    GPZ_LINE_BAY = "GPZ_LINE_BAY"
     TRANSFORMER_SN_NN = "TRANSFORMER_SN_NN"
+    MEASUREMENT_SN = "MEASUREMENT_SN"
     PV_SN = "PV_SN"
     BESS_SN = "BESS_SN"
     COUPLER_SN = "COUPLER_SN"
@@ -64,6 +67,7 @@ class FieldRoleV1(str, Enum):
 POLE_TO_FIELD_ROLE: dict[PoleTypeV1, FieldRoleV1] = {
     PoleTypeV1.POLE_LINIOWE_SN: FieldRoleV1.LINE_IN,
     PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN: FieldRoleV1.TRANSFORMER_SN_NN,
+    PoleTypeV1.POLE_POMIAROWE_SN: FieldRoleV1.MEASUREMENT_SN,
     PoleTypeV1.POLE_SPRZEGLOWE_SN: FieldRoleV1.COUPLER_SN,
     PoleTypeV1.POLE_ZRODLA_PV_SN: FieldRoleV1.PV_SN,
     PoleTypeV1.POLE_ZRODLA_BESS_SN: FieldRoleV1.BESS_SN,
@@ -78,7 +82,9 @@ FIELD_ROLE_TO_POLE: dict[FieldRoleV1, PoleTypeV1] = {
     FieldRoleV1.LINE_IN: PoleTypeV1.POLE_LINIOWE_SN,
     FieldRoleV1.LINE_OUT: PoleTypeV1.POLE_LINIOWE_SN,
     FieldRoleV1.LINE_BRANCH: PoleTypeV1.POLE_LINIOWE_SN,
+    FieldRoleV1.GPZ_LINE_BAY: PoleTypeV1.POLE_LINIOWE_SN,
     FieldRoleV1.TRANSFORMER_SN_NN: PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN,
+    FieldRoleV1.MEASUREMENT_SN: PoleTypeV1.POLE_POMIAROWE_SN,
     FieldRoleV1.PV_SN: PoleTypeV1.POLE_ZRODLA_PV_SN,
     FieldRoleV1.BESS_SN: PoleTypeV1.POLE_ZRODLA_BESS_SN,
     FieldRoleV1.COUPLER_SN: PoleTypeV1.POLE_SPRZEGLOWE_SN,
@@ -166,6 +172,7 @@ DEVICE_TYPE_TO_APARAT: dict[DeviceTypeV1, AparatTypeV1] = {
 POLE_TYPE_LABELS_PL: dict[PoleTypeV1, str] = {
     PoleTypeV1.POLE_LINIOWE_SN: "Pole liniowe SN",
     PoleTypeV1.POLE_TRANSFORMATOROWE_SN_NN: "Pole transformatorowe SN/nN",
+    PoleTypeV1.POLE_POMIAROWE_SN: "Pole pomiarowe SN",
     PoleTypeV1.POLE_SPRZEGLOWE_SN: "Pole sprzęgła sekcyjnego SN",
     PoleTypeV1.POLE_ZRODLA_PV_SN: "Pole źródła PV (SN)",
     PoleTypeV1.POLE_ZRODLA_BESS_SN: "Pole źródła BESS (SN)",
@@ -253,11 +260,15 @@ def validate_generator_field_connection(
             fix_code="generator.connection_variant_missing",
             fix_message_pl=(
                 f"Generator {generator_id}: brak wariantu przyłączenia "
-                f"(wymagane nn_side lub block_transformer)"
+                f"(wymagane LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION "
+                f"albo SOURCE_CONNECTION_STATION)"
             ),
         )
 
-    if connection_variant == "nn_side":
+    lv_variants = {"nn_side", "LV_BEHIND_STATION_TRANSFORMER", "SOURCE_CONNECTION_STATION"}
+    dedicated_mv_variants = {"block_transformer", "DEDICATED_MV_CONNECTION"}
+
+    if connection_variant in lv_variants:
         if station_ref is None:
             return GeneratorFieldValidationV1(
                 generator_id=generator_id,
@@ -267,10 +278,10 @@ def validate_generator_field_connection(
                 station_ref=None,
                 is_valid=False,
                 fix_code="generator.station_ref_missing",
-                fix_message_pl=(f"Generator {generator_id} (nn_side): brak referencji do stacji"),
+                fix_message_pl=(f"Generator {generator_id} ({connection_variant}): brak referencji do stacji"),
             )
 
-    if connection_variant == "block_transformer":
+    if connection_variant in dedicated_mv_variants:
         if blocking_transformer_ref is None:
             return GeneratorFieldValidationV1(
                 generator_id=generator_id,
@@ -281,8 +292,8 @@ def validate_generator_field_connection(
                 is_valid=False,
                 fix_code="generator.block_transformer_missing",
                 fix_message_pl=(
-                    f"Generator {generator_id} (block_transformer): "
-                    f"brak referencji do transformatora blokowego"
+                    f"Generator {generator_id} ({connection_variant}): "
+                    f"brak referencji do transformatora przylaczeniowego"
                 ),
             )
 

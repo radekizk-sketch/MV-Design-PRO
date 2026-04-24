@@ -58,7 +58,7 @@ export function FaultScenariosPanel({ studyCaseId, onHighlightElement }: FaultSc
   if (!studyCaseId) {
     return (
       <div className="p-4 text-sm text-slate-500" data-testid="fault-scenarios-no-case">
-        Wybierz przypadek obliczeniowy, aby zarządzać scenariuszami zwarć.
+        Wybierz wariant pracy, aby zarządzać scenariuszami zwarć.
       </div>
     );
   }

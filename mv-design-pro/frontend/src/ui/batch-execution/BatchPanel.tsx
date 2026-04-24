@@ -251,7 +251,7 @@ export const BatchPanel: React.FC<BatchPanelProps> = React.memo(
           data-testid="batch-panel-empty"
           className="p-4 text-sm text-slate-400 text-center"
         >
-          Wybierz przypadek obliczeniowy
+          Wybierz wariant pracy
         </div>
       );
     }

@@ -82,7 +82,7 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz uruchomienie —</option>
+        <option value="">— Wybierz obliczenia —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           return (
@@ -538,7 +538,7 @@ export function ProtectionComparisonPage({
     }
 
     if (runAId === runBId) {
-      setError('Uruchomienie A i uruchomienie B musza byc rozne.');
+      setError('Obliczenia A i obliczenia B muszą być różne.');
       return;
     }
 
@@ -615,13 +615,13 @@ export function ProtectionComparisonPage({
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             <RunSelector
-              label="Uruchomienie A (wzorzec)"
+              label="Obliczenia A (wzorzec)"
               runs={protectionRuns}
               selectedRunId={runAId}
               onChange={setRunAId}
             />
             <RunSelector
-              label="Uruchomienie B (porownanie)"
+              label="Obliczenia B (porównanie)"
               runs={protectionRuns}
               selectedRunId={runBId}
               onChange={setRunBId}

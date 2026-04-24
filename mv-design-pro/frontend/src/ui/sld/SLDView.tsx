@@ -303,7 +303,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
   const { hasResults: hasDiagnostics } = useSanityChecks(
     activeProjectId ?? 'aktywny-projekt',
-    activeCaseId ?? 'aktywny-przypadek',
+    activeCaseId ?? 'aktywny-wariant-pracy',
   );
 
   const sldMode = useSldModeStore((state) => state.mode);
@@ -1238,7 +1238,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       try {
         const metadata = {
           projectName: activeProjectName ?? 'projekt',
-          caseName: activeCaseName ?? 'przypadek',
+          caseName: activeCaseName ?? 'wariant pracy',
           runId: sldOverlay?.run_id,
           zoomPercent: Math.round(viewport.zoom * 100),
           timestamp: new Date().toISOString(),
@@ -1286,7 +1286,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   const exportMetadata = useMemo(
     () => ({
       projectName: activeProjectName ?? 'projekt',
-      caseName: activeCaseName ?? 'przypadek',
+      caseName: activeCaseName ?? 'wariant pracy',
       runId: sldOverlay?.run_id,
       zoomPercent: Math.round(viewport.zoom * 100),
       timestamp: new Date().toISOString(),

@@ -86,7 +86,7 @@ export function ProtectionSettingsPage() {
           <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
             <h1 className="text-2xl font-semibold text-gray-800">Nastawy zabezpieczeń</h1>
             <p className="mt-2 text-sm text-gray-500">
-              Bieżący przypadek nie zawiera przypisań ochrony w kanonicznym read modelu.
+              Bieżący wariant pracy nie zawiera przypisań ochrony w kanonicznym read modelu.
             </p>
           </div>
         </div>

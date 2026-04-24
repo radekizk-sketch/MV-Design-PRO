@@ -137,7 +137,6 @@ function navigateToHash(hash: string, mutate?: (params: URLSearchParams) => void
     mutate?.(params);
   });
 }
-
 function assignRouteContext(params: URLSearchParams, options: RouteContextOptions = {}): void {
   const entries: Array<[keyof RouteContextOptions, string]> = [
     ['runId', 'run'],
@@ -289,4 +288,3 @@ export function navigateToCatalog(context: RouteContextOptions = {}): void {
     assignRouteContext(params, context);
   });
 }
-

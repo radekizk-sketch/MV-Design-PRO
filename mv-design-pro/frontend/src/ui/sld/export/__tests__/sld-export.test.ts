@@ -177,7 +177,7 @@ describe('generateExportFilename', () => {
     });
     const filename = generateExportFilename(metadata, 'png');
 
-    expect(filename).toMatch(/^sld_projekt_przypadek_/);
+    expect(filename).toMatch(/^sld_projekt_wariant_/);
   });
 });
 

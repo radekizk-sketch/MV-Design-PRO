@@ -327,7 +327,7 @@ export const ComparisonPanel: React.FC<ComparisonPanelProps> = React.memo(
           data-testid="comparison-panel-empty"
           className="p-4 text-sm text-slate-400 text-center"
         >
-          Wybierz przypadek obliczeniowy
+          Wybierz wariant pracy
         </div>
       );
     }

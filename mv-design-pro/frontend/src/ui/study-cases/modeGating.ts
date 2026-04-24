@@ -21,19 +21,19 @@ export type StudyCaseOperation =
 function getBlockedReason(operation: StudyCaseOperation): string {
   switch (operation) {
     case 'create':
-      return 'Tworzenie przypadkow jest zablokowane w analizie i wynikach.';
+      return 'Tworzenie wariantów pracy jest zablokowane w analizie i wynikach.';
     case 'rename':
-      return 'Zmiana nazwy przypadku jest zablokowana w analizie i wynikach.';
+      return 'Zmiana nazwy wariantu pracy jest zablokowana w analizie i wynikach.';
     case 'delete':
-      return 'Usuwanie przypadkow jest zablokowane w analizie i wynikach.';
+      return 'Usuwanie wariantów pracy jest zablokowane w analizie i wynikach.';
     case 'clone':
-      return 'Klonowanie przypadkow jest zablokowane w analizie i wynikach.';
+      return 'Klonowanie wariantów pracy jest zablokowane w analizie i wynikach.';
     case 'activate':
-      return 'Aktywacja przypadku jest zablokowana w analizie i wynikach.';
+      return 'Aktywacja wariantu pracy jest zablokowana w analizie i wynikach.';
     case 'edit_config':
-      return 'Edycja kontekstu przypadku jest zablokowana w analizie i wynikach.';
+      return 'Edycja kontekstu wariantu pracy jest zablokowana w analizie i wynikach.';
     case 'calculate':
-      return 'Uruchomienie obliczen jest zablokowane w analizie i wynikach.';
+      return 'Obliczenia są zablokowane w analizie i wynikach.';
     default:
       return 'Operacja jest zablokowana w analizie i wynikach.';
   }
@@ -142,7 +142,7 @@ export function useCanActivateCase(): {
 
   const getBlockedReason = useCallback((): string | null => {
     if (mode !== 'MODEL_EDIT') {
-      return 'Aktywacja przypadku jest dozwolona tylko w trybie Model sieci.';
+      return 'Aktywacja wariantu pracy jest dozwolona tylko w trybie Model sieci.';
     }
     return null;
   }, [mode]);
