@@ -182,8 +182,25 @@ describe('readTopologyFromENM — PV/BESS connection variant validation', () => 
     const result = readTopologyFromENM(enm);
     const gen = result.generators.find(g => g.id === 'gen_pv_1');
     expect(gen).toBeDefined();
-    expect(gen!.connectionVariant).toBe('nn_side');
+    expect(gen!.connectionVariant).toBe('LV_BEHIND_STATION_TRANSFORMER');
     expect(gen!.stationRef).toBe('sta_1');
+  });
+
+  it('canonical SOURCE_CONNECTION_STATION is accepted and propagated', () => {
+    const enm = minimalENM({
+      generators: [pvGen({ connection_variant: 'SOURCE_CONNECTION_STATION', station_ref: 'sta_src' })],
+      substations: [{
+        id: 'uuid-src-sta', ref_id: 'sta_src', name: 'Stacja przyłączeniowa źródła', tags: [], meta: {},
+        station_type: 'mv_lv', bus_refs: ['bus_sn'], transformer_refs: [],
+      }],
+    });
+    const result = readTopologyFromENM(enm);
+    const gen = result.generators.find(g => g.id === 'gen_pv_1');
+    const invalidFix = result.fixActions.find(f => f.code === 'generator.connection_variant_invalid');
+
+    expect(invalidFix).toBeUndefined();
+    expect(gen!.connectionVariant).toBe('SOURCE_CONNECTION_STATION');
+    expect(gen!.stationRef).toBe('sta_src');
   });
 
   it('blockingTransformerId propagated from ENM', () => {

@@ -397,6 +397,14 @@ _VALIDATION_MESSAGES_PL: dict[str, str] = {
 
 # Maps FieldRole -> list of DeviceTypeV1 that are REQUIRED (always)
 _REQUIRED_DEVICES: dict[FieldRoleV1, list[DeviceTypeV1]] = {
+    FieldRoleV1.GPZ_LINE_BAY: [
+        DeviceTypeV1.DS,
+        DeviceTypeV1.CB,
+        DeviceTypeV1.CT,
+        DeviceTypeV1.RELAY,
+        DeviceTypeV1.ES,
+        DeviceTypeV1.CABLE_HEAD,
+    ],
     FieldRoleV1.LINE_IN: [DeviceTypeV1.CB, DeviceTypeV1.CABLE_HEAD],
     FieldRoleV1.LINE_OUT: [DeviceTypeV1.CB, DeviceTypeV1.CABLE_HEAD],
     FieldRoleV1.LINE_BRANCH: [DeviceTypeV1.CB, DeviceTypeV1.CABLE_HEAD],
@@ -407,6 +415,7 @@ _REQUIRED_DEVICES: dict[FieldRoleV1, list[DeviceTypeV1]] = {
         DeviceTypeV1.TRANSFORMER_DEVICE,
         DeviceTypeV1.CABLE_HEAD,
     ],
+    FieldRoleV1.MEASUREMENT_SN: [DeviceTypeV1.VT],
     FieldRoleV1.PV_SN: [
         DeviceTypeV1.CB,
         DeviceTypeV1.CT,
@@ -421,8 +430,8 @@ _REQUIRED_DEVICES: dict[FieldRoleV1, list[DeviceTypeV1]] = {
         DeviceTypeV1.GENERATOR_BESS,
         DeviceTypeV1.CABLE_HEAD,
     ],
-    FieldRoleV1.COUPLER_SN: [DeviceTypeV1.CB],
-    FieldRoleV1.BUS_TIE: [DeviceTypeV1.CB],
+    FieldRoleV1.COUPLER_SN: [DeviceTypeV1.DS, DeviceTypeV1.CB],
+    FieldRoleV1.BUS_TIE: [DeviceTypeV1.DS, DeviceTypeV1.CB],
     FieldRoleV1.MAIN_NN: [DeviceTypeV1.ACB],
     FieldRoleV1.FEEDER_NN: [DeviceTypeV1.FUSE],
     FieldRoleV1.PV_NN: [

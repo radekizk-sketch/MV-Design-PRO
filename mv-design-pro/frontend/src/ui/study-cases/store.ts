@@ -112,7 +112,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       const cases = await api.listStudyCases(projectId);
       set({ cases, isLoading: false });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd ładowania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd ładowania wariantów pracy';
       set({ error: message, isLoading: false });
     }
   },
@@ -147,7 +147,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isCreating: false });
       return newCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd tworzenia przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd tworzenia wariantu pracy';
       set({ error: message, isCreating: false });
       throw err;
     }
@@ -169,7 +169,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       }
       return updatedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd aktualizacji przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd aktualizacji wariantu pracy';
       set({ error: message });
       throw err;
     }
@@ -192,7 +192,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isDeleting: false });
       return true;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd usuwania przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd usuwania wariantu pracy';
       set({ error: message, isDeleting: false });
       return false;
     }
@@ -212,7 +212,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ isCloning: false });
       return clonedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd klonowania przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd klonowania wariantu pracy';
       set({ error: message, isCloning: false });
       throw err;
     }
@@ -234,7 +234,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ activeCase: activatedCase, isActivating: false });
       return activatedCase;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd aktywacji przypadku';
+      const message = err instanceof Error ? err.message : 'Błąd aktywacji wariantu pracy';
       set({ error: message, isActivating: false });
       throw err;
     }
@@ -250,7 +250,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       set({ comparisonResult: comparison, isComparing: false });
       return comparison;
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd porównywania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd porównywania wariantów pracy';
       set({ error: message, isComparing: false });
       throw err;
     }
@@ -276,7 +276,7 @@ export const useStudyCasesStore = create<StudyCasesState>((set, get) => ({
       await get().loadCases(projectId);
       await get().loadActiveCase(projectId);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Błąd oznaczania przypadków';
+      const message = err instanceof Error ? err.message : 'Błąd oznaczania wariantów pracy';
       set({ error: message });
     }
   },
@@ -340,7 +340,7 @@ export function useIsLoading(): boolean {
  */
 export function useActiveCaseStatusLabel(): string {
   const status = useActiveCaseResultStatus();
-  if (!status) return 'Brak aktywnego przypadku';
+  if (!status) return 'Brak aktywnego wariantu pracy';
 
   switch (status) {
     case 'NONE':

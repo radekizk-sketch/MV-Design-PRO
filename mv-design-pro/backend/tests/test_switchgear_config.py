@@ -516,6 +516,82 @@ class TestValidation:
         # LINE_IN requires CB + CABLE_HEAD
         assert len(missing_issues) == 2
 
+    def test_gpz_line_bay_requires_full_gpz_apparatus_contract(self) -> None:
+        """GPZ_LINE_BAY requires switching, protection, CT, earthing, and cable head."""
+        config = SwitchgearConfigV1(
+            station_id="gpz1",
+            fields=(
+                FieldConfigV1(
+                    field_id="gpz_line_1",
+                    pole_type=PoleTypeV1.POLE_LINIOWE_SN,
+                    field_role=FieldRoleV1.GPZ_LINE_BAY,
+                ),
+            ),
+        )
+        result = validate_switchgear_config(config)
+        missing_issues = [
+            i
+            for i in result.issues
+            if i.code == SwitchgearConfigValidationCode.FIELD_MISSING_REQUIRED_DEVICE
+        ]
+        messages = "\n".join(issue.message_pl for issue in missing_issues)
+
+        assert result.valid is False
+        assert len(missing_issues) == 6
+        for required_type in ("DS", "CB", "CT", "RELAY", "ES", "CABLE_HEAD"):
+            assert required_type in messages
+
+    def test_coupler_requires_disconnector_and_breaker(self) -> None:
+        """Coupler is not a single-apparatus CB-only field."""
+        config = SwitchgearConfigV1(
+            station_id="station_sectional",
+            fields=(
+                FieldConfigV1(
+                    field_id="coupler_1",
+                    pole_type=PoleTypeV1.POLE_SPRZEGLOWE_SN,
+                    field_role=FieldRoleV1.COUPLER_SN,
+                ),
+            ),
+        )
+        result = validate_switchgear_config(config)
+        missing_issues = [
+            i
+            for i in result.issues
+            if i.code == SwitchgearConfigValidationCode.FIELD_MISSING_REQUIRED_DEVICE
+        ]
+        messages = "\n".join(issue.message_pl for issue in missing_issues)
+
+        assert result.valid is False
+        assert len(missing_issues) == 2
+        assert "DS" in messages
+        assert "CB" in messages
+
+    def test_measurement_sn_requires_vt(self) -> None:
+        """Bus measurement bay requires VT, not a line-bay apparatus chain."""
+        config = SwitchgearConfigV1(
+            station_id="gpz1",
+            fields=(
+                FieldConfigV1(
+                    field_id="measurement_1",
+                    pole_type=PoleTypeV1.POLE_POMIAROWE_SN,
+                    field_role=FieldRoleV1.MEASUREMENT_SN,
+                ),
+            ),
+        )
+        result = validate_switchgear_config(config)
+        missing_issues = [
+            i
+            for i in result.issues
+            if i.code == SwitchgearConfigValidationCode.FIELD_MISSING_REQUIRED_DEVICE
+        ]
+        messages = "\n".join(issue.message_pl for issue in missing_issues)
+
+        assert result.valid is False
+        assert len(missing_issues) == 1
+        assert "VT" in messages
+        assert "CB" not in messages
+        assert "CABLE_HEAD" not in messages
+
     def test_protection_binding_missing(self) -> None:
         """Relay without protection binding -> PROTECTION_BINDING_MISSING."""
         config = SwitchgearConfigV1(

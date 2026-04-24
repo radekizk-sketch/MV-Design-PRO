@@ -382,7 +382,7 @@ function AnalysisCaseContextPanel({
         />
         <ContextField label="Case ref" value={context.case_ref} />
         <ContextField label="Run ref" value={context.run_ref} />
-        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
+        <ContextField label="Stan modelu" value={context.snapshot_ref ?? 'Brak'} />
         <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref} />
         <ContextField label="Zakres" value={applicability} />
       </div>
@@ -492,7 +492,7 @@ function ResultStatusBar() {
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="power-flow-status-case-context">
-              <span className="font-medium">Przypadek:</span> {caseLabel}
+              <span className="font-medium">Wariant pracy:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (

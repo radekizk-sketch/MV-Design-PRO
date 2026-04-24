@@ -21,6 +21,7 @@ import type {
 // =============================================================================
 
 export const FIELD_ROLE_LABELS_PL: Record<FieldRoleV1, string> = {
+  GPZ_LINE_BAY: 'Pole liniowe GPZ',
   LINE_IN: 'Pole liniowe wejsciowe',
   LINE_OUT: 'Pole liniowe wyjsciowe',
   LINE_BRANCH: 'Pole odgalezieniowe',

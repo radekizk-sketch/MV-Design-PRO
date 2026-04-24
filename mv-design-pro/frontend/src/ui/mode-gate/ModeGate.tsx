@@ -130,7 +130,7 @@ export function CaseConfigGate({
       allowedModes={['MODEL_EDIT']}
       fallback={fallback}
       showBlockedMessage={showBlockedMessage}
-      blockedMessage="Kontekst przypadku jest niedostepny w analizie i wynikach."
+      blockedMessage="Kontekst wariantu jest niedostępny w analizie i wynikach."
     >
       {children}
     </ModeGate>

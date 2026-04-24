@@ -79,7 +79,7 @@ export const IssuePanelContainer: React.FC<IssuePanelContainerProps> = ({ caseId
     return (
       <div className="h-full flex items-center justify-center bg-white">
         <div className="text-gray-500 text-sm text-center">
-          Wybierz przypadek obliczeniowy<br />aby zobaczyć problemy.
+          Wybierz wariant pracy<br />aby zobaczyć problemy.
         </div>
       </div>
     );

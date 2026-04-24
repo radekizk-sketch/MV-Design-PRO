@@ -258,13 +258,13 @@ export async function exportPdf(
 
       const headerInfo = [
         `Projekt: ${options.metadata.projectName}`,
-        `Przypadek: ${options.metadata.caseName}`,
+        `Wariant pracy: ${options.metadata.caseName}`,
         `Skala: ${options.metadata.zoomPercent}%`,
         `Data: ${formatDatePl(options.metadata.timestamp)}`,
       ];
 
       if (options.metadata.runId) {
-        headerInfo.splice(2, 0, `Run: ${options.metadata.runId.substring(0, 8)}`);
+        headerInfo.splice(2, 0, `Obliczenia: ${options.metadata.runId.substring(0, 8)}`);
       }
 
       pdf.text(headerInfo.join('  |  '), MARGINS.left, headerY);

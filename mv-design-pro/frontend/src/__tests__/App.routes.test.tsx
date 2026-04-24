@@ -144,7 +144,7 @@ describe('App hash routes', () => {
   it('zachowuje trase katalogu i otwiera launcher analiz bez cichego fallbacku', async () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'source-1', name: 'GPZ 1' }],
@@ -179,7 +179,7 @@ describe('App hash routes', () => {
   it('pozostaje na kanonicznej trasie schematu i otwiera launcher analiz', async () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
+      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'source-1', name: 'GPZ 1' }],

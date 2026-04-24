@@ -13,6 +13,26 @@ describe('SLD canonical hygiene', () => {
     expect(app.includes('<SLDViewPage useDemo={true} />')).toBe(false);
   });
 
+  it('aktywny route SLD nie importuje statycznego ekranu inzynierskiego', () => {
+    const app = read('src/App.tsx');
+    const sldIndex = read('src/ui/sld/index.ts');
+    const staticScreenName = 'Engineering' + 'SldScreen';
+    const staticModelName = 'canonical' + 'SnSldModel';
+    const staticSymbolsName = 'canonical' + 'SnSldSymbols';
+
+    expect(app.includes(staticScreenName)).toBe(false);
+    expect(sldIndex.includes(staticScreenName)).toBe(false);
+    expect(sldIndex.includes(staticModelName)).toBe(false);
+    expect(sldIndex.includes(staticSymbolsName)).toBe(false);
+    expect(app.includes('<SldEditorPage useDemo={false} />')).toBe(true);
+  });
+
+  it('SldEditorPage korzysta z projektora ENM -> SLD zamiast statycznej topologii runtime', () => {
+    const page = read('src/ui/sld/SldEditorPage.tsx');
+    expect(page.includes('projectEnmSnapshotToSld')).toBe(true);
+    expect(page.includes('const enmProjection = useMemo(')).toBe(true);
+  });
+
   it('critical-run-flow E2E nie mockuje backend API przez page.route', () => {
     const critical = read('e2e/critical-run-flow.spec.ts');
     expect(critical.includes('page.route(')).toBe(false);

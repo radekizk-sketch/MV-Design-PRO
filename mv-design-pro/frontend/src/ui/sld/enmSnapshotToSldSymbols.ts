@@ -260,7 +260,7 @@ function normalizeSnapshotToEnm(snapshot: SnapshotLike): EnergyNetworkModel {
   const hash = readString(headerRecord, 'hash_sha256', 'enm-snapshot');
   const createdAt = readString(headerRecord, 'created_at', '1970-01-01T00:00:00Z');
   const updatedAt = readString(headerRecord, 'updated_at', createdAt);
-  const name = readString(headerRecord, 'name', 'Migawka ENM');
+  const name = readString(headerRecord, 'name', 'Stan modelu ENM');
   const revision = readNumber(headerRecord, 'revision', 0);
 
   return {

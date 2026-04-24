@@ -272,11 +272,14 @@ export function buildVisualTopologyContract(
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  // --- PolaZasilajace: LINE_IN fields in GPZ stations ---
+  // --- PolaZasilajace: GPZ line bays in MAIN_SUBSTATION stations ---
   const snFields = stationBlockDetails.allFields.filter((f) => !f.fieldRole.includes('_NN'));
 
   const polaZasilajace: PoleZasilajaceVisual[] = snFields
-    .filter((field) => field.fieldRole === FieldRoleV1.LINE_IN && gpzStationIds.has(field.stationId))
+    .filter((field) =>
+      (field.fieldRole === FieldRoleV1.GPZ_LINE_BAY || field.fieldRole === FieldRoleV1.LINE_IN)
+      && gpzStationIds.has(field.stationId),
+    )
     .map((field): PoleZasilajaceVisual => ({
       id: `pole_zasilajace_${field.id}`,
       kind: 'pole_zasilajace',

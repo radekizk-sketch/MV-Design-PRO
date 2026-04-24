@@ -174,6 +174,7 @@ export type SwitchgearConfigValidationCode =
 // =============================================================================
 
 export const REQUIRED_DEVICES: Record<FieldRoleV1, readonly DeviceTypeV1[]> = {
+  [FR.GPZ_LINE_BAY]: [DT.DS, DT.CB, DT.CT, DT.RELAY, DT.ES, DT.CABLE_HEAD],
   [FR.LINE_IN]: [DT.CB, DT.CABLE_HEAD],
   [FR.LINE_OUT]: [DT.CB, DT.CABLE_HEAD],
   [FR.LINE_BRANCH]: [DT.CB, DT.CABLE_HEAD],

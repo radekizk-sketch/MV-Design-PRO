@@ -36,7 +36,7 @@ export function useSafeModeTransition(): {
         if (resultStatus === 'NONE') {
           return 'Brak wynikow - najpierw uruchom obliczenia.';
         }
-        return 'Wyniki sa nieaktualne - wymagane jest ponowne uruchomienie obliczen.';
+        return 'Wyniki są nieaktualne - wymagane jest ponowne wykonanie obliczeń.';
       }
       return null;
     },
@@ -126,7 +126,7 @@ export function useOverlayVisibility(): {
   if (resultStatus === 'OUTDATED') {
     return {
       visible: false,
-      hiddenReason: 'Wyniki sa nieaktualne - wymagane jest ponowne uruchomienie obliczen.',
+      hiddenReason: 'Wyniki są nieaktualne - wymagane jest ponowne wykonanie obliczeń.',
     };
   }
 

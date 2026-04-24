@@ -423,9 +423,9 @@ export const SldSnapshotExportDialog: React.FC<SldSnapshotExportDialogProps> = (
             <div className="font-medium text-gray-700 mb-1">Informacje o eksporcie</div>
             <div className="space-y-0.5">
               <div>Projekt: {metadata.projectName}</div>
-              <div>Przypadek: {metadata.caseName}</div>
+              <div>Wariant pracy: {metadata.caseName}</div>
               <div>Skala: {metadata.zoomPercent}%</div>
-              {metadata.runId && <div>Run: {metadata.runId.substring(0, 8)}...</div>}
+              {metadata.runId && <div>Obliczenia: {metadata.runId.substring(0, 8)}...</div>}
             </div>
           </div>
         </div>

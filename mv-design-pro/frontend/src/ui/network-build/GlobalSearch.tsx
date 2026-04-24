@@ -31,13 +31,13 @@ interface SearchResult {
 type SearchCategory = 'sources' | 'buses' | 'branches' | 'transformers' | 'stations' | 'generators' | 'loads';
 
 const CATEGORY_LABELS: Record<SearchCategory, string> = {
-  sources: 'ĹąrĂłdĹ‚a zasilania',
+  sources: 'Źródła zasilania',
   buses: 'Szyny',
-  branches: 'GaĹ‚Ä™zie / Odcinki',
+  branches: 'Gałęzie / Odcinki',
   transformers: 'Transformatory',
   stations: 'Stacje',
-  generators: 'ĹąrĂłdĹ‚a OZE / Generatory',
-  loads: 'ObciÄ…ĹĽenia',
+  generators: 'Źródła OZE / Generatory',
+  loads: 'Obciążenia',
 };
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -272,16 +272,16 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         <div className="max-h-[50vh] overflow-y-auto">
           {query.trim() && results.length === 0 && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Nie znaleziono elementĂłw</p>
-              <p className="text-[10px] text-gray-400 mt-1">SprĂłbuj innej frazy</p>
+              <p className="text-sm text-gray-500">Nie znaleziono elementów</p>
+              <p className="text-[10px] text-gray-400 mt-1">Spróbuj innej frazy</p>
             </div>
           )}
 
           {!query.trim() && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Wpisz nazwÄ™ lub identyfikator elementu</p>
+              <p className="text-sm text-gray-500">Wpisz nazwę lub identyfikator elementu</p>
               <p className="text-[10px] text-gray-400 mt-1">
-                Szukaj szyn, odcinkĂłw, stacji, transformatorĂłw, ĹşrĂłdeĹ‚ OZE
+                Szukaj szyn, odcinków, stacji, transformatorów, źródeł OZE
               </p>
             </div>
           )}
@@ -327,7 +327,7 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         {/* Footer */}
         {results.length > 0 && (
           <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center gap-4 text-[10px] text-gray-400">
-            <span>{results.length} wynikĂłw</span>
+            <span>{results.length} wyników</span>
             <span>â†‘â†“ nawigacja</span>
             <span>Enter wybierz</span>
             <span>Esc zamknij</span>

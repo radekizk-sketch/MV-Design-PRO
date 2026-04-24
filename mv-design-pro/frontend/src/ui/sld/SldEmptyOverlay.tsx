@@ -60,8 +60,8 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-amber-600',
   },
   NO_CASE: {
-    title: 'Nie wybrano przypadku obliczeniowego',
-    description: 'Wybierz istniejacy lub utworz nowy przypadek, aby uruchomic obliczenia.',
+    title: 'Nie wybrano wariantu pracy',
+    description: 'Wybierz istniejący lub utwórz nowy wariant pracy, aby wykonać obliczenia.',
     bgColor: 'bg-slate-50/95',
     borderColor: 'border-slate-300',
     textColor: 'text-slate-800',
@@ -173,7 +173,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-select-case"
               >
-                Wybierz przypadek
+                Wybierz wariant
               </button>
             )}
             {!hasCases && onCreateCase && (
@@ -190,7 +190,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-create-case"
               >
-                {isCreatingCase ? 'Tworzenie przypadku...' : 'Utworz pierwszy przypadek'}
+                {isCreatingCase ? 'Tworzenie wariantu...' : 'Utwórz pierwszy wariant'}
               </button>
             )}
             {hasCases && onCreateCase && (
@@ -200,7 +200,7 @@ export function SldEmptyOverlay({
                 className="rounded-md border border-slate-300 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-150 hover:border-slate-400 hover:bg-white"
                 data-testid="sld-empty-overlay-create-new"
               >
-                Nowy przypadek
+                Nowy wariant
               </button>
             )}
           </div>

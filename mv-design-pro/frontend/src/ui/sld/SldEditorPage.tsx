@@ -75,7 +75,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'bus_main',
     elementId: 'bus_main',
     elementType: 'Bus',
-    elementName: 'Szyna gĹ‚Ăłwna SN',
+    elementName: 'Szyna główna SN',
     position: { x: 400, y: 200 },
     inService: true,
     width: 100,
@@ -95,7 +95,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'source_grid',
     elementId: 'source_grid',
     elementType: 'Source',
-    elementName: 'SieÄ‡ zasilajÄ…ca',
+    elementName: 'Sieć zasilająca',
     position: { x: 400, y: 40 },
     inService: true,
     connectedToNodeId: 'bus_main',
@@ -234,8 +234,8 @@ const DOCK_TOOL_COPY: Record<
     description: 'Zaznacz obiekt na schemacie i przejdz do jego inspektora.',
   },
   move: {
-    label: 'Przesun geometrie',
-    description: 'Koryguj polozenie geometrii i powiazan schematu.',
+    label: 'Przesuń geometrię',
+    description: 'Koryguj położenie geometrii i powiązań schematu.',
   },
   edit_properties: {
     label: 'Edytuj parametry',
@@ -868,7 +868,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
   const openExecutionSurface = useCallback(() => {
     openCaseContextSurface();
-    notify('Otwarto menedzer przypadkow — wybierz przypadek i uruchom obliczenia.', 'info');
+    notify('Otwarto menedżer wariantów pracy — wybierz wariant i wykonaj obliczenia.', 'info');
   }, [openCaseContextSurface]);
 
   const dockContextItems = useMemo(
@@ -878,20 +878,20 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeProjectName ?? activeProjectId ?? 'Nie wybrano',
       },
       {
-        label: 'Przypadek',
+    label: 'Wariant pracy',
         value: activeCaseName ?? activeCaseId ?? 'Nie wybrano',
         tone: hasActiveCase ? ('default' as const) : ('warn' as const),
       },
       {
-        label: 'Wariant pracy',
+        label: 'Wariant obliczeń',
         value: activeVariant?.name ?? 'Brak',
       },
       {
-        label: 'Migawka modelu',
+    label: 'Stan modelu',
         value: activeSnapshotId ?? 'Brak',
       },
       {
-        label: 'Uruchomienie',
+    label: 'Obliczenia',
         value: activeRunId ?? 'Brak',
       },
       {
@@ -934,7 +934,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockActionGroups = useMemo(() => {
     const toolDisabledReason = (toolId: Exclude<CreatorTool, null>): string | null => {
       if (!activeCaseId) {
-        return 'Najpierw wybierz aktywny przypadek obliczeniowy.';
+        return 'Najpierw wybierz aktywny wariant pracy.';
       }
       if (toolId !== 'add_grid_source_sn' && !hasSource) {
         return 'Najpierw dodaj zrodlo zasilania GPZ.';
@@ -1010,10 +1010,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockNextStep = useMemo(() => {
     if (!hasActiveCase) {
       return {
-        title: 'Aktywuj przypadek obliczeniowy',
+        title: 'Aktywuj wariant pracy',
         description:
-          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym przypadkiem obliczeniowym.',
-        actionLabel: 'Otworz kontekst przypadku',
+          'Budowa modelu, wyniki i raporty są związane z jednym aktywnym wariantem pracy.',
+        actionLabel: 'Otwórz kontekst wariantu',
         onAction: openCaseContextSurface,
       };
     }
@@ -1047,8 +1047,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       return {
         title: 'Uruchom analize dla aktywnego przypadku',
         description:
-          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do wariantow i uruchomien.',
-        actionLabel: 'Otworz warianty i uruchomienia',
+          'Model ma już wymagany kontekst i gotowość obliczeniową. Przejdź do wariantów pracy i obliczeń.',
+        actionLabel: 'Otwórz warianty i obliczenia',
         onAction: openExecutionSurface,
       };
     }
@@ -1122,28 +1122,28 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       }
 
       if (!projectId) {
-        notify('Nie moĹĽna utworzyÄ‡ przypadku: brak aktywnego projektu. OtwĂłrz MenedĹĽer przypadkĂłw i utwĂłrz projekt.', 'warning');
+        notify('Nie można utworzyć wariantu pracy: brak aktywnego projektu. Otwórz menedżer wariantów i utwórz projekt.', 'warning');
         return;
       }
 
       const createdCase = await withTimeout(
         createCase({
           project_id: projectId,
-          name: 'Przypadek 1',
+          name: 'Wariant 1',
           description: '',
           set_active: true,
         })
       );
 
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
-      notify(`Utworzono i aktywowano przypadek: ${createdCase.name}.`, 'success');
+      notify(`Utworzono i aktywowano wariant pracy: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d';
+      const message = error instanceof Error ? error.message : 'Nieznany błąd';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). SprawdĹş poĹ‚Ä…czenie i sprĂłbuj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas tworzenia wariantu pracy (limit 15 s). Sprawdź połączenie i spróbuj ponownie.', 'warning');
         return;
       }
-      notify(`Nie udaĹ‚o siÄ™ utworzyÄ‡ przypadku. SzczegĂłĹ‚y techniczne: ${message}`, 'error');
+      notify(`Nie udało się utworzyć wariantu pracy. Szczegóły techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
@@ -1226,7 +1226,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     ]);
 
     if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
+      const reason = resolved.reasonPl ?? 'Narzędzie chwilowo niedostępne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
@@ -1238,14 +1238,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           id: target.id,
           label: target.name ?? target.id,
         });
-        const msg = 'Wybierz drugi port ringu, aby otworzyÄ‡ formularz domkniÄ™cia pierĹ›cienia.';
+        const msg = 'Wybierz drugi port pierścienia, aby otworzyć formularz domknięcia pierścienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
       }
 
       if (pendingRingTerminal.id === target.id) {
-        const msg = 'WskaĹĽ drugi, rĂłĹĽny port ringu.';
+        const msg = 'Wskaż drugi, różny port pierścienia.';
         setInteractionMessage(msg);
         notify(msg, 'warning');
         return;
@@ -1268,7 +1268,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domkniÄ™cia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domknięcia pierścienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1276,7 +1276,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
       openOperationForm('connect_secondary_ring_sn', ringPayload);
       setPendingRingTerminal(null);
-      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portĂłw ${pendingRingTerminal.label} i ${target.name}.`;
+      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portów ${pendingRingTerminal.label} i ${target.name}.`;
       setInteractionMessage(msg);
       notify(msg, 'success');
       setActiveTool('select');
@@ -1335,7 +1335,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       notify(msg, 'success');
       setActiveTool('select');
     } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiodĹ‚a siÄ™.`;
+      const err = `Operacja ${resolved.canonicalOp} nie powiodła się.`;
       setInteractionMessage(err);
       notify(err, 'error');
     }
@@ -1429,12 +1429,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_grid_source_sn') {
               void runResolvedAction(
                 'add_grid_source_sn',
-                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'płótna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
+            setInteractionMessage('Kliknięto tło płótna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -1595,7 +1595,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udało się przypisać typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

@@ -134,7 +134,7 @@ function FixturesList() {
   }
 
   if (fixtures.length === 0) {
-    return <div className="p-4 text-sm text-slate-500">Brak przypadków referencyjnych</div>;
+    return <div className="p-4 text-sm text-slate-500">Brak wariantów referencyjnych</div>;
   }
 
   const getVerdictBadge = (verdict: string | null) => {
@@ -717,7 +717,7 @@ function ResultContent() {
 
   if (!runResult) {
     return (
-      <EmptyState message="Wybierz przypadek referencyjny z listy po lewej stronie i kliknij 'Uruchom wzorzec' aby zobaczyć wyniki." />
+      <EmptyState message="Wybierz wariant referencyjny z listy po lewej stronie i kliknij 'Wykonaj wzorzec', aby zobaczyć wyniki." />
     );
   }
 

@@ -337,9 +337,9 @@ export function useCaseKindLabel(): string | null {
   if (!kind) return null;
   switch (kind) {
     case 'ShortCircuitCase':
-      return 'Przypadek zwarciowy';
+      return 'Wariant zwarciowy';
     case 'PowerFlowCase':
-      return 'Przypadek rozplywu mocy';
+      return 'Wariant rozpływu mocy';
     default:
       return kind;
   }
@@ -379,7 +379,7 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const readiness = useSnapshotStore((state) => state.readiness);
 
   if (!activeCaseId) {
-    return { allowed: false, reason: 'Wybierz aktywny przypadek obliczeniowy' };
+    return { allowed: false, reason: 'Wybierz aktywny wariant pracy' };
   }
 
   if (activeMode !== 'MODEL_EDIT') {
@@ -446,9 +446,9 @@ export function useActiveAnalysisTypeLabel(): string | null {
     case 'SHORT_CIRCUIT':
       return 'Analiza zwarciowa';
     case 'LOAD_FLOW':
-      return 'RozpĹ‚yw mocy';
+      return 'Rozpływ mocy';
     case 'PROTECTION':
-      return 'Koordynacja zabezpieczeĹ„';
+      return 'Koordynacja zabezpieczeń';
     default:
       return analysisType;
   }

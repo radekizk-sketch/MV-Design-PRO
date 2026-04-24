@@ -129,7 +129,7 @@ vi.stubGlobal('fetch', fetchMock);
 vi.mock('../../study-cases/RunHistoryPanel', () => ({
   RunHistoryPanel: ({ onSelectRun }: { onSelectRun?: (runId: string) => void }) => (
     <button type="button" data-testid="run-history-panel" onClick={() => onSelectRun?.('run-1')}>
-      Run history
+      Historia obliczeń
     </button>
   ),
 }));
@@ -198,7 +198,7 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(await screen.findByText('pf_source_nominal')).toBeInTheDocument();
     expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
     expect(
-      screen.queryByText(/Kontrakt przypadku musi wskazywac aktywne zalozenia zrodlowe/i),
+      screen.queryByText(/Kontrakt wariantu musi wskazywac aktywne zalozenia zrodlowe/i),
     ).not.toBeInTheDocument();
   });
 
@@ -230,7 +230,7 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
     expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontekst przypadku' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Kontekst wariantu' })).toBeInTheDocument();
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {

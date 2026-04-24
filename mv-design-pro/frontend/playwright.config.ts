@@ -35,8 +35,8 @@ const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER
   ? 'echo "skip webserver"'
   : 'npm run dev:e2e';
 const backendServerCommand = process.platform === 'win32'
-  ? 'powershell -NoProfile -Command "Set-Location ..\\backend; poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"'
-  : 'bash -lc "cd ../backend && poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"';
+  ? 'powershell -NoProfile -Command "Set-Location ..\\backend; $env:PYTHONPATH=\'src\'; poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"'
+  : 'bash -lc "cd ../backend && PYTHONPATH=src poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"';
 
 export default defineConfig({
   testDir: './e2e',

@@ -22,6 +22,12 @@ import type {
   Substation as ENMSubstation,
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
+import {
+  type SourceConnectionVariantInputV1,
+  isSupportedSourceConnectionVariant,
+  normalizeSourceConnectionVariant,
+  SourceConnectionVariantV1,
+} from './sourceConnectionVariant';
 
 // =============================================================================
 // ENUMS
@@ -159,8 +165,8 @@ export interface TopologyGeneratorV1 {
   readonly inService: boolean;
   readonly ratedPowerMw: number | null;
   readonly blockingTransformerId: string | null;
-  /** Wariant przylaczenia PV/BESS: nn_side | block_transformer | null (brak → FixAction). */
-  readonly connectionVariant: 'nn_side' | 'block_transformer' | null;
+  /** Wariant przylaczenia PV/BESS: canonical V1 or accepted legacy alias. */
+  readonly connectionVariant: SourceConnectionVariantInputV1 | null;
   /** Referencja do stacji (wymagana przy nn_side). */
   readonly stationRef: string | null;
 }
@@ -622,8 +628,6 @@ export function readTopologyFromENM(
 
   // --- Generators ---
   const OZE_TYPES: GeneratorKind[] = [GeneratorKind.PV, GeneratorKind.WIND, GeneratorKind.BESS];
-  const VALID_CONNECTION_VARIANTS = new Set(['nn_side', 'block_transformer']);
-
   // Build lookup maps for validation
   const transformerRefSet = new Set(enm.transformers.map(t => t.ref_id));
   const stationRefSet = new Set(enm.substations.map(s => s.ref_id));
@@ -640,31 +644,32 @@ export function readTopologyFromENM(
 
     const kind = enmGenKind(g);
     const isOze = OZE_TYPES.includes(kind);
-    const connectionVariant = g.connection_variant ?? null;
+    const rawConnectionVariant = g.connection_variant ?? null;
+    const connectionVariant = normalizeSourceConnectionVariant(rawConnectionVariant);
     const blockingTransformerId = g.blocking_transformer_ref ?? null;
     const stationRef = g.station_ref ?? null;
 
     // OZE-specific validation (PV, WIND, BESS)
     if (isOze) {
-      if (!connectionVariant) {
+      if (!rawConnectionVariant) {
         fixActions.push({
           code: 'generator.connection_variant_missing',
           message: `Generator OZE '${g.name}' (${g.ref_id}) nie ma wariantu przylaczenia (connection_variant).`,
           elementRef: g.ref_id,
-          fixHint: 'Ustaw connection_variant na nn_side lub block_transformer.',
+          fixHint: 'Ustaw connection_variant na LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION albo SOURCE_CONNECTION_STATION.',
         });
-      } else if (!VALID_CONNECTION_VARIANTS.has(connectionVariant)) {
+      } else if (!isSupportedSourceConnectionVariant(rawConnectionVariant)) {
         fixActions.push({
           code: 'generator.connection_variant_invalid',
-          message: `Generator '${g.name}' (${g.ref_id}): wariant '${connectionVariant}' jest nieprawidlowy.`,
+          message: `Generator '${g.name}' (${g.ref_id}): wariant '${rawConnectionVariant}' jest nieprawidlowy.`,
           elementRef: g.ref_id,
-          fixHint: 'Wariant musi byc nn_side lub block_transformer.',
+          fixHint: 'Wariant musi byc jednym z: LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION, SOURCE_CONNECTION_STATION.',
         });
-      } else if (connectionVariant === 'block_transformer') {
+      } else if (connectionVariant === SourceConnectionVariantV1.DEDICATED_MV_CONNECTION) {
         if (!blockingTransformerId) {
           fixActions.push({
             code: 'generator.block_transformer_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant block_transformer wymaga blocking_transformer_ref.`,
+            message: `Generator '${g.name}' (${g.ref_id}): wariant DEDICATED_MV_CONNECTION wymaga blocking_transformer_ref.`,
             elementRef: g.ref_id,
             fixHint: 'Przypisz transformator blokowy do generatora.',
           });
@@ -676,11 +681,14 @@ export function readTopologyFromENM(
             fixHint: 'Sprawdz ref_id transformatora blokowego.',
           });
         }
-      } else if (connectionVariant === 'nn_side') {
+      } else if (
+        connectionVariant === SourceConnectionVariantV1.LV_BEHIND_STATION_TRANSFORMER
+        || connectionVariant === SourceConnectionVariantV1.SOURCE_CONNECTION_STATION
+      ) {
         if (!stationRef) {
           fixActions.push({
             code: 'generator.station_ref_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant nn_side wymaga station_ref.`,
+            message: `Generator '${g.name}' (${g.ref_id}): wariant ${connectionVariant} wymaga station_ref.`,
             elementRef: g.ref_id,
             fixHint: 'Przypisz stacje SN/nN do generatora.',
           });

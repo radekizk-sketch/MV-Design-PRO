@@ -192,7 +192,7 @@ export function TracePanel({
           <p className="text-sm text-slate-500">{labels.subtitle}</p>
           {(runId || createdAt) && (
             <div className="mt-1 flex gap-3 text-xs text-slate-400">
-              {runId && <span>Run: {runId.slice(0, 8)}...</span>}
+              {runId && <span>Obliczenia: {runId.slice(0, 8)}...</span>}
               {createdAt && (
                 <span>
                   {labels.timestamp}: {new Date(createdAt).toLocaleString('pl-PL')}

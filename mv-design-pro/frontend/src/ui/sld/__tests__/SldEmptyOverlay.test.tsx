@@ -28,7 +28,7 @@ describe('SldEmptyOverlay', () => {
       />,
     );
 
-    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Nie wybrano przypadku obliczeniowego');
+    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Nie wybrano wariantu pracy');
     expect(screen.getByTestId('sld-empty-overlay-select-case')).toBeInTheDocument();
     expect(screen.getByTestId('sld-empty-overlay-create-new')).toBeInTheDocument();
   });

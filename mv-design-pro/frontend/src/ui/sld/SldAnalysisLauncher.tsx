@@ -82,7 +82,7 @@ export function resolveAnalysisLauncherBlockMessage(
     case 'NO_CASE':
       return 'Brak aktywnego przypadku obliczeniowego.';
     case 'NO_SNAPSHOT':
-      return 'Model sieci nie jest jeszcze gotowy do uruchomienia analiz. Poczekaj na synchronizację danych.';
+      return 'Model sieci nie jest jeszcze gotowy do obliczeń. Poczekaj na synchronizację danych.';
     case 'NO_SOURCE':
       return 'Brak źródła zasilania. Najpierw dodaj GPZ, a potem wyprowadź pierwszy odcinek magistrali.';
     case 'NO_MODEL':
@@ -395,7 +395,7 @@ export function SldAnalysisLauncher({
 
     if (workspaceBlockState) {
       const message = resolveAnalysisLauncherBlockMessage(workspaceBlockState)
-        ?? 'Model nie spełnia jeszcze warunków do uruchomienia analiz.';
+        ?? 'Model nie spełnia jeszcze warunków do obliczeń.';
       setLauncherError(message);
       notify(message, 'warning');
       return;
@@ -447,7 +447,7 @@ export function SldAnalysisLauncher({
         'success',
       );
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nie udało się uruchomić analiz.';
+      const message = error instanceof Error ? error.message : 'Nie udało się wykonać obliczeń.';
       setLauncherError(message);
       notify(message, 'error');
     } finally {
@@ -582,9 +582,9 @@ export function SldAnalysisLauncher({
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                 Schemat jednokreskowy
               </div>
-              <div className="text-lg font-semibold text-slate-900">Uruchomienie analiz</div>
+              <div className="text-lg font-semibold text-slate-900">Obliczenia</div>
               <div className="mt-1 text-xs text-slate-500">
-                Przypadek: {caseName ?? caseId ?? 'brak'} • Projekt: {projectName ?? 'brak'}
+                Wariant pracy: {caseName ?? caseId ?? 'brak'} • Projekt: {projectName ?? 'brak'}
               </div>
             </div>
             <button
@@ -645,7 +645,7 @@ export function SldAnalysisLauncher({
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                 <div className="text-sm font-semibold text-slate-900">Zakres obliczenia</div>
                 <div className="mt-1 text-xs text-slate-600">
-                  Uruchamia obliczenie zwarciowe trójfazowe oraz rozpływ mocy, a następnie składa wspólną nakładkę wynikową na schemacie.
+                  Wykonuje obliczenie zwarciowe trójfazowe oraz rozpływ mocy, a następnie składa wspólną nakładkę wynikową na schemacie.
                 </div>
               </div>
               <button
@@ -654,7 +654,7 @@ export function SldAnalysisLauncher({
                 disabled={quickExecutionDisabled}
                 className="w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {isExecuting ? 'Trwają obliczenia...' : 'Uruchom szybkie obliczenie'}
+                {isExecuting ? 'Trwają obliczenia...' : 'Wykonaj szybkie obliczenie'}
               </button>
               {launcherBlockMessage && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -674,7 +674,7 @@ export function SldAnalysisLauncher({
           {activeTab === 'FULL' && (
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                Pełna analiza korzysta z pakietu zwarcie trójfazowe + rozpływ mocy oraz z macierzy gotowości analizy. Panel pozostaje powiązany ze schematem i uruchamia szybkie naprawy bez wychodzenia z SLD.
+                Pełna analiza korzysta z pakietu zwarcie trójfazowe + rozpływ mocy oraz z macierzy gotowości analizy. Panel pozostaje powiązany ze schematem i wykonuje szybkie naprawy bez wychodzenia z SLD.
               </div>
               <button
                 type="button"
@@ -682,7 +682,7 @@ export function SldAnalysisLauncher({
                 disabled={fullExecutionDisabled}
                 className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {isExecuting ? 'Trwa analiza...' : 'Uruchom pełną analizę'}
+                {isExecuting ? 'Trwa analiza...' : 'Wykonaj pełną analizę'}
               </button>
               {launcherBlockMessage && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -703,7 +703,7 @@ export function SldAnalysisLauncher({
                 />
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-                  {eligibilityLoading ? 'Ładowanie macierzy gotowości analizy...' : 'Brak danych gotowości analizy dla aktywnego przypadku.'}
+                  {eligibilityLoading ? 'Ładowanie macierzy gotowości analizy...' : 'Brak danych gotowości analizy dla aktywnego wariantu pracy.'}
                 </div>
               )}
             </div>
@@ -713,13 +713,13 @@ export function SldAnalysisLauncher({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-xs font-medium text-slate-600">
-                  Uruchomienie A
+                  Obliczenia A
                   <select
                     value={comparisonRunA}
                     onChange={(event) => setComparisonRunA(event.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="">Wybierz uruchomienie</option>
+                    <option value="">Wybierz obliczenia</option>
                     {doneRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         {ANALYSIS_TYPE_LABELS[run.analysis_type]} • {RUN_STATUS_LABELS[run.status]} • {run.id}
@@ -728,13 +728,13 @@ export function SldAnalysisLauncher({
                   </select>
                 </label>
                 <label className="text-xs font-medium text-slate-600">
-                  Uruchomienie B
+                  Obliczenia B
                   <select
                     value={comparisonRunB}
                     onChange={(event) => setComparisonRunB(event.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="">Wybierz uruchomienie</option>
+                    <option value="">Wybierz obliczenia</option>
                     {doneRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         {ANALYSIS_TYPE_LABELS[run.analysis_type]} • {RUN_STATUS_LABELS[run.status]} • {run.id}

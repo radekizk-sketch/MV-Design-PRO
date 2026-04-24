@@ -28,9 +28,9 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   Bus: 'Szyna',
   LineBranch: 'Linia',
   TransformerBranch: 'Transformator',
-  Switch: 'ĹÄ…cznik',
-  Source: 'ĹąrĂłdĹ‚o',
-  Load: 'OdbiĂłr',
+  Switch: 'Łącznik',
+  Source: 'Źródło',
+  Load: 'Odbiór',
   Generator: 'Generator',
   Measurement: 'Pomiar',
   ProtectionAssignment: 'Zabezpieczenie',
@@ -41,50 +41,50 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   BranchPole: 'Slup rozgalezny',
   ZKSN: 'ZKSN',
   BaySN: 'Pole SN',
-  Relay: 'PrzekaĹşnik',
-  SecondaryLink: 'PoĹ‚Ä…czenie wtĂłrne',
+  Relay: 'Przekaźnik',
+  SecondaryLink: 'Połączenie wtórne',
   NOP: 'Punkt normalnie otwarty',
   // Typy nN (Mâ€“O, Râ€“AP)
   BusNN: 'Szyna nN',
-  MainBreakerNN: 'WyĹ‚Ä…cznik gĹ‚Ăłwny nN',
-  FeederNN: 'OdpĹ‚yw nN',
+  MainBreakerNN: 'Wyłącznik główny nN',
+  FeederNN: 'Odpływ nN',
   SegmentNN: 'Segment nN',
-  LoadNN: 'OdbiĂłr nN',
+  LoadNN: 'Odbiór nN',
   SwitchboardNN: 'Rozdzielnica nN',
-  SourceFieldNN: 'Pole ĹşrĂłdĹ‚owe nN',
+  SourceFieldNN: 'Pole źródłowe nN',
   // ĹąrĂłdĹ‚a nN (Vâ€“Z)
   PVInverter: 'Falownik PV',
   BESSInverter: 'Falownik BESS',
   EnergyStorage: 'Magazyn energii',
-  Genset: 'Agregat prÄ…dotwĂłrczy',
+  Genset: 'Agregat prądotwórczy',
   UPS: 'UPS',
   // Pomiary i zabezpieczenia nN (AAâ€“AE)
   EnergyMeter: 'Licznik energii',
-  PowerQualityMeter: 'Miernik jakoĹ›ci',
-  SurgeArresterNN: 'Ogranicznik przepiÄ™Ä‡',
+  PowerQualityMeter: 'Miernik jakości',
+  SurgeArresterNN: 'Ogranicznik przepięć',
   Earthing: 'Uziemienie',
   MeasurementNN: 'Pomiar nN',
   // Infrastruktura szyn nN (AFâ€“AR)
   AuxBus: 'Szyna pomocnicza',
-  ConnectionPoint: 'Punkt przyĹ‚Ä…czenia',
-  SwitchNN: 'ĹÄ…cznik nN',
+  ConnectionPoint: 'Punkt przyłączenia',
+  SwitchNN: 'Łącznik nN',
   ProtectionNN: 'Zabezpieczenie nN',
-  SourceController: 'Sterownik ĹşrĂłdĹ‚a',
-  InternalJunction: 'WÄ™zeĹ‚ wewnÄ™trzny',
-  CableJointNN: 'ZĹ‚Ä…cze kablowe',
-  FaultCurrentLimiter: 'Ogr. prÄ…du zwarciowego',
+  SourceController: 'Sterownik źródła',
+  InternalJunction: 'Węzeł wewnętrzny',
+  CableJointNN: 'Złącze kablowe',
+  FaultCurrentLimiter: 'Ogr. prądu zwarciowego',
   FilterCompensator: 'Filtr/kompensator',
-  TelecontrolDevice: 'UrzÄ…dzenie telesterowania',
+  TelecontrolDevice: 'Urządzenie telesterowania',
   BusSectionNN: 'Sekcja szyn nN',
-  BusCouplerNN: 'SprzÄ™gĹ‚o szyn nN',
-  ReserveLink: 'ĹÄ…cznik rezerwowy',
+  BusCouplerNN: 'Sprzęgło szyn nN',
+  ReserveLink: 'Łącznik rezerwowy',
   // Parametry logiczne ĹşrĂłdeĹ‚ (ASâ€“AZ)
-  SourceDisconnect: 'OdĹ‚Ä…cznik ĹşrĂłdĹ‚a',
+  SourceDisconnect: 'Odłącznik źródła',
   PowerLimit: 'Ograniczenie mocy',
   WorkProfile: 'Profil pracy',
   OperatingMode: 'Tryb pracy',
-  ConnectionConstraints: 'Warunki przyĹ‚Ä…czenia',
-  MeteringBlock: 'UkĹ‚ad pomiarowy',
+  ConnectionConstraints: 'Warunki przyłączenia',
+  MeteringBlock: 'Układ pomiarowy',
   SyncPoint: 'Punkt synchronizacji',
   DescriptiveElement: 'Element opisowy',
 };
@@ -211,7 +211,7 @@ export function EmptyInspectorPanel({
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <span>Tryb wynikow â€” tylko do odczytu</span>
+              <span>Tryb wyników - tylko do odczytu</span>
             </div>
           </div>
         )}
@@ -263,7 +263,7 @@ export function EmptyInspectorPanel({
           <div className="flex justify-between items-start">
             <span className="text-xs text-gray-500">Nazwa</span>
             <span className="text-xs text-gray-700 text-right max-w-[180px] truncate" title={selectedElement.name}>
-              {selectedElement.name || 'â€”'}
+              {selectedElement.name || '-'}
             </span>
           </div>
 
@@ -277,7 +277,7 @@ export function EmptyInspectorPanel({
         {/* Loading indicator for full properties */}
         <div className="mt-6 pt-4 border-t border-gray-100">
           <p className="text-xs text-gray-400 text-center">
-            SzczegĂłĹ‚owe wĹ‚aĹ›ciwoĹ›ci Ĺ‚adujÄ… siÄ™...
+            Szczegółowe właściwości ładują się...
           </p>
         </div>
       </div>
@@ -289,7 +289,7 @@ export function EmptyInspectorPanel({
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            <span>Tryb wynikĂłw â€” tylko do odczytu</span>
+            <span>Tryb wyników - tylko do odczytu</span>
           </div>
         </div>
       )}

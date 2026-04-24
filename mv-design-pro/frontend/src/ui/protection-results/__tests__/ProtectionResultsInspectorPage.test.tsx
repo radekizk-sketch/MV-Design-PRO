@@ -86,7 +86,7 @@ describe('ProtectionResultsInspectorPage', () => {
     render(<ProtectionResultsInspectorPage />);
 
     expect(
-      screen.getByText('Wybierz aktywny przypadek obliczeniowy, aby zobaczyć wyniki ochrony.'),
+      screen.getByText('Wybierz aktywny wariant pracy, aby zobaczyć wyniki ochrony.'),
     ).toBeInTheDocument();
   });
 
@@ -95,7 +95,7 @@ describe('ProtectionResultsInspectorPage', () => {
 
     expect(screen.getByText('Źródło danych:')).toBeInTheDocument();
     expect(screen.getByText('Bieżący widok ochrony ENM')).toBeInTheDocument();
-    expect(screen.getByText('Uruchomienie referencyjne:')).toBeInTheDocument();
+    expect(screen.getByText('Obliczenia referencyjne:')).toBeInTheDocument();
     expect(screen.getByText('Elementy z ochroną')).toBeInTheDocument();
     expect(screen.getByText(/Przypisania aktywne:/)).toBeInTheDocument();
     expect(screen.getByText('Weryfikacja i diagnostyka')).toBeInTheDocument();

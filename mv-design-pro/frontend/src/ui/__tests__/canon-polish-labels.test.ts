@@ -34,12 +34,12 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     }
   });
 
-  it('ma polskie etykiety w pasku aktywnego przypadku', () => {
+  it('ma polskie etykiety w pasku aktywnego wariantu pracy', () => {
     const { missing, fileExists } = fileContains('active-case-bar/ActiveCaseBar.tsx', [
-      'Zmien przypadek',
-      'Kontekst przypadku',
+      'Zmień wariant',
+      'Aktywny wariant pracy',
       'Oblicz',
-      'Podglad wynikow',
+      'Podgląd wyników',
     ]);
     if (fileExists) {
       expect(
@@ -77,13 +77,13 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     }
   });
 
-  it('ma polskie komunikaty blokad w zarzadzaniu przypadkami', () => {
+  it('ma polskie komunikaty blokad w zarzadzaniu wariantami pracy', () => {
     const { missing, fileExists } = fileContains('case-manager/useModeGating.ts', [
-      'Tworzenie przypadkow',
-      'Zmiana nazwy przypadku',
-      'Usuwanie przypadkow',
-      'Klonowanie przypadkow',
-      'Uruchomienie obliczen',
+      'Tworzenie wariantów pracy',
+      'Zmiana nazwy wariantu pracy',
+      'Usuwanie wariantów pracy',
+      'Klonowanie wariantów pracy',
+      'Obliczenia są zablokowane',
     ]);
     if (fileExists) {
       expect(

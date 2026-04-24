@@ -51,6 +51,15 @@ class TestPVBESSConnectionVariant:
         gen_issues = [i for i in issues if i.element_id == "gen_1"]
         assert len(gen_issues) == 0
 
+    def test_canonical_lv_behind_station_variant_valid(self) -> None:
+        issues = validate_generator_connections(
+            generators=[_gen(connection_variant="LV_BEHIND_STATION_TRANSFORMER", station_ref="sta_1")],
+            transformers_by_ref={},
+            stations_by_ref={"sta_1": {"ref_id": "sta_1"}},
+        )
+        gen_issues = [i for i in issues if i.element_id == "gen_1"]
+        assert len(gen_issues) == 0
+
     def test_variant_a_missing_station_ref(self) -> None:
         issues = validate_generator_connections(
             generators=[_gen(connection_variant="nn_side", station_ref=None)],
@@ -79,6 +88,29 @@ class TestPVBESSConnectionVariant:
             ],
             transformers_by_ref={"tr_block_1": {"ref_id": "tr_block_1"}},
             stations_by_ref={},
+        )
+        gen_issues = [i for i in issues if i.element_id == "gen_1"]
+        assert len(gen_issues) == 0
+
+    def test_canonical_dedicated_mv_connection_valid(self) -> None:
+        issues = validate_generator_connections(
+            generators=[
+                _gen(
+                    connection_variant="DEDICATED_MV_CONNECTION",
+                    blocking_transformer_ref="tr_block_1",
+                )
+            ],
+            transformers_by_ref={"tr_block_1": {"ref_id": "tr_block_1"}},
+            stations_by_ref={},
+        )
+        gen_issues = [i for i in issues if i.element_id == "gen_1"]
+        assert len(gen_issues) == 0
+
+    def test_canonical_source_connection_station_valid(self) -> None:
+        issues = validate_generator_connections(
+            generators=[_gen(connection_variant="SOURCE_CONNECTION_STATION", station_ref="sta_src")],
+            transformers_by_ref={},
+            stations_by_ref={"sta_src": {"ref_id": "sta_src"}},
         )
         gen_issues = [i for i in issues if i.element_id == "gen_1"]
         assert len(gen_issues) == 0

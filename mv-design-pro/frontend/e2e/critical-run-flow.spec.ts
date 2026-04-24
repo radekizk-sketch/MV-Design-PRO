@@ -85,7 +85,7 @@ async function createProjectAndCase(
 ): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = nextEntitySuffix();
   const projectName = `E2E Krytyczny ${suffix}`;
-  const caseName = `Przypadek krytyczny ${suffix}`;
+  const caseName = `Wariant krytyczny ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
@@ -152,7 +152,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
+  await expect(page.getByTestId('active-case-bar')).toContainText('Wariant');
   return caseId;
 }
 

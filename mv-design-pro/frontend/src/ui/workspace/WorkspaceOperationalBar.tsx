@@ -22,10 +22,10 @@ interface WorkspaceOperationalBarProps {
 }
 
 const RUN_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Uruchomienie oczekuje',
-  RUNNING: 'Uruchomienie trwa',
-  DONE: 'Uruchomienie zakonczone',
-  FAILED: 'Uruchomienie nieudane',
+  PENDING: 'Obliczenia oczekują',
+  RUNNING: 'Obliczenia trwają',
+  DONE: 'Obliczenia zakończone',
+  FAILED: 'Obliczenia nieudane',
 };
 
 function shortId(value: string | null): string {
@@ -174,7 +174,7 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Aktywna migawka"
+        label="Aktywny stan modelu"
         value={shortId(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>

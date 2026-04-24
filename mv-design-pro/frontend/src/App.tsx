@@ -129,7 +129,7 @@ function UnknownRoutePage({ route }: { route: string }) {
         <h1 className="text-lg font-semibold">Nieznana trasa interfejsu</h1>
         <p className="mt-2 text-sm leading-6">
           Aktywna trasa <code>{route || '(pusta)'}</code> nie jest zmapowana do kanonicznego
-          surface&apos;u. PrzejdĹş do jednej z aktywnych sekcji albo popraw routing.
+          surface&apos;u. Przejdź do jednej z aktywnych sekcji albo popraw routing.
         </p>
       </div>
     </div>
@@ -250,10 +250,10 @@ function App() {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
       const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
+      notify('Wykonano obliczenia. Przejdź do widoku wyników po zakończeniu.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
+      const message = error instanceof Error ? error.message : 'Błąd obliczeń';
       notify(message, 'error');
     }
   }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);

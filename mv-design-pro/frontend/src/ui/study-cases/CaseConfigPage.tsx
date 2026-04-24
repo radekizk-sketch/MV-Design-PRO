@@ -112,10 +112,10 @@ export function CaseConfigPage() {
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">[CFG]</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
-            Brak aktywnego przypadku
+            Brak aktywnego wariantu pracy
           </h2>
           <p className="text-sm text-gray-500">
-            Wybierz lub utworz przypadek obliczeniowy, aby skonfigurowac parametry analizy.
+            Wybierz lub utwórz wariant pracy, aby skonfigurować parametry analizy.
           </p>
         </div>
       </div>
@@ -128,10 +128,10 @@ export function CaseConfigPage() {
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <h1 className="text-2xl font-semibold text-gray-800">
-            Kontekst przypadku obliczeniowego
+            Kontekst wariantu pracy
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Przypadek: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
+            Wariant pracy: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
           </p>
         </div>
 

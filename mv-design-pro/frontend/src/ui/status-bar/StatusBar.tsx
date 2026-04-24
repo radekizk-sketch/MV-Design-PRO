@@ -124,7 +124,7 @@ export function StatusBar({
         <span className="text-chrome-600">|</span>
 
         <div className="flex items-center gap-1.5" data-testid="status-bar-case">
-          <span className="text-chrome-400">Przypadek:</span>
+          <span className="text-chrome-400">Wariant pracy:</span>
           {caseId ? (
             <>
               <span className="font-medium text-white">{caseName || 'Bez nazwy'}</span>
@@ -149,7 +149,7 @@ export function StatusBar({
       <div className="flex items-center gap-3">
         {snapshotDisplay && (
           <div className="flex items-center gap-1.5" data-testid="status-bar-snapshot">
-            <span className="text-chrome-400">Migawka:</span>
+            <span className="text-chrome-400">Stan modelu:</span>
             <span className="font-mono text-[10px] text-chrome-300">{snapshotDisplay}</span>
           </div>
         )}

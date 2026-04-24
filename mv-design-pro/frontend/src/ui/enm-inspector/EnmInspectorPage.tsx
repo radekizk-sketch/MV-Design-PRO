@@ -145,7 +145,7 @@ export function EnmInspectorPage() {
         <p className="text-xs text-slate-500 mt-0.5">
           {activeCaseId
             ? 'Diagnostyka inżynierska ENM'
-            : 'Wybierz przypadek obliczeniowy'}
+            : 'Wybierz wariant pracy'}
         </p>
       </div>
 

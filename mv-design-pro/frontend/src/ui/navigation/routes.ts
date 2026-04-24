@@ -56,8 +56,8 @@ export const ROUTES = {
   },
   CASE_CONFIG: {
     hash: '#case-config',
-    label: 'Kontekst przypadku',
-    description: 'Helper kontekstu przypadku w glownym shellu',
+    label: 'Kontekst wariantu',
+    description: 'Helper kontekstu wariantu w głównym shellu',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },

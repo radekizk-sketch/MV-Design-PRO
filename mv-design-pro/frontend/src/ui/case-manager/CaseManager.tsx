@@ -163,14 +163,14 @@ export function CaseManager({
         pid = project.id;
         setActiveProject(pid, project.name);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'Nie udaĹ‚o siÄ™ utworzyÄ‡ projektu';
-        console.error('[CaseManager] BĹ‚Ä…d tworzenia projektu:', message);
-        // Kontynuuj mimo bĹ‚Ä™du - store pokaĹĽe bĹ‚Ä…d przy tworzeniu przypadku
+        const message = err instanceof Error ? err.message : 'Nie udało się utworzyć projektu';
+        console.error('[CaseManager] Błąd tworzenia projektu:', message);
+        // Kontynuuj mimo błędu - store pokaże błąd przy tworzeniu wariantu pracy
       }
     }
 
     if (!pid) {
-      console.error('[CaseManager] Brak project_id po prĂłbie utworzenia projektu');
+      console.error('[CaseManager] Brak project_id po próbie utworzenia projektu');
       return;
     }
 
@@ -333,7 +333,7 @@ export function CaseManager({
               ? 'bg-blue-600 hover:bg-blue-700 text-white'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           )}
-          title={getBlockedReason('create') || 'Nowy przypadek zwarciowy'}
+          title={getBlockedReason('create') || 'Nowy wariant zwarciowy'}
         >
           + Zwarciowy
         </button>
@@ -349,9 +349,9 @@ export function CaseManager({
               ? 'bg-green-600 hover:bg-green-700 text-white'
               : 'bg-gray-200 text-gray-400 cursor-not-allowed'
           )}
-          title={getBlockedReason('create') || 'Nowy przypadek rozpĹ‚ywowy'}
+          title={getBlockedReason('create') || 'Nowy wariant rozpływowy'}
         >
-          + RozpĹ‚ywowy
+          + Rozpływowy
         </button>
 
         <div className="flex-1" />
@@ -404,8 +404,8 @@ export function CaseManager({
         {filteredCases.length === 0 ? (
           <div className="p-8 text-center text-gray-400">
             {searchQuery
-              ? 'Brak przypadkĂłw pasujÄ…cych do wyszukiwania'
-              : 'Brak przypadkĂłw obliczeniowych. UtwĂłrz pierwszy przypadek.'}
+              ? 'Brak wariantów pasujących do wyszukiwania'
+              : 'Brak wariantów pracy. Utwórz pierwszy wariant.'}
           </div>
         ) : (
           filteredCases.map((caseItem) => (
@@ -539,7 +539,7 @@ function CaseRow({
       {/* Name */}
       <div className="flex items-center gap-2 min-w-0">
         {caseItem.is_active && (
-          <span className="text-green-600 text-sm font-bold" title="Aktywny przypadek">
+          <span className="text-green-600 text-sm font-bold" title="Aktywny wariant pracy">
             &gt;
           </span>
         )}
@@ -599,7 +599,7 @@ function CaseRow({
               disabled={isDeleting}
               className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
             >
-              {isDeleting ? '...' : 'UsuĹ„'}
+              {isDeleting ? '...' : 'Usuń'}
             </button>
             <button
               onClick={(e) => {
@@ -664,7 +664,7 @@ function CaseRow({
                   ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   : 'bg-gray-50 text-gray-400 cursor-not-allowed'
               )}
-              title={getBlockedReason('rename') || 'ZmieĹ„ nazwÄ™'}
+              title={getBlockedReason('rename') || 'Zmień nazwę'}
             >
               Ed
             </button>
@@ -696,7 +696,7 @@ function CaseRow({
                   ? 'bg-red-100 text-red-700 hover:bg-red-200'
                   : 'bg-gray-50 text-gray-400 cursor-not-allowed'
               )}
-              title={getBlockedReason('delete') || 'UsuĹ„'}
+              title={getBlockedReason('delete') || 'Usuń'}
             >
               âś•
             </button>
@@ -729,17 +729,17 @@ function CreateCaseDialog({
   onCancel,
 }: CreateCaseDialogProps) {
   const kindLabel =
-    kind === 'ShortCircuitCase' ? 'zwarciowy' : 'rozpĹ‚ywowy';
+    kind === 'ShortCircuitCase' ? 'zwarciowy' : 'rozpływowy';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-lg shadow-xl w-96 p-6">
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Nowy przypadek {kindLabel}
+          Nowy wariant {kindLabel}
         </h3>
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nazwa przypadku
+            Nazwa wariantu
           </label>
           <input
             type="text"
@@ -771,7 +771,7 @@ function CreateCaseDialog({
                 : 'bg-blue-300 cursor-not-allowed'
             )}
           >
-            {isCreating ? 'Tworzenie...' : 'UtwĂłrz'}
+            {isCreating ? 'Tworzenie...' : 'Utwórz'}
           </button>
         </div>
       </div>

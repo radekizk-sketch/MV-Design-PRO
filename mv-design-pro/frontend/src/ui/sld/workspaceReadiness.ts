@@ -114,14 +114,14 @@ export function resolveWorkspaceBlockState({
       reason: 'NO_CASE',
       title: 'Brak aktywnego przypadku obliczeniowego',
       description:
-        'Bez aktywnego przypadku panel gotowości pozostaje zablokowany. Wybierz przypadek albo utwórz nowy.',
-      nextStep: 'Wybierz istniejący przypadek w menedżerze przypadków lub utwórz nowy.',
+        'Bez aktywnego wariantu pracy panel gotowości pozostaje zablokowany. Wybierz wariant albo utwórz nowy.',
+      nextStep: 'Wybierz istniejący wariant w menedżerze wariantów albo utwórz nowy.',
     },
     NO_MODEL: {
       reason: 'NO_MODEL',
       title: 'Pusty schemat jednokreskowy',
       description:
-        'Przypadek jest aktywny, ale model nie zawiera jeszcze elementów sieci. Dodaj pierwszy odcinek albo stację.',
+        'Wariant pracy jest aktywny, ale model nie zawiera jeszcze elementów sieci. Dodaj pierwszy odcinek albo stację.',
       nextStep: 'Wstaw pierwszy odcinek, stację lub źródło, aby zbudować topologię.',
     },
     NO_SOURCE: {

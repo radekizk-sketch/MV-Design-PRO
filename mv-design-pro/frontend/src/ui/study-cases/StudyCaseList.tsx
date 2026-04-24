@@ -99,7 +99,7 @@ export function StudyCaseList({
   if (isLoading) {
     return (
       <div className="p-4 text-center text-gray-500 text-sm">
-        Ładowanie przypadków...
+        Ładowanie wariantów pracy...
       </div>
     );
   }
@@ -114,7 +114,7 @@ export function StudyCaseList({
         <button
           onClick={onCreateCase}
           className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
-          title="Utwórz nowy przypadek"
+          title="Utwórz nowy wariant pracy"
         >
           + Nowy
         </button>
@@ -123,9 +123,9 @@ export function StudyCaseList({
       {/* Cases list */}
       {cases.length === 0 ? (
         <div className="p-4 text-center text-gray-400 text-xs">
-          Brak przypadków obliczeniowych.
+          Brak wariantów pracy.
           <br />
-          Utwórz pierwszy przypadek.
+          Utwórz pierwszy wariant.
         </div>
       ) : (
         <div className="divide-y divide-gray-100">
@@ -189,7 +189,7 @@ function StudyCaseListItem({
       {/* Active indicator */}
       <span className="w-4 text-center mr-2">
         {caseItem.is_active && (
-          <span className="text-blue-600 font-bold" title="Aktywny przypadek">
+          <span className="text-blue-600 font-bold" title="Aktywny wariant pracy">
             &gt;
           </span>
         )}
@@ -265,7 +265,7 @@ function StudyCaseContextMenu({
         className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
         onClick={() => onClone(caseId)}
       >
-        Klonuj przypadek
+        Klonuj wariant
       </button>
 
       {/* Separator */}
@@ -276,7 +276,7 @@ function StudyCaseContextMenu({
         className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50"
         onClick={() => onDelete(caseId)}
       >
-        Usun przypadek
+        Usuń wariant
       </button>
     </div>
   );

@@ -189,7 +189,7 @@ export function generateExportFilename(
     str.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 32);
 
   const project = sanitize(metadata.projectName || 'projekt');
-  const caseStr = sanitize(metadata.caseName || 'przypadek');
+  const caseStr = sanitize(metadata.caseName || 'wariant');
   const timestamp = metadata.timestamp
     .replace(/[:.]/g, '-')
     .substring(0, 19);

@@ -44,7 +44,7 @@ export function SnapshotView({ snapshot, loading, error }: Props) {
 
   return (
     <div className="p-4 border rounded bg-white">
-      <h3 className="font-semibold text-gray-900 mb-2">Migawka</h3>
+      <h3 className="font-semibold text-gray-900 mb-2">Stan modelu</h3>
       <dl className="text-sm space-y-1">
         <div className="flex gap-2">
           <dt className="text-gray-500">ID:</dt>

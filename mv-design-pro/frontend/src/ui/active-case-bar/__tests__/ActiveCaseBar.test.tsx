@@ -58,7 +58,7 @@ describe('ActiveCaseBar', () => {
   it('trzyma kanoniczny stan przypadku zamiast przejmować status z oglądanego uruchomienia', () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'NONE');
+      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'NONE');
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
@@ -82,7 +82,7 @@ describe('ActiveCaseBar', () => {
 
     expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wynikow');
     expect(screen.queryByText('Wyniki aktualne')).toBeNull();
-    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Uruchomienie: run-42');
+    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Obliczenia: run-42');
   });
 
   it('ukrywa sekundarne akcje w menu i zachowuje ich działanie', () => {
@@ -91,7 +91,7 @@ describe('ActiveCaseBar', () => {
 
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
+      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'FRESH');
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
       resultsIndex: {
@@ -124,8 +124,8 @@ describe('ActiveCaseBar', () => {
     fireEvent.click(screen.getByTestId('btn-secondary-actions'));
 
     expect(screen.getByTestId('secondary-actions-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Kontekst przypadku');
-    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podglad wynikow');
+    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Kontekst wariantu');
+    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podgląd wyników');
 
     fireEvent.click(screen.getByTestId('btn-configure'));
     expect(onConfigureClick).toHaveBeenCalledTimes(1);

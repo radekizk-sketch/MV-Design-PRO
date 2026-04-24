@@ -35,13 +35,13 @@ const MODE_PERMISSIONS: Record<RuntimeOperatingMode, Record<CaseAction, boolean>
 };
 
 const BLOCKED_MESSAGES: Record<CaseAction, string> = {
-  create: 'Tworzenie przypadkow zablokowane w powierzchni analitycznej.',
-  rename: 'Zmiana nazwy przypadku jest zablokowana w powierzchni analitycznej.',
-  delete: 'Usuwanie przypadkow jest zablokowane w powierzchni analitycznej.',
-  clone: 'Klonowanie przypadkow jest zablokowane w powierzchni analitycznej.',
-  activate: 'Aktywacja przypadku jest zablokowana w powierzchni analitycznej.',
-  edit_config: 'Edycja kontekstu przypadku jest zablokowana w powierzchni analitycznej.',
-  calculate: 'Uruchomienie obliczen jest zablokowane w powierzchni analitycznej.',
+  create: 'Tworzenie wariantów pracy zablokowane w powierzchni analitycznej.',
+  rename: 'Zmiana nazwy wariantu pracy jest zablokowana w powierzchni analitycznej.',
+  delete: 'Usuwanie wariantów pracy jest zablokowane w powierzchni analitycznej.',
+  clone: 'Klonowanie wariantów pracy jest zablokowane w powierzchni analitycznej.',
+  activate: 'Aktywacja wariantu pracy jest zablokowana w powierzchni analitycznej.',
+  edit_config: 'Edycja kontekstu wariantu pracy jest zablokowana w powierzchni analitycznej.',
+  calculate: 'Obliczenia są zablokowane w powierzchni analitycznej.',
 };
 
 export function useModeGating(): {
