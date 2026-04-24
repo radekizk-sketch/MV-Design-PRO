@@ -1,10 +1,10 @@
 ﻿/**
- * Global Application State Store â€” P12a Data Manager Parity
+ * Global Application State Store - P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
- * - wizard_screens.md Â§ 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
- * - wizard_screens.md Â§ 1.3: Active case awareness
- * - ui_canonical_parity.md Â§ A: Mode-based gating
+ * - wizard_screens.md section 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
+ * - wizard_screens.md section 1.3: Active case awareness
+ * - ui_canonical_parity.md section A: Mode-based gating
  *
  * SINGLE SOURCE OF TRUTH for:
  * - Active project ID
@@ -14,7 +14,7 @@
  *
  * INVARIANTS:
  * - Exactly ONE active case per project
- * - No activeCaseId â†’ [Oblicz] button DISABLED
+ * - No activeCaseId -> [Oblicz] button DISABLED
  * - MODEL_EDIT: model mutable, results invalidated on change
  * - CASE_CONFIG: model read-only, case config mutable
  * - RESULT_VIEW: everything read-only
@@ -37,7 +37,7 @@ export type CaseKind = 'ShortCircuitCase' | 'PowerFlowCase';
 
 /**
  * Analysis type for UI Context.
- * CANONICAL: UI_CORE_ARCHITECTURE.md Â§ 5.2 â€” Analysis type in Context Bar hierarchy
+ * CANONICAL: UI_CORE_ARCHITECTURE.md section 5.2 - Analysis type in Context Bar hierarchy
  */
 export type AnalysisType = 'SHORT_CIRCUIT' | 'LOAD_FLOW' | 'PROTECTION' | null;
 
@@ -437,7 +437,7 @@ export function useActiveAnalysisType(): AnalysisType {
 
 /**
  * Hook: Get active analysis type label in Polish.
- * CANONICAL: PROOF_UI_ARCHITECTURE.md Â§ 7.6 â€” Polish terminology in UI
+ * CANONICAL: PROOF_UI_ARCHITECTURE.md section 7.6 - Polish terminology in UI
  */
 export function useActiveAnalysisTypeLabel(): string | null {
   const analysisType = useAppStateStore((state) => state.activeAnalysisType);
@@ -446,9 +446,9 @@ export function useActiveAnalysisTypeLabel(): string | null {
     case 'SHORT_CIRCUIT':
       return 'Analiza zwarciowa';
     case 'LOAD_FLOW':
-      return 'RozpĹ‚yw mocy';
+      return 'Rozpływ mocy';
     case 'PROTECTION':
-      return 'Koordynacja zabezpieczeĹ„';
+      return 'Koordynacja zabezpieczeń';
     default:
       return analysisType;
   }
@@ -463,7 +463,7 @@ export function useActiveRunId(): string | null {
 
 /**
  * Hook: Get complete UI context for Context Bar.
- * UI_INTEGRATION_E2E: Single source of truth per UI_CORE_ARCHITECTURE.md Â§ 5.2
+ * UI_INTEGRATION_E2E: Single source of truth per UI_CORE_ARCHITECTURE.md section 5.2
  */
 export function useUIContext() {
   return useAppStateStore((state) => ({

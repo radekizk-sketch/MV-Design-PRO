@@ -1,13 +1,13 @@
 ﻿/**
- * SLD Editor Page â€” Canonical/CANONICAL Style Main Editor View
+ * SLD Editor Page - Canonical/CANONICAL Style Main Editor View
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
- * - wizard_screens.md Â§ 2.1: GĹ‚Ăłwna struktura okna
- * - sld_rules.md: SLD â†” selection synchronization
+ * - ui_canonical_parity.md: Layout narzędziowy ZAWSZE renderowany
+ * - wizard_screens.md section 2.1: Główna struktura okna
+ * - sld_rules.md: SLD <-> selection synchronization
  *
  * CANONICAL RULE:
- * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
+ * > Layout narzędziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * FEATURES:
@@ -75,7 +75,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'bus_main',
     elementId: 'bus_main',
     elementType: 'Bus',
-    elementName: 'Szyna gĹ‚Ăłwna SN',
+    elementName: 'Szyna główna SN',
     position: { x: 400, y: 200 },
     inService: true,
     width: 100,
@@ -461,7 +461,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const clearSelection = useSelectionStore((state) => state.clearSelection);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
 
-  // Readiness live store â€” real data from API
+  // Readiness live store - real data from API
   const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const readinessStatus = useReadinessLiveStore((state) => state.status);
   const readinessLoading = useReadinessLiveStore((state) => state.loading);
@@ -469,7 +469,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const readinessToggleGroup = useReadinessLiveStore((state) => state.toggleGroup);
   const readinessRefresh = useReadinessLiveStore((state) => state.refresh);
 
-  // Study cases â€” for hasCases wiring
+  // Study cases - for hasCases wiring
   const studyCasesCount = useStudyCasesStore((state) => state.cases.length);
 
   const [isCreatingFirstCase, setIsCreatingFirstCase] = useState(false);
@@ -1149,7 +1149,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     }
   }, [isCreatingFirstCase, activeProjectId, withTimeout, setActiveProject, createCase, setActiveCase]);
 
-  // BLOK 8: Uruchom obliczenia â€” otwiera menedĹĽer przypadkĂłw z widokiem obliczeniowym
+  // BLOK 8: Uruchom obliczenia - otwiera menedżer przypadków z widokiem obliczeniowym
   const handleCalculate = useCallback(() => {
     openExecutionSurface();
   }, [openExecutionSurface]);
@@ -1268,7 +1268,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domkni?cia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domknięcia ringu.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1276,7 +1276,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
       openOperationForm('connect_secondary_ring_sn', ringPayload);
       setPendingRingTerminal(null);
-      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portĂłw ${pendingRingTerminal.label} i ${target.name}.`;
+      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portów ${pendingRingTerminal.label} i ${target.name}.`;
       setInteractionMessage(msg);
       notify(msg, 'success');
       setActiveTool('select');
@@ -1504,7 +1504,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           />
         )}
 
-        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
+        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar - bottom-right corner */}
         <div
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
           data-testid="sld-bottom-right-toolbars"
