@@ -179,13 +179,13 @@ def _draw_header_block(
 ) -> None:
     c.setFont("Helvetica", 10)
     project = bundle.get("project", {})
-    operating_case = bundle.get("operating_case", {})
+    study_case = bundle.get("study_case") or bundle.get("operating_case", {})
     run = bundle.get("run", {})
     items = [
         ("Projekt", project.get("name")),
         ("Project ID", project.get("id")),
-        ("OperatingCase", operating_case.get("name")),
-        ("OperatingCase ID", operating_case.get("id")),
+        ("Przypadek obliczeniowy", study_case.get("name")),
+        ("StudyCase ID", study_case.get("id")),
         ("AnalysisRun ID", run.get("id")),
         ("Deterministic ID", run.get("deterministic_id")),
         ("Analysis type", run.get("analysis_type")),
@@ -211,13 +211,13 @@ def _advance_y(
     y: float,
 ) -> float:
     project = bundle.get("project", {})
-    operating_case = bundle.get("operating_case", {})
+    study_case = bundle.get("study_case") or bundle.get("operating_case", {})
     run = bundle.get("run", {})
     items = [
         project.get("name"),
         project.get("id"),
-        operating_case.get("name"),
-        operating_case.get("id"),
+        study_case.get("name"),
+        study_case.get("id"),
         run.get("id"),
         run.get("deterministic_id"),
         run.get("analysis_type"),
@@ -258,3 +258,4 @@ def _label_for_summary_key(key: str) -> str:
     if key == "connection_node_id":
         return "BoundaryNode – węzeł przyłączenia"
     return key
+

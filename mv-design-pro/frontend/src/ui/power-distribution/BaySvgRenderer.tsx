@@ -62,7 +62,7 @@ export interface BaySvgRendererProps {
 export const BaySvgRenderer: React.FC<BaySvgRendererProps> = ({
   config,
   detail,
-  theme = 'light',
+  theme = 'canonical-dark',
   width = 800,
   height = 500,
   selectedFieldId = null,

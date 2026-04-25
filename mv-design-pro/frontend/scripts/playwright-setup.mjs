@@ -20,9 +20,14 @@ function ensureProjectDependenciesInstalled() {
 }
 
 function installPlaywrightChromium() {
-  const localPlaywright = './node_modules/.bin/playwright';
+  const localPlaywright = process.platform === 'win32'
+    ? '.\\node_modules\\.bin\\playwright.cmd'
+    : './node_modules/.bin/playwright';
   if (!fs.existsSync(localPlaywright)) {
     return { status: 1 };
+  }
+  if (process.platform === 'win32') {
+    return run('cmd', ['/d', '/s', '/c', localPlaywright, 'install', '--with-deps', 'chromium']);
   }
   return run(localPlaywright, ['install', '--with-deps', 'chromium']);
 }
@@ -46,6 +51,11 @@ if (install.status === 0) {
 }
 
 console.log('[playwright-setup] Instalacja z CDN nie powiodła się. Próba instalacji Google Chrome (APT)...');
+if (process.platform === 'win32') {
+  console.error('[playwright-setup] Nie udalo sie zainstalowac Playwright Chromium na Windows.');
+  process.exit(install.status ?? 1);
+}
+
 const sudoPrefix = typeof process.getuid === 'function' && process.getuid() === 0 ? '' : 'sudo ';
 
 const apt = run('bash', ['-lc', [

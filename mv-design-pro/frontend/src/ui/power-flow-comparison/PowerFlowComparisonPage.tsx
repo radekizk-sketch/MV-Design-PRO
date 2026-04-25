@@ -1,5 +1,5 @@
-/**
- * P20c — Power Flow Comparison Page (Porownanie rozplywu mocy)
+﻿/**
+ * P20c â€” Power Flow Comparison Page (Porownanie rozplywu mocy)
  *
  * CANONICAL ALIGNMENT:
  * - P20c: Power Flow A/B Comparison
@@ -92,7 +92,7 @@ function ComparisonExportButton({ comparisonId, disabled }: ComparisonExportButt
       document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
-      notify(`Błąd eksportu: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
+      notify(`BĹ‚Ä…d eksportu: ${error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d'}`);
     } finally {
       setIsExporting(false);
     }
@@ -135,7 +135,7 @@ function ComparisonExportButton({ comparisonId, disabled }: ComparisonExportButt
 // =============================================================================
 
 function formatNumber(value: number | null | undefined, decimals = 4): string {
-  if (value === null || value === undefined) return '—';
+  if (value === null || value === undefined) return 'â€”';
   return value.toLocaleString('pl-PL', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -173,13 +173,13 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz uruchomienie —</option>
+        <option value="">â€” Wybierz uruchomienie â€”</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           const convergence = run.converged ? 'Zbiezny' : 'Niezbiezny';
           return (
             <option key={run.id} value={run.id}>
-              PF [{truncateId(run.operating_case_id)}] — {date} — {convergence}
+              PF [{truncateId(run.study_case_id)}] â€” {date} â€” {convergence}
             </option>
           );
         })}
@@ -236,22 +236,22 @@ function BusDifferencesTable({ rows, filter }: BusDifferencesTableProps) {
               ID szyny
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              V [pu] — A
+              V [pu] â€” A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              V [pu] — B
+              V [pu] â€” B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              ΔV [pu]
+              Î”V [pu]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Kat [deg] — A
+              Kat [deg] â€” A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Kat [deg] — B
+              Kat [deg] â€” B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              ΔKat [deg]
+              Î”Kat [deg]
             </th>
           </tr>
         </thead>
@@ -327,22 +327,22 @@ function BranchDifferencesTable({ rows, filter }: BranchDifferencesTableProps) {
               ID galezi
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Straty P [MW] — A
+              Straty P [MW] â€” A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Straty P [MW] — B
+              Straty P [MW] â€” B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              ΔStraty P [MW]
+              Î”Straty P [MW]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              P_from [MW] — A
+              P_from [MW] â€” A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              P_from [MW] — B
+              P_from [MW] â€” B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              ΔP_from [MW]
+              Î”P_from [MW]
             </th>
           </tr>
         </thead>
@@ -630,7 +630,7 @@ function SummaryPanel({ summary }: SummaryPanelProps) {
         <p className={`text-lg font-bold ${getDeltaColor(summary.delta_total_losses_p_mw, 0.01)}`}>
           {formatDelta(summary.delta_total_losses_p_mw, 3)} MW
         </p>
-        <p className="text-xs text-slate-500">ΔStraty calkowite</p>
+        <p className="text-xs text-slate-500">Î”Straty calkowite</p>
       </div>
       <div className="rounded border border-slate-200 bg-slate-50 p-4 text-center">
         <p className="text-2xl font-bold text-slate-700">{summary.total_issues}</p>
@@ -722,7 +722,7 @@ export function PowerFlowComparisonPage({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-400">
-                P20c — Porownanie rozplywu mocy
+                P20c â€” Porownanie rozplywu mocy
               </p>
               <h1 className="text-2xl font-semibold text-slate-900">
                 Porownanie analiz rozplywu mocy
@@ -862,3 +862,4 @@ export function PowerFlowComparisonPage({
 }
 
 export default PowerFlowComparisonPage;
+

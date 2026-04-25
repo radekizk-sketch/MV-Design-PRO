@@ -22,6 +22,7 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import type { PdfExportOptions, ExportResult, ExportLayerOptions, PdfOrientation } from './types';
 import { generateExportFilename } from './types';
+import { applyExportTheme, resolveExportTheme } from './exportTheme';
 
 /**
  * Page dimensions in mm (jsPDF uses mm by default).
@@ -96,7 +97,8 @@ function applyLayerVisibility(
 function createExportClone(
   originalContainer: HTMLElement,
   width: number,
-  height: number
+  height: number,
+  theme: PdfExportOptions['theme']
 ): HTMLElement {
   const clone = originalContainer.cloneNode(true) as HTMLElement;
 
@@ -112,6 +114,8 @@ function createExportClone(
   const statusBar = clone.querySelector('[data-testid="sld-view-status"]');
   toolbar?.remove();
   statusBar?.remove();
+
+  applyExportTheme(clone, resolveExportTheme(theme));
 
   return clone;
 }
@@ -176,7 +180,12 @@ export async function exportPdf(
     const exportHeight = canvasRect.height;
 
     // Create clone for export manipulation
-    const clone = createExportClone(containerElement, exportWidth, exportHeight);
+    const clone = createExportClone(
+      containerElement,
+      exportWidth,
+      exportHeight,
+      options.theme
+    );
     document.body.appendChild(clone);
 
     try {

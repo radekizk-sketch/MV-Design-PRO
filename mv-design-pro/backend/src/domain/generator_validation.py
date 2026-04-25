@@ -26,7 +26,9 @@ from domain.readiness import (
 )
 
 # Generator types that REQUIRE connection_variant
-_OZE_GEN_TYPES = frozenset({"pv_inverter", "wind_inverter", "bess"})
+_OZE_GEN_TYPES = frozenset(
+    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+)
 
 
 def validate_generator_connections(

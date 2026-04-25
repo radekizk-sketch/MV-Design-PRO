@@ -10,7 +10,9 @@ describe('WizardPage terminology', () => {
     expect(source).not.toContain('Generators (OZE)');
     expect(source).not.toContain("wind_inverter: 'Wiatr'");
     expect(source).not.toContain("synchronous: 'Gen. synchr.'");
-    expect(source).toContain("wind_inverter: 'FW'");
+    expect(source).toContain("fw_pmsg: 'FW PMSG'");
+    expect(source).toContain("fw_dfig: 'FW DFIG'");
+    expect(source).toContain("fw_scig: 'FW SCIG'");
     expect(source).toContain("synchronous: 'Generator synchroniczny'");
   });
 });

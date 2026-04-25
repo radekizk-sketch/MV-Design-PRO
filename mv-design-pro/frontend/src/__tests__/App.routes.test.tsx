@@ -103,6 +103,15 @@ describe('App hash routes', () => {
     useReadinessLiveStore.getState().clear();
   });
 
+  it('renderuje cala aplikacje w ekranowym motywie dark SCADA', async () => {
+    render(<App />);
+
+    const root = await screen.findByTestId('app-root');
+
+    expect(root).toHaveAttribute('data-ui-theme', 'dark-scada');
+    expect(root).toHaveClass('mv-dark-scada');
+  });
+
   it('przełącza się na #results bez pustego ekranu i przekazuje run do widoku wyników', async () => {
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
     render(<App />);

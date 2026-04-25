@@ -24,14 +24,22 @@ import { mergeAnalysisCaseContexts } from '../results-inspector/analysisCaseCont
 
 const API_BASE = '/api';
 
-function normalizePowerFlowRunHeader(payload: PowerFlowRunHeader): PowerFlowRunHeader {
+type LegacyPowerFlowRunHeader = Omit<PowerFlowRunHeader, 'study_case_id'> & {
+  study_case_id?: string;
+};
+
+function normalizePowerFlowRunHeader(payload: LegacyPowerFlowRunHeader): PowerFlowRunHeader {
   const analysisCaseContext = mergeAnalysisCaseContexts(
     payload.analysis_case_context,
     payload.input_metadata?.analysis_case_context,
   );
+  if (!payload.study_case_id) {
+    throw new Error('Brak `study_case_id` w kanonicznym nagłówku uruchomienia.');
+  }
 
   return {
     ...payload,
+    study_case_id: payload.study_case_id,
     analysis_case_context: analysisCaseContext,
     input_metadata: payload.input_metadata
       ? {

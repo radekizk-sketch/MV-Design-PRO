@@ -29,7 +29,7 @@ const RENDER_PRESETS: Record<BayRenderContext, RenderPreset> = {
   podglad_formularza: {
     width: 360,
     height: 420,
-    theme: 'light',
+    theme: 'canonical-dark',
   },
   inspektor: {
     width: 300,

@@ -8,12 +8,16 @@ from typing import Any, Literal
 from api.analysis_case_context import build_analysis_case_context
 from api.canonical_run_views import (
     build_analysis_run_summary,
+    build_automation_trace_results_response,
     build_branch_results_response,
     build_bus_results_response,
+    build_dynamic_stability_results_response,
     build_extended_trace_response,
+    build_phase_state_results_response,
     build_power_flow_export_bundle,
     build_results_index_response,
     build_short_circuit_results_response,
+    build_source_compliance_results_response,
 )
 from api.v125_contracts import build_export_artifact, build_export_policy, resolve_proof_pack_ref
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
@@ -24,7 +28,19 @@ ReportProfile = Literal["osd", "wykonawczy", "audytowy"]
 ReportDetailLevel = Literal["minimalny", "standardowy", "pelny"]
 ReportScope = Literal["whole_run", "active_table"]
 ReportSection = Literal["summary", "results", "catalog", "trace"]
-ReportFocusTable = Literal["buses", "branches", "short_circuit", "trace"] | None
+ReportFocusTable = (
+    Literal[
+        "buses",
+        "branches",
+        "short_circuit",
+        "phase_state",
+        "dynamic_stability",
+        "automation_trace",
+        "source_compliance",
+        "trace",
+    ]
+    | None
+)
 
 DEFAULT_REPORT_SECTIONS_BY_DETAIL: dict[ReportDetailLevel, tuple[ReportSection, ...]] = {
     "minimalny": ("summary", "results"),
@@ -71,7 +87,19 @@ def normalize_report_options(
     )
     normalized_scope: ReportScope = scope if scope in REPORT_SCOPE_LABELS else "whole_run"
     normalized_focus_table: ReportFocusTable = (
-        focus_table if focus_table in {"buses", "branches", "short_circuit", "trace"} else None
+        focus_table
+        if focus_table
+        in {
+            "buses",
+            "branches",
+            "short_circuit",
+            "phase_state",
+            "dynamic_stability",
+            "automation_trace",
+            "source_compliance",
+            "trace",
+        }
+        else None
     )
 
     default_sections = list(DEFAULT_REPORT_SECTIONS_BY_DETAIL[normalized_detail])
@@ -100,6 +128,12 @@ def _analysis_title(run: CanonicalRun) -> str:
         return "Raport rozpływu mocy"
     if run.analysis_type == "short_circuit_sn":
         return "Raport analizy zwarciowej"
+    if run.analysis_type == "phase_state_sn":
+        return "Raport stanu fazowego SN"
+    if run.analysis_type == "dynamic_stability":
+        return "Raport stabilności dynamicznej"
+    if run.analysis_type == "source_compliance":
+        return "Raport zgodności źródła"
     return "Raport analizy sieci"
 
 
@@ -121,6 +155,10 @@ def _build_report_results_section(
     bus_results = build_bus_results_response(run)
     branch_results = build_branch_results_response(run)
     short_circuit_results = build_short_circuit_results_response(run)
+    phase_state_results = build_phase_state_results_response(run)
+    dynamic_stability_results = build_dynamic_stability_results_response(run)
+    automation_trace_results = build_automation_trace_results_response(run)
+    source_compliance_results = build_source_compliance_results_response(run)
 
     if scope != "active_table" or focus_table is None:
         return {
@@ -128,6 +166,10 @@ def _build_report_results_section(
             "buses": bus_results,
             "branches": branch_results,
             "short_circuit": short_circuit_results,
+            "phase_state": phase_state_results,
+            "dynamic_stability": dynamic_stability_results,
+            "automation_trace": automation_trace_results,
+            "source_compliance": source_compliance_results,
         }
 
     filtered_tables = [
@@ -145,6 +187,26 @@ def _build_report_results_section(
         "short_circuit": (
             short_circuit_results
             if focus_table == "short_circuit"
+            else {"run_id": str(run.id), "rows": []}
+        ),
+        "phase_state": (
+            phase_state_results
+            if focus_table == "phase_state"
+            else {"run_id": str(run.id), "rows": []}
+        ),
+        "dynamic_stability": (
+            dynamic_stability_results
+            if focus_table == "dynamic_stability"
+            else {"run_id": str(run.id), "rows": []}
+        ),
+        "automation_trace": (
+            automation_trace_results
+            if focus_table == "automation_trace"
+            else {"run_id": str(run.id), "rows": []}
+        ),
+        "source_compliance": (
+            source_compliance_results
+            if focus_table == "source_compliance"
             else {"run_id": str(run.id), "rows": []}
         ),
     }
@@ -200,6 +262,71 @@ def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
     return build_power_flow_export_bundle(run)
 
 
+def _build_short_circuit_export_bundle(run: CanonicalRun) -> dict[str, Any]:
+    if run.analysis_type != "short_circuit_sn":
+        raise ValueError("Przebieg nie jest analiza zwarciowa")
+    analysis_case_context = build_analysis_case_context(run)
+    trace_payload = canonicalize_json(build_extended_trace_response(run))
+    return {
+        "analysis_case_context": analysis_case_context,
+        "short_circuit_results": build_short_circuit_results_response(run),
+        "results_index": build_results_index_response(run),
+        "catalog_context": trace_payload.get("catalog_context", []),
+        "catalog_context_summary": trace_payload.get("catalog_context_summary", {}),
+        "white_box_trace": trace_payload.get("white_box_trace", []),
+        "metadata": {
+            "run_id": str(run.id),
+            "project_id": run.project_id,
+            "study_case_id": run.case_id,
+            "created_at": run.created_at.isoformat(),
+            "input_hash": run.input_hash,
+            "snapshot_hash": run.snapshot_hash,
+            "analysis_type": (run.raw_result or {}).get("analysis_type"),
+            "short_circuit_type": (run.raw_result or {}).get("short_circuit_type"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "proof_pack_ref": resolve_proof_pack_ref(run),
+            "catalog_context_count": len(trace_payload.get("catalog_context", [])),
+            "analysis_case_context": analysis_case_context,
+        },
+    }
+
+
+def _build_generic_export_bundle(run: CanonicalRun) -> dict[str, Any]:
+    analysis_case_context = build_analysis_case_context(run)
+    trace_payload = canonicalize_json(build_extended_trace_response(run))
+    results_index = build_results_index_response(run)
+    bundle: dict[str, Any] = {
+        "analysis_case_context": analysis_case_context,
+        "results_index": results_index,
+        "catalog_context": trace_payload.get("catalog_context", []),
+        "catalog_context_summary": trace_payload.get("catalog_context_summary", {}),
+        "white_box_trace": trace_payload.get("white_box_trace", []),
+        "metadata": {
+            "run_id": str(run.id),
+            "project_id": run.project_id,
+            "study_case_id": run.case_id,
+            "created_at": run.created_at.isoformat(),
+            "input_hash": run.input_hash,
+            "snapshot_hash": run.snapshot_hash,
+            "analysis_type": (run.raw_result or {}).get("analysis_type", run.analysis_type),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "proof_pack_ref": resolve_proof_pack_ref(run),
+            "catalog_context_count": len(trace_payload.get("catalog_context", [])),
+            "analysis_case_context": analysis_case_context,
+        },
+    }
+    if run.analysis_type == "phase_state_sn":
+        bundle["phase_state"] = build_phase_state_results_response(run)
+    elif run.analysis_type == "dynamic_stability":
+        bundle["dynamic_stability"] = build_dynamic_stability_results_response(run)
+        bundle["automation_trace"] = build_automation_trace_results_response(run)
+    elif run.analysis_type == "source_compliance":
+        bundle["source_compliance"] = build_source_compliance_results_response(run)
+    return bundle
+
+
 def _format_catalog_binding(entry: dict[str, Any]) -> str:
     binding = entry.get("catalog_binding") or {}
     namespace = binding.get("catalog_namespace") or "-"
@@ -240,29 +367,79 @@ def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> li
 
 
 def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
-    bundle = _require_power_flow_bundle(run)
+    if run.analysis_type == "short_circuit_sn":
+        bundle = _build_short_circuit_export_bundle(run)
+        analysis_case_context = bundle.get("analysis_case_context") or build_analysis_case_context(
+            run
+        )
+        return {
+            "report_type": "short_circuit_result",
+            "report_version": "1.1.0",
+            "analysis_case_context": analysis_case_context,
+            "proof_pack_ref": resolve_proof_pack_ref(run),
+            "export_artifact": build_export_artifact(run, export_kind="json"),
+            "export_policy": build_export_policy("json"),
+            "metadata": bundle["metadata"],
+            "short_circuit_results": bundle.get("short_circuit_results", {}),
+            "results_index": bundle.get("results_index", {}),
+            "catalog_context": bundle.get("catalog_context", []),
+            "catalog_context_summary": bundle.get("catalog_context_summary", {}),
+            "white_box_trace": bundle.get("white_box_trace", []),
+            "trace_summary": build_trace_summary(bundle.get("white_box_trace") or []),
+        }
+
+    if run.analysis_type == "PF":
+        bundle = _require_power_flow_bundle(run)
+        analysis_case_context = bundle.get("analysis_case_context") or build_analysis_case_context(
+            run
+        )
+        return {
+            "report_type": "power_flow_result",
+            "report_version": "1.1.0",
+            "analysis_case_context": analysis_case_context,
+            "proof_pack_ref": resolve_proof_pack_ref(run),
+            "export_artifact": build_export_artifact(run, export_kind="json"),
+            "export_policy": build_export_policy("json"),
+            "metadata": bundle["metadata"],
+            "result": bundle["result"],
+            "bus_results": bundle.get("bus_results", {}),
+            "branch_results": bundle.get("branch_results", {}),
+            "results_index": bundle.get("results_index", {}),
+            "catalog_context": bundle.get("catalog_context", []),
+            "white_box_trace": bundle.get("white_box_trace", []),
+            "trace_summary": {
+                "solver_version": bundle["trace"].get("solver_version"),
+                "input_hash": bundle["trace"].get("input_hash"),
+                "converged": bundle["trace"].get("converged"),
+                "final_iterations_count": bundle["trace"].get("final_iterations_count"),
+            },
+        }
+
+    bundle = _build_generic_export_bundle(run)
     analysis_case_context = bundle.get("analysis_case_context") or build_analysis_case_context(run)
-    return {
-        "report_type": "power_flow_result",
+    payload = {
+        "report_type": str(bundle["metadata"].get("analysis_type") or run.analysis_type),
         "report_version": "1.1.0",
         "analysis_case_context": analysis_case_context,
         "proof_pack_ref": resolve_proof_pack_ref(run),
         "export_artifact": build_export_artifact(run, export_kind="json"),
         "export_policy": build_export_policy("json"),
         "metadata": bundle["metadata"],
-        "result": bundle["result"],
-        "bus_results": bundle.get("bus_results", {}),
-        "branch_results": bundle.get("branch_results", {}),
         "results_index": bundle.get("results_index", {}),
         "catalog_context": bundle.get("catalog_context", []),
+        "catalog_context_summary": bundle.get("catalog_context_summary", {}),
         "white_box_trace": bundle.get("white_box_trace", []),
-        "trace_summary": {
-            "solver_version": bundle["trace"].get("solver_version"),
-            "input_hash": bundle["trace"].get("input_hash"),
-            "converged": bundle["trace"].get("converged"),
-            "final_iterations_count": bundle["trace"].get("final_iterations_count"),
-        },
+        "trace_summary": build_trace_summary(bundle.get("white_box_trace") or []),
     }
+    if "phase_state" in bundle:
+        payload["phase_state"] = bundle["phase_state"]
+    if "dynamic_stability" in bundle:
+        payload["dynamic_stability"] = bundle["dynamic_stability"]
+    if "automation_trace" in bundle:
+        payload["automation_trace"] = bundle["automation_trace"]
+    if "source_compliance" in bundle:
+        payload["source_compliance"] = bundle["source_compliance"]
+    return payload
 
 
 def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]:
@@ -361,6 +538,10 @@ def _trace_jsonl_lines(trace_payload: dict[str, Any]) -> list[str]:
                         "inputs": step.get("inputs"),
                         "substitution": step.get("substitution"),
                         "result": step.get("result"),
+                        "proof_ref": step.get("proof_ref"),
+                        "proof_status": step.get("proof_status"),
+                        "reporting_status": step.get("reporting_status"),
+                        "method_basis": step.get("method_basis"),
                         "materialized_params": step.get("materialized_params")
                         or (step.get("catalog_context_entry") or {}).get("materialized_params"),
                         "manual_overrides": step.get("manual_overrides")
@@ -795,6 +976,70 @@ def export_run_report_docx_response(
                             ]
                         )
                     )
+            elif table_id == "phase_state":
+                rows = (results_section.get("phase_state", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]
+                for row_data in rows:
+                    doc.add_paragraph(
+                        " | ".join(
+                            [
+                                str(
+                                    row_data.get("target_name") or row_data.get("element_id") or "—"
+                                ),
+                                f"UA={row_data.get('ua_kv') or '—'} kV",
+                                f"UB={row_data.get('ub_kv') or '—'} kV",
+                                f"UC={row_data.get('uc_kv') or '—'} kV",
+                                f"Asymetria U={row_data.get('voltage_unbalance_percent') or '—'} %",
+                            ]
+                        )
+                    )
+            elif table_id == "dynamic_stability":
+                rows = (results_section.get("dynamic_stability", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]
+                for row_data in rows:
+                    doc.add_paragraph(
+                        " | ".join(
+                            [
+                                str(row_data.get("source_id") or "—"),
+                                f"Status={row_data.get('status') or '—'}",
+                                f"t_wyl={row_data.get('clearing_time_ms') or '—'} ms",
+                                f"Margines={row_data.get('clearing_margin_ms') or '—'} ms",
+                                f"Indeks={row_data.get('stability_index') or '—'}",
+                            ]
+                        )
+                    )
+            elif table_id == "automation_trace":
+                rows = (results_section.get("automation_trace", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]
+                for row_data in rows:
+                    doc.add_paragraph(
+                        " | ".join(
+                            [
+                                str(row_data.get("event_seq") or "—"),
+                                str(row_data.get("event_type") or "—"),
+                                str(row_data.get("element_id") or "—"),
+                                str(row_data.get("detail") or "—"),
+                            ]
+                        )
+                    )
+            elif table_id == "source_compliance":
+                rows = (results_section.get("source_compliance", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]
+                for row_data in rows:
+                    doc.add_paragraph(
+                        " | ".join(
+                            [
+                                str(row_data.get("source_ref") or "—"),
+                                str(row_data.get("source_type") or "—"),
+                                str(row_data.get("verdict") or "—"),
+                                str(row_data.get("reporting_status") or "—"),
+                            ]
+                        )
+                    )
             else:
                 doc.add_paragraph("Brak danych tabelarycznych dla wybranego zakresu.")
 
@@ -940,6 +1185,34 @@ def export_run_report_pdf_response(
                 ]:
                     draw_line(
                         f"{row_data.get('target_name') or row_data.get('target_id')}: Ik''={row_data.get('ikss_ka') or '—'} kA, ip={row_data.get('ip_ka') or '—'} kA"
+                    )
+            elif table.get("table_id") == "phase_state":
+                for row_data in (results_section.get("phase_state", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]:
+                    draw_line(
+                        f"{row_data.get('target_name') or row_data.get('element_id')}: UA={row_data.get('ua_kv') or '—'} kV, UB={row_data.get('ub_kv') or '—'} kV, UC={row_data.get('uc_kv') or '—'} kV"
+                    )
+            elif table.get("table_id") == "dynamic_stability":
+                for row_data in (results_section.get("dynamic_stability", {}) or {}).get(
+                    "rows", []
+                )[: limits["rows"]]:
+                    draw_line(
+                        f"{row_data.get('source_id')}: status={row_data.get('status') or '—'}, t_wyl={row_data.get('clearing_time_ms') or '—'} ms, indeks={row_data.get('stability_index') or '—'}"
+                    )
+            elif table.get("table_id") == "automation_trace":
+                for row_data in (results_section.get("automation_trace", {}) or {}).get("rows", [])[
+                    : limits["rows"]
+                ]:
+                    draw_line(
+                        f"{row_data.get('event_seq') or '—'} | {row_data.get('event_type') or '—'} | {row_data.get('element_id') or '—'} | {row_data.get('detail') or '—'}"
+                    )
+            elif table.get("table_id") == "source_compliance":
+                for row_data in (results_section.get("source_compliance", {}) or {}).get(
+                    "rows", []
+                )[: limits["rows"]]:
+                    draw_line(
+                        f"{row_data.get('source_ref') or '—'} | {row_data.get('source_type') or '—'} | {row_data.get('verdict') or '—'} | {row_data.get('reporting_status') or '—'}"
                     )
         y -= 2 * mm
 

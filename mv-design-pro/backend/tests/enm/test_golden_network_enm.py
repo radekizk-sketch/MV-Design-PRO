@@ -19,6 +19,7 @@ from application.sld.cross_reference import build_cross_reference_table
 from application.sld.station_geometry import build_station_geometry
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
+from enm.severity import severity_rank
 from enm.topology import build_topology_graph
 from enm.validator import ENMValidator
 
@@ -253,15 +254,14 @@ class TestGoldenNetworkValidation:
         assert codes1 == codes2
 
         # Verify sort order: severity rank ascending, then code, then element_ref
-        severity_rank = {"BLOCKER": 0, "IMPORTANT": 1, "INFO": 2}
         for prev, curr in zip(result1.issues, result1.issues[1:], strict=False):
             prev_key = (
-                severity_rank[prev.severity],
+                severity_rank(prev.severity),
                 prev.code,
                 prev.element_refs[0] if prev.element_refs else "",
             )
             curr_key = (
-                severity_rank[curr.severity],
+                severity_rank(curr.severity),
                 curr.code,
                 curr.element_refs[0] if curr.element_refs else "",
             )

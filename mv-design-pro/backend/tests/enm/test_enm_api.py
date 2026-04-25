@@ -83,6 +83,12 @@ def _valid_enm_payload(name: str) -> dict:
     }
 
 
+def _valid_enm_payload_with_z0(name: str) -> dict:
+    payload = _valid_enm_payload(name)
+    payload["sources"][0].update({"r0_ohm": 0.16, "x0_ohm": 1.6})
+    return payload
+
+
 def _valid_enm_with_field_specs(name: str) -> dict:
     payload = _valid_enm_payload(name)
     payload["substations"] = [
@@ -158,6 +164,37 @@ class TestENMRead:
         assert response.json()["header"]["name"] == "Updated"
 
 
+class TestENMV2Projection:
+    def test_v2_projection_returns_read_only_m1_contract(self, client):
+        case_id = "test-case-v2-projection"
+        _seed_enm(case_id, _valid_enm_payload("V2 Projection"))
+
+        response = client.get(f"/api/cases/{case_id}/enm/v2-projection")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["header"]["enm_version"] == "2.0"
+        assert data["header"]["source_enm_version"] == "1.0"
+        assert data["header"]["name"] == "V2 Projection"
+        assert data["projection_hash_sha256"]
+        assert data["element_refs"][0]["ref_id"] == "b1"
+        assert data["operating_variants"][0]["ref_id"] == "variant.uklad_normalny"
+        assert data["switching_state_snapshots"][0]["ref_id"] == "switching.uklad_normalny.base"
+        assert data["summary"]["buses"] == 1
+
+        stored = client.get(f"/api/cases/{case_id}/enm").json()
+        assert stored["header"]["enm_version"] == "1.0"
+
+    def test_v2_projection_hash_is_deterministic(self, client):
+        case_id = "test-case-v2-projection-deterministic"
+        _seed_enm(case_id, _valid_enm_payload("V2 Deterministic"))
+
+        first = client.get(f"/api/cases/{case_id}/enm/v2-projection").json()
+        second = client.get(f"/api/cases/{case_id}/enm/v2-projection").json()
+
+        assert first["projection_hash_sha256"] == second["projection_hash_sha256"]
+
+
 class TestENMValidate:
     def test_empty_enm_fails_validation(self, client):
         client.get("/api/cases/test-case-5/enm")
@@ -191,6 +228,70 @@ class TestRunDispatch:
         assert data["analysis_type"] == "short_circuit_3f"
         assert len(data["results"]) >= 1
         assert data["results"][0]["ikss_a"] > 0
+
+    def test_run_dispatch_ignores_client_snapshot_body(self, client):
+        case_id = "test-case-run-draft-isolation"
+        _seed_enm(case_id, _valid_enm_payload("Committed ENM"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/runs/short-circuit",
+            json={
+                "snapshot": {"header": {"name": "Wstrzykniety draft"}, "buses": []},
+                "enm": {"buses": [], "sources": []},
+                "buses": [],
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["case_id"] == case_id
+        assert data["analysis_type"] == "short_circuit_3f"
+        assert len(data["results"]) >= 1
+        assert data["results"][0]["ikss_a"] > 0
+
+    def test_run_dispatch_accepts_fault_type_1f_without_accepting_enm_draft(self, client):
+        case_id = "test-case-run-sc-1f"
+        _seed_enm(case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/runs/short-circuit",
+            json={
+                "fault_type": "1F",
+                "snapshot": {"header": {"name": "Wstrzykniety draft"}, "buses": []},
+                "enm": {"buses": [], "sources": []},
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["analysis_type"] == "short_circuit_1f"
+        assert data["short_circuit_type"] == "1F"
+        assert len(data["results"]) >= 1
+        assert data["results"][0]["short_circuit_type"] == "1F"
+        assert data["results"][0]["reporting_status"] == "reportable"
+        assert data["results"][0]["proof_status"] == "complete"
+        assert data["results"][0]["proof_ref"].startswith("proof:short-circuit:")
+        assert "z0_ohm" in data["results"][0]["white_box_trace"][0]["inputs"]
+
+    def test_run_dispatch_accepts_fault_type_2fg_with_reportable_proof(self, client):
+        case_id = "test-case-run-sc-2fg"
+        _seed_enm(case_id, _valid_enm_payload_with_z0("Committed ENM Z0"))
+
+        response = client.post(
+            f"/api/cases/{case_id}/runs/short-circuit",
+            json={"fault_type": "2F+Z"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["analysis_type"] == "short_circuit_2fg"
+        assert data["short_circuit_type"] == "2F+G"
+        assert data["reporting_status"] == "reportable"
+        assert data["proof_status"] == "complete"
+        assert len(data["results"]) >= 1
+        assert data["results"][0]["short_circuit_type"] == "2F+G"
+        assert data["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
+        assert data["results"][0]["dopuszczalnosc_raportowa"] is True
 
 
 class TestDomainOpsCatalogPolicy:

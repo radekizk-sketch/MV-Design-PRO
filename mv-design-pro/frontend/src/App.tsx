@@ -268,7 +268,12 @@ function App() {
 
   // E2E_STABILIZATION: Wrapper with app-ready indicator
   const wrapWithReadyIndicator = (content: React.ReactNode) => (
-    <div data-testid="app-root" data-ready={appReady}>
+    <div
+      data-testid="app-root"
+      data-ready={appReady}
+      className="mv-dark-scada min-h-screen bg-chrome-900 text-chrome-100"
+      data-ui-theme="dark-scada"
+    >
       {appReady && <div data-testid="app-ready" style={{ display: 'none' }} />}
       <NotificationToast />
       {content}

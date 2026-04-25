@@ -273,7 +273,18 @@ class Generator(ENMElement):
     bus_ref: str
     p_mw: float
     q_mvar: float | None = None
-    gen_type: Literal["synchronous", "pv_inverter", "wind_inverter", "bess"] | None = None
+    gen_type: (
+        Literal[
+            "synchronous",
+            "pv_inverter",
+            "wind_inverter",
+            "fw_pmsg",
+            "fw_dfig",
+            "fw_scig",
+            "bess",
+        ]
+        | None
+    ) = None
     limits: GenLimits | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
@@ -291,7 +302,8 @@ class Generator(ENMElement):
     - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)
     - 'block_transformer': przez transformator blokowy do SN
     - None: brak informacji → FixAction generator.connection_variant_missing
-    Dotyczy TYLKO gen_type in ('pv_inverter', 'wind_inverter', 'bess').
+    Dotyczy TYLKO gen_type in ('pv_inverter', 'wind_inverter',
+    'fw_pmsg', 'fw_dfig', 'fw_scig', 'bess').
     Generatory synchroniczne nie wymagaja wariantu.
     """
 

@@ -35,17 +35,17 @@ const KOLOR_LINII = CANONICAL_VOLTAGE_COLORS.SN;
 /** Kolor linii NOP (normalnie otwartej). */
 const KOLOR_NOP = CANONICAL_STATE_COLORS.deenergized;
 
-/** Kolor tla obiektu (stacji). */
-const KOLOR_TLA_OBIEKTU = '#F8FAFC';
+/** Kolor tla obiektu (stacji) w ekranowym dark SCADA. */
+const KOLOR_TLA_OBIEKTU = '#111827';
 
 /** Kolor obrysu obiektu. */
-const KOLOR_OBRYSU = '#CBD5E1';
+const KOLOR_OBRYSU = '#475569';
 
 /** Kolor tla aparatu. */
-const KOLOR_TLA_APARATU = '#FFFFFF';
+const KOLOR_TLA_APARATU = '#0F172A';
 
 /** Kolor tekstu. */
-const KOLOR_TEKSTU = '#1E293B';
+const KOLOR_TEKSTU = '#E5E7EB';
 
 /** Kolor portu. */
 const KOLOR_PORTU = '#EF4444';
@@ -264,7 +264,7 @@ const TrasaSvg: React.FC<TrasaProps> = ({ trasa }) => {
             y={p.y - 6}
             width={12}
             height={12}
-            fill="#FFFFFF"
+            fill="#0F172A"
             stroke={KOLOR_NOP}
             strokeWidth={2}
           />
@@ -326,7 +326,7 @@ export const RendererSld: React.FC<RendererSldProps> = ({
       height={wysokosc ?? '100%'}
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      style={{ background: '#FFFFFF' }}
+      style={{ background: '#020617' }}
       data-sld-hash={wynik.hash}
     >
       {/* Warstwa 1: Trasy polaczen (za obiektami) */}

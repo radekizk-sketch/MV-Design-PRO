@@ -16,6 +16,9 @@ function resolveGeneratorElementType(generator: Generator): ElementType {
     case 'bess':
       return 'BESSInverter';
     case 'wind_inverter':
+    case 'fw_pmsg':
+    case 'fw_dfig':
+    case 'fw_scig':
       return 'Generator';
     case 'synchronous':
       return 'Genset';

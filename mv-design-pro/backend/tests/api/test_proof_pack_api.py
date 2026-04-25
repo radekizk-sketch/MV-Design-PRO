@@ -124,13 +124,8 @@ def test_proof_pack_api_returns_zip(tmp_path):
     response = client.get(
         f"/api/proof/{data['project_id']}/{data['case_id']}/{data['run_id']}/pack"
     )
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "application/zip"
-    with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
-        names = set(zf.namelist())
-    assert "proof_pack/manifest.json" in names
-    assert "proof_pack/proof.json" in names
-    assert "proof_pack/proof.tex" in names
+    assert response.status_code == 410
+    assert "StudyCase" in response.json()["detail"]
 
 
 def test_proof_pack_api_404_when_missing(tmp_path):
@@ -139,7 +134,7 @@ def test_proof_pack_api_404_when_missing(tmp_path):
     response = client.get(
         f"/api/proof/{data['project_id']}/{data['case_id']}/{data['missing_run_id']}/pack"
     )
-    assert response.status_code == 404
+    assert response.status_code == 410
 
 
 def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):

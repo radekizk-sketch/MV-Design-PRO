@@ -7,8 +7,6 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
-from typing import Literal
-
 import networkx as nx
 from pydantic import BaseModel
 
@@ -19,11 +17,24 @@ from .models import (
     OverheadLine,
     SwitchBranch,
 )
+from .severity import (
+    SEVERITY_BLOCKER,
+    SEVERITY_IMPORTANT,
+    SEVERITY_INFO,
+    STATUS_FAIL,
+    STATUS_OK,
+    STATUS_WARN,
+    ValidationSeverity,
+    ValidationStatus,
+    is_blocking_severity,
+    is_warning_severity,
+    severity_rank,
+)
 
 
 class ValidationIssue(BaseModel):
     code: str
-    severity: Literal["BLOCKER", "IMPORTANT", "INFO"]
+    severity: ValidationSeverity
     message_pl: str
     element_refs: list[str] = []
     wizard_step_hint: str = ""
@@ -38,7 +49,7 @@ class AnalysisAvailability(BaseModel):
 
 
 class ValidationResult(BaseModel):
-    status: Literal["OK", "WARN", "FAIL"]
+    status: ValidationStatus
     issues: list[ValidationIssue] = []
     analysis_available: AnalysisAvailability = AnalysisAvailability()
 
@@ -50,8 +61,6 @@ class ReadinessResult(BaseModel):
 
 class ENMValidator:
     """Walidator energetyczny modelu sieci."""
-
-    _SEVERITY_RANK = {"BLOCKER": 0, "IMPORTANT": 1, "INFO": 2}
 
     def validate(self, enm: EnergyNetworkModel) -> ValidationResult:
         issues: list[ValidationIssue] = []
@@ -65,21 +74,21 @@ class ENMValidator:
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
             key=lambda i: (
-                self._SEVERITY_RANK.get(i.severity, 9),
+                severity_rank(i.severity),
                 i.code,
                 i.element_refs[0] if i.element_refs else "",
             )
         )
 
-        has_blockers = any(i.severity == "BLOCKER" for i in issues)
-        has_warnings = any(i.severity == "IMPORTANT" for i in issues)
+        has_blockers = any(is_blocking_severity(i.severity) for i in issues)
+        has_warnings = any(is_warning_severity(i.severity) for i in issues)
 
         if has_blockers:
-            status: Literal["OK", "WARN", "FAIL"] = "FAIL"
+            status: ValidationStatus = STATUS_FAIL
         elif has_warnings:
-            status = "WARN"
+            status = STATUS_WARN
         else:
-            status = "OK"
+            status = STATUS_OK
 
         availability = self._compute_availability(enm, issues)
 
@@ -90,8 +99,8 @@ class ENMValidator:
         )
 
     def readiness(self, validation: ValidationResult) -> ReadinessResult:
-        blockers = [i for i in validation.issues if i.severity == "BLOCKER"]
-        ready = validation.status != "FAIL" and len(blockers) == 0
+        blockers = [i for i in validation.issues if is_blocking_severity(i.severity)]
+        ready = validation.status != STATUS_FAIL and len(blockers) == 0
         return ReadinessResult(ready=ready, blockers=blockers)
 
     # ------------------------------------------------------------------
@@ -104,7 +113,7 @@ class ENMValidator:
             issues.append(
                 ValidationIssue(
                     code="E001",
-                    severity="BLOCKER",
+                    severity=SEVERITY_BLOCKER,
                     message_pl="Brak źródła zasilania w modelu sieci.",
                     wizard_step_hint="K2",
                     suggested_fix="Dodaj źródło zasilania (sieć zewnętrzna lub Thevenin) na szynie głównej.",
@@ -121,7 +130,7 @@ class ENMValidator:
             issues.append(
                 ValidationIssue(
                     code="E002",
-                    severity="BLOCKER",
+                    severity=SEVERITY_BLOCKER,
                     message_pl="Brak szyn (węzłów) w modelu sieci.",
                     wizard_step_hint="K3",
                     suggested_fix="Dodaj przynajmniej jedną szynę w kroku K2 lub K3.",
@@ -143,7 +152,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E004",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=f"Szyna '{bus.ref_id}' nie ma napięcia znamionowego (voltage_kv <= 0).",
                         element_refs=[bus.ref_id],
                         wizard_step_hint="K3",
@@ -164,7 +173,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="E005",
-                            severity="BLOCKER",
+                            severity=SEVERITY_BLOCKER,
                             message_pl=(
                                 f"Gałąź '{branch.ref_id}' ma zerową impedancję "
                                 f"(R=0 i X=0 Ω/km)."
@@ -187,7 +196,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E006",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Transformator '{trafo.ref_id}' nie ma napięcia zwarcia (uk% <= 0)."
                         ),
@@ -209,7 +218,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E007",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Transformator '{trafo.ref_id}': strona HV i LV "
                             f"podłączone do tej samej szyny '{trafo.hv_bus_ref}'."
@@ -239,7 +248,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="sources.no_short_circuit_params",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Źródło '{source.ref_id}' nie ma parametrów zwarciowych "
                             f"(brak Sk'', Ik'' lub R/X)."
@@ -265,7 +274,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E009",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Gałąź '{branch.ref_id}' nie ma referencji katalogowej "
                             f"(catalog_ref)."
@@ -287,7 +296,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E009",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Transformator '{trafo.ref_id}' nie ma referencji katalogowej "
                             f"(catalog_ref)."
@@ -309,7 +318,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E009",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Źródło '{source.ref_id}' nie ma referencji katalogowej "
                             f"(catalog_ref)."
@@ -338,7 +347,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="W001",
-                            severity="IMPORTANT",
+                            severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"Gałąź '{branch.ref_id}' nie ma składowej zerowej (Z₀) — "
                                 f"zwarcia 1F/2F-Z niedostępne."
@@ -364,7 +373,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="W002",
-                        severity="IMPORTANT",
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Źródło '{source.ref_id}' nie ma składowej zerowej (Z₀) — "
                             f"zwarcia 1F/2F-Z niedostępne."
@@ -386,7 +395,7 @@ class ENMValidator:
             issues.append(
                 ValidationIssue(
                     code="W003",
-                    severity="IMPORTANT",
+                    severity=SEVERITY_IMPORTANT,
                     message_pl="Brak odbiorów i generatorów — rozpływ mocy będzie pusty.",
                     wizard_step_hint="K6",
                     suggested_fix="Dodaj odbiory lub generatory w kroku K6.",
@@ -404,7 +413,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="W004",
-                        severity="IMPORTANT",
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Transformator '{trafo.ref_id}' nie ma grupy "
                             f"połączeń (vector_group)."
@@ -444,7 +453,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E010",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Element '{elem.ref_id}' ma overrides, ale "
                             f"parameter_source != 'OVERRIDE'."
@@ -471,7 +480,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="I001",
-                        severity="INFO",
+                        severity=SEVERITY_INFO,
                         message_pl=(
                             f"Łącznik '{branch.ref_id}' w stanie 'open' — " f"odcina część sieci."
                         ),
@@ -486,7 +495,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="I002",
-                        severity="INFO",
+                        severity=SEVERITY_INFO,
                         message_pl=(
                             f"Gałąź '{branch.ref_id}' bez katalogu — "
                             f"parametry wprowadzone ręcznie."
@@ -515,7 +524,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="W005",
-                            severity="IMPORTANT",
+                            severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"Stacja '{sub.ref_id}' zawiera referencję do "
                                 f"nieistniejącej szyny '{br}'."
@@ -530,7 +539,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="W005",
-                            severity="IMPORTANT",
+                            severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"Stacja '{sub.ref_id}' zawiera referencję do "
                                 f"nieistniejącego transformatora '{tr}'."
@@ -549,7 +558,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="W006",
-                        severity="IMPORTANT",
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Pole '{bay.ref_id}' referencja do nieistniejącej "
                             f"stacji '{bay.substation_ref}'."
@@ -563,7 +572,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="W006",
-                        severity="IMPORTANT",
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Pole '{bay.ref_id}' referencja do nieistniejącej "
                             f"szyny '{bay.bus_ref}'."
@@ -580,7 +589,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="W007",
-                        severity="IMPORTANT",
+                        severity=SEVERITY_IMPORTANT,
                         message_pl=(
                             f"Węzeł T '{junc.ref_id}' ma {len(junc.connected_branch_refs)} "
                             f"gałęzi — wymagane minimum 3."
@@ -595,7 +604,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="W007",
-                            severity="IMPORTANT",
+                            severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"Węzeł T '{junc.ref_id}' referencja do "
                                 f"nieistniejącej gałęzi '{br_ref}'."
@@ -613,7 +622,7 @@ class ENMValidator:
                     issues.append(
                         ValidationIssue(
                             code="W008",
-                            severity="IMPORTANT",
+                            severity=SEVERITY_IMPORTANT,
                             message_pl=(
                                 f"Magistrala '{corr.ref_id}' referencja do "
                                 f"nieistniejącego segmentu '{seg_ref}'."
@@ -631,7 +640,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="I003",
-                        severity="INFO",
+                        severity=SEVERITY_INFO,
                         message_pl=(
                             f"Stacja '{sub.ref_id}' nie ma przypisanych pól rozdzielczych."
                         ),
@@ -646,7 +655,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="I004",
-                        severity="INFO",
+                        severity=SEVERITY_INFO,
                         message_pl=(f"Magistrala '{corr.ref_id}' nie ma segmentów."),
                         element_refs=[corr.ref_id],
                         wizard_step_hint="K4",
@@ -659,7 +668,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="I005",
-                        severity="INFO",
+                        severity=SEVERITY_INFO,
                         message_pl=(
                             f"Magistrala pierścieniowa '{corr.ref_id}' nie ma "
                             f"zdefiniowanego punktu normalnie otwartego (NO)."
@@ -702,7 +711,7 @@ class ENMValidator:
                 issues.append(
                     ValidationIssue(
                         code="E003",
-                        severity="BLOCKER",
+                        severity=SEVERITY_BLOCKER,
                         message_pl=(
                             f"Wyspa sieci odcięta od źródła zasilania: "
                             f"{', '.join(island_refs[:5])}"
@@ -721,7 +730,7 @@ class ENMValidator:
     def _compute_availability(
         self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
     ) -> AnalysisAvailability:
-        has_blockers = any(i.severity == "BLOCKER" for i in issues)
+        has_blockers = any(is_blocking_severity(i.severity) for i in issues)
 
         if has_blockers:
             return AnalysisAvailability(

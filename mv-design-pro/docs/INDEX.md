@@ -1,6 +1,9 @@
 # Documentation Index
 
 ## Active Canon
+- [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
+- [v12xx/RAPORT_M0_INWENTARYZACJA.md](./v12xx/RAPORT_M0_INWENTARYZACJA.md) - inwentaryzacja startowa M0 V12.xx
+- [v12xx/BACKLOG_WDROZENIOWY_V12_XX.md](./v12xx/BACKLOG_WDROZENIOWY_V12_XX.md) - backlog wdrozeniowy M0-M4
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5
 - [SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
@@ -30,6 +33,7 @@
 - Link do materiału historycznego musi być jawnie oznaczony `[historyczne]`.
 
 ## Active Areas
+- [v12xx/](./v12xx/) - nadrzedny kanon V12.xx, rejestry i macierze wykonawcze
 - [analysis/](./analysis/) - aktywne kontrakty analiz
 - [architecture/](./architecture/) - aktywne workflow i mapy architektury wykonawczej
 - [audit/](./audit/) - aktywne audyty i higiena repo V12.5

@@ -365,7 +365,7 @@ def _resolve_canonical_bay_role(
         generator_types = {str(generator.gen_type).upper() for generator in generators}
         if {"BESS", "BESS_INVERTER"} & generator_types:
             return "BESS_SN"
-        if "WIND_INVERTER" in generator_types:
+        if {"WIND_INVERTER", "FW_PMSG", "FW_DFIG", "FW_SCIG"} & generator_types:
             return "FW_SN"
         return "PV_SN"
     return CANONICAL_BAY_ROLE_MAP.get(bay.bay_role, "LINIA_OUT")
@@ -891,7 +891,7 @@ def _build_source_endpoint(
             requires_synchrocheck=False,
             operating_mode="gotowosc",
         )
-    if generator.gen_type == "wind_inverter":
+    if generator.gen_type in {"wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig"}:
         return BaySourceEndpoint(
             source_kind="FW",
             turbine_ref=generator.ref_id,

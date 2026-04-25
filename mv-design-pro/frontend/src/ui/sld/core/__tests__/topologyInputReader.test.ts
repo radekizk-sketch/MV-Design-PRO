@@ -155,6 +155,37 @@ describe('readTopologyFromENM — PV/BESS connection variant validation', () => 
     expect(fix).toBeDefined();
   });
 
+  it('FW DFIG without connection_variant → fixAction', () => {
+    const enm = minimalENM({
+      generators: [pvGen({ ref_id: 'gen_fw_dfig_1', name: 'FW DFIG', gen_type: 'fw_dfig' })],
+    });
+    const result = readTopologyFromENM(enm);
+    const fix = result.fixActions.find(f => f.code === 'generator.connection_variant_missing');
+    expect(fix).toBeDefined();
+    expect(fix!.elementRef).toBe('gen_fw_dfig_1');
+  });
+
+  it('FW PMSG propagates precise generator kind', () => {
+    const enm = minimalENM({
+      generators: [pvGen({
+        ref_id: 'gen_fw_pmsg_1',
+        name: 'FW PMSG',
+        gen_type: 'fw_pmsg',
+        connection_variant: 'block_transformer',
+        blocking_transformer_ref: 'tr_blk',
+      })],
+      transformers: [{
+        id: 'uuid-tr', ref_id: 'tr_blk', name: 'TR blk', tags: [], meta: {},
+        hv_bus_ref: 'bus_sn', lv_bus_ref: 'bus_sn',
+        sn_mva: 1, uhv_kv: 15, ulv_kv: 0.4, uk_percent: 6, pk_kw: 10,
+      }],
+    });
+    const result = readTopologyFromENM(enm);
+    const gen = result.generators.find(g => g.id === 'gen_fw_pmsg_1');
+    expect(gen).toBeDefined();
+    expect(gen!.kind).toBe('FW_PMSG');
+  });
+
   it('synchronous generator without connection_variant → no variant FixAction', () => {
     const enm = minimalENM({
       generators: [pvGen({ ref_id: 'gen_sync', name: 'Generator synchroniczny', gen_type: 'synchronous' })],

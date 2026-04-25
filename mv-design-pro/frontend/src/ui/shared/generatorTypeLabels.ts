@@ -6,6 +6,12 @@ export function formatGeneratorTypeLabelPl(genType: string | null | undefined): 
       return 'Zrodlo przeksztaltnikowe BESS';
     case 'wind_inverter':
       return 'Zrodlo przeksztaltnikowe FW';
+    case 'fw_pmsg':
+      return 'Farma wiatrowa PMSG';
+    case 'fw_dfig':
+      return 'Farma wiatrowa DFIG';
+    case 'fw_scig':
+      return 'Farma wiatrowa SCIG';
     case 'synchronous':
       return 'Generator synchroniczny';
     default:
@@ -21,6 +27,12 @@ export function formatGeneratorTypeShortLabelPl(genType: string | null | undefin
       return 'BESS';
     case 'wind_inverter':
       return 'FW';
+    case 'fw_pmsg':
+      return 'PMSG';
+    case 'fw_dfig':
+      return 'DFIG';
+    case 'fw_scig':
+      return 'SCIG';
     case 'synchronous':
       return 'GEN';
     default:

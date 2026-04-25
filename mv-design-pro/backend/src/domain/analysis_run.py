@@ -12,6 +12,24 @@ AnalysisRunStatus = Literal["CREATED", "VALIDATED", "RUNNING", "FINISHED", "FAIL
 ResultStatus = Literal["VALID", "OUTDATED"]
 AnalysisCompletenessStatus = Literal["complete", "partial", "failed", "not_applicable"]
 
+DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"
+DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"
+DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION = "catalog_materialization_v1"
+DEFAULT_ENM_PROJECTION_VERSION = "v12xx.m1.1"
+DEFAULT_REPORT_CONTRACT_VERSION = "analysis_report_v2"
+DEFAULT_RESULT_RULES_VERSION = "result_rules_v12_5"
+
+_CATALOG_SNAPSHOT_COLLECTIONS = (
+    "branches",
+    "transformers",
+    "sources",
+    "loads",
+    "generators",
+    "measurements",
+    "protection_assignments",
+    "branch_points",
+)
+
 
 def _canonicalize(value: Any) -> Any:
     if isinstance(value, dict):
@@ -26,6 +44,75 @@ def _stable_hash(value: object) -> str | None:
         return None
     canonical = json.dumps(_canonicalize(value), sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _catalog_materialization_entries(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for collection in _CATALOG_SNAPSHOT_COLLECTIONS:
+        for raw_element in snapshot.get(collection) or []:
+            if not isinstance(raw_element, dict):
+                continue
+
+            meta = raw_element.get("meta") or {}
+            catalog_ref = raw_element.get("catalog_ref")
+            catalog_namespace = raw_element.get("catalog_namespace")
+            catalog_version = raw_element.get("catalog_version") or meta.get("catalog_item_version")
+            materialized_params = raw_element.get("materialized_params")
+            parameter_source = raw_element.get("parameter_source")
+            overrides = raw_element.get("overrides") or []
+
+            if not any(
+                (
+                    catalog_ref,
+                    catalog_namespace,
+                    catalog_version,
+                    materialized_params,
+                    parameter_source,
+                    overrides,
+                )
+            ):
+                continue
+
+            entry: dict[str, Any] = {
+                "collection": collection,
+                "element_ref": str(raw_element.get("ref_id") or raw_element.get("id") or ""),
+                "catalog_ref": catalog_ref,
+                "catalog_namespace": catalog_namespace,
+                "catalog_version": catalog_version,
+                "parameter_source": parameter_source,
+                "manual_override_count": len(overrides),
+            }
+            if materialized_params is not None:
+                entry["materialized_params"] = materialized_params
+            entries.append(entry)
+
+    entries.sort(key=lambda item: (item["collection"], item["element_ref"]))
+    return entries
+
+
+def _catalog_materialization_status(entries: list[dict[str, Any]]) -> str:
+    if not entries:
+        return "placeholder"
+    materialized_count = sum(1 for entry in entries if "materialized_params" in entry)
+    if materialized_count == len(entries):
+        return "materialized"
+    if materialized_count:
+        return "partial"
+    return "placeholder"
+
+
+def _catalog_materialization_ref(
+    snapshot_ref: str,
+    entries: list[dict[str, Any]],
+    *,
+    explicit_ref: str | None = None,
+) -> str:
+    if explicit_ref:
+        return explicit_ref
+    entries_hash = _stable_hash(entries) if entries else None
+    if entries_hash:
+        return f"catalog-materialization:{entries_hash}"
+    return f"catalog-materialization:placeholder:{snapshot_ref}"
 
 
 @dataclass(frozen=True)
@@ -77,12 +164,36 @@ def infer_analysis_run_completeness(run: AnalysisRun) -> AnalysisCompletenessSta
 def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
     trace_json = run.trace_json if isinstance(run.trace_json, dict) else {}
     snapshot_ref = str(run.input_snapshot.get("snapshot_id") or "")
+    snapshot_header = run.input_snapshot.get("header") or {}
+    if not isinstance(snapshot_header, dict):
+        snapshot_header = {}
+    catalog_materialization_entries = _catalog_materialization_entries(run.input_snapshot or {})
+    catalog_materialization_hash = (
+        _stable_hash(catalog_materialization_entries) if catalog_materialization_entries else None
+    )
+    variant_ref = str(run.input_snapshot.get("variant_ref") or DEFAULT_OPERATING_VARIANT_REF)
+    switching_snapshot_ref = str(
+        run.input_snapshot.get("switching_snapshot_ref")
+        or run.input_snapshot.get("switching_state_ref")
+        or DEFAULT_SWITCHING_SNAPSHOT_REF
+    )
     solver_family = {
         "PF": "power_flow_newton",
         "short_circuit_sn": "iec60909_short_circuit",
         "fault_loop_nn": "fault_loop_nn",
     }[run.analysis_type]
     return {
+        "case_ref": str(run.operating_case_id),
+        "analysis_case_ref": str(run.operating_case_id),
+        "snapshot_ref": snapshot_ref or None,
+        "enm_hash": snapshot_ref or None,
+        "enm_snapshot_ref": str(run.input_snapshot.get("enm_snapshot_ref") or snapshot_ref) or None,
+        "enm_projection_version": str(
+            run.input_snapshot.get("enm_projection_version") or DEFAULT_ENM_PROJECTION_VERSION
+        ),
+        "variant_ref": variant_ref,
+        "operating_variant_ref": variant_ref,
+        "switching_snapshot_ref": switching_snapshot_ref,
         "solver_family": solver_family,
         "solver_version": trace_json.get("solver_version") or "1.0.0",
         "method_version": "analysis_run_service_v1",
@@ -98,15 +209,34 @@ def build_analysis_run_reproducibility(run: AnalysisRun) -> dict[str, Any]:
         }[run.analysis_type],
         "input_hash": run.input_hash,
         "result_hash": _stable_hash(run.result_summary),
-        "domain_model_version": "network_snapshot_v1",
+        "domain_model_version": snapshot_header.get("enm_version")
+        or snapshot_header.get("schema_version")
+        or "network_snapshot_v1",
         "bay_contract_version": "V12.5",
         "results_contract_version": "V12.5",
         "proof_renderer_version": "white_box_trace_v1" if run.white_box_trace else "none",
         "catalog_snapshot_ref": snapshot_ref or None,
+        "catalog_materialization_ref": _catalog_materialization_ref(
+            snapshot_ref,
+            catalog_materialization_entries,
+            explicit_ref=run.input_snapshot.get("catalog_materialization_ref"),
+        ),
+        "catalog_materialization_hash": catalog_materialization_hash,
+        "catalog_materialization_status": _catalog_materialization_status(
+            catalog_materialization_entries,
+        ),
+        "catalog_materialization_contract_version": str(
+            run.input_snapshot.get("catalog_materialization_contract_version")
+            or DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION
+        ),
         "catalog_schema_version": "catalog_v1",
         "tolerance_policy_ref": "solver_tolerance/default",
         "rounding_policy_ref": "rounding/default",
         "quality_gate_policy_version": "v12_5_quality_gate",
+        "report_contract_version": DEFAULT_REPORT_CONTRACT_VERSION,
+        "export_generator_version": "v12_5_export_artifact/1.0",
+        "result_rules_version": DEFAULT_RESULT_RULES_VERSION,
+        "ruleset_version": DEFAULT_RESULT_RULES_VERSION,
     }
 
 

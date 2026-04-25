@@ -22,6 +22,7 @@ from enm.models import (
     Source,
     Transformer,
 )
+from enm.severity import severity_rank
 from enm.validator import ENMValidator, ValidationIssue
 
 
@@ -600,17 +601,16 @@ class TestDeterminism:
                 ],
             )
         )
-        severity_rank = {"BLOCKER": 0, "IMPORTANT": 1, "INFO": 2}
         for i in range(len(result.issues) - 1):
             a = result.issues[i]
             b = result.issues[i + 1]
             rank_a = (
-                severity_rank[a.severity],
+                severity_rank(a.severity),
                 a.code,
                 a.element_refs[0] if a.element_refs else "",
             )
             rank_b = (
-                severity_rank[b.severity],
+                severity_rank(b.severity),
                 b.code,
                 b.element_refs[0] if b.element_refs else "",
             )

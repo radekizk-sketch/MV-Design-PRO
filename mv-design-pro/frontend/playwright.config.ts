@@ -18,6 +18,7 @@
  */
 
 import { defineConfig, devices } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
 import { resolveChromiumExecutable } from './scripts/playwright-env.mjs';
 
 function withTrailingSlash(url: string): string {
@@ -31,12 +32,12 @@ const backendUrl = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000'
 const backendHealthUrl = process.env.PLAYWRIGHT_BACKEND_HEALTH_URL
   ?? new URL('/ready', withTrailingSlash(backendUrl)).toString();
 const frontendUrl = process.env.PLAYWRIGHT_FRONTEND_URL ?? 'http://127.0.0.1:5173';
+const frontendCwd = fileURLToPath(new URL('.', import.meta.url));
+const backendCwd = fileURLToPath(new URL('../backend/', import.meta.url));
 const frontendServerCommand = process.env.PLAYWRIGHT_DISABLE_WEBSERVER
   ? 'echo "skip webserver"'
   : 'npm run dev:e2e';
-const backendServerCommand = process.platform === 'win32'
-  ? 'powershell -NoProfile -Command "Set-Location ..\\backend; poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"'
-  : 'bash -lc "cd ../backend && poetry run uvicorn src.api.main:app --host 0.0.0.0 --port 8000"';
+const backendServerCommand = 'poetry run python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000';
 
 export default defineConfig({
   testDir: './e2e',
@@ -114,6 +115,7 @@ export default defineConfig({
     ? [
       {
         command: backendServerCommand,
+        cwd: backendCwd,
         url: backendHealthUrl,
         reuseExistingServer: true,
         timeout: 120000,
@@ -122,6 +124,7 @@ export default defineConfig({
       },
       {
         command: frontendServerCommand,
+        cwd: frontendCwd,
         url: frontendUrl,
         reuseExistingServer: true,
         timeout: 120000,
@@ -131,6 +134,7 @@ export default defineConfig({
     ]
     : {
       command: frontendServerCommand,
+      cwd: frontendCwd,
       url: frontendUrl,
       reuseExistingServer: true,
       timeout: 120000,

@@ -9,6 +9,7 @@ import type {
   PreflightReport,
   EnmDiffReport,
 } from './types';
+import type { EnergyNetworkModelV2Projection } from '../../types/enm';
 
 const API_BASE = '/api';
 
@@ -51,6 +52,19 @@ export async function fetchEnmDiff(
   );
   if (!response.ok) {
     throw new Error(`Błąd pobierania diff ENM: ${response.statusText}`);
+  }
+  return response.json();
+}
+
+/**
+ * Pobierz read-only projekcje ENM v2.0 dla danego przypadku.
+ */
+export async function fetchEnmV2Projection(
+  caseId: string,
+): Promise<EnergyNetworkModelV2Projection> {
+  const response = await fetch(`${API_BASE}/cases/${caseId}/enm/v2-projection`);
+  if (!response.ok) {
+    throw new Error(`Blad pobierania projekcji ENM v2: ${response.statusText}`);
   }
   return response.json();
 }

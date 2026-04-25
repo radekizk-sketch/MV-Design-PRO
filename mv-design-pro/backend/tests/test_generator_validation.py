@@ -193,6 +193,34 @@ class TestBESSGenerator:
         assert len(gen_issues) == 0
 
 
+class TestPreciseWindGeneratorTypes:
+    """FW PMSG/DFIG/SCIG use the same no-direct-SN rules as PV/BESS."""
+
+    def test_fw_pmsg_requires_variant(self) -> None:
+        issues = validate_generator_connections(
+            generators=[_gen(gen_type="fw_pmsg", connection_variant=None)],
+            transformers_by_ref={},
+            stations_by_ref={},
+        )
+        codes = [i.code for i in issues]
+        assert "generator.connection_variant_missing" in codes
+
+    def test_fw_dfig_variant_b_valid(self) -> None:
+        issues = validate_generator_connections(
+            generators=[
+                _gen(
+                    gen_type="fw_dfig",
+                    connection_variant="block_transformer",
+                    blocking_transformer_ref="tr_fw",
+                )
+            ],
+            transformers_by_ref={"tr_fw": {}},
+            stations_by_ref={},
+        )
+        gen_issues = [i for i in issues if i.element_id == "gen_1"]
+        assert len(gen_issues) == 0
+
+
 class TestDeterminism:
     """Same input → same output regardless of input order."""
 

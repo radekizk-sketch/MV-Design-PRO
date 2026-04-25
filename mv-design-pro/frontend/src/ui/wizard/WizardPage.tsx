@@ -721,7 +721,15 @@ function StepK6({ enm, onChange }: StepProps) {
   // --- Zrodla przeksztaltnikowe i synchroniczne ---
   const addGen = (genType: Generator['gen_type']) => {
     const n = enm.generators.length + 1;
-    const labels: Record<string, string> = { pv_inverter: 'PV', wind_inverter: 'FW', bess: 'BESS', synchronous: 'Generator synchroniczny' };
+    const labels: Record<string, string> = {
+      pv_inverter: 'PV',
+      wind_inverter: 'FW legacy',
+      fw_pmsg: 'FW PMSG',
+      fw_dfig: 'FW DFIG',
+      fw_scig: 'FW SCIG',
+      bess: 'BESS',
+      synchronous: 'Generator synchroniczny',
+    };
     const label = labels[genType ?? ''] ?? 'Generator';
     const gen: Generator = { id: crypto.randomUUID(), ref_id: `gen_${Date.now()}`, name: `${label} ${n}`, tags: [], meta: {}, bus_ref: refs[refs.length - 1] ?? '', p_mw: 0.5, q_mvar: 0, gen_type: genType ?? 'pv_inverter', connection_variant: genType === 'synchronous' ? null : 'nn_side' };
     onChange({ ...enm, generators: [...enm.generators, gen] });
@@ -734,6 +742,9 @@ function StepK6({ enm, onChange }: StepProps) {
       case 'bess':
         return 'BESS_INVERTER';
       case 'wind_inverter':
+      case 'fw_pmsg':
+      case 'fw_dfig':
+      case 'fw_scig':
         return 'CONVERTER';
       case 'synchronous':
         return null;
@@ -757,7 +768,9 @@ function StepK6({ enm, onChange }: StepProps) {
 
   const GEN_TYPES: { value: NonNullable<Generator['gen_type']>; label: string }[] = [
     { value: 'pv_inverter', label: 'Zrodlo przeksztaltnikowe PV' },
-    { value: 'wind_inverter', label: 'Zrodlo przeksztaltnikowe FW' },
+    { value: 'fw_pmsg', label: 'Farma wiatrowa PMSG' },
+    { value: 'fw_dfig', label: 'Farma wiatrowa DFIG' },
+    { value: 'fw_scig', label: 'Farma wiatrowa SCIG' },
     { value: 'bess', label: 'Zrodlo przeksztaltnikowe BESS' },
     { value: 'synchronous', label: 'Generator synchroniczny' },
   ];

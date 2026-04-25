@@ -20,6 +20,7 @@
 import html2canvas from 'html2canvas';
 import type { PngExportOptions, ExportResult, ExportLayerOptions } from './types';
 import { generateExportFilename } from './types';
+import { applyExportTheme, resolveExportTheme } from './exportTheme';
 
 /**
  * Test IDs for layer elements.
@@ -72,7 +73,8 @@ function applyLayerVisibility(
 function createExportClone(
   originalContainer: HTMLElement,
   width: number,
-  height: number
+  height: number,
+  theme: PngExportOptions['theme']
 ): HTMLElement {
   const clone = originalContainer.cloneNode(true) as HTMLElement;
 
@@ -90,6 +92,8 @@ function createExportClone(
   const statusBar = clone.querySelector('[data-testid="sld-view-status"]');
   toolbar?.remove();
   statusBar?.remove();
+
+  applyExportTheme(clone, resolveExportTheme(theme));
 
   return clone;
 }
@@ -138,7 +142,12 @@ export async function exportPng(
     // Here we just capture what's rendered
 
     // Create clone for export manipulation
-    const clone = createExportClone(containerElement, exportWidth, exportHeight);
+    const clone = createExportClone(
+      containerElement,
+      exportWidth,
+      exportHeight,
+      options.theme
+    );
     document.body.appendChild(clone);
 
     try {

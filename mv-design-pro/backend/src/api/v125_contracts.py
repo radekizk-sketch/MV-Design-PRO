@@ -18,6 +18,23 @@ DEFAULT_TOLERANCE_POLICY_REF = "solver_tolerance/default"
 DEFAULT_ROUNDING_POLICY_REF = "rounding/default"
 DEFAULT_QUALITY_GATE_POLICY_VERSION = "v12_5_quality_gate"
 DEFAULT_EXPORT_GENERATOR_VERSION = "v12_5_export_artifact/1.0"
+DEFAULT_OPERATING_VARIANT_REF = "variant.uklad_normalny"
+DEFAULT_SWITCHING_SNAPSHOT_REF = "switching.uklad_normalny.base"
+DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION = "catalog_materialization_v1"
+DEFAULT_ENM_PROJECTION_VERSION = "v12xx.m1.1"
+DEFAULT_REPORT_CONTRACT_VERSION = "analysis_report_v2"
+DEFAULT_RESULT_RULES_VERSION = "result_rules_v12_5"
+
+_CATALOG_SNAPSHOT_COLLECTIONS = (
+    "branches",
+    "transformers",
+    "sources",
+    "loads",
+    "generators",
+    "measurements",
+    "protection_assignments",
+    "branch_points",
+)
 
 EXPORT_POLICY_MATRIX: dict[ExportArtifactKind, dict[str, Any]] = {
     "pdf": {
@@ -120,6 +137,99 @@ def _stable_hash(value: Any) -> str | None:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _snapshot_header(run: CanonicalRun) -> dict[str, Any]:
+    header = (run.snapshot or {}).get("header") or {}
+    return header if isinstance(header, dict) else {}
+
+
+def _snapshot_ref(run: CanonicalRun) -> str:
+    header = _snapshot_header(run)
+    return str(run.snapshot_hash or header.get("hash_sha256") or "")
+
+
+def _option_or_header(
+    run: CanonicalRun,
+    key: str,
+    *,
+    default: str | None = None,
+) -> str | None:
+    value = run.options.get(key) if isinstance(run.options, dict) else None
+    if value is None:
+        value = _snapshot_header(run).get(key)
+    if value is None:
+        return default
+    return str(value)
+
+
+def _catalog_materialization_entries(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    entries: list[dict[str, Any]] = []
+    for collection in _CATALOG_SNAPSHOT_COLLECTIONS:
+        for raw_element in snapshot.get(collection) or []:
+            if not isinstance(raw_element, dict):
+                continue
+
+            meta = raw_element.get("meta") or {}
+            catalog_ref = raw_element.get("catalog_ref")
+            catalog_namespace = raw_element.get("catalog_namespace")
+            catalog_version = raw_element.get("catalog_version") or meta.get("catalog_item_version")
+            materialized_params = raw_element.get("materialized_params")
+            parameter_source = raw_element.get("parameter_source")
+            overrides = raw_element.get("overrides") or []
+
+            if not any(
+                (
+                    catalog_ref,
+                    catalog_namespace,
+                    catalog_version,
+                    materialized_params,
+                    parameter_source,
+                    overrides,
+                )
+            ):
+                continue
+
+            entry: dict[str, Any] = {
+                "collection": collection,
+                "element_ref": str(raw_element.get("ref_id") or raw_element.get("id") or ""),
+                "catalog_ref": catalog_ref,
+                "catalog_namespace": catalog_namespace,
+                "catalog_version": catalog_version,
+                "parameter_source": parameter_source,
+                "manual_override_count": len(overrides),
+            }
+            if materialized_params is not None:
+                entry["materialized_params"] = materialized_params
+            entries.append(entry)
+
+    entries.sort(key=lambda item: (item["collection"], item["element_ref"]))
+    return entries
+
+
+def _catalog_materialization_status(entries: list[dict[str, Any]]) -> str:
+    if not entries:
+        return "placeholder"
+    materialized_count = sum(1 for entry in entries if "materialized_params" in entry)
+    if materialized_count == len(entries):
+        return "materialized"
+    if materialized_count:
+        return "partial"
+    return "placeholder"
+
+
+def _catalog_materialization_ref(
+    run: CanonicalRun,
+    entries: list[dict[str, Any]],
+) -> str:
+    explicit = _option_or_header(run, "catalog_materialization_ref")
+    if explicit:
+        return explicit
+
+    entries_hash = _stable_hash(entries) if entries else None
+    if entries_hash:
+        return f"catalog-materialization:{entries_hash}"
+    return f"catalog-materialization:placeholder:{_snapshot_ref(run)}"
+
+
 def infer_completeness_status(run: CanonicalRun) -> CanonicalCompletenessStatus:
     explicit = str(run.options.get("completeness_status") or "").strip().lower()
     if explicit in {"complete", "partial", "failed", "not_applicable"}:
@@ -155,21 +265,67 @@ def resolve_proof_pack_ref(run: CanonicalRun) -> str:
 
 
 def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
-    snapshot_header = (run.snapshot or {}).get("header") or {}
-    solver_family = "power_flow_newton" if run.analysis_type == "PF" else "iec60909_short_circuit"
+    snapshot_header = _snapshot_header(run)
+    snapshot_ref = _snapshot_ref(run)
+    catalog_materialization_entries = _catalog_materialization_entries(run.snapshot or {})
+    catalog_materialization_hash = (
+        _stable_hash(catalog_materialization_entries) if catalog_materialization_entries else None
+    )
+    solver_family = {
+        "PF": "power_flow_newton",
+        "short_circuit_sn": "iec60909_short_circuit",
+        "phase_state_sn": "phase_state_sn_radial",
+        "dynamic_stability": "dynamic_stability_fault_clear",
+        "source_compliance": "source_compliance_profile_match",
+    }.get(run.analysis_type, run.analysis_type)
     solver_version = (
         ((run.power_flow_trace or {}).get("solver_version"))
         or run.options.get("solver_version")
         or "1.0.0"
     )
+    formula_set_version = {
+        "PF": "pf_result_v1",
+        "short_circuit_sn": "iec60909_v1",
+        "phase_state_sn": "phase_state_sn_v1",
+        "dynamic_stability": "dynamic_stability_fault_clear_v1",
+        "source_compliance": "source_compliance_v1",
+    }.get(run.analysis_type, "canonical_run_v1")
+    standard_basis_ref = {
+        "PF": "NR_POWER_FLOW",
+        "short_circuit_sn": "IEC_60909",
+        "phase_state_sn": "PHASE_STATE_SN_RADIAL_V1",
+        "dynamic_stability": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
+        "source_compliance": "SOURCE_COMPLIANCE_PROFILE_V1",
+    }.get(run.analysis_type, "CANONICAL_ANALYSIS")
+    variant_ref = _option_or_header(
+        run,
+        "variant_ref",
+        default=DEFAULT_OPERATING_VARIANT_REF,
+    )
+    switching_snapshot_ref = (
+        _option_or_header(run, "switching_snapshot_ref")
+        or _option_or_header(run, "switching_state_ref")
+        or DEFAULT_SWITCHING_SNAPSHOT_REF
+    )
     return {
+        "case_ref": run.case_id,
+        "analysis_case_ref": run.case_id,
+        "snapshot_ref": snapshot_ref,
+        "enm_hash": snapshot_ref,
+        "enm_snapshot_ref": _option_or_header(run, "enm_snapshot_ref", default=snapshot_ref),
+        "enm_projection_version": _option_or_header(
+            run,
+            "enm_projection_version",
+            default=DEFAULT_ENM_PROJECTION_VERSION,
+        ),
+        "variant_ref": variant_ref,
+        "operating_variant_ref": variant_ref,
+        "switching_snapshot_ref": switching_snapshot_ref,
         "solver_family": solver_family,
         "solver_version": solver_version,
         "method_version": run.options.get("method_version") or "canonical_run_v1",
-        "formula_set_version": run.options.get("formula_set_version")
-        or ("pf_result_v1" if run.analysis_type == "PF" else "iec60909_v1"),
-        "standard_basis_ref": run.options.get("standard_basis_ref")
-        or ("NR_POWER_FLOW" if run.analysis_type == "PF" else "IEC_60909"),
+        "formula_set_version": run.options.get("formula_set_version") or formula_set_version,
+        "standard_basis_ref": run.options.get("standard_basis_ref") or standard_basis_ref,
         "input_hash": run.input_hash,
         "result_hash": _stable_hash(run.raw_result),
         "domain_model_version": snapshot_header.get("enm_version")
@@ -183,7 +339,19 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         or DEFAULT_PROOF_RENDERER_VERSION,
         "catalog_snapshot_ref": run.options.get("catalog_snapshot_ref")
         or snapshot_header.get("catalog_snapshot_ref")
-        or run.snapshot_hash,
+        or snapshot_ref,
+        "catalog_materialization_ref": _catalog_materialization_ref(
+            run,
+            catalog_materialization_entries,
+        ),
+        "catalog_materialization_hash": catalog_materialization_hash,
+        "catalog_materialization_status": _catalog_materialization_status(
+            catalog_materialization_entries,
+        ),
+        "catalog_materialization_contract_version": run.options.get(
+            "catalog_materialization_contract_version"
+        )
+        or DEFAULT_CATALOG_MATERIALIZATION_CONTRACT_VERSION,
         "catalog_schema_version": run.options.get("catalog_schema_version")
         or DEFAULT_CATALOG_SCHEMA_VERSION,
         "tolerance_policy_ref": run.options.get("tolerance_policy_ref")
@@ -192,6 +360,12 @@ def build_analysis_case_reproducibility(run: CanonicalRun) -> dict[str, Any]:
         or DEFAULT_ROUNDING_POLICY_REF,
         "quality_gate_policy_version": run.options.get("quality_gate_policy_version")
         or DEFAULT_QUALITY_GATE_POLICY_VERSION,
+        "report_contract_version": run.options.get("report_contract_version")
+        or DEFAULT_REPORT_CONTRACT_VERSION,
+        "export_generator_version": DEFAULT_EXPORT_GENERATOR_VERSION,
+        "result_rules_version": run.options.get("result_rules_version")
+        or DEFAULT_RESULT_RULES_VERSION,
+        "ruleset_version": run.options.get("ruleset_version") or DEFAULT_RESULT_RULES_VERSION,
     }
 
 
