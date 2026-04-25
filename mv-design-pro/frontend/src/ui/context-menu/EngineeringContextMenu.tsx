@@ -391,7 +391,7 @@ export function EngineeringContextMenu({
         return [
           {
             id: 'canvas_hint',
-            label: 'Wybierz sekcję GPZ lub pole liniowe',
+            label: 'Wybierz sekcjÄ‚â€žĂ˘â€žË GPZ lub pole liniowe',
             enabled: false,
             visible: true,
             handler: () => undefined,
@@ -403,7 +403,7 @@ export function EngineeringContextMenu({
       return [
         {
           id: 'add_grid_source_sn',
-          label: 'Dodaj źródło zasilania GPZ...',
+          label: 'Dodaj ÄąĹźrÄ‚Ĺ‚dÄąâ€šo zasilania GPZ...',
           enabled: mode === 'MODEL_EDIT',
           visible: true,
           handler: makeHandler('add_grid_source_sn'),
@@ -444,7 +444,7 @@ export function EngineeringContextMenu({
     return [
       {
         id: 'properties',
-        label: 'Właściwości...',
+        label: 'WÄąâ€šaÄąâ€şciwoÄąâ€şci...',
         enabled: true,
         visible: true,
         handler: makeHandler('properties'),
@@ -459,7 +459,7 @@ export function EngineeringContextMenu({
       },
       {
         id: 'show_diagram',
-        label: 'Pokaż na schemacie',
+        label: 'PokaÄąÄ˝ na schemacie',
         enabled: true,
         visible: true,
         handler: makeHandler('show_diagram'),

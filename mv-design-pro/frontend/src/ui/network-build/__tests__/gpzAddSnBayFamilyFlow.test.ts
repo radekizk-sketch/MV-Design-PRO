@@ -41,22 +41,16 @@ describe('canonical GPZ -> add SN bay -> choose family flow', () => {
     ).toBe(false);
   });
 
-  it('routes the canonical GPZ continuation through add_sn_bay and E-06 before E-11', () => {
+  it('routes the canonical GPZ continuation through add_sn_bay before E-11', () => {
     expect(getOperationSurfaceByOp('add_sn_bay')?.screenCode).toBe('E-14');
-    expect(getOperationSurfaceByOp('continue_trunk_segment_sn')?.screenCode).toBe('E-06');
-    expect(SCREEN_TRANSITIONS['E-14'].allowedOpenTargets).toContain('E-06');
-    expect(SCREEN_TRANSITIONS['E-14'].allowedOpenTargets).not.toContain('E-11');
-    expect(SCREEN_TRANSITIONS['E-06'].allowedOpenTargets).toEqual(['E-11']);
-    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toContain('E-06');
+    expect(SCREEN_TRANSITIONS['E-14'].allowedOpenTargets).toContain('E-11');
+    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toContain('E-14');
   });
 
-  it('forces E-06 and E-11 to keep only the canonical family step and family tabs', () => {
-    expect(SCREEN_MATRIX['E-06'].allowedTabIds).toEqual(['wybor-rodziny']);
-    expect(SCREEN_MATRIX['E-06'].defaultTabId).toBe('wybor-rodziny');
-    expect(SCREEN_MATRIX['E-06'].prerequisiteCodes).toEqual(['E-14']);
+  it('forces E-11 to choose only kabel SN or linia napowietrzna SN', () => {
     expect(SCREEN_MATRIX['E-11'].allowedTabIds).toEqual(['kabel-sn', 'linia-napowietrzna-sn']);
     expect(SCREEN_MATRIX['E-11'].defaultTabId).toBe('kabel-sn');
-    expect(SCREEN_MATRIX['E-11'].prerequisiteCodes).toEqual(['E-06']);
-    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toEqual(['E-06']);
+    expect(SCREEN_MATRIX['E-11'].prerequisiteCodes).toEqual(['E-14']);
+    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toEqual(['E-14']);
   });
 });

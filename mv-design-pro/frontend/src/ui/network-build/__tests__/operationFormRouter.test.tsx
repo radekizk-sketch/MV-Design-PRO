@@ -129,19 +129,6 @@ describe('OperationFormRouter', () => {
     await waitFor(() => expect(fetchMvApparatusTypes).toHaveBeenCalled());
   });
 
-  it('renderuje obowiazkowy wybor rodziny odcinka SN dla continue_trunk_segment_sn', () => {
-    activateOperationForm('continue_trunk_segment_sn', {
-      trunk_id: 'tr-1',
-      terminal_id: 'term-1',
-      terminal_port_id: 'port-1',
-    });
-
-    render(<OperationFormRouter />);
-
-    expect(screen.getByTestId('choose-sn-segment-family-form')).toBeInTheDocument();
-    expect(screen.getByText('Wybierz rodzine odcinka SN')).toBeInTheDocument();
-  });
-
   it('renderuje formularz transformatora SN/nN', () => {
     activateOperationForm('add_transformer_sn_nn', {
       station_ref: 'st-1',

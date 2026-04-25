@@ -15,7 +15,7 @@ import type { RuntimeOperatingMode } from '../operatingMode';
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import { useResultsInspectorStore } from '../results-inspector/store';
-import { navigateToConditions, navigateToVariants } from '../navigation/routes';
+import { navigateToCaseConfig, navigateToVariants } from '../navigation/routes';
 
 const RESULT_STATUS_STYLES: Record<ResultStatus, { badge: string; dot: string }> = {
   NONE: {
@@ -78,7 +78,7 @@ export function ActiveCaseBar({
     if (onConfigureClick) {
       onConfigureClick();
     } else {
-      navigateToConditions();
+      navigateToCaseConfig();
     }
     setSecondaryMenuOpen(false);
   }, [onConfigureClick]);
@@ -112,64 +112,67 @@ export function ActiveCaseBar({
         className,
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
-        <div className="flex min-w-[16rem] items-center gap-3 rounded-[18px] border border-[#1d3446] bg-[rgba(9,22,33,0.82)] px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
-          <svg className="h-4 w-4 shrink-0 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-ind-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
           </svg>
-          <div className="min-w-0">
-            <div className="scada-shell-eyebrow">Zakres obliczeń</div>
-            {hasActiveCase ? (
-              <div className="truncate text-sm font-semibold text-slate-50">{caseName || '(bez nazwy)'}</div>
-            ) : (
-              <div className="text-sm italic text-[#8199ac]">Nie wybrano</div>
-            )}
-          </div>
+          <span className="text-xs font-medium text-chrome-500">Biezacy zestaw:</span>
+          {hasActiveCase ? (
+            <span className="text-sm font-semibold text-ind-900">{caseName || '(bez nazwy)'}</span>
+          ) : (
+            <span className="text-sm italic text-chrome-300">Nie wybrano</span>
+          )}
         </div>
 
         {hasActiveCase && caseKindLabel ? (
-          <div className="rounded-[16px] border border-[#1d3446] bg-[rgba(9,22,33,0.82)] px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
-            <div className="scada-shell-eyebrow">Tryb pracy</div>
-            <div className="text-xs font-semibold text-slate-100">{caseKindLabel}</div>
-          </div>
+          <>
+            <div className="ind-divider-v" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] font-medium text-chrome-400 uppercase tracking-wider">Typ:</span>
+              <span className="text-xs font-medium text-chrome-600">{caseKindLabel}</span>
+            </div>
+          </>
         ) : null}
 
         {hasActiveCase ? (
-          <div
-            data-testid="result-status-card"
-            className={clsx(
-              'rounded-[16px] border px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]',
-              statusStyle.badge,
-            )}
-            title={resultStatusLabel}
-          >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-70">Stan wyników</div>
-            <div data-testid="result-status" className="mt-1 flex items-center gap-2 text-xs font-semibold">
+          <>
+            <div className="ind-divider-v" />
+            <div
+              data-testid="result-status"
+              className={clsx(
+                'flex items-center gap-1.5 px-2 py-0.5 rounded-ind text-xs font-medium',
+                statusStyle.badge,
+              )}
+              title={resultStatusLabel}
+            >
               <span className={statusStyle.dot} />
               <span>{resultStatusLabel}</span>
             </div>
-          </div>
+          </>
         ) : null}
 
         {hasActiveCase && visibleRunId ? (
-          <div
-            data-testid="active-run-id"
-            className="rounded-[16px] border border-sky-500/35 bg-sky-500/12 px-3 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]"
-            title="Identyfikator ostatniego obliczenia"
-          >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100/70">Ostatnie obliczenie</div>
-            <div className="mt-1 text-[11px] font-mono font-semibold text-sky-100">{visibleRunId}</div>
-          </div>
+          <>
+            <div className="ind-divider-v" />
+            <div
+              data-testid="active-run-id"
+              className="px-2 py-0.5 rounded-ind border border-indigo-200 bg-indigo-50 text-[11px] font-mono text-indigo-700"
+              title="Aktywny identyfikator uruchomienia obliczen"
+            >
+              Id uruchomienia {visibleRunId}
+            </div>
+          </>
         ) : null}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <button
           data-testid="btn-change-case"
           onClick={handleChangeCaseClick}
-          className="scada-action-btn"
+          className="ind-btn border border-chrome-200 bg-chrome-50 text-chrome-600 hover:bg-chrome-100"
         >
-          Zmień zakres
+          Przelacz zestaw
         </button>
 
         <button
@@ -185,10 +188,10 @@ export function ActiveCaseBar({
           Oblicz
         </button>
 
-        <div className="flex items-center gap-1 rounded-[14px] border border-[#1d3446] bg-[rgba(9,22,33,0.82)] px-1.5 py-1 shadow-[inset_0_1px_0_rgba(148,163,184,0.06)]">
-          <UndoRedoButtons />
-        </div>
+        <div className="ind-divider-v" />
+        <UndoRedoButtons />
 
+        <div className="ind-divider-v" />
         <div className="relative">
           <button
             type="button"
@@ -196,14 +199,14 @@ export function ActiveCaseBar({
             onClick={handleSecondaryActionsToggle}
             disabled={!hasActiveCase}
             className={clsx(
-              'inline-flex items-center justify-center gap-1.5 rounded-[12px] border px-3 py-2 text-xs font-medium transition-colors',
+              'ind-btn border',
               hasActiveCase
-                ? 'border-[#274154] bg-[#0a1824] text-[#d7e5ef] hover:bg-[#112433] hover:text-white'
-                : 'cursor-not-allowed border-[#223544] bg-[#0b151f] text-[#637a8e]',
+                ? 'border-chrome-200 bg-chrome-50 text-chrome-600 hover:bg-chrome-100'
+                : 'cursor-not-allowed border-chrome-100 bg-chrome-50 text-chrome-300',
             )}
             title={
               !hasActiveCase
-                ? 'Wybierz zakres obliczeń, aby otworzyć akcje dodatkowe'
+                ? 'Wybierz wariant pracy, aby otworzyc akcje dodatkowe'
                 : 'Akcje dodatkowe'
             }
           >
@@ -213,15 +216,15 @@ export function ActiveCaseBar({
           {secondaryMenuOpen && hasActiveCase ? (
             <div
               data-testid="secondary-actions-menu"
-              className="absolute right-0 top-full z-20 mt-2 min-w-[12rem] rounded-[16px] border border-[#21394c] bg-[#07131c] p-1.5 shadow-[0_18px_36px_rgba(2,8,23,0.45)]"
+              className="absolute right-0 top-full z-20 mt-2 min-w-[11rem] rounded-ind border border-chrome-200 bg-white p-1 shadow-lg"
             >
               <button
                 type="button"
                 data-testid="btn-configure"
                 onClick={handleConfigureClick}
-                className="flex w-full items-center rounded-[10px] px-3 py-2 text-left text-sm text-slate-100 transition-colors hover:bg-[#112433]"
+                className="flex w-full items-center rounded-ind px-3 py-2 text-left text-sm text-chrome-700 hover:bg-chrome-50"
               >
-                Warunki obliczeń
+                Parametry analizy
               </button>
               <button
                 type="button"
@@ -229,23 +232,24 @@ export function ActiveCaseBar({
                 onClick={handleResultsClick}
                 disabled={resultStatus === 'NONE'}
                 className={clsx(
-                  'flex w-full items-center rounded-[10px] px-3 py-2 text-left text-sm',
+                  'flex w-full items-center rounded-ind px-3 py-2 text-left text-sm',
                   resultStatus === 'NONE'
-                    ? 'cursor-not-allowed text-[#637a8e]'
-                    : 'text-slate-100 transition-colors hover:bg-[#112433]',
+                    ? 'cursor-not-allowed text-chrome-300'
+                    : 'text-chrome-700 hover:bg-chrome-50',
                 )}
                 title={
                   resultStatus === 'NONE'
-                    ? 'Brak wyników - wykonaj obliczenia'
-                    : 'Przeglądaj wyniki'
+                    ? 'Brak wynikow - uruchom obliczenia'
+                    : 'Przegladaj wyniki'
                 }
               >
-                Podgląd wyników
+                Podglad wynikow
               </button>
             </div>
           ) : null}
         </div>
 
+        <div className="ind-divider-v" />
         <ModeIndicator mode={activeMode} />
       </div>
     </div>
@@ -260,7 +264,7 @@ function ModeIndicator({ mode }: ModeIndicatorProps) {
   const config = {
     MODEL_EDIT: {
       label: 'Model sieci',
-      className: 'border-cyan-500/40 bg-cyan-500/10 text-cyan-200',
+      className: 'text-ind-700 bg-ind-50 border-ind-200',
       icon: (
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
@@ -269,7 +273,7 @@ function ModeIndicator({ mode }: ModeIndicatorProps) {
     },
     RESULT_VIEW: {
       label: 'Analiza i wyniki',
-      className: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200',
+      className: 'text-emerald-700 bg-emerald-50 border-emerald-200',
       icon: (
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />

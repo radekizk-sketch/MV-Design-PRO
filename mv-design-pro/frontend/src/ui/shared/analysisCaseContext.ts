@@ -1,14 +1,3 @@
-import type {
-  AnalysisCaseContext as CanonicalAnalysisCaseContext,
-  BenchmarkComparisonResult,
-  CaseInputReadinessStatus,
-  ExportPolicyEntry,
-  MigrationAuditEntry,
-  ModuleResult,
-  ModuleResultEnvelope,
-  ResultCompletenessStatus,
-} from '../contracts/shared';
-
 export type AnalysisCompletenessStatus =
   | 'complete'
   | 'partial'
@@ -64,93 +53,10 @@ export interface ExportArtifact {
   completeness_status: AnalysisCompletenessStatus;
 }
 
-export type {
-  BenchmarkComparisonResult,
-  CanonicalAnalysisCaseContext,
-  CaseInputReadinessStatus,
-  ExportPolicyEntry,
-  MigrationAuditEntry,
-  ModuleResult,
-  ModuleResultEnvelope,
-  ResultCompletenessStatus,
-};
-
-export function mapLegacyCompletenessToResultCompleteness(
-  status: AnalysisCompletenessStatus | null | undefined,
-): ResultCompletenessStatus {
-  switch (status) {
-    case 'complete':
-      return 'complete';
-    case 'partial':
-      return 'partial';
-    case 'failed':
-    case 'not_applicable':
-    default:
-      return 'empty';
-  }
-}
-
-export function mapLegacyAnalysisCaseContextToCanonical(
-  context: AnalysisCaseContext,
-): CanonicalAnalysisCaseContext {
-  return {
-    caseRef: context.case_ref,
-    analysisFamily: 'short_circuit',
-    analysisSubcase: 'sc_k3_max',
-    networkRevision: context.snapshot_ref ?? 'snapshot:missing',
-    modelStateRef: context.snapshot_ref,
-    variantRef: context.variant_ref ?? null,
-    runRef: context.run_ref ?? null,
-    catalogSnapshotRef: context.reproducibility.catalog_snapshot_ref ?? 'catalog:unknown',
-    tolerancePolicyRef: context.reproducibility.tolerance_policy_ref ?? 'tolerance:unknown',
-    roundingPolicyRef: context.reproducibility.rounding_policy_ref ?? 'rounding:unknown',
-    assumptionsSummaryRef: context.case_ref,
-    lineageRef: context.lineage?.project_ref ?? context.case_ref,
-    proofPackRef: context.proof_pack_ref ?? null,
-    inputReadiness:
-      context.missing_prerequisites.length === 0
-        ? 'ready'
-        : context.completeness === 'complete'
-          ? 'degraded'
-          : 'blocked',
-    applicabilityScope: {
-      kind: 'whole_case',
-      entityRefs: context.applicability_scope,
-    },
-    missingPrerequisites: context.missing_prerequisites.map((message) => ({
-      code: 'analysis.missing_prerequisite',
-      severity: 'warning',
-      messagePl: message,
-      entityRef: null,
-      fieldPath: null,
-    })),
-    qualityGate:
-      context.quality_gate === 'G4'
-        ? 'accepted'
-        : context.quality_gate === 'G0'
-          ? 'blocked'
-          : 'warning',
-    qualityImpactSummary: [],
-    inputHash: context.reproducibility.input_hash ?? 'input:unknown',
-    sourceRefs: Object.values(context.lineage ?? {}).filter((value): value is string => Boolean(value)),
-    generatedAt: context.run_ref ?? context.case_ref,
-    generatedByVersion: context.reproducibility.results_contract_version ?? 'unknown',
-    reproducibility: {
-      solverFamily: context.reproducibility.solver_family ?? 'unknown',
-      solverVersion: context.reproducibility.solver_version ?? 'unknown',
-      methodVersion: context.reproducibility.method_version ?? 'unknown',
-      formulaSetVersion: context.reproducibility.formula_set_version ?? 'unknown',
-      domainModelVersion: context.reproducibility.domain_model_version ?? 'unknown',
-      resultsContractVersion: context.reproducibility.results_contract_version ?? 'unknown',
-      proofRendererVersion: context.reproducibility.proof_renderer_version ?? 'unknown',
-    },
-  };
-}
-
 export const ANALYSIS_COMPLETENESS_LABELS: Record<AnalysisCompletenessStatus, string> = {
-  complete: 'Kompletne',
-  partial: 'Częściowe',
-  failed: 'Błąd',
+  complete: 'Pelny',
+  partial: 'Czesciowy',
+  failed: 'Nieudany',
   not_applicable: 'Nie dotyczy',
 };
 
@@ -162,11 +68,11 @@ export const ANALYSIS_COMPLETENESS_BADGE_CLASS: Record<AnalysisCompletenessStatu
 };
 
 export const QUALITY_GATE_LABELS: Record<string, string> = {
-  G0: 'Dane zablokowane',
-  G1: 'Dane z krytycznymi brakami',
-  G2: 'Dane częściowe',
-  G3: 'Dane wymagają przeglądu',
-  G4: 'Dane zaakceptowane',
+  G0: 'Gate G0',
+  G1: 'Gate G1',
+  G2: 'Gate G2',
+  G3: 'Gate G3',
+  G4: 'Gate G4',
 };
 
 export const QUALITY_GATE_BADGE_CLASS: Record<string, string> = {

@@ -9,6 +9,19 @@ from enm.models import (
     Source,
     Transformer,
 )
+from enm.severity import (
+    SEVERITY_BLOCKER,
+    SEVERITY_IMPORTANT,
+    SEVERITY_INFO,
+    STATUS_FAIL,
+    STATUS_OK,
+    STATUS_WARN,
+    empty_severity_counts,
+    is_blocking_severity,
+    is_failed_status,
+    is_warning_severity,
+    severity_rank,
+)
 from enm.validator import ENMValidator
 
 
@@ -49,6 +62,30 @@ def _minimal_enm() -> EnergyNetworkModel:
             ),
         ],
     )
+
+
+class TestSeverityContract:
+    def test_public_values_are_stable(self):
+        assert SEVERITY_BLOCKER == "BLOCKER"
+        assert SEVERITY_IMPORTANT == "IMPORTANT"
+        assert SEVERITY_INFO == "INFO"
+        assert STATUS_OK == "OK"
+        assert STATUS_WARN == "WARN"
+        assert STATUS_FAIL == "FAIL"
+        assert empty_severity_counts() == {"BLOCKER": 0, "IMPORTANT": 0, "INFO": 0}
+        assert is_failed_status(STATUS_FAIL) is True
+        assert is_failed_status(STATUS_WARN) is False
+
+    def test_blocking_and_warning_semantics(self):
+        assert is_blocking_severity(SEVERITY_BLOCKER) is True
+        assert is_blocking_severity(SEVERITY_IMPORTANT) is False
+        assert is_warning_severity(SEVERITY_IMPORTANT) is True
+        assert is_warning_severity(SEVERITY_INFO) is False
+        assert [
+            severity_rank(SEVERITY_BLOCKER),
+            severity_rank(SEVERITY_IMPORTANT),
+            severity_rank(SEVERITY_INFO),
+        ] == [0, 1, 2]
 
 
 class TestBlockers:

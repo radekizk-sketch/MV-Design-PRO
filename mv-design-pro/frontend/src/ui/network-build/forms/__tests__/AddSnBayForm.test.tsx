@@ -133,7 +133,7 @@ describe('AddSnBayForm', () => {
     });
 
     fireEvent.click(screen.getByText('wybierz:Aparat SN z katalogu'));
-    fireEvent.click(screen.getByRole('button', { name: 'Utworz pole SN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj pole SN' }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -143,8 +143,6 @@ describe('AddSnBayForm', () => {
           bus_ref: 'bus-gpz-1',
           station_ref: 'gpz-1',
           bay_role: 'OUT',
-          creation_mode: 'WITH_PRIMARY_APPARATUS',
-          configure_primary_apparatus: true,
           apparatus_kind: 'DISCONNECTOR',
           catalog_binding: expect.objectContaining({
             catalog_namespace: 'APARAT_SN',
@@ -185,7 +183,7 @@ describe('AddSnBayForm', () => {
     });
 
     fireEvent.click(screen.getByText('wybierz:Aparat SN z katalogu'));
-    fireEvent.click(screen.getByRole('button', { name: 'Utworz pole SN' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj pole SN' }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -194,40 +192,8 @@ describe('AddSnBayForm', () => {
         expect.objectContaining({
           bus_ref: 'bus-gpz-ref-only',
           station_ref: 'gpz-1',
-          creation_mode: 'WITH_PRIMARY_APPARATUS',
-          configure_primary_apparatus: true,
         }),
       );
     });
-  });
-
-  it('pozwala utworzyc kontener pola SN bez katalogu aparatu', async () => {
-    networkBuildState.activeOperationForm.context = {
-      station_ref: 'gpz-1',
-      bus_ref: 'bus-gpz-1',
-      bay_role: 'OUT',
-    };
-    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
-
-    render(<AddSnBayForm />);
-
-    fireEvent.click(screen.getByRole('button', { name: /Kontener pola teraz/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'Utworz pole SN' }));
-
-    await waitFor(() => {
-      expect(executeDomainOperationMock).toHaveBeenCalledWith(
-        'case-1',
-        'add_sn_bay',
-        expect.objectContaining({
-          bus_ref: 'bus-gpz-1',
-          station_ref: 'gpz-1',
-          bay_role: 'OUT',
-          creation_mode: 'TOPOLOGICAL_CONTAINER',
-          configure_primary_apparatus: false,
-        }),
-      );
-    });
-
-    expect(closeFormMock).toHaveBeenCalledTimes(1);
   });
 });

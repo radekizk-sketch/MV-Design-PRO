@@ -1,6 +1,9 @@
 # Documentation Index
 
 ## Active Canon
+- [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
+- [v12xx/RAPORT_M0_INWENTARYZACJA.md](./v12xx/RAPORT_M0_INWENTARYZACJA.md) - inwentaryzacja startowa M0 V12.xx
+- [v12xx/BACKLOG_WDROZENIOWY_V12_XX.md](./v12xx/BACKLOG_WDROZENIOWY_V12_XX.md) - backlog wdrozeniowy M0-M4
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5
 - [SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
 - [ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
@@ -30,6 +33,7 @@
 - Link do materiału historycznego musi być jawnie oznaczony `[historyczne]`.
 
 ## Active Areas
+- [v12xx/](./v12xx/) - nadrzedny kanon V12.xx, rejestry i macierze wykonawcze
 - [analysis/](./analysis/) - aktywne kontrakty analiz
 - [architecture/](./architecture/) - aktywne workflow i mapy architektury wykonawczej
 - [audit/](./audit/) - aktywne audyty i higiena repo V12.5
@@ -42,15 +46,6 @@
 - [ui/](./ui/) - aktywne kontrakty UI
 - [export/](./export/) - aktywne kontrakty eksportu
 - [tests/](./tests/) - aktywne kryteria testowe i goldeny
-
-## SLD PR-A..PR-G Quick Index
-- Runtime audit SLD: [audit/MV_DESIGN_PRO_SLD_RUNTIME_AUDIT.md](./audit/MV_DESIGN_PRO_SLD_RUNTIME_AUDIT.md)
-- Kontrakty SLD runtime: [sld/SLD_SYSTEM_SPEC_CANONICAL.md](./sld/SLD_SYSTEM_SPEC_CANONICAL.md)
-- Kontrakty GPZ i pol: [audit/MV_DESIGN_PRO_SLD_GPZ_CONTRACT_AUDIT.md](./audit/MV_DESIGN_PRO_SLD_GPZ_CONTRACT_AUDIT.md)
-- Kontrakty stacji SN/nN: [audit/MV_DESIGN_PRO_SLD_STATION_SWITCHGEAR_AUDIT.md](./audit/MV_DESIGN_PRO_SLD_STATION_SWITCHGEAR_AUDIT.md)
-- Source variants PV/BESS i NOP: [audit/MV_DESIGN_PRO_SLD_SOURCE_CONNECTION_AUDIT.md](./audit/MV_DESIGN_PRO_SLD_SOURCE_CONNECTION_AUDIT.md)
-- Test evidence PR-A..PR-G: [audit/MV_DESIGN_PRO_END_TO_END_AUDIT.md](./audit/MV_DESIGN_PRO_END_TO_END_AUDIT.md)
-- Indeks audit PR-A..PR-G: [audit/README.md](./audit/README.md)
 
 ## Historical
 - [spec/](./spec/) [historyczne]

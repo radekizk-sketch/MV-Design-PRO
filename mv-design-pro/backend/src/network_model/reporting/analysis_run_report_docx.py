@@ -61,13 +61,13 @@ def _add_title(doc: Document, title: str) -> None:
 def _add_header_section(doc: Document, bundle: dict[str, Any]) -> None:
     doc.add_heading("A. Nagłówek", level=1)
     project = bundle.get("project", {})
-    operating_case = bundle.get("operating_case", {})
+    study_case = bundle.get("study_case") or bundle.get("operating_case", {})
     run = bundle.get("run", {})
     rows = [
         ("Projekt", project.get("name")),
         ("Project ID", project.get("id")),
-        ("OperatingCase", operating_case.get("name")),
-        ("OperatingCase ID", operating_case.get("id")),
+        ("Przypadek obliczeniowy", study_case.get("name")),
+        ("StudyCase ID", study_case.get("id")),
         ("AnalysisRun ID", run.get("id")),
         ("Deterministic ID", run.get("deterministic_id")),
         ("Analysis type", run.get("analysis_type")),
@@ -230,3 +230,5 @@ def _label_for_summary_key(key: str) -> str:
     if key == "connection_node_id":
         return "BoundaryNode – węzeł przyłączenia"
     return key
+
+

@@ -4,9 +4,6 @@
  * RUN #3G §1: UI kreator pól i aparatów.
  */
 
-// Main page
-export { SwitchgearWizardPage } from './SwitchgearWizardPage';
-
 // Screens
 export { StationListScreen } from './StationListScreen';
 export { StationEditScreen } from './StationEditScreen';

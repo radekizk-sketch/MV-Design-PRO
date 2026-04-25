@@ -29,28 +29,28 @@ export const ROUTES = {
   ANALYSIS: {
     hash: '#analysis',
     label: 'Poziom analityczny',
-    description: 'Analityka w głównym shellu',
+    description: 'Analityka E-24 w glownym shellu',
     icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
   REPORT: {
     hash: '#report',
     label: 'Generator raportu',
-    description: 'Konfiguracja i podgląd raportu technicznego',
+    description: 'Konfiguracja i podglad raportu technicznego',
     icon: 'RPT',
     requiredMode: 'RESULT_VIEW',
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Zakresy obliczeń i wyniki',
-    description: 'Panel wyboru zakresu obliczeń i wyników',
+    label: 'Przebiegi obliczen',
+    description: 'Helper wyboru przebiegow i identyfikatorow uruchomien',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
-  CONDITIONS: {
-    hash: '#warunki-obliczen',
-    label: 'Warunki obliczeń',
-    description: 'Panel warunków obliczeń w głównym shellu',
+  CASE_CONFIG: {
+    hash: '#case-config',
+    label: 'Parametry analizy',
+    description: 'Helper konfiguracji analizy w glownym shellu',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
@@ -63,24 +63,16 @@ export const ROUTES = {
   FAULT_SCENARIOS: {
     hash: '#fault-scenarios',
     label: 'Scenariusze zwarciowe',
-    description: 'Zarządzanie scenariuszami zwarć i analiz',
+    description: 'Zarzadzanie scenariuszami zwarc i analiz',
     icon: 'SCN',
   },
   CATALOG: {
     hash: '#catalog',
-    label: 'Biblioteka typów',
-    description: 'Panel katalogowy shell-a',
+    label: 'Biblioteka typow',
+    description: 'Helper katalogowy shell-a',
     icon: 'CAT',
   },
 } satisfies Record<string, RouteDefinition>;
-
-export const SWITCHGEAR = {
-  hash: '#switchgear',
-  label: 'Rozdzielnica',
-  description: 'Tryb zgodności dla kreatora rozdzielnicy',
-  icon: 'SWG',
-  requiredMode: 'MODEL_EDIT',
-} satisfies RouteDefinition;
 
 type RouteKey = keyof typeof ROUTES;
 
@@ -137,6 +129,7 @@ function navigateToHash(hash: string, mutate?: (params: URLSearchParams) => void
     mutate?.(params);
   });
 }
+
 function assignRouteContext(params: URLSearchParams, options: RouteContextOptions = {}): void {
   const entries: Array<[keyof RouteContextOptions, string]> = [
     ['runId', 'run'],
@@ -215,9 +208,9 @@ export function navigateToResults(context: RouteContextOptions = {}): void {
 }
 
 export function navigateToProof(context: RouteContextOptions = {}): void {
-  navigateToAnalysisRoute({
-    ...context,
-    tabId: 'trace',
+  navigateToHash('#proof', (params) => {
+    params.delete('tab');
+    assignRouteContext(params, context);
   });
 }
 
@@ -250,8 +243,8 @@ export function navigateToNetworkBuild(): void {
   navigateTo(ROUTES.SLD);
 }
 
-export function navigateToConditions(context: RouteContextOptions = {}): void {
-  navigateToHash(ROUTES.CONDITIONS.hash, (params) => {
+export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
     params.delete('run');
     assignRouteContext(params, context);
   });

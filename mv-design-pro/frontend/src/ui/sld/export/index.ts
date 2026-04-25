@@ -11,6 +11,7 @@ export type {
   PdfPageSize,
   PdfOrientation,
   ExportScope,
+  ExportThemeId,
   ExportLayerOptions,
   ExportMetadata,
   PngExportOptions,
@@ -28,6 +29,12 @@ export {
   PDF_ORIENTATION_LABELS_PL,
   generateExportFilename,
 } from './types';
+
+export {
+  DEFAULT_EXPORT_THEME,
+  applyExportTheme,
+  resolveExportTheme,
+} from './exportTheme';
 
 // Export utilities
 export { exportPng } from './exportPng';

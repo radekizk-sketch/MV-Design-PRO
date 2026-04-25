@@ -52,14 +52,14 @@ async function executeDomainOp(
 
   const response = await request.post(`${BACKEND_BASE}/api/cases/${caseId}/enm/domain-ops`, {
     data: {
-      project_id: caseId,
-      snapshot_base_hash: '',
-      operation: {
-        name,
-        idempotency_key: `e2e-branch-points-${String(opCounter).padStart(4, '0')}`,
-        payload,
+        project_id: caseId,
+        snapshot_base_hash: '',
+        operation: {
+          name,
+          idempotency_key: `e2e-branch-points-${caseId}-${String(opCounter).padStart(4, '0')}`,
+          payload,
+        },
       },
-    },
   });
 
   expect(response.ok()).toBeTruthy();

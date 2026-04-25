@@ -26,11 +26,12 @@ from domain.readiness import (
 )
 
 # Generator types that REQUIRE connection_variant
-_OZE_GEN_TYPES = frozenset({"pv_inverter", "wind_inverter", "bess"})
+_OZE_GEN_TYPES = frozenset(
+    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+)
 _LV_VARIANTS = frozenset({"nn_side", "LV_BEHIND_STATION_TRANSFORMER"})
-_DEDICATED_MV_VARIANTS = frozenset({"block_transformer", "DEDICATED_MV_CONNECTION"})
 _SOURCE_STATION_VARIANTS = frozenset({"SOURCE_CONNECTION_STATION"})
-_VALID_CONNECTION_VARIANTS = _LV_VARIANTS | _DEDICATED_MV_VARIANTS | _SOURCE_STATION_VARIANTS
+_DEDICATED_MV_VARIANTS = frozenset({"block_transformer", "DEDICATED_MV_CONNECTION"})
 
 
 def validate_generator_connections(
@@ -89,8 +90,7 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): brak wariantu przylaczenia "
-                        f"(LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION "
-                        f"albo SOURCE_CONNECTION_STATION)"
+                        f"(nn_side lub block_transformer)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",
@@ -178,8 +178,7 @@ def validate_generator_connections(
                     priority=ReadinessPriority.BLOCKER,
                     message_pl=(
                         f"Generator OZE '{name}' ({ref_id}): nieznany wariant przylaczenia "
-                        f"'{connection_variant}' (dozwolone: LV_BEHIND_STATION_TRANSFORMER, "
-                        f"DEDICATED_MV_CONNECTION, SOURCE_CONNECTION_STATION)"
+                        f"'{connection_variant}' (dozwolone: nn_side, block_transformer)"
                     ),
                     element_id=ref_id,
                     element_type="GENERATOR",

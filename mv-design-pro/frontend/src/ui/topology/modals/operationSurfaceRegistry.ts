@@ -47,14 +47,14 @@ function entry(
 export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'continue_trunk_segment_sn',
-    'ChooseSnSegmentFamilyForm',
-    'Wybierz rodzine odcinka SN',
-    'E-06',
+    'ContinueTrunkForm',
+    'Kontynuuj ciag glowny SN',
+    'E-11',
     'A',
     'manual',
     'replace_right_panel',
     false,
-    'wybor-rodziny',
+    'kabel-sn',
   ),
   entry(
     'insert_station_on_segment_sn',
@@ -170,7 +170,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'update_element_parameters',
     'UpdateElementParametersForm',
     'Zmien parametry elementu',
-    'E-03',
+    'E-24',
     'B',
     'manual',
     'replace_right_panel',

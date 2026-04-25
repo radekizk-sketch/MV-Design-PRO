@@ -59,6 +59,9 @@ export type DeviceKind = (typeof DeviceKind)[keyof typeof DeviceKind];
 export const GeneratorKind = {
   PV: 'PV',
   WIND: 'WIND',
+  FW_PMSG: 'FW_PMSG',
+  FW_DFIG: 'FW_DFIG',
+  FW_SCIG: 'FW_SCIG',
   BESS: 'BESS',
   SYNCHRONOUS: 'SYNCHRONOUS',
 } as const;
@@ -426,6 +429,9 @@ function enmGenKind(g: ENMGenerator): GeneratorKind {
   switch (g.gen_type) {
     case 'pv_inverter': return GeneratorKind.PV;
     case 'wind_inverter': return GeneratorKind.WIND;
+    case 'fw_pmsg': return GeneratorKind.FW_PMSG;
+    case 'fw_dfig': return GeneratorKind.FW_DFIG;
+    case 'fw_scig': return GeneratorKind.FW_SCIG;
     case 'bess': return GeneratorKind.BESS;
     case 'synchronous': return GeneratorKind.SYNCHRONOUS;
     default: return GeneratorKind.SYNCHRONOUS;
@@ -627,7 +633,15 @@ export function readTopologyFromENM(
   }));
 
   // --- Generators ---
-  const OZE_TYPES: GeneratorKind[] = [GeneratorKind.PV, GeneratorKind.WIND, GeneratorKind.BESS];
+  const OZE_TYPES: GeneratorKind[] = [
+    GeneratorKind.PV,
+    GeneratorKind.WIND,
+    GeneratorKind.FW_PMSG,
+    GeneratorKind.FW_DFIG,
+    GeneratorKind.FW_SCIG,
+    GeneratorKind.BESS,
+  ];
+
   // Build lookup maps for validation
   const transformerRefSet = new Set(enm.transformers.map(t => t.ref_id));
   const stationRefSet = new Set(enm.substations.map(s => s.ref_id));
@@ -638,7 +652,7 @@ export function readTopologyFromENM(
         code: 'generator.type_missing',
         message: `Generator '${g.name}' (${g.ref_id}) nie ma typu (gen_type).`,
         elementRef: g.ref_id,
-        fixHint: 'Ustaw gen_type na pv_inverter, wind_inverter, bess lub synchronous.',
+        fixHint: 'Ustaw gen_type na pv_inverter, fw_pmsg, fw_dfig, fw_scig, bess lub synchronous.',
       });
     }
 

@@ -9,6 +9,7 @@ from api.v125_contracts import (
     resolve_proof_pack_ref,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.severity import is_failed_status
 
 
 def _infer_case_kind(run: CanonicalRun) -> str:
@@ -19,6 +20,12 @@ def _infer_case_kind(run: CanonicalRun) -> str:
         return "ROZPLYW_MAX_OBC"
     if run.analysis_type == "short_circuit_sn":
         return "ZWARCIOWY_MAKS"
+    if run.analysis_type == "phase_state_sn":
+        return "STAN_FAZOWY_SN"
+    if run.analysis_type == "dynamic_stability":
+        return "PRACA_PO_ZAKLOCENIU"
+    if run.analysis_type == "source_compliance":
+        return "ZGODNOSC_PRZYLACZENIOWA"
     return "RAPORTOWY_BAZOWY"
 
 
@@ -26,7 +33,7 @@ def _infer_quality_gate(run: CanonicalRun) -> str:
     validation_status = str((run.validation or {}).get("status") or "").upper()
     blockers = len((run.readiness or {}).get("blockers") or [])
 
-    if validation_status == "FAIL":
+    if is_failed_status(validation_status):
         return "G0"
     if blockers > 0:
         return "G1"
@@ -42,6 +49,12 @@ def _infer_applicability_scope(run: CanonicalRun) -> list[str]:
         return ["PF", "REPORT"]
     if run.analysis_type == "short_circuit_sn":
         return ["SC", "REPORT"]
+    if run.analysis_type == "phase_state_sn":
+        return ["PHASE_STATE_SN", "REPORT"]
+    if run.analysis_type == "dynamic_stability":
+        return ["DYNAMIC_STABILITY", "AUTOMATION", "REPORT"]
+    if run.analysis_type == "source_compliance":
+        return ["SOURCE_COMPLIANCE", "REPORT"]
     return ["REPORT"]
 
 
@@ -49,9 +62,33 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
     options = run.options or {}
     return {
         "source_assumptions_ref": options.get("source_assumptions_ref")
-        or ("sc_source_max" if run.analysis_type == "short_circuit_sn" else "pf_source_nominal"),
+        or (
+            "sc_source_max"
+            if run.analysis_type == "short_circuit_sn"
+            else (
+                "phase_state_source_snapshot"
+                if run.analysis_type == "phase_state_sn"
+                else (
+                    "dynamic_fault_source_state"
+                    if run.analysis_type == "dynamic_stability"
+                    else (
+                        "source_profile_snapshot"
+                        if run.analysis_type == "source_compliance"
+                        else "pf_source_nominal"
+                    )
+                )
+            )
+        ),
         "load_assumptions_ref": options.get("load_assumptions_ref")
-        or ("pf_load_max" if run.analysis_type == "PF" else "sc_load_snapshot"),
+        or (
+            "pf_load_max"
+            if run.analysis_type == "PF"
+            else (
+                "phase_state_load_snapshot"
+                if run.analysis_type == "phase_state_sn"
+                else "sc_load_snapshot"
+            )
+        ),
         "switching_state_ref": options.get("switching_state_ref") or "snapshot_switching_state",
         "grounding_assumptions_ref": options.get("grounding_assumptions_ref")
         or "network_grounding_snapshot",

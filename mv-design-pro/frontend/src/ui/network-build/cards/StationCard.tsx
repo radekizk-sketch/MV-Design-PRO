@@ -34,19 +34,19 @@ function buildConverterSourceContext(
 function bayRoleLabel(role: string): string {
   switch (role) {
     case 'IN':
-      return 'Zasilające (wejście)';
+      return 'ZasilajÄ…ce (wejĹ›cie)';
     case 'OUT':
-      return 'Odgałęźne (wyjście)';
+      return 'OdgaĹ‚Ä™Ĺşne (wyjĹ›cie)';
     case 'TR':
       return 'Transformatorowe';
     case 'COUPLER':
-      return 'Sprzęgło sekcji';
+      return 'SprzÄ™gĹ‚o sekcji';
     case 'FEEDER':
-      return 'Zasilające odgałęźne';
+      return 'ZasilajÄ…ce odgaĹ‚Ä™Ĺşne';
     case 'MEASUREMENT':
       return 'Pomiarowe';
     case 'OZE':
-      return 'OZE / źródło';
+      return 'OZE / ĹşrĂłdĹ‚o';
     default:
       return role;
   }
@@ -122,8 +122,8 @@ export function StationCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'entry_point',
-          label: 'Punkt wejścia',
-          value: station.entry_point_ref ?? '-',
+          label: 'Punkt wejĹ›cia',
+          value: station.entry_point_ref ?? 'â€”',
         },
       ],
     };
@@ -174,7 +174,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         bayFields.length > 0
           ? bayFields
-          : [{ key: 'no_bays', label: 'Brak pól', value: 'Nie zdefiniowano pól SN', severity: 'warning' as const }],
+          : [{ key: 'no_bays', label: 'Brak pĂłl', value: 'Nie zdefiniowano pĂłl SN', severity: 'warning' as const }],
     };
 
     // Transformer-to-bay assignment enrichment (via equipment_refs)
@@ -207,11 +207,11 @@ export function StationCard({ elementId }: { elementId: string }) {
         id: 'analysis',
         label: 'Wyniki analizy',
         fields: [
-          { key: 'u_bus_pu', label: 'Napięcie U szyny', value: null, unit: 'pu', source: 'calculated' },
-          { key: 'ik3', label: 'Prąd zwarciowy Ik3', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'ik1', label: 'Prąd zwarciowy Ik1', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wyników - wykonaj analizę', severity: 'warning' },
+          { key: 'u_bus_pu', label: 'NapiÄ™cie U szyny', value: null, unit: 'pu', source: 'calculated' },
+          { key: 'ik3', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik1', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'max_tr_loading', label: 'Maks. obciÄ…ĹĽenie trafo', value: null, unit: '%', source: 'calculated' },
+          { key: 'no_results', label: 'Status', value: 'Brak wynikĂłw â€” uruchom analizÄ™', severity: 'warning' },
         ],
       });
     }

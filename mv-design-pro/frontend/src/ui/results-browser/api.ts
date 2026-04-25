@@ -10,7 +10,6 @@
  * - GET /api/analysis-runs/{run_id}/results/branches
  * - GET /api/power-flow-runs/{run_id}/results
  * - GET /api/power-flow-runs/{run_id}/trace
- * - GET /api/power-flow-runs/{run_id}/violations
  * - GET /api/power-flow-runs/{run_id}/export/pdf
  * - GET /api/power-flow-runs/{run_id}/export/xlsx
  */
@@ -125,18 +124,7 @@ export async function fetchLosses(runId: string): Promise<LossesRow[]> {
  * Fetch violations for a run.
  */
 export async function fetchViolations(runId: string): Promise<ViolationRow[]> {
-  // Try dedicated violations endpoint first
-  try {
-    const response = await fetch(`${API_BASE}/power-flow-runs/${runId}/violations`);
-    if (response.ok) {
-      const data = await response.json();
-      return mapViolationsResponse(data);
-    }
-  } catch {
-    // Fall back to computing from results
-  }
-
-  // Compute violations from results
+  // Compute violations directly from the canonical result payload.
   const busVoltages = await fetchBusVoltages(runId);
   const violations: ViolationRow[] = [];
 
@@ -210,18 +198,23 @@ export async function fetchRunsForComparison(projectId: string): Promise<RunHead
 
   return (data.runs ?? []).map((run: {
     id: string;
-    operating_case_id: string;
+    study_case_id?: string;
     created_at: string;
     status: string;
     converged?: boolean;
-  }) => ({
-    run_id: run.id,
-    case_id: run.operating_case_id,
-    created_at: run.created_at,
-    solver_kind: 'PF',
-    status: run.status,
-    converged: run.converged,
-  }));
+  }) => {
+    if (!run.study_case_id) {
+      throw new Error('Brak `study_case_id` w kanonicznej liście uruchomień rozplywu.');
+    }
+    return {
+      run_id: run.id,
+      case_id: run.study_case_id,
+      created_at: run.created_at,
+      solver_kind: 'PF',
+      status: run.status,
+      converged: run.converged,
+    };
+  });
 }
 
 // =============================================================================
@@ -385,30 +378,3 @@ function determineLoadingStatus(loadingPct: number): 'PASS' | 'FAIL' | 'WARNING'
   return 'PASS';
 }
 
-function mapViolationsResponse(data: {
-  violations?: Array<{
-    element_id: string;
-    element_name?: string;
-    element_type: string;
-    violation_type: string;
-    voltage_pu?: number;
-    loading_pct?: number;
-    limit_min_pu?: number;
-    limit_max_pu?: number;
-    deviation_pct: number;
-    severity: string;
-  }>;
-}): ViolationRow[] {
-  return (data.violations ?? []).map((v) => ({
-    element_id: v.element_id,
-    element_name: v.element_name ?? v.element_id,
-    element_type: v.element_type as 'bus' | 'branch',
-    violation_type: v.violation_type as ViolationRow['violation_type'],
-    voltage_pu: v.voltage_pu,
-    loading_pct: v.loading_pct,
-    limit_min_pu: v.limit_min_pu,
-    limit_max_pu: v.limit_max_pu,
-    deviation_pct: v.deviation_pct,
-    severity: v.severity as ViolationRow['severity'],
-  }));
-}

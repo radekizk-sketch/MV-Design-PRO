@@ -157,20 +157,6 @@ def _manual_grid_source_equivalent_complete(payload: dict[str, Any]) -> bool:
     )
 
 
-def _allows_topological_sn_bay_without_catalog(payload: dict[str, Any]) -> bool:
-    creation_mode = payload.get("creation_mode")
-    if isinstance(creation_mode, str):
-        normalized = creation_mode.strip().upper()
-        if normalized in {"TOPOLOGICAL_CONTAINER", "CONTAINER_ONLY"}:
-            return True
-
-    apparatus_kind = payload.get("apparatus_kind")
-    if isinstance(apparatus_kind, str) and apparatus_kind.strip():
-        return False
-
-    return bool(payload.get("bus_ref"))
-
-
 def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str, Any] | None:
     """Extract catalog_binding from payload, preferring canonical nested contracts."""
 
@@ -350,12 +336,12 @@ def validate_and_materialize_catalog_binding(
         return (
             CatalogPolicyError(
                 code="catalog.ref_required",
-                message_pl="Element techniczny wymaga powi?zania z katalogiem",
+                message_pl="Element techniczny wymaga powiÄ…zania z katalogiem",
                 errors=[
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            "R?czny odpowiednik GPZ musi by? kompletny albo nale?y poda? "
+                            "RÄ™czny odpowiednik GPZ musi byÄ‡ kompletny albo naleĹĽy podaÄ‡ "
                             "'catalog_binding'."
                         ),
                     }
@@ -363,9 +349,6 @@ def validate_and_materialize_catalog_binding(
             ),
             {},
         )
-
-    if operation == "add_sn_bay" and _allows_topological_sn_bay_without_catalog(payload):
-        return None, {}
 
     binding_data = extract_catalog_binding(operation, payload)
     if binding_data is None:

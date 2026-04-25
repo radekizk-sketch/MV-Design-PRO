@@ -155,7 +155,7 @@ describe('buildContextMenuForElement', () => {
     );
   });
 
-  it('kieruje Station add_sn_field_out bezposrednio do formularza kontenera pola SN', () => {
+  it('kieruje Station add_sn_field_out do kanonicznego add_sn_bay', () => {
     const req = makeRequest('Station', 'MODEL_EDIT');
     const handlers = makeHandlers();
     const result = buildContextMenuForElement(req, handlers)!;
@@ -171,7 +171,7 @@ describe('buildContextMenuForElement', () => {
     expect(handlers.onCatalogRequired).not.toHaveBeenCalled();
   });
 
-  it('kieruje Bus add_breaker do formularza pola SN z prekonfiguracja aparatu', () => {
+  it('kieruje Bus add_breaker do kanonicznego add_sn_bay z wariantem aparatu', () => {
     const req = makeRequest('Bus', 'MODEL_EDIT');
     const handlers = makeHandlers();
     const result = buildContextMenuForElement(req, handlers)!;

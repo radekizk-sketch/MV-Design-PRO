@@ -22,12 +22,14 @@ import type { ViewportState } from '../types';
 import { fitToContent } from '../types';
 import { exportPng } from './exportPng';
 import { exportPdf } from './exportPdf';
+import { DEFAULT_EXPORT_THEME } from './exportTheme';
 import type {
   SldExportOptions,
   ExportResult,
   ExportScope,
   ExportLayerOptions,
   ExportMetadata,
+  ExportThemeId,
 } from './types';
 
 /**
@@ -106,6 +108,7 @@ export function createExportOptions(
   format: 'png',
   userOptions: {
     scale?: 1 | 2;
+    theme?: ExportThemeId;
     scope: ExportScope;
     layers: ExportLayerOptions;
   },
@@ -116,6 +119,7 @@ export function createExportOptions(
   userOptions: {
     pageSize?: 'A4' | 'A3';
     orientation?: 'portrait' | 'landscape' | 'auto';
+    theme?: ExportThemeId;
     scope: ExportScope;
     layers: ExportLayerOptions;
   },
@@ -127,6 +131,7 @@ export function createExportOptions(
     scale?: 1 | 2;
     pageSize?: 'A4' | 'A3';
     orientation?: 'portrait' | 'landscape' | 'auto';
+    theme?: ExportThemeId;
     scope: ExportScope;
     layers: ExportLayerOptions;
   },
@@ -136,6 +141,7 @@ export function createExportOptions(
     return {
       format: 'png',
       scale: userOptions.scale ?? 1,
+      theme: userOptions.theme ?? DEFAULT_EXPORT_THEME,
       scope: userOptions.scope,
       layers: userOptions.layers,
       metadata,
@@ -146,6 +152,7 @@ export function createExportOptions(
     format: 'pdf',
     pageSize: userOptions.pageSize ?? 'A4',
     orientation: userOptions.orientation ?? 'auto',
+    theme: userOptions.theme ?? DEFAULT_EXPORT_THEME,
     scope: userOptions.scope,
     layers: userOptions.layers,
     metadata,

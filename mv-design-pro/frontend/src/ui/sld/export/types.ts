@@ -39,6 +39,8 @@ export type PdfOrientation = 'portrait' | 'landscape' | 'auto';
  */
 export type ExportScope = 'viewport' | 'fit';
 
+export type ExportThemeId = 'screen' | 'light_technical';
+
 /**
  * Layer visibility options for export.
  * Matches SLD UI layer structure.
@@ -79,6 +81,8 @@ export interface PngExportOptions {
   format: 'png';
   /** Resolution scale: 1× or 2× */
   scale: PngScale;
+  /** Visual theme for the exported clone */
+  theme?: ExportThemeId;
   /** Export scope: viewport or fit-to-network */
   scope: ExportScope;
   /** Layer visibility options */
@@ -96,6 +100,8 @@ export interface PdfExportOptions {
   pageSize: PdfPageSize;
   /** Orientation: portrait, landscape, or auto */
   orientation: PdfOrientation;
+  /** Visual theme for the exported clone */
+  theme?: ExportThemeId;
   /** Export scope: viewport or fit-to-network */
   scope: ExportScope;
   /** Layer visibility options */

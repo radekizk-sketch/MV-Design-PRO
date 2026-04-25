@@ -21,7 +21,7 @@
  * - "#sld-view" â†’ Podglad schematu (SLD Read-Only Viewer)
  * - "#analysis" â†’ Poziom analityczny (E-24)
  * - "#report" â†’ Generator raportu (E-25)
- * - "#variants" / "#catalog" / "#warunki-obliczen" â†’ Helpery shell-a
+ * - "#variants" / "#catalog" / "#case-config" â†’ Helpery shell-a
  * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
  *   â†’ aliasy prowadzÄ…ce do E-24
  */
@@ -43,7 +43,7 @@ import {
   getRouteByHash,
   isAnalysisRouteAlias,
   navigateToAnalysis,
-  navigateToConditions,
+  navigateToCaseConfig,
   navigateToCatalog,
   navigateToCompare,
   navigateToNetworkBuild,
@@ -223,7 +223,7 @@ function App() {
       });
       return;
     }
-    if (route === ROUTES.CONDITIONS.hash) {
+    if (route === ROUTES.CASE_CONFIG.hash) {
       openRouteSurface('case_context', {
         subjectKind: 'helper_context',
         subjectRef: params.get('case') ?? params.get('snapshot') ?? 'case-context',
@@ -249,10 +249,10 @@ function App() {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
       const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Rozpoczęto obliczenia. Przejdź do widoku wyników po zakończeniu.', 'success');
+      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
+      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
       notify(message, 'error');
     }
   }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);
@@ -268,7 +268,12 @@ function App() {
 
   // E2E_STABILIZATION: Wrapper with app-ready indicator
   const wrapWithReadyIndicator = (content: React.ReactNode) => (
-    <div data-testid="app-root" data-ready={appReady}>
+    <div
+      data-testid="app-root"
+      data-ready={appReady}
+      className="mv-dark-scada min-h-screen bg-chrome-900 text-chrome-100"
+      data-ui-theme="dark-scada"
+    >
       {appReady && <div data-testid="app-ready" style={{ display: 'none' }} />}
       <NotificationToast />
       {content}
@@ -299,7 +304,7 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'case-manager':
-        navigateToConditions({ caseId: activeCaseId });
+        navigateToCaseConfig({ caseId: activeCaseId });
         break;
       case 'sld-view':
         window.location.hash = ROUTES.SLD_VIEW.hash;
@@ -346,7 +351,7 @@ function App() {
     activeRunId,
     handleCalculate,
     navigateToAnalysis,
-    navigateToConditions,
+    navigateToCaseConfig,
     navigateToCatalog,
     navigateToCompare,
     navigateToNetworkBuild,

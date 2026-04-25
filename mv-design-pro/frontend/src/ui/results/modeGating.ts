@@ -34,9 +34,9 @@ export function useSafeModeTransition(): {
       const normalizedMode = normalizeOperatingMode(mode);
       if (normalizedMode === 'RESULT_VIEW' && resultStatus !== 'FRESH') {
         if (resultStatus === 'NONE') {
-          return 'Brak wynik?w - najpierw uruchom obliczenia.';
+          return 'Brak wynikow - najpierw uruchom obliczenia.';
         }
-        return 'Wyniki są nieaktualne - wymagane jest ponowne wykonanie obliczeń.';
+        return 'Wyniki sa nieaktualne - wymagane jest ponowne uruchomienie obliczen.';
       }
       return null;
     },
@@ -119,14 +119,14 @@ export function useOverlayVisibility(): {
   if (resultStatus === 'NONE') {
     return {
       visible: false,
-      hiddenReason: 'Brak wynik?w - uruchom obliczenia.',
+      hiddenReason: 'Brak wynikow - uruchom obliczenia.',
     };
   }
 
   if (resultStatus === 'OUTDATED') {
     return {
       visible: false,
-      hiddenReason: 'Wyniki są nieaktualne - wymagane jest ponowne wykonanie obliczeń.',
+      hiddenReason: 'Wyniki sa nieaktualne - wymagane jest ponowne uruchomienie obliczen.',
     };
   }
 

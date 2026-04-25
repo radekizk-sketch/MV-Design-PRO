@@ -26,6 +26,7 @@ from domain.canonical_operations import resolve_operation_name
 from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
+from enm.severity import empty_severity_counts, is_failed_status
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -45,6 +46,7 @@ from enm.topology_ops import (
     update_node,
     update_protection,
 )
+from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -66,9 +68,6 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
     except ValueError:
         return None
     with uow_factory() as uow:
-        operating_case = uow.cases.get_operating_case(parsed_case_id)
-        if operating_case is not None:
-            return str(operating_case.project_id)
         study_case = uow.cases.get_study_case(parsed_case_id)
         if study_case is not None:
             return str(study_case.project_id)
@@ -85,6 +84,14 @@ async def get_enm(case_id: str) -> dict[str, Any]:
     """Return current EnergyNetworkModel for case."""
     enm = _get_enm(case_id)
     return enm.model_dump(mode="json")
+
+
+@router.get("/{case_id}/enm/v2-projection")
+async def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
+    """Return the read-only ENM v2.0 projection used by V12.xx M1 migration."""
+    enm = _get_enm(case_id)
+    projection = project_enm_v1_to_v2(enm)
+    return projection.model_dump(mode="json")
 
 
 @router.put("/{case_id}/enm")
@@ -208,11 +215,13 @@ async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
             "message_pl": issue.message_pl,
             "wizard_step_hint": issue.wizard_step_hint,
             "suggested_fix": issue.suggested_fix,
-            "fix_action": (issue.fix_action.model_dump(mode="json") if issue.fix_action else None),
+            "fix_action": (
+                issue.fix_action.model_dump(mode="json") if issue.fix_action else None
+            ),
         }
         issues_out.append(item)
 
-    by_severity = {"BLOCKER": 0, "IMPORTANT": 0, "INFO": 0}
+    by_severity = empty_severity_counts()
     for issue in validation.issues:
         by_severity[issue.severity] = by_severity.get(issue.severity, 0) + 1
 
@@ -347,10 +356,14 @@ _OP_DISPATCH = {
         data.get("ref_id", ""),
     ),
     "create_measurement": lambda enm, data: create_measurement(enm, data),
-    "delete_measurement": lambda enm, data: delete_measurement(enm, data.get("ref_id", "")),
+    "delete_measurement": lambda enm, data: delete_measurement(
+        enm, data.get("ref_id", "")
+    ),
     "attach_protection": lambda enm, data: attach_protection(enm, data),
     "update_protection": lambda enm, data: update_protection(enm, data),
-    "detach_protection": lambda enm, data: detach_protection(enm, data.get("ref_id", "")),
+    "detach_protection": lambda enm, data: detach_protection(
+        enm, data.get("ref_id", "")
+    ),
 }
 
 
@@ -501,15 +514,31 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
     # Validate
     validator = ENMValidator()
     validation = validator.validate(enm)
-    if validation.status == "FAIL":
+    if is_failed_status(validation.status):
         raise HTTPException(
             status_code=422,
             detail=[i.model_dump(mode="json") for i in validation.issues],
         )
 
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    allowed_options = {
+        key: body[key]
+        for key in (
+            "fault_type",
+            "short_circuit_type",
+            "c_factor",
+            "thermal_time_seconds",
+        )
+        if isinstance(body, dict) and key in body
+    }
+
     run = run_short_circuit_now(
         case_id=case_id,
         project_id=_resolve_project_id(case_id, request),
+        options=allowed_options,
     )
 
     # Map ENM → NetworkGraph
@@ -517,7 +546,13 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         "case_id": case_id,
         "enm_revision": enm.header.revision,
         "enm_hash": compute_enm_hash(enm),
-        "analysis_type": "short_circuit_3f",
+        "analysis_type": (run.raw_result or {}).get(
+            "analysis_type", "short_circuit_3f"
+        ),
+        "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
+        "reporting_status": (run.raw_result or {}).get("reporting_status"),
+        "proof_status": (run.raw_result or {}).get("proof_status"),
+        "proof_engine_version": (run.raw_result or {}).get("proof_engine_version"),
         "run_id": str(run.id),
         "input_hash": run.input_hash,
         "readiness": run.readiness,
@@ -532,7 +567,7 @@ async def run_power_flow(case_id: str, request: Request) -> dict[str, Any]:
 
     validator = ENMValidator()
     validation = validator.validate(enm)
-    if validation.status == "FAIL":
+    if is_failed_status(validation.status):
         raise HTTPException(
             status_code=422,
             detail=[i.model_dump(mode="json") for i in validation.issues],
@@ -576,7 +611,9 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
 
 
 @router.post("/{case_id}/wizard/apply-step")
-async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
+async def wizard_apply_step(
+    case_id: str, req: WizardStepRequestModel
+) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.
@@ -635,7 +672,9 @@ async def wizard_can_proceed(
     Backward transitions are always allowed.
     """
     from application.network_wizard.schema import CanProceedResponse
-    from application.network_wizard.step_controller import can_proceed as ctrl_can_proceed
+    from application.network_wizard.step_controller import (
+        can_proceed as ctrl_can_proceed,
+    )
 
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")

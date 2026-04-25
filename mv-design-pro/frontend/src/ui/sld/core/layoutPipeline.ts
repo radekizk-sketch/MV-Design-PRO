@@ -1348,7 +1348,7 @@ function phase6_enforce_invariants_and_finalize(
       });
       state.validationErrors.push({
         code: 'MISSING_CATALOG_REF',
-        message: `Węzeł ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
+        message: `WÄ™zeĹ‚ ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
         nodeId: node.id,
         fixAction: `Przypisz typ z katalogu ${category} do elementu ${node.attributes.elementName}`,
       });

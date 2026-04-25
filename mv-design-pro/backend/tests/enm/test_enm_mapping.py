@@ -1,6 +1,7 @@
 """Tests for ENM → NetworkGraph mapping and roundtrip to solver."""
 
-from enm.mapping import map_enm_to_network_graph
+import pytest
+from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import (
     Bus,
     EnergyNetworkModel,
@@ -230,3 +231,84 @@ class TestSolverRoundtrip:
         assert result.ip_a > 0
         assert result.ith_a > 0
         assert result.sk_mva > 0
+
+    def test_zero_sequence_builder_uses_enm_z0_without_changing_3f_result(self):
+        enm = _make_enm(
+            buses=[
+                Bus(ref_id="bus_src", name="Szyna zasilajaca", voltage_kv=15),
+                Bus(ref_id="bus_fault", name="Szyna zwarcia", voltage_kv=15),
+            ],
+            sources=[
+                Source(
+                    ref_id="src_grid",
+                    name="Siec",
+                    bus_ref="bus_src",
+                    model="thevenin",
+                    r_ohm=0.08,
+                    x_ohm=0.8,
+                    r0_ohm=0.16,
+                    x0_ohm=1.6,
+                ),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="bus_src",
+                    to_bus_ref="bus_fault",
+                    length_km=2.0,
+                    r_ohm_per_km=0.25,
+                    x_ohm_per_km=0.32,
+                    r0_ohm_per_km=0.75,
+                    x0_ohm_per_km=0.96,
+                ),
+            ],
+        )
+        graph = map_enm_to_network_graph(enm)
+
+        from network_model.solvers.short_circuit_iec60909 import (
+            ShortCircuitIEC60909Solver,
+        )
+
+        fault_node_id = next(
+            node.id for node in graph.nodes.values() if node.name == "Szyna zwarcia"
+        )
+        result_3f_before = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=1.1,
+            tk_s=1.0,
+        )
+
+        z0_bus = build_zero_sequence_zbus(enm, graph)
+
+        result_3f_after = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=1.1,
+            tk_s=1.0,
+        )
+        assert result_3f_after.ikss_a == pytest.approx(result_3f_before.ikss_a)
+        assert result_3f_after.zkk_ohm == pytest.approx(result_3f_before.zkk_ohm)
+        assert result_3f_after.short_circuit_type.value == "3F"
+
+        result_1f = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+        )
+        assert result_1f.ikss_a > 0
+        assert result_1f.short_circuit_type.value == "1F"
+        assert "z0_ohm" in result_1f.white_box_trace[0]["inputs"]
+
+        result_2fg = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
+            graph=graph,
+            fault_node_id=fault_node_id,
+            c_factor=1.1,
+            tk_s=1.0,
+            z0_bus=z0_bus,
+        )
+        assert result_2fg.ikss_a > 0
+        assert result_2fg.short_circuit_type.value == "2F+G"

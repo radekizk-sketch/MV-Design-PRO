@@ -260,7 +260,7 @@ function normalizeSnapshotToEnm(snapshot: SnapshotLike): EnergyNetworkModel {
   const hash = readString(headerRecord, 'hash_sha256', 'enm-snapshot');
   const createdAt = readString(headerRecord, 'created_at', '1970-01-01T00:00:00Z');
   const updatedAt = readString(headerRecord, 'updated_at', createdAt);
-  const name = readString(headerRecord, 'name', 'Stan modelu ENM');
+  const name = readString(headerRecord, 'name', 'Migawka ENM');
   const revision = readNumber(headerRecord, 'revision', 0);
 
   return {
@@ -357,7 +357,7 @@ function buildCanonicalProjection(snapshot: SnapshotLike | null | undefined): En
   const enm = normalizeSnapshotToEnm(snapshot);
   const topology = readTopologyFromENM(enm, enm.header.hash_sha256);
   const adapter = buildVisualGraphFromTopology(topology);
-  const layout = computeLayout(adapter.graph, undefined, adapter.stationBlockDetails);
+  const layout = computeLayout(adapter.graph, undefined, adapter.stationBlockDetails, { strategy: 'legacy' });
   const baseSymbols = buildBaseSymbols(enm, { includeHelperBuses: true });
   const placementByNodeId = new Map(layout.nodePlacements.map((placement) => [placement.nodeId, placement] as const));
   const edgeRouteById = new Map(layout.edgeRoutes.map((route) => [route.edgeId, route] as const));

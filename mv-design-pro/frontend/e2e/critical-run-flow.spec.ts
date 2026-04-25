@@ -85,7 +85,7 @@ async function createProjectAndCase(
 ): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = nextEntitySuffix();
   const projectName = `E2E Krytyczny ${suffix}`;
-  const caseName = `Zakres krytyczny ${suffix}`;
+  const caseName = `Przypadek krytyczny ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
@@ -152,11 +152,11 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText('Zakres obliczeń');
+  await expect(page.getByTestId('active-case-bar')).toContainText('Przypadek');
   return caseId;
 }
 
-test('krytyczny flow V1 na realnym backendzie: zakres -> GPZ -> magistrala -> stacja -> odgałęzienie -> katalogi -> gotowość -> obliczenie -> wyniki -> SLD -> ślad -> geometria bez zmian', async ({ page, request }) => {
+test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> White Box -> geometria bez zmian', async ({ page, request }) => {
   const caseId = await createCaseFromUi(page, request);
 
   // Krok 1: GPZ
@@ -318,7 +318,7 @@ test('krytyczny flow V1 na realnym backendzie: zakres -> GPZ -> magistrala -> st
   await expect(page.getByTestId('embedded-sld-mode-run')).toBeVisible();
 
   await page.getByRole('button', { name: 'White Box' }).click();
-  await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}(&|.*&)tab=trace$`));
+  await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
   await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Przebieg obliczeń analizy' })).toBeVisible();
 

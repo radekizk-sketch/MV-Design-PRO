@@ -22,7 +22,7 @@ import { ExpertOverrides, type OverrideEntry } from './ExpertOverrides';
 
 export type ElementKind = 'load' | 'generator';
 export type LoadModel = 'pq' | 'zip';
-export type GenType = 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'bess';
+export type GenType = 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'fw_pmsg' | 'fw_dfig' | 'fw_scig' | 'bess';
 
 export interface LoadDERFormData {
   ref_id: string;
@@ -71,10 +71,20 @@ const GEN_TYPE_LABELS: Record<GenType, string> = {
   synchronous: 'Synchroniczny',
   pv_inverter: 'Falownik PV',
   wind_inverter: 'Falownik wiatrowy',
+  fw_pmsg: 'Farma wiatrowa PMSG',
+  fw_dfig: 'Farma wiatrowa DFIG',
+  fw_scig: 'Farma wiatrowa SCIG',
   bess: 'Magazyn energii (BESS)',
 };
 
-const QUANTITY_GEN_TYPES = new Set<GenType>(['pv_inverter', 'wind_inverter', 'bess']);
+const QUANTITY_GEN_TYPES = new Set<GenType>([
+  'pv_inverter',
+  'wind_inverter',
+  'fw_pmsg',
+  'fw_dfig',
+  'fw_scig',
+  'bess',
+]);
 
 const DEFAULT_DATA: LoadDERFormData = {
   ref_id: '',

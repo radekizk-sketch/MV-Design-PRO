@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import io
+import zipfile
 from uuid import uuid4
 
 import pytest
@@ -276,6 +278,8 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert header_response.status_code == 200
     header_payload = header_response.json()
     assert header_payload["id"] == run_id
+    assert header_payload["study_case_id"] == case_id
+    assert "operating_case_id" not in header_payload
     assert header_payload["input_hash"] == run_payload["input_hash"]
     assert header_payload["input_metadata"]["snapshot_hash"] == run_payload["enm_hash"]
     assert header_payload["analysis_case_context"]["rodzaj_przypadku"] == "ROZPLYW_MAX_OBC"
@@ -332,6 +336,8 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert export_payload["export_artifact"]["completeness_status"] == "complete"
     assert export_payload["export_policy"]["carries_analysis_case_context"] is True
     assert export_payload["metadata"]["run_id"] == run_id
+    assert export_payload["metadata"]["study_case_id"] == case_id
+    assert "operating_case_id" not in export_payload["metadata"]
     assert export_payload["metadata"]["snapshot_hash"] == run_payload["enm_hash"]
     assert export_payload["metadata"]["proof_pack_ref"].startswith("proof-pack:")
     assert (
@@ -348,6 +354,18 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     )
     assert "branch-load" in {row["element_id"] for row in export_payload["branch_results"]["rows"]}
     assert export_payload["white_box_trace"]
+
+    xlsx_response = client.get(f"/power-flow-runs/{run_id}/export/xlsx")
+    assert xlsx_response.status_code == 200
+    assert (
+        xlsx_response.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    with zipfile.ZipFile(io.BytesIO(xlsx_response.content)) as archive:
+        names = set(archive.namelist())
+    assert "[Content_Types].xml" in names
+    assert "xl/workbook.xml" in names
+    assert "xl/worksheets/sheet1.xml" in names
 
 
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
@@ -383,6 +401,150 @@ def test_canonical_run_persists_outside_process_memory(client: TestClient) -> No
 
     with canonical_run_repository_scope() as repository:
         assert repository.get(run.id) is None
+
+
+def test_phase_state_sn_run_exposes_canonical_results_and_trace(client: TestClient) -> None:
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={
+            "analysis_type": "PHASE_STATE_SN",
+            "solver_input": {
+                "target_bus_ref": "bus-load",
+                "source_voltage_kv": {"A": 8.66, "B": 8.66, "C": 8.66},
+                "load_current_a": {"A": 120.0, "B": 100.0, "C": 80.0},
+                "branch_resistance_ohm": {"A": 0.1, "B": 0.1, "C": 0.1},
+                "fault_current_a": {"A": 20.0, "B": 0.0, "C": 0.0},
+                "open_phase": {"C": True},
+            },
+        },
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    assert execute_run.json()["analysis_type"] == "PHASE_STATE_SN"
+
+    result_set = client.get(f"/api/execution/runs/{run_id}/results")
+    assert result_set.status_code == 200
+    result_payload = result_set.json()
+    assert result_payload["analysis_type"] == "PHASE_STATE_SN"
+    assert result_payload["element_results"]
+    assert result_payload["global_results"]["analysis_type"] == "phase_state_sn"
+
+    results_index = client.get(f"/api/analysis-runs/{run_id}/results/index")
+    assert results_index.status_code == 200
+    assert any(table["table_id"] == "phase_state" for table in results_index.json()["tables"])
+
+    phase_state = client.get(f"/api/analysis-runs/{run_id}/results/phase-state")
+    assert phase_state.status_code == 200
+    phase_state_payload = phase_state.json()
+    assert phase_state_payload["analysis_case_context"]["rodzaj_przypadku"] == "STAN_FAZOWY_SN"
+    assert phase_state_payload["rows"][0]["proof_status"] == "complete"
+    assert phase_state_payload["rows"][0]["reporting_status"] == "reportable"
+    assert phase_state_payload["rows"][0]["proof_ref"].startswith("proof:phase-state-sn:")
+
+    trace_payload = client.get(f"/api/analysis-runs/{run_id}/results/trace")
+    assert trace_payload.status_code == 200
+    assert trace_payload.json()["white_box_trace"][0]["proof_status"] == "complete"
+
+
+def test_dynamic_stability_run_exposes_results_and_automation_trace(client: TestClient) -> None:
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={
+            "analysis_type": "DYNAMIC_STABILITY",
+            "solver_input": {
+                "scenario_id": "dyn-api-1",
+                "source_ref": "src-grid",
+                "faulted_element_id": "branch-load",
+                "cleared_by_element_ids": ["cb-a", "cb-b"],
+                "clearing_time_ms": 120.0,
+                "pre_fault_angle_deg": 10.0,
+                "during_fault_angle_deg": 75.0,
+                "post_fault_angle_deg": 28.0,
+                "post_fault_voltage_pu": 0.97,
+                "post_fault_frequency_pu": 0.99,
+                "isolated_element_ids": ["load-1"],
+            },
+        },
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    assert execute_run.json()["analysis_type"] == "DYNAMIC_STABILITY"
+
+    result_set = client.get(f"/api/execution/runs/{run_id}/results")
+    assert result_set.status_code == 200
+    assert result_set.json()["global_results"]["analysis_type"] == "dynamic_stability"
+
+    stability = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability")
+    assert stability.status_code == 200
+    stability_payload = stability.json()
+    assert stability_payload["analysis_case_context"]["rodzaj_przypadku"] == "PRACA_PO_ZAKLOCENIU"
+    assert stability_payload["rows"][0]["status"] == "STABLE"
+    assert stability_payload["rows"][0]["proof_ref"].startswith("proof:dynamic-stability:")
+
+    automation_trace = client.get(f"/api/analysis-runs/{run_id}/results/automation-trace")
+    assert automation_trace.status_code == 200
+    automation_payload = automation_trace.json()
+    assert len(automation_payload["rows"]) == 5
+    assert automation_payload["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
+
+
+def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    operator_profile = {
+        "frt": {"points": [{"u_pu": 0.15, "min_duration_ms": 150.0}]},
+        "q_u": {"points": [{"u_pu": 1.0, "q_pu": 0.0}]},
+        "cos_phi_p": {"points": [{"p_pu": 1.0, "cos_phi": 0.95}]},
+    }
+    source_profile = {
+        "frt": {"points": [{"u_pu": 0.15, "min_duration_ms": 200.0}]},
+        "q_u": {"points": [{"u_pu": 1.0, "q_pu": 0.0}]},
+        "cos_phi_p": {"points": [{"p_pu": 1.0, "cos_phi": 0.95}]},
+    }
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={
+            "analysis_type": "SOURCE_COMPLIANCE",
+            "solver_input": {
+                "source_ref": "src-grid",
+                "source_type": "PV",
+                "operator_profile": operator_profile,
+                "source_profile": source_profile,
+            },
+        },
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    assert execute_run.json()["analysis_type"] == "SOURCE_COMPLIANCE"
+
+    result_set = client.get(f"/api/execution/runs/{run_id}/results")
+    assert result_set.status_code == 200
+    assert result_set.json()["global_results"]["analysis_type"] == "source_compliance"
+
+    source_compliance = client.get(f"/api/analysis-runs/{run_id}/results/source-compliance")
+    assert source_compliance.status_code == 200
+    source_payload = source_compliance.json()
+    assert source_payload["analysis_case_context"]["rodzaj_przypadku"] == "ZGODNOSC_PRZYLACZENIOWA"
+    assert source_payload["rows"][0]["verdict"] == "compliant"
+    assert source_payload["rows"][0]["reporting_status"] == "reportable"
+    assert source_payload["rows"][0]["proof_ref"].startswith("proof:source-compliance:")
 
 
 def test_legacy_snapshot_and_analysis_index_routes_are_disabled_in_main_app(

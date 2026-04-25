@@ -21,7 +21,6 @@ from api.project_archive import router as project_archive_router
 from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_comparisons import router as protection_comparisons_router
-from api.protection_engine_v1 import router as protection_engine_v1_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
 from api.sld import router as sld_router
@@ -110,7 +109,6 @@ app.include_router(enm_router)
 app.include_router(execution_runs_router)
 app.include_router(result_contract_v1_router)
 app.include_router(fault_scenarios_router)
-app.include_router(protection_engine_v1_router)
 app.include_router(sld_overrides_router)
 app.include_router(switchgear_config_router)
 

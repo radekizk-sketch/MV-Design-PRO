@@ -3,14 +3,7 @@ import type {
   AnalysisCaseReproducibility,
   AnalysisCompletenessStatus,
 } from '../shared/analysisCaseContext';
-import {
-  type AnalysisCaseContextContract,
-  formatCompletenessStatus,
-  formatPublicCaseKind,
-  formatTechnicalReference,
-  getAnalysisCaseSummaryRow,
-  getPublicCompletenessTone,
-} from '../workspace/analysisRunContract';
+import { ANALYSIS_COMPLETENESS_LABELS } from '../shared/analysisCaseContext';
 
 export interface AnalysisInputMetadata {
   snapshot_hash?: string | null;
@@ -140,24 +133,8 @@ export function getAnalysisCaseLabel(context?: AnalysisCaseContext | null): stri
     return null;
   }
 
-  return (
-    formatPublicCaseKind(context.rodzaj_przypadku)
-    ?? formatPublicCaseKind(context.case_kind)
-    ?? null
-  );
-}
-
-function sanitizeRecord(
-  value: Record<string, string | null | undefined> | undefined,
-): Record<string, string | null> {
-  if (!value) {
-    return {};
-  }
-
-  return Object.entries(value).reduce<Record<string, string | null>>((accumulator, [key, entry]) => {
-    accumulator[key] = entry ?? null;
-    return accumulator;
-  }, {});
+  const candidates = [context.rodzaj_przypadku, context.case_kind, context.case_ref];
+  return candidates.find(isNonEmptyString) ?? null;
 }
 
 export function getCompletenessLabel(context?: AnalysisCaseContext | null): string | null {
@@ -174,7 +151,7 @@ export function getCompletenessDisplayLabel(context?: AnalysisCaseContext | null
   }
 
   if (context.completeness) {
-    return formatCompletenessStatus(context.completeness);
+    return ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
   }
 
   return getCompletenessLabel(context);
@@ -183,61 +160,56 @@ export function getCompletenessDisplayLabel(context?: AnalysisCaseContext | null
 export function getCompletenessTone(
   completeness?: AnalysisCompletenessStatus | string | null,
 ): 'info' | 'success' | 'warning' {
-  return getPublicCompletenessTone(completeness);
+  if (!isNonEmptyString(completeness)) {
+    return 'info';
+  }
+
+  const normalized = completeness.trim().toLowerCase();
+  if (normalized === 'complete' || normalized === 'ready') {
+    return 'success';
+  }
+
+  return 'warning';
 }
 
 export function formatProofPackRef(proofPackRef?: string | null): string | null {
-  return formatTechnicalReference(proofPackRef);
+  if (!isNonEmptyString(proofPackRef)) {
+    return null;
+  }
+
+  return proofPackRef.length <= 36 ? proofPackRef : `${proofPackRef.slice(0, 33)}...`;
 }
 
 export function getReproducibilitySummary(
   context?: AnalysisCaseContext | null,
 ): ReproducibilitySummary | null {
-  if (!context) {
+  const reproducibility = context?.reproducibility;
+  if (!isRecord(reproducibility)) {
     return null;
   }
 
-  return getAnalysisCaseSummaryRow(toAnalysisCaseContextContract(context));
-}
+  const preferredKeys: Array<[keyof AnalysisCaseReproducibility, string]> = [
+    ['results_contract_version', 'Kontrakt'],
+    ['solver_family', 'Solver'],
+    ['solver_version', 'Wersja solvera'],
+    ['proof_renderer_version', 'Proof pack'],
+  ];
 
-export function toAnalysisCaseContextContract(
-  context: AnalysisCaseContext,
-): AnalysisCaseContextContract {
-  return {
-    caseRef: context.case_ref,
-    caseKind: context.rodzaj_przypadku ?? context.case_kind ?? null,
-    snapshotRef: context.snapshot_ref ?? null,
-    variantRef: context.variant_ref ?? null,
-    runRef: context.run_ref,
-    proofPackRef: context.proof_pack_ref,
-    qualityGate: context.quality_gate,
-    applicabilityScope: context.applicability_scope,
-    completeness: context.completeness,
-    completenessLegacy: context.completeness_legacy ?? null,
-    missingPrerequisites: context.missing_prerequisites,
-    assumptions: sanitizeRecord(context.assumptions),
-    lineage: sanitizeRecord(context.lineage),
-    reproducibility: context.reproducibility
-      ? {
-          solverFamily: context.reproducibility.solver_family ?? '-',
-          solverVersion: context.reproducibility.solver_version ?? '-',
-          methodVersion: context.reproducibility.method_version ?? '-',
-          formulaSetVersion: context.reproducibility.formula_set_version ?? '-',
-          standardBasisRef: context.reproducibility.standard_basis_ref
-            ? [context.reproducibility.standard_basis_ref]
-            : [],
-          inputHash: context.reproducibility.input_hash ?? '-',
-          resultHash: context.reproducibility.result_hash ?? null,
-          domainModelVersion: context.reproducibility.domain_model_version ?? '-',
-          bayContractVersion: context.reproducibility.bay_contract_version ?? '-',
-          resultsContractVersion: context.reproducibility.results_contract_version ?? '-',
-          proofRendererVersion: context.reproducibility.proof_renderer_version ?? '-',
-          catalogSnapshotRef: context.reproducibility.catalog_snapshot_ref ?? '-',
-          catalogSchemaVersion: context.reproducibility.catalog_schema_version ?? '-',
-          tolerancePolicyRef: context.reproducibility.tolerance_policy_ref ?? '-',
-          roundingPolicyRef: context.reproducibility.rounding_policy_ref ?? '-',
-          qualityGatePolicyVersion: context.reproducibility.quality_gate_policy_version ?? '-',
-        }
-      : null,
-  };
+  for (const [key, label] of preferredKeys) {
+    const value = reproducibility[key];
+    if (isNonEmptyString(value)) {
+      return { label, value };
+    }
+  }
+
+  for (const [key, value] of Object.entries(reproducibility)) {
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return {
+        label: key.replace(/_/g, ' '),
+        value: String(value),
+      };
+    }
+  }
+
+  return null;
 }

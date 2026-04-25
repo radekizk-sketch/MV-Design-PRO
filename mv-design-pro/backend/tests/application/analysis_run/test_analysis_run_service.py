@@ -125,6 +125,21 @@ def test_analysis_run_lifecycle_pf() -> None:
     assert executed.proof_pack_ref is not None
     assert executed.analysis_case_context["case_ref"] == str(case.id)
     assert executed.reproducibility["results_contract_version"] == "V12.5"
+    assert executed.reproducibility["case_ref"] == str(case.id)
+    assert executed.reproducibility["enm_hash"] == run.input_snapshot["snapshot_id"]
+    assert executed.reproducibility["snapshot_ref"] == run.input_snapshot["snapshot_id"]
+    assert executed.reproducibility["variant_ref"] == "variant.uklad_normalny"
+    assert executed.reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    assert executed.reproducibility["catalog_materialization_status"] == "placeholder"
+    assert executed.reproducibility["catalog_materialization_ref"].endswith(
+        run.input_snapshot["snapshot_id"]
+    )
+    assert (
+        executed.reproducibility["catalog_materialization_contract_version"]
+        == "catalog_materialization_v1"
+    )
+    assert executed.reproducibility["report_contract_version"] == "analysis_report_v2"
+    assert executed.reproducibility["result_rules_version"] == "result_rules_v12_5"
     assert executed.started_at is not None
     assert executed.finished_at is not None
 

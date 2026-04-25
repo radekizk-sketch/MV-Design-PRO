@@ -469,7 +469,7 @@ const SYMBOL_DEFINITIONS: Record<CanonicalSymbolId, Omit<ResolvedSymbol, 'symbol
     defaultRotation: 0,
   },
   study_case: {
-    description: 'Zakres i warunki obliczeń',
+    description: 'Przypadek obliczeniowy',
     viewBox: '0 0 100 100',
     ports: {},
     allowedRotations: [0],

@@ -728,11 +728,11 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
     expect(screen.getByText('Lacznosc ograniczona')).toBeInTheDocument();
     expect(screen.getByText('Tor pomiarowy')).toBeInTheDocument();
-    expect(screen.getByText('Źródło 3I0')).toBeInTheDocument();
+    expect(screen.getByText('Zrodlo 3I0')).toBeInTheDocument();
     expect(screen.getByText('Sterowanie i blokady')).toBeInTheDocument();
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
-    expect(screen.getByText('Wkłady źródeł w zwarciu')).toBeInTheDocument();
-    expect(screen.getByText('Uzasadnienie inżynierskie pola')).toBeInTheDocument();
+    expect(screen.getByText('Wklady zrodel w zwarciu')).toBeInTheDocument();
+    expect(screen.getByText('Wywod pola')).toBeInTheDocument();
     expect(screen.getByText('Schemat Kanoniczny')).toBeInTheDocument();
     expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
   });

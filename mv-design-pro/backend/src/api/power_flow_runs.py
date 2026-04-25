@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import io
+import math
+import zipfile
 from typing import Any
 from uuid import UUID
+from xml.sax.saxutils import escape
 
 from api.analysis_run_exports import export_run_json_response
 from api.canonical_run_views import (
@@ -19,21 +23,11 @@ from api.canonical_run_views import (
 )
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
-from enm.canonical_analysis import (
-    CanonicalRun,
-)
-from enm.canonical_analysis import (
-    create_run as create_canonical_run,
-)
-from enm.canonical_analysis import (
-    execute_run as execute_canonical_run,
-)
-from enm.canonical_analysis import (
-    get_run as get_canonical_run,
-)
-from enm.canonical_analysis import (
-    list_runs_for_project as list_canonical_runs_for_project,
-)
+from enm.canonical_analysis import CanonicalRun
+from enm.canonical_analysis import create_run as create_canonical_run
+from enm.canonical_analysis import execute_run as execute_canonical_run
+from enm.canonical_analysis import get_run as get_canonical_run
+from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
@@ -41,10 +35,11 @@ router = APIRouter(tags=["power-flow"])
 
 
 class PowerFlowRunCreateRequest(BaseModel):
-    operating_case_id: UUID | None = Field(
+    study_case_id: UUID | None = Field(
         default=None,
-        description="ID przypadku operacyjnego. Jeżeli None, użyje Active Case.",
+        description="ID przypadku obliczeniowego. Jeżeli None, użyje aktywnego przypadku.",
     )
+
     options: dict[str, Any] | None = Field(
         default=None,
         description="Opcje solvera (tolerance, max_iter, trace_level, etc.)",
@@ -55,7 +50,7 @@ class PowerFlowRunResponse(BaseModel):
     id: str
     deterministic_id: str
     project_id: str
-    operating_case_id: str
+    study_case_id: str
     analysis_type: str
     status: str
     result_status: str
@@ -87,11 +82,11 @@ def _require_canonical_run(run_id: UUID) -> CanonicalRun:
 
 def _resolve_case_id(
     project_id: UUID,
-    operating_case_id: UUID | None,
+    study_case_id: UUID | None,
     uow_factory: Any,
 ) -> str:
-    if operating_case_id is not None:
-        return str(operating_case_id)
+    if study_case_id is not None:
+        return str(study_case_id)
     with uow_factory() as uow:
         active_case = uow.cases.get_active_study_case(project_id)
     if active_case is None:
@@ -144,6 +139,200 @@ def _catalog_context_lines(bundle: dict[str, Any], *, max_items: int = 20) -> li
     return lines
 
 
+def _xlsx_column_name(index: int) -> str:
+    name = ""
+    while index > 0:
+        index, remainder = divmod(index - 1, 26)
+        name = chr(65 + remainder) + name
+    return name
+
+
+def _xlsx_cell_xml(value: Any, row_index: int, column_index: int) -> str:
+    cell_ref = f"{_xlsx_column_name(column_index)}{row_index}"
+    if isinstance(value, bool):
+        value = "TAK" if value else "NIE"
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        if math.isfinite(float(value)):
+            return f'<c r="{cell_ref}"><v>{value}</v></c>'
+    text = "" if value is None else escape(str(value))
+    return f'<c r="{cell_ref}" t="inlineStr"><is><t xml:space="preserve">{text}</t></is></c>'
+
+
+def _xlsx_sheet_xml(rows: list[list[Any]]) -> str:
+    row_xml_parts: list[str] = []
+    for row_index, row in enumerate(rows, start=1):
+        cells = "".join(
+            _xlsx_cell_xml(value, row_index, column_index)
+            for column_index, value in enumerate(row, start=1)
+        )
+        row_xml_parts.append(f'<row r="{row_index}">{cells}</row>')
+    sheet_data = "".join(row_xml_parts)
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<sheetData>{sheet_data}</sheetData>"
+        "</worksheet>"
+    )
+
+
+def _build_power_flow_xlsx(bundle: dict[str, Any]) -> bytes:
+    result = bundle["result"]
+    metadata = bundle["metadata"]
+    summary = result.get("summary", {}) or {}
+    bus_results = result.get("bus_results", []) or []
+    branch_results = result.get("branch_results", []) or []
+    catalog_context = bundle.get("catalog_context", []) or []
+    white_box_trace = bundle.get("white_box_trace", []) or []
+
+    sheets: list[tuple[str, list[list[Any]]]] = [
+        (
+            "Podsumowanie",
+            [
+                ["Pole", "Wartosc"],
+                ["Run ID", metadata.get("run_id")],
+                ["StudyCase ID", metadata.get("study_case_id")],
+                ["Status zbieznosci", "Zbiezny" if result.get("converged") else "Niezbiezny"],
+                ["Liczba iteracji", result.get("iterations_count")],
+                ["Wezel bilansujacy", result.get("slack_bus_id")],
+                ["Straty P [MW]", summary.get("total_losses_p_mw")],
+                ["Straty Q [Mvar]", summary.get("total_losses_q_mvar")],
+                ["Min napiecie [pu]", summary.get("min_v_pu")],
+                ["Max napiecie [pu]", summary.get("max_v_pu")],
+                ["Snapshot hash", metadata.get("snapshot_hash")],
+                ["Input hash", metadata.get("input_hash")],
+            ],
+        ),
+        (
+            "Szyny",
+            [["Bus ID", "V [pu]", "Kat [deg]", "P inj [MW]", "Q inj [Mvar]"]]
+            + [
+                [
+                    row.get("bus_id"),
+                    row.get("v_pu"),
+                    row.get("angle_deg"),
+                    row.get("p_injected_mw"),
+                    row.get("q_injected_mvar"),
+                ]
+                for row in bus_results
+            ],
+        ),
+        (
+            "Odcinki",
+            [["Branch ID", "P from [MW]", "Q from [Mvar]", "P to [MW]", "Q to [Mvar]"]]
+            + [
+                [
+                    row.get("branch_id"),
+                    row.get("p_from_mw"),
+                    row.get("q_from_mvar"),
+                    row.get("p_to_mw"),
+                    row.get("q_to_mvar"),
+                ]
+                for row in branch_results
+            ],
+        ),
+        (
+            "Katalog",
+            [["Element", "Typ", "Katalog", "Pochodzenie", "Parametry"]]
+            + [
+                [
+                    entry.get("element_id"),
+                    entry.get("element_type"),
+                    _format_catalog_binding(entry),
+                    entry.get("parameter_source") or entry.get("parameter_origin"),
+                    _truncate_catalog_params(entry.get("materialized_params")),
+                ]
+                for entry in catalog_context
+            ],
+        ),
+        (
+            "WhiteBox",
+            [["Krok", "Tytul", "Proof ref", "Proof status", "Reporting status"]]
+            + [
+                [
+                    step.get("step") or step.get("key"),
+                    step.get("title"),
+                    step.get("proof_ref"),
+                    step.get("proof_status"),
+                    step.get("reporting_status"),
+                ]
+                for step in white_box_trace
+            ],
+        ),
+    ]
+
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/styles.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        + "".join(
+            f'<Override PartName="/xl/worksheets/sheet{index}.xml" '
+            'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+            for index in range(1, len(sheets) + 1)
+        )
+        + "</Types>"
+    )
+    root_rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="xl/workbook.xml"/>'
+        "</Relationships>"
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        "<sheets>"
+        + "".join(
+            f'<sheet name="{escape(name[:31])}" sheetId="{index}" r:id="rId{index}"/>'
+            for index, (name, _) in enumerate(sheets, start=1)
+        )
+        + "</sheets></workbook>"
+    )
+    workbook_rels = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        + "".join(
+            f'<Relationship Id="rId{index}" '
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+            f'Target="worksheets/sheet{index}.xml"/>'
+            for index in range(1, len(sheets) + 1)
+        )
+        + f'<Relationship Id="rId{len(sheets) + 1}" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" '
+        'Target="styles.xml"/>'
+        "</Relationships>"
+    )
+    styles_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+        '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+        '<borders count="1"><border/></borders>'
+        '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
+        '<cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>'
+        '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
+        "</styleSheet>"
+    )
+
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", root_rels)
+        archive.writestr("xl/workbook.xml", workbook_xml)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_rels)
+        archive.writestr("xl/styles.xml", styles_xml)
+        for index, (_, rows) in enumerate(sheets, start=1):
+            archive.writestr(f"xl/worksheets/sheet{index}.xml", _xlsx_sheet_xml(rows))
+    return buffer.getvalue()
+
+
 @router.get("/projects/{project_id}/power-flow-runs")
 def list_power_flow_runs(
     project_id: UUID,
@@ -156,7 +345,7 @@ def list_power_flow_runs(
         {
             "id": str(run.id),
             "project_id": run.project_id,
-            "operating_case_id": run.case_id,
+            "study_case_id": run.case_id,
             "status": run.status,
             "result_status": run.result_status,
             "created_at": run.created_at.isoformat(),
@@ -181,7 +370,11 @@ def create_power_flow_run(
     try:
         options = dict(request.options or {})
         options.setdefault("trace_level", "summary")
-        case_id = _resolve_case_id(project_id, request.operating_case_id, uow_factory)
+        case_id = _resolve_case_id(
+            project_id,
+            request.study_case_id,
+            uow_factory,
+        )
         run = create_canonical_run(
             case_id=case_id,
             project_id=str(project_id),
@@ -199,7 +392,7 @@ def create_power_flow_run(
             "id": str(run.id),
             "deterministic_id": run.input_hash,
             "project_id": str(project_id),
-            "operating_case_id": case_id,
+            "study_case_id": case_id,
             "analysis_type": run.analysis_type,
             "status": run.status,
             "result_status": run.result_status,
@@ -400,9 +593,21 @@ def export_power_flow_run_docx(run_id: UUID):
     )
 
 
+@router.get("/power-flow-runs/{run_id}/export/xlsx")
+def export_power_flow_run_xlsx(run_id: UUID):
+    from fastapi.responses import Response
+
+    bundle = _build_export_bundle(run_id)
+    workbook_bytes = _build_power_flow_xlsx(bundle)
+    return Response(
+        content=workbook_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="power_flow_run_{run_id}.xlsx"'},
+    )
+
+
 @router.get("/power-flow-runs/{run_id}/export/pdf")
 def export_power_flow_run_pdf(run_id: UUID):
-    import io
     import json
 
     from fastapi.responses import Response

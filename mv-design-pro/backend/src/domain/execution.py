@@ -52,7 +52,11 @@ class ExecutionAnalysisType(str, Enum):
     SC_3F = "SC_3F"
     SC_1F = "SC_1F"
     SC_2F = "SC_2F"
+    SC_2F_G = "SC_2F_G"
     LOAD_FLOW = "LOAD_FLOW"
+    PHASE_STATE_SN = "PHASE_STATE_SN"
+    DYNAMIC_STABILITY = "DYNAMIC_STABILITY"
+    SOURCE_COMPLIANCE = "SOURCE_COMPLIANCE"
     PROTECTION = "PROTECTION"
 
 

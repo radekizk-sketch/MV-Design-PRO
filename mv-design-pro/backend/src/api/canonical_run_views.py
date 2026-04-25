@@ -21,11 +21,15 @@ from api.v125_contracts import (
 from application.analysis_run import build_trace_summary
 from enm.canonical_analysis import (
     CanonicalRun,
+    build_automation_trace_results,
     build_branch_results,
     build_bus_results,
+    build_dynamic_stability_results,
     build_extended_trace,
+    build_phase_state_results,
     build_results_index,
     build_short_circuit_results,
+    build_source_compliance_results,
 )
 
 
@@ -97,17 +101,54 @@ def build_run_summary_json(run: CanonicalRun) -> dict[str, Any]:
             "iterations": result_v1.get("iterations_count"),
             "summary": result_v1.get("summary", {}),
         }
-    rows = (run.raw_result or {}).get("results") or []
-    ikss_values = [float(row["ikss_a"]) / 1000.0 for row in rows if row.get("ikss_a") is not None]
-    return {
-        "row_count": len(rows),
-        "max_ikss_ka": max(ikss_values) if ikss_values else None,
-    }
+    if run.analysis_type == "short_circuit_sn":
+        rows = (run.raw_result or {}).get("results") or []
+        ikss_values = [
+            float(row["ikss_a"]) / 1000.0 for row in rows if row.get("ikss_a") is not None
+        ]
+        return {
+            "row_count": len(rows),
+            "max_ikss_ka": max(ikss_values) if ikss_values else None,
+        }
+    if run.analysis_type == "phase_state_sn":
+        rows = build_phase_state_results(run).get("rows", [])
+        row = rows[0] if rows else {}
+        return {
+            "row_count": len(rows),
+            "target_name": row.get("target_name"),
+            "voltage_unbalance_percent": row.get("voltage_unbalance_percent"),
+            "current_unbalance_percent": row.get("current_unbalance_percent"),
+        }
+    if run.analysis_type == "dynamic_stability":
+        rows = build_dynamic_stability_results(run).get("rows", [])
+        row = rows[0] if rows else {}
+        return {
+            "row_count": len(rows),
+            "status": row.get("status"),
+            "stability_index": row.get("stability_index"),
+            "limiting_factor": row.get("limiting_factor"),
+        }
+    if run.analysis_type == "source_compliance":
+        rows = build_source_compliance_results(run).get("rows", [])
+        row = rows[0] if rows else {}
+        return {
+            "row_count": len(rows),
+            "source_type": row.get("source_type"),
+            "verdict": row.get("verdict"),
+            "reporting_status": row.get("reporting_status"),
+        }
+    return {"row_count": 0}
 
 
 def build_result_items(run: CanonicalRun) -> dict[str, Any]:
     analysis_case_context = build_analysis_case_context(run)
-    result_type = "power_flow" if run.analysis_type == "PF" else "short_circuit_sn"
+    result_type = {
+        "PF": "power_flow",
+        "short_circuit_sn": "short_circuit_sn",
+        "phase_state_sn": "phase_state_sn",
+        "dynamic_stability": "dynamic_stability",
+        "source_compliance": "source_compliance",
+    }.get(run.analysis_type, run.analysis_type)
     payload_summary = build_run_summary_json(run)
     return {
         "analysis_case_context": analysis_case_context,
@@ -137,6 +178,11 @@ def build_sld_overlay(
     bus_rows = {row["bus_id"]: row for row in build_bus_results(run).get("rows", [])}
     branch_rows = {row["branch_id"]: row for row in build_branch_results(run).get("rows", [])}
     sc_rows = {row["target_id"]: row for row in build_short_circuit_results(run).get("rows", [])}
+    phase_rows = {row["target_id"]: row for row in build_phase_state_results(run).get("rows", [])}
+    stability_rows = build_dynamic_stability_results(run).get("rows", [])
+    stability_row = stability_rows[0] if stability_rows else {}
+    compliance_rows = build_source_compliance_results(run).get("rows", [])
+    compliance_row = compliance_rows[0] if compliance_rows else {}
 
     node_symbols = list(sld_payload.get("nodes", []))
     if not node_symbols:
@@ -148,6 +194,7 @@ def build_sld_overlay(
         node_id = str(symbol.get("node_id") or symbol.get("bus_id") or "")
         bus_data = bus_rows.get(node_id, {})
         sc_data = sc_rows.get(node_id, {})
+        phase_data = phase_rows.get(node_id, {})
         nodes.append(
             {
                 "symbol_id": symbol_id,
@@ -158,6 +205,24 @@ def build_sld_overlay(
                 "angle_deg": bus_data.get("angle_deg"),
                 "ikss_ka": sc_data.get("ikss_ka"),
                 "sk_mva": sc_data.get("sk_mva"),
+                "ua_kv": phase_data.get("ua_kv"),
+                "ub_kv": phase_data.get("ub_kv"),
+                "uc_kv": phase_data.get("uc_kv"),
+                "ia_a": phase_data.get("ia_a"),
+                "ib_a": phase_data.get("ib_a"),
+                "ic_a": phase_data.get("ic_a"),
+                "phase_voltage_unbalance_percent": phase_data.get("voltage_unbalance_percent"),
+                "phase_current_unbalance_percent": phase_data.get("current_unbalance_percent"),
+                "dynamic_stability_status": (
+                    stability_row.get("status")
+                    if node_id == str(stability_row.get("source_id") or "")
+                    else None
+                ),
+                "source_compliance_verdict": (
+                    compliance_row.get("verdict")
+                    if node_id == str(compliance_row.get("source_ref") or "")
+                    else None
+                ),
             }
         )
 
@@ -201,7 +266,7 @@ def build_power_flow_run_header(run: CanonicalRun) -> dict[str, Any]:
         "id": str(run.id),
         "deterministic_id": run.input_hash,
         "project_id": run.project_id,
-        "operating_case_id": run.case_id,
+        "study_case_id": run.case_id,
         "analysis_type": run.analysis_type,
         "status": run.status,
         "result_status": run.result_status,
@@ -314,7 +379,7 @@ def build_power_flow_export_bundle(run: CanonicalRun) -> dict[str, Any]:
         "metadata": {
             "run_id": str(run.id),
             "project_id": run.project_id,
-            "operating_case_id": run.case_id,
+            "study_case_id": run.case_id,
             "created_at": run.created_at.isoformat(),
             "input_hash": run.input_hash,
             "snapshot_hash": run.snapshot_hash,
@@ -335,6 +400,30 @@ def build_results_index_response(run: CanonicalRun) -> dict[str, Any]:
     payload["analysis_case_context"] = build_analysis_case_context(run)
     payload.setdefault("run_header", {})["analysis_case_context"] = build_analysis_case_context(run)
     payload.update(_build_export_contract(run))
+    return payload
+
+
+def build_phase_state_results_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_phase_state_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_dynamic_stability_results_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_dynamic_stability_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_automation_trace_results_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_automation_trace_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_source_compliance_results_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_source_compliance_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 
 

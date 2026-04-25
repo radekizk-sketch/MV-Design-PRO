@@ -26,6 +26,11 @@ import {
   type ExportLayerOptions,
 } from '../types';
 import {
+  DEFAULT_EXPORT_THEME,
+  applyExportTheme,
+  resolveExportTheme,
+} from '../exportTheme';
+import {
   calculateExportViewport,
   getCurrentLayerState,
   createExportOptions,
@@ -286,6 +291,7 @@ describe('createExportOptions', () => {
 
       expect(options.format).toBe('png');
       expect(options.scale).toBe(1);
+      expect(options.theme).toBe('light_technical');
       expect(options.scope).toBe('viewport');
       expect(options.layers).toEqual(layers);
       expect(options.metadata).toEqual(metadata);
@@ -302,6 +308,16 @@ describe('createExportOptions', () => {
       expect(options.scale).toBe(2);
       expect(options.scope).toBe('fit');
     });
+
+    it('should preserve screen theme when explicitly requested', () => {
+      const options = createExportOptions(
+        'png',
+        { scope: 'viewport', layers, theme: 'screen' },
+        metadata
+      );
+
+      expect(options.theme).toBe('screen');
+    });
   });
 
   describe('PDF options', () => {
@@ -315,6 +331,7 @@ describe('createExportOptions', () => {
       expect(options.format).toBe('pdf');
       expect(options.pageSize).toBe('A4');
       expect(options.orientation).toBe('auto');
+      expect(options.theme).toBe('light_technical');
       expect(options.scope).toBe('viewport');
       expect(options.layers).toEqual(layers);
       expect(options.metadata).toEqual(metadata);
@@ -332,6 +349,56 @@ describe('createExportOptions', () => {
       expect(options.orientation).toBe('landscape');
       expect(options.scope).toBe('fit');
     });
+  });
+});
+
+// =============================================================================
+// Export Theme Tests
+// =============================================================================
+
+describe('export theme', () => {
+  it('should default to light_technical for export', () => {
+    expect(DEFAULT_EXPORT_THEME).toBe('light_technical');
+    expect(resolveExportTheme()).toBe('light_technical');
+  });
+
+  it('should apply light technical theme to a cloned export container', () => {
+    const container = document.createElement('div');
+    const panel = document.createElement('div');
+    panel.className = 'bg-chrome-800 text-white border-chrome-700';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    background.setAttribute('data-testid', 'sld-canvas-background');
+    background.setAttribute('fill', 'url(#canonical-canvas-bg)');
+    svg.setAttribute('data-testid', 'sld-view-canvas');
+    svg.appendChild(background);
+
+    container.appendChild(panel);
+    container.appendChild(svg);
+
+    applyExportTheme(container, 'light_technical');
+
+    expect(container.dataset.sldExportTheme).toBe('light_technical');
+    expect(container.querySelector('[data-sld-export-theme-style="light_technical"]')).not.toBeNull();
+    expect(container.style.backgroundColor).toBe('rgb(255, 255, 255)');
+    expect(background.getAttribute('fill')).toBe('#FFFFFF');
+  });
+
+  it('should leave cloned export container unchanged for screen theme', () => {
+    const container = document.createElement('div');
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const background = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    background.setAttribute('data-testid', 'sld-canvas-background');
+    background.setAttribute('fill', 'url(#canonical-canvas-bg)');
+    svg.appendChild(background);
+    container.appendChild(svg);
+
+    applyExportTheme(container, 'screen');
+
+    expect(container.dataset.sldExportTheme).toBeUndefined();
+    expect(container.querySelector('[data-sld-export-theme-style]')).toBeNull();
+    expect(background.getAttribute('fill')).toBe('url(#canonical-canvas-bg)');
   });
 });
 

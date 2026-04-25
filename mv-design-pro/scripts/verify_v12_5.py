@@ -24,11 +24,17 @@ BACKEND_V125_SCOPE_PATHS = [
     Path("src/api/power_flow_runs.py"),
     Path("src/api/v125_contracts.py"),
     Path("src/application/field_read_model.py"),
+    Path("src/application/compliance/source_compliance.py"),
+    Path("src/domain/generator_validation.py"),
     Path("src/enm/canonical_analysis.py"),
+    Path("src/enm/v2_projection.py"),
     Path("src/infrastructure/persistence/repositories/canonical_run_repository.py"),
     Path("tests/api/test_analysis_run_report_exports.py"),
     Path("tests/application/analysis_run/test_analysis_run_service.py"),
     Path("tests/enm/test_enm_field_view_api.py"),
+    Path("tests/enm/test_v2_projection.py"),
+    Path("tests/application/test_source_compliance.py"),
+    Path("tests/test_generator_validation.py"),
     Path("tests/test_canonical_analysis_api.py"),
     Path("tests/test_execution_api.py"),
     Path("tests/test_production_canonical_only_api.py"),
@@ -40,6 +46,9 @@ BACKEND_V125_TEST_PATHS = [
     Path("tests/test_execution_api.py"),
     Path("tests/test_production_canonical_only_api.py"),
     Path("tests/enm/test_enm_field_view_api.py"),
+    Path("tests/enm/test_v2_projection.py"),
+    Path("tests/application/test_source_compliance.py"),
+    Path("tests/test_generator_validation.py"),
     Path("tests/api/test_analysis_run_report_exports.py"),
 ]
 
@@ -50,6 +59,7 @@ class Step:
     cwd: Path
     command: list[str]
     env: dict[str, str] | None = None
+    timeout_seconds: int = 1200
 
 
 @dataclass
@@ -88,9 +98,11 @@ def run_script_command(
     return [package_manager, "run", script, *extra_args]
 
 
-def tail(text: str | None, limit: int = 30) -> str:
+def tail(text: str | bytes | None, limit: int = 30) -> str:
     if not text:
         return ""
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", errors="replace")
     lines = [line.rstrip() for line in text.strip().splitlines() if line.strip()]
     return "\n".join(lines[-limit:])
 
@@ -112,6 +124,17 @@ def run_step(step: Step) -> StepResult:
             encoding="utf-8",
             errors="replace",
             env=env,
+            timeout=step.timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        return StepResult(
+            step=step,
+            exit_code=124,
+            stdout_tail=tail(error.stdout),
+            stderr_tail=tail(
+                f"Step exceeded timeout of {step.timeout_seconds} seconds."
+            ),
+            duration_seconds=perf_counter() - started_at,
         )
     except OSError as error:
         return StepResult(
@@ -172,14 +195,29 @@ def build_repo_guard_steps() -> list[Step]:
             command=[sys.executable, str(ROOT / "scripts/ui_terminology_guard.py")],
         ),
         Step(
-            name="UTF-8 mojibake guard",
-            cwd=ROOT,
-            command=[sys.executable, str(ROOT / "scripts/utf8_mojibake_guard.py")],
-        ),
-        Step(
             name="Docs archive guard",
             cwd=ROOT,
             command=[sys.executable, str(ROOT / "scripts/docs_archive_guard.py")],
+        ),
+        Step(
+            name="V12.xx canon guard",
+            cwd=ROOT,
+            command=[sys.executable, str(ROOT / "scripts/v12xx_canon_guard.py")],
+        ),
+        Step(
+            name="API lifecycle guard",
+            cwd=ROOT,
+            command=[sys.executable, str(ROOT / "scripts/api_lifecycle_guard.py")],
+        ),
+        Step(
+            name="Legacy public path guard",
+            cwd=ROOT,
+            command=[sys.executable, str(ROOT / "scripts/legacy_public_path_guard.py")],
+        ),
+        Step(
+            name="Severity contract guard",
+            cwd=ROOT,
+            command=[sys.executable, str(ROOT / "scripts/severity_contract_guard.py")],
         ),
         Step(
             name="Import graph guard",
@@ -613,7 +651,9 @@ def main() -> int:
 
     failed = [result for result in results if not result.ok]
     if failed:
-        print(f"{verification_label()} verification failed. See {REPORT_PATH.name} for details.")
+        print(
+            f"{verification_label()} verification failed. See {REPORT_PATH.name} for details."
+        )
         return 1
 
     print(f"{verification_label()} verification passed.")

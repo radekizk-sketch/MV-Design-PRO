@@ -1,7 +1,25 @@
 # INDEX KANONICZNY
 
 Status: **KANONICZNY**  
-Data aktualizacji: **2026-04-20**
+Data aktualizacji: **2026-04-24**
+
+## 0. Kanon nadrzedny V12.xx
+
+- [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
+- [v12xx/REJESTR_DECYZJI.md](./v12xx/REJESTR_DECYZJI.md) - decyzje kanonu
+- [v12xx/REJESTR_KONFLIKTOW.md](./v12xx/REJESTR_KONFLIKTOW.md) - konflikty i rozstrzygniecia
+- [v12xx/REJESTR_DLUGU.md](./v12xx/REJESTR_DLUGU.md) - jawny rejestr dlugu V12.xx
+- [v12xx/MIGRACJA_ENM_V1_V2.md](./v12xx/MIGRACJA_ENM_V1_V2.md) - migracja M0-M4
+- [v12xx/MACIERZ_INVALIDACJI.md](./v12xx/MACIERZ_INVALIDACJI.md) - invalidacja wynikow
+- [v12xx/MACIERZ_INTERAKCJI.md](./v12xx/MACIERZ_INTERAKCJI.md) - interakcje SLD
+- [v12xx/MACIERZ_TESTOW_V12_XX.md](./v12xx/MACIERZ_TESTOW_V12_XX.md) - testy i sieci wzorcowe
+- [v12xx/MACIERZ_UPRAWNIEN.md](./v12xx/MACIERZ_UPRAWNIEN.md) - uprawnienia i audyt
+- [v12xx/MACIERZ_KOMPATYBILNOSCI_API.md](./v12xx/MACIERZ_KOMPATYBILNOSCI_API.md) - cykl zycia API
+- [v12xx/MACIERZ_RAPORTOWALNOSCI.md](./v12xx/MACIERZ_RAPORTOWALNOSCI.md) - status raportowalnosci
+- [v12xx/MACIERZ_ID_I_REFERENCJI.md](./v12xx/MACIERZ_ID_I_REFERENCJI.md) - identyfikatory i referencje
+- [v12xx/MACIERZ_DRAFT_VS_COMMITTED.md](./v12xx/MACIERZ_DRAFT_VS_COMMITTED.md) - rozdzielenie draftu UI od ENM
+- [v12xx/RAPORT_M0_INWENTARYZACJA.md](./v12xx/RAPORT_M0_INWENTARYZACJA.md) - inwentaryzacja startowa M0
+- [v12xx/BACKLOG_WDROZENIOWY_V12_XX.md](./v12xx/BACKLOG_WDROZENIOWY_V12_XX.md) - backlog wdrozeniowy M0-M4
 
 ## 1. Fundament wiążący
 

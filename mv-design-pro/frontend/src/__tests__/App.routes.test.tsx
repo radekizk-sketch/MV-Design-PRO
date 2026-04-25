@@ -103,6 +103,15 @@ describe('App hash routes', () => {
     useReadinessLiveStore.getState().clear();
   });
 
+  it('renderuje cala aplikacje w ekranowym motywie dark SCADA', async () => {
+    render(<App />);
+
+    const root = await screen.findByTestId('app-root');
+
+    expect(root).toHaveAttribute('data-ui-theme', 'dark-scada');
+    expect(root).toHaveClass('mv-dark-scada');
+  });
+
   it('przełącza się na #results bez pustego ekranu i przekazuje run do widoku wyników', async () => {
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
     render(<App />);
@@ -144,7 +153,7 @@ describe('App hash routes', () => {
   it('zachowuje trase katalogu i otwiera launcher analiz bez cichego fallbacku', async () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'OUTDATED');
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'source-1', name: 'GPZ 1' }],
@@ -179,7 +188,7 @@ describe('App hash routes', () => {
   it('pozostaje na kanonicznej trasie schematu i otwiera launcher analiz', async () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Wariant 1', 'ShortCircuitCase', 'OUTDATED');
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'source-1', name: 'GPZ 1' }],
@@ -233,8 +242,8 @@ describe('App hash routes', () => {
     expect(await screen.findByTestId('results-comparison-page')).toBeInTheDocument();
   });
 
-  it('traktuje #warunki-obliczen jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
-    window.location.hash = '#warunki-obliczen?case=case-1';
+  it('traktuje #case-config jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
+    window.location.hash = '#case-config?case=case-1';
 
     render(<App />);
 

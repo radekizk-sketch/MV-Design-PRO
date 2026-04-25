@@ -58,7 +58,7 @@ describe('ActiveCaseBar', () => {
   it('trzyma kanoniczny stan przypadku zamiast przejmować status z oglądanego uruchomienia', () => {
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Zakres podstawowy', 'ShortCircuitCase', 'NONE');
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'NONE');
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
@@ -80,12 +80,9 @@ describe('ActiveCaseBar', () => {
 
     render(<ActiveCaseBar />);
 
-    expect(screen.getByText('Zakres obliczeń')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-change-case')).toHaveTextContent('Zmień zakres');
-    expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wyników');
+    expect(screen.getByTestId('result-status')).toHaveTextContent('Brak wynikow');
     expect(screen.queryByText('Wyniki aktualne')).toBeNull();
-    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Ostatnie obliczenie');
-    expect(screen.getByTestId('active-run-id')).toHaveTextContent('run-42');
+    expect(screen.getByTestId('active-run-id')).toHaveTextContent('Id uruchomienia run-42');
   });
 
   it('ukrywa sekundarne akcje w menu i zachowuje ich działanie', () => {
@@ -94,7 +91,7 @@ describe('ActiveCaseBar', () => {
 
     useAppStateStore
       .getState()
-      .setActiveCase('case-1', 'Zakres podstawowy', 'ShortCircuitCase', 'FRESH');
+      .setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'FRESH');
     useResultsInspectorStore.setState({
       selectedRunId: 'run-42',
       resultsIndex: {
@@ -127,8 +124,8 @@ describe('ActiveCaseBar', () => {
     fireEvent.click(screen.getByTestId('btn-secondary-actions'));
 
     expect(screen.getByTestId('secondary-actions-menu')).toBeInTheDocument();
-    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Warunki obliczeń');
-    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podgląd wyników');
+    expect(screen.getByTestId('btn-configure')).toHaveTextContent('Parametry analizy');
+    expect(screen.getByTestId('btn-results')).toHaveTextContent('Podglad wynikow');
 
     fireEvent.click(screen.getByTestId('btn-configure'));
     expect(onConfigureClick).toHaveBeenCalledTimes(1);

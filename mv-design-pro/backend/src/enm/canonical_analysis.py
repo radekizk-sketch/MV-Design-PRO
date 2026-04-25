@@ -8,8 +8,22 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
+from application.automation.trace import (
+    build_automation_trace,
+    build_post_fault_topology_effect,
+)
+from application.compliance.source_compliance import evaluate_source_compliance
+from application.proof_engine.packs.phase_state_sn import (
+    PhaseStateSNProofPack,
+    PhaseStateSNProofPackInput,
+)
+from application.stability.dynamic_stability import (
+    FaultClearScenario,
+    FaultClearSourceState,
+    evaluate_fault_clear_dynamic_stability,
+)
 from enm.hash import compute_enm_hash
-from enm.mapping import map_enm_to_network_graph
+from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from enm.validator import ENMValidator
@@ -17,6 +31,12 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     canonical_run_repository_scope,
 )
 from network_model.core.node import NodeType
+from network_model.solvers.phase_state_sn import (
+    OpenPhaseFlags,
+    PhaseStateSNInput,
+    PhaseStateSNSolver,
+    PhaseValues,
+)
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
@@ -25,6 +45,7 @@ from network_model.solvers.power_flow_types import (
     PQSpec,
     SlackSpec,
 )
+from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
 
 
@@ -47,6 +68,137 @@ def _compute_input_hash(
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitType:
+    raw = options.get("fault_type") or options.get("short_circuit_type") or "3F"
+    mapping = {
+        "3F": ShortCircuitType.THREE_PHASE,
+        "1F": ShortCircuitType.SINGLE_PHASE_GROUND,
+        "2F": ShortCircuitType.TWO_PHASE,
+        "2F+G": ShortCircuitType.TWO_PHASE_GROUND,
+        "2F+Z": ShortCircuitType.TWO_PHASE_GROUND,
+    }
+    if raw in mapping:
+        return mapping[raw]
+    raise ValueError(f"Nieobslugiwany typ zwarcia: {raw}")
+
+
+def _result_analysis_type_for_fault(short_circuit_type: ShortCircuitType) -> str:
+    return {
+        ShortCircuitType.THREE_PHASE: "short_circuit_3f",
+        ShortCircuitType.SINGLE_PHASE_GROUND: "short_circuit_1f",
+        ShortCircuitType.TWO_PHASE: "short_circuit_2f",
+        ShortCircuitType.TWO_PHASE_GROUND: "short_circuit_2fg",
+    }[short_circuit_type]
+
+
+def _execution_analysis_type_for_fault(short_circuit_type: ShortCircuitType) -> str:
+    return {
+        ShortCircuitType.THREE_PHASE: "SC_3F",
+        ShortCircuitType.SINGLE_PHASE_GROUND: "SC_1F",
+        ShortCircuitType.TWO_PHASE: "SC_2F",
+        ShortCircuitType.TWO_PHASE_GROUND: "SC_2F_G",
+    }[short_circuit_type]
+
+
+def _short_circuit_requires_z0(short_circuit_type: ShortCircuitType) -> bool:
+    return short_circuit_type in {
+        ShortCircuitType.SINGLE_PHASE_GROUND,
+        ShortCircuitType.TWO_PHASE_GROUND,
+    }
+
+
+def _short_circuit_proof_ref(
+    *,
+    run: CanonicalRun,
+    target_id: str,
+    short_circuit_type: ShortCircuitType,
+) -> str:
+    payload = {
+        "input_hash": run.input_hash,
+        "run_id": str(run.id),
+        "short_circuit_type": short_circuit_type.value,
+        "target_id": target_id,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"proof:short-circuit:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+
+def _short_circuit_reportability(
+    *,
+    run: CanonicalRun,
+    target_id: str,
+    short_circuit_type: ShortCircuitType,
+    trace_step_refs: list[int],
+) -> dict[str, Any]:
+    proof_ref = _short_circuit_proof_ref(
+        run=run,
+        target_id=target_id,
+        short_circuit_type=short_circuit_type,
+    )
+    requires_z0 = _short_circuit_requires_z0(short_circuit_type)
+    return {
+        "reporting_status": "reportable",
+        "reporting_status_pl": "raportowalny",
+        "proof_status": "complete",
+        "proof_status_pl": "pelny",
+        "proof_ref": proof_ref,
+        "proof_kind": "white_box_trace",
+        "proof_engine_version": "white_box_trace_v1",
+        "trace_step_refs": trace_step_refs,
+        "method_basis": "IEC_60909",
+        "requires_z0": requires_z0,
+        "z0_source": "ENM_COMMITTED" if requires_z0 else "NOT_APPLICABLE",
+        "reporting_limitations": [],
+    }
+
+
+def _phase_state_proof_ref(*, run: CanonicalRun, target_id: str) -> str:
+    payload = {
+        "analysis_type": "phase_state_sn",
+        "input_hash": run.input_hash,
+        "run_id": str(run.id),
+        "target_id": target_id,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"proof:phase-state-sn:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+
+def _dynamic_stability_proof_ref(*, run: CanonicalRun, scenario_id: str) -> str:
+    payload = {
+        "analysis_type": "dynamic_stability",
+        "input_hash": run.input_hash,
+        "run_id": str(run.id),
+        "scenario_id": scenario_id,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"proof:dynamic-stability:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+
+def _source_compliance_proof_ref(*, run: CanonicalRun, source_ref: str) -> str:
+    payload = {
+        "analysis_type": "source_compliance",
+        "input_hash": run.input_hash,
+        "run_id": str(run.id),
+        "source_ref": source_ref,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"proof:source-compliance:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+
+def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
+    if run.analysis_type == "PF":
+        return "LOAD_FLOW"
+    if run.analysis_type == "short_circuit_sn":
+        return _execution_analysis_type_for_fault(_short_circuit_type_from_options(run.options))
+    if run.analysis_type == "phase_state_sn":
+        return "PHASE_STATE_SN"
+    if run.analysis_type == "dynamic_stability":
+        return "DYNAMIC_STABILITY"
+    if run.analysis_type == "source_compliance":
+        return "SOURCE_COMPLIANCE"
+    raise ValueError(f"Unsupported canonical analysis type: {run.analysis_type}")
 
 
 @dataclass
@@ -75,10 +227,18 @@ class CanonicalRun:
     def solver_kind(self) -> str:
         if self.analysis_type == "PF":
             return "PF"
-        return "short_circuit_sn"
+        if self.analysis_type == "short_circuit_sn":
+            return "short_circuit_sn"
+        if self.analysis_type == "phase_state_sn":
+            return "phase_state_sn"
+        if self.analysis_type == "dynamic_stability":
+            return "dynamic_stability"
+        if self.analysis_type == "source_compliance":
+            return "source_compliance"
+        return self.analysis_type
 
     def to_execution_dict(self) -> dict[str, Any]:
-        analysis_type = "LOAD_FLOW" if self.analysis_type == "PF" else "SC_3F"
+        analysis_type = _execution_analysis_type_for_run(self)
         status = {
             "CREATED": "PENDING",
             "RUNNING": "RUNNING",
@@ -148,12 +308,28 @@ def create_run(
     availability = validation.analysis_available
     if analysis_type == "PF" and not availability.load_flow:
         raise ValueError("Analiza rozpływu mocy nie jest dostepna dla biezacego snapshotu ENM")
-    if analysis_type == "short_circuit_sn" and not availability.short_circuit_3f:
-        raise ValueError("Analiza zwarciowa nie jest dostepna dla biezacego snapshotu ENM")
-
     snapshot = enm.model_dump(mode="json")
     enm_hash = compute_enm_hash(enm)
     normalized_options = dict(options or {})
+    if analysis_type == "short_circuit_sn":
+        fault_type = _short_circuit_type_from_options(normalized_options)
+        if not availability.short_circuit_3f:
+            raise ValueError("Analiza zwarciowa nie jest dostepna dla biezacego snapshotu ENM")
+        if (
+            fault_type
+            in {
+                ShortCircuitType.SINGLE_PHASE_GROUND,
+                ShortCircuitType.TWO_PHASE_GROUND,
+            }
+            and not availability.short_circuit_1f
+        ):
+            raise ValueError("Zwarcie 1F/2F+Z wymaga kompletnej skladowej zerowej Z0 w ENM")
+    if analysis_type == "phase_state_sn" and not enm.buses:
+        raise ValueError("Stan fazowy SN wymaga co najmniej jednej szyny w ENM")
+    if analysis_type == "dynamic_stability" and not (enm.sources or enm.generators):
+        raise ValueError("Stabilnosc dynamiczna wymaga co najmniej jednego zrodla w ENM")
+    if analysis_type == "source_compliance" and not (enm.sources or enm.generators):
+        raise ValueError("Ocena zgodnosci zrodla wymaga co najmniej jednego zrodla w ENM")
     run = CanonicalRun(
         id=uuid4(),
         case_id=case_id,
@@ -195,6 +371,12 @@ def execute_run(run_id: UUID) -> CanonicalRun:
             _execute_power_flow(run)
         elif run.analysis_type == "short_circuit_sn":
             _execute_short_circuit(run)
+        elif run.analysis_type == "phase_state_sn":
+            _execute_phase_state_sn(run)
+        elif run.analysis_type == "dynamic_stability":
+            _execute_dynamic_stability(run)
+        elif run.analysis_type == "source_compliance":
+            _execute_source_compliance(run)
         else:
             raise ValueError(f"Unsupported analysis type: {run.analysis_type}")
         run.status = "FINISHED"
@@ -233,49 +415,459 @@ def run_power_flow_now(
     return execute_run(run.id)
 
 
+def run_phase_state_now(
+    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+) -> CanonicalRun:
+    run = create_run(
+        case_id=case_id,
+        analysis_type="phase_state_sn",
+        project_id=project_id,
+        options=options,
+    )
+    return execute_run(run.id)
+
+
+def run_dynamic_stability_now(
+    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+) -> CanonicalRun:
+    run = create_run(
+        case_id=case_id,
+        analysis_type="dynamic_stability",
+        project_id=project_id,
+        options=options,
+    )
+    return execute_run(run.id)
+
+
+def run_source_compliance_now(
+    *, case_id: str, project_id: str | None = None, options: dict[str, Any] | None = None
+) -> CanonicalRun:
+    run = create_run(
+        case_id=case_id,
+        analysis_type="source_compliance",
+        project_id=project_id,
+        options=options,
+    )
+    return execute_run(run.id)
+
+
 def _load_graph(run: CanonicalRun):
     enm = EnergyNetworkModel.model_validate(run.snapshot)
     return map_enm_to_network_graph(enm)
 
 
+def _phase_value_from_options(
+    options: dict[str, Any],
+    key: str,
+    *,
+    default: tuple[float, float, float],
+) -> PhaseValues:
+    raw = options.get(key)
+    if isinstance(raw, dict):
+        return PhaseValues(
+            float(raw.get("A", default[0])),
+            float(raw.get("B", default[1])),
+            float(raw.get("C", default[2])),
+        )
+    if isinstance(raw, list | tuple) and len(raw) == 3:
+        return PhaseValues(float(raw[0]), float(raw[1]), float(raw[2]))
+    return PhaseValues(*default)
+
+
+def _open_phase_flags_from_options(options: dict[str, Any]) -> OpenPhaseFlags:
+    raw = options.get("open_phase")
+    if isinstance(raw, dict):
+        return OpenPhaseFlags(
+            a=bool(raw.get("A", raw.get("a", False))),
+            b=bool(raw.get("B", raw.get("b", False))),
+            c=bool(raw.get("C", raw.get("c", False))),
+        )
+    if isinstance(raw, str):
+        normalized = raw.strip().upper()
+        return OpenPhaseFlags(
+            a=normalized == "A",
+            b=normalized == "B",
+            c=normalized == "C",
+        )
+    return OpenPhaseFlags()
+
+
+def _pick_phase_state_target(snapshot: dict[str, Any], options: dict[str, Any]) -> str:
+    explicit = options.get("target_bus_ref") or options.get("target_id")
+    if explicit:
+        return str(explicit)
+    buses = snapshot.get("buses") or []
+    for raw_bus in buses:
+        if isinstance(raw_bus, dict) and raw_bus.get("ref_id"):
+            return str(raw_bus["ref_id"])
+    return "bus-phase-state"
+
+
+def _pick_dynamic_source_ref(snapshot: dict[str, Any], options: dict[str, Any]) -> str:
+    explicit = options.get("source_ref") or options.get("source_id")
+    if explicit:
+        return str(explicit)
+    for collection in ("sources", "generators"):
+        for raw_element in snapshot.get(collection) or []:
+            if isinstance(raw_element, dict) and raw_element.get("ref_id"):
+                return str(raw_element["ref_id"])
+    return "source-dynamic"
+
+
+def _pick_compliance_source_ref(snapshot: dict[str, Any], options: dict[str, Any]) -> str:
+    explicit = options.get("source_ref") or options.get("source_id")
+    if explicit:
+        return str(explicit)
+    for collection in ("sources", "generators"):
+        for raw_element in snapshot.get(collection) or []:
+            if isinstance(raw_element, dict) and raw_element.get("ref_id"):
+                return str(raw_element["ref_id"])
+    return "source-compliance"
+
+
+def _execute_phase_state_sn(run: CanonicalRun) -> None:
+    snapshot = run.snapshot or {}
+    target_bus_ref = _pick_phase_state_target(snapshot, run.options)
+    target_bus_id = _graph_id_from_ref(target_bus_ref)
+    target_bus = next(
+        (
+            raw_bus
+            for raw_bus in snapshot.get("buses") or []
+            if isinstance(raw_bus, dict) and str(raw_bus.get("ref_id") or "") == target_bus_ref
+        ),
+        {},
+    )
+    source_voltage_default = float(target_bus.get("voltage_kv") or 15.0) / math.sqrt(3.0)
+    solver_input = PhaseStateSNInput(
+        source_voltage_kv=_phase_value_from_options(
+            run.options,
+            "source_voltage_kv",
+            default=(source_voltage_default, source_voltage_default, source_voltage_default),
+        ),
+        load_current_a=_phase_value_from_options(
+            run.options,
+            "load_current_a",
+            default=(100.0, 100.0, 100.0),
+        ),
+        branch_resistance_ohm=_phase_value_from_options(
+            run.options,
+            "branch_resistance_ohm",
+            default=(0.1, 0.1, 0.1),
+        ),
+        fault_current_a=_phase_value_from_options(
+            run.options,
+            "fault_current_a",
+            default=(0.0, 0.0, 0.0),
+        ),
+        open_phase=_open_phase_flags_from_options(run.options),
+        unbalance_alert_percent=float(run.options.get("unbalance_alert_percent", 10.0)),
+        solver_version=str(run.options.get("solver_version") or "phase_state_sn_v1"),
+    )
+    solver_result = PhaseStateSNSolver.solve(solver_input)
+    proof_ref = _phase_state_proof_ref(run=run, target_id=target_bus_ref)
+    proof_payload = PhaseStateSNProofPack.materialize_payload(
+        PhaseStateSNProofPackInput(
+            project_id=run.project_id or run.case_id,
+            case_id=run.case_id,
+            run_id=str(run.id),
+            snapshot_id=run.snapshot_hash,
+            project_name=str((snapshot.get("header") or {}).get("name") or "Projekt"),
+            case_name=str(run.options.get("case_name") or "Stan fazowy SN"),
+            run_timestamp=run.started_at or run.created_at,
+            solver_input=solver_input,
+            scenario_name=str(run.options.get("scenario_name") or "radial_reference"),
+        ),
+        solver_result=solver_result,
+    )
+    run.raw_result = {
+        "analysis_type": "phase_state_sn",
+        "target_id": target_bus_id,
+        "target_bus_ref": target_bus_ref,
+        "proof_ref": proof_ref,
+        "proof_status": "complete",
+        "proof_status_pl": "pelny",
+        "reporting_status": "reportable",
+        "reporting_status_pl": "raportowalny",
+        "proof_payload": proof_payload,
+        "result": solver_result.to_dict(),
+        "dopuszczalnosc_raportowa": True,
+        "reporting_limitations": [],
+    }
+    run.white_box_trace = [
+        {
+            "step": 1,
+            "key": "PHASE_STATE_INPUT",
+            "title": f"Stan fazowy SN: wejscie {target_bus_ref}",
+            "target_id": target_bus_id,
+            "element_id": target_bus_ref,
+            "phase_state_target_ref": target_bus_ref,
+            "method_basis": "PHASE_STATE_SN_RADIAL_V1",
+            "inputs": solver_input.to_dict(),
+            "proof_ref": proof_ref,
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+        },
+        {
+            "step": 2,
+            "key": "PHASE_STATE_OUTPUT",
+            "title": f"Stan fazowy SN: wynik {target_bus_ref}",
+            "target_id": target_bus_id,
+            "element_id": target_bus_ref,
+            "phase_state_target_ref": target_bus_ref,
+            "method_basis": "PHASE_STATE_SN_RADIAL_V1",
+            "result": solver_result.to_dict(),
+            "proof_ref": proof_ref,
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+        },
+    ]
+    run.power_flow_trace = None
+
+
+def _execute_dynamic_stability(run: CanonicalRun) -> None:
+    snapshot = run.snapshot or {}
+    source_ref = _pick_dynamic_source_ref(snapshot, run.options)
+    scenario = FaultClearScenario(
+        scenario_id=str(run.options.get("scenario_id") or f"dyn-{run.id}"),
+        faulted_element_id=str(run.options.get("faulted_element_id") or "faulted-element"),
+        clearing_time_ms=float(run.options.get("clearing_time_ms", 120.0)),
+        cleared_by_element_ids=tuple(run.options.get("cleared_by_element_ids") or ("cb-main",)),
+        source_state=FaultClearSourceState(
+            source_id=source_ref,
+            pre_fault_angle_deg=float(run.options.get("pre_fault_angle_deg", 10.0)),
+            during_fault_angle_deg=float(run.options.get("during_fault_angle_deg", 75.0)),
+            post_fault_angle_deg=float(run.options.get("post_fault_angle_deg", 28.0)),
+            post_fault_voltage_pu=float(run.options.get("post_fault_voltage_pu", 0.97)),
+            post_fault_frequency_pu=float(run.options.get("post_fault_frequency_pu", 0.99)),
+        ),
+    )
+    stability_result = evaluate_fault_clear_dynamic_stability(scenario)
+    topology_effect = build_post_fault_topology_effect(
+        source_id=stability_result.source_id,
+        faulted_element_id=stability_result.faulted_element_id,
+        cleared_by_element_ids=stability_result.cleared_by_element_ids,
+        isolated_element_ids=tuple(run.options.get("isolated_element_ids") or ()),
+        additionally_opened_element_ids=tuple(
+            run.options.get("additionally_opened_element_ids") or ()
+        ),
+        disconnected_source_ids=tuple(run.options.get("disconnected_source_ids") or ()),
+    )
+    automation_trace = build_automation_trace(stability_result, topology_effect)
+    proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=stability_result.scenario_id)
+    result_payload = stability_result.to_dict()
+    topology_payload = topology_effect.to_dict()
+    run.raw_result = {
+        "analysis_type": "dynamic_stability",
+        "scenario": scenario.to_dict(),
+        "result": result_payload,
+        "automation_trace": automation_trace.to_dict(),
+        "topology_effect": topology_payload,
+        "proof_ref": proof_ref,
+        "proof_status": "complete",
+        "proof_status_pl": "pelny",
+        "reporting_status": "reportable",
+        "reporting_status_pl": "raportowalny",
+        "dopuszczalnosc_raportowa": True,
+        "reporting_limitations": [],
+    }
+    run.white_box_trace = [
+        {
+            "step": index,
+            "key": event.event_type,
+            "title": event.detail or event.event_type,
+            "target_id": event.element_id,
+            "element_id": event.element_id,
+            "method_basis": "DYNAMIC_STABILITY_FAULT_CLEAR_V1",
+            "result": event.payload,
+            "proof_ref": proof_ref,
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+        }
+        for index, event in enumerate(automation_trace.events, start=1)
+    ]
+    run.power_flow_trace = None
+
+
+def _execute_source_compliance(run: CanonicalRun) -> None:
+    snapshot = run.snapshot or {}
+    source_ref = _pick_compliance_source_ref(snapshot, run.options)
+    source_type = str(run.options.get("source_type") or "PV")
+    operator_profile = run.options.get("operator_profile")
+    source_profile = run.options.get("source_profile")
+    compliance_result = evaluate_source_compliance(
+        source_type=source_type,
+        operator_profile=operator_profile if isinstance(operator_profile, dict) else None,
+        source_profile=source_profile if isinstance(source_profile, dict) else None,
+    )
+    proof_ref = _source_compliance_proof_ref(run=run, source_ref=source_ref)
+    result_payload = compliance_result.to_dict()
+    run.raw_result = {
+        "analysis_type": "source_compliance",
+        "source_ref": source_ref,
+        "source_type": result_payload["source_type"],
+        "operator_profile": operator_profile,
+        "source_profile": source_profile,
+        "result": result_payload,
+        "proof_ref": proof_ref,
+        "proof_status": result_payload["proof_status"],
+        "proof_status_pl": (
+            "pelny" if result_payload["proof_status"] == "complete" else "niepelny"
+        ),
+        "reporting_status": result_payload["reporting_status"],
+        "reporting_status_pl": (
+            "raportowalny"
+            if result_payload["reporting_status"] == "reportable"
+            else "nieraportowalny"
+        ),
+        "dopuszczalnosc_raportowa": result_payload["reporting_status"] == "reportable",
+        "reporting_limitations": list(result_payload["limitations"]),
+    }
+    run.white_box_trace = [
+        {
+            "step": 1,
+            "key": "SOURCE_PROFILE_INPUT",
+            "title": f"Profil operatora i zrodla: {source_ref}",
+            "target_id": source_ref,
+            "element_id": source_ref,
+            "method_basis": "SOURCE_COMPLIANCE_V1",
+            "inputs": {
+                "source_type": result_payload["source_type"],
+                "operator_profile": operator_profile,
+                "source_profile": source_profile,
+            },
+            "proof_ref": proof_ref,
+            "proof_status": result_payload["proof_status"],
+            "reporting_status": result_payload["reporting_status"],
+        },
+        {
+            "step": 2,
+            "key": "SOURCE_COMPLIANCE_RESULT",
+            "title": f"Ocena zgodnosci zrodla: {source_ref}",
+            "target_id": source_ref,
+            "element_id": source_ref,
+            "method_basis": "SOURCE_COMPLIANCE_V1",
+            "result": result_payload,
+            "proof_ref": proof_ref,
+            "proof_status": result_payload["proof_status"],
+            "reporting_status": result_payload["reporting_status"],
+        },
+    ]
+    run.power_flow_trace = None
+
+
 def _execute_short_circuit(run: CanonicalRun) -> None:
-    graph = _load_graph(run)
+    enm = EnergyNetworkModel.model_validate(run.snapshot)
+    graph = map_enm_to_network_graph(enm)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
+    short_circuit_type = _short_circuit_type_from_options(run.options)
+    z0_bus = (
+        build_zero_sequence_zbus(enm, graph)
+        if _short_circuit_requires_z0(short_circuit_type)
+        else None
+    )
     c_factor = float(run.options.get("c_factor", 1.10))
     tk_s = float(run.options.get("thermal_time_seconds", 1.0))
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
 
     for node_id in sorted(graph.nodes.keys()):
-        result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
-            graph=graph,
-            fault_node_id=node_id,
-            c_factor=c_factor,
-            tk_s=tk_s,
-        )
+        if short_circuit_type == ShortCircuitType.THREE_PHASE:
+            result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+                graph=graph,
+                fault_node_id=node_id,
+                c_factor=c_factor,
+                tk_s=tk_s,
+            )
+        elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
+            result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+                graph=graph,
+                fault_node_id=node_id,
+                c_factor=c_factor,
+                tk_s=tk_s,
+                z0_bus=z0_bus,
+            )
+        elif short_circuit_type == ShortCircuitType.TWO_PHASE:
+            result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+                graph=graph,
+                fault_node_id=node_id,
+                c_factor=c_factor,
+                tk_s=tk_s,
+            )
+        else:
+            result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
+                graph=graph,
+                fault_node_id=node_id,
+                c_factor=c_factor,
+                tk_s=tk_s,
+                z0_bus=z0_bus,
+            )
         payload = result.to_dict()
-        rows.append(payload)
+        node_trace_step_refs: list[int] = []
         for step_index, step in enumerate(payload.get("white_box_trace", []), start=1):
             node_context = graph_nodes.get(node_id, {})
+            global_step_index = len(trace_steps) + 1
+            node_trace_step_refs.append(global_step_index)
             trace_steps.append(
                 {
                     **step,
-                    "step": len(trace_steps) + 1,
+                    "step": global_step_index,
                     "target_id": node_id,
                     "element_id": node_context.get("element_id"),
                     "element_type": node_context.get("element_type"),
                     "graph_role": node_context.get("graph_role"),
-                    "title": step.get("title") or f"Zwarcie 3F: {node_id} / krok {step_index}",
+                    "title": step.get("title")
+                    or f"Zwarcie {short_circuit_type.value}: {node_id} / krok {step_index}",
                 }
             )
+        reportability = _short_circuit_reportability(
+            run=run,
+            target_id=node_id,
+            short_circuit_type=short_circuit_type,
+            trace_step_refs=node_trace_step_refs,
+        )
+        for trace_step in trace_steps[-len(node_trace_step_refs) :] if node_trace_step_refs else []:
+            trace_step.update(
+                {
+                    "proof_ref": reportability["proof_ref"],
+                    "proof_status": reportability["proof_status"],
+                    "reporting_status": reportability["reporting_status"],
+                    "method_basis": reportability["method_basis"],
+                }
+            )
+        payload.update(
+            {
+                "analysis_type": _result_analysis_type_for_fault(short_circuit_type),
+                "reporting_status": reportability["reporting_status"],
+                "reporting_status_pl": reportability["reporting_status_pl"],
+                "proof_status": reportability["proof_status"],
+                "proof_status_pl": reportability["proof_status_pl"],
+                "proof_ref": reportability["proof_ref"],
+                "proof_binding": reportability,
+                "dopuszczalnosc_raportowa": True,
+                "reporting_limitations": reportability["reporting_limitations"],
+            }
+        )
+        rows.append(payload)
 
     if not rows:
         raise ValueError("Nie udalo sie obliczyc wynikow zwarciowych dla zadnego wezla")
 
     run.raw_result = {
-        "analysis_type": "short_circuit_3f",
+        "analysis_type": _result_analysis_type_for_fault(short_circuit_type),
+        "short_circuit_type": short_circuit_type.value,
+        "reporting_status": "reportable",
+        "reporting_status_pl": "raportowalny",
+        "proof_status": "complete",
+        "proof_status_pl": "pelny",
+        "proof_engine_version": "white_box_trace_v1",
+        "method_basis": "IEC_60909",
+        "requires_z0": _short_circuit_requires_z0(short_circuit_type),
+        "z0_source": (
+            "ENM_COMMITTED" if _short_circuit_requires_z0(short_circuit_type) else "NOT_APPLICABLE"
+        ),
+        "reporting_limitations": [],
         "case_id": run.case_id,
         "enm_hash": run.snapshot_hash,
         "results": rows,
@@ -517,10 +1109,87 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                 "row_count": len(raw_result.get("results", [])),
                 "columns": [
                     {"key": "target_id", "label_pl": "Cel"},
+                    {"key": "fault_type", "label_pl": "Typ zwarcia"},
                     {"key": "ikss_ka", "label_pl": "Ik''", "unit": "kA"},
                     {"key": "ip_ka", "label_pl": "ip", "unit": "kA"},
                     {"key": "ith_ka", "label_pl": "Ith", "unit": "kA"},
                     {"key": "sk_mva", "label_pl": "Sk''", "unit": "MVA"},
+                    {"key": "reporting_status", "label_pl": "Status raportowy"},
+                    {"key": "proof_status", "label_pl": "Status uzasadnienia"},
+                    {"key": "proof_ref", "label_pl": "Identyfikator uzasadnienia"},
+                ],
+            }
+        )
+    if run.analysis_type == "phase_state_sn":
+        tables.append(
+            {
+                "table_id": "phase_state",
+                "label_pl": "Stan fazowy SN",
+                "row_count": 1 if raw_result.get("result") else 0,
+                "columns": [
+                    {"key": "target_name", "label_pl": "Cel"},
+                    {"key": "ua_kv", "label_pl": "UA", "unit": "kV"},
+                    {"key": "ub_kv", "label_pl": "UB", "unit": "kV"},
+                    {"key": "uc_kv", "label_pl": "UC", "unit": "kV"},
+                    {"key": "ia_a", "label_pl": "IA", "unit": "A"},
+                    {"key": "ib_a", "label_pl": "IB", "unit": "A"},
+                    {"key": "ic_a", "label_pl": "IC", "unit": "A"},
+                    {"key": "voltage_unbalance_percent", "label_pl": "Asymetria U", "unit": "%"},
+                    {"key": "current_unbalance_percent", "label_pl": "Asymetria I", "unit": "%"},
+                    {"key": "proof_status", "label_pl": "Status uzasadnienia"},
+                ],
+            }
+        )
+    if run.analysis_type == "dynamic_stability":
+        tables.extend(
+            [
+                {
+                    "table_id": "dynamic_stability",
+                    "label_pl": "Stabilnosc dynamiczna",
+                    "row_count": 1 if raw_result.get("result") else 0,
+                    "columns": [
+                        {"key": "source_id", "label_pl": "Zrodlo"},
+                        {"key": "faulted_element_id", "label_pl": "Element zaklocenia"},
+                        {"key": "status", "label_pl": "Status"},
+                        {"key": "clearing_time_ms", "label_pl": "Czas wylaczenia", "unit": "ms"},
+                        {"key": "clearing_margin_ms", "label_pl": "Margines", "unit": "ms"},
+                        {"key": "angle_swing_deg", "label_pl": "Wychylenie kata", "unit": "deg"},
+                        {
+                            "key": "post_fault_voltage_pu",
+                            "label_pl": "Napiecie po zakloceniu",
+                            "unit": "pu",
+                        },
+                        {"key": "stability_index", "label_pl": "Wskaznik stabilnosci"},
+                    ],
+                },
+                {
+                    "table_id": "automation_trace",
+                    "label_pl": "Slad automatyki",
+                    "row_count": len(
+                        (raw_result.get("automation_trace") or {}).get("events") or []
+                    ),
+                    "columns": [
+                        {"key": "event_seq", "label_pl": "Lp."},
+                        {"key": "event_type", "label_pl": "Typ zdarzenia"},
+                        {"key": "element_id", "label_pl": "Element"},
+                        {"key": "detail", "label_pl": "Opis"},
+                    ],
+                },
+            ]
+        )
+    if run.analysis_type == "source_compliance":
+        tables.append(
+            {
+                "table_id": "source_compliance",
+                "label_pl": "Zgodnosc zrodla",
+                "row_count": 1 if raw_result.get("result") else 0,
+                "columns": [
+                    {"key": "source_ref", "label_pl": "Zrodlo"},
+                    {"key": "source_type", "label_pl": "Typ"},
+                    {"key": "verdict", "label_pl": "Werdykt"},
+                    {"key": "reporting_status", "label_pl": "Status raportowy"},
+                    {"key": "proof_status", "label_pl": "Status uzasadnienia"},
+                    {"key": "limitations", "label_pl": "Ograniczenia"},
                 ],
             }
         )
@@ -640,6 +1309,20 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
                 "fault_type": item.get("short_circuit_type"),
+                "analysis_type": item.get("analysis_type")
+                or (run.raw_result or {}).get("analysis_type"),
+                "reporting_status": item.get("reporting_status")
+                or (run.raw_result or {}).get("reporting_status"),
+                "reporting_status_pl": item.get("reporting_status_pl")
+                or (run.raw_result or {}).get("reporting_status_pl"),
+                "proof_status": item.get("proof_status")
+                or (run.raw_result or {}).get("proof_status"),
+                "proof_status_pl": item.get("proof_status_pl")
+                or (run.raw_result or {}).get("proof_status_pl"),
+                "proof_ref": item.get("proof_ref"),
+                "proof_binding": item.get("proof_binding"),
+                "dopuszczalnosc_raportowa": item.get("dopuszczalnosc_raportowa", True),
+                "reporting_limitations": item.get("reporting_limitations", []),
                 "synthetic": node.get("synthetic"),
                 "graph_role": node.get("graph_role"),
                 "flags": [],
@@ -647,6 +1330,113 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
         )
     rows.sort(key=lambda row: row["target_id"] or "")
     return {"run_id": str(run.id), "rows": rows}
+
+
+def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
+    if run.analysis_type != "phase_state_sn":
+        return {"run_id": str(run.id), "rows": []}
+    raw_result = run.raw_result or {}
+    result = raw_result.get("result") or {}
+    if not result:
+        return {"run_id": str(run.id), "rows": []}
+    target_ref = str(raw_result.get("target_bus_ref") or raw_result.get("target_id") or "")
+    rows = [
+        {
+            "target_id": str(raw_result.get("target_id") or target_ref),
+            "element_id": target_ref,
+            "target_name": target_ref,
+            "ua_kv": result.get("ua_kv"),
+            "ub_kv": result.get("ub_kv"),
+            "uc_kv": result.get("uc_kv"),
+            "ia_a": result.get("ia_a"),
+            "ib_a": result.get("ib_a"),
+            "ic_a": result.get("ic_a"),
+            "phase_losses_kw": (result.get("phase_losses_kw") or {}),
+            "voltage_unbalance_percent": (
+                (result.get("unbalance_indices") or {}).get("voltage_percent")
+            ),
+            "current_unbalance_percent": (
+                (result.get("unbalance_indices") or {}).get("current_percent")
+            ),
+            "losses_unbalance_percent": (
+                (result.get("unbalance_indices") or {}).get("losses_percent")
+            ),
+            "flags": (result.get("flags") or {}),
+            "proof_ref": raw_result.get("proof_ref"),
+            "proof_status": raw_result.get("proof_status"),
+            "proof_status_pl": raw_result.get("proof_status_pl"),
+            "reporting_status": raw_result.get("reporting_status"),
+            "reporting_status_pl": raw_result.get("reporting_status_pl"),
+            "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", True),
+            "reporting_limitations": raw_result.get("reporting_limitations", []),
+        }
+    ]
+    return {"run_id": str(run.id), "rows": rows}
+
+
+def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
+    if run.analysis_type != "dynamic_stability":
+        return {"run_id": str(run.id), "rows": []}
+    result = (run.raw_result or {}).get("result") or {}
+    if not result:
+        return {"run_id": str(run.id), "rows": []}
+    return {
+        "run_id": str(run.id),
+        "rows": [
+            {
+                **result,
+                "proof_ref": (run.raw_result or {}).get("proof_ref"),
+                "proof_status": (run.raw_result or {}).get("proof_status"),
+                "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),
+                "reporting_status": (run.raw_result or {}).get("reporting_status"),
+                "reporting_status_pl": (run.raw_result or {}).get("reporting_status_pl"),
+                "dopuszczalnosc_raportowa": (run.raw_result or {}).get(
+                    "dopuszczalnosc_raportowa", True
+                ),
+                "reporting_limitations": (run.raw_result or {}).get("reporting_limitations", []),
+            }
+        ],
+    }
+
+
+def build_automation_trace_results(run: CanonicalRun) -> dict[str, Any]:
+    if run.analysis_type != "dynamic_stability":
+        return {"run_id": str(run.id), "rows": []}
+    trace = (run.raw_result or {}).get("automation_trace") or {}
+    rows = list(trace.get("events") or [])
+    rows.sort(key=lambda row: (row.get("event_seq", 0), str(row.get("event_type") or "")))
+    return {
+        "run_id": str(run.id),
+        "topology_effect": trace.get("topology_effect"),
+        "rows": rows,
+    }
+
+
+def build_source_compliance_results(run: CanonicalRun) -> dict[str, Any]:
+    if run.analysis_type != "source_compliance":
+        return {"run_id": str(run.id), "rows": []}
+    raw_result = run.raw_result or {}
+    result = raw_result.get("result") or {}
+    if not result:
+        return {"run_id": str(run.id), "rows": []}
+    return {
+        "run_id": str(run.id),
+        "rows": [
+            {
+                "source_ref": raw_result.get("source_ref"),
+                "source_type": result.get("source_type"),
+                "verdict": result.get("verdict"),
+                "reporting_status": result.get("reporting_status"),
+                "proof_status": result.get("proof_status"),
+                "limitations": list(result.get("limitations") or []),
+                "checks": result.get("checks") or {},
+                "proof_ref": raw_result.get("proof_ref"),
+                "proof_status_pl": raw_result.get("proof_status_pl"),
+                "reporting_status_pl": raw_result.get("reporting_status_pl"),
+                "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
+            }
+        ],
+    }
 
 
 def _amps_to_ka(value: Any) -> float | None:
@@ -981,12 +1771,23 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                         "ith_ka": item.get("ith_ka"),
                         "sk_mva": item.get("sk_mva"),
                         "fault_type": item.get("fault_type"),
+                        "analysis_type": item.get("analysis_type"),
+                        "reporting_status": item.get("reporting_status"),
+                        "proof_status": item.get("proof_status"),
+                        "proof_ref": item.get("proof_ref"),
+                        "dopuszczalnosc_raportowa": item.get("dopuszczalnosc_raportowa"),
                     },
+                    "proof_ref": item.get("proof_ref"),
+                    "proof_status": item.get("proof_status"),
+                    "reporting_status": item.get("reporting_status"),
                 }
             )
         global_results = {
             "count": len(element_results),
-            "analysis_type": "short_circuit_3f",
+            "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
+            "short_circuit_type": (run.raw_result or {}).get("short_circuit_type"),
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
         }
     elif run.analysis_type == "PF":
         result_v1 = (run.raw_result or {}).get("result_v1") or {}
@@ -1000,6 +1801,67 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                 }
             )
         global_results = result_v1.get("summary", {})
+    elif run.analysis_type == "phase_state_sn":
+        phase_rows = build_phase_state_results(run).get("rows", [])
+        for row in phase_rows:
+            element_results.append(
+                {
+                    "element_ref": row.get("element_id") or row.get("target_id"),
+                    "element_type": "Bus",
+                    "solver_ref": row.get("target_id"),
+                    "values": row,
+                    "proof_ref": row.get("proof_ref"),
+                    "proof_status": row.get("proof_status"),
+                    "reporting_status": row.get("reporting_status"),
+                }
+            )
+        global_results = {
+            "count": len(element_results),
+            "analysis_type": "phase_state_sn",
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+        }
+    elif run.analysis_type == "dynamic_stability":
+        stability_rows = build_dynamic_stability_results(run).get("rows", [])
+        for row in stability_rows:
+            element_results.append(
+                {
+                    "element_ref": row.get("source_id") or row.get("faulted_element_id"),
+                    "element_type": "Source",
+                    "solver_ref": row.get("scenario_id"),
+                    "values": row,
+                    "proof_ref": row.get("proof_ref"),
+                    "proof_status": row.get("proof_status"),
+                    "reporting_status": row.get("reporting_status"),
+                }
+            )
+        global_results = {
+            "count": len(element_results),
+            "analysis_type": "dynamic_stability",
+            "automation_event_count": len(build_automation_trace_results(run).get("rows", [])),
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+        }
+    elif run.analysis_type == "source_compliance":
+        compliance_rows = build_source_compliance_results(run).get("rows", [])
+        for row in compliance_rows:
+            element_results.append(
+                {
+                    "element_ref": row.get("source_ref"),
+                    "element_type": "Source",
+                    "solver_ref": row.get("source_ref"),
+                    "values": row,
+                    "proof_ref": row.get("proof_ref"),
+                    "proof_status": row.get("proof_status"),
+                    "reporting_status": row.get("reporting_status"),
+                }
+            )
+        global_results = {
+            "count": len(element_results),
+            "analysis_type": "source_compliance",
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+        }
 
     signature_payload = json.dumps(
         _canonicalize(
@@ -1017,7 +1879,7 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
     )
     deterministic_signature = hashlib.sha256(signature_payload.encode("utf-8")).hexdigest()
 
-    analysis_type = "LOAD_FLOW" if run.analysis_type == "PF" else "SC_3F"
+    analysis_type = _execution_analysis_type_for_run(run)
     return {
         "run_id": str(run.id),
         "analysis_type": analysis_type,

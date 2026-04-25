@@ -39,7 +39,6 @@ import { VerdictBadge } from '../protection-coordination/ResultsTables';
 import type { CoordinationVerdict } from '../protection-coordination/types';
 import { NormativeLabels } from '../shared/normativeLabels';
 import {
-  toAnalysisCaseContextContract,
   formatProofPackRef,
   getAnalysisCaseLabel,
   getCompletenessDisplayLabel,
@@ -48,13 +47,12 @@ import {
   mergeAnalysisCaseContexts,
 } from '../results-inspector/analysisCaseContextView';
 import {
-  buildAnalysisCaseDiagnosticRows,
-  buildAnalysisCasePrimaryRows,
-  formatCompletenessStatus,
-  formatPublicQualityGate,
-  getPublicQualityGateTone,
-} from '../workspace/analysisRunContract';
-import type { AnalysisCaseContext } from '../shared/analysisCaseContext';
+  ANALYSIS_COMPLETENESS_BADGE_CLASS,
+  ANALYSIS_COMPLETENESS_LABELS,
+  QUALITY_GATE_BADGE_CLASS,
+  QUALITY_GATE_LABELS,
+  type AnalysisCaseContext,
+} from '../shared/analysisCaseContext';
 
 // =============================================================================
 // P20d: Export Types and Component
@@ -346,59 +344,82 @@ function AnalysisCaseContextPanel({
     return null;
   }
 
-  const contractContext = toAnalysisCaseContextContract(context);
-  const completenessLabel = formatCompletenessStatus(contractContext.completeness);
-  const completenessTone = getCompletenessTone(contractContext.completeness ?? completenessLabel);
-  const qualityGateLabel = formatPublicQualityGate(contractContext.qualityGate);
-  const qualityGateTone = getPublicQualityGateTone(contractContext.qualityGate);
-  const primaryRows = buildAnalysisCasePrimaryRows(contractContext);
-  const diagnosticRows = buildAnalysisCaseDiagnosticRows(contractContext);
+  const reproducibility = context.reproducibility ?? {};
+  const completenessLabel =
+    ANALYSIS_COMPLETENESS_LABELS[context.completeness] ?? context.completeness;
+  const completenessTone =
+    ANALYSIS_COMPLETENESS_BADGE_CLASS[context.completeness] ??
+    ANALYSIS_COMPLETENESS_BADGE_CLASS.partial;
+  const qualityGateLabel = QUALITY_GATE_LABELS[context.quality_gate] ?? context.quality_gate;
+  const qualityGateTone =
+    QUALITY_GATE_BADGE_CLASS[context.quality_gate] ?? QUALITY_GATE_BADGE_CLASS.G2;
+  const applicability =
+    context.applicability_scope.length > 0
+      ? context.applicability_scope.join(', ')
+      : 'Brak zakresu';
 
   return (
     <section className="mt-4 space-y-4 rounded border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Zakres i warunki obliczeń
+            analysis_case_context
           </div>
           <h2 className="mt-1 text-sm font-semibold text-slate-900">
-            Kontekst obliczeń i jakości danych
+            Kontekst uruchomienia rozpływu
           </h2>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ContextBadge label={`Kompletność wyników: ${completenessLabel}`} tone={completenessTone} />
+          <ContextBadge label={`Kompletnosc: ${completenessLabel}`} tone={completenessTone} />
           <ContextBadge label={qualityGateLabel} tone={qualityGateTone} />
         </div>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-3">
-        {primaryRows.map((row) => (
-          <ContextField key={row.label} label={row.label} value={row.value} />
-        ))}
+        <ContextField
+          label="Rodzaj przypadku"
+          value={context.rodzaj_przypadku ?? context.case_kind ?? 'Brak'}
+        />
+        <ContextField label="Case ref" value={context.case_ref} />
+        <ContextField label="Run ref" value={context.run_ref} />
+        <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
+        <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref} />
+        <ContextField label="Zakres" value={applicability} />
       </div>
 
-      {contractContext.missingPrerequisites.length > 0 && (
+      <div className="grid gap-3 lg:grid-cols-3">
+        <ContextField label="Solver" value={reproducibility.solver_family ?? 'Brak'} />
+        <ContextField
+          label="Wersja solvera"
+          value={reproducibility.solver_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Kontrakt wynikow"
+          value={reproducibility.results_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Kontrakt pola"
+          value={reproducibility.bay_contract_version ?? 'Brak'}
+        />
+        <ContextField
+          label="Snapshot katalogow"
+          value={reproducibility.catalog_snapshot_ref ?? 'Brak'}
+        />
+        <ContextField
+          label="Schemat katalogow"
+          value={reproducibility.catalog_schema_version ?? 'Brak'}
+        />
+      </div>
+
+      {context.missing_prerequisites.length > 0 && (
         <div className="rounded border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          <div className="font-semibold">Brakujące warunki wejściowe</div>
+          <div className="font-semibold">Brakujace warunki wejsciowe</div>
           <ul className="mt-2 list-disc space-y-1 pl-5">
-            {contractContext.missingPrerequisites.map((item) => (
+            {context.missing_prerequisites.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
         </div>
-      )}
-
-      {diagnosticRows.length > 0 && (
-        <details className="rounded border border-slate-200 bg-slate-50">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700">
-            Diagnostyka techniczna
-          </summary>
-          <div className="grid gap-3 border-t border-slate-200 px-4 py-4 lg:grid-cols-3">
-            {diagnosticRows.map((row) => (
-              <ContextField key={row.label} label={row.label} value={row.value} />
-            ))}
-          </div>
-        </details>
       )}
     </section>
   );
@@ -471,7 +492,7 @@ function ResultStatusBar() {
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="power-flow-status-case-context">
-              <span className="font-medium">Zakres i warunki obliczeń:</span> {caseLabel}
+              <span className="font-medium">Przypadek:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (
@@ -479,7 +500,7 @@ function ResultStatusBar() {
               className={`rounded px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(completenessTone)}`}
               data-testid="power-flow-status-completeness"
             >
-              Kompletność wyników: {completenessLabel}
+              Kompletnosc: {completenessLabel}
             </span>
           )}
           <span className="text-sm text-slate-600">
@@ -493,7 +514,7 @@ function ResultStatusBar() {
             {iterationsLabel}
           </span>
           <span className="text-sm text-slate-600">
-            <span className="font-medium">Ostatnie obliczenie:</span>{' '}
+            <span className="font-medium">{NormativeLabels.common.powerFlowLabels.run}:</span>{' '}
             {runHeader.id.substring(0, 8)}...
           </span>
         </div>
@@ -501,7 +522,7 @@ function ResultStatusBar() {
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
             {proofPackRef && (
               <span data-testid="power-flow-status-proof-pack">
-                <span className="font-medium text-slate-600">Uzasadnienie inżynierskie:</span> {proofPackRef}
+                <span className="font-medium text-slate-600">Pakiet uzasadnienia:</span> {proofPackRef}
               </span>
             )}
             {reproducibilitySummary && (

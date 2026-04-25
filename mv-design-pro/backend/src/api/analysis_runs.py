@@ -6,14 +6,18 @@ from uuid import UUID
 from api.canonical_run_views import (
     build_analysis_run_detail,
     build_analysis_run_summary,
+    build_automation_trace_results_response,
     build_branch_results_response,
     build_bus_results_response,
+    build_dynamic_stability_results_response,
     build_extended_trace_response,
+    build_phase_state_results_response,
     build_result_items,
     build_results_index_response,
     build_run_trace_payload,
     build_short_circuit_results_response,
     build_sld_overlay,
+    build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
@@ -208,6 +212,32 @@ def get_branch_results(run_id: UUID) -> dict[str, Any]:
 @router.get("/analysis-runs/{run_id}/results/short-circuit")
 def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_short_circuit_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/phase-state")
+def get_phase_state_results(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(build_phase_state_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamic-stability")
+def get_dynamic_stability_results(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(
+        build_dynamic_stability_results_response(_require_canonical_run(run_id))
+    )
+
+
+@router.get("/analysis-runs/{run_id}/results/automation-trace")
+def get_automation_trace_results(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(
+        build_automation_trace_results_response(_require_canonical_run(run_id))
+    )
+
+
+@router.get("/analysis-runs/{run_id}/results/source-compliance")
+def get_source_compliance_results(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(
+        build_source_compliance_results_response(_require_canonical_run(run_id))
+    )
 
 
 @router.get("/analysis-runs/{run_id}/results/trace")

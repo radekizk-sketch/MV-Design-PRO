@@ -19,7 +19,6 @@ import { AddRelayForm } from './forms/AddRelayForm';
 import { AddSnBayForm } from './forms/AddSnBayForm';
 import { AddTransformerForm } from './forms/AddTransformerForm';
 import { AssignCatalogForm } from './forms/AssignCatalogForm';
-import { ChooseSnSegmentFamilyForm } from './forms/ChooseSnSegmentFamilyForm';
 import { ConnectRingForm } from './forms/ConnectRingForm';
 import { ContinueTrunkForm } from './forms/ContinueTrunkForm';
 import { InsertBranchPoleForm } from './forms/InsertBranchPoleForm';
@@ -28,8 +27,7 @@ import { InsertStationForm } from './forms/InsertStationForm';
 import { InsertZksnForm } from './forms/InsertZksnForm';
 import { StartBranchForm } from './forms/StartBranchForm';
 import { UpdateElementParametersForm } from './forms/UpdateElementParametersForm';
-import { useNetworkBuildStore } from './networkBuildStore';
-import type { ActiveOperationForm } from './internal/legacySurfaceTypes';
+import type { ActiveOperationForm } from './networkBuildStore';
 
 type SupportedOperationForm = Exclude<ActiveOperationForm, null>['op'];
 type RoutedOperationForm = Exclude<SupportedOperationForm, 'refresh_snapshot'>;
@@ -74,7 +72,6 @@ export interface OperationFormRouterProps {
 
 export function OperationFormRouter({ className }: OperationFormRouterProps) {
   const activeForm = useActiveOperationForm();
-  const activeScreenCode = useNetworkBuildStore((state) => state.activeSurface?.screenCode ?? null);
 
   if (!activeForm) {
     return null;
@@ -82,14 +79,6 @@ export function OperationFormRouter({ className }: OperationFormRouterProps) {
 
   const operation = activeForm.op as string;
   assertSupportedOperation(operation);
-
-  if (operation === 'continue_trunk_segment_sn' && activeScreenCode === 'E-06') {
-    return (
-      <div className={clsx('h-full', className)} data-testid="operation-form-router">
-        <ChooseSnSegmentFamilyForm />
-      </div>
-    );
-  }
 
   return (
     <div className={clsx('h-full', className)} data-testid="operation-form-router">

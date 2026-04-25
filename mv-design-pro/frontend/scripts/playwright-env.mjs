@@ -1,5 +1,8 @@
 import fs from 'node:fs';
+import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
+
+const require = createRequire(import.meta.url);
 
 const WINDOWS_CHROMIUM_BINARIES = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -22,13 +25,34 @@ const CANDIDATE_BINARIES = [
   ...(process.platform === 'win32' ? WINDOWS_CHROMIUM_BINARIES : POSIX_CHROMIUM_BINARIES),
 ].filter(Boolean);
 
+const CHROMIUM_VERSION_TIMEOUT_MS = Number.parseInt(
+  process.env.PLAYWRIGHT_CHROMIUM_VERSION_TIMEOUT_MS ?? '5000',
+  10,
+);
+
+function resolveBundledPlaywrightChromium() {
+  try {
+    const playwright = require('playwright');
+    return playwright.chromium?.executablePath?.() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function commandExists(cmd) {
   if (process.platform === 'win32') {
-    const result = spawnSync('where', [cmd], { encoding: 'utf-8' });
+    const result = spawnSync('where', [cmd], {
+      encoding: 'utf-8',
+      timeout: CHROMIUM_VERSION_TIMEOUT_MS,
+      windowsHide: true,
+    });
     return result.status === 0 ? result.stdout.split(/\r?\n/).find(Boolean)?.trim() ?? null : null;
   }
 
-  const result = spawnSync('bash', ['-lc', `command -v ${cmd}`], { encoding: 'utf-8' });
+  const result = spawnSync('bash', ['-lc', `command -v ${cmd}`], {
+    encoding: 'utf-8',
+    timeout: CHROMIUM_VERSION_TIMEOUT_MS,
+  });
   return result.status === 0 ? result.stdout.trim() : null;
 }
 
@@ -37,14 +61,34 @@ function isUsableExecutable(path) {
   if (!fs.existsSync(path)) return false;
   try {
     fs.accessSync(path, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);
-    const output = spawnSync(path, ['--version'], { encoding: 'utf-8' });
+    const output = spawnSync(path, ['--version'], {
+      encoding: 'utf-8',
+      timeout: CHROMIUM_VERSION_TIMEOUT_MS,
+      windowsHide: true,
+    });
     return output.status === 0;
   } catch {
     return false;
   }
 }
 
+function isExistingExecutable(path) {
+  if (!path) return false;
+  if (!fs.existsSync(path)) return false;
+  try {
+    fs.accessSync(path, process.platform === 'win32' ? fs.constants.F_OK : fs.constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function resolveChromiumExecutable() {
+  const bundled = resolveBundledPlaywrightChromium();
+  if (isExistingExecutable(bundled)) {
+    return bundled;
+  }
+
   for (const candidate of CANDIDATE_BINARIES) {
     if (isUsableExecutable(candidate)) {
       return candidate;

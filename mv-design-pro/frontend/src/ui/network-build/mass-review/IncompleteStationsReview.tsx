@@ -103,7 +103,7 @@ export function IncompleteStationsReview() {
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Pola SN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Szyny nN</th>
             <th className="px-3 py-2 font-medium text-gray-600 text-center">Blokery</th>
-            <th className="px-3 py-2 font-medium text-gray-600">Gotowość</th>
+            <th className="px-3 py-2 font-medium text-gray-600">GotowoĹ›Ä‡</th>
           </tr>
         </thead>
         <tbody>
