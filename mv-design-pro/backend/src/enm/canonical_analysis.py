@@ -74,10 +74,16 @@ def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitTyp
     raw = options.get("fault_type") or options.get("short_circuit_type") or "3F"
     mapping = {
         "3F": ShortCircuitType.THREE_PHASE,
+        "SC_3F": ShortCircuitType.THREE_PHASE,
         "1F": ShortCircuitType.SINGLE_PHASE_GROUND,
+        "SC_1F": ShortCircuitType.SINGLE_PHASE_GROUND,
         "2F": ShortCircuitType.TWO_PHASE,
+        "SC_2F": ShortCircuitType.TWO_PHASE,
         "2F+G": ShortCircuitType.TWO_PHASE_GROUND,
         "2F+Z": ShortCircuitType.TWO_PHASE_GROUND,
+        "SC_2F_G": ShortCircuitType.TWO_PHASE_GROUND,
+        "SC_2F+G": ShortCircuitType.TWO_PHASE_GROUND,
+        "SC_2F+Z": ShortCircuitType.TWO_PHASE_GROUND,
     }
     if raw in mapping:
         return mapping[raw]
@@ -1439,7 +1445,7 @@ def build_source_compliance_results(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def _amps_to_ka(value: Any) -> float | None:
+def _amps_to_ka(value: object | None) -> float | None:
     if value is None:
         return None
     return float(value) / 1000.0

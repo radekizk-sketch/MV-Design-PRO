@@ -1,6 +1,6 @@
 # Verification V12.5
 
-- Generated at: `2026-04-25 23:19:49Z`
+- Generated at: `2026-04-25 23:43:52Z`
 - Package manager: `npm`
 - Total steps: `16`
 - Passed: `16`
@@ -8,22 +8,22 @@
 
 | Step | Status | Exit code | Duration [s] |
 |---|---|---:|---:|
-| UI terminology guard | PASS | 0 | 2.81 |
-| Docs archive guard | PASS | 0 | 1.67 |
-| V12.xx canon guard | PASS | 0 | 1.78 |
-| API lifecycle guard | PASS | 0 | 0.89 |
-| Legacy public path guard | PASS | 0 | 0.67 |
-| Severity contract guard | PASS | 0 | 0.41 |
-| Import graph guard | PASS | 0 | 0.31 |
-| Grep-zero guard | PASS | 0 | 0.38 |
-| Frontend type-check | PASS | 0 | 119.76 |
-| Frontend lint | PASS | 0 | 58.63 |
-| Backend V12.5 lint (ruff) | PASS | 0 | 5.57 |
-| Backend V12.5 format check (black) | PASS | 0 | 11.62 |
-| Backend targeted V12.5 tests | PASS | 0 | 31.73 |
-| Frontend V12.5 surface tests | PASS | 0 | 275.37 |
-| Golden tests | PASS | 0 | 49.14 |
-| Frontend V12.5 performance harness (quick) | PASS | 0 | 24.60 |
+| UI terminology guard | PASS | 0 | 2.28 |
+| Docs archive guard | PASS | 0 | 0.84 |
+| V12.xx canon guard | PASS | 0 | 0.95 |
+| API lifecycle guard | PASS | 0 | 0.46 |
+| Legacy public path guard | PASS | 0 | 0.36 |
+| Severity contract guard | PASS | 0 | 0.26 |
+| Import graph guard | PASS | 0 | 0.18 |
+| Grep-zero guard | PASS | 0 | 0.22 |
+| Frontend type-check | PASS | 0 | 66.03 |
+| Frontend lint | PASS | 0 | 41.43 |
+| Backend V12.5 lint (ruff) | PASS | 0 | 3.26 |
+| Backend V12.5 format check (black) | PASS | 0 | 7.95 |
+| Backend targeted V12.5 tests | PASS | 0 | 21.74 |
+| Frontend V12.5 surface tests | PASS | 0 | 214.56 |
+| Golden tests | PASS | 0 | 35.96 |
+| Frontend V12.5 performance harness (quick) | PASS | 0 | 19.64 |
 
 ## Outcome
 
@@ -274,7 +274,7 @@ tests\enm\test_v2_projection.py ........                                 [ 59%]
 tests\application\test_source_compliance.py .........                    [ 68%]
 tests\test_generator_validation.py ....................                  [ 88%]
 tests\api\test_analysis_run_report_exports.py ............               [100%]
-============================ 102 passed in 23.16s =============================
+============================ 102 passed in 15.92s =============================
 ```
 
 ### stderr tail
@@ -292,42 +292,41 @@ tests\api\test_analysis_run_report_exports.py ............               [100%]
 ### stdout tail
 
 ```text
- [32m✓[39m src/ui/network-build/__tests__/converterSourceEntryPoints.test.tsx [2m ([22m[2m8 tests[22m[2m)[22m[90m 132[2mms[22m[39m
- [32m✓[39m src/ui/network-build/__tests__/cardEditActions.test.tsx [2m ([22m[2m4 tests[22m[2m)[22m[90m 104[2mms[22m[39m
- [32m✓[39m src/ui/proof/__tests__/traceCatalogContextExport.spec.tsx [2m ([22m[2m3 tests[22m[2m)[22m[90m 259[2mms[22m[39m
- [32m✓[39m src/ui/active-case-bar/__tests__/ActiveCaseBar.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 283[2mms[22m[39m
- [32m✓[39m src/ui/network-build/__tests__/StartBranchForm.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 456[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/store.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 24[2mms[22m[39m
- [32m✓[39m src/ui/proof/__tests__/no-codenames.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 40[2mms[22m[39m
- [32m✓[39m src/ui/inspector/__tests__/InspectorPanel.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 616[2mms[22m[39m
- [32m✓[39m src/ui/navigation/__tests__/routes.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 32[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/readinessVisualState.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 15[2mms[22m[39m
- [32m✓[39m src/ui/protection-engine-v1/__tests__/ProtectionSettingsPage.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 138[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanelContainer.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 71[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/fixActionRouting.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 10[2mms[22m[39m
- [32m✓[39m src/ui/network-build/__tests__/gpzAddSnBayFamilyFlow.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 15[2mms[22m[39m
- [32m✓[39m src/ui/proof/__tests__/traceExportApi.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 37[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/readinessLivePanel.integration.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 162[2mms[22m[39m
- [32m✓[39m src/ui/network-build/__tests__/contextMenuConverterEntry.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 21[2mms[22m[39m
- [32m✓[39m src/ui/network-build/__tests__/networkBuildStore.routeSurfaces.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 13[2mms[22m[39m
- [32m✓[39m src/ui/proof/__tests__/TraceMetadataPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 266[2mms[22m[39m
- [32m✓[39m src/ui/protection-diagnostics/__tests__/ProtectionDiagnosticsPanelContainer.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 156[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanel.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 104[2mms[22m[39m
- [32m✓[39m src/ui/protection-coordination/__tests__/ProtectionSettingsEditor.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 190[2mms[22m[39m
- [32m✓[39m src/ui/notifications/__tests__/NotificationToast.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[33m 397[2mms[22m[39m
- [32m✓[39m src/ui/navigation/urlState.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 38[2mms[22m[39m
- [32m✓[39m src/ui/protection-coordination/__tests__/TracePanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 107[2mms[22m[39m
- [32m✓[39m src/ui/layout/__tests__/index.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 9[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/converterSourceEntryPoints.test.tsx [2m ([22m[2m8 tests[22m[2m)[22m[90m 88[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/cardEditActions.test.tsx [2m ([22m[2m4 tests[22m[2m)[22m[90m 65[2mms[22m[39m
+ [32m✓[39m src/ui/proof/__tests__/traceCatalogContextExport.spec.tsx [2m ([22m[2m3 tests[22m[2m)[22m[90m 188[2mms[22m[39m
+ [32m✓[39m src/ui/active-case-bar/__tests__/ActiveCaseBar.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 155[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/StartBranchForm.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 400[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/store.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 12[2mms[22m[39m
+ [32m✓[39m src/ui/proof/__tests__/no-codenames.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 23[2mms[22m[39m
+ [32m✓[39m src/ui/inspector/__tests__/InspectorPanel.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[33m 447[2mms[22m[39m
+ [32m✓[39m src/ui/navigation/__tests__/routes.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/readinessVisualState.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m src/ui/protection-engine-v1/__tests__/ProtectionSettingsPage.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 151[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanelContainer.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 64[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/fixActionRouting.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 13[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/gpzAddSnBayFamilyFlow.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 31[2mms[22m[39m
+ [32m✓[39m src/ui/proof/__tests__/traceExportApi.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 40[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/readinessLivePanel.integration.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 131[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/contextMenuConverterEntry.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+ [32m✓[39m src/ui/network-build/__tests__/networkBuildStore.routeSurfaces.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 10[2mms[22m[39m
+ [32m✓[39m src/ui/proof/__tests__/TraceMetadataPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 100[2mms[22m[39m
+ [32m✓[39m src/ui/protection-diagnostics/__tests__/ProtectionDiagnosticsPanelContainer.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 94[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanel.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 85[2mms[22m[39m
+ [32m✓[39m src/ui/protection-coordination/__tests__/ProtectionSettingsEditor.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 170[2mms[22m[39m
+ [32m✓[39m src/ui/notifications/__tests__/NotificationToast.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 204[2mms[22m[39m
+ [32m✓[39m src/ui/navigation/urlState.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 26[2mms[22m[39m
+ [32m✓[39m src/ui/protection-coordination/__tests__/TracePanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 80[2mms[22m[39m
+ [32m✓[39m src/ui/layout/__tests__/index.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 7[2mms[22m[39m
 [2m Test Files [22m [1m[32m39 passed[39m[22m[90m (39)[39m
 [2m      Tests [22m [1m[32m394 passed[39m[22m[90m (394)[39m
-[2m   Start at [22m 00:14:03
-[2m   Duration [22m 271.49s[2m (transform 13.51s, setup 24.73s, collect 48.99s, tests 9.97s, environment 139.89s, prepare 24.60s)[22m
+[2m   Start at [22m 00:39:25
+[2m   Duration [22m 211.81s[2m (transform 9.47s, setup 20.23s, collect 36.49s, tests 7.25s, environment 111.63s, prepare 18.62s)[22m
 ```
 
 ### stderr tail
 
 ```text
-[31mWebSocket server error: Port is already in use[39m
 [90mstderr[2m | src/ui/proof/__tests__/TraceViewer.test.tsx[2m > [22m[2mTraceStepView[2m > [22m[2mrenders step title and number[22m[39m
 LaTeX-incompatible input and strict mode is set to 'warn': Unrecognized Unicode character "√" (8730) [unknownSymbol]
 [90mstderr[2m | src/ui/proof/__tests__/TraceViewer.test.tsx[2m > [22m[2mTraceStepView[2m > [22m[2mrenders formula section[22m[39m
@@ -356,22 +355,22 @@ LaTeX-incompatible input and strict mode is set to 'warn': Unrecognized Unicode 
 > mv-design-pro-frontend@0.1.0 test:golden
 > vitest run --no-file-parallelism src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts src/ui/__tests__/ux-golden-scenario.test.ts
 [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend[39m
- [32m✓[39m src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts [2m ([22m[2m52 tests[22m[2m)[22m[33m 2731[2mms[22m[39m
- [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 3182[2mms[22m[39m
- [32m✓[39m src/ui/__tests__/ux-golden-scenario.test.ts [2m ([22m[2m45 tests[22m[2m)[22m[90m 143[2mms[22m[39m
- [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts [2m ([22m[2m27 tests[22m[2m)[22m[90m 257[2mms[22m[39m
- [32m✓[39m src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 89[2mms[22m[39m
- [32m✓[39m src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 118[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts [2m ([22m[2m52 tests[22m[2m)[22m[33m 1807[2mms[22m[39m
+ [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 2388[2mms[22m[39m
+ [32m✓[39m src/ui/__tests__/ux-golden-scenario.test.ts [2m ([22m[2m45 tests[22m[2m)[22m[90m 86[2mms[22m[39m
+ [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts [2m ([22m[2m27 tests[22m[2m)[22m[90m 187[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 71[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 87[2mms[22m[39m
 [2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
 [2m      Tests [22m [1m[32m160 passed[39m[22m[90m (160)[39m
-[2m   Start at [22m 00:18:39
-[2m   Duration [22m 44.80s[2m (transform 1.88s, setup 3.71s, collect 2.73s, tests 6.52s, environment 22.63s, prepare 3.78s)[22m
+[2m   Start at [22m 00:42:59
+[2m   Duration [22m 33.37s[2m (transform 1.37s, setup 2.86s, collect 2.03s, tests 4.63s, environment 17.15s, prepare 2.89s)[22m
 ```
 
 ### stderr tail
 
 ```text
-[31mWebSocket server error: Port is already in use[39m
+<empty>
 ```
 
 ## Frontend V12.5 performance harness (quick)
@@ -388,51 +387,51 @@ LaTeX-incompatible input and strict mode is set to 'warn': Unrecognized Unicode 
 > vitest run --no-file-parallelism --run src/ui/workspace/__tests__/v125.performance.test.tsx
 [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend[39m
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures mini-SLD helper surface mount[22m[39m
-[v125-perf] mini-sld mean=33.89ms median=30.56ms p95=44.97ms
+[v125-perf] mini-sld mean=21.44ms median=21.92ms p95=23.26ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures full SLD pipeline and canvas mount[22m[39m
-[v125-perf] full-sld mean=407.03ms median=405.53ms p95=434.21ms
+[v125-perf] full-sld mean=304.26ms median=281.61ms p95=374.52ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-06 analysis surface mount[22m[39m
-[v125-perf] E-06 mean=11.94ms median=10.85ms p95=14.16ms
+[v125-perf] E-06 mean=7.70ms median=6.90ms p95=9.58ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-27 report surface mount[22m[39m
-[v125-perf] E-27 mean=18.54ms median=16.98ms p95=24.25ms
+[v125-perf] E-27 mean=15.62ms median=15.50ms p95=16.65ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-28 protection coordination surface mount[22m[39m
-[v125-perf] E-28 mean=32.71ms median=31.46ms p95=40.27ms
+[v125-perf] E-28 mean=18.44ms median=18.34ms p95=18.82ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-29 symmetrical components surface mount[22m[39m
-[v125-perf] E-29 mean=29.84ms median=30.41ms p95=37.14ms
+[v125-perf] E-29 mean=17.41ms median=17.73ms p95=22.80ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-30 compliance surface mount[22m[39m
-[v125-perf] E-30 mean=28.79ms median=29.51ms p95=32.38ms
+[v125-perf] E-30 mean=31.47ms median=32.06ms p95=32.90ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-33 thermal dynamic surface mount[22m[39m
-[v125-perf] E-33 mean=21.84ms median=18.99ms p95=30.26ms
+[v125-perf] E-33 mean=30.97ms median=23.98ms p95=46.16ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-34 convergence surface mount[22m[39m
-[v125-perf] E-34 mean=18.39ms median=19.07ms p95=21.27ms
- [32m✓[39m src/ui/workspace/__tests__/v125.performance.test.tsx [2m ([22m[2m9 tests[22m[2m)[22m[33m 3872[2mms[22m[39m
+[v125-perf] E-34 mean=27.05ms median=29.41ms p95=30.04ms
+ [32m✓[39m src/ui/workspace/__tests__/v125.performance.test.tsx [2m ([22m[2m9 tests[22m[2m)[22m[33m 3033[2mms[22m[39m
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 [2m      Tests [22m [1m[32m9 passed[39m[22m[90m (9)[39m
-[2m   Start at [22m 00:19:28
-[2m   Duration [22m 20.99s[2m (transform 6.22s, setup 646ms, collect 9.64s, tests 3.87s, environment 3.63s, prepare 641ms)[22m
+[2m   Start at [22m 00:43:35
+[2m   Duration [22m 16.96s[2m (transform 4.81s, setup 548ms, collect 7.59s, tests 3.03s, environment 3.12s, prepare 509ms)[22m
 ```
 
 ### stderr tail
 
 ```text
-[31mWebSocket server error: Port is already in use[39m
+<empty>
 ```
 
 ## Performance Report
 
 - Profile: `quick`
-- Measured at: `2026-04-25T23:19:48.972Z`
+- Measured at: `2026-04-25T23:43:52.499Z`
 - Harness: `frontend/src/ui/workspace/__tests__/v125.performance.test.tsx`
 - Methodology: `1` warm-up run(s) + `3` measured run(s) per target.
 
 | Target | Kind | Mean [ms] | Median [ms] | P95 [ms] | Max [ms] | Samples [ms] |
 |---|---|---:|---:|---:|---:|---|
-| Mini-SLD helper surface | mount | 33.89 | 30.56 | 44.97 | 44.97 | 44.97, 30.56, 26.16 |
-| Full SLD terrain pipeline + canvas | pipeline+mount | 407.03 | 405.53 | 434.21 | 434.21 | 434.21, 405.53, 381.34 |
-| Nakladka wynikowa na schemacie | mount | 11.94 | 10.85 | 14.16 | 14.16 | 10.85, 10.81, 14.16 |
-| Raporty i eksporty | mount | 18.54 | 16.98 | 24.25 | 24.25 | 24.25, 14.38, 16.98 |
-| Koordynacja zabezpieczen | mount | 32.71 | 31.46 | 40.27 | 40.27 | 26.38, 40.27, 31.46 |
-| Skladowe symetryczne i siec zerowa | mount | 29.84 | 30.41 | 37.14 | 37.14 | 21.98, 30.41, 37.14 |
-| Wymagania przylaczeniowe i kodeks sieciowy | mount | 28.79 | 29.51 | 32.38 | 32.38 | 32.38, 24.49, 29.51 |
-| Weryfikacja cieplna i dynamiczna toru pradowego | mount | 21.84 | 18.99 | 30.26 | 30.26 | 30.26, 16.26, 18.99 |
-| Zbieznosc rozplywu mocy i regulacja zaczepow | mount | 18.39 | 19.07 | 21.27 | 21.27 | 21.27, 14.81, 19.07 |
+| Mini-SLD helper surface | mount | 21.44 | 21.92 | 23.26 | 23.26 | 19.15, 23.26, 21.92 |
+| Full SLD terrain pipeline + canvas | pipeline+mount | 304.26 | 281.61 | 374.52 | 374.52 | 281.61, 374.52, 256.65 |
+| Nakladka wynikowa na schemacie | mount | 7.70 | 6.90 | 9.58 | 9.58 | 6.90, 9.58, 6.61 |
+| Raporty i eksporty | mount | 15.62 | 15.50 | 16.65 | 16.65 | 14.71, 15.50, 16.65 |
+| Koordynacja zabezpieczen | mount | 18.44 | 18.34 | 18.82 | 18.82 | 18.34, 18.82, 18.15 |
+| Skladowe symetryczne i siec zerowa | mount | 17.41 | 17.73 | 22.80 | 22.80 | 11.72, 17.73, 22.80 |
+| Wymagania przylaczeniowe i kodeks sieciowy | mount | 31.47 | 32.06 | 32.90 | 32.90 | 32.06, 29.45, 32.90 |
+| Weryfikacja cieplna i dynamiczna toru pradowego | mount | 30.97 | 23.98 | 46.16 | 46.16 | 23.98, 22.76, 46.16 |
+| Zbieznosc rozplywu mocy i regulacja zaczepow | mount | 27.05 | 29.41 | 30.04 | 30.04 | 30.04, 29.41, 21.68 |
