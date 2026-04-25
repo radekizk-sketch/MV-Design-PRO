@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { useAppStateStore } from '../ui/app-state/store';
 import { useReadinessLiveStore } from '../ui/engineering-readiness/readinessLiveStore';
+import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../ui/study-cases/runStore';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 
@@ -101,6 +102,7 @@ describe('App hash routes', () => {
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
+    useNetworkBuildStore.getState().reset();
   });
 
   it('renderuje cala aplikacje w ekranowym motywie dark SCADA', async () => {
@@ -296,7 +298,7 @@ describe('App hash routes', () => {
     expect(await screen.findByText('Nieznana trasa interfejsu')).toBeInTheDocument();
   });
 
-  it.each(['#case-manager', '#network-build', '#switchgear'])(
+  it.each(['#case-manager', '#network-build'])(
     'odrzuca legacy public route %s i pokazuje blad kanoniczny',
     async (legacyRoute) => {
       window.location.hash = legacyRoute;
@@ -307,4 +309,17 @@ describe('App hash routes', () => {
       expect(screen.getByText(new RegExp(legacyRoute.replace('#', '\\#')))).toBeInTheDocument();
     },
   );
+
+  it('otwiera kreator rozdzielnicy na trasie kanonicznej #switchgear', async () => {
+    window.location.hash = '#switchgear';
+
+    render(<App />);
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.screenCode).toBe('switchgear_wizard');
+      expect(activeSurface?.routeState.route).toBe('switchgear');
+      expect(activeSurface?.openMode).toBe('expand_workspace');
+    });
+  });
 });

@@ -13,6 +13,7 @@ import { ResultsInspectorPage } from '../results-inspector';
 import { useSelectionStore } from '../selection';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
+import { SwitchgearWizardPage } from '../wizard/switchgear/SwitchgearWizardPage';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -1217,6 +1218,8 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <CatalogHelperSurface surface={surface} />;
     case 'case_context':
       return <CaseContextSurface surface={surface} />;
+    case 'switchgear_wizard':
+      return <SwitchgearWizardPage />;
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:

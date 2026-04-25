@@ -51,6 +51,7 @@ import {
   navigateToReport,
   navigateToResults,
   navigateToResultsProtection,
+  navigateToSwitchgear,
   navigateToVariants,
   resolveAnalysisRouteAliasTab,
   useUrlSelectionSync,
@@ -230,6 +231,13 @@ function App() {
       });
       return;
     }
+    if (route === ROUTES.SWITCHGEAR.hash) {
+      openRouteSurface('switchgear_wizard', {
+        subjectKind: 'helper_context',
+        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'switchgear-context',
+      });
+      return;
+    }
     clearRouteManagedSurface();
   }, [clearRouteManagedSurface, hashVersion, openRouteSurface, route, setActiveRun, setExecutionActiveRun]);
 
@@ -300,6 +308,8 @@ function App() {
         navigateToNetworkBuild();
         break;
       case 'switchgear':
+        navigateToSwitchgear({ caseId: activeCaseId });
+        break;
       case 'power-distribution':
         navigateToNetworkBuild();
         break;
@@ -358,6 +368,7 @@ function App() {
     navigateToProof,
     navigateToReport,
     navigateToResultsProtection,
+    navigateToSwitchgear,
     navigateToVariants,
   ]);
 

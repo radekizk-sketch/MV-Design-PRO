@@ -39,7 +39,8 @@ export type HelperSurfaceCode =
   | 'variants_runs'
   | 'catalog_picker'
   | 'catalog_admin'
-  | 'case_context';
+  | 'case_context'
+  | 'switchgear_wizard';
 
 export type WorkspaceSurfaceCode = WorkspaceScreenCode | HelperSurfaceCode;
 
@@ -115,6 +116,7 @@ export const ROUTE_MANAGED_ROUTE_KEYS = [
   'variants',
   'catalog',
   'case-config',
+  'switchgear',
 ] as const;
 
 export type RouteManagedRouteKey = (typeof ROUTE_MANAGED_ROUTE_KEYS)[number];
@@ -551,6 +553,7 @@ export const HELPER_SURFACE_CODES: HelperSurfaceCode[] = [
   'catalog_picker',
   'catalog_admin',
   'case_context',
+  'switchgear_wizard',
 ];
 
 const ROUTE_MANAGED_SCREEN_CODES = new Set<WorkspaceSurfaceCode>([
@@ -639,6 +642,15 @@ export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDef
     titlePl: 'Parametry analizy',
     componentRef: 'CaseContextHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
+    mayWriteModel: false,
+    mayOwnResults: false,
+    mayOwnReportState: false,
+  },
+  switchgear_wizard: {
+    helperCode: 'switchgear_wizard',
+    titlePl: 'Rozdzielnica: pola i aparaty',
+    componentRef: 'SwitchgearWizardHelperSurface',
+    allowedCapabilities: ['read_context', 'open_canonical_surface'],
     mayWriteModel: false,
     mayOwnResults: false,
     mayOwnReportState: false,

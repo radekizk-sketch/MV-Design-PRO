@@ -138,6 +138,8 @@ function inferRouteKey(target: WorkspaceSurfaceCode): WorkspaceRouteKey {
         return 'catalog';
       case 'case_context':
         return 'case-config';
+      case 'switchgear_wizard':
+        return 'switchgear';
     }
   }
 
@@ -187,6 +189,13 @@ function helperSurfaceDefaults(helperCode: HelperSurfaceCode): {
         openMode: 'replace_right_panel',
         supportsMiniSld: false,
         route: 'case-config',
+      };
+    case 'switchgear_wizard':
+      return {
+        sizeClass: 'C',
+        openMode: 'expand_workspace',
+        supportsMiniSld: true,
+        route: 'switchgear',
       };
   }
 }
