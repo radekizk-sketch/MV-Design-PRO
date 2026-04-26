@@ -41,6 +41,7 @@ import { useAppStateStore } from '../app-state/store';
 import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
+import { AreaContextPanel } from './context-panels';
 
 export interface AppShellV12Props {
   children: ReactNode;
@@ -80,8 +81,19 @@ function IconClipboard({ className }: { className?: string }) {
   );
 }
 
-/** Minimalny placeholder panelu kontekstu obszaru. */
-function ContextPanel({ areaCode, collapsed }: { areaCode: string; collapsed: boolean }) {
+/**
+ * Wrapper panelu kontekstu obszaru — routing 7 obszarów (MO/AN/ZA/OZ/RA/AD/HI).
+ *
+ * Reuse istniejących komponentów (ProcessPanel, StudyCaseList, ProtectionLibraryBrowser,
+ * TypeLibraryBrowser, RunHistoryPanel) — bez duplikacji logiki.
+ */
+function ContextPanelShell({
+  areaCode,
+  collapsed,
+}: {
+  areaCode: import('../app-state/store').AreaCode;
+  collapsed: boolean;
+}) {
   if (collapsed) return null;
   return (
     <aside
@@ -90,17 +102,7 @@ function ContextPanel({ areaCode, collapsed }: { areaCode: string; collapsed: bo
       className="flex w-80 shrink-0 flex-col border-r border-scada-border bg-scada-panel"
       style={{ minWidth: 280, maxWidth: 520 }}
     >
-      <div className="border-b border-scada-border px-3 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Panel kontekstu — {areaCode}
-        </span>
-      </div>
-      <div className="flex-1 overflow-auto p-3">
-        <p className="text-[11px] text-scada-muted">
-          Obszar <strong className="text-scada-text">{areaCode}</strong> — panel kontekstowy
-          wdrażany w Etapie 2 (drzewo modelu / analizy / zabezpieczenia / profile / raporty).
-        </p>
-      </div>
+      <AreaContextPanel areaCode={areaCode} />
     </aside>
   );
 }
@@ -220,7 +222,7 @@ export function AppShellV12({
 
         {/* ContextPanel (320px, zwijany) */}
         {!mainSurfaceExpanded && (
-          <ContextPanel areaCode={activeArea} collapsed={contextCollapsed} />
+          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} />
         )}
 
         {/* Kanwas SLD — elastyczny */}
