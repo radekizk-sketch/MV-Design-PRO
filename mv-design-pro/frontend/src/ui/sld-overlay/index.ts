@@ -55,3 +55,11 @@ export type { OverlayRuntimeResult } from './useOverlayRuntime';
 
 // Components
 export { OverlayLegend } from './OverlayLegend';
+
+// Adapters
+export { adaptZeroSequenceToOverlay } from './ZeroSequenceOverlayAdapter';
+export type {
+  ZeroSequenceElementResult,
+  ZeroSequenceResultV1,
+  ZeroSequenceSeverity,
+} from './ZeroSequenceOverlayAdapter';
