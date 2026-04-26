@@ -173,7 +173,7 @@ describe('SldAnalysisLauncher', () => {
     expect(resolveAnalysisLauncherBlockMessage(null)).toBeNull();
   });
 
-  it('blokuje szybkie i pełne obliczenie, gdy w stanie modelu brakuje źródła', async () => {
+  it('blokuje szybkie i pełne uruchomienie, gdy w migawce brakuje źródła', async () => {
     const user = userEvent.setup();
     useSnapshotStore.setState({
       snapshot: {
@@ -195,7 +195,7 @@ describe('SldAnalysisLauncher', () => {
       <SldAnalysisLauncher
         isOpen
         caseId="case-1"
-        caseName="Wariant 1"
+        caseName="Przypadek 1"
         projectName="Projekt 1"
         onClose={vi.fn()}
       />,
@@ -204,12 +204,12 @@ describe('SldAnalysisLauncher', () => {
     expect(screen.getByTestId('analysis-launcher-blocked')).toBeInTheDocument();
     expect(screen.getByText('Brak źródła zasilania')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Wykonaj szybkie obliczenie' }),
+      screen.getByRole('button', { name: 'Uruchom szybkie obliczenie' }),
     ).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: 'Pełna analiza' }));
 
-    expect(screen.getByRole('button', { name: 'Wykonaj pełną analizę' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Uruchom pełną analizę' })).toBeDisabled();
     expect(analysisEligibilityState.load).not.toHaveBeenCalled();
   });
 
@@ -218,7 +218,7 @@ describe('SldAnalysisLauncher', () => {
       <SldAnalysisLauncher
         isOpen
         caseId="case-1"
-        caseName="Wariant 1"
+        caseName="Przypadek 1"
         projectName="Projekt 1"
         onClose={vi.fn()}
       />,
@@ -258,7 +258,7 @@ describe('SldAnalysisLauncher', () => {
       <SldAnalysisLauncher
         isOpen
         caseId="case-1"
-        caseName="Wariant 1"
+        caseName="Przypadek 1"
         projectName="Projekt 1"
         onClose={vi.fn()}
       />,
@@ -271,7 +271,7 @@ describe('SldAnalysisLauncher', () => {
     expect(screen.getByTestId('analysis-launcher-blocked')).toBeInTheDocument();
   });
 
-  it('odblokowuje szybkie obliczenie, gdy stan modelu ma źródło i topologię', () => {
+  it('odblokowuje szybkie uruchomienie, gdy migawka ma źródło i topologię', () => {
     useSnapshotStore.setState({
       snapshot: {
         sources: [{ ref_id: 'source-1', name: 'GPZ 1' }],
@@ -292,7 +292,7 @@ describe('SldAnalysisLauncher', () => {
       <SldAnalysisLauncher
         isOpen
         caseId="case-1"
-        caseName="Wariant 1"
+        caseName="Przypadek 1"
         projectName="Projekt 1"
         onClose={vi.fn()}
       />,
@@ -300,7 +300,7 @@ describe('SldAnalysisLauncher', () => {
 
     expect(screen.queryByTestId('analysis-launcher-blocked')).toBeNull();
     expect(
-      screen.getByRole('button', { name: 'Wykonaj szybkie obliczenie' }),
+      screen.getByRole('button', { name: 'Uruchom szybkie obliczenie' }),
     ).toBeEnabled();
   });
 });

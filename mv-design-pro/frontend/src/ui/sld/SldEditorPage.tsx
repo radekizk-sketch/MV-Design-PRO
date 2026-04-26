@@ -1,13 +1,13 @@
 ﻿/**
- * SLD Editor Page - Canonical/CANONICAL Style Main Editor View
+ * SLD Editor Page â€” Canonical/CANONICAL Style Main Editor View
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md: Layout narzędziowy ZAWSZE renderowany
- * - wizard_screens.md section 2.1: Główna struktura okna
- * - sld_rules.md: SLD <-> selection synchronization
+ * - ui_canonical_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
+ * - wizard_screens.md Â§ 2.1: GĹ‚Ăłwna struktura okna
+ * - sld_rules.md: SLD â†” selection synchronization
  *
  * CANONICAL RULE:
- * > Layout narzędziowy ZAWSZE jest renderowany.
+ * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * FEATURES:
@@ -54,7 +54,7 @@ import { buildCatalogBinding } from '../catalog/catalogBinding';
 import { NAMESPACE_TO_PICKER_CATEGORY } from '../catalog/elementCatalogRegistry';
 import type { CatalogNamespace, TypeCategory } from '../catalog/types';
 import { checkCatalogGate } from '../context-menu/catalogGate';
-import { navigateToConditions } from '../navigation/routes';
+import { navigateToVariants } from '../navigation/routes';
 import {
   readExplicitCatalogNamespace,
   readExplicitCatalogVersion,
@@ -75,7 +75,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'bus_main',
     elementId: 'bus_main',
     elementType: 'Bus',
-    elementName: 'Szyna główna SN',
+    elementName: 'Szyna gĹ‚Ăłwna SN',
     position: { x: 400, y: 200 },
     inService: true,
     width: 100,
@@ -95,7 +95,7 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
     id: 'source_grid',
     elementId: 'source_grid',
     elementType: 'Source',
-    elementName: 'Sie? zasilaj?ca',
+    elementName: 'SieÄ‡ zasilajÄ…ca',
     position: { x: 400, y: 40 },
     inService: true,
     connectedToNodeId: 'bus_main',
@@ -461,7 +461,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const clearSelection = useSelectionStore((state) => state.clearSelection);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
 
-  // Readiness live store - real data from API
+  // Readiness live store â€” real data from API
   const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const readinessStatus = useReadinessLiveStore((state) => state.status);
   const readinessLoading = useReadinessLiveStore((state) => state.loading);
@@ -469,10 +469,13 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const readinessToggleGroup = useReadinessLiveStore((state) => state.toggleGroup);
   const readinessRefresh = useReadinessLiveStore((state) => state.refresh);
 
-  // Study cases - for hasCases wiring
+  // Study cases â€” for hasCases wiring
   const studyCasesCount = useStudyCasesStore((state) => state.cases.length);
 
   const [isCreatingFirstCase, setIsCreatingFirstCase] = useState(false);
+  const [isFirstVariantDialogOpen, setIsFirstVariantDialogOpen] = useState(false);
+  const [firstVariantProjectName, setFirstVariantProjectName] = useState('Projekt 1');
+  const [firstVariantName, setFirstVariantName] = useState('Wariant 1');
   const [activeTool, setActiveTool] = useState<CreatorTool>('select');
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
   const [hoveredElementName, setHoveredElementName] = useState<string | null>(null);
@@ -753,21 +756,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           value={projectTreeQuery}
           onChange={(event) => setProjectTreeQuery(event.target.value)}
           placeholder="Filtruj elementy..."
-          className="w-full rounded-[12px] border border-[#294153] bg-[#091721] px-3 py-2 text-sm text-slate-100 outline-none transition placeholder:text-[#5f778b] focus:border-cyan-400/35 focus:ring-2 focus:ring-cyan-500/10"
+          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
         />
         <div
           data-testid="project-tree"
           data-empty={filteredProjectTreeNodes.length === 0}
-          className="max-h-[320px] space-y-3 overflow-y-auto rounded-[14px] border border-[#22384a] bg-[#08141d] p-2"
+          className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2"
         >
           {filteredProjectTreeNodes.length === 0 ? (
-            <div className="rounded-[12px] border border-dashed border-[#294153] bg-[#091721] px-3 py-4 text-xs text-[#8ea6ba]">
+            <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-xs text-slate-500">
               Brak elementow pasujacych do filtra.
             </div>
           ) : (
             Object.entries(groupedNodes).map(([group, nodes]) => (
               <div key={group} className="space-y-1">
-                <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#6f8ca4]">
+                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   {group}
                 </div>
                 {nodes.map((node) => {
@@ -782,17 +785,17 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                         centerSldOnElement(node.id);
                         setInteractionMessage(`Wybrano element z drzewa modelu: ${node.label}.`);
                       }}
-                      className={`flex w-full items-start justify-between gap-3 rounded-[12px] border px-3 py-2 text-left transition ${
+                      className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${
                         isActive
-                          ? 'border-cyan-400/35 bg-cyan-500/14 text-cyan-50'
-                          : 'border-[#274154] bg-[#0d1c29] text-slate-100 hover:bg-[#112433]'
+                          ? 'border-blue-300 bg-blue-50 text-blue-900'
+                          : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-100'
                       }`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{node.label}</span>
-                        <span className="block truncate text-[11px] text-[#8ea6ba]">{node.subtitle}</span>
+                        <span className="block truncate text-[11px] text-slate-500">{node.subtitle}</span>
                       </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-[#6f8ca4]">
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
                         {node.type}
                       </span>
                     </button>
@@ -863,12 +866,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       onOpenCaseHelper();
       return;
     }
-    navigateToConditions();
+    navigateToVariants();
   }, [onOpenCaseHelper]);
 
   const openExecutionSurface = useCallback(() => {
     openCaseContextSurface();
-    notify('Otwarto warunki obliczen — wybierz zakres i wykonaj obliczenia.', 'info');
+    notify('Otwarto menedzer przypadkow — wybierz przypadek i uruchom obliczenia.', 'info');
   }, [openCaseContextSurface]);
 
   const dockContextItems = useMemo(
@@ -878,7 +881,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeProjectName ?? activeProjectId ?? 'Nie wybrano',
       },
       {
-        label: 'Zakres obliczen',
+        label: 'Przypadek',
         value: activeCaseName ?? activeCaseId ?? 'Nie wybrano',
         tone: hasActiveCase ? ('default' as const) : ('warn' as const),
       },
@@ -887,11 +890,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeVariant?.name ?? 'Brak',
       },
       {
-        label: 'Wersja modelu',
+        label: 'Migawka modelu',
         value: activeSnapshotId ?? 'Brak',
       },
       {
-        label: 'Wyniki',
+        label: 'Uruchomienie',
         value: activeRunId ?? 'Brak',
       },
       {
@@ -900,7 +903,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         tone:
           resultStatusLabel === 'Wyniki aktualne'
             ? ('ok' as const)
-            : resultStatusLabel === 'Brak wynik?w'
+            : resultStatusLabel === 'Brak wynikow'
               ? ('warn' as const)
               : ('danger' as const),
       },
@@ -934,7 +937,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockActionGroups = useMemo(() => {
     const toolDisabledReason = (toolId: Exclude<CreatorTool, null>): string | null => {
       if (!activeCaseId) {
-        return 'Najpierw wybierz aktywny zakres obliczen.';
+        return 'Najpierw wybierz aktywny przypadek obliczeniowy.';
       }
       if (toolId !== 'add_grid_source_sn' && !hasSource) {
         return 'Najpierw dodaj zrodlo zasilania GPZ.';
@@ -1010,10 +1013,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockNextStep = useMemo(() => {
     if (!hasActiveCase) {
       return {
-        title: 'Aktywuj zakres obliczen',
+        title: 'Aktywuj wariant pracy',
         description:
-          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym zakresem obliczen.',
-        actionLabel: 'Otworz warunki obliczen',
+          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym wariantem pracy.',
+        actionLabel: 'Otworz parametry analizy',
         onAction: openCaseContextSurface,
       };
     }
@@ -1045,10 +1048,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
     if (enmReadiness?.ready && modelSummary.branches > 0) {
       return {
-        title: 'Wykonaj analize dla aktywnego zakresu',
+        title: 'Uruchom analize dla aktywnego przypadku',
         description:
-          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do zakresow obliczen i wynikow.',
-        actionLabel: 'Otworz zakresy obliczen i wyniki',
+          'Model ma juz wymagany kontekst i gotowosc obliczeniowa. Przejdz do wariantow i uruchomien.',
+        actionLabel: 'Otworz warianty i uruchomienia',
         onAction: openExecutionSurface,
       };
     }
@@ -1107,49 +1110,78 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     openCaseContextSurface();
   }, [openCaseContextSurface]);
 
-  const handleCreateFirstCase = useCallback(async () => {
+  const handleCreateFirstCase = useCallback(() => {
     if (isCreatingFirstCase) {
       return;
     }
+    setFirstVariantProjectName(activeProjectName?.trim() || 'Projekt 1');
+    setFirstVariantName('Wariant 1');
+    setIsFirstVariantDialogOpen(true);
+  }, [activeProjectName, isCreatingFirstCase]);
+
+  const handleCloseFirstVariantDialog = useCallback(() => {
+    if (isCreatingFirstCase) {
+      return;
+    }
+    setIsFirstVariantDialogOpen(false);
+  }, [isCreatingFirstCase]);
+
+  const handleSubmitFirstVariant = useCallback(async () => {
+    if (isCreatingFirstCase) {
+      return;
+    }
+
+    const normalizedProjectName = firstVariantProjectName.trim() || 'Projekt 1';
+    const normalizedVariantName = firstVariantName.trim() || 'Wariant 1';
 
     setIsCreatingFirstCase(true);
     try {
       let projectId = activeProjectId;
       if (!projectId) {
-        const project = await withTimeout(createProject({ name: 'Projekt 1' }));
+        const project = await withTimeout(createProject({ name: normalizedProjectName }));
         projectId = project.id;
         setActiveProject(project.id, project.name);
       }
 
       if (!projectId) {
-        notify('Nie mo?na utworzy? zakresu oblicze?: brak aktywnego projektu. Otw?rz projekt i utw?rz zakres oblicze?.', 'warning');
+        notify('Nie mozna skonfigurowac wariantu: brak aktywnego projektu.', 'warning');
         return;
       }
 
       const createdCase = await withTimeout(
         createCase({
           project_id: projectId,
-          name: 'Zakres 1',
-          description: '',
+          name: normalizedVariantName,
+          description: 'Pierwszy wariant przygotowany bezposrednio ze schematu jednokreskowego.',
           set_active: true,
-        })
+        }),
       );
 
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
-      notify(`Utworzono i aktywowano zakres obliczen: ${createdCase.name}.`, 'success');
+      setIsFirstVariantDialogOpen(false);
+      notify(`Skonfigurowano aktywny wariant pracy: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany b??d';
+      const message = error instanceof Error ? error.message : 'Nieznany blad';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia zakresu oblicze? (limit 15 s). Sprawd? po??czenie i spr?buj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas przygotowania wariantu pracy. Sprobuj ponownie.', 'warning');
         return;
       }
-      notify(`Nie uda?o si? utworzy? zakresu oblicze?. Szczeg??y techniczne: ${message}`, 'error');
+      notify(`Nie udalo sie przygotowac pierwszego wariantu pracy. Szczegoly techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
-  }, [isCreatingFirstCase, activeProjectId, withTimeout, setActiveProject, createCase, setActiveCase]);
+  }, [
+    activeProjectId,
+    createCase,
+    firstVariantName,
+    firstVariantProjectName,
+    isCreatingFirstCase,
+    setActiveCase,
+    setActiveProject,
+    withTimeout,
+  ]);
 
-  // BLOK 8: Uruchom obliczenia - otwiera menedżer przypadków z widokiem obliczeniowym
+  // BLOK 8: Uruchom obliczenia â€” otwiera menedĹĽer przypadkĂłw z widokiem obliczeniowym
   const handleCalculate = useCallback(() => {
     openExecutionSurface();
   }, [openExecutionSurface]);
@@ -1226,7 +1258,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     ]);
 
     if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'Narz?dzie chwilowo niedost?pne.';
+      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
@@ -1238,14 +1270,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           id: target.id,
           label: target.name ?? target.id,
         });
-        const msg = 'Wybierz drugi port ringu, aby otworzy? formularz domkni?cia pier?cienia.';
+        const msg = 'Wybierz drugi port ringu, aby otworzyÄ‡ formularz domkniÄ™cia pierĹ›cienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
       }
 
       if (pendingRingTerminal.id === target.id) {
-        const msg = 'Wska? drugi, r??ny port ringu.';
+        const msg = 'WskaĹĽ drugi, rĂłĹĽny port ringu.';
         setInteractionMessage(msg);
         notify(msg, 'warning');
         return;
@@ -1264,11 +1296,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         openToolCatalogPicker(
           'connect_secondary_ring_sn',
           ringPayload,
-          `${pendingRingTerminal.label} ? ${target.name ?? target.id}`,
+          `${pendingRingTerminal.label} â†’ ${target.name ?? target.id}`,
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domknięcia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domkniÄ™cia ringu.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1276,7 +1308,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
       openOperationForm('connect_secondary_ring_sn', ringPayload);
       setPendingRingTerminal(null);
-      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portów ${pendingRingTerminal.label} i ${target.name}.`;
+      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portĂłw ${pendingRingTerminal.label} i ${target.name}.`;
       setInteractionMessage(msg);
       notify(msg, 'success');
       setActiveTool('select');
@@ -1335,7 +1367,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       notify(msg, 'success');
       setActiveTool('select');
     } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiod?a si?.`;
+      const err = `Operacja ${resolved.canonicalOp} nie powiodĹ‚a siÄ™.`;
       setInteractionMessage(err);
       notify(err, 'error');
     }
@@ -1383,7 +1415,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   return (
     <div
       data-testid="sld-editor-page"
-      className="flex h-full w-full overflow-hidden rounded-[20px] border border-[#173041] bg-[linear-gradient(180deg,#030b11_0%,#06111a_100%)] shadow-[0_24px_60px_rgba(2,8,23,0.44),inset_0_1px_0_rgba(148,163,184,0.06)]"
+      className="flex h-full w-full overflow-hidden rounded-xl bg-white"
     >
       <SldWorkDock
         contextItems={dockContextItems}
@@ -1414,7 +1446,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       />
 
       {/* SLD View (main area) - ALWAYS rendered */}
-      <div className="relative flex-1 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_top,rgba(14,116,144,0.12),transparent_28%),linear-gradient(180deg,#06111a_0%,#08131d_100%)]">
+      <div className="relative flex-1 min-w-0 overflow-hidden bg-slate-100">
         <SLDView
           symbols={symbols}
           connections={enmProjection.connections}
@@ -1429,12 +1461,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_grid_source_sn') {
               void runResolvedAction(
                 'add_grid_source_sn',
-                { id: 'canvas', type: 'Bus', name: 'p??tna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('Klikni?to t?o p??tna.');
+            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -1504,7 +1536,78 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           />
         )}
 
-        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar - bottom-right corner */}
+        {isFirstVariantDialogOpen && (
+          <div
+            className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(2,8,23,0.74)] px-4"
+            data-testid="first-variant-quickstart"
+          >
+            <div className="w-full max-w-xl rounded-[18px] border border-[#1d3446] bg-[#091622] shadow-[0_24px_64px_rgba(2,8,23,0.58)]">
+              <div className="border-b border-[#173042] px-6 py-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7dd3fc]">
+                  Start projektu
+                </div>
+                <h3 className="mt-2 text-xl font-semibold text-[#e6edf5]">
+                  Skonfiguruj pierwszy wariant pracy
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[#94a7b8]">
+                  Ten przebieg tworzy jawny punkt startowy: projekt, aktywny wariant pracy i kontekst do dalszego modelowania na schemacie.
+                </p>
+              </div>
+
+              <div className="grid gap-5 px-6 py-5">
+                {!activeProjectId && (
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium text-[#d5e0ea]">Nazwa projektu</span>
+                    <input
+                      data-testid="first-variant-project-name"
+                      value={firstVariantProjectName}
+                      onChange={(event) => setFirstVariantProjectName(event.target.value)}
+                      className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
+                      placeholder="Projekt 1"
+                    />
+                  </label>
+                )}
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-medium text-[#d5e0ea]">Nazwa wariantu pracy</span>
+                  <input
+                    data-testid="first-variant-name"
+                    value={firstVariantName}
+                    onChange={(event) => setFirstVariantName(event.target.value)}
+                    className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
+                    placeholder="Wariant 1"
+                  />
+                </label>
+
+                <div className="rounded-[14px] border border-[#163245] bg-[#08131d] px-4 py-3 text-sm text-[#9fb0bf]">
+                  Po zapisaniu system aktywuje wariant, odswiezy pasek kontekstu i zdejmie blokade pustego schematu.
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-[#173042] px-6 py-4">
+                <button
+                  type="button"
+                  onClick={handleCloseFirstVariantDialog}
+                  disabled={isCreatingFirstCase}
+                  className="rounded-[12px] border border-[#294153] bg-[#0b1823] px-4 py-2 text-sm font-medium text-[#c7d4df] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Anuluj
+                </button>
+                <button
+                  type="button"
+                  data-testid="first-variant-submit"
+                  onClick={handleSubmitFirstVariant}
+                  disabled={isCreatingFirstCase || firstVariantName.trim().length === 0 || (!activeProjectId && firstVariantProjectName.trim().length === 0)}
+                  className="rounded-[12px] border border-[#0ea5e9] bg-[#0ea5e9]/16 px-4 py-2 text-sm font-semibold text-[#e0f2fe] disabled:cursor-not-allowed disabled:border-[#294153] disabled:bg-[#10202d] disabled:text-[#6e8192]"
+                >
+                  {isCreatingFirstCase ? 'Zapisywanie...' : 'Aktywuj wariant'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
         <div
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
           data-testid="sld-bottom-right-toolbars"
@@ -1597,7 +1700,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie uda?o si? przypisa? typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

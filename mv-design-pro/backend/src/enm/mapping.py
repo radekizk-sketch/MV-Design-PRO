@@ -10,7 +10,8 @@ Rules:
 6. SwitchBranch(status=open) → excluded from topology (Switch with state OPEN).
 7. FuseBranch → LineBranch with near-zero impedance.
 8. Load/Generator → adjustments on node P/Q.
-9. Zero-sequence fields (r0, x0, grounding) are ignored by current solvers.
+9. Zero-sequence fields are mapped only by the explicit Z0 helper; they do not
+   change the positive-sequence graph used by 3F calculations.
 """
 
 from __future__ import annotations
@@ -18,10 +19,12 @@ from __future__ import annotations
 import math
 import uuid
 
+import numpy as np
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
+from network_model.core.ybus import AdmittanceMatrixBuilder
 
 from .models import (
     Cable,
@@ -35,6 +38,121 @@ from .models import (
 def _ref_to_uuid(ref_id: str) -> str:
     """Deterministic UUID-like string from ref_id (for mapping stability)."""
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, ref_id))
+
+
+def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+    if source.r_ohm is not None and source.x_ohm is not None:
+        return complex(source.r_ohm, source.x_ohm)
+    if source.sk3_mva is None or source.sk3_mva <= 0:
+        return None
+    z_abs = (bus_voltage_kv**2) / source.sk3_mva
+    rx = source.rx_ratio if source.rx_ratio and source.rx_ratio > 0 else 0.1
+    x_ohm = z_abs / math.sqrt(1.0 + rx**2)
+    r_ohm = x_ohm * rx
+    return complex(r_ohm, x_ohm)
+
+
+def _source_zero_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+    if source.r0_ohm is not None and source.x0_ohm is not None:
+        return complex(source.r0_ohm, source.x0_ohm)
+    if source.z0_z1_ratio is None or source.z0_z1_ratio <= 0:
+        return None
+    z1 = _source_positive_impedance_ohm(source, bus_voltage_kv)
+    if z1 is None:
+        return None
+    return z1 * source.z0_z1_ratio
+
+
+def _add_series_admittance(
+    y_bus: np.ndarray,
+    *,
+    from_idx: int,
+    to_idx: int,
+    z_ohm: complex,
+    z_base_ohm: float,
+) -> None:
+    if from_idx == to_idx:
+        return
+    if z_ohm == 0:
+        raise ZeroDivisionError("Cannot compute zero-sequence admittance: impedance is zero")
+    z_pu = z_ohm / z_base_ohm
+    y_series_pu = 1.0 / z_pu
+    y_bus[from_idx, to_idx] -= y_series_pu
+    y_bus[to_idx, from_idx] -= y_series_pu
+    y_bus[from_idx, from_idx] += y_series_pu
+    y_bus[to_idx, to_idx] += y_series_pu
+
+
+def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
+    """
+    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+
+    The returned matrix uses the same merged node order as
+    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
+    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
+    """
+    builder = AdmittanceMatrixBuilder(graph)
+    builder.build()
+    node_index = builder.node_id_to_index
+    size = len(set(node_index.values()))
+    y0_bus = np.zeros((size, size), dtype=complex)
+
+    ref_to_node_id = {bus.ref_id: _ref_to_uuid(bus.ref_id) for bus in enm.buses}
+    bus_voltage = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
+
+    for branch in sorted(enm.branches, key=lambda b: b.ref_id):
+        if not isinstance(branch, OverheadLine | Cable):
+            continue
+        if branch.status != "closed":
+            continue
+        if branch.r0_ohm_per_km is None or branch.x0_ohm_per_km is None:
+            continue
+
+        from_id = ref_to_node_id.get(branch.from_bus_ref)
+        to_id = ref_to_node_id.get(branch.to_bus_ref)
+        if from_id not in node_index or to_id not in node_index:
+            continue
+        from_idx = node_index[from_id]
+        to_idx = node_index[to_id]
+        z0_ohm = complex(branch.r0_ohm_per_km, branch.x0_ohm_per_km) * branch.length_km
+        z_base_ohm = builder.get_zbase_ohm(from_id)
+        _add_series_admittance(
+            y0_bus,
+            from_idx=from_idx,
+            to_idx=to_idx,
+            z_ohm=z0_ohm,
+            z_base_ohm=z_base_ohm,
+        )
+
+    for source in sorted(enm.sources, key=lambda s: s.ref_id):
+        bus_id = ref_to_node_id.get(source.bus_ref)
+        if bus_id not in node_index:
+            continue
+        bus_voltage_kv = bus_voltage.get(source.bus_ref, 0.0)
+        if bus_voltage_kv <= 0:
+            continue
+        z0_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
+        if z0_ohm is None:
+            continue
+        if z0_ohm == 0:
+            raise ZeroDivisionError(
+                "Cannot compute source zero-sequence admittance: impedance is zero"
+            )
+        idx = node_index[bus_id]
+        y0_bus[idx, idx] += 1.0 / (z0_ohm / builder.get_zbase_ohm(bus_id))
+
+    # Source impedance mapping creates virtual ground nodes in the positive
+    # graph. They are not physical ENM buses, so ground them in Z0 to avoid an
+    # isolated row without changing the real bus impedances.
+    for node in graph.nodes.values():
+        idx = node_index.get(node.id)
+        if idx is not None and node.name.startswith("GND ("):
+            y0_bus[idx, idx] += complex(1e6, 0.0)
+
+    try:
+        return np.linalg.inv(y0_bus)
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
 
 
 def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:

@@ -41,7 +41,13 @@ def get_engine() -> ExecutionEngineService:
 
 
 class CreateRunRequest(BaseModel):
-    analysis_type: str = Field(..., description="Typ analizy: SC_3F, SC_1F, LOAD_FLOW")
+    analysis_type: str = Field(
+        ...,
+        description=(
+            "Typ analizy: SC_3F, SC_1F, SC_2F, SC_2F_G, LOAD_FLOW, "
+            "PHASE_STATE_SN, DYNAMIC_STABILITY, SOURCE_COMPLIANCE"
+        ),
+    )
     solver_input: dict[str, Any] = Field(default_factory=dict, description="Opcje solvera")
     readiness: dict[str, Any] | None = Field(None, description="Legacy - ignorowane")
     eligibility: dict[str, Any] | None = Field(None, description="Legacy - ignorowane")
@@ -101,7 +107,41 @@ def _parse_analysis_type(value: str) -> ExecutionAnalysisType:
 
 
 def _canonical_analysis_type(value: ExecutionAnalysisType) -> str:
-    return "PF" if value == ExecutionAnalysisType.LOAD_FLOW else "short_circuit_sn"
+    if value == ExecutionAnalysisType.LOAD_FLOW:
+        return "PF"
+    if value in {
+        ExecutionAnalysisType.SC_3F,
+        ExecutionAnalysisType.SC_1F,
+        ExecutionAnalysisType.SC_2F,
+        ExecutionAnalysisType.SC_2F_G,
+    }:
+        return "short_circuit_sn"
+    if value == ExecutionAnalysisType.PHASE_STATE_SN:
+        return "phase_state_sn"
+    if value == ExecutionAnalysisType.DYNAMIC_STABILITY:
+        return "dynamic_stability"
+    if value == ExecutionAnalysisType.SOURCE_COMPLIANCE:
+        return "source_compliance"
+    raise HTTPException(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        detail=f"Nieobslugiwany typ analizy: {value.value}",
+    )
+
+
+def _normalize_solver_input(
+    analysis_type: ExecutionAnalysisType,
+    solver_input: dict[str, Any] | None,
+) -> dict[str, Any]:
+    options = dict(solver_input or {})
+    if analysis_type == ExecutionAnalysisType.SC_3F:
+        options.setdefault("fault_type", "3F")
+    elif analysis_type == ExecutionAnalysisType.SC_1F:
+        options.setdefault("fault_type", "1F")
+    elif analysis_type == ExecutionAnalysisType.SC_2F:
+        options.setdefault("fault_type", "2F")
+    elif analysis_type == ExecutionAnalysisType.SC_2F_G:
+        options.setdefault("fault_type", "2F+Z")
+    return options
 
 
 def _resolve_project_id(case_id: str, request: Request) -> str | None:
@@ -110,9 +150,6 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
         return None
     parsed_case_id = _parse_uuid(case_id, "case_id")
     with uow_factory() as uow:
-        operating_case = uow.cases.get_operating_case(parsed_case_id)
-        if operating_case is not None:
-            return str(operating_case.project_id)
         study_case = uow.cases.get_study_case(parsed_case_id)
         if study_case is not None:
             return str(study_case.project_id)
@@ -133,7 +170,7 @@ def create_run(case_id: str, request: CreateRunRequest, http_request: Request) -
             case_id=case_id,
             project_id=_resolve_project_id(case_id, http_request),
             analysis_type=_canonical_analysis_type(analysis_type),
-            options=dict(request.solver_input or {}),
+            options=_normalize_solver_input(analysis_type, request.solver_input),
         )
         return run.to_execution_dict()
     except ValueError as exc:

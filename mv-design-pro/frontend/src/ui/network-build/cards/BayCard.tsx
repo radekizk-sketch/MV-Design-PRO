@@ -366,12 +366,12 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'source_3i0',
-          label: 'Źródło 3I0',
+          label: 'Zrodlo 3I0',
           value: measurementChain?.zero_sequence_current_source ?? null,
         },
         {
           key: 'source_3u0',
-          label: 'Źródło 3U0',
+          label: 'Zrodlo 3U0',
           value: measurementChain?.zero_sequence_voltage_source ?? null,
         },
       ],
@@ -465,10 +465,10 @@ export function BayCard({ elementId }: { elementId: string }) {
       id: 'results',
       label: 'Wyniki projektowe pola',
       fields: [
-        { key: 'run_ref', label: 'Ostatnie obliczenie', value: projectResults?.run_ref ?? null },
+        { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
         {
           key: 'result_state',
-          label: 'Stan wyników',
+          label: 'Stan wynikow',
           value: resultStateLabel(projectResults?.result_state),
           severity:
             projectResults?.result_state === 'bledny'
@@ -479,17 +479,17 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'result_message',
-          label: 'Opis wyników',
+          label: 'Opis wynikow',
           value: projectResults?.result_message_pl ?? null,
         },
         {
           key: 'sc_contributions',
-          label: 'Wkłady źródeł w zwarciu',
+          label: 'Wklady zrodel w zwarciu',
           value: projectResults?.source_contributions_sc.length ?? null,
         },
         {
           key: 'pf_contributions',
-          label: 'Wkłady źródeł w rozpływie',
+          label: 'Wklady zrodel w rozplywie',
           value: projectResults?.source_contributions_pf.length ?? null,
         },
         {
@@ -507,21 +507,21 @@ export function BayCard({ elementId }: { elementId: string }) {
 
     cardSections.push({
       id: 'proof',
-      label: 'Uzasadnienie inżynierskie pola',
+      label: 'Wywod pola',
       fields: [
         {
           key: 'proof_ref',
-          label: 'Identyfikator uzasadnienia',
+          label: 'Identyfikator wywodu',
           value: projectResults?.proof_binding.proof_ref ?? null,
         },
         {
           key: 'input_data_refs',
-          label: 'Powiązane dane wejściowe',
+          label: 'Powiazane dane wejsciowe',
           value: projectResults?.proof_binding.input_data_refs.length ?? null,
         },
         {
           key: 'source_contribution_refs',
-          label: 'Powiązane wkłady źródeł',
+          label: 'Powiazane wklady zrodel',
           value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
         },
       ],
@@ -680,7 +680,7 @@ export function BayCard({ elementId }: { elementId: string }) {
       },
       {
         id: 'field_source_contributions',
-        label: 'Wkłady źródeł',
+        label: 'Wklady zrodel',
         variant: 'secondary',
         onClick: handleOpenSourceContributions,
       },
@@ -692,13 +692,13 @@ export function BayCard({ elementId }: { elementId: string }) {
       },
       {
         id: 'field_work_safety',
-        label: 'Bezpieczeństwo do pracy',
+        label: 'Bezpieczenstwo do pracy',
         variant: 'secondary',
         onClick: handleOpenWorkSafety,
       },
       {
         id: 'field_compare',
-        label: 'Porównanie pól',
+        label: 'Porownaj pola',
         variant: 'secondary',
         onClick: handleOpenCompare,
       },

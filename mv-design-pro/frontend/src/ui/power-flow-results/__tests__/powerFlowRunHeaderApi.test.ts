@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+﻿import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchPowerFlowRunHeader } from '../api';
 
@@ -20,7 +20,7 @@ describe('power-flow-results run header API', () => {
         JSON.stringify({
           id: 'run-1',
           project_id: 'project-1',
-          operating_case_id: 'case-1',
+          study_case_id: 'case-1',
           status: 'DONE',
           result_status: 'VALID',
           created_at: '2026-04-20T12:00:00Z',
@@ -110,3 +110,4 @@ describe('power-flow-results run header API', () => {
     expect(runHeader.export_policy?.carries_generated_by_version).toBe(true);
   });
 });
+

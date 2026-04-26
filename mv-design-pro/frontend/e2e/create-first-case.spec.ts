@@ -65,7 +65,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
         body: JSON.stringify({
           id: 'case-001',
           project_id: 'proj-001',
-          name: 'Zakres 1',
+          name: 'Wariant 1',
           description: '',
           case_type: 'ShortCircuitCase',
           is_active: true,
@@ -86,7 +86,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
           caseCreated
             ? [{
                 id: 'case-001',
-                name: 'Zakres 1',
+                name: 'Wariant 1',
                 description: '',
                 case_type: 'ShortCircuitCase',
                 is_active: true,
@@ -107,7 +107,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
           ? JSON.stringify({
               id: 'case-001',
               project_id: 'proj-001',
-              name: 'Zakres 1',
+              name: 'Wariant 1',
               description: '',
               case_type: 'ShortCircuitCase',
               is_active: true,
@@ -129,7 +129,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
   });
 }
 
-test('tworzenie pierwszego przypadku jest deterministyczne i bez freeze', async ({ page }) => {
+test('konfiguracja pierwszego wariantu pracy jest deterministyczna i bez freeze', async ({ page }) => {
   const guards = installConsoleGuards(page);
   await mockCaseCreationApi(page);
 
@@ -138,18 +138,22 @@ test('tworzenie pierwszego przypadku jest deterministyczne i bez freeze', async 
   });
 
   await page.goto('/', { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached' });
 
   const createButton = page.getByTestId('sld-empty-overlay-create-case');
   await expect(createButton).toBeVisible();
   await createButton.click();
 
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres obliczeń');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Zakres 1');
+  await expect(page.getByTestId('first-variant-quickstart')).toBeVisible();
+  await page.getByTestId('first-variant-project-name').fill('Projekt 1');
+  await page.getByTestId('first-variant-name').fill('Wariant 1');
+  await page.getByTestId('first-variant-submit').click();
+
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Biezacy zestaw:');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wariant 1');
   await expect(createButton).toHaveCount(0);
 
   const uniqueWarnCount = guards.warningCounts.size;
-  expect(guards.pageErrors, `Błędy pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
-  expect(guards.errors, `Błędy console.error: ${guards.errors.join('\n')}`).toEqual([]);
-  expect(uniqueWarnCount, 'Liczba unikalnych ostrzeżeń przekroczyła budżet 5').toBeLessThanOrEqual(5);
+  expect(guards.pageErrors, `Bledy pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
+  expect(guards.errors, `Bledy console.error: ${guards.errors.join('\n')}`).toEqual([]);
+  expect(uniqueWarnCount, 'Liczba unikalnych ostrzezen przekroczyla budzet 5').toBeLessThanOrEqual(5);
 });

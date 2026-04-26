@@ -251,7 +251,7 @@ export interface Generator extends ENMElement {
   bus_ref: string;
   p_mw: number;
   q_mvar?: number | null;
-  gen_type?: 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'bess' | null;
+  gen_type?: 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'fw_pmsg' | 'fw_dfig' | 'fw_scig' | 'bess' | null;
   limits?: GenLimits | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
@@ -890,6 +890,108 @@ export interface ReadinessMatrix {
   analysis_readiness: AnalysisReadiness;
   topology_completeness: TopologyCompleteness;
   element_counts: ElementCounts;
+}
+
+// ---------------------------------------------------------------------------
+// ENM v2.0 Projection (z GET /enm/v2-projection)
+// ---------------------------------------------------------------------------
+
+export type V2ProjectionQuality = 'pelna' | 'czesciowa' | 'wymaga_decyzji';
+export type V2ReadinessStatus = 'gotowy' | 'wymaga_uzupelnienia' | 'zablokowany';
+
+export interface V2Header {
+  enm_version: '2.0';
+  projection_version: 'v12xx.m1.1';
+  source_enm_version: string;
+  name: string;
+  revision: number;
+  source_hash_sha256: string;
+}
+
+export interface V2ElementReference {
+  id: string;
+  ref_id: string;
+  name: string;
+  kind: string;
+  namespace: string;
+  catalog_ref: string | null;
+  catalog_namespace: string | null;
+  quality_status: V2ProjectionQuality;
+  readiness_status: V2ReadinessStatus;
+}
+
+export interface V2OperatingVariant {
+  ref_id: string;
+  name: string;
+  variant_type: 'uklad_normalny' | 'przelaczeniowy' | 'po_zakloceniu';
+  switching_snapshot_ref: string;
+  source: 'migracja_m1';
+}
+
+export interface V2SwitchingDeviceState {
+  device_ref: string;
+  state: 'closed' | 'open' | 'unknown';
+  device_type: string;
+}
+
+export interface V2SwitchingStateSnapshot {
+  ref_id: string;
+  name: string;
+  variant_ref: string;
+  source: 'enm_v1_status';
+  switch_states: V2SwitchingDeviceState[];
+}
+
+export interface V2ZeroSequenceConfig {
+  element_ref: string;
+  element_kind: 'branch' | 'source' | 'transformer' | 'bus';
+  r0: number | null;
+  x0: number | null;
+  b0: number | null;
+  grounding_type: string | null;
+  quality_status: V2ProjectionQuality;
+}
+
+export interface V2MigrationWarning {
+  code: string;
+  severity: 'informacja' | 'ostrzezenie' | 'blokada_migracji';
+  element_ref: string | null;
+  message_pl: string;
+}
+
+export interface V2ProjectionSummary {
+  buses: number;
+  branches: number;
+  transformers: number;
+  sources: number;
+  loads: number;
+  generators: number;
+  substations: number;
+  bays: number;
+  measurements: number;
+  protection_assignments: number;
+  branch_points: number;
+  switching_devices: number;
+  zero_sequence_configs: number;
+  warnings: number;
+}
+
+export interface EnergyNetworkModelV2Projection {
+  header: V2Header;
+  projection_hash_sha256: string;
+  element_refs: V2ElementReference[];
+  operating_variants: V2OperatingVariant[];
+  switching_state_snapshots: V2SwitchingStateSnapshot[];
+  zero_sequence_configs: V2ZeroSequenceConfig[];
+  operator_profiles: Record<string, unknown>[];
+  source_profiles: Record<string, unknown>[];
+  frt_profiles: Record<string, unknown>[];
+  q_u_profiles: Record<string, unknown>[];
+  cos_phi_p_profiles: Record<string, unknown>[];
+  load_profiles: Record<string, unknown>[];
+  automation_assets: Record<string, unknown>[];
+  migration_warnings: V2MigrationWarning[];
+  summary: V2ProjectionSummary;
 }
 
 // ---------------------------------------------------------------------------

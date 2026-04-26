@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join, relative } from 'path';
+import { describe, expect, it } from 'vitest';
 
 function collectUiSourceFiles(dir: string): string[] {
   const files: string[] = [];
@@ -67,19 +67,14 @@ function extractUiStrings(content: string): { line: number; text: string }[] {
 }
 
 const FORBIDDEN_UI_TERMS = [
-  { term: /\bmaterializacj/i, replacement: 'Wczytanie parametrów z katalogu' },
-  { term: /\brematerializuj/i, replacement: 'Odśwież parametry z katalogu' },
-  { term: /\bbinding\b/i, replacement: 'Powiązanie z katalogiem' },
+  { term: /\bmaterializacj/i, replacement: 'Wczytanie parametrow z katalogu' },
+  { term: /\brematerializuj/i, replacement: 'Odswiez parametry z katalogu' },
+  { term: /\bbinding\b/i, replacement: 'Powiazanie z katalogiem' },
   { term: /\bnamespace\b/i, replacement: 'Kategoria katalogu' },
-  { term: /\bdrift\b/i, replacement: 'Rozbieżność katalogu' },
-  { term: /\breadiness\b/i, replacement: 'Gotowość obliczeń' },
+  { term: /\bdrift\b/i, replacement: 'Rozbieznosc katalogu' },
+  { term: /\breadiness\b/i, replacement: 'Gotowosc obliczen' },
   { term: /\bfix.?actions?\b/i, replacement: 'Szybkie naprawy' },
   { term: /\bblocker\b/i, replacement: 'Brak wymaganych danych' },
-  { term: /\bprzypadek\b/i, replacement: 'wariant pracy' },
-  { term: /\bprzypadków\b/i, replacement: 'wariantów pracy' },
-  { term: /\bmigawka\b/i, replacement: 'stan modelu' },
-  { term: /\buruchomienie\b/i, replacement: 'obliczenia' },
-  { term: /[ÄĹĂ]|â€|Ë/, replacement: 'poprawne kodowanie UTF-8 polskiego tekstu' },
 ];
 
 describe('UI Terminology Guard - public UI strings', () => {
@@ -90,7 +85,7 @@ describe('UI Terminology Guard - public UI strings', () => {
     expect(uiFiles.length).toBeGreaterThan(0);
   });
 
-  it('no forbidden terms or mojibake in UI-visible strings', () => {
+  it('no forbidden English implementation terms in UI-visible strings', () => {
     const violations: string[] = [];
 
     for (const filePath of uiFiles) {

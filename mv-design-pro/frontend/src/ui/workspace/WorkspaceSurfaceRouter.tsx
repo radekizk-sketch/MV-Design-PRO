@@ -4,7 +4,7 @@ import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { ObjectCardRouter } from '../network-build/ObjectCardRouter';
-import { OperationFormRouter, supportsOperationForm } from '../network-build/OperationFormRouter';
+import { OperationFormRouter } from '../network-build/OperationFormRouter';
 import { ReadOnlyPanelRouter } from '../network-build/ReadOnlyPanelRouter';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { PowerFlowResultsInspectorPage } from '../power-flow-results';
@@ -13,17 +13,13 @@ import { ResultsInspectorPage } from '../results-inspector';
 import { useSelectionStore } from '../selection';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
+import { SwitchgearWizardPage } from '../wizard/switchgear/SwitchgearWizardPage';
 import {
   buildRecordRows,
   buildSummaryRows,
   buildTraceSummaryRows,
   formatCompletenessStatus,
   formatContractValue,
-  formatPublicApplicabilityScope,
-  formatPublicCaseKind,
-  formatPublicQualityGate,
-  formatTechnicalReference,
-  getAnalysisCaseSummaryRow,
   resolveSurfaceRunId,
   useAnalysisRunContract,
   type AnalysisRunContract,
@@ -46,13 +42,13 @@ function SurfaceBreadcrumbs({ surface }: { surface: WorkspaceSurfaceDescriptor }
   const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
 
   return (
-    <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+    <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
       {surface.breadcrumbs.map((crumb, index) => (
         <div key={`${crumb.labelPl}-${index}`} className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => collapseSurfaceStackTo(crumb.surfaceId)}
-            className="rounded px-1.5 py-0.5 hover:bg-cyan-500/10 hover:text-cyan-50"
+            className="rounded px-1.5 py-0.5 hover:bg-slate-100 hover:text-slate-800"
           >
             {crumb.labelPl}
           </button>
@@ -75,10 +71,10 @@ function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     >
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Mini-SLD</div>
       <div className="mt-2 text-sm font-medium">
-        Kontekst obiektu pozostaje zsynchronizowany z głównym schematem.
+        Kontekst obiektu pozostaje zsynchronizowany z glownym schematem.
       </div>
       <div className="mt-1 text-xs text-slate-300">
-        Ten widok pracuje w tej samej ramie aplikacji. Powiązany obiekt: {surface.entityRef ?? 'aktywny kontekst'}.
+        Ten widok pracuje w tej samej ramie aplikacji. Powiazany obiekt: {surface.entityRef ?? 'aktywny kontekst'}.
       </div>
     </div>
   );
@@ -88,20 +84,20 @@ function SurfaceHeader({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
 
   return (
-    <div className="border-b border-cyan-950/80 bg-[#081b2c] px-4 py-3">
+    <div className="border-b border-slate-200 bg-white px-4 py-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <SurfaceBreadcrumbs surface={surface} />
-          <h2 className="text-sm font-semibold text-white">{surface.titlePl}</h2>
+          <h2 className="text-sm font-semibold text-slate-900">{surface.titlePl}</h2>
         </div>
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
-          <span className="rounded-full border border-cyan-950/80 px-2 py-0.5">Klasa {surface.sizeClass}</span>
-          <span className="rounded-full border border-cyan-950/80 px-2 py-0.5">Poziom {surface.stackLevel}</span>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+          <span className="rounded-full border border-slate-200 px-2 py-0.5">Klasa {surface.sizeClass}</span>
+          <span className="rounded-full border border-slate-200 px-2 py-0.5">Poziom {surface.stackLevel}</span>
           {session && (
-            <span className="rounded-full border border-cyan-950/80 px-2 py-0.5">Zapis: {resolveSaveModeLabel(session.saveMode)}</span>
+            <span className="rounded-full border border-slate-200 px-2 py-0.5">Zapis: {resolveSaveModeLabel(session.saveMode)}</span>
           )}
           {session?.hasUnsavedChanges && (
-            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-100">
+            <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700">
               Zmiany robocze
             </span>
           )}
@@ -121,11 +117,11 @@ function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-cyan-950/80 bg-[#0b1b29] p-4 shadow-[0_0_0_1px_rgba(8,145,178,0.08)]">
+    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       {eyebrow && (
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-400/75">{eyebrow}</div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{eyebrow}</div>
       )}
-      <h3 className="mt-1 text-sm font-semibold text-white">{title}</h3>
+      <h3 className="mt-1 text-sm font-semibold text-slate-900">{title}</h3>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -141,9 +137,9 @@ function KeyValueGrid({
   return (
     <div className={`grid gap-3 ${columns === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
       {rows.map((row) => (
-        <div key={row.label} className="rounded-lg border border-cyan-950/70 bg-[#07141f] p-3">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300/75">{row.label}</div>
-          <div className="mt-1 text-sm text-slate-100">{row.value}</div>
+        <div key={row.label} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{row.label}</div>
+          <div className="mt-1 text-sm text-slate-800">{row.value}</div>
         </div>
       ))}
     </div>
@@ -151,65 +147,21 @@ function KeyValueGrid({
 }
 
 const ASSUMPTION_LABELS: Record<string, string> = {
-  source_assumptions_ref: 'Założenia źródeł',
-  load_assumptions_ref: 'Założenia obciążeń',
-  switching_state_ref: 'Stan łączników',
+  source_assumptions_ref: 'Zalozenia zrodel',
+  load_assumptions_ref: 'Zalozenia obciazen',
+  switching_state_ref: 'Stan lacznikow',
   grounding_assumptions_ref: 'Uziemienie',
   temperature_assumptions_ref: 'Temperatura',
-  transformer_tap_assumptions_ref: 'Założenia regulacji zaczepowej',
+  transformer_tap_assumptions_ref: 'Zalozenia regulacji zaczepowej',
   ibg_assumptions_ref: 'Model IBG / OZE',
 };
 
 const LINEAGE_LABELS: Record<string, string> = {
   project_ref: 'Projekt',
-  run_ref: 'Wyniki obliczeń',
+  run_ref: 'Uruchomienie obliczen',
   analysis_type: 'Typ analizy',
-  snapshot_ref: 'Wersja modelu',
+  snapshot_ref: 'Migawka',
 };
-
-function formatAnalysisStatus(value: string | null | undefined): string {
-  switch (value) {
-    case 'DONE':
-    case 'FINISHED':
-    case 'SUCCEEDED':
-      return 'Zakończone';
-    case 'RUNNING':
-      return 'W trakcie';
-    case 'QUEUED':
-    case 'PENDING':
-      return 'Oczekujące';
-    case 'FAILED':
-      return 'Błąd';
-    case 'CANCELLED':
-      return 'Anulowane';
-    default:
-      return formatContractValue(value);
-  }
-}
-
-function formatResultStatus(value: string | null | undefined): string {
-  switch (value) {
-    case 'VALID':
-    case 'FRESH':
-      return 'Gotowe';
-    case 'PARTIAL':
-      return 'Częściowe';
-    case 'INVALID':
-    case 'FAILED':
-      return 'Błąd';
-    case 'NOT_APPLICABLE':
-      return 'Nie dotyczy';
-    case 'NONE':
-    case 'EMPTY':
-      return 'Brak wyników';
-    default:
-      return formatContractValue(value);
-  }
-}
-
-function formatPresenceStatus(value: string | null | undefined): string {
-  return value ? 'Dostępne' : 'Brak';
-}
 
 function formatDateTime(value: string | null | undefined): string {
   if (!value) {
@@ -238,29 +190,17 @@ function limitRows(rows: LabeledValueRow[], maxRows = rows.length): LabeledValue
 
 function buildRunOverviewRows(contract: AnalysisRunContract): LabeledValueRow[] {
   const context = contract.analysisCaseContext;
-  const analysisSummary = getAnalysisCaseSummaryRow(context);
 
   return [
-    analysisSummary ?? {
-      label: 'Rodzaj obliczenia',
-      value: formatPublicCaseKind(context?.caseKind) ?? formatContractValue(contract.analysisType),
-    },
-    {
-      label: 'Ostatnie obliczenie',
-      value: formatDateTime(contract.finishedAt ?? contract.createdAt),
-    },
-    {
-      label: 'Wersja modelu użyta do obliczeń',
-      value: formatTechnicalReference(context?.snapshotRef) ?? 'Brak danych',
-    },
-    { label: 'Stan obliczeń', value: formatAnalysisStatus(contract.status) },
-    { label: 'Stan wyników', value: formatResultStatus(contract.resultStatus) },
-    { label: 'Ocena jakości danych', value: formatPublicQualityGate(context?.qualityGate) },
-    { label: 'Kompletność wyników', value: formatCompletenessStatus(context?.completeness ?? null) },
-    {
-      label: 'Uzasadnienie inżynierskie',
-      value: formatPresenceStatus(contract.proofPackRef ?? context?.proofPackRef),
-    },
+    { label: 'Uruchomienie obliczen', value: formatContractValue(context?.runRef ?? contract.id) },
+    { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
+    { label: 'Status uruchomienia', value: formatContractValue(contract.status) },
+    { label: 'Stan wynikow', value: formatContractValue(contract.resultStatus) },
+    { label: 'Brama jakosci', value: formatContractValue(context?.qualityGate) },
+    { label: 'Kompletnosc', value: formatCompletenessStatus(context?.completeness ?? null) },
+    { label: 'Pakiet uzasadnien', value: formatContractValue(contract.proofPackRef ?? context?.proofPackRef) },
+    { label: 'Skrot wejscia', value: formatContractValue(contract.inputHash) },
+    { label: 'Utworzono', value: formatDateTime(contract.createdAt) },
   ];
 }
 
@@ -273,7 +213,7 @@ function buildExportArtifactRows(contract: AnalysisRunContract): LabeledValueRow
   return [
     { label: 'Typ eksportu', value: exportArtifact.exportKind },
     { label: 'Identyfikator eksportu', value: formatContractValue(exportArtifact.exportRef) },
-    { label: 'Kompletność eksportu', value: formatCompletenessStatus(exportArtifact.completenessStatus) },
+    { label: 'Kompletnosc eksportu', value: formatCompletenessStatus(exportArtifact.completenessStatus) },
     { label: 'Pakiet uzasadnien', value: formatContractValue(exportArtifact.proofPackRef ?? contract.proofPackRef) },
     { label: 'Skrot wejscia', value: formatContractValue(exportArtifact.inputHash) },
     { label: 'Skrot wyniku', value: formatContractValue(exportArtifact.resultHash) },
@@ -313,14 +253,14 @@ function buildReproducibilityRows(contract: AnalysisRunContract): LabeledValueRo
     { label: 'Wersja solvera', value: reproducibility.solverVersion },
     { label: 'Wersja metody', value: reproducibility.methodVersion },
     { label: 'Wersja zestawu wzorow', value: reproducibility.formulaSetVersion },
-    { label: 'Kontrakt wyników', value: reproducibility.resultsContractVersion },
+    { label: 'Kontrakt wynikow', value: reproducibility.resultsContractVersion },
     { label: 'Kontrakt pola', value: reproducibility.bayContractVersion },
     { label: 'Renderer uzasadnienia', value: reproducibility.proofRendererVersion },
-    { label: 'Wersja katalogu', value: reproducibility.catalogSnapshotRef },
+    { label: 'Migawka katalogu', value: reproducibility.catalogSnapshotRef },
     { label: 'Wersja schematu katalogu', value: reproducibility.catalogSchemaVersion },
     { label: 'Tolerancje', value: reproducibility.tolerancePolicyRef },
     { label: 'Zaokraglenia', value: reproducibility.roundingPolicyRef },
-    { label: 'Polityka jakości', value: reproducibility.qualityGatePolicyVersion },
+    { label: 'Polityka jakosci', value: reproducibility.qualityGatePolicyVersion },
     { label: 'Skrot wyniku', value: formatContractValue(reproducibility.resultHash) },
     { label: 'Podstawa normatywna', value: formatContractValue(reproducibility.standardBasisRef) },
   ];
@@ -352,7 +292,7 @@ function ContractStatusCard({
 
 function ScopePills({ scopes }: { scopes: string[] }) {
   if (scopes.length === 0) {
-    return <div className="text-sm text-slate-600">Brak zadanego zakresu zastosowania.</div>;
+    return <div className="text-sm text-slate-600">Brak zadanego zakresu stosowalnosci.</div>;
   }
 
   return (
@@ -362,50 +302,9 @@ function ScopePills({ scopes }: { scopes: string[] }) {
           key={scope}
           className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700"
         >
-          {formatPublicApplicabilityScope([scope])}
+          {scope}
         </span>
       ))}
-    </div>
-  );
-}
-
-function ContractOutcomeBanner({ contract }: { contract: AnalysisRunContract }) {
-  const completeness = contract.analysisCaseContext?.completeness ?? null;
-  const missingPrerequisites = contract.analysisCaseContext?.missingPrerequisites ?? [];
-  const missingSummary =
-    missingPrerequisites.length > 0
-      ? ` Brakuje: ${missingPrerequisites.join(', ')}.`
-      : '';
-
-  const config =
-    completeness === 'failed'
-      ? {
-          className: 'border border-rose-200 bg-rose-50 text-rose-700',
-          title: 'Stan kontraktu: nieudany',
-          message: `Bieżący ekran nie ma wiarygodnego kompletu wyników.${missingSummary}`,
-        }
-      : completeness === 'partial'
-        ? {
-            className: 'border border-amber-200 bg-amber-50 text-amber-700',
-            title: 'Stan kontraktu: czesciowy',
-            message: `Widok korzysta z niepełnego kontekstu obliczeniowego.${missingSummary}`,
-          }
-        : completeness === 'not_applicable'
-          ? {
-              className: 'border border-slate-200 bg-slate-50 text-slate-700',
-              title: 'Stan kontraktu: nie dotyczy',
-              message: 'Ten ekran pozostaje dostępny, ale aktualny zakres obliczeń nie wymaga tego modułu.',
-            }
-          : {
-              className: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
-              title: 'Stan kontraktu: kompletny',
-              message: 'Widok korzysta z pełnego kontekstu obliczeniowego dla aktywnych wyników.',
-            };
-
-  return (
-    <div data-testid="analysis-contract-state" className={`rounded-lg px-4 py-3 text-sm ${config.className}`}>
-      <div className="font-semibold">{config.title}</div>
-      <div className="mt-1">{config.message}</div>
     </div>
   );
 }
@@ -461,36 +360,35 @@ function AnalysisContractPanel({
       {!runId ? (
         <ContractStatusCard
           tone="idle"
-          title="Brak aktywnych wyników obliczeń"
-          message="Wybierz zestaw wyników, aby ten widok korzystał ze wspólnego kontekstu obliczeniowego."
+          title="Brak aktywnego uruchomienia obliczen"
+          message="Aktywuj uruchomienie obliczen, aby ten widok korzystal ze wspolnego kontekstu obliczeniowego."
         />
       ) : isLoading ? (
         <ContractStatusCard
           tone="loading"
-          title="Ładowanie kontraktu wyników"
-          message={`Widok pobiera wspólny kontekst obliczeniowy dla zestawu wyników ${runId}.`}
+          title="Ladowanie kontraktu uruchomienia"
+          message={`Widok pobiera wspolny kontekst obliczeniowy dla uruchomienia ${runId}.`}
         />
       ) : error ? (
         <ContractStatusCard
           tone="error"
-          title="Nie udało się pobrać kontraktu wyników"
+          title="Nie udalo sie pobrac kontraktu uruchomienia"
           message={error}
         />
       ) : !data || !context ? (
         <ContractStatusCard
           tone="idle"
           title="Brak kontekstu obliczeniowego"
-          message="Aktywny zestaw wyników nie zwrócił wspólnego kontekstu obliczeniowego."
+          message="Aktywne uruchomienie nie zwrocilo wspolnego kontekstu obliczeniowego."
         />
       ) : (
         <div className="space-y-4">
-          <ContractOutcomeBanner contract={data} />
           <KeyValueGrid rows={overviewRows} columns={3} />
 
           <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_1fr]">
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Zakres zastosowania
+                Zakres stosowalnosci
               </div>
               <div className="mt-3">
                 <ScopePills scopes={context.applicabilityScope} />
@@ -499,10 +397,10 @@ function AnalysisContractPanel({
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                Brakujące warunki wstępne
+                Brakujace warunki wstepne
               </div>
               {context.missingPrerequisites.length === 0 ? (
-                <div className="mt-3 text-sm text-slate-700">Brak brakujących warunków wstępnych dla aktywnych wyników.</div>
+                <div className="mt-3 text-sm text-slate-700">Brak brakujacych warunkow wstepnych dla aktywnego uruchomienia.</div>
               ) : (
                 <ul className="mt-3 space-y-2 text-sm text-slate-700">
                   {context.missingPrerequisites.map((entry) => (
@@ -522,14 +420,14 @@ function AnalysisContractPanel({
 
           {summaryRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Podsumowanie wyników</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Podsumowanie wynikow</div>
               <KeyValueGrid rows={summaryRows} columns={3} />
             </div>
           )}
 
           {traceRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Ślad obliczeń</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Slad obliczen</div>
               <KeyValueGrid rows={traceRows} columns={3} />
             </div>
           )}
@@ -550,7 +448,7 @@ function AnalysisContractPanel({
 
           {assumptionRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Jawne założenia</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Jawne zalozenia</div>
               <KeyValueGrid rows={assumptionRows} columns={3} />
             </div>
           )}
@@ -564,7 +462,7 @@ function AnalysisContractPanel({
 
           {reproducibilityRows.length > 0 && (
             <div className="space-y-3">
-              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Reprodukowalność</div>
+              <div className="text-xs font-medium uppercase tracking-wide text-slate-500">Reprodukowalnosc</div>
               <KeyValueGrid rows={reproducibilityRows} columns={3} />
             </div>
           )}
@@ -638,11 +536,11 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
     <KeyValueGrid
       rows={[
         { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
-        { label: 'Zakres obliczeń', value: activeCaseName ?? 'Brak aktywnego zakresu' },
-        { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej wersji modelu' },
-        { label: 'Wyniki obliczeń', value: activeRunId ?? 'Brak aktywnych wyników' },
+        { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
+        { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+        { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
         { label: 'Obiekt', value: surface.entityRef ?? 'Kontekst globalny' },
-        { label: 'Zakładka', value: surface.tabId ?? 'Podsumowanie' },
+        { label: 'Zakladka', value: surface.tabId ?? 'Podsumowanie' },
       ]}
       columns={3}
     />
@@ -661,7 +559,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       executionRuns.map((run) => ({
         run_id: run.id,
         case_id: run.study_case_id,
-        case_name: projectName ?? 'Zakres aktywny',
+        case_name: projectName ?? 'Przypadek aktywny',
         snapshot_id: null,
         created_at: run.started_at ?? run.finished_at ?? '',
         status: run.status,
@@ -679,10 +577,10 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         <AnalysisContextSummary surface={surface} />
       </SectionCard>
 
-      <SectionCard title="Nawigacja analityczna" eyebrow="Przejścia analityczne">
+      <SectionCard title="Nawigacja analityczna" eyebrow="Przejscia analityczne">
         <div className="flex flex-wrap gap-2">
           <SurfaceActionButton
-            label="Koordynacja zabezpieczeń"
+            label="Koordynacja zabezpieczen"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-28',
@@ -690,7 +588,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Wymagania przyłączeniowe i kodeks sieciowy"
+            label="Wymagania przylaczeniowe i kodeks sieciowy"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-30',
@@ -698,7 +596,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Rejestr założeń i jakości"
+            label="Rejestr zalozen i jakosci"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-31',
@@ -708,7 +606,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Wkłady źródeł rozszerzone"
+            label="Wklady zrodel rozszerzone"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-32',
@@ -724,7 +622,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Zbieżność rozpływu i regulacja zaczepów"
+            label="Zbieznosc rozplywu i regulacja zaczepow"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-34',
@@ -745,7 +643,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
+      <SectionCard title="Biezacy widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'trace' ? (
           <ResultsInspectorPage runId={activeRunId ?? undefined} forcedTab="TRACE" />
         ) : activeAnalysisTab === 'protection' ? (
@@ -840,8 +738,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             <KeyValueGrid
               rows={[
                 { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
-                { label: 'Zakres obliczeń', value: activeCaseName ?? 'Brak aktywnego zakresu' },
-                { label: 'Wyniki obliczeń', value: activeRunId ?? 'Brak aktywnych wyników' },
+                { label: 'Wariant', value: activeCaseName ?? 'Brak przypadku' },
+                { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
                 { label: 'Tryb zapisu', value: session?.saveMode ?? 'transakcyjny' },
                 { label: 'Zakres', value: scope },
                 { label: 'Szczegolowosc', value: detailLevel },
@@ -854,13 +752,13 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 <li>1. Strona tytulowa i identyfikacja projektu</li>
                 <li>2. Zakres modelu oraz zrodlo zasilania</li>
                 <li>3. Schemat i kontekst topologiczny</li>
-                <li>4. Wyniki zwarciowe i rozpływowe</li>
-                <li>5. Wkłady źródeł, tor ziemnozwarciowy i uzasadnienie inżynierskie</li>
+                <li>4. Wyniki zwarciowe i rozplywowe</li>
+                <li>5. Wklady zrodel, tor ziemnozwarciowy i uzasadnienie inzynierskie</li>
               </ul>
             </div>
             <div className="flex flex-wrap gap-2">
               <SurfaceActionButton
-                label="Rejestr założeń"
+                label="Rejestr zalozen"
                 onClick={() =>
                   openChildSurface('analysis', {
                     screenCode: 'E-31',
@@ -870,7 +768,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 }
               />
               <SurfaceActionButton
-                label="Wkłady źródeł"
+                label="Wklady zrodel"
                 onClick={() =>
                   openChildSurface('analysis', {
                     screenCode: 'E-32',
@@ -885,13 +783,13 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         surface={surface}
         title="Kontrakt raportu i eksportu"
         eyebrow="Eksport"
-        focusTitle="Bieżąca konfiguracja"
+        focusTitle="Biezaca konfiguracja"
         focusRowsBuilder={(contract) => [
-          { label: 'Ostatnie obliczenie', value: formatDateTime(contract.finishedAt ?? contract.createdAt) },
+          { label: 'Uruchomienie obliczen', value: formatContractValue(contract.analysisCaseContext?.runRef ?? contract.id) },
           { label: 'Zakres raportu', value: scope },
-          { label: 'Szczegółowość', value: detailLevel },
+          { label: 'Szczegolowosc', value: detailLevel },
           { label: 'Tryb zapisu', value: formatContractValue(session?.saveMode ?? 'transactional') },
-          { label: 'Uzasadnienie inżynierskie', value: formatPresenceStatus(contract.proofPackRef) },
+          { label: 'Pakiet uzasadnien', value: formatContractValue(contract.proofPackRef) },
         ]}
         showAssumptions
         showLineage
@@ -912,35 +810,35 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   return (
     <div className="space-y-4">
       <MiniSldCard surface={surface} />
-      <SectionCard title="Zakresy obliczeń i wyniki" eyebrow="variants_runs">
+      <SectionCard title="Warianty, przypadki i uruchomienia" eyebrow="variants_runs">
         <div className="grid gap-4 xl:grid-cols-[minmax(340px,420px)_minmax(320px,420px)_1fr]">
           <div className="space-y-4">
-            <SectionCard title="Aktywny kontekst obliczeń">
+            <SectionCard title="Aktywny kontekst wariantu">
               <KeyValueGrid
                 rows={[
                   { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
-                  { label: 'Zakres obliczeń', value: activeCaseName ?? 'Brak aktywnego zakresu' },
-                  { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej wersji modelu' },
-                  { label: 'Wyniki obliczeń', value: activeRunId ?? 'Brak aktywnych wyników' },
+                  { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
+                  { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+                  { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
                   {
                     label: 'Rola',
-                    value: 'Panel pomocniczy pozostaje w głównym oknie roboczym i otwiera tylko dozwolone widoki.',
+                    value: 'Panel pomocniczy pozostaje w glownym oknie roboczym i otwiera tylko dozwolone widoki.',
                   },
                   {
-                    label: 'Tryb pracy',
-                    value: 'Widok pozostaje częścią tej samej powłoki i nie uruchamia osobnego trybu pracy.',
+                    label: 'Status migracji',
+                    value: 'Panel zarzadzania przypadkami zostal wchloniety do jednej ramy aplikacji.',
                   },
                 ]}
                 columns={2}
               />
             </SectionCard>
-            <SectionCard title="Szybkie przejścia pomocnicze">
+            <SectionCard title="Szybkie przejscia pomocnicze">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
-                  label="Warunki obliczeń"
+                  label="Parametry analizy"
                   onClick={() =>
                     openChildSurface('case_context', {
-                      titlePl: 'Warunki obliczeń',
+                      titlePl: 'Parametry analizy',
                       sizeClass: 'B',
                       openMode: 'replace_right_panel',
                       supportsMiniSld: false,
@@ -950,10 +848,10 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                   }
                 />
                 <SurfaceActionButton
-                  label="Biblioteka typów"
+                  label="Biblioteka typow"
                   onClick={() =>
                     openChildSurface('catalog_admin', {
-                      titlePl: 'Biblioteka typów',
+                      titlePl: 'Biblioteka typow',
                       sizeClass: 'B',
                       openMode: 'replace_right_panel',
                       supportsMiniSld: false,
@@ -966,44 +864,44 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             </SectionCard>
           </div>
           <div className="space-y-4">
-            <SectionCard title="Historia wyników">
+            <SectionCard title="Historia analiz">
               <RunHistoryPanel
                 selectedRunId={activeRunId}
                 onSelectRun={(runId) => {
                   setActiveRun(runId);
-                    openChildSurface('analysis', {
-                      screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
-                      tabId: 'results',
-                      titlePl: 'Nakładka wynikowa na schemacie',
-                      sizeClass: 'C',
-                      supportsMiniSld: true,
-                    });
+                  openChildSurface('analysis', {
+                    screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
+                    tabId: 'results',
+                    titlePl: 'Nakladka wynikowa na schemacie',
+                    sizeClass: 'C',
+                    supportsMiniSld: true,
+                  });
                 }}
               />
             </SectionCard>
           </div>
           <div className="space-y-4">
-            <SectionCard title="Działania zakresu">
+            <SectionCard title="Akcje wariantu">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
-                  label="Otwórz wyniki"
+                  label="Otworz wyniki"
                   onClick={() =>
                     openChildSurface('analysis', {
                       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                       tabId: 'results',
-                      titlePl: 'Nakładka wynikowa na schemacie',
+                      titlePl: 'Nakladka wynikowa na schemacie',
                       sizeClass: 'C',
                       supportsMiniSld: true,
                     })
                   }
                 />
                 <SurfaceActionButton
-                  label="Porównanie wyników"
+                  label="Porownanie przebiegow"
                   onClick={() =>
                     openChildSurface('analysis', {
                       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                       tabId: 'compare',
-                      titlePl: 'Porównanie wyników',
+                      titlePl: 'Porownanie przebiegow',
                       sizeClass: 'C',
                       supportsMiniSld: true,
                     })
@@ -1035,16 +933,16 @@ function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor })
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Ocena zgodności z wymaganiami przyłączeniowymi"
-        eyebrow="Zgodność"
-        focusTitle="Kontekst zgodności"
+        title="Ocena zgodnosci z wymaganiami przylaczeniowymi"
+        eyebrow="Zgodnosc"
+        focusTitle="Kontrakt zgodnosci"
         focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj obliczenia', value: formatPublicCaseKind(contract.analysisCaseContext?.caseKind) ?? 'Brak danych' },
-          { label: 'Zakres obliczeń', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
+          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
+          { label: 'Wariant', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
           { label: 'Model IBG / OZE', value: formatContractValue(contract.analysisCaseContext?.assumptions['ibg_assumptions_ref']) },
-          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Zalozenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
+          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
         ]}
       />
     </div>
@@ -1056,18 +954,15 @@ function AssumptionsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
     <div className="space-y-4">
       <AnalysisContractPanel
         surface={surface}
-        title="Rejestr założeń i jakości danych"
-        eyebrow="Jakość danych"
-        focusTitle="Jakość kontekstu"
+        title="Rejestr zalozen i jakosci danych"
+        eyebrow="Jakosc danych"
+        focusTitle="Jakosc kontekstu"
         focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj obliczenia', value: formatPublicCaseKind(contract.analysisCaseContext?.caseKind) ?? 'Brak danych' },
-          {
-            label: 'Wersja modelu użyta do obliczeń',
-            value: formatTechnicalReference(contract.analysisCaseContext?.snapshotRef) ?? 'Brak danych',
-          },
-          { label: 'Ocena jakości danych', value: formatPublicQualityGate(contract.analysisCaseContext?.qualityGate) },
-          { label: 'Kompletność wyników', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
+          { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
+          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Brama jakosci', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
+          { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
         showAssumptions
         showLineage
@@ -1082,7 +977,7 @@ function AssumptionsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 function ModelGapsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   return (
     <div className="space-y-4">
-      <SectionCard title="Gotowość modelu i lista braków" eyebrow="Gotowość">
+      <SectionCard title="Gotowosc modelu i lista brakow" eyebrow="Gotowosc">
         <KeyValueGrid
           rows={[
             { label: 'Widok', value: surface.titlePl },
@@ -1105,18 +1000,18 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Koordynacja zabezpieczeń"
+        title="Koordynacja zabezpieczen"
         eyebrow="Zabezpieczenia"
-        focusTitle="Kontekst koordynacji"
+        focusTitle="Kontrakt koordynacji"
         focusRowsBuilder={(contract) => [
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
+          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
           { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
           { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Kompletność wyników', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
+          { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
       />
-      <SectionCard title="Bieżący widok koordynacji" eyebrow="Widok wynikowy">
+      <SectionCard title="Biezacy widok koordynacji" eyebrow="Widok wynikowy">
         <ProtectionResultsInspectorPage />
       </SectionCard>
     </div>
@@ -1131,15 +1026,15 @@ function SymmetricalComponentsSurface({ surface }: { surface: WorkspaceSurfaceDe
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Składowe symetryczne i sieć zerowa"
-        eyebrow="Składowe"
+        title="Skladowe symetryczne i siec zerowa"
+        eyebrow="Skladowe"
         focusTitle="Kontekst Z0"
         focusRowsBuilder={(contract) => [
           { label: 'Obiekt', value: formatContractValue(surface.entityRef ?? selectedElement?.id ?? surface.subjectRef) },
-          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
+          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
         ]}
       />
     </div>
@@ -1163,7 +1058,7 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
                 ? 'Ekran sluzy do przegladu i wyboru pozycji katalogowych dla obiektow technicznych.'
                 : 'Panel pomocniczy sluzy do wyboru i przegladu pozycji katalogowych.',
             },
-            { label: 'Wyniki', value: 'Widok katalogowy nie ma własnych wyników, uzasadnienia ani raportu.' },
+            { label: 'Wyniki', value: 'Widok katalogowy nie ma wlasnych wynikow, uzasadnienia ani raportu.' },
             { label: 'Model', value: 'Widok katalogowy nie wykonuje samodzielnego zapisu modelu domenowego.' },
             { label: 'Kontekst', value: surface.subjectRef ?? 'Brak wskazanego kontekstu katalogowego' },
           ]}
@@ -1187,23 +1082,23 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
   return (
     <div className="space-y-4">
       <MiniSldCard surface={surface} />
-      <SectionCard title="Warunki obliczeń" eyebrow="Kontekst roboczy">
+      <SectionCard title="Parametry analizy" eyebrow="Kontekst roboczy">
         <KeyValueGrid
           rows={[
-            { label: 'Zakres obliczeń', value: activeCaseName ?? 'Brak aktywnego zakresu' },
-            { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej wersji modelu' },
-            { label: 'Wyniki obliczeń', value: activeRunId ?? 'Brak aktywnych wyników' },
+            { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
+            { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+            { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
             { label: 'Rola', value: 'Panel pomocniczy wybiera kontekst i otwiera kolejne widoki, ale nie tworzy osobnego trybu pracy.' },
           ]}
         />
       </SectionCard>
-      <SectionCard title="Nawigacja kanoniczna" eyebrow="Główne okno robocze">
+      <SectionCard title="Nawigacja kanoniczna" eyebrow="Glowne okno robocze">
         <div className="flex flex-wrap gap-2">
           <SurfaceActionButton
-            label="Zakresy obliczeń i wyniki"
+            label="Przebiegi obliczen"
             onClick={() =>
               openChildSurface('variants', {
-                titlePl: 'Zakresy obliczeń i wyniki',
+                titlePl: 'Przebiegi obliczen',
                 sizeClass: 'C',
                 supportsMiniSld: true,
                 subjectKind: 'helper_context',
@@ -1212,12 +1107,12 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
             }
           />
           <SurfaceActionButton
-            label="Nakładka wynikowa"
+            label="Nakladka wynikowa"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                 tabId: 'results',
-                titlePl: 'Nakładka wynikowa na schemacie',
+                titlePl: 'Nakladka wynikowa na schemacie',
                 sizeClass: 'C',
                 supportsMiniSld: true,
               })
@@ -1246,14 +1141,14 @@ function SourceContributionsSurface({ surface }: { surface: WorkspaceSurfaceDesc
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Wkłady źródeł rozszerzone"
-        eyebrow="Wkłady źródeł"
-        focusTitle="Kontekst źródeł"
+        title="Wklady zrodel rozszerzone"
+        eyebrow="Wklady zrodel"
+        focusTitle="Kontrakt zrodel"
         focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj obliczenia', value: formatPublicCaseKind(contract.analysisCaseContext?.caseKind) ?? 'Brak danych' },
-          { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
+          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
+          { label: 'Zalozenia zrodel', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
+          { label: 'Zalozenia obciazen', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
           { label: 'Projekt', value: formatContractValue(contract.analysisCaseContext?.lineage['project_ref']) },
         ]}
       />
@@ -1272,10 +1167,10 @@ function ThermalDynamicSurface({ surface }: { surface: WorkspaceSurfaceDescripto
         focusTitle="Kontrakt toru"
         focusRowsBuilder={(contract) => [
           { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-          { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Kompletność wyników', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
+          { label: 'Zalozenia obciazen', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
+          { label: 'Zalozenia zrodel', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Kompletnosc', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
         ]}
       />
     </div>
@@ -1288,69 +1183,30 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Zbieżność rozpływu i sterowanie zaczepami"
-        eyebrow="Rozpływ mocy"
-        focusTitle="Kontekst solvera"
+        title="Zbieznosc rozplywu i sterowanie zaczepami"
+        eyebrow="Rozplyw mocy"
+        focusTitle="Kontrakt solvera"
         focusRowsBuilder={(contract) => [
           { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-          { label: 'Ważność wyniku', value: formatContractValue(contract.resultsValid) },
-          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Zakres zastosowania', value: formatPublicApplicabilityScope(contract.analysisCaseContext?.applicabilityScope ?? []) },
+          { label: 'Waznosc wyniku', value: formatContractValue(contract.resultsValid) },
+          { label: 'Zalozenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
         ]}
       />
     </div>
   );
 }
 
-function renderLegacyCanonicalSurface(surface: WorkspaceSurfaceDescriptor): ReactNode {
-  const payload = surface.routeState.payload ?? {};
-  const operation = typeof payload.operation === 'string' ? payload.operation : null;
-  const panelKind =
-    payload.panel && typeof payload.panel === 'object' && 'kind' in payload.panel
-      ? String((payload.panel as { kind?: unknown }).kind ?? '')
-      : null;
-  const cardKind =
-    payload.card && typeof payload.card === 'object' && 'kind' in payload.card
-      ? String((payload.card as { kind?: unknown }).kind ?? '')
-      : null;
-
-  if (operation && supportsOperationForm(operation)) {
-    return <OperationFormRouter />;
-  }
-
-  if (panelKind) {
-    return <ReadOnlyPanelRouter />;
-  }
-
-  if (cardKind) {
-    return <ObjectCardRouter />;
-  }
-
-  return null;
-}
-
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
-  switch (surface.screenCode) {
-    case 'E-03':
-    case 'E-10':
-    case 'E-11':
-    case 'E-12':
-    case 'E-13':
-    case 'E-14':
-    case 'E-15':
-    case 'E-16':
-    case 'E-17':
-    case 'E-18':
-    case 'E-19':
-    case 'E-20':
-    case 'E-21':
-    case 'E-22':
-    case 'E-23':
-    case 'E-25':
-      return renderLegacyCanonicalSurface(surface);
-    default:
-      break;
+  const delegate = surface.routeState.payload?.delegate;
+  const delegateBodies: Record<string, ReactNode> = {
+    operation_form: <OperationFormRouter />,
+    object_card: <ObjectCardRouter />,
+    read_only_panel: <ReadOnlyPanelRouter />,
+  };
+  if (typeof delegate === 'string' && delegate in delegateBodies) {
+    return delegateBodies[delegate];
   }
 
   switch (surface.screenCode) {
@@ -1362,6 +1218,8 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <CatalogHelperSurface surface={surface} />;
     case 'case_context':
       return <CaseContextSurface surface={surface} />;
+    case 'switchgear_wizard':
+      return <SwitchgearWizardPage />;
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:
@@ -1402,9 +1260,9 @@ export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) 
   }
 
   return (
-    <div data-testid={`workspace-surface-${region}`} className="flex h-full min-h-0 flex-col bg-[#07141f]">
+    <div data-testid={`workspace-surface-${region}`} className="flex h-full min-h-0 flex-col bg-slate-50">
       <SurfaceHeader surface={activeSurface} />
-      <div className="min-h-0 flex-1 overflow-auto bg-[#07141f] p-4">{renderSurfaceBody(activeSurface)}</div>
+      <div className="min-h-0 flex-1 overflow-auto p-4">{renderSurfaceBody(activeSurface)}</div>
     </div>
   );
 }

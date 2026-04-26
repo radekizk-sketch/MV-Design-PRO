@@ -63,8 +63,15 @@ function validateTransformerCatalogFirst(data: {
 }
 
 // Load/DER validation (catalog-first: no P/Q/cos_phi/limits)
-type GenType = 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'bess';
-const QUANTITY_GEN_TYPES = new Set<GenType>(['pv_inverter', 'wind_inverter', 'bess']);
+type GenType = 'synchronous' | 'pv_inverter' | 'wind_inverter' | 'fw_pmsg' | 'fw_dfig' | 'fw_scig' | 'bess';
+const QUANTITY_GEN_TYPES = new Set<GenType>([
+  'pv_inverter',
+  'wind_inverter',
+  'fw_pmsg',
+  'fw_dfig',
+  'fw_scig',
+  'bess',
+]);
 
 function validateLoadDERCatalogFirst(data: {
   ref_id: string;
@@ -213,6 +220,13 @@ describe('LoadDER — catalog_ref required, quantity for PV/BESS', () => {
   it('should fail when quantity < 1 for wind inverter', () => {
     const errors = validateLoadDERCatalogFirst({
       ...validGen, gen_type: 'wind_inverter', quantity: -1,
+    });
+    expect(errors.some((e) => e.field === 'quantity')).toBe(true);
+  });
+
+  it('should fail when quantity < 1 for FW PMSG', () => {
+    const errors = validateLoadDERCatalogFirst({
+      ...validGen, gen_type: 'fw_pmsg', quantity: -1,
     });
     expect(errors.some((e) => e.field === 'quantity')).toBe(true);
   });

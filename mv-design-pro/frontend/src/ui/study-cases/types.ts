@@ -164,7 +164,15 @@ export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
 /**
  * Analysis type for execution runs.
  */
-export type ExecutionAnalysisType = 'SC_3F' | 'SC_1F' | 'LOAD_FLOW';
+export type ExecutionAnalysisType =
+  | 'SC_3F'
+  | 'SC_1F'
+  | 'SC_2F'
+  | 'SC_2F_G'
+  | 'LOAD_FLOW'
+  | 'PHASE_STATE_SN'
+  | 'DYNAMIC_STABILITY'
+  | 'SOURCE_COMPLIANCE';
 
 /**
  * Run lifecycle status.
@@ -213,7 +221,12 @@ export interface ExecutionResultSet {
 export const ANALYSIS_TYPE_LABELS: Record<ExecutionAnalysisType, string> = {
   SC_3F: 'Zwarcie trójfazowe (3F)',
   SC_1F: 'Zwarcie jednofazowe (1F)',
+  SC_2F: 'Zwarcie dwufazowe (2F)',
+  SC_2F_G: 'Zwarcie dwufazowe z ziemią (2F+Z)',
   LOAD_FLOW: 'Rozpływ mocy',
+  PHASE_STATE_SN: 'Stan fazowy SN',
+  DYNAMIC_STABILITY: 'Stabilność dynamiczna',
+  SOURCE_COMPLIANCE: 'Zgodność źródła',
 };
 
 /**

@@ -161,6 +161,14 @@ def test_main_app_no_longer_exposes_noncanonical_routers(client: TestClient) -> 
         ).status_code
         == 404
     )
+    assert client.get("/api/protection-engine/v1/curve-types").status_code == 404
+    assert (
+        client.post(
+            "/api/protection-engine/v1/execute",
+            json={"relays": [], "test_points": []},
+        ).status_code
+        == 404
+    )
 
 
 def test_production_enm_has_single_public_write_path(client: TestClient) -> None:

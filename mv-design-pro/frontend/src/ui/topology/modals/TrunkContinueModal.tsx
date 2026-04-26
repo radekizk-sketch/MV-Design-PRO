@@ -38,7 +38,6 @@ interface TrunkContinueModalProps {
   initialData?: Partial<TrunkContinueFormData>;
   submitDisabled?: boolean;
   submitDisabledReason?: string | null;
-  lockSegmentKind?: boolean;
   onSubmit: (data: TrunkContinueFormData) => void;
   onCancel: () => void;
 }
@@ -120,7 +119,6 @@ export function TrunkContinueModal({
   initialData,
   submitDisabled = false,
   submitDisabledReason = null,
-  lockSegmentKind = false,
   onSubmit,
   onCancel,
 }: TrunkContinueModalProps) {
@@ -130,6 +128,7 @@ export function TrunkContinueModal({
   });
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const lockSegmentKind = Boolean(initialData?.segment_kind);
 
   useEffect(() => {
     if (isOpen) {

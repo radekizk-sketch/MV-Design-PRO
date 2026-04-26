@@ -436,12 +436,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
             if "pv" in gen_type or "bess" in gen_type or "inverter" in gen_type:
                 has_trafo = bool(gen.get("blocking_transformer_ref"))
                 cv = gen.get("connection_variant") or ""
-                station_variant = cv in {
-                    "nn_side",
-                    "LV_BEHIND_STATION_TRANSFORMER",
-                    "SOURCE_CONNECTION_STATION",
-                }
-                if not has_trafo and not station_variant:
+                if not has_trafo and "direct" not in cv.lower():
                     blockers.append(
                         {
                             "code": "pv_bess.transformer_required",

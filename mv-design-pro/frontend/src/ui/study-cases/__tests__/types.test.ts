@@ -172,7 +172,16 @@ describe('CONFIG_FIELD_LABELS', () => {
 // ---------------------------------------------------------------------------
 
 describe('ANALYSIS_TYPE_LABELS', () => {
-  const ALL_TYPES: ExecutionAnalysisType[] = ['SC_3F', 'SC_1F', 'LOAD_FLOW'];
+  const ALL_TYPES: ExecutionAnalysisType[] = [
+    'SC_3F',
+    'SC_1F',
+    'SC_2F',
+    'SC_2F_G',
+    'LOAD_FLOW',
+    'PHASE_STATE_SN',
+    'DYNAMIC_STABILITY',
+    'SOURCE_COMPLIANCE',
+  ];
 
   it('should have labels for all analysis types', () => {
     for (const type of ALL_TYPES) {
@@ -185,7 +194,12 @@ describe('ANALYSIS_TYPE_LABELS', () => {
   it('should contain Polish analysis descriptions', () => {
     expect(ANALYSIS_TYPE_LABELS.SC_3F).toContain('warcie');
     expect(ANALYSIS_TYPE_LABELS.SC_1F).toContain('warcie');
+    expect(ANALYSIS_TYPE_LABELS.SC_2F).toContain('warcie');
+    expect(ANALYSIS_TYPE_LABELS.SC_2F_G).toContain('warcie');
     expect(ANALYSIS_TYPE_LABELS.LOAD_FLOW).toContain('mocy');
+    expect(ANALYSIS_TYPE_LABELS.PHASE_STATE_SN).toContain('Stan');
+    expect(ANALYSIS_TYPE_LABELS.DYNAMIC_STABILITY).toContain('dynamiczna');
+    expect(ANALYSIS_TYPE_LABELS.SOURCE_COMPLIANCE).toContain('Zgodność');
   });
 });
 

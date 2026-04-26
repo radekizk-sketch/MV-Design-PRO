@@ -80,7 +80,7 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz obliczenie —</option>
+        <option value="">— Wybierz uruchomienie —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           const solverLabel = run.solver_kind === 'PF' ? 'Rozpływ' : run.solver_kind === 'short_circuit_sn' ? 'Zwarcie' : run.solver_kind;
@@ -289,12 +289,12 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
 
   const handleCompare = useCallback(async () => {
     if (!runAId || !runBId) {
-      setError('Wybierz oba obliczenia (A i B), aby wykonać porównanie.');
+      setError('Wybierz oba uruchomienia (A i B), aby wykonac porownanie.');
       return;
     }
 
     if (runAId === runBId) {
-      setError('Obliczenie A i obliczenie B muszą być różne.');
+      setError('Uruchomienie A i uruchomienie B musza byc rozne.');
       return;
     }
 
@@ -350,16 +350,16 @@ export function ResultsComparisonPage({ runHistory, onClose }: ResultsComparison
       <div className="mx-auto max-w-6xl px-6 py-6">
         {/* Run Selectors */}
         <div className="rounded border border-slate-200 bg-white p-4">
-          <h2 className="mb-4 text-lg font-semibold text-slate-900">Wybierz obliczenia do porównania</h2>
+          <h2 className="mb-4 text-lg font-semibold text-slate-900">Wybierz uruchomienia do porownania</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <RunSelector
-              label="Obliczenie A (wzorzec)"
+              label="Uruchomienie A (wzorzec)"
               runs={runHistory}
               selectedRunId={runAId}
               onChange={setRunAId}
             />
             <RunSelector
-              label="Obliczenie B (porównanie)"
+              label="Uruchomienie B (porownanie)"
               runs={runHistory}
               selectedRunId={runBId}
               onChange={setRunBId}

@@ -81,7 +81,7 @@ describe('InspectorPanel', () => {
     expect(screen.queryByText('VIOLATION')).not.toBeInTheDocument();
   });
 
-  it('nawiguje do kanonicznego widoku wywodu aktywnego obliczenia, gdy wynik jest dostępny', () => {
+  it('nawiguje do wywodu aktywnego uruchomienia, gdy run jest dostępny', () => {
     useExecutionRunsStore.setState({ activeRunId: 'run-42' });
 
     render(<InspectorPanel selectedRow={selectedRow} />);
@@ -93,6 +93,6 @@ describe('InspectorPanel', () => {
     expect(screen.queryByTestId('open-proof-trace-blocked-proof')).not.toBeInTheDocument();
 
     fireEvent.click(proofButton);
-    expect(window.location.hash).toBe('#analysis?run=run-42&tab=trace');
+    expect(window.location.hash).toBe('#proof?run=run-42');
   });
 });

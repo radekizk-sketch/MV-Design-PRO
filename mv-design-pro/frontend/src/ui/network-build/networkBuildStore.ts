@@ -20,6 +20,11 @@ import type {
 } from '../../types/enm';
 import { buildBlockerCountsByElement } from './liveReadiness';
 import type {
+  ActiveInspectorPanel,
+  ActiveObjectCard,
+  NetworkBuildOperationName,
+} from './internal/legacySurfaceTypes';
+import type {
   EntityTypeCode,
   HelperSurfaceCode,
   SurfaceLifecycleState,
@@ -44,11 +49,6 @@ import {
   SURFACE_REGISTRY,
   validateSurfaceStack,
 } from '../workspace/types';
-import type {
-  ActiveInspectorPanel,
-  ActiveObjectCard,
-  NetworkBuildOperationName,
-} from './internal/legacySurfaceTypes';
 
 export type BuildPhase =
   | 'NO_SOURCE'
@@ -137,7 +137,9 @@ function inferRouteKey(target: WorkspaceSurfaceCode): WorkspaceRouteKey {
       case 'catalog_picker':
         return 'catalog';
       case 'case_context':
-        return 'conditions';
+        return 'case-config';
+      case 'switchgear_wizard':
+        return 'switchgear';
     }
   }
 
@@ -186,7 +188,14 @@ function helperSurfaceDefaults(helperCode: HelperSurfaceCode): {
         sizeClass: 'B',
         openMode: 'replace_right_panel',
         supportsMiniSld: false,
-        route: 'conditions',
+        route: 'case-config',
+      };
+    case 'switchgear_wizard':
+      return {
+        sizeClass: 'C',
+        openMode: 'expand_workspace',
+        supportsMiniSld: true,
+        route: 'switchgear',
       };
   }
 }
@@ -304,9 +313,9 @@ function buildObjectCardSurfaceDescriptor(
   };
   const screenMap: Record<Exclude<ActiveObjectCard, null>['kind'], WorkspaceScreenCode> = {
     source: 'E-10',
-    trunk: 'E-03',
+    trunk: 'E-24',
     station: 'E-13',
-    line_segment: 'E-03',
+    line_segment: 'E-24',
     transformer: 'E-15',
     switch: 'E-14',
     bay: 'E-14',
@@ -394,27 +403,27 @@ function mapInspectorPanelMeta(
     case 'field_measurements':
       return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
-      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wkłady źródeł', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
-      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Sieć zerowa i składowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_work_safety':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczeństwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczenstwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_compare':
-      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porównanie pól', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porownanie pol', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
     case 'report':
       return { screenCode: REPORT_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Generator raportu', route: 'report', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'readiness':
-      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowość modelu i lista braków', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
+      return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
     case 'history':
-      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Zakresy obliczeń i wyniki', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Warianty i uruchomienia', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'topology':
     case 'secondary_links':
-      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Składowe symetryczne i sieć zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
     case 'results':
     case 'trace':
       return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'coordination':
-      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczeń', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczen', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
   }
 }
 

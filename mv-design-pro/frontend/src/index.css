@@ -17,9 +17,9 @@
   }
 
   body {
-    background-color: #030b11;
-    color: #e2e8f0;
+    @apply bg-chrome-900 text-chrome-100;
     overflow: hidden;
+    color-scheme: dark;
   }
 
   /* Scrollbar styling — industrial thin */
@@ -44,6 +44,86 @@
   ::selection {
     background: rgba(34, 211, 238, 0.3);
     color: #ecfeff;
+  }
+}
+
+@layer utilities {
+  /* =========================================================================
+   * V12.xx Dark SCADA Screen Theme
+   *
+   * The application shell owns the screen theme. Legacy light utility classes
+   * are mapped to industrial dark surfaces so every routed screen inherits one
+   * visual system. Export containers opt out through data-sld-export-theme and
+   * keep the separate light technical rendering contract.
+   * ========================================================================= */
+
+  .mv-dark-scada {
+    --scada-bg: #020617;
+    --scada-surface: #0f172a;
+    --scada-surface-raised: #111827;
+    --scada-surface-muted: #1e293b;
+    --scada-border: #334155;
+    --scada-border-strong: #475569;
+    --scada-text: #e5e7eb;
+    --scada-text-muted: #cbd5e1;
+    --scada-text-subtle: #94a3b8;
+    --scada-focus: #38bdf8;
+    background: var(--scada-bg);
+    color: var(--scada-text);
+    color-scheme: dark;
+  }
+
+  .mv-dark-scada :where(.bg-white, .bg-gray-50, .bg-slate-50, .bg-zinc-50, .bg-chrome-50):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface) !important;
+  }
+
+  .mv-dark-scada :where(.bg-gray-100, .bg-slate-100, .bg-zinc-100, .bg-chrome-100):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface-muted) !important;
+  }
+
+  .mv-dark-scada :where(.bg-canvas-bg):not([data-sld-export-theme] *) {
+    background-color: var(--scada-bg) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-900, .text-slate-900, .text-zinc-900, .text-black):not([data-sld-export-theme] *) {
+    color: var(--scada-text) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-800, .text-gray-700, .text-slate-800, .text-slate-700, .text-zinc-800, .text-zinc-700, .text-chrome-700, .text-chrome-800):not([data-sld-export-theme] *) {
+    color: var(--scada-text-muted) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-600, .text-gray-500, .text-slate-600, .text-slate-500, .text-zinc-600, .text-zinc-500, .text-chrome-600, .text-chrome-500):not([data-sld-export-theme] *) {
+    color: var(--scada-text-subtle) !important;
+  }
+
+  .mv-dark-scada :where(.border-gray-100, .border-gray-200, .border-gray-300, .border-slate-100, .border-slate-200, .border-slate-300, .border-zinc-100, .border-zinc-200, .border-zinc-300, .border-chrome-100, .border-chrome-200, .border-chrome-300):not([data-sld-export-theme] *) {
+    border-color: var(--scada-border) !important;
+  }
+
+  .mv-dark-scada :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl):not([data-sld-export-theme] *) {
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface-raised) !important;
+    border-color: var(--scada-border-strong) !important;
+    color: var(--scada-text) !important;
+  }
+
+  .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *)::placeholder {
+    color: var(--scada-text-subtle) !important;
+  }
+
+  .mv-dark-scada :where(button):not([data-sld-export-theme] *):focus-visible,
+  .mv-dark-scada :where(a, input, select, textarea):not([data-sld-export-theme] *):focus-visible {
+    outline: 2px solid var(--scada-focus);
+    outline-offset: 2px;
+  }
+
+  .mv-dark-scada [data-sld-export-theme="light_technical"],
+  .mv-dark-scada [data-sld-export-theme="light_technical"] * {
+    color-scheme: light;
   }
 }
 

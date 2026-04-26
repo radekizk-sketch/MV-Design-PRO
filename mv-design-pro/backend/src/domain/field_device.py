@@ -278,7 +278,7 @@ def validate_generator_field_connection(
                 station_ref=None,
                 is_valid=False,
                 fix_code="generator.station_ref_missing",
-                fix_message_pl=(f"Generator {generator_id} ({connection_variant}): brak referencji do stacji"),
+                fix_message_pl=(f"Generator {generator_id} (nn_side): brak referencji do stacji"),
             )
 
     if connection_variant in dedicated_mv_variants:

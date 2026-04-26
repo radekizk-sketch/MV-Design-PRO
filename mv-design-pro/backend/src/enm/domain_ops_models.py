@@ -945,13 +945,7 @@ class AddConverterSourcePayload(_FrozenBase):
     """Payload: add_converter_source — kanoniczne źródło przekształtnikowe."""
 
     source_technology: Literal["PV", "BESS", "FW"]
-    connection_variant: Literal[
-        "LV_BEHIND_STATION_TRANSFORMER",
-        "DEDICATED_MV_CONNECTION",
-        "SOURCE_CONNECTION_STATION",
-        "nn_side",
-        "block_transformer",
-    ]
+    connection_variant: Literal["nn_side", "block_transformer"]
     station_ref: str
     bus_nn_ref: str
     placement: Literal["NEW_FIELD", "EXISTING_FIELD"] | None = None

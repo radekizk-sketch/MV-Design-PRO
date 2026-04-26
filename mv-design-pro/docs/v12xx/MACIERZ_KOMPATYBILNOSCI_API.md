@@ -1,0 +1,156 @@
+# Macierz kompatybilnosci API V12.xx
+
+Status: aktywna  
+Cel: zaden endpoint nie dziala bez statusu cyklu zycia
+
+## Statusy endpointow
+
+| Status | Znaczenie |
+|---|---|
+| aktywny | Kanoniczna sciezka V12.xx. |
+| deprecated | Sciezka wygaszana, z data wylaczenia. |
+| adapter | Sciezka przejsciowa dla migracji M1/M2. |
+| usuniety | Endpoint nie jest dostepny. |
+
+## Pola wymagane
+
+| Pole | Opis |
+|---|---|
+| Endpoint | Metoda i sciezka. |
+| Wersja | `v1`, `v2`, `v12xx` albo wersja routera. |
+| Status | aktywny / deprecated / adapter / usuniety. |
+| Data wejscia | Kiedy status obowiazuje. |
+| Data wylaczenia | Wymagana dla deprecated i adapter. |
+| Zakres kompatybilnosci | Co jest gwarantowane. |
+| Testy | Testy kontraktu. |
+| Wlasciciel | Rola odpowiedzialna. |
+
+## Macierz aktywnych endpointow `/api` M0/M1
+
+Data wejscia statusow: 2026-04-24.  
+Data wylaczenia dla adapterow: koniec M3, o ile wiersz nie wskazuje inaczej.  
+Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
+
+| Endpoint | Wersja | Status | Data wejscia | Data wylaczenia | Zakres kompatybilnosci | Testy | Wlasciciel |
+|---|---|---|---|---|---|---|---|
+| `DELETE /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Usuwanie scenariusza zakloceniowego w przejsciowym API execution. | execution fault scenario tests | Architekt API |
+| `DELETE /api/projects/{project_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Usuwanie projektu; wymaga audytu destrukcyjnego w M2. | project deletion tests | Architekt API |
+| `DELETE /api/study-cases/{case_id}` | v12xx | aktywny | 2026-04-24 | - | Usuwanie kanonicznego przypadku z blokada destrukcyjna. | study case API tests | Architekt domeny |
+| `GET /api/analysis-runs/{run_id}` | v12xx | aktywny | 2026-04-24 | - | Odczyt uruchomienia analizy. | analysis run tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/overlay` | v12xx | aktywny | 2026-04-24 | - | Dane nakladki SLD dla wyniku. | overlay contract tests | Architekt SLD |
+| `GET /api/analysis-runs/{run_id}/results` | v12xx | aktywny | 2026-04-24 | - | Odczyt wynikow uruchomienia. | result contract tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/results/automation-trace` | v12xx | aktywny | 2026-04-25 | - | Slad automatyki i skutkow po zakloceniu dla stabilnosci dynamicznej. | canonical analysis API tests, report export tests | Architekt automatyki |
+| `GET /api/analysis-runs/{run_id}/results/branches` | v12xx | aktywny | 2026-04-24 | - | Wyniki odcinkow dla SLD i tabel. | branch result tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/results/buses` | v12xx | aktywny | 2026-04-24 | - | Wyniki wezlow dla SLD i tabel. | bus result tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/results/dynamic-stability` | v12xx | aktywny | 2026-04-25 | - | Wyniki stabilnosci dynamicznej z proof i statusem raportowym. | canonical analysis API tests, report export tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/index` | v12xx | aktywny | 2026-04-24 | - | Indeks wynikow dla UI. | result index tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/results/phase-state` | v12xx | aktywny | 2026-04-25 | - | Wyniki stanu fazowego SN z proof i statusem raportowym. | canonical analysis API tests, report export tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Wyniki zwarciowe dla raportu i SLD, razem z `proof_ref`, `proof_status` i `reporting_status` dla 1F/2F+Z. | short circuit result tests, report export tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/source-compliance` | v12xx | aktywny | 2026-04-25 | - | Wyniki zgodnosci zrodla z profilem operatora wraz z proof i raportowalnoscia. | canonical analysis API tests, report export tests | Architekt OZE |
+| `GET /api/analysis-runs/{run_id}/results/trace` | v12xx | aktywny | 2026-04-24 | - | Slad danych wynikow. | trace tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/snapshot` | v12xx | aktywny | 2026-04-24 | - | Migawka modelu uzyta do wyniku. | snapshot tests | Architekt ENM |
+| `GET /api/analysis-runs/{run_id}/trace` | v12xx | aktywny | 2026-04-24 | - | Slad wykonania uruchomienia. | trace tests | Architekt wynikow |
+| `GET /api/analysis-runs/{run_id}/trace/summary` | v12xx | aktywny | 2026-04-24 | - | Skrot sladu wykonania. | trace summary tests | Architekt wynikow |
+| `GET /api/cases/{case_id}/analysis-eligibility` | v12xx | aktywny | 2026-04-24 | - | Zdolnosc uruchomienia analiz. | eligibility tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/diagnostics` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Diagnostyka przejsciowa modelu. | diagnostics tests | Architekt API |
+| `GET /api/cases/{case_id}/diagnostics/preflight` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Diagnostyka przed obliczeniami. | diagnostics preflight tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/engineering-readiness` | v12xx | aktywny | 2026-04-24 | - | Agregowana gotowosc inzynierska. | readiness tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/enm` | v1 | adapter | 2026-04-24 | koniec M3 | Odczyt i migracja ENM v1 w M1/M2. | test migracji ENM v1->v2 | Architekt API |
+| `GET /api/cases/{case_id}/enm/diff` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Porownanie ENM dla UI i audytu. | enm diff tests | Architekt ENM |
+| `GET /api/cases/{case_id}/enm/field-view` | v12xx | aktywny | 2026-04-24 | - | Kanoniczny odczyt widoku pol SN z ENM. | field view tests | Architekt UI/UX |
+| `GET /api/cases/{case_id}/enm/protection-view` | v12xx | aktywny | 2026-04-24 | - | Kanoniczny odczyt zabezpieczen z ENM. | protection view tests | Projektant zabezpieczen |
+| `GET /api/cases/{case_id}/enm/readiness` | v12xx | aktywny | 2026-04-24 | - | Macierz gotowosci ENM. | readiness tests | Architekt walidacji |
+| `GET /api/cases/{case_id}/enm/topology` | v12xx | aktywny | 2026-04-24 | - | Topologia dla SLD i inspektora. | topology tests | Architekt SLD |
+| `GET /api/cases/{case_id}/enm/topology/summary` | v12xx | aktywny | 2026-04-24 | - | Podsumowanie topologii. | topology summary tests | Architekt SLD |
+| `GET /api/cases/{case_id}/enm/v2-projection` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczytowa projekcja ENM v1 -> ENM v2.0; bez zapisu, z zachowaniem `ref_id`, wariantem bazowym i migawka lacznikowa. | test endpointu projekcji ENM v2 | Architekt migracji |
+| `GET /api/cases/{case_id}/enm/validate` | v1 | adapter | 2026-04-24 | koniec M3 | Walidacja przejsciowa mapowana do severity V12.xx. | test severity mapping | Architekt API |
+| `GET /api/cases/{case_id}/wizard/can-proceed` | legacy | deprecated | 2026-04-24 | koniec M2 | Przejscie kreatora utrzymane jako adapter odczytowy; kanoniczny zapis idzie przez operacje domenowe ENM. | wizard migration tests | Architekt migracji |
+| `GET /api/cases/{case_id}/wizard/state` | legacy | deprecated | 2026-04-24 | koniec M2 | Stan kreatora; nie jest prawda domenowa. | wizard state tests | Architekt migracji |
+| `GET /api/catalog/bess-inverter-types` | v12xx | aktywny | 2026-04-24 | - | Katalog falownikow BESS. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/branch-point-types` | v12xx | aktywny | 2026-04-24 | - | Katalog punktow rozgaleznych. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli SN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/ct-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow pradowych. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/export` | v12xx | aktywny | 2026-04-24 | - | Eksport katalogow. | catalog export tests | Administrator katalogow |
+| `GET /api/catalog/line-types` | v12xx | aktywny | 2026-04-24 | - | Katalog linii napowietrznych SN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/load-types` | v12xx | aktywny | 2026-04-24 | - | Katalog obciazen. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/lv-apparatus-types` | v12xx | aktywny | 2026-04-24 | - | Katalog aparatow nN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/lv-cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli nN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/mv-apparatus-types` | v12xx | aktywny | 2026-04-24 | - | Katalog aparatow SN. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/protection/curves` | v12xx | aktywny | 2026-04-24 | - | Krzywe zabezpieczeniowe. | protection catalog tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/curves/{curve_id}` | v12xx | aktywny | 2026-04-24 | - | Rekord krzywej zabezpieczeniowej. | protection catalog tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/device-types` | v12xx | aktywny | 2026-04-24 | - | Typy urzadzen zabezpieczeniowych. | protection catalog tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/device-types/{device_type_id}` | v12xx | aktywny | 2026-04-24 | - | Rekord typu zabezpieczenia. | protection catalog tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/export` | v12xx | aktywny | 2026-04-24 | - | Eksport katalogu zabezpieczen. | protection export tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/templates` | v12xx | aktywny | 2026-04-24 | - | Szablony zabezpieczen. | protection template tests | Projektant zabezpieczen |
+| `GET /api/catalog/protection/templates/{template_id}` | v12xx | aktywny | 2026-04-24 | - | Rekord szablonu zabezpieczen. | protection template tests | Projektant zabezpieczen |
+| `GET /api/catalog/pv-inverter-types` | v12xx | aktywny | 2026-04-24 | - | Katalog falownikow PV. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/source-system-types` | v12xx | aktywny | 2026-04-24 | - | Katalog systemow zasilania i zrodel. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/switch-equipment-types` | v12xx | aktywny | 2026-04-24 | - | Katalog lacznikow. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/transformer-types` | v12xx | aktywny | 2026-04-24 | - | Katalog transformatorow. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/vt-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow napieciowych. | catalog tests | Administrator katalogow |
+| `GET /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
+| `GET /api/execution/fault-scenarios/{scenario_id}/eligibility` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zdolnosc uruchomienia scenariusza zakloceniowego. | execution eligibility tests | Architekt ruchowy |
+| `GET /api/execution/fault-scenarios/{scenario_id}/sld-overlay` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Nakladka SLD scenariusza zakloceniowego. | execution overlay tests | Architekt SLD |
+| `GET /api/execution/runs/{run_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Odczyt uruchomienia execution. | execution run tests | Architekt wynikow |
+| `GET /api/execution/runs/{run_id}/results` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wyniki execution. | execution result tests | Architekt wynikow |
+| `GET /api/execution/runs/{run_id}/results/v1` | legacy | deprecated | 2026-04-24 | koniec M2 | Stary kontrakt wyniku execution. | legacy result tests | Architekt migracji |
+| `GET /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Scenariusze zakloceniowe przypadku. | fault scenario tests | Architekt ruchowy |
+| `GET /api/execution/study-cases/{case_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Uruchomienia execution dla przypadku. | execution run tests | Architekt wynikow |
+| `GET /api/health` | v12xx | aktywny | 2026-04-24 | - | Healthcheck API. | health tests | Architekt API |
+| `GET /api/projects` | v12xx | aktywny | 2026-04-24 | - | Lista projektow. | project API tests | Architekt API |
+| `GET /api/projects/{project_id}` | v12xx | aktywny | 2026-04-24 | - | Odczyt projektu. | project API tests | Architekt API |
+| `GET /api/projects/{project_id}/analysis-runs` | v12xx | aktywny | 2026-04-24 | - | Uruchomienia analiz projektu. | analysis run tests | Architekt wynikow |
+| `GET /api/projects/{project_id}/analysis-runs/{run_id}/export/docx` | legacy | deprecated | 2026-04-25 | koniec M4 | Trasa zwraca `410` i zostaje tylko jako jawny komunikat migracyjny; produkcyjny eksport idzie przez execution/power-flow. | canonical only API tests | Architekt raportow |
+| `GET /api/projects/{project_id}/analysis-runs/{run_id}/export/pdf` | legacy | deprecated | 2026-04-25 | koniec M4 | Trasa zwraca `410` i zostaje tylko jako jawny komunikat migracyjny; produkcyjny eksport idzie przez execution/power-flow. | canonical only API tests | Architekt raportow |
+| `GET /api/proof/{project_id}/{case_id}/{run_id}/pack` | legacy | deprecated | 2026-04-25 | koniec M4 | Legacy GET proof-pack zwraca `410`; aktywny pozostaje tylko proof-pack zwarc asymetrycznych i kanoniczne eksporty StudyCase. | proof pack tests | Architekt proof |
+| `GET /api/protection-engine/v1/curve-types` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint typow krzywych silnika zabezpieczen zostal odciety z `api.main`; kanoniczne zabezpieczenia ida przez katalog i tory StudyCase. | canonical only API tests | Projektant zabezpieczen |
+| `GET /api/reference-patterns/fixtures/{fixture_file}` | v12xx | aktywny | 2026-04-24 | - | Fixture sieci wzorcowych. | reference pattern tests | Architekt testow |
+| `GET /api/reference-patterns/fixtures/{fixture_file}/export/docx` | v12xx | aktywny | 2026-04-24 | - | Eksport DOCX fixture. | reference export tests | Architekt testow |
+| `GET /api/reference-patterns/fixtures/{fixture_file}/export/pdf` | v12xx | aktywny | 2026-04-24 | - | Eksport PDF fixture. | reference export tests | Architekt testow |
+| `GET /api/reference-patterns/patterns` | v12xx | aktywny | 2026-04-24 | - | Lista wzorcow referencyjnych. | reference pattern tests | Architekt testow |
+| `GET /api/reference-patterns/patterns/{pattern_id}/fixtures` | v12xx | aktywny | 2026-04-24 | - | Fixture wzorca referencyjnego. | reference pattern tests | Architekt testow |
+| `GET /api/result-contract/schema` | v12xx | aktywny | 2026-04-24 | - | Schemat kontraktu wyniku. | result contract tests | Architekt wynikow |
+| `GET /api/study-cases/project/{project_id}` | v12xx | aktywny | 2026-04-24 | - | Przypadki projektu. | study case tests | Architekt domeny |
+| `GET /api/study-cases/project/{project_id}/active` | v12xx | aktywny | 2026-04-24 | - | Aktywny przypadek projektu. | study case tests | Architekt domeny |
+| `GET /api/study-cases/project/{project_id}/count` | v12xx | aktywny | 2026-04-24 | - | Liczba przypadkow projektu. | study case tests | Architekt domeny |
+| `GET /api/study-cases/{case_id}` | v12xx | aktywny | 2026-04-24 | - | Odczyt przypadku. | study case tests | Architekt domeny |
+| `GET /api/study-cases/{case_id}/can-calculate` | v12xx | aktywny | 2026-04-24 | - | Gotowosc przypadku do obliczen. | can-calculate tests | Architekt walidacji |
+| `GET /api/study-cases/{case_id}/protection-config` | v12xx | aktywny | 2026-04-24 | - | Konfiguracja zabezpieczen przypadku. | protection config tests | Projektant zabezpieczen |
+| `GET /api/study-cases/{case_id}/sld-overrides` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Przejscie geometrii SLD; nie jest prawda domenowa. | sld override tests | Architekt SLD |
+| `GET /api/switchgear/{station_id}/config` | v12xx | aktywny | 2026-04-24 | - | Konfiguracja rozdzielnicy. | switchgear tests | Architekt SLD |
+| `PATCH /api/study-cases/{case_id}` | v12xx | aktywny | 2026-04-24 | - | Aktualizacja przypadku. | study case update tests | Architekt domeny |
+| `POST /api/cases/{case_id}/enm/domain-ops` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Walidowane operacje domenowe ENM v1, docelowo single-write ENM v2. | domain ops tests | Architekt ENM |
+| `POST /api/cases/{case_id}/runs/power-flow` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie rozplywu mocy. | power flow run tests | Architekt solverow |
+| `POST /api/cases/{case_id}/runs/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie obliczen zwarciowych; whitelistuje `fault_type`, `short_circuit_type`, `c_factor`, `thermal_time_seconds`, ignoruje draft ENM i zwraca status dowodowy oraz raportowy dla 1F/2F+Z. | short circuit run tests, draft isolation tests | Architekt solverow |
+| `POST /api/catalog/import` | v12xx | aktywny | 2026-04-24 | - | Import katalogow. | catalog import tests | Administrator katalogow |
+| `POST /api/catalog/protection/import` | v12xx | aktywny | 2026-04-24 | - | Import katalogu zabezpieczen. | protection import tests | Projektant zabezpieczen |
+| `POST /api/comparison/runs` | v12xx | aktywny | 2026-04-24 | - | Porownanie uruchomien. | comparison tests | Architekt wynikow |
+| `POST /api/equipment-proof/pack` | v12xx | aktywny | 2026-04-24 | - | Pakiet uzasadnienia dla aparatury. | equipment proof tests | Architekt proof |
+| `POST /api/execution/fault-scenarios/{scenario_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Uruchomienie scenariusza zakloceniowego. | execution tests | Architekt ruchowy |
+| `POST /api/execution/runs/{run_id}/execute` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Wykonanie runu execution. | execution tests | Architekt ruchowy |
+| `POST /api/execution/study-cases/{case_id}/fault-scenarios` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie scenariusza zakloceniowego. | fault scenario tests | Architekt ruchowy |
+| `POST /api/execution/study-cases/{case_id}/runs` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Utworzenie runu execution. | execution tests | Architekt ruchowy |
+| `POST /api/import/xlsx` | v12xx | aktywny | 2026-04-24 | - | Import XLSX do modelu. | xlsx import tests | Architekt migracji |
+| `POST /api/projects` | v12xx | aktywny | 2026-04-24 | - | Utworzenie projektu. | project API tests | Architekt API |
+| `POST /api/proof/sc-asymmetrical/pack` | v12xx | aktywny | 2026-04-24 | - | Proof-pack dla zwarc asymetrycznych. | asym proof tests | Architekt proof |
+| `POST /api/protection-engine/v1/curve-time` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint czasu krzywej zabezpieczenia zostal odciety z `api.main`; obliczenia zabezpieczeniowe pozostaja w domenie i raportach kanonicznych. | canonical only API tests | Projektant zabezpieczen |
+| `POST /api/protection-engine/v1/execute` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint wykonania silnika zabezpieczen zostal odciety z `api.main`; publiczny tor nie moze tworzyc drugiej prawdy wynikow EAZ. | canonical only API tests | Projektant zabezpieczen |
+| `POST /api/protection-engine/v1/validate` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint walidacji silnika zabezpieczen zostal odciety z `api.main`; walidacje publiczne ida przez wspolny kontrakt severity i gotowosc. | canonical only API tests | Projektant zabezpieczen |
+| `POST /api/reference-patterns/run` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie wzorca referencyjnego. | reference pattern tests | Architekt testow |
+| `POST /api/study-cases` | v12xx | aktywny | 2026-04-24 | - | Utworzenie przypadku. | study case tests | Architekt domeny |
+| `POST /api/study-cases/activate` | v12xx | aktywny | 2026-04-24 | - | Aktywacja przypadku. | study case tests | Architekt domeny |
+| `POST /api/study-cases/compare` | v12xx | aktywny | 2026-04-24 | - | Porownanie przypadkow. | comparison tests | Architekt wynikow |
+| `POST /api/study-cases/project/{project_id}/invalidate-all` | v12xx | aktywny | 2026-04-24 | - | Globalna invalidacja przypadkow projektu. | invalidation tests | Architekt wynikow |
+| `POST /api/study-cases/{case_id}/clone` | v12xx | aktywny | 2026-04-24 | - | Klonowanie przypadku. | study case tests | Architekt domeny |
+| `POST /api/study-cases/{case_id}/invalidate` | v12xx | aktywny | 2026-04-24 | - | Invalidacja przypadku. | invalidation tests | Architekt wynikow |
+| `POST /api/study-cases/{case_id}/sld-overrides/reset` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Reset geometrii SLD. | sld override tests | Architekt SLD |
+| `POST /api/study-cases/{case_id}/sld-overrides/validate` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Walidacja override SLD. | sld override tests | Architekt SLD |
+| `POST /api/switchgear/{station_id}/validate` | v12xx | aktywny | 2026-04-24 | - | Walidacja rozdzielnicy. | switchgear tests | Architekt SLD |
+| `PUT /api/execution/fault-scenarios/{scenario_id}` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Aktualizacja scenariusza zakloceniowego. | fault scenario tests | Architekt ruchowy |
+| `PUT /api/study-cases/{case_id}/protection-config` | v12xx | aktywny | 2026-04-24 | - | Zapis konfiguracji zabezpieczen. | protection config tests | Projektant zabezpieczen |
+| `PUT /api/study-cases/{case_id}/sld-overrides` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zapis override SLD; docelowo kontrolowany przez warstwe geometrii. | sld override tests | Architekt SLD |
+| `PUT /api/switchgear/{station_id}/config` | v12xx | aktywny | 2026-04-24 | - | Zapis konfiguracji rozdzielnicy. | switchgear tests | Architekt SLD |
+
+## Blokada wdrozeniowa
+
+Nowy endpoint bez wpisu w tej macierzy blokuje zamkniecie PR.

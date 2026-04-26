@@ -58,6 +58,9 @@ function requiresCatalogBinding(canonicalOp: string | null): boolean {
   if (!canonicalOp) {
     return false;
   }
+  if (canonicalOp === 'add_grid_source_sn') {
+    return false;
+  }
   return canonicalOp === 'add_converter_source' || requiresCatalog(canonicalOp);
 }
 

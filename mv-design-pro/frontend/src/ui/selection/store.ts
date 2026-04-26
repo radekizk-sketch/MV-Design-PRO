@@ -174,7 +174,7 @@ export function useResultStatusLabel(): string {
   const status = useSelectionStore((state) => state.resultStatus);
   switch (status) {
     case 'NONE':
-      return 'Brak wynik?w';
+      return 'Brak wynikow';
     case 'FRESH':
       return 'Wyniki aktualne';
     case 'OUTDATED':

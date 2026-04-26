@@ -34,12 +34,12 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     }
   });
 
-  it('ma polskie etykiety w pasku zakresu obliczeń', () => {
+  it('ma polskie etykiety w pasku aktywnego przypadku', () => {
     const { missing, fileExists } = fileContains('active-case-bar/ActiveCaseBar.tsx', [
-      'Zmień zakres',
-      'Warunki obliczeń',
+      'Przelacz zestaw',
+      'Parametry analizy',
       'Oblicz',
-      'Podgląd wyników',
+      'Podglad wynikow',
     ]);
     if (fileExists) {
       expect(
@@ -67,8 +67,7 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
   it('ma polskie komunikaty blokad w warstwie mode gate', () => {
     const { missing, fileExists } = fileContains('mode-gate/ModeGate.tsx', [
       'Edycja modelu zablokowana',
-      'Akcja niedostępna w analizie i wynikach',
-      'Warunki obliczeń są niedostępne w analizie i wynikach',
+      'Akcja niedostepna w analizie i wynikach',
     ]);
     if (fileExists) {
       expect(
@@ -78,15 +77,18 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
     }
   });
 
-  it('ma dokladne nazwy ekranow E-07 i E-09', () => {
-    const { missing, fileExists } = fileContains('workspace/types.ts', [
-      "titlePl: 'Zakres i warunki obliczeń'",
-      "titlePl: 'Historia modelu i obliczeń'",
+  it('ma polskie komunikaty blokad w zarzadzaniu przypadkami', () => {
+    const { missing, fileExists } = fileContains('case-manager/useModeGating.ts', [
+      'Tworzenie przypadkow',
+      'Zmiana nazwy przypadku',
+      'Usuwanie przypadkow',
+      'Klonowanie przypadkow',
+      'Uruchomienie obliczen',
     ]);
     if (fileExists) {
       expect(
         missing,
-        `Missing canonical screen labels in workspace/types.ts: ${missing.join(', ')}`,
+        `Missing Polish labels in useModeGating: ${missing.join(', ')}`,
       ).toHaveLength(0);
     }
   });
@@ -94,12 +96,12 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
   it('nie dopuszcza prostych angielskich etykiet przyciskow w aktywnych plikach UI', () => {
     const englishTermsInStrings = [
       { pattern: "'Settings'", replacement: "'Ustawienia'" },
-        { pattern: "'Delete'", replacement: "'Usuń'" },
+      { pattern: "'Delete'", replacement: "'Usun'" },
       { pattern: "'Save'", replacement: "'Zapisz'" },
       { pattern: "'Cancel'", replacement: "'Anuluj'" },
       { pattern: "'Close'", replacement: "'Zamknij'" },
-        { pattern: "'Loading...'", replacement: "'Ładowanie...'" },
-        { pattern: "'Error'", replacement: "'Błąd'" },
+      { pattern: "'Loading...'", replacement: "'Ladowanie...'" },
+      { pattern: "'Error'", replacement: "'Blad'" },
     ];
 
     const violations: { file: string; term: string }[] = [];

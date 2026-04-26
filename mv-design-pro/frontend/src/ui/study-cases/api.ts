@@ -16,6 +16,23 @@ import type {
 } from './types';
 
 const API_BASE = '/api/study-cases';
+const EXECUTION_BASE = '/api/execution';
+
+function buildCreateRunBody(request: CreateRunRequest): CreateRunRequest {
+  const body: CreateRunRequest = {
+    analysis_type: request.analysis_type,
+  };
+  if (request.solver_input !== undefined) {
+    body.solver_input = request.solver_input;
+  }
+  if (request.readiness !== undefined) {
+    body.readiness = request.readiness;
+  }
+  if (request.eligibility !== undefined) {
+    body.eligibility = request.eligibility;
+  }
+  return body;
+}
 
 /**
  * Handle API response errors.
@@ -224,8 +241,6 @@ export async function updateProtectionConfig(
 // PR-14: Execution Runs API
 // =============================================================================
 
-const EXECUTION_BASE = '/api/execution';
-
 /**
  * Create a new execution run for a study case.
  */
@@ -236,7 +251,7 @@ export async function createRun(
   const response = await fetch(`${EXECUTION_BASE}/study-cases/${caseId}/runs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(request),
+    body: JSON.stringify(buildCreateRunBody(request)),
   });
   return handleResponse<ExecutionRun>(response);
 }

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from api.analysis_run_exports import (
+    build_analysis_run_export_payload,
     build_analysis_run_report_payload,
     build_analysis_run_trace_export_payload,
     export_run_report_json_response,
@@ -104,6 +105,11 @@ def _build_sc_run() -> CanonicalRun:
         readiness={},
         result_status="VALID",
         raw_result={
+            "analysis_type": "short_circuit_1f",
+            "short_circuit_type": "1F",
+            "reporting_status": "reportable",
+            "proof_status": "complete",
+            "proof_engine_version": "white_box_trace_v1",
             "results": [
                 {
                     "fault_node_id": "bus-2",
@@ -111,7 +117,23 @@ def _build_sc_run() -> CanonicalRun:
                     "ip_a": 9200.0,
                     "ith_a": 4700.0,
                     "sk_mva": 125.0,
-                    "short_circuit_type": "3PH",
+                    "short_circuit_type": "1F",
+                    "analysis_type": "short_circuit_1f",
+                    "reporting_status": "reportable",
+                    "proof_status": "complete",
+                    "proof_ref": "proof:short-circuit:bus-2",
+                    "proof_binding": {
+                        "proof_ref": "proof:short-circuit:bus-2",
+                        "proof_status": "complete",
+                        "reporting_status": "reportable",
+                        "trace_step_refs": [1],
+                        "method_basis": "IEC_60909",
+                        "requires_z0": True,
+                        "z0_source": "ENM_COMMITTED",
+                        "reporting_limitations": [],
+                    },
+                    "dopuszczalnosc_raportowa": True,
+                    "reporting_limitations": [],
                 }
             ],
             "graph": {
@@ -125,6 +147,10 @@ def _build_sc_run() -> CanonicalRun:
                 "step": 1,
                 "title": "Krok SC",
                 "result": {"ikss_a": {"value": 4500.0, "unit": "A"}},
+                "proof_ref": "proof:short-circuit:bus-2",
+                "proof_status": "complete",
+                "reporting_status": "reportable",
+                "method_basis": "IEC_60909",
             }
         ],
     )
@@ -158,6 +184,20 @@ def test_build_analysis_run_report_payload_filters_to_active_bus_table() -> None
         payload["analysis_case_context"]["reproducibility"]["proof_renderer_version"]
         == "white_box_trace_v1"
     )
+    reproducibility = payload["analysis_case_context"]["reproducibility"]
+    assert reproducibility["case_ref"] == "case-pf"
+    assert reproducibility["snapshot_ref"] == "snapshot-pf"
+    assert reproducibility["enm_hash"] == "snapshot-pf"
+    assert reproducibility["variant_ref"] == "variant.uklad_normalny"
+    assert reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
+    assert reproducibility["catalog_materialization_status"] == "materialized"
+    assert reproducibility["catalog_materialization_ref"].startswith("catalog-materialization:")
+    assert len(reproducibility["catalog_materialization_hash"]) == 64
+    assert (
+        reproducibility["catalog_materialization_contract_version"] == "catalog_materialization_v1"
+    )
+    assert reproducibility["report_contract_version"] == "analysis_report_v2"
+    assert reproducibility["result_rules_version"] == "result_rules_v12_5"
     assert payload["export_artifact"]["export_kind"] == "json"
     assert payload["results"]["index"]["tables"][0]["table_id"] == "buses"
     assert payload["results"]["branches"]["rows"] == []
@@ -179,7 +219,173 @@ def test_build_analysis_run_report_payload_supports_short_circuit_runs() -> None
     assert payload["proof_pack_ref"].startswith("proof-pack:")
     assert payload["export_policy"]["carries_generated_by_version"] is True
     assert payload["results"]["short_circuit"]["rows"][0]["target_id"] == "bus-2"
-    assert payload["trace"]["white_box_trace"][0]["title"] == "Krok SC"
+    assert payload["results"]["short_circuit"]["rows"][0]["fault_type"] == "1F"
+    assert payload["results"]["short_circuit"]["rows"][0]["reporting_status"] == "reportable"
+    assert payload["results"]["short_circuit"]["rows"][0]["proof_status"] == "complete"
+    assert payload["results"]["short_circuit"]["rows"][0]["proof_ref"].startswith(
+        "proof:short-circuit:"
+    )
+
+
+def _build_phase_state_run() -> CanonicalRun:
+    return CanonicalRun(
+        id=uuid4(),
+        case_id="case-phase",
+        project_id="project-1",
+        analysis_type="phase_state_sn",
+        status="FINISHED",
+        created_at=datetime.now(UTC),
+        snapshot_hash="snapshot-phase",
+        input_hash="hash-phase",
+        snapshot={"buses": [{"ref_id": "bus-load"}]},
+        validation={},
+        readiness={},
+        result_status="VALID",
+        raw_result={
+            "analysis_type": "phase_state_sn",
+            "target_id": "bus-load",
+            "target_bus_ref": "bus-load",
+            "proof_ref": "proof:phase-state-sn:bus-load",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+                "ua_kv": 8.648,
+                "ub_kv": 8.65,
+                "uc_kv": 0.0,
+                "ia_a": 120.0,
+                "ib_a": 100.0,
+                "ic_a": 0.0,
+                "phase_losses_kw": {"A": 1.44, "B": 1.0, "C": 0.0},
+                "unbalance_indices": {
+                    "voltage_percent": 50.0,
+                    "current_percent": 50.0,
+                    "losses_percent": 70.0,
+                },
+                "flags": {
+                    "has_fault": True,
+                    "has_open_phase": True,
+                    "faulted_phases": ["A"],
+                    "open_phases": ["C"],
+                },
+            },
+        },
+        white_box_trace=[
+            {
+                "step": 1,
+                "title": "Krok stanu fazowego",
+                "proof_ref": "proof:phase-state-sn:bus-load",
+                "proof_status": "complete",
+                "reporting_status": "reportable",
+            }
+        ],
+    )
+
+
+def _build_dynamic_stability_run() -> CanonicalRun:
+    return CanonicalRun(
+        id=uuid4(),
+        case_id="case-dyn",
+        project_id="project-1",
+        analysis_type="dynamic_stability",
+        status="FINISHED",
+        created_at=datetime.now(UTC),
+        snapshot_hash="snapshot-dyn",
+        input_hash="hash-dyn",
+        snapshot={"sources": [{"ref_id": "src-main"}]},
+        validation={},
+        readiness={},
+        result_status="VALID",
+        raw_result={
+            "analysis_type": "dynamic_stability",
+            "proof_ref": "proof:dynamic-stability:dyn-1",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+                "scenario_id": "dyn-1",
+                "source_id": "src-main",
+                "faulted_element_id": "line-1",
+                "status": "STABLE",
+                "stability_index": 0.66,
+                "clearing_time_ms": 120.0,
+                "clearing_margin_ms": 30.0,
+                "angle_swing_deg": 65.0,
+                "post_fault_voltage_pu": 0.97,
+                "post_fault_frequency_pu": 0.99,
+                "limiting_factor": "clearing_time",
+            },
+            "automation_trace": {
+                "topology_effect": {"network_state": "RECONFIGURED"},
+                "events": [
+                    {"event_seq": 1, "event_type": "AUTOMATION_STARTED", "detail": "Start"},
+                    {"event_seq": 5, "event_type": "DYNAMIC_STABILITY_EVALUATED", "detail": "Eval"},
+                ],
+            },
+        },
+        white_box_trace=[
+            {
+                "step": 1,
+                "title": "Krok stabilnosci",
+                "proof_ref": "proof:dynamic-stability:dyn-1",
+                "proof_status": "complete",
+                "reporting_status": "reportable",
+            }
+        ],
+    )
+
+
+def _build_source_compliance_run() -> CanonicalRun:
+    return CanonicalRun(
+        id=uuid4(),
+        case_id="case-comp",
+        project_id="project-1",
+        analysis_type="source_compliance",
+        status="FINISHED",
+        created_at=datetime.now(UTC),
+        snapshot_hash="snapshot-comp",
+        input_hash="hash-comp",
+        snapshot={"sources": [{"ref_id": "src-main"}]},
+        validation={},
+        readiness={},
+        result_status="VALID",
+        raw_result={
+            "analysis_type": "source_compliance",
+            "source_ref": "src-main",
+            "proof_ref": "proof:source-compliance:src-main",
+            "proof_status": "complete",
+            "reporting_status": "reportable",
+            "result": {
+                "source_type": "PV",
+                "verdict": "compliant",
+                "reporting_status": "reportable",
+                "proof_status": "complete",
+                "limitations": [],
+                "checks": {"frt": {"verdict": "compliant"}},
+            },
+        },
+        white_box_trace=[
+            {
+                "step": 1,
+                "title": "Krok zgodnosci zrodla",
+                "proof_ref": "proof:source-compliance:src-main",
+                "proof_status": "complete",
+                "reporting_status": "reportable",
+            }
+        ],
+    )
+
+
+def test_export_payload_supports_asymmetric_short_circuit_proof_status() -> None:
+    payload = build_analysis_run_export_payload(_build_sc_run())
+
+    assert payload["report_type"] == "short_circuit_result"
+    assert payload["metadata"]["analysis_type"] == "short_circuit_1f"
+    assert payload["metadata"]["reporting_status"] == "reportable"
+    assert payload["metadata"]["proof_status"] == "complete"
+    row = payload["short_circuit_results"]["rows"][0]
+    assert row["fault_type"] == "1F"
+    assert row["proof_binding"]["z0_source"] == "ENM_COMMITTED"
+    assert row["dopuszczalnosc_raportowa"] is True
+    assert payload["white_box_trace"][0]["proof_ref"].startswith("proof:short-circuit:")
 
 
 def test_export_run_report_json_response_returns_json_payload() -> None:
@@ -199,6 +405,10 @@ def test_export_run_report_json_response_returns_json_payload() -> None:
     assert (
         payload["analysis_case_context"]["reproducibility"]["results_contract_version"] == "V12.5"
     )
+    assert (
+        payload["analysis_case_context"]["reproducibility"]["catalog_materialization_status"]
+        == "placeholder"
+    )
     assert payload["export_artifact"]["completeness_status"] == "complete"
     assert "results" in payload
 
@@ -213,6 +423,52 @@ def test_trace_export_payload_carries_export_lineage() -> None:
     assert payload["export_artifact"]["lineage"]["snapshot_ref"] == payload["snapshot_id"]
     assert payload["export_artifact"]["lineage"]["proof_pack_ref"] == payload["proof_pack_ref"]
     assert payload["export_policy"]["carries_proof_pack_ref"] is True
+
+
+def test_trace_export_payload_carries_asymmetric_short_circuit_proof_status() -> None:
+    payload = build_analysis_run_trace_export_payload(_build_sc_run())
+
+    assert payload["analysis_case_context"]["case_ref"] == "case-sc"
+    assert payload["proof_pack_ref"].startswith("proof-pack:")
+    assert payload["export_artifact"]["export_kind"] == "whitebox_package"
+    assert payload["white_box_trace"][0]["proof_status"] == "complete"
+    assert payload["white_box_trace"][0]["reporting_status"] == "reportable"
+    assert payload["white_box_trace"][0]["method_basis"] == "IEC_60909"
+
+
+def test_report_payload_supports_phase_state_focus_table() -> None:
+    payload = build_analysis_run_report_payload(
+        _build_phase_state_run(),
+        report_options={
+            "profile": "audytowy",
+            "detail_level": "pelny",
+            "scope": "active_table",
+            "focus_table": "phase_state",
+            "sections": ["summary", "results", "trace"],
+        },
+    )
+
+    assert payload["results"]["index"]["tables"][0]["table_id"] == "phase_state"
+    assert payload["results"]["phase_state"]["rows"][0]["proof_status"] == "complete"
+    assert payload["trace"]["white_box_trace"][0]["proof_ref"].startswith("proof:phase-state-sn:")
+
+
+def test_export_payload_supports_dynamic_stability_bundle() -> None:
+    payload = build_analysis_run_export_payload(_build_dynamic_stability_run())
+
+    assert payload["report_type"] == "dynamic_stability"
+    assert payload["dynamic_stability"]["rows"][0]["status"] == "STABLE"
+    assert payload["automation_trace"]["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
+    assert payload["metadata"]["proof_status"] == "complete"
+
+
+def test_export_payload_supports_source_compliance_bundle() -> None:
+    payload = build_analysis_run_export_payload(_build_source_compliance_run())
+
+    assert payload["report_type"] == "source_compliance"
+    assert payload["source_compliance"]["rows"][0]["verdict"] == "compliant"
+    assert payload["source_compliance"]["rows"][0]["reporting_status"] == "reportable"
+    assert payload["metadata"]["analysis_type"] == "source_compliance"
 
 
 def test_report_payload_marks_readiness_blockers_as_partial_with_missing_prerequisites() -> None:

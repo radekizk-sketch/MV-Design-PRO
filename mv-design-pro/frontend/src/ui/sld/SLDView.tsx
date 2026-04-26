@@ -60,9 +60,9 @@ import { useCanCalculate, useAppStateStore } from '../app-state';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import {
   useNetworkBuildStore,
+  type ActiveObjectCard,
   type NetworkBuildOperationName,
 } from '../network-build/networkBuildStore';
-import type { ActiveObjectCard } from '../network-build/internal/legacySurfaceTypes';
 import { supportsOperationForm } from '../network-build/OperationFormRouter';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { buildOperationContext } from '../network-build/operationContext';
@@ -303,7 +303,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
   const { hasResults: hasDiagnostics } = useSanityChecks(
     activeProjectId ?? 'aktywny-projekt',
-    activeCaseId ?? 'aktywny-wariant-pracy',
+    activeCaseId ?? 'aktywny-przypadek',
   );
 
   const sldMode = useSldModeStore((state) => state.mode);
@@ -1358,7 +1358,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
             </svg>
             <h3 className="text-sm font-semibold tracking-wide text-slate-50">Schemat jednokreskowy</h3>
           </div>
-          <span className="text-xs font-medium text-[#8ea6ba]">
+          <span className="text-xs text-chrome-400 font-medium">
             Widok schematu
           </span>
           {/* PR-SLD-06: Mode indicator */}
@@ -1378,7 +1378,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
         <div className="flex items-center gap-1.5">
           {/* Zoom controls — CANONICAL-grade */}
-          <div className="flex items-center overflow-hidden rounded-[12px] border border-[#274154] bg-[#0d1c29]">
+          <div className="flex items-center bg-chrome-700 rounded overflow-hidden">
             <button
               type="button"
               onClick={handleZoomOut}

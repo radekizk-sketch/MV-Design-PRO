@@ -32,13 +32,13 @@ export type CalculationAnalysisType = 'SC_3F' | 'SC_1F' | 'LOAD_FLOW';
 const ANALYSIS_TYPE_LABELS: Record<CalculationAnalysisType, string> = {
   SC_3F: 'Zwarcie 3F (IEC 60909)',
   SC_1F: 'Zwarcie 1F (IEC 60909)',
-  LOAD_FLOW: 'Rozpływ mocy (Newton-Raphson)',
+  LOAD_FLOW: 'RozpĹ‚yw mocy (Newton-Raphson)',
 };
 
 const ANALYSIS_TYPE_SHORT: Record<CalculationAnalysisType, string> = {
   SC_3F: 'Zwarcie 3F',
   SC_1F: 'Zwarcie 1F',
-  LOAD_FLOW: 'Rozpływ mocy',
+  LOAD_FLOW: 'RozpĹ‚yw mocy',
 };
 
 interface Props {
@@ -155,7 +155,7 @@ export function ResultStatusBar({
               title={validationErrors.join('\n')}
               data-testid="validation-error-count"
             >
-              {validationErrors.length} błędów
+              {validationErrors.length} bĹ‚Ä…d(Ăłw)
             </span>
           )}
 
@@ -169,7 +169,7 @@ export function ResultStatusBar({
           >
             {(Object.keys(ANALYSIS_TYPE_LABELS) as CalculationAnalysisType[]).map((type) => (
               <option key={type} value={type} disabled={!isAnalysisAvailable(type, availableAnalyses)}>
-                {ANALYSIS_TYPE_SHORT[type]}{!isAnalysisAvailable(type, availableAnalyses) ? ' (niedostępne)' : ''}
+                {ANALYSIS_TYPE_SHORT[type]}{!isAnalysisAvailable(type, availableAnalyses) ? ' (niedostÄ™pne)' : ''}
               </option>
             ))}
           </select>
@@ -189,9 +189,9 @@ export function ResultStatusBar({
             title={
               !canRun
                 ? !analysisAvailable
-                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} - model nie spełnia wymagań`
+                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} â€” model nie speĹ‚nia wymagaĹ„`
                   : validationErrors.length > 0
-                  ? 'Popraw błędy walidacji przed obliczeniem'
+                  ? 'Popraw bĹ‚Ä™dy walidacji przed obliczeniem'
                   : isCalculating
                   ? 'Obliczenia w toku...'
                   : 'Uruchom obliczenia'
@@ -220,11 +220,11 @@ export function ResultStatusBar({
             <div className="flex items-center gap-3" data-testid="element-counts-summary">
               <span>Szyny: <span className="font-medium text-gray-700">{elementCounts.buses}</span></span>
               <span className="text-gray-300">|</span>
-              <span>Gałęzie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
+              <span>GaĹ‚Ä™zie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
               <span className="text-gray-300">|</span>
               <span>Transformatory: <span className="font-medium text-gray-700">{elementCounts.transformers}</span></span>
               <span className="text-gray-300">|</span>
-              <span>Źródła: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
+              <span>ĹąrĂłdĹ‚a: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
               <span className="text-gray-300">|</span>
               <span>Odbiory: <span className="font-medium text-gray-700">{elementCounts.loads}</span></span>
               {elementCounts.generators > 0 && (

@@ -4,7 +4,7 @@ import {
   ROUTES,
   getRouteByHash,
   isAnalysisRouteAlias,
-  navigateToConditions,
+  navigateToCaseConfig,
   navigateToCompare,
   navigateToNetworkBuild,
   navigateToProof,
@@ -35,7 +35,7 @@ describe('routes V12.5', () => {
     expect(getRouteByHash('#results')).toBeNull();
     expect(getRouteByHash('#proof')).toBeNull();
     expect(getRouteByHash('#compare')).toBeNull();
-    expect(getRouteByHash('#switchgear')).toBeNull();
+    expect(getRouteByHash('#switchgear')).toEqual(ROUTES.SWITCHGEAR);
     expect(getRouteByHash('#network-build')).toBeNull();
     expect(getRouteByHash('#case-manager')).toBeNull();
   });
@@ -55,7 +55,7 @@ describe('routes V12.5', () => {
     expect(resolveAnalysisRouteAliasTab('#switchgear')).toBeNull();
   });
 
-  it('navigates canonical analysis views without exposing technical proof alias', () => {
+  it('navigates analysis aliases through dedicated public alias hashes', () => {
     navigateToResults();
 
     let location = getHashParts();
@@ -66,8 +66,8 @@ describe('routes V12.5', () => {
 
     navigateToProof();
     location = getHashParts();
-    expect(location.hash).toBe('#analysis');
-    expect(location.params.get('tab')).toBe('trace');
+    expect(location.hash).toBe('#proof');
+    expect(location.params.has('tab')).toBe(false);
 
     navigateToResultsProtection();
     location = getHashParts();
@@ -86,9 +86,9 @@ describe('routes V12.5', () => {
   });
 
   it('maps legacy helper entrypoints onto canonical hashes', () => {
-    navigateToConditions();
+    navigateToCaseConfig();
     let location = getHashParts();
-    expect(location.hash).toBe('#warunki-obliczen');
+    expect(location.hash).toBe('#case-config');
     expect(location.params.has('tab')).toBe(false);
 
     navigateToNetworkBuild();

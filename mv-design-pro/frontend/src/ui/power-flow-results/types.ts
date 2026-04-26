@@ -27,7 +27,7 @@ import type { ExportPolicy } from '../results-inspector/types';
 export interface PowerFlowRunHeader {
   id: string;
   project_id: string;
-  operating_case_id: string;
+  study_case_id: string;
   status: string;
   result_status: string;
   created_at: string;
