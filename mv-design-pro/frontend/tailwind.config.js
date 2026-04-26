@@ -65,6 +65,27 @@ export default {
           'selection': '#3b82f6',
           'hover': '#60a5fa',
         },
+
+        /* === V12 dark SCADA-tech palette === */
+        'scada': {
+          'bg':        '#0B1014',   /* główne tło aplikacji */
+          'surface':   '#0E1620',   /* powierzchnia paneli */
+          'panel':     '#111B26',   /* panel kontekstu */
+          'border':    '#1E2D3D',   /* granica paneli */
+          'grid':      '#152028',   /* siatka SLD */
+          'sn':        '#FFD400',   /* magistrala SN 15-30 kV */
+          'nn':        '#3FA9F5',   /* magistrala nN 0.4 kV */
+          'wn':        '#C084FC',   /* magistrala WN 110+ kV */
+          'energized': '#00E5A8',   /* pod napięciem */
+          'dead':      '#5C6470',   /* bez napięcia */
+          'grounded':  '#FF8A00',   /* uziemione */
+          'alarm':     '#FF3B3B',   /* alarm */
+          'earth':     '#7E8A99',   /* ziemia/metal */
+          'text':      '#E2EBF3',   /* tekst główny */
+          'muted':     '#7E8A99',   /* tekst pomocniczy */
+          'active':    '#1A3050',   /* aktywna pozycja nawigacji */
+          'hover-nav': '#162238',   /* hover w nawigacji */
+        },
       },
 
       fontFamily: {

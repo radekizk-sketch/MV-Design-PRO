@@ -30,6 +30,22 @@ import {
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
+// =============================================================================
+// V12 — Area and Work-mode types
+// =============================================================================
+
+/**
+ * V12 application area codes.
+ * Each area maps to a dedicated left-context panel.
+ */
+export type AreaCode = 'MO' | 'AN' | 'ZA' | 'OZ' | 'RA' | 'AD' | 'HI';
+
+/**
+ * V12 SLD work-mode codes.
+ * TE=Edycja, TW=Wyniki, TZ=Zabezpieczenia, TP=Porównanie, TA=Audyt, TN=Operator nocny
+ */
+export type WorkMode = 'TE' | 'TW' | 'TZ' | 'TP' | 'TA' | 'TN';
+
 /**
  * Case kind (type of calculation case).
  */
@@ -68,6 +84,12 @@ interface AppState {
   // UI_INTEGRATION_E2E: Analysis type context
   activeAnalysisType: AnalysisType;
 
+  // V12: Area and work-mode
+  activeArea: AreaCode;
+  activeWorkMode: WorkMode;
+  activeVariantId: string | null;
+  activeVariantName: string | null;
+
   // UI state
   issuePanelOpen: boolean; // P30d: Issue Panel toggle
 
@@ -85,6 +107,11 @@ interface AppState {
   setActiveSnapshot: (snapshotId: string | null) => void; // UI_INTEGRATION_E2E
   setActiveAnalysisType: (analysisType: AnalysisType) => void; // UI_INTEGRATION_E2E
   toggleIssuePanel: (open?: boolean) => void; // P30d
+
+  // V12 actions
+  setActiveArea: (area: AreaCode) => void;
+  setActiveWorkMode: (mode: WorkMode) => void;
+  setActiveVariant: (variantId: string | null, variantName?: string | null) => void;
 
   // Computed helpers
   hasActiveCase: () => boolean;
@@ -112,6 +139,11 @@ const initialState = {
   activeRunId: null,
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
   issuePanelOpen: false, // P30d
+  // V12
+  activeArea: 'MO' as AreaCode,
+  activeWorkMode: 'TE' as WorkMode,
+  activeVariantId: null as string | null,
+  activeVariantName: null as string | null,
 };
 
 /**
@@ -211,6 +243,26 @@ export const useAppStateStore = create<AppState>()(
         set((state) => ({
           issuePanelOpen: open !== undefined ? open : !state.issuePanelOpen,
         }));
+      },
+
+      // V12 actions
+
+      setActiveArea: (area) => {
+        set({ activeArea: area });
+      },
+
+      setActiveWorkMode: (mode) => {
+        set({ activeWorkMode: mode });
+        // Sync legacy activeMode
+        if (mode === 'TE') {
+          set({ activeMode: 'MODEL_EDIT' });
+        } else {
+          set({ activeMode: 'RESULT_VIEW' });
+        }
+      },
+
+      setActiveVariant: (variantId, variantName = null) => {
+        set({ activeVariantId: variantId, activeVariantName: variantName });
       },
 
       /**
