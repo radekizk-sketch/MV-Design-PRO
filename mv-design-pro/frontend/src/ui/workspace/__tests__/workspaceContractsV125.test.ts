@@ -74,6 +74,7 @@ describe('workspace contracts V12.5', () => {
       catalog_picker: ['read_context', 'pick_catalog_item', 'open_canonical_surface'],
       catalog_admin: ['read_context', 'pick_catalog_item'],
       case_context: ['read_context', 'select_context', 'open_canonical_surface'],
+      switchgear_wizard: ['read_context', 'open_canonical_surface'],
     } as const;
 
     for (const helperCode of HELPER_SURFACE_CODES) {
