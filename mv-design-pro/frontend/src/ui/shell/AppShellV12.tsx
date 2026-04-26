@@ -41,6 +41,7 @@ import { useAppStateStore } from '../app-state/store';
 import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
+import { V12OverlayModeController } from './V12OverlayModeController';
 import { AreaContextPanel } from './context-panels';
 
 export interface AppShellV12Props {
@@ -185,6 +186,9 @@ export function AppShellV12({
       data-v12-shell
       className="flex h-screen flex-col overflow-hidden bg-scada-bg text-scada-text"
     >
+      {/* === V12 — sync work-mode → overlay visibility (headless) === */}
+      <V12OverlayModeController />
+
       {/* === TopBar V12 (48px) — kontekst + tryby === */}
       <TopBar
         projectName={projectName}

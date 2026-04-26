@@ -35,7 +35,8 @@ export {
 } from './overlayTypes';
 
 // Store
-export { useOverlayStore } from './overlayStore';
+export { useOverlayStore, ALL_OVERLAY_KINDS } from './overlayStore';
+export type { OverlayKind } from './overlayStore';
 
 // Engine
 export {
