@@ -40,7 +40,7 @@ import { UnifiedSymbolRenderer, type SymbolVisualState, type SymbolInteractionHa
 import { BranchRenderer } from './BranchRenderer';
 import { FieldBlockRenderer } from './FieldBlockRenderer';
 import { InlineBranchObjectRenderer } from './InlineBranchObjectRenderer';
-import { GpzFieldBlockRenderer } from './GpzFieldBlockRenderer';
+import { GpzSwitchgearRenderer } from './GpzFieldBlockRenderer';
 import { JunctionDotLayer } from './JunctionDotLayer';
 import { CANONICAL_GRID, CANONICAL_TYPOGRAPHY, CANONICAL_CANVAS } from './sldCanonicalStyle';
 import { useSldReadabilityOverlay } from './SldReadabilityOverlay';
@@ -270,11 +270,16 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   // Viewer nie uruchamia lokalnego engine layoutu. Używa wyłącznie geometrii
   // dostarczonej przez pipeline Snapshot -> SLD symbols.
   const symbols = inputSymbols;
+  const gpzSections = canonicalAnnotations?.gpzSections ?? [];
   const gpzFeederFields = canonicalAnnotations?.gpzFeederFields ?? [];
   const stationChains = canonicalAnnotations?.stationChains ?? [];
   const gpzFieldNodeIds = useMemo(
     () => new Set(gpzFeederFields.map((field) => field.feederNodeId)),
     [gpzFeederFields],
+  );
+  const gpzRootBusIds = useMemo(
+    () => new Set(gpzSections.map((section) => section.rootBusId)),
+    [gpzSections],
   );
 
   // Sort symbols for deterministic rendering (by ID)
@@ -283,6 +288,9 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     if (symbol.elementType === 'LineBranch') return false;
     if (gpzFieldNodeIds.has(symbol.id)) return false;
     if (symbol.elementId && gpzFieldNodeIds.has(symbol.elementId)) return false;
+    if (symbol.elementType === 'Bus' && (gpzRootBusIds.has(symbol.id) || (symbol.elementId && gpzRootBusIds.has(symbol.elementId)))) {
+      return false;
+    }
     return true;
   });
 
@@ -297,40 +305,37 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const { getOpacity, lodBand } = useSldReadabilityOverlay(symbols, viewport);
   // Pochodna LOD: czy pokazujemy pełne etykiety techniczne
   const showTechnicalCanonicalLabels = shouldShowTechnicalLabels(lodBand);
-  const canonicalFieldOverlays = useMemo(
-    () => [
-      ...gpzFeederFields.map((field) => (
-        <g
-          key={`gpz-field-${field.fieldId}`}
-          data-element-id={field.fieldId}
-          data-element-type="BaySN"
-          data-element-name={field.designation}
-          style={{ cursor: 'pointer' }}
-          onClick={(event) => {
-            event.stopPropagation();
+  const canonicalFieldOverlays = useMemo(() => {
+    const overlays: React.ReactNode[] = [];
+
+    if (gpzFeederFields.length > 0) {
+      overlays.push(
+        <GpzSwitchgearRenderer
+          key="gpz-switchgear-canonical"
+          sections={gpzSections}
+          fields={gpzFeederFields}
+          showTechnicalLabels={showTechnicalCanonicalLabels}
+          onFieldClick={(field) => {
             onSymbolClick(field.fieldId, 'BaySN', field.designation);
           }}
-          onDoubleClick={(event) => {
-            event.stopPropagation();
+          onFieldDoubleClick={(field) => {
             onSymbolDoubleClick?.(field.fieldId, 'BaySN', field.designation);
           }}
-        >
-          <GpzFieldBlockRenderer
-            field={field}
-            showTechnicalLabels={showTechnicalCanonicalLabels}
-            onTrunkOutPortClick={(selectedField) => {
-              onPortClick?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
-            }}
-            onTrunkOutPortHover={(selectedField) => {
-              if (!selectedField) {
-                onPortHover?.(null);
-                return;
-              }
-              onPortHover?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
-            }}
-          />
-        </g>
-      )),
+          onTrunkOutPortClick={(selectedField) => {
+            onPortClick?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
+          }}
+          onTrunkOutPortHover={(selectedField) => {
+            if (!selectedField) {
+              onPortHover?.(null);
+              return;
+            }
+            onPortHover?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
+          }}
+        />,
+      );
+    }
+
+    overlays.push(
       ...stationChains.map((chain) => (
         <g
           key={`station-field-${chain.stationId}`}
@@ -353,17 +358,19 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           />
         </g>
       )),
-    ],
-    [
-      gpzFeederFields,
-      onPortClick,
-      onPortHover,
-      onSymbolClick,
-      onSymbolDoubleClick,
-      showTechnicalCanonicalLabels,
-      stationChains,
-    ],
-  );
+    );
+
+    return overlays;
+  }, [
+    gpzSections,
+    gpzFeederFields,
+    onPortClick,
+    onPortHover,
+    onSymbolClick,
+    onSymbolDoubleClick,
+    showTechnicalCanonicalLabels,
+    stationChains,
+  ]);
 
   // Build energization map for connections
   const connectionEnergizationMap = useMemo(() => {

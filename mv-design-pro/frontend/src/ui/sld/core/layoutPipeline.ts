@@ -1468,8 +1468,7 @@ function phase7_generate_canonical_annotations(
       continue;
     }
 
-    const firstFieldBusId = fields[0].terminals.outgoingNodeId
-      ?? fields[0].terminals.incomingNodeId
+    const firstFieldBusId = fields[0].busSectionId
       ?? null;
     const rootBusId = firstFieldBusId ?? detail.busSections[0]?.id ?? block.blockId;
     const rootBusPlacement = placementMap.get(rootBusId);
@@ -1492,8 +1491,7 @@ function phase7_generate_canonical_annotations(
 
     for (let index = 0; index < fields.length; index++) {
       const field = fields[index];
-      const rootId = field.terminals.outgoingNodeId
-        ?? field.terminals.incomingNodeId
+      const rootId = field.busSectionId
         ?? rootBusId;
       const axisX = snap(firstAxisX + index * PITCH_FIELD_X);
       fieldAxes.set(field.id, axisX);
@@ -1504,8 +1502,8 @@ function phase7_generate_canonical_annotations(
         designation: field.id,
         axisX,
         busTap: { x: axisX, y: snap(busbar.y + busbar.height) },
-        segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 2 * OFFSET_POLE) },
-        headCenter: { x: axisX, y: snap(busbar.y + busbar.height + OFFSET_POLE) },
+        segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 8 * OFFSET_POLE) },
+        headCenter: { x: axisX, y: snap(busbar.y + busbar.height + 3 * OFFSET_POLE) },
         detail,
       });
     }

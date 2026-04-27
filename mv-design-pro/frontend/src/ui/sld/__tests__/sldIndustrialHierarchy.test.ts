@@ -42,7 +42,7 @@ describe('SLD industrial hierarchy gates', () => {
     expect(inlineObjectRenderer.includes('showTechnicalLabels &&')).toBe(true);
   });
 
-  it('aktywne rendery pola SN uzywaja wspolnego bloku schematu', () => {
+  it('aktywne rendery pola SN uzywaja wspolnych blokow, a GPZ ma dedykowany kanon rozdzielczy', () => {
     const branchRenderer = read('src/ui/sld/BranchRenderer.tsx');
     const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
     const gpzFieldBlockSource = read('src/ui/sld/GpzFieldBlockRenderer.tsx');
@@ -50,7 +50,10 @@ describe('SLD industrial hierarchy gates', () => {
 
     expect(branchRenderer.includes('StationBlockLayoutSvg')).toBe(true);
     expect(stationRenderer.includes('StationBlockLayoutSvg')).toBe(true);
-    expect(gpzFieldBlockSource.includes('CanonicalFieldBlockSvg')).toBe(true);
+    expect(gpzFieldBlockSource.includes('data-sld-role="gpz-bus-coupler"')).toBe(true);
+    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q1')).toBe(true);
+    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q2')).toBe(true);
+    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q3')).toBe(true);
     expect(baySvgRenderer.includes('StationBlockLayoutSvg')).toBe(true);
   });
 
@@ -89,7 +92,7 @@ describe('SLD industrial hierarchy gates', () => {
   it('GPZ ma jawny renderer pola liniowego między szyną i początkiem magistrali', () => {
     const canvasRenderer = read('src/ui/sld/SLDViewCanvas.tsx');
     const gpzFieldBlockSource = read('src/ui/sld/GpzFieldBlockRenderer.tsx');
-    expect(canvasRenderer.includes('GpzFieldBlockRenderer')).toBe(true);
+    expect(canvasRenderer.includes('GpzSwitchgearRenderer')).toBe(true);
     expect(gpzFieldBlockSource.includes('data-sld-role="gpz-feeder-field"')).toBe(true);
     expect(gpzFieldBlockSource.includes('field.segmentStart')).toBe(true);
   });

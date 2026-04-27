@@ -298,7 +298,7 @@ function App() {
     return 'valid' as const;
   }, [readiness]);
 
-  // Menu action handler â€” routes navigation from MainMenuBar
+  // Action handler for canonical top/workspace controls.
   const handleMenuAction = useCallback((actionId: string) => {
     switch (actionId) {
       case 'sld':

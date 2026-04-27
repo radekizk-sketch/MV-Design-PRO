@@ -8,7 +8,7 @@ const ACTIVE_SHELL_FILES = [
   ['workspace', 'WorkspaceSurfaceRouter.tsx'],
   ['workspace', 'types.ts'],
   ['navigation', 'routes.ts'],
-  ['main-menu', 'MainMenuBar.tsx'],
+  ['shell', 'AppShellV12.tsx'],
 ] as const;
 
 const FORBIDDEN_ACTIVE_LABELS = [

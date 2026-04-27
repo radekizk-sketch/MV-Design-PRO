@@ -15,7 +15,6 @@ import { ActiveCaseBar } from '../active-case-bar';
 import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
-import { MainMenuBar } from '../main-menu';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { MassReviewPanel } from '../network-build/mass-review';
@@ -76,7 +75,6 @@ export function CanonicalLayout({
   validationWarnings = 0,
   validationErrors = 0,
   hideInspector = false,
-  onMenuAction,
   networkStats,
 }: CanonicalLayoutProps) {
   const issuePanelOpen = useIssuePanelOpen();
@@ -172,8 +170,6 @@ export function CanonicalLayout({
 
   return (
     <div className="flex h-screen flex-col bg-chrome-100" data-testid="canonical-layout">
-      <MainMenuBar onAction={onMenuAction} />
-
       <ActiveCaseBar
         onChangeCaseClick={handleChangeCaseClick}
         onConfigureClick={handleConfigureClick}

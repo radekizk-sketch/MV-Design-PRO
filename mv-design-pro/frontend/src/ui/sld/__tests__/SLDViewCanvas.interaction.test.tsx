@@ -18,6 +18,24 @@ vi.mock('../symbols', () => ({
 }));
 
 vi.mock('../GpzFieldBlockRenderer', () => ({
+  GpzSwitchgearRenderer: ({ fields, onFieldClick, onTrunkOutPortClick, onTrunkOutPortHover }: any) => (
+    <g>
+      {fields.map((field: any) => (
+        <g key={field.fieldId} onClick={() => onFieldClick?.(field)}>
+          <text>{field.designation}</text>
+          <circle
+            data-testid={`sld-port-${field.fieldId}-TRUNK_OUT`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onTrunkOutPortClick?.(field);
+            }}
+            onMouseEnter={() => onTrunkOutPortHover?.(field)}
+            onMouseLeave={() => onTrunkOutPortHover?.(null)}
+          />
+        </g>
+      ))}
+    </g>
+  ),
   GpzFieldBlockRenderer: ({ field, onTrunkOutPortClick, onTrunkOutPortHover }: any) => (
     <g>
       <text>{field.designation}</text>

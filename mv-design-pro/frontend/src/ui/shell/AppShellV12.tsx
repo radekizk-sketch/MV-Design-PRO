@@ -24,7 +24,6 @@ import { ActiveCaseBar } from '../active-case-bar';
 import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
-import { MainMenuBar } from '../main-menu';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { MassReviewPanel } from '../network-build/mass-review';
@@ -195,9 +194,8 @@ export function AppShellV12({
         onViewResults={onViewResults}
       />
 
-      {/* === Paski legacy (menu + case bar + context bar) === */}
+      {/* === Paski kontekstu pracy === */}
       <div className="shrink-0">
-        <MainMenuBar onAction={onMenuAction} />
         <ActiveCaseBar
           onChangeCaseClick={handleChangeCaseClick}
           onConfigureClick={handleConfigureClick}

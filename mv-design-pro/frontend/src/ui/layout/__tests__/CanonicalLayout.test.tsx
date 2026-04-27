@@ -7,10 +7,6 @@ const activeSurfaceState = {
   activeSurface: null,
 };
 
-vi.mock('../../main-menu', () => ({
-  MainMenuBar: () => <div data-testid="main-menu-bar">menu</div>,
-}));
-
 vi.mock('../../active-case-bar', () => ({
   ActiveCaseBar: () => <div data-testid="active-case-bar">case bar</div>,
 }));
@@ -88,7 +84,7 @@ describe('CanonicalLayout V12.5 shell', () => {
     );
 
     expect(screen.getByTestId('canonical-layout')).toBeInTheDocument();
-    expect(screen.getByTestId('main-menu-bar')).toBeInTheDocument();
+    expect(screen.queryByTestId('main-menu-bar')).not.toBeInTheDocument();
     expect(screen.getByTestId('active-case-bar')).toBeInTheDocument();
     expect(screen.getByTestId('top-context-bar')).toBeInTheDocument();
     expect(screen.getByTestId('main-content')).toBeInTheDocument();
