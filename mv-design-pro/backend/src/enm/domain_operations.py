@@ -328,6 +328,54 @@ def _field_specs_for_substation(substation: dict[str, Any]) -> list[dict[str, An
     return [spec for spec in raw_specs if isinstance(spec, dict)]
 
 
+def _field_specs_by_bus(enm: dict[str, Any]) -> dict[str, list[dict[str, Any]]]:
+    by_bus: dict[str, list[dict[str, Any]]] = {}
+    role_rank = {"OUT": 0, "FEEDER": 1, "IN": 2}
+
+    for substation in enm.get("substations", []):
+        if not isinstance(substation, dict):
+            continue
+        station_ref = substation.get("ref_id")
+        for spec in _field_specs_for_substation(substation):
+            field_ref = spec.get("field_ref")
+            bus_ref = spec.get("bus_ref")
+            if not isinstance(field_ref, str) or not isinstance(bus_ref, str):
+                continue
+            indexed_spec = dict(spec)
+            if isinstance(station_ref, str):
+                indexed_spec["station_ref"] = station_ref
+            by_bus.setdefault(bus_ref, []).append(indexed_spec)
+
+    for specs in by_bus.values():
+        specs.sort(
+            key=lambda spec: (
+                role_rank.get(str(spec.get("bay_role", "")).upper(), 99),
+                str(spec.get("field_ref", "")),
+            )
+        )
+    return by_bus
+
+
+def _field_ref_to_bus_ref(enm: dict[str, Any], field_ref: str | None) -> str | None:
+    if not field_ref:
+        return None
+    for specs in _field_specs_by_bus(enm).values():
+        for spec in specs:
+            if spec.get("field_ref") == field_ref:
+                bus_ref = spec.get("bus_ref")
+                return bus_ref if isinstance(bus_ref, str) and bus_ref else None
+    return None
+
+
+def _is_trunk_start_field_spec(spec: dict[str, Any]) -> bool:
+    role = str(spec.get("bay_role", "")).upper()
+    if role not in {"OUT", "FEEDER", "IN"}:
+        return False
+    tags = spec.get("tags")
+    normalized_tags = {tag for tag in tags if isinstance(tag, str)} if isinstance(tags, list) else set()
+    return not (role == "FEEDER" and "gpz_line_field" in normalized_tags)
+
+
 def _sn_bus_refs_for_substation(enm: dict[str, Any], substation: dict[str, Any]) -> list[str]:
     bus_index = {bus.get("ref_id"): bus for bus in enm.get("buses", [])}
     bus_refs = [ref for ref in substation.get("bus_refs", []) if isinstance(ref, str)]
@@ -604,6 +652,14 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
             corridor_segment_refs.add(seg)
 
     branch_points = {bp.get("bus_ref"): bp for bp in enm.get("branch_points", [])}
+    field_specs_by_bus = _field_specs_by_bus(enm)
+    source_bus_refs = sorted(
+        {
+            source.get("bus_ref")
+            for source in enm.get("sources", [])
+            if isinstance(source, dict) and isinstance(source.get("bus_ref"), str)
+        }
+    )
 
     # Build trunks with terminals
     trunks = []
@@ -642,6 +698,30 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
                         "status": end_status,
                     }
                 )
+        else:
+            for bus_ref in source_bus_refs:
+                start_field = next(
+                    (
+                        spec
+                        for spec in field_specs_by_bus.get(bus_ref, [])
+                        if _is_trunk_start_field_spec(spec)
+                    ),
+                    None,
+                )
+                if start_field is None:
+                    continue
+                terminals.append(
+                    {
+                        "element_id": start_field["field_ref"],
+                        "port_id": "trunk_out",
+                        "trunk_id": c.get("ref_id"),
+                        "branch_id": None,
+                        "status": "OTWARTY",
+                        "bus_ref": bus_ref,
+                        "station_ref": start_field.get("station_ref"),
+                    }
+                )
+                break
 
         embedded_objects: list[dict[str, Any]] = []
         for seg_ref in segments:
@@ -1831,7 +1911,20 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
     """Kontynuuj magistralę SN — dodaj kolejny odcinek."""
     trunk_id = payload.get("trunk_id")
     from_terminal_id = payload.get("from_terminal_id")
+    field_ref = payload.get("field_ref")
+    if not isinstance(field_ref, str) or not field_ref.strip():
+        field_ref = payload.get("terminal_id")
+    field_ref = field_ref.strip() if isinstance(field_ref, str) and field_ref.strip() else None
     segment = payload.get("segment", {})
+
+    if isinstance(from_terminal_id, str) and from_terminal_id.strip():
+        from_terminal_id = from_terminal_id.strip()
+        resolved_field_bus = _field_ref_to_bus_ref(enm, from_terminal_id)
+        if resolved_field_bus:
+            field_ref = field_ref or from_terminal_id
+            from_terminal_id = resolved_field_bus
+    elif field_ref:
+        from_terminal_id = _field_ref_to_bus_ref(enm, field_ref)
 
     # Auto-detect from_terminal_id: find the last bus on the trunk
     if not from_terminal_id:
@@ -1876,7 +1969,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         {
             "op": "continue_trunk",
             "trunk_id": trunk_id or "",
-            "from": from_terminal_id,
+            "from": field_ref or from_terminal_id,
             "rodzaj": rodzaj,
             "dlugosc_m": dlugosc_m,
         }
@@ -1967,10 +2060,11 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
 
     # Update corridor (auto-detect if not specified)
     effective_trunk_id = trunk_id
-    if not effective_trunk_id:
-        corridors = new_enm.get("corridors", [])
-        if corridors:
-            effective_trunk_id = corridors[0].get("ref_id")
+    corridors = new_enm.get("corridors", [])
+    if effective_trunk_id and not any(c.get("ref_id") == effective_trunk_id for c in corridors):
+        effective_trunk_id = None
+    if not effective_trunk_id and corridors:
+        effective_trunk_id = corridors[0].get("ref_id")
 
     if effective_trunk_id:
         for c in new_enm.get("corridors", []):

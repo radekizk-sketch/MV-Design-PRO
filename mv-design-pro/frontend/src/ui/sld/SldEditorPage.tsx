@@ -449,6 +449,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const setActiveProject = useAppStateStore((state) => state.setActiveProject);
   const setActiveCase = useAppStateStore((state) => state.setActiveCase);
+  const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
   const createCase = useStudyCasesStore((state) => state.createCase);
   const resultStatusLabel = useResultStatusLabel();
   const activeVariant = useActiveVariant();
@@ -617,8 +618,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   }, [selectedSegmentBranch]);
 
   const enmProjection = useMemo(
-    () => projectEnmSnapshotToSld((enmSnapshot ?? null) as Record<string, unknown> | null),
-    [enmSnapshot],
+    () => projectEnmSnapshotToSld(
+      (enmSnapshot ?? null) as Record<string, unknown> | null,
+      logicalViews ?? null,
+    ),
+    [enmSnapshot, logicalViews],
   );
 
   const openCatalogPickerForSelectedSegment = useCallback(() => {
@@ -705,8 +709,9 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   // Determine symbols to display from canonical store only
   const symbols = useMemo(() => storeSymbols, [storeSymbols]);
   const hasSource = useMemo(
-    () => symbols.some((symbol) => symbol.elementType === 'Source'),
-    [symbols],
+    () => (enmSnapshot?.sources?.length ?? 0) > 0
+      || symbols.some((symbol) => symbol.elementType === 'Source'),
+    [enmSnapshot, symbols],
   );
   const hasCanonicalTrunkStart = useMemo(
     () => (logicalViews?.terminals ?? []).some((terminal) => terminal.status === 'OTWARTY'),
@@ -1090,6 +1095,13 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   useEffect(() => {
     setSldSymbols(enmProjection.symbols);
   }, [enmProjection.symbols, setSldSymbols]);
+
+  useEffect(() => {
+    const snapshotHash = enmSnapshot?.header?.hash_sha256;
+    if (snapshotHash && snapshotHash !== activeSnapshotId) {
+      setActiveSnapshot(snapshotHash);
+    }
+  }, [activeSnapshotId, enmSnapshot?.header?.hash_sha256, setActiveSnapshot]);
 
   // Determine empty state
   const emptyState: SldEmptyState | null = useMemo(() => {

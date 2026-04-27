@@ -26,6 +26,12 @@ const TERMINAL_TARGET: SelectedElement = {
   name: 'Terminal pola GPZ',
 };
 
+const BAY_TARGET: SelectedElement = {
+  id: 'bay-sn-001',
+  type: 'BaySN',
+  name: 'Pole odpływowe SN',
+};
+
 describe('interactionController', () => {
   it('zwraca tabelÄ™ statusĂłw z delete_element ustawionym jako DZIALA', () => {
     const table = getToolStatusTable();
@@ -216,6 +222,25 @@ describe('interactionController', () => {
       terminal_id: 'seg-001',
       from_terminal_id: 'seg-001',
     });
+  });
+
+  it('buduje payload kontynuacji z portu pola SN bez podszywania pola pod trunk_id', () => {
+    const resolved = resolveToolAction('continue_trunk_segment_sn', BAY_TARGET, {
+      hasSource: true,
+      hasCanonicalTrunkStart: true,
+      hasRing: false,
+      activeCaseId: 'case-1',
+    }, { kind: 'port', portRole: 'TRUNK_OUT' });
+
+    expect(resolved.mode).toBe('DOMAIN_OP');
+    expect(resolved.canonicalOp).toBe('continue_trunk_segment_sn');
+    expect(resolved.payload).toMatchObject({
+      source: 'sld_tool',
+      field_ref: 'bay-sn-001',
+      terminal_id: 'bay-sn-001',
+      from_terminal_id: 'bay-sn-001',
+    });
+    expect(resolved.payload).not.toHaveProperty('trunk_id');
   });
 
   it('pozwala kontynuowac magistrale z terminala magistrali', () => {

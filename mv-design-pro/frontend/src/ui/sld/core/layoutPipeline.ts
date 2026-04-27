@@ -54,6 +54,8 @@ import {
   type BranchPointV1,
   type InlineBranchObjectV1,
   type StationFieldAnnotationV1,
+  type GpzFieldAnnotationV1,
+  type GpzSectionV1,
   type StationApparatusItemV1,
   type NNFeederV1,
   type ProtectionRelayV1,
@@ -63,7 +65,7 @@ import {
   computeLayoutResultHash,
   canonicalizeLayoutResult,
 } from './layoutResult';
-import type { StationBlockDetailV1 } from './fieldDeviceContracts';
+import { FieldRoleV1, type StationBlockDetailV1 } from './fieldDeviceContracts';
 import type { StationBlockBuildResult } from './stationBlockBuilder';
 import {
   resolveBranchPointDetailsForGraph,
@@ -1407,10 +1409,6 @@ function phase7_generate_canonical_annotations(
     .filter(e => e.edgeType === EdgeTypeV1.TRUNK)
     .sort((a, b) => a.id.localeCompare(b.id));
 
-  if (trunkEdges.length === 0) {
-    return null;
-  }
-
   // Build placement lookup
   const placementMap = new Map<string, NodePlacementV1>();
   for (const p of _placements) {
@@ -1424,6 +1422,124 @@ function phase7_generate_canonical_annotations(
     }
   }
   const branchPointDetailMap = resolveBranchPointDetailsForGraph(graph);
+
+  const gpzSections: GpzSectionV1[] = [];
+  const gpzFeederFields: GpzFieldAnnotationV1[] = [];
+  const sourceNodeIdsByBus = new Map<string, string[]>();
+  const sourceNodes = graph.nodes
+    .filter((node) => isSourceType(node.nodeType))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  for (const source of sourceNodes) {
+    const connectedToNodeId = source.attributes.connectedToNodeId;
+    if (typeof connectedToNodeId === 'string' && connectedToNodeId) {
+      sourceNodeIdsByBus.set(connectedToNodeId, [
+        ...(sourceNodeIdsByBus.get(connectedToNodeId) ?? []),
+        source.id,
+      ]);
+    }
+    for (const edge of graph.edges) {
+      const otherNodeId = edge.fromPortRef.nodeId === source.id
+        ? edge.toPortRef.nodeId
+        : edge.toPortRef.nodeId === source.id
+          ? edge.fromPortRef.nodeId
+          : null;
+      if (otherNodeId) {
+        sourceNodeIdsByBus.set(otherNodeId, [
+          ...(sourceNodeIdsByBus.get(otherNodeId) ?? []),
+          source.id,
+        ]);
+      }
+    }
+  }
+
+  for (const block of [...stationBlocks].sort((left, right) => left.blockId.localeCompare(right.blockId))) {
+    const detail = block.detail;
+    if (!detail) {
+      continue;
+    }
+    const fields = detail.fields
+      .filter((field) => field.fieldRole === FieldRoleV1.GPZ_LINE_BAY)
+      .sort((left, right) => left.id.localeCompare(right.id));
+    if (fields.length === 0) {
+      continue;
+    }
+
+    const firstFieldBusId = fields[0].terminals.outgoingNodeId
+      ?? fields[0].terminals.incomingNodeId
+      ?? null;
+    const rootBusId = firstFieldBusId ?? detail.busSections[0]?.id ?? block.blockId;
+    const rootBusPlacement = placementMap.get(rootBusId);
+    const busbar = rootBusPlacement
+      ? {
+          x: rootBusPlacement.bounds.x,
+          y: rootBusPlacement.bounds.y,
+          width: rootBusPlacement.bounds.width,
+          height: rootBusPlacement.bounds.height,
+        }
+      : {
+          x: block.bounds.x,
+          y: Math.max(Y_GPZ, block.bounds.y - OFFSET_POLE),
+          width: Math.max(block.bounds.width, (fields.length - 1) * PITCH_FIELD_X + 2 * GRID_BASE),
+          height: 10,
+        };
+    const totalFieldWidth = (fields.length - 1) * PITCH_FIELD_X;
+    const firstAxisX = snap(busbar.x + busbar.width / 2 - totalFieldWidth / 2);
+    const fieldAxes = new Map<string, number>();
+
+    for (let index = 0; index < fields.length; index++) {
+      const field = fields[index];
+      const rootId = field.terminals.outgoingNodeId
+        ?? field.terminals.incomingNodeId
+        ?? rootBusId;
+      const axisX = snap(firstAxisX + index * PITCH_FIELD_X);
+      fieldAxes.set(field.id, axisX);
+      gpzFeederFields.push({
+        fieldId: field.id,
+        feederNodeId: field.terminals.outgoingNodeId ?? field.id,
+        rootBusId: rootId,
+        designation: field.id,
+        axisX,
+        busTap: { x: axisX, y: snap(busbar.y + busbar.height) },
+        segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 2 * OFFSET_POLE) },
+        headCenter: { x: axisX, y: snap(busbar.y + busbar.height + OFFSET_POLE) },
+        detail,
+      });
+    }
+
+    const sections = detail.busSections.length > 0
+      ? [...detail.busSections].sort((left, right) => left.orderIndex - right.orderIndex || left.id.localeCompare(right.id))
+      : [{ id: rootBusId, stationId: block.blockId, orderIndex: 0, catalogRef: null }];
+    for (const section of sections) {
+      const sectionFields = fields.filter((field) => field.busSectionId === section.id);
+      const effectiveFields = sectionFields.length > 0 ? sectionFields : fields;
+      const axes = effectiveFields
+        .map((field) => fieldAxes.get(field.id))
+        .filter((axis): axis is number => typeof axis === 'number');
+      if (axes.length === 0) {
+        continue;
+      }
+      const minAxis = Math.min(...axes);
+      const maxAxis = Math.max(...axes);
+      gpzSections.push({
+        sectionId: section.id,
+        rootBusId,
+        rootBusName: graph.nodes.find((node) => node.id === rootBusId)?.attributes.label ?? null,
+        order: section.orderIndex,
+        bounds: {
+          x: snap(minAxis - GRID_BASE * 2),
+          y: snap(busbar.y - GRID_BASE),
+          width: snap(maxAxis - minAxis + GRID_BASE * 4),
+          height: snap(3 * OFFSET_POLE + GRID_BASE),
+        },
+        busbar,
+        centerX: snap((minAxis + maxAxis) / 2),
+        fieldIds: effectiveFields.map((field) => field.id).sort(),
+        sourceNodeIds: [...new Set(sourceNodeIdsByBus.get(rootBusId) ?? [])].sort(),
+        leftCouplerEdgeId: null,
+        rightCouplerEdgeId: null,
+      });
+    }
+  }
 
   // Build trunk node annotations
   const trunkNodes: TrunkNodeAnnotationV1[] = [];
@@ -1719,6 +1835,8 @@ function phase7_generate_canonical_annotations(
     trunkSegments,
     branchPoints,
     stationChains,
+    gpzSections,
+    gpzFeederFields,
     inlineBranchObjects,
   };
 }

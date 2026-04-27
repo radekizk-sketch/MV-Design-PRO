@@ -81,6 +81,20 @@ def _continue_trunk(enm_dict: dict, **extra_payload) -> dict:
     )
 
 
+def _add_sn_bay(enm_dict: dict, *, station_ref: str, bus_ref: str) -> dict:
+    """Dodaj kanoniczne pole SN OUT do rozdzielnicy GPZ."""
+    return execute_domain_operation(
+        enm_dict=enm_dict,
+        op_name="add_sn_bay",
+        payload={
+            "station_ref": station_ref,
+            "bus_ref": bus_ref,
+            "bay_role": "OUT",
+            "apparatus_kind": "BREAKER",
+        },
+    )
+
+
 def _build_gpz_plus_segments(n_segments: int = 2) -> tuple[dict, dict]:
     """Zbuduj GPZ + N segmentów magistrali. Zwróć (last_result, snapshot)."""
     enm = _empty_enm()
@@ -224,6 +238,46 @@ class TestContinueTrunkSegmentSN:
         assert len(corridors) >= 1
         seg_refs = corridors[0].get("ordered_segment_refs", [])
         assert len(seg_refs) >= 1, "Corridor should have at least 1 segment"
+
+
+class TestSnBayLogicalViews:
+    def test_add_sn_bay_exposes_trunk_start_terminal_and_continue_uses_field_ref(self):
+        """Pole SN dodane jako field_specs musi byc widocznym terminalem startu magistrali."""
+        enm = _empty_enm()
+        result_gpz = _add_grid_source(enm)
+        assert result_gpz.get("snapshot") is not None
+        assert not result_gpz.get("error")
+        snapshot_gpz = result_gpz["snapshot"]
+        station = snapshot_gpz["substations"][0]
+        station_ref = station["ref_id"]
+        bus_ref = station["bus_refs"][0]
+        corridor_ref = snapshot_gpz["corridors"][0]["ref_id"]
+
+        result_bay = _add_sn_bay(snapshot_gpz, station_ref=station_ref, bus_ref=bus_ref)
+        assert result_bay.get("snapshot") is not None
+        assert not result_bay.get("error")
+
+        field_ref = result_bay["changes"]["created_element_ids"][0]
+        logical_views = result_bay["logical_views"]
+        terminals = logical_views["terminals"]
+        terminal = next((item for item in terminals if item["element_id"] == field_ref), None)
+
+        assert terminal is not None
+        assert terminal["port_id"] == "trunk_out"
+        assert terminal["trunk_id"] == corridor_ref
+        assert terminal["status"] == "OTWARTY"
+        assert terminal["bus_ref"] == bus_ref
+        assert terminal["station_ref"] == station_ref
+
+        result_segment = _continue_trunk(
+            result_bay["snapshot"],
+            field_ref=field_ref,
+            terminal_id=field_ref,
+            from_terminal_id=field_ref,
+        )
+        assert result_segment.get("snapshot") is not None
+        assert not result_segment.get("error")
+        assert len(result_segment["snapshot"]["corridors"][0]["ordered_segment_refs"]) == 1
 
 
 # ===========================================================================

@@ -18,7 +18,20 @@ vi.mock('../symbols', () => ({
 }));
 
 vi.mock('../GpzFieldBlockRenderer', () => ({
-  GpzFieldBlockRenderer: ({ field }: any) => <text>{field.designation}</text>,
+  GpzFieldBlockRenderer: ({ field, onTrunkOutPortClick, onTrunkOutPortHover }: any) => (
+    <g>
+      <text>{field.designation}</text>
+      <circle
+        data-testid={`sld-port-${field.fieldId}-TRUNK_OUT`}
+        onClick={(event) => {
+          event.stopPropagation();
+          onTrunkOutPortClick?.(field);
+        }}
+        onMouseEnter={() => onTrunkOutPortHover?.(field)}
+        onMouseLeave={() => onTrunkOutPortHover?.(null)}
+      />
+    </g>
+  ),
 }));
 
 vi.mock('../FieldBlockRenderer', () => ({
@@ -234,6 +247,50 @@ describe('SLDViewCanvas interaction surface', () => {
 
     fireEvent.click(screen.getByText('Pole liniowe GPZ'));
     expect(onSymbolClick).toHaveBeenCalledWith('bay-sn-1', 'BaySN', 'Pole liniowe GPZ');
+  });
+
+  it('port TRUNK_OUT kanonicznego pola GPZ uruchamia callback portu pola SN', () => {
+    const onPortClick = vi.fn();
+
+    render(
+      <SLDViewCanvas
+        symbols={[]}
+        selectedId={null}
+        onSymbolClick={vi.fn()}
+        onPortClick={onPortClick}
+        viewport={VIEWPORT}
+        showGrid={false}
+        width={800}
+        height={500}
+        canonicalAnnotations={{
+          gpzSections: [],
+          gpzFeederFields: [
+            {
+              fieldId: 'bay-sn-1',
+              feederNodeId: 'feeder-1',
+              designation: 'Pole liniowe GPZ',
+              axisX: 120,
+              busTap: { x: 120, y: 100 },
+              segmentStart: { x: 120, y: 180 },
+              detail: {
+                bayId: 'bay-sn-1',
+                title: 'Pole liniowe GPZ',
+                voltageKV: 15,
+                currentA: 630,
+                devices: [],
+              },
+            },
+          ],
+          stationChains: [],
+          branchPoints: [],
+          inlineBranchObjects: [],
+          junctionDots: [],
+        } as any}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('sld-port-bay-sn-1-TRUNK_OUT'));
+    expect(onPortClick).toHaveBeenCalledWith('bay-sn-1', 'BaySN', 'Pole liniowe GPZ', 'TRUNK_OUT');
   });
 
   it('dwuklik symbolu przekazuje intencje otwarcia glownego surfaceu', () => {

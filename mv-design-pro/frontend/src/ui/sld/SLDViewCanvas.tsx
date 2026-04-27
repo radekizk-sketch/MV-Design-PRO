@@ -318,6 +318,16 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           <GpzFieldBlockRenderer
             field={field}
             showTechnicalLabels={showTechnicalCanonicalLabels}
+            onTrunkOutPortClick={(selectedField) => {
+              onPortClick?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
+            }}
+            onTrunkOutPortHover={(selectedField) => {
+              if (!selectedField) {
+                onPortHover?.(null);
+                return;
+              }
+              onPortHover?.(selectedField.fieldId, 'BaySN', selectedField.designation, 'TRUNK_OUT');
+            }}
           />
         </g>
       )),
@@ -344,7 +354,15 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
         </g>
       )),
     ],
-    [gpzFeederFields, onSymbolClick, onSymbolDoubleClick, showTechnicalCanonicalLabels, stationChains],
+    [
+      gpzFeederFields,
+      onPortClick,
+      onPortHover,
+      onSymbolClick,
+      onSymbolDoubleClick,
+      showTechnicalCanonicalLabels,
+      stationChains,
+    ],
   );
 
   // Build energization map for connections

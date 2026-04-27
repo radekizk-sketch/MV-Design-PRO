@@ -1,4 +1,4 @@
-import type { EnergyNetworkModel } from '../../types/enm';
+import type { EnergyNetworkModel, LogicalViewsV1 } from '../../types/enm';
 import { isInlineHelperBus } from '../shared/enmVisibility';
 import type {
   AnySldSymbol,
@@ -251,7 +251,10 @@ function buildBaseSymbols(
   return symbols;
 }
 
-function normalizeSnapshotToEnm(snapshot: SnapshotLike): EnergyNetworkModel {
+function normalizeSnapshotToEnm(
+  snapshot: SnapshotLike,
+  logicalViews?: LogicalViewsV1 | null,
+): EnergyNetworkModel {
   const headerRecord =
     snapshot.header && typeof snapshot.header === 'object' && !Array.isArray(snapshot.header)
       ? (snapshot.header as unknown as SnapshotRecord)
@@ -295,9 +298,12 @@ function normalizeSnapshotToEnm(snapshot: SnapshotLike): EnergyNetworkModel {
       snapshot.protection_assignments,
     ),
     logical_views:
-      snapshot.logical_views && typeof snapshot.logical_views === 'object' && !Array.isArray(snapshot.logical_views)
-        ? (snapshot.logical_views as EnergyNetworkModel['logical_views'])
-        : undefined,
+      logicalViews
+      ?? (
+        snapshot.logical_views && typeof snapshot.logical_views === 'object' && !Array.isArray(snapshot.logical_views)
+          ? (snapshot.logical_views as EnergyNetworkModel['logical_views'])
+          : undefined
+      ),
   };
 }
 
@@ -345,7 +351,10 @@ function midpointFromPath(path: Position[]): Position {
   };
 }
 
-function buildCanonicalProjection(snapshot: SnapshotLike | null | undefined): EnmProjectionResult {
+function buildCanonicalProjection(
+  snapshot: SnapshotLike | null | undefined,
+  logicalViews?: LogicalViewsV1 | null,
+): EnmProjectionResult {
   if (!snapshot) {
     return {
       symbols: [],
@@ -354,7 +363,7 @@ function buildCanonicalProjection(snapshot: SnapshotLike | null | undefined): En
     };
   }
 
-  const enm = normalizeSnapshotToEnm(snapshot);
+  const enm = normalizeSnapshotToEnm(snapshot, logicalViews);
   const topology = readTopologyFromENM(enm, enm.header.hash_sha256);
   const adapter = buildVisualGraphFromTopology(topology);
   const layout = computeLayout(adapter.graph, undefined, adapter.stationBlockDetails, { strategy: 'legacy' });
@@ -462,8 +471,11 @@ function buildCanonicalProjection(snapshot: SnapshotLike | null | undefined): En
   };
 }
 
-export function enmSnapshotToSldSymbols(snapshot: SnapshotLike | null | undefined): AnySldSymbol[] {
-  return buildCanonicalProjection(snapshot).symbols;
+export function enmSnapshotToSldSymbols(
+  snapshot: SnapshotLike | null | undefined,
+  logicalViews?: LogicalViewsV1 | null,
+): AnySldSymbol[] {
+  return buildCanonicalProjection(snapshot, logicalViews).symbols;
 }
 
 export interface EnmProjectionResult {
@@ -472,6 +484,9 @@ export interface EnmProjectionResult {
   canonicalAnnotations: CanonicalAnnotationsV1 | null;
 }
 
-export function projectEnmSnapshotToSld(snapshot: SnapshotLike | null | undefined): EnmProjectionResult {
-  return buildCanonicalProjection(snapshot);
+export function projectEnmSnapshotToSld(
+  snapshot: SnapshotLike | null | undefined,
+  logicalViews?: LogicalViewsV1 | null,
+): EnmProjectionResult {
+  return buildCanonicalProjection(snapshot, logicalViews);
 }

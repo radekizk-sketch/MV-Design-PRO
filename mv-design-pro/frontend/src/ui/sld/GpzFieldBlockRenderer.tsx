@@ -9,12 +9,16 @@ export interface GpzFieldBlockRendererProps {
   field: GpzFieldAnnotationV1;
   color?: string;
   showTechnicalLabels?: boolean;
+  onTrunkOutPortClick?: (field: GpzFieldAnnotationV1) => void;
+  onTrunkOutPortHover?: (field: GpzFieldAnnotationV1 | null) => void;
 }
 
 export const GpzFieldBlockRenderer: React.FC<GpzFieldBlockRendererProps> = ({
   field,
   color = CANONICAL_VOLTAGE_COLORS.SN,
   showTechnicalLabels = false,
+  onTrunkOutPortClick,
+  onTrunkOutPortHover,
 }) => {
   const block = field.detail ?? null;
 
@@ -54,6 +58,25 @@ export const GpzFieldBlockRenderer: React.FC<GpzFieldBlockRendererProps> = ({
       />
 
       <JunctionDot x={cableExitPoint.x} y={field.segmentStart.y} color={color} />
+
+      <circle
+        data-testid={`sld-port-${field.fieldId}-TRUNK_OUT`}
+        cx={cableExitPoint.x}
+        cy={field.segmentStart.y}
+        r={11}
+        fill="rgba(37, 99, 235, 0.18)"
+        stroke="#2563eb"
+        strokeWidth={1.5}
+        style={{ cursor: 'crosshair' }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onTrunkOutPortClick?.(field);
+        }}
+        onMouseEnter={() => onTrunkOutPortHover?.(field)}
+        onMouseLeave={() => onTrunkOutPortHover?.(null)}
+      >
+        <title>Port TRUNK_OUT pola SN</title>
+      </circle>
 
       <text
         x={field.axisX + bounds.width / 2 + 10}

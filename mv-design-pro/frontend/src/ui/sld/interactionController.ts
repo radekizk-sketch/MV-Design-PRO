@@ -62,9 +62,10 @@ function buildContinueTrunkPayload(
   target: SelectedElement,
   interaction: InteractionTargetContext,
 ): Record<string, unknown> {
+  const isBayPort = interaction.kind === 'port' && target.type === 'BaySN';
   return {
     source: 'sld_tool',
-    trunk_id: ref,
+    ...(isBayPort ? { field_ref: ref } : { trunk_id: ref }),
     terminal_id: ref,
     from_terminal_id:
       interaction.kind === 'port' || target.type === 'Terminal'
