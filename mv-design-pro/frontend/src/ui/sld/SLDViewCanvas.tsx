@@ -43,6 +43,8 @@ import { InlineBranchObjectRenderer } from './InlineBranchObjectRenderer';
 import { GpzFieldBlockRenderer } from './GpzFieldBlockRenderer';
 import { JunctionDotLayer } from './JunctionDotLayer';
 import { CANONICAL_GRID, CANONICAL_TYPOGRAPHY, CANONICAL_CANVAS } from './sldCanonicalStyle';
+import { useSldReadabilityOverlay } from './SldReadabilityOverlay';
+import { shouldShowTechnicalLabels } from './sldDetailLevel';
 import './sld-canonical.css';
 
 /**
@@ -291,7 +293,10 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   // Viewer nie rekonstruuje już routingu lokalną heurystyką.
   const connections = canonicalConnections as RenderConnection[];
 
-  const showTechnicalCanonicalLabels = viewport.zoom >= 1.35;
+  // V12 § 5.7: readability overlay (LOD + filtry warstwowe + szkielet)
+  const { getOpacity, lodBand } = useSldReadabilityOverlay(symbols, viewport);
+  // Pochodna LOD: czy pokazujemy pełne etykiety techniczne
+  const showTechnicalCanonicalLabels = shouldShowTechnicalLabels(lodBand);
   const canonicalFieldOverlays = useMemo(
     () => [
       ...gpzFeederFields.map((field) => (
@@ -482,23 +487,26 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           </g>
         )}
 
-        {/* Render symbols with energization + readiness state */}
+        {/* Render symbols with energization + readiness state + V12 readability (LOD/filtry/szkielet) */}
         {renderableSymbols.map((symbol) => {
           const elementRef = symbol.elementId ?? symbol.id;
           const severity = highlightedElements?.get(elementRef)
             ?? highlightedElements?.get(symbol.id)
             ?? null;
+          const opacity = getOpacity(symbol.id, symbol.elementType as import('../types').ElementType);
+          if (opacity === 0) return null;
           return (
-            <Symbol
-              key={symbol.id}
-              symbol={symbol}
-              selected={symbol.id === selectedId || symbol.elementId === selectedId}
-              onClick={onSymbolClick}
-              onDoubleClick={onSymbolDoubleClick}
-              onHover={onSymbolHover}
-              energized={energizationState.energizedElements.get(symbol.id) ?? true}
-              readinessSeverity={severity}
-            />
+            <g key={symbol.id} style={opacity < 1 ? { opacity } : undefined} data-lod-opacity={opacity < 1 ? opacity : undefined}>
+              <Symbol
+                symbol={symbol}
+                selected={symbol.id === selectedId || symbol.elementId === selectedId}
+                onClick={onSymbolClick}
+                onDoubleClick={onSymbolDoubleClick}
+                onHover={onSymbolHover}
+                energized={energizationState.energizedElements.get(symbol.id) ?? true}
+                readinessSeverity={severity}
+              />
+            </g>
           );
         })}
 

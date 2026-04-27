@@ -20,6 +20,9 @@ export {
   useCanEditCaseConfig,
   useCanRunCalculations,
   useEnforcePermission,
+  useWorkModeEditAllowed,
+  useIsAuditMode,
+  useWorkModeLabel,
   type AppAction,
   type PermissionResult,
 } from './useModePermissions';

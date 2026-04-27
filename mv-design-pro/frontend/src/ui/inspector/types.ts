@@ -21,6 +21,27 @@ export interface InspectorSection {
 }
 
 /**
+ * Pochodzenie (provenance) wartości w inspektorze.
+ * Używane w trybie Audyt (TA) do śledzenia źródła wartości.
+ */
+export interface ValueProvenance {
+  /** Skrótowy typ źródła — wyświetlany jako znacznik. */
+  sourceLabel: string;
+  /** Pełny opis źródła (po polsku). */
+  descriptionPl: string;
+  /** Identyfikator powiązanego wpisu w katalogu (opcjonalnie). */
+  catalogId?: string;
+  /** Identyfikator uruchomienia obliczeń (opcjonalnie). */
+  runId?: string;
+  /** Wersja/rewizja modelu ENM w chwili obliczenia (opcjonalnie). */
+  enmRevision?: number;
+  /** Czas ostatniej aktualizacji (ISO 8601, opcjonalnie). */
+  updatedAt?: string;
+  /** Status aktualności: aktualne / nieaktualne / brak. */
+  freshness?: 'FRESH' | 'OUTDATED' | 'NONE';
+}
+
+/**
  * Pole właściwości w inspektorze (read-only).
  */
 export interface InspectorField {
@@ -30,6 +51,8 @@ export interface InspectorField {
   unit?: string;
   source?: 'instance' | 'type' | 'calculated' | 'audit';
   highlight?: 'primary' | 'warning' | 'error';
+  /** Opcjonalne dane o pochodzeniu wartości — używane w trybie Audyt (TA). */
+  provenance?: ValueProvenance;
 }
 
 /**

@@ -91,6 +91,7 @@ import {
   preserveViewportCenterOnResize,
   zoomViewportByStep,
 } from './interactionMath';
+import { SldSemanticMinimap } from './SldSemanticMinimap';
 
 /**
  * Default canvas dimensions.
@@ -1791,6 +1792,25 @@ export const SLDView: React.FC<SLDViewProps> = ({
           height={canvasHeight}
           visible={effectiveTechLabelsVisible}
         />
+
+        {/* V12 § 5.7 — Semantyczna mini-mapa (prawy dolny narożnik) */}
+        {symbols.length > 0 && (
+          <div className="absolute bottom-4 right-4 z-20 pointer-events-auto">
+            <SldSemanticMinimap
+              symbols={symbols}
+              viewport={viewport}
+              canvasWidth={canvasWidth}
+              canvasHeight={canvasHeight}
+              onNavigate={(worldX, worldY) => {
+                setViewport((prev) => ({
+                  ...prev,
+                  offsetX: canvasWidth / 2 - worldX * prev.zoom,
+                  offsetY: canvasHeight / 2 - worldY * prev.zoom,
+                }));
+              }}
+            />
+          </div>
+        )}
       </div>
 
       {/* Status bar — CANONICAL-grade professional */}

@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { useActiveMode } from '../app-state';
+import { useActiveMode, useAppStateStore } from '../app-state';
 import { normalizeOperatingMode, type RuntimeOperatingMode } from '../operatingMode';
 import type { OperatingMode } from '../types';
 
@@ -202,4 +202,51 @@ export function useEnforcePermission(): (action: AppAction) => void {
     },
     [getBlockedReason, isAllowed]
   );
+}
+
+// =============================================================================
+// V12 WorkMode — bramka edycji dla 6-stanowej osi trybów pracy
+// =============================================================================
+
+/**
+ * Hook: czy edycja modelu jest dozwolona w bieżącym trybie pracy V12.
+ *
+ * Edycja dozwolona TYLKO w trybie TE (Edycja).
+ * Wszystkie pozostałe tryby (TW, TZ, TP, TA, TN) = tylko odczyt.
+ *
+ * @returns { allowed, blockedReason }
+ */
+export function useWorkModeEditAllowed(): PermissionResult {
+  const workMode = useAppStateStore((s) => s.activeWorkMode);
+  const allowed = workMode === 'TE';
+  return {
+    allowed,
+    blockedReason: allowed
+      ? null
+      : 'Edycja modelu dostępna wyłącznie w trybie Edycja. Przełącz tryb pracy, aby modyfikować sieć.',
+  };
+}
+
+/**
+ * Hook: czy bieżący tryb pracy V12 to tryb Audyt (TA).
+ * W trybie Audyt inspektor wyświetla rozszerzone informacje o pochodzeniu wartości.
+ */
+export function useIsAuditMode(): boolean {
+  return useAppStateStore((s) => s.activeWorkMode === 'TA');
+}
+
+/**
+ * Zwraca polską etykietę aktualnego trybu pracy V12.
+ */
+export function useWorkModeLabel(): string {
+  const workMode = useAppStateStore((s) => s.activeWorkMode);
+  const LABELS: Record<string, string> = {
+    TE: 'Edycja',
+    TW: 'Wyniki',
+    TZ: 'Zabezpieczenia',
+    TP: 'Porównanie',
+    TA: 'Audyt',
+    TN: 'Operator nocny',
+  };
+  return LABELS[workMode] ?? workMode;
 }
