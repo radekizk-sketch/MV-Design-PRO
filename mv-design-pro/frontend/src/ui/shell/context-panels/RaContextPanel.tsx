@@ -52,7 +52,7 @@ export function RaContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Raporty
+          Raporty i uzasadnienia
         </span>
         <div className="mt-1 text-[11px] text-scada-text">
           <span className="text-scada-muted">Przypadek: </span>
@@ -70,10 +70,10 @@ export function RaContextPanel() {
           )}
         >
           {hasResults
-            ? '◉ Wyniki aktualne'
+            ? 'Wyniki aktualne'
             : isOutdated
-              ? '⚠ Wyniki nieaktualne'
-              : '◯ Brak wyników'}
+              ? 'Wymaga ponownego obliczenia'
+              : 'Brak wyników'}
         </div>
       </div>
 

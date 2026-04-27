@@ -41,7 +41,7 @@ describe('StatusBarV12 — pasek statusu V12', () => {
       useAppStateStore.getState().setActiveWorkMode('TW');
     });
     render(<StatusBarV12 />);
-    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('AN/TW');
+    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('Studia / Wyniki');
   });
 
   it('pokazuje status walidacji (valid/warnings/errors)', () => {

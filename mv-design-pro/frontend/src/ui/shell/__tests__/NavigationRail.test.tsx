@@ -1,89 +1,69 @@
-/**
- * Tests for NavigationRail — V12 obszary aplikacji.
- */
-
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { NavigationRail } from '../NavigationRail';
+import { AREA_DEFINITIONS } from '../../navigation/areaRegistry';
 import { useAppStateStore } from '../../app-state/store';
+import { NavigationRail } from '../NavigationRail';
 
-const AREAS = ['MO', 'AN', 'ZA', 'OZ', 'RA', 'AD', 'HI'] as const;
-
-describe('NavigationRail — 7 obszarów V12', () => {
+describe('NavigationRail - pasek obszarów roboczych', () => {
   beforeEach(() => {
     act(() => {
-      useAppStateStore.getState().setActiveArea('MO');
+      useAppStateStore.getState().setActiveArea('MODEL_SIECI');
     });
   });
 
   afterEach(() => {
     act(() => {
-      useAppStateStore.getState().setActiveArea('MO');
+      useAppStateStore.getState().setActiveArea('MODEL_SIECI');
     });
   });
 
-  it('renderuje wszystkie 7 obszarów', () => {
+  it('renderuje dziewięć kanonicznych obszarów', () => {
     render(<NavigationRail />);
     expect(screen.getByTestId('navigation-rail')).toBeInTheDocument();
-    for (const code of AREAS) {
-      expect(screen.getByTestId(`nav-area-${code}`)).toBeInTheDocument();
+    for (const area of AREA_DEFINITIONS) {
+      expect(screen.getByTestId(area.testId)).toBeInTheDocument();
     }
   });
 
-  it('klik w obszar AN aktywuje AN w store', () => {
+  it('klik w obszar Wyniki i analizy aktywuje kanoniczny identyfikator', () => {
     render(<NavigationRail />);
     act(() => {
-      fireEvent.click(screen.getByTestId('nav-area-AN'));
+      fireEvent.click(screen.getByTestId('nav-area-WYNIKI_ANALIZY'));
     });
-    expect(useAppStateStore.getState().activeArea).toBe('AN');
+    expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
   });
 
-  it('Ctrl+3 aktywuje obszar ZA', () => {
+  it('Ctrl+5 aktywuje obszar Zabezpieczenia i automatyka', () => {
     render(<NavigationRail />);
     act(() => {
-      fireEvent.keyDown(window, { key: '3', ctrlKey: true });
+      fireEvent.keyDown(window, { key: '5', ctrlKey: true });
     });
-    expect(useAppStateStore.getState().activeArea).toBe('ZA');
+    expect(useAppStateStore.getState().activeArea).toBe('ZABEZPIECZENIA_AUTOMATYKA');
   });
 
-  it('Ctrl+7 aktywuje obszar HI', () => {
+  it('Ctrl+9 aktywuje obszar Historia i audyt', () => {
     render(<NavigationRail />);
     act(() => {
-      fireEvent.keyDown(window, { key: '7', ctrlKey: true });
+      fireEvent.keyDown(window, { key: '9', ctrlKey: true });
     });
-    expect(useAppStateStore.getState().activeArea).toBe('HI');
+    expect(useAppStateStore.getState().activeArea).toBe('HISTORIA_AUDYT');
   });
 
-  it('Ctrl+8 NIE zmienia obszaru (poza zakresem)', () => {
+  it('tooltip i aria-label zawierają pełną nazwę oraz skrót', () => {
     render(<NavigationRail />);
-    act(() => {
-      useAppStateStore.getState().setActiveArea('MO');
-    });
-    act(() => {
-      fireEvent.keyDown(window, { key: '8', ctrlKey: true });
-    });
-    expect(useAppStateStore.getState().activeArea).toBe('MO');
+    for (const area of AREA_DEFINITIONS) {
+      const button = screen.getByTestId(area.testId);
+      expect(button).toHaveAccessibleName(new RegExp(area.labelFull));
+      expect(button.getAttribute('title')).toContain(area.shortcut);
+      expect(button.getAttribute('title')).toContain(area.labelFull);
+    }
   });
 
-  it('aktywny obszar ma klasy bg-scada-active i text-scada-sn', () => {
-    act(() => {
-      useAppStateStore.getState().setActiveArea('OZ');
-    });
+  it('nie pokazuje roboczych kodów obszarów jako etykiet', () => {
     render(<NavigationRail />);
-    const button = screen.getByTestId('nav-area-OZ');
-    expect(button.className).toMatch(/scada-active/);
-    expect(button.className).toMatch(/scada-sn/);
-  });
-
-  it('etykiety obszarów są w języku polskim', () => {
-    render(<NavigationRail />);
-    expect(screen.getByLabelText(/Model sieci/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Analizy/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Zabezpieczenia/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Źródła i profile/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Raporty/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Administracja/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Historia i audyt/)).toBeInTheDocument();
+    for (const code of ['MO', 'AN', 'ZA', 'OZ', 'RA', 'AD', 'HI']) {
+      expect(screen.queryByText(code)).not.toBeInTheDocument();
+    }
   });
 });

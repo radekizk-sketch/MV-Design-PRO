@@ -583,18 +583,35 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
       </g>
 
       {/* Empty state — CANONICAL typography */}
-        {symbols.length === 0 && (
-        <text
-          x={width / 2}
-          y={height / 2}
-          textAnchor="middle"
-          fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
-          fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
-          fill={CANONICAL_TYPOGRAPHY.secondaryColor}
+      {symbols.length === 0 && (
+        <g
           data-testid="sld-empty-state"
+          onClick={onCanvasClick}
+          role="button"
+          aria-label="Pusty schemat jednokreskowy. Dodaj Główny Punkt Zasilający z szyną SN i polem SN."
+          style={{ cursor: onCanvasClick ? 'pointer' : 'default' }}
         >
-          Brak elementów do wyświetlenia
-        </text>
+          <text
+            x={width / 2}
+            y={height / 2 - 12}
+            textAnchor="middle"
+            fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+            fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
+            fill={CANONICAL_TYPOGRAPHY.labelColor}
+          >
+            Pusty schemat jednokreskowy
+          </text>
+          <text
+            x={width / 2}
+            y={height / 2 + 12}
+            textAnchor="middle"
+            fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+            fontSize={CANONICAL_TYPOGRAPHY.fontSize.small}
+            fill={CANONICAL_TYPOGRAPHY.secondaryColor}
+          >
+            Dodaj GPZ, szynę SN i pierwsze pole SN, aby rozpocząć modelowanie sieci.
+          </text>
+        </g>
       )}
 
       {interactionPreview && (

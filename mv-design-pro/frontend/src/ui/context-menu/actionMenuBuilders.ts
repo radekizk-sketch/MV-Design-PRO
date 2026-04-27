@@ -15,6 +15,7 @@
 
 import { normalizeOperatingMode } from '../operatingMode';
 import type { ContextMenuAction, OperatingMode } from '../types';
+import { buildCanonicalContextMenuActions } from './contextMenuRegistry';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -315,37 +316,7 @@ export function buildBaySNContextMenu(
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const edit = mode === 'MODEL_EDIT';
-  const result = mode === 'RESULT_VIEW';
-  return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości pola SN...', { handler: handlers.onProperties }),
-    sep('s1'),
-    action('add_sn_bay', 'Dodaj wyłącznik...', {
-      enabled: edit,
-      handler: handlers.onAddBreaker,
-      actionKey: 'bay_sn_add_breaker',
-    }),
-    action('add_sn_bay', 'Dodaj rozłącznik...', {
-      enabled: edit,
-      handler: handlers.onAddDisconnector,
-      actionKey: 'bay_sn_add_disconnector',
-    }),
-    action('add_ct', 'Dodaj przekładnik prądowy (CT)...', { enabled: edit, handler: handlers.onAddCT }),
-    action('add_vt', 'Dodaj przekładnik napięciowy (VT)...', { enabled: edit, handler: handlers.onAddVT }),
-    action('add_relay', 'Dodaj zabezpieczenie...', { enabled: edit, handler: handlers.onAddProtection }),
-    sep('s2'),
-    action('change_role', 'Zmień rolę pola...', { enabled: edit, handler: handlers.onChangeRole }),
-    action('assign_catalog', 'Przypisz katalog aparatów...', { enabled: edit, handler: handlers.onAssignCatalog }),
-    action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
-    sep('s3'),
-    action('show_readiness', 'Pokaż gotowość pola...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki pola...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
-    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
-    sep('s4'),
-    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
-    action('delete', 'Usuń pole SN...', { enabled: edit, handler: handlers.onDelete }),
-  ];
+  return buildCanonicalContextMenuActions('POLE_SN', mode, handlers);
 }
 
 // ---------------------------------------------------------------------------
@@ -644,31 +615,7 @@ export function buildPVInverterContextMenu(
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const edit = mode === 'MODEL_EDIT';
-  const result = mode === 'RESULT_VIEW';
-  return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości źródła przekształtnikowego PV...', { handler: handlers.onProperties }),
-    sep('s1'),
-    action('assign_catalog', 'Przypisz katalog źródła przekształtnikowego PV...', { enabled: edit, handler: handlers.onAssignCatalog }),
-    action('edit_power', 'Zmień moc znamionową/maksymalną...', { enabled: edit, handler: handlers.onEditPower }),
-    action('edit_control', 'Zmień tryb regulacji (cos φ / Q(U) / P(U))...', { enabled: edit, handler: handlers.onEditControl }),
-    action('edit_limits', 'Zmień ograniczenia generacji...', { enabled: edit, handler: handlers.onEditLimits }),
-    action('edit_disconnect', 'Zmień warunek odłączenia...', { enabled: edit, handler: handlers.onEditDisconnect }),
-    action('edit_measurement', 'Zmień punkt pomiaru energii...', { enabled: edit, handler: handlers.onEditMeasurement }),
-    action('set_profile', 'Przypisz profil pracy...', { enabled: edit, handler: handlers.onSetProfile }),
-    action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
-    sep('s2'),
-    action('show_readiness', 'Pokaż gotowość źródła przekształtnikowego PV...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki źródła przekształtnikowego PV...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
-    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
-    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
-    sep('s3'),
-    action('export_data', 'Eksportuj dane źródła przekształtnikowego PV...', { handler: handlers.onExport }),
-    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
-    sep('s4'),
-    action('delete', 'Usuń źródło PV...', { enabled: edit, handler: handlers.onDelete }),
-  ];
+  return buildCanonicalContextMenuActions('ZRODLO_PRZYLACZENIE', mode, handlers);
 }
 
 // ---------------------------------------------------------------------------
@@ -679,32 +626,7 @@ export function buildBESSInverterContextMenu(
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const edit = mode === 'MODEL_EDIT';
-  const result = mode === 'RESULT_VIEW';
-  return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości źródła przekształtnikowego BESS...', { handler: handlers.onProperties }),
-    sep('s1'),
-    action('assign_inverter_catalog', 'Przypisz katalog źródła przekształtnikowego BESS...', { enabled: edit, handler: handlers.onAssignInverterCatalog }),
-    action('assign_storage_catalog', 'Przypisz katalog magazynu energii...', { enabled: edit, handler: handlers.onAssignStorageCatalog }),
-    action('edit_capacity', 'Zmień pojemność użyteczną (kWh)...', { enabled: edit, handler: handlers.onEditCapacity }),
-    action('edit_power', 'Zmień moc ładowania/rozładowania (kW)...', { enabled: edit, handler: handlers.onEditPower }),
-    action('edit_mode', 'Zmień tryb pracy...', { enabled: edit, handler: handlers.onEditMode }),
-    action('edit_strategy', 'Zmień strategię sterowania...', { enabled: edit, handler: handlers.onEditStrategy }),
-    action('edit_soc', 'Zmień ograniczenia SOC (%)...', { enabled: edit, handler: handlers.onEditSOC }),
-    action('set_profile', 'Przypisz profil czasowy...', { enabled: edit, handler: handlers.onSetProfile }),
-    action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
-    sep('s2'),
-    action('show_readiness', 'Pokaż gotowość źródła przekształtnikowego BESS...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki źródła przekształtnikowego BESS...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_whitebox', 'Pokaż wywód obliczeń...', { enabled: result, handler: handlers.onShowWhitebox }),
-    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
-    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
-    sep('s3'),
-    action('export_data', 'Eksportuj dane źródła przekształtnikowego BESS...', { handler: handlers.onExport }),
-    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
-    sep('s4'),
-    action('delete', 'Usuń źródło BESS...', { enabled: edit, handler: handlers.onDelete }),
-  ];
+  return buildCanonicalContextMenuActions('ZRODLO_PRZYLACZENIE', mode, handlers);
 }
 
 // ---------------------------------------------------------------------------
@@ -1032,26 +954,7 @@ export function buildEnergyStorageContextMenu(
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const edit = mode === 'MODEL_EDIT';
-  const result = mode === 'RESULT_VIEW';
-  return [
-    action('properties', result ? 'Pokaż właściwości...' : 'Właściwości magazynu energii...', { handler: handlers.onProperties }),
-    sep('s1'),
-    action('assign_catalog', 'Przypisz katalog modułu magazynu...', { enabled: edit, handler: handlers.onAssignCatalog }),
-    action('edit_capacity', 'Zmień pojemność użyteczną (kWh)...', { enabled: edit, handler: handlers.onEditCapacity }),
-    action('edit_soc', 'Zmień ograniczenia SOC (%)...', { enabled: edit, handler: handlers.onEditSOC }),
-    action('edit_cycles', 'Zmień limit cykli...', { enabled: edit, handler: handlers.onEditCycles }),
-    action('edit_chemistry', 'Zmień technologię ogniw...', { enabled: edit, handler: handlers.onEditChemistry }),
-    action('toggle_service', 'Zmień stan eksploatacji...', { enabled: edit, handler: handlers.onToggleService }),
-    sep('s2'),
-    action('show_readiness', 'Pokaż gotowość magazynu...', { handler: handlers.onShowReadiness }),
-    action('show_results', 'Pokaż wyniki magazynu...', { enabled: result, handler: handlers.onShowResults }),
-    action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
-    action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
-    sep('s3'),
-    action('history', 'Historia zdarzeń...', { handler: handlers.onHistory }),
-    action('delete', 'Usuń magazyn energii...', { enabled: edit, handler: handlers.onDelete }),
-  ];
+  return buildCanonicalContextMenuActions('ZRODLO_PRZYLACZENIE', mode, handlers);
 }
 
 // ---------------------------------------------------------------------------
@@ -1082,13 +985,13 @@ export const ACTION_MENU_MINIMUM_OPTIONS: Record<string, number> = {
   BusNN: 22,
   FeederNN: 22,
   SourceFieldNN: 20,
-  PVInverter: 17,
-  BESSInverter: 18,
+  PVInverter: 14,
+  BESSInverter: 14,
   Genset: 16,
   UPS: 14,
   LoadNN: 12,
   EnergyMeter: 11,
-  EnergyStorage: 13,
+  EnergyStorage: 14,
   SwitchNN: 12,
   // StudyCase / Analizy
   StudyCase: 20,

@@ -18,17 +18,18 @@ import { navigateToCaseConfig, navigateToVariants } from '../navigation/routes';
 interface WorkModeDef {
   code: WorkMode;
   labelPl: string;
+  labelShort: string;
   key: string;
   title: string;
 }
 
 const WORK_MODES: WorkModeDef[] = [
-  { code: 'TE', labelPl: 'Edycja',        key: 'F2', title: 'Edycja CAD modelu sieci' },
-  { code: 'TW', labelPl: 'Wyniki',        key: 'F3', title: 'Nakładki obliczeniowe na SLD' },
-  { code: 'TZ', labelPl: 'Zabezpieczenia', key: 'F4', title: 'Nastawy, krzywe t-I, selektywność' },
-  { code: 'TP', labelPl: 'Porównanie',    key: 'F5', title: 'Porównanie wariantów A/B/N' },
-  { code: 'TA', labelPl: 'Audyt',         key: 'F6', title: 'Pochodzenie wartości i trace' },
-  { code: 'TN', labelPl: 'Operator',      key: 'F7', title: 'Stan operatorski nocny' },
+  { code: 'TE', labelPl: 'Edycja modelu', labelShort: 'Edycja', key: 'F2', title: 'Edycja modelu sieci' },
+  { code: 'TW', labelPl: 'Wyniki na SLD', labelShort: 'Wyniki', key: 'F3', title: 'Nakładki obliczeniowe na SLD' },
+  { code: 'TZ', labelPl: 'Zabezpieczenia', labelShort: 'Zabezp.', key: 'F4', title: 'Nastawy, krzywe t-I, selektywność' },
+  { code: 'TP', labelPl: 'Porównanie wariantów', labelShort: 'Porówn.', key: 'F5', title: 'Porównanie wariantów pracy' },
+  { code: 'TA', labelPl: 'Audyt', labelShort: 'Audyt', key: 'F6', title: 'Pochodzenie wartości i ślad obliczeń' },
+  { code: 'TN', labelPl: 'Stan operatorski', labelShort: 'Operator', key: 'F7', title: 'Stan operatorski' },
 ];
 
 const MODE_ACTIVE_COLOR: Record<WorkMode, string> = {
@@ -129,13 +130,13 @@ export function TopBar({ projectName = 'Nowy projekt', onCalculate, onViewResult
                 title={`${m.labelPl}\n${m.key} — ${m.title}`}
                 onClick={() => setActiveWorkMode(m.code)}
                 className={clsx(
-                  'rounded border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider transition-colors',
+                  'rounded border px-2.5 py-0.5 text-[10px] font-bold tracking-normal transition-colors',
                   isActive
                     ? MODE_ACTIVE_COLOR[m.code]
                     : 'border-transparent text-scada-muted hover:text-scada-text hover:bg-scada-hover-nav',
                 )}
               >
-                {m.code}
+                {m.labelShort}
               </button>
             );
           })}

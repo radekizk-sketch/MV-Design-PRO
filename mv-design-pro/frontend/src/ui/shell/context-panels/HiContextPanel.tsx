@@ -27,7 +27,7 @@ export function HiContextPanel() {
         </span>
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="hi-active-run">
-            <span className="text-scada-muted">Aktywne uruchomienie: </span>
+            <span className="text-scada-muted">Aktywne uruchomienie obliczeń: </span>
             <span className="font-mono">{activeRunId ?? '—'}</span>
           </div>
           <div data-testid="hi-active-snapshot">
@@ -43,7 +43,7 @@ export function HiContextPanel() {
 
       <div className="shrink-0 border-t border-scada-border bg-scada-bg p-2 text-[10px] text-scada-muted">
         Każde uruchomienie ma deterministyczny hash wejścia (SHA-256). Audyt obejmuje
-        wszystkie operacje na modelu — pełna ścieżka WHITE BOX.
+        wszystkie operacje na modelu i umożliwia odtworzenie ścieżki obliczeń.
       </div>
     </div>
   );

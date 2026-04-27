@@ -213,13 +213,16 @@ export interface ContextMenuAction {
   id: string;
   actionKey?: string;
   label: string;
+  section?: string;
   icon?: string;
   enabled: boolean;
   visible: boolean;
+  blockedReason?: string;
   separator?: boolean;
   submenu?: ContextMenuAction[];
   handler?: () => void;
   initialFormData?: Record<string, unknown>;
+  testId?: string;
 }
 
 /**

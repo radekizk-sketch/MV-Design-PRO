@@ -47,7 +47,7 @@ export function MoContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Model sieci — budowa
+          Model sieci
         </span>
         <div
           className={clsx(
@@ -63,7 +63,7 @@ export function MoContextPanel() {
       <div className="grid grid-cols-3 gap-1.5 border-b border-scada-border bg-scada-bg px-3 py-2">
         <CounterTile label="Źródła" value={derived.sourceCount} testId="mo-counter-sources" />
         <CounterTile label="Magistrale" value={derived.trunkCount} testId="mo-counter-trunks" />
-        <CounterTile label="Odgałęz." value={derived.branchCount} testId="mo-counter-branches" />
+        <CounterTile label="Odgałęzienia" value={derived.branchCount} testId="mo-counter-branches" />
         <CounterTile label="Stacje" value={derived.stationCount} testId="mo-counter-stations" />
         <CounterTile label="Trafa" value={derived.transformerCount} testId="mo-counter-trafo" />
         <CounterTile label="OZE" value={derived.generatorCount} testId="mo-counter-generators" />

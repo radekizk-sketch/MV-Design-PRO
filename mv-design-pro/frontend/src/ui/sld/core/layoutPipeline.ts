@@ -1404,6 +1404,10 @@ function phase7_generate_canonical_annotations(
   _config: LayoutGeometryConfigV1,
   stationBlocks: readonly MutableBlock[],
 ): CanonicalAnnotationsV1 | null {
+  if (graph.nodes.length === 0 && graph.edges.length === 0) {
+    return null;
+  }
+
   // Identify trunk edges
   const trunkEdges = graph.edges
     .filter(e => e.edgeType === EdgeTypeV1.TRUNK)

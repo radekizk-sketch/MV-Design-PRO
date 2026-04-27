@@ -1,5 +1,5 @@
 /**
- * AnContextPanel — Panel kontekstu obszaru AN (Analizy).
+ * Panel kontekstu obszaru Studia obliczeniowe.
  *
  * Wyświetla:
  *  - Aktywny przypadek + wariant + migawkę
@@ -43,7 +43,7 @@ export function AnContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Analizy — kontekst
+          Studia obliczeniowe
         </span>
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="an-active-case">
@@ -63,7 +63,7 @@ export function AnContextPanel() {
 
       <div className="border-b border-scada-border bg-scada-bg px-3 py-2">
         <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Typ analizy
+          Zakres analizy
         </div>
         <div className="mt-1.5 flex flex-col gap-1" data-testid="an-analysis-list">
           {ANALYSIS_TYPES.map((row) => {
@@ -78,6 +78,7 @@ export function AnContextPanel() {
                 key={row.code}
                 type="button"
                 data-testid={`an-analysis-${row.code}`}
+                data-analysis-code={row.code}
                 onClick={() => {
                   if (row.code.startsWith('SC_')) setActiveAnalysisType('SHORT_CIRCUIT');
                   else if (row.code === 'LOAD_FLOW') setActiveAnalysisType('LOAD_FLOW');
@@ -98,7 +99,6 @@ export function AnContextPanel() {
                   )}
                 />
                 <span className="flex-1">{row.label}</span>
-                <span className="font-mono text-[9px] text-scada-muted">{row.code}</span>
               </button>
             );
           })}

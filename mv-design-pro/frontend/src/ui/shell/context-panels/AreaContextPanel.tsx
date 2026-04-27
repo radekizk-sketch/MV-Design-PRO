@@ -1,13 +1,9 @@
-/**
- * AreaContextPanel — Router 7 obszarów (MO/AN/ZA/OZ/RA/AD/HI).
- *
- * Zwraca odpowiedni komponent kontekstowy dla aktywnego obszaru z NavigationRail.
- * Catalog-first, no codenames, dark SCADA palette.
- */
-
-import type { AreaCode } from '../../app-state/store';
+import type { AreaId } from '../../navigation/areaRegistry';
+import { normalizeAreaId } from '../../navigation/areaRegistry';
 import { MoContextPanel } from './MoContextPanel';
 import { AnContextPanel } from './AnContextPanel';
+import { SchematContextPanel } from './SchematContextPanel';
+import { WynikiContextPanel } from './WynikiContextPanel';
 import { ZaContextPanel } from './ZaContextPanel';
 import { OzContextPanel } from './OzContextPanel';
 import { RaContextPanel } from './RaContextPanel';
@@ -15,24 +11,29 @@ import { AdContextPanel } from './AdContextPanel';
 import { HiContextPanel } from './HiContextPanel';
 
 interface AreaContextPanelProps {
-  areaCode: AreaCode;
+  areaCode: AreaId | string;
 }
 
 export function AreaContextPanel({ areaCode }: AreaContextPanelProps) {
-  switch (areaCode) {
-    case 'MO':
+  const normalizedArea = normalizeAreaId(areaCode);
+  switch (normalizedArea) {
+    case 'MODEL_SIECI':
       return <MoContextPanel />;
-    case 'AN':
+    case 'SCHEMAT_TOPOLOGIA':
+      return <SchematContextPanel />;
+    case 'STUDIA_OBLICZENIOWE':
       return <AnContextPanel />;
-    case 'ZA':
+    case 'WYNIKI_ANALIZY':
+      return <WynikiContextPanel />;
+    case 'ZABEZPIECZENIA_AUTOMATYKA':
       return <ZaContextPanel />;
-    case 'OZ':
+    case 'ZRODLA_PRZYLACZENIA':
       return <OzContextPanel />;
-    case 'RA':
+    case 'RAPORTY_UZASADNIENIA':
       return <RaContextPanel />;
-    case 'AD':
+    case 'KATALOGI_TECHNICZNE':
       return <AdContextPanel />;
-    case 'HI':
+    case 'HISTORIA_AUDYT':
       return <HiContextPanel />;
     default:
       return (
@@ -40,7 +41,7 @@ export function AreaContextPanel({ areaCode }: AreaContextPanelProps) {
           data-testid="unknown-context-panel"
           className="flex h-full items-center justify-center bg-scada-panel p-4 text-[11px] text-scada-muted"
         >
-          Nieznany obszar: {areaCode}
+          Nie można rozpoznać obszaru roboczego. Wróć do obszaru Model sieci.
         </div>
       );
   }

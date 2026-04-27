@@ -17,6 +17,7 @@ import {
 } from '../app-state';
 import { useStudyCasesStore } from '../study-cases/store';
 import type { ResultStatus } from '../types';
+import { getAreaDefinition } from '../navigation/areaRegistry';
 
 function getResultDot(status: ResultStatus) {
   if (status === 'FRESH') return 'text-scada-energized';
@@ -75,6 +76,18 @@ export function StatusBarV12({
     : null;
 
   const modeLabel = activeMode === 'MODEL_EDIT' ? 'Edycja' : 'Odczyt';
+  const areaLabel = getAreaDefinition(activeArea).labelShort;
+  const workModeLabel = activeWorkMode === 'TE'
+    ? 'Model'
+    : activeWorkMode === 'TW'
+      ? 'Wyniki'
+      : activeWorkMode === 'TZ'
+        ? 'Zabezpieczenia'
+        : activeWorkMode === 'TP'
+          ? 'Porównanie'
+          : activeWorkMode === 'TA'
+            ? 'Audyt'
+            : 'Operator';
 
   return (
     <div
@@ -93,7 +106,7 @@ export function StatusBarV12({
           data-testid="status-area-mode"
           className="rounded bg-scada-active px-1.5 py-0.5 font-bold text-scada-sn"
         >
-          {activeArea}/{activeWorkMode}
+          {areaLabel} / {workModeLabel}
         </span>
 
         <Separator />
@@ -162,7 +175,7 @@ export function StatusBarV12({
         {runDisplay && (
           <>
             <div className="flex items-center gap-1" data-testid="status-run-id">
-              <span className="text-scada-muted">run:</span>
+              <span className="text-scada-muted">Uruchomienie:</span>
               <span className="font-mono text-[9px] text-scada-text">{runDisplay}</span>
             </div>
             <Separator />

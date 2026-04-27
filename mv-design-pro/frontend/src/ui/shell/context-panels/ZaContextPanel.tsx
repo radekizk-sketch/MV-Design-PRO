@@ -29,7 +29,7 @@ export function ZaContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Zabezpieczenia
+          Zabezpieczenia i automatyka
         </span>
       </div>
 
@@ -68,7 +68,7 @@ export function ZaContextPanel() {
               obliczonych zwarć. Aby uruchomić diagnostykę:
             </p>
             <ol className="ml-4 list-decimal space-y-1">
-              <li>Wybierz aktywny przypadek z analizą zwarciową (SC_3F, SC_1F)</li>
+              <li>Wybierz aktywny przypadek z analizą zwarciową trójfazową lub jednofazową</li>
               <li>Uruchom obliczenia (przycisk Oblicz)</li>
               <li>Otwórz panel <strong>Diagnostyka</strong> w Inspektorze</li>
             </ol>
@@ -77,7 +77,7 @@ export function ZaContextPanel() {
                 Skróty klawiszowe
               </span>
               <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-scada-text">
-                <li><kbd>F4</kbd> — tryb TZ (zabezpieczenia)</li>
+                <li><kbd>F4</kbd> — tryb zabezpieczeń</li>
                 <li><kbd>Ctrl+K</kbd> — wyszukaj urządzenie</li>
               </ul>
             </div>

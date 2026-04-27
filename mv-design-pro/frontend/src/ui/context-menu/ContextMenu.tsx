@@ -12,10 +12,12 @@
  * - Keyboard navigation
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { Fragment, useEffect, useRef, useCallback } from 'react';
 import { clsx } from 'clsx';
 import { getOperatingModeLabel, normalizeOperatingMode } from '../operatingMode';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
+import { hasTechnicalIcon, TechnicalIcon } from '../icons/technicalIconRegistry';
+import type { TechnicalIconName } from '../icons/technicalIconRegistry';
 import { getContextMenuHeader } from './actions';
 
 interface ContextMenuProps {
@@ -96,40 +98,50 @@ export function ContextMenu({
     zIndex: 1000,
   };
 
+  const visibleActions = actions.filter((action) => action.visible);
+
   return (
     <div
       ref={menuRef}
       style={style}
-      className="bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-[200px] max-w-[300px]"
+      className="min-w-[260px] max-w-[360px] rounded border border-scada-border bg-scada-panel py-1 text-scada-text shadow-xl"
       role="menu"
     >
       {/* Header */}
-      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
-        <span className="text-sm font-medium text-gray-800">
+      <div className="border-b border-scada-border bg-scada-surface px-3 py-2">
+        <span className="text-sm font-semibold text-scada-text">
           {headerText ?? getContextMenuHeader(elementType, elementName)}
         </span>
       </div>
 
       {/* Actions */}
       <div className="py-1">
-        {actions
-          .filter((action) => action.visible)
-          .map((action) => (
+        {visibleActions.map((action, index) => {
+          const prev = visibleActions[index - 1];
+          const showSection = Boolean(action.section && action.section !== prev?.section && !action.separator);
+          return (
+            <Fragment key={action.actionKey ?? action.id}>
+              {showSection && (
+                <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-scada-muted">
+                  {action.section}
+                </div>
+              )}
             <ContextMenuItem
-              key={action.actionKey ?? action.id}
               action={action}
               onClick={() => handleActionClick(action)}
             />
-          ))}
+            </Fragment>
+          );
+        })}
       </div>
 
       {/* Mode indicator */}
-      <div className="px-3 py-1 border-t border-gray-200 bg-gray-50">
+      <div className="border-t border-scada-border bg-scada-surface px-3 py-1">
         <span
           className={clsx(
             'text-xs',
-            runtimeMode === 'MODEL_EDIT' && 'text-blue-600',
-            runtimeMode === 'RESULT_VIEW' && 'text-green-600'
+            runtimeMode === 'MODEL_EDIT' && 'text-scada-sn',
+            runtimeMode === 'RESULT_VIEW' && 'text-scada-success'
           )}
         >
           Tryb: {getOperatingModeLabel(mode)}
@@ -159,25 +171,27 @@ function ContextMenuItem({ action, onClick }: ContextMenuItemProps) {
       <button
         onClick={onClick}
         disabled={!action.enabled}
+        data-testid={action.testId}
+        title={!action.enabled ? action.blockedReason : undefined}
         className={clsx(
-          'w-full text-left px-3 py-1.5 text-sm flex items-center justify-between',
+          'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm',
           action.enabled
-            ? 'text-gray-700 hover:bg-blue-50 hover:text-blue-800'
-            : 'text-gray-400 cursor-not-allowed'
+            ? 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn'
+            : 'cursor-not-allowed text-scada-muted opacity-60'
         )}
         role="menuitem"
       >
         <span className="flex items-center gap-2">
-          {action.icon && <span>{action.icon}</span>}
+          {action.icon && <ContextMenuIcon icon={action.icon} />}
           <span>{action.label}</span>
         </span>
-        {hasSubmenu && <span className="text-gray-400">&gt;</span>}
+        {hasSubmenu && <span className="text-scada-muted">&gt;</span>}
       </button>
 
       {/* Submenu */}
       {hasSubmenu && action.enabled && (
         <div className="absolute left-full top-0 hidden group-hover:block ml-0.5">
-          <div className="bg-white border border-gray-300 rounded-lg shadow-lg py-1 min-w-[180px]">
+          <div className="min-w-[220px] rounded border border-scada-border bg-scada-panel py-1 shadow-lg">
             {action.submenu!.map((subAction) => (
               <ContextMenuItem
                 key={subAction.actionKey ?? subAction.id}
@@ -193,6 +207,18 @@ function ContextMenuItem({ action, onClick }: ContextMenuItemProps) {
         </div>
       )}
     </div>
+  );
+}
+
+function ContextMenuIcon({ icon }: { icon: string }) {
+  if (!hasTechnicalIcon(icon)) {
+    return <span aria-hidden="true" className="h-4 w-4" />;
+  }
+
+  return (
+    <span aria-hidden="true" className="flex h-4 w-4 items-center justify-center text-scada-muted">
+      <TechnicalIcon name={icon as TechnicalIconName} size={16} />
+    </span>
   );
 }
 

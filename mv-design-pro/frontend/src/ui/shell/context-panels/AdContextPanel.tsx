@@ -18,10 +18,11 @@ export function AdContextPanel() {
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
-          Administracja — biblioteka typów
+          Katalogi techniczne
         </span>
         <div className="mt-1 text-[10px] text-scada-muted">
-          Każdy element sieci musi referować typ z biblioteki (catalog-first).
+          Każdy element sieci powinien mieć przypisany typ katalogowy aparatury,
+          przewodu, transformatora albo profilu technicznego.
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">

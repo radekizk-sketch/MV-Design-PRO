@@ -46,13 +46,20 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Non-separator actions (real menu items). */
-function realActions(items: { separator?: boolean; label: string }[]) {
+function realActions<T extends { separator?: boolean; label: string }>(items: T[]): T[] {
   return items.filter((a) => !a.separator && a.label !== '');
 }
 
 function actionTokens(items: { id: string; actionKey?: string; separator?: boolean }[]) {
   return items.filter((a) => !a.separator).map((a) => a.actionKey ?? a.id);
 }
+
+const CANONICAL_MENU_BUILDERS = new Set([
+  'buildPVInverterContextMenu',
+  'buildBESSInverterContextMenu',
+  'buildBaySNContextMenu',
+  'buildEnergyStorageContextMenu',
+]);
 
 /**
  * Forbidden English words that must NOT appear in any label.
@@ -118,14 +125,36 @@ function assertPolishLabels(
 
 /** Assert required base actions exist in menu. */
 function assertRequiredActions(
-  items: { id: string; separator?: boolean }[],
+  items: { id: string; separator?: boolean; section?: string }[],
   contextName: string,
 ) {
   const ids = items.map((a) => a.id);
+  if (CANONICAL_MENU_BUILDERS.has(contextName)) {
+    expect(ids).toContain('open_inspector');
+    expect(realActions(items).every((a) => Boolean(a.section))).toBe(true);
+    return;
+  }
   const required = ['properties', 'show_tree', 'show_diagram', 'history'];
   for (const req of required) {
     expect(ids).toContain(req);
   }
+}
+
+function isEditAction(
+  action: { id: string; separator?: boolean; section?: string },
+  builderName: string,
+): boolean {
+  if (action.separator) return false;
+  if (CANONICAL_MENU_BUILDERS.has(builderName)) {
+    return ['Edytuj', 'Dodaj', 'Operacje', 'Usuń'].includes(action.section ?? '');
+  }
+  return (
+    action.id.startsWith('add_') ||
+    action.id.startsWith('edit_') ||
+    action.id.startsWith('assign_') ||
+    action.id === 'delete' ||
+    action.id === 'toggle_service'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +226,7 @@ describe('ACTION_MENU_MINIMUM_OPTIONS', () => {
  */
 function describeBuilder(
   builderName: string,
-  buildFn: (mode: 'MODEL_EDIT' | 'RESULT_VIEW') => { id: string; label: string; enabled: boolean; separator?: boolean }[],
+  buildFn: (mode: 'MODEL_EDIT' | 'RESULT_VIEW') => { id: string; label: string; enabled: boolean; separator?: boolean; section?: string; actionKey?: string }[],
   minOptionsKey: string,
   expectedMinCount: number,
 ) {
@@ -220,15 +249,7 @@ function describeBuilder(
 
     it('should enable edit actions in MODEL_EDIT mode', () => {
       const items = buildFn('MODEL_EDIT');
-      const editIds = items.filter(
-        (a) =>
-          !a.separator &&
-          (a.id.startsWith('add_') ||
-            a.id.startsWith('edit_') ||
-            a.id.startsWith('assign_') ||
-            a.id === 'delete' ||
-            a.id === 'toggle_service'),
-      );
+      const editIds = items.filter((a) => isEditAction(a, builderName));
       for (const editAction of editIds) {
         expect(
           editAction.enabled,
@@ -239,15 +260,7 @@ function describeBuilder(
 
     it('should disable edit actions in RESULT_VIEW mode', () => {
       const items = buildFn('RESULT_VIEW');
-      const editIds = items.filter(
-        (a) =>
-          !a.separator &&
-          (a.id.startsWith('add_') ||
-            a.id.startsWith('edit_') ||
-            a.id.startsWith('assign_') ||
-            a.id === 'delete' ||
-            a.id === 'toggle_service'),
-      );
+      const editIds = items.filter((a) => isEditAction(a, builderName));
       for (const editAction of editIds) {
         expect(
           editAction.enabled,
@@ -279,6 +292,11 @@ function describeBuilder(
     it('should always enable navigation actions (show_tree, show_diagram)', () => {
       for (const mode of ['MODEL_EDIT', 'RESULT_VIEW'] as const) {
         const items = buildFn(mode);
+        if (CANONICAL_MENU_BUILDERS.has(builderName)) {
+          const openInspector = items.find((a) => a.id === 'open_inspector');
+          expect(openInspector?.enabled, `${mode}: open_inspector should be enabled`).toBe(true);
+          continue;
+        }
         const treeAction = items.find((a) => a.id === 'show_tree');
         const diagramAction = items.find((a) => a.id === 'show_diagram');
         expect(treeAction?.enabled, `${mode}: show_tree should be enabled`).toBe(true);
@@ -289,6 +307,11 @@ function describeBuilder(
     it('should always enable history action', () => {
       for (const mode of ['MODEL_EDIT', 'RESULT_VIEW'] as const) {
         const items = buildFn(mode);
+        if (CANONICAL_MENU_BUILDERS.has(builderName)) {
+          const reportAction = items.find((a) => a.section === 'Raport');
+          expect(reportAction?.enabled, `${mode}: report action should be enabled`).toBe(true);
+          continue;
+        }
         const historyAction = items.find((a) => a.id === 'history');
         expect(historyAction?.enabled, `${mode}: history should be enabled`).toBe(true);
       }
@@ -468,34 +491,37 @@ describeBuilder(
   'buildPVInverterContextMenu',
   (mode) => buildPVInverterContextMenu(mode),
   'PVInverter',
-  17,
+  14,
 );
 
 describe('buildPVInverterContextMenu — specific', () => {
-  it('should include PV-specific edit actions', () => {
+  it('should include canonical source profile and compliance actions', () => {
     const items = buildPVInverterContextMenu('MODEL_EDIT');
     const ids = items.map((a) => a.id);
-    expect(ids).toContain('edit_power');
-    expect(ids).toContain('edit_control');
-    expect(ids).toContain('edit_limits');
-    expect(ids).toContain('edit_disconnect');
-    expect(ids).toContain('edit_measurement');
-    expect(ids).toContain('set_profile');
+    expect(ids).toContain('edit_source');
+    expect(ids).toContain('edit_connection_point');
+    expect(ids).toContain('edit_operator_profile');
+    expect(ids).toContain('edit_source_profile');
+    expect(ids).toContain('edit_qu_profile');
+    expect(ids).toContain('edit_cosphi_profile');
+    expect(ids).toContain('edit_frt_profile');
+    expect(ids).toContain('check_connection_compliance');
   });
 
-  it('should include only catalog assignment, without odkatalogowanie', () => {
+  it('should use source compliance report instead of catalog-assignment menu', () => {
     const items = buildPVInverterContextMenu('MODEL_EDIT');
     const ids = items.map((a) => a.id);
-    expect(ids).toContain('assign_catalog');
+    expect(ids).toContain('add_to_compliance_report');
+    expect(ids).not.toContain('assign_catalog');
     expect(ids).not.toContain('clear_catalog');
   });
 
-  it('should include trace action', () => {
+  it('should include engineering justification action', () => {
     const items = buildPVInverterContextMenu('RESULT_VIEW');
-    const wb = items.find((a) => a.id === 'show_whitebox');
+    const wb = items.find((a) => a.id === 'show_engineering_justification');
     expect(wb).toBeDefined();
     expect(wb!.enabled).toBe(true);
-    expect(wb!.label).toContain('wywód obliczeń');
+    expect(wb!.label).toContain('uzasadnienie inżynierskie');
   });
 });
 
@@ -507,26 +533,29 @@ describeBuilder(
   'buildBESSInverterContextMenu',
   (mode) => buildBESSInverterContextMenu(mode),
   'BESSInverter',
-  18,
+  14,
 );
 
 describe('buildBESSInverterContextMenu — specific', () => {
-  it('should include BESS-specific edit actions', () => {
+  it('should include canonical source profile and compliance actions', () => {
     const items = buildBESSInverterContextMenu('MODEL_EDIT');
     const ids = items.map((a) => a.id);
-    expect(ids).toContain('edit_capacity');
-    expect(ids).toContain('edit_power');
-    expect(ids).toContain('edit_mode');
-    expect(ids).toContain('edit_strategy');
-    expect(ids).toContain('edit_soc');
-    expect(ids).toContain('set_profile');
+    expect(ids).toContain('edit_source');
+    expect(ids).toContain('edit_connection_point');
+    expect(ids).toContain('edit_operator_profile');
+    expect(ids).toContain('edit_source_profile');
+    expect(ids).toContain('edit_qu_profile');
+    expect(ids).toContain('edit_cosphi_profile');
+    expect(ids).toContain('edit_frt_profile');
+    expect(ids).toContain('check_connection_compliance');
   });
 
-  it('should include dual catalog assignment without odkatalogowanie', () => {
+  it('should use source compliance report instead of dual catalog-assignment menu', () => {
     const items = buildBESSInverterContextMenu('MODEL_EDIT');
     const ids = items.map((a) => a.id);
-    expect(ids).toContain('assign_inverter_catalog');
-    expect(ids).toContain('assign_storage_catalog');
+    expect(ids).toContain('add_to_compliance_report');
+    expect(ids).not.toContain('assign_inverter_catalog');
+    expect(ids).not.toContain('assign_storage_catalog');
     expect(ids).not.toContain('clear_catalog');
   });
 });
@@ -770,7 +799,7 @@ describeBuilder(
   'buildEnergyStorageContextMenu',
   (mode) => buildEnergyStorageContextMenu(mode),
   'EnergyStorage',
-  13,
+  14,
 );
 
 // ---------------------------------------------------------------------------
@@ -839,12 +868,12 @@ describe('Cross-builder consistency', () => {
   ];
 
   it.each(builders)(
-    '%s: first real action should be "properties"',
-    (_name, build) => {
+    '%s: first real action should follow canonical opening rule',
+    (name, build) => {
       const items = build();
       const first = items.find((a) => !a.separator);
       expect(first).toBeDefined();
-      expect(first!.id).toBe('properties');
+      expect(first!.id).toBe(CANONICAL_MENU_BUILDERS.has(name) ? 'open_inspector' : 'properties');
     },
   );
 

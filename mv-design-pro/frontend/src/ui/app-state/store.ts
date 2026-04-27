@@ -29,16 +29,17 @@ import {
   type RuntimeOperatingMode,
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import {
+  normalizeAreaId,
+  type AreaId,
+  type LegacyAreaCode,
+} from '../navigation/areaRegistry';
 
 // =============================================================================
 // V12 — Area and Work-mode types
 // =============================================================================
 
-/**
- * V12 application area codes.
- * Each area maps to a dedicated left-context panel.
- */
-export type AreaCode = 'MO' | 'AN' | 'ZA' | 'OZ' | 'RA' | 'AD' | 'HI';
+export type AreaCode = AreaId;
 
 /**
  * V12 SLD work-mode codes.
@@ -85,7 +86,7 @@ interface AppState {
   activeAnalysisType: AnalysisType;
 
   // V12: Area and work-mode
-  activeArea: AreaCode;
+  activeArea: AreaId;
   activeWorkMode: WorkMode;
   activeVariantId: string | null;
   activeVariantName: string | null;
@@ -109,7 +110,7 @@ interface AppState {
   toggleIssuePanel: (open?: boolean) => void; // P30d
 
   // V12 actions
-  setActiveArea: (area: AreaCode) => void;
+  setActiveArea: (area: AreaId | LegacyAreaCode | string) => void;
   setActiveWorkMode: (mode: WorkMode) => void;
   setActiveVariant: (variantId: string | null, variantName?: string | null) => void;
 
@@ -140,7 +141,7 @@ const initialState = {
   activeAnalysisType: null as AnalysisType, // UI_INTEGRATION_E2E
   issuePanelOpen: false, // P30d
   // V12
-  activeArea: 'MO' as AreaCode,
+  activeArea: 'MODEL_SIECI' as AreaId,
   activeWorkMode: 'TE' as WorkMode,
   activeVariantId: null as string | null,
   activeVariantName: null as string | null,
@@ -248,7 +249,7 @@ export const useAppStateStore = create<AppState>()(
       // V12 actions
 
       setActiveArea: (area) => {
-        set({ activeArea: area });
+        set({ activeArea: normalizeAreaId(area) });
       },
 
       setActiveWorkMode: (mode) => {
@@ -317,10 +318,16 @@ export const useAppStateStore = create<AppState>()(
     }),
     {
       name: 'mv-design-app-state',
-      version: 1,
-      migrate: (persistedState: unknown, version) => {
-        if (version === 1) return persistedState as AppState;
-        return persistedState as AppState;
+      version: 2,
+      migrate: (persistedState: unknown, _version) => {
+        if (!persistedState || typeof persistedState !== 'object') {
+          return persistedState as AppState;
+        }
+        const state = persistedState as Partial<AppState> & { activeArea?: unknown };
+        return {
+          ...state,
+          activeArea: normalizeAreaId(state.activeArea),
+        } as AppState;
       },
       // Only persist project and case IDs, not transient state
       partialize: (state) => ({
@@ -330,6 +337,7 @@ export const useAppStateStore = create<AppState>()(
         activeCaseName: state.activeCaseName,
         activeCaseKind: state.activeCaseKind,
         activeSnapshotId: state.activeSnapshotId, // UI_INTEGRATION_E2E
+        activeArea: state.activeArea,
       }),
     }
   )

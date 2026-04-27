@@ -2,10 +2,10 @@
  * AppShellV12 — główny shell MV-DESIGN-PRO V12.xx
  *
  * Architektura 4-kolumnowa:
- *   [56px]  NavigationRail  — 7 obszarów (MO/AN/ZA/OZ/RA/AD/HI)
- *   [320px] ContextPanel    — lewy panel kontekstu obszaru (zwijany)
- *   [flex]  Kanwas SLD      — główny obszar roboczy
- *   [360px] Inspector       — prawy panel inspektora (zwijany)
+ *   Pasek obszarów roboczych
+ *   Panel kontekstu obszaru
+ *   Kanwa schematu jednokreskowego
+ *   Inspektor techniczny
  *   [28px]  StatusBarV12    — dolny pasek statusu
  *
  * Tryby (TE/TW/TZ/TP/TA/TN) ZMIENIAJĄ nakładki i inspektor — geometria SLD stała.
@@ -37,6 +37,7 @@ import { navigateToCaseConfig, navigateToCatalog, navigateToVariants } from '../
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
+import type { AreaId } from '../navigation/areaRegistry';
 
 import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
@@ -83,16 +84,13 @@ function IconClipboard({ className }: { className?: string }) {
 }
 
 /**
- * Wrapper panelu kontekstu obszaru — routing 7 obszarów (MO/AN/ZA/OZ/RA/AD/HI).
- *
- * Reuse istniejących komponentów (ProcessPanel, StudyCaseList, ProtectionLibraryBrowser,
- * TypeLibraryBrowser, RunHistoryPanel) — bez duplikacji logiki.
+ * Wrapper panelu kontekstu obszaru.
  */
 function ContextPanelShell({
   areaCode,
   collapsed,
 }: {
-  areaCode: import('../app-state/store').AreaCode;
+  areaCode: AreaId;
   collapsed: boolean;
 }) {
   if (collapsed) return null;
@@ -273,15 +271,15 @@ export function AppShellV12({
                   'flex h-6 w-6 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text',
                   inspectorCollapsed && 'mx-auto',
                 )}
-                aria-label={inspectorCollapsed ? 'Rozwiń panel właściwości' : 'Zwiń panel właściwości'}
-                title={inspectorCollapsed ? 'Rozwiń panel właściwości' : 'Zwiń panel właściwości'}
+                aria-label={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
+                title={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
                 data-testid="inspector-panel-toggle"
               >
                 {inspectorCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
               </button>
               {!inspectorCollapsed && (
                 <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
-                  Właściwości
+                  Inspektor techniczny
                 </span>
               )}
             </div>
@@ -303,8 +301,8 @@ export function AppShellV12({
                   type="button"
                   onClick={toggleInspector}
                   className="flex h-8 w-8 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text"
-                  title="Otwórz panel właściwości"
-                  aria-label="Otwórz panel właściwości"
+                  title="Otwórz Inspektor techniczny"
+                  aria-label="Otwórz Inspektor techniczny"
                 >
                   <IconClipboard />
                 </button>
