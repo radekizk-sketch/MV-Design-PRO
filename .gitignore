@@ -23,6 +23,7 @@ TestResults.xml
 
 ### Node ###
 node_modules/
+*.log
 
 ### Python ###
 __pycache__/

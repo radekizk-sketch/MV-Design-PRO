@@ -74,11 +74,11 @@ export type CatalogListItem =
 const DECATALOGING_BLOCKED_MESSAGE =
   'Odkatalogowanie elementów technicznych jest niedostępne w trybie katalog-first.';
 const NETWORK_ERROR_MESSAGE =
-  'Nie mozna polaczyc sie z API katalogow. Uruchom backend i odswiez widok.';
+  'Nie można połączyć się z API katalogów. Uruchom backend i odśwież widok.';
 const CATALOG_OPERATION_ERROR_MESSAGE =
-  'Nie udalo sie wykonac operacji katalogowej. Sprobuj ponownie.';
+  'Nie udało się wykonać operacji katalogowej. Spróbuj ponownie.';
 const BACKEND_UNAVAILABLE_MESSAGE =
-  'Backend katalogow nie odpowiada. Uruchom API i sprobuj ponownie.';
+  'Backend katalogów nie odpowiada. Uruchom API i spróbuj ponownie.';
 
 async function handleResponse<T>(response: Response, endpoint: string): Promise<T> {
   if (!response.ok) {

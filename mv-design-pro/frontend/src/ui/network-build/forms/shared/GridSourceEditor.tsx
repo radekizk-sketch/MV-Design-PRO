@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
-import { fetchSourceSystemTypes } from '../../../catalog/api';
+import { fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../catalog/api';
 import type { SourceSystemCatalogType } from '../../../catalog/types';
 import type {
   GpzGroundingType,
@@ -64,6 +64,12 @@ const DEFAULT_DATA: GridSourceFormData = {
   grounding_r_ohm: null,
   grounding_x_ohm: null,
 };
+
+const SOURCE_CATALOG_UNAVAILABLE_MESSAGE =
+  'Katalog systemów SN jest niedostępny. Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.';
+
+const SOURCE_CATALOG_EMPTY_MESSAGE =
+  'Brak pozycji katalogowych systemów SN. Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.';
 
 function mergeInitialData(initialData?: Partial<GridSourceFormData>): GridSourceFormData {
   const merged = {
@@ -250,29 +256,53 @@ export function GridSourceEditor({
       return;
     }
 
+    let cancelled = false;
     setCatalogLoading(true);
     setCatalogError(null);
 
     fetchSourceSystemTypes()
       .then((items) => {
+        if (cancelled) {
+          return;
+        }
         setCatalogItems(items);
+        if (items.length === 0) {
+          setCatalogError(SOURCE_CATALOG_EMPTY_MESSAGE);
+          setFormData((previous) => ({
+            ...previous,
+            manual_mode: true,
+            catalog_ref: null,
+          }));
+        }
         setCatalogLoading(false);
       })
       .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
         setCatalogItems([]);
+        const reason = getCatalogErrorMessage(error) || SOURCE_CATALOG_UNAVAILABLE_MESSAGE;
         setCatalogError(
-          error instanceof Error
-            ? error.message
-            : 'Nie udało się pobrać katalogu zasilania systemowego.',
+          `${reason} Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.`,
         );
+        setFormData((previous) => ({
+          ...previous,
+          manual_mode: true,
+          catalog_ref: null,
+        }));
         setCatalogLoading(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   const selectedCatalog = useMemo(
     () => catalogItems.find((item) => item.id === formData.catalog_ref) ?? null,
     [catalogItems, formData.catalog_ref],
   );
+  const catalogModeUnavailable = Boolean(catalogError) && catalogItems.length === 0;
 
   useEffect(() => {
     if (!selectedCatalog || formData.manual_mode) {
@@ -495,11 +525,12 @@ export function GridSourceEditor({
               <button
                 type="button"
                 onClick={() => handleModeChange(false)}
+                disabled={catalogModeUnavailable}
                 className={`rounded-md border px-3 py-2 text-sm font-medium ${
                   !formData.manual_mode
                     ? 'border-blue-600 bg-blue-50 text-blue-700'
                     : 'border-gray-300 bg-white text-gray-700'
-                }`}
+                } disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400`}
               >
                 Katalog
               </button>
@@ -538,7 +569,11 @@ export function GridSourceEditor({
                 </option>
               ))}
             </select>
-            {catalogError && <p className="mt-1 text-xs text-red-600">{catalogError}</p>}
+            {catalogError && (
+              <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                {catalogError}
+              </p>
+            )}
             {getFieldError('catalog_ref') && (
               <p className="mt-1 text-xs text-red-600">{getFieldError('catalog_ref')}</p>
             )}
