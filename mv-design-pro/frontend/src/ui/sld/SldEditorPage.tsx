@@ -61,6 +61,7 @@ import {
 } from '../catalog/catalogSnapshot';
 import { resolveBusSnRef, resolveStationRef } from '../network-build/forms/enmResolvers';
 import { projectEnmSnapshotToSld } from './enmSnapshotToSldSymbols';
+import type { InteractionPortRole } from './types';
 import type { FixAction, ReadinessIssue } from '../types';
 import type { ElementType } from '../types';
 import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
@@ -497,7 +498,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     target_id: string;
     valid: boolean;
     message_pl: string;
-    port_role?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE';
+    port_role?: InteractionPortRole;
   } | null>(null);
   const executeEnmOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const resetEnmStore = useSnapshotStore((state) => state.reset);
@@ -1249,7 +1250,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const runResolvedAction = useCallback(async (
     tool: CreatorTool,
     target: { id: string; type: any; name: string },
-    interaction: { kind: 'canvas' | 'element' | 'port'; portRole?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE' },
+    interaction: { kind: 'canvas' | 'element' | 'port'; portRole?: InteractionPortRole },
   ) => {
     const resolved = resolveToolAction(tool, target as any, {
       hasSource,
@@ -1399,7 +1400,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const buildPreview = useCallback((
     tool: CreatorTool,
     target: { id: string; type: any; name: string },
-    interaction: { kind: 'canvas' | 'element' | 'port'; portRole?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE' },
+    interaction: { kind: 'canvas' | 'element' | 'port'; portRole?: InteractionPortRole },
   ) => {
     if (!tool || tool === 'select' || tool === 'move') {
       setInteractionPreview(null);

@@ -1,4 +1,5 @@
 import type { SelectedElement } from '../types';
+import type { InteractionPortRole } from './types';
 import type { CreatorTool } from '../topology/editorPalette';
 import { CREATOR_TOOLS } from '../topology/editorPalette';
 import type { CanonicalOpName } from '../../types/domainOps';
@@ -34,7 +35,7 @@ export interface ResolvedToolAction {
 
 export interface InteractionTargetContext {
   kind: 'canvas' | 'element' | 'port';
-  portRole?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE';
+  portRole?: InteractionPortRole;
 }
 
 const TOOL_STATUS: Record<Exclude<CreatorTool, null>, ToolRuntimeStatus> = {

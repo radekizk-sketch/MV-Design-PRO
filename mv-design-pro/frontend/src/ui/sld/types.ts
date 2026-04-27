@@ -14,7 +14,28 @@ import type { AnySldSymbol, Connection as RenderConnection, Position } from '../
 import type { CanonicalAnnotationsV1 } from './core/layoutResult';
 import { CANONICAL_GEOMETRY } from './sldCanonicalStyle';
 
-export type InteractionPortRole = 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE';
+export type InteractionPortRole =
+  | 'TRUNK_IN'
+  | 'TRUNK_OUT'
+  | 'BRANCH_OUT'
+  | 'RING'
+  | 'NN_SOURCE'
+  | 'BAY_SN_IN'
+  | 'BAY_SN_OUT'
+  | 'BAY_SN_TRANSFORMER'
+  | 'SEGMENT_SN_IN'
+  | 'SEGMENT_SN_OUT'
+  | 'TRANSFORMER_SN'
+  | 'TRANSFORMER_NN'
+  | 'LV_FEEDER_OUT'
+  | 'SOURCE_AC'
+  | 'SOURCE_DC'
+  | 'ZKSN_MAIN_IN'
+  | 'ZKSN_MAIN_OUT'
+  | 'ZKSN_BRANCH_OUT'
+  | 'POLE_MAIN_IN'
+  | 'POLE_MAIN_OUT'
+  | 'POLE_BRANCH_OUT';
 
 export interface SegmentInteractionTarget {
   segment_ref: string;

@@ -122,15 +122,36 @@ function getPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
     case 'Bus':
       return [];
     case 'TransformerBranch':
-      return ['TRUNK_IN', 'NN_SOURCE'];
+      return ['TRANSFORMER_SN', 'TRANSFORMER_NN'];
     case 'Generator':
-      return ['NN_SOURCE'];
+      return ['SOURCE_AC'];
     default:
       return [];
   }
 }
 
 function getPortLabel(role: InteractionPortRole): string {
+  const formalLabels: Partial<Record<InteractionPortRole, string>> = {
+    BAY_SN_IN: 'Port wejściowy pola SN',
+    BAY_SN_OUT: 'Port wyjściowy pola SN',
+    BAY_SN_TRANSFORMER: 'Port transformatorowy pola SN',
+    SEGMENT_SN_IN: 'Port wejściowy odcinka SN',
+    SEGMENT_SN_OUT: 'Port wyjściowy odcinka SN',
+    TRANSFORMER_SN: 'Port SN transformatora',
+    TRANSFORMER_NN: 'Port nN transformatora',
+    LV_FEEDER_OUT: 'Port odpływu nN',
+    SOURCE_AC: 'Port AC źródła',
+    SOURCE_DC: 'Port DC źródła',
+    ZKSN_MAIN_IN: 'Port wejściowy główny ZKSN',
+    ZKSN_MAIN_OUT: 'Port wyjściowy główny ZKSN',
+    ZKSN_BRANCH_OUT: 'Port odgałęźny ZKSN',
+    POLE_MAIN_IN: 'Port wejściowy słupa rozgałęźnego',
+    POLE_MAIN_OUT: 'Port wyjściowy słupa rozgałęźnego',
+    POLE_BRANCH_OUT: 'Port odgałęźny słupa rozgałęźnego',
+  };
+  const label = formalLabels[role];
+  if (label) return label;
+
   switch (role) {
     case 'TRUNK_IN':
       return 'Port wejścia magistrali';
@@ -143,15 +164,32 @@ function getPortLabel(role: InteractionPortRole): string {
     case 'NN_SOURCE':
       return 'Port źródła nN';
   }
+  return 'Port techniczny';
 }
 
 function mapInteractionRoleToPortName(role: InteractionPortRole): PortName {
   switch (role) {
     case 'TRUNK_IN':
+    case 'BAY_SN_IN':
+    case 'SEGMENT_SN_IN':
+    case 'TRANSFORMER_SN':
+    case 'ZKSN_MAIN_IN':
+    case 'POLE_MAIN_IN':
       return 'top';
     case 'TRUNK_OUT':
+    case 'BAY_SN_OUT':
+    case 'SEGMENT_SN_OUT':
+    case 'TRANSFORMER_NN':
+    case 'LV_FEEDER_OUT':
+    case 'SOURCE_AC':
+    case 'SOURCE_DC':
+    case 'ZKSN_MAIN_OUT':
+    case 'POLE_MAIN_OUT':
       return 'bottom';
     case 'BRANCH_OUT':
+    case 'BAY_SN_TRANSFORMER':
+    case 'ZKSN_BRANCH_OUT':
+    case 'POLE_BRANCH_OUT':
       return 'right';
     case 'RING':
       return 'left';
@@ -302,7 +340,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const connections = canonicalConnections as RenderConnection[];
 
   // V12 § 5.7: readability overlay (LOD + filtry warstwowe + szkielet)
-  const { getOpacity, lodBand } = useSldReadabilityOverlay(symbols, viewport);
+  const { getOpacity, lodBand, lodLevel } = useSldReadabilityOverlay(symbols, viewport);
   // Pochodna LOD: czy pokazujemy pełne etykiety techniczne
   const showTechnicalCanonicalLabels = shouldShowTechnicalLabels(lodBand);
   const canonicalFieldOverlays = useMemo(() => {
@@ -456,6 +494,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
       <g
         transform={`translate(${viewport.offsetX}, ${viewport.offsetY}) scale(${viewport.zoom})`}
         data-testid="sld-content-group"
+        data-sld-lod-level={lodLevel}
       >
         {/* Connections layer (rendered UNDER symbols) */}
         <ConnectionsLayer

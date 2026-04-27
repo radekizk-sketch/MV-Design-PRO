@@ -24,6 +24,7 @@ import type { AnySldSymbol } from '../sld-editor/types';
 import type { ViewportState } from './types';
 import type { ElementType } from '../types';
 import { getLodBand, isElementVisibleAtLod } from './sldDetailLevel';
+import { getSldLodLevel } from './SldLevelOfDetailEngine';
 import { useSldLayerFiltersStore, elementMatchesLayerFilter, isElementInSkeletonView } from './sldLayerFiltersStore';
 
 export type ReadinessMap = ReadonlyMap<string, boolean>;
@@ -33,6 +34,8 @@ export interface SldReadabilityOverlayResult {
   getOpacity: (symbolId: string, elementType: ElementType) => number;
   /** Aktualne pasmo LOD. */
   lodBand: ReturnType<typeof getLodBand>;
+  /** Kanoniczny poziom szczegółowości SLD LOD-0..LOD-7. */
+  lodLevel: ReturnType<typeof getSldLodLevel>;
   /** Czy tryb szkieletowy aktywny. */
   isSkeletonView: boolean;
 }
@@ -51,6 +54,7 @@ export function useSldReadabilityOverlay(
   const zoom = viewport.zoom;
 
   const lodBand = useMemo(() => getLodBand(zoom), [zoom]);
+  const lodLevel = useMemo(() => getSldLodLevel({ zoom }), [zoom]);
 
   const getOpacity = useMemo(() => {
     return (symbolId: string, elementType: ElementType): number => {
@@ -76,5 +80,5 @@ export function useSldReadabilityOverlay(
     };
   }, [lodBand, layerFilter, skeletonView, readinessMap]);
 
-  return { getOpacity, lodBand, isSkeletonView: skeletonView };
+  return { getOpacity, lodBand, lodLevel, isSkeletonView: skeletonView };
 }

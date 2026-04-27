@@ -30,6 +30,7 @@ import {
   ZOOM_MAX,
   ZOOM_STEP,
   fitToContent,
+  type InteractionPortRole,
   type ViewportState,
   type SLDViewProps,
 } from './types';
@@ -673,7 +674,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   }, [onCanvasClick]);
 
   const handlePortClick = useCallback(
-    (symbolId: string, elementType: ElementType, elementName: string, role: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE') => {
+    (symbolId: string, elementType: ElementType, elementName: string, role: InteractionPortRole) => {
       const target: SelectedElement = {
         id: symbolId,
         type: elementType,
@@ -685,7 +686,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   );
 
   const handlePortHover = useCallback(
-    (symbolId: string | null, elementType?: ElementType, elementName?: string, role?: 'TRUNK_IN' | 'TRUNK_OUT' | 'BRANCH_OUT' | 'RING' | 'NN_SOURCE') => {
+    (symbolId: string | null, elementType?: ElementType, elementName?: string, role?: InteractionPortRole) => {
       if (!onPortHover) return;
       if (!symbolId || !elementType || !elementName || !role) {
         onPortHover(null, null);
