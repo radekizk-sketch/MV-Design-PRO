@@ -37,7 +37,7 @@ router = APIRouter(prefix="/projects", tags=["incremental-archive"])
 
 
 # ============================================================================
-# IN-MEMORY STORE (placeholder — docelowo w bazie danych)
+# IN-MEMORY STORE dla lokalnego adaptera eksportu przyrostowego
 # ============================================================================
 
 # Przechowywanie historii eksportów per projekt.

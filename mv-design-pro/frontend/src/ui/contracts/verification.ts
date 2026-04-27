@@ -75,15 +75,21 @@ export type DomainEntityFamily =
   | 'busbar_sections'
   | 'oltc_model'
   | 'q_limits'
-  | 'pv_nodes';
+  | 'pv_nodes'
+  | 'frt_profile'
+  | 'dynamic_model'
+  | 'switching_sequence'
+  | 'phase_measurements';
 
 export type RequiredModuleResult =
-  | 'E-24.short_circuit'
-  | 'E-24.protection_base'
-  | 'E-24.load_flow'
-  | 'E-24.any_completed_module'
+  | 'E-26.frt_compliance'
+  | 'E-27.protection_base'
+  | 'E-29.short_circuit'
+  | 'E-30.load_flow'
+  | 'E-32.dynamic_stability'
+  | 'E-35.any_completed_module'
   | 'E-28'
-  | 'E-32';
+  | 'E-33';
 
 export interface BenchmarkRegistryEntry {
   benchmarkId: string;
@@ -95,7 +101,7 @@ export interface BenchmarkRegistryEntry {
 }
 
 export interface AnalysisModuleSpecEntry {
-  screenCode: 'E-28' | 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
+  screenCode: 'E-26' | 'E-27' | 'E-28' | 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
   inputContract: string;
   moduleDataContract: string;
   requiredEntities: DomainEntityFamily[];
@@ -237,16 +243,48 @@ export const BENCHMARK_REGISTRY: Record<string, BenchmarkRegistryEntry> = {
 };
 
 export const ANALYSIS_MODULE_MATRIX: Record<
-  'E-28' | 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34',
+  'E-26' | 'E-27' | 'E-28' | 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34',
   AnalysisModuleSpecEntry
 > = {
+  'E-26': {
+    screenCode: 'E-26',
+    inputContract: 'E26FrtLvrtHvrtInput',
+    moduleDataContract: 'E26FrtLvrtHvrtComplianceData',
+    requiredEntities: ['der_sources', 'pcc_measurements', 'frt_profile', 'q_limits'],
+    requiredResultFamilies: ['source_frt_lvrt_hvrt', 'source_compliance'],
+    requiresModuleResults: ['E-30.load_flow'],
+    invalidIfMissing: ['analysis.missing_source_model', 'analysis.missing_curve_family'],
+    partialReasons: ['analysis.missing_curve_family'],
+    failedReasons: ['analysis.missing_prerequisite'],
+    notApplicableReasons: [],
+    exportPolicyKey: 'analysis_frt_export',
+    minimumCaseInputReadinessRequired: 'degraded',
+    supportedCaseInputReadiness: ['degraded', 'ready'],
+    blocksReportProfiles: ['standard', 'full', 'audit', 'osd'],
+  },
+  'E-27': {
+    screenCode: 'E-27',
+    inputContract: 'E27ProtectionAutomationInput',
+    moduleDataContract: 'E27ProtectionAutomationData',
+    requiredEntities: ['protection_devices', 'ct_vt', 'protection_assignments'],
+    requiredResultFamilies: ['protection_automation'],
+    requiresModuleResults: ['E-29.short_circuit'],
+    invalidIfMissing: ['analysis.missing_curve_family', 'analysis.missing_ct_vt_ratio'],
+    partialReasons: ['analysis.missing_curve_family', 'analysis.missing_ct_vt_ratio'],
+    failedReasons: ['analysis.missing_prerequisite'],
+    notApplicableReasons: [],
+    exportPolicyKey: 'analysis_protection_automation_export',
+    minimumCaseInputReadinessRequired: 'degraded',
+    supportedCaseInputReadiness: ['degraded', 'ready'],
+    blocksReportProfiles: ['standard', 'full', 'audit', 'osd', 'execution'],
+  },
   'E-28': {
     screenCode: 'E-28',
     inputContract: 'E28ProtectionCoordinationInput',
     moduleDataContract: 'E28ProtectionCoordinationData',
     requiredEntities: ['protection_devices', 'ct_vt', 'fault_scope'],
     requiredResultFamilies: ['protection_coordination'],
-    requiresModuleResults: ['E-24.short_circuit', 'E-24.protection_base'],
+    requiresModuleResults: ['E-29.short_circuit', 'E-27.protection_base'],
     invalidIfMissing: ['analysis.missing_curve_family', 'analysis.missing_ct_vt_ratio', 'analysis.missing_fault_path'],
     partialReasons: ['analysis.missing_curve_family', 'analysis.missing_ct_vt_ratio'],
     failedReasons: ['analysis.missing_prerequisite'],
@@ -261,8 +299,8 @@ export const ANALYSIS_MODULE_MATRIX: Record<
     inputContract: 'E29SymmetricalComponentsInput',
     moduleDataContract: 'E29SymmetricalComponentsData',
     requiredEntities: ['grounding_model', 'zero_sequence_network'],
-    requiredResultFamilies: ['symmetrical_components'],
-    requiresModuleResults: ['E-24.short_circuit'],
+    requiredResultFamilies: ['short_circuit_all_fault_types', 'symmetrical_components'],
+    requiresModuleResults: [],
     invalidIfMissing: ['analysis.missing_z0'],
     partialReasons: ['analysis.missing_z0'],
     failedReasons: ['analysis.missing_prerequisite'],
@@ -274,43 +312,59 @@ export const ANALYSIS_MODULE_MATRIX: Record<
   },
   'E-30': {
     screenCode: 'E-30',
-    inputContract: 'E30GridCodeInput',
-    moduleDataContract: 'E30GridCodeComplianceData',
-    requiredEntities: ['der_sources', 'pcc_measurements', 'protection_assignments'],
-    requiredResultFamilies: ['grid_code_compliance'],
-    requiresModuleResults: ['E-24.load_flow', 'E-32'],
-    invalidIfMissing: ['analysis.missing_prerequisite'],
-    partialReasons: ['analysis.missing_prerequisite'],
-    failedReasons: ['analysis.missing_prerequisite'],
+    inputContract: 'E30LoadFlowInput',
+    moduleDataContract: 'E30LoadFlowNrGsFdData',
+    requiredEntities: ['oltc_model', 'q_limits', 'pv_nodes'],
+    requiredResultFamilies: ['load_flow_nr', 'load_flow_gs_diagnostic', 'load_flow_fd_performance'],
+    requiresModuleResults: [],
+    invalidIfMissing: ['analysis.missing_q_limits', 'analysis.solver_cutoff_reached'],
+    partialReasons: ['analysis.missing_q_limits'],
+    failedReasons: ['analysis.solver_cutoff_reached'],
     notApplicableReasons: [],
-    exportPolicyKey: 'analysis_gridcode_export',
+    exportPolicyKey: 'analysis_load_flow_export',
     minimumCaseInputReadinessRequired: 'degraded',
     supportedCaseInputReadiness: ['degraded', 'ready'],
     blocksReportProfiles: ['standard', 'full', 'audit', 'osd'],
   },
   'E-31': {
     screenCode: 'E-31',
-    inputContract: 'E31QualityAuditInput',
-    moduleDataContract: 'E31QualityAuditData',
-    requiredEntities: ['lineage_records', 'assumptions', 'quality_gates'],
-    requiredResultFamilies: ['quality_audit'],
-    requiresModuleResults: ['E-24.any_completed_module'],
-    invalidIfMissing: ['quality.missing_lineage', 'quality.missing_quality_dimension'],
-    partialReasons: ['quality.missing_lineage', 'quality.missing_quality_dimension'],
+    inputContract: 'E31PhaseStateSnInput',
+    moduleDataContract: 'E31PhaseStateSnData',
+    requiredEntities: ['phase_measurements', 'der_sources', 'pcc_measurements'],
+    requiredResultFamilies: ['phase_state_sn'],
+    requiresModuleResults: ['E-30.load_flow'],
+    invalidIfMissing: ['analysis.missing_prerequisite'],
+    partialReasons: ['analysis.missing_prerequisite'],
     failedReasons: ['analysis.missing_prerequisite'],
     notApplicableReasons: [],
-    exportPolicyKey: 'analysis_quality_export',
-    minimumCaseInputReadinessRequired: 'blocked',
-    supportedCaseInputReadiness: ['blocked', 'degraded', 'ready'],
-    blocksReportProfiles: ['audit', 'osd', 'execution'],
+    exportPolicyKey: 'analysis_phase_state_export',
+    minimumCaseInputReadinessRequired: 'degraded',
+    supportedCaseInputReadiness: ['degraded', 'ready'],
+    blocksReportProfiles: ['full', 'audit', 'osd'],
   },
   'E-32': {
     screenCode: 'E-32',
-    inputContract: 'E32SourceContributionsInput',
-    moduleDataContract: 'E32SourceContributionsData',
+    inputContract: 'E32DynamicStabilityInput',
+    moduleDataContract: 'E32DynamicStabilityData',
+    requiredEntities: ['dynamic_model', 'switching_sequence', 'fault_scope', 'der_sources'],
+    requiredResultFamilies: ['dynamic_stability'],
+    requiresModuleResults: ['E-26.frt_compliance', 'E-30.load_flow'],
+    invalidIfMissing: ['analysis.missing_source_model', 'analysis.missing_fault_path'],
+    partialReasons: ['analysis.missing_source_model', 'analysis.missing_fault_path'],
+    failedReasons: ['analysis.missing_prerequisite'],
+    notApplicableReasons: [],
+    exportPolicyKey: 'analysis_dynamic_stability_export',
+    minimumCaseInputReadinessRequired: 'degraded',
+    supportedCaseInputReadiness: ['degraded', 'ready'],
+    blocksReportProfiles: ['full', 'audit', 'osd'],
+  },
+  'E-33': {
+    screenCode: 'E-33',
+    inputContract: 'E33SourceContributionsInput',
+    moduleDataContract: 'E33SourceContributionsData',
     requiredEntities: ['active_sources', 'branch_mapping', 'field_mapping'],
     requiredResultFamilies: ['source_contributions'],
-    requiresModuleResults: ['E-24.load_flow'],
+    requiresModuleResults: ['E-29.short_circuit', 'E-30.load_flow'],
     invalidIfMissing: ['analysis.missing_source_model', 'analysis.missing_branch_mapping'],
     partialReasons: ['analysis.missing_source_model', 'analysis.missing_branch_mapping'],
     failedReasons: ['analysis.missing_prerequisite'],
@@ -318,36 +372,20 @@ export const ANALYSIS_MODULE_MATRIX: Record<
     exportPolicyKey: 'analysis_sources_export',
     minimumCaseInputReadinessRequired: 'degraded',
     supportedCaseInputReadiness: ['degraded', 'ready'],
-    blocksReportProfiles: ['full', 'audit', 'osd'],
+    blocksReportProfiles: ['standard', 'full', 'audit', 'osd', 'execution'],
   },
-  'E-33': {
-    screenCode: 'E-33',
-    inputContract: 'E33ThermalDynamicInput',
-    moduleDataContract: 'E33ThermalDynamicData',
+  'E-34': {
+    screenCode: 'E-34',
+    inputContract: 'E34ThermalDynamicInput',
+    moduleDataContract: 'E34ThermalDynamicData',
     requiredEntities: ['device_ratings', 'busbar_sections', 'fault_scope'],
     requiredResultFamilies: ['thermal_dynamic_verification'],
-    requiresModuleResults: ['E-24.short_circuit', 'E-28'],
+    requiresModuleResults: ['E-29.short_circuit', 'E-28'],
     invalidIfMissing: ['analysis.missing_device_rating', 'analysis.missing_busbar_section'],
     partialReasons: ['analysis.missing_device_rating', 'analysis.missing_busbar_section'],
     failedReasons: ['analysis.missing_prerequisite'],
     notApplicableReasons: [],
     exportPolicyKey: 'analysis_thermal_export',
-    minimumCaseInputReadinessRequired: 'degraded',
-    supportedCaseInputReadiness: ['degraded', 'ready'],
-    blocksReportProfiles: ['standard', 'full', 'audit', 'osd', 'execution'],
-  },
-  'E-34': {
-    screenCode: 'E-34',
-    inputContract: 'E34ConvergenceInput',
-    moduleDataContract: 'E34ConvergenceData',
-    requiredEntities: ['oltc_model', 'q_limits', 'pv_nodes'],
-    requiredResultFamilies: ['load_flow_convergence'],
-    requiresModuleResults: ['E-24.load_flow'],
-    invalidIfMissing: ['analysis.missing_q_limits', 'analysis.solver_cutoff_reached'],
-    partialReasons: ['analysis.missing_q_limits'],
-    failedReasons: ['analysis.solver_cutoff_reached'],
-    notApplicableReasons: [],
-    exportPolicyKey: 'analysis_convergence_export',
     minimumCaseInputReadinessRequired: 'degraded',
     supportedCaseInputReadiness: ['degraded', 'ready'],
     blocksReportProfiles: ['full', 'audit', 'osd'],

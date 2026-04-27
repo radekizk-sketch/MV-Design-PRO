@@ -25,6 +25,7 @@ from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
 from api.sld import router as sld_router
 from api.sld_overrides import router as sld_overrides_router
+from api.solver_capabilities import router as solver_capabilities_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
 from api.xlsx_import import router as xlsx_import_router
@@ -111,6 +112,7 @@ app.include_router(result_contract_v1_router)
 app.include_router(fault_scenarios_router)
 app.include_router(sld_overrides_router)
 app.include_router(switchgear_config_router)
+app.include_router(solver_capabilities_router, prefix="/api")
 
 
 @app.get("/")

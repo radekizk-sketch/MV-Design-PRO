@@ -37,6 +37,14 @@ from network_model.solvers.phase_state_sn import (
     PhaseStateSNSolver,
     PhaseValues,
 )
+from network_model.solvers.power_flow_fast_decoupled import (
+    FastDecoupledOptions,
+    PowerFlowFastDecoupledSolver,
+)
+from network_model.solvers.power_flow_gauss_seidel import (
+    GaussSeidelOptions,
+    PowerFlowGaussSeidelSolver,
+)
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
@@ -191,6 +199,17 @@ def _source_compliance_proof_ref(*, run: CanonicalRun, source_ref: str) -> str:
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"proof:source-compliance:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
+
+
+def _power_flow_proof_ref(*, run: CanonicalRun, solver_method: str) -> str:
+    payload = {
+        "analysis_type": "PF",
+        "input_hash": run.input_hash,
+        "run_id": str(run.id),
+        "solver_method": solver_method,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"proof:power-flow:{hashlib.sha256(raw.encode('utf-8')).hexdigest()}"
 
 
 def _execution_analysis_type_for_run(run: CanonicalRun) -> str:
@@ -902,6 +921,63 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
+def _normalize_power_flow_solver_method(raw_method: Any) -> str:
+    normalized = str(raw_method or "NR").strip().upper().replace("-", "_")
+    if normalized in {"NR", "NEWTON", "NEWTON_RAPHSON"}:
+        return "newton-raphson"
+    if normalized in {"GS", "GAUSS", "GAUSS_SEIDEL"}:
+        return "gauss-seidel"
+    if normalized in {"FD", "FDLF", "FAST_DECOUPLED"}:
+        return "fast-decoupled"
+    raise ValueError(f"Nieznany tryb rozpływu mocy: {raw_method}")
+
+
+def _solve_power_flow_with_method(
+    pf_input: PowerFlowInput,
+    options: PowerFlowOptions,
+    run_options: dict[str, Any],
+    solver_method: str,
+):
+    if solver_method == "newton-raphson":
+        return PowerFlowNewtonSolver().solve(pf_input)
+    if solver_method == "gauss-seidel":
+        gs_options = GaussSeidelOptions(
+            tolerance=options.tolerance,
+            max_iter=options.max_iter,
+            damping=options.damping,
+            flat_start=options.flat_start,
+            validate=options.validate,
+            trace_level=options.trace_level,
+            acceleration_factor=float(
+                run_options.get("acceleration_factor")
+                or run_options.get("gs_acceleration_factor")
+                or 1.0
+            ),
+            allow_fallback=False,
+        )
+        return PowerFlowGaussSeidelSolver().solve(pf_input, gs_options)
+    if solver_method == "fast-decoupled":
+        fd_method = str(
+            run_options.get("fd_method") or run_options.get("fast_decoupled_method") or "XB"
+        ).upper()
+        if fd_method not in {"XB", "BX"}:
+            raise ValueError(f"Nieznany wariant fast-decoupled: {fd_method}")
+        fd_options = FastDecoupledOptions(
+            tolerance=options.tolerance,
+            max_iter=options.max_iter,
+            damping=options.damping,
+            flat_start=options.flat_start,
+            validate=options.validate,
+            trace_level=options.trace_level,
+            method=fd_method,  # type: ignore[arg-type]
+            rebuild_matrices_every=int(run_options.get("rebuild_matrices_every") or 0),
+            angle_damping=float(run_options.get("angle_damping") or 1.0),
+            voltage_damping=float(run_options.get("voltage_damping") or 1.0),
+        )
+        return PowerFlowFastDecoupledSolver().solve(pf_input, fd_options)
+    raise ValueError(f"Nieznany tryb rozpływu mocy: {solver_method}")
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -938,7 +1014,19 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         pq=pq_specs,
         options=options,
     )
-    solution = PowerFlowNewtonSolver().solve(pf_input)
+    requested_solver_method = _normalize_power_flow_solver_method(
+        run.options.get("solver_method") or run.options.get("method")
+    )
+    solution = _solve_power_flow_with_method(
+        pf_input,
+        options,
+        run.options,
+        requested_solver_method,
+    )
+    solver_method = str(getattr(solution, "solver_method", requested_solver_method))
+    proof_ref = _power_flow_proof_ref(run=run, solver_method=solver_method)
+    reporting_status = "reportable" if solution.converged else "not_reportable"
+    proof_status = "complete" if solution.converged else "partial"
 
     node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
@@ -965,6 +1053,20 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     )
 
     run.raw_result = {
+        "analysis_type": "load_flow",
+        "solver_method": solver_method,
+        "solver_version": f"load-flow-{solver_method}-v1",
+        "proof_ref": proof_ref,
+        "proof_status": proof_status,
+        "proof_status_pl": "pelny" if proof_status == "complete" else "czesciowy",
+        "reporting_status": reporting_status,
+        "reporting_status_pl": (
+            "raportowalny" if reporting_status == "reportable" else "nieraportowalny"
+        ),
+        "quality_status": "accepted" if solution.converged else "failed",
+        "applicability_status": "applicable",
+        "dopuszczalnosc_raportowa": solution.converged,
+        "reporting_limitations": [] if solution.converged else ["solver_non_convergence"],
         "result_v1": result_v1.to_dict(),
         "node_voltage_kv": solution.node_voltage_kv,
         "branch_current_ka": solution.branch_current_ka,
@@ -992,7 +1094,11 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     }
     run.white_box_trace = _build_power_flow_trace_steps(solution)
     run.power_flow_trace = {
-        "solver_version": "1.0.0",
+        "solver_version": f"load-flow-{solver_method}-v1",
+        "solver_method": solver_method,
+        "proof_ref": proof_ref,
+        "proof_status": proof_status,
+        "reporting_status": reporting_status,
         "input_hash": run.input_hash,
         "snapshot_id": run.snapshot_hash,
         "case_id": run.case_id,
@@ -1023,6 +1129,19 @@ def _execute_power_flow(run: CanonicalRun) -> None:
 
 def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
     steps: list[dict[str, Any]] = []
+    solver_method = str(getattr(solution, "solver_method", "newton-raphson"))
+    title_by_method = {
+        "newton-raphson": "Newtona-Raphsona",
+        "gauss-seidel": "Gaussa-Seidla",
+        "fast-decoupled": "fast-decoupled",
+    }
+    phase_by_method = {
+        "newton-raphson": "newton_raphson",
+        "gauss-seidel": "gauss_seidel",
+        "fast-decoupled": "fast_decoupled",
+    }
+    title_method = title_by_method.get(solver_method, solver_method)
+    phase = phase_by_method.get(solver_method, solver_method.replace("-", "_"))
     if solution.init_state:
         steps.append(
             {
@@ -1036,8 +1155,8 @@ def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
         steps.append(
             {
                 "step": index,
-                "title": f"Iteracja Newtona-Raphsona {iteration.get('iter', index)}",
-                "phase": "newton_raphson",
+                "title": f"Iteracja {title_method} {iteration.get('iter', index)}",
+                "phase": phase,
                 "inputs": {
                     "max_mismatch_pu": {
                         "value": float(iteration.get("max_mismatch_pu", 0.0)),
@@ -1797,6 +1916,7 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         }
     elif run.analysis_type == "PF":
         result_v1 = (run.raw_result or {}).get("result_v1") or {}
+        raw_result = run.raw_result or {}
         for row in build_bus_results(run).get("rows", []):
             element_results.append(
                 {
@@ -1804,9 +1924,22 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                     "element_type": "Bus",
                     "solver_ref": row.get("bus_id"),
                     "values": row,
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
                 }
             )
-        global_results = result_v1.get("summary", {})
+        global_results = {
+            **(result_v1.get("summary", {}) or {}),
+            "analysis_type": "load_flow",
+            "solver_method": raw_result.get("solver_method"),
+            "proof_ref": raw_result.get("proof_ref"),
+            "proof_status": raw_result.get("proof_status"),
+            "reporting_status": raw_result.get("reporting_status"),
+            "quality_status": raw_result.get("quality_status"),
+            "applicability_status": raw_result.get("applicability_status"),
+            "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
+        }
     elif run.analysis_type == "phase_state_sn":
         phase_rows = build_phase_state_results(run).get("rows", [])
         for row in phase_rows:

@@ -86,7 +86,7 @@ const IMPORTANCE_BY_TYPE: Readonly<Record<ElementType, ElementImportance>> = Obj
   SecondaryLink: 'SZKIELET',
   NOP: 'SZKIELET',
   // Główne pola operacyjne
-  TransformerBranch: 'GLOWNY',
+  TransformerBranch: 'SZKIELET',
   BaySN: 'GLOWNY',
   MainBreakerNN: 'GLOWNY',
   FeederNN: 'GLOWNY',

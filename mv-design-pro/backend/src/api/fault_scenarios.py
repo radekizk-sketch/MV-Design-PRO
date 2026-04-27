@@ -507,12 +507,13 @@ def create_run_from_scenario(
             detail="Analiza zablokowana: " + "; ".join(blocker_msgs),
         )
 
-    if scenario.fault_type.value != "SC_3F":
+    supported_fault_types = {"SC_3F", "SC_1F", "SC_2F", "SC_2F_G"}
+    if scenario.fault_type.value not in supported_fault_types:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=(
-                "Scenariusz może uruchomić tylko kanoniczną analizę SC_3F. "
-                "Typy SC_1F i SC_2F pozostają poza torem produkcyjnym po migracji."
+                "Scenariusz zwarciowy ma typ poza kanonicznym zakresem SC_3F, "
+                "SC_1F, SC_2F i SC_2F_G."
             ),
         )
 

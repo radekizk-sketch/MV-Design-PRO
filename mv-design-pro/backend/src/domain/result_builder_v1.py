@@ -412,7 +412,7 @@ def build_resultset_v1(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         created_at=created_at,
-        deterministic_signature="",  # placeholder
+        deterministic_signature="",  # populated after canonical payload hashing
         global_results=dict(sorted(merged_global.items())),
         element_results=element_results,
         overlay_payload=overlay_payload,

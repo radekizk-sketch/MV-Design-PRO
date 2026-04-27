@@ -407,7 +407,7 @@ def test_export_run_report_json_response_returns_json_payload() -> None:
     )
     assert (
         payload["analysis_case_context"]["reproducibility"]["catalog_materialization_status"]
-        == "placeholder"
+        == "not_materialized"
     )
     assert payload["export_artifact"]["completeness_status"] == "complete"
     assert "results" in payload

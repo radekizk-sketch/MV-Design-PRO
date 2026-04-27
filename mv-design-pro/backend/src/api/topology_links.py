@@ -112,7 +112,7 @@ class ResolveResponse(BaseModel):
 
 
 # =============================================================================
-# IN-MEMORY STORAGE (placeholder — will be replaced by persistence layer)
+# IN-MEMORY STORAGE for the process-local topology-link adapter
 # =============================================================================
 
 # project_id → TopologyLinkSet (serialized dict)

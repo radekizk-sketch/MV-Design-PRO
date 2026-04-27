@@ -313,16 +313,16 @@ function buildObjectCardSurfaceDescriptor(
   };
   const screenMap: Record<Exclude<ActiveObjectCard, null>['kind'], WorkspaceScreenCode> = {
     source: 'E-10',
-    trunk: 'E-24',
+    trunk: 'E-12',
     station: 'E-13',
-    line_segment: 'E-24',
-    transformer: 'E-15',
-    switch: 'E-14',
-    bay: 'E-14',
-    nn_switchgear: 'E-16',
-    renewable_source: 'E-17',
-    branch_pole: 'E-20',
-    zksn: 'E-19',
+    line_segment: 'E-12',
+    transformer: 'E-18',
+    switch: 'E-11',
+    bay: 'E-11',
+    nn_switchgear: 'E-19',
+    renewable_source: 'E-21',
+    branch_pole: 'E-15',
+    zksn: 'E-14',
   };
 
   const screenCode = screenMap[card.kind];
@@ -397,17 +397,17 @@ function mapInspectorPanelMeta(
 } {
   switch (panel.kind) {
     case 'field_control':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Sterowanie polem', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Sterowanie polem', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_protection':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Zabezpieczenia pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Zabezpieczenia pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_measurements':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
-      return { screenCode: 'E-32', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-33', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_work_safety':
-      return { screenCode: 'E-14', sizeClass: 'B', titlePl: 'Bezpieczenstwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Bezpieczenstwo do pracy', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_compare':
       return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Porownanie pol', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 2 };
     case 'report':

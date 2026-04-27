@@ -30,8 +30,8 @@ describe('canonical GPZ -> add SN bay -> choose family flow', () => {
     ) ?? [];
 
     expect(getOperationSurfaceByOp('add_grid_source_sn')?.screenCode).toBe('E-10');
-    expect(SCREEN_TRANSITIONS['E-10'].allowedOpenTargets).toEqual(['E-14']);
-    expect(SCREEN_TRANSITIONS['E-10'].allowedOpenTargets).not.toContain('E-11');
+    expect(SCREEN_TRANSITIONS['E-10'].allowedOpenTargets).toEqual(['E-11']);
+    expect(SCREEN_TRANSITIONS['E-10'].allowedOpenTargets).not.toContain('E-12');
     expect(sourceActions.some((action) => action.id === 'continue_trunk_segment_sn')).toBe(false);
     expect(sourceActions.some((action) => action.id === 'start_branch_segment_sn')).toBe(false);
     expect(
@@ -41,16 +41,17 @@ describe('canonical GPZ -> add SN bay -> choose family flow', () => {
     ).toBe(false);
   });
 
-  it('routes the canonical GPZ continuation through add_sn_bay before E-11', () => {
-    expect(getOperationSurfaceByOp('add_sn_bay')?.screenCode).toBe('E-14');
-    expect(SCREEN_TRANSITIONS['E-14'].allowedOpenTargets).toContain('E-11');
-    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toContain('E-14');
+  it('routes the canonical GPZ continuation through add_sn_bay before E-12', () => {
+    expect(getOperationSurfaceByOp('add_sn_bay')?.screenCode).toBe('E-11');
+    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenTargets).toContain('E-12');
+    expect(SCREEN_TRANSITIONS['E-12'].allowedOpenFrom).toContain('E-11');
   });
 
-  it('forces E-11 to choose only kabel SN or linia napowietrzna SN', () => {
-    expect(SCREEN_MATRIX['E-11'].allowedTabIds).toEqual(['kabel-sn', 'linia-napowietrzna-sn']);
-    expect(SCREEN_MATRIX['E-11'].defaultTabId).toBe('kabel-sn');
-    expect(SCREEN_MATRIX['E-11'].prerequisiteCodes).toEqual(['E-14']);
-    expect(SCREEN_TRANSITIONS['E-11'].allowedOpenFrom).toEqual(['E-14']);
+  it('forces E-12 to choose only kabel SN or linia napowietrzna SN', () => {
+    expect(getOperationSurfaceByOp('continue_trunk_segment_sn')?.screenCode).toBe('E-12');
+    expect(SCREEN_MATRIX['E-12'].allowedTabIds).toEqual(['kabel-sn', 'linia-napowietrzna-sn']);
+    expect(SCREEN_MATRIX['E-12'].defaultTabId).toBe('kabel-sn');
+    expect(SCREEN_MATRIX['E-12'].prerequisiteCodes).toEqual(['E-11']);
+    expect(SCREEN_TRANSITIONS['E-12'].allowedOpenFrom).toContain('E-11');
   });
 });

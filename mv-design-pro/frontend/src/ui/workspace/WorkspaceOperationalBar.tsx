@@ -128,8 +128,8 @@ export function WorkspaceOperationalBar({
         value={protectionReady ? 'Brak blokad ochrony' : 'Wymaga uzupelnienia danych'}
         tone={protectionReady ? 'ok' : 'warn'}
         onClick={() =>
-          openRouteSurface('E-30', {
-            titlePl: 'Zgodnosc NC RfG / IRiESD',
+          openRouteSurface('E-27', {
+            titlePl: 'Zabezpieczenia i automatyka',
             sizeClass: 'C',
             supportsMiniSld: true,
             tabId: 'protection-readiness',
@@ -145,7 +145,7 @@ export function WorkspaceOperationalBar({
         tone={reportReady ? 'ok' : 'warn'}
         onClick={() =>
           openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
-            titlePl: 'Generator raportu',
+            titlePl: 'Raporty OSD i audytowe',
             subjectKind: 'report',
             subjectRef: activeRunId,
           })
@@ -159,7 +159,7 @@ export function WorkspaceOperationalBar({
         onClick={() =>
           openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
             tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
-            titlePl: 'Poziom analityczny',
+            titlePl: 'Wyniki i porownania',
             subjectKind: 'analysis_run',
             subjectRef: activeRunId,
           })
@@ -178,13 +178,13 @@ export function WorkspaceOperationalBar({
         value={shortId(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
-          openRouteSurface('E-31', {
-            titlePl: 'Rejestr zalozen i jakosci danych',
+          openRouteSurface('E-39', {
+            titlePl: 'Historia i audyt',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
-            tabId: 'snapshot',
-            subjectKind: 'analysis_case',
+            tabId: 'migawki',
+            subjectKind: 'analysis_run',
             subjectRef: activeSnapshotId,
           })
         }
@@ -227,8 +227,8 @@ export function WorkspaceOperationalBar({
         }
         tone={errorCount > 0 ? 'error' : validationStatus === 'warnings' || readinessStatus === 'WARN' ? 'warn' : 'ok'}
         onClick={() =>
-          openRouteSurface('E-26', {
-            titlePl: 'Braki modelu',
+          openRouteSurface('E-04', {
+            titlePl: 'Gotowosc modelu i lista brakow',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,

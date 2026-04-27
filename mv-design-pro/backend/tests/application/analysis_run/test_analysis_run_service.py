@@ -130,7 +130,7 @@ def test_analysis_run_lifecycle_pf() -> None:
     assert executed.reproducibility["snapshot_ref"] == run.input_snapshot["snapshot_id"]
     assert executed.reproducibility["variant_ref"] == "variant.uklad_normalny"
     assert executed.reproducibility["switching_snapshot_ref"] == "switching.uklad_normalny.base"
-    assert executed.reproducibility["catalog_materialization_status"] == "placeholder"
+    assert executed.reproducibility["catalog_materialization_status"] == "not_materialized"
     assert executed.reproducibility["catalog_materialization_ref"].endswith(
         run.input_snapshot["snapshot_id"]
     )

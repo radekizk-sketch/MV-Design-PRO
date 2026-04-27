@@ -44,7 +44,7 @@ describe('TypePicker', () => {
 
     expect(await screen.findByText('Nie udalo sie pobrac typow katalogowych')).toBeInTheDocument();
     expect(
-      screen.getByText('Backend katalogow nie odpowiada. Uruchom API i sprobuj ponownie.'),
+      screen.getByText('Backend katalogów nie odpowiada. Uruchom API i spróbuj ponownie.'),
     ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Ponow' }));

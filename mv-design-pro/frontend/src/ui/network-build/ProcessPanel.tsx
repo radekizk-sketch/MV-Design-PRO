@@ -17,6 +17,10 @@ import { formatStationTypeShortLabelPl } from '../shared/stationTypeLabels';
 
 type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
 
+function scopedTestId(testId: string, scope?: string): string {
+  return scope ? `${scope}-${testId}` : testId;
+}
+
 function IconChevronDown({ className }: { className?: string }) {
   return (
     <svg className={clsx('w-3.5 h-3.5', className)} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -51,15 +55,16 @@ interface SectionHeaderProps {
   badge?: string;
   collapsed: boolean;
   onToggle: () => void;
+  testIdScope?: string;
 }
 
-function SectionHeader({ id, label, status, badge, collapsed, onToggle }: SectionHeaderProps) {
+function SectionHeader({ id, label, status, badge, collapsed, onToggle, testIdScope }: SectionHeaderProps) {
   return (
     <button
       type="button"
       onClick={onToggle}
       className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-chrome-50 transition-colors border-b border-chrome-100"
-      data-testid={`process-section-${id}`}
+      data-testid={scopedTestId(`process-section-${id}`, testIdScope)}
       data-collapsed={collapsed}
     >
       {collapsed ? <IconChevronRight className="text-chrome-400" /> : <IconChevronDown className="text-chrome-400" />}
@@ -77,10 +82,11 @@ interface ActionButtonProps {
   onClick: () => void;
   variant?: 'primary' | 'secondary';
   testId?: string;
+  testIdScope?: string;
   disabled?: boolean;
 }
 
-function ActionButton({ label, onClick, variant = 'secondary', testId, disabled }: ActionButtonProps) {
+function ActionButton({ label, onClick, variant = 'secondary', testId, testIdScope, disabled }: ActionButtonProps) {
   return (
     <button
       type="button"
@@ -92,14 +98,14 @@ function ActionButton({ label, onClick, variant = 'secondary', testId, disabled 
           ? 'bg-ind-600 text-white hover:bg-ind-700 disabled:bg-chrome-300'
           : 'text-ind-700 hover:bg-ind-50 disabled:text-chrome-400 disabled:hover:bg-transparent',
       )}
-      data-testid={testId}
+      data-testid={testId ? scopedTestId(testId, testIdScope) : undefined}
     >
       {label}
     </button>
   );
 }
 
-function SourceSection({ sourceCount }: { sourceCount: number }) {
+function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; testIdScope?: string }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddSource = useCallback(() => {
@@ -117,6 +123,7 @@ function SourceSection({ sourceCount }: { sourceCount: number }) {
           onClick={handleAddSource}
           variant="primary"
           testId="btn-add-gpz"
+          testIdScope={testIdScope}
         />
       </div>
     );
@@ -132,6 +139,7 @@ function SourceSection({ sourceCount }: { sourceCount: number }) {
         label="Edytuj GPZ i pola SN"
         onClick={handleAddSource}
         testId="btn-edit-source"
+        testIdScope={testIdScope}
       />
     </div>
   );
@@ -140,9 +148,11 @@ function SourceSection({ sourceCount }: { sourceCount: number }) {
 function TrunksSection({
   trunks,
   openTerminals,
+  testIdScope,
 }: {
   trunks: TrunkViewV1[];
   openTerminals: TerminalRef[];
+  testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
@@ -201,7 +211,7 @@ function TrunksSection({
               type="button"
               onClick={() => handleContinueTrunk(terminal)}
               className="w-full text-left text-[11px] text-ind-700 hover:bg-ind-50 px-2 py-1 rounded"
-              data-testid={`btn-continue-${terminal.element_id}`}
+              data-testid={scopedTestId(`btn-continue-${terminal.element_id}`, testIdScope)}
             >
               Kontynuuj z {terminal.element_id}
             </button>
@@ -294,7 +304,13 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
   );
 }
 
-function SectioningSection({ ringCandidateCount }: { ringCandidateCount: number }) {
+function SectioningSection({
+  ringCandidateCount,
+  testIdScope,
+}: {
+  ringCandidateCount: number;
+  testIdScope?: string;
+}) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleInsertSwitch = useCallback(() => {
@@ -315,23 +331,32 @@ function SectioningSection({ ringCandidateCount }: { ringCandidateCount: number 
         label="+ Wstaw łącznik sekcyjny"
         onClick={handleInsertSwitch}
         testId="btn-insert-switch"
+        testIdScope={testIdScope}
       />
       <ActionButton
         label={`+ Domknij pierścień${ringCandidateCount > 0 ? ` (${ringCandidateCount} kandydatów)` : ''}`}
         onClick={handleConnectRing}
         testId="btn-connect-ring"
+        testIdScope={testIdScope}
         disabled={ringCandidateCount === 0}
       />
       <ActionButton
         label="Ustaw punkt normalnie otwarty (NOP)"
         onClick={handleSetNop}
         testId="btn-set-nop"
+        testIdScope={testIdScope}
       />
     </div>
   );
 }
 
-function TransformersSection({ transformers }: { transformers: TransformerSummary[] }) {
+function TransformersSection({
+  transformers,
+  testIdScope,
+}: {
+  transformers: TransformerSummary[];
+  testIdScope?: string;
+}) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddTransformer = useCallback(() => {
@@ -365,12 +390,13 @@ function TransformersSection({ transformers }: { transformers: TransformerSummar
         label="+ Dodaj transformator"
         onClick={handleAddTransformer}
         testId="btn-add-transformer"
+        testIdScope={testIdScope}
       />
     </div>
   );
 }
 
-function OzeSection({ sources }: { sources: OzeSourceSummary[] }) {
+function OzeSection({ sources, testIdScope }: { sources: OzeSourceSummary[]; testIdScope?: string }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
 
   const handleAddPV = useCallback(() => {
@@ -412,9 +438,9 @@ function OzeSection({ sources }: { sources: OzeSourceSummary[] }) {
       )}
 
       <div className="flex gap-2">
-        <ActionButton label="+ PV" onClick={handleAddPV} testId="btn-add-pv" />
-        <ActionButton label="+ BESS" onClick={handleAddBESS} testId="btn-add-bess" />
-        <ActionButton label="+ FW" onClick={handleAddFW} testId="btn-add-fw" />
+        <ActionButton label="+ PV" onClick={handleAddPV} testId="btn-add-pv" testIdScope={testIdScope} />
+        <ActionButton label="+ BESS" onClick={handleAddBESS} testId="btn-add-bess" testIdScope={testIdScope} />
+        <ActionButton label="+ FW" onClick={handleAddFW} testId="btn-add-fw" testIdScope={testIdScope} />
       </div>
     </div>
   );
@@ -458,9 +484,10 @@ function ReadinessSection({
 
 export interface ProcessPanelProps {
   className?: string;
+  testIdScope?: string;
 }
 
-export function ProcessPanel({ className }: ProcessPanelProps) {
+export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   const collapsedSections = useNetworkBuildStore((state) => state.collapsedSections);
   const toggleSection = useNetworkBuildStore((state) => state.toggleSection);
 
@@ -500,7 +527,10 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
   const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
 
   return (
-    <div className={clsx('flex flex-col h-full overflow-hidden', className)} data-testid="process-panel">
+    <div
+      className={clsx('flex flex-col h-full overflow-hidden', className)}
+      data-testid={scopedTestId('process-panel', testIdScope)}
+    >
       <div className="px-3 py-2 bg-ind-50 border-b border-ind-200">
         <p className="text-[11px] font-semibold text-ind-800">{buildPhaseLabel}</p>
       </div>
@@ -513,8 +543,11 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={sourceCount > 0 ? `${sourceCount}` : undefined}
           collapsed={isSectionCollapsed('source')}
           onToggle={() => toggleSection('source')}
+          testIdScope={testIdScope}
         />
-        {!isSectionCollapsed('source') && <SourceSection sourceCount={sourceCount} />}
+        {!isSectionCollapsed('source') && (
+          <SourceSection sourceCount={sourceCount} testIdScope={testIdScope} />
+        )}
 
         <SectionHeader
           id="trunks"
@@ -523,9 +556,10 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={trunkCount > 0 ? `${trunkCount}` : undefined}
           collapsed={isSectionCollapsed('trunks')}
           onToggle={() => toggleSection('trunks')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('trunks') && (
-          <TrunksSection trunks={trunks} openTerminals={openTerminals} />
+          <TrunksSection trunks={trunks} openTerminals={openTerminals} testIdScope={testIdScope} />
         )}
 
         <SectionHeader
@@ -535,6 +569,7 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={stationCount > 0 ? `${stationCount}` : undefined}
           collapsed={isSectionCollapsed('stations')}
           onToggle={() => toggleSection('stations')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('stations') && <StationsSection stations={stationSummaries} />}
 
@@ -545,6 +580,7 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={branchCount > 0 ? `${branchCount}` : undefined}
           collapsed={isSectionCollapsed('branches')}
           onToggle={() => toggleSection('branches')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('branches') && <BranchesSection branches={branches} />}
 
@@ -554,9 +590,10 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           status={sectioningStatus}
           collapsed={isSectionCollapsed('sectioning')}
           onToggle={() => toggleSection('sectioning')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('sectioning') && (
-          <SectioningSection ringCandidateCount={ringCandidates.length} />
+          <SectioningSection ringCandidateCount={ringCandidates.length} testIdScope={testIdScope} />
         )}
 
         <SectionHeader
@@ -566,9 +603,10 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={transformerCount > 0 ? `${transformerCount}` : undefined}
           collapsed={isSectionCollapsed('transformers')}
           onToggle={() => toggleSection('transformers')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('transformers') && (
-          <TransformersSection transformers={transformerSummaries} />
+          <TransformersSection transformers={transformerSummaries} testIdScope={testIdScope} />
         )}
 
         <SectionHeader
@@ -578,8 +616,11 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           badge={generatorCount > 0 ? `${generatorCount}` : undefined}
           collapsed={isSectionCollapsed('oze')}
           onToggle={() => toggleSection('oze')}
+          testIdScope={testIdScope}
         />
-        {!isSectionCollapsed('oze') && <OzeSection sources={ozeSourceSummaries} />}
+        {!isSectionCollapsed('oze') && (
+          <OzeSection sources={ozeSourceSummaries} testIdScope={testIdScope} />
+        )}
 
         <SectionHeader
           id="readiness"
@@ -587,6 +628,7 @@ export function ProcessPanel({ className }: ProcessPanelProps) {
           status={readinessStatus}
           collapsed={isSectionCollapsed('readiness')}
           onToggle={() => toggleSection('readiness')}
+          testIdScope={testIdScope}
         />
         {!isSectionCollapsed('readiness') && (
           <ReadinessSection isReady={isReady} blockersByCategory={blockersByCategory} />

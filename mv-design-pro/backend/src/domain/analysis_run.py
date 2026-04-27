@@ -92,13 +92,13 @@ def _catalog_materialization_entries(snapshot: dict[str, Any]) -> list[dict[str,
 
 def _catalog_materialization_status(entries: list[dict[str, Any]]) -> str:
     if not entries:
-        return "placeholder"
+        return "not_materialized"
     materialized_count = sum(1 for entry in entries if "materialized_params" in entry)
     if materialized_count == len(entries):
         return "materialized"
     if materialized_count:
         return "partial"
-    return "placeholder"
+    return "not_materialized"
 
 
 def _catalog_materialization_ref(
@@ -112,7 +112,7 @@ def _catalog_materialization_ref(
     entries_hash = _stable_hash(entries) if entries else None
     if entries_hash:
         return f"catalog-materialization:{entries_hash}"
-    return f"catalog-materialization:placeholder:{snapshot_ref}"
+    return f"catalog-materialization:not-materialized:{snapshot_ref}"
 
 
 @dataclass(frozen=True)

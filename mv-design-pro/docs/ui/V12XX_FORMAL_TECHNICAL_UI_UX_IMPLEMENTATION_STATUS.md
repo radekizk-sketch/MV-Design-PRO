@@ -26,12 +26,12 @@ Ten dokument wiąże kanon UI/UX z aktywną implementacją frontendową. Nie jes
 7. Akcje nowych menu są dopisane do routingu akcji, aby strażnik nie dopuszczał martwych kliknięć.
 8. Testy akceptacyjne blokują powrót roboczych etykiet, brak ikon, brak obszarów, brak zakładek inspektora, niekompletne menu i brak pokrycia zakresu.
 
-## Jawny dług techniczny
+## Zamknięty dług techniczny
 
-| Kod | Zakres | Ryzyko | Plan domknięcia |
-|---|---|---|---|
-| `V12-CANON-WORKSPACE-SCREEN-REMAP` | Wewnętrzny router ekranów nadal ma część starych mapowań E-10..E-34 | Średnie: nazwy użytkowe są kanoniczne, ale kontrakt routingu wymaga pełnej synchronizacji | Przepiąć router workspace na `screenCanonRegistry.ts` i migrować testy ekranów |
-| `V12-CANON-ADVANCED-SOLVERS` | Zaawansowane solvery: FRT, stabilność dynamiczna, pełne warianty zwarć, GS/FD | Wysokie: UI wskazuje obszar i status, ale backend wymaga potwierdzenia pełnej fizyki obliczeń | Domknąć implementację solverów albo utrzymać formalny stan niedostępności z raportem ryzyka |
+| Kod | Status | Decyzja | Pliki źródłowe | Testy domykające | Data zamknięcia |
+|---|---|---|---|---|---|
+| `V12-CANON-WORKSPACE-SCREEN-REMAP` | ZAMKNIĘTY | Router workspace korzysta z `screenCanonRegistry.ts`, stare znaczenia ekranów są wyłącznie aliasami legacy, a operacje modelowania i SLD są zsynchronizowane z kanonem ekranów. | `frontend/src/ui/workspace/screenCanonRegistry.ts`, `frontend/src/ui/workspace/types.ts`, `frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx`, `frontend/src/ui/workspace/WorkspaceOperationalBar.tsx`, `frontend/src/ui/topology/modals/operationSurfaceRegistry.ts`, `frontend/src/ui/network-build/ProcessPanel.tsx`, `frontend/src/ui/sld/sldDetailLevel.ts` | `screen-canon-registry.test.ts`, `workspace-screen-router.test.ts`, `screen-legacy-aliases.test.ts`, `screen-labels-polish.test.ts`, `screen-registry-coverage.test.ts`, `catalog-enforcement.spec.ts`, `sld-editor-real-backend-flex.spec.ts` | 2026-04-27 |
+| `V12-CANON-ADVANCED-SOLVERS` | ZAMKNIĘTY | Backend ma rejestr zdolności solverów, pełne warianty zwarć, PF NR/GS/FD, FRT/LVRT/HVRT, stabilność dynamiczną oraz wyniki z proof i raportowalnością. | `backend/src/application/solvers/solver_capability_registry.py`, `backend/src/api/solver_capabilities.py`, `backend/src/enm/canonical_analysis.py`, `backend/src/api/fault_scenarios.py` | `test_advanced_solver_capability_registry.py`, `test_frt_lvrt_hvrt_compliance.py`, `test_dynamic_stability_reference.py`, `test_load_flow_canonical_solver_modes.py` | 2026-04-27 |
 
 ## Testy wdrożeniowe
 

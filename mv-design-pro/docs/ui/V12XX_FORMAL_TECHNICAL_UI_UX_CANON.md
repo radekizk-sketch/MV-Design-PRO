@@ -660,7 +660,7 @@ Akcje: wyprowadź odcinek kablowy, wyprowadź odcinek napowietrzny, edytuj zabez
 | Ukrywanie niedostępnych akcji usunie informację o ścieżce pracy | Użytkownik nie wie, co zrobić dalej | Dla blokad procesowych pokazywać akcję z powodem, dla akcji nieistotnych ukrywać |
 | Inspektor stanie się zbyt ciężkim formularzem | Prawy panel spowolni pracę | Inspektor pokazuje podgląd i przejścia, pełna edycja w oknie zadaniowym |
 | Za dużo statusów w pasku obszarów | Interfejs stanie się alarmowy | Pokazywać tylko braki blokujące i wyniki wymagające uwagi |
-| Kanon opisze funkcje, których solver jeszcze nie ma | UI obieca więcej niż backend realizuje | W obszarach zaawansowanych oznaczyć lukę implementacyjną i prowadzić przez formalny stan niedostępności z planem domknięcia |
+| Kanon i backend solverów rozejdą się semantycznie | UI obieca więcej niż backend realizuje | Każdy obszar zaawansowany musi czytać kontrakt zdolności solverów i wymagać wyniku z proof oraz statusem raportowym |
 | SLD nie aktualizuje się po zmianie modelu | Użytkownik nie może modelować sieci | Kanwa musi subskrybować kanoniczny model topologii; po operacji tworzenia obiektu test musi wymagać renderu symbolu |
 | Pole SN istnieje w store, ale nie na kanwie | Model techniczny i widok są niespójne | Każda operacja dodania pola SN musi atomowo aktualizować topologię, wybór i źródło danych SLD |
 | Ikony obiektów pomylą się z symbolami SLD | Raporty i kanwa będą niespójne wizualnie | Oddzielić `objectIconRegistry` od `sldSymbolRegistry` |

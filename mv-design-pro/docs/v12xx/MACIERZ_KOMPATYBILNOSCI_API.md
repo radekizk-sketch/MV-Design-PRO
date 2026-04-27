@@ -110,6 +110,9 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/reference-patterns/patterns` | v12xx | aktywny | 2026-04-24 | - | Lista wzorcow referencyjnych. | reference pattern tests | Architekt testow |
 | `GET /api/reference-patterns/patterns/{pattern_id}/fixtures` | v12xx | aktywny | 2026-04-24 | - | Fixture wzorca referencyjnego. | reference pattern tests | Architekt testow |
 | `GET /api/result-contract/schema` | v12xx | aktywny | 2026-04-24 | - | Schemat kontraktu wyniku. | result contract tests | Architekt wynikow |
+| `GET /api/solver-capabilities` | v12xx | aktywny | 2026-04-27 | - | Kanoniczny kontrakt zdolnosci solverow: typ analizy, proof, raportowalnosc i status implementacji. | advanced solver capability registry tests | Architekt solverow |
+| `GET /api/solver-capabilities/analysis-type/{analysis_type}` | v12xx | aktywny | 2026-04-27 | - | Zdolnosci solverow filtrowane po typie analizy dla UI i raportow. | advanced solver capability registry tests | Architekt solverow |
+| `GET /api/solver-capabilities/{capability}` | v12xx | aktywny | 2026-04-27 | - | Szczegol pojedynczej zdolnosci solvera z proof support i statusem raportowym. | advanced solver capability registry tests | Architekt solverow |
 | `GET /api/study-cases/project/{project_id}` | v12xx | aktywny | 2026-04-24 | - | Przypadki projektu. | study case tests | Architekt domeny |
 | `GET /api/study-cases/project/{project_id}/active` | v12xx | aktywny | 2026-04-24 | - | Aktywny przypadek projektu. | study case tests | Architekt domeny |
 | `GET /api/study-cases/project/{project_id}/count` | v12xx | aktywny | 2026-04-24 | - | Liczba przypadkow projektu. | study case tests | Architekt domeny |

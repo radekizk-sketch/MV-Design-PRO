@@ -185,11 +185,11 @@ describe('useNetworkBuildStore', () => {
     const state = useNetworkBuildStore.getState();
     expect(state.surfaceStack).toHaveLength(3);
     expect(state.surfaceStack[0]?.screenCode).toBe('E-13');
-    expect(state.surfaceStack[1]?.screenCode).toBe('E-14');
-    expect(state.surfaceStack[2]?.screenCode).toBe('E-14');
+    expect(state.surfaceStack[1]?.screenCode).toBe('E-11');
+    expect(state.surfaceStack[2]?.screenCode).toBe('E-11');
 
     state.closeActiveSurface();
-    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-14');
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-11');
   });
 
   it('opens canonical route-managed analysis surface and clears it without touching shell state', () => {

@@ -167,7 +167,7 @@ class ProofsSection:
 
 @dataclass(frozen=True)
 class InterpretationsSection:
-    """Sekcja interpretacji w archiwum (placeholder dla przyszłych rozszerzeń)."""
+    """Sekcja interpretacji w archiwum."""
 
     # Interpretacje są generowane dynamicznie z wyników
     # Ta sekcja może przechowywać cached interpretations

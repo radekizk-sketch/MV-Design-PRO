@@ -167,6 +167,7 @@ describe('workspace shell V12.5 surfaces', () => {
     useNetworkBuildStore.getState().openRouteSurface('E-30', {
       subjectKind: 'analysis_case',
       subjectRef: 'case-1',
+      openMode: 'expand_workspace',
     });
 
     render(<WorkspaceSurfaceRouter region="main" />);
@@ -175,7 +176,7 @@ describe('workspace shell V12.5 surfaces', () => {
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-30'].titlePl }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: /Ocena zgodnosci z wymaganiami/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /Zbieznosc rozplywu/i })).toBeInTheDocument();
     expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Powierzchnia pomocnicza/i)).not.toBeInTheDocument();
   });
@@ -183,18 +184,18 @@ describe('workspace shell V12.5 surfaces', () => {
   it('renderuje panelowy surface E-31 z analysis_case_context aktywnego runu', async () => {
     useAppStateStore.getState().setActiveRun('run-1');
     useNetworkBuildStore.getState().openRouteSurface('E-31', {
-      titlePl: 'Rejestr zalozen i jakosci danych',
+      titlePl: SURFACE_REGISTRY['E-31'].titlePl,
       sizeClass: 'B',
       openMode: 'replace_right_panel',
       supportsMiniSld: false,
-      tabId: 'assumptions',
-      subjectKind: 'analysis_case',
+      tabId: 'fazy',
+      subjectKind: 'analysis_run',
       subjectRef: 'case-1',
     });
 
     render(<WorkspaceSurfaceRouter region="panel" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Rejestr zalozen i jakosci danych' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-31'].titlePl })).toBeInTheDocument();
     expect(await screen.findByText('pf_source_nominal')).toBeInTheDocument();
     expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
     expect(
@@ -202,10 +203,10 @@ describe('workspace shell V12.5 surfaces', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renderuje surface E-27 z kontraktem eksportu dla aktywnego runu', async () => {
+  it('renderuje surface E-37 z kontraktem eksportu dla aktywnego runu', async () => {
     useAppStateStore.getState().setActiveRun('run-1');
-    useNetworkBuildStore.getState().openRouteSurface('E-27', {
-      titlePl: 'Generator raportu',
+    useNetworkBuildStore.getState().openRouteSurface('E-37', {
+      titlePl: SURFACE_REGISTRY['E-37'].titlePl,
       sizeClass: 'C',
       supportsMiniSld: true,
       subjectKind: 'report',
@@ -214,7 +215,7 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Generator raportu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-37'].titlePl })).toBeInTheDocument();
     expect(await screen.findByRole('heading', { level: 3, name: /Kontrakt raportu i eksportu/i })).toBeInTheDocument();
     expect(screen.getAllByText('json').length).toBeGreaterThan(0);
     expect(screen.getByText('status_field')).toBeInTheDocument();
@@ -253,11 +254,12 @@ describe('workspace shell V12.5 surfaces', () => {
 
   it.each([
     ['Koordynacja zabezpieczen', 'E-28'],
-    ['Wymagania przylaczeniowe i kodeks sieciowy', 'E-30'],
-    ['Rejestr zalozen i jakosci', 'E-31'],
-    ['Wklady zrodel rozszerzone', 'E-32'],
-    ['Weryfikacja cieplna i dynamiczna', 'E-33'],
-    ['Zbieznosc rozplywu i regulacja zaczepow', 'E-34'],
+    ['Charakterystyki FRT/LVRT/HVRT', 'E-26'],
+    ['Rozplyw mocy NR/GS/FD', 'E-30'],
+    ['Stan fazowy SN', 'E-31'],
+    ['Stabilnosc dynamiczna', 'E-32'],
+    ['Wklady zrodel rozszerzone', 'E-33'],
+    ['Weryfikacja cieplna i dynamiczna', 'E-34'],
   ] as const)(
     'launcher "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -280,8 +282,8 @@ describe('workspace shell V12.5 surfaces', () => {
   );
 
   it.each([
-    ['Rejestr zalozen', 'E-31'],
-    ['Wklady zrodel', 'E-32'],
+    ['Uzasadnienie inzynierskie', 'E-36'],
+    ['Wklady zrodel', 'E-33'],
   ] as const)(
     'launcher raportowy "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -315,7 +317,7 @@ describe('WorkspaceOperationalBar', () => {
     useReadinessLiveStore.getState().clear();
   });
 
-  it('otwiera surface E-31 po kliknieciu segmentu aktywnej migawki', async () => {
+  it('otwiera surface E-39 po kliknieciu segmentu aktywnej migawki', async () => {
     const user = userEvent.setup();
     useAppStateStore.getState().setActiveCase('case-1', 'Wariant A', 'PowerFlowCase', 'OUTDATED');
     useAppStateStore.getState().setActiveSnapshot('snapshot-001');
@@ -351,15 +353,15 @@ describe('WorkspaceOperationalBar', () => {
     await user.click(screen.getByTestId('workspace-operational-snapshot'));
 
     const activeSurface = useNetworkBuildStore.getState().activeSurface;
-    expect(activeSurface?.screenCode).toBe('E-31');
-    expect(activeSurface?.titlePl).toBe('Rejestr zalozen i jakosci danych');
+    expect(activeSurface?.screenCode).toBe('E-39');
+    expect(activeSurface?.titlePl).toBe('Historia i audyt');
   });
 
   it('nie pokazuje technicznego jezyka runtime w pasku operacyjnym', () => {
-    useNetworkBuildStore.getState().openRouteSurface('E-31', {
-      titlePl: 'Rejestr zalozen i jakosci danych',
+    useNetworkBuildStore.getState().openRouteSurface('E-39', {
+      titlePl: 'Historia i audyt',
       sizeClass: 'B',
-      subjectKind: 'analysis_case',
+      subjectKind: 'analysis_run',
       subjectRef: 'case-1',
     });
 

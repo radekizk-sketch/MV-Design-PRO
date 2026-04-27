@@ -315,7 +315,7 @@ def build_trace_artifact_v2(
         inputs=dict(sorted(inputs.items())),
         equation_steps=sorted_steps,
         outputs=dict(sorted(outputs.items())),
-        trace_signature="",  # placeholder
+        trace_signature="",  # populated after canonical trace hashing
     )
 
     signature = compute_trace_signature(temp.to_canonical_dict())

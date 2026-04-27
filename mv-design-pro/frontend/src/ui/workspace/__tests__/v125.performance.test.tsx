@@ -13,6 +13,7 @@ import { SLDViewCanvas } from '../../sld/SLDViewCanvas';
 import { buildReferenceScenario } from '../../sld/core/referenceTopologies';
 import type { ViewportState } from '../../sld/types';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
+import { getScreenDefinition, type CanonicalScreenCode } from '../screenCanonRegistry';
 import type { WorkspaceSurfaceCode } from '../types';
 
 const fetchMock = vi.fn();
@@ -272,13 +273,16 @@ async function measureTarget(
 function renderSurfaceTarget(
   screenCode: WorkspaceSurfaceCode,
   region: 'main' | 'panel',
-  expectedHeading: string,
+  expectedHeading?: string,
 ): () => void {
   seedResultsContext();
-  useNetworkBuildStore.getState().openRouteSurface(screenCode);
+  const heading = expectedHeading ?? getScreenDefinition(screenCode as CanonicalScreenCode).labelFull;
+  useNetworkBuildStore.getState().openRouteSurface(screenCode, {
+    openMode: region === 'main' ? 'expand_workspace' : 'replace_right_panel',
+  });
   render(<WorkspaceSurfaceRouter region={region} />);
   return () => {
-    expect(screen.getByRole('heading', { level: 2, name: expectedHeading })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: heading })).toBeInTheDocument();
   };
 }
 
@@ -353,63 +357,63 @@ describe('V12.5 performance harness', () => {
   it('measures E-06 analysis surface mount', async () => {
     await measureTarget(
       'E-06',
-      'Nakladka wynikowa na schemacie',
+      'Nakładki wynikowe SLD',
       'mount',
-      () => renderSurfaceTarget('E-06', 'main', 'Nakladka wynikowa na schemacie'),
+      () => renderSurfaceTarget('E-06', 'main'),
     );
   });
 
-  it('measures E-27 report surface mount', async () => {
+  it('measures E-37 report surface mount', async () => {
     await measureTarget(
-      'E-27',
-      'Raporty i eksporty',
+      'E-37',
+      'Raporty OSD i audytowe',
       'mount',
-      () => renderSurfaceTarget('E-27', 'main', 'Raporty i eksporty'),
+      () => renderSurfaceTarget('E-37', 'main'),
     );
   });
 
   it('measures E-28 protection coordination surface mount', async () => {
     await measureTarget(
       'E-28',
-      'Koordynacja zabezpieczen',
+      'Koordynacja zabezpieczeń',
       'mount',
-      () => renderSurfaceTarget('E-28', 'main', 'Koordynacja zabezpieczen'),
+      () => renderSurfaceTarget('E-28', 'main'),
     );
   });
 
   it('measures E-29 symmetrical components surface mount', async () => {
     await measureTarget(
       'E-29',
-      'Skladowe symetryczne i siec zerowa',
+      'Sieć zerowa i składowe symetryczne',
       'mount',
-      () => renderSurfaceTarget('E-29', 'main', 'Skladowe symetryczne i siec zerowa'),
+      () => renderSurfaceTarget('E-29', 'main'),
     );
   });
 
-  it('measures E-30 compliance surface mount', async () => {
+  it('measures E-30 load-flow surface mount', async () => {
     await measureTarget(
       'E-30',
-      'Wymagania przylaczeniowe i kodeks sieciowy',
+      'Rozpływ mocy',
       'mount',
-      () => renderSurfaceTarget('E-30', 'main', 'Wymagania przylaczeniowe i kodeks sieciowy'),
+      () => renderSurfaceTarget('E-30', 'main'),
     );
   });
 
-  it('measures E-33 thermal dynamic surface mount', async () => {
+  it('measures E-33 source contributions surface mount', async () => {
     await measureTarget(
       'E-33',
-      'Weryfikacja cieplna i dynamiczna toru pradowego',
+      'Wkłady źródeł',
       'mount',
-      () => renderSurfaceTarget('E-33', 'main', 'Weryfikacja cieplna i dynamiczna toru pradowego'),
+      () => renderSurfaceTarget('E-33', 'main'),
     );
   });
 
-  it('measures E-34 convergence surface mount', async () => {
+  it('measures E-34 thermal dynamic surface mount', async () => {
     await measureTarget(
       'E-34',
-      'Zbieznosc rozplywu mocy i regulacja zaczepow',
+      'Weryfikacja cieplna i dynamiczna',
       'mount',
-      () => renderSurfaceTarget('E-34', 'panel', 'Zbieznosc rozplywu mocy i regulacja zaczepow'),
+      () => renderSurfaceTarget('E-34', 'panel'),
     );
   });
 });

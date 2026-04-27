@@ -87,8 +87,8 @@ describe('getElementImportance', () => {
     expect(getElementImportance('BranchPole')).toBe('SZKIELET');
   });
 
-  it('TransformerBranch ma klasę GLOWNY', () => {
-    expect(getElementImportance('TransformerBranch')).toBe('GLOWNY');
+  it('TransformerBranch ma klasę SZKIELET', () => {
+    expect(getElementImportance('TransformerBranch')).toBe('SZKIELET');
   });
 
   it('Load ma klasę GLOWNY', () => {
@@ -114,8 +114,8 @@ describe('isElementVisibleAtLod', () => {
     }
   });
 
-  it('GLOWNY jest niewidoczny w PRZEGLAD, widoczny w pozostałych', () => {
-    expect(isElementVisibleAtLod('TransformerBranch', 'PRZEGLAD')).toBe(false);
+  it('TransformerBranch pozostaje widoczny jako element szkieletu topologii', () => {
+    expect(isElementVisibleAtLod('TransformerBranch', 'PRZEGLAD')).toBe(true);
     expect(isElementVisibleAtLod('TransformerBranch', 'GLOWNE_POLA')).toBe(true);
     expect(isElementVisibleAtLod('TransformerBranch', 'SZCZEGOLY')).toBe(true);
     expect(isElementVisibleAtLod('TransformerBranch', 'PELNY')).toBe(true);

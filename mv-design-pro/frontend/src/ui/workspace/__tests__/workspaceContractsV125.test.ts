@@ -14,7 +14,7 @@ import {
 } from '../types';
 
 describe('workspace contracts V12.5', () => {
-  it('covers every E-00..E-34 screen in registry, matrix and transitions', () => {
+  it('covers every E-00..E-39 screen in registry, matrix and transitions', () => {
     expect(Object.keys(SURFACE_REGISTRY).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_MATRIX).sort()).toEqual([...SCREEN_CODES].sort());
     expect(Object.keys(SCREEN_TRANSITIONS).sort()).toEqual([...SCREEN_CODES].sort());
@@ -57,13 +57,13 @@ describe('workspace contracts V12.5', () => {
       expect(matrixEntry.historyPolicy).toBe('push_new_entry');
       expect(matrixEntry.requiresAnalysisCaseContext).toBe(true);
       expect(matrixEntry.prerequisiteCodes).toContain('analysis_case_context');
-      expect(transition.allowedOpenTargets).toEqual([]);
-      expect(transition.invalidRouteFallback).toBe('E-06');
+      expect(transition.allowedOpenTargets).toEqual(['E-36', 'E-37']);
+      expect(transition.invalidRouteFallback).toBe('E-35');
       expect(transition.closeReturnsTo).toBe('parent');
     }
 
     expect(SCREEN_TRANSITIONS['E-31'].allowedOpenFrom).toContain('case_context');
-    expect(SCREEN_TRANSITIONS['E-32'].allowedOpenFrom).toContain('E-27');
+    expect(SCREEN_TRANSITIONS['E-32'].allowedOpenFrom).toContain('E-35');
   });
 
   it('keeps helper surfaces capability-limited and side-effect free', () => {

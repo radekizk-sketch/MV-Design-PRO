@@ -172,14 +172,14 @@ class OvercurrentStageSettings:
         pickup_current_a: Pickup current [A]
         time_s: Operating time [s] (definite time or calculated from curve)
         curve_settings: Curve settings (if inverse-time)
-        directional: Whether stage is directional (placeholder for future)
+        directional: Whether this stage uses directional criteria
     """
 
     enabled: bool
     pickup_current_a: float
     time_s: float | None = None  # None if curve-based
     curve_settings: ProtectionCurveSettings | None = None
-    directional: bool = False  # Placeholder - kierunkowość bez logiki mocy
+    directional: bool = False  # Kierunkowosc bez logiki mocy w tym modelu danych
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

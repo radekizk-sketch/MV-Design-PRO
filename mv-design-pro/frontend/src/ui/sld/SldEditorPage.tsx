@@ -1438,7 +1438,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         interactionMessage={interactionMessage}
         interactionHint={dockInteractionHint}
         projectTreeContent={projectTreeContent}
-        processContent={<ProcessPanel className="h-full" />}
+        processContent={<ProcessPanel className="h-full" testIdScope="sld-dock" />}
         readinessContent={
           <SldReadinessStack
             activeCaseId={activeCaseId}

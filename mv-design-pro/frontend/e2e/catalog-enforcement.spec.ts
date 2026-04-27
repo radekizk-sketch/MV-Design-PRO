@@ -223,10 +223,11 @@ test.describe('Catalog-First Enforcement - realny backend', () => {
   test('frontend nie wystawia bezposrednich przyciskow branch point i ZKSN bez kontekstu segmentu', async ({ page, request }) => {
     await createCaseFromUi(page, request);
     await page.getByTestId('left-panel-mode-readiness').click();
-    await expect(page.getByTestId('process-panel')).toBeVisible();
+    const processPanel = page.getByTestId('process-panel');
+    await expect(processPanel).toBeVisible();
     await expect(page.getByTestId('btn-insert-object-branch-pole')).toHaveCount(0);
     await expect(page.getByTestId('btn-insert-object-zksn')).toHaveCount(0);
-    await expect(page.getByText(/nigdy bez wskazania segmentu/i)).toBeVisible();
+    await expect(processPanel.getByText(/nigdy bez wskazania segmentu/i)).toBeVisible();
   });
 
   test('formularz lacznika sekcyjnego blokuje wstawienie bez katalogu', async ({ page, request }) => {

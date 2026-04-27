@@ -1,6 +1,6 @@
-# Verification V12.5
+# Verification V12.5.1
 
-- Generated at: `2026-04-25 22:21:35Z`
+- Generated at: `2026-04-27 21:57:01Z`
 - Package manager: `npm`
 - Total steps: `18`
 - Passed: `18`
@@ -8,24 +8,24 @@
 
 | Step | Status | Exit code | Duration [s] |
 |---|---|---:|---:|
-| UI terminology guard | PASS | 0 | 1.17 |
-| Docs archive guard | PASS | 0 | 0.54 |
-| V12.xx canon guard | PASS | 0 | 0.66 |
-| API lifecycle guard | PASS | 0 | 0.26 |
-| Legacy public path guard | PASS | 0 | 0.19 |
-| Severity contract guard | PASS | 0 | 0.12 |
+| UI terminology guard | PASS | 0 | 0.94 |
+| Docs archive guard | PASS | 0 | 0.48 |
+| V12.xx canon guard | PASS | 0 | 0.55 |
+| API lifecycle guard | PASS | 0 | 0.23 |
+| Legacy public path guard | PASS | 0 | 0.18 |
+| Severity contract guard | PASS | 0 | 0.13 |
 | Import graph guard | PASS | 0 | 0.09 |
 | Grep-zero guard | PASS | 0 | 0.09 |
-| Backend V12.5 lint (ruff) | PASS | 0 | 1.70 |
-| Backend V12.5 format check (black) | PASS | 0 | 4.24 |
-| Backend targeted V12.5 tests | PASS | 0 | 11.46 |
-| Vulture guard | PASS | 0 | 4.90 |
-| Frontend lint | PASS | 0 | 20.50 |
-| Frontend type-check | PASS | 0 | 27.93 |
-| Frontend tests | PASS | 0 | 751.20 |
-| Frontend V12.5 performance harness (full) | PASS | 0 | 12.16 |
-| Golden tests | PASS | 0 | 21.51 |
-| E2E tests | PASS | 0 | 79.52 |
+| Backend V12.5 lint (ruff) | PASS | 0 | 2.35 |
+| Backend V12.5 format check (black) | PASS | 0 | 4.28 |
+| Backend targeted V12.5 tests | PASS | 0 | 12.13 |
+| Vulture guard | PASS | 0 | 4.86 |
+| Frontend lint | PASS | 0 | 20.65 |
+| Frontend type-check | PASS | 0 | 30.08 |
+| Frontend tests | PASS | 0 | 865.99 |
+| Frontend V12.5 performance harness (full) | PASS | 0 | 10.41 |
+| Golden tests | PASS | 0 | 18.89 |
+| E2E tests | PASS | 0 | 51.32 |
 
 ## Outcome
 
@@ -208,7 +208,7 @@ V12.5 grep-zero guard passed.
 ### stderr tail
 
 ```text
-All done! \u2728 \U0001f370 \u2728
+All done! ✨ 🍰 ✨
 20 files would be left unchanged.
 ```
 
@@ -238,7 +238,7 @@ tests\enm\test_v2_projection.py ........                                 [ 59%]
 tests\application\test_source_compliance.py .........                    [ 68%]
 tests\test_generator_validation.py ....................                  [ 88%]
 tests\api\test_analysis_run_report_exports.py ............               [100%]
-============================= 102 passed in 8.11s =============================
+============================= 102 passed in 8.88s =============================
 ```
 
 ### stderr tail
@@ -312,36 +312,36 @@ vulture-guard: OK (backend/src clean)
 ### stdout tail
 
 ```text
- [32m✓[39m src/ui/network-build/__tests__/networkBuildStore.routeSurfaces.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32m✓[39m src/ui/property-grid/__tests__/EngineeringInspector.test.tsx [2m ([22m[2m3 tests[22m[2m)[22m[90m 80[2mms[22m[39m
- [32m✓[39m src/ui/catalog/__tests__/TypePicker.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 214[2mms[22m[39m
- [32m✓[39m src/ui/sld/__tests__/SegmentInspectorPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 59[2mms[22m[39m
- [32m✓[39m src/ui/__tests__/legacyPublicApiCut.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 7[2mms[22m[39m
- [32m✓[39m src/ui/app-state/__tests__/useCanCalculateReadiness.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 22[2mms[22m[39m
- [32m✓[39m src/ui/study-cases/__tests__/ProtectionCaseConfigPanel.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 6[2mms[22m[39m
- [32m✓[39m src/ui/proof/__tests__/TraceMetadataPanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 62[2mms[22m[39m
- [32m✓[39m src/ui/study-cases/__tests__/api.draft-isolation.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 6[2mms[22m[39m
- [32m✓[39m src/ui/catalog/__tests__/catalogSnapshot.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
- [32m✓[39m src/ui/sld/__tests__/SldEmptyOverlay.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 48[2mms[22m[39m
- [32m✓[39m src/ui/protection-diagnostics/__tests__/ProtectionDiagnosticsPanelContainer.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 48[2mms[22m[39m
+ [32m✓[39m src/ui/protection-diagnostics/__tests__/ProtectionDiagnosticsPanelContainer.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 49[2mms[22m[39m
+ [32m✓[39m src/ui/workspace/__tests__/screen-registry-coverage.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 7[2mms[22m[39m
  [32m✓[39m src/ui/network-build/__tests__/converterSourceFlow.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32m✓[39m src/ui/shared/__tests__/enmVisibility.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanel.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 43[2mms[22m[39m
- [32m✓[39m src/ui/protection-coordination/__tests__/ProtectionSettingsEditor.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 62[2mms[22m[39m
- [32m✓[39m src/ui/notifications/__tests__/NotificationToast.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 115[2mms[22m[39m
- [32m✓[39m src/ui/sld/__tests__/powerFlowOverlayGeometryInvariant.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 32[2mms[22m[39m
+ [32m✓[39m src/ui/shared/__tests__/enmVisibility.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m src/ui/workspace/__tests__/workspace-screen-router.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 5[2mms[22m[39m
+ [32m✓[39m src/ui/navigation/__tests__/area-registry.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 7[2mms[22m[39m
+ [32m✓[39m src/ui/workspace/__tests__/screen-canon-registry.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+ [32m✓[39m src/ui/engineering-readiness/__tests__/EngineeringReadinessPanel.blocking.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 36[2mms[22m[39m
+ [32m✓[39m src/ui/protection-coordination/__tests__/ProtectionSettingsEditor.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 65[2mms[22m[39m
+ [32m✓[39m src/ui/workspace/__tests__/screen-labels-polish.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+ [32m✓[39m src/ui/workspace/__tests__/screen-legacy-aliases.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m src/ui/notifications/__tests__/NotificationToast.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 106[2mms[22m[39m
+ [32m✓[39m src/ui/sld/__tests__/powerFlowOverlayGeometryInvariant.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 24[2mms[22m[39m
  [32m✓[39m src/ui/__tests__/activeShellTerminology.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 6[2mms[22m[39m
- [32m✓[39m src/ui/sld/__tests__/DiagnosticsLegend.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 45[2mms[22m[39m
+ [32m✓[39m src/ui/sld/__tests__/DiagnosticsLegend.test.tsx [2m ([22m[2m2 tests[22m[2m)[22m[90m 44[2mms[22m[39m
+ [32m✓[39m src/ui/navigation/__tests__/area-migration.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 3[2mms[22m[39m
  [32m✓[39m src/ui/navigation/urlState.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 12[2mms[22m[39m
- [32m✓[39m src/ui/sld/__tests__/readinessSyncPolicy.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+ [32m✓[39m src/ui/sld/__tests__/result-overlay-navigation.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 46[2mms[22m[39m
+ [32m✓[39m src/ui/icons/__tests__/visual-technical-icons.spec.tsx [2m ([22m[2m1 test[22m[2m)[22m[33m 513[2mms[22m[39m
+ [32m✓[39m src/ui/sld/__tests__/readinessSyncPolicy.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
  [32m✓[39m src/ui/common/connectionNode.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 3[2mms[22m[39m
- [32m✓[39m src/ui/protection-coordination/__tests__/TracePanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 53[2mms[22m[39m
+ [32m✓[39m src/ui/wizard/__tests__/wizardTerminology.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 4[2mms[22m[39m
+ [32m✓[39m src/ui/protection-coordination/__tests__/TracePanel.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 42[2mms[22m[39m
  [32m✓[39m src/ui/shared/__tests__/generatorTypeLabels.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
- [32m✓[39m src/ui/layout/__tests__/index.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 5[2mms[22m[39m
-[2m Test Files [22m [1m[32m300 passed[39m[22m[90m (300)[39m
-[2m      Tests [22m [1m[32m4610 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (4611)[39m
-[2m   Start at [22m 23:07:12
-[2m   Duration [22m 749.53s[2m (transform 9.40s, setup 75.27s, collect 67.97s, tests 27.60s, environment 447.26s, prepare 72.00s)[22m
+ [32m✓[39m src/ui/shell/__tests__/navigation-rail.a11y.test.tsx [2m ([22m[2m1 test[22m[2m)[22m[90m 108[2mms[22m[39m
+ [32m✓[39m src/ui/layout/__tests__/index.test.ts [2m ([22m[2m1 test[22m[2m)[22m[90m 3[2mms[22m[39m
+[2m Test Files [22m [1m[32m350 passed[39m[22m[90m (350)[39m
+[2m      Tests [22m [1m[32m5003 passed[39m[22m[2m | [22m[33m1 skipped[39m[90m (5004)[39m
+[2m   Start at [22m 23:41:16
+[2m   Duration [22m 864.32s[2m (transform 10.24s, setup 86.00s, collect 83.25s, tests 31.47s, environment 513.57s, prepare 82.57s)[22m
 ```
 
 ### stderr tail
@@ -393,28 +393,28 @@ This ensures that you're testing the behavior the user would see in the browser.
 > vitest run --no-file-parallelism --run src/ui/workspace/__tests__/v125.performance.test.tsx
 [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend[39m
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures mini-SLD helper surface mount[22m[39m
-[v125-perf] mini-sld mean=9.45ms median=7.45ms p95=19.68ms
+[v125-perf] mini-sld mean=6.90ms median=6.55ms p95=9.18ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures full SLD pipeline and canvas mount[22m[39m
-[v125-perf] full-sld mean=152.07ms median=150.04ms p95=172.03ms
+[v125-perf] full-sld mean=119.24ms median=134.99ms p95=149.93ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-06 analysis surface mount[22m[39m
-[v125-perf] E-06 mean=4.69ms median=4.99ms p95=6.01ms
-[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-27 report surface mount[22m[39m
-[v125-perf] E-27 mean=10.61ms median=8.98ms p95=24.07ms
+[v125-perf] E-06 mean=1.41ms median=1.46ms p95=1.71ms
+[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-37 report surface mount[22m[39m
+[v125-perf] E-37 mean=5.22ms median=5.33ms p95=6.42ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-28 protection coordination surface mount[22m[39m
-[v125-perf] E-28 mean=10.58ms median=11.29ms p95=14.55ms
+[v125-perf] E-28 mean=9.91ms median=7.25ms p95=23.79ms
 [90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-29 symmetrical components surface mount[22m[39m
-[v125-perf] E-29 mean=7.13ms median=6.85ms p95=10.20ms
-[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-30 compliance surface mount[22m[39m
-[v125-perf] E-30 mean=14.42ms median=13.54ms p95=19.40ms
-[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-33 thermal dynamic surface mount[22m[39m
-[v125-perf] E-33 mean=13.91ms median=13.80ms p95=18.83ms
-[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-34 convergence surface mount[22m[39m
-[v125-perf] E-34 mean=6.35ms median=6.54ms p95=6.99ms
- [32m✓[39m src/ui/workspace/__tests__/v125.performance.test.tsx [2m ([22m[2m9 tests[22m[2m)[22m[33m 2904[2mms[22m[39m
+[v125-perf] E-29 mean=7.38ms median=7.34ms p95=8.85ms
+[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-30 load-flow surface mount[22m[39m
+[v125-perf] E-30 mean=6.68ms median=6.76ms p95=7.96ms
+[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-33 source contributions surface mount[22m[39m
+[v125-perf] E-33 mean=7.56ms median=8.08ms p95=9.21ms
+[90mstdout[2m | src/ui/workspace/__tests__/v125.performance.test.tsx[2m > [22m[2mV12.5 performance harness[2m > [22m[2mmeasures E-34 thermal dynamic surface mount[22m[39m
+[v125-perf] E-34 mean=7.03ms median=7.04ms p95=8.67ms
+ [32m✓[39m src/ui/workspace/__tests__/v125.performance.test.tsx [2m ([22m[2m9 tests[22m[2m)[22m[33m 2376[2mms[22m[39m
 [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
 [2m      Tests [22m [1m[32m9 passed[39m[22m[90m (9)[39m
-[2m   Start at [22m 23:19:43
-[2m   Duration [22m 10.53s[2m (transform 2.45s, setup 236ms, collect 3.89s, tests 2.90s, environment 1.85s, prepare 287ms)[22m
+[2m   Start at [22m 23:55:42
+[2m   Duration [22m 9.01s[2m (transform 2.38s, setup 253ms, collect 3.69s, tests 2.38s, environment 1.41s, prepare 220ms)[22m
 ```
 
 ### stderr tail
@@ -435,16 +435,16 @@ This ensures that you're testing the behavior the user would see in the browser.
 > mv-design-pro-frontend@0.1.0 test:golden
 > vitest run --no-file-parallelism src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts src/ui/__tests__/ux-golden-scenario.test.ts
 [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mC:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/frontend[39m
- [32m✓[39m src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts [2m ([22m[2m52 tests[22m[2m)[22m[33m 910[2mms[22m[39m
- [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 1828[2mms[22m[39m
- [32m✓[39m src/ui/__tests__/ux-golden-scenario.test.ts [2m ([22m[2m45 tests[22m[2m)[22m[90m 54[2mms[22m[39m
- [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts [2m ([22m[2m27 tests[22m[2m)[22m[90m 127[2mms[22m[39m
- [32m✓[39m src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 81[2mms[22m[39m
- [32m✓[39m src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 42[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts [2m ([22m[2m52 tests[22m[2m)[22m[33m 938[2mms[22m[39m
+ [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenNetworkSn.test.ts [2m ([22m[2m17 tests[22m[2m)[22m[33m 1740[2mms[22m[39m
+ [32m✓[39m src/ui/__tests__/ux-golden-scenario.test.ts [2m ([22m[2m45 tests[22m[2m)[22m[90m 45[2mms[22m[39m
+ [32m✓[39m src/ui/sld-editor/utils/topological-layout/__tests__/goldenFixtures.test.ts [2m ([22m[2m27 tests[22m[2m)[22m[90m 115[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 43[2mms[22m[39m
+ [32m✓[39m src/ui/sld/core/__tests__/sldRenderManifestGolden.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 50[2mms[22m[39m
 [2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
 [2m      Tests [22m [1m[32m160 passed[39m[22m[90m (160)[39m
-[2m   Start at [22m 23:19:56
-[2m   Duration [22m 19.90s[2m (transform 723ms, setup 1.72s, collect 1.06s, tests 3.04s, environment 10.07s, prepare 1.53s)[22m
+[2m   Start at [22m 23:55:53
+[2m   Duration [22m 17.43s[2m (transform 725ms, setup 1.49s, collect 1.02s, tests 2.93s, environment 8.61s, prepare 1.38s)[22m
 ```
 
 ### stderr tail
@@ -462,88 +462,51 @@ This ensures that you're testing the behavior the user would see in the browser.
 ### stdout tail
 
 ```text
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:59499 - "GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:59498 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:59500 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:59501 - "GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:63889 - "GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:63888 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:63890 - "POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:63891 - "GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness HTTP/1.1" 200 OK
+> mv-design-pro-frontend@0.1.0 test:e2e
+> node ./scripts/playwright-run.mjs
+Running 18 tests using 1 worker
+[1A[2K[1/18] [chromium] › e2e\branch-points-workflow.spec.ts:179:3 › Branch points workflow › opens branch pole form from canonical overhead-line surface
+[1A[2K[2/18] [chromium] › e2e\branch-points-workflow.spec.ts:216:3 › Branch points workflow › opens ZKSN form from canonical cable surface
+[1A[2K[3/18] [chromium] › e2e\catalog-enforcement.spec.ts:223:3 › Catalog-First Enforcement - realny backend › frontend nie wystawia bezposrednich przyciskow branch point i ZKSN bez kontekstu segmentu
+[1A[2K[4/18] [chromium] › e2e\catalog-enforcement.spec.ts:233:3 › Catalog-First Enforcement - realny backend › formularz lacznika sekcyjnego blokuje wstawienie bez katalogu
+[1A[2K[5/18] [chromium] › e2e\catalog-enforcement.spec.ts:249:3 › Catalog-First Enforcement - realny backend › przycisk domkniecia pierscienia jest nieaktywny bez kandydatow ringu
+[1A[2K[6/18] [chromium] › e2e\catalog-enforcement.spec.ts:259:3 › Catalog-First Enforcement - realny backend › backend odrzuca insert_branch_pole_on_segment_sn bez katalogu
+[1A[2K[7/18] [chromium] › e2e\catalog-enforcement.spec.ts:273:3 › Catalog-First Enforcement - realny backend › backend odrzuca insert_zksn_on_segment_sn bez katalogu
+[1A[2K[8/18] [chromium] › e2e\catalog-enforcement.spec.ts:289:3 › Catalog-First Enforcement - realny backend › backend odrzuca insert_section_switch_sn bez katalogu
+[1A[2K[9/18] [chromium] › e2e\catalog-enforcement.spec.ts:305:3 › Catalog-First Enforcement - realny backend › backend odrzuca connect_secondary_ring_sn bez katalogu
+[1A[2K[10/18] [chromium] › e2e\create-first-case.spec.ts:132:1 › konfiguracja pierwszego wariantu pracy jest deterministyczna i bez freeze
+[1A[2K[11/18] [chromium] › e2e\critical-run-flow.spec.ts:159:1 › krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> White Box -> geometria bez zmian
+[1A[2K[12/18] [chromium] › e2e\happy-path.spec.ts:32:3 › UI Integration E2E Happy Path › renders canonical active case bar and mode indicator
+[1A[2K[13/18] [chromium] › e2e\happy-path.spec.ts:39:3 › UI Integration E2E Happy Path › opens canonical variants helper surface z active case bar
+[1A[2K[14/18] [chromium] › e2e\happy-path.spec.ts:47:3 › UI Integration E2E Happy Path › switches shell mode on canonical analytical routes
+[1A[2K[15/18] [chromium] › e2e\happy-path.spec.ts:61:3 › UI Integration E2E Happy Path › persists seeded UI state in localStorage
+[1A[2K[16/18] [chromium] › e2e\happy-path.spec.ts:83:3 › Context Bar Synchronization › keeps calculate action visible and mode consistent while navigating
+[1A[2K[17/18] [chromium] › e2e\sld-editor-real-backend-flex.spec.ts:213:1 › real backend SLD editor flow: source -> trunk -> station -> branch -> update -> delete -> continue
 [1A[2K[18/18] [chromium] › e2e\sld-editor-real-backend-flex.spec.ts:331:1 › real backend supports flexible operation order combinations
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/projects HTTP/1.1" 201 Created
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/study-cases HTTP/1.1" 201 Created
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:58567 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:58568 - "GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:58569 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:58570 - "GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:60658 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:57817 - "GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness HTTP/1.1" 200 OK
-[2m[WebServer] [22mINFO:     127.0.0.1:57816 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:57818 - "POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops HTTP/1.1" 200 OK
-[1A[2K[2m[WebServer] [22mINFO:     127.0.0.1:57819 - "GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness HTTP/1.1" 200 OK
-[1A[2K  18 passed (1.2m)
+[1A[2K  18 passed (47.3s)
 ```
 
 ### stderr tail
 
 ```text
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:24 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (31.0ms) rid=3ce87bca-780f-4677-92f2-f0f5e99a4081
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:24 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (31.0ms) rid=408c486f-5836-47fa-9801-d020a9d1224b
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness -> 200 (15.0ms) rid=e96d2263-cc40-4939-ac44-213a68a36de2
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (31.0ms) rid=a39d87ca-c88a-401e-9b85-f86be70080bf
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (16.0ms) rid=d7c36862-306c-4adc-bf3b-e05dee02b764
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness -> 200 (0.0ms) rid=f40986e7-d8a2-446f-92d5-6856783e7840
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (15.0ms) rid=4328ac80-c388-4a5f-9a4e-843e8533a68c
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (16.0ms) rid=5aa1d76b-8c39-402f-a35a-90d9f3782f9d
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:25 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (31.0ms) rid=9d30c3ff-4fbf-4a5f-a3dc-d5a2658bb1bc
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:26 INFO mv_design_pro HTTP GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness -> 200 (31.0ms) rid=0a05f769-97ea-4818-beb0-345520780b37
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:26 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (31.0ms) rid=017b507c-b0be-4a5b-8104-ceaa4ff9e73d
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:26 INFO mv_design_pro HTTP POST /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/enm/domain-ops -> 200 (47.0ms) rid=299ef083-7729-4348-9b2b-296690a8a848
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:26 INFO mv_design_pro HTTP GET /api/cases/4a563a3b-fe38-4601-ad41-aa78209454cf/engineering-readiness -> 200 (0.0ms) rid=7dbf8169-6f13-41a5-a5ff-87ad0802984c
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:27 INFO mv_design_pro HTTP POST /api/projects -> 201 (31.0ms) rid=dbeef00a-b7b0-4ec5-8e3b-e5892e85cbca
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:27 INFO mv_design_pro HTTP POST /api/study-cases -> 201 (16.0ms) rid=f516ec12-834a-4081-b8e3-bc2519282af5
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (16.0ms) rid=417a07da-1a49-4662-9e96-f5fe3b7f775a
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness -> 200 (15.0ms) rid=b278eba3-f791-41b6-ab3d-b045aad9cb60
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (16.0ms) rid=8672b149-0cfc-4ea3-a0c5-5c93834265ff
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness -> 200 (16.0ms) rid=a4637c1d-2c98-478f-a9db-786934f31666
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (78.0ms) rid=3092a843-a0b1-481b-abfc-aa09e1427f4c
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (47.0ms) rid=1f896760-478b-4fd1-91fb-7c652f93eb8a
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (16.0ms) rid=47971a94-250b-41a9-aef3-c88360527acd
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:29 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (0.0ms) rid=facbf988-2c7d-4c70-b415-2270fefe0f08
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:30 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (31.0ms) rid=79c96018-a171-415e-909a-27e7f442f8d6
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:30 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (31.0ms) rid=96a92086-4ffa-469c-8628-7a3b27cc980c
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:30 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (78.0ms) rid=dd701612-18b8-4ea0-8dbc-f3aa14f1b2ef
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:32 INFO mv_design_pro HTTP GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness -> 200 (15.0ms) rid=fceb6b09-2880-43d1-857b-25374042baf0
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:32 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (15.0ms) rid=f2abe025-c84f-4874-961b-fca9944030dd
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:32 INFO mv_design_pro HTTP POST /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/enm/domain-ops -> 200 (32.0ms) rid=0b4ba5f5-db8b-4185-a5d8-5da677f56e36
-[1A[2K[2m[WebServer] [22m2026-04-25T23:21:32 INFO mv_design_pro HTTP GET /api/cases/3abe8007-1627-4c49-b63b-8c8ec9acfccf/engineering-readiness -> 200 (0.0ms) rid=54dce9bc-e801-4fc3-a046-6f1532fc260e
+<empty>
 ```
 
 ## Performance Report
 
 - Profile: `full`
-- Measured at: `2026-04-25T22:19:54.506Z`
+- Measured at: `2026-04-27T21:55:51.554Z`
 - Harness: `frontend/src/ui/workspace/__tests__/v125.performance.test.tsx`
 - Methodology: `2` warm-up run(s) + `7` measured run(s) per target.
 
 | Target | Kind | Mean [ms] | Median [ms] | P95 [ms] | Max [ms] | Samples [ms] |
 |---|---|---:|---:|---:|---:|---|
-| Mini-SLD helper surface | mount | 9.45 | 7.45 | 19.68 | 19.68 | 19.68, 6.97, 10.51, 6.02, 5.94, 9.60, 7.45 |
-| Full SLD terrain pipeline + canvas | pipeline+mount | 152.07 | 150.04 | 172.03 | 172.03 | 172.03, 132.04, 156.50, 150.04, 148.77, 133.17, 171.95 |
-| Nakladka wynikowa na schemacie | mount | 4.69 | 4.99 | 6.01 | 6.01 | 3.49, 3.38, 4.99, 5.32, 4.04, 6.01, 5.60 |
-| Raporty i eksporty | mount | 10.61 | 8.98 | 24.07 | 24.07 | 9.72, 24.07, 8.16, 9.06, 8.98, 8.09, 6.16 |
-| Koordynacja zabezpieczen | mount | 10.58 | 11.29 | 14.55 | 14.55 | 14.55, 11.88, 11.29, 13.36, 6.70, 10.26, 6.02 |
-| Skladowe symetryczne i siec zerowa | mount | 7.13 | 6.85 | 10.20 | 10.20 | 6.26, 5.06, 5.30, 7.65, 10.20, 8.58, 6.85 |
-| Wymagania przylaczeniowe i kodeks sieciowy | mount | 14.42 | 13.54 | 19.40 | 19.40 | 13.54, 17.91, 16.90, 19.40, 12.38, 12.08, 8.74 |
-| Weryfikacja cieplna i dynamiczna toru pradowego | mount | 13.91 | 13.80 | 18.83 | 18.83 | 12.07, 13.80, 16.19, 18.83, 14.38, 12.85, 9.25 |
-| Zbieznosc rozplywu mocy i regulacja zaczepow | mount | 6.35 | 6.54 | 6.99 | 6.99 | 6.54, 5.61, 6.76, 5.48, 6.16, 6.99, 6.92 |
+| Mini-SLD helper surface | mount | 6.90 | 6.55 | 9.18 | 9.18 | 8.11, 7.69, 6.55, 6.10, 5.19, 9.18, 5.47 |
+| Full SLD terrain pipeline + canvas | pipeline+mount | 119.24 | 134.99 | 149.93 | 149.93 | 149.93, 134.99, 142.44, 137.25, 88.51, 91.64, 89.92 |
+| Nakładki wynikowe SLD | mount | 1.41 | 1.46 | 1.71 | 1.71 | 1.58, 1.57, 1.09, 1.06, 1.71, 1.37, 1.46 |
+| Raporty OSD i audytowe | mount | 5.22 | 5.33 | 6.42 | 6.42 | 4.53, 3.77, 6.42, 6.25, 6.17, 5.33, 4.10 |
+| Koordynacja zabezpieczeń | mount | 9.91 | 7.25 | 23.79 | 23.79 | 9.87, 7.52, 7.01, 7.25, 7.05, 23.79, 6.86 |
+| Sieć zerowa i składowe symetryczne | mount | 7.38 | 7.34 | 8.85 | 8.85 | 6.44, 8.85, 6.16, 6.42, 7.34, 8.85, 7.63 |
+| Rozpływ mocy | mount | 6.68 | 6.76 | 7.96 | 7.96 | 7.96, 6.06, 7.00, 6.76, 7.28, 5.78, 5.91 |
+| Wkłady źródeł | mount | 7.56 | 8.08 | 9.21 | 9.21 | 5.90, 5.32, 8.78, 8.96, 6.68, 9.21, 8.08 |
+| Weryfikacja cieplna i dynamiczna | mount | 7.03 | 7.04 | 8.67 | 8.67 | 7.59, 6.87, 7.15, 8.67, 6.14, 5.79, 7.04 |

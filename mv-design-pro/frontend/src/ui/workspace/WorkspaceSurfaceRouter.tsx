@@ -588,7 +588,15 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Wymagania przylaczeniowe i kodeks sieciowy"
+            label="Charakterystyki FRT/LVRT/HVRT"
+            onClick={() =>
+              openChildSurface('analysis', {
+                screenCode: 'E-26',
+              })
+            }
+          />
+          <SurfaceActionButton
+            label="Rozplyw mocy NR/GS/FD"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-30',
@@ -596,17 +604,15 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Rejestr zalozen i jakosci"
+            label="Stan fazowy SN"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-31',
-                sizeClass: 'B',
-                openMode: 'replace_right_panel',
               })
             }
           />
           <SurfaceActionButton
-            label="Wklady zrodel rozszerzone"
+            label="Stabilnosc dynamiczna"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-32',
@@ -614,7 +620,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Weryfikacja cieplna i dynamiczna"
+            label="Wklady zrodel rozszerzone"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-33',
@@ -622,7 +628,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Zbieznosc rozplywu i regulacja zaczepow"
+            label="Weryfikacja cieplna i dynamiczna"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: 'E-34',
@@ -630,11 +636,11 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Raporty i eksporty"
+            label="Raporty OSD i audytowe"
             onClick={() =>
               openChildSurface('report', {
                 screenCode: REPORT_SURFACE_SCREEN_CODE,
-                titlePl: 'Raporty i eksporty',
+                titlePl: 'Raporty OSD i audytowe',
                 sizeClass: 'C',
                 supportsMiniSld: true,
               })
@@ -758,11 +764,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             </div>
             <div className="flex flex-wrap gap-2">
               <SurfaceActionButton
-                label="Rejestr zalozen"
+                label="Uzasadnienie inzynierskie"
                 onClick={() =>
-                  openChildSurface('analysis', {
-                    screenCode: 'E-31',
-                    sizeClass: 'B',
+                  openChildSurface('report', {
+                    screenCode: 'E-36',
+                    sizeClass: 'C',
                     openMode: 'replace_right_panel',
                   })
                 }
@@ -771,7 +777,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 label="Wklady zrodel"
                 onClick={() =>
                   openChildSurface('analysis', {
-                    screenCode: 'E-32',
+                    screenCode: 'E-33',
                   })
                 }
               />
@@ -933,9 +939,9 @@ function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor })
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Ocena zgodnosci z wymaganiami przylaczeniowymi"
-        eyebrow="Zgodnosc"
-        focusTitle="Kontrakt zgodnosci"
+        title="Charakterystyki FRT/LVRT/HVRT i zgodnosc przylaczeniowa"
+        eyebrow="Zrodla i przyłączenia"
+        focusTitle="Kontrakt FRT"
         focusRowsBuilder={(contract) => [
           { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
           { label: 'Wariant', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
@@ -949,14 +955,15 @@ function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor })
   );
 }
 
-function AssumptionsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+function PhaseStateSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   return (
     <div className="space-y-4">
+      <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Rejestr zalozen i jakosci danych"
-        eyebrow="Jakosc danych"
-        focusTitle="Jakosc kontekstu"
+        title="Stan fazowy SN"
+        eyebrow="Analiza fazowa"
+        focusTitle="Kontrakt stanu fazowego"
         focusRowsBuilder={(contract) => [
           { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
           { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
@@ -969,6 +976,27 @@ function AssumptionsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
         showReproducibility
         showSummary={false}
         showTraceSummary={false}
+      />
+    </div>
+  );
+}
+
+function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  return (
+    <div className="space-y-4">
+      <MiniSldCard surface={surface} />
+      <AnalysisContractPanel
+        surface={surface}
+        title="Stabilnosc dynamiczna"
+        eyebrow="Dynamika"
+        focusTitle="Kontrakt stabilnosci"
+        focusRowsBuilder={(contract) => [
+          { label: 'Scenariusz zaklocenia', value: formatContractValue(contract.analysisCaseContext?.assumptions['fault_scenario_ref']) },
+          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Zalozenia zrodel', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
+          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+        ]}
       />
     </div>
   );
@@ -1042,7 +1070,7 @@ function SymmetricalComponentsSurface({ surface }: { surface: WorkspaceSurfaceDe
 }
 
 function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const isPublicCatalogScreen = surface.screenCode === 'E-26';
+  const isPublicCatalogScreen = surface.screenCode === 'E-38';
 
   return (
     <div className="space-y-4">
@@ -1198,6 +1226,30 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
   );
 }
 
+function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  return (
+    <div className="space-y-4">
+      <MiniSldCard surface={surface} />
+      <AnalysisContractPanel
+        surface={surface}
+        title="Uzasadnienie inzynierskie"
+        eyebrow="Uzasadnienie"
+        focusTitle="Slad obliczen"
+        focusRowsBuilder={(contract) => [
+          { label: 'Identyfikator wyniku', value: formatContractValue(contract.id) },
+          { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
+          { label: 'Waznosc wyniku', value: formatContractValue(contract.resultsValid) },
+          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Migawka katalogu', value: formatContractValue(contract.analysisCaseContext?.reproducibility?.catalogSnapshotRef) },
+        ]}
+        showAssumptions
+        showLineage
+        showReproducibility
+      />
+    </div>
+  );
+}
+
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
   const delegateBodies: Record<string, ReactNode> = {
@@ -1212,9 +1264,9 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   switch (surface.screenCode) {
     case 'variants_runs':
       return <VariantsSurface surface={surface} />;
-    case 'E-26':
     case 'catalog_admin':
     case 'catalog_picker':
+    case 'E-38':
       return <CatalogHelperSurface surface={surface} />;
     case 'case_context':
       return <CaseContextSurface surface={surface} />;
@@ -1230,16 +1282,22 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <ProtectionCoordinationSurface surface={surface} />;
     case 'E-29':
       return <SymmetricalComponentsSurface surface={surface} />;
-    case 'E-30':
+    case 'E-26':
       return <ComplianceSurface surface={surface} />;
-    case 'E-31':
-      return <AssumptionsSurface surface={surface} />;
-    case 'E-32':
-      return <SourceContributionsSurface surface={surface} />;
-    case 'E-33':
-      return <ThermalDynamicSurface surface={surface} />;
-    case 'E-34':
+    case 'E-27':
+      return <ProtectionCoordinationSurface surface={surface} />;
+    case 'E-30':
       return <ConvergenceSurface surface={surface} />;
+    case 'E-31':
+      return <PhaseStateSurface surface={surface} />;
+    case 'E-32':
+      return <DynamicStabilitySurface surface={surface} />;
+    case 'E-33':
+      return <SourceContributionsSurface surface={surface} />;
+    case 'E-34':
+      return <ThermalDynamicSurface surface={surface} />;
+    case 'E-36':
+      return <ProofSurface surface={surface} />;
     default:
       break;
   }

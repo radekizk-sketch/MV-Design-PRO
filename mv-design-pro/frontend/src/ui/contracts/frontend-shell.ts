@@ -1,42 +1,7 @@
 import type { CanonicalIssueCode, CanonicalWritePreconditionEvaluation, RepairSurfaceDescriptor } from './shared';
+import { CANONICAL_SCREEN_CODES } from '../workspace/screenCanonRegistry';
 
-export const SCREEN_CODES = [
-  'E-00',
-  'E-01',
-  'E-02',
-  'E-03',
-  'E-04',
-  'E-05',
-  'E-06',
-  'E-07',
-  'E-08',
-  'E-09',
-  'E-10',
-  'E-11',
-  'E-12',
-  'E-13',
-  'E-14',
-  'E-15',
-  'E-16',
-  'E-17',
-  'E-18',
-  'E-19',
-  'E-20',
-  'E-21',
-  'E-22',
-  'E-23',
-  'E-24',
-  'E-25',
-  'E-26',
-  'E-27',
-  'E-28',
-  'E-29',
-  'E-30',
-  'E-31',
-  'E-32',
-  'E-33',
-  'E-34',
-] as const;
+export const SCREEN_CODES = CANONICAL_SCREEN_CODES;
 
 export const ROUTE_ALIAS_CODES = ['sld', 'network_build', 'analysis', 'report'] as const;
 export const HELPER_SURFACE_CODES = [
