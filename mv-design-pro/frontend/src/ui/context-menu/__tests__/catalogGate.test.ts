@@ -1,38 +1,22 @@
-/**
- * Testy bramki katalogowej UI — catalogGate.ts
- *
- * Faza 5: Weryfikacja mapy operacja → namespace i logiki bramy.
- *
- * INVARIANTS:
- * - Operacje tworzące segmenty → namespace KABEL_SN
- * - Operacje tworzące transformatory → namespace TRAFO_SN_NN
- * - Operacje NIE tworzące elementów → brak wymagania
- * - Etykiety PL — brak anglicyzmów
- */
+import { describe, expect, it } from 'vitest';
 
-import { describe, it, expect } from 'vitest';
 import {
-  requiresCatalog,
+  catalogGateMode,
   catalogNamespace,
   catalogNamespaceLabel,
   checkCatalogGate,
+  requiresCatalog,
   resolveCanonicalOperation,
 } from '../catalogGate';
 
-// ===========================================================================
-// TEST 1: requiresCatalog — operacje wymagające katalogu
-// ===========================================================================
-
-describe('requiresCatalog', () => {
-  it('returns true for segment operations', () => {
+describe('catalog gate', () => {
+  it('keeps technical segment and transformer operations as hard catalog-first', () => {
     expect(requiresCatalog('continue_trunk_segment_sn')).toBe(true);
     expect(requiresCatalog('start_branch_segment_sn')).toBe(true);
-    expect(requiresCatalog('connect_secondary_ring_sn')).toBe(true);
-  });
-
-  it('returns true for transformer operations', () => {
     expect(requiresCatalog('insert_station_on_segment_sn')).toBe(true);
     expect(requiresCatalog('add_transformer_sn_nn')).toBe(true);
+    expect(catalogGateMode('continue_trunk_segment_sn')).toBe('required');
+    expect(catalogGateMode('insert_station_on_segment_sn')).toBe('required');
   });
 
   it('returns true for kanoniczne operacje tworzące lub nadal aktywne aliasy topologii', () => {
@@ -111,16 +95,21 @@ describe('checkCatalogGate', () => {
   it('returns required=true with namespace for gated operations', () => {
     const gate = checkCatalogGate('continue_trunk_segment_sn');
     expect(gate.required).toBe(true);
+    expect(gate.mode).toBe('required');
     expect(gate.namespace).toBe('KABEL_SN');
-    expect(gate.label).toBeDefined();
-    expect(gate.canonicalOperation).toBe('continue_trunk_segment_sn');
+    expect(gate.label).toBe('Kabel/linia SN');
   });
 
-  it('returns required=false for ungated operations', () => {
-    const gate = checkCatalogGate('properties');
-    expect(gate.required).toBe(false);
-    expect(gate.namespace).toBeUndefined();
-    expect(gate.label).toBeUndefined();
+  it('returns topology mode without hard blocking for GPZ and SN bay', () => {
+    const sourceGate = checkCatalogGate('add_grid_source_sn');
+    expect(sourceGate.required).toBe(false);
+    expect(sourceGate.mode).toBe('topology_allowed_without_catalog');
+    expect(sourceGate.namespace).toBe('ZRODLO_SN');
+
+    const bayGate = checkCatalogGate('add_sn_bay');
+    expect(bayGate.required).toBe(false);
+    expect(bayGate.mode).toBe('topology_allowed_without_catalog');
+    expect(bayGate.namespace).toBe('APARAT_SN');
   });
 
   it('resolves action IDs to canonical operations', () => {

@@ -22,8 +22,8 @@ export const ROUTES = {
   },
   SLD_VIEW: {
     hash: '#sld-view',
-    label: 'Podglad schematu',
-    description: 'Podglad schematu jednokreskowego (tylko odczyt)',
+    label: 'Podgląd schematu',
+    description: 'Podgląd schematu jednokreskowego (tylko odczyt)',
     icon: 'VIEW',
   },
   ANALYSIS: {
@@ -42,22 +42,29 @@ export const ROUTES = {
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Warianty i uruchomienia',
-    description: 'Helper wyboru wariantow i uruchomien',
+    label: 'Przebiegi obliczen',
+    description: 'Helper wyboru przebiegow i identyfikatorow uruchomien',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
   CASE_CONFIG: {
     hash: '#case-config',
-    label: 'Kontekst przypadku',
-    description: 'Helper kontekstu przypadku w glownym shellu',
+    label: 'Parametry analizy',
+    description: 'Helper konfiguracji analizy w glownym shellu',
     icon: 'CFG',
+    requiredMode: 'MODEL_EDIT',
+  },
+  SWITCHGEAR: {
+    hash: '#switchgear',
+    label: 'Rozdzielnica: pola i aparaty',
+    description: 'Kreator konfiguracji pol i aparatow rozdzielnicy',
+    icon: 'SWG',
     requiredMode: 'MODEL_EDIT',
   },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
-    description: 'Diagnostyka inzynierska modelu sieci ENM',
+    description: 'Diagnostyka inżynierska modelu sieci ENM',
     icon: 'INS',
   },
   FAULT_SCENARIOS: {
@@ -249,6 +256,14 @@ export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
     assignRouteContext(params, context);
   });
 }
+
+export function navigateToSwitchgear(context: RouteContextOptions = {}): void {
+  navigateToHash(ROUTES.SWITCHGEAR.hash, (params) => {
+    params.delete('run');
+    assignRouteContext(params, context);
+  });
+}
+
 
 export function navigateToAnalysis(context: RouteContextOptions = {}): void {
   navigateToAnalysisRoute(context);

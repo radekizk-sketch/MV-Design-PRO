@@ -33,16 +33,97 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-chrome-300 rounded-full;
+    @apply rounded-full bg-chrome-700;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-chrome-400;
+    @apply bg-chrome-500;
   }
 
   /* Selection color */
   ::selection {
-    @apply bg-blue-200 text-blue-900;
+    background: rgba(34, 211, 238, 0.3);
+    color: #ecfeff;
+  }
+}
+
+@layer utilities {
+  /* =========================================================================
+   * V12.xx Dark SCADA Screen Theme
+   *
+   * The application shell owns the screen theme. Legacy light utility classes
+   * are mapped to industrial dark surfaces so every routed screen inherits one
+   * visual system. Export containers opt out through data-sld-export-theme and
+   * keep the separate light technical rendering contract.
+   * ========================================================================= */
+
+  .mv-dark-scada {
+    --scada-bg: #020617;
+    --scada-surface: #0f172a;
+    --scada-surface-raised: #111827;
+    --scada-surface-muted: #1e293b;
+    --scada-border: #334155;
+    --scada-border-strong: #475569;
+    --scada-text: #e5e7eb;
+    --scada-text-muted: #cbd5e1;
+    --scada-text-subtle: #94a3b8;
+    --scada-focus: #38bdf8;
+    background: var(--scada-bg);
+    color: var(--scada-text);
+    color-scheme: dark;
+  }
+
+  .mv-dark-scada :where(.bg-white, .bg-gray-50, .bg-slate-50, .bg-zinc-50, .bg-chrome-50):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface) !important;
+  }
+
+  .mv-dark-scada :where(.bg-gray-100, .bg-slate-100, .bg-zinc-100, .bg-chrome-100):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface-muted) !important;
+  }
+
+  .mv-dark-scada :where(.bg-canvas-bg):not([data-sld-export-theme] *) {
+    background-color: var(--scada-bg) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-900, .text-slate-900, .text-zinc-900, .text-black):not([data-sld-export-theme] *) {
+    color: var(--scada-text) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-800, .text-gray-700, .text-slate-800, .text-slate-700, .text-zinc-800, .text-zinc-700, .text-chrome-700, .text-chrome-800):not([data-sld-export-theme] *) {
+    color: var(--scada-text-muted) !important;
+  }
+
+  .mv-dark-scada :where(.text-gray-600, .text-gray-500, .text-slate-600, .text-slate-500, .text-zinc-600, .text-zinc-500, .text-chrome-600, .text-chrome-500):not([data-sld-export-theme] *) {
+    color: var(--scada-text-subtle) !important;
+  }
+
+  .mv-dark-scada :where(.border-gray-100, .border-gray-200, .border-gray-300, .border-slate-100, .border-slate-200, .border-slate-300, .border-zinc-100, .border-zinc-200, .border-zinc-300, .border-chrome-100, .border-chrome-200, .border-chrome-300):not([data-sld-export-theme] *) {
+    border-color: var(--scada-border) !important;
+  }
+
+  .mv-dark-scada :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl):not([data-sld-export-theme] *) {
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *) {
+    background-color: var(--scada-surface-raised) !important;
+    border-color: var(--scada-border-strong) !important;
+    color: var(--scada-text) !important;
+  }
+
+  .mv-dark-scada :where(input, select, textarea):not([data-sld-export-theme] *)::placeholder {
+    color: var(--scada-text-subtle) !important;
+  }
+
+  .mv-dark-scada :where(button):not([data-sld-export-theme] *):focus-visible,
+  .mv-dark-scada :where(a, input, select, textarea):not([data-sld-export-theme] *):focus-visible {
+    outline: 2px solid var(--scada-focus);
+    outline-offset: 2px;
+  }
+
+  .mv-dark-scada [data-sld-export-theme="light_technical"],
+  .mv-dark-scada [data-sld-export-theme="light_technical"] * {
+    color-scheme: light;
   }
 }
 
@@ -127,6 +208,136 @@
 }
 
 @layer components {
+  .scada-panel {
+    border: 1px solid #173041;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(11, 23, 34, 0.98) 0%, rgba(8, 18, 28, 0.96) 100%);
+    box-shadow:
+      0 20px 50px rgba(2, 8, 23, 0.42),
+      inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  }
+
+  .scada-panel-muted {
+    border: 1px solid #1d3446;
+    border-radius: 14px;
+    background: rgba(9, 22, 33, 0.82);
+    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.06);
+  }
+
+  .scada-shell-eyebrow {
+    color: #6f8ca4;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+  }
+
+  .scada-shell-title {
+    color: #f8fafc;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .scada-shell-copy {
+    color: #8ea6ba;
+    font-size: 0.75rem;
+    line-height: 1.25rem;
+  }
+
+  .scada-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border-radius: 9999px;
+    border-width: 1px;
+    padding: 0.25rem 0.625rem;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .scada-chip-neutral {
+    border-color: #2a4355;
+    background: #0d1c29;
+    color: #dde8f2;
+  }
+
+  .scada-chip-ok {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.12);
+    color: #d1fae5;
+  }
+
+  .scada-chip-warn {
+    border-color: rgba(245, 158, 11, 0.35);
+    background: rgba(245, 158, 11, 0.12);
+    color: #fef3c7;
+  }
+
+  .scada-chip-danger {
+    border-color: rgba(244, 63, 94, 0.35);
+    background: rgba(244, 63, 94, 0.12);
+    color: #ffe4e6;
+  }
+
+  .scada-chip-accent {
+    border-color: rgba(6, 182, 212, 0.35);
+    background: rgba(6, 182, 212, 0.12);
+    color: #cffafe;
+  }
+
+  .scada-metric-tile {
+    border: 1px solid #20384a;
+    border-radius: 14px;
+    background: rgba(10, 24, 36, 0.86);
+    padding: 0.5rem 0.75rem;
+    box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.05);
+  }
+
+  .scada-action-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border: 1px solid #264053;
+    border-radius: 12px;
+    background: #0a1824;
+    padding: 0.5rem 0.75rem;
+    color: #d7e5ef;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition:
+      background-color 150ms ease,
+      color 150ms ease,
+      border-color 150ms ease;
+  }
+
+  .scada-action-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    border-radius: 12px;
+    background: rgba(6, 182, 212, 0.14);
+    padding: 0.5rem 0.75rem;
+    color: #ecfeff;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .scada-action-btn:hover {
+    background: #112433;
+    color: #ffffff;
+  }
+
+  .scada-action-btn-primary:hover {
+    background: rgba(6, 182, 212, 0.2);
+  }
+
   /* =========================================================================
    * Project Tree Empty Node Styling
    * ========================================================================= */
@@ -197,12 +408,18 @@
    * ========================================================================= */
 
   .ind-panel-header {
-    @apply flex items-center justify-between
-           px-3 py-2
-           bg-chrome-50 border-b border-chrome-200
-           text-xs font-semibold text-chrome-600
-           uppercase tracking-wider
-           select-none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #1c3344;
+    background: #08131d;
+    color: #7ea7c4;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    user-select: none;
   }
 
   .ind-panel-section {
@@ -353,7 +570,10 @@
    * ========================================================================= */
 
   .ind-divider-v {
-    @apply w-px h-5 bg-chrome-600 mx-1.5;
+    margin: 0 0.375rem;
+    height: 1.25rem;
+    width: 1px;
+    background: #1f384a;
   }
 
   .ind-divider-h {

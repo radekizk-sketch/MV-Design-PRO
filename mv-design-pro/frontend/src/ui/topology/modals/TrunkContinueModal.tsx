@@ -128,6 +128,7 @@ export function TrunkContinueModal({
   });
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const lockSegmentKind = Boolean(initialData?.segment_kind);
 
   useEffect(() => {
     if (isOpen) {
@@ -239,6 +240,7 @@ export function TrunkContinueModal({
               <select
                 value={formData.segment_kind}
                 onChange={(e) => handleChange('segment_kind', e.target.value)}
+                disabled={lockSegmentKind}
                 className={`w-full px-3 py-2 border rounded-md text-sm ${
                   getFieldError('segment_kind') ? 'border-red-500' : 'border-gray-300'
                 }`}
@@ -251,6 +253,11 @@ export function TrunkContinueModal({
               </select>
               {getFieldError('segment_kind') && (
                 <p className="mt-1 text-xs text-red-600">{getFieldError('segment_kind')}</p>
+              )}
+              {lockSegmentKind && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Rodzina odcinka zostala ustalona w kroku E-06 i nie jest tutaj zmieniana.
+                </p>
               )}
             </div>
 

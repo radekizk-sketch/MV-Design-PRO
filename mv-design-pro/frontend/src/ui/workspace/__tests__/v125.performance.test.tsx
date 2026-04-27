@@ -100,10 +100,6 @@ function mockJsonResponse(payload: unknown) {
 fetchMock.mockImplementation(() => mockJsonResponse(mockAnalysisRunDetail));
 vi.stubGlobal('fetch', fetchMock);
 
-vi.mock('../../case-manager', () => ({
-  CaseManager: () => <div data-testid="perf-case-manager">Case manager</div>,
-}));
-
 vi.mock('../../study-cases/RunHistoryPanel', () => ({
   RunHistoryPanel: () => <div data-testid="perf-run-history">Run history</div>,
 }));
@@ -291,7 +287,7 @@ function renderMiniSldTarget(): () => void {
   useNetworkBuildStore.getState().openRouteSurface('variants_runs');
   render(<WorkspaceSurfaceRouter region="main" />);
   return () => {
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Przebiegi obliczen' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
   };
 }

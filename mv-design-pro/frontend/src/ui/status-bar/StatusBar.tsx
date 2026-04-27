@@ -124,7 +124,7 @@ export function StatusBar({
         <span className="text-chrome-600">|</span>
 
         <div className="flex items-center gap-1.5" data-testid="status-bar-case">
-          <span className="text-chrome-400">Przypadek:</span>
+          <span className="text-chrome-400">Wariant pracy:</span>
           {caseId ? (
             <>
               <span className="font-medium text-white">{caseName || 'Bez nazwy'}</span>

@@ -22,6 +22,12 @@ import type {
   Substation as ENMSubstation,
 } from '../../../types/enm';
 import type { AnySldSymbol, BusSymbol, BranchSymbol, SwitchSymbol, SourceSymbol, LoadSymbol } from '../../sld-editor/types';
+import {
+  type SourceConnectionVariantInputV1,
+  isSupportedSourceConnectionVariant,
+  normalizeSourceConnectionVariant,
+  SourceConnectionVariantV1,
+} from './sourceConnectionVariant';
 
 // =============================================================================
 // ENUMS
@@ -116,6 +122,19 @@ export interface TopologyDeviceV1 {
   readonly catalogRef: string | null;
   readonly state: 'OPEN' | 'CLOSED' | null;
   readonly inService: boolean;
+  readonly bayRef?: string | null;
+}
+
+export interface TopologyFieldSpecV1 {
+  readonly fieldRef: string;
+  readonly name: string;
+  readonly bayRole: string;
+  readonly busRef: string;
+  readonly equipmentRefs: readonly string[];
+  readonly protectionRef: string | null;
+  readonly gpzSectionId: string | null;
+  readonly tags: readonly string[];
+  readonly meta: Readonly<Record<string, unknown>>;
 }
 
 /**
@@ -133,6 +152,8 @@ export interface TopologyStationV1 {
   readonly branchIds: readonly string[];
   readonly switchIds: readonly string[];
   readonly transformerIds: readonly string[];
+  readonly fieldSpecs?: readonly TopologyFieldSpecV1[];
+  readonly nnFieldSpecs?: readonly TopologyFieldSpecV1[];
 }
 
 /**
@@ -147,8 +168,8 @@ export interface TopologyGeneratorV1 {
   readonly inService: boolean;
   readonly ratedPowerMw: number | null;
   readonly blockingTransformerId: string | null;
-  /** Wariant przylaczenia PV/BESS: nn_side | block_transformer | null (brak → FixAction). */
-  readonly connectionVariant: 'nn_side' | 'block_transformer' | null;
+  /** Wariant przylaczenia PV/BESS: canonical V1 or accepted legacy alias. */
+  readonly connectionVariant: SourceConnectionVariantInputV1 | null;
   /** Referencja do stacji (wymagana przy nn_side). */
   readonly stationRef: string | null;
 }
@@ -301,6 +322,73 @@ function sortById<T extends { readonly id: string }>(arr: readonly T[]): T[] {
   return [...arr].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function firstString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function stringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .map(item => item.trim());
+}
+
+function sortFieldSpecs(specs: readonly TopologyFieldSpecV1[]): TopologyFieldSpecV1[] {
+  return [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
+}
+
+function normalizeFieldSpec(raw: unknown): TopologyFieldSpecV1 | null {
+  if (!isRecord(raw)) return null;
+  const fieldRef = firstString(raw.field_ref ?? raw.fieldRef ?? raw.ref_id ?? raw.refId);
+  const busRef = firstString(raw.bus_ref ?? raw.busRef);
+  if (!fieldRef || !busRef) return null;
+  return {
+    fieldRef,
+    name: firstString(raw.name) ?? fieldRef,
+    bayRole: firstString(raw.bay_role ?? raw.bayRole) ?? 'FEEDER',
+    busRef,
+    equipmentRefs: stringList(raw.equipment_refs ?? raw.equipmentRefs),
+    protectionRef: firstString(raw.protection_ref ?? raw.protectionRef),
+    gpzSectionId: firstString(raw.gpz_section_id ?? raw.gpzSectionId),
+    tags: stringList(raw.tags),
+    meta: isRecord(raw.meta) ? { ...raw.meta } : {},
+  };
+}
+
+function readFieldSpecsFromMeta(meta: unknown, key: 'field_specs' | 'nn_field_specs'): TopologyFieldSpecV1[] {
+  if (!isRecord(meta)) return [];
+  const rawSpecs = meta[key];
+  if (!Array.isArray(rawSpecs)) return [];
+  return sortFieldSpecs(
+    rawSpecs
+      .map(normalizeFieldSpec)
+      .filter((spec): spec is TopologyFieldSpecV1 => spec !== null),
+  );
+}
+
+function synthesizeGpzFieldSpecs(substation: ENMSubstation): TopologyFieldSpecV1[] {
+  return sortFieldSpecs(
+    (substation.gpz_sections ?? []).map((section) => ({
+      fieldRef: `${substation.ref_id}:section:${section.section_id}:field`,
+      name: section.line_field_name || `Pole GPZ ${section.order + 1}`,
+      bayRole: 'FEEDER',
+      busRef: section.bus_ref,
+      equipmentRefs: [],
+      protectionRef: null,
+      gpzSectionId: section.section_id,
+      tags: ['gpz_line_field'],
+      meta: {
+        gpz_section_id: section.section_id,
+        gpz_section_order: section.order,
+      },
+    })),
+  );
+}
+
 /**
  * Mapuje ENM Branch.type na BranchKind.
  */
@@ -393,6 +481,9 @@ export function readTopologyFromENM(
     for (const busRef of sub.bus_refs) {
       stationBusMap.set(busRef, sub.ref_id);
     }
+    const meta = (sub as { meta?: unknown }).meta;
+    const fieldSpecs = readFieldSpecsFromMeta(meta, 'field_specs');
+    const nnFieldSpecs = readFieldSpecsFromMeta(meta, 'nn_field_specs');
     return {
       id: sub.ref_id,
       name: sub.name,
@@ -405,6 +496,10 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [...sub.transformer_refs].sort(),
+      fieldSpecs: fieldSpecs.length > 0
+        ? fieldSpecs
+        : (sub.gpz_sections?.length ? synthesizeGpzFieldSpecs(sub) : undefined),
+      nnFieldSpecs: nnFieldSpecs.length > 0 ? nnFieldSpecs : undefined,
     };
   });
 
@@ -420,6 +515,8 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [],
+      fieldSpecs: undefined,
+      nnFieldSpecs: undefined,
     });
     stationBusMap.set(bp.bus_ref, bp.ref_id);
   }
@@ -513,6 +610,7 @@ export function readTopologyFromENM(
       catalogRef: m.catalog_ref ?? null,
       state: null,
       inService: true,
+      bayRef: m.bay_ref ?? null,
     });
   }
 
@@ -543,7 +641,6 @@ export function readTopologyFromENM(
     GeneratorKind.FW_SCIG,
     GeneratorKind.BESS,
   ];
-  const VALID_CONNECTION_VARIANTS = new Set(['nn_side', 'block_transformer']);
 
   // Build lookup maps for validation
   const transformerRefSet = new Set(enm.transformers.map(t => t.ref_id));
@@ -561,31 +658,32 @@ export function readTopologyFromENM(
 
     const kind = enmGenKind(g);
     const isOze = OZE_TYPES.includes(kind);
-    const connectionVariant = g.connection_variant ?? null;
+    const rawConnectionVariant = g.connection_variant ?? null;
+    const connectionVariant = normalizeSourceConnectionVariant(rawConnectionVariant);
     const blockingTransformerId = g.blocking_transformer_ref ?? null;
     const stationRef = g.station_ref ?? null;
 
     // OZE-specific validation (PV, WIND, BESS)
     if (isOze) {
-      if (!connectionVariant) {
+      if (!rawConnectionVariant) {
         fixActions.push({
           code: 'generator.connection_variant_missing',
           message: `Generator OZE '${g.name}' (${g.ref_id}) nie ma wariantu przylaczenia (connection_variant).`,
           elementRef: g.ref_id,
-          fixHint: 'Ustaw connection_variant na nn_side lub block_transformer.',
+          fixHint: 'Ustaw connection_variant na LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION albo SOURCE_CONNECTION_STATION.',
         });
-      } else if (!VALID_CONNECTION_VARIANTS.has(connectionVariant)) {
+      } else if (!isSupportedSourceConnectionVariant(rawConnectionVariant)) {
         fixActions.push({
           code: 'generator.connection_variant_invalid',
-          message: `Generator '${g.name}' (${g.ref_id}): wariant '${connectionVariant}' jest nieprawidlowy.`,
+          message: `Generator '${g.name}' (${g.ref_id}): wariant '${rawConnectionVariant}' jest nieprawidlowy.`,
           elementRef: g.ref_id,
-          fixHint: 'Wariant musi byc nn_side lub block_transformer.',
+          fixHint: 'Wariant musi byc jednym z: LV_BEHIND_STATION_TRANSFORMER, DEDICATED_MV_CONNECTION, SOURCE_CONNECTION_STATION.',
         });
-      } else if (connectionVariant === 'block_transformer') {
+      } else if (connectionVariant === SourceConnectionVariantV1.DEDICATED_MV_CONNECTION) {
         if (!blockingTransformerId) {
           fixActions.push({
             code: 'generator.block_transformer_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant block_transformer wymaga blocking_transformer_ref.`,
+            message: `Generator '${g.name}' (${g.ref_id}): wariant DEDICATED_MV_CONNECTION wymaga blocking_transformer_ref.`,
             elementRef: g.ref_id,
             fixHint: 'Przypisz transformator blokowy do generatora.',
           });
@@ -597,11 +695,14 @@ export function readTopologyFromENM(
             fixHint: 'Sprawdz ref_id transformatora blokowego.',
           });
         }
-      } else if (connectionVariant === 'nn_side') {
+      } else if (
+        connectionVariant === SourceConnectionVariantV1.LV_BEHIND_STATION_TRANSFORMER
+        || connectionVariant === SourceConnectionVariantV1.SOURCE_CONNECTION_STATION
+      ) {
         if (!stationRef) {
           fixActions.push({
             code: 'generator.station_ref_missing',
-            message: `Generator '${g.name}' (${g.ref_id}): wariant nn_side wymaga station_ref.`,
+            message: `Generator '${g.name}' (${g.ref_id}): wariant ${connectionVariant} wymaga station_ref.`,
             elementRef: g.ref_id,
             fixHint: 'Przypisz stacje SN/nN do generatora.',
           });

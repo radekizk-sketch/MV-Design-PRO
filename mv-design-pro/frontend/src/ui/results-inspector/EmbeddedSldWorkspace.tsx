@@ -177,7 +177,7 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
     );
   }, [effectiveMode, runHeader.run_id]);
 
-  const statusBadge = effectiveMode === 'RUN_SNAPSHOT' ? 'Migawka uruchomienia' : 'Model bieżący';
+  const statusBadge = effectiveMode === 'RUN_SNAPSHOT' ? 'Stan modelu obliczeń' : 'Model bieżący';
 
   return (
     <section className="rounded border border-slate-200 bg-white p-4" data-testid="embedded-sld-workspace">
@@ -200,7 +200,7 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
             }`}
             data-testid="embedded-sld-mode-run"
           >
-            Migawka uruchomienia
+            Stan modelu obliczeń
           </button>
           <button
             type="button"
@@ -234,8 +234,8 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-600">
         <span className="rounded bg-slate-100 px-2 py-1 font-semibold text-slate-700">{statusBadge}</span>
-        <span>Run: {runHeader.run_id.slice(0, 8)}…</span>
-        <span>Migawka runu: {formatShortHash(runHeader.snapshot_id)}</span>
+        <span>Obliczenia: {runHeader.run_id.slice(0, 8)}…</span>
+        <span>Stan modelu obliczeń: {formatShortHash(runHeader.snapshot_id)}</span>
         <span>Model bieżący: {formatShortHash(currentModelSnapshotId)}</span>
         {sldOverlay && <span>Warstwa wyników: aktywna</span>}
       </div>

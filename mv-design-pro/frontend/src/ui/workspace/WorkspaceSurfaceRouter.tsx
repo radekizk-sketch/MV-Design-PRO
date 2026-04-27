@@ -13,6 +13,7 @@ import { ResultsInspectorPage } from '../results-inspector';
 import { useSelectionStore } from '../selection';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
+import { SwitchgearWizardPage } from '../wizard/switchgear/SwitchgearWizardPage';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -834,10 +835,10 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             <SectionCard title="Szybkie przejscia pomocnicze">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
-                  label="Kontekst przypadku"
+                  label="Parametry analizy"
                   onClick={() =>
                     openChildSurface('case_context', {
-                      titlePl: 'Kontekst przypadku',
+                      titlePl: 'Parametry analizy',
                       sizeClass: 'B',
                       openMode: 'replace_right_panel',
                       supportsMiniSld: false,
@@ -863,7 +864,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             </SectionCard>
           </div>
           <div className="space-y-4">
-            <SectionCard title="Historia uruchomien">
+            <SectionCard title="Historia analiz">
               <RunHistoryPanel
                 selectedRunId={activeRunId}
                 onSelectRun={(runId) => {
@@ -895,12 +896,12 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                   }
                 />
                 <SurfaceActionButton
-                  label="Porownanie wariantow"
+                  label="Porownanie przebiegow"
                   onClick={() =>
                     openChildSurface('analysis', {
                       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                       tabId: 'compare',
-                      titlePl: 'Porownanie wariantow',
+                      titlePl: 'Porownanie przebiegow',
                       sizeClass: 'C',
                       supportsMiniSld: true,
                     })
@@ -1081,7 +1082,7 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
   return (
     <div className="space-y-4">
       <MiniSldCard surface={surface} />
-      <SectionCard title="Kontekst przypadku" eyebrow="Kontekst roboczy">
+      <SectionCard title="Parametry analizy" eyebrow="Kontekst roboczy">
         <KeyValueGrid
           rows={[
             { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
@@ -1094,10 +1095,10 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
       <SectionCard title="Nawigacja kanoniczna" eyebrow="Glowne okno robocze">
         <div className="flex flex-wrap gap-2">
           <SurfaceActionButton
-            label="Warianty i uruchomienia"
+            label="Przebiegi obliczen"
             onClick={() =>
               openChildSurface('variants', {
-                titlePl: 'Warianty i uruchomienia',
+                titlePl: 'Przebiegi obliczen',
                 sizeClass: 'C',
                 supportsMiniSld: true,
                 subjectKind: 'helper_context',
@@ -1199,14 +1200,13 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
-  if (delegate === 'operation_form') {
-    return <OperationFormRouter />;
-  }
-  if (delegate === 'object_card') {
-    return <ObjectCardRouter />;
-  }
-  if (delegate === 'read_only_panel') {
-    return <ReadOnlyPanelRouter />;
+  const delegateBodies: Record<string, ReactNode> = {
+    operation_form: <OperationFormRouter />,
+    object_card: <ObjectCardRouter />,
+    read_only_panel: <ReadOnlyPanelRouter />,
+  };
+  if (typeof delegate === 'string' && delegate in delegateBodies) {
+    return delegateBodies[delegate];
   }
 
   switch (surface.screenCode) {
@@ -1218,6 +1218,8 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <CatalogHelperSurface surface={surface} />;
     case 'case_context':
       return <CaseContextSurface surface={surface} />;
+    case 'switchgear_wizard':
+      return <SwitchgearWizardPage />;
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:

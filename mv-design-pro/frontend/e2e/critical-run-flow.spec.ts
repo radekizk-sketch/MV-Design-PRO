@@ -235,7 +235,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     });
   }
 
-  // Krok 6: Readiness i ewentualne domknięcie blockerów katalogowych
+  // Krok 6: Gotowość i ewentualne domknięcie blokerów katalogowych
   let readiness: { ready: boolean; status: string; issues?: Array<{ code: string; element_ref?: string | null }> } | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const readinessResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`);
@@ -283,7 +283,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   const snapshotHashBefore = enmBefore.header?.hash_sha256;
   expect(snapshotHashBefore).toBeTruthy();
 
-  // Krok 7: Realny run + przejście do wyników
+  // Krok 7: Realne obliczenie + przejście do wyników
   const createRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
     { data: { analysis_type: 'SC_3F' } },

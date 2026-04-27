@@ -35,7 +35,7 @@ describe('routes V12.5', () => {
     expect(getRouteByHash('#results')).toBeNull();
     expect(getRouteByHash('#proof')).toBeNull();
     expect(getRouteByHash('#compare')).toBeNull();
-    expect(getRouteByHash('#switchgear')).toBeNull();
+    expect(getRouteByHash('#switchgear')).toEqual(ROUTES.SWITCHGEAR);
     expect(getRouteByHash('#network-build')).toBeNull();
     expect(getRouteByHash('#case-manager')).toBeNull();
   });

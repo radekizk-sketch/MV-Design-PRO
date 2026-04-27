@@ -226,11 +226,11 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Warianty i uruchomienia' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Przebiegi obliczen' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
     expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Kontekst przypadku' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Parametry analizy' })).toBeInTheDocument();
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {

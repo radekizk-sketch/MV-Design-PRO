@@ -82,9 +82,29 @@ function hasLegacyPvCatalog(payload: Payload): boolean {
 function hasLegacyBessCatalog(payload: Payload): boolean {
   const bessSpec = asPayload(payload.bess_spec);
   return (
-    bessSpec !== null
-    && isNonEmptyString(bessSpec.inverter_catalog_id)
-    && isNonEmptyString(bessSpec.storage_catalog_id)
+    bessSpec !== null &&
+    isNonEmptyString(bessSpec.inverter_catalog_id) &&
+    isNonEmptyString(bessSpec.storage_catalog_id)
+  );
+}
+
+function hasConverterCatalog(payload: Payload): boolean {
+  return (
+    isNonEmptyString(payload.converter_catalog_id)
+    || isNonEmptyString(payload.catalog_ref)
+    || isNonEmptyString(payload.catalog_item_id)
+    || hasCatalogBinding(payload.catalog_binding)
+    || hasLegacyPvCatalog(payload)
+    || hasLegacyBessCatalog(payload)
+  );
+}
+
+function hasRelayCatalog(payload: Payload): boolean {
+  const protection = asPayload(payload.protection);
+  return (
+    (protection !== null && isNonEmptyString(protection.catalog_item_id))
+    || isNonEmptyString(payload.catalog_item_id)
+    || isNonEmptyString(payload.catalog_ref)
   );
 }
 
@@ -109,10 +129,14 @@ function hasRelayCatalog(payload: Payload): boolean {
 }
 
 const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
-  continue_trunk_segment_sn: 'Wybierz typ linii lub kabla z katalogu przed utworzeniem segmentu.',
-  start_branch_segment_sn: 'Wybierz typ odgałęzienia z katalogu przed utworzeniem segmentu.',
-  insert_station_on_segment_sn: 'Wybierz transformator z katalogu przed wstawieniem stacji.',
-  insert_branch_pole_on_segment_sn: 'Wybierz typ słupa rozgałęźnego z katalogu przed wstawieniem.',
+  continue_trunk_segment_sn:
+    'Wybierz typ linii lub kabla z katalogu przed utworzeniem odcinka.',
+  start_branch_segment_sn:
+    'Wybierz typ odgalezienia z katalogu przed utworzeniem odcinka.',
+  insert_station_on_segment_sn:
+    'Wybierz transformator z katalogu przed wstawieniem stacji.',
+  insert_branch_pole_on_segment_sn:
+    'Wybierz typ slupa rozgaleznego z katalogu przed wstawieniem.',
   insert_zksn_on_segment_sn: 'Wybierz typ ZKSN z katalogu przed wstawieniem.',
   add_transformer_sn_nn: 'Wybierz transformator z katalogu przed dodaniem do stacji.',
   insert_section_switch_sn: 'Wybierz aparat z katalogu przed wstawieniem łącznika.',

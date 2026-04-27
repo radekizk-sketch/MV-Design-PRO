@@ -377,6 +377,7 @@ function buildBaysFromFields(
 
 function mapFieldRoleToBayRole(fieldRole: FieldRoleV1): BayRoleSldType {
   switch (fieldRole) {
+    case FieldRoleV1.GPZ_LINE_BAY: return BayRoleSld.LINE_OUT;
     case FieldRoleV1.LINE_IN: return BayRoleSld.LINE_IN;
     case FieldRoleV1.LINE_OUT: return BayRoleSld.LINE_OUT;
     case FieldRoleV1.LINE_BRANCH: return BayRoleSld.BRANCH;

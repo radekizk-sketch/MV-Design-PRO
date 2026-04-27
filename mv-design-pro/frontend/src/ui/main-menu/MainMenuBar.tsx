@@ -112,7 +112,7 @@ const MENU_GROUPS: MenuGroup[] = [
       { id: 'run-sc-1f', label: 'Zwarcia 1F (doziemne)' },
       { id: 'run-power-flow', label: 'Rozpływ mocy' },
       { id: 'sep-1', label: '', separator: true },
-      { id: 'variants', label: 'Warianty i uruchomienia' },
+      { id: 'variants', label: 'Przebiegi obliczen' },
       { id: 'analysis', label: 'Poziom analityczny' },
       { id: 'report', label: 'Generator raportu' },
     ],
@@ -207,19 +207,19 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
       ref={menuBarRef}
       data-testid="main-menu-bar"
       className={clsx(
-        'flex items-center h-7 px-1 bg-chrome-50 border-b border-chrome-200 select-none',
+        'flex h-7 items-center border-b border-chrome-800 bg-chrome-950 px-1 select-none',
         className
       )}
     >
       {/* Logo / Brand */}
-      <div className="flex items-center gap-1.5 px-2 mr-1">
-        <svg className="w-4 h-4 text-ind-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <div className="mr-1 flex items-center gap-1.5 px-2">
+        <svg className="h-4 w-4 text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
-        <span className="text-[11px] font-bold text-ind-800 tracking-wide">MV-DESIGN-PRO</span>
+        <span className="text-[11px] font-bold tracking-wide text-chrome-50">MV-DESIGN-PRO</span>
       </div>
 
-      <div className="h-4 w-px bg-chrome-200 mr-1" />
+      <div className="mr-1 h-4 w-px bg-chrome-700" />
 
       {/* Menu groups */}
       {MENU_GROUPS.map((group) => (
@@ -231,8 +231,8 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
             className={clsx(
               'px-2.5 py-1 text-[11px] font-medium rounded-sm transition-colors',
               openMenuId === group.id
-                ? 'bg-ind-100 text-ind-800'
-                : 'text-chrome-600 hover:bg-chrome-100 hover:text-chrome-800'
+                ? 'bg-chrome-800 text-emerald-200'
+                : 'text-chrome-200 hover:bg-chrome-900 hover:text-chrome-50'
             )}
             data-testid={`menu-${group.id}`}
           >
@@ -242,12 +242,12 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
           {/* Dropdown */}
           {openMenuId === group.id && (
             <div
-              className="absolute top-full left-0 mt-0.5 min-w-[220px] bg-white border border-chrome-200 rounded-md shadow-overlay z-50 py-1"
+              className="absolute left-0 top-full z-50 mt-0.5 min-w-[220px] rounded-md border border-chrome-700 bg-chrome-950 py-1 shadow-overlay"
               data-testid={`menu-dropdown-${group.id}`}
             >
               {group.items.map((item) =>
                 item.separator ? (
-                  <div key={item.id} className="my-1 h-px bg-chrome-100 mx-2" />
+                  <div key={item.id} className="mx-2 my-1 h-px bg-chrome-800" />
                 ) : (
                   <button
                     key={item.id}
@@ -257,16 +257,16 @@ export function MainMenuBar({ onAction, className }: MainMenuBarProps) {
                     className={clsx(
                       'w-full flex items-center justify-between px-3 py-1.5 text-[11px] transition-colors text-left',
                       item.disabled
-                        ? 'text-chrome-300 cursor-not-allowed'
+                        ? 'cursor-not-allowed text-chrome-600'
                         : item.danger
-                          ? 'text-red-700 hover:bg-red-50'
-                          : 'text-chrome-700 hover:bg-ind-50 hover:text-ind-800'
+                          ? 'text-rose-300 hover:bg-rose-500/10'
+                          : 'text-chrome-100 hover:bg-chrome-900 hover:text-emerald-200'
                     )}
                     data-testid={`menu-action-${item.id}`}
                   >
                     <span>{item.label}</span>
                     {item.shortcut && (
-                      <span className="ml-4 text-[10px] text-chrome-400 font-mono">
+                      <span className="ml-4 font-mono text-[10px] text-chrome-500">
                         {item.shortcut}
                       </span>
                     )}

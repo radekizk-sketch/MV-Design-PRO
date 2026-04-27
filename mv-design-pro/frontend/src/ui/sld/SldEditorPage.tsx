@@ -473,6 +473,9 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const studyCasesCount = useStudyCasesStore((state) => state.cases.length);
 
   const [isCreatingFirstCase, setIsCreatingFirstCase] = useState(false);
+  const [isFirstVariantDialogOpen, setIsFirstVariantDialogOpen] = useState(false);
+  const [firstVariantProjectName, setFirstVariantProjectName] = useState('Projekt 1');
+  const [firstVariantName, setFirstVariantName] = useState('Wariant 1');
   const [activeTool, setActiveTool] = useState<CreatorTool>('select');
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
   const [hoveredElementName, setHoveredElementName] = useState<string | null>(null);
@@ -1010,10 +1013,10 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockNextStep = useMemo(() => {
     if (!hasActiveCase) {
       return {
-        title: 'Aktywuj przypadek obliczeniowy',
+        title: 'Aktywuj wariant pracy',
         description:
-          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym przypadkiem obliczeniowym.',
-        actionLabel: 'Otworz kontekst przypadku',
+          'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym wariantem pracy.',
+        actionLabel: 'Otworz parametry analizy',
         onAction: openCaseContextSurface,
       };
     }
@@ -1107,47 +1110,76 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     openCaseContextSurface();
   }, [openCaseContextSurface]);
 
-  const handleCreateFirstCase = useCallback(async () => {
+  const handleCreateFirstCase = useCallback(() => {
     if (isCreatingFirstCase) {
       return;
     }
+    setFirstVariantProjectName(activeProjectName?.trim() || 'Projekt 1');
+    setFirstVariantName('Wariant 1');
+    setIsFirstVariantDialogOpen(true);
+  }, [activeProjectName, isCreatingFirstCase]);
+
+  const handleCloseFirstVariantDialog = useCallback(() => {
+    if (isCreatingFirstCase) {
+      return;
+    }
+    setIsFirstVariantDialogOpen(false);
+  }, [isCreatingFirstCase]);
+
+  const handleSubmitFirstVariant = useCallback(async () => {
+    if (isCreatingFirstCase) {
+      return;
+    }
+
+    const normalizedProjectName = firstVariantProjectName.trim() || 'Projekt 1';
+    const normalizedVariantName = firstVariantName.trim() || 'Wariant 1';
 
     setIsCreatingFirstCase(true);
     try {
       let projectId = activeProjectId;
       if (!projectId) {
-        const project = await withTimeout(createProject({ name: 'Projekt 1' }));
+        const project = await withTimeout(createProject({ name: normalizedProjectName }));
         projectId = project.id;
         setActiveProject(project.id, project.name);
       }
 
       if (!projectId) {
-        notify('Nie moĹĽna utworzyÄ‡ przypadku: brak aktywnego projektu. OtwĂłrz MenedĹĽer przypadkĂłw i utwĂłrz projekt.', 'warning');
+        notify('Nie mozna skonfigurowac wariantu: brak aktywnego projektu.', 'warning');
         return;
       }
 
       const createdCase = await withTimeout(
         createCase({
           project_id: projectId,
-          name: 'Przypadek 1',
-          description: '',
+          name: normalizedVariantName,
+          description: 'Pierwszy wariant przygotowany bezposrednio ze schematu jednokreskowego.',
           set_active: true,
-        })
+        }),
       );
 
       setActiveCase(createdCase.id, createdCase.name, 'ShortCircuitCase', createdCase.result_status);
-      notify(`Utworzono i aktywowano przypadek: ${createdCase.name}.`, 'success');
+      setIsFirstVariantDialogOpen(false);
+      notify(`Skonfigurowano aktywny wariant pracy: ${createdCase.name}.`, 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d';
+      const message = error instanceof Error ? error.message : 'Nieznany blad';
       if (message === 'TIMEOUT_API_CREATE_CASE') {
-        notify('Brak odpowiedzi API podczas tworzenia przypadku (limit 15 s). SprawdĹş poĹ‚Ä…czenie i sprĂłbuj ponownie.', 'warning');
+        notify('Brak odpowiedzi API podczas przygotowania wariantu pracy. Sprobuj ponownie.', 'warning');
         return;
       }
-      notify(`Nie udaĹ‚o siÄ™ utworzyÄ‡ przypadku. SzczegĂłĹ‚y techniczne: ${message}`, 'error');
+      notify(`Nie udalo sie przygotowac pierwszego wariantu pracy. Szczegoly techniczne: ${message}`, 'error');
     } finally {
       setIsCreatingFirstCase(false);
     }
-  }, [isCreatingFirstCase, activeProjectId, withTimeout, setActiveProject, createCase, setActiveCase]);
+  }, [
+    activeProjectId,
+    createCase,
+    firstVariantName,
+    firstVariantProjectName,
+    isCreatingFirstCase,
+    setActiveCase,
+    setActiveProject,
+    withTimeout,
+  ]);
 
   // BLOK 8: Uruchom obliczenia â€” otwiera menedĹĽer przypadkĂłw z widokiem obliczeniowym
   const handleCalculate = useCallback(() => {
@@ -1504,13 +1536,87 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           />
         )}
 
+        {isFirstVariantDialogOpen && (
+          <div
+            className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(2,8,23,0.74)] px-4"
+            data-testid="first-variant-quickstart"
+          >
+            <div className="w-full max-w-xl rounded-[18px] border border-[#1d3446] bg-[#091622] shadow-[0_24px_64px_rgba(2,8,23,0.58)]">
+              <div className="border-b border-[#173042] px-6 py-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[#7dd3fc]">
+                  Start projektu
+                </div>
+                <h3 className="mt-2 text-xl font-semibold text-[#e6edf5]">
+                  Skonfiguruj pierwszy wariant pracy
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-[#94a7b8]">
+                  Ten przebieg tworzy jawny punkt startowy: projekt, aktywny wariant pracy i kontekst do dalszego modelowania na schemacie.
+                </p>
+              </div>
+
+              <div className="grid gap-5 px-6 py-5">
+                {!activeProjectId && (
+                  <label className="grid gap-2">
+                    <span className="text-sm font-medium text-[#d5e0ea]">Nazwa projektu</span>
+                    <input
+                      data-testid="first-variant-project-name"
+                      value={firstVariantProjectName}
+                      onChange={(event) => setFirstVariantProjectName(event.target.value)}
+                      className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
+                      placeholder="Projekt 1"
+                    />
+                  </label>
+                )}
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-medium text-[#d5e0ea]">Nazwa wariantu pracy</span>
+                  <input
+                    data-testid="first-variant-name"
+                    value={firstVariantName}
+                    onChange={(event) => setFirstVariantName(event.target.value)}
+                    className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
+                    placeholder="Wariant 1"
+                  />
+                </label>
+
+                <div className="rounded-[14px] border border-[#163245] bg-[#08131d] px-4 py-3 text-sm text-[#9fb0bf]">
+                  Po zapisaniu system aktywuje wariant, odswiezy pasek kontekstu i zdejmie blokade pustego schematu.
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 border-t border-[#173042] px-6 py-4">
+                <button
+                  type="button"
+                  onClick={handleCloseFirstVariantDialog}
+                  disabled={isCreatingFirstCase}
+                  className="rounded-[12px] border border-[#294153] bg-[#0b1823] px-4 py-2 text-sm font-medium text-[#c7d4df] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Anuluj
+                </button>
+                <button
+                  type="button"
+                  data-testid="first-variant-submit"
+                  onClick={handleSubmitFirstVariant}
+                  disabled={isCreatingFirstCase || firstVariantName.trim().length === 0 || (!activeProjectId && firstVariantProjectName.trim().length === 0)}
+                  className="rounded-[12px] border border-[#0ea5e9] bg-[#0ea5e9]/16 px-4 py-2 text-sm font-semibold text-[#e0f2fe] disabled:cursor-not-allowed disabled:border-[#294153] disabled:bg-[#10202d] disabled:text-[#6e8192]"
+                >
+                  {isCreatingFirstCase ? 'Zapisywanie...' : 'Aktywuj wariant'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
         <div
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
           data-testid="sld-bottom-right-toolbars"
         >
-          <LabelModeToolbar compact />
-          <OperationalModeToolbar />
+          <div className="flex items-center gap-2 rounded-[18px] border border-[#1d3446] bg-[rgba(7,19,28,0.88)] px-2 py-2 shadow-[0_16px_32px_rgba(2,8,23,0.42),inset_0_1px_0_rgba(148,163,184,0.06)] backdrop-blur">
+            <LabelModeToolbar compact />
+            <OperationalModeToolbar />
+          </div>
         </div>
       </div>
 

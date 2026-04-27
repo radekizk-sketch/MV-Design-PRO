@@ -296,7 +296,13 @@ class Generator(ENMElement):
     overrides: list[ParameterOverride] = []
 
     # PV/BESS connection variant (KROK 2: explicit, no guessing)
-    connection_variant: Literal["nn_side", "block_transformer"] | None = None
+    connection_variant: Literal[
+        "LV_BEHIND_STATION_TRANSFORMER",
+        "DEDICATED_MV_CONNECTION",
+        "SOURCE_CONNECTION_STATION",
+        "nn_side",
+        "block_transformer",
+    ] | None = None
     """
     Wariant przylaczenia PV/BESS:
     - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)

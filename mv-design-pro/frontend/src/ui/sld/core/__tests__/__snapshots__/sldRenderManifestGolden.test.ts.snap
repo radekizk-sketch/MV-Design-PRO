@@ -172,7 +172,7 @@ exports[`SLD Render Manifest Golden (Step VII) > pv_bess: matches golden snapsho
   "visualTopologySummary": {
     "gpz": 1,
     "nopy": 0,
-    "polaSn": 3,
+    "polaSn": 1,
     "punktyRozgalezien": 0,
     "ringi": 0,
     "segmentyMagistrali": 1,

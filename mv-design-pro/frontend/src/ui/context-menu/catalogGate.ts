@@ -23,6 +23,9 @@ export type CatalogNamespace =
   | 'VT'
   | 'OBCIAZENIE';
 
+export type CatalogGateMode = 'required' | 'topology_allowed_without_catalog';
+
+
 const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   add_grid_source_sn: 'ZRODLO_SN',
   add_sn_bay: 'APARAT_SN',
@@ -60,6 +63,18 @@ export function catalogNamespace(operationId: string): CatalogNamespace | undefi
   return CATALOG_REQUIRED_OPERATIONS[canonicalOp];
 }
 
+export function catalogGateMode(operationId: string): CatalogGateMode | undefined {
+  const canonicalOp = resolveCanonicalOperationName(operationId);
+  if (canonicalOp === null || !(canonicalOp in CATALOG_REQUIRED_OPERATIONS)) {
+    return undefined;
+  }
+  if (canonicalOp === 'add_grid_source_sn' || canonicalOp === 'add_sn_bay') {
+    return 'topology_allowed_without_catalog';
+  }
+  return 'required';
+}
+
+
 export function catalogNamespaceLabel(ns: CatalogNamespace): string {
   const labels: Record<CatalogNamespace, string> = {
     ZRODLO_SN: 'Zasilanie systemowe SN',
@@ -85,6 +100,7 @@ export function resolveCanonicalOperation(actionId: string): string {
 
 export interface CatalogGateResult {
   required: boolean;
+  mode?: CatalogGateMode;
   namespace?: CatalogNamespace;
   label?: string;
   canonicalOperation: string;
@@ -100,8 +116,20 @@ export function checkCatalogGate(actionId: string): CatalogGateResult {
     };
   }
 
+  const mode = catalogGateMode(actionId);
+  if (mode === 'topology_allowed_without_catalog') {
+    return {
+      required: false,
+      mode,
+      namespace,
+      label: catalogNamespaceLabel(namespace),
+      canonicalOperation,
+    };
+  }
+
   return {
     required: true,
+    mode,
     namespace,
     label: catalogNamespaceLabel(namespace),
     canonicalOperation,

@@ -89,7 +89,6 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Routers
-app.include_router(analysis_runs_router)
 app.include_router(analysis_runs_router, prefix="/api")
 app.include_router(catalog_router)
 app.include_router(comparison_router)

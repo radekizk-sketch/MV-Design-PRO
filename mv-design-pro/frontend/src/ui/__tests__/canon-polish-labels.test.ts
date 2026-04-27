@@ -36,8 +36,8 @@ describe('Canon Guard: polskie etykiety w aktywnym UI', () => {
 
   it('ma polskie etykiety w pasku aktywnego przypadku', () => {
     const { missing, fileExists } = fileContains('active-case-bar/ActiveCaseBar.tsx', [
-      'Zmien przypadek',
-      'Kontekst przypadku',
+      'Przelacz zestaw',
+      'Parametry analizy',
       'Oblicz',
       'Podglad wynikow',
     ]);

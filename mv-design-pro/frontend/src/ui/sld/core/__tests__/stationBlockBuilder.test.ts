@@ -130,17 +130,22 @@ function buildGN_STA_INLINE(): TopologyInputV1 {
       { id: 'bus_sn', name: 'Szyna SN 15kV GPZ', voltageKv: 15, inService: true },
       { id: 'bus_st1', name: 'Szyna SN 15kV Stacja B1', voltageKv: 15, inService: true },
       { id: 'bus_st2', name: 'Szyna SN 15kV Stacja A2', voltageKv: 15, inService: true },
+      { id: 'bus_nn_b1', name: 'Szyna nN 0.4kV Stacja B1', voltageKv: 0.4, inService: true },
     ],
     branches: [
       { id: 'line_1', name: 'Linia SN 1', kind: BranchKind.LINE, fromNodeId: 'bus_sn', toNodeId: 'bus_st1', lengthKm: 3, isNormallyOpen: false, inService: true },
       { id: 'line_2', name: 'Linia SN 2', kind: BranchKind.LINE, fromNodeId: 'bus_st1', toNodeId: 'bus_st2', lengthKm: 2, isNormallyOpen: false, inService: true },
+      { id: 'tr_b1', name: 'TR 15/0.4kV B1', kind: BranchKind.TR_LINK, fromNodeId: 'bus_st1', toNodeId: 'bus_nn_b1', lengthKm: 0, isNormallyOpen: false, inService: true },
     ],
     stations: [
-      { id: 'sta_b1', name: 'Stacja B1', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st1'], switchIds: [], transformerIds: [] },
+      { id: 'sta_b1', name: 'Stacja B1', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st1'], switchIds: [], transformerIds: ['tr_b1'] },
       { id: 'sta_a2', name: 'Stacja A2', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st2'], switchIds: [], transformerIds: [] },
     ],
     sources: [
       { id: 'src_gpz', name: 'GPZ 110/15kV', nodeId: 'bus_sn', inService: true },
+    ],
+    loads: [
+      { id: 'load_b2', name: 'Odbiorca za stacja B1', nodeId: 'bus_st2', inService: true },
     ],
   });
 }
@@ -156,14 +161,16 @@ function buildGN_STA_BRANCH(): TopologyInputV1 {
       { id: 'bus_st1', name: 'Szyna SN 15kV Stacja C1', voltageKv: 15, inService: true },
       { id: 'bus_br1', name: 'Szyna SN 15kV Odgal 1', voltageKv: 15, inService: true },
       { id: 'bus_st2', name: 'Szyna SN 15kV Stacja A3', voltageKv: 15, inService: true },
+      { id: 'bus_nn_c1', name: 'Szyna nN 0.4kV Stacja C1', voltageKv: 0.4, inService: true },
     ],
     branches: [
       { id: 'line_1', name: 'Linia SN 1', kind: BranchKind.LINE, fromNodeId: 'bus_sn', toNodeId: 'bus_st1', lengthKm: 2, isNormallyOpen: false, inService: true },
       { id: 'line_2', name: 'Linia SN 2', kind: BranchKind.LINE, fromNodeId: 'bus_st1', toNodeId: 'bus_st2', lengthKm: 3, isNormallyOpen: false, inService: true },
       { id: 'line_br', name: 'Linia odgalezienie', kind: BranchKind.CABLE, fromNodeId: 'bus_st1', toNodeId: 'bus_br1', lengthKm: 1, isNormallyOpen: false, inService: true },
+      { id: 'tr_c1', name: 'TR 15/0.4kV C1', kind: BranchKind.TR_LINK, fromNodeId: 'bus_st1', toNodeId: 'bus_nn_c1', lengthKm: 0, isNormallyOpen: false, inService: true },
     ],
     stations: [
-      { id: 'sta_c1', name: 'Stacja C1', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st1'], switchIds: [], transformerIds: [] },
+      { id: 'sta_c1', name: 'Stacja C1', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st1'], switchIds: [], transformerIds: ['tr_c1'] },
       { id: 'sta_a3', name: 'Stacja A3', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_st2'], switchIds: [], transformerIds: [] },
     ],
     sources: [
@@ -182,13 +189,17 @@ function buildGN_STA_SECTIONAL(): TopologyInputV1 {
       { id: 'bus_sn', name: 'Szyna SN GPZ', voltageKv: 15, inService: true },
       { id: 'bus_sec_a', name: 'Szyna SN Sekcja A', voltageKv: 15, inService: true },
       { id: 'bus_sec_b', name: 'Szyna SN Sekcja B', voltageKv: 15, inService: true },
+      { id: 'bus_out', name: 'Szyna SN za stacja sekcyjna', voltageKv: 15, inService: true },
+      { id: 'bus_nn_d1', name: 'Szyna nN 0.4kV Stacja D1', voltageKv: 0.4, inService: true },
     ],
     branches: [
       { id: 'line_1', name: 'Linia zasilajaca', kind: BranchKind.LINE, fromNodeId: 'bus_sn', toNodeId: 'bus_sec_a', lengthKm: 5, isNormallyOpen: false, inService: true },
+      { id: 'line_2', name: 'Linia wyjsciowa', kind: BranchKind.LINE, fromNodeId: 'bus_sec_b', toNodeId: 'bus_out', lengthKm: 2, isNormallyOpen: false, inService: true },
       { id: 'coupler_1', name: 'Sprzeglo sekcyjne', kind: BranchKind.BUS_LINK, fromNodeId: 'bus_sec_a', toNodeId: 'bus_sec_b', lengthKm: 0, isNormallyOpen: false, inService: true },
+      { id: 'tr_d1', name: 'TR 15/0.4kV D1', kind: BranchKind.TR_LINK, fromNodeId: 'bus_sec_b', toNodeId: 'bus_nn_d1', lengthKm: 0, isNormallyOpen: false, inService: true },
     ],
     stations: [
-      { id: 'sta_d1', name: 'Stacja D1 Sekcyjna', stationType: StationKind.SWITCHING, voltageKv: 15, busIds: ['bus_sec_a', 'bus_sec_b'], switchIds: [], transformerIds: [] },
+      { id: 'sta_d1', name: 'Stacja D1 Sekcyjna', stationType: StationKind.SWITCHING, voltageKv: 15, busIds: ['bus_sec_a', 'bus_sec_b'], switchIds: [], transformerIds: ['tr_d1'] },
     ],
     sources: [
       { id: 'src_gpz', name: 'GPZ 110/15kV', nodeId: 'bus_sn', inService: true },
@@ -416,6 +427,41 @@ describe('Field/Device Building — RUN #3D', () => {
     expect(trField).toBeDefined();
   });
 
+  it('GN-STA-INLINE: stacja przelotowa ma pole wejsciowe, wyjsciowe i transformatorowe', () => {
+    const input = buildGN_STA_INLINE();
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_b1');
+    const roles = new Set(block!.fields.map(field => field.fieldRole));
+
+    expect(roles.has(FieldRoleV1.LINE_IN)).toBe(true);
+    expect(roles.has(FieldRoleV1.LINE_OUT)).toBe(true);
+    expect(roles.has(FieldRoleV1.TRANSFORMER_SN_NN)).toBe(true);
+  });
+
+  it('GN-STA-BRANCH: stacja odgalezieniowa rozroznia ciag glowny i pole odgalezne', () => {
+    const input = buildGN_STA_BRANCH();
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_c1');
+    const roles = new Set(block!.fields.map(field => field.fieldRole));
+
+    expect(roles.has(FieldRoleV1.LINE_IN)).toBe(true);
+    expect(roles.has(FieldRoleV1.LINE_OUT)).toBe(true);
+    expect(roles.has(FieldRoleV1.LINE_BRANCH)).toBe(true);
+    expect(roles.has(FieldRoleV1.TRANSFORMER_SN_NN)).toBe(true);
+  });
+
+  it('GN-STA-SECTIONAL: stacja sekcyjna ma wejscie, wyjscie, sprzeglo i transformator', () => {
+    const input = buildGN_STA_SECTIONAL();
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_d1');
+    const roles = new Set(block!.fields.map(field => field.fieldRole));
+
+    expect(roles.has(FieldRoleV1.LINE_IN)).toBe(true);
+    expect(roles.has(FieldRoleV1.LINE_OUT)).toBe(true);
+    expect(roles.has(FieldRoleV1.COUPLER_SN)).toBe(true);
+    expect(roles.has(FieldRoleV1.TRANSFORMER_SN_NN)).toBe(true);
+  });
+
   it('GN-STA-LEAF: devices mapped from domain', () => {
     const input = buildGN_STA_LEAF();
     const result = buildVisualGraphFromTopology(input);
@@ -423,6 +469,85 @@ describe('Field/Device Building — RUN #3D', () => {
     const cb = allDevices.find(d => d.deviceType === DeviceTypeV1.CB);
     expect(cb).toBeDefined();
     expect(cb!.id).toBe('cb_1');
+  });
+
+  it('explicit field_specs renderuje pole GPZ bez gałęzi heurystycznych', () => {
+    const input = makeBaseInput({
+      connectionNodes: [
+        { id: 'bus_gpz', name: 'Szyna GPZ', voltageKv: 15, inService: true },
+      ],
+      stations: [
+        {
+          id: 'sta_gpz',
+          name: 'GPZ 15 kV',
+          stationType: StationKind.MAIN_SUBSTATION,
+          voltageKv: 15,
+          busIds: ['bus_gpz'],
+          switchIds: [],
+          transformerIds: [],
+          fieldSpecs: [
+            {
+              fieldRef: 'bay_sn_in',
+              name: 'Pole SN wejściowe',
+              bayRole: 'IN',
+              busRef: 'bus_gpz',
+              equipmentRefs: ['cb_in'],
+              protectionRef: null,
+              gpzSectionId: 'sec_1',
+              tags: ['gpz', 'sn'],
+              meta: { source_field_kind: 'IN' },
+            },
+          ],
+          nnFieldSpecs: [
+            {
+              fieldRef: 'bay_meas',
+              name: 'Pole pomiarowe',
+              bayRole: 'MEASUREMENT',
+              busRef: 'bus_gpz',
+              equipmentRefs: ['ct_in'],
+              protectionRef: null,
+              gpzSectionId: null,
+              tags: ['pomiar'],
+              meta: { source_field_kind: 'MEASUREMENT' },
+            },
+          ],
+        },
+      ],
+      devices: [
+        {
+          id: 'cb_in',
+          name: 'Wyłącznik wejściowy',
+          kind: DeviceKind.CB,
+          nodeId: 'bus_gpz',
+          inService: true,
+          catalogRef: 'cat_cb_in',
+          state: 'CLOSED',
+          bayRef: 'bay_sn_in',
+        },
+        {
+          id: 'ct_in',
+          name: 'Przekładnik prądowy',
+          kind: DeviceKind.CT,
+          nodeId: 'bus_gpz',
+          inService: true,
+          catalogRef: 'cat_ct_in',
+          state: null,
+          bayRef: 'bay_meas',
+        },
+      ],
+      sources: [
+        { id: 'src_gpz', name: 'GPZ 110/15kV', nodeId: 'bus_gpz', inService: true },
+      ],
+    });
+
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_gpz');
+
+    expect(block).toBeDefined();
+    expect(block!.fields.map(field => field.id)).toEqual(['bay_meas', 'bay_sn_in']);
+    expect(block!.fields.find(f => f.fieldRole === FieldRoleV1.GPZ_LINE_BAY)).toBeDefined();
+    expect(block!.fields.find(f => f.fieldRole === FieldRoleV1.MEASUREMENT_SN)).toBeDefined();
+    expect(block!.devices.map(device => device.id)).toEqual(['cb_in', 'ct_in']);
   });
 
   it('GN-OZE-SN: PV i BESS generatory tworza pola', () => {
@@ -436,6 +561,28 @@ describe('Field/Device Building — RUN #3D', () => {
 
     const bessField = block!.fields.find(f => f.fieldRole === FieldRoleV1.BESS_SN);
     expect(bessField).toBeDefined();
+  });
+
+  it('PV za transformatorem stacyjnym tworzy pole nN, nie pole zrodla SN', () => {
+    const input = makeBaseInput({
+      connectionNodes: [
+        { id: 'bus_sn', name: 'Szyna SN', voltageKv: 15, inService: true },
+      ],
+      stations: [
+        { id: 'sta_lv_pv', name: 'Stacja z PV nN', stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: ['bus_sn'], switchIds: [], transformerIds: [] },
+      ],
+      sources: [
+        { id: 'src_gpz', name: 'GPZ', nodeId: 'bus_sn', inService: true },
+      ],
+      generators: [
+        { id: 'gen_pv_lv', name: 'PV nN', kind: GeneratorKind.PV, nodeId: 'bus_sn', inService: true, ratedPowerMw: 0.25, catalogRef: 'cat_pv', blockingTransformerId: null, connectionVariant: 'LV_BEHIND_STATION_TRANSFORMER', stationRef: 'sta_lv_pv' },
+      ],
+    });
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_lv_pv');
+
+    expect(block!.fields.some(f => f.fieldRole === FieldRoleV1.PV_NN)).toBe(true);
+    expect(block!.fields.some(f => f.fieldRole === FieldRoleV1.PV_SN)).toBe(false);
   });
 
   it('GN-OZE-SN: generator devices present', () => {
@@ -557,6 +704,17 @@ describe('Station Block Validation — RUN #3D', () => {
       f.code === FieldDeviceFixCodes.CATALOG_REF_MISSING,
     );
     expect(catalogFix).toBeDefined();
+  });
+  it('SN/nN station contract reports missing nN switchgear instead of hiding transformer-only station', () => {
+    const input = buildGN_STA_LEAF();
+    const result = buildVisualGraphFromTopology(input);
+    const block = result.stationBlockDetails.stationBlocks.find(b => b.blockId === 'sta_a1');
+    const blockFixActions = validateStationBlock(block!);
+
+    expect(block!.fields.some(field => field.fieldRole === FieldRoleV1.TRANSFORMER_SN_NN)).toBe(true);
+    expect(blockFixActions.some(
+      fix => fix.code === FieldDeviceFixCodes.STATION_NN_SWITCHGEAR_MISSING,
+    )).toBe(true);
   });
 });
 

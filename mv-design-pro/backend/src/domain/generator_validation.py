@@ -29,6 +29,9 @@ from domain.readiness import (
 _OZE_GEN_TYPES = frozenset(
     {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
 )
+_LV_VARIANTS = frozenset({"nn_side", "LV_BEHIND_STATION_TRANSFORMER"})
+_SOURCE_STATION_VARIANTS = frozenset({"SOURCE_CONNECTION_STATION"})
+_DEDICATED_MV_VARIANTS = frozenset({"block_transformer", "DEDICATED_MV_CONNECTION"})
 
 
 def validate_generator_connections(
@@ -97,7 +100,7 @@ def validate_generator_connections(
             )
             continue
 
-        if connection_variant == "nn_side":
+        if connection_variant in _LV_VARIANTS or connection_variant in _SOURCE_STATION_VARIANTS:
             # Variant A: must have station_ref
             if not station_ref:
                 issues.append(
@@ -132,7 +135,7 @@ def validate_generator_connections(
                     )
                 )
 
-        elif connection_variant == "block_transformer":
+        elif connection_variant in _DEDICATED_MV_VARIANTS:
             # Variant B: must have blocking_transformer_ref
             if not blocking_tr_ref:
                 issues.append(

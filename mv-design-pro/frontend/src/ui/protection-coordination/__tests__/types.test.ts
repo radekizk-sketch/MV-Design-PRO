@@ -85,8 +85,8 @@ describe('Protection Coordination Types', () => {
 
     it('should have context labels for StudyCase/Snapshot/Run', () => {
       expect(LABELS.context.project).toBe('Projekt');
-      expect(LABELS.context.studyCase).toBe('Przypadek obliczeniowy');
-      expect(LABELS.context.snapshot).toBe('Migawka sieci');
+      expect(LABELS.context.studyCase).toBe('Wariant pracy');
+      expect(LABELS.context.snapshot).toBe('Stan modelu');
       expect(LABELS.context.run).toBe('Przebieg analizy');
     });
 

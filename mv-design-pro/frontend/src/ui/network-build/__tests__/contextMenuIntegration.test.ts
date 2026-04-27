@@ -164,17 +164,11 @@ describe('buildContextMenuForElement', () => {
     expect(addSnFieldOutAction).toBeDefined();
 
     addSnFieldOutAction!.handler?.();
-    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
-      operationId: 'add_sn_bay',
-      elementId: 'test-id-001',
-      elementType: 'Station',
-      namespace: 'APARAT_SN',
-      label: 'Aparat SN',
-      initialFormData: {
-        station_ref: 'test-id-001',
-        bay_role: 'OUT',
-      },
+    expect(handlers.onOpenOperationForm).toHaveBeenCalledWith('add_sn_bay', {
+      station_ref: 'test-id-001',
+      bay_role: 'OUT',
     });
+    expect(handlers.onCatalogRequired).not.toHaveBeenCalled();
   });
 
   it('kieruje Bus add_breaker do kanonicznego add_sn_bay z wariantem aparatu', () => {
@@ -187,18 +181,12 @@ describe('buildContextMenuForElement', () => {
     expect(addBreakerAction?.label).toBe('Dodaj pole SN z wyłącznikiem...');
 
     addBreakerAction!.handler?.();
-    expect(handlers.onCatalogRequired).toHaveBeenCalledWith({
-      operationId: 'add_sn_bay',
-      elementId: 'test-id-001',
-      elementType: 'Bus',
-      namespace: 'APARAT_SN',
-      label: 'Aparat SN',
-      initialFormData: {
-        bus_ref: 'test-id-001',
-        apparatus_kind: 'BREAKER',
-        bay_role: 'OUT',
-      },
+    expect(handlers.onOpenOperationForm).toHaveBeenCalledWith('add_sn_bay', {
+      bus_ref: 'test-id-001',
+      apparatus_kind: 'BREAKER',
+      bay_role: 'OUT',
     });
+    expect(handlers.onCatalogRequired).not.toHaveBeenCalled();
   });
 
   it('kieruje BusNN add_nn_outgoing_field do kanonicznego add_nn_outgoing_field z jawna intencja SOURCE', () => {

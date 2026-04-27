@@ -60,8 +60,8 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-amber-600',
   },
   NO_CASE: {
-    title: 'Nie wybrano przypadku obliczeniowego',
-    description: 'Wybierz istniejacy lub utworz nowy przypadek, aby uruchomic obliczenia.',
+    title: 'Brak aktywnego wariantu pracy',
+    description: 'Aktywuj istniejacy wariant pracy albo skonfiguruj pierwszy wariant, aby prowadzic model i obliczenia.',
     bgColor: 'bg-slate-50/95',
     borderColor: 'border-slate-300',
     textColor: 'text-slate-800',
@@ -69,8 +69,8 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-blue-600',
   },
   NO_SNAPSHOT: {
-    title: 'Brak aktywnego snapshotu',
-    description: 'Wybierz snapshot w drzewie projektu lub utworz nowy.',
+    title: 'Brak aktywnego stanu modelu',
+    description: 'Wybierz stan modelu w drzewie projektu lub przygotuj nowy.',
     bgColor: 'bg-violet-50/90',
     borderColor: 'border-violet-300',
     textColor: 'text-violet-900',
@@ -79,7 +79,7 @@ const EMPTY_STATE_CONFIG: Record<
   },
   NO_MODEL: {
     title: 'Pusty schemat jednokreskowy',
-    description: 'Kliknij prawym przyciskiem na schemacie i wybierz Sieć → Dodaj GPZ, aby rozpocząć projektowanie sieci.',
+    description: 'Kliknij prawym przyciskiem na schemacie i wybierz Siec -> Dodaj GPZ, aby rozpoczac projektowanie sieci.',
     bgColor: 'bg-stone-50/95',
     borderColor: 'border-stone-300',
     textColor: 'text-stone-700',
@@ -173,7 +173,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-select-case"
               >
-                Wybierz przypadek
+                Wybierz wariant pracy
               </button>
             )}
             {!hasCases && onCreateCase && (
@@ -190,7 +190,7 @@ export function SldEmptyOverlay({
                 )}
                 data-testid="sld-empty-overlay-create-case"
               >
-                {isCreatingCase ? 'Tworzenie przypadku...' : 'Utworz pierwszy przypadek'}
+                {isCreatingCase ? 'Przygotowywanie wariantu...' : 'Skonfiguruj pierwszy wariant'}
               </button>
             )}
             {hasCases && onCreateCase && (
@@ -200,7 +200,7 @@ export function SldEmptyOverlay({
                 className="rounded-md border border-slate-300 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-150 hover:border-slate-400 hover:bg-white"
                 data-testid="sld-empty-overlay-create-new"
               >
-                Nowy przypadek
+                Nowy wariant pracy
               </button>
             )}
           </div>

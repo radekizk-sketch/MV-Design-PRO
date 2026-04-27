@@ -374,9 +374,12 @@ function powerPathOrder(pos: string): number {
  */
 function isDeviceOnPowerPath(device: DeviceV1): boolean {
   return (
-    device.electricalRole === DeviceElectricalRoleV1.POWER_PATH ||
-    device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT ||
-    device.electricalRole === DeviceElectricalRoleV1.TERMINATION
+    device.powerPathPosition !== DevicePowerPathPositionV1.OFF_PATH &&
+    (
+      device.electricalRole === DeviceElectricalRoleV1.POWER_PATH ||
+      device.electricalRole === DeviceElectricalRoleV1.MEASUREMENT ||
+      device.electricalRole === DeviceElectricalRoleV1.TERMINATION
+    )
   );
 }
 
@@ -657,6 +660,9 @@ function resolveBayPorts(
     portOut = { x: bayCenterX, y: cableExitY };
   }
   if (field.fieldRole === 'LINE_BRANCH' && blockPorts.branchPort) {
+    portOut = { x: bayCenterX, y: cableExitY };
+  }
+  if (field.fieldRole === 'GPZ_LINE_BAY' && blockPorts.trunkOutPort) {
     portOut = { x: bayCenterX, y: cableExitY };
   }
 

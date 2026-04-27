@@ -103,7 +103,7 @@ describe('interactionController', () => {
     expect(resolved.mode).toBe('DOMAIN_OP');
     expect(resolved.canonicalOp).toBe('add_grid_source_sn');
     expect(resolved.payload).toEqual({ source: 'sld_tool' });
-    expect(resolved.catalogRequired).toBe(true);
+    expect(resolved.catalogRequired).toBe(false);
     expect(resolved.catalogNamespace).toBe('ZRODLO_SN');
   });
 

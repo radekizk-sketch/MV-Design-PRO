@@ -174,7 +174,7 @@ describe('buildResultsSection', () => {
     };
     const section = buildResultsSection(data);
     expect(section.id).toBe('element_results');
-    expect(section.fields.some(f => f.value === 'Brak wynikow dla tego elementu')).toBe(true);
+    expect(section.fields.some(f => f.value === 'Brak wyników dla tego elementu')).toBe(true);
   });
 
   it('shows SC data when available', () => {
@@ -192,9 +192,9 @@ describe('buildResultsSection', () => {
     expect(section.fields.length).toBeGreaterThanOrEqual(6);
     // Check specific labels
     const labels = section.fields.map(f => f.label);
-    expect(labels).toContain('Prad zwarciowy Ik"');
-    expect(labels).toContain('Prad udarowy ip');
-    expect(labels).toContain('Obciazenie');
+    expect(labels).toContain('Prąd zwarciowy Ik"');
+    expect(labels).toContain('Prąd udarowy ip');
+    expect(labels).toContain('Obciążenie');
   });
 
   it('highlights loading > 100% as error', () => {
@@ -227,7 +227,7 @@ describe('buildResultsSection', () => {
     const section = buildResultsSection(data);
     const breakingField = section.fields.find(f => f.key === 'breaking_ok');
     expect(breakingField?.highlight).toBe('error');
-    expect(breakingField?.value).toBe('NIEWYSTARCZAJACA');
+    expect(breakingField?.value).toBe('NIEWYSTARCZAJĄCA');
   });
 });
 

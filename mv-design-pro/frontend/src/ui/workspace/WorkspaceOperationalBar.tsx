@@ -174,7 +174,7 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Aktywna migawka"
+        label="Id migawki"
         value={shortId(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
@@ -191,7 +191,7 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-snapshot"
       />
       <SegmentButton
-        label="Aktywny wariant"
+        label="Uklad pracy"
         value={activeCaseName ?? 'Brak aktywnego wariantu'}
         tone={activeCaseName ? 'accent' : 'default'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}

@@ -792,7 +792,7 @@ const CatalogSymbol: React.FC<Omit<CanonicalSymbolProps, 'symbolId'>> = ({
 );
 
 /**
- * Study Case / Przypadek obliczeniowy
+ * Study Case / wariant pracy
  * Calculator/document with sigma symbol.
  */
 const StudyCaseSymbol: React.FC<Omit<CanonicalSymbolProps, 'symbolId'>> = ({

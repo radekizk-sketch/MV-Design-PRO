@@ -1238,7 +1238,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       try {
         const metadata = {
           projectName: activeProjectName ?? 'projekt',
-          caseName: activeCaseName ?? 'przypadek',
+          caseName: activeCaseName ?? 'wariant pracy',
           runId: sldOverlay?.run_id,
           zoomPercent: Math.round(viewport.zoom * 100),
           timestamp: new Date().toISOString(),
@@ -1286,7 +1286,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   const exportMetadata = useMemo(
     () => ({
       projectName: activeProjectName ?? 'projekt',
-      caseName: activeCaseName ?? 'przypadek',
+      caseName: activeCaseName ?? 'wariant pracy',
       runId: sldOverlay?.run_id,
       zoomPercent: Math.round(viewport.zoom * 100),
       timestamp: new Date().toISOString(),
@@ -1343,20 +1343,20 @@ export const SLDView: React.FC<SLDViewProps> = ({
   return (
     <div
       data-testid="sld-view"
-      className="flex flex-col h-full bg-canvas-bg"
+      className="flex h-full flex-col bg-[linear-gradient(180deg,#040b11_0%,#08131d_100%)]"
     >
       {/* Pasek narzędzi SLD — klasa przemysłowa */}
       <div
         data-testid="sld-view-toolbar"
-        className="flex items-center justify-between px-4 py-2 bg-chrome-800 border-b border-chrome-700 shadow-toolbar"
+        className="flex items-center justify-between border-b border-[#1a3040] bg-[linear-gradient(180deg,#08131d_0%,#07111a_100%)] px-4 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]"
       >
         <div className="flex items-center gap-3">
           {/* Logo/Icon */}
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-ind-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+            <svg className="w-5 h-5 text-cyan-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
             </svg>
-            <h3 className="text-sm font-semibold text-chrome-100 tracking-wide">Schemat jednokreskowy</h3>
+            <h3 className="text-sm font-semibold tracking-wide text-slate-50">Schemat jednokreskowy</h3>
           </div>
           <span className="text-xs text-chrome-400 font-medium">
             Widok schematu
@@ -1364,12 +1364,12 @@ export const SLDView: React.FC<SLDViewProps> = ({
           {/* PR-SLD-06: Mode indicator */}
           <span
             data-testid="sld-mode-indicator"
-            className={`rounded px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ${
               isResultsMode
-                ? 'bg-blue-600 text-white'
+                ? 'border-blue-500/35 bg-blue-500/14 text-white'
                 : isProtectionMode
-                ? 'bg-emerald-600 text-white'
-                : 'bg-chrome-600 text-chrome-200'
+                ? 'border-emerald-500/35 bg-emerald-500/14 text-white'
+                : 'border-[#274154] bg-[#0d1c29] text-[#dde8f2]'
             }`}
           >
             {SLD_MODE_LABELS_PL[sldMode]}
@@ -1383,7 +1383,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
               type="button"
               onClick={handleZoomOut}
               disabled={viewport.zoom <= ZOOM_MIN}
-              className="px-2.5 py-1.5 text-sm text-chrome-200 hover:bg-chrome-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2.5 py-1.5 text-sm text-[#d7e5ef] transition-colors hover:bg-[#112433] disabled:cursor-not-allowed disabled:opacity-40"
               title="Pomniejsz"
               data-testid="sld-zoom-out"
             >
@@ -1392,7 +1392,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
               </svg>
             </button>
             <span
-              className="text-xs text-chrome-100 w-12 text-center font-mono bg-chrome-600 py-1.5"
+              className="w-12 bg-[#112433] py-1.5 text-center font-mono text-xs text-slate-50"
               data-testid="sld-zoom-level"
             >
               {zoomPercent}%
@@ -1401,7 +1401,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
               type="button"
               onClick={handleZoomIn}
               disabled={viewport.zoom >= ZOOM_MAX}
-              className="px-2.5 py-1.5 text-sm text-chrome-200 hover:bg-chrome-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-2.5 py-1.5 text-sm text-[#d7e5ef] transition-colors hover:bg-[#112433] disabled:cursor-not-allowed disabled:opacity-40"
               title="Powiększ"
               data-testid="sld-zoom-in"
             >
@@ -1627,7 +1627,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       {/* Canvas container */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-hidden relative"
+        className="relative flex-1 overflow-hidden border-t border-[#10202c] bg-[radial-gradient(circle_at_top,rgba(14,116,144,0.08),transparent_32%),linear-gradient(180deg,#07111a_0%,#08131d_100%)]"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -1667,12 +1667,12 @@ export const SLDView: React.FC<SLDViewProps> = ({
         {/* PR-SLD-UX-MAX: Mode indicator overlay (top-right corner of canvas) */}
         <div
           data-testid="sld-mode-overlay"
-          className={`absolute top-4 right-4 z-10 flex items-center gap-2 px-4 py-2.5 rounded-lg shadow-lg backdrop-blur-sm transition-all duration-200 ${
+          className={`absolute top-4 right-4 z-10 flex items-center gap-2 rounded-[16px] border px-4 py-2.5 shadow-[0_18px_36px_rgba(2,8,23,0.38)] backdrop-blur-sm transition-all duration-200 ${
             isResultsMode
-              ? 'bg-blue-600/95 text-white border border-blue-500'
+              ? 'border-blue-500/35 bg-blue-500/16 text-white'
               : isProtectionMode
-              ? 'bg-emerald-600/95 text-white border border-emerald-500'
-              : 'bg-chrome-700/90 text-chrome-100 border border-chrome-600'
+              ? 'border-emerald-500/35 bg-emerald-500/16 text-white'
+              : 'border-[#274154] bg-[rgba(7,19,28,0.9)] text-[#dde8f2]'
           }`}
         >
           {/* Mode icon */}
@@ -1749,10 +1749,10 @@ export const SLDView: React.FC<SLDViewProps> = ({
         <button
           type="button"
           onClick={() => setLegendVisible((prev) => !prev)}
-          className={`absolute bottom-4 left-4 z-10 flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg shadow-md transition-all duration-150 ${
+          className={`absolute bottom-4 left-4 z-10 flex items-center gap-1.5 rounded-[14px] border px-3 py-2 text-xs font-medium shadow-[0_16px_30px_rgba(2,8,23,0.34)] transition-all duration-150 ${
             legendVisible
-              ? 'bg-chrome-800 text-white hover:bg-chrome-700'
-              : 'bg-white/95 backdrop-blur-sm border border-chrome-300 text-chrome-700 hover:bg-white hover:border-chrome-400'
+              ? 'border-[#274154] bg-[rgba(7,19,28,0.92)] text-white hover:bg-[#0d1c29]'
+              : 'border-[#274154] bg-[rgba(7,19,28,0.84)] text-[#d7e5ef] hover:bg-[#112433]'
           }`}
           title={legendVisible ? 'Ukryj legendę' : 'Pokaż legendę'}
           data-testid="sld-legend-toggle"
@@ -1796,7 +1796,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       {/* Status bar — CANONICAL-grade professional */}
       <div
         data-testid="sld-view-status"
-        className="flex items-center justify-between px-4 py-1.5 bg-chrome-800 border-t border-chrome-700 text-xs"
+        className="flex items-center justify-between border-t border-[#1a3040] bg-[linear-gradient(180deg,#07111a_0%,#08131d_100%)] px-4 py-2 text-xs"
       >
         <div className="flex items-center gap-4 text-chrome-300">
           <span className="flex items-center gap-1.5">

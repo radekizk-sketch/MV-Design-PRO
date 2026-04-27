@@ -91,9 +91,11 @@ export function ContinueTrunkForm() {
   );
 
   return (
-    <div className="h-full overflow-y-auto" data-testid="continue-trunk-form">
+    <div className="h-full overflow-y-auto bg-[#07141f]" data-testid="continue-trunk-form">
       {catalogError && (
-        <p className="px-4 py-2 text-xs text-red-600 bg-red-50 border-b border-red-200">{catalogError}</p>
+        <p className="border-b border-rose-500/30 bg-rose-950/40 px-4 py-2 text-xs text-rose-100">
+          {catalogError}
+        </p>
       )}
       <TrunkContinueModal
         isOpen={true}

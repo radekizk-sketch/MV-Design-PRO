@@ -52,19 +52,19 @@ const ANALYSIS_TYPE_OPTIONS: Array<{
   {
     value: 'SHORT_CIRCUIT',
     label: 'Zwarcia (IEC 60909)',
-    description: 'Obliczenia pradow zwarciowych wg normy IEC 60909',
+    description: 'Obliczenia prądów zwarciowych wg normy IEC 60909',
     icon: 'SC',
   },
   {
     value: 'LOAD_FLOW',
-    label: 'Rozplyw mocy',
-    description: 'Obliczenia rozplywu mocy — napiecija, prady, straty',
+    label: 'Rozpływ mocy',
+    description: 'Obliczenia rozpływu mocy — napięcia, prądy, straty',
     icon: 'LF',
   },
   {
     value: 'PROTECTION',
     label: 'Zabezpieczenia',
-    description: 'Analiza koordynacji zabezpieczen nadpradowych',
+    description: 'Analiza koordynacji zabezpieczeń nadprądowych',
     icon: 'PR',
   },
 ];
@@ -112,10 +112,10 @@ export function CaseConfigPage() {
         <div className="text-center max-w-sm">
           <div className="text-4xl mb-4">[CFG]</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">
-            Brak aktywnego przypadku
+            Brak aktywnego zakresu obliczeń
           </h2>
           <p className="text-sm text-gray-500">
-            Wybierz lub utworz przypadek obliczeniowy, aby skonfigurowac parametry analizy.
+            Wybierz lub utwórz zakres obliczeń, aby skonfigurować warunki analizy.
           </p>
         </div>
       </div>
@@ -127,11 +127,9 @@ export function CaseConfigPage() {
       <div className="max-w-3xl mx-auto p-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <h1 className="text-2xl font-semibold text-gray-800">
-            Kontekst przypadku obliczeniowego
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-800">Parametry analizy</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Przypadek: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
+            Zakres obliczeń: <span className="font-medium text-gray-700">{activeCaseName ?? activeCaseId}</span>
           </p>
         </div>
 
@@ -165,7 +163,7 @@ export function CaseConfigPage() {
         {config.analysisType === 'SHORT_CIRCUIT' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-              Parametry obliczen zwarciowych
+              Parametry obliczeń zwarciowych
             </h2>
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -183,7 +181,7 @@ export function CaseConfigPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Wspolczynnik napieciowy c
+                  Współczynnik napięciowy c
                 </label>
                 <div className="flex gap-4 mt-2">
                   <label className="flex items-center gap-2">
@@ -194,7 +192,7 @@ export function CaseConfigPage() {
                       onChange={() => handleFieldChange('cFactor', 'max')}
                       className="text-blue-600"
                     />
-                    <span className="text-sm">c_max (prady maksymalne)</span>
+                    <span className="text-sm">c_max (prądy maksymalne)</span>
                   </label>
                   <label className="flex items-center gap-2">
                     <input
@@ -204,7 +202,7 @@ export function CaseConfigPage() {
                       onChange={() => handleFieldChange('cFactor', 'min')}
                       className="text-blue-600"
                     />
-                    <span className="text-sm">c_min (prady minimalne)</span>
+                    <span className="text-sm">c_min (prądy minimalne)</span>
                   </label>
                 </div>
               </div>
@@ -216,7 +214,7 @@ export function CaseConfigPage() {
         {config.analysisType === 'LOAD_FLOW' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-              Parametry rozplywu mocy
+              Parametry rozpływu mocy
             </h2>
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -248,7 +246,7 @@ export function CaseConfigPage() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Tolerancja zbieznosci
+                  Tolerancja zbieżności
                 </label>
                 <input
                   type="number"
@@ -268,7 +266,7 @@ export function CaseConfigPage() {
                   className="h-4 w-4 text-blue-600 border-gray-300 rounded"
                 />
                 <label className="text-sm text-gray-700">
-                  Regulacja napieciowa (zaczepy transformatorow)
+                  Regulacja napięciowa (zaczepy transformatorów)
                 </label>
               </div>
             </div>
@@ -279,11 +277,11 @@ export function CaseConfigPage() {
         {config.analysisType === 'PROTECTION' && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
             <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider mb-4">
-              Parametry analizy zabezpieczen
+              Parametry analizy zabezpieczeń
             </h2>
             <p className="text-sm text-gray-500">
-              Analiza zabezpieczen wymaga wczesniejszego wykonania obliczen zwarciowych.
-              Nastawy zabezpieczen konfiguruje sie w widoku Nastawy zabezpieczen.
+              Analiza zabezpieczeń wymaga wcześniejszego wykonania obliczeń zwarciowych.
+              Nastawy zabezpieczeń konfiguruje się w widoku Nastawy zabezpieczeń.
             </p>
           </div>
         )}
@@ -292,7 +290,7 @@ export function CaseConfigPage() {
         <div className="flex justify-end gap-3">
           {saved && (
             <span className="text-sm text-green-600 flex items-center gap-1">
-              Zapisano konfiguracje
+              Zapisano konfigurację
             </span>
           )}
           <button

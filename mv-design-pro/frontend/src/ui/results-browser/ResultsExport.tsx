@@ -128,7 +128,7 @@ function PrintPreview<T>({
               <span className="font-medium">Projekt:</span> {projectName ?? '—'}
             </div>
             <div>
-              <span className="font-medium">Przypadek:</span> {caseName ?? '—'}
+              <span className="font-medium">Wariant pracy:</span> {caseName ?? '—'}
             </div>
             <div>
               <span className="font-medium">Data eksportu:</span> {formatDate(new Date().toISOString())}

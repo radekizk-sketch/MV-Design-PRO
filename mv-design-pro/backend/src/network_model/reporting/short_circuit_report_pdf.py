@@ -8,6 +8,7 @@ results to PDF format. It uses the stable Result API contract
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -52,7 +53,7 @@ def _format_complex(value: dict | complex | str | Any) -> str:
 def _format_value(value: Any) -> str:
     """Format a value for display in the report."""
     if value is None:
-        return "—"
+        return "â€”"
     if isinstance(value, dict) and "re" in value and "im" in value:
         return _format_complex(value)
     if isinstance(value, complex):
@@ -62,7 +63,7 @@ def _format_value(value: Any) -> str:
     if isinstance(value, bool):
         return "Tak" if value else "Nie"
     if isinstance(value, list):
-        return f"[{len(value)} elementów]"
+        return f"[{len(value)} elementĂłw]"
     return str(value)
 
 
@@ -181,8 +182,8 @@ def export_short_circuit_result_to_pdf(
     # 2) Fault parameters (metryka)
     c.setFont("Helvetica", 10)
     params = [
-        f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
-        f"Węzeł: {data.get('fault_node_id', '—')}",
+        f"Typ zwarcia: {data.get('short_circuit_type', 'â€”')}",
+        f"WÄ™zeĹ‚: {data.get('fault_node_id', 'â€”')}",
         f"Un: {_format_value(data.get('un_v'))} V",
         f"c: {_format_value(data.get('c_factor'))}",
         f"tk: {_format_value(data.get('tk_s'))} s",
@@ -213,9 +214,9 @@ def export_short_circuit_result_to_pdf(
         ("Ib [A]", "ib_a"),
         ("Ith [A]", "ith_a"),
         ("Sk [MVA]", "sk_mva"),
-        ("κ [-]", "kappa"),
+        ("Îş [-]", "kappa"),
         ("R/X [-]", "rx_ratio"),
-        ("Zk [Ω]", "zkk_ohm"),
+        ("Zk [Î©]", "zkk_ohm"),
     ]
 
     # Draw results as a simple table
@@ -242,7 +243,7 @@ def export_short_circuit_result_to_pdf(
         if not white_box_trace:
             y = check_page_break(line_height)
             c.setFont("Helvetica-Oblique", 10)
-            c.drawString(left_margin, y, "Brak śladu obliczeń.")
+            c.drawString(left_margin, y, "Brak Ĺ›ladu obliczeĹ„.")
             y -= line_height
         else:
             for step in white_box_trace:
@@ -290,6 +291,32 @@ def _add_white_box_step(
             return top_margin
         return y
 
+    def draw_wrapped_lines(
+        text: str,
+        x: float,
+        y_pos: float,
+        max_width_value: float,
+        font_size: int,
+    ) -> float:
+        nonlocal y
+        c.setFont("Helvetica", font_size)
+        approx_char_width = max(font_size * 0.55, 1.0)
+        max_chars = max(1, int(max_width_value / approx_char_width))
+        lines = textwrap.wrap(
+            text,
+            width=max_chars,
+            break_long_words=True,
+            break_on_hyphens=False,
+        ) or [text]
+        for idx, line in enumerate(lines):
+            if idx == 0:
+                y_pos = check_page_break(line_height)
+            else:
+                y_pos -= line_height
+                y_pos = check_page_break(line_height)
+            c.drawString(x, y_pos, line)
+        return y_pos
+
     step_key = step.get("key", "")
     step_title = step.get("title", "")
 
@@ -303,13 +330,10 @@ def _add_white_box_step(
     # Formula
     formula = step.get("formula_latex", "")
     if formula:
-        y = check_page_break(line_height * 2)
         c.setFont("Helvetica-Bold", 10)
         c.drawString(left_margin, y, "Wzór:")
         y -= line_height
-        c.setFont("Helvetica", 9)
-        # Simple wrap for formula
-        _draw_wrapped_line(c, formula, left_margin + 10 * mm, y, max_width - 10 * mm, 9)
+        y = draw_wrapped_lines(str(formula), left_margin + 10 * mm, y, max_width - 10 * mm, 9)
         y -= line_height
 
     # Inputs
@@ -317,18 +341,17 @@ def _add_white_box_step(
     if inputs and isinstance(inputs, dict):
         y = check_page_break(line_height * (len(inputs) + 2))
         c.setFont("Helvetica-Bold", 10)
-        c.drawString(left_margin, y, "Dane wejściowe:")
+        c.drawString(left_margin, y, "Dane wejĹ›ciowe:")
         y -= line_height
         c.setFont("Helvetica", 9)
         for k, v in inputs.items():
             y = check_page_break(line_height)
-            c.drawString(left_margin + 5 * mm, y, f"• {k}: {_format_value(v)}")
+            c.drawString(left_margin + 5 * mm, y, f"â€˘ {k}: {_format_value(v)}")
             y -= line_height
 
     # Substitution
-    substitution = step.get("substitution", "")
+    substitution = step.get("substitution_latex") or step.get("substitution", "")
     if substitution:
-        y = check_page_break(line_height * 2)
         c.setFont("Helvetica-Bold", 10)
         c.drawString(left_margin, y, "Podstawienie:")
         y -= line_height
@@ -346,7 +369,7 @@ def _add_white_box_step(
         c.setFont("Helvetica", 9)
         for k, v in result_data.items():
             y = check_page_break(line_height)
-            c.drawString(left_margin + 5 * mm, y, f"• {k}: {_format_value(v)}")
+            c.drawString(left_margin + 5 * mm, y, f"â€˘ {k}: {_format_value(v)}")
             y -= line_height
 
     # Notes

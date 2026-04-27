@@ -240,6 +240,13 @@ export interface Load extends ENMElement {
 // Generator
 // ---------------------------------------------------------------------------
 
+export type GeneratorConnectionVariant =
+  | 'LV_BEHIND_STATION_TRANSFORMER'
+  | 'DEDICATED_MV_CONNECTION'
+  | 'SOURCE_CONNECTION_STATION'
+  | 'nn_side'
+  | 'block_transformer';
+
 export interface Generator extends ENMElement {
   bus_ref: string;
   p_mw: number;
@@ -258,10 +265,12 @@ export interface Generator extends ENMElement {
   /**
    * Wariant przylaczenia PV/BESS:
    * - 'nn_side': po stronie nN stacji (przez transformator stacji SN/nN)
-   * - 'block_transformer': przez transformator blokowy do SN
+   * - 'DEDICATED_MV_CONNECTION': przez dedykowane pole SN i transformator przyłączeniowy
+   * - 'SOURCE_CONNECTION_STATION': przez osobną stację przyłączeniową źródła
+   * - 'nn_side' / 'block_transformer': legacy aliases accepted on input
    * - null: brak informacji → FixAction generator.connection_variant_missing
    */
-  connection_variant?: 'nn_side' | 'block_transformer' | null;
+  connection_variant?: GeneratorConnectionVariant | null;
 
   /** Referencja do transformatora blokowego (ref_id). Wymagana przy 'block_transformer'. */
   blocking_transformer_ref?: string | null;

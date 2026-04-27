@@ -92,6 +92,9 @@ def _summary_response(
 ) -> dict[str, Any]:
     """Build a deterministically sorted response from AnalysisRunSummary."""
     payload = summary.to_dict()
+    result_location = payload.get("result_location")
+    if isinstance(result_location, str) and result_location.startswith("/analysis-runs/"):
+        payload["result_location"] = f"/api{result_location}"
     # Add run_summary wrapper for backward-compat envelope
     return canonicalize_json({"run_summary": payload})
 

@@ -95,7 +95,7 @@ class AdmittanceMatrixBuilder:
         """Napięcie znamionowe węzła reprezentatywnego [kV]."""
         return self._graph.nodes[rep_id].voltage_level
 
-    def build(self) -> np.ndarray:
+    def build(self, ground_slack_buses: bool = True) -> np.ndarray:
         """
         Buduje macierz Y-bus w systemie per-unit.
 
@@ -127,7 +127,8 @@ class AdmittanceMatrixBuilder:
             y_bus[from_idx, from_idx] += y_series_pu + y_shunt_pu
             y_bus[to_idx, to_idx] += y_series_pu + y_shunt_pu
 
-        self._ground_slack_buses(y_bus)
+        if ground_slack_buses:
+            self._ground_slack_buses(y_bus)
 
         return y_bus
 

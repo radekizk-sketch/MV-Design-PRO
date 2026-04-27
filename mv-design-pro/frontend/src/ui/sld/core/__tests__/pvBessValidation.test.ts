@@ -94,6 +94,33 @@ const BESS_BLOCK_TR_VALID: PvBessConnectionInputV1 = {
   blockingTransformerHasCatalog: true,
 };
 
+const PV_LV_BEHIND_STATION_VALID: PvBessConnectionInputV1 = {
+  generatorId: 'gen_pv_lv_01',
+  generatorType: 'PV',
+  connectionVariant: 'LV_BEHIND_STATION_TRANSFORMER',
+  stationRef: 'station_001',
+  blockingTransformerRef: null,
+  blockingTransformerHasCatalog: false,
+};
+
+const BESS_DEDICATED_MV_VALID: PvBessConnectionInputV1 = {
+  generatorId: 'gen_bess_mv_01',
+  generatorType: 'BESS',
+  connectionVariant: 'DEDICATED_MV_CONNECTION',
+  stationRef: null,
+  blockingTransformerRef: 'block_tr_04',
+  blockingTransformerHasCatalog: true,
+};
+
+const PV_SOURCE_STATION_VALID: PvBessConnectionInputV1 = {
+  generatorId: 'gen_pv_source_station_01',
+  generatorType: 'PV',
+  connectionVariant: 'SOURCE_CONNECTION_STATION',
+  stationRef: 'station_001',
+  blockingTransformerRef: null,
+  blockingTransformerHasCatalog: false,
+};
+
 /** PV with no connection variant — FORBIDDEN */
 const PV_NO_VARIANT: PvBessConnectionInputV1 = {
   generatorId: 'gen_pv_02',
@@ -205,6 +232,12 @@ describe('validatePvBessConnections', () => {
       expect(result.fixActions).toHaveLength(0);
     });
 
+    it('PASS for canonical LV_BEHIND_STATION_TRANSFORMER when station has transformer field', () => {
+      const result = validatePvBessConnections([PV_LV_BEHIND_STATION_VALID], ALL_STATIONS);
+      expect(result.valid).toBe(true);
+      expect(result.fixActions).toHaveLength(0);
+    });
+
     it('FAIL when stationRef is missing', () => {
       const result = validatePvBessConnections([PV_NN_NO_STATION], ALL_STATIONS);
       expect(result.valid).toBe(false);
@@ -241,6 +274,12 @@ describe('validatePvBessConnections', () => {
       expect(result.fixActions).toHaveLength(0);
     });
 
+    it('PASS for canonical DEDICATED_MV_CONNECTION when transformer ref and catalog exist', () => {
+      const result = validatePvBessConnections([BESS_DEDICATED_MV_VALID], ALL_STATIONS);
+      expect(result.valid).toBe(true);
+      expect(result.fixActions).toHaveLength(0);
+    });
+
     it('FAIL when blockingTransformerRef is missing', () => {
       const result = validatePvBessConnections([BESS_BLOCK_NO_REF], ALL_STATIONS);
       expect(result.valid).toBe(false);
@@ -253,6 +292,25 @@ describe('validatePvBessConnections', () => {
       expect(result.valid).toBe(false);
       expect(result.fixActions[0].code).toBe(FieldDeviceFixCodes.GENERATOR_BLOCK_TR_MISSING);
       expect(result.fixActions[0].elementId).toBe('gen_bess_03');
+    });
+  });
+
+  describe('Rule 4: SOURCE_CONNECTION_STATION variant', () => {
+    it('PASS when source station exists and has transformer field', () => {
+      const result = validatePvBessConnections([PV_SOURCE_STATION_VALID], ALL_STATIONS);
+      expect(result.valid).toBe(true);
+      expect(result.fixActions).toHaveLength(0);
+    });
+
+    it('FAIL when source station reference is missing', () => {
+      const gen: PvBessConnectionInputV1 = {
+        ...PV_SOURCE_STATION_VALID,
+        generatorId: 'gen_pv_source_station_missing',
+        stationRef: null,
+      };
+      const result = validatePvBessConnections([gen], ALL_STATIONS);
+      expect(result.valid).toBe(false);
+      expect(result.fixActions[0].code).toBe(FieldDeviceFixCodes.GENERATOR_STATION_REF_MISSING);
     });
   });
 

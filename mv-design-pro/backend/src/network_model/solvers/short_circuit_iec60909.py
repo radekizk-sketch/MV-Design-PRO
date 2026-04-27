@@ -262,6 +262,13 @@ class ShortCircuitIEC60909Solver:
         return f"{value:.6g}"
 
     @staticmethod
+    def _format_complex_latex(value: complex) -> str:
+        real = f"{value.real:.6g}"
+        imag = f"{abs(value.imag):.6g}"
+        sign = "+" if value.imag >= 0 else "-"
+        return f"\\left({real} {sign} j {imag}\\right)"
+
+    @staticmethod
     def _build_white_box_trace(
         *,
         short_circuit_type: ShortCircuitType,
@@ -291,29 +298,29 @@ class ShortCircuitIEC60909Solver:
             z_inputs["z0_ohm"] = z0
 
         if short_circuit_type == ShortCircuitType.THREE_PHASE:
-            formula = "Z_k = Z_1"
-            substitution = f"{ShortCircuitIEC60909Solver._format_complex(z1)}"
+            formula = r"Z_k = Z_1"
+            substitution = ShortCircuitIEC60909Solver._format_complex_latex(z1)
         elif short_circuit_type == ShortCircuitType.TWO_PHASE:
-            formula = "Z_k = Z_1 + Z_2"
+            formula = r"Z_k = Z_1 + Z_2"
             substitution = (
-                f"{ShortCircuitIEC60909Solver._format_complex(z1)}"
-                f" + {ShortCircuitIEC60909Solver._format_complex(z2)}"
+                f"{ShortCircuitIEC60909Solver._format_complex_latex(z1)}"
+                f" + {ShortCircuitIEC60909Solver._format_complex_latex(z2)}"
             )
         elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
-            formula = "Z_k = Z_1 + Z_2 + Z_0"
+            formula = r"Z_k = Z_1 + Z_2 + Z_0"
             substitution = (
-                f"{ShortCircuitIEC60909Solver._format_complex(z1)}"
-                f" + {ShortCircuitIEC60909Solver._format_complex(z2)}"
-                f" + {ShortCircuitIEC60909Solver._format_complex(z0 or 0)}"
+                f"{ShortCircuitIEC60909Solver._format_complex_latex(z1)}"
+                f" + {ShortCircuitIEC60909Solver._format_complex_latex(z2)}"
+                f" + {ShortCircuitIEC60909Solver._format_complex_latex(z0 or 0)}"
             )
         else:
-            formula = "Z_k = Z_1 + (Z_2 \\cdot Z_0) / (Z_2 + Z_0)"
+            formula = r"Z_k = Z_1 + \frac{Z_2 \cdot Z_0}{Z_2 + Z_0}"
             denominator = z2 + (z0 or 0)
             substitution = (
-                f"{ShortCircuitIEC60909Solver._format_complex(z1)}"
-                f" + ({ShortCircuitIEC60909Solver._format_complex(z2)}"
-                f" * {ShortCircuitIEC60909Solver._format_complex(z0 or 0)})"
-                f" / ({ShortCircuitIEC60909Solver._format_complex(denominator)})"
+                f"{ShortCircuitIEC60909Solver._format_complex_latex(z1)}"
+                f" + \\frac{{{ShortCircuitIEC60909Solver._format_complex_latex(z2)}"
+                f" \\cdot {ShortCircuitIEC60909Solver._format_complex_latex(z0 or 0)}}}"
+                f"{{{ShortCircuitIEC60909Solver._format_complex_latex(denominator)}}}"
             )
 
         tracer.add(
@@ -322,13 +329,14 @@ class ShortCircuitIEC60909Solver:
             formula_latex=formula,
             inputs=z_inputs,
             substitution=substitution,
+            substitution_latex=substitution,
             result={"z_equiv_ohm": z_equiv},
         )
 
         tracer.add(
             key="Ikss",
             title="Prąd zwarciowy początkowy symetryczny",
-            formula_latex="I_{k}'' = (c \\cdot U_n \\cdot k_U) / |Z_k|",
+            formula_latex=r"I_{k}'' = \frac{c \cdot U_n \cdot k_U}{\left|Z_k\right|}",
             inputs={
                 "c_factor": c_factor,
                 "un_v": un_v,
@@ -336,10 +344,16 @@ class ShortCircuitIEC60909Solver:
                 "z_equiv_abs_ohm": z_equiv_abs,
             },
             substitution=(
-                f"({ShortCircuitIEC60909Solver._format_float(c_factor)}"
-                f" * {ShortCircuitIEC60909Solver._format_float(un_v)}"
-                f" * {ShortCircuitIEC60909Solver._format_float(voltage_factor)})"
-                f" / {ShortCircuitIEC60909Solver._format_float(z_equiv_abs)}"
+                f"\\frac{{{ShortCircuitIEC60909Solver._format_float(c_factor)} \\cdot "
+                f"{ShortCircuitIEC60909Solver._format_float(un_v)} \\cdot "
+                f"{ShortCircuitIEC60909Solver._format_float(voltage_factor)}}}"
+                f"{{{ShortCircuitIEC60909Solver._format_float(z_equiv_abs)}}}"
+            ),
+            substitution_latex=(
+                f"\\frac{{{ShortCircuitIEC60909Solver._format_float(c_factor)} \\cdot "
+                f"{ShortCircuitIEC60909Solver._format_float(un_v)} \\cdot "
+                f"{ShortCircuitIEC60909Solver._format_float(voltage_factor)}}}"
+                f"{{{ShortCircuitIEC60909Solver._format_float(z_equiv_abs)}}}"
             ),
             result={"ikss_a": ikss_a},
         )
@@ -350,10 +364,13 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="kappa",
             title="Współczynnik udaru",
-            formula_latex="\\kappa = 1.02 + 0.98 \\cdot e^{-3 R/X}",
+            formula_latex=r"\kappa = 1.02 + 0.98 \cdot e^{-3 R/X}",
             inputs={"r_ohm": r_ohm, "x_ohm": x_ohm, "rx_ratio": rx_ratio},
             substitution=(
-                f"1.02 + 0.98 * exp(-3 * {ShortCircuitIEC60909Solver._format_float(rx_ratio)})"
+                f"1.02 + 0.98 \\cdot e^{{-3 \\cdot {ShortCircuitIEC60909Solver._format_float(rx_ratio)}}}"
+            ),
+            substitution_latex=(
+                f"1.02 + 0.98 \\cdot e^{{-3 \\cdot {ShortCircuitIEC60909Solver._format_float(rx_ratio)}}}"
             ),
             result={"kappa": post.kappa},
         )
@@ -361,11 +378,15 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="Ip",
             title="Prąd udarowy",
-            formula_latex="I_p = \\kappa \\cdot \\sqrt{2} \\cdot I_{k}''",
+            formula_latex=r"I_p = \kappa \cdot \sqrt{2} \cdot I_{k}''",
             inputs={"kappa": post.kappa, "ikss_a": ikss_a},
             substitution=(
                 f"{ShortCircuitIEC60909Solver._format_float(post.kappa)}"
-                f" * sqrt(2) * {ShortCircuitIEC60909Solver._format_float(ikss_a)}"
+                f" \\cdot \\sqrt{{2}} \\cdot {ShortCircuitIEC60909Solver._format_float(ikss_a)}"
+            ),
+            substitution_latex=(
+                f"{ShortCircuitIEC60909Solver._format_float(post.kappa)}"
+                f" \\cdot \\sqrt{{2}} \\cdot {ShortCircuitIEC60909Solver._format_float(ikss_a)}"
             ),
             result={"ip_a": post.ip_a},
         )
@@ -387,8 +408,13 @@ class ShortCircuitIEC60909Solver:
             },
             substitution=(
                 f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" * sqrt(1 + (({ShortCircuitIEC60909Solver._format_float(post.kappa)}"
-                f" - 1) * {ShortCircuitIEC60909Solver._format_float(exp_factor)})^2)"
+                f" \\cdot \\sqrt{{1 + \\left(({ShortCircuitIEC60909Solver._format_float(post.kappa)}"
+                f" - 1) \\cdot {ShortCircuitIEC60909Solver._format_float(exp_factor)}\\right)^2}}"
+            ),
+            substitution_latex=(
+                f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
+                f" \\cdot \\sqrt{{1 + \\left(({ShortCircuitIEC60909Solver._format_float(post.kappa)}"
+                f" - 1) \\cdot {ShortCircuitIEC60909Solver._format_float(exp_factor)}\\right)^2}}"
             ),
             result={"ib_a": post.ib_a},
         )
@@ -396,11 +422,15 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="Ith",
             title="Prąd zastępczy cieplny",
-            formula_latex="I_{th} = I_{k}'' \\cdot \\sqrt{t_k}",
+            formula_latex=r"I_{th} = I_{k}'' \cdot \sqrt{t_k}",
             inputs={"ikss_a": ikss_a, "tk_s": tk_s},
             substitution=(
                 f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" * sqrt({ShortCircuitIEC60909Solver._format_float(tk_s)})"
+                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(tk_s)}}}"
+            ),
+            substitution_latex=(
+                f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
+                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(tk_s)}}}"
             ),
             result={"ith_a": post.ith_a},
         )
@@ -408,11 +438,15 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="Sk",
             title="Moc zwarciowa",
-            formula_latex="S_k = \\sqrt{3} \\cdot U_n \\cdot I_{k}'' / 10^6",
+            formula_latex=r"S_k = \sqrt{3} \cdot U_n \cdot I_{k}'' / 10^6",
             inputs={"un_v": un_v, "ikss_a": ikss_a},
             substitution=(
-                f"sqrt(3) * {ShortCircuitIEC60909Solver._format_float(un_v)}"
-                f" * {ShortCircuitIEC60909Solver._format_float(ikss_a)} / 1e6"
+                f"\\sqrt{{3}} \\cdot {ShortCircuitIEC60909Solver._format_float(un_v)}"
+                f" \\cdot {ShortCircuitIEC60909Solver._format_float(ikss_a)} / 10^6"
+            ),
+            substitution_latex=(
+                f"\\sqrt{{3}} \\cdot {ShortCircuitIEC60909Solver._format_float(un_v)}"
+                f" \\cdot {ShortCircuitIEC60909Solver._format_float(ikss_a)} / 10^6"
             ),
             result={"sk_mva": post.sk_mva},
         )

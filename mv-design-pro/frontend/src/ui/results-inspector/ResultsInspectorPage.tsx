@@ -240,9 +240,7 @@ function AnalysisCaseContextPanel({
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             analysis_case_context
           </div>
-          <h2 className="mt-1 text-sm font-semibold text-slate-900">
-            Kontekst przypadku obliczeniowego
-          </h2>
+          <h2 className="mt-1 text-sm font-semibold text-slate-900">Parametry analizy</h2>
         </div>
         <div className="flex flex-wrap gap-2">
           <ContextBadge label={`Kompletnosc: ${completenessLabel}`} tone={completenessTone} />
@@ -920,7 +918,7 @@ export function ResultsInspectorPage({ runId, forcedTab, onClose }: ResultsInspe
               Wyniki i ślad obliczeń
             </p>
             <h1 className="mt-2 text-xl font-semibold text-slate-900">
-              Brak wybranego uruchomienia
+          Brak wybranych wynikow
             </h1>
             <p className="mt-2 text-sm text-slate-600">
               Wybierz wykonane obliczenie w widoku wyników albo uruchom analizę dla aktywnego
