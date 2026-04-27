@@ -212,3 +212,33 @@ export {
 
 // UX 10/10: Label mode toolbar
 export { LabelModeToolbar } from './LabelModeToolbar';
+
+// V12 § 5.7: Detail levels (LOD)
+export {
+  getLodBand,
+  getElementImportance,
+  isElementVisibleAtLod,
+  shouldShowTechnicalLabels,
+  shouldShowStateBadges,
+  LOD_BANDS,
+  LOD_BAND_LABELS_PL,
+} from './sldDetailLevel';
+export type { LodBand, ElementImportance, LodBandRange } from './sldDetailLevel';
+
+// V12 § 5.7: Layer filters store
+export {
+  useSldLayerFiltersStore,
+  useSldLayerFilter,
+  useSkeletonView,
+  elementMatchesLayerFilter,
+  isElementInSkeletonView,
+  SLD_LAYER_FILTER_LABELS_PL,
+  SLD_LAYER_FILTERS,
+} from './sldLayerFiltersStore';
+export type { SldLayerFilter } from './sldLayerFiltersStore';
+
+// V12 § 5.7: Readability overlay hook
+export { useSldReadabilityOverlay } from './SldReadabilityOverlay';
+
+// V12 § 5.7: Semantic minimap
+export { SldSemanticMinimap } from './SldSemanticMinimap';

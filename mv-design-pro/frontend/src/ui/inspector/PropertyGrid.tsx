@@ -16,6 +16,7 @@
 
 import { useState, useCallback } from 'react';
 import type { InspectorSection, InspectorField } from './types';
+import { ValueProvenanceIcon } from './ValueProvenancePopover';
 
 // =============================================================================
 // Helper Functions
@@ -103,10 +104,13 @@ function PropertyRow({ field, sectionId }: PropertyRowProps) {
         )}
       </dt>
 
-      {/* Value + Unit */}
-      <dd className={`text-xs font-mono ${getValueClass()}`}>
+      {/* Value + Unit + Provenance */}
+      <dd className={`flex items-center gap-0.5 text-xs font-mono ${getValueClass()}`}>
         {formatValue(field.value)}
         {field.unit && <span className="ml-1 text-slate-400">{field.unit}</span>}
+        {(field.provenance || field.source === 'calculated' || field.source === 'type') && (
+          <ValueProvenanceIcon fieldLabel={field.label} provenance={field.provenance} />
+        )}
       </dd>
     </div>
   );

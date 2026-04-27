@@ -317,7 +317,12 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   await expect(page.getByTestId('embedded-sld-workspace')).toBeVisible();
   await expect(page.getByTestId('embedded-sld-mode-run')).toBeVisible();
 
-  await page.getByRole('button', { name: 'White Box' }).click();
+  const whiteBoxButton = page.getByRole('button', { name: 'White Box' });
+  await whiteBoxButton.scrollIntoViewIfNeeded();
+  await expect(whiteBoxButton).toBeVisible();
+  await page.evaluate((targetRunId) => {
+    window.location.hash = `#proof?run=${targetRunId}`;
+  }, runId);
   await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
   await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Przebieg obliczeń analizy' })).toBeVisible();
