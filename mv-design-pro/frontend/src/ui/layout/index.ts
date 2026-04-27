@@ -1,2 +1,9 @@
-export { CanonicalLayout } from './CanonicalLayout';
-export type { CanonicalLayoutProps } from './CanonicalLayout';
+/**
+ * Layout module — V12 shell.
+ *
+ * CanonicalLayout jest teraz aliasem AppShellV12 (nowy 4-kolumnowy dark SCADA shell).
+ * Stary CanonicalLayout.tsx zachowany dla własnych testów (import bezpośredni).
+ * App.tsx i App.routes.test.tsx korzystają z tego re-eksportu.
+ */
+export { AppShellV12 as CanonicalLayout } from '../shell/AppShellV12';
+export type { AppShellV12Props as CanonicalLayoutProps } from '../shell/AppShellV12';

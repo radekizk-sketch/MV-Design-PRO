@@ -35,7 +35,8 @@ export {
 } from './overlayTypes';
 
 // Store
-export { useOverlayStore } from './overlayStore';
+export { useOverlayStore, ALL_OVERLAY_KINDS } from './overlayStore';
+export type { OverlayKind } from './overlayStore';
 
 // Engine
 export {
@@ -54,3 +55,11 @@ export type { OverlayRuntimeResult } from './useOverlayRuntime';
 
 // Components
 export { OverlayLegend } from './OverlayLegend';
+
+// Adapters
+export { adaptZeroSequenceToOverlay } from './ZeroSequenceOverlayAdapter';
+export type {
+  ZeroSequenceElementResult,
+  ZeroSequenceResultV1,
+  ZeroSequenceSeverity,
+} from './ZeroSequenceOverlayAdapter';

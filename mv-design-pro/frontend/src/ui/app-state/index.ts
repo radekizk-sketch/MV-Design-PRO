@@ -25,4 +25,4 @@ export {
   useUIContext,
 } from './store';
 
-export type { CaseKind, AnalysisType } from './store';
+export type { CaseKind, AnalysisType, AreaCode, WorkMode } from './store';
