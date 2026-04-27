@@ -119,12 +119,11 @@ function defaultPortSide(
       // Pierwszy port = WEST (wejście od trunku), pozostałe = EAST (gałęzie)
       return portIdx === 0 ? 'WEST' : 'EAST';
     case 'generic':
-    default:
-      // Generic: rozkład po obwodzie (alternujemy strony)
+    default: {
       if (totalPorts <= 2) return portIdx === 0 ? 'WEST' : 'EAST';
-      // Dla > 2 portów rozdzielamy po stronach
       const sides: ElkPortSide[] = ['NORTH', 'EAST', 'SOUTH', 'WEST'];
       return sides[portIdx % 4];
+    }
   }
 }
 
