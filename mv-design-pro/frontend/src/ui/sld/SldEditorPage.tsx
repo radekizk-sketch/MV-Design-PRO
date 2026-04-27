@@ -1607,6 +1607,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           </div>
         )}
 
+
         {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
         <div
           className="absolute bottom-4 right-4 z-20 flex items-center gap-2"

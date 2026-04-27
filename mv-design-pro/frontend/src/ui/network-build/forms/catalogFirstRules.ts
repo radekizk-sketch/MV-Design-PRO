@@ -108,6 +108,26 @@ function hasRelayCatalog(payload: Payload): boolean {
   );
 }
 
+function hasConverterCatalog(payload: Payload): boolean {
+  return (
+    isNonEmptyString(payload.converter_catalog_id)
+    || isNonEmptyString(payload.catalog_ref)
+    || isNonEmptyString(payload.catalog_item_id)
+    || hasCatalogBinding(payload.catalog_binding)
+    || hasLegacyPvCatalog(payload)
+    || hasLegacyBessCatalog(payload)
+  );
+}
+
+function hasRelayCatalog(payload: Payload): boolean {
+  const protection = asPayload(payload.protection);
+  return (
+    (protection !== null && isNonEmptyString(protection.catalog_item_id))
+    || isNonEmptyString(payload.catalog_item_id)
+    || isNonEmptyString(payload.catalog_ref)
+  );
+}
+
 const REQUIRED_CATALOG_MESSAGE: Record<string, string> = {
   continue_trunk_segment_sn:
     'Wybierz typ linii lub kabla z katalogu przed utworzeniem odcinka.',

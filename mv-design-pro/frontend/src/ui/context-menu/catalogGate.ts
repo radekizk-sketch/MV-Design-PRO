@@ -25,6 +25,7 @@ export type CatalogNamespace =
 
 export type CatalogGateMode = 'required' | 'topology_allowed_without_catalog';
 
+
 const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   add_grid_source_sn: 'ZRODLO_SN',
   add_sn_bay: 'APARAT_SN',
@@ -72,6 +73,7 @@ export function catalogGateMode(operationId: string): CatalogGateMode | undefine
   }
   return 'required';
 }
+
 
 export function catalogNamespaceLabel(ns: CatalogNamespace): string {
   const labels: Record<CatalogNamespace, string> = {

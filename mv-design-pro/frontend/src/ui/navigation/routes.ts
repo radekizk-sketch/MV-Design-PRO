@@ -264,6 +264,7 @@ export function navigateToSwitchgear(context: RouteContextOptions = {}): void {
   });
 }
 
+
 export function navigateToAnalysis(context: RouteContextOptions = {}): void {
   navigateToAnalysisRoute(context);
 }
