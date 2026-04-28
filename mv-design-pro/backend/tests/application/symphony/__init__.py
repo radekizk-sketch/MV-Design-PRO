@@ -1,0 +1,1 @@
+"""Symphony application tests."""
