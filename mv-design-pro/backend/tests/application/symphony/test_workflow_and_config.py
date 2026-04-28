@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from application.symphony.config import load_symphony_config
 from application.symphony.workflow import load_workflow_definition
 

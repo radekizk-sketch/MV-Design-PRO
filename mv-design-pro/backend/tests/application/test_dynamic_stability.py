@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from application.stability.dynamic_stability import (
     FaultClearScenario,
     FaultClearSourceState,

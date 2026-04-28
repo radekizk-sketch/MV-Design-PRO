@@ -26,7 +26,7 @@ class Issue:
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    def with_normalized_labels(self) -> "Issue":
+    def with_normalized_labels(self) -> Issue:
         normalized_labels = tuple(sorted({label.strip().lower() for label in self.labels if label.strip()}))
         return Issue(
             id=self.id,

@@ -921,7 +921,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     run.power_flow_trace = None
 
 
-def _normalize_power_flow_solver_method(raw_method: Any) -> str:
+def _normalize_power_flow_solver_method(raw_method: object) -> str:
     normalized = str(raw_method or "NR").strip().upper().replace("-", "_")
     if normalized in {"NR", "NEWTON", "NEWTON_RAPHSON"}:
         return "newton-raphson"
