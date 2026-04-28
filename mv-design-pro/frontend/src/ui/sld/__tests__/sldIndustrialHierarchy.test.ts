@@ -21,7 +21,7 @@ describe('SLD industrial hierarchy gates', () => {
 
   it('stacja SN/nN ma jawne sekcje funkcjonalne SN i nN', () => {
     const stationRenderer = read('src/ui/sld/FieldBlockRenderer.tsx');
-    expect(stationRenderer.includes('data-sld-role="station-sn-section"')).toBe(true);
+    expect(stationRenderer.includes('data-sld-role="station-sn-fields"')).toBe(true);
     expect(stationRenderer.includes('data-sld-role="station-nn-section"')).toBe(true);
   });
 
@@ -49,7 +49,8 @@ describe('SLD industrial hierarchy gates', () => {
     const baySvgRenderer = read('src/ui/power-distribution/BaySvgRenderer.tsx');
 
     expect(branchRenderer.includes('StationBlockLayoutSvg')).toBe(true);
-    expect(stationRenderer.includes('StationBlockLayoutSvg')).toBe(true);
+    expect(stationRenderer.includes('buildStationCadLayout')).toBe(true);
+    expect(stationRenderer.includes('data-sld-role="station-cad-sn-nn"')).toBe(true);
     expect(gpzFieldBlockSource.includes('data-sld-role="gpz-bus-coupler"')).toBe(true);
     expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q1')).toBe(true);
     expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q2')).toBe(true);
@@ -85,7 +86,8 @@ describe('SLD industrial hierarchy gates', () => {
     const inlineObjectRenderer = read('src/ui/sld/InlineBranchObjectRenderer.tsx');
 
     expect(branchRenderer.includes('bay.cableExitPoint')).toBe(true);
-    expect(stationRenderer.includes('x={baseX')).toBe(true);
+    expect(stationRenderer.includes('x={labelX}')).toBe(true);
+    expect(stationRenderer.includes('x={conductorX}')).toBe(true);
     expect(inlineObjectRenderer.includes('textAnchor="middle"')).toBe(true);
   });
 
