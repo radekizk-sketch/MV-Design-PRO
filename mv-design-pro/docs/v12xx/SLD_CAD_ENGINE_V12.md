@@ -16,6 +16,7 @@ Pelny GPZ z transformatorem WN/SN jest rowniez jawnym sprzezeniem domen. Tor WN 
 | `FieldBlockRenderer.tsx` | Renderuje stacje jako uklad techniczny CAD, a nie kafel. |
 | `SldLevelOfDetailEngine.ts` | Definiuje poziomy LOD-0..LOD-7 oraz mapowanie do dotychczasowych pasm widocznosci. |
 | `contextMenuRegistry.ts` | Definiuje kanoniczne menu pola SN, odcinka SN, stacji SN/nN i zrodel/przylaczen w stalych sekcjach technicznych. |
+| `actionMenuBuilders.ts` | Buduje aktywne menu SLD z kanonicznego rejestru, zachowujac zaawansowane akcje inzynierskie jako rozszerzenia po sekcjach kanonicznych. |
 | `SldSemanticMinimap.tsx` | Renderuje mini-mape jako widok systemowy `LOD-0`, niezalezny od szczegolow aparaturowych glownej kanwy. |
 
 ## Reguly topologiczne
@@ -44,6 +45,8 @@ Menu kontekstowe jest rejestrem technicznym, a nie zbiorem luznych etykiet w kom
 | Zrodlo i przylaczenie | `SOURCE_CONNECTION_MENU_ACTIONS` | profil operatora, profil zrodla, Q(U), cos phi(P), FRT/LVRT/HVRT, zgodnosc przylaczeniowa, wklad zwarciowy, wyniki, uzasadnienie, raport |
 
 Akcje edycyjne sa mapowane w `actionRouting.ts` na operacje domenowe albo jawne przejscia nawigacyjne. Akcja bez mapowania nie moze przejsc testow kanonu menu.
+
+Aktywne menu odcinka SN i stacji SN/nN nie omijaja rejestru. `buildSegmentSNContextMenu` i `buildStationContextMenu` zaczynaja od kanonicznych akcji `contextMenuRegistry.ts`, a dopiero potem dopinaja szczegolowe akcje projektowe. Akcja `Usun` pozostaje na koncu menu, zeby nie mieszac operacji destrukcyjnej z edycja i analiza.
 
 ## Pipeline
 

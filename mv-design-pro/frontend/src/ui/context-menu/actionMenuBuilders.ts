@@ -48,6 +48,47 @@ function action(
   };
 }
 
+function mergeCanonicalWithExtendedActions(
+  canonicalActions: ContextMenuAction[],
+  extendedActions: ContextMenuAction[],
+  separatorId: string,
+): ContextMenuAction[] {
+  const canonicalIds = new Set(
+    canonicalActions
+      .filter((actionItem) => !actionItem.separator)
+      .map((actionItem) => actionItem.id),
+  );
+  const canonicalDeleteActions = canonicalActions.filter((actionItem) => (
+    !actionItem.separator && actionItem.section === 'Usuń'
+  ));
+  const canonicalOpeningActions = canonicalActions.filter((actionItem) => (
+    actionItem.separator || actionItem.section !== 'Usuń'
+  ));
+
+  const extendedWithoutDuplicateIds = extendedActions.filter((actionItem) => (
+    actionItem.separator
+    || !canonicalIds.has(actionItem.id)
+    || Boolean(actionItem.actionKey && EXTENDED_ACTION_VARIANT_IDS.has(actionItem.id))
+  ));
+
+  return [
+    ...canonicalOpeningActions,
+    sep(separatorId),
+    ...extendedWithoutDuplicateIds,
+    ...(canonicalDeleteActions.length > 0 ? [sep(`${separatorId}-delete`)] : []),
+    ...canonicalDeleteActions,
+  ];
+}
+
+const EXTENDED_ACTION_VARIANT_IDS = new Set([
+  'add_converter_source',
+  'add_genset_nn',
+  'add_nn_outgoing_field',
+  'add_sn_bay',
+  'add_ups_nn',
+  'insert_section_switch_sn',
+]);
+
 // ---------------------------------------------------------------------------
 // A) GPZ / Źródło SN — buildSourceSNContextMenu
 // ---------------------------------------------------------------------------
@@ -193,7 +234,7 @@ export function buildStationContextMenu(
 ): ContextMenuAction[] {
   const edit = mode === 'MODEL_EDIT';
   const result = mode === 'RESULT_VIEW';
-  return [
+  const extendedActions = [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości stacji...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Pola SN (1-6) ---
@@ -306,6 +347,11 @@ export function buildStationContextMenu(
     sep('s7'),
     action('delete', 'Usuń stację...', { enabled: edit, handler: handlers.onDelete }),
   ];
+  return mergeCanonicalWithExtendedActions(
+    buildCanonicalContextMenuActions('STACJA_SN_NN', mode, handlers),
+    extendedActions,
+    'station-canonical-extended',
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -795,7 +841,7 @@ export function buildSegmentSNContextMenu(
 ): ContextMenuAction[] {
   const edit = mode === 'MODEL_EDIT';
   const result = mode === 'RESULT_VIEW';
-  return [
+  const extendedActions = [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości segmentu...', { handler: handlers.onProperties }),
     sep('s1'),
     // --- Budowa (1-8) ---
@@ -853,6 +899,11 @@ export function buildSegmentSNContextMenu(
     sep('s8'),
     action('delete', 'Usuń odcinek (z potwierdzeniem)...', { enabled: edit, handler: handlers.onDelete }),
   ];
+  return mergeCanonicalWithExtendedActions(
+    buildCanonicalContextMenuActions('ODCINEK_SN', mode, handlers),
+    extendedActions,
+    'segment-canonical-extended',
+  );
 }
 
 // ---------------------------------------------------------------------------

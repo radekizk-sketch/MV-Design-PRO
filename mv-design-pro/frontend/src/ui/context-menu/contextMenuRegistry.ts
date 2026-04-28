@@ -156,7 +156,7 @@ function toContextMenuAction(
     enabled,
     visible: true,
     blockedReason,
-    handler: handlers[definition.handlerName],
+    handler: handlers[definition.id] ?? handlers[definition.handlerName],
     testId: definition.testId,
   };
 }

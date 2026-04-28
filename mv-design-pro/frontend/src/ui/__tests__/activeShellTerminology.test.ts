@@ -11,16 +11,31 @@ const ACTIVE_SHELL_FILES = [
   ['shell', 'AppShellV12.tsx'],
 ] as const;
 
+const ACTIVE_TOP_MENU_FILES = [
+  ['shell', 'AppShellV12.tsx'],
+  ['shell', 'TopBar.tsx'],
+  ['shell', 'NavigationRail.tsx'],
+] as const;
+
 const FORBIDDEN_ACTIVE_LABELS = [
   'Aktywny przypadek',
-  'Zmien przypadek',
+  'Zmień przypadek',
   'Uruchomienie:',
   'Aktywna migawka',
   'Aktywny wariant',
   'Kontekst przypadku',
   'Warianty i uruchomienia',
-  'Historia uruchomien',
-  'Porownanie wariantow',
+  'Historia uruchomień',
+  'Porównanie wariantów',
+];
+
+const FORBIDDEN_LEGACY_TOP_MENU_LABELS = [
+  'Plik',
+  'Widok',
+  'Obliczenia',
+  'Narzedzia',
+  'Narzędzia',
+  'Pomoc',
 ];
 
 describe('active shell terminology', () => {
@@ -30,6 +45,17 @@ describe('active shell terminology', () => {
     for (const [dirName, fileName] of ACTIVE_SHELL_FILES) {
       const source = readFileSync(join(uiDir, dirName, fileName), 'utf-8');
       for (const label of FORBIDDEN_ACTIVE_LABELS) {
+        expect(source).not.toContain(label);
+      }
+    }
+  });
+
+  it('keeps the removed legacy top menu labels out of the active top shell', () => {
+    const uiDir = join(__dirname, '..');
+
+    for (const [dirName, fileName] of ACTIVE_TOP_MENU_FILES) {
+      const source = readFileSync(join(uiDir, dirName, fileName), 'utf-8');
+      for (const label of FORBIDDEN_LEGACY_TOP_MENU_LABELS) {
         expect(source).not.toContain(label);
       }
     }

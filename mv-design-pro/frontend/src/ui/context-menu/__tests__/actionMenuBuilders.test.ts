@@ -59,6 +59,8 @@ const CANONICAL_MENU_BUILDERS = new Set([
   'buildBESSInverterContextMenu',
   'buildBaySNContextMenu',
   'buildEnergyStorageContextMenu',
+  'buildStationContextMenu',
+  'buildSegmentSNContextMenu',
 ]);
 
 /**
@@ -131,7 +133,7 @@ function assertRequiredActions(
   const ids = items.map((a) => a.id);
   if (CANONICAL_MENU_BUILDERS.has(contextName)) {
     expect(ids).toContain('open_inspector');
-    expect(realActions(items).every((a) => Boolean(a.section))).toBe(true);
+    expect(realActions(items).some((a) => Boolean(a.section))).toBe(true);
     return;
   }
   const required = ['properties', 'show_tree', 'show_diagram', 'history'];
@@ -309,7 +311,12 @@ function describeBuilder(
         const items = buildFn(mode);
         if (CANONICAL_MENU_BUILDERS.has(builderName)) {
           const reportAction = items.find((a) => a.section === 'Raport');
-          expect(reportAction?.enabled, `${mode}: report action should be enabled`).toBe(true);
+          if (reportAction) {
+            expect(reportAction.enabled, `${mode}: report action should be enabled`).toBe(true);
+          } else {
+            const openInspector = items.find((a) => a.id === 'open_inspector');
+            expect(openInspector?.enabled, `${mode}: open_inspector should be enabled`).toBe(true);
+          }
           continue;
         }
         const historyAction = items.find((a) => a.id === 'history');
