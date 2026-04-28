@@ -210,6 +210,13 @@ Zakres zakończony:
 - [x] Dodano testy kontraktu semantycznego i transformacji semantyka→layout (deterministyczność 100x).
 - [x] Uzupełniono dokumentację: `SLD_SEMANTIC_MODEL_CANONICAL_V1.md` + `SLD_CONTRACT_FLOW_V1.md`.
 
+### 3.0.9 Symphony orchestration baseline (completed)
+
+Zakres zakończony:
+- [x] Dodano nowy moduł `application/symphony` z kanonicznymi komponentami: loader `WORKFLOW.md`, typed config, modele domenowe, manager workspace, renderer promptu i orchestrator poll/retry/reconcile.
+- [x] Dodano kontrakty integracyjne (`IssueTrackerClient`, `AgentRunner`) dla adaptera tracker/runner zgodnie z granicami specyfikacji Symphony.
+- [x] Dodano testy jednostkowe pokrywające parse workflow/config, bezpieczeństwo workspace i logikę dispatch/retry/blockers/concurrency.
+
 
 ### 3.0.5 Hotfix CI TypeScript — referenceTopologies (completed)
 
