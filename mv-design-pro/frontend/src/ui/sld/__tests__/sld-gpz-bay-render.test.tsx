@@ -52,7 +52,20 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
       trunkNodes: [],
       trunkSegments: [],
       branchPoints: [],
-      stationChains: [],
+      stationChains: [
+        {
+          stationId: 'gpz-switchgear',
+          stationType: 'TYPE_A',
+          hasOZE: false,
+          ozeType: null,
+          apparatus: [],
+          nnBusbar: { voltageKV: 0.4, feeders: [] },
+          protection: [],
+          detail: {
+            fields: [{ fieldRole: 'GPZ_LINE_BAY' }],
+          },
+        } as any,
+      ],
       gpzSections: [
         {
           sectionId: 'section-1',
@@ -112,7 +125,7 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
       <SLDViewCanvas
         symbols={symbols}
         connections={connections}
-        selectedId={null}
+        selectedId="bay-sn-1"
         onSymbolClick={onSymbolClick}
         viewport={viewport}
         showGrid={false}
@@ -136,6 +149,13 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q2')).toHaveAttribute('data-state', 'closed');
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q1')).toHaveAttribute('data-state', 'closed');
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q3')).toHaveAttribute('data-state', 'open');
+    expect(screen.getByTestId('gpz-field-selection-bay-sn-1')).toBeInTheDocument();
+    expect(screen.getByTestId('gpz-field-results-bay-sn-1')).toHaveAttribute('data-result-status', 'brak');
+    expect(screen.getByTestId('gpz-field-results-bay-sn-1')).toHaveTextContent('I1 = -- A');
+    expect(screen.getByTestId('gpz-field-results-bay-sn-1')).toHaveTextContent('P = -- MW');
+    expect(screen.getByTestId('gpz-coupler-results')).toHaveAttribute('data-result-status', 'brak');
+    expect(screen.getByTestId('gpz-coupler-results')).toHaveTextContent('I1 = -- A');
+    expect(container.querySelector('[data-element-id="gpz-switchgear"]')).toBeNull();
     expect(screen.getByTestId('sld-connection-conn-gpz-bus')).toBeInTheDocument();
 
     const field = container.querySelector('[data-testid="gpz-line-bay-bay-sn-1"]');

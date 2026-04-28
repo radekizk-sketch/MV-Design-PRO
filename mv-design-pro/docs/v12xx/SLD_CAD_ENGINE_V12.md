@@ -58,6 +58,37 @@ Aktywne menu odcinka SN i stacji SN/nN nie omijaja rejestru. `buildSegmentSNCont
 6. Wynik projekcji zawiera `lodLevel` oraz jasny profil wydruku technicznego.
 7. Warstwa wynikowa moze zmienic LOD na `LOD-6`, ale nie moze zmienic geometrii.
 
+## Workflow GPZ i pola SN
+
+Pusty SLD nie prowadzi juz przez stary menubar ani instrukcje typu `Siec -> Dodaj GPZ`. Widok startowy ma formalny komunikat `Brak zrodla zasilania`, opis wymaganej przyczyny i dwie jawne akcje: `Utworz GPZ uproszczony` oraz `Utworz GPZ pelny`.
+
+Po utworzeniu GPZ kanwa ma materializowac rozdzielnie SN:
+
+- nazwa i parametry GPZ jako kontekst techniczny,
+- pozioma szyna SN z sekcjami,
+- pola SN jako pionowe tory pod szyna,
+- sprzeglo sekcji `6-7` jako osobny uklad lacznikowy,
+- port `BAY_SN_OUT` jako jedyny punkt wyprowadzenia dalszego odcinka SN z pola.
+
+Zaznaczone pole SN ma pokazywac ramke wyboru w stylu CAD/SCADA oraz blok wartosci wynikowych przy polu. Brak aktywnych wynikow jest jawny (`--` z atrybutem statusu `brak`) i nie podszywa sie pod obliczenia zerowe. Wlaczenie lub brak nakladki wynikowej nie moze zmieniac geometrii pola, szyny ani sprzegla.
+
+Warstwa stacji SN/nN nie renderuje rozdzielni GPZ jako osobnego bloku stacyjnego na kanwie. Jezeli projekcja ENM zawiera lancuch pol z rola `GPZ_LINE_BAY`, jest on reprezentowany przez `GpzSwitchgearRenderer`, a nie przez `FieldBlockRenderer` stacji SN/nN. GPZ pozostaje zrodlem i rozdzielnia SN; stacja SN/nN jest osobnym typem obiektu sieciowego.
+
+## Kanon praktyczny ze stacji elektroenergetycznych
+
+Zasady wykonawcze wynikajace z kanonu stacji elektroenergetycznych sa traktowane jako wymagania projektowe SLD, a nie jako opis pomocniczy:
+
+- GPZ na kanwie jest zrodlem zasilania i rozdzielnia SN z szynami, sekcjami, polami liniowymi, transformatorowymi, pomiarowymi i sprzeglowymi. Nie jest renderowany jako stacja SN/nN.
+- Rozdzielnica danego poziomu napiecia zawiera szyny zbiorcze, aparaty laczeniowe, zabezpieczenia, pomiary, sterowanie i sygnalizacje; nie moze byc zastepowana pojedyncza ikona.
+- Pole rozdzielcze jest torem aparaturowym zaleznym od funkcji pola. Pole liniowe, transformatorowe, pomiarowe i sprzeglowe nie moga byc rysowane tym samym symbolem bez roznic funkcjonalnych.
+- Szyna zbiorcza jest glowna osia rozdzialu energii. Odejscia liniowe i transformatorowe wychodza z szyny przez pola, a nie bezposrednio z dowolnego bloku graficznego.
+- Sprzeglo sekcji jest osobnym polem laczacym sekcje szyn, z wlasna aparatura i stanem laczeniowym. Nie jest zwyklym odcinkiem sieci SN.
+- Poziomy napiecia sa oddzielnymi domenami. SN laczy sie z nN tylko przez transformator SN/nN, a tor nN nie moze byc kontynuacja magistrali SN.
+- Tory glowne przenosza energie i musza byc odroznione od obwodow wtornych: zabezpieczen, pomiarow, sterowania, sygnalizacji, blokad i telemechaniki.
+- Operacje laczeniowe musza uwzgledniac identyfikacje pola, stan wylacznika i odlacznikow, blokady, uziemienie, brak napiecia oraz kolejnosc ruchowa. UI nie moze redukowac ich do prostego przelacznika bez kontekstu.
+- Alarmy, znaczniki pracy, uziemienia przenosne, wskazania beznapieciowe, wyniki i proof sa nakladkami lub wpisami audytu. Nie zmieniaja geometrii bazowego SLD.
+- Nawigator i Inspektor techniczny musza umiec prowadzic po GPZ, polach, liniach, polach poza stacjami, ciagach beznapieciowych, punktach zasilania, lokalizacjach zwarc i zdarzeniach ruchowych.
+
 ## Testy akceptacyjne
 
 | Test | Pokrycie |

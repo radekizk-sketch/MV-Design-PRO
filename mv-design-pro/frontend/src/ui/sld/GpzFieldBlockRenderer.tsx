@@ -21,6 +21,8 @@ export interface GpzFieldBlockRendererProps {
   color?: string;
   showTechnicalLabels?: boolean;
   bayNumber?: string;
+  selected?: boolean;
+  resultValues?: GpzFieldResultValues | null;
   onTrunkOutPortClick?: (field: GpzFieldAnnotationV1) => void;
   onTrunkOutPortHover?: (field: GpzFieldAnnotationV1 | null) => void;
 }
@@ -29,10 +31,21 @@ export interface GpzSwitchgearRendererProps {
   sections: readonly GpzSectionV1[];
   fields: readonly GpzFieldAnnotationV1[];
   showTechnicalLabels?: boolean;
+  selectedFieldId?: string | null;
+  fieldResults?: ReadonlyMap<string, GpzFieldResultValues>;
   onFieldClick?: (field: GpzFieldAnnotationV1) => void;
   onFieldDoubleClick?: (field: GpzFieldAnnotationV1) => void;
   onTrunkOutPortClick?: (field: GpzFieldAnnotationV1) => void;
   onTrunkOutPortHover?: (field: GpzFieldAnnotationV1 | null) => void;
+}
+
+export interface GpzFieldResultValues {
+  i1A?: number | null;
+  i2A?: number | null;
+  i3A?: number | null;
+  pMW?: number | null;
+  qMvar?: number | null;
+  status?: 'aktualne' | 'brak' | 'nieaktualne';
 }
 
 type SwitchState = 'closed' | 'open';
@@ -142,17 +155,56 @@ function BayNumberLabel({ x, y, label }: { x: number; y: number; label: string }
   );
 }
 
-function CurrentValues({ x, y }: { x: number; y: number }) {
+function MissingCurrentValues({ x, y }: { x: number; y: number }) {
   return (
     <g
+      data-testid="gpz-coupler-results"
+      data-result-status="brak"
       fill={WIRE}
       fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
       fontSize={19}
       fontWeight={600}
     >
-      <text x={x} y={y}>I1 = 0.00 A</text>
-      <text x={x} y={y + 28}>I2 = 0.00 A</text>
-      <text x={x} y={y + 56}>I3 = 0.00 A</text>
+      <text x={x} y={y}>I1 = -- A</text>
+      <text x={x} y={y + 28}>I2 = -- A</text>
+      <text x={x} y={y + 56}>I3 = -- A</text>
+    </g>
+  );
+}
+
+function formatMeasuredValue(value: number | null | undefined, unit: string, digits: number): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return `-- ${unit}`;
+  }
+  return `${value.toFixed(digits)} ${unit}`;
+}
+
+function FieldResultBlock({
+  fieldId,
+  x,
+  y,
+  values,
+}: {
+  fieldId: string;
+  x: number;
+  y: number;
+  values?: GpzFieldResultValues | null;
+}) {
+  const status = values?.status ?? 'brak';
+  return (
+    <g
+      data-testid={`gpz-field-results-${fieldId}`}
+      data-result-status={status}
+      fill={status === 'nieaktualne' ? '#FBBF24' : WIRE}
+      fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+      fontSize={15}
+      fontWeight={650}
+    >
+      <text x={x} y={y}>I1 = {formatMeasuredValue(values?.i1A, 'A', 1)}</text>
+      <text x={x} y={y + 19}>I2 = {formatMeasuredValue(values?.i2A, 'A', 1)}</text>
+      <text x={x} y={y + 38}>I3 = {formatMeasuredValue(values?.i3A, 'A', 1)}</text>
+      <text x={x} y={y + 61}>P = {formatMeasuredValue(values?.pMW, 'MW', 2)}</text>
+      <text x={x} y={y + 80}>Q = {formatMeasuredValue(values?.qMvar, 'Mvar', 2)}</text>
     </g>
   );
 }
@@ -182,6 +234,8 @@ function CanonicalLineBay({
   field,
   bayNumber,
   showTechnicalLabels,
+  selected = false,
+  resultValues,
   onTrunkOutPortClick,
   onTrunkOutPortHover,
 }: GpzFieldBlockRendererProps) {
@@ -194,6 +248,7 @@ function CanonicalLineBay({
   const earthTapY = yBottomDs + TILE_HEIGHT + 28;
   const earthX = axisX + EARTH_BRANCH_OFFSET;
   const earthY = earthTapY + 8;
+  const showResultBlock = selected || Boolean(resultValues);
 
   return (
     <g
@@ -204,6 +259,34 @@ function CanonicalLineBay({
       data-element-name={field.designation}
       data-testid={`gpz-line-bay-${field.fieldId}`}
     >
+      {selected && (
+        <g data-testid={`gpz-field-selection-${field.fieldId}`} pointerEvents="none">
+          <rect
+            x={axisX - 58}
+            y={field.busTap.y - 8}
+            width={116}
+            height={verticalExitY - field.busTap.y + 190}
+            rx={6}
+            ry={6}
+            fill="rgba(37, 99, 235, 0.10)"
+            stroke="#3B82F6"
+            strokeWidth={1.4}
+          />
+          <rect
+            x={axisX - 49}
+            y={yTop - 9}
+            width={98}
+            height={TILE_HEIGHT * 3 + TILE_GAP * 2 + 18}
+            rx={5}
+            ry={5}
+            fill="none"
+            stroke="#60A5FA"
+            strokeWidth={1.6}
+            strokeDasharray="5 4"
+          />
+          <circle cx={axisX} cy={field.busTap.y} r={6} fill="#60A5FA" stroke={WIRE} strokeWidth={1.5} />
+        </g>
+      )}
       {bayNumber && <BayNumberLabel x={axisX} y={field.busTap.y - 22} label={bayNumber} />}
       <circle cx={axisX} cy={field.busTap.y} r={5} fill={WIRE} />
       <line x1={axisX} y1={field.busTap.y} x2={axisX} y2={yTop} stroke={WIRE} strokeWidth={3} />
@@ -278,6 +361,14 @@ function CanonicalLineBay({
           {field.designation}
         </text>
       )}
+      {showResultBlock && (
+        <FieldResultBlock
+          fieldId={field.fieldId}
+          x={axisX - 50}
+          y={verticalExitY + 46}
+          values={resultValues}
+        />
+      )}
     </g>
   );
 }
@@ -339,6 +430,8 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
   sections,
   fields,
   showTechnicalLabels = false,
+  selectedFieldId = null,
+  fieldResults,
   onFieldClick,
   onFieldDoubleClick,
   onTrunkOutPortClick,
@@ -424,6 +517,8 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
       {layout.sortedFields.map((field, index) => {
         const label = lineBayLabel(index, layout.sortedFields.length, layout.hasCoupler, field.designation);
         const section = sections.find((candidate) => sectionHasField(candidate, field));
+        const selected = selectedFieldId === field.fieldId || selectedFieldId === field.feederNodeId;
+        const resultValues = fieldResults?.get(field.fieldId) ?? fieldResults?.get(field.feederNodeId) ?? null;
         return (
           <g
             key={field.fieldId}
@@ -442,6 +537,8 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
               field={field}
               bayNumber={label}
               showTechnicalLabels={showTechnicalLabels}
+              selected={selected}
+              resultValues={resultValues}
               onTrunkOutPortClick={onTrunkOutPortClick}
               onTrunkOutPortHover={onTrunkOutPortHover}
             />
@@ -452,7 +549,7 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
       {layout.hasCoupler && layout.couplerLeftX !== null && layout.couplerRightX !== null && (
         <>
           <CouplerRenderer leftX={layout.couplerLeftX} rightX={layout.couplerRightX} busY={layout.busY} />
-          <CurrentValues x={layout.couplerLeftX - 2} y={layout.busY + 178} />
+          <MissingCurrentValues x={layout.couplerLeftX - 2} y={layout.busY + 178} />
         </>
       )}
     </g>
@@ -463,6 +560,8 @@ export const GpzFieldBlockRenderer: React.FC<GpzFieldBlockRendererProps> = ({
   field,
   showTechnicalLabels = false,
   bayNumber,
+  selected,
+  resultValues,
   onTrunkOutPortClick,
   onTrunkOutPortHover,
 }) => (
@@ -470,6 +569,8 @@ export const GpzFieldBlockRenderer: React.FC<GpzFieldBlockRendererProps> = ({
     field={field}
     bayNumber={bayNumber ?? field.designation}
     showTechnicalLabels={showTechnicalLabels}
+    selected={selected}
+    resultValues={resultValues}
     onTrunkOutPortClick={onTrunkOutPortClick}
     onTrunkOutPortHover={onTrunkOutPortHover}
   />

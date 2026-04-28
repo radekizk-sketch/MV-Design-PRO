@@ -78,13 +78,13 @@ const EMPTY_STATE_CONFIG: Record<
     accentColor: 'bg-violet-600',
   },
   NO_MODEL: {
-    title: 'Pusty schemat jednokreskowy',
-    description: 'Kliknij prawym przyciskiem na schemacie i wybierz Siec -> Dodaj GPZ, aby rozpoczac projektowanie sieci.',
-    bgColor: 'bg-stone-50/95',
-    borderColor: 'border-stone-300',
-    textColor: 'text-stone-700',
-    iconColor: 'text-stone-400',
-    accentColor: 'bg-stone-500',
+    title: 'Brak źródła zasilania',
+    description: 'Aby rozpocząć modelowanie sieci, utwórz Główny Punkt Zasilający.',
+    bgColor: 'bg-slate-950/92',
+    borderColor: 'border-sky-500/45',
+    textColor: 'text-slate-100',
+    iconColor: 'text-sky-300',
+    accentColor: 'bg-sky-600',
   },
   LOADING: {
     title: 'Ladowanie schematu...',
@@ -104,21 +104,32 @@ export interface SldEmptyOverlayProps {
   hasCases?: boolean;
   onSelectCase?: () => void;
   onCreateCase?: () => void;
+  onCreateSimpleGpz?: () => void;
+  onCreateFullGpz?: () => void;
   isCreatingCase?: boolean;
+  isCreatingGpz?: boolean;
   createCaseDisabled?: boolean;
   createCaseDisabledReason?: string;
+  createGpzDisabled?: boolean;
+  createGpzDisabledReason?: string;
   className?: string;
 }
 
 export function SldEmptyOverlay({
   state,
   forceShow = false,
+  hasSource = false,
   hasCases = false,
   onSelectCase,
   onCreateCase,
+  onCreateSimpleGpz,
+  onCreateFullGpz,
   isCreatingCase = false,
+  isCreatingGpz = false,
   createCaseDisabled = false,
   createCaseDisabledReason,
+  createGpzDisabled = false,
+  createGpzDisabledReason,
   className,
 }: SldEmptyOverlayProps) {
   const hasActiveCase = useHasActiveCase();
@@ -134,6 +145,9 @@ export function SldEmptyOverlay({
   }
 
   const showCaseActions = resolvedState === 'NO_CASE' && (onSelectCase || onCreateCase);
+  const showGpzActions =
+    resolvedState === 'NO_MODEL' && !hasSource && (onCreateSimpleGpz || onCreateFullGpz);
+  const gpzDisabled = createGpzDisabled || isCreatingGpz;
 
   return (
     <div
@@ -201,6 +215,44 @@ export function SldEmptyOverlay({
                 data-testid="sld-empty-overlay-create-new"
               >
                 Nowy wariant pracy
+              </button>
+            )}
+          </div>
+        )}
+
+        {showGpzActions && (
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {onCreateSimpleGpz && (
+              <button
+                type="button"
+                onClick={onCreateSimpleGpz}
+                disabled={gpzDisabled}
+                title={createGpzDisabled ? createGpzDisabledReason : undefined}
+                className={clsx(
+                  'rounded-md px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all duration-150',
+                  config.accentColor,
+                  !gpzDisabled && 'hover:opacity-90 hover:shadow',
+                  gpzDisabled && 'cursor-not-allowed opacity-60',
+                )}
+                data-testid="sld-empty-overlay-create-gpz-simple"
+              >
+                {isCreatingGpz ? 'Tworzenie GPZ...' : 'Utwórz GPZ uproszczony'}
+              </button>
+            )}
+            {onCreateFullGpz && (
+              <button
+                type="button"
+                onClick={onCreateFullGpz}
+                disabled={gpzDisabled}
+                title={createGpzDisabled ? createGpzDisabledReason : undefined}
+                className={clsx(
+                  'rounded-md border border-sky-400/70 bg-slate-900/80 px-4 py-2 text-sm font-semibold text-sky-100 transition-all duration-150',
+                  !gpzDisabled && 'hover:border-sky-300 hover:bg-slate-800',
+                  gpzDisabled && 'cursor-not-allowed opacity-60',
+                )}
+                data-testid="sld-empty-overlay-create-gpz-full"
+              >
+                Utwórz GPZ pełny
               </button>
             )}
           </div>

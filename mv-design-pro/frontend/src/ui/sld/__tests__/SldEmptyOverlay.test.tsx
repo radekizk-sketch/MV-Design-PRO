@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SldEmptyOverlay } from '../SldEmptyOverlay';
@@ -8,14 +8,31 @@ vi.mock('../../app-state', () => ({
 }));
 
 describe('SldEmptyOverlay', () => {
-  it('pokazuje pojedynczy komunikat warsztatowy dla pustego modelu bez zrodla', () => {
-    render(<SldEmptyOverlay state="NO_MODEL" forceShow hasSource={false} />);
+  it('pokazuje formalne akcje utworzenia GPZ dla pustego modelu bez zrodla', () => {
+    const onCreateSimpleGpz = vi.fn();
+    const onCreateFullGpz = vi.fn();
+
+    render(
+      <SldEmptyOverlay
+        state="NO_MODEL"
+        forceShow
+        hasSource={false}
+        onCreateSimpleGpz={onCreateSimpleGpz}
+        onCreateFullGpz={onCreateFullGpz}
+      />,
+    );
 
     expect(screen.getByTestId('sld-empty-overlay')).toBeInTheDocument();
-    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Pusty schemat jednokreskowy');
-    expect(screen.getByText(/Kliknij prawym przyciskiem na schemacie/i)).toBeInTheDocument();
-    expect(screen.getByText(/Siec -> Dodaj GPZ/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getByTestId('sld-empty-overlay-title')).toHaveTextContent('Brak źródła zasilania');
+    expect(screen.getByText(/Aby rozpocząć modelowanie sieci/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Siec -> Dodaj GPZ/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Kliknij prawym przyciskiem/i)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('sld-empty-overlay-create-gpz-simple'));
+    fireEvent.click(screen.getByTestId('sld-empty-overlay-create-gpz-full'));
+
+    expect(onCreateSimpleGpz).toHaveBeenCalledTimes(1);
+    expect(onCreateFullGpz).toHaveBeenCalledTimes(1);
   });
 
   it('pokazuje dzialania wyboru i konfiguracji pierwszego wariantu pracy', () => {

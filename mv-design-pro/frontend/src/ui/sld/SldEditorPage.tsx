@@ -840,6 +840,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     notify('Wlaczono dodawanie GPZ. Wskaz miejsce na schemacie.', 'info');
   }, []);
 
+  const handleActivateFullGpzPlacement = useCallback(() => {
+    setActiveTool('add_grid_source_sn');
+    setInteractionMessage(
+      'Kliknij na schemacie, aby wstawic pelny GPZ z torem WN, transformatorem WN/SN i szyna SN.',
+    );
+    notify('Wlaczono dodawanie pelnego GPZ. Wskaz miejsce na schemacie.', 'info');
+  }, []);
+
   const handleOpenSnBayFlow = useCallback(() => {
     if (!primaryStationRef || !primarySnBusRef) {
       const msg =
@@ -1543,10 +1551,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         {emptyState && (
           <SldEmptyOverlay
             state={emptyState}
+            hasSource={hasSource}
             hasCases={studyCasesCount > 0}
             onSelectCase={handleEmptyAction}
             onCreateCase={handleCreateFirstCase}
+            onCreateSimpleGpz={handleActivateGpzPlacement}
+            onCreateFullGpz={handleActivateFullGpzPlacement}
             isCreatingCase={isCreatingFirstCase}
+            createGpzDisabled={!hasActiveCase || hasSource}
+            createGpzDisabledReason={
+              !hasActiveCase
+                ? 'Najpierw skonfiguruj wariant pracy.'
+                : hasSource
+                  ? 'Model ma juz aktywne zrodlo zasilania GPZ.'
+                  : undefined
+            }
           />
         )}
 

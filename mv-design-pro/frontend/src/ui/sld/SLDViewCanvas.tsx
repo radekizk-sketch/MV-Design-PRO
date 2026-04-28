@@ -202,6 +202,16 @@ function inlineBranchElementType(objectType: 'branch_pole' | 'zksn'): ElementTyp
   return objectType === 'branch_pole' ? 'BranchPole' : 'ZKSN';
 }
 
+type StationChainForCanvas = NonNullable<SLDViewCanvasProps['canonicalAnnotations']>['stationChains'][number];
+
+function isGpzSwitchgearChain(chain: StationChainForCanvas, hasGpzSwitchgear: boolean): boolean {
+  if (!hasGpzSwitchgear) {
+    return false;
+  }
+
+  return chain.detail?.fields.some((field) => field.fieldRole === 'GPZ_LINE_BAY') ?? false;
+}
+
 /**
  * Grid background for canvas.
  * CANONICAL style: subdued, not dominant. Major grid every N cells.
@@ -311,6 +321,15 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const gpzSections = canonicalAnnotations?.gpzSections ?? [];
   const gpzFeederFields = canonicalAnnotations?.gpzFeederFields ?? [];
   const stationChains = canonicalAnnotations?.stationChains ?? [];
+  const hasGpzSwitchgear = gpzSections.length > 0 || gpzFeederFields.length > 0;
+  const visibleStationChains = useMemo(
+    () => stationChains.filter((chain) => !isGpzSwitchgearChain(chain, hasGpzSwitchgear)),
+    [hasGpzSwitchgear, stationChains],
+  );
+  const visibleCanonicalAnnotations = useMemo(
+    () => canonicalAnnotations ? { ...canonicalAnnotations, stationChains: visibleStationChains } : null,
+    [canonicalAnnotations, visibleStationChains],
+  );
   const gpzFieldNodeIds = useMemo(
     () => new Set(gpzFeederFields.map((field) => field.feederNodeId)),
     [gpzFeederFields],
@@ -353,6 +372,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           sections={gpzSections}
           fields={gpzFeederFields}
           showTechnicalLabels={showTechnicalCanonicalLabels}
+          selectedFieldId={selectedId}
           onFieldClick={(field) => {
             onSymbolClick(field.fieldId, 'BaySN', field.designation);
           }}
@@ -374,7 +394,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     }
 
     overlays.push(
-      ...stationChains.map((chain) => (
+      ...visibleStationChains.map((chain) => (
         <g
           key={`station-field-${chain.stationId}`}
           data-element-id={chain.stationId}
@@ -406,8 +426,9 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     onPortHover,
     onSymbolClick,
     onSymbolDoubleClick,
+    selectedId,
     showTechnicalCanonicalLabels,
-    stationChains,
+    visibleStationChains,
   ]);
 
   // Build energization map for connections
@@ -600,16 +621,16 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           })}
 
         {/* Canonical SLD layers (Phase 7) — pointerEvents: none to avoid blocking interaction */}
-        {canonicalAnnotations && (
+        {visibleCanonicalAnnotations && (
           <>
             <g className="sld-branch-points" style={{ pointerEvents: 'none' }}>
-              {canonicalAnnotations.branchPoints.map((bp) => (
+              {visibleCanonicalAnnotations.branchPoints.map((bp) => (
                 <BranchRenderer key={bp.branchId} branch={bp} showTechnicalLabels={showTechnicalCanonicalLabels} />
               ))}
             </g>
-            {(canonicalAnnotations.inlineBranchObjects?.length ?? 0) > 0 && (
+            {(visibleCanonicalAnnotations.inlineBranchObjects?.length ?? 0) > 0 && (
               <g className="sld-inline-branch-objects">
-                {canonicalAnnotations.inlineBranchObjects!.map((obj) => (
+                {visibleCanonicalAnnotations.inlineBranchObjects!.map((obj) => (
                   <InlineBranchObjectRenderer
                     key={obj.nodeId}
                     obj={obj}
@@ -622,7 +643,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
               </g>
             )}
             <g className="sld-junction-dots" style={{ pointerEvents: 'none' }}>
-              <JunctionDotLayer annotations={canonicalAnnotations} />
+              <JunctionDotLayer annotations={visibleCanonicalAnnotations} />
             </g>
           </>
         )}
