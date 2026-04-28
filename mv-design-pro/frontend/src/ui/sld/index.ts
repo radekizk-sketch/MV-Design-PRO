@@ -65,6 +65,22 @@ export {
   calculateSymbolsBounds,
 } from './types';
 export { enmSnapshotToSldSymbols, projectEnmSnapshotToSld } from './enmSnapshotToSldSymbols';
+export {
+  createSldCadEngineV12Graph,
+  createSldPrintProfile,
+  extractSldGeometrySignature,
+  projectEnmToSldCadV12,
+  validateSldCadGraph,
+  voltageDomainFromKv,
+} from './SldCadEngineV12';
+export type {
+  SldCadEngineOptions,
+  SldCadGraph,
+  SldCadGraphEdge,
+  SldCadGraphNode,
+  SldCadProjectionResult,
+  SldPrintProfile,
+} from './SldCadEngineV12';
 
 // Overlay utilities
 export {

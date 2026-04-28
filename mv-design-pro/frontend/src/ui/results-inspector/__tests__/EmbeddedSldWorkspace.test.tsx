@@ -8,7 +8,7 @@ import { EmbeddedSldWorkspace } from '../EmbeddedSldWorkspace';
 import type { EnergyNetworkModel } from '../../../types/enm';
 
 const fetchCurrentCaseSnapshotMock = vi.fn();
-const projectEnmSnapshotToSldMock = vi.fn();
+const projectEnmToSldCadV12Mock = vi.fn();
 
 vi.mock('../api', () => ({
   fetchCurrentCaseSnapshot: (...args: unknown[]) => fetchCurrentCaseSnapshotMock(...args),
@@ -18,7 +18,7 @@ vi.mock('../../sld', () => ({
   SLDView: ({ symbols }: { symbols: unknown[] }) => (
     <div data-testid="mock-sld-view" data-symbol-count={symbols.length} />
   ),
-  projectEnmSnapshotToSld: (...args: unknown[]) => projectEnmSnapshotToSldMock(...args),
+  projectEnmToSldCadV12: (...args: unknown[]) => projectEnmToSldCadV12Mock(...args),
 }));
 
 function createSnapshot(hash: string, busCount: number): EnergyNetworkModel {
@@ -63,7 +63,7 @@ describe('EmbeddedSldWorkspace', () => {
     useAppStateStore.getState().reset();
     useSnapshotStore.getState().reset();
     fetchCurrentCaseSnapshotMock.mockReset();
-    projectEnmSnapshotToSldMock.mockReset();
+    projectEnmToSldCadV12Mock.mockReset();
     window.history.replaceState(null, '', '/#results?run=run-1&snapshot=run');
   });
 
@@ -95,7 +95,7 @@ describe('EmbeddedSldWorkspace', () => {
       },
     });
 
-    projectEnmSnapshotToSldMock.mockImplementation((snapshot: EnergyNetworkModel | null) => {
+    projectEnmToSldCadV12Mock.mockImplementation((snapshot: EnergyNetworkModel | null) => {
       const hash = snapshot?.header.hash_sha256;
       if (hash === 'current-hash-002') {
         return {

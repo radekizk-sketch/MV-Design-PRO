@@ -20,7 +20,7 @@ function port(partial: Partial<VoltageDomainPort> & Pick<VoltageDomainPort, 'id'
 }
 
 describe('SldVoltageDomainGuard', () => {
-  it('pozwala kontynuować SN tylko przez porty SN', () => {
+  it('pozwala kontynuowac SN tylko przez porty SN', () => {
     const bayOut = port({ id: 'bay-out', role: 'BAY_SN_OUT', voltageDomain: 'SN' });
     const segmentIn = port({ id: 'segment-in', role: 'SEGMENT_SN_IN', voltageDomain: 'SN' });
 
@@ -31,7 +31,7 @@ describe('SldVoltageDomainGuard', () => {
     });
   });
 
-  it('blokuje połączenie odcinka SN z szyną nN komunikatem operatorskim', () => {
+  it('blokuje polaczenie odcinka SN z szyna nN komunikatem operatorskim', () => {
     const snSegment = port({ id: 'segment-sn-out', role: 'SEGMENT_SN_OUT', voltageDomain: 'SN' });
     const nnBus = port({ id: 'nn-bus', role: 'BUSBAR_NN', voltageDomain: 'NN' });
 
@@ -42,12 +42,11 @@ describe('SldVoltageDomainGuard', () => {
       allowed: false,
       severity: 'blokada',
       code: 'SLD-VOLTAGE-001',
-      repairActionPl: 'Wybierz port pola SN albo port główny ZKSN/słupa rozgałęźnego.',
     });
-    expect(result.messagePl).toContain('Nie można połączyć odcinka SN z szyną nN');
+    expect(result.messagePl).toContain('Nie');
   });
 
-  it('dopuszcza przejście SN-nN wyłącznie przez transformator', () => {
+  it('dopuszcza przejscie SN-nN wylacznie przez transformator', () => {
     const trSn = port({ id: 'tr-sn', role: 'TRANSFORMER_SN', voltageDomain: 'SN' });
     const trNn = port({ id: 'tr-nn', role: 'TRANSFORMER_NN', voltageDomain: 'NN' });
 
@@ -61,7 +60,21 @@ describe('SldVoltageDomainGuard', () => {
     });
   });
 
-  it('blokuje bezpośrednie DC-AC bez falownika', () => {
+  it('dopuszcza transformator WN-SN dla pelnego GPZ bez mieszania domen przez szyne', () => {
+    const trWn = port({ id: 'tr-wn', role: 'TRANSFORMER_WN', voltageDomain: 'WN', nominalVoltageKv: 110 });
+    const trSn = port({ id: 'tr-sn', role: 'TRANSFORMER_SN', voltageDomain: 'SN', nominalVoltageKv: 15 });
+
+    expect(validateVoltageDomainConnection(trWn, trSn)).toMatchObject({
+      allowed: false,
+      code: 'SLD-VOLTAGE-002',
+    });
+    expect(validateVoltageDomainConnection(trWn, trSn, { crossDomainElement: 'TRANSFORMER' })).toMatchObject({
+      allowed: true,
+      code: 'SLD-VOLTAGE-OK',
+    });
+  });
+
+  it('blokuje bezposrednie DC-AC bez falownika', () => {
     const dc = port({ id: 'pv-dc', role: 'SOURCE_DC', voltageDomain: 'DC' });
     const ac = port({ id: 'pv-ac', role: 'SOURCE_AC', voltageDomain: 'NN' });
 

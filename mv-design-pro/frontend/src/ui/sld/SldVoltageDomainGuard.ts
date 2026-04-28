@@ -9,6 +9,7 @@ export type VoltageDomainPortRole =
   | 'BAY_SN_TRANSFORMER'
   | 'SEGMENT_SN_IN'
   | 'SEGMENT_SN_OUT'
+  | 'TRANSFORMER_WN'
   | 'TRANSFORMER_SN'
   | 'TRANSFORMER_NN'
   | 'LV_FEEDER_OUT'
@@ -122,8 +123,9 @@ function pairHasDomains(
 }
 
 function isTransformerPair(left: VoltageDomainPort, right: VoltageDomainPort): boolean {
-  const roles = new Set([left.role, right.role]);
-  return roles.has('TRANSFORMER_SN') && roles.has('TRANSFORMER_NN');
+  const roles = [left.role, right.role];
+  return roles.every((role) => role.startsWith('TRANSFORMER_'))
+    && left.voltageDomain !== right.voltageDomain;
 }
 
 function isInverterPair(left: VoltageDomainPort, right: VoltageDomainPort): boolean {
@@ -144,10 +146,11 @@ export function validateVoltageDomainConnection(
     return OK_RESULT;
   }
 
+  if (options.crossDomainElement === 'TRANSFORMER' && isTransformerPair(left, right)) {
+    return OK_RESULT;
+  }
+
   if (pairHasDomains(left, right, 'SN', 'NN')) {
-    if (options.crossDomainElement === 'TRANSFORMER' && isTransformerPair(left, right)) {
-      return OK_RESULT;
-    }
     return SN_NN_BLOCK_RESULT;
   }
 

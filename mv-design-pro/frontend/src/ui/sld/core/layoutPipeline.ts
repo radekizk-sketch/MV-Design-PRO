@@ -508,7 +508,7 @@ function phase2_build_trunk_topology(
   // Retrieve fieldStartX from phase1 metadata
   const metaPlacement = state.placements.get('__fieldStartX__');
   const fieldStartX = metaPlacement ? metaPlacement.x : snap(X_START + PITCH_FIELD_X);
-  // Clean up metadata placeholder
+  // Clean up transient metadata marker
   state.placements.delete('__fieldStartX__');
 
   // Y where trunk starts (below SN busbar)

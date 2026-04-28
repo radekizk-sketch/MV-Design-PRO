@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../types/enm';
-import { projectEnmSnapshotToSld } from '../sld/enmSnapshotToSldSymbols';
+import { projectEnmToSldCadV12 } from '../sld/SldCadEngineV12';
 import { SLDView } from '../sld/SLDView';
 
 interface WizardSldPreviewProps {
@@ -13,7 +13,7 @@ export function WizardSldPreview({ enm }: WizardSldPreviewProps) {
   const [canvasSize, setCanvasSize] = useState({ width: 720, height: 420 });
 
   const projection = useMemo(
-    () => projectEnmSnapshotToSld((enm ?? null) as unknown as Record<string, unknown> | null),
+    () => projectEnmToSldCadV12((enm ?? null) as unknown as Record<string, unknown> | null),
     [enm],
   );
   const symbols = projection.symbols;

@@ -5,7 +5,7 @@ import { useAppStateStore } from '../app-state';
 import { navigateToNetworkBuild, navigateToProof } from '../navigation';
 import { encodeSelectionToParams } from '../navigation/urlState';
 import { useSelectionStore } from '../selection/store';
-import { projectEnmSnapshotToSld, SLDView } from '../sld';
+import { projectEnmToSldCadV12, SLDView } from '../sld';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { fetchCurrentCaseSnapshot } from './api';
 import { useResultsInspectorStore } from './store';
@@ -140,7 +140,11 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
     effectiveMode === 'CURRENT_MODEL' ? currentModelSnapshotId : runSnapshot?.snapshot_id ?? runHeader.snapshot_id;
 
   const projection = useMemo(
-    () => projectEnmSnapshotToSld((displayedSnapshot ?? null) as Record<string, unknown> | null),
+    () => projectEnmToSldCadV12(
+      (displayedSnapshot ?? null) as Record<string, unknown> | null,
+      null,
+      { hasActiveResults: true },
+    ),
     [displayedSnapshot],
   );
   const symbols = projection.symbols;

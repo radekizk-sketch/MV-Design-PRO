@@ -13,7 +13,7 @@
  * SV03: Branch station MUST NOT be on trunk path
  * SV04: Sectional station MUST have 2 sections + tie bay
  * SV05: Terminal station MUST have incoming bay, MUST NOT have outgoing
- * SV06: Every bay MUST have >= 1 device (or be a diagnostic placeholder)
+ * SV06: Every bay MUST have >= 1 device (or be a synthetic diagnostic bay)
  * SV07: NOP MUST connect two different trunks or sections
  * SV08: Every trunk MUST start from a GPZ node
  * SV09: Branch point node MUST have >= 3 incident edges (not validated here — topology adapter)
@@ -146,7 +146,7 @@ export function validateSldSemanticModel(
     }
   }
 
-  // SV06: Every bay MUST have >= 1 device (skip placeholders)
+  // SV06: Every bay MUST have >= 1 device (skip synthetic diagnostic bays)
   const allBays = [
     ...model.inlineStations.flatMap(s => [s.incomingBay, s.outgoingBay, ...s.transformerBays, ...s.branchBays, ...s.generatorBays]),
     ...model.branchStations.flatMap(s => [s.incomingBay, s.outgoingBay, ...s.transformerBays, ...s.generatorBays].filter(Boolean)),
@@ -155,7 +155,7 @@ export function validateSldSemanticModel(
   ];
 
   for (const bay of allBays) {
-    if (bay && bay.devices.length === 0 && !bay.id.startsWith('placeholder_')) {
+    if (bay && bay.devices.length === 0 && !bay.id.startsWith('synthetic_missing_bay_')) {
       issues.push({
         code: 'SV06',
         message: `Pole '${bay.id}' (rola: ${bay.bayRole}): brak urzadzen`,

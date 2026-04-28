@@ -60,7 +60,7 @@ import {
   readExplicitCatalogVersion,
 } from '../catalog/catalogSnapshot';
 import { resolveBusSnRef, resolveStationRef } from '../network-build/forms/enmResolvers';
-import { projectEnmSnapshotToSld } from './enmSnapshotToSldSymbols';
+import { projectEnmToSldCadV12 } from './SldCadEngineV12';
 import type { InteractionPortRole } from './types';
 import type { FixAction, ReadinessIssue } from '../types';
 import type { ElementType } from '../types';
@@ -619,11 +619,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   }, [selectedSegmentBranch]);
 
   const enmProjection = useMemo(
-    () => projectEnmSnapshotToSld(
+    () => projectEnmToSldCadV12(
       (enmSnapshot ?? null) as Record<string, unknown> | null,
       logicalViews ?? null,
+      { zoom: 1, hasActiveResults: resultStatusLabel !== 'Brak wynikow' },
     ),
-    [enmSnapshot, logicalViews],
+    [enmSnapshot, logicalViews, resultStatusLabel],
   );
 
   const openCatalogPickerForSelectedSegment = useCallback(() => {

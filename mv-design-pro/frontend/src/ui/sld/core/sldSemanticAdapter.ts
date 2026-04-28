@@ -107,8 +107,8 @@ export function buildSldSemanticModel(
           trunkId: trunkInfo?.trunkId ?? '',
           incomingSegmentId: trunkInfo?.incomingSegmentId ?? '',
           outgoingSegmentId: trunkInfo?.outgoingSegmentId ?? '',
-          incomingBay: inBay ?? makePlaceholderBay(station.id, BayRoleSld.LINE_IN),
-          outgoingBay: outBay ?? makePlaceholderBay(station.id, BayRoleSld.LINE_OUT),
+          incomingBay: inBay ?? makeSyntheticMissingBay(station.id, BayRoleSld.LINE_IN),
+          outgoingBay: outBay ?? makeSyntheticMissingBay(station.id, BayRoleSld.LINE_OUT),
           transformerBays: bays.filter(b => b.bayRole === BayRoleSld.TRANSFORMER),
           branchBays: bays.filter(b => b.bayRole === BayRoleSld.BRANCH),
           generatorBays: bays.filter(b =>
@@ -430,9 +430,9 @@ function findBranchPathForStation(
   return null;
 }
 
-function makePlaceholderBay(stationId: string, role: BayRoleSldType): SldBayV1 {
+function makeSyntheticMissingBay(stationId: string, role: BayRoleSldType): SldBayV1 {
   return {
-    id: `placeholder_${stationId}_${role}`,
+    id: `synthetic_missing_bay_${stationId}_${role}`,
     bayRole: role,
     busSectionId: stationId,
     devices: [],

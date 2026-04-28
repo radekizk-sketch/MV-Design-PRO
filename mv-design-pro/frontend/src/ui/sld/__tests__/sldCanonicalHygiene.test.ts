@@ -29,7 +29,7 @@ describe('SLD canonical hygiene', () => {
 
   it('SldEditorPage korzysta z projektora ENM -> SLD zamiast statycznej topologii runtime', () => {
     const page = read('src/ui/sld/SldEditorPage.tsx');
-    expect(page.includes('projectEnmSnapshotToSld')).toBe(true);
+    expect(page.includes('projectEnmToSldCadV12')).toBe(true);
     expect(page.includes('const enmProjection = useMemo(')).toBe(true);
   });
 

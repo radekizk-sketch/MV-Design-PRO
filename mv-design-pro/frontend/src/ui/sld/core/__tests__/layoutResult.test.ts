@@ -44,7 +44,7 @@ function makeResult(gpzSections: readonly GpzSectionV1[]): LayoutResultV1 {
     relayBindings: [],
     validationErrors: [],
     bounds: { x: 0, y: 0, width: 100, height: 100 },
-    hash: 'placeholder',
+    hash: 'semantic-test',
     canonicalAnnotations,
   };
 }
