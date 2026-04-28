@@ -10,6 +10,8 @@
  * - Polish labels only
  */
 
+import { createElement } from 'react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import type { ElementType, OperatingMode } from '../../types';
 
@@ -44,7 +46,7 @@ import {
   buildAnalysisResultContextMenu,
   ACTION_MENU_MINIMUM_OPTIONS,
 } from '../actionMenuBuilders';
-import { handlerNameToActionId } from '../EngineeringContextMenu';
+import { EngineeringContextMenu, handlerNameToActionId } from '../EngineeringContextMenu';
 
 // =============================================================================
 // Forbidden English words in context menu labels
@@ -104,6 +106,31 @@ describe('EngineeringContextMenu — §2 UX 10/10', () => {
       expect(handlerNameToActionId('onAddProtection')).toBe('add_relay');
       expect(handlerNameToActionId('onAssignTRCatalog')).toBe('assign_tr_catalog');
       expect(handlerNameToActionId('onInsertSwitch')).toBe('insert_section_switch_sn');
+    });
+  });
+
+  describe('Canvas menu labels', () => {
+    it('does not call an existing model canvas empty', () => {
+      render(createElement(EngineeringContextMenu, {
+        state: {
+          isOpen: true,
+          x: 12,
+          y: 18,
+          elementId: '',
+          elementType: 'Source',
+          elementName: '',
+          scope: 'canvas',
+          canvasMode: 'NEUTRAL',
+          headerText: 'Kanwa schematu jednokreskowego',
+        },
+        mode: 'MODEL_EDIT',
+        onClose: vi.fn(),
+        onOperation: vi.fn(),
+      }));
+
+      expect(screen.getByText('Kanwa schematu jednokreskowego')).toBeInTheDocument();
+      expect(screen.getByText('Wskaż pole SN, szynę GPZ albo odcinek SN')).toBeInTheDocument();
+      expect(screen.queryByText(/Puste płótno/i)).not.toBeInTheDocument();
     });
   });
 

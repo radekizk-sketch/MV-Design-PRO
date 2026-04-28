@@ -215,7 +215,9 @@ function isGpzSwitchgearChain(chain: StationChainForCanvas, hasGpzSwitchgear: bo
     return false;
   }
 
-  return chain.detail?.fields.some((field) => field.fieldRole === 'GPZ_LINE_BAY') ?? false;
+  const hasGpzLineBay = chain.detail?.fields.some((field) => field.fieldRole === 'GPZ_LINE_BAY') ?? false;
+  const chainId = String(chain.stationId).toLowerCase();
+  return hasGpzLineBay || chainId.includes('/substation') || chainId.includes('gpz-switchgear');
 }
 
 /**

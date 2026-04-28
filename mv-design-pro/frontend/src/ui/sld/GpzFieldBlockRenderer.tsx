@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import type { GpzFieldAnnotationV1, GpzSectionV1 } from './core/layoutResult';
+import { FieldRoleV1, type FieldRoleV1 as FieldRoleName } from './core/fieldDeviceContracts';
 
 const WIRE = '#F8FAFC';
 const MUTED_WIRE = '#CBD5E1';
@@ -11,6 +12,7 @@ const PORT_STROKE = 'rgba(96, 165, 250, 0.24)';
 
 const TILE_WIDTH = 44;
 const TILE_HEIGHT = 34;
+const CT_SYMBOL_HEIGHT = 26;
 const TILE_GAP = 1;
 const BAY_STACK_OFFSET = 34;
 const BAY_BOTTOM_TAIL = 58;
@@ -50,6 +52,14 @@ export interface GpzFieldResultValues {
 
 type SwitchState = 'closed' | 'open';
 type ApparatusKind = 'disconnector' | 'breaker' | 'earthing-switch';
+
+interface BayFunctionDescriptor {
+  role: FieldRoleName;
+  title: string;
+  subtitle: string;
+  requiredPath: string;
+  portLabel: string;
+}
 
 interface TileProps {
   x: number;
@@ -124,6 +134,169 @@ function SwitchTile({ x, y, label, kind, state = 'closed', testId }: TileProps) 
           {label}
         </text>
       )}
+    </g>
+  );
+}
+
+function resolveFieldRole(field: GpzFieldAnnotationV1): FieldRoleName {
+  const detailField = field.detail?.fields.find((candidate) => candidate.id === field.fieldId);
+  return detailField?.fieldRole ?? FieldRoleV1.GPZ_LINE_BAY;
+}
+
+function resolveBayFunction(role: FieldRoleName): BayFunctionDescriptor {
+  switch (role) {
+    case FieldRoleV1.TRANSFORMER_SN_NN:
+      return {
+        role,
+        title: 'Pole transformatorowe SN',
+        subtitle: 'transformatorowe',
+        requiredPath: 'Q2 - Q1 - PP - pole transformatorowe',
+        portLabel: 'port transformatorowy SN',
+      };
+    case FieldRoleV1.MEASUREMENT_SN:
+      return {
+        role,
+        title: 'Pole pomiarowe SN',
+        subtitle: 'pomiarowe',
+        requiredPath: 'Q2 - PP/PN - układ pomiarowy',
+        portLabel: 'port pomiarowy SN',
+      };
+    case FieldRoleV1.PV_SN:
+      return {
+        role,
+        title: 'Pole źródła PV SN',
+        subtitle: 'źródłowe PV',
+        requiredPath: 'Q2 - Q1 - PP - pole źródłowe',
+        portLabel: 'port źródła SN',
+      };
+    case FieldRoleV1.BESS_SN:
+      return {
+        role,
+        title: 'Pole magazynu energii SN',
+        subtitle: 'źródłowe BESS',
+        requiredPath: 'Q2 - Q1 - PP - pole źródłowe',
+        portLabel: 'port źródła SN',
+      };
+    case FieldRoleV1.FW_SN:
+      return {
+        role,
+        title: 'Pole farmy wiatrowej SN',
+        subtitle: 'źródłowe FW',
+        requiredPath: 'Q2 - Q1 - PP - pole źródłowe',
+        portLabel: 'port źródła SN',
+      };
+    case FieldRoleV1.LINE_IN:
+      return {
+        role,
+        title: 'Pole liniowe wejściowe SN',
+        subtitle: 'liniowe wejściowe',
+        requiredPath: 'Q2 - Q1 - PP - tor liniowy',
+        portLabel: 'port wejściowy SN',
+      };
+    case FieldRoleV1.LINE_BRANCH:
+      return {
+        role,
+        title: 'Pole odgałęźne SN',
+        subtitle: 'odgałęźne',
+        requiredPath: 'Q2 - Q1 - PP - odgałęzienie SN',
+        portLabel: 'port odgałęzienia SN',
+      };
+    case FieldRoleV1.LINE_OUT:
+    case FieldRoleV1.GPZ_LINE_BAY:
+    default:
+      return {
+        role: FieldRoleV1.GPZ_LINE_BAY,
+        title: 'Pole liniowe SN',
+        subtitle: 'liniowe odpływowe',
+        requiredPath: 'Q2 - Q1 - PP - Q3',
+        portLabel: 'BAY_SN_OUT',
+      };
+  }
+}
+
+function CurrentTransformerSymbol({
+  x,
+  y,
+  fieldId,
+}: {
+  x: number;
+  y: number;
+  fieldId: string;
+}) {
+  const centerY = y + CT_SYMBOL_HEIGHT / 2;
+  return (
+    <g
+      data-testid={`gpz-device-${fieldId}-PP`}
+      data-apparatus-role="przekladnik-pradowy"
+      stroke={WIRE}
+      strokeWidth={2}
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1={x} y1={y} x2={x} y2={y + CT_SYMBOL_HEIGHT} />
+      <circle cx={x - 7} cy={centerY} r={7} />
+      <circle cx={x + 7} cy={centerY} r={7} />
+      <text
+        x={x + 28}
+        y={centerY + 4}
+        fill={WIRE}
+        stroke="none"
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={13}
+        fontWeight={700}
+      >
+        PP
+      </text>
+    </g>
+  );
+}
+
+function ProtectionRelayBadge({
+  fieldId,
+  x,
+  y,
+  targetX,
+  targetY,
+}: {
+  fieldId: string;
+  x: number;
+  y: number;
+  targetX: number;
+  targetY: number;
+}) {
+  return (
+    <g data-testid={`gpz-protection-${fieldId}`} data-apparatus-role="zabezpieczenie-pola">
+      <path
+        d={`M${x + 58} ${y + 20} L${targetX} ${targetY}`}
+        stroke="#93C5FD"
+        strokeWidth={1.2}
+        strokeDasharray="4 4"
+        fill="none"
+      />
+      <rect x={x} y={y} width={58} height={40} rx={5} ry={5} fill="#0B1723" stroke="#60A5FA" strokeWidth={1.2} />
+      <text
+        x={x + 29}
+        y={y + 16}
+        textAnchor="middle"
+        fill="#BFDBFE"
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={10}
+        fontWeight={700}
+      >
+        ZAB
+      </text>
+      <text
+        x={x + 29}
+        y={y + 31}
+        textAnchor="middle"
+        fill={WIRE}
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={11}
+        fontWeight={700}
+      >
+        50/51
+      </text>
     </g>
   );
 }
@@ -214,7 +387,7 @@ function stackTop(field: GpzFieldAnnotationV1): number {
 }
 
 function stackBottom(field: GpzFieldAnnotationV1): number {
-  return stackTop(field) + 3 * TILE_HEIGHT + 2 * TILE_GAP;
+  return stackTop(field) + 3 * TILE_HEIGHT + CT_SYMBOL_HEIGHT + 3 * TILE_GAP;
 }
 
 function exitY(field: GpzFieldAnnotationV1): number {
@@ -243,12 +416,14 @@ function CanonicalLineBay({
   const tileX = axisX - TILE_WIDTH / 2;
   const yTop = stackTop(field);
   const yQ1 = yTop + TILE_HEIGHT + TILE_GAP;
-  const yBottomDs = yQ1 + TILE_HEIGHT + TILE_GAP;
+  const yCt = yQ1 + TILE_HEIGHT + TILE_GAP;
+  const yBottomDs = yCt + CT_SYMBOL_HEIGHT + TILE_GAP;
   const verticalExitY = exitY(field);
   const earthTapY = yBottomDs + TILE_HEIGHT + 28;
   const earthX = axisX + EARTH_BRANCH_OFFSET;
   const earthY = earthTapY + 8;
   const showResultBlock = selected || Boolean(resultValues);
+  const bayFunction = resolveBayFunction(resolveFieldRole(field));
 
   return (
     <g
@@ -276,7 +451,7 @@ function CanonicalLineBay({
             x={axisX - 49}
             y={yTop - 9}
             width={98}
-            height={TILE_HEIGHT * 3 + TILE_GAP * 2 + 18}
+            height={TILE_HEIGHT * 3 + CT_SYMBOL_HEIGHT + TILE_GAP * 3 + 18}
             rx={5}
             ry={5}
             fill="none"
@@ -291,7 +466,8 @@ function CanonicalLineBay({
       <circle cx={axisX} cy={field.busTap.y} r={5} fill={WIRE} />
       <line x1={axisX} y1={field.busTap.y} x2={axisX} y2={yTop} stroke={WIRE} strokeWidth={3} />
       <line x1={axisX} y1={yTop + TILE_HEIGHT} x2={axisX} y2={yQ1} stroke={WIRE} strokeWidth={3} />
-      <line x1={axisX} y1={yQ1 + TILE_HEIGHT} x2={axisX} y2={yBottomDs} stroke={WIRE} strokeWidth={3} />
+      <line x1={axisX} y1={yQ1 + TILE_HEIGHT} x2={axisX} y2={yCt} stroke={WIRE} strokeWidth={3} />
+      <line x1={axisX} y1={yCt + CT_SYMBOL_HEIGHT} x2={axisX} y2={yBottomDs} stroke={WIRE} strokeWidth={3} />
       <line x1={axisX} y1={yBottomDs + TILE_HEIGHT} x2={axisX} y2={verticalExitY} stroke={WIRE} strokeWidth={3} />
 
       <SwitchTile
@@ -310,12 +486,20 @@ function CanonicalLineBay({
         state="closed"
         testId={`gpz-device-${field.fieldId}-Q1`}
       />
+      <CurrentTransformerSymbol x={axisX} y={yCt} fieldId={field.fieldId} />
       <SwitchTile
         x={tileX}
         y={yBottomDs}
         kind="disconnector"
         state="closed"
         testId={`gpz-device-${field.fieldId}-DS-DOWNSTREAM`}
+      />
+      <ProtectionRelayBadge
+        fieldId={field.fieldId}
+        x={axisX - 104}
+        y={yQ1 - 3}
+        targetX={tileX}
+        targetY={yQ1 + TILE_HEIGHT / 2}
       />
 
       <line x1={axisX} y1={earthTapY} x2={earthX} y2={earthTapY} stroke={WIRE} strokeWidth={3} />
@@ -346,20 +530,33 @@ function CanonicalLineBay({
         onMouseEnter={() => onTrunkOutPortHover?.(field)}
         onMouseLeave={() => onTrunkOutPortHover?.(null)}
       >
-        <title>Port wyjścia pola SN</title>
+        <title>Port wyjścia pola SN - {bayFunction.portLabel}</title>
       </circle>
 
+      <text
+        x={axisX}
+        y={verticalExitY + 24}
+        textAnchor="middle"
+        fill={MUTED_WIRE}
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={11}
+        fontWeight={650}
+      >
+        {bayFunction.subtitle}
+      </text>
+
       {showTechnicalLabels && (
-        <text
-          x={axisX}
-          y={verticalExitY + 24}
-          textAnchor="middle"
+        <g
           fill={MUTED_WIRE}
           fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
-          fontSize={10}
+          fontSize={9}
+          textAnchor="middle"
         >
-          {field.designation}
-        </text>
+          <text x={axisX} y={verticalExitY + (showResultBlock ? 146 : 44)}>{bayFunction.title}</text>
+          <text x={axisX} y={verticalExitY + (showResultBlock ? 160 : 58)}>{bayFunction.requiredPath}</text>
+          <text x={axisX} y={verticalExitY + (showResultBlock ? 174 : 72)}>wyjście SN: {bayFunction.portLabel}</text>
+          <text x={axisX} y={verticalExitY + (showResultBlock ? 188 : 86)}>{field.designation}</text>
+        </g>
       )}
       {showResultBlock && (
         <FieldResultBlock
@@ -452,7 +649,11 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
     const rightBusEnd = hasCoupler ? lastAxis + 110 : null;
     const minX = Math.min(leftBusStart, ...(rightBusStart !== null ? [rightBusStart] : []));
     const maxX = Math.max(leftBusEnd, ...(rightBusEnd !== null ? [rightBusEnd] : []));
-    const maxExitY = sortedFields.reduce((maxY, field) => Math.max(maxY, exitY(field) + 62), busY + 250);
+    const lowerLabelReserve = showTechnicalLabels ? 210 : 136;
+    const maxExitY = sortedFields.reduce(
+      (maxY, field) => Math.max(maxY, exitY(field) + lowerLabelReserve),
+      busY + 320,
+    );
 
     return {
       sortedFields,
@@ -471,7 +672,7 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
         height: maxExitY - (busY - 58) + 24,
       },
     };
-  }, [fields, sections]);
+  }, [fields, sections, showTechnicalLabels]);
 
   if (layout.sortedFields.length === 0) {
     return null;
@@ -493,6 +694,52 @@ export const GpzSwitchgearRenderer: React.FC<GpzSwitchgearRendererProps> = ({
         stroke={BACKDROP_STROKE}
         strokeWidth={1}
       />
+      <text
+        x={layout.backdrop.x + 16}
+        y={layout.backdrop.y + 22}
+        fill="#E5E7EB"
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={13}
+        fontWeight={800}
+      >
+        ROZDZIELNIA SN GPZ
+      </text>
+      <text
+        x={layout.backdrop.x + 16}
+        y={layout.backdrop.y + 40}
+        fill="#93A4B8"
+        fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+        fontSize={10}
+        fontWeight={600}
+      >
+        szyny sekcyjne 15 kV - pola funkcjonalne
+      </text>
+      {leftSection && (
+        <text
+          x={(layout.leftBusStart + layout.leftBusEnd) / 2}
+          y={layout.busY + 18}
+          textAnchor="middle"
+          fill="#BFDBFE"
+          fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+          fontSize={11}
+          fontWeight={700}
+        >
+          Sekcja A
+        </text>
+      )}
+      {layout.hasCoupler && rightSection && layout.rightBusStart !== null && layout.rightBusEnd !== null && (
+        <text
+          x={(layout.rightBusStart + layout.rightBusEnd) / 2}
+          y={layout.busY + 18}
+          textAnchor="middle"
+          fill="#BFDBFE"
+          fontFamily="'JetBrains Mono', 'Fira Code', Menlo, monospace"
+          fontSize={11}
+          fontWeight={700}
+        >
+          Sekcja B
+        </text>
+      )}
       <line
         x1={layout.leftBusStart}
         y1={layout.busY}

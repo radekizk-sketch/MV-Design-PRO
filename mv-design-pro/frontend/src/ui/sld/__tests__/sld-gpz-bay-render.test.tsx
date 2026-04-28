@@ -5,7 +5,7 @@ import type { AnySldSymbol, BusSymbol, Connection, SourceSymbol } from '../../sl
 import type { CanonicalAnnotationsV1 } from '../core/layoutResult';
 import { SLDViewCanvas } from '../SLDViewCanvas';
 
-const viewport = { zoom: 1, offsetX: 0, offsetY: 0 };
+const viewport = { zoom: 1.5, offsetX: 0, offsetY: 0 };
 
 describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () => {
   it('renderuje GPZ jako jedna rozdzielnie SN bez osobnego symbolu zrodla i ukrytej szyny', () => {
@@ -138,6 +138,8 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
     expect(screen.queryByTestId('sld-symbol-source-gpz-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('sld-symbol-bus-sn-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('gpz-switchgear-canonical')).toBeInTheDocument();
+    expect(screen.getByText('ROZDZIELNIA SN GPZ')).toBeInTheDocument();
+    expect(screen.getByText('szyny sekcyjne 15 kV - pola funkcjonalne')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-bus-section-section-1')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-bus-section-section-2')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-line-bay-bay-sn-1')).toBeInTheDocument();
@@ -148,7 +150,12 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
     expect(screen.getByText('8')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q2')).toHaveAttribute('data-state', 'closed');
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q1')).toHaveAttribute('data-state', 'closed');
+    expect(screen.getByTestId('gpz-device-bay-sn-1-PP')).toBeInTheDocument();
+    expect(screen.getByTestId('gpz-protection-bay-sn-1')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-device-bay-sn-1-Q3')).toHaveAttribute('data-state', 'open');
+    expect(screen.getAllByText('liniowe odpływowe').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Pole liniowe SN').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('wyjście SN: BAY_SN_OUT').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('gpz-field-selection-bay-sn-1')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-field-results-bay-sn-1')).toHaveAttribute('data-result-status', 'brak');
     expect(screen.getByTestId('gpz-field-results-bay-sn-1')).toHaveTextContent('I1 = -- A');

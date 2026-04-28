@@ -27,6 +27,7 @@ Pliki obowiazkowe:
 - `MACIERZ_RAPORTOWALNOSCI.md`
 - `MACIERZ_ID_I_REFERENCJI.md`
 - `MACIERZ_DRAFT_VS_COMMITTED.md`
+- `SEMANTYCZNY_RDZEN_ELEKTROENERGETYCZNY_V8.md`
 
 Katalog `docs/spec` jest archiwum i zrodlem luk historycznych. Nie wolno kopiowac tresci z archiwum do aktywnego kanonu bez wpisu w `REJESTR_KONFLIKTOW.md`.
 
@@ -43,6 +44,7 @@ Katalog `docs/spec` jest archiwum i zrodlem luk historycznych. Nie wolno kopiowa
 - Draft formularza nie jest prawda domenowa.
 - Raport nie czyta danych z draftu UI ani z lokalnych projekcji.
 - Raport czyta wylacznie ENM, snapshot katalogowy, wynik frozen i uzasadnienie.
+- UI, SLD, Inspektor, menu, wyniki i raporty nie moga interpretowac funkcji elementu lokalnie po nazwie, typie komponentu, geometrii, CSS ani etykiecie; semantyka pochodzi z `EngineeringSemanticModel` albo projekcji pochodnej wskazujacej `semanticHash`.
 - Determinizm wynikow jest obowiazkowy.
 - Dark SCADA jest motywem ekranowym, a eksport uzywa osobnego jasnego motywu technicznego `light_technical`.
 - Severity i status walidacji maja jeden kontrakt wartosci publicznych: `BLOCKER`, `IMPORTANT`, `INFO`, `OK`, `WARN`, `FAIL`.

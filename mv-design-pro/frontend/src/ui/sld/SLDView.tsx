@@ -96,6 +96,7 @@ import {
 import { SldSemanticMinimap } from './SldSemanticMinimap';
 import {
   collectGpzSwitchgearSuppressedSymbolIds,
+  hasCanonicalGpzSwitchgear,
   shouldSuppressForGpzSwitchgear,
 } from './gpzSwitchgearVisibility';
 
@@ -559,6 +560,15 @@ export const SLDView: React.FC<SLDViewProps> = ({
     [canonicalAnnotations, snapshot, symbols],
   );
 
+  const hasRenderableModel = useMemo(
+    () =>
+      symbols.length > 0
+      || hasCanonicalGpzSwitchgear(canonicalAnnotations)
+      || (canonicalAnnotations?.stationChains.length ?? 0) > 0
+      || (canonicalAnnotations?.trunkSegments.length ?? 0) > 0,
+    [canonicalAnnotations, symbols.length],
+  );
+
   const resolveCanvasContextMenuState = useCallback(
     (x: number, y: number): EngineeringContextMenuState => ({
       isOpen: true,
@@ -568,10 +578,10 @@ export const SLDView: React.FC<SLDViewProps> = ({
       elementType: 'Source',
       elementName: '',
       scope: 'canvas',
-      canvasMode: 'NEUTRAL',
-      headerText: 'Puste płótno schematu',
+      canvasMode: hasRenderableModel ? 'NEUTRAL' : 'ADD_SOURCE',
+      headerText: hasRenderableModel ? 'Kanwa schematu jednokreskowego' : 'Brak źródła zasilania',
     }),
-    [],
+    [hasRenderableModel],
   );
 
   const openInspectorPanel = useCallback(

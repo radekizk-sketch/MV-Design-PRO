@@ -16,6 +16,14 @@ import { buildVisualGraphFromTopology } from './core/topologyAdapterV2';
 import { computeLayout } from './core/layoutPipeline';
 import type { CanonicalAnnotationsV1, EdgeRouteV1 } from './core/layoutResult';
 import { readTopologyFromENM } from './core/topologyInputReader';
+import {
+  buildEngineeringDiagnosticsProjection,
+  buildSldBaseProjectionFromSemantic,
+  projectEnmToEngineeringSemanticModel,
+  type EngineeringDiagnosticsProjection,
+  type EngineeringSemanticModel,
+  type SldBaseProjectionViewModel,
+} from '../engineering-semantic';
 
 type SnapshotLike = Partial<EnergyNetworkModel>;
 type SnapshotRecord = Record<string, unknown>;
@@ -360,6 +368,9 @@ function buildCanonicalProjection(
       symbols: [],
       connections: [],
       canonicalAnnotations: EMPTY_CANONICAL_ANNOTATIONS,
+      semanticModel: null,
+      diagnostics: null,
+      sldBaseProjection: null,
     };
   }
 
@@ -464,10 +475,23 @@ function buildCanonicalProjection(
     }
   }
 
+  const visibleSymbols = projectedSymbols.filter((symbol) => !isHelperBusSymbol(symbol));
+  const connections = generateConnections(projectedSymbols, {}, edgeBendOverrides);
+  const semanticModel = projectEnmToEngineeringSemanticModel(enm, {
+    projectRefId: 'project-active',
+    modelId: `${enm.header.hash_sha256}:engineering-semantic`,
+    generatedAt: '1970-01-01T00:00:00.000Z',
+  });
+  const diagnostics = buildEngineeringDiagnosticsProjection(semanticModel);
+  const sldBaseProjection = buildSldBaseProjectionFromSemantic(semanticModel, visibleSymbols, connections);
+
   return {
-    symbols: projectedSymbols.filter((symbol) => !isHelperBusSymbol(symbol)),
-    connections: generateConnections(projectedSymbols, {}, edgeBendOverrides),
+    symbols: visibleSymbols,
+    connections,
     canonicalAnnotations: layout.canonicalAnnotations ?? EMPTY_CANONICAL_ANNOTATIONS,
+    semanticModel,
+    diagnostics,
+    sldBaseProjection,
   };
 }
 
@@ -482,6 +506,9 @@ export interface EnmProjectionResult {
   symbols: AnySldSymbol[];
   connections: Connection[];
   canonicalAnnotations: CanonicalAnnotationsV1 | null;
+  semanticModel: EngineeringSemanticModel | null;
+  diagnostics: EngineeringDiagnosticsProjection | null;
+  sldBaseProjection: SldBaseProjectionViewModel | null;
 }
 
 export function projectEnmSnapshotToSld(

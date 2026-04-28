@@ -391,7 +391,7 @@ export function EngineeringContextMenu({
         return [
           {
             id: 'canvas_hint',
-            label: 'Wybierz sekcjÄ‚â€žĂ˘â€žË GPZ lub pole liniowe',
+            label: 'Wskaż pole SN, szynę GPZ albo odcinek SN',
             enabled: false,
             visible: true,
             handler: () => undefined,
@@ -403,7 +403,7 @@ export function EngineeringContextMenu({
       return [
         {
           id: 'add_grid_source_sn',
-          label: 'Dodaj ÄąĹźrÄ‚Ĺ‚dÄąâ€šo zasilania GPZ...',
+          label: 'Utwórz Główny Punkt Zasilający...',
           enabled: mode === 'MODEL_EDIT',
           visible: true,
           handler: makeHandler('add_grid_source_sn'),
