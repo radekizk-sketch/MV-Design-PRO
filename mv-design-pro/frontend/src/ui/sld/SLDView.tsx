@@ -29,6 +29,7 @@ import {
   ZOOM_MIN,
   ZOOM_MAX,
   ZOOM_STEP,
+  calculateSymbolsBounds,
   fitToContent,
   type InteractionPortRole,
   type ViewportState,
@@ -93,6 +94,10 @@ import {
   zoomViewportByStep,
 } from './interactionMath';
 import { SldSemanticMinimap } from './SldSemanticMinimap';
+import {
+  collectGpzSwitchgearSuppressedSymbolIds,
+  shouldSuppressForGpzSwitchgear,
+} from './gpzSwitchgearVisibility';
 
 /**
  * Default canvas dimensions.
@@ -113,6 +118,147 @@ const CONTEXT_MENU_CLOSED: EngineeringContextMenuState = {
 };
 
 const CONTEXT_MENU_OP_MAP = CONTEXT_ACTION_TO_OPERATION;
+
+interface SldFitBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+  width: number;
+  height: number;
+}
+
+function mergeBounds(left: SldFitBounds | null, right: SldFitBounds | null): SldFitBounds | null {
+  if (!left) return right;
+  if (!right) return left;
+
+  const minX = Math.min(left.minX, right.minX);
+  const minY = Math.min(left.minY, right.minY);
+  const maxX = Math.max(left.maxX, right.maxX);
+  const maxY = Math.max(left.maxY, right.maxY);
+
+  return {
+    minX,
+    minY,
+    maxX,
+    maxY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
+function calculateGpzSwitchgearBounds(
+  canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
+): SldFitBounds | null {
+  if (
+    (canonicalAnnotations?.gpzSections?.length ?? 0) === 0
+    && (canonicalAnnotations?.gpzFeederFields?.length ?? 0) === 0
+  ) {
+    return null;
+  }
+
+  let bounds: SldFitBounds | null = null;
+
+  const includeRect = (minX: number, minY: number, maxX: number, maxY: number) => {
+    bounds = mergeBounds(bounds, {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    });
+  };
+
+  for (const section of canonicalAnnotations?.gpzSections ?? []) {
+    includeRect(
+      section.bounds.x - 32,
+      section.bounds.y - 64,
+      section.bounds.x + section.bounds.width + 32,
+      section.bounds.y + section.bounds.height + 48,
+    );
+    includeRect(
+      section.busbar.x - 48,
+      section.busbar.y - 90,
+      section.busbar.x + section.busbar.width + 48,
+      section.busbar.y + 260,
+    );
+  }
+
+  for (const field of canonicalAnnotations?.gpzFeederFields ?? []) {
+    includeRect(
+      field.axisX - 120,
+      field.busTap.y - 96,
+      field.axisX + 120,
+      Math.max(field.segmentStart.y + 190, field.busTap.y + 360),
+    );
+  }
+
+  return bounds;
+}
+
+function fitBoundsToViewport(
+  bounds: SldFitBounds,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding: number,
+  minZoom: number,
+): ViewportState {
+  const width = Math.max(bounds.width, 1);
+  const height = Math.max(bounds.height, 1);
+  const scaleX = (canvasWidth - 2 * padding) / width;
+  const scaleY = (canvasHeight - 2 * padding) / height;
+  const zoom = Math.min(scaleX, scaleY, ZOOM_MAX);
+  const clampedZoom = Math.max(zoom, minZoom);
+  const roundedZoom = Math.round(clampedZoom * 100) / 100;
+  const offsetX = padding - bounds.minX * roundedZoom + (canvasWidth - width * roundedZoom - 2 * padding) / 2;
+  const offsetY = padding - bounds.minY * roundedZoom + (canvasHeight - height * roundedZoom - 2 * padding) / 2;
+
+  return {
+    offsetX: Math.round(offsetX),
+    offsetY: Math.round(offsetY),
+    zoom: roundedZoom,
+  };
+}
+
+function fitSldOperationalContent(
+  symbols: readonly AnySldSymbol[],
+  canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
+  canvasWidth: number,
+  canvasHeight: number,
+  padding: number | undefined,
+  minZoom: number,
+): ViewportState {
+  const effectivePadding = padding ?? 32;
+  const suppressedIds = collectGpzSwitchgearSuppressedSymbolIds(symbols, canonicalAnnotations);
+  const visibleSymbols = symbols.filter((symbol) => !shouldSuppressForGpzSwitchgear(symbol, suppressedIds));
+  const symbolBounds = calculateSymbolsBounds(visibleSymbols);
+  const gpzBounds = calculateGpzSwitchgearBounds(canonicalAnnotations);
+  const mergedBounds = mergeBounds(symbolBounds, gpzBounds);
+
+  if (!mergedBounds) {
+    return fitToContent([...symbols], canvasWidth, canvasHeight, effectivePadding, minZoom);
+  }
+
+  return fitBoundsToViewport(mergedBounds, canvasWidth, canvasHeight, effectivePadding, minZoom);
+}
+
+function buildAutoFitSignature(
+  symbols: readonly AnySldSymbol[],
+  canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
+): string {
+  const symbolSignature = symbols
+    .map((symbol) => `${symbol.id}:${symbol.position.x}:${symbol.position.y}`)
+    .join('|');
+  const gpzSectionSignature = (canonicalAnnotations?.gpzSections ?? [])
+    .map((section) => `${section.sectionId}:${section.busbar.x}:${section.busbar.y}:${section.busbar.width}`)
+    .join('|');
+  const gpzFieldSignature = (canonicalAnnotations?.gpzFeederFields ?? [])
+    .map((field) => `${field.fieldId}:${field.axisX}:${field.busTap.y}:${field.segmentStart.y}`)
+    .join('|');
+
+  return `${symbolSignature}::${gpzSectionSignature}::${gpzFieldSignature}`;
+}
 
 function collectBusIdsFromSingleCanonicalGpzSection(
   canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
@@ -560,16 +706,21 @@ export const SLDView: React.FC<SLDViewProps> = ({
       return;
     }
 
-    const signature = symbols
-      .map((symbol) => `${symbol.id}:${symbol.position.x}:${symbol.position.y}`)
-      .join('|');
+    const signature = buildAutoFitSignature(symbols, canonicalAnnotations);
 
     if (autoFitSignatureRef.current !== signature) {
       autoFitSignatureRef.current = signature;
-      const fittedViewport = fitToContent(symbols, canvasWidth, canvasHeight, fitPadding, minFitZoom);
+      const fittedViewport = fitSldOperationalContent(
+        symbols,
+        canonicalAnnotations,
+        canvasWidth,
+        canvasHeight,
+        fitPadding,
+        minFitZoom,
+      );
       setViewport(fittedViewport);
     }
-  }, [canvasHeight, canvasWidth, fitOnMount, fitPadding, minFitZoom, symbols]);
+  }, [canonicalAnnotations, canvasHeight, canvasWidth, fitOnMount, fitPadding, minFitZoom, symbols]);
 
   /**
    * Center on element when requested by store.
@@ -726,9 +877,16 @@ export const SLDView: React.FC<SLDViewProps> = ({
    * Handle fit to content.
    */
   const handleFitToContent = useCallback(() => {
-    const fittedViewport = fitToContent(symbols, canvasWidth, canvasHeight, fitPadding, minFitZoom);
+    const fittedViewport = fitSldOperationalContent(
+      symbols,
+      canonicalAnnotations,
+      canvasWidth,
+      canvasHeight,
+      fitPadding,
+      minFitZoom,
+    );
     setViewport(fittedViewport);
-  }, [canvasHeight, canvasWidth, fitPadding, minFitZoom, symbols]);
+  }, [canonicalAnnotations, canvasHeight, canvasWidth, fitPadding, minFitZoom, symbols]);
 
   /**
    * Handle reset view (100%).

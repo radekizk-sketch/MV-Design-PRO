@@ -1468,13 +1468,15 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       />
 
       {/* SLD View (main area) - ALWAYS rendered */}
-      <div className="relative flex-1 min-w-0 overflow-hidden bg-slate-100">
+      <div className="relative flex-1 min-w-0 overflow-hidden bg-[#07111a]">
         <SLDView
           symbols={symbols}
           connections={enmProjection.connections}
           selectedElement={selectedElement}
           showGrid={true}
           fitOnMount={symbols.length > 0}
+          minFitZoom={0.55}
+          fitPadding={34}
           canonicalAnnotations={enmProjection.canonicalAnnotations}
           onCalculateClick={handleCalculate}
           onCanvasClick={() => {

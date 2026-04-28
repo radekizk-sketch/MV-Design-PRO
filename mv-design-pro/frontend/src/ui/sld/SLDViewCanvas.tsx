@@ -45,6 +45,12 @@ import { JunctionDotLayer } from './JunctionDotLayer';
 import { CANONICAL_GRID, CANONICAL_TYPOGRAPHY, CANONICAL_CANVAS } from './sldCanonicalStyle';
 import { useSldReadabilityOverlay } from './SldReadabilityOverlay';
 import { shouldShowTechnicalLabels } from './sldDetailLevel';
+import {
+  collectGpzSwitchgearSuppressedSymbolIds,
+  filterConnectionsForGpzSwitchgear,
+  hasCanonicalGpzSwitchgear,
+  shouldSuppressForGpzSwitchgear,
+} from './gpzSwitchgearVisibility';
 import './sld-canonical.css';
 
 /**
@@ -321,7 +327,11 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const gpzSections = canonicalAnnotations?.gpzSections ?? [];
   const gpzFeederFields = canonicalAnnotations?.gpzFeederFields ?? [];
   const stationChains = canonicalAnnotations?.stationChains ?? [];
-  const hasGpzSwitchgear = gpzSections.length > 0 || gpzFeederFields.length > 0;
+  const hasGpzSwitchgear = hasCanonicalGpzSwitchgear(canonicalAnnotations);
+  const suppressedGpzSymbolIds = useMemo(
+    () => collectGpzSwitchgearSuppressedSymbolIds(symbols, canonicalAnnotations),
+    [canonicalAnnotations, symbols],
+  );
   const visibleStationChains = useMemo(
     () => stationChains.filter((chain) => !isGpzSwitchgearChain(chain, hasGpzSwitchgear)),
     [hasGpzSwitchgear, stationChains],
@@ -334,10 +344,6 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     () => new Set(gpzFeederFields.map((field) => field.feederNodeId)),
     [gpzFeederFields],
   );
-  const gpzRootBusIds = useMemo(
-    () => new Set(gpzSections.map((section) => section.rootBusId)),
-    [gpzSections],
-  );
 
   // Sort symbols for deterministic rendering (by ID)
   const sortedSymbols = [...symbols].sort((a, b) => a.id.localeCompare(b.id));
@@ -345,9 +351,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     if (symbol.elementType === 'LineBranch') return false;
     if (gpzFieldNodeIds.has(symbol.id)) return false;
     if (symbol.elementId && gpzFieldNodeIds.has(symbol.elementId)) return false;
-    if (symbol.elementType === 'Bus' && (gpzRootBusIds.has(symbol.id) || (symbol.elementId && gpzRootBusIds.has(symbol.elementId)))) {
-      return false;
-    }
+    if (shouldSuppressForGpzSwitchgear(symbol, suppressedGpzSymbolIds)) return false;
     return true;
   });
 
@@ -356,7 +360,10 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
 
   // Połączenia pochodzą wyłącznie z kanonicznego pipeline layoutu.
   // Viewer nie rekonstruuje już routingu lokalną heurystyką.
-  const connections = canonicalConnections as RenderConnection[];
+  const connections = useMemo(
+    () => filterConnectionsForGpzSwitchgear(canonicalConnections as RenderConnection[], suppressedGpzSymbolIds),
+    [canonicalConnections, suppressedGpzSymbolIds],
+  );
 
   // V12 § 5.7: readability overlay (LOD + filtry warstwowe + szkielet)
   const { getOpacity, lodBand, lodLevel } = useSldReadabilityOverlay(symbols, viewport);

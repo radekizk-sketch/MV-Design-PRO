@@ -29,6 +29,8 @@ describe('inspector-tabs - Inspektor techniczny', () => {
   it('stan braku wyboru nie pokazuje pustych zakładek specjalistycznych', () => {
     render(<EmptyInspectorPanel selectedElement={null} />);
     expect(screen.getByText('Inspektor techniczny')).toBeInTheDocument();
+    expect(screen.getByText('Wybierz obiekt techniczny')).toBeInTheDocument();
+    expect(screen.getByText(/Brak zaznaczenia nie oznacza braku modelu/i)).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Identyfikacja' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Gotowość' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Historia' })).toBeInTheDocument();

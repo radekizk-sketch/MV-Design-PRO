@@ -174,15 +174,15 @@ describe('sldKrokStyle', () => {
     it('CANONICAL_GRID settings are stable', () => {
       expect(CANONICAL_GRID).toMatchInlineSnapshot(`
         {
-          "axisColor": "#CBD5E1",
+          "axisColor": "rgba(125, 211, 252, 0.34)",
           "axisStrokeWidth": 0.8,
           "defaultVisible": true,
-          "majorColor": "#E2E8F0",
+          "majorColor": "rgba(148, 163, 184, 0.22)",
           "majorEvery": 5,
           "majorStrokeWidth": 0.6,
-          "minorColor": "#F1F5F9",
+          "minorColor": "rgba(148, 163, 184, 0.12)",
           "minorStrokeWidth": 0.4,
-          "opacity": 0.6,
+          "opacity": 0.75,
           "size": 20,
         }
       `);

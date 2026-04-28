@@ -558,17 +558,17 @@ export const CANONICAL_SYMBOL_SIZES = {
  * Professional, calm, engineered appearance.
  */
 export const CANONICAL_CANVAS = {
-  /** Primary background — clean white (ABB standard drawing paper) */
-  backgroundColor: '#FFFFFF',
-  /** Subtle gradient (top to bottom) — barely perceptible warmth */
-  gradientStart: '#FEFEFE',
-  gradientEnd: '#FAFAFA',
+  /** Primary background — dark CAD/SCADA operator canvas */
+  backgroundColor: '#0B1520',
+  /** Subtle gradient (top to bottom) — engineered dark surface */
+  gradientStart: '#101C28',
+  gradientEnd: '#08111A',
   /** Border around canvas area */
-  borderColor: '#E5E7EB', // gray-200
+  borderColor: '#1E3A4A',
   /** Shadow for depth */
-  shadowColor: 'rgba(0, 0, 0, 0.03)',
+  shadowColor: 'rgba(2, 8, 23, 0.45)',
   /** Canvas inner glow for depth */
-  innerGlowColor: 'rgba(255, 255, 255, 0.8)',
+  innerGlowColor: 'rgba(14, 165, 233, 0.08)',
 } as const;
 
 // =============================================================================
@@ -584,12 +584,12 @@ export const CANONICAL_GRID = {
   size: 20,
   /** Major grid every N cells */
   majorEvery: 5,
-  /** Minor grid color — ABB very subtle, clean gray */
-  minorColor: '#F1F5F9', // slate-100 (nearly invisible)
-  /** Major grid color — ABB subtle blue-gray */
-  majorColor: '#E2E8F0', // slate-200
-  /** Axis/origin color — ABB soft reference axis */
-  axisColor: '#CBD5E1', // slate-300
+  /** Minor grid color — dark CAD hairline */
+  minorColor: 'rgba(148, 163, 184, 0.12)',
+  /** Major grid color — dark CAD section line */
+  majorColor: 'rgba(148, 163, 184, 0.22)',
+  /** Axis/origin color — dark CAD reference axis */
+  axisColor: 'rgba(125, 211, 252, 0.34)',
   /** Minor stroke width */
   minorStrokeWidth: 0.4,
   /** Major stroke width */
@@ -599,7 +599,7 @@ export const CANONICAL_GRID = {
   /** Default visibility */
   defaultVisible: true,
   /** Grid opacity — ABB: very subtle, diagram dominates */
-  opacity: 0.6,
+  opacity: 0.75,
 } as const;
 
 // =============================================================================

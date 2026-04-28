@@ -94,12 +94,12 @@ export function EmptyInspectorPanel({
         <div className="flex-1 space-y-3 overflow-auto p-4">
           <section className="rounded border border-scada-border bg-scada-surface p-3">
             <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
-              Brak wyboru
+              Wybierz obiekt techniczny
             </h3>
-            <p className="mt-2 text-sm text-scada-text">Nie wskazano obiektu sieci ani wyniku analizy.</p>
+            <p className="mt-2 text-sm text-scada-text">Inspektor czeka na wskazanie elementu SLD albo wyniku analizy.</p>
             <p className="mt-1 text-[12px] leading-snug text-scada-muted">
-              Wybierz symbol na kanwie schematu jednokreskowego albo element w drzewie modelu,
-              aby otworzyć identyfikację, parametry, gotowość i historię wyboru.
+              Kliknij GPZ, pole SN, odcinek, stację albo element w drzewie modelu.
+              Brak zaznaczenia nie oznacza braku modelu.
             </p>
           </section>
 
@@ -204,8 +204,8 @@ function NetworkStats({ stats }: { stats?: EmptyInspectorPanelProps['networkStat
   if (!stats || rows.every(([, value]) => value === undefined)) {
     return (
       <p className="mt-2 text-[12px] leading-snug text-scada-muted">
-        Przyczyna: model nie zawiera jeszcze policzalnych elementów. Warunek przejścia:
-        utwórz Główny Punkt Zasilający, szynę SN i pierwsze pole SN w obszarze Model sieci.
+        Statystyki modelu nie zostały przekazane do Inspektora technicznego. Warunek przejścia:
+        wybierz Główny Punkt Zasilający, pole SN albo odcinek sieci na kanwie SLD.
       </p>
     );
   }

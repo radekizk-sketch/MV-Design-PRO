@@ -26,8 +26,8 @@ import { isElementInSkeletonView } from './sldLayerFiltersStore';
 import type { ElementType } from '../types';
 import { getSldLodLevel } from './SldLevelOfDetailEngine';
 
-const MINIMAP_W = 180;
-const MINIMAP_H = 120;
+const MINIMAP_W = 140;
+const MINIMAP_H = 92;
 const MINIMAP_PADDING = 6;
 const SKELETON_TYPES: ReadonlySet<ElementType> = new Set([
   'Bus', 'BusNN', 'Station', 'ZKSN', 'BranchPole', 'Source', 'LineBranch',
@@ -113,7 +113,7 @@ export function SldSemanticMinimap({
 
   return (
     <div
-      className={`pointer-events-auto select-none overflow-hidden rounded border border-scada-border bg-scada-panel/90 shadow-md ${className}`}
+      className={`pointer-events-auto select-none overflow-hidden rounded border border-sky-900/70 bg-slate-950/80 opacity-[0.72] shadow-md transition-opacity hover:opacity-100 ${className}`}
       style={{ width: MINIMAP_W, height: MINIMAP_H }}
       data-testid="sld-semantic-minimap"
       data-sld-lod-level={minimapLodLevel}

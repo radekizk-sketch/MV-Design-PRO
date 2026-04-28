@@ -8,7 +8,7 @@ import { SLDViewCanvas } from '../SLDViewCanvas';
 const viewport = { zoom: 1, offsetX: 0, offsetY: 0 };
 
 describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () => {
-  it('renderuje GPZ jako rozdzielnie SN: pole 5, sprzeglo 6-7, pole 8 oraz polaczenie', () => {
+  it('renderuje GPZ jako jedna rozdzielnie SN bez osobnego symbolu zrodla i ukrytej szyny', () => {
     const onSymbolClick = vi.fn();
     const symbols: AnySldSymbol[] = [
       {
@@ -135,7 +135,7 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
       />,
     );
 
-    expect(screen.getByTestId('sld-symbol-source-gpz-1')).toHaveAttribute('data-element-type', 'Source');
+    expect(screen.queryByTestId('sld-symbol-source-gpz-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('sld-symbol-bus-sn-1')).not.toBeInTheDocument();
     expect(screen.getByTestId('gpz-switchgear-canonical')).toBeInTheDocument();
     expect(screen.getByTestId('gpz-bus-section-section-1')).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('sld-gpz-bay-render - kanoniczne GPZ, szyny, pola SN i sprzeglo', () =>
     expect(screen.getByTestId('gpz-coupler-results')).toHaveAttribute('data-result-status', 'brak');
     expect(screen.getByTestId('gpz-coupler-results')).toHaveTextContent('I1 = -- A');
     expect(container.querySelector('[data-element-id="gpz-switchgear"]')).toBeNull();
-    expect(screen.getByTestId('sld-connection-conn-gpz-bus')).toBeInTheDocument();
+    expect(screen.queryByTestId('sld-connection-conn-gpz-bus')).not.toBeInTheDocument();
 
     const field = container.querySelector('[data-testid="gpz-line-bay-bay-sn-1"]');
     expect(field).not.toBeNull();
