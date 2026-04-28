@@ -24,6 +24,12 @@ export const CANONICAL_MENU_SECTIONS: readonly ContextMenuSection[] = [
   'Usuń',
 ];
 
+export type CanonicalContextMenuKind =
+  | 'POLE_SN'
+  | 'ZRODLO_PRZYLACZENIE'
+  | 'ODCINEK_SN'
+  | 'STACJA_SN_NN';
+
 export interface CanonicalContextMenuActionDefinition {
   id: string;
   label: string;
@@ -72,13 +78,56 @@ export const SOURCE_CONNECTION_MENU_ACTIONS: readonly CanonicalContextMenuAction
   source('delete_source', 'Usuń źródło', 'Usuń', 'ikona-stan-blokada', 'onDelete'),
 ];
 
+export const SEGMENT_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
+  segment('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  segment('edit_segment', 'Edytuj odcinek', 'Edytuj', 'ikona-ekran-odcinek-sn', 'onEditSegment'),
+  segment('assign_catalog', 'Zmień typ katalogowy', 'Edytuj', 'ikona-dane-katalogowe', 'onAssignCatalog'),
+  segment('insert_station_on_segment_sn', 'Wstaw stację', 'Dodaj', 'ikona-obiekt-stacja-sn-nn', 'onInsertStation'),
+  segment('insert_zksn', 'Wstaw ZKSN', 'Dodaj', 'ikona-obiekt-zksn', 'onInsertZksn'),
+  segment('insert_branch_pole', 'Wstaw słup rozgałęźny', 'Dodaj', 'ikona-obiekt-slup-rozgalezny', 'onInsertBranchPole'),
+  segment('split_segment', 'Podziel odcinek', 'Operacje', 'ikona-obiekt-kabel-sn', 'onSplitSegment'),
+  segment('continue_trunk_segment_sn', 'Kontynuuj magistralę', 'Operacje', 'ikona-obiekt-kabel-sn', 'onContinueTrunk'),
+  segment('show_results', 'Pokaż wyniki odcinka', 'Wyniki', 'ikona-obszar-wyniki-analizy', 'onShowResults', 'result'),
+  segment('show_engineering_justification', 'Pokaż uzasadnienie', 'Uzasadnienie', 'ikona-wynik-uzasadnienie', 'onShowEngineeringJustification', 'result'),
+  segment('delete', 'Usuń odcinek', 'Usuń', 'ikona-stan-blokada', 'onDelete'),
+];
+
+export const STATION_SN_NN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
+  station('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
+  station('station_edit_simple', 'Edytuj kreatorem prostym', 'Edytuj', 'ikona-obiekt-stacja-sn-nn', 'onEditSimple'),
+  station('station_edit_advanced', 'Edytuj kreatorem zaawansowanym', 'Edytuj', 'ikona-ekran-stacja-sn-nn', 'onEditAdvanced'),
+  station('station_edit_sn_fields', 'Edytuj pola SN', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditSnFields'),
+  station('station_edit_transformer', 'Edytuj transformator', 'Edytuj', 'ikona-obiekt-transformator', 'onEditTransformer'),
+  station('station_edit_nn_side', 'Edytuj stronę nN', 'Edytuj', 'ikona-obiekt-strona-nn', 'onEditNnSide'),
+  station('add_nn_load', 'Dodaj obciążenie', 'Dodaj', 'ikona-obiekt-obciazenie', 'onAddLoad'),
+  station('add_converter_source', 'Dodaj źródło', 'Dodaj', 'ikona-obszar-zrodla-przylaczenia', 'onAddSource'),
+  station('show_results', 'Pokaż wyniki stacji', 'Wyniki', 'ikona-obszar-wyniki-analizy', 'onShowResults', 'result'),
+  station('show_engineering_justification', 'Pokaż uzasadnienie', 'Uzasadnienie', 'ikona-wynik-uzasadnienie', 'onShowEngineeringJustification', 'result'),
+  station('add_to_report', 'Dodaj do raportu', 'Raport', 'ikona-wynik-raport', 'onAddToReport', 'always'),
+  station('delete', 'Usuń stację', 'Usuń', 'ikona-stan-blokada', 'onDelete'),
+];
+
 export function buildCanonicalContextMenuActions(
-  menuKind: 'POLE_SN' | 'ZRODLO_PRZYLACZENIE',
+  menuKind: CanonicalContextMenuKind,
   mode: OperatingMode,
   handlers: Record<string, (() => void) | undefined> = {},
 ): ContextMenuAction[] {
-  const definitions = menuKind === 'POLE_SN' ? FIELD_SN_MENU_ACTIONS : SOURCE_CONNECTION_MENU_ACTIONS;
-  return definitions.map((definition) => toContextMenuAction(definition, mode, handlers));
+  return definitionsForMenuKind(menuKind).map((definition) => (
+    toContextMenuAction(definition, mode, handlers)
+  ));
+}
+
+function definitionsForMenuKind(menuKind: CanonicalContextMenuKind): readonly CanonicalContextMenuActionDefinition[] {
+  switch (menuKind) {
+    case 'POLE_SN':
+      return FIELD_SN_MENU_ACTIONS;
+    case 'ZRODLO_PRZYLACZENIE':
+      return SOURCE_CONNECTION_MENU_ACTIONS;
+    case 'ODCINEK_SN':
+      return SEGMENT_SN_MENU_ACTIONS;
+    case 'STACJA_SN_NN':
+      return STATION_SN_NN_MENU_ACTIONS;
+  }
 }
 
 function toContextMenuAction(
@@ -130,15 +179,7 @@ function field(
   handlerName: string,
   mode: CanonicalContextMenuActionDefinition['mode'] = 'edit',
 ): CanonicalContextMenuActionDefinition {
-  return {
-    id,
-    label,
-    section,
-    icon,
-    handlerName,
-    mode,
-    testId: `context-menu-pole-sn-${id}`,
-  };
+  return actionDefinition('pole-sn', id, label, section, icon, handlerName, mode);
 }
 
 function source(
@@ -149,6 +190,40 @@ function source(
   handlerName: string,
   mode: CanonicalContextMenuActionDefinition['mode'] = 'edit',
 ): CanonicalContextMenuActionDefinition {
+  return actionDefinition('source', id, label, section, icon, handlerName, mode);
+}
+
+function segment(
+  id: string,
+  label: string,
+  section: ContextMenuSection,
+  icon: TechnicalIconName,
+  handlerName: string,
+  mode: CanonicalContextMenuActionDefinition['mode'] = 'edit',
+): CanonicalContextMenuActionDefinition {
+  return actionDefinition('odcinek-sn', id, label, section, icon, handlerName, mode);
+}
+
+function station(
+  id: string,
+  label: string,
+  section: ContextMenuSection,
+  icon: TechnicalIconName,
+  handlerName: string,
+  mode: CanonicalContextMenuActionDefinition['mode'] = 'edit',
+): CanonicalContextMenuActionDefinition {
+  return actionDefinition('stacja-sn-nn', id, label, section, icon, handlerName, mode);
+}
+
+function actionDefinition(
+  testPrefix: string,
+  id: string,
+  label: string,
+  section: ContextMenuSection,
+  icon: TechnicalIconName,
+  handlerName: string,
+  mode: CanonicalContextMenuActionDefinition['mode'],
+): CanonicalContextMenuActionDefinition {
   return {
     id,
     label,
@@ -156,6 +231,6 @@ function source(
     icon,
     handlerName,
     mode,
-    testId: `context-menu-source-${id}`,
+    testId: `context-menu-${testPrefix}-${id}`,
   };
 }

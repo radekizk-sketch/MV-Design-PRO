@@ -6,8 +6,8 @@ import {
 } from '../contextMenuRegistry';
 import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 
-describe('context-menu-source - kanon menu źródeł i przyłączeń', () => {
-  it('ma akcje profili, charakterystyk i zgodności przyłączeniowej', () => {
+describe('context-menu-source - kanon menu zrodel i przylaczen', () => {
+  it('ma akcje profili, charakterystyk i zgodnosci przylaczeniowej', () => {
     expect(SOURCE_CONNECTION_MENU_ACTIONS.map((action) => action.label)).toEqual([
       'Otwórz w inspektorze',
       'Edytuj źródło',

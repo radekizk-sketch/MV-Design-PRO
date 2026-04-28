@@ -8,7 +8,7 @@ import {
 import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 
 describe('context-menu-pole-sn - kanon menu pola SN', () => {
-  it('ma wszystkie wymagane akcje i sekcje w kolejności kanonicznej', () => {
+  it('ma wszystkie wymagane akcje i sekcje w kolejnosci kanonicznej', () => {
     expect(FIELD_SN_MENU_ACTIONS.map((action) => action.label)).toEqual([
       'Otwórz w inspektorze',
       'Edytuj konfigurację pola',
@@ -33,7 +33,7 @@ describe('context-menu-pole-sn - kanon menu pola SN', () => {
     expect(sections).toEqual(CANONICAL_MENU_SECTIONS);
   });
 
-  it('każda akcja ma ikonę, test id, handler i powód blokady, gdy tryb nie pozwala na wynik', () => {
+  it('kazda akcja ma ikone, test id, handler i powod blokady, gdy tryb nie pozwala na wynik', () => {
     const actions = buildCanonicalContextMenuActions(
       'POLE_SN',
       'MODEL_EDIT',

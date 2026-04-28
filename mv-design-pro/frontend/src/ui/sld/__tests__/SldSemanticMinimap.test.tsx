@@ -35,7 +35,7 @@ describe('SldSemanticMinimap', () => {
         onNavigate={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('sld-semantic-minimap')).toBeTruthy();
+    expect(screen.getByTestId('sld-semantic-minimap')).toHaveAttribute('data-sld-lod-level', 'LOD-0');
     expect(screen.getByTestId('sld-minimap-svg')).toBeTruthy();
   });
 

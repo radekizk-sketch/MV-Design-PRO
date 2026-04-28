@@ -24,6 +24,7 @@ import type { ViewportState } from './types';
 import { calculateSymbolsBounds } from './types';
 import { isElementInSkeletonView } from './sldLayerFiltersStore';
 import type { ElementType } from '../types';
+import { getSldLodLevel } from './SldLevelOfDetailEngine';
 
 const MINIMAP_W = 180;
 const MINIMAP_H = 120;
@@ -54,6 +55,7 @@ export function SldSemanticMinimap({
   onNavigate,
   className = '',
 }: SldSemanticMinimapProps) {
+  const minimapLodLevel = getSldLodLevel({ zoom: 0.1 });
   const skeletonSymbols = useMemo(
     () => symbols.filter(isMiniSymbol),
     [symbols],
@@ -114,6 +116,7 @@ export function SldSemanticMinimap({
       className={`pointer-events-auto select-none overflow-hidden rounded border border-scada-border bg-scada-panel/90 shadow-md ${className}`}
       style={{ width: MINIMAP_W, height: MINIMAP_H }}
       data-testid="sld-semantic-minimap"
+      data-sld-lod-level={minimapLodLevel}
       title="Mini-mapa sieci — kliknij, aby przejść do miejsca"
     >
       <svg

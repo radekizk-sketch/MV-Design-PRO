@@ -67,6 +67,12 @@ export const CONTEXT_ACTION_TO_OPERATION: Record<string, string> = {
   edit_qu_profile: 'update_element_parameters',
   edit_cosphi_profile: 'update_element_parameters',
   edit_frt_profile: 'update_element_parameters',
+  edit_segment: 'update_element_parameters',
+  station_edit_simple: 'update_element_parameters',
+  station_edit_advanced: 'update_element_parameters',
+  station_edit_sn_fields: 'update_element_parameters',
+  station_edit_transformer: 'update_element_parameters',
+  station_edit_nn_side: 'update_element_parameters',
   // Catalog operations
   assign_catalog: 'assign_catalog_to_element',
   assign_tr_catalog: 'assign_catalog_to_element',
@@ -167,6 +173,7 @@ export const NAVIGATION_ACTIONS = new Set([
   'open_gpz_fields',
   'reserve_ring',
   'release_ring',
+  'split_segment',
 ]);
 
 export const TOGGLE_ACTIONS = new Set([
