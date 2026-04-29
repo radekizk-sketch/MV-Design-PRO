@@ -194,6 +194,7 @@ export function SchematContextPanel() {
           ))
         ) : (
           <div className="rounded-sm border border-scada-border bg-[#0a141d] p-3 text-[11px] leading-snug text-scada-muted">
+            {!snapshot && <span className="mb-1 block font-semibold text-scada-text">Stan pustej kanwy</span>}
             {snapshot
               ? 'Aktualny snapshot nie zawiera elementów schematu do pokazania w drzewie.'
               : 'Brak aktywnego snapshotu. Drzewo zostanie wypełnione po załadowaniu danych modelu.'}
@@ -204,6 +205,7 @@ export function SchematContextPanel() {
       <div className="flex h-12 shrink-0 items-center gap-2 border-t border-scada-border p-2">
         <button
           type="button"
+          data-testid="schemat-action-go-model"
           onClick={() => setActiveArea('MODEL_SIECI')}
           className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
         >
