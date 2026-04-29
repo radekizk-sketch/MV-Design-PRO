@@ -590,6 +590,18 @@ function hasDelegate(
   return surface?.routeState.payload?.delegate === delegate;
 }
 
+function activeSurfaceInStack(
+  state: Pick<NetworkBuildState, 'activeSurface' | 'surfaceStack'>,
+): WorkspaceSurfaceDescriptor | null {
+  const activeSurface = state.activeSurface;
+  if (!activeSurface) {
+    return null;
+  }
+  return state.surfaceStack.some((surface) => surface.surfaceId === activeSurface.surfaceId)
+    ? activeSurface
+    : null;
+}
+
 function buildInvariantErrorMessage(
   violations: SurfaceStackInvariantViolation[],
 ): string {
@@ -799,7 +811,12 @@ export const useNetworkBuildStore = create<NetworkBuildState>((set, get) => ({
     })),
 
   openOperationForm: (op, context) => {
-    const { descriptor, session } = buildOperationSurfaceDescriptor(op, context, get().activeSurface);
+    const state = get();
+    const { descriptor, session } = buildOperationSurfaceDescriptor(
+      op,
+      context,
+      activeSurfaceInStack(state),
+    );
     get().openSurface(descriptor, session);
   },
 
@@ -810,7 +827,11 @@ export const useNetworkBuildStore = create<NetworkBuildState>((set, get) => ({
   },
 
   openObjectCard: (card) => {
-    const { descriptor, session } = buildObjectCardSurfaceDescriptor(card, get().activeSurface);
+    const state = get();
+    const { descriptor, session } = buildObjectCardSurfaceDescriptor(
+      card,
+      activeSurfaceInStack(state),
+    );
     get().openSurface(descriptor, session);
   },
 
@@ -821,9 +842,10 @@ export const useNetworkBuildStore = create<NetworkBuildState>((set, get) => ({
   },
 
   openInspectorPanel: (kind, elementId, elementType) => {
+    const state = get();
     const { descriptor, session } = buildInspectorSurfaceDescriptor(
       { kind, elementId, elementType },
-      get().activeSurface,
+      activeSurfaceInStack(state),
     );
     get().openSurface(descriptor, session);
   },

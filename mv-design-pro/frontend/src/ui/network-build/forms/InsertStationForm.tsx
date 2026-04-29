@@ -7,7 +7,7 @@
  * BINDING: 100% PL etykiety.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   TransformerStationEditor,
   type TransformerStationFormData,
@@ -17,6 +17,8 @@ import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuild
 import { useAppStateStore } from '../../app-state';
 import { validateCatalogFirst } from './catalogFirstRules';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
+import { fetchTransformerTypes, getCatalogErrorMessage } from '../../catalog/api';
+import type { TransformerType } from '../../catalog/types';
 import {
   formatStationTypeLabelPl,
   normalizeTopologicalStationKind,
@@ -85,6 +87,46 @@ function estimateReadiness(
   return Math.min(92, base[stationKind] + (hasPv ? 4 : 0) + (hasBess ? 4 : 0));
 }
 
+const STATION_SN_SIDE_REF = '__station_sn_side__';
+const STATION_NN_SIDE_REF = '__station_nn_side__';
+const DEFAULT_SN_VOLTAGE_KV = 15;
+const DEFAULT_NN_VOLTAGE_KV = 0.4;
+
+function toTransformerCatalogEntries(types: TransformerType[]) {
+  return types.map((type) => ({
+    id: type.id,
+    name: type.name,
+    manufacturer: type.manufacturer,
+    summary: `${type.voltage_hv_kv}/${type.voltage_lv_kv} kV, ${type.rated_power_mva} MVA, ${type.vector_group}`,
+  }));
+}
+
+function deriveSnVoltageKv(
+  snapshot: unknown,
+  busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>,
+  segmentId: string,
+): number {
+  const model = snapshot as {
+    branches?: Array<{
+      id?: string;
+      ref_id?: string;
+      from_bus_ref?: string | null;
+      to_bus_ref?: string | null;
+    }>;
+  } | null;
+  const segment = model?.branches?.find(
+    (branch) => branch.ref_id === segmentId || branch.id === segmentId,
+  );
+  const segmentBusRef = segment?.from_bus_ref ?? segment?.to_bus_ref ?? null;
+  const segmentBusVoltage = busOptions.find((bus) => bus.ref_id === segmentBusRef)?.voltage_kv;
+  if (typeof segmentBusVoltage === 'number' && Number.isFinite(segmentBusVoltage) && segmentBusVoltage > 0) {
+    return segmentBusVoltage;
+  }
+
+  const firstMvBus = busOptions.find((bus) => bus.voltage_kv >= 1 && bus.voltage_kv < 60);
+  return firstMvBus?.voltage_kv ?? DEFAULT_SN_VOLTAGE_KV;
+}
+
 export function InsertStationForm() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
@@ -95,6 +137,9 @@ export function InsertStationForm() {
   const [outgoingFeederCount, setOutgoingFeederCount] = useState(2);
   const [includePv, setIncludePv] = useState(false);
   const [includeBess, setIncludeBess] = useState(false);
+  const [transformerCatalogEntries, setTransformerCatalogEntries] = useState<
+    ReturnType<typeof toTransformerCatalogEntries>
+  >([]);
 
   const busOptions = useMemo(() => selectBusOptions(snapshot), [snapshot]);
 
@@ -104,8 +149,8 @@ export function InsertStationForm() {
     return {
       ref_id: (context.ref_id as string) ?? '',
       name: (context.name as string) ?? '',
-      hv_bus_ref: (context.hv_bus_ref as string) ?? '',
-      lv_bus_ref: (context.lv_bus_ref as string) ?? '',
+      hv_bus_ref: (context.hv_bus_ref as string) ?? STATION_SN_SIDE_REF,
+      lv_bus_ref: (context.lv_bus_ref as string) ?? STATION_NN_SIDE_REF,
       catalog_ref: (
         catalogRefFromInput(transformerContext?.catalog_binding)
         ?? catalogRefFromInput(context.catalog_binding)
@@ -134,12 +179,64 @@ export function InsertStationForm() {
     () => estimateReadiness(stationKind, includePv, includeBess),
     [includeBess, includePv, stationKind],
   );
+  const stationSnVoltageKv = useMemo(
+    () => deriveSnVoltageKv(snapshot, busOptions, segmentId),
+    [busOptions, segmentId, snapshot],
+  );
+  const stationBusOptions = useMemo(
+    () => [
+      ...busOptions,
+      {
+        ref_id: STATION_SN_SIDE_REF,
+        name: 'Strona SN stacji',
+        voltage_kv: stationSnVoltageKv,
+      },
+      {
+        ref_id: STATION_NN_SIDE_REF,
+        name: 'Strona nN stacji',
+        voltage_kv: DEFAULT_NN_VOLTAGE_KV,
+      },
+    ],
+    [busOptions, stationSnVoltageKv],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchTransformerTypes()
+      .then((types) => {
+        if (cancelled) return;
+        const snNnTypes = types.filter(
+          (type) =>
+            Math.abs(type.voltage_hv_kv - stationSnVoltageKv) < 0.01
+            && Math.abs(type.voltage_lv_kv - DEFAULT_NN_VOLTAGE_KV) < 0.001,
+        );
+        const fallbackSnNnTypes = types.filter(
+          (type) =>
+            type.voltage_hv_kv >= 1
+            && type.voltage_hv_kv < 60
+            && Math.abs(type.voltage_lv_kv - DEFAULT_NN_VOLTAGE_KV) < 0.001,
+        );
+        setTransformerCatalogEntries(
+          toTransformerCatalogEntries(snNnTypes.length > 0 ? snNnTypes : fallbackSnNnTypes),
+        );
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setCatalogError(getCatalogErrorMessage(error));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stationSnVoltageKv]);
 
   const handleSubmit = useCallback(
     async (data: TransformerStationFormData) => {
       if (!activeCaseId) return;
-      const hvBusVoltage = busOptions.find((option) => option.ref_id === data.hv_bus_ref)?.voltage_kv;
-      const lvBusVoltage = busOptions.find((option) => option.ref_id === data.lv_bus_ref)?.voltage_kv;
+      const hvBusVoltage = stationBusOptions.find((option) => option.ref_id === data.hv_bus_ref)?.voltage_kv;
+      const lvBusVoltage = stationBusOptions.find((option) => option.ref_id === data.lv_bus_ref)?.voltage_kv;
       if (hvBusVoltage == null || lvBusVoltage == null) {
         setCatalogError('Nie udało się ustalić napięć szyn stacji. Wybierz poprawne szyny GN i DN.');
         return;
@@ -198,12 +295,20 @@ export function InsertStationForm() {
         return;
       }
       setCatalogError(null);
-      await executeDomainOperation(activeCaseId, 'insert_station_on_segment_sn', payload);
+      const response = await executeDomainOperation(activeCaseId, 'insert_station_on_segment_sn', payload);
+      if (!response) {
+        const operationError = useSnapshotStore.getState().error;
+        setCatalogError(operationError ?? 'Nie udało się wstawić stacji SN/nN na odcinku.');
+        return;
+      }
+      if (response.error) {
+        setCatalogError(response.error);
+        return;
+      }
       closeForm();
     },
     [
       activeCaseId,
-      busOptions,
       closeForm,
       executeDomainOperation,
       includeBess,
@@ -211,6 +316,7 @@ export function InsertStationForm() {
       outgoingFeederCount,
       positionOnSegment,
       segmentId,
+      stationBusOptions,
       stationKind,
     ],
   );
@@ -322,8 +428,14 @@ export function InsertStationForm() {
           mode="create"
           embedded={true}
           hideHeader={true}
+          busSelectionMode="station-sides"
+          stationSideLabels={{
+            high: `Strona SN z odcinka magistrali (${stationSnVoltageKv} kV)`,
+            low: `Strona nN tworzona za transformatorem (${DEFAULT_NN_VOLTAGE_KV} kV)`,
+          }}
           initialData={initialData}
-          busOptions={busOptions}
+          busOptions={stationBusOptions}
+          catalogEntries={transformerCatalogEntries}
           onSubmit={handleSubmit}
           onCancel={closeForm}
         />

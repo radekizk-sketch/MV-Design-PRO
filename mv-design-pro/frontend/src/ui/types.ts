@@ -13,6 +13,13 @@ import type {
   FixActionSurfaceDescriptor,
   WizardSurfaceStepId,
 } from '../types/fixActionSurface';
+import type {
+  DataQualityState as SemanticDataQualityState,
+  EngineeringCompleteness,
+  EngineeringElementKind,
+  EngineeringRole,
+  VoltageDomain as SemanticVoltageDomain,
+} from './engineering-semantic/types';
 
 /**
  * Internal operating context.
@@ -131,6 +138,12 @@ export interface SelectedElement {
   id: string;
   type: ElementType;
   name: string;
+  semanticHash?: string;
+  semanticElementKind?: EngineeringElementKind;
+  semanticEngineeringRole?: EngineeringRole;
+  semanticCompleteness?: EngineeringCompleteness;
+  semanticVoltageDomain?: SemanticVoltageDomain;
+  semanticDataQualityState?: SemanticDataQualityState;
 }
 
 /**

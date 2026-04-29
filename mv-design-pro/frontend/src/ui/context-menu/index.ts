@@ -24,6 +24,11 @@ export {
   buildNetworkModelContextMenu,
   getContextMenuHeader,
 } from './actions';
+export {
+  buildSemanticRoleContextMenuActions,
+  semanticActionOperationId,
+  toContextMenuActionFromSemanticPolicy,
+} from './semanticContextMenuPolicy';
 
 // Rich Action Menu Builders A–AZ (UI 10/10 ABSOLUTE++)
 export {

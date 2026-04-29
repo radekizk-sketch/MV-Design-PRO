@@ -16,6 +16,7 @@ import { useNetworkBuildDerived } from '../../network-build/networkBuildStore';
 import { formatGeneratorTypeShortLabelPl } from '../../shared/generatorTypeLabels';
 
 type OzeFilter = 'all' | 'PV' | 'BESS' | 'WIND';
+export type OzeTechnology = Exclude<OzeFilter, 'all'> | 'UNKNOWN';
 
 const FILTER_DEFS: Array<{ id: OzeFilter; label: string; testId: string }> = [
   { id: 'all', label: 'Wszystkie', testId: 'oz-filter-all' },
@@ -24,13 +25,22 @@ const FILTER_DEFS: Array<{ id: OzeFilter; label: string; testId: string }> = [
   { id: 'WIND', label: 'FW', testId: 'oz-filter-WIND' },
 ];
 
+const GENERATOR_TYPE_TECHNOLOGY: Record<string, OzeTechnology> = {
+  pv_inverter: 'PV',
+  photovoltaic_inverter: 'PV',
+  bess: 'BESS',
+  battery_storage: 'BESS',
+  wind_inverter: 'WIND',
+  wind_turbine: 'WIND',
+};
+
+export function resolveOzeTechnology(genType: string): OzeTechnology {
+  return GENERATOR_TYPE_TECHNOLOGY[genType.trim().toLowerCase()] ?? 'UNKNOWN';
+}
+
 function matchFilter(genType: string, filter: OzeFilter): boolean {
   if (filter === 'all') return true;
-  const normalized = genType.toUpperCase();
-  if (filter === 'PV') return normalized.includes('PV') || normalized.includes('PHOTO');
-  if (filter === 'BESS') return normalized.includes('BESS') || normalized.includes('BATT');
-  if (filter === 'WIND') return normalized.includes('WIND') || normalized.includes('WTG') || normalized.includes('FW');
-  return false;
+  return resolveOzeTechnology(genType) === filter;
 }
 
 export function OzContextPanel() {

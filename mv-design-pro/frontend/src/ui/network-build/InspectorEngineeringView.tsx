@@ -36,7 +36,7 @@ import { useAppStateStore } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { issueTargetsElement } from '../topology/liveReadiness';
 import { formatStationTypeLabelPl } from '../shared/stationTypeLabels';
-import type { ReadinessIssue } from '../types';
+import type { ReadinessIssue, SelectedElement } from '../types';
 import type { EnergyNetworkModel, Branch, LogicalViewsV1 } from '../../types/enm';
 import type { NetworkBuildOperationName } from './networkBuildStore';
 import { buildOperationContext } from './operationContext';
@@ -377,6 +377,19 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   relay: 'Zabezpieczenie',
   branch_pole: 'SĹ‚up rozgaĹ‚Ä™Ĺşny SN',
   zksn: 'ZKSN SN',
+  BUSBAR_SECTION: 'Szyna',
+  BUSBAR_SYSTEM: 'System szyn',
+  MV_CABLE_SEGMENT: 'Odcinek kablowy SN',
+  MV_OVERHEAD_SEGMENT: 'Odcinek napowietrzny SN',
+  MV_BRANCH_POINT: 'Punkt rozgalezienia SN',
+  MV_LV_TRANSFORMER: 'Transformator SN/nN',
+  TRANSFORMER: 'Transformator',
+  GPZ: 'GPZ',
+  SOURCE: 'Zrodlo',
+  PV_INVERTER: 'Zrodlo przeksztaltnikowe PV',
+  BESS_CONVERTER: 'Magazyn energii BESS',
+  WIND_SOURCE: 'Zrodlo wiatrowe',
+  LV_LOAD_NODE: 'Odbior nN',
 };
 
 function connectionVariantLabel(variant: string | null | undefined): string {
@@ -401,6 +414,433 @@ function formatElementTypeLabel(elementType: string): string {
 
 function isLineCable(b: Branch): b is Branch & { type: 'line_overhead' | 'cable' } {
   return b.type === 'line_overhead' || b.type === 'cable';
+}
+
+interface SegmentTechnicalPayload {
+  length_km?: number | null;
+  r_ohm_per_km?: number | null;
+  x_ohm_per_km?: number | null;
+  rating?: { in_a?: number | null } | null;
+  catalog_ref?: string | null;
+}
+
+function getSegmentTechnicalPayload(branch: Branch | undefined): SegmentTechnicalPayload | null {
+  if (!branch) return null;
+  const payload = branch as Branch & SegmentTechnicalPayload;
+  if (
+    payload.length_km === undefined
+    && payload.r_ohm_per_km === undefined
+    && payload.x_ohm_per_km === undefined
+    && payload.rating === undefined
+    && payload.catalog_ref === undefined
+  ) {
+    return null;
+  }
+  return payload;
+}
+
+function hasSemanticSelection(
+  selectedElement: SelectedElement | null | undefined,
+): selectedElement is SelectedElement & {
+  semanticHash: string;
+  semanticElementKind: string;
+  semanticEngineeringRole: string;
+} {
+  return Boolean(
+    selectedElement?.semanticHash
+      && selectedElement.semanticElementKind
+      && selectedElement.semanticEngineeringRole,
+  );
+}
+
+function semanticTypeKey(selectedElement: SelectedElement): string {
+  return selectedElement.semanticEngineeringRole
+    ?? selectedElement.semanticElementKind
+    ?? selectedElement.type;
+}
+
+function semanticTypeLabel(selectedElement: SelectedElement): string {
+  return formatElementTypeLabel(semanticTypeKey(selectedElement));
+}
+
+function semanticActionContext(
+  selectedElement: SelectedElement,
+  context: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    ...context,
+    semantic_element_kind: selectedElement.semanticElementKind,
+    semantic_engineering_role: selectedElement.semanticEngineeringRole,
+    semantic_hash: selectedElement.semanticHash,
+  };
+}
+
+function isSemanticMvSegment(selectedElement: SelectedElement): boolean {
+  return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
+    || selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
+    || selectedElement.semanticEngineeringRole === 'MV_CABLE_SEGMENT'
+    || selectedElement.semanticEngineeringRole === 'MV_OVERHEAD_SEGMENT';
+}
+
+function isSemanticOverheadSegment(selectedElement: SelectedElement): boolean {
+  return selectedElement.semanticElementKind === 'MV_OVERHEAD_SEGMENT'
+    || selectedElement.semanticEngineeringRole === 'MV_OVERHEAD_SEGMENT';
+}
+
+function isSemanticCableSegment(selectedElement: SelectedElement): boolean {
+  return selectedElement.semanticElementKind === 'MV_CABLE_SEGMENT'
+    || selectedElement.semanticEngineeringRole === 'MV_CABLE_SEGMENT';
+}
+
+function isSemanticConverterSource(selectedElement: SelectedElement): boolean {
+  return selectedElement.semanticElementKind === 'SOURCE'
+    && (
+      selectedElement.semanticEngineeringRole === 'PV_INVERTER'
+      || selectedElement.semanticEngineeringRole === 'BESS_CONVERTER'
+      || selectedElement.semanticEngineeringRole === 'WIND_SOURCE'
+    );
+}
+
+function isSemanticGpzSource(selectedElement: SelectedElement): boolean {
+  return selectedElement.semanticElementKind === 'GPZ'
+    || selectedElement.semanticEngineeringRole === 'GPZ_SUPPLY_NODE';
+}
+
+function buildSemanticSegmentSections(
+  selectedElement: SelectedElement,
+  branch: Branch | undefined,
+  snapshot: EnergyNetworkModel,
+  readinessIssues: ReadinessIssue[],
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+  const elementId = selectedElement.id;
+  const segmentRef = branch?.ref_id ?? elementId;
+  const segmentName = branch?.name ?? selectedElement.name;
+  const segmentPayload = getSegmentTechnicalPayload(branch);
+  const sections: PropertySection[] = [
+    {
+      id: 'ident',
+      label: 'Identyfikacja',
+      fields: [
+        { key: 'ref_id', label: 'Oznaczenie odcinka', value: segmentRef },
+        { key: 'name', label: 'Nazwa', value: segmentName },
+        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
+        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
+        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
+        ...(branch?.status ? [{ key: 'status', label: 'Stan', value: branch.status }] : []),
+      ],
+    },
+  ];
+  const actions: QuickAction[] = [
+    {
+      id: 'assign_catalog',
+      label: 'Przypisz katalog',
+      op: 'assign_catalog_to_element',
+      context: semanticActionContext(selectedElement, { element_ref: segmentRef }),
+    },
+    {
+      id: 'insert_station_on_segment_sn',
+      label: 'Wstaw stacje',
+      op: 'insert_station_on_segment_sn',
+      context: semanticActionContext(selectedElement, { segment_ref: segmentRef }),
+    },
+  ];
+
+  const branchParent = findParentStation(elementId, snapshot);
+  if (branchParent) {
+    sections[0].fields.push(
+      { key: 'parent_station', label: 'Stacja nadrzedna', value: branchParent },
+    );
+  }
+
+  if (branch) {
+    sections.push({
+      id: 'topology',
+      label: 'Topologia',
+      fields: [
+        { key: 'from_bus', label: 'Szyna poczatkowa', value: branch.from_bus_ref },
+        { key: 'to_bus', label: 'Szyna koncowa', value: branch.to_bus_ref },
+      ],
+    });
+  }
+  if (segmentPayload) {
+    sections.push({
+      id: 'electrical',
+      label: 'Parametry elektryczne',
+      fields: [
+        { key: 'length_km', label: 'Dlugosc', value: segmentPayload.length_km ?? null, unit: 'km' },
+        { key: 'r_ohm', label: 'Rezystancja R\'', value: segmentPayload.r_ohm_per_km ?? null, unit: 'ohm/km', source: 'catalog' },
+        { key: 'x_ohm', label: 'Reaktancja X\'', value: segmentPayload.x_ohm_per_km ?? null, unit: 'ohm/km', source: 'catalog' },
+        { key: 'rating', label: 'Obciazalnosc dlugotrwala', value: segmentPayload.rating?.in_a ?? null, unit: 'A', source: 'catalog' },
+      ],
+    });
+    sections.push({
+      id: 'catalog',
+      label: 'Katalog',
+      fields: [
+        { key: 'catalog_ref', label: 'Pozycja katalogowa', value: segmentPayload.catalog_ref ?? '?' },
+      ],
+    });
+  }
+
+  if (isSemanticOverheadSegment(selectedElement)) {
+    actions.push({
+      id: 'insert_branch_pole_on_segment_sn',
+      label: 'Wstaw slup rozgalezny',
+      op: 'insert_branch_pole_on_segment_sn',
+      context: semanticActionContext(selectedElement, { segment_ref: segmentRef }),
+    });
+  }
+  if (isSemanticCableSegment(selectedElement)) {
+    actions.push({
+      id: 'insert_zksn_on_segment_sn',
+      label: 'Wstaw ZKSN',
+      op: 'insert_zksn_on_segment_sn',
+      context: semanticActionContext(selectedElement, { segment_ref: segmentRef }),
+    });
+  }
+  actions.push({
+    id: 'insert_section_switch_sn',
+    label: 'Wstaw lacznik',
+    op: 'insert_section_switch_sn',
+    context: semanticActionContext(selectedElement, { segmentRef: segmentRef, segmentLabel: segmentName }),
+  });
+
+  appendReadinessSection(sections, readinessIssues, elementId);
+
+  return {
+    sections,
+    elementType: semanticTypeKey(selectedElement),
+    elementName: segmentName,
+    actions,
+  };
+}
+
+function appendReadinessSection(
+  sections: PropertySection[],
+  readinessIssues: ReadinessIssue[],
+  elementId: string,
+): void {
+  const elementBlockers = readinessIssues.filter(
+    (issue) => issue.severity === 'BLOCKER' && issueTargetsElement(issue, elementId),
+  );
+  const elementWarnings = readinessIssues.filter(
+    (issue) => issue.severity !== 'BLOCKER' && issueTargetsElement(issue, elementId),
+  );
+  if (elementBlockers.length > 0 || elementWarnings.length > 0) {
+    sections.push({
+      id: 'readiness',
+      label: 'Gotowosc',
+      fields: [
+        ...elementBlockers.map((b, i) => ({
+          key: `blocker_${i}`,
+          label: 'Blokada',
+          value: b.message_pl,
+        })),
+        ...elementWarnings.map((w, i) => ({
+          key: `warning_${i}`,
+          label: 'Ostrzezenie',
+          value: w.message_pl,
+        })),
+      ],
+    });
+  }
+}
+
+function buildSemanticConverterSections(
+  selectedElement: SelectedElement,
+  snapshot: EnergyNetworkModel,
+  readinessIssues: ReadinessIssue[],
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+  const generator = snapshot.generators?.find((g) => g.ref_id === selectedElement.id);
+  const elementName = generator?.name ?? selectedElement.name;
+  const sections: PropertySection[] = [
+    {
+      id: 'ident',
+      label: 'Identyfikacja',
+      fields: [
+        { key: 'ref_id', label: 'Oznaczenie zrodla', value: selectedElement.id },
+        { key: 'name', label: 'Nazwa', value: elementName },
+        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
+        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
+        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
+      ],
+    },
+  ];
+
+  if (generator) {
+    sections.push({
+      id: 'electrical',
+      label: 'Parametry elektryczne',
+      fields: [
+        { key: 'p_mw', label: 'Moc czynna', value: generator.p_mw, unit: 'MW' },
+        { key: 'q_mvar', label: 'Moc bierna', value: generator.q_mvar ?? null, unit: 'Mvar' },
+        { key: 'connection_variant', label: 'Wariant przylaczenia', value: connectionVariantLabel(generator.connection_variant) },
+      ],
+    });
+    sections.push({
+      id: 'catalog',
+      label: 'Katalog',
+      fields: [
+        { key: 'catalog_ref', label: 'Pozycja katalogowa', value: generator.catalog_ref ?? '?' },
+      ],
+    });
+  }
+
+  appendReadinessSection(sections, readinessIssues, selectedElement.id);
+
+  return {
+    sections,
+    elementType: semanticTypeKey(selectedElement),
+    elementName,
+    actions: [
+      {
+        id: 'assign_catalog',
+        label: 'Przypisz katalog',
+        op: 'assign_catalog_to_element',
+        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
+      },
+      {
+        id: 'edit',
+        label: 'Edytuj parametry',
+        op: 'update_element_parameters',
+        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
+      },
+    ],
+  };
+}
+
+function buildSemanticGpzSections(
+  selectedElement: SelectedElement,
+  snapshot: EnergyNetworkModel,
+  readinessIssues: ReadinessIssue[],
+  fieldItems: readonly FieldReadModelItem[],
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+  const source = snapshot.sources?.find((s) => s.ref_id === selectedElement.id);
+  const elementName = source?.name ?? selectedElement.name;
+  const sourceBus = source ? findOperationalBus(snapshot, source.bus_ref) : null;
+  const sourceSubstation = source?.substation_ref
+    ? snapshot.substations?.find((station) => station.ref_id === source.substation_ref)
+    : null;
+  const sourceGpzSection = sourceSubstation && source
+    ? sourceSubstation.gpz_sections?.find((section) => section.section_id === source.gpz_section_id)
+      ?? sourceSubstation.gpz_sections?.[0]
+      ?? null
+    : null;
+  const sourceGpzField = source
+    ? findFieldForGpzSection(
+      fieldItems,
+      sourceSubstation?.id,
+      sourceSubstation?.ref_id,
+      sourceGpzSection?.section_id ?? source.gpz_section_id,
+    )
+    : null;
+  const sections: PropertySection[] = [
+    {
+      id: 'ident',
+      label: 'Identyfikacja',
+      fields: [
+        { key: 'ref_id', label: 'Oznaczenie zrodla', value: selectedElement.id },
+        { key: 'name', label: 'Nazwa', value: elementName },
+        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
+        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
+        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
+        ...(source?.model ? [{ key: 'model', label: 'Model zastepczy', value: source.model }] : []),
+      ],
+    },
+  ];
+
+  if (source) {
+    sections.push({
+      id: 'electrical',
+      label: 'Parametry sieci',
+      fields: [
+        { key: 'bus_voltage_kv', label: 'Napiecie szyny', value: sourceBus?.voltage_kv ?? null, unit: 'kV' },
+        { key: 'sk3_mva', label: 'Moc zwarciowa Sk3', value: source.sk3_mva ?? null, unit: 'MVA' },
+        { key: 'rx_ratio', label: 'Stosunek R/X', value: source.rx_ratio ?? null },
+        { key: 'r_ohm', label: 'Rezystancja R', value: source.r_ohm ?? null, unit: 'ohm' },
+        { key: 'x_ohm', label: 'Reaktancja X', value: source.x_ohm ?? null, unit: 'ohm' },
+      ],
+    });
+    sections.push({
+      id: 'gpz',
+      label: 'Sekcje GPZ',
+      fields: [
+        { key: 'substation_ref', label: 'Stacja GPZ', value: sourceSubstation?.name ?? source.substation_ref ?? '-' },
+        { key: 'section_id', label: 'Sekcja zrodla', value: sourceGpzSection?.section_id ?? source.gpz_section_id ?? '-' },
+        { key: 'section_name', label: 'Nazwa sekcji', value: sourceGpzSection?.name ?? '-' },
+        { key: 'line_field', label: 'Pole liniowe GPZ', value: sourceGpzField?.bay_name ?? sourceGpzSection?.line_field_name ?? '-' },
+      ],
+    });
+  }
+
+  appendReadinessSection(sections, readinessIssues, selectedElement.id);
+
+  return {
+    sections,
+    elementType: semanticTypeKey(selectedElement),
+    elementName,
+    actions: [
+      {
+        id: 'edit',
+        label: 'Edytuj parametry',
+        op: 'update_element_parameters',
+        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
+      },
+    ],
+  };
+}
+
+function buildSemanticSectionsForElement(
+  selectedElement: SelectedElement,
+  snapshot: EnergyNetworkModel,
+  readinessIssues: ReadinessIssue[],
+  fieldItems: readonly FieldReadModelItem[],
+): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
+  if (isSemanticMvSegment(selectedElement)) {
+    return buildSemanticSegmentSections(
+      selectedElement,
+      snapshot.branches?.find((branch) => branch.ref_id === selectedElement.id),
+      snapshot,
+      readinessIssues,
+    );
+  }
+
+  if (isSemanticConverterSource(selectedElement)) {
+    return buildSemanticConverterSections(selectedElement, snapshot, readinessIssues);
+  }
+
+  if (isSemanticGpzSource(selectedElement)) {
+    return buildSemanticGpzSections(selectedElement, snapshot, readinessIssues, fieldItems);
+  }
+
+  const sections: PropertySection[] = [
+    {
+      id: 'ident',
+      label: 'Identyfikacja',
+      fields: [
+        { key: 'ref_id', label: 'Oznaczenie elementu', value: selectedElement.id },
+        { key: 'name', label: 'Nazwa', value: selectedElement.name },
+        { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
+        { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
+        { key: 'semantic_hash', label: 'Hash semantyczny', value: selectedElement.semanticHash ?? null },
+      ],
+    },
+  ];
+  appendReadinessSection(sections, readinessIssues, selectedElement.id);
+
+  return {
+    sections,
+    elementType: semanticTypeKey(selectedElement),
+    elementName: selectedElement.name,
+    actions: [
+      {
+        id: 'edit',
+        label: 'Edytuj parametry',
+        op: 'update_element_parameters',
+        context: semanticActionContext(selectedElement, { element_ref: selectedElement.id }),
+      },
+    ],
+  };
 }
 
 // =============================================================================
@@ -481,8 +921,18 @@ function buildSectionsForElement(
   readinessIssues: ReadinessIssue[],
   fieldItems: readonly FieldReadModelItem[],
   logicalViews?: LogicalViewsV1 | null,
+  selectedElement?: SelectedElement | null,
 ): { sections: PropertySection[]; elementType: string; elementName: string; actions: QuickAction[] } {
   if (!snapshot) return { sections: [], elementType: '', elementName: '', actions: [] };
+
+  if (hasSemanticSelection(selectedElement)) {
+    return buildSemanticSectionsForElement(
+      selectedElement,
+      snapshot,
+      readinessIssues,
+      fieldItems,
+    );
+  }
 
   const sections: PropertySection[] = [];
   const actions: QuickAction[] = [];
@@ -858,6 +1308,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
         readinessIssues,
         fieldReadModelData.fields,
         logicalViews,
+        selectedElement,
       );
     },
     [
@@ -870,6 +1321,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       readinessIssues,
       selectedBayField,
       selectedBayName,
+      selectedElement,
       snapshot,
     ],
   );

@@ -363,7 +363,7 @@ function AnalysisCaseContextPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            analysis_case_context
+            kontekst_analizy
           </div>
           <h2 className="mt-1 text-sm font-semibold text-slate-900">
             Kontekst uruchomienia rozpływu
@@ -380,8 +380,8 @@ function AnalysisCaseContextPanel({
           label="Rodzaj przypadku"
           value={context.rodzaj_przypadku ?? context.case_kind ?? 'Brak'}
         />
-        <ContextField label="Case ref" value={context.case_ref} />
-        <ContextField label="Run ref" value={context.run_ref} />
+        <ContextField label="Id przypadku" value={context.case_ref} />
+        <ContextField label="Id uruchomienia" value={context.run_ref} />
         <ContextField label="Migawka" value={context.snapshot_ref ?? 'Brak'} />
         <ContextField label="Pakiet uzasadnienia" value={context.proof_pack_ref} />
         <ContextField label="Zakres" value={applicability} />

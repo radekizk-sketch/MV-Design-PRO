@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { InspectorEngineeringView } from '../InspectorEngineeringView';
 
 const openOperationForm = vi.fn();
@@ -17,7 +17,21 @@ const snapshot = {
       voltage_kv: 15,
     },
   ],
-  branches: [],
+  branches: [
+    {
+      ref_id: 'seg-1',
+      name: 'Segment testowy',
+      type: 'cable',
+      status: 'active',
+      from_bus_ref: 'bus-sn-1',
+      to_bus_ref: 'bus-nn-1',
+      length_km: 0.7,
+      r_ohm_per_km: 0.12,
+      x_ohm_per_km: 0.08,
+      rating: { in_a: 240 },
+      catalog_ref: 'cat:cable',
+    },
+  ],
   branch_points: [],
   transformers: [],
   sources: [],
@@ -59,7 +73,14 @@ const snapshot = {
   loads: [],
 };
 
-let mockSelectedElements: Array<{ id: string; type: string; name: string }> = [];
+let mockSelectedElements: Array<{
+  id: string;
+  type: string;
+  name: string;
+  semanticHash?: string;
+  semanticElementKind?: string;
+  semanticEngineeringRole?: string;
+}> = [];
 let mockReadinessIssues: Array<{
   severity: string;
   element_ref: string | null;
@@ -80,7 +101,7 @@ vi.mock('../networkBuildStore', () => ({
 }));
 
 vi.mock('../../selection', () => ({
-  useSelectionStore: (selector: (state: { selectedElements: Array<{ id: string; type: string; name: string }> }) => unknown) =>
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
     selector({
       selectedElements: mockSelectedElements,
     }),
@@ -146,6 +167,58 @@ describe('InspectorEngineeringView', () => {
     expect(screen.getByText('Brak katalogu zrodla przeksztaltnikowego')).toBeInTheDocument();
     expect(screen.queryByText('mv_lv')).not.toBeInTheDocument();
     expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
+  });
+
+  it('wybiera akcje segmentu po semantyce selekcji zamiast po branch.type', () => {
+    mockSelectedElements = [{
+      id: 'seg-1',
+      type: 'LineBranch',
+      name: 'Segment testowy',
+      semanticHash: 'semantic:v1',
+      semanticElementKind: 'MV_OVERHEAD_SEGMENT',
+      semanticEngineeringRole: 'MV_OVERHEAD_SEGMENT',
+    }];
+    mockReadinessIssues = [];
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.getAllByText('Odcinek napowietrzny SN').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Kabel SN')).not.toBeInTheDocument();
+    expect(screen.getByText('Wstaw slup rozgalezny')).toBeInTheDocument();
+    expect(screen.queryByText('Wstaw ZKSN')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Wstaw slup rozgalezny'));
+
+    expect(openOperationForm).toHaveBeenCalledWith(
+      'insert_branch_pole_on_segment_sn',
+      expect.objectContaining({
+        segment_ref: 'seg-1',
+        semantic_element_kind: 'MV_OVERHEAD_SEGMENT',
+        semantic_engineering_role: 'MV_OVERHEAD_SEGMENT',
+        semantic_hash: 'semantic:v1',
+      }),
+    );
+  });
+
+  it('opisuje zrodlo przeksztaltnikowe po roli semantycznej zamiast po generator.gen_type', () => {
+    mockSelectedElements = [{
+      id: 'gen-1',
+      type: 'Generator',
+      name: 'Farma wiatrowa 1',
+      semanticHash: 'semantic:v2',
+      semanticElementKind: 'SOURCE',
+      semanticEngineeringRole: 'PV_INVERTER',
+    }];
+    mockReadinessIssues = [];
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.getAllByText('Zrodlo przeksztaltnikowe PV').length).toBeGreaterThan(0);
+    expect(screen.getByText('PV_INVERTER')).toBeInTheDocument();
+    expect(screen.getByText('Moc czynna')).toBeInTheDocument();
+    expect(
+      screen.queryByText((content) => content.includes('FW') && content.includes('przekszta')),
+    ).not.toBeInTheDocument();
   });
 
   it('renderuje pole SN z kanonicznego field read-modelu zamiast z lokalnych heurystyk', () => {

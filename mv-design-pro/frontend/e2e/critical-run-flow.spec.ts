@@ -156,7 +156,7 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
   return caseId;
 }
 
-test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> White Box -> geometria bez zmian', async ({ page, request }) => {
+test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -> branch -> katalogi -> readiness -> run -> wyniki -> SLD -> uzasadnienie -> geometria bez zmian', async ({ page, request }) => {
   const caseId = await createCaseFromUi(page, request);
 
   // Krok 1: GPZ
@@ -317,7 +317,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   await expect(page.getByTestId('embedded-sld-workspace')).toBeVisible();
   await expect(page.getByTestId('embedded-sld-mode-run')).toBeVisible();
 
-  const whiteBoxButton = page.getByRole('button', { name: 'White Box' });
+  const whiteBoxButton = page.getByRole('button', { name: 'Uzasadnienie' });
   await whiteBoxButton.scrollIntoViewIfNeeded();
   await expect(whiteBoxButton).toBeVisible();
   await page.evaluate((targetRunId) => {

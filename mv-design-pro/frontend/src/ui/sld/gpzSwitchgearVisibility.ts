@@ -88,9 +88,16 @@ export function filterConnectionsForGpzSwitchgear(
   }
 
   return connections.filter(
-    (connection) =>
-      !suppressedIds.has(connection.fromSymbolId)
-      && !suppressedIds.has(connection.toSymbolId)
-      && !(connection.elementId && suppressedIds.has(connection.elementId)),
+    (connection) => {
+      const realNetworkSegment = connection.connectionType !== 'source'
+        && connection.connectionType !== 'load'
+        && connection.connectionType !== 'switch';
+      if (realNetworkSegment && connection.elementId && !suppressedIds.has(connection.elementId)) {
+        return true;
+      }
+      return !suppressedIds.has(connection.fromSymbolId)
+        && !suppressedIds.has(connection.toSymbolId)
+        && !(connection.elementId && suppressedIds.has(connection.elementId));
+    },
   );
 }

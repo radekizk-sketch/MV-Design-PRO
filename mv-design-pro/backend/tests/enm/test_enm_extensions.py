@@ -462,6 +462,31 @@ class TestValidatorTopologyEntities:
         codes = [i.code for i in result.issues]
         assert "I003" in codes
 
+    def test_i003_accepts_canonical_field_specs_without_legacy_bays(self):
+        enm = _base_enm()
+        enm.substations = [
+            Substation(
+                ref_id="sub_1",
+                name="S1",
+                station_type="gpz",
+                bus_refs=["bus_sn_a"],
+                meta={
+                    "field_specs": [
+                        {
+                            "field_ref": "sub_1/bay/out",
+                            "bay_role": "OUT",
+                            "bus_ref": "bus_sn_a",
+                        }
+                    ]
+                },
+            ),
+        ]
+        enm.bays = []
+
+        result = ENMValidator().validate(enm)
+        codes = [i.code for i in result.issues]
+        assert "I003" not in codes
+
     def test_i004_empty_corridor(self):
         enm = _base_enm()
         enm.corridors = [

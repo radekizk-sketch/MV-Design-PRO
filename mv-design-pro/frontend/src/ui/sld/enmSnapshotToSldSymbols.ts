@@ -16,10 +16,24 @@ import { buildVisualGraphFromTopology } from './core/topologyAdapterV2';
 import { computeLayout } from './core/layoutPipeline';
 import type { CanonicalAnnotationsV1, EdgeRouteV1 } from './core/layoutResult';
 import { readTopologyFromENM } from './core/topologyInputReader';
+import {
+  buildEngineeringDiagnosticsProjection,
+  buildSldBaseProjectionViewModel,
+  projectEnergyNetworkModelToSemantic,
+  type EngineeringDiagnosticsProjection,
+  type EngineeringSemanticModel,
+  type SldBaseProjectionViewModel,
+} from '../engineering-semantic';
 
 type SnapshotLike = Partial<EnergyNetworkModel>;
 type SnapshotRecord = Record<string, unknown>;
 type ProjectedSymbol = AnySldSymbol & { helperBus?: boolean };
+
+interface CanonicalProjectionCore {
+  symbols: AnySldSymbol[];
+  connections: Connection[];
+  canonicalAnnotations: CanonicalAnnotationsV1 | null;
+}
 
 const EMPTY_CANONICAL_ANNOTATIONS: CanonicalAnnotationsV1 = {
   trunkNodes: [],
@@ -54,6 +68,11 @@ function readString(record: SnapshotRecord, key: string, fallback = ''): string 
   return typeof value === 'string' ? value : fallback;
 }
 
+function readStringArray(record: SnapshotRecord, key: string): string[] {
+  const value = record[key];
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+}
+
 function readNumber(record: SnapshotRecord, key: string, fallback: number): number {
   const value = record[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
@@ -82,6 +101,7 @@ function buildBusWidth(
   branches: SnapshotRecord[],
   sources: SnapshotRecord[],
   transformers: SnapshotRecord[],
+  substations: SnapshotRecord[] = [],
 ): number {
   const refId = readString(bus, 'ref_id');
   const attachedCount = branches.filter(
@@ -93,7 +113,18 @@ function buildBusWidth(
         readString(transformer, 'hv_bus_ref') === refId || readString(transformer, 'lv_bus_ref') === refId,
     ).length;
 
-  if (/gpz/i.test(readString(bus, 'name'))) {
+  const hasSupplySource = sources.some((source) => readString(source, 'bus_ref') === refId);
+  const belongsToGpzSubstation = substations.some((substation) => {
+    const stationType = readString(substation, 'station_type').toLowerCase();
+    return stationType === 'gpz'
+      && (
+        readString(substation, 'bus_ref') === refId
+        || readString(substation, 'mv_bus_ref') === refId
+        || readStringArray(substation, 'bus_refs').includes(refId)
+      );
+  });
+
+  if (hasSupplySource || belongsToGpzSubstation) {
     return Math.max(240, 120 + attachedCount * 60);
   }
 
@@ -112,6 +143,7 @@ function buildBaseSymbols(
   const branches = asRecords(snapshot.branches);
   const sources = asRecords(snapshot.sources);
   const transformers = asRecords(snapshot.transformers);
+  const substations = asRecords(snapshot.substations);
   const includeHelperBuses = options.includeHelperBuses === true;
 
   for (const bus of asRecords(snapshot.buses)) {
@@ -132,7 +164,7 @@ function buildBaseSymbols(
       elementName: readString(bus, 'name', refId),
       position: { x: 0, y: 0 },
       inService: true,
-      width: buildBusWidth(bus, branches, sources, transformers),
+      width: buildBusWidth(bus, branches, sources, transformers, substations),
       height: 8,
       helperBus,
     } as BusSymbol & { helperBus: boolean });
@@ -354,7 +386,7 @@ function midpointFromPath(path: Position[]): Position {
 function buildCanonicalProjection(
   snapshot: SnapshotLike | null | undefined,
   logicalViews?: LogicalViewsV1 | null,
-): EnmProjectionResult {
+): CanonicalProjectionCore {
   if (!snapshot) {
     return {
       symbols: [],
@@ -374,6 +406,7 @@ function buildCanonicalProjection(
   const rawBranchRecords = asRecords(snapshot.branches);
   const rawSourceRecords = asRecords(snapshot.sources);
   const rawTransformerRecords = asRecords(snapshot.transformers);
+  const rawSubstationRecords = asRecords(snapshot.substations);
 
   const projectedSymbols = baseSymbols.map((symbol) => {
     if (
@@ -394,7 +427,13 @@ function buildCanonicalProjection(
           position: placement.position,
           width:
             busRecord != null
-              ? buildBusWidth(busRecord, rawBranchRecords, rawSourceRecords, rawTransformerRecords)
+              ? buildBusWidth(
+                busRecord,
+                rawBranchRecords,
+                rawSourceRecords,
+                rawTransformerRecords,
+                rawSubstationRecords,
+              )
               : symbol.width,
           height: 8,
         } as ProjectedSymbol;
@@ -482,11 +521,28 @@ export interface EnmProjectionResult {
   symbols: AnySldSymbol[];
   connections: Connection[];
   canonicalAnnotations: CanonicalAnnotationsV1 | null;
+  semanticModel: EngineeringSemanticModel | null;
+  diagnostics: EngineeringDiagnosticsProjection | null;
+  sldBaseProjection: SldBaseProjectionViewModel | null;
 }
 
 export function projectEnmSnapshotToSld(
   snapshot: SnapshotLike | null | undefined,
   logicalViews?: LogicalViewsV1 | null,
 ): EnmProjectionResult {
-  return buildCanonicalProjection(snapshot, logicalViews);
+  const projection = buildCanonicalProjection(snapshot, logicalViews);
+  const semanticModel = projectEnergyNetworkModelToSemantic(snapshot);
+  const diagnostics = buildEngineeringDiagnosticsProjection(semanticModel);
+  const sldBaseProjection = buildSldBaseProjectionViewModel(
+    semanticModel,
+    projection.symbols,
+    projection.connections,
+  );
+
+  return {
+    ...projection,
+    semanticModel,
+    diagnostics,
+    sldBaseProjection,
+  };
 }

@@ -21,6 +21,11 @@ import { ContextMenu } from './ContextMenu';
 import type { ContextMenuAction, ElementType, OperatingMode, SwitchState } from '../types';
 import { checkCatalogGate } from './catalogGate';
 import type { CatalogNamespace } from './catalogGate';
+import type { SemanticContextMenuElement } from '../engineering-semantic/semanticContextActions';
+import {
+  buildMissingSemanticContextMenuActions,
+  buildSemanticRoleContextMenuActions,
+} from './semanticContextMenuPolicy';
 import {
   buildSourceSNContextMenu,
   buildBranchPoleContextMenu,
@@ -64,6 +69,9 @@ export interface EngineeringContextMenuState {
   scope?: 'element' | 'canvas';
   canvasMode?: 'ADD_SOURCE' | 'NEUTRAL';
   headerText?: string;
+  semanticElement?: SemanticContextMenuElement;
+  semanticHash?: string;
+  legacyMenuMode?: 'element-type-builders';
   hasAttachedSource?: boolean;
   switchState?: SwitchState;
   terminalStatus?: 'OTWARTY' | 'ZAJETY' | 'ZAREZERWOWANY_DLA_RINGU';
@@ -384,7 +392,7 @@ export function EngineeringContextMenu({
     );
   }, [elementType, makeHandler]);
 
-  // Zbuduj akcje per elementType
+  // Zbuduj akcje z polityki semantycznej; legacy buildery wymagaja jawnego trybu.
   const actions = useMemo((): ContextMenuAction[] => {
     if (state.scope === 'canvas') {
       if (state.canvasMode === 'NEUTRAL') {
@@ -409,6 +417,18 @@ export function EngineeringContextMenu({
           handler: makeHandler('add_grid_source_sn'),
         },
       ];
+    }
+
+    if (state.semanticElement) {
+      return buildSemanticRoleContextMenuActions(state.semanticElement, mode, handlers);
+    }
+
+    if (state.semanticHash) {
+      return buildMissingSemanticContextMenuActions('semantic-hash-without-element');
+    }
+
+    if (state.legacyMenuMode !== 'element-type-builders') {
+      return buildMissingSemanticContextMenuActions('missing-semantic-element');
     }
 
     // Switch types have extra state
@@ -476,6 +496,9 @@ export function EngineeringContextMenu({
     state.resultType,
     state.canvasMode,
     state.hasAttachedSource,
+    state.semanticElement,
+    state.semanticHash,
+    state.legacyMenuMode,
     state.scope,
   ]);
 

@@ -265,6 +265,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       return response;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
+      const errorCode =
+        typeof (err as { code?: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : 'NETWORK_ERROR';
       set({
         operationHistory: [
           createHistoryEntry(opName, payload, null, 'error'),
@@ -272,7 +276,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
         ],
         loading: false,
         error: errorMsg,
-        errorCode: 'NETWORK_ERROR',
+        errorCode,
       });
       return null;
     }
@@ -311,7 +315,11 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       return response;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
-      set({ loading: false, error: errorMsg, errorCode: 'NETWORK_ERROR' });
+      const errorCode =
+        typeof (err as { code?: unknown }).code === 'string'
+          ? (err as { code: string }).code
+          : 'NETWORK_ERROR';
+      set({ loading: false, error: errorMsg, errorCode });
       return null;
     }
   },

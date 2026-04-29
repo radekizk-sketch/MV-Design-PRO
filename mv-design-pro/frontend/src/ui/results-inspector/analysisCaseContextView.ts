@@ -192,7 +192,7 @@ export function getReproducibilitySummary(
     ['results_contract_version', 'Kontrakt'],
     ['solver_family', 'Solver'],
     ['solver_version', 'Wersja solvera'],
-    ['proof_renderer_version', 'Proof pack'],
+    ['proof_renderer_version', 'Pakiet uzasadnienia'],
   ];
 
   for (const [key, label] of preferredKeys) {

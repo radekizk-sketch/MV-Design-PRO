@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EnergyNetworkModel } from '../../types/enm';
 import { useAppStateStore } from '../app-state';
 import { navigateToNetworkBuild, navigateToProof } from '../navigation';
-import { encodeSelectionToParams } from '../navigation/urlState';
+import { clearSelectionFromUrl, encodeSelectionToParams } from '../navigation/urlState';
 import { useSelectionStore } from '../selection/store';
 import { projectEnmToSldCadV12, SLDView } from '../sld';
 import { useSnapshotStore } from '../topology/snapshotStore';
@@ -45,6 +45,7 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
   const selectedElement = useSelectionStore((state) => state.selectedElement);
+  const clearSelection = useSelectionStore((state) => state.clearSelection);
   const currentSnapshotFromStore = useSnapshotStore((state) => state.snapshot);
   const { runSnapshot, isLoadingRunSnapshot, sldOverlay } = useResultsInspectorStore();
 
@@ -148,6 +149,34 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
     [displayedSnapshot],
   );
   const symbols = projection.symbols;
+  const selectableRefs = useMemo(() => {
+    const refs = new Set<string>();
+    for (const symbol of projection.symbols) {
+      refs.add(symbol.id);
+      refs.add(symbol.elementId);
+    }
+    for (const connection of projection.connections) {
+      refs.add(connection.id);
+      if (connection.elementId) {
+        refs.add(connection.elementId);
+      }
+    }
+    return refs;
+  }, [projection.connections, projection.symbols]);
+  const selectedElementExistsInDisplayedSld =
+    selectedElement === null || selectableRefs.has(selectedElement.id);
+  const selectedElementForDisplayedSld = selectedElementExistsInDisplayedSld
+    ? selectedElement
+    : null;
+
+  useEffect(() => {
+    if (!selectedElement || selectedElementExistsInDisplayedSld || selectableRefs.size === 0) {
+      return;
+    }
+
+    clearSelection();
+    clearSelectionFromUrl();
+  }, [clearSelection, selectableRefs, selectedElement, selectedElementExistsInDisplayedSld]);
 
   useEffect(() => {
     setActiveSnapshot(displayedSnapshotId ?? null);
@@ -224,7 +253,7 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
             onClick={handleOpenProof}
             className="rounded border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
           >
-            White Box
+            Uzasadnienie
           </button>
           <button
             type="button"
@@ -285,7 +314,7 @@ export function EmbeddedSldWorkspace({ runHeader }: EmbeddedSldWorkspaceProps) {
             symbols={symbols}
             connections={projection.connections}
             canonicalAnnotations={projection.canonicalAnnotations}
-            selectedElement={selectedElement}
+            selectedElement={selectedElementForDisplayedSld}
             width={canvasSize.width}
             height={canvasSize.height}
             fitOnMount={true}

@@ -115,7 +115,7 @@ export function buildOperationContext({
     }
     case 'set_normal_open_point':
       context.switch_ref = elementId;
-      context.nop_candidates = resolveNopCandidates(snapshot);
+      context.nop_candidates = resolveNopCandidates(snapshot, logicalViews);
       break;
     case 'add_sn_bay':
       context.bus_ref = elementType === 'Bus' ? elementId : context.bus_ref ?? null;

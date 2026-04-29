@@ -63,9 +63,16 @@ import { resolveBusSnRef, resolveStationRef } from '../network-build/forms/enmRe
 import { projectEnmToSldCadV12 } from './SldCadEngineV12';
 import type { InteractionPortRole } from './types';
 import type { FixAction, ReadinessIssue } from '../types';
-import type { ElementType } from '../types';
+import type { ElementType, SelectedElement } from '../types';
 import { executeFixActionSurface } from '../shared/fixActionSurfaceExecutor';
 import { useActiveVariant } from '../sld-overlay/variantStore';
+import {
+  buildSemanticDiagnosticsReport,
+  createSemanticSelectedElement,
+  type EngineeringElement,
+  type EngineeringSemanticModel,
+  type SemanticDiagnosticsReport,
+} from '../engineering-semantic';
 
 /**
  * Demo symbols for development/testing.
@@ -187,6 +194,13 @@ const DEMO_SYMBOLS: AnySldSymbol[] = [
   } as any,
 ];
 
+function resolveSemanticOutgoingPortRef(element: EngineeringElement | null): string | null {
+  if (!element || element.elementKind !== 'MV_BAY') return null;
+  return element.outgoingPortRefId
+    ?? element.ports.find((port) => port.role === 'BAY_SN_OUT')?.portId
+    ?? null;
+}
+
 type EnmLookupCollection = keyof Pick<
   EnergyNetworkModel,
   | 'buses'
@@ -205,6 +219,7 @@ type EnmLookupCollection = keyof Pick<
 >;
 
 type EnmLookupEntry = Record<string, unknown> & {
+  id?: string;
   ref_id?: string;
   catalog_ref?: string | null;
   voltage_kv?: number | null;
@@ -334,12 +349,109 @@ interface DockProjectTreeEntry {
   name?: string | null;
 }
 
+function hasSemanticGpzSupplyNode(semanticModel: EngineeringSemanticModel | null): boolean {
+  if (!semanticModel) {
+    return false;
+  }
+
+  return semanticModel.elements.some(
+    (element) => element.engineeringRole === 'GPZ_SUPPLY_NODE' && element.elementKind === 'GPZ',
+  );
+}
+
+function hasSemanticRingOrNormalOpenPoint(semanticModel: EngineeringSemanticModel | null): boolean {
+  if (!semanticModel) {
+    return false;
+  }
+
+  const elementsByRef = new Map(semanticModel.elements.map((element) => [element.refId, element]));
+  if (semanticModel.elements.some((element) => element.engineeringRole === 'MV_NORMAL_OPEN_POINT')) {
+    return true;
+  }
+
+  const ownerByPort = new Map<string, string>();
+  for (const element of semanticModel.elements) {
+    for (const port of element.ports) {
+      ownerByPort.set(port.portId, element.refId);
+    }
+  }
+
+  const powerConnections = semanticModel.connections.filter(
+    (connection) => connection.connectionKind === 'TOR_MOCY' && connection.voltageDomain === 'SN',
+  );
+
+  if (
+    powerConnections.some((connection) => {
+      const switchingDevice = connection.switchingDeviceRefId
+        ? elementsByRef.get(connection.switchingDeviceRefId)
+        : null;
+      return connection.normalState === 'ROZLACZONE'
+        || switchingDevice?.engineeringRole === 'MV_NORMAL_OPEN_POINT';
+    })
+  ) {
+    return true;
+  }
+
+  const parent = new Map<string, string>();
+  const find = (node: string): string => {
+    const parentNode = parent.get(node);
+    if (!parentNode || parentNode === node) {
+      parent.set(node, node);
+      return node;
+    }
+    const root = find(parentNode);
+    parent.set(node, root);
+    return root;
+  };
+
+  const union = (left: string, right: string): boolean => {
+    const leftRoot = find(left);
+    const rightRoot = find(right);
+    if (leftRoot === rightRoot) {
+      return true;
+    }
+    parent.set(leftRoot, rightRoot);
+    return false;
+  };
+
+  return powerConnections.some((connection) => {
+    const fromOwner = ownerByPort.get(connection.fromPortId);
+    const toOwner = ownerByPort.get(connection.toPortId);
+    if (!fromOwner || !toOwner || fromOwner === toOwner) {
+      return false;
+    }
+    return union(fromOwner, toOwner);
+  });
+}
+
 function isCatalogNamespace(value: unknown): value is CatalogNamespace {
   return typeof value === 'string' && value in NAMESPACE_TO_PICKER_CATEGORY;
 }
 
 function asEnmLookupEntries(value: unknown): EnmLookupEntry[] {
   return Array.isArray(value) ? (value as unknown as EnmLookupEntry[]) : [];
+}
+
+function collectEnmElementRefIds(snapshot: EnergyNetworkModel | null): string[] {
+  if (!snapshot) {
+    return [];
+  }
+
+  const ids = new Set<string>();
+  for (const collection of ENM_LOOKUP_COLLECTIONS) {
+    for (const entry of asEnmLookupEntries(snapshot[collection])) {
+      const refId = typeof entry.ref_id === 'string' && entry.ref_id.length > 0
+        ? entry.ref_id
+        : typeof entry.id === 'string' && entry.id.length > 0
+          ? entry.id
+          : null;
+      if (refId) {
+        ids.add(refId);
+      }
+    }
+  }
+
+  return Array.from(ids).sort((left, right) => left.localeCompare(right));
 }
 
 function buildDockProjectTreeNodes(snapshot: EnergyNetworkModel | null): DockProjectTreeNode[] {
@@ -627,6 +739,64 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     [enmSnapshot, logicalViews, resultStatusLabel],
   );
 
+  const semanticDiagnosticsReport = useMemo<SemanticDiagnosticsReport | null>(() => {
+    if (!enmProjection.semanticModel || !enmProjection.diagnostics) {
+      return null;
+    }
+
+    return buildSemanticDiagnosticsReport({
+      enmElementRefIds: collectEnmElementRefIds(enmSnapshot ?? null),
+      semanticModel: enmProjection.semanticModel,
+      diagnosticsProjection: enmProjection.diagnostics,
+      sldViewModel: enmProjection.sldBaseProjection,
+      legacyMappings: [],
+    });
+  }, [
+    enmProjection.diagnostics,
+    enmProjection.semanticModel,
+    enmProjection.sldBaseProjection,
+    enmSnapshot,
+  ]);
+
+  const buildSelectedElement = useCallback((
+    elementRef: string,
+    fallbackType: ElementType = 'Bus',
+    fallbackName?: string,
+  ): SelectedElement => {
+    const enmElement = findEnmElementByRef(elementRef);
+    const name = typeof enmElement?.name === 'string' && enmElement.name.trim()
+      ? enmElement.name.trim()
+      : fallbackName ?? elementRef;
+
+    return createSemanticSelectedElement(
+      elementRef,
+      fallbackType,
+      name,
+      enmProjection.semanticModel,
+    );
+  }, [enmProjection.semanticModel, findEnmElementByRef]);
+
+  useEffect(() => {
+    if (!selectedElement || !enmProjection.semanticModel) {
+      return;
+    }
+
+    const existsInSemanticModel = enmProjection.semanticModel.elements.some(
+      (element) => element.refId === selectedElement.id,
+    );
+    const existsInCurrentEnm = Boolean(findEnmElementByRef(selectedElement.id));
+
+    if (!existsInSemanticModel && !existsInCurrentEnm) {
+      clearSelection();
+      setSelectedSegment(null);
+    }
+  }, [
+    clearSelection,
+    enmProjection.semanticModel,
+    findEnmElementByRef,
+    selectedElement,
+  ]);
+
   const openCatalogPickerForSelectedSegment = useCallback(() => {
     if (!selectedSegment || !selectedSegmentBranch) {
       notify('Brak segmentu do przypisania katalogu.', 'warning');
@@ -711,21 +881,52 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   // Determine symbols to display from canonical store only
   const symbols = useMemo(() => storeSymbols, [storeSymbols]);
   const hasSource = useMemo(
-    () => (enmSnapshot?.sources?.length ?? 0) > 0
-      || symbols.some((symbol) => symbol.elementType === 'Source'),
-    [enmSnapshot, symbols],
+    () => {
+      if (enmProjection.semanticModel) {
+        return hasSemanticGpzSupplyNode(enmProjection.semanticModel);
+      }
+
+      // Legacy fallback: pre-semantic snapshots and demo symbols do not expose GPZ engineering roles.
+      return (enmSnapshot?.sources?.length ?? 0) > 0
+        || symbols.some((symbol) => symbol.elementType === 'Source');
+    },
+    [enmProjection.semanticModel, enmSnapshot, symbols],
   );
   const hasCanonicalTrunkStart = useMemo(
     () => (logicalViews?.terminals ?? []).some((terminal) => terminal.status === 'OTWARTY'),
     [logicalViews],
   );
-  const hasRing = useMemo(
+  const primaryOpenTrunkTerminal = useMemo(
+    () => (logicalViews?.terminals ?? []).find((terminal) => terminal.status === 'OTWARTY') ?? null,
+    [logicalViews],
+  );
+  const primaryLineFeederBay = useMemo(
     () =>
-      symbols.some((symbol) => {
+      (enmProjection.semanticModel?.elements ?? []).find(
+        (element) =>
+          element.elementKind === 'MV_BAY'
+          && element.engineeringRole === 'LINE_FEEDER_BAY'
+          && element.voltageDomain === 'SN',
+      ) ?? null,
+    [enmProjection.semanticModel],
+  );
+  const primaryTrunkRef = useMemo(
+    () => logicalViews?.trunks?.[0]?.corridor_ref ?? null,
+    [logicalViews],
+  );
+  const hasRing = useMemo(
+    () => {
+      if (enmProjection.semanticModel) {
+        return hasSemanticRingOrNormalOpenPoint(enmProjection.semanticModel);
+      }
+
+      // Legacy fallback: older SLD symbols carried ring/NOP only in display names.
+      return symbols.some((symbol) => {
         const normalizedName = (symbol.elementName ?? '').toLowerCase();
         return normalizedName.includes('ring') || normalizedName.includes('nop');
-      }),
-    [symbols],
+      });
+    },
+    [enmProjection.semanticModel, symbols],
   );
   const modelSummary = useMemo(
     () => ({
@@ -788,7 +989,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                       type="button"
                       onClick={() => {
                         setSelectedSegment(null);
-                        selectElement({ id: node.id, type: node.type, name: node.label });
+                        if (activeTool === 'insert_station_on_segment_sn' && node.type === 'LineBranch') {
+                          openOperationForm('insert_station_on_segment_sn', {
+                            source: 'project_tree',
+                            segment_id: node.id,
+                            segment_ref: node.id,
+                            position_on_segment: 0.5,
+                            station_type: 'inline',
+                          });
+                          setActiveTool('select');
+                          const msg = `Otwarto formularz wstawienia stacji na odcinku: ${node.label}.`;
+                          setInteractionMessage(msg);
+                          notify(msg, 'info');
+                          return;
+                        }
+                        selectElement(buildSelectedElement(node.id, node.type, node.label));
                         centerSldOnElement(node.id);
                         setInteractionMessage(`Wybrano element z drzewa modelu: ${node.label}.`);
                       }}
@@ -815,9 +1030,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       </div>
     );
   }, [
+    activeTool,
     centerSldOnElement,
     filteredProjectTreeNodes,
+    openOperationForm,
     projectTreeQuery,
+    buildSelectedElement,
     selectElement,
     selectedElement?.id,
   ]);
@@ -835,18 +1053,26 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   );
 
   const handleActivateGpzPlacement = useCallback(() => {
-    setActiveTool('add_grid_source_sn');
-    setInteractionMessage('Kliknij na schemacie, aby wstawic zrodlo zasilania GPZ.');
-    notify('Wlaczono dodawanie GPZ. Wskaz miejsce na schemacie.', 'info');
-  }, []);
+    setActiveTool('select');
+    openOperationForm('add_grid_source_sn', {
+      source: 'sld_empty_state',
+      gpz_model_kind: 'UPROSZCZONY_PARAMETRY_NA_SZYNIE_SN',
+    });
+    setInteractionMessage('Otwarto formularz GPZ uproszczonego z szyna SN.');
+    notify('Otwarto formularz GPZ uproszczonego.', 'info');
+  }, [openOperationForm]);
 
   const handleActivateFullGpzPlacement = useCallback(() => {
-    setActiveTool('add_grid_source_sn');
+    setActiveTool('select');
+    openOperationForm('add_grid_source_sn', {
+      source: 'sld_empty_state',
+      gpz_model_kind: 'PELNY_WN_TRANSFORMATOR_SN',
+    });
     setInteractionMessage(
-      'Kliknij na schemacie, aby wstawic pelny GPZ z torem WN, transformatorem WN/SN i szyna SN.',
+      'Otwarto formularz pelnego GPZ z torem WN, transformatorem WN/SN i szyna SN.',
     );
-    notify('Wlaczono dodawanie pelnego GPZ. Wskaz miejsce na schemacie.', 'info');
-  }, []);
+    notify('Otwarto formularz pelnego GPZ.', 'info');
+  }, [openOperationForm]);
 
   const handleOpenSnBayFlow = useCallback(() => {
     if (!primaryStationRef || !primarySnBusRef) {
@@ -869,20 +1095,60 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   }, [openOperationForm, primarySnBusRef, primaryStationRef]);
 
   const handleActivateTrunkFlow = useCallback(() => {
+    const terminalElementRef = primaryOpenTrunkTerminal?.element_id ?? primaryLineFeederBay?.refId ?? null;
+    const terminalPortRef =
+      primaryOpenTrunkTerminal?.port_id
+      ?? resolveSemanticOutgoingPortRef(primaryLineFeederBay)
+      ?? null;
+
+    if (terminalElementRef) {
+      const terminalName =
+        terminalPortRef
+        || terminalElementRef
+        || 'Otwarty port pola SN';
+      openOperationForm('continue_trunk_segment_sn', {
+        source: 'work_dock',
+        field_ref: terminalElementRef,
+        terminal_id: terminalElementRef,
+        from_terminal_id: terminalElementRef,
+        terminal_port_id: terminalPortRef ?? undefined,
+        trunk_id: primaryOpenTrunkTerminal?.trunk_id ?? primaryTrunkRef ?? undefined,
+        branch_id: primaryOpenTrunkTerminal?.branch_id ?? undefined,
+        terminal_name: terminalName,
+        terminal_voltage_label: 'SN',
+        segment_kind: 'KABEL_SN',
+      });
+      setActiveTool('select');
+      const msg =
+        'Otwarto formularz odcinka SN z otwartego portu pola. Wybierz kabel albo linie i parametry katalogowe.';
+      setInteractionMessage(msg);
+      notify(msg, 'info');
+      return;
+    }
+
     setActiveTool('continue_trunk_segment_sn');
     const msg =
       'Wskaz port pola SN. Formularz wymusi wybor kabla SN albo linii napowietrznej SN.';
     setInteractionMessage(msg);
     notify(msg, 'info');
-  }, []);
+  }, [openOperationForm, primaryLineFeederBay, primaryOpenTrunkTerminal, primaryTrunkRef]);
 
   const openCaseContextSurface = useCallback(() => {
+    if (!hasActiveCase) {
+      if (!isCreatingFirstCase) {
+        setFirstVariantProjectName(activeProjectName?.trim() || 'Projekt 1');
+        setFirstVariantName('Wariant 1');
+        setIsFirstVariantDialogOpen(true);
+      }
+      return;
+    }
+
     if (onOpenCaseHelper) {
       onOpenCaseHelper();
       return;
     }
     navigateToVariants();
-  }, [onOpenCaseHelper]);
+  }, [activeProjectName, hasActiveCase, isCreatingFirstCase, onOpenCaseHelper]);
 
   const openExecutionSurface = useCallback(() => {
     openCaseContextSurface();
@@ -1031,7 +1297,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         title: 'Aktywuj wariant pracy',
         description:
           'Budowa modelu, wyniki i raporty sa zwiazane z jednym aktywnym wariantem pracy.',
-        actionLabel: 'Otworz parametry analizy',
+        actionLabel: 'Skonfiguruj pierwszy wariant',
         onAction: openCaseContextSurface,
       };
     }
@@ -1210,13 +1476,13 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
   // UX 10/10: ReadinessLivePanel callbacks
   const handleReadinessNavigate = useCallback((elementRef: string) => {
-    selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+    selectElement(buildSelectedElement(elementRef));
     centerSldOnElement(elementRef);
-  }, [selectElement, centerSldOnElement]);
+  }, [buildSelectedElement, selectElement, centerSldOnElement]);
 
   const handleReadinessFixAction = useCallback((fixAction: FixAction, elementRef: string | null) => {
     if (elementRef) {
-      selectElement({ id: elementRef, type: 'Bus', name: elementRef });
+      selectElement(buildSelectedElement(elementRef));
       centerSldOnElement(elementRef);
     }
     executeFixActionSurface(fixAction, {
@@ -1226,14 +1492,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       centerSldOnElement,
       notify,
     });
-  }, [centerSldOnElement, enmSnapshot, openOperationForm, selectElement]);
+  }, [buildSelectedElement, centerSldOnElement, enmSnapshot, openOperationForm, selectElement]);
 
   // UX 10/10: DataGapPanel callbacks
   const handleDataGapQuickFix = useCallback((issue: ReadinessIssue) => {
     const fixAction = issue.fix_action;
     const elementId = issue.element_ref ?? issue.element_refs[0] ?? null;
     if (elementId) {
-      selectElement({ id: elementId, type: 'Bus', name: elementId });
+      selectElement(buildSelectedElement(elementId));
       centerSldOnElement(elementId);
     }
     if (!fixAction) {
@@ -1247,7 +1513,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       centerSldOnElement,
       notify,
     });
-  }, [centerSldOnElement, enmSnapshot, openOperationForm, selectElement]);
+  }, [buildSelectedElement, centerSldOnElement, enmSnapshot, openOperationForm, selectElement]);
 
   // Show inspector when selection changes
   useEffect(() => {
@@ -1448,7 +1714,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         interactionMessage={interactionMessage}
         interactionHint={dockInteractionHint}
         projectTreeContent={projectTreeContent}
-        processContent={<ProcessPanel className="h-full" testIdScope="sld-dock" />}
+        processContent={<ProcessPanel className="h-full" />}
         readinessContent={
           <SldReadinessStack
             activeCaseId={activeCaseId}
@@ -1472,6 +1738,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         <SLDView
           symbols={symbols}
           connections={enmProjection.connections}
+          semanticModel={enmProjection.semanticModel}
+          semanticDiagnosticsReport={semanticDiagnosticsReport}
           selectedElement={selectedElement}
           showGrid={true}
           fitOnMount={symbols.length > 0}
@@ -1573,7 +1841,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
         {isFirstVariantDialogOpen && (
           <div
-            className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(2,8,23,0.74)] px-4"
+            className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(2,8,23,0.74)] px-4"
             data-testid="first-variant-quickstart"
           >
             <div className="w-full max-w-xl rounded-[18px] border border-[#1d3446] bg-[#091622] shadow-[0_24px_64px_rgba(2,8,23,0.58)]">

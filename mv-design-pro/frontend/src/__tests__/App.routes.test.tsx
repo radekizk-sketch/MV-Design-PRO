@@ -290,6 +290,30 @@ describe('App hash routes', () => {
     expect(window.location.hash).toBe('#sld');
   });
 
+  it('wymusza obszar Schemat i topologia dla trasy #sld mimo poprzedniego obszaru z sesji', async () => {
+    useAppStateStore.getState().setActiveArea('ZABEZPIECZENIA_AUTOMATYKA');
+    window.location.hash = '#sld';
+
+    render(<App />);
+
+    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+    });
+  });
+
+  it('wymusza obszar Wyniki i analizy dla tras wynikowych', async () => {
+    useAppStateStore.getState().setActiveArea('MODEL_SIECI');
+    window.location.hash = '#analysis?run=run-1';
+
+    render(<App />);
+
+    expect(await screen.findByTestId('results-inspector-page')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeArea).toBe('WYNIKI_ANALIZY');
+    });
+  });
+
   it('pokazuje jawny blad dla nieznanej trasy zamiast cichego fallbacku', async () => {
     window.location.hash = '#nieznana-trasa';
 

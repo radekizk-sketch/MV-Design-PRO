@@ -17,11 +17,18 @@ export interface TransformerStationFormData {
   overrides: OverrideEntry[];
 }
 
+export type TransformerStationBusSelectionMode = 'existing-buses' | 'station-sides';
+
 export interface TransformerStationEditorProps {
   isOpen: boolean;
   mode: 'create' | 'edit';
   embedded?: boolean;
   hideHeader?: boolean;
+  busSelectionMode?: TransformerStationBusSelectionMode;
+  stationSideLabels?: {
+    high: string;
+    low: string;
+  };
   initialData?: Partial<TransformerStationFormData>;
   busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>;
   catalogEntries?: CatalogEntry[];
@@ -79,6 +86,11 @@ export function TransformerStationEditor({
   mode,
   embedded = false,
   hideHeader = false,
+  busSelectionMode = 'existing-buses',
+  stationSideLabels = {
+    high: 'Strona SN wyznaczana z odcinka magistrali',
+    low: 'Strona nN tworzona za transformatorem',
+  },
   initialData,
   busOptions,
   catalogEntries = [],
@@ -183,7 +195,28 @@ export function TransformerStationEditor({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        {busSelectionMode === 'station-sides' && (
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                Strona SN
+              </div>
+              <div className="mt-1 text-sm font-medium text-emerald-950">
+                {stationSideLabels.high}
+              </div>
+            </div>
+            <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                Strona nN
+              </div>
+              <div className="mt-1 text-sm font-medium text-sky-950">
+                {stationSideLabels.low}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className={`grid grid-cols-2 gap-4 ${busSelectionMode === 'station-sides' ? 'hidden' : ''}`}>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Szyna strony górnej (GN)

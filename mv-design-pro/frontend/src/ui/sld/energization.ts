@@ -1,23 +1,14 @@
 /**
- * SLD Energization Algorithm (UI-only, deterministic)
+ * SLD energization projection.
  *
- * CANONICAL ALIGNMENT:
- * - sld_rules.md § D: Visual state encoding
- * - CANONICAL parity: energized vs de-energized visualization
- *
- * ALGORITHM:
- * - BFS traversal from source nodes
- * - Source types: utility_feeder, generator, pv, fw, bess
- * - OPEN switches block energy flow
- * - CLOSED switches allow energy flow
- *
- * BINDING:
- * - No backend/solver dependencies
- * - UI-only state calculation
- * - Deterministic (same input = same output)
+ * Production energization is derived from EngineeringSemanticModel only:
+ * - source semantics come from engineering element kind/role/ports;
+ * - topology comes from EngineeringConnection normalState and port ownership;
+ * - SVG position and visual ElementType/name are not part of the decision.
  */
 
-import type { AnySldSymbol, SwitchSymbol, BranchSymbol, SourceSymbol } from '../sld-editor/types';
+import type { AnySldSymbol, BranchSymbol, SourceSymbol, SwitchSymbol } from '../sld-editor/types';
+import type { EngineeringElement, EngineeringSemanticModel, PortRole } from '../engineering-semantic';
 
 /**
  * Energization state for SLD elements.
@@ -28,40 +19,259 @@ export interface EnergizationState {
   /** Source elements that provide energy */
   sourceElements: string[];
   /** Elements that are de-energized due to OPEN switches */
-  deenergizedBySwitch: Map<string, string>; // elementId -> blocking switchId
+  deenergizedBySwitch: Map<string, string>;
 }
 
-/**
- * Source element types that provide energy to the network.
- * Per CANONICAL parity: utility_feeder, generator, pv, fw, bess
- */
-const SOURCE_ELEMENT_NAMES = ['utility_feeder', 'generator', 'pv', 'fw', 'bess', 'grid', 'siec'];
+function emptyState(): EnergizationState {
+  return {
+    energizedElements: new Map(),
+    sourceElements: [],
+    deenergizedBySwitch: new Map(),
+  };
+}
 
-/**
- * Check if an element is a source (provides energy).
- */
-function isSourceElement(symbol: AnySldSymbol): boolean {
-  if (symbol.elementType === 'Source') {
-    return true;
+const SEMANTIC_SOURCE_ROLES = new Set<EngineeringElement['engineeringRole']>([
+  'GPZ_SUPPLY_NODE',
+  'PV_INVERTER',
+  'BESS_CONVERTER',
+  'WIND_SOURCE',
+]);
+
+const SEMANTIC_SOURCE_PORT_ROLES = new Set<PortRole>(['SOURCE_AC', 'SOURCE_DC']);
+
+function isSemanticSource(element: EngineeringElement): boolean {
+  return (
+    element.elementKind === 'SOURCE'
+    || SEMANTIC_SOURCE_ROLES.has(element.engineeringRole)
+    || element.ports.some((port) => SEMANTIC_SOURCE_PORT_ROLES.has(port.role))
+  );
+}
+
+function portOwnerMap(semanticModel: EngineeringSemanticModel): Map<string, string> {
+  const owners = new Map<string, string>();
+  for (const element of semanticModel.elements) {
+    for (const port of element.ports) {
+      owners.set(port.portId, element.refId);
+    }
   }
-  // Check element name for source indicators
-  const nameLower = symbol.elementName.toLowerCase();
-  return SOURCE_ELEMENT_NAMES.some((source) => nameLower.includes(source));
+  return owners;
+}
+
+function ensureSymbolAliases(
+  state: EnergizationState,
+  symbols: readonly AnySldSymbol[] | undefined,
+): EnergizationState {
+  if (!symbols) return state;
+
+  for (const symbol of symbols) {
+    const elementRef = symbol.elementId ?? symbol.id;
+    if (state.energizedElements.has(elementRef)) {
+      state.energizedElements.set(symbol.id, state.energizedElements.get(elementRef)!);
+    }
+
+    const blockingSwitch = state.deenergizedBySwitch.get(elementRef);
+    if (blockingSwitch) {
+      state.deenergizedBySwitch.set(symbol.id, blockingSwitch);
+    }
+  }
+
+  return state;
 }
 
 /**
- * Check if a switch allows energy flow (CLOSED = allows, OPEN = blocks).
+ * Calculate energization from the semantic model. This is the production path.
  */
-function switchAllowsFlow(symbol: SwitchSymbol): boolean {
+export function calculateEnergization(
+  semanticModel: EngineeringSemanticModel,
+  semanticHash: string,
+  symbols?: readonly AnySldSymbol[],
+): EnergizationState {
+  if (semanticModel.semanticHash !== semanticHash) {
+    throw new Error('SLD energization requires a semanticHash matching EngineeringSemanticModel.semanticHash.');
+  }
+
+  const state = emptyState();
+  const portOwners = portOwnerMap(semanticModel);
+  const elementRefs = new Set(semanticModel.elements.map((element) => element.refId));
+  const energizedRefs = new Set<string>();
+  const adjacency = new Map<string, Set<string>>();
+  const openBoundaries: Array<{ fromRef: string; toRef: string; blockerRef: string }> = [];
+
+  for (const elementRef of elementRefs) {
+    adjacency.set(elementRef, new Set());
+    state.energizedElements.set(elementRef, false);
+  }
+
+  for (const connection of semanticModel.connections) {
+    if (connection.connectionKind !== 'TOR_MOCY') continue;
+
+    const fromRef = portOwners.get(connection.fromPortId);
+    const toRef = portOwners.get(connection.toPortId);
+    if (!fromRef || !toRef || fromRef === toRef) continue;
+
+    if (connection.normalState === 'POLACZONE') {
+      adjacency.get(fromRef)?.add(toRef);
+      adjacency.get(toRef)?.add(fromRef);
+      continue;
+    }
+
+    if (connection.normalState === 'ROZLACZONE') {
+      openBoundaries.push({
+        fromRef,
+        toRef,
+        blockerRef: connection.switchingDeviceRefId ?? connection.connectionId,
+      });
+    }
+  }
+
+  const queue: string[] = [];
+  for (const element of semanticModel.elements) {
+    if (!isSemanticSource(element)) continue;
+    state.sourceElements.push(element.refId);
+    energizedRefs.add(element.refId);
+    queue.push(element.refId);
+  }
+
+  while (queue.length > 0) {
+    const currentRef = queue.shift()!;
+    for (const nextRef of adjacency.get(currentRef) ?? []) {
+      if (energizedRefs.has(nextRef)) continue;
+      energizedRefs.add(nextRef);
+      queue.push(nextRef);
+    }
+  }
+
+  for (const elementRef of energizedRefs) {
+    state.energizedElements.set(elementRef, true);
+  }
+
+  for (const boundary of openBoundaries) {
+    const fromEnergized = energizedRefs.has(boundary.fromRef);
+    const toEnergized = energizedRefs.has(boundary.toRef);
+    if (fromEnergized && !toEnergized) {
+      state.deenergizedBySwitch.set(boundary.toRef, boundary.blockerRef);
+    }
+    if (toEnergized && !fromEnergized) {
+      state.deenergizedBySwitch.set(boundary.fromRef, boundary.blockerRef);
+    }
+  }
+
+  return ensureSymbolAliases(state, symbols);
+}
+
+/**
+ * @legacy @testOnly
+ * Local symbol-only energization retained for isolated legacy tests and for
+ * pre-semantic rendering surfaces. Do not use when EngineeringSemanticModel is available.
+ */
+export function calculateLegacyTestOnlyEnergization(symbols: readonly AnySldSymbol[]): EnergizationState {
+  const result = emptyState();
+
+  if (symbols.length === 0) {
+    return result;
+  }
+
+  const { nodeToElements, elementToNodes } = buildLegacyAdjacencyMap(symbols);
+  const sources = symbols.filter(isLegacySourceElement);
+  result.sourceElements = sources.map((source) => source.id);
+
+  if (sources.length === 0) {
+    for (const symbol of symbols) {
+      result.energizedElements.set(symbol.id, false);
+    }
+    return result;
+  }
+
+  const energizedNodes = new Set<string>();
+  const energizedElements = new Set<string>();
+  const visitedElements = new Set<string>();
+  const queue: string[] = [];
+
+  for (const source of sources) {
+    energizedElements.add(source.id);
+    result.energizedElements.set(source.id, true);
+
+    const connectedNodes = elementToNodes.get(source.id) || [];
+    for (const nodeId of connectedNodes) {
+      if (!energizedNodes.has(nodeId)) {
+        energizedNodes.add(nodeId);
+        queue.push(nodeId);
+      }
+    }
+  }
+
+  for (const symbol of symbols) {
+    if (symbol.elementType === 'Bus' && energizedNodes.has(symbol.id)) {
+      energizedElements.add(symbol.id);
+    }
+  }
+
+  while (queue.length > 0) {
+    const currentNodeId = queue.shift()!;
+    const connectedElements = nodeToElements.get(currentNodeId) || [];
+
+    for (const element of connectedElements) {
+      if (visitedElements.has(element.id)) continue;
+      visitedElements.add(element.id);
+
+      if (element.elementType === 'Switch' && !legacySwitchAllowsFlow(element as SwitchSymbol)) {
+        energizedElements.add(element.id);
+        result.energizedElements.set(element.id, true);
+        continue;
+      }
+
+      energizedElements.add(element.id);
+      result.energizedElements.set(element.id, true);
+
+      const elementNodes = elementToNodes.get(element.id) || [];
+      for (const nodeId of elementNodes) {
+        if (energizedNodes.has(nodeId)) continue;
+        energizedNodes.add(nodeId);
+        queue.push(nodeId);
+
+        const busSymbol = symbols.find((symbol) => symbol.id === nodeId && symbol.elementType === 'Bus');
+        if (busSymbol) {
+          energizedElements.add(busSymbol.id);
+          result.energizedElements.set(busSymbol.id, true);
+        }
+      }
+    }
+  }
+
+  for (const symbol of symbols) {
+    if (result.energizedElements.has(symbol.id)) continue;
+    result.energizedElements.set(symbol.id, false);
+
+    const connectedNodes = elementToNodes.get(symbol.id) || [];
+    for (const nodeId of connectedNodes) {
+      const nodeElements = nodeToElements.get(nodeId) || [];
+      for (const nodeElement of nodeElements) {
+        if (
+          nodeElement.elementType === 'Switch'
+          && !legacySwitchAllowsFlow(nodeElement as SwitchSymbol)
+          && energizedElements.has(nodeElement.id)
+        ) {
+          result.deenergizedBySwitch.set(symbol.id, nodeElement.id);
+          break;
+        }
+      }
+      if (result.deenergizedBySwitch.has(symbol.id)) break;
+    }
+  }
+
+  return result;
+}
+
+function isLegacySourceElement(symbol: AnySldSymbol): boolean {
+  return symbol.elementType === 'Source';
+}
+
+function legacySwitchAllowsFlow(symbol: SwitchSymbol): boolean {
   return symbol.switchState === 'CLOSED';
 }
 
-/**
- * Build adjacency map from symbols.
- * Returns map of nodeId -> connected elements.
- */
-function buildAdjacencyMap(
-  symbols: AnySldSymbol[]
+function buildLegacyAdjacencyMap(
+  symbols: readonly AnySldSymbol[],
 ): {
   nodeToElements: Map<string, AnySldSymbol[]>;
   elementToNodes: Map<string, string[]>;
@@ -78,17 +288,22 @@ function buildAdjacencyMap(
     } else if (symbol.elementType === 'LineBranch' || symbol.elementType === 'TransformerBranch') {
       const branchSymbol = symbol as BranchSymbol;
       connectedNodes.push(branchSymbol.fromNodeId, branchSymbol.toNodeId);
-    } else if (symbol.elementType === 'Source' || symbol.elementType === 'Load') {
+    } else if (
+      symbol.elementType === 'Source'
+      || symbol.elementType === 'Load'
+      || symbol.elementType === 'Generator'
+      || symbol.elementType === 'Measurement'
+      || symbol.elementType === 'ProtectionAssignment'
+      || symbol.elementType === 'Relay'
+    ) {
       const sourceOrLoad = symbol as SourceSymbol;
       if (sourceOrLoad.connectedToNodeId) {
         connectedNodes.push(sourceOrLoad.connectedToNodeId);
       }
     }
 
-    // Store element -> nodes mapping
     elementToNodes.set(symbol.id, connectedNodes);
 
-    // Store node -> elements mapping
     for (const nodeId of connectedNodes) {
       const elements = nodeToElements.get(nodeId) || [];
       elements.push(symbol);
@@ -100,171 +315,21 @@ function buildAdjacencyMap(
 }
 
 /**
- * Calculate energization state using BFS from source nodes.
- *
- * Algorithm:
- * 1. Find all source elements
- * 2. Mark source nodes as energized
- * 3. BFS traversal:
- *    - From energized nodes, traverse connected elements
- *    - If element is OPEN switch, do not continue through it
- *    - If element is CLOSED switch or branch, mark connected node as energized
- * 4. All unreached elements are de-energized
- *
- * @param symbols - All SLD symbols
- * @returns EnergizationState with energized/de-energized elements
- */
-export function calculateEnergization(symbols: AnySldSymbol[]): EnergizationState {
-  const result: EnergizationState = {
-    energizedElements: new Map(),
-    sourceElements: [],
-    deenergizedBySwitch: new Map(),
-  };
-
-  if (symbols.length === 0) {
-    return result;
-  }
-
-  // Build adjacency maps
-  const { nodeToElements, elementToNodes } = buildAdjacencyMap(symbols);
-
-  // Find all source elements
-  const sources = symbols.filter(isSourceElement);
-  result.sourceElements = sources.map((s) => s.id);
-
-  // If no sources, everything is de-energized
-  if (sources.length === 0) {
-    for (const symbol of symbols) {
-      result.energizedElements.set(symbol.id, false);
-    }
-    return result;
-  }
-
-  // BFS state
-  const energizedNodes = new Set<string>();
-  const energizedElements = new Set<string>();
-  const visitedElements = new Set<string>();
-  const queue: string[] = []; // Queue of node IDs
-
-  // Start from source-connected nodes
-  for (const source of sources) {
-    energizedElements.add(source.id);
-    result.energizedElements.set(source.id, true);
-
-    const connectedNodes = elementToNodes.get(source.id) || [];
-    for (const nodeId of connectedNodes) {
-      if (!energizedNodes.has(nodeId)) {
-        energizedNodes.add(nodeId);
-        queue.push(nodeId);
-      }
-    }
-  }
-
-  // Mark Bus nodes as energized
-  for (const symbol of symbols) {
-    if (symbol.elementType === 'Bus' && energizedNodes.has(symbol.id)) {
-      energizedElements.add(symbol.id);
-    }
-  }
-
-  // BFS traversal
-  while (queue.length > 0) {
-    const currentNodeId = queue.shift()!;
-    const connectedElements = nodeToElements.get(currentNodeId) || [];
-
-    for (const element of connectedElements) {
-      if (visitedElements.has(element.id)) {
-        continue;
-      }
-      visitedElements.add(element.id);
-
-      // Check if this is a switch
-      if (element.elementType === 'Switch') {
-        const switchSymbol = element as SwitchSymbol;
-
-        if (!switchAllowsFlow(switchSymbol)) {
-          // OPEN switch - blocks energy flow
-          // The switch itself can be reached but doesn't conduct
-          energizedElements.add(element.id);
-          result.energizedElements.set(element.id, true);
-          // Don't traverse through OPEN switch - elements on the other side are not reached
-          continue;
-        }
-      }
-
-      // Element is energized (reachable through CLOSED path)
-      energizedElements.add(element.id);
-      result.energizedElements.set(element.id, true);
-
-      // Get nodes connected to this element
-      const elementNodes = elementToNodes.get(element.id) || [];
-      for (const nodeId of elementNodes) {
-        if (!energizedNodes.has(nodeId)) {
-          energizedNodes.add(nodeId);
-          queue.push(nodeId);
-
-          // Mark Bus node as energized
-          const busSymbol = symbols.find((s) => s.id === nodeId && s.elementType === 'Bus');
-          if (busSymbol) {
-            energizedElements.add(busSymbol.id);
-            result.energizedElements.set(busSymbol.id, true);
-          }
-        }
-      }
-    }
-  }
-
-  // Mark all unreached elements as de-energized
-  for (const symbol of symbols) {
-    if (!result.energizedElements.has(symbol.id)) {
-      result.energizedElements.set(symbol.id, false);
-
-      // Try to find blocking switch
-      const connectedNodes = elementToNodes.get(symbol.id) || [];
-      for (const nodeId of connectedNodes) {
-        const nodeElements = nodeToElements.get(nodeId) || [];
-        for (const nodeElement of nodeElements) {
-          if (
-            nodeElement.elementType === 'Switch' &&
-            !switchAllowsFlow(nodeElement as SwitchSymbol) &&
-            energizedElements.has(nodeElement.id)
-          ) {
-            result.deenergizedBySwitch.set(symbol.id, nodeElement.id);
-            break;
-          }
-        }
-        if (result.deenergizedBySwitch.has(symbol.id)) break;
-      }
-    }
-  }
-
-  return result;
-}
-
-/**
  * Check if an element is energized.
- *
- * @param elementId - Element ID to check
- * @param energizationState - Calculated energization state
- * @returns true if energized, false if de-energized
  */
 export function isEnergized(
   elementId: string,
-  energizationState: EnergizationState
+  energizationState: EnergizationState,
 ): boolean {
   return energizationState.energizedElements.get(elementId) ?? false;
 }
 
 /**
  * Get the switch that blocks energy to an element.
- *
- * @param elementId - Element ID to check
- * @param energizationState - Calculated energization state
- * @returns Switch ID that blocks energy, or null if not blocked by switch
  */
 export function getBlockingSwitch(
   elementId: string,
-  energizationState: EnergizationState
+  energizationState: EnergizationState,
 ): string | null {
   return energizationState.deenergizedBySwitch.get(elementId) ?? null;
 }

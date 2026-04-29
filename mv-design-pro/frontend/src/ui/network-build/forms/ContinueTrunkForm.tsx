@@ -43,6 +43,7 @@ export function ContinueTrunkForm() {
   ).trim();
   const terminalName = ((context?.terminal_name as string) ?? '').trim();
   const terminalVoltageLabel = ((context?.terminal_voltage_label as string) ?? '').trim();
+  const fieldRef = ((context?.field_ref as string) ?? '').trim();
   const hasCanonicalTerminal = terminalId.length > 0;
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
@@ -70,6 +71,7 @@ export function ContinueTrunkForm() {
       const catalogBinding = normalizeCatalogBinding(data.catalog_ref, catalogNamespace);
       const payload = {
         ...(trunkId ? { trunk_id: trunkId } : {}),
+        ...(fieldRef ? { field_ref: fieldRef } : {}),
         from_terminal_id: terminalId,
         segment: {
           rodzaj: normalizeSegmentKind(data.segment_kind),
@@ -84,10 +86,31 @@ export function ContinueTrunkForm() {
         return;
       }
       setCatalogError(null);
-      await executeDomainOperation(activeCaseId, 'continue_trunk_segment_sn', payload);
+      const response = await executeDomainOperation(activeCaseId, 'continue_trunk_segment_sn', payload);
+      if (!response) {
+        const operationError = useSnapshotStore.getState().error;
+        if (operationError) {
+          setCatalogError(operationError);
+          return;
+        }
+        setCatalogError('Nie udało się wykonać operacji domenowej odcinka SN.');
+        return;
+      }
+      if (response.error) {
+        setCatalogError(response.error);
+        return;
+      }
       closeForm();
     },
-    [activeCaseId, closeForm, executeDomainOperation, hasCanonicalTerminal, terminalId, trunkId],
+    [
+      activeCaseId,
+      closeForm,
+      executeDomainOperation,
+      fieldRef,
+      hasCanonicalTerminal,
+      terminalId,
+      trunkId,
+    ],
   );
 
   return (
