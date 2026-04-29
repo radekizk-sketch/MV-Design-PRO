@@ -53,28 +53,28 @@ const EMPTY_STATE_CONFIG: Record<
   NO_PROJECT: {
     title: 'Brak aktywnego projektu',
     description: 'Utworz lub otworz projekt, aby rozpoczac modelowanie sieci.',
-    bgColor: 'bg-amber-50/90',
-    borderColor: 'border-amber-300',
-    textColor: 'text-amber-900',
-    iconColor: 'text-amber-600',
+    bgColor: 'bg-scada-panel/95',
+    borderColor: 'border-amber-500/40',
+    textColor: 'text-amber-100',
+    iconColor: 'text-amber-300',
     accentColor: 'bg-amber-600',
   },
   NO_CASE: {
     title: 'Brak aktywnego wariantu pracy',
     description: 'Aktywuj istniejacy wariant pracy albo skonfiguruj pierwszy wariant, aby prowadzic model i obliczenia.',
-    bgColor: 'bg-slate-50/95',
-    borderColor: 'border-slate-300',
-    textColor: 'text-slate-800',
-    iconColor: 'text-slate-500',
+    bgColor: 'bg-scada-panel/95',
+    borderColor: 'border-scada-border',
+    textColor: 'text-scada-text',
+    iconColor: 'text-scada-sn',
     accentColor: 'bg-blue-600',
   },
   NO_SNAPSHOT: {
     title: 'Brak aktywnego stanu modelu',
     description: 'Wybierz stan modelu w drzewie projektu lub przygotuj nowy.',
-    bgColor: 'bg-violet-50/90',
-    borderColor: 'border-violet-300',
-    textColor: 'text-violet-900',
-    iconColor: 'text-violet-500',
+    bgColor: 'bg-scada-panel/95',
+    borderColor: 'border-violet-500/35',
+    textColor: 'text-violet-100',
+    iconColor: 'text-violet-300',
     accentColor: 'bg-violet-600',
   },
   NO_MODEL: {
@@ -89,11 +89,11 @@ const EMPTY_STATE_CONFIG: Record<
   LOADING: {
     title: 'Ladowanie schematu...',
     description: 'Trwa ladowanie danych modelu sieci.',
-    bgColor: 'bg-slate-50/95',
-    borderColor: 'border-slate-200',
-    textColor: 'text-slate-600',
-    iconColor: 'text-slate-400',
-    accentColor: 'bg-slate-400',
+    bgColor: 'bg-scada-panel/95',
+    borderColor: 'border-scada-border',
+    textColor: 'text-scada-muted',
+    iconColor: 'text-scada-muted',
+    accentColor: 'bg-slate-600',
   },
 };
 
@@ -162,7 +162,7 @@ export function SldEmptyOverlay({
           config.borderColor,
         )}
       >
-        <div className={clsx('flex-shrink-0 rounded-lg bg-white/50 p-2', config.iconColor)}>
+        <div className={clsx('flex-shrink-0 rounded-lg border border-scada-border bg-scada-bg/70 p-2', config.iconColor)}>
           {EmptyStateIcons[resolvedState as SldEmptyState]}
         </div>
 
@@ -211,7 +211,7 @@ export function SldEmptyOverlay({
               <button
                 type="button"
                 onClick={onCreateCase}
-                className="rounded-md border border-slate-300 bg-white/80 px-4 py-2 text-sm font-medium text-slate-700 transition-all duration-150 hover:border-slate-400 hover:bg-white"
+                className="rounded-md border border-scada-border bg-scada-bg/80 px-4 py-2 text-sm font-medium text-scada-text transition-all duration-150 hover:bg-scada-active hover:text-scada-sn"
                 data-testid="sld-empty-overlay-create-new"
               >
                 Nowy wariant pracy

@@ -7,11 +7,11 @@
  *
  * Hook do pobierania wynikow walidacji zabezpieczen.
  *
- * STATUS: PLACEHOLDER (uzywa fixture data)
+ * STATUS: API adapter placeholder.
  *
  * UWAGA:
- * Obecnie zwraca dane fixture. Po dodaniu endpointu API
- * implementacja zostanie zaktualizowana.
+ * Runtime nie pokazuje danych testowych. Po dodaniu endpointu API
+ * implementacja zostanie zaktualizowana tak, aby zasilać panel danymi systemowymi.
  */
 
 import { useMemo } from 'react';
@@ -30,9 +30,10 @@ import {
 // =============================================================================
 
 /**
- * Czy uzywac danych fixture (dla developmentu/testow).
+ * Fixture data are exported for unit tests only. Runtime hooks must not
+ * synthesize diagnostics when the backend has not returned them.
  */
-const USE_FIXTURE_DATA = true;
+const USE_FIXTURE_DATA = false;
 
 // =============================================================================
 // Fixture Data (dla testow UI)

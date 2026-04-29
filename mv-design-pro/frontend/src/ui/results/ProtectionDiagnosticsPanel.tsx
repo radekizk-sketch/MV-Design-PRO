@@ -163,8 +163,8 @@ function DiagnosticsRow({ result, onJumpToElement }: DiagnosticsRowProps) {
  * @example
  * ```tsx
  * <ProtectionDiagnosticsPanel
- *   projectId="demo-project"
- *   diagramId="demo-diagram"
+ *   projectId={activeProjectId}
+ *   diagramId={activeDiagramId}
  *   onSwitchToSld={() => setActiveTab('sld')}
  * />
  * ```
@@ -365,14 +365,6 @@ export function ProtectionDiagnosticsPanel({
             </tbody>
           </table>
         )}
-      </div>
-
-      {/* Footer with fixture notice */}
-      <div className="px-4 py-2 border-t border-gray-200 bg-gray-50">
-        <div className="text-xs text-gray-500 italic flex items-center gap-1">
-          <span>*</span>
-          <span>Dane demonstracyjne (fixture)</span>
-        </div>
       </div>
     </div>
   );

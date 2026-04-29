@@ -77,7 +77,6 @@ export interface EmptyInspectorPanelProps {
 export function EmptyInspectorPanel({
   selectedElement,
   isReadOnly = false,
-  networkStats,
   className,
 }: EmptyInspectorPanelProps) {
   const visibleTabs = getVisibleInspectorTabs(selectedElement?.type ?? null);
@@ -88,27 +87,55 @@ export function EmptyInspectorPanel({
         className={clsx('flex h-full flex-col bg-scada-panel text-scada-text', className)}
         data-testid="inspector-panel-empty"
       >
-        <InspectorHeader readOnly={isReadOnly} />
-        <InspectorTabs labels={visibleTabs.map((tab) => tab.label)} />
+        <InspectorSectionTitle title="Karta semantyczna" />
+        <div className="space-y-3 border-b border-scada-border p-3">
+          <InspectorField label="Rola inżynierska" value="—" />
+          <InspectorField label="Rodzaj elementu" value="—" />
+          <InspectorField label="Kompletność" value="—" />
+          <InspectorField label="Domena napięciowa" value="—" />
+          <div className="grid grid-cols-[112px_minmax(0,1fr)] items-start gap-2 text-[11px]">
+            <span className="text-scada-muted">Porty</span>
+            <div className="space-y-1 text-scada-text">
+              <div className="font-mono">—</div>
+              <div className="text-[10px] leading-snug text-scada-muted">
+                Wybierz element schematu, aby pokazać porty z modelu semantycznego.
+              </div>
+            </div>
+          </div>
+        </div>
 
-        <div className="flex-1 space-y-3 overflow-auto p-4">
-          <section className="rounded border border-scada-border bg-scada-surface p-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
-              Wybierz obiekt techniczny
-            </h3>
-            <p className="mt-2 text-sm text-scada-text">Inspektor czeka na wskazanie elementu SLD albo wyniku analizy.</p>
-            <p className="mt-1 text-[12px] leading-snug text-scada-muted">
-              Kliknij GPZ, pole SN, odcinek, stację albo element w drzewie modelu.
-              Brak zaznaczenia nie oznacza braku modelu.
-            </p>
-          </section>
+        <InspectorSectionTitle title="Inspektor techniczny" />
+        <div className="flex-1 overflow-auto p-3">
+          <div className="space-y-2">
+            <InspectorField label="Nazwa" value="—" />
+            <InspectorField label="Opis" value="—" />
+            <InspectorField label="Producent" value="—" />
+            <InspectorField label="Typ" value="—" />
+            <InspectorField label="Prąd znamionowy" value="—" />
+            <InspectorField label="Prąd zwarciowy wytrz." value="—" />
+            <InspectorField label="Napięcie znamionowe" value="—" />
+            <InspectorField label="Częstotliwość" value="—" />
+            <InspectorField label="Rodzaj pola" value="—" />
+            <InspectorField label="Zabudowa" value="—" />
+          </div>
 
-          <section className="rounded border border-scada-border bg-scada-surface p-3">
-            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
-              Stan modelu
-            </h3>
-            <NetworkStats stats={networkStats} />
-          </section>
+          <div className="mt-5 flex items-center justify-between">
+            <h3 className="text-[12px] font-semibold text-scada-text">Zabezpieczenia</h3>
+            <span className="text-emerald-400">◎</span>
+          </div>
+          <div className="mt-2 space-y-2">
+            <InspectorField label="Typ zabezpieczenia" value="—" />
+            <InspectorField label="Funkcje" value="—" />
+            <InspectorField label="Nastawy" value="—" />
+          </div>
+
+          <div className="mt-5">
+            <h3 className="text-[12px] font-semibold text-scada-text">Uwagi</h3>
+            <div className="mt-2 flex h-8 items-center justify-between rounded-sm border border-scada-border bg-scada-bg px-2 text-[11px] text-scada-muted">
+              <span>0</span>
+              <span className="text-scada-text">＋</span>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -192,35 +219,50 @@ function InspectorTabs({ labels }: { labels: string[] }) {
   );
 }
 
-function NetworkStats({ stats }: { stats?: EmptyInspectorPanelProps['networkStats'] }) {
-  const rows = [
-    ['Węzły', stats?.nodeCount],
-    ['Gałęzie', stats?.branchCount],
-    ['Transformatory', stats?.transformerCount],
-    ['Obciążenia', stats?.loadCount],
-    ['Źródła', stats?.sourceCount],
-  ] as const;
-
-  if (!stats || rows.every(([, value]) => value === undefined)) {
-    return (
-      <p className="mt-2 text-[12px] leading-snug text-scada-muted">
-        Statystyki modelu nie zostały przekazane do Inspektora technicznego. Warunek przejścia:
-        wybierz Główny Punkt Zasilający, pole SN albo odcinek sieci na kanwie SLD.
-      </p>
-    );
-  }
-
+function InspectorSectionTitle({ title }: { title: string }) {
   return (
-    <dl className="mt-3 grid grid-cols-2 gap-2 text-[12px]">
-      {rows
-        .filter(([, value]) => value !== undefined)
-        .map(([label, value]) => (
-          <div key={label} className="rounded border border-scada-border bg-scada-bg px-2 py-1.5">
-            <dt className="text-[10px] uppercase tracking-widest text-scada-muted">{label}</dt>
-            <dd className="mt-0.5 font-semibold text-scada-text">{value}</dd>
-          </div>
-        ))}
-    </dl>
+    <div className="flex h-9 shrink-0 items-center justify-between border-b border-scada-border px-3">
+      <div className="flex items-center gap-2">
+        <ChevronDown />
+        <span className="text-[13px] font-semibold text-scada-text">{title}</span>
+      </div>
+      <ChevronDown />
+    </div>
+  );
+}
+
+function InspectorField({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string;
+  value: string;
+  tone?: 'default' | 'ok' | 'warn';
+}) {
+  return (
+    <label className="grid grid-cols-[112px_minmax(0,1fr)] items-center gap-2 text-[11px]">
+      <span className="truncate text-scada-muted" title={label}>{label}</span>
+      <span
+        className={clsx(
+          'flex h-7 min-w-0 items-center justify-between rounded-sm border border-scada-border bg-scada-bg px-2 text-scada-text',
+          tone === 'ok' && 'text-emerald-300',
+          tone === 'warn' && 'text-amber-300',
+        )}
+        title={value}
+      >
+        <span className="truncate">{value}</span>
+        <ChevronDown />
+      </span>
+    </label>
+  );
+}
+
+function ChevronDown() {
+  return (
+    <svg className="h-3 w-3 shrink-0 text-scada-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
   );
 }
 

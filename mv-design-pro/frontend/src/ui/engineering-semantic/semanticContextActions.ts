@@ -7,6 +7,7 @@ export type SemanticEngineeringRole =
   | 'MV_CABLE_SEGMENT'
   | 'MV_OVERHEAD_SEGMENT'
   | 'MV_LV_TRANSFORMER'
+  | 'STACJA_SN_NN'
   | 'GPZ_SUPPLY_NODE'
   | string;
 
@@ -415,6 +416,49 @@ function transformer(): SemanticContextActionDefinition[] {
   ];
 }
 
+function stationSnNn(): SemanticContextActionDefinition[] {
+  return [
+    openInspector(),
+    action({
+      actionId: 'station_edit_advanced',
+      labelPl: 'Edytuj stację SN/nN',
+      section: 'Edytuj',
+      handlerRef: 'onEditAdvanced',
+      operationId: 'update_element_parameters',
+      invalidates: ['SEMANTYKA', 'GOTOWOSC', 'WEJSCIE_SOLVERA', 'WYNIKI', 'RAPORT', 'SLD_VIEW'],
+    }),
+    action({
+      actionId: 'station_edit_sn_fields',
+      labelPl: 'Edytuj pola SN',
+      section: 'Edytuj',
+      handlerRef: 'onEditSnFields',
+      operationId: 'update_element_parameters',
+      invalidates: ['SEMANTYKA', 'GOTOWOSC', 'WEJSCIE_SOLVERA', 'WYNIKI', 'RAPORT', 'SLD_VIEW'],
+    }),
+    action({
+      actionId: 'add_nn_load',
+      labelPl: 'Dodaj obciążenie nN',
+      section: 'Dodaj',
+      handlerRef: 'onAddLoad',
+      operationId: 'add_nn_load',
+      invalidates: ['SEMANTYKA', 'GOTOWOSC', 'WEJSCIE_SOLVERA', 'WYNIKI', 'RAPORT', 'SLD_VIEW'],
+    }),
+    action({
+      actionId: 'add_converter_source',
+      labelPl: 'Dodaj źródło po stronie nN',
+      section: 'Dodaj',
+      handlerRef: 'onAddSource',
+      operationId: 'add_converter_source',
+      invalidates: ['SEMANTYKA', 'GOTOWOSC', 'WEJSCIE_SOLVERA', 'WYNIKI', 'RAPORT', 'SLD_VIEW'],
+    }),
+    readiness('Sprawdź gotowość stacji'),
+    results('Pokaż wyniki stacji'),
+    justification('Pokaż uzasadnienie stacji'),
+    report(),
+    deleteAction('Usuń stację'),
+  ];
+}
+
 function gpz(): SemanticContextActionDefinition[] {
   return [
     openInspector(),
@@ -460,6 +504,7 @@ export const SEMANTIC_CONTEXT_ACTION_ROLE_REGISTRY: Readonly<
   MV_CABLE_SEGMENT: segment('odcinek kablowy SN'),
   MV_OVERHEAD_SEGMENT: segment('odcinek napowietrzny SN'),
   MV_LV_TRANSFORMER: transformer(),
+  STACJA_SN_NN: stationSnNn(),
   GPZ_SUPPLY_NODE: gpz(),
 };
 

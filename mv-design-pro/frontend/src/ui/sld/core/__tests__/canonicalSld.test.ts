@@ -162,8 +162,8 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       expect(STATION_INTERNAL_STROKE).toBe(2);
     });
 
-    it('OVERHEAD_DASH_ARRAY is defined', () => {
-      expect(OVERHEAD_DASH_ARRAY).toBe('12 6');
+    it('OVERHEAD_DASH_ARRAY is "none" (solid line)', () => {
+      expect(OVERHEAD_DASH_ARRAY).toBe('none');
     });
 
     it('APPARATUS_CHAIN_STEP_Y is 40px', () => {
@@ -530,8 +530,8 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       expect(ANNOTATION_FONT_SIZE_PARAMS).toBe(9);
     });
 
-    it('CABLE_DASH_ARRAY is "none" (solid line)', () => {
-      expect(CABLE_DASH_ARRAY).toBe('none');
+    it('CABLE_DASH_ARRAY is defined (dashed line)', () => {
+      expect(CABLE_DASH_ARRAY).toBe('8 5');
     });
 
     it('BRANCH_APPARATUS_WIDTH is 40px', () => {
@@ -605,12 +605,12 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       expect(CANONICAL_SLD_STYLES.stationTitle.fontFamily).toContain('Inter');
     });
 
-    it('overhead dash is "12 6"', () => {
-      expect(CANONICAL_SLD_STYLES.branchLine.overheadDash).toBe('12 6');
+    it('overhead dash is "none"', () => {
+      expect(CANONICAL_SLD_STYLES.branchLine.overheadDash).toBe('none');
     });
 
-    it('cable dash is "none"', () => {
-      expect(CANONICAL_SLD_STYLES.branchLine.cableDash).toBe('none');
+    it('cable dash is "8 5"', () => {
+      expect(CANONICAL_SLD_STYLES.branchLine.cableDash).toBe('8 5');
     });
 
     it('trunkSpine color is CANONICAL SN blue', () => {

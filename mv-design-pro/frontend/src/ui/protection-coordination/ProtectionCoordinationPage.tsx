@@ -44,6 +44,7 @@ import {
 import { TccChartFromResult } from './TccChart';
 import { TracePanel } from './TracePanel';
 import { TccInterpretationPanel } from './TccInterpretationPanel';
+import { useAppStateStore } from '../app-state/store';
 
 // =============================================================================
 // Types
@@ -68,7 +69,7 @@ interface PageState {
 // =============================================================================
 
 interface ContextSelectorProps {
-  projectId: string;
+  projectId: string | null;
   caseId: string | null;
   snapshotId: string | null;
   onProjectChange?: (id: string) => void;
@@ -410,10 +411,9 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
 // =============================================================================
 
 export function ProtectionCoordinationPage() {
-  // Demo project context
-  const projectId = 'demo-project';
-  const caseId = 'case-001';
-  const snapshotId = 'snapshot-001';
+  const projectId = useAppStateStore((state) => state.activeProjectId);
+  const caseId = useAppStateStore((state) => state.activeCaseId);
+  const snapshotId = useAppStateStore((state) => state.activeSnapshotId);
 
   const [state, setState] = useState<PageState>({
     devices: [],
@@ -556,6 +556,14 @@ export function ProtectionCoordinationPage() {
 
   // Run analysis
   const handleRunAnalysis = useCallback(async () => {
+    if (!projectId) {
+      setState((prev) => ({
+        ...prev,
+        error: 'Wybierz aktywny projekt przed uruchomieniem koordynacji zabezpieczeń',
+      }));
+      return;
+    }
+
     if (state.devices.length === 0) {
       setState((prev) => ({
         ...prev,
@@ -589,7 +597,7 @@ export function ProtectionCoordinationPage() {
         error: err instanceof Error ? err.message : LABELS.status.error,
       }));
     }
-  }, [state.devices, state.faultCurrents, state.operatingCurrents]);
+  }, [projectId, state.devices, state.faultCurrents, state.operatingCurrents]);
 
   // Get editing device
   const editingDevice = useMemo(

@@ -453,6 +453,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   fitPadding,
   canonicalAnnotations = null,
   semanticDiagnosticsReport = null,
+  hideChrome = false,
 }) => {
   const hasExplicitCanvasSize = typeof width === 'number' && typeof height === 'number';
   const fallbackCanvasWidth = width ?? DEFAULT_WIDTH;
@@ -520,8 +521,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
   const setDiagnosticsFilter = useDiagnosticsStore((state) => state.setDiagnosticsFilter);
 
   const { hasResults: hasDiagnostics } = useSanityChecks(
-    activeProjectId ?? 'aktywny-projekt',
-    activeCaseId ?? 'aktywny-przypadek',
+    activeProjectId,
+    activeCaseId,
   );
 
   const sldMode = useSldModeStore((state) => state.mode);
@@ -1650,6 +1651,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       className="flex h-full flex-col bg-[linear-gradient(180deg,#040b11_0%,#08131d_100%)]"
     >
       {/* Pasek narzędzi SLD — klasa przemysłowa */}
+      {!hideChrome && (
       <div
         data-testid="sld-view-toolbar"
         className="flex items-center justify-between border-b border-[#1a3040] bg-[linear-gradient(180deg,#08131d_0%,#07111a_100%)] px-4 py-2 shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]"
@@ -1927,6 +1929,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
           </button>
         </div>
       </div>
+      )}
 
       {/* Canvas container */}
       <div
@@ -2122,6 +2125,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
       </div>
 
       {/* Status bar — CANONICAL-grade professional */}
+      {!hideChrome && (
       <div
         data-testid="sld-view-status"
         className="flex items-center justify-between border-t border-[#1a3040] bg-[linear-gradient(180deg,#07111a_0%,#08131d_100%)] px-4 py-2 text-xs"
@@ -2161,6 +2165,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
           </span>
         </div>
       </div>
+      )}
 
       {/* Export dialog */}
       <SldSnapshotExportDialog

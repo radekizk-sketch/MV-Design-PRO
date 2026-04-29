@@ -28,7 +28,7 @@ import {
   CANONICAL_LINE_LABEL,
   calculateLineLabelPosition,
 } from './sldCanonicalStyle';
-import { RING_DASH_ARRAY, RING_STROKE_WIDTH } from './IndustrialAesthetics';
+import { CABLE_DASH_ARRAY, RING_DASH_ARRAY, RING_STROKE_WIDTH } from './IndustrialAesthetics';
 
 // =============================================================================
 // STALE STYLIZACJI — using CANONICAL tokens
@@ -81,6 +81,16 @@ function pathToPoints(path: Position[]): string {
   return path.map((p) => `${p.x},${p.y}`).join(' ');
 }
 
+function resolveBranchType(connection: Connection): 'LINE' | 'CABLE' | null {
+  const direct = connection.branchType;
+  if (direct === 'LINE' || direct === 'CABLE') {
+    return direct;
+  }
+
+  const projected = connection.attributes?.branchType;
+  return projected === 'LINE' || projected === 'CABLE' ? projected : null;
+}
+
 /**
  * Komponent renderowania polaczenia.
  * PR-SLD-CANONICAL-LABELS-01: Etykiety na linii z halo/white-box.
@@ -101,6 +111,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
 
   // Ring detection — kontrakt §1.7: ring = 2px przerywana
   const isRing = connectionStyle === 'ring';
+  const branchType = resolveBranchType(connection);
 
   // Hooks must be called before any early return (Rules of Hooks)
   // Punkty dla polyline
@@ -151,8 +162,12 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
     ? CONNECTION_STROKE_WIDTH_SELECTED
     : CONNECTION_STROKE_WIDTH;
 
-  // Stroke-dasharray: pusta = ciągła, ustawiona = przerywana (ring)
-  const strokeDashArray = isRing ? RING_DASH_ARRAY : undefined;
+  // Stroke-dasharray: ring and cable are dashed; overhead LINE remains solid.
+  const strokeDashArray = isRing
+    ? RING_DASH_ARRAY
+    : branchType === 'CABLE'
+      ? CABLE_DASH_ARRAY
+      : undefined;
 
   const opacity = energized ? 1 : 0.6;
 
@@ -168,6 +183,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
       data-element-id={connection.elementId ?? undefined}
       data-connection-selected={selected}
       data-connection-energized={energized}
+      data-branch-type={branchType ?? undefined}
       data-has-label={!!(showLabel && label && labelPosition)}
     >
       {/* Niewidoczna strefa klikniecia (hitbox) */}
@@ -197,6 +213,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         opacity={opacity}
         style={{ pointerEvents: 'none' }}
         data-connection-ring={isRing}
+        data-branch-medium={branchType === 'CABLE' ? 'cable' : branchType === 'LINE' ? 'overhead' : undefined}
       />
 
       {/* Etykieta na linii z halo/white-box */}

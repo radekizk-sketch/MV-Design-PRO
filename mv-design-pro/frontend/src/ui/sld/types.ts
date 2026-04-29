@@ -133,6 +133,9 @@ export interface SLDViewProps {
 
   /** Raport ENM kontra projekcja semantyczna, pokazywany w trybie Diagnostyka. */
   semanticDiagnosticsReport?: SemanticDiagnosticsReport | null;
+
+  /** Ukrywa własny pasek narzędzi i stopkę SLD, gdy shell dostarcza chrome. */
+  hideChrome?: boolean;
 }
 
 /**

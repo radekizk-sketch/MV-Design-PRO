@@ -6,7 +6,7 @@ import type {
 import { JunctionDot } from './symbols/JunctionDot';
 import {
   TRUNK_STROKE_WIDTH,
-  OVERHEAD_DASH_ARRAY,
+  CABLE_DASH_ARRAY,
   GRID_BASE,
 } from './IndustrialAesthetics';
 import { CANONICAL_VOLTAGE_COLORS } from './sldCanonicalStyle';
@@ -139,7 +139,7 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
         stroke={color}
         strokeWidth={TRUNK_STROKE_WIDTH - 1}
         strokeLinecap="round"
-        opacity={0.85}
+        opacity={0.18}
       />
 
       {/* ═══════════════════════════════════════════════════════════
@@ -196,19 +196,18 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
 
         return (
           <g key={seg.segmentId} data-sld-role="trunk-segment" data-segment-id={seg.segmentId}>
-            {/* Overhead line dashing overlay */}
-            {seg.isOverhead && (
-              <line
-                x1={trunkX}
-                y1={nodeAbove.position.y}
-                x2={trunkX}
-                y2={nodeBelow.position.y}
-                stroke={color}
-                strokeWidth={TRUNK_STROKE_WIDTH}
-                strokeDasharray={OVERHEAD_DASH_ARRAY}
-                strokeLinecap="round"
-              />
-            )}
+            {/* Segment medium: cable is dashed, overhead line is solid. */}
+            <line
+              x1={trunkX}
+              y1={nodeAbove.position.y}
+              x2={trunkX}
+              y2={nodeBelow.position.y}
+              stroke={color}
+              strokeWidth={TRUNK_STROKE_WIDTH}
+              strokeDasharray={seg.isOverhead ? undefined : CABLE_DASH_ARRAY}
+              strokeLinecap="round"
+              data-sld-branch-medium={seg.isOverhead ? 'overhead' : 'cable'}
+            />
             {/* Parameter box background */}
             <rect
               x={trunkX + 12}

@@ -579,4 +579,54 @@
   .ind-divider-h {
     @apply h-px w-full bg-chrome-200 my-2;
   }
+
+  /* Right-panel GPZ operation form. Kept compact so it scales with the
+   * inspector column instead of behaving like a detached wizard modal. */
+  .mv-dark-scada .grid-source-editor-panel .gpz-editor-header {
+    padding: 0.625rem 1rem;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel .gpz-editor-body {
+    padding: 0.75rem 1rem;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel .gpz-editor-footer {
+    padding: 0.625rem 1rem;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel h3 {
+    margin-bottom: 0.5rem;
+    font-size: 0.6875rem;
+    letter-spacing: 0.14em;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel label {
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1.15;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel .grid {
+    gap: 0.5rem !important;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel input,
+  .mv-dark-scada .grid-source-editor-panel select {
+    min-height: 2.125rem;
+    border-radius: 2px !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel button {
+    border-radius: 2px !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+    font-size: 0.75rem !important;
+  }
+
+  .mv-dark-scada .grid-source-editor-panel p {
+    line-height: 1.25;
+  }
 }

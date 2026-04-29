@@ -473,8 +473,8 @@ export function InspectorResolver() {
         />
       </div>
       {branchActions.length > 0 && (
-        <div className="border-t border-slate-200 bg-slate-50 p-3">
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <div className="border-t border-scada-border bg-scada-surface p-3">
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-scada-muted">
             Operacje odcinka
           </div>
           <div className="flex flex-wrap gap-2">
@@ -483,7 +483,7 @@ export function InspectorResolver() {
                 key={action.id}
                 type="button"
                 onClick={() => openOperationForm(action.id as never, action.context)}
-                className="rounded border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                className="rounded border border-scada-border bg-scada-bg px-2.5 py-1.5 text-xs font-medium text-scada-text hover:bg-scada-active hover:text-scada-sn"
               >
                 {action.label}
               </button>

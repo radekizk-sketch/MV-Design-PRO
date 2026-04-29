@@ -1797,8 +1797,8 @@ export const CANONICAL_SLD_STYLES = {
   branchLine: {
     strokeWidth: 2.5,
     color: CANONICAL_VOLTAGE_COLORS.SN,
-    overheadDash: '12 6',
-    cableDash: 'none',
+    overheadDash: 'none',
+    cableDash: '8 5',
   },
   /** Station internal line (łańcuch aparatów) */
   stationInternal: {
@@ -1807,12 +1807,12 @@ export const CANONICAL_SLD_STYLES = {
   },
   /** Overhead line differentiation */
   overheadLine: {
-    strokeDasharray: '12 6',
+    strokeDasharray: 'none',
     strokeWidth: 2.5,
   },
   /** Cable line differentiation */
   cableLine: {
-    strokeDasharray: 'none',
+    strokeDasharray: '8 5',
     strokeWidth: 2.5,
   },
   /** Junction dot (IEC 61082) */

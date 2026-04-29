@@ -414,15 +414,23 @@ export function GridSourceEditor({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl">
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {mode === 'create' ? 'Dodaj źródło GPZ' : 'Edycja źródła GPZ'}
+    <div
+      className="grid-source-editor-panel h-full min-h-0 bg-[#071018]"
+      data-testid="grid-source-editor-shell"
+    >
+      <div
+        role="dialog"
+        aria-labelledby="grid-source-editor-title"
+        className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0d1724] text-scada-text"
+        data-testid="grid-source-editor-dialog"
+      >
+        <div className="gpz-editor-header shrink-0 border-b border-scada-border bg-[#0a141f] px-5 py-3.5">
+          <h2 id="grid-source-editor-title" className="text-[15px] font-semibold text-scada-text">
+            {mode === 'create' ? 'Parametry źródła GPZ' : 'Edycja źródła GPZ'}
           </h2>
         </div>
 
-        <div className="space-y-6 px-6 py-4">
+        <div className="gpz-editor-body min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
           <section>
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Dane wymagane
@@ -438,7 +446,7 @@ export function GridSourceEditor({
                   className={`w-full rounded-md border px-3 py-2 text-sm ${
                     getFieldError('source_name') ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="np. GPZ Konarzewo"
+                  placeholder="Nazwa źródła zasilania"
                 />
                 {getFieldError('source_name') && (
                   <p className="mt-1 text-xs text-red-600">{getFieldError('source_name')}</p>
@@ -469,7 +477,7 @@ export function GridSourceEditor({
             </div>
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Sekcja GPZ i pole liniowe
             </h3>
@@ -484,7 +492,7 @@ export function GridSourceEditor({
                   className={`w-full rounded-md border px-3 py-2 text-sm ${
                     getFieldError('gpz_section_name') ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="np. Sekcja GPZ"
+                  placeholder="Nazwa sekcji GPZ"
                 />
                 {getFieldError('gpz_section_name') && (
                   <p className="mt-1 text-xs text-red-600">{getFieldError('gpz_section_name')}</p>
@@ -502,7 +510,7 @@ export function GridSourceEditor({
                   className={`w-full rounded-md border px-3 py-2 text-sm ${
                     getFieldError('gpz_line_field_name') ? 'border-red-500' : 'border-gray-300'
                   }`}
-                  placeholder="np. Pole liniowe GPZ"
+                  placeholder="Nazwa pola liniowego GPZ"
                 />
                 {getFieldError('gpz_line_field_name') && (
                   <p className="mt-1 text-xs text-red-600">{getFieldError('gpz_line_field_name')}</p>
@@ -516,7 +524,7 @@ export function GridSourceEditor({
             </p>
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Tryb definicji technicznej
             </h3>
@@ -526,21 +534,21 @@ export function GridSourceEditor({
                 type="button"
                 onClick={() => handleModeChange(false)}
                 disabled={catalogModeUnavailable}
-                className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                className={`rounded-sm border px-3 py-2 text-sm font-medium transition-colors ${
                   !formData.manual_mode
-                    ? 'border-blue-600 bg-blue-50 text-blue-700'
-                    : 'border-gray-300 bg-white text-gray-700'
-                } disabled:cursor-not-allowed disabled:border-gray-300 disabled:bg-gray-100 disabled:text-gray-400`}
+                    ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                    : 'border-scada-border bg-[#0a141f] text-scada-muted hover:border-cyan-500/45 hover:text-scada-text'
+                } disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-[#101827] disabled:text-scada-muted/60`}
               >
                 Katalog
               </button>
               <button
                 type="button"
                 onClick={() => handleModeChange(true)}
-                className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                className={`rounded-sm border px-3 py-2 text-sm font-medium transition-colors ${
                   formData.manual_mode
-                    ? 'border-amber-600 bg-amber-50 text-amber-700'
-                    : 'border-gray-300 bg-white text-gray-700'
+                    ? 'border-amber-400/70 bg-amber-400/12 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                    : 'border-scada-border bg-[#0a141f] text-scada-muted hover:border-amber-400/45 hover:text-scada-text'
                 }`}
               >
                 Umowa równoważna ręczna
@@ -548,7 +556,7 @@ export function GridSourceEditor({
             </div>
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Pozycja katalogowa systemu SN
             </label>
@@ -579,7 +587,7 @@ export function GridSourceEditor({
             )}
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Parametry zwarciowe
             </h3>
@@ -690,7 +698,7 @@ export function GridSourceEditor({
             )}
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Składowa zerowa
             </h3>
@@ -755,7 +763,7 @@ export function GridSourceEditor({
             </div>
           </section>
 
-          <section className="border-t border-gray-200 pt-4">
+          <section className="border-t border-gray-200 pt-3">
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
               Uziemienie punktu neutralnego
             </h3>
@@ -812,18 +820,18 @@ export function GridSourceEditor({
           </section>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+        <div className="gpz-editor-footer flex shrink-0 justify-end gap-3 border-t border-scada-border bg-[#0a141f] px-5 py-3">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="rounded-sm border border-scada-border bg-[#101827] px-4 py-2 text-sm font-medium text-scada-muted transition-colors hover:border-cyan-500/45 hover:text-scada-text"
           >
             Anuluj
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="rounded-sm border border-cyan-500/70 bg-cyan-500/20 px-4 py-2 text-sm font-semibold text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_18px_rgba(34,211,238,0.12)] transition-colors hover:bg-cyan-500/30"
           >
             {mode === 'create' ? 'Dodaj źródło GPZ' : 'Zapisz źródło GPZ'}
           </button>

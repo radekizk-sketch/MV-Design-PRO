@@ -34,7 +34,6 @@ import {
   useResultStatusLabel,
 } from '../app-state';
 import { SegmentInspectorPanel } from './SegmentInspectorPanel';
-import type { AnySldSymbol } from '../sld-editor/types';
 import { useStudyCasesStore } from '../study-cases/store';
 import { createProject } from '../projects/api';
 import { notify } from '../notifications/store';
@@ -73,126 +72,6 @@ import {
   type EngineeringSemanticModel,
   type SemanticDiagnosticsReport,
 } from '../engineering-semantic';
-
-/**
- * Demo symbols for development/testing.
- * In production, these come from the network model via SldEditorStore.
- */
-const DEMO_SYMBOLS: AnySldSymbol[] = [
-  {
-    id: 'bus_main',
-    elementId: 'bus_main',
-    elementType: 'Bus',
-    elementName: 'Szyna gĹ‚Ăłwna SN',
-    position: { x: 400, y: 200 },
-    inService: true,
-    width: 100,
-    height: 10,
-  } as any,
-  {
-    id: 'bus_dist',
-    elementId: 'bus_dist',
-    elementType: 'Bus',
-    elementName: 'Szyna dystrybucyjna',
-    position: { x: 400, y: 350 },
-    inService: true,
-    width: 80,
-    height: 8,
-  } as any,
-  {
-    id: 'source_grid',
-    elementId: 'source_grid',
-    elementType: 'Source',
-    elementName: 'SieÄ‡ zasilajÄ…ca',
-    position: { x: 400, y: 40 },
-    inService: true,
-    connectedToNodeId: 'bus_main',
-  } as any,
-  {
-    id: 'trafo_1',
-    elementId: 'trafo_1',
-    elementType: 'TransformerBranch',
-    elementName: 'TR1 110/15kV',
-    position: { x: 400, y: 150 },
-    inService: true,
-    fromNodeId: 'bus_main',
-    toNodeId: 'bus_dist',
-    points: [],
-  } as any,
-  {
-    id: 'line_1',
-    elementId: 'line_1',
-    elementType: 'LineBranch',
-    elementName: 'Linia L1',
-    position: { x: 300, y: 275 },
-    inService: true,
-    fromNodeId: 'bus_main',
-    toNodeId: 'bus_dist',
-    points: [],
-  } as any,
-  {
-    id: 'line_2',
-    elementId: 'line_2',
-    elementType: 'LineBranch',
-    elementName: 'Linia L2',
-    position: { x: 500, y: 275 },
-    inService: true,
-    fromNodeId: 'bus_main',
-    toNodeId: 'bus_dist',
-    points: [],
-  } as any,
-  {
-    id: 'sw_1',
-    elementId: 'sw_1',
-    elementType: 'Switch',
-    elementName: 'Q1',
-    position: { x: 300, y: 230 },
-    inService: true,
-    fromNodeId: 'bus_main',
-    toNodeId: 'line_1',
-    switchState: 'CLOSED',
-    switchType: 'BREAKER',
-  } as any,
-  {
-    id: 'sw_2',
-    elementId: 'sw_2',
-    elementType: 'Switch',
-    elementName: 'Q2',
-    position: { x: 500, y: 230 },
-    inService: true,
-    fromNodeId: 'bus_main',
-    toNodeId: 'line_2',
-    switchState: 'OPEN',
-    switchType: 'BREAKER',
-  } as any,
-  {
-    id: 'load_1',
-    elementId: 'load_1',
-    elementType: 'Load',
-    elementName: 'Odbior O1',
-    position: { x: 250, y: 420 },
-    inService: true,
-    connectedToNodeId: 'bus_dist',
-  } as any,
-  {
-    id: 'load_2',
-    elementId: 'load_2',
-    elementType: 'Load',
-    elementName: 'Odbior O2',
-    position: { x: 400, y: 420 },
-    inService: true,
-    connectedToNodeId: 'bus_dist',
-  } as any,
-  {
-    id: 'load_3',
-    elementId: 'load_3',
-    elementType: 'Load',
-    elementName: 'Odbior O3',
-    position: { x: 550, y: 420 },
-    inService: false,
-    connectedToNodeId: 'bus_dist',
-  } as any,
-];
 
 function resolveSemanticOutgoingPortRef(element: EngineeringElement | null): string | null {
   if (!element || element.elementKind !== 'MV_BAY') return null;
@@ -513,8 +392,6 @@ function buildDockProjectTreeNodes(snapshot: EnergyNetworkModel | null): DockPro
   });
 }
 
-void DEMO_SYMBOLS;
-
 /**
  * Props for SldEditorPage.
  */
@@ -588,8 +465,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
   const [isCreatingFirstCase, setIsCreatingFirstCase] = useState(false);
   const [isFirstVariantDialogOpen, setIsFirstVariantDialogOpen] = useState(false);
-  const [firstVariantProjectName, setFirstVariantProjectName] = useState('Projekt 1');
-  const [firstVariantName, setFirstVariantName] = useState('Wariant 1');
+  const [firstVariantProjectName, setFirstVariantProjectName] = useState('');
+  const [firstVariantName, setFirstVariantName] = useState('');
   const [activeTool, setActiveTool] = useState<CreatorTool>('select');
   const [interactionMessage, setInteractionMessage] = useState<string | null>(null);
   const [hoveredElementName, setHoveredElementName] = useState<string | null>(null);
@@ -886,7 +763,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         return hasSemanticGpzSupplyNode(enmProjection.semanticModel);
       }
 
-      // Legacy fallback: pre-semantic snapshots and demo symbols do not expose GPZ engineering roles.
+        // Legacy fallback: pre-semantic snapshots do not expose GPZ engineering roles.
       return (enmSnapshot?.sources?.length ?? 0) > 0
         || symbols.some((symbol) => symbol.elementType === 'Source');
     },
@@ -964,21 +841,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           value={projectTreeQuery}
           onChange={(event) => setProjectTreeQuery(event.target.value)}
           placeholder="Filtruj elementy..."
-          className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded border border-scada-border bg-scada-bg px-3 py-2 text-sm text-scada-text outline-none transition placeholder:text-scada-muted focus:border-scada-sn focus:ring-2 focus:ring-scada-sn/20"
         />
         <div
           data-testid="project-tree"
           data-empty={filteredProjectTreeNodes.length === 0}
-          className="max-h-[320px] space-y-3 overflow-y-auto rounded-lg border border-slate-200 bg-slate-50 p-2"
+          className="max-h-[320px] space-y-3 overflow-y-auto rounded border border-scada-border bg-scada-bg p-2"
         >
           {filteredProjectTreeNodes.length === 0 ? (
-            <div className="rounded-md border border-dashed border-slate-300 bg-white px-3 py-4 text-xs text-slate-500">
+            <div className="rounded border border-dashed border-scada-border bg-scada-surface px-3 py-4 text-xs text-scada-muted">
               Brak elementow pasujacych do filtra.
             </div>
           ) : (
             Object.entries(groupedNodes).map(([group, nodes]) => (
               <div key={group} className="space-y-1">
-                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-scada-muted">
                   {group}
                 </div>
                 {nodes.map((node) => {
@@ -1009,15 +886,15 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                       }}
                       className={`flex w-full items-start justify-between gap-3 rounded-md border px-3 py-2 text-left transition ${
                         isActive
-                          ? 'border-blue-300 bg-blue-50 text-blue-900'
-                          : 'border-slate-200 bg-white text-slate-800 hover:bg-slate-100'
+                          ? 'border-scada-sn bg-scada-active text-scada-sn'
+                          : 'border-scada-border bg-scada-surface text-scada-text hover:bg-scada-active'
                       }`}
                     >
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium">{node.label}</span>
-                        <span className="block truncate text-[11px] text-slate-500">{node.subtitle}</span>
+                        <span className="block truncate text-[11px] text-scada-muted">{node.subtitle}</span>
                       </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-slate-400">
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-scada-muted">
                         {node.type}
                       </span>
                     </button>
@@ -1136,8 +1013,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const openCaseContextSurface = useCallback(() => {
     if (!hasActiveCase) {
       if (!isCreatingFirstCase) {
-        setFirstVariantProjectName(activeProjectName?.trim() || 'Projekt 1');
-        setFirstVariantName('Wariant 1');
+        setFirstVariantProjectName(activeProjectName?.trim() ?? '');
+        setFirstVariantName('');
         setIsFirstVariantDialogOpen(true);
       }
       return;
@@ -1402,8 +1279,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     if (isCreatingFirstCase) {
       return;
     }
-    setFirstVariantProjectName(activeProjectName?.trim() || 'Projekt 1');
-    setFirstVariantName('Wariant 1');
+    setFirstVariantProjectName(activeProjectName?.trim() ?? '');
+    setFirstVariantName('');
     setIsFirstVariantDialogOpen(true);
   }, [activeProjectName, isCreatingFirstCase]);
 
@@ -1419,8 +1296,16 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       return;
     }
 
-    const normalizedProjectName = firstVariantProjectName.trim() || 'Projekt 1';
-    const normalizedVariantName = firstVariantName.trim() || 'Wariant 1';
+    const normalizedProjectName = firstVariantProjectName.trim();
+    const normalizedVariantName = firstVariantName.trim();
+    if (!activeProjectId && normalizedProjectName.length === 0) {
+      notify('Podaj nazwę projektu.', 'warning');
+      return;
+    }
+    if (normalizedVariantName.length === 0) {
+      notify('Podaj nazwę wariantu pracy.', 'warning');
+      return;
+    }
 
     setIsCreatingFirstCase(true);
     try {
@@ -1703,35 +1588,37 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   return (
     <div
       data-testid="sld-editor-page"
-      className="flex h-full w-full overflow-hidden rounded-xl bg-white"
+      className="flex h-full w-full overflow-hidden bg-[#07111a]"
     >
-      <SldWorkDock
-        contextItems={dockContextItems}
-        nextStep={dockNextStep}
-        actionGroups={dockActionGroups}
-        objectPalette={DOCK_OBJECT_PALETTE}
-        modelSummary={modelSummary}
-        interactionMessage={interactionMessage}
-        interactionHint={dockInteractionHint}
-        projectTreeContent={projectTreeContent}
-        processContent={<ProcessPanel className="h-full" />}
-        readinessContent={
-          <SldReadinessStack
-            activeCaseId={activeCaseId}
-            className="pointer-events-auto"
-            workspaceBlockState={null}
-            issues={readinessIssues}
-            status={readinessStatus}
-            ready={Boolean(enmReadiness?.ready)}
-            loading={readinessLoading}
-            collapsedGroups={readinessCollapsedGroups}
-            onToggleGroup={readinessToggleGroup}
-            onNavigateToElement={handleReadinessNavigate}
-            onFixAction={handleReadinessFixAction}
-            onQuickFix={handleDataGapQuickFix}
-          />
-        }
-      />
+      {false && (
+        <SldWorkDock
+          contextItems={dockContextItems}
+          nextStep={dockNextStep}
+          actionGroups={dockActionGroups}
+          objectPalette={DOCK_OBJECT_PALETTE}
+          modelSummary={modelSummary}
+          interactionMessage={interactionMessage}
+          interactionHint={dockInteractionHint}
+          projectTreeContent={projectTreeContent}
+          processContent={<ProcessPanel className="h-full" />}
+          readinessContent={
+            <SldReadinessStack
+              activeCaseId={activeCaseId}
+              className="pointer-events-auto"
+              workspaceBlockState={null}
+              issues={readinessIssues}
+              status={readinessStatus}
+              ready={Boolean(enmReadiness?.ready)}
+              loading={readinessLoading}
+              collapsedGroups={readinessCollapsedGroups}
+              onToggleGroup={readinessToggleGroup}
+              onNavigateToElement={handleReadinessNavigate}
+              onFixAction={handleReadinessFixAction}
+              onQuickFix={handleDataGapQuickFix}
+            />
+          }
+        />
+      )}
 
       {/* SLD View (main area) - ALWAYS rendered */}
       <div className="relative flex-1 min-w-0 overflow-hidden bg-[#07111a]">
@@ -1745,6 +1632,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           fitOnMount={symbols.length > 0}
           minFitZoom={0.55}
           fitPadding={34}
+          hideChrome
           canonicalAnnotations={enmProjection.canonicalAnnotations}
           onCalculateClick={handleCalculate}
           onCanvasClick={() => {
@@ -1817,8 +1705,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           }}
         />
 
-        {/* Empty state overlay - rendered ON TOP of canvas */}
-        {emptyState && (
+        {/* Empty state overlay is opt-in only; the active shell keeps the SLD canvas visually dominant. */}
+        {forceEmptyState && emptyState && (
           <SldEmptyOverlay
             state={emptyState}
             hasSource={hasSource}
@@ -1866,7 +1754,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                       value={firstVariantProjectName}
                       onChange={(event) => setFirstVariantProjectName(event.target.value)}
                       className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
-                      placeholder="Projekt 1"
+                      placeholder="Nazwa projektu"
                     />
                   </label>
                 )}
@@ -1878,7 +1766,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                     value={firstVariantName}
                     onChange={(event) => setFirstVariantName(event.target.value)}
                     className="rounded-[12px] border border-[#284458] bg-[#0b1d2a] px-3 py-2 text-sm text-[#f2f7fb] outline-none transition focus:border-[#38bdf8]"
-                    placeholder="Wariant 1"
+                    placeholder="Nazwa wariantu"
                   />
                 </label>
 

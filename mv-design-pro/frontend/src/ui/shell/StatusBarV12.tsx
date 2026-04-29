@@ -140,7 +140,11 @@ export function StatusBarV12({
         {/* Wariant */}
         <div className="flex items-center gap-1" data-testid="status-variant">
           <span className="text-scada-muted">Wariant:</span>
-          <span className="font-medium text-scada-text">{variantName || 'Bazowy'}</span>
+          {variantName ? (
+            <span className="font-medium text-scada-text">{variantName}</span>
+          ) : (
+            <span className="italic text-scada-muted">nie wybrano</span>
+          )}
         </div>
 
         <Separator />

@@ -404,6 +404,15 @@ export interface Connection {
   /** Connection type (for styling) */
   connectionType?: 'branch' | 'switch' | 'source' | 'load';
 
+  /** Typ odcinka SN dla LineBranch: LINE = napowietrzna, CABLE = kablowa. */
+  branchType?: BranchType;
+
+  /** Opcjonalne atrybuty z projekcji SLD/core. */
+  attributes?: {
+    branchType?: BranchType | null;
+    [key: string]: unknown;
+  };
+
   /**
    * Styl wizualny połączenia — widokowy (nie domenowy).
    * 'ring' = linia przerywana (połączenie ringowe w układzie pętlowym)

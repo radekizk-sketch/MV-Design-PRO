@@ -3,10 +3,10 @@
  *
  * Hook adaptera do pobierania przypisań zabezpieczeń do elementów.
  *
- * STATUS: PLACEHOLDER (używa fixture data)
+ * STATUS: API adapter placeholder.
  *
  * UWAGA:
- * Obecnie zwraca dane fixture. Po rozszerzeniu modelu NetworkModel
+ * Runtime nie pokazuje przypisań testowych. Po rozszerzeniu modelu NetworkModel
  * lub dodaniu endpointu API, implementacja zostanie zaktualizowana.
  *
  * DOCELOWA IMPLEMENTACJA:
@@ -24,10 +24,10 @@ import { PROTECTION_ASSIGNMENT_FIXTURES } from './element-assignment';
 // =============================================================================
 
 /**
- * Czy używać danych fixture (dla developmentu/testów).
- * W produkcji powinno być false i dane powinny pochodzić z API.
+ * Fixture data are kept for tests only. Runtime hooks must not create
+ * protection assignments that are not present in project data/API.
  */
-const USE_FIXTURE_DATA = true;
+const USE_FIXTURE_DATA = false;
 
 // =============================================================================
 // Hook: useProtectionAssignment

@@ -4,7 +4,7 @@ import { computeBayLayout } from './core/bayRenderer';
 import { JunctionDot } from './symbols/JunctionDot';
 import {
   BRANCH_LINE_STROKE_WIDTH,
-  OVERHEAD_DASH_ARRAY,
+  CABLE_DASH_ARRAY,
   POWER_ARROW_SIZE,
   STATION_FIELD_OFFSET_X,
 } from './IndustrialAesthetics';
@@ -26,7 +26,7 @@ export const BranchRenderer: React.FC<BranchRendererProps> = ({
   showTechnicalLabels = false,
 }) => {
   const { position } = branch;
-  const dashArray = branch.branchLine.isOverhead ? OVERHEAD_DASH_ARRAY : undefined;
+  const dashArray = branch.branchLine.isOverhead ? undefined : CABLE_DASH_ARRAY;
   const block = branch.detail ?? null;
 
   const bounds = useMemo(

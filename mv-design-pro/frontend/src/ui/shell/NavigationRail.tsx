@@ -44,7 +44,7 @@ export function NavigationRail() {
     <nav
       data-testid="navigation-rail"
       aria-label="Pasek obszarów roboczych"
-      className="flex w-20 shrink-0 flex-col items-center border-r border-scada-border bg-scada-surface py-2"
+      className="flex w-14 shrink-0 flex-col items-center border-r border-scada-border bg-scada-surface py-2"
     >
       <div className="flex flex-1 flex-col items-center gap-1 pt-1">
         {AREA_DEFINITIONS.map((area) => {
@@ -60,7 +60,7 @@ export function NavigationRail() {
               title={area.tooltip}
               onClick={() => handleAreaClick(area.id)}
               className={clsx(
-                'relative grid h-[54px] w-[72px] grid-rows-[22px_1fr] place-items-center rounded-md px-1 py-1 transition-colors',
+                'relative grid h-[52px] w-[52px] grid-rows-[20px_1fr] place-items-center rounded-md px-1 py-1 transition-colors',
                 isActive
                   ? 'bg-scada-active text-scada-sn'
                   : 'text-scada-muted hover:bg-scada-hover-nav hover:text-scada-text',

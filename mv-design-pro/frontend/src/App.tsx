@@ -413,7 +413,7 @@ function App() {
   const layoutProps = {
     onCalculate: handleCalculate,
     onViewResults: handleViewResults,
-    projectName: projectName ?? 'Nowy projekt',
+    projectName: projectName ?? undefined,
     inspectorContent: <InspectorResolver />,
     validationStatus: validationStatus,
     validationWarnings: readiness?.warnings?.length ?? 0,

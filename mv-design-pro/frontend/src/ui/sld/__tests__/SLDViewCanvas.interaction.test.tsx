@@ -324,6 +324,61 @@ describe('SLDViewCanvas interaction surface', () => {
     );
   });
 
+  it('renderuje kabel SN jako linię przerywaną, a napowietrzną jako ciągłą', () => {
+    render(
+      <SLDViewCanvas
+        connections={[
+          {
+            id: 'cable-1',
+            fromSymbolId: 'bus-1',
+            toSymbolId: 'bus-2',
+            fromPortName: 'right',
+            toPortName: 'left',
+            path: [
+              { x: 100, y: 100 },
+              { x: 200, y: 100 },
+            ],
+            connectionType: 'branch',
+            branchType: 'CABLE',
+          } as any,
+          {
+            id: 'overhead-1',
+            fromSymbolId: 'bus-2',
+            toSymbolId: 'bus-3',
+            fromPortName: 'right',
+            toPortName: 'left',
+            path: [
+              { x: 220, y: 100 },
+              { x: 320, y: 100 },
+            ],
+            connectionType: 'branch',
+            branchType: 'LINE',
+          } as any,
+        ]}
+        symbols={[
+          { id: 'bus-1', elementId: 'bus-1', elementType: 'Bus', elementName: 'Szyna 1', position: { x: 100, y: 100 }, inService: true } as any,
+          { id: 'bus-2', elementId: 'bus-2', elementType: 'Bus', elementName: 'Szyna 2', position: { x: 200, y: 100 }, inService: true } as any,
+          { id: 'bus-3', elementId: 'bus-3', elementType: 'Bus', elementName: 'Szyna 3', position: { x: 320, y: 100 }, inService: true } as any,
+        ]}
+        selectedId={null}
+        onSymbolClick={vi.fn()}
+        viewport={VIEWPORT}
+        showGrid={false}
+        width={800}
+        height={500}
+      />,
+    );
+
+    const cableLine = screen.getByTestId('sld-connection-cable-1').querySelectorAll('polyline')[1];
+    const overheadLine = screen.getByTestId('sld-connection-overhead-1').querySelectorAll('polyline')[1];
+
+    expect(screen.getByTestId('sld-engineering-legend')).toBeInTheDocument();
+    expect(cableLine).toHaveAttribute('stroke-dasharray', '8 5');
+    expect(cableLine).toHaveAttribute('data-branch-medium', 'cable');
+    expect(overheadLine).not.toHaveAttribute('stroke-dasharray');
+    expect(overheadLine).toHaveAttribute('data-branch-medium', 'overhead');
+  });
+
   it('renderuje preview walidacyjny dla targetu niepoprawnego', () => {
     render(
       <SLDViewCanvas
