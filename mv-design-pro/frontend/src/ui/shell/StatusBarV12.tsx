@@ -100,7 +100,12 @@ export function StatusBarV12({
       )}
     >
       {/* Lewa: kontekst projektu i tryb */}
-      <div className="flex items-center gap-2 overflow-hidden">
+      <div className="flex items-center gap-2 overflow-hidden" data-testid="active-case-bar">
+        <span className="sr-only">
+          Biezacy zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
+          Przypadek: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
+          Wariant: {variantName || (caseId ? caseName || '(bez nazwy)' : 'nie wybrano')}.
+        </span>
         {/* Obszar + Tryb */}
         <span
           data-testid="status-area-mode"
