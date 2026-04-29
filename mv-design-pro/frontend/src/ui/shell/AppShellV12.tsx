@@ -20,7 +20,6 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { ActiveCaseBar } from '../active-case-bar';
 import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
@@ -30,19 +29,20 @@ import { MassReviewPanel } from '../network-build/mass-review';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SldVisualModes } from '../network-build/SldVisualModes';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
-import { TopContextBar } from '../network-build/TopContextBar';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { navigateToCaseConfig, navigateToCatalog, navigateToVariants } from '../navigation/routes';
+import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
 
+import { UndoRedoButtons } from '../history/UndoRedoButtons';
 import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
 import { V12OverlayModeController } from './V12OverlayModeController';
 import { AreaContextPanel } from './context-panels';
+import { WorkflowContextStrip } from './WorkflowContextStrip';
 
 export interface AppShellV12Props {
   children: ReactNode;
@@ -97,8 +97,8 @@ function ContextPanelShell({
     <aside
       data-testid="context-panel"
       data-area={areaCode}
-      className="flex w-80 shrink-0 flex-col border-r border-scada-border bg-scada-panel"
-      style={{ minWidth: 280, maxWidth: 520 }}
+      className="flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
+      style={{ minWidth: 280, maxWidth: 280 }}
     >
       <AreaContextPanel areaCode={areaCode} />
     </aside>
@@ -109,7 +109,7 @@ export function AppShellV12({
   children,
   onCalculate,
   onViewResults,
-  projectName = 'Nowy projekt',
+  projectName,
   inspectorContent,
   validationStatus,
   validationWarnings = 0,
@@ -159,11 +159,6 @@ export function AppShellV12({
 
   const toggleInspector = useCallback(() => setInspectorCollapsed((v) => !v), []);
 
-  const handleChangeCaseClick = useCallback(() => navigateToVariants(), []);
-  const handleConfigureClick = useCallback(() => navigateToCaseConfig(), []);
-  const handleCalculateClick = useCallback(() => onCalculate?.(), [onCalculate]);
-  const handleResultsClick = useCallback(() => onViewResults?.(), [onViewResults]);
-
   const resolvedInspectorContent = useMemo(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
@@ -185,6 +180,8 @@ export function AppShellV12({
     >
       {/* === V12 — sync work-mode → overlay visibility (headless) === */}
       <V12OverlayModeController />
+      {/* === Skróty cofnij/ponów (Ctrl+Z/Y) — bezgłowy === */}
+      <div className="sr-only" aria-hidden="true"><UndoRedoButtons /></div>
 
       {/* === TopBar V12 (48px) — kontekst + tryby === */}
       <TopBar
@@ -194,26 +191,16 @@ export function AppShellV12({
         onViewResults={onViewResults}
       />
 
-      {/* === Paski kontekstu pracy === */}
-      <div className="shrink-0">
-        <ActiveCaseBar
-          onChangeCaseClick={handleChangeCaseClick}
-          onConfigureClick={handleConfigureClick}
-          onCalculateClick={handleCalculateClick}
-          onResultsClick={handleResultsClick}
+      {/* === Pasek przepływu pracy (48px, tylko MODEL_EDIT) === */}
+      {activeMode === 'MODEL_EDIT' && (
+        <WorkflowContextStrip
+          onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
+          onOpenCatalogBrowser={navigateToCatalog}
+          onOpenMassReview={() => setMassReviewOpen(true)}
+          onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
+          onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
         />
-        {activeMode === 'MODEL_EDIT' && (
-          <TopContextBar
-            projectName={projectName}
-            caseName={activeCaseId ?? undefined}
-            onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
-            onOpenCatalogBrowser={navigateToCatalog}
-            onOpenMassReview={() => setMassReviewOpen(true)}
-            onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
-            onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
-          />
-        )}
-      </div>
+      )}
 
       {/* === Główny układ 4-kolumnowy === */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -236,7 +223,7 @@ export function AppShellV12({
         >
           {/* Tryby wizualne SLD (MODEL_EDIT) */}
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
-            <div className="shrink-0 border-b border-scada-border bg-scada-surface px-3 py-1.5">
+            <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
               <SldVisualModes />
             </div>
           )}

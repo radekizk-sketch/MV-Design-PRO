@@ -61,6 +61,8 @@ export interface Connection {
   elementId?: string;
   /** Typ polaczenia (dla stylizacji) */
   connectionType?: 'branch' | 'switch' | 'source' | 'load';
+  /** Typ odcinka SN: LINE = napowietrzna, CABLE = kablowa. */
+  branchType?: BranchSymbol['branchType'];
 }
 
 /** Konfiguracja routingu */
@@ -207,6 +209,7 @@ export function generateConnections(
     toSymbol: AnySldSymbol;
     elementId?: string;
     connectionType?: 'branch' | 'switch' | 'source' | 'load';
+    branchType?: BranchSymbol['branchType'];
   }> = [];
 
   // Przetworz Branch i Switch (maja fromNodeId/toNodeId)
@@ -223,6 +226,7 @@ export function generateConnections(
           toSymbol,
           elementId: branch.elementId,
           connectionType: 'branch',
+          branchType: branch.branchType,
         });
       }
     }
@@ -303,6 +307,7 @@ export function generateConnections(
       edgeBendOverrides?.[request.id],
       request.elementId,
       request.connectionType,
+      request.branchType,
       autoLayoutPaths // AUTO-LAYOUT V1: pass pre-computed paths
     );
     connections.push(connection);
@@ -331,6 +336,7 @@ function createConnection(
   edgeBends?: Position[],
   elementId?: string,
   connectionType?: 'branch' | 'switch' | 'source' | 'load',
+  branchType?: BranchSymbol['branchType'],
   autoLayoutPaths?: Map<string, Position[]> // AUTO-LAYOUT V1: pre-computed paths
 ): Connection {
   // Wybierz najlepsze porty
@@ -370,6 +376,7 @@ function createConnection(
         path: alignedPath,
         elementId,
         connectionType,
+        branchType,
       };
     }
     // AUTO-FALLBACK: path intersects obstacles, use standard routing below
@@ -403,6 +410,7 @@ function createConnection(
     path,
     elementId,
     connectionType,
+    branchType,
   };
 }
 

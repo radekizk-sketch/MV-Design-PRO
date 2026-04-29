@@ -47,7 +47,14 @@ import { FieldBlockRenderer } from './FieldBlockRenderer';
 import { InlineBranchObjectRenderer } from './InlineBranchObjectRenderer';
 import { GpzSwitchgearRenderer } from './GpzFieldBlockRenderer';
 import { JunctionDotLayer } from './JunctionDotLayer';
-import { CANONICAL_GRID, CANONICAL_TYPOGRAPHY, CANONICAL_CANVAS } from './sldCanonicalStyle';
+import {
+  CANONICAL_CANVAS,
+  CANONICAL_GRID,
+  CANONICAL_STATE_COLORS,
+  CANONICAL_TYPOGRAPHY,
+  CANONICAL_VOLTAGE_COLORS,
+} from './sldCanonicalStyle';
+import { CABLE_DASH_ARRAY } from './IndustrialAesthetics';
 import { useSldReadabilityOverlay } from './SldReadabilityOverlay';
 import { shouldShowTechnicalLabels } from './sldDetailLevel';
 import {
@@ -345,6 +352,81 @@ const Grid: React.FC<GridProps> = ({ width, height, gridSize, viewport }) => {
 
   return <g data-testid="sld-grid">{lines}</g>;
 };
+
+function EngineeringLegend({ width, height }: { width: number; height: number }) {
+  const x = 12;
+  const y = Math.max(44, height - 88);
+  const lineX1 = x + 12;
+  const lineX2 = x + 48;
+  const labelX = x + 58;
+
+  return (
+    <g data-testid="sld-engineering-legend" transform={`translate(${x}, ${y})`} style={{ pointerEvents: 'none' }}>
+      <rect
+        x={0}
+        y={0}
+        width={Math.min(244, Math.max(180, width - 24))}
+        height={76}
+        rx={4}
+        fill="rgba(6, 17, 24, 0.88)"
+        stroke="rgba(51, 80, 92, 0.95)"
+        strokeWidth={1}
+      />
+      <line x1={lineX1} y1={16} x2={lineX2} y2={16} stroke={CANONICAL_VOLTAGE_COLORS.SN} strokeWidth={2.5} strokeDasharray={CABLE_DASH_ARRAY} />
+      <text x={labelX} y={19} fontFamily={CANONICAL_TYPOGRAPHY.fontFamily} fontSize={10} fill={CANONICAL_TYPOGRAPHY.labelColor}>Kabel SN</text>
+      <line x1={lineX1} y1={32} x2={lineX2} y2={32} stroke={CANONICAL_VOLTAGE_COLORS.SN} strokeWidth={2.5} />
+      <text x={labelX} y={35} fontFamily={CANONICAL_TYPOGRAPHY.fontFamily} fontSize={10} fill={CANONICAL_TYPOGRAPHY.labelColor}>Linia napowietrzna</text>
+      <circle cx={lineX1 + 6} cy={50} r={4} fill="none" stroke="#f59e0b" strokeWidth={1.5} />
+      <line x1={lineX1 + 2} y1={50} x2={lineX1 + 10} y2={50} stroke="#f59e0b" strokeWidth={1.5} />
+      <text x={labelX} y={53} fontFamily={CANONICAL_TYPOGRAPHY.fontFamily} fontSize={10} fill={CANONICAL_TYPOGRAPHY.labelColor}>NOP</text>
+      <rect x={lineX1 + 80} y={44} width={12} height={12} fill="none" stroke={CANONICAL_STATE_COLORS.selected} strokeWidth={1.5} />
+      <text x={lineX1 + 100} y={53} fontFamily={CANONICAL_TYPOGRAPHY.fontFamily} fontSize={10} fill={CANONICAL_TYPOGRAPHY.labelColor}>Wybrany</text>
+      <path d={`M${lineX1 + 80} 64 L${lineX1 + 86} 54 L${lineX1 + 92} 64 Z`} fill="#f59e0b" />
+      <text x={lineX1 + 100} y={65} fontFamily={CANONICAL_TYPOGRAPHY.fontFamily} fontSize={10} fill={CANONICAL_TYPOGRAPHY.labelColor}>Blokada</text>
+    </g>
+  );
+}
+
+function EmptyCanvasHint({
+  width,
+  height,
+  onCanvasClick,
+}: {
+  width: number;
+  height: number;
+  onCanvasClick?: () => void;
+}) {
+  return (
+    <g
+      data-testid="sld-empty-state"
+      onClick={onCanvasClick}
+      role="button"
+      aria-label="Brak danych schematu jednokreskowego."
+      style={{ cursor: onCanvasClick ? 'pointer' : 'default' }}
+    >
+      <text
+        x={width / 2}
+        y={height / 2 - 10}
+        textAnchor="middle"
+        fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+        fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
+        fill="#8aa6b9"
+      >
+        Brak danych schematu
+      </text>
+      <text
+        x={width / 2}
+        y={height / 2 + 14}
+        textAnchor="middle"
+        fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
+        fontSize={CANONICAL_TYPOGRAPHY.fontSize.small}
+        fill="#60798c"
+      >
+        Kanwa zostanie wypełniona wyłącznie danymi z aktywnego modelu.
+      </text>
+    </g>
+  );
+}
 
 /**
  * Main SLD View Canvas component (read-only) with CANONICAL symbols.
@@ -728,35 +810,10 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
       </g>
 
       {/* Empty state — CANONICAL typography */}
+      <EngineeringLegend width={width} height={height} />
+
       {symbols.length === 0 && (
-        <g
-          data-testid="sld-empty-state"
-          onClick={onCanvasClick}
-          role="button"
-          aria-label="Pusty schemat jednokreskowy. Dodaj Główny Punkt Zasilający z szyną SN i polem SN."
-          style={{ cursor: onCanvasClick ? 'pointer' : 'default' }}
-        >
-          <text
-            x={width / 2}
-            y={height / 2 - 12}
-            textAnchor="middle"
-            fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
-            fontSize={CANONICAL_TYPOGRAPHY.fontSize.large}
-            fill={CANONICAL_TYPOGRAPHY.labelColor}
-          >
-            Pusty schemat jednokreskowy
-          </text>
-          <text
-            x={width / 2}
-            y={height / 2 + 12}
-            textAnchor="middle"
-            fontFamily={CANONICAL_TYPOGRAPHY.fontFamily}
-            fontSize={CANONICAL_TYPOGRAPHY.fontSize.small}
-            fill={CANONICAL_TYPOGRAPHY.secondaryColor}
-          >
-            Dodaj GPZ, szynę SN i pierwsze pole SN, aby rozpocząć modelowanie sieci.
-          </text>
-        </g>
+        <EmptyCanvasHint width={width} height={height} onCanvasClick={onCanvasClick} />
       )}
 
       {interactionPreview && (

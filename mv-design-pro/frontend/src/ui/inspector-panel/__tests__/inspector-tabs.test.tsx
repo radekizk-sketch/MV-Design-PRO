@@ -5,35 +5,34 @@ import { EmptyInspectorPanel } from '../EmptyInspectorPanel';
 import { INSPECTOR_TABS, getVisibleInspectorTabs } from '../inspectorTabRegistry';
 
 describe('inspector-tabs - Inspektor techniczny', () => {
-  it('rejestr ma dziewięć kanonicznych zakładek', () => {
-    expect(INSPECTOR_TABS.map((tab) => tab.label)).toEqual([
-      'Identyfikacja',
-      'Parametry',
-      'Katalog',
-      'Wyniki',
-      'Uzasadnienie',
-      'Gotowość',
-      'Zabezpieczenia',
-      'Automatyka',
-      'Historia',
+  it('rejestr ma dziewiec kanonicznych zakladek', () => {
+    expect(INSPECTOR_TABS.map((tab) => tab.id)).toEqual([
+      'identyfikacja',
+      'parametry',
+      'katalog',
+      'wyniki',
+      'uzasadnienie',
+      'gotowosc',
+      'zabezpieczenia',
+      'automatyka',
+      'historia',
     ]);
   });
 
-  it('dla pola SN pokazuje zakładki zabezpieczeń i automatyki', () => {
-    const tabs = getVisibleInspectorTabs('BaySN').map((tab) => tab.label);
-    expect(tabs).toContain('Zabezpieczenia');
-    expect(tabs).toContain('Automatyka');
-    expect(tabs).toContain('Wyniki');
+  it('dla pola SN pokazuje zakladki zabezpieczen i automatyki', () => {
+    const tabs = getVisibleInspectorTabs('BaySN').map((tab) => tab.id);
+    expect(tabs).toContain('zabezpieczenia');
+    expect(tabs).toContain('automatyka');
+    expect(tabs).toContain('wyniki');
   });
 
-  it('stan braku wyboru nie pokazuje pustych zakładek specjalistycznych', () => {
+  it('stan braku wyboru pokazuje karte semantyczna bez pustych zakladek specjalistycznych', () => {
     render(<EmptyInspectorPanel selectedElement={null} />);
+    expect(screen.getByText('Karta semantyczna')).toBeInTheDocument();
     expect(screen.getByText('Inspektor techniczny')).toBeInTheDocument();
-    expect(screen.getByText('Wybierz obiekt techniczny')).toBeInTheDocument();
-    expect(screen.getByText(/Brak zaznaczenia nie oznacza braku modelu/i)).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Identyfikacja' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Gotowość' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Historia' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Zabezpieczenia' })).not.toBeInTheDocument();
+    expect(screen.getByText(/Rola/)).toBeInTheDocument();
+    expect(screen.getByText('Rodzaj elementu')).toBeInTheDocument();
+    expect(screen.getByText(/Kompletno/)).toBeInTheDocument();
+    expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 });

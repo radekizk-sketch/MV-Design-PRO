@@ -18,6 +18,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { SLDView } from './SLDView';
 import { useSldEditorStore } from '../sld-editor/SldEditorStore';
 import { useSelectionStore } from '../selection/store';
+import { useAppStateStore } from '../app-state/store';
 import { ProtectionDiagnosticsPanel } from '../results/ProtectionDiagnosticsPanel';
 import { SldInspectorPanel } from './inspector';
 import { buildReferenceScenario, type ReferenceScenarioId } from './core/referenceTopologies';
@@ -86,6 +87,8 @@ export const SLDViewPage: React.FC<SLDViewPageProps> = ({
   void useDemo;
   // Get symbols from store
   const storeSymbols = useSldEditorStore((state) => Array.from(state.symbols.values()));
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
     // Panel collapsed state
   const [diagnosticsPanelCollapsed, setDiagnosticsPanelCollapsed] = useState(false);
   const [inspectorPanelVisible, setInspectorPanelVisible] = useState(true);
@@ -116,6 +119,9 @@ export const SLDViewPage: React.FC<SLDViewPageProps> = ({
 
   // Get current selection from store (for synchronization)
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
+  const diagnosticsContext = activeProjectId && activeSnapshotId
+    ? { projectId: activeProjectId, diagramId: activeSnapshotId }
+    : null;
 
   // Toggle diagnostics panel
   const toggleDiagnosticsPanel = useCallback(() => {
@@ -219,10 +225,16 @@ export const SLDViewPage: React.FC<SLDViewPageProps> = ({
           {/* Panel content (hidden when collapsed) */}
           {!diagnosticsPanelCollapsed && (
             <div className="h-[calc(100%-36px)] overflow-hidden">
-              <ProtectionDiagnosticsPanel
-                projectId="demo-project"
-                diagramId="demo-diagram"
-              />
+              {diagnosticsContext ? (
+                <ProtectionDiagnosticsPanel
+                  projectId={diagnosticsContext.projectId}
+                  diagramId={diagnosticsContext.diagramId}
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center p-6 text-center text-sm text-gray-500">
+                  Diagnostyka zabezpieczeń zostanie pokazana po wybraniu aktywnego projektu i migawki.
+                </div>
+              )}
             </div>
           )}
         </div>

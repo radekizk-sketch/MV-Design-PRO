@@ -69,7 +69,7 @@ export function CanonicalLayout({
   children,
   onCalculate,
   onViewResults,
-  projectName = 'Nowy projekt',
+  projectName,
   inspectorContent,
   validationStatus,
   validationWarnings = 0,

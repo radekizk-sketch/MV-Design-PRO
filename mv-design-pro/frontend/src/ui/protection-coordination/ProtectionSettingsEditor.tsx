@@ -435,7 +435,7 @@ export function ProtectionSettingsEditor({
             value={localDevice.model ?? ''}
             onChange={(e) => updateDevice({ model: e.target.value || undefined })}
             className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
-            placeholder="np. REF615, SEL-751"
+            placeholder="np. model zabezpieczenia"
           />
         </div>
 

@@ -59,13 +59,13 @@ export interface SldWorkDockProps {
 function toneClasses(tone: ContextItem['tone'] = 'default'): string {
   switch (tone) {
     case 'ok':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-900';
+      return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100';
     case 'warn':
-      return 'border-amber-200 bg-amber-50 text-amber-900';
+      return 'border-amber-500/35 bg-amber-500/12 text-amber-100';
     case 'danger':
-      return 'border-rose-200 bg-rose-50 text-rose-900';
+      return 'border-rose-500/35 bg-rose-500/12 text-rose-100';
     default:
-      return 'border-slate-200 bg-slate-50 text-slate-900';
+      return 'border-scada-border bg-scada-bg text-scada-text';
   }
 }
 
@@ -82,13 +82,13 @@ function Section({
 }) {
   return (
     <section
-      className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
+      className="rounded border border-scada-border bg-scada-surface p-3 shadow-sm shadow-cyan-950/10"
       data-testid={testId}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
         {eyebrow}
       </div>
-      <div className="mt-1 text-sm font-semibold text-slate-900">{title}</div>
+      <div className="mt-1 text-sm font-semibold text-scada-text">{title}</div>
       <div className="mt-3">{children}</div>
     </section>
   );
@@ -96,9 +96,9 @@ function Section({
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+    <div className="rounded border border-scada-border bg-scada-bg px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wide text-scada-muted">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-scada-text">{value}</div>
     </div>
   );
 }
@@ -119,17 +119,17 @@ export function SldWorkDock({
 
   return (
     <aside
-      className="flex w-[368px] min-w-[368px] flex-col overflow-hidden border-r border-slate-200 bg-slate-50/95 backdrop-blur"
+      className="flex w-[368px] min-w-[368px] flex-col overflow-hidden border-r border-scada-border bg-scada-panel backdrop-blur"
       data-testid="sld-work-dock"
     >
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+      <div className="border-b border-scada-border bg-scada-surface px-4 py-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
           Dock operatorski V12.5.1
         </div>
-        <h2 className="mt-1 text-sm font-semibold text-slate-900">
+        <h2 className="mt-1 text-sm font-semibold text-scada-text">
           Prowadzenie projektu ze schematu jednokreskowego
         </h2>
-        <p className="mt-1 text-xs leading-5 text-slate-500">
+        <p className="mt-1 text-xs leading-5 text-scada-muted">
           Jedyny aktywny panel roboczy. Dzialania, blokady i stan modelu sa powiazane z
           aktualnym kontekstem pracy.
         </p>
@@ -141,7 +141,7 @@ export function SldWorkDock({
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               dockMode === 'workspace'
                 ? 'bg-blue-600 text-white'
-                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                : 'border border-scada-border bg-scada-bg text-scada-muted hover:bg-scada-active hover:text-scada-text'
             }`}
           >
             Kontekst i drzewo
@@ -153,7 +153,7 @@ export function SldWorkDock({
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
               dockMode === 'readiness'
                 ? 'bg-blue-600 text-white'
-                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                : 'border border-scada-border bg-scada-bg text-scada-muted hover:bg-scada-active hover:text-scada-text'
             }`}
           >
             Proces i gotowosc
@@ -171,7 +171,7 @@ export function SldWorkDock({
                 key={item.label}
                 className={`rounded-lg border px-3 py-2 ${toneClasses(item.tone)}`}
               >
-                <div className="text-[10px] uppercase tracking-wide text-slate-500">{item.label}</div>
+                <div className="text-[10px] uppercase tracking-wide text-scada-muted">{item.label}</div>
                 <div className="mt-1 text-sm font-semibold">{item.value}</div>
               </div>
             ))}
@@ -183,7 +183,7 @@ export function SldWorkDock({
             <div
               data-testid="project-tree"
               data-empty="true"
-              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500"
+              className="rounded border border-scada-border bg-scada-bg px-3 py-2 text-xs text-scada-muted"
             >
               Drzewo modelu nie jest jeszcze dostepne dla aktywnego kontekstu.
             </div>
@@ -194,8 +194,8 @@ export function SldWorkDock({
           {nextStep ? (
             <div className="space-y-3">
               <div>
-                <div className="text-sm font-semibold text-slate-900">{nextStep.title}</div>
-                <p className="mt-1 text-xs leading-5 text-slate-600">{nextStep.description}</p>
+                <div className="text-sm font-semibold text-scada-text">{nextStep.title}</div>
+                <p className="mt-1 text-xs leading-5 text-scada-muted">{nextStep.description}</p>
               </div>
               <button
                 type="button"
@@ -207,13 +207,13 @@ export function SldWorkDock({
                 {nextStep.actionLabel}
               </button>
               {nextStep.disabledReason && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                <div className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
                   {nextStep.disabledReason}
                 </div>
               )}
             </div>
           ) : (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+            <div className="rounded border border-scada-border bg-scada-bg px-3 py-2 text-xs text-scada-muted">
               Brak zalecanej akcji. Wybierz element na schemacie albo otworz powierzchnie analityczne.
             </div>
           )}
@@ -222,12 +222,12 @@ export function SldWorkDock({
         <Section eyebrow="Blokady i naprawy" title="Braki, ryzyka i sciezki naprawy" testId="sld-dock-repair">
           <div className="space-y-3">
             {interactionMessage && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+              <div className="rounded border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
                 {interactionMessage}
               </div>
             )}
             {interactionHint && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+              <div className="rounded border border-scada-border bg-scada-bg px-3 py-2 text-[11px] text-scada-muted">
                 {interactionHint}
               </div>
             )}
@@ -239,22 +239,22 @@ export function SldWorkDock({
           <div className="space-y-4">
             {actionGroups.map((group) => (
               <div key={group.title}>
-                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-scada-muted">
                   {group.title}
                 </div>
                 <div className="space-y-2">
                   {group.actions.map((action) => (
-                    <div key={action.id} className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                    <div key={action.id} className="rounded border border-scada-border bg-scada-bg p-2">
                       <button
                         type="button"
                         onClick={action.onSelect}
                         disabled={!action.enabled}
                         className={`flex w-full items-center justify-between rounded-md px-2 py-2 text-left text-sm font-medium transition ${
                           action.active
-                            ? 'bg-blue-100 text-blue-900'
+                            ? 'bg-blue-600 text-white'
                             : action.enabled
-                              ? 'bg-white text-slate-900 hover:bg-slate-100'
-                              : 'cursor-not-allowed bg-slate-100 text-slate-400'
+                              ? 'bg-scada-surface text-scada-text hover:bg-scada-active'
+                              : 'cursor-not-allowed bg-scada-surface/60 text-scada-muted'
                         }`}
                       >
                         <span>{action.label}</span>
@@ -262,9 +262,9 @@ export function SldWorkDock({
                           {action.active ? 'Aktywne' : action.enabled ? 'Dostepne' : 'Zablokowane'}
                         </span>
                       </button>
-                      <div className="mt-2 text-[11px] text-slate-600">{action.description}</div>
+                      <div className="mt-2 text-[11px] text-scada-muted">{action.description}</div>
                       {!action.enabled && action.disabledReason && (
-                        <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+                        <div className="mt-2 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-100">
                           {action.disabledReason}
                         </div>
                       )}
@@ -275,17 +275,17 @@ export function SldWorkDock({
             ))}
 
             <div>
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-scada-muted">
                 Obiekty topologiczne
               </div>
               <div className="space-y-2">
                 {objectPalette.map((item) => (
                   <div
                     key={item.label}
-                    className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                    className="rounded border border-scada-border bg-scada-bg px-3 py-2"
                   >
-                    <div className="text-sm font-medium text-slate-900">{item.label}</div>
-                    <div className="mt-1 text-[11px] text-slate-600">{item.description}</div>
+                    <div className="text-sm font-medium text-scada-text">{item.label}</div>
+                    <div className="mt-1 text-[11px] text-scada-muted">{item.description}</div>
                   </div>
                 ))}
               </div>
@@ -310,7 +310,7 @@ export function SldWorkDock({
         {dockMode === 'readiness' && (
           <div className="min-h-full" data-testid="sld-dock-process-mode">
             {processContent ?? (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm">
+              <div className="rounded border border-scada-border bg-scada-surface p-4 text-sm text-scada-muted shadow-sm shadow-cyan-950/10">
                 Brak aktywnego panelu procesu dla biezacego kontekstu.
               </div>
             )}

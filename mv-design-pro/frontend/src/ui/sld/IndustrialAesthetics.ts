@@ -556,11 +556,11 @@ export const STATION_INTERNAL_STROKE = 2 as const;
 /** Promień kropki połączeniowej IEC 61082 [px]. */
 export const JUNCTION_DOT_RADIUS = 4 as const;
 
-/** Wzór kreskowania linii napowietrznej (SVG stroke-dasharray). */
-export const OVERHEAD_DASH_ARRAY = '12 6' as const;
+/** Linia napowietrzna SN = linia ciągła (brak dash). */
+export const OVERHEAD_DASH_ARRAY = 'none' as const;
 
-/** Kabel = linia ciągła (brak dash). */
-export const CABLE_DASH_ARRAY = 'none' as const;
+/** Kabel SN = linia przerywana (SVG stroke-dasharray). */
+export const CABLE_DASH_ARRAY = '8 5' as const;
 
 /** Offset etykiety węzła po lewej stronie toru [px]. */
 export const NODE_LABEL_OFFSET_X = -20 as const;
