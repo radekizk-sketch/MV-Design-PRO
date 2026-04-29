@@ -145,7 +145,7 @@ MV-Design-PRO/
 │   │   │   ├── proof-inspector/  # Proof inspector UI module
 │   │   │   ├── types/            # Shared TypeScript type definitions
 │   │   │   ├── test/             # Test infrastructure (setup.ts)
-│   │   │   └── ui/               # React components (50+ feature modules)
+│   │   │   └── ui/               # React components (60+ feature modules)
 │   │   │       ├── sld/          # Single Line Diagram (primary)
 │   │   │       │   ├── core/     # VisualGraph, TopologyAdapter, LayoutPipeline, StationBlockBuilder
 │   │   │       │   ├── etap_symbols/
@@ -177,6 +177,7 @@ MV-Design-PRO/
 │   │   │       ├── topology/           # Topology tree
 │   │   │       ├── power-flow-results/ # Load flow results
 │   │   │       ├── power-flow-comparison/ # Load flow A/B comparison
+│   │   │       ├── power-distribution/ # Power distribution analysis
 │   │   │       ├── context-menu/       # Context menu actions
 │   │   │       ├── app-state/          # Global Zustand store
 │   │   │       ├── history/            # Undo/redo
@@ -205,9 +206,15 @@ MV-Design-PRO/
 │   │   │       ├── inspector/          # Generic inspector
 │   │   │       ├── inspector-panel/    # Inspector panel wrapper
 │   │   │       ├── issue-panel/        # Validation issue panel
+│   │   │       ├── canon/              # Canonical form utilities
+│   │   │       ├── field/              # Form field components
+│   │   │       ├── network-build/      # Network building utilities
+│   │   │       ├── workspace/          # Workspace management
+│   │   │       ├── icons/              # Icon definitions
+│   │   │       ├── shell/              # Shell components
 │   │   │       └── ...                 # shared/, common/, config/, layout/, types.ts
 │   │   └── e2e/                  # Playwright end-to-end tests
-│   ├── scripts/                  # CI/CD guard scripts (33 scripts)
+│   ├── scripts/                  # CI/CD guard scripts (64+ scripts)
 │   └── docs/                     # Detailed documentation (150+ files)
 │       ├── spec/                 # DETAILED SPECIFICATION (18 chapters + supplements - SOURCE OF TRUTH)
 │       ├── ui/                   # UI contracts (35+ canonical contracts)
@@ -437,7 +444,7 @@ docker-compose logs -f backend
 docker-compose down
 ```
 
-### Guard Scripts (33 total)
+### Guard Scripts (64+ total)
 ```bash
 cd mv-design-pro
 
@@ -447,27 +454,32 @@ python scripts/pcc_zero_guard.py                  # Prevent PCC in NetworkModel
 python scripts/domain_no_guessing_guard.py        # Domain model validation
 python scripts/solver_boundary_guard.py           # Solver layer isolation
 python scripts/solver_diff_guard.py               # Solver output diff guard
+python scripts/active_public_layer.py             # Active/public layer separation
 
 # Operations & canonicalization
 python scripts/canonical_ops_guard.py             # Canonical operations check
 python scripts/readiness_codes_guard.py           # Readiness gate validation
 python scripts/audit_contract_guard.py            # Audit contract compliance
+python scripts/api_lifecycle_guard.py             # API lifecycle enforcement
 
 # Catalog guards
 python scripts/catalog_binding_guard.py           # Catalog binding enforcement
 python scripts/catalog_enforcement_guard.py       # Catalog usage enforcement
 python scripts/catalog_gate_guard.py              # Catalog gate checks
+python scripts/catalog_metadata_guard.py          # Catalog metadata validation
 python scripts/transformer_catalog_voltage_guard.py # Transformer catalog voltage
 
 # UI / UX guards
 python scripts/no_codenames_guard.py              # Block codenames in UI strings
 python scripts/test_no_codenames_guard.py         # Block codenames in test artifacts
 python scripts/forbidden_ui_terms_guard.py        # Block forbidden UI terminology
+python scripts/ui_terminology_guard.py            # UI terminology validation
 python scripts/dead_click_guard.py                # Detect dead/unhandled UI actions
 python scripts/fix_action_completeness_guard.py   # Fix action completeness
 python scripts/dialog_completeness_guard.py       # Dialog contract completeness
 python scripts/nn_source_menu_guard.py            # Source menu guard
 python scripts/guard_ux_flow_v1.py                # UX flow v1 compliance
+python scripts/interaction_matrix_guard.py        # Interaction matrix validation
 
 # Physics separation guards
 python scripts/overlay_no_physics_guard.py        # Overlay layer physics prohibition
@@ -485,10 +497,37 @@ python scripts/results_workspace_determinism_guard.py # Results workspace determ
 
 # Schema guards
 python scripts/resultset_v1_schema_guard.py       # ResultSet v1 schema compliance
+python scripts/severity_contract_guard.py         # Severity contract enforcement
 
-# Documentation
+# Legacy & compatibility guards
+python scripts/legacy_public_path_guard.py        # Legacy path detection
+python scripts/v12xx_canon_guard.py               # v12.xx canonical form guard
+python scripts/reference_networks_guard.py        # Reference network validation
+
+# Repository & quality guards
 python scripts/docs_guard.py                      # Documentation integrity
 python scripts/local_truth_guard.py               # Local vs remote consistency
+python scripts/docs_archive_guard.py              # Documentation archive validation
+python scripts/repo_hygiene_guard.py              # Repository cleanliness
+python scripts/grep_zero_guard.py                 # Zero-occurrence grep checks
+python scripts/import_graph_guard.py              # Import dependency graph analysis
+python scripts/vulture_guard.py                   # Dead code detection
+python scripts/utf8_mojibake_guard.py             # UTF-8 encoding validation
+
+# Testing & verification
+python scripts/test_no_codenames_guard.py         # Test artifact codename check
+python scripts/test_api_lifecycle_guard.py        # API lifecycle test validation
+python scripts/test_interaction_matrix_guard.py   # Interaction matrix test validation
+python scripts/test_legacy_public_path_guard.py   # Legacy path test validation
+python scripts/test_reference_networks_guard.py   # Reference network test validation
+python scripts/test_severity_contract_guard.py    # Severity contract test validation
+python scripts/test_ui_terminology_guard.py       # UI terminology test validation
+python scripts/test_utf8_mojibake_guard.py        # UTF-8 encoding test validation
+python scripts/verify_v12_5.py                    # v12.5 verification suite
+python scripts/verify_v12_5_1.py                  # v12.5.1 verification suite
+
+# Scripts & utilities
+python scripts/smoke_local.sh                     # Local smoke test
 ```
 
 ## CI/CD Pipelines
@@ -599,7 +638,7 @@ The Proof Engine generates mathematical proofs from solver results:
 - PDF (`proof.pdf`)
 - DOCX
 
-## Project Status (as of 2026-03)
+## Project Status (as of 2026-04)
 
 The system is fully functional with:
 - 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
@@ -611,7 +650,10 @@ The system is fully functional with:
 - CAD geometry editing in SLD
 - PDF/DOCX report generation
 - ENM v1.0 (EnergyNetworkModel)
-- Active work: Phase 3.0 post-10/10 audit (see `PLANS.md` and `docs/plan/PLAN_10_10_GLOBAL_SN.md`)
+- Active work: Phase 3.0 post-10/10 audit with completed execution steps I-VII (see `PLANS.md` and `docs/plan/PLAN_10_10_GLOBAL_SN.md`)
+  - SLD industrial aesthetics: golden render manifest, deterministic layout, ABB-inspired visual tokens
+  - E2E critical path: domain operations → snapshot → SLD → readiness gates → analysis → results
+  - CI guard hardening: 64+ validation guards, connection node detection, API lifecycle enforcement
 
 ## Common Tasks
 
@@ -651,23 +693,54 @@ The system is fully functional with:
 ### Running All Guards Locally
 ```bash
 cd mv-design-pro
+
+# Core architectural guards (critical)
 python scripts/pcc_zero_guard.py
+python scripts/domain_no_guessing_guard.py
+python scripts/arch_guard.py
+python scripts/solver_boundary_guard.py
+python scripts/canonical_ops_guard.py
+
+# UI & terminology guards
 python scripts/no_codenames_guard.py
 python scripts/forbidden_ui_terms_guard.py
-python scripts/domain_no_guessing_guard.py
-python scripts/canonical_ops_guard.py
-python scripts/readiness_codes_guard.py
-python scripts/sld_determinism_guards.py
-python scripts/arch_guard.py
-python scripts/docs_guard.py
+python scripts/ui_terminology_guard.py
+python scripts/dialog_completeness_guard.py
+python scripts/dead_click_guard.py
+
+# Catalog & binding guards
 python scripts/catalog_binding_guard.py
+python scripts/catalog_enforcement_guard.py
+python scripts/catalog_gate_guard.py
+python scripts/catalog_metadata_guard.py
+
+# Physics & solver guards
 python scripts/overlay_no_physics_guard.py
 python scripts/load_flow_no_heuristics_guard.py
 python scripts/protection_no_heuristics_guard.py
+python scripts/trace_ui_leak_guard.py
+
+# Determinism & trace guards
+python scripts/sld_determinism_guards.py
 python scripts/trace_determinism_guard.py
 python scripts/fault_scenarios_determinism_guard.py
 python scripts/results_workspace_determinism_guard.py
 python scripts/resultset_v1_schema_guard.py
+
+# Validation & contracts
+python scripts/readiness_codes_guard.py
+python scripts/audit_contract_guard.py
+python scripts/api_lifecycle_guard.py
+python scripts/severity_contract_guard.py
+python scripts/reference_networks_guard.py
+
+# Repository & code quality
+python scripts/docs_guard.py
+python scripts/local_truth_guard.py
+python scripts/docs_archive_guard.py
+python scripts/repo_hygiene_guard.py
+python scripts/import_graph_guard.py
+python scripts/vulture_guard.py
 ```
 
 ## Important Warnings
