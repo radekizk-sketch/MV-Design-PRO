@@ -201,6 +201,7 @@ export function SldWorkDock({
                 type="button"
                 onClick={nextStep.onAction}
                 disabled={nextStep.disabled}
+                data-testid="sld-dock-next-step-action"
                 className="w-full rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {nextStep.actionLabel}

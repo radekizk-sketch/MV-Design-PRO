@@ -11,6 +11,7 @@
 
 import type { ElementType, SelectedElement } from '../types';
 import type { AnySldSymbol, Connection as RenderConnection, Position } from '../sld-editor/types';
+import type { EngineeringSemanticModel, SemanticDiagnosticsReport } from '../engineering-semantic';
 import type { CanonicalAnnotationsV1 } from './core/layoutResult';
 import { CANONICAL_GEOMETRY } from './sldCanonicalStyle';
 
@@ -126,6 +127,12 @@ export interface SLDViewProps {
 
   /** Podgląd walidacyjny aktywnego narzędzia na płótnie */
   interactionPreview?: InteractionPreviewState | null;
+
+  /** Projekcja semantyczna ENM uzywana przez SLD jako zrodlo roli, domeny i portow. */
+  semanticModel?: EngineeringSemanticModel | null;
+
+  /** Raport ENM kontra projekcja semantyczna, pokazywany w trybie Diagnostyka. */
+  semanticDiagnosticsReport?: SemanticDiagnosticsReport | null;
 }
 
 /**
@@ -168,6 +175,9 @@ export interface SLDViewCanvasProps {
 
   /** Podgląd walidacyjny aktywnego narzędzia */
   interactionPreview?: InteractionPreviewState | null;
+
+  /** Projekcja semantyczna ENM uzywana przez canvas jako zrodlo portow. */
+  semanticModel?: EngineeringSemanticModel | null;
 
   /** Viewport state */
   viewport: ViewportState;

@@ -6,9 +6,10 @@ import { SLDViewCanvas } from '../SLDViewCanvas';
 import type { ViewportState } from '../types';
 
 vi.mock('../symbols', () => ({
-  UnifiedSymbolRenderer: ({ symbol, handlers }: any) => (
+  UnifiedSymbolRenderer: ({ symbol, handlers, visualState }: any) => (
     <g
       data-testid={`mock-symbol-${symbol.id}`}
+      data-energized={String(visualState?.energized)}
       onClick={() => handlers?.onClick?.(symbol.id)}
       onDoubleClick={() => handlers?.onDoubleClick?.(symbol.id)}
     >
@@ -115,6 +116,128 @@ describe('SLDViewCanvas interaction surface', () => {
     );
 
     expect(screen.queryByTestId('sld-port-source-1-TRUNK_OUT')).toBeNull();
+  });
+
+  it('renderuje porty z EngineeringSemanticModel zamiast zgadywac z ElementType', () => {
+    render(
+      <SLDViewCanvas
+        symbols={[
+          {
+            id: 'visual-bus-like',
+            elementId: 'bay-l3',
+            elementType: 'Bus',
+            elementName: 'Pole L3',
+            position: { x: 100, y: 100 },
+            inService: true,
+          } as any,
+        ]}
+        selectedId="bay-l3"
+        onSymbolClick={vi.fn()}
+        viewport={VIEWPORT}
+        showGrid={false}
+        width={800}
+        height={500}
+        semanticModel={{
+          semanticHash: 'sem-1',
+          elements: [
+            {
+              refId: 'bay-l3',
+              elementKind: 'MV_BAY',
+              engineeringRole: 'LINE_FEEDER_BAY',
+              completeness: 'MODEL_TECHNICZNY_PELNY',
+              voltageDomain: 'SN',
+              dataQualityState: 'PELNA',
+              ports: [
+                {
+                  portId: 'bay-l3:out',
+                  ownerRefId: 'bay-l3',
+                  role: 'BAY_SN_OUT',
+                  voltageDomain: 'SN',
+                  nominalVoltageKv: 15,
+                  phaseSystem: 'ABC',
+                  connectionSide: 'STRONA_LINII',
+                  minConnections: 0,
+                  maxConnections: 1,
+                  connectionPolicyRef: 'policy:BAY_SN_OUT',
+                  requiredConnectionKinds: ['TOR_MOCY'],
+                  forbiddenConnectionKinds: [],
+                },
+              ],
+            },
+          ],
+          connections: [],
+          physicalTopologyGraph: {
+            graphId: 'graph-ports',
+            connectionRefs: [],
+            elementRefs: ['bay-l3'],
+          },
+        } as any}
+      />,
+    );
+
+    expect(screen.getByTestId('sld-port-visual-bus-like-BAY_SN_OUT')).toBeDefined();
+    expect(screen.queryByTestId('sld-port-visual-bus-like-TRUNK_OUT')).toBeNull();
+  });
+
+  it('energizacje bierze z EngineeringSemanticModel, nie z wizualnego elementType zrodla', () => {
+    render(
+      <SLDViewCanvas
+        symbols={[
+          {
+            id: 'visual-source-like',
+            elementId: 'bus-semantic',
+            elementType: 'Source',
+            elementName: 'utility_feeder grid PV',
+            position: { x: 100, y: 100 },
+            inService: true,
+            connectedToNodeId: 'bus-semantic',
+          } as any,
+        ]}
+        selectedId={null}
+        onSymbolClick={vi.fn()}
+        viewport={VIEWPORT}
+        showGrid={false}
+        width={800}
+        height={500}
+        semanticModel={{
+          semanticHash: 'sem-2',
+          elements: [
+            {
+              refId: 'bus-semantic',
+              elementKind: 'BUSBAR_SECTION',
+              engineeringRole: 'BUSBAR_SECTION',
+              completeness: 'MODEL_TECHNICZNY_PELNY',
+              voltageDomain: 'SN',
+              dataQualityState: 'PELNA',
+              ports: [
+                {
+                  portId: 'bus-semantic:p',
+                  ownerRefId: 'bus-semantic',
+                  role: 'BUSBAR_SN',
+                  voltageDomain: 'SN',
+                  nominalVoltageKv: 15,
+                  phaseSystem: 'ABC',
+                  connectionSide: 'NIE_DOTYCZY',
+                  minConnections: 0,
+                  maxConnections: 2,
+                  connectionPolicyRef: 'policy:BUSBAR_SN',
+                  requiredConnectionKinds: ['TOR_MOCY'],
+                  forbiddenConnectionKinds: [],
+                },
+              ],
+            },
+          ],
+          connections: [],
+          physicalTopologyGraph: {
+            graphId: 'graph-1',
+            connectionRefs: [],
+            elementRefs: ['bus-semantic'],
+          },
+        } as any}
+      />,
+    );
+
+    expect(screen.getByTestId('mock-symbol-visual-source-like')).toHaveAttribute('data-energized', 'false');
   });
 
   it('klik tla wywoluje callback resetu interakcji', () => {

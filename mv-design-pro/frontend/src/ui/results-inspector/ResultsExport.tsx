@@ -267,7 +267,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-slate-900">Generator raportu końcowego</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Raport korzysta ze wspolnego kontraktu wynikow, White Box i aktywnego uruchomienia.
+            Raport korzysta ze wspolnego kontraktu wynikow, uzasadnienia inzynierskiego i aktywnego uruchomienia.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">
@@ -303,8 +303,8 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
               value={reportScope}
               onChange={(event) => setReportScope(event.target.value as ReportScope)}
             >
-              <option value="whole_run">whole_run</option>
-              <option value="active_table">active_table</option>
+              <option value="whole_run">cale uruchomienie</option>
+              <option value="active_table">aktywna tabela</option>
             </select>
           </label>
         </div>

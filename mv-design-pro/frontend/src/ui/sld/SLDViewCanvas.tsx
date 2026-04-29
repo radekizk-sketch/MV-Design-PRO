@@ -33,8 +33,13 @@ import React, { useCallback, useMemo } from 'react';
 import type { AnySldSymbol, Connection as RenderConnection } from '../sld-editor/types';
 import { getPortPoint, type PortName } from '../sld-editor/utils/portUtils';
 import type { ElementType } from '../types';
+import type {
+  EngineeringElement,
+  PortRole,
+  VoltageDomain,
+} from '../engineering-semantic';
 import type { InteractionPortRole, SLDViewCanvasProps, ViewportState } from './types';
-import { calculateEnergization } from './energization';
+import { calculateEnergization, calculateLegacyTestOnlyEnergization } from './energization';
 import { ConnectionsLayer } from './ConnectionRenderer';
 import { UnifiedSymbolRenderer, type SymbolVisualState, type SymbolInteractionHandlers } from './symbols';
 import { BranchRenderer } from './BranchRenderer';
@@ -123,7 +128,46 @@ const Symbol: React.FC<SymbolProps> = ({
   );
 };
 
-function getPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
+function mapSemanticPortRoleToInteractionRole(
+  role: PortRole,
+  voltageDomain: VoltageDomain,
+): InteractionPortRole | null {
+  switch (role) {
+    case 'BAY_SN_IN':
+    case 'BAY_SN_OUT':
+    case 'BAY_SN_TRANSFORMER':
+    case 'SEGMENT_SN_IN':
+    case 'SEGMENT_SN_OUT':
+    case 'TRANSFORMER_SN':
+    case 'TRANSFORMER_NN':
+    case 'LV_FEEDER_OUT':
+    case 'SOURCE_AC':
+    case 'SOURCE_DC':
+      return role;
+    case 'TRANSFORMER_HIGH':
+      return voltageDomain === 'NN' ? 'TRANSFORMER_NN' : 'TRANSFORMER_SN';
+    case 'TRANSFORMER_LOW':
+      return voltageDomain === 'NN' ? 'TRANSFORMER_NN' : 'TRANSFORMER_SN';
+    case 'BAY_COUPLER_A':
+      return 'BAY_SN_IN';
+    case 'BAY_COUPLER_B':
+      return 'BAY_SN_OUT';
+    default:
+      return null;
+  }
+}
+
+function getSemanticPortsForSymbol(element: EngineeringElement | undefined): InteractionPortRole[] {
+  if (!element) return [];
+
+  const roles = element.ports
+    .map((port) => mapSemanticPortRoleToInteractionRole(port.role, port.voltageDomain))
+    .filter((role): role is InteractionPortRole => role !== null);
+
+  return Array.from(new Set(roles));
+}
+
+function getLegacyPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
   switch (symbol.elementType) {
     case 'Bus':
       return [];
@@ -134,6 +178,18 @@ function getPortsForSymbol(symbol: AnySldSymbol): InteractionPortRole[] {
     default:
       return [];
   }
+}
+
+function getPortsForSymbol(
+  symbol: AnySldSymbol,
+  semanticElement: EngineeringElement | undefined,
+  hasSemanticModel: boolean,
+): InteractionPortRole[] {
+  if (hasSemanticModel) {
+    return getSemanticPortsForSymbol(semanticElement);
+  }
+
+  return getLegacyPortsForSymbol(symbol);
 }
 
 function getPortLabel(role: InteractionPortRole): string {
@@ -313,6 +369,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   onSegmentHover,
   selectedConnectionId,
   interactionPreview,
+  semanticModel = null,
   viewport,
   showGrid,
   width,
@@ -328,6 +385,10 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const gpzFeederFields = canonicalAnnotations?.gpzFeederFields ?? [];
   const stationChains = canonicalAnnotations?.stationChains ?? [];
   const hasGpzSwitchgear = hasCanonicalGpzSwitchgear(canonicalAnnotations);
+  const semanticElementByRef = useMemo(
+    () => new Map((semanticModel?.elements ?? []).map((element) => [element.refId, element])),
+    [semanticModel],
+  );
   const suppressedGpzSymbolIds = useMemo(
     () => collectGpzSwitchgearSuppressedSymbolIds(symbols, canonicalAnnotations),
     [canonicalAnnotations, symbols],
@@ -355,8 +416,13 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     return true;
   });
 
-  // Calculate energization state (UI-only, deterministic)
-  const energizationState = useMemo(() => calculateEnergization(symbols), [symbols]);
+  // Calculate energization state from semantic operation projection when available.
+  const energizationState = useMemo(
+    () => semanticModel
+      ? calculateEnergization(semanticModel, semanticModel.semanticHash, symbols)
+      : calculateLegacyTestOnlyEnergization(symbols),
+    [semanticModel, symbols],
+  );
 
   // Połączenia pochodzą wyłącznie z kanonicznego pipeline layoutu.
   // Viewer nie rekonstruuje już routingu lokalną heurystyką.
@@ -604,7 +670,12 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
 
         {renderableSymbols
           .filter((symbol) => symbol.id === selectedId || symbol.elementId === selectedId)
-          .flatMap((symbol) => getPortsForSymbol(symbol).map((role) => ({ symbol, role })))
+          .flatMap((symbol) => {
+            const elementRef = symbol.elementId ?? symbol.id;
+            const semanticElement = semanticElementByRef.get(elementRef);
+            return getPortsForSymbol(symbol, semanticElement, Boolean(semanticModel))
+              .map((role) => ({ symbol, role }));
+          })
           .map(({ symbol, role }) => {
             const portPos = getPortPoint(symbol, mapInteractionRoleToPortName(role));
             return (

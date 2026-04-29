@@ -37,6 +37,14 @@ import {
 } from './types';
 import type { AnySldSymbol } from '../sld-editor/types';
 import type { EnergyNetworkModel } from '../../types/enm';
+import {
+  buildSemanticElementMap,
+  createSemanticContextMenuElement,
+  createSemanticSelectedElement,
+  mapSemanticElementKindToElementType,
+  type EngineeringElementKind,
+  type EngineeringSemanticModel,
+} from '../engineering-semantic';
 import type { ElementType, SelectedElement } from '../types';
 import { useSelectionStore } from '../selection/store';
 import { useResultsInspectorStore } from '../results-inspector/store';
@@ -94,6 +102,7 @@ import {
   zoomViewportByStep,
 } from './interactionMath';
 import { SldSemanticMinimap } from './SldSemanticMinimap';
+import { SldSemanticDiagnosticsPanel } from './SldSemanticDiagnosticsPanel';
 import {
   collectGpzSwitchgearSuppressedSymbolIds,
   shouldSuppressForGpzSwitchgear,
@@ -234,13 +243,19 @@ function fitSldOperationalContent(
   const visibleSymbols = symbols.filter((symbol) => !shouldSuppressForGpzSwitchgear(symbol, suppressedIds));
   const symbolBounds = calculateSymbolsBounds(visibleSymbols);
   const gpzBounds = calculateGpzSwitchgearBounds(canonicalAnnotations);
-  const mergedBounds = mergeBounds(symbolBounds, gpzBounds);
+  const mergedBounds = gpzBounds ?? symbolBounds;
 
   if (!mergedBounds) {
     return fitToContent([...symbols], canvasWidth, canvasHeight, effectivePadding, minZoom);
   }
 
-  return fitBoundsToViewport(mergedBounds, canvasWidth, canvasHeight, effectivePadding, minZoom);
+  return fitBoundsToViewport(
+    mergedBounds,
+    canvasWidth,
+    canvasHeight,
+    effectivePadding,
+    gpzBounds ? Math.max(minZoom, 0.85) : minZoom,
+  );
 }
 
 function buildAutoFitSignature(
@@ -359,12 +374,66 @@ function isPickerCatalogNamespace(
   return value in NAMESPACE_TO_PICKER_CATEGORY;
 }
 
+function resolveAttachedSystemSourceBusIdsFromSemanticModel(
+  semanticModel: EngineeringSemanticModel | null | undefined,
+): Set<string> {
+  if (!semanticModel) {
+    return new Set<string>();
+  }
+
+  const elementsByRef = new Map(semanticModel.elements.map((element) => [element.refId, element]));
+  const ownerByPort = new Map<string, string>();
+  for (const element of semanticModel.elements) {
+    for (const port of element.ports ?? []) {
+      ownerByPort.set(port.portId, element.refId);
+    }
+  }
+
+  const sourceRoles = new Set(['GPZ_SUPPLY_NODE']);
+  const busElementKinds = new Set<EngineeringElementKind>(['BUSBAR_SYSTEM', 'BUSBAR_SECTION']);
+  const busIds = new Set<string>();
+
+  for (const connection of semanticModel.connections ?? []) {
+    if (connection.connectionKind !== 'TOR_MOCY' || connection.voltageDomain !== 'SN') {
+      continue;
+    }
+
+    const fromOwnerId = ownerByPort.get(connection.fromPortId);
+    const toOwnerId = ownerByPort.get(connection.toPortId);
+    const fromElement = fromOwnerId ? elementsByRef.get(fromOwnerId) : undefined;
+    const toElement = toOwnerId ? elementsByRef.get(toOwnerId) : undefined;
+
+    if (!fromElement || !toElement) {
+      continue;
+    }
+
+    if (sourceRoles.has(fromElement.engineeringRole) && busElementKinds.has(toElement.elementKind)) {
+      busIds.add(toElement.refId);
+    }
+    if (sourceRoles.has(toElement.engineeringRole) && busElementKinds.has(fromElement.elementKind)) {
+      busIds.add(fromElement.refId);
+    }
+  }
+
+  for (const element of semanticModel.elements) {
+    const structure = 'structure' in element ? element.structure : undefined;
+    if (element.elementKind === 'GPZ' && structure?.busbarSectionRefs?.length) {
+      for (const busbarSectionRef of structure.busbarSectionRefs) {
+        busIds.add(busbarSectionRef);
+      }
+    }
+  }
+
+  return busIds;
+}
+
 /**
  * Main SLD View component.
  */
 export const SLDView: React.FC<SLDViewProps> = ({
   symbols,
   connections = [],
+  semanticModel = null,
   selectedElement: externalSelectedElement,
   onElementClick,
   onCanvasClick,
@@ -383,6 +452,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
   minFitZoom = ZOOM_MIN,
   fitPadding,
   canonicalAnnotations = null,
+  semanticDiagnosticsReport = null,
 }) => {
   const hasExplicitCanvasSize = typeof width === 'number' && typeof height === 'number';
   const fallbackCanvasWidth = width ?? DEFAULT_WIDTH;
@@ -479,6 +549,10 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
   const selectedElement =
     externalSelectedElement !== undefined ? externalSelectedElement : storeSelectedElement;
+  const semanticElementByRef = useMemo(
+    () => buildSemanticElementMap(semanticModel),
+    [semanticModel],
+  );
 
   const canvasWidth = hasExplicitCanvasSize ? fallbackCanvasWidth : measuredCanvasSize.width;
   const canvasHeight = hasExplicitCanvasSize ? fallbackCanvasHeight : measuredCanvasSize.height;
@@ -555,8 +629,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
   );
 
   const busIdsWithAttachedSources = useMemo(
-    () => resolveAttachedSystemSourceBusIds(snapshot, symbols, canonicalAnnotations),
-    [canonicalAnnotations, snapshot, symbols],
+    () => {
+      if (semanticModel) {
+        return resolveAttachedSystemSourceBusIdsFromSemanticModel(semanticModel);
+      }
+      return resolveAttachedSystemSourceBusIds(snapshot, symbols, canonicalAnnotations);
+    },
+    [canonicalAnnotations, semanticModel, snapshot, symbols],
   );
 
   const resolveCanvasContextMenuState = useCallback(
@@ -580,10 +659,16 @@ export const SLDView: React.FC<SLDViewProps> = ({
       elementId: string,
       elementType: ElementType,
     ) => {
-      selectElement({ id: elementId, type: elementType, name: elementId });
+      selectElement(createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementId,
+        semanticModel,
+        semanticElementByRef,
+      ));
       openInspectorPanelInStore(kind, elementId, elementType);
     },
-    [openInspectorPanelInStore, selectElement],
+    [openInspectorPanelInStore, selectElement, semanticElementByRef, semanticModel],
   );
 
   const openInlineOperation = useCallback(
@@ -606,21 +691,29 @@ export const SLDView: React.FC<SLDViewProps> = ({
           : (extraContext ?? {});
 
       if (elementId && elementType) {
-        selectElement({ id: elementId, type: elementType, name: elementId });
+        selectElement(createSemanticSelectedElement(
+          elementId,
+          elementType,
+          elementId,
+          semanticModel,
+          semanticElementByRef,
+        ));
       }
 
       openOperationForm(canonicalOp, context);
     },
-    [logicalViews, openOperationForm, selectElement, snapshot],
+    [logicalViews, openOperationForm, selectElement, semanticElementByRef, semanticModel, snapshot],
   );
 
   const openPrimarySurfaceForElement = useCallback(
     (elementId: string, elementType: ElementType, elementName: string) => {
-      const element: SelectedElement = {
-        id: elementId,
-        type: elementType,
-        name: elementName,
-      };
+      const element = createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementName,
+        semanticModel,
+        semanticElementByRef,
+      );
 
       setSelectedConnectionId(null);
       selectElement(element);
@@ -639,7 +732,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
       openInlineOperation('update_element_parameters', elementId, elementType);
     },
-    [openInlineOperation, openObjectCard, selectElement],
+    [openInlineOperation, openObjectCard, selectElement, semanticElementByRef, semanticModel],
   );
 
   const handleCatalogRequired = useCallback((request: CatalogGateRequest) => {
@@ -774,11 +867,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
       }
 
       // Standard selection logic (NORMALNY mode, or SELECT action in other modes)
-      const element: SelectedElement = {
-        id: elementId,
-        type: elementType,
-        name: elementName,
-      };
+      const element = createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementName,
+        semanticModel,
+        semanticElementByRef,
+      );
 
       // Update selection store
       setSelectedConnectionId(null);
@@ -792,7 +887,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
         onElementClick(element);
       }
     },
-    [symbols, selectElement, onElementClick, operationalMode]
+    [symbols, selectElement, onElementClick, operationalMode, semanticElementByRef, semanticModel]
   );
 
   const handleSymbolDoubleClick = useCallback(
@@ -811,13 +906,17 @@ export const SLDView: React.FC<SLDViewProps> = ({
         onElementHover(null);
         return;
       }
-      onElementHover({
-        id: symbolId,
-        type: elementType,
-        name: elementName,
-      });
+      const symbol = symbols.find((candidate) => candidate.id === symbolId);
+      const elementId = symbol?.elementId || symbolId;
+      onElementHover(createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementName,
+        semanticModel,
+        semanticElementByRef,
+      ));
     },
-    [onElementHover],
+    [onElementHover, semanticElementByRef, semanticModel, symbols],
   );
 
   const handleCanvasBackgroundClick = useCallback(() => {
@@ -826,14 +925,18 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
   const handlePortClick = useCallback(
     (symbolId: string, elementType: ElementType, elementName: string, role: InteractionPortRole) => {
-      const target: SelectedElement = {
-        id: symbolId,
-        type: elementType,
-        name: elementName,
-      };
+      const symbol = symbols.find((candidate) => candidate.id === symbolId);
+      const elementId = symbol?.elementId || symbolId;
+      const target = createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementName,
+        semanticModel,
+        semanticElementByRef,
+      );
       onPortClick?.(target, role);
     },
-    [onPortClick],
+    [onPortClick, semanticElementByRef, semanticModel, symbols],
   );
 
   const handlePortHover = useCallback(
@@ -843,9 +946,17 @@ export const SLDView: React.FC<SLDViewProps> = ({
         onPortHover(null, null);
         return;
       }
-      onPortHover({ id: symbolId, type: elementType, name: elementName }, role);
+      const symbol = symbols.find((candidate) => candidate.id === symbolId);
+      const elementId = symbol?.elementId || symbolId;
+      onPortHover(createSemanticSelectedElement(
+        elementId,
+        elementType,
+        elementName,
+        semanticModel,
+        semanticElementByRef,
+      ), role);
     },
-    [onPortHover],
+    [onPortHover, semanticElementByRef, semanticModel, symbols],
   );
 
   const handleSegmentClick = useCallback((segment: { edge_id: string; segment_ref: string; from_ref: string; to_ref: string; segment_kind: 'TRUNK' | 'BRANCH' | 'RING' | 'SECONDARY' }) => {
@@ -1015,21 +1126,28 @@ export const SLDView: React.FC<SLDViewProps> = ({
       }
 
       const elementId = symbolEl.getAttribute('data-element-id') ?? '';
-      const elementType = (symbolEl.getAttribute('data-element-type') ?? 'Bus') as ElementType;
-      const elementName = symbolEl.getAttribute('data-element-name') ?? elementId;
+      const symbol = symbols.find((candidate) => candidate.id === elementId || candidate.elementId === elementId);
+      const semanticElement = semanticElementByRef.get(symbol?.elementId ?? elementId);
+      const elementType = semanticElement
+        ? mapSemanticElementKindToElementType(semanticElement.elementKind)
+        : symbol?.elementType ?? 'Bus';
+      const elementName = symbol?.elementName ?? elementId;
+      const semanticElementId = semanticElement?.refId ?? elementId;
 
       setContextMenuState({
         isOpen: true,
         x: e.clientX,
         y: e.clientY,
-        elementId,
+        elementId: semanticElementId,
         elementType,
         elementName,
         scope: 'element',
-        hasAttachedSource: elementType === 'Bus' && busIdsWithAttachedSources.has(elementId),
+        semanticElement: createSemanticContextMenuElement(semanticElement, semanticModel),
+        hasAttachedSource: semanticElement?.elementKind === 'BUSBAR_SECTION'
+          && busIdsWithAttachedSources.has(semanticElementId),
       });
     },
-    [busIdsWithAttachedSources, resolveCanvasContextMenuState],
+    [busIdsWithAttachedSources, resolveCanvasContextMenuState, semanticElementByRef, semanticModel, symbols],
   );
 
   /**
@@ -1153,7 +1271,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
       }
 
       if (operationId === 'open_gpz_fields') {
-        selectElement({ id: elementId, type: elementType, name: elementId });
+        selectElement(createSemanticSelectedElement(
+          elementId,
+          elementType,
+          elementId,
+          semanticModel,
+          semanticElementByRef,
+        ));
         openObjectCard({ kind: 'source', elementId });
         return;
       }
@@ -1196,7 +1320,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
         || operationId === 'fix_issues'
         || operationId === 'history'
       ) {
-        selectElement({ id: elementId, type: elementType, name: elementId });
+        selectElement(createSemanticSelectedElement(
+          elementId,
+          elementType,
+          elementId,
+          semanticModel,
+          semanticElementByRef,
+        ));
         const panelKind =
           operationId === 'show_results' || operationId === 'export_results'
             ? 'results'
@@ -1211,7 +1341,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
         return;
       }
       if (NAVIGATION_ACTIONS.has(operationId)) {
-        selectElement({ id: elementId, type: elementType, name: elementId });
+        selectElement(createSemanticSelectedElement(
+          elementId,
+          elementType,
+          elementId,
+          semanticModel,
+          semanticElementByRef,
+        ));
 
         if (operationId === 'show_diagram' || operationId === 'show_on_diagram') {
           centerSldOnElement(elementId);
@@ -1274,7 +1410,13 @@ export const SLDView: React.FC<SLDViewProps> = ({
 
       // 3. Toggle actions — direct state change + notify
       if (TOGGLE_ACTIONS.has(operationId)) {
-        selectElement({ id: elementId, type: elementType, name: elementId });
+        selectElement(createSemanticSelectedElement(
+          elementId,
+          elementType,
+          elementId,
+          semanticModel,
+          semanticElementByRef,
+        ));
         if (operationId === 'toggle_switch') {
           openInlineOperation('update_element_parameters', elementId, elementType, { field: 'state' });
           return;
@@ -1356,6 +1498,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
       openOperationForm,
       openObjectCard,
       selectElement,
+      semanticElementByRef,
+      semanticModel,
     ],
   );
 
@@ -1798,6 +1942,7 @@ export const SLDView: React.FC<SLDViewProps> = ({
         <SLDViewCanvas
           symbols={symbols}
           connections={connections}
+          semanticModel={semanticModel}
           selectedId={selectedElement?.id ?? null}
           onSymbolClick={handleSymbolClick}
           onSymbolDoubleClick={handleSymbolDoubleClick}
@@ -1901,6 +2046,10 @@ export const SLDView: React.FC<SLDViewProps> = ({
           diagramId={activeCaseId}
           showLegend={true}
         />
+
+        {diagnosticsVisible && semanticDiagnosticsReport && (
+          <SldSemanticDiagnosticsPanel report={semanticDiagnosticsReport} />
+        )}
 
         {/* Switching state & energization legend (toggled via button) */}
         <SwitchingStateLegend visible={legendVisible} />

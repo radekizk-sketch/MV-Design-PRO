@@ -539,8 +539,67 @@ interface BayFeatures {
   hasSubBusbar: boolean;
   hasTwoBusbars: boolean;
   generatorTypes: Set<string>;
-  terminalNames: string[];
+  explicitBayTypes: Set<BayType>;
   onlyMeasurement: boolean;
+}
+
+type RuntimeSymbolSemantics = {
+  bayType?: unknown;
+  bayRole?: unknown;
+  semanticRole?: unknown;
+  role?: unknown;
+};
+
+const EXPLICIT_ELEMENT_TYPE_TO_BAY_TYPE: Record<string, BayType> = {
+  Capacitor: 'capacitor',
+  CapacitorBank: 'capacitor',
+  Measurement: 'measurement',
+  Metering: 'measurement',
+  CurrentTransformer: 'measurement',
+  VoltageTransformer: 'measurement',
+  Auxiliary: 'auxiliary',
+  AuxiliarySupply: 'auxiliary',
+};
+
+const EXPLICIT_ROLE_TO_BAY_TYPE: Record<string, BayType> = {
+  incomer: 'incomer',
+  feeder: 'feeder',
+  tie: 'tie',
+  generator: 'generator',
+  oze_pv: 'oze_pv',
+  PV: 'oze_pv',
+  oze_wind: 'oze_wind',
+  WIND: 'oze_wind',
+  bess: 'bess',
+  BESS: 'bess',
+  capacitor: 'capacitor',
+  measurement: 'measurement',
+  auxiliary: 'auxiliary',
+  unknown: 'unknown',
+};
+
+function getExplicitBayType(symbol: LayoutSymbol): BayType | undefined {
+  const typeFromElementType = EXPLICIT_ELEMENT_TYPE_TO_BAY_TYPE[symbol.elementType];
+  if (typeFromElementType) {
+    return typeFromElementType;
+  }
+
+  const runtimeSemantics = symbol as RuntimeSymbolSemantics;
+  const explicitRole =
+    runtimeSemantics.bayType ??
+    runtimeSemantics.bayRole ??
+    runtimeSemantics.semanticRole ??
+    runtimeSemantics.role;
+
+  if (typeof explicitRole !== 'string') {
+    return undefined;
+  }
+
+  return EXPLICIT_ROLE_TO_BAY_TYPE[explicitRole];
+}
+
+function isMeasurementElement(symbol: LayoutSymbol): boolean {
+  return getExplicitBayType(symbol) === 'measurement';
 }
 
 /**
@@ -563,19 +622,20 @@ function extractBayFeatures(
     }
   }
 
-  // Zbierz nazwy terminali (Source, Load, Generator)
-  const terminals = [...sources, ...loads, ...generators];
-  const terminalNames = terminals.map((t) => t.elementName.toLowerCase());
+  const explicitBayTypes = new Set<BayType>();
+  for (const symbol of symbols) {
+    const explicitBayType = getExplicitBayType(symbol);
+    if (explicitBayType) {
+      explicitBayTypes.add(explicitBayType);
+    }
+  }
 
   // Sprawdź czy to pole pomiarowe (tylko CT/VT + switching, BEZ sub-busbara)
   // Bay z sub-busbarem to feeder, nie pole pomiarowe
-  const onlyMeasurement = busbars.length === 0 && symbols.every(
-    (s) =>
-      s.elementType === 'Switch' ||
-      s.elementName.toLowerCase().includes('ct') ||
-      s.elementName.toLowerCase().includes('vt') ||
-      s.elementName.toLowerCase().includes('przekładnik')
-  ) && symbols.length <= 3;
+  const onlyMeasurement =
+    busbars.length === 0 &&
+    symbols.every((s) => s.elementType === 'Switch' || isMeasurementElement(s)) &&
+    symbols.length <= 3;
 
   return {
     hasSource: sources.length > 0,
@@ -585,7 +645,7 @@ function extractBayFeatures(
     hasSubBusbar: busbars.length > 0,
     hasTwoBusbars: busbars.length >= 2,
     generatorTypes,
-    terminalNames,
+    explicitBayTypes,
     onlyMeasurement,
   };
 }
@@ -606,63 +666,31 @@ function extractBayFeatures(
  * 10. feeder (domyślne pole liniowe)
  */
 function classifyBayFromFeatures(features: BayFeatures): BayType {
-  const { generatorTypes, terminalNames } = features;
+  const { explicitBayTypes, generatorTypes } = features;
 
   // 1. Tie: łączy dwa busbary
   if (features.hasTwoBusbars) {
     return 'tie';
   }
 
-  // 2. BESS: sprawdź generatorType lub nazwę
-  if (generatorTypes.has('BESS')) {
-    return 'bess';
-  }
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('bess') ||
-        n.includes('magazyn') ||
-        n.includes('battery') ||
-        n.includes('storage')
-    )
-  ) {
+  // 2. BESS: jawny generatorType lub rola/typ
+  if (generatorTypes.has('BESS') || explicitBayTypes.has('bess')) {
     return 'bess';
   }
 
-  // 3. OZE PV: sprawdź generatorType lub nazwę
-  if (generatorTypes.has('PV')) {
-    return 'oze_pv';
-  }
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('pv') ||
-        n.includes('fotowolt') ||
-        n.includes('solar') ||
-        n.includes('fotowolaik')
-    )
-  ) {
+  // 3. OZE PV: jawny generatorType lub rola/typ
+  if (generatorTypes.has('PV') || explicitBayTypes.has('oze_pv')) {
     return 'oze_pv';
   }
 
-  // 4. OZE Wind: sprawdź generatorType lub nazwę
-  if (generatorTypes.has('WIND')) {
-    return 'oze_wind';
-  }
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('wt') ||
-        n.includes('wiatr') ||
-        n.includes('wind') ||
-        n.includes('turbine')
-    )
-  ) {
+  // 4. OZE Wind: jawny generatorType lub rola/typ
+  if (generatorTypes.has('WIND') || explicitBayTypes.has('oze_wind')) {
     return 'oze_wind';
   }
 
   // 5. Generator konwencjonalny
   if (
+    explicitBayTypes.has('generator') ||
     generatorTypes.has('DIESEL') ||
     generatorTypes.has('GAS') ||
     generatorTypes.has('HYDRO') ||
@@ -670,40 +698,14 @@ function classifyBayFromFeatures(features: BayFeatures): BayType {
   ) {
     return 'generator';
   }
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('generator') ||
-        n.includes('agregat') ||
-        (n.includes('gen') && !n.includes('oze'))
-    )
-  ) {
-    return 'generator';
-  }
 
   // 6. Bateria kondensatorów
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('kondensator') ||
-        n.includes('capacitor') ||
-        n.includes('bk')
-    )
-  ) {
+  if (explicitBayTypes.has('capacitor')) {
     return 'capacitor';
   }
 
   // 7. Potrzeby własne
-  // Note: 'pz' must be a standalone word or at word boundary to avoid matching 'gpz' (Główny Punkt Zasilania)
-  if (
-    terminalNames.some(
-      (n) =>
-        n.includes('potrzeby własne') ||
-        n.includes('auxiliary') ||
-        /\bpz\b/.test(n) ||
-        n.includes('p.w.')
-    )
-  ) {
+  if (explicitBayTypes.has('auxiliary')) {
     return 'auxiliary';
   }
 
@@ -863,17 +865,7 @@ export function findSZRBays(bays: Bay[], symbolById: Map<string, LayoutSymbol>):
     for (const element of bay.elements) {
       const symbol = symbolById.get(element.symbolId);
       if (symbol?.elementType === 'Switch' && symbol.switchState === 'OPEN') {
-        // Sprawdź nazwę
-        const nameLower = symbol.elementName.toLowerCase();
-        if (
-          nameLower.includes('szr') ||
-          nameLower.includes('ats') ||
-          nameLower.includes('samoczynne') ||
-          nameLower.includes('n.o.') ||
-          nameLower.includes('normally open')
-        ) {
-          return true;
-        }
+        return true;
       }
     }
 

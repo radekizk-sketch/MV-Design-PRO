@@ -186,6 +186,21 @@ function findTerminal(logicalViews: LogicalViewsV1 | null, elementId: string) {
   return logicalViews.terminals.find((terminal) => terminal.element_id === elementId || terminal.port_id === elementId) ?? null;
 }
 
+function findMatchingTerminals(logicalViews: LogicalViewsV1 | null, elementIds: Iterable<string>): TerminalRef[] {
+  if (!logicalViews) {
+    return [];
+  }
+
+  const ids = new Set(Array.from(elementIds).filter((id) => id.length > 0));
+  if (ids.size === 0) {
+    return [];
+  }
+
+  return logicalViews.terminals.filter((terminal) => (
+    ids.has(terminal.element_id) || ids.has(terminal.port_id)
+  ));
+}
+
 function findStationRefByBus(snapshot: EnergyNetworkModel | null, busRef: string | null): string | null {
   if (!snapshot || !busRef) {
     return null;
@@ -355,23 +370,30 @@ function findRingPartner(
   }) ?? null;
 }
 
-export function resolveNopCandidates(snapshot: EnergyNetworkModel | null) {
-  if (!snapshot) {
+export function resolveNopCandidates(
+  snapshot: EnergyNetworkModel | null,
+  logicalViews: LogicalViewsV1 | null = null,
+) {
+  if (!snapshot || !logicalViews) {
     return [];
   }
 
-  return snapshot.branches
-    .filter((branch) => (
-      branch.type === 'switch'
-      || branch.type === 'breaker'
-      || branch.type === 'bus_coupler'
-      || branch.type === 'disconnector'
-    ))
-    .map((branch) => ({
-      id: branch.ref_id,
-      label: branch.name,
-      elementType: branch.type,
-    }));
+  const branchByRef = new Map(snapshot.branches.map((branch) => [branch.ref_id, branch]));
+  const trunks = Array.isArray(logicalViews.trunks) ? logicalViews.trunks : [];
+  const candidateIds = Array.from(new Set(
+    trunks
+      .map((trunk) => trunk.no_point_ref)
+      .filter((ref): ref is string => typeof ref === 'string' && ref.length > 0),
+  ));
+
+  return candidateIds.map((candidateId) => {
+    const branch = branchByRef.get(candidateId);
+    return {
+      id: candidateId,
+      label: branch?.name ?? candidateId,
+      elementType: 'NORMAL_OPEN_POINT',
+    };
+  });
 }
 
 export function resolveStationRefForElement(
@@ -692,29 +714,24 @@ function findTrunkTerminalForBus(
     return null;
   }
 
-  const directTerminal = findTerminal(logicalViews, busRef);
-  if (directTerminal) {
-    return directTerminal;
+  const directTerminals = findMatchingTerminals(logicalViews, [busRef]);
+  if (directTerminals.length === 1) {
+    return directTerminals[0];
+  }
+  if (directTerminals.length > 1) {
+    return null;
   }
 
-  const candidateRoles = ['OUT', 'FEEDER', 'IN'];
   const matchingBays = snapshot.bays.filter((bay) => (
     bay.bus_ref === busRef
     && (!stationRef || bay.substation_ref === stationRef)
   ));
+  const bayTerminalCandidates = findMatchingTerminals(
+    logicalViews,
+    matchingBays.flatMap((bay) => [bay.ref_id, bay.id]),
+  );
 
-  const preferredBay =
-    candidateRoles
-      .map((role) => matchingBays.find((bay) => bay.bay_role === role))
-      .find((bay) => bay != null)
-    ?? matchingBays[0]
-    ?? null;
-
-  if (!preferredBay) {
-    return null;
-  }
-
-  return findTerminal(logicalViews, preferredBay.ref_id) ?? findTerminal(logicalViews, preferredBay.id);
+  return bayTerminalCandidates.length === 1 ? bayTerminalCandidates[0] : null;
 }
 
 export function resolveContinueTrunkSelection(
@@ -724,9 +741,13 @@ export function resolveContinueTrunkSelection(
   busRef: string | null,
   stationRef: string | null,
 ): ContinueTrunkSelection {
-  const terminal = findTerminal(logicalViews, elementId)
-    ?? findTrunkTerminalForBus(snapshot, logicalViews, busRef, stationRef);
-  const terminalId = terminal?.element_id ?? busRef ?? '';
+  const directTerminals = findMatchingTerminals(logicalViews, [elementId]);
+  const terminal = directTerminals.length === 1
+    ? directTerminals[0]
+    : directTerminals.length === 0
+      ? findTrunkTerminalForBus(snapshot, logicalViews, busRef, stationRef)
+      : null;
+  const terminalId = terminal?.element_id ?? '';
   const terminalBusRef = busRef ?? terminal?.element_id ?? '';
 
   return {
@@ -795,7 +816,7 @@ export function resolveRingOperationContext(
   return {
     terminalAId: currentTerminal?.element_id ?? elementId,
     terminalBId: partner?.element_id ?? '',
-    nopCandidates: resolveNopCandidates(snapshot),
+    nopCandidates: resolveNopCandidates(snapshot, logicalViews),
   };
 }
 

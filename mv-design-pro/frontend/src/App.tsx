@@ -61,6 +61,7 @@ import { notify } from './ui/notifications/store';
 import { InspectorResolver } from './ui/inspector-panel';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
+import type { AreaId } from './ui/navigation/areaRegistry';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
@@ -122,6 +123,34 @@ function resolveAnalysisSurfaceTab(route: string, params: URLSearchParams): stri
   return resolveAnalysisRouteAliasTab(route) ?? 'results';
 }
 
+function resolveRouteArea(route: string): AreaId | null {
+  if (route === '' || route === ROUTES.SLD.hash || route === ROUTES.SLD_VIEW.hash) {
+    return 'SCHEMAT_TOPOLOGIA';
+  }
+  if (route === ROUTES.ANALYSIS.hash || isAnalysisRouteAlias(route)) {
+    return 'WYNIKI_ANALIZY';
+  }
+  if (route === ROUTES.REPORT.hash) {
+    return 'RAPORTY_UZASADNIENIA';
+  }
+  if (route === ROUTES.VARIANTS.hash || route === ROUTES.CASE_CONFIG.hash) {
+    return 'STUDIA_OBLICZENIOWE';
+  }
+  if (route === ROUTES.CATALOG.hash) {
+    return 'KATALOGI_TECHNICZNE';
+  }
+  if (route === ROUTES.SWITCHGEAR.hash) {
+    return 'SCHEMAT_TOPOLOGIA';
+  }
+  if (route === ROUTES.FAULT_SCENARIOS.hash) {
+    return 'STUDIA_OBLICZENIOWE';
+  }
+  if (route === ROUTES.ENM_INSPECTOR.hash) {
+    return 'HISTORIA_AUDYT';
+  }
+  return null;
+}
+
 function UnknownRoutePage({ route }: { route: string }) {
   return (
     <div className="flex h-full items-center justify-center bg-slate-50">
@@ -141,6 +170,7 @@ function App() {
   const [route, setRoute] = useState(() => getCurrentHashRoute());
   const [hashVersion, setHashVersion] = useState(0);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
+  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
@@ -165,6 +195,13 @@ function App() {
     window.addEventListener('hashchange', handler);
     return () => window.removeEventListener('hashchange', handler);
   }, []);
+
+  useEffect(() => {
+    const routeArea = resolveRouteArea(route);
+    if (routeArea) {
+      setActiveArea(routeArea);
+    }
+  }, [route, setActiveArea]);
 
   // Sync mode with route
   useEffect(() => {

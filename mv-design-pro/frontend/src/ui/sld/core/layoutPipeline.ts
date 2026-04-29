@@ -1472,6 +1472,7 @@ function phase7_generate_canonical_annotations(
       ?? null;
     const rootBusId = firstFieldBusId ?? detail.busSections[0]?.id ?? block.blockId;
     const rootBusPlacement = placementMap.get(rootBusId);
+    const gpzFieldPitchX = GRID_BASE * 6;
     const busbar = rootBusPlacement
       ? {
           x: rootBusPlacement.bounds.x,
@@ -1482,10 +1483,10 @@ function phase7_generate_canonical_annotations(
       : {
           x: block.bounds.x,
           y: Math.max(Y_GPZ, block.bounds.y - OFFSET_POLE),
-          width: Math.max(block.bounds.width, (fields.length - 1) * PITCH_FIELD_X + 2 * GRID_BASE),
+          width: Math.max(block.bounds.width, (fields.length - 1) * gpzFieldPitchX + 2 * GRID_BASE),
           height: 10,
         };
-    const totalFieldWidth = (fields.length - 1) * PITCH_FIELD_X;
+    const totalFieldWidth = (fields.length - 1) * gpzFieldPitchX;
     const firstAxisX = snap(busbar.x + busbar.width / 2 - totalFieldWidth / 2);
     const fieldAxes = new Map<string, number>();
 
@@ -1493,7 +1494,7 @@ function phase7_generate_canonical_annotations(
       const field = fields[index];
       const rootId = field.busSectionId
         ?? rootBusId;
-      const axisX = snap(firstAxisX + index * PITCH_FIELD_X);
+      const axisX = snap(firstAxisX + index * gpzFieldPitchX);
       fieldAxes.set(field.id, axisX);
       gpzFeederFields.push({
         fieldId: field.id,
@@ -1502,7 +1503,7 @@ function phase7_generate_canonical_annotations(
         designation: field.id,
         axisX,
         busTap: { x: axisX, y: snap(busbar.y + busbar.height) },
-        segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 8 * OFFSET_POLE) },
+        segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 4 * OFFSET_POLE) },
         headCenter: { x: axisX, y: snap(busbar.y + busbar.height + 3 * OFFSET_POLE) },
         detail,
       });

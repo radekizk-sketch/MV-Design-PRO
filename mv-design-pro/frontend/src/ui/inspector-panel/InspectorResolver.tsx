@@ -13,20 +13,25 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
 import type { ElementType } from '../types';
 import type { EnergyNetworkModel } from '../../types/enm';
+import {
+  buildSemanticInspectorCardModel,
+  type EngineeringSemanticModelForInspector,
+} from '../engineering-semantic/semanticInspectorAdapter';
+import { projectEnergyNetworkModelToSemantic } from '../engineering-semantic/enmAdapter';
 import { EngineeringInspector } from '../property-grid/EngineeringInspector';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { EmptyInspectorPanel } from './EmptyInspectorPanel';
+import { SemanticInspectorCard } from './SemanticInspectorCard';
 
 function findElementInSnapshot(
   snapshot: EnergyNetworkModel | null,
   elementId: string,
-): { data: Record<string, unknown>; elementType: ElementType; name: string } | null {
+): { data: Record<string, unknown>; name: string } | null {
   if (!snapshot) return null;
 
   const bus = (snapshot.buses ?? []).find((item) => item.ref_id === elementId);
   if (bus) {
     return {
-      elementType: 'Bus',
       name: bus.name,
       data: {
         ref_id: bus.ref_id,
@@ -44,9 +49,6 @@ function findElementInSnapshot(
 
   const branch = (snapshot.branches ?? []).find((item) => item.ref_id === elementId);
   if (branch) {
-    const branchType: ElementType =
-      branch.type === 'line_overhead' || branch.type === 'cable' ? 'LineBranch' : 'Switch';
-
     const baseData: Record<string, unknown> = {
       ref_id: branch.ref_id,
       name: branch.name,
@@ -56,7 +58,7 @@ function findElementInSnapshot(
       type_ref: branch.catalog_ref,
     };
 
-    if (branch.type === 'line_overhead' || branch.type === 'cable') {
+    if ('length_km' in branch) {
       Object.assign(baseData, {
         length_km: branch.length_km,
         r_ohm_per_km: branch.r_ohm_per_km,
@@ -65,20 +67,19 @@ function findElementInSnapshot(
         ith_ka: branch.rating?.ith_ka,
         idyn_ka: branch.rating?.idyn_ka,
       });
-      if (branch.type === 'cable') {
+      if ('insulation' in branch) {
         Object.assign(baseData, {
           insulation: branch.insulation,
         });
       }
     }
 
-    return { elementType: branchType, name: branch.name, data: baseData };
+    return { name: branch.name, data: baseData };
   }
 
   const transformer = (snapshot.transformers ?? []).find((item) => item.ref_id === elementId);
   if (transformer) {
     return {
-      elementType: 'TransformerBranch',
       name: transformer.name,
       data: {
         ref_id: transformer.ref_id,
@@ -104,7 +105,6 @@ function findElementInSnapshot(
   const source = (snapshot.sources ?? []).find((item) => item.ref_id === elementId);
   if (source) {
     return {
-      elementType: 'Source',
       name: source.name,
       data: {
         ref_id: source.ref_id,
@@ -126,7 +126,6 @@ function findElementInSnapshot(
   const load = (snapshot.loads ?? []).find((item) => item.ref_id === elementId);
   if (load) {
     return {
-      elementType: 'Load',
       name: load.name,
       data: {
         ref_id: load.ref_id,
@@ -144,7 +143,6 @@ function findElementInSnapshot(
   const generator = (snapshot.generators ?? []).find((item) => item.ref_id === elementId);
   if (generator) {
     return {
-      elementType: 'Source',
       name: generator.name,
       data: {
         ref_id: generator.ref_id,
@@ -162,6 +160,116 @@ function findElementInSnapshot(
   return null;
 }
 
+function readSemanticModelFromSnapshot(snapshot: EnergyNetworkModel | null): EngineeringSemanticModelForInspector | null {
+  if (!snapshot || typeof snapshot !== 'object') {
+    return null;
+  }
+
+  const candidate = snapshot as EnergyNetworkModel & {
+    engineeringSemanticModel?: EngineeringSemanticModelForInspector;
+    semanticModel?: EngineeringSemanticModelForInspector;
+  };
+
+  return (
+    candidate.engineeringSemanticModel
+    ?? candidate.semanticModel
+    ?? projectEnergyNetworkModelToSemantic(snapshot)
+  );
+}
+
+function elementTypeFromSemanticCard(
+  card: ReturnType<typeof buildSemanticInspectorCardModel>,
+): ElementType | null {
+  if (card.status !== 'SEMANTYKA_OK') {
+    return null;
+  }
+
+  switch (card.engineeringRole) {
+    case 'GPZ_SUPPLY_NODE':
+      return 'Source';
+    case 'LINE_FEEDER_BAY':
+    case 'INCOMING_SUPPLY_BAY':
+    case 'TRANSFORMER_BAY':
+    case 'MEASUREMENT_BAY':
+    case 'COUPLER_BAY':
+    case 'SOURCE_CONNECTION_BAY':
+    case 'RESERVE_BAY':
+      return 'BaySN';
+    case 'MV_CABLE_SEGMENT':
+    case 'MV_OVERHEAD_SEGMENT':
+      return 'LineBranch';
+    case 'HV_MV_TRANSFORMATION_NODE':
+    case 'MV_LV_TRANSFORMER':
+      return 'TransformerBranch';
+    case 'BUSBAR_SYSTEM':
+    case 'BUSBAR_SECTION':
+      return 'Bus';
+    case 'CIRCUIT_BREAKER':
+    case 'LOAD_BREAK_SWITCH':
+    case 'LINE_DISCONNECTOR':
+    case 'BUSBAR_DISCONNECTOR':
+    case 'EARTHING_SWITCH':
+      return 'Switch';
+    case 'LV_LOAD_NODE':
+      return 'Load';
+    case 'PV_INVERTER':
+      return 'PVInverter';
+    case 'BESS_CONVERTER':
+      return 'BESSInverter';
+    case 'WIND_SOURCE':
+      return 'Generator';
+    case 'CURRENT_TRANSFORMER':
+    case 'VOLTAGE_TRANSFORMER':
+      return 'Measurement';
+    case 'PROTECTION_RELAY':
+      return 'ProtectionAssignment';
+    default:
+      break;
+  }
+
+  switch (card.elementKind) {
+    case 'GPZ':
+    case 'SOURCE':
+      return 'Source';
+    case 'MV_BAY':
+      return 'BaySN';
+    case 'MV_CABLE_SEGMENT':
+    case 'MV_OVERHEAD_SEGMENT':
+    case 'LV_CABLE_SEGMENT':
+      return 'LineBranch';
+    case 'TRANSFORMER':
+      return 'TransformerBranch';
+    case 'BUSBAR_SYSTEM':
+    case 'BUSBAR_SECTION':
+      return 'Bus';
+    case 'SWITCHGEAR_DEVICE':
+      return 'Switch';
+    case 'LV_LOAD':
+      return 'Load';
+    case 'MEASUREMENT':
+      return 'Measurement';
+    case 'PROTECTION_RELAY':
+      return 'ProtectionAssignment';
+    default:
+      return null;
+  }
+}
+
+function semanticSegmentKind(
+  card: ReturnType<typeof buildSemanticInspectorCardModel>,
+): 'overhead' | 'cable' | null {
+  if (card.status !== 'SEMANTYKA_OK') {
+    return null;
+  }
+  if (card.engineeringRole === 'MV_OVERHEAD_SEGMENT' || card.elementKind === 'MV_OVERHEAD_SEGMENT') {
+    return 'overhead';
+  }
+  if (card.engineeringRole === 'MV_CABLE_SEGMENT' || card.elementKind === 'MV_CABLE_SEGMENT') {
+    return 'cable';
+  }
+  return null;
+}
+
 export function InspectorResolver() {
   const selectedElements = useSelectionStore((state) => state.selectedElements);
   const activeMode = useSelectionStore((state) => state.mode);
@@ -172,6 +280,10 @@ export function InspectorResolver() {
 
   const selected = selectedElements[0] ?? null;
 
+  const semanticModel = useMemo(() => {
+    return readSemanticModelFromSnapshot(snapshot);
+  }, [snapshot]);
+
   const resolved = useMemo(() => {
     if (!selected || !snapshot) {
       return null;
@@ -179,8 +291,23 @@ export function InspectorResolver() {
     return findElementInSnapshot(snapshot, selected.id);
   }, [selected, snapshot]);
 
+  const semanticCard = useMemo(
+    () =>
+      buildSemanticInspectorCardModel({
+        semanticModel,
+        elementRefId: selected?.id ?? null,
+        fallbackVisualLabel: selected?.type ?? null,
+      }),
+    [semanticModel, selected?.id, selected?.type],
+  );
+
+  const semanticElementType = useMemo(
+    () => elementTypeFromSemanticCard(semanticCard),
+    [semanticCard],
+  );
+
   const catalogInfo = useMemo(() => {
-    if (!resolved) {
+    if (!resolved || !semanticElementType) {
       return null;
     }
 
@@ -206,7 +333,7 @@ export function InspectorResolver() {
     };
 
     return {
-      namespace: namespaceByType[resolved.elementType] ?? 'ELEMENT_TECHNICZNY',
+      namespace: namespaceByType[semanticElementType] ?? 'ELEMENT_TECHNICZNY',
       typeId: typeRef,
       typeName: typeRef,
       version:
@@ -216,7 +343,7 @@ export function InspectorResolver() {
       isMaterialized: true,
       hasDrift: false,
     };
-  }, [resolved]);
+  }, [resolved, semanticElementType]);
 
   const selectedBranch = useMemo(() => {
     if (!selected || !snapshot) {
@@ -225,8 +352,13 @@ export function InspectorResolver() {
     return (snapshot.branches ?? []).find((item) => item.ref_id === selected.id) ?? null;
   }, [selected, snapshot]);
 
+  const selectedSegmentKind = useMemo(
+    () => semanticSegmentKind(semanticCard),
+    [semanticCard],
+  );
+
   const branchActions = useMemo(() => {
-    if (!selectedBranch) {
+    if (!selectedBranch || !selectedSegmentKind) {
       return [];
     }
 
@@ -242,7 +374,7 @@ export function InspectorResolver() {
       context: { segment_ref: selectedBranch.ref_id },
     });
 
-    if (selectedBranch.type === 'line_overhead') {
+    if (selectedSegmentKind === 'overhead') {
       actions.push({
         id: 'insert_branch_pole_on_segment_sn',
         label: 'Wstaw słup rozgałęźny',
@@ -250,7 +382,7 @@ export function InspectorResolver() {
       });
     }
 
-    if (selectedBranch.type === 'cable') {
+    if (selectedSegmentKind === 'cable') {
       actions.push({
         id: 'insert_zksn_on_segment_sn',
         label: 'Wstaw ZKSN',
@@ -268,7 +400,7 @@ export function InspectorResolver() {
     });
 
     return actions;
-  }, [selectedBranch]);
+  }, [selectedBranch, selectedSegmentKind]);
 
   const handleFieldChange = useCallback(
     (fieldKey: string, value: unknown) => {
@@ -297,6 +429,28 @@ export function InspectorResolver() {
   }, [activeCaseId, executeDomainOperation, selected]);
 
   if (!selected || !resolved) {
+    if (selected) {
+      return (
+        <div
+          className="flex h-full flex-col bg-scada-panel text-scada-text"
+          data-testid="inspector-semantic-missing"
+        >
+          <SemanticInspectorCard card={semanticCard} />
+          <div className="flex-1 overflow-auto p-4">
+            <section className="rounded border border-scada-border bg-scada-surface p-3">
+              <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+                Inspektor techniczny
+              </h3>
+              <p className="mt-2 text-[12px] leading-snug text-scada-muted">
+                Zaznaczony obiekt nie ma kompletnej projekcji inspektora. Karta semantyczna
+                pokazuje blokade i akcje naprawcza bez zgadywania funkcji z typu UI.
+              </p>
+            </section>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <EmptyInspectorPanel
         selectedElement={null}
@@ -307,10 +461,11 @@ export function InspectorResolver() {
 
   return (
     <div className="flex h-full flex-col" data-testid="inspector-engineering">
-      <div className="h-full" data-testid="sld-engineering-inspector-wrapper">
+      <SemanticInspectorCard card={semanticCard} />
+      <div className="min-h-[220px] flex-1 overflow-auto" data-testid="sld-engineering-inspector-wrapper">
         <EngineeringInspector
           elementId={selected.id}
-          elementType={resolved.elementType}
+          elementType={semanticElementType}
           elementData={resolved.data}
           catalogInfo={catalogInfo}
           onFieldChange={handleFieldChange}

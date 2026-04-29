@@ -11,6 +11,11 @@ import type {
   Transformer,
 } from '../../types/enm';
 import type { Connection, Position, AnySldSymbol } from '../sld-editor/types';
+import type {
+  EngineeringDiagnosticsProjection,
+  EngineeringSemanticModel,
+  SldBaseProjectionViewModel,
+} from '../engineering-semantic';
 import type { CanonicalAnnotationsV1 } from './core/layoutResult';
 import { projectEnmSnapshotToSld } from './enmSnapshotToSldSymbols';
 import {
@@ -95,6 +100,9 @@ export interface SldCadProjectionResult {
   symbols: AnySldSymbol[];
   connections: Connection[];
   canonicalAnnotations: CanonicalAnnotationsV1 | null;
+  semanticModel: EngineeringSemanticModel | null;
+  diagnostics: EngineeringDiagnosticsProjection | null;
+  sldBaseProjection: SldBaseProjectionViewModel | null;
   graph: SldCadGraph;
   voltageValidation: ConnectionValidationResult[];
   lodLevel: SldLodLevel;

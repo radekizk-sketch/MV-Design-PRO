@@ -20,9 +20,51 @@ class DomainApiError extends Error {
     public statusText: string,
     public detail: unknown,
     public endpoint: string,
+    message?: string,
+    public code?: string | null,
   ) {
-    super(`API ${status} ${statusText}: ${endpoint}`);
+    super(message ?? `API ${status} ${statusText}: ${endpoint}`);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function extractApiError(detail: unknown, status: number, statusText: string, endpoint: string) {
+  const root = isRecord(detail) && 'detail' in detail ? detail.detail : detail;
+  const payload = isRecord(root) ? root : isRecord(detail) ? detail : null;
+  const nestedErrors = Array.isArray(payload?.errors) ? payload.errors : [];
+  const nestedMessages = nestedErrors
+    .map((entry) => {
+      if (!isRecord(entry)) return null;
+      return readString(entry.message_pl)
+        ?? readString(entry.message)
+        ?? readString(entry.reason)
+        ?? readString(entry.code);
+    })
+    .filter((entry): entry is string => Boolean(entry));
+
+  const message = [
+    readString(payload?.message_pl)
+      ?? readString(payload?.message)
+      ?? readString(payload?.error)
+      ?? readString(root),
+    ...nestedMessages,
+  ]
+    .filter((entry): entry is string => Boolean(entry))
+    .join(' ');
+
+  return {
+    code: readString(payload?.code) ?? readString(payload?.error_code),
+    message: message
+      ? `API ${status} ${statusText}: ${endpoint} - ${message}`
+      : `API ${status} ${statusText}: ${endpoint}`,
+  };
 }
 
 function resolveCanonicalName(name: string): string {
@@ -204,7 +246,15 @@ export async function executeDomainOp(
 
   if (!res.ok) {
     const detail = await res.json().catch(() => res.statusText);
-    throw new DomainApiError(res.status, res.statusText, detail, endpoint);
+    const extracted = extractApiError(detail, res.status, res.statusText, endpoint);
+    throw new DomainApiError(
+      res.status,
+      res.statusText,
+      detail,
+      endpoint,
+      extracted.message,
+      extracted.code,
+    );
   }
 
   const response = (await res.json()) as DomainOpResponse & {

@@ -46,6 +46,7 @@ vi.mock('../../catalog/api', () => ({
   fetchMvApparatusTypes: vi.fn(async () => []),
   fetchLvApparatusTypes: vi.fn(async () => []),
   fetchSourceSystemTypes: vi.fn(async () => []),
+  fetchTransformerTypes: vi.fn(async () => []),
   fetchVtTypes: vi.fn(async () => []),
 }));
 

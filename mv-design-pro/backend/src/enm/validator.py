@@ -636,6 +636,19 @@ class ENMValidator:
         # I003: Stacja bez pól (bayów)
         substations_with_bays = {bay.substation_ref for bay in enm.bays}
         for sub in enm.substations:
+            meta = sub.meta if isinstance(sub.meta, dict) else {}
+            field_specs = meta.get("field_specs")
+            nn_field_specs = meta.get("nn_field_specs")
+            has_field_specs = (
+                isinstance(field_specs, list)
+                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in field_specs)
+            ) or (
+                isinstance(nn_field_specs, list)
+                and any(isinstance(spec, dict) and spec.get("field_ref") for spec in nn_field_specs)
+            )
+            if has_field_specs:
+                substations_with_bays.add(sub.ref_id)
+        for sub in enm.substations:
             if sub.ref_id not in substations_with_bays:
                 issues.append(
                     ValidationIssue(

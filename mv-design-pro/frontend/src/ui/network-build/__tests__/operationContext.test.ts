@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { buildOperationContext } from '../operationContext';
 import {
+  resolveNopCandidates,
   resolveBranchSourceContextFromOperation,
   resolveElementNetworkContext,
 } from '../operationContextResolvers';
@@ -173,6 +174,42 @@ describe('buildOperationContext', () => {
     expect(context.existing_segment_count).toBe(2);
   });
 
+  it('blokuje kontynuacje z szyny, gdy terminal pola nie jest jednoznaczny w logicalViews', () => {
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'bus-sn-1',
+      elementType: 'Bus',
+      snapshot,
+      logicalViews: {
+        terminals: [
+          {
+            element_id: 'bay-out-1',
+            port_id: 'bay-out-1:OUT',
+            trunk_id: 'trunk-out',
+            status: 'DOSTEPNY',
+          },
+          {
+            element_id: 'bay-feeder-1',
+            port_id: 'bay-feeder-1:FEEDER',
+            trunk_id: 'trunk-feeder',
+            status: 'DOSTEPNY',
+          },
+        ],
+      } as any,
+    });
+
+    expect(context.station_ref).toBe('st-1');
+    expect(context.from_bus_ref).toBe('bus-sn-1');
+    expect(context.trunk_id).toBeUndefined();
+    expect(context.trunkId).toBeUndefined();
+    expect(context.from_terminal_id).toBeUndefined();
+    expect(context.terminal_id).toBeUndefined();
+    expect(context.terminalId).toBeUndefined();
+    expect(context.port_id).toBeUndefined();
+    expect(context.terminal_name).toBe('Szyna SN 1');
+    expect(context.is_first_trunk_segment).toBe(true);
+  });
+
   it('nie wyprowadza magistrali bezposrednio z obiektu zrodla SN', () => {
     const context = buildOperationContext({
       canonicalOp: 'continue_trunk_segment_sn',
@@ -300,6 +337,33 @@ describe('buildOperationContext', () => {
     expect(context.terminalA_id).toBe('bus-ring-a');
     expect(context.terminalB_id).toBe('bus-ring-b');
     expect(Array.isArray(context.nop_candidates)).toBe(true);
+  });
+
+  it('nie buduje kandydatow NOP z lokalnego branch.type bez widoku logicznego', () => {
+    expect(resolveNopCandidates(snapshot, null)).toEqual([]);
+  });
+
+  it('buduje kandydatow NOP z logicalViews.no_point_ref, a nie z typu galezi', () => {
+    const candidates = resolveNopCandidates(snapshot, {
+      ...logicalViews,
+      trunks: [
+        {
+          corridor_ref: 'trunk-1',
+          corridor_type: 'main',
+          segments: [],
+          no_point_ref: 'sw-a',
+          terminals: [],
+        },
+      ],
+    } as any);
+
+    expect(candidates).toEqual([
+      {
+        id: 'sw-a',
+        label: 'Lacznik A',
+        elementType: 'NORMAL_OPEN_POINT',
+      },
+    ]);
   });
 
   it('adapter add_converter_source dziedziczy kontekst nn z resolvera kanonicznego', () => {
