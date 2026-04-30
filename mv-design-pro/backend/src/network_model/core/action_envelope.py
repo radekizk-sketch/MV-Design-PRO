@@ -279,6 +279,9 @@ def _validate_payload_required_keys(
                 )
 
 
+_CATALOG_REQUIRED_BRANCH_KINDS = ("cable", "line_overhead")
+
+
 def _validate_payload_values(
     action_type: str,
     payload: dict[str, Any],
@@ -294,6 +297,24 @@ def _validate_payload_values(
                     path="payload.branch_kind",
                 )
             )
+        else:
+            # V12S-009: katalog-first hard w action envelope dla galezi
+            # technicznych (kable, linie napowietrzne). Bypass `draft=True`
+            # tworzy LogicalSketch — element nie awansuje do MODEL_TECHNICZNY_PELNY.
+            if branch_kind in _CATALOG_REQUIRED_BRANCH_KINDS:
+                catalog_ref = payload.get("catalog_ref")
+                is_draft = bool(payload.get("draft", False))
+                if not is_draft and (catalog_ref is None or catalog_ref == ""):
+                    errors.append(
+                        ActionIssue(
+                            code="catalog_ref_missing",
+                            message=(
+                                f"create_branch '{branch_kind}' wymaga "
+                                "catalog_ref albo draft=True (LogicalSketch)."
+                            ),
+                            path="payload.catalog_ref",
+                        )
+                    )
 
     if action_type == "set_in_service" and "in_service" in payload:
         if not isinstance(payload["in_service"], bool):
