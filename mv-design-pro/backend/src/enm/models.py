@@ -110,6 +110,18 @@ class ENMHeader(BaseModel):
     hash_sha256: str = ""
     defaults: ENMDefaults = Field(default_factory=ENMDefaults)
 
+    # V12S-010: chain hashy (additive, opcjonalne dla wstecznej kompatybilnosci)
+    semantic_hash: str | None = None
+    """Hash topologii + rol + pasm napieciowych + catalog_ref."""
+    input_hash: str | None = None
+    """Hash wejsc obliczeniowych BEZ switching state."""
+    case_hash: str | None = None
+    """Hash parametrow przypadku obliczeniowego."""
+    variant_hash: str | None = None
+    """Hash delty wariantu (overlay)."""
+    switching_snapshot_hash: str | None = None
+    """Hash TYLKO stanow lacznikow."""
+
 
 # ---------------------------------------------------------------------------
 # Bus (node)
