@@ -31,10 +31,15 @@ def _enm(**kwargs) -> EnergyNetworkModel:
 
 
 def _golden_enm() -> EnergyNetworkModel:
-    """Poprawna sieć — brak BLOCKERÓW."""
+    """Poprawna sieć — brak BLOCKERÓW.
+
+    Domena V12S-007: linia SN biegnie pomiędzy dwoma szynami SN (bus_1, bus_3).
+    Transformator jest jedynym dopuszczalnym przejściem SN→nN (bus_3 → bus_2).
+    """
     return _enm(
         buses=[
-            Bus(ref_id="bus_1", name="Szyna SN", voltage_kv=15),
+            Bus(ref_id="bus_1", name="Szyna SN GPZ", voltage_kv=15),
+            Bus(ref_id="bus_3", name="Szyna SN stacji", voltage_kv=15),
             Bus(ref_id="bus_2", name="Szyna NN", voltage_kv=0.4),
         ],
         sources=[
@@ -58,7 +63,7 @@ def _golden_enm() -> EnergyNetworkModel:
                 ref_id="ln_1",
                 name="Linia SN",
                 from_bus_ref="bus_1",
-                to_bus_ref="bus_2",
+                to_bus_ref="bus_3",
                 length_km=5,
                 r_ohm_per_km=0.4,
                 x_ohm_per_km=0.3,
@@ -71,7 +76,7 @@ def _golden_enm() -> EnergyNetworkModel:
             Transformer(
                 ref_id="trafo_1",
                 name="Transformator T1",
-                hv_bus_ref="bus_1",
+                hv_bus_ref="bus_3",
                 lv_bus_ref="bus_2",
                 sn_mva=0.63,
                 uhv_kv=15,
