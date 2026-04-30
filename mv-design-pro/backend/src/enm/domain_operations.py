@@ -2423,6 +2423,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {
             "ref_id": stn_id,
             "name": station.get("station_name")
+            or station.get("name")
             or payload.get("name")
             or f"Stacja {station_type_raw or station_type}",
             "station_type": substation_semantic_type,
