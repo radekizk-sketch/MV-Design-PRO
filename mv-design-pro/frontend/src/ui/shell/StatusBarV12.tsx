@@ -14,6 +14,9 @@ import {
   useActiveRunId,
   useActiveSnapshotId,
   useAppStateStore,
+  useEnmHashChain,
+  shortHash,
+  type EnmHashChain,
 } from '../app-state';
 import { useStudyCasesStore } from '../study-cases/store';
 import type { ResultStatus } from '../types';
@@ -58,6 +61,7 @@ export function StatusBarV12({
   const activeWorkMode = useAppStateStore((s) => s.activeWorkMode);
   const activeArea = useAppStateStore((s) => s.activeArea);
   const variantName = useAppStateStore((s) => s.activeVariantName);
+  const hashChain = useEnmHashChain();
 
   const appResultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const studyCaseResultStatus = useStudyCasesStore((s) => s.activeCase?.result_status ?? null);
@@ -71,9 +75,13 @@ export function StatusBarV12({
     ? runId.length > 8 ? runId.slice(0, 8) : runId
     : null;
 
-  const hashDisplay = viewHash
-    ? viewHash.length > 10 ? viewHash.slice(0, 10) : viewHash
+  // Hash audytu — preferuj chain V12S-010 (semantic). Fallback do viewHash gdy
+  // backend jeszcze nie populuje pól w storze.
+  const hashChipPrimary = hashChain?.semantic ?? hashChain?.input ?? viewHash ?? null;
+  const hashDisplay = hashChipPrimary
+    ? hashChipPrimary.length > 10 ? hashChipPrimary.slice(0, 10) : hashChipPrimary
     : null;
+  const hashTooltipTitle = buildHashTooltip(hashChain, viewHash);
 
   const modeLabel = activeMode === 'MODEL_EDIT' ? 'Edycja' : 'Odczyt';
   const areaLabel = getAreaDefinition(activeArea).labelShort;
@@ -191,11 +199,16 @@ export function StatusBarV12({
           </>
         )}
 
-        {/* Hash widoku */}
+        {/* Hash audytu — V12S-010: jeden chip, tooltip rozwija 5 hashy */}
         {hashDisplay && (
           <>
-            <div className="flex items-center gap-1" data-testid="status-hash">
-              <span className="text-scada-muted">hash:</span>
+            <div
+              className="flex items-center gap-1 cursor-help"
+              data-testid="status-hash"
+              title={hashTooltipTitle}
+              aria-label={hashTooltipTitle}
+            >
+              <span className="text-scada-muted">Hash audytu:</span>
               <span className="font-mono text-[9px] text-scada-muted">{hashDisplay}</span>
             </div>
             <Separator />
@@ -242,4 +255,27 @@ export function StatusBarV12({
 
 function Separator() {
   return <span className="text-scada-border" aria-hidden="true">|</span>;
+}
+
+/**
+ * Złóż wieloliniowy tooltip dla chipu „Hash audytu".
+ * Pokazuje 5 hashy V12S-010 (semantic / input / case / variant / switching).
+ * Każdy hash skrócony do 8 znaków; '—' gdy backend nie dostarczył wartości.
+ */
+function buildHashTooltip(chain: EnmHashChain | null, fallbackViewHash?: string): string {
+  if (!chain && !fallbackViewHash) {
+    return 'Hash audytu w toku — backend nie dostarczył pól.';
+  }
+  const lines = [
+    'Hash audytu (V12S-010, kliknij, aby skopiować pełny):',
+    `  Semantyka:   ${shortHash(chain?.semantic)}    topologia + role + pasma + katalog`,
+    `  Wejścia:     ${shortHash(chain?.input)}    R/X/B, ratingi, długości, sk3`,
+    `  Przypadek:   ${shortHash(chain?.case)}    parametry przypadku obliczeniowego`,
+    `  Wariant:     ${shortHash(chain?.variant)}    delta wariantu (overlay)`,
+    `  Łączniki:    ${shortHash(chain?.switching)}    stany open/closed`,
+  ];
+  if (!chain && fallbackViewHash) {
+    lines.push('', `  Hash widoku: ${shortHash(fallbackViewHash)} (legacy)`);
+  }
+  return lines.join('\n');
 }

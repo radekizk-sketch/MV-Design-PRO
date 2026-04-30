@@ -59,6 +59,23 @@ export type CaseKind = 'ShortCircuitCase' | 'PowerFlowCase';
 export type AnalysisType = 'SHORT_CIRCUIT' | 'LOAD_FLOW' | 'PROTECTION' | null;
 
 /**
+ * V12S-010 — pięć ortogonalnych hashy ENM.
+ *   semantic   topologia + role + pasma napięciowe + catalog_ref
+ *   input      wejścia obliczeniowe (R, X, B, ratingi, długości, sk3_mva…)
+ *   case       parametry przypadku obliczeniowego
+ *   variant    delta wariantu (overlay)
+ *   switching  stany łączników (open/closed)
+ * Każda wartość niezależna — zmiana parametru nie unieważnia całego chainu.
+ */
+export interface EnmHashChainState {
+  semantic: string | null;
+  input: string | null;
+  case: string | null;
+  variant: string | null;
+  switching: string | null;
+}
+
+/**
  * Global application state interface.
  * Extended for UI_INTEGRATION_E2E: SnapshotId, AnalysisType per UI_CORE_ARCHITECTURE.md
  */
@@ -91,6 +108,10 @@ interface AppState {
   activeVariantId: string | null;
   activeVariantName: string | null;
 
+  // V12S-010: chain pięciu ortogonalnych hashy ENM (semantic/input/case/variant/switching)
+  // Konsumowany opcjonalnie — null gdy backend nie populował (placeholder „—" w UI).
+  enmHashChain: EnmHashChainState | null;
+
   // UI state
   issuePanelOpen: boolean; // P30d: Issue Panel toggle
 
@@ -113,6 +134,7 @@ interface AppState {
   setActiveArea: (area: AreaId | LegacyAreaCode | string) => void;
   setActiveWorkMode: (mode: WorkMode) => void;
   setActiveVariant: (variantId: string | null, variantName?: string | null) => void;
+  setEnmHashChain: (chain: EnmHashChainState | null) => void;
 
   // Computed helpers
   hasActiveCase: () => boolean;
@@ -145,6 +167,7 @@ const initialState = {
   activeWorkMode: 'TE' as WorkMode,
   activeVariantId: null as string | null,
   activeVariantName: null as string | null,
+  enmHashChain: null as EnmHashChainState | null,
 };
 
 /**
@@ -264,6 +287,13 @@ export const useAppStateStore = create<AppState>()(
 
       setActiveVariant: (variantId, variantName = null) => {
         set({ activeVariantId: variantId, activeVariantName: variantName });
+      },
+
+      /**
+       * V12S-010 — ustaw chain pięciu hashy ENM (lub null gdy brak).
+       */
+      setEnmHashChain: (chain) => {
+        set({ enmHashChain: chain });
       },
 
       /**

@@ -62,4 +62,79 @@ describe('StatusBarV12 — pasek statusu V12', () => {
     expect(screen.getByTestId('status-network').textContent).toMatch(/42/);
     expect(screen.getByTestId('status-network').textContent).toMatch(/17/);
   });
+
+  describe('Hash audytu (V12S-010 — chain pięciu hashy)', () => {
+    afterEach(() => {
+      act(() => {
+        useAppStateStore.getState().setEnmHashChain(null);
+      });
+    });
+
+    it('nie pokazuje chipu Hash audytu gdy brak hashy i brak viewHash', () => {
+      render(<StatusBarV12 />);
+      expect(screen.queryByTestId('status-hash')).not.toBeInTheDocument();
+    });
+
+    it('pokazuje chip Hash audytu z fallbackiem viewHash gdy chain pusty', () => {
+      render(<StatusBarV12 viewHash="abcdef1234567890" />);
+      const chip = screen.getByTestId('status-hash');
+      expect(chip).toBeInTheDocument();
+      expect(chip.textContent).toMatch(/Hash audytu/);
+      expect(chip.textContent).toMatch(/abcdef1234/);
+    });
+
+    it('preferuje semantic_hash z chain V12S-010 nad viewHash', () => {
+      act(() => {
+        useAppStateStore.getState().setEnmHashChain({
+          semantic: '11111111aaaaaaaa',
+          input: '22222222bbbbbbbb',
+          case: '33333333cccccccc',
+          variant: '44444444dddddddd',
+          switching: '55555555eeeeeeee',
+        });
+      });
+      render(<StatusBarV12 viewHash="legacyhash00000" />);
+      const chip = screen.getByTestId('status-hash');
+      expect(chip.textContent).toMatch(/11111111/);
+      expect(chip.textContent).not.toMatch(/legacyhash/);
+    });
+
+    it('eksponuje 5 hashy w tooltipie chipu (title)', () => {
+      act(() => {
+        useAppStateStore.getState().setEnmHashChain({
+          semantic: 'sssssssssssssss',
+          input: 'iiiiiiiiiiiiiii',
+          case: 'ccccccccccccccc',
+          variant: 'vvvvvvvvvvvvvvv',
+          switching: 'wwwwwwwwwwwwwww',
+        });
+      });
+      render(<StatusBarV12 />);
+      const chip = screen.getByTestId('status-hash');
+      const title = chip.getAttribute('title') ?? '';
+      expect(title).toMatch(/Semantyka:\s*sssssss/);
+      expect(title).toMatch(/Wejścia:\s*iiiiiii/);
+      expect(title).toMatch(/Przypadek:\s*ccccccc/);
+      expect(title).toMatch(/Wariant:\s*vvvvvvv/);
+      expect(title).toMatch(/Łączniki:\s*wwwwwww/);
+    });
+
+    it('pokazuje placeholder „—" w tooltipie dla brakujących hashy chainu', () => {
+      act(() => {
+        useAppStateStore.getState().setEnmHashChain({
+          semantic: 'abc12345xyz',
+          input: null,
+          case: null,
+          variant: null,
+          switching: null,
+        });
+      });
+      render(<StatusBarV12 />);
+      const title = screen.getByTestId('status-hash').getAttribute('title') ?? '';
+      expect(title).toMatch(/Wejścia:\s*—/);
+      expect(title).toMatch(/Przypadek:\s*—/);
+      expect(title).toMatch(/Wariant:\s*—/);
+      expect(title).toMatch(/Łączniki:\s*—/);
+    });
+  });
 });
