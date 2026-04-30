@@ -1,12 +1,18 @@
 /**
- * TopBar — V12 górny pasek kontekstu i trybów (48px)
+ * TopBar — górny pasek kontekstu projektu i trybów pracy.
  *
- * Trzy strefy:
- * - Lewa:  nazwa projektu + przełącznik trybów roboczych (TE/TW/TZ/TP/TA/TN)
- * - Środkowa: Przypadek ▼  Wariant ▼  Migawka ▼  (zawsze widoczne)
- * - Prawa: użytkownik, zegar, zapisz
+ * Tryby pracy (etykiety widoczne dla inżyniera, kody to wewnętrzne ID):
+ *   F2  Edycja modelu          (kod TE)
+ *   F3  Wyniki na SLD          (kod TW)
+ *   F4  Zabezpieczenia         (kod TZ)
+ *   F5  Porównanie wariantów   (kod TP)
+ *   F6  Audyt obliczeń         (kod TA)
+ *   F7  Stan operatorski       (kod TN)
  *
- * Skróty: F2=TE, F3=TW, F4=TZ, F5=TP, F6=TA, F7=TN
+ * Trzy strefy paska:
+ * - lewa: nazwa projektu + Przypadek/Wariant/Migawka
+ * - środkowa: status wyników (FRESH/OUTDATED/NONE)
+ * - prawa: zegar serwera, przycisk Oblicz, przycisk Wyniki, ustawienia
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -313,13 +319,13 @@ export function TopBar({ projectName, onCalculate, onViewResults }: TopBarProps)
                 title={`${m.labelPl}\n${m.key} — ${m.title}`}
                 onClick={() => setActiveWorkMode(m.code)}
                 className={clsx(
-                  'h-[32px] min-w-[64px] border-r border-scada-border px-3 text-[12px] font-semibold tracking-normal transition-colors last:border-r-0',
+                  'h-[32px] min-w-[96px] border-r border-scada-border px-3 text-[12px] font-semibold tracking-normal transition-colors last:border-r-0',
                   isActive
                     ? MODE_ACTIVE_COLOR[m.code]
                     : 'text-scada-muted hover:bg-scada-hover-nav hover:text-scada-text',
                 )}
               >
-                {m.code}
+                {m.labelShort}
               </button>
             );
           })}
