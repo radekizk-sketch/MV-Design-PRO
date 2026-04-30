@@ -8,6 +8,19 @@
           "title": "Element Ref",
           "type": "string"
         },
+        "element_ref_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stable ENM ref_id (V12S-011). Populated by result_mapping layer; None for legacy rows.",
+          "title": "Element Ref Id"
+        },
         "element_type": {
           "description": "Element type (Bus, Branch, Transformer, etc.)",
           "title": "Element Type",

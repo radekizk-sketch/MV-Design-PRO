@@ -370,15 +370,28 @@ def build_golden_network() -> EnergyNetworkModel:
     # Dodatkowe kable (8 segmentów — łącznie 31)
     # =========================================================================
 
+    # V12S-007: kable OZE musza laczyc szyny w tym samym pasmie napieciowym.
+    # Dla przylaczen OZE wprowadzamy dedykowane szyny SN po stronie OZE
+    # (pelnoprawny wariant DEDICATED_MV_CONNECTION) zamiast nielegalnego
+    # przejscia kablem SN→nN, ktore omijalo transformator stacji.
+    oze_mv_buses = [
+        ("bus_s05_pv_15", "Szyna SN PV S05"),
+        ("bus_s10_wind_15", "Szyna SN FW S10"),
+        ("bus_s14_uni_15", "Szyna SN OZE S14"),
+        ("bus_s17_fab_15", "Szyna SN OZE S17"),
+    ]
+    for ref, name in oze_mv_buses:
+        buses.append(Bus(ref_id=ref, name=name, voltage_kv=15.0))
+
     extra_cables = [
         ("cab_s01_s08", "bus_s01_15", "bus_s08_15", 2.8),
         ("cab_s03_s12", "bus_s03_15", "bus_s12_15", 3.5),
         ("cab_s07_s15", "bus_s07_15", "bus_s15_15", 4.0),
         ("cab_s10_s19", "bus_s10_15", "bus_s19_15", 3.2),
-        ("cab_s05_pv", "bus_s05_15", "bus_s05_04", 0.05),
-        ("cab_s10_wind", "bus_s10_15", "bus_s10_04", 0.03),
-        ("cab_s14_uni", "bus_s14_15", "bus_s14_04", 0.04),
-        ("cab_s17_fab", "bus_s17_15", "bus_s17_04", 0.06),
+        ("cab_s05_pv", "bus_s05_15", "bus_s05_pv_15", 0.05),
+        ("cab_s10_wind", "bus_s10_15", "bus_s10_wind_15", 0.03),
+        ("cab_s14_uni", "bus_s14_15", "bus_s14_uni_15", 0.04),
+        ("cab_s17_fab", "bus_s17_15", "bus_s17_fab_15", 0.06),
     ]
 
     for ref, from_bus, to_bus, length in extra_cables:

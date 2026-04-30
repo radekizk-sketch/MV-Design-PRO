@@ -1,12 +1,18 @@
 /**
- * TopBar — V12 górny pasek kontekstu i trybów (48px)
+ * TopBar — górny pasek kontekstu projektu i trybów pracy.
  *
- * Trzy strefy:
- * - Lewa:  nazwa projektu + przełącznik trybów roboczych (TE/TW/TZ/TP/TA/TN)
- * - Środkowa: Przypadek ▼  Wariant ▼  Migawka ▼  (zawsze widoczne)
- * - Prawa: użytkownik, zegar, zapisz
+ * Tryby pracy (etykiety widoczne dla inżyniera, kody to wewnętrzne ID):
+ *   F2  Edycja modelu          (kod TE)
+ *   F3  Wyniki na SLD          (kod TW)
+ *   F4  Zabezpieczenia         (kod TZ)
+ *   F5  Porównanie wariantów   (kod TP)
+ *   F6  Audyt obliczeń         (kod TA)
+ *   F7  Stan operatorski       (kod TN)
  *
- * Skróty: F2=TE, F3=TW, F4=TZ, F5=TP, F6=TA, F7=TN
+ * Trzy strefy paska:
+ * - lewa: nazwa projektu + Przypadek/Wariant/Migawka
+ * - środkowa: status wyników (FRESH/OUTDATED/NONE)
+ * - prawa: zegar serwera, przycisk Oblicz, przycisk Wyniki, ustawienia
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -27,8 +33,8 @@ interface WorkModeDef {
 const WORK_MODES: WorkModeDef[] = [
   { code: 'TE', labelPl: 'Edycja modelu', labelShort: 'Edycja', key: 'F2', title: 'Edycja modelu sieci' },
   { code: 'TW', labelPl: 'Wyniki na SLD', labelShort: 'Wyniki', key: 'F3', title: 'Nakładki obliczeniowe na SLD' },
-  { code: 'TZ', labelPl: 'Zabezpieczenia', labelShort: 'Zabezp.', key: 'F4', title: 'Nastawy, krzywe t-I, selektywność' },
-  { code: 'TP', labelPl: 'Porównanie wariantów', labelShort: 'Porówn.', key: 'F5', title: 'Porównanie wariantów pracy' },
+  { code: 'TZ', labelPl: 'Zabezpieczenia', labelShort: 'Zabezpieczenia', key: 'F4', title: 'Nastawy, krzywe t-I, selektywność' },
+  { code: 'TP', labelPl: 'Porównanie wariantów', labelShort: 'Porównanie', key: 'F5', title: 'Porównanie wariantów pracy' },
   { code: 'TA', labelPl: 'Audyt', labelShort: 'Audyt', key: 'F6', title: 'Pochodzenie wartości i ślad obliczeń' },
   { code: 'TN', labelPl: 'Stan operatorski', labelShort: 'Operator', key: 'F7', title: 'Stan operatorski' },
 ];
@@ -313,13 +319,13 @@ export function TopBar({ projectName, onCalculate, onViewResults }: TopBarProps)
                 title={`${m.labelPl}\n${m.key} — ${m.title}`}
                 onClick={() => setActiveWorkMode(m.code)}
                 className={clsx(
-                  'h-[32px] min-w-[64px] border-r border-scada-border px-3 text-[12px] font-semibold tracking-normal transition-colors last:border-r-0',
+                  'h-[32px] min-w-[120px] border-r border-scada-border px-4 text-[12px] font-semibold tracking-normal transition-colors last:border-r-0',
                   isActive
                     ? MODE_ACTIVE_COLOR[m.code]
                     : 'text-scada-muted hover:bg-scada-hover-nav hover:text-scada-text',
                 )}
               >
-                {m.code}
+                {m.labelShort}
               </button>
             );
           })}

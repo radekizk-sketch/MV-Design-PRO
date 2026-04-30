@@ -172,18 +172,26 @@ class ElementResult:
 
     Maps element_ref → analysis-specific result data.
     Immutable, deterministic.
+
+    V12S-011: element_ref_id (additive, Optional) carries the stable ENM ref_id
+    so the FE can resolve results without a UUID reverse-lookup.
     """
 
     element_ref: str
     element_type: str
     values: dict[str, Any] = field(default_factory=dict)
+    # V12S-011: stable ENM ref_id, populated by result_mapping layer (None for legacy rows)
+    element_ref_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "element_ref": self.element_ref,
             "element_type": self.element_type,
             "values": self.values,
         }
+        if self.element_ref_id is not None:
+            result["element_ref_id"] = self.element_ref_id
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ElementResult:
@@ -191,6 +199,7 @@ class ElementResult:
             element_ref=data["element_ref"],
             element_type=data["element_type"],
             values=data.get("values", {}),
+            element_ref_id=data.get("element_ref_id"),
         )
 
 

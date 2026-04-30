@@ -119,16 +119,29 @@ export function ContextMenu({
         {visibleActions.map((action, index) => {
           const prev = visibleActions[index - 1];
           const showSection = Boolean(action.section && action.section !== prev?.section && !action.separator);
+          // D1: sekcja „Usuń" wizualnie wyróżniona — czerwony nagłówek + osobny separator
+          const isDeleteSection = action.section === 'Usuń';
+          // Separator nad sekcją „Usuń" — wizualnie oddziela operacje destrukcyjne
+          const showDestructiveSeparator = showSection && isDeleteSection && index > 0;
           return (
             <Fragment key={action.actionKey ?? action.id}>
+              {showDestructiveSeparator && (
+                <div className="my-1 border-t border-scada-border" role="separator" aria-hidden="true" />
+              )}
               {showSection && (
-                <div className="px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest text-scada-muted">
+                <div
+                  className={clsx(
+                    'px-3 pb-1 pt-2 text-[10px] font-bold uppercase tracking-widest',
+                    isDeleteSection ? 'text-red-400' : 'text-scada-muted',
+                  )}
+                >
                   {action.section}
                 </div>
               )}
             <ContextMenuItem
               action={action}
               onClick={() => handleActionClick(action)}
+              isDestructive={isDeleteSection}
             />
             </Fragment>
           );
@@ -157,9 +170,11 @@ export function ContextMenu({
 interface ContextMenuItemProps {
   action: ContextMenuAction;
   onClick: () => void;
+  /** D1: gdy true, item należy do sekcji „Usuń" — czerwony hover + tekst. */
+  isDestructive?: boolean;
 }
 
-function ContextMenuItem({ action, onClick }: ContextMenuItemProps) {
+function ContextMenuItem({ action, onClick, isDestructive = false }: ContextMenuItemProps) {
   if (action.separator) {
     return <div className="my-1 border-t border-gray-200" role="separator" />;
   }
@@ -175,9 +190,9 @@ function ContextMenuItem({ action, onClick }: ContextMenuItemProps) {
         title={!action.enabled ? action.blockedReason : undefined}
         className={clsx(
           'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm',
-          action.enabled
-            ? 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn'
-            : 'cursor-not-allowed text-scada-muted opacity-60'
+          !action.enabled && 'cursor-not-allowed text-scada-muted opacity-60',
+          action.enabled && isDestructive && 'text-red-400 hover:bg-red-900/30 hover:text-red-200',
+          action.enabled && !isDestructive && 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn',
         )}
         role="menuitem"
       >

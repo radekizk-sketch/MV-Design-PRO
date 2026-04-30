@@ -1008,7 +1008,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "bus_ref": bus_nn_ref or feeder_ref,
             "p_mw": active_power_kw / 1000.0,
             "q_mvar": (payload.get("reactive_power_kvar") or 0) / 1000.0,
-            "model": "constant_power",
+            # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
+            "model": "pq",
             "tags": [],
             "meta": {
                 "load_kind": payload.get("load_kind", "SKUPIONY"),

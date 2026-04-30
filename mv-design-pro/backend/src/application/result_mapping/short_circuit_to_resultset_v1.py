@@ -33,6 +33,7 @@ def map_short_circuit_to_resultset_v1(
     graph: NetworkGraph,
     validation_snapshot: dict[str, Any],
     readiness_snapshot: dict[str, Any],
+    enm_ref_id_map: dict[str, str] | None = None,
 ) -> ResultSet:
     """
     Map a ShortCircuitBindingResult to a canonical ResultSet v1.
@@ -43,6 +44,9 @@ def map_short_circuit_to_resultset_v1(
         graph: NetworkGraph used for the calculation (for element enumeration).
         validation_snapshot: Validation state at run time.
         readiness_snapshot: Readiness state at run time.
+        enm_ref_id_map: Optional UUID→ref_id mapping from ENM (V12S-011).
+            When provided, element_ref_id is populated on each ElementResult
+            so the frontend can resolve results without a reverse UUID lookup.
 
     Returns:
         Immutable ResultSet with deterministic signature.
@@ -50,7 +54,7 @@ def map_short_circuit_to_resultset_v1(
     sr = binding_result.solver_result
 
     # Build per-element results: one entry for the fault node
-    element_results = _build_element_results(sr, graph)
+    element_results = _build_element_results(sr, graph, enm_ref_id_map or {})
 
     # Build global results from the solver output
     global_results = _build_global_results(sr, binding_result.analysis_type)
@@ -68,11 +72,14 @@ def map_short_circuit_to_resultset_v1(
 def _build_element_results(
     sr: Any,
     graph: NetworkGraph,
+    enm_ref_id_map: dict[str, str],
 ) -> list[ElementResult]:
     """Build per-element results from the solver result.
 
     The primary result is for the fault node. Contributions from
     sources and branches (if available) are also included.
+
+    enm_ref_id_map maps UUID → ENM ref_id for V12S-011 element_ref_id population.
     """
     results: list[ElementResult] = []
 
@@ -93,6 +100,7 @@ def _build_element_results(
                 "kappa": float(sr.kappa),
                 "rx_ratio": float(sr.rx_ratio),
             },
+            element_ref_id=enm_ref_id_map.get(sr.fault_node_id),
         )
     )
 
@@ -107,6 +115,7 @@ def _build_element_results(
                     "share": float(contrib.share),
                     "source_type": contrib.source_type.value,
                 },
+                element_ref_id=enm_ref_id_map.get(contrib.source_id),
             )
         )
 
@@ -123,6 +132,7 @@ def _build_element_results(
                         "i_contrib_a": float(bc.i_contrib_a),
                         "direction": bc.direction,
                     },
+                    element_ref_id=enm_ref_id_map.get(bc.branch_id),
                 )
             )
 

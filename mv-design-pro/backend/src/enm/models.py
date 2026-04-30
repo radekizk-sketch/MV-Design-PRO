@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Supporting types
@@ -109,6 +109,18 @@ class ENMHeader(BaseModel):
     revision: int = 1
     hash_sha256: str = ""
     defaults: ENMDefaults = Field(default_factory=ENMDefaults)
+
+    # V12S-010: chain hashy (additive, opcjonalne dla wstecznej kompatybilnosci)
+    semantic_hash: str | None = None
+    """Hash topologii + rol + pasm napieciowych + catalog_ref."""
+    input_hash: str | None = None
+    """Hash wejsc obliczeniowych BEZ switching state."""
+    case_hash: str | None = None
+    """Hash parametrow przypadku obliczeniowego."""
+    variant_hash: str | None = None
+    """Hash delty wariantu (overlay)."""
+    switching_snapshot_hash: str | None = None
+    """Hash TYLKO stanow lacznikow."""
 
 
 # ---------------------------------------------------------------------------
@@ -325,6 +337,64 @@ class Generator(ENMElement):
     Referencja do stacji (ref_id substacji).
     Wymagana dla wariantu 'nn_side' (wskazuje stacje SN/nN).
     """
+
+    @model_validator(mode="after")
+    def _validate_connection_variant_consistency(self) -> "Generator":
+        """V12S-008: connection_variant musi byc spojny z station_ref/blocking_transformer_ref.
+
+        Tabela prawdy:
+          LV_BEHIND_STATION_TRANSFORMER → station_ref WYMAGANY, blocking_transformer_ref WYMAGANY
+          DEDICATED_MV_CONNECTION       → station_ref ZABRONIONY, blocking_transformer_ref opcjonalny
+          nn_side                       → station_ref WYMAGANY, blocking_transformer_ref ZABRONIONY
+          block_transformer             → blocking_transformer_ref WYMAGANY, station_ref opcjonalny
+          SOURCE_CONNECTION_STATION     → permisywne (legacy bus-only connection)
+          None                          → permisywne (dane przed migracja)
+
+        Walidator NIE jest blokujacy dla wariantow None oraz SOURCE_CONNECTION_STATION,
+        zeby umozliwic ladowanie danych legacy. Eligibility (ELIG_GEN_CONNECTION_VARIANT_INCONSISTENT)
+        sygnalizuje brakujacy connection_variant osobno.
+        """
+        variant = self.connection_variant
+        if variant is None or variant == "SOURCE_CONNECTION_STATION":
+            return self
+
+        if variant == "LV_BEHIND_STATION_TRANSFORMER":
+            if self.station_ref is None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant="
+                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga station_ref."
+                )
+            if self.blocking_transformer_ref is None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant="
+                    f"'LV_BEHIND_STATION_TRANSFORMER' wymaga blocking_transformer_ref."
+                )
+        elif variant == "DEDICATED_MV_CONNECTION":
+            if self.station_ref is not None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant="
+                    f"'DEDICATED_MV_CONNECTION' nie moze miec station_ref "
+                    f"(generator ma dedykowane przylacze SN, nie idzie przez stacje)."
+                )
+        elif variant == "nn_side":
+            if self.station_ref is None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
+                    f"wymaga station_ref (wskazuje stacje SN/nN)."
+                )
+            if self.blocking_transformer_ref is not None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant='nn_side' "
+                    f"nie moze miec blocking_transformer_ref "
+                    f"(generator po stronie nN, transformator stacji wystarczy)."
+                )
+        elif variant == "block_transformer":
+            if self.blocking_transformer_ref is None:
+                raise ValueError(
+                    f"Generator '{self.ref_id}': connection_variant="
+                    f"'block_transformer' wymaga blocking_transformer_ref."
+                )
+        return self
 
 
 # ---------------------------------------------------------------------------

@@ -170,6 +170,89 @@ def test_referential_integrity_errors_rejected() -> None:
     assert result.errors[0].code == "unknown_entity"
 
 
+def test_create_branch_cable_without_catalog_ref_rejected() -> None:
+    """V12S-009: kabel SN bez catalog_ref → catalog_ref_missing."""
+    graph, snapshot_id = _build_snapshot()
+    snapshot = create_network_snapshot(
+        graph, snapshot_id=snapshot_id, created_at="2024-01-01T00:00:00+00:00"
+    )
+    envelope = _base_envelope(
+        action_type="create_branch",
+        payload={
+            "from_node_id": "node-1",
+            "to_node_id": "node-2",
+            "branch_kind": "cable",
+        },
+    )
+
+    result = validate_action_envelope(envelope, snapshot)
+    assert result.status == "rejected"
+    codes = [issue.code for issue in result.errors]
+    assert "catalog_ref_missing" in codes
+
+
+def test_create_branch_cable_with_catalog_ref_accepted() -> None:
+    """V12S-009: kabel z catalog_ref przechodzi gate katalogowy."""
+    graph, snapshot_id = _build_snapshot()
+    snapshot = create_network_snapshot(
+        graph, snapshot_id=snapshot_id, created_at="2024-01-01T00:00:00+00:00"
+    )
+    envelope = _base_envelope(
+        action_type="create_branch",
+        payload={
+            "from_node_id": "node-1",
+            "to_node_id": "node-2",
+            "branch_kind": "cable",
+            "catalog_ref": "CAT-CAB-YAKY-240",
+        },
+    )
+
+    result = validate_action_envelope(envelope, snapshot)
+    catalog_errors = [i for i in result.errors if i.code == "catalog_ref_missing"]
+    assert catalog_errors == []
+
+
+def test_create_branch_cable_draft_bypass_accepted() -> None:
+    """V12S-009: draft=True tworzy LogicalSketch bez catalog_ref."""
+    graph, snapshot_id = _build_snapshot()
+    snapshot = create_network_snapshot(
+        graph, snapshot_id=snapshot_id, created_at="2024-01-01T00:00:00+00:00"
+    )
+    envelope = _base_envelope(
+        action_type="create_branch",
+        payload={
+            "from_node_id": "node-1",
+            "to_node_id": "node-2",
+            "branch_kind": "cable",
+            "draft": True,
+        },
+    )
+
+    result = validate_action_envelope(envelope, snapshot)
+    catalog_errors = [i for i in result.errors if i.code == "catalog_ref_missing"]
+    assert catalog_errors == []
+
+
+def test_create_branch_line_overhead_without_catalog_rejected() -> None:
+    """V12S-009: linia napowietrzna bez catalog_ref → odrzucenie."""
+    graph, snapshot_id = _build_snapshot()
+    snapshot = create_network_snapshot(
+        graph, snapshot_id=snapshot_id, created_at="2024-01-01T00:00:00+00:00"
+    )
+    envelope = _base_envelope(
+        action_type="create_branch",
+        payload={
+            "from_node_id": "node-1",
+            "to_node_id": "node-2",
+            "branch_kind": "line_overhead",
+        },
+    )
+
+    result = validate_action_envelope(envelope, snapshot)
+    codes = [issue.code for issue in result.errors]
+    assert "catalog_ref_missing" in codes
+
+
 def test_validator_is_deterministic() -> None:
     graph, snapshot_id = _build_snapshot()
     snapshot = create_network_snapshot(

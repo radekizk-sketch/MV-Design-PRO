@@ -31,6 +31,23 @@ from .severity import (
     severity_rank,
 )
 
+# V12S-007: voltage band thresholds (kV).
+# Pasma napieciowe domeny:
+#   nN : voltage_kv < 1.0
+#   SN : 1.0 <= voltage_kv <= 60.0
+#   WN : voltage_kv > 60.0
+_VOLTAGE_BAND_NN_MAX = 1.0
+_VOLTAGE_BAND_SN_MAX = 60.0
+
+
+def _voltage_band(voltage_kv: float) -> str:
+    """Zwroc pasmo napieciowe szyny: 'nN', 'SN' albo 'WN'."""
+    if voltage_kv < _VOLTAGE_BAND_NN_MAX:
+        return "nN"
+    if voltage_kv <= _VOLTAGE_BAND_SN_MAX:
+        return "SN"
+    return "WN"
+
 
 class ValidationIssue(BaseModel):
     code: str
@@ -70,6 +87,9 @@ class ENMValidator:
         self._check_warnings(enm, issues)
         self._check_info(enm, issues)
         self._check_topology_entities(enm, issues)
+        # V12S-007: pasmo napieciowe + ciaglosc przez stacje przelotowa
+        self._check_voltage_band_consistency(enm, issues)
+        self._check_through_station_continuity(enm, issues)
 
         # Deterministic sort: severity_rank → code → first element_ref
         issues.sort(
@@ -764,3 +784,154 @@ class ENMValidator:
             short_circuit_1f=sc_1f,
             load_flow=has_loads,
         )
+
+    # ------------------------------------------------------------------
+    # V12S-007: voltage band consistency on branch endpoints
+    # ------------------------------------------------------------------
+
+    def _check_voltage_band_consistency(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E020: galaz laczy szyny w roznych pasmach napieciowych.
+
+        Galaz typu OverheadLine, Cable, SwitchBranch lub FuseBranch nie moze
+        przechodzic miedzy pasmami napieciowymi (nN/SN/WN). Jedynym dozwolonym
+        elementem cross-band jest Transformer (V12S-007).
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+        for branch in enm.branches:
+            from_bus = bus_by_ref.get(branch.from_bus_ref)
+            to_bus = bus_by_ref.get(branch.to_bus_ref)
+            if from_bus is None or to_bus is None:
+                continue  # missing-ref errors are reported by other checks
+            if from_bus.voltage_kv <= 0 or to_bus.voltage_kv <= 0:
+                continue  # zero-voltage errors reported by E004
+            band_from = _voltage_band(from_bus.voltage_kv)
+            band_to = _voltage_band(to_bus.voltage_kv)
+            if band_from == band_to:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="E020",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Galaz '{branch.ref_id}' laczy pasma napieciowe "
+                        f"{band_from} ({from_bus.voltage_kv} kV) i "
+                        f"{band_to} ({to_bus.voltage_kv} kV). Galaz nie moze "
+                        f"przechodzic miedzy pasmami - jedynym dozwolonym "
+                        f"przejsciem jest transformator."
+                    ),
+                    element_refs=[
+                        branch.ref_id,
+                        from_bus.ref_id,
+                        to_bus.ref_id,
+                    ],
+                    wizard_step_hint="K4",
+                    suggested_fix=(
+                        "Wstaw transformator miedzy szynami w roznych pasmach "
+                        "albo zmien przypisanie szyn galezi."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=branch.ref_id,
+                        modal_type="BranchModal",
+                        payload_hint={"required": "voltage_band_consistency"},
+                    ),
+                )
+            )
+
+    # ------------------------------------------------------------------
+    # V12S-007: through-station MV continuity
+    # ------------------------------------------------------------------
+
+    def _check_through_station_continuity(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E021: ciaglosc SN przez stacje przelotowa.
+
+        Stacja przelotowa (substation z polem IN i polem OUT) musi miec oba
+        pola podpiete do tej samej szyny SN. SN nie moze 'przejsc' przez
+        strone nN ani przez transformator. Ciaglosc realizowana jest WYLACZNIE
+        przez wspolna magistrala SN stacji.
+        """
+        bus_by_ref = {b.ref_id: b for b in enm.buses}
+
+        # Group bays by substation_ref
+        bays_by_station: dict[str, list] = {}
+        for bay in enm.bays:
+            bays_by_station.setdefault(bay.substation_ref, []).append(bay)
+
+        for sub in enm.substations:
+            sub_bays = bays_by_station.get(sub.ref_id, [])
+            in_bays = [b for b in sub_bays if b.bay_role == "IN"]
+            out_bays = [b for b in sub_bays if b.bay_role == "OUT"]
+            # Stacja przelotowa: ma co najmniej 1 IN i 1 OUT
+            if not in_bays or not out_bays:
+                continue
+
+            # Wszystkie pola IN/OUT musza siedziec na szynie SN; w tym samym
+            # pasmie napieciowym; podpiete do tej samej szyny.
+            mv_buses_used: set[str] = set()
+            offending_bays: list[str] = []
+            for bay in [*in_bays, *out_bays]:
+                bus = bus_by_ref.get(bay.bus_ref)
+                if bus is None or bus.voltage_kv <= 0:
+                    continue
+                band = _voltage_band(bus.voltage_kv)
+                if band != "SN":
+                    offending_bays.append(bay.ref_id)
+                    continue
+                mv_buses_used.add(bay.bus_ref)
+
+            if offending_bays:
+                issues.append(
+                    ValidationIssue(
+                        code="E021",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Stacja przelotowa '{sub.ref_id}': pola IN/OUT "
+                            f"({', '.join(sorted(offending_bays))}) nie sa "
+                            f"podpiete do szyny SN. Ciaglosc SN nie moze "
+                            f"przechodzic przez strone nN ani transformator."
+                        ),
+                        element_refs=[sub.ref_id, *offending_bays],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            "Przypisz pola IN i OUT do magistrali SN stacji "
+                            "(wspolna szyna SN)."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=sub.ref_id,
+                            modal_type="SubstationModal",
+                            payload_hint={"required": "through_station_mv_bus"},
+                        ),
+                    )
+                )
+                continue
+
+            if len(mv_buses_used) > 1:
+                issues.append(
+                    ValidationIssue(
+                        code="E021",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Stacja przelotowa '{sub.ref_id}': pola IN i OUT "
+                            f"podpiete do roznych szyn SN "
+                            f"({', '.join(sorted(mv_buses_used))}). "
+                            f"Ciaglosc SN przez stacje przelotowa wymaga "
+                            f"wspolnej magistrali SN."
+                        ),
+                        element_refs=[sub.ref_id, *sorted(mv_buses_used)],
+                        wizard_step_hint="K3",
+                        suggested_fix=(
+                            "Podlacz pola IN i OUT do tej samej szyny SN stacji."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=sub.ref_id,
+                            modal_type="SubstationModal",
+                            payload_hint={"required": "through_station_mv_bus"},
+                        ),
+                    )
+                )

@@ -54,3 +54,5 @@ venv/
 .playwright-mcp/
 mv-design-pro/qa-*.png
 mv-design-ui-implementation-*.png
+mv-design-pro/backend/*.db
+mv-design-pro/backend/**/*.db
