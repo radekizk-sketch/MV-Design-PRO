@@ -81,6 +81,56 @@ const MUTATING_SECTIONS = new Set<SemanticContextMenuSection>([
   'Usuń',
 ]);
 
+/**
+ * Kanoniczna kolejność sekcji w menu kontekstowym (D2).
+ *
+ * Wynika z perspektywy inżyniera projektującego sieć:
+ *   1. Otwórz       — najpierw poznaj element
+ *   2. Edytuj       — popraw parametry
+ *   3. Dodaj        — rozwiń strukturę (pole, odcinek, stacja)
+ *   4. Analizuj     — sprawdź gotowość, blokery
+ *   5. Wyniki       — zobacz, co policzono
+ *   6. Uzasadnienie — dlaczego ten wynik
+ *   7. Raport       — udokumentuj
+ *   8. Operacje     — łącznikowe (zmień stan, NOP)
+ *   9. Usuń         — destrukcyjne, na końcu, wizualnie oddzielone
+ */
+const SECTION_ORDER: readonly SemanticContextMenuSection[] = [
+  'Otwórz',
+  'Edytuj',
+  'Dodaj',
+  'Analizuj',
+  'Wyniki',
+  'Uzasadnienie',
+  'Raport',
+  'Operacje',
+  'Usuń',
+];
+
+const SECTION_ORDER_INDEX: Record<SemanticContextMenuSection, number> = SECTION_ORDER.reduce(
+  (acc, section, index) => {
+    acc[section] = index;
+    return acc;
+  },
+  {} as Record<SemanticContextMenuSection, number>,
+);
+
+/**
+ * Zwraca akcje posortowane stabilnie wg `SECTION_ORDER`.
+ * Kolejność akcji wewnątrz sekcji zachowana (Array.prototype.sort jest stable
+ * od ES2019 / Node ≥ 12). Determinizm: dla tej samej listy wejściowej zawsze
+ * ten sam wynik — wymóg dla `interaction_matrix_guard`.
+ */
+function sortActionsBySection(
+  actions: readonly SemanticContextActionDefinition[],
+): SemanticContextActionDefinition[] {
+  return [...actions].sort((a, b) => {
+    const ai = SECTION_ORDER_INDEX[a.section] ?? Number.MAX_SAFE_INTEGER;
+    const bi = SECTION_ORDER_INDEX[b.section] ?? Number.MAX_SAFE_INTEGER;
+    return ai - bi;
+  });
+}
+
 function action(draft: ActionDraft): SemanticContextActionDefinition {
   return {
     mode: draft.mode ?? 'edit',
@@ -289,6 +339,14 @@ function measurementBay(): SemanticContextActionDefinition[] {
     }),
     readiness('Sprawdź gotowość pola pomiarowego'),
     results('Pokaż wyniki pola pomiarowego'),
+    // A4: pole pomiarowe ma teraz „Pokaż wartości na SLD" (parytet z line/transformer bay)
+    action({
+      actionId: 'show_sld_values',
+      labelPl: 'Pokaż wartości pomiarów na SLD',
+      section: 'Wyniki',
+      handlerRef: 'onShowSldValues',
+      mode: 'result',
+    }),
     justification('Pokaż uzasadnienie pomiarów'),
     report(),
     deleteAction('Usuń pole pomiarowe'),
@@ -342,6 +400,8 @@ function busbarSection(): SemanticContextActionDefinition[] {
     readiness('Sprawdź gotowość sekcji szyn'),
     results('Pokaż wyniki sekcji szyn'),
     justification('Pokaż uzasadnienie sekcji szyn'),
+    // A1: sekcja szyn ma teraz „Dodaj do raportu" (parytet z innymi rolami)
+    report(),
     deleteAction('Usuń sekcję szyn'),
   ];
 }
@@ -385,6 +445,8 @@ function segment(label: string): SemanticContextActionDefinition[] {
     readiness(`Sprawdź gotowość ${label}`),
     results(`Pokaż wyniki ${label}`),
     justification('Pokaż uzasadnienie odcinka'),
+    // A2: odcinek SN ma teraz „Dodaj do raportu" (parytet z transformatorem/stacją/GPZ)
+    report(),
     deleteAction(`Usuń ${label}`),
   ];
 }
@@ -522,9 +584,13 @@ export function buildSemanticContextActionSet(
   return {
     elementRefId: element.refId,
     engineeringRole: element.engineeringRole,
-    actions: [...actions],
+    // D2: explicit sortowanie wg kanonicznej kolejności sekcji.
+    // Zabezpieczenie przed dryfem kolejności w funkcjach budujących role.
+    actions: sortActionsBySection(actions),
   };
 }
+
+export { SECTION_ORDER, sortActionsBySection };
 
 export function isSemanticContextActionMutating(actionDefinition: SemanticContextActionDefinition): boolean {
   return MUTATING_SECTIONS.has(actionDefinition.section);

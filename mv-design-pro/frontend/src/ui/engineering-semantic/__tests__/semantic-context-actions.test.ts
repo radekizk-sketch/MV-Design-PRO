@@ -3,7 +3,9 @@ import {
   buildSemanticContextActionSet,
   findSemanticContextActionPolicyViolations,
   isSemanticContextActionMutating,
+  SECTION_ORDER,
   SEMANTIC_CONTEXT_ACTION_ROLE_REGISTRY,
+  sortActionsBySection,
   type SemanticContextMenuElement,
   type SemanticEngineeringRole,
 } from '../semanticContextActions';
@@ -120,5 +122,89 @@ describe('semantic context action policy by EngineeringRole', () => {
         expect(Boolean(action.handlerRef || action.blockedReasonPl), action.actionId).toBe(true);
       }
     }
+  });
+
+  // A1: BUSBAR_SECTION ma teraz „Dodaj do raportu"
+  it('BUSBAR_SECTION exposes add_to_report (parytet z innymi rolami)', () => {
+    expect(actionIds('BUSBAR_SECTION')).toContain('add_to_report');
+  });
+
+  // A2: odcinki SN mają teraz „Dodaj do raportu"
+  it.each(['MV_CABLE_SEGMENT', 'MV_OVERHEAD_SEGMENT'] as const)(
+    '%s exposes add_to_report',
+    (role) => {
+      expect(actionIds(role)).toContain('add_to_report');
+    },
+  );
+
+  // A4: pole pomiarowe ma teraz „Pokaż wartości na SLD"
+  it('MEASUREMENT_BAY exposes show_sld_values (parytet z LINE/TRANSFORMER bay)', () => {
+    expect(actionIds('MEASUREMENT_BAY')).toContain('show_sld_values');
+  });
+
+  // D2: kanoniczna kolejność sekcji
+  it('SECTION_ORDER zachowuje kolejność: Otwórz → Edytuj → Dodaj → Analizuj → Wyniki → Uzasadnienie → Raport → Operacje → Usuń', () => {
+    expect([...SECTION_ORDER]).toEqual([
+      'Otwórz',
+      'Edytuj',
+      'Dodaj',
+      'Analizuj',
+      'Wyniki',
+      'Uzasadnienie',
+      'Raport',
+      'Operacje',
+      'Usuń',
+    ]);
+  });
+
+  it('sortActionsBySection sortuje stabilnie wg SECTION_ORDER', () => {
+    const actions = buildSemanticContextActionSet(elementWithRole('LINE_FEEDER_BAY')).actions;
+    const sectionsInOrder = actions.map((a) => a.section);
+    const seenSections: string[] = [];
+    for (const s of sectionsInOrder) {
+      if (s !== seenSections[seenSections.length - 1]) {
+        seenSections.push(s);
+      }
+    }
+    // każda sekcja występuje ciągłym blokiem (sortowanie stabilne)
+    const expectedSubseq = SECTION_ORDER.filter((s) => seenSections.includes(s));
+    expect(seenSections).toEqual(expectedSubseq);
+  });
+
+  it('„Usuń" jest ostatnią sekcją w każdej roli (operacja destrukcyjna na końcu)', () => {
+    for (const role of Object.keys(SEMANTIC_CONTEXT_ACTION_ROLE_REGISTRY) as SemanticEngineeringRole[]) {
+      const actions = buildSemanticContextActionSet(elementWithRole(role)).actions;
+      const last = actions[actions.length - 1];
+      expect(last?.section, role).toBe('Usuń');
+    }
+  });
+
+  it('sortActionsBySection nie zmienia kolejności akcji o tej samej sekcji', () => {
+    const input = [
+      {
+        actionId: 'a',
+        labelPl: 'A',
+        section: 'Edytuj' as const,
+        handlerRef: 'h',
+        mode: 'edit' as const,
+        domainOperationKind: null,
+        operationId: 'update_element_parameters',
+        invalidates: [],
+        blockedReasonPl: '',
+      },
+      {
+        actionId: 'b',
+        labelPl: 'B',
+        section: 'Edytuj' as const,
+        handlerRef: 'h',
+        mode: 'edit' as const,
+        domainOperationKind: null,
+        operationId: 'update_element_parameters',
+        invalidates: [],
+        blockedReasonPl: '',
+      },
+    ];
+    const sorted = sortActionsBySection(input);
+    expect(sorted.map((a) => a.actionId)).toEqual(['a', 'b']);
   });
 });
