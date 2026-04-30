@@ -272,6 +272,11 @@ class ElementResultV1(BaseModel):
         default_factory=dict,
         description="Analysis-specific result values",
     )
+    # V12S-011: stable ENM ref_id, populated by result_mapping layer; None for legacy rows
+    element_ref_id: str | None = Field(
+        default=None,
+        description="Stable ENM ref_id (V12S-011). Populated by result_mapping layer; None for legacy rows.",
+    )
 
     model_config = {"frozen": True}
 
