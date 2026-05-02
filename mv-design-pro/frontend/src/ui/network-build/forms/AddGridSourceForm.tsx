@@ -13,11 +13,14 @@ import {
   type GridSourceFormData,
 } from './shared/GridSourceEditor';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
+import { navigateToSld } from '../../navigation/routes';
 
 type GpzSection = {
   order: number;
   name: string;
   line_field_name: string;
+  line_fields_count: number;
+  line_field_names: string[];
 };
 
 function withIndexedSuffix(base: string, index: number, total: number, fallback: string): string {
@@ -27,10 +30,24 @@ function withIndexedSuffix(base: string, index: number, total: number, fallback:
 
 function buildGpzSections(data: GridSourceFormData): GpzSection[] {
   const count = Math.max(1, Math.trunc(data.sections_count || 1));
+  const lineFieldsPerSection = Math.max(
+    1,
+    Math.min(12, Math.trunc(data.line_fields_per_section || 1)),
+  );
   return Array.from({ length: count }, (_, index) => ({
     order: index,
     name: withIndexedSuffix(data.gpz_section_name, index, count, 'Sekcja GPZ'),
-    line_field_name: withIndexedSuffix(data.gpz_line_field_name, index, count, 'Pole liniowe GPZ'),
+    line_field_name: data.gpz_line_field_name.trim() || 'Pole liniowe GPZ',
+    line_fields_count: lineFieldsPerSection,
+    line_field_names: Array.from(
+      { length: lineFieldsPerSection },
+      (_unused, fieldIndex) => withIndexedSuffix(
+        data.gpz_line_field_name,
+        fieldIndex,
+        lineFieldsPerSection,
+        'Pole liniowe GPZ',
+      ),
+    ),
   }));
 }
 
@@ -108,6 +125,10 @@ function buildGridSourcePayload(data: GridSourceFormData) {
     source_name: data.source_name,
     voltage_kv: data.sn_voltage_kv,
     sections_count: Math.max(1, Math.trunc(data.sections_count || 1)),
+    line_fields_per_section: Math.max(
+      1,
+      Math.min(12, Math.trunc(data.line_fields_per_section || 1)),
+    ),
     short_circuit_mode: data.short_circuit_mode,
     gpz_sections: buildGpzSections(data),
     zero_sequence: buildZeroSequence(data),
@@ -133,9 +154,18 @@ function buildGridSourcePayload(data: GridSourceFormData) {
   return payload;
 }
 
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 export function AddGridSourceForm() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((state) => state.closeOperationForm);
+  const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const [formError, setFormError] = useState<string | null>(null);
@@ -145,17 +175,31 @@ export function AddGridSourceForm() {
       return {};
     }
 
-    return {
-      source_name: (context.source_name as string) ?? '',
-      sn_voltage_kv: (context.sn_voltage_kv as number) ?? (context.voltage_kv as number) ?? null,
-      sk3_mva: (context.sk3_mva as number) ?? null,
-      rx_ratio: (context.rx_ratio as number) ?? null,
-      catalog_ref:
-        catalogRefFromInput(context.catalog_ref) ?? catalogRefFromInput(context.catalog_binding),
-      sections_count: (context.sections_count as number) ?? 1,
-      gpz_section_name: (context.gpz_section_name as string) ?? '',
-      gpz_line_field_name: (context.gpz_line_field_name as string) ?? '',
-    };
+    const initial: Partial<GridSourceFormData> = {};
+    const sourceName = readString(context.source_name);
+    const voltageKv = readNumber(context.sn_voltage_kv) ?? readNumber(context.voltage_kv);
+    const sk3Mva = readNumber(context.sk3_mva);
+    const rxRatio = readNumber(context.rx_ratio);
+    const catalogRef =
+      catalogRefFromInput(context.catalog_ref) ?? catalogRefFromInput(context.catalog_binding);
+    const sectionsCount = readNumber(context.sections_count);
+    const lineFieldsPerSection =
+      readNumber(context.line_fields_per_section)
+      ?? readNumber(context.gpz_line_fields_per_section);
+    const sectionName = readString(context.gpz_section_name);
+    const lineFieldName = readString(context.gpz_line_field_name);
+
+    if (sourceName) initial.source_name = sourceName;
+    if (voltageKv !== null) initial.sn_voltage_kv = voltageKv;
+    if (sk3Mva !== null) initial.sk3_mva = sk3Mva;
+    if (rxRatio !== null) initial.rx_ratio = rxRatio;
+    if (catalogRef) initial.catalog_ref = catalogRef;
+    if (sectionsCount !== null) initial.sections_count = sectionsCount;
+    if (lineFieldsPerSection !== null) initial.line_fields_per_section = lineFieldsPerSection;
+    if (sectionName) initial.gpz_section_name = sectionName;
+    if (lineFieldName) initial.gpz_line_field_name = lineFieldName;
+
+    return initial;
   }, [context]);
 
   const handleSubmit = useCallback(
@@ -185,15 +229,16 @@ export function AddGridSourceForm() {
         return;
       }
 
-      closeForm();
+      collapseSurfaceStackTo(null);
+      navigateToSld();
     },
-    [activeCaseId, closeForm, executeDomainOperation],
+    [activeCaseId, collapseSurfaceStackTo, executeDomainOperation],
   );
 
   return (
     <div className="h-full overflow-y-auto" data-testid="add-grid-source-form">
       {formError && (
-        <p className="border-b border-red-200 bg-red-50 px-4 py-2 text-xs text-red-600">
+        <p className="border-b border-[#4a1c2a] bg-[#210711] px-4 py-2 font-mono-eng text-xs text-[#ff6b85]">
           {formError}
         </p>
       )}

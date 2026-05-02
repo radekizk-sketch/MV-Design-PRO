@@ -8,7 +8,8 @@
  * Brak fizyki — wyłącznie formularz prezentacyjny.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,7 +17,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
 export type GeometryMode = 'ODCINEK_PROSTY' | 'ZALAMANIE' | 'RASTER';
-export type Direction = 'N' | 'E' | 'S' | 'W' | 'NE' | 'SE' | 'SW' | 'NW';
+export type Direction = 'N' | 'E' | 'S' | 'W';
 
 export interface TrunkContinueFormData {
   segment_kind: SegmentKind;
@@ -36,6 +37,10 @@ interface TrunkContinueModalProps {
   terminalName?: string;
   terminalVoltageLabel?: string;
   initialData?: Partial<TrunkContinueFormData>;
+  cableCatalogEntries?: CatalogEntry[];
+  lineCatalogEntries?: CatalogEntry[];
+  catalogLoading?: boolean;
+  catalogLoadError?: string | null;
   submitDisabled?: boolean;
   submitDisabledReason?: string | null;
   onSubmit: (data: TrunkContinueFormData) => void;
@@ -60,6 +65,10 @@ function validateForm(data: TrunkContinueFormData): FieldError[] {
 
   if (data.length_m <= 0) {
     errors.push({ field: 'length_m', message: 'Długość musi być > 0 m' });
+  }
+
+  if (!data.catalog_ref) {
+    errors.push({ field: 'catalog_ref', message: 'Wybór typu z katalogu jest wymagany' });
   }
 
   return errors;
@@ -98,11 +107,29 @@ const DIRECTION_LABELS: Record<Direction, string> = {
   E: 'Wschód (E)',
   S: 'Południe (S)',
   W: 'Zachód (W)',
-  NE: 'Północny-wschód (NE)',
-  SE: 'Południowy-wschód (SE)',
-  SW: 'Południowy-zachód (SW)',
-  NW: 'Północny-zachód (NW)',
 };
+
+function engineeringTrunkLabel(trunkId: string): string {
+  if (!trunkId.trim()) {
+    return 'Pierwszy odcinek magistrali SN';
+  }
+
+  const indexedMatch = trunkId.match(/(?:corridor|trunk|magistrala)[_-]?(\d+)/i);
+  if (indexedMatch?.[1]) {
+    return `Magistrala SN ${Number(indexedMatch[1])}`;
+  }
+
+  return 'Magistrala SN';
+}
+
+function engineeringPortLabel(portId: string): string {
+  const normalized = portId.trim().toLowerCase();
+  if (!normalized) return 'zacisk pola SN';
+  if (normalized.includes('branch')) return 'zacisk odgałęźny SN';
+  if (normalized.includes('out')) return 'zacisk wyjściowy pola SN';
+  if (normalized.includes('in')) return 'zacisk wejściowy pola SN';
+  return 'zacisk pola SN';
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -117,6 +144,10 @@ export function TrunkContinueModal({
   terminalName = '',
   terminalVoltageLabel = '',
   initialData,
+  cableCatalogEntries = [],
+  lineCatalogEntries = [],
+  catalogLoading = false,
+  catalogLoadError = null,
   submitDisabled = false,
   submitDisabledReason = null,
   onSubmit,
@@ -139,7 +170,11 @@ export function TrunkContinueModal({
   }, [isOpen, initialData]);
 
   const handleChange = useCallback((field: keyof TrunkContinueFormData, value: unknown) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'segment_kind' ? { catalog_ref: null } : {}),
+    }));
     setTouched((prev) => new Set(prev).add(field));
   }, []);
 
@@ -156,93 +191,101 @@ export function TrunkContinueModal({
     return errors.find((e) => e.field === field)?.message;
   };
 
+  const activeCatalogEntries = useMemo(
+    () => (formData.segment_kind === 'LINIA_NAPOWIETRZNA' ? lineCatalogEntries : cableCatalogEntries),
+    [cableCatalogEntries, formData.segment_kind, lineCatalogEntries],
+  );
+
   if (!isOpen) return null;
+  const terminalDisplayName = terminalName || terminalId;
+  const trunkDisplayName = engineeringTrunkLabel(trunkId);
+  const terminalPortDisplayName = engineeringPortLabel(terminalPortId);
+  const sectionTitleClass =
+    'mb-3 font-mono-eng text-[11px] font-bold uppercase tracking-[0.22em] text-[#19e6ff]';
+  const labelClass =
+    'mb-1 block font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]';
+  const inputClass =
+    'w-full border border-[#28425f] bg-[#07111c] px-3 py-2 font-mono-eng text-sm text-[#e6f4ff] outline-none focus:border-[#04d6ff]';
+  const readOnlyInputClass = `${inputClass} text-[#8fb3d1]`;
+  const selectClass = `${inputClass} disabled:border-[#22364e] disabled:bg-[#050c14] disabled:text-[#607d99]`;
+  const sectionDividerClass = 'border-t border-[#17314c] pt-4';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
+      <div className="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {mode === 'create' ? 'Kontynuuj magistrale z terminala pola' : 'Edycja odcinka magistrali'}
+        <div className="border-b border-[#17314c] bg-[#081522] px-6 py-4">
+          <h2 className="font-mono-eng text-lg font-semibold text-white">
+            {mode === 'create' ? 'Połącz zacisk pola SN z odcinkiem' : 'Edycja odcinka magistrali'}
           </h2>
-          <p className="mt-1 text-xs text-gray-500">
-            Magistrala: {trunkId || 'pierwszy odcinek'} &middot; Terminal pola: {terminalId}
+          <p className="mt-1 font-mono-eng text-xs text-[#8eb1cf]">
+            {trunkDisplayName} &middot; Zacisk: {terminalDisplayName}
           </p>
         </div>
 
         {/* Body */}
         <div className="px-6 py-4 space-y-4">
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Kontekst pola
-            </h3>
+            <h3 className={sectionTitleClass}>Kontekst pola</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Magistrala</label>
+                <label className={labelClass}>Magistrala</label>
                 <input
                   type="text"
-                  value={trunkId}
+                  value={trunkDisplayName}
                   readOnly={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                  className={readOnlyInputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Terminal pola</label>
+                <label className={labelClass}>Zacisk źródłowy</label>
                 <input
                   type="text"
-                  value={terminalId}
+                  value={terminalDisplayName}
                   readOnly={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                  className={readOnlyInputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Port terminala</label>
+                <label className={labelClass}>Rola zacisku</label>
                 <input
                   type="text"
-                  value={terminalPortId}
+                  value={terminalPortDisplayName}
                   readOnly={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                  className={readOnlyInputClass}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Napiecie odniesienia</label>
+                <label className={labelClass}>Napięcie odniesienia</label>
                 <input
                   type="text"
                   value={terminalVoltageLabel}
                   readOnly={true}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-gray-50 text-gray-700"
+                  className={readOnlyInputClass}
                 />
               </div>
             </div>
-            {terminalName && (
-              <p className="mt-2 text-xs text-gray-500">Pole startowe: {terminalName}</p>
-            )}
           </div>
 
           {submitDisabledReason && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
               {submitDisabledReason}
             </div>
           )}
 
           {/* === SEKCJA: Dane wymagane === */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Dane wymagane
-            </h3>
+            <h3 className={sectionTitleClass}>Dane wymagane</h3>
 
             {/* Rodzaj odcinka */}
             <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Rodzaj odcinka
-              </label>
+              <label className={labelClass}>Rodzaj odcinka</label>
               <select
                 value={formData.segment_kind}
                 onChange={(e) => handleChange('segment_kind', e.target.value)}
                 disabled={lockSegmentKind}
-                className={`w-full px-3 py-2 border rounded-md text-sm ${
-                  getFieldError('segment_kind') ? 'border-red-500' : 'border-gray-300'
+                className={`${selectClass} ${
+                  getFieldError('segment_kind') ? 'border-[#ff4d4d]' : ''
                 }`}
               >
                 {Object.entries(SEGMENT_KIND_LABELS).map(([val, label]) => (
@@ -252,83 +295,84 @@ export function TrunkContinueModal({
                 ))}
               </select>
               {getFieldError('segment_kind') && (
-                <p className="mt-1 text-xs text-red-600">{getFieldError('segment_kind')}</p>
+                <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('segment_kind')}</p>
               )}
               {lockSegmentKind && (
-                <p className="mt-1 text-xs text-gray-500">
-                  Rodzina odcinka zostala ustalona w kroku E-06 i nie jest tutaj zmieniana.
+                <p className="mt-1 text-xs text-[#607d99]">
+                  Rodzina odcinka została ustalona w poprzednim kroku i nie jest tutaj zmieniana.
                 </p>
               )}
             </div>
 
             {/* Długość */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Długość [m]
-              </label>
+              <label className={labelClass}>Długość [m]</label>
               <input
                 type="number"
                 value={formData.length_m}
                 onChange={(e) => handleChange('length_m', parseFloat(e.target.value) || 0)}
                 step="1"
                 min="0"
-                className={`w-full px-3 py-2 border rounded-md text-sm ${
-                  getFieldError('length_m') ? 'border-red-500' : 'border-gray-300'
+                className={`${inputClass} ${
+                  getFieldError('length_m') ? 'border-[#ff4d4d]' : ''
                 }`}
                 placeholder="np. 350"
               />
               {getFieldError('length_m') && (
-                <p className="mt-1 text-xs text-red-600">{getFieldError('length_m')}</p>
+                <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('length_m')}</p>
               )}
             </div>
           </div>
 
           {/* === SEKCJA: Katalog === */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Katalog
-            </h3>
+          <div className={sectionDividerClass}>
+            <h3 className={sectionTitleClass}>Katalog</h3>
 
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Pozycja katalogowa
-              </label>
-              <input
-                type="text"
-                value={formData.catalog_ref ?? ''}
-                onChange={(e) =>
-                  handleChange('catalog_ref', e.target.value.trim() || null)
+            {catalogLoading ? (
+              <div className="border border-[#174c75] bg-[#071b2b] px-3 py-2 text-xs text-[#a8c7e2]">
+                Ładowanie katalogu kabli i linii SN...
+              </div>
+            ) : activeCatalogEntries.length > 0 ? (
+              <CatalogPicker
+                label={
+                  formData.segment_kind === 'LINIA_NAPOWIETRZNA'
+                    ? 'Typ linii z katalogu'
+                    : 'Typ kabla z katalogu'
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
-                placeholder="Wskaż pozycję katalogową"
+                entries={activeCatalogEntries}
+                selectedId={formData.catalog_ref ?? ''}
+                onChange={(id) => handleChange('catalog_ref', id || null)}
+                required
+                error={getFieldError('catalog_ref')}
+                placeholder="Wyszukaj typ w katalogu SN"
               />
-            </div>
+            ) : (
+              <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
+                {catalogLoadError ?? 'Brak pozycji katalogowych dla wybranego rodzaju odcinka.'}
+              </div>
+            )}
 
             {/* Info badge */}
-            <div className="flex items-start gap-2 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
-              <span className="mt-0.5 text-blue-500 text-sm font-bold">i</span>
-              <p className="text-xs text-blue-700">
+            <div className="flex items-start gap-2 border border-[#174c75] bg-[#071b2b] px-3 py-2">
+              <span className="mt-0.5 text-sm font-bold text-[#19e6ff]">i</span>
+              <p className="text-xs text-[#a8c7e2]">
                 Wybór katalogu jest wymagany przed utworzeniem odcinka.
               </p>
             </div>
           </div>
 
           {/* === SEKCJA: Geometria (opcjonalnie) === */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Geometria
-            </h3>
+          <div className={sectionDividerClass}>
+            <h3 className={sectionTitleClass}>Geometria</h3>
 
             <div className="grid grid-cols-2 gap-4">
               {/* Kierunek prowadzenia */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Kierunek prowadzenia
-                </label>
+                <label className={labelClass}>Kierunek prowadzenia</label>
                 <select
                   value={formData.geometry_mode}
                   onChange={(e) => handleChange('geometry_mode', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className={selectClass}
                 >
                   {Object.entries(GEOMETRY_MODE_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>
@@ -340,13 +384,11 @@ export function TrunkContinueModal({
 
               {/* Kierunek */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Kierunek
-                </label>
+                <label className={labelClass}>Kierunek</label>
                 <select
                   value={formData.direction}
                   onChange={(e) => handleChange('direction', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                  className={selectClass}
                 >
                   {Object.entries(DIRECTION_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>
@@ -359,33 +401,31 @@ export function TrunkContinueModal({
           </div>
 
           {/* === SEKCJA: Uwagi === */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              Uwagi
-            </h3>
+          <div className={sectionDividerClass}>
+            <h3 className={sectionTitleClass}>Uwagi</h3>
 
             <textarea
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none"
+              className={`${inputClass} resize-none`}
               placeholder="Dodatkowe informacje..."
             />
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+        <div className="flex justify-end gap-3 border-t border-[#17314c] bg-[#050c14] px-6 py-4">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            className="border border-[#28425f] bg-[#07111c] px-4 py-2 text-sm font-medium text-[#b7d3ed] hover:border-[#42617e] hover:bg-[#0a1826]"
           >
             Anuluj
           </button>
           <button
             onClick={handleSubmit}
             disabled={submitDisabled}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed"
+            className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
           >
             {mode === 'create' ? 'Dodaj odcinek' : 'Zapisz zmiany'}
           </button>

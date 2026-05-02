@@ -3,6 +3,7 @@ import { renderHook } from '@testing-library/react';
 
 import { useAppStateStore, useCanCalculate } from '../store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { makeCalculationReadySnapshot } from '../../../test/enmCalculationSnapshot';
 
 describe('useCanCalculate — bramka gotowości z backendu', () => {
   beforeEach(() => {
@@ -13,6 +14,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   it('blokuje obliczenia, gdy readiness.ready = false', () => {
     useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
+      snapshot: makeCalculationReadySnapshot(),
       readiness: {
         ready: false,
         blockers: [
@@ -36,6 +38,7 @@ describe('useCanCalculate — bramka gotowości z backendu', () => {
   it('odblokowuje obliczenia, gdy readiness.ready = true i case aktywny', () => {
     useAppStateStore.getState().setActiveCase('case-1', 'Przypadek 1', 'ShortCircuitCase', 'OUTDATED');
     useSnapshotStore.setState({
+      snapshot: makeCalculationReadySnapshot(),
       readiness: {
         ready: true,
         blockers: [],

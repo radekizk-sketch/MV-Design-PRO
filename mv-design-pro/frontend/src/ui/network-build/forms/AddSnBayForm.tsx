@@ -5,6 +5,7 @@ import { fetchMvApparatusTypes } from '../../catalog/api';
 import type { MVApparatusType } from '../../catalog/types';
 import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { navigateToSld } from '../../navigation/routes';
 import { useActiveOperationForm, useNetworkBuildStore } from '../networkBuildStore';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
 import {
@@ -71,6 +72,7 @@ export function AddSnBayForm() {
       }
     | null;
   const closeForm = useNetworkBuildStore((state) => state.closeOperationForm);
+  const collapseSurfaceStackTo = useNetworkBuildStore((state) => state.collapseSurfaceStackTo);
   const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
@@ -188,7 +190,7 @@ export function AddSnBayForm() {
     setSubmitError(null);
     setIsSubmitting(true);
     try {
-      await executeDomainOperation(activeCaseId, 'add_sn_bay', {
+      const response = await executeDomainOperation(activeCaseId, 'add_sn_bay', {
         bus_ref: busRef,
         station_ref: stationRef,
         bay_role: bayRole,
@@ -200,7 +202,18 @@ export function AddSnBayForm() {
             : undefined,
         catalog_binding: normalizeCatalogBinding(catalogItemId, 'APARAT_SN') ?? undefined,
       });
-      closeForm();
+      if (!response) {
+        setSubmitError(
+          useSnapshotStore.getState().error ?? 'Nie udało się dodać pola SN do modelu.',
+        );
+        return;
+      }
+      if (response.error) {
+        setSubmitError(response.error);
+        return;
+      }
+      collapseSurfaceStackTo(null);
+      navigateToSld();
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : 'Nie udało się dodać pola SN.',
@@ -214,7 +227,7 @@ export function AddSnBayForm() {
     bayRole,
     busRef,
     catalogItemId,
-    closeForm,
+    collapseSurfaceStackTo,
     context?.gpz_section_id,
     executeDomainOperation,
     fieldName,
@@ -222,32 +235,38 @@ export function AddSnBayForm() {
   ]);
 
   return (
-    <div className="h-full overflow-y-auto bg-white" data-testid="add-sn-bay-form">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-900">Nowe pole SN</h3>
-        <p className="mt-1 text-[11px] text-slate-500">
-          Rozdzielnia: <span className="font-medium text-slate-700">{stationLabel(snapshot, stationRef)}</span>
+    <div
+      className="h-full overflow-y-auto bg-[#07111c] text-[#d7ecff]"
+      data-testid="add-sn-bay-form"
+    >
+      <div className="border-b border-[#17314c] bg-[#081522] px-4 py-3">
+        <h3 className="font-mono-eng text-sm font-semibold text-white">Nowe pole SN</h3>
+        <p className="mt-1 text-[11px] text-[#7da1bf]">
+          Rozdzielnia:{' '}
+          <span className="font-medium text-[#18e6ff]">{stationLabel(snapshot, stationRef)}</span>
         </p>
       </div>
 
       <div className="space-y-4 p-4">
         {submitError && (
-          <div className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <div className="border border-[#7f1d1d] bg-[#2a1014] px-3 py-2 text-xs text-[#ff9a9a]">
             {submitError}
           </div>
         )}
         {catalogError && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
             {catalogError} Możesz tymczasowo wpisać identyfikator katalogowy ręcznie.
           </div>
         )}
 
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-700">Szyna SN</span>
+          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+            Szyna SN
+          </span>
           <select
             value={busRef}
             onChange={(event) => setBusRef(event.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
           >
             <option value="">— wybierz —</option>
             {busOptions.map((bus) => (
@@ -259,11 +278,13 @@ export function AddSnBayForm() {
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-700">Rola pola</span>
+          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+            Rola pola
+          </span>
           <select
             value={bayRole}
             onChange={(event) => setBayRole(event.target.value as SnBayRole)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
           >
             {BAY_ROLE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -274,11 +295,13 @@ export function AddSnBayForm() {
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-700">Rodzaj aparatu głównego</span>
+          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+            Rodzaj aparatu głównego
+          </span>
           <select
             value={apparatusKind}
             onChange={(event) => setApparatusKind(event.target.value as ApparatusKind)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
           >
             {APPARATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -289,11 +312,13 @@ export function AddSnBayForm() {
         </label>
 
         <label className="block">
-          <span className="text-[11px] font-medium text-slate-700">Nazwa pola</span>
+          <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+            Nazwa pola
+          </span>
           <input
             value={fieldName}
             onChange={(event) => setFieldName(event.target.value)}
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-white outline-none focus:border-[#04d6ff]"
           />
         </label>
 
@@ -307,36 +332,40 @@ export function AddSnBayForm() {
           />
         ) : (
           <label className="block">
-            <span className="text-[11px] font-medium text-slate-700">Identyfikator aparatu z katalogu</span>
+            <span className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
+              Identyfikator aparatu z katalogu
+            </span>
             <input
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm font-mono"
+              className="mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 font-mono-eng text-sm text-white outline-none focus:border-[#04d6ff]"
               placeholder="np. cb-24kv-1250a"
             />
           </label>
         )}
 
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3 text-xs text-emerald-800">
-          <div className="font-semibold">Podsumowanie</div>
+        <div className="border border-[#14532d] bg-[#061f18] px-3 py-3 text-xs text-[#9ff6c5]">
+          <div className="font-mono-eng font-semibold uppercase tracking-[0.12em] text-[#17f7a8]">
+            Następny krok
+          </div>
           <div className="mt-1">
-            System dopisze pole do typed kontraktu stacji bez zapisu do legacy `bays`.
+            Po zapisie tego pola magistrala SN będzie wyprowadzana z jego zacisku wyjściowego.
           </div>
         </div>
 
-        <div className="flex items-center gap-2 border-t border-slate-200 pt-2">
+        <div className="flex items-center gap-2 border-t border-[#17314c] pt-2">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="border border-[#04d6ff] bg-[#075071] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a678d] disabled:opacity-50"
           >
             {isSubmitting ? 'Dodawanie…' : 'Dodaj pole SN'}
           </button>
           <button
             type="button"
             onClick={closeForm}
-            className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="border border-[#2a4562] bg-[#091521] px-4 py-2 text-sm text-[#b9d4ea] hover:border-[#4b6b89]"
           >
             Anuluj
           </button>

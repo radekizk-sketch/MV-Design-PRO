@@ -15,6 +15,8 @@ def test_default_catalog_derives_pv_and_bess_namespaces_from_converter_catalog()
     assert bess_types, "Domyślny katalog musi wystawiać typoszeregi BESS dla ZRODLO_NN_BESS"
     assert any(item.id == "conv-pv-0.5mw-15kv" for item in pv_types)
     assert any(item.id == "conv-bess-0.5mw-1mwh-15kv" for item in bess_types)
+    assert all(item.un_kv > 0 for item in pv_types)
+    assert all(item.un_kv > 0 for item in bess_types)
 
 
 def test_default_catalog_derives_mv_apparatus_namespace_from_switchgear_catalog() -> None:
@@ -58,10 +60,12 @@ def test_materialization_works_for_derived_pv_bess_and_mv_apparatus_namespaces()
     )
 
     assert pv_result.success
+    assert pv_result.solver_fields["un_kv"] == 15.0
     assert pv_result.solver_fields["s_n_kva"] == 550.0
     assert pv_result.solver_fields["p_max_kw"] == 500.0
 
     assert bess_result.success
+    assert bess_result.solver_fields["un_kv"] == 15.0
     assert bess_result.solver_fields["p_charge_kw"] == 500.0
     assert bess_result.solver_fields["e_kwh"] == 1000.0
 

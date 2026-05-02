@@ -7,11 +7,18 @@
  * BINDING: 100% PL etykiety.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   TrunkContinueModal,
   type TrunkContinueFormData,
 } from '../../topology/modals/TrunkContinueModal';
+import type { CatalogEntry } from '../../topology/modals/CatalogPicker';
+import {
+  fetchCableTypes,
+  fetchLineTypes,
+  getCatalogErrorMessage,
+} from '../../catalog/api';
+import type { CableType, LineType } from '../../catalog/types';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveOperationContext, useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
@@ -22,6 +29,24 @@ import {
   normalizeSegmentKind,
   normalizeSegmentNamespace,
 } from './catalogPayload';
+
+function cableEntry(item: CableType): CatalogEntry {
+  return {
+    id: item.id,
+    name: item.name,
+    manufacturer: item.manufacturer,
+    summary: `${item.voltage_rating_kv} kV, ${item.cross_section_mm2} mm2, Iz ${item.rated_current_a} A`,
+  };
+}
+
+function lineEntry(item: LineType): CatalogEntry {
+  return {
+    id: item.id,
+    name: item.name,
+    manufacturer: item.manufacturer,
+    summary: `${item.voltage_rating_kv} kV, ${item.cross_section_mm2} mm2, Iz ${item.rated_current_a} A`,
+  };
+}
 
 export function ContinueTrunkForm() {
   const context = useActiveOperationContext();
@@ -44,8 +69,39 @@ export function ContinueTrunkForm() {
   const terminalName = ((context?.terminal_name as string) ?? '').trim();
   const terminalVoltageLabel = ((context?.terminal_voltage_label as string) ?? '').trim();
   const fieldRef = ((context?.field_ref as string) ?? '').trim();
-  const hasCanonicalTerminal = terminalId.length > 0;
+  const hasTrunkStartRef = terminalId.length > 0 || fieldRef.length > 0;
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [segmentCatalogError, setSegmentCatalogError] = useState<string | null>(null);
+  const [segmentCatalogLoading, setSegmentCatalogLoading] = useState(true);
+  const [cableCatalogEntries, setCableCatalogEntries] = useState<CatalogEntry[]>([]);
+  const [lineCatalogEntries, setLineCatalogEntries] = useState<CatalogEntry[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    setSegmentCatalogLoading(true);
+    void Promise.all([fetchCableTypes(), fetchLineTypes()])
+      .then(([cableTypes, lineTypes]) => {
+        if (!active) return;
+        setCableCatalogEntries(cableTypes.map(cableEntry));
+        setLineCatalogEntries(lineTypes.map(lineEntry));
+        setSegmentCatalogError(null);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setCableCatalogEntries([]);
+        setLineCatalogEntries([]);
+        setSegmentCatalogError(getCatalogErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) {
+          setSegmentCatalogLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const initialData = useMemo<Partial<TrunkContinueFormData>>(() => {
     if (!context) return {};
@@ -66,13 +122,13 @@ export function ContinueTrunkForm() {
 
   const handleSubmit = useCallback(
     async (data: TrunkContinueFormData) => {
-      if (!activeCaseId || !hasCanonicalTerminal) return;
+      if (!activeCaseId || !hasTrunkStartRef) return;
       const catalogNamespace = normalizeSegmentNamespace(data.segment_kind);
       const catalogBinding = normalizeCatalogBinding(data.catalog_ref, catalogNamespace);
       const payload = {
         ...(trunkId ? { trunk_id: trunkId } : {}),
         ...(fieldRef ? { field_ref: fieldRef } : {}),
-        from_terminal_id: terminalId,
+        ...(terminalId ? { from_terminal_id: terminalId } : {}),
         segment: {
           rodzaj: normalizeSegmentKind(data.segment_kind),
           dlugosc_m: data.length_m,
@@ -107,7 +163,7 @@ export function ContinueTrunkForm() {
       closeForm,
       executeDomainOperation,
       fieldRef,
-      hasCanonicalTerminal,
+      hasTrunkStartRef,
       terminalId,
       trunkId,
     ],
@@ -124,13 +180,17 @@ export function ContinueTrunkForm() {
         isOpen={true}
         mode="create"
         trunkId={trunkId}
-        terminalId={terminalId}
+        terminalId={terminalId || fieldRef}
         terminalPortId={terminalPortId}
         terminalName={terminalName}
         terminalVoltageLabel={terminalVoltageLabel}
         initialData={initialData}
-        submitDisabled={!hasCanonicalTerminal}
-        submitDisabledReason={!hasCanonicalTerminal ? 'Brak jawnego terminala magistrali.' : null}
+        cableCatalogEntries={cableCatalogEntries}
+        lineCatalogEntries={lineCatalogEntries}
+        catalogLoading={segmentCatalogLoading}
+        catalogLoadError={segmentCatalogError}
+        submitDisabled={!hasTrunkStartRef}
+        submitDisabledReason={!hasTrunkStartRef ? 'Brak jawnego zacisku lub pola SN.' : null}
         onSubmit={handleSubmit}
         onCancel={closeForm}
       />

@@ -78,23 +78,23 @@ export function CatalogPicker({
 
   return (
     <div data-testid="catalog-picker">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
+      <label className="mb-1 block font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="ml-0.5 text-[#ff5c5c]">*</span>}
       </label>
 
       {selectedEntry ? (
-        <div className="flex items-center gap-2 px-3 py-2 border border-blue-300 bg-blue-50 rounded-md text-sm">
+        <div className="flex items-center gap-2 border border-[#1f5c8a] bg-[#08213a] px-3 py-2 text-sm text-white">
           <div className="flex-1">
             <span className="font-medium">{selectedEntry.name}</span>
             {selectedEntry.manufacturer && (
-              <span className="text-gray-500 ml-1">({selectedEntry.manufacturer})</span>
+              <span className="ml-1 text-[#7da1bf]">({selectedEntry.manufacturer})</span>
             )}
           </div>
           {!disabled && (
             <button
               onClick={handleClear}
-              className="text-gray-400 hover:text-gray-600 text-xs"
+              className="text-xs text-[#7da1bf] hover:text-white"
               title="Usuń wybór"
             >
               ✕
@@ -113,40 +113,40 @@ export function CatalogPicker({
             onFocus={() => setIsDropdownOpen(true)}
             disabled={disabled}
             className={`w-full px-3 py-2 border rounded-md text-sm ${
-              error ? 'border-red-500' : 'border-gray-300'
-            }`}
+              error ? 'border-[#ff5c5c]' : 'border-[#2a4562]'
+            } bg-[#08111d] text-white outline-none placeholder:text-[#526f88] focus:border-[#04d6ff] disabled:opacity-60`}
             placeholder={placeholder}
             data-testid="catalog-picker-search"
           />
           {isDropdownOpen && filteredEntries.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+            <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto border border-[#2a4562] bg-[#08111d] shadow-lg shadow-black/40">
               {filteredEntries.map((entry) => (
                 <button
                   key={entry.id}
                   onClick={() => handleSelect(entry.id)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                  className="w-full border-b border-[#17314c] px-3 py-2 text-left text-sm text-white last:border-b-0 hover:bg-[#0b2b45]"
                   data-testid={`catalog-entry-${entry.id}`}
                 >
                   <span className="font-medium">{entry.name}</span>
                   {entry.manufacturer && (
-                    <span className="text-gray-500 ml-1">({entry.manufacturer})</span>
+                    <span className="ml-1 text-[#7da1bf]">({entry.manufacturer})</span>
                   )}
                   {entry.summary && (
-                    <span className="block text-xs text-gray-400">{entry.summary}</span>
+                    <span className="block text-xs text-[#6f8eaa]">{entry.summary}</span>
                   )}
                 </button>
               ))}
             </div>
           )}
           {isDropdownOpen && filteredEntries.length === 0 && searchTerm && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg px-3 py-2 text-sm text-gray-500">
+            <div className="absolute z-10 mt-1 w-full border border-[#2a4562] bg-[#08111d] px-3 py-2 text-sm text-[#9fc2df] shadow-lg shadow-black/40">
               Brak wyników dla &ldquo;{searchTerm}&rdquo;
             </div>
           )}
         </div>
       )}
 
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-xs text-[#ff9a9a]">{error}</p>}
     </div>
   );
 }

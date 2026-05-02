@@ -584,7 +584,7 @@ export function SldAnalysisLauncher({
               </div>
               <div className="text-lg font-semibold text-slate-900">Uruchomienie analiz</div>
               <div className="mt-1 text-xs text-slate-500">
-                Przypadek: {caseName ?? caseId ?? 'brak'} • Projekt: {projectName ?? 'brak'}
+                Obliczenia: {caseName ?? caseId ?? 'brak'} • Projekt: {projectName ?? 'brak'}
               </div>
             </div>
             <button

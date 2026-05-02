@@ -127,16 +127,16 @@ const REPORT_KIND_ORDER: ReportKind[] = [
 
 const NETWORK_POSITION_LABELS: Record<keyof NetworkPosition, string> = {
   projectRefId: 'Projekt',
-  parentRefId: 'Element nadrzedny',
+  parentRefId: 'Element nadrzędny',
   containerRefId: 'Kontener',
-  voltageLevelRefId: 'Poziom napiecia',
+  voltageLevelRefId: 'Poziom napięcia',
   switchgearRefId: 'Rozdzielnia',
   busbarSectionRefId: 'Sekcja szyn',
   bayRefId: 'Pole',
-  feederRefId: 'Ciag / feeder',
+  feederRefId: 'Ciąg / feeder',
   branchRefId: 'Odcinek',
   stationRefId: 'Stacja',
-  orderIndex: 'Kolejnosc',
+  orderIndex: 'Kolejność',
 };
 
 export interface BuildSemanticInspectorCardModelOptions {
@@ -160,7 +160,7 @@ export function buildSemanticInspectorCardModel({
       titlePl: 'Brak funkcji elektroenergetycznej',
       semanticHash: model?.semanticHash ?? null,
       refId,
-      displayName: refId,
+      displayName: fallbackVisualLabel ?? 'Obiekt bez semantyki',
       elementKind: null,
       engineeringRole: null,
       functionalRole: null,
@@ -171,8 +171,8 @@ export function buildSemanticInspectorCardModel({
       networkPosition: [],
       ports: [],
       messagePl:
-        'Wybrany obiekt nie ma odpowiadajacego elementu w EngineeringSemanticModel albo projekcja semantyczna jest nieaktualna.',
-      repairActionPl: 'Otworz mapowanie semantyczne i przypisz funkcje elektroenergetyczna elementu.',
+        'Wybrany obiekt nie ma odpowiadającego elementu w modelu semantycznym albo projekcja semantyczna jest nieaktualna.',
+      repairActionPl: 'Otwórz mapowanie semantyczne i przypisz funkcję elektroenergetyczną elementu.',
       fallbackVisualLabel,
     };
   }
@@ -182,7 +182,7 @@ export function buildSemanticInspectorCardModel({
     titlePl: 'Karta semantyczna',
     semanticHash: model?.semanticHash ?? null,
     refId: element.refId,
-    displayName: element.refId,
+    displayName: buildDisplayName(element),
     elementKind: element.elementKind,
     engineeringRole: element.engineeringRole,
     functionalRole: element.functionalRole,
@@ -230,4 +230,29 @@ function formatNullable(value: string | number | null): string {
     return '-';
   }
   return String(value);
+}
+
+function buildDisplayName(element: EngineeringElementForInspector): string {
+  if (element.networkPosition.bayRefId) {
+    return element.engineeringRole === 'LINE_FEEDER_BAY' ? 'Pole liniowe SN' : 'Pole rozdzielcze SN';
+  }
+  if (element.networkPosition.busbarSectionRefId) {
+    return 'Sekcja szyn SN';
+  }
+  if (element.networkPosition.stationRefId) {
+    return humanElementKind(element.elementKind);
+  }
+  return humanElementKind(element.elementKind);
+}
+
+function humanElementKind(value: string): string {
+  const normalized = value.toUpperCase();
+  if (normalized.includes('BAY')) return 'Pole rozdzielcze SN';
+  if (normalized.includes('BUS')) return 'Sekcja szyn';
+  if (normalized.includes('SUBSTATION') || normalized.includes('STATION')) return 'Stacja elektroenergetyczna';
+  if (normalized.includes('LINE') || normalized.includes('CABLE')) return 'Odcinek sieci SN';
+  if (normalized.includes('TRANSFORMER')) return 'Transformator';
+  if (normalized.includes('SOURCE')) return 'Źródło zasilania';
+  if (normalized.includes('LOAD')) return 'Odbiór';
+  return 'Element sieci';
 }

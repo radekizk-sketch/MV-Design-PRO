@@ -74,7 +74,7 @@ const ELECTRICAL_ROLE_LABELS_PL: Record<string, string> = {
  * 1. Informacje podstawowe (basic info: role, pole type, bus section)
  * 2. Aparaty w polu (devices in field: list with status)
  * 3. Referencja katalogowa (if present)
- * 4. Terminale (terminal connections)
+ * 4. Zaciski pola
  */
 export function buildFieldInspectorSections(
   field: FieldV1,
@@ -129,25 +129,25 @@ export function buildFieldInspectorSections(
     sections.push(buildCatalogRefSection('field_catalog', 'Katalog pola', field.catalogRef));
   }
 
-  // 4. Terminals
+  // 4. Zaciski pola
   const terminalFields: InspectorPropertyField[] = [];
   if (field.terminals.incomingNodeId) {
-    terminalFields.push({ key: 'incoming', label: 'Terminal wejsciowy', value: field.terminals.incomingNodeId });
+    terminalFields.push({ key: 'incoming', label: 'Zacisk wejsciowy', value: field.terminals.incomingNodeId });
   }
   if (field.terminals.outgoingNodeId) {
-    terminalFields.push({ key: 'outgoing', label: 'Terminal wyjsciowy', value: field.terminals.outgoingNodeId });
+    terminalFields.push({ key: 'outgoing', label: 'Zacisk wyjsciowy', value: field.terminals.outgoingNodeId });
   }
   if (field.terminals.branchNodeId) {
-    terminalFields.push({ key: 'branch', label: 'Terminal odgalezieniowy', value: field.terminals.branchNodeId });
+    terminalFields.push({ key: 'branch', label: 'Zacisk odgalezieniowy', value: field.terminals.branchNodeId });
   }
   if (field.terminals.generatorNodeId) {
-    terminalFields.push({ key: 'generator', label: 'Terminal generatora', value: field.terminals.generatorNodeId });
+    terminalFields.push({ key: 'generator', label: 'Zacisk generatora', value: field.terminals.generatorNodeId });
   }
 
   if (terminalFields.length > 0) {
     sections.push({
       id: 'field_terminals',
-      label: 'Terminale',
+      label: 'Zaciski pola',
       fields: terminalFields,
       collapsed: true,
     });

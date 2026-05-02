@@ -12,6 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   computeBuildPhase,
   selectOpenTerminals,
+  selectConfiguredGridSourceSnFields,
   selectBlockersByCategory,
   selectActiveOperationForm,
   buildPhaseLabel,
@@ -62,16 +63,102 @@ describe('computeBuildPhase', () => {
     expect(computeBuildPhase(enmWithSource(), { trunks: [], terminals: [], branches: [] } as unknown as LogicalViewsV1, null)).toBe('HAS_SOURCE');
   });
 
+  it('treats a planned trunk with zero segments as not built yet', () => {
+    const lv = { trunks: [{ id: 't1', segments: [] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
+    expect(computeBuildPhase(enmWithSource(), lv, null)).toBe('HAS_SOURCE');
+  });
+
   it('returns HAS_TRUNKS when trunks exist but no substations', () => {
-    const lv = { trunks: [{ id: 't1' }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
+    const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     expect(computeBuildPhase(enmWithSource(), lv, null)).toBe('HAS_TRUNKS');
   });
 
   it('returns READY when readiness.ready is true', () => {
     const enm = { ...enmWithSource(), substations: [{ id: 's1', name: 'S1', station_type: 'terminal', transformer_refs: [], bus_refs: [] }] } as unknown as EnergyNetworkModel;
-    const lv = { trunks: [{ id: 't1' }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
+    const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     const readiness = { ready: true, blockers: [] } as ReadinessInfo;
     expect(computeBuildPhase(enm, lv, readiness)).toBe('READY');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: selectConfiguredGridSourceSnFields
+// ---------------------------------------------------------------------------
+
+describe('selectConfiguredGridSourceSnFields', () => {
+  it('rozpoznaje kanoniczne pole SN GPZ zapisane w substation.meta.field_specs', () => {
+    const enm = {
+      ...emptyENM(),
+      sources: [{ ref_id: 'src-1', name: 'GPZ 1', bus_ref: 'bus-gpz', substation_ref: 'gpz-1' }],
+      buses: [{ ref_id: 'bus-gpz', name: 'Szyna GPZ', voltage_kv: 15 }],
+      substations: [
+        {
+          id: 'gpz-1',
+          ref_id: 'gpz-1',
+          name: 'GPZ 1',
+          station_type: 'gpz',
+          bus_refs: ['bus-gpz'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'bay-sn-out-1',
+                name: 'Pole odpływowe SN',
+                bay_role: 'OUT',
+                bus_ref: 'bus-gpz',
+                equipment_refs: [],
+                meta: {
+                  catalog_binding: {
+                    catalog_namespace: 'APARAT_SN',
+                    catalog_item_id: 'ap-sn-1',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectConfiguredGridSourceSnFields(enm)).toEqual([
+      expect.objectContaining({
+        ref_id: 'bay-sn-out-1',
+        name: 'Pole odpływowe SN',
+        source: 'field_spec',
+        bay_role: 'OUT',
+      }),
+    ]);
+  });
+
+  it('nie pokazuje technicznego ref_id jako nazwy skonfigurowanego pola', () => {
+    const enm = {
+      ...emptyENM(),
+      sources: [{ ref_id: 'src-1', name: 'GPZ 1', bus_ref: 'bus-gpz', substation_ref: 'gpz-1' }],
+      buses: [{ ref_id: 'bus-gpz', name: 'Szyna GPZ', voltage_kv: 15 }],
+      substations: [
+        {
+          id: 'gpz-1',
+          ref_id: 'gpz-1',
+          name: 'GPZ 1',
+          station_type: 'gpz',
+          bus_refs: ['bus-gpz'],
+          transformer_refs: [],
+          meta: {
+            field_specs: [
+              {
+                field_ref: 'sn/123/bay',
+                bay_role: 'OUT',
+                bus_ref: 'bus-gpz',
+                equipment_refs: [],
+                meta: { apparatus_kind: 'BREAKER' },
+              },
+            ],
+          },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectConfiguredGridSourceSnFields(enm)[0]?.name).toBe('Pole odpływowe SN');
   });
 });
 
@@ -140,7 +227,7 @@ describe('buildPhaseLabel', () => {
     expect(buildPhaseLabel('HAS_SOURCE')).toContain('GPZ');
     expect(buildPhaseLabel('HAS_TRUNKS')).toContain('Magistrala');
     expect(buildPhaseLabel('HAS_STATIONS')).toContain('Stacje');
-    expect(buildPhaseLabel('READY')).toContain('Gotowy');
+    expect(buildPhaseLabel('READY')).toContain('gotowy');
   });
 });
 

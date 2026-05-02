@@ -11,6 +11,7 @@ import {
   resolveStationRef,
   stationLabel,
 } from './enmResolvers';
+import { normalizeCatalogBinding } from './catalogPayload';
 
 type LoadKind = 'SKUPIONY' | 'ROZPROSZONY';
 type ConnectionType = 'TROJFAZOWY' | 'JEDNOFAZOWY';
@@ -171,7 +172,7 @@ export function AddNnLoadForm() {
     setIsSubmitting(true);
 
     try {
-      await executeDomainOperation(activeCaseId, 'add_nn_load', {
+      const response = await executeDomainOperation(activeCaseId, 'add_nn_load', {
         feeder_ref: feederRef,
         bus_nn_ref: busNnRef,
         load_name: loadName.trim() || undefined,
@@ -182,7 +183,18 @@ export function AddNnLoadForm() {
         cos_phi: typeof cosPhi === 'number' ? cosPhi : undefined,
         load_profile_ref: loadProfileRef.trim() || undefined,
         catalog_item_id: selectedCatalogId || undefined,
+        catalog_ref: selectedCatalogId || undefined,
+        catalog_binding: normalizeCatalogBinding(selectedCatalogId, 'OBCIAZENIE') ?? undefined,
       });
+      if (!response) {
+        const operationError = useSnapshotStore.getState().error;
+        setError(operationError ?? 'Nie udało się dodać obciążenia nN.');
+        return;
+      }
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
       closeForm();
     } catch (submitError) {
       setError(

@@ -235,7 +235,7 @@ export function SldWorkDock({
           </div>
         </Section>
 
-        <Section eyebrow="Paleta dzialan i obiektow" title="Dozwolone operacje w biezacym kontekscie" testId="sld-dock-actions">
+        <Section eyebrow="Paleta działań i obiektów" title="Dozwolone operacje w bieżącym kontekście" testId="sld-dock-actions">
           <div className="space-y-4">
             {actionGroups.map((group) => (
               <div key={group.title}>

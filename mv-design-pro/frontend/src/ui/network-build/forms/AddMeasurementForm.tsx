@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchCtTypes, fetchVtTypes } from '../../catalog/api';
+import { buildCatalogBinding } from '../../catalog/catalogBinding';
 import type { CTCatalogType, VTCatalogType } from '../../catalog/types';
 import { useAppStateStore } from '../../app-state';
 import {
@@ -83,7 +84,7 @@ export function AddMeasurementForm() {
         setCatalogError(
           error instanceof Error
             ? error.message
-            : 'Nie udalo sie pobrac katalogu przekladnikow.',
+            : 'Nie udało się pobrać katalogu przekładników.',
         );
       }
     };
@@ -135,13 +136,13 @@ export function AddMeasurementForm() {
       return;
     }
     if (!bayRef) {
-      setSubmitError('Wybierz pole SN, do ktorego ma zostac dodany przekladnik.');
+      setSubmitError('Wybierz pole SN, do którego ma zostać dodany przekładnik.');
       return;
     }
     if (!catalogRef.trim()) {
       setSubmitError(isCt
-        ? 'Wybierz typ przekladnika pradowego z katalogu.'
-        : 'Wybierz typ przekladnika napieciowego z katalogu.');
+        ? 'Wybierz typ przekładnika prądowego z katalogu.'
+        : 'Wybierz typ przekładnika napięciowego z katalogu.');
       return;
     }
 
@@ -150,25 +151,22 @@ export function AddMeasurementForm() {
     const burden = burdenVa.trim() ? Number(burdenVa) : null;
 
     if (!Number.isFinite(primary) || primary <= 0) {
-      setSubmitError('Podaj poprawna wartosc przekladni pierwotnej.');
+      setSubmitError('Podaj poprawną wartość przekładni pierwotnej.');
       return;
     }
     if (!Number.isFinite(secondary) || secondary <= 0) {
-      setSubmitError('Podaj poprawna wartosc przekladni wtorniej.');
+      setSubmitError('Podaj poprawną wartość przekładni wtórnej.');
       return;
     }
     if (burdenVa.trim() && (!Number.isFinite(burden) || burden == null || burden < 0)) {
-      setSubmitError('Moc obciazeniowa musi byc liczba nieujemna.');
+      setSubmitError('Moc obciążeniowa musi być liczbą nieujemną.');
       return;
     }
 
     const payload: Record<string, unknown> = {
       bay_ref: bayRef,
       catalog_ref: catalogRef.trim(),
-      catalog_binding: {
-        catalog_namespace: isCt ? 'CT' : 'VT',
-        catalog_item_id: catalogRef.trim(),
-      },
+      catalog_binding: buildCatalogBinding(isCt ? 'CT' : 'VT', catalogRef.trim()),
       accuracy_class: accuracyClass.trim() || undefined,
       burden_va: burden,
     };
@@ -191,6 +189,12 @@ export function AddMeasurementForm() {
     setSubmitError(null);
     try {
       const response = await executeDomainOperation(activeCaseId, operation, payload);
+      if (!response) {
+        setSubmitError(
+          useSnapshotStore.getState().error ?? 'Nie udało się dodać przekładnika do pola.',
+        );
+        return;
+      }
       if (response?.error) {
         setSubmitError(response.error);
         return;
@@ -200,7 +204,7 @@ export function AddMeasurementForm() {
       setSubmitError(
         error instanceof Error
           ? error.message
-          : 'Nie udalo sie dodac przekladnika do pola.',
+          : 'Nie udało się dodać przekładnika do pola.',
       );
     } finally {
       setIsSubmitting(false);
@@ -220,26 +224,26 @@ export function AddMeasurementForm() {
   ]);
 
   return (
-    <div className="h-full overflow-y-auto bg-white" data-testid={isCt ? 'add-ct-form' : 'add-vt-form'}>
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-900">
-          {isCt ? 'Dodaj przekladnik pradowy CT' : 'Dodaj przekladnik napieciowy VT'}
+    <div className="h-full overflow-y-auto bg-[#07111c] text-[#d7ecff]" data-testid={isCt ? 'add-ct-form' : 'add-vt-form'}>
+      <div className="border-b border-[#1f3a50] bg-[#0b1624] px-4 py-3">
+        <h3 className="text-sm font-semibold text-white">
+          {isCt ? 'Dodaj przekładnik prądowy CT' : 'Dodaj przekładnik napięciowy VT'}
         </h3>
-        <p className="mt-1 text-[11px] text-slate-500">
+        <p className="mt-1 text-[11px] text-[#8fb8d8]">
           Kanoniczny formularz pola SN w trybie katalog-first.
         </p>
       </div>
 
       <div className="space-y-4 p-4">
-        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Kontekst pola</div>
+        <section className="rounded-lg border border-[#1f3a50] bg-[#0b1624] p-3 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300">Kontekst pola</div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Pole SN</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Pole SN</span>
               <select
                 value={bayRef}
                 onChange={(event) => setBayRef(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               >
                 <option value="">- wybierz -</option>
                 {bayOptions.map((option) => (
@@ -251,13 +255,13 @@ export function AddMeasurementForm() {
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">
-                {isCt ? 'Przekladnik pradowy z katalogu' : 'Przekladnik napieciowy z katalogu'}
+              <span className="text-[11px] font-medium text-[#b8d6ef]">
+                {isCt ? 'Przekładnik prądowy z katalogu' : 'Przekładnik napięciowy z katalogu'}
               </span>
               <select
                 value={catalogRef}
                 onChange={(event) => setCatalogRef(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               >
                 <option value="">- wybierz -</option>
                 {catalogEntries.map((entry) => (
@@ -271,26 +275,26 @@ export function AddMeasurementForm() {
 
           {selectedBayInfo && (
             <div className="mt-3 grid gap-2 md:grid-cols-2">
-              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Stacja</div>
-                <div className="mt-1 text-xs font-medium text-slate-800">{selectedBayInfo.station_name}</div>
+              <div className="rounded border border-[#25445d] bg-[#08111d] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[#6f9fc4]">Stacja</div>
+                <div className="mt-1 text-xs font-medium text-white">{selectedBayInfo.station_name}</div>
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Szyna</div>
-                <div className="mt-1 text-xs font-medium text-slate-800">{selectedBayInfo.bus_name}</div>
+              <div className="rounded border border-[#25445d] bg-[#08111d] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[#6f9fc4]">Szyna</div>
+                <div className="mt-1 text-xs font-medium text-white">{selectedBayInfo.bus_name}</div>
               </div>
             </div>
           )}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+        <section className="rounded-lg border border-[#1f3a50] bg-[#0b1624] p-3 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300">
             Dane znamionowe
           </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">
-                {isCt ? 'Przekladnia pierwotna [A]' : 'Przekladnia pierwotna [V]'}
+              <span className="text-[11px] font-medium text-[#b8d6ef]">
+                {isCt ? 'Przekładnia pierwotna [A]' : 'Przekładnia pierwotna [V]'}
               </span>
               <input
                 type="number"
@@ -298,13 +302,13 @@ export function AddMeasurementForm() {
                 step="any"
                 value={ratioPrimary}
                 onChange={(event) => setRatioPrimary(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               />
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">
-                {isCt ? 'Przekladnia wtornia [A]' : 'Przekladnia wtornia [V]'}
+              <span className="text-[11px] font-medium text-[#b8d6ef]">
+                {isCt ? 'Przekładnia wtórna [A]' : 'Przekładnia wtórna [V]'}
               </span>
               <input
                 type="number"
@@ -312,56 +316,56 @@ export function AddMeasurementForm() {
                 step="any"
                 value={ratioSecondary}
                 onChange={(event) => setRatioSecondary(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               />
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Klasa dokladnosci</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Klasa dokładności</span>
               <input
                 type="text"
                 value={accuracyClass}
                 onChange={(event) => setAccuracyClass(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               />
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Moc obciazeniowa [VA]</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Moc obciążeniowa [VA]</span>
               <input
                 type="number"
                 min="0"
                 step="any"
                 value={burdenVa}
                 onChange={(event) => setBurdenVa(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               />
             </label>
           </div>
 
           {selectedCatalog && (
-            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
               <div className="font-medium">{selectedCatalog.name}</div>
               <div className="mt-1">Producent: {selectedCatalog.manufacturer ?? '-'}</div>
             </div>
           )}
 
           {catalogError && (
-            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
               {catalogError}
             </div>
           )}
         </section>
 
         {submitError && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <div className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
             {submitError}
           </div>
         )}
 
         {bayOptions.length === 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            Brak pol SN w aktywnym modelu. Dodanie przekladnika wymaga istniejacego pola.
+          <div className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+            Brak pól SN w aktywnym modelu. Dodanie przekładnika wymaga istniejącego pola.
           </div>
         )}
 
@@ -370,7 +374,7 @@ export function AddMeasurementForm() {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting || bayOptions.length === 0}
-            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-[#00a8d8] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {isSubmitting
               ? (isCt ? 'Dodawanie CT...' : 'Dodawanie VT...')
@@ -379,7 +383,7 @@ export function AddMeasurementForm() {
           <button
             type="button"
             onClick={closeForm}
-            className="rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-700"
+            className="rounded-md border border-[#2d4a63] px-3 py-2 text-xs text-[#b8d6ef]"
           >
             Anuluj
           </button>

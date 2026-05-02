@@ -337,6 +337,25 @@ function stringList(value: unknown): string[] {
     .map(item => item.trim());
 }
 
+function defaultFieldSpecName(role: string): string {
+  switch (role.toUpperCase()) {
+    case 'IN':
+      return 'Pole dopływowe SN';
+    case 'OUT':
+      return 'Pole odpływowe SN';
+    case 'TR':
+      return 'Pole transformatorowe SN';
+    case 'COUPLER':
+      return 'Pole sprzęgła SN';
+    case 'MEASUREMENT':
+      return 'Pole pomiarowe SN';
+    case 'OZE':
+      return 'Pole źródłowe SN';
+    default:
+      return 'Pole liniowe SN';
+  }
+}
+
 function sortFieldSpecs(specs: readonly TopologyFieldSpecV1[]): TopologyFieldSpecV1[] {
   return [...specs].sort((a, b) => a.fieldRef.localeCompare(b.fieldRef));
 }
@@ -346,17 +365,28 @@ function normalizeFieldSpec(raw: unknown): TopologyFieldSpecV1 | null {
   const fieldRef = firstString(raw.field_ref ?? raw.fieldRef ?? raw.ref_id ?? raw.refId);
   const busRef = firstString(raw.bus_ref ?? raw.busRef);
   if (!fieldRef || !busRef) return null;
+  const bayRole = firstString(raw.bay_role ?? raw.bayRole) ?? 'FEEDER';
+  const rawMeta = isRecord(raw.meta) ? { ...raw.meta } : {};
+  const explicitName = firstString(raw.name ?? raw.field_name ?? raw.fieldName)
+    ?? firstString(rawMeta.name ?? rawMeta.field_name ?? rawMeta.display_name);
+  const name = explicitName && explicitName !== fieldRef
+    ? explicitName
+    : defaultFieldSpecName(bayRole);
   return {
     fieldRef,
-    name: firstString(raw.name) ?? fieldRef,
-    bayRole: firstString(raw.bay_role ?? raw.bayRole) ?? 'FEEDER',
+    name,
+    bayRole,
     busRef,
     equipmentRefs: stringList(raw.equipment_refs ?? raw.equipmentRefs),
     protectionRef: firstString(raw.protection_ref ?? raw.protectionRef),
     gpzSectionId: firstString(raw.gpz_section_id ?? raw.gpzSectionId),
     tags: stringList(raw.tags),
-    meta: isRecord(raw.meta) ? { ...raw.meta } : {},
+    meta: rawMeta,
   };
+}
+
+function hasExplicitFieldSpecs(meta: unknown, key: 'field_specs' | 'nn_field_specs'): boolean {
+  return isRecord(meta) && Array.isArray(meta[key]);
 }
 
 function readFieldSpecsFromMeta(meta: unknown, key: 'field_specs' | 'nn_field_specs'): TopologyFieldSpecV1[] {
@@ -368,6 +398,13 @@ function readFieldSpecsFromMeta(meta: unknown, key: 'field_specs' | 'nn_field_sp
       .map(normalizeFieldSpec)
       .filter((spec): spec is TopologyFieldSpecV1 => spec !== null),
   );
+}
+
+function isConfiguredGpzFieldSpec(spec: TopologyFieldSpecV1): boolean {
+  if (spec.equipmentRefs.length > 0) return true;
+  if (isRecord(spec.meta.catalog_binding)) return true;
+  return firstString(spec.meta.apparatus_kind) !== null
+    || firstString(spec.meta.source_field_kind) !== null;
 }
 
 function synthesizeGpzFieldSpecs(substation: ENMSubstation): TopologyFieldSpecV1[] {
@@ -482,12 +519,17 @@ export function readTopologyFromENM(
       stationBusMap.set(busRef, sub.ref_id);
     }
     const meta = (sub as { meta?: unknown }).meta;
+    const stationKind = enmStationKind(sub);
+    const hasExplicitSnFieldSpecs = hasExplicitFieldSpecs(meta, 'field_specs');
     const fieldSpecs = readFieldSpecsFromMeta(meta, 'field_specs');
+    const renderableFieldSpecs = stationKind === StationKind.MAIN_SUBSTATION
+      ? fieldSpecs.filter(isConfiguredGpzFieldSpec)
+      : fieldSpecs;
     const nnFieldSpecs = readFieldSpecsFromMeta(meta, 'nn_field_specs');
     return {
       id: sub.ref_id,
       name: sub.name,
-      stationType: enmStationKind(sub),
+      stationType: stationKind,
       branchPointType: null,
       voltageKv: sub.bus_refs.length > 0
         ? (busVoltageMap.get(sub.bus_refs[0]) ?? null)
@@ -496,9 +538,11 @@ export function readTopologyFromENM(
       branchIds: [],
       switchIds: [],
       transformerIds: [...sub.transformer_refs].sort(),
-      fieldSpecs: fieldSpecs.length > 0
-        ? fieldSpecs
-        : (sub.gpz_sections?.length ? synthesizeGpzFieldSpecs(sub) : undefined),
+      fieldSpecs: renderableFieldSpecs.length > 0
+        ? renderableFieldSpecs
+        : (!hasExplicitSnFieldSpecs && sub.gpz_sections?.length
+            ? synthesizeGpzFieldSpecs(sub)
+            : undefined),
       nnFieldSpecs: nnFieldSpecs.length > 0 ? nnFieldSpecs : undefined,
     };
   });

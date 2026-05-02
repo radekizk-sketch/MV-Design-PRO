@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Engineering Context Menu - UX 10/10.
  *
  * Warstwa CDSE-integrowanego menu kontekstowego.
@@ -80,9 +80,9 @@ export interface EngineeringContextMenuState {
 }
 
 /**
- * Callback wywoÄąâ€šywany gdy operacja wymaga wyboru z katalogu.
- * Komponent nadrzÄ‚â€žĂ˘â€žËdny MUSI otworzyÄ‚â€žĂ˘â‚¬Ë‡ CatalogPicker i po wyborze
- * wywoÄąâ€šaĂ„â€ˇ onOperation z catalog_binding w payload.
+ * Callback wywoływany, gdy operacja wymaga wyboru z katalogu.
+ * Komponent nadrzędny MUSI otworzyć CatalogPicker i po wyborze
+ * wywołać onOperation z catalog_binding w payload.
  */
 export interface CatalogGateRequest {
   operationId: string;
@@ -97,14 +97,14 @@ export interface EngineeringContextMenuProps {
   state: EngineeringContextMenuState;
   mode: OperatingMode;
   onClose: () => void;
-  /** WywoÄąâ€šany TYLKO jeÄąâ€şli operacja NIE wymaga katalogu lub katalog juÄąÄ˝ wybrany */
+  /** Wywołany TYLKO jeśli operacja NIE wymaga katalogu lub katalog już wybrany. */
   onOperation: (
     operationId: string,
     elementId: string,
     elementType: ElementType,
     initialFormData?: Record<string, unknown>,
   ) => void;
-  /** WywoĂ„Ä…Ă˘â‚¬Ĺˇany gdy operacja WYMAGA katalogu Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ komponent nadrzÄ‚â€žĂ˘â€žËdny otwiera CatalogPicker */
+  /** Wywołany, gdy operacja WYMAGA katalogu; komponent nadrzędny otwiera CatalogPicker. */
   onCatalogRequired?: (request: CatalogGateRequest) => void;
 }
 
@@ -117,8 +117,8 @@ type ActionBuilder = (
 ) => ContextMenuAction[];
 
 /**
- * Akcje wyÄąâ€šĂ„â€¦czone w kanonicznym SLD, dopÄ‚Ĺ‚ki nie majĂ„â€¦ realnego efektu end-to-end.
- * Zamiast zostawiaĂ„â€ˇ martwe Äąâ€şcieÄąÄ˝ki, ukrywamy je w warstwie renderowania menu.
+ * Akcje wyłączone w kanonicznym SLD, dopóki nie mają realnego efektu end-to-end.
+ * Zamiast zostawiać martwe ścieżki, ukrywamy je w warstwie renderowania menu.
  */
 const UNSUPPORTED_ACTION_IDS = new Set<string>([
   'assign_ct',
@@ -233,8 +233,8 @@ export function sanitizeEngineeringActions(
 }
 
 /**
- * Rejestr budujĂ„â€¦cy menu kontekstowe per typ elementu.
- * Deterministic: kaÄąÄ˝dy typ ma dokÄąâ€šadnie jeden builder.
+ * Rejestr budujący menu kontekstowe per typ elementu.
+ * Deterministic: każdy typ ma dokładnie jeden builder.
  */
 const BUILDER_REGISTRY: Partial<Record<ElementType, ActionBuilder>> = {
   Source: buildSourceSNContextMenu,
@@ -330,12 +330,12 @@ export function handlerNameToActionId(handlerName: string): string {
 // =============================================================================
 
 /**
- * EngineeringContextMenu Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ centralny komponent menu kontekstowego SLD.
+ * EngineeringContextMenu - centralny komponent menu kontekstowego SLD.
  *
  * Automatycznie dobiera builder per elementType.
- * Generuje handlery ktÄ‚Ĺ‚re wywoÄąâ€šujĂ„â€¦ onOperation z operationId.
- * BRAMKA KATALOGOWA: jeÄąâ€şli operacja wymaga katalogu, wywoÄąâ€šuje onCatalogRequired
- * zamiast onOperation Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ komponent nadrzÄ‚â€žĂ˘â€žËdny MUSI otworzyÄ‚â€žĂ˘â‚¬Ë‡ CatalogPicker.
+ * Generuje handlery, które wywołują onOperation z operationId.
+ * BRAMKA KATALOGOWA: jeśli operacja wymaga katalogu, wywołuje onCatalogRequired
+ * zamiast onOperation; komponent nadrzędny MUSI otworzyć CatalogPicker.
  */
 export function EngineeringContextMenu({
   state,
@@ -346,14 +346,14 @@ export function EngineeringContextMenu({
 }: EngineeringContextMenuProps) {
   const { isOpen, x, y, elementId, elementType, elementName, switchState } = state;
 
-  // Generuj handlery z bramkĂ„â€¦ katalogowĂ„â€¦
+  // Generuj handlery z bramką katalogową.
   const makeHandler = useCallback(
     (operationId: string, explicitInitialFormData?: Record<string, unknown>) => () => {
       const initialFormData = explicitInitialFormData;
-      // SprawdĂ„Ä…ÄąĹş bramkÄ‚â€žĂ˘â€žË katalogowÄ‚â€žĂ˘â‚¬Â¦ PRZED wysĂ„Ä…Ă˘â‚¬Ĺˇaniem operacji
+      // Sprawdź bramkę katalogową przed wysłaniem operacji.
       const gate = checkCatalogGate(operationId);
       if (gate.required && gate.namespace && gate.label && onCatalogRequired) {
-        // Operacja wymaga katalogu Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ deleguj do CatalogPicker
+        // Operacja wymaga katalogu - deleguj do CatalogPicker.
         onCatalogRequired({
           operationId: gate.canonicalOperation,
           elementId,
@@ -363,7 +363,7 @@ export function EngineeringContextMenu({
           initialFormData,
         });
       } else {
-        // Operacja nie wymaga katalogu Ä‚ËĂ˘â€šÂ¬Ă˘â‚¬ĹĄ wykonaj bezpoĂ„Ä…Ă˘â‚¬Ĺźrednio
+        // Operacja nie wymaga katalogu - wykonaj bezpośrednio.
         onOperation(
           operationId,
           elementId,
@@ -375,7 +375,7 @@ export function EngineeringContextMenu({
     [onOperation, onCatalogRequired, elementId, elementType],
   );
 
-  // Zbuduj proxy handlerÄ‚Ĺ‚w (Proxy-based to cover all possible handler keys)
+  // Zbuduj proxy handlerów (Proxy-based to cover all possible handler keys).
   const handlers = useMemo(() => {
     return new Proxy<Record<string, () => void>>(
       {},
@@ -399,7 +399,7 @@ export function EngineeringContextMenu({
         return [
           {
             id: 'canvas_hint',
-            label: 'Wybierz sekcjÄ‚â€žĂ˘â€žË GPZ lub pole liniowe',
+            label: 'Wybierz sekcję GPZ lub pole liniowe',
             enabled: false,
             visible: true,
             handler: () => undefined,
@@ -411,7 +411,7 @@ export function EngineeringContextMenu({
       return [
         {
           id: 'add_grid_source_sn',
-          label: 'Dodaj ÄąĹźrÄ‚Ĺ‚dÄąâ€šo zasilania GPZ...',
+          label: 'Dodaj źródło zasilania GPZ...',
           enabled: mode === 'MODEL_EDIT',
           visible: true,
           handler: makeHandler('add_grid_source_sn'),
@@ -464,7 +464,7 @@ export function EngineeringContextMenu({
     return [
       {
         id: 'properties',
-        label: 'WÄąâ€šaÄąâ€şciwoÄąâ€şci...',
+        label: 'Właściwości...',
         enabled: true,
         visible: true,
         handler: makeHandler('properties'),
@@ -479,7 +479,7 @@ export function EngineeringContextMenu({
       },
       {
         id: 'show_diagram',
-        label: 'PokaÄąÄ˝ na schemacie',
+        label: 'Pokaż na schemacie',
         enabled: true,
         visible: true,
         handler: makeHandler('show_diagram'),

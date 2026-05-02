@@ -320,8 +320,8 @@ export interface TrunkNodeAnnotationV1 {
   readonly trunkId: string;
   readonly kmFromGPZ: number;
   readonly voltageKV: number;
-  readonly ikss3p: number;
-  readonly deltaU_percent: number;
+  readonly ikss3p: number | null;
+  readonly deltaU_percent: number | null;
   readonly position: PointV1;
   readonly branchStationId: string | null;
 }
@@ -334,13 +334,13 @@ export interface TrunkSegmentAnnotationV1 {
   readonly designation: string;
   readonly cableType: string;
   readonly isOverhead: boolean;
-  readonly lengthKm: number;
-  readonly resistance_ohm: number;
-  readonly reactance_ohm: number;
+  readonly lengthKm: number | null;
+  readonly resistance_ohm: number | null;
+  readonly reactance_ohm: number | null;
   readonly capacitance_uF_per_km: number | null;
-  readonly ampacity_A: number;
-  readonly current_A: number;
-  readonly power_MW: number;
+  readonly ampacity_A: number | null;
+  readonly current_A: number | null;
+  readonly power_MW: number | null;
 }
 
 /**
@@ -355,16 +355,16 @@ export interface BranchPointV1 {
   readonly branchApparatus: {
     readonly designation: string;
     readonly type: 'disconnector';
-    readonly ratedCurrent_A: number;
-    readonly ratedVoltage_kV: number;
+    readonly ratedCurrent_A: number | null;
+    readonly ratedVoltage_kV: number | null;
   };
   readonly branchLine: {
     readonly designation: string;
     readonly cableType: string;
-    readonly lengthKm: number;
-    readonly resistance_ohm: number;
-    readonly reactance_ohm: number;
-    readonly ampacity_A: number;
+    readonly lengthKm: number | null;
+    readonly resistance_ohm: number | null;
+    readonly reactance_ohm: number | null;
+    readonly ampacity_A: number | null;
     readonly isOverhead: boolean;
   };
   readonly targetStationId: string;
@@ -377,6 +377,7 @@ export interface BranchPointV1 {
  */
 export interface StationFieldAnnotationV1 {
   readonly stationId: string;
+  readonly stationName?: string | null;
   readonly stationType: 'TYPE_A' | 'TYPE_B' | 'TYPE_C' | 'TYPE_D';
   readonly hasOZE: boolean;
   readonly ozeType: 'PV' | 'BESS' | 'WIND' | null;

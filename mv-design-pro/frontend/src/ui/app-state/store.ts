@@ -29,11 +29,13 @@ import {
   type RuntimeOperatingMode,
 } from '../operatingMode';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import {
   normalizeAreaId,
   type AreaId,
   type LegacyAreaCode,
 } from '../navigation/areaRegistry';
+import type { EnergyNetworkModel } from '../../types/enm';
 
 // =============================================================================
 // V12 — Area and Work-mode types
@@ -170,6 +172,27 @@ const initialState = {
   enmHashChain: null as EnmHashChainState | null,
 };
 
+function getCalculationStructuralBlocker(snapshot: EnergyNetworkModel | null): string | null {
+  if (!snapshot) {
+    return 'Brak aktywnej migawki modelu - odswiez model przed obliczeniami';
+  }
+
+  const sourceCount = snapshot.sources?.length ?? 0;
+  if (sourceCount === 0) {
+    return 'Najpierw utworz zrodlo zasilania GPZ';
+  }
+
+  const networkBranchCount = (snapshot.branches ?? []).filter(
+    (branch) => branch.type === 'line_overhead' || branch.type === 'cable',
+  ).length;
+  const transformerCount = snapshot.transformers?.length ?? 0;
+  if (networkBranchCount === 0 && transformerCount === 0) {
+    return 'Wyprowadz z pola GPZ pierwszy odcinek magistrali SN';
+  }
+
+  return null;
+}
+
 /**
  * Zustand store for global application state.
  */
@@ -196,6 +219,8 @@ export const useAppStateStore = create<AppState>()(
             activeSnapshotId: null, // UI_INTEGRATION_E2E
             activeRunId: null,
             activeAnalysisType: null, // UI_INTEGRATION_E2E
+            activeVariantId: null,
+            activeVariantName: null,
           });
         } else {
           set({
@@ -309,10 +334,13 @@ export const useAppStateStore = create<AppState>()(
        */
       canCalculate: () => {
         const state = get();
-        const readiness = useSnapshotStore.getState().readiness;
+        const snapshotState = useSnapshotStore.getState();
+        const readiness = snapshotState.readiness;
+        const structuralBlocker = getCalculationStructuralBlocker(snapshotState.snapshot);
         return (
           state.activeCaseId !== null &&
           state.activeMode === 'MODEL_EDIT' &&
+          !structuralBlocker &&
           (!readiness || readiness.ready) &&
           state.activeCaseResultStatus !== 'FRESH'
         );
@@ -368,6 +396,8 @@ export const useAppStateStore = create<AppState>()(
         activeCaseKind: state.activeCaseKind,
         activeSnapshotId: state.activeSnapshotId, // UI_INTEGRATION_E2E
         activeArea: state.activeArea,
+        activeVariantId: state.activeVariantId,
+        activeVariantName: state.activeVariantName,
       }),
     }
   )
@@ -466,7 +496,12 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
   const readiness = useSnapshotStore((state) => state.readiness);
+  const liveReady = useReadinessLiveStore((state) => state.ready);
+  const liveBlocker = useReadinessLiveStore((state) =>
+    state.issues.find((issue) => issue.severity === 'BLOCKER') ?? null,
+  );
 
   if (!activeCaseId) {
     return { allowed: false, reason: 'Wybierz aktywny zakres obliczen' };
@@ -479,11 +514,26 @@ export function useCanCalculate(): { allowed: boolean; reason: string | null } {
     };
   }
 
+  const structuralBlocker = getCalculationStructuralBlocker(snapshot);
+  if (structuralBlocker) {
+    return {
+      allowed: false,
+      reason: structuralBlocker,
+    };
+  }
+
   if (readiness && !readiness.ready) {
     const blocker = readiness.blockers?.[0];
     return {
       allowed: false,
       reason: blocker?.message_pl ?? 'Model nie jest gotowy do analizy - usun blokery',
+    };
+  }
+
+  if (!liveReady || liveBlocker) {
+    return {
+      allowed: false,
+      reason: liveBlocker?.message_pl ?? 'Model nie jest gotowy do analizy - usun blokery',
     };
   }
 

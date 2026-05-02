@@ -46,6 +46,23 @@ vi.mock('../../networkBuildStore', () => ({
   useActiveOperationContext: () => networkBuildState.activeOperationForm.context,
 }));
 
+vi.mock('../../../catalog/api', () => ({
+  fetchCableTypes: vi.fn().mockResolvedValue([
+    {
+      id: 'XRUHAKXS-3x120',
+      name: 'XRUHAKXS 3x120',
+      manufacturer: 'Katalog SN',
+      voltage_rating_kv: 15,
+      cross_section_mm2: 120,
+      rated_current_a: 240,
+    },
+  ]),
+  fetchLineTypes: vi.fn().mockResolvedValue([]),
+  getCatalogErrorMessage: (error: unknown) => (
+    error instanceof Error ? error.message : 'Błąd katalogu'
+  ),
+}));
+
 describe('ContinueTrunkForm', () => {
   beforeEach(() => {
     closeFormMock.mockReset();
@@ -57,13 +74,17 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Kontynuuj magistrale z terminala pola')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('bus-gpz-1')).toBeInTheDocument();
+    expect(screen.getByText('Kontynuuj magistralę z pola SN')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Pierwszy odcinek magistrali SN')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('np. 350'), { target: { value: '400' } });
-    fireEvent.change(screen.getByPlaceholderText('Wskaż pozycję katalogową'), {
-      target: { value: 'XRUHAKXS-3x120' },
+    await waitFor(() => {
+      expect(screen.getByTestId('catalog-picker-search')).toBeInTheDocument();
     });
+    fireEvent.change(screen.getByTestId('catalog-picker-search'), {
+      target: { value: 'XRUHAKXS' },
+    });
+    fireEvent.click(screen.getByTestId('catalog-entry-XRUHAKXS-3x120'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj odcinek' }));
 
     await waitFor(() => {

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddGridSourceForm } from '../AddGridSourceForm';
 
 const closeFormMock = vi.fn();
+const collapseSurfaceStackToMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const gridSourceEditorMock = vi.fn();
 const appState = { activeCaseId: 'case-1' };
@@ -19,6 +20,7 @@ const networkBuildState = {
     },
   },
   closeOperationForm: closeFormMock,
+  collapseSurfaceStackTo: collapseSurfaceStackToMock,
 };
 
 vi.mock('../../../app-state', () => ({
@@ -39,6 +41,7 @@ vi.mock('../../networkBuildStore', () => ({
     selector: (state: {
       activeOperationForm: { context: Record<string, unknown> };
       closeOperationForm: typeof closeFormMock;
+      collapseSurfaceStackTo: typeof collapseSurfaceStackToMock;
     }) => unknown,
   ) => selector(networkBuildState),
   useActiveOperationForm: () => networkBuildState.activeOperationForm,
@@ -70,6 +73,7 @@ vi.mock('../shared/GridSourceEditor', () => ({
               gpz_section_name: 'Sekcja A',
               gpz_line_field_name: 'Pole liniowe',
               sections_count: 3,
+              line_fields_per_section: 12,
               zero_sequence_enabled: true,
               r0_ohm: 0.4,
               x0_ohm: 1.8,
@@ -100,6 +104,7 @@ vi.mock('../shared/GridSourceEditor', () => ({
               gpz_section_name: 'Sekcja B',
               gpz_line_field_name: 'Pole SN',
               sections_count: 2,
+              line_fields_per_section: 2,
               zero_sequence_enabled: false,
               r0_ohm: null,
               x0_ohm: null,
@@ -130,6 +135,7 @@ vi.mock('../shared/GridSourceEditor', () => ({
               gpz_section_name: 'Sekcja C',
               gpz_line_field_name: 'Pole zasilajace',
               sections_count: 2,
+              line_fields_per_section: 3,
               zero_sequence_enabled: true,
               r0_ohm: 0.9,
               x0_ohm: 2.4,
@@ -152,8 +158,10 @@ vi.mock('../shared/GridSourceEditor', () => ({
 describe('AddGridSourceForm', () => {
   beforeEach(() => {
     closeFormMock.mockReset();
+    collapseSurfaceStackToMock.mockReset();
     executeDomainOperationMock.mockReset();
     gridSourceEditorMock.mockReset();
+    window.location.hash = '';
   });
 
   it('pokazuje błąd backendu i nie zamyka formularza po odpowiedzi error', async () => {
@@ -173,11 +181,30 @@ describe('AddGridSourceForm', () => {
           source_name: 'GPZ Centrum',
           voltage_kv: 15,
           sections_count: 3,
+          line_fields_per_section: 12,
           short_circuit_mode: 'SHORT_CIRCUIT_POWER',
           gpz_sections: [
-            { order: 0, name: 'Sekcja A 1', line_field_name: 'Pole liniowe 1' },
-            { order: 1, name: 'Sekcja A 2', line_field_name: 'Pole liniowe 2' },
-            { order: 2, name: 'Sekcja A 3', line_field_name: 'Pole liniowe 3' },
+            expect.objectContaining({
+              order: 0,
+              name: 'Sekcja A 1',
+              line_field_name: 'Pole liniowe',
+              line_fields_count: 12,
+              line_field_names: expect.arrayContaining(['Pole liniowe 1', 'Pole liniowe 12']),
+            }),
+            expect.objectContaining({
+              order: 1,
+              name: 'Sekcja A 2',
+              line_field_name: 'Pole liniowe',
+              line_fields_count: 12,
+              line_field_names: expect.arrayContaining(['Pole liniowe 1', 'Pole liniowe 12']),
+            }),
+            expect.objectContaining({
+              order: 2,
+              name: 'Sekcja A 3',
+              line_field_name: 'Pole liniowe',
+              line_fields_count: 12,
+              line_field_names: expect.arrayContaining(['Pole liniowe 1', 'Pole liniowe 12']),
+            }),
           ],
           zero_sequence: {
             enabled: true,
@@ -218,10 +245,23 @@ describe('AddGridSourceForm', () => {
           source_name: 'GPZ Reczny',
           voltage_kv: 15,
           sections_count: 2,
+          line_fields_per_section: 2,
           short_circuit_mode: 'SHORT_CIRCUIT_POWER',
           gpz_sections: [
-            { order: 0, name: 'Sekcja B 1', line_field_name: 'Pole SN 1' },
-            { order: 1, name: 'Sekcja B 2', line_field_name: 'Pole SN 2' },
+            {
+              order: 0,
+              name: 'Sekcja B 1',
+              line_field_name: 'Pole SN',
+              line_fields_count: 2,
+              line_field_names: ['Pole SN 1', 'Pole SN 2'],
+            },
+            {
+              order: 1,
+              name: 'Sekcja B 2',
+              line_field_name: 'Pole SN',
+              line_fields_count: 2,
+              line_field_names: ['Pole SN 1', 'Pole SN 2'],
+            },
           ],
           manual_equivalent: {
             voltage_kv: 15,
@@ -242,7 +282,8 @@ describe('AddGridSourceForm', () => {
       );
     });
 
-    expect(closeFormMock).toHaveBeenCalledTimes(1);
+    expect(collapseSurfaceStackToMock).toHaveBeenCalledWith(null);
+    expect(window.location.hash).toBe('#sld');
   });
 
   it('wysyla reczna umowe rownowazna GPZ w trybie impedancyjnym', async () => {
@@ -262,12 +303,25 @@ describe('AddGridSourceForm', () => {
           source_name: 'GPZ Impedancyjny',
           voltage_kv: 15,
           sections_count: 2,
+          line_fields_per_section: 3,
           short_circuit_mode: 'IMPEDANCE',
           r_ohm: 0.55,
           x_ohm: 1.87,
           gpz_sections: [
-            { order: 0, name: 'Sekcja C 1', line_field_name: 'Pole zasilajace 1' },
-            { order: 1, name: 'Sekcja C 2', line_field_name: 'Pole zasilajace 2' },
+            {
+              order: 0,
+              name: 'Sekcja C 1',
+              line_field_name: 'Pole zasilajace',
+              line_fields_count: 3,
+              line_field_names: ['Pole zasilajace 1', 'Pole zasilajace 2', 'Pole zasilajace 3'],
+            },
+            {
+              order: 1,
+              name: 'Sekcja C 2',
+              line_field_name: 'Pole zasilajace',
+              line_fields_count: 3,
+              line_field_names: ['Pole zasilajace 1', 'Pole zasilajace 2', 'Pole zasilajace 3'],
+            },
           ],
           manual_equivalent: {
             voltage_kv: 15,
@@ -295,6 +349,7 @@ describe('AddGridSourceForm', () => {
       );
     });
 
-    expect(closeFormMock).toHaveBeenCalledTimes(1);
+    expect(collapseSurfaceStackToMock).toHaveBeenCalledWith(null);
+    expect(window.location.hash).toBe('#sld');
   });
 });

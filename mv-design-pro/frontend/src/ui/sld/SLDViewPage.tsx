@@ -158,7 +158,7 @@ export const SLDViewPage: React.FC<SLDViewPageProps> = ({
                 : 'border-chrome-300 text-chrome-700 hover:bg-chrome-50'
             }`}
           >
-            Biezacy projekt
+            Bieżący projekt
           </button>
           {REFERENCE_SCENARIOS.map((scenarioId) => (
             <button

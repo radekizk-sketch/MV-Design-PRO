@@ -52,9 +52,9 @@ describe('SLD industrial hierarchy gates', () => {
     expect(stationRenderer.includes('buildStationCadLayout')).toBe(true);
     expect(stationRenderer.includes('data-sld-role="station-cad-sn-nn"')).toBe(true);
     expect(gpzFieldBlockSource.includes('data-sld-role="gpz-bus-coupler"')).toBe(true);
-    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q1')).toBe(true);
-    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q2')).toBe(true);
-    expect(gpzFieldBlockSource.includes('gpz-device-${field.fieldId}-Q3')).toBe(true);
+    expect(gpzFieldBlockSource.includes('gpzFieldDevices(field)')).toBe(true);
+    expect(gpzFieldBlockSource.includes('gpz-missing-apparatus-${fieldId}')).toBe(true);
+    expect(gpzFieldBlockSource.includes('state="unknown"')).toBe(true);
     expect(baySvgRenderer.includes('StationBlockLayoutSvg')).toBe(true);
   });
 

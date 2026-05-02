@@ -20,6 +20,10 @@ export interface BranchRendererProps {
   showTechnicalLabels?: boolean;
 }
 
+function formatNullableNumber(value: number | null, digits: number, suffix = ''): string {
+  return value === null ? '-' : `${value.toFixed(digits)}${suffix}`;
+}
+
 export const BranchRenderer: React.FC<BranchRendererProps> = ({
   branch,
   color = CANONICAL_VOLTAGE_COLORS.SN,
@@ -153,7 +157,7 @@ export const BranchRenderer: React.FC<BranchRendererProps> = ({
         y={bay.cableExitPoint.y + 8}
         className="sld-label-params"
       >
-        {branch.branchLine.cableType} • {branch.branchLine.lengthKm.toFixed(3)} km
+        {branch.branchLine.cableType} • {formatNullableNumber(branch.branchLine.lengthKm, 3, ' km')}
       </text>
       {showTechnicalLabels && (
         <text
@@ -161,7 +165,7 @@ export const BranchRenderer: React.FC<BranchRendererProps> = ({
           y={bay.cableExitPoint.y + 20}
           className="sld-label-params"
         >
-          R={branch.branchLine.resistance_ohm.toFixed(3)}Ω X={branch.branchLine.reactance_ohm.toFixed(3)}Ω
+          R={formatNullableNumber(branch.branchLine.resistance_ohm, 3, 'Ω')} X={formatNullableNumber(branch.branchLine.reactance_ohm, 3, 'Ω')}
         </text>
       )}
     </g>

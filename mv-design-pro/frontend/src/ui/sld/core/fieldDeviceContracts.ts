@@ -221,13 +221,15 @@ export interface DeviceRequirementSetV1 {
 export interface FieldV1 {
   /** Stabilne ID pola */
   readonly id: string;
+  /** Nazwa uzytkowa pola z domeny, jesli jest jawnie dostepna */
+  readonly name?: string;
   /** ID stacji do ktorej nalezy pole */
   readonly stationId: string;
   /** ID sekcji szynowej do ktorej przylaczone jest pole */
   readonly busSectionId: string;
   /** Rola pola */
   readonly fieldRole: FieldRoleV1;
-  /** Terminale polaczeniowe (referencje do ConnectionNode) */
+  /** Zaciski polaczeniowe (referencje do ConnectionNode) */
   readonly terminals: FieldTerminalsV1;
   /** Wymagania urzadzen dla tego pola */
   readonly requiredDevices: DeviceRequirementSetV1;
@@ -238,7 +240,7 @@ export interface FieldV1 {
 }
 
 /**
- * Terminale pola — referencje do ConnectionNode.
+ * Zaciski pola — referencje do ConnectionNode.
  */
 export interface FieldTerminalsV1 {
   /** Wezel wejsciowy (od strony szyny/magistrali) */

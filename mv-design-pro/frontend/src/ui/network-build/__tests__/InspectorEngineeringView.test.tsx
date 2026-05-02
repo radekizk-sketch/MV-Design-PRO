@@ -140,7 +140,7 @@ describe('InspectorEngineeringView', () => {
         severity: 'BLOCKER',
         element_ref: 'gen-1',
         element_refs: [],
-        message_pl: 'Brak katalogu zrodla przeksztaltnikowego',
+        message_pl: 'Brak katalogu źródła przekształtnikowego',
       },
     ];
     mockFieldReadModel = {
@@ -164,7 +164,7 @@ describe('InspectorEngineeringView', () => {
         (content) => content.startsWith('Oznaczenie') && content.includes('przekszta'),
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText('Brak katalogu zrodla przeksztaltnikowego')).toBeInTheDocument();
+    expect(screen.getByText('Brak katalogu źródła przekształtnikowego')).toBeInTheDocument();
     expect(screen.queryByText('mv_lv')).not.toBeInTheDocument();
     expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
   });
@@ -184,10 +184,10 @@ describe('InspectorEngineeringView', () => {
 
     expect(screen.getAllByText('Odcinek napowietrzny SN').length).toBeGreaterThan(0);
     expect(screen.queryByText('Kabel SN')).not.toBeInTheDocument();
-    expect(screen.getByText('Wstaw slup rozgalezny')).toBeInTheDocument();
+    expect(screen.getByText('Wstaw słup rozgałęźny')).toBeInTheDocument();
     expect(screen.queryByText('Wstaw ZKSN')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('Wstaw slup rozgalezny'));
+    fireEvent.click(screen.getByText('Wstaw słup rozgałęźny'));
 
     expect(openOperationForm).toHaveBeenCalledWith(
       'insert_branch_pole_on_segment_sn',
@@ -213,7 +213,7 @@ describe('InspectorEngineeringView', () => {
 
     render(<InspectorEngineeringView />);
 
-    expect(screen.getAllByText('Zrodlo przeksztaltnikowe PV').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Źródło przekształtnikowe PV').length).toBeGreaterThan(0);
     expect(screen.getByText('PV_INVERTER')).toBeInTheDocument();
     expect(screen.getByText('Moc czynna')).toBeInTheDocument();
     expect(
@@ -797,15 +797,15 @@ describe('InspectorEngineeringView', () => {
     render(<InspectorEngineeringView />);
 
     expect(screen.getByText('Rola kanoniczna')).toBeInTheDocument();
-    expect(screen.getAllByText('Pole liniowe wyjsciowe').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pole liniowe wyjściowe').length).toBeGreaterThan(0);
     expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
-    expect(screen.getByText('Lacznosc ograniczona')).toBeInTheDocument();
+    expect(screen.getByText('Łączność ograniczona')).toBeInTheDocument();
     expect(screen.getByText('Tor pomiarowy')).toBeInTheDocument();
-    expect(screen.getByText('Zrodlo 3I0')).toBeInTheDocument();
+    expect(screen.getByText('Źródło 3I0')).toBeInTheDocument();
     expect(screen.getByText('Sterowanie i blokady')).toBeInTheDocument();
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
-    expect(screen.getByText('Wklady zrodel w zwarciu')).toBeInTheDocument();
-    expect(screen.getByText('Wywod pola')).toBeInTheDocument();
+    expect(screen.getByText('Wkłady źródeł w zwarciu')).toBeInTheDocument();
+    expect(screen.getByText('Wywód pola')).toBeInTheDocument();
     expect(screen.getByText('Schemat Kanoniczny')).toBeInTheDocument();
     expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
   });

@@ -1,10 +1,18 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { clsx } from 'clsx';
+
 import { fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../catalog/api';
 import type { SourceSystemCatalogType } from '../../../catalog/types';
 import type {
   GpzGroundingType,
   ManualSourceShortCircuitMode,
 } from '../catalogPayload';
+import {
+  fetchGridSourcePreview,
+  type ComplexOhmResponse,
+  type GridSourcePreviewRequest,
+  type GridSourcePreviewResponse,
+} from '../gridSourcePreviewApi';
 
 export interface GridSourceFormData {
   source_name: string;
@@ -19,6 +27,7 @@ export interface GridSourceFormData {
   gpz_section_name: string;
   gpz_line_field_name: string;
   sections_count: number;
+  line_fields_per_section: number;
   manual_mode: boolean;
   zero_sequence_enabled: boolean;
   r0_ohm: number | null;
@@ -27,6 +36,7 @@ export interface GridSourceFormData {
   grounding_type: GpzGroundingType;
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
+  thermal_time_s: number;
 }
 
 export interface GridSourceEditorProps {
@@ -42,63 +52,113 @@ interface FieldError {
   message: string;
 }
 
+type ReadinessState = 'complete' | 'warning' | 'missing';
+type PreviewStatus = 'idle' | 'loading' | 'ready' | 'error';
+type CatalogStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+interface GpzEditorSection {
+  order: number;
+  sectionName: string;
+  busName: string;
+  lineFieldNames: string[];
+}
+
 const DEFAULT_DATA: GridSourceFormData = {
-  source_name: '',
-  sn_voltage_kv: null,
-  sk3_mva: null,
-  rx_ratio: null,
+  source_name: 'GPZ 1',
+  sn_voltage_kv: 15,
+  sk3_mva: 310,
+  rx_ratio: 0.12,
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
   x_ohm: null,
-  notes: '',
+  notes: 'Ekran E-03B - karta GPZ zaawansowana',
   catalog_ref: null,
-  gpz_section_name: '',
-  gpz_line_field_name: '',
-  sections_count: 1,
-  manual_mode: false,
-  zero_sequence_enabled: false,
+  gpz_section_name: 'Sekcja',
+  gpz_line_field_name: 'Pole odpływowe',
+  sections_count: 2,
+  line_fields_per_section: 2,
+  manual_mode: true,
+  zero_sequence_enabled: true,
   r0_ohm: null,
   x0_ohm: null,
-  z0_z1_ratio: null,
-  grounding_type: 'isolated',
-  grounding_r_ohm: null,
+  z0_z1_ratio: 3.2,
+  grounding_type: 'resistor_grounded',
+  grounding_r_ohm: 12,
   grounding_x_ohm: null,
+  thermal_time_s: 1,
 };
 
-const SOURCE_CATALOG_UNAVAILABLE_MESSAGE =
-  'Katalog systemów SN jest niedostępny. Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.';
+const FIELD_LABEL_CLASS =
+  'block font-mono-eng text-[11px] font-semibold leading-tight text-[#a8bed6]';
+const INPUT_CLASS =
+  'h-8 w-full rounded-[3px] border bg-[#020812] px-2 font-mono-eng text-[12px]'
+  + ' font-bold text-scada-text outline-none transition-colors placeholder:text-[#536b86]'
+  + ' focus:border-[#00e5ff]';
+const INPUT_DISABLED_CLASS =
+  'disabled:border-[#15263a] disabled:bg-[#07111f] disabled:text-[#6d8198] disabled:opacity-100';
+const ERROR_CLASS = 'mt-1 font-mono-eng text-[10px] text-[#ff4666]';
 
-const SOURCE_CATALOG_EMPTY_MESSAGE =
-  'Brak pozycji katalogowych systemów SN. Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.';
+function isBlankValue(value: unknown): boolean {
+  return value === undefined
+    || value === null
+    || (typeof value === 'string' && value.trim().length === 0);
+}
 
 function mergeInitialData(initialData?: Partial<GridSourceFormData>): GridSourceFormData {
-  const merged = {
-    ...DEFAULT_DATA,
-    ...initialData,
-  };
+  const merged: GridSourceFormData = { ...DEFAULT_DATA };
+
+  for (const [key, value] of Object.entries(initialData ?? {})) {
+    if (isBlankValue(value)) {
+      continue;
+    }
+    (merged as unknown as Record<string, unknown>)[key] = value;
+  }
 
   return {
     ...merged,
     sections_count: Math.max(1, Math.min(4, Math.trunc(merged.sections_count || 1))),
+    line_fields_per_section: Math.max(
+      1,
+      Math.min(12, Math.trunc(merged.line_fields_per_section || 1)),
+    ),
   };
 }
 
-function catalogToFormData(
-  catalogItem: SourceSystemCatalogType,
-  previous: GridSourceFormData,
-): GridSourceFormData {
-  return {
-    ...previous,
-    catalog_ref: catalogItem.id,
-    sn_voltage_kv: catalogItem.voltage_rating_kv,
-    sk3_mva: catalogItem.sk3_mva,
-    rx_ratio: catalogItem.rx_ratio ?? null,
-    short_circuit_mode: 'SHORT_CIRCUIT_POWER',
-  };
+function withIndexedSuffix(base: string, index: number, total: number, fallback: string): string {
+  const normalized = base.trim() || fallback;
+  return total <= 1 ? normalized : `${normalized} ${index + 1}`;
+}
+
+function buildEditorGpzSections(data: GridSourceFormData): GpzEditorSection[] {
+  const count = Math.max(1, Math.min(4, Math.trunc(data.sections_count || 1)));
+  const lineFieldsPerSection = Math.max(
+    1,
+    Math.min(12, Math.trunc(data.line_fields_per_section || 1)),
+  );
+  const voltageLabel = formatNumber(data.sn_voltage_kv, 0);
+
+  return Array.from({ length: count }, (_, index) => ({
+    order: index + 1,
+    sectionName: withIndexedSuffix(data.gpz_section_name, index, count, 'Sekcja GPZ'),
+    busName: `Szyna GPZ S${index + 1} ${voltageLabel} kV`,
+    lineFieldNames: Array.from(
+      { length: lineFieldsPerSection },
+      (_unused, fieldIndex) => withIndexedSuffix(
+        data.gpz_line_field_name,
+        fieldIndex,
+        lineFieldsPerSection,
+        'Pole liniowe GPZ',
+      ),
+    ),
+  }));
 }
 
 function asNullableNumber(rawValue: string): number | null {
   return rawValue.trim() ? Number(rawValue) : null;
+}
+
+function isPositive(value: number | null): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
 }
 
 function validateForm(data: GridSourceFormData): FieldError[] {
@@ -108,14 +168,14 @@ function validateForm(data: GridSourceFormData): FieldError[] {
     : 'wybranego katalogu systemowego';
 
   if (!data.source_name.trim()) {
-    errors.push({ field: 'source_name', message: 'Nazwa źródła jest wymagana.' });
+    errors.push({ field: 'source_name', message: 'Nazwa GPZ jest wymagana.' });
   }
 
   if (!data.manual_mode && !data.catalog_ref?.trim()) {
     errors.push({ field: 'catalog_ref', message: 'Pozycja katalogowa jest wymagana.' });
   }
 
-  if (data.sn_voltage_kv === null || data.sn_voltage_kv <= 0) {
+  if (!isPositive(data.sn_voltage_kv)) {
     errors.push({
       field: 'sn_voltage_kv',
       message: `Napięcie SN musi pochodzić z ${sourceDescriptor}.`,
@@ -126,6 +186,24 @@ function validateForm(data: GridSourceFormData): FieldError[] {
     errors.push({
       field: 'sections_count',
       message: 'Liczba sekcji GPZ musi mieścić się w zakresie 1-4.',
+    });
+  }
+
+  if (
+    !Number.isInteger(data.line_fields_per_section)
+    || data.line_fields_per_section < 1
+    || data.line_fields_per_section > 12
+  ) {
+    errors.push({
+      field: 'line_fields_per_section',
+      message: 'Liczba pól liniowych na sekcję musi mieścić się w zakresie 1-12.',
+    });
+  }
+
+  if (!Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
+    errors.push({
+      field: 'thermal_time_s',
+      message: 'Czas cieplny tk musi być dodatni.',
     });
   }
 
@@ -158,7 +236,7 @@ function validateForm(data: GridSourceFormData): FieldError[] {
         });
       }
     } else {
-      if (data.sk3_mva === null || data.sk3_mva <= 0) {
+      if (!isPositive(data.sk3_mva)) {
         errors.push({
           field: 'sk3_mva',
           message: 'Moc zwarciowa Sk3 musi być dodatnia.',
@@ -172,7 +250,7 @@ function validateForm(data: GridSourceFormData): FieldError[] {
       }
     }
   } else {
-    if (data.sk3_mva === null || data.sk3_mva <= 0) {
+    if (!isPositive(data.sk3_mva)) {
       errors.push({
         field: 'sk3_mva',
         message: `Moc zwarciowa Sk3 musi pochodzić z ${sourceDescriptor}.`,
@@ -228,6 +306,163 @@ function validateForm(data: GridSourceFormData): FieldError[] {
   return errors;
 }
 
+function normalizePolishIdentifier(value: string): string {
+  return value
+    .replace(/[ąćęłńóśźż]/gi, (match) => {
+      const lower = match.toLowerCase();
+      const normalized: Record<string, string> = {
+        ą: 'a',
+        ć: 'c',
+        ę: 'e',
+        ł: 'l',
+        ń: 'n',
+        ó: 'o',
+        ś: 's',
+        ź: 'z',
+        ż: 'z',
+      };
+      const replacement = normalized[lower] ?? lower;
+      return match === lower ? replacement : replacement.toUpperCase();
+    })
+    .replace(/[^a-zA-Z0-9]+/g, ' ')
+    .trim();
+}
+
+function buildGpzIdentifier(sourceName: string): string {
+  const normalized = normalizePolishIdentifier(sourceName);
+  const parts = normalized.split(/\s+/).filter(Boolean);
+  if (parts[0]?.toUpperCase() === 'GPZ' && /^\d+$/.test(parts[1] ?? '')) {
+    return `GPZ-${parts[1].padStart(2, '0')}`;
+  }
+  const token = parts.length > 1
+    ? parts.slice(1).map((part) => part.slice(0, 3)).join('-')
+    : parts[0]?.slice(0, 6);
+  return `GPZ-${(token || 'SN').toUpperCase()}-01`;
+}
+
+function formatNumber(value: number | null | undefined, digits: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '—';
+  }
+  return value.toFixed(digits);
+}
+
+function formatMva(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${value.toFixed(1)} MVA`
+    : '—';
+}
+
+function formatKiloamp(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value) ? `${value.toFixed(2)} kA` : '—';
+}
+
+function formatComplex(value: ComplexOhmResponse | null | undefined): string {
+  if (!value) {
+    return '—';
+  }
+  const sign = value.x_ohm >= 0 ? '+' : '-';
+  return `${value.r_ohm.toFixed(3)} ${sign} j${Math.abs(value.x_ohm).toFixed(4)} Ω`;
+}
+
+function sourceCatalogLabel(item: SourceSystemCatalogType): string {
+  const manufacturer = item.operator_name ?? item.series ?? item.catalog_number;
+  const voltage = Number.isFinite(item.voltage_rating_kv) ? `${item.voltage_rating_kv} kV` : 'SN';
+  const sk = Number.isFinite(item.sk3_mva) ? `Sk3 ${item.sk3_mva} MVA` : 'Sk3 —';
+  return [item.name, manufacturer, voltage, sk].filter(Boolean).join(' · ');
+}
+
+function findCatalogItem(
+  items: SourceSystemCatalogType[],
+  catalogRef: string | null,
+): SourceSystemCatalogType | null {
+  if (!catalogRef) {
+    return null;
+  }
+  return items.find((item) => item.id === catalogRef || `ZRODLO_SN/${item.id}` === catalogRef) ?? null;
+}
+
+function buildPreviewPayload(data: GridSourceFormData): GridSourcePreviewRequest | null {
+  if (!isPositive(data.sn_voltage_kv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
+    return null;
+  }
+
+  if (data.short_circuit_mode === 'IMPEDANCE') {
+    if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
+      return null;
+    }
+  } else if (!isPositive(data.sk3_mva) || data.rx_ratio === null || data.rx_ratio < 0) {
+    return null;
+  }
+
+  if (
+    data.zero_sequence_enabled
+    && (
+      data.r0_ohm !== null
+      || data.x0_ohm !== null
+    )
+    && (data.r0_ohm === null || data.r0_ohm < 0 || !isPositive(data.x0_ohm))
+  ) {
+    return null;
+  }
+
+  return {
+    voltage_kv: data.sn_voltage_kv,
+    short_circuit_mode: data.short_circuit_mode,
+    sk3_mva: data.sk3_mva,
+    rx_ratio: data.rx_ratio,
+    r_ohm: data.r_ohm,
+    x_ohm: data.x_ohm,
+    zero_sequence_enabled: data.zero_sequence_enabled,
+    r0_ohm: data.r0_ohm,
+    x0_ohm: data.x0_ohm,
+    z0_z1_ratio: data.z0_z1_ratio,
+    tk_s: data.thermal_time_s,
+    tb_s: 0.1,
+  };
+}
+
+function getReadinessRows(data: GridSourceFormData): Array<[string, ReadinessState, string]> {
+  const hasZeroSequenceInput =
+    (data.r0_ohm !== null && data.x0_ohm !== null) || isPositive(data.z0_z1_ratio);
+
+  return [
+    ['Identyfikacja', data.source_name.trim() ? 'complete' : 'missing', 'Kompletne'],
+    ['Napięcie SN', isPositive(data.sn_voltage_kv) ? 'complete' : 'missing', 'Kompletne'],
+    [
+      'Parametry zwarciowe',
+      isPositive(data.sk3_mva) && data.rx_ratio !== null ? 'complete' : 'missing',
+      'Kompletne',
+    ],
+    [
+      'Uziemienie neutralnego',
+      data.grounding_type === 'resistor_grounded' && !isPositive(data.grounding_r_ohm)
+        ? 'missing'
+        : 'complete',
+      'Kompletne',
+    ],
+    ['Parametry normowe', 'complete', 'Kompletne'],
+    ['Sekcje i pola', data.sections_count > 0 ? 'complete' : 'missing', 'Kompletne'],
+    [
+      'Składowa zerowa',
+      !data.zero_sequence_enabled || !hasZeroSequenceInput
+        ? 'warning'
+        : 'complete',
+      data.zero_sequence_enabled ? 'Niepełne' : 'Wymaga uzupełnienia',
+    ],
+  ];
+}
+
+function getReadinessText(state: ReadinessState, fallback: string): string {
+  if (state === 'complete') {
+    return 'Kompletne';
+  }
+  if (state === 'warning') {
+    return fallback;
+  }
+  return 'Brak danych';
+}
+
 export function GridSourceEditor({
   isOpen,
   mode,
@@ -238,8 +473,11 @@ export function GridSourceEditor({
   const [formData, setFormData] = useState<GridSourceFormData>(mergeInitialData(initialData));
   const [errors, setErrors] = useState<FieldError[]>([]);
   const [touched, setTouched] = useState<Set<string>>(new Set());
+  const [preview, setPreview] = useState<GridSourcePreviewResponse | null>(null);
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>('idle');
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [catalogItems, setCatalogItems] = useState<SourceSystemCatalogType[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('idle');
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -249,15 +487,18 @@ export function GridSourceEditor({
     setFormData(mergeInitialData(initialData));
     setErrors([]);
     setTouched(new Set());
+    setPreview(null);
+    setPreviewStatus('idle');
+    setPreviewError(null);
   }, [initialData, isOpen]);
 
   useEffect(() => {
     if (!isOpen) {
-      return;
+      return undefined;
     }
 
     let cancelled = false;
-    setCatalogLoading(true);
+    setCatalogStatus('loading');
     setCatalogError(null);
 
     fetchSourceSystemTypes()
@@ -265,63 +506,22 @@ export function GridSourceEditor({
         if (cancelled) {
           return;
         }
-        setCatalogItems(items);
-        if (items.length === 0) {
-          setCatalogError(SOURCE_CATALOG_EMPTY_MESSAGE);
-          setFormData((previous) => ({
-            ...previous,
-            manual_mode: true,
-            catalog_ref: null,
-          }));
-        }
-        setCatalogLoading(false);
+        setCatalogItems(Array.isArray(items) ? items : []);
+        setCatalogStatus('ready');
       })
       .catch((error: unknown) => {
         if (cancelled) {
           return;
         }
         setCatalogItems([]);
-        const reason = getCatalogErrorMessage(error) || SOURCE_CATALOG_UNAVAILABLE_MESSAGE;
-        setCatalogError(
-          `${reason} Włączono ręczną definicję parametrów GPZ; uzupełnij napięcie, Sk3 i R/X.`,
-        );
-        setFormData((previous) => ({
-          ...previous,
-          manual_mode: true,
-          catalog_ref: null,
-        }));
-        setCatalogLoading(false);
+        setCatalogStatus('error');
+        setCatalogError(getCatalogErrorMessage(error));
       });
 
     return () => {
       cancelled = true;
     };
   }, [isOpen]);
-
-  const selectedCatalog = useMemo(
-    () => catalogItems.find((item) => item.id === formData.catalog_ref) ?? null,
-    [catalogItems, formData.catalog_ref],
-  );
-  const catalogModeUnavailable = Boolean(catalogError) && catalogItems.length === 0;
-
-  useEffect(() => {
-    if (!selectedCatalog || formData.manual_mode) {
-      return;
-    }
-
-    setFormData((previous) => {
-      if (
-        previous.catalog_ref === selectedCatalog.id &&
-        previous.sn_voltage_kv === selectedCatalog.voltage_rating_kv &&
-        previous.sk3_mva === selectedCatalog.sk3_mva &&
-        previous.rx_ratio === (selectedCatalog.rx_ratio ?? null)
-      ) {
-        return previous;
-      }
-
-      return catalogToFormData(selectedCatalog, previous);
-    });
-  }, [formData.manual_mode, selectedCatalog]);
 
   const handleChange = useCallback((field: keyof GridSourceFormData, value: unknown) => {
     setFormData((previous) => ({ ...previous, [field]: value as never }));
@@ -336,62 +536,25 @@ export function GridSourceEditor({
     [handleChange],
   );
 
-  const handleCatalogChange = useCallback(
+  const handleCatalogSelect = useCallback(
     (catalogRef: string) => {
-      const selected = catalogItems.find((item) => item.id === catalogRef) ?? null;
-      setTouched((previous) => {
-        const next = new Set(previous);
-        next.add('catalog_ref');
-        next.add('sn_voltage_kv');
-        next.add('sk3_mva');
-        next.add('rx_ratio');
-        return next;
-      });
-
-      if (!selected) {
-        setFormData((previous) => ({
-          ...previous,
-          catalog_ref: null,
-          sn_voltage_kv: null,
-          sk3_mva: null,
-          rx_ratio: null,
-        }));
-        return;
-      }
-
-      setFormData((previous) => catalogToFormData(selected, previous));
-    },
-    [catalogItems],
-  );
-
-  const handleModeChange = useCallback(
-    (manualMode: boolean) => {
-      setTouched((previous) => {
-        const next = new Set(previous);
-        next.add('catalog_ref');
-        next.add('sn_voltage_kv');
-        next.add('sk3_mva');
-        next.add('rx_ratio');
-        next.add('r_ohm');
-        next.add('x_ohm');
-        return next;
-      });
-
+      const selected = findCatalogItem(catalogItems, catalogRef);
       setFormData((previous) => ({
         ...previous,
-        manual_mode: manualMode,
-        catalog_ref: manualMode ? null : previous.catalog_ref,
-        ...(manualMode || selectedCatalog === null
-          ? {}
-          : {
-              sn_voltage_kv: selectedCatalog.voltage_rating_kv,
-              sk3_mva: selectedCatalog.sk3_mva,
-              rx_ratio: selectedCatalog.rx_ratio ?? null,
-              short_circuit_mode: 'SHORT_CIRCUIT_POWER' as const,
-            }),
+        catalog_ref: catalogRef,
+        manual_mode: false,
+        sn_voltage_kv: selected?.voltage_rating_kv ?? previous.sn_voltage_kv,
+        sk3_mva: selected?.sk3_mva ?? previous.sk3_mva,
+        rx_ratio: selected?.rx_ratio ?? previous.rx_ratio,
       }));
+      setTouched((previous) => {
+        const next = new Set(previous);
+        next.add('catalog_ref');
+        next.add('manual_mode');
+        return next;
+      });
     },
-    [selectedCatalog],
+    [catalogItems],
   );
 
   const handleSubmit = useCallback(() => {
@@ -409,434 +572,829 @@ export function GridSourceEditor({
     return errors.find((entry) => entry.field === field)?.message;
   };
 
+  const sourceIdentifier = useMemo(
+    () => buildGpzIdentifier(formData.source_name),
+    [formData.source_name],
+  );
+  const selectedCatalogItem = useMemo(
+    () => findCatalogItem(catalogItems, formData.catalog_ref),
+    [catalogItems, formData.catalog_ref],
+  );
+  const gpzBuildSections = useMemo(() => buildEditorGpzSections(formData), [formData]);
+  const gpzCouplerCount = Math.max(0, gpzBuildSections.length - 1);
+  const dataSourceLabel = formData.manual_mode
+    ? 'Ręczny równoważnik ekspercki'
+    : selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
+  const previewPayload = useMemo(() => buildPreviewPayload(formData), [formData]);
+  const readinessRows = useMemo(() => getReadinessRows(formData), [formData]);
+  const pendingMetricLabel = previewStatus === 'loading' ? 'solver...' : '—';
+  const ik1MetricLabel = previewStatus === 'loading'
+    ? 'solver...'
+    : previewStatus === 'ready' && preview?.ik1_ka === null
+      ? 'brak Z0 z solvera'
+      : formatKiloamp(preview?.ik1_ka);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    if (previewPayload === null) {
+      setPreview(null);
+      setPreviewStatus('idle');
+      setPreviewError(null);
+      return undefined;
+    }
+
+    const controller = new AbortController();
+    setPreview(null);
+    setPreviewStatus('loading');
+    setPreviewError(null);
+
+    void fetchGridSourcePreview(previewPayload, { signal: controller.signal })
+      .then((result) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setPreview(result);
+        setPreviewStatus('ready');
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setPreview(null);
+        setPreviewStatus('error');
+        setPreviewError(
+          error instanceof Error
+            ? error.message
+            : 'Backend solvera nie zwrócił podsumowania GPZ.',
+        );
+      });
+
+    return () => controller.abort();
+  }, [isOpen, previewPayload]);
+
   if (!isOpen) {
     return null;
   }
 
   return (
     <div
-      className="grid-source-editor-panel h-full min-h-0 bg-[#071018]"
+      className="grid-source-editor-panel h-full min-h-0 bg-[#050810]"
       data-testid="grid-source-editor-shell"
     >
       <div
         role="dialog"
         aria-labelledby="grid-source-editor-title"
-        className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0d1724] text-scada-text"
+        className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#050810] text-scada-text"
         data-testid="grid-source-editor-dialog"
       >
-        <div className="gpz-editor-header shrink-0 border-b border-scada-border bg-[#0a141f] px-5 py-3.5">
-          <h2 id="grid-source-editor-title" className="text-[15px] font-semibold text-scada-text">
-            {mode === 'create' ? 'Parametry źródła GPZ' : 'Edycja źródła GPZ'}
-          </h2>
+        <div className="shrink-0 border-b border-[#15324f] bg-[#07111f] px-4 py-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#00ffaa]" aria-hidden="true" />
+                <h2
+                  id="grid-source-editor-title"
+                  className="font-mono-eng text-[16px] font-bold leading-none text-scada-text"
+                >
+                  {formData.source_name || 'GPZ'}
+                </h2>
+              </div>
+              <p className="mt-1 font-mono-eng text-[11px] text-[#8fb4d8]">
+                Ekran E-03B · Karta GPZ zaawansowana · {formatNumber(formData.sn_voltage_kv, 0)} kV
+              </p>
+            </div>
+            <span className="rounded-[3px] border border-[#1d3550] bg-[#091728] px-2 py-1 font-mono-eng text-[10px] font-semibold uppercase tracking-[0.14em] text-[#67d9ff]">
+              {mode === 'create' ? 'Nowy GPZ' : 'Edycja GPZ'}
+            </span>
+          </div>
         </div>
 
-        <div className="gpz-editor-body min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4">
-          <section>
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Dane wymagane
-            </h3>
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+          <GpzAdvancedSummary
+            sourceName={formData.source_name || 'GPZ'}
+            sourceIdentifier={sourceIdentifier}
+            voltageKv={formData.sn_voltage_kv}
+            dataSourceLabel={dataSourceLabel}
+            sectionsCount={gpzBuildSections.length}
+            couplerCount={gpzCouplerCount}
+            previewStatus={previewStatus}
+          />
 
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Nazwa źródła</label>
+          <ScadaSection title="Źródło danych i katalog">
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleChange('manual_mode', false)}
+                  className={modeButtonClass(!formData.manual_mode)}
+                >
+                  Katalog źródła systemowego
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChange('manual_mode', true)}
+                  className={modeButtonClass(formData.manual_mode)}
+                >
+                  Ręczny równoważnik ekspercki
+                </button>
+              </div>
+
+              <FieldShell label="Pozycja katalogowa ZRODLO_SN" error={getFieldError('catalog_ref')}>
+                <select
+                  value={formData.catalog_ref ?? ''}
+                  onChange={(event) => handleCatalogSelect(event.target.value)}
+                  disabled={formData.manual_mode || catalogStatus === 'loading'}
+                  className={clsx(selectClass(getFieldError('catalog_ref')), INPUT_DISABLED_CLASS)}
+                >
+                  <option value="">
+                    {catalogStatus === 'loading'
+                      ? 'Ładowanie katalogu źródeł...'
+                      : '— wybierz źródło systemowe GPZ —'}
+                  </option>
+                  {catalogItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {sourceCatalogLabel(item)}
+                    </option>
+                  ))}
+                </select>
+              </FieldShell>
+            </div>
+
+            {catalogStatus === 'error' && (
+              <SolverMessage tone="warning">
+                {catalogError ?? 'Nie udało się pobrać katalogu źródeł systemowych SN.'}
+              </SolverMessage>
+            )}
+
+            <div className="grid gap-2 lg:grid-cols-3">
+              <AdvancedDataRow label="Źródło parametrów" value={dataSourceLabel} />
+              <AdvancedDataRow
+                label="Powiązanie katalogowe"
+                value={formData.manual_mode ? 'nie dotyczy' : formData.catalog_ref ?? 'brak'}
+                tone={!formData.manual_mode && !formData.catalog_ref ? 'warning' : 'normal'}
+              />
+              <AdvancedDataRow
+                label="Zasada obliczeń"
+                value="UI wysyła dane wejściowe, wynik wraca z backendu"
+              />
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Identyfikacja GPZ">
+            <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-[1fr_1fr_130px]">
+              <FieldShell label="Nazwa GPZ" error={getFieldError('source_name')}>
                 <input
                   type="text"
                   value={formData.source_name}
                   onChange={(event) => handleChange('source_name', event.target.value)}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('source_name') ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Nazwa źródła zasilania"
+                  className={fieldClass(getFieldError('source_name'))}
+                  placeholder="np. GPZ-01 albo nazwa stacji"
                 />
-                {getFieldError('source_name') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('source_name')}</p>
-                )}
-              </div>
+              </FieldShell>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Liczba sekcji GPZ</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={4}
-                  value={formData.sections_count}
-                  onChange={(event) =>
-                    handleChange(
-                      'sections_count',
-                      Math.max(1, Math.min(4, Math.trunc(Number(event.target.value || 1)))),
-                    )
-                  }
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('sections_count') ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                />
-                {getFieldError('sections_count') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('sections_count')}</p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Sekcja GPZ i pole liniowe
-            </h3>
-
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Bazowa nazwa sekcji GPZ</label>
+              <FieldShell label="Oznaczenie">
                 <input
                   type="text"
-                  value={formData.gpz_section_name}
-                  onChange={(event) => handleChange('gpz_section_name', event.target.value)}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('gpz_section_name') ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Nazwa sekcji GPZ"
+                  value={sourceIdentifier}
+                  readOnly
+                  className={clsx(INPUT_CLASS, INPUT_DISABLED_CLASS, 'border-[#1d3550]')}
                 />
-                {getFieldError('gpz_section_name') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('gpz_section_name')}</p>
-                )}
-              </div>
+              </FieldShell>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">
-                  Bazowa nazwa pola liniowego GPZ
-                </label>
-                <input
-                  type="text"
-                  value={formData.gpz_line_field_name}
-                  onChange={(event) => handleChange('gpz_line_field_name', event.target.value)}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('gpz_line_field_name') ? 'border-red-500' : 'border-gray-300'
-                  }`}
-                  placeholder="Nazwa pola liniowego GPZ"
-                />
-                {getFieldError('gpz_line_field_name') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('gpz_line_field_name')}</p>
-                )}
-              </div>
-            </div>
-
-            <p className="mt-2 text-xs text-gray-500">
-              Formularz buduje jawne `gpz_sections`. Dla wielu sekcji nazwy są numerowane
-              deterministycznie od lewej do prawej.
-            </p>
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Tryb definicji technicznej
-            </h3>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleModeChange(false)}
-                disabled={catalogModeUnavailable}
-                className={`rounded-sm border px-3 py-2 text-sm font-medium transition-colors ${
-                  !formData.manual_mode
-                    ? 'border-cyan-500/70 bg-cyan-500/15 text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-                    : 'border-scada-border bg-[#0a141f] text-scada-muted hover:border-cyan-500/45 hover:text-scada-text'
-                } disabled:cursor-not-allowed disabled:border-scada-border disabled:bg-[#101827] disabled:text-scada-muted/60`}
-              >
-                Katalog
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange(true)}
-                className={`rounded-sm border px-3 py-2 text-sm font-medium transition-colors ${
-                  formData.manual_mode
-                    ? 'border-amber-400/70 bg-amber-400/12 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
-                    : 'border-scada-border bg-[#0a141f] text-scada-muted hover:border-amber-400/45 hover:text-scada-text'
-                }`}
-              >
-                Umowa równoważna ręczna
-              </button>
-            </div>
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Pozycja katalogowa systemu SN
-            </label>
-            <select
-              value={formData.catalog_ref ?? ''}
-              onChange={(event) => handleCatalogChange(event.target.value)}
-              disabled={formData.manual_mode || catalogLoading}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                getFieldError('catalog_ref') ? 'border-red-500' : 'border-gray-300'
-              } disabled:bg-gray-100`}
-            >
-              <option value="">
-                {catalogLoading ? 'Ładowanie katalogu...' : '— wybierz pozycję katalogową —'}
-              </option>
-              {catalogItems.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ({item.voltage_rating_kv} kV, Sk3 {item.sk3_mva} MVA)
-                </option>
-              ))}
-            </select>
-            {catalogError && (
-              <p className="mt-1 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                {catalogError}
-              </p>
-            )}
-            {getFieldError('catalog_ref') && (
-              <p className="mt-1 text-xs text-red-600">{getFieldError('catalog_ref')}</p>
-            )}
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Parametry zwarciowe
-            </h3>
-
-            <div className="mb-3 grid gap-3 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Napięcie SN [kV]</label>
-                <input
-                  type="number"
+              <FieldShell label="Napięcie SN">
+                <select
                   value={formData.sn_voltage_kv ?? ''}
-                  onChange={handleNumericChange('sn_voltage_kv')}
-                  disabled={!formData.manual_mode}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('sn_voltage_kv') ? 'border-red-500' : 'border-gray-300'
-                  } ${!formData.manual_mode ? 'bg-gray-100 text-gray-500' : ''}`}
-                />
-                {getFieldError('sn_voltage_kv') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('sn_voltage_kv')}</p>
-                )}
-              </div>
-
-              {formData.manual_mode && (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Tryb ręczny</label>
-                  <select
-                    value={formData.short_circuit_mode}
-                    onChange={(event) =>
-                      handleChange(
-                        'short_circuit_mode',
-                        event.target.value === 'IMPEDANCE' ? 'IMPEDANCE' : 'SHORT_CIRCUIT_POWER',
-                      )
-                    }
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="SHORT_CIRCUIT_POWER">Moc zwarciowa + R/X</option>
-                    <option value="IMPEDANCE">Impedancja R + X</option>
-                  </select>
-                </div>
-              )}
+                  onChange={(event) => handleChange('sn_voltage_kv', Number(event.target.value))}
+                  className={selectClass(getFieldError('sn_voltage_kv'))}
+                >
+                  <option value={15}>15 kV</option>
+                  <option value={20}>20 kV</option>
+                  <option value={30}>30 kV</option>
+                </select>
+              </FieldShell>
             </div>
 
-            {formData.manual_mode && formData.short_circuit_mode === 'IMPEDANCE' ? (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">R [ohm]</label>
-                  <input
-                    type="number"
-                    value={formData.r_ohm ?? ''}
-                    onChange={handleNumericChange('r_ohm')}
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${
-                      getFieldError('r_ohm') ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {getFieldError('r_ohm') && (
-                    <p className="mt-1 text-xs text-red-600">{getFieldError('r_ohm')}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">X [ohm]</label>
-                  <input
-                    type="number"
-                    value={formData.x_ohm ?? ''}
-                    onChange={handleNumericChange('x_ohm')}
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${
-                      getFieldError('x_ohm') ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  />
-                  {getFieldError('x_ohm') && (
-                    <p className="mt-1 text-xs text-red-600">{getFieldError('x_ohm')}</p>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Sk3 [MVA]</label>
-                  <input
-                    type="number"
-                    value={formData.sk3_mva ?? ''}
-                    onChange={handleNumericChange('sk3_mva')}
-                    disabled={!formData.manual_mode}
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${
-                      getFieldError('sk3_mva') ? 'border-red-500' : 'border-gray-300'
-                    } ${!formData.manual_mode ? 'bg-gray-100 text-gray-500' : ''}`}
-                  />
-                  {getFieldError('sk3_mva') && (
-                    <p className="mt-1 text-xs text-red-600">{getFieldError('sk3_mva')}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">R/X</label>
-                  <input
-                    type="number"
-                    value={formData.rx_ratio ?? ''}
-                    onChange={handleNumericChange('rx_ratio')}
-                    disabled={!formData.manual_mode}
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${
-                      getFieldError('rx_ratio') ? 'border-red-500' : 'border-gray-300'
-                    } ${!formData.manual_mode ? 'bg-gray-100 text-gray-500' : ''}`}
-                  />
-                  {getFieldError('rx_ratio') && (
-                    <p className="mt-1 text-xs text-red-600">{getFieldError('rx_ratio')}</p>
-                  )}
-                </div>
-              </div>
-            )}
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Składowa zerowa
-            </h3>
-
-            <label className="mb-3 flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={formData.zero_sequence_enabled}
-                onChange={(event) => handleChange('zero_sequence_enabled', event.target.checked)}
-              />
-              Definiuj parametry składowej zerowej
-            </label>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">R0 [ohm]</label>
-                <input
-                  type="number"
-                  value={formData.r0_ohm ?? ''}
-                  onChange={handleNumericChange('r0_ohm')}
-                  disabled={!formData.zero_sequence_enabled}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('r0_ohm') ? 'border-red-500' : 'border-gray-300'
-                  } ${!formData.zero_sequence_enabled ? 'bg-gray-100 text-gray-500' : ''}`}
-                />
-                {getFieldError('r0_ohm') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('r0_ohm')}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">X0 [ohm]</label>
-                <input
-                  type="number"
-                  value={formData.x0_ohm ?? ''}
-                  onChange={handleNumericChange('x0_ohm')}
-                  disabled={!formData.zero_sequence_enabled}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('x0_ohm') ? 'border-red-500' : 'border-gray-300'
-                  } ${!formData.zero_sequence_enabled ? 'bg-gray-100 text-gray-500' : ''}`}
-                />
-                {getFieldError('x0_ohm') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('x0_ohm')}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Z0/Z1</label>
-                <input
-                  type="number"
-                  value={formData.z0_z1_ratio ?? ''}
-                  onChange={handleNumericChange('z0_z1_ratio')}
-                  disabled={!formData.zero_sequence_enabled}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('z0_z1_ratio') ? 'border-red-500' : 'border-gray-300'
-                  } ${!formData.zero_sequence_enabled ? 'bg-gray-100 text-gray-500' : ''}`}
-                />
-                {getFieldError('z0_z1_ratio') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('z0_z1_ratio')}</p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          <section className="border-t border-gray-200 pt-3">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
-              Uziemienie punktu neutralnego
-            </h3>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Typ uziemienia</label>
+            <div className="grid gap-3 lg:grid-cols-2">
+              <FieldShell label="Uziemienie punktu neutralnego" error={getFieldError('grounding_type')}>
                 <select
                   value={formData.grounding_type}
                   onChange={(event) =>
                     handleChange('grounding_type', event.target.value as GpzGroundingType)
                   }
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  className={selectClass(getFieldError('grounding_type'))}
                 >
-                  <option value="isolated">Izolowany</option>
-                  <option value="petersen_coil">Cewka Petersena</option>
-                  <option value="directly_grounded">Bezpośrednio uziemiony</option>
-                  <option value="resistor_grounded">Przez rezystor</option>
+                  <option value="resistor_grounded">rezystancja</option>
+                  <option value="isolated">izolowany</option>
+                  <option value="petersen_coil">cewka Petersena</option>
+                  <option value="solid_grounded">bezpośrednio uziemiony</option>
                 </select>
-              </div>
+              </FieldShell>
 
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">R uziemienia [ohm]</label>
+              <FieldShell
+                label={formData.grounding_type === 'petersen_coil' ? 'X cewki [ohm]' : 'R uziemienia [ohm]'}
+                error={getFieldError(
+                  formData.grounding_type === 'petersen_coil'
+                    ? 'grounding_x_ohm'
+                    : 'grounding_r_ohm',
+                )}
+              >
                 <input
                   type="number"
-                  value={formData.grounding_r_ohm ?? ''}
-                  onChange={handleNumericChange('grounding_r_ohm')}
-                  disabled={formData.grounding_type !== 'resistor_grounded'}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('grounding_r_ohm') ? 'border-red-500' : 'border-gray-300'
-                  } ${formData.grounding_type !== 'resistor_grounded' ? 'bg-gray-100 text-gray-500' : ''}`}
+                  value={
+                    formData.grounding_type === 'petersen_coil'
+                      ? formData.grounding_x_ohm ?? ''
+                      : formData.grounding_r_ohm ?? ''
+                  }
+                  onChange={
+                    formData.grounding_type === 'petersen_coil'
+                      ? handleNumericChange('grounding_x_ohm')
+                      : handleNumericChange('grounding_r_ohm')
+                  }
+                  disabled={!['resistor_grounded', 'petersen_coil'].includes(formData.grounding_type)}
+                  className={clsx(
+                    fieldClass(
+                      getFieldError(
+                        formData.grounding_type === 'petersen_coil'
+                          ? 'grounding_x_ohm'
+                          : 'grounding_r_ohm',
+                      ),
+                    ),
+                    INPUT_DISABLED_CLASS,
+                  )}
                 />
-                {getFieldError('grounding_r_ohm') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('grounding_r_ohm')}</p>
-                )}
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">X cewki [ohm]</label>
-                <input
-                  type="number"
-                  value={formData.grounding_x_ohm ?? ''}
-                  onChange={handleNumericChange('grounding_x_ohm')}
-                  disabled={formData.grounding_type !== 'petersen_coil'}
-                  className={`w-full rounded-md border px-3 py-2 text-sm ${
-                    getFieldError('grounding_x_ohm') ? 'border-red-500' : 'border-gray-300'
-                  } ${formData.grounding_type !== 'petersen_coil' ? 'bg-gray-100 text-gray-500' : ''}`}
-                />
-                {getFieldError('grounding_x_ohm') && (
-                  <p className="mt-1 text-xs text-red-600">{getFieldError('grounding_x_ohm')}</p>
-                )}
-              </div>
+              </FieldShell>
             </div>
-          </section>
+          </ScadaSection>
+
+          <ScadaSection title="Parametry zwarciowe na szynach SN">
+            <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+              <FieldShell label="Moc zwarciowa Sk''" unit="MVA" error={getFieldError('sk3_mva')}>
+                <input
+                  type="number"
+                  value={formData.sk3_mva ?? ''}
+                  onChange={handleNumericChange('sk3_mva')}
+                  className={fieldClass(getFieldError('sk3_mva'))}
+                />
+              </FieldShell>
+
+              <FieldShell label="Stosunek R/X" error={getFieldError('rx_ratio')}>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.rx_ratio ?? ''}
+                  onChange={handleNumericChange('rx_ratio')}
+                  className={fieldClass(getFieldError('rx_ratio'))}
+                />
+              </FieldShell>
+
+              <FieldShell label="Normalny czas obliczeń">
+                <select className={selectClass()}>
+                  <option>minimum / maksimum</option>
+                  <option>maksimum</option>
+                  <option>minimum</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell label="Czas cieplny tk" unit="s" error={getFieldError('thermal_time_s')}>
+                <input
+                  type="number"
+                  min={0.1}
+                  step={0.1}
+                  value={formData.thermal_time_s}
+                  onChange={(event) =>
+                    handleChange('thermal_time_s', Number(event.target.value || 0))
+                  }
+                  className={fieldClass(getFieldError('thermal_time_s'))}
+                />
+              </FieldShell>
+            </div>
+
+            <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+              <FieldShell label="Prąd zwarciowy Ik'' (3-faz. maks.)">
+                <ReadOnlyMetric value={preview ? formatKiloamp(preview.ik3_ka) : pendingMetricLabel} />
+              </FieldShell>
+
+              <FieldShell label="Prąd zwarciowy Ik'' (1-faz. maks.)">
+                <ReadOnlyMetric
+                  value={ik1MetricLabel}
+                  tone={previewStatus === 'ready' && preview?.ik1_ka !== null ? 'ok' : 'warning'}
+                />
+              </FieldShell>
+
+              <FieldShell label="Z1 źródła">
+                <ReadOnlyMetric value={preview ? formatComplex(preview.z1_ohm) : pendingMetricLabel} />
+              </FieldShell>
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Parametry normowe">
+            <div className="grid gap-3 lg:grid-cols-2">
+              <FieldShell label="Norma obliczeniowa">
+                <select className={selectClass()}>
+                  <option>IEC 60909:2016</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell label="Częstotliwość">
+                <select className={selectClass()}>
+                  <option>50 Hz</option>
+                  <option>60 Hz</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell label="Współczynnik napięcia c (maks.)">
+                <select className={selectClass()}>
+                  <option>1.10</option>
+                  <option>1.05</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell label="Współczynnik napięcia c (min.)">
+                <select className={selectClass()}>
+                  <option>1.00</option>
+                  <option>0.95</option>
+                </select>
+              </FieldShell>
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Sekcje szyn GPZ">
+            <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+              <FieldShell label="Liczba sekcji szyn SN" error={getFieldError('sections_count')}>
+                <select
+                  value={formData.sections_count}
+                  onChange={(event) => handleChange('sections_count', Number(event.target.value))}
+                  className={selectClass(getFieldError('sections_count'))}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                  <option value={4}>4</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell label="Bazowa nazwa sekcji GPZ" error={getFieldError('gpz_section_name')}>
+                <input
+                  type="text"
+                  value={formData.gpz_section_name}
+                  onChange={(event) => handleChange('gpz_section_name', event.target.value)}
+                  className={fieldClass(getFieldError('gpz_section_name'))}
+                />
+              </FieldShell>
+
+              <FieldShell label="Bazowa nazwa pola liniowego" error={getFieldError('gpz_line_field_name')}>
+                <input
+                  type="text"
+                  value={formData.gpz_line_field_name}
+                  onChange={(event) => handleChange('gpz_line_field_name', event.target.value)}
+                  className={fieldClass(getFieldError('gpz_line_field_name'))}
+                />
+              </FieldShell>
+
+              <FieldShell
+                label="Liczba pól liniowych na sekcję"
+                error={getFieldError('line_fields_per_section')}
+              >
+                <select
+                  value={formData.line_fields_per_section}
+                  onChange={(event) =>
+                    handleChange('line_fields_per_section', Number(event.target.value))
+                  }
+                  className={selectClass(getFieldError('line_fields_per_section'))}
+                >
+                  {Array.from({ length: 12 }, (_unused, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      {index + 1}
+                    </option>
+                  ))}
+                </select>
+              </FieldShell>
+            </div>
+
+            <div className="grid gap-2 xl:grid-cols-2">
+              {gpzBuildSections.map((section) => (
+                <div
+                  key={section.order}
+                  className="rounded-[3px] border border-[#163a5c] bg-[#050c17] p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-mono-eng text-[12px] font-bold text-scada-text">
+                        {section.sectionName}
+                      </p>
+                      <p className="mt-1 font-mono-eng text-[10px] text-[#83a8ca]">
+                        {section.busName}
+                      </p>
+                    </div>
+                    <span className="rounded-[3px] border border-[#1d5b90] bg-[#081d33] px-2 py-1 font-mono-eng text-[10px] font-bold text-[#67d9ff]">
+                      {section.lineFieldNames.length} pól
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-1.5">
+                    {section.lineFieldNames.slice(0, 12).map((fieldName, fieldIndex) => (
+                      <div
+                        key={`${section.order}-${fieldName}-${fieldIndex}`}
+                        className="truncate rounded-[3px] border border-[#102d48] bg-[#020812] px-2 py-1 font-mono-eng text-[10px] text-[#a8bed6]"
+                        title={fieldName}
+                      >
+                        {fieldName}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-4 pt-1">
+              <CheckLine checked={gpzBuildSections.length > 1} label="Sprzęgło sekcji między szynami" />
+              <CheckLine checked label="Zacisk wyjściowy każdego pola liniowego" />
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Składowa zerowa">
+            <label className="flex items-center gap-2 font-mono-eng text-[12px] text-scada-text">
+              <input
+                type="checkbox"
+                checked={formData.zero_sequence_enabled}
+                onChange={(event) => handleChange('zero_sequence_enabled', event.target.checked)}
+                className="h-3.5 w-3.5 accent-[#00a7ff]"
+              />
+              Definiuj R0/X0 dla obliczeń doziemnych
+            </label>
+
+            <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
+              <FieldShell label="R0 [ohm]" error={getFieldError('r0_ohm')}>
+                <input
+                  type="number"
+                  value={formData.r0_ohm ?? ''}
+                  onChange={handleNumericChange('r0_ohm')}
+                  disabled={!formData.zero_sequence_enabled}
+                  className={clsx(fieldClass(getFieldError('r0_ohm')), INPUT_DISABLED_CLASS)}
+                />
+              </FieldShell>
+              <FieldShell label="X0 [ohm]" error={getFieldError('x0_ohm')}>
+                <input
+                  type="number"
+                  value={formData.x0_ohm ?? ''}
+                  onChange={handleNumericChange('x0_ohm')}
+                  disabled={!formData.zero_sequence_enabled}
+                  className={clsx(fieldClass(getFieldError('x0_ohm')), INPUT_DISABLED_CLASS)}
+                />
+              </FieldShell>
+              <FieldShell label="Z0/Z1" error={getFieldError('z0_z1_ratio')}>
+                <input
+                  type="number"
+                  value={formData.z0_z1_ratio ?? ''}
+                  onChange={handleNumericChange('z0_z1_ratio')}
+                  disabled={!formData.zero_sequence_enabled}
+                  className={clsx(fieldClass(getFieldError('z0_z1_ratio')), INPUT_DISABLED_CLASS)}
+                />
+              </FieldShell>
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Podsumowanie obliczone">
+            <div className="rounded-[3px] border border-[#1d5b90] bg-[#081d33] p-3">
+              {previewStatus === 'loading' && (
+                <SolverMessage tone="neutral">
+                  Backend solvera liczy podsumowanie z danych wejściowych.
+                </SolverMessage>
+              )}
+              {previewStatus === 'error' && (
+                <SolverMessage tone="warning">
+                  {previewError ?? 'Backend solvera nie zwrócił podsumowania GPZ.'}
+                </SolverMessage>
+              )}
+              <SummaryRow
+                label="Sk'' (SN)"
+                value={formatMva(preview?.sk_mva)}
+              />
+              <SummaryRow
+                label="Ik'' (3-faz. maks.)"
+                value={formatKiloamp(preview?.ik3_ka)}
+              />
+              <SummaryRow
+                label="Ik'' (1-faz. maks.)"
+                value={formatKiloamp(preview?.ik1_ka)}
+              />
+              <SummaryRow label="κ (IEC 60909)" value={formatNumber(preview?.kappa, 3)} />
+              <SummaryRow label="ip (3-faz. maks.)" value={formatKiloamp(preview?.ip_ka)} />
+              <SummaryRow label="Ith (3-faz., tk)" value={formatKiloamp(preview?.ith_ka)} />
+              <SummaryRow label="Z1 źródła" value={formatComplex(preview?.z1_ohm)} />
+              <SummaryRow label="Z0 źródła" value={formatComplex(preview?.z0_ohm)} />
+              <SummaryRow label="Źródło wyników" value={preview?.formula_ref ?? 'backend solver'} />
+            </div>
+          </ScadaSection>
+
+          <ScadaSection title="Gotowość GPZ">
+            <div className="divide-y divide-[#193451] border border-[#193451]">
+              {readinessRows.map(([label, state, fallback]) => (
+                <ReadinessRow
+                  key={label}
+                  label={label}
+                  state={state}
+                  value={getReadinessText(state, fallback)}
+                />
+              ))}
+            </div>
+
+            {previewStatus === 'ready' && preview?.z0_ohm === null && (
+              <div className="rounded-[3px] border border-[#f0b429]/50 bg-[#2b2105] px-3 py-2 font-mono-eng text-[11px] leading-snug text-[#ffce73]">
+                Backend nie zwrócił składowej zerowej. Wynik zwarcia doziemnego pozostaje niedostępny.
+              </div>
+            )}
+          </ScadaSection>
         </div>
 
-        <div className="gpz-editor-footer flex shrink-0 justify-end gap-3 border-t border-scada-border bg-[#0a141f] px-5 py-3">
+        <div className="flex shrink-0 justify-end gap-3 border-t border-[#15324f] bg-[#07111f] px-4 py-3">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-sm border border-scada-border bg-[#101827] px-4 py-2 text-sm font-medium text-scada-muted transition-colors hover:border-cyan-500/45 hover:text-scada-text"
+            className="h-9 rounded-[3px] border border-[#1d3550] bg-[#08111f] px-5 font-mono-eng text-[12px] font-semibold text-[#a8bed6] transition-colors hover:border-[#67d9ff] hover:text-scada-text"
           >
             Anuluj
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="rounded-sm border border-cyan-500/70 bg-cyan-500/20 px-4 py-2 text-sm font-semibold text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_18px_rgba(34,211,238,0.12)] transition-colors hover:bg-cyan-500/30"
+            className="h-9 rounded-[3px] border border-[#1d63ff] bg-[#2d6bf0] px-8 font-mono-eng text-[13px] font-bold text-white shadow-[0_0_18px_rgba(45,107,240,0.22)] transition-colors hover:bg-[#3a7cff]"
           >
-            {mode === 'create' ? 'Dodaj źródło GPZ' : 'Zapisz źródło GPZ'}
+            Zapisz GPZ
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function modeButtonClass(active: boolean): string {
+  return clsx(
+    'min-h-9 rounded-[3px] border px-3 py-2 text-left font-mono-eng text-[11px] font-bold transition-colors',
+    active
+      ? 'border-[#00e5ff] bg-[#06324c] text-[#66f6ff] shadow-[inset_0_0_0_1px_rgba(0,229,255,0.25)]'
+      : 'border-[#1d3550] bg-[#020812] text-[#8fb4d8] hover:border-[#2f6b95]',
+  );
+}
+
+function GpzAdvancedSummary({
+  sourceName,
+  sourceIdentifier,
+  voltageKv,
+  dataSourceLabel,
+  sectionsCount,
+  couplerCount,
+  previewStatus,
+}: {
+  sourceName: string;
+  sourceIdentifier: string;
+  voltageKv: number | null;
+  dataSourceLabel: string;
+  sectionsCount: number;
+  couplerCount: number;
+  previewStatus: PreviewStatus;
+}) {
+  const solverText =
+    previewStatus === 'ready'
+      ? 'podsumowanie z backendu'
+      : previewStatus === 'loading'
+        ? 'backend liczy preview'
+        : 'brak wyniku preview';
+
+  return (
+    <section
+      className="overflow-hidden rounded-[3px] border border-[#15547b] bg-[#06101c]"
+      data-testid="gpz-advanced-summary"
+    >
+      <div className="border-b border-[#15547b] bg-[#020812] px-4 py-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="font-mono-eng text-[10px] font-bold uppercase tracking-[0.24em] text-[#66f6ff]">
+              GPZ / rozdzielnia SN
+            </p>
+            <h3 className="mt-2 font-mono-eng text-[18px] font-bold leading-tight text-scada-text">
+              {sourceName}
+            </h3>
+            <p className="mt-1 font-mono-eng text-[11px] text-[#8fb4d8]">
+              {sourceIdentifier} · {formatNumber(voltageKv, 0)} kV · {dataSourceLabel}
+            </p>
+          </div>
+          <div className="grid min-w-[260px] grid-cols-3 gap-2">
+            <HeaderMetric label="Sekcje szyn" value={String(sectionsCount)} />
+            <HeaderMetric label="Sprzęgła" value={String(couplerCount)} />
+            <HeaderMetric label="Wynik" value={solverText} tone={previewStatus === 'ready' ? 'ok' : 'normal'} />
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-0 border-t border-[#0c2d45] md:grid-cols-3">
+        <AdvancedDataRow label="Tok budowy" value="GPZ → pole liniowe → magistrala SN" />
+        <AdvancedDataRow label="Zaciski" value="każde pole ma osobny zacisk wyjściowy" />
+        <AdvancedDataRow label="Obliczenia" value="wartości liczbowe tylko z backendu" />
+      </div>
+    </section>
+  );
+}
+
+function HeaderMetric({
+  label,
+  value,
+  tone = 'normal',
+}: {
+  label: string;
+  value: string;
+  tone?: 'normal' | 'ok';
+}) {
+  return (
+    <div className="rounded-[3px] border border-[#15324f] bg-[#020812] px-2 py-1.5">
+      <div className="font-mono-eng text-[9px] uppercase tracking-[0.12em] text-[#6d8fb3]">
+        {label}
+      </div>
+      <div
+        className={clsx(
+          'mt-1 truncate font-mono-eng text-[11px] font-bold',
+          tone === 'ok' ? 'text-[#00ffaa]' : 'text-scada-text',
+        )}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function AdvancedDataRow({
+  label,
+  value,
+  tone = 'normal',
+}: {
+  label: string;
+  value: string;
+  tone?: 'normal' | 'warning';
+}) {
+  return (
+    <div className="min-w-0 border-[#12324f] px-3 py-2 md:border-r md:last:border-r-0">
+      <div className="font-mono-eng text-[9px] uppercase tracking-[0.14em] text-[#6d8fb3]">
+        {label}
+      </div>
+      <div
+        className={clsx(
+          'mt-1 truncate font-mono-eng text-[11px] font-bold',
+          tone === 'warning' ? 'text-[#ffce73]' : 'text-scada-text',
+        )}
+        title={value}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function fieldClass(error?: string): string {
+  return clsx(
+    INPUT_CLASS,
+    INPUT_DISABLED_CLASS,
+    error ? 'border-[#ff4666]' : 'border-[#1d3550]',
+  );
+}
+
+function selectClass(error?: string): string {
+  return clsx(
+    INPUT_CLASS,
+    'appearance-auto',
+    error ? 'border-[#ff4666]' : 'border-[#1d3550]',
+  );
+}
+
+function ScadaSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[3px] border border-[#12324f] bg-[#07111f]">
+      <div className="border-b border-[#12324f] bg-[#020812] px-3 py-2 font-mono-eng text-[12px] font-bold uppercase tracking-[0.14em] text-[#66f6ff]">
+        {title}
+      </div>
+      <div className="space-y-3 p-3">{children}</div>
+    </section>
+  );
+}
+
+function FieldShell({
+  label,
+  unit,
+  error,
+  children,
+}: {
+  label: string;
+  unit?: string;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block min-w-0 space-y-1">
+      <span className={FIELD_LABEL_CLASS}>
+        {label}
+        {unit && <span className="ml-1 text-[#6d8fb3]">{unit}</span>}
+      </span>
+      {children}
+      {error && <span className={ERROR_CLASS}>{error}</span>}
+    </label>
+  );
+}
+
+function ReadOnlyMetric({
+  value,
+  tone = 'ok',
+}: {
+  value: string;
+  tone?: 'ok' | 'warning';
+}) {
+  return (
+    <div
+      className={clsx(
+        'flex h-8 items-center rounded-[3px] border border-[#1d3550] bg-[#020812] px-2 font-mono-eng text-[12px] font-bold',
+        tone === 'warning' ? 'text-[#ffce73]' : 'text-[#00ffaa]',
+      )}
+    >
+      {value}
+    </div>
+  );
+}
+
+function CheckLine({
+  checked,
+  label,
+}: {
+  checked: boolean;
+  label: string;
+}) {
+  return (
+    <span className="flex items-center gap-2 font-mono-eng text-[12px] text-scada-text">
+      <input type="checkbox" checked={checked} readOnly className="h-3.5 w-3.5 accent-[#00a7ff]" />
+      {label}
+    </span>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(120px,auto)] gap-3 border-b border-[#2a5b88]/70 py-1 last:border-b-0">
+      <span className="font-mono-eng text-[11px] text-[#9ecbff]">{label}</span>
+      <span className="text-right font-mono-eng text-[11px] font-bold text-scada-text">{value}</span>
+    </div>
+  );
+}
+
+function SolverMessage({
+  tone,
+  children,
+}: {
+  tone: 'neutral' | 'warning';
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className={clsx(
+        'mb-2 rounded-[3px] border px-3 py-2 font-mono-eng text-[11px] leading-snug',
+        tone === 'warning'
+          ? 'border-[#f0b429]/50 bg-[#2b2105] text-[#ffce73]'
+          : 'border-[#1d5b90] bg-[#061426] text-[#9ecbff]',
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ReadinessRow({
+  label,
+  state,
+  value,
+}: {
+  label: string;
+  state: ReadinessState;
+  value: string;
+}) {
+  const tone = state === 'complete'
+    ? 'text-[#00ffaa]'
+    : state === 'warning'
+      ? 'text-[#ffb547]'
+      : 'text-[#ff4666]';
+
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_140px] gap-3 bg-[#050c17] px-3 py-2 font-mono-eng text-[11px]">
+      <span className="text-[#a8bed6]">{label}</span>
+      <span className={clsx('text-right font-bold', tone)}>{value}</span>
     </div>
   );
 }

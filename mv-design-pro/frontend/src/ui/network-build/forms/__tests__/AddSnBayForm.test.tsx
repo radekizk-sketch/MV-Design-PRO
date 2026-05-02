@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddSnBayForm } from '../AddSnBayForm';
 
 const closeFormMock = vi.fn();
+const collapseSurfaceStackToMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 
 const appState = { activeCaseId: 'case-1' };
@@ -18,6 +19,7 @@ const networkBuildState = {
     },
   },
   closeOperationForm: closeFormMock,
+  collapseSurfaceStackTo: collapseSurfaceStackToMock,
 };
 
 const snapshotState = {
@@ -101,7 +103,9 @@ vi.mock('../../../topology/modals/CatalogPicker', () => ({
 describe('AddSnBayForm', () => {
   beforeEach(() => {
     closeFormMock.mockReset();
+    collapseSurfaceStackToMock.mockReset();
     executeDomainOperationMock.mockReset();
+    window.location.hash = '';
     snapshotState.substations = [
       {
         id: 'gpz-1',
@@ -152,7 +156,8 @@ describe('AddSnBayForm', () => {
       );
     });
 
-    expect(closeFormMock).toHaveBeenCalledTimes(1);
+    expect(collapseSurfaceStackToMock).toHaveBeenCalledWith(null);
+    expect(window.location.hash).toBe('#sld');
   });
 
   it('rozpoznaje stacje GPZ takze wtedy, gdy bus_ref i station.bus_refs uzywaja mieszanych id/ref_id', async () => {

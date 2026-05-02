@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useAppStateStore } from '../../app-state';
 import { fetchProtectionDeviceTypes } from '../../catalog/api';
+import { buildCatalogBinding } from '../../catalog/catalogBinding';
 import type { ProtectionDeviceType } from '../../catalog/types';
 import {
   buildControlDeviceOptions,
@@ -160,8 +161,11 @@ export function AddRelayForm() {
       breaker_ref: breakerRef || undefined,
       relay_type: relayType,
       catalog_item_id: catalogItemId.trim(),
+      catalog_ref: catalogItemId.trim(),
+      catalog_binding: buildCatalogBinding('ZABEZPIECZENIE', catalogItemId.trim()),
       protection: {
         catalog_item_id: catalogItemId.trim(),
+        catalog_item_version: '2024.1',
       },
     };
 
@@ -175,6 +179,12 @@ export function AddRelayForm() {
     setSubmitError(null);
     try {
       const response = await executeDomainOperation(activeCaseId, 'add_relay', payload);
+      if (!response) {
+        setSubmitError(
+          useSnapshotStore.getState().error ?? 'Nie udało się dodać zabezpieczenia.',
+        );
+        return;
+      }
       if (response?.error) {
         setSubmitError(response.error);
         return;
@@ -188,24 +198,24 @@ export function AddRelayForm() {
   }, [activeCaseId, bayRef, breakerRef, catalogItemId, closeForm, executeDomainOperation, relayType]);
 
   return (
-    <div className="h-full overflow-y-auto bg-white" data-testid="add-relay-form">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-3">
-        <h3 className="text-sm font-semibold text-slate-900">Dodaj zabezpieczenie SN</h3>
-        <p className="mt-1 text-[11px] text-slate-500">
+    <div className="h-full overflow-y-auto bg-[#07111c] text-[#d7ecff]" data-testid="add-relay-form">
+      <div className="border-b border-[#1f3a50] bg-[#0b1624] px-4 py-3">
+        <h3 className="text-sm font-semibold text-white">Dodaj zabezpieczenie SN</h3>
+        <p className="mt-1 text-[11px] text-[#8fb8d8]">
           Katalog-first dla pola SN z poziomu schematu jednokreskowego.
         </p>
       </div>
 
       <div className="space-y-4 p-4">
-        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Kontekst pola</div>
+        <section className="rounded-lg border border-[#1f3a50] bg-[#0b1624] p-3 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300">Kontekst pola</div>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Pole SN</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Pole SN</span>
               <select
                 value={bayRef}
                 onChange={(event) => setBayRef(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               >
                 <option value="">- wybierz -</option>
                 {bayOptions.map((option) => (
@@ -217,13 +227,13 @@ export function AddRelayForm() {
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Aparat powiązany</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Aparat powiązany</span>
               <select
                 value={breakerRef}
                 onChange={(event) => setBreakerRef(event.target.value)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               >
-                <option value="">- bez powiazania -</option>
+                <option value="">- bez powiązania -</option>
                 {breakerOptions.map((option) => (
                   <option key={option.ref_id} value={option.ref_id}>
                     {option.name} ({option.type})
@@ -233,11 +243,11 @@ export function AddRelayForm() {
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-slate-700">Rodzina ochrony</span>
+              <span className="text-[11px] font-medium text-[#b8d6ef]">Rodzina ochrony</span>
               <select
                 value={relayType}
                 onChange={(event) => setRelayType(event.target.value as RelayType)}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
               >
                 {Object.entries(RELAY_TYPE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -250,30 +260,30 @@ export function AddRelayForm() {
 
           {selectedBayInfo && (
             <div className="mt-3 grid gap-2 md:grid-cols-3">
-              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Stacja</div>
-                <div className="mt-1 text-xs font-medium text-slate-800">{selectedBayInfo.station_name}</div>
+              <div className="rounded border border-[#25445d] bg-[#08111d] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[#6f9fc4]">Stacja</div>
+                <div className="mt-1 text-xs font-medium text-white">{selectedBayInfo.station_name}</div>
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Szyna</div>
-                <div className="mt-1 text-xs font-medium text-slate-800">{selectedBayInfo.bus_name}</div>
+              <div className="rounded border border-[#25445d] bg-[#08111d] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[#6f9fc4]">Szyna</div>
+                <div className="mt-1 text-xs font-medium text-white">{selectedBayInfo.bus_name}</div>
               </div>
-              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-                <div className="text-[10px] uppercase tracking-wide text-slate-400">Pomiar</div>
-                <div className="mt-1 text-xs font-medium text-slate-800">CT: {measurementSummary.ct} / VT: {measurementSummary.vt}</div>
+              <div className="rounded border border-[#25445d] bg-[#08111d] px-3 py-2">
+                <div className="text-[10px] uppercase tracking-wide text-[#6f9fc4]">Pomiar</div>
+                <div className="mt-1 text-xs font-medium text-white">CT: {measurementSummary.ct} / VT: {measurementSummary.vt}</div>
               </div>
             </div>
           )}
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Typ katalogowy</div>
+        <section className="rounded-lg border border-[#1f3a50] bg-[#0b1624] p-3 shadow-sm">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300">Typ katalogowy</div>
           <label className="mt-3 block">
-            <span className="text-[11px] font-medium text-slate-700">Zabezpieczenie z katalogu</span>
+            <span className="text-[11px] font-medium text-[#b8d6ef]">Zabezpieczenie z katalogu</span>
             <select
               value={catalogItemId}
               onChange={(event) => setCatalogItemId(event.target.value)}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-[#2d4a63] bg-[#050c14] px-3 py-2 text-sm text-white"
             >
               <option value="">- wybierz -</option>
               {catalogEntries.map((entry) => (
@@ -285,7 +295,7 @@ export function AddRelayForm() {
           </label>
 
           {selectedCatalog && (
-            <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            <div className="mt-3 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-200">
               <div className="font-medium">{selectedCatalog.name}</div>
               <div className="mt-1">
                 Producent: {selectedCatalog.manufacturer ?? selectedCatalog.vendor ?? '-'}
@@ -295,20 +305,20 @@ export function AddRelayForm() {
           )}
 
           {catalogError && (
-            <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+            <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
               {catalogError}
             </div>
           )}
         </section>
 
         {submitError && (
-          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+          <div className="rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
             {submitError}
           </div>
         )}
 
         {bayOptions.length === 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <div className="rounded-lg border border-amber-500/40 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
             Brak pól SN w aktywnym modelu. Dodanie zabezpieczenia wymaga istniejącego pola.
           </div>
         )}
@@ -318,14 +328,14 @@ export function AddRelayForm() {
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || isSubmitting || bayOptions.length === 0}
-            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
+            className="rounded-md bg-[#00a8d8] px-3 py-2 text-xs font-medium text-white disabled:opacity-50"
           >
             {isSubmitting ? 'Dodawanie...' : 'Dodaj zabezpieczenie'}
           </button>
           <button
             type="button"
             onClick={closeForm}
-            className="rounded-md border border-slate-300 px-3 py-2 text-xs text-slate-700"
+            className="rounded-md border border-[#2d4a63] px-3 py-2 text-xs text-[#b8d6ef]"
           >
             Anuluj
           </button>

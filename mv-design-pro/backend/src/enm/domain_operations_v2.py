@@ -27,6 +27,7 @@ from .domain_operations import (
     _make_id,
     _response,
 )
+from .topology_ops import attach_protection, create_branch, create_measurement, create_node
 
 # ---------------------------------------------------------------------------
 # IEC 60255 — krzywe IDMT (TCC)
@@ -90,6 +91,221 @@ def _field_ref_exists(enm: dict[str, Any], field_ref: str) -> bool:
     return False
 
 
+def _field_record(enm: dict[str, Any], field_ref: str) -> dict[str, Any] | None:
+    for bay in enm.get("bays", []):
+        if isinstance(bay, dict) and bay.get("ref_id") == field_ref:
+            return bay
+    for sub in enm.get("substations", []):
+        for key in ("field_specs", "nn_field_specs"):
+            for spec in _substation_meta_specs(sub, key):
+                if spec.get("field_ref") == field_ref:
+                    return spec
+    return None
+
+
+def _update_field_spec(
+    enm: dict[str, Any],
+    field_ref: str,
+    values: dict[str, Any],
+) -> None:
+    for bay in enm.get("bays", []):
+        if isinstance(bay, dict) and bay.get("ref_id") == field_ref:
+            bay.update(values)
+            return
+    for sub in enm.get("substations", []):
+        for key in ("field_specs", "nn_field_specs"):
+            for spec in _substation_meta_specs(sub, key):
+                if spec.get("field_ref") == field_ref:
+                    spec.update(values)
+                    return
+
+
+def _field_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+    record = _field_record(enm, field_ref)
+    bus_ref = record.get("bus_ref") if isinstance(record, dict) else None
+    return bus_ref if isinstance(bus_ref, str) and bus_ref.strip() else None
+
+
+def _field_equipment_refs(enm: dict[str, Any], field_ref: str) -> list[str]:
+    record = _field_record(enm, field_ref)
+    raw_refs = record.get("equipment_refs") if isinstance(record, dict) else []
+    return [ref for ref in raw_refs if isinstance(ref, str)] if isinstance(raw_refs, list) else []
+
+
+def _first_field_breaker_ref(enm: dict[str, Any], field_ref: str) -> str | None:
+    field_refs = set(_field_equipment_refs(enm, field_ref))
+    for branch in enm.get("branches", []):
+        if not isinstance(branch, dict):
+            continue
+        if branch.get("ref_id") in field_refs and branch.get("type") == "breaker":
+            ref_id = branch.get("ref_id")
+            return ref_id if isinstance(ref_id, str) else None
+    return None
+
+
+def _first_measurement_ref(
+    enm: dict[str, Any],
+    field_ref: str,
+    measurement_type: str,
+) -> str | None:
+    for measurement in enm.get("measurements", []):
+        if (
+            isinstance(measurement, dict)
+            and measurement.get("bay_ref") == field_ref
+            and measurement.get("measurement_type") == measurement_type
+        ):
+            ref_id = measurement.get("ref_id")
+            return ref_id if isinstance(ref_id, str) else None
+    return None
+
+
+def _catalog_binding_from_payload(
+    payload: dict[str, Any],
+    namespace: str,
+) -> dict[str, Any] | None:
+    binding = payload.get("catalog_binding")
+    if isinstance(binding, dict):
+        normalized = copy.deepcopy(binding)
+        item_id = (
+            normalized.get("catalog_item_id")
+            or normalized.get("catalog_ref")
+            or normalized.get("item_id")
+            or payload.get("catalog_item_id")
+            or payload.get("catalog_ref")
+        )
+        if isinstance(item_id, str) and item_id.strip():
+            normalized["catalog_item_id"] = item_id.strip()
+        catalog_namespace = normalized.get("catalog_namespace")
+        if not isinstance(catalog_namespace, str) or not catalog_namespace.strip():
+            normalized["catalog_namespace"] = namespace
+        item_version = normalized.get("catalog_item_version") or payload.get("catalog_item_version")
+        normalized["catalog_item_version"] = (
+            item_version.strip() if isinstance(item_version, str) and item_version.strip() else "2024.1"
+        )
+        normalized.setdefault("materialize", True)
+        normalized.setdefault("snapshot_mapping_version", "1.0")
+        return normalized
+
+    item_id = payload.get("catalog_item_id") or payload.get("catalog_ref")
+    if isinstance(item_id, str) and item_id.strip():
+        return {
+            "catalog_namespace": namespace,
+            "catalog_item_id": item_id.strip(),
+            "catalog_item_version": payload.get("catalog_item_version") or "2024.1",
+            "materialize": True,
+            "snapshot_mapping_version": "1.0",
+        }
+    return None
+
+
+def _catalog_namespace(binding: dict[str, Any] | None, fallback: str) -> str:
+    if isinstance(binding, dict):
+        namespace = binding.get("catalog_namespace")
+        if isinstance(namespace, str) and namespace.strip():
+            return namespace.strip()
+    return fallback
+
+
+def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
+    if not isinstance(binding, dict):
+        return None
+    for key in ("catalog_item_id", "catalog_ref", "id"):
+        value = binding.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
+    for bus in enm.get("buses", []):
+        if not isinstance(bus, dict) or bus.get("ref_id") != bus_ref:
+            continue
+        voltage = bus.get("voltage_kv")
+        if isinstance(voltage, (int, float)) and voltage > 0:
+            return float(voltage)
+    return None
+
+
+def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float = 1e-6) -> bool:
+    return abs(left_kv - right_kv) <= tolerance_kv
+
+
+def _sn_bay_branch_type(apparatus_kind: Any) -> str:
+    normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
+    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
+        return "disconnector"
+    if normalized in {"LOAD_SWITCH", "LS", "ROZLACZNIK", "ROZŁĄCZNIK"}:
+        return "switch"
+    if normalized in {"MEASUREMENT", "VT", "POMIAR"}:
+        return "switch"
+    return "breaker"
+
+
+def _relay_catalog_binding(payload: dict[str, Any]) -> dict[str, Any] | None:
+    protection = payload.get("protection")
+    if isinstance(protection, dict):
+        item_id = protection.get("catalog_item_id") or protection.get("catalog_ref")
+        if isinstance(item_id, str) and item_id.strip():
+            return {
+                "catalog_namespace": "ZABEZPIECZENIE",
+                "catalog_item_id": item_id.strip(),
+                "catalog_item_version": protection.get("catalog_item_version") or "2024.1",
+            }
+    return _catalog_binding_from_payload(payload, "ZABEZPIECZENIE")
+
+
+def _relay_device_type(relay_type: str) -> str:
+    normalized = relay_type.upper()
+    if normalized == "ZIEMNOZWARCIOWY":
+        return "earth_fault"
+    if normalized == "KIERUNKOWY_NADPRADOWY":
+        return "directional_overcurrent"
+    if normalized == "ODLEGLOSCIOWY":
+        return "distance"
+    if normalized == "ROZNICOWY":
+        return "differential"
+    if normalized == "NADPRADOWY":
+        return "overcurrent"
+    return "custom"
+
+
+def _default_relay_settings(relay_type: str) -> list[dict[str, Any]]:
+    device_type = _relay_device_type(relay_type)
+    if device_type == "earth_fault":
+        return [
+            {"function_type": "earth_fault_50N", "threshold_a": None, "time_delay_s": None, "curve_type": "DT"},
+            {
+                "function_type": "earth_fault_51N",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "IEC_SI",
+            },
+        ]
+    if device_type == "directional_overcurrent":
+        return [
+            {
+                "function_type": "directional_67",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "IEC_SI",
+                "is_directional": True,
+            },
+            {
+                "function_type": "directional_67N",
+                "threshold_a": None,
+                "time_delay_s": None,
+                "curve_type": "IEC_SI",
+                "is_directional": True,
+            },
+        ]
+    if device_type == "overcurrent":
+        return [
+            {"function_type": "overcurrent_50", "threshold_a": None, "time_delay_s": None, "curve_type": "DT"},
+            {"function_type": "overcurrent_51", "threshold_a": None, "time_delay_s": None, "curve_type": "IEC_SI"},
+        ]
+    return []
+
+
 def _substation_meta_specs(substation: dict[str, Any], key: str) -> list[dict[str, Any]]:
     meta = substation.get("meta")
     if not isinstance(meta, dict):
@@ -108,7 +324,7 @@ def _resolve_station_for_field_write(
 ) -> dict[str, Any] | None:
     if station_ref:
         for sub in enm.get("substations", []):
-            if sub.get("ref_id") == station_ref:
+            if sub.get("ref_id") == station_ref or sub.get("id") == station_ref:
                 return sub
         return None
     return _find_station_for_bus(enm, bus_ref)
@@ -122,7 +338,7 @@ def _append_substation_field_spec(
     field_spec: dict[str, Any],
 ) -> bool:
     for sub in new_enm.get("substations", []):
-        if sub.get("ref_id") != station_ref:
+        if sub.get("ref_id") != station_ref and sub.get("id") != station_ref:
             continue
         meta = sub.setdefault("meta", {})
         if not isinstance(meta, dict):
@@ -183,20 +399,106 @@ def _relay_adapter_error(
 
 
 def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj przekładnik prądowy (CT) do pola stacji."""
+    """Dodaj przekładnik prądowy CT do pola stacji."""
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
     if not field_ref:
         return _error_response("Brak identyfikatora pola (bay_ref).", "ct.bay_missing")
     if not _field_ref_exists(enm, field_ref):
         return _error_response(f"Pole '{field_ref}' nie istnieje.", "ct.field_not_found")
-    return _field_adapter_error(
-        field_ref=field_ref,
-        message=(
-            f"Zapis CT dla pola '{field_ref}' do legacy measurements jest wyłączony w V11. "
-            "Użyj kanonicznego read-modelu pola."
+
+    bus_ref = _field_bus_ref(enm, field_ref)
+    if not bus_ref:
+        return _error_response(
+            f"Pole '{field_ref}' nie ma przypisanej szyny pomiarowej.",
+            "ct.bus_missing",
+        )
+
+    binding = _catalog_binding_from_payload(payload, "CT")
+    catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
+    if catalog_error or not catalog_ref:
+        return _error_response(
+            "Przekładnik prądowy CT wymaga wyboru pozycji katalogowej.",
+            catalog_error or "ct.catalog_required",
+        )
+
+    primary = payload.get("ratio_primary_a")
+    secondary = payload.get("ratio_secondary_a")
+    if primary is None or secondary is None:
+        return _error_response(
+            "Przekładnik CT wymaga przekładni pierwotnej i wtórnej.",
+            "ct.ratio_missing",
+        )
+
+    measurement_ref = _make_id(
+        "ct",
+        _compute_seed(
+            {
+                "field_ref": field_ref,
+                "catalog_ref": catalog_ref,
+                "ratio_primary_a": primary,
+                "ratio_secondary_a": secondary,
+            }
         ),
-        code="field.legacy_write_disabled",
-        attach_protection_view=True,
+        "measurement",
+    )
+    result = create_measurement(
+        enm,
+        {
+            "ref_id": measurement_ref,
+            "name": payload.get("name") or f"CT pola {field_ref}",
+            "measurement_type": "CT",
+            "bus_ref": bus_ref,
+            "bay_ref": field_ref,
+            "rating": {
+                "ratio_primary": float(primary),
+                "ratio_secondary": float(secondary),
+                "accuracy_class": payload.get("accuracy_class"),
+                "burden_va": payload.get("burden_va"),
+            },
+            "connection": payload.get("connection") or "star",
+            "purpose": payload.get("purpose") or "protection",
+            "tags": ["field_ct", "catalog_bound"],
+            "meta": {"field_ref": field_ref, "catalog_binding": binding},
+        },
+    )
+    if not result.success:
+        issue = result.issues[0].message_pl if result.issues else "nieznany błąd"
+        return _error_response(f"Nie udało się dodać CT: {issue}", "ct.creation_failed")
+
+    new_enm = result.enm
+    for measurement in new_enm.get("measurements", []):
+        if measurement.get("ref_id") == measurement_ref:
+            measurement.update(
+                {
+                    "catalog_ref": catalog_ref,
+                    "catalog_namespace": _catalog_namespace(binding, "CT"),
+                    "parameter_source": "CATALOG",
+                    "source_mode": "KATALOG",
+                    "materialized_params": {
+                        "catalog_item_id": catalog_ref,
+                        "ratio_primary_a": float(primary),
+                        "ratio_secondary_a": float(secondary),
+                        "accuracy_class": payload.get("accuracy_class"),
+                        "burden_va": payload.get("burden_va"),
+                    },
+                    "overrides": [],
+                }
+            )
+            break
+
+    return _response(
+        new_enm,
+        created=[measurement_ref],
+        selection_id=measurement_ref,
+        selection_type="measurement",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "CT_CREATED",
+                "element_id": measurement_ref,
+                "field_ref": field_ref,
+            }
+        ],
     )
 
 
@@ -206,20 +508,106 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj przekładnik napięciowy (VT) do pola stacji."""
+    """Dodaj przekładnik napięciowy VT do pola stacji."""
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
     if not field_ref:
         return _error_response("Brak identyfikatora pola (bay_ref).", "vt.bay_missing")
     if not _field_ref_exists(enm, field_ref):
         return _error_response(f"Pole '{field_ref}' nie istnieje.", "vt.field_not_found")
-    return _field_adapter_error(
-        field_ref=field_ref,
-        message=(
-            f"Zapis VT dla pola '{field_ref}' do legacy measurements jest wyłączony w V11. "
-            "Użyj kanonicznego read-modelu pola."
+
+    bus_ref = _field_bus_ref(enm, field_ref)
+    if not bus_ref:
+        return _error_response(
+            f"Pole '{field_ref}' nie ma przypisanej szyny pomiarowej.",
+            "vt.bus_missing",
+        )
+
+    binding = _catalog_binding_from_payload(payload, "VT")
+    catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
+    if catalog_error or not catalog_ref:
+        return _error_response(
+            "Przekładnik napięciowy VT wymaga wyboru pozycji katalogowej.",
+            catalog_error or "vt.catalog_required",
+        )
+
+    primary = payload.get("ratio_primary_v")
+    secondary = payload.get("ratio_secondary_v")
+    if primary is None or secondary is None:
+        return _error_response(
+            "Przekładnik VT wymaga przekładni pierwotnej i wtórnej.",
+            "vt.ratio_missing",
+        )
+
+    measurement_ref = _make_id(
+        "vt",
+        _compute_seed(
+            {
+                "field_ref": field_ref,
+                "catalog_ref": catalog_ref,
+                "ratio_primary_v": primary,
+                "ratio_secondary_v": secondary,
+            }
         ),
-        code="field.legacy_write_disabled",
-        attach_protection_view=True,
+        "measurement",
+    )
+    result = create_measurement(
+        enm,
+        {
+            "ref_id": measurement_ref,
+            "name": payload.get("name") or f"VT pola {field_ref}",
+            "measurement_type": "VT",
+            "bus_ref": bus_ref,
+            "bay_ref": field_ref,
+            "rating": {
+                "ratio_primary": float(primary),
+                "ratio_secondary": float(secondary),
+                "accuracy_class": payload.get("accuracy_class"),
+                "burden_va": payload.get("burden_va"),
+            },
+            "connection": payload.get("connection") or "star",
+            "purpose": payload.get("purpose") or "protection",
+            "tags": ["field_vt", "catalog_bound"],
+            "meta": {"field_ref": field_ref, "catalog_binding": binding},
+        },
+    )
+    if not result.success:
+        issue = result.issues[0].message_pl if result.issues else "nieznany błąd"
+        return _error_response(f"Nie udało się dodać VT: {issue}", "vt.creation_failed")
+
+    new_enm = result.enm
+    for measurement in new_enm.get("measurements", []):
+        if measurement.get("ref_id") == measurement_ref:
+            measurement.update(
+                {
+                    "catalog_ref": catalog_ref,
+                    "catalog_namespace": _catalog_namespace(binding, "VT"),
+                    "parameter_source": "CATALOG",
+                    "source_mode": "KATALOG",
+                    "materialized_params": {
+                        "catalog_item_id": catalog_ref,
+                        "ratio_primary_v": float(primary),
+                        "ratio_secondary_v": float(secondary),
+                        "accuracy_class": payload.get("accuracy_class"),
+                        "burden_va": payload.get("burden_va"),
+                    },
+                    "overrides": [],
+                }
+            )
+            break
+
+    return _response(
+        new_enm,
+        created=[measurement_ref],
+        selection_id=measurement_ref,
+        selection_type="measurement",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "VT_CREATED",
+                "element_id": measurement_ref,
+                "field_ref": field_ref,
+            }
+        ],
     )
 
 
@@ -229,7 +617,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaj przekaźnik ochronny do pola stacji."""
+    """Dodaj zabezpieczenie do pola stacji."""
     field_ref = payload.get("field_ref") or payload.get("bay_ref")
     relay_type = payload.get("relay_type", "NADPRADOWY")
 
@@ -237,14 +625,114 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         return _error_response("Brak identyfikatora pola (bay_ref).", "relay.bay_missing")
     if not _field_ref_exists(enm, field_ref):
         return _error_response(f"Pole '{field_ref}' nie istnieje.", "relay.field_not_found")
-    return _field_adapter_error(
-        field_ref=field_ref,
-        message=(
-            f"Zapis przekaźnika '{relay_type}' dla pola '{field_ref}' do legacy protection_assignments "
-            "jest wyłączony w V11. Użyj kanonicznego read-modelu pola."
+
+    binding = _relay_catalog_binding(payload)
+    catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
+    if catalog_error or not catalog_ref:
+        return _error_response(
+            "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
+            catalog_error or "relay.catalog_required",
+        )
+
+    breaker_ref = payload.get("breaker_ref")
+    if not isinstance(breaker_ref, str) or not breaker_ref.strip():
+        breaker_ref = _first_field_breaker_ref(enm, field_ref)
+    if not isinstance(breaker_ref, str) or not breaker_ref.strip():
+        return _error_response(
+            "Pole SN nie ma wyłącznika wykonawczego. Najpierw skonfiguruj aparat pola.",
+            "relay.breaker_missing",
+        )
+
+    relay_type_text = str(relay_type)
+    device_type = _relay_device_type(relay_type_text)
+    ct_ref = payload.get("ct_ref")
+    if not isinstance(ct_ref, str) or not ct_ref.strip():
+        ct_ref = _first_measurement_ref(enm, field_ref, "CT")
+    vt_ref = payload.get("vt_ref")
+    if not isinstance(vt_ref, str) or not vt_ref.strip():
+        vt_ref = _first_measurement_ref(enm, field_ref, "VT")
+
+    if device_type in {"overcurrent", "earth_fault", "directional_overcurrent"} and not ct_ref:
+        return _error_response(
+            "Dobór zabezpieczenia wymaga przekładnika prądowego CT w tym samym polu.",
+            "relay.ct_missing",
+        )
+
+    protection_ref = _make_id(
+        "relay",
+        _compute_seed(
+            {
+                "field_ref": field_ref,
+                "breaker_ref": breaker_ref,
+                "ct_ref": ct_ref,
+                "vt_ref": vt_ref,
+                "catalog_ref": catalog_ref,
+                "relay_type": relay_type_text,
+            }
         ),
-        code="field.legacy_write_disabled",
-        attach_protection_view=True,
+        "assignment",
+    )
+    result = attach_protection(
+        enm,
+        {
+            "ref_id": protection_ref,
+            "name": payload.get("name") or f"Zabezpieczenie pola {field_ref}",
+            "breaker_ref": breaker_ref,
+            "ct_ref": ct_ref,
+            "vt_ref": vt_ref,
+            "device_type": device_type,
+            "catalog_ref": catalog_ref,
+            "settings": payload.get("settings") or _default_relay_settings(relay_type_text),
+            "is_enabled": True,
+            "tags": ["field_protection", "catalog_bound"],
+            "meta": {
+                "field_ref": field_ref,
+                "relay_type": relay_type_text,
+                "catalog_binding": binding,
+            },
+        },
+    )
+    if not result.success:
+        issue = result.issues[0].message_pl if result.issues else "nieznany błąd"
+        return _error_response(
+            f"Nie udało się dodać zabezpieczenia: {issue}",
+            "relay.creation_failed",
+        )
+
+    new_enm = result.enm
+    for assignment in new_enm.get("protection_assignments", []):
+        if assignment.get("ref_id") == protection_ref:
+            assignment.update(
+                {
+                    "catalog_ref": catalog_ref,
+                    "catalog_namespace": _catalog_namespace(binding, "ZABEZPIECZENIE"),
+                    "parameter_source": "CATALOG",
+                    "source_mode": "KATALOG",
+                    "materialized_params": {
+                        "catalog_item_id": catalog_ref,
+                        "relay_type": relay_type_text,
+                        "device_type": device_type,
+                    },
+                    "overrides": [],
+                }
+            )
+            break
+    _update_field_spec(new_enm, field_ref, {"protection_ref": protection_ref})
+
+    return _response(
+        new_enm,
+        created=[protection_ref],
+        updated=[field_ref],
+        selection_id=protection_ref,
+        selection_type="protection",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "PROTECTION_CREATED",
+                "element_id": protection_ref,
+                "field_ref": field_ref,
+            }
+        ],
     )
 
 
@@ -724,6 +1212,7 @@ def _materialize_nn_source_params(
     if namespace == "ZRODLO_NN_PV":
         return _validate_required_materialization(
             {
+                "un_kv": result.solver_fields.get("un_kv"),
                 "rated_power_ac_kw": result.solver_fields.get("s_n_kva"),
                 "max_power_kw": result.solver_fields.get("p_max_kw"),
                 "control_mode": result.solver_fields.get("control_mode"),
@@ -734,6 +1223,7 @@ def _materialize_nn_source_params(
     if namespace == "ZRODLO_NN_BESS":
         return _validate_required_materialization(
             {
+                "un_kv": result.solver_fields.get("un_kv"),
                 "usable_capacity_kwh": result.solver_fields.get("e_kwh"),
                 "charge_power_kw": result.solver_fields.get("p_charge_kw"),
                 "discharge_power_kw": result.solver_fields.get("p_discharge_kw"),
@@ -828,24 +1318,99 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 None,
             )
     apparatus_kind = payload.get("apparatus_kind")
+    field_name_raw = payload.get("field_name")
+    field_name = (
+        field_name_raw.strip()
+        if isinstance(field_name_raw, str) and field_name_raw.strip()
+        else _default_sn_bay_name(bay_role)
+    )
+    terminal_bus_ref = _make_id("sn", seed, "bay_terminal")
+    apparatus_ref = _make_id("sn", seed, "bay_device")
+    voltage_kv = _bus_voltage_kv(enm, bus_ref)
+    if voltage_kv is None:
+        return _error_response("Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing")
+    catalog_binding = _catalog_binding_from_payload(payload, "APARAT_SN")
+    catalog_namespace = _catalog_namespace(catalog_binding, "APARAT_SN")
+    catalog_ref = _catalog_item_id(catalog_binding)
+    branch_type = _sn_bay_branch_type(apparatus_kind)
     field_spec = _build_field_spec(
         field_ref=field_ref,
-        name=payload.get("field_name") or _default_sn_bay_name(bay_role),
+        name=field_name,
         bay_role=bay_role,
         bus_ref=bus_ref,
         gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+        equipment_refs=[apparatus_ref],
         tags=list(payload.get("tags") or []),
         meta={
             "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
-            "catalog_binding": (
-                copy.deepcopy(payload.get("catalog_binding"))
-                if isinstance(payload.get("catalog_binding"), dict)
-                else None
-            ),
+            "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+            "terminal_bus_ref": terminal_bus_ref,
+            "default_device_ref": apparatus_ref,
         },
     )
 
     new_enm = copy.deepcopy(enm)
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": terminal_bus_ref,
+            "name": f"Zacisk odpływowy {field_name}",
+            "voltage_kv": voltage_kv,
+            "tags": ["helper_bus", "field_terminal"],
+            "meta": {
+                "visual_role": "FIELD_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "field_ref": field_ref,
+                "station_ref": station["ref_id"],
+                "port_kind": "trunk_out",
+            },
+        },
+    )
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return _error_response(
+            f"Nie udało się utworzyć zacisku technicznego pola SN: {message}",
+            "sn.field_terminal_failed",
+        )
+    new_enm = result.enm
+
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": apparatus_ref,
+            "name": f"Aparat {field_name}",
+            "type": branch_type,
+            "from_bus_ref": bus_ref,
+            "to_bus_ref": terminal_bus_ref,
+            "status": "closed",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+            "source_mode": "KATALOG",
+            "catalog_namespace": catalog_namespace,
+            "catalog_ref": catalog_ref,
+            "tags": ["gpz_field_device", "requires_catalog_binding"],
+            "meta": {
+                "field_ref": field_ref,
+                "station_ref": station["ref_id"],
+                "bay_role": bay_role,
+                "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                "terminal_bus_ref": terminal_bus_ref,
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "requires_catalog_binding": catalog_ref is None,
+                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+            },
+        },
+    )
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return _error_response(
+            f"Nie udało się utworzyć aparatu pola SN: {message}",
+            "sn.field_apparatus_failed",
+        )
+    new_enm = result.enm
+
     if not _append_substation_field_spec(
         new_enm,
         station_ref=station["ref_id"],
@@ -856,10 +1421,14 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     return _response(
         new_enm,
-        created=[field_ref],
+        created=[field_ref, terminal_bus_ref, apparatus_ref],
         selection_id=field_ref,
         selection_type="bay",
-        events=[{"event_seq": 1, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref}],
+        events=[
+            {"event_seq": 1, "event_type": "FIELD_TERMINAL_CREATED_SN", "element_id": terminal_bus_ref},
+            {"event_seq": 2, "event_type": "FIELD_DEVICE_CREATED_SN", "element_id": apparatus_ref},
+            {"event_seq": 3, "event_type": "FIELDS_CREATED_SN", "element_id": field_ref},
+        ],
     )
 
 
@@ -993,9 +1562,22 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     feeder_ref = payload.get("feeder_ref")
     bus_nn_ref = payload.get("bus_nn_ref")
     active_power_kw = payload.get("active_power_kw", 0)
+    catalog_binding = _catalog_binding_from_payload(payload, "OBCIAZENIE")
+    catalog_ref = _catalog_item_id(catalog_binding)
 
     if not feeder_ref:
         return _error_response("Brak identyfikatora odpływu (feeder_ref).", "nn.feeder_missing")
+    if not isinstance(feeder_ref, str) or not _field_ref_exists(enm, feeder_ref):
+        return _error_response("Wskazany odpływ nN nie istnieje w modelu.", "nn.feeder_not_found")
+
+    feeder_bus_ref = _field_bus_ref(enm, feeder_ref)
+    if not feeder_bus_ref:
+        return _error_response("Odpływ nN nie ma przypisanej szyny nN.", "nn.feeder_bus_missing")
+    if bus_nn_ref and bus_nn_ref != feeder_bus_ref:
+        return _error_response(
+            "Niezgodność szyny nN formularza i odpływu.",
+            "nn.feeder_bus_mismatch",
+        )
 
     seed = _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw})
     load_ref = _make_id("nn", seed, "load")
@@ -1005,16 +1587,23 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         {
             "ref_id": load_ref,
             "name": payload.get("load_name") or "Odbiór nN",
-            "bus_ref": bus_nn_ref or feeder_ref,
+            "bus_ref": feeder_bus_ref,
             "p_mw": active_power_kw / 1000.0,
             "q_mvar": (payload.get("reactive_power_kvar") or 0) / 1000.0,
             # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
             "model": "pq",
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": _catalog_namespace(catalog_binding, "OBCIAZENIE"),
+            "source_mode": "KATALOG" if catalog_ref else "RECZNY",
+            "parameter_source": "CATALOG" if catalog_ref else "MANUAL",
             "tags": [],
             "meta": {
                 "load_kind": payload.get("load_kind", "SKUPIONY"),
                 "connection_type": payload.get("connection_type", "TROJFAZOWY"),
                 "feeder_ref": feeder_ref,
+                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                "load_profile_ref": payload.get("load_profile_ref"),
+                "cos_phi": payload.get("cos_phi"),
             },
         }
     )
@@ -1105,7 +1694,7 @@ def _build_converter_materialized_params(
             namespace="ZRODLO_NN_PV",
             catalog_ref=catalog_ref,
             explicit_params=None,
-            required_fields=["rated_power_ac_kw", "max_power_kw", "control_mode"],
+            required_fields=["un_kv", "rated_power_ac_kw", "max_power_kw", "control_mode"],
         )
         if error or materialized_params is None:
             return {}, error or "catalog.materialization_incomplete"
@@ -1115,6 +1704,7 @@ def _build_converter_materialized_params(
             "rated_power_ac_kw": materialized_params.get("rated_power_ac_kw"),
             "max_power_kw": materialized_params.get("max_power_kw"),
             "control_mode": materialized_params.get("control_mode"),
+            "un_kv": materialized_params.get("un_kv"),
             "pmax_mw": _kw_to_mw(materialized_params.get("max_power_kw")),
             "sn_mva": _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
         }, None
@@ -1124,7 +1714,7 @@ def _build_converter_materialized_params(
             namespace="ZRODLO_NN_BESS",
             catalog_ref=catalog_ref,
             explicit_params=None,
-            required_fields=["usable_capacity_kwh", "charge_power_kw", "discharge_power_kw"],
+            required_fields=["un_kv", "usable_capacity_kwh", "charge_power_kw", "discharge_power_kw"],
         )
         if error or materialized_params is None:
             return {}, error or "catalog.materialization_incomplete"
@@ -1135,6 +1725,7 @@ def _build_converter_materialized_params(
             "charge_power_kw": materialized_params.get("charge_power_kw"),
             "discharge_power_kw": materialized_params.get("discharge_power_kw"),
             "operation_mode": payload.get("bess_mode"),
+            "un_kv": materialized_params.get("un_kv"),
             "pmax_mw": _kw_to_mw(materialized_params.get("discharge_power_kw")),
             "sn_mva": _kw_to_mw(materialized_params.get("discharge_power_kw")),
             "e_kwh": materialized_params.get("usable_capacity_kwh"),
@@ -1421,6 +2012,27 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         return _error_response(
             f"Źródło {technology} wymaga kompletnej materializacji parametrów katalogowych.",
             materialization_error,
+        )
+
+    converter_voltage_kv = _as_float(materialized_params.get("un_kv"))
+    if converter_voltage_kv is None or converter_voltage_kv <= 0:
+        return _error_response(
+            f"Źródło {technology} wymaga napięcia znamionowego un_kv z katalogu.",
+            "converter.un_kv_missing",
+        )
+    bus_voltage_kv = _bus_voltage_kv(enm, bus_nn_ref)
+    if bus_voltage_kv is None:
+        return _error_response(
+            "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
+            "converter.bus_voltage_missing",
+        )
+    if not _same_nominal_voltage(converter_voltage_kv, bus_voltage_kv):
+        return _error_response(
+            (
+                "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
+                f"Źródło: {converter_voltage_kv:g} kV, szyna: {bus_voltage_kv:g} kV."
+            ),
+            "converter.voltage_mismatch",
         )
 
     name, gen_type, event_type, meta, p_mw = _resolve_converter_defaults(

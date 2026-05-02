@@ -649,7 +649,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Biezacy widok analityki" eyebrow="Wyniki">
+      <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'trace' ? (
           <ResultsInspectorPage runId={activeRunId ?? undefined} forcedTab="TRACE" />
         ) : activeAnalysisTab === 'protection' ? (
@@ -1039,7 +1039,7 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
           { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
       />
-      <SectionCard title="Biezacy widok koordynacji" eyebrow="Widok wynikowy">
+      <SectionCard title="Bieżący widok koordynacji" eyebrow="Widok wynikowy">
         <ProtectionResultsInspectorPage />
       </SectionCard>
     </div>

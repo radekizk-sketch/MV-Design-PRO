@@ -19,6 +19,7 @@ import {
 type SourceTechnology = 'PV' | 'BESS' | 'FW';
 type ConnectionVariant = 'nn_side' | 'block_transformer';
 type FieldPlacement = 'EXISTING_FIELD' | 'NEW_FIELD';
+type ConverterCatalogNamespace = 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'CONVERTER';
 
 interface ConverterSourceContext extends Record<string, unknown> {
   source_technology?: SourceTechnology;
@@ -63,12 +64,30 @@ function formatPower(value: number | null | undefined): string {
   return `${value.toFixed(3)} MW`;
 }
 
+function sameNominalVoltageKv(left: number, right: number): boolean {
+  return Math.abs(left - right) <= 1e-6;
+}
+
+function formatVoltageKv(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+  return `${value.toLocaleString('pl-PL', { maximumFractionDigits: 3 })} kV`;
+}
+
+function converterCatalogNamespace(technology: SourceTechnology): ConverterCatalogNamespace {
+  if (technology === 'PV') return 'ZRODLO_NN_PV';
+  if (technology === 'BESS') return 'ZRODLO_NN_BESS';
+  return 'CONVERTER';
+}
+
 function toCatalogEntries(types: ConverterType[] | LVApparatusType[]): CatalogEntry[] {
   return types.map((item) => ({
     id: item.id,
     name: item.name,
     manufacturer: item.manufacturer,
-    summary: 'sn_mva' in item ? `S ${item.sn_mva.toFixed(3)} MVA, Pmax ${item.pmax_mw.toFixed(3)} MW` : `Un ${item.u_n_kv} kV, In ${item.i_n_a} A`,
+    summary:
+      'sn_mva' in item
+        ? `Un ${formatVoltageKv(item.un_kv)}, S ${item.sn_mva.toFixed(3)} MVA, Pmax ${item.pmax_mw.toFixed(3)} MW`
+        : `Un ${formatVoltageKv(item.u_n_kv)}, In ${item.i_n_a} A`,
   }));
 }
 
@@ -210,9 +229,24 @@ export function AddConverterSourceForm() {
   }, []);
 
   const tech = TECHNOLOGY[sourceTechnology];
+  const selectedNnBus = useMemo(
+    () => busOptions.find((bus) => bus.ref_id === busNnRef) ?? null,
+    [busNnRef, busOptions],
+  );
+  const requiredConverterVoltageKv =
+    connectionVariant === 'nn_side' ? (selectedNnBus?.voltage_kv ?? null) : null;
   const filteredConverters = useMemo(
-    () => converterTypes.filter((entry) => entry.kind === tech.catalogKind),
-    [converterTypes, tech.catalogKind],
+    () =>
+      converterTypes.filter((entry) => {
+        if (entry.kind !== tech.catalogKind) {
+          return false;
+        }
+        if (requiredConverterVoltageKv === null) {
+          return true;
+        }
+        return sameNominalVoltageKv(entry.un_kv, requiredConverterVoltageKv);
+      }),
+    [converterTypes, requiredConverterVoltageKv, tech.catalogKind],
   );
   const converterEntries = useMemo(() => toCatalogEntries(filteredConverters), [filteredConverters]);
   const apparatusEntries = useMemo(() => toCatalogEntries(lvApparatusTypes), [lvApparatusTypes]);
@@ -405,7 +439,11 @@ export function AddConverterSourceForm() {
           connectionVariant === 'block_transformer'
             ? selectedTransformer?.ref_id ?? undefined
             : undefined,
-        catalog_binding: normalizeCatalogBinding(converterCatalogId, 'CONVERTER') ?? undefined,
+        catalog_binding:
+          normalizeCatalogBinding(
+            converterCatalogId,
+            converterCatalogNamespace(sourceTechnology),
+          ) ?? undefined,
         materialized_params: {
           catalog_item_id: selectedConverter.id,
           catalog_item_version: CANONICAL_CATALOG_VERSION,
@@ -421,7 +459,12 @@ export function AddConverterSourceForm() {
       });
 
       if (!result || result.error) {
-        throw new Error(result?.error || 'Nie udało się utworzyć źródła.');
+        const storeError = useSnapshotStore.getState().error;
+        throw new Error(
+          result?.error ||
+            storeError ||
+            'Nie udało się utworzyć źródła przekształtnikowego.',
+        );
       }
 
       closeForm();
@@ -739,6 +782,22 @@ export function AddConverterSourceForm() {
               onChange={setConverterCatalogId}
               required
             />
+            {requiredConverterVoltageKv !== null && (
+              <div className="rounded-md border border-cyan-500/40 bg-cyan-950/30 px-3 py-2 text-[11px] text-cyan-100">
+                Katalog ograniczony do napięcia zacisku nN:{' '}
+                <span className="font-semibold">
+                  {formatVoltageKv(requiredConverterVoltageKv)}
+                </span>
+                . Falownik o innym napięciu nie jest prawidłową pozycją katalogową dla tej
+                szyny.
+              </div>
+            )}
+            {requiredConverterVoltageKv !== null && filteredConverters.length === 0 && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-[11px] text-amber-100">
+                Brak falownika katalogowego zgodnego z napięciem tej szyny nN. Wybierz inną
+                konfigurację strony nN albo dobierz transformator blokowy do napięcia źródła.
+              </div>
+            )}
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
                 <div className="text-[10px] uppercase tracking-wide text-slate-400">

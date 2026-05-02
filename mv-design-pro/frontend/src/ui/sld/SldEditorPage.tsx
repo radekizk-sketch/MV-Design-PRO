@@ -38,8 +38,6 @@ import { useStudyCasesStore } from '../study-cases/store';
 import { createProject } from '../projects/api';
 import { notify } from '../notifications/store';
 import { useReadinessLiveStore } from '../engineering-readiness';
-import { OperationalModeToolbar } from './OperationalModeToolbar';
-import { LabelModeToolbar } from './LabelModeToolbar';
 import type { CreatorTool } from '../topology/editorPalette';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../types/enm';
@@ -78,6 +76,14 @@ function resolveSemanticOutgoingPortRef(element: EngineeringElement | null): str
   return element.outgoingPortRefId
     ?? element.ports.find((port) => port.role === 'BAY_SN_OUT')?.portId
     ?? null;
+}
+
+function portRefToZaciskLabel(portRef: string | null): string {
+  const normalized = portRef?.toUpperCase() ?? '';
+  if (normalized.includes('BRANCH')) return 'zacisk odgalezieniowy SN';
+  if (normalized.includes('OUT')) return 'zacisk wyjsciowy pola SN';
+  if (normalized.includes('IN')) return 'zacisk wejsciowy pola SN';
+  return 'zacisk pola SN';
 }
 
 type EnmLookupCollection = keyof Pick<
@@ -806,14 +812,21 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     [enmProjection.semanticModel, symbols],
   );
   const modelSummary = useMemo(
-    () => ({
-      buses: enmSnapshot?.buses?.length ?? 0,
-      branches: enmSnapshot?.branches?.length ?? 0,
-      transformers: enmSnapshot?.transformers?.length ?? 0,
-      stations: enmSnapshot?.substations?.length ?? 0,
-      openTerminals: (logicalViews?.terminals ?? []).filter((terminal) => terminal.status === 'OTWARTY').length,
-    }),
-    [enmSnapshot, logicalViews],
+    () => {
+      const canonical = enmProjection.canonicalAnnotations;
+      const canonicalBranches =
+        (canonical?.trunkSegments.length ?? 0)
+        + (canonical?.branchPoints.length ?? 0);
+
+      return {
+        buses: enmSnapshot?.buses?.length ?? 0,
+        branches: Math.max(enmSnapshot?.branches?.length ?? 0, canonicalBranches),
+        transformers: enmSnapshot?.transformers?.length ?? 0,
+        stations: Math.max(enmSnapshot?.substations?.length ?? 0, canonical?.stationChains.length ?? 0),
+        openTerminals: (logicalViews?.terminals ?? []).filter((terminal) => terminal.status === 'OTWARTY').length,
+      };
+    },
+    [enmProjection.canonicalAnnotations, enmSnapshot, logicalViews],
   );
   const projectTreeNodes = useMemo(
     () => buildDockProjectTreeNodes(enmSnapshot ?? null),
@@ -972,32 +985,29 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   }, [openOperationForm, primarySnBusRef, primaryStationRef]);
 
   const handleActivateTrunkFlow = useCallback(() => {
-    const terminalElementRef = primaryOpenTrunkTerminal?.element_id ?? primaryLineFeederBay?.refId ?? null;
-    const terminalPortRef =
+    const zaciskElementRef = primaryOpenTrunkTerminal?.element_id ?? primaryLineFeederBay?.refId ?? null;
+    const zaciskPortRef =
       primaryOpenTrunkTerminal?.port_id
       ?? resolveSemanticOutgoingPortRef(primaryLineFeederBay)
       ?? null;
 
-    if (terminalElementRef) {
-      const terminalName =
-        terminalPortRef
-        || terminalElementRef
-        || 'Otwarty port pola SN';
+    if (zaciskElementRef) {
+      const zaciskName = portRefToZaciskLabel(zaciskPortRef);
       openOperationForm('continue_trunk_segment_sn', {
         source: 'work_dock',
-        field_ref: terminalElementRef,
-        terminal_id: terminalElementRef,
-        from_terminal_id: terminalElementRef,
-        terminal_port_id: terminalPortRef ?? undefined,
+        field_ref: zaciskElementRef,
+        terminal_id: zaciskElementRef,
+        from_terminal_id: zaciskElementRef,
+        terminal_port_id: zaciskPortRef ?? undefined,
         trunk_id: primaryOpenTrunkTerminal?.trunk_id ?? primaryTrunkRef ?? undefined,
         branch_id: primaryOpenTrunkTerminal?.branch_id ?? undefined,
-        terminal_name: terminalName,
+        terminal_name: zaciskName,
         terminal_voltage_label: 'SN',
         segment_kind: 'KABEL_SN',
       });
       setActiveTool('select');
       const msg =
-        'Otwarto formularz odcinka SN z otwartego portu pola. Wybierz kabel albo linie i parametry katalogowe.';
+        'Otwarto formularz odcinka SN z wybranego zacisku pola. Wybierz kabel albo linie i parametry katalogowe.';
       setInteractionMessage(msg);
       notify(msg, 'info');
       return;
@@ -1534,7 +1544,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     const result = await executeEnmOperation(activeCaseId!, resolved.canonicalOp, resolved.payload);
     if (result) {
       const msg = interaction.kind === 'port'
-        ? `Wykonano ${resolved.canonicalOp} przez port ${interaction.portRole}.`
+        ? `Wykonano ${resolved.canonicalOp} przez zacisk ${interaction.portRole}.`
         : `Wykonano ${resolved.canonicalOp} dla ${target.name}.`;
       setInteractionMessage(msg);
       notify(msg, 'success');
@@ -1798,17 +1808,6 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           </div>
         )}
 
-
-        {/* UX 10/10: OperationalModeToolbar + LabelModeToolbar â€” bottom-right corner */}
-        <div
-          className="absolute bottom-4 right-4 z-20 flex items-center gap-2"
-          data-testid="sld-bottom-right-toolbars"
-        >
-          <div className="flex items-center gap-2 rounded-[18px] border border-[#1d3446] bg-[rgba(7,19,28,0.88)] px-2 py-2 shadow-[0_16px_32px_rgba(2,8,23,0.42),inset_0_1px_0_rgba(148,163,184,0.06)] backdrop-blur">
-            <LabelModeToolbar compact />
-            <OperationalModeToolbar />
-          </div>
-        </div>
       </div>
 
       {!selectedElement && selectedSegment && activeMode === 'MODEL_EDIT' && (

@@ -17,32 +17,25 @@
  * - Propsinterface identyczny z CanonicalLayoutProps
  */
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
 import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
-import { GlobalSearch } from '../network-build/GlobalSearch';
+import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
-import { MassReviewPanel } from '../network-build/mass-review';
-import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SldVisualModes } from '../network-build/SldVisualModes';
-import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
-import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
 
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
-import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
 import { V12OverlayModeController } from './V12OverlayModeController';
 import { AreaContextPanel } from './context-panels';
-import { WorkflowContextStrip } from './WorkflowContextStrip';
 
 export interface AppShellV12Props {
   children: ReactNode;
@@ -97,8 +90,8 @@ function ContextPanelShell({
     <aside
       data-testid="context-panel"
       data-area={areaCode}
-      className="flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
-      style={{ minWidth: 280, maxWidth: 280 }}
+      className="flex w-[284px] shrink-0 flex-col border-r border-[#10263d] bg-[#050810]"
+      style={{ minWidth: 284, maxWidth: 284 }}
     >
       <AreaContextPanel areaCode={areaCode} />
     </aside>
@@ -123,26 +116,10 @@ export function AppShellV12({
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
-  const activeArea = useAppStateStore((s) => s.activeArea);
+  const contextArea: AreaId = 'MODEL_SIECI';
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [contextCollapsed] = useState(false);
-  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [massReviewOpen, setMassReviewOpen] = useState(false);
-  const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
-  const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
-
-  // Ctrl+K = globalne wyszukiwanie
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
-        event.preventDefault();
-        setGlobalSearchOpen((v) => !v);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
 
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
@@ -150,10 +127,10 @@ export function AppShellV12({
   const inspectorWidthClass = useMemo(() => {
     if (inspectorCollapsed) return 'w-10';
     switch (activeSurface?.sizeClass) {
-      case 'A': return 'w-[420px]';
-      case 'B': return 'w-[620px]';
-      case 'C': return 'w-[min(70vw,1100px)]';
-      default:  return 'w-[360px]';
+      case 'A': return 'w-[380px]';
+      case 'B': return 'w-[min(40vw,540px)]';
+      case 'C': return 'w-[min(52vw,760px)]';
+      default:  return 'w-[320px]';
     }
   }, [activeSurface, inspectorCollapsed]);
 
@@ -162,6 +139,9 @@ export function AppShellV12({
   const resolvedInspectorContent = useMemo(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
+    }
+    if (activeMode === 'MODEL_EDIT' && !selectedElement) {
+      return <GuidedBuildActionPanel />;
     }
     if (inspectorContent) return inspectorContent;
     if (activeMode === 'MODEL_EDIT' && selectedElement) {
@@ -192,24 +172,10 @@ export function AppShellV12({
       />
 
       {/* === Pasek przepływu pracy (48px, tylko MODEL_EDIT) === */}
-      {activeMode === 'MODEL_EDIT' && (
-        <WorkflowContextStrip
-          onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
-          onOpenCatalogBrowser={navigateToCatalog}
-          onOpenMassReview={() => setMassReviewOpen(true)}
-          onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
-          onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
-        />
-      )}
-
       {/* === Główny układ 4-kolumnowy === */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* NavigationRail (56px) */}
-        <NavigationRail />
-
-        {/* ContextPanel (320px, zwijany) */}
         {!mainSurfaceExpanded && (
-          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} />
+          <ContextPanelShell areaCode={contextArea} collapsed={contextCollapsed} />
         )}
 
         {/* Kanwas SLD — elastyczny */}
@@ -223,7 +189,7 @@ export function AppShellV12({
         >
           {/* Tryby wizualne SLD (MODEL_EDIT) */}
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
-            <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
+            <div className="flex h-[34px] shrink-0 items-center border-b border-[#10263d] bg-[#07111c] px-2">
               <SldVisualModes />
             </div>
           )}
@@ -312,11 +278,6 @@ export function AppShellV12({
         networkStats={networkStats}
       />
 
-      {/* Modale */}
-      <GlobalSearch isOpen={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
-      <MassReviewPanel isOpen={massReviewOpen} onClose={() => setMassReviewOpen(false)} />
-      <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
-      <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
     </div>
   );
 }

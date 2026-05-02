@@ -281,6 +281,44 @@ function isGpzSwitchgearChain(chain: StationChainForCanvas, hasGpzSwitchgear: bo
   return chain.detail?.fields.some((field) => field.fieldRole === 'GPZ_LINE_BAY') ?? false;
 }
 
+function collectStationChainSuppressedSymbolIds(chains: readonly StationChainForCanvas[]): Set<string> {
+  const ids = new Set<string>();
+
+  for (const chain of chains) {
+    ids.add(chain.stationId);
+    const detail = chain.detail ?? null;
+    if (!detail) continue;
+
+    ids.add(detail.blockId);
+    for (const section of detail.busSections) {
+      ids.add(section.id);
+      if (section.catalogRef?.elementId) ids.add(section.catalogRef.elementId);
+    }
+    for (const field of detail.fields) {
+      ids.add(field.id);
+      if (field.catalogRef?.elementId) ids.add(field.catalogRef.elementId);
+      if (field.terminals.incomingNodeId) ids.add(field.terminals.incomingNodeId);
+      if (field.terminals.outgoingNodeId) ids.add(field.terminals.outgoingNodeId);
+      if (field.terminals.branchNodeId) ids.add(field.terminals.branchNodeId);
+      if (field.terminals.generatorNodeId) ids.add(field.terminals.generatorNodeId);
+      for (const deviceId of field.deviceIds) ids.add(deviceId);
+    }
+    for (const device of detail.devices) {
+      ids.add(device.id);
+      ids.add(device.fieldId);
+      if (device.catalogRef?.elementId) ids.add(device.catalogRef.elementId);
+      if (device.logicalBindings.boundCbId) ids.add(device.logicalBindings.boundCbId);
+      for (const ctId of device.logicalBindings.ctInputIds) ids.add(ctId);
+    }
+    for (const anchor of detail.deviceAnchors) {
+      ids.add(anchor.deviceId);
+      ids.add(anchor.fieldId);
+    }
+  }
+
+  return ids;
+}
+
 /**
  * Grid background for canvas.
  * CANONICAL style: subdued, not dominant. Major grid every N cells.
@@ -479,6 +517,10 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
     () => stationChains.filter((chain) => !isGpzSwitchgearChain(chain, hasGpzSwitchgear)),
     [hasGpzSwitchgear, stationChains],
   );
+  const stationBlockSuppressedSymbolIds = useMemo(
+    () => collectStationChainSuppressedSymbolIds(visibleStationChains),
+    [visibleStationChains],
+  );
   const visibleCanonicalAnnotations = useMemo(
     () => canonicalAnnotations ? { ...canonicalAnnotations, stationChains: visibleStationChains } : null,
     [canonicalAnnotations, visibleStationChains],
@@ -492,8 +534,16 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
   const sortedSymbols = [...symbols].sort((a, b) => a.id.localeCompare(b.id));
   const renderableSymbols = sortedSymbols.filter((symbol) => {
     if (symbol.elementType === 'LineBranch') return false;
+    if (
+      visibleStationChains.length > 0
+      && (symbol.elementType === 'TransformerBranch' || symbol.elementType === 'Load')
+    ) {
+      return false;
+    }
     if (gpzFieldNodeIds.has(symbol.id)) return false;
     if (symbol.elementId && gpzFieldNodeIds.has(symbol.elementId)) return false;
+    if (stationBlockSuppressedSymbolIds.has(symbol.id)) return false;
+    if (symbol.elementId && stationBlockSuppressedSymbolIds.has(symbol.elementId)) return false;
     if (shouldSuppressForGpzSwitchgear(symbol, suppressedGpzSymbolIds)) return false;
     return true;
   });
@@ -554,7 +604,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
           key={`station-field-${chain.stationId}`}
           data-element-id={chain.stationId}
           data-element-type="Station"
-          data-element-name={chain.stationId}
+          data-element-name={chain.stationName ?? 'Stacja SN/nN'}
           style={{ cursor: 'pointer' }}
           onClick={(event) => {
             event.stopPropagation();
@@ -810,7 +860,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
       </g>
 
       {/* Empty state — CANONICAL typography */}
-      <EngineeringLegend width={width} height={height} />
+      {symbols.length === 0 && <EngineeringLegend width={width} height={height} />}
 
       {symbols.length === 0 && (
         <EmptyCanvasHint width={width} height={height} onCanvasClick={onCanvasClick} />

@@ -37,7 +37,7 @@ export interface StationCadLayout {
   hasBranchOut: boolean;
 }
 
-const FIELD_SPACING = 86;
+const FIELD_SPACING = 112;
 const FIELD_STACK_HEIGHT = 142;
 const FIELD_TOP_OFFSET = 12;
 

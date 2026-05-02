@@ -66,6 +66,7 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
             "catalog_binding",
             "sections_count",
             "gpz_sections",
+            "line_fields_per_section",
             "grounding",
             "zero_sequence",
             "manual_equivalent",

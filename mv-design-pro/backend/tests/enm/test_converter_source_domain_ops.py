@@ -106,6 +106,7 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
             "materialized_params": {
                 "catalog_item_id": "conv-pv-1mw",
                 "catalog_item_version": "2024.1",
+                "un_kv": 0.4,
                 "pmax_mw": 0.75,
                 "sn_mva": 0.8,
             },
@@ -151,6 +152,7 @@ def test_add_converter_source_returns_field_not_found_for_missing_existing_field
             "materialized_params": {
                 "catalog_item_id": "conv-pv-legacy",
                 "catalog_item_version": "2024.1",
+                "un_kv": 0.4,
                 "rated_power_ac_kw": 500.0,
                 "max_power_kw": 500.0,
                 "control_mode": "STALY_COS_PHI",
@@ -161,6 +163,53 @@ def test_add_converter_source_returns_field_not_found_for_missing_existing_field
     )
 
     assert result["error_code"] == "converter.field_not_found"
+
+
+def test_add_converter_source_rejects_catalog_voltage_mismatch_with_nn_bus() -> None:
+    result = execute_domain_operation(
+        _station_enm(),
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "nn_side",
+            "station_ref": "st_1",
+            "bus_nn_ref": "bus_nn_1",
+            "placement": "NEW_FIELD",
+            "source_field": {
+                "source_field_kind": "PV",
+                "field_name": "Pole PV nN",
+                "catalog_binding": {
+                    "catalog_namespace": "APARAT_NN",
+                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                    "snapshot_mapping_version": "1.0",
+                },
+            },
+            "source_name": "Blok PV",
+            "power_setpoint_mw": 0.5,
+            "catalog_binding": {
+                "catalog_namespace": "ZRODLO_NN_PV",
+                "catalog_item_id": "conv-pv-15kv",
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
+            "materialized_params": {
+                "catalog_item_id": "conv-pv-15kv",
+                "catalog_item_version": "2024.1",
+                "un_kv": 15.0,
+                "rated_power_ac_kw": 500.0,
+                "max_power_kw": 500.0,
+                "control_mode": "STALY_COS_PHI",
+                "pmax_mw": 0.5,
+                "sn_mva": 0.5,
+            },
+        },
+    )
+
+    assert result["error_code"] == "converter.voltage_mismatch"
+    assert "Źródło: 15 kV, szyna: 0.4 kV" in result["error"]
 
 
 @pytest.mark.parametrize(
@@ -193,6 +242,7 @@ def test_add_converter_source_returns_field_not_found_for_missing_existing_field
                 "materialized_params": {
                     "catalog_item_id": "conv-pv-nullable-list",
                     "catalog_item_version": "2024.1",
+                    "un_kv": 0.4,
                     "rated_power_ac_kw": 500.0,
                     "max_power_kw": 500.0,
                     "control_mode": "STALY_COS_PHI",

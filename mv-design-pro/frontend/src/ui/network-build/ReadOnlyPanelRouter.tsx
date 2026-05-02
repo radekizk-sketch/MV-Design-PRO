@@ -509,7 +509,7 @@ export function ReadOnlyPanelRouter() {
             label: `Pomiar ${index + 1}`,
             value,
           }))
-        : [{ label: 'Pomiar biezacy', value: 'Brak zestawow pomiarowych w read-modelu pola' }]),
+        : [{ label: 'Pomiar bieżący', value: 'Brak zestawów pomiarowych w read-modelu pola' }]),
     ];
   }, [selectedFieldRecord]);
   const fieldControlRows = useMemo(() => {
@@ -766,7 +766,7 @@ export function ReadOnlyPanelRouter() {
           <div className="space-y-4">
             <div>
               <div className="text-sm font-semibold text-slate-900">Wyniki powiązane z elementem</div>
-              <div className="text-xs text-slate-500">Przypadek: {activeCaseName ?? activeCaseId ?? 'brak'} • Projekt: {activeProjectName ?? activeProjectId ?? 'brak'}</div>
+              <div className="text-xs text-slate-500">Obliczenia: {activeCaseName ?? activeCaseId ?? 'brak'} • Projekt: {activeProjectName ?? activeProjectId ?? 'brak'}</div>
             </div>
             {matchedBusRows.length === 0 && matchedBranchRows.length === 0 && matchedShortCircuitRows.length === 0 ? (
               <Empty title="Brak dopasowanych wyników" text="W aktywnym uruchomieniu nie znaleziono wyników dla tego elementu." />
@@ -1046,7 +1046,7 @@ export function ReadOnlyPanelRouter() {
             <div>
               <div className="text-sm font-semibold text-slate-900">Historia uruchomień</div>
               <div className="text-xs text-slate-500">
-                Przypadek: {activeCaseName ?? activeCaseId ?? 'brak'} - wybierz przebieg, aby otworzyć jego wyniki dla aktywnego elementu.
+                Obliczenia: {activeCaseName ?? activeCaseId ?? 'brak'} - wybierz przebieg, aby otworzyć jego wyniki dla aktywnego elementu.
               </div>
             </div>
             {runs.length === 0 ? (

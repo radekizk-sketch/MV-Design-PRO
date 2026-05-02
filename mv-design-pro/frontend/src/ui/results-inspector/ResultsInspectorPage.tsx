@@ -136,7 +136,7 @@ function ResultStatusBar({
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="results-status-case-context">
-              <span className="font-medium">Przypadek:</span> {caseLabel}
+              <span className="font-medium">Obliczenia:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (

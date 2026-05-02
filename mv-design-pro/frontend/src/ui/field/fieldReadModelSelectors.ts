@@ -75,6 +75,27 @@ function findBus(
   return snapshot.buses.find((bus) => bus.ref_id === busRef || bus.id === busRef) ?? null;
 }
 
+function resolveFieldBusRef(
+  fieldItem: FieldReadModelItem,
+  station: LegacyStation | null,
+  legacyBayBusRef: string | null | undefined,
+): string | null {
+  if (legacyBayBusRef) {
+    return legacyBayBusRef;
+  }
+
+  const gpzSectionId = fieldItem.canonical_model.base_model.gpz_section_id ?? null;
+  if (gpzSectionId && Array.isArray(station?.gpz_sections)) {
+    const section = station.gpz_sections.find((item) => item.section_id === gpzSectionId);
+    if (section?.bus_ref) {
+      return section.bus_ref;
+    }
+  }
+
+  const stationBusRefs = Array.isArray(station?.bus_refs) ? station.bus_refs : [];
+  return stationBusRefs.length === 1 ? stationBusRefs[0] : null;
+}
+
 function linkedRefsForFieldItem(item: FieldReadModelItem): string[] {
   const refs = new Set<string>();
   const baseModel = item.canonical_model.base_model;
@@ -125,7 +146,8 @@ export function buildFieldReadModelSummaries(
       const baseModel = item.canonical_model.base_model;
       const legacyBay = findLegacyBay(snapshot, item.bay_ref, item.bay_id);
       const station = findStation(snapshot, baseModel.substation_ref);
-      const bus = findBus(snapshot, legacyBay?.bus_ref ?? null);
+      const busRef = resolveFieldBusRef(item, station, legacyBay?.bus_ref ?? null);
+      const bus = findBus(snapshot, busRef);
 
       return {
         ref_id: item.bay_ref,
@@ -135,8 +157,8 @@ export function buildFieldReadModelSummaries(
         bay_role_label: canonicalRoleLabel(baseModel.bay_role),
         station_ref: baseModel.substation_ref ?? null,
         station_name: station?.name ?? baseModel.substation_ref ?? 'Brak stacji',
-        bus_ref: legacyBay?.bus_ref ?? null,
-        bus_name: bus?.name ?? legacyBay?.bus_ref ?? 'Brak szyny',
+        bus_ref: busRef,
+        bus_name: bus?.name ?? busRef ?? 'Brak szyny',
         gpz_section_id: baseModel.gpz_section_id ?? null,
         linked_refs: linkedRefsForFieldItem(item),
         fieldItem: item,

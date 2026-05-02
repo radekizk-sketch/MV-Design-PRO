@@ -186,17 +186,77 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
         if not isinstance(line_field_name, str) or not line_field_name.strip():
             line_field_name = None
 
+        raw_field_names = entry.get("line_field_names")
+        line_field_names = []
+        if isinstance(raw_field_names, list):
+            line_field_names = [
+                str(name).strip()
+                for name in raw_field_names
+                if isinstance(name, str) and name.strip()
+            ]
+
+        line_fields_count = _read_gpz_line_fields_count(entry, payload)
+
         normalized.append(
             {
                 "order": order,
                 "name": section_name,
                 "bus_name": bus_name,
                 "line_field_name": line_field_name,
+                "line_field_names": line_field_names,
+                "line_fields_count": line_fields_count,
             }
         )
 
     normalized.sort(key=lambda item: (item["order"], item["name"] or ""))
     return normalized
+
+
+MAX_GPZ_LINE_FIELDS_PER_SECTION = 12
+
+
+def _read_gpz_line_fields_count(entry: dict[str, Any], payload: dict[str, Any]) -> int:
+    for source in (entry, payload):
+        for key in (
+            "line_fields_count",
+            "line_fields_per_section",
+            "gpz_line_fields_per_section",
+        ):
+            raw_value = source.get(key)
+            if raw_value is None:
+                continue
+            if isinstance(raw_value, bool):
+                return 0
+            if isinstance(raw_value, int):
+                return raw_value
+            if isinstance(raw_value, float):
+                return int(raw_value) if raw_value.is_integer() else 0
+            if isinstance(raw_value, str) and raw_value.strip().isdigit():
+                return int(raw_value.strip())
+            return 0
+    return 1
+
+
+def _build_gpz_line_field_names(section_entry: dict[str, Any], count: int) -> list[str]:
+    explicit_names = section_entry.get("line_field_names")
+    names = (
+        [name for name in explicit_names if isinstance(name, str) and name.strip()]
+        if isinstance(explicit_names, list)
+        else []
+    )
+    base_name = section_entry.get("line_field_name")
+    if not isinstance(base_name, str) or not base_name.strip():
+        base_name = "Pole liniowe GPZ"
+
+    result: list[str] = []
+    for index in range(count):
+        if index < len(names):
+            result.append(names[index].strip())
+        elif count == 1:
+            result.append(base_name.strip())
+        else:
+            result.append(f"{base_name.strip()} {index + 1}")
+    return result
 
 
 def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
@@ -1118,6 +1178,41 @@ def _apply_materialized_transformer_fields(
             target[target_key] = materialized_params[source_key]
 
 
+def _as_positive_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _validate_transformer_voltage_compatibility(
+    *,
+    transformer_data: dict[str, Any],
+    expected_hv_kv: Any,
+    expected_lv_kv: Any,
+) -> dict[str, Any] | None:
+    """Sprawdź zgodność napięć stacji z materializacją katalogową transformatora."""
+    expected_hv = _as_positive_float(expected_hv_kv)
+    expected_lv = _as_positive_float(expected_lv_kv)
+    catalog_hv = _as_positive_float(transformer_data.get("uhv_kv"))
+    catalog_lv = _as_positive_float(transformer_data.get("ulv_kv"))
+
+    if expected_hv is None or expected_lv is None or catalog_hv is None or catalog_lv is None:
+        return _error_response(
+            "Nie udało się zweryfikować napięć transformatora katalogowego.",
+            "station.insert.transformer_voltage_missing",
+        )
+
+    if abs(catalog_hv - expected_hv) > 0.01 or abs(catalog_lv - expected_lv) > 0.001:
+        return _error_response(
+            "Brak transformatora katalogowego zgodnego z napięciem SN i napięciem strony nN źródła.",
+            "station.insert.transformer_voltage_mismatch",
+        )
+
+    return None
+
+
 def _element_requires_catalog(collection: str, element: dict[str, Any]) -> bool:
     """Określ, czy dany element techniczny może istnieć wyłącznie z katalogiem."""
     if collection in {
@@ -1535,12 +1630,15 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     gpz_section_entries = _normalize_gpz_section_entries(payload)
     sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
     if len(gpz_section_entries) != sections_count:
+        fallback_line_fields_count = _read_gpz_line_fields_count({}, payload)
         gpz_section_entries = [
             {
                 "order": index,
                 "name": f"Sekcja {index + 1}",
                 "bus_name": None,
                 "line_field_name": None,
+                "line_field_names": [],
+                "line_fields_count": fallback_line_fields_count,
             }
             for index in range(sections_count)
         ]
@@ -1549,6 +1647,21 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
+    for index, entry in enumerate(gpz_section_entries):
+        line_fields_count = entry.get("line_fields_count")
+        if (
+            not isinstance(line_fields_count, int)
+            or line_fields_count < 1
+            or line_fields_count > MAX_GPZ_LINE_FIELDS_PER_SECTION
+        ):
+            return _error_response(
+                (
+                    "Sekcja GPZ "
+                    f"{index + 1} musi mieć od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
+                    "pól liniowych odpływowych."
+                ),
+                "source.invalid_line_fields_count",
+            )
     if manual_source_mode and (voltage_kv is None or voltage_kv <= 0):
         voltage_kv = manual_equivalent["voltage_kv"]
     if voltage_kv is None or voltage_kv <= 0:
@@ -1676,19 +1789,23 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     gpz_sections: list[dict[str, Any]] = []
     gpz_section_bus_refs: list[str] = []
     gpz_section_bus_names: list[str] = []
-    gpz_section_line_field_names: list[str | None] = []
     for idx, entry in enumerate(gpz_section_entries):
         order = idx + 1
         section_ref = _make_id("gpz", seed, f"section/{order:03d}")
         section_bus_ref = _make_id("gpz", seed, f"section/{order:03d}/bus_sn")
         section_bus_name = entry.get("bus_name") or f"Szyna GPZ S{order} {voltage_kv} kV"
         section_name = entry.get("name") or f"Sekcja {idx + 1}"
+        line_fields_count = int(entry.get("line_fields_count") or 1)
+        line_field_names = _build_gpz_line_field_names(entry, line_fields_count)
         gpz_sections.append(
             {
                 "section_id": section_ref,
                 "order": idx,
                 "name": section_name,
-                "line_field_name": entry.get("line_field_name"),
+                "line_field_name": line_field_names[0] if line_field_names else None,
+                "line_field_names": line_field_names,
+                "line_fields_count": line_fields_count,
+                "line_field_refs": [],
                 "bus_ref": section_bus_ref,
                 "incoming_source_ref": source_ref if idx == 0 else None,
                 "left_coupler_ref": None,
@@ -1697,7 +1814,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
         gpz_section_bus_refs.append(section_bus_ref)
         gpz_section_bus_names.append(section_bus_name)
-        gpz_section_line_field_names.append(entry.get("line_field_name"))
 
     new_enm = copy.deepcopy(enm)
     created = []
@@ -1749,7 +1865,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     source_data = {
         "device_type": "source",
         "ref_id": source_ref,
-        "name": payload.get("source_name") or f"?r?d?o GPZ {voltage_kv} kV",
+        "name": payload.get("source_name") or f"Źródło GPZ {voltage_kv} kV",
         "bus_ref": gpz_section_bus_refs[0],
         "substation_ref": substation_ref,
         "gpz_section_id": gpz_sections[0]["section_id"] if gpz_sections else None,
@@ -1786,20 +1902,20 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     result = create_device(new_enm, source_data)
     if not result.success:
         return _error_response(
-            f"Nie uda?o si? utworzy? ?r?d?a: {result.issues[0].message_pl if result.issues else '?'}",
+            f"Nie udało się utworzyć źródła: {result.issues[0].message_pl if result.issues else '?'}",
             "source.creation_failed",
         )
     new_enm = result.enm
     created.append(source_ref)
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "SOURCE_CREATED", "element_id": source_ref})
-    audit.append({"step": ev_seq, "action": "Utworzono ?r?d?o zasilania", "element_id": source_ref})
+    audit.append({"step": ev_seq, "action": "Utworzono źródło zasilania", "element_id": source_ref})
 
     for idx in range(1, len(gpz_sections)):
         left_section = gpz_sections[idx - 1]
         right_section = gpz_sections[idx]
         coupler_ref = _make_id("gpz", seed, f"coupler/{idx:03d}")
-        coupler_name = payload.get("gpz_coupler_name") or f"Sprz?g?o sekcji GPZ {idx}?{idx + 1}"
+        coupler_name = payload.get("gpz_coupler_name") or f"Sprzęgło sekcji GPZ {idx}-{idx + 1}"
         new_enm.setdefault("branches", []).append(
             {
                 "ref_id": coupler_ref,
@@ -1826,27 +1942,40 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             {"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": coupler_ref}
         )
         audit.append(
-            {"step": ev_seq, "action": "Utworzono sprz?g?o sekcyjne GPZ", "element_id": coupler_ref}
+            {"step": ev_seq, "action": "Utworzono sprzęgło sekcyjne GPZ", "element_id": coupler_ref}
         )
 
     field_specs = []
     for idx, section in enumerate(gpz_sections):
-        bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}")
-        bay_name = gpz_section_line_field_names[idx] or f"Pole liniowe GPZ {idx + 1}"
-        field_specs.append(
-            _build_field_spec(
-                field_ref=bay_ref,
-                name=bay_name,
-                bay_role="FEEDER",
-                bus_ref=section["bus_ref"],
-                gpz_section_id=section["section_id"],
-                tags=["gpz_line_field"],
-                meta={
-                    "gpz_section_id": section["section_id"],
-                    "gpz_section_order": section["order"],
-                },
+        line_field_names = section.get("line_field_names")
+        if not isinstance(line_field_names, list):
+            line_field_names = []
+        for field_index in range(int(section.get("line_fields_count") or 1)):
+            bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}/{field_index + 1:03d}")
+            bay_name = (
+                line_field_names[field_index]
+                if field_index < len(line_field_names)
+                else f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
             )
-        )
+            section["line_field_refs"].append(bay_ref)
+            field_specs.append(
+                _build_field_spec(
+                    field_ref=bay_ref,
+                    name=bay_name,
+                    bay_role="FEEDER",
+                    bus_ref=section["bus_ref"],
+                    gpz_section_id=section["section_id"],
+                    tags=["gpz_line_field"],
+                    meta={
+                        "gpz_section_id": section["section_id"],
+                        "gpz_section_order": section["order"],
+                        "gpz_line_field_index": field_index,
+                        "gpz_line_fields_count": section["line_fields_count"],
+                        "source_field_kind": "FEEDER",
+                        "field_status": "READY_FOR_TRUNK",
+                    },
+                )
+            )
 
     # Create substation (GPZ)
     new_enm.setdefault("substations", []).append(
@@ -2384,15 +2513,87 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "TRANSFORMATOROWE": "TR",
         "SPRZEGLO": "COUPLER",
     }
-    field_specs = [
-        _build_field_spec(
-            field_ref=_make_id("stn", station_seed, f"sn_field/{idx:03d}"),
-            name=f"Pole {field_spec.get('field_role', '')} {idx + 1}",
-            bay_role=role_map.get(field_spec.get("field_role", ""), "FEEDER"),
-            bus_ref=sn_bus_id,
+    field_specs: list[dict[str, Any]] = []
+    sn_field_specs_sorted = sorted(sn_fields, key=lambda f: f.get("field_role", ""))
+    for idx, field_spec in enumerate(sn_field_specs_sorted):
+        field_role = str(field_spec.get("field_role", ""))
+        field_ref = _make_id("stn", station_seed, f"sn_field/{idx:03d}")
+        bay_role = role_map.get(field_role, "FEEDER")
+        terminal_bus_ref = _make_id("stn", station_seed, f"sn_field_terminal/{idx:03d}")
+        breaker_ref = _make_id("stn", station_seed, f"sn_field_breaker/{idx:03d}")
+
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": terminal_bus_ref,
+                "name": f"Zacisk techniczny pola SN {idx + 1}",
+                "voltage_kv": sn_voltage_kv,
+                "tags": ["helper_bus", "field_terminal"],
+                "meta": {
+                    "visual_role": "FIELD_TERMINAL",
+                    "render_on_sld": False,
+                    "show_in_project_tree": False,
+                    "field_ref": field_ref,
+                    "station_ref": stn_id,
+                },
+            },
         )
-        for idx, field_spec in enumerate(sorted(sn_fields, key=lambda f: f.get("field_role", "")))
-    ]
+        if not result.success:
+            return _error_response(
+                "Nie udało się utworzyć zacisku technicznego pola SN.",
+                "station.insert.field_terminal_failed",
+            )
+        new_enm = result.enm
+        created.append(terminal_bus_ref)
+
+        result = create_branch(
+            new_enm,
+            {
+                "ref_id": breaker_ref,
+                "name": f"Wyłącznik pola SN {idx + 1}",
+                "type": "breaker",
+                "from_bus_ref": sn_bus_id,
+                "to_bus_ref": terminal_bus_ref,
+                "status": "closed",
+                "r_ohm": 0.0,
+                "x_ohm": 0.0,
+                "tags": ["station_field_device", "requires_catalog_binding"],
+                "meta": {
+                    "field_ref": field_ref,
+                    "station_ref": stn_id,
+                    "field_role": field_role,
+                    "bay_role": bay_role,
+                    "render_on_sld": False,
+                    "show_in_project_tree": False,
+                    "requires_catalog_binding": True,
+                    "catalog_message": "Dobierz aparat pola SN z katalogu APARAT_SN.",
+                },
+            },
+        )
+        if not result.success:
+            return _error_response(
+                "Nie udało się utworzyć wyłącznika pola SN.",
+                "station.insert.field_breaker_failed",
+            )
+        new_enm = result.enm
+        created.append(breaker_ref)
+
+        field_specs.append(
+            _build_field_spec(
+                field_ref=field_ref,
+                name=f"Pole {field_role or 'SN'} {idx + 1}",
+                bay_role=bay_role,
+                bus_ref=sn_bus_id,
+                equipment_refs=[breaker_ref],
+                tags=["station_sn_field"],
+                meta={
+                    "field_role": field_role,
+                    "terminal_bus_ref": terminal_bus_ref,
+                    "default_device_ref": breaker_ref,
+                    "requires_catalog_binding": True,
+                },
+            )
+        )
 
     feeders = nn_block.get("outgoing_feeders_nn", [])
     feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
@@ -2511,6 +2712,13 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             default_namespace="TRAFO_SN_NN",
         )
         _apply_materialized_transformer_fields(tr_data, materialized_params)
+        voltage_validation_error = _validate_transformer_voltage_compatibility(
+            transformer_data=tr_data,
+            expected_hv_kv=sn_voltage_kv,
+            expected_lv_kv=nn_voltage_kv,
+        )
+        if voltage_validation_error is not None:
+            return voltage_validation_error
 
         result = create_device(new_enm, tr_data)
         if not result.success:
@@ -2526,7 +2734,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 sub["transformer_refs"].append(tr_id)
                 for field_spec in _field_specs_for_substation(sub):
                     if field_spec.get("bay_role") == "TR":
-                        field_spec["equipment_refs"] = [tr_id]
+                        equipment_refs = [
+                            ref
+                            for ref in field_spec.get("equipment_refs", [])
+                            if isinstance(ref, str)
+                        ]
+                        if tr_id not in equipment_refs:
+                            equipment_refs.append(tr_id)
+                        field_spec["equipment_refs"] = equipment_refs
                 break
 
         ev_seq += 1

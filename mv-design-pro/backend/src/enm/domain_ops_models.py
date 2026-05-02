@@ -642,6 +642,9 @@ class AddGridSourceSNPayload(_FrozenBase):
     rx_ratio: float | None = None
     """Stosunek R/X impedancji zwarciowej."""
 
+    line_fields_per_section: int | None = None
+    """Liczba pól liniowych odpływowych tworzonych na każdej sekcji GPZ."""
+
     pozycja_widokowa: dict[str, Any] | None = None
     """Pozycja elementu na schemacie jednokreskowym (SLD)."""
 

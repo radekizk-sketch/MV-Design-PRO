@@ -36,7 +36,9 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
 
   it('panel Schemat i topologia prowadzi do Modelu sieci z pustej kanwy', () => {
     render(<SchematContextPanel />);
-    expect(screen.getByText(/Stan pustej kanwy/)).toBeInTheDocument();
+    expect(screen.getByText(/Start pustej kanwy/)).toBeInTheDocument();
+    expect(screen.getByText(/Dodaj GPZ jako pierwszy element modelu/)).toBeInTheDocument();
+    expect(screen.getByText(/Przejdź do budowy GPZ/)).toBeInTheDocument();
     expect(screen.getByTestId('schemat-action-go-model')).toBeInTheDocument();
   });
 

@@ -441,8 +441,8 @@ export class LayoutEngine {
       bounds: { x: Number.isFinite(minX) ? minX : 0, y: Number.isFinite(minY) ? minY : 0, width: Number.isFinite(maxX) ? maxX - minX : 0, height: Number.isFinite(maxY) ? maxY - minY : 0 },
       hash: '',
       canonicalAnnotations: {
-        trunkNodes: nodePlacements.filter((n) => n.layer > 0).map((n) => ({ nodeId: n.nodeId, trunkId: 'TRUNK-1', kmFromGPZ: n.layer * 0.2, voltageKV: 15, ikss3p: 0, deltaU_percent: 0, position: n.position, branchStationId: null })),
-        trunkSegments: edgeRoutes.filter((e) => e.edgeType === EdgeTypeV1.TRUNK).map((e, idx) => ({ segmentId: e.edgeId, designation: `L-${idx + 1}`, cableType: 'SN', isOverhead: false, lengthKm: Math.abs(e.endPoint.x - e.startPoint.x + e.endPoint.y - e.startPoint.y) / 1000, resistance_ohm: 0, reactance_ohm: 0, capacitance_uF_per_km: null, ampacity_A: 0, current_A: 0, power_MW: 0 })),
+        trunkNodes: nodePlacements.filter((n) => n.layer > 0).map((n) => ({ nodeId: n.nodeId, trunkId: 'TRUNK-1', kmFromGPZ: n.layer * 0.2, voltageKV: 15, ikss3p: null, deltaU_percent: null, position: n.position, branchStationId: null })),
+        trunkSegments: edgeRoutes.filter((e) => e.edgeType === EdgeTypeV1.TRUNK).map((e, idx) => ({ segmentId: e.edgeId, designation: `L-${idx + 1}`, cableType: 'SN', isOverhead: false, lengthKm: Math.abs(e.endPoint.x - e.startPoint.x + e.endPoint.y - e.startPoint.y) / 1000, resistance_ohm: null, reactance_ohm: null, capacitance_uF_per_km: null, ampacity_A: null, current_A: null, power_MW: null })),
         branchPoints: [],
         stationChains: [],
         inlineBranchObjects: [],

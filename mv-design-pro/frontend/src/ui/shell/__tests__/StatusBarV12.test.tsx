@@ -35,13 +35,13 @@ describe('StatusBarV12 — pasek statusu V12', () => {
     expect(screen.getByTestId('status-area-mode')).toBeInTheDocument();
   });
 
-  it('pokazuje aktywny obszar i tryb pracy w status-area-mode', () => {
+  it('pokazuje model jako stały obszar roboczy shell-a i aktywny tryb pracy', () => {
     act(() => {
       useAppStateStore.getState().setActiveArea('AN');
       useAppStateStore.getState().setActiveWorkMode('TW');
     });
     render(<StatusBarV12 />);
-    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('Studia / Wyniki');
+    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('Model / Wyniki');
   });
 
   it('pokazuje status walidacji (valid/warnings/errors)', () => {
@@ -114,8 +114,8 @@ describe('StatusBarV12 — pasek statusu V12', () => {
       const title = chip.getAttribute('title') ?? '';
       expect(title).toMatch(/Semantyka:\s*sssssss/);
       expect(title).toMatch(/Wejścia:\s*iiiiiii/);
-      expect(title).toMatch(/Przypadek:\s*ccccccc/);
-      expect(title).toMatch(/Wariant:\s*vvvvvvv/);
+      expect(title).toMatch(/Obliczenia:\s*ccccccc/);
+      expect(title).toMatch(/Stan:\s*vvvvvvv/);
       expect(title).toMatch(/Łączniki:\s*wwwwwww/);
     });
 
@@ -132,8 +132,8 @@ describe('StatusBarV12 — pasek statusu V12', () => {
       render(<StatusBarV12 />);
       const title = screen.getByTestId('status-hash').getAttribute('title') ?? '';
       expect(title).toMatch(/Wejścia:\s*—/);
-      expect(title).toMatch(/Przypadek:\s*—/);
-      expect(title).toMatch(/Wariant:\s*—/);
+      expect(title).toMatch(/Obliczenia:\s*—/);
+      expect(title).toMatch(/Stan:\s*—/);
       expect(title).toMatch(/Łączniki:\s*—/);
     });
   });

@@ -103,6 +103,7 @@ import {
 } from './interactionMath';
 import { SldSemanticMinimap } from './SldSemanticMinimap';
 import { SldSemanticDiagnosticsPanel } from './SldSemanticDiagnosticsPanel';
+import { buildStationCadLayout } from './SldStationLayoutEngine';
 import {
   collectGpzSwitchgearSuppressedSymbolIds,
   shouldSuppressForGpzSwitchgear,
@@ -206,6 +207,35 @@ function calculateGpzSwitchgearBounds(
   return bounds;
 }
 
+function calculateStationChainBounds(
+  canonicalAnnotations: CanonicalAnnotationsV1 | null | undefined,
+): SldFitBounds | null {
+  let bounds: SldFitBounds | null = null;
+
+  const includeRect = (minX: number, minY: number, maxX: number, maxY: number) => {
+    bounds = mergeBounds(bounds, {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: maxX - minX,
+      height: maxY - minY,
+    });
+  };
+
+  for (const station of canonicalAnnotations?.stationChains ?? []) {
+    const layout = buildStationCadLayout(station);
+    includeRect(
+      layout.bounds.x - 56,
+      layout.bounds.y - 56,
+      layout.bounds.x + layout.bounds.width + 56,
+      layout.bounds.y + layout.bounds.height + 56,
+    );
+  }
+
+  return bounds;
+}
+
 function fitBoundsToViewport(
   bounds: SldFitBounds,
   canvasWidth: number,
@@ -243,18 +273,23 @@ function fitSldOperationalContent(
   const visibleSymbols = symbols.filter((symbol) => !shouldSuppressForGpzSwitchgear(symbol, suppressedIds));
   const symbolBounds = calculateSymbolsBounds(visibleSymbols);
   const gpzBounds = calculateGpzSwitchgearBounds(canonicalAnnotations);
-  const mergedBounds = gpzBounds ?? symbolBounds;
+  const stationBounds = calculateStationChainBounds(canonicalAnnotations);
+  const mergedBounds = mergeBounds(mergeBounds(gpzBounds, stationBounds), symbolBounds);
 
   if (!mergedBounds) {
     return fitToContent([...symbols], canvasWidth, canvasHeight, effectivePadding, minZoom);
   }
+
+  const canonicalMinZoom = gpzBounds || stationBounds
+    ? Math.min(minZoom, 0.45)
+    : minZoom;
 
   return fitBoundsToViewport(
     mergedBounds,
     canvasWidth,
     canvasHeight,
     effectivePadding,
-    gpzBounds ? Math.max(minZoom, 0.85) : minZoom,
+    canonicalMinZoom,
   );
 }
 
@@ -2105,8 +2140,8 @@ export const SLDView: React.FC<SLDViewProps> = ({
         />
 
         {/* V12 § 5.7 — Semantyczna mini-mapa (prawy dolny narożnik) */}
-        {symbols.length > 0 && (
-          <div className="absolute bottom-4 right-4 z-20 pointer-events-auto">
+        {symbols.length > 12 && (
+          <div className="absolute right-4 top-16 z-20 pointer-events-auto">
             <SldSemanticMinimap
               symbols={symbols}
               viewport={viewport}

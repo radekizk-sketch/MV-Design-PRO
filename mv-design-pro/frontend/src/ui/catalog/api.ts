@@ -40,7 +40,7 @@ export function getCatalogErrorMessage(error: unknown): string {
     if (error.detail) {
       return error.detail;
     }
-    return `Blad API katalogow (${error.status}).`;
+    return `Błąd API katalogów (${error.status}).`;
   }
   if (error instanceof Error && error.message === NETWORK_ERROR_MESSAGE) {
     return error.message;
@@ -51,7 +51,7 @@ export function getCatalogErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
-  return 'Blad pobierania typow katalogowych.';
+  return 'Błąd pobierania typów katalogowych.';
 }
 
 export type CatalogListItem =
@@ -184,35 +184,66 @@ export async function fetchBessInverterTypes(): Promise<BESSInverterCatalogType[
   return fetchCatalogJson<BESSInverterCatalogType[]>('/api/catalog/bess-inverter-types');
 }
 
+export async function fetchWindInverterTypes(): Promise<ConverterType[]> {
+  return fetchCatalogJson<ConverterType[]>('/api/catalog/wind-inverter-types');
+}
+
+function resolveConverterVoltageKv(
+  item: Pick<PVInverterCatalogType | BESSInverterCatalogType, 'un_kv' | 'u_n_kv' | 'voltage_kv' | 'voltage_lv_kv'>,
+): number | null {
+  const voltage =
+    item.un_kv ?? item.u_n_kv ?? item.voltage_lv_kv ?? item.voltage_kv;
+  return typeof voltage === 'number' && Number.isFinite(voltage) && voltage > 0
+    ? voltage
+    : null;
+}
+
 export async function fetchConverterTypes(): Promise<ConverterType[]> {
-  const [pvTypes, bessTypes] = await Promise.all([
+  const [pvTypes, bessTypes, windTypes] = await Promise.all([
     fetchPvInverterTypes(),
     fetchBessInverterTypes(),
+    fetchWindInverterTypes(),
   ]);
 
-  const pvConverters: ConverterType[] = pvTypes.map((item) => ({
-    id: item.id,
-    name: item.name,
-    manufacturer: item.manufacturer,
-    kind: 'PV',
-    un_kv: 0.4,
-    sn_mva: item.s_n_kva / 1000,
-    pmax_mw: item.p_max_kw / 1000,
-    cosphi_min: item.cos_phi_min,
-    cosphi_max: item.cos_phi_max,
-  }));
-  const bessConverters: ConverterType[] = bessTypes.map((item) => ({
-    id: item.id,
-    name: item.name,
-    manufacturer: item.manufacturer,
-    kind: 'BESS',
-    un_kv: 0.4,
-    sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
-    pmax_mw: item.p_discharge_kw / 1000,
-    e_kwh: item.e_kwh,
-  }));
+  const pvConverters: ConverterType[] = pvTypes.flatMap((item) => {
+    const voltageKv = resolveConverterVoltageKv(item);
+    if (voltageKv === null) return [];
+    return [{
+      id: item.id,
+      name: item.name,
+      manufacturer: item.manufacturer,
+      kind: 'PV',
+      un_kv: voltageKv,
+      sn_mva: item.s_n_kva / 1000,
+      pmax_mw: item.p_max_kw / 1000,
+      cosphi_min: item.cos_phi_min,
+      cosphi_max: item.cos_phi_max,
+    }];
+  });
+  const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
+    const voltageKv = resolveConverterVoltageKv(item);
+    if (voltageKv === null) return [];
+    return [{
+      id: item.id,
+      name: item.name,
+      manufacturer: item.manufacturer,
+      kind: 'BESS',
+      un_kv: voltageKv,
+      sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
+      pmax_mw: item.p_discharge_kw / 1000,
+      e_kwh: item.e_kwh,
+    }];
+  });
 
-  return [...pvConverters, ...bessConverters];
+  const windConverters = windTypes.filter(
+    (item) =>
+      item.kind === 'WIND'
+      && typeof item.un_kv === 'number'
+      && Number.isFinite(item.un_kv)
+      && item.un_kv > 0,
+  );
+
+  return [...pvConverters, ...bessConverters, ...windConverters];
 }
 
 export async function fetchSourceSystemTypes(): Promise<SourceSystemCatalogType[]> {

@@ -1,28 +1,29 @@
-﻿# SLD SCADA + CAD: Kontrakt Widoku (CANONICAL)
+# SLD SCADA + CAD: Kontrakt Widoku (CANONICAL)
 
 **Status:** CANONICAL (BINDING)
 **Wersja:** 1.1
 **Data:** 2026-01-28
 **Referencje:**
-- `SLD_UI_CONTRACT.md` â€” kontrakty UI (priorytet, gÄ™stoĹ›Ä‡, kolory, wydruk, interakcja)
-- `sld_rules.md` â€” podstawowe reguĹ‚y SLD
-- `wizard_screens.md` â€” tryby pracy
-- `SHORT_CIRCUIT_PANELS_AND_PRINTING.md` â€” wydruk
+- `SLD_UI_CONTRACT.md` — kontrakty UI (priorytet, gęstość, kolory, wydruk, interakcja)
+- `sld_rules.md` — podstawowe reguły SLD
+- `wizard_screens.md` — tryby pracy
+- `SHORT_CIRCUIT_PANELS_AND_PRINTING.md` — wydruk
+- `../sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md` - standard projektowania stacji: GPZ, szyny, pola SN, aparatura, zabezpieczenia, sterowanie, sygnalizacja i zakaz atrap schematowych
 
 ---
 
 ## 1. Cel i zakres dokumentu
 
-Niniejszy dokument definiuje **wiÄ…ĹĽÄ…cy kontrakt** miÄ™dzy dwoma aspektami widoku SLD (Single Line Diagram):
+Niniejszy dokument definiuje **wiążący kontrakt** między dwoma aspektami widoku SLD (Single Line Diagram):
 
-1. **SCADA SLD** â€” operatorski, wizualizacja stanu i wynikĂłw,
-2. **CAD overlay** â€” techniczny, parametry katalogowe i geometryczne.
+1. **SCADA SLD** — operatorski, wizualizacja stanu i wyników,
+2. **CAD overlay** — techniczny, parametry katalogowe i geometryczne.
 
 Dokument jest **BINDING** dla:
 - implementacji warstwy UI (SLD renderer),
-- logiki prezentacji wynikĂłw analiz (overlay),
+- logiki prezentacji wyników analiz (overlay),
 - logiki wydruku (PDF/DOCX),
-- wszystkich dokumentĂłw referencyjnych (ARCHITECTURE.md, SYSTEM_SPEC.md).
+- wszystkich dokumentów referencyjnych (ARCHITECTURE.md, SYSTEM_SPEC.md).
 
 ---
 
@@ -30,23 +31,23 @@ Dokument jest **BINDING** dla:
 
 ### 2.1 Podstawowe terminy
 
-| Termin | Definicja | PrzykĹ‚ad |
+| Termin | Definicja | Przykład |
 |--------|-----------|----------|
-| **SCADA SLD** | Warstwowy widok SLD w stylu systemĂłw SCADA/benchmark/SmartCollect: neonowe kolory, stan operacyjny, przepĹ‚ywy mocy, wizualizacja pracy sieci | Szyny kolorowe, przepĹ‚ywy prÄ…du z kierunkiem, kolor czerwony = przeciÄ…ĹĽenie |
-| **CAD overlay** | NakĹ‚adka techniczna zawierajÄ…ca parametry katalogowe, impedancje, dĹ‚ugoĹ›ci, przekroje kabli, dane konstrukcyjne | R/X/B linii, dĹ‚ugoĹ›Ä‡ kabla, typ przekroju |
-| **BoundaryNode** | WÄ™zeĹ‚ przyĹ‚Ä…czenia (Point of Common Coupling) â€” granica miÄ™dzy sieciÄ… operatora a instalacjÄ… uĹĽytkownika. **ZAWSZE uĹĽywaj terminu BoundaryNode**, nigdy "punkt przyĹ‚Ä…czenia", "granica", itp. | BoundaryNode przy zĹ‚Ä…czu SN/nn |
-| **BUS** | Szyna elektryczna (busbar), wÄ™zeĹ‚ topologiczny sieci | Szyna rozdzielcza 15 kV |
-| **BUS-centric** | Prezentacja wynikĂłw skupiona wokĂłĹ‚ szyn jako punktĂłw wÄ™zĹ‚owych (nie na liniach) | Wyniki zwarciowe `Ikâ€ł` wyĹ›wietlane **tylko przy BUS** |
+| **SCADA SLD** | Warstwowy widok SLD w stylu systemów SCADA/benchmark/SmartCollect: neonowe kolory, stan operacyjny, przepływy mocy, wizualizacja pracy sieci | Szyny kolorowe, przepływy prądu z kierunkiem, kolor czerwony = przeciążenie |
+| **CAD overlay** | Nakładka techniczna zawierająca parametry katalogowe, impedancje, długości, przekroje kabli, dane konstrukcyjne | R/X/B linii, długość kabla, typ przekroju |
+| **BoundaryNode** | Węzeł przyłączenia (Point of Common Coupling) — granica między siecią operatora a instalacją użytkownika. **ZAWSZE używaj terminu BoundaryNode**, nigdy "punkt przyłączenia", "granica", itp. | BoundaryNode przy złączu SN/nn |
+| **BUS** | Szyna elektryczna (busbar), węzeł topologiczny sieci | Szyna rozdzielcza 15 kV |
+| **BUS-centric** | Prezentacja wyników skupiona wokół szyn jako punktów węzłowych (nie na liniach) | Wyniki zwarciowe `Ik″` wyświetlane **tylko przy BUS** |
 | **Case** | Przypadek obliczeniowy zgodny z IEC/PN-EN 60909 | MAX / MIN / N-1 |
-| **Overlay** | Warstwa graficzna nakĹ‚adana na bazowy SLD, zawierajÄ…ca adnotacje wynikowe lub techniczne | Overlay z wartoĹ›ciami prÄ…dĂłw zwarciowych |
+| **Overlay** | Warstwa graficzna nakładana na bazowy SLD, zawierająca adnotacje wynikowe lub techniczne | Overlay z wartościami prądów zwarciowych |
 
 ### 2.2 Style etykiet CAD
 
-| Styl | Definicja | Kiedy stosowaÄ‡ |
+| Styl | Definicja | Kiedy stosować |
 |------|-----------|----------------|
-| **INLINE** | Etykiety umieszczone **bezpoĹ›rednio na symbolu lub linii**, bez oddzielenia | **DomyĹ›lnie** â€” dla normalnej gÄ™stoĹ›ci elementĂłw |
-| **OFFSET (leader)** | Etykiety przesuniÄ™te z liniÄ… wiodÄ…cÄ… (leader line) | **Automatyczny fallback** â€” przy duĹĽej gÄ™stoĹ›ci, kolizjach |
-| **SIDE STACK** | Etykiety zebrane w tabeli bocznej, referencje numeryczne na diagramie | **Audyt/dokument** â€” wydruki z wymaganÄ… czytelnoĹ›ciÄ… |
+| **INLINE** | Etykiety umieszczone **bezpośrednio na symbolu lub linii**, bez oddzielenia | **Domyślnie** — dla normalnej gęstości elementów |
+| **OFFSET (leader)** | Etykiety przesunięte z linią wiodącą (leader line) | **Automatyczny fallback** — przy dużej gęstości, kolizjach |
+| **SIDE STACK** | Etykiety zebrane w tabeli bocznej, referencje numeryczne na diagramie | **Audyt/dokument** — wydruki z wymaganą czytelnością |
 
 ---
 
@@ -55,61 +56,61 @@ Dokument jest **BINDING** dla:
 ### 3.1 SCADA SLD (aspekt operatorski)
 
 **MUST:**
-- UĹĽywaÄ‡ kolorĂłw wskazujÄ…cych stan operacyjny (zielony, ĹĽĂłĹ‚ty, czerwony).
-- PokazywaÄ‡ **aktualny stan** elementĂłw:
-  - `in_service=True` â†’ normalny wyglÄ…d,
-  - `in_service=False` â†’ wyszarzony, linia przerywana.
-- PokazywaÄ‡ **wyniki analiz** jako overlay:
-  - przepĹ‚ywy prÄ…dĂłw i mocy,
-  - kierunki przepĹ‚ywu (strzaĹ‚ki),
-  - wartoĹ›ci zwarciowe przy BUS,
-  - kolory przeciÄ…ĹĽenia (loading).
-- UĹĽywaÄ‡ symboli zgodnych z `sld_rules.md` Â§ A.2.
+- Używać kolorów wskazujących stan operacyjny (zielony, żółty, czerwony).
+- Pokazywać **aktualny stan** elementów:
+  - `in_service=True` → normalny wygląd,
+  - `in_service=False` → wyszarzony, linia przerywana.
+- Pokazywać **wyniki analiz** jako overlay:
+  - przepływy prądów i mocy,
+  - kierunki przepływu (strzałki),
+  - wartości zwarciowe przy BUS,
+  - kolory przeciążenia (loading).
+- Używać symboli zgodnych z `sld_rules.md` § A.2.
 
 **FORBIDDEN:**
-- Przedstawianie parametrĂłw katalogowych (R/X/B, przekrĂłj kabla, typ linii) jako podstawowej informacji w warstwÄ™ SCADA.
-- UĹĽywanie szarych, monotonnych kolorĂłw (z wyjÄ…tkiem `in_service=False`).
-- Mieszanie wynikĂłw rĂłĹĽnych Case w jednym widoku bez jawnej separacji.
+- Przedstawianie parametrów katalogowych (R/X/B, przekrój kabla, typ linii) jako podstawowej informacji w warstwę SCADA.
+- Używanie szarych, monotonnych kolorów (z wyjątkiem `in_service=False`).
+- Mieszanie wyników różnych Case w jednym widoku bez jawnej separacji.
 
 ### 3.2 CAD overlay (aspekt techniczny)
 
 **MUST:**
-- PokazywaÄ‡ parametry **katalogowe** kaĹĽdego elementu:
-  - typ, dĹ‚ugoĹ›Ä‡, przekrĂłj, R/X/B dla linii,
-  - moc znamionowa, napiÄ™cie, grupa poĹ‚Ä…czeĹ„ dla transformatorĂłw,
-  - parametry ĹşrĂłdeĹ‚ (Sn, Un, typ konwertera).
-- UĹĽywaÄ‡ **czcionek inĹĽynieryjnych** (sans-serif, monospace dla liczb).
-- UmieszczaÄ‡ etykiety wedĹ‚ug reguĹ‚ Â§ 5 (INLINE â†’ OFFSET â†’ SIDE STACK).
-- DuplikowaÄ‡ informacje miÄ™dzy SCADA a CAD **tylko jeĹ›li poprawia to czytelnoĹ›Ä‡** (np. `in_service` jako tekst + kolor).
+- Pokazywać parametry **katalogowe** każdego elementu:
+  - typ, długość, przekrój, R/X/B dla linii,
+  - moc znamionowa, napięcie, grupa połączeń dla transformatorów,
+  - parametry źródeł (Sn, Un, typ konwertera).
+- Używać **czcionek inżynieryjnych** (sans-serif, monospace dla liczb).
+- Umieszczać etykiety według reguł § 5 (INLINE → OFFSET → SIDE STACK).
+- Duplikować informacje między SCADA a CAD **tylko jeśli poprawia to czytelność** (np. `in_service` jako tekst + kolor).
 
 **FORBIDDEN:**
-- Ukrywanie parametrĂłw katalogowych za interakcjÄ… (hover, click), chyba ĹĽe gÄ™stoĹ›Ä‡ wymusza fallback.
-- Pomijanie jednostek (zawsze: `120 A`, `2.5 km`, `0.15 Î©/km`).
-- UĹĽywanie skrĂłtĂłw niejednoznacznych (np. `R` bez `Î©/km`).
+- Ukrywanie parametrów katalogowych za interakcją (hover, click), chyba że gęstość wymusza fallback.
+- Pomijanie jednostek (zawsze: `120 A`, `2.5 km`, `0.15 Ω/km`).
+- Używanie skrótów niejednoznacznych (np. `R` bez `Ω/km`).
 
 ### 3.3 Integracja SCADA + CAD
 
-**ReguĹ‚a zĹ‚otego Ĺ›rodka:**
+**Reguła złotego środka:**
 
-> **Wszystko, co jest widoczne na ekranie, MUSI trafiÄ‡ na wydruk.**
+> **Wszystko, co jest widoczne na ekranie, MUSI trafić na wydruk.**
 > Wydruk = snapshot UI bez utraty informacji.
 
 **MUST:**
-- Oba aspekty (SCADA + CAD) sÄ… **zawsze aktywne rĂłwnoczeĹ›nie**.
-- UĹĽytkownik widzi:
+- Oba aspekty (SCADA + CAD) są **zawsze aktywne równocześnie**.
+- Użytkownik widzi:
   - stan operacyjny (SCADA),
   - parametry techniczne (CAD),
   - wyniki analiz (overlay).
-- Renderer renderuje oba aspekty jako jednÄ… warstwÄ™ kompozytowÄ….
+- Renderer renderuje oba aspekty jako jedną warstwę kompozytową.
 
 **ALLOWED:**
-- Tymczasowe wyĹ‚Ä…czenie CAD overlay w trybie edycji (MODEL_EDIT), jeĹ›li upraszcza UX.
-- Automatyczny fallback do OFFSET/SIDE STACK przy ekstremalnej gÄ™stoĹ›ci.
+- Tymczasowe wyłączenie CAD overlay w trybie edycji (MODEL_EDIT), jeśli upraszcza UX.
+- Automatyczny fallback do OFFSET/SIDE STACK przy ekstremalnej gęstości.
 
 **FORBIDDEN:**
-- Ukrywanie CAD overlay jako domyĹ›lne zachowanie.
-- Wymaganie rÄ™cznego wĹ‚Ä…czania CAD overlay przez uĹĽytkownika.
-- WyĹ›wietlanie SCADA bez CAD w trybie RESULT_VIEW.
+- Ukrywanie CAD overlay jako domyślne zachowanie.
+- Wymaganie ręcznego włączania CAD overlay przez użytkownika.
+- Wyświetlanie SCADA bez CAD w trybie RESULT_VIEW.
 
 ---
 
@@ -119,153 +120,153 @@ Dokument jest **BINDING** dla:
 
 **CANONICAL:**
 
-> Wszystkie istotne informacje o elementach sieci (stan, parametry, wyniki) sÄ… **widoczne na diagramie** bez koniecznoĹ›ci interakcji (hover, click).
+> Wszystkie istotne informacje o elementach sieci (stan, parametry, wyniki) są **widoczne na diagramie** bez konieczności interakcji (hover, click).
 
 ### 4.2 Co jest "istotne"?
 
-**MUST byÄ‡ widoczne:**
+**MUST być widoczne:**
 
 | Element sieci | Informacje widoczne (SCADA) | Informacje widoczne (CAD) |
 |---------------|----------------------------|---------------------------|
-| **Bus** | Nazwa, napiÄ™cie Un, kolor stanu | Typ szyny (gĹ‚Ăłwna/rozdzielcza) |
-| **LineBranch** | PrÄ…d roboczy I [A], kierunek, kolor loading | DĹ‚ugoĹ›Ä‡ [km], R/X/B [Î©/km], przekrĂłj [mmÂ˛] |
-| **TransformerBranch** | PrÄ…d I [A], loading [%] | Sn [MVA], Un1/Un2 [kV], uk [%], grupa |
+| **Bus** | Nazwa, napięcie Un, kolor stanu | Typ szyny (główna/rozdzielcza) |
+| **LineBranch** | Prąd roboczy I [A], kierunek, kolor loading | Długość [km], R/X/B [Ω/km], przekrój [mm²] |
+| **TransformerBranch** | Prąd I [A], loading [%] | Sn [MVA], Un1/Un2 [kV], uk [%], grupa |
 | **Source** | P/Q [MW/Mvar], kierunek | Sn [MVA], Un [kV], typ (grid/PV/WIND/BESS) |
-| **Load** | P/Q [MW/Mvar] | Typ obciÄ…ĹĽenia, cosĎ† |
-| **Switch** | Stan (OPEN/CLOSED) | Typ (wyĹ‚Ä…cznik, odĹ‚Ä…cznik, bezpiecznik) |
+| **Load** | P/Q [MW/Mvar] | Typ obciążenia, cosφ |
+| **Switch** | Stan (OPEN/CLOSED) | Typ (wyłącznik, odłącznik, bezpiecznik) |
 
-**MUST byÄ‡ widoczne w trybie zwarciowym:**
+**MUST być widoczne w trybie zwarciowym:**
 
 | Element | Informacje widoczne |
 |---------|---------------------|
-| **Bus** | `Ikâ€ł`, `ip`, `Ith`, `Skâ€ł` â€” **zawsze przy BUS** |
-| **LineBranch** | WkĹ‚ad do `Ikâ€ł` w BUS docelowym (opcjonalnie, jeĹ›li pomaga zrozumieÄ‡ przepĹ‚yw) |
+| **Bus** | `Ik″`, `ip`, `Ith`, `Sk″` — **zawsze przy BUS** |
+| **LineBranch** | Wkład do `Ik″` w BUS docelowym (opcjonalnie, jeśli pomaga zrozumieć przepływ) |
 
 ### 4.3 ON-DEMAND jako awaryjny fallback
 
 **BINDING:**
 
-ON-DEMAND (wyĹ›wietlanie informacji dopiero po hover/click) jest **DOZWOLONE WYĹÄ„CZNIE** w nastÄ™pujÄ…cych przypadkach:
+ON-DEMAND (wyświetlanie informacji dopiero po hover/click) jest **DOZWOLONE WYŁĄCZNIE** w następujących przypadkach:
 
-1. **Ekstremalna gÄ™stoĹ›Ä‡ diagramu** â€” gdy liczba elementĂłw na jednostkÄ™ powierzchni przekracza prĂłg czytelnoĹ›ci (zdefiniowany jako: etykiety nakĹ‚adajÄ… siÄ™ w >30% przypadkĂłw przy INLINE).
-2. **SzczegĂłĹ‚y pomocnicze** â€” np. szczegĂłĹ‚owe parametry katalogowe (rezystancja termiczna, prÄ…d dynamiczny), ktĂłre nie sÄ… kluczowe dla podstawowej analizy.
-3. **Historia wynikĂłw** â€” porĂłwnanie Case A vs Case B w tym samym BUS (panel boczny, nie main diagram).
+1. **Ekstremalna gęstość diagramu** — gdy liczba elementów na jednostkę powierzchni przekracza próg czytelności (zdefiniowany jako: etykiety nakładają się w >30% przypadków przy INLINE).
+2. **Szczegóły pomocnicze** — np. szczegółowe parametry katalogowe (rezystancja termiczna, prąd dynamiczny), które nie są kluczowe dla podstawowej analizy.
+3. **Historia wyników** — porównanie Case A vs Case B w tym samym BUS (panel boczny, nie main diagram).
 
 **FORBIDDEN:**
-- ON-DEMAND jako **domyĹ›lny sposĂłb prezentacji** parametrĂłw kluczowych (R/X/B, Sn, `Ikâ€ł`).
-- ON-DEMAND jako sposĂłb na "uproszenie" UI kosztem dostÄ™pnoĹ›ci informacji.
+- ON-DEMAND jako **domyślny sposób prezentacji** parametrów kluczowych (R/X/B, Sn, `Ik″`).
+- ON-DEMAND jako sposób na "uproszenie" UI kosztem dostępności informacji.
 
-**ReguĹ‚a:**
-> JeĹ›li informacja jest kluczowa dla zrozumienia sieci lub wynikĂłw â†’ **MUST byÄ‡ widoczna**.
-> JeĹ›li informacja jest pomocnicza lub rzadko uĹĽywana â†’ **MAY byÄ‡ ON-DEMAND**.
+**Reguła:**
+> Jeśli informacja jest kluczowa dla zrozumienia sieci lub wyników → **MUST być widoczna**.
+> Jeśli informacja jest pomocnicza lub rzadko używana → **MAY być ON-DEMAND**.
 
 ---
 
-## 5. Etykiety CAD: INLINE â†’ OFFSET â†’ SIDE STACK
+## 5. Etykiety CAD: INLINE → OFFSET → SIDE STACK
 
-### 5.1 Hierarchia trybĂłw
+### 5.1 Hierarchia trybów
 
 **CANONICAL:**
 
-System wybiera tryb prezentacji etykiet CAD wedĹ‚ug nastÄ™pujÄ…cej hierarchii:
+System wybiera tryb prezentacji etykiet CAD według następującej hierarchii:
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  1. INLINE (domyĹ›lnie)                                       â”‚
-â”‚     â””â”€> JeĹ›li kolizja > 30% â†’ przejdĹş do 2                  â”‚
-â”‚                                                              â”‚
-â”‚  2. OFFSET (leader line)                                     â”‚
-â”‚     â””â”€> JeĹ›li kolizja > 50% â†’ przejdĹş do 3                  â”‚
-â”‚                                                              â”‚
-â”‚  3. SIDE STACK (tabela boczna)                               â”‚
-â”‚     â””â”€> UĹĽywane zawsze w trybie audytu/wydruku              â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌─────────────────────────────────────────────────────────────┐
+│  1. INLINE (domyślnie)                                       │
+│     └─> Jeśli kolizja > 30% → przejdź do 2                  │
+│                                                              │
+│  2. OFFSET (leader line)                                     │
+│     └─> Jeśli kolizja > 50% → przejdź do 3                  │
+│                                                              │
+│  3. SIDE STACK (tabela boczna)                               │
+│     └─> Używane zawsze w trybie audytu/wydruku              │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 INLINE (tryb domyĹ›lny)
+### 5.2 INLINE (tryb domyślny)
 
 **Definicja:**
-Etykiety umieszczone bezpoĹ›rednio na symbolu lub wzdĹ‚uĹĽ linii, bez oddzielenia.
+Etykiety umieszczone bezpośrednio na symbolu lub wzdłuż linii, bez oddzielenia.
 
 **MUST:**
-- Etykieta jest czÄ™Ĺ›ciÄ… symbolu (rendering atomowy).
+- Etykieta jest częścią symbolu (rendering atomowy).
 - Tekst jest czytelny przy standardowym zoomie (100%).
-- Parametry sÄ… uporzÄ…dkowane wertykalnie lub horyzontalnie wg staĹ‚ego schematu.
+- Parametry są uporządkowane wertykalnie lub horyzontalnie wg stałego schematu.
 
-**PrzykĹ‚ad (LineBranch INLINE):**
+**Przykład (LineBranch INLINE):**
 ```
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  L = 2.5 km, 3Ă—150 mmÂ˛ Cu
-  R = 0.124 Î©/km, X = 0.08 Î©/km
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+────────────────────────────────────────
+  L = 2.5 km, 3×150 mm² Cu
+  R = 0.124 Ω/km, X = 0.08 Ω/km
+────────────────────────────────────────
 ```
 
-**PrzykĹ‚ad (Bus INLINE):**
+**Przykład (Bus INLINE):**
 ```
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+════════════════════════════════════════
    Szyna SN-01 | 15 kV | U = 14.85 kV
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+════════════════════════════════════════
 ```
 
 ### 5.3 OFFSET (leader line)
 
 **Definicja:**
-Etykiety przesuniÄ™te poza symbol, z liniÄ… wiodÄ…cÄ… (leader) wskazujÄ…cÄ… element.
+Etykiety przesunięte poza symbol, z linią wiodącą (leader) wskazującą element.
 
-**Kiedy stosowaÄ‡:**
-- Automatyczny fallback, gdy **INLINE powoduje kolizje** (nakĹ‚adanie siÄ™ tekstu).
-- GÄ™stoĹ›Ä‡ elementĂłw wysoka, ale nie krytyczna.
+**Kiedy stosować:**
+- Automatyczny fallback, gdy **INLINE powoduje kolizje** (nakładanie się tekstu).
+- Gęstość elementów wysoka, ale nie krytyczna.
 
 **MUST:**
-- Leader line (linia wiodÄ…ca) jest **cienka, przerywana** (nie myliÄ‡ z liniÄ… elektrycznÄ…).
-- Etykieta jest w prostokÄ…tnym polu z tĹ‚em (biaĹ‚ym lub pĂłĹ‚przeĹşroczystym).
-- OdlegĹ‚oĹ›Ä‡ od symbolu: min 10 px, max 50 px.
+- Leader line (linia wiodąca) jest **cienka, przerywana** (nie mylić z linią elektryczną).
+- Etykieta jest w prostokątnym polu z tłem (białym lub półprzeźroczystym).
+- Odległość od symbolu: min 10 px, max 50 px.
 
-**PrzykĹ‚ad (OFFSET):**
+**Przykład (OFFSET):**
 ```
-                     â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                     â”‚ Linia L-12          â”‚
-          â•­â”€ â”€ â”€ â”€ â”€ â”‚ L = 3.2 km          â”‚
-          â”‚          â”‚ 3Ă—185 mmÂ˛ Al        â”‚
-          â”‚          â”‚ R = 0.164 Î©/km      â”‚
-â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€
+                     ┌─────────────────────┐
+                     │ Linia L-12          │
+          ╭─ ─ ─ ─ ─ │ L = 3.2 km          │
+          │          │ 3×185 mm² Al        │
+          │          │ R = 0.164 Ω/km      │
+──────────┴──────────┴─────────────────────┴──────
 ```
 
 ### 5.4 SIDE STACK (tabela boczna)
 
 **Definicja:**
-Wszystkie etykiety zebrane w tabeli bocznej (panel), elementy na diagramie majÄ… **referencje numeryczne** (ID).
+Wszystkie etykiety zebrane w tabeli bocznej (panel), elementy na diagramie mają **referencje numeryczne** (ID).
 
-**Kiedy stosowaÄ‡:**
-- **Audyt/dokument** â€” wydruk do dokumentacji projektowej, raporty.
-- **Ekstremalna gÄ™stoĹ›Ä‡** â€” gdy OFFSET nie rozwiÄ…zuje problemu kolizji.
-- **PorĂłwnania** â€” wyĹ›wietlanie Case A vs Case B w tabeli bocznej.
+**Kiedy stosować:**
+- **Audyt/dokument** — wydruk do dokumentacji projektowej, raporty.
+- **Ekstremalna gęstość** — gdy OFFSET nie rozwiązuje problemu kolizji.
+- **Porównania** — wyświetlanie Case A vs Case B w tabeli bocznej.
 
 **MUST:**
-- KaĹĽdy element na diagramie ma unikalny **identyfikator numeryczny** (np. L-12, T-03, B-05).
+- Każdy element na diagramie ma unikalny **identyfikator numeryczny** (np. L-12, T-03, B-05).
 - Tabela boczna zawiera **wszystkie parametry** danego elementu.
-- KlikniÄ™cie ID w tabeli â†’ podĹ›wietlenie elementu na diagramie.
-- KlikniÄ™cie elementu na diagramie â†’ podĹ›wietlenie wiersza w tabeli.
+- Kliknięcie ID w tabeli → podświetlenie elementu na diagramie.
+- Kliknięcie elementu na diagramie → podświetlenie wiersza w tabeli.
 
-**PrzykĹ‚ad (SIDE STACK):**
+**Przykład (SIDE STACK):**
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ Diagram                           â”‚ Tabela parametrĂłw       â”‚
-â”‚                                   â”‚                         â”‚
-â”‚   â•â•â•â•â•¦â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•¦â•â•â•â•      â”‚ ID  â”‚ Element â”‚ L [km] â”‚
-â”‚       â•‘                â•‘          â”‚ â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”‚
-â”‚     [L-12]          [L-15]        â”‚ L-12â”‚ Linia   â”‚ 3.2    â”‚
-â”‚       â”‚                â”‚          â”‚ L-15â”‚ Linia   â”‚ 1.8    â”‚
-â”‚                                   â”‚     â”‚         â”‚        â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌───────────────────────────────────┬─────────────────────────┐
+│ Diagram                           │ Tabela parametrów       │
+│                                   │                         │
+│   ════╦════════════════╦════      │ ID  │ Element │ L [km] │
+│       ║                ║          │ ────┼─────────┼────────│
+│     [L-12]          [L-15]        │ L-12│ Linia   │ 3.2    │
+│       │                │          │ L-15│ Linia   │ 1.8    │
+│                                   │     │         │        │
+└───────────────────────────────────┴─────────────────────────┘
 ```
 
-### 5.5 Automatyczne przeĹ‚Ä…czanie trybĂłw
+### 5.5 Automatyczne przełączanie trybów
 
 **BINDING:**
 
-System **automatycznie** wybiera tryb etykiet wedĹ‚ug algorytmu:
+System **automatycznie** wybiera tryb etykiet według algorytmu:
 
 ```python
 def select_label_mode(diagram):
@@ -280,60 +281,60 @@ def select_label_mode(diagram):
 ```
 
 **Definicja `collision_ratio`:**
-Procent etykiet, ktĂłrych bounding box nakĹ‚ada siÄ™ z innymi etykietami lub symbolami.
+Procent etykiet, których bounding box nakłada się z innymi etykietami lub symbolami.
 
-**UĹĽytkownik MAY:**
-- WymusiÄ‡ tryb SIDE STACK rÄ™cznie (np. przycisk "Tryb audytu").
-- WyĹ‚Ä…czyÄ‡ automatyczne przeĹ‚Ä…czanie (ustawienie preferencji).
+**Użytkownik MAY:**
+- Wymusić tryb SIDE STACK ręcznie (np. przycisk "Tryb audytu").
+- Wyłączyć automatyczne przełączanie (ustawienie preferencji).
 
-**UĹĽytkownik MUST NOT:**
-- MieÄ‡ moĹĽliwoĹ›ci trwaĹ‚ego wyĹ‚Ä…czenia CAD overlay (moĹĽe tylko tymczasowo ukryÄ‡).
+**Użytkownik MUST NOT:**
+- Mieć możliwości trwałego wyłączenia CAD overlay (może tylko tymczasowo ukryć).
 
 ---
 
 ## 6. Szyny (BUS): Zasady geometryczne
 
-### 6.1 ReguĹ‚a podstawowa
+### 6.1 Reguła podstawowa
 
 **CANONICAL:**
 
-> Jedna szyna (Bus) = **jedna, ciÄ…gĹ‚a belka pozioma**.
+> Jedna szyna (Bus) = **jedna, ciągła belka pozioma**.
 
 **MUST:**
 - Szyna jest reprezentowana jako **pojedyncza, gruba linia pozioma**.
-- SzerokoĹ›Ä‡ linii: 3-5 px (zaleĹĽnie od zoomu).
+- Szerokość linii: 3-5 px (zależnie od zoomu).
 - Kolor:
-  - `in_service=True` â†’ kolor operacyjny (np. niebieski, czerwony dla wysokiego napiÄ™cia),
-  - `in_service=False` â†’ szary.
-- JeĹ›li do szyny podĹ‚Ä…czonych jest wiele elementĂłw â†’ wszystkie Ĺ‚Ä…czÄ… siÄ™ **do tej samej belki**.
+  - `in_service=True` → kolor operacyjny (np. niebieski, czerwony dla wysokiego napięcia),
+  - `in_service=False` → szary.
+- Jeśli do szyny podłączonych jest wiele elementów → wszystkie łączą się **do tej samej belki**.
 
 ### 6.2 Zakazy (FORBIDDEN)
 
 **NIGDY:**
 
-| Zabronione | Dlaczego | PrawidĹ‚owe |
+| Zabronione | Dlaczego | Prawidłowe |
 |------------|----------|------------|
-| **Dwie rĂłwnolegĹ‚e linie dla jednego BUS** | Sugeruje dwa rĂłĹĽne BUS (bĹ‚Ä™dna topologia) | Jedna linia |
-| **Pseudo-sekcje** (linia przerywana w Ĺ›rodku BUS) | Sugeruje sekcjonowanie, ktĂłre nie istnieje w modelu | Jedna ciÄ…gĹ‚a linia |
-| **PodwĂłjne belki** (sekciĂł busbar) | WyglÄ…da jak dwie szyny w ukĹ‚adzie H/Z | Jeden BUS = jedna belka |
-| **Linie pionowe jako BUS** | Konwencja inĹĽynierska: BUS = poziomo | Zawsze poziomo (z wyjÄ…tkiem schematu poziomego transformatora) |
+| **Dwie równoległe linie dla jednego BUS** | Sugeruje dwa różne BUS (błędna topologia) | Jedna linia |
+| **Pseudo-sekcje** (linia przerywana w środku BUS) | Sugeruje sekcjonowanie, które nie istnieje w modelu | Jedna ciągła linia |
+| **Podwójne belki** (sekció busbar) | Wygląda jak dwie szyny w układzie H/Z | Jeden BUS = jedna belka |
+| **Linie pionowe jako BUS** | Konwencja inżynierska: BUS = poziomo | Zawsze poziomo (z wyjątkiem schematu poziomego transformatora) |
 
-### 6.3 Wiele poziomĂłw napiÄ™cia
+### 6.3 Wiele poziomów napięcia
 
-JeĹ›li diagram zawiera wiele poziomĂłw napiÄ™cia (np. SN, nn):
+Jeśli diagram zawiera wiele poziomów napięcia (np. SN, nn):
 
 **MUST:**
-- KaĹĽdy poziom ma **osobnÄ… warstwÄ™ wizualnÄ…** (rĂłĹĽne wysokoĹ›ci Y na diagramie).
-- Transformatory Ĺ‚Ä…czÄ… warstwy pionowymi liniami.
-- BUS w jednym poziomie **NIE MOGÄ„** nachodziÄ‡ na BUS w innym poziomie (separacja Y).
+- Każdy poziom ma **osobną warstwę wizualną** (różne wysokości Y na diagramie).
+- Transformatory łączą warstwy pionowymi liniami.
+- BUS w jednym poziomie **NIE MOGĄ** nachodzić na BUS w innym poziomie (separacja Y).
 
-**PrzykĹ‚ad:**
+**Przykład:**
 ```
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•  â† SN (15 kV)
-       â•‘
-       â•‘  [T-01]
-       â•‘
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•  â† nn (0.4 kV)
+════════════════════════════════════  ← SN (15 kV)
+       ║
+       ║  [T-01]
+       ║
+════════════════════════════════════  ← nn (0.4 kV)
 ```
 
 ---
@@ -342,81 +343,81 @@ JeĹ›li diagram zawiera wiele poziomĂłw napiÄ™cia (np. SN, nn):
 
 ### 7.1 Linie (LineBranch)
 
-**MUST byÄ‡ widoczne (CAD overlay):**
+**MUST być widoczne (CAD overlay):**
 
-| Parametr | Jednostka | ĹąrĂłdĹ‚o | PrzykĹ‚ad |
+| Parametr | Jednostka | Źródło | Przykład |
 |----------|-----------|--------|----------|
-| DĹ‚ugoĹ›Ä‡ | km | User input | `L = 2.5 km` |
-| PrzekrĂłj | mmÂ˛ | Catalog (type_ref) | `3Ă—150 mmÂ˛ Cu` |
-| Rezystancja | Î©/km | Catalog | `R = 0.124 Î©/km` |
-| Reaktancja | Î©/km | Catalog | `X = 0.08 Î©/km` |
-| Susceptancja | ÂµS/km | Catalog | `B = 3.5 ÂµS/km` |
+| Długość | km | User input | `L = 2.5 km` |
+| Przekrój | mm² | Catalog (type_ref) | `3×150 mm² Cu` |
+| Rezystancja | Ω/km | Catalog | `R = 0.124 Ω/km` |
+| Reaktancja | Ω/km | Catalog | `X = 0.08 Ω/km` |
+| Susceptancja | µS/km | Catalog | `B = 3.5 µS/km` |
 
-**KolejnoĹ›Ä‡ wyĹ›wietlania (BINDING):**
+**Kolejność wyświetlania (BINDING):**
 ```
 Linia [Nazwa]
-L = [wartoĹ›Ä‡] km, [przekrĂłj] mmÂ˛ [materiaĹ‚]
-R = [wartoĹ›Ä‡] Î©/km, X = [wartoĹ›Ä‡] Î©/km
+L = [wartość] km, [przekrój] mm² [materiał]
+R = [wartość] Ω/km, X = [wartość] Ω/km
 ```
 
 **FORBIDDEN:**
 - Pomijanie jednostek (`L = 2.5` zamiast `L = 2.5 km`).
 - Pokazywanie tylko R lub tylko X (zawsze R **i** X).
-- UĹĽywanie impedancji caĹ‚kowitej zamiast jednostkowej (chyba ĹĽe jawnie oznaczone jako `Z_total`).
+- Używanie impedancji całkowitej zamiast jednostkowej (chyba że jawnie oznaczone jako `Z_total`).
 
 ### 7.2 Transformatory (TransformerBranch)
 
-**MUST byÄ‡ widoczne (CAD overlay):**
+**MUST być widoczne (CAD overlay):**
 
-| Parametr | Jednostka | ĹąrĂłdĹ‚o | PrzykĹ‚ad |
+| Parametr | Jednostka | Źródło | Przykład |
 |----------|-----------|--------|----------|
 | Moc znamionowa | MVA | Catalog | `Sn = 1.6 MVA` |
-| NapiÄ™cie strony WN | kV | Catalog | `Un1 = 15 kV` |
-| NapiÄ™cie strony NN | kV | Catalog | `Un2 = 0.4 kV` |
-| NapiÄ™cie zwarcia | % | Catalog | `uk = 6%` |
-| Grupa poĹ‚Ä…czeĹ„ | - | Catalog | `Dyn11` |
+| Napięcie strony WN | kV | Catalog | `Un1 = 15 kV` |
+| Napięcie strony NN | kV | Catalog | `Un2 = 0.4 kV` |
+| Napięcie zwarcia | % | Catalog | `uk = 6%` |
+| Grupa połączeń | - | Catalog | `Dyn11` |
 
-**KolejnoĹ›Ä‡ wyĹ›wietlania (BINDING):**
+**Kolejność wyświetlania (BINDING):**
 ```
 Transformator [Nazwa]
-Sn = [wartoĹ›Ä‡] MVA, [Un1]/[Un2] kV
-uk = [wartoĹ›Ä‡]%, [grupa]
+Sn = [wartość] MVA, [Un1]/[Un2] kV
+uk = [wartość]%, [grupa]
 ```
 
-### 7.3 ĹąrĂłdĹ‚a (Source)
+### 7.3 Źródła (Source)
 
-**MUST byÄ‡ widoczne (CAD overlay):**
+**MUST być widoczne (CAD overlay):**
 
-| Parametr | Jednostka | ĹąrĂłdĹ‚o | PrzykĹ‚ad |
+| Parametr | Jednostka | Źródło | Przykład |
 |----------|-----------|--------|----------|
 | Moc znamionowa | MVA | Catalog | `Sn = 2.5 MVA` |
-| NapiÄ™cie znamionowe | kV | Catalog | `Un = 0.4 kV` |
+| Napięcie znamionowe | kV | Catalog | `Un = 0.4 kV` |
 | Typ | - | converter_kind | `PV` / `WIND` / `BESS` / `GRID` |
 
-**KolejnoĹ›Ä‡ wyĹ›wietlania (BINDING):**
+**Kolejność wyświetlania (BINDING):**
 ```
-ĹąrĂłdĹ‚o [Nazwa] ([Typ])
-Sn = [wartoĹ›Ä‡] MVA, Un = [wartoĹ›Ä‡] kV
+Źródło [Nazwa] ([Typ])
+Sn = [wartość] MVA, Un = [wartość] kV
 ```
 
 **FORBIDDEN:**
-- Pokazywanie impedancji wewnÄ™trznej w CAD overlay (impedancja jest parametrem solvera, nie katalogowym).
+- Pokazywanie impedancji wewnętrznej w CAD overlay (impedancja jest parametrem solvera, nie katalogowym).
 
 ---
 
-## 8. Duplikacja informacji miÄ™dzy SCADA a CAD
+## 8. Duplikacja informacji między SCADA a CAD
 
 ### 8.1 Kiedy dozwolone?
 
 **ALLOWED:**
 
-Duplikacja informacji miÄ™dzy SCADA a CAD jest **dozwolona**, jeĹ›li:
+Duplikacja informacji między SCADA a CAD jest **dozwolona**, jeśli:
 
-1. **Poprawia czytelnoĹ›Ä‡** â€” np. powtĂłrzenie nazwy BUS w CAD overlay, gdy SCADA uĹĽywa koloru.
-2. **Nie zmienia semantyki** â€” ta sama wartoĹ›Ä‡ w obu warstwach (np. `in_service` jako kolor + tekst).
-3. **Jest jawnie oznaczona** â€” np. `[SCADA]` vs `[CAD]` w etykiecie (tylko w trybie debug).
+1. **Poprawia czytelność** — np. powtórzenie nazwy BUS w CAD overlay, gdy SCADA używa koloru.
+2. **Nie zmienia semantyki** — ta sama wartość w obu warstwach (np. `in_service` jako kolor + tekst).
+3. **Jest jawnie oznaczona** — np. `[SCADA]` vs `[CAD]` w etykiecie (tylko w trybie debug).
 
-**PrzykĹ‚ad dozwolony:**
+**Przykład dozwolony:**
 - SCADA: Szyna kolorowa (niebieski = `in_service=True`).
 - CAD: Tekst "W eksploatacji: TAK".
 
@@ -424,11 +425,11 @@ Duplikacja informacji miÄ™dzy SCADA a CAD jest **dozwolona**, jeĹ›li:
 
 **FORBIDDEN:**
 
-| BĹ‚Ä™dna duplikacja | Dlaczego | PrawidĹ‚owe |
+| Błędna duplikacja | Dlaczego | Prawidłowe |
 |-------------------|----------|------------|
-| **RĂłĹĽne wartoĹ›ci w SCADA vs CAD** | SprzecznoĹ›Ä‡ â†’ uĹĽytkownik nie wie, ktĂłrej wierzyÄ‡ | Jedna wartoĹ›Ä‡, jedno ĹşrĂłdĹ‚o prawdy |
-| **Duplikacja wynikĂłw zwarciowych** | `Ikâ€ł` raz na BUS (CAD), raz w overlay (SCADA) | `Ikâ€ł` **tylko** w overlay wynikĂłw |
-| **Duplikacja parametrĂłw katalogowych** | `Sn` raz w symbolu, raz w CAD | `Sn` **tylko** w CAD overlay |
+| **Różne wartości w SCADA vs CAD** | Sprzeczność → użytkownik nie wie, której wierzyć | Jedna wartość, jedno źródło prawdy |
+| **Duplikacja wyników zwarciowych** | `Ik″` raz na BUS (CAD), raz w overlay (SCADA) | `Ik″` **tylko** w overlay wyników |
+| **Duplikacja parametrów katalogowych** | `Sn` raz w symbolu, raz w CAD | `Sn` **tylko** w CAD overlay |
 
 ---
 
@@ -441,15 +442,15 @@ Duplikacja informacji miÄ™dzy SCADA a CAD jest **dozwolona**, jeĹ›li:
 > Wydruk (PDF/DOCX) jest **1:1 snapchotem UI** bez utraty informacji.
 
 **MUST:**
-- Wszystko, co widoczne na ekranie â†’ widoczne w PDF.
-- SCADA + CAD â†’ obie warstwy w PDF.
-- Etykiety INLINE/OFFSET â†’ zachowane w PDF.
-- Etykiety SIDE STACK â†’ tabela boczna w PDF (jak na ekranie).
+- Wszystko, co widoczne na ekranie → widoczne w PDF.
+- SCADA + CAD → obie warstwy w PDF.
+- Etykiety INLINE/OFFSET → zachowane w PDF.
+- Etykiety SIDE STACK → tabela boczna w PDF (jak na ekranie).
 
 **FORBIDDEN:**
-- Ukrywanie CAD overlay w PDF (jeĹ›li widoczne na ekranie).
-- Zmiana trybĂłw etykiet przy wydruku (np. INLINE â†’ SIDE STACK bez zgody uĹĽytkownika).
-- Pomijanie elementĂłw "zbyt maĹ‚ych" (wszystko musi byÄ‡ widoczne, nawet jeĹ›li wymaga to wielu stron).
+- Ukrywanie CAD overlay w PDF (jeśli widoczne na ekranie).
+- Zmiana trybów etykiet przy wydruku (np. INLINE → SIDE STACK bez zgody użytkownika).
+- Pomijanie elementów "zbyt małych" (wszystko musi być widoczne, nawet jeśli wymaga to wielu stron).
 
 ### 9.2 Layout wydruku
 
@@ -457,148 +458,148 @@ Duplikacja informacji miÄ™dzy SCADA a CAD jest **dozwolona**, jeĹ›li:
 
 Strona PDF zawiera:
 
-1. **NagĹ‚Ăłwek:**
-   - TytuĹ‚ projektu,
+1. **Nagłówek:**
+   - Tytuł projektu,
    - Data wygenerowania,
    - Autor,
-   - Case (jeĹ›li wyniki zwarciowe: MAX / MIN / N-1).
+   - Case (jeśli wyniki zwarciowe: MAX / MIN / N-1).
 
 2. **Diagram SLD:**
-   - Fragment SLD (jeĹ›li duĹĽy â†’ podzielony na strony),
+   - Fragment SLD (jeśli duży → podzielony na strony),
    - SCADA + CAD overlay,
-   - Legendy kolorĂłw i symboli.
+   - Legendy kolorów i symboli.
 
-3. **Tabela wynikĂłw (jeĹ›li RESULT_VIEW):**
-   - Tabela BUS â†’ `Ikâ€ł` / `ip` / `Ith` / `Skâ€ł`,
-   - Tabela wkĹ‚adĂłw (contributions),
+3. **Tabela wyników (jeśli RESULT_VIEW):**
+   - Tabela BUS → `Ik″` / `ip` / `Ith` / `Sk″`,
+   - Tabela wkładów (contributions),
    - Metadane (norma IEC 60909, snapshot ID, trace_id).
 
 4. **Stopka:**
    - Numer strony,
    - Link do trace (opcjonalnie).
 
-### 9.3 WielostronicowoĹ›Ä‡
+### 9.3 Wielostronicowość
 
-JeĹ›li diagram nie mieĹ›ci siÄ™ na jednej stronie A4/A3:
+Jeśli diagram nie mieści się na jednej stronie A4/A3:
 
 **MUST:**
-- PodziaĹ‚ na strony wedĹ‚ug **logicznych sekcji** (np. jedna strona = jeden poziom napiÄ™cia).
-- Oznaczenie kontynuacji (strzaĹ‚ki "â†’ ciÄ…g dalszy na stronie X").
-- PowtĂłrzenie nagĹ‚Ăłwka na kaĹĽdej stronie.
+- Podział na strony według **logicznych sekcji** (np. jedna strona = jeden poziom napięcia).
+- Oznaczenie kontynuacji (strzałki "→ ciąg dalszy na stronie X").
+- Powtórzenie nagłówka na każdej stronie.
 
 **FORBIDDEN:**
-- CiÄ™cie elementĂłw w poĹ‚owie (np. transformator na dwĂłch stronach).
+- Cięcie elementów w połowie (np. transformator na dwóch stronach).
 - Brak informacji o kontynuacji.
 
 ---
 
-## 10. Integracja z pozostaĹ‚ymi dokumentami
+## 10. Integracja z pozostałymi dokumentami
 
-### 10.1 PowiÄ…zania kanoniczne
+### 10.1 Powiązania kanoniczne
 
-| Dokument | Co definiuje | PowiÄ…zanie z SLD_SCADA_CAD_CONTRACT |
+| Dokument | Co definiuje | Powiązanie z SLD_SCADA_CAD_CONTRACT |
 |----------|--------------|-------------------------------------|
-| `sld_rules.md` | Podstawowe reguĹ‚y SLD (bijection, symbole, tryby) | SLD_SCADA_CAD rozszerza o CAD overlay i wydruk |
-| `wizard_screens.md` | Tryby pracy systemu (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW) | Tryby okreĹ›lajÄ…, kiedy CAD overlay jest aktywny |
-| `SLD_SHORT_CIRCUIT_BUS_CENTRIC.md` | Prezentacja wynikĂłw zwarciowych (BUS-centric) | CAD overlay + wyniki zwarciowe = jedna warstwa kompozytowa |
-| `SHORT_CIRCUIT_PANELS_AND_PRINTING.md` | Panele wynikĂłw, wydruk | Layout wydruku zgodny z Â§ 9 |
-| `P11_SC_CASE_MAPPING.md` | Mapowanie Case â†’ ProofDocument | Wydruk zawiera trace_id dla kaĹĽdej liczby |
+| `sld_rules.md` | Podstawowe reguły SLD (bijection, symbole, tryby) | SLD_SCADA_CAD rozszerza o CAD overlay i wydruk |
+| `wizard_screens.md` | Tryby pracy systemu (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW) | Tryby określają, kiedy CAD overlay jest aktywny |
+| `SLD_SHORT_CIRCUIT_BUS_CENTRIC.md` | Prezentacja wyników zwarciowych (BUS-centric) | CAD overlay + wyniki zwarciowe = jedna warstwa kompozytowa |
+| `SHORT_CIRCUIT_PANELS_AND_PRINTING.md` | Panele wyników, wydruk | Layout wydruku zgodny z § 9 |
+| `P11_SC_CASE_MAPPING.md` | Mapowanie Case → ProofDocument | Wydruk zawiera trace_id dla każdej liczby |
 
-### 10.2 Rozstrzyganie konfliktĂłw
+### 10.2 Rozstrzyganie konfliktów
 
 **BINDING:**
 
-W przypadku konfliktu miÄ™dzy dokumentami:
+W przypadku konfliktu między dokumentami:
 
-1. **SYSTEM_SPEC.md** ma najwyĹĽszy priorytet (CANONICAL).
-2. **SLD_SCADA_CAD_CONTRACT.md** (ten dokument) rozstrzyga konflikty miÄ™dzy SCADA a CAD.
-3. **sld_rules.md** definiuje bazowe reguĹ‚y (bijection, symbole).
+1. **SYSTEM_SPEC.md** ma najwyższy priorytet (CANONICAL).
+2. **SLD_SCADA_CAD_CONTRACT.md** (ten dokument) rozstrzyga konflikty między SCADA a CAD.
+3. **sld_rules.md** definiuje bazowe reguły (bijection, symbole).
 4. **wizard_screens.md** definiuje tryby pracy (MODEL_EDIT / RESULT_VIEW).
 
-JeĹ›li konflikt pozostaje nierozstrzygniÄ™ty â†’ **zgĹ‚oĹ› jako Issue** (REPOSITORY-HYGIENE.md).
+Jeśli konflikt pozostaje nierozstrzygnięty → **zgłoś jako Issue** (REPOSITORY-HYGIENE.md).
 
 ---
 
-## 11. PrzykĹ‚ady (ilustracje kanoniczne)
+## 11. Przykłady (ilustracje kanoniczne)
 
-### 11.1 PrzykĹ‚ad: Linia z INLINE etykietÄ…
+### 11.1 Przykład: Linia z INLINE etykietą
 
 ```
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                        â”‚
-                        â”‚  Linia L-12
-                        â”‚  L = 2.5 km, 3Ă—150 mmÂ˛ Cu
-                        â”‚  R = 0.124 Î©/km, X = 0.08 Î©/km
-                        â”‚  I = 125 A â†’
-                        â”‚
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+════════════════════════════════════════════════════════════
+                        │
+                        │  Linia L-12
+                        │  L = 2.5 km, 3×150 mm² Cu
+                        │  R = 0.124 Ω/km, X = 0.08 Ω/km
+                        │  I = 125 A →
+                        │
+════════════════════════════════════════════════════════════
 ```
 
 **SCADA:**
-- Kierunek przepĹ‚ywu (strzaĹ‚ka â†’),
-- WartoĹ›Ä‡ prÄ…du `I = 125 A`,
+- Kierunek przepływu (strzałka →),
+- Wartość prądu `I = 125 A`,
 - Kolor linii (zielony = loading < 80%).
 
 **CAD overlay:**
-- DĹ‚ugoĹ›Ä‡, przekrĂłj, materiaĹ‚,
+- Długość, przekrój, materiał,
 - Parametry R/X.
 
-### 11.2 PrzykĹ‚ad: Szyna z wynikami zwarciowymi
+### 11.2 Przykład: Szyna z wynikami zwarciowymi
 
 ```
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+════════════════════════════════════════════════════════════
    Szyna SN-01 | 15 kV                              [SCADA]
-   Ikâ€ł = 12.5 kA, ip = 32.8 kA, Skâ€ł = 325 MVA      [WYNIKI]
+   Ik″ = 12.5 kA, ip = 32.8 kA, Sk″ = 325 MVA      [WYNIKI]
    U = 14.85 kV (operacyjne)                        [SCADA]
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+════════════════════════════════════════════════════════════
 ```
 
 **SCADA:**
-- NapiÄ™cie operacyjne `U = 14.85 kV`,
-- Kolor szyny (niebieski = normalne napiÄ™cie).
+- Napięcie operacyjne `U = 14.85 kV`,
+- Kolor szyny (niebieski = normalne napięcie).
 
 **CAD overlay:**
-- NapiÄ™cie znamionowe `15 kV`,
-- Typ szyny (gĹ‚Ăłwna/rozdzielcza).
+- Napięcie znamionowe `15 kV`,
+- Typ szyny (główna/rozdzielcza).
 
-**Overlay wynikĂłw (zwarcie):**
-- `Ikâ€ł`, `ip`, `Skâ€ł` â€” **tylko przy BUS** (BUS-centric).
+**Overlay wyników (zwarcie):**
+- `Ik″`, `ip`, `Sk″` — **tylko przy BUS** (BUS-centric).
 
-### 11.3 PrzykĹ‚ad: Transformator
+### 11.3 Przykład: Transformator
 
 ```
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•  â† SN (15 kV)
-       â•‘
-       â•‘  Transformator T-01
-       â•‘  Sn = 1.6 MVA, 15/0.4 kV
-       â•‘  uk = 6%, Dyn11
-       â•‘  Loading = 85% (SCADA: ĹĽĂłĹ‚ty)
-       â•‘
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•  â† nn (0.4 kV)
+════════════════════════════════════════  ← SN (15 kV)
+       ║
+       ║  Transformator T-01
+       ║  Sn = 1.6 MVA, 15/0.4 kV
+       ║  uk = 6%, Dyn11
+       ║  Loading = 85% (SCADA: żółty)
+       ║
+════════════════════════════════════════  ← nn (0.4 kV)
 ```
 
 **SCADA:**
-- Loading 85% â†’ kolor ĹĽĂłĹ‚ty (ostrzeĹĽenie).
+- Loading 85% → kolor żółty (ostrzeżenie).
 
 **CAD overlay:**
-- Parametry katalogowe: Sn, uk, grupa poĹ‚Ä…czeĹ„.
+- Parametry katalogowe: Sn, uk, grupa połączeń.
 
 ---
 
-## 12. Podsumowanie reguĹ‚ (checklist)
+## 12. Podsumowanie reguł (checklist)
 
-**Implementacja zgodna z SLD_SCADA_CAD_CONTRACT, jeĹ›li:**
+**Implementacja zgodna z SLD_SCADA_CAD_CONTRACT, jeśli:**
 
-- [ ] Diagram zawiera **dwa aspekty** (SCADA + CAD) aktywne rĂłwnoczeĹ›nie.
-- [ ] Wszystkie informacje kluczowe sÄ… **widoczne bez interakcji** (zasada "wszystko widoczne zawsze").
-- [ ] ON-DEMAND jest uĹĽywane **tylko jako awaryjny fallback** (ekstremalna gÄ™stoĹ›Ä‡, szczegĂłĹ‚y pomocnicze).
-- [ ] Jedna szyna (Bus) = **jedna, ciÄ…gĹ‚a belka pozioma** (zakaz podwĂłjnych belek, pseudo-sekcji).
-- [ ] Etykiety CAD uĹĽywajÄ… hierarchii **INLINE â†’ OFFSET â†’ SIDE STACK** (automatyczne przeĹ‚Ä…czanie).
-- [ ] Parametry katalogowe (R/X/B, Sn, uk) sÄ… **zawsze widoczne** w CAD overlay.
+- [ ] Diagram zawiera **dwa aspekty** (SCADA + CAD) aktywne równocześnie.
+- [ ] Wszystkie informacje kluczowe są **widoczne bez interakcji** (zasada "wszystko widoczne zawsze").
+- [ ] ON-DEMAND jest używane **tylko jako awaryjny fallback** (ekstremalna gęstość, szczegóły pomocnicze).
+- [ ] Jedna szyna (Bus) = **jedna, ciągła belka pozioma** (zakaz podwójnych belek, pseudo-sekcji).
+- [ ] Etykiety CAD używają hierarchii **INLINE → OFFSET → SIDE STACK** (automatyczne przełączanie).
+- [ ] Parametry katalogowe (R/X/B, Sn, uk) są **zawsze widoczne** w CAD overlay.
 - [ ] Wydruk (PDF/DOCX) jest **1:1 snapchotem UI** bez utraty informacji.
-- [ ] Terminologia: **BoundaryNode** (wÄ™zeĹ‚ przyĹ‚Ä…czenia), **BUS-centric**, **Case** (MAX/MIN/N-1).
-- [ ] Duplikacja SCADA â†” CAD dozwolona **tylko jeĹ›li poprawia czytelnoĹ›Ä‡** i nie zmienia semantyki.
-- [ ] System automatycznie wykrywa kolizje etykiet i przeĹ‚Ä…cza tryby (collision_ratio).
+- [ ] Terminologia: **BoundaryNode** (węzeł przyłączenia), **BUS-centric**, **Case** (MAX/MIN/N-1).
+- [ ] Duplikacja SCADA ↔ CAD dozwolona **tylko jeśli poprawia czytelność** i nie zmienia semantyki.
+- [ ] System automatycznie wykrywa kolizje etykiet i przełącza tryby (collision_ratio).
 
 ---
 
@@ -610,104 +611,104 @@ JeĹ›li konflikt pozostaje nierozstrzygniÄ™ty â†’ **zgĹ‚oĹ› jako
 
 `SLD_SCADA_CAD_CONTRACT.md` (ten dokument) definiuje **warstwy widoku** (SCADA + CAD).
 
-`SLD_UI_CONTRACT.md` definiuje **kontrakty renderowania i interakcji** (priorytety, gÄ™stoĹ›Ä‡, kolory, wydruk, interakcja).
+`SLD_UI_CONTRACT.md` definiuje **kontrakty renderowania i interakcji** (priorytety, gęstość, kolory, wydruk, interakcja).
 
-Oba dokumenty sÄ… **komplementarne** i obowiÄ…zujÄ… rĂłwnoczeĹ›nie.
+Oba dokumenty są **komplementarne** i obowiązują równocześnie.
 
 ### 13.2 UI Priority Stack (kontrakt #1)
 
 **BINDING:**
 
-Zgodnie z `SLD_UI_CONTRACT.md` Â§ 3 (UI Priority Stack):
+Zgodnie z `SLD_UI_CONTRACT.md` § 3 (UI Priority Stack):
 
-1. **BUS** (wyniki zwarciowe, stan) â€” absolutny priorytet wizualny.
-2. **LINIA** (prÄ…d roboczy `I`) â€” priorytet 2.
-3. **CAD** (parametry katalogowe) â€” najniĹĽszy priorytet.
+1. **BUS** (wyniki zwarciowe, stan) — absolutny priorytet wizualny.
+2. **LINIA** (prąd roboczy `I`) — priorytet 2.
+3. **CAD** (parametry katalogowe) — najniższy priorytet.
 
 **Implikacje dla SLD_SCADA_CAD_CONTRACT:**
 
-- Wyniki zwarciowe przy BUS (Â§ 4.3 tego dokumentu) **MUSZÄ„** byÄ‡ widoczne zawsze (INLINE lub OFFSET, nigdy SIDE STACK).
-- Parametry CAD (Â§ 7 tego dokumentu) **MOGÄ„** byÄ‡ przesuwane do OFFSET lub SIDE STACK przy kolizji z wynikami BUS.
-- PrÄ…d roboczy linii (Â§ 4.3 tego dokumentu) **MUSI** byÄ‡ widoczny, ale moĹĽe ustÄ…piÄ‡ miejsca wynikom BUS.
+- Wyniki zwarciowe przy BUS (§ 4.3 tego dokumentu) **MUSZĄ** być widoczne zawsze (INLINE lub OFFSET, nigdy SIDE STACK).
+- Parametry CAD (§ 7 tego dokumentu) **MOGĄ** być przesuwane do OFFSET lub SIDE STACK przy kolizji z wynikami BUS.
+- Prąd roboczy linii (§ 4.3 tego dokumentu) **MUSI** być widoczny, ale może ustąpić miejsca wynikom BUS.
 
 ### 13.3 Dense SLD Rules (kontrakt #2)
 
 **BINDING:**
 
-Zgodnie z `SLD_UI_CONTRACT.md` Â§ 4 (Dense SLD Rules):
+Zgodnie z `SLD_UI_CONTRACT.md` § 4 (Dense SLD Rules):
 
-- System automatycznie wykrywa gÄ™stoĹ›Ä‡ diagramu (`density > 0.10 elem/cmÂ˛`).
-- Etykiety CAD przeĹ‚Ä…czajÄ… siÄ™: **INLINE â†’ OFFSET â†’ SIDE STACK** (zgodnie z Â§ 5 tego dokumentu).
-- Wyniki BUS pozostajÄ… **INLINE lub OFFSET** niezaleĹĽnie od gÄ™stoĹ›ci (zgodnie z Â§ 4 tego dokumentu).
+- System automatycznie wykrywa gęstość diagramu (`density > 0.10 elem/cm²`).
+- Etykiety CAD przełączają się: **INLINE → OFFSET → SIDE STACK** (zgodnie z § 5 tego dokumentu).
+- Wyniki BUS pozostają **INLINE lub OFFSET** niezależnie od gęstości (zgodnie z § 4 tego dokumentu).
 
-**ReguĹ‚a rozszerzona:**
+**Reguła rozszerzona:**
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  GÄ™stoĹ›Ä‡ < 0.10 elem/cmÂ˛:                                    â”‚
-â”‚  - CAD: INLINE (domyĹ›lnie)                                   â”‚
-â”‚  - Wyniki BUS: INLINE                                        â”‚
-â”‚                                                              â”‚
-â”‚  GÄ™stoĹ›Ä‡ 0.10 â€“ 0.20 elem/cmÂ˛:                               â”‚
-â”‚  - CAD: OFFSET (auto fallback)                               â”‚
-â”‚  - Wyniki BUS: INLINE (priorytet)                            â”‚
-â”‚                                                              â”‚
-â”‚  GÄ™stoĹ›Ä‡ > 0.20 elem/cmÂ˛:                                    â”‚
-â”‚  - CAD: SIDE STACK (wymuszony)                               â”‚
-â”‚  - Wyniki BUS: INLINE (absolutny priorytet)                  â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+┌─────────────────────────────────────────────────────────────┐
+│  Gęstość < 0.10 elem/cm²:                                    │
+│  - CAD: INLINE (domyślnie)                                   │
+│  - Wyniki BUS: INLINE                                        │
+│                                                              │
+│  Gęstość 0.10 – 0.20 elem/cm²:                               │
+│  - CAD: OFFSET (auto fallback)                               │
+│  - Wyniki BUS: INLINE (priorytet)                            │
+│                                                              │
+│  Gęstość > 0.20 elem/cm²:                                    │
+│  - CAD: SIDE STACK (wymuszony)                               │
+│  - Wyniki BUS: INLINE (absolutny priorytet)                  │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### 13.4 Semantic Color Contract (kontrakt #3)
 
 **BINDING:**
 
-Zgodnie z `SLD_UI_CONTRACT.md` Â§ 5 (Semantic Color Contract):
+Zgodnie z `SLD_UI_CONTRACT.md` § 5 (Semantic Color Contract):
 
 - Kolor oznacza **znaczenie** (stan, alarm), nie typ elementu.
-- SCADA SLD (Â§ 3.1 tego dokumentu) uĹĽywa kolorĂłw semantycznych:
+- SCADA SLD (§ 3.1 tego dokumentu) używa kolorów semantycznych:
   - **Zielony** = stan normalny,
-  - **Ĺ»ĂłĹ‚ty** = ostrzeĹĽenie (loading 80-100%),
-  - **Czerwony** = przeciÄ…ĹĽenie (loading > 100%) lub bĹ‚Ä…d,
+  - **Żółty** = ostrzeżenie (loading 80-100%),
+  - **Czerwony** = przeciążenie (loading > 100%) lub błąd,
   - **Szary** = `in_service=False`.
 
-**CAD overlay (Â§ 3.2 tego dokumentu) uĹĽywa kolorĂłw neutralnych:**
+**CAD overlay (§ 3.2 tego dokumentu) używa kolorów neutralnych:**
 - Czarny/ciemny dla tekstu i symboli (brak semantyki operacyjnej).
 
 ### 13.5 Print-First Contract (kontrakt #4)
 
 **BINDING:**
 
-Zgodnie z `SLD_UI_CONTRACT.md` Â§ 6 (Print-First Contract):
+Zgodnie z `SLD_UI_CONTRACT.md` § 6 (Print-First Contract):
 
 > **Ekran = PDF = prawda projektu**
 
-**Implikacje dla wydruku (Â§ 9 tego dokumentu):**
+**Implikacje dla wydruku (§ 9 tego dokumentu):**
 
-- Wszystko widoczne na ekranie **MUSI** byÄ‡ widoczne w PDF (ĹĽadne auto-hide).
-- Wyniki BUS i prÄ…dy linii **zawsze widoczne** na wydruku.
+- Wszystko widoczne na ekranie **MUSI** być widoczne w PDF (żadne auto-hide).
+- Wyniki BUS i prądy linii **zawsze widoczne** na wydruku.
 - Tryb etykiet (INLINE/OFFSET/SIDE STACK) **zachowany** w PDF.
 
 ### 13.6 Interaction Contract (kontrakt #5)
 
 **BINDING:**
 
-Zgodnie z `SLD_UI_CONTRACT.md` Â§ 7 (Interaction Contract):
+Zgodnie z `SLD_UI_CONTRACT.md` § 7 (Interaction Contract):
 
 - **Hover** = informacja (tooltip), nie zmienia stanu.
-- **Click** = fokus + panel boczny (zgodnie z Â§ 10.1 `SLD_SCADA_CAD_CONTRACT.md`).
-- **ESC** = zamkniÄ™cie panelu / anulowanie fokusa.
+- **Click** = fokus + panel boczny (zgodnie z § 10.1 `SLD_SCADA_CAD_CONTRACT.md`).
+- **ESC** = zamknięcie panelu / anulowanie fokusa.
 
 **Tooltip (SCADA + CAD):**
 
-Hover nad BUS wyĹ›wietla:
-1. SCADA: napiÄ™cie operacyjne, stan (`in_service`),
-2. Wyniki: `Ikâ€ł`, `ip`, `Ith`, `Skâ€ł` (jeĹ›li RESULT_VIEW),
-3. CAD: typ szyny, napiÄ™cie znamionowe.
+Hover nad BUS wyświetla:
+1. SCADA: napięcie operacyjne, stan (`in_service`),
+2. Wyniki: `Ik″`, `ip`, `Ith`, `Sk″` (jeśli RESULT_VIEW),
+3. CAD: typ szyny, napięcie znamionowe.
 
 ---
 
 **KONIEC DOKUMENTU SLD_SCADA_CAD_CONTRACT.md**
 **Status:** CANONICAL (BINDING)
-**Dokument jest ĹşrĂłdĹ‚em prawdy dla implementacji SLD UI w MV-DESIGN-PRO.**
+**Dokument jest źródłem prawdy dla implementacji SLD UI w MV-DESIGN-PRO.**
 

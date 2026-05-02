@@ -37,7 +37,7 @@ export function SemanticInspectorCard({ card }: SemanticInspectorCardProps) {
               : 'border-scada-border bg-scada-bg text-scada-muted',
           )}
         >
-          {blocked ? 'BLOKADA_SEMANTYCZNA' : card.completeness}
+          {blocked ? 'Blokada semantyczna' : formatCompleteness(card.completeness)}
         </span>
       </div>
 
@@ -51,27 +51,30 @@ export function SemanticInspectorCard({ card }: SemanticInspectorCardProps) {
 }
 
 function CompleteSemanticContent({ card }: { card: SemanticInspectorCardModel }) {
+  const visiblePositionRows = card.networkPosition.filter((row) => row.value !== '-');
+
   return (
     <div className="mt-3 space-y-3">
       <dl className="grid gap-1.5 text-[12px]">
-        <SemanticRow label="refId" value={card.refId} mono />
-        <SemanticRow label="Rodzaj elementu" value={card.elementKind ?? '-'} mono />
-        <SemanticRow label="Rola inzynierska" value={card.engineeringRole ?? '-'} mono />
-        <SemanticRow label="Funkcja ukladowa" value={card.functionalRole ?? '-'} mono />
-        <SemanticRow label="Domena napieciowa" value={card.voltageDomain ?? '-'} mono />
-        <SemanticRow label="Jakosc danych" value={card.dataQualityState ?? '-'} mono />
+        <SemanticRow label="Rodzaj elementu" value={formatElementKind(card.elementKind)} />
+        <SemanticRow label="Rola inżynierska" value={formatEngineeringRole(card.engineeringRole)} />
+        <SemanticRow label="Funkcja układowa" value={formatFunctionalRole(card.functionalRole)} />
+        <SemanticRow label="Domena napięciowa" value={formatVoltageDomain(card.voltageDomain)} />
+        <SemanticRow label="Jakość danych" value={formatDataQuality(card.dataQualityState)} />
       </dl>
 
+      {visiblePositionRows.length > 0 && (
       <div>
         <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-scada-muted">
           Pozycja w sieci
         </h4>
         <dl className="mt-1 grid gap-1 text-[11px]">
-          {card.networkPosition.map((row) => (
-            <SemanticRow key={row.key} label={row.labelPl} value={row.value} mono />
+          {visiblePositionRows.map((row) => (
+            <SemanticRow key={row.key} label={row.labelPl} value={formatPositionValue(row.value)} />
           ))}
         </dl>
       </div>
+      )}
 
       <div>
         <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-scada-muted">
@@ -86,38 +89,34 @@ function CompleteSemanticContent({ card }: { card: SemanticInspectorCardModel })
                 data-testid="semantic-inspector-port"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate font-mono text-scada-text" title={port.portId}>
-                    {port.portId}
+                  <span className="truncate font-semibold text-scada-text" title={port.portId}>
+                    {formatPortRole(port.role)}
                   </span>
-                  <span className="font-mono text-scada-muted">{port.voltageDomain}</span>
+                  <span className="font-mono text-scada-muted">{formatVoltageDomain(port.voltageDomain)}</span>
                 </div>
-                <div className="mt-0.5 font-mono text-scada-muted">
-                  {port.role} / {port.connectionSide} / {formatVoltage(port.nominalVoltageKv)}
+                <div className="mt-0.5 text-scada-muted">
+                  {formatConnectionSide(port.connectionSide)} · {formatVoltage(port.nominalVoltageKv)}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <p className="mt-1 text-[11px] text-scada-muted">Brak portow w modelu semantycznym.</p>
+          <p className="mt-1 text-[11px] text-scada-muted">Brak portów w modelu semantycznym.</p>
         )}
       </div>
 
       <div>
         <h4 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-scada-muted">
-          Raportowalnosc
+          Raportowalność
         </h4>
         <dl className="mt-1 grid gap-1 text-[11px]">
           {card.reportEligibility.map((row) => (
-            <SemanticRow key={row.reportKind} label={row.reportKind} value={row.status} mono />
+            <SemanticRow key={row.reportKind} label={formatReportKind(row.reportKind)} value={formatReportStatus(row.status)} />
           ))}
         </dl>
       </div>
 
-      {card.semanticHash && (
-        <div className="truncate border-t border-scada-border pt-2 font-mono text-[10px] text-scada-muted">
-          semanticHash: {card.semanticHash}
-        </div>
-      )}
+      <RawDiagnostics card={card} />
     </div>
   );
 }
@@ -127,7 +126,18 @@ function BlockedSemanticContent({ card }: { card: SemanticInspectorCardModel }) 
     <div className="mt-3 space-y-2 text-[12px]">
       <p className="font-semibold text-red-100">{card.messagePl}</p>
       <p className="text-red-200">{card.repairActionPl}</p>
-      <dl className="grid gap-1">
+      <RawDiagnostics card={card} />
+    </div>
+  );
+}
+
+function RawDiagnostics({ card }: { card: SemanticInspectorCardModel }) {
+  return (
+    <details className="border-t border-scada-border pt-2 text-[10px] text-scada-muted">
+      <summary className="cursor-pointer font-semibold uppercase tracking-[0.12em]">
+        Diagnostyka techniczna
+      </summary>
+      <dl className="mt-2 grid gap-1">
         <SemanticRow label="refId" value={card.refId} mono />
         {card.fallbackVisualLabel && (
           <SemanticRow label="Typ wizualny" value={card.fallbackVisualLabel} mono />
@@ -135,8 +145,14 @@ function BlockedSemanticContent({ card }: { card: SemanticInspectorCardModel }) 
         {card.semanticHash && (
           <SemanticRow label="semanticHash" value={card.semanticHash} mono />
         )}
+        {card.networkPosition.map((row) => (
+          <SemanticRow key={`diag-${row.key}`} label={row.key} value={row.value} mono />
+        ))}
+        {card.ports.map((port) => (
+          <SemanticRow key={`diag-${port.portId}`} label="portId" value={port.portId} mono />
+        ))}
       </dl>
-    </div>
+    </details>
   );
 }
 
@@ -165,7 +181,134 @@ function SemanticRow({
 }
 
 function formatVoltage(value: number | null): string {
-  return value === null ? 'napiecie: -' : `${value} kV`;
+  return value === null ? 'napięcie: -' : `${value} kV`;
+}
+
+function formatElementKind(value: string | null): string {
+  if (!value) return '-';
+  const normalized = value.toUpperCase();
+  if (normalized.includes('BAY')) return 'Pole rozdzielcze SN';
+  if (normalized.includes('BUS')) return 'Sekcja szyn';
+  if (normalized.includes('SUBSTATION') || normalized.includes('STATION')) return 'Stacja elektroenergetyczna';
+  if (normalized.includes('LINE') || normalized.includes('CABLE')) return 'Odcinek sieci SN';
+  if (normalized.includes('TRANSFORMER')) return 'Transformator';
+  if (normalized.includes('SOURCE')) return 'Źródło zasilania';
+  if (normalized.includes('LOAD')) return 'Odbiór';
+  return value;
+}
+
+function formatEngineeringRole(value: string | null): string {
+  switch (value) {
+    case 'LINE_FEEDER_BAY':
+      return 'Pole odpływowe SN zasilające magistralę';
+    case 'FEEDS_MV_TRUNK':
+      return 'Zasila magistralę SN';
+    case 'BUSBAR_SECTION':
+      return 'Sekcja szyn';
+    default:
+      return value ?? '-';
+  }
+}
+
+function formatFunctionalRole(value: string | null): string {
+  switch (value) {
+    case 'FEEDS_MV_TRUNK':
+      return 'Wyprowadzenie magistrali SN';
+    default:
+      return value ?? '-';
+  }
+}
+
+function formatVoltageDomain(value: string | null): string {
+  if (!value) return '-';
+  if (value === 'NN') return 'nN';
+  return value;
+}
+
+function formatDataQuality(value: string | null): string {
+  switch (value) {
+    case 'PELNA':
+      return 'Pełna';
+    case 'CZESCIOWA':
+      return 'Częściowa';
+    case 'BRAK':
+      return 'Brak danych';
+    case 'NIEZWERYFIKOWANA':
+      return 'Niezweryfikowana';
+    case 'OSZACOWANA':
+      return 'Oszacowana';
+    default:
+      return value ?? '-';
+  }
+}
+
+function formatCompleteness(value: string | null): string {
+  switch (value) {
+    case 'SZKIC_LOGICZNY':
+      return 'Szkic logiczny';
+    case 'MODEL_TECHNICZNY_NIEPELNY':
+      return 'Model techniczny niepełny';
+    case 'MODEL_TECHNICZNY_PELNY':
+      return 'Model techniczny pełny';
+    default:
+      return value ?? '-';
+  }
+}
+
+function formatPortRole(value: string): string {
+  if (value.includes('OUT')) return 'Port wyjściowy';
+  if (value.includes('IN')) return 'Port wejściowy';
+  if (value.includes('BRANCH')) return 'Port odgałęzienia';
+  return 'Port techniczny';
+}
+
+function formatConnectionSide(value: string): string {
+  switch (value) {
+    case 'STRONA_LINII':
+      return 'strona linii';
+    case 'STRONA_SZYN':
+      return 'strona szyn';
+    default:
+      return value || '-';
+  }
+}
+
+function formatReportKind(value: string): string {
+  switch (value) {
+    case 'RAPORT_TECHNICZNY':
+      return 'Raport techniczny';
+    case 'RAPORT_OSD':
+      return 'Raport OSD';
+    case 'RAPORT_AUDYTOWY':
+      return 'Raport audytowy';
+    case 'RAPORT_ZGODNOSCI_ZRODLA':
+      return 'Raport zgodności źródła';
+    case 'RAPORT_ZABEZPIECZEN':
+      return 'Raport zabezpieczeń';
+    default:
+      return value;
+  }
+}
+
+function formatReportStatus(value: string): string {
+  switch (value) {
+    case 'RAPORTOWALNY':
+      return 'Raportowalny';
+    case 'RAPORTOWALNY_Z_OSTRZEZENIEM':
+      return 'Raportowalny z ostrzeżeniem';
+    case 'NIERAPORTOWALNY_BRAK_DANYCH':
+      return 'Brak danych do raportu';
+    case 'NIERAPORTOWALNY_SZKIC':
+      return 'Szkic, nie raportować';
+    case 'NIE_DOTYCZY':
+      return 'Nie dotyczy';
+    default:
+      return value;
+  }
+}
+
+function formatPositionValue(value: string): string {
+  return value.includes('/') || value.length > 36 ? 'powiązanie techniczne' : value;
 }
 
 export default SemanticInspectorCard;

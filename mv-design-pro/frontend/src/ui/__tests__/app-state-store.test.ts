@@ -16,6 +16,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStateStore } from '../app-state/store';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { makeCalculationReadySnapshot } from '../../test/enmCalculationSnapshot';
 
 describe('App State Store', () => {
   beforeEach(() => {
@@ -185,6 +186,7 @@ describe('App State Store', () => {
       it('should return false when not in MODEL_EDIT mode', () => {
         const store = useAppStateStore.getState();
         store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'NONE');
+        useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
         store.setActiveMode('CASE_CONFIG');
         expect(store.canCalculate()).toBe(true);
 
@@ -203,6 +205,7 @@ describe('App State Store', () => {
         const store = useAppStateStore.getState();
         store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'NONE');
         store.setActiveMode('MODEL_EDIT');
+        useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
         expect(store.canCalculate()).toBe(true);
 
         store.setActiveCaseResultStatus('OUTDATED');
@@ -213,13 +216,16 @@ describe('App State Store', () => {
         const store = useAppStateStore.getState();
         store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'OUTDATED');
         store.setActiveMode('MODEL_EDIT');
-        useSnapshotStore.setState({ readiness: {
-          ready: false,
-          blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
-          warnings: [],
-          summary: { blocker_count: 1, warning_count: 0 },
-          checked_at: '2026-01-01T00:00:00Z',
-        } });
+        useSnapshotStore.setState({
+          snapshot: makeCalculationReadySnapshot(),
+          readiness: {
+            ready: false,
+            blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
+            warnings: [],
+            summary: { blocker_count: 1, warning_count: 0 },
+            checked_at: '2026-01-01T00:00:00Z',
+          },
+        });
 
         expect(store.canCalculate()).toBe(false);
       });

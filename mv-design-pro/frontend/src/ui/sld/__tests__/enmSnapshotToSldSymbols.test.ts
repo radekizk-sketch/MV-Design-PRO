@@ -261,8 +261,11 @@ describe('enmSnapshotToSldSymbols', () => {
     } as any, logicalViews as any);
 
     expect(projection.symbols.some((symbol) => symbol.elementType === 'Source')).toBe(true);
-    expect(projection.canonicalAnnotations?.gpzFeederFields?.map((field) => field.fieldId)).toContain(
+    expect(projection.canonicalAnnotations?.gpzFeederFields?.map((field) => field.fieldId)).toEqual([
       'bay-sn-out-1',
+    ]);
+    expect(projection.canonicalAnnotations?.gpzFeederFields?.[0]?.designation).toBe(
+      'Pole odpływowe SN',
     );
     expect(projection.canonicalAnnotations?.gpzSections?.length ?? 0).toBeGreaterThan(0);
   });

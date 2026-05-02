@@ -31,20 +31,20 @@ import { useResultsInspectorStore } from '../results-inspector/store';
 // Stałe stylistyczne
 // =============================================================================
 
-/** Kolor tła etykiety — półprzezroczyste białe */
-const LABEL_BG = 'rgba(255,255,255,0.90)';
+/** Kolor tła etykiety - dark SCADA, bez jasnych nalepek na schemacie */
+const LABEL_BG = 'rgba(2, 9, 18, 0.92)';
 /** Kolor obramowania etykiety */
-const LABEL_BORDER = '#cbd5e1'; // slate-300
+const LABEL_BORDER = 'rgba(56, 189, 248, 0.42)';
 /** Kolor czcionki — domyślny */
-const LABEL_COLOR_DEFAULT = '#1e293b'; // slate-900
+const LABEL_COLOR_DEFAULT = '#DDE8F2';
 /** Kolor czcionki — obciążenie wysokie (>80%) */
-const LABEL_COLOR_HIGH = '#dc2626'; // red-600
+const LABEL_COLOR_HIGH = '#F87171';
 /** Kolor czcionki — obciążenie umiarkowane (50-80%) */
-const LABEL_COLOR_MED = '#d97706'; // amber-600
+const LABEL_COLOR_MED = '#FBBF24';
 /** Kolor czcionki — OK (<50%) */
-const LABEL_COLOR_OK = '#16a34a'; // green-600
+const LABEL_COLOR_OK = '#34D399';
 /** Kolor etykiety NOP */
-const LABEL_COLOR_NOP = '#7c3aed'; // violet-700
+const LABEL_COLOR_NOP = '#FBBF24';
 /** Rozmiar czcionki px */
 const FONT_SIZE = 10;
 /** Padding etykiety px */
@@ -161,12 +161,6 @@ export function SldTechLabelsLayer({
       const lines: Array<{ text: string; color: string }> = [];
 
       if (symbol.elementType === 'LineBranch') {
-        // Typ gałęzi
-        const branchType = (symbol as { branchType?: string }).branchType;
-        const typeLabel = branchType === 'LINE' ? 'Nap.' : 'Kab.';
-        lines.push({ text: typeLabel, color: LABEL_COLOR_DEFAULT });
-
-        // Obciążenie z wyników
         const loadPct = branchLoadingMap.get(symbol.elementId);
         if (loadPct !== undefined) {
           lines.push({ text: formatLoadingLabel(loadPct), color: loadingColor(loadPct) });
@@ -176,8 +170,6 @@ export function SldTechLabelsLayer({
         const loadPct = branchLoadingMap.get(symbol.elementId);
         if (loadPct !== undefined) {
           lines.push({ text: `TR ${formatLoadingLabel(loadPct)}`, color: loadingColor(loadPct) });
-        } else {
-          lines.push({ text: 'TR', color: LABEL_COLOR_DEFAULT });
         }
       } else if (symbol.elementType === 'Switch') {
         const sw = symbol as { switchState?: string; switchType?: string };
@@ -192,13 +184,7 @@ export function SldTechLabelsLayer({
           lines.push({ text: `${voltKv.toFixed(2)} kV`, color: LABEL_COLOR_DEFAULT });
         }
       } else if (symbol.elementType === 'Source') {
-        // Tryb pracy źródła
-        const src = symbol as { sourceType?: string; slackBus?: boolean };
-        if (src.slackBus) {
-          lines.push({ text: 'Slack', color: LABEL_COLOR_DEFAULT });
-        } else if (src.sourceType) {
-          lines.push({ text: src.sourceType, color: LABEL_COLOR_DEFAULT });
-        }
+        // Źródło ma kartę/inspektor; nie pokazujemy pływających etykiet bez wyników.
       }
 
       if (lines.length === 0) continue;

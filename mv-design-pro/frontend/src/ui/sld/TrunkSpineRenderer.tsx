@@ -30,6 +30,10 @@ function gpzBusbarWidth(fieldCount: number): number {
   return Math.max(minWidth, 120 + fieldCount * perField);
 }
 
+function formatNullableNumber(value: number | null, digits: number, suffix = ''): string {
+  return value === null ? '-' : `${value.toFixed(digits)}${suffix}`;
+}
+
 export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
   nodes,
   segments,
@@ -176,9 +180,9 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
               x={trunkX - 14}
               y={node.position.y + 20}
               textAnchor="end"
-              className="sld-label-params"
+            className="sld-label-params"
             >
-              {node.voltageKV.toFixed(1)}kV Ik3={node.ikss3p.toFixed(1)}kA
+              {node.voltageKV.toFixed(1)} kV Ik3={formatNullableNumber(node.ikss3p, 1, ' kA')}
             </text>
           )}
         </g>
@@ -229,7 +233,7 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
               y={midY + 12}
               className="sld-label-params"
             >
-              {seg.cableType} • {seg.lengthKm.toFixed(3)} km
+              {seg.cableType} • {formatNullableNumber(seg.lengthKm, 3, ' km')}
             </text>
             {showTechnicalLabels && (
               <text
@@ -237,7 +241,7 @@ export const TrunkSpineRenderer: React.FC<TrunkSpineRendererProps> = ({
                 y={midY + 20}
                 className="sld-label-params"
               >
-                R={seg.resistance_ohm.toFixed(3)}&Omega; X={seg.reactance_ohm.toFixed(3)}&Omega;
+                R={formatNullableNumber(seg.resistance_ohm, 3, 'Ω')} X={formatNullableNumber(seg.reactance_ohm, 3, 'Ω')}
               </text>
             )}
           </g>

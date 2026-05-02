@@ -95,7 +95,7 @@ function buildBaySections(
               key: 'state',
               label: isLoading ? 'Stan odczytu' : 'Stan modelu',
               value: isLoading
-                ? 'Ladowanie widoku pola...'
+                ? 'Ładowanie widoku pola...'
                 : error ?? 'Brak kanonicznego modelu pola dla wybranego elementu.',
             },
           ],
@@ -117,7 +117,7 @@ function buildBaySections(
     .filter((issue) => issueTargetsElement(issue, elementId))
     .map((issue, index) => ({
       key: `readiness_${index}`,
-      label: issue.severity === 'BLOCKER' ? 'Blokada' : 'Ostrzezenie',
+      label: issue.severity === 'BLOCKER' ? 'Blokada' : 'Ostrzeżenie',
       value: issue.message_pl,
     }));
 
@@ -136,7 +136,7 @@ function buildBaySections(
           { key: 'role', label: 'Rola kanoniczna', value: canonicalRoleLabel(baseModel.bay_role) },
           {
             key: 'integrity',
-            label: 'Integralnosc modelu',
+            label: 'Integralność modelu',
             value: integrityStatusLabel(canonicalModel.integrity_status),
           },
         ],
@@ -147,7 +147,7 @@ function buildBaySections(
         fields: [
           {
             key: 'comm',
-            label: 'Lacznosc urzadzenia wtorego',
+            label: 'Łączność urządzenia wtórnego',
             value: communicationStatusLabel(runtimeState?.secondary_communication_status),
           },
           {
@@ -157,12 +157,12 @@ function buildBaySections(
           },
           {
             key: 'control_availability',
-            label: 'Dostepnosc sterowania',
+            label: 'Dostępność sterowania',
             value: availabilityLabel(runtimeState?.control_availability),
           },
           {
             key: 'measurement_availability',
-            label: 'Dostepnosc pomiarow',
+            label: 'Dostępność pomiarów',
             value: availabilityLabel(runtimeState?.measurement_availability),
           },
           {
@@ -224,10 +224,10 @@ function buildBaySections(
         label: 'Tor pomiarowy',
         fields: [
           { key: 'chain_ref', label: 'Identyfikator toru', value: measurementChain?.chain_ref ?? null },
-          { key: 'ct_refs', label: 'Przekladniki pradowe', value: joinValues(measurementChain?.ct_refs) },
-          { key: 'vt_refs', label: 'Przekladniki napieciowe', value: joinValues(measurementChain?.vt_refs) },
-          { key: '3i0', label: 'Zrodlo 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
-          { key: '3u0', label: 'Zrodlo 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
+          { key: 'ct_refs', label: 'Przekładniki prądowe', value: joinValues(measurementChain?.ct_refs) },
+          { key: 'vt_refs', label: 'Przekładniki napięciowe', value: joinValues(measurementChain?.vt_refs) },
+          { key: '3i0', label: 'Źródło 3I0', value: measurementChain?.zero_sequence_current_source ?? null },
+          { key: '3u0', label: 'Źródło 3U0', value: measurementChain?.zero_sequence_voltage_source ?? null },
         ],
       },
       {
@@ -273,10 +273,10 @@ function buildBaySections(
       ...(sourceEndpoint
         ? [{
             id: 'source',
-            label: 'Endpoint zrodlowy',
+            label: 'Zacisk źródłowy',
             fields: [
-              { key: 'source_kind', label: 'Rodzaj zrodla', value: sourceKindLabel(sourceEndpoint.source_kind) },
-              { key: 'requires_vt', label: 'Wymaga toru przekladnika napieciowego', value: sourceEndpoint.requires_vt },
+              { key: 'source_kind', label: 'Rodzaj źródła', value: sourceKindLabel(sourceEndpoint.source_kind) },
+              { key: 'requires_vt', label: 'Wymaga toru przekładnika napięciowego', value: sourceEndpoint.requires_vt },
               { key: 'requires_sync', label: 'Wymaga synchronizmu', value: sourceEndpoint.requires_synchrocheck },
               { key: 'operating_mode', label: 'Tryb pracy', value: sourceEndpoint.operating_mode },
             ],
@@ -287,16 +287,16 @@ function buildBaySections(
         label: 'Wyniki projektowe pola',
         fields: [
           { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
-          { key: 'result_state', label: 'Stan wynikow', value: resultStateLabel(projectResults?.result_state) },
-          { key: 'result_message', label: 'Opis wynikow', value: projectResults?.result_message_pl ?? null },
+          { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
+          { key: 'result_message', label: 'Opis wyników', value: projectResults?.result_message_pl ?? null },
           {
             key: 'sc_contributions',
-            label: 'Wklady zrodel w zwarciu',
+            label: 'Wkłady źródeł w zwarciu',
             value: projectResults?.source_contributions_sc.length ?? null,
           },
           {
             key: 'pf_contributions',
-            label: 'Wklady zrodel w rozplywie',
+            label: 'Wkłady źródeł w rozpływie',
             value: projectResults?.source_contributions_pf.length ?? null,
           },
           {
@@ -306,24 +306,24 @@ function buildBaySections(
           },
           {
             key: 'whole_path',
-            label: 'Tor pola spelnia wymagania',
+            label: 'Tor pola spełnia wymagania',
             value: projectResults?.verification.whole_power_path_ok ?? null,
           },
         ],
       },
       {
         id: 'proof',
-        label: 'Wywod pola',
+        label: 'Wywód pola',
         fields: [
           { key: 'proof_ref', label: 'Identyfikator wywodu', value: projectResults?.proof_binding.proof_ref ?? null },
           {
             key: 'input_refs',
-            label: 'Powiazane dane wejsciowe',
+            label: 'Powiązane dane wejściowe',
             value: projectResults?.proof_binding.input_data_refs.length ?? null,
           },
           {
             key: 'source_refs',
-            label: 'Powiazane wklady zrodel',
+            label: 'Powiązane wkłady źródeł',
             value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
           },
         ],
@@ -381,15 +381,15 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   BUSBAR_SYSTEM: 'System szyn',
   MV_CABLE_SEGMENT: 'Odcinek kablowy SN',
   MV_OVERHEAD_SEGMENT: 'Odcinek napowietrzny SN',
-  MV_BRANCH_POINT: 'Punkt rozgalezienia SN',
+  MV_BRANCH_POINT: 'Punkt rozgałęzienia SN',
   MV_LV_TRANSFORMER: 'Transformator SN/nN',
   TRANSFORMER: 'Transformator',
   GPZ: 'GPZ',
-  SOURCE: 'Zrodlo',
-  PV_INVERTER: 'Zrodlo przeksztaltnikowe PV',
+  SOURCE: 'Źródło',
+  PV_INVERTER: 'Źródło przekształtnikowe PV',
   BESS_CONVERTER: 'Magazyn energii BESS',
-  WIND_SOURCE: 'Zrodlo wiatrowe',
-  LV_LOAD_NODE: 'Odbior nN',
+  WIND_SOURCE: 'Źródło wiatrowe',
+  LV_LOAD_NODE: 'Odbiór nN',
 };
 
 function connectionVariantLabel(variant: string | null | undefined): string {
@@ -585,7 +585,7 @@ function buildSemanticSegmentSections(
   if (isSemanticOverheadSegment(selectedElement)) {
     actions.push({
       id: 'insert_branch_pole_on_segment_sn',
-      label: 'Wstaw slup rozgalezny',
+      label: 'Wstaw słup rozgałęźny',
       op: 'insert_branch_pole_on_segment_sn',
       context: semanticActionContext(selectedElement, { segment_ref: segmentRef }),
     });
@@ -638,7 +638,7 @@ function appendReadinessSection(
         })),
         ...elementWarnings.map((w, i) => ({
           key: `warning_${i}`,
-          label: 'Ostrzezenie',
+          label: 'Ostrzeżenie',
           value: w.message_pl,
         })),
       ],
@@ -658,7 +658,7 @@ function buildSemanticConverterSections(
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'ref_id', label: 'Oznaczenie zrodla', value: selectedElement.id },
+        { key: 'ref_id', label: 'Oznaczenie źródła', value: selectedElement.id },
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
@@ -674,7 +674,7 @@ function buildSemanticConverterSections(
       fields: [
         { key: 'p_mw', label: 'Moc czynna', value: generator.p_mw, unit: 'MW' },
         { key: 'q_mvar', label: 'Moc bierna', value: generator.q_mvar ?? null, unit: 'Mvar' },
-        { key: 'connection_variant', label: 'Wariant przylaczenia', value: connectionVariantLabel(generator.connection_variant) },
+        { key: 'connection_variant', label: 'Wariant przyłączenia', value: connectionVariantLabel(generator.connection_variant) },
       ],
     });
     sections.push({
@@ -739,7 +739,7 @@ function buildSemanticGpzSections(
       id: 'ident',
       label: 'Identyfikacja',
       fields: [
-        { key: 'ref_id', label: 'Oznaczenie zrodla', value: selectedElement.id },
+        { key: 'ref_id', label: 'Oznaczenie źródła', value: selectedElement.id },
         { key: 'name', label: 'Nazwa', value: elementName },
         { key: 'type', label: 'Typ', value: semanticTypeLabel(selectedElement) },
         { key: 'engineering_role', label: 'Rola semantyczna', value: selectedElement.semanticEngineeringRole ?? null },
@@ -766,7 +766,7 @@ function buildSemanticGpzSections(
       label: 'Sekcje GPZ',
       fields: [
         { key: 'substation_ref', label: 'Stacja GPZ', value: sourceSubstation?.name ?? source.substation_ref ?? '-' },
-        { key: 'section_id', label: 'Sekcja zrodla', value: sourceGpzSection?.section_id ?? source.gpz_section_id ?? '-' },
+        { key: 'section_id', label: 'Sekcja źródła', value: sourceGpzSection?.section_id ?? source.gpz_section_id ?? '-' },
         { key: 'section_name', label: 'Nazwa sekcji', value: sourceGpzSection?.name ?? '-' },
         { key: 'line_field', label: 'Pole liniowe GPZ', value: sourceGpzField?.bay_name ?? sourceGpzSection?.line_field_name ?? '-' },
       ],

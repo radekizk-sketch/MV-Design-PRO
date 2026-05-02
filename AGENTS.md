@@ -8,6 +8,11 @@ This file is intentionally concise. Codex loads `AGENTS.md` files from the repos
 
 When working inside `mv-design-pro/`, also follow `mv-design-pro/AGENTS.md`.
 
+Przy pracy nad stacjami, GPZ, rozdzielnią SN, SLD, zabezpieczeniami i kartami obiektów obowiązuje standard projektowy:
+`mv-design-pro/docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md`.
+
+Reguła języka i kodowania: dokumentacja projektu, etykiety interfejsu i komunikaty użytkownika mają być po polsku technicznym. Naprawiaj widoczne błędy kodowania w dotykanym zakresie, szczególnie typowe pozostałości po błędnym odczycie UTF-8.
+
 ## Authority
 
 Project authority order, highest first:

@@ -370,6 +370,7 @@ function buildFieldsFromExplicitSpecs(
 
     fields.push({
       id: fieldId,
+      name: spec.name,
       stationId: station.id,
       busSectionId: spec.gpzSectionId ?? (station.busIds[0] ?? station.id),
       fieldRole,

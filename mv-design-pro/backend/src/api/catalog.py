@@ -278,6 +278,26 @@ def list_bess_inverter_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_bess_inverter_types()]
 
 
+@router.get("/converter-types")
+def list_converter_types(kind: str | None = None) -> list[dict[str, Any]]:
+    """List all converter source types from the canonical MV catalog."""
+    records = [item.to_dict() for item in get_default_mv_catalog().list_converter_types()]
+    if not kind:
+        return records
+    normalized_kind = kind.strip().upper()
+    return [item for item in records if str(item.get("kind", "")).upper() == normalized_kind]
+
+
+@router.get("/wind-inverter-types")
+def list_wind_inverter_types() -> list[dict[str, Any]]:
+    """List all wind farm converter types from the canonical MV catalog."""
+    return [
+        item.to_dict()
+        for item in get_default_mv_catalog().list_converter_types()
+        if item.kind.value == "WIND"
+    ]
+
+
 @router.get("/source-system-types")
 def list_source_system_types() -> list[dict[str, Any]]:
     """List all MV system source types for GPZ / zasilanie systemowe."""

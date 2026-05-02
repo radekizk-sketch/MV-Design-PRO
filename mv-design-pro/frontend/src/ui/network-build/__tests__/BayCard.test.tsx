@@ -333,26 +333,26 @@ describe('BayCard', () => {
 
     expect(screen.getByTestId('object-card')).toBeInTheDocument();
     expect(screen.getByText('Rola kanoniczna')).toBeInTheDocument();
-    expect(screen.getAllByText('Pole liniowe wejsciowe').length).toBeGreaterThan(0);
-    expect(screen.getByText('Integralnosc modelu')).toBeInTheDocument();
+    expect(screen.getAllByText('Pole liniowe wejściowe').length).toBeGreaterThan(0);
+    expect(screen.getByText('Integralność modelu')).toBeInTheDocument();
     expect(screen.getByText('Po migracji')).toBeInTheDocument();
     expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
-    expect(screen.getByText('Lacznosc ograniczona')).toBeInTheDocument();
+    expect(screen.getByText('Łączność ograniczona')).toBeInTheDocument();
     expect(screen.getByText('Aparaty pierwotne')).toBeInTheDocument();
-    expect(screen.getByText('Wylacznik - zamkniety')).toBeInTheDocument();
+    expect(screen.getByText('Wyłącznik - zamknięty')).toBeInTheDocument();
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
     expect(screen.getByText('run-1')).toBeInTheDocument();
-    expect(screen.getByText('Pelny')).toBeInTheDocument();
-    expect(screen.getByText('Wywod pola')).toBeInTheDocument();
+    expect(screen.getByText('Pełny')).toBeInTheDocument();
+    expect(screen.getByText('Wywód pola')).toBeInTheDocument();
     expect(screen.getByText('proof:bay_ref_1:run-1')).toBeInTheDocument();
     expect(screen.getByTestId('bay-svg-renderer')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pomiary pola' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sterowanie polem' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zabezpieczenie pola' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Wklady zrodel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Wkłady źródeł' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Tor ziemnozwarciowy' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Bezpieczenstwo do pracy' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Porownaj pola' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bezpieczeństwo do pracy' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Porównaj pola' })).toBeInTheDocument();
   });
 
   it('obsluguje otwarcie pola po bay_ref bez legacy bay.id jako aktywnej sciezki wejscia', () => {
@@ -360,6 +360,6 @@ describe('BayCard', () => {
 
     expect(screen.getByTestId('object-card')).toBeInTheDocument();
     expect(screen.getAllByText('Pole IN').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Pole liniowe wejsciowe').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Pole liniowe wejściowe').length).toBeGreaterThan(0);
   });
 });

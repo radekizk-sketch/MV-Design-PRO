@@ -15,6 +15,7 @@ import { ActiveCaseBar } from '../active-case-bar';
 import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { IssuePanelContainer } from '../issue-panel';
+import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { MassReviewPanel } from '../network-build/mass-review';
@@ -141,6 +142,9 @@ export function CanonicalLayout({
   const resolvedInspectorContent = useMemo(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
+    }
+    if (activeMode === 'MODEL_EDIT' && !selectedElement) {
+      return <GuidedBuildActionPanel />;
     }
     if (inspectorContent) {
       return inspectorContent;

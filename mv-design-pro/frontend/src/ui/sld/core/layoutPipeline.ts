@@ -1,20 +1,20 @@
-﻿/**
- * Layout Pipeline V1 â€” 6-fazowy, deterministyczny pipeline layoutu SLD.
+/**
+ * Layout Pipeline V1 — 6-fazowy, deterministyczny pipeline layoutu SLD.
  *
- * UKĹAD PIONOWY (VERTICAL SN) â€” STYL ABB/CANONICAL:
- *   GPZ u gĂłry â†’ szyna GPZ pozioma â†’ pola liniowe w rĂłwnym pitch â†’
- *   z pĂłl pionowe magistrale SN w dĂłĹ‚ â†’ odgaĹ‚Ä™zienia L (bok+dĂłĹ‚) â†’
- *   stacje jako "drop" z magistrali â†’ ring/NOP w kanale wtĂłrnym
+ * UKŁAD PIONOWY (VERTICAL SN) — STYL ABB/CANONICAL:
+ *   GPZ u góry → szyna GPZ pozioma → pola liniowe w równym pitch →
+ *   z pól pionowe magistrale SN w dół → odgałęzienia L (bok+dół) →
+ *   stacje jako "drop" z magistrali → ring/NOP w kanale wtórnym
  *
- * ESTETYKA PRZEMYSLOWA (E1â€“E4 + VERTICAL):
- * - E1: RĂłwne odlegĹ‚oĹ›ci pĂłl GPZ na szynie (PITCH_FIELD_X)
- * - E2: Symetryczne ringi (orthogonal, kanaĹ‚ wtĂłrny)
- * - E3: Brak przypadkowych dĹ‚ugoĹ›ci wizualnych (snap to grid, staĹ‚e kroki)
- * - E4: WyrĂłwnanie pionowe pĂłl stacji (OFFSET_POLE, wspĂłlna oĹ› Y)
- * - V1: GPZ u gĂłry, sieÄ‡ buduje siÄ™ w dĂłĹ‚ (monotoniczny Y)
- * - V2: Magistrale SN pionowe (kaĹĽde pole GPZ â†’ trunk w dĂłĹ‚)
- * - V3: OdgaĹ‚Ä™zienia L-shape (bok + dĂłĹ‚), deterministyczny wybĂłr strony
- * - V4: Stacje jako "drop" (bok + dĂłĹ‚ z magistrali)
+ * ESTETYKA PRZEMYSLOWA (E1–E4 + VERTICAL):
+ * - E1: Równe odległości pól GPZ na szynie (PITCH_FIELD_X)
+ * - E2: Symetryczne ringi (orthogonal, kanał wtórny)
+ * - E3: Brak przypadkowych długości wizualnych (snap to grid, stałe kroki)
+ * - E4: Wyrównanie pionowe pól stacji (OFFSET_POLE, wspólna oś Y)
+ * - V1: GPZ u góry, sieć buduje się w dół (monotoniczny Y)
+ * - V2: Magistrale SN pionowe (każde pole GPZ → trunk w dół)
+ * - V3: Odgałęzienia L-shape (bok + dół), deterministyczny wybór strony
+ * - V4: Stacje jako "drop" (bok + dół z magistrali)
  *
  * PIPELINE:
  *   phase1_place_gpz_and_fields()
@@ -24,17 +24,23 @@
  *   phase5_place_labels()
  *   phase6_enforce_invariants_and_finalize_hash()
  *
- * REGUĹY:
- * - KaĹĽda faza uĹĽywa WYĹÄ„CZNIE VisualGraphV1 + GeometryConfig.
- * - KaĹĽda faza NIE zna camera/overlay/viewport.
- * - KaĹĽda faza NIE modyfikuje Snapshot.
- * - KaĹĽda faza zwraca immutable struktury.
- * - DETERMINIZM: ten sam input â†’ identyczny output (bit-for-bit).
- * - KOLIZJE: rozwiÄ…zywane WYĹÄ„CZNIE w osi Y (Y-only push-away).
- * - JEDEN SILNIK: brak flag wyboru, brak rĂłwnolegĹ‚ych implementacji.
+ * REGUŁY:
+ * - Każda faza używa WYŁĄCZNIE VisualGraphV1 + GeometryConfig.
+ * - Każda faza NIE zna camera/overlay/viewport.
+ * - Każda faza NIE modyfikuje Snapshot.
+ * - Każda faza zwraca immutable struktury.
+ * - DETERMINIZM: ten sam input → identyczny output (bit-for-bit).
+ * - KOLIZJE: rozwiązywane WYŁĄCZNIE w osi Y (Y-only push-away).
+ * - JEDEN SILNIK: brak flag wyboru, brak równoległych implementacji.
  */
 
-import type { VisualGraphV1, VisualNodeV1, VisualEdgeV1 } from './visualGraph';
+import type {
+  VisualGraphV1,
+  VisualNodeV1,
+  VisualEdgeV1,
+  VisualNodeAttributesV1,
+  VisualEdgeAttributesV1,
+} from './visualGraph';
 import { NodeTypeV1, EdgeTypeV1 } from './visualGraph';
 import {
   type LayoutResultV1,
@@ -100,39 +106,39 @@ import {
 export interface LayoutGeometryConfigV1 {
   /** Krok siatki [px] */
   readonly gridStep: number;
-  /** OdstÄ™p miÄ™dzy warstwami Y [px] */
+  /** Odstęp między warstwami Y [px] */
   readonly layerSpacing: number;
-  /** OdstÄ™p miÄ™dzy bandami branch [px] */
+  /** Odstęp między bandami branch [px] */
   readonly bandSpacing: number;
-  /** SzerokoĹ›Ä‡ symbolu domyĹ›lna [px] */
+  /** Szerokość symbolu domyślna [px] */
   readonly defaultSymbolWidth: number;
-  /** WysokoĹ›Ä‡ symbolu domyĹ›lna [px] */
+  /** Wysokość symbolu domyślna [px] */
   readonly defaultSymbolHeight: number;
-  /** SzerokoĹ›Ä‡ szyny zbiorczej domyĹ›lna [px] */
+  /** Szerokość szyny zbiorczej domyślna [px] */
   readonly defaultBusWidth: number;
-  /** WysokoĹ›Ä‡ szyny zbiorczej [px] */
+  /** Wysokość szyny zbiorczej [px] */
   readonly busHeight: number;
-  /** OdstÄ™p miÄ™dzy slotami feederĂłw [px] */
+  /** Odstęp między slotami feederów [px] */
   readonly feederSlotSpacing: number;
-  /** Pitch kanaĹ‚u secondary connector [px] */
+  /** Pitch kanału secondary connector [px] */
   readonly secondaryLanePitch: number;
   /** Margines bloku switchgear [px] */
   readonly blockMargin: number;
   /** Offset relay nad CB [px] */
   readonly relayOffsetY: number;
-  /** Spina X (oĹ› pionowa magistrali) [px] */
+  /** Spina X (oś pionowa magistrali) [px] */
   readonly spineX: number;
 }
 
 export const DEFAULT_LAYOUT_CONFIG: LayoutGeometryConfigV1 = {
   gridStep: GRID_BASE,
-  layerSpacing: 6 * GRID_BASE,       // 120px â€” layer Y spacing
-  bandSpacing: MIN_VERTICAL_GAP,      // 80px â€” branch band gap
+  layerSpacing: 6 * GRID_BASE,       // 120px — layer Y spacing
+  bandSpacing: MIN_VERTICAL_GAP,      // 80px — branch band gap
   defaultSymbolWidth: 3 * GRID_BASE,  // 60px
   defaultSymbolHeight: 3 * GRID_BASE, // 60px
   defaultBusWidth: 20 * GRID_BASE,    // 400px
   busHeight: 10,                      // busbar thickness
-  feederSlotSpacing: PITCH_FIELD_X,   // 280px â€” E1: equal field spacing
+  feederSlotSpacing: PITCH_FIELD_X,   // 280px — E1: equal field spacing
   secondaryLanePitch: 30,
   blockMargin: GRID_BASE,             // 20px
   relayOffsetY: -2 * GRID_BASE,      // -40px
@@ -174,7 +180,7 @@ interface MutableBlock {
   detail: StationBlockDetailV1 | null;
 }
 
-/** Trunk assignment: maps nodeId â†’ trunkIndex (which feeder field) */
+/** Trunk assignment: maps nodeId → trunkIndex (which feeder field) */
 interface TrunkAssignment {
   trunkIndex: number;
   trunkX: number;
@@ -188,9 +194,9 @@ interface PipelineState {
   catalogRefs: CatalogRefV1[];
   relayBindings: RelayBindingV1[];
   validationErrors: LayoutValidationErrorV1[];
-  /** Maps nodeId â†’ trunk assignment (which vertical trunk) */
+  /** Maps nodeId → trunk assignment (which vertical trunk) */
   trunkAssignments: Map<string, TrunkAssignment>;
-  /** Maps nodeId â†’ branch side (1=right, -1=left) */
+  /** Maps nodeId → branch side (1=right, -1=left) */
   branchSides: Map<string, 1 | -1>;
 }
 
@@ -282,15 +288,15 @@ function buildAdjacency(graph: VisualGraphV1): Map<string, Array<{ nodeId: strin
 // =============================================================================
 
 /**
- * Faza 1: Umieszczenie GPZ u gĂłry schematu.
+ * Faza 1: Umieszczenie GPZ u góry schematu.
  *
  * VERTICAL SN LAYOUT:
- * - ĹąrĂłdĹ‚a (GRID_SOURCE) na samej gĂłrze
- * - Transformatory WN/SN pod ĹşrĂłdĹ‚ami
- * - Szyna SN GPZ (root busbar) pod transformatorami â€” JEDNA szyna GPZ
- * - WYĹÄ„CZNIE szyna GPZ (root) jest umieszczana w fazie 1
- * - PozostaĹ‚e szyny SN sÄ… odkrywane w fazie 2 (BFS trunk)
- * - WyĹ‚Ä…czniki miÄ™dzy transformatorem a szynÄ… SN
+ * - Źródła (GRID_SOURCE) na samej górze
+ * - Transformatory WN/SN pod źródłami
+ * - Szyna SN GPZ (root busbar) pod transformatorami — JEDNA szyna GPZ
+ * - WYŁĄCZNIE szyna GPZ (root) jest umieszczana w fazie 1
+ * - Pozostałe szyny SN są odkrywane w fazie 2 (BFS trunk)
+ * - Wyłączniki między transformatorem a szyną SN
  */
 function phase1_place_gpz_and_fields(
   graph: VisualGraphV1,
@@ -300,7 +306,7 @@ function phase1_place_gpz_and_fields(
   const { defaultSymbolWidth, defaultSymbolHeight, defaultBusWidth, busHeight } = config;
   const adj = buildAdjacency(graph);
 
-  // Layer Y coordinates (top â†’ down, all on grid)
+  // Layer Y coordinates (top → down, all on grid)
   const Y_SOURCE = snap(Y_GPZ - 2 * OFFSET_POLE);        // Sources above GPZ busbar
   const Y_TR_WN_SN = snap(Y_GPZ + 2 * OFFSET_POLE);       // WN/SN transformers
   const Y_SN_BUS = snap(Y_GPZ + 4 * OFFSET_POLE);          // SN busbar = start of feeders
@@ -408,7 +414,7 @@ function phase1_place_gpz_and_fields(
   // Place sources centered above GPZ busbar
   for (let i = 0; i < sources.length; i++) {
     const src = sources[i];
-    // Single source â†’ center above GPZ bus, multiple â†’ distribute along fields
+    // Single source → center above GPZ bus, multiple → distribute along fields
     const x = sources.length === 1
       ? snap(gpzBusCenterX - defaultSymbolWidth / 2)
       : snap(fieldStartX + i * PITCH_FIELD_X);
@@ -488,15 +494,15 @@ function phase1_place_gpz_and_fields(
  * Faza 2: Budowa topologii magistral pionowych.
  *
  * Z szyny GPZ (root bus) identyfikujemy pola liniowe (feeder fields).
- * KaĹĽde pierwsze BUS_SN sÄ…siadujÄ…ce z root = poczÄ…tek oddzielnej magistrali.
- * BFS po ALL edge types (TRUNK + BRANCH + inne) â†’ kaĹĽdy odkryty wÄ™zeĹ‚
+ * Każde pierwsze BUS_SN sąsiadujące z root = początek oddzielnej magistrali.
+ * BFS po ALL edge types (TRUNK + BRANCH + inne) → każdy odkryty węzeł
  * otrzymuje trunkIndex i depthInTrunk.
  *
- * UWAGA: Adapter segmentuje tylko JEDNÄ„ najdĹ‚uĹĽszÄ… Ĺ›cieĹĽkÄ™ jako TRUNK.
- * Dla multi-feeder GPZ inne feedery majÄ… edgeType=BRANCH.
- * Dlatego phase2 BFS idzie po WSZYSTKICH typach krawÄ™dzi.
+ * UWAGA: Adapter segmentuje tylko JEDNĄ najdłuższą ścieżkę jako TRUNK.
+ * Dla multi-feeder GPZ inne feedery mają edgeType=BRANCH.
+ * Dlatego phase2 BFS idzie po WSZYSTKICH typach krawędzi.
  *
- * Magistrala = oĹ› X staĹ‚a (= X pola), Y roĹ›nie monotonicznie w dĂłĹ‚.
+ * Magistrala = oś X stała (= X pola), Y rośnie monotonicznie w dół.
  */
 function phase2_build_trunk_topology(
   graph: VisualGraphV1,
@@ -545,7 +551,7 @@ function phase2_build_trunk_topology(
 
       // BUS_SN neighbor = start of a trunk feeder
       // Non-bus neighbor (e.g., line junction) = also a trunk start
-      // Skip station/load/source nodes â€” they don't start trunks
+      // Skip station/load/source nodes — they don't start trunks
       if (isStationType(node.nodeType) || node.nodeType === NodeTypeV1.LOAD) continue;
 
       feederStarts.push({ nodeId: n.nodeId, trunkIndex });
@@ -553,9 +559,9 @@ function phase2_build_trunk_topology(
     }
   }
 
-  // BFS from each feeder start â†’ build trunk chains
+  // BFS from each feeder start → build trunk chains
   // Follow ONLY trunk-forming edges (TRUNK, BUS_COUPLER, TRANSFORMER_LINK).
-  // BRANCH edges are NOT followed in phase2 â€” they will be placed with
+  // BRANCH edges are NOT followed in phase2 — they will be placed with
   // horizontal offset in phase3 to produce the CANONICAL/ABB layout style:
   // trunk vertical, branches horizontal to the side.
   const isTrunkFormingEdge = (edgeType: string): boolean => {
@@ -617,7 +623,7 @@ function phase2_build_trunk_topology(
       const branchNode = graph.nodes.find(n => n.id === toId);
       if (!branchNode) continue;
 
-      // Skip loads â€” they're placed in phase3
+      // Skip loads — they're placed in phase3
       if (branchNode.nodeType === NodeTypeV1.LOAD) continue;
 
       // Determine branch lane (offset from parent trunk axis)
@@ -636,9 +642,9 @@ function phase2_build_trunk_topology(
         depthInTrunk: branchDepth,
       });
 
-      // BFS from branch node to find continuation (B1â†’B2, B4â†’B5â†’B6)
-      // BRANCH continuation: same branchX (B1â†’B2 stays on same axis)
-      // Sub-branch: new offset (B4â†’B6 when B4 already has B4â†’B5)
+      // BFS from branch node to find continuation (B1→B2, B4→B5→B6)
+      // BRANCH continuation: same branchX (B1→B2 stays on same axis)
+      // Sub-branch: new offset (B4→B6 when B4 already has B4→B5)
       const branchQueue: Array<{ nodeId: string; depth: number; axisX: number }> = [
         { nodeId: toId, depth: branchDepth, axisX: branchX },
       ];
@@ -671,8 +677,8 @@ function phase2_build_trunk_topology(
           return node && isBusType(node.nodeType) && n.edge.edgeType === EdgeTypeV1.BRANCH;
         });
 
-        // If this node has exactly 1 BRANCH-bus neighbor â†’ continuation (same axis)
-        // If this node has 2+ BRANCH-bus neighbors â†’ first continues, rest are sub-branches
+        // If this node has exactly 1 BRANCH-bus neighbor → continuation (same axis)
+        // If this node has 2+ BRANCH-bus neighbors → first continues, rest are sub-branches
         let continuationUsed = false;
 
         for (const bn of bNeighbors) {
@@ -703,7 +709,7 @@ function phase2_build_trunk_topology(
         }
       }
     } else if (toOnTrunk && !fromOnTrunk && !visited.has(fromId)) {
-      // Reverse direction â€” same logic
+      // Reverse direction — same logic
       const parentAssignment = state.trunkAssignments.get(toId)!;
       const branchNode = graph.nodes.find(n => n.id === fromId);
       if (!branchNode || branchNode.nodeType === NodeTypeV1.LOAD) continue;
@@ -763,21 +769,122 @@ function phase2_build_trunk_topology(
 // =============================================================================
 
 /**
- * Faza 3: Umieszczenie stacji (drop) i odgaĹ‚Ä™zieĹ„ (L-shape).
+ * Faza 3: Umieszczenie stacji (drop) i odgałęzień (L-shape).
  *
  * STACJE: Stacja wisi jako "drop" z magistrali:
- *   - Punkt wpiÄ™cia na magistrali (trunkX, trunkY)
+ *   - Punkt wpięcia na magistrali (trunkX, trunkY)
  *   - Poziomo w bok (deterministyczny: lewo/prawo)
- *   - Pionowo w dĂłĹ‚ â€” blok stacji
+ *   - Pionowo w dół — blok stacji
  *
- * ODGAĹÄZIENIA: Branch nodes that are NOT on trunk:
- *   - Od punktu T na magistrali â†’ bok + dĂłĹ‚
- *   - Deterministyczny wybĂłr strony (hash elementId)
+ * ODGAŁĘZIENIA: Branch nodes that are NOT on trunk:
+ *   - Od punktu T na magistrali → bok + dół
+ *   - Deterministyczny wybór strony (hash elementId)
  */
+function collectStationBusIds(
+  station: VisualNodeV1,
+  graph: VisualGraphV1,
+  adj: ReadonlyMap<string, readonly { nodeId: string; edge: VisualEdgeV1 }[]>,
+  stationBlockDetails: ReadonlyMap<string, StationBlockDetailV1>,
+): string[] {
+  const busIds = new Set<string>();
+  const detail = stationBlockDetails.get(station.id);
+
+  for (const section of detail?.busSections ?? []) {
+    busIds.add(section.id);
+  }
+
+  for (const field of detail?.fields ?? []) {
+    if (field.busSectionId) busIds.add(field.busSectionId);
+    if (field.terminals.incomingNodeId) busIds.add(field.terminals.incomingNodeId);
+    if (field.terminals.outgoingNodeId) busIds.add(field.terminals.outgoingNodeId);
+  }
+
+  for (const edge of graph.edges) {
+    const otherId = edge.fromPortRef.nodeId === station.id
+      ? edge.toPortRef.nodeId
+      : edge.toPortRef.nodeId === station.id
+        ? edge.fromPortRef.nodeId
+        : null;
+    if (!otherId) continue;
+
+    const otherNode = graph.nodes.find(n => n.id === otherId);
+    if (otherNode && isBusType(otherNode.nodeType)) {
+      busIds.add(otherId);
+    }
+  }
+
+  for (const neighbor of adj.get(station.id) ?? []) {
+    const neighborNode = graph.nodes.find(n => n.id === neighbor.nodeId);
+    if (neighborNode && isBusType(neighborNode.nodeType)) {
+      busIds.add(neighbor.nodeId);
+    }
+  }
+
+  return [...busIds].sort((left, right) => left.localeCompare(right));
+}
+
+function findBestPlacedParentForStationBuses(
+  busIds: readonly string[],
+  state: PipelineState,
+  config: LayoutGeometryConfigV1,
+): MutablePlacement | null {
+  let parentPlacement: MutablePlacement | null = null;
+
+  for (const busId of busIds) {
+    const placement = state.placements.get(busId);
+    if (placement && isBetterStationParent(placement, parentPlacement)) {
+      parentPlacement = placement;
+      continue;
+    }
+
+    const trunkAssignment = state.trunkAssignments.get(busId);
+    if (trunkAssignment) {
+      const fallbackPlacement: MutablePlacement = {
+        nodeId: busId,
+        x: snap(trunkAssignment.trunkX - config.defaultSymbolWidth / 2),
+        y: snap(Y_GPZ + 8 * OFFSET_POLE + trunkAssignment.depthInTrunk * TRUNK_STEP_Y),
+        width: config.defaultSymbolWidth,
+        height: config.busHeight,
+        layer: 4,
+        bandIndex: trunkAssignment.trunkIndex,
+        autoPositioned: true,
+      };
+      if (isBetterStationParent(fallbackPlacement, parentPlacement)) {
+        parentPlacement = fallbackPlacement;
+      }
+    }
+  }
+
+  return parentPlacement;
+}
+
+function isBetterStationParent(
+  candidate: MutablePlacement,
+  current: MutablePlacement | null,
+): boolean {
+  if (!current) {
+    return true;
+  }
+  const candidateIsNetworkAxis = candidate.layer >= 4;
+  const currentIsNetworkAxis = current.layer >= 4;
+  if (candidateIsNetworkAxis !== currentIsNetworkAxis) {
+    return candidateIsNetworkAxis;
+  }
+  if (candidate.y !== current.y) {
+    return candidate.y > current.y;
+  }
+  return candidate.x < current.x;
+}
+
+function hasGpzLineBay(detail: StationBlockDetailV1 | undefined): boolean {
+  return detail?.fields.some((field) => field.fieldRole === FieldRoleV1.GPZ_LINE_BAY) ?? false;
+}
+
 function phase3_place_stations_and_branches(
   graph: VisualGraphV1,
   config: LayoutGeometryConfigV1,
   state: PipelineState,
+  stationBlockDetails: ReadonlyMap<string, StationBlockDetailV1> = new Map(),
 ): void {
   const { defaultSymbolWidth, defaultSymbolHeight, busHeight } = config;
   const adj = buildAdjacency(graph);
@@ -790,29 +897,13 @@ function phase3_place_stations_and_branches(
   // Track branch-side usage per trunk position to avoid overlaps
   const usedSides = new Map<string, Set<1 | -1>>();
 
-  // Build station â†’ bus membership for parent lookup
-  // Station nodes may not have direct edges â€” they contain buses implicitly
+  // Build station → bus membership for parent lookup.
+  // Station nodes may contain buses implicitly through StationBlockDetailV1, so
+  // direct graph edges are not enough after guided station insertion.
   const stationBusMap = new Map<string, string[]>();
   for (const node of graph.nodes) {
     if (isStationType(node.nodeType)) {
-      // Find buses that belong to this station by checking edges
-      const busIds: string[] = [];
-      for (const edge of graph.edges) {
-        const otherId = edge.fromPortRef.nodeId === node.id
-          ? edge.toPortRef.nodeId
-          : edge.toPortRef.nodeId === node.id
-            ? edge.fromPortRef.nodeId
-            : null;
-        if (otherId) {
-          const otherNode = graph.nodes.find(n => n.id === otherId);
-          if (otherNode && isBusType(otherNode.nodeType)) {
-            busIds.push(otherId);
-          }
-        }
-      }
-      // Also check all BUS nodes whose elementName or attributes suggest station membership
-      // by looking for nodes connected to the same neighbors as the station
-      stationBusMap.set(node.id, busIds);
+      stationBusMap.set(node.id, collectStationBusIds(node, graph, adj, stationBlockDetails));
     }
   }
 
@@ -822,7 +913,7 @@ function phase3_place_stations_and_branches(
 
     // Find parent trunk node:
     // 1. Check direct edge neighbors
-    // 2. Check internal bus membership (station â†’ bus)
+    // 2. Check internal bus membership (station → bus)
     const neighbors = adj.get(station.id) ?? [];
     let parentPlacement: MutablePlacement | null = null;
 
@@ -831,7 +922,7 @@ function phase3_place_stations_and_branches(
     for (const n of sortedNeighbors) {
       if (state.placements.has(n.nodeId) && n.nodeId !== station.id) {
         const pl = state.placements.get(n.nodeId)!;
-        if (!parentPlacement || pl.y < parentPlacement.y) {
+        if (isBetterStationParent(pl, parentPlacement)) {
           parentPlacement = pl;
         }
       }
@@ -840,19 +931,12 @@ function phase3_place_stations_and_branches(
     // If no direct parent found, check internal buses
     if (!parentPlacement) {
       const internalBuses = stationBusMap.get(station.id) ?? [];
-      for (const busId of internalBuses.sort()) {
-        if (state.placements.has(busId)) {
-          const pl = state.placements.get(busId)!;
-          if (!parentPlacement || pl.y < parentPlacement.y) {
-            parentPlacement = pl;
-          }
-        }
-      }
+      parentPlacement = findBestPlacedParentForStationBuses(internalBuses, state, config);
     }
 
     // If still no parent, check ALL placed nodes and find one that's
     // connected to a bus that this station should contain.
-    // This handles the case where topology has station.busIds â†’ bus nodes
+    // This handles the case where topology has station.busIds → bus nodes
     // but no explicit edge between station and bus in the visual graph.
     if (!parentPlacement) {
       // Check all placed BUS nodes that could belong to this station
@@ -864,7 +948,7 @@ function phase3_place_stations_and_branches(
           const busNeighbors = adj.get(nodeId) ?? [];
           for (const bn of busNeighbors) {
             if (bn.nodeId === station.id || (adj.get(station.id) ?? []).some(s => s.nodeId === nodeId)) {
-              if (!parentPlacement || placement.y < parentPlacement.y) {
+              if (isBetterStationParent(placement, parentPlacement)) {
                 parentPlacement = placement;
               }
             }
@@ -876,7 +960,7 @@ function phase3_place_stations_and_branches(
     // If not already placed, assign position
     if (!alreadyPlaced) {
       if (!parentPlacement) {
-        // No parent found â€” will be placed in unplaced loop below
+        // No parent found — will be placed in unplaced loop below
         continue;
       }
 
@@ -893,9 +977,18 @@ function phase3_place_stations_and_branches(
       used.add(side);
       state.branchSides.set(station.id, side);
 
-      // Station position: horizontal offset + drop down
+      const stationDetail = stationBlockDetails.get(station.id);
+      const isGpzSwitchgearStation = hasGpzLineBay(stationDetail);
+
+      // Station position: horizontal offset + drop down.
+      // A downstream SN/nN station must never be drawn inside the GPZ bay area.
+      // The GPZ block itself stays near the source, all other stations start
+      // below the feeder bay clearance corridor.
       const stationX = snap(parentPlacement.x + side * BRANCH_OFFSET_X);
-      const stationY = snap(parentPlacement.y + OFFSET_POLE);
+      const downstreamClearanceY = snap(Y_GPZ + 10 * OFFSET_POLE);
+      const stationY = isGpzSwitchgearStation
+        ? snap(parentPlacement.y + TRUNK_STEP_Y)
+        : snap(Math.max(parentPlacement.y + 2 * TRUNK_STEP_Y, downstreamClearanceY));
 
       state.placements.set(station.id, {
         nodeId: station.id,
@@ -1114,14 +1207,14 @@ function phase3_place_stations_and_branches(
 // =============================================================================
 
 /**
- * Faza 4: Routing wszystkich krawÄ™dzi.
+ * Faza 4: Routing wszystkich krawędzi.
  *
  * VERTICAL SN RULES:
- * - TRUNK edges: vertical-first (same X â†’ straight down; different X â†’ Z-shape)
+ * - TRUNK edges: vertical-first (same X → straight down; different X → Z-shape)
  * - BRANCH edges: L-shape (horizontal to branch X, then vertical)
  * - SECONDARY_CONNECTOR (ring/NOP): orthogonal via secondary channel
  * - TRANSFORMER_LINK: straight vertical
- * - ALL segments orthogonal (0Â° or 90Â°)
+ * - ALL segments orthogonal (0° or 90°)
  * - ALL points snapped to GRID_BASE
  */
 function phase4_route_all_edges(
@@ -1154,14 +1247,14 @@ function phase4_route_all_edges(
     const toIsRootBus = rootBusNodeIds.has(edge.toPortRef.nodeId);
 
     if (fromIsRootBus && toP) {
-      // FROM root bus â†’ use target's center X (feeder field position) on the bus
+      // FROM root bus → use target's center X (feeder field position) on the bus
       const targetCX = snap(toP.x + toP.width / 2);
       startX = targetCX;
       startY = fromP ? snap(fromP.y + fromP.height) : 0;  // bottom edge of bus
       endX = targetCX;
       endY = toP ? snap(toP.y) : 0;  // top edge of target
     } else if (toIsRootBus && fromP) {
-      // TO root bus â†’ use source's center X on the bus
+      // TO root bus → use source's center X on the bus
       const sourceCX = snap(fromP.x + fromP.width / 2);
       startX = sourceCX;
       startY = fromP ? snap(fromP.y + fromP.height) : 0;
@@ -1189,12 +1282,12 @@ function phase4_route_all_edges(
     if (edge.edgeType === EdgeTypeV1.TRUNK) {
       // TRUNK: vertical first, then horizontal if needed
       if (Math.abs(sx - ex) < GRID_BASE) {
-        // Same X â†’ straight vertical
+        // Same X → straight vertical
         segments = [
           { from: startPoint, to: endPoint },
         ];
       } else {
-        // Different X â†’ Z-shape: vertical to midY, horizontal, vertical to end
+        // Different X → Z-shape: vertical to midY, horizontal, vertical to end
         const midY = snap((sy + ey) / 2);
         segments = [
           { from: startPoint, to: { x: sx, y: midY } },
@@ -1226,10 +1319,10 @@ function phase4_route_all_edges(
     } else {
       // BRANCH and others: L-shape (horizontal then vertical)
       if (Math.abs(sx - ex) < GRID_BASE) {
-        // Same X â†’ straight vertical
+        // Same X → straight vertical
         segments = [{ from: startPoint, to: endPoint }];
       } else if (Math.abs(sy - ey) < GRID_BASE) {
-        // Same Y â†’ straight horizontal
+        // Same Y → straight horizontal
         segments = [{ from: startPoint, to: endPoint }];
       } else {
         // L-shape: horizontal first, then vertical
@@ -1276,9 +1369,9 @@ function phase4_route_all_edges(
  *
  * VERTICAL SN LABEL RULES:
  * - Segmenty pionowe: etykieta po prawej stronie (fallback: lewa, stack)
- * - OdgaĹ‚Ä™zienia: etykieta na odcinku poziomym
+ * - Odgałęzienia: etykieta na odcinku poziomym
  * - Stacje: nazwa nad blokiem
- * - Zakaz etykiet naĹ‚oĹĽonych na symbole
+ * - Zakaz etykiet nałożonych na symbole
  * - Deterministic tiebreak (sort po id)
  */
 function phase5_place_labels(
@@ -1298,8 +1391,8 @@ function phase5_place_labels(
 /**
  * Faza 6: Wymuszenie inwariancji i finalizacja.
  *
- * - SprawdĹş symbol-symbol overlap (= 0, resolve w osi Y).
- * - Y-ONLY push-away (NIGDY nie przesuwaj w osi X â€” zachowaj magistrali)
+ * - Sprawdź symbol-symbol overlap (= 0, resolve w osi Y).
+ * - Y-ONLY push-away (NIGDY nie przesuwaj w osi X — zachowaj magistrali)
  * - Oblicz bounds.
  * - Catalog refs, relay bindings.
  * - Oblicz hash (world geometry only).
@@ -1309,7 +1402,7 @@ function phase6_enforce_invariants_and_finalize(
   config: LayoutGeometryConfigV1,
   state: PipelineState,
 ): void {
-  // 1. Resolve symbol-symbol overlaps â€” Y-ONLY push-away
+  // 1. Resolve symbol-symbol overlaps — Y-ONLY push-away
   const MAX_ITERATIONS = 20;
   for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
     let hasOverlap = false;
@@ -1326,7 +1419,7 @@ function phase6_enforce_invariants_and_finalize(
           a.y < b.y + b.height && a.y + a.height > b.y
         ) {
           hasOverlap = true;
-          // Y-ONLY push-away â€” NIGDY nie przesuwaj w osi X
+          // Y-ONLY push-away — NIGDY nie przesuwaj w osi X
           if (a.layer > b.layer || (a.layer === b.layer && a.nodeId > b.nodeId)) {
             a.y = snap(b.y + b.height + config.blockMargin);
           } else {
@@ -1350,7 +1443,7 @@ function phase6_enforce_invariants_and_finalize(
       });
       state.validationErrors.push({
         code: 'MISSING_CATALOG_REF',
-        message: `WÄ™zeĹ‚ ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
+        message: `Węzeł ${node.id} (${node.attributes.elementName}) wymaga referencji do katalogu (${category})`,
         nodeId: node.id,
         fixAction: `Przypisz typ z katalogu ${category} do elementu ${node.attributes.elementName}`,
       });
@@ -1383,14 +1476,68 @@ function phase6_enforce_invariants_and_finalize(
 // PHASE 7: CANONICAL SLD ANNOTATIONS
 // =============================================================================
 
+function edgeNumber(
+  attributes: VisualEdgeAttributesV1,
+  keys: readonly string[],
+): number | null {
+  const rawAttributes = attributes as unknown as Record<string, unknown>;
+  for (const key of keys) {
+    const value = rawAttributes[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function edgeString(
+  attributes: VisualEdgeAttributesV1,
+  keys: readonly string[],
+): string | null {
+  const rawAttributes = attributes as unknown as Record<string, unknown>;
+  for (const key of keys) {
+    const value = rawAttributes[key];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return null;
+}
+
+function nodeNumber(
+  attributes: VisualNodeAttributesV1 | null | undefined,
+  keys: readonly string[],
+): number | null {
+  if (!attributes) {
+    return null;
+  }
+  const rawAttributes = attributes as unknown as Record<string, unknown>;
+  for (const key of keys) {
+    const value = rawAttributes[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return null;
+}
+
+function isEngineeringDisplayName(value: string | undefined, fallbackId: string): boolean {
+  const normalized = value?.trim();
+  if (!normalized || normalized === fallbackId) return false;
+  if (/^\d+$/.test(normalized)) return false;
+  if (/^[a-f0-9]{8,}$/i.test(normalized)) return false;
+  if (/^(sn|nn|gpz|tr|station)?[/-]?[a-f0-9]{8,}$/i.test(normalized)) return false;
+  return true;
+}
+
 /**
  * Phase 7: Generate canonical SLD annotations.
  *
  * Generates rendering annotations for CANONICAL/IEC-style canonical SLD:
- * - TrunkNodeAnnotationV1[] â€” numbered nodes on trunk with km/U/Ik3
- * - TrunkSegmentAnnotationV1[] â€” trunk segments with impedance parameters
- * - BranchPointV1[] â€” branch points with apparatus and line data
- * - StationFieldAnnotationV1[] â€” station field annotations
+ * - TrunkNodeAnnotationV1[] — numbered nodes on trunk with km/U/Ik3
+ * - TrunkSegmentAnnotationV1[] — trunk segments with impedance parameters
+ * - BranchPointV1[] — branch points with apparatus and line data
+ * - StationFieldAnnotationV1[] — station field annotations
  *
  * RULE: Phase 7 does NOT modify Phase 1-6 results.
  *       It adds ONLY rendering annotations.
@@ -1500,7 +1647,7 @@ function phase7_generate_canonical_annotations(
         fieldId: field.id,
         feederNodeId: field.terminals.outgoingNodeId ?? field.id,
         rootBusId: rootId,
-        designation: field.id,
+        designation: field.name ?? field.id,
         axisX,
         busTap: { x: axisX, y: snap(busbar.y + busbar.height) },
         segmentStart: { x: axisX, y: snap(busbar.y + busbar.height + 4 * OFFSET_POLE) },
@@ -1547,7 +1694,7 @@ function phase7_generate_canonical_annotations(
   // Build trunk node annotations
   const trunkNodes: TrunkNodeAnnotationV1[] = [];
   let nodeIndex = 1;
-  let cumulativeKm = 0;
+  const cumulativeKm = 0;
 
   // Collect all unique nodes on trunk edges in order
   const trunkNodeIds = new Set<string>();
@@ -1581,14 +1728,12 @@ function phase7_generate_canonical_annotations(
       trunkId: 'M1',
       kmFromGPZ: cumulativeKm,
       voltageKV,
-      ikss3p: Math.max(1, 10 - nodeIndex * 0.5),
-      deltaU_percent: nodeIndex * 0.3,
+      ikss3p: nodeNumber(node?.attributes, ['ikss3p', 'ikss3pKa', 'ik3pKa', 'ik3p_ka']),
+      deltaU_percent: nodeNumber(node?.attributes, ['deltaU_percent', 'deltaUPercent', 'delta_u_percent']),
       position: placement.position,
       branchStationId: hasBranch ? nodeId : null,
     });
 
-    // Approximate km step based on trunk edge existence
-    cumulativeKm += 0.3;
     nodeIndex++;
   }
 
@@ -1596,21 +1741,22 @@ function phase7_generate_canonical_annotations(
   const trunkSegments: TrunkSegmentAnnotationV1[] = [];
   for (let i = 0; i < trunkEdges.length; i++) {
     const edge = trunkEdges[i];
-    const edgeNode = graph.nodes.find(n => n.id === edge.fromPortRef.nodeId);
-    const isOverhead = edgeNode?.attributes.branchType === 'LINE';
+    const isOverhead = edge.attributes.branchType === 'LINE';
+    const designation = edgeString(edge.attributes, ['designation', 'iecDesignation', 'segmentCode'])
+      ?? `W-M1-${String(i + 1).padStart(2, '0')}`;
 
     trunkSegments.push({
-      segmentId: `W-M1-${String(i + 1).padStart(2, '0')}`,
-      designation: `W-M1-${String(i + 1).padStart(2, '0')}`,
-      cableType: isOverhead ? 'AFL-6 120mm2' : 'YAKY 3x240mm2',
-      isOverhead: isOverhead ?? false,
-      lengthKm: 0.3,
-      resistance_ohm: 0.038,
-      reactance_ohm: 0.014,
-      capacitance_uF_per_km: isOverhead ? null : 0.26,
-      ampacity_A: isOverhead ? 375 : 290,
-      current_A: 0,
-      power_MW: 0,
+      segmentId: edge.id,
+      designation,
+      cableType: edge.attributes.branchType ?? 'Typ z katalogu',
+      isOverhead,
+      lengthKm: edge.attributes.lengthKm,
+      resistance_ohm: edgeNumber(edge.attributes, ['resistance_ohm', 'r_ohm']),
+      reactance_ohm: edgeNumber(edge.attributes, ['reactance_ohm', 'x_ohm']),
+      capacitance_uF_per_km: null,
+      ampacity_A: edgeNumber(edge.attributes, ['ampacity_A', 'rated_current_a']),
+      current_A: edgeNumber(edge.attributes, ['current_A', 'current_a']),
+      power_MW: edgeNumber(edge.attributes, ['power_MW', 'p_mw']),
     });
   }
 
@@ -1625,8 +1771,8 @@ function phase7_generate_canonical_annotations(
     const fromPlacement = placementMap.get(edge.fromPortRef.nodeId);
     if (!fromPlacement) continue;
 
-    const edgeNode = graph.nodes.find(n => n.id === edge.toPortRef.nodeId);
-    const isOverhead = edgeNode?.attributes.branchType === 'LINE';
+    const isOverhead = edge.attributes.branchType === 'LINE';
+    const physicalLocationPrefix = isOverhead ? 'SO' : 'ZK';
 
     // Find corresponding trunk node
     const trunkNode = trunkNodes.find(tn =>
@@ -1637,22 +1783,22 @@ function phase7_generate_canonical_annotations(
       branchId: `OG-M1-${String(i + 1).padStart(2, '0')}`,
       sourceEdgeId: edge.id,
       trunkNodeId: trunkNode?.nodeId ?? `N${String(i + 1).padStart(2, '0')}`,
-      physicalLocation: isOverhead ? 'SO' : 'ZK',
-      physicalLocationId: `${isOverhead ? 'SO' : 'ZK'}-${String(i + 1).padStart(2, '0')}`,
+      physicalLocation: physicalLocationPrefix,
+      physicalLocationId: `${physicalLocationPrefix}-${String(i + 1).padStart(2, '0')}`,
       branchApparatus: {
         designation: `Q-O${i + 1}`,
         type: 'disconnector',
-        ratedCurrent_A: 200,
-        ratedVoltage_kV: 17.5,
+        ratedCurrent_A: edgeNumber(edge.attributes, ['switch_rated_current_a', 'rated_current_a']),
+        ratedVoltage_kV: edgeNumber(edge.attributes, ['rated_voltage_kv', 'voltage_rating_kv']),
       },
       branchLine: {
-        designation: `W-O${i + 1}`,
-        cableType: isOverhead ? 'AFL-6 50mm2' : 'YAKY 3x50mm2',
-        lengthKm: 0.15,
-        resistance_ohm: 0.038,
-        reactance_ohm: 0.014,
-        ampacity_A: isOverhead ? 210 : 175,
-        isOverhead: isOverhead ?? false,
+        designation: edge.attributes.label || `Odgałęzienie SN ${i + 1}`,
+        cableType: edge.attributes.branchType ?? 'Typ z katalogu',
+        lengthKm: edge.attributes.lengthKm,
+        resistance_ohm: edgeNumber(edge.attributes, ['resistance_ohm', 'r_ohm']),
+        reactance_ohm: edgeNumber(edge.attributes, ['reactance_ohm', 'x_ohm']),
+        ampacity_A: edgeNumber(edge.attributes, ['ampacity_A', 'rated_current_a']),
+        isOverhead,
       },
       targetStationId: edge.toPortRef.nodeId,
       position: fromPlacement.position,
@@ -1701,103 +1847,80 @@ function phase7_generate_canonical_annotations(
       : windNode ? 'WIND' as const
       : null;
 
+    const stationDisplayName = isEngineeringDisplayName(station.attributes.label, station.id)
+      ? station.attributes.label
+      : `Stacja SN/nN ${stationChains.length + 1}`;
     const baseX = placement.position.x;
     const baseY = placement.position.y;
     const stepY = 40;
+    const transformerParameters: Record<string, string | number> = {};
+    if (typeof station.attributes.ratedPowerMva === 'number' && Number.isFinite(station.attributes.ratedPowerMva)) {
+      transformerParameters.Sn = `${station.attributes.ratedPowerMva} MVA`;
+    }
 
     const apparatus: StationApparatusItemV1[] = [
       {
         designation: `QS-${station.id.slice(-2)}`,
         symbolType: 'disconnector',
-        label: 'Rozlacznik SN',
-        parameters: { In: '200A', Ur: '17.5kV' },
+        label: 'Rozłącznik SN',
+        parameters: {},
         position: { x: baseX, y: baseY },
       },
       {
         designation: `Q-${station.id.slice(-2)}`,
         symbolType: 'circuit_breaker',
-        label: 'Wylacznik',
-        parameters: { In: '630A', Icu: '25kA' },
+        label: 'Wyłącznik',
+        parameters: {},
         position: { x: baseX, y: baseY + stepY },
       },
       {
         designation: `A-${station.id.slice(-2)}`,
         symbolType: 'ct',
-        label: 'Przekladnik pradowy',
-        parameters: { ratio: '50/5A', class: '0.5s' },
+        label: 'Przekładnik prądowy',
+        parameters: {},
         position: { x: baseX, y: baseY + stepY * 2 },
       },
       {
         designation: `T-${station.id.slice(-2)}`,
         symbolType: 'transformer_2w',
-        label: 'Transformator SN/nn',
-        parameters: {
-          Sn: `${station.attributes.ratedPowerMva ? station.attributes.ratedPowerMva * 1000 : 400}kVA`,
-          group: 'Dyn11',
-          uk: '4%',
-        },
+        label: 'Transformator SN/nN',
+        parameters: transformerParameters,
         position: { x: baseX, y: baseY + stepY * 3 },
       },
     ];
 
-    // Protection relays
+    // Nastawy i wyniki zabezpieczeń pochodzą z backendu; SLD nie fabrykuje wartości.
     const protection: ProtectionRelayV1[] = [];
-    protection.push({
-      designation: `K-${station.id.slice(-2)}a`,
-      ansiCode: '51',
-      function: 'nadpradowe',
-      setting_Ir_A: 200,
-      setting_t_s: 0.5,
-    });
-    protection.push({
-      designation: `K-${station.id.slice(-2)}b`,
-      ansiCode: '51N',
-      function: 'ziemnozwarciowe',
-      setting_Ir_A: 20,
-      setting_t_s: 0.3,
-    });
 
-    if (hasOZE) {
-      protection.push({
-        designation: `K-${station.id.slice(-2)}c`,
-        ansiCode: '67',
-        function: 'kierunkowe',
-        setting_Ir_A: 100,
-        setting_t_s: 0.2,
-      });
-    }
-
-    // NN feeders
+    // Odpływy nN/OZE pokazujemy tylko dla elementów faktycznie obecnych w grafie.
     const feeders: NNFeederV1[] = [];
-    feeders.push({
-      designation: `Q-nn1`,
-      type: 'load',
-      power_kW: 200,
-      cosPhi: 0.92,
-      additionalParams: {},
-    });
 
     if (pvNode) {
       feeders.push({
-        designation: `G-PV1`,
+        designation: pvNode.attributes.label || 'PV',
         type: 'generator_pv',
-        power_kW: 50,
-        cosPhi: 1.0,
+        power_kW: typeof pvNode.attributes.ratedPowerMva === 'number'
+          ? pvNode.attributes.ratedPowerMva * 1000
+          : 0,
+        cosPhi: null,
         additionalParams: {},
       });
     }
     if (bessNode) {
       feeders.push({
-        designation: `G-BESS1`,
+        designation: bessNode.attributes.label || 'BESS',
         type: 'generator_bess',
-        power_kW: 30,
-        cosPhi: 0.95,
+        power_kW: typeof bessNode.attributes.ratedPowerMva === 'number'
+          ? bessNode.attributes.ratedPowerMva * 1000
+          : 0,
         additionalParams: {},
+        cosPhi: null,
       });
     }
 
     const stationChain: StationFieldAnnotationV1 = {
       stationId: station.id,
+      stationName: stationDisplayName,
       stationType,
       hasOZE,
       ozeType,
@@ -1849,14 +1972,14 @@ function phase7_generate_canonical_annotations(
 // =============================================================================
 
 /**
- * Uruchamia peĹ‚ny 6-fazowy pipeline layoutu (VERTICAL SN).
+ * Uruchamia pełny 6-fazowy pipeline layoutu (VERTICAL SN).
  *
- * DETERMINIZM: ten sam VisualGraphV1 + config â†’ identyczny LayoutResultV1.
+ * DETERMINIZM: ten sam VisualGraphV1 + config → identyczny LayoutResultV1.
  *
- * @param graph VisualGraphV1 â€” zamroĹĽony kontrakt wejĹ›cia
- * @param config Konfiguracja geometrii (opcjonalna, domyĹ›lna CANONICAL)
- * @param stationBlockDetails Opcjonalne szczegĂłĹ‚y pĂłl/urzÄ…dzeĹ„ (RUN #3D)
- * @returns LayoutResultV1 â€” zamroĹĽony wynik layoutu
+ * @param graph VisualGraphV1 — zamrożony kontrakt wejścia
+ * @param config Konfiguracja geometrii (opcjonalna, domyślna CANONICAL)
+ * @param stationBlockDetails Opcjonalne szczegóły pól/urządzeń (RUN #3D)
+ * @returns LayoutResultV1 — zamrożony wynik layoutu
  */
 function legacyPipelineInternal(
   graph: VisualGraphV1,
@@ -1883,10 +2006,10 @@ function legacyPipelineInternal(
     }
   }
 
-  // Execute 6 phases â€” VERTICAL SN LAYOUT
+  // Execute 6 phases — VERTICAL SN LAYOUT
   phase1_place_gpz_and_fields(graph, config, state);
   phase2_build_trunk_topology(graph, config, state);
-  phase3_place_stations_and_branches(graph, config, state);
+  phase3_place_stations_and_branches(graph, config, state, detailsByBlockId);
 
   // Attach station block details
   for (const block of state.blocks) {
@@ -1897,7 +2020,7 @@ function legacyPipelineInternal(
   phase5_place_labels(graph, config, state);
   phase6_enforce_invariants_and_finalize(graph, config, state);
 
-  // Convert mutable state â†’ immutable LayoutResultV1
+  // Convert mutable state → immutable LayoutResultV1
   const nodePlacements: NodePlacementV1[] = [...state.placements.values()]
     .sort((a, b) => a.nodeId.localeCompare(b.nodeId))
     .map(p => ({
@@ -1987,10 +2110,10 @@ function legacyPipelineInternal(
 }
 
 /**
- * Publiczny punkt wejĹ›cia layoutu SLD.
+ * Publiczny punkt wejścia layoutu SLD.
  *
- * DomyĹ›lnie zachowuje kompatybilnoĹ›Ä‡ wstecznÄ… (`strategy: 'legacy'`),
- * a jednoczeĹ›nie umoĹĽliwia przeĹ‚Ä…czenie na nowy LayoutEngine
+ * Domyślnie zachowuje kompatybilność wsteczną (`strategy: 'legacy'`),
+ * a jednocześnie umożliwia przełączenie na nowy LayoutEngine
  * (strategia greedy/force-directed + routing ortogonalny/diagonalny).
  */
 export function computeLayout(

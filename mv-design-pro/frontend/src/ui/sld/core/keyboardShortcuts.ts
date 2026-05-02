@@ -45,7 +45,7 @@ export const KEYBOARD_SHORTCUTS: readonly KeyboardShortcutDef[] = [
   { keys: 'Space', description_pl: 'PrzeĹ‚Ä…cz stan Ĺ‚Ä…cznika (otwĂłrz/zamknij)', category: 'EDYCJA_MODELU', action_id: 'toggle_switch', required_mode: 'MODEL_EDIT' },
 
   // Budowa sieci SN
-  { keys: 'S', description_pl: 'Dodaj odcinek z pola GPZ albo kontynuuj z aktywnego terminala magistrali', category: 'EDYCJA_MODELU', action_id: 'continue_trunk_segment_sn', required_mode: 'MODEL_EDIT' },
+  { keys: 'S', description_pl: 'Dodaj odcinek z pola GPZ albo z aktywnego zacisku magistrali', category: 'EDYCJA_MODELU', action_id: 'continue_trunk_segment_sn', required_mode: 'MODEL_EDIT' },
   { keys: 'T', description_pl: 'Wstaw stacjÄ™ SN/nN...', category: 'EDYCJA_MODELU', action_id: 'insert_station_on_segment_sn', required_mode: 'MODEL_EDIT' },
   { keys: 'B', description_pl: 'Dodaj odgaĹ‚Ä™zienie', category: 'EDYCJA_MODELU', action_id: 'start_branch_segment_sn', required_mode: 'MODEL_EDIT' },
   { keys: 'R', description_pl: 'WejdĹş w tryb Ĺ‚Ä…czenia koĹ„cĂłw (rezerwa lub pierĹ›cieĹ„)', category: 'EDYCJA_MODELU', action_id: 'start_connect_ends', required_mode: 'MODEL_EDIT' },

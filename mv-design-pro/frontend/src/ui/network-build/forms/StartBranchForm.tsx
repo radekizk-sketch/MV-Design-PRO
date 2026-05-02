@@ -133,7 +133,7 @@ export function StartBranchForm() {
       <div className="border-b border-slate-200 px-4 py-3">
         <h2 className="text-base font-semibold text-slate-900">Rozpocznij odgałęzienie SN</h2>
         <p className="mt-1 text-sm text-slate-500">
-          Kanoniczny start odgałęzienia wymaga jawnego portu BRANCH oraz wyboru rodziny odcinka.
+          Kanoniczny start odgałęzienia wymaga jawnego zacisku odgałęźnego oraz wyboru rodziny odcinka.
         </p>
       </div>
 

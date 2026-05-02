@@ -1,23 +1,23 @@
 export function canonicalRoleLabel(role: string | null | undefined): string {
   switch (role) {
     case 'LINIA_IN':
-      return 'Pole liniowe wejsciowe';
+      return 'Pole liniowe wejściowe';
     case 'LINIA_OUT':
-      return 'Pole liniowe wyjsciowe';
+      return 'Pole liniowe wyjściowe';
     case 'TRANSFORMATOROWE':
       return 'Pole transformatorowe';
     case 'LINIA_ODG':
-      return 'Pole odgalezne';
+      return 'Pole odgałęźne';
     case 'SPRZEGLO':
-      return 'Pole sprzegla';
+      return 'Pole sprzęgła';
     case 'POMIAROWE':
       return 'Pole pomiarowe';
     case 'PV_SN':
-      return 'Pole zrodlowe PV';
+      return 'Pole źródłowe PV';
     case 'BESS_SN':
-      return 'Pole zrodlowe BESS';
+      return 'Pole źródłowe BESS';
     case 'FW_SN':
-      return 'Pole zrodlowe FW';
+      return 'Pole źródłowe FW';
     default:
       return 'Brak danych';
   }
@@ -30,7 +30,7 @@ export function integrityStatusLabel(status: string | null | undefined): string 
     case 'po_migracji':
       return 'Po migracji';
     case 'wymaga_uzupelnienia':
-      return 'Wymaga uzupelnienia';
+      return 'Wymaga uzupełnienia';
     default:
       return 'Brak danych';
   }
@@ -39,19 +39,19 @@ export function integrityStatusLabel(status: string | null | undefined): string 
 export function deviceKindLabel(kind: string | null | undefined): string {
   switch (kind) {
     case 'CB':
-      return 'Wylacznik';
+      return 'Wyłącznik';
     case 'LOAD_SWITCH':
-      return 'Rozlacznik';
+      return 'Rozłącznik';
     case 'DS':
-      return 'Odlacznik';
+      return 'Odłącznik';
     case 'ES':
       return 'Uziemnik';
     case 'CT':
-      return 'Przekladnik pradowy';
+      return 'Przekładnik prądowy';
     case 'VT':
-      return 'Przekladnik napieciowy';
+      return 'Przekładnik napięciowy';
     case 'CABLE_HEAD':
-      return 'Glowica kablowa';
+      return 'Głowica kablowa';
     case 'TRANSFORMER_DEVICE':
       return 'Transformator';
     case 'FUSE':
@@ -74,13 +74,13 @@ export function deviceKindLabel(kind: string | null | undefined): string {
 export function switchStateLabel(state: string | null | undefined): string {
   switch (state) {
     case 'zamkniety':
-      return 'zamkniety';
+      return 'zamknięty';
     case 'otwarty':
       return 'otwarty';
     case 'zamkniety_naped_rozbrojony':
-      return 'zamkniety, naped rozbrojony';
+      return 'zamknięty, napęd rozbrojony';
     case 'otwarty_naped_rozbrojony':
-      return 'otwarty, naped rozbrojony';
+      return 'otwarty, napęd rozbrojony';
     case 'nieznany':
       return 'stan nieznany';
     case 'awaria':
@@ -93,11 +93,11 @@ export function switchStateLabel(state: string | null | undefined): string {
 export function communicationStatusLabel(status: string | null | undefined): string {
   switch (status) {
     case 'ok':
-      return 'Lacznosc poprawna';
+      return 'Łączność poprawna';
     case 'degraded':
-      return 'Lacznosc ograniczona';
+      return 'Łączność ograniczona';
     case 'offline':
-      return 'Brak lacznosci';
+      return 'Brak łączności';
     default:
       return 'Brak danych';
   }
@@ -106,13 +106,13 @@ export function communicationStatusLabel(status: string | null | undefined): str
 export function availabilityLabel(status: string | null | undefined): string {
   switch (status) {
     case 'dostepne':
-      return 'Dostepne';
+      return 'Dostępne';
     case 'czesciowo_dostepne':
-      return 'Czesciowo dostepne';
+      return 'Częściowo dostępne';
     case 'czesciowe':
-      return 'Czesciowe';
+      return 'Częściowe';
     case 'niedostepne':
-      return 'Niedostepne';
+      return 'Niedostępne';
     default:
       return 'Brak danych';
   }
@@ -121,11 +121,11 @@ export function availabilityLabel(status: string | null | undefined): string {
 export function sourceKindLabel(kind: string | null | undefined): string {
   switch (kind) {
     case 'PV':
-      return 'Zrodlo PV';
+      return 'Źródło PV';
     case 'BESS':
-      return 'Zrodlo BESS';
+      return 'Źródło BESS';
     case 'FW':
-      return 'Zrodlo FW';
+      return 'Źródło FW';
     default:
       return 'Brak danych';
   }
@@ -136,7 +136,7 @@ export function commandExecutionStateLabel(state: string | null | undefined): st
     case 'oczekuje':
       return 'Oczekuje';
     case 'przyjete':
-      return 'Przyjete';
+      return 'Przyjęte';
     case 'odrzucone':
       return 'Odrzucone';
     case 'wykonane':
@@ -151,11 +151,11 @@ export function commandExecutionStateLabel(state: string | null | undefined): st
 export function resultStateLabel(state: string | null | undefined): string {
   switch (state) {
     case 'pelny':
-      return 'Pelny';
+      return 'Pełny';
     case 'czesciowy':
-      return 'Czesciowy';
+      return 'Częściowy';
     case 'bledny':
-      return 'Bledny';
+      return 'Błędny';
     default:
       return 'Brak danych';
   }

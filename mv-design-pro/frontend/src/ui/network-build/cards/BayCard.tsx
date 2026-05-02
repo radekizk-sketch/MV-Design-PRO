@@ -26,19 +26,19 @@ import { useElementStatusDot } from '../liveReadiness';
 function bayRoleLabel(role: string): string {
   switch (role) {
     case 'IN':
-      return 'Pole zasilajace';
+      return 'Pole zasilające';
     case 'OUT':
       return 'Pole liniowe';
     case 'TR':
       return 'Pole transformatorowe';
     case 'COUPLER':
-      return 'Pole sprzegla sekcji';
+      return 'Pole sprzęgła sekcji';
     case 'FEEDER':
-      return 'Pole odgalezne';
+      return 'Pole odgałęźne';
     case 'MEASUREMENT':
       return 'Pole pomiarowe';
     case 'OZE':
-      return 'Pole zrodlowe';
+      return 'Pole źródłowe';
     default:
       return role;
   }
@@ -162,14 +162,14 @@ export function BayCard({ elementId }: { elementId: string }) {
           key: 'canonical_role',
           label: 'Rola kanoniczna',
           value: isFieldLoading
-            ? 'Ladowanie...'
+            ? 'Ładowanie...'
             : canonicalRoleLabel(fieldItem?.canonical_model.base_model.bay_role),
         },
         {
           key: 'integrity',
-          label: 'Integralnosc modelu',
+          label: 'Integralność modelu',
           value: isFieldLoading
-            ? 'Ladowanie...'
+            ? 'Ładowanie...'
             : integrityStatusLabel(fieldItem?.canonical_model.integrity_status),
           severity:
             fieldItem?.canonical_model.integrity_status === 'wymaga_uzupelnienia'
@@ -181,7 +181,7 @@ export function BayCard({ elementId }: { elementId: string }) {
 
     const stationSection: CardSection = {
       id: 'station',
-      label: 'Stacja nadrzedna',
+      label: 'Stacja nadrzędna',
       fields: [
         { key: 'station_id', label: 'Identyfikator stacji', value: stationRef },
         {
@@ -225,7 +225,7 @@ export function BayCard({ elementId }: { elementId: string }) {
             key: 'field_read_model_state',
             label: isFieldLoading ? 'Stan odczytu' : 'Stan modelu',
             value: isFieldLoading
-              ? 'Ladowanie widoku pola...'
+              ? 'Ładowanie widoku pola...'
               : 'Brak kanonicznego widoku pola dla tego elementu',
             severity: 'warning',
           },
@@ -249,7 +249,7 @@ export function BayCard({ elementId }: { elementId: string }) {
       fields: [
         {
           key: 'comm_status',
-          label: 'Lacznosc urzadzenia wtorego',
+          label: 'Łączność urządzenia wtórnego',
           value: communicationStatusLabel(runtimeState?.secondary_communication_status),
           severity:
             runtimeState?.secondary_communication_status === 'offline'
@@ -274,12 +274,12 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'control_availability',
-          label: 'Dostepnosc sterowania',
+          label: 'Dostępność sterowania',
           value: availabilityLabel(runtimeState?.control_availability),
         },
         {
           key: 'measurement_availability',
-          label: 'Dostepnosc pomiarow',
+          label: 'Dostępność pomiarów',
           value: availabilityLabel(runtimeState?.measurement_availability),
         },
         {
@@ -356,22 +356,22 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'ct_refs',
-          label: 'Przekladniki pradowe',
+          label: 'Przekładniki prądowe',
           value: measurementChain?.ct_refs.join(', ') ?? null,
         },
         {
           key: 'vt_refs',
-          label: 'Przekladniki napieciowe',
+          label: 'Przekładniki napięciowe',
           value: measurementChain?.vt_refs.join(', ') ?? null,
         },
         {
           key: 'source_3i0',
-          label: 'Zrodlo 3I0',
+          label: 'Źródło 3I0',
           value: measurementChain?.zero_sequence_current_source ?? null,
         },
         {
           key: 'source_3u0',
-          label: 'Zrodlo 3U0',
+          label: 'Źródło 3U0',
           value: measurementChain?.zero_sequence_voltage_source ?? null,
         },
       ],
@@ -435,16 +435,16 @@ export function BayCard({ elementId }: { elementId: string }) {
     if (sourceEndpoint) {
       cardSections.push({
         id: 'source',
-        label: 'Endpoint zrodlowy',
+        label: 'Zacisk źródłowy',
         fields: [
           {
             key: 'source_kind',
-            label: 'Rodzaj zrodla',
+            label: 'Rodzaj źródła',
             value: sourceKindLabel(sourceEndpoint.source_kind),
           },
           {
             key: 'requires_vt',
-            label: 'Wymaga toru przekladnika napieciowego',
+            label: 'Wymaga toru przekładnika napięciowego',
             value: sourceEndpoint.requires_vt,
           },
           {
@@ -479,17 +479,17 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'result_message',
-          label: 'Opis wynikow',
+          label: 'Opis wyników',
           value: projectResults?.result_message_pl ?? null,
         },
         {
           key: 'sc_contributions',
-          label: 'Wklady zrodel w zwarciu',
+          label: 'Wkłady źródeł w zwarciu',
           value: projectResults?.source_contributions_sc.length ?? null,
         },
         {
           key: 'pf_contributions',
-          label: 'Wklady zrodel w rozplywie',
+          label: 'Wkłady źródeł w rozpływie',
           value: projectResults?.source_contributions_pf.length ?? null,
         },
         {
@@ -499,7 +499,7 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'whole_power_path_ok',
-          label: 'Tor pola spelnia wymagania',
+          label: 'Tor pola spełnia wymagania',
           value: projectResults?.verification.whole_power_path_ok ?? null,
         },
       ],
@@ -507,7 +507,7 @@ export function BayCard({ elementId }: { elementId: string }) {
 
     cardSections.push({
       id: 'proof',
-      label: 'Wywod pola',
+      label: 'Wywód pola',
       fields: [
         {
           key: 'proof_ref',
@@ -516,12 +516,12 @@ export function BayCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'input_data_refs',
-          label: 'Powiazane dane wejsciowe',
+          label: 'Powiązane dane wejściowe',
           value: projectResults?.proof_binding.input_data_refs.length ?? null,
         },
         {
           key: 'source_contribution_refs',
-          label: 'Powiazane wklady zrodel',
+          label: 'Powiązane wkłady źródeł',
           value: projectResults?.proof_binding.source_contribution_refs.length ?? null,
         },
       ],
@@ -680,7 +680,7 @@ export function BayCard({ elementId }: { elementId: string }) {
       },
       {
         id: 'field_source_contributions',
-        label: 'Wklady zrodel',
+        label: 'Wkłady źródeł',
         variant: 'secondary',
         onClick: handleOpenSourceContributions,
       },
@@ -692,13 +692,13 @@ export function BayCard({ elementId }: { elementId: string }) {
       },
       {
         id: 'field_work_safety',
-        label: 'Bezpieczenstwo do pracy',
+        label: 'Bezpieczeństwo do pracy',
         variant: 'secondary',
         onClick: handleOpenWorkSafety,
       },
       {
         id: 'field_compare',
-        label: 'Porownaj pola',
+        label: 'Porównaj pola',
         variant: 'secondary',
         onClick: handleOpenCompare,
       },

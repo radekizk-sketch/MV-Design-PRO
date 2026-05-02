@@ -333,11 +333,9 @@ class TestDomainOpsCatalogPolicy:
         assert after["header"]["hash_sha256"] == before_hash
         assert after["branches"] == before["branches"]
 
-    def test_domain_ops_field_adapter_rejects_legacy_ct_write_without_persisting(self, client):
+    def test_domain_ops_add_ct_persists_measurement_for_field_spec(self, client):
         case_id = "test-case-domain-ops-ct-adapter"
         _seed_enm(case_id, _valid_enm_with_field_specs("Field Adapter"))
-
-        before = client.get(f"/api/cases/{case_id}/enm").json()
 
         response = client.post(
             f"/api/cases/{case_id}/enm/domain-ops",
@@ -360,13 +358,98 @@ class TestDomainOpsCatalogPolicy:
 
         assert response.status_code == 200
         body = response.json()
-        assert body["error_code"] == "field.legacy_write_disabled"
-        assert body["adapter_only"] is True
-        assert body["field_view"]["summary"]["total_fields"] == 1
-        assert body["field_view"]["fields"][0]["bay_ref"] == "field_in_1"
+        assert body.get("error") is None
+        assert "changes" in body
+        assert body["changes"]["created_element_ids"]
 
         after = client.get(f"/api/cases/{case_id}/enm").json()
-        assert after == before
+        assert len(after["measurements"]) == 1
+        measurement = after["measurements"][0]
+        assert measurement["measurement_type"] == "CT"
+        assert measurement["bay_ref"] == "field_in_1"
+        assert measurement["bus_ref"] == "b1"
+        assert measurement["catalog_ref"] == "ct_400_5_5p20_15va_abb"
+        assert measurement["catalog_namespace"] == "CT"
+        assert measurement["source_mode"] == "KATALOG"
+
+    def test_domain_ops_add_relay_persists_protection_for_field_spec(self, client):
+        case_id = "test-case-domain-ops-relay-adapter"
+        payload = _valid_enm_with_field_specs("Relay Adapter")
+        payload["buses"].append(
+            {
+                "id": "00000000-0000-0000-0000-000000000004",
+                "ref_id": "b2",
+                "name": "B2",
+                "tags": [],
+                "meta": {},
+                "voltage_kv": 15,
+                "phase_system": "3ph",
+            }
+        )
+        payload["branches"].append(
+            {
+                "id": "00000000-0000-0000-0000-000000000005",
+                "ref_id": "brk_1",
+                "name": "Wyłącznik pola",
+                "tags": [],
+                "meta": {},
+                "from_bus_ref": "b1",
+                "to_bus_ref": "b2",
+                "status": "closed",
+                "type": "breaker",
+            }
+        )
+        payload["substations"][0]["meta"]["field_specs"][0]["equipment_refs"] = ["brk_1"]
+        _seed_enm(case_id, payload)
+
+        add_ct = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_ct",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "ratio_primary_a": 400.0,
+                        "ratio_secondary_a": 5.0,
+                        "catalog_binding": {
+                            "catalog_namespace": "CT",
+                            "catalog_item_id": "ct_400_5_5p20_15va_abb",
+                            "catalog_item_version": "2024.1",
+                        },
+                    },
+                }
+            },
+        )
+        assert add_ct.status_code == 200
+
+        response = client.post(
+            f"/api/cases/{case_id}/enm/domain-ops",
+            json={
+                "operation": {
+                    "name": "add_relay",
+                    "payload": {
+                        "field_ref": "field_in_1",
+                        "breaker_ref": "brk_1",
+                        "relay_type": "NADPRADOWY",
+                        "protection": {"catalog_item_id": "ACME_REX500_v1"},
+                    },
+                }
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body.get("error") is None
+
+        after = client.get(f"/api/cases/{case_id}/enm").json()
+        assert len(after["protection_assignments"]) == 1
+        assignment = after["protection_assignments"][0]
+        assert assignment["breaker_ref"] == "brk_1"
+        assert assignment["ct_ref"] == after["measurements"][0]["ref_id"]
+        assert assignment["catalog_ref"] == "ACME_REX500_v1"
+        assert assignment["catalog_namespace"] == "ZABEZPIECZENIE"
+        field_spec = after["substations"][0]["meta"]["field_specs"][0]
+        assert field_spec["protection_ref"] == assignment["ref_id"]
 
     def test_domain_ops_rejects_legacy_bay_parameter_update_without_persisting(self, client):
         case_id = "test-case-domain-ops-legacy-bay"

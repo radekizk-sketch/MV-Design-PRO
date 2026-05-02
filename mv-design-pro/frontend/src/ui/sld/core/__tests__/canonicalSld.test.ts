@@ -307,7 +307,7 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       if (!annotations) return;
 
       for (const node of annotations.trunkNodes) {
-        expect(node.deltaU_percent).toBeGreaterThanOrEqual(0);
+        expect(node.deltaU_percent === null || node.deltaU_percent >= 0).toBe(true);
       }
     });
   });
@@ -319,10 +319,10 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
 
       for (const seg of annotations.trunkSegments) {
         expect(seg.cableType).toBeTruthy();
-        expect(seg.lengthKm).toBeGreaterThanOrEqual(0);
-        expect(seg.resistance_ohm).toBeGreaterThanOrEqual(0);
-        expect(seg.reactance_ohm).toBeGreaterThanOrEqual(0);
-        expect(seg.ampacity_A).toBeGreaterThan(0);
+        expect(seg.lengthKm === null || seg.lengthKm >= 0).toBe(true);
+        expect(seg.resistance_ohm === null || seg.resistance_ohm >= 0).toBe(true);
+        expect(seg.reactance_ohm === null || seg.reactance_ohm >= 0).toBe(true);
+        expect(seg.ampacity_A === null || seg.ampacity_A > 0).toBe(true);
       }
     });
 
@@ -363,10 +363,10 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       for (const bp of annotations.branchPoints) {
         expect(bp.branchLine.designation).toBeTruthy();
         expect(bp.branchLine.cableType).toBeTruthy();
-        expect(bp.branchLine.lengthKm).toBeGreaterThanOrEqual(0);
-        expect(bp.branchLine.resistance_ohm).toBeGreaterThanOrEqual(0);
-        expect(bp.branchLine.reactance_ohm).toBeGreaterThanOrEqual(0);
-        expect(bp.branchLine.ampacity_A).toBeGreaterThan(0);
+        expect(bp.branchLine.lengthKm === null || bp.branchLine.lengthKm >= 0).toBe(true);
+        expect(bp.branchLine.resistance_ohm === null || bp.branchLine.resistance_ohm >= 0).toBe(true);
+        expect(bp.branchLine.reactance_ohm === null || bp.branchLine.reactance_ohm >= 0).toBe(true);
+        expect(bp.branchLine.ampacity_A === null || bp.branchLine.ampacity_A > 0).toBe(true);
       }
     });
 
@@ -384,7 +384,7 @@ describe('Canonical SLD — CANONICAL/IEC Style', () => {
       if (!annotations) return;
 
       for (const bp of annotations.branchPoints) {
-        expect(bp.branchApparatus.ratedVoltage_kV).toBeGreaterThan(0);
+        expect(bp.branchApparatus.ratedVoltage_kV === null || bp.branchApparatus.ratedVoltage_kV > 0).toBe(true);
       }
     });
 

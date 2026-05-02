@@ -35,6 +35,13 @@ Use these rules for agent behavior. They do not weaken any domain, solver, proof
 - For current model behavior, pricing, API parameters, regulations, dependencies, or time-sensitive facts, verify against current sources and cite exact dates.
 - Do not add the current date to prompts or docs unless the task is time-sensitive.
 
+### 0.4 Język i kodowanie
+
+- W dokumentacji projektu, etykietach interfejsu, komunikatach i nowych komentarzach używaj polskiego języka technicznego.
+- Angielski zostawiaj tylko dla nazw własnych standardów, bibliotek, API, typów kodowych, ścieżek i identyfikatorów programu.
+- Każdy widoczny błąd kodowania, w tym typowe pozostałości po błędnym odczycie UTF-8, jest błędem do naprawy w dotykanym zakresie.
+- Nie zostawiaj w interfejsie ani dokumentacji mieszanki językowej, jeżeli nie wynika ona z nazwy własnej albo kontraktu kodowego.
+
 ## 1. Document Hierarchy
 
 | Document | Purpose | Authority |
@@ -51,6 +58,17 @@ In case of conflict: `docs/spec/` wins (it is the most detailed and authoritativ
 ---
 
 ## 2. Immutable Rules
+
+### 2.0 Standard projektowania stacji
+
+Przy pracy nad GPZ, rozdzielnią SN, stacjami SN/nN, odgałęzieniami, zabezpieczeniami, kartami obiektów i SLD stosuj
+[`docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md`](docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md).
+
+- Traktuj każdą stację jako funkcjonalny układ elektroenergetyczny: tor zasilania, tor transformatora, sekcje szyn, pola, aparaturę, uziemienie, zabezpieczenia, sterowanie, sygnalizację i wyprowadzone odcinki sieci.
+- Nie rysuj dekoracyjnej ani atrapowej aparatury. Każdy widoczny element schematu musi wynikać z danych domeny, katalogu, pola stacji, aparatu albo jawnego stanu brakujących danych.
+- Obowiązująca sekwencja budowy to `GPZ -> pole SN -> magistrala SN -> odcinek/stacja/odgałęzienie -> transformator/odbiór/OZE/BESS -> obliczenia serwerowe -> nakładka wyników i dowód obliczeń`.
+- Warstwa prezentacji wysyła wyłącznie dane wejściowe. Wartości obliczone pochodzą z solverów i wyników serwerowych.
+- Główne karty użytkownika są kartami inżynierskimi. Surowe identyfikatory, skróty haszy i referencje wewnętrzne mogą występować tylko w zwiniętej diagnostyce.
 
 ### 2.1 NOT-A-SOLVER Rule
 

@@ -211,6 +211,10 @@ export interface VTCatalogType extends CatalogType {
 export interface PVInverterCatalogType extends CatalogType {
   s_n_kva: number;
   p_max_kw: number;
+  un_kv?: number;
+  u_n_kv?: number;
+  voltage_kv?: number;
+  voltage_lv_kv?: number;
   cos_phi_min?: number;
   cos_phi_max?: number;
   control_mode?: string;
@@ -226,6 +230,10 @@ export interface BESSInverterCatalogType extends CatalogType {
   p_discharge_kw: number;
   e_kwh: number;
   s_n_kva?: number;
+  un_kv?: number;
+  u_n_kv?: number;
+  voltage_kv?: number;
+  voltage_lv_kv?: number;
 }
 
 /**

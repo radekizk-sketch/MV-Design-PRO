@@ -74,6 +74,12 @@ export function SchematContextPanel() {
   );
   const blockerCount = blockers.length || (blockersByCategory?.total ?? 0);
   const readinessPercent = snapshot ? (isReady ? 100 : Math.max(0, Math.min(99, 100 - blockerCount * 12))) : 0;
+  const nextActionLabel = !snapshot
+    ? 'Dodaj GPZ jako pierwszy element modelu'
+    : blockerCount > 0
+      ? `${blockerCount} ${blockerCount === 1 ? 'element wymaga' : 'elementów wymaga'} uzupełnienia danych`
+      : 'Brak aktywnych blokad modelu';
+  const nextActionButtonLabel = snapshot ? 'Pokaż' : 'Buduj';
 
   return (
     <div
@@ -101,25 +107,29 @@ export function SchematContextPanel() {
         <button
           type="button"
           data-testid="schemat-action-show-normal-open-points"
-          onClick={() => setActiveWorkMode('TP')}
+          onClick={() => {
+            if (!snapshot) {
+              setActiveArea('MODEL_SIECI');
+              return;
+            }
+            setActiveWorkMode('TP');
+          }}
           className={clsx(
             'mt-2 flex w-full items-center justify-between rounded-sm border px-2 py-1.5 text-left text-[10px]',
-            blockerCount > 0
+            !snapshot
+              ? 'border-cyan-500/45 bg-cyan-500/10 text-cyan-100'
+              : blockerCount > 0
               ? 'border-amber-500/45 bg-amber-500/10 text-amber-100'
               : 'border-emerald-500/30 bg-emerald-500/8 text-emerald-200',
           )}
         >
           <span className="flex min-w-0 items-center gap-2">
-            <span className={blockerCount > 0 ? 'text-amber-400' : 'text-emerald-400'}>
-              {blockerCount > 0 ? '△' : '◎'}
+            <span className={!snapshot ? 'text-cyan-300' : blockerCount > 0 ? 'text-amber-400' : 'text-emerald-400'}>
+              {!snapshot ? '1' : blockerCount > 0 ? '△' : '◎'}
             </span>
-            <span className="truncate">
-              {blockerCount > 0
-                ? `${blockerCount} ${blockerCount === 1 ? 'element wymaga' : 'elementów wymaga'} uzupełnienia danych`
-                : snapshot ? 'Brak aktywnych blokad modelu' : 'Brak aktywnego modelu'}
-            </span>
+            <span className="truncate">{nextActionLabel}</span>
           </span>
-          <span className="text-cyan-300">Pokaż</span>
+          <span className="text-cyan-300">{nextActionButtonLabel}</span>
         </button>
       </div>
 
@@ -161,7 +171,9 @@ export function SchematContextPanel() {
           </div>
         ) : (
           <div className="text-[10px] text-scada-muted">
-            {snapshot ? 'Brak blokad w aktualnym stanie modelu.' : 'Brak danych gotowości dla aktywnego modelu.'}
+            {snapshot
+              ? 'Brak blokad w aktualnym stanie modelu.'
+              : 'Brak modelu do sprawdzenia. Najpierw przejdź do budowy GPZ.'}
           </div>
         )}
       </div>
@@ -194,10 +206,16 @@ export function SchematContextPanel() {
           ))
         ) : (
           <div className="rounded-sm border border-scada-border bg-[#0a141d] p-3 text-[11px] leading-snug text-scada-muted">
-            {!snapshot && <span className="mb-1 block font-semibold text-scada-text">Stan pustej kanwy</span>}
-            {snapshot
-              ? 'Aktualny snapshot nie zawiera elementów schematu do pokazania w drzewie.'
-              : 'Brak aktywnego snapshotu. Drzewo zostanie wypełnione po załadowaniu danych modelu.'}
+            {!snapshot && <span className="mb-2 block font-semibold text-scada-text">Start pustej kanwy</span>}
+            {snapshot ? (
+              'Aktualny snapshot nie zawiera elementów schematu do pokazania w drzewie.'
+            ) : (
+              <div className="space-y-1">
+                <div>1. Wybierz albo utwórz przypadek obliczeniowy.</div>
+                <div>2. Dodaj GPZ z parametrami zwarciowymi.</div>
+                <div>3. Wyprowadź magistralę SN, stacje i OZE/BESS.</div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -210,7 +228,7 @@ export function SchematContextPanel() {
           className="flex h-9 flex-1 items-center gap-2 rounded-sm border border-scada-border bg-[#0a141d] px-2 text-scada-muted hover:border-cyan-500/55 hover:text-scada-text"
         >
           <span className="text-lg leading-none">+</span>
-          <span>Dodaj element</span>
+          <span>{snapshot ? 'Dodaj element' : 'Przejdź do budowy GPZ'}</span>
         </button>
         <div className="grid h-9 min-w-10 place-items-center rounded-sm border border-scada-border bg-[#0a141d] px-2 font-mono text-[10px] text-scada-muted">
           {elementCount}
