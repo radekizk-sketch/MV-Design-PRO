@@ -17,7 +17,6 @@
  */
 
 import { useMemo } from 'react';
-import type { AnySldSymbol } from '../sld-editor/types';
 import type { ResolvedOverlayStyle, OverlayPayloadV1 } from './overlayTypes';
 import { useOverlayStore } from './overlayStore';
 import { applyOverlayToSymbols, getElementOverlayStyle } from './OverlayEngine';
@@ -66,7 +65,7 @@ const EMPTY_STYLE_MAP = new Map<string, ResolvedOverlayStyle>();
  * @returns Overlay runtime state and actions
  */
 export function useOverlayRuntime(
-  symbols: readonly AnySldSymbol[]
+  symbols: readonly unknown[]
 ): OverlayRuntimeResult {
   const activeRunId = useOverlayStore((state) => state.activeRunId);
   const overlay = useOverlayStore((state) => state.overlay);

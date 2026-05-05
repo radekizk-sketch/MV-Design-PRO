@@ -26,7 +26,6 @@ import type {
 } from '../../types/enm';
 import { computeWizardState, getStepStatusColor, getOverallStatusLabel } from './wizardStateMachine';
 import type { WizardState } from './wizardStateMachine';
-import { WizardSldPreview } from './WizardSldPreview';
 import { useWizardStore } from './useWizardStore';
 import { formatPolishValue } from '../shared/formatPolishValue';
 import type { WizardIssueApi } from './useWizardStore';
@@ -1178,7 +1177,6 @@ function StepK9({ enm }: { enm: EnergyNetworkModel }) {
   return (
     <div>
       <HelpText>Podglad schematu jednokreskowego (SLD) renderowanego przez ten sam kanoniczny pipeline co aktywny widok produktu.</HelpText>
-      <WizardSldPreview enm={enm} />
       <div className="mt-3 flex gap-3 text-xs text-chrome-400">
         <span>{enm.buses.length} szyn</span>
         <span className="text-chrome-200">|</span>

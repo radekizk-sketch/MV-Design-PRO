@@ -7,4 +7,3 @@
 
 export { EmptyInspectorPanel, default } from './EmptyInspectorPanel';
 export type { EmptyInspectorPanelProps } from './EmptyInspectorPanel';
-export { InspectorResolver } from './InspectorResolver';

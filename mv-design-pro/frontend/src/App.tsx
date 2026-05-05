@@ -28,7 +28,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 
-import { SLDViewPage, SldEditorPage } from './ui/sld';
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout } from './ui/layout';
@@ -58,7 +57,6 @@ import {
 } from './ui/navigation';
 import { NotificationToast } from './ui/notifications/NotificationToast';
 import { notify } from './ui/notifications/store';
-import { InspectorResolver } from './ui/inspector-panel';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
 import type { AreaId } from './ui/navigation/areaRegistry';
@@ -414,7 +412,6 @@ function App() {
     onCalculate: handleCalculate,
     onViewResults: handleViewResults,
     projectName: projectName ?? undefined,
-    inspectorContent: <InspectorResolver />,
     validationStatus: validationStatus,
     validationWarnings: readiness?.warnings?.length ?? 0,
     validationErrors: readiness?.blockers?.length ?? 0,
@@ -447,7 +444,6 @@ function App() {
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
-        <SLDViewPage useDemo={false} />
       </CanonicalLayout>
     );
   }
@@ -465,7 +461,6 @@ function App() {
   // This replaces the old DesignerPage with proper Canonical-style layout
   return wrapWithReadyIndicator(
     <CanonicalLayout {...layoutProps}>
-      <SldEditorPage useDemo={false} />
     </CanonicalLayout>
   );
 }

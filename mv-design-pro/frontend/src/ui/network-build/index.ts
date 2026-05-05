@@ -6,7 +6,6 @@
 
 export { ProcessPanel } from './ProcessPanel';
 export { ReadinessBar } from './ReadinessBar';
-export { InspectorEngineeringView } from './InspectorEngineeringView';
 export {
   useNetworkBuildStore,
   useNetworkBuildDerived,
@@ -33,9 +32,6 @@ export type {
 } from './networkBuildStore';
 
 // Krok V — Context menu, visual modes, catalog, search, mass review, modals
-export { buildContextMenuForElement, getContextMenuTitle } from './contextMenuIntegration';
-export type { ContextMenuRequest, ContextMenuHandlers } from './contextMenuIntegration';
-export { SldVisualModes } from './SldVisualModes';
 export { CatalogBrowser } from './CatalogBrowser';
 export { GlobalSearch } from './GlobalSearch';
 export { TopContextBar } from './TopContextBar';

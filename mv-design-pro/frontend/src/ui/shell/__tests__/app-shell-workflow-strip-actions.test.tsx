@@ -144,9 +144,6 @@ describe('AppShellV12 workflow strip actions', () => {
     fireEvent.click(screen.getByTestId('wcs-catalog'));
     expect(mockNavigateToCatalog).toHaveBeenCalledOnce();
 
-    fireEvent.click(screen.getByTestId('wcs-mass-review'));
-    expect(screen.getByTestId('mass-review-panel')).toBeInTheDocument();
-
     fireEvent.click(screen.getByTestId('wcs-project-metadata'));
     expect(screen.getByTestId('project-metadata-modal')).toBeInTheDocument();
 

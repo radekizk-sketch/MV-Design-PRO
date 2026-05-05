@@ -3,17 +3,10 @@ import { type ReactNode, useMemo, useState } from 'react';
 import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
-import { ObjectCardRouter } from '../network-build/ObjectCardRouter';
-import { OperationFormRouter } from '../network-build/OperationFormRouter';
-import { ReadOnlyPanelRouter } from '../network-build/ReadOnlyPanelRouter';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { PowerFlowResultsInspectorPage } from '../power-flow-results';
-import { ProtectionResultsInspectorPage } from '../protection-results';
-import { ResultsInspectorPage } from '../results-inspector';
 import { useSelectionStore } from '../selection';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
-import { SwitchgearWizardPage } from '../wizard/switchgear/SwitchgearWizardPage';
 import {
   buildRecordRows,
   buildSummaryRows,
@@ -548,7 +541,6 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
 }
 
 function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const openChildSurface = useChildSurfaceLauncher(surface);
@@ -650,16 +642,10 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       </SectionCard>
 
       <SectionCard title="Biezacy widok analityki" eyebrow="Wyniki">
-        {activeAnalysisTab === 'trace' ? (
-          <ResultsInspectorPage runId={activeRunId ?? undefined} forcedTab="TRACE" />
-        ) : activeAnalysisTab === 'protection' ? (
-          <ProtectionResultsInspectorPage />
-        ) : activeAnalysisTab === 'power-flow' ? (
-          <PowerFlowResultsInspectorPage />
-        ) : activeAnalysisTab === 'compare' ? (
+        {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
         ) : (
-          <ResultsInspectorPage runId={activeRunId ?? undefined} />
+          <p className="text-xs text-slate-400">Wybierz zakładkę analityki.</p>
         )}
       </SectionCard>
     </div>
@@ -1040,7 +1026,7 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
         ]}
       />
       <SectionCard title="Biezacy widok koordynacji" eyebrow="Widok wynikowy">
-        <ProtectionResultsInspectorPage />
+        <p className="text-xs text-slate-400">Widok koordynacji nie jest dostepny.</p>
       </SectionCard>
     </div>
   );
@@ -1253,9 +1239,6 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
   const delegateBodies: Record<string, ReactNode> = {
-    operation_form: <OperationFormRouter />,
-    object_card: <ObjectCardRouter />,
-    read_only_panel: <ReadOnlyPanelRouter />,
   };
   if (typeof delegate === 'string' && delegate in delegateBodies) {
     return delegateBodies[delegate];
@@ -1271,7 +1254,6 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'case_context':
       return <CaseContextSurface surface={surface} />;
     case 'switchgear_wizard':
-      return <SwitchgearWizardPage />;
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:
