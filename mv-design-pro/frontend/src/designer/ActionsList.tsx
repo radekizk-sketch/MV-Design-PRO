@@ -44,7 +44,7 @@ export function ActionsList({ actions, loading, error, onRunAction, runningActio
     return (
       <div className="p-4 border rounded bg-white">
         <h2 className="text-lg font-semibold mb-2">Actions</h2>
-        <div className="text-gray-500">No actions available for this snapshot.</div>
+        <div className="text-gray-500">Brak dostępnych działań dla tej wersji modelu.</div>
       </div>
     );
   }

@@ -1039,7 +1039,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeProjectName ?? activeProjectId ?? 'Nie wybrano',
       },
       {
-        label: 'Przypadek',
+        label: 'Zakres obliczeń',
         value: activeCaseName ?? activeCaseId ?? 'Nie wybrano',
         tone: hasActiveCase ? ('default' as const) : ('warn' as const),
       },
@@ -1048,11 +1048,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeVariant?.name ?? 'Brak',
       },
       {
-        label: 'Migawka modelu',
+        label: 'Wersja modelu',
         value: activeSnapshotId ?? 'Brak',
       },
       {
-        label: 'Uruchomienie',
+        label: 'Obliczenie',
         value: activeRunId ?? 'Brak',
       },
       {
@@ -1095,7 +1095,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockActionGroups = useMemo(() => {
     const toolDisabledReason = (toolId: Exclude<CreatorTool, null>): string | null => {
       if (!activeCaseId) {
-        return 'Najpierw wybierz aktywny przypadek obliczeniowy.';
+        return 'Najpierw wybierz aktywny zakres obliczeń.';
       }
       if (toolId !== 'add_grid_source_sn' && !hasSource) {
         return 'Najpierw dodaj zrodlo zasilania GPZ.';

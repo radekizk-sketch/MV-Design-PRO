@@ -1573,7 +1573,7 @@ export function WizardPage() {
       <div className="w-wizard-sidebar border-r border-chrome-200 bg-white flex flex-col overflow-hidden">
         {/* Header */}
         <div className="ind-panel-header justify-between">
-          <span>Kreator sieci</span>
+          <span>Konfiguracja sieci</span>
           <div
             data-testid="wizard-gate"
             className="flex items-center gap-1.5 px-2 py-0.5 rounded-ind text-[10px] font-semibold"

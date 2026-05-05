@@ -149,7 +149,7 @@ export function StatusBar({
       <div className="flex items-center gap-3">
         {snapshotDisplay && (
           <div className="flex items-center gap-1.5" data-testid="status-bar-snapshot">
-            <span className="text-chrome-400">Migawka:</span>
+            <span className="text-chrome-400">Wersja modelu:</span>
             <span className="font-mono text-[10px] text-chrome-300">{snapshotDisplay}</span>
           </div>
         )}

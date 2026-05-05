@@ -460,7 +460,7 @@ function createSymbols(input: TopologyInputV1, layout: ReturnType<typeof compute
   });
 
   const branches: BranchSymbol[] = input.branches.map((branch) => {
-    const edgeId = `edge_${branch.id}`;
+    const edgeId = `edge_${branch.id}` /* ui-terminology-ignore */;
     const route = layout.edgeRoutes.find((edge) => edge.edgeId === edgeId);
     const branchType = branch.kind === BranchKind.CABLE ? 'CABLE' : 'LINE';
     return {

@@ -582,7 +582,7 @@ export function SldAnalysisLauncher({
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                 Schemat jednokreskowy
               </div>
-              <div className="text-lg font-semibold text-slate-900">Uruchomienie analiz</div>
+              <div className="text-lg font-semibold text-slate-900">Obliczenia analityczne</div>
               <div className="mt-1 text-xs text-slate-500">
                 Przypadek: {caseName ?? caseId ?? 'brak'} • Projekt: {projectName ?? 'brak'}
               </div>
@@ -713,13 +713,13 @@ export function SldAnalysisLauncher({
             <div className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="text-xs font-medium text-slate-600">
-                  Uruchomienie A
+                  Obliczenie A
                   <select
                     value={comparisonRunA}
                     onChange={(event) => setComparisonRunA(event.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="">Wybierz uruchomienie</option>
+                    <option value="">Wybierz obliczenie</option>
                     {doneRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         {ANALYSIS_TYPE_LABELS[run.analysis_type]} • {RUN_STATUS_LABELS[run.status]} • {run.id}
@@ -728,13 +728,13 @@ export function SldAnalysisLauncher({
                   </select>
                 </label>
                 <label className="text-xs font-medium text-slate-600">
-                  Uruchomienie B
+                  Obliczenie B
                   <select
                     value={comparisonRunB}
                     onChange={(event) => setComparisonRunB(event.target.value)}
                     className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   >
-                    <option value="">Wybierz uruchomienie</option>
+                    <option value="">Wybierz obliczenie</option>
                     {doneRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         {ANALYSIS_TYPE_LABELS[run.analysis_type]} • {RUN_STATUS_LABELS[run.status]} • {run.id}

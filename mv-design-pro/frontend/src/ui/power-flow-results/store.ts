@@ -124,7 +124,7 @@ export const usePowerFlowResultsStore = create<PowerFlowResultsState>((set, get)
         isLoadingHeader: false,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Blad ladowania metadanych run';
+      const message = err instanceof Error ? err.message : 'Blad ladowania metadanych obliczenia';
       set({ error: message, isLoadingHeader: false });
     }
   },

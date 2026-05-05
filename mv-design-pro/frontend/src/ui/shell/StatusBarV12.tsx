@@ -138,9 +138,9 @@ export function StatusBarV12({
 
         <Separator />
 
-        {/* Przypadek */}
+        {/* Zakres obliczeń */}
         <div className="flex items-center gap-1" data-testid="status-case">
-          <span className="text-scada-muted">Przypadek:</span>
+          <span className="text-scada-muted">Zakres obliczeń:</span>
           {caseId ? (
             <span className="font-medium text-scada-text">{caseName || 'Bez nazwy'}</span>
           ) : (
@@ -162,13 +162,13 @@ export function StatusBarV12({
 
         <Separator />
 
-        {/* Migawka */}
+        {/* Wersja modelu */}
         <div className="flex items-center gap-1" data-testid="status-snapshot">
-          <span className="text-scada-muted">Migawka:</span>
+          <span className="text-scada-muted">Wersja modelu:</span>
           <span className="font-mono text-scada-text">{snapshotDisplay}</span>
         </div>
 
-        {/* Tryb legacy */}
+        {/* Tryb pracy */}
         <Separator />
         <span data-testid="status-mode" className="text-scada-muted">{modeLabel}</span>
       </div>
@@ -192,7 +192,7 @@ export function StatusBarV12({
         {runDisplay && (
           <>
             <div className="flex items-center gap-1" data-testid="status-run-id">
-              <span className="text-scada-muted">Uruchomienie:</span>
+              <span className="text-scada-muted">Ostatnie obliczenie:</span>
               <span className="font-mono text-[9px] text-scada-text">{runDisplay}</span>
             </div>
             <Separator />

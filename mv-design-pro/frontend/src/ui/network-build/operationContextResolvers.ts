@@ -175,7 +175,7 @@ function findBranchPointByBus(snapshot: EnergyNetworkModel | null, busRef: strin
     branchPoint.bus_ref === busRef
     || branchPoint.ports.MAIN_IN === busRef
     || branchPoint.ports.MAIN_OUT === busRef
-    || branchPoint.ports.BRANCH.includes(busRef)
+    || branchPoint.ports.BRANCH.includes(busRef) // ui-terminology-ignore
   )) ?? null;
 }
 
@@ -514,30 +514,30 @@ export function resolveBranchSourceRef(
     || null;
 
   if (branchPoint?.branch_point_type === 'branch_pole') {
-    return `${branchPoint.ref_id}.BRANCH`;
+    return `${branchPoint.ref_id}.BRANCH`; // ui-terminology-ignore
   }
 
   if (branchPoint?.branch_point_type === 'zksn') {
-    const branchPorts = Array.isArray(branchPoint.ports.BRANCH) ? branchPoint.ports.BRANCH : [];
+    const branchPorts = Array.isArray(branchPoint.ports.BRANCH) ? branchPoint.ports.BRANCH : []; // ui-terminology-ignore
     if (branchPorts.length === 0) {
-      return `${branchPoint.ref_id}.BRANCH_1`;
+      return `${branchPoint.ref_id}.BRANCH_1`; // ui-terminology-ignore
     }
 
     if (busRef) {
       const matchedPortIndex = branchPorts.findIndex((candidateBusRef) => candidateBusRef === busRef);
       if (matchedPortIndex >= 0) {
-        return `${branchPoint.ref_id}.BRANCH_${matchedPortIndex + 1}`;
+        return `${branchPoint.ref_id}.BRANCH_${matchedPortIndex + 1}`; // ui-terminology-ignore
       }
     }
 
     const occupiedPorts = branchPoint.branch_occupied ?? {};
     const freePortIndex = branchPorts.findIndex((_, index) => !occupiedPorts[`BRANCH_${index + 1}`]);
     const selectedPortIndex = freePortIndex >= 0 ? freePortIndex : 0;
-    return `${branchPoint.ref_id}.BRANCH_${selectedPortIndex + 1}`;
+    return `${branchPoint.ref_id}.BRANCH_${selectedPortIndex + 1}`; // ui-terminology-ignore
   }
 
   if (bay && bay.bay_role === 'FEEDER' && effectiveStationRef) {
-    return `${effectiveStationRef}.BRANCH`;
+    return `${effectiveStationRef}.BRANCH`; // ui-terminology-ignore
   }
 
   if (effectiveStationRef) {
@@ -545,7 +545,7 @@ export function resolveBranchSourceRef(
       candidate.substation_ref === effectiveStationRef && candidate.bay_role === 'FEEDER'
     ));
     if (feederBay) {
-      return `${effectiveStationRef}.BRANCH`;
+      return `${effectiveStationRef}.BRANCH`; // ui-terminology-ignore
     }
   }
 
@@ -611,12 +611,12 @@ export function resolveBranchSourceContext(
 
   let sourceBusRef = '';
   if (branchPoint.branch_point_type === 'branch_pole') {
-    sourceBusRef = branchPoint.ports.BRANCH[0] ?? '';
+    sourceBusRef = branchPoint.ports.BRANCH[0] ?? ''; // ui-terminology-ignore
   } else if (portId.startsWith('BRANCH_')) {
     const index = Number(portId.split('_')[1]) - 1;
-    sourceBusRef = branchPoint.ports.BRANCH[index] ?? '';
+    sourceBusRef = branchPoint.ports.BRANCH[index] ?? ''; // ui-terminology-ignore
   } else {
-    sourceBusRef = branchPoint.ports.BRANCH[0] ?? '';
+    sourceBusRef = branchPoint.ports.BRANCH[0] ?? ''; // ui-terminology-ignore
   }
 
   const branchBus = findBus(snapshot, sourceBusRef);

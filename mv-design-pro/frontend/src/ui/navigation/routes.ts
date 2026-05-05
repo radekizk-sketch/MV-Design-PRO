@@ -57,7 +57,7 @@ export const ROUTES = {
   SWITCHGEAR: {
     hash: '#switchgear',
     label: 'Rozdzielnica: pola i aparaty',
-    description: 'Kreator konfiguracji pol i aparatow rozdzielnicy',
+    description: 'Konfiguracja pol i aparatow rozdzielnicy',
     icon: 'SWG',
     requiredMode: 'MODEL_EDIT',
   },

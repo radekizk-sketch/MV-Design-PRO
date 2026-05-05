@@ -118,7 +118,7 @@ export function ValueProvenanceIcon({
               )}
               {provenance.runId && (
                 <div className="flex justify-between">
-                  <dt className="text-slate-500">Uruchomienie obliczeń</dt>
+                  <dt className="text-slate-500">Obliczenie</dt>
                   <dd className="font-mono text-[10px] text-slate-600">
                     {provenance.runId.slice(0, 8)}…
                   </dd>

@@ -57,7 +57,7 @@ export function SldSemanticDiagnosticsPanel({ report }: SldSemanticDiagnosticsPa
     { label: 'Semantyka', value: report.totals.semanticElements, tone: 'neutral' },
     { label: 'Naruszenia', value: report.totals.violations, tone: report.totals.violations > 0 ? 'block' : 'neutral' },
     {
-      label: 'Legacy',
+      label: 'Archiwalny',
       value: report.legacySilentPromotionRefIds.length,
       tone: report.legacySilentPromotionRefIds.length > 0 ? 'block' : 'neutral',
     },
@@ -96,7 +96,7 @@ export function SldSemanticDiagnosticsPanel({ report }: SldSemanticDiagnosticsPa
           <RefList title="Nierenderowalne produkcyjnie" refs={report.enmElementsNotProductionRenderable} />
           <RefList title="Renderowane jako szkic" refs={report.elementsRenderedAsSketch} />
           <RefList title="Renderowane jako blokada semantyczna" refs={report.elementsRenderedAsSemanticBlock} />
-          <RefList title="Cichy awans legacy" refs={report.legacySilentPromotionRefIds} />
+          <RefList title="Cichy awans archiwalny" refs={report.legacySilentPromotionRefIds} />
         </div>
       </div>
     </aside>

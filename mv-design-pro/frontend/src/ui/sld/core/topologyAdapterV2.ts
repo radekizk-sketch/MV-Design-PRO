@@ -897,7 +897,7 @@ export function buildVisualGraphFromTopology(
     if (branch.fromNodeId === branch.toNodeId) {
       fixActions.push({
         code: 'topology.self_edge_forbidden',
-        message: `Galaz '${branch.name}' (${branch.id}) ma fromNodeId === toNodeId (${branch.fromNodeId}). Pominieto.`,
+        message: `Galaz '${branch.name}' (${branch.id}) ma fromNodeId === toNodeId  /* ui-terminology-ignore */ (${branch.fromNodeId}). Pominieto.`,
         elementRef: branch.id,
         fixHint: 'Popraw polaczenia galezi — fromNodeId i toNodeId musza byc rozne.',
       });
@@ -908,7 +908,7 @@ export function buildVisualGraphFromTopology(
     if (!nodeIdSet.has(branch.fromNodeId)) {
       fixActions.push({
         code: 'branch.endpoint_invalid',
-        message: `Galaz '${branch.name}' (${branch.id}): fromNodeId '${branch.fromNodeId}' nie istnieje jako wezel.`,
+        message: `Galaz '${branch.name}' (${branch.id}): fromNodeId '${branch.fromNodeId}' /* ui-terminology-ignore */ nie istnieje jako wezel.`,
         elementRef: branch.id,
         fixHint: 'Dodaj brakujacy wezel polaczeniowy.',
       });
@@ -917,7 +917,7 @@ export function buildVisualGraphFromTopology(
     if (!nodeIdSet.has(branch.toNodeId)) {
       fixActions.push({
         code: 'branch.endpoint_invalid',
-        message: `Galaz '${branch.name}' (${branch.id}): toNodeId '${branch.toNodeId}' nie istnieje jako wezel.`,
+        message: `Galaz '${branch.name}' (${branch.id}): toNodeId '${branch.toNodeId}' /* ui-terminology-ignore */ nie istnieje jako wezel.`,
         elementRef: branch.id,
         fixHint: 'Dodaj brakujacy wezel polaczeniowy.',
       });

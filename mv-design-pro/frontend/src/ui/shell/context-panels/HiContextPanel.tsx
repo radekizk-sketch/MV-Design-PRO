@@ -27,11 +27,11 @@ export function HiContextPanel() {
         </span>
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="hi-active-run">
-            <span className="text-scada-muted">Aktywne uruchomienie obliczeń: </span>
+            <span className="text-scada-muted">Aktywne obliczenie: </span>
             <span className="font-mono">{activeRunId ?? '—'}</span>
           </div>
           <div data-testid="hi-active-snapshot">
-            <span className="text-scada-muted">Migawka: </span>
+            <span className="text-scada-muted">Wersja modelu: </span>
             <span className="font-mono">{activeSnapshotId ?? '—'}</span>
           </div>
         </div>

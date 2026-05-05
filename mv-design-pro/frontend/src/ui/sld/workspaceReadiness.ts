@@ -115,7 +115,7 @@ export function resolveWorkspaceBlockState({
       title: 'Brak aktywnego przypadku obliczeniowego',
       description:
         'Bez aktywnego przypadku panel gotowości pozostaje zablokowany. Wybierz przypadek albo utwórz nowy.',
-      nextStep: 'Wybierz istniejący przypadek w menedżerze przypadków lub utwórz nowy.',
+      nextStep: 'Wybierz istniejący zakres obliczeń w menedżerze obliczeń lub utwórz nowy.',
     },
     NO_MODEL: {
       reason: 'NO_MODEL',

@@ -36,7 +36,7 @@ export function WynikiContextPanel() {
 
       <div className="border-b border-scada-border bg-scada-bg px-3 py-2 text-[11px] text-scada-text">
         <div data-testid="wyniki-active-run">
-          <span className="text-scada-muted">Uruchomienie obliczeń: </span>
+          <span className="text-scada-muted">Obliczenie: </span>
           <span className="font-mono">{activeRunId ?? 'nie wybrano'}</span>
         </div>
       </div>

@@ -329,7 +329,7 @@ function checkConnections(symbols: AnySldSymbol[]): ValidationIssue[] {
         issues.push({
           ruleId: 'V-03',
           severity: 'ERROR',
-          message: `Gałąź "${symbol.elementName}" wskazuje na nieistniejący fromNodeId: ${branch.fromNodeId}`,
+          message: `Gałąź "${symbol.elementName}" wskazuje na nieistniejący fromNodeId: ${branch.fromNodeId}`, // ui-terminology-ignore
           symbolIds: [symbol.id],
           suggestion: 'Popraw referencję lub dodaj brakujący węzeł',
         });
@@ -347,7 +347,7 @@ function checkConnections(symbols: AnySldSymbol[]): ValidationIssue[] {
         issues.push({
           ruleId: 'V-03',
           severity: 'ERROR',
-          message: `Gałąź "${symbol.elementName}" wskazuje na nieistniejący toNodeId: ${branch.toNodeId}`,
+          message: `Gałąź "${symbol.elementName}" wskazuje na nieistniejący toNodeId: ${branch.toNodeId}`, // ui-terminology-ignore
           symbolIds: [symbol.id],
           suggestion: 'Popraw referencję lub dodaj brakujący węzeł',
         });

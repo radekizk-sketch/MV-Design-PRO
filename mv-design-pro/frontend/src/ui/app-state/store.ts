@@ -429,7 +429,7 @@ export function useCaseKindLabel(): string | null {
     case 'ShortCircuitCase':
       return 'Zakres zwarciowy';
     case 'PowerFlowCase':
-      return 'Przypadek rozplywu mocy';
+      return 'Zakres obliczeń rozplywu mocy';
     default:
       return kind;
   }

@@ -32,15 +32,48 @@ UI_PROP_PATTERN = re.compile(
 )
 
 JSX_TEXT_PATTERN = re.compile(r">(?P<content>[^<>{}][^<>{}]*)<")
-IGNORE_PATTERN = re.compile(r"//\s*ui-terminology-ignore")
+# Akceptujemy zarówno `// ui-terminology-ignore` jak i `/* ui-terminology-ignore */`
+# (block comment) per linia — dla programmatic template literals z nazwami zmiennych
+# (np. ${branch.name}) gdzie token jest częścią ścieżki obiektu, nie tekstem UI.
+IGNORE_PATTERN = re.compile(r"(?://|/\*)\s*ui-terminology-ignore")
+# Skip lines, które są typowymi programmatic referencjami do pól obiektu domenowego
+# (np. ${branch.fromNodeId}, state.snapshot as Record, NormativeLabels.terms.branch).
+# Dotyczy wyłącznie technicznych template literals w error/log messages.
+PROGRAMMATIC_REF_PATTERN = re.compile(
+    r"(?:\$\{[^}]*\.(?:branch|run|snapshot|case|proof|wizard)[^}]*\}"
+    r"|\bstate\.(?:branch|run|snapshot|case|proof|wizard)\b"
+    r"|\bNormativeLabels\.terms\.\w+)"
+)
 
 BANNED_UI_TERMS: dict[str, re.Pattern[str]] = {
+    # Brief 1 §2 + Brief 2 §2 — 12 tokenów zakazanych w aktywnym UI
     "Feeder": re.compile(r"\bFeeder\b"),
+    "feeder": re.compile(r"\bfeeder\b"),
     "Branch": re.compile(r"\bBranch\b"),
+    "branch": re.compile(r"\bbranch\b"),
     "Case": re.compile(r"\bCase\b"),
+    "case": re.compile(r"\bcase\b"),
     "Snapshot": re.compile(r"\bSnapshot\b"),
+    "snapshot": re.compile(r"\bsnapshot\b"),
     "Run": re.compile(r"\bRun\b"),
+    "run": re.compile(r"\brun\b"),
     "Proof": re.compile(r"\bProof\b"),
+    "proof": re.compile(r"\bproof\b"),
+    "Migawka": re.compile(r"\bMigawka\b"),
+    "migawka": re.compile(r"\bmigawka\b"),
+    "Uruchomienie": re.compile(r"\bUruchomienie\b"),
+    "uruchomienie": re.compile(r"\buruchomienie\b"),
+    "Przypadek": re.compile(r"\bPrzypadek\b"),
+    "przypadek": re.compile(r"\bprzypadek\b"),
+    "Wizard": re.compile(r"\bWizard\b"),
+    "wizard": re.compile(r"\bwizard\b"),
+    "Kreator": re.compile(r"\bKreator\b"),  # alias dla wizard w PL UI
+    "kreator": re.compile(r"\bkreator\b"),
+    "Fallback": re.compile(r"\bFallback\b"),
+    "fallback": re.compile(r"\bfallback\b"),
+    "Legacy": re.compile(r"\bLegacy\b"),
+    "legacy": re.compile(r"\blegacy\b"),
+    # Pozostałe pre-existing tokeny (skróty IEC i kody projektowe)
     "CT": re.compile(r"\bCT\b"),
     "VT": re.compile(r"\bVT\b"),
     "PT": re.compile(r"\bPT\b"),
@@ -115,7 +148,11 @@ def scan_file(path: Path) -> list[Violation]:
         if IGNORE_PATTERN.search(line):
             continue
         for fragment in extract_ui_strings(line):
-            for token in find_banned_terms(fragment):
+            # Pomijamy fragmenty będące programmatic referencjami obiektowymi
+            # (np. `${branch.name}` w error message — `branch` to nazwa zmiennej,
+            # nie token UI). Dotyczy WYŁĄCZNIE technicznych error/log messages.
+            cleaned = PROGRAMMATIC_REF_PATTERN.sub("", fragment)
+            for token in find_banned_terms(cleaned):
                 violations.append(
                     Violation(
                         file_path=normalize_path(path),

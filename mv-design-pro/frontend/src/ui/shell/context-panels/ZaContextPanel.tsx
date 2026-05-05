@@ -68,7 +68,7 @@ export function ZaContextPanel() {
               obliczonych zwarć. Aby uruchomić diagnostykę:
             </p>
             <ol className="ml-4 list-decimal space-y-1">
-              <li>Wybierz aktywny przypadek z analizą zwarciową trójfazową lub jednofazową</li>
+              <li>Wybierz aktywny zakres obliczeń z analizą zwarciową trójfazową lub jednofazową</li>
               <li>Uruchom obliczenia (przycisk Oblicz)</li>
               <li>Otwórz panel <strong>Diagnostyka</strong> w Inspektorze</li>
             </ol>

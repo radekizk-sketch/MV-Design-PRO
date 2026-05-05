@@ -223,7 +223,7 @@ function RunSelector({
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">Wybierz run...</option>
+        <option value="">Wybierz obliczenie...</option>
         {availableRuns.map((run) => (
           <option key={run.run_id} value={run.run_id}>
             {run.case_name ?? run.case_id.substring(0, 8)} — {new Date(run.created_at).toLocaleDateString('pl-PL')}

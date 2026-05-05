@@ -158,9 +158,9 @@ const ASSUMPTION_LABELS: Record<string, string> = {
 
 const LINEAGE_LABELS: Record<string, string> = {
   project_ref: 'Projekt',
-  run_ref: 'Uruchomienie obliczen',
+  run_ref: 'Obliczenie',
   analysis_type: 'Typ analizy',
-  snapshot_ref: 'Migawka',
+  snapshot_ref: 'Wersja modelu',
 };
 
 function formatDateTime(value: string | null | undefined): string {
@@ -192,7 +192,7 @@ function buildRunOverviewRows(contract: AnalysisRunContract): LabeledValueRow[] 
   const context = contract.analysisCaseContext;
 
   return [
-    { label: 'Uruchomienie obliczen', value: formatContractValue(context?.runRef ?? contract.id) },
+    { label: 'Obliczenie', value: formatContractValue(context?.runRef ?? contract.id) },
     { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
     { label: 'Status uruchomienia', value: formatContractValue(contract.status) },
     { label: 'Stan wynikow', value: formatContractValue(contract.resultStatus) },
@@ -256,7 +256,7 @@ function buildReproducibilityRows(contract: AnalysisRunContract): LabeledValueRo
     { label: 'Kontrakt wynikow', value: reproducibility.resultsContractVersion },
     { label: 'Kontrakt pola', value: reproducibility.bayContractVersion },
     { label: 'Renderer uzasadnienia', value: reproducibility.proofRendererVersion },
-    { label: 'Migawka katalogu', value: reproducibility.catalogSnapshotRef },
+    { label: 'Wersja katalogu', value: reproducibility.catalogSnapshotRef },
     { label: 'Wersja schematu katalogu', value: reproducibility.catalogSchemaVersion },
     { label: 'Tolerancje', value: reproducibility.tolerancePolicyRef },
     { label: 'Zaokraglenia', value: reproducibility.roundingPolicyRef },
@@ -537,8 +537,8 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
       rows={[
         { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
         { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
-        { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
-        { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+        { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+        { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
         { label: 'Obiekt', value: surface.entityRef ?? 'Kontekst globalny' },
         { label: 'Zakladka', value: surface.tabId ?? 'Podsumowanie' },
       ]}
@@ -745,7 +745,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               rows={[
                 { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
                 { label: 'Wariant', value: activeCaseName ?? 'Brak przypadku' },
-                { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+                { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
                 { label: 'Tryb zapisu', value: session?.saveMode ?? 'transakcyjny' },
                 { label: 'Zakres', value: scope },
                 { label: 'Szczegolowosc', value: detailLevel },
@@ -791,7 +791,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         eyebrow="Eksport"
         focusTitle="Biezaca konfiguracja"
         focusRowsBuilder={(contract) => [
-          { label: 'Uruchomienie obliczen', value: formatContractValue(contract.analysisCaseContext?.runRef ?? contract.id) },
+          { label: 'Obliczenie', value: formatContractValue(contract.analysisCaseContext?.runRef ?? contract.id) },
           { label: 'Zakres raportu', value: scope },
           { label: 'Szczegolowosc', value: detailLevel },
           { label: 'Tryb zapisu', value: formatContractValue(session?.saveMode ?? 'transactional') },
@@ -824,8 +824,8 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 rows={[
                   { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
                   { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
-                  { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
-                  { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+                  { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+                  { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
                   {
                     label: 'Rola',
                     value: 'Panel pomocniczy pozostaje w glownym oknie roboczym i otwiera tylko dozwolone widoki.',
@@ -967,7 +967,7 @@ function PhaseStateSurface({ surface }: { surface: WorkspaceSurfaceDescriptor })
         focusRowsBuilder={(contract) => [
           { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
           { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Brama jakosci', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
           { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
@@ -995,7 +995,7 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
           { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
           { label: 'Zalozenia zrodel', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
           { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
         ]}
       />
     </div>
@@ -1059,7 +1059,7 @@ function SymmetricalComponentsSurface({ surface }: { surface: WorkspaceSurfaceDe
         focusTitle="Kontekst Z0"
         focusRowsBuilder={(contract) => [
           { label: 'Obiekt', value: formatContractValue(surface.entityRef ?? selectedElement?.id ?? surface.subjectRef) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
           { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
           { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
@@ -1114,8 +1114,8 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
         <KeyValueGrid
           rows={[
             { label: 'Wariant', value: activeCaseName ?? 'Brak aktywnego wariantu' },
-            { label: 'Migawka', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
-            { label: 'Uruchomienie obliczen', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+            { label: 'Wersja modelu', value: activeSnapshotId ?? 'Brak aktywnej migawki' },
+            { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
             { label: 'Rola', value: 'Panel pomocniczy wybiera kontekst i otwiera kolejne widoki, ale nie tworzy osobnego trybu pracy.' },
           ]}
         />
@@ -1197,7 +1197,7 @@ function ThermalDynamicSurface({ surface }: { surface: WorkspaceSurfaceDescripto
           { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
           { label: 'Zalozenia obciazen', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
           { label: 'Zalozenia zrodel', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Kompletnosc', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
         ]}
       />
@@ -1218,7 +1218,7 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
           { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
           { label: 'Waznosc wyniku', value: formatContractValue(contract.resultsValid) },
           { label: 'Zalozenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
         ]}
       />
@@ -1239,8 +1239,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           { label: 'Identyfikator wyniku', value: formatContractValue(contract.id) },
           { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
           { label: 'Waznosc wyniku', value: formatContractValue(contract.resultsValid) },
-          { label: 'Migawka', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Migawka katalogu', value: formatContractValue(contract.analysisCaseContext?.reproducibility?.catalogSnapshotRef) },
+          { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
+          { label: 'Wersja katalogu', value: formatContractValue(contract.analysisCaseContext?.reproducibility?.catalogSnapshotRef) },
         ]}
         showAssumptions
         showLineage

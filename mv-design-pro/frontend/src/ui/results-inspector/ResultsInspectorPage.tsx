@@ -136,7 +136,7 @@ function ResultStatusBar({
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="results-status-case-context">
-              <span className="font-medium">Przypadek:</span> {caseLabel}
+              <span className="font-medium">Zakres obliczeń:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (
@@ -148,7 +148,7 @@ function ResultStatusBar({
             </span>
           )}
           <span className="text-sm text-slate-600">
-            <span className="font-medium">Uruchomienie:</span> {runId.substring(0, 8)}...
+            <span className="font-medium">Ostatnie obliczenie:</span> {runId.substring(0, 8)}...
           </span>
         </div>
         {(proofPackRef || reproducibilitySummary) && (
