@@ -119,16 +119,16 @@ describe('StationConfigTopologyCard', () => {
     render(
       <StationConfigTopologyCard
         externalPorts={[
-          { portId: 'p1', kind: 'sn_input', nominalVoltageKv: 15, bayDesignation: 'Pole 1' },
-          { portId: 'p2', kind: 'sn_output', nominalVoltageKv: 15, bayDesignation: 'Pole 2' },
+          { portId: 'port_in1', kind: 'sn_input', nominalVoltageKv: 15, bayDesignation: 'Pole 1' },
+          { portId: 'port_out1', kind: 'sn_output', nominalVoltageKv: 15, bayDesignation: 'Pole 2' },
         ]}
         errors={[]}
         endToEndConnectionsCount={2}
         missingEndpointsCount={0}
       />,
     );
-    expect(screen.getByTestId('station-port-p1')).toBeInTheDocument();
-    expect(screen.getByTestId('station-port-p2')).toBeInTheDocument();
+    expect(screen.getByTestId('station-port-port_in1')).toBeInTheDocument();
+    expect(screen.getByTestId('station-port-port_out1')).toBeInTheDocument();
     expect(screen.getByText('Wejście SN')).toBeInTheDocument();
     expect(screen.getByText('Wyjście SN')).toBeInTheDocument();
   });
