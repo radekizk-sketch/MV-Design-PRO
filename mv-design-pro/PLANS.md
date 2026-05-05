@@ -262,12 +262,12 @@ Progress:
 
 ---
 
-### 3.3 SLD CAD/SCADA Rebuild — PR-0..PR-4 dostarczone, PR-5..PR-16 w toku
+### 3.3 SLD CAD/SCADA Rebuild — PR-0..PR-7 dostarczone, PR-8..PR-16 w toku
 
 **Branch:** `claude/sld-architecture-redesign-ufa8Q`
 **Plan main:** `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md` (17 PR-ów)
 
-**Dostarczone w bieżącej sesji (5 commitów):**
+**Dostarczone w bieżącej sesji (9 commitów):**
 
 | PR | Commit | Zakres |
 |---|---|---|
@@ -276,8 +276,12 @@ Progress:
 | **PR-2** | `165d577` | UI terminology guard rebrief: 132 migracje stringów UI + 12 zakazanych tokenów (migawka/uruchomienie/przypadek/proof/run/snapshot/feeder/branch/case/wizard/fallback/legacy) z polskimi zamiennikami |
 | **PR-3** | `5e6b880` | ENM Port + ConnectionNode + LineRun + CableJoint + 10 BayTemplate + 9 StationTemplate + multi-voltage nN + automigracja v_ports_001 (idempotentna, deterministyczna) |
 | **PR-4** | `fc37351` | SLD v2 PortResolver: 15 PortKind contract z parity test ENM ↔ frontend, classifyStationTopology, validatePortVoltages, canConnectPorts (14 reguł), isPortKindCompatibleWithBayRole |
+| **PR-5 (cz. I)** | `60fe605` | v2 fundamenty: theme tokens (22 kolory dark SCADA), geometry/slot.ts (slot allocator hierarchiczny), geometry/routing.ts (ortogonalne L-shape, brak A*), domain/HierarchyTree.ts (adapter ENM), builder/BuildSequence.ts (8 kanonicznych komend), builder/HierarchicalLayout.ts (deterministic + przyrostowy, FNV-1a hash), viewport/ViewportController.ts (kursor-anchored zoom), lod/LodPolicy.ts (5 LOD + 13 warstw) — 81 testów green |
+| **PR-5 (cz. II)** | `4f1a8a0` | v2 renderery: 7 dedykowanych rendererów per typ (Gpz, Section, Bay, Device, CableRun, StationOnRun, Der + Connection), SldCanvasV2 composition root z pan/zoom/auto-fit/LOD inference/layer toggle — 24 testy renderers, 105 testów total v2 |
+| **PR-6** | `d8614db` | Wewnętrzny SLD stacji: backend topology_classifier + internal_layout (InternalSldDTO, multi-voltage nN, 4 typy topologiczne wnioskowane z portów), frontend StationInternalView z szyną SN + polami + transformatorami + rozdzielnicami nN — 19 testów (14 backend + 5 frontend) |
+| **PR-7** | `a769f4d` | InspectorTabs v2 (11 zakładek: Podstawowe/SLD/Topologia/Aparatura/Dane elektryczne/Zabezpieczenia/Pomiary/Obliczenia/Braki danych/Raport/Techniczne) + StickyHeader (status kompletności/zasilania/obliczeń + quick actions) + Breadcrumb dwukierunkowy — 23 testy |
 
-**Pozostałe PR-y (PR-5..PR-16, ~170 osobodni):**
+**Pozostałe PR-y (PR-8..PR-16, ~110 osobodni):**
 
 Plan obejmuje 12 kolejnych PR-ów z explicit scope-em w pliku planu:
 
@@ -296,11 +300,11 @@ Plan obejmuje 12 kolejnych PR-ów z explicit scope-em w pliku planu:
 
 PR-0..PR-4 stanowią **fundament merge-ready** rebuild-u: wszystkie inwarianty kanoniczne (zakaz 0.00, polish UI, 12 zakazanych tokenów wyeliminowanych), domena ENM rozszerzona o porty/connection nodes/line runs/cable joints + automigracja, frontend port contract + walidatory. Pozostałe PR-y to rdzeń rebuild-u i wymagają znacznego nakładu pracy (~170 osobodni / ~3-4 miesiące zespołu 2-3 osób). Plan dokumentuje pełne scope każdego z PR-ów (`/root/.claude/plans/...md`) i jest przygotowany do kontynuacji w kolejnych sesjach.
 
-**Walidacja kumulatywna PR-0..PR-4:**
+**Walidacja kumulatywna PR-0..PR-7:**
 
-- Backend: 4421 testów green (zero regresji), ENM 458 testów + nowe 46 PR-3 testów = 504 PR-3-relevant testów green.
-- Frontend: 491+ testów green (zero regresji), nowe 30 PR-0 + 29 PR-4 testów = 59 PR-relevant testów green.
-- Guards: pcc_zero / no_codenames / ui_terminology / docs / sld_determinism — wszystkie zielone.
+- Backend: 4421+ testów green (zero regresji), ENM 458 + 46 PR-3 + 14 PR-6 = 518 PR-relevant testów green.
+- Frontend: 491+ testów green (zero regresji), nowe 30 PR-0 + 29 PR-4 + 81 PR-5 (cz.I) + 24 PR-5 (cz.II) + 5 PR-6 + 23 PR-7 = 192 PR-relevant testów green.
+- Guards: pcc_zero / no_codenames / ui_terminology (132 violations zlikwidowane) / docs / sld_determinism — wszystkie zielone.
 - Type-check + lint: green.
 
 Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md`.
