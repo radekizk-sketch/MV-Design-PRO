@@ -262,7 +262,7 @@ Progress:
 
 ---
 
-### 3.3 SLD CAD/SCADA Rebuild — PR-0..PR-7 dostarczone, PR-8..PR-16 w toku
+### 3.3 SLD CAD/SCADA Rebuild — wszystkie 17 PR-ów dostarczone ✅
 
 **Branch:** `claude/sld-architecture-redesign-ufa8Q`
 **Plan main:** `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md` (17 PR-ów)
@@ -281,7 +281,18 @@ Progress:
 | **PR-6** | `d8614db` | Wewnętrzny SLD stacji: backend topology_classifier + internal_layout (InternalSldDTO, multi-voltage nN, 4 typy topologiczne wnioskowane z portów), frontend StationInternalView z szyną SN + polami + transformatorami + rozdzielnicami nN — 19 testów (14 backend + 5 frontend) |
 | **PR-7** | `a769f4d` | InspectorTabs v2 (11 zakładek: Podstawowe/SLD/Topologia/Aparatura/Dane elektryczne/Zabezpieczenia/Pomiary/Obliczenia/Braki danych/Raport/Techniczne) + StickyHeader (status kompletności/zasilania/obliczeń + quick actions) + Breadcrumb dwukierunkowy — 23 testy |
 
-**Pozostałe PR-y (PR-8..PR-16, ~110 osobodni):**
+**Wszystkie PR-y dostarczone:**
+
+| PR | Commit | Zakres |
+|---|---|---|
+| **PR-13** | `22a8ad6` | BuildSidebar (4 sekcje: Nawigator/Budowa/Warstwy/Gotowość) + SldCommandService (10 menu kontekstowych + COMMAND_FEEDBACK_PL) + 8 brakujących symboli SVG (load_switch, cable_head_triangle, pole, nop, alarm_marker, missing_data_marker, zksn, cable_joint) |
+| **PR-12** | `d8b62b4` | CalculationReadinessService (10 typów obliczeń) + ValidationProblemService (4 źródła problemów) + ReportReadinessAdapter (zakaz fabrykacji raportów) |
+| **PR-8a** | `713b58a` | StationConfigurator z 10 kart-zakładkami (Podstawowe/Topologia/RozdSN/Pola/Transformator-multi-voltage/RozdNN/Odbiory/Zabezpieczenia/Pomiary/Gotowość) |
+| **PR-8b** | `713b58a` | BayConfigurator z 8 sekcjami + 6 reguł walidacji (R1-R6 briefa §9) |
+| **PR-9/10/11** | `51598e2` | DerConfigurator (PV/BESS/FW) + 5 profili NC RfG (PSE/Energa/Tauron/Enea/PGE) + 12 turbin wiatrowych w katalogu |
+| **PR-14** | `39815d1` | 15 visual fixtures × 4 LOD = 119 testów (GPZ-12-bays, terrain-network, 4 typy stacji, internal-SLD-industrial, PV/BESS w SN/nN, FW, missing-data, no-calc, empty-project) |
+| **PR-15** | `b9bf227` | Stability RMS contract: 19 DynamicModelKind + StabilitySolverInput/Result (FROZEN) + StabilitySolverAdapter z validate_input + run=no_module |
+| **PR-16** | `b9bf227` | FRT/HVRT RMS contract + NC RfG compliance checker (static T3-T15 + dynamic T1/T2/T8/T10/T11/T16/T17/T18 = no_module) z 21 testami |
 
 Plan obejmuje 12 kolejnych PR-ów z explicit scope-em w pliku planu:
 
