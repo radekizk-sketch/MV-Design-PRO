@@ -22,7 +22,25 @@ import { describe, expect, it } from 'vitest';
  */
 
 const FRONTEND_SRC = join(__dirname, '..', '..');
-const SLD_GLOB = ['ui/sld', 'ui/sld-editor', 'ui/sld-overlay', 'ui/power-flow-results'];
+const SLD_GLOB = [
+  'ui/sld',
+  'ui/sld-editor',
+  'ui/sld-overlay',
+  'ui/power-flow-results',
+  'ui/wizard',
+  'ui/results',
+  'ui/results-browser',
+  'ui/results-inspector',
+  'ui/results-workspace',
+  'ui/run-results-inspector',
+  'ui/protection-results',
+  'ui/protection-coordination',
+  'ui/protection-curves',
+  'ui/protection-diagnostics',
+  'ui/voltage-profile',
+  'ui/reference-patterns',
+  'ui/proof',
+];
 
 interface Violation {
   file: string;

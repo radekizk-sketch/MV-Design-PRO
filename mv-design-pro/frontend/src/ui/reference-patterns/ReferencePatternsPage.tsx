@@ -35,17 +35,19 @@ import {
   buildVerdictMessage,
   type VerdictMessage,
 } from '../shared/verdict-messages';
+import { formatPolishValue } from '../shared/formatPolishValue';
 
 // =============================================================================
 // Helper Functions
 // =============================================================================
 
+/**
+ * @deprecated Migrated to formatPolishValue (PR-1). Wrapper retained for
+ * inline usage z `decimals` arg w istniejących call-sites tego pliku.
+ * Nowy kod używa `formatPolishValue` bezpośrednio z `ui/shared`.
+ */
 function formatNumber(value: number | null | undefined, decimals = 2): string {
-  if (value === null || value === undefined) return '—';
-  return value.toLocaleString('pl-PL', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  return formatPolishValue(value, { decimals });
 }
 
 // =============================================================================

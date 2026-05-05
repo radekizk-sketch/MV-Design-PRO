@@ -28,6 +28,7 @@ import { computeWizardState, getStepStatusColor, getOverallStatusLabel } from '.
 import type { WizardState } from './wizardStateMachine';
 import { WizardSldPreview } from './WizardSldPreview';
 import { useWizardStore } from './useWizardStore';
+import { formatPolishValue } from '../shared/formatPolishValue';
 import type { WizardIssueApi } from './useWizardStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { TypePicker } from '../catalog/TypePicker';
@@ -1309,10 +1310,10 @@ function StepK10({ validation, wizardState, runResult, isRunning, onRun, onRunPF
                 {scResults.map((r, i) => (
                   <tr key={i} className="hover:bg-chrome-50">
                     <td className="px-3 py-2 font-mono text-xs text-chrome-600">{String(r.fault_node_id ?? '').slice(0, 12)}...</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.ikss_a ?? 0).toFixed(1)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.ip_a ?? 0).toFixed(1)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.ith_a ?? 0).toFixed(1)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.sk_mva ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.ikss_a as number | null | undefined, { decimals: 1 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.ip_a as number | null | undefined, { decimals: 1 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.ith_a as number | null | undefined, { decimals: 1 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.sk_mva as number | null | undefined, { decimals: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1340,10 +1341,10 @@ function StepK10({ validation, wizardState, runResult, isRunning, onRun, onRunPF
                 {pfBuses.map((r, i) => (
                   <tr key={i} className="hover:bg-chrome-50">
                     <td className="px-3 py-2 font-mono text-xs text-chrome-600">{String(r.bus_id ?? r.bus_ref ?? '').slice(0, 16)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.v_kv ?? 0).toFixed(3)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.v_pu ?? 0).toFixed(4)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.p_mw ?? 0).toFixed(3)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.q_mvar ?? 0).toFixed(3)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.v_kv as number | null | undefined, { decimals: 3 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.v_pu as number | null | undefined, { decimals: 4 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.p_mw as number | null | undefined, { decimals: 3 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.q_mvar as number | null | undefined, { decimals: 3 })}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1371,10 +1372,10 @@ function StepK10({ validation, wizardState, runResult, isRunning, onRun, onRunPF
                 {pfBranches.map((r, i) => (
                   <tr key={i} className="hover:bg-chrome-50">
                     <td className="px-3 py-2 font-mono text-xs text-chrome-600">{String(r.branch_id ?? r.branch_ref ?? '').slice(0, 16)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.p_from_mw ?? 0).toFixed(3)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.q_from_mvar ?? 0).toFixed(3)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.i_a ?? r.i_from_a ?? 0).toFixed(1)}</td>
-                    <td className="px-3 py-2 text-right font-mono">{Number(r.losses_kw ?? 0).toFixed(2)}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.p_from_mw as number | null | undefined, { decimals: 3 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.q_from_mvar as number | null | undefined, { decimals: 3 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue((r.i_a ?? r.i_from_a) as number | null | undefined, { decimals: 1 })}</td>
+                    <td className="px-3 py-2 text-right font-mono">{formatPolishValue(r.losses_kw as number | null | undefined, { decimals: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
