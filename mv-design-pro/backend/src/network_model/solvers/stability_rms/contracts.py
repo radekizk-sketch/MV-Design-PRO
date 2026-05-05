@@ -135,22 +135,7 @@ class StabilityResult(BaseModel):
 
 
 class StabilitySolverAdapter:
-    """Adapter API solvera stabilności RMS.
-
-    Status `no_module` zwracany dopóki nie zostanie podpięty solver
-    numeryczny. Schema, walidacja, UI są gotowe do podpięcia w PR-15-impl.
-    """
-
-    NO_MODULE_REASON_PL = (
-        "Solver stabilności RMS (Newton-Raphson dynamic + 8 modeli: "
-        "synchronous 6-rzędowy, AVR IEEE T1/T2/AC4A/ST5B, governor "
-        "TGOV1/GAST/IEEE-G1, PSS, induction motor, wind type 1-4, "
-        "PV inverter, BESS PCS) nie jest podpięty w aktualnym module "
-        "obliczeniowym. Schema StabilitySolverInput, walidacja, UI w "
-        "konfiguratorze DER (PR-9/10/11) i adapter API są gotowe — "
-        "pełna implementacja numeryczna w osobnej sesji eksperta solver "
-        "(~42 osobodni)."
-    )
+    """Adapter API solvera stabilności RMS (PR-15-impl: MVP Newton-Raphson)."""
 
     def validate_input(
         self, solver_input: StabilitySolverInput,
@@ -192,8 +177,3 @@ class StabilitySolverAdapter:
             run_stability_rms,
         )
         return run_stability_rms(solver_input)
-        # PR-15-impl: tutaj będzie podpięcie solver_rms_engine.
-        return StabilityResult(
-            status="no_module",
-            no_module_reason_pl=self.NO_MODULE_REASON_PL,
-        )
