@@ -61,7 +61,7 @@ describe('SldSemanticDiagnosticsPanel', () => {
     expect(screen.getByText('bay-without-port')).toBeInTheDocument();
     expect(screen.getByText('Renderowane jako blokada semantyczna')).toBeInTheDocument();
     expect(screen.getAllByText('unknown-role-1')).toHaveLength(2);
-    expect(screen.getByText('Cichy awans legacy')).toBeInTheDocument();
+    expect(screen.getByText('Cichy awans archiwalny')).toBeInTheDocument();
     expect(screen.getByText('legacy-promoted')).toBeInTheDocument();
   });
 });
