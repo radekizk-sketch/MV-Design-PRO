@@ -113,7 +113,8 @@ class TestCalculationReadinessService:
         assert sc.status in ("partial", "blocked")
         assert any("u_k" in m for m in sc.missing_fields_pl)
 
-    def test_stability_no_module_with_der(self) -> None:
+    def test_stability_ready_with_der_after_pr15_impl(self) -> None:
+        """Po PR-15-impl: stabilność jest 'ready' przy DER (solver podpięty)."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -126,8 +127,8 @@ class TestCalculationReadinessService:
         )
         svc = CalculationReadinessService()
         stab = svc.evaluate_single(enm, "stability")
-        assert stab.status == "no_module"
-        assert "RMS" in (stab.no_module_reason_pl or "")
+        assert stab.status == "ready"
+        assert "PR-15-impl" in (stab.recommended_action_pl or "")
 
     def test_stability_n_a_without_der(self) -> None:
         enm = _minimal_enm_with_pf_data()
@@ -135,7 +136,8 @@ class TestCalculationReadinessService:
         stab = svc.evaluate_single(enm, "stability")
         assert stab.status == "n_a"
 
-    def test_frt_hvrt_no_module_with_der(self) -> None:
+    def test_frt_hvrt_ready_with_der_after_pr16_impl(self) -> None:
+        """Po PR-16-impl: FRT/HVRT jest 'ready' przy DER (solver podpięty)."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -148,9 +150,11 @@ class TestCalculationReadinessService:
         )
         svc = CalculationReadinessService()
         frt = svc.evaluate_single(enm, "frt_hvrt")
-        assert frt.status == "no_module"
+        assert frt.status == "ready"
+        assert "PR-16-impl" in (frt.recommended_action_pl or "")
 
-    def test_ncrfg_no_module_with_der(self) -> None:
+    def test_ncrfg_ready_with_der_after_pr16_impl(self) -> None:
+        """Po PR-16-impl: NC RfG jest 'ready' przy DER (testbench podpięty)."""
         enm = _minimal_enm_with_pf_data()
         enm.generators.append(
             Generator(
@@ -163,8 +167,8 @@ class TestCalculationReadinessService:
         )
         svc = CalculationReadinessService()
         ncrfg = svc.evaluate_single(enm, "ncrfg_compliance")
-        assert ncrfg.status == "no_module"
-        assert "operatorów" in (ncrfg.no_module_reason_pl or "")
+        assert ncrfg.status == "ready"
+        assert "operatorów" in (ncrfg.recommended_action_pl or "")
 
     def test_evaluate_returns_10_items(self) -> None:
         svc = CalculationReadinessService()

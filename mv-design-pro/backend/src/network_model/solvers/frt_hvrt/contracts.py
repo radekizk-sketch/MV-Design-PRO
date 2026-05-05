@@ -108,7 +108,6 @@ class FrtHvrtSolverAdapter:
                 status="input_invalid",
                 no_module_reason_pl="Walidacja wejścia: " + "; ".join(errors),
             )
-        return FrtHvrtResult(
-            status="no_module",
-            no_module_reason_pl=self.NO_MODULE_REASON_PL,
-        )
+        # PR-16-impl: realne wyniki numeryczne (MVP voltage dip simulation)
+        from src.network_model.solvers.frt_hvrt.engine import run_frt_hvrt
+        return run_frt_hvrt(solver_input)

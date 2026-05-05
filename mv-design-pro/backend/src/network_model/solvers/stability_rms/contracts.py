@@ -179,13 +179,19 @@ class StabilitySolverAdapter:
         return len(errors) == 0, errors
 
     def run(self, solver_input: StabilitySolverInput) -> StabilityResult:
-        """Uruchom solver. Aktualnie zwraca status=no_module zgodnie z PR-15-impl pending."""
+        """Uruchom solver. PR-15-impl: realne wyniki numeryczne (MVP Newton-Raphson)."""
         valid, errors = self.validate_input(solver_input)
         if not valid:
             return StabilityResult(
                 status="input_invalid",
                 no_module_reason_pl="Walidacja wejścia: " + "; ".join(errors),
             )
+        # PR-15-impl: podpięcie MVP solvera (Newton-Raphson trapezoidal-implicit
+        # z 5+ modelami dynamicznymi). Status='ok' z deterministycznymi wynikami.
+        from src.network_model.solvers.stability_rms.engine import (
+            run_stability_rms,
+        )
+        return run_stability_rms(solver_input)
         # PR-15-impl: tutaj będzie podpięcie solver_rms_engine.
         return StabilityResult(
             status="no_module",

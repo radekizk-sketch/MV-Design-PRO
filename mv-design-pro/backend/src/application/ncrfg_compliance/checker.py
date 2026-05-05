@@ -171,7 +171,7 @@ class NcRfgComplianceChecker:
                 "Rejestrator zakłóceń obecny",
                 "Brak rejestratora zakłóceń.",
             )
-        if test_id in {"T1", "T2"}:  # LVRT/HVRT — wymaga curves
+        if test_id in {"T1", "T2"}:  # LVRT/HVRT — wymaga curves + FRT solver
             has_curve = der_data.has_lvrt_curve if test_id == "T1" else der_data.has_hvrt_curve
             if not has_curve:
                 return ComplianceTestResult(
@@ -183,11 +183,41 @@ class NcRfgComplianceChecker:
                         + " — wymagane do testu RMS."
                     ),
                 )
-            # Mamy curves, ale nie mamy solver_RMS
+            # PR-16-impl: uruchamiamy FrtHvrtSolverAdapter dla scenariusza testowego
+            from src.network_model.solvers.frt_hvrt import (
+                FrtHvrtSolverAdapter,
+                FrtHvrtSolverInput,
+                FrtScenario,
+            )
+            adapter = FrtHvrtSolverAdapter()
+            test_kind = "lvrt" if test_id == "T1" else "hvrt"
+            voltage_dip = 0.05 if test_kind == "lvrt" else 1.30
+            scenario = FrtScenario(
+                scenario_id=f"{test_id}_{der_data.der_ref}",
+                test_kind=test_kind,
+                voltage_dip_depth_pu=voltage_dip,
+                fault_duration_s=0.15,
+                target_der_ref=der_data.der_ref,
+            )
+            result = adapter.run(
+                FrtHvrtSolverInput(
+                    enm_ref="ncrfg_test",
+                    scenarios=[scenario],
+                ),
+            )
+            if result.scenario_results and result.scenario_results[0].stayed_connected:
+                return ComplianceTestResult(
+                    test_id=test_id, test_name_pl=test_name_pl,
+                    verdict="pass",
+                    message_pl=(
+                        f"DER pozostał w pracy podczas {test_kind.upper()} "
+                        f"(margin {result.scenario_results[0].margin_to_curve_pu:.3f} p.u.)."
+                    ),
+                )
             return ComplianceTestResult(
                 test_id=test_id, test_name_pl=test_name_pl,
-                verdict="no_module",
-                message_pl=self.NO_MODULE_REASON_PL,
+                verdict="fail",
+                message_pl=f"DER wypadł z pracy podczas testu {test_kind.upper()}.",
             )
         if test_id in self.DYNAMIC_TEST_IDS:
             return ComplianceTestResult(

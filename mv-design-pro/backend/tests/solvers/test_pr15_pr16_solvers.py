@@ -32,17 +32,19 @@ from src.network_model.solvers.stability_rms.contracts import (
 
 
 class TestStabilitySolverAdapter:
-    def test_run_returns_no_module_status(self) -> None:
+    def test_run_returns_ok_status_with_real_results(self) -> None:
+        """PR-15-impl: solver zwraca 'ok' z prawdziwymi wynikami numerycznymi."""
         adapter = StabilitySolverAdapter()
         valid_input = StabilitySolverInput(
             enm_ref="snap_1",
-            simulation_duration_s=10.0,
+            simulation_duration_s=2.0,
             integration_step_s=0.005,
+            linearize_at_t0=True,
             dynamic_models=[
                 DynamicModelParameters(
                     element_ref="gen_1",
                     model_kind="synchronous_machine_6th_order",
-                    parameters={"H": 4.5},
+                    parameters={"H": 4.5, "D": 1.0, "Pm": 0.8},
                 ),
             ],
             events=[
@@ -57,9 +59,15 @@ class TestStabilitySolverAdapter:
         )
         result = adapter.run(valid_input)
         assert isinstance(result, StabilityResult)
-        assert result.status == "no_module"
-        assert result.no_module_reason_pl is not None
-        assert "Newton-Raphson" in result.no_module_reason_pl
+        assert result.status == "ok"
+        # Trajectory powinna mieć próbki
+        assert len(result.trajectories) == 1
+        assert len(result.trajectories[0].samples) > 0
+        # Eigenvalue analysis (linearize_at_t0=True)
+        assert len(result.eigenvalues) > 0
+        # Convergence iterations > 0
+        assert result.convergence_iterations is not None
+        assert result.convergence_iterations > 0
 
     def test_validate_input_rejects_negative_duration(self) -> None:
         adapter = StabilitySolverAdapter()
@@ -117,7 +125,8 @@ class TestStabilitySolverAdapter:
 
 
 class TestFrtHvrtSolverAdapter:
-    def test_run_returns_no_module_status(self) -> None:
+    def test_run_returns_ok_status_with_real_simulation(self) -> None:
+        """PR-16-impl: solver zwraca 'ok' z trajektorią V/Iq/P."""
         adapter = FrtHvrtSolverAdapter()
         valid_input = FrtHvrtSolverInput(
             enm_ref="snap_1",
@@ -133,9 +142,13 @@ class TestFrtHvrtSolverAdapter:
         )
         result = adapter.run(valid_input)
         assert isinstance(result, FrtHvrtResult)
-        assert result.status == "no_module"
-        assert result.no_module_reason_pl is not None
-        assert "FRT/HVRT" in result.no_module_reason_pl
+        assert result.status == "ok"
+        assert len(result.scenario_results) == 1
+        sc_result = result.scenario_results[0]
+        # Scenario powinien mieć trajektorię
+        assert len(sc_result.trajectory) > 0
+        # margin_to_curve_pu obliczone
+        assert sc_result.margin_to_curve_pu is not None
 
     def test_validate_lvrt_voltage_range(self) -> None:
         adapter = FrtHvrtSolverAdapter()
@@ -265,8 +278,8 @@ class TestNcRfgComplianceChecker:
         t5 = next(r for r in report.test_results if r.test_id == "T5")
         assert t5.verdict == "fail"
 
-    def test_dynamic_t1_lvrt_returns_no_module(self) -> None:
-        """Test T1 LVRT — wymaga RMS solver (PR-16-impl)."""
+    def test_dynamic_t1_lvrt_returns_pass_or_fail(self) -> None:
+        """PR-16-impl: T1 LVRT teraz uruchamia FRT solver i daje pass/fail."""
         checker = NcRfgComplianceChecker()
         report = checker.check(
             operator_id="pse",
@@ -278,8 +291,9 @@ class TestNcRfgComplianceChecker:
             ),
         )
         t1 = next(r for r in report.test_results if r.test_id == "T1")
-        assert t1.verdict == "no_module"
-        assert "PR-16-impl" in (t1.message_pl or "")
+        # Po PR-16-impl: realny solver daje pass/fail (nie no_module)
+        assert t1.verdict in {"pass", "fail"}
+        assert t1.message_pl is not None
 
     def test_dynamic_t1_lvrt_no_data_when_no_curve(self) -> None:
         checker = NcRfgComplianceChecker()
@@ -312,6 +326,8 @@ class TestNcRfgComplianceChecker:
         assert report.operator_id == operator_id
 
     def test_compliance_report_aggregates_passed_no_module(self) -> None:
+        """PR-16-impl: T1/T2 dają teraz pass/fail (FRT solver podpięty),
+        no_module zostaje dla T8/T10/T11/T16/T17/T18 (pełen stability RMS)."""
         checker = NcRfgComplianceChecker()
         report = checker.check(
             operator_id="pse",
@@ -327,6 +343,8 @@ class TestNcRfgComplianceChecker:
                 cos_phi_min=0.96,
             ),
         )
-        assert report.passed_count >= 5  # T3, T4, T5, T14, T15
-        assert report.no_module_count >= 5  # T1, T2, T8, T10, T11 itp.
+        # T3, T4, T5, T14, T15 + T1/T2 (po PR-16-impl) = ≥7 passed
+        assert report.passed_count >= 5
+        # T8, T10, T11, T16, T17, T18 = ≥3 no_module (pozostałe dynamic)
+        assert report.no_module_count >= 3
         assert report.total_tests == 18

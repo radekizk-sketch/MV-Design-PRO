@@ -263,7 +263,7 @@ def _check_loadability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
 
 
 def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Stabilność RMS — wymaga modułu solver-rms (PR-15, jeszcze nie dostarczony)."""
+    """Stabilność RMS — PR-15-impl podpięty (Newton-Raphson trapezoidal)."""
     has_dynamic_sources = any(
         g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
         for g in enm.generators
@@ -280,17 +280,17 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     return ReadinessTypeReport(
         calculation_type="stability",
         label_pl=CALCULATION_LABEL_PL["stability"],
-        status="no_module",
-        no_module_reason_pl=(
-            "Solver stabilności RMS (Newton-Raphson dynamic + modele 6-rzędowe) "
-            "nie jest częścią aktualnego modułu obliczeniowego. "
-            "Schemat danych + walidacja + UI gotowe do podpięcia (PR-15)."
+        status="ready",
+        recommended_action_pl=(
+            "MVP solver stabilności RMS dostępny (PR-15-impl). "
+            "Newton-Raphson trapezoidal + 5 modeli dynamicznych (synchronous, AVR, governor, "
+            "inverter, induction motor). Można uruchomić obliczenia."
         ),
     )
 
 
 def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """FRT/HVRT — wymaga solver-rms time-domain (PR-16, jeszcze nie dostarczony)."""
+    """FRT/HVRT — PR-16-impl podpięty (voltage dip simulation)."""
     has_der = any(
         g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
         for g in enm.generators
@@ -305,16 +305,17 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     return ReadinessTypeReport(
         calculation_type="frt_hvrt",
         label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
-        status="no_module",
-        no_module_reason_pl=(
-            "Solver FRT/HVRT RMS time-domain nie jest częścią aktualnego modułu obliczeniowego. "
-            "Krzywe FRT/HVRT + walidacja w schema DER (PR-9/10/11), pełen testbench w PR-16."
+        status="ready",
+        recommended_action_pl=(
+            "MVP solver FRT/HVRT RMS dostępny (PR-16-impl). "
+            "Voltage dip + recovery + Iq response + p_recovery_time. "
+            "Można uruchomić obliczenia testbench."
         ),
     )
 
 
 def _check_ncrfg_compliance(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Zgodność NC RfG — wymaga 5 profili operatorów + testbench (PR-16)."""
+    """Zgodność NC RfG — testbench dostępny (PR-16-impl)."""
     has_der = any(
         g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
         for g in enm.generators
@@ -329,11 +330,11 @@ def _check_ncrfg_compliance(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     return ReadinessTypeReport(
         calculation_type="ncrfg_compliance",
         label_pl=CALCULATION_LABEL_PL["ncrfg_compliance"],
-        status="no_module",
-        no_module_reason_pl=(
-            "Compliance testbench NC RfG (5 profili operatorów × 18 testów × 4 typy modułów A/B/C/D) "
-            "nie jest częścią aktualnego modułu obliczeniowego. Profile YAML + UI w PR-9, "
-            "pełen testbench w PR-16."
+        status="ready",
+        recommended_action_pl=(
+            "Compliance testbench NC RfG dostępny (PR-16-impl). "
+            "5 profili operatorów (PSE/Energa/Tauron/Enea/PGE) × 18 testów × klasyfikacja A/B/C/D. "
+            "Static T3-T15 + dynamic T1/T2 podpięte przez FRT solver."
         ),
     )
 
