@@ -121,7 +121,7 @@ Edge creation uses `selectSourcePort(branch, edgeType, fromNodeType)` and
 ### Voltage Contract (RUN #3D-FIX)
 
 `ConnectionNodeV1.voltageKv` is `number | null` (NOT `number`).
-Missing voltage is never fabricated â€” it produces FixAction `bus.voltage_missing`.
+Missing voltage is never fabricated — it produces FixAction `bus.voltage_missing`.
 
 | Field | Type | Zero-fabrication |
 |-------|------|------------------|
@@ -199,7 +199,7 @@ and their `deviceIds` are populated in the coupler field.
 ## Station Type Classification (RUN #3D-FIX)
 
 `classifyStationType()` in topologyAdapterV2.ts:
-- DISTRIBUTION + hasTransformer â†’ `TYPE_B` (before busCount check)
+- DISTRIBUTION + hasTransformer → `TYPE_B` (before busCount check)
 - This ensures stations with transformers but single bus get TYPE_B, not TYPE_A
 
 ## Determinism Guarantees
@@ -265,7 +265,7 @@ Guard 1 (dual layout engine) is a pre-existing failure unrelated to RUN #3D.
 - Metadata builders for OZE golden networks
 
 ### topologyAdapterV2.test.ts
-- classifyStationType: DISTRIBUTION + transformer â†’ TYPE_B
+- classifyStationType: DISTRIBUTION + transformer → TYPE_B
 
 ### layoutPipeline.test.ts
 - V2 pipeline assertions (switches = edges, not nodes)
@@ -276,6 +276,6 @@ Guard 1 (dual layout engine) is a pre-existing failure unrelated to RUN #3D.
 |------|-------|-------------|
 | 1 | Guard #9 + voltage | Eliminated string heuristics from validateVisualGraph; voltageKv: number\|null; bus.voltage_missing FixAction |
 | 2 | Port semantics + typology | Bus ports IN/OUT (not BUS); resolvePortId; station.typology_conflict FixAction |
-| 3 | Builder completion | Relayâ†’CB binding (nodeId-only); coupler busSectionId (lower-index bus); parameter validation FixCodes |
+| 3 | Builder completion | Relay→CB binding (nodeId-only); coupler busSectionId (lower-index bus); parameter validation FixCodes |
 | 4 | Verification | 154/154 tests pass; Guards 2-15 pass; determinism verified bit-for-bit |
 

@@ -1,4 +1,4 @@
-﻿# Application Layer â€” Orkiestracja i Workflow
+﻿# Application Layer — Orkiestracja i Workflow
 
 ## 1. Lokalizacja
 
@@ -21,12 +21,12 @@ backend/src/application/
 
 ## 2. Zasady Warstwy Application
 
-### 2.1 OdpowiedzialnoĹ›Ä‡
+### 2.1 OdpowiedzialnoĹ›ć
 
-- **Orkiestracja** - koordynacja operacji miÄ™dzy warstwami
+- **Orkiestracja** - koordynacja operacji między warstwami
 - **Workflow** - sekwencje operacji biznesowych
 - **CRUD** - tworzenie, odczyt, aktualizacja, usuwanie encji
-- **Import/Export** - wymiana danych z zewnÄ™trznymi systemami
+- **Import/Export** - wymiana danych z zewnętrznymi systemami
 - **Walidacja biznesowa** - sprawdzenie kompletnoĹ›ci danych
 
 ### 2.2 Zakazy
@@ -39,7 +39,7 @@ backend/src/application/
 
 ### 3.1 Rola
 
-`NetworkWizardService` to gĹ‚Ăłwny serwis orkiestracyjny dla zarzÄ…dzania sieciÄ… elektroenergetycznÄ….
+`NetworkWizardService` to gĹ‚Ăłwny serwis orkiestracyjny dla zarządzania siecią elektroenergetyczną.
 
 ### 3.2 Operacje CRUD
 
@@ -52,14 +52,14 @@ update_project(project_id, patch) -> Project
 delete_project(project_id) -> None
 ```
 
-#### WÄ™zĹ‚y
+#### WęzĹ‚y
 ```python
 add_node(project_id, payload) -> dict
 update_node(project_id, node_id, patch) -> dict
 remove_node(project_id, node_id) -> None
 ```
 
-#### GaĹ‚Ä™zie
+#### GaĹ‚ęzie
 ```python
 add_branch(project_id, payload) -> dict
 update_branch(project_id, branch_id, patch) -> dict
@@ -75,7 +75,7 @@ get_sources(project_id) -> list[SourcePayload]
 set_sources(project_id, sources) -> None
 ```
 
-#### Loads (ObciÄ…ĹĽenia)
+#### Loads (ObciąĹĽenia)
 ```python
 add_load(project_id, payload) -> dict
 update_load(project_id, load_id, patch) -> dict
@@ -103,10 +103,10 @@ set_limits(project_id, payload) -> None
 get_limits(project_id) -> LimitsPayload
 ```
 
-> **WAĹ»NE (benchmark Alignment):** `set_connection_node()` i `get_connection_node()` obsĹ‚ugujÄ… **hint uĹĽytkownika**
-> przechowywany w ustawieniach aplikacji/projektu. BoundaryNode â€“ wÄ™zeĹ‚ przyĹ‚Ä…czenia **NIE**
-> jest przechowywany w NetworkModel/NetworkGraph. Faktyczna identyfikacja BoundaryNode â€“ punktu wspĂłlnego
-> przyĹ‚Ä…czenia jest wykonywana przez BoundaryIdentifier w warstwie analysis, ktĂłra moĹĽe uĹĽyÄ‡
+> **WAĹ»NE (benchmark Alignment):** `set_connection_node()` i `get_connection_node()` obsĹ‚ugują **hint uĹĽytkownika**
+> przechowywany w ustawieniach aplikacji/projektu. BoundaryNode – węzeĹ‚ przyĹ‚ączenia **NIE**
+> jest przechowywany w NetworkModel/NetworkGraph. Faktyczna identyfikacja BoundaryNode – punktu wspĂłlnego
+> przyĹ‚ączenia jest wykonywana przez BoundaryIdentifier w warstwie analysis, ktĂłra moĹĽe uĹĽyć
 > tego hintu jako wejĹ›cia.
 > Zobacz SYSTEM_SPEC.md Â§ 18.3.4.
 
@@ -117,12 +117,12 @@ validate_network(project_id, case_id=None) -> ValidationReport
 ```
 
 Sprawdza:
-- Istnienie wÄ™zĹ‚Ăłw i gaĹ‚Ä™zi
-- PoprawnoĹ›Ä‡ BoundaryNode hint (czy wskazany wÄ™zeĹ‚ istnieje w projekcie)
-- KompletnoĹ›Ä‡ sources
-- KompletnoĹ›Ä‡ loads
-- PoprawnoĹ›Ä‡ parametrĂłw gaĹ‚Ä™zi
-- Istnienie wÄ™zĹ‚a SLACK
+- Istnienie węzĹ‚Ăłw i gaĹ‚ęzi
+- PoprawnoĹ›ć BoundaryNode hint (czy wskazany węzeĹ‚ istnieje w projekcie)
+- KompletnoĹ›ć sources
+- KompletnoĹ›ć loads
+- PoprawnoĹ›ć parametrĂłw gaĹ‚ęzi
+- Istnienie węzĹ‚a SLACK
 
 ### 3.4 Budowanie Modelu
 
@@ -133,10 +133,10 @@ build_short_circuit_input(project_id, case_id, fault_spec, options) -> ShortCirc
 ```
 
 Metody te:
-1. WalidujÄ… sieÄ‡
-2. PobierajÄ… dane z persystencji
-3. TworzÄ… obiekty core (NetworkGraph)
-4. StosujÄ… specyfikacje nakĹ‚adek (stany Ĺ‚Ä…czeniowe, limity)
+1. Walidują sieć
+2. Pobierają dane z persystencji
+3. Tworzą obiekty core (NetworkGraph)
+4. Stosują specyfikacje nakĹ‚adek (stany Ĺ‚ączeniowe, limity)
 
 ### 3.5 Import/Export
 
@@ -152,8 +152,8 @@ import_nodes_branches_from_csv(project_id, nodes_csv, branches_csv, mode) -> Imp
 ```
 
 **Tryby importu:**
-- `merge` - Ĺ‚Ä…czy z istniejÄ…cymi danymi
-- `replace` - zastÄ™puje wszystkie dane
+- `merge` - Ĺ‚ączy z istniejącymi danymi
+- `replace` - zastępuje wszystkie dane
 
 ### 3.6 SLD
 
@@ -178,7 +178,7 @@ create_power_flow_run(project_id, operating_case_id, options) -> AnalysisRun
 create_short_circuit_run(project_id, operating_case_id, fault_spec, options) -> AnalysisRun
 ```
 
-**Determinizm:** JeĹ›li run z tym samym `input_hash` juĹĽ istnieje, zwracany jest istniejÄ…cy.
+**Determinizm:** JeĹ›li run z tym samym `input_hash` juĹĽ istnieje, zwracany jest istniejący.
 
 ### 4.3 Wykonywanie
 
@@ -262,19 +262,19 @@ class ShortCircuitInput:
 
 > **Uwaga:** `connection_node_id` w ShortCircuitInput to parametr warstwy application
 > (hint uĹĽytkownika z ustawieĹ„ projektu), a nie pole z NetworkGraph.
-> NetworkGraph NIE zawiera BoundaryNode â€“ punktu wspĂłlnego przyĹ‚Ä…czenia (zobacz SYSTEM_SPEC.md Â§ 18.3.4).
+> NetworkGraph NIE zawiera BoundaryNode – punktu wspĂłlnego przyĹ‚ączenia (zobacz SYSTEM_SPEC.md Â§ 18.3.4).
 
 > **Terminology:** Bus to kanoniczny termin benchmark. `NodePayload` pozostaje
-> kompatybilnym aliasem wewnÄ™trznym, a API akceptuje zarĂłwno `bus_type`, jak i `node_type`.
-> Pola `node_id` / `from_node_id` / `to_node_id` pozostajÄ… bez zmian dla kompatybilnoĹ›ci.
+> kompatybilnym aliasem wewnętrznym, a API akceptuje zarĂłwno `bus_type`, jak i `node_type`.
+> Pola `node_id` / `from_node_id` / `to_node_id` pozostają bez zmian dla kompatybilnoĹ›ci.
 
-## 6. BĹ‚Ä™dy
+## 6. BĹ‚ędy
 
 ### 6.1 Lokalizacja
 
 `application/network_wizard/errors.py`
 
-### 6.2 Typy BĹ‚Ä™dĂłw
+### 6.2 Typy BĹ‚ędĂłw
 
 ```python
 class NotFound(Exception):
@@ -282,11 +282,11 @@ class NotFound(Exception):
     pass
 
 class Conflict(Exception):
-    """Konflikt operacji (np. usuwanie wÄ™zĹ‚a z gaĹ‚Ä™ziami)"""
+    """Konflikt operacji (np. usuwanie węzĹ‚a z gaĹ‚ęziami)"""
     pass
 
 class ValidationFailed(Exception):
-    """Walidacja nie powiodĹ‚a siÄ™"""
+    """Walidacja nie powiodĹ‚a się"""
     def __init__(self, report: ValidationReport):
         self.report = report
 ```
@@ -297,7 +297,7 @@ class ValidationFailed(Exception):
 
 ```python
 # 1. UtwĂłrz projekt
-project = service.create_project("SieÄ‡ SN Centrum")
+project = service.create_project("Sieć SN Centrum")
 
 # 2. Dodaj busy (legacy: nodes)
 slack = service.add_node(project.id, BusPayload(
@@ -307,7 +307,7 @@ slack = service.add_node(project.id, BusPayload(
     attrs={"voltage_magnitude_pu": 1.0, "voltage_angle_rad": 0.0}
 ))
 
-# 3. Dodaj gaĹ‚Ä™zie
+# 3. Dodaj gaĹ‚ęzie
 line = service.add_branch(project.id, BranchPayload(
     name="Linia 110kV",
     branch_type="LINE",
@@ -316,7 +316,7 @@ line = service.add_branch(project.id, BranchPayload(
     params={"r_ohm_per_km": 0.05, "x_ohm_per_km": 0.4, "length_km": 50}
 ))
 
-# 4. Ustaw hint BoundaryNode â€“ punktu wspĂłlnego przyĹ‚Ä…czenia (warstwa application, NIE w NetworkModel)
+# 4. Ustaw hint BoundaryNode – punktu wspĂłlnego przyĹ‚ączenia (warstwa application, NIE w NetworkModel)
 service.set_connection_node(project.id, slack["id"])  # Stores hint in project settings
 
 # 5. Dodaj source
@@ -354,7 +354,7 @@ results = analysis_service.get_results(run.id)
 
 ## 8. Granice OdpowiedzialnoĹ›ci
 
-| FunkcjonalnoĹ›Ä‡           | Application (TAK)    | Application (NIE)       |
+| FunkcjonalnoĹ›ć           | Application (TAK)    | Application (NIE)       |
 |--------------------------|----------------------|------------------------|
 | CRUD encji               | âś“                    |                        |
 | Walidacja biznesowa      | âś“                    |                        |
@@ -366,7 +366,7 @@ results = analysis_service.get_results(run.id)
 | HTTP/REST                |                      | âś— (API)                |
 | Logika OSD               |                      | âś— (nie zaimplementowane)|
 
-## 9. PowiÄ…zane Dokumenty
+## 9. Powiązane Dokumenty
 
 - [01-Core.md](./01-Core.md) - model budowany przez application
 - [02-Solvers.md](./02-Solvers.md) - solvery wywoĹ‚ywane przez application

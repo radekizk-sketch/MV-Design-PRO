@@ -26,18 +26,18 @@ export type OperatingMode = 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
 export type ResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
 
 /**
- * Element type in the network model â€” rozszerzenie Aâ€“AZ.
+ * Element type in the network model — rozszerzenie A–AZ.
  * Maps 1:1 to SLD symbols (bijection per sld_rules.md Â§ A.1).
  */
 export type ElementType =
-  // IstniejÄ…ce typy SN (Aâ€“L)
+  // Istniejące typy SN (A–L)
   | 'Bus'                    // A-B: Szyna SN / GPZ
-  | 'LineBranch'             // D-E: Segment magistrali/odgaĹ‚Ä™zienia
+  | 'LineBranch'             // D-E: Segment magistrali/odgaĹ‚ęzienia
   | 'TransformerBranch'      // L: Transformator SN/nN
-  | 'Switch'                 // I: Aparat SN (wyĹ‚Ä…cznik/rozĹ‚Ä…cznik)
+  | 'Switch'                 // I: Aparat SN (wyĹ‚ącznik/rozĹ‚ącznik)
   | 'Source'                 // A: GPZ / ĹąrĂłdĹ‚o SN
   | 'Load'                   // S: OdbiĂłr
-  | 'Generator'              // IstniejÄ…cy typ generatora
+  | 'Generator'              // Istniejący typ generatora
   | 'Measurement'            // K: CT SN / VT SN
   | 'ProtectionAssignment'   // J: PrzekaĹşnik SN
   // Nowe typy infrastruktury SN
@@ -48,48 +48,48 @@ export type ElementType =
   | 'ZKSN'                   // G3: ZKSN
   | 'BaySN'                  // H: Pole SN
   | 'Relay'                  // J: PrzekaĹşnik SN (logiczny)
-  | 'SecondaryLink'          // P: PoĹ‚Ä…czenie wtĂłrne (pierĹ›cieĹ„)
+  | 'SecondaryLink'          // P: PoĹ‚ączenie wtĂłrne (pierĹ›cieĹ„)
   | 'NOP'                    // Q: Punkt normalnie otwarty
-  // Typy nN (Mâ€“O, Râ€“AP)
+  // Typy nN (M–O, R–AP)
   | 'BusNN'                  // M: Szyna nN
-  | 'MainBreakerNN'          // N: Pole gĹ‚Ăłwne nN (wyĹ‚Ä…cznik gĹ‚Ăłwny)
+  | 'MainBreakerNN'          // N: Pole gĹ‚Ăłwne nN (wyĹ‚ącznik gĹ‚Ăłwny)
   | 'FeederNN'               // O: OdpĹ‚yw nN (pole odpĹ‚ywowe)
   | 'SegmentNN'              // R: Segment nN (odcinek linii/kabla)
   | 'LoadNN'                 // S: OdbiĂłr nN
   | 'SwitchboardNN'          // T: Rozdzielnica nN
   | 'SourceFieldNN'          // U: Pole ĹşrĂłdĹ‚owe nN
-  // ĹąrĂłdĹ‚a nN (Vâ€“Z)
+  // ĹąrĂłdĹ‚a nN (V–Z)
   | 'PVInverter'             // V: Falownik PV
   | 'BESSInverter'           // W: Falownik BESS
   | 'EnergyStorage'          // X: Magazyn energii (moduĹ‚ BESS)
-  | 'Genset'                 // Y: ZespĂłĹ‚ prÄ…dotwĂłrczy / agregat
+  | 'Genset'                 // Y: ZespĂłĹ‚ prądotwĂłrczy / agregat
   | 'UPS'                    // Z: UPS
-  // Pomiary i zabezpieczenia nN (AAâ€“AE)
+  // Pomiary i zabezpieczenia nN (AA–AE)
   | 'EnergyMeter'            // AA: Licznik energii
   | 'PowerQualityMeter'      // AB: Pomiar jakoĹ›ci energii
-  | 'SurgeArresterNN'        // AC: Ogranicznik przepiÄ™Ä‡ nN
+  | 'SurgeArresterNN'        // AC: Ogranicznik przepięć nN
   | 'Earthing'               // AD: Uziemienie
   | 'MeasurementNN'          // AE: PrzekĹ‚adnik nN (CT/VT)
-  // Infrastruktura szyn nN (AFâ€“AR)
+  // Infrastruktura szyn nN (AF–AR)
   | 'AuxBus'                 // AF: Szyna pomocnicza
-  | 'ConnectionPoint'        // AG: Punkt przyĹ‚Ä…czenia odbiorcy
-  | 'SwitchNN'               // AH: UrzÄ…dzenie Ĺ‚Ä…czeniowe nN
+  | 'ConnectionPoint'        // AG: Punkt przyĹ‚ączenia odbiorcy
+  | 'SwitchNN'               // AH: Urządzenie Ĺ‚ączeniowe nN
   | 'ProtectionNN'           // AI: Zabezpieczenie nN (logiczne)
   | 'SourceController'       // AJ: Regulator/sterownik ĹşrĂłdĹ‚a
   | 'InternalJunction'       // AK: Punkt wspĂłlny w rozdzielnicy
-  | 'CableJointNN'           // AL: ZĹ‚Ä…cze kablowe nN
-  | 'FaultCurrentLimiter'    // AM: Ogranicznik prÄ…du zwarciowego
+  | 'CableJointNN'           // AL: ZĹ‚ącze kablowe nN
+  | 'FaultCurrentLimiter'    // AM: Ogranicznik prądu zwarciowego
   | 'FilterCompensator'      // AN: Filtr/kompensator
-  | 'TelecontrolDevice'      // AO: UrzÄ…dzenie komunikacyjne
+  | 'TelecontrolDevice'      // AO: Urządzenie komunikacyjne
   | 'BusSectionNN'           // AP: Sekcja szyn nN
-  | 'BusCouplerNN'           // AQ: SprzÄ™gĹ‚o szyn nN
-  | 'ReserveLink'            // AR: Zworka/Ĺ‚Ä…cznik rezerwowy nN
-  // Parametry logiczne ĹşrĂłdeĹ‚ (ASâ€“AZ)
-  | 'SourceDisconnect'       // AS: Punkt odĹ‚Ä…czenia ĹşrĂłdĹ‚a
+  | 'BusCouplerNN'           // AQ: SprzęgĹ‚o szyn nN
+  | 'ReserveLink'            // AR: Zworka/Ĺ‚ącznik rezerwowy nN
+  // Parametry logiczne ĹşrĂłdeĹ‚ (AS–AZ)
+  | 'SourceDisconnect'       // AS: Punkt odĹ‚ączenia ĹşrĂłdĹ‚a
   | 'PowerLimit'             // AT: Ograniczenie mocy ĹşrĂłdĹ‚a
   | 'WorkProfile'            // AU: Profil pracy ĹşrĂłdĹ‚a
   | 'OperatingMode'          // AV: Tryb pracy
-  | 'ConnectionConstraints'  // AW: Ograniczenia przyĹ‚Ä…czeniowe
+  | 'ConnectionConstraints'  // AW: Ograniczenia przyĹ‚ączeniowe
   | 'MeteringBlock'          // AX: UkĹ‚ad pomiarowo-rozliczeniowy
   | 'SyncPoint'              // AY: Punkt synchronizacji ĹşrĂłdĹ‚a
   | 'DescriptiveElement';    // AZ: Elementy opisowe
@@ -201,7 +201,7 @@ export type MultiEditFieldValue =
  * P30c: Draft state for Property Grid (Apply/Cancel).
  */
 export interface PropertyGridDraft {
-  /** Draft changes (field â†’ new value) */
+  /** Draft changes (field → new value) */
   changes: Map<string, unknown>;
   /** Has any unsaved changes */
   isDirty: boolean;
@@ -516,7 +516,7 @@ export interface IssueFilter {
 // ============================================================================
 
 /**
- * FixAction â€” deterministic fix suggestion (no mutation, no auto-fix).
+ * FixAction — deterministic fix suggestion (no mutation, no auto-fix).
  */
 export type FixActionType =
   | 'OPEN_MODAL'

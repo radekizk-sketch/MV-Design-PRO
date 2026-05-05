@@ -1,12 +1,12 @@
-﻿# SLD GEOMETRIA â€” ESTETYKA PRZEMYSĹOWA
+﻿# SLD GEOMETRIA — ESTETYKA PRZEMYSĹOWA
 
-> Dokument wiÄ…ĹĽÄ…cy: zasady layoutu SLD wzorowane na DIgSILENT/ABB.
+> Dokument wiąĹĽący: zasady layoutu SLD wzorowane na DIgSILENT/ABB.
 > Patrz teĹĽ: `SLD_ALGORITHM_LAYOUT_SPEC.md` (algorytm layoutu).
 
 ## 1. ZASADY NADRZÄDNE
 
-1. **Deterministyczny**: ten sam Snapshot â†’ identyczny ukĹ‚ad (SHA-256 hash)
-2. **NiezaleĹĽny od permutacji**: kolejnoĹ›Ä‡ list wejĹ›ciowych nie wpĹ‚ywa na wynik
+1. **Deterministyczny**: ten sam Snapshot → identyczny ukĹ‚ad (SHA-256 hash)
+2. **NiezaleĹĽny od permutacji**: kolejnoĹ›ć list wejĹ›ciowych nie wpĹ‚ywa na wynik
 3. **Bez mutacji domeny**: geometria NIE zmienia Snapshot
 4. **Overlay wynikĂłw**: NIE zmienia pozycji elementĂłw (tylko kolory/wartoĹ›ci)
 
@@ -16,8 +16,8 @@
 |------|-----|-------------------|
 | 1 | Umieszczenie magistrali (trunk) | spineX, layerSpacing |
 | 2 | Detekcja blokĂłw stacyjnych | stationMinWidth, stationPadding |
-| 3 | Osadzenie geometrii wewnÄ™trznej | blockMargin, feederSlotSpacing |
-| 4 | Umieszczenie odgaĹ‚Ä™zieĹ„ w pasmach | bandSpacing, bayGap |
+| 3 | Osadzenie geometrii wewnętrznej | blockMargin, feederSlotSpacing |
+| 4 | Umieszczenie odgaĹ‚ęzieĹ„ w pasmach | bandSpacing, bayGap |
 | 5 | Routing Manhattan + etykiety | secondaryLanePitch |
 | 6 | Inwarianty + hash finalny | gridStep (snap-to-grid) |
 
@@ -25,31 +25,31 @@
 
 ### Pipeline Core (layoutPipeline.ts)
 ```
-gridStep:           20 px    â€” siatka snap-to-grid
-layerSpacing:      120 px    â€” odlegĹ‚oĹ›Ä‡ pionowa miÄ™dzy warstwami
-bandSpacing:        80 px    â€” odlegĹ‚oĹ›Ä‡ pozioma miÄ™dzy pasmami odgaĹ‚Ä™zieĹ„
-defaultBusWidth:   400 px    â€” domyĹ›lna szerokoĹ›Ä‡ szyny
-busHeight:          10 px    â€” gruboĹ›Ä‡ szyny
-feederSlotSpacing:  80 px    â€” odlegĹ‚oĹ›Ä‡ miÄ™dzy slotami odpĹ‚ywĂłw
-blockMargin:        20 px    â€” margines bloku rozdzielni
-spineX:            500 px    â€” oĹ› gĹ‚Ăłwna X (magistrala)
+gridStep:           20 px    — siatka snap-to-grid
+layerSpacing:      120 px    — odlegĹ‚oĹ›ć pionowa między warstwami
+bandSpacing:        80 px    — odlegĹ‚oĹ›ć pozioma między pasmami odgaĹ‚ęzieĹ„
+defaultBusWidth:   400 px    — domyĹ›lna szerokoĹ›ć szyny
+busHeight:          10 px    — gruboĹ›ć szyny
+feederSlotSpacing:  80 px    — odlegĹ‚oĹ›ć między slotami odpĹ‚ywĂłw
+blockMargin:        20 px    — margines bloku rozdzielni
+spineX:            500 px    — oĹ› gĹ‚Ăłwna X (magistrala)
 ```
 
 ### Pipeline Engine (types.ts)
 ```
-busbarMinWidth:    400 px    â€” minimalna szerokoĹ›Ä‡ szyny
-busbarExtendPerBay: 120 px  â€” rozszerzenie na kaĹĽdy bay
-busbarHeight:        8 px    â€” gruboĹ›Ä‡ szyny
-bayGap:            160 px    â€” przerwa miÄ™dzy polami
-elementGapY:       100 px    â€” odlegĹ‚oĹ›Ä‡ pionowa elementĂłw w polu
-canvasPadding:      80 px    â€” padding od krawÄ™dzi
+busbarMinWidth:    400 px    — minimalna szerokoĹ›ć szyny
+busbarExtendPerBay: 120 px  — rozszerzenie na kaĹĽdy bay
+busbarHeight:        8 px    — gruboĹ›ć szyny
+bayGap:            160 px    — przerwa między polami
+elementGapY:       100 px    — odlegĹ‚oĹ›ć pionowa elementĂłw w polu
+canvasPadding:      80 px    — padding od krawędzi
 ```
 
 ### Stacje
 ```
-stationPadding:     40 px    â€” margines wokĂłĹ‚ elementĂłw stacji
-stationMinWidth:   200 px    â€” minimalna szerokoĹ›Ä‡ bounding box
-stationMinHeight:  160 px    â€” minimalna wysokoĹ›Ä‡ bounding box
+stationPadding:     40 px    — margines wokĂłĹ‚ elementĂłw stacji
+stationMinWidth:   200 px    — minimalna szerokoĹ›ć bounding box
+stationMinHeight:  160 px    — minimalna wysokoĹ›ć bounding box
 ```
 
 ### Kolory stacji
@@ -60,7 +60,7 @@ Sekcjonowanie: border #d97706 (pomaraĹ„czowy), fill rgba(217,119,6,0.06)
 Odbiorca:     border #059669 (zielony), fill rgba(5,150,105,0.06)
 ```
 
-### Kolory napiÄ™Ä‡ (dynamiczne zakresy)
+### Kolory napięć (dynamiczne zakresy)
 ```
 220+ kV:   #CC0000 (NN)
 60-200 kV: #CC3333 (WN)
@@ -74,19 +74,19 @@ Odbiorca:     border #059669 (zielony), fill rgba(5,150,105,0.06)
 
 1. **WyrĂłwnanie do siatki**: wszystkie pozycje snap do `gridStep`
 2. **Symetria magistrali**: trunk na staĹ‚ej osi `spineX`
-3. **RĂłwne odlegĹ‚oĹ›ci stacji**: wynikajÄ… z `bayGap` (160 px)
+3. **RĂłwne odlegĹ‚oĹ›ci stacji**: wynikają z `bayGap` (160 px)
 4. **Pionowe wyrĂłwnanie pĂłl**: elementy w bay'u na jednej osi X
-5. **Routing Manhattan**: tylko kÄ…ty 90Â° (brak skoĹ›nych linii)
+5. **Routing Manhattan**: tylko kąty 90° (brak skoĹ›nych linii)
 6. **Kolizje**: deterministyczny push-away (PUSH_AWAY_STEP_X = 40 px)
-7. **Pasma napiÄ™ciowe**: dynamicznie obliczane z modelu (nie hardcoded)
+7. **Pasma napięciowe**: dynamicznie obliczane z modelu (nie hardcoded)
 
 ## 5. PRESETY
 
 | Preset | Styl | UĹĽycie |
 |--------|------|--------|
 | DEFAULT | Standardowy (jak wyĹĽej) | DomyĹ›lny dla V1 |
-| benchmark_STYLE_COLORS | Kolory benchmark | KompatybilnoĹ›Ä‡ z benchmark |
-| CANONICAL_STYLE_COLORS | Kolory benchmark | KompatybilnoĹ›Ä‡ z DIgSILENT |
+| benchmark_STYLE_COLORS | Kolory benchmark | KompatybilnoĹ›ć z benchmark |
+| CANONICAL_STYLE_COLORS | Kolory benchmark | KompatybilnoĹ›ć z DIgSILENT |
 | MONOCHROME_COLORS | Monochromatyczny | Wydruk |
 
 ## 6. TESTY DETERMINIZMU SLD
@@ -94,9 +94,9 @@ Odbiorca:     border #059669 (zielony), fill rgba(5,150,105,0.06)
 | Test | Plik | Co weryfikuje |
 |------|------|---------------|
 | VisualGraph | `sld/core/__tests__/visualGraph.test.ts` | Budowa grafu wizualnego |
-| Determinizm | `sld/core/__tests__/determinism.test.ts` | Bit-for-bit stabilnoĹ›Ä‡ |
+| Determinizm | `sld/core/__tests__/determinism.test.ts` | Bit-for-bit stabilnoĹ›ć |
 | LayoutPipeline | `sld/core/__tests__/layoutPipeline.test.ts` | 6 faz pipeline |
-| TopologyAdapter | `sld/core/__tests__/topologyAdapterV2.test.ts` | ENMâ†’SLD mapping |
+| TopologyAdapter | `sld/core/__tests__/topologyAdapterV2.test.ts` | ENM→SLD mapping |
 | SwitchgearConfig | `sld/core/__tests__/switchgearConfig.test.ts` | Konfiguracja rozdzielni |
-| Hash parity | `sld/core/__tests__/switchgearConfig.hashParity.test.ts` | StabilnoĹ›Ä‡ hash |
+| Hash parity | `sld/core/__tests__/switchgearConfig.hashParity.test.ts` | StabilnoĹ›ć hash |
 

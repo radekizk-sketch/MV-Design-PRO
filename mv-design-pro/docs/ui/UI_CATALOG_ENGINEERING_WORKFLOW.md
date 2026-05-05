@@ -199,7 +199,7 @@ NetworkValidator.validate()
 
 1. **Parametry per-km mnozene przez dlugosc** -- dla linii i kabli.
 2. **Transformatory: parametry bezposrednie** -- S_n, u_k, P_Cu, P_Fe z katalogu.
-3. **catalog_ref zapisywany** -- element "pamiÄ™ta" skad pochodza parametry.
+3. **catalog_ref zapisywany** -- element "pamięta" skad pochodza parametry.
 4. **Walidacja po materializacji** -- NetworkValidator sprawdza czy parametry sa
    kompletne i poprawne (np. R1 > 0, I_n > 0).
 5. **Zmiana katalogu invaluduje wyniki** -- zgodnie z Case Immutability Rule,

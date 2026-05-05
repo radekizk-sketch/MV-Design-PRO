@@ -1,4 +1,4 @@
-﻿# SLD UX MAX â€” Implementation Proof
+﻿# SLD UX MAX — Implementation Proof
 
 ## Overview
 
@@ -17,7 +17,7 @@ The changes transform the MV-DESIGN PRO SLD (Single Line Diagram) viewer into a 
 
 ## UX Improvements Implemented
 
-### 1. Three-Level Visual Hierarchy (STRUCTURE â†’ TOPOLOGY â†’ DETAIL)
+### 1. Three-Level Visual Hierarchy (STRUCTURE → TOPOLOGY → DETAIL)
 
 **Implementation:** `sldCanonicalStyle.ts:VISUAL_HIERARCHY`
 
@@ -84,7 +84,7 @@ GENERATION_COLORS = {
 - Subtle blue ring (`rgba(37, 99, 235, 0.3)`)
 - Positioned behind symbol (doesn't obscure)
 - Rounded corners for professional appearance
-- Non-intrusive â€” maintains context visibility
+- Non-intrusive — maintains context visibility
 
 ### 7. Pinned Position Indicator
 
@@ -123,20 +123,20 @@ All SLD-related tests pass:
 
 The implementation achieves benchmark/benchmark-grade visual quality:
 
-1. **Professional typography** â€” Inter font, hierarchy-aware sizing
-2. **Subdued grid** â€” Technical drawing paper aesthetic
-3. **Clear voltage zones** â€” Subtle background tinting
-4. **Industrial precision** â€” No cosmetic animations, no disco colors
-5. **8-hour usability** â€” Reduced visual fatigue through hierarchy
+1. **Professional typography** — Inter font, hierarchy-aware sizing
+2. **Subdued grid** — Technical drawing paper aesthetic
+3. **Clear voltage zones** — Subtle background tinting
+4. **Industrial precision** — No cosmetic animations, no disco colors
+5. **8-hour usability** — Reduced visual fatigue through hierarchy
 
 ## Design Philosophy
 
 Following benchmark and benchmark principles:
-- **Immediate structure comprehension** â€” Primary voltage levels visible at a glance
-- **Progressive detail revelation** â€” Zoom-dependent detail visibility
-- **Deterministic behavior** â€” Same model always produces same visual output
-- **Professional restraint** â€” No unnecessary visual effects
-- **Technical accuracy** â€” All symbols conform to IEC 60617 conventions
+- **Immediate structure comprehension** — Primary voltage levels visible at a glance
+- **Progressive detail revelation** — Zoom-dependent detail visibility
+- **Deterministic behavior** — Same model always produces same visual output
+- **Professional restraint** — No unnecessary visual effects
+- **Technical accuracy** — All symbols conform to IEC 60617 conventions
 
 ---
 

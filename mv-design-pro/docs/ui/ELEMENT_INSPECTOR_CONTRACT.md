@@ -10,17 +10,17 @@
 
 ## 1. Cel dokumentu
 
-Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” centralnego panelu inspekcji dowolnego elementu sieci (BUS, LINE, TRAFO, SOURCE, LOAD, SWITCH, PROTECTION).
+Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** — centralnego panelu inspekcji dowolnego elementu sieci (BUS, LINE, TRAFO, SOURCE, LOAD, SWITCH, PROTECTION).
 
-**Filozofia:** Jeden punkt dostÄ™pu do WSZYSTKICH informacji o elemencie â€” parametry, wyniki, kontrybutorzy, limity, dowody.
+**Filozofia:** Jeden punkt dostępu do WSZYSTKICH informacji o elemencie — parametry, wyniki, kontrybutorzy, limity, dowody.
 
 ---
 
-## 2. Definicje pojÄ™Ä‡ (BINDING)
+## 2. Definicje pojęć (BINDING)
 
 ### 2.1 Element Inspector
 
-**Element Inspector** to dedykowany panel boczny UI prezentujÄ…cy peĹ‚ne informacje o wybranym elemencie sieci.
+**Element Inspector** to dedykowany panel boczny UI prezentujący peĹ‚ne informacje o wybranym elemencie sieci.
 
 | Atrybut | Opis |
 |---------|------|
@@ -32,14 +32,14 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ### 2.2 ObsĹ‚ugiwane typy elementĂłw
 
-| Typ | Opis | ZakĹ‚adki dostÄ™pne |
+| Typ | Opis | ZakĹ‚adki dostępne |
 |-----|------|-------------------|
-| BUS | WÄ™zeĹ‚ sieci | All 6 tabs |
+| BUS | WęzeĹ‚ sieci | All 6 tabs |
 | LINE | Linia / kabel | All except Contributions (limited) |
 | TRAFO | Transformator | All 6 tabs |
 | SOURCE | ĹąrĂłdĹ‚o (Grid/Gen/PV/BESS) | All 6 tabs |
-| LOAD | ObciÄ…ĹĽenie | Overview, Parameters, Results |
-| SWITCH | ĹÄ…cznik | Overview, Parameters, Switching History |
+| LOAD | ObciąĹĽenie | Overview, Parameters, Results |
+| SWITCH | Ĺącznik | Overview, Parameters, Switching History |
 | PROTECTION | Zabezpieczenie | All 6 tabs + Proof P11 |
 
 ---
@@ -48,9 +48,9 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ### 3.1 Tab: Overview
 
-**Cel:** Szybki przeglÄ…d kluczowych informacji o elemencie.
+**Cel:** Szybki przegląd kluczowych informacji o elemencie.
 
-| Sekcja | ZawartoĹ›Ä‡ |
+| Sekcja | ZawartoĹ›ć |
 |--------|-----------|
 | **Identity** | Element ID, Name, Type, Subtype |
 | **Location** | Station, Voltage Level, Feeder, Zone |
@@ -61,9 +61,9 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ### 3.2 Tab: Parameters
 
-**Cel:** Edycja i przeglÄ…d parametrĂłw technicznych elementu.
+**Cel:** Edycja i przegląd parametrĂłw technicznych elementu.
 
-| Sekcja | ZawartoĹ›Ä‡ | Edytowalne |
+| Sekcja | ZawartoĹ›ć | Edytowalne |
 |--------|-----------|------------|
 | **Catalog Reference** | Type ID, Type Name, Manufacturer | âś— (read-only, see Catalog Browser) |
 | **Rated Values** | U_n, I_n, S_n, P_n | âś— (from Type) |
@@ -77,10 +77,10 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 | Pole | Style | Znaczenie |
 |------|-------|-----------|
-| Editable | White background + border | MoĹĽna edytowaÄ‡ (w Designer Mode) |
+| Editable | White background + border | MoĹĽna edytować (w Designer Mode) |
 | Read-only (from Type) | Gray background | Z katalogu typĂłw |
 | Calculated | Blue italic | Obliczone przez solver |
-| Case-specific | Yellow border | WartoĹ›Ä‡ zaleĹĽna od Case |
+| Case-specific | Yellow border | WartoĹ›ć zaleĹĽna od Case |
 
 ### 3.3 Tab: Results
 
@@ -90,7 +90,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    RESULTS â€” BUS_007                             â”‚
+â”‚                    RESULTS — BUS_007                             â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ Analysis: Short-Circuit (IEC 60909)                             â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
@@ -114,17 +114,17 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ### 3.4 Tab: Contributions
 
-**Cel:** Analiza kontrybutorĂłw do prÄ…du zwarciowego (Bus) lub obciÄ…ĹĽenia (Line/Trafo).
+**Cel:** Analiza kontrybutorĂłw do prądu zwarciowego (Bus) lub obciąĹĽenia (Line/Trafo).
 
 **Dla BUS (Short-Circuit Contributions):**
 
 | Contributor | Type | Ik" [kA] | % Total | Direction |
 |-------------|------|----------|---------|-----------|
-| Grid_Source | GRID | 8.50 | 68.0% | â†’ BUS_007 |
-| Gen_01 | GENERATOR | 2.10 | 16.8% | â†’ BUS_007 |
-| PV_Park_01 | PV_INVERTER | 0.85 | 6.8% | â†’ BUS_007 |
-| Line_12 (backfeed) | LINE | 1.05 | 8.4% | â†’ BUS_007 |
-| **TOTAL** | â€” | **12.50** | **100%** | â€” |
+| Grid_Source | GRID | 8.50 | 68.0% | → BUS_007 |
+| Gen_01 | GENERATOR | 2.10 | 16.8% | → BUS_007 |
+| PV_Park_01 | PV_INVERTER | 0.85 | 6.8% | → BUS_007 |
+| Line_12 (backfeed) | LINE | 1.05 | 8.4% | → BUS_007 |
+| **TOTAL** | — | **12.50** | **100%** | — |
 
 **Dla LINE/TRAFO (Load Flow Contributions):**
 
@@ -150,18 +150,18 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 | THD [%] | 8.0% | 3.2% | -4.8% | âś… OK |
 
 **ĹąrĂłdĹ‚a norm:**
-- PN-EN 50160 (jakoĹ›Ä‡ napiÄ™cia)
-- IEC 60909 (prÄ…dy zwarciowe)
+- PN-EN 50160 (jakoĹ›ć napięcia)
+- IEC 60909 (prądy zwarciowe)
 - IEC 60076 (transformatory)
 - IEEE 519 (harmoniczne)
 
 ### 3.6 Tab: Proof (P11)
 
-**Cel:** DostÄ™p do dowodu matematycznego P11 dla elementu.
+**Cel:** Dostęp do dowodu matematycznego P11 dla elementu.
 
-**DostÄ™pnoĹ›Ä‡:** BUS, PROTECTION (gdzie dowĂłd P11 jest generowany)
+**DostępnoĹ›ć:** BUS, PROTECTION (gdzie dowĂłd P11 jest generowany)
 
-**ZawartoĹ›Ä‡:**
+**ZawartoĹ›ć:**
 
 | Sekcja | Opis |
 |--------|------|
@@ -170,7 +170,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 | Navigation | Spis treĹ›ci, Prev/Next |
 | Export | PDF, LaTeX, DOCX |
 
-**Link:** â†’ Proof Inspector (P11_1d_PROOF_UI_EXPORT.md)
+**Link:** → Proof Inspector (P11_1d_PROOF_UI_EXPORT.md)
 
 ---
 
@@ -180,7 +180,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 **Multi-Case View** = Element Inspector pokazuje wyniki dla WSZYSTKICH Cases w jednej tabeli.
 
-**PowĂłd:** UĹĽytkownik chce porĂłwnaÄ‡ wartoĹ›ci bez przeĹ‚Ä…czania miÄ™dzy Cases.
+**PowĂłd:** UĹĽytkownik chce porĂłwnać wartoĹ›ci bez przeĹ‚ączania między Cases.
 
 ### 4.2 Implementacja
 
@@ -192,7 +192,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚                                                                 â”‚
 â”‚ [SC_BASE]  [SC_VARIANT_A]  [SC_VARIANT_B]                      â”‚
-â”‚    âś“ Baseline       Compareâ†’         Compareâ†’                   â”‚
+â”‚    âś“ Baseline       Compare→         Compare→                   â”‚
 â”‚                                                                 â”‚
 â”‚ â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”â”‚
 â”‚ â”‚ Case          â”‚ Ik_max â”‚ ip    â”‚ Ith   â”‚ Status â”‚          â”‚â”‚
@@ -209,8 +209,8 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 | Akcja | Reakcja |
 |-------|---------|
 | Klik "Baseline" | Ustawia Case jako baseline dla porĂłwnaĹ„ |
-| Klik "Compareâ†’" | Aktywuje Delta view dla tego Case |
-| Toggle Single/Multi | PrzeĹ‚Ä…cza miÄ™dzy widokami |
+| Klik "Compare→" | Aktywuje Delta view dla tego Case |
+| Toggle Single/Multi | PrzeĹ‚ącza między widokami |
 | Hover nad Case | Tooltip z metadanymi (Run, Timestamp) |
 
 ---
@@ -221,7 +221,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 - Wszystkie pola read-only
 - Brak przyciskĂłw "Save"
-- DostÄ™pne dla Operator, Analyst, Auditor
+- Dostępne dla Operator, Analyst, Auditor
 
 ### 5.2 EDIT Mode (Designer only)
 
@@ -230,11 +230,11 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 - Walidacja przy zapisie (NetworkValidator)
 - Automatyczne oznaczenie wynikĂłw jako OUTDATED
 
-### 5.3 PrzeĹ‚Ä…czanie trybĂłw
+### 5.3 PrzeĹ‚ączanie trybĂłw
 
 ```
-[Designer Mode] â†’ Element Inspector â†’ Parameters tab â†’ EDIT mode aktywny
-[Operator Mode] â†’ Element Inspector â†’ Parameters tab â†’ READ_ONLY (no edit)
+[Designer Mode] → Element Inspector → Parameters tab → EDIT mode aktywny
+[Operator Mode] → Element Inspector → Parameters tab → READ_ONLY (no edit)
 ```
 
 ---
@@ -243,7 +243,7 @@ Niniejszy dokument definiuje **kanoniczny kontrakt Element Inspector** â€” 
 
 ### 6.1 Single Global Focus
 
-Element Inspector MUSI reagowaÄ‡ na zmiany Global Focus:
+Element Inspector MUSI reagować na zmiany Global Focus:
 
 | ĹąrĂłdĹ‚o zmiany | Reakcja Element Inspector |
 |---------------|---------------------------|
@@ -259,7 +259,7 @@ Element Inspector MUSI reagowaÄ‡ na zmiany Global Focus:
 |---------------------------|------------|
 | Klik "Open in SLD" | SLD centruje i podĹ›wietla element |
 | Klik wiersz w Contributions | SLD podĹ›wietla contributor |
-| Edycja parametru | Wyniki â†’ OUTDATED, banner w SLD |
+| Edycja parametru | Wyniki → OUTDATED, banner w SLD |
 
 ---
 
@@ -278,9 +278,9 @@ Element Inspector MUSI reagowaÄ‡ na zmiany Global Focus:
 
 | Klawisz | Akcja |
 |---------|-------|
-| Tab | PrzejdĹş do nastÄ™pnego pola |
+| Tab | PrzejdĹş do następnego pola |
 | Shift+Tab | PrzejdĹş do poprzedniego pola |
-| Ctrl+1..6 | PrzeĹ‚Ä…cz na zakĹ‚adkÄ™ 1..6 |
+| Ctrl+1..6 | PrzeĹ‚ącz na zakĹ‚adkę 1..6 |
 | Escape | Zamknij inspector / Revert changes |
 | Ctrl+S | Save changes (EDIT mode) |
 | F5 | Refresh content |
@@ -319,23 +319,23 @@ Element Inspector MUSI reagowaÄ‡ na zmiany Global Focus:
 
 ```
 USER: Klika Bus_007 na SLD
-SYSTEM: Element Inspector otwiera siÄ™ z Bus_007
+SYSTEM: Element Inspector otwiera się z Bus_007
 USER: Przechodzi do zakĹ‚adki Results
 SYSTEM: Multi-Case View pokazuje wyniki dla wszystkich Cases
 USER: Klika "SC_VARIANT_A" jako Compare target
-SYSTEM: Kolumna Delta pojawia siÄ™ z % zmian
-USER: Eksportuje tabelÄ™ do PDF
+SYSTEM: Kolumna Delta pojawia się z % zmian
+USER: Eksportuje tabelę do PDF
 ```
 
 ### 9.2 Scenariusz: Edycja parametrĂłw (Designer)
 
 ```
 USER: W Designer Mode klika Line_001 na SLD
-SYSTEM: Element Inspector otwiera siÄ™, Parameters tab edytowalne
-USER: Zmienia in_service â†’ False
+SYSTEM: Element Inspector otwiera się, Parameters tab edytowalne
+USER: Zmienia in_service → False
 SYSTEM: Walidacja OK, przycisk "Save" aktywny
 USER: Klika "Save"
-SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
+SYSTEM: Model zaktualizowany, Results → OUTDATED
 ```
 
 ---
@@ -346,7 +346,7 @@ SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
 
 **FORBIDDEN:**
 ```
-âťŚ Operator moĹĽe edytowaÄ‡ parametry (np. R, X linii)
+âťŚ Operator moĹĽe edytować parametry (np. R, X linii)
 ```
 
 **CORRECT:**
@@ -360,12 +360,12 @@ SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
 **FORBIDDEN:**
 ```
 âťŚ Element Inspector pokazuje wyniki tylko dla Active Case
-âťŚ UĹĽytkownik musi przeĹ‚Ä…czaÄ‡ Case, ĹĽeby zobaczyÄ‡ rĂłĹĽnice
+âťŚ UĹĽytkownik musi przeĹ‚ączać Case, ĹĽeby zobaczyć rĂłĹĽnice
 ```
 
 **CORRECT:**
 ```
-âś“ Multi-Case View domyĹ›lnie wĹ‚Ä…czone
+âś“ Multi-Case View domyĹ›lnie wĹ‚ączone
 âś“ Wszystkie Cases widoczne w jednej tabeli
 âś“ Delta column automatycznie
 ```
@@ -379,7 +379,7 @@ SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
 
 **CORRECT:**
 ```
-âś“ ZakĹ‚adka Proof (P11) dostÄ™pna dla Bus i Protection
+âś“ ZakĹ‚adka Proof (P11) dostępna dla Bus i Protection
 âś“ Link do peĹ‚nego Proof Inspector
 âś“ Eksport do PDF/LaTeX
 ```
@@ -391,7 +391,7 @@ SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
 **Implementacja zgodna z ELEMENT_INSPECTOR_CONTRACT.md, jeĹ›li:**
 
 - [ ] Element Inspector ma 6 zakĹ‚adek (Overview, Parameters, Results, Contributions, Limits, Proof)
-- [ ] Multi-Case View implementuje tabelÄ™ z wszystkimi Cases
+- [ ] Multi-Case View implementuje tabelę z wszystkimi Cases
 - [ ] Delta Comparison z trend indicators (â–˛/â–Ľ/=)
 - [ ] Contributions tab dla Bus (SC) i Line/Trafo (PF)
 - [ ] Limits tab z Margin % i status
@@ -408,7 +408,7 @@ SYSTEM: Model zaktualizowany, Results â†’ OUTDATED
 
 | Data | Wersja | Zmiany |
 |------|--------|--------|
-| 2026-01-28 | 1.0 | Utworzenie dokumentu â€” Phase 1.z |
+| 2026-01-28 | 1.0 | Utworzenie dokumentu — Phase 1.z |
 
 ---
 

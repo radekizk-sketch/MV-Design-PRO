@@ -10,17 +10,17 @@
 
 ## 1. Cel dokumentu
 
-Niniejszy dokument definiuje **kanoniczny kontrakt Results Browser** â€” centralnego narzÄ™dzia eksploracji wynikĂłw obliczeĹ„ jako alternatywy dla nawigacji SLD.
+Niniejszy dokument definiuje **kanoniczny kontrakt Results Browser** — centralnego narzędzia eksploracji wynikĂłw obliczeĹ„ jako alternatywy dla nawigacji SLD.
 
-**Filozofia:** Results Browser + SLD = dwa rĂłwnorzÄ™dne okna do tych samych danych.
+**Filozofia:** Results Browser + SLD = dwa rĂłwnorzędne okna do tych samych danych.
 
 ---
 
-## 2. Definicje pojÄ™Ä‡ (BINDING)
+## 2. Definicje pojęć (BINDING)
 
 ### 2.1 Results Browser
 
-**Results Browser** to dedykowany panel UI umoĹĽliwiajÄ…cy eksploracjÄ™ wynikĂłw obliczeĹ„ w strukturze hierarchicznej, niezaleĹĽnie od ukĹ‚adu graficznego SLD.
+**Results Browser** to dedykowany panel UI umoĹĽliwiający eksplorację wynikĂłw obliczeĹ„ w strukturze hierarchicznej, niezaleĹĽnie od ukĹ‚adu graficznego SLD.
 
 | Atrybut | Opis |
 |---------|------|
@@ -61,7 +61,7 @@ PROJECT
 | Snapshot | ZamroĹĽony stan modelu | âś“ | Collapsed |
 | Analysis Run | Pojedynczy run obliczeĹ„ | âś“ | Collapsed |
 | Target Category | BUS/LINE/TRAFO/SOURCE/LOAD | âś“ | Collapsed |
-| Element | Konkretny element sieci | â€” | N/A |
+| Element | Konkretny element sieci | — | N/A |
 
 ### 3.2 Metadata na kaĹĽdym poziomie
 
@@ -89,48 +89,48 @@ PROJECT
 
 ### 4.1 Tabela wynikĂłw zwarciowych (SC Results Table)
 
-**Kolumny OBOWIÄ„ZKOWE:**
+**Kolumny OBOWIĄZKOWE:**
 
 | Kolumna | Opis | Format | Sortowalna |
 |---------|------|--------|------------|
-| Bus ID | Identyfikator wÄ™zĹ‚a | UUID | âś“ |
-| Bus Name | Nazwa wÄ™zĹ‚a | String | âś“ |
-| Voltage [kV] | NapiÄ™cie znamionowe | Float, 2 dec | âś“ |
+| Bus ID | Identyfikator węzĹ‚a | UUID | âś“ |
+| Bus Name | Nazwa węzĹ‚a | String | âś“ |
+| Voltage [kV] | Napięcie znamionowe | Float, 2 dec | âś“ |
 | Fault Type | Typ zwarcia | 3PH / 1PH / 2PH | âś“ |
-| Ik_max [kA] | PrÄ…d zwarciowy max | Float, 2 dec | âś“ |
-| Ik_min [kA] | PrÄ…d zwarciowy min | Float, 2 dec | âś“ |
-| ip [kA] | PrÄ…d udarowy | Float, 2 dec | âś“ |
-| Ith [kA] | PrÄ…d cieplny | Float, 2 dec | âś“ |
+| Ik_max [kA] | Prąd zwarciowy max | Float, 2 dec | âś“ |
+| Ik_min [kA] | Prąd zwarciowy min | Float, 2 dec | âś“ |
+| ip [kA] | Prąd udarowy | Float, 2 dec | âś“ |
+| Ith [kA] | Prąd cieplny | Float, 2 dec | âś“ |
 | Sk [MVA] | Moc zwarciowa | Float, 1 dec | âś“ |
 | X/R | Stosunek X/R | Float, 2 dec | âś“ |
 | Status | OK / WARNING / VIOLATION | Enum | âś“ |
 
 ### 4.2 Tabela wynikĂłw rozpĹ‚ywu mocy (PF Results Table)
 
-**Kolumny OBOWIÄ„ZKOWE:**
+**Kolumny OBOWIĄZKOWE:**
 
 | Kolumna | Opis | Format |
 |---------|------|--------|
 | Element ID | Identyfikator elementu | UUID |
 | Element Name | Nazwa elementu | String |
 | Element Type | BUS / LINE / TRAFO | Enum |
-| U [kV] | NapiÄ™cie (BUS) | Float, 3 dec |
-| U [p.u.] | NapiÄ™cie per unit (BUS) | Float, 3 dec |
+| U [kV] | Napięcie (BUS) | Float, 3 dec |
+| U [p.u.] | Napięcie per unit (BUS) | Float, 3 dec |
 | P [MW] | Moc czynna | Float, 3 dec |
 | Q [Mvar] | Moc bierna | Float, 3 dec |
-| I [A] | PrÄ…d (LINE/TRAFO) | Float, 1 dec |
-| Loading [%] | ObciÄ…ĹĽenie termiczne | Float, 1 dec |
+| I [A] | Prąd (LINE/TRAFO) | Float, 1 dec |
+| Loading [%] | ObciąĹĽenie termiczne | Float, 1 dec |
 | P_loss [kW] | Straty mocy czynnej | Float, 2 dec |
 | Status | OK / OVERLOAD / UNDERVOLTAGE | Enum |
 
 ### 4.3 Filtrowanie
 
-**Filtry dostÄ™pne:**
+**Filtry dostępne:**
 
 | Filtr | Opis | WartoĹ›ci |
 |-------|------|----------|
 | Violations Only | Tylko przekroczenia | Boolean |
-| Voltage Range | Zakres napiÄ™Ä‡ | [U_min, U_max] kV |
+| Voltage Range | Zakres napięć | [U_min, U_max] kV |
 | Zone | Strefa / feeder | Zone ID |
 | Element Type | Typ elementu | BUS / LINE / TRAFO / ALL |
 | Status | Status wyniku | OK / WARNING / VIOLATION |
@@ -140,9 +140,9 @@ PROJECT
 
 **ReguĹ‚y sortowania:**
 
-1. KlikniÄ™cie nagĹ‚Ăłwka kolumny â†’ sortowanie rosnÄ…ce
-2. Drugie klikniÄ™cie â†’ sortowanie malejÄ…ce
-3. Trzecie klikniÄ™cie â†’ reset do domyĹ›lnego (unsorted / by name)
+1. Kliknięcie nagĹ‚Ăłwka kolumny → sortowanie rosnące
+2. Drugie kliknięcie → sortowanie malejące
+3. Trzecie kliknięcie → reset do domyĹ›lnego (unsorted / by name)
 4. Wielokolumnowe sortowanie: SHIFT + klik
 
 ---
@@ -151,7 +151,7 @@ PROJECT
 
 ### 5.1 Delta View (Comparison Mode)
 
-**Cel:** PorĂłwnanie wynikĂłw miÄ™dzy dwoma (lub trzema) Cases/Snapshots.
+**Cel:** PorĂłwnanie wynikĂłw między dwoma (lub trzema) Cases/Snapshots.
 
 **Aktywacja:** 
 - Przycisk "Compare" w toolbarze Results Browser
@@ -162,8 +162,8 @@ PROJECT
 | Kolumna | Opis |
 |---------|------|
 | Element | Identyfikator elementu |
-| Value A | WartoĹ›Ä‡ w Case A |
-| Value B | WartoĹ›Ä‡ w Case B |
+| Value A | WartoĹ›ć w Case A |
+| Value B | WartoĹ›ć w Case B |
 | Î” (B-A) | RĂłĹĽnica absolutna |
 | %Î” | RĂłĹĽnica procentowa |
 | Trend | â–˛ IMPROVED / â–Ľ REGRESSED / = NO_CHANGE |
@@ -172,8 +172,8 @@ PROJECT
 
 | Trend | Kolor | Znaczenie |
 |-------|-------|-----------|
-| â–˛ IMPROVED | Zielony (#22C55E) | WartoĹ›Ä‡ poprawiĹ‚a siÄ™ (np. spadek Ikâ€ł) |
-| â–Ľ REGRESSED | Czerwony (#EF4444) | WartoĹ›Ä‡ pogorszyĹ‚a siÄ™ |
+| â–˛ IMPROVED | Zielony (#22C55E) | WartoĹ›ć poprawiĹ‚a się (np. spadek Ikâ€ł) |
+| â–Ľ REGRESSED | Czerwony (#EF4444) | WartoĹ›ć pogorszyĹ‚a się |
 | = NO_CHANGE | Szary (#9CA3AF) | Brak istotnej zmiany (|%Î”| < 0.1%) |
 
 ### 5.3 Progi istotnoĹ›ci
@@ -182,7 +182,7 @@ PROJECT
 |---------------|------|
 | Nieistotna | |%Î”| < 0.1% |
 | MaĹ‚a | 0.1% â‰¤ |%Î”| < 5% |
-| ZnaczÄ…ca | 5% â‰¤ |%Î”| < 15% |
+| Znacząca | 5% â‰¤ |%Î”| < 15% |
 | DuĹĽa | |%Î”| â‰Ą 15% |
 
 ---
@@ -204,7 +204,7 @@ PROJECT
 | All Data | Wszystkie wiersze |
 | Visible Only | Tylko widoczne (po filtrach) |
 | Selected Only | Tylko zaznaczone |
-| Include Metadata | DoĹ‚Ä…cz nagĹ‚Ăłwek z Case/Run info |
+| Include Metadata | DoĹ‚ącz nagĹ‚Ăłwek z Case/Run info |
 
 ### 6.3 Nazwa pliku (deterministyczna)
 
@@ -220,28 +220,28 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 | Akcja w Results Browser | Reakcja w SLD |
 |-------------------------|---------------|
-| KlikniÄ™cie wiersza | PodĹ›wietlenie elementu na SLD |
-| PodwĂłjne klikniÄ™cie | Centrowanie SLD na elemencie |
-| Hover nad wierszem | Tooltip z miniaturÄ… SLD (opcjonalne) |
+| Kliknięcie wiersza | PodĹ›wietlenie elementu na SLD |
+| PodwĂłjne kliknięcie | Centrowanie SLD na elemencie |
+| Hover nad wierszem | Tooltip z miniaturą SLD (opcjonalne) |
 
 | Akcja w SLD | Reakcja w Results Browser |
 |-------------|---------------------------|
-| KlikniÄ™cie elementu | PodĹ›wietlenie wiersza + scroll to |
+| Kliknięcie elementu | PodĹ›wietlenie wiersza + scroll to |
 | Hover nad elementem | Highlight wiersza (light background) |
 
 ### 7.2 Focus Lock
 
-**Focus Lock** = Results Browser i SLD dzielÄ… wspĂłlny fokus.
+**Focus Lock** = Results Browser i SLD dzielą wspĂłlny fokus.
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚                    SINGLE GLOBAL FOCUS                           â”‚
 â”‚  Global Focus = (Target Element, Case, Run, Snapshot, Analysis) â”‚
 â”‚                                                                  â”‚
-â”‚       Results Browser â†â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â†’ SLD Viewer                   â”‚
+â”‚       Results Browser â†â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€→ SLD Viewer                   â”‚
 â”‚              â”‚                           â”‚                       â”‚
 â”‚              â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                       â”‚
-â”‚                        â†“                                         â”‚
+â”‚                        ↓                                         â”‚
 â”‚                Element Inspector                                 â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -254,7 +254,7 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 | Akcja | Reakcja |
 |-------|---------|
-| Klik wiersza â†’ Inspector | Otwarcie Element Inspector dla elementu |
+| Klik wiersza → Inspector | Otwarcie Element Inspector dla elementu |
 | Double-click | Inspector + Results tab active |
 
 ### 8.2 Topology Tree
@@ -276,7 +276,7 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ## 9. Tryby eksperckie (EXPERT MODES)
 
-### 9.1 WidocznoĹ›Ä‡ kolumn per tryb
+### 9.1 WidocznoĹ›ć kolumn per tryb
 
 | Tryb | DomyĹ›lne kolumny |
 |------|------------------|
@@ -285,14 +285,14 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 | Analyst | Wszystkie + X/R, Contributions |
 | Auditor | Wszystkie + Metadata (Timestamp, User, Diff) |
 
-### 9.2 DomyĹ›lne rozwiniÄ™cia drzewa per tryb
+### 9.2 DomyĹ›lne rozwinięcia drzewa per tryb
 
-| Tryb | DomyĹ›lne rozwiniÄ™cie |
+| Tryb | DomyĹ›lne rozwinięcie |
 |------|----------------------|
-| Operator | Case â†’ Buses (violations only) |
-| Designer | Case â†’ Snapshot â†’ All Categories |
-| Analyst | Wszystko rozwiniÄ™te |
-| Auditor | Wszystko rozwiniÄ™te + History visible |
+| Operator | Case → Buses (violations only) |
+| Designer | Case → Snapshot → All Categories |
+| Analyst | Wszystko rozwinięte |
+| Auditor | Wszystko rozwinięte + History visible |
 
 ---
 
@@ -311,11 +311,11 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 | Klawisz | Akcja |
 |---------|-------|
-| â†‘/â†“ | Nawigacja miÄ™dzy wierszami |
+| ↑/↓ | Nawigacja między wierszami |
 | Enter | OtwĂłrz Element Inspector |
 | Ctrl+F | Focus na search box |
 | Escape | Zamknij modal / reset filtrow |
-| Tab | PrzejdĹş do nastÄ™pnego focusable |
+| Tab | PrzejdĹş do następnego focusable |
 
 ---
 
@@ -368,12 +368,12 @@ PrzykĹ‚ad: `MV_Network_SC_MAX_2026-01-28_1930.xlsx`
 
 ```
 USER: Otwiera Results Browser
-USER: Rozwija Case â†’ Snapshot â†’ Run â†’ Buses
+USER: Rozwija Case → Snapshot → Run → Buses
 USER: Klika "Violations Only" filter
 SYSTEM: Tabela pokazuje tylko Bus z Status = VIOLATION
-USER: Sortuje po Ik_max (malejÄ…co)
+USER: Sortuje po Ik_max (malejąco)
 USER: Klika wiersz Bus_007
-SYSTEM: SLD centruje na Bus_007, Element Inspector otwiera siÄ™
+SYSTEM: SLD centruje na Bus_007, Element Inspector otwiera się
 ```
 
 ### 13.2 Scenariusz: PorĂłwnanie dwĂłch Cases
@@ -381,7 +381,7 @@ SYSTEM: SLD centruje na Bus_007, Element Inspector otwiera siÄ™
 ```
 USER: Klika "Compare" w toolbarze
 USER: Wybiera Case A = SC_BASE, Case B = SC_VARIANT
-SYSTEM: Tabela przeĹ‚Ä…cza w tryb Delta View
+SYSTEM: Tabela przeĹ‚ącza w tryb Delta View
 SYSTEM: Koloruje wiersze: zielone (improved), czerwone (regressed)
 USER: Filtruje "REGRESSED only"
 USER: Eksportuje do PDF
@@ -395,7 +395,7 @@ USER: Eksportuje do PDF
 
 **FORBIDDEN:**
 ```
-âťŚ Results Browser przechowuje kopiÄ™ wynikĂłw (shadow store)
+âťŚ Results Browser przechowuje kopię wynikĂłw (shadow store)
 ```
 
 **CORRECT:**
@@ -412,7 +412,7 @@ USER: Eksportuje do PDF
 
 **CORRECT:**
 ```
-âś“ Single Global Focus â€” klik â†’ aktualizacja ALL widokĂłw
+âś“ Single Global Focus — klik → aktualizacja ALL widokĂłw
 ```
 
 ### 14.3 Ukrywanie kolumn bez powodu
@@ -424,7 +424,7 @@ USER: Eksportuje do PDF
 
 **CORRECT:**
 ```
-âś“ Expert Modes zmieniajÄ… DOMYĹšLNE widocznoĹ›ci, uĹĽytkownik moĹĽe pokazaÄ‡ wszystko
+âś“ Expert Modes zmieniają DOMYĹšLNE widocznoĹ›ci, uĹĽytkownik moĹĽe pokazać wszystko
 ```
 
 ---
@@ -433,14 +433,14 @@ USER: Eksportuje do PDF
 
 **Implementacja zgodna z RESULTS_BROWSER_CONTRACT.md, jeĹ›li:**
 
-- [ ] Results Browser implementuje hierarchiÄ™ drzewa (Project â†’ Study â†’ Case â†’ Snapshot â†’ Run â†’ Category â†’ Element)
-- [ ] Tabele SC i PF zawierajÄ… wszystkie OBOWIÄ„ZKOWE kolumny
+- [ ] Results Browser implementuje hierarchię drzewa (Project → Study → Case → Snapshot → Run → Category → Element)
+- [ ] Tabele SC i PF zawierają wszystkie OBOWIĄZKOWE kolumny
 - [ ] Sortowanie, filtrowanie dziaĹ‚a dla wszystkich kolumn
 - [ ] Delta View (Compare) implementuje trend highlighting
 - [ ] Eksport CSV/Excel/PDF zachowuje wszystkie kolumny i metadane
-- [ ] Synchronizacja z SLD (klik â†’ highlight, double-click â†’ center)
-- [ ] Focus Lock (Single Global Focus) dziaĹ‚a miÄ™dzy Results Browser, SLD, Element Inspector
-- [ ] Expert Modes zmieniajÄ… domyĹ›lne widocznoĹ›ci, NIE ukrywajÄ… danych
+- [ ] Synchronizacja z SLD (klik → highlight, double-click → center)
+- [ ] Focus Lock (Single Global Focus) dziaĹ‚a między Results Browser, SLD, Element Inspector
+- [ ] Expert Modes zmieniają domyĹ›lne widocznoĹ›ci, NIE ukrywają danych
 - [ ] Screen reader support (ARIA labels)
 - [ ] Virtual scrolling dla > 500 wierszy
 - [ ] Performance: render < 500ms, sort < 200ms, filter < 300ms
@@ -451,7 +451,7 @@ USER: Eksportuje do PDF
 
 | Data | Wersja | Zmiany |
 |------|--------|--------|
-| 2026-01-28 | 1.0 | Utworzenie dokumentu â€” Phase 1.z |
+| 2026-01-28 | 1.0 | Utworzenie dokumentu — Phase 1.z |
 
 ---
 

@@ -20,7 +20,18 @@ BANNED_PATTERNS = [
     {
         "id": "NH-02",
         "name": "Implicit cosφ",
-        "pattern": re.compile(r"cos_phi|power_factor\s*\*|cosfi|cos_fi", re.IGNORECASE),
+        # Tylko rzeczywiste obliczenia Q z cos_phi, nie nazwy pól w schematach.
+        # Wykrywa: math.tan/acos/sin/cos(cos_phi*...), Q = ...cos_phi..., mnożenie p * cos_phi.
+        "pattern": re.compile(
+            r"(math\.(tan|acos|asin|sin|cos)\s*\([^)]*cos_phi"
+            r"|power_factor\s*\*"
+            r"|\*\s*cos_phi"
+            r"|cos_phi\s*\*"
+            r"|cosfi\s*\*|\*\s*cosfi"
+            r"|cos_fi\s*\*|\*\s*cos_fi"
+            r"|q[_a-z]*\s*=[^=].*\bcos_phi\b)",
+            re.IGNORECASE,
+        ),
         "description": "Obliczanie Q z cosφ bez jawnego parametru wejścia jest zabronione.",
     },
     {

@@ -1,4 +1,4 @@
-﻿# MODEL SEMANTYCZNY SLD â€” ADAPTERY I WALIDACJA
+﻿# MODEL SEMANTYCZNY SLD — ADAPTERY I WALIDACJA
 
 **Data:** 2026-03-14
 **Wersja:** 1.0
@@ -26,7 +26,7 @@ TopologyInputV1
     v
 +----------------------------------+
 | buildSldSemanticModel()          |
-| (NOWY adapter â€” zast. 4 obiekty)|
+| (NOWY adapter — zast. 4 obiekty)|
 |   1. BFS segmentacja             |
 |   2. Klasyfikacja stacji         |
 |   3. Budowa pĂłl per stacja       |
@@ -34,7 +34,7 @@ TopologyInputV1
 +----------------------------------+
     |
     v
-SldSemanticModelV1 (NOWY â€” jeden jawny model)
+SldSemanticModelV1 (NOWY — jeden jawny model)
     |
     v
 +----------------------------------+
@@ -103,7 +103,7 @@ Pelna definicja typĂłw w: `SPEC_KONTRAKTY_SYSTEMOWE_SN.md` sekcja 1.
 
 ```typescript
 /**
- * buildSldSemanticModel â€” jedyny adapter Snapshot -> SldSemanticModel.
+ * buildSldSemanticModel — jedyny adapter Snapshot -> SldSemanticModel.
  *
  * Zastepuje dotychczasowe 4 osobne obiekty jednym modelem.
  * Logika z topologyAdapterV2 + stationBlockBuilder zostaje,

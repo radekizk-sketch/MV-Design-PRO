@@ -1,5 +1,5 @@
 ﻿/**
- * P20c â€” Power Flow Comparison Page (Porownanie rozplywu mocy)
+ * P20c — Power Flow Comparison Page (Porownanie rozplywu mocy)
  *
  * CANONICAL ALIGNMENT:
  * - P20c: Power Flow A/B Comparison
@@ -92,7 +92,7 @@ function ComparisonExportButton({ comparisonId, disabled }: ComparisonExportButt
       document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
-      notify(`BĹ‚Ä…d eksportu: ${error instanceof Error ? error.message : 'Nieznany bĹ‚Ä…d'}`);
+      notify(`BĹ‚ąd eksportu: ${error instanceof Error ? error.message : 'Nieznany bĹ‚ąd'}`);
     } finally {
       setIsExporting(false);
     }
@@ -135,7 +135,7 @@ function ComparisonExportButton({ comparisonId, disabled }: ComparisonExportButt
 // =============================================================================
 
 function formatNumber(value: number | null | undefined, decimals = 4): string {
-  if (value === null || value === undefined) return 'â€”';
+  if (value === null || value === undefined) return '—';
   return value.toLocaleString('pl-PL', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
@@ -173,13 +173,13 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">â€” Wybierz obliczenie â€”</option>
+        <option value="">— Wybierz obliczenie —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           const convergence = run.converged ? 'Zbiezny' : 'Niezbiezny';
           return (
             <option key={run.id} value={run.id}>
-              PF [{truncateId(run.study_case_id)}] â€” {date} â€” {convergence}
+              PF [{truncateId(run.study_case_id)}] — {date} — {convergence}
             </option>
           );
         })}
@@ -236,19 +236,19 @@ function BusDifferencesTable({ rows, filter }: BusDifferencesTableProps) {
               ID szyny
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              V [pu] â€” A
+              V [pu] — A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              V [pu] â€” B
+              V [pu] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               Î”V [pu]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Kat [deg] â€” A
+              Kat [deg] — A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Kat [deg] â€” B
+              Kat [deg] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               Î”Kat [deg]
@@ -327,19 +327,19 @@ function BranchDifferencesTable({ rows, filter }: BranchDifferencesTableProps) {
               ID galezi
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Straty P [MW] â€” A
+              Straty P [MW] — A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Straty P [MW] â€” B
+              Straty P [MW] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               Î”Straty P [MW]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              P_from [MW] â€” A
+              P_from [MW] — A
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              P_from [MW] â€” B
+              P_from [MW] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               Î”P_from [MW]
@@ -722,7 +722,7 @@ export function PowerFlowComparisonPage({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs uppercase tracking-wide text-slate-400">
-                P20c â€” Porownanie rozplywu mocy
+                P20c — Porownanie rozplywu mocy
               </p>
               <h1 className="text-2xl font-semibold text-slate-900">
                 Porownanie analiz rozplywu mocy

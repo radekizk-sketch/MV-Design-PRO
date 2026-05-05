@@ -4,9 +4,9 @@
 > Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
 > Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
 
-# Jak modelowa� magistral� i odga��zienia SN
+# Jak modelować magistralę i odgałęzienia SN
 
-**MV-DESIGN-PRO � PR-9 przewodnik modelowania**
+**MV-DESIGN-PRO — PR-9 przewodnik modelowania**
 **Status:** INFORMATIONAL
 **Warstwa:** Application / UI
 
@@ -14,57 +14,57 @@
 
 > **ZASADA KANONICZNA (BINDING)**
 >
-> MV-DESIGN-PRO dzia�a wy��cznie w modelu:
-> **TYPE (CATALOG) � INSTANCE � SOLVER INPUT**
+> MV-DESIGN-PRO działa wyłącznie w modelu:
+> **TYPE (CATALOG) — INSTANCE — SOLVER INPUT**
 >
-> - UI **NIGDY** nie udost�pnia p�l do edycji parametr�w elektrycznych.
-> - Wszystkie parametry techniczne pochodz� wy��cznie z `catalog_ref`.
-> - Je�eli parametr nie istnieje w katalogu � **nie mo�e istnie� w instancji ani w UI**.
-> - TRYB EKSPERT pozwala nadpisa� istniej�cy parametr katalogowy, nie dodaje nowych.
+> - UI **NIGDY** nie udostępnia pól do edycji parametrów elektrycznych.
+> - Wszystkie parametry techniczne pochodzą wyłącznie z `catalog_ref`.
+> - Jeżeli parametr nie istnieje w katalogu — **nie może istnieć w instancji ani w UI**.
+> - TRYB EKSPERT pozwala nadpisać istniejący parametr katalogowy, nie dodaje nowych.
 
 ---
 
-## 1. Wst�p
+## 1. Wstęp
 
-Niniejszy dokument opisuje spos�b modelowania typowej sieci SN w MV-DESIGN-PRO:
-magistrala (trunk/spine), odga��zienia (laterals), stacje transformatorowe SN/nn,
-aparatura ��czeniowa, przek�adniki pomiarowe, zabezpieczenia, odbiory i �r�d�a OZE/BESS.
+Niniejszy dokument opisuje sposób modelowania typowej sieci SN w MV-DESIGN-PRO:
+magistrala (trunk/spine), odgałęzienia (laterals), stacje transformatorowe SN/nn,
+aparatura łączeniowa, przekładniki pomiarowe, zabezpieczenia, odbiory i źródła OZE/BESS.
 
 ### 1.1 Konwencja opisu operacji
 
-Operacje opisane w tym dokumencie (�dodaj szyn�", �dodaj ga���") s� **poj�ciowe** �
-odpowiadaj� transakcyjnym akcjom w interfejsie u�ytkownika (UI).
-Nie stanowi� one kontraktu API, nie definiuj� nazw endpoint�w i nie gwarantuj�
-sygnatury �adnej funkcji backendowej. Faktyczny interfejs programistyczny
-mo�e si� r�ni� od opis�w w guide.
+Operacje opisane w tym dokumencie („dodaj szynę", „dodaj gałąź") są **pojęciowe** —
+odpowiadają transakcyjnym akcjom w interfejsie użytkownika (UI).
+Nie stanowią one kontraktu API, nie definiują nazw endpointów i nie gwarantują
+sygnatury żadnej funkcji backendowej. Faktyczny interfejs programistyczny
+może się różnić od opisów w guide.
 
 ### 1.2 Zakres PR-9 (Czego PR-9 nie robi)
 
-PR-9 umo�liwia zapisanie **topologii sieci** i **konfiguracji katalogowej**.
-PR-9 **nie wykonuje �adnych oblicze�**:
+PR-9 umożliwia zapisanie **topologii sieci** i **konfiguracji katalogowej**.
+PR-9 **nie wykonuje żadnych obliczeń**:
 
-- nie liczy rozp�ywu mocy (PF),
-- nie liczy zwar� (SC / IEC 60909),
-- nie wykonuje koordynacji zabezpiecze�,
-- nie wyprowadza parametr�w zabezpiecze�,
-- nie weryfikuje parametr�w pr�dowo-czasowo,
-- nie �zgaduje" ani nie interpoluje parametr�w technicznych.
+- nie liczy rozpływu mocy (PF),
+- nie liczy zwarć (SC / IEC 60909),
+- nie wykonuje koordynacji zabezpieczeń,
+- nie wyprowadza parametrów zabezpieczeń,
+- nie weryfikuje parametrów prądowo-czasowo,
+- nie „zgaduje" ani nie interpoluje parametrów technicznych.
 
-Elementy wprowadzone w PR-9 to **konfiguracja wej�ciowa do przysz�ych analiz**,
+Elementy wprowadzone w PR-9 to **konfiguracja wejściowa do przyszłych analiz**,
 nie wynik obliczeniowy.
 
 ---
 
 ## 2. TYPE vs INSTANCE
 
-### 2.1 TYPE (Katalog typ�w)
+### 2.1 TYPE (Katalog typów)
 
-Katalog typ�w zawiera **100% parametr�w technicznych** ka�dego elementu.
-Typy s� wersjonowane i fingerprintowane (hash integralno�ci).
+Katalog typów zawiera **100% parametrów technicznych** każdego elementu.
+Typy są wersjonowane i fingerprintowane (hash integralności).
 
 Kategorie katalogowe:
 
-| Kategoria katalogu | Przyk�adowe identyfikatory |
+| Kategoria katalogu | Przykładowe identyfikatory |
 |---|---|
 | LineType | `AFL_120`, `AFL_70` |
 | CableType | `XRUHAKXS_120`, `XRUHAKXS_70` |
@@ -78,170 +78,170 @@ Kategorie katalogowe:
 | GeneratorType (OZE) | `PV_INV_100kW`, `BESS_250kWh` |
 | LoadType | `LOAD_KOMUNALNY_300kW` |
 
-U�ytkownik **nie edytuje** parametr�w w katalogu typ�w w ramach PR-9.
-Parametry techniczne w katalogu s� dost�pne wy��cznie do podgl�du.
+Użytkownik **nie edytuje** parametrów w katalogu typów w ramach PR-9.
+Parametry techniczne w katalogu są dostępne wyłącznie do podglądu.
 
 ### 2.2 INSTANCE (Element w modelu ENM)
 
-Instancja to konkretne wyst�pienie typu katalogowego w topologii sieci.
-Instancja zawiera **wy��cznie**:
+Instancja to konkretne wystąpienie typu katalogowego w topologii sieci.
+Instancja zawiera **wyłącznie**:
 
-- `catalog_ref` � referencja do typu katalogowego (obowi�zkowa),
-- `quantity` / `n_parallel` � liczba identycznych egzemplarzy (mno�nik),
-- topologi� � szyny od/do, powi�zania z innymi instancjami,
-- status � `OPEN` / `CLOSED` / `IN_SERVICE`,
-- `overrides[]` � **wy��cznie w trybie EKSPERT** (patrz �3.2).
+- `catalog_ref` — referencja do typu katalogowego (obowiązkowa),
+- `quantity` / `n_parallel` — liczba identycznych egzemplarzy (mnożnik),
+- topologię — szyny od/do, powiązania z innymi instancjami,
+- status — `OPEN` / `CLOSED` / `IN_SERVICE`,
+- `overrides[]` — **wyłącznie w trybie EKSPERT** (patrz §3.2).
 
-Instancja **nie zawiera** parametr�w technicznych � dziedziczy je z katalogu.
-Je�eli parametr nie istnieje w katalogu, nie mo�e pojawi� si� w instancji.
+Instancja **nie zawiera** parametrów technicznych — dziedziczy je z katalogu.
+Jeżeli parametr nie istnieje w katalogu, nie może pojawić się w instancji.
 
 ---
 
 ## 3. Tryby pracy
 
-### 3.1 Tryb STANDARDOWY (domy�lny)
+### 3.1 Tryb STANDARDOWY (domyślny)
 
-W trybie standardowym u�ytkownik:
+W trybie standardowym użytkownik:
 - wybiera typ z katalogu (`catalog_ref`),
-- podaje topologi� (szyny od/do, powi�zania),
-- podaje d�ugo�� odcinka (linie/kable) i status ��cznika,
-- podaje ilo�� identycznych instancji (`quantity` / `n_parallel`),
-- **nie wpisuje r�cznie �adnych warto�ci technicznych**.
+- podaje topologię (szyny od/do, powiązania),
+- podaje długość odcinka (linie/kable) i status łącznika,
+- podaje ilość identycznych instancji (`quantity` / `n_parallel`),
+- **nie wpisuje ręcznie żadnych wartości technicznych**.
 
-Pola techniczne w UI s� **READ-ONLY** � wy�wietlaj� warto�ci pobrane z katalogu.
-UI nie zawiera p�l edytowalnych opisuj�cych fizyk� elementu.
+Pola techniczne w UI są **READ-ONLY** — wyświetlaj— wartości pobrane z katalogu.
+UI nie zawiera pól edytowalnych opisujących fizykę elementu.
 
 ### 3.2 Tryb EKSPERT (opt-in, audytowany)
 
-Tryb EKSPERT pozwala na nadpisanie parametru **istniej�cego w katalogu**
+Tryb EKSPERT pozwala na nadpisanie parametru **istniejącego w katalogu**
 na poziomie instancji (nie modyfikuje katalogu).
 
 **Twarde ograniczenia TRYBU EKSPERT:**
-- **Nie dodaje nowych parametr�w** � je�li parametr nie istnieje w typie katalogowym,
-  nie mo�e zosta� dodany przez override.
-- **Nie zmienia struktury modelu** � override nie dodaje p�l, relacji ani topologii.
-- **Pozwala jedynie nadpisa� istniej�cy parametr katalogowy** � warto�� override
-  zast�puje warto�� z katalogu dla tej jednej instancji.
-- **Ka�de nadpisanie jest audytowalne** � zapisywane z `ParameterSource=OVERRIDE`,
+- **Nie dodaje nowych parametrów** — jeśli parametr nie istnieje w typie katalogowym,
+  nie może został dodany przez override.
+- **Nie zmienia struktury modelu** — override nie dodaje pól, relacji ani topologii.
+- **Pozwala jedynie nadpisać istniejący parametr katalogowy** — wartość override
+  zastępuje wartość z katalogu dla tej jednej instancji.
+- **Każde nadpisanie jest audytowalne** — zapisywane z `ParameterSource=OVERRIDE`,
   widoczne w SLD, Inspector i raportach.
 
 Wymagania operacyjne:
-- Tryb EKSPERT nie jest domy�lny; wymaga **�wiadomej aktywacji** przez u�ytkownika
+- Tryb EKSPERT nie jest domyślny; wymaga **świadomej aktywacji** przez użytkownika
   i jest wizualnie oznaczony w UI (ikona, kolor pola).
-- Override jest jawnie zapisany jako lista `overrides` (parametr � warto��).
-- Parametry bez override zachowuj� warto�� z `catalog_ref` (`ParameterSource=CATALOG`).
-- Brak override � pe�ne dziedziczenie z katalogu.
+- Override jest jawnie zapisany jako lista `overrides` (parametr — wartość).
+- Parametry bez override zachowuj— wartość z `catalog_ref` (`ParameterSource=CATALOG`).
+- Brak override — pełne dziedziczenie z katalogu.
 
 ### 3.3 Semantyka `quantity` / `n_parallel`
 
-`quantity` lub `n_parallel` opisuje **liczb� identycznych instancji typu katalogowego**.
+`quantity` lub `n_parallel` opisuje **liczb— identycznych instancji typu katalogowego**.
 
-- Nie oznacza mocy, pr�du, napi�cia ani �adnego wsp�czynnika elektrycznego.
-- Agregacja mocy, zwar� i regulacji jest **wynikiem solvera**, nie wej�ciem u�ytkownika.
-- Dotyczy w r�wnym stopniu: PV, BESS, transformator�w, linii r�wnoleg�ych, odbior�w.
-- U�ytkownik nie podaje warto�ci �sumarycznych" � system wyprowadza agregaty
+- Nie oznacza mocy, prądu, napięcia ani żadnego współczynnika elektrycznego.
+- Agregacja mocy, zwarć i regulacji jest **wynikiem solvera**, nie wejściem użytkownika.
+- Dotyczy w równym stopniu: PV, BESS, transformatorów, linii równoległych, odbiorów.
+- Użytkownik nie podaje wartości „sumarycznych" — system wyprowadza agregaty
   dopiero w analizach (PF/SC), poza zakresem PR-9.
 
 **ZABRONIONE:** interpretowanie `quantity` jako MW, MVA, kA lub jakiejkolwiek
-wielko�ci elektrycznej.
+wielkości elektrycznej.
 
-### 3.4 PV / OZE / BESS � brak wyj�tk�w
+### 3.4 PV / OZE / BESS — brak wyjątków
 
-PV, �r�d�a wiatrowe, BESS i inne �r�d�a rozproszone (DER) podlegaj�
+PV, źródła wiatrowe, BESS i inne źródła rozproszone (DER) podlegają
 **identycznym zasadom** jak wszystkie inne elementy:
 
-- Brak p�l edytowalnych opisuj�cych fizyk� elementu w UI.
-- Regulacje, charakterystyki, parametry zwarciowe � wy��cznie z katalogu.
+- Brak pól edytowalnych opisujących fizykę elementu w UI.
+- Regulacje, charakterystyki, parametry zwarciowe — wyłącznie z katalogu.
 - Instancja DER = `catalog_ref` + `quantity` + `bus_ref` + `status`.
 
-> PV nie jest �r�d�em �specjalnym" ani �uproszczonym".
-> Ka�dy DER jest instancj� typu katalogowego � bez wyj�tk�w.
+> PV nie jest źródłem „specjalnym" ani „uproszczonym".
+> Każdy DER jest instancją typu katalogowego — bez wyjątków.
 
-### 3.5 Zakaz self-loop (p�tla w�asna)
+### 3.5 Zakaz self-loop (pętla własna)
 
-�adna ga��� ani element ��czeniowy nie mo�e ��czy� szyny z t� sam� szyn�
-(`from_bus == to_bus`). Aparatura ��czeniowa jest modelowana mi�dzy dwoma
-**r�nymi** szynami: `bus_in � device � bus_out`.
+żadna gałąź ani element łączeniowy nie może łączyć szyny z tą samą szyną
+(`from_bus == to_bus`). Aparatura łączeniowa jest modelowana między dwoma
+**różnymi** szynami: `bus_in — device — bus_out`.
 
 ---
 
-## 4. Poj�cia
+## 4. Pojścia
 
-| Poj�cie | Opis | ENM |
+| Pojęcie | Opis | ENM |
 |---------|------|-----|
-| Magistrala (spine) | Ci�g odcink�w linii/kabli od GPZ do ko�ca linii | Sekwencja Branch (line/cable) + Bus |
-| Odga��zienie (lateral) | Linia odchodz�ca od magistrali | Branch + Bus do��czony do w�z�a T |
-| W�ze� T (T-node) | Punkt rozga��zienia magistrali | Bus z ?3 ga��ziami |
-| Stacja SN/nn | Transformator + szyny HV/LV | Transformer + 2�Bus |
-| Punkt roz��cznikowy | Roz��cznik/wy��cznik na magistrali | Branch type=disconnector/breaker |
-| Przek�adnik CT | Przek�adnik pr�dowy przy wy��czniku | Measurement type=CT |
-| Przek�adnik VT | Przek�adnik napi�ciowy | Measurement type=VT |
-| Zabezpieczenie | Konfiguracja zabezpieczenia przypisana do wy��cznika | ProtectionAssignment |
+| Magistrala (spine) | Ciąg odcinków linii/kabli od GPZ do końca linii | Sekwencja Branch (line/cable) + Bus |
+| Odgałęzienie (lateral) | Linia odchodząca od magistrali | Branch + Bus dołączony do węzłówa T |
+| Węzeł T (T-node) | Punkt rozgałęzienia magistrali | Bus z ?3 gałęziami |
+| Stacja SN/nn | Transformator + szyny HV/LV | Transformer + 2×Bus |
+| Punkt rozłącznikowy | Rozłącznik/wyłącznik na magistrali | Branch type=disconnector/breaker |
+| Przekładnik CT | Przekładnik prądowy przy wyłączniku | Measurement type=CT |
+| Przekładnik VT | Przekładnik napiściowy | Measurement type=VT |
+| Zabezpieczenie | Konfiguracja zabezpieczenia przypisana do wyłącznika | ProtectionAssignment |
 
 ---
 
 ## 5. Krok po kroku: magistrala 3-odcinkowa
 
-Poni�sze operacje opisuj� logiczne kroki modelowania w UI.
-Ka�dy element wskazuje `catalog_ref` � parametry techniczne nie s� wprowadzane r�cznie.
+Poniższe operacje opisują logiczne kroki modelowania w UI.
+Każdy element wskazuje `catalog_ref` — parametry techniczne nie są wprowadzane ręcznie.
 
 ### 5.1 Szyny (buses)
 
-Dodaj 5 szyn � topologia wymaga osobnej szyny wewn�trznej GPZ dla wy��cznika:
+Dodaj 5 szyn — topologia wymaga osobnej szyny wewnętrznej GPZ dla wyłącznika:
 
 ```
-Dodaj szyny � 5
-����������������
-bus_gpz_in  (15 kV)  � szyna wewn�trzna GPZ (przed wy��cznikiem)
-bus_gpz     (15 kV)  � szyna GPZ (za wy��cznikiem, pocz�tek magistrali)
-bus_t1      (15 kV)  � punkt na magistrali
-bus_t2      (15 kV)  � punkt rozga��zienia (T-node)
-bus_end     (15 kV)  � koniec magistrali
+Dodaj szyny — 5
+────────────────
+bus_gpz_in  (15 kV)  — szyna wewnętrzna GPZ (przed wyłącznikiem)
+bus_gpz     (15 kV)  — szyna GPZ (za wyłącznikiem, początek magistrali)
+bus_t1      (15 kV)  — punkt na magistrali
+bus_t2      (15 kV)  — punkt rozgałęzienia (T-node)
+bus_end     (15 kV)  — koniec magistrali
 ```
 
-### 5.2 Wy��cznik na GPZ
+### 5.2 Wyłącznik na GPZ
 
-Wy��cznik ��czy dwie **r�ne** szyny. Self-loop jest zabroniony.
+Wyłącznik łączy dwie **różne** szyny. Self-loop jest zabroniony.
 
 ```
-Dodaj ga��� (breaker) � 1
-��������������������������
-brk_1:  bus_gpz_in � bus_gpz  (breaker, catalog_ref="WYL_SN_630A", state=CLOSED)
+Dodaj gałąź (breaker) — 1
+──────────────────────────
+brk_1:  bus_gpz_in — bus_gpz  (breaker, catalog_ref="WYL_SN_630A", state=CLOSED)
 ```
 
 ### 5.3 Odcinki magistrali
 
 ```
-Dodaj ga��� (linia/kabel) � 3
-������������������������������
-line_1:  bus_gpz � bus_t1   (line_overhead, length_km=3.5, catalog_ref="AFL_120")
-line_2:  bus_t1  � bus_t2   (cable,         length_km=1.2, catalog_ref="XRUHAKXS_120")
-line_3:  bus_t2  � bus_end  (line_overhead, length_km=4.0, catalog_ref="AFL_120")
+Dodaj gałąź (linia/kabel) — 3
+──────────────────────────────
+line_1:  bus_gpz — bus_t1   (line_overhead, length_km=3.5, catalog_ref="AFL_120")
+line_2:  bus_t1  — bus_t2   (cable,         length_km=1.2, catalog_ref="XRUHAKXS_120")
+line_3:  bus_t2  — bus_end  (line_overhead, length_km=4.0, catalog_ref="AFL_120")
 ```
 
-Wybrano typ katalogowy odcinka; wszystkie parametry techniczne s� podgl�dem READ-ONLY.
-U�ytkownik podaje wy��cznie: typ ga��zi, szyny od/do, `catalog_ref`, d�ugo�� odcinka.
+Wybrano typ katalogowy odcinka; wszystkie parametry techniczne są podglądem READ-ONLY.
+Użytkownik podaje wyłącznie: typ gałęzi, szyny od/do, `catalog_ref`, długość odcinka.
 
-### 5.4 Odga��zienie
+### 5.4 Odgałęzienie
 
 ```
-Dodaj szyn� + ga���
-��������������������
-bus_lat_1   (15 kV)  � koniec odga��zienia
-line_lat:   bus_t2 � bus_lat_1  (cable, length_km=0.8, catalog_ref="XRUHAKXS_70")
+Dodaj szynę + gałąź
+────────────────────
+bus_lat_1   (15 kV)  — koniec odgałęzienia
+line_lat:   bus_t2 — bus_lat_1  (cable, length_km=0.8, catalog_ref="XRUHAKXS_70")
 ```
 
 ### 5.5 Stacja transformatorowa SN/nn
 
 ```
-Dodaj szyn� + transformator
-���������������������������
-bus_lv  (0.4 kV)  � szyna strony nn
+Dodaj szynę + transformator
+───────────────────────────
+bus_lv  (0.4 kV)  — szyna strony nn
 tr_1:   hv_bus=bus_end, lv_bus=bus_lv, catalog_ref="TRANS_SN_630kVA_15_0p4_Dyn11"
 ```
 
-Wybrano typ katalogowy transformatora; wszystkie parametry techniczne s� podgl�dem READ-ONLY.
-U�ytkownik podaje wy��cznie: szyny HV/LV, `catalog_ref`, `quantity`.
+Wybrano typ katalogowy transformatora; wszystkie parametry techniczne są podglądem READ-ONLY.
+Użytkownik podaje wyłącznie: szyny HV/LV, `catalog_ref`, `quantity`.
 
 Zapis JSON:
 ```json
@@ -257,16 +257,16 @@ Zapis JSON:
 ### 5.6 Odbiory i OZE
 
 ```
-Dodaj odbi�r + generator
-������������������������
+Dodaj odbiór + generator
+────────────────────────
 load_1:   bus_ref=bus_lv, catalog_ref="LOAD_KOMUNALNY_300kW"
 pv_1:     bus_ref=bus_lv, catalog_ref="PV_INV_100kW", quantity=3
 ```
 
-Wybrano typ katalogowy; wszystkie parametry techniczne s� podgl�dem READ-ONLY.
-U�ytkownik podaje wy��cznie: szyn�, `catalog_ref`, `quantity`.
+Wybrano typ katalogowy; wszystkie parametry techniczne są podglądem READ-ONLY.
+Użytkownik podaje wyłącznie: szynę, `catalog_ref`, `quantity`.
 
-Zapis JSON (OZE z ilo�ci�):
+Zapis JSON (OZE z ilością):
 ```json
 {
   "type": "generator",
@@ -276,19 +276,19 @@ Zapis JSON (OZE z ilo�ci�):
 }
 ```
 
-Ilo�� (`quantity=3`) oznacza 3 identyczne instancje o parametrach z katalogu.
+Ilość (`quantity=3`) oznacza 3 identyczne instancje o parametrach z katalogu.
 
-### 5.7 Przek�adniki CT i VT
+### 5.7 Przekładniki CT i VT
 
 ```
-Dodaj przek�adnik � 2
-���������������������
+Dodaj przekładnik — 2
+─────────────────────
 ct_1:   bus_ref=bus_gpz, type=CT, catalog_ref="CT_200_5_5P20_15VA"
 vt_1:   bus_ref=bus_gpz, type=VT, catalog_ref="VT_15000_100_05"
 ```
 
-Wybrano typ katalogowy przek�adnika; wszystkie parametry techniczne s� podgl�dem READ-ONLY.
-U�ytkownik podaje wy��cznie: typ (CT/VT), szyn�, `catalog_ref`.
+Wybrano typ katalogowy przekładnika; wszystkie parametry techniczne są podglądem READ-ONLY.
+Użytkownik podaje wyłącznie: typ (CT/VT), szynę, `catalog_ref`.
 
 Zapis JSON:
 ```json
@@ -304,15 +304,15 @@ Zapis JSON:
 
 ```
 Dodaj zabezpieczenie
-��������������������
+────────────────────
 pa_1:   breaker_ref=brk_1, ct_ref=ct_1, catalog_ref="PROT_SEL_751A"
 ```
 
-Wybrano typ katalogowy zabezpieczenia; wszystkie parametry techniczne s� podgl�dem READ-ONLY.
-U�ytkownik podaje wy��cznie: `catalog_ref`, przypisanie do wy��cznika, powi�zanie z CT/VT.
+Wybrano typ katalogowy zabezpieczenia; wszystkie parametry techniczne są podglądem READ-ONLY.
+Użytkownik podaje wyłącznie: `catalog_ref`, przypisanie do wyłącznika, powiązanie z CT/VT.
 
-PR-9 zapisuje konfiguracj� zabezpiecze� jako dane wej�ciowe.
-Weryfikacja i koordynacja nast�puje w przysz�ych analizach.
+PR-9 zapisuje konfigurację zabezpieczeń jako dane wejściowe.
+Weryfikacja i koordynacja następuje w przyszłych analizach.
 
 ---
 
@@ -333,79 +333,79 @@ Po zbudowaniu modelu system oblicza deterministyczne podsumowanie topologii:
 }
 ```
 
-Spine jest wyznaczany algorytmem BFS od szyn �r�d�owych (source).
-Laterals to szyny poza magistral�, po��czone z ni� ga��ziami.
+Spine jest wyznaczany algorytmem BFS od szyn źródłowych (source).
+Laterals to szyny poza magistralę, połączone z ni— gałęziami.
 
 ---
 
 ## 7. Walidacje i ograniczenia
 
-| Regu�a | Opis |
+| Reguła | Opis |
 |--------|------|
-| Zakaz p�tli w�asnej | Ga��� nie mo�e ��czy� szyny z t� sam� szyn� |
-| CT wymagany | Zabezpieczenia nadpr�dowe / ziemnozwarciowe / kierunkowe wymagaj� CT |
-| Wy��cznik wymagany | Zabezpieczenie wymaga wy��cznika (nie roz��cznika ani bezpiecznika) |
-| Brak duplikat�w | Jeden wy��cznik = maksymalnie jedno zabezpieczenie |
-| Kaskada usuwania | Nie mo�na usun�� wy��cznika z aktywnym zabezpieczeniem |
-| CT w u�yciu | Nie mo�na usun�� CT przypisanego do zabezpieczenia |
-| Sie� promieniowa | Ostrze�enie przy wykryciu cyklu w topologii |
+| Zakaz pętli własnej | Gałąź nie może łączyć szyny z tą samą szyną |
+| CT wymagany | Zabezpieczenia nadprądowe / ziemnozwarciowe / kierunkowe wymagają CT |
+| Wyłącznik wymagany | Zabezpieczenie wymaga wyłącznika (nie rozłącznika ani bezpiecznika) |
+| Brak duplikatów | Jeden wyłącznik = maksymalnie jedno zabezpieczenie |
+| Kaskada usuwania | Nie można usunąć wyłącznika z aktywnym zabezpieczeniem |
+| CT w użyciu | Nie można usunąć CT przypisanego do zabezpieczenia |
+| Sie— promieniowa | Ostrzeżenie przy wykryciu cyklu w topologii |
 
 ---
 
-## 8. Deterministyczno��
+## 8. Deterministyczność
 
-Wszystkie operacje topologiczne gwarantuj�:
-- Identyczne wej�cie � identyczny wynik (JSON-serializable)
-- Sortowanie wynik�w: adjacency po ref_id, spine po depth
+Wszystkie operacje topologiczne gwarantują:
+- Identyczne wejście — identyczny wynik (JSON-serializable)
+- Sortowanie wyników: adjacency po ref_id, spine po depth
 - Copy-on-write: oryginalne ENM nie jest mutowane
-- Atomowo��: batch z rollback w przypadku b��du
+- Atomowość: batch z rollback w przypadku błędu
 
 ---
 
-## 9. Interfejs u�ytkownika
+## 9. Interfejs użytkownika
 
 ### 9.1 Panel topologii
-- Toolbar z przyciskami: Szyna, Ga���, Transformator, Odbi�r/OZE, Przek�adnik, Zabezpieczenie
-- Drzewo topologii: podzia� na spine (magistrala) i laterals (odga��zienia)
-- Klikni�cie w�z�a � selekcja w SLD (dwukierunkowa synchronizacja)
+- Toolbar z przyciskami: Szyna, Gałąź, Transformator, Odbiór/OZE, Przekładnik, Zabezpieczenie
+- Drzewo topologii: podzia— na spine (magistrala) i laterals (odgałęzienia)
+- Klikniście węzłówa — selekcja w SLD (dwukierunkowa synchronizacja)
 
 ### 9.2 Modale edycji
 
-Ka�dy modal obs�uguje tryb STANDARDOWY (katalog-only, pola techniczne READ-ONLY)
+Każdy modal obsługuje tryb STANDARDOWY (katalog-only, pola techniczne READ-ONLY)
 i tryb EKSPERT (jawna aktywacja, override z audytem).
 
-**�aden modal nie zawiera p�l liczbowych opisuj�cych fizyk� elementu.**
+**żaden modal nie zawiera pól liczbowych opisujących fizykę elementu.**
 
-- **NodeModal** � identyfikator, nazwa, poziom napi�ciowy sieci, strefa
-- **BranchModal** � typ ga��zi, szyny od/do, `catalog_ref`, d�ugo�� odcinka (linie/kable), stan ��cznika; podgl�d parametr�w z katalogu (READ-ONLY)
-- **TransformerStationModal** � szyny HV/LV, `catalog_ref`, `quantity`; podgl�d parametr�w z katalogu (READ-ONLY)
-- **LoadDERModal** � szyna, `catalog_ref`, `quantity`; podgl�d parametr�w z katalogu (READ-ONLY)
-- **MeasurementModal** � typ CT/VT, szyna, `catalog_ref`; podgl�d parametr�w z katalogu (READ-ONLY)
-- **ProtectionModal** � `catalog_ref`, przypisanie do wy��cznika, powi�zanie CT/VT; podgl�d parametr�w z katalogu (READ-ONLY)
+- **NodeModal** — identyfikator, nazwa, poziom napiściowy sieci, strefa
+- **BranchModal** — typ gałęzi, szyny od/do, `catalog_ref`, długość odcinka (linie/kable), stan łącznika; podgląd parametrów z katalogu (READ-ONLY)
+- **TransformerStationModal** — szyny HV/LV, `catalog_ref`, `quantity`; podgląd parametrów z katalogu (READ-ONLY)
+- **LoadDERModal** — szyna, `catalog_ref`, `quantity`; podgląd parametrów z katalogu (READ-ONLY)
+- **MeasurementModal** — typ CT/VT, szyna, `catalog_ref`; podgląd parametrów z katalogu (READ-ONLY)
+- **ProtectionModal** — `catalog_ref`, przypisanie do wyłącznika, powiązanie CT/VT; podgląd parametrów z katalogu (READ-ONLY)
 
 ---
 
 ## 10. Zakaz interpretacji
 
-Dokument **nie mo�e** by� interpretowany jako sugeruj�cy:
-- r�czne �dobieranie parametr�w" technicznych,
-- zgadywanie lub interpolowanie warto�ci,
+Dokument **nie może** być interpretowany jako sugerujący:
+- ręczne „dobieranie parametrów" technicznych,
+- zgadywanie lub interpolowanie wartości,
 - wpisywanie danych liczbowych w polach technicznych,
-- dodawanie p�l edytowalnych opisuj�cych fizyk� elementu w przysz�ych PR.
+- dodawanie pól edytowalnych opisujących fizykę elementu w przyszłych PR.
 
-Je�li parametr ma warto�� w instancji, **musi** pochodzi� z katalogu (`ParameterSource=CATALOG`)
+Jeśli parametr ma wartość w instancji, **musi** pochodzi— z katalogu (`ParameterSource=CATALOG`)
 albo z jawnego override w trybie EKSPERT (`ParameterSource=OVERRIDE`).
 
-Ka�dy przysz�y PR modyfikuj�cy UI **musi** zachowa� zasad�:
-UI nie udost�pnia p�l do edycji parametr�w elektrycznych.
+Każdy przyszły PR modyfikujący UI **musi** zachować zasadę:
+UI nie udostępnia pól do edycji parametrów elektrycznych.
 
 ---
 
-## 11. Przekazanie do solver�w (handoff)
+## 11. Przekazanie do solverów (handoff)
 
-Model topologiczny i konfiguracja katalogowa (z ewentualnymi override'ami) stanowi�
-**wej�cie do analiz PF / SC / Protection** bez semantycznej transformacji.
-Parametry techniczne element�w s� pobierane z katalogu (`ParameterSource=CATALOG`)
+Model topologiczny i konfiguracja katalogowa (z ewentualnymi override'ami) stanowią
+**wejście do analiz PF / SC / Protection** bez semantycznej transformacji.
+Parametry techniczne elementów są pobierane z katalogu (`ParameterSource=CATALOG`)
 lub z override'u instancji (`ParameterSource=OVERRIDE`).
-Ilo�ci (`quantity` / `n_parallel`) i override'y wp�ywaj� na wej�cie do analiz
+Ilości (`quantity` / `n_parallel`) i override'y wpływaj— na wejście do analiz
 dopiero na etapie ich uruchomienia, poza zakresem PR-9.
