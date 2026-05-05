@@ -262,6 +262,38 @@ Progress:
 
 ---
 
+### 3.3 SLD CAD/SCADA Rebuild — PR-0 (foundation, current)
+
+Objective: Otwarcie wątku przebudowy SLD do klasy CAD/SCADA. PR-0 nie zmienia rendererów ani solverów — dostarcza audyt, plan PR-ów (PR-1..PR-14), kanoniczne docs i fundament prezentacji wartości (zakaz `0.00` dla braku danych).
+
+Branch: `claude/sld-architecture-redesign-ufa8Q`.
+
+Progress:
+- [x] Audit doc: `docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md` — diagnoza luk, plan 14 PR-ów, DoD całości.
+- [x] Kanoniczne docs SLD w `mv-design-pro/docs/sld/`:
+  - `SLD_CAD_SCADA_REBUILD.md` — kanon wizualny + UX rebuild + zakaz 0.00.
+  - `SLD_SYMBOL_LIBRARY.md` — kontrakt biblioteki symboli (state→style, anchors, viewBox).
+  - `SLD_LAYOUT_ENGINE.md` — pipeline 6-fazowy + invariant determinizmu + edycja delta.
+  - `SLD_LOD_AND_LAYERS.md` — LOD 0–4 + warstwy widoczności.
+  - `SLD_PORTS_AND_ENDPOINTS.md` — model portu/endpointu (PR-3/PR-4).
+  - `STATION_INTERNAL_SLD.md` — wewnętrzny widok stacji (PR-5).
+  - `STATION_CONFIGURATOR_UIUX.md` — 11 zakładek inspectora stacji.
+  - `DER_PV_BESS_FW_CONFIGURATOR.md` — karty PV/BESS/FW + FRT/HVRT/NC RfG (PR-6/7/8).
+  - `CALCULATION_READINESS.md` — 9 typów obliczeń (PR-9), w tym brak modułu dla stabilności / FRT / NC RfG.
+- [x] Kanoniczny formatter wartości i braków danych: `frontend/src/ui/shared/formatPolishValue.ts` + helpery `formatCurrent` / `formatVoltage` / `formatActivePower` / `formatReactivePower` / `formatApparentPower` / `formatLengthKm` / `formatPercent` / `formatFrequency`.
+- [x] Test kontraktowy formatera: 30 testów (`src/ui/shared/__tests__/formatPolishValue.test.ts`) — fuzz cross-product status × value × placeholder × jednostka.
+- [x] Guard regresji: `src/ui/__tests__/no-zero-spam.test.ts` — skanuje `ui/sld*` i `ui/power-flow-results` pod antypattern `(value ?? 0).toFixed(...)` / `.toLocaleString(...)`. 4/4 zielone (brak antypatternu w obecnym kodzie).
+- [x] Eksport formatera z `ui/shared/index.ts`.
+
+Validation:
+- `npm run type-check` — green
+- `npm run lint -- src/ui/shared/formatPolishValue.ts ...` — green
+- `npx vitest run src/ui/shared/ src/ui/__tests__/` — 26 plików, 400 testów green (brak regresji)
+
+Następne PR-y (poza PR-0): patrz `docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md §5`.
+
+---
+
 ## 4. Next Priorities
 
 ### 4.1 HIGH Priority
