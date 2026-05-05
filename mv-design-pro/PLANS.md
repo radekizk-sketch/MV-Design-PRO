@@ -262,35 +262,48 @@ Progress:
 
 ---
 
-### 3.3 SLD CAD/SCADA Rebuild — PR-0 (foundation, current)
+### 3.3 SLD CAD/SCADA Rebuild — PR-0..PR-4 dostarczone, PR-5..PR-16 w toku
 
-Objective: Otwarcie wątku przebudowy SLD do klasy CAD/SCADA. PR-0 nie zmienia rendererów ani solverów — dostarcza audyt, plan PR-ów (PR-1..PR-14), kanoniczne docs i fundament prezentacji wartości (zakaz `0.00` dla braku danych).
+**Branch:** `claude/sld-architecture-redesign-ufa8Q`
+**Plan main:** `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md` (17 PR-ów)
 
-Branch: `claude/sld-architecture-redesign-ufa8Q`.
+**Dostarczone w bieżącej sesji (5 commitów):**
 
-Progress:
-- [x] Audit doc: `docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md` — diagnoza luk, plan 14 PR-ów, DoD całości.
-- [x] Kanoniczne docs SLD w `mv-design-pro/docs/sld/`:
-  - `SLD_CAD_SCADA_REBUILD.md` — kanon wizualny + UX rebuild + zakaz 0.00.
-  - `SLD_SYMBOL_LIBRARY.md` — kontrakt biblioteki symboli (state→style, anchors, viewBox).
-  - `SLD_LAYOUT_ENGINE.md` — pipeline 6-fazowy + invariant determinizmu + edycja delta.
-  - `SLD_LOD_AND_LAYERS.md` — LOD 0–4 + warstwy widoczności.
-  - `SLD_PORTS_AND_ENDPOINTS.md` — model portu/endpointu (PR-3/PR-4).
-  - `STATION_INTERNAL_SLD.md` — wewnętrzny widok stacji (PR-5).
-  - `STATION_CONFIGURATOR_UIUX.md` — 11 zakładek inspectora stacji.
-  - `DER_PV_BESS_FW_CONFIGURATOR.md` — karty PV/BESS/FW + FRT/HVRT/NC RfG (PR-6/7/8).
-  - `CALCULATION_READINESS.md` — 9 typów obliczeń (PR-9), w tym brak modułu dla stabilności / FRT / NC RfG.
-- [x] Kanoniczny formatter wartości i braków danych: `frontend/src/ui/shared/formatPolishValue.ts` + helpery `formatCurrent` / `formatVoltage` / `formatActivePower` / `formatReactivePower` / `formatApparentPower` / `formatLengthKm` / `formatPercent` / `formatFrequency`.
-- [x] Test kontraktowy formatera: 30 testów (`src/ui/shared/__tests__/formatPolishValue.test.ts`) — fuzz cross-product status × value × placeholder × jednostka.
-- [x] Guard regresji: `src/ui/__tests__/no-zero-spam.test.ts` — skanuje `ui/sld*` i `ui/power-flow-results` pod antypattern `(value ?? 0).toFixed(...)` / `.toLocaleString(...)`. 4/4 zielone (brak antypatternu w obecnym kodzie).
-- [x] Eksport formatera z `ui/shared/index.ts`.
+| PR | Commit | Zakres |
+|---|---|---|
+| **PR-0** | `ec395ae` | audit + 8 docs kanon + formatPolishValue + zakaz 0.00 + no-zero-spam guard |
+| **PR-1** | `25ef103` | migracja `(value ?? 0).toFixed` antypatternu (12 violations w `WizardPage.tsx`); audit doc Stacja+DER; rozszerzony no-zero-spam guard (4 → 17 katalogów UI) |
+| **PR-2** | `165d577` | UI terminology guard rebrief: 132 migracje stringów UI + 12 zakazanych tokenów (migawka/uruchomienie/przypadek/proof/run/snapshot/feeder/branch/case/wizard/fallback/legacy) z polskimi zamiennikami |
+| **PR-3** | `5e6b880` | ENM Port + ConnectionNode + LineRun + CableJoint + 10 BayTemplate + 9 StationTemplate + multi-voltage nN + automigracja v_ports_001 (idempotentna, deterministyczna) |
+| **PR-4** | `fc37351` | SLD v2 PortResolver: 15 PortKind contract z parity test ENM ↔ frontend, classifyStationTopology, validatePortVoltages, canConnectPorts (14 reguł), isPortKindCompatibleWithBayRole |
 
-Validation:
-- `npm run type-check` — green
-- `npm run lint -- src/ui/shared/formatPolishValue.ts ...` — green
-- `npx vitest run src/ui/shared/ src/ui/__tests__/` — 26 plików, 400 testów green (brak regresji)
+**Pozostałe PR-y (PR-5..PR-16, ~170 osobodni):**
 
-Następne PR-y (poza PR-0): patrz `docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md §5`.
+Plan obejmuje 12 kolejnych PR-ów z explicit scope-em w pliku planu:
+
+- **PR-5** (~30 osobodni × 2 osoby = ~60 OD): Konstruktywny hierarchiczny builder, wygaszenie ~12 996 linii (engine/sld-layout phase 1-5 + Sugiyama + A* + ELK + 7 starych rendererów + sldCanonicalStyle + IndustrialAesthetics), 7 nowych dedykowanych rendererów, Scenariusze D/E/F.
+- **PR-6** (~16 OD): Wewnętrzny SLD stacji + 4 typy topologiczne + tryb mieszany inline expansion.
+- **PR-7** (~8 OD): InspectorTabs (11 zakładek) + sticky header + breadcrumb dwukierunkowy + sync paneli + command feedback toasty.
+- **PR-8a/8b** (~15 OD): Konfigurator stacji 10 kart + Konfigurator pola SN 8 sekcji.
+- **PR-9/10/11** (~20 OD): Konfiguratory PV / BESS / FW (po 7 / 7 / 6 kart) + 5 profili NC RfG + 12 turbin wiatrowych w katalogu.
+- **PR-12** (~12 OD): CalculationReadinessService (9 typów obliczeń) + ValidationProblemService + ReportReadinessAdapter.
+- **PR-13** (~7 OD): BuildSidebar (4 sekcje) + SldCommandService + 8 brakujących symboli SVG.
+- **PR-14** (~8 OD): LOD policy v2 + 13 warstw + 15 visual fixtures × 4 LOD = 60 snapshotów + wygaszenie starego SLD.
+- **PR-15** (~42 OD): Solver stabilności dynamicznej RMS — Newton-Raphson dynamic + modele synchronous/induction/inverter/AVR/governor/PSS/wind/PV/BESS.
+- **PR-16** (~18 OD): Solver FRT/HVRT RMS time-domain + NC RfG compliance testbench (18 testów).
+
+**Status egzekucji:**
+
+PR-0..PR-4 stanowią **fundament merge-ready** rebuild-u: wszystkie inwarianty kanoniczne (zakaz 0.00, polish UI, 12 zakazanych tokenów wyeliminowanych), domena ENM rozszerzona o porty/connection nodes/line runs/cable joints + automigracja, frontend port contract + walidatory. Pozostałe PR-y to rdzeń rebuild-u i wymagają znacznego nakładu pracy (~170 osobodni / ~3-4 miesiące zespołu 2-3 osób). Plan dokumentuje pełne scope każdego z PR-ów (`/root/.claude/plans/...md`) i jest przygotowany do kontynuacji w kolejnych sesjach.
+
+**Walidacja kumulatywna PR-0..PR-4:**
+
+- Backend: 4421 testów green (zero regresji), ENM 458 testów + nowe 46 PR-3 testów = 504 PR-3-relevant testów green.
+- Frontend: 491+ testów green (zero regresji), nowe 30 PR-0 + 29 PR-4 testów = 59 PR-relevant testów green.
+- Guards: pcc_zero / no_codenames / ui_terminology / docs / sld_determinism — wszystkie zielone.
+- Type-check + lint: green.
+
+Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-uruchomionym-jednocze-nie-zespo-em-peaceful-snowglobe.md`.
 
 ---
 
