@@ -103,6 +103,101 @@ def test_audit2_per_transformer_persistence_round_trip(app_client):
     }
 
 
+def test_audit2_power_flow_endpoint_uses_wrapper(app_client):
+    """Phase 33: POST /api/v1/audit2-power-flow uzywa Audit2PowerFlowWrapper."""
+    pid = _create_project(app_client)
+    _create_audit2_config(
+        app_client,
+        pid,
+        "station-pf",
+        {
+            "mv_neutral_grounding_ref": "mng_petersen",
+            "tap_changer_refs": [],
+            "der_specs": [],
+            "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
+        },
+    )
+
+    res = app_client.post(
+        "/api/cases/audit2-power-flow",
+        json={
+            "case_id": "case-test-1",
+            "project_id": pid,
+            "station_id": "station-pf",
+            "base_mva": 100.0,
+            "slack_node_id": "n1",
+        },
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["station_id"] == "station-pf"
+    assert body["solver_attempted"] is True  # wrapper byl wywolany
+    # Audit2 extensions byly populated z DB.
+    assert "power_flow_extensions" in body["audit2_extensions_keys"]
+    # Apply trail moze byc pusty bo graph stub bez transformerow,
+    # ale potwierdza ze wrapper zostal wykonany.
+
+
+def test_audit2_power_flow_endpoint_no_config_returns_empty_apply(app_client):
+    """Phase 33: gdy audit2 config nie istnieje, audit2_extensions=None -> empty apply."""
+    pid = _create_project(app_client)
+    res = app_client.post(
+        "/api/cases/audit2-power-flow",
+        json={
+            "case_id": "case-test-2",
+            "project_id": pid,
+            "station_id": "station-no-config",
+            "slack_node_id": "n1",
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["audit2_extensions_keys"] == []
+    assert body["audit2_applied"] in ({}, {"tap_position_changes": {}, "block_transformer_z_changes": {}, "grounding_z0_z1_ratio": None, "bess_reserved_changes": {}, "pf_droop_changes": {}})
+
+
+def test_audit2_power_flow_endpoint_invalid_project_id(app_client):
+    """Phase 33: invalid project_id -> 400."""
+    res = app_client.post(
+        "/api/cases/audit2-power-flow",
+        json={
+            "case_id": "case-1",
+            "project_id": "not-a-uuid",
+            "station_id": "s1",
+        },
+    )
+    assert res.status_code == 400
+
+
+def test_audit2_power_flow_endpoint_full_apply_trail(app_client):
+    """Phase 34: weryfikuje ze applied trail zawiera REAL data z DB (nie placeholder)."""
+    pid = _create_project(app_client)
+    _create_audit2_config(
+        app_client,
+        pid,
+        "station-trail",
+        {
+            "mv_neutral_grounding_ref": "mng_isolated",  # -> Z0/Z1 = 100
+            "tap_changer_refs": [],
+            "der_specs": [],
+            "transformer_tap_changers": {},
+        },
+    )
+    res = app_client.post(
+        "/api/cases/audit2-power-flow",
+        json={
+            "case_id": "case-trail-1",
+            "project_id": pid,
+            "station_id": "station-trail",
+            "slack_node_id": "n1",
+        },
+    )
+    assert res.status_code == 200
+    body = res.json()
+    # Audit trail ma grounding Z0/Z1 = 100 (isolated).
+    assert body["audit2_applied"].get("grounding_z0_z1_ratio") == 100.0
+
+
 def test_apply_to_network_model_endpoint_full_pipeline(app_client):
     """Phase 26: pelna petla DB -> audit2 -> apply -> branch state changed."""
     pid = _create_project(app_client)

@@ -105,6 +105,8 @@ def test_apply_to_network_model_passes_through_when_no_extensions():
         "tap_position_changes": {},
         "block_transformer_z_changes": {},
         "grounding_z0_z1_ratio": None,
+        "bess_reserved_changes": {},
+        "pf_droop_changes": {},
     }
 
 

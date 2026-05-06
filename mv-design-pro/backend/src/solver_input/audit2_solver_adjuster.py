@@ -174,6 +174,8 @@ def apply_audit2_to_network_model(
         "tap_position_changes": {},
         "block_transformer_z_changes": {},
         "grounding_z0_z1_ratio": None,
+        "bess_reserved_changes": {},
+        "pf_droop_changes": {},
     }
 
     if audit2_extensions is None:
