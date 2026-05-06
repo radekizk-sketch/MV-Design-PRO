@@ -101,6 +101,7 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                     "control_mode": params.get("control_mode") or "STALY_COS_PHI",
                     "grid_code": params.get("grid_code"),
                     "manufacturer": params.get("manufacturer"),
+                    "dynamic_profile_id": params.get("dynamic_profile_id"),
                     **_copy_catalog_quality(record),
                 },
             }
@@ -125,6 +126,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                     "e_kwh": float(params.get("e_kwh", 0.0)),
                     "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
                     "manufacturer": params.get("manufacturer"),
+                    "dynamic_profile_id": params.get("dynamic_profile_id"),
                     **_copy_catalog_quality(record),
                 },
             }

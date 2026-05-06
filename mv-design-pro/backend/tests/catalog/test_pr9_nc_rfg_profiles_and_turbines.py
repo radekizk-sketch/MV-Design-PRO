@@ -94,23 +94,28 @@ class TestNcRfgProfileStructure:
 
 
 class TestWindTurbineCatalog:
-    def test_12_reference_turbines(self) -> None:
-        assert len(WIND_TURBINE_CATALOG) == 12
+    def test_reference_turbines_minimum_set(self) -> None:
+        # Co najmniej 12 producentów referencyjnych (PR-11 minimum) — katalog
+        # rozszerzany w kolejnych iteracjach o turbiny rynkowe.
+        assert len(WIND_TURBINE_CATALOG) >= 12
 
     def test_list_wind_turbines_deterministic(self) -> None:
         turbines = list_wind_turbines()
         ids = [t.catalog_id for t in turbines]
         assert ids == sorted(ids)  # deterministyczna kolejność
 
-    def test_5_manufacturers_represented(self) -> None:
+    def test_core_manufacturers_represented(self) -> None:
+        # Pięciu głównych producentów PR-11 zawsze obecnych — kolejni
+        # producenci (Senvion, Goldwind, MingYang) doprowadzeni produkcyjnie.
         manufacturers = {t.manufacturer for t in list_wind_turbines()}
-        assert manufacturers == {
+        for must_have in (
             "Vestas",
             "Siemens Gamesa",
             "GE Renewable Energy",
             "Nordex",
             "Enercon",
-        }
+        ):
+            assert must_have in manufacturers
 
     def test_converter_types_diverse(self) -> None:
         types = {t.converter_type for t in list_wind_turbines()}

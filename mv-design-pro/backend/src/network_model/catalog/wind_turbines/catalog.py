@@ -22,7 +22,7 @@ class WindTurbineCatalogEntry(BaseModel):
     catalog_id: str
     manufacturer: str
     model: str
-    converter_type: Literal["DFIG", "full_converter", "SCIG", "hydraulic"]
+    converter_type: Literal["DFIG", "full_converter", "SCIG", "hydraulic", "WRIG"]
     nominal_power_kw: float
     nominal_voltage_kv: float  # napięcie generatora
     rotor_diameter_m: float
@@ -35,6 +35,13 @@ class WindTurbineCatalogEntry(BaseModel):
     fault_current_contribution_pu: float  # I_short pod FRT
     voltage_control_capable: bool
     p_f_droop_capable: bool
+    # Profil dynamiczny IEC 61400-27 (default per converter_type, override możliwy)
+    dynamic_profile_id: str | None = None
+    """Referencja do profilu w `der_dynamic` (default mapowany z converter_type).
+
+    None → resolver dobiera default_wind_type_X (1: SCIG, 2: WRIG/hydraulic,
+    3: DFIG, 4: full_converter) — żadna turbina nie zostanie bez modelu.
+    """
 
 
 # 12 referencyjnych turbin (per brief 2 §12 Karta 1):
@@ -249,6 +256,131 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
         voltage_control_capable=True,
         p_f_droop_capable=True,
     ),
+    # === Vestas EnVentus (2024+) ===
+    WindTurbineCatalogEntry(
+        catalog_id="vestas_v162_6_2mw",
+        manufacturer="Vestas",
+        model="V162-6.2 MW EnVentus",
+        converter_type="full_converter",
+        nominal_power_kw=6200,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=162,
+        hub_height_m=149,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=11.5,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    # === Siemens Gamesa SG 5.X-145 / SG 6.6-170 ===
+    WindTurbineCatalogEntry(
+        catalog_id="siemens_gamesa_sg_5x_145_5mw",
+        manufacturer="Siemens Gamesa",
+        model="SG 5.X-145 (5.0 MW)",
+        converter_type="full_converter",
+        nominal_power_kw=5000,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=145,
+        hub_height_m=127,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=11.0,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    WindTurbineCatalogEntry(
+        catalog_id="siemens_gamesa_sg_6p6_170_6p6mw",
+        manufacturer="Siemens Gamesa",
+        model="SG 6.6-170",
+        converter_type="full_converter",
+        nominal_power_kw=6600,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=170,
+        hub_height_m=135,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=11.0,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    # === GE Cypress / Vernova Sierra (2024+) ===
+    WindTurbineCatalogEntry(
+        catalog_id="ge_cypress_6_0_164",
+        manufacturer="GE Renewable Energy",
+        model="6.0-164 Cypress",
+        converter_type="full_converter",
+        nominal_power_kw=6000,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=164,
+        hub_height_m=140,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=11.5,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    # === Goldwind (Chiny) — full converter PMSM, popularne globalnie ===
+    WindTurbineCatalogEntry(
+        catalog_id="goldwind_gw_165_6mw",
+        manufacturer="Goldwind",
+        model="GW 165-6.0 MW PMDD",
+        converter_type="full_converter",
+        nominal_power_kw=6000,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=165,
+        hub_height_m=130,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=11.5,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    # === MingYang (offshore-class, full converter SCADA-grade) ===
+    WindTurbineCatalogEntry(
+        catalog_id="mingyang_my_8p3_180",
+        manufacturer="MingYang",
+        model="MySE 8.3-180 (offshore)",
+        converter_type="full_converter",
+        nominal_power_kw=8300,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=180,
+        hub_height_m=125,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=25.0,
+        rated_wind_speed_m_s=10.5,
+        short_circuit_current_pu=1.2,
+        fault_current_contribution_pu=1.1,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
+    # === Senvion (legacy DFIG) — używana w Polsce ===
+    WindTurbineCatalogEntry(
+        catalog_id="senvion_3_4m_122",
+        manufacturer="Senvion",
+        model="3.4M122",
+        converter_type="DFIG",
+        nominal_power_kw=3400,
+        nominal_voltage_kv=0.69,
+        rotor_diameter_m=122,
+        hub_height_m=119,
+        cut_in_wind_speed_m_s=3.0,
+        cut_out_wind_speed_m_s=22.0,
+        rated_wind_speed_m_s=12.0,
+        short_circuit_current_pu=2.4,
+        fault_current_contribution_pu=1.2,
+        voltage_control_capable=True,
+        p_f_droop_capable=True,
+    ),
 ]
 
 
@@ -258,7 +390,7 @@ WIND_TURBINE_CATALOG: dict[str, WindTurbineCatalogEntry] = {
 
 
 def list_wind_turbines() -> list[WindTurbineCatalogEntry]:
-    """Lista wszystkich 12 referencyjnych turbin (deterministyczna kolejność po catalog_id)."""
+    """Lista wszystkich referencyjnych turbin (deterministyczna kolejność po catalog_id)."""
     return sorted(WIND_TURBINES, key=lambda t: t.catalog_id)
 
 

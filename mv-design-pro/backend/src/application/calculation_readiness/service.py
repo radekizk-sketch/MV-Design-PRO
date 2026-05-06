@@ -262,13 +262,65 @@ def _check_loadability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     )
 
 
+_DER_GEN_TYPES = (
+    "pv_inverter",
+    "bess",
+    "wind_inverter",
+    "fw_pmsg",
+    "fw_dfig",
+    "fw_scig",
+)
+
+
+def _resolve_der_dynamic_for_generator(gen) -> str:  # type: ignore[no-untyped-def]
+    """Resolve profilu dynamicznego dla pojedynczego DER w ENM.
+
+    Domyślnie używa default per kind/converter — żaden DER nie zostaje bez
+    modelu. Mapping `gen_type` → resolver args:
+        pv_inverter → PV grid_following
+        bess        → BESS grid_following
+        fw_scig     → FW SCIG (type 1)
+        fw_dfig     → FW DFIG (type 3)
+        fw_pmsg     → FW full_converter (type 4)
+        wind_inverter → FW full_converter (type 4) — generic
+    """
+    from src.network_model.catalog.der_dynamic import resolve_der_dynamic_profile
+
+    gen_type = getattr(gen, "gen_type", None)
+    explicit = getattr(gen, "dynamic_profile_id", None)
+
+    if gen_type == "pv_inverter":
+        result = resolve_der_dynamic_profile(
+            der_kind="PV", explicit_profile_id=explicit
+        )
+    elif gen_type == "bess":
+        result = resolve_der_dynamic_profile(
+            der_kind="BESS", explicit_profile_id=explicit
+        )
+    elif gen_type == "fw_scig":
+        result = resolve_der_dynamic_profile(
+            der_kind="FW", explicit_profile_id=explicit, converter_type="SCIG"
+        )
+    elif gen_type == "fw_dfig":
+        result = resolve_der_dynamic_profile(
+            der_kind="FW", explicit_profile_id=explicit, converter_type="DFIG"
+        )
+    elif gen_type in ("fw_pmsg", "wind_inverter"):
+        result = resolve_der_dynamic_profile(
+            der_kind="FW",
+            explicit_profile_id=explicit,
+            converter_type="full_converter",
+        )
+    else:
+        # Bezpieczny fallback dla nieznanych dynamicznych źródeł
+        result = resolve_der_dynamic_profile(der_kind="PV")
+    return result.profile_id
+
+
 def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """Stabilność RMS — PR-15-impl podpięty (Newton-Raphson trapezoidal)."""
-    has_dynamic_sources = any(
-        g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
-        for g in enm.generators
-    )
-    if not has_dynamic_sources:
+    """Stabilność RMS — PR-15-impl + DER dynamic resolver (każdy DER ma model)."""
+    der_generators = [g for g in enm.generators if g.gen_type in _DER_GEN_TYPES]
+    if not der_generators:
         return ReadinessTypeReport(
             calculation_type="stability",
             label_pl=CALCULATION_LABEL_PL["stability"],
@@ -277,39 +329,46 @@ def _check_stability(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 "Brak źródeł dynamicznych (PV/BESS/FW). Stabilność RMS nie dotyczy projektu."
             ),
         )
+    resolved = {
+        getattr(g, "ref_id", getattr(g, "id", "?")): _resolve_der_dynamic_for_generator(g)
+        for g in der_generators
+    }
     return ReadinessTypeReport(
         calculation_type="stability",
         label_pl=CALCULATION_LABEL_PL["stability"],
         status="ready",
         recommended_action_pl=(
-            "MVP solver stabilności RMS dostępny (PR-15-impl). "
-            "Newton-Raphson trapezoidal + 5 modeli dynamicznych (synchronous, AVR, governor, "
-            "inverter, induction motor). Można uruchomić obliczenia."
+            f"Solver stabilności RMS dostępny (PR-15-impl). "
+            f"{len(der_generators)} DER z modelami dynamicznymi rozwiązanymi: "
+            + ", ".join(f"{ref}={pid}" for ref, pid in sorted(resolved.items())[:3])
+            + ("..." if len(resolved) > 3 else "")
+            + ". Można uruchomić obliczenia."
         ),
     )
 
 
 def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
-    """FRT/HVRT — PR-16-impl podpięty (voltage dip simulation)."""
-    has_der = any(
-        g.gen_type in ("pv_inverter", "bess", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig")
-        for g in enm.generators
-    )
-    if not has_der:
+    """FRT/HVRT — PR-16-impl + per-DER dynamic resolver."""
+    der_generators = [g for g in enm.generators if g.gen_type in _DER_GEN_TYPES]
+    if not der_generators:
         return ReadinessTypeReport(
             calculation_type="frt_hvrt",
             label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
             status="n_a",
             recommended_action_pl="Brak DER w projekcie. FRT/HVRT nie dotyczy.",
         )
+    resolved_count = sum(
+        1 for g in der_generators if _resolve_der_dynamic_for_generator(g)
+    )
     return ReadinessTypeReport(
         calculation_type="frt_hvrt",
         label_pl=CALCULATION_LABEL_PL["frt_hvrt"],
         status="ready",
         recommended_action_pl=(
-            "MVP solver FRT/HVRT RMS dostępny (PR-16-impl). "
-            "Voltage dip + recovery + Iq response + p_recovery_time. "
-            "Można uruchomić obliczenia testbench."
+            f"Solver FRT/HVRT RMS dostępny (PR-16-impl). "
+            f"{resolved_count}/{len(der_generators)} DER z profilami FRT/HVRT "
+            "rozwiązanymi (catalog → operator profile → IEEE/IEC default). "
+            "Można uruchomić testbench."
         ),
     )
 
