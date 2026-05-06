@@ -32,6 +32,7 @@ import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout } from './ui/layout';
 import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
+import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
@@ -170,6 +171,7 @@ function App() {
   const [hashVersion, setHashVersion] = useState(0);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
@@ -437,6 +439,16 @@ function App() {
           <FaultScenariosPanel studyCaseId={null} />
           <FaultScenarioModal />
         </div>
+      </CanonicalLayout>
+    );
+  }
+
+  // E-00: Pulpit projektu (Dashboard) — renderowany dla #dashboard ORAZ
+  // domyślnie gdy brak aktywnego projektu (etap 2 dostawy).
+  if (route === '#dashboard' || (route === '' && !activeProjectId)) {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <ProjectDashboardSurface />
       </CanonicalLayout>
     );
   }

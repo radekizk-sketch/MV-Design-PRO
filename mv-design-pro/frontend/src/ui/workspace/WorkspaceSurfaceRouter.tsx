@@ -6,6 +6,7 @@ import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
+import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
@@ -1287,6 +1288,9 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')), również
       // renderujemy SldWorkspaceContainer dla spójności kontraktu shellu.
       return <SldWorkspaceContainer />;
+    case 'E-00':
+      // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
+      return <ProjectDashboardSurface />;
     default:
       break;
   }
