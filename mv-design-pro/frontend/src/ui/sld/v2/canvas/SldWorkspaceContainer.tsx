@@ -27,6 +27,7 @@ import {
 } from '../command/SldCommandService';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView } from './StationInternalView';
+import { buildSldDataFromSnapshot } from './enmToSldAdapter';
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -149,6 +150,7 @@ export function SldWorkspaceContainer(
   });
 
   const snapshot = useSnapshotStore((state) => state.snapshot);
+  const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
 
@@ -156,12 +158,20 @@ export function SldWorkspaceContainer(
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Iteracja 11: real-data adapter snapshot → SLD renderers props.
+  const sldData = useMemo(
+    () => buildSldDataFromSnapshot(snapshot, logicalViews),
+    [snapshot, logicalViews],
+  );
+
   const isEmpty = useMemo(() => {
-    if (!snapshot) return true;
-    const buses = snapshot.buses ?? [];
-    const transformers = snapshot.transformers ?? [];
-    return buses.length === 0 && transformers.length === 0;
-  }, [snapshot]);
+    return (
+      sldData.gpzs.length === 0 &&
+      sldData.stations.length === 0 &&
+      sldData.cableRuns.length === 0 &&
+      sldData.ders.length === 0
+    );
+  }, [sldData]);
 
   const handleContextMenu = useCallback(
     (request: SldCanvasContextMenuRequest) => {
@@ -263,11 +273,11 @@ export function SldWorkspaceContainer(
       <SldCanvasV2
         width={measured.width}
         height={measured.height}
-        gpzs={[]}
-        sections={[]}
-        cableRuns={[]}
-        stations={[]}
-        ders={[]}
+        gpzs={sldData.gpzs}
+        sections={sldData.sections}
+        cableRuns={sldData.cableRuns}
+        stations={sldData.stations}
+        ders={sldData.ders}
         connections={[]}
         selectedId={selectedId}
         onSelectElement={handleSelectElement}
