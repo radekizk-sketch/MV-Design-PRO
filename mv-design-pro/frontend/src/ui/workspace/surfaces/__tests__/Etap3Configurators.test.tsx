@@ -98,7 +98,8 @@ describe('Etap 3 — surface\'y konfiguratorów', () => {
     it('renderuje StationConfigurator z 10 kartami', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
-      // 10 kart wymaganych przez brief 2 §8
+      // 10 kart docelowego layout'u (brief 2 §8 + integracja DER):
+      // Karta 7 "Odbiory" zastąpiona przez "Źródła i magazyny" (PV/BESS/FW).
       const cards = [
         'Podstawowe',
         'Topologia i porty',
@@ -106,7 +107,7 @@ describe('Etap 3 — surface\'y konfiguratorów', () => {
         'Pola SN',
         'Transformator SN/nN',
         'Rozdzielnica nN',
-        'Odbiory',
+        'Źródła i magazyny',
         'Zabezpieczenia',
         'Pomiary',
         'Gotowość obliczeń',

@@ -1,16 +1,22 @@
 /**
  * StationConfiguratorSurface (E-13) — wrapper konfiguratora stacji SN/nN.
  *
- * Etap 3 dostawy: udostępnia istniejący StationConfigurator (10 kart) jako
- * powierzchnię workspace. Adapter danych snapshot → propsy konfiguratora
- * jest minimalny — czyta podstawowe parametry stacji z ENM, dla pól nieobecnych
- * wyświetla "Brak danych" (formatPolishValue).
+ * Karta 7 "Źródła i magazyny" jest pomostem do E-21/E-22/E-23: czyta
+ * `useStationDerStore` aby pokazać DERy przypięte do tej stacji oraz
+ * wywołuje `openRouteSurface('E-21'/'E-22'/'E-23')` z stationContext.
  */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { StationConfigurator } from '../../network-build/station-configurator/StationConfigurator';
+import {
+  useStationDerStore,
+  selectDersOfStation,
+} from '../../network-build/station-der';
+import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
+import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { notify } from '../../notifications/store';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 interface StationConfiguratorSurfaceProps {
@@ -18,7 +24,7 @@ interface StationConfiguratorSurfaceProps {
 }
 
 /** Minimalne propsy konfiguratora — używane gdy brak danych snapshot. */
-function buildEmptyStationProps(stationName: string) {
+function buildBaseStationProps(stationName: string) {
   return {
     basic: {
       stationName,
@@ -48,7 +54,6 @@ function buildEmptyStationProps(stationName: string) {
     bays: { bays: [] },
     transformer: { transformers: [], availableLvVoltages: [0.4] },
     nnSwitchgear: { switchgears: [] },
-    loads: { loads: [] },
     protection: {
       relays: [],
       automation: [],
@@ -60,10 +65,24 @@ function buildEmptyStationProps(stationName: string) {
   };
 }
 
+/** Mapowanie rodzaju DER → screenCode konfiguratora. */
+const DER_KIND_TO_SCREEN: Record<AddDerKindRequest, 'E-21' | 'E-22' | 'E-23'> = {
+  PV: 'E-21',
+  BESS: 'E-22',
+  FW: 'E-23',
+};
+
 export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const stationRef = surface.entityRef ?? null;
+  const ders = useStationDerStore((state) =>
+    stationRef ? selectDersOfStation(state, stationRef) : [],
+  );
+  const detachDer = useStationDerStore((state) => state.detachDer);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+
+  const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
 
   const stationName = useMemo(() => {
     if (!stationRef) return 'Stacja niewybrana';
@@ -74,10 +93,73 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     return station?.name ?? stationRef;
   }, [stationRef, snapshot]);
 
-  const configuratorProps = useMemo(
-    () => buildEmptyStationProps(stationName),
-    [stationName],
+  const handleOpenDer = useCallback(
+    (derId: string, derKind: AddDerKindRequest) => {
+      const screenCode = DER_KIND_TO_SCREEN[derKind];
+      openRouteSurface(screenCode, {
+        entityRef: derId,
+        subjectKind: 'helper_context',
+        payload: { stationId: stationRef ?? null },
+      });
+    },
+    [openRouteSurface, stationRef],
   );
+
+  const handleAddDer = useCallback(
+    (kind: AddDerKindRequest) => {
+      if (!stationRef) {
+        notify('Wybierz stację, aby dodać źródło lub magazyn.', 'warning');
+        return;
+      }
+      // Faza D doda kreator AddDerWizard (5-krokowy flow). Tutaj wystawiamy
+      // event w window — controller modalu nasłuchuje.
+      window.dispatchEvent(
+        new CustomEvent('mvdesignpro:add-der-request', {
+          detail: { stationId: stationRef, kind },
+        }),
+      );
+    },
+    [stationRef],
+  );
+
+  const handleShowOnSld = useCallback(
+    (derId: string) => {
+      window.location.hash = '#sld';
+      notify(`Schemat SLD: skupienie na ${derId}.`, 'info');
+    },
+    [],
+  );
+
+  const requestDetach = useCallback(
+    (derId: string) => {
+      const der = ders.find((d) => d.id === derId);
+      if (!der) return;
+      setPendingDetach({ derId, name: der.name });
+    },
+    [ders],
+  );
+
+  const confirmDetach = useCallback(() => {
+    if (!pendingDetach) return;
+    detachDer(pendingDetach.derId);
+    notify(`Odłączono "${pendingDetach.name}" od stacji.`, 'info');
+    setPendingDetach(null);
+  }, [pendingDetach, detachDer]);
+
+  const configuratorProps = useMemo(() => {
+    const base = buildBaseStationProps(stationName);
+    return {
+      ...base,
+      derSources: {
+        stationId: stationRef ?? 'unselected',
+        ders,
+        onOpenDer: handleOpenDer,
+        onShowOnSld: handleShowOnSld,
+        onAddDer: handleAddDer,
+        onDetachDer: requestDetach,
+      },
+    };
+  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
@@ -85,9 +167,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
           E-13 · Konfigurator stacji SN/nN
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {stationName}
-        </h2>
+        <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
         {!stationRef && (
           <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
             Brak referencji do stacji w kontekście. Wybierz stację z lewego nawigatora
@@ -96,8 +176,50 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         )}
       </div>
       <div className="flex-1 overflow-auto rounded border border-scada-border bg-scada-panel">
-        <StationConfigurator {...configuratorProps} />
+        <StationConfigurator {...configuratorProps} defaultCard="der-sources" />
       </div>
+
+      {/* Confirm detach modal */}
+      {pendingDetach && (
+        <div
+          data-testid="der-detach-confirm"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        >
+          <div className="w-[420px] max-w-[90vw] rounded-lg border border-scada-border bg-scada-panel p-5 shadow-2xl">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+              Operacja nieodwracalna
+            </div>
+            <h3 className="text-base font-semibold text-scada-text">
+              Odłączyć "{pendingDetach.name}" od stacji?
+            </h3>
+            <p className="mt-2 text-sm text-scada-muted">
+              Spowoduje to usunięcie obiektu DER z modelu sieci wraz z relacją
+              station_der_connection. Konfiguracja katalogu i profili NC RfG
+              zostanie utracona.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingDetach(null)}
+                className="rounded border border-scada-border px-3 py-1.5 text-sm text-scada-text hover:bg-scada-hover-nav"
+                data-testid="der-detach-cancel"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={confirmDetach}
+                className="rounded bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+                data-testid="der-detach-ok"
+              >
+                Odłącz
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

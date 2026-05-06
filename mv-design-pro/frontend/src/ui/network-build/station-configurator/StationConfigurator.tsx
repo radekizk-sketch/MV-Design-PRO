@@ -40,10 +40,11 @@ import {
   StationConfigNnSwitchgearCard,
   type StationConfigNnSwitchgearCardProps,
 } from './cards/StationConfigNnSwitchgearCard';
+import type { StationConfigLoadsCardProps } from './cards/StationConfigLoadsCard';
 import {
-  StationConfigLoadsCard,
-  type StationConfigLoadsCardProps,
-} from './cards/StationConfigLoadsCard';
+  StationConfigDerSourcesCard,
+  type StationConfigDerSourcesCardProps,
+} from './cards/StationConfigDerSourcesCard';
 import {
   StationConfigProtectionCard,
   type StationConfigProtectionCardProps,
@@ -64,7 +65,7 @@ export type StationConfigCardId =
   | 'bays'
   | 'transformer'
   | 'nn-switchgear'
-  | 'loads'
+  | 'der-sources'
   | 'protection'
   | 'measurements'
   | 'readiness';
@@ -76,7 +77,15 @@ export interface StationConfiguratorProps {
   readonly bays: StationConfigBaysCardProps;
   readonly transformer: StationConfigTransformerCardProps;
   readonly nnSwitchgear: StationConfigNnSwitchgearCardProps;
-  readonly loads: StationConfigLoadsCardProps;
+  /**
+   * Karta 7 — Źródła i magazyny (PV/FV, BESS, FW). Zastępuje historyczne
+   * "Odbiory" w 10-kartowym layout'cie. Odbiory są częścią Karty 6
+   * (Rozdzielnica nN). Komponent `StationConfigLoadsCard` pozostaje
+   * dostępny do osobnego użycia poza tym layout'em.
+   */
+  readonly derSources: StationConfigDerSourcesCardProps;
+  /** Backward-compat: Loads card slot (renderowane jeśli surface go używa). */
+  readonly loads?: StationConfigLoadsCardProps;
   readonly protection: StationConfigProtectionCardProps;
   readonly measurements: StationConfigMeasurementsCardProps;
   readonly readiness: StationConfigReadinessCardProps;
@@ -90,7 +99,7 @@ const CARD_LABELS: Record<StationConfigCardId, string> = {
   bays: 'Pola SN',
   transformer: 'Transformator SN/nN',
   'nn-switchgear': 'Rozdzielnica nN',
-  loads: 'Odbiory',
+  'der-sources': 'Źródła i magazyny',
   protection: 'Zabezpieczenia',
   measurements: 'Pomiary',
   readiness: 'Gotowość obliczeń',
@@ -99,10 +108,15 @@ const CARD_LABELS: Record<StationConfigCardId, string> = {
 export function StationConfigurator(props: StationConfiguratorProps): JSX.Element {
   const {
     basic, topology, snSwitchgear, bays, transformer, nnSwitchgear,
-    loads, protection, measurements, readiness,
+    derSources, loads, protection, measurements, readiness,
     defaultCard = 'basic',
   } = props;
   const [activeCard, setActiveCard] = useState<StationConfigCardId>(defaultCard);
+  // Backward-compat: niektóre testy odwołują się do `loads` slotu, który
+  // został zastąpiony przez `der-sources`. Komponent `StationConfigLoadsCard`
+  // pozostaje wyeksportowany i może być użyty bezpośrednio jeśli surface
+  // potrzebuje listy odbiorów. W aktywnej karcie pokazujemy DER.
+  void loads;
 
   return (
     <div data-testid="station-configurator" className="flex h-full flex-col bg-scada-panel">
@@ -144,7 +158,7 @@ export function StationConfigurator(props: StationConfiguratorProps): JSX.Elemen
         {activeCard === 'bays' && <StationConfigBaysCard {...bays} />}
         {activeCard === 'transformer' && <StationConfigTransformerCard {...transformer} />}
         {activeCard === 'nn-switchgear' && <StationConfigNnSwitchgearCard {...nnSwitchgear} />}
-        {activeCard === 'loads' && <StationConfigLoadsCard {...loads} />}
+        {activeCard === 'der-sources' && <StationConfigDerSourcesCard {...derSources} />}
         {activeCard === 'protection' && <StationConfigProtectionCard {...protection} />}
         {activeCard === 'measurements' && <StationConfigMeasurementsCard {...measurements} />}
         {activeCard === 'readiness' && <StationConfigReadinessCard {...readiness} />}
