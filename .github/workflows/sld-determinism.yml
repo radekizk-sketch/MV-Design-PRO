@@ -17,7 +17,7 @@ jobs:
         with:
           python-version: '3.11.x'
 
-      - name: Run SLD determinism guards
+      - name: Run SLD v2 determinism guards
         run: python mv-design-pro/scripts/sld_determinism_guards.py
 
   sld-contract-tests:
@@ -38,77 +38,37 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm ci
 
-      - name: Run VisualGraph contract tests
+      - name: Run HierarchicalLayout determinism tests (PR-5)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/visualGraph.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts --reporter=verbose
 
-      - name: Run VisualGraph determinism tests
+      - name: Run ViewportController contract tests
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/determinism.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/ViewportController.test.ts --reporter=verbose
 
-      - name: Run LayoutPipeline contract tests
+      - name: Run LodPolicy contract tests
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/layoutPipeline.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/LodPolicy.test.ts --reporter=verbose
 
-      - name: Run TopologyAdapterV2 domain-driven tests
+      - name: Run renderers contract tests
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/topologyAdapterV2.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/renderers.test.tsx --reporter=verbose
 
-      - name: Run StationBlockBuilder contract tests
+      - name: Run visual fixtures tests (15 fixtures × 4 LOD)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/stationBlockBuilder.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/visualFixtures.test.ts --reporter=verbose
 
-      - name: Run TopologyInputReader validation tests
+      - name: Run StationInternalView tests (PR-6)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/topologyInputReader.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/StationInternalView.test.tsx --reporter=verbose
 
-      - name: Run ElementRef + Readiness + ResultJoin tests
+      - name: Run SldCommandService tests (PR-13)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/elementRef.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/command/__tests__/SldCommandService.test.ts --reporter=verbose
 
-      - name: Run ExportManifest determinism tests
+      - name: Run Ports contract tests (PR-3/4)
         working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/exportManifest.test.ts --reporter=verbose
-
-      - name: Run GeometryOverrides contract tests (RUN #3H)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/geometryOverrides.test.ts --reporter=verbose
-
-      - name: Run ApplyOverrides contract tests (RUN #3H)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/applyOverrides.test.ts --reporter=verbose
-
-      - name: Run Overrides CI Render artifacts tests (RUN #3H)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/overridesCiRender.test.ts --reporter=verbose
-
-      - name: Run Drag Overrides integration tests (RUN #3H DOMKNIECIE)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/dragOverrides.integration.test.ts --reporter=verbose
-
-      - name: Run SwitchgearConfig contract tests (RUN #3I)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/switchgearConfig.test.ts --reporter=verbose
-
-      - name: Run SwitchgearConfig golden E2E tests (RUN #3I)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/switchgearConfigGolden.test.ts --reporter=verbose
-
-      - name: Run Wizard config ops integration tests (RUN #3I)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/wizard/switchgear/__tests__/switchgearConfigOps.test.ts --reporter=verbose
-
-      - name: Run Inspector config sections tests (RUN #3I)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/inspector/__tests__/inspectorConfigSections.test.ts --reporter=verbose
-
-      - name: Run SwitchgearConfig hash parity tests (RUN #3I N1)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/switchgearConfig.hashParity.test.ts --reporter=verbose
-
-      - name: Run Industrial Aesthetics E1-E4 + Vertical SN Layout + Golden Render tests (ESTETYKA PRZEMYSLOWA)
-        working-directory: mv-design-pro/frontend
-        run: npx vitest run src/ui/sld/core/__tests__/industrialAestheticsLayout.test.ts --reporter=verbose
+        run: npx vitest run --no-file-parallelism src/ui/sld/v2/core/__tests__/ports.test.ts --reporter=verbose
 
       - name: Upload test results
         if: always()
@@ -119,7 +79,7 @@ jobs:
           retention-days: 30
 
   sld-render-artifacts:
-    name: SLD Render Artifacts (RUN #3H DOMKNIECIE)
+    name: SLD Render Artifacts (v2)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -140,7 +100,7 @@ jobs:
         working-directory: mv-design-pro
         run: npm install -g tsx
 
-      - name: Generate SLD render artifacts
+      - name: Generate SLD v2 render artifacts (3 golden networks)
         working-directory: mv-design-pro
         run: npx tsx scripts/sld_render_artifacts.ts
 
