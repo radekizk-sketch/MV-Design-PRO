@@ -17,6 +17,7 @@ import {
   BranchSurface,
   NopSurface,
 } from './surfaces/InfrastructureSurfaces';
+import { PvSourceSurface, BessSurface, FwSurface } from './surfaces/DerSurfaces';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
@@ -1325,6 +1326,15 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-17':
       // Etap 4 dostawy: Punkt normalnie otwarty.
       return <NopSurface surface={surface} />;
+    case 'E-21':
+      // Etap 5 dostawy: PV/FV.
+      return <PvSourceSurface surface={surface} />;
+    case 'E-22':
+      // Etap 5 dostawy: BESS.
+      return <BessSurface surface={surface} />;
+    case 'E-23':
+      // Etap 5 dostawy: Farma wiatrowa.
+      return <FwSurface surface={surface} />;
     default:
       break;
   }

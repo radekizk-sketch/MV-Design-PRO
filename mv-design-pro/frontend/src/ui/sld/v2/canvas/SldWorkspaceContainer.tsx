@@ -51,6 +51,12 @@ const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'edit-line': 'E-12',
   'change-catalog': 'E-12',
   'show-thermal': 'E-12',
+  // Etap 5: źródła OZE (PV/BESS/FW):
+  'open-pv-config': 'E-21',
+  'open-bess-config': 'E-22',
+  'open-fw-config': 'E-23',
+  'show-frt-hvrt': 'E-26',
+  'show-ncrfg': 'E-26',
 };
 
 /** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
@@ -74,11 +80,6 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'show-sc-data': 'Dane zwarciowe sekcji: dostępne w konfiguratorze GPZ (E-10) → "Strona 110 kV".',
   'change-family-to-overhead': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
   'change-family-to-cable': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
-  'open-pv-config': 'Konfigurator PV: Etap 5 roadmapy.',
-  'open-bess-config': 'Konfigurator BESS: Etap 5 roadmapy.',
-  'open-fw-config': 'Konfigurator farmy wiatrowej: Etap 5 roadmapy.',
-  'show-frt-hvrt': 'Krzywe FRT/HVRT: Etap 5 roadmapy.',
-  'show-ncrfg': 'Zgodność przyłączeniowa NC RfG: Etap 5 roadmapy.',
   'delete-bay': 'Usuwanie pola SN: Etap 4 roadmapy.',
   'delete-segment': 'Usuwanie odcinka: Etap 4 roadmapy.',
   'delete-station': 'Usuwanie stacji: Etap 4 roadmapy.',
