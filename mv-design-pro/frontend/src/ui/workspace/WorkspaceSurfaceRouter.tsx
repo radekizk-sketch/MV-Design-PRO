@@ -7,6 +7,9 @@ import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
+import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
+import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
+import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
@@ -1291,6 +1294,15 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-00':
       // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
       return <ProjectDashboardSurface />;
+    case 'E-10':
+      // Etap 3 dostawy: Konfigurator GPZ.
+      return <GpzConfiguratorSurface surface={surface} />;
+    case 'E-11':
+      // Etap 3 dostawy: Konfigurator pola SN.
+      return <BayConfiguratorSurface surface={surface} />;
+    case 'E-13':
+      // Etap 3 dostawy: Konfigurator stacji SN/nN.
+      return <StationConfiguratorSurface surface={surface} />;
     default:
       break;
   }

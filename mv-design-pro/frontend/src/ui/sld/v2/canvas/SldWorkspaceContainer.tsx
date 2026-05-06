@@ -33,19 +33,26 @@ const MIN_CANVAS_HEIGHT_PX = 240;
 const STATION_INTERNAL_WIDTH_PX = 880;
 const STATION_INTERNAL_HEIGHT_PX = 560;
 
-/** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etap 1 obsługuje istniejące surface'y. */
+/** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
   'show-results': 'E-24',
   'show-rationale': 'E-36',
   'open-catalogs': 'E-38',
+  // Etap 3:
+  'open-source': 'E-10', // GPZ konfigurator
+  'open-bay': 'E-11',
+  'configure-equipment': 'E-11',
+  'configure-cts-vts': 'E-11',
+  'configure-protection': 'E-11',
+  'open-station-config': 'E-13',
 };
 
 /** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
 const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
-  'insert-gpz': 'Wstawianie Głównego Punktu Zasilającego: Etap 3 roadmapy. Tymczasowo użyj operacji domenowej add_grid_source_sn z panelu ENM.',
-  'add-section': 'Dodawanie sekcji rozdzielni SN: Etap 3 roadmapy.',
-  'add-bay': 'Dodawanie pola SN: Etap 3 roadmapy. Konfigurator pola jest gotowy (BayConfigurator) — podpięcie z menu w Etapie 3.',
+  'insert-gpz': 'Wstawianie Głównego Punktu Zasilającego: Etap 6 roadmapy (insert tool). Tymczasowo użyj operacji domenowej add_grid_source_sn z panelu ENM.',
+  'add-section': 'Dodawanie sekcji rozdzielni SN: Etap 4 roadmapy (sieć terenowa).',
+  'add-bay': 'Dodawanie pola SN: Etap 4 roadmapy.',
   'extend-trunk': 'Wyprowadzanie ciągu głównego: Etap 4 roadmapy.',
   'start-branch': 'Rozpoczynanie odgałęzienia: Etap 4 roadmapy.',
   'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
@@ -56,28 +63,22 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'add-source': 'Dodawanie źródła OZE (PV/BESS/FW): Etap 5 roadmapy.',
   'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
   'continue-trunk': 'Kontynuacja ciągu głównego: Etap 4 roadmapy.',
-  'configure-equipment': 'Konfiguracja aparatury pola: Etap 3 roadmapy (BayConfigurator).',
-  'configure-cts-vts': 'Konfiguracja przekładników CT/VT: Etap 3 roadmapy.',
-  'configure-protection': 'Konfiguracja zabezpieczeń pola: Etap 8 roadmapy.',
   'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
   'show-measurements': 'Podgląd pomiarów pola: Etap 7 roadmapy.',
-  'show-sc-source': 'Dane zwarciowe źródła GPZ: Etap 3 roadmapy.',
-  'show-sc-data': 'Dane zwarciowe sekcji: Etap 3 roadmapy.',
+  'show-sc-source': 'Dane zwarciowe źródła GPZ: dostępne w karcie "Strona 110 kV" konfiguratora GPZ (E-10).',
+  'show-sc-data': 'Dane zwarciowe sekcji: Etap 4 roadmapy.',
   'change-catalog': 'Zmiana katalogu odcinka: Etap 4 roadmapy.',
   'edit-laying': 'Parametry ułożenia kabla: Etap 4 roadmapy.',
   'edit-line': 'Parametry linii napowietrznej: Etap 4 roadmapy.',
   'show-thermal': 'Obciążalność cieplna: Etap 8 roadmapy.',
   'change-family-to-overhead': 'Zmiana rodziny: Etap 4 roadmapy.',
   'change-family-to-cable': 'Zmiana rodziny: Etap 4 roadmapy.',
-  'open-source': 'Edycja Głównego Punktu Zasilającego: Etap 3 roadmapy (GpzConfigurator).',
-  'open-bay': 'Otwieranie karty pola SN: Etap 3 roadmapy.',
-  'open-station-config': 'Otwieranie konfiguratora stacji: Etap 3 roadmapy.',
   'open-pv-config': 'Konfigurator PV: Etap 5 roadmapy.',
   'open-bess-config': 'Konfigurator BESS: Etap 5 roadmapy.',
   'open-fw-config': 'Konfigurator farmy wiatrowej: Etap 5 roadmapy.',
   'show-frt-hvrt': 'Krzywe FRT/HVRT: Etap 5 roadmapy.',
   'show-ncrfg': 'Zgodność przyłączeniowa NC RfG: Etap 5 roadmapy.',
-  'delete-bay': 'Usuwanie pola SN: Etap 3 roadmapy.',
+  'delete-bay': 'Usuwanie pola SN: Etap 4 roadmapy.',
   'delete-segment': 'Usuwanie odcinka: Etap 4 roadmapy.',
   'delete-station': 'Usuwanie stacji: Etap 4 roadmapy.',
   'delete-pv': 'Usuwanie źródła PV: Etap 5 roadmapy.',
@@ -205,24 +206,7 @@ export function SldWorkspaceContainer(
         return;
       }
 
-      // 2) Specjalna akcja — wstaw GPZ z prawego kliku tła:
-      if (actionId === 'insert-gpz') {
-        notify(
-          ACTION_ROADMAP_HINT_PL[actionId] ??
-            'Wstawianie Głównego Punktu Zasilającego: Etap 3 roadmapy.',
-          'info',
-        );
-        return;
-      }
-
-      // 3) Specjalna akcja — open-bay otwiera ENM operation surface (jeśli kontekst pozwala).
-      if (actionId === 'open-bay' && elementId) {
-        // W Etapie 3 podepniemy do BayConfigurator; teraz informacyjny toast.
-        notify(ACTION_ROADMAP_HINT_PL[actionId] ?? 'Konfigurator pola SN: Etap 3 roadmapy.', 'info');
-        return;
-      }
-
-      // 4) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
+      // 2) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
       const hint = ACTION_ROADMAP_HINT_PL[actionId];
       if (hint) {
         notify(hint, 'info');
