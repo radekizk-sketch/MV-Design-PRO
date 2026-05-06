@@ -8,6 +8,7 @@ import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
+import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -969,21 +970,57 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
 }
 
 function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  // Iteracja 13: wybór profilu NC RfG + wykres FRT/HVRT (Recharts).
+  const [profileId, setProfileId] = useState<NcRfgProfileId>('PSE');
   return (
-    <div className="space-y-4">
+    <div data-testid="compliance-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
+      <SectionCard
+        title="Krzywe FRT/LVRT/HVRT — profil operatora"
+        eyebrow="E-26 · Zgodność przyłączeniowa NC RfG"
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500">Profil:</span>
+          {(['PSE', 'Energa', 'Tauron', 'Enea', 'PGE'] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              data-testid={`compliance-profile-${id}`}
+              data-active={profileId === id}
+              onClick={() => setProfileId(id)}
+              className={
+                'rounded-full border px-3 py-1 text-xs font-medium '
+                + (profileId === id
+                  ? 'border-slate-900 bg-slate-900 text-white'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100')
+              }
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+        <FrtHvrtCurves profileId={profileId} />
+        <p className="mt-3 text-xs text-slate-500">
+          Krzywe NC RfG Annex II: dolna obwiednia LVRT (czerwony) — DER musi
+          pozostać dołączone, jeśli przebieg napięcia jest powyżej krzywej.
+          Górna obwiednia HVRT (niebieski) — analogicznie. Trajektoria U(t)
+          z solvera FRT/HVRT renderowana po uruchomieniu obliczeń (status
+          backendu: <code>no_module</code> do czasu pełnego wdrożenia
+          numerycznego solvera RMS).
+        </p>
+      </SectionCard>
       <AnalysisContractPanel
         surface={surface}
-        title="Charakterystyki FRT/LVRT/HVRT i zgodnosc przylaczeniowa"
-        eyebrow="Zrodla i przyłączenia"
+        title="Kontrakt zgodności przyłączeniowej"
+        eyebrow="Lineage"
         focusTitle="Kontrakt FRT"
         focusRowsBuilder={(contract) => [
           { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
           { label: 'Wariant', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
-          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
+          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
           { label: 'Model IBG / OZE', value: formatContractValue(contract.analysisCaseContext?.assumptions['ibg_assumptions_ref']) },
-          { label: 'Zalozenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
+          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
         ]}
       />
     </div>
