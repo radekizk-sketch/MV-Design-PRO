@@ -19,6 +19,9 @@ import {
   getStationAudit2Config,
   listStationAudit2Configs,
   putStationAudit2Config,
+  runAudit2PowerFlow,
+  type Audit2PowerFlowRequest,
+  type Audit2PowerFlowResponse,
   type Audit2ProofPackRequest,
   type Audit2ProofPackResponse,
   type Audit2ReportRequest,
@@ -159,5 +162,15 @@ export function useGenerateAudit2ProofPack() {
 export function useGenerateAudit2Report() {
   return useMutation<Audit2ReportResponse, Error, Audit2ReportRequest>({
     mutationFn: generateAudit2Report,
+  });
+}
+
+/**
+ * Phase 37: hook do uruchomienia audit2 power flow.
+ * Pelna petla: DB audit2 -> wrapper -> audit trail.
+ */
+export function useRunAudit2PowerFlow() {
+  return useMutation<Audit2PowerFlowResponse, Error, Audit2PowerFlowRequest>({
+    mutationFn: runAudit2PowerFlow,
   });
 }

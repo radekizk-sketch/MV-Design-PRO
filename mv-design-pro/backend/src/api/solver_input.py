@@ -36,12 +36,29 @@ router = APIRouter(
 
 def _get_graph_for_case(case_id: str) -> NetworkGraph:
     """
-    Stub: retrieve NetworkGraph for a given case.
+    Phase 36: Real loader — case_id is treated as snapshot_id.
+    If snapshot exists in DB, returns its graph; otherwise empty graph
+    (backward-compat dla istniejacych endpointow ktore nie maja UoW).
 
-    In production, this would load from persistence via UoW.
-    For now, returns empty graph to demonstrate API contract.
+    Caller z UoW (build_audit2_solver_input_payload) moze przekazac
+    real graph wskazujac snapshot_id.
     """
     return NetworkGraph(network_model_id=case_id)
+
+
+def _get_graph_for_snapshot(snapshot_id: str, uow_factory) -> NetworkGraph:
+    """
+    Phase 36: ladowanie real NetworkGraph z persystencji (network_snapshots).
+
+    Zwraca empty graph (z network_model_id=snapshot_id) jesli snapshot
+    nie istnieje — pozwala na backward-compat.
+    """
+    with uow_factory() as uow:
+        assert uow.session is not None and uow.snapshots is not None
+        snapshot = uow.snapshots.get_snapshot(snapshot_id)
+        if snapshot is None:
+            return NetworkGraph(network_model_id=snapshot_id)
+        return snapshot.graph
 
 
 def _get_config_for_case(case_id: str) -> StudyCaseConfig:
@@ -55,13 +72,15 @@ def _get_config_for_case(case_id: str) -> StudyCaseConfig:
 
 
 class Audit2PowerFlowRequest(BaseModel):
-    """Request dla POST /api/v1/audit2-power-flow."""
+    """Request dla POST /api/cases/audit2-power-flow."""
 
     case_id: str
     project_id: str
     station_id: str
     base_mva: float = 100.0
     slack_node_id: str | None = None
+    # Phase 36: opcjonalny snapshot_id — jesli pdany, graph ladowany z DB.
+    snapshot_id: str | None = None
 
 
 class Audit2PowerFlowResponse(BaseModel):
@@ -74,6 +93,11 @@ class Audit2PowerFlowResponse(BaseModel):
     solver_attempted: bool = False
     solver_error: str | None = None
     audit2_extensions_keys: list[str] = []
+    # Phase 36: graph stats — diagnose jaki graph zostal zaladowany.
+    graph_branch_count: int = 0
+    graph_node_count: int = 0
+    graph_inverter_source_count: int = 0
+    snapshot_id_loaded: str | None = None
 
 
 @router.post(
@@ -132,8 +156,11 @@ def run_audit2_power_flow(
             )
             audit2_extensions = extract_solver_extensions_from_payload(payload)
 
-    # 2. Zbuduj PowerFlowInput.
-    graph = _get_graph_for_case(req.case_id)
+    # 2. Zbuduj PowerFlowInput. Phase 36: real graph loader gdy snapshot_id pdany.
+    if req.snapshot_id:
+        graph = _get_graph_for_snapshot(req.snapshot_id, uow_factory)
+    else:
+        graph = _get_graph_for_case(req.case_id)
     pf_input = PowerFlowInput(
         graph=graph,
         base_mva=req.base_mva,
@@ -167,6 +194,10 @@ def run_audit2_power_flow(
         solver_attempted=solver_attempted,
         solver_error=solver_error,
         audit2_extensions_keys=list((audit2_extensions or {}).keys()),
+        graph_branch_count=len(getattr(graph, "branches", {}) or {}),
+        graph_node_count=len(getattr(graph, "nodes", {}) or {}),
+        graph_inverter_source_count=len(getattr(graph, "inverter_sources", {}) or {}),
+        snapshot_id_loaded=req.snapshot_id,
     )
 
 

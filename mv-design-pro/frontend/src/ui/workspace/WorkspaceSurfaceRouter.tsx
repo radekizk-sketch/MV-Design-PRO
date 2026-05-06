@@ -14,6 +14,7 @@ import {
   summarizeReadiness,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
+  useRunAudit2PowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
@@ -1771,6 +1772,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   // Phase 10: integracja audit2 ProofPack.
   const generateProofPack = useGenerateAudit2ProofPack();
   const stationConfigList = useStationAudit2ConfigList(projectId);
+  // Phase 37: audit2 power flow.
+  const runPowerFlow = useRunAudit2PowerFlow();
   return (
     <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
@@ -1906,6 +1909,72 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         {generateProofPack.isError && (
           <div className="mt-2 text-xs text-rose-700">
             Blad generowania: {generateProofPack.error.message}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Phase 37: audit2 Power Flow run — pełna pętla DB → wrapper → audit trail. */}
+      <SectionCard
+        title="Audit2 Power Flow (rozszerzona analiza z aplikacja zaczepow)"
+        eyebrow="POST /api/cases/audit2-power-flow"
+      >
+        <p className="mb-2 text-xs text-slate-700">
+          Uruchamia pełną pętlę: pobiera audit2 station config z DB, aplikuje
+          adjustments do network model (tap-changer + block-trafo Z + grounding +
+          BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
+          sieci. Zwraca audit trail.
+        </p>
+        <button
+          type="button"
+          data-testid="audit2-power-flow-run"
+          disabled={!projectId || !activeRunId || runPowerFlow.isPending || (stationConfigList.data ?? []).length === 0}
+          onClick={() => {
+            if (!projectId || !activeRunId) return;
+            const configs = stationConfigList.data ?? [];
+            const stationId = configs[0]?.station_id ?? '';
+            if (!stationId) return;
+            runPowerFlow.mutate({
+              case_id: activeRunId,
+              project_id: projectId,
+              station_id: stationId,
+              base_mva: 100.0,
+              slack_node_id: 'slack',
+            });
+          }}
+          className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom audit2 Power Flow'}
+        </button>
+        {runPowerFlow.data && (
+          <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
+            <div className="font-semibold">
+              Wynik dla stacji <code>{runPowerFlow.data.station_id}</code>
+            </div>
+            <div>
+              Solver wywolany: {runPowerFlow.data.solver_attempted ? 'TAK' : 'NIE'}
+              {runPowerFlow.data.solver_error && (
+                <span className="ml-2 text-rose-700">(blad: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
+              )}
+            </div>
+            <div>
+              Graph: {runPowerFlow.data.graph_node_count} wezlow,{' '}
+              {runPowerFlow.data.graph_branch_count} galezi,{' '}
+              {runPowerFlow.data.graph_inverter_source_count} zrodel.
+            </div>
+            <div className="text-[11px] font-mono">
+              audit2 ext keys: [{runPowerFlow.data.audit2_extensions_keys.join(', ')}]
+            </div>
+            <details>
+              <summary className="cursor-pointer">Audit trail (apply changes)</summary>
+              <pre className="mt-1 overflow-auto bg-white p-1 text-[10px]">
+                {JSON.stringify(runPowerFlow.data.audit2_applied, null, 2)}
+              </pre>
+            </details>
+          </div>
+        )}
+        {runPowerFlow.isError && (
+          <div className="mt-2 text-xs text-rose-700">
+            Blad uruchomienia: {runPowerFlow.error.message}
           </div>
         )}
       </SectionCard>

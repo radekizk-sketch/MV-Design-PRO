@@ -278,4 +278,45 @@ test.describe('Audit2 Backend Integration (A-P)', () => {
     expect(body.proof_count).toBe(5);
     expect(body.all_pass).toBeTruthy();
   });
+
+  test('Q. POST /api/cases/audit2-power-flow uruchamia wrapper z DB', async ({ request }) => {
+    // Create project + audit2 config dla full e2e flow.
+    const projectRes = await request.post(`${BACKEND_BASE}/api/projects`, {
+      data: { name: `E2E Audit2 PowerFlow ${Date.now()}` },
+    });
+    expect(projectRes.status()).toBe(201);
+    const pid = (await projectRes.json()).id;
+
+    const cfgRes = await request.put(
+      `${BACKEND_BASE}/api/v1/projects/${pid}/audit2-station-config/station-pf-test`,
+      {
+        data: {
+          mv_neutral_grounding_ref: 'mng_petersen',
+          tap_changer_refs: [],
+          der_specs: [],
+          transformer_tap_changers: { tr_001: 'tc_oltc_110sn_19_125' },
+        },
+      },
+    );
+    expect(cfgRes.ok()).toBeTruthy();
+
+    const pfRes = await request.post(`${BACKEND_BASE}/api/cases/audit2-power-flow`, {
+      data: {
+        case_id: 'case-e2e',
+        project_id: pid,
+        station_id: 'station-pf-test',
+        slack_node_id: 'n1',
+      },
+    });
+    expect(pfRes.ok()).toBeTruthy();
+    const body = await pfRes.json();
+    expect(body.solver_attempted).toBe(true);
+    // audit2_extensions populated z DB.
+    expect(body.audit2_extensions_keys).toContain('power_flow_extensions');
+    // Audit trail zawiera 5 klucz (tap, block_z, grounding, BESS, P(f)).
+    expect(body.audit2_applied).toHaveProperty('tap_position_changes');
+    expect(body.audit2_applied).toHaveProperty('grounding_z0_z1_ratio');
+    // Grounding z petersen_coil → Z0/Z1 = 50.0
+    expect(body.audit2_applied.grounding_z0_z1_ratio).toBe(50.0);
+  });
 });
