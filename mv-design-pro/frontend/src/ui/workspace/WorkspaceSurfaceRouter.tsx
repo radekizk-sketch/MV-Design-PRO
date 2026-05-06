@@ -1082,7 +1082,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       </SectionCard>
 
       {!readiness && (
-        <SectionCard title="Brak danych readiness" eyebrow="Wymagana operacja">
+        <SectionCard title="Brak danych gotowości obliczeń" eyebrow="Wymagana operacja">
           <p className="text-sm text-slate-300">
             Snapshot nie zawiera informacji o gotowości modelu. Wykonaj
             jakąkolwiek operację domenową w panelu ENM (np. add_grid_source_sn),

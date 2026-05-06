@@ -54,6 +54,7 @@ export function ProjectDashboardSurface(): JSX.Element {
   });
   const [createOpen, setCreateOpen] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Project | null>(null);
 
   const refresh = useCallback(async () => {
     setState((prev) => ({ ...prev, status: 'loading', errorMessage: null }));
@@ -103,26 +104,28 @@ export function ProjectDashboardSurface(): JSX.Element {
     [setActiveProject],
   );
 
-  const handleDeleteProject = useCallback(
-    async (project: Project) => {
-      const confirmed = window.confirm(
-        `Czy na pewno usunąć projekt "${project.name}"? Operacja jest nieodwracalna.`,
-      );
-      if (!confirmed) return;
-      setBusyId(project.id);
-      try {
-        await deleteProject(project.id);
-        notify(`Usunięto projekt "${project.name}".`, 'info');
-        await refresh();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Nieznany błąd usuwania projektu.';
-        notify(message, 'error');
-      } finally {
-        setBusyId(null);
-      }
-    },
-    [refresh],
-  );
+  const requestDelete = useCallback((project: Project) => {
+    setPendingDelete(project);
+  }, []);
+
+  const cancelDelete = useCallback(() => setPendingDelete(null), []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!pendingDelete) return;
+    const project = pendingDelete;
+    setPendingDelete(null);
+    setBusyId(project.id);
+    try {
+      await deleteProject(project.id);
+      notify(`Usunięto projekt "${project.name}".`, 'info');
+      await refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Nieznany błąd usuwania projektu.';
+      notify(message, 'error');
+    } finally {
+      setBusyId(null);
+    }
+  }, [pendingDelete, refresh]);
 
   return (
     <div data-testid="project-dashboard-surface" className="flex h-full w-full flex-col bg-scada-bg p-6">
@@ -258,7 +261,7 @@ export function ProjectDashboardSurface(): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  onClick={() => void handleDeleteProject(project)}
+                  onClick={() => requestDelete(project)}
                   disabled={busyId === project.id}
                   className="rounded border border-red-700 px-3 py-1.5 text-sm text-red-300 hover:bg-red-900/30 disabled:cursor-not-allowed disabled:opacity-50"
                   data-testid={`dashboard-delete-${project.id}`}
@@ -278,6 +281,48 @@ export function ProjectDashboardSurface(): JSX.Element {
         onClose={() => setCreateOpen(false)}
         onSave={(metadata) => void handleCreateProject(metadata)}
       />
+
+      {/* Modal potwierdzenia usunięcia */}
+      {pendingDelete && (
+        <div
+          data-testid="dashboard-delete-confirm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Potwierdzenie usunięcia projektu"
+        >
+          <div className="w-[420px] max-w-[90vw] rounded-lg border border-scada-border bg-scada-panel p-5 shadow-2xl">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+              Operacja nieodwracalna
+            </div>
+            <h3 className="text-base font-semibold text-scada-text">
+              Usunąć projekt "{pendingDelete.name}"?
+            </h3>
+            <p className="mt-2 text-sm text-scada-muted">
+              Spowoduje to skasowanie modelu sieci, scenariuszy obliczeniowych
+              oraz historii wyników. Eksporty zapisane lokalnie pozostają.
+            </p>
+            <div className="mt-4 flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={cancelDelete}
+                className="rounded border border-scada-border px-3 py-1.5 text-sm text-scada-text hover:bg-scada-hover-nav"
+                data-testid="dashboard-delete-cancel"
+              >
+                Anuluj
+              </button>
+              <button
+                type="button"
+                onClick={() => void confirmDelete()}
+                className="rounded bg-red-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-600"
+                data-testid="dashboard-delete-ok"
+              >
+                Usuń projekt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
