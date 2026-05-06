@@ -46,6 +46,11 @@ const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'configure-cts-vts': 'E-11',
   'configure-protection': 'E-11',
   'open-station-config': 'E-13',
+  // Etap 4: sieć terenowa (odcinki SN, ZK SN, słupy, NOP, odgałęzienia):
+  'edit-laying': 'E-12',
+  'edit-line': 'E-12',
+  'change-catalog': 'E-12',
+  'show-thermal': 'E-12',
 };
 
 /** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
@@ -66,13 +71,9 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
   'show-measurements': 'Podgląd pomiarów pola: Etap 7 roadmapy.',
   'show-sc-source': 'Dane zwarciowe źródła GPZ: dostępne w karcie "Strona 110 kV" konfiguratora GPZ (E-10).',
-  'show-sc-data': 'Dane zwarciowe sekcji: Etap 4 roadmapy.',
-  'change-catalog': 'Zmiana katalogu odcinka: Etap 4 roadmapy.',
-  'edit-laying': 'Parametry ułożenia kabla: Etap 4 roadmapy.',
-  'edit-line': 'Parametry linii napowietrznej: Etap 4 roadmapy.',
-  'show-thermal': 'Obciążalność cieplna: Etap 8 roadmapy.',
-  'change-family-to-overhead': 'Zmiana rodziny: Etap 4 roadmapy.',
-  'change-family-to-cable': 'Zmiana rodziny: Etap 4 roadmapy.',
+  'show-sc-data': 'Dane zwarciowe sekcji: dostępne w konfiguratorze GPZ (E-10) → "Strona 110 kV".',
+  'change-family-to-overhead': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
+  'change-family-to-cable': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
   'open-pv-config': 'Konfigurator PV: Etap 5 roadmapy.',
   'open-bess-config': 'Konfigurator BESS: Etap 5 roadmapy.',
   'open-fw-config': 'Konfigurator farmy wiatrowej: Etap 5 roadmapy.',

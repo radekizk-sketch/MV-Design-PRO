@@ -10,6 +10,13 @@ import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
+import { SnSegmentSurface } from './surfaces/SnSegmentSurface';
+import {
+  ZksnSurface,
+  BranchPoleSurface,
+  BranchSurface,
+  NopSurface,
+} from './surfaces/InfrastructureSurfaces';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
@@ -1303,6 +1310,21 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-13':
       // Etap 3 dostawy: Konfigurator stacji SN/nN.
       return <StationConfiguratorSurface surface={surface} />;
+    case 'E-12':
+      // Etap 4 dostawy: Konfigurator odcinka SN.
+      return <SnSegmentSurface surface={surface} />;
+    case 'E-14':
+      // Etap 4 dostawy: Złącze kablowe SN.
+      return <ZksnSurface surface={surface} />;
+    case 'E-15':
+      // Etap 4 dostawy: Słup linii napowietrznej SN.
+      return <BranchPoleSurface surface={surface} />;
+    case 'E-16':
+      // Etap 4 dostawy: Odgałęzienie.
+      return <BranchSurface surface={surface} />;
+    case 'E-17':
+      // Etap 4 dostawy: Punkt normalnie otwarty.
+      return <NopSurface surface={surface} />;
     default:
       break;
   }
