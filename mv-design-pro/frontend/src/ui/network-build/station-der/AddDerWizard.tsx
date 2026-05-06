@@ -245,11 +245,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       catalogs: {
         device_catalog_ref: selections.deviceCatalogRef,
         battery_catalog_ref: selections.batteryCatalogRef,
+        block_transformer_catalog_ref: selections.blockTransformerCatalogRef,
       },
       profiles: {
         nc_rfg_profile_ref: selections.ncRfgProfileRef,
         lvrt_curve_ref: selections.lvrtCurveRef,
         hvrt_curve_ref: selections.hvrtCurveRef,
+        pf_curve_ref: selections.pfCurveRef,
+        bess_operation_mode_refs: selections.bessOperationModeRefs,
       },
       created_at: nowIso,
     });

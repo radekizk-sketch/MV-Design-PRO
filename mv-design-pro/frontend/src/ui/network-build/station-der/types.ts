@@ -59,6 +59,10 @@ export interface DerCatalogSelections {
    * grid-following/forming dla PV/BESS) — wymagane dla solvera RMS i FRT/HVRT.
    */
   readonly dynamic_model_ref: string | null;
+  /**
+   * Pakiet H: catalog_ref do block-trafo gdy connection_side='dedicated_transformer'.
+   */
+  readonly block_transformer_catalog_ref: string | null;
 }
 
 export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
@@ -73,6 +77,7 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   vt_catalog_ref: null,
   fault_current_data_ref: null,
   dynamic_model_ref: null,
+  block_transformer_catalog_ref: null,
 });
 
 /** Wybrane profile zgodności przyłączeniowej i wymagań. */
@@ -85,6 +90,10 @@ export interface DerProfileSelections {
   readonly hvrt_curve_ref: string | null;
   /** Profil regulacji Q(U), P(f). */
   readonly regulation_profile_ref: string | null;
+  /** Pakiet H: krzywa P(f) (NC RfG Art. 13/15) — operator-specific. */
+  readonly pf_curve_ref: string | null;
+  /** Pakiet H: tryby pracy BESS (multi-select, NC RfG Art. 13/15). */
+  readonly bess_operation_mode_refs: readonly string[];
 }
 
 export const EMPTY_DER_PROFILES: DerProfileSelections = Object.freeze({
@@ -92,6 +101,8 @@ export const EMPTY_DER_PROFILES: DerProfileSelections = Object.freeze({
   lvrt_curve_ref: null,
   hvrt_curve_ref: null,
   regulation_profile_ref: null,
+  pf_curve_ref: null,
+  bess_operation_mode_refs: [],
 });
 
 /** Status pojedynczej macierzy gotowości obliczeń per typ. */

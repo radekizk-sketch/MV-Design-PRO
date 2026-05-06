@@ -25,8 +25,21 @@ interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
 }
 
+/**
+ * Lokalne oznaczenia dla Pakietu H/G — dane konfiguracyjne stacji
+ * trzymane w stanie Surface'u dopóki nie ma backendowej trwałości.
+ * Po podłączeniu backendu: zmienić na pull-from-snapshot.
+ */
+interface StationLocalConfig {
+  readonly mvNeutralGroundingRef: string | null;
+}
+
+const EMPTY_STATION_CONFIG: StationLocalConfig = {
+  mvNeutralGroundingRef: null,
+};
+
 /** Minimalne propsy konfiguratora — używane gdy brak danych snapshot. */
-function buildBaseStationProps(stationName: string) {
+function buildBaseStationProps(stationName: string, localConfig: StationLocalConfig) {
   return {
     basic: {
       stationName,
@@ -35,6 +48,7 @@ function buildBaseStationProps(stationName: string) {
       snVoltageKv: 15,
       nnVoltageLevels: [0.4],
       completeness: 'missing' as const,
+      mvNeutralGroundingRef: localConfig.mvNeutralGroundingRef,
     },
     topology: {
       externalPorts: [],
@@ -63,10 +77,25 @@ function buildBaseStationProps(stationName: string) {
       automation: [],
       interlocksConfigured: false,
       controlMode: 'lokalne' as const,
+      // Pakiet G: typ uziemienia synchronizowany z karty 1 (basic).
+      mvNeutralGroundingType: mapGroundingRefToType(localConfig.mvNeutralGroundingRef),
+      deviceWithstandRows: [],
     },
     measurements: { cts: [], vts: [], metersCount: 0, telemetryCount: 0 },
     readiness: { items: [] },
   };
+}
+
+/** Mapowanie catalog_ref do typu uziemienia (dla ProtectionCard validation). */
+function mapGroundingRefToType(
+  ref: string | null,
+): 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded' | undefined {
+  if (!ref) return undefined;
+  if (ref === 'mng_isolated') return 'isolated';
+  if (ref === 'mng_petersen') return 'petersen_coil';
+  if (ref.startsWith('mng_resistor')) return 'resistor_grounded';
+  if (ref === 'mng_directly') return 'directly_grounded';
+  return undefined;
 }
 
 /** Mapowanie rodzaju DER → screenCode konfiguratora. */
@@ -89,6 +118,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
+  // Pakiet H: lokalna konfiguracja stacji (uziemienie neutralne).
+  const [localConfig, setLocalConfig] = useState<StationLocalConfig>(EMPTY_STATION_CONFIG);
 
   // Nasłuch event'a wystawianego przez DerSourcesCard.
   useEffect(() => {
@@ -171,9 +202,21 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   }, [pendingDetach, detachDer]);
 
   const configuratorProps = useMemo(() => {
-    const base = buildBaseStationProps(stationName);
+    const base = buildBaseStationProps(stationName, localConfig);
     return {
       ...base,
+      basic: {
+        ...base.basic,
+        // Pakiet H: onChange dla uziemienia neutralnego propaguje do localConfig.
+        onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
+          if ('mvNeutralGroundingRef' in changes) {
+            setLocalConfig((s) => ({
+              ...s,
+              mvNeutralGroundingRef: changes.mvNeutralGroundingRef ?? null,
+            }));
+          }
+        },
+      },
       derSources: {
         stationId: stationRef ?? 'unselected',
         ders,
@@ -183,7 +226,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onDetachDer: requestDetach,
       },
     };
-  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach]);
+  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
