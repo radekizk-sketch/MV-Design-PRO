@@ -12,7 +12,7 @@
  * stan jest opisany komunikatem.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 
 import { useAppStateStore } from '../../../app-state';
 import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
@@ -28,6 +28,12 @@ import {
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
+import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
+import {
+  hasPaletteDragData,
+  readPaletteDragData,
+  type PaletteDragPayload,
+} from '../../../network-build/dragDropController';
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -157,6 +163,10 @@ export function SldWorkspaceContainer(
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Iteracja 12: lasso multi-select state.
+  const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
+  const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [pendingDrop, setPendingDrop] = useState<PaletteDragPayload | null>(null);
 
   // Iteracja 11: real-data adapter snapshot → SLD renderers props.
   const sldData = useMemo(
@@ -196,6 +206,65 @@ export function SldWorkspaceContainer(
   }, []);
 
   const closeInternalStation = useCallback(() => setInternalStationId(null), []);
+
+  // Iteracja 12: drag&drop z palety (BuildSidebar) → kanwa.
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    if (hasPaletteDragData(e)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      const payload = readPaletteDragData(e);
+      if (!payload) return;
+      e.preventDefault();
+      if (readOnly) {
+        notify('Tryb podglądu schematu — wstawianie elementów zablokowane.', 'warning');
+        return;
+      }
+      // Etap 12: drop intent → notify + zapamiętanie. Realne wstawianie elementu
+      // wymaga insert tool flow (insert mode + click pozycji); tutaj sygnał
+      // intencji do dalszej obsługi (pełny flow dochodzi w kolejnych iteracjach
+      // po podpięciu BuildSequence.tryApplyCommand do snapshotStore).
+      setPendingDrop(payload);
+      notify(
+        `Przygotowano wstawienie: ${payload.labelPl}. Otwórz konfigurator z menu kontekstowego po wstawieniu elementu.`,
+        'info',
+      );
+    },
+    [readOnly],
+  );
+
+  // Iteracja 12: lasso (Shift+drag w tle) — wybierz wiele elementów.
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.shiftKey || e.button !== 0) return;
+    if (e.target !== e.currentTarget) {
+      // klik tła sygnalizuje pointer-events = none na dzieciach? Bezpiecznik:
+      const tag = (e.target as HTMLElement).tagName.toLowerCase();
+      if (tag !== 'svg' && tag !== 'rect' && tag !== 'div') return;
+    }
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const start = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    lassoStartRef.current = start;
+    setLassoRect({ x: start.x, y: start.y, width: 0, height: 0 });
+  }, []);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!lassoStartRef.current) return;
+    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+    const end = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    setLassoRect(rectFromPoints(lassoStartRef.current, end));
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    if (lassoStartRef.current) {
+      lassoStartRef.current = null;
+      // Zatrzymaj lasso po krótkim czasie (pozwól użytkownikowi zobaczyć wybór).
+      setTimeout(() => setLassoRect(null), 150);
+    }
+  }, []);
 
   const handleAction = useCallback(
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
@@ -268,7 +337,13 @@ export function SldWorkspaceContainer(
       ref={containerRef}
       data-testid="sld-workspace-container"
       data-readonly={readOnly}
+      data-pending-drop={pendingDrop?.kind ?? ''}
       className="relative flex h-full w-full overflow-hidden bg-scada-bg"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
       <SldCanvasV2
         width={measured.width}
@@ -320,6 +395,17 @@ export function SldWorkspaceContainer(
         onAction={handleAction}
         onClose={closeContextMenu}
       />
+
+      {/* Lasso multi-select overlay (warstwa screen-space). */}
+      {lassoRect && (
+        <svg
+          className="pointer-events-none absolute inset-0 z-20"
+          width="100%"
+          height="100%"
+        >
+          <LassoSelector visible={true} rect={lassoRect} />
+        </svg>
+      )}
 
       {/* Drill-down stacji — overlay z wewnętrznym SLD. */}
       {internalStationProps && (
