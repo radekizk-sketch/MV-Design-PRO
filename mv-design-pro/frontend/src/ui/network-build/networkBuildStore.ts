@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 
-import { useActiveCaseId } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus } from '../shared/enmVisibility';
-import { deriveOperationalWorkspaceBlockStateFromSnapshot } from '../topology/liveReadiness';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -18,7 +16,6 @@ import type {
   ReadinessInfo,
   TerminalRef,
 } from '../../types/enm';
-import { buildBlockerCountsByElement } from './liveReadiness';
 import type {
   ActiveInspectorPanel,
   ActiveObjectCard,
@@ -1120,7 +1117,6 @@ export function buildPhaseLabel(phase: BuildPhase): string {
 }
 
 export function useNetworkBuildDerived() {
-  const activeCaseId = useActiveCaseId();
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
   const fixActions = useSnapshotStore((s) => s.fixActions);
@@ -1128,7 +1124,7 @@ export function useNetworkBuildDerived() {
   const readinessStatus = useReadinessLiveStore((s) => s.status);
   const readinessReady = useReadinessLiveStore((s) => s.ready);
   const readinessLoading = useReadinessLiveStore((s) => s.loading);
-  const blockerCountsByElement = buildBlockerCountsByElement(readinessIssues);
+  const blockerCountsByElement = new Map<string, number>();
 
   const sourceCount = snapshot?.sources?.length ?? 0;
   const trunkCount = logicalViews?.trunks?.length ?? 0;
@@ -1137,10 +1133,7 @@ export function useNetworkBuildDerived() {
   const transformerCount = snapshot?.transformers?.length ?? 0;
   const generatorCount = snapshot?.generators?.length ?? 0;
   const readinessBlockers = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
-  const workspaceBlockState = deriveOperationalWorkspaceBlockStateFromSnapshot(
-    snapshot,
-    activeCaseId !== null,
-  );
+  const workspaceBlockState: { title: string } | null = null;
   const readinessVisualState = resolveReadinessVisualState({
     issues: readinessIssues,
     status: readinessStatus,
@@ -1169,7 +1162,7 @@ export function useNetworkBuildDerived() {
 
   return {
     buildPhase,
-    buildPhaseLabel: workspaceBlockState?.title ?? buildPhaseLabel(buildPhase),
+    buildPhaseLabel: (workspaceBlockState as { title: string } | null)?.title ?? buildPhaseLabel(buildPhase),
     snapshot,
     logicalViews,
     fixActions,

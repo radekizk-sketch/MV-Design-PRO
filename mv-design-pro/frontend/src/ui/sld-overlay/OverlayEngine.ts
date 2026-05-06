@@ -21,7 +21,6 @@
  * - Any physics interpretation whatsoever
  */
 
-import type { AnySldSymbol } from '../sld-editor/types';
 import type {
   OverlayPayloadV1,
   OverlayElement,
@@ -74,7 +73,7 @@ export function resolveElementStyle(element: OverlayElement): ResolvedOverlaySty
  * @returns Map of elementId → resolved style
  */
 export function applyOverlayToSymbols(
-  symbols: readonly AnySldSymbol[],
+  symbols: readonly unknown[],
   overlayPayload: OverlayPayloadV1
 ): Map<string, ResolvedOverlayStyle> {
   const result = new Map<string, ResolvedOverlayStyle>();
@@ -82,7 +81,7 @@ export function applyOverlayToSymbols(
   // Build set of existing symbol elementIds for O(1) lookup
   const symbolElementIds = new Set<string>();
   for (const symbol of symbols) {
-    symbolElementIds.add(symbol.elementId);
+    symbolElementIds.add((symbol as { elementId: string }).elementId);
   }
 
   // Map overlay elements to resolved styles (only if symbol exists)

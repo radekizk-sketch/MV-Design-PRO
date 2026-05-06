@@ -4,7 +4,7 @@
 > Any binding, canonical, AS-IS, TO-BE, or roadmap language below reflects the original document state and is kept for audit context.
 > Use ../INDEX_KANONICZNY.md to locate current canonical documentation.
 
-# SOLVER_INPUT_CONTRACT � v1.0
+# SOLVER_INPUT_CONTRACT — v1.0
 
 **Status: BINDING**
 **Contract version: 1.0**
@@ -24,13 +24,13 @@ topology + catalog data into solver-ready input. It covers:
 - API endpoints
 
 This contract closes the interpretive gap between ENM/topology and solvers. Solvers receive
-"clean" input � no heuristics, no defaults, no UI references.
+"clean" input — no heuristics, no defaults, no UI references.
 
 ---
 
 ## 2. Determinism Guarantees
 
-**Invariant:** Identical ENM + identical catalog + identical config � identical solver-input JSON.
+**Invariant:** Identical ENM + identical catalog + identical config — identical solver-input JSON.
 
 Rules:
 1. All lists in payload are sorted deterministically:
@@ -89,7 +89,7 @@ If `eligible=false`, the solver MUST NOT be invoked. The payload may be partial 
 | `CATALOG` | Value from catalog type library (via `type_ref`) |
 | `OVERRIDE` | Explicit impedance override on instance |
 | `DERIVED` | Computed from instance parameters or topology |
-| `DEFAULT_FORBIDDEN` | Required field with no source � generates BLOCKER |
+| `DEFAULT_FORBIDDEN` | Required field with no source — generates BLOCKER |
 
 ### 4.2 Trace Entry
 
@@ -113,9 +113,9 @@ ProvenanceEntry:
 ### 4.3 CATALOG-FIRST Policy
 
 Physical parameter precedence (canonical, from resolver):
-1. `impedance_override` � source_kind=OVERRIDE
-2. `type_ref` (catalog) � source_kind=CATALOG
-3. Instance parameters � source_kind=DERIVED
+1. `impedance_override` — source_kind=OVERRIDE
+2. `type_ref` (catalog) — source_kind=CATALOG
+3. Instance parameters — source_kind=DERIVED
 
 If a field has no source and is required, the generator:
 - Does NOT fill a default value (no zeros, no guesses)

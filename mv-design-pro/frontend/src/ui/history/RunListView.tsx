@@ -97,7 +97,7 @@ export function RunListView({ runs, availableCases, onRunClick }: RunListViewPro
         )}
 
         <label className="flex items-center gap-1">
-          Typ proof:
+          Typ uzasadnienia:
           <select
             value={filter.proof_type ?? ''}
             onChange={(e) =>
@@ -166,8 +166,8 @@ export function RunListView({ runs, availableCases, onRunClick }: RunListViewPro
           <thead>
             <tr className="text-scada-muted">
               <th className="text-left">Data</th>
-              <th className="text-left">Przypadek</th>
-              <th className="text-left">Typ proof</th>
+              <th className="text-left">Zakres obliczeń</th>
+              <th className="text-left">Typ uzasadnienia</th>
               <th className="text-left">Status</th>
               <th className="text-left">Czas [s]</th>
               <th className="text-left">Hash</th>

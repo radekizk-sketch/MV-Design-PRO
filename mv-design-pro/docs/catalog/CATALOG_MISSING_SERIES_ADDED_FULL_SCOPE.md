@@ -1,4 +1,4 @@
-﻿# CATALOG MISSING SERIES â€” ADDED FULL SCOPE (BIEĹ»Ä„CY benchmark)
+﻿# CATALOG MISSING SERIES — ADDED FULL SCOPE (BIEĹ»ĄCY benchmark)
 
 ## UzupeĹ‚nione
 - PrzejĹ›cie `CatalogBrowser` z mockĂłw na API dla przestrzeni:
@@ -7,7 +7,7 @@
   - `TRAFO_SN_NN` -> `TRANSFORMER`
   - `APARAT_SN`, `APARAT_NN` -> `SWITCH_EQUIPMENT`
 
-## Braki do peĹ‚nego domkniÄ™cia OSD-grade
+## Braki do peĹ‚nego domknięcia OSD-grade
 - Listowanie i mapowanie dla: `CT`, `VT`, `ZABEZPIECZENIE`, `ZRODLO_NN_PV`, `ZRODLO_NN_BESS`, `OBCIAZENIE`, `KABEL_NN`.
 - PeĹ‚ne typoszeregi i kontrakty wersjonowania katalogĂłw dla ww. namespace.
 

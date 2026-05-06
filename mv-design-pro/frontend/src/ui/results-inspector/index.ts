@@ -25,6 +25,4 @@ export {
 } from './store';
 
 // Components
-export { ResultsInspectorPage } from './ResultsInspectorPage';
-export { EmbeddedSldWorkspace } from './EmbeddedSldWorkspace';
 export { SldOverlay } from './SldOverlay';

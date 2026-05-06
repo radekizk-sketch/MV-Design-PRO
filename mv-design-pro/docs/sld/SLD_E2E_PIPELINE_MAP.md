@@ -1,7 +1,7 @@
 ﻿# SLD E2E Pipeline Map
 
 **Status:** KANONICZNY | **Wersja:** 1.1 | **Data:** 2026-02-13
-**Kontekst:** RUN #3A PR-3A-01 + RUN #3C (topology hardening) â€” Mapa przeplywa danych E2E dla systemu SLD
+**Kontekst:** RUN #3A PR-3A-01 + RUN #3C (topology hardening) — Mapa przeplywa danych E2E dla systemu SLD
 
 ---
 
@@ -30,7 +30,7 @@ NetworkModel (backend)
               â”‚
               â–Ľ
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  ADAPTER NetworkGraph â†’ SLD     â”‚
+â”‚  ADAPTER NetworkGraph → SLD     â”‚
 â”‚  convert_graph_to_sld_payload() â”‚
 â”‚  build_sld_from_network_graph() â”‚
 â”‚  backend/src/application/sld/   â”‚
@@ -55,7 +55,7 @@ NetworkModel (backend)
 â”‚  OUT: SldDiagramDTO (JSON)      â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
               â”‚
-              â–Ľ (HTTP â†’ frontend store)
+              â–Ľ (HTTP → frontend store)
 â”Śâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â”
 â•‘                         FRONTEND                                       â•‘
 â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•Ł
@@ -117,7 +117,7 @@ NetworkModel (backend)
 â•‘                 â–Ľ                                                      â•‘
 â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘  â”‚  SYMBOL REGISTRY                                               â”‚    â•‘
-â•‘  â”‚  SymbolResolver.ts â€” mapowanie ElementType â†’ benchmarkSymbolId      â”‚    â•‘
+â•‘  â”‚  SymbolResolver.ts — mapowanie ElementType → benchmarkSymbolId      â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/SymbolResolver.ts                         â”‚    â•‘
 â•‘  â”‚  + canonical_symbols/*.svg (16 symboli)                             â”‚    â•‘
 â•‘  â”‚  + canonical_symbols/ports.json (porty: x,y w viewBox 0-100)       â”‚    â•‘
@@ -128,8 +128,8 @@ NetworkModel (backend)
 â•‘  â”‚  CAMERA (ViewportState)                                        â”‚    â•‘
 â•‘  â”‚  { offsetX, offsetY, zoom }                                    â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/types.ts                                  â”‚    â•‘
-â•‘  â”‚  fitToContent() â€” auto-fit z paddingiem                        â”‚    â•‘
-â•‘  â”‚  ZOOM: 0.25â€“3.0, krok 0.1                                     â”‚    â•‘
+â•‘  â”‚  fitToContent() — auto-fit z paddingiem                        â”‚    â•‘
+â•‘  â”‚  ZOOM: 0.25–3.0, krok 0.1                                     â”‚    â•‘
 â•‘  â”‚  PAN: middle-click drag / Shift+drag                           â”‚    â•‘
 â•‘  â”‚  BRAK reflow geometrii przy zmianie zoom/pan                   â”‚    â•‘
 â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
@@ -137,31 +137,31 @@ NetworkModel (backend)
 â•‘                 â–Ľ                                                      â•‘
 â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘  â”‚  RENDERER (thin)                                               â”‚    â•‘
-â•‘  â”‚  SLDViewCanvas.tsx â€” SVG canvas z energizacja                  â”‚    â•‘
-â•‘  â”‚  UnifiedSymbolRenderer.tsx â€” renderowanie symboli benchmark         â”‚    â•‘
-â•‘  â”‚  CanonicalSymbolRenderer.tsx â€” generowanie SVG                      â”‚    â•‘
+â•‘  â”‚  SLDViewCanvas.tsx — SVG canvas z energizacja                  â”‚    â•‘
+â•‘  â”‚  UnifiedSymbolRenderer.tsx — renderowanie symboli benchmark         â”‚    â•‘
+â•‘  â”‚  CanonicalSymbolRenderer.tsx — generowanie SVG                      â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/SLDViewCanvas.tsx                         â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/symbols/UnifiedSymbolRenderer.tsx         â”‚    â•‘
-â•‘  â”‚  Renderer NIE zna topologii â€” rysuje to co dostanie            â”‚    â•‘
+â•‘  â”‚  Renderer NIE zna topologii — rysuje to co dostanie            â”‚    â•‘
 â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘                 â”‚                                                      â•‘
 â•‘                 â–Ľ                                                      â•‘
 â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘  â”‚  OVERLAY (token-only)                                          â”‚    â•‘
-â•‘  â”‚  OverlayEngine.ts â€” PURE FUNCTION (element â†’ style token)      â”‚    â•‘
-â•‘  â”‚  LoadFlowOverlayAdapter.ts â€” PowerFlow â†’ overlay               â”‚    â•‘
+â•‘  â”‚  OverlayEngine.ts — PURE FUNCTION (element → style token)      â”‚    â•‘
+â•‘  â”‚  LoadFlowOverlayAdapter.ts — PowerFlow → overlay               â”‚    â•‘
 â•‘  â”‚  ResultsOverlay.tsx, DiagnosticsOverlay.tsx, Protection...     â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld-overlay/                                  â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/ResultsOverlay.tsx                        â”‚    â•‘
-â•‘  â”‚  OVERLAY NIE modyfikuje geometrii â€” tylko tokeny wizualne      â”‚    â•‘
+â•‘  â”‚  OVERLAY NIE modyfikuje geometrii — tylko tokeny wizualne      â”‚    â•‘
 â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘                 â”‚                                                      â•‘
 â•‘                 â–Ľ                                                      â•‘
 â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
 â•‘  â”‚  EXPORT                                                        â”‚    â•‘
-â•‘  â”‚  SldSnapshotExport.ts â€” orkiestracja                           â”‚    â•‘
-â•‘  â”‚  exportPng.ts â€” raster PNG (1x/1.5x/2x/4x)                   â”‚    â•‘
-â•‘  â”‚  exportPdf.ts â€” wektor PDF (A4/A3/A2)                         â”‚    â•‘
+â•‘  â”‚  SldSnapshotExport.ts — orkiestracja                           â”‚    â•‘
+â•‘  â”‚  exportPng.ts — raster PNG (1x/1.5x/2x/4x)                   â”‚    â•‘
+â•‘  â”‚  exportPdf.ts — wektor PDF (A4/A3/A2)                         â”‚    â•‘
 â•‘  â”‚  frontend/src/ui/sld/export/                                   â”‚    â•‘
 â•‘  â”‚  Warstwy: diagram, results, diagnostics, protection           â”‚    â•‘
 â•‘  â”‚  Koordynaty: world coords (nie screen)                         â”‚    â•‘
@@ -190,7 +190,7 @@ NetworkModel (backend)
 | `backend/src/application/sld/network_graph_to_sld.py` | `convert_graph_to_sld_payload(graph)` | NetworkGraph | SldPayload + id_map (UUID5 deterministic) |
 | `backend/src/application/sld/layout.py` | `build_auto_layout_diagram(payload)` | SldPayload | SldDiagram z pozycjami (BFS od SLACK) |
 
-### 2.3 Topology Adapter (frontend) â€” DOMAIN-DRIVEN (RUN #3C)
+### 2.3 Topology Adapter (frontend) — DOMAIN-DRIVEN (RUN #3C)
 
 | Plik | Funkcja | Wejscie | Wyjscie |
 |------|---------|---------|---------|
@@ -200,11 +200,11 @@ NetworkModel (backend)
 | `frontend/src/ui/sld/core/topologyAdapterV1.ts` | `convertToVisualGraph(symbols, options?)` | AnySldSymbol[] + TopologyAdapterOptions | VisualGraphV1 (deleguje do V2 pipeline) |
 
 **Zmiana RUN #3C:** Adapter jest teraz **NetworkGraph-driven** (domain-driven), nie symbol-driven.
-- Sciezka glowna: `readTopologyFromENM()` â†’ `buildVisualGraphFromTopology()`
-- Sciezka bridge: `readTopologyFromSymbols()` â†’ `buildVisualGraphFromTopology()`
-- **ZERO self-edges** â€” twardy invariant (throw Error)
-- **ZERO string heuristics** â€” typy z pĂłl strukturalnych (voltageKv, kind, stationType)
-- **Deterministyczna segmentacja** â€” BFS spanning tree â†’ trunk/branch/secondary
+- Sciezka glowna: `readTopologyFromENM()` → `buildVisualGraphFromTopology()`
+- Sciezka bridge: `readTopologyFromSymbols()` → `buildVisualGraphFromTopology()`
+- **ZERO self-edges** — twardy invariant (throw Error)
+- **ZERO string heuristics** — typy z pĂłl strukturalnych (voltageKv, kind, stationType)
+- **Deterministyczna segmentacja** — BFS spanning tree → trunk/branch/secondary
 - **Stacje A/B/C/D** z analizy topologicznej domeny (busCount, branchCount, switchIds)
 - **PV/BESS** z jawnego pola `kind` (GeneratorKind), nie z nazw
 
@@ -215,7 +215,7 @@ NetworkModel (backend)
 | `frontend/src/ui/sld-editor/utils/topological-layout/topologicalLayoutEngine.ts` | `computeTopologicalLayout(symbols, config, orientation)` | AnySldSymbol[], LayoutGeometryConfig | TopologicalLayoutResult |
 | `frontend/src/ui/sld-editor/utils/topological-layout/geometricSkeleton.ts` | `buildGeometricSkeleton(symbols, assignments, chains, stations, config)` | AnySldSymbol[], RoleAssignment map | GeometricSkeleton (positions, busbars, tiers) |
 
-### 2.5 Busbar Feeder Layout (frontend â€” oddzielny pipeline)
+### 2.5 Busbar Feeder Layout (frontend — oddzielny pipeline)
 
 | Plik | Funkcja | Wejscie | Wyjscie |
 |------|---------|---------|---------|
@@ -236,7 +236,7 @@ NetworkModel (backend)
 
 | Plik | Rola |
 |------|------|
-| `frontend/src/ui/sld/SymbolResolver.ts` | ElementType â†’ benchmarkSymbolId + porty |
+| `frontend/src/ui/sld/SymbolResolver.ts` | ElementType → benchmarkSymbolId + porty |
 | `frontend/src/ui/sld/canonical_symbols/*.svg` | 16 symboli SVG (viewBox 0 0 100 100) |
 | `frontend/src/ui/sld/canonical_symbols/ports.json` | Definicje portow (x, y) per symbol |
 
@@ -247,7 +247,7 @@ NetworkModel (backend)
 | `frontend/src/ui/sld/types.ts` | ViewportState { offsetX, offsetY, zoom } |
 | `frontend/src/ui/sld/SLDView.tsx` | Obsluga wheel (zoom) + middle/shift-drag (pan) |
 | Stale: `ZOOM_MIN=0.25`, `ZOOM_MAX=3.0`, `ZOOM_STEP=0.1` | |
-| **Brak reflow geometrii** â€” camera to transformacja afiniczna na warstwie SVG | |
+| **Brak reflow geometrii** — camera to transformacja afiniczna na warstwie SVG | |
 
 ### 2.9 Renderer (frontend)
 
@@ -262,8 +262,8 @@ NetworkModel (backend)
 
 | Plik | Rola |
 |------|------|
-| `frontend/src/ui/sld-overlay/OverlayEngine.ts` | PURE FUNCTION: element_ref â†’ style token |
-| `frontend/src/ui/sld-overlay/LoadFlowOverlayAdapter.ts` | PowerFlowResult â†’ OverlayPayloadV1 |
+| `frontend/src/ui/sld-overlay/OverlayEngine.ts` | PURE FUNCTION: element_ref → style token |
+| `frontend/src/ui/sld-overlay/LoadFlowOverlayAdapter.ts` | PowerFlowResult → OverlayPayloadV1 |
 | `frontend/src/ui/sld/ResultsOverlay.tsx` | Warstwa wynikow (napiecie, prad, moc) |
 | `frontend/src/ui/sld/DiagnosticsOverlay.tsx` | Warstwa diagnostyczna (walidacja) |
 | `frontend/src/ui/sld/ProtectionOverlayLayer.tsx` | Warstwa ochrony |
@@ -293,7 +293,7 @@ NetworkModel (backend)
 | `backend/tests/application/sld/test_overlay_builder.py` | Budowanie overlay wynikow |
 | `backend/tests/application/sld/test_sld_parity.py` | Parytet z benchmark, brak PCC |
 | `backend/tests/application/sld/test_sld_integration.py` | Integracja E2E backend |
-| `backend/tests/test_sld_projection.py` | Projekcja snapshot â†’ SLD |
+| `backend/tests/test_sld_projection.py` | Projekcja snapshot → SLD |
 | `backend/tests/test_wizard_sld_unity.py` | Jednosc Wizard-SLD, determinizm |
 
 ### 3.2 Testy frontend (Vitest)
@@ -353,5 +353,5 @@ NetworkModel (backend)
 | `sldCadEditingEnabled` | FALSE | j.w. | Tryby CAD/AUTO/HYBRID (kontrakty, nie narzedzia) |
 | `SLD_AUTO_LAYOUT_V1` | FALSE | `frontend/src/ui/sld/layout/index.ts` | Busbar feeder auto-layout (opt-in) |
 
-**Uwaga:** Brak flag `layout_v2`, `experimental_layout`, `new_layout` â€” spelniony wymog single-engine.
+**Uwaga:** Brak flag `layout_v2`, `experimental_layout`, `new_layout` — spelniony wymog single-engine.
 

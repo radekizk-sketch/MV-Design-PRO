@@ -1,4 +1,4 @@
-﻿# Wizard Screens â€” Profesjonalna Edycja InĹĽynierska
+﻿# Wizard Screens — Profesjonalna Edycja InĹĽynierska
 
 **Status:** KANONICZNY
 **Wersja:** 2.0
@@ -13,7 +13,7 @@
 2. [Globalny UkĹ‚ad Paneli](#2-globalny-ukĹ‚ad-paneli)
 3. [Siatka WĹ‚aĹ›ciwoĹ›ci Obiektu](#3-siatka-wĹ‚aĹ›ciwoĹ›ci-obiektu)
 4. [Menu Kontekstowe](#4-menu-kontekstowe)
-5. [Przebieg Kreatora â€” PeĹ‚ny Cykl InĹĽynierski](#5-przebieg-kreatora--peĹ‚ny-cykl-inĹĽynierski)
+5. [Przebieg Kreatora — PeĹ‚ny Cykl InĹĽynierski](#5-przebieg-kreatora--peĹ‚ny-cykl-inĹĽynierski)
 6. [SzczegĂłĹ‚owe Ekrany i Modale](#6-szczegĂłĹ‚owe-ekrany-i-modale)
 7. [Modale Zaawansowane](#7-modale-zaawansowane)
 8. [Ekrany PrzypadkĂłw Obliczeniowych](#8-ekrany-przypadkĂłw-obliczeniowych)
@@ -28,18 +28,18 @@
 
 ### 1.1 Rola Kreatora (Wizard)
 
-Kreator (Wizard) w MV-DESIGN-PRO peĹ‚ni rolÄ™ analogicznÄ… do **Data Managera** oraz **dialogĂłw edycyjnych obiektĂłw** w DIgSILENT benchmark. Jest to **gĹ‚Ăłwny interfejs** do:
+Kreator (Wizard) w MV-DESIGN-PRO peĹ‚ni rolę analogiczną do **Data Managera** oraz **dialogĂłw edycyjnych obiektĂłw** w DIgSILENT benchmark. Jest to **gĹ‚Ăłwny interfejs** do:
 
 - Definiowania topologii sieci elektroenergetycznej
 - Parametryzacji wszystkich elementĂłw modelu
 - Konfiguracji przypadkĂłw obliczeniowych
-- PrzeglÄ…dania wynikĂłw analiz
+- Przeglądania wynikĂłw analiz
 
-**ZASADA KARDYNALNA:** Kreator NIE JEST narzÄ™dziem do "szybkiego projektowania". Jest profesjonalnym Ĺ›rodowiskiem inĹĽynierskim wymagajÄ…cym peĹ‚nej parametryzacji kaĹĽdego elementu.
+**ZASADA KARDYNALNA:** Kreator NIE JEST narzędziem do "szybkiego projektowania". Jest profesjonalnym Ĺ›rodowiskiem inĹĽynierskim wymagającym peĹ‚nej parametryzacji kaĹĽdego elementu.
 
 ### 1.2 Tryby Pracy
 
-System operuje w trzech rozĹ‚Ä…cznych trybach pracy:
+System operuje w trzech rozĹ‚ącznych trybach pracy:
 
 #### 1.2.1 Tryb Edycji Modelu (MODEL_EDIT)
 
@@ -68,13 +68,13 @@ System operuje w trzech rozĹ‚Ä…cznych trybach pracy:
 | Stan modelu | TYLKO DO ODCZYTU |
 | Stan przypadku | TYLKO DO ODCZYTU |
 | Stan wynikĂłw | AKTYWNE |
-| Dozwolone akcje | PrzeglÄ…danie, eksport, porĂłwnanie |
+| Dozwolone akcje | Przeglądanie, eksport, porĂłwnanie |
 | NakĹ‚adki wynikĂłw | WIDOCZNE |
 | Edycja | ZABLOKOWANA |
 
-### 1.3 ĹšwiadomoĹ›Ä‡ Aktywnego Przypadku Obliczeniowego
+### 1.3 ĹšwiadomoĹ›ć Aktywnego Przypadku Obliczeniowego
 
-System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczeniowego:
+System MUSI utrzymywać Ĺ›wiadomoĹ›ć aktywnego przypadku obliczeniowego:
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -86,9 +86,9 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-**REGUĹA BLOKADY:** Brak aktywnego przypadku â†’ przycisk [Oblicz] NIEAKTYWNY.
+**REGUĹA BLOKADY:** Brak aktywnego przypadku → przycisk [Oblicz] NIEAKTYWNY.
 
-**REGUĹA SPĂ“JNOĹšCI:** Zmiana modelu â†’ stan wszystkich przypadkĂłw = NIEAKTUALNY (STALE).
+**REGUĹA SPĂ“JNOĹšCI:** Zmiana modelu → stan wszystkich przypadkĂłw = NIEAKTUALNY (STALE).
 
 ### 1.4 Deterministyczne UI
 
@@ -109,7 +109,7 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
 | Szyna (Bus) | `SZ-{NR_STACJI}-{NR_SZYNY}` | SZ-ST01-01 |
 | Linia (LineBranch) | `LN-{NAZWA_OD}-{NAZWA_DO}` | LN-ST01-ST02 |
 | Transformator (TransformerBranch) | `TR-{STACJA}-{NR}` | TR-ST01-01 |
-| WyĹ‚Ä…cznik (CircuitBreaker) | `WĹ-{SZYNA}-{NR}` | WĹ-SZ01-01 |
+| WyĹ‚ącznik (CircuitBreaker) | `WĹ-{SZYNA}-{NR}` | WĹ-SZ01-01 |
 | ĹąrĂłdĹ‚o (ExternalGrid) | `ZR-{STACJA}` | ZR-ST01 |
 | Odbiornik (Load) | `OD-{SZYNA}-{NR}` | OD-SZ01-01 |
 | Przypadek zwarciowy | `SC-{NNN}` | SC-001 |
@@ -117,20 +117,20 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
 
 #### 1.4.3 Jednostki (Deterministyczne)
 
-| WielkoĹ›Ä‡ | Jednostka wyĹ›wietlana | Jednostka wewnÄ™trzna |
+| WielkoĹ›ć | Jednostka wyĹ›wietlana | Jednostka wewnętrzna |
 |----------|----------------------|---------------------|
-| NapiÄ™cie znamionowe | kV | V |
-| PrÄ…d znamionowy | A | A |
+| Napięcie znamionowe | kV | V |
+| Prąd znamionowy | A | A |
 | Moc czynna | MW | W |
 | Moc bierna | Mvar | var |
 | Moc pozorna | MVA | VA |
 | Impedancja | Î© | Î© |
 | Reaktancja | Î© | Î© |
 | Rezystancja | Î© | Î© |
-| DĹ‚ugoĹ›Ä‡ | km | m |
+| DĹ‚ugoĹ›ć | km | m |
 | PrzekrĂłj | mmÂ˛ | mmÂ˛ |
 | Czas | ms | ms |
-| Temperatura | Â°C | Â°C |
+| Temperatura | °C | °C |
 | WspĂłĹ‚czynnik mocy | - (bezwymiarowy) | - |
 
 ---
@@ -168,13 +168,13 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
 â”‚               â”‚                                     â”‚                       â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ PANEL KOMUNIKATĂ“W I DIAGNOSTYKI                                             â”‚
-â”‚ [BĹ‚Ä™dy: 0] [OstrzeĹĽenia: 2] [Informacje: 5]                                â”‚
+â”‚ [BĹ‚ędy: 0] [OstrzeĹĽenia: 2] [Informacje: 5]                                â”‚
 â”‚ âš  W-VAL-001 | OstrzeĹĽenie | TR-ST01-01 | PrzekĹ‚adnia poza zakresem normy  â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ KONSOLA OBLICZEĹ                                                            â”‚
 â”‚ > Solver: IEC60909ShortCircuitSolver                                        â”‚
 â”‚ > Walidacja sieci: OK                                                       â”‚
-â”‚ > Iteracja 1: zbieĹĽnoĹ›Ä‡ = 1.2e-4                                           â”‚
+â”‚ > Iteracja 1: zbieĹĽnoĹ›ć = 1.2e-4                                           â”‚
 â”‚ > Obliczenia zakoĹ„czone: 0.34s                                             â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ PASEK STANU                                                                 â”‚
@@ -185,7 +185,7 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
 ### 2.2 Drzewo Projektu (Struktura benchmark)
 
 ```
-â–Ľ đź“ Projekt: "SieÄ‡ SN ZakĹ‚ad PrzemysĹ‚owy"
+â–Ľ đź“ Projekt: "Sieć SN ZakĹ‚ad PrzemysĹ‚owy"
   â”‚
   â”śâ”€â–Ľ đź“ Model sieci
   â”‚   â”‚
@@ -208,13 +208,13 @@ System MUSI utrzymywaÄ‡ Ĺ›wiadomoĹ›Ä‡ aktywnego przypadku obliczenio
   â”‚   â”‚   â”śâ”€ âŠ— TR-GPZ-01 (110/15 kV, 25 MVA)
   â”‚   â”‚   â””â”€ âŠ— TR-GPZ-02 (110/15 kV, 25 MVA)
   â”‚   â”‚
-  â”‚   â”śâ”€â–Ľ đź“ Aparatura Ĺ‚Ä…czeniowa
-  â”‚   â”‚   â”śâ”€ â—Ż WĹ-GPZ-SN-01 (wyĹ‚Ä…cznik)
-  â”‚   â”‚   â”śâ”€ â—Ż WĹ-GPZ-SN-02 (wyĹ‚Ä…cznik)
-  â”‚   â”‚   â””â”€ â”€ RZ-STA-01 (rozĹ‚Ä…cznik)
+  â”‚   â”śâ”€â–Ľ đź“ Aparatura Ĺ‚ączeniowa
+  â”‚   â”‚   â”śâ”€ â—Ż WĹ-GPZ-SN-01 (wyĹ‚ącznik)
+  â”‚   â”‚   â”śâ”€ â—Ż WĹ-GPZ-SN-02 (wyĹ‚ącznik)
+  â”‚   â”‚   â””â”€ â”€ RZ-STA-01 (rozĹ‚ącznik)
   â”‚   â”‚
   â”‚   â”śâ”€â–Ľ đź“ ĹąrĂłdĹ‚a
-  â”‚   â”‚   â””â”€ âšˇ ZR-GPZ (sieÄ‡ zewnÄ™trzna 110 kV)
+  â”‚   â”‚   â””â”€ âšˇ ZR-GPZ (sieć zewnętrzna 110 kV)
   â”‚   â”‚
   â”‚   â””â”€â–Ľ đź“ Odbiorniki
   â”‚       â”śâ”€ â–˝ OD-STA-01 (P=2.5 MW, Q=1.2 Mvar)
@@ -240,7 +240,7 @@ Schemat jednokreskowy (SLD) jest gĹ‚Ăłwnym widokiem graficznym sieci. Reali
 | Funkcja | Tryb Edycji | Tryb WynikĂłw |
 |---------|-------------|--------------|
 | WyĹ›wietlanie topologii | âś“ | âś“ |
-| PrzeciÄ…ganie symboli | âś“ | âś— |
+| Przeciąganie symboli | âś“ | âś— |
 | Dodawanie elementĂłw | âś“ | âś— |
 | Usuwanie elementĂłw | âś“ | âś— |
 | WyĹ›wietlanie nakĹ‚adek wynikĂłw | âś— | âś“ |
@@ -268,13 +268,13 @@ Siatka wĹ‚aĹ›ciwoĹ›ci jest **GĹĂ“WNYM INTERFEJSEM** edycji parame
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ â–Ľ Parametry elektryczne                 â”‚
 â”‚   Moc znamionowa:     [25.0    ] MVA    â”‚
-â”‚   NapiÄ™cie GN:        [110.0   ] kV     â”‚
-â”‚   NapiÄ™cie DN:        [15.0    ] kV     â”‚
-â”‚   Grupa poĹ‚Ä…czeĹ„:     [Dyn11   ] â–Ľ      â”‚
+â”‚   Napięcie GN:        [110.0   ] kV     â”‚
+â”‚   Napięcie DN:        [15.0    ] kV     â”‚
+â”‚   Grupa poĹ‚ączeĹ„:     [Dyn11   ] â–Ľ      â”‚
 â”‚   uk%:                [10.5    ] %      â”‚
 â”‚   Straty Cu (Pk):     [125.0   ] kW     â”‚
 â”‚   Straty Fe (P0):     [25.0    ] kW     â”‚
-â”‚   PrÄ…d jaĹ‚owy (i0%):  [0.5     ] %      â”‚
+â”‚   Prąd jaĹ‚owy (i0%):  [0.5     ] %      â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ â–Ľ Dane znamionowe (tabliczka)           â”‚
 â”‚   Producent:          [ABB         ]    â”‚
@@ -304,12 +304,12 @@ Siatka wĹ‚aĹ›ciwoĹ›ci jest **GĹĂ“WNYM INTERFEJSEM** edycji parame
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ PANEL KOMUNIKATĂ“W                                          [BĹ‚Ä™dy][Ostrz.][Info]â”‚
+â”‚ PANEL KOMUNIKATĂ“W                                          [BĹ‚ędy][Ostrz.][Info]â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ KOD      â”‚ POZIOM   â”‚ ELEMENT        â”‚ WYJAĹšNIENIE                          â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ E-TOP-001â”‚ BĹ‚Ä…d     â”‚ Model sieci    â”‚ SieÄ‡ niespĂłjna: szyna SZ-STA-02     â”‚
-â”‚          â”‚          â”‚                â”‚ nie jest poĹ‚Ä…czona z ĹĽadnÄ… gaĹ‚Ä™ziÄ…   â”‚
+â”‚ E-TOP-001â”‚ BĹ‚ąd     â”‚ Model sieci    â”‚ Sieć niespĂłjna: szyna SZ-STA-02     â”‚
+â”‚          â”‚          â”‚                â”‚ nie jest poĹ‚ączona z ĹĽadną gaĹ‚ęzią   â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ W-VAL-001â”‚OstrzeĹĽenieâ”‚ TR-GPZ-01     â”‚ PrzekĹ‚adnia transformatora (7.33)    â”‚
 â”‚          â”‚          â”‚                â”‚ poza typowym zakresem (1.0-5.0)      â”‚
@@ -323,7 +323,7 @@ Siatka wĹ‚aĹ›ciwoĹ›ci jest **GĹĂ“WNYM INTERFEJSEM** edycji parame
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ KONSOLA OBLICZEĹ                                                    [WyczyĹ›Ä‡]â”‚
+â”‚ KONSOLA OBLICZEĹ                                                    [WyczyĹ›ć]â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [2024-01-15 14:30:01] Inicjalizacja solvera: IEC60909ShortCircuitSolver    â”‚
 â”‚ [2024-01-15 14:30:01] Walidacja modelu sieci...                            â”‚
@@ -331,7 +331,7 @@ Siatka wĹ‚aĹ›ciwoĹ›ci jest **GĹĂ“WNYM INTERFEJSEM** edycji parame
 â”‚ [2024-01-15 14:30:01]   âś“ Wszystkie parametry zdefiniowane                 â”‚
 â”‚ [2024-01-15 14:30:01]   âś“ ĹąrĂłdĹ‚o zdefiniowane                              â”‚
 â”‚ [2024-01-15 14:30:02] Budowanie macierzy admitancyjnej...                  â”‚
-â”‚ [2024-01-15 14:30:02] Obliczanie prÄ…dĂłw zwarciowych...                     â”‚
+â”‚ [2024-01-15 14:30:02] Obliczanie prądĂłw zwarciowych...                     â”‚
 â”‚ [2024-01-15 14:30:02]   Lokalizacja zwarcia: SZ-GPZ-SN                     â”‚
 â”‚ [2024-01-15 14:30:02]   Typ zwarcia: trĂłjfazowe symetryczne                â”‚
 â”‚ [2024-01-15 14:30:02]   Ik" = 12.45 kA                                     â”‚
@@ -345,7 +345,7 @@ Siatka wĹ‚aĹ›ciwoĹ›ci jest **GĹĂ“WNYM INTERFEJSEM** edycji parame
 
 ## 3. Siatka WĹ‚aĹ›ciwoĹ›ci Obiektu (Standard Enterprise)
 
-Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacjÄ™ siatki wĹ‚aĹ›ciwoĹ›ci.
+Dla KAĹ»DEGO typu obiektu w modelu definiuje się kompletną specyfikację siatki wĹ‚aĹ›ciwoĹ›ci.
 
 ### 3.1 Szyna (Bus)
 
@@ -363,15 +363,15 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy szyna jest aktywna w obliczeniach |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.1.3 Grupa: Parametry elektryczne
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| NapiÄ™cie znamionowe | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
+| Napięcie znamionowe | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
 | Typ szyny | enum | - | ZBIORCZA / SEKCYJNA / ODCZEPOWA | ZBIORCZA | Wymagane |
-| PrÄ…d znamionowy | float | A | 100 - 10000 | 1000 | Wymagane, > 0 |
+| Prąd znamionowy | float | A | 100 - 10000 | 1000 | Wymagane, > 0 |
 
 #### 3.1.4 Grupa: Dane znamionowe (tabliczka)
 
@@ -385,18 +385,18 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| U obliczone | float | kV | PowerFlowResult | NapiÄ™cie z rozpĹ‚ywu mocy |
-| KÄ…t napiÄ™cia | float | Â° | PowerFlowResult | KÄ…t fazowy napiÄ™cia |
-| Ik" | float | kA | ShortCircuitResult | PrÄ…d zwarciowy poczÄ…tkowy |
-| ip | float | kA | ShortCircuitResult | PrÄ…d udarowy |
+| U obliczone | float | kV | PowerFlowResult | Napięcie z rozpĹ‚ywu mocy |
+| Kąt napięcia | float | ° | PowerFlowResult | Kąt fazowy napięcia |
+| Ik" | float | kA | ShortCircuitResult | Prąd zwarciowy początkowy |
+| ip | float | kA | ShortCircuitResult | Prąd udarowy |
 
 #### 3.1.6 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-BUS-001 | BĹ‚Ä…d | Un â‰¤ 0 | NapiÄ™cie znamionowe musi byÄ‡ wiÄ™ksze od zera |
-| E-BUS-002 | BĹ‚Ä…d | In â‰¤ 0 | PrÄ…d znamionowy musi byÄ‡ wiÄ™kszy od zera |
-| W-BUS-001 | OstrzeĹĽenie | Brak poĹ‚Ä…czeĹ„ | Szyna nie ma ĹĽadnych poĹ‚Ä…czeĹ„ |
+| E-BUS-001 | BĹ‚ąd | Un â‰¤ 0 | Napięcie znamionowe musi być większe od zera |
+| E-BUS-002 | BĹ‚ąd | In â‰¤ 0 | Prąd znamionowy musi być większy od zera |
+| W-BUS-001 | OstrzeĹĽenie | Brak poĹ‚ączeĹ„ | Szyna nie ma ĹĽadnych poĹ‚ączeĹ„ |
 
 #### 3.1.7 Grupa: Metadane audytowe
 
@@ -425,13 +425,13 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy linia jest aktywna |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.2.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna poczÄ…tkowa (from_bus) | ref:Bus | TAK | Wymagane | Referencja do szyny ĹşrĂłdĹ‚owej |
+| Szyna początkowa (from_bus) | ref:Bus | TAK | Wymagane | Referencja do szyny ĹşrĂłdĹ‚owej |
 | Szyna koĹ„cowa (to_bus) | ref:Bus | TAK | Wymagane | Referencja do szyny docelowej |
 
 #### 3.2.4 Grupa: Parametry elektryczne
@@ -439,34 +439,34 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | Typ przewodu | enum | - | KABEL / NAPOWIETRZNA | KABEL | Wymagane |
-| DĹ‚ugoĹ›Ä‡ | float | km | 0.001 - 1000 | 1.0 | Wymagane, > 0 |
+| DĹ‚ugoĹ›ć | float | km | 0.001 - 1000 | 1.0 | Wymagane, > 0 |
 | Rezystancja jednostkowa R' | float | Î©/km | 0.001 - 10 | 0.125 | Wymagane, > 0 |
 | Reaktancja jednostkowa X' | float | Î©/km | 0.001 - 10 | 0.08 | Wymagane, > 0 |
 | Susceptancja jednostkowa B' | float | ÂµS/km | 0 - 1000 | 0 | â‰Ą 0 |
 | Konduktancja jednostkowa G' | float | ÂµS/km | 0 - 100 | 0 | â‰Ą 0 |
-| PrÄ…d dopuszczalny dĹ‚ugotrwaĹ‚y | float | A | 10 - 5000 | 300 | Wymagane, > 0 |
+| Prąd dopuszczalny dĹ‚ugotrwaĹ‚y | float | A | 10 - 5000 | 300 | Wymagane, > 0 |
 | PrzekrĂłj przewodu | float | mmÂ˛ | 1 - 2000 | 240 | Wymagane, > 0 |
-| Liczba przewodĂłw w wiÄ…zce | int | - | 1 - 4 | 1 | Wymagane, â‰Ą 1 |
+| Liczba przewodĂłw w wiązce | int | - | 1 - 4 | 1 | Wymagane, â‰Ą 1 |
 
 #### 3.2.5 Grupa: Parametry kabla (tylko gdy Typ = KABEL)
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | Typ kabla | string | - | - | XRUHAKXS | - |
-| NapiÄ™cie znamionowe izolacji U0/U | string | kV | - | 8.7/15 | - |
+| Napięcie znamionowe izolacji U0/U | string | kV | - | 8.7/15 | - |
 | SposĂłb uĹ‚oĹĽenia | enum | - | ZIEMIA_BEZPOĹšREDNIO / RURY / KANAĹ | ZIEMIA_BEZPOĹšREDNIO | - |
-| GĹ‚Ä™bokoĹ›Ä‡ uĹ‚oĹĽenia | float | m | 0.5 - 3.0 | 0.7 | - |
-| Temperatura gruntu | float | Â°C | -20 - 50 | 20 | - |
-| RezystywnoĹ›Ä‡ termiczna gruntu | float | KÂ·m/W | 0.5 - 3.0 | 1.0 | - |
+| GĹ‚ębokoĹ›ć uĹ‚oĹĽenia | float | m | 0.5 - 3.0 | 0.7 | - |
+| Temperatura gruntu | float | °C | -20 - 50 | 20 | - |
+| RezystywnoĹ›ć termiczna gruntu | float | KÂ·m/W | 0.5 - 3.0 | 1.0 | - |
 
 #### 3.2.6 Grupa: Parametry linii napowietrznej (tylko gdy Typ = NAPOWIETRZNA)
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | Typ przewodu | string | - | - | AFL-6 | - |
-| Ĺšrednia wysokoĹ›Ä‡ zawieszenia | float | m | 5 - 50 | 10 | - |
-| Ĺšrednia rozpiÄ™toĹ›Ä‡ przÄ™sĹ‚a | float | m | 30 - 500 | 150 | - |
-| Temperatura przewodu | float | Â°C | -30 - 80 | 40 | - |
+| Ĺšrednia wysokoĹ›ć zawieszenia | float | m | 5 - 50 | 10 | - |
+| Ĺšrednia rozpiętoĹ›ć przęsĹ‚a | float | m | 30 - 500 | 150 | - |
+| Temperatura przewodu | float | °C | -30 - 80 | 40 | - |
 
 #### 3.2.7 Grupa: Dane znamionowe (tabliczka)
 
@@ -475,28 +475,28 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Producent | string | TAK | Producent kabla/przewodu |
 | Oznaczenie katalogowe | string | TAK | PeĹ‚ne oznaczenie |
 | Rok instalacji | int | TAK | Rok oddania do eksploatacji |
-| Numer ewidencyjny | string | TAK | Numer wewnÄ™trzny |
+| Numer ewidencyjny | string | TAK | Numer wewnętrzny |
 
 #### 3.2.8 Grupa: WartoĹ›ci obliczeniowe (tylko odczyt)
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| R caĹ‚kowite | float | Î© | Obliczone | R' Ă— dĹ‚ugoĹ›Ä‡ |
-| X caĹ‚kowite | float | Î© | Obliczone | X' Ă— dĹ‚ugoĹ›Ä‡ |
+| R caĹ‚kowite | float | Î© | Obliczone | R' Ă— dĹ‚ugoĹ›ć |
+| X caĹ‚kowite | float | Î© | Obliczone | X' Ă— dĹ‚ugoĹ›ć |
 | Z caĹ‚kowite | float | Î© | Obliczone | âš(RÂ˛ + XÂ˛) |
-| I obliczony | float | A | PowerFlowResult | PrÄ…d z rozpĹ‚ywu |
-| ObciÄ…ĹĽenie | float | % | PowerFlowResult | I/Idop Ă— 100% |
+| I obliczony | float | A | PowerFlowResult | Prąd z rozpĹ‚ywu |
+| ObciąĹĽenie | float | % | PowerFlowResult | I/Idop Ă— 100% |
 | P strat | float | kW | PowerFlowResult | Straty mocy czynnej |
 
 #### 3.2.9 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-LIN-001 | BĹ‚Ä…d | from_bus == null | Szyna poczÄ…tkowa nie jest zdefiniowana |
-| E-LIN-002 | BĹ‚Ä…d | to_bus == null | Szyna koĹ„cowa nie jest zdefiniowana |
-| E-LIN-003 | BĹ‚Ä…d | from_bus == to_bus | Szyna poczÄ…tkowa i koĹ„cowa sÄ… identyczne |
-| E-LIN-004 | BĹ‚Ä…d | dĹ‚ugoĹ›Ä‡ â‰¤ 0 | DĹ‚ugoĹ›Ä‡ linii musi byÄ‡ wiÄ™ksza od zera |
-| W-LIN-001 | OstrzeĹĽenie | ObciÄ…ĹĽenie > 80% | Linia obciÄ…ĹĽona powyĹĽej 80% dopuszczalnego prÄ…du |
+| E-LIN-001 | BĹ‚ąd | from_bus == null | Szyna początkowa nie jest zdefiniowana |
+| E-LIN-002 | BĹ‚ąd | to_bus == null | Szyna koĹ„cowa nie jest zdefiniowana |
+| E-LIN-003 | BĹ‚ąd | from_bus == to_bus | Szyna początkowa i koĹ„cowa są identyczne |
+| E-LIN-004 | BĹ‚ąd | dĹ‚ugoĹ›ć â‰¤ 0 | DĹ‚ugoĹ›ć linii musi być większa od zera |
+| W-LIN-001 | OstrzeĹĽenie | ObciąĹĽenie > 80% | Linia obciąĹĽona powyĹĽej 80% dopuszczalnego prądu |
 
 #### 3.2.10 Grupa: Metadane audytowe
 
@@ -521,39 +521,39 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy transformator jest aktywny |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.3.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna GN (hv_bus) | ref:Bus | TAK | Wymagane | Strona gĂłrnego napiÄ™cia |
-| Szyna DN (lv_bus) | ref:Bus | TAK | Wymagane | Strona dolnego napiÄ™cia |
+| Szyna GN (hv_bus) | ref:Bus | TAK | Wymagane | Strona gĂłrnego napięcia |
+| Szyna DN (lv_bus) | ref:Bus | TAK | Wymagane | Strona dolnego napięcia |
 
 #### 3.3.4 Grupa: Parametry znamionowe
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | Moc znamionowa Sn | float | MVA | 0.05 - 1000 | 25.0 | Wymagane, > 0 |
-| NapiÄ™cie znamionowe GN (Un_hv) | float | kV | 0.4 - 800 | 110.0 | Wymagane, > 0 |
-| NapiÄ™cie znamionowe DN (Un_lv) | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
-| Grupa poĹ‚Ä…czeĹ„ | enum | - | Dyn11 / Yyn0 / Dyn5 / Yd11 / ... | Dyn11 | Wymagane |
-| NapiÄ™cie zwarcia uk% | float | % | 4 - 25 | 10.5 | Wymagane, 4 â‰¤ uk â‰¤ 25 |
-| SkĹ‚adowa czynna napiÄ™cia zwarcia ur% | float | % | 0.1 - 5 | 1.0 | Opcjonalne |
-| Straty obciÄ…ĹĽeniowe (Pk) | float | kW | 1 - 1000 | 125.0 | Wymagane, > 0 |
+| Napięcie znamionowe GN (Un_hv) | float | kV | 0.4 - 800 | 110.0 | Wymagane, > 0 |
+| Napięcie znamionowe DN (Un_lv) | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
+| Grupa poĹ‚ączeĹ„ | enum | - | Dyn11 / Yyn0 / Dyn5 / Yd11 / ... | Dyn11 | Wymagane |
+| Napięcie zwarcia uk% | float | % | 4 - 25 | 10.5 | Wymagane, 4 â‰¤ uk â‰¤ 25 |
+| SkĹ‚adowa czynna napięcia zwarcia ur% | float | % | 0.1 - 5 | 1.0 | Opcjonalne |
+| Straty obciąĹĽeniowe (Pk) | float | kW | 1 - 1000 | 125.0 | Wymagane, > 0 |
 | Straty jaĹ‚owe (P0) | float | kW | 0.1 - 200 | 25.0 | Wymagane, > 0 |
-| PrÄ…d jaĹ‚owy (i0%) | float | % | 0.1 - 5 | 0.5 | Opcjonalne |
+| Prąd jaĹ‚owy (i0%) | float | % | 0.1 - 5 | 0.5 | Opcjonalne |
 
-#### 3.3.5 Grupa: PodobciÄ…ĹĽeniowy przeĹ‚Ä…cznik zaczepĂłw (OLTC)
+#### 3.3.5 Grupa: PodobciąĹĽeniowy przeĹ‚ącznik zaczepĂłw (OLTC)
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | OLTC zainstalowany | boolean | - | - | false | - |
-| Strona przeĹ‚Ä…cznika | enum | - | GN / DN | GN | Gdy OLTC = true |
+| Strona przeĹ‚ącznika | enum | - | GN / DN | GN | Gdy OLTC = true |
 | Liczba zaczepĂłw (gĂłra) | int | - | 0 - 20 | 8 | Gdy OLTC = true |
 | Liczba zaczepĂłw (dĂłĹ‚) | int | - | 0 - 20 | 8 | Gdy OLTC = true |
-| Krok napiÄ™cia na zaczep | float | % | 0.5 - 5 | 1.25 | Gdy OLTC = true |
-| Aktualny zaczep | int | - | -n_low ... +n_high | 0 | Zakres zgodny z liczbÄ… zaczepĂłw |
+| Krok napięcia na zaczep | float | % | 0.5 - 5 | 1.25 | Gdy OLTC = true |
+| Aktualny zaczep | int | - | -n_low ... +n_high | 0 | Zakres zgodny z liczbą zaczepĂłw |
 
 #### 3.3.6 Grupa: Dane znamionowe (tabliczka)
 
@@ -575,21 +575,21 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Rezystancja zwarcia Rk | float | Î© | Obliczone | Pk Ă— UnÂ˛/SnÂ˛ |
 | Reaktancja zwarcia Xk | float | Î© | Obliczone | âš(ZkÂ˛ - RkÂ˛) |
 | PrzekĹ‚adnia nominalna | float | - | Obliczone | Un_hv / Un_lv |
-| PrzekĹ‚adnia rzeczywista | float | - | Obliczone | UwzglÄ™dnia aktualny zaczep |
-| PrÄ…d znamionowy GN | float | A | Obliczone | Sn / (âš3 Ă— Un_hv) |
-| PrÄ…d znamionowy DN | float | A | Obliczone | Sn / (âš3 Ă— Un_lv) |
-| ObciÄ…ĹĽenie | float | % | PowerFlowResult | S/Sn Ă— 100% |
+| PrzekĹ‚adnia rzeczywista | float | - | Obliczone | Uwzględnia aktualny zaczep |
+| Prąd znamionowy GN | float | A | Obliczone | Sn / (âš3 Ă— Un_hv) |
+| Prąd znamionowy DN | float | A | Obliczone | Sn / (âš3 Ă— Un_lv) |
+| ObciąĹĽenie | float | % | PowerFlowResult | S/Sn Ă— 100% |
 | Straty | float | kW | PowerFlowResult | Straty w transformatorze |
 
 #### 3.3.8 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-TRF-001 | BĹ‚Ä…d | hv_bus == null | Szyna GN nie jest zdefiniowana |
-| E-TRF-002 | BĹ‚Ä…d | lv_bus == null | Szyna DN nie jest zdefiniowana |
-| E-TRF-003 | BĹ‚Ä…d | Un_hv â‰¤ Un_lv | NapiÄ™cie GN musi byÄ‡ wiÄ™ksze od napiÄ™cia DN |
-| E-TRF-004 | BĹ‚Ä…d | uk% < 4 lub uk% > 25 | NapiÄ™cie zwarcia poza dopuszczalnym zakresem |
-| W-TRF-001 | OstrzeĹĽenie | ObciÄ…ĹĽenie > 100% | Transformator przeciÄ…ĹĽony |
+| E-TRF-001 | BĹ‚ąd | hv_bus == null | Szyna GN nie jest zdefiniowana |
+| E-TRF-002 | BĹ‚ąd | lv_bus == null | Szyna DN nie jest zdefiniowana |
+| E-TRF-003 | BĹ‚ąd | Un_hv â‰¤ Un_lv | Napięcie GN musi być większe od napięcia DN |
+| E-TRF-004 | BĹ‚ąd | uk% < 4 lub uk% > 25 | Napięcie zwarcia poza dopuszczalnym zakresem |
+| W-TRF-001 | OstrzeĹĽenie | ObciąĹĽenie > 100% | Transformator przeciąĹĽony |
 | W-TRF-002 | OstrzeĹĽenie | PrzekĹ‚adnia > 5 | Nietypowa przekĹ‚adnia transformatora |
 
 #### 3.3.9 Grupa: Metadane audytowe
@@ -618,9 +618,9 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna GN (hv_bus) | ref:Bus | TAK | Wymagane | Strona gĂłrnego napiÄ™cia |
-| Szyna SN (mv_bus) | ref:Bus | TAK | Wymagane | Strona Ĺ›redniego napiÄ™cia |
-| Szyna DN (lv_bus) | ref:Bus | TAK | Wymagane | Strona dolnego napiÄ™cia |
+| Szyna GN (hv_bus) | ref:Bus | TAK | Wymagane | Strona gĂłrnego napięcia |
+| Szyna SN (mv_bus) | ref:Bus | TAK | Wymagane | Strona Ĺ›redniego napięcia |
+| Szyna DN (lv_bus) | ref:Bus | TAK | Wymagane | Strona dolnego napięcia |
 
 #### 3.4.4 Grupa: Parametry znamionowe
 
@@ -629,10 +629,10 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Moc znamionowa GN-SN | float | MVA | 0.05 - 1000 | 40.0 | Wymagane, > 0 |
 | Moc znamionowa GN-DN | float | MVA | 0.05 - 1000 | 25.0 | Wymagane, > 0 |
 | Moc znamionowa SN-DN | float | MVA | 0.05 - 1000 | 25.0 | Wymagane, > 0 |
-| NapiÄ™cie znamionowe GN | float | kV | 0.4 - 800 | 110.0 | Wymagane |
-| NapiÄ™cie znamionowe SN | float | kV | 0.4 - 400 | 30.0 | Wymagane |
-| NapiÄ™cie znamionowe DN | float | kV | 0.4 - 110 | 15.0 | Wymagane |
-| Grupa poĹ‚Ä…czeĹ„ | enum | - | YNyn0d11 / ... | YNyn0d11 | Wymagane |
+| Napięcie znamionowe GN | float | kV | 0.4 - 800 | 110.0 | Wymagane |
+| Napięcie znamionowe SN | float | kV | 0.4 - 400 | 30.0 | Wymagane |
+| Napięcie znamionowe DN | float | kV | 0.4 - 110 | 15.0 | Wymagane |
+| Grupa poĹ‚ączeĹ„ | enum | - | YNyn0d11 / ... | YNyn0d11 | Wymagane |
 | uk% GN-SN | float | % | 4 - 25 | 12.0 | Wymagane |
 | uk% GN-DN | float | % | 4 - 25 | 18.0 | Wymagane |
 | uk% SN-DN | float | % | 4 - 25 | 6.0 | Wymagane |
@@ -653,22 +653,22 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| Zk GN | float | Î© | Obliczone | Impedancja gaĹ‚Ä™zi GN |
-| Zk SN | float | Î© | Obliczone | Impedancja gaĹ‚Ä™zi SN |
-| Zk DN | float | Î© | Obliczone | Impedancja gaĹ‚Ä™zi DN |
-| In GN | float | A | Obliczone | PrÄ…d znamionowy GN |
-| In SN | float | A | Obliczone | PrÄ…d znamionowy SN |
-| In DN | float | A | Obliczone | PrÄ…d znamionowy DN |
+| Zk GN | float | Î© | Obliczone | Impedancja gaĹ‚ęzi GN |
+| Zk SN | float | Î© | Obliczone | Impedancja gaĹ‚ęzi SN |
+| Zk DN | float | Î© | Obliczone | Impedancja gaĹ‚ęzi DN |
+| In GN | float | A | Obliczone | Prąd znamionowy GN |
+| In SN | float | A | Obliczone | Prąd znamionowy SN |
+| In DN | float | A | Obliczone | Prąd znamionowy DN |
 
 #### 3.4.8 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-T3W-001 | BĹ‚Ä…d | Brak szyny GN | Szyna GN nie jest zdefiniowana |
-| E-T3W-002 | BĹ‚Ä…d | Brak szyny SN | Szyna SN nie jest zdefiniowana |
-| E-T3W-003 | BĹ‚Ä…d | Brak szyny DN | Szyna DN nie jest zdefiniowana |
-| E-T3W-004 | BĹ‚Ä…d | Un_hv â‰¤ Un_mv | NapiÄ™cie GN musi byÄ‡ wiÄ™ksze od SN |
-| E-T3W-005 | BĹ‚Ä…d | Un_mv â‰¤ Un_lv | NapiÄ™cie SN musi byÄ‡ wiÄ™ksze od DN |
+| E-T3W-001 | BĹ‚ąd | Brak szyny GN | Szyna GN nie jest zdefiniowana |
+| E-T3W-002 | BĹ‚ąd | Brak szyny SN | Szyna SN nie jest zdefiniowana |
+| E-T3W-003 | BĹ‚ąd | Brak szyny DN | Szyna DN nie jest zdefiniowana |
+| E-T3W-004 | BĹ‚ąd | Un_hv â‰¤ Un_mv | Napięcie GN musi być większe od SN |
+| E-T3W-005 | BĹ‚ąd | Un_mv â‰¤ Un_lv | Napięcie SN musi być większe od DN |
 
 #### 3.4.9 Grupa: Metadane audytowe
 
@@ -676,7 +676,7 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 ---
 
-### 3.5 WyĹ‚Ä…cznik (CircuitBreaker)
+### 3.5 WyĹ‚ącznik (CircuitBreaker)
 
 #### 3.5.1 Grupa: Identyfikacja
 
@@ -686,37 +686,37 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Nazwa | string | TAK | Nazwa (wzorzec: WĹ-{SZYNA}-{NR}) |
 | UUID | UUID | NIE | Globalnie unikalny identyfikator |
 | Typ obiektu | enum | NIE | Switch |
-| Podtyp | enum | NIE | WYĹÄ„CZNIK |
+| Podtyp | enum | NIE | WYĹĄCZNIK |
 
 #### 3.5.2 Grupa: Stan
 
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
-| W eksploatacji | boolean | TAK | true | Czy wyĹ‚Ä…cznik jest zamontowany |
+| W eksploatacji | boolean | TAK | true | Czy wyĹ‚ącznik jest zamontowany |
 | Pozycja | enum | TAK | ZAMKNIÄTY | ZAMKNIÄTY / OTWARTY |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.5.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚Ä…czony |
-| GaĹ‚Ä…Ĺş | ref:Branch | TAK | Opcjonalne | GaĹ‚Ä…Ĺş (linia/transformator) |
+| Szyna | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚ączony |
+| GaĹ‚ąĹş | ref:Branch | TAK | Opcjonalne | GaĹ‚ąĹş (linia/transformator) |
 
 #### 3.5.4 Grupa: Parametry znamionowe
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| NapiÄ™cie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
-| PrÄ…d znamionowy In | float | A | 100 - 10000 | 1250 | Wymagane |
-| Znamionowy prÄ…d wyĹ‚Ä…czalny Ik | float | kA | 5 - 100 | 25.0 | Wymagane |
-| Znamionowy prÄ…d zaĹ‚Ä…czalny Ima | float | kA | 10 - 250 | 63.0 | Wymagane |
-| Znamionowy prÄ…d zwarciowy krĂłtkotrwaĹ‚y Icw | float | kA | 5 - 100 | 25.0 | Wymagane |
+| Napięcie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
+| Prąd znamionowy In | float | A | 100 - 10000 | 1250 | Wymagane |
+| Znamionowy prąd wyĹ‚ączalny Ik | float | kA | 5 - 100 | 25.0 | Wymagane |
+| Znamionowy prąd zaĹ‚ączalny Ima | float | kA | 10 - 250 | 63.0 | Wymagane |
+| Znamionowy prąd zwarciowy krĂłtkotrwaĹ‚y Icw | float | kA | 5 - 100 | 25.0 | Wymagane |
 | Czas wytrzymywania zwarcia tcw | float | s | 0.5 - 3.0 | 1.0 | Wymagane |
-| Czas wĹ‚asny wyĹ‚Ä…czenia | float | ms | 20 - 100 | 60 | Opcjonalne |
+| Czas wĹ‚asny wyĹ‚ączenia | float | ms | 20 - 100 | 60 | Opcjonalne |
 | Czas Ĺ‚ukowy | float | ms | 5 - 50 | 15 | Opcjonalne |
 
-#### 3.5.5 Grupa: Medium gaszÄ…ce
+#### 3.5.5 Grupa: Medium gaszące
 
 | Pole | Typ | Edytowalne | Opis |
 |------|-----|------------|------|
@@ -731,26 +731,26 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Typ | string | TAK | Oznaczenie typu |
 | Rok produkcji | int | TAK | Rok produkcji |
 | Numer seryjny | string | TAK | Numer fabryczny |
-| Licznik operacji | int | TAK | Liczba wykonanych Ĺ‚Ä…czeĹ„ |
-| Resursy mechaniczne | int | TAK | Dopuszczalna liczba Ĺ‚Ä…czeĹ„ |
+| Licznik operacji | int | TAK | Liczba wykonanych Ĺ‚ączeĹ„ |
+| Resursy mechaniczne | int | TAK | Dopuszczalna liczba Ĺ‚ączeĹ„ |
 
 #### 3.5.7 Grupa: WartoĹ›ci obliczeniowe (tylko odczyt)
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| I obliczony | float | A | PowerFlowResult | PrÄ…d pĹ‚ynÄ…cy przez wyĹ‚Ä…cznik |
-| Ik" w miejscu | float | kA | ShortCircuitResult | PrÄ…d zwarciowy w miejscu wyĹ‚Ä…cznika |
+| I obliczony | float | A | PowerFlowResult | Prąd pĹ‚ynący przez wyĹ‚ącznik |
+| Ik" w miejscu | float | kA | ShortCircuitResult | Prąd zwarciowy w miejscu wyĹ‚ącznika |
 | WspĂłĹ‚czynnik wykorzystania | float | % | Obliczone | Ik"/Ik_znamionowy Ă— 100% |
 
 #### 3.5.8 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-CBR-001 | BĹ‚Ä…d | Brak szyny | WyĹ‚Ä…cznik nie jest przyĹ‚Ä…czony do szyny |
-| E-CBR-002 | BĹ‚Ä…d | Ik" > Ik_znam | Znamionowy prÄ…d wyĹ‚Ä…czalny niewystarczajÄ…cy dla prÄ…du zwarciowego |
-| E-CBR-003 | BĹ‚Ä…d | ip > Ima | Znamionowy prÄ…d zaĹ‚Ä…czalny niewystarczajÄ…cy dla prÄ…du udarowego |
-| W-CBR-001 | OstrzeĹĽenie | Wykorzystanie > 80% | WyĹ‚Ä…cznik blisko granicy zdolnoĹ›ci Ĺ‚Ä…czeniowej |
-| W-CBR-002 | OstrzeĹĽenie | Licznik > 80% resursĂłw | WyĹ‚Ä…cznik bliski wyczerpania resursĂłw mechanicznych |
+| E-CBR-001 | BĹ‚ąd | Brak szyny | WyĹ‚ącznik nie jest przyĹ‚ączony do szyny |
+| E-CBR-002 | BĹ‚ąd | Ik" > Ik_znam | Znamionowy prąd wyĹ‚ączalny niewystarczający dla prądu zwarciowego |
+| E-CBR-003 | BĹ‚ąd | ip > Ima | Znamionowy prąd zaĹ‚ączalny niewystarczający dla prądu udarowego |
+| W-CBR-001 | OstrzeĹĽenie | Wykorzystanie > 80% | WyĹ‚ącznik blisko granicy zdolnoĹ›ci Ĺ‚ączeniowej |
+| W-CBR-002 | OstrzeĹĽenie | Licznik > 80% resursĂłw | WyĹ‚ącznik bliski wyczerpania resursĂłw mechanicznych |
 
 #### 3.5.9 Grupa: Metadane audytowe
 
@@ -758,7 +758,7 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 ---
 
-### 3.6 RozĹ‚Ä…cznik (Disconnector)
+### 3.6 RozĹ‚ącznik (Disconnector)
 
 #### 3.6.1 Grupa: Identyfikacja
 
@@ -768,33 +768,33 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Nazwa | string | TAK | Nazwa (wzorzec: RZ-{SZYNA}-{NR}) |
 | UUID | UUID | NIE | Globalnie unikalny identyfikator |
 | Typ obiektu | enum | NIE | Switch |
-| Podtyp | enum | NIE | ROZĹÄ„CZNIK |
+| Podtyp | enum | NIE | ROZĹĄCZNIK |
 
 #### 3.6.2 Grupa: Stan
 
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
-| W eksploatacji | boolean | TAK | true | Czy rozĹ‚Ä…cznik jest zamontowany |
+| W eksploatacji | boolean | TAK | true | Czy rozĹ‚ącznik jest zamontowany |
 | Pozycja | enum | TAK | ZAMKNIÄTY | ZAMKNIÄTY / OTWARTY |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.6.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚Ä…czony |
-| GaĹ‚Ä…Ĺş | ref:Branch | TAK | Opcjonalne | GaĹ‚Ä…Ĺş (linia/transformator) |
+| Szyna | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚ączony |
+| GaĹ‚ąĹş | ref:Branch | TAK | Opcjonalne | GaĹ‚ąĹş (linia/transformator) |
 
 #### 3.6.4 Grupa: Parametry znamionowe
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| NapiÄ™cie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
-| PrÄ…d znamionowy In | float | A | 100 - 10000 | 630 | Wymagane |
-| Znamionowy prÄ…d zwarciowy krĂłtkotrwaĹ‚y Icw | float | kA | 5 - 100 | 25.0 | Wymagane |
+| Napięcie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
+| Prąd znamionowy In | float | A | 100 - 10000 | 630 | Wymagane |
+| Znamionowy prąd zwarciowy krĂłtkotrwaĹ‚y Icw | float | kA | 5 - 100 | 25.0 | Wymagane |
 | Czas wytrzymywania zwarcia tcw | float | s | 0.5 - 3.0 | 1.0 | Wymagane |
-| ZdolnoĹ›Ä‡ zaĹ‚Ä…czania na zwarcie | boolean | - | - | false | - |
-| PrÄ…d zaĹ‚Ä…czalny zwarciowy (jeĹ›li ma zdolnoĹ›Ä‡) | float | kA | 10 - 250 | 0 | Gdy zdolnoĹ›Ä‡ = true |
+| ZdolnoĹ›ć zaĹ‚ączania na zwarcie | boolean | - | - | false | - |
+| Prąd zaĹ‚ączalny zwarciowy (jeĹ›li ma zdolnoĹ›ć) | float | kA | 10 - 250 | 0 | Gdy zdolnoĹ›ć = true |
 
 #### 3.6.5 Grupa: Dane znamionowe (tabliczka)
 
@@ -804,16 +804,16 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| I obliczony | float | A | PowerFlowResult | PrÄ…d pĹ‚ynÄ…cy przez rozĹ‚Ä…cznik |
-| Icw w miejscu | float | kA | ShortCircuitResult | PrÄ…d zwarciowy krĂłtkotrwaĹ‚y |
+| I obliczony | float | A | PowerFlowResult | Prąd pĹ‚ynący przez rozĹ‚ącznik |
+| Icw w miejscu | float | kA | ShortCircuitResult | Prąd zwarciowy krĂłtkotrwaĹ‚y |
 
 #### 3.6.7 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-DSC-001 | BĹ‚Ä…d | Brak szyny | RozĹ‚Ä…cznik nie jest przyĹ‚Ä…czony do szyny |
-| E-DSC-002 | BĹ‚Ä…d | Pozycja OTWARTY podczas rozpĹ‚ywu | RozĹ‚Ä…cznik otwarty powoduje przerwÄ™ w sieci |
-| W-DSC-001 | OstrzeĹĽenie | Icw < Ik" | PrÄ…d zwarciowy krĂłtkotrwaĹ‚y przekracza zdolnoĹ›Ä‡ rozĹ‚Ä…cznika |
+| E-DSC-001 | BĹ‚ąd | Brak szyny | RozĹ‚ącznik nie jest przyĹ‚ączony do szyny |
+| E-DSC-002 | BĹ‚ąd | Pozycja OTWARTY podczas rozpĹ‚ywu | RozĹ‚ącznik otwarty powoduje przerwę w sieci |
+| W-DSC-001 | OstrzeĹĽenie | Icw < Ik" | Prąd zwarciowy krĂłtkotrwaĹ‚y przekracza zdolnoĹ›ć rozĹ‚ącznika |
 
 #### 3.6.8 Grupa: Metadane audytowe
 
@@ -821,7 +821,7 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 ---
 
-### 3.7 SieÄ‡ ZewnÄ™trzna (ExternalGrid)
+### 3.7 Sieć Zewnętrzna (ExternalGrid)
 
 #### 3.7.1 Grupa: Identyfikacja
 
@@ -837,21 +837,21 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy ĹşrĂłdĹ‚o jest aktywne |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.7.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna przyĹ‚Ä…czenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚Ä…czone ĹşrĂłdĹ‚o |
+| Szyna przyĹ‚ączenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚ączone ĹşrĂłdĹ‚o |
 
 #### 3.7.4 Grupa: Parametry znamionowe
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| NapiÄ™cie znamionowe Un | float | kV | 0.4 - 800 | 110.0 | Wymagane |
-| NapiÄ™cie odniesienia (p.u.) | float | p.u. | 0.9 - 1.1 | 1.0 | Wymagane |
-| CzÄ™stotliwoĹ›Ä‡ | float | Hz | 50 / 60 | 50 | Wymagane |
+| Napięcie znamionowe Un | float | kV | 0.4 - 800 | 110.0 | Wymagane |
+| Napięcie odniesienia (p.u.) | float | p.u. | 0.9 - 1.1 | 1.0 | Wymagane |
+| CzęstotliwoĹ›ć | float | Hz | 50 / 60 | 50 | Wymagane |
 
 #### 3.7.5 Grupa: Parametry zwarciowe (zgodnie z IEC 60909)
 
@@ -881,37 +881,37 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| Typ wÄ™zĹ‚a | enum | - | SLACK / PV | SLACK | Wymagane |
+| Typ węzĹ‚a | enum | - | SLACK / PV | SLACK | Wymagane |
 | Moc czynna (gdy PV) | float | MW | -1000 - 1000 | 0 | Gdy typ = PV |
-| NapiÄ™cie zadane (gdy PV) | float | p.u. | 0.9 - 1.1 | 1.0 | Gdy typ = PV |
+| Napięcie zadane (gdy PV) | float | p.u. | 0.9 - 1.1 | 1.0 | Gdy typ = PV |
 
 #### 3.7.8 Grupa: Dane znamionowe (tabliczka)
 
 | Pole | Typ | Edytowalne | Opis |
 |------|-----|------------|------|
 | Operator sieci | string | TAK | Nazwa operatora sieci przesyĹ‚owej/dystrybucyjnej |
-| Punkt przyĹ‚Ä…czenia | string | TAK | Oznaczenie punktu przyĹ‚Ä…czenia |
-| Umowa przyĹ‚Ä…czeniowa | string | TAK | Numer umowy |
+| Punkt przyĹ‚ączenia | string | TAK | Oznaczenie punktu przyĹ‚ączenia |
+| Umowa przyĹ‚ączeniowa | string | TAK | Numer umowy |
 
 #### 3.7.9 Grupa: WartoĹ›ci obliczeniowe (tylko odczyt)
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| Impedancja zwarciowa Zk | float | Î© | Obliczone | Impedancja zastÄ™pcza sieci |
-| Rk | float | Î© | Obliczone | Rezystancja zastÄ™pcza |
-| Xk | float | Î© | Obliczone | Reaktancja zastÄ™pcza |
-| Ik" | float | kA | Obliczone | PrÄ…d zwarciowy poczÄ…tkowy |
-| P wpĹ‚ywajÄ…ce | float | MW | PowerFlowResult | Moc czynna z sieci |
-| Q wpĹ‚ywajÄ…ce | float | Mvar | PowerFlowResult | Moc bierna z sieci |
+| Impedancja zwarciowa Zk | float | Î© | Obliczone | Impedancja zastępcza sieci |
+| Rk | float | Î© | Obliczone | Rezystancja zastępcza |
+| Xk | float | Î© | Obliczone | Reaktancja zastępcza |
+| Ik" | float | kA | Obliczone | Prąd zwarciowy początkowy |
+| P wpĹ‚ywające | float | MW | PowerFlowResult | Moc czynna z sieci |
+| Q wpĹ‚ywające | float | Mvar | PowerFlowResult | Moc bierna z sieci |
 
 #### 3.7.10 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-EXG-001 | BĹ‚Ä…d | Brak szyny | ĹąrĂłdĹ‚o nie jest przyĹ‚Ä…czone do szyny |
-| E-EXG-002 | BĹ‚Ä…d | Sk" â‰¤ 0 | Moc zwarciowa musi byÄ‡ wiÄ™ksza od zera |
-| E-EXG-003 | BĹ‚Ä…d | R/X â‰¤ 0 | Stosunek R/X musi byÄ‡ wiÄ™kszy od zera |
-| W-EXG-001 | OstrzeĹĽenie | Un â‰  Un_szyny | NapiÄ™cie ĹşrĂłdĹ‚a rĂłĹĽni siÄ™ od napiÄ™cia szyny |
+| E-EXG-001 | BĹ‚ąd | Brak szyny | ĹąrĂłdĹ‚o nie jest przyĹ‚ączone do szyny |
+| E-EXG-002 | BĹ‚ąd | Sk" â‰¤ 0 | Moc zwarciowa musi być większa od zera |
+| E-EXG-003 | BĹ‚ąd | R/X â‰¤ 0 | Stosunek R/X musi być większy od zera |
+| W-EXG-001 | OstrzeĹĽenie | Un â‰  Un_szyny | Napięcie ĹşrĂłdĹ‚a rĂłĹĽni się od napięcia szyny |
 
 #### 3.7.11 Grupa: Metadane audytowe
 
@@ -935,13 +935,13 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy generator jest aktywny |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.8.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna przyĹ‚Ä…czenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚Ä…czony |
+| Szyna przyĹ‚ączenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚ączony |
 
 #### 3.8.4 Grupa: Parametry znamionowe
 
@@ -949,10 +949,10 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 |------|-----|-----------|--------|----------|-----------|
 | Moc znamionowa pozorna Sn | float | MVA | 0.1 - 1000 | 10.0 | Wymagane |
 | Moc znamionowa czynna Pn | float | MW | 0.1 - 1000 | 8.0 | Wymagane |
-| NapiÄ™cie znamionowe Un | float | kV | 0.4 - 36 | 6.3 | Wymagane |
+| Napięcie znamionowe Un | float | kV | 0.4 - 36 | 6.3 | Wymagane |
 | WspĂłĹ‚czynnik mocy cos Ď†n | float | - | 0.7 - 1.0 | 0.8 | Wymagane |
-| PrÄ™dkoĹ›Ä‡ obrotowa nn | float | obr/min | 300 - 3600 | 1500 | Wymagane |
-| CzÄ™stotliwoĹ›Ä‡ | float | Hz | 50 / 60 | 50 | Wymagane |
+| PrędkoĹ›ć obrotowa nn | float | obr/min | 300 - 3600 | 1500 | Wymagane |
+| CzęstotliwoĹ›ć | float | Hz | 50 / 60 | 50 | Wymagane |
 
 #### 3.8.5 Grupa: Parametry zwarciowe
 
@@ -970,9 +970,9 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| Typ wÄ™zĹ‚a | enum | - | PV / PQ | PV | Wymagane |
+| Typ węzĹ‚a | enum | - | PV / PQ | PV | Wymagane |
 | Moc czynna zadana P | float | MW | 0 - Pn | 8.0 | Wymagane |
-| NapiÄ™cie zadane (gdy PV) | float | p.u. | 0.9 - 1.1 | 1.0 | Gdy typ = PV |
+| Napięcie zadane (gdy PV) | float | p.u. | 0.9 - 1.1 | 1.0 | Gdy typ = PV |
 | Moc bierna zadana (gdy PQ) | float | Mvar | -Qmax - Qmax | 0 | Gdy typ = PQ |
 | Qmin | float | Mvar | -Sn - 0 | -6.0 | Ograniczenie |
 | Qmax | float | Mvar | 0 - Sn | 6.0 | Ograniczenie |
@@ -992,19 +992,19 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 
 | Pole | Typ | Jednostka | ĹąrĂłdĹ‚o | Opis |
 |------|-----|-----------|--------|------|
-| PrÄ…d znamionowy In | float | A | Obliczone | Sn / (âš3 Ă— Un) |
-| Ik" (wkĹ‚ad do zwarcia) | float | kA | ShortCircuitResult | PrÄ…d zwarciowy poczÄ…tkowy |
+| Prąd znamionowy In | float | A | Obliczone | Sn / (âš3 Ă— Un) |
+| Ik" (wkĹ‚ad do zwarcia) | float | kA | ShortCircuitResult | Prąd zwarciowy początkowy |
 | P generowane | float | MW | PowerFlowResult | Moc czynna |
 | Q generowane | float | Mvar | PowerFlowResult | Moc bierna |
-| ObciÄ…ĹĽenie | float | % | PowerFlowResult | S/Sn Ă— 100% |
+| ObciąĹĽenie | float | % | PowerFlowResult | S/Sn Ă— 100% |
 
 #### 3.8.9 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-GEN-001 | BĹ‚Ä…d | Brak szyny | Generator nie jest przyĹ‚Ä…czony do szyny |
-| E-GEN-002 | BĹ‚Ä…d | Pn > Sn | Moc czynna wiÄ™ksza od mocy pozornej |
-| E-GEN-003 | BĹ‚Ä…d | X"d â‰¤ 0 | Reaktancja subtransientalna musi byÄ‡ > 0 |
+| E-GEN-001 | BĹ‚ąd | Brak szyny | Generator nie jest przyĹ‚ączony do szyny |
+| E-GEN-002 | BĹ‚ąd | Pn > Sn | Moc czynna większa od mocy pozornej |
+| E-GEN-003 | BĹ‚ąd | X"d â‰¤ 0 | Reaktancja subtransientalna musi być > 0 |
 | W-GEN-001 | OstrzeĹĽenie | cos Ď†n < 0.8 | Nietypowy wspĂłĹ‚czynnik mocy |
 
 #### 3.8.10 Grupa: Metadane audytowe
@@ -1029,15 +1029,15 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy odbiornik jest aktywny |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.9.3 Grupa: Topologia
 
 | Pole | Typ | Edytowalne | Walidacja | Opis |
 |------|-----|------------|-----------|------|
-| Szyna przyĹ‚Ä…czenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚Ä…czony |
+| Szyna przyĹ‚ączenia | ref:Bus | TAK | Wymagane | Szyna, do ktĂłrej jest przyĹ‚ączony |
 
-#### 3.9.4 Grupa: Model obciÄ…ĹĽenia
+#### 3.9.4 Grupa: Model obciąĹĽenia
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
@@ -1057,12 +1057,12 @@ Dla KAĹ»DEGO typu obiektu w modelu definiuje siÄ™ kompletnÄ… specyfikacj
 |------|-----|-----------|--------|----------|-----------|
 | Moc bazowa P0 | float | MW | 0 - 1000 | 1.0 | Wymagane |
 | Moc bazowa Q0 | float | Mvar | -1000 - 1000 | 0.5 | Wymagane |
-| NapiÄ™cie bazowe U0 | float | kV | 0.4 - 400 | - | Z szyny |
+| Napięcie bazowe U0 | float | kV | 0.4 - 400 | - | Z szyny |
 | Wsp. impedancji ZIP (ap) | float | - | 0 - 1 | 0.4 | Suma = 1 |
-| Wsp. prÄ…du ZIP (bp) | float | - | 0 - 1 | 0.4 | Suma = 1 |
+| Wsp. prądu ZIP (bp) | float | - | 0 - 1 | 0.4 | Suma = 1 |
 | Wsp. mocy ZIP (cp) | float | - | 0 - 1 | 0.2 | Suma = 1 |
 | Wsp. impedancji ZIQ (aq) | float | - | 0 - 1 | 0.4 | Suma = 1 |
-| Wsp. prÄ…du ZIQ (bq) | float | - | 0 - 1 | 0.4 | Suma = 1 |
+| Wsp. prądu ZIQ (bq) | float | - | 0 - 1 | 0.4 | Suma = 1 |
 | Wsp. mocy ZIQ (cq) | float | - | 0 - 1 | 0.2 | Suma = 1 |
 
 **WzĂłr ZIP:**
@@ -1076,9 +1076,9 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
 | Moc znamionowa silnika Pn | float | kW | 0.1 - 10000 | 100 | Wymagane |
-| SprawnoĹ›Ä‡ Î· | float | % | 70 - 98 | 95 | Wymagane |
+| SprawnoĹ›ć Î· | float | % | 70 - 98 | 95 | Wymagane |
 | WspĂłĹ‚czynnik mocy cos Ď† | float | - | 0.7 - 0.95 | 0.85 | Wymagane |
-| PrÄ…d rozruchowy Ir/In | float | - | 4 - 8 | 6 | Wymagane |
+| Prąd rozruchowy Ir/In | float | - | 4 - 8 | 6 | Wymagane |
 | WspĂłĹ‚czynnik mocy rozruchowy cos Ď†r | float | - | 0.1 - 0.4 | 0.2 | Wymagane |
 | Stosunek Ik"/In | float | - | 4 - 10 | 6.5 | Dla obliczeĹ„ zwarciowych |
 
@@ -1086,7 +1086,7 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 
 | Pole | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|-----|-----------|--------|----------|-----------|
-| UwzglÄ™dnij w zwarciu | boolean | - | - | true | Dla silnikĂłw |
+| Uwzględnij w zwarciu | boolean | - | - | true | Dla silnikĂłw |
 | WkĹ‚ad do Ik" | enum | - | PEĹNY / ZREDUKOWANY / BRAK | PEĹNY | Zgodnie z IEC 60909 |
 
 #### 3.9.9 Grupa: Dane znamionowe (tabliczka)
@@ -1094,7 +1094,7 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 | Pole | Typ | Edytowalne | Opis |
 |------|-----|------------|------|
 | Opis odbiornika | string | TAK | Opis funkcjonalny |
-| Numer ewidencyjny | string | TAK | Numer wewnÄ™trzny |
+| Numer ewidencyjny | string | TAK | Numer wewnętrzny |
 | Lokalizacja | string | TAK | Miejsce instalacji |
 
 #### 3.9.10 Grupa: WartoĹ›ci obliczeniowe (tylko odczyt)
@@ -1104,16 +1104,16 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 | P obliczone | float | MW | PowerFlowResult | Moc czynna pobierana |
 | Q obliczone | float | Mvar | PowerFlowResult | Moc bierna pobierana |
 | S obliczone | float | MVA | PowerFlowResult | Moc pozorna |
-| I obliczony | float | A | PowerFlowResult | PrÄ…d pobierany |
+| I obliczony | float | A | PowerFlowResult | Prąd pobierany |
 | Ik" (wkĹ‚ad silnikĂłw) | float | kA | ShortCircuitResult | Tylko dla modelu silnikowego |
 
 #### 3.9.11 Grupa: Stan walidacji
 
 | Kod | Poziom | Warunek | Komunikat |
 |-----|--------|---------|-----------|
-| E-LOD-001 | BĹ‚Ä…d | Brak szyny | Odbiornik nie jest przyĹ‚Ä…czony do szyny |
-| E-LOD-002 | BĹ‚Ä…d | P < 0 | Moc czynna odbiornika nie moĹĽe byÄ‡ ujemna |
-| E-LOD-003 | BĹ‚Ä…d | ZIP: suma â‰  1 | WspĂłĹ‚czynniki ZIP muszÄ… sumowaÄ‡ siÄ™ do 1 |
+| E-LOD-001 | BĹ‚ąd | Brak szyny | Odbiornik nie jest przyĹ‚ączony do szyny |
+| E-LOD-002 | BĹ‚ąd | P < 0 | Moc czynna odbiornika nie moĹĽe być ujemna |
+| E-LOD-003 | BĹ‚ąd | ZIP: suma â‰  1 | WspĂłĹ‚czynniki ZIP muszą sumować się do 1 |
 | W-LOD-001 | OstrzeĹĽenie | cos Ď† < 0.85 | Niski wspĂłĹ‚czynnik mocy |
 
 #### 3.9.12 Grupa: Metadane audytowe
@@ -1122,7 +1122,7 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 
 ---
 
-### 3.10 Stacja (Substation) â€” obiekt grupujÄ…cy
+### 3.10 Stacja (Substation) — obiekt grupujący
 
 #### 3.10.1 Grupa: Identyfikacja
 
@@ -1138,13 +1138,13 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 | Pole | Typ | Edytowalne | DomyĹ›lna | Opis |
 |------|-----|------------|----------|------|
 | W eksploatacji | boolean | TAK | true | Czy stacja jest aktywna |
-| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹÄ„CZONY |
+| Stan cyklu ĹĽycia | enum | TAK | AKTYWNY | PROJEKTOWANY / AKTYWNY / WYĹĄCZONY |
 
 #### 3.10.3 Grupa: Lokalizacja
 
 | Pole | Typ | Edytowalne | Opis |
 |------|-----|------------|------|
-| WspĂłĹ‚rzÄ™dne GPS | (float, float) | TAK | SzerokoĹ›Ä‡, dĹ‚ugoĹ›Ä‡ geograficzna |
+| WspĂłĹ‚rzędne GPS | (float, float) | TAK | SzerokoĹ›ć, dĹ‚ugoĹ›ć geograficzna |
 | Adres | string | TAK | Adres pocztowy |
 | DziaĹ‚ka | string | TAK | Numer dziaĹ‚ki ewidencyjnej |
 
@@ -1152,7 +1152,7 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 
 | Pole | Typ | Opis |
 |------|-----|------|
-| Szyny | list:Bus | Lista szyn naleĹĽÄ…cych do stacji |
+| Szyny | list:Bus | Lista szyn naleĹĽących do stacji |
 | Transformatory | list:Transformer | Lista transformatorĂłw |
 | Pola rozdzielcze | int | Liczba pĂłl |
 
@@ -1161,7 +1161,7 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 | Pole | Typ | Edytowalne | Opis |
 |------|-----|------------|------|
 | Typ stacji | enum | TAK | GPZ / RPZ / STACJA_KOĹCOWA / ROZDZIELNIA |
-| Poziomy napiÄ™Ä‡ | string | TAK | np. "110/15 kV" |
+| Poziomy napięć | string | TAK | np. "110/15 kV" |
 | Moc zainstalowana | float | TAK | MVA |
 | WĹ‚aĹ›ciciel | string | TAK | Operator/wĹ‚aĹ›ciciel |
 | Rok budowy | int | TAK | Rok oddania do eksploatacji |
@@ -1174,13 +1174,13 @@ Q = Q0 Ă— [aqĂ—(U/U0)Â˛ + bqĂ—(U/U0) + cq]
 
 ## 4. Menu Kontekstowe
 
-Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ™pne po klikniÄ™ciu prawym przyciskiem myszy. Menu MUSZÄ„ byÄ‡ w jÄ™zyku polskim.
+Dla KAĹ»DEGO typu obiektu definiuje się peĹ‚ne menu kontekstowe dostępne po kliknięciu prawym przyciskiem myszy. Menu MUSZĄ być w języku polskim.
 
 ### 4.1 Menu Kontekstowe: Projekt
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ đź“ Projekt: "SieÄ‡ SN ZakĹ‚ad"            â”‚
+â”‚ đź“ Projekt: "Sieć SN ZakĹ‚ad"            â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ Nowy projekt...                         â”‚
 â”‚ OtwĂłrz projekt...                       â”‚
@@ -1199,9 +1199,9 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
 | Nowy projekt... | âś“ | âś— | Tworzy nowy projekt |
-| OtwĂłrz projekt... | âś“ | âś— | Otwiera istniejÄ…cy projekt |
+| OtwĂłrz projekt... | âś“ | âś— | Otwiera istniejący projekt |
 | Zapisz projekt | âś“ | âś“ | Zapisuje stan projektu |
-| Zapisz jako... | âś“ | âś“ | Zapisuje kopiÄ™ projektu |
+| Zapisz jako... | âś“ | âś“ | Zapisuje kopię projektu |
 | WĹ‚aĹ›ciwoĹ›ci projektu... | âś“ | âś“ (RO) | Otwiera dialog wĹ‚aĹ›ciwoĹ›ci |
 | Eksportuj do benchmark... | âś“ | âś“ | Eksportuje model do formatu PF |
 | Eksportuj do CIM... | âś“ | âś“ | Eksportuje do formatu CIM |
@@ -1214,14 +1214,14 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”‚ đź“ Model sieci                          â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ â–¶ Dodaj                                 â”‚
-â”‚   â”śâ”€ StacjÄ™...                          â”‚
-â”‚   â”śâ”€ SzynÄ™...                           â”‚
-â”‚   â”śâ”€ LiniÄ™/kabel...                     â”‚
+â”‚   â”śâ”€ Stację...                          â”‚
+â”‚   â”śâ”€ Szynę...                           â”‚
+â”‚   â”śâ”€ Linię/kabel...                     â”‚
 â”‚   â”śâ”€ Transformator 2-uzwojeniowy...     â”‚
 â”‚   â”śâ”€ Transformator 3-uzwojeniowy...     â”‚
-â”‚   â”śâ”€ WyĹ‚Ä…cznik...                       â”‚
-â”‚   â”śâ”€ RozĹ‚Ä…cznik...                      â”‚
-â”‚   â”śâ”€ ĹąrĂłdĹ‚o (sieÄ‡ zewnÄ™trzna)...        â”‚
+â”‚   â”śâ”€ WyĹ‚ącznik...                       â”‚
+â”‚   â”śâ”€ RozĹ‚ącznik...                      â”‚
+â”‚   â”śâ”€ ĹąrĂłdĹ‚o (sieć zewnętrzna)...        â”‚
 â”‚   â”śâ”€ Generator...                       â”‚
 â”‚   â””â”€ Odbiornik...                       â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
@@ -1235,12 +1235,12 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| Dodaj > StacjÄ™... | âś“ | âś— | Otwiera kreator stacji |
-| Dodaj > SzynÄ™... | âś“ | âś— | Otwiera kreator szyny |
-| Dodaj > LiniÄ™/kabel... | âś“ | âś— | Otwiera kreator linii |
+| Dodaj > Stację... | âś“ | âś— | Otwiera kreator stacji |
+| Dodaj > Szynę... | âś“ | âś— | Otwiera kreator szyny |
+| Dodaj > Linię/kabel... | âś“ | âś— | Otwiera kreator linii |
 | Dodaj > Transformator... | âś“ | âś— | Otwiera kreator transformatora |
-| Dodaj > WyĹ‚Ä…cznik... | âś“ | âś— | Otwiera kreator wyĹ‚Ä…cznika |
-| Dodaj > RozĹ‚Ä…cznik... | âś“ | âś— | Otwiera kreator rozĹ‚Ä…cznika |
+| Dodaj > WyĹ‚ącznik... | âś“ | âś— | Otwiera kreator wyĹ‚ącznika |
+| Dodaj > RozĹ‚ącznik... | âś“ | âś— | Otwiera kreator rozĹ‚ącznika |
 | Dodaj > ĹąrĂłdĹ‚o... | âś“ | âś— | Otwiera kreator ĹşrĂłdĹ‚a |
 | Dodaj > Generator... | âś“ | âś— | Otwiera kreator generatora |
 | Dodaj > Odbiornik... | âś“ | âś— | Otwiera kreator odbiornika |
@@ -1257,7 +1257,7 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ â–¶ Dodaj do stacji                       â”‚
-â”‚   â”śâ”€ SzynÄ™...                           â”‚
+â”‚   â”śâ”€ Szynę...                           â”‚
 â”‚   â”śâ”€ Transformator...                   â”‚
 â”‚   â”śâ”€ Pole rozdzielcze...                â”‚
 â”‚   â””â”€ WyposaĹĽenie pomocnicze...          â”‚
@@ -1267,21 +1267,21 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Kopiuj stacjÄ™...                        â”‚
+â”‚ Kopiuj stację...                        â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ UsuĹ„ stacjÄ™...                          â”‚
+â”‚ UsuĹ„ stację...                          â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
 | Dodaj do stacji > ... | âś“ | âś— | Dodaje element do stacji |
 | PokaĹĽ elementy stacji | âś“ | âś“ | Filtruje drzewo do elementĂłw stacji |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na stacji |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
-| Kopiuj stacjÄ™... | âś“ | âś— | Tworzy kopiÄ™ stacji z elementami |
-| UsuĹ„ stacjÄ™... | âś“ | âś— | Usuwa stacjÄ™ (z potwierdzeniem) |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
+| Kopiuj stację... | âś“ | âś— | Tworzy kopię stacji z elementami |
+| UsuĹ„ stację... | âś“ | âś— | Usuwa stację (z potwierdzeniem) |
 
 ### 4.4 Menu Kontekstowe: Szyna
 
@@ -1291,35 +1291,35 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ â–¶ PodĹ‚Ä…cz do szyny                      â”‚
-â”‚   â”śâ”€ LiniÄ™/kabel...                     â”‚
+â”‚ â–¶ PodĹ‚ącz do szyny                      â”‚
+â”‚   â”śâ”€ Linię/kabel...                     â”‚
 â”‚   â”śâ”€ Transformator...                   â”‚
-â”‚   â”śâ”€ WyĹ‚Ä…cznik...                       â”‚
-â”‚   â”śâ”€ RozĹ‚Ä…cznik...                      â”‚
+â”‚   â”śâ”€ WyĹ‚ącznik...                       â”‚
+â”‚   â”śâ”€ RozĹ‚ącznik...                      â”‚
 â”‚   â”śâ”€ ĹąrĂłdĹ‚o...                          â”‚
 â”‚   â”śâ”€ Generator...                       â”‚
 â”‚   â””â”€ Odbiornik...                       â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ PokaĹĽ poĹ‚Ä…czone elementy                â”‚
+â”‚ PokaĹĽ poĹ‚ączone elementy                â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Ustaw jako lokalizacjÄ™ zwarcia          â”‚
+â”‚ Ustaw jako lokalizację zwarcia          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ UsuĹ„ szynÄ™...                           â”‚
+â”‚ UsuĹ„ szynę...                           â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| PodĹ‚Ä…cz do szyny > ... | âś“ | âś— | Tworzy nowy element poĹ‚Ä…czony z szynÄ… |
-| PokaĹĽ poĹ‚Ä…czone elementy | âś“ | âś“ | WyĹ›wietla listÄ™ poĹ‚Ä…czonych elementĂłw |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| PodĹ‚ącz do szyny > ... | âś“ | âś— | Tworzy nowy element poĹ‚ączony z szyną |
+| PokaĹĽ poĹ‚ączone elementy | âś“ | âś“ | WyĹ›wietla listę poĹ‚ączonych elementĂłw |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na szynie |
-| Ustaw jako lokalizacjÄ™ zwarcia | âś“ | âś— | Ustawia szynÄ™ jako fault_location w aktywnym przypadku |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
-| UsuĹ„ szynÄ™... | âś“ | âś— | Usuwa szynÄ™ (sprawdza poĹ‚Ä…czenia) |
+| Ustaw jako lokalizację zwarcia | âś“ | âś— | Ustawia szynę jako fault_location w aktywnym przypadku |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
+| UsuĹ„ szynę... | âś“ | âś— | Usuwa szynę (sprawdza poĹ‚ączenia) |
 
 ### 4.5 Menu Kontekstowe: Linia/Kabel
 
@@ -1329,8 +1329,8 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™ poczÄ…tkowÄ…...               â”‚
-â”‚ ZmieĹ„ szynÄ™ koĹ„cowÄ…...                  â”‚
+â”‚ ZmieĹ„ szynę początkową...               â”‚
+â”‚ ZmieĹ„ szynę koĹ„cową...                  â”‚
 â”‚ ZamieĹ„ kierunek                         â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
@@ -1339,23 +1339,23 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Podziel liniÄ™...                        â”‚
+â”‚ Podziel linię...                        â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ UsuĹ„ liniÄ™...                           â”‚
+â”‚ UsuĹ„ linię...                           â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| ZmieĹ„ szynÄ™ poczÄ…tkowÄ…... | âś“ | âś— | Otwiera selektor szyny |
-| ZmieĹ„ szynÄ™ koĹ„cowÄ…... | âś“ | âś— | Otwiera selektor szyny |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| ZmieĹ„ szynę początkową... | âś“ | âś— | Otwiera selektor szyny |
+| ZmieĹ„ szynę koĹ„cową... | âś“ | âś— | Otwiera selektor szyny |
 | ZamieĹ„ kierunek | âś“ | âś— | Zamienia from_bus i to_bus |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na linii |
 | Edytor impedancji... | âś“ | âś— | Otwiera zaawansowany edytor impedancji |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
-| Podziel liniÄ™... | âś“ | âś— | Dzieli liniÄ™ na dwie czÄ™Ĺ›ci |
-| UsuĹ„ liniÄ™... | âś“ | âś— | Usuwa liniÄ™ (z potwierdzeniem) |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
+| Podziel linię... | âś“ | âś— | Dzieli linię na dwie częĹ›ci |
+| UsuĹ„ linię... | âś“ | âś— | Usuwa linię (z potwierdzeniem) |
 
 ### 4.6 Menu Kontekstowe: Transformator
 
@@ -1365,8 +1365,8 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™ GN...                       â”‚
-â”‚ ZmieĹ„ szynÄ™ DN...                       â”‚
+â”‚ ZmieĹ„ szynę GN...                       â”‚
+â”‚ ZmieĹ„ szynę DN...                       â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
@@ -1383,86 +1383,86 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| ZmieĹ„ szynÄ™ GN... | âś“ | âś— | Otwiera selektor szyny |
-| ZmieĹ„ szynÄ™ DN... | âś“ | âś— | Otwiera selektor szyny |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| ZmieĹ„ szynę GN... | âś“ | âś— | Otwiera selektor szyny |
+| ZmieĹ„ szynę DN... | âś“ | âś— | Otwiera selektor szyny |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na transformatorze |
 | SzczegĂłĹ‚owy model transformatora... | âś“ | âś— | Otwiera modal zaawansowany |
-| Konfiguracja OLTC... | âś“ | âś— | Otwiera konfiguracjÄ™ OLTC |
+| Konfiguracja OLTC... | âś“ | âś— | Otwiera konfigurację OLTC |
 | Ustaw zaczep | âś“ | âś— | Zmienia aktualny zaczep |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
 | UsuĹ„ transformator... | âś“ | âś— | Usuwa transformator (z potwierdzeniem) |
 
-### 4.7 Menu Kontekstowe: WyĹ‚Ä…cznik
+### 4.7 Menu Kontekstowe: WyĹ‚ącznik
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ â—Ż WyĹ‚Ä…cznik: WĹ-GPZ-SN-01               â”‚
+â”‚ â—Ż WyĹ‚ącznik: WĹ-GPZ-SN-01               â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ Pozycja: ZAMKNIJ                        â”‚
 â”‚ Pozycja: OTWĂ“RZ                         â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™...                          â”‚
-â”‚ ZmieĹ„ gaĹ‚Ä…Ĺş...                          â”‚
+â”‚ ZmieĹ„ szynę...                          â”‚
+â”‚ ZmieĹ„ gaĹ‚ąĹş...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ SprawdĹş zdolnoĹ›Ä‡ Ĺ‚Ä…czeniowÄ…...          â”‚
+â”‚ SprawdĹş zdolnoĹ›ć Ĺ‚ączeniową...          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ UsuĹ„ wyĹ‚Ä…cznik...                       â”‚
+â”‚ UsuĹ„ wyĹ‚ącznik...                       â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| Pozycja: ZAMKNIJ | âś“ | âś— | Ustawia pozycjÄ™ = ZAMKNIÄTY |
-| Pozycja: OTWĂ“RZ | âś“ | âś— | Ustawia pozycjÄ™ = OTWARTY |
-| ZmieĹ„ szynÄ™... | âś“ | âś— | Otwiera selektor szyny |
-| ZmieĹ„ gaĹ‚Ä…Ĺş... | âś“ | âś— | Otwiera selektor gaĹ‚Ä™zi |
-| PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na wyĹ‚Ä…czniku |
-| SprawdĹş zdolnoĹ›Ä‡ Ĺ‚Ä…czeniowÄ…... | âś“ | âś“ | PorĂłwnuje Ik" z parametrami znamionowymi |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
-| UsuĹ„ wyĹ‚Ä…cznik... | âś“ | âś— | Usuwa wyĹ‚Ä…cznik (z potwierdzeniem) |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| Pozycja: ZAMKNIJ | âś“ | âś— | Ustawia pozycję = ZAMKNIÄTY |
+| Pozycja: OTWĂ“RZ | âś“ | âś— | Ustawia pozycję = OTWARTY |
+| ZmieĹ„ szynę... | âś“ | âś— | Otwiera selektor szyny |
+| ZmieĹ„ gaĹ‚ąĹş... | âś“ | âś— | Otwiera selektor gaĹ‚ęzi |
+| PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na wyĹ‚ączniku |
+| SprawdĹş zdolnoĹ›ć Ĺ‚ączeniową... | âś“ | âś“ | PorĂłwnuje Ik" z parametrami znamionowymi |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
+| UsuĹ„ wyĹ‚ącznik... | âś“ | âś— | Usuwa wyĹ‚ącznik (z potwierdzeniem) |
 
-### 4.8 Menu Kontekstowe: RozĹ‚Ä…cznik
+### 4.8 Menu Kontekstowe: RozĹ‚ącznik
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ â”€ RozĹ‚Ä…cznik: RZ-STA-01                 â”‚
+â”‚ â”€ RozĹ‚ącznik: RZ-STA-01                 â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ Pozycja: ZAMKNIJ                        â”‚
 â”‚ Pozycja: OTWĂ“RZ                         â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™...                          â”‚
-â”‚ ZmieĹ„ gaĹ‚Ä…Ĺş...                          â”‚
+â”‚ ZmieĹ„ szynę...                          â”‚
+â”‚ ZmieĹ„ gaĹ‚ąĹş...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ UsuĹ„ rozĹ‚Ä…cznik...                      â”‚
+â”‚ UsuĹ„ rozĹ‚ącznik...                      â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| Pozycja: ZAMKNIJ | âś“ | âś— | Ustawia pozycjÄ™ = ZAMKNIÄTY |
-| Pozycja: OTWĂ“RZ | âś“ | âś— | Ustawia pozycjÄ™ = OTWARTY |
-| ZmieĹ„ szynÄ™... | âś“ | âś— | Otwiera selektor szyny |
-| ZmieĹ„ gaĹ‚Ä…Ĺş... | âś“ | âś— | Otwiera selektor gaĹ‚Ä™zi |
-| PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na rozĹ‚Ä…czniku |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
-| UsuĹ„ rozĹ‚Ä…cznik... | âś“ | âś— | Usuwa rozĹ‚Ä…cznik (z potwierdzeniem) |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| Pozycja: ZAMKNIJ | âś“ | âś— | Ustawia pozycję = ZAMKNIÄTY |
+| Pozycja: OTWĂ“RZ | âś“ | âś— | Ustawia pozycję = OTWARTY |
+| ZmieĹ„ szynę... | âś“ | âś— | Otwiera selektor szyny |
+| ZmieĹ„ gaĹ‚ąĹş... | âś“ | âś— | Otwiera selektor gaĹ‚ęzi |
+| PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na rozĹ‚ączniku |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
+| UsuĹ„ rozĹ‚ącznik... | âś“ | âś— | Usuwa rozĹ‚ącznik (z potwierdzeniem) |
 
-### 4.9 Menu Kontekstowe: ĹąrĂłdĹ‚o (SieÄ‡ ZewnÄ™trzna)
+### 4.9 Menu Kontekstowe: ĹąrĂłdĹ‚o (Sieć Zewnętrzna)
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -1470,13 +1470,13 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia...             â”‚
+â”‚ ZmieĹ„ szynę przyĹ‚ączenia...             â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ Model zwarciowy ĹşrĂłdĹ‚a...               â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Ustaw jako wÄ™zeĹ‚ bilansujÄ…cy (SLACK)    â”‚
+â”‚ Ustaw jako węzeĹ‚ bilansujący (SLACK)    â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
@@ -1486,12 +1486,12 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia... | âś“ | âś— | Otwiera selektor szyny |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| ZmieĹ„ szynę przyĹ‚ączenia... | âś“ | âś— | Otwiera selektor szyny |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na ĹşrĂłdle |
 | Model zwarciowy ĹşrĂłdĹ‚a... | âś“ | âś— | Otwiera modal modelu zwarciowego |
-| Ustaw jako wÄ™zeĹ‚ bilansujÄ…cy | âś“ | âś— | Ustawia typ wÄ™zĹ‚a = SLACK |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
+| Ustaw jako węzeĹ‚ bilansujący | âś“ | âś— | Ustawia typ węzĹ‚a = SLACK |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
 | UsuĹ„ ĹşrĂłdĹ‚o... | âś“ | âś— | Usuwa ĹşrĂłdĹ‚o (sprawdza czy nie jedyne) |
 
 ### 4.10 Menu Kontekstowe: Generator
@@ -1502,14 +1502,14 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia...             â”‚
+â”‚ ZmieĹ„ szynę przyĹ‚ączenia...             â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ Parametry zwarciowe generatora...       â”‚
 â”‚ Krzywa zdolnoĹ›ci (PQ diagram)...        â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Ustaw moc zadanÄ…...                     â”‚
+â”‚ Ustaw moc zadaną...                     â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
@@ -1519,13 +1519,13 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia... | âś“ | âś— | Otwiera selektor szyny |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| ZmieĹ„ szynę przyĹ‚ączenia... | âś“ | âś— | Otwiera selektor szyny |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na generatorze |
 | Parametry zwarciowe generatora... | âś“ | âś— | Otwiera modal parametrĂłw zwarciowych |
 | Krzywa zdolnoĹ›ci... | âś“ | âś“ | WyĹ›wietla diagram PQ generatora |
-| Ustaw moc zadanÄ…... | âś“ | âś— | Otwiera dialog ustawienia mocy P, Q |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
+| Ustaw moc zadaną... | âś“ | âś— | Otwiera dialog ustawienia mocy P, Q |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
 | UsuĹ„ generator... | âś“ | âś— | Usuwa generator (z potwierdzeniem) |
 
 ### 4.11 Menu Kontekstowe: Odbiornik
@@ -1536,16 +1536,16 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ‚aĹ›ciwoĹ›ci...                          â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia...             â”‚
+â”‚ ZmieĹ„ szynę przyĹ‚ączenia...             â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ PokaĹĽ na schemacie                      â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Model obciÄ…ĹĽenia...                     â”‚
+â”‚ Model obciąĹĽenia...                     â”‚
 â”‚   â”śâ”€ Model PQ                           â”‚
 â”‚   â”śâ”€ Model ZIP                          â”‚
 â”‚   â””â”€ Model silnikowy                    â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
-â”‚ Ustaw moc zadanÄ…...                     â”‚
+â”‚ Ustaw moc zadaną...                     â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
 â”‚ W eksploatacji                     [âś“]  â”‚
 â”‚ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ â”‚
@@ -1555,14 +1555,14 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkÄ™ wĹ‚aĹ›ciwoĹ›ci |
-| ZmieĹ„ szynÄ™ przyĹ‚Ä…czenia... | âś“ | âś— | Otwiera selektor szyny |
+| WĹ‚aĹ›ciwoĹ›ci... | âś“ | âś“ (RO) | Otwiera siatkę wĹ‚aĹ›ciwoĹ›ci |
+| ZmieĹ„ szynę przyĹ‚ączenia... | âś“ | âś— | Otwiera selektor szyny |
 | PokaĹĽ na schemacie | âś“ | âś“ | Centruje widok na odbiorniku |
-| Model obciÄ…ĹĽenia > Model PQ | âś“ | âś— | Ustawia typ modelu = PQ |
-| Model obciÄ…ĹĽenia > Model ZIP | âś“ | âś— | Ustawia typ modelu = ZIP |
-| Model obciÄ…ĹĽenia > Model silnikowy | âś“ | âś— | Ustawia typ modelu = SILNIK |
-| Ustaw moc zadanÄ…... | âś“ | âś— | Otwiera dialog ustawienia mocy P, Q |
-| W eksploatacji | âś“ | âś— | PrzeĹ‚Ä…cza stan in_service |
+| Model obciąĹĽenia > Model PQ | âś“ | âś— | Ustawia typ modelu = PQ |
+| Model obciąĹĽenia > Model ZIP | âś“ | âś— | Ustawia typ modelu = ZIP |
+| Model obciąĹĽenia > Model silnikowy | âś“ | âś— | Ustawia typ modelu = SILNIK |
+| Ustaw moc zadaną... | âś“ | âś— | Otwiera dialog ustawienia mocy P, Q |
+| W eksploatacji | âś“ | âś— | PrzeĹ‚ącza stan in_service |
 | UsuĹ„ odbiornik... | âś“ | âś— | Usuwa odbiornik (z potwierdzeniem) |
 
 ### 4.12 Menu Kontekstowe: Przypadek Obliczeniowy
@@ -1593,10 +1593,10 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 | WĹ‚aĹ›ciwoĹ›ci przypadku... | âś“ | âś“ (RO) | Otwiera parametry przypadku |
 | Ustaw jako aktywny | âś“ | âś“ | Ustawia przypadek jako aktywny |
 | Oblicz | âś“ | âś“ | Uruchamia solver dla przypadku |
-| PokaĹĽ wyniki | âś“ (gdy dostÄ™pne) | âś“ | PrzeĹ‚Ä…cza do trybu wynikĂłw |
-| Klonuj przypadek... | âś“ | âś“ | Tworzy kopiÄ™ przypadku z parametrami |
+| PokaĹĽ wyniki | âś“ (gdy dostępne) | âś“ | PrzeĹ‚ącza do trybu wynikĂłw |
+| Klonuj przypadek... | âś“ | âś“ | Tworzy kopię przypadku z parametrami |
 | PorĂłwnaj z przypadkiem... | âś“ | âś“ | Otwiera porĂłwnanie wynikĂłw |
-| Eksportuj wyniki... | âś“ (gdy dostÄ™pne) | âś“ | Eksportuje wyniki do pliku |
+| Eksportuj wyniki... | âś“ (gdy dostępne) | âś“ | Eksportuje wyniki do pliku |
 | UsuĹ„ przypadek... | âś“ | âś— | Usuwa przypadek (z potwierdzeniem) |
 
 ### 4.13 Menu Kontekstowe: Wynik
@@ -1621,7 +1621,7 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 | Akcja | Tryb Edycji | Tryb WynikĂłw | WpĹ‚yw |
 |-------|-------------|--------------|-------|
-| PokaĹĽ wyniki | âś“ | âś“ | PrzeĹ‚Ä…cza do trybu wynikĂłw |
+| PokaĹĽ wyniki | âś“ | âś“ | PrzeĹ‚ącza do trybu wynikĂłw |
 | SzczegĂłĹ‚y wyniku... | âś“ | âś“ | Otwiera peĹ‚ny raport wynikĂłw |
 | Eksportuj do CSV... | âś“ | âś“ | Eksportuje dane do CSV |
 | Eksportuj do PDF... | âś“ | âś“ | Generuje raport PDF |
@@ -1631,11 +1631,11 @@ Dla KAĹ»DEGO typu obiektu definiuje siÄ™ peĹ‚ne menu kontekstowe dostÄ�
 
 ---
 
-## 5. Przebieg Kreatora â€” PeĹ‚ny Cykl InĹĽynierski
+## 5. Przebieg Kreatora — PeĹ‚ny Cykl InĹĽynierski
 
-### 5.1 ObowiÄ…zkowa KolejnoĹ›Ä‡ KrokĂłw
+### 5.1 Obowiązkowa KolejnoĹ›ć KrokĂłw
 
-Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego cyklu projektowania i analizy sieci:
+Kreator wymusza następującą sekwencję krokĂłw dla peĹ‚nego cyklu projektowania i analizy sieci:
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -1644,11 +1644,11 @@ Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego 
 â”‚                                                                             â”‚
 â”‚  1. DEFINICJA PROJEKTU                                                      â”‚
 â”‚     â””â”€â–ş 2. SZKIELET TOPOLOGII SIECI                                         â”‚
-â”‚           â””â”€â–ş 3. POZIOMY NAPIÄÄ† I SZYNY                                     â”‚
+â”‚           â””â”€â–ş 3. POZIOMY NAPIÄĆ I SZYNY                                     â”‚
 â”‚                 â””â”€â–ş 4. STACJE                                               â”‚
 â”‚                       â””â”€â–ş 5. LINIE I KABLE                                  â”‚
 â”‚                             â””â”€â–ş 6. TRANSFORMATORY (2W/3W)                   â”‚
-â”‚                                   â””â”€â–ş 7. APARATURA ĹÄ„CZENIOWA               â”‚
+â”‚                                   â””â”€â–ş 7. APARATURA ĹĄCZENIOWA               â”‚
 â”‚                                         â””â”€â–ş 8. ĹąRĂ“DĹA I GENERATORY          â”‚
 â”‚                                               â””â”€â–ş 9. ODBIORY                â”‚
 â”‚                                                     â””â”€â–ş 10. WALIDACJA SIECI â”‚
@@ -1669,14 +1669,14 @@ Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego 
 |------|---------------|-------|-----|-------------------|
 | 1 | WZ-01 | Definicja projektu | Utworzenie lub wybĂłr projektu | Projekt zapisany |
 | 2 | WZ-02 | Szkielet topologii | OkreĹ›lenie struktury sieci | Minimum 1 szyna |
-| 3 | WZ-03 | Poziomy napiÄ™Ä‡ | Definicja poziomĂłw napiÄ™Ä‡ | Wszystkie szyny majÄ… Un |
+| 3 | WZ-03 | Poziomy napięć | Definicja poziomĂłw napięć | Wszystkie szyny mają Un |
 | 4 | WZ-04 | Stacje | Grupowanie elementĂłw w stacje | Opcjonalne |
-| 5 | WZ-05 | Linie i kable | Definicja gaĹ‚Ä™zi liniowych | Wszystkie linie majÄ… R', X' |
-| 6 | WZ-06 | Transformatory | Definicja transformatorĂłw | Wszystkie TR majÄ… uk%, Sn |
-| 7 | WZ-07 | Aparatura Ĺ‚Ä…czeniowa | Definicja wyĹ‚Ä…cznikĂłw i rozĹ‚Ä…cznikĂłw | Wszystkie majÄ… pozycjÄ™ |
+| 5 | WZ-05 | Linie i kable | Definicja gaĹ‚ęzi liniowych | Wszystkie linie mają R', X' |
+| 6 | WZ-06 | Transformatory | Definicja transformatorĂłw | Wszystkie TR mają uk%, Sn |
+| 7 | WZ-07 | Aparatura Ĺ‚ączeniowa | Definicja wyĹ‚ącznikĂłw i rozĹ‚ącznikĂłw | Wszystkie mają pozycję |
 | 8 | WZ-08 | ĹąrĂłdĹ‚a i generatory | Definicja ĹşrĂłdeĹ‚ zasilania | Minimum 1 ĹşrĂłdĹ‚o |
-| 9 | WZ-09 | Odbiory | Definicja odbiornikĂłw | Wszystkie majÄ… P, Q |
-| 10 | WZ-10 | Walidacja sieci | Sprawdzenie poprawnoĹ›ci modelu | Brak bĹ‚Ä™dĂłw krytycznych |
+| 9 | WZ-09 | Odbiory | Definicja odbiornikĂłw | Wszystkie mają P, Q |
+| 10 | WZ-10 | Walidacja sieci | Sprawdzenie poprawnoĹ›ci modelu | Brak bĹ‚ędĂłw krytycznych |
 
 ### 5.3 Faza II: Analiza (Kroki 11-14)
 
@@ -1684,22 +1684,22 @@ Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego 
 |------|---------------|-------|-----|-------------------|
 | 11 | WZ-11 | Tworzenie przypadku | Utworzenie przypadku obliczeniowego | Przypadek utworzony |
 | 12 | WZ-12 | Parametryzacja przypadku | Konfiguracja parametrĂłw solvera | Wszystkie parametry zdefiniowane |
-| 13 | WZ-13 | Obliczenia | Wykonanie obliczeĹ„ | Solver zakoĹ„czony bez bĹ‚Ä™dĂłw |
-| 14 | WZ-14 | Analiza wynikĂłw | PrzeglÄ…danie i eksport wynikĂłw | N/A (krok koĹ„cowy) |
+| 13 | WZ-13 | Obliczenia | Wykonanie obliczeĹ„ | Solver zakoĹ„czony bez bĹ‚ędĂłw |
+| 14 | WZ-14 | Analiza wynikĂłw | Przeglądanie i eksport wynikĂłw | N/A (krok koĹ„cowy) |
 
 ### 5.4 ReguĹ‚y Nawigacji
 
 | Przycisk | Akcja | Walidacja |
 |----------|-------|-----------|
 | â—€ Wstecz | PowrĂłt do poprzedniego kroku | Brak (dane zachowane) |
-| Dalej â–¶ | PrzejĹ›cie do nastÄ™pnego kroku | Walidacja bieĹĽÄ…cego kroku |
+| Dalej â–¶ | PrzejĹ›cie do następnego kroku | Walidacja bieĹĽącego kroku |
 | Zapisz | Zapisuje model bez przejĹ›cia | Brak |
-| Anuluj | Anuluje kreator | Potwierdzenie jeĹ›li sÄ… zmiany |
+| Anuluj | Anuluje kreator | Potwierdzenie jeĹ›li są zmiany |
 | ZakoĹ„cz | KoĹ„czy kreator (tylko z WZ-10 lub WZ-14) | PeĹ‚na walidacja modelu |
 
 ### 5.5 Walidacja Przed Solverem
 
-**WYMĂ“G BEZWZGLÄDNY:** Krok 10 (Walidacja sieci) MUSI zakoĹ„czyÄ‡ siÄ™ sukcesem przed przejĹ›ciem do krokĂłw obliczeniowych.
+**WYMĂ“G BEZWZGLÄDNY:** Krok 10 (Walidacja sieci) MUSI zakoĹ„czyć się sukcesem przed przejĹ›ciem do krokĂłw obliczeniowych.
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -1708,12 +1708,12 @@ Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego 
 â”‚                                                                 â”‚
 â”‚ NetworkValidator.validate(model)                                â”‚
 â”‚         â”‚                                                       â”‚
-â”‚         â”śâ”€â”€ BĹÄDY KRYTYCZNE â†’ [Dalej â–¶] ZABLOKOWANY             â”‚
+â”‚         â”śâ”€â”€ BĹÄDY KRYTYCZNE → [Dalej â–¶] ZABLOKOWANY             â”‚
 â”‚         â”‚                                                       â”‚
-â”‚         â”śâ”€â”€ OSTRZEĹ»ENIA â†’ [Dalej â–¶] AKTYWNY                     â”‚
-â”‚         â”‚                 (UĹĽytkownik musi potwierdziÄ‡)          â”‚
+â”‚         â”śâ”€â”€ OSTRZEĹ»ENIA → [Dalej â–¶] AKTYWNY                     â”‚
+â”‚         â”‚                 (UĹĽytkownik musi potwierdzić)          â”‚
 â”‚         â”‚                                                       â”‚
-â”‚         â””â”€â”€ BRAK PROBLEMĂ“W â†’ [Dalej â–¶] AKTYWNY                  â”‚
+â”‚         â””â”€â”€ BRAK PROBLEMĂ“W → [Dalej â–¶] AKTYWNY                  â”‚
 â”‚                                                                 â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -1722,17 +1722,17 @@ Kreator wymusza nastÄ™pujÄ…cÄ… sekwencjÄ™ krokĂłw dla peĹ‚nego 
 
 ## 6. SzczegĂłĹ‚owe Ekrany i Modale
 
-Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
+Dla KAĹ»DEGO ekranu kreatora definiuje się kompletną specyfikację.
 
 ### 6.1 Ekran WZ-01: Definicja Projektu
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-01 |
 | **TytuĹ‚** | Definicja projektu |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | Uruchomienie kreatora / Menu: Plik > Nowy projekt |
-| **Warunki wstÄ™pne** | Brak |
+| **Warunki wstępne** | Brak |
 
 #### 6.1.1 Pola formularza
 
@@ -1744,15 +1744,15 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 | project_number | Numer projektu | string | - | 0-50 znakĂłw | "" | Opcjonalne |
 | project_date | Data projektu | date | - | - | Dzisiaj | Wymagane |
 | author | Autor | string | - | 0-100 znakĂłw | Zalogowany uĹĽytkownik | Opcjonalne |
-| base_frequency | CzÄ™stotliwoĹ›Ä‡ bazowa | enum | Hz | 50 / 60 | 50 | Wymagane |
-| base_voltage_levels | Poziomy napiÄ™Ä‡ | multi-select | kV | 0.4, 6, 10, 15, 20, 30, 110, 220, 400 | [15, 110] | Minimum 1 |
+| base_frequency | CzęstotliwoĹ›ć bazowa | enum | Hz | 50 / 60 | 50 | Wymagane |
+| base_voltage_levels | Poziomy napięć | multi-select | kV | 0.4, 6, 10, 15, 20, 30, 110, 220, 400 | [15, 110] | Minimum 1 |
 
 #### 6.1.2 ZakĹ‚adki
 
-| ZakĹ‚adka | ZawartoĹ›Ä‡ |
+| ZakĹ‚adka | ZawartoĹ›ć |
 |----------|-----------|
 | OgĂłlne | Pola podstawowe (nazwa, opis, klient) |
-| Parametry systemu | CzÄ™stotliwoĹ›Ä‡, poziomy napiÄ™Ä‡ |
+| Parametry systemu | CzęstotliwoĹ›ć, poziomy napięć |
 | Metadane | Autor, data, numer projektu |
 
 #### 6.1.3 Akcje
@@ -1766,19 +1766,19 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 
 - Tworzy nowy obiekt Project
 - Inicjalizuje pusty NetworkModel
-- Ustawia parametry systemowe (czÄ™stotliwoĹ›Ä‡, poziomy napiÄ™Ä‡)
+- Ustawia parametry systemowe (częstotliwoĹ›ć, poziomy napięć)
 
 ---
 
 ### 6.2 Ekran WZ-02: Szkielet Topologii Sieci
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-02 |
 | **TytuĹ‚** | Szkielet topologii sieci |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-01 |
-| **Warunki wstÄ™pne** | Projekt utworzony |
+| **Warunki wstępne** | Projekt utworzony |
 
 #### 6.2.1 Pola formularza
 
@@ -1786,13 +1786,13 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 |------|---------------|-----|-----------|--------|----------|-----------|
 | network_type | Typ sieci | enum | - | PROMIENIOWA / PIERĹšCIENIOWA / MIESZANA | PROMIENIOWA | Wymagane |
 | network_name | Nazwa sieci | string | - | 1-255 znakĂłw | "Model sieci" | Wymagane |
-| initial_buses_count | Liczba poczÄ…tkowych szyn | int | - | 1 - 100 | 3 | Wymagane, â‰Ą 1 |
+| initial_buses_count | Liczba początkowych szyn | int | - | 1 - 100 | 3 | Wymagane, â‰Ą 1 |
 
 #### 6.2.2 Widok graficzny
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ PODGLÄ„D TOPOLOGII                                               â”‚
+â”‚ PODGLĄD TOPOLOGII                                               â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚                                                                 â”‚
 â”‚     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Szyna 1 (Un = ? kV)       â”‚
@@ -1805,7 +1805,7 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 â”‚              â”‚                                                  â”‚
 â”‚     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• Szyna 3 (Un = ? kV)       â”‚
 â”‚                                                                 â”‚
-â”‚ [+ Dodaj szynÄ™] [- UsuĹ„ ostatniÄ…]                              â”‚
+â”‚ [+ Dodaj szynę] [- UsuĹ„ ostatnią]                              â”‚
 â”‚                                                                 â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -1814,27 +1814,27 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj szynÄ™ | Dodaje nowÄ… szynÄ™ do listy | - |
-| - UsuĹ„ ostatniÄ… | Usuwa ostatniÄ… szynÄ™ | Minimum 1 szyna pozostaje |
+| + Dodaj szynę | Dodaje nową szynę do listy | - |
+| - UsuĹ„ ostatnią | Usuwa ostatnią szynę | Minimum 1 szyna pozostaje |
 | â—€ Wstecz | PowrĂłt do WZ-01 | - |
 | Dalej â–¶ | PrzejdĹş do WZ-03 | Minimum 1 szyna |
 
 #### 6.2.4 WpĹ‚yw na model
 
 - Tworzy obiekty Bus dla kaĹĽdej szyny
-- Ustawia wstÄ™pnÄ… topologiÄ™
+- Ustawia wstępną topologię
 
 ---
 
-### 6.3 Ekran WZ-03: Poziomy NapiÄ™Ä‡ i Szyny
+### 6.3 Ekran WZ-03: Poziomy Napięć i Szyny
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-03 |
-| **TytuĹ‚** | Poziomy napiÄ™Ä‡ i parametry szyn |
+| **TytuĹ‚** | Poziomy napięć i parametry szyn |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-02 |
-| **Warunki wstÄ™pne** | Minimum 1 szyna utworzona |
+| **Warunki wstępne** | Minimum 1 szyna utworzona |
 
 #### 6.3.1 Tabela edycyjna szyn
 
@@ -1842,13 +1842,13 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ PARAMETRY SZYN                                                              â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa         â”‚ NapiÄ™cie [kV]  â”‚ Typ szyny  â”‚ PrÄ…d zn [A] â”‚ Stacja          â”‚
+â”‚ Nazwa         â”‚ Napięcie [kV]  â”‚ Typ szyny  â”‚ Prąd zn [A] â”‚ Stacja          â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [SZ-GPZ-WN  ] â”‚ [110.0     ] â–Ľ â”‚ [ZBIORCZA] â”‚ [1250     ] â”‚ [GPZ GĹ‚Ăłwny  ] â–Ľâ”‚
 â”‚ [SZ-GPZ-SN  ] â”‚ [15.0      ] â–Ľ â”‚ [ZBIORCZA] â”‚ [2000     ] â”‚ [GPZ GĹ‚Ăłwny  ] â–Ľâ”‚
 â”‚ [SZ-STA-01  ] â”‚ [15.0      ] â–Ľ â”‚ [ZBIORCZA] â”‚ [1000     ] â”‚ [Stacja A    ] â–Ľâ”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj szynÄ™] [Importuj z listy...]                                       â”‚
+â”‚ [+ Dodaj szynę] [Importuj z listy...]                                       â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -1857,19 +1857,19 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa | string | - | 1-100 znakĂłw | SZ-{NR} | Wymagane, unikalne |
-| nominal_voltage | NapiÄ™cie znamionowe | select | kV | Z listy projektu | 15.0 | Wymagane |
+| nominal_voltage | Napięcie znamionowe | select | kV | Z listy projektu | 15.0 | Wymagane |
 | bus_type | Typ szyny | enum | - | ZBIORCZA / SEKCYJNA / ODCZEPOWA | ZBIORCZA | Wymagane |
-| rated_current | PrÄ…d znamionowy | float | A | 100 - 10000 | 1000 | Wymagane, > 0 |
+| rated_current | Prąd znamionowy | float | A | 100 - 10000 | 1000 | Wymagane, > 0 |
 | substation | Stacja | ref:Substation | - | Lista stacji | - | Opcjonalne |
 
 #### 6.3.3 Akcje
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj szynÄ™ | Dodaje nowy wiersz | - |
+| + Dodaj szynę | Dodaje nowy wiersz | - |
 | Importuj z listy... | Importuje szyny z pliku CSV | - |
 | â—€ Wstecz | PowrĂłt do WZ-02 | - |
-| Dalej â–¶ | PrzejdĹş do WZ-04 | Wszystkie szyny majÄ… Un > 0 |
+| Dalej â–¶ | PrzejdĹş do WZ-04 | Wszystkie szyny mają Un > 0 |
 
 #### 6.3.4 WpĹ‚yw na model
 
@@ -1880,13 +1880,13 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 
 ### 6.4 Ekran WZ-04: Stacje
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-04 |
 | **TytuĹ‚** | Definicja stacji |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-03 |
-| **Warunki wstÄ™pne** | Szyny zdefiniowane |
+| **Warunki wstępne** | Szyny zdefiniowane |
 
 #### 6.4.1 Tabela edycyjna stacji
 
@@ -1894,13 +1894,13 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ STACJE                                                                      â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa         â”‚ Typ stacji     â”‚ Poziomy napiÄ™Ä‡    â”‚ Szyny                  â”‚
+â”‚ Nazwa         â”‚ Typ stacji     â”‚ Poziomy napięć    â”‚ Szyny                  â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [GPZ GĹ‚Ăłwny ] â”‚ [GPZ        ] â–Ľâ”‚ 110/15 kV         â”‚ SZ-GPZ-WN, SZ-GPZ-SN   â”‚
 â”‚ [Stacja A   ] â”‚ [ROZDZIELNIA] â–Ľâ”‚ 15 kV             â”‚ SZ-STA-01              â”‚
 â”‚ [Stacja B   ] â”‚ [ROZDZIELNIA] â–Ľâ”‚ 15 kV             â”‚ SZ-STB-01              â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj stacjÄ™]                                                            â”‚
+â”‚ [+ Dodaj stację]                                                            â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -1910,17 +1910,17 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa stacji | string | - | 1-100 znakĂłw | "Stacja {NR}" | Wymagane, unikalne |
 | station_type | Typ stacji | enum | - | GPZ / RPZ / STACJA_KOĹCOWA / ROZDZIELNIA | ROZDZIELNIA | Wymagane |
-| voltage_levels | Poziomy napiÄ™Ä‡ | calculated | kV | - | - | Z przypisanych szyn |
+| voltage_levels | Poziomy napięć | calculated | kV | - | - | Z przypisanych szyn |
 | buses | Szyny | multi-ref:Bus | - | - | - | Minimum 1 szyna |
 | address | Adres | string | - | 0-255 znakĂłw | "" | Opcjonalne |
-| gps_lat | SzerokoĹ›Ä‡ GPS | float | Â° | -90 - 90 | - | Opcjonalne |
-| gps_lon | DĹ‚ugoĹ›Ä‡ GPS | float | Â° | -180 - 180 | - | Opcjonalne |
+| gps_lat | SzerokoĹ›ć GPS | float | ° | -90 - 90 | - | Opcjonalne |
+| gps_lon | DĹ‚ugoĹ›ć GPS | float | ° | -180 - 180 | - | Opcjonalne |
 
 #### 6.4.3 Akcje
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj stacjÄ™ | Dodaje nowÄ… stacjÄ™ | - |
+| + Dodaj stację | Dodaje nową stację | - |
 | â—€ Wstecz | PowrĂłt do WZ-03 | - |
 | Dalej â–¶ | PrzejdĹş do WZ-05 | - |
 | PomiĹ„ | PrzejdĹş do WZ-05 bez definiowania stacji | - |
@@ -1934,13 +1934,13 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 
 ### 6.5 Ekran WZ-05: Linie i Kable
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-05 |
 | **TytuĹ‚** | Definicja linii i kabli |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-04 |
-| **Warunki wstÄ™pne** | Minimum 2 szyny zdefiniowane |
+| **Warunki wstępne** | Minimum 2 szyny zdefiniowane |
 
 #### 6.5.1 Tabela edycyjna linii
 
@@ -1948,12 +1948,12 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ LINIE I KABLE                                                                           â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa      â”‚ Od szyny â”‚ Do szyny â”‚ Typ   â”‚ DĹ‚ugoĹ›Ä‡    â”‚ R' [Î©/km]â”‚ X' [Î©/km]â”‚ Idop [A]  â”‚
+â”‚ Nazwa      â”‚ Od szyny â”‚ Do szyny â”‚ Typ   â”‚ DĹ‚ugoĹ›ć    â”‚ R' [Î©/km]â”‚ X' [Î©/km]â”‚ Idop [A]  â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [LN-GPZ-A ]â”‚ [SZ-GPZ ]â–Ľâ”‚ [SZ-STA]â–Ľâ”‚[KABEL]â–Ľâ”‚ [2.5     ]â”‚ [0.125  ]â”‚ [0.08   ]â”‚ [350     ]â”‚
 â”‚ [LN-GPZ-B ]â”‚ [SZ-GPZ ]â–Ľâ”‚ [SZ-STB]â–Ľâ”‚[NAPOW]â–Ľâ”‚ [5.0     ]â”‚ [0.27   ]â”‚ [0.35   ]â”‚ [280     ]â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj liniÄ™] [Wybierz z katalogu...]                                                 â”‚
+â”‚ [+ Dodaj linię] [Wybierz z katalogu...]                                                 â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -1962,14 +1962,14 @@ Dla KAĹ»DEGO ekranu kreatora definiuje siÄ™ kompletnÄ… specyfikacjÄ™.
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa | string | - | 1-100 znakĂłw | LN-{OD}-{DO} | Wymagane, unikalne |
-| from_bus | Szyna poczÄ…tkowa | ref:Bus | - | Lista szyn | - | Wymagane |
+| from_bus | Szyna początkowa | ref:Bus | - | Lista szyn | - | Wymagane |
 | to_bus | Szyna koĹ„cowa | ref:Bus | - | Lista szyn | - | Wymagane, â‰  from_bus |
 | line_type | Typ przewodu | enum | - | KABEL / NAPOWIETRZNA | KABEL | Wymagane |
-| length | DĹ‚ugoĹ›Ä‡ | float | km | 0.001 - 1000 | 1.0 | Wymagane, > 0 |
+| length | DĹ‚ugoĹ›ć | float | km | 0.001 - 1000 | 1.0 | Wymagane, > 0 |
 | r_per_km | Rezystancja R' | float | Î©/km | 0.001 - 10 | 0.125 | Wymagane, > 0 |
 | x_per_km | Reaktancja X' | float | Î©/km | 0.001 - 10 | 0.08 | Wymagane, > 0 |
 | b_per_km | Susceptancja B' | float | ÂµS/km | 0 - 1000 | 0 | â‰Ą 0 |
-| rated_current | PrÄ…d dopuszczalny | float | A | 10 - 5000 | 300 | Wymagane, > 0 |
+| rated_current | Prąd dopuszczalny | float | A | 10 - 5000 | 300 | Wymagane, > 0 |
 | cross_section | PrzekrĂłj | float | mmÂ˛ | 1 - 2000 | 240 | Wymagane, > 0 |
 
 #### 6.5.3 Przycisk "Wybierz z katalogu..."
@@ -2001,27 +2001,27 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj liniÄ™ | Dodaje nowy wiersz | - |
+| + Dodaj linię | Dodaje nowy wiersz | - |
 | Wybierz z katalogu... | Otwiera katalog przewodĂłw | - |
 | â—€ Wstecz | PowrĂłt do WZ-04 | - |
-| Dalej â–¶ | PrzejdĹş do WZ-06 | Wszystkie linie majÄ… R', X' > 0 |
+| Dalej â–¶ | PrzejdĹş do WZ-06 | Wszystkie linie mają R', X' > 0 |
 
 #### 6.5.5 WpĹ‚yw na model
 
 - Tworzy obiekty LineBranch
-- ĹÄ…czy szyny zgodnie z topologiÄ…
+- Ĺączy szyny zgodnie z topologią
 
 ---
 
 ### 6.6 Ekran WZ-06: Transformatory
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-06 |
 | **TytuĹ‚** | Definicja transformatorĂłw |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-05 |
-| **Warunki wstÄ™pne** | Szyny o rĂłĹĽnych poziomach napiÄ™Ä‡ |
+| **Warunki wstępne** | Szyny o rĂłĹĽnych poziomach napięć |
 
 #### 6.6.1 WybĂłr typu transformatora
 
@@ -2053,7 +2053,7 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ TRANSFORMATORY 2-UZWOJENIOWE                                                                    â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa    â”‚ Szyna GN â”‚ Szyna DN â”‚ Sn[MVA]â”‚ Un_GN   â”‚ Un_DN   â”‚ uk [%] â”‚ Pk [kW]â”‚ Grupa poĹ‚Ä…czeĹ„  â”‚
+â”‚ Nazwa    â”‚ Szyna GN â”‚ Szyna DN â”‚ Sn[MVA]â”‚ Un_GN   â”‚ Un_DN   â”‚ uk [%] â”‚ Pk [kW]â”‚ Grupa poĹ‚ączeĹ„  â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [TR-01  ]â”‚ [SZ-WN ]â–Ľâ”‚ [SZ-SN ]â–Ľâ”‚ [25.0 ]â”‚ [110.0 ]â”‚ [15.0  ]â”‚ [10.5 ]â”‚ [125  ]â”‚ [Dyn11       ] â–Ľâ”‚
 â”‚ [TR-02  ]â”‚ [SZ-WN ]â–Ľâ”‚ [SZ-SN ]â–Ľâ”‚ [25.0 ]â”‚ [110.0 ]â”‚ [15.0  ]â”‚ [10.5 ]â”‚ [125  ]â”‚ [Dyn11       ] â–Ľâ”‚
@@ -2070,13 +2070,13 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 | hv_bus | Szyna GN | ref:Bus | - | Lista szyn | - | Wymagane |
 | lv_bus | Szyna DN | ref:Bus | - | Lista szyn | - | Wymagane, â‰  hv_bus |
 | rated_power | Moc znamionowa Sn | float | MVA | 0.05 - 1000 | 25.0 | Wymagane, > 0 |
-| hv_voltage | NapiÄ™cie GN | float | kV | 0.4 - 800 | 110.0 | Wymagane, > lv_voltage |
-| lv_voltage | NapiÄ™cie DN | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
-| uk_percent | NapiÄ™cie zwarcia uk% | float | % | 4 - 25 | 10.5 | Wymagane, 4 â‰¤ uk â‰¤ 25 |
-| pk | Straty obciÄ…ĹĽeniowe Pk | float | kW | 1 - 1000 | 125.0 | Wymagane, > 0 |
+| hv_voltage | Napięcie GN | float | kV | 0.4 - 800 | 110.0 | Wymagane, > lv_voltage |
+| lv_voltage | Napięcie DN | float | kV | 0.4 - 400 | 15.0 | Wymagane, > 0 |
+| uk_percent | Napięcie zwarcia uk% | float | % | 4 - 25 | 10.5 | Wymagane, 4 â‰¤ uk â‰¤ 25 |
+| pk | Straty obciąĹĽeniowe Pk | float | kW | 1 - 1000 | 125.0 | Wymagane, > 0 |
 | p0 | Straty jaĹ‚owe P0 | float | kW | 0.1 - 200 | 25.0 | Wymagane, > 0 |
-| i0_percent | PrÄ…d jaĹ‚owy i0% | float | % | 0.1 - 5 | 0.5 | Opcjonalne |
-| vector_group | Grupa poĹ‚Ä…czeĹ„ | enum | - | Lista grup | Dyn11 | Wymagane |
+| i0_percent | Prąd jaĹ‚owy i0% | float | % | 0.1 - 5 | 0.5 | Opcjonalne |
+| vector_group | Grupa poĹ‚ączeĹ„ | enum | - | Lista grup | Dyn11 | Wymagane |
 
 #### 6.6.4 Akcje
 
@@ -2086,73 +2086,73 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 | Wybierz z katalogu... | Otwiera katalog transformatorĂłw | - |
 | Konfiguruj OLTC... | Otwiera modal OLTC | Transformator wybrany |
 | â—€ Wstecz | PowrĂłt do WZ-05 | - |
-| Dalej â–¶ | PrzejdĹş do WZ-07 | Wszystkie TR majÄ… uk%, Sn > 0 |
+| Dalej â–¶ | PrzejdĹş do WZ-07 | Wszystkie TR mają uk%, Sn > 0 |
 
 #### 6.6.5 WpĹ‚yw na model
 
 - Tworzy obiekty TransformerBranch
-- ĹÄ…czy szyny o rĂłĹĽnych poziomach napiÄ™Ä‡
+- Ĺączy szyny o rĂłĹĽnych poziomach napięć
 
 ---
 
-### 6.7 Ekran WZ-07: Aparatura ĹÄ…czeniowa
+### 6.7 Ekran WZ-07: Aparatura Ĺączeniowa
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-07 |
-| **TytuĹ‚** | Definicja aparatury Ĺ‚Ä…czeniowej |
+| **TytuĹ‚** | Definicja aparatury Ĺ‚ączeniowej |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-06 |
-| **Warunki wstÄ™pne** | Szyny zdefiniowane |
+| **Warunki wstępne** | Szyny zdefiniowane |
 
-#### 6.7.1 Tabela edycyjna wyĹ‚Ä…cznikĂłw
+#### 6.7.1 Tabela edycyjna wyĹ‚ącznikĂłw
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ WYĹÄ„CZNIKI                                                                              â”‚
+â”‚ WYĹĄCZNIKI                                                                              â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa        â”‚ Szyna    â”‚ GaĹ‚Ä…Ĺş    â”‚ Un [kV]   â”‚ In [A]    â”‚ Ik [kA]   â”‚ Pozycja        â”‚
+â”‚ Nazwa        â”‚ Szyna    â”‚ GaĹ‚ąĹş    â”‚ Un [kV]   â”‚ In [A]    â”‚ Ik [kA]   â”‚ Pozycja        â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [WĹ-GPZ-01 ]â”‚ [SZ-SN ]â–Ľâ”‚ [LN-01 ]â–Ľâ”‚ [15.0    ]â”‚ [1250    ]â”‚ [25.0    ]â”‚ [ZAMKNIÄTY  ] â–Ľâ”‚
 â”‚ [WĹ-GPZ-02 ]â”‚ [SZ-SN ]â–Ľâ”‚ [LN-02 ]â–Ľâ”‚ [15.0    ]â”‚ [1250    ]â”‚ [25.0    ]â”‚ [ZAMKNIÄTY  ] â–Ľâ”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj wyĹ‚Ä…cznik] [Wybierz z katalogu...]                                             â”‚
+â”‚ [+ Dodaj wyĹ‚ącznik] [Wybierz z katalogu...]                                             â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-#### 6.7.2 Tabela edycyjna rozĹ‚Ä…cznikĂłw
+#### 6.7.2 Tabela edycyjna rozĹ‚ącznikĂłw
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ ROZĹÄ„CZNIKI                                                                             â”‚
+â”‚ ROZĹĄCZNIKI                                                                             â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa        â”‚ Szyna    â”‚ GaĹ‚Ä…Ĺş    â”‚ Un [kV]   â”‚ In [A]    â”‚ Icw [kA]  â”‚ Pozycja        â”‚
+â”‚ Nazwa        â”‚ Szyna    â”‚ GaĹ‚ąĹş    â”‚ Un [kV]   â”‚ In [A]    â”‚ Icw [kA]  â”‚ Pozycja        â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [RZ-STA-01 ]â”‚ [SZ-STA]â–Ľâ”‚ [LN-01 ]â–Ľâ”‚ [15.0    ]â”‚ [630     ]â”‚ [25.0    ]â”‚ [ZAMKNIÄTY  ] â–Ľâ”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj rozĹ‚Ä…cznik] [Wybierz z katalogu...]                                            â”‚
+â”‚ [+ Dodaj rozĹ‚ącznik] [Wybierz z katalogu...]                                            â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-#### 6.7.3 Pola dla wyĹ‚Ä…cznika
+#### 6.7.3 Pola dla wyĹ‚ącznika
 
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa | string | - | 1-100 znakĂłw | WĹ-{SZYNA}-{NR} | Wymagane, unikalne |
 | bus | Szyna | ref:Bus | - | Lista szyn | - | Wymagane |
-| branch | GaĹ‚Ä…Ĺş | ref:Branch | - | Lista gaĹ‚Ä™zi | - | Opcjonalne |
-| rated_voltage | NapiÄ™cie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
-| rated_current | PrÄ…d znamionowy In | float | A | 100 - 10000 | 1250 | Wymagane |
-| breaking_current | PrÄ…d wyĹ‚Ä…czalny Ik | float | kA | 5 - 100 | 25.0 | Wymagane |
-| making_current | PrÄ…d zaĹ‚Ä…czalny Ima | float | kA | 10 - 250 | 63.0 | Wymagane |
+| branch | GaĹ‚ąĹş | ref:Branch | - | Lista gaĹ‚ęzi | - | Opcjonalne |
+| rated_voltage | Napięcie znamionowe Un | float | kV | 0.4 - 800 | 15.0 | Wymagane |
+| rated_current | Prąd znamionowy In | float | A | 100 - 10000 | 1250 | Wymagane |
+| breaking_current | Prąd wyĹ‚ączalny Ik | float | kA | 5 - 100 | 25.0 | Wymagane |
+| making_current | Prąd zaĹ‚ączalny Ima | float | kA | 10 - 250 | 63.0 | Wymagane |
 | position | Pozycja | enum | - | ZAMKNIÄTY / OTWARTY | ZAMKNIÄTY | Wymagane |
 
 #### 6.7.4 Akcje
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj wyĹ‚Ä…cznik | Dodaje nowy wyĹ‚Ä…cznik | - |
-| + Dodaj rozĹ‚Ä…cznik | Dodaje nowy rozĹ‚Ä…cznik | - |
+| + Dodaj wyĹ‚ącznik | Dodaje nowy wyĹ‚ącznik | - |
+| + Dodaj rozĹ‚ącznik | Dodaje nowy rozĹ‚ącznik | - |
 | Wybierz z katalogu... | Otwiera katalog aparatury | - |
 | â—€ Wstecz | PowrĂłt do WZ-06 | - |
 | Dalej â–¶ | PrzejdĹş do WZ-08 | - |
@@ -2161,31 +2161,31 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 #### 6.7.5 WpĹ‚yw na model
 
 - Tworzy obiekty Switch (typ: CircuitBreaker / Disconnector)
-- Przypisuje do szyn i gaĹ‚Ä™zi
+- Przypisuje do szyn i gaĹ‚ęzi
 
 ---
 
 ### 6.8 Ekran WZ-08: ĹąrĂłdĹ‚a i Generatory
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-08 |
 | **TytuĹ‚** | Definicja ĹşrĂłdeĹ‚ zasilania |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-07 |
-| **Warunki wstÄ™pne** | Szyny zdefiniowane |
+| **Warunki wstępne** | Szyny zdefiniowane |
 
-#### 6.8.1 Tabela edycyjna sieci zewnÄ™trznych
+#### 6.8.1 Tabela edycyjna sieci zewnętrznych
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ SIECI ZEWNÄTRZNE (EXTERNAL GRID)                                                        â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa      â”‚ Szyna    â”‚ Un [kV]   â”‚ Sk" [MVA]  â”‚ R/X       â”‚ Typ wÄ™zĹ‚a â”‚ Operator       â”‚
+â”‚ Nazwa      â”‚ Szyna    â”‚ Un [kV]   â”‚ Sk" [MVA]  â”‚ R/X       â”‚ Typ węzĹ‚a â”‚ Operator       â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [ZR-GPZ   ]â”‚ [SZ-WN ]â–Ľâ”‚ [110.0   ]â”‚ [5000     ]â”‚ [0.1     ]â”‚ [SLACK  ]â–Ľâ”‚ [PGE Dystr.  ]â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj sieÄ‡ zewnÄ™trznÄ…] [Model zwarciowy...]                                          â”‚
+â”‚ [+ Dodaj sieć zewnętrzną] [Model zwarciowy...]                                          â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -2195,7 +2195,7 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ GENERATORY SYNCHRONICZNE                                                                â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Nazwa      â”‚ Szyna    â”‚ Un [kV]   â”‚ Sn [MVA]   â”‚ Pn [MW]   â”‚ X"d [p.u.]â”‚ Typ wÄ™zĹ‚a      â”‚
+â”‚ Nazwa      â”‚ Szyna    â”‚ Un [kV]   â”‚ Sn [MVA]   â”‚ Pn [MW]   â”‚ X"d [p.u.]â”‚ Typ węzĹ‚a      â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [GEN-01   ]â”‚ [SZ-GEN]â–Ľâ”‚ [6.3     ]â”‚ [10.0     ]â”‚ [8.0     ]â”‚ [0.15    ]â”‚ [PV         ] â–Ľâ”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
@@ -2203,23 +2203,23 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-#### 6.8.3 Pola dla sieci zewnÄ™trznej
+#### 6.8.3 Pola dla sieci zewnętrznej
 
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa | string | - | 1-100 znakĂłw | ZR-{STACJA} | Wymagane, unikalne |
-| bus | Szyna przyĹ‚Ä…czenia | ref:Bus | - | Lista szyn | - | Wymagane |
-| rated_voltage | NapiÄ™cie znamionowe | float | kV | 0.4 - 800 | 110.0 | Wymagane |
+| bus | Szyna przyĹ‚ączenia | ref:Bus | - | Lista szyn | - | Wymagane |
+| rated_voltage | Napięcie znamionowe | float | kV | 0.4 - 800 | 110.0 | Wymagane |
 | sk_3ph | Moc zwarciowa Sk" | float | MVA | 100 - 100000 | 5000 | Wymagane |
 | rx_ratio | Stosunek R/X | float | - | 0.05 - 0.5 | 0.1 | Wymagane |
-| node_type | Typ wÄ™zĹ‚a | enum | - | SLACK / PV | SLACK | Wymagane |
+| node_type | Typ węzĹ‚a | enum | - | SLACK / PV | SLACK | Wymagane |
 | operator | Operator sieci | string | - | 0-100 znakĂłw | "" | Opcjonalne |
 
 #### 6.8.4 Akcje
 
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
-| + Dodaj sieÄ‡ zewnÄ™trznÄ… | Dodaje nowe ĹşrĂłdĹ‚o | - |
+| + Dodaj sieć zewnętrzną | Dodaje nowe ĹşrĂłdĹ‚o | - |
 | + Dodaj generator | Dodaje nowy generator | - |
 | Model zwarciowy... | Otwiera modal modelu zwarciowego | ĹąrĂłdĹ‚o wybrane |
 | Parametry zwarciowe... | Otwiera modal parametrĂłw generatora | Generator wybrany |
@@ -2231,7 +2231,7 @@ Otwiera modal wyboru przewodu z predefiniowanego katalogu:
 - Tworzy obiekty ExternalGrid i/lub SynchronousGenerator
 - Definiuje punkt zasilania sieci
 
-#### 6.8.6 ĹąrĂłdĹ‚a konwerterowe (Converter-Based Sources) â€” tryb statyczny
+#### 6.8.6 ĹąrĂłdĹ‚a konwerterowe (Converter-Based Sources) — tryb statyczny
 
 Ekran WZ-08 obejmuje rĂłwnieĹĽ **ĹşrĂłdĹ‚a konwerterowe** (converter-based sources):
 
@@ -2243,39 +2243,39 @@ Ekran WZ-08 obejmuje rĂłwnieĹĽ **ĹşrĂłdĹ‚a konwerterowe** (converter-
 
 **Tryb statyczny (Static Mode):**
 
-W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…cznie jako ĹşrĂłdĹ‚a PQ lub z zadanym cosĎ†:
+W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ają wyĹ‚ącznie jako ĹşrĂłdĹ‚a PQ lub z zadanym cosĎ†:
 
 | Parametr | Lokalizacja | Opis |
 |----------|-------------|------|
-| Typ, Sn, Un | NetworkModel (type_ref â†’ Catalog) | Parametry znamionowe â€” niezmienne |
-| PrzyĹ‚Ä…czenie (Bus) | NetworkModel | Szyna przyĹ‚Ä…czenia â€” topologia |
-| P, Q, cosĎ† (setpointy) | Case (Active Case) | Parametry pracy â€” zmienne per scenariusz |
+| Typ, Sn, Un | NetworkModel (type_ref → Catalog) | Parametry znamionowe — niezmienne |
+| PrzyĹ‚ączenie (Bus) | NetworkModel | Szyna przyĹ‚ączenia — topologia |
+| P, Q, cosĎ† (setpointy) | Case (Active Case) | Parametry pracy — zmienne per scenariusz |
 
-**INVARIANT:** Setpointy pracy (P, Q, cosĎ†) naleĹĽÄ… wyĹ‚Ä…cznie do Case â€” nie do NetworkModel. Model sieci zawiera tylko przyĹ‚Ä…czenie i referencjÄ™ do typu.
+**INVARIANT:** Setpointy pracy (P, Q, cosĎ†) naleĹĽą wyĹ‚ącznie do Case — nie do NetworkModel. Model sieci zawiera tylko przyĹ‚ączenie i referencję do typu.
 
-**BESS â€” interpretacja znaku mocy:**
+**BESS — interpretacja znaku mocy:**
 
 | Znak P | Interpretacja | Kierunek przepĹ‚ywu energii |
 |--------|---------------|---------------------------|
-| P > 0 | Eksport (rozĹ‚adowanie) | BESS â†’ sieÄ‡ |
-| P < 0 | Import (Ĺ‚adowanie) | sieÄ‡ â†’ BESS |
+| P > 0 | Eksport (rozĹ‚adowanie) | BESS → sieć |
+| P < 0 | Import (Ĺ‚adowanie) | sieć → BESS |
 
 **Ograniczenia trybu statycznego:**
 - Brak regulatorĂłw (Volt-VAR, Volt-Watt, droop)
 - Brak modeli dynamicznych (RMS/EMT)
-- BoundaryNode â€“ wÄ™zeĹ‚ przyĹ‚Ä…czenia nie istnieje w NetworkModel (analysis-only)
+- BoundaryNode – węzeĹ‚ przyĹ‚ączenia nie istnieje w NetworkModel (analysis-only)
 
 ---
 
 ### 6.9 Ekran WZ-09: Odbiory
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-09 |
 | **TytuĹ‚** | Definicja odbiornikĂłw |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-08 |
-| **Warunki wstÄ™pne** | Szyny zdefiniowane |
+| **Warunki wstępne** | Szyny zdefiniowane |
 
 #### 6.9.1 Tabela edycyjna odbiornikĂłw
 
@@ -2289,7 +2289,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ [OD-STB-01]â”‚ [SZ-STB]â–Ľâ”‚ [PQ     ]â–Ľâ”‚ [1.8      ]â”‚ [0.9     ]â”‚ 0.89      â”‚ [Biurowiec     ]â”‚
 â”‚ [OD-SIL-01]â”‚ [SZ-STA]â–Ľâ”‚ [SILNIK ]â–Ľâ”‚ [0.5      ]â”‚ [0.3     ]â”‚ 0.86      â”‚ [Silnik wentyl.]â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ [+ Dodaj odbiornik] [Model obciÄ…ĹĽenia...]                                               â”‚
+â”‚ [+ Dodaj odbiornik] [Model obciąĹĽenia...]                                               â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -2298,8 +2298,8 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna | Walidacja |
 |------|---------------|-----|-----------|--------|----------|-----------|
 | name | Nazwa | string | - | 1-100 znakĂłw | OD-{SZYNA}-{NR} | Wymagane, unikalne |
-| bus | Szyna przyĹ‚Ä…czenia | ref:Bus | - | Lista szyn | - | Wymagane |
-| load_model | Model obciÄ…ĹĽenia | enum | - | PQ / ZIP / SILNIK | PQ | Wymagane |
+| bus | Szyna przyĹ‚ączenia | ref:Bus | - | Lista szyn | - | Wymagane |
+| load_model | Model obciąĹĽenia | enum | - | PQ / ZIP / SILNIK | PQ | Wymagane |
 | active_power | Moc czynna P | float | MW | 0 - 1000 | 1.0 | Wymagane, â‰Ą 0 |
 | reactive_power | Moc bierna Q | float | Mvar | -1000 - 1000 | 0.5 | Wymagane |
 | power_factor | WspĂłĹ‚czynnik mocy | float | - | 0.5 - 1.0 | - | Obliczony automatycznie |
@@ -2310,9 +2310,9 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Przycisk | Akcja | Warunek |
 |----------|-------|---------|
 | + Dodaj odbiornik | Dodaje nowy odbiornik | - |
-| Model obciÄ…ĹĽenia... | Otwiera modal modelu obciÄ…ĹĽenia | Odbiornik wybrany |
+| Model obciąĹĽenia... | Otwiera modal modelu obciąĹĽenia | Odbiornik wybrany |
 | â—€ Wstecz | PowrĂłt do WZ-08 | - |
-| Dalej â–¶ | PrzejdĹş do WZ-10 | Wszystkie odbiorniki majÄ… P â‰Ą 0 |
+| Dalej â–¶ | PrzejdĹş do WZ-10 | Wszystkie odbiorniki mają P â‰Ą 0 |
 
 #### 6.9.4 WpĹ‚yw na model
 
@@ -2323,13 +2323,13 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 ### 6.10 Ekran WZ-10: Walidacja Sieci
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-10 |
 | **TytuĹ‚** | Walidacja modelu sieci |
 | **Tryb** | MODEL_EDIT |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-09 |
-| **Warunki wstÄ™pne** | Model sieci zdefiniowany |
+| **Warunki wstępne** | Model sieci zdefiniowany |
 
 #### 6.10.1 Widok walidacji
 
@@ -2342,11 +2342,11 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•‘ PODSUMOWANIE WALIDACJI                                                 â•‘  â”‚
 â”‚ â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•Ł  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
-â”‚ â•‘   BĹ‚Ä™dy krytyczne:    0  âś“                                            â•‘  â”‚
+â”‚ â•‘   BĹ‚ędy krytyczne:    0  âś“                                            â•‘  â”‚
 â”‚ â•‘   OstrzeĹĽenia:        2  âš                                             â•‘  â”‚
 â”‚ â•‘   Informacje:         3  â„ą                                            â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
-â”‚ â•‘   Status:  âś“ SIEÄ† GOTOWA DO OBLICZEĹ                                  â•‘  â”‚
+â”‚ â•‘   Status:  âś“ SIEĆ GOTOWA DO OBLICZEĹ                                  â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť  â”‚
 â”‚                                                                             â”‚
@@ -2360,7 +2360,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ W-LOD-001â”‚OstrzeĹĽenieâ”‚ OD-STA-01     â”‚ Niski wspĂłĹ‚czynnik mocy (cos Ď†=0.78) â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ I-TOP-001â”‚ Info     â”‚ Model sieci    â”‚ SieÄ‡ zawiera 4 szyny, 3 linie,       â”‚
+â”‚ I-TOP-001â”‚ Info     â”‚ Model sieci    â”‚ Sieć zawiera 4 szyny, 3 linie,       â”‚
 â”‚          â”‚          â”‚                â”‚ 2 transformatory, 1 ĹşrĂłdĹ‚o           â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ [Waliduj ponownie] [Eksportuj raport...]                                    â”‚
@@ -2371,11 +2371,11 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 | Kategoria | Kod | Opis |
 |-----------|-----|------|
-| Topologia | TOP | SpĂłjnoĹ›Ä‡ sieci, izolowane elementy |
-| Parametry | PAR | KompletnoĹ›Ä‡ i zakresy parametrĂłw |
-| Transformatory | TRF | PrzekĹ‚adnie, grupy poĹ‚Ä…czeĹ„ |
+| Topologia | TOP | SpĂłjnoĹ›ć sieci, izolowane elementy |
+| Parametry | PAR | KompletnoĹ›ć i zakresy parametrĂłw |
+| Transformatory | TRF | PrzekĹ‚adnie, grupy poĹ‚ączeĹ„ |
 | Linie | LIN | Impedancje, dĹ‚ugoĹ›ci |
-| ĹąrĂłdĹ‚a | SRC | ObecnoĹ›Ä‡ ĹşrĂłdĹ‚a, parametry zwarciowe |
+| ĹąrĂłdĹ‚a | SRC | ObecnoĹ›ć ĹşrĂłdĹ‚a, parametry zwarciowe |
 | Odbiorniki | LOD | Moce, wspĂłĹ‚czynniki mocy |
 | Aparatura | SWT | Pozycje, parametry znamionowe |
 
@@ -2386,27 +2386,27 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Waliduj ponownie | Uruchamia NetworkValidator | - |
 | Eksportuj raport... | Eksportuje raport walidacji do PDF | - |
 | â—€ Wstecz | PowrĂłt do WZ-09 | - |
-| Dalej â–¶ | PrzejdĹş do WZ-11 | Brak bĹ‚Ä™dĂłw krytycznych |
-| ZakoĹ„cz | KoĹ„czy kreator, zapisuje model | Brak bĹ‚Ä™dĂłw krytycznych |
+| Dalej â–¶ | PrzejdĹş do WZ-11 | Brak bĹ‚ędĂłw krytycznych |
+| ZakoĹ„cz | KoĹ„czy kreator, zapisuje model | Brak bĹ‚ędĂłw krytycznych |
 
 #### 6.10.4 ReguĹ‚a blokady
 
-**JEĹšLI** liczba bĹ‚Ä™dĂłw krytycznych > 0:
+**JEĹšLI** liczba bĹ‚ędĂłw krytycznych > 0:
 - Przycisk [Dalej â–¶] = NIEAKTYWNY
 - Przycisk [ZakoĹ„cz] = NIEAKTYWNY
-- WyĹ›wietl komunikat: "UsuĹ„ bĹ‚Ä™dy krytyczne przed kontynuacjÄ…"
+- WyĹ›wietl komunikat: "UsuĹ„ bĹ‚ędy krytyczne przed kontynuacją"
 
 ---
 
 ### 6.11 Ekran WZ-11: Tworzenie Przypadku Obliczeniowego
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-11 |
 | **TytuĹ‚** | Tworzenie przypadku obliczeniowego |
 | **Tryb** | CASE_CONFIG |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-10 |
-| **Warunki wstÄ™pne** | Model sieci zwalidowany |
+| **Warunki wstępne** | Model sieci zwalidowany |
 
 #### 6.11.1 WybĂłr typu przypadku
 
@@ -2424,7 +2424,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚  â”‚  ANALIZA ZWARCIOWA             â”‚  â”‚  ROZPĹYW MOCY                   â”‚  â”‚
 â”‚  â”‚  (ShortCircuitCase)             â”‚  â”‚  (PowerFlowCase)                â”‚  â”‚
 â”‚  â”‚                                 â”‚  â”‚                                 â”‚  â”‚
-â”‚  â”‚  Obliczenia prÄ…dĂłw zwarciowych â”‚  â”‚  Obliczenia stanu ustalonego    â”‚  â”‚
+â”‚  â”‚  Obliczenia prądĂłw zwarciowych â”‚  â”‚  Obliczenia stanu ustalonego    â”‚  â”‚
 â”‚  â”‚  zgodnie z IEC 60909            â”‚  â”‚  Newton-Raphson                 â”‚  â”‚
 â”‚  â”‚                                 â”‚  â”‚                                 â”‚  â”‚
 â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
@@ -2462,13 +2462,13 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 ### 6.12 Ekran WZ-12: Parametryzacja Przypadku
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-12 |
 | **TytuĹ‚** | Parametry przypadku obliczeniowego |
 | **Tryb** | CASE_CONFIG |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-11 |
-| **Warunki wstÄ™pne** | Przypadek utworzony |
+| **Warunki wstępne** | Przypadek utworzony |
 
 #### 6.12.1 Parametry ShortCircuitCase
 
@@ -2507,7 +2507,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚                                                                             â”‚
 â”‚ â–Ľ WkĹ‚ad silnikĂłw                                                            â”‚
 â”‚   â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚   â”‚ UwzglÄ™dnij silniki:   [âś“] Tak                                      â”‚  â”‚
+â”‚   â”‚ Uwzględnij silniki:   [âś“] Tak                                      â”‚  â”‚
 â”‚   â”‚                                                                     â”‚  â”‚
 â”‚   â”‚ Metoda:               [Zgodnie z IEC 60909                    ] â–Ľ  â”‚  â”‚
 â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
@@ -2527,7 +2527,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | c_max | WspĂłĹ‚czynnik c_max | float | - | 1.0 - 1.2 | 1.10 | Wymagane |
 | c_min | WspĂłĹ‚czynnik c_min | float | - | 0.9 - 1.1 | 1.00 | Wymagane |
 | fault_duration | Czas trwania zwarcia | float | s | 0.1 - 5.0 | 1.0 | Wymagane |
-| include_motors | UwzglÄ™dnij silniki | boolean | - | - | true | - |
+| include_motors | Uwzględnij silniki | boolean | - | - | true | - |
 
 #### 6.12.3 Parametry PowerFlowCase
 
@@ -2545,21 +2545,21 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚   â”‚                                                                     â”‚  â”‚
 â”‚   â”‚ Tolerancja mocy:      [1e-6                         ] MW           â”‚  â”‚
 â”‚   â”‚                                                                     â”‚  â”‚
-â”‚   â”‚ Tolerancja napiÄ™cia:  [1e-6                         ] p.u.         â”‚  â”‚
+â”‚   â”‚ Tolerancja napięcia:  [1e-6                         ] p.u.         â”‚  â”‚
 â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
 â”‚                                                                             â”‚
 â”‚ â–Ľ Opcje obliczeĹ„                                                            â”‚
 â”‚   â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚   â”‚ [âś“] UwzglÄ™dnij straty w transformatorach                           â”‚  â”‚
-â”‚   â”‚ [âś“] UwzglÄ™dnij straty w liniach                                    â”‚  â”‚
+â”‚   â”‚ [âś“] Uwzględnij straty w transformatorach                           â”‚  â”‚
+â”‚   â”‚ [âś“] Uwzględnij straty w liniach                                    â”‚  â”‚
 â”‚   â”‚ [âś“] Automatyczna regulacja zaczepĂłw OLTC                           â”‚  â”‚
 â”‚   â”‚ [ ] Ograniczenie mocy biernej generatorĂłw                          â”‚  â”‚
 â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
 â”‚                                                                             â”‚
-â”‚ â–Ľ Warunki poczÄ…tkowe                                                        â”‚
+â”‚ â–Ľ Warunki początkowe                                                        â”‚
 â”‚   â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
-â”‚   â”‚ NapiÄ™cie startowe:    [1.0                          ] p.u.         â”‚  â”‚
-â”‚   â”‚ KÄ…t startowy:         [0.0                          ] Â°            â”‚  â”‚
+â”‚   â”‚ Napięcie startowe:    [1.0                          ] p.u.         â”‚  â”‚
+â”‚   â”‚ Kąt startowy:         [0.0                          ] °            â”‚  â”‚
 â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚
 â”‚                                                                             â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -2572,11 +2572,11 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | algorithm | Algorytm | enum | - | NEWTON_RAPHSON / GAUSS_SEIDEL | NEWTON_RAPHSON | Wymagane |
 | max_iterations | Maks. iteracji | int | - | 10 - 1000 | 100 | Wymagane |
 | power_tolerance | Tolerancja mocy | float | MW | 1e-10 - 1e-3 | 1e-6 | Wymagane |
-| voltage_tolerance | Tolerancja napiÄ™cia | float | p.u. | 1e-10 - 1e-3 | 1e-6 | Wymagane |
+| voltage_tolerance | Tolerancja napięcia | float | p.u. | 1e-10 - 1e-3 | 1e-6 | Wymagane |
 | include_transformer_losses | Straty w transformatorach | boolean | - | - | true | - |
 | include_line_losses | Straty w liniach | boolean | - | - | true | - |
 | auto_tap_control | Automatyczne zaczepy | boolean | - | - | true | - |
-| initial_voltage | NapiÄ™cie startowe | float | p.u. | 0.8 - 1.2 | 1.0 | Wymagane |
+| initial_voltage | Napięcie startowe | float | p.u. | 0.8 - 1.2 | 1.0 | Wymagane |
 
 #### 6.12.5 Akcje
 
@@ -2595,13 +2595,13 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 ### 6.13 Ekran WZ-13: Obliczenia
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-13 |
 | **TytuĹ‚** | Wykonywanie obliczeĹ„ |
 | **Tryb** | CASE_CONFIG |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-12 |
-| **Warunki wstÄ™pne** | Przypadek sparametryzowany |
+| **Warunki wstępne** | Przypadek sparametryzowany |
 
 #### 6.13.1 Widok obliczeĹ„
 
@@ -2617,7 +2617,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•‘   [âś“] Model sieci spĂłjny                                              â•‘  â”‚
 â”‚ â•‘   [âś“] Wszystkie parametry zdefiniowane                                â•‘  â”‚
-â”‚ â•‘   [âś“] ĹąrĂłdĹ‚o zasilania dostÄ™pne                                       â•‘  â”‚
+â”‚ â•‘   [âś“] ĹąrĂłdĹ‚o zasilania dostępne                                       â•‘  â”‚
 â”‚ â•‘   [âś“] Przypadek sparametryzowany                                      â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•‘   Status: GOTOWY DO OBLICZEĹ                                          â•‘  â”‚
@@ -2667,7 +2667,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•‘   [â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘â–‘] 65%              â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
-â”‚ â•‘   benchmark: Obliczanie prÄ…dĂłw zwarciowych...                              â•‘  â”‚
+â”‚ â•‘   benchmark: Obliczanie prądĂłw zwarciowych...                              â•‘  â”‚
 â”‚ â•‘   Czas: 0.23s                                                         â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť  â”‚
@@ -2686,7 +2686,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ [14:30:01]   âś“ Topologia spĂłjna                                            â”‚
 â”‚ [14:30:01]   âś“ Wszystkie parametry zdefiniowane                            â”‚
 â”‚ [14:30:02] Budowanie macierzy admitancyjnej...                              â”‚
-â”‚ [14:30:02] Obliczanie prÄ…dĂłw zwarciowych...                                 â”‚
+â”‚ [14:30:02] Obliczanie prądĂłw zwarciowych...                                 â”‚
 â”‚                                                                             â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -2697,16 +2697,16 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 |----------|-------|---------|
 | OBLICZ | Uruchamia solver | Kontrola przedobliczeniowa OK |
 | PRZERWIJ | Przerywa obliczenia | Obliczenia w toku |
-| â—€ Wstecz | PowrĂłt do WZ-12 | Obliczenia zakoĹ„czone lub nie rozpoczÄ™te |
+| â—€ Wstecz | PowrĂłt do WZ-12 | Obliczenia zakoĹ„czone lub nie rozpoczęte |
 | Dalej â–¶ | PrzejdĹş do WZ-14 | Obliczenia zakoĹ„czone sukcesem |
 
-#### 6.13.4 ObsĹ‚uga bĹ‚Ä™dĂłw
+#### 6.13.4 ObsĹ‚uga bĹ‚ędĂłw
 
-| Typ bĹ‚Ä™du | Komunikat | Akcja |
+| Typ bĹ‚ędu | Komunikat | Akcja |
 |-----------|-----------|-------|
-| Brak zbieĹĽnoĹ›ci | Solver nie osiÄ…gnÄ…Ĺ‚ zbieĹĽnoĹ›ci po {N} iteracjach | WyĹ›wietl szczegĂłĹ‚y, zaproponuj zmianÄ™ parametrĂłw |
-| Singularna macierz | Macierz admitancyjna singularna (sieÄ‡ niespĂłjna?) | Uruchom ponownÄ… walidacjÄ™ topologii |
-| Przekroczony czas | Obliczenia przekroczyĹ‚y maksymalny czas | Zaproponuj uproszczenie modelu lub zwiÄ™kszenie czasu |
+| Brak zbieĹĽnoĹ›ci | Solver nie osiągnąĹ‚ zbieĹĽnoĹ›ci po {N} iteracjach | WyĹ›wietl szczegĂłĹ‚y, zaproponuj zmianę parametrĂłw |
+| Singularna macierz | Macierz admitancyjna singularna (sieć niespĂłjna?) | Uruchom ponowną walidację topologii |
+| Przekroczony czas | Obliczenia przekroczyĹ‚y maksymalny czas | Zaproponuj uproszczenie modelu lub zwiększenie czasu |
 
 #### 6.13.5 WpĹ‚yw na model
 
@@ -2718,13 +2718,13 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 ### 6.14 Ekran WZ-14: Analiza WynikĂłw
 
-| Atrybut | WartoĹ›Ä‡ |
+| Atrybut | WartoĹ›ć |
 |---------|---------|
 | **Identyfikator** | WZ-14 |
 | **TytuĹ‚** | Analiza wynikĂłw |
 | **Tryb** | RESULT_VIEW |
 | **Wyzwalacz** | PrzejĹ›cie z WZ-13 |
-| **Warunki wstÄ™pne** | Obliczenia zakoĹ„czone sukcesem |
+| **Warunki wstępne** | Obliczenia zakoĹ„czone sukcesem |
 
 #### 6.14.1 Widok wynikĂłw zwarciowych
 
@@ -2741,26 +2741,26 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•‘ Standard:             IEC 60909, Metoda B                             â•‘  â”‚
 â”‚ â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•Ł  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
-â”‚ â•‘   Ik" (poczÄ…tkowy prÄ…d zwarciowy):     12.45 kA                       â•‘  â”‚
-â”‚ â•‘   ip  (prÄ…d udarowy):                  31.67 kA                       â•‘  â”‚
-â”‚ â•‘   Ib  (prÄ…d wyĹ‚Ä…czeniowy):             12.45 kA                       â•‘  â”‚
-â”‚ â•‘   Ith (prÄ…d cieplny, tk=1.0s):         12.89 kA                       â•‘  â”‚
+â”‚ â•‘   Ik" (początkowy prąd zwarciowy):     12.45 kA                       â•‘  â”‚
+â”‚ â•‘   ip  (prąd udarowy):                  31.67 kA                       â•‘  â”‚
+â”‚ â•‘   Ib  (prąd wyĹ‚ączeniowy):             12.45 kA                       â•‘  â”‚
+â”‚ â•‘   Ith (prąd cieplny, tk=1.0s):         12.89 kA                       â•‘  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť  â”‚
 â”‚                                                                             â”‚
-â”‚ â–Ľ WkĹ‚ady do prÄ…du zwarciowego                                               â”‚
+â”‚ â–Ľ WkĹ‚ady do prądu zwarciowego                                               â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ ĹąRĂ“DĹO           â”‚ Ik" [kA]  â”‚ ip [kA]   â”‚ UdziaĹ‚ [%]  â”‚ Stan              â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ ZR-GPZ (sieÄ‡)    â”‚ 11.23     â”‚ 28.54     â”‚ 90.2%       â”‚ âś“                 â”‚
+â”‚ ZR-GPZ (sieć)    â”‚ 11.23     â”‚ 28.54     â”‚ 90.2%       â”‚ âś“                 â”‚
 â”‚ GEN-01 (generator)â”‚ 1.22      â”‚ 3.13      â”‚ 9.8%        â”‚ âś“                 â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ SUMA             â”‚ 12.45     â”‚ 31.67     â”‚ 100.0%      â”‚                   â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚                                                                             â”‚
-â”‚ â–Ľ Weryfikacja aparatury Ĺ‚Ä…czeniowej                                         â”‚
+â”‚ â–Ľ Weryfikacja aparatury Ĺ‚ączeniowej                                         â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ WYĹÄ„CZNIK        â”‚ Ik" [kA]  â”‚ Ik_zn[kA] â”‚ Margines    â”‚ Status            â”‚
+â”‚ WYĹĄCZNIK        â”‚ Ik" [kA]  â”‚ Ik_zn[kA] â”‚ Margines    â”‚ Status            â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ WĹ-GPZ-SN-01     â”‚ 12.45     â”‚ 25.0      â”‚ +50.2%      â”‚ âś“ OK              â”‚
 â”‚ WĹ-GPZ-SN-02     â”‚ 12.45     â”‚ 25.0      â”‚ +50.2%      â”‚ âś“ OK              â”‚
@@ -2784,7 +2784,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—  â”‚
 â”‚ â•‘ Algorytm:             Newton-Raphson                                  â•‘  â”‚
 â”‚ â•‘ Iteracje:             4                                               â•‘  â”‚
-â”‚ â•‘ ZbieĹĽnoĹ›Ä‡:            1.2e-8 MW                                       â•‘  â”‚
+â”‚ â•‘ ZbieĹĽnoĹ›ć:            1.2e-8 MW                                       â•‘  â”‚
 â”‚ â•‘ Czas obliczeĹ„:        0.12s                                           â•‘  â”‚
 â”‚ â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•Ł  â”‚
 â”‚ â•‘                                                                        â•‘  â”‚
@@ -2794,9 +2794,9 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ â•‘                                                                        â•‘  â”‚
 â”‚ â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť  â”‚
 â”‚                                                                             â”‚
-â”‚ â–Ľ NapiÄ™cia na szynach                                                       â”‚
+â”‚ â–Ľ Napięcia na szynach                                                       â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ SZYNA            â”‚ Un [kV]   â”‚ U [kV]    â”‚ U [p.u.]  â”‚ Î´ [Â°]    â”‚ Status   â”‚
+â”‚ SZYNA            â”‚ Un [kV]   â”‚ U [kV]    â”‚ U [p.u.]  â”‚ Î´ [°]    â”‚ Status   â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ SZ-GPZ-WN        â”‚ 110.0     â”‚ 110.0     â”‚ 1.000     â”‚ 0.0      â”‚ SLACK    â”‚
 â”‚ SZ-GPZ-SN        â”‚ 15.0      â”‚ 14.92     â”‚ 0.995     â”‚ -1.2     â”‚ âś“        â”‚
@@ -2804,9 +2804,9 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 â”‚ SZ-STB-01        â”‚ 15.0      â”‚ 14.65     â”‚ 0.977     â”‚ -3.1     â”‚ âš  <0.98  â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚                                                                             â”‚
-â”‚ â–Ľ ObciÄ…ĹĽenie gaĹ‚Ä™zi                                                         â”‚
+â”‚ â–Ľ ObciąĹĽenie gaĹ‚ęzi                                                         â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ GAĹÄ„Ĺą            â”‚ I [A]     â”‚ Idop [A]  â”‚ ObciÄ…ĹĽenieâ”‚ P_strat  â”‚ Status   â”‚
+â”‚ GAĹĄĹą            â”‚ I [A]     â”‚ Idop [A]  â”‚ ObciąĹĽenieâ”‚ P_strat  â”‚ Status   â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚ LN-GPZ-STA       â”‚ 125.3     â”‚ 380       â”‚ 33.0%     â”‚ 4.9 kW   â”‚ âś“        â”‚
 â”‚ LN-GPZ-STB       â”‚ 98.2      â”‚ 280       â”‚ 35.1%     â”‚ 6.8 kW   â”‚ âś“        â”‚
@@ -2824,11 +2824,11 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 |----------|-------|---------|
 | Eksportuj do PDF... | Generuje raport PDF | - |
 | Eksportuj do CSV... | Eksportuje dane do CSV | - |
-| PokaĹĽ na schemacie | PrzeĹ‚Ä…cza do SLD z nakĹ‚adkami wynikĂłw | - |
+| PokaĹĽ na schemacie | PrzeĹ‚ącza do SLD z nakĹ‚adkami wynikĂłw | - |
 | PorĂłwnaj z... | Otwiera porĂłwnanie z innym wynikiem | - |
 | â—€ Wstecz | PowrĂłt do WZ-13 | - |
 | ZakoĹ„cz | KoĹ„czy kreator | - |
-| Nowy przypadek | Tworzy nowy przypadek (â†’ WZ-11) | - |
+| Nowy przypadek | Tworzy nowy przypadek (→ WZ-11) | - |
 
 #### 6.14.4 WpĹ‚yw na model
 
@@ -2843,16 +2843,16 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 **Wyzwalacz:** Menu kontekstowe transformatora > "SzczegĂłĹ‚owy model transformatora..."
 
-#### 7.1.1 ZakĹ‚adka: Schemat zastÄ™pczy
+#### 7.1.1 ZakĹ‚adka: Schemat zastępczy
 
 | Pole | Etykieta (PL) | Typ | Jednostka | ĹąrĂłdĹ‚o | Edytowalne |
 |------|---------------|-----|-----------|--------|------------|
 | Zk | Impedancja zwarcia | float | Î© | Obliczone z uk%, Sn, Un | NIE |
 | Rk | Rezystancja zwarcia | float | Î© | Obliczone z Pk, Sn, Un | NIE |
 | Xk | Reaktancja zwarcia | float | Î© | âš(ZkÂ˛ - RkÂ˛) | NIE |
-| Gm | Konduktancja magnetyzujÄ…ca | float | S | P0 / UnÂ˛ | NIE |
-| Bm | Susceptancja magnetyzujÄ…ca | float | S | i0% Ă— Sn / UnÂ˛ | NIE |
-| uk% | NapiÄ™cie zwarcia | float | % | Dane wejĹ›ciowe | TAK |
+| Gm | Konduktancja magnetyzująca | float | S | P0 / UnÂ˛ | NIE |
+| Bm | Susceptancja magnetyzująca | float | S | i0% Ă— Sn / UnÂ˛ | NIE |
+| uk% | Napięcie zwarcia | float | % | Dane wejĹ›ciowe | TAK |
 | ur% | SkĹ‚adowa czynna uk | float | % | Obliczone z Pk | NIE |
 | ux% | SkĹ‚adowa bierna uk | float | % | âš(uk%Â˛ - ur%Â˛) | NIE |
 
@@ -2861,10 +2861,10 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna |
 |------|---------------|-----|-----------|--------|----------|
 | oltc_installed | OLTC zainstalowany | boolean | - | - | false |
-| oltc_side | Strona przeĹ‚Ä…cznika | enum | - | GN / DN | GN |
+| oltc_side | Strona przeĹ‚ącznika | enum | - | GN / DN | GN |
 | tap_high | Liczba zaczepĂłw (gĂłra) | int | - | 0 - 20 | 8 |
 | tap_low | Liczba zaczepĂłw (dĂłĹ‚) | int | - | 0 - 20 | 8 |
-| tap_step | Krok napiÄ™cia | float | % | 0.5 - 5 | 1.25 |
+| tap_step | Krok napięcia | float | % | 0.5 - 5 | 1.25 |
 | tap_position | Aktualny zaczep | int | - | -tap_low ... +tap_high | 0 |
 
 #### 7.1.3 ZakĹ‚adka: Dane katalogowe
@@ -2931,9 +2931,9 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 ---
 
-### 7.4 Modal: Model ObciÄ…ĹĽenia (MOD-LOD-01)
+### 7.4 Modal: Model ObciąĹĽenia (MOD-LOD-01)
 
-**Wyzwalacz:** Menu kontekstowe odbiornika > "Model obciÄ…ĹĽenia..."
+**Wyzwalacz:** Menu kontekstowe odbiornika > "Model obciąĹĽenia..."
 
 #### 7.4.1 ZakĹ‚adka: Model ZIP
 
@@ -2942,10 +2942,10 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | p0 | Moc bazowa P0 | float | MW | 0 - 1000 | 1.0 | Wymagane |
 | q0 | Moc bazowa Q0 | float | Mvar | -1000 - 1000 | 0.5 | Wymagane |
 | ap | Wsp. impedancji (P) | float | - | 0 - 1 | 0.4 | ap+bp+cp=1 |
-| bp | Wsp. prÄ…du (P) | float | - | 0 - 1 | 0.4 | ap+bp+cp=1 |
+| bp | Wsp. prądu (P) | float | - | 0 - 1 | 0.4 | ap+bp+cp=1 |
 | cp | Wsp. mocy (P) | float | - | 0 - 1 | 0.2 | ap+bp+cp=1 |
 | aq | Wsp. impedancji (Q) | float | - | 0 - 1 | 0.4 | aq+bq+cq=1 |
-| bq | Wsp. prÄ…du (Q) | float | - | 0 - 1 | 0.4 | aq+bq+cq=1 |
+| bq | Wsp. prądu (Q) | float | - | 0 - 1 | 0.4 | aq+bq+cq=1 |
 | cq | Wsp. mocy (Q) | float | - | 0 - 1 | 0.2 | aq+bq+cq=1 |
 
 #### 7.4.2 ZakĹ‚adka: Model silnikowy
@@ -2953,13 +2953,13 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Pole | Etykieta (PL) | Typ | Jednostka | Zakres | DomyĹ›lna |
 |------|---------------|-----|-----------|--------|----------|
 | motor_pn | Moc znamionowa | float | kW | 0.1 - 10000 | 100 |
-| motor_un | NapiÄ™cie znamionowe | float | kV | 0.4 - 36 | 6.0 |
-| motor_eta | SprawnoĹ›Ä‡ | float | % | 70 - 98 | 95 |
+| motor_un | Napięcie znamionowe | float | kV | 0.4 - 36 | 6.0 |
+| motor_eta | SprawnoĹ›ć | float | % | 70 - 98 | 95 |
 | motor_cos_phi | WspĂłĹ‚czynnik mocy | float | - | 0.7 - 0.95 | 0.85 |
-| motor_ir_in | PrÄ…d rozruchowy | float | - | 4 - 8 | 6 |
+| motor_ir_in | Prąd rozruchowy | float | - | 4 - 8 | 6 |
 | motor_cos_phi_start | Cos Ď† rozruchowy | float | - | 0.1 - 0.4 | 0.2 |
 | motor_ik_in | Stosunek Ik"/In | float | - | 4 - 10 | 6.5 |
-| include_in_sc | UwzglÄ™dnij w zwarciu | boolean | - | - | true |
+| include_in_sc | Uwzględnij w zwarciu | boolean | - | - | true |
 
 ---
 
@@ -2969,9 +2969,9 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 #### 7.5.1 Struktura raportu
 
-| Sekcja | ZawartoĹ›Ä‡ |
+| Sekcja | ZawartoĹ›ć |
 |--------|-----------|
-| Podsumowanie | Liczba bĹ‚Ä™dĂłw, ostrzeĹĽeĹ„, informacji; status gotowoĹ›ci |
+| Podsumowanie | Liczba bĹ‚ędĂłw, ostrzeĹĽeĹ„, informacji; status gotowoĹ›ci |
 | Lista komunikatĂłw | Tabela z KOD, POZIOM, ELEMENT, OPIS |
 | Statystyki modelu | Liczba elementĂłw kaĹĽdego typu |
 | Czas walidacji | Znacznik czasu i czas trwania |
@@ -2998,7 +2998,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | new_name | Nazwa nowego przypadku | string | {STARY}-kopia |
 | new_description | Opis | string | "" |
 | copy_solver_params | Kopiuj parametry solvera | boolean | true |
-| copy_fault_location | Kopiuj lokalizacjÄ™ zwarcia | boolean | false |
+| copy_fault_location | Kopiuj lokalizację zwarcia | boolean | false |
 | copy_fault_type | Kopiuj typ zwarcia | boolean | false |
 | copy_thermal_params | Kopiuj parametry termiczne | boolean | true |
 | copy_motor_settings | Kopiuj ustawienia silnikĂłw | boolean | true |
@@ -3011,7 +3011,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 #### 7.7.1 Struktura porĂłwnania
 
-| Sekcja | ZawartoĹ›Ä‡ |
+| Sekcja | ZawartoĹ›ć |
 |--------|-----------|
 | Parametry przypadkĂłw | Tabela rĂłĹĽnic w parametrach |
 | Wyniki liczbowe | Tabela wartoĹ›ci z kolumnami A, B, Î”, Î”% |
@@ -3028,10 +3028,10 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Grupa | Pole | Etykieta (PL) | Typ | DomyĹ›lna |
 |-------|------|---------------|-----|----------|
 | Walidacja | validate_before_calc | Waliduj przed obliczeniem | boolean | true |
-| Walidacja | block_on_errors | Blokuj przy bĹ‚Ä™dach | boolean | true |
+| Walidacja | block_on_errors | Blokuj przy bĹ‚ędach | boolean | true |
 | Walidacja | block_on_warnings | Blokuj przy ostrzeĹĽeniach | boolean | false |
-| WydajnoĹ›Ä‡ | max_calc_time | Maks. czas obliczeĹ„ | int (s) | 300 |
-| WydajnoĹ›Ä‡ | log_level | Poziom logĂłw | enum | NORMAL |
+| WydajnoĹ›ć | max_calc_time | Maks. czas obliczeĹ„ | int (s) | 300 |
+| WydajnoĹ›ć | log_level | Poziom logĂłw | enum | NORMAL |
 | Automatyzacja | auto_open_results | OtwĂłrz wyniki automatycznie | boolean | false |
 | Automatyzacja | auto_save_project | Zapisz projekt automatycznie | boolean | true |
 | Automatyzacja | auto_export_pdf | Eksportuj PDF automatycznie | boolean | false |
@@ -3049,25 +3049,25 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | ID | Unikalny identyfikator przypadku |
 | Nazwa | Nazwa opisowa |
 | Typ | ShortCircuitCase / PowerFlowCase |
-| Stan | OBLICZONY / GOTOWY / NIEAKTUALNY / BĹÄ„D |
-| Wynik gĹ‚Ăłwny | Ik" (zwarcie) / ZbieĹĽnoĹ›Ä‡ (rozpĹ‚yw) |
+| Stan | OBLICZONY / GOTOWY / NIEAKTUALNY / BĹĄD |
+| Wynik gĹ‚Ăłwny | Ik" (zwarcie) / ZbieĹĽnoĹ›ć (rozpĹ‚yw) |
 | Data obliczenia | Znacznik czasu ostatniego obliczenia |
 
 #### 8.1.2 Stany przypadkĂłw
 
 | Stan | Symbol | Opis | Kolor |
 |------|--------|------|-------|
-| OBLICZONY | â—Ź | Wyniki dostÄ™pne | Zielony |
+| OBLICZONY | â—Ź | Wyniki dostępne | Zielony |
 | GOTOWY | â—‹ | Gotowy do obliczeĹ„ | Niebieski |
 | NIEAKTUALNY | â— | Model zmieniony | Ĺ»ĂłĹ‚ty |
-| BĹÄ„D | âś— | Ostatnie obliczenie bĹ‚Ä™dne | Czerwony |
+| BĹĄD | âś— | Ostatnie obliczenie bĹ‚ędne | Czerwony |
 
 ### 8.2 ReguĹ‚a Blokady ObliczeĹ„
 
 **WYMĂ“G:** Przycisk [Oblicz] jest AKTYWNY tylko gdy:
 1. Przypadek jest wybrany jako aktywny
 2. Walidacja modelu wykonana
-3. Brak bĹ‚Ä™dĂłw krytycznych w walidacji
+3. Brak bĹ‚ędĂłw krytycznych w walidacji
 4. Wszystkie parametry przypadku zdefiniowane
 
 ### 8.3 Parametry ShortCircuitCase
@@ -3082,7 +3082,7 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 | Metoda | c_max | WspĂłĹ‚czynnik c_max | float | - | 1.0-1.2 | 1.10 |
 | Metoda | c_min | WspĂłĹ‚czynnik c_min | float | - | 0.9-1.1 | 1.00 |
 | Termiczne | fault_duration | Czas trwania tk | float | s | 0.1-5.0 | 1.0 |
-| Silniki | include_motors | UwzglÄ™dnij silniki | boolean | - | - | true |
+| Silniki | include_motors | Uwzględnij silniki | boolean | - | - | true |
 
 ### 8.4 Parametry PowerFlowCase
 
@@ -3090,12 +3090,12 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 |-------|------|---------------|-----|-----------|--------|----------|
 | Algorytm | algorithm | Algorytm | enum | - | NR/GS | NR |
 | Algorytm | max_iterations | Maks. iteracji | int | - | 10-1000 | 100 |
-| ZbieĹĽnoĹ›Ä‡ | power_tolerance | Tolerancja mocy | float | MW | 1e-10-1e-3 | 1e-6 |
-| ZbieĹĽnoĹ›Ä‡ | voltage_tolerance | Tolerancja napiÄ™cia | float | p.u. | 1e-10-1e-3 | 1e-6 |
+| ZbieĹĽnoĹ›ć | power_tolerance | Tolerancja mocy | float | MW | 1e-10-1e-3 | 1e-6 |
+| ZbieĹĽnoĹ›ć | voltage_tolerance | Tolerancja napięcia | float | p.u. | 1e-10-1e-3 | 1e-6 |
 | Opcje | transformer_losses | Straty w TR | boolean | - | - | true |
 | Opcje | line_losses | Straty w liniach | boolean | - | - | true |
 | Opcje | auto_tap | Automatyczne zaczepy | boolean | - | - | true |
-| Start | initial_voltage | NapiÄ™cie startowe | float | p.u. | 0.8-1.2 | 1.0 |
+| Start | initial_voltage | Napięcie startowe | float | p.u. | 0.8-1.2 | 1.0 |
 
 ---
 
@@ -3105,11 +3105,11 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 
 | Kontrola | Opis | Blokuje |
 |----------|------|---------|
-| Topologia spĂłjna | SieÄ‡ nie zawiera izolowanych elementĂłw | TAK |
+| Topologia spĂłjna | Sieć nie zawiera izolowanych elementĂłw | TAK |
 | ĹąrĂłdĹ‚o zdefiniowane | Istnieje co najmniej jedno aktywne ĹşrĂłdĹ‚o | TAK |
 | Parametry kompletne | Wszystkie wymagane parametry zdefiniowane | TAK |
 | Przypadek aktywny | Przypadek obliczeniowy jest wybrany | TAK |
-| Model zwalidowany | NetworkValidator bez bĹ‚Ä™dĂłw | TAK |
+| Model zwalidowany | NetworkValidator bez bĹ‚ędĂłw | TAK |
 
 ### 9.2 Format LogĂłw Konsoli
 
@@ -3119,16 +3119,16 @@ W trybie statycznym ĹşrĂłdĹ‚a konwerterowe dziaĹ‚ajÄ… wyĹ‚Ä…c
 Poziomy: DEBUG, INFO, WARNING, ERROR, SUCCESS
 ```
 
-### 9.3 Kody BĹ‚Ä™dĂłw Solvera
+### 9.3 Kody BĹ‚ędĂłw Solvera
 
-| Kod | Opis | Przyczyna | RozwiÄ…zanie |
+| Kod | Opis | Przyczyna | Rozwiązanie |
 |-----|------|-----------|-------------|
-| E-SLV-001 | Singularna macierz | SieÄ‡ niespĂłjna | SprawdĹş topologiÄ™ |
-| E-SLV-002 | Brak zbieĹĽnoĹ›ci | ZĹ‚e parametry | SprawdĹş dane, zwiÄ™ksz iteracje |
+| E-SLV-001 | Singularna macierz | Sieć niespĂłjna | SprawdĹş topologię |
+| E-SLV-002 | Brak zbieĹĽnoĹ›ci | ZĹ‚e parametry | SprawdĹş dane, zwiększ iteracje |
 | E-SLV-003 | Brak ĹşrĂłdĹ‚a | Brak aktywnego ĹşrĂłdĹ‚a | Dodaj ĹşrĂłdĹ‚o |
-| E-SLV-004 | Przekroczony czas | Obliczenia zbyt dĹ‚ugie | UproĹ›Ä‡ model |
-| E-SLV-005 | BĹ‚Ä…d pamiÄ™ci | NiewystarczajÄ…ca pamiÄ™Ä‡ | Zamknij inne aplikacje |
-| E-SLV-006 | NiespĂłjne napiÄ™cia | RĂłĹĽne Un bez TR | SprawdĹş napiÄ™cia szyn |
+| E-SLV-004 | Przekroczony czas | Obliczenia zbyt dĹ‚ugie | UproĹ›ć model |
+| E-SLV-005 | BĹ‚ąd pamięci | Niewystarczająca pamięć | Zamknij inne aplikacje |
+| E-SLV-006 | NiespĂłjne napięcia | RĂłĹĽne Un bez TR | SprawdĹş napięcia szyn |
 
 ---
 
@@ -3138,24 +3138,24 @@ Poziomy: DEBUG, INFO, WARNING, ERROR, SUCCESS
 
 | Zasada | Opis |
 |--------|------|
-| TYLKO DO ODCZYTU | Ĺ»adne modyfikacje nie sÄ… dozwolone |
+| TYLKO DO ODCZYTU | Ĺ»adne modyfikacje nie są dozwolone |
 | NAKĹADKI AKTYWNE | Wyniki wyĹ›wietlane na SLD |
-| SELEKCJA INFORMACYJNA | KlikniÄ™cie pokazuje wyniki, nie edycjÄ™ |
+| SELEKCJA INFORMACYJNA | Kliknięcie pokazuje wyniki, nie edycję |
 | EKSPORT DOZWOLONY | Eksport do rĂłĹĽnych formatĂłw |
 
 ### 10.2 Warstwy WynikĂłw na SLD
 
-| Warstwa | ZawartoĹ›Ä‡ | Wizualizacja |
+| Warstwa | ZawartoĹ›ć | Wizualizacja |
 |---------|-----------|--------------|
-| PrÄ…dy | WartoĹ›ci prÄ…dĂłw w gaĹ‚Ä™ziach | Etykiety [I=xxx A] |
-| NapiÄ™cia | WartoĹ›ci napiÄ™Ä‡ na szynach | Etykiety [U=xxx kV] |
-| ObciÄ…ĹĽenie | StopieĹ„ obciÄ…ĹĽenia gaĹ‚Ä™zi | Kolor: zielony/ĹĽĂłĹ‚ty/czerwony |
-| Naruszenia | Szyny z napiÄ™ciem poza zakresem | Marker czerwony |
-| PrÄ…dy zwarciowe | WartoĹ›ci Ik" na szynach | Etykiety [Ik"=xxx kA] |
+| Prądy | WartoĹ›ci prądĂłw w gaĹ‚ęziach | Etykiety [I=xxx A] |
+| Napięcia | WartoĹ›ci napięć na szynach | Etykiety [U=xxx kV] |
+| ObciąĹĽenie | StopieĹ„ obciąĹĽenia gaĹ‚ęzi | Kolor: zielony/ĹĽĂłĹ‚ty/czerwony |
+| Naruszenia | Szyny z napięciem poza zakresem | Marker czerwony |
+| Prądy zwarciowe | WartoĹ›ci Ik" na szynach | Etykiety [Ik"=xxx kA] |
 
 ### 10.3 Formaty Eksportu
 
-| Format | ZawartoĹ›Ä‡ | Zastosowanie |
+| Format | ZawartoĹ›ć | Zastosowanie |
 |--------|-----------|--------------|
 | PDF | PeĹ‚ny raport z tabelami | Dokumentacja |
 | CSV | Surowe dane tabelaryczne | Import do Excel |
@@ -3174,53 +3174,53 @@ KOD | POZIOM | ELEMENT | WYJAĹšNIENIE
 
 Gdzie:
   KOD        = {KATEGORIA}-{TYP}-{NNN}
-  POZIOM     = BĹ‚Ä…d | OstrzeĹĽenie | Info
+  POZIOM     = BĹ‚ąd | OstrzeĹĽenie | Info
   ELEMENT    = Nazwa obiektu
-  WYJAĹšNIENIE = PeĹ‚ny opis + sugestia rozwiÄ…zania
+  WYJAĹšNIENIE = PeĹ‚ny opis + sugestia rozwiązania
 ```
 
 ### 11.2 Kategorie KomunikatĂłw
 
 | Kategoria | Prefiks | Opis |
 |-----------|---------|------|
-| TOP | Topologia | BĹ‚Ä™dy struktury sieci |
-| VAL | Walidacja | BĹ‚Ä™dy walidacji parametrĂłw |
-| TRF | Transformator | BĹ‚Ä™dy transformatorĂłw |
-| LIN | Linia | BĹ‚Ä™dy linii/kabli |
-| SRC | ĹąrĂłdĹ‚o | BĹ‚Ä™dy ĹşrĂłdeĹ‚ |
-| LOD | Odbiornik | BĹ‚Ä™dy odbiornikĂłw |
-| CBR | WyĹ‚Ä…cznik | BĹ‚Ä™dy wyĹ‚Ä…cznikĂłw |
-| DSC | RozĹ‚Ä…cznik | BĹ‚Ä™dy rozĹ‚Ä…cznikĂłw |
-| BUS | Szyna | BĹ‚Ä™dy szyn |
-| CAS | Przypadek | BĹ‚Ä™dy przypadkĂłw |
-| SLV | Solver | BĹ‚Ä™dy obliczeĹ„ |
+| TOP | Topologia | BĹ‚ędy struktury sieci |
+| VAL | Walidacja | BĹ‚ędy walidacji parametrĂłw |
+| TRF | Transformator | BĹ‚ędy transformatorĂłw |
+| LIN | Linia | BĹ‚ędy linii/kabli |
+| SRC | ĹąrĂłdĹ‚o | BĹ‚ędy ĹşrĂłdeĹ‚ |
+| LOD | Odbiornik | BĹ‚ędy odbiornikĂłw |
+| CBR | WyĹ‚ącznik | BĹ‚ędy wyĹ‚ącznikĂłw |
+| DSC | RozĹ‚ącznik | BĹ‚ędy rozĹ‚ącznikĂłw |
+| BUS | Szyna | BĹ‚ędy szyn |
+| CAS | Przypadek | BĹ‚ędy przypadkĂłw |
+| SLV | Solver | BĹ‚ędy obliczeĹ„ |
 
 ### 11.3 Poziomy KomunikatĂłw
 
 | Poziom | Ikona | Znaczenie | WpĹ‚yw |
 |--------|-------|-----------|-------|
-| BĹ‚Ä…d | âś— | Problem krytyczny | BLOKUJE |
-| OstrzeĹĽenie | âš  | Problem wymagajÄ…cy uwagi | NIE BLOKUJE |
+| BĹ‚ąd | âś— | Problem krytyczny | BLOKUJE |
+| OstrzeĹĽenie | âš  | Problem wymagający uwagi | NIE BLOKUJE |
 | Info | â„ą | Informacja pomocnicza | NIE BLOKUJE |
 
 ### 11.4 Zasada Braku KomunikatĂłw OgĂłlnych
 
 **ZAKAZANE:**
-- "WystÄ…piĹ‚ bĹ‚Ä…d"
-- "Operacja nie powiodĹ‚a siÄ™"
+- "WystąpiĹ‚ bĹ‚ąd"
+- "Operacja nie powiodĹ‚a się"
 - "NieprawidĹ‚owe dane"
 
 **WYMAGANE zawsze:**
-- Konkretny kod bĹ‚Ä™du
+- Konkretny kod bĹ‚ędu
 - Nazwa elementu
 - PeĹ‚ny opis problemu
-- Sugestia rozwiÄ…zania
+- Sugestia rozwiązania
 
 ---
 
 ## 12. Odniesienia
 
-### 12.1 Dokumenty WewnÄ™trzne
+### 12.1 Dokumenty Wewnętrzne
 
 | Dokument | ĹšcieĹĽka | Opis |
 |----------|---------|------|
@@ -3228,16 +3228,16 @@ Gdzie:
 | ARCHITECTURE.md | /docs/ARCHITECTURE.md | Architektura aplikacji |
 | PLANS.md | /docs/PLANS.md | Plany rozwoju |
 | sld_rules.md | /docs/ui/sld_rules.md | ReguĹ‚y SLD |
-| CANONICAL_COMPLIANCE.md | /docs/CANONICAL_COMPLIANCE.md | ZgodnoĹ›Ä‡ z benchmark |
+| CANONICAL_COMPLIANCE.md | /docs/CANONICAL_COMPLIANCE.md | ZgodnoĹ›ć z benchmark |
 
-### 12.2 Standardy ZewnÄ™trzne
+### 12.2 Standardy Zewnętrzne
 
 | Standard | Opis | Zastosowanie |
 |----------|------|--------------|
-| IEC 60909 | Obliczanie prÄ…dĂłw zwarciowych | ShortCircuitSolver |
+| IEC 60909 | Obliczanie prądĂłw zwarciowych | ShortCircuitSolver |
 | IEC 60076 | Transformatory mocy | Parametry TR |
-| IEC 60287 | ObciÄ…ĹĽalnoĹ›Ä‡ prÄ…dowa kabli | Parametry kabli |
-| EN 50160 | Charakterystyki napiÄ™cia | Walidacja napiÄ™Ä‡ |
+| IEC 60287 | ObciąĹĽalnoĹ›ć prądowa kabli | Parametry kabli |
+| EN 50160 | Charakterystyki napięcia | Walidacja napięć |
 
 ### 12.3 Wzorzec UI
 
@@ -3247,7 +3247,7 @@ Gdzie:
 
 ---
 
-## ZaĹ‚Ä…cznik A: SĹ‚ownik TerminĂłw UI (PL/EN)
+## ZaĹ‚ącznik A: SĹ‚ownik TerminĂłw UI (PL/EN)
 
 | Polski | Angielski |
 |--------|-----------|
@@ -3255,10 +3255,10 @@ Gdzie:
 | Linia | Line |
 | Kabel | Cable |
 | Transformator | Transformer |
-| WyĹ‚Ä…cznik | Circuit Breaker |
-| RozĹ‚Ä…cznik | Disconnector |
+| WyĹ‚ącznik | Circuit Breaker |
+| RozĹ‚ącznik | Disconnector |
 | ĹąrĂłdĹ‚o | Source |
-| SieÄ‡ zewnÄ™trzna | External Grid |
+| Sieć zewnętrzna | External Grid |
 | Generator | Generator |
 | Odbiornik | Load |
 | Przypadek obliczeniowy | Calculation Case |
@@ -3270,15 +3270,15 @@ Gdzie:
 | Drzewo projektu | Project Tree |
 | Kreator | Wizard |
 | Walidacja | Validation |
-| NapiÄ™cie znamionowe | Rated Voltage |
-| PrÄ…d znamionowy | Rated Current |
+| Napięcie znamionowe | Rated Voltage |
+| Prąd znamionowy | Rated Current |
 | Moc zwarciowa | Short Circuit Power |
-| PrÄ…d zwarciowy poczÄ…tkowy | Initial Short Circuit Current |
-| PrÄ…d udarowy | Peak Short Circuit Current |
+| Prąd zwarciowy początkowy | Initial Short Circuit Current |
+| Prąd udarowy | Peak Short Circuit Current |
 
 ---
 
-## ZaĹ‚Ä…cznik B: SkrĂłty Klawiszowe
+## ZaĹ‚ącznik B: SkrĂłty Klawiszowe
 
 | SkrĂłt | Akcja |
 |-------|-------|
@@ -3289,9 +3289,9 @@ Gdzie:
 | Ctrl+Y | PonĂłw |
 | F5 | Uruchom obliczenia |
 | F6 | Waliduj model |
-| F7 | PrzeĹ‚Ä…cz tryb |
+| F7 | PrzeĹ‚ącz tryb |
 | Delete | UsuĹ„ element |
-| Escape | Anuluj operacjÄ™ |
+| Escape | Anuluj operację |
 | Ctrl+A | Zaznacz wszystko |
 | Ctrl+F | ZnajdĹş element |
 | Ctrl+P | Drukuj/Eksportuj PDF |

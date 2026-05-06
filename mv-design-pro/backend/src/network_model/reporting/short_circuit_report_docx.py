@@ -57,7 +57,7 @@ def _format_complex(value: dict | complex | str | Any) -> str:
 def _format_value(value: Any) -> str:
     """Format a value for display in the report."""
     if value is None:
-        return "â€”"
+        return "—"
     if isinstance(value, dict) and "re" in value and "im" in value:
         return _format_complex(value)
     if isinstance(value, complex):
@@ -139,8 +139,8 @@ def export_short_circuit_result_to_docx(
 
     # Subtitle with fault parameters
     subtitle_parts = [
-        f"Typ zwarcia: {data.get('short_circuit_type', 'â€”')}",
-        f"WÄ™zeĹ‚: {data.get('fault_node_id', 'â€”')}",
+        f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
+        f"WęzeĹ‚: {data.get('fault_node_id', '—')}",
         f"Un: {_format_value(data.get('un_v'))} V",
         f"c: {_format_value(data.get('c_factor'))}",
         f"tk: {_format_value(data.get('tk_s'))} s",
@@ -161,7 +161,7 @@ def export_short_circuit_result_to_docx(
     # Header row
     hdr_cells = results_table.rows[0].cells
     hdr_cells[0].text = "Nazwa"
-    hdr_cells[1].text = "WartoĹ›Ä‡"
+    hdr_cells[1].text = "WartoĹ›ć"
 
     # Make header bold
     for cell in hdr_cells:
@@ -241,7 +241,7 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
 
         hdr = inputs_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "WartoĹ›Ä‡"
+        hdr[1].text = "WartoĹ›ć"
 
         for k, v in inputs.items():
             row = inputs_table.add_row().cells
@@ -264,7 +264,7 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
 
         hdr = result_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "WartoĹ›Ä‡"
+        hdr[1].text = "WartoĹ›ć"
 
         for k, v in result_data.items():
             row = result_table.add_row().cells

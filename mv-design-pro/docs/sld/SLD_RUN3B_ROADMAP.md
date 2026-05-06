@@ -1,20 +1,20 @@
 ﻿# SLD RUN 3B+ Roadmap
 
 **Status:** PLANOWANY | **Wersja:** 1.1 | **Data:** 2026-02-13
-**Kontekst:** RUN #3A + RUN #3C â†’ mapa zaleznosci dla kolejnych etapow SLD benchmark-grade
+**Kontekst:** RUN #3A + RUN #3C → mapa zaleznosci dla kolejnych etapow SLD benchmark-grade
 
 ---
 
 ## 1. Dependency Map
 
 ```
-RUN #3A (DONE â€” kontrakty + determinism)
+RUN #3A (DONE — kontrakty + determinism)
   â”śâ”€ PR-3A-01: docs (pipeline map, gap audit, SSOT)
   â”śâ”€ PR-3A-02: VisualGraphV1 contract + TopologyAdapterV1
   â””â”€ PR-3A-03: determinism suite + guards + golden networks
         â”‚
         â–Ľ
-RUN #3C (DONE â€” topology hardening, domain-driven adapter)
+RUN #3C (DONE — topology hardening, domain-driven adapter)
   â”śâ”€ TopologyInputReader (ENM + bridge)
   â”śâ”€ TopologyAdapterV2 (domain-driven, zero self-edges)
   â”śâ”€ Segmentacja trunk/branch/secondary (BFS spanning tree)
@@ -26,7 +26,7 @@ RUN #3C (DONE â€” topology hardening, domain-driven adapter)
   â””â”€ Guards: no-self-edges, no-string-typology, no-legacy
         â”‚
         â–Ľ
-RUN #3B (NEXT â€” embedded switchgear blocks + layout rendering)
+RUN #3B (NEXT — embedded switchgear blocks + layout rendering)
   â”śâ”€ Wymaga: VisualGraphV1 zamrozony (PR-3A-02) âś“
   â”śâ”€ Wymaga: golden networks (PR-3A-03) âś“
   â”śâ”€ Wymaga: domain-driven adapter (RUN #3C) âś“
@@ -95,27 +95,27 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
 - VisualGraphV1 (niezmieniony lub V1.1)
 
 ### 3.2 Wyjscie
-- **LayoutSpec** â€” deklaratywny opis layoutu (co uzytkownik chce)
+- **LayoutSpec** — deklaratywny opis layoutu (co uzytkownik chce)
   - Constraints (element A nad B, bus horizontal)
   - User overrides (reczne przesuniecia, CAD mode)
   - Auto-layout hints
-- **LayoutResult** â€” wynik obliczen layoutu (co engine produkuje)
+- **LayoutResult** — wynik obliczen layoutu (co engine produkuje)
   - Pozycje wszystkich symboli
   - Sciezki wszystkich polaczen
   - Collision report
   - Hash (dla cache i determinism)
-- **SldEditAction** â€” atomowe operacje edycji
+- **SldEditAction** — atomowe operacje edycji
   - MoveSymbol, ResizeSymbol, RoutePath
   - AddElement, RemoveElement
   - Batch operations
-- **Undo/Redo** â€” pelna historia edycji
+- **Undo/Redo** — pelna historia edycji
   - Integracja z istniejacym command pattern
   - Persistent undo stack (cross-session)
-- **Routing Bendpoints** â€” kontrolowane zalamanie sciezek
+- **Routing Bendpoints** — kontrolowane zalamanie sciezek
   - Uzytkownik moze dodac/usunac/przesunac bendpoints
   - Routing z uwzglednieniem bendpoints
-- **Incremental Auto-Layout** (bez przycisku "uporzÄ…dkuj")
-  - Zmiana modelu â†’ automatyczna aktualizacja layoutu
+- **Incremental Auto-Layout** (bez przycisku "uporządkuj")
+  - Zmiana modelu → automatyczna aktualizacja layoutu
   - Zachowanie user overrides
   - Brak przebudowy calego layoutu
 
@@ -123,12 +123,12 @@ RUN #3D (Export E2E + CI artifacts + perf budgets)
 | Ryzyko | Mitigacja |
 |--------|-----------|
 | User overrides lamiaca determinism | LayoutSpec hash niezalezny od override order |
-| Incremental layout diverguje od full layout | Test: incremental + full â†’ identyczny result (dla tych samych constraints) |
+| Incremental layout diverguje od full layout | Test: incremental + full → identyczny result (dla tych samych constraints) |
 | Undo/Redo zmienia hash | Hash oparty na LayoutSpec, nie historii |
 | Bendpoints tworza non-canonical routing | Canonical bendpoint serialization |
 
 ### 3.4 Testy i guardy
-- Test: LayoutSpec â†’ LayoutResult jest deterministyczny
+- Test: LayoutSpec → LayoutResult jest deterministyczny
 - Test: SldEditAction jest odwracalny (action + undo = identity)
 - Test: Incremental layout zachowuje user overrides
 - Guard: LayoutResult hash jest stabilny (100x)

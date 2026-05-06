@@ -1,4 +1,4 @@
-﻿# LOAD FLOW DEPENDENCY GRAPH â€” RUN #2A
+﻿# LOAD FLOW DEPENDENCY GRAPH — RUN #2A
 
 > **Status**: BINDING
 > **Date**: 2026-02-13
@@ -91,15 +91,15 @@ PR-LF-03 and PR-LF-04 have no dependency on each other and can be developed and 
 class LoadFlowRunInput:
     """
     Application-level Load Flow run input.
-    ZERO defaults â€” every field is mandatory and explicit.
+    ZERO defaults — every field is mandatory and explicit.
     """
     study_case_id: UUID
     snapshot_id: str
     solver_method: Literal["newton-raphson", "gauss-seidel", "fast-decoupled"]
     modeling_mode: Literal["AC_POWER_FLOW"]
     start_mode: Literal["FLAT_START", "CUSTOM_INITIAL"]
-    tolerance: float          # NO default â€” caller must specify
-    max_iterations: int       # NO default â€” caller must specify
+    tolerance: float          # NO default — caller must specify
+    max_iterations: int       # NO default — caller must specify
     base_mva: float           # Explicit system base
     slack: SlackSpec          # Single slack (explicit node + voltage)
     pq_specs: tuple[PQSpec, ...]

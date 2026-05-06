@@ -303,7 +303,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
               value={reportScope}
               onChange={(event) => setReportScope(event.target.value as ReportScope)}
             >
-              <option value="whole_run">cale uruchomienie</option>
+              <option value="whole_run">całe obliczenie</option>
               <option value="active_table">aktywna tabela</option>
             </select>
           </label>

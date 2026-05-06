@@ -14,7 +14,7 @@
       "defaultRotation": 0
     },
     "circuit_breaker": {
-      "description": "WyĹ‚Ä…cznik / Circuit Breaker",
+      "description": "WyĹ‚ącznik / Circuit Breaker",
       "viewBox": "0 0 100 100",
       "ports": {
         "top": { "x": 50, "y": 0 },
@@ -24,7 +24,7 @@
       "defaultRotation": 0
     },
     "disconnector": {
-      "description": "RozĹ‚Ä…cznik / Disconnector",
+      "description": "RozĹ‚ącznik / Disconnector",
       "viewBox": "0 0 100 100",
       "ports": {
         "top": { "x": 50, "y": 0 },
@@ -120,7 +120,7 @@
       },
       "allowedRotations": [0, 180],
       "defaultRotation": 0,
-      "notes": "180Â° rotation swaps +/- polarity visually"
+      "notes": "180° rotation swaps +/- polarity visually"
     },
     "utility_feeder": {
       "description": "Zasilanie z sieci / Utility Feeder",
@@ -143,7 +143,7 @@
       "notes": "Rotation not allowed - ground symbol must point down"
     },
     "ct": {
-      "description": "PrzekĹ‚adnik prÄ…dowy / Current Transformer",
+      "description": "PrzekĹ‚adnik prądowy / Current Transformer",
       "viewBox": "0 0 100 100",
       "ports": {
         "left": { "x": 0, "y": 50 },
@@ -153,7 +153,7 @@
       "defaultRotation": 0
     },
     "vt": {
-      "description": "PrzekĹ‚adnik napiÄ™ciowy / Voltage Transformer",
+      "description": "PrzekĹ‚adnik napięciowy / Voltage Transformer",
       "viewBox": "0 0 100 100",
       "ports": {
         "left": { "x": 0, "y": 50 },
@@ -170,7 +170,7 @@
       },
       "allowedRotations": [0],
       "defaultRotation": 0,
-      "notes": "Single port â€” blade connects to ground symbol below"
+      "notes": "Single port — blade connects to ground symbol below"
     },
     "fuse": {
       "description": "Bezpiecznik / Fuse",
@@ -183,14 +183,14 @@
       "defaultRotation": 0
     },
     "surge_arrester": {
-      "description": "Ogranicznik przepiÄ™Ä‡ / Surge Arrester",
+      "description": "Ogranicznik przepięć / Surge Arrester",
       "viewBox": "0 0 100 100",
       "ports": {
         "top": { "x": 50, "y": 0 }
       },
       "allowedRotations": [0],
       "defaultRotation": 0,
-      "notes": "Single port â€” ground symbol integrated at bottom"
+      "notes": "Single port — ground symbol integrated at bottom"
     },
     "capacitor": {
       "description": "Kondensator / Capacitor",
@@ -220,7 +220,7 @@
       },
       "allowedRotations": [0],
       "defaultRotation": 0,
-      "notes": "Circle with M â€” single connection port at top"
+      "notes": "Circle with M — single connection port at top"
     },
     "metering_cubicle": {
       "description": "Szafka pomiarowa / Metering Cubicle",
@@ -240,7 +240,7 @@
       },
       "allowedRotations": [0, 180],
       "defaultRotation": 0,
-      "notes": "Downward triangle â€” single connection port at top"
+      "notes": "Downward triangle — single connection port at top"
     }
   },
   "portTransformations": {

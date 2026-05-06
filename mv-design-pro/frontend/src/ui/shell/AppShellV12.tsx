@@ -20,14 +20,10 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
-import { IssuePanelContainer } from '../issue-panel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
-import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
-import { MassReviewPanel } from '../network-build/mass-review';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
-import { SldVisualModes } from '../network-build/SldVisualModes';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { navigateToCatalog } from '../navigation/routes';
@@ -45,7 +41,7 @@ import { AreaContextPanel } from './context-panels';
 import { WorkflowContextStrip } from './WorkflowContextStrip';
 
 export interface AppShellV12Props {
-  children: ReactNode;
+  children?: ReactNode;
   onCalculate?: () => void;
   onViewResults?: () => void;
   projectName?: string;
@@ -119,7 +115,6 @@ export function AppShellV12({
   networkStats,
 }: AppShellV12Props) {
   const issuePanelOpen = useIssuePanelOpen();
-  const activeCaseId = useActiveCaseId();
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
@@ -128,7 +123,7 @@ export function AppShellV12({
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [contextCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-  const [massReviewOpen, setMassReviewOpen] = useState(false);
+  const [, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
 
@@ -164,13 +159,10 @@ export function AppShellV12({
       return <WorkspaceSurfaceRouter region="panel" />;
     }
     if (inspectorContent) return inspectorContent;
-    if (activeMode === 'MODEL_EDIT' && selectedElement) {
-      return <InspectorEngineeringView />;
-    }
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
-  }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
+  }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   return (
     <div
@@ -224,7 +216,6 @@ export function AppShellV12({
           {/* Tryby wizualne SLD (MODEL_EDIT) */}
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
             <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
-              <SldVisualModes />
             </div>
           )}
 
@@ -299,7 +290,6 @@ export function AppShellV12({
         {/* Panel zgłoszeń (issue panel) */}
         {issuePanelOpen && (
           <aside className="w-[360px] shrink-0 overflow-hidden border-l border-scada-border bg-scada-surface">
-            <IssuePanelContainer caseId={activeCaseId} />
           </aside>
         )}
       </div>
@@ -314,7 +304,6 @@ export function AppShellV12({
 
       {/* Modale */}
       <GlobalSearch isOpen={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
-      <MassReviewPanel isOpen={massReviewOpen} onClose={() => setMassReviewOpen(false)} />
       <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
       <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
     </div>

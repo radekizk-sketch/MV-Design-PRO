@@ -1,5 +1,5 @@
-﻿<# MV-DESIGN-PRO â€” KANONICZNY ALGORYTM KREATORA
-# (ALGORYTM PROJEKTANTA â€“ WERSJA PRZEMYSĹOWA)
+﻿<# MV-DESIGN-PRO — KANONICZNY ALGORYTM KREATORA
+# (ALGORYTM PROJEKTANTA – WERSJA PRZEMYSĹOWA)
 # ĹąRĂ“DĹO: PeĹ‚na Specyfikacja Algorytmu Projektanta (DOCX)
 
 ================================================================================
@@ -9,26 +9,26 @@ STATUS
 - KLASYFIKACJA: Industrial (benchmark / DIgSILENT benchmark)
 - TEN PLIK JEST JEDYNYM KONTRAKTEM DLA:
   - kreatora (wizard)
-  - backendu (logika dostÄ™pnoĹ›ci)
+  - backendu (logika dostępnoĹ›ci)
   - AI (Codex / Claude Code)
-- WSZYSTKIE WCZEĹšNIEJSZE OPISY KREATORA TRACÄ„ WAĹ»NOĹšÄ†
+- WSZYSTKIE WCZEĹšNIEJSZE OPISY KREATORA TRACĄ WAĹ»NOĹšĆ
 
 ================================================================================
-ZASADY NADRZÄDNE (Z DOCX â€” LINIA PO LINII)
+ZASADY NADRZÄDNE (Z DOCX — LINIA PO LINII)
 ================================================================================
 [DOCX]
-â€žProjektant nie wykonuje obliczeĹ„ rÄ™cznych. Wszystkie parametry wynikajÄ…
+â€žProjektant nie wykonuje obliczeĹ„ ręcznych. Wszystkie parametry wynikają
 z danych katalogowych i obliczeĹ„ systemowych.â€ť
 
-â†’ UI NIE LICZY
-â†’ UI NIE POSIADA DANYCH ELEKTRYCZNYCH
-â†’ WSZYSTKIE PARAMETRY Z KATALOGĂ“W
+→ UI NIE LICZY
+→ UI NIE POSIADA DANYCH ELEKTRYCZNYCH
+→ WSZYSTKIE PARAMETRY Z KATALOGĂ“W
 
 [DOCX]
-â€žElementy sieci dobierane sÄ… wyĹ‚Ä…cznie z zatwierdzonych baz danych.â€ť
+â€žElementy sieci dobierane są wyĹ‚ącznie z zatwierdzonych baz danych.â€ť
 
-â†’ WSZYSTKIE ELEMENTY: catalog.*
-â†’ UI OPERUJE WYĹÄ„CZNIE NA ID
+→ WSZYSTKIE ELEMENTY: catalog.*
+→ UI OPERUJE WYĹĄCZNIE NA ID
 
 ================================================================================
 DEFINICJE
@@ -42,7 +42,7 @@ Snapshot:
 
 Katalog:
 - jedyne ĹşrĂłdĹ‚o danych technicznych
-- brak rÄ™cznego wprowadzania parametrĂłw
+- brak ręcznego wprowadzania parametrĂłw
 
 ================================================================================
 TRYBY ALGORYTMU (Z DOCX)
@@ -58,20 +58,20 @@ FULL:
 ================================================================================
 TYPY DECYZJI ALGORYTMICZNYCH (Z DOCX)
 ================================================================================
-ALLOW   â€” operacja dopuszczona
-BLOCK   â€” operacja zabroniona, brak kontynuacji
-RETURN  â€” cofniÄ™cie do wczeĹ›niejszego kroku
-WARNING â€” dopuszczone z flagÄ… ostrzegawczÄ…
+ALLOW   — operacja dopuszczona
+BLOCK   — operacja zabroniona, brak kontynuacji
+RETURN  — cofnięcie do wczeĹ›niejszego kroku
+WARNING — dopuszczone z flagą ostrzegawczą
 
 ================================================================================
-ALGORYTM PROJEKTANTA â€” KROK PO KROKU (DOCX â†’ SYSTEM)
+ALGORYTM PROJEKTANTA — KROK PO KROKU (DOCX → SYSTEM)
 ================================================================================
 
 --------------------------------------------------------------------------------
-ALG_STEP 1 â€” INICJALIZACJA PROJEKTU
+ALG_STEP 1 — INICJALIZACJA PROJEKTU
 --------------------------------------------------------------------------------
 [DOCX]
-â€žProjekt rozpoczyna siÄ™ od pustej struktury sieciowej.â€ť
+â€žProjekt rozpoczyna się od pustej struktury sieciowej.â€ť
 
 WARUNEK:
 - projekt istnieje
@@ -82,10 +82,10 @@ EFEKT:
 - snapshot startowy
 
 --------------------------------------------------------------------------------
-ALG_STEP 2 â€” DEFINICJA ĹąRĂ“DĹA ZASILANIA (GPZ)
+ALG_STEP 2 — DEFINICJA ĹąRĂ“DĹA ZASILANIA (GPZ)
 --------------------------------------------------------------------------------
 [DOCX]
-â€žNa poczÄ…tku naleĹĽy okreĹ›liÄ‡ jedno gĹ‚Ăłwne ĹşrĂłdĹ‚o zasilania SN.â€ť
+â€žNa początku naleĹĽy okreĹ›lić jedno gĹ‚Ăłwne ĹşrĂłdĹ‚o zasilania SN.â€ť
 
 OPERACJA:
 - ADD_SOURCE (catalog.sources)
@@ -94,18 +94,18 @@ WARUNKI:
 - dokĹ‚adnie jedno ĹşrĂłdĹ‚o
 
 JEĹ»ELI:
-- brak ĹşrĂłdĹ‚a â†’ BLOCK
-- wiÄ™cej niĹĽ jedno â†’ BLOCK
+- brak ĹşrĂłdĹ‚a → BLOCK
+- więcej niĹĽ jedno → BLOCK
 
 EFEKT:
 - snapshot
 - obliczenia zwarciowe IEC / PN-EN 60909
 
 --------------------------------------------------------------------------------
-ALG_STEP 3 â€” BUDOWA TOPOLOGII SIECI
+ALG_STEP 3 — BUDOWA TOPOLOGII SIECI
 --------------------------------------------------------------------------------
 [DOCX]
-â€žSieÄ‡ rozwijana jest przez dodawanie kolejnych odcinkĂłw i stacji.â€ť
+â€žSieć rozwijana jest przez dodawanie kolejnych odcinkĂłw i stacji.â€ť
 
 OPERACJE:
 - CONTINUE_TRUNK_SEGMENT_SN / START_BRANCH_SEGMENT_SN
@@ -113,32 +113,32 @@ OPERACJE:
 - ADD_TRANSFORMER_SN_NN
 
 JEĹ»ELI:
-- topologia niespĂłjna â†’ RETURN do poczÄ…tku kroku
-- naruszenie struktury â†’ BLOCK
+- topologia niespĂłjna → RETURN do początku kroku
+- naruszenie struktury → BLOCK
 
 EFEKT:
 - graf sieci
 - snapshot po kaĹĽdej operacji
 
 --------------------------------------------------------------------------------
-ALG_STEP 4 â€” WERYFIKACJA KOMPLETNOĹšCI DANYCH
+ALG_STEP 4 — WERYFIKACJA KOMPLETNOĹšCI DANYCH
 --------------------------------------------------------------------------------
 [DOCX]
 â€žW przypadku brakĂłw danych algorytm powraca do budowy struktury.â€ť
 
 SPRAWDZANE:
-- kompletnoĹ›Ä‡ katalogowych ID
-- spĂłjnoĹ›Ä‡ grafu
+- kompletnoĹ›ć katalogowych ID
+- spĂłjnoĹ›ć grafu
 
 JEĹ»ELI:
-- braki â†’ RETURN do ALG_STEP 3
-- sprzecznoĹ›ci â†’ BLOCK
+- braki → RETURN do ALG_STEP 3
+- sprzecznoĹ›ci → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 5 â€” OBLICZENIA ZWARCIOWE
+ALG_STEP 5 — OBLICZENIA ZWARCIOWE
 --------------------------------------------------------------------------------
 [DOCX]
-â€žWykonywane sÄ… obliczenia zwarciowe zgodnie z PN-EN 60909.â€ť
+â€žWykonywane są obliczenia zwarciowe zgodnie z PN-EN 60909.â€ť
 
 AKCJA:
 - run_short_circuit
@@ -148,45 +148,45 @@ SPRAWDZANE:
 - Ik1min
 
 JEĹ»ELI:
-- przekroczenia â†’ RETURN do ALG_STEP 3
-- brak zbieĹĽnoĹ›ci â†’ BLOCK
+- przekroczenia → RETURN do ALG_STEP 3
+- brak zbieĹĽnoĹ›ci → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 6 â€” OBLICZENIA ROZPĹYWU MOCY
+ALG_STEP 6 — OBLICZENIA ROZPĹYWU MOCY
 --------------------------------------------------------------------------------
 [DOCX]
-â€žWykonywane sÄ… obliczenia rozpĹ‚ywu mocy.â€ť
+â€žWykonywane są obliczenia rozpĹ‚ywu mocy.â€ť
 
 AKCJA:
 - run_power_flow
 
 SPRAWDZANE:
-- spadki napiÄ™Ä‡
-- obciÄ…ĹĽenia
+- spadki napięć
+- obciąĹĽenia
 
 JEĹ»ELI:
-- przekroczenia â†’ RETURN
-- brak zbieĹĽnoĹ›ci â†’ BLOCK
+- przekroczenia → RETURN
+- brak zbieĹĽnoĹ›ci → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 7 â€” ODBIORY I ĹąRĂ“DĹA OZE
+ALG_STEP 7 — ODBIORY I ĹąRĂ“DĹA OZE
 --------------------------------------------------------------------------------
 [DOCX]
-â€žOdbiory i generatory przyĹ‚Ä…czane sÄ… do istniejÄ…cej sieci.â€ť
+â€žOdbiory i generatory przyĹ‚ączane są do istniejącej sieci.â€ť
 
 OPERACJE:
 - ADD_LOAD
 - ADD_GENERATOR
 
 EFEKT:
-- aktualizacja obciÄ…ĹĽeĹ„
+- aktualizacja obciąĹĽeĹ„
 - nowe obliczenia
 
 --------------------------------------------------------------------------------
-ALG_STEP 8 â€” BoundaryNode â€“ PUNKT WSPĂ“LNEGO PRZYĹÄ„CZENIA
+ALG_STEP 8 — BoundaryNode – PUNKT WSPĂ“LNEGO PRZYĹĄCZENIA
 --------------------------------------------------------------------------------
 [DOCX]
-â€žDla ĹşrĂłdeĹ‚ wytwĂłrczych naleĹĽy okreĹ›liÄ‡ BoundaryNode.â€ť
+â€žDla ĹşrĂłdeĹ‚ wytwĂłrczych naleĹĽy okreĹ›lić BoundaryNode.â€ť
 
 OPERACJA:
 - SET_BoundaryNode
@@ -196,34 +196,34 @@ EFEKT:
 - snapshot
 
 --------------------------------------------------------------------------------
-ALG_STEP 9 â€” ZABEZPIECZENIA I SELEKTYWNOĹšÄ†
+ALG_STEP 9 — ZABEZPIECZENIA I SELEKTYWNOĹšĆ
 --------------------------------------------------------------------------------
 [DOCX]
 â€žDobĂłr zabezpieczeĹ„ wykonywany jest na podstawie wynikĂłw zwarciowych.â€ť
 
 WARUNEK:
-- dostÄ™pne wyniki zwarciowe
+- dostępne wyniki zwarciowe
 
 JEĹ»ELI:
-- brak selektywnoĹ›ci â†’ RETURN
-- brak danych â†’ BLOCK
+- brak selektywnoĹ›ci → RETURN
+- brak danych → BLOCK
 
 --------------------------------------------------------------------------------
-ALG_STEP 10 â€” WALIDACJA KOĹCOWA
+ALG_STEP 10 — WALIDACJA KOĹCOWA
 --------------------------------------------------------------------------------
 [DOCX]
 â€žProjekt podlega koĹ„cowej weryfikacji normowej.â€ť
 
 SPRAWDZANE:
 - normy
-- kompletnoĹ›Ä‡
+- kompletnoĹ›ć
 - BoundaryNode
 
 JEĹ»ELI:
-- niezgodnoĹ›Ä‡ â†’ RETURN do wĹ‚aĹ›ciwego kroku
+- niezgodnoĹ›ć → RETURN do wĹ‚aĹ›ciwego kroku
 
 --------------------------------------------------------------------------------
-ALG_STEP 11 â€” DOKUMENTACJA
+ALG_STEP 11 — DOKUMENTACJA
 --------------------------------------------------------------------------------
 [DOCX]
 â€žGenerowana jest dokumentacja projektowa.â€ť
@@ -236,7 +236,7 @@ OPERACJE:
 ================================================================================
 ROLA KREATORA
 ================================================================================
-- pokazuje dostÄ™pne operacje
+- pokazuje dostępne operacje
 - pokazuje BLOCK / RETURN / WARNING
 - NIE interpretuje
 - NIE liczy
@@ -245,7 +245,7 @@ ROLA KREATORA
 ================================================================================
 ZAKAZY ABSOLUTNE
 ================================================================================
-- rÄ™czne parametry elektryczne
+- ręczne parametry elektryczne
 - lokalne obliczenia
 - auto-kroki
 - heurystyki UI
@@ -254,12 +254,12 @@ ZAKAZY ABSOLUTNE
 DEFINICJA ZGODNOĹšCI
 ================================================================================
 Implementacja jest zgodna, jeĹĽeli:
-- algorytm da siÄ™ odtworzyÄ‡ wyĹ‚Ä…cznie z snapshotĂłw
+- algorytm da się odtworzyć wyĹ‚ącznie z snapshotĂłw
 - solver jest jedynym ĹşrĂłdĹ‚em fizyki
 - kreator jest w 100% deterministyczny
 
 ================================================================================
-KONIEC â€” TEN PLIK JEST WIÄ„Ĺ»Ä„CY
+KONIEC — TEN PLIK JEST WIĄĹ»ĄCY
 ================================================================================
 > 
 

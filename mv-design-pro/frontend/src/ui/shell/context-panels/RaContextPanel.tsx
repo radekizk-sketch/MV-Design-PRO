@@ -55,7 +55,7 @@ export function RaContextPanel() {
           Raporty i uzasadnienia
         </span>
         <div className="mt-1 text-[11px] text-scada-text">
-          <span className="text-scada-muted">Przypadek: </span>
+          <span className="text-scada-muted">Zakres obliczeń: </span>
           <span className="font-mono">{activeCaseName ?? '—'}</span>
         </div>
         <div

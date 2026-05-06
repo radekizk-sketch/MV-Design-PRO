@@ -29,4 +29,3 @@ export {
   useOverlayVisibility,
 } from './modeGating';
 
-export { ProtectionDiagnosticsPanel } from './ProtectionDiagnosticsPanel';

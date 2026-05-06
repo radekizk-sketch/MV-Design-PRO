@@ -1,11 +1,11 @@
-﻿# Warianty, uruchomienia i porownania â€” specyfikacja Study Case
+﻿# Warianty, uruchomienia i porownania — specyfikacja Study Case
 
 | Pole           | Wartosc                                      |
 |----------------|----------------------------------------------|
 | **Status**     | BINDING                                      |
 | **Wersja**     | 1.0                                          |
 | **Data**       | 2026-02-17                                   |
-| **Wlasciciel** | MV-Design-PRO â€” warstwa domenowa             |
+| **Wlasciciel** | MV-Design-PRO — warstwa domenowa             |
 | **Dokument**   | WARIANTY_URUCHOMIENIA_POROWNANIA.md          |
 
 ---
@@ -21,7 +21,7 @@ Study Case (wariant obliczeniowy) to **scenariusz obliczeniowy**, ktory odwoluje
 - Wariant przechowuje **WYLACZNIE** parametry obliczeniowe.
 - Wiele wariantow moze odwolywac sie do tego samego modelu.
 - W danym momencie aktywny jest **dokladnie jeden** wariant.
-- Model sieci jest **wspoldzielony** â€” Kreator i SLD edytuja ten sam model.
+- Model sieci jest **wspoldzielony** — Kreator i SLD edytuja ten sam model.
 
 ### 1.1. Analogia z DIgSILENT benchmark
 
@@ -42,22 +42,22 @@ Wariant przechowuje nastepujace parametry:
 
 | Parametr                      | Typ     | Jednostka | Domyslnie | Opis                                          |
 |-------------------------------|---------|-----------|-----------|-----------------------------------------------|
-| `nazwa`                       | string  | â€”         | â€”         | Nazwa wariantu (unikalna w projekcie)         |
-| `opis`                        | string  | â€”         | ""        | Opis tekstowy wariantu                        |
-| `data_utworzenia`              | datetime| â€”         | now()     | Data utworzenia wariantu                       |
-| `data_ostatniego_uruchomienia`| datetime| â€”         | null      | Data ostatniego uruchomienia obliczen         |
+| `nazwa`                       | string  | —         | —         | Nazwa wariantu (unikalna w projekcie)         |
+| `opis`                        | string  | —         | ""        | Opis tekstowy wariantu                        |
+| `data_utworzenia`              | datetime| —         | now()     | Data utworzenia wariantu                       |
+| `data_ostatniego_uruchomienia`| datetime| —         | null      | Data ostatniego uruchomienia obliczen         |
 
 ### 2.2. Parametry obliczen zwarciowych (IEC 60909)
 
 | Parametr                      | Typ     | Jednostka | Domyslnie | Opis                                          |
 |-------------------------------|---------|-----------|-----------|-----------------------------------------------|
-| `wspolczynnik_c_max`          | float   | â€”         | 1.10      | Wspolczynnik napiecia c (max) wg IEC 60909   |
-| `wspolczynnik_c_min`          | float   | â€”         | 1.00      | Wspolczynnik napiecia c (min) wg IEC 60909   |
+| `wspolczynnik_c_max`          | float   | —         | 1.10      | Wspolczynnik napiecia c (max) wg IEC 60909   |
+| `wspolczynnik_c_min`          | float   | —         | 1.00      | Wspolczynnik napiecia c (min) wg IEC 60909   |
 | `moc_bazowa`                  | float   | MVA       | 100.0     | Moc bazowa ukladu                             |
-| `tolerancja`                  | float   | â€”         | 1e-6      | Tolerancja zbiĐµĐ·nosci obliczen                |
+| `tolerancja`                  | float   | —         | 1e-6      | Tolerancja zbiĐµĐ·nosci obliczen                |
 | `czas_cieplny`                | float   | s         | 1.0       | Czas odniesienia dla pradu cieplnego Ith      |
-| `wklad_silnikow`              | bool    | â€”         | false     | Uwzglednienie wkladu silnikow asynchronicznych|
-| `wklad_falownikow`            | bool    | â€”         | false     | Uwzglednienie wkladu zrodel falownikowych (OZE)|
+| `wklad_silnikow`              | bool    | —         | false     | Uwzglednienie wkladu silnikow asynchronicznych|
+| `wklad_falownikow`            | bool    | —         | false     | Uwzglednienie wkladu zrodel falownikowych (OZE)|
 
 ### 2.3. Nadpisania stanu lacznikow (per wariant)
 
@@ -190,14 +190,14 @@ Po pomyslnym uruchomieniu zapisywane sa:
 |-----------------|-----------|-----------------------------------------------|--------------------|
 | Wyniki          | JSON      | Pelne wyniki obliczen                         | `run_id` + hash    |
 | Nakladki SLD    | JSON      | Dane nakladek na schemat jednokreskowy        | `run_id` + hash    |
-| Slad obliczen   | JSON      | TraceArtifact â€” pelny slad White Box          | `run_id` + hash    |
+| Slad obliczen   | JSON      | TraceArtifact — pelny slad White Box          | `run_id` + hash    |
 | Metadane        | JSON      | Czas obliczen, wersje solwerow, parametry     | `run_id` + hash    |
 
 ### 4.3. Zasada jednego aktywnego wariantu
 
 - W danym momencie **dokladnie jeden** wariant moze byc aktywny.
 - Aktywny wariant okresla, ktore wyniki sa wyswietlane w SLD i inspektorze.
-- Zmiana aktywnego wariantu **nie uruchamia** obliczen â€” jedynie przelacza widok.
+- Zmiana aktywnego wariantu **nie uruchamia** obliczen — jedynie przelacza widok.
 - Jezeli aktywny wariant ma stan `OUTDATED`, wyswietlane jest ostrzezenie.
 
 ---
@@ -338,8 +338,8 @@ Przed kazdym uruchomieniem obliczen system wykonuje:
 
 ## 10. Ograniczenia i zalozenia
 
-1. Jeden model sieci per projekt â€” warianty nie tworza kopii modelu.
-2. Wyniki obliczen sa **niezmiennicze** â€” nie mozna ich recznie edytowac.
+1. Jeden model sieci per projekt — warianty nie tworza kopii modelu.
+2. Wyniki obliczen sa **niezmiennicze** — nie mozna ich recznie edytowac.
 3. Zmiana dowolnego parametru modelu sieci powoduje przejscie **wszystkich** wariantow do stanu OUTDATED.
 4. Porownanie wymaga, aby oba warianty mialy stan FRESH.
 5. Maksymalna liczba wariantow per projekt: **brak limitu** (ograniczenie techniczne: pamiec i dysk).

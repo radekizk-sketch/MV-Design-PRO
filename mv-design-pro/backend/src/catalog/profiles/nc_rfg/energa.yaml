@@ -1,0 +1,59 @@
+# Profil wymagań przyłączeniowych — Energa Operator (OSD).
+# Bazuje na: IRiESD Energa Operator + NC RfG.
+operator_id: energa
+operator_name_pl: "Energa Operator"
+voltage_level_pl: "SN/nN (dystrybucyjny — północna Polska)"
+last_revision: "2024-Q4"
+module_types:
+  - { id: A, threshold_kw_min: 0.8, threshold_kw_max: 1000, voltage_kv_max: 110, description_pl: "Mikro" }
+  - { id: B, threshold_kw_min: 1000, threshold_kw_max: 50000, voltage_kv_max: 110, description_pl: "Małe" }
+  - { id: C, threshold_kw_min: 50000, threshold_kw_max: 75000, voltage_kv_max: 110, description_pl: "Duże" }
+  - { id: D, threshold_kw_min: 75000, voltage_kv_max: null, description_pl: "B. duże" }
+frequency_response:
+  steady_state_hz_min: 49.5
+  steady_state_hz_max: 50.5
+  transient_hz_min: 47.5
+  transient_hz_max: 51.5
+  pf_droop_percent: 5.0
+  dead_band_hz: 0.2
+  ramp_rate_pct_per_min: 10.0
+reactive_power:
+  q_range_pct_pn_min: -0.33
+  q_range_pct_pn_max: 0.33
+  cos_phi_min: 0.95
+  voltage_control_modes: [cos_phi_constant, q_constant, q_of_u, voltage_control]
+voltage_levels:
+  lvrt:
+    - { time_s: 0.00, voltage_pu: 0.05 }
+    - { time_s: 0.15, voltage_pu: 0.05 }
+    - { time_s: 0.70, voltage_pu: 0.50 }
+    - { time_s: 1.50, voltage_pu: 0.85 }
+    - { time_s: 3.00, voltage_pu: 0.90 }
+  hvrt:
+    - { time_s: 0.00, voltage_pu: 1.30 }
+    - { time_s: 0.10, voltage_pu: 1.25 }
+    - { time_s: 1.00, voltage_pu: 1.15 }
+    - { time_s: 60.00, voltage_pu: 1.10 }
+p_recovery_after_fault:
+  required_for_modules: [B, C, D]
+  p_recovery_time_s: 1.0
+  p_recovery_rate_pct_per_s: 80.0
+compliance_tests:
+  - { id: T1, name_pl: "Test LVRT" }
+  - { id: T2, name_pl: "Test HVRT" }
+  - { id: T3, name_pl: "Test P(f) droop" }
+  - { id: T4, name_pl: "Test Q(U)" }
+  - { id: T5, name_pl: "Test cos φ stały" }
+  - { id: T6, name_pl: "Test ramp rate" }
+  - { id: T7, name_pl: "Test dead-band częstotliwości" }
+  - { id: T8, name_pl: "Test stabilności małosygnałowej" }
+  - { id: T9, name_pl: "Test pracy wyspowej" }
+  - { id: T10, name_pl: "Test odzysku mocy czynnej" }
+  - { id: T11, name_pl: "Test prądu biernego podczas FRT" }
+  - { id: T12, name_pl: "Test ograniczenia mocy" }
+  - { id: T13, name_pl: "Test zakresu U/Q" }
+  - { id: T14, name_pl: "Test SCADA operatora" }
+  - { id: T15, name_pl: "Test rejestracji zakłóceń" }
+  - { id: T16, name_pl: "Test FRT 3F" }
+  - { id: T17, name_pl: "Test FRT 1F" }
+  - { id: T18, name_pl: "Test harmonicznych" }

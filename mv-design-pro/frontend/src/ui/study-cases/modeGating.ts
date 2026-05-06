@@ -33,7 +33,7 @@ function getBlockedReason(operation: StudyCaseOperation): string {
     case 'edit_config':
       return 'Edycja kontekstu przypadku jest zablokowana w analizie i wynikach.';
     case 'calculate':
-      return 'Uruchomienie obliczen jest zablokowane w analizie i wynikach.';
+      return 'Obliczenie jest zablokowane w analizie i wynikach.';
     default:
       return 'Operacja jest zablokowana w analizie i wynikach.';
   }

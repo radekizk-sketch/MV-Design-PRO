@@ -44,22 +44,22 @@ Agresywne uproszczenie architektury i kodu obszaru SLD. Eliminacja chaosu bez ut
 ```
 frontend/src/ui/sld/
   core/
-    sldSemanticModel.ts          # NOWY â€” typy SldSemanticModelV1
-    sldSemanticAdapter.ts        # NOWY â€” Snapshot -> SldSemanticModel
-    sldSemanticValidator.ts      # NOWY â€” walidator kontraktĂłw per typ stacji
-    topologyAdapterV2.ts         # ISTNIEJACY â€” BFS segmentacja (uzywany przez adapter)
-    stationBlockBuilder.ts       # ISTNIEJACY â€” budowa pĂłl (uzywany przez adapter)
-    layoutPipeline.ts            # ISTNIEJACY â€” 6-fazowy layout
-    visualGraph.ts               # ISTNIEJACY â€” typy wizualne
-    layoutResult.ts              # ISTNIEJACY â€” wynik layoutu
+    sldSemanticModel.ts          # NOWY — typy SldSemanticModelV1
+    sldSemanticAdapter.ts        # NOWY — Snapshot -> SldSemanticModel
+    sldSemanticValidator.ts      # NOWY — walidator kontraktĂłw per typ stacji
+    topologyAdapterV2.ts         # ISTNIEJACY — BFS segmentacja (uzywany przez adapter)
+    stationBlockBuilder.ts       # ISTNIEJACY — budowa pĂłl (uzywany przez adapter)
+    layoutPipeline.ts            # ISTNIEJACY — 6-fazowy layout
+    visualGraph.ts               # ISTNIEJACY — typy wizualne
+    layoutResult.ts              # ISTNIEJACY — wynik layoutu
     __tests__/
       sldSemanticModel.test.ts   # NOWY
       sldSemanticAdapter.test.ts # NOWY
       sldSemanticValidator.test.ts # NOWY
-      stationContracts.test.ts   # NOWY â€” testy kontraktĂłw per typ stacji
+      stationContracts.test.ts   # NOWY — testy kontraktĂłw per typ stacji
       ...existing tests...
   symbols/
-    etapSymbols.tsx              # ISTNIEJACY â€” kanoniczny renderer IEC 60617
+    etapSymbols.tsx              # ISTNIEJACY — kanoniczny renderer IEC 60617
   styles/
     sldColors.ts                 # NOWY (z sldbenchmarkStyle)
     sldGeometry.ts               # NOWY (z sldbenchmarkStyle + IndustrialAesthetics)

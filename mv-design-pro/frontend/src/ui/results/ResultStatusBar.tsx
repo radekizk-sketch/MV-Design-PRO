@@ -155,7 +155,7 @@ export function ResultStatusBar({
               title={validationErrors.join('\n')}
               data-testid="validation-error-count"
             >
-              {validationErrors.length} bĹ‚Ä…d(Ăłw)
+              {validationErrors.length} bĹ‚ąd(Ăłw)
             </span>
           )}
 
@@ -169,7 +169,7 @@ export function ResultStatusBar({
           >
             {(Object.keys(ANALYSIS_TYPE_LABELS) as CalculationAnalysisType[]).map((type) => (
               <option key={type} value={type} disabled={!isAnalysisAvailable(type, availableAnalyses)}>
-                {ANALYSIS_TYPE_SHORT[type]}{!isAnalysisAvailable(type, availableAnalyses) ? ' (niedostÄ™pne)' : ''}
+                {ANALYSIS_TYPE_SHORT[type]}{!isAnalysisAvailable(type, availableAnalyses) ? ' (niedostępne)' : ''}
               </option>
             ))}
           </select>
@@ -189,9 +189,9 @@ export function ResultStatusBar({
             title={
               !canRun
                 ? !analysisAvailable
-                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} â€” model nie speĹ‚nia wymagaĹ„`
+                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} — model nie speĹ‚nia wymagaĹ„`
                   : validationErrors.length > 0
-                  ? 'Popraw bĹ‚Ä™dy walidacji przed obliczeniem'
+                  ? 'Popraw bĹ‚ędy walidacji przed obliczeniem'
                   : isCalculating
                   ? 'Obliczenia w toku...'
                   : 'Uruchom obliczenia'
@@ -213,14 +213,14 @@ export function ResultStatusBar({
         </div>
       </div>
 
-      {/* Summary footer â€” element counts + last run */}
+      {/* Summary footer — element counts + last run */}
       {(elementCounts || lastResult) && (
         <div className="flex items-center justify-between px-3 py-1.5 border-t border-gray-100 bg-gray-50 text-xs text-gray-500">
           {elementCounts && (
             <div className="flex items-center gap-3" data-testid="element-counts-summary">
               <span>Szyny: <span className="font-medium text-gray-700">{elementCounts.buses}</span></span>
               <span className="text-gray-300">|</span>
-              <span>GaĹ‚Ä™zie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
+              <span>GaĹ‚ęzie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
               <span className="text-gray-300">|</span>
               <span>Transformatory: <span className="font-medium text-gray-700">{elementCounts.transformers}</span></span>
               <span className="text-gray-300">|</span>
