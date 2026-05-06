@@ -242,7 +242,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             onClick={onClose}
             data-testid="add-der-wizard-close"
             className="rounded p-1 text-scada-muted hover:bg-scada-hover-nav hover:text-scada-text"
-            aria-label="Zamknij kreator"
+            aria-label="Zamknij konfigurację"
           >
             ✕
           </button>

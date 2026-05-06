@@ -1629,8 +1629,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       </SectionCard>
       {allDers.length > 0 && (
         <SectionCard
-          title="Kontekst Proof Pack — DER"
-          eyebrow="Faza F · station↔DER lineage"
+          title="Kontekst uzasadnienia — DER"
+          eyebrow="Lineage station↔DER"
         >
           <div data-testid="proof-der-lineage" className="space-y-1 text-xs">
             {allDers.map((der) => (

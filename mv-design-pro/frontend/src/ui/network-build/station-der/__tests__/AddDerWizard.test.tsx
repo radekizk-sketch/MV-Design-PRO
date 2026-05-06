@@ -22,7 +22,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
         stationId="station_1"
         stationName="Stacja 1"
         derKind="PV"
-        projectId="p1"
+        projectId="proj-test"
         onClose={vi.fn()}
       />,
     );
@@ -36,7 +36,7 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
         stationId="station_1"
         stationName="Stacja 1"
         derKind="PV"
-        projectId="p1"
+        projectId="proj-test"
         onClose={vi.fn()}
       />,
     );
