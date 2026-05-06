@@ -1,5 +1,5 @@
 /**
- * DerConfigurator — uniwersalny konfigurator DER (PV/BESS/FW) z 6-7 kartami (PR-9/10/11).
+ * DerConfigurator — uniwersalny konfigurator DER (PV/BESS/FW) z 6-7 kartami.
  *
  * Brief 2 §10/11/12. Wspólna struktura:
  *  Karta 1: Dane podstawowe
@@ -9,6 +9,12 @@
  *  Karta 5: FRT/LVRT/HVRT
  *  Karta 6: NC RfG / Zgodność przyłączeniowa
  *  Karta 7: Gotowość obliczeń (PV/BESS — FW pomija ten tab gdy brak modułów)
+ *
+ * Faza E: kontekst stacji.
+ *  Konfigurator wyświetla breadcrumb `Projekt > GPZ > Ciąg > Stacja > DER`
+ *  jeśli `stationContext` został podany. Breadcrumb klikalny — nawigacja do
+ *  E-13 (stacja). Kontekst zawiera connection_side, pcc_ref, bay_ref,
+ *  transformer_ref, lv_busbar_ref — dane pochodzą z `useStationDerStore`.
  */
 
 import { useMemo, useState } from 'react';
@@ -24,11 +30,28 @@ export type DerCardId =
   | 'ncrfg'
   | 'readiness';
 
+export interface DerStationContext {
+  readonly stationId: string;
+  readonly stationName: string;
+  readonly projectName?: string;
+  readonly gpzName?: string;
+  readonly trunkName?: string;
+  readonly connectionSide?: 'SN' | 'nN' | 'dedicated_transformer';
+  readonly pccRef?: string | null;
+  readonly bayRef?: string | null;
+  readonly transformerRef?: string | null;
+  readonly lvBusbarRef?: string | null;
+  /** Wywoływane przy kliknięciu breadcrumb-a aby wrócić do E-13. */
+  readonly onNavigateToStation?: () => void;
+}
+
 export interface DerConfiguratorProps {
   readonly derId: string;
   readonly derKind: DerKind;
   readonly children?: Partial<Record<DerCardId, React.ReactNode>>;
   readonly defaultCard?: DerCardId;
+  /** Kontekst stacji — gdy DER jest przyłączony do konkretnej stacji. */
+  readonly stationContext?: DerStationContext;
 }
 
 const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> = {
@@ -61,14 +84,71 @@ const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> =
   },
 };
 
+const DER_KIND_LABEL_PL: Record<DerKind, string> = {
+  PV: 'PV / FV',
+  BESS: 'BESS',
+  FW: 'Farma wiatrowa',
+};
+
+const CONNECTION_SIDE_LABEL_PL: Record<NonNullable<DerStationContext['connectionSide']>, string> = {
+  SN: 'po SN',
+  nN: 'po nN',
+  dedicated_transformer: 'transformator dedykowany',
+};
+
 export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
-  const { derId, derKind, children = {}, defaultCard = 'basic' } = props;
+  const { derId, derKind, children = {}, defaultCard = 'basic', stationContext } = props;
   const labels = useMemo(() => CARD_LABELS_BY_KIND[derKind], [derKind]);
   const [activeCard, setActiveCard] = useState<DerCardId>(defaultCard);
   const cardIds = Object.keys(labels) as DerCardId[];
 
   return (
     <div data-testid={`der-configurator-${derId}`} data-der-kind={derKind} className="flex h-full flex-col bg-scada-panel">
+      {stationContext && (
+        <div
+          data-testid="der-breadcrumb"
+          data-station-id={stationContext.stationId}
+          className="flex flex-wrap items-center gap-1.5 border-b border-scada-border bg-scada-surface px-3 py-2 text-[11px]"
+        >
+          <span className="text-scada-muted">Kontekst:</span>
+          {stationContext.projectName && (
+            <>
+              <span className="font-medium text-scada-text">{stationContext.projectName}</span>
+              <span className="text-scada-muted">›</span>
+            </>
+          )}
+          {stationContext.gpzName && (
+            <>
+              <span className="text-scada-text">{stationContext.gpzName}</span>
+              <span className="text-scada-muted">›</span>
+            </>
+          )}
+          {stationContext.trunkName && (
+            <>
+              <span className="text-scada-text">{stationContext.trunkName}</span>
+              <span className="text-scada-muted">›</span>
+            </>
+          )}
+          <button
+            type="button"
+            onClick={stationContext.onNavigateToStation}
+            data-testid="der-breadcrumb-station"
+            className="rounded px-1 py-0.5 font-medium text-scada-sn hover:bg-scada-hover-nav"
+            disabled={!stationContext.onNavigateToStation}
+          >
+            {stationContext.stationName}
+          </button>
+          <span className="text-scada-muted">›</span>
+          <span className="font-semibold text-scada-text">
+            {DER_KIND_LABEL_PL[derKind]}
+          </span>
+          {stationContext.connectionSide && (
+            <span className="ml-auto rounded border border-scada-border bg-scada-panel px-2 py-0.5 text-[10px] text-scada-muted">
+              {CONNECTION_SIDE_LABEL_PL[stationContext.connectionSide]}
+            </span>
+          )}
+        </div>
+      )}
       <nav role="tablist" className="flex shrink-0 overflow-x-auto border-b border-scada-border bg-scada-surface">
         {cardIds.map((id) => (
           <button
