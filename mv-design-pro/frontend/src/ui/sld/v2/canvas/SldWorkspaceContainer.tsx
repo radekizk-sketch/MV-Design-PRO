@@ -78,7 +78,7 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
   'insert-joint': 'Wstawianie mufy kablowej: Etap 4 roadmapy.',
   'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
-  'add-source': 'Dodawanie źródła OZE (PV/BESS/FW): Etap 5 roadmapy.',
+  'add-source': 'Wybór rodzaju DER (PV/BESS/FW) odbywa się w karcie "Źródła i magazyny" konfiguratora stacji E-13.',
   'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
   'continue-trunk': 'Kontynuacja ciągu głównego: Etap 4 roadmapy.',
   'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
@@ -205,6 +205,22 @@ export function SldWorkspaceContainer(
     setInternalStationId(id);
   }, []);
 
+  // Faza G: dwuklik DER (PV/BESS/FW) na SLD → otwarcie konfiguratora E-21/E-22/E-23.
+  // Rozpoznajemy rodzaj DER po prefixie id (`der_pv_*`, `der_bess_*`, `der_fw_*`)
+  // wytwarzanym przez AddDerWizard.
+  const handleDoubleClickDer = useCallback(
+    (id: string) => {
+      let screenCode: 'E-21' | 'E-22' | 'E-23' = 'E-21';
+      if (id.includes('bess')) screenCode = 'E-22';
+      else if (id.includes('fw')) screenCode = 'E-23';
+      openRouteSurface(screenCode, {
+        entityRef: id,
+        subjectKind: 'helper_context',
+      });
+    },
+    [openRouteSurface],
+  );
+
   const closeInternalStation = useCallback(() => setInternalStationId(null), []);
 
   // Iteracja 12: drag&drop z palety (BuildSidebar) → kanwa.
@@ -287,6 +303,23 @@ export function SldWorkspaceContainer(
         return;
       }
 
+      // 1b) Faza G: 'add-source' z menu stacji → otwiera E-13 Karta 7 i prosi
+      //     o kreator DER. Stację identyfikuje elementId (kontekst SLD).
+      if (actionId === 'add-source' && kind === 'station' && elementId) {
+        openRouteSurface('E-13', {
+          entityRef: elementId,
+          subjectKind: 'helper_context',
+        });
+        // Wystawiamy intent — controller w E-13 (StationConfiguratorSurface)
+        // pokaże menu wyboru kindu (PV/BESS/FW) lub bezpośrednio uruchomi
+        // kreator. Domyślnie sugerujemy PV; user wybiera w E-13.
+        notify(
+          'Otwarto kartę "Źródła i magazyny" stacji. Użyj przycisków "Dodaj PV/BESS/FW" aby uruchomić kreator.',
+          'info',
+        );
+        return;
+      }
+
       // 2) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
       const hint = ACTION_ROADMAP_HINT_PL[actionId];
       if (hint) {
@@ -357,6 +390,7 @@ export function SldWorkspaceContainer(
         selectedId={selectedId}
         onSelectElement={handleSelectElement}
         onDoubleClickStation={handleDoubleClickStation}
+        onDoubleClickDer={handleDoubleClickDer}
         onContextMenu={handleContextMenu}
       />
 
