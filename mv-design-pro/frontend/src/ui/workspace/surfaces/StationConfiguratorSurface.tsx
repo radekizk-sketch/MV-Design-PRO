@@ -162,9 +162,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         der_specs: targetDerSpecs,
       },
     });
-    // Zalezne tylko od ders + station/project — `audit2Config.data` jest celem porownania.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ders, projectId, stationRef]);
+  }, [ders, projectId, stationRef, audit2Config.data]);
 
   // Nasłuch event'a wystawianego przez DerSourcesCard.
   useEffect(() => {
