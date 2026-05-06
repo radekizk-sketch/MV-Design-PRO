@@ -1915,7 +1915,11 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         )}
       </SectionCard>
 
-      {/* Phase 37: audit2 Power Flow run — pełna pętla DB → wrapper → audit trail. */}
+      {/* Phase 37+46: audit2 Power Flow run — pełna pętla DB → wrapper → audit trail.
+          Kanał 1 (direct): ten przycisk → POST /api/cases/audit2-power-flow.
+          Kanał 2 (indirect): ustaw run.options.audit2_project_id +
+          audit2_station_id w istniejącym Calculate flow (opt-in dla canonical_run
+          pipeline obejmujących PF, SC, phase_state_sn). */}
       <SectionCard
         title="Audit2 Power Flow (rozszerzona analiza z aplikacja zaczepow)"
         eyebrow="POST /api/cases/audit2-power-flow"
@@ -1924,7 +1928,10 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           Uruchamia pełną pętlę: pobiera audit2 station config z DB, aplikuje
           adjustments do network model (tap-changer + block-trafo Z + grounding +
           BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
-          sieci. Zwraca audit trail.
+          sieci. Zwraca audit trail. Solvery PF/SC/phase_state_sn rozszerzone o
+          opt-in audit2 (Phase 41+43+46) — przekaż <code>audit2_project_id</code> +{' '}
+          <code>audit2_station_id</code> w <code>run.options</code> aby aktywowac
+          drugi kanał integracji.
         </p>
         <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
           {snapshotId ? (

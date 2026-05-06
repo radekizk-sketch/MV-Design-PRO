@@ -140,3 +140,71 @@ def test_canonical_run_sc_options_propagate_to_audit2():
     # Oba uzywaja apply_audit2_to_network_model.
     assert "apply_audit2_to_network_model" in pf_source
     assert "apply_audit2_to_network_model" in sc_source
+
+
+# Phase 46: phase_state_sn grounding integration
+
+
+def test_phase_state_default_fault_from_grounding_isolated():
+    """Phase 46: isolated grounding -> Ik1 median ~15A."""
+    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
+
+    extensions = {
+        "sc_iec60909_extensions": {
+            "mv_neutral_grounding": {
+                "grounding_type": "isolated",
+                "typical_ik1_a_range": {"min": 1, "max": 30},
+            },
+        },
+    }
+    result = _phase_state_default_fault_current_from_grounding(extensions)
+    assert result is not None
+    assert result == (15.5, 0.0, 0.0)  # (1+30)/2 = 15.5
+
+
+def test_phase_state_default_fault_from_grounding_directly():
+    """Phase 46: directly grounded -> wysoki Ik1 median ~10500A."""
+    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
+
+    extensions = {
+        "sc_iec60909_extensions": {
+            "mv_neutral_grounding": {
+                "grounding_type": "directly_grounded",
+                "typical_ik1_a_range": {"min": 1000, "max": 20000},
+            },
+        },
+    }
+    result = _phase_state_default_fault_current_from_grounding(extensions)
+    assert result is not None
+    median = result[0]
+    assert 5000 <= median <= 20000
+
+
+def test_phase_state_default_fault_from_grounding_none():
+    """Phase 46: brak audit2 -> None default."""
+    from enm.canonical_analysis import _phase_state_default_fault_current_from_grounding
+
+    assert _phase_state_default_fault_current_from_grounding(None) is None
+    assert _phase_state_default_fault_current_from_grounding({}) is None
+    # Brak grounding key.
+    assert _phase_state_default_fault_current_from_grounding(
+        {"sc_iec60909_extensions": {}}
+    ) is None
+    # Empty range.
+    assert _phase_state_default_fault_current_from_grounding(
+        {
+            "sc_iec60909_extensions": {
+                "mv_neutral_grounding": {"typical_ik1_a_range": {"min": 0, "max": 0}}
+            }
+        }
+    ) is None
+
+
+def test_phase_state_uses_audit2_helper():
+    """Phase 46: _execute_phase_state_sn tez korzysta z _maybe_load_audit2_extensions."""
+    import inspect
+    from enm import canonical_analysis
+
+    ps_source = inspect.getsource(canonical_analysis._execute_phase_state_sn)
+    assert "_maybe_load_audit2_extensions" in ps_source
+    assert "_phase_state_default_fault_current_from_grounding" in ps_source

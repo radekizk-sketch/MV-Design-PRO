@@ -550,10 +550,48 @@ def _pick_compliance_source_ref(snapshot: dict[str, Any], options: dict[str, Any
     return "source-compliance"
 
 
+def _phase_state_default_fault_current_from_grounding(
+    audit2_extensions: dict[str, object] | None,
+) -> tuple[float, float, float] | None:
+    """
+    Phase 46: jesli audit2 grounding ustawione, zwraca median Ik1 z catalogu
+    jako default fault_current_a dla phase_state_sn solvera.
+
+    Zwraca None gdy nie mozna ustalic.
+    """
+    if not audit2_extensions:
+        return None
+    sc_ext = audit2_extensions.get("sc_iec60909_extensions") or {}
+    if not isinstance(sc_ext, dict):
+        return None
+    grounding = sc_ext.get("mv_neutral_grounding") or {}
+    if not isinstance(grounding, dict):
+        return None
+    ik1_range = grounding.get("typical_ik1_a_range") or {}
+    if not isinstance(ik1_range, dict):
+        return None
+    try:
+        ik1_min = float(ik1_range.get("min", 0))
+        ik1_max = float(ik1_range.get("max", 0))
+    except (TypeError, ValueError):
+        return None
+    if ik1_max <= 0:
+        return None
+    median = (ik1_min + ik1_max) / 2.0
+    # Symetryczne 1-fazowe doziemne — Ik1 na fazie A, 0 na B i C.
+    return (median, 0.0, 0.0)
+
+
 def _execute_phase_state_sn(run: CanonicalRun) -> None:
     snapshot = run.snapshot or {}
     target_bus_ref = _pick_phase_state_target(snapshot, run.options)
     target_bus_id = _graph_id_from_ref(target_bus_ref)
+    # Phase 46: opt-in audit2 grounding -> default fault_current_a.
+    audit2_extensions_ps = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    fault_default = _phase_state_default_fault_current_from_grounding(audit2_extensions_ps)
     target_bus = next(
         (
             raw_bus
@@ -582,7 +620,9 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         fault_current_a=_phase_value_from_options(
             run.options,
             "fault_current_a",
-            default=(0.0, 0.0, 0.0),
+            # Phase 46: gdy audit2 grounding ustawione, uzywamy median Ik1 z
+            # catalogu jako default. Override w run.options ma priorytet.
+            default=(fault_default if fault_default is not None else (0.0, 0.0, 0.0)),
         ),
         open_phase=_open_phase_flags_from_options(run.options),
         unbalance_alert_percent=float(run.options.get("unbalance_alert_percent", 10.0)),
