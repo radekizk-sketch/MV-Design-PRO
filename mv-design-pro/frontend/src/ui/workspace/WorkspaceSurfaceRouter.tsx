@@ -706,17 +706,41 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       canNavigateAway: true,
     });
 
-  // Etap 9 + Faza F: status raportu zależny od readiness modelu, run-a
-  // ORAZ kompletności DER (catalog_refs + profile_refs).
+  // Etap 9 + Faza F + audit fix sys.4: status raportu uwzględnia DerReadinessMatrix
+  // per-axis. Jeśli jakikolwiek DER ma blocker na osi krytycznej dla raportu
+  // (SC3F/SC1F/VDROP/EQUIPMENT/PROTECTION/NC_RFG), raport jest zablokowany.
   const readiness = useSnapshotStore((state) => state.readiness);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const incompleteDers = allDers.filter(
     (d) => d.completeness !== 'complete',
   );
+  // Per-axis check (computeDerReadinessMatrix uruchamiamy z liczbą innych DER).
+  const derAxesAggregate = (() => {
+    let anyBlocked = false;
+    let anyPartial = false;
+    for (const der of allDers) {
+      const others = allDers.filter((d) => d.station_id === der.station_id && d.id !== der.id).length;
+      const matrix = computeDerReadinessMatrix(der, { otherDersInStation: others });
+      const criticalAxes: ReadonlyArray<keyof typeof matrix> = [
+        'sc_3f',
+        'vdrop',
+        'equipment',
+        'protection',
+        'nc_rfg',
+      ];
+      for (const axis of criticalAxes) {
+        if (matrix[axis] === 'blocked') anyBlocked = true;
+        if (matrix[axis] === 'partial') anyPartial = true;
+      }
+    }
+    return { anyBlocked, anyPartial };
+  })();
   const reportStatus: 'gotowy' | 'czesciowy' | 'zablokowany' = (() => {
     if (!activeRunId) return 'zablokowany';
+    if (derAxesAggregate.anyBlocked) return 'zablokowany';
     if (!readiness?.ready) return 'czesciowy';
     if (incompleteDers.length > 0) return 'czesciowy';
+    if (derAxesAggregate.anyPartial) return 'czesciowy';
     return 'gotowy';
   })();
   const reportStatusInfo: Record<typeof reportStatus, { label: string; tone: string }> = {

@@ -142,10 +142,16 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const handleShowOnSld = useCallback(
     (derId: string) => {
-      window.location.hash = '#sld';
-      notify(`Schemat SLD: skupienie na ${derId}.`, 'info');
+      // Naprawa hmi.1: przekazujemy derId jako entityRef do SLD aby skupić
+      // kamerę na DER (selection). SldWorkspaceContainer odczytuje
+      // routeState.payload.focusElementRef.
+      openRouteSurface('E-01', {
+        entityRef: derId,
+        subjectKind: 'helper_context',
+        payload: { focusElementRef: derId, stationId: stationRef ?? null },
+      });
     },
-    [],
+    [openRouteSurface, stationRef],
   );
 
   const requestDetach = useCallback(

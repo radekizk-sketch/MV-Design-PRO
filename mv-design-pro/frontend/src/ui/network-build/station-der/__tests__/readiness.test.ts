@@ -104,15 +104,16 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     expect(matrix.equipment).toBe('partial');
   });
 
-  it('DER z protection + ct + vt → protection ready', () => {
+  it('DER z protection + ct (5P20 zabezpieczeniowa) + vt → protection ready', () => {
     const matrix = computeDerReadinessMatrix(
       makeDer({
         catalogs: {
           ...EMPTY_DER_CATALOGS,
           device_catalog_ref: 'pv_inv_sma_2500',
           protection_catalog_ref: 'prot_xyz',
-          ct_catalog_ref: 'ct_xyz',
-          vt_catalog_ref: 'vt_xyz',
+          // Naprawa eng.5: CT musi być z katalogu i mieć klasę 5P/10P.
+          ct_catalog_ref: 'ct_200_5_5p20',
+          vt_catalog_ref: 'vt_15kv_100v_3p',
         },
       }),
     );

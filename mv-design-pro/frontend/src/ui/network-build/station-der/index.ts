@@ -7,5 +7,6 @@ export * from './store';
 export * from './catalogs';
 export * from './protection-catalogs';
 export * from './readiness';
+export * from './selectivity-grading';
 export { AddDerWizard } from './AddDerWizard';
 export type { AddDerWizardProps } from './AddDerWizard';

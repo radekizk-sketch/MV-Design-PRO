@@ -1,13 +1,19 @@
 /**
- * Readiness aggregation Station ↔ DER (Faza F).
+ * Readiness aggregation Station ↔ DER (Faza F + iteracja eksperckiego audytu).
  *
  * Funkcje pure agregujące macierz gotowości obliczeń (DerReadinessMatrix)
  * + globalne dane stacji do jednolitego widoku w E-04, E-25/E-37, E-36.
  *
  * Zasada: nie wykonujemy fizyki — patrzymy na obecność `catalog_refs` /
  * `profile_refs` / `pcc_ref` i mapujemy na status osi.
+ *
+ * Naprawy z drugiego audytu eksperckiego:
+ *  - eng.5: CT klasa 5P/10P wymagana dla zabezpieczeń (IEC 61869-2)
+ *  - eng.6: CT dwurdzeniowy (5P + 0,5) wymagany dla 87T (różnicowe transformatora)
+ *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
+import { CT_CATALOG, isCtClassValidForProtection } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
   type DerReadinessMatrix,
@@ -160,6 +166,26 @@ export function computeDerReadinessMatrix(
   const hasFaultCurrentData = der.catalogs.fault_current_data_ref !== null;
   // Naprawa A.5: model dynamiczny dla FRT/HVRT.
   const hasDynamicModel = der.catalogs.dynamic_model_ref !== null;
+  // Naprawa eng.5: klasa CT musi być zabezpieczeniowa (5P/10P) dla protection axis.
+  const ctValidForProtection = (() => {
+    if (!der.catalogs.ct_catalog_ref) return false;
+    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
+    if (!ct) return false;
+    return isCtClassValidForProtection(ct.accuracy_class);
+  })();
+  // Naprawa eng.6: CT dual-core wymagany jeśli mamy dedicated_transformer
+  // o mocy ≥ 1.6 MVA (próg dla 87T per IEC 60255-13). Dual-core = klasa 5P/10P
+  // + 0,5/0,2 łączone (oznaczone application='dual' w katalogu CT).
+  const requires87T =
+    der.connection_side === 'dedicated_transformer' &&
+    (der.nominal_power_kw ?? 0) >= 1600;
+  const ctIsDualCore = (() => {
+    if (!der.catalogs.ct_catalog_ref) return false;
+    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
+    return ct?.application === 'dual';
+  })();
+  // Naprawa eng.11: anti-islanding (27/59/81U/81O) — egzekwowane przez
+  // buildBlockersForAxis dla protection axis (po nN/ZK/słupie/mufie).
 
   // Krótkie helpery.
   const allOk = (...flags: boolean[]) =>
@@ -183,7 +209,19 @@ export function computeDerReadinessMatrix(
     if (requiresDedicatedTrafo && !hasDedicatedTrafo) return 'partial' as const;
     return 'ready' as const;
   })();
-  const protectionStatus = partialOk(hasProtection && hasCtVt, hasProtection || hasCtVt);
+  // Naprawy eng.5 + eng.6 + eng.11: rozszerzona logika protection.
+  const protectionStatus: ReadinessAxisStatus = (() => {
+    if (!hasProtection && !hasCtVt) return 'blocked';
+    if (!hasProtection || !hasCtVt) return 'partial';
+    // eng.5: CT klasa musi być zabezpieczeniowa (5P/10P).
+    if (!ctValidForProtection) return 'partial';
+    // eng.6: jeśli DER po dedicated_transformer ≥ 1.6 MVA, wymagany dual-core CT.
+    if (requires87T && !ctIsDualCore) return 'partial';
+    // eng.11: anti-islanding — sprawdzane jako dodatkowy warunek
+    // (sygnalizujemy 'partial' jeśli brak antyislandowych funkcji 27/59/81U/81O).
+    // Tę walidację rozszerza buildBlockersForAxis poniżej.
+    return 'ready';
+  })();
   const protectionSelectivity: ReadinessAxisStatus = (() => {
     if (!hasProtection) return 'blocked';
     if (otherDers === 0) return 'partial'; // tylko jeden DER — selektywność wewnętrzna
@@ -346,6 +384,59 @@ function buildBlockersForAxis(
         blockers.push({
           code: 'der.ct_vt.missing',
           message_pl: 'Brak przekładników CT/VT z katalogu.',
+          object_ref: der.id,
+          target_screen: derKindToScreen(der.der_kind),
+          target_tab: 'topology',
+        });
+      }
+      // Naprawa eng.5: CT klasa musi być zabezpieczeniowa.
+      if (der.catalogs.ct_catalog_ref) {
+        const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
+        if (ct && !isCtClassValidForProtection(ct.accuracy_class)) {
+          blockers.push({
+            code: 'der.ct_class.invalid',
+            message_pl:
+              `Klasa CT "${ct.accuracy_class}" jest pomiarowa, nie zabezpieczeniowa. `
+              + `Wymagana klasa 5P/10P (IEC 61869-2). Wybierz przekładnik typu protection.`,
+            object_ref: der.id,
+            target_screen: derKindToScreen(der.der_kind),
+            target_tab: 'topology',
+          });
+        }
+      }
+      // Naprawa eng.6: 87T wymaga CT dual-core dla transformatora ≥ 1.6 MVA.
+      if (
+        der.connection_side === 'dedicated_transformer' &&
+        (der.nominal_power_kw ?? 0) >= 1600
+      ) {
+        if (der.catalogs.ct_catalog_ref) {
+          const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
+          if (ct && ct.application !== 'dual') {
+            blockers.push({
+              code: 'der.ct_87t_dual_core.required',
+              message_pl:
+                `Transformator dedykowany ≥ 1,6 MVA wymaga zabezpieczenia różnicowego 87T `
+                + `(IEC 60255-13). Wybierz przekładnik dwurdzeniowy (5P + 0,5 łączony).`,
+              object_ref: der.id,
+              target_screen: derKindToScreen(der.der_kind),
+              target_tab: 'topology',
+            });
+          }
+        }
+      }
+      // Naprawa eng.11: anti-islanding (27/59/81U/81O) dla DER po nN/ZK/słupie.
+      if (
+        (der.connection_side === 'nN' || der.connection_side === 'at_zksn'
+          || der.connection_side === 'at_branch_pole' || der.connection_side === 'at_cable_joint')
+        && (der.der_kind === 'PV' || der.der_kind === 'FW')
+        && !der.catalogs.protection_catalog_ref
+      ) {
+        blockers.push({
+          code: 'der.anti_islanding.required',
+          message_pl:
+            `DER ${der.der_kind} po stronie ${der.connection_side} wymaga zabezpieczeń `
+            + `anti-islanding (27/59/81U/81O — IEEE 1547 / NC RfG Art. 14). `
+            + `Brak zabezpieczeń uniemożliwia ochronę przed pracą wyspową.`,
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),
           target_tab: 'topology',

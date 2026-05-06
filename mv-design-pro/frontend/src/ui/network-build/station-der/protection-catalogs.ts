@@ -17,17 +17,20 @@
 // =============================================================================
 
 export type AnsiFunctionCode =
-  | '50' | '51' | '50N' | '51N' // Overcurrent (instantaneous + time-delayed)
-  | '67' | '67N' // Directional overcurrent / earth fault
-  | '87T' | '87L' | '87B' // Differential (transformer / line / busbar)
-  | '27' | '59' // Under/overvoltage
-  | '81U' | '81O' // Under/over frequency
-  | '79' // Auto-reclosing (SPZ)
-  | '86' // Lockout
+  | '21' // Distance (impedance) protection
   | '25' // Synchrocheck
+  | '27' | '59' // Under/overvoltage
   | '32' // Directional power
   | '46' // Negative sequence overcurrent
-  | '49'; // Thermal overload
+  | '49' // Thermal overload
+  | '50' | '51' | '50N' | '51N' // Overcurrent (instantaneous + time-delayed)
+  | '50G' | '51G' // Generator overcurrent (synchronous machines)
+  | '67' | '67N' // Directional overcurrent / earth fault
+  | '78' // Out-of-step (loss of synchronism)
+  | '79' // Auto-reclosing (SPZ)
+  | '81U' | '81O' // Under/over frequency
+  | '86' // Lockout
+  | '87T' | '87L' | '87B'; // Differential (transformer / line / busbar)
 
 export interface ProtectionFunctionItem {
   readonly id: string;
@@ -256,6 +259,72 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
       'Modeluje termiczną stałą czasu (RTD/CTD). Chroni transformatory, kable '
       + 'i silniki przed przeciążeniem cieplnym.',
     typical_application_pl: 'Transformatory, kable SN, silniki',
+    required_for_der: false,
+  },
+  {
+    id: 'pf_21',
+    catalog_namespace: 'protection_function',
+    catalog_version: '2024.1',
+    ansi_code: '21',
+    label_pl: '21 — Zabezpieczenie dystansowe (impedancyjne)',
+    description_pl:
+      'Mierzy impedancję pętli zwarcia Z = U/I. Selektywne strefowo (3-5 stref). '
+      + 'Wymagane dla farm wiatrowych modułu D (>50 MW) na długich liniach SN '
+      + 'oraz dla pierścieni SN gdzie 51 nie zapewnia selektywności.',
+    iec_60255_part: 'IEC 60255-121',
+    typical_application_pl: 'FW moduł D, długie linie SN, pierścienie',
+    required_for_der: false,
+  },
+  {
+    id: 'pf_50g',
+    catalog_namespace: 'protection_function',
+    catalog_version: '2024.1',
+    ansi_code: '50G',
+    label_pl: '50G — Zabezpieczenie nadprądowe natychmiastowe generatora',
+    description_pl:
+      'Wersja 50 dla generatorów synchronicznych (PMSG, DFIG). Inny próg pickup '
+      + '(typowo 1.5-2.5 × In_gen) i krótszy czas reakcji.',
+    typical_application_pl: 'Generatory synchroniczne, FW PMSG/DFIG',
+    required_for_der: true,
+  },
+  {
+    id: 'pf_51g',
+    catalog_namespace: 'protection_function',
+    catalog_version: '2024.1',
+    ansi_code: '51G',
+    label_pl: '51G — Zabezpieczenie nadprądowe czasowo-zwłoczne generatora',
+    description_pl:
+      'Wersja 51 dla generatorów. Typowo z charakterystyką VI/EI dla skutecznej '
+      + 'koordynacji z 50G + ochroną termiczną stojana 49.',
+    typical_application_pl: 'Generatory synchroniczne, FW',
+    required_for_der: true,
+  },
+  {
+    id: 'pf_78',
+    catalog_namespace: 'protection_function',
+    catalog_version: '2024.1',
+    ansi_code: '78',
+    label_pl: '78 — Out-of-step (utrata synchronizmu)',
+    description_pl:
+      'Wykrywa wypadnięcie generatora z synchronizmu (poślizg biegunów). '
+      + 'Wymagane dla farm wiatrowych modułu D (NC RfG) i generatorów '
+      + 'synchronicznych powyżej 5 MVA.',
+    typical_application_pl: 'FW moduł D, generatory synchroniczne',
+    required_for_der: true,
+  },
+  {
+    id: 'pf_87l',
+    catalog_namespace: 'protection_function',
+    catalog_version: '2024.1',
+    ansi_code: '87L',
+    label_pl: '87L — Zabezpieczenie różnicowe linii',
+    description_pl:
+      'Różnicowe linii SN — wykrywa zwarcie wewnątrz strefy chronionej (między '
+      + 'CT-ami na obu końcach linii). Wymaga komunikacji (pilot wire / fiber). '
+      + 'Selektywne, nie wymaga koordynacji czasowej. Stosowane w pierścieniach SN '
+      + 'i krytycznych liniach kablowych.',
+    iec_60255_part: 'IEC 60255-14',
+    typical_application_pl: 'Pierścienie SN, krytyczne linie kablowe',
     required_for_der: false,
   },
 ]);
@@ -589,4 +658,327 @@ export function isCtClassValidForProtection(ctClass: CtClass): boolean {
 
 export function isCtClassValidForMetering(ctClass: CtClass): boolean {
   return ['0.2', '0.5', '1.0'].includes(ctClass);
+}
+
+/**
+ * Naprawa eng.20: walidacja voltage_factor VT vs typu sieci (uziemienia neutralnego).
+ * Sieci skompensowane (Petersena) i izolowane wymagają VT z U_th = 1.9 (8h).
+ * Sieci R-grounded mogą używać 1.5 (30s).
+ * Sieci HV (≥110kV) mogą używać 1.2 (continuous).
+ */
+export function isVtVoltageFactorValidForGrounding(
+  voltageFactor: 1.2 | 1.5 | 1.9,
+  groundingType: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded',
+): { ok: boolean; message_pl: string } {
+  switch (groundingType) {
+    case 'isolated':
+    case 'petersen_coil':
+      if (voltageFactor < 1.9) {
+        return {
+          ok: false,
+          message_pl:
+            `Sieć ${groundingType === 'isolated' ? 'izolowana' : 'skompensowana (Petersena)'} `
+            + `wymaga VT z współczynnikiem napięciowym U_th = 1.9 (8h, IEC 61869-3). `
+            + `Wybrany VT ma U_th = ${voltageFactor}.`,
+        };
+      }
+      return { ok: true, message_pl: '' };
+    case 'resistor_grounded':
+      if (voltageFactor < 1.5) {
+        return {
+          ok: false,
+          message_pl:
+            `Sieć R-grounded wymaga VT z U_th ≥ 1.5 (30s). `
+            + `Wybrany VT ma U_th = ${voltageFactor}.`,
+        };
+      }
+      return { ok: true, message_pl: '' };
+    case 'directly_grounded':
+      if (voltageFactor < 1.2) {
+        return {
+          ok: false,
+          message_pl: `Sieć directly-grounded wymaga VT z U_th ≥ 1.2 (continuous).`,
+        };
+      }
+      return { ok: true, message_pl: '' };
+  }
+}
+
+// =============================================================================
+// 7. HvFuseCatalog (Naprawa eng.17 — audyt zabezpieczeń)
+// =============================================================================
+//
+// Bezpieczniki SN/HV (typowo 6-36 kV) — typowe zabezpieczenie pól TRAFO i
+// odbiorów małych mocy w stacjach SN. Selektywność czasowa z 50/51 wymaga
+// znajomości pełnej charakterystyki I-t fuse (pre-arcing time + total clearing).
+//
+// IEC 60282-1 (HV fuses): klasy I (general purpose), full-range, back-up.
+// Polish standard PN-EN 60282-1 dla SN.
+
+export interface HvFuseItem {
+  readonly id: string;
+  readonly catalog_namespace: 'hv_fuse';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly manufacturer: string;
+  readonly nominal_voltage_kv: number;
+  readonly nominal_current_a: number;
+  /** Klasa wg IEC 60282-1: 'general_purpose', 'full_range', 'back_up'. */
+  readonly class: 'general_purpose' | 'full_range' | 'back_up';
+  /** Prąd minimalny przerywania [A]. */
+  readonly i_min_breaking_a: number;
+  /** Prąd maksymalny przerywania [kA]. */
+  readonly i_max_breaking_ka: number;
+  /** I²t (Joule integral) — ważne dla koordynacji z transformatorem [A²s]. */
+  readonly i2t_total_a2s: number;
+  /** Czas pre-arcing przy 6×In [ms]. */
+  readonly pre_arcing_time_at_6in_ms: number;
+  /** Czas total clearing przy 6×In [ms]. */
+  readonly total_clearing_time_at_6in_ms: number;
+  /** Stosowanie. */
+  readonly application: 'transformer' | 'feeder' | 'motor' | 'capacitor';
+}
+
+export const HV_FUSE_CATALOG: ReadonlyArray<HvFuseItem> = Object.freeze([
+  {
+    id: 'fuse_15kv_50a_full',
+    catalog_namespace: 'hv_fuse',
+    catalog_version: '2024.1',
+    label_pl: 'Bezpiecznik SN 15 kV / 50 A · full-range · TRAFO 630 kVA',
+    manufacturer: 'ABB',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 50,
+    class: 'full_range',
+    i_min_breaking_a: 200,
+    i_max_breaking_ka: 50,
+    i2t_total_a2s: 14000,
+    pre_arcing_time_at_6in_ms: 30,
+    total_clearing_time_at_6in_ms: 50,
+    application: 'transformer',
+  },
+  {
+    id: 'fuse_15kv_100a_full',
+    catalog_namespace: 'hv_fuse',
+    catalog_version: '2024.1',
+    label_pl: 'Bezpiecznik SN 15 kV / 100 A · full-range · TRAFO 1250 kVA',
+    manufacturer: 'Siemens',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 100,
+    class: 'full_range',
+    i_min_breaking_a: 400,
+    i_max_breaking_ka: 50,
+    i2t_total_a2s: 56000,
+    pre_arcing_time_at_6in_ms: 25,
+    total_clearing_time_at_6in_ms: 45,
+    application: 'transformer',
+  },
+  {
+    id: 'fuse_20kv_25a_gp',
+    catalog_namespace: 'hv_fuse',
+    catalog_version: '2024.1',
+    label_pl: 'Bezpiecznik SN 20 kV / 25 A · general-purpose · pole odpływowe',
+    manufacturer: 'Schneider',
+    nominal_voltage_kv: 20,
+    nominal_current_a: 25,
+    class: 'general_purpose',
+    i_min_breaking_a: 75,
+    i_max_breaking_ka: 25,
+    i2t_total_a2s: 3500,
+    pre_arcing_time_at_6in_ms: 35,
+    total_clearing_time_at_6in_ms: 60,
+    application: 'feeder',
+  },
+  {
+    id: 'fuse_15kv_160a_backup',
+    catalog_namespace: 'hv_fuse',
+    catalog_version: '2024.1',
+    label_pl: 'Bezpiecznik SN 15 kV / 160 A · back-up (kondensator)',
+    manufacturer: 'ABB',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 160,
+    class: 'back_up',
+    i_min_breaking_a: 1000,
+    i_max_breaking_ka: 50,
+    i2t_total_a2s: 145000,
+    pre_arcing_time_at_6in_ms: 20,
+    total_clearing_time_at_6in_ms: 40,
+    application: 'capacitor',
+  },
+]);
+
+/** Filtruje bezpieczniki po napięciu i prądzie znamionowym. */
+export function selectHvFusesForRating(args: {
+  readonly voltageKv: number;
+  readonly minCurrentA: number;
+  readonly application?: HvFuseItem['application'];
+}): readonly HvFuseItem[] {
+  return HV_FUSE_CATALOG.filter((f) => {
+    if (Math.abs(f.nominal_voltage_kv - args.voltageKv) > 1.0) return false;
+    if (f.nominal_current_a < args.minCurrentA) return false;
+    if (args.application && f.application !== args.application) return false;
+    return true;
+  });
+}
+
+// =============================================================================
+// 8. Idyn / Ith Catalog (Naprawa eng.18 — audyt zabezpieczeń)
+// =============================================================================
+//
+// IEC 60909-0 wprowadza dwie kluczowe wartości aparatury:
+//  - I_dyn (peak short-circuit current — prąd udarowy ip) — wytrzymałość mechaniczna [kA]
+//  - I_th (thermal short-circuit current — prąd cieplny równoważny 1s) — wytrzymałość termiczna [kA]
+//
+// Standardowe wartości dla typowej aparatury SN podane w katalogu.
+
+export interface DeviceWithstandRatings {
+  readonly id: string;
+  readonly catalog_namespace: 'device_withstand';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly device_type:
+    | 'breaker_vacuum_15'
+    | 'breaker_sf6_15'
+    | 'breaker_vacuum_20'
+    | 'switch_load_15'
+    | 'disconnector_15'
+    | 'busbar_15_1250'
+    | 'busbar_15_2000';
+  readonly nominal_voltage_kv: number;
+  readonly nominal_current_a: number;
+  /** Prąd udarowy ip [kA] — wytrzymałość mechaniczna. */
+  readonly i_dyn_ka: number;
+  /** Prąd cieplny równoważny 1s I_th [kA]. */
+  readonly i_th_1s_ka: number;
+  /** Czas dla I_th — typowo 1s lub 3s. */
+  readonly i_th_duration_s: number;
+}
+
+export const DEVICE_WITHSTAND_CATALOG: ReadonlyArray<DeviceWithstandRatings> = Object.freeze([
+  {
+    id: 'wstd_breaker_vacuum_15_25',
+    catalog_namespace: 'device_withstand',
+    catalog_version: '2024.1',
+    label_pl: 'Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
+    device_type: 'breaker_vacuum_15',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 1250,
+    i_dyn_ka: 63,
+    i_th_1s_ka: 25,
+    i_th_duration_s: 1,
+  },
+  {
+    id: 'wstd_breaker_sf6_15_31_5',
+    catalog_namespace: 'device_withstand',
+    catalog_version: '2024.1',
+    label_pl: 'Wyłącznik SF6 15 kV · I_dyn=80 kA · I_th=31,5 kA/3s',
+    device_type: 'breaker_sf6_15',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 1250,
+    i_dyn_ka: 80,
+    i_th_1s_ka: 31.5,
+    i_th_duration_s: 3,
+  },
+  {
+    id: 'wstd_busbar_15_2000_50',
+    catalog_namespace: 'device_withstand',
+    catalog_version: '2024.1',
+    label_pl: 'Szyna SN 15 kV · 2000 A · I_dyn=125 kA · I_th=50 kA/1s',
+    device_type: 'busbar_15_2000',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 2000,
+    i_dyn_ka: 125,
+    i_th_1s_ka: 50,
+    i_th_duration_s: 1,
+  },
+  {
+    id: 'wstd_busbar_15_1250_25',
+    catalog_namespace: 'device_withstand',
+    catalog_version: '2024.1',
+    label_pl: 'Szyna SN 15 kV · 1250 A · I_dyn=63 kA · I_th=25 kA/1s',
+    device_type: 'busbar_15_1250',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 1250,
+    i_dyn_ka: 63,
+    i_th_1s_ka: 25,
+    i_th_duration_s: 1,
+  },
+  {
+    id: 'wstd_switch_load_15_25',
+    catalog_namespace: 'device_withstand',
+    catalog_version: '2024.1',
+    label_pl: 'Rozłącznik z bezpiecznikami 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
+    device_type: 'switch_load_15',
+    nominal_voltage_kv: 15,
+    nominal_current_a: 630,
+    i_dyn_ka: 63,
+    i_th_1s_ka: 25,
+    i_th_duration_s: 1,
+  },
+]);
+
+/**
+ * Naprawa eng.18: walidacja wytrzymałości aparatury względem prądów obliczonych.
+ * Reguła: I_dyn (peak) ≥ √2·κ·Ik″, I_th (thermal 1s) ≥ Ik″ × √(t_clearing).
+ */
+export function validateDeviceWithstand(args: {
+  readonly device_id: string;
+  readonly i_peak_calculated_ka: number;
+  readonly i_thermal_calculated_ka: number;
+  readonly t_clearing_s: number;
+}): {
+  readonly ok: boolean;
+  readonly i_dyn_ok: boolean;
+  readonly i_th_ok: boolean;
+  readonly message_pl: string;
+  readonly utilization_dyn_percent: number;
+  readonly utilization_th_percent: number;
+} {
+  const device = DEVICE_WITHSTAND_CATALOG.find((d) => d.id === args.device_id);
+  if (!device) {
+    return {
+      ok: false,
+      i_dyn_ok: false,
+      i_th_ok: false,
+      message_pl: `Brak aparatury w katalogu (id=${args.device_id}).`,
+      utilization_dyn_percent: 0,
+      utilization_th_percent: 0,
+    };
+  }
+  // Skala I_th do nowej długości czasu clearing: I_th_eff = I_th_rated × √(t_rated / t_clearing).
+  const i_th_effective = device.i_th_1s_ka * Math.sqrt(device.i_th_duration_s / Math.max(args.t_clearing_s, 0.01));
+  const i_dyn_ok = device.i_dyn_ka >= args.i_peak_calculated_ka;
+  const i_th_ok = i_th_effective >= args.i_thermal_calculated_ka;
+  const utilization_dyn = (args.i_peak_calculated_ka / device.i_dyn_ka) * 100;
+  const utilization_th = (args.i_thermal_calculated_ka / i_th_effective) * 100;
+
+  let message_pl: string;
+  if (i_dyn_ok && i_th_ok) {
+    message_pl =
+      `OK: aparatura "${device.label_pl}" wytrzymała `
+      + `(I_dyn util ${utilization_dyn.toFixed(0)}%, I_th util ${utilization_th.toFixed(0)}%).`;
+  } else {
+    const failures: string[] = [];
+    if (!i_dyn_ok) {
+      failures.push(
+        `I_dyn ${args.i_peak_calculated_ka.toFixed(1)} kA > ${device.i_dyn_ka.toFixed(1)} kA (limit) — `
+        + `przekroczenie wytrzymałości dynamicznej`,
+      );
+    }
+    if (!i_th_ok) {
+      failures.push(
+        `I_th ${args.i_thermal_calculated_ka.toFixed(1)} kA > ${i_th_effective.toFixed(1)} kA `
+        + `(limit przy t=${args.t_clearing_s.toFixed(2)} s) — przekroczenie wytrzymałości termicznej`,
+      );
+    }
+    message_pl = `BLOKER: ${failures.join('; ')}.`;
+  }
+
+  return {
+    ok: i_dyn_ok && i_th_ok,
+    i_dyn_ok,
+    i_th_ok,
+    message_pl,
+    utilization_dyn_percent: utilization_dyn,
+    utilization_th_percent: utilization_th,
+  };
 }

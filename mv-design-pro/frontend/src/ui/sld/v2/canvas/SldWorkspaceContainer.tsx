@@ -34,6 +34,7 @@ import {
   readPaletteDragData,
   type PaletteDragPayload,
 } from '../../../network-build/dragDropController';
+import { useStationDerStore as useStationDerStoreImport } from '../../../network-build/station-der';
 
 const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -207,15 +208,21 @@ export function SldWorkspaceContainer(
 
   // Faza G: dwuklik DER (PV/BESS/FW) na SLD → otwarcie konfiguratora E-21/E-22/E-23.
   // Rozpoznajemy rodzaj DER po prefixie id (`der_pv_*`, `der_bess_*`, `der_fw_*`)
-  // wytwarzanym przez AddDerWizard.
+  // wytwarzanym przez AddDerWizard. Naprawa hmi.2: przekazujemy stationId
+  // przez payload aby DerConfigurator mógł zbudować breadcrumb.
   const handleDoubleClickDer = useCallback(
     (id: string) => {
       let screenCode: 'E-21' | 'E-22' | 'E-23' = 'E-21';
       if (id.includes('bess')) screenCode = 'E-22';
       else if (id.includes('fw')) screenCode = 'E-23';
+      // Pobierz stationId z useStationDerStore — payload zawiera kontekst.
+      // Adapter: zaimportujemy selektor by wczytać z store'a.
+      const ders = useStationDerStoreImport.getState().ders;
+      const der = ders[id] ?? null;
       openRouteSurface(screenCode, {
         entityRef: id,
         subjectKind: 'helper_context',
+        payload: { stationId: der?.station_id ?? null },
       });
     },
     [openRouteSurface],

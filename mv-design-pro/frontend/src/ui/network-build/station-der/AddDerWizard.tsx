@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { notify } from '../../notifications/store';
+import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
   BESS_BATTERY_CATALOG,
   BESS_PCS_CATALOG,
@@ -103,6 +104,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     }
   }, [isOpen, derKind]);
 
+  // Naprawa hmi.11: reset stanu również przy zamknięciu, aby uniknąć
+  // wycieku poprzednich selekcji do następnego otwarcia (np. innym DER).
+  const handleClose = useCallback(() => {
+    setStep('variant');
+    setSelections({ ...EMPTY_SELECTIONS });
+    onClose();
+  }, [onClose]);
+
   const variants = useMemo(() => selectConnectionVariantsForKind(derKind), [derKind]);
 
   const lvrtCurves = useMemo(() =>
@@ -169,7 +178,25 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
   const handleCreate = useCallback(() => {
     if (!stationId || !selections.connectionSide) return;
-    const id = `der_${derKind.toLowerCase()}_${Date.now().toString(36)}`;
+    // Walidacja runtime: catalog_refs muszą istnieć w katalogach
+    // (chroni przed manipulacją selections w devtools).
+    const validation = validateWizardSelections(selections, derKind);
+    if (!validation.ok) {
+      notify(
+        `Walidacja kreatora DER nie powiodła się: ${validation.errors.join('; ')}`,
+        'error',
+      );
+      return;
+    }
+    // Deterministyczne ID — fnv1a hash z (project + station + kind + name).
+    // Dwa wywołania kreatora z identycznymi danymi → identyczne id.
+    const id = generateDeterministicDerId({
+      projectId,
+      stationId,
+      derKind,
+      derName: selections.derName,
+      pccLabel: selections.pccLabel,
+    });
     const pccRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
     const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
     const nominalPowerKw = device && 'nominal_power_kw' in device ? device.nominal_power_kw : null;
@@ -219,18 +246,39 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       `Utworzono ${DER_KIND_LABELS[derKind]} "${selections.derName}" w stacji "${stationName}".`,
       'success',
     );
-    onClose();
+    handleClose();
   }, [
     attachDer,
     deviceCatalog,
     derKind,
     nowIso,
-    onClose,
+    handleClose,
     projectId,
     selections,
     stationId,
     stationName,
   ]);
+
+  // Naprawa hmi.5: real-time voltage mismatch warning przy wyborze urządzenia.
+  // Porównujemy napięcie urządzenia (z katalogu) z napięciem nN (jeśli wybrane).
+  const voltageMismatchWarning = useMemo(() => {
+    if (selections.connectionSide !== 'nN' || !selections.voltageLevelRef
+        || !selections.deviceCatalogRef) {
+      return null;
+    }
+    const lvLevel = LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === selections.voltageLevelRef);
+    const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
+    if (!lvLevel || !device || !('nominal_voltage_kv' in device)) return null;
+    const deviceKv = device.nominal_voltage_kv as number;
+    if (Math.abs(deviceKv - lvLevel.nominal_kv) > 0.01) {
+      return (
+        `Niezgodność napięcia: urządzenie ${deviceKv.toFixed(2)} kV vs `
+        + `szyna nN ${lvLevel.nominal_kv.toFixed(2)} kV. `
+        + `Wymagany transformator dedykowany lub zmiana wariantu na "dedicated_transformer".`
+      );
+    }
+    return null;
+  }, [selections.connectionSide, selections.voltageLevelRef, selections.deviceCatalogRef, deviceCatalog]);
 
   if (!isOpen) return null;
 
@@ -257,7 +305,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             data-testid="add-der-wizard-close"
             className="rounded p-1 text-scada-muted hover:bg-scada-hover-nav hover:text-scada-text"
             aria-label="Zamknij konfigurację"
@@ -408,6 +456,14 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 Wybierz urządzenie z katalogu producenta. Wszystkie wartości
                 techniczne (moc, napięcie, charakterystyki) pochodzą z katalogu.
               </p>
+              {voltageMismatchWarning && (
+                <div
+                  data-testid="add-der-voltage-mismatch-warning"
+                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                >
+                  ⚠ {voltageMismatchWarning}
+                </div>
+              )}
               <Select
                 label={derKind === 'PV' ? 'Falownik PV' : derKind === 'BESS' ? 'PCS BESS' : 'Turbina wiatrowa'}
                 required

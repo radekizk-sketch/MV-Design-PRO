@@ -50,6 +50,16 @@ export interface NcRfgProfileItem {
    * D: ≥25× zgodnie z NC RfG Art. 17.
    */
   readonly sk_min_to_p_ratio_by_module: Readonly<Record<'A' | 'B' | 'C' | 'D', number | null>>;
+  /**
+   * Naprawa eng.8 (audyt OZE): parametry Q(U) per OSD (NC RfG Art. 21).
+   * - q_u_deadzone_percent: szerokość strefy nieczułości (typowo ±3% Un)
+   * - q_u_min_pu / q_u_max_pu: zakres Q dla cos φ ind/poj (typowo ±0.33 = 0.95)
+   * - cos_phi_min_lagging: minimalny cos φ przy zwiększonym napięciu
+   */
+  readonly q_u_deadzone_percent: number;
+  readonly q_u_min_pu: number;
+  readonly q_u_max_pu: number;
+  readonly cos_phi_min_lagging: number;
 }
 
 // IEC 60909 Tabela 1: dla 1-35 kV c_max=1.10, c_min=0.95 (sieć średniego
@@ -65,6 +75,21 @@ const NC_RFG_SK_RATIOS = {
   D: 25,
 } as const;
 
+// Naprawa eng.8: domyślne parametry Q(U) zgodne z NC RfG Art. 21.
+const Q_U_DEFAULTS = {
+  q_u_deadzone_percent: 3, // ±3% Un (typowy "dead zone")
+  q_u_min_pu: -0.33,        // -33% S_n (cos φ ind 0.95)
+  q_u_max_pu: 0.33,         // +33% S_n (cos φ poj 0.95)
+  cos_phi_min_lagging: 0.95,
+};
+// Pełniejszy zakres dla PSE (transmission, NC RfG Art. 21 Mode A.3).
+const Q_U_PSE = {
+  q_u_deadzone_percent: 2,
+  q_u_min_pu: -0.40,
+  q_u_max_pu: 0.40,
+  cos_phi_min_lagging: 0.90,
+};
+
 export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.freeze([
   {
     id: 'ncrfg_pse',
@@ -73,14 +98,15 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     operator_code: 'PSE',
     label_pl: 'PSE — Polskie Sieci Elektroenergetyczne',
     description_pl:
-      'Profil bazowy NC RfG Annex II (sieć przesyłowa 110+ kV). Moduły typu C/D z wymaganiami pełnymi.',
-    applicable_module_types: ['B', 'C', 'D'],
+      'Profil bazowy NC RfG Annex II (sieć przesyłowa 110+ kV). Wszystkie moduły A-D z wymaganiami pełnymi.',
+    applicable_module_types: ['A', 'B', 'C', 'D'],
     q_u_curve_ref: 'qu_pse_2024',
     p_f_curve_ref: 'pf_pse_2024',
     source: 'NC_RfG_Annex_II',
     status: 'active',
     ...C_FACTORS_MV,
     sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
+    ...Q_U_PSE,
   },
   {
     id: 'ncrfg_energa',
@@ -96,6 +122,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     status: 'active',
     ...C_FACTORS_MV,
     sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
+    ...Q_U_DEFAULTS,
   },
   {
     id: 'ncrfg_tauron',
@@ -111,6 +138,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     status: 'active',
     ...C_FACTORS_MV,
     sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
+    ...Q_U_DEFAULTS,
   },
   {
     id: 'ncrfg_enea',
@@ -126,6 +154,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     status: 'active',
     ...C_FACTORS_MV,
     sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
+    ...Q_U_DEFAULTS,
   },
   {
     id: 'ncrfg_pge',
@@ -141,6 +170,7 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     status: 'active',
     ...C_FACTORS_MV,
     sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
+    ...Q_U_DEFAULTS,
   },
 ]);
 
@@ -242,6 +272,41 @@ export const LVRT_CURVE_CATALOG: ReadonlyArray<LvrtCurveItem> = Object.freeze([
     envelope: offsetCurve(LVRT_BASE_PSE, 0.02),
     source: 'IRiESD',
   },
+  // Naprawa eng.7: dodatkowe krzywe LVRT dla modułów C/D PSE.
+  {
+    id: 'lvrt_pse_c',
+    catalog_namespace: 'lvrt_curve',
+    catalog_version: '2024.1',
+    label_pl: 'LVRT — PSE NC RfG, moduł C (10-50 MW)',
+    operator_code: 'PSE',
+    module_type: 'C',
+    // Moduł C wymaga przetrwania zwarcia z U=0 przez 150 ms (więcej niż B).
+    envelope: [
+      { time_s: 0, voltage_pu: 0.00 },
+      { time_s: 0.15, voltage_pu: 0.05 },
+      { time_s: 0.7, voltage_pu: 0.5 },
+      { time_s: 1.5, voltage_pu: 0.85 },
+      { time_s: 3.0, voltage_pu: 0.9 },
+    ],
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'lvrt_pse_d',
+    catalog_namespace: 'lvrt_curve',
+    catalog_version: '2024.1',
+    label_pl: 'LVRT — PSE NC RfG, moduł D (>50 MW)',
+    operator_code: 'PSE',
+    module_type: 'D',
+    // Moduł D wymaga przetrwania zwarcia z U=0 przez 250 ms.
+    envelope: [
+      { time_s: 0, voltage_pu: 0.00 },
+      { time_s: 0.25, voltage_pu: 0.00 },
+      { time_s: 0.7, voltage_pu: 0.4 },
+      { time_s: 1.5, voltage_pu: 0.85 },
+      { time_s: 3.0, voltage_pu: 0.9 },
+    ],
+    source: 'NC_RfG_Annex_II',
+  },
 ]);
 
 export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
@@ -253,6 +318,27 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
     operator_code: 'PSE',
     module_type: 'B',
     envelope: HVRT_BASE_PSE,
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'hvrt_pse_c',
+    catalog_namespace: 'hvrt_curve',
+    catalog_version: '2024.1',
+    label_pl: 'HVRT — PSE NC RfG, moduł C (10-50 MW, surowsze wymagania)',
+    operator_code: 'PSE',
+    module_type: 'C',
+    // Moduł C ma surowsze wymagania (kontynuacja pracy do U > 1.30 pu krócej).
+    envelope: offsetCurve(HVRT_BASE_PSE, 0.02),
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'hvrt_pse_d',
+    catalog_namespace: 'hvrt_curve',
+    catalog_version: '2024.1',
+    label_pl: 'HVRT — PSE NC RfG, moduł D (>50 MW, najwyższe wymagania)',
+    operator_code: 'PSE',
+    module_type: 'D',
+    envelope: offsetCurve(HVRT_BASE_PSE, 0.03),
     source: 'NC_RfG_Annex_II',
   },
   {
@@ -283,6 +369,102 @@ export const HVRT_CURVE_CATALOG: ReadonlyArray<HvrtCurveItem> = Object.freeze([
     operator_code: 'PGE',
     module_type: 'B',
     envelope: offsetCurve(HVRT_BASE_PSE, -0.02),
+    source: 'IRiESD',
+  },
+]);
+
+// =============================================================================
+// 2b. PfCurveCatalog (Naprawa eng.9 — audyt OZE: regulacja P(f))
+// =============================================================================
+//
+// NC RfG Art. 13 + 15: regulacja mocy czynnej w funkcji częstotliwości.
+// Moduły B/C/D wymagają droop'u (typowo 3-5%) i operacji w zakresie
+// [f_min, f_max] (typowo 47.5-51.5 Hz dla DER).
+
+export interface PfCurveItem {
+  readonly id: string;
+  readonly catalog_namespace: 'p_f_curve';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly operator_code: 'PSE' | 'Energa' | 'Tauron' | 'Enea' | 'PGE';
+  readonly module_type: 'A' | 'B' | 'C' | 'D';
+  readonly f_ref_hz: number;          // 50 Hz nominal
+  readonly droop_percent: number;     // typowo 3-5%
+  readonly f_min_hz: number;          // 47.5 Hz typowo
+  readonly f_max_hz: number;          // 51.5 Hz typowo
+  readonly deadband_hz: number;       // ±0.2 Hz typowo
+  readonly source: 'NC_RfG_Annex_II' | 'IRiESD';
+}
+
+export const PF_CURVE_CATALOG: ReadonlyArray<PfCurveItem> = Object.freeze([
+  {
+    id: 'pf_pse_b',
+    catalog_namespace: 'p_f_curve',
+    catalog_version: '2024.1',
+    label_pl: 'P(f) — PSE NC RfG, moduł B (droop 5%)',
+    operator_code: 'PSE',
+    module_type: 'B',
+    f_ref_hz: 50.0,
+    droop_percent: 5.0,
+    f_min_hz: 47.5,
+    f_max_hz: 51.5,
+    deadband_hz: 0.2,
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'pf_pse_c',
+    catalog_namespace: 'p_f_curve',
+    catalog_version: '2024.1',
+    label_pl: 'P(f) — PSE NC RfG, moduł C (droop 4%)',
+    operator_code: 'PSE',
+    module_type: 'C',
+    f_ref_hz: 50.0,
+    droop_percent: 4.0,
+    f_min_hz: 47.5,
+    f_max_hz: 51.5,
+    deadband_hz: 0.15,
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'pf_pse_d',
+    catalog_namespace: 'p_f_curve',
+    catalog_version: '2024.1',
+    label_pl: 'P(f) — PSE NC RfG, moduł D (droop 3%, FCR-N capable)',
+    operator_code: 'PSE',
+    module_type: 'D',
+    f_ref_hz: 50.0,
+    droop_percent: 3.0,
+    f_min_hz: 47.5,
+    f_max_hz: 51.5,
+    deadband_hz: 0.10,
+    source: 'NC_RfG_Annex_II',
+  },
+  {
+    id: 'pf_energa_b',
+    catalog_namespace: 'p_f_curve',
+    catalog_version: '2024.1',
+    label_pl: 'P(f) — Energa-Operator, moduł B',
+    operator_code: 'Energa',
+    module_type: 'B',
+    f_ref_hz: 50.0,
+    droop_percent: 5.0,
+    f_min_hz: 47.5,
+    f_max_hz: 51.5,
+    deadband_hz: 0.20,
+    source: 'IRiESD',
+  },
+  {
+    id: 'pf_tauron_b',
+    catalog_namespace: 'p_f_curve',
+    catalog_version: '2024.1',
+    label_pl: 'P(f) — Tauron Dystrybucja, moduł B',
+    operator_code: 'Tauron',
+    module_type: 'B',
+    f_ref_hz: 50.0,
+    droop_percent: 5.0,
+    f_min_hz: 47.5,
+    f_max_hz: 51.5,
+    deadband_hz: 0.20,
     source: 'IRiESD',
   },
 ]);
@@ -1050,6 +1232,136 @@ export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataIt
 ]);
 
 // =============================================================================
+// 7b. BlockTransformerCatalog (Naprawa B.5 — audyt projektanta SN)
+// =============================================================================
+//
+// Transformator dedykowany (block-trafo) dla DER. W odróżnieniu od standardowego
+// transformatora SN/nN obsługuje również przekładnie SN/SN (np. 15/3 kV dla
+// turbinowni FW) oraz dedykowane konfiguracje dla farm PV/BESS.
+//
+// Zastosowanie:
+//   - PV po SN: 15/0.69 kV (string-level), 15/0.4 kV (centralny)
+//   - BESS po SN: 15/0.4 kV, 15/0.69 kV
+//   - FW dedykowany: 30/15 kV (turbinownia), 15/0.69 kV (turbina)
+
+export interface BlockTransformerItem {
+  readonly id: string;
+  readonly catalog_namespace: 'block_transformer';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly manufacturer: string;
+  readonly sn_kva: number;
+  /** Napięcie strony pierwotnej [kV]. */
+  readonly hv_kv: number;
+  /** Napięcie strony wtórnej [kV]. SN/SN gdy lv_kv > 1.0. */
+  readonly lv_kv: number;
+  readonly uk_percent: number;
+  readonly pk_kw: number;
+  readonly p0_kw: number;
+  readonly i0_percent: number;
+  readonly vector_group: string;
+  /** Czy transformator obsługuje SN/SN (block dla turbinowni FW). */
+  readonly is_mv_to_mv: boolean;
+  /** Dla jakich rodzajów DER. */
+  readonly applicable_der_kinds: ReadonlyArray<'PV' | 'BESS' | 'FW'>;
+  /** Czy ma izolację galwaniczną (wymagana dla BESS). */
+  readonly galvanic_isolation: boolean;
+}
+
+export const BLOCK_TRANSFORMER_CATALOG: ReadonlyArray<BlockTransformerItem> = Object.freeze([
+  {
+    id: 'btr_pv_15_069_2500',
+    catalog_namespace: 'block_transformer',
+    catalog_version: '2024.1',
+    label_pl: 'PV block-trafo 15/0,69 kV · 2500 kVA · Dyn5',
+    manufacturer: 'ABB',
+    sn_kva: 2500,
+    hv_kv: 15,
+    lv_kv: 0.69,
+    uk_percent: 6.0,
+    pk_kw: 24.0,
+    p0_kw: 3.5,
+    i0_percent: 0.4,
+    vector_group: 'Dyn5',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['PV', 'BESS'],
+    galvanic_isolation: true,
+  },
+  {
+    id: 'btr_pv_15_04_1000',
+    catalog_namespace: 'block_transformer',
+    catalog_version: '2024.1',
+    label_pl: 'PV block-trafo 15/0,4 kV · 1000 kVA · Dyn11',
+    manufacturer: 'Siemens',
+    sn_kva: 1000,
+    hv_kv: 15,
+    lv_kv: 0.4,
+    uk_percent: 6.0,
+    pk_kw: 11.0,
+    p0_kw: 1.6,
+    i0_percent: 0.6,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['PV', 'BESS'],
+    galvanic_isolation: true,
+  },
+  {
+    id: 'btr_bess_15_04_1600',
+    catalog_namespace: 'block_transformer',
+    catalog_version: '2024.1',
+    label_pl: 'BESS block-trafo 15/0,4 kV · 1600 kVA · Dyn11 (galwaniczna izolacja)',
+    manufacturer: 'Schneider',
+    sn_kva: 1600,
+    hv_kv: 15,
+    lv_kv: 0.4,
+    uk_percent: 6.5,
+    pk_kw: 16.5,
+    p0_kw: 2.4,
+    i0_percent: 0.5,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['BESS'],
+    galvanic_isolation: true,
+  },
+  {
+    id: 'btr_fw_30_15_30000',
+    catalog_namespace: 'block_transformer',
+    catalog_version: '2024.1',
+    label_pl: 'FW block-trafo 30/15 kV · 30 MVA · YNyn0 (turbinownia, SN/SN)',
+    manufacturer: 'ABB',
+    sn_kva: 30000,
+    hv_kv: 30,
+    lv_kv: 15,
+    uk_percent: 12.5,
+    pk_kw: 220.0,
+    p0_kw: 24.0,
+    i0_percent: 0.3,
+    vector_group: 'YNyn0',
+    is_mv_to_mv: true,
+    applicable_der_kinds: ['FW'],
+    galvanic_isolation: false,
+  },
+  {
+    id: 'btr_fw_15_069_3450',
+    catalog_namespace: 'block_transformer',
+    catalog_version: '2024.1',
+    label_pl: 'FW block-trafo turbinowy 15/0,69 kV · 3450 kVA · Dyn11',
+    manufacturer: 'Siemens',
+    sn_kva: 3450,
+    hv_kv: 15,
+    lv_kv: 0.69,
+    uk_percent: 6.0,
+    pk_kw: 33.0,
+    p0_kw: 4.8,
+    i0_percent: 0.35,
+    vector_group: 'Dyn11',
+    is_mv_to_mv: false,
+    applicable_der_kinds: ['FW'],
+    galvanic_isolation: true,
+  },
+]);
+
+// =============================================================================
 // 8. DerDynamicModelCatalog (Naprawa A.5 — audyt profesora)
 // =============================================================================
 //
@@ -1208,6 +1520,30 @@ export function getMvNeutralGrounding(id: string): MvNeutralGroundingItem | null
   return MV_NEUTRAL_GROUNDING_CATALOG.find((g) => g.id === id) ?? null;
 }
 
+/**
+ * Naprawa B.5: filtruje block-trafo dla danej kombinacji DER + napięć.
+ * Zwraca pozycje katalogowe pasujące do device_voltage / station_voltage.
+ */
+export function selectBlockTransformersForDer(args: {
+  readonly derKind: 'PV' | 'BESS' | 'FW';
+  readonly hvKv?: number;
+  readonly lvKv?: number;
+  readonly requiresGalvanicIsolation?: boolean;
+}): readonly BlockTransformerItem[] {
+  return BLOCK_TRANSFORMER_CATALOG.filter((btr) => {
+    if (!btr.applicable_der_kinds.includes(args.derKind)) return false;
+    if (args.hvKv !== undefined && Math.abs(btr.hv_kv - args.hvKv) > 0.5) return false;
+    if (args.lvKv !== undefined && Math.abs(btr.lv_kv - args.lvKv) > 0.05) return false;
+    if (args.requiresGalvanicIsolation === true && !btr.galvanic_isolation) return false;
+    return true;
+  });
+}
+
+/** Pobiera block-trafo po id. */
+export function getBlockTransformer(id: string): BlockTransformerItem | null {
+  return BLOCK_TRANSFORMER_CATALOG.find((b) => b.id === id) ?? null;
+}
+
 /** Naprawa A.1: pobiera dane zwarciowe dla danego device_id. */
 export function getFaultCurrentDataForDevice(
   deviceId: string,
@@ -1256,5 +1592,396 @@ export function validateMinSkAtPcc(args: {
     available_sk_mva: args.available_sk_mva,
     ok: args.available_sk_mva !== null && args.available_sk_mva >= required,
     ratio,
+  };
+}
+
+// =============================================================================
+// 10. BessOperationModeCatalog (Naprawa eng.10 — audyt OZE)
+// =============================================================================
+//
+// Tryby pracy magazynu energii BESS — wymagane dla obliczeń przepływu mocy
+// (kierunek P), strategii NC RfG (FCR/aFRR/mFRR), peak shaving i arbitrażu.
+// Każdy tryb ma deterministyczne parametry kontrolne.
+
+export interface BessOperationModeItem {
+  readonly id: string;
+  readonly catalog_namespace: 'bess_operation_mode';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  readonly description_pl: string;
+  readonly mode_code:
+    | 'peak_shaving'
+    | 'arbitrage'
+    | 'fcr_n'        // Frequency Containment Reserve - normal
+    | 'fcr_d_up'     // FCR-D upward
+    | 'fcr_d_down'   // FCR-D downward
+    | 'afrr'         // automatic Frequency Restoration Reserve
+    | 'mfrr'         // manual Frequency Restoration Reserve
+    | 'voltage_support' // Q(U) regulation
+    | 'island_backup'   // grid-forming po awarii
+    | 'self_consumption';
+  /** Wymagana pojemność rezerwy [%]. */
+  readonly reserved_capacity_percent: number;
+  /** Czas reakcji [s]. */
+  readonly response_time_s: number;
+  /** Maksymalny czas trwania trybu [h] (FCR-D: 15 min, aFRR: 60 min, mFRR: ≥4h). */
+  readonly max_duration_h: number;
+  /** Wymagane dla NC RfG modułów (B/C/D). */
+  readonly required_for_nc_rfg_modules: ReadonlyArray<'A' | 'B' | 'C' | 'D'>;
+  /** Wymagane four-quadrant. */
+  readonly requires_four_quadrant: boolean;
+  /** Wymagane grid-forming. */
+  readonly requires_grid_forming: boolean;
+}
+
+export const BESS_OPERATION_MODE_CATALOG: ReadonlyArray<BessOperationModeItem> = Object.freeze([
+  {
+    id: 'mode_peak_shaving',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'Peak shaving (redukcja szczytu)',
+    description_pl:
+      'Wyładowanie BESS podczas szczytów obciążenia odbiorcy w celu redukcji '
+      + 'mocy szczytowej i opłat dystrybucyjnych (taryfa BD/CD).',
+    mode_code: 'peak_shaving',
+    reserved_capacity_percent: 30,
+    response_time_s: 60,
+    max_duration_h: 4,
+    required_for_nc_rfg_modules: [],
+    requires_four_quadrant: false,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_arbitrage',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'Arbitraż cenowy (energy time-shift)',
+    description_pl:
+      'Ładowanie w godzinach niskich cen, wyładowanie w godzinach drogich. '
+      + 'Wymaga TGE / RB cennika spot.',
+    mode_code: 'arbitrage',
+    reserved_capacity_percent: 0,
+    response_time_s: 300,
+    max_duration_h: 8,
+    required_for_nc_rfg_modules: [],
+    requires_four_quadrant: false,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_fcr_n',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'FCR-N (rezerwa pierwotna normalna)',
+    description_pl:
+      'Symetryczna rezerwa pierwotna ±50 mHz, droop 5%. NC RfG Art. 13 — '
+      + 'moduły C/D obowiązkowo. Reakcja w pełni w 30 s.',
+    mode_code: 'fcr_n',
+    reserved_capacity_percent: 50,
+    response_time_s: 30,
+    max_duration_h: 0.5,
+    required_for_nc_rfg_modules: ['C', 'D'],
+    requires_four_quadrant: true,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_fcr_d_up',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'FCR-D (rezerwa awaryjna w górę)',
+    description_pl:
+      'Rezerwa pierwotna asymetryczna w górę dla podczęstotliwościowych zakłóceń '
+      + '(f<49.5 Hz). Reakcja 50% w 5 s, 100% w 30 s. Pełna 15 min.',
+    mode_code: 'fcr_d_up',
+    reserved_capacity_percent: 100,
+    response_time_s: 5,
+    max_duration_h: 0.25,
+    required_for_nc_rfg_modules: ['D'],
+    requires_four_quadrant: true,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_afrr',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'aFRR (rezerwa wtórna automatyczna)',
+    description_pl:
+      'Rezerwa wtórna sterowana przez sygnał ACE od PSE. Reakcja w 5 min, '
+      + 'pełna w 15 min. Symetryczna ±. NC RfG Art. 15.',
+    mode_code: 'afrr',
+    reserved_capacity_percent: 70,
+    response_time_s: 300,
+    max_duration_h: 1,
+    required_for_nc_rfg_modules: ['D'],
+    requires_four_quadrant: true,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_mfrr',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'mFRR (rezerwa wtórna ręczna)',
+    description_pl:
+      'Rezerwa ręczna uruchamiana komendą dyspozytora PSE. Pełna aktywacja '
+      + 'w 12.5 min. Czas trwania ≥ 4h.',
+    mode_code: 'mfrr',
+    reserved_capacity_percent: 100,
+    response_time_s: 750,
+    max_duration_h: 4,
+    required_for_nc_rfg_modules: [],
+    requires_four_quadrant: false,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_voltage_support',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'Wsparcie napięciowe Q(U)',
+    description_pl:
+      'Regulacja mocy biernej w funkcji napięcia (Q(U) static). NC RfG Art. 21. '
+      + 'Wymaga 4-quadrant, regulacja ±0.33 S_n.',
+    mode_code: 'voltage_support',
+    reserved_capacity_percent: 0,
+    response_time_s: 1,
+    max_duration_h: 24,
+    required_for_nc_rfg_modules: ['B', 'C', 'D'],
+    requires_four_quadrant: true,
+    requires_grid_forming: false,
+  },
+  {
+    id: 'mode_island_backup',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'Tryb wyspowy (grid-forming backup)',
+    description_pl:
+      'Tworzenie napięcia po awarii zasilania. Wymaga grid-forming PCS. '
+      + 'Synchronizacja z siecią po powrocie zasilania (synchrocheck 25).',
+    mode_code: 'island_backup',
+    reserved_capacity_percent: 80,
+    response_time_s: 0.05,
+    max_duration_h: 4,
+    required_for_nc_rfg_modules: [],
+    requires_four_quadrant: true,
+    requires_grid_forming: true,
+  },
+  {
+    id: 'mode_self_consumption',
+    catalog_namespace: 'bess_operation_mode',
+    catalog_version: '2024.1',
+    label_pl: 'Autokonsumpcja PV+BESS (self-consumption)',
+    description_pl:
+      'Maksymalizacja autokonsumpcji PV — ładowanie nadwyżek dziennej generacji, '
+      + 'wyładowanie wieczorne. Typowe dla DER po nN.',
+    mode_code: 'self_consumption',
+    reserved_capacity_percent: 0,
+    response_time_s: 30,
+    max_duration_h: 8,
+    required_for_nc_rfg_modules: [],
+    requires_four_quadrant: false,
+    requires_grid_forming: false,
+  },
+]);
+
+/** Filtruje tryby BESS kompatybilne z PCS (4Q + grid-forming). */
+export function selectBessModesForPcs(args: {
+  readonly fourQuadrant: boolean;
+  readonly gridFormingCapable: boolean;
+}): readonly BessOperationModeItem[] {
+  return BESS_OPERATION_MODE_CATALOG.filter((m) => {
+    if (m.requires_four_quadrant && !args.fourQuadrant) return false;
+    if (m.requires_grid_forming && !args.gridFormingCapable) return false;
+    return true;
+  });
+}
+
+/** Filtruje tryby BESS wymagane dla danego modułu NC RfG. */
+export function selectRequiredBessModesForModule(
+  module: 'A' | 'B' | 'C' | 'D',
+): readonly BessOperationModeItem[] {
+  return BESS_OPERATION_MODE_CATALOG.filter((m) =>
+    m.required_for_nc_rfg_modules.includes(module),
+  );
+}
+
+// =============================================================================
+// 11. TapChangerCatalog (Naprawa eng.13 — audyt projektanta SN)
+// =============================================================================
+//
+// Przełącznik zaczepów transformatora — kluczowy dla regulacji napięcia
+// (VR control) i zarządzania w GPZ. NC RfG / IRiESD wymaga AVR
+// (Automatic Voltage Regulation) dla transformatorów 110/SN.
+
+export interface TapChangerItem {
+  readonly id: string;
+  readonly catalog_namespace: 'tap_changer';
+  readonly catalog_version: string;
+  readonly label_pl: string;
+  /** Typ przełącznika: OLTC = on-load (pod obciążeniem), DETC = off-load. */
+  readonly type: 'oltc' | 'detc';
+  /** Pozycja neutralna (typowo 0 lub środek zakresu). */
+  readonly neutral_position: number;
+  /** Liczba zaczepów (typowo 17 lub 19 dla 110/SN, 5 dla SN/nN). */
+  readonly tap_count: number;
+  /** Krok napięcia per zaczep [%]. Typowo 1.25% dla 110/SN, 2.5% dla SN/nN. */
+  readonly step_percent: number;
+  /** Zakres regulacji [%]. Typowo ±10% dla OLTC 110/SN, ±5% dla DETC SN/nN. */
+  readonly range_percent: number;
+  /** Strona regulacji: HV (pierwotna) lub LV (wtórna). */
+  readonly regulated_side: 'hv' | 'lv';
+  /** Czas przełączenia [s] — istotne dla dynamiki napięcia. */
+  readonly switching_time_s: number;
+  /** Liczba operacji przed przeglądem [×1000]. */
+  readonly operations_before_maintenance_thousand: number;
+  /** Czy obsługuje AVR (Automatic Voltage Regulation). */
+  readonly supports_avr: boolean;
+  /** Stosowanie. */
+  readonly applicable_to: ReadonlyArray<'transformer_110_15' | 'transformer_110_20' | 'transformer_15_04' | 'block_transformer'>;
+}
+
+export const TAP_CHANGER_CATALOG: ReadonlyArray<TapChangerItem> = Object.freeze([
+  {
+    id: 'tc_oltc_110sn_19_125',
+    catalog_namespace: 'tap_changer',
+    catalog_version: '2024.1',
+    label_pl: 'OLTC 110/SN · 19 zaczepów · ±11,25% · AVR',
+    type: 'oltc',
+    neutral_position: 0,
+    tap_count: 19,
+    step_percent: 1.25,
+    range_percent: 11.25,
+    regulated_side: 'hv',
+    switching_time_s: 5,
+    operations_before_maintenance_thousand: 100,
+    supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+  {
+    id: 'tc_oltc_110sn_17_125',
+    catalog_namespace: 'tap_changer',
+    catalog_version: '2024.1',
+    label_pl: 'OLTC 110/SN · 17 zaczepów · ±10% · AVR',
+    type: 'oltc',
+    neutral_position: 0,
+    tap_count: 17,
+    step_percent: 1.25,
+    range_percent: 10.0,
+    regulated_side: 'hv',
+    switching_time_s: 4,
+    operations_before_maintenance_thousand: 80,
+    supports_avr: true,
+    applicable_to: ['transformer_110_15', 'transformer_110_20'],
+  },
+  {
+    id: 'tc_detc_snnn_5_25',
+    catalog_namespace: 'tap_changer',
+    catalog_version: '2024.1',
+    label_pl: 'DETC SN/nN · 5 zaczepów · ±5% (off-load)',
+    type: 'detc',
+    neutral_position: 0,
+    tap_count: 5,
+    step_percent: 2.5,
+    range_percent: 5.0,
+    regulated_side: 'hv',
+    switching_time_s: 0,
+    operations_before_maintenance_thousand: 1,
+    supports_avr: false,
+    applicable_to: ['transformer_15_04', 'block_transformer'],
+  },
+  {
+    id: 'tc_oltc_snnn_9_15',
+    catalog_namespace: 'tap_changer',
+    catalog_version: '2024.1',
+    label_pl: 'OLTC SN/nN · 9 zaczepów · ±6% · AVR (przemysłowe)',
+    type: 'oltc',
+    neutral_position: 0,
+    tap_count: 9,
+    step_percent: 1.5,
+    range_percent: 6.0,
+    regulated_side: 'hv',
+    switching_time_s: 3,
+    operations_before_maintenance_thousand: 50,
+    supports_avr: true,
+    applicable_to: ['transformer_15_04', 'block_transformer'],
+  },
+]);
+
+/** Filtruje przełączniki zaczepów dla danego typu transformatora. */
+export function selectTapChangersForTransformer(
+  type: 'transformer_110_15' | 'transformer_110_20' | 'transformer_15_04' | 'block_transformer',
+): readonly TapChangerItem[] {
+  return TAP_CHANGER_CATALOG.filter((tc) => tc.applicable_to.includes(type));
+}
+
+/** Pobiera szczegóły przełącznika zaczepów. */
+export function getTapChanger(id: string): TapChangerItem | null {
+  return TAP_CHANGER_CATALOG.find((tc) => tc.id === id) ?? null;
+}
+
+// =============================================================================
+// 12. Hosting capacity export check (Naprawa eng.15 — audyt OZE)
+// =============================================================================
+//
+// Eksport mocy DER do sieci OSD vs. import obciążenia. Reguła operatora:
+// jeśli moc eksportowana ≥ 1.5 × moc importowana, wymagana studium NC RfG
+// "ramp-down" + ograniczenie eksportu (curtailment).
+
+export interface HostingCapacityExportResult {
+  readonly station_id: string;
+  readonly p_export_kw: number; // suma mocy DER
+  readonly p_import_kw: number; // suma mocy odbiorów
+  readonly p_net_export_kw: number; // P_export - P_import (>0 = export do OSD)
+  readonly export_to_import_ratio: number;
+  readonly status: 'no_export' | 'normal_export' | 'high_export_warning' | 'requires_ramp_down';
+  readonly message_pl: string;
+}
+
+/**
+ * Naprawa eng.15: walidacja kierunku przepływu mocy (export vs import) w stacji.
+ * Reguła operatora:
+ *   - Σ P_DER ≤ 0.8 × Σ P_load → "no_export" (lokalna autokonsumpcja)
+ *   - 0.8 × Σ P_load < Σ P_DER ≤ 1.5 × Σ P_load → "normal_export"
+ *   - Σ P_DER > 1.5 × Σ P_load → "high_export_warning" (wymagane curtailment)
+ *   - Σ P_DER > 3 × Σ P_load → "requires_ramp_down" (NC RfG study + curtailment)
+ */
+export function validateHostingCapacityExport(args: {
+  readonly station_id: string;
+  readonly p_export_kw: number;
+  readonly p_import_kw: number;
+}): HostingCapacityExportResult {
+  const net = args.p_export_kw - args.p_import_kw;
+  const ratio = args.p_import_kw > 0 ? args.p_export_kw / args.p_import_kw : Infinity;
+
+  let status: HostingCapacityExportResult['status'];
+  let message_pl: string;
+
+  if (net < 0 || ratio < 0.8) {
+    status = 'no_export';
+    message_pl =
+      `Lokalna autokonsumpcja: ${args.p_export_kw.toFixed(0)} kW DER vs `
+      + `${args.p_import_kw.toFixed(0)} kW odbiorów. Brak eksportu netto do OSD.`;
+  } else if (ratio <= 1.5) {
+    status = 'normal_export';
+    message_pl =
+      `Eksport normalny: ${net.toFixed(0)} kW eksportowanych do OSD `
+      + `(stosunek ${ratio.toFixed(2)}× — w granicach standardowej hosting capacity).`;
+  } else if (ratio <= 3.0) {
+    status = 'high_export_warning';
+    message_pl =
+      `Wysoki eksport: ${net.toFixed(0)} kW (stosunek ${ratio.toFixed(2)}×). `
+      + `Zalecane curtailment 70% w godzinach południowych. Sprawdź profil P(t).`;
+  } else {
+    status = 'requires_ramp_down';
+    message_pl =
+      `Krytyczny eksport: ${net.toFixed(0)} kW (stosunek ${ratio.toFixed(2)}×). `
+      + `WYMAGANE: studium NC RfG ramp-down + curtailment + uzgodnienie z OSD.`;
+  }
+
+  return {
+    station_id: args.station_id,
+    p_export_kw: args.p_export_kw,
+    p_import_kw: args.p_import_kw,
+    p_net_export_kw: net,
+    export_to_import_ratio: ratio,
+    status,
+    message_pl,
   };
 }
