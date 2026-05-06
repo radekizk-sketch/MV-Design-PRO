@@ -1,0 +1,361 @@
+/**
+ * SldWorkspaceContainer — kontener kanwy SLD podpięty do shellu V12.
+ *
+ * Etap 1 — krytyczne wiring:
+ *   - Renderowanie SldCanvasV2 jako body domyślnej powierzchni roboczej (E-01).
+ *   - Right-click (na tle lub elemencie) → SldContextMenuController z menu z SLD_MENU_REGISTRY.
+ *   - Dwuklik stacji → overlay StationInternalView (drill-down).
+ *   - Pusty stan: polski komunikat z sugestią pierwszego kroku inżynierskiego.
+ *
+ * Adapter snapshot → propsy rendererów dostarcza Etap 3 (GPZ/Pole SN/Stacja
+ * konfiguratory). W Etapie 1 kanwa renderuje się z pustymi tablicami; pusty
+ * stan jest opisany komunikatem.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { useAppStateStore } from '../../../app-state';
+import { SldContextMenuController } from '../../../context-menu/SldContextMenuController';
+import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
+import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
+import { notify } from '../../../notifications/store';
+import { useSnapshotStore } from '../../../topology/snapshotStore';
+import {
+  COMMAND_FEEDBACK_PL,
+  toastBus,
+  type SldElementKindForMenu,
+} from '../command/SldCommandService';
+import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
+import { StationInternalView } from './StationInternalView';
+
+const MIN_CANVAS_WIDTH_PX = 360;
+const MIN_CANVAS_HEIGHT_PX = 240;
+const STATION_INTERNAL_WIDTH_PX = 880;
+const STATION_INTERNAL_HEIGHT_PX = 560;
+
+/** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etap 1 obsługuje istniejące surface'y. */
+const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
+  'show-readiness': 'E-04',
+  'show-results': 'E-24',
+  'show-rationale': 'E-36',
+  'open-catalogs': 'E-38',
+};
+
+/** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
+const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
+  'insert-gpz': 'Wstawianie Głównego Punktu Zasilającego: Etap 3 roadmapy. Tymczasowo użyj operacji domenowej add_grid_source_sn z panelu ENM.',
+  'add-section': 'Dodawanie sekcji rozdzielni SN: Etap 3 roadmapy.',
+  'add-bay': 'Dodawanie pola SN: Etap 3 roadmapy. Konfigurator pola jest gotowy (BayConfigurator) — podpięcie z menu w Etapie 3.',
+  'extend-trunk': 'Wyprowadzanie ciągu głównego: Etap 4 roadmapy.',
+  'start-branch': 'Rozpoczynanie odgałęzienia: Etap 4 roadmapy.',
+  'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
+  'insert-zksn': 'Wstawianie złącza kablowego SN: Etap 4 roadmapy.',
+  'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
+  'insert-joint': 'Wstawianie mufy kablowej: Etap 4 roadmapy.',
+  'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
+  'add-source': 'Dodawanie źródła OZE (PV/BESS/FW): Etap 5 roadmapy.',
+  'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
+  'continue-trunk': 'Kontynuacja ciągu głównego: Etap 4 roadmapy.',
+  'configure-equipment': 'Konfiguracja aparatury pola: Etap 3 roadmapy (BayConfigurator).',
+  'configure-cts-vts': 'Konfiguracja przekładników CT/VT: Etap 3 roadmapy.',
+  'configure-protection': 'Konfiguracja zabezpieczeń pola: Etap 8 roadmapy.',
+  'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
+  'show-measurements': 'Podgląd pomiarów pola: Etap 7 roadmapy.',
+  'show-sc-source': 'Dane zwarciowe źródła GPZ: Etap 3 roadmapy.',
+  'show-sc-data': 'Dane zwarciowe sekcji: Etap 3 roadmapy.',
+  'change-catalog': 'Zmiana katalogu odcinka: Etap 4 roadmapy.',
+  'edit-laying': 'Parametry ułożenia kabla: Etap 4 roadmapy.',
+  'edit-line': 'Parametry linii napowietrznej: Etap 4 roadmapy.',
+  'show-thermal': 'Obciążalność cieplna: Etap 8 roadmapy.',
+  'change-family-to-overhead': 'Zmiana rodziny: Etap 4 roadmapy.',
+  'change-family-to-cable': 'Zmiana rodziny: Etap 4 roadmapy.',
+  'open-source': 'Edycja Głównego Punktu Zasilającego: Etap 3 roadmapy (GpzConfigurator).',
+  'open-bay': 'Otwieranie karty pola SN: Etap 3 roadmapy.',
+  'open-station-config': 'Otwieranie konfiguratora stacji: Etap 3 roadmapy.',
+  'open-pv-config': 'Konfigurator PV: Etap 5 roadmapy.',
+  'open-bess-config': 'Konfigurator BESS: Etap 5 roadmapy.',
+  'open-fw-config': 'Konfigurator farmy wiatrowej: Etap 5 roadmapy.',
+  'show-frt-hvrt': 'Krzywe FRT/HVRT: Etap 5 roadmapy.',
+  'show-ncrfg': 'Zgodność przyłączeniowa NC RfG: Etap 5 roadmapy.',
+  'delete-bay': 'Usuwanie pola SN: Etap 3 roadmapy.',
+  'delete-segment': 'Usuwanie odcinka: Etap 4 roadmapy.',
+  'delete-station': 'Usuwanie stacji: Etap 4 roadmapy.',
+  'delete-pv': 'Usuwanie źródła PV: Etap 5 roadmapy.',
+  'delete-bess': 'Usuwanie BESS: Etap 5 roadmapy.',
+  'delete-fw': 'Usuwanie farmy wiatrowej: Etap 5 roadmapy.',
+};
+
+export interface SldWorkspaceContainerProps {
+  /** Tryb tylko-do-odczytu (np. ekran #sld-view). */
+  readonly readOnly?: boolean;
+  /** Override szerokości kanwy — używane w testach. */
+  readonly width?: number;
+  /** Override wysokości kanwy — używane w testach. */
+  readonly height?: number;
+}
+
+/**
+ * Hook obliczający faktyczne wymiary kanwy z elementu DOM. Pozwala SLD
+ * dopasować się do kontenera shellu V12.
+ */
+function useMeasuredSize(
+  ref: React.RefObject<HTMLDivElement>,
+  fallbackWidth: number,
+  fallbackHeight: number,
+  override?: { width?: number; height?: number },
+): { width: number; height: number } {
+  const [size, setSize] = useState<{ width: number; height: number }>(() => ({
+    width: override?.width ?? fallbackWidth,
+    height: override?.height ?? fallbackHeight,
+  }));
+
+  useEffect(() => {
+    if (override?.width !== undefined && override?.height !== undefined) {
+      setSize({ width: override.width, height: override.height });
+      return;
+    }
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const next = {
+        width: Math.max(MIN_CANVAS_WIDTH_PX, entry.contentRect.width),
+        height: Math.max(MIN_CANVAS_HEIGHT_PX, entry.contentRect.height),
+      };
+      setSize((current) =>
+        current.width === next.width && current.height === next.height ? current : next,
+      );
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [override?.width, override?.height, ref]);
+
+  return size;
+}
+
+export function SldWorkspaceContainer(
+  props: SldWorkspaceContainerProps = {},
+): JSX.Element {
+  const { readOnly = false, width: widthOverride, height: heightOverride } = props;
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const measured = useMeasuredSize(containerRef, 1024, 640, {
+    width: widthOverride,
+    height: heightOverride,
+  });
+
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const activeMode = useAppStateStore((state) => state.activeMode);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+
+  const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
+  const [internalStationId, setInternalStationId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const isEmpty = useMemo(() => {
+    if (!snapshot) return true;
+    const buses = snapshot.buses ?? [];
+    const transformers = snapshot.transformers ?? [];
+    return buses.length === 0 && transformers.length === 0;
+  }, [snapshot]);
+
+  const handleContextMenu = useCallback(
+    (request: SldCanvasContextMenuRequest) => {
+      setContextRequest({
+        kind: request.kind,
+        elementId: request.elementId,
+        clientX: request.clientX,
+        clientY: request.clientY,
+      });
+    },
+    [],
+  );
+
+  const closeContextMenu = useCallback(() => setContextRequest(null), []);
+
+  const handleSelectElement = useCallback((id: string | null) => {
+    setSelectedId(id);
+  }, []);
+
+  const handleDoubleClickStation = useCallback((id: string) => {
+    setInternalStationId(id);
+  }, []);
+
+  const closeInternalStation = useCallback(() => setInternalStationId(null), []);
+
+  const handleAction = useCallback(
+    (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
+      if (readOnly && (actionId.startsWith('delete-') || actionId.startsWith('insert-')
+          || actionId.startsWith('add-') || actionId.startsWith('extend-')
+          || actionId.startsWith('start-') || actionId === 'set-switch-state'
+          || actionId === 'continue-trunk')) {
+        notify('Tryb podglądu schematu — operacje budowy są zablokowane.', 'warning');
+        return;
+      }
+
+      // 1) Akcje nawigacyjne — otwórz istniejącą powierzchnię.
+      const screenCode = ACTION_TO_SCREEN[actionId];
+      if (screenCode) {
+        openRouteSurface(screenCode as Parameters<typeof openRouteSurface>[0], {
+          entityRef: elementId ?? null,
+          subjectKind: 'helper_context',
+        });
+        toastBus.publish('info', `Przeniesiono do ekranu ${screenCode}.`);
+        return;
+      }
+
+      // 2) Specjalna akcja — wstaw GPZ z prawego kliku tła:
+      if (actionId === 'insert-gpz') {
+        notify(
+          ACTION_ROADMAP_HINT_PL[actionId] ??
+            'Wstawianie Głównego Punktu Zasilającego: Etap 3 roadmapy.',
+          'info',
+        );
+        return;
+      }
+
+      // 3) Specjalna akcja — open-bay otwiera ENM operation surface (jeśli kontekst pozwala).
+      if (actionId === 'open-bay' && elementId) {
+        // W Etapie 3 podepniemy do BayConfigurator; teraz informacyjny toast.
+        notify(ACTION_ROADMAP_HINT_PL[actionId] ?? 'Konfigurator pola SN: Etap 3 roadmapy.', 'info');
+        return;
+      }
+
+      // 4) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
+      const hint = ACTION_ROADMAP_HINT_PL[actionId];
+      if (hint) {
+        notify(hint, 'info');
+        return;
+      }
+
+      // 5) Fallback — komunikat ogólny (nie powinien wystąpić, ale gwarantuje brak dead click).
+      notify(`Akcja "${actionId}" nie jest jeszcze dostępna w tej wersji.`, 'info');
+      // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
+      void kind;
+    },
+    [openRouteSurface, readOnly],
+  );
+
+  // Toast feedback z bus'a (informacja zwrotna z poziomu menu).
+  useEffect(() => {
+    const unsubscribe = toastBus.subscribe((event) => {
+      notify(event.messagePl, event.severity);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const internalStationProps = useMemo(() => {
+    if (!internalStationId) return null;
+    // Etap 1: wybudowanie pełnego deskryptora wymaga adaptera ENM → InternalSldDTO
+    // (Etap 3+). Tymczasowo prezentujemy minimalny deskryptor, który pozwala
+    // sprawdzić, że overlay otwiera się poprawnie.
+    return {
+      substationId: internalStationId,
+      name: internalStationId,
+      topologicalType: 'końcowa' as const,
+      snVoltageKv: 15,
+      nnVoltageLevels: [0.4],
+      bays: [] as const,
+      transformers: [] as const,
+      nnSwitchgears: [] as const,
+      width: STATION_INTERNAL_WIDTH_PX,
+      height: STATION_INTERNAL_HEIGHT_PX,
+      onClose: closeInternalStation,
+    };
+  }, [internalStationId, closeInternalStation]);
+
+  return (
+    <div
+      ref={containerRef}
+      data-testid="sld-workspace-container"
+      data-readonly={readOnly}
+      className="relative flex h-full w-full overflow-hidden bg-scada-bg"
+    >
+      <SldCanvasV2
+        width={measured.width}
+        height={measured.height}
+        gpzs={[]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        connections={[]}
+        selectedId={selectedId}
+        onSelectElement={handleSelectElement}
+        onDoubleClickStation={handleDoubleClickStation}
+        onContextMenu={handleContextMenu}
+      />
+
+      {/* Pusty stan — kanoniczny komunikat polski. */}
+      {isEmpty && (
+        <div
+          data-testid="sld-empty-state"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          <div className="pointer-events-auto max-w-md rounded border border-scada-border bg-scada-panel/95 p-6 text-center text-scada-text shadow-xl">
+            <div className="mb-2 text-sm font-bold uppercase tracking-widest text-scada-muted">
+              Schemat jednokreskowy
+            </div>
+            <h2 className="mb-3 text-lg font-semibold text-scada-text">
+              Schemat oczekuje na dane modelu sieci
+            </h2>
+            <p className="text-sm leading-6 text-scada-muted">
+              Rozpocznij budowę od wstawienia Głównego Punktu Zasilającego.
+              Kliknij prawym przyciskiem myszy na kanwie, aby otworzyć menu
+              kontekstowe budowy modelu.
+            </p>
+            <p className="mt-3 text-xs text-scada-muted">
+              Pomoc inżynierska: prawy klik na elementach modelu otwiera akcje
+              właściwe dla danego obiektu (pole, stacja, kabel, źródło OZE).
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Menu kontekstowe — most do SLD_MENU_REGISTRY. */}
+      <SldContextMenuController
+        request={contextRequest}
+        elementName={contextRequest?.elementId ?? undefined}
+        mode={activeMode}
+        context={{}}
+        onAction={handleAction}
+        onClose={closeContextMenu}
+      />
+
+      {/* Drill-down stacji — overlay z wewnętrznym SLD. */}
+      {internalStationProps && (
+        <div
+          data-testid="station-internal-view"
+          className="absolute inset-0 z-30 flex items-center justify-center bg-black/60"
+          onClick={closeInternalStation}
+        >
+          <div
+            className="rounded border border-scada-border bg-scada-panel shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <StationInternalView {...internalStationProps} />
+            <div className="flex justify-end gap-2 border-t border-scada-border bg-scada-surface px-4 py-2">
+              <button
+                type="button"
+                className="rounded border border-scada-border px-3 py-1 text-sm text-scada-text hover:bg-scada-hover-nav"
+                onClick={closeInternalStation}
+                data-testid="station-internal-close"
+              >
+                Zamknij
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Re-eksport typów do użycia w testach.
+export type { SldContextMenuRequest, SldElementKindForMenu };
+export { COMMAND_FEEDBACK_PL };
+
+export default SldWorkspaceContainer;

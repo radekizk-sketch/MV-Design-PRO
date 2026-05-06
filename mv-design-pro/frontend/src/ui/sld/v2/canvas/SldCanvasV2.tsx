@@ -1,10 +1,8 @@
 /**
- * SldCanvasV2 — composition root nowego SLD (PR-5b).
+ * SldCanvasV2 — composition root nowego SLD.
  *
- * Pure functional viewport + SVG canvas. NIE wpina się jeszcze w
- * WorkspaceSurfaceRouter (to PR-14, kiedy default_sld_v2=true).
- *
- * Działa równolegle do starego `SLDView.tsx` jako opt-in pod `AreaId.SLD_V2`.
+ * Pure functional viewport + SVG canvas. Renderowane przez SldWorkspaceContainer
+ * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -30,6 +28,16 @@ import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
 import { StationOnRunRenderer, type StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
+import type { SldElementKindForMenu } from '../command/SldCommandService';
+
+export type SldElementContextKind = SldElementKindForMenu;
+
+export interface SldCanvasContextMenuRequest {
+  readonly kind: SldElementContextKind;
+  readonly elementId: string | null;
+  readonly clientX: number;
+  readonly clientY: number;
+}
 
 export interface SldCanvasV2Props {
   /** Wymiary viewport (pixele ekranu). */
@@ -61,13 +69,18 @@ export interface SldCanvasV2Props {
   readonly onSelectElement?: (id: string | null, kind: string) => void;
   readonly onDoubleClickStation?: (id: string) => void;
   readonly onDoubleClickDer?: (id: string) => void;
+  /**
+   * Right-click handler. Wywoływany dla elementu lub tła kanwy.
+   * Container otwiera menu kontekstowe na (clientX, clientY).
+   */
+  readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
 }
 
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility,
-    onSelectElement, onDoubleClickStation, onDoubleClickDer,
+    onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu,
   } = props;
 
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
@@ -127,6 +140,30 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     lastPosRef.current = null;
   }, []);
 
+  const handleSvgContextMenu = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (!onContextMenu) return;
+    e.preventDefault();
+    if (e.target === e.currentTarget) {
+      onContextMenu({
+        kind: 'background',
+        elementId: null,
+        clientX: e.clientX,
+        clientY: e.clientY,
+      });
+    }
+  }, [onContextMenu]);
+
+  const buildElementContextMenuHandler = useCallback(
+    (kind: SldElementContextKind, id: string) =>
+      (e: React.MouseEvent) => {
+        if (!onContextMenu) return;
+        e.preventDefault();
+        e.stopPropagation();
+        onContextMenu({ kind, elementId: id, clientX: e.clientX, clientY: e.clientY });
+      },
+    [onContextMenu],
+  );
+
   return (
     <svg
       data-testid="sld-canvas-v2"
@@ -139,6 +176,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onContextMenu={handleSvgContextMenu}
     >
       {/* Tło */}
       <rect width={width} height={height} fill={COLOR_BG} />
@@ -152,50 +190,90 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
         {/* Cable runs */}
         {layers.equipment && cableRuns.map((run) => (
-          <CableRunRenderer
+          <g
             key={run.id}
-            {...run}
-            selected={selectedId === run.id}
-            onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
-          />
+            onContextMenu={
+              onContextMenu
+                ? buildElementContextMenuHandler(
+                    run.segmentKind === 'cable_sn' ? 'cable_segment_sn' : 'overhead_line_sn',
+                    run.id,
+                  )
+                : undefined
+            }
+          >
+            <CableRunRenderer
+              {...run}
+              selected={selectedId === run.id}
+              onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
+            />
+          </g>
         ))}
 
         {/* Sections (szyny SN GPZ) */}
         {sections.map((s) => (
-          <SectionRenderer key={s.id} {...s} />
+          <g
+            key={s.id}
+            onContextMenu={
+              onContextMenu ? buildElementContextMenuHandler('section', s.id) : undefined
+            }
+          >
+            <SectionRenderer {...s} />
+          </g>
         ))}
 
         {/* GPZ blocks */}
         {gpzs.map((g) => (
-          <GpzRenderer
+          <g
             key={g.id}
-            {...g}
-            selected={selectedId === g.id}
-            onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
-          />
+            onContextMenu={
+              onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
+            }
+          >
+            <GpzRenderer
+              {...g}
+              selected={selectedId === g.id}
+              onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
+            />
+          </g>
         ))}
 
         {/* Stacje na ciągu */}
         {stations.map((st) => (
-          <StationOnRunRenderer
+          <g
             key={st.id}
-            {...st}
-            selected={selectedId === st.id}
-            onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
-            onDoubleClick={onDoubleClickStation}
-          />
+            onContextMenu={
+              onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
+            }
+          >
+            <StationOnRunRenderer
+              {...st}
+              selected={selectedId === st.id}
+              onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
+              onDoubleClick={onDoubleClickStation}
+            />
+          </g>
         ))}
 
         {/* DER (PV/BESS/FW) */}
-        {layers.der && ders.map((d) => (
-          <DerRenderer
-            key={d.id}
-            {...d}
-            selected={selectedId === d.id}
-            onClick={onSelectElement ? (id) => onSelectElement(id, 'der') : undefined}
-            onDoubleClick={onDoubleClickDer}
-          />
-        ))}
+        {layers.der && ders.map((d) => {
+          const menuKind: SldElementContextKind =
+            d.kind === 'PV' ? 'der_pv' : d.kind === 'BESS' ? 'der_bess' : 'der_fw';
+          return (
+            <g
+              key={d.id}
+              onContextMenu={
+                onContextMenu ? buildElementContextMenuHandler(menuKind, d.id) : undefined
+              }
+            >
+              <DerRenderer
+                {...d}
+                selected={selectedId === d.id}
+                onClick={onSelectElement ? (id) => onSelectElement(id, 'der') : undefined}
+                onDoubleClick={onDoubleClickDer}
+              />
+            </g>
+          );
+        })}
       </g>
 
       {/* Status bar (LOD + scale) — read-only, dla developera/diagnostyki */}

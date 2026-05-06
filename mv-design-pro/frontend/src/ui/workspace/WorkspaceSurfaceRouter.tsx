@@ -5,6 +5,7 @@ import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
+import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { RunHistoryPanel } from '../study-cases/RunHistoryPanel';
 import { useExecutionRunsStore } from '../study-cases/runStore';
 import {
@@ -1280,6 +1281,12 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <ThermalDynamicSurface surface={surface} />;
     case 'E-36':
       return <ProofSurface surface={surface} />;
+    case 'E-01':
+      // Etap 1 dostawy: E-01 (Główne środowisko pracy SLD) renderuje się
+      // domyślnie jako children CanonicalLayout w App.tsx. Gdy ktoś otworzy
+      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')), również
+      // renderujemy SldWorkspaceContainer dla spójności kontraktu shellu.
+      return <SldWorkspaceContainer />;
     default:
       break;
   }

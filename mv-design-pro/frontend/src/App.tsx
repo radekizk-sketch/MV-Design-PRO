@@ -31,6 +31,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout } from './ui/layout';
+import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
@@ -444,6 +445,7 @@ function App() {
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
+        <SldWorkspaceContainer readOnly />
       </CanonicalLayout>
     );
   }
@@ -457,10 +459,13 @@ function App() {
       </CanonicalLayout>
     );
   }
-  // CANONICAL_LAYOUT: Default — SLD Editor Page (ALWAYS shows tools)
-  // This replaces the old DesignerPage with proper Canonical-style layout
+  // CANONICAL_LAYOUT: domyślna trasa "" / "#sld" → środowisko SLD (E-01).
+  // Etap 1 dostawy: SldWorkspaceContainer renderuje SldCanvasV2 z menu
+  // kontekstowym i drill-downem stacji. Adapter danych snapshot → propsy
+  // rendererów dostarcza Etap 3 roadmapy.
   return wrapWithReadyIndicator(
     <CanonicalLayout {...layoutProps}>
+      <SldWorkspaceContainer />
     </CanonicalLayout>
   );
 }
