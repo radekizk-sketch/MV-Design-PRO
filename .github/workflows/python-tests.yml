@@ -35,6 +35,20 @@ jobs:
       - name: Run pytest
         working-directory: mv-design-pro/backend
         run: poetry run pytest -q
+      - name: Run audit2 backend integration tests (Phase 8-30)
+        working-directory: mv-design-pro/backend
+        run: |
+          poetry run pytest -q \
+            tests/api/test_audit2_catalogs_api.py \
+            tests/api/test_audit2_station_config_api.py \
+            tests/api/test_solver_input_audit2_integration.py \
+            tests/solver_input/test_audit2_der_payload.py \
+            tests/solver_input/test_audit2_solver_adjuster.py \
+            tests/solver_input/test_audit2_real_graph_integration.py \
+            tests/solver_input/test_audit2_pf_wrapper.py \
+            tests/solver_input/test_audit2_builder_integration.py \
+            tests/proof_engine/test_audit2_validation_pack.py \
+            tests/analysis/reporting/test_audit2_report.py
       - name: PCC Zero Guard
         working-directory: mv-design-pro
         run: python scripts/pcc_zero_guard.py

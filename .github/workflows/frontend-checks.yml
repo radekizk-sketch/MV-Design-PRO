@@ -28,6 +28,14 @@ jobs:
       - name: Run tests
         working-directory: mv-design-pro/frontend
         run: npm test
+      - name: Run audit2 frontend integration tests (Phase 8-30)
+        working-directory: mv-design-pro/frontend
+        run: |
+          npx vitest run --no-file-parallelism \
+            src/ui/network-build/station-der/__tests__/audit2-api.test.ts \
+            src/ui/network-build/station-der/__tests__/audit2-hooks.test.tsx \
+            src/ui/network-build/station-configurator/cards/__tests__/audit-round3-wiring.test.tsx \
+            src/ui/network-build/station-configurator/cards/__tests__/audit-round4-wiring.test.tsx
       - name: Setup Python for codenames guard
         uses: actions/setup-python@v5
         with:

@@ -108,14 +108,6 @@ def test_apply_to_network_model_passes_through_when_no_extensions():
     }
 
 
-def test_apply_to_network_model_no_op_when_empty_adjustments():
-    """Empty extensions -> nothing applied."""
-    graph = {"branches": {}, "buses": {}}
-    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions={})
-    assert applied["tap_position_changes"] == {}
-    assert applied["block_transformer_z_changes"] == {}
-
-
 class _MockTransformerBranch:
     """Minimal stub for TransformerBranch used in apply tests."""
 
@@ -213,6 +205,124 @@ def test_apply_to_network_model_grounding_z0_z1_recorded():
     assert applied["grounding_z0_z1_ratio"] == 50.0
     # Dict graph dostaje field.
     assert graph["z0_z1_ratio"] == 50.0
+
+
+class _MockInverterSource:
+    """Stub for InverterSource."""
+
+    def __init__(self, source_id: str):
+        self.id = source_id
+        self.in_rated_a = 100.0
+
+
+def test_apply_to_network_model_bess_reserved_capacity():
+    """Phase 28: BESS reserved capacity ustawia inverter.reserved_capacity_percent."""
+
+    class _MockGraph:
+        def __init__(self):
+            self.branches = {}
+            self.inverter_sources = {
+                "der_bess_001": _MockInverterSource("der_bess_001"),
+            }
+
+    graph = _MockGraph()
+    extensions = {
+        "power_flow_extensions": {
+            "bess_operation_modes_per_der": [
+                {
+                    "der_id": "der_bess_001",
+                    "mode": {
+                        "mode_code": "fcr_n",
+                        "reserved_capacity_percent": 50,
+                    },
+                },
+            ],
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+    inv = graph.inverter_sources["der_bess_001"]
+    # Phase 28: faktyczna mutacja inverter source.
+    assert inv.reserved_capacity_percent == 50
+    assert "der_bess_001" in applied["bess_reserved_changes"]
+    assert applied["bess_reserved_changes"]["der_bess_001"]["mode_code"] == "fcr_n"
+
+
+def test_apply_to_network_model_pf_droop():
+    """Phase 28: P(f) droop ustawia inverter.frequency_droop_percent + f_min/max/deadband."""
+
+    class _MockGraph:
+        def __init__(self):
+            self.branches = {}
+            self.inverter_sources = {
+                "der_pv_001": _MockInverterSource("der_pv_001"),
+            }
+
+    graph = _MockGraph()
+    extensions = {
+        "power_flow_extensions": {
+            "p_f_curves_per_der": [
+                {
+                    "der_id": "der_pv_001",
+                    "curve": {
+                        "droop_percent": 5.0,
+                        "f_min_hz": 47.5,
+                        "f_max_hz": 51.5,
+                        "deadband_hz": 0.2,
+                    },
+                },
+            ],
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+    inv = graph.inverter_sources["der_pv_001"]
+    assert inv.frequency_droop_percent == 5.0
+    assert inv.f_min_hz == 47.5
+    assert inv.f_max_hz == 51.5
+    assert inv.deadband_hz == 0.2
+    assert applied["pf_droop_changes"]["der_pv_001"]["droop_percent"] == 5.0
+
+
+def test_apply_to_network_model_combines_all_adjustments():
+    """Phase 28: pelna kombinacja tap + block-trafo + grounding + BESS + P(f)."""
+
+    class _MockGraph:
+        def __init__(self):
+            self.branches = {
+                "tr_001": _MockTransformerBranch("tr_001"),
+                "tr_dedicated_der_pv_001": _MockTransformerBranch("tr_dedicated_der_pv_001"),
+            }
+            self.inverter_sources = {
+                "der_bess_001": _MockInverterSource("der_bess_001"),
+                "der_pv_001": _MockInverterSource("der_pv_001"),
+            }
+
+    graph = _MockGraph()
+    extensions = {
+        "power_flow_extensions": {
+            "transformer_to_tap_changer": {
+                "tr_001": {"id": "tc_oltc_110sn_19_125", "neutral_position": 0, "step_percent": 1.25},
+            },
+            "bess_operation_modes_per_der": [
+                {"der_id": "der_bess_001", "mode": {"mode_code": "fcr_n", "reserved_capacity_percent": 50}},
+            ],
+            "p_f_curves_per_der": [
+                {"der_id": "der_pv_001", "curve": {"droop_percent": 5, "f_min_hz": 47.5, "f_max_hz": 51.5, "deadband_hz": 0.2}},
+            ],
+        },
+        "sc_iec60909_extensions": {
+            "block_transformers": [
+                {"der_id": "der_pv_001", "transformer": {"id": "btr", "uk_percent": 6.5, "pk_kw": 25, "p0_kw": 3.6, "i0_percent": 0.42}},
+            ],
+            "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+    # Wszystkie 5 typow adjustments zaaplikowane.
+    assert graph.branches["tr_001"].tap_position == 0
+    assert graph.branches["tr_dedicated_der_pv_001"].uk_percent == 6.5
+    assert applied["grounding_z0_z1_ratio"] == 50.0
+    assert graph.inverter_sources["der_bess_001"].reserved_capacity_percent == 50
+    assert graph.inverter_sources["der_pv_001"].frequency_droop_percent == 5
 
 
 def test_determinism_same_extensions_same_adjustments():

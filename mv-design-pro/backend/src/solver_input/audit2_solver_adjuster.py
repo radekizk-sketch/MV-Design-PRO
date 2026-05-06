@@ -264,11 +264,67 @@ def apply_audit2_to_network_model(
         "directly_grounded": 1.0,
     }
     if grounding_type in grounding_z0_z1_map:
-        applied["grounding_z0_z1_ratio"] = grounding_z0_z1_map[grounding_type]
-        # Apply to graph if it has matching field.
-        if hasattr(graph, "z0_z1_ratio"):
-            graph.z0_z1_ratio = grounding_z0_z1_map[grounding_type]
-        elif isinstance(graph, dict):
-            graph["z0_z1_ratio"] = grounding_z0_z1_map[grounding_type]
+        z0_z1_value = grounding_z0_z1_map[grounding_type]
+        applied["grounding_z0_z1_ratio"] = z0_z1_value
+        # Apply to graph: dict get []=, real obiekt setattr (dynamic attr).
+        if isinstance(graph, dict):
+            graph["z0_z1_ratio"] = z0_z1_value
+        else:
+            try:
+                setattr(graph, "z0_z1_ratio", z0_z1_value)
+            except (AttributeError, TypeError):
+                pass  # frozen dataclass / immutable — skip silently
+
+    # 4. Phase 28: BESS reserved capacity per DER -> inverter_source.reserved_capacity_kw.
+    applied["bess_reserved_changes"] = {}
+    inverter_sources = (
+        getattr(graph, "inverter_sources", None)
+        or (graph.get("inverter_sources") if isinstance(graph, dict) else None)
+        or {}
+    )
+    if isinstance(inverter_sources, dict):
+        inv_iter = inverter_sources.items()
+    else:
+        inv_iter = [(getattr(s, "id", None), s) for s in inverter_sources]
+
+    for entry in pf_ext.get("bess_operation_modes_per_der", []):
+        der_id = str(entry.get("der_id", ""))
+        mode = entry.get("mode") or {}
+        reserved_pct = float(mode.get("reserved_capacity_percent", 0))
+        # Znajdz inverter source z id == der_id.
+        for inv_id, inv in inv_iter:
+            if inv_id == der_id or getattr(inv, "id", None) == der_id:
+                # Ustaw reserved_capacity_kw (nowe pole — solvery moga je czytac
+                # gdy obsluguja BESS modes; brak konfliktu z istniejacymi solverami).
+                if hasattr(inv, "__dict__"):
+                    inv.reserved_capacity_percent = reserved_pct
+                applied["bess_reserved_changes"][der_id] = {
+                    "reserved_capacity_percent": reserved_pct,
+                    "mode_code": mode.get("mode_code"),
+                }
+                break
+
+    # 5. Phase 28: P(f) droop per DER -> inverter_source.frequency_droop_percent.
+    applied["pf_droop_changes"] = {}
+    for entry in pf_ext.get("p_f_curves_per_der", []):
+        der_id = str(entry.get("der_id", ""))
+        curve = entry.get("curve") or {}
+        droop_pct = float(curve.get("droop_percent", 0))
+        if droop_pct == 0:
+            continue
+        for inv_id, inv in inv_iter:
+            if inv_id == der_id or getattr(inv, "id", None) == der_id:
+                if hasattr(inv, "__dict__"):
+                    inv.frequency_droop_percent = droop_pct
+                    inv.f_min_hz = float(curve.get("f_min_hz", 47.5))
+                    inv.f_max_hz = float(curve.get("f_max_hz", 51.5))
+                    inv.deadband_hz = float(curve.get("deadband_hz", 0.2))
+                applied["pf_droop_changes"][der_id] = {
+                    "droop_percent": droop_pct,
+                    "f_min_hz": curve.get("f_min_hz"),
+                    "f_max_hz": curve.get("f_max_hz"),
+                    "deadband_hz": curve.get("deadband_hz"),
+                }
+                break
 
     return applied
