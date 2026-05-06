@@ -168,6 +168,16 @@ export interface StationDerConnection {
 
 /**
  * Komputowalny status kompletności DER na podstawie pól.
+ *
+ * Reguły:
+ *  - Brak PCC → no_pcc
+ *  - Brak catalog urządzenia → missing_catalog
+ *  - Brak profilu NC RfG → missing_profile
+ *  - Connection nN bez voltage_level_ref → missing_catalog
+ *    (SN i dedicated_transformer nie wymagają voltage_level_ref — napięcie
+ *    pochodzi ze stacji albo z transformatora dedykowanego).
+ *  - Voltage mismatch sprawdza wyższa warstwa porównująca napięcie szyny
+ *    z napięciem urządzenia (potrzebuje katalogu).
  */
 export function computeDerCompleteness(der: Pick<
   StationDerConnection,
@@ -176,7 +186,6 @@ export function computeDerCompleteness(der: Pick<
   if (!der.pcc_ref) return 'no_pcc';
   if (!der.catalogs.device_catalog_ref) return 'missing_catalog';
   if (!der.profiles.nc_rfg_profile_ref) return 'missing_profile';
-  if (!der.voltage_level_ref) return 'missing_catalog';
-  // Voltage mismatch — sprawdzane przez konkretny komponent (potrzebuje catalogu napięć).
+  if (der.connection_side === 'nN' && !der.voltage_level_ref) return 'missing_catalog';
   return 'complete';
 }

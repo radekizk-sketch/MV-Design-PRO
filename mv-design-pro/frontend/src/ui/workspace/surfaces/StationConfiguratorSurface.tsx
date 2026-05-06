@@ -6,10 +6,12 @@
  * wywołuje `openRouteSurface('E-21'/'E-22'/'E-23')` z stationContext.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAppStateStore } from '../../app-state';
 
 import { StationConfigurator } from '../../network-build/station-configurator/StationConfigurator';
 import {
+  AddDerWizard,
   useStationDerStore,
   selectDersOfStation,
 } from '../../network-build/station-der';
@@ -81,8 +83,22 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   );
   const detachDer = useStationDerStore((state) => state.detachDer);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const projectId = useAppStateStore((state) => state.activeProjectId);
 
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
+  const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
+
+  // Nasłuch event'a wystawianego przez DerSourcesCard.
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<{ stationId: string; kind: AddDerKindRequest }>).detail;
+      if (detail?.stationId === stationRef && detail.kind) {
+        setWizardKind(detail.kind);
+      }
+    };
+    window.addEventListener('mvdesignpro:add-der-request', listener);
+    return () => window.removeEventListener('mvdesignpro:add-der-request', listener);
+  }, [stationRef]);
 
   const stationName = useMemo(() => {
     if (!stationRef) return 'Stacja niewybrana';
@@ -178,6 +194,16 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       <div className="flex-1 overflow-auto rounded border border-scada-border bg-scada-panel">
         <StationConfigurator {...configuratorProps} defaultCard="der-sources" />
       </div>
+
+      {/* AddDerWizard — 5-krokowy kreator dodawania DER. */}
+      <AddDerWizard
+        isOpen={wizardKind !== null}
+        stationId={stationRef}
+        stationName={stationName}
+        derKind={wizardKind ?? 'PV'}
+        projectId={projectId ?? 'no-project'}
+        onClose={() => setWizardKind(null)}
+      />
 
       {/* Confirm detach modal */}
       {pendingDetach && (
