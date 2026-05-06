@@ -28,6 +28,7 @@ import {
   NC_RFG_PROFILE_CATALOG,
   PV_INVERTER_CATALOG,
   WIND_TURBINE_CATALOG,
+  selectBessModesForPcs,
   selectConnectionVariantsForKind,
   selectHvrtCurvesForProfile,
   selectLvrtCurvesForProfile,
@@ -75,6 +76,8 @@ interface WizardSelections {
   lvrtCurveRef: string | null;
   hvrtCurveRef: string | null;
   derName: string;
+  /** Naprawa eng.10: tryby pracy BESS (multi-select). */
+  bessOperationModeRefs: readonly string[];
 }
 
 const EMPTY_SELECTIONS: WizardSelections = {
@@ -88,6 +91,7 @@ const EMPTY_SELECTIONS: WizardSelections = {
   lvrtCurveRef: null,
   hvrtCurveRef: null,
   derName: '',
+  bessOperationModeRefs: [],
 };
 
 export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
@@ -488,6 +492,52 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   testId="add-der-battery"
                 />
               )}
+
+              {/* Naprawa eng.10: tryby pracy BESS — multi-select z katalogu. */}
+              {derKind === 'BESS' && selections.deviceCatalogRef && (() => {
+                const pcs = BESS_PCS_CATALOG.find((p) => p.id === selections.deviceCatalogRef);
+                if (!pcs) return null;
+                const availableModes = selectBessModesForPcs({
+                  fourQuadrant: pcs.four_quadrant,
+                  gridFormingCapable: pcs.grid_forming_capable,
+                });
+                return (
+                  <div data-testid="add-der-bess-modes" className="space-y-1">
+                    <label className="block text-[11px] text-scada-muted">
+                      Tryby pracy BESS (NC RfG Art. 13/15) — wybierz min. 1
+                    </label>
+                    <div className="grid grid-cols-1 gap-1 rounded border border-scada-border bg-scada-bg p-2 text-[11px]">
+                      {availableModes.map((m) => (
+                        <label
+                          key={m.id}
+                          data-testid={`add-der-bess-mode-${m.mode_code}`}
+                          className="flex items-start gap-2 hover:bg-scada-hover-nav"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selections.bessOperationModeRefs.includes(m.id)}
+                            onChange={(e) => {
+                              setSelections((s) => ({
+                                ...s,
+                                bessOperationModeRefs: e.target.checked
+                                  ? [...s.bessOperationModeRefs, m.id]
+                                  : s.bessOperationModeRefs.filter((r) => r !== m.id),
+                              }));
+                            }}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-scada-text">{m.label_pl}</div>
+                            <div className="text-[10px] text-scada-muted">
+                              t_resp ≤ {m.response_time_s}s · max {m.max_duration_h}h · rezerwa {m.reserved_capacity_percent}%
+                            </div>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 

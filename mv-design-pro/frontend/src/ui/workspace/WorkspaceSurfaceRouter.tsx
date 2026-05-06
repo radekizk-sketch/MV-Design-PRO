@@ -12,6 +12,7 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   summarizeReadiness,
+  validateHostingCapacityExport,
 } from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
@@ -1126,6 +1127,7 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const blockerCount = readiness?.blockers?.length ?? 0;
@@ -1145,6 +1147,30 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       axes: buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
     };
   });
+
+  // Naprawa eng.15: walidacja hosting capacity (export vs import) per stacja.
+  const hostingCapacityRows = useMemo(() => {
+    const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
+    return stationIds.map((stationId) => {
+      const stationDers = allDers.filter((d) => d.station_id === stationId);
+      const p_export_kw = stationDers.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
+      // Suma odbiorow dla stacji ze snapshotu (jezeli dostepne).
+      const allLoads = (snapshot?.loads ?? []) as readonly unknown[];
+      const stationLoads = allLoads.filter((l) => {
+        const lo = l as { station_ref?: string };
+        return lo.station_ref === stationId;
+      });
+      const p_import_kw = stationLoads.reduce((sum: number, l) => {
+        const lo = l as { nominal_power_kw?: number };
+        return sum + (lo.nominal_power_kw ?? 0);
+      }, 0);
+      return validateHostingCapacityExport({
+        station_id: stationId,
+        p_export_kw,
+        p_import_kw,
+      });
+    });
+  }, [allDers, snapshot]);
 
   const fixActionByElement = (elementRef: string | null) => {
     if (!elementRef) return null;
@@ -1310,6 +1336,42 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       <span className="font-bold uppercase">{axis.status}</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      {/* Naprawa eng.15: hosting capacity export check per stacja. */}
+      {hostingCapacityRows.length > 0 && (
+        <SectionCard
+          title={`Hosting capacity (export vs import) — ${hostingCapacityRows.length} stacji`}
+          eyebrow="NC RfG Art. 17"
+        >
+          <div data-testid="hosting-capacity-export-rows" className="space-y-2">
+            {hostingCapacityRows.map((row) => (
+              <div
+                key={row.station_id}
+                data-testid={`hosting-capacity-${row.station_id}`}
+                data-status={row.status}
+                className={
+                  'rounded border p-3 text-sm '
+                  + (row.status === 'requires_ramp_down'
+                    ? 'border-rose-700 bg-rose-950/30 text-rose-200'
+                    : row.status === 'high_export_warning'
+                      ? 'border-amber-700 bg-amber-950/30 text-amber-200'
+                      : row.status === 'normal_export'
+                        ? 'border-blue-700 bg-blue-950/30 text-blue-200'
+                        : 'border-emerald-700 bg-emerald-950/30 text-emerald-200')
+                }
+              >
+                <div className="font-semibold">Stacja: {row.station_id}</div>
+                <div className="mt-1 text-[11px]">{row.message_pl}</div>
+                <div className="mt-1 grid grid-cols-3 gap-2 font-mono text-[10px]">
+                  <span>P_export: {row.p_export_kw.toFixed(0)} kW</span>
+                  <span>P_import: {row.p_import_kw.toFixed(0)} kW</span>
+                  <span>P_net: {row.p_net_export_kw.toFixed(0)} kW</span>
                 </div>
               </div>
             ))}

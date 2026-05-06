@@ -344,3 +344,28 @@ Pełna lista zaimplementowanych ulepszeń:
 14. ✅ hmi.5 Voltage mismatch real-time warning
 15. ✅ hmi.11 Wizard handleClose state cleanup
 
+---
+
+## 8. PAKIET G — wiring katalogów audytu 2 do UI (post-audit gap)
+
+### 8.1 Cel
+
+Po zaimplementowaniu wszystkich 24 napraw audytu eksperckiego — weryfikacja że nowe katalogi i walidatory są **rzeczywiście używane** w UI cards (nie tylko zdefiniowane jako dead code). Audyt repo ujawnił, że BESS_OPERATION_MODE_CATALOG, TAP_CHANGER_CATALOG, HV_FUSE_CATALOG, DEVICE_WITHSTAND_CATALOG i validateHostingCapacityExport były dostępne ale nieużywane w żadnym komponencie UI.
+
+### 8.2 Wdrożone integracje
+
+| # | Katalog/Walidator | Komponent UI | Status |
+|---|-------------------|---------------|--------|
+| 8.1 | TAP_CHANGER_CATALOG | StationConfigTransformerCard | ✅ DONE: select + szczegóły (zaczepy / krok / AVR / OLTC vs DETC) |
+| 8.2 | BESS_OPERATION_MODE_CATALOG | AddDerWizard (krok device, dla derKind='BESS') | ✅ DONE: multi-select checkboxy z `selectBessModesForPcs` po PCS 4Q+grid-forming |
+| 8.3 | validateHostingCapacityExport | ModelGapsSurface (E-04) | ✅ DONE: sekcja "Hosting capacity" z 4 statusami + komunikatem PL per stacja |
+| 8.4 | HV_FUSE_CATALOG | StationConfigBaysCard | ✅ DONE: kolumna "HV fuse" z label + napięcie/prąd/klasa z katalogu |
+| 8.5 | DEVICE_WITHSTAND_CATALOG | StationConfigProtectionCard | ✅ DONE: prop `deviceWithstandRows` + sekcja walidacji I_dyn/I_th |
+| 8.6 | isVtVoltageFactorValidForGrounding | StationConfigProtectionCard | ✅ DONE: prop `mvNeutralGroundingType` + walidacja per pole z VT |
+
+### 8.3 Statystyki Pakietu G
+
+- **Komponenty UI rozszerzone**: 4 (TransformerCard, BaysCard, ProtectionCard, AddDerWizard) + 1 (ModelGapsSurface w WorkspaceSurfaceRouter).
+- **Nowe testy**: 7 (audit-round3-wiring.test.tsx) covering 8.1/8.4/8.5/8.6.
+- **Ukończenie**: katalogi z drugiego audytu są teraz w pełni zintegrowane — brak dead code, kod katalogów aktywnie używany w UI cards i wykorzystywany w runtime.
+
