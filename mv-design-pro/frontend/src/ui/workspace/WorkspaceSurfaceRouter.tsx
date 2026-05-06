@@ -6,6 +6,13 @@ import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import {
+  useStationDerStore,
+  selectAllDers,
+  buildAggregatedReadiness,
+  computeDerReadinessMatrix,
+  summarizeReadiness,
+} from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
@@ -699,11 +706,17 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       canNavigateAway: true,
     });
 
-  // Etap 9: status raportu zależny od readiness modelu i obecności run.
+  // Etap 9 + Faza F: status raportu zależny od readiness modelu, run-a
+  // ORAZ kompletności DER (catalog_refs + profile_refs).
   const readiness = useSnapshotStore((state) => state.readiness);
+  const allDers = useStationDerStore((state) => selectAllDers(state));
+  const incompleteDers = allDers.filter(
+    (d) => d.completeness !== 'complete',
+  );
   const reportStatus: 'gotowy' | 'czesciowy' | 'zablokowany' = (() => {
     if (!activeRunId) return 'zablokowany';
     if (!readiness?.ready) return 'czesciowy';
+    if (incompleteDers.length > 0) return 'czesciowy';
     return 'gotowy';
   })();
   const reportStatusInfo: Record<typeof reportStatus, { label: string; tone: string }> = {
@@ -727,6 +740,11 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         className={`rounded border px-4 py-3 text-sm font-medium ${reportStatusInfo[reportStatus].tone}`}
       >
         {reportStatusInfo[reportStatus].label}
+        {incompleteDers.length > 0 && (
+          <div data-testid="report-status-der-incomplete" className="mt-1 text-[11px] font-normal opacity-80">
+            Niekompletne źródła i magazyny: {incompleteDers.length} (z {allDers.length})
+          </div>
+        )}
       </div>
       <SectionCard title="Konfiguracja raportu" eyebrow="Raport">
         <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_1fr]">
@@ -1085,9 +1103,24 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
   const fixActions = useSnapshotStore((state) => state.fixActions);
+  const allDers = useStationDerStore((state) => selectAllDers(state));
   const blockerCount = readiness?.blockers?.length ?? 0;
   const warningCount = readiness?.warnings?.length ?? 0;
   const isReady = readiness?.ready ?? false;
+
+  // Agregacja gotowości DER per stacja (Faza F).
+  const derReadinessRows = allDers.map((der) => {
+    const sameStationCount = allDers.filter((d) => d.station_id === der.station_id).length;
+    const matrix = computeDerReadinessMatrix(der, {
+      otherDersInStation: sameStationCount - 1,
+    });
+    return {
+      der,
+      matrix,
+      summary: summarizeReadiness(matrix),
+      axes: buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
+    };
+  });
 
   const fixActionByElement = (elementRef: string | null) => {
     if (!elementRef) return null;
@@ -1201,6 +1234,62 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
             Model przechodzi wszystkie reguły walidacji. Możesz uruchomić
             obliczenia (Ctrl+Shift+P → "Oblicz") albo przejść do raportów (E-25).
           </p>
+        </SectionCard>
+      )}
+
+      {/* Faza F: macierz gotowości DER per stacja. */}
+      {derReadinessRows.length > 0 && (
+        <SectionCard
+          title={`Gotowość DER (${derReadinessRows.length} obiektów)`}
+          eyebrow="Źródła i magazyny"
+        >
+          <div data-testid="model-gaps-der-matrix" className="space-y-2">
+            {derReadinessRows.map(({ der, summary, axes }) => (
+              <div
+                key={der.id}
+                data-testid={`gap-der-${der.id}`}
+                className="rounded border border-slate-200 bg-white p-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800">
+                      {der.name}
+                    </span>
+                    <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-slate-600">
+                      {der.der_kind}
+                    </span>
+                    <span className="ml-1 text-[11px] text-slate-500">
+                      stacja: {der.station_id}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    {summary.ready}/{summary.total} ready · {summary.partial} częściowych ·{' '}
+                    {summary.blocked} zablokowanych
+                  </div>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-1 md:grid-cols-2 xl:grid-cols-3">
+                  {axes.map((axis) => (
+                    <div
+                      key={axis.axis}
+                      data-testid={`gap-der-axis-${der.id}-${axis.axis}`}
+                      data-status={axis.status}
+                      className={
+                        'flex items-center justify-between rounded px-2 py-1 text-[11px] '
+                        + (axis.status === 'ready'
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : axis.status === 'partial'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-rose-50 text-rose-700')
+                      }
+                    >
+                      <span>{axis.label_pl}</span>
+                      <span className="font-bold uppercase">{axis.status}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </SectionCard>
       )}
     </div>
@@ -1506,6 +1595,9 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  // Faza F: kontekst stacja+DER w uzasadnieniu inżynierskim.
+  const allDers = useStationDerStore((state) => selectAllDers(state));
+  const stationCount = new Set(allDers.map((d) => d.station_id)).size;
   return (
     <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
@@ -1523,8 +1615,47 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           <KeyValue label="Aktywne uruchomienie" value={activeRunId ?? 'Brak'} />
           <KeyValue label="Zakres" value={String(surface.entityRef ?? 'Cała sieć')} />
           <KeyValue label="Format eksportu" value="JSON · LaTeX · PDF · DOCX" />
+          <KeyValue label="Stacje w zakresie" value={String(stationCount)} />
+          <KeyValue label="Źródła i magazyny (DER)" value={String(allDers.length)} />
+          <KeyValue
+            label="Lineage katalogów"
+            value={
+              allDers.length > 0
+                ? `${allDers.length} obiektów × catalog_refs (deterministyczne)`
+                : 'Brak DER w zakresie'
+            }
+          />
         </div>
       </SectionCard>
+      {allDers.length > 0 && (
+        <SectionCard
+          title="Kontekst Proof Pack — DER"
+          eyebrow="Faza F · station↔DER lineage"
+        >
+          <div data-testid="proof-der-lineage" className="space-y-1 text-xs">
+            {allDers.map((der) => (
+              <div
+                key={der.id}
+                data-testid={`proof-der-row-${der.id}`}
+                className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-1.5"
+              >
+                <div>
+                  <span className="font-medium text-slate-800">{der.name}</span>
+                  <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-widest text-slate-600">
+                    {der.der_kind}
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  station: <code>{der.station_id}</code> · pcc:{' '}
+                  <code>{der.pcc_ref ?? '—'}</code> · catalog:{' '}
+                  <code>{der.catalogs.device_catalog_ref ?? '—'}</code> · profile:{' '}
+                  <code>{der.profiles.nc_rfg_profile_ref ?? '—'}</code>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
       <SectionCard title="Dostępne paczki uzasadnień" eyebrow="Lista 12 typów">
         <div data-testid="proof-pack-list" className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           {PROOF_PACK_TYPES.map((pt) => (
