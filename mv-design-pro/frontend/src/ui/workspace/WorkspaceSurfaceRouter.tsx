@@ -1766,6 +1766,8 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const projectId = useAppStateStore((state) => state.activeProjectId);
+  // Phase 39: auto-pull snapshot_id z aktywnego snapshot store (real graph).
+  const snapshotId = useSnapshotStore((state) => state.snapshot?.header?.hash_sha256 ?? null);
   // Faza F: kontekst stacja+DER w uzasadnieniu inżynierskim.
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const stationCount = new Set(allDers.map((d) => d.station_id)).size;
@@ -1924,6 +1926,21 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
           sieci. Zwraca audit trail.
         </p>
+        <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
+          {snapshotId ? (
+            <>
+              <span className="text-emerald-700">●</span> Aktywny snapshot:{' '}
+              <code className="text-[10px]">{snapshotId.slice(0, 16)}...</code> — wczytany
+              z DB jako real NetworkGraph.
+            </>
+          ) : (
+            <>
+              <span className="text-amber-700">●</span> Brak aktywnego snapshotu —
+              backend uzyje empty graph, solver moze rzucic blad. Wykonaj operacje
+              domenowa aby wygenerowac snapshot.
+            </>
+          )}
+        </div>
         <button
           type="button"
           data-testid="audit2-power-flow-run"
@@ -1939,6 +1956,9 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               station_id: stationId,
               base_mva: 100.0,
               slack_node_id: 'slack',
+              // Phase 39: auto-inject snapshot_id z aktywnego snapshot store
+              // — backend laduje real NetworkGraph zamiast empty stub.
+              snapshot_id: snapshotId ?? undefined,
             });
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"

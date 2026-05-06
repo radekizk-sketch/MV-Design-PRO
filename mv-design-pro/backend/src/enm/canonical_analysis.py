@@ -978,6 +978,71 @@ def _solve_power_flow_with_method(
     raise ValueError(f"Nieznany tryb rozpływu mocy: {solver_method}")
 
 
+def _maybe_load_audit2_extensions(
+    *, project_id_str: str | None, station_id: str | None
+) -> dict[str, object] | None:
+    """
+    Phase 41: opt-in audit2 extensions z DB. Zwraca None gdy brak ID-kow lub
+    config nie istnieje. NOT-A-SOLVER: tylko orchestracja, nie physics.
+    """
+    if not project_id_str or not station_id:
+        return None
+    try:
+        from uuid import UUID
+
+        pid_uuid = UUID(str(project_id_str))
+    except ValueError:
+        return None
+
+    try:
+        from infrastructure.persistence.db import (
+            create_engine_from_url,
+            create_session_factory,
+        )
+        from infrastructure.persistence.models import StationAudit2ConfigORM
+        from infrastructure.persistence.unit_of_work import build_uow_factory
+    except ImportError:
+        return None
+
+    import os
+
+    db_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
+    try:
+        engine = create_engine_from_url(db_url)
+        session_factory = create_session_factory(engine)
+        uow_factory = build_uow_factory(session_factory)
+    except Exception:
+        return None
+
+    with uow_factory() as uow:
+        if uow.session is None:
+            return None
+        cfg = (
+            uow.session.query(StationAudit2ConfigORM)
+            .filter(
+                StationAudit2ConfigORM.project_id == pid_uuid,
+                StationAudit2ConfigORM.station_id == station_id,
+            )
+            .one_or_none()
+        )
+        if cfg is None:
+            return None
+
+        from solver_input.audit2_der_payload import (
+            build_station_audit2_payload,
+            extract_solver_extensions_from_payload,
+        )
+
+        payload = build_station_audit2_payload(
+            station_id=cfg.station_id,
+            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
+            tap_changer_refs=list(cfg.tap_changer_refs or []),
+            der_specs=list(cfg.der_specs or []),
+            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
+        )
+        return extract_solver_extensions_from_payload(payload)
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -1007,12 +1072,25 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         trace_level=str(run.options.get("trace_level", "full")),
     )
     base_mva = float(run.options.get("base_mva", 100.0))
+    # Phase 41: opt-in integracja audit2 z istniejacym pipeline'em.
+    # Jesli run.options zawiera audit2_project_id + audit2_station_id, ladujemy
+    # config z DB i aplikujemy adjustments do graph PRZED solverem.
+    audit2_extensions = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    if audit2_extensions is not None:
+        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+
+        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions)
+
     pf_input = PowerFlowInput(
         graph=graph,
         base_mva=base_mva,
         slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
         pq=pq_specs,
         options=options,
+        audit2_extensions=audit2_extensions,
     )
     requested_solver_method = _normalize_power_flow_solver_method(
         run.options.get("solver_method") or run.options.get("method")
