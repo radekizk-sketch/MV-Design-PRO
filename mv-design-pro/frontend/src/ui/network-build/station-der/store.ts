@@ -43,6 +43,7 @@ export interface AttachDerInput {
   readonly bay_ref?: string | null;
   readonly transformer_ref?: string | null;
   readonly lv_busbar_ref?: string | null;
+  readonly connection_node_ref?: string | null;
   readonly internal_cable_ref?: string | null;
   readonly voltage_level_ref?: string | null;
   readonly catalogs?: Partial<DerCatalogSelections>;
@@ -70,6 +71,7 @@ export interface StationDerState {
         | 'bay_ref'
         | 'transformer_ref'
         | 'lv_busbar_ref'
+        | 'connection_node_ref'
         | 'internal_cable_ref'
         | 'voltage_level_ref'
         | 'name'
@@ -102,6 +104,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
       bay_ref: input.bay_ref ?? null,
       transformer_ref: input.transformer_ref ?? null,
       lv_busbar_ref: input.lv_busbar_ref ?? null,
+      connection_node_ref: input.connection_node_ref ?? null,
       internal_cable_ref: input.internal_cable_ref ?? null,
       voltage_level_ref: input.voltage_level_ref ?? null,
       catalogs,

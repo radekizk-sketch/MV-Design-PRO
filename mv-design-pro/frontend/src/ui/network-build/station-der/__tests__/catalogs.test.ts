@@ -96,25 +96,30 @@ describe('LvVoltageLevelCatalog', () => {
 });
 
 describe('ConnectionVariantCatalog', () => {
-  it('zawiera 3 warianty (SN/nN/dedicated_transformer)', () => {
-    expect(CONNECTION_VARIANT_CATALOG).toHaveLength(3);
+  it('zawiera 6 wariantów (3 stacjonarne + 3 pozastacjonarne — Naprawa B.2)', () => {
+    expect(CONNECTION_VARIANT_CATALOG).toHaveLength(6);
     const sides = CONNECTION_VARIANT_CATALOG.map((v) => v.side);
     expect(sides).toContain('SN');
     expect(sides).toContain('nN');
     expect(sides).toContain('dedicated_transformer');
+    expect(sides).toContain('at_zksn');
+    expect(sides).toContain('at_branch_pole');
+    expect(sides).toContain('at_cable_joint');
   });
 
-  it('selectConnectionVariantsForKind: PV ma 3 warianty (SN, nN, dedicated)', () => {
+  it('selectConnectionVariantsForKind: PV ma 6 wariantów (SN, nN, dedicated, ZK SN, słup, mufa)', () => {
     const variants = selectConnectionVariantsForKind('PV');
-    expect(variants).toHaveLength(3);
+    expect(variants).toHaveLength(6);
   });
 
-  it('selectConnectionVariantsForKind: FW ma 2 warianty (SN, dedicated) — nie nN', () => {
+  it('selectConnectionVariantsForKind: FW ma 3 warianty (SN, dedicated, słup) — nie nN, nie mufa', () => {
     const variants = selectConnectionVariantsForKind('FW');
     const sides = variants.map((v) => v.side);
     expect(sides).toContain('SN');
     expect(sides).toContain('dedicated_transformer');
+    expect(sides).toContain('at_branch_pole');
     expect(sides).not.toContain('nN');
+    expect(sides).not.toContain('at_cable_joint');
   });
 
   it('getConnectionSideLabelPl zwraca polski label', () => {

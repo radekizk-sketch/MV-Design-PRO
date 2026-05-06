@@ -38,7 +38,32 @@ export interface NcRfgProfileItem {
   readonly p_f_curve_ref: string;
   readonly source: 'NC_RfG_Annex_II' | 'IRiESD' | 'IRiESP';
   readonly status: 'active';
+  /**
+   * Naprawa A.2 (audyt profesora): współczynniki napięciowe IEC 60909 Tab.1.
+   * c_max — maksymalny prąd zwarcia (≈1,10), c_min — minimalny (≈0,95).
+   */
+  readonly c_max: number;
+  readonly c_min: number;
+  /**
+   * Naprawa B.4 (audyt projektanta): minimalna wymagana moc zwarciowa w PCC
+   * (Sk_min) jako multiplikator mocy modułu (P_DER). Moduł B: ≥5×, C: ≥10×,
+   * D: ≥25× zgodnie z NC RfG Art. 17.
+   */
+  readonly sk_min_to_p_ratio_by_module: Readonly<Record<'A' | 'B' | 'C' | 'D', number | null>>;
 }
+
+// IEC 60909 Tabela 1: dla 1-35 kV c_max=1.10, c_min=0.95 (sieć średniego
+// napięcia stosowana w Polsce 15/20/30 kV).
+const C_FACTORS_MV: Pick<NcRfgProfileItem, 'c_max' | 'c_min'> = { c_max: 1.10, c_min: 0.95 };
+
+// NC RfG Art. 17: minimalna Sk w PCC dla DER modułów B/C/D (multiplikator P_DER).
+// Moduł A nie ma wymogu (małe instalacje <0.8 kW).
+const NC_RFG_SK_RATIOS = {
+  A: null,
+  B: 5,
+  C: 10,
+  D: 25,
+} as const;
 
 export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.freeze([
   {
@@ -54,6 +79,8 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     p_f_curve_ref: 'pf_pse_2024',
     source: 'NC_RfG_Annex_II',
     status: 'active',
+    ...C_FACTORS_MV,
+    sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
   },
   {
     id: 'ncrfg_energa',
@@ -67,6 +94,8 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     p_f_curve_ref: 'pf_pse_2024',
     source: 'IRiESD',
     status: 'active',
+    ...C_FACTORS_MV,
+    sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
   },
   {
     id: 'ncrfg_tauron',
@@ -80,6 +109,8 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     p_f_curve_ref: 'pf_pse_2024',
     source: 'IRiESD',
     status: 'active',
+    ...C_FACTORS_MV,
+    sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
   },
   {
     id: 'ncrfg_enea',
@@ -93,6 +124,8 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     p_f_curve_ref: 'pf_pse_2024',
     source: 'IRiESD',
     status: 'active',
+    ...C_FACTORS_MV,
+    sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
   },
   {
     id: 'ncrfg_pge',
@@ -106,6 +139,8 @@ export const NC_RFG_PROFILE_CATALOG: ReadonlyArray<NcRfgProfileItem> = Object.fr
     p_f_curve_ref: 'pf_pse_2024',
     source: 'IRiESD',
     status: 'active',
+    ...C_FACTORS_MV,
+    sk_min_to_p_ratio_by_module: NC_RFG_SK_RATIOS,
   },
 ]);
 
@@ -309,13 +344,18 @@ export const LV_VOLTAGE_LEVEL_CATALOG: ReadonlyArray<LvVoltageLevelItem> = Objec
 ]);
 
 // =============================================================================
-// 4. ConnectionVariantCatalog (3 warianty)
+// 4. ConnectionVariantCatalog (Naprawa B.2 — rozszerzony)
 // =============================================================================
 
+/**
+ * Naprawa B.2 (audyt projektanta SN): rozszerzony catalog wariantów połączeń
+ * o 3 dodatkowe punkty pozastacjonarne: ZK SN, słup rozgałęźny, mufa kablowa
+ * (typowe dla małych farm PV / BESS przyłączonych do odgałęzienia).
+ */
 export interface ConnectionVariantItem {
   readonly id: string;
   readonly catalog_namespace: 'connection_variant';
-  readonly side: 'SN' | 'nN' | 'dedicated_transformer';
+  readonly side: 'SN' | 'nN' | 'dedicated_transformer' | 'at_zksn' | 'at_branch_pole' | 'at_cable_joint';
   readonly label_pl: string;
   readonly description_pl: string;
   readonly applicable_der_kinds: ReadonlyArray<'PV' | 'BESS' | 'FW'>;
@@ -349,10 +389,11 @@ export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = 
     id: 'cv_dedicated',
     catalog_namespace: 'connection_variant',
     side: 'dedicated_transformer',
-    label_pl: 'Przez transformator dedykowany',
+    label_pl: 'Przez transformator dedykowany (block-trafo)',
     description_pl:
       'DER przyłączony przez transformator dedykowany (block transformer). '
-      + 'Stosowane gdy napięcie urządzenia nie pasuje do żadnej szyny stacji.',
+      + 'Stosowane gdy napięcie urządzenia nie pasuje do żadnej szyny stacji '
+      + 'albo dla farm PV/FW > 1 MW wymagających izolacji galwanicznej.',
     applicable_der_kinds: ['PV', 'BESS', 'FW'],
     required_objects_pl: [
       'Transformator dedykowany',
@@ -360,6 +401,151 @@ export const CONNECTION_VARIANT_CATALOG: ReadonlyArray<ConnectionVariantItem> = 
       'Kabel SN do transformatora',
       'Zabezpieczenia po obu stronach',
     ],
+  },
+  {
+    id: 'cv_at_zksn',
+    catalog_namespace: 'connection_variant',
+    side: 'at_zksn',
+    label_pl: 'Na złączu kablowym SN (ZK SN)',
+    description_pl:
+      'DER przyłączony do złącza kablowego SN poza stacją — typowe dla małych '
+      + 'farm PV (200-500 kW) przyłączonych do odgałęzienia. Wymaga ZK SN '
+      + 'z dedykowanym polem oraz zabezpieczenia kierunkowego.',
+    applicable_der_kinds: ['PV', 'BESS'],
+    required_objects_pl: [
+      'ZK SN z polem dedykowanym',
+      'Aparatura ZK SN',
+      'Przekładniki na ZK SN',
+      'Zabezpieczenie kierunkowe (67/67N)',
+    ],
+  },
+  {
+    id: 'cv_at_branch_pole',
+    catalog_namespace: 'connection_variant',
+    side: 'at_branch_pole',
+    label_pl: 'Na słupie rozgałęźnym linii napowietrznej SN',
+    description_pl:
+      'DER przyłączony na słupie rozgałęźnym linii napowietrznej. Stosowane '
+      + 'dla małych farm wiatrowych (1 turbina) lub PV przy linii napowietrznej. '
+      + 'Wymaga rozłącznika napowietrznego + transformatora słupowego.',
+    applicable_der_kinds: ['PV', 'FW'],
+    required_objects_pl: [
+      'Słup rozgałęźny',
+      'Rozłącznik napowietrzny',
+      'Transformator słupowy SN/nN',
+      'Zabezpieczenie ziemnozwarciowe',
+    ],
+  },
+  {
+    id: 'cv_at_cable_joint',
+    catalog_namespace: 'connection_variant',
+    side: 'at_cable_joint',
+    label_pl: 'Na mufie kablowej SN (T-joint)',
+    description_pl:
+      'DER przyłączony przez mufę kablową typu T (T-joint). Stosowane wyjątkowo '
+      + 'dla mikroinstalacji PV przyłączonych bez dedykowanej rozdzielni — '
+      + 'wymaga zatwierdzenia operatora z uwagi na trudności w zabezpieczeniach.',
+    applicable_der_kinds: ['PV'],
+    required_objects_pl: [
+      'Mufa T-joint SN',
+      'Kabel odgałęziający',
+      'Transformator dedykowany',
+      'Zabezpieczenie kierunkowe',
+    ],
+  },
+]);
+
+// =============================================================================
+// 4b. MvNeutralGroundingCatalog (Naprawa B.1 — audyt projektanta SN)
+// =============================================================================
+//
+// Punkt uziemienia neutralnego transformatora 110/SN (lub stacji SN-SN).
+// Decyduje o impedancji Z₀ sieci SN i kształcie obliczeń SC1F/SC2FG.
+
+export interface MvNeutralGroundingItem {
+  readonly id: string;
+  readonly catalog_namespace: 'mv_neutral_grounding';
+  readonly catalog_version: string;
+  readonly grounding_type: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
+  readonly label_pl: string;
+  readonly description_pl: string;
+  /** Typowa rezystancja uziemienia [Ω] (gdy resistor_grounded). */
+  readonly r_ohm?: number;
+  /** Typowa reaktancja uziemienia [Ω] (gdy petersen_coil — Lp = 1/(3·ω·C₀)). */
+  readonly x_ohm?: number;
+  /** Typowy zakres prądu zwarcia 1-fazowego doziemnego [A]. */
+  readonly typical_ik1_a_range: { min: number; max: number };
+  /** Typowa praktyka operatorów. */
+  readonly typical_operators_pl: string;
+}
+
+export const MV_NEUTRAL_GROUNDING_CATALOG: ReadonlyArray<MvNeutralGroundingItem> = Object.freeze([
+  {
+    id: 'mng_isolated',
+    catalog_namespace: 'mv_neutral_grounding',
+    catalog_version: '2024.1',
+    grounding_type: 'isolated',
+    label_pl: 'Sieć izolowana (bez uziemienia neutralnego)',
+    description_pl:
+      'Punkt neutralny transformatora 110/SN nie jest uziemiony. Prąd zwarcia '
+      + '1-fazowego doziemnego jest ograniczony tylko pojemnością sieci. '
+      + 'Typowe dla starych sieci 15 kV w Polsce (PGE rural, fragmenty Tauron).',
+    typical_ik1_a_range: { min: 5, max: 50 },
+    typical_operators_pl: 'PGE Dystrybucja (sieci wiejskie 15 kV)',
+  },
+  {
+    id: 'mng_petersen',
+    catalog_namespace: 'mv_neutral_grounding',
+    catalog_version: '2024.1',
+    grounding_type: 'petersen_coil',
+    label_pl: 'Sieć skompensowana (cewka Petersena PCK)',
+    description_pl:
+      'Punkt neutralny uziemiony przez dławik kompensacyjny (cewkę Petersena). '
+      + 'Lp = 1 / (3·ω·C₀) gdzie C₀ jest pojemnością sieci. W stanie '
+      + 'kompensacji Ik1 ≈ 0. Standard nowoczesny — większość sieci 15-30 kV.',
+    typical_ik1_a_range: { min: 1, max: 20 },
+    typical_operators_pl: 'Energa-Operator, Tauron, Enea, PGE (sieci miejskie)',
+  },
+  {
+    id: 'mng_resistor_low',
+    catalog_namespace: 'mv_neutral_grounding',
+    catalog_version: '2024.1',
+    grounding_type: 'resistor_grounded',
+    label_pl: 'Sieć uziemiona przez rezystor — niski (R≈7 Ω, Ik1≈300 A)',
+    description_pl:
+      'Punkt neutralny uziemiony przez rezystor 7 Ω. Ogranicza Ik1 do około '
+      + '300 A (skuteczne wykrycie zwarć doziemnych przez 51N). Stosowane '
+      + 'w sieciach kablowych miejskich.',
+    r_ohm: 7,
+    typical_ik1_a_range: { min: 250, max: 350 },
+    typical_operators_pl: 'PSE GPZ, sieci kablowe miejskie 20 kV',
+  },
+  {
+    id: 'mng_resistor_medium',
+    catalog_namespace: 'mv_neutral_grounding',
+    catalog_version: '2024.1',
+    grounding_type: 'resistor_grounded',
+    label_pl: 'Sieć uziemiona przez rezystor — średni (R≈40 Ω, Ik1≈100 A)',
+    description_pl:
+      'Punkt neutralny uziemiony przez rezystor 40 Ω. Kompromis między '
+      + 'wykrywalnością zwarć a ochroną sprzętu. Stosowane w sieciach '
+      + 'mieszanych kabel/napowietrzna.',
+    r_ohm: 40,
+    typical_ik1_a_range: { min: 80, max: 120 },
+    typical_operators_pl: 'OSD regionalni, sieci 15-20 kV mieszane',
+  },
+  {
+    id: 'mng_directly',
+    catalog_namespace: 'mv_neutral_grounding',
+    catalog_version: '2024.1',
+    grounding_type: 'directly_grounded',
+    label_pl: 'Sieć uziemiona bezpośrednio (Z=0)',
+    description_pl:
+      'Punkt neutralny uziemiony bezpośrednio. Ik1 maksymalne (porównywalne '
+      + 'z Ik3). Rzadko stosowane w SN — głównie w przemysłowych sieciach '
+      + 'specjalnych. Zwiększa wymagania na zabezpieczenia i sprzęt.',
+    typical_ik1_a_range: { min: 5000, max: 25000 },
+    typical_operators_pl: 'Sieci przemysłowe specjalne, USA',
   },
 ]);
 
@@ -558,6 +744,8 @@ export interface BessPcsItem {
   readonly nominal_voltage_kv: number;
   readonly four_quadrant: boolean;
   readonly grid_forming_capable: boolean;
+  /** Naprawa A.4: limit prądu zwarciowego (typowo 1.05-1.20×In). */
+  readonly fault_current_capability_pu: number;
 }
 
 export const BESS_PCS_CATALOG: ReadonlyArray<BessPcsItem> = Object.freeze([
@@ -571,6 +759,7 @@ export const BESS_PCS_CATALOG: ReadonlyArray<BessPcsItem> = Object.freeze([
     nominal_voltage_kv: 0.69,
     four_quadrant: true,
     grid_forming_capable: true,
+    fault_current_capability_pu: 1.20,
   },
   {
     id: 'bess_pcs_abb_500',
@@ -582,6 +771,7 @@ export const BESS_PCS_CATALOG: ReadonlyArray<BessPcsItem> = Object.freeze([
     nominal_voltage_kv: 0.4,
     four_quadrant: true,
     grid_forming_capable: false,
+    fault_current_capability_pu: 1.10,
   },
 ]);
 
@@ -633,6 +823,10 @@ export interface WindTurbineItem {
   readonly hub_height_m: number;
   readonly rotor_diameter_m: number;
   readonly generator_type: 'PMSG' | 'DFIG' | 'SCIG';
+  /** Naprawa A.4: limit prądu zwarciowego (DFIG ma transient 4-6×In). */
+  readonly fault_current_capability_pu: number;
+  /** Transient short-circuit current ratio (only for DFIG). */
+  readonly transient_short_circuit_pu?: number;
 }
 
 export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freeze([
@@ -647,6 +841,7 @@ export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freez
     hub_height_m: 116.5,
     rotor_diameter_m: 117,
     generator_type: 'PMSG',
+    fault_current_capability_pu: 1.10,
   },
   {
     id: 'wt_siemens_swt_2300_113',
@@ -659,6 +854,8 @@ export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freez
     hub_height_m: 99.5,
     rotor_diameter_m: 113,
     generator_type: 'DFIG',
+    fault_current_capability_pu: 1.10,
+    transient_short_circuit_pu: 5.0,
   },
   {
     id: 'wt_ge_158_5500',
@@ -671,11 +868,289 @@ export const WIND_TURBINE_CATALOG: ReadonlyArray<WindTurbineItem> = Object.freez
     hub_height_m: 161,
     rotor_diameter_m: 158,
     generator_type: 'PMSG',
+    fault_current_capability_pu: 1.10,
   },
 ]);
 
 // =============================================================================
-// 7. Helpery selektora
+// 7. DerFaultCurrentDataCatalog (Naprawa A.1, A.3, A.4 — audyt profesora)
+// =============================================================================
+//
+// Składowe symetryczne (R₁/X₁, R₂/X₂, R₀/X₀) + Z₀/Z₁ ratio + κ + i_max_pu.
+// Wymagane dla obliczeń:
+//   - SC1F (zwarcie 1-fazowe doziemne) — IEC 60909-3
+//   - SC2FG (zwarcie 2-fazowe z ziemią)
+//   - ip (peak short-circuit) przez κ = 1.02 + 0.98·exp(-3·R/X)
+//
+// Pozycje w katalogu są skojarzone z konkretnym device_catalog_ref poprzez
+// pole `applicable_device_ids`.
+
+export interface DerFaultCurrentDataItem {
+  readonly id: string;
+  readonly catalog_namespace: 'der_fault_current_data';
+  readonly catalog_version: string;
+  readonly applicable_device_ids: readonly string[];
+  readonly label_pl: string;
+  /** Składowe kolejności dodatniej (R₁, X₁) per unit. */
+  readonly r1_pu: number;
+  readonly x1_pu: number;
+  /** Składowe kolejności ujemnej (R₂, X₂). Domyślnie ≈ R₁/X₁ dla falowników. */
+  readonly r2_pu: number;
+  readonly x2_pu: number;
+  /** Składowe kolejności zerowej (R₀, X₀). */
+  readonly r0_pu: number;
+  readonly x0_pu: number;
+  /** Stosunek Z₀/Z₁ — kluczowe dla SC1F. */
+  readonly z0_z1_ratio: number;
+  /** Stosunek R/X w punkcie generowania prądu zwarciowego. Dla κ. */
+  readonly rx_ratio_at_terminal: number;
+  /** Limit prądu zwarciowego falownika (typowo 1.05-1.20 × In). */
+  readonly fault_current_capability_pu: number;
+  /** Model contribution: voltage-source-behind-Zth albo current-source-limited. */
+  readonly contribution_model: 'voltage_source' | 'current_source_limited';
+}
+
+export const DER_FAULT_CURRENT_DATA_CATALOG: ReadonlyArray<DerFaultCurrentDataItem> = Object.freeze([
+  {
+    id: 'fcd_pv_inv_sma_2500',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['pv_inv_sma_2500'],
+    label_pl: 'SMA SC2500-EV — model zwarciowy (current-source 1.10×In)',
+    r1_pu: 0.05,
+    x1_pu: 0.18,
+    r2_pu: 0.05,
+    x2_pu: 0.18,
+    r0_pu: 0.10,
+    x0_pu: 0.40,
+    z0_z1_ratio: 2.2,
+    rx_ratio_at_terminal: 0.28,
+    fault_current_capability_pu: 1.10,
+    contribution_model: 'current_source_limited',
+  },
+  {
+    id: 'fcd_pv_inv_huawei_185',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['pv_inv_huawei_185'],
+    label_pl: 'Huawei SUN2000-185KTL — model zwarciowy (current-source 1.05×In)',
+    r1_pu: 0.04,
+    x1_pu: 0.15,
+    r2_pu: 0.04,
+    x2_pu: 0.15,
+    r0_pu: 0.08,
+    x0_pu: 0.32,
+    z0_z1_ratio: 2.1,
+    rx_ratio_at_terminal: 0.27,
+    fault_current_capability_pu: 1.05,
+    contribution_model: 'current_source_limited',
+  },
+  {
+    id: 'fcd_pv_inv_fimer_3000',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['pv_inv_fimer_3000'],
+    label_pl: 'FIMER PVS-3000-CSE — model zwarciowy (current-source 1.15×In)',
+    r1_pu: 0.05,
+    x1_pu: 0.20,
+    r2_pu: 0.05,
+    x2_pu: 0.20,
+    r0_pu: 0.11,
+    x0_pu: 0.42,
+    z0_z1_ratio: 2.1,
+    rx_ratio_at_terminal: 0.25,
+    fault_current_capability_pu: 1.15,
+    contribution_model: 'current_source_limited',
+  },
+  {
+    id: 'fcd_bess_pcs_sma_2200',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['bess_pcs_sma_2200'],
+    label_pl: 'SMA SCS-2200 — PCS BESS (4Q + grid-forming, 1.20×In)',
+    r1_pu: 0.04,
+    x1_pu: 0.16,
+    r2_pu: 0.04,
+    x2_pu: 0.16,
+    r0_pu: 0.08,
+    x0_pu: 0.32,
+    z0_z1_ratio: 2.0,
+    rx_ratio_at_terminal: 0.25,
+    fault_current_capability_pu: 1.20,
+    contribution_model: 'voltage_source',
+  },
+  {
+    id: 'fcd_bess_pcs_abb_500',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['bess_pcs_abb_500'],
+    label_pl: 'ABB PCS100 ESS — PCS BESS (4Q grid-following, 1.10×In)',
+    r1_pu: 0.05,
+    x1_pu: 0.18,
+    r2_pu: 0.05,
+    x2_pu: 0.18,
+    r0_pu: 0.10,
+    x0_pu: 0.36,
+    z0_z1_ratio: 2.0,
+    rx_ratio_at_terminal: 0.28,
+    fault_current_capability_pu: 1.10,
+    contribution_model: 'current_source_limited',
+  },
+  {
+    id: 'fcd_wt_vestas_v117_3450',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['wt_vestas_v117_3450'],
+    label_pl: 'Vestas V117 (PMSG full-converter) — 1.10×In',
+    r1_pu: 0.06,
+    x1_pu: 0.20,
+    r2_pu: 0.06,
+    x2_pu: 0.20,
+    r0_pu: 0.12,
+    x0_pu: 0.40,
+    z0_z1_ratio: 2.0,
+    rx_ratio_at_terminal: 0.30,
+    fault_current_capability_pu: 1.10,
+    contribution_model: 'current_source_limited',
+  },
+  {
+    id: 'fcd_wt_siemens_swt_2300',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['wt_siemens_swt_2300_113'],
+    label_pl: 'Siemens SWT-2.3 (DFIG) — 4-6×In transient + 1.10×In sustained',
+    r1_pu: 0.025,
+    x1_pu: 0.12,
+    r2_pu: 0.025,
+    x2_pu: 0.12,
+    r0_pu: 0.05,
+    x0_pu: 0.24,
+    z0_z1_ratio: 2.0,
+    rx_ratio_at_terminal: 0.21,
+    fault_current_capability_pu: 1.10,
+    contribution_model: 'voltage_source',
+  },
+  {
+    id: 'fcd_wt_ge_158_5500',
+    catalog_namespace: 'der_fault_current_data',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['wt_ge_158_5500'],
+    label_pl: 'GE Cypress 5.5 (PMSG full-converter) — 1.10×In',
+    r1_pu: 0.06,
+    x1_pu: 0.20,
+    r2_pu: 0.06,
+    x2_pu: 0.20,
+    r0_pu: 0.12,
+    x0_pu: 0.40,
+    z0_z1_ratio: 2.0,
+    rx_ratio_at_terminal: 0.30,
+    fault_current_capability_pu: 1.10,
+    contribution_model: 'current_source_limited',
+  },
+]);
+
+// =============================================================================
+// 8. DerDynamicModelCatalog (Naprawa A.5 — audyt profesora)
+// =============================================================================
+//
+// Modele dynamiczne dla solvera RMS time-domain (FRT/HVRT, stabilność).
+
+export interface DerDynamicModelItem {
+  readonly id: string;
+  readonly catalog_namespace: 'der_dynamic_model';
+  readonly catalog_version: string;
+  readonly applicable_device_ids: readonly string[];
+  readonly label_pl: string;
+  readonly model_type:
+    | 'pv_grid_following'
+    | 'pv_grid_forming'
+    | 'bess_grid_following'
+    | 'bess_grid_forming'
+    | 'wt_pmsg_full_converter'
+    | 'wt_dfig'
+    | 'wt_scig';
+  /** Czas reakcji falownika/PCS [ms]. */
+  readonly response_time_ms: number;
+  /** Współczynnik wsparcia napięciowego k(Iq/ΔU) podczas FRT — typowo 2-6. */
+  readonly k_factor_iq_over_du: number;
+  /** Maksymalny prąd reaktywny podczas FRT [pu]. */
+  readonly iq_max_during_fault_pu: number;
+  /** Stopień regenenracji P po zakończeniu FRT [pu/s]. */
+  readonly p_recovery_rate_pu_per_s: number;
+  /** Czas filtru wykrywania zaniku napięcia [ms]. */
+  readonly voltage_drop_detection_time_ms: number;
+}
+
+export const DER_DYNAMIC_MODEL_CATALOG: ReadonlyArray<DerDynamicModelItem> = Object.freeze([
+  {
+    id: 'dyn_pv_gfl_typical',
+    catalog_namespace: 'der_dynamic_model',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['pv_inv_sma_2500', 'pv_inv_huawei_185', 'pv_inv_fimer_3000'],
+    label_pl: 'PV grid-following typowy (NC RfG: k=2, t_resp=20ms)',
+    model_type: 'pv_grid_following',
+    response_time_ms: 20,
+    k_factor_iq_over_du: 2.0,
+    iq_max_during_fault_pu: 1.0,
+    p_recovery_rate_pu_per_s: 5.0,
+    voltage_drop_detection_time_ms: 10,
+  },
+  {
+    id: 'dyn_bess_gfm_4q',
+    catalog_namespace: 'der_dynamic_model',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['bess_pcs_sma_2200'],
+    label_pl: 'BESS grid-forming 4Q (k=4, t_resp=5ms)',
+    model_type: 'bess_grid_forming',
+    response_time_ms: 5,
+    k_factor_iq_over_du: 4.0,
+    iq_max_during_fault_pu: 1.2,
+    p_recovery_rate_pu_per_s: 10.0,
+    voltage_drop_detection_time_ms: 5,
+  },
+  {
+    id: 'dyn_bess_gfl_4q',
+    catalog_namespace: 'der_dynamic_model',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['bess_pcs_abb_500'],
+    label_pl: 'BESS grid-following 4Q (k=2.5, t_resp=15ms)',
+    model_type: 'bess_grid_following',
+    response_time_ms: 15,
+    k_factor_iq_over_du: 2.5,
+    iq_max_during_fault_pu: 1.0,
+    p_recovery_rate_pu_per_s: 8.0,
+    voltage_drop_detection_time_ms: 10,
+  },
+  {
+    id: 'dyn_wt_pmsg_full',
+    catalog_namespace: 'der_dynamic_model',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['wt_vestas_v117_3450', 'wt_ge_158_5500'],
+    label_pl: 'WT PMSG full-converter (k=2, t_resp=30ms)',
+    model_type: 'wt_pmsg_full_converter',
+    response_time_ms: 30,
+    k_factor_iq_over_du: 2.0,
+    iq_max_during_fault_pu: 1.0,
+    p_recovery_rate_pu_per_s: 3.0,
+    voltage_drop_detection_time_ms: 15,
+  },
+  {
+    id: 'dyn_wt_dfig',
+    catalog_namespace: 'der_dynamic_model',
+    catalog_version: '2024.1',
+    applicable_device_ids: ['wt_siemens_swt_2300_113'],
+    label_pl: 'WT DFIG (transient 4-6×In, k=2.5, t_resp=20ms)',
+    model_type: 'wt_dfig',
+    response_time_ms: 20,
+    k_factor_iq_over_du: 2.5,
+    iq_max_during_fault_pu: 1.1,
+    p_recovery_rate_pu_per_s: 4.0,
+    voltage_drop_detection_time_ms: 10,
+  },
+]);
+
+// =============================================================================
+// 9. Helpery selektora
 // =============================================================================
 
 /** Filtruje katalogi po polu module_type/operator_code. */
@@ -720,8 +1195,66 @@ export function getLvVoltageLevel(id: string): LvVoltageLevelItem | null {
   return LV_VOLTAGE_LEVEL_CATALOG.find((l) => l.id === id) ?? null;
 }
 
-/** Polski label dla connection_side. */
-export function getConnectionSideLabelPl(side: 'SN' | 'nN' | 'dedicated_transformer'): string {
+/** Polski label dla connection_side (w tym pozastacjonarne — Naprawa B.2). */
+export function getConnectionSideLabelPl(
+  side: 'SN' | 'nN' | 'dedicated_transformer' | 'at_zksn' | 'at_branch_pole' | 'at_cable_joint',
+): string {
   const item = CONNECTION_VARIANT_CATALOG.find((v) => v.side === side);
   return item?.label_pl ?? side;
+}
+
+/** Naprawa B.1: pobiera szczegóły uziemienia neutralnego stacji. */
+export function getMvNeutralGrounding(id: string): MvNeutralGroundingItem | null {
+  return MV_NEUTRAL_GROUNDING_CATALOG.find((g) => g.id === id) ?? null;
+}
+
+/** Naprawa A.1: pobiera dane zwarciowe dla danego device_id. */
+export function getFaultCurrentDataForDevice(
+  deviceId: string,
+): DerFaultCurrentDataItem | null {
+  return (
+    DER_FAULT_CURRENT_DATA_CATALOG.find((d) => d.applicable_device_ids.includes(deviceId)) ?? null
+  );
+}
+
+/** Naprawa A.5: pobiera model dynamiczny dla danego device_id. */
+export function getDynamicModelForDevice(deviceId: string): DerDynamicModelItem | null {
+  return DER_DYNAMIC_MODEL_CATALOG.find((d) => d.applicable_device_ids.includes(deviceId)) ?? null;
+}
+
+/**
+ * Naprawa A.3: oblicza współczynnik κ (peak short-circuit factor) z R/X
+ * zgodnie z IEC 60909-0 Sekcja 8.1.3 (metoda B):
+ *
+ *   κ = 1.02 + 0.98 · exp(-3 · R/X)
+ *
+ * Prąd udarowy ip = κ · √2 · Ik″.
+ */
+export function computeKappa(rx_ratio: number): number {
+  if (rx_ratio < 0) return 1.0;
+  return 1.02 + 0.98 * Math.exp(-3 * rx_ratio);
+}
+
+/**
+ * Naprawa B.4: walidacja minimalnej Sk w PCC zgodnie z NC RfG Art. 17.
+ * Zwraca obiekt z polami required_sk_mva (minimalna wymagana) + ok (boolean).
+ */
+export function validateMinSkAtPcc(args: {
+  readonly profileRef: string | null;
+  readonly moduleType: 'A' | 'B' | 'C' | 'D';
+  readonly p_der_mw: number;
+  readonly available_sk_mva: number | null;
+}): { required_sk_mva: number | null; available_sk_mva: number | null; ok: boolean; ratio: number | null } {
+  const profile = args.profileRef ? getNcRfgProfile(args.profileRef) : null;
+  const ratio = profile?.sk_min_to_p_ratio_by_module[args.moduleType] ?? null;
+  if (ratio === null) {
+    return { required_sk_mva: null, available_sk_mva: args.available_sk_mva, ok: true, ratio: null };
+  }
+  const required = ratio * args.p_der_mw;
+  return {
+    required_sk_mva: required,
+    available_sk_mva: args.available_sk_mva,
+    ok: args.available_sk_mva !== null && args.available_sk_mva >= required,
+    ratio,
+  };
 }

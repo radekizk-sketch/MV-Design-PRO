@@ -6,8 +6,16 @@
  * + `profile_refs`. Brak duplikacji między E-13 i E-21/E-22/E-23.
  */
 
-/** Wariant przyłączenia DER do stacji. */
-export type ConnectionSide = 'SN' | 'nN' | 'dedicated_transformer';
+/**
+ * Wariant przyłączenia DER (Naprawa B.2 — rozszerzony o pozastacjonarne).
+ */
+export type ConnectionSide =
+  | 'SN'
+  | 'nN'
+  | 'dedicated_transformer'
+  | 'at_zksn'
+  | 'at_branch_pole'
+  | 'at_cable_joint';
 
 /** Rodzaj DER (zunifikowany dla 3 specjalizacji). */
 export type DerKindUnified = 'PV' | 'BESS' | 'FW';
@@ -40,6 +48,17 @@ export interface DerCatalogSelections {
   /** Przekładniki CT/VT. */
   readonly ct_catalog_ref: string | null;
   readonly vt_catalog_ref: string | null;
+  /**
+   * Naprawa A (audyt profesora): dane składowych symetrycznych z katalogu
+   * urządzenia. Wymagane dla obliczeń SC1F/SC2FG (IEC 60909-3) + asymetrii.
+   * Format ref: `der_fault_current_data_{device_id}` z polami R0/X0/Z0Z1.
+   */
+  readonly fault_current_data_ref: string | null;
+  /**
+   * Naprawa A (audyt profesora): model dynamiczny (PMSG/DFIG/SCIG dla FW,
+   * grid-following/forming dla PV/BESS) — wymagane dla solvera RMS i FRT/HVRT.
+   */
+  readonly dynamic_model_ref: string | null;
 }
 
 export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
@@ -52,6 +71,8 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   protection_catalog_ref: null,
   ct_catalog_ref: null,
   vt_catalog_ref: null,
+  fault_current_data_ref: null,
+  dynamic_model_ref: null,
 });
 
 /** Wybrane profile zgodności przyłączeniowej i wymagań. */
@@ -143,6 +164,12 @@ export interface StationDerConnection {
   readonly transformer_ref: string | null;
   /** Szyna nN — jeśli `connection_side='nN'`. */
   readonly lv_busbar_ref: string | null;
+  /**
+   * Naprawa B.2: węzeł połączenia poza stacją (ZK SN / słup / mufa). Wymagany
+   * gdy connection_side ∈ {at_zksn, at_branch_pole, at_cable_joint}.
+   * Format: `node_{kind}_{id}` (np. `node_zksn_ZK-12`).
+   */
+  readonly connection_node_ref: string | null;
   /** Kabel/linia wewnętrzna stacji od PCC do urządzenia. */
   readonly internal_cable_ref: string | null;
   /** Poziom napięcia przyłączenia (z `lv-voltage-level-catalog` lub `mv`). */

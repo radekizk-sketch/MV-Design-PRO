@@ -127,8 +127,15 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         return (
           selections.derName.trim().length > 0 &&
           selections.pccLabel.trim().length > 0 &&
+          // nN wymaga voltage_level z katalogu
           (selections.connectionSide !== 'nN' || selections.voltageLevelRef !== null) &&
-          (selections.connectionSide !== 'SN' || selections.bayName.trim().length > 0)
+          // SN wymaga oznaczenia pola SN
+          (selections.connectionSide !== 'SN' || selections.bayName.trim().length > 0) &&
+          // Naprawa B.2: pozastacjonarne warianty wymagają connection_node_ref
+          (
+            !['at_zksn', 'at_branch_pole', 'at_cable_joint'].includes(selections.connectionSide ?? '')
+            || selections.bayName.trim().length > 0
+          )
         );
       case 'device':
         return selections.deviceCatalogRef !== null
@@ -167,6 +174,16 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
     const nominalPowerKw = device && 'nominal_power_kw' in device ? device.nominal_power_kw : null;
 
+    // Naprawa B.2: connection_node_ref dla pozastacjonarnych wariantów.
+    let connectionNodeRef: string | null = null;
+    if (selections.connectionSide === 'at_zksn') {
+      connectionNodeRef = `node_zksn_${selections.bayName}`;
+    } else if (selections.connectionSide === 'at_branch_pole') {
+      connectionNodeRef = `node_branch_pole_${selections.bayName}`;
+    } else if (selections.connectionSide === 'at_cable_joint') {
+      connectionNodeRef = `node_cable_joint_${selections.bayName}`;
+    }
+
     attachDer({
       id,
       project_id: projectId,
@@ -183,6 +200,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         selections.connectionSide === 'dedicated_transformer'
           ? `tr_dedicated_${id}`
           : null,
+      connection_node_ref: connectionNodeRef,
       voltage_level_ref: selections.voltageLevelRef,
       nominal_power_kw: nominalPowerKw,
       catalogs: {
@@ -336,6 +354,36 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
                   placeholder="np. Pole-PV-01"
                   testId="add-der-bay-name"
+                />
+              )}
+              {selections.connectionSide === 'at_zksn' && (
+                <Field
+                  label="Oznaczenie ZK SN (węzeł połączenia)"
+                  required
+                  value={selections.bayName}
+                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
+                  placeholder="np. ZK-SN-12"
+                  testId="add-der-zksn-name"
+                />
+              )}
+              {selections.connectionSide === 'at_branch_pole' && (
+                <Field
+                  label="Oznaczenie słupa rozgałęźnego"
+                  required
+                  value={selections.bayName}
+                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
+                  placeholder="np. SLUP-W-12-3"
+                  testId="add-der-pole-name"
+                />
+              )}
+              {selections.connectionSide === 'at_cable_joint' && (
+                <Field
+                  label="Oznaczenie mufy kablowej (T-joint)"
+                  required
+                  value={selections.bayName}
+                  onChange={(v) => setSelections((s) => ({ ...s, bayName: v }))}
+                  placeholder="np. MUFA-T-08"
+                  testId="add-der-joint-name"
                 />
               )}
               {selections.connectionSide === 'nN' && (

@@ -48,12 +48,14 @@ function makeDer(
 }
 
 describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
-  it('Pełny minimalny DER (device + pcc + nc_rfg) → SC ready, FRT/HVRT blocked, NC RfG blocked', () => {
+  it('Pełny minimalny DER (device + pcc + nc_rfg) → SC3F ready, SC1F/SC2FG partial (Naprawa A.1), FRT/HVRT/NC_RFG blocked', () => {
     const matrix = computeDerReadinessMatrix(makeDer());
     expect(matrix.sc_3f).toBe('ready');
-    expect(matrix.sc_1f).toBe('ready');
     expect(matrix.sc_2f).toBe('ready');
-    expect(matrix.sc_2fg).toBe('ready');
+    // Naprawa A.1: SC1F/SC2FG wymagają fault_current_data_ref (Z₀/Z₁) — bez
+    // tego status partial nawet z pełnymi pcc + device.
+    expect(matrix.sc_1f).toBe('partial');
+    expect(matrix.sc_2fg).toBe('partial');
     expect(matrix.q_u).toBe('ready');
     // Brak LVRT/HVRT curve → frt/hvrt blocked
     expect(matrix.frt).toBe('blocked');
@@ -61,7 +63,7 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     expect(matrix.nc_rfg).toBe('blocked');
   });
 
-  it('DER z pełnymi profilami → FRT/HVRT/NC_RFG ready', () => {
+  it('DER z pełnymi profilami + dynamic_model_ref → FRT/HVRT/NC_RFG ready (Naprawa A.5)', () => {
     const matrix = computeDerReadinessMatrix(
       makeDer({
         profiles: {
@@ -69,6 +71,11 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
           lvrt_curve_ref: 'lvrt_pse_b',
           hvrt_curve_ref: 'hvrt_pse_b',
           regulation_profile_ref: null,
+        },
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'pv_inv_sma_2500',
+          dynamic_model_ref: 'dyn_pv_gfl_typical',
         },
       }),
     );

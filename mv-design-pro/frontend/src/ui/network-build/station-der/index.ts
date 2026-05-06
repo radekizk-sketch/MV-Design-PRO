@@ -5,6 +5,7 @@
 export * from './types';
 export * from './store';
 export * from './catalogs';
+export * from './protection-catalogs';
 export * from './readiness';
 export { AddDerWizard } from './AddDerWizard';
 export type { AddDerWizardProps } from './AddDerWizard';

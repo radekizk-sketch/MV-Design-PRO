@@ -36,7 +36,13 @@ export interface DerStationContext {
   readonly projectName?: string;
   readonly gpzName?: string;
   readonly trunkName?: string;
-  readonly connectionSide?: 'SN' | 'nN' | 'dedicated_transformer';
+  readonly connectionSide?:
+    | 'SN'
+    | 'nN'
+    | 'dedicated_transformer'
+    | 'at_zksn'
+    | 'at_branch_pole'
+    | 'at_cable_joint';
   readonly pccRef?: string | null;
   readonly bayRef?: string | null;
   readonly transformerRef?: string | null;
@@ -94,6 +100,9 @@ const CONNECTION_SIDE_LABEL_PL: Record<NonNullable<DerStationContext['connection
   SN: 'po SN',
   nN: 'po nN',
   dedicated_transformer: 'transformator dedykowany',
+  at_zksn: 'na ZK SN',
+  at_branch_pole: 'na słupie rozgałęźnym',
+  at_cable_joint: 'na mufie kablowej',
 };
 
 export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {

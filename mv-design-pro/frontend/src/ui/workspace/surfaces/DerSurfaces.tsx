@@ -142,7 +142,9 @@ function DerKpi({ label, value }: { label: string; value: string }) {
   );
 }
 
-function connectionSidePl(side: 'SN' | 'nN' | 'dedicated_transformer'): string {
+function connectionSidePl(
+  side: 'SN' | 'nN' | 'dedicated_transformer' | 'at_zksn' | 'at_branch_pole' | 'at_cable_joint',
+): string {
   switch (side) {
     case 'SN':
       return 'po stronie SN';
@@ -150,6 +152,12 @@ function connectionSidePl(side: 'SN' | 'nN' | 'dedicated_transformer'): string {
       return 'po stronie nN';
     case 'dedicated_transformer':
       return 'transformator dedykowany';
+    case 'at_zksn':
+      return 'na ZK SN';
+    case 'at_branch_pole':
+      return 'na słupie rozgałęźnym';
+    case 'at_cable_joint':
+      return 'na mufie kablowej';
   }
 }
 
