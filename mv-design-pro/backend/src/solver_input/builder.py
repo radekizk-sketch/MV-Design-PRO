@@ -383,6 +383,7 @@ def build_solver_input(
     enm_revision: str,
     analysis_type: SolverAnalysisType,
     config: StudyCaseConfig | None = None,
+    audit2_station_payload: dict[str, Any] | None = None,
 ) -> SolverInputEnvelope:
     """
     Build canonical solver-input envelope from ENM + catalog + case config.
@@ -452,7 +453,24 @@ def build_solver_input(
     # Step 3: Build provenance summary
     summary = build_provenance_summary(trace_entries)
 
-    # Step 4: Assemble envelope
+    # Step 4 (Phase 12): audit2 extensions — additive, opcjonalne.
+    audit2_extensions: dict[str, Any] | None = None
+    if audit2_station_payload is not None:
+        from solver_input.audit2_der_payload import (
+            build_station_audit2_payload,
+            extract_solver_extensions_from_payload,
+        )
+
+        ap = build_station_audit2_payload(
+            station_id=audit2_station_payload.get("station_id", "unknown"),
+            mv_neutral_grounding_ref=audit2_station_payload.get("mv_neutral_grounding_ref"),
+            tap_changer_refs=audit2_station_payload.get("tap_changer_refs", []),
+            der_specs=audit2_station_payload.get("der_specs", []),
+            transformer_tap_changers=audit2_station_payload.get("transformer_tap_changers"),
+        )
+        audit2_extensions = extract_solver_extensions_from_payload(ap)
+
+    # Step 5: Assemble envelope
     return SolverInputEnvelope(
         solver_input_version=SOLVER_INPUT_CONTRACT_VERSION,
         case_id=case_id,
@@ -462,4 +480,5 @@ def build_solver_input(
         provenance_summary=_summary_to_schema(summary),
         payload=payload_dict,
         trace=_trace_to_schema(trace_entries),
+        audit2_extensions=audit2_extensions,
     )

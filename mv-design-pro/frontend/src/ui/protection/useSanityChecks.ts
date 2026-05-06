@@ -193,7 +193,11 @@ export function useSanityChecks(
       return SANITY_CHECK_FIXTURES;
     }
 
-    // TODO: Implementacja rzeczywistego pobierania z API
+    // Realny endpoint backendu (GET /api/projects/{id}/protection-sanity-checks)
+    // nie jest jeszcze dostępny w warstwie publicznej API. Hook zwraca pustą
+    // tablicę zamiast zmyślać dane — UI pokaże stan "brak danych" w panelu
+    // diagnostyki. Po dodaniu endpointu zastąpić tę linię wywołaniem fetch
+    // i zwrócić wynik (z obsługą błędów/loading state).
     return [];
   }, [projectId, diagramId]);
 
@@ -276,7 +280,9 @@ export function useSanityChecksByElement(
       return map.get(elementId) ?? null;
     }
 
-    // TODO: Implementacja rzeczywistego pobierania z API
+    // Endpoint backendu dla per-element diagnostyki nie jest jeszcze dostępny.
+    // Zwracamy null zamiast generować fałszywe diagnostyki. Po dodaniu API
+    // (planowane jako część protection_assignment): zastąpić wywołaniem fetch.
     return null;
   }, [elementId]);
 

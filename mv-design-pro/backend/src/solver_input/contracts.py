@@ -262,6 +262,16 @@ class SolverInputEnvelope(BaseModel):
         default_factory=list,
         description="Per-field provenance trace entries",
     )
+    # Phase 12: audit2 extensions — additive (nie zmienia frozen Result API).
+    # Solvery moga je czytac aby uwzglednic tap-changer settings, BESS modes,
+    # block-trafo Z, MV grounding type. Brak (None) = solver dziala jak dotychczas.
+    audit2_extensions: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "Audit2 extensions: {sc_iec60909_extensions, power_flow_extensions, "
+            "protection_extensions} — additive, optional"
+        ),
+    )
 
     model_config = {"frozen": True}
 

@@ -78,12 +78,15 @@ export function useProtectionAssignment(
     if (!elementId) return [];
 
     if (USE_FIXTURE_DATA) {
-      // Placeholder: zwraca fixture data dla znanych elementów
+      // Fixture data tylko dla testów i Storybook — nigdy w production runtime.
       return PROTECTION_ASSIGNMENT_FIXTURES.filter((a) => a.element_id === elementId);
     }
 
-    // TODO: Implementacja rzeczywistego pobierania danych
-    // const data = await fetchProtectionAssignments(projectId, elementId);
+    // Endpoint GET /api/projects/{id}/protection-assignments nie jest jeszcze
+    // udostępniony w publicznej warstwie API. Zwracamy pustą tablicę — UI
+    // pokaże "brak przypisań" w panelu zabezpieczeń elementu. Implementacja
+    // pełnej integracji wymaga: (a) dodania endpointu w api/, (b) zastąpienia
+    // tej tablicy wywołaniem fetch z obsługą loading/error state.
     return [];
   }, [elementId]);
 
@@ -133,7 +136,7 @@ export function useProtectionAssignments(
     if (!projectId || !diagramId) return map;
 
     if (USE_FIXTURE_DATA) {
-      // Grupuj fixture data po element_id
+      // Grupowanie fixture po element_id (tylko testy/Storybook).
       for (const assignment of PROTECTION_ASSIGNMENT_FIXTURES) {
         const existing = map.get(assignment.element_id) || [];
         existing.push(assignment);
@@ -142,7 +145,9 @@ export function useProtectionAssignments(
       return map;
     }
 
-    // TODO: Implementacja rzeczywistego pobierania danych
+    // Bulk endpoint dla nakładki SLD nie jest jeszcze dostępny. Pusta mapa
+    // = "brak przypisań" — nakładka nie pokaże fałszywych badge'ów. Po
+    // dodaniu endpointu: GET /api/projects/{id}/protection-assignments → JSON.
     return map;
   }, [projectId, diagramId]);
 

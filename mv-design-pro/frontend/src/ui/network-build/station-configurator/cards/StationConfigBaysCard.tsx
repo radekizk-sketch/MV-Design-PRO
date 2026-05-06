@@ -1,6 +1,10 @@
 /**
  * Karta 4 — Pola SN (lista) (PR-8a, brief 2 §8 karta 4).
+ *
+ * Naprawa eng.17: bezpieczniki HV z katalogu (HV_FUSE_CATALOG).
  */
+
+import { HV_FUSE_CATALOG } from '../../station-der/protection-catalogs';
 
 export type BayTypePl =
   | 'liniowe wejściowe'
@@ -24,6 +28,11 @@ export interface StationConfigBayRow {
   readonly hasProtection: boolean;
   readonly hasMeasurements: boolean;
   readonly statusPl: 'kompletne' | 'częściowe' | 'brak danych';
+  /**
+   * Naprawa eng.17: catalog_ref do bezpiecznika HV (jeśli pole transformatorowe
+   * małej mocy lub feeder z fuse). Null oznacza brak bezpiecznika (wyłącznik).
+   */
+  readonly hvFuseCatalogRef?: string | null;
 }
 
 export interface StationConfigBaysCardProps {
@@ -32,6 +41,8 @@ export interface StationConfigBaysCardProps {
   readonly onShowOnSld?: (bayId: string) => void;
   readonly onCopyConfig?: (bayId: string) => void;
   readonly onDeleteBay?: (bayId: string) => void;
+  /** Phase 18: HV fuse onChange (per bay). */
+  readonly onChangeHvFuse?: (bayId: string, fuseId: string | null) => void;
 }
 
 const STATUS_CLASS: Record<StationConfigBayRow['statusPl'], string> = {
@@ -41,7 +52,7 @@ const STATUS_CLASS: Record<StationConfigBayRow['statusPl'], string> = {
 };
 
 export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.Element {
-  const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay } = props;
+  const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
 
   return (
     <div data-testid="station-config-bays" className="flex flex-col gap-2 text-xs">
@@ -59,6 +70,7 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
               <th className="text-left">Powiązany obiekt</th>
               <th className="text-center">A/Z/P</th>
               <th className="text-left">Status</th>
+              <th className="text-left">HV fuse</th>
               <th className="text-right">Akcje</th>
             </tr>
           </thead>
@@ -80,6 +92,34 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                   <span className={b.hasMeasurements ? 'text-status-ok' : 'text-scada-muted'}>P</span>
                 </td>
                 <td className={STATUS_CLASS[b.statusPl]}>{b.statusPl}</td>
+                <td data-testid={`bay-fuse-${b.bayId}`} className="text-[10px]">
+                  {onChangeHvFuse ? (
+                    <select
+                      data-testid={`bay-fuse-select-${b.bayId}`}
+                      value={b.hvFuseCatalogRef ?? ''}
+                      onChange={(e) => onChangeHvFuse(b.bayId, e.target.value || null)}
+                      className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
+                    >
+                      <option value="">—</option>
+                      {HV_FUSE_CATALOG.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.nominal_voltage_kv}kV/{f.nominal_current_a}A · {f.class.replace('_', '-')}
+                        </option>
+                      ))}
+                    </select>
+                  ) : b.hvFuseCatalogRef ? (() => {
+                    const fuse = HV_FUSE_CATALOG.find((f) => f.id === b.hvFuseCatalogRef);
+                    return fuse ? (
+                      <span className="font-mono text-scada-text" title={fuse.label_pl}>
+                        {fuse.nominal_voltage_kv}kV/{fuse.nominal_current_a}A · {fuse.class.replace('_', '-')}
+                      </span>
+                    ) : (
+                      <span className="text-status-error">nieznany</span>
+                    );
+                  })() : (
+                    <span className="text-scada-muted">—</span>
+                  )}
+                </td>
                 <td className="text-right">
                   <div className="flex justify-end gap-1">
                     {onOpenBay && (

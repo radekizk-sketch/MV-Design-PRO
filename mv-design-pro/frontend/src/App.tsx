@@ -31,6 +31,8 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout } from './ui/layout';
+import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
+import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
@@ -169,6 +171,7 @@ function App() {
   const [hashVersion, setHashVersion] = useState(0);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
@@ -440,10 +443,21 @@ function App() {
     );
   }
 
+  // E-00: Pulpit projektu (Dashboard) — renderowany dla #dashboard ORAZ
+  // domyślnie gdy brak aktywnego projektu (etap 2 dostawy).
+  if (route === '#dashboard' || (route === '' && !activeProjectId)) {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <ProjectDashboardSurface />
+      </CanonicalLayout>
+    );
+  }
+
   // SLD_READ_ONLY_UI: Podglad schematu jednokreskowego (tylko odczyt)
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
+        <SldWorkspaceContainer readOnly />
       </CanonicalLayout>
     );
   }
@@ -457,10 +471,13 @@ function App() {
       </CanonicalLayout>
     );
   }
-  // CANONICAL_LAYOUT: Default — SLD Editor Page (ALWAYS shows tools)
-  // This replaces the old DesignerPage with proper Canonical-style layout
+  // CANONICAL_LAYOUT: domyślna trasa "" / "#sld" → środowisko SLD (E-01).
+  // Etap 1 dostawy: SldWorkspaceContainer renderuje SldCanvasV2 z menu
+  // kontekstowym i drill-downem stacji. Adapter danych snapshot → propsy
+  // rendererów dostarcza Etap 3 roadmapy.
   return wrapWithReadyIndicator(
     <CanonicalLayout {...layoutProps}>
+      <SldWorkspaceContainer />
     </CanonicalLayout>
   );
 }

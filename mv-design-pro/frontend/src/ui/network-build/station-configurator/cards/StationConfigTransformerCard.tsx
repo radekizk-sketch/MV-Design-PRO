@@ -1,6 +1,11 @@
 /**
  * Karta 5 — Transformator SN/nN (multi-voltage nN, PR-8a brief §8 karta 5 + §13).
+ *
+ * Naprawa eng.13: wybór przełącznika zaczepów z `TAP_CHANGER_CATALOG`
+ * (OLTC vs DETC, ±10% / ±5%, AVR support).
  */
+
+import { TAP_CHANGER_CATALOG, getTapChanger, type TapChangerItem } from '../../station-der/catalogs';
 
 export interface StationConfigTransformerRow {
   readonly transformerId: string;
@@ -15,6 +20,8 @@ export interface StationConfigTransformerRow {
   readonly tapPosition?: number | null;
   readonly tapMin?: number | null;
   readonly tapMax?: number | null;
+  /** Naprawa eng.13: catalog_ref do wybranego przełącznika zaczepów. */
+  readonly tapChangerCatalogRef?: string | null;
   readonly hvNeutralLabelPl?: string | null;
   readonly lvNeutralLabelPl?: string | null;
   readonly statusForSc: 'gotowe' | 'częściowe' | 'brak danych';
@@ -33,6 +40,24 @@ const STATUS_CLASS: Record<'gotowe' | 'częściowe' | 'brak danych', string> = {
   'częściowe': 'text-status-warn',
   'brak danych': 'text-status-error',
 };
+
+/**
+ * Helper: filtruje TAP_CHANGER_CATALOG po napięciach pierwotnym/wtórnym
+ * transformatora. 110/SN → transformer_110_15 lub transformer_110_20.
+ * SN/nN → transformer_15_04. Inne → block_transformer.
+ */
+function selectTapChangersForTransformerByVoltage(
+  hvKv: number,
+  lvKv: number,
+): readonly TapChangerItem[] {
+  const transformerType = ((): TapChangerItem['applicable_to'][number] => {
+    if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 15) < 1) return 'transformer_110_15';
+    if (hvKv >= 100 && hvKv < 130 && Math.abs(lvKv - 20) < 1) return 'transformer_110_20';
+    if (hvKv > 1 && lvKv < 1) return 'transformer_15_04';
+    return 'block_transformer';
+  })();
+  return TAP_CHANGER_CATALOG.filter((tc) => tc.applicable_to.includes(transformerType));
+}
 
 export function StationConfigTransformerCard(
   props: StationConfigTransformerCardProps,
@@ -139,6 +164,36 @@ export function StationConfigTransformerCard(
                   onChange={(e) => onChange?.(tr.transformerId, { tapPosition: Number(e.target.value) })}
                   className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
                 />
+              </label>
+              <label className="col-span-2 flex flex-col">
+                <span className="text-scada-muted">Przełącznik zaczepów (z katalogu)</span>
+                <select
+                  data-testid={`tr-tap-changer-${tr.transformerId}`}
+                  value={tr.tapChangerCatalogRef ?? ''}
+                  onChange={(e) =>
+                    onChange?.(tr.transformerId, { tapChangerCatalogRef: e.target.value || null })
+                  }
+                  className="rounded border border-scada-border bg-scada-bg px-1 py-0.5"
+                >
+                  <option value="">— wybierz z katalogu —</option>
+                  {selectTapChangersForTransformerByVoltage(tr.uhvKv, tr.ulvKv).map((tc) => (
+                    <option key={tc.id} value={tc.id}>
+                      {tc.label_pl}
+                    </option>
+                  ))}
+                </select>
+                {tr.tapChangerCatalogRef && (() => {
+                  const tc = getTapChanger(tr.tapChangerCatalogRef);
+                  if (!tc) return null;
+                  return (
+                    <div className="mt-1 rounded bg-scada-panel-raised px-2 py-1 text-[10px]">
+                      {tc.tap_count} zaczepów · krok {tc.step_percent.toFixed(2)}% · zakres ±
+                      {tc.range_percent.toFixed(1)}%{' '}
+                      {tc.supports_avr && <span className="text-status-ok">· AVR</span>}{' '}
+                      {tc.type === 'oltc' ? '· OLTC (pod obciążeniem)' : '· DETC (off-load)'}
+                    </div>
+                  );
+                })()}
               </label>
               <div className="col-span-2 mt-1 grid grid-cols-3 gap-1 text-[10px]">
                 <div>

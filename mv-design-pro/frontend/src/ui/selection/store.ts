@@ -30,6 +30,9 @@ interface SelectionState {
   sldCenterOnElement: string | null;
   selectElement: (element: SelectedElement | null) => void;
   selectElements: (elements: SelectedElement[]) => void;
+  toggleElement: (element: SelectedElement) => void;
+  extendSelection: (element: SelectedElement) => void;
+  removeFromSelection: (elementId: string) => void;
   getMultiSelection: () => MultiSelection | null;
   setMode: (mode: OperatingMode | RuntimeOperatingMode) => void;
   setResultStatus: (status: ResultStatus) => void;
@@ -65,6 +68,46 @@ export const useSelectionStore = create<SelectionState>()(
             selectedElements: sorted,
             selectedElement: sorted[0] ?? null,
             propertyGridOpen: sorted.length > 0 || state.propertyGridOpen,
+          };
+        }),
+
+      // Iteracja 12: toggle (Ctrl+click) — dodaj/usuń element z multi-selection.
+      toggleElement: (element) =>
+        set((state) => {
+          const exists = state.selectedElements.some((e) => e.id === element.id);
+          const next = exists
+            ? state.selectedElements.filter((e) => e.id !== element.id)
+            : [...state.selectedElements, element].sort((a, b) => a.id.localeCompare(b.id));
+          return {
+            selectedElements: next,
+            selectedElement: next[0] ?? null,
+            propertyGridOpen: next.length > 0 || state.propertyGridOpen,
+          };
+        }),
+
+      // Iteracja 12: extend (Shift+click) — dodaje element do selekcji bez usuwania.
+      extendSelection: (element) =>
+        set((state) => {
+          if (state.selectedElements.some((e) => e.id === element.id)) {
+            return state;
+          }
+          const next = [...state.selectedElements, element].sort((a, b) =>
+            a.id.localeCompare(b.id),
+          );
+          return {
+            selectedElements: next,
+            selectedElement: next[0] ?? null,
+            propertyGridOpen: next.length > 0 || state.propertyGridOpen,
+          };
+        }),
+
+      // Iteracja 12: usuwa konkretny element z multi-selection.
+      removeFromSelection: (elementId) =>
+        set((state) => {
+          const next = state.selectedElements.filter((e) => e.id !== elementId);
+          return {
+            selectedElements: next,
+            selectedElement: next[0] ?? null,
           };
         }),
 

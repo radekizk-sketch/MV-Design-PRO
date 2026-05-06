@@ -14,6 +14,12 @@ export interface RouteDefinition {
 }
 
 export const ROUTES = {
+  DASHBOARD: {
+    hash: '#dashboard',
+    label: 'Pulpit projektu',
+    description: 'Lista projektów i tworzenie nowego projektu',
+    icon: 'DASH',
+  },
   SLD: {
     hash: '#sld',
     label: 'Schemat jednokreskowy',

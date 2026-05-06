@@ -42,6 +42,7 @@ const minimalProps = {
   bays: { bays: [] },
   transformer: { transformers: [], availableLvVoltages: [0.4] },
   nnSwitchgear: { switchgears: [] },
+  derSources: { stationId: 'station_test', ders: [] },
   loads: { loads: [] },
   protection: {
     relays: [],
@@ -58,8 +59,8 @@ describe('StationConfigurator — 10 kart', () => {
     render(<StationConfigurator {...minimalProps} />);
     const labels = [
       'Podstawowe', 'Topologia i porty', 'Rozdzielnia SN', 'Pola SN',
-      'Transformator SN/nN', 'Rozdzielnica nN', 'Odbiory', 'Zabezpieczenia',
-      'Pomiary', 'Gotowość obliczeń',
+      'Transformator SN/nN', 'Rozdzielnica nN', 'Źródła i magazyny',
+      'Zabezpieczenia', 'Pomiary', 'Gotowość obliczeń',
     ];
     for (const l of labels) {
       expect(screen.getByText(l)).toBeInTheDocument();

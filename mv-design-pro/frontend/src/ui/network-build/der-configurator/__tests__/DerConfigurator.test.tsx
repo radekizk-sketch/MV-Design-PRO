@@ -1,9 +1,9 @@
 /**
- * PR-9/10/11 — Test DerConfigurator (PV/BESS/FW).
+ * Test DerConfigurator (PV/BESS/FW + Faza E station_context breadcrumb).
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { DerConfigurator } from '../DerConfigurator';
 
@@ -73,5 +73,76 @@ describe('DerConfigurator — przełączanie kart', () => {
   it('pusta sekcja → "Brak danych"', () => {
     render(<DerConfigurator derId="pv1" derKind="PV" />);
     expect(screen.getByText(/Brak danych/)).toBeInTheDocument();
+  });
+});
+
+describe('DerConfigurator — stationContext breadcrumb (Faza E)', () => {
+  it('nie renderuje breadcrumb gdy brak stationContext', () => {
+    render(<DerConfigurator derId="pv1" derKind="PV" />);
+    expect(screen.queryByTestId('der-breadcrumb')).toBeNull();
+  });
+
+  it('renderuje pełny breadcrumb Projekt > GPZ > Ciąg > Stacja > DER', () => {
+    render(
+      <DerConfigurator
+        derId="pv_xyz"
+        derKind="PV"
+        stationContext={{
+          stationId: 'station_001',
+          stationName: 'Stacja Centralna',
+          projectName: 'Projekt Test',
+          gpzName: 'GPZ Wschód',
+          trunkName: 'Ciąg główny K-12',
+          connectionSide: 'SN',
+        }}
+      />,
+    );
+    const breadcrumb = screen.getByTestId('der-breadcrumb');
+    expect(breadcrumb).toHaveAttribute('data-station-id', 'station_001');
+    expect(breadcrumb.textContent).toContain('Projekt Test');
+    expect(breadcrumb.textContent).toContain('GPZ Wschód');
+    expect(breadcrumb.textContent).toContain('Ciąg główny K-12');
+    expect(breadcrumb.textContent).toContain('Stacja Centralna');
+    expect(breadcrumb.textContent).toContain('PV / FV');
+    expect(breadcrumb.textContent).toContain('po SN');
+  });
+
+  it('breadcrumb stacji wywołuje onNavigateToStation gdy klikany', () => {
+    const onNavigateToStation = vi.fn();
+    render(
+      <DerConfigurator
+        derId="pv_xyz"
+        derKind="PV"
+        stationContext={{
+          stationId: 'station_001',
+          stationName: 'Stacja',
+          onNavigateToStation,
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('der-breadcrumb-station'));
+    expect(onNavigateToStation).toHaveBeenCalled();
+  });
+
+  it('różne kindy DER pokazują polskie etykiety w breadcrumb', () => {
+    const { rerender } = render(
+      <DerConfigurator
+        derId="x"
+        derKind="BESS"
+        stationContext={{ stationId: 's', stationName: 'S', connectionSide: 'nN' }}
+      />,
+    );
+    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('BESS');
+    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('po nN');
+
+    rerender(
+      <DerConfigurator
+        derId="x"
+        derKind="FW"
+        stationContext={{ stationId: 's', stationName: 'S', connectionSide: 'dedicated_transformer' }}
+      />,
+    );
+    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('Farma wiatrowa');
+    expect(screen.getByTestId('der-breadcrumb').textContent).toContain('transformator dedykowany');
   });
 });

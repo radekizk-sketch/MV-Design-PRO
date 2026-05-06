@@ -23,6 +23,8 @@ import { clsx } from 'clsx';
 import { useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
+import { CommandPalette } from '../network-build/CommandPalette';
+import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
@@ -123,20 +125,40 @@ export function AppShellV12({
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [contextCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
 
-  // Ctrl+K = globalne wyszukiwanie
+  // Ctrl+K = globalne wyszukiwanie ENM
+  // Ctrl+Shift+P = paleta komend (ekrany + akcje SLD + skróty)
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+      const meta = event.ctrlKey || event.metaKey;
+      if (meta && event.shiftKey && (event.key === 'P' || event.key === 'p')) {
+        event.preventDefault();
+        setCommandPaletteOpen((v) => !v);
+        return;
+      }
+      if (meta && event.key === 'k') {
         event.preventDefault();
         setGlobalSearchOpen((v) => !v);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Komendy z palety publikują custom event z informacją (np. wymagany kontekst).
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      if (typeof detail === 'string' && detail.length > 0) {
+        notify(detail, 'info');
+      }
+    };
+    window.addEventListener('mvdesignpro:command-palette-info', listener);
+    return () => window.removeEventListener('mvdesignpro:command-palette-info', listener);
   }, []);
 
   const isReadOnly = activeMode === 'RESULT_VIEW';
@@ -304,6 +326,42 @@ export function AppShellV12({
 
       {/* Modale */}
       <GlobalSearch isOpen={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        extraCommands={[
+          {
+            id: 'shortcut:open-enm-inspector',
+            label: 'Otwórz Inspektor modelu ENM',
+            description: 'Diagnostyka inżynierska modelu sieci.',
+            keywords: 'enm inspektor diagnostyka modelu sieci',
+            run: () => {
+              window.location.hash = '#enm-inspector';
+              setCommandPaletteOpen(false);
+            },
+          },
+          {
+            id: 'shortcut:open-fault-scenarios',
+            label: 'Scenariusze zwarciowe',
+            description: 'Zarządzaj scenariuszami zwarć i analiz.',
+            keywords: 'fault scenariusze zwarciowe zwarcia analizy',
+            run: () => {
+              window.location.hash = '#fault-scenarios';
+              setCommandPaletteOpen(false);
+            },
+          },
+          {
+            id: 'shortcut:open-dashboard',
+            label: 'Pulpit projektu',
+            description: 'Lista projektów + nowy projekt (E-00).',
+            keywords: 'pulpit dashboard projekt lista nowy',
+            run: () => {
+              window.location.hash = '#dashboard';
+              setCommandPaletteOpen(false);
+            },
+          },
+        ]}
+      />
       <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
       <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
     </div>
