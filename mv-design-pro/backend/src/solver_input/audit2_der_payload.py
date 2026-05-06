@@ -59,6 +59,8 @@ class StationAudit2Payload:
     mv_neutral_grounding: dict[str, Any] | None = None
     tap_changers: list[dict[str, Any]] = field(default_factory=list)
     der_payloads: list[DerAudit2Payload] = field(default_factory=list)
+    # Phase 22: per-transformer mapping (transformer_id -> tap_changer_dict).
+    transformer_to_tap_changer: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -66,6 +68,7 @@ class StationAudit2Payload:
             "mv_neutral_grounding": self.mv_neutral_grounding,
             "tap_changers": self.tap_changers,
             "der_payloads": [d.to_dict() for d in self.der_payloads],
+            "transformer_to_tap_changer": dict(self.transformer_to_tap_changer),
         }
 
 
@@ -143,6 +146,7 @@ def build_station_audit2_payload(
     mv_neutral_grounding_ref: str | None = None,
     tap_changer_refs: list[str] | None = None,
     der_specs: list[dict[str, Any]] | None = None,
+    transformer_tap_changers: dict[str, str] | None = None,
 ) -> StationAudit2Payload:
     """
     Buduje deterministyczny payload audytu 2 dla stacji + DERs.
@@ -151,6 +155,8 @@ def build_station_audit2_payload(
       - B.1: mv_neutral_grounding -> rozwija typ uziemienia (isolated/petersen/etc.)
       - eng.13: tap_changers -> rozwija przelaczniki zaczepow per transformator
       - delegacja do build_der_audit2_payload dla kazdego DER
+      - Phase 22: transformer_tap_changers (Dict[transformer_id, tap_changer_ref])
+        rozwijany do `transformer_to_tap_changer` mapping (id -> full dict).
     """
     issues_global: list[str] = []
 
@@ -172,6 +178,17 @@ def build_station_audit2_payload(
         else:
             tap_changers_payload.append(tc.to_dict())
 
+    # Phase 22: per-transformer mapping z DB konfiguracji.
+    tr_to_tc_payload: dict[str, dict[str, Any]] = {}
+    for tr_id, tc_ref in (transformer_tap_changers or {}).items():
+        if not tc_ref:
+            continue
+        tc = get_tap_changer(str(tc_ref))
+        if tc is None:
+            issues_global.append(f"Nieznany tap-changer dla {tr_id}: {tc_ref}")
+        else:
+            tr_to_tc_payload[str(tr_id)] = tc.to_dict()
+
     # DER payloads (delegacja).
     der_payloads: list[DerAudit2Payload] = []
     for spec in sorted(der_specs or [], key=lambda s: s.get("der_id", "")):
@@ -190,6 +207,7 @@ def build_station_audit2_payload(
         mv_neutral_grounding=grounding_payload,
         tap_changers=tap_changers_payload,
         der_payloads=der_payloads,
+        transformer_to_tap_changer=tr_to_tc_payload,
     )
 
     # Sklonuj issues_global do dict gdy zaszla potrzeba — uzywamy obiektu jak jest.
@@ -261,6 +279,10 @@ def extract_solver_extensions_from_payload(
         protection_extensions["frequency_protection_curves"] = pf_curves_aggregated
     if block_transformers_aggregated:
         sc_extensions["block_transformers"] = block_transformers_aggregated
+
+    # Phase 22: per-transformer mapping (transformer_id -> tap_changer dict).
+    if payload.transformer_to_tap_changer:
+        pf_extensions["transformer_to_tap_changer"] = dict(payload.transformer_to_tap_changer)
 
     return {
         "sc_iec60909_extensions": sc_extensions,

@@ -466,6 +466,7 @@ def build_solver_input(
             mv_neutral_grounding_ref=audit2_station_payload.get("mv_neutral_grounding_ref"),
             tap_changer_refs=audit2_station_payload.get("tap_changer_refs", []),
             der_specs=audit2_station_payload.get("der_specs", []),
+            transformer_tap_changers=audit2_station_payload.get("transformer_tap_changers"),
         )
         audit2_extensions = extract_solver_extensions_from_payload(ap)
 

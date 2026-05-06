@@ -159,37 +159,116 @@ def apply_audit2_to_network_model(
     *,
     graph: Any,  # NetworkGraph — uzywamy Any aby uniknac importu
     audit2_extensions: dict[str, Any] | None,
-) -> Any:
+) -> dict[str, Any]:
     """
     Aplikuje audit2 adjustments do graph (in-place WHERE applicable).
+    Zwraca dict opisujacy aplikowane zmiany (audit trail).
 
-    Wraz z `compute_audit2_adjustments`, pelna funkcja: audit2_extensions ->
-    adjustments -> mutated graph (gotowy dla solverow).
+    Phase 22: realna implementacja — uzywa
+    `audit2_extensions.power_flow_extensions.transformer_to_tap_changer`
+    (per-transformer mapping) zamiast heurystyki neutral-on-all.
 
-    NOT-A-SOLVER: ta funkcja NIE robi physics — tylko ustawia pola
-    network_model na podstawie catalogow.
+    NOT-A-SOLVER: funkcja mapuje audit2 -> network_model fields, brak physics.
     """
+    applied: dict[str, Any] = {
+        "tap_position_changes": {},
+        "block_transformer_z_changes": {},
+        "grounding_z0_z1_ratio": None,
+    }
+
     if audit2_extensions is None:
-        return graph
+        return applied
 
-    adjustments = compute_audit2_adjustments(audit2_extensions)
-    if adjustments.is_empty():
-        return graph
+    pf_ext = audit2_extensions.get("power_flow_extensions") or {}
+    sc_ext = audit2_extensions.get("sc_iec60909_extensions") or {}
 
-    # Tap-changer: ustaw transformer.tap_position dla transformerow w grafie.
-    # Mapowanie tr_id -> tap_changer wymaga zewnetrznego kontekstu (audit2 station config),
-    # tu stosujemy heurystyke: jesli graph ma transformer z type_ref pasujacym do
-    # applicable_to tap-changera, ustawiamy neutral position.
-    if hasattr(graph, "branches") and adjustments.tap_position_changes:
-        for branch in getattr(graph, "branches", {}).values():
-            if hasattr(branch, "tap_position") and hasattr(branch, "tap_position_neutral"):
-                # Default to neutral gdy mapping nieznany.
-                if getattr(branch, "tap_position", None) is None:
-                    branch.tap_position = getattr(branch, "tap_position_neutral", 0)
+    # 1. Tap-changer: per-transformer mapping z `transformer_to_tap_changer`.
+    tr_to_tc = pf_ext.get("transformer_to_tap_changer") or {}
+    branches = getattr(graph, "branches", None) or (graph.get("branches") if isinstance(graph, dict) else None) or {}
+    if isinstance(branches, dict):
+        branches_iter = branches.items()
+    else:
+        # Sometimes graph.branches is a list — try to extract by id.
+        branches_iter = [(getattr(b, "id", None) or getattr(b, "ref_id", None), b) for b in branches]
 
-    # Inne adjustments wymagaja zewnetrznego kontekstu (der_id mapping). W realnym
-    # pipeline, wrapper wywolujacy te funkcje przekazuje rownoczesnie graph + station
-    # config — wtedy mozna uzyc adjustments.bess_p_reserved_changes do modyfikacji
-    # source.p_max etc.
+    for tr_id, tc_dict in tr_to_tc.items():
+        # Try lookup by branch id, ref_id, or type_ref.
+        target_branch = None
+        for br_id, branch in branches_iter:
+            if br_id == tr_id:
+                target_branch = branch
+                break
+            if getattr(branch, "id", None) == tr_id:
+                target_branch = branch
+                break
+            if getattr(branch, "type_ref", None) == tr_id:
+                target_branch = branch
+                break
 
-    return graph
+        if target_branch is None:
+            continue
+        if not hasattr(target_branch, "tap_position"):
+            continue
+
+        # Ustaw tap_position na neutral_position z tap-changer dict.
+        new_pos = int(tc_dict.get("neutral_position", 0))
+        target_branch.tap_position = new_pos
+        # Ustaw tap_step_percent z tap-changer.step_percent.
+        if hasattr(target_branch, "tap_step_percent"):
+            target_branch.tap_step_percent = float(tc_dict.get("step_percent", 1.25))
+
+        applied["tap_position_changes"][str(tr_id)] = {
+            "new_tap_position": new_pos,
+            "step_percent": target_branch.tap_step_percent if hasattr(target_branch, "tap_step_percent") else None,
+            "tap_changer_id": tc_dict.get("id"),
+        }
+
+    # 2. Block transformer Z (per DER) — modyfikuje impedancje transformatora.
+    # Apply: dla kazdego DER z block-trafo, znajdz odpowiadajacy branch (trafo
+    # dedykowany) w grafie i ustaw uk_percent + pk_kw zgodnie z catalogiem.
+    for entry in sc_ext.get("block_transformers", []):
+        der_id = str(entry.get("der_id", ""))
+        trafo = entry.get("transformer") or {}
+        # Branch ID dla block-trafo: konwencja `tr_dedicated_{der_id}`.
+        target_branch_id = f"tr_dedicated_{der_id}"
+        target_branch = None
+        for br_id, branch in branches_iter:
+            if br_id == target_branch_id or getattr(branch, "id", None) == target_branch_id:
+                target_branch = branch
+                break
+        if target_branch is None:
+            continue
+        # Ustaw parametry transformatora z catalogu.
+        if hasattr(target_branch, "uk_percent"):
+            target_branch.uk_percent = float(trafo.get("uk_percent", target_branch.uk_percent))
+        if hasattr(target_branch, "pk_kw"):
+            target_branch.pk_kw = float(trafo.get("pk_kw", target_branch.pk_kw))
+        if hasattr(target_branch, "p0_kw"):
+            target_branch.p0_kw = float(trafo.get("p0_kw", target_branch.p0_kw))
+        if hasattr(target_branch, "i0_percent"):
+            target_branch.i0_percent = float(trafo.get("i0_percent", target_branch.i0_percent))
+
+        applied["block_transformer_z_changes"][der_id] = {
+            "branch_id": target_branch_id,
+            "uk_percent": trafo.get("uk_percent"),
+            "pk_kw": trafo.get("pk_kw"),
+        }
+
+    # 3. MV grounding -> Z0/Z1 ratio (audit trail).
+    grounding = sc_ext.get("mv_neutral_grounding") or {}
+    grounding_type = grounding.get("grounding_type") if isinstance(grounding, dict) else None
+    grounding_z0_z1_map = {
+        "isolated": 100.0,
+        "petersen_coil": 50.0,
+        "resistor_grounded": 5.0,
+        "directly_grounded": 1.0,
+    }
+    if grounding_type in grounding_z0_z1_map:
+        applied["grounding_z0_z1_ratio"] = grounding_z0_z1_map[grounding_type]
+        # Apply to graph if it has matching field.
+        if hasattr(graph, "z0_z1_ratio"):
+            graph.z0_z1_ratio = grounding_z0_z1_map[grounding_type]
+        elif isinstance(graph, dict):
+            graph["z0_z1_ratio"] = grounding_z0_z1_map[grounding_type]
+
+    return applied

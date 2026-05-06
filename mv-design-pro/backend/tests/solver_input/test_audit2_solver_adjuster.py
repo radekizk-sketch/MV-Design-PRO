@@ -98,17 +98,121 @@ def test_compute_adjustments_grounding_z0_z1_ratio_per_type():
 
 
 def test_apply_to_network_model_passes_through_when_no_extensions():
-    """Brak extensions -> graph bez zmian."""
+    """Brak extensions -> empty applied dict."""
     graph = {"branches": {}, "buses": {}}
-    result = apply_audit2_to_network_model(graph=graph, audit2_extensions=None)
-    assert result is graph
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=None)
+    assert applied == {
+        "tap_position_changes": {},
+        "block_transformer_z_changes": {},
+        "grounding_z0_z1_ratio": None,
+    }
 
 
 def test_apply_to_network_model_no_op_when_empty_adjustments():
-    """Empty extensions -> graph bez zmian."""
+    """Empty extensions -> nothing applied."""
     graph = {"branches": {}, "buses": {}}
-    result = apply_audit2_to_network_model(graph=graph, audit2_extensions={})
-    assert result is graph
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions={})
+    assert applied["tap_position_changes"] == {}
+    assert applied["block_transformer_z_changes"] == {}
+
+
+class _MockTransformerBranch:
+    """Minimal stub for TransformerBranch used in apply tests."""
+
+    def __init__(self, branch_id: str):
+        self.id = branch_id
+        self.tap_position = 5  # initial non-neutral
+        self.tap_step_percent = 2.5
+        self.uk_percent = 6.0
+        self.pk_kw = 24.0
+        self.p0_kw = 3.5
+        self.i0_percent = 0.4
+
+
+def test_apply_to_network_model_sets_tap_position_per_transformer():
+    """Phase 22: per-transformer mapping rzeczywiscie modyfikuje branch.tap_position."""
+
+    class _MockGraph:
+        def __init__(self):
+            self.branches = {
+                "tr_001": _MockTransformerBranch("tr_001"),
+                "tr_002": _MockTransformerBranch("tr_002"),
+            }
+
+    graph = _MockGraph()
+    extensions = {
+        "power_flow_extensions": {
+            "transformer_to_tap_changer": {
+                "tr_001": {
+                    "id": "tc_oltc_110sn_19_125",
+                    "neutral_position": 0,
+                    "step_percent": 1.25,
+                },
+                "tr_002": {
+                    "id": "tc_detc_snnn_5_25",
+                    "neutral_position": 0,
+                    "step_percent": 2.5,
+                },
+            },
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+
+    # tr_001 i tr_002 dostaja neutral position + nowy step_percent.
+    assert graph.branches["tr_001"].tap_position == 0
+    assert graph.branches["tr_001"].tap_step_percent == 1.25
+    assert graph.branches["tr_002"].tap_position == 0
+    assert graph.branches["tr_002"].tap_step_percent == 2.5
+    assert "tr_001" in applied["tap_position_changes"]
+    assert applied["tap_position_changes"]["tr_001"]["tap_changer_id"] == "tc_oltc_110sn_19_125"
+
+
+def test_apply_to_network_model_block_transformer_overrides_uk():
+    """Phase 22: block-trafo applied per DER (tr_dedicated_{der_id} convention)."""
+
+    class _MockGraph:
+        def __init__(self):
+            self.branches = {
+                "tr_dedicated_der_pv_001": _MockTransformerBranch("tr_dedicated_der_pv_001"),
+            }
+
+    graph = _MockGraph()
+    extensions = {
+        "sc_iec60909_extensions": {
+            "block_transformers": [
+                {
+                    "der_id": "der_pv_001",
+                    "transformer": {
+                        "id": "btr_pv_15_069_2500",
+                        "uk_percent": 6.5,  # changed from default 6.0
+                        "pk_kw": 25.0,
+                        "p0_kw": 3.6,
+                        "i0_percent": 0.42,
+                    },
+                }
+            ],
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+    branch = graph.branches["tr_dedicated_der_pv_001"]
+    assert branch.uk_percent == 6.5
+    assert branch.pk_kw == 25.0
+    assert branch.p0_kw == 3.6
+    assert "der_pv_001" in applied["block_transformer_z_changes"]
+
+
+def test_apply_to_network_model_grounding_z0_z1_recorded():
+    """Phase 22: grounding type -> Z0/Z1 ratio recorded in applied + on graph."""
+    graph = {"branches": {}}
+    extensions = {
+        "sc_iec60909_extensions": {
+            "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
+        },
+    }
+    applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+    assert applied["grounding_z0_z1_ratio"] == 50.0
+    # Dict graph dostaje field.
+    assert graph["z0_z1_ratio"] == 50.0
 
 
 def test_determinism_same_extensions_same_adjustments():

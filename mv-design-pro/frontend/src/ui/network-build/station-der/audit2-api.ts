@@ -107,6 +107,9 @@ export interface DerAudit2SpecBody {
   readonly bess_operation_mode_refs?: readonly string[] | null;
   readonly block_transformer_catalog_ref?: string | null;
   readonly pf_curve_ref?: string | null;
+  // Phase 23: real device + power.
+  readonly device_catalog_ref?: string | null;
+  readonly nominal_power_kw?: number | null;
 }
 
 export interface BayDeviceWithstandSpec {

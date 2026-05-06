@@ -35,6 +35,9 @@ class DerAudit2SpecPayload(BaseModel):
     bess_operation_mode_refs: list[str] | None = None
     block_transformer_catalog_ref: str | None = None
     pf_curve_ref: str | None = None
+    # Phase 23: real device + power persisted (nie wiecej median fallback).
+    device_catalog_ref: str | None = None
+    nominal_power_kw: float | None = None
 
 
 class BayDeviceWithstandSpec(BaseModel):
@@ -189,6 +192,84 @@ def delete_station_audit2_config(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.post("/{station_id}/_apply-to-network-model")
+def apply_audit2_to_network_model_endpoint(
+    project_id: UUID,
+    station_id: str,
+    uow_factory=Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """
+    Phase 26: aplikuje audit2 config (z DB) do dummy graph i zwraca audit trail
+    aplikowanych zmian. Sprawdza ze pelna petla dziala:
+      DB audit2 config -> build_station_audit2_payload ->
+      extract_solver_extensions -> apply_audit2_to_network_model -> applied dict.
+
+    Endpoint dla diagnostyki + integracji UI (uruchamia adjustment przed run'em).
+    """
+    from solver_input.audit2_der_payload import (
+        build_station_audit2_payload,
+        extract_solver_extensions_from_payload,
+    )
+    from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+
+    with uow_factory() as uow:
+        assert uow.session is not None
+        cfg = (
+            uow.session.query(StationAudit2ConfigORM)
+            .filter(
+                StationAudit2ConfigORM.project_id == project_id,
+                StationAudit2ConfigORM.station_id == station_id,
+            )
+            .one_or_none()
+        )
+        if cfg is None:
+            raise HTTPException(status_code=404, detail="Brak audit2 config")
+
+        payload = build_station_audit2_payload(
+            station_id=cfg.station_id,
+            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
+            tap_changer_refs=list(cfg.tap_changer_refs or []),
+            der_specs=list(cfg.der_specs or []),
+            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
+        )
+        extensions = extract_solver_extensions_from_payload(payload)
+
+        # Dummy graph z transformerami z config'u (do diagnostyki integracji).
+        class _DummyTr:
+            def __init__(self, tr_id: str):
+                self.id = tr_id
+                self.tap_position = 5  # pre-adjustment
+                self.tap_step_percent = 2.5
+                self.uk_percent = 6.0
+                self.pk_kw = 24.0
+                self.p0_kw = 3.5
+                self.i0_percent = 0.4
+
+        class _DummyGraph:
+            def __init__(self, tr_ids: list[str]):
+                self.branches = {tid: _DummyTr(tid) for tid in tr_ids}
+
+        graph = _DummyGraph(list((cfg.transformer_tap_changers or {}).keys()))
+        applied = apply_audit2_to_network_model(graph=graph, audit2_extensions=extensions)
+
+        # Zwracaj audit trail + post-adjustment branch state (snapshot dla frontendu).
+        return {
+            "project_id": str(project_id),
+            "station_id": station_id,
+            "applied": applied,
+            "extensions": extensions,
+            "post_adjustment_branches": {
+                tid: {
+                    "tap_position": br.tap_position,
+                    "tap_step_percent": br.tap_step_percent,
+                    "uk_percent": br.uk_percent,
+                    "pk_kw": br.pk_kw,
+                }
+                for tid, br in graph.branches.items()
+            },
+        }
+
+
 @router.post("/_validate-all")
 def validate_all_audit2(
     project_id: UUID,
@@ -227,16 +308,23 @@ def validate_all_audit2(
 
         for cfg in configs:
             proofs = []
-            # Phase 20: hosting capacity z realnych mocy DER (nie hardcoded 1MW).
+            # Phase 23: hosting capacity z realnych mocy DER. Priorytet:
+            # 1. spec["nominal_power_kw"] (jesli zapisane przy attach DER)
+            # 2. block_transformer.sn_kva (z catalogu)
+            # 3. estimate (median per kind) — ostatnia deska ratunku.
             if cfg.der_specs:
-                p_export_real = sum(
-                    estimate_der_power_kw(
-                        der_kind=str(spec.get("der_kind", "")),
-                        block_transformer_catalog_ref=spec.get("block_transformer_catalog_ref"),
-                    )
-                    for spec in cfg.der_specs
-                    if isinstance(spec, dict)
-                )
+                p_export_real = 0.0
+                for spec in cfg.der_specs:
+                    if not isinstance(spec, dict):
+                        continue
+                    real_p = spec.get("nominal_power_kw")
+                    if real_p is not None:
+                        p_export_real += float(real_p)
+                    else:
+                        p_export_real += estimate_der_power_kw(
+                            der_kind=str(spec.get("der_kind", "")),
+                            block_transformer_catalog_ref=spec.get("block_transformer_catalog_ref"),
+                        )
                 proofs.append(
                     generate_hosting_capacity_export_proof(
                         station_id=cfg.station_id,

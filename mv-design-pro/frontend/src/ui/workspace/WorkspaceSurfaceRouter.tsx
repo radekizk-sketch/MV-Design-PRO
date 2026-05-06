@@ -913,21 +913,20 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             disabled={!activeProjectId || audit2ProofPack.isPending}
             onClick={() => {
               const configs = audit2ConfigList.data ?? [];
-              // Phase 15: real power per DER kind (deterministic median z catalogu).
+              // Phase 23: real nominal_power_kw z spec (priorytet); median fallback.
               const estimatePowerKw = (kind: string): number => {
                 if (kind === 'PV') return 500;
                 if (kind === 'BESS') return 1000;
                 if (kind === 'FW') return 2300;
                 return 0;
               };
+              const realPower = (spec: { der_kind: string; nominal_power_kw?: number | null }): number =>
+                spec.nominal_power_kw ?? estimatePowerKw(spec.der_kind);
               audit2ProofPack.mutate({
                 station_id: configs[0]?.station_id ?? 'aggregate',
                 hosting_capacity_specs: configs.map((c) => ({
                   station_id: c.station_id,
-                  p_export_kw: c.der_specs.reduce(
-                    (sum: number, s) => sum + estimatePowerKw(s.der_kind),
-                    0,
-                  ),
+                  p_export_kw: c.der_specs.reduce((sum: number, s) => sum + realPower(s), 0),
                   p_import_kw: 0,
                 })),
                 generated_at_iso: '1970-01-01T00:00:00Z',
@@ -1847,19 +1846,22 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           onClick={() => {
             if (!projectId) return;
             const configs = stationConfigList.data ?? [];
-            // Phase 15: real power per DER kind (mediana z catalogu, nie hardcoded 1MW).
+            // Phase 23: priorytetowo real nominal_power_kw z DER spec (jak ustawione przez wizard).
+            // Fallback: median per kind (gdy spec nie ma power).
             const estimatePowerKw = (kind: string): number => {
               if (kind === 'PV') return 500;
               if (kind === 'BESS') return 1000;
               if (kind === 'FW') return 2300;
               return 0;
             };
+            const realPower = (spec: { der_kind: string; nominal_power_kw?: number | null }): number =>
+              spec.nominal_power_kw ?? estimatePowerKw(spec.der_kind);
             const hostingSpecs = configs
               .filter((c) => c.der_specs.length > 0)
               .map((c) => ({
                 station_id: c.station_id,
                 p_export_kw: c.der_specs.reduce(
-                  (sum: number, spec) => sum + estimatePowerKw(spec.der_kind),
+                  (sum: number, spec) => sum + realPower(spec),
                   0,
                 ),
                 p_import_kw: 0,

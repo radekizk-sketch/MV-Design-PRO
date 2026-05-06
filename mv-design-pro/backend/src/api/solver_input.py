@@ -148,6 +148,8 @@ async def get_solver_input(
                         "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
                         "tap_changer_refs": list(cfg.tap_changer_refs or []),
                         "der_specs": list(cfg.der_specs or []),
+                        # Phase 22: per-transformer mapping dla apply_audit2_to_network_model.
+                        "transformer_tap_changers": dict(cfg.transformer_tap_changers or {}),
                     }
 
     envelope = build_solver_input(

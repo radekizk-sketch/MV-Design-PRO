@@ -146,6 +146,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       bess_operation_mode_refs: d.profiles.bess_operation_mode_refs ?? [],
       block_transformer_catalog_ref: d.catalogs.block_transformer_catalog_ref ?? null,
       pf_curve_ref: d.profiles.pf_curve_ref ?? null,
+      // Phase 23: real device + nominal power (z catalogu, projekcja deterministic).
+      device_catalog_ref: d.catalogs.device_catalog_ref ?? null,
+      nominal_power_kw: d.nominal_power_kw,
     }));
     const currentDerSpecs = audit2Config.data.der_specs;
     // Compare by serialization — proste i deterministyczne.
