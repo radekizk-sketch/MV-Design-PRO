@@ -4,6 +4,10 @@
  * Karta 7 "Źródła i magazyny" jest pomostem do E-21/E-22/E-23: czyta
  * `useStationDerStore` aby pokazać DERy przypięte do tej stacji oraz
  * wywołuje `openRouteSurface('E-21'/'E-22'/'E-23')` z stationContext.
+ *
+ * Punkt 3 Phase 4: konfiguracja audytu 2 (mvNeutralGroundingRef etc.)
+ * pull-from-backend przez `useStationAudit2Config` + UPSERT przez
+ * `useUpdateStationAudit2Config` (React Query, optimistic updates).
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -12,7 +16,9 @@ import { useAppStateStore } from '../../app-state';
 import { StationConfigurator } from '../../network-build/station-configurator/StationConfigurator';
 import {
   AddDerWizard,
+  useStationAudit2Config,
   useStationDerStore,
+  useUpdateStationAudit2Config,
   selectDersOfStation,
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
@@ -26,17 +32,14 @@ interface StationConfiguratorSurfaceProps {
 }
 
 /**
- * Lokalne oznaczenia dla Pakietu H/G — dane konfiguracyjne stacji
- * trzymane w stanie Surface'u dopóki nie ma backendowej trwałości.
- * Po podłączeniu backendu: zmienić na pull-from-snapshot.
+ * Konfiguracja stacji audytu 2 — projekcja na potrzeby Surface.
+ *
+ * Punkt 3: dane plyną przez React Query z backendu (`station_audit2_configs`).
+ * Optimistic updates przez `useUpdateStationAudit2Config`.
  */
 interface StationLocalConfig {
   readonly mvNeutralGroundingRef: string | null;
 }
-
-const EMPTY_STATION_CONFIG: StationLocalConfig = {
-  mvNeutralGroundingRef: null,
-};
 
 /** Minimalne propsy konfiguratora — używane gdy brak danych snapshot. */
 function buildBaseStationProps(stationName: string, localConfig: StationLocalConfig) {
@@ -118,8 +121,44 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   const [pendingDetach, setPendingDetach] = useState<{ derId: string; name: string } | null>(null);
   const [wizardKind, setWizardKind] = useState<AddDerKindRequest | null>(null);
-  // Pakiet H: lokalna konfiguracja stacji (uziemienie neutralne).
-  const [localConfig, setLocalConfig] = useState<StationLocalConfig>(EMPTY_STATION_CONFIG);
+
+  // Punkt 3 Phase 4: pull konfiguracji audytu 2 z backendu (React Query).
+  const audit2Config = useStationAudit2Config(projectId, stationRef);
+  const updateAudit2Config = useUpdateStationAudit2Config();
+  const localConfig: StationLocalConfig = useMemo(
+    () => ({
+      mvNeutralGroundingRef: audit2Config.data?.mv_neutral_grounding_ref ?? null,
+    }),
+    [audit2Config.data?.mv_neutral_grounding_ref],
+  );
+
+  // Punkt 3 Phase 5: sync der_specs -> backend gdy DERs zmieniaja sie w lokalnym
+  // Zustand store. Zustand pozostaje dla SLD rendering (kompatybilnosc z istniejacym
+  // kodem); backend persystuje audit2-specific pola (BESS modes, block-trafo, P(f)).
+  useEffect(() => {
+    if (!projectId || !stationRef || !audit2Config.data) return;
+    const targetDerSpecs = ders.map((d) => ({
+      der_id: d.id,
+      der_kind: d.der_kind,
+      bess_operation_mode_refs: d.profiles.bess_operation_mode_refs ?? [],
+      block_transformer_catalog_ref: d.catalogs.block_transformer_catalog_ref ?? null,
+      pf_curve_ref: d.profiles.pf_curve_ref ?? null,
+    }));
+    const currentDerSpecs = audit2Config.data.der_specs;
+    // Compare by serialization — proste i deterministyczne.
+    if (JSON.stringify(targetDerSpecs) === JSON.stringify(currentDerSpecs)) return;
+    updateAudit2Config.mutate({
+      projectId,
+      stationId: stationRef,
+      body: {
+        mv_neutral_grounding_ref: audit2Config.data.mv_neutral_grounding_ref,
+        tap_changer_refs: audit2Config.data.tap_changer_refs,
+        der_specs: targetDerSpecs,
+      },
+    });
+    // Zalezne tylko od ders + station/project — `audit2Config.data` jest celem porownania.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ders, projectId, stationRef]);
 
   // Nasłuch event'a wystawianego przez DerSourcesCard.
   useEffect(() => {
@@ -207,13 +246,23 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
       ...base,
       basic: {
         ...base.basic,
-        // Pakiet H: onChange dla uziemienia neutralnego propaguje do localConfig.
+        // Punkt 3: onChange wywoluje PUT przez React Query mutation
+        // (optimistic update + invalidation po sukcesie).
         onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
+          if (!projectId || !stationRef) {
+            notify('Najpierw wybierz aktywny projekt i stację.', 'warning');
+            return;
+          }
           if ('mvNeutralGroundingRef' in changes) {
-            setLocalConfig((s) => ({
-              ...s,
-              mvNeutralGroundingRef: changes.mvNeutralGroundingRef ?? null,
-            }));
+            updateAudit2Config.mutate({
+              projectId,
+              stationId: stationRef,
+              body: {
+                mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null,
+                tap_changer_refs: audit2Config.data?.tap_changer_refs ?? [],
+                der_specs: audit2Config.data?.der_specs ?? [],
+              },
+            });
           }
         },
       },
@@ -226,7 +275,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onDetachDer: requestDetach,
       },
     };
-  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig]);
+  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, projectId, audit2Config.data, updateAudit2Config]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">

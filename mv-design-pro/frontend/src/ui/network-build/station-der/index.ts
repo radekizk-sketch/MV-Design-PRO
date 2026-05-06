@@ -9,5 +9,6 @@ export * from './protection-catalogs';
 export * from './readiness';
 export * from './selectivity-grading';
 export * from './audit2-api';
+export * from './audit2-hooks';
 export { AddDerWizard } from './AddDerWizard';
 export type { AddDerWizardProps } from './AddDerWizard';

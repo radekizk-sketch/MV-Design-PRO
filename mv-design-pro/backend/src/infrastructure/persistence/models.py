@@ -624,3 +624,40 @@ class DesignEvidenceORM(Base):
     snapshot_id: Mapped[str] = mapped_column(String(64), nullable=False)
     evidence_json: Mapped[dict[str, Any]] = mapped_column(DeterministicJSON(), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class StationAudit2ConfigORM(Base):
+    """
+    Audit2 Station Config ORM (Punkt 3 — Phase 2 backend integration).
+
+    Persystencja stanu audytu 2 per (project_id, station_id):
+    - mv_neutral_grounding_ref: B.1 typ uziemienia neutralnego SN
+    - tap_changer_refs: eng.13 lista przelacznikow zaczepow per transformator
+    - der_specs: lista DER z polami audit2 (BESS modes, block-trafo, P(f))
+
+    Schema: jeden row na (project_id, station_id) - UPSERT przez PUT.
+    """
+
+    __tablename__ = "station_audit2_configs"
+    __table_args__ = (
+        Index("ix_audit2_project_station", "project_id", "station_id", unique=True),
+    )
+
+    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
+    project_id: Mapped[UUID] = mapped_column(
+        GUID(), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    station_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    mv_neutral_grounding_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    tap_changer_refs: Mapped[list[Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
+    der_specs: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=list
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )

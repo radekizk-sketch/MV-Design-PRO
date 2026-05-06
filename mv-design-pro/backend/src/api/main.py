@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from api.analysis_runs import router as analysis_runs_router
 from api.audit2_catalogs import router as audit2_catalogs_router
+from api.audit2_station_config import router as audit2_station_config_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
 from api.diagnostics import router as diagnostics_router
@@ -93,6 +94,7 @@ register_exception_handlers(app)
 # Routers
 app.include_router(analysis_runs_router, prefix="/api")
 app.include_router(audit2_catalogs_router)
+app.include_router(audit2_station_config_router)
 app.include_router(catalog_router)
 app.include_router(comparison_router)
 app.include_router(diagnostics_router)

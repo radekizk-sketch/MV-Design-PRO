@@ -96,3 +96,85 @@ export async function validateHostingCapacityExportApi(args: {
     args,
   );
 }
+
+// =============================================================================
+// Station config persistence (Punkt 3 Phase 2)
+// =============================================================================
+
+export interface DerAudit2SpecBody {
+  readonly der_id: string;
+  readonly der_kind: 'PV' | 'BESS' | 'FW';
+  readonly bess_operation_mode_refs?: readonly string[] | null;
+  readonly block_transformer_catalog_ref?: string | null;
+  readonly pf_curve_ref?: string | null;
+}
+
+export interface StationAudit2ConfigBody {
+  readonly mv_neutral_grounding_ref: string | null;
+  readonly tap_changer_refs: readonly string[];
+  readonly der_specs: readonly DerAudit2SpecBody[];
+}
+
+export interface StationAudit2ConfigResponse extends StationAudit2ConfigBody {
+  readonly id: string;
+  readonly project_id: string;
+  readonly station_id: string;
+  readonly created_at: string | null;
+  readonly updated_at: string | null;
+}
+
+const STATION_CONFIG_BASE = '/api/v1/projects';
+
+export async function listStationAudit2Configs(
+  projectId: string,
+): Promise<readonly StationAudit2ConfigResponse[]> {
+  return getJson<readonly StationAudit2ConfigResponse[]>(
+    `${STATION_CONFIG_BASE}/${projectId}/audit2-station-config`,
+  );
+}
+
+export async function getStationAudit2Config(
+  projectId: string,
+  stationId: string,
+): Promise<StationAudit2ConfigResponse | null> {
+  const res = await fetch(
+    `${STATION_CONFIG_BASE}/${projectId}/audit2-station-config/${stationId}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new Error(`GET station config failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<StationAudit2ConfigResponse>;
+}
+
+export async function putStationAudit2Config(args: {
+  readonly projectId: string;
+  readonly stationId: string;
+  readonly body: StationAudit2ConfigBody;
+}): Promise<StationAudit2ConfigResponse> {
+  const res = await fetch(
+    `${STATION_CONFIG_BASE}/${args.projectId}/audit2-station-config/${args.stationId}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args.body),
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`PUT station config failed: ${res.status} ${res.statusText}`);
+  }
+  return res.json() as Promise<StationAudit2ConfigResponse>;
+}
+
+export async function deleteStationAudit2Config(args: {
+  readonly projectId: string;
+  readonly stationId: string;
+}): Promise<void> {
+  const res = await fetch(
+    `${STATION_CONFIG_BASE}/${args.projectId}/audit2-station-config/${args.stationId}`,
+    { method: 'DELETE' },
+  );
+  if (res.status !== 204 && res.status !== 404) {
+    throw new Error(`DELETE station config failed: ${res.status} ${res.statusText}`);
+  }
+}
