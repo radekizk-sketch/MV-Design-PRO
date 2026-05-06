@@ -690,9 +690,35 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       canNavigateAway: true,
     });
 
+  // Etap 9: status raportu zależny od readiness modelu i obecności run.
+  const readiness = useSnapshotStore((state) => state.readiness);
+  const reportStatus: 'gotowy' | 'czesciowy' | 'zablokowany' = (() => {
+    if (!activeRunId) return 'zablokowany';
+    if (!readiness?.ready) return 'czesciowy';
+    return 'gotowy';
+  })();
+  const reportStatusInfo: Record<typeof reportStatus, { label: string; tone: string }> = {
+    gotowy: { label: 'Raport gotowy', tone: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+    czesciowy: {
+      label: 'Wynik częściowy (uzupełnij brakujące dane)',
+      tone: 'bg-amber-100 text-amber-800 border-amber-300',
+    },
+    zablokowany: {
+      label: 'Raport zablokowany — uruchom obliczenia',
+      tone: 'bg-rose-100 text-rose-800 border-rose-300',
+    },
+  };
+
   return (
-    <div className="space-y-4">
+    <div data-testid="report-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
+      <div
+        data-testid="report-status"
+        data-report-status={reportStatus}
+        className={`rounded border px-4 py-3 text-sm font-medium ${reportStatusInfo[reportStatus].tone}`}
+      >
+        {reportStatusInfo[reportStatus].label}
+      </div>
       <SectionCard title="Konfiguracja raportu" eyebrow="Raport">
         <div className="grid gap-4 xl:grid-cols-[minmax(260px,320px)_1fr]">
           <div className="space-y-4">
@@ -708,16 +734,16 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2"
               >
-                <option value="siec">Cala siec</option>
-                <option value="ciag">Wybrany ciag</option>
+                <option value="siec">Cała sieć</option>
+                <option value="ciag">Wybrany ciąg</option>
                 <option value="stacja">Wybrana stacja</option>
                 <option value="pole">Wybrane pole</option>
-                <option value="zrodlo">Wybrane zrodlo</option>
+                <option value="zrodlo">Wybrane źródło</option>
               </select>
             </label>
             <label className="block text-sm text-slate-700">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-                Szczegolowosc
+                Szczegółowość
               </span>
               <select
                 value={detailLevel}
@@ -728,7 +754,7 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 className="w-full rounded-lg border border-slate-200 px-3 py-2"
               >
                 <option value="standard">Standardowa</option>
-                <option value="pelny">Pelna techniczna</option>
+                <option value="pelny">Pełna techniczna</option>
               </select>
             </label>
             <button
@@ -736,19 +762,28 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               onClick={saveDraft}
               className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
             >
-              Zapisz konfiguracje raportu
+              Zapisz konfigurację raportu
             </button>
+            <div className="space-y-1 border-t border-slate-200 pt-3">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                Eksport
+              </div>
+              <ExportButton format="PDF" enabled={reportStatus === 'gotowy'} />
+              <ExportButton format="DOCX" enabled={reportStatus === 'gotowy'} />
+              <ExportButton format="JSON" enabled={reportStatus !== 'zablokowany'} />
+              <ExportButton format="LaTeX" enabled={reportStatus !== 'zablokowany'} />
+            </div>
           </div>
 
           <div className="space-y-4">
             <KeyValueGrid
               rows={[
                 { label: 'Projekt', value: activeProjectName ?? 'Brak projektu' },
-                { label: 'Wariant', value: activeCaseName ?? 'Brak przypadku' },
-                { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
+                { label: 'Zakres i warunki', value: activeCaseName ?? 'Brak zakresu obliczeń' },
+                { label: 'Ostatnie obliczenie', value: activeRunId ?? 'Brak aktywnego obliczenia' },
                 { label: 'Tryb zapisu', value: session?.saveMode ?? 'transakcyjny' },
-                { label: 'Zakres', value: scope },
-                { label: 'Szczegolowosc', value: detailLevel },
+                { label: 'Zakres raportu', value: scope },
+                { label: 'Szczegółowość', value: detailLevel },
               ]}
               columns={3}
             />
@@ -1343,18 +1378,54 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 }
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const activeRunId = useAppStateStore((state) => state.activeRunId);
   return (
-    <div className="space-y-4">
+    <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
+      <SectionCard
+        title="Uzasadnienie inżynierskie obliczeń"
+        eyebrow="E-36 · Proof Pack"
+      >
+        <p className="text-sm text-slate-700">
+          Pakiet uzasadnień inżynierskich (Proof Pack) zawiera matematyczny ślad
+          obliczeń: wzory IEC/PN-EN, dane wejściowe, podstawienia, wyniki kroków
+          i jednostki. Każdy krok ma postać:{' '}
+          <strong>Wzór → Dane → Podstawienie → Wynik → Sprawdzenie jednostek</strong>.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-2 text-xs md:grid-cols-2 xl:grid-cols-3">
+          <KeyValue label="Aktywne uruchomienie" value={activeRunId ?? 'Brak'} />
+          <KeyValue label="Zakres" value={String(surface.entityRef ?? 'Cała sieć')} />
+          <KeyValue label="Format eksportu" value="JSON · LaTeX · PDF · DOCX" />
+        </div>
+      </SectionCard>
+      <SectionCard title="Dostępne paczki uzasadnień" eyebrow="Lista 12 typów">
+        <div data-testid="proof-pack-list" className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {PROOF_PACK_TYPES.map((pt) => (
+            <div
+              key={pt.id}
+              data-testid={`proof-pack-${pt.id}`}
+              className="rounded border border-slate-200 bg-white p-3"
+            >
+              <div className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                {pt.id}
+              </div>
+              <div className="mt-1 text-sm font-medium text-slate-800">
+                {pt.labelPl}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">{pt.descriptionPl}</div>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
       <AnalysisContractPanel
         surface={surface}
-        title="Uzasadnienie inzynierskie"
-        eyebrow="Uzasadnienie"
-        focusTitle="Slad obliczen"
+        title="Ślad obliczeń"
+        eyebrow="Lineage"
+        focusTitle="Reprodukowalność"
         focusRowsBuilder={(contract) => [
           { label: 'Identyfikator wyniku', value: formatContractValue(contract.id) },
           { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-          { label: 'Waznosc wyniku', value: formatContractValue(contract.resultsValid) },
+          { label: 'Ważność wyniku', value: formatContractValue(contract.resultsValid) },
           { label: 'Wersja modelu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
           { label: 'Wersja katalogu', value: formatContractValue(contract.analysisCaseContext?.reproducibility?.catalogSnapshotRef) },
         ]}
@@ -1363,6 +1434,102 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         showReproducibility
       />
     </div>
+  );
+}
+
+const PROOF_PACK_TYPES = [
+  {
+    id: 'SC3F_IEC60909',
+    labelPl: 'Zwarcie 3-fazowe',
+    descriptionPl: 'IEC 60909, Ik″/ip/Ith z śladem Y-bus + Z-thevenin.',
+  },
+  {
+    id: 'SC1F_IEC60909',
+    labelPl: 'Zwarcie 1-fazowe (doziemne)',
+    descriptionPl: 'IEC 60909-3 składowe symetryczne.',
+  },
+  {
+    id: 'SC2F_IEC60909',
+    labelPl: 'Zwarcie 2-fazowe',
+    descriptionPl: 'IEC 60909, międzyfazowe bez ziemi.',
+  },
+  {
+    id: 'SC2FG_IEC60909',
+    labelPl: 'Zwarcie 2-fazowe z ziemią',
+    descriptionPl: 'IEC 60909, międzyfazowe z udziałem ziemi.',
+  },
+  {
+    id: 'VDROP',
+    labelPl: 'Spadek napięcia',
+    descriptionPl: 'ΔU% wzdłuż ciągu — IEC 60364.',
+  },
+  {
+    id: 'LOAD_FLOW_VOLTAGE',
+    labelPl: 'Napięcia rozpływowe',
+    descriptionPl: 'Profile U(s) z Newton-Raphson power flow.',
+  },
+  {
+    id: 'Q_U_REGULATION',
+    labelPl: 'Regulacja Q(U)',
+    descriptionPl: 'Charakterystyka Q(U) źródeł OZE — NC RfG.',
+  },
+  {
+    id: 'EQUIPMENT_PROOF',
+    labelPl: 'Dowód aparatury',
+    descriptionPl: 'Termiczna i dynamiczna obciążalność znamionowa.',
+  },
+  {
+    id: 'LOAD_CURRENTS_OVERLOAD',
+    labelPl: 'Prądy obciążenia',
+    descriptionPl: 'Idd vs. obciążenie obliczone — przekroczenia.',
+  },
+  {
+    id: 'LOSSES_ENERGY',
+    labelPl: 'Straty i bilans energii',
+    descriptionPl: 'P_loss/Q_loss + bilans energii roczny.',
+  },
+  {
+    id: 'PROTECTION_OVERCURRENT',
+    labelPl: 'Zabezpieczenia nadprądowe',
+    descriptionPl: 'IEC 60255 IDMT + selektywność (margines numeryczny).',
+  },
+  {
+    id: 'EARTHING_GROUND_FAULT_SN',
+    labelPl: 'Tor ziemnozwarciowy',
+    descriptionPl: 'Prądy ziemnozwarciowe w sieci SN izolowanej/skompensowanej.',
+  },
+];
+
+function KeyValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border border-slate-200 bg-white p-2">
+      <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-medium text-slate-800">{value}</div>
+    </div>
+  );
+}
+
+function ExportButton({ format, enabled }: { format: string; enabled: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={!enabled}
+      data-testid={`report-export-${format.toLowerCase()}`}
+      title={!enabled ? 'Eksport zablokowany — uzupełnij dane modelu i uruchom obliczenia.' : `Eksportuj raport do formatu ${format}`}
+      className={
+        'flex w-full items-center justify-between rounded-lg border px-3 py-1.5 text-xs '
+        + (enabled
+          ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+          : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400')
+      }
+    >
+      <span>Eksport {format}</span>
+      <span className="text-[10px] text-slate-500">
+        {enabled ? '↓' : '🔒'}
+      </span>
+    </button>
   );
 }
 
