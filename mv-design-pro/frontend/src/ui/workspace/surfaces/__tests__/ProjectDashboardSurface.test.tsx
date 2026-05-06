@@ -39,7 +39,7 @@ describe('ProjectDashboardSurface — pulpit projektu E-00', () => {
 
   it('renderuje listę projektów i pozwala otworzyć projekt', async () => {
     const project = {
-      id: 'p1',
+      id: 'projekt-testowy-001',
       name: 'Sieć SN Gmina Test',
       description: 'Sieć testowa do walidacji',
       created_at: '2026-04-01T00:00:00Z',
@@ -57,7 +57,7 @@ describe('ProjectDashboardSurface — pulpit projektu E-00', () => {
     const openBtn = screen.getByTestId(`dashboard-open-${project.id}`);
     fireEvent.click(openBtn);
 
-    expect(useAppStateStore.getState().activeProjectId).toBe('p1');
+    expect(useAppStateStore.getState().activeProjectId).toBe('projekt-testowy-001');
     expect(useAppStateStore.getState().activeProjectName).toBe('Sieć SN Gmina Test');
     expect(window.location.hash).toBe('#sld');
   });

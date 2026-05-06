@@ -103,7 +103,20 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
         branches: [],
         sources: [],
         loads: [],
-        substations: [],
+        substations: [
+          // Po Iteracji 11 isEmpty bazuje na wyniku adaptera; dodajemy GPZ
+          // żeby adapter wyprodukował niepusty SldDataPayload.
+          {
+            id: 'gpz_1',
+            ref_id: 'gpz_1',
+            name: 'GPZ-1',
+            tags: [],
+            meta: {},
+            station_type: 'gpz',
+            bus_refs: ['bus_1'],
+            transformer_refs: [],
+          } as never,
+        ],
         bays: [],
         terminals: [],
         line_runs: [],
