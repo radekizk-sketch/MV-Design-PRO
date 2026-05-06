@@ -11,6 +11,12 @@ import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
 import type { ProtectionCurve, FaultMarker, CurvePoint } from '../protection-curves/types';
+import {
+  exportReport,
+  exportProofPack,
+  type ReportExportFormat,
+} from '../results/reportExportApi';
+import { notify } from '../notifications/store';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -771,10 +777,10 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
                 Eksport
               </div>
-              <ExportButton format="PDF" enabled={reportStatus === 'gotowy'} />
-              <ExportButton format="DOCX" enabled={reportStatus === 'gotowy'} />
-              <ExportButton format="JSON" enabled={reportStatus !== 'zablokowany'} />
-              <ExportButton format="LaTeX" enabled={reportStatus !== 'zablokowany'} />
+              <ExportButton format="PDF" enabled={reportStatus === 'gotowy'} runId={activeRunId} kind="report" />
+              <ExportButton format="DOCX" enabled={reportStatus === 'gotowy'} runId={activeRunId} kind="report" />
+              <ExportButton format="JSON" enabled={reportStatus !== 'zablokowany'} runId={activeRunId} kind="report" />
+              <ExportButton format="LaTeX" enabled={reportStatus !== 'zablokowany'} runId={activeRunId} kind="proof" />
             </div>
           </div>
 
@@ -1632,23 +1638,70 @@ function KeyValue({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ExportButton({ format, enabled }: { format: string; enabled: boolean }) {
+function ExportButton({
+  format,
+  enabled,
+  runId,
+  kind = 'report',
+}: {
+  format: string;
+  enabled: boolean;
+  runId: string | null;
+  kind?: 'report' | 'proof';
+}) {
+  const [busy, setBusy] = useState(false);
+  const handleClick = async () => {
+    if (!enabled || !runId || busy) return;
+    setBusy(true);
+    try {
+      const fmt = format.toLowerCase();
+      let outcome;
+      if (kind === 'proof') {
+        if (fmt !== 'pdf' && fmt !== 'latex' && fmt !== 'json') {
+          notify(`Format ${format} nie jest obsługiwany dla uzasadnienia inżynierskiego.`, 'warning');
+          return;
+        }
+        outcome = await exportProofPack(runId, fmt as 'pdf' | 'latex' | 'json');
+      } else {
+        if (fmt !== 'pdf' && fmt !== 'docx' && fmt !== 'json' && fmt !== 'xlsx') {
+          notify(`Format ${format} nie jest obsługiwany dla raportu.`, 'warning');
+          return;
+        }
+        outcome = await exportReport(runId, fmt as ReportExportFormat);
+      }
+      if (outcome.ok) {
+        notify(`Pobrano: ${outcome.filename}`, 'success');
+      } else {
+        notify(outcome.error, 'error');
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const tooltip = !enabled
+    ? 'Eksport zablokowany — uzupełnij dane modelu i uruchom obliczenia.'
+    : !runId
+      ? 'Brak aktywnego obliczenia.'
+      : `Eksportuj ${kind === 'proof' ? 'uzasadnienie' : 'raport'} do formatu ${format}`;
+
   return (
     <button
       type="button"
-      disabled={!enabled}
-      data-testid={`report-export-${format.toLowerCase()}`}
-      title={!enabled ? 'Eksport zablokowany — uzupełnij dane modelu i uruchom obliczenia.' : `Eksportuj raport do formatu ${format}`}
+      disabled={!enabled || !runId || busy}
+      onClick={handleClick}
+      data-testid={`${kind === 'proof' ? 'proof' : 'report'}-export-${format.toLowerCase()}`}
+      title={tooltip}
       className={
         'flex w-full items-center justify-between rounded-lg border px-3 py-1.5 text-xs '
-        + (enabled
+        + (enabled && runId
           ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
           : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400')
       }
     >
-      <span>Eksport {format}</span>
+      <span>{busy ? 'Pobieranie...' : `Eksport ${format}`}</span>
       <span className="text-[10px] text-slate-500">
-        {enabled ? '↓' : '🔒'}
+        {enabled && runId ? '↓' : '🔒'}
       </span>
     </button>
   );
