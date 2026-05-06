@@ -55,7 +55,9 @@ function buildBaseStationProps(stationName: string) {
     },
     bays: { bays: [] },
     transformer: { transformers: [], availableLvVoltages: [0.4] },
-    nnSwitchgear: { switchgears: [] },
+    // Karta 6 "Strona nN i poziomy napięć" zawiera rozdzielnice nN +
+    // sekcję "Odbiory nN" — niezbędną dla Power Flow i VDROP.
+    nnSwitchgear: { switchgears: [], loads: [] },
     protection: {
       relays: [],
       automation: [],
