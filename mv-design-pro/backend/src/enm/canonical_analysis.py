@@ -787,6 +787,19 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
     short_circuit_type = _short_circuit_type_from_options(run.options)
+
+    # Phase 43: opt-in audit2 dla SC. Grounding Z0/Z1 wplywa na Z0_bus oraz
+    # block-trafo Z wplywa na fault current contribution. Aplikuje przed
+    # build_zero_sequence_zbus.
+    audit2_extensions_sc = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    if audit2_extensions_sc is not None:
+        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+
+        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
+
     z0_bus = (
         build_zero_sequence_zbus(enm, graph)
         if _short_circuit_requires_z0(short_circuit_type)
