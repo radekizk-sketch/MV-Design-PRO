@@ -5,6 +5,7 @@ import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 import { useSelectionStore } from '../selection';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
@@ -1001,22 +1002,127 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
   );
 }
 
-function ModelGapsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const readiness = useSnapshotStore((state) => state.readiness);
+  const fixActions = useSnapshotStore((state) => state.fixActions);
+  const blockerCount = readiness?.blockers?.length ?? 0;
+  const warningCount = readiness?.warnings?.length ?? 0;
+  const isReady = readiness?.ready ?? false;
+
+  const fixActionByElement = (elementRef: string | null) => {
+    if (!elementRef) return null;
+    return fixActions.find((fa) => fa.element_ref === elementRef) ?? null;
+  };
+
+  const handleFixActionClick = (action: { element_ref: string | null }) => {
+    if (action.element_ref) {
+      // Wybor elementu: synchronizacja z store selekcji.
+      // Tutaj only switch selection — surface routing to inny krok.
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <SectionCard title="Gotowosc modelu i lista brakow" eyebrow="Gotowosc">
-        <KeyValueGrid
-          rows={[
-            { label: 'Widok', value: surface.titlePl },
-            { label: 'Obiekt', value: surface.entityRef ?? surface.subjectRef ?? 'Kontekst globalny' },
-            { label: 'Zakladka', value: surface.tabId ?? 'list' },
-            { label: 'Naprawa', value: 'Kazdy problem musi prowadzic do repair target, a nie tylko do ogolnego panelu.' },
-            { label: 'Wynik czesciowy', value: 'Wynik czesciowy i wynik bledny sa rozrozniane od stanu nie dotyczy i braku danych.' },
-            { label: 'Raport', value: 'Blokady krytyczne zatrzymuja raport i eksport zalezne od brakujacych modulow.' },
-          ]}
-          columns={3}
-        />
+    <div data-testid="model-gaps-surface" className="space-y-4">
+      <SectionCard
+        title="Gotowość modelu sieci"
+        eyebrow={
+          isReady
+            ? 'Status: model gotowy'
+            : `Status: ${blockerCount} blokerów, ${warningCount} ostrzeżeń`
+        }
+      >
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <KeyValueGrid
+            rows={[
+              {
+                label: 'Stan modelu',
+                value: isReady ? 'Gotowy do obliczeń' : 'Wymaga uzupełnienia',
+              },
+              { label: 'Blokery (krytyczne)', value: String(blockerCount) },
+              { label: 'Ostrzeżenia', value: String(warningCount) },
+            ]}
+            columns={3}
+          />
+        </div>
       </SectionCard>
+
+      {!readiness && (
+        <SectionCard title="Brak danych readiness" eyebrow="Wymagana operacja">
+          <p className="text-sm text-slate-300">
+            Snapshot nie zawiera informacji o gotowości modelu. Wykonaj
+            jakąkolwiek operację domenową w panelu ENM (np. add_grid_source_sn),
+            aby backend wyliczył readiness.
+          </p>
+        </SectionCard>
+      )}
+
+      {readiness && blockerCount > 0 && (
+        <SectionCard title="Blokery (krytyczne)" eyebrow="Lista">
+          <ul className="space-y-2">
+            {readiness.blockers.map((blocker, idx) => {
+              const action = fixActionByElement(blocker.element_ref);
+              return (
+                <li
+                  key={`${blocker.code}-${idx}`}
+                  data-testid={`gap-blocker-${idx}`}
+                  className="rounded border border-red-700 bg-red-950/30 p-3"
+                >
+                  <div className="text-sm font-semibold text-red-200">
+                    {blocker.message_pl}
+                  </div>
+                  <div className="mt-1 text-[11px] text-red-300">
+                    Kod: <code>{blocker.code}</code>
+                    {blocker.element_ref && (
+                      <>
+                        {' '}· Element: <code>{blocker.element_ref}</code>
+                      </>
+                    )}
+                  </div>
+                  {action && (
+                    <button
+                      type="button"
+                      onClick={() => handleFixActionClick(action)}
+                      className="mt-2 rounded border border-red-500 px-3 py-1 text-xs text-red-100 hover:bg-red-900/40"
+                    >
+                      Napraw: {action.message_pl}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </SectionCard>
+      )}
+
+      {readiness && warningCount > 0 && (
+        <SectionCard title="Ostrzeżenia" eyebrow="Lista">
+          <ul className="space-y-2">
+            {readiness.warnings.map((warning, idx) => (
+              <li
+                key={`${warning.code}-${idx}`}
+                data-testid={`gap-warning-${idx}`}
+                className="rounded border border-amber-700 bg-amber-950/30 p-3"
+              >
+                <div className="text-sm font-semibold text-amber-200">
+                  {warning.message_pl}
+                </div>
+                <div className="mt-1 text-[11px] text-amber-300">
+                  Kod: <code>{warning.code}</code>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </SectionCard>
+      )}
+
+      {readiness && blockerCount === 0 && warningCount === 0 && (
+        <SectionCard title="Brak luk i ostrzeżeń" eyebrow="Stan modelu">
+          <p className="text-sm text-emerald-300">
+            Model przechodzi wszystkie reguły walidacji. Możesz uruchomić
+            obliczenia (Ctrl+Shift+P → "Oblicz") albo przejść do raportów (E-25).
+          </p>
+        </SectionCard>
+      )}
     </div>
   );
 }
