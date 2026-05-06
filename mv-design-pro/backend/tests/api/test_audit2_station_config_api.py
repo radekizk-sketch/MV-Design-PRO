@@ -216,6 +216,78 @@ def test_aggregate_loads_per_station_helper_no_snapshot(app_client):
     assert result == {}
 
 
+def test_aggregate_loads_or_chain_zero_value_bug_fix():
+    """Phase 51: explicit None check (or-chain z 0 nie psuje wyniku)."""
+    from uuid import UUID
+    from unittest.mock import MagicMock
+    from api.audit2_station_config import _aggregate_loads_per_station_for_project
+
+    # Mock UoW z snapshot zawierajacym load z p=0.
+    mock_uow = MagicMock()
+    mock_session = MagicMock()
+    mock_uow.session = mock_session
+
+    from infrastructure.persistence.models import ProjectORM
+
+    project = MagicMock(spec=ProjectORM)
+    project.active_network_snapshot_id = "snap-1"
+    mock_session.query.return_value.filter.return_value.one_or_none.return_value = project
+
+    # Mock snapshot z 1 load p=0.
+    class _MockLoad:
+        def __init__(self, station, p):
+            self.station_ref = station
+            self.nominal_power_kw = p
+
+    mock_snapshot = MagicMock()
+    mock_snapshot.graph.loads = {"l1": _MockLoad("st-1", 0.0)}  # p=0!
+    mock_uow.snapshots = MagicMock()
+    mock_uow.snapshots.get_snapshot.return_value = mock_snapshot
+
+    result = _aggregate_loads_per_station_for_project(
+        uow=mock_uow, project_id=UUID("00000000-0000-0000-0000-000000000001")
+    )
+    # Bug fix: load z p=0 zostaje uwzgledniony (nie pomijany przez or-chain).
+    assert result == {"st-1": 0.0}
+
+
+def test_aggregate_loads_p_mw_conversion():
+    """Phase 51: p_mw -> kW conversion (* 1000)."""
+    from uuid import UUID
+    from unittest.mock import MagicMock
+    from api.audit2_station_config import _aggregate_loads_per_station_for_project
+
+    mock_uow = MagicMock()
+    mock_session = MagicMock()
+    mock_uow.session = mock_session
+
+    from infrastructure.persistence.models import ProjectORM
+
+    project = MagicMock(spec=ProjectORM)
+    project.active_network_snapshot_id = "snap-1"
+    mock_session.query.return_value.filter.return_value.one_or_none.return_value = project
+
+    class _MockLoad:
+        def __init__(self, station, p_mw):
+            self.station_ref = station
+            # Brak nominal_power_kw / p_kw, tylko p_mw.
+            self.p_mw = p_mw
+
+    mock_snapshot = MagicMock()
+    mock_snapshot.graph.loads = [
+        _MockLoad("st-A", 1.5),  # 1.5 MW = 1500 kW
+        _MockLoad("st-A", 0.5),  # 0.5 MW = 500 kW (dodaje sie do A: 2000)
+        _MockLoad("st-B", 2.0),  # 2.0 MW = 2000 kW
+    ]
+    mock_uow.snapshots = MagicMock()
+    mock_uow.snapshots.get_snapshot.return_value = mock_snapshot
+
+    result = _aggregate_loads_per_station_for_project(
+        uow=mock_uow, project_id=UUID("00000000-0000-0000-0000-000000000001")
+    )
+    assert result == {"st-A": 2000.0, "st-B": 2000.0}
+
+
 def test_validate_all_returns_pack_per_station(app_client):
     """Phase 13: POST /_validate-all zwraca proof pack per stacja."""
     pid = _create_project(app_client)

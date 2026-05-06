@@ -94,31 +94,45 @@ def _aggregate_loads_per_station_for_project(*, uow, project_id: UUID) -> dict[s
 
     for load in loads_iter:
         # Load model moze miec rozne pola: nominal_power_kw / p_kw / station_ref / node_id.
-        station_ref = (
-            getattr(load, "station_ref", None)
-            or getattr(load, "station_id", None)
-            or getattr(load, "node_id", None)
-        )
+        # Phase 51: explicit None check (or-chain treat 0 jako falsy bug fix).
+        station_ref = getattr(load, "station_ref", None)
+        if station_ref is None:
+            station_ref = getattr(load, "station_id", None)
+        if station_ref is None:
+            station_ref = getattr(load, "node_id", None)
         if not station_ref:
             continue
-        p_kw = (
-            getattr(load, "nominal_power_kw", None)
-            or getattr(load, "p_kw", None)
-            or getattr(load, "p_mw", None)
-        )
-        if p_kw is None:
+
+        # Phase 51: explicit per-field check + jednostka detection.
+        # nominal_power_kw / p_kw -> juz w kW (no conversion).
+        # p_mw -> konwersja * 1000.
+        p_kw_value: float | None = None
+        if hasattr(load, "nominal_power_kw"):
+            v = getattr(load, "nominal_power_kw")
+            if v is not None:
+                try:
+                    p_kw_value = float(v)
+                except (TypeError, ValueError):
+                    p_kw_value = None
+        if p_kw_value is None and hasattr(load, "p_kw"):
+            v = getattr(load, "p_kw")
+            if v is not None:
+                try:
+                    p_kw_value = float(v)
+                except (TypeError, ValueError):
+                    p_kw_value = None
+        if p_kw_value is None and hasattr(load, "p_mw"):
+            v = getattr(load, "p_mw")
+            if v is not None:
+                try:
+                    p_kw_value = float(v) * 1000.0  # MW -> kW
+                except (TypeError, ValueError):
+                    p_kw_value = None
+        if p_kw_value is None:
             continue
-        try:
-            p_kw_float = float(p_kw)
-            # Konwersja MW->kW gdy widac niska wartosc.
-            if hasattr(load, "p_mw") and not hasattr(load, "p_kw") and not hasattr(
-                load, "nominal_power_kw"
-            ):
-                p_kw_float = p_kw_float * 1000
-        except (TypeError, ValueError):
-            continue
+
         loads_per_station[str(station_ref)] = (
-            loads_per_station.get(str(station_ref), 0.0) + p_kw_float
+            loads_per_station.get(str(station_ref), 0.0) + p_kw_value
         )
 
     return loads_per_station

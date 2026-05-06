@@ -198,6 +198,78 @@ def test_audit2_power_flow_endpoint_full_apply_trail(app_client):
     assert body["audit2_applied"].get("grounding_z0_z1_ratio") == 100.0
 
 
+def test_get_solver_input_with_audit2_query_params_populates_extensions(app_client):
+    """
+    Phase 52: GET /api/cases/{cid}/analysis/solver-input/{type}?project_id=&station_id=
+    weryfikuje ze audit2_extensions jest faktycznie populated z DB w response body
+    (nie tylko smoke status check).
+
+    Trick: case_id moze byc fake (graph stub returns empty), ale audit2_extensions
+    powinien byc populated jezeli project_id + station_id wskazuja real config.
+    """
+    pid = _create_project(app_client)
+    _create_audit2_config(
+        app_client,
+        pid,
+        "station-real-test",
+        {
+            "mv_neutral_grounding_ref": "mng_petersen",
+            "tap_changer_refs": [],
+            "der_specs": [],
+            "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
+            "bay_hv_fuses": {},
+            "bay_vts": {},
+            "bay_device_withstand": {},
+        },
+    )
+    # GET solver-input z audit2 params. Case_id "case-fake" -> empty graph stub,
+    # ale audit2_extensions powinno byc populated.
+    res = app_client.get(
+        f"/api/cases/case-fake/analysis/solver-input/short_circuit_3f"
+        f"?project_id={pid}&station_id=station-real-test"
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    # Phase 52: audit2_extensions populated z DB.
+    assert body["audit2_extensions"] is not None, "audit2_extensions should be populated"
+    assert "power_flow_extensions" in body["audit2_extensions"]
+    assert "sc_iec60909_extensions" in body["audit2_extensions"]
+    # Per-transformer mapping w extensions.
+    assert (
+        "transformer_to_tap_changer"
+        in body["audit2_extensions"]["power_flow_extensions"]
+    )
+    assert (
+        "tr_001"
+        in body["audit2_extensions"]["power_flow_extensions"]["transformer_to_tap_changer"]
+    )
+    # Grounding type.
+    grounding = body["audit2_extensions"]["sc_iec60909_extensions"]["mv_neutral_grounding"]
+    assert grounding["grounding_type"] == "petersen_coil"
+
+
+def test_get_solver_input_without_audit2_params_returns_none(app_client):
+    """Phase 52: brak audit2 params -> audit2_extensions = None (backward compat)."""
+    res = app_client.get(
+        "/api/cases/case-fake/analysis/solver-input/short_circuit_3f"
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["audit2_extensions"] is None
+
+
+def test_get_solver_input_with_audit2_params_no_config_returns_none(app_client):
+    """Phase 52: project_id + station_id pdane ale config nie istnieje -> None."""
+    pid = _create_project(app_client)
+    res = app_client.get(
+        f"/api/cases/case-fake/analysis/solver-input/short_circuit_3f"
+        f"?project_id={pid}&station_id=non-existent-station"
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["audit2_extensions"] is None
+
+
 def test_apply_to_network_model_endpoint_full_pipeline(app_client):
     """Phase 26: pelna petla DB -> audit2 -> apply -> branch state changed."""
     pid = _create_project(app_client)
