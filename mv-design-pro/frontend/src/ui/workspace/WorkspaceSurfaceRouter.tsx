@@ -9,6 +9,8 @@ import { useSnapshotStore } from '../topology/snapshotStore';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
+import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
+import type { ProtectionCurve, FaultMarker, CurvePoint } from '../protection-curves/types';
 import { GpzConfiguratorSurface } from './surfaces/GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from './surfaces/BayConfiguratorSurface';
 import { StationConfiguratorSurface } from './surfaces/StationConfiguratorSurface';
@@ -1199,36 +1201,118 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   );
 }
 
+// Iteracja 14: deterministyczny generator demonstracyjnych krzywych TCC.
+// Punkty pochodzą z formuły IEC 60255-151:2009 Standard Inverse:
+//    t(I) = (TMS · 0,14) / ((I/Is)^0,02 - 1)
+// Dla MIN(I) zabezpiecza dolny zakres tabeli — żeby uniknąć osobliwości.
+// Funkcja jest pure (deterministyczna) — używana wyłącznie do podglądu UI;
+// rzeczywiste punkty krzywej z solvera protection_iec60255 (backend) zastępują
+// tę tablicę gdy są dostępne.
+function generateIec60255SiCurvePoints(
+  pickupCurrentA: number,
+  tms: number,
+): CurvePoint[] {
+  const ratios = [1.05, 1.5, 2, 3, 5, 10, 20, 50, 100];
+  return ratios.map((m) => {
+    const denom = Math.pow(m, 0.02) - 1;
+    const time = denom > 0 ? (tms * 0.14) / denom : 60;
+    return {
+      current_a: pickupCurrentA * m,
+      current_multiple: m,
+      time_s: Math.min(time, 60),
+    };
+  });
+}
+
 function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  // Iteracja 14: TCC chart preview z 2 demonstracyjnymi krzywymi
+  // (nadrzędna 51 + podrzędna 50/51) zgodnie z IEC 60255 SI.
+  const sampleCurves: ProtectionCurve[] = useMemo(
+    () => [
+      {
+        id: 'demo-upstream-51',
+        name_pl: 'Nadrzędne 51 (sekcja GPZ)',
+        standard: 'IEC',
+        curve_type: 'SI',
+        pickup_current_a: 600,
+        time_multiplier: 0.5,
+        color: '#dc2626',
+        enabled: true,
+        points: generateIec60255SiCurvePoints(600, 0.5),
+      },
+      {
+        id: 'demo-downstream-51',
+        name_pl: 'Podrzędne 51 (pole liniowe)',
+        standard: 'IEC',
+        curve_type: 'SI',
+        pickup_current_a: 250,
+        time_multiplier: 0.2,
+        color: '#2563eb',
+        enabled: true,
+        points: generateIec60255SiCurvePoints(250, 0.2),
+      },
+    ],
+    [],
+  );
+  const sampleFaults: FaultMarker[] = useMemo(
+    () => [
+      {
+        id: 'sc3f-bus-end',
+        label_pl: 'Zwarcie 3F na końcu ciągu (Ik" = 4,8 kA)',
+        current_a: 4800,
+        fault_type: '3F',
+        location: 'Stacja końcowa',
+      },
+      {
+        id: 'sc1f-bus-end',
+        label_pl: 'Zwarcie 1F doziemne (Ik1 = 1,2 kA)',
+        current_a: 1200,
+        fault_type: '1F',
+        location: 'Stacja końcowa',
+      },
+    ],
+    [],
+  );
+
   return (
-    <div className="space-y-4">
+    <div data-testid="protection-coordination-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
       <AnalysisContractPanel
         surface={surface}
-        title="Koordynacja zabezpieczen"
-        eyebrow="Zabezpieczenia"
+        title="Koordynacja zabezpieczeń"
+        eyebrow="E-28 · Zabezpieczenia"
         focusTitle="Kontrakt koordynacji"
         focusRowsBuilder={(contract) => [
-          { label: 'Zakres stosowalnosci', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Stan lacznikow', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
+          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
+          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
           { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
           { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
+          { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
       />
-      <SectionCard title="Bieżący widok koordynacji" eyebrow="Widok wynikowy">
-        <div className="space-y-2">
-          <p className="text-sm text-slate-300">
-            Wykres TCC (czasowo-prądowy) renderowany z ProtectionCurvesEditor po
-            wyborze pary nadrzędny ↔ podrzędny w sekcji "Ustawienia". Aktywne
-            uruchomienie analizy: <code>{String(surface.routeState.payload?.runId ?? '—')}</code>.
+      <SectionCard title="Wykres TCC (czasowo-prądowy)" eyebrow="Krzywe IEC 60255">
+        <div data-testid="protection-coordination-tcc" className="space-y-2">
+          <TimeCurrentChart curves={sampleCurves} faultMarkers={sampleFaults} />
+          <p className="text-xs text-slate-500">
+            Krzywe demo (IEC 60255 SI) wygenerowane lokalnie do podglądu osi
+            i skali log-log. Po podpięciu solvera <code>protection_iec60255</code>
+            punkty krzywej (CurvePoint[]) pochodzą wprost z backendu —
+            tabela jest read-only widokiem.
           </p>
-          <p className="text-xs text-slate-400">
-            Wybierz dwa zabezpieczenia w panelu "Ustawienia zabezpieczeń" (E-27),
-            aby zobaczyć krzywe IEC 60255 z marginesami selektywności (numerycznie,
-            bez werdyktów OK/FAIL — rule from PROTECTION_CANONICAL_ARCHITECTURE).
+          <p className="text-xs text-slate-500">
+            Markery zwarciowe (Ik″ 3F i Ik 1F) ilustrują typowe punkty pracy.
+            Aktywne uruchomienie:{' '}
+            <code>{String(surface.routeState.payload?.runId ?? '—')}</code>.
           </p>
         </div>
+      </SectionCard>
+      <SectionCard title="Selektywność i marginesy" eyebrow="Wynik">
+        <p className="text-sm text-slate-300">
+          Selektywność zabezpieczeń jest mierzona w marginesach numerycznych
+          (Δt, Δprąd) — zgodnie z PROTECTION_CANONICAL_ARCHITECTURE bez
+          werdyktów OK/FAIL. Pełna analiza par nadrzędne ↔ podrzędne wymaga
+          uzgodnienia w E-27 (Ustawienia zabezpieczeń).
+        </p>
       </SectionCard>
     </div>
   );
