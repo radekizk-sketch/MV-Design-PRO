@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { notify } from '../../notifications/store';
+import { useAudit2CatalogSnapshot } from './audit2-hooks';
 import { generateDeterministicDerId, validateWizardSelections } from './wizard-validation';
 import {
   BESS_BATTERY_CATALOG,
@@ -107,6 +108,10 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
   const attachDer = useStationDerStore((state) => state.attachDer);
   const [step, setStep] = useState<StepId>('variant');
   const [selections, setSelections] = useState<WizardSelections>(EMPTY_SELECTIONS);
+  // Phase 9: pre-fetch backend catalog snapshot — lokalne staticki sluzą jako
+  // fallback, ale snapshot z backendu warm-cache'uje React Query dla stations
+  // pobierajacych je dalej. Hook sam zarzadza cache'em i refetch'em.
+  useAudit2CatalogSnapshot();
 
   // Reset stanu kreatora przy każdym otwarciu.
   useEffect(() => {

@@ -14,9 +14,15 @@ import { audit2QueryKeys } from '../../../query-client';
 import {
   deleteStationAudit2Config,
   fetchAudit2CatalogSnapshot,
+  generateAudit2ProofPack,
+  generateAudit2Report,
   getStationAudit2Config,
   listStationAudit2Configs,
   putStationAudit2Config,
+  type Audit2ProofPackRequest,
+  type Audit2ProofPackResponse,
+  type Audit2ReportRequest,
+  type Audit2ReportResponse,
   type StationAudit2ConfigBody,
   type StationAudit2ConfigResponse,
 } from './audit2-api';
@@ -137,5 +143,21 @@ export function useDeleteStationAudit2Config() {
         queryKey: audit2QueryKeys.stationConfigList(args.projectId),
       });
     },
+  });
+}
+
+// =============================================================================
+// Phase 10/11: Proof Pack + Report mutations (server-side actions, brak cache).
+// =============================================================================
+
+export function useGenerateAudit2ProofPack() {
+  return useMutation<Audit2ProofPackResponse, Error, Audit2ProofPackRequest>({
+    mutationFn: generateAudit2ProofPack,
+  });
+}
+
+export function useGenerateAudit2Report() {
+  return useMutation<Audit2ReportResponse, Error, Audit2ReportRequest>({
+    mutationFn: generateAudit2Report,
   });
 }

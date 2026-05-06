@@ -37,10 +37,22 @@ class DerAudit2SpecPayload(BaseModel):
     pf_curve_ref: str | None = None
 
 
+class BayDeviceWithstandSpec(BaseModel):
+    device_id: str
+    i_peak_calculated_ka: float
+    i_thermal_calculated_ka: float
+    t_clearing_s: float
+
+
 class StationAudit2ConfigBody(BaseModel):
     mv_neutral_grounding_ref: str | None = None
     tap_changer_refs: list[str] = Field(default_factory=list)
     der_specs: list[DerAudit2SpecPayload] = Field(default_factory=list)
+    # Phase 8: per-transformer/bay mappings.
+    transformer_tap_changers: dict[str, str] = Field(default_factory=dict)
+    bay_hv_fuses: dict[str, str] = Field(default_factory=dict)
+    bay_vts: dict[str, str] = Field(default_factory=dict)
+    bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
 
 
 def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
@@ -51,6 +63,10 @@ def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
         "mv_neutral_grounding_ref": orm.mv_neutral_grounding_ref,
         "tap_changer_refs": list(orm.tap_changer_refs or []),
         "der_specs": list(orm.der_specs or []),
+        "transformer_tap_changers": dict(orm.transformer_tap_changers or {}),
+        "bay_hv_fuses": dict(orm.bay_hv_fuses or {}),
+        "bay_vts": dict(orm.bay_vts or {}),
+        "bay_device_withstand": dict(orm.bay_device_withstand or {}),
         "created_at": orm.created_at.isoformat() if orm.created_at else None,
         "updated_at": orm.updated_at.isoformat() if orm.updated_at else None,
     }
@@ -123,6 +139,12 @@ def upsert_station_audit2_config(
             existing.mv_neutral_grounding_ref = body.mv_neutral_grounding_ref
             existing.tap_changer_refs = list(body.tap_changer_refs)
             existing.der_specs = [spec.model_dump() for spec in body.der_specs]
+            existing.transformer_tap_changers = dict(body.transformer_tap_changers)
+            existing.bay_hv_fuses = dict(body.bay_hv_fuses)
+            existing.bay_vts = dict(body.bay_vts)
+            existing.bay_device_withstand = {
+                k: v.model_dump() for k, v in body.bay_device_withstand.items()
+            }
             uow.session.flush()
             return _to_dict(existing)
 
@@ -133,6 +155,12 @@ def upsert_station_audit2_config(
             mv_neutral_grounding_ref=body.mv_neutral_grounding_ref,
             tap_changer_refs=list(body.tap_changer_refs),
             der_specs=[spec.model_dump() for spec in body.der_specs],
+            transformer_tap_changers=dict(body.transformer_tap_changers),
+            bay_hv_fuses=dict(body.bay_hv_fuses),
+            bay_vts=dict(body.bay_vts),
+            bay_device_withstand={
+                k: v.model_dump() for k, v in body.bay_device_withstand.items()
+            },
         )
         uow.session.add(new_row)
         uow.session.flush()
@@ -159,3 +187,111 @@ def delete_station_audit2_config(
         if deleted == 0:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Brak konfiguracji")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/_validate-all")
+def validate_all_audit2(
+    project_id: UUID,
+    uow_factory=Depends(get_uow_factory),
+) -> dict[str, Any]:
+    """
+    Phase 13: walidacja audytu 2 dla wszystkich stacji projektu (parallel to physics).
+
+    Wywoluje walidatory + proof packs dla kazdej zapisanej stacji w projekcie.
+    Zwraca agregat: per-station + global pass/fail.
+
+    Bezpieczne: nie modyfikuje physics solvers, dziala obok istniejacego pipeline'u.
+    """
+    from application.proof_engine.packs.audit2_validation import (
+        generate_device_withstand_proof,
+        generate_hosting_capacity_export_proof,
+        generate_station_audit2_proof_pack,
+        generate_tap_changer_plan_proof,
+        generate_vt_grounding_validation_proof,
+    )
+
+    with uow_factory() as uow:
+        assert uow.session is not None
+        configs = (
+            uow.session.query(StationAudit2ConfigORM)
+            .filter(StationAudit2ConfigORM.project_id == project_id)
+            .all()
+        )
+        per_station_results: list[dict[str, Any]] = []
+        all_pass = True
+
+        for cfg in configs:
+            proofs = []
+            # Hosting capacity (gdy DERs obecne).
+            if cfg.der_specs:
+                proofs.append(
+                    generate_hosting_capacity_export_proof(
+                        station_id=cfg.station_id,
+                        # Konserwatywne: 1 MW per DER + 0 odbiorow (worst case eksport).
+                        p_export_kw=len(cfg.der_specs) * 1000.0,
+                        p_import_kw=0.0,
+                    )
+                )
+            # Tap-changer (gdy mappings istnieja).
+            for tr_id, tc_ref in (cfg.transformer_tap_changers or {}).items():
+                if not tc_ref:
+                    continue
+                proofs.append(
+                    generate_tap_changer_plan_proof(
+                        transformer_id=str(tr_id),
+                        transformer_type="transformer_15_04",  # default; UI moze podac dokladniej
+                        tap_changer_ref=str(tc_ref),
+                        requires_avr=False,
+                    )
+                )
+            # VT grounding (per bay).
+            grounding = cfg.mv_neutral_grounding_ref
+            if grounding:
+                # Map ref to grounding type.
+                grounding_type = (
+                    "isolated"
+                    if grounding == "mng_isolated"
+                    else "petersen_coil"
+                    if grounding == "mng_petersen"
+                    else "resistor_grounded"
+                    if grounding.startswith("mng_resistor")
+                    else "directly_grounded"
+                    if grounding == "mng_directly"
+                    else "isolated"
+                )
+                # Na potrzeby walidacji uzywamy U_th=1.9 jako default (worst-safe).
+                for bay_id, _vt_ref in (cfg.bay_vts or {}).items():
+                    proofs.append(
+                        generate_vt_grounding_validation_proof(
+                            bay_designation=str(bay_id),
+                            vt_voltage_factor=1.9,
+                            grounding_type=grounding_type,
+                        )
+                    )
+            # Device withstand (per bay).
+            for bay_id, spec in (cfg.bay_device_withstand or {}).items():
+                if isinstance(spec, dict):
+                    proofs.append(
+                        generate_device_withstand_proof(
+                            device_id=str(spec.get("device_id", "")),
+                            i_peak_calculated_ka=float(spec.get("i_peak_calculated_ka", 0)),
+                            i_thermal_calculated_ka=float(spec.get("i_thermal_calculated_ka", 0)),
+                            t_clearing_s=float(spec.get("t_clearing_s", 1.0)),
+                        )
+                    )
+
+            pack = generate_station_audit2_proof_pack(
+                station_id=cfg.station_id,
+                proofs=proofs,
+                generated_at_iso="1970-01-01T00:00:00Z",
+            )
+            per_station_results.append(pack.to_dict())
+            if not pack.all_pass:
+                all_pass = False
+
+        return {
+            "project_id": str(project_id),
+            "all_pass": all_pass,
+            "station_count": len(per_station_results),
+            "per_station": per_station_results,
+        }

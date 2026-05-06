@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -7,6 +7,12 @@ import { useReadinessLiveStore } from '../../engineering-readiness/readinessLive
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
+
+// Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
+// Wszystkie testy wymagaja QueryClientProvider.
+const render = renderWithQueryClient;
+void rtlRender; // keep import for type compat
 import { WorkspaceOperationalBar } from '../WorkspaceOperationalBar';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import {

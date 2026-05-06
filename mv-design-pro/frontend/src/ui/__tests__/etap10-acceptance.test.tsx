@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { renderWithQueryClient as render } from '../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../app-state';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';

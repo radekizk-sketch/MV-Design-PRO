@@ -109,10 +109,21 @@ export interface DerAudit2SpecBody {
   readonly pf_curve_ref?: string | null;
 }
 
+export interface BayDeviceWithstandSpec {
+  readonly device_id: string;
+  readonly i_peak_calculated_ka: number;
+  readonly i_thermal_calculated_ka: number;
+  readonly t_clearing_s: number;
+}
+
 export interface StationAudit2ConfigBody {
   readonly mv_neutral_grounding_ref: string | null;
   readonly tap_changer_refs: readonly string[];
   readonly der_specs: readonly DerAudit2SpecBody[];
+  readonly transformer_tap_changers?: Readonly<Record<string, string>>;
+  readonly bay_hv_fuses?: Readonly<Record<string, string>>;
+  readonly bay_vts?: Readonly<Record<string, string>>;
+  readonly bay_device_withstand?: Readonly<Record<string, BayDeviceWithstandSpec>>;
 }
 
 export interface StationAudit2ConfigResponse extends StationAudit2ConfigBody {
@@ -177,4 +188,62 @@ export async function deleteStationAudit2Config(args: {
   if (res.status !== 204 && res.status !== 404) {
     throw new Error(`DELETE station config failed: ${res.status} ${res.statusText}`);
   }
+}
+
+// =============================================================================
+// Phase 10/11: ProofPack + Report API clients
+// =============================================================================
+
+export interface Audit2ProofPackRequest {
+  readonly station_id: string;
+  readonly bess_modes_specs?: readonly Record<string, unknown>[];
+  readonly tap_changer_specs?: readonly Record<string, unknown>[];
+  readonly hosting_capacity_specs?: readonly Record<string, unknown>[];
+  readonly device_withstand_specs?: readonly Record<string, unknown>[];
+  readonly vt_grounding_specs?: readonly Record<string, unknown>[];
+  readonly generated_at_iso?: string;
+}
+
+export interface Audit2ProofPackResponse {
+  readonly station_id: string;
+  readonly all_pass: boolean;
+  readonly fail_count: number;
+  readonly proof_count: number;
+  readonly proofs: ReadonlyArray<{
+    readonly proof_id: string;
+    readonly proof_type: string;
+    readonly pass_status: boolean;
+    readonly summary_pl: string;
+    readonly details: Record<string, unknown>;
+    readonly formulas_latex: readonly string[];
+    readonly generated_at: string;
+  }>;
+  readonly generated_at: string;
+}
+
+export async function generateAudit2ProofPack(
+  req: Audit2ProofPackRequest,
+): Promise<Audit2ProofPackResponse> {
+  return postJson<Audit2ProofPackResponse>(`${BASE}/generate-proof-pack`, req);
+}
+
+export interface Audit2ReportRequest {
+  readonly project_name: string;
+  readonly station_id: string;
+  readonly proof_pack: Audit2ProofPackResponse;
+  readonly operator_pl?: string;
+  readonly generated_at_iso?: string;
+  readonly formats?: readonly ('json' | 'text_pl' | 'latex')[];
+}
+
+export interface Audit2ReportResponse {
+  readonly json?: Record<string, unknown>;
+  readonly text_pl?: string;
+  readonly latex?: string;
+}
+
+export async function generateAudit2Report(
+  req: Audit2ReportRequest,
+): Promise<Audit2ReportResponse> {
+  return postJson<Audit2ReportResponse>(`${BASE}/generate-report`, req);
 }

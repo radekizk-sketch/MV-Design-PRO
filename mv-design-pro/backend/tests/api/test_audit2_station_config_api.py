@@ -160,6 +160,52 @@ def test_isolation_between_projects(app_client):
     assert res2.json() == []
 
 
+def test_validate_all_returns_pack_per_station(app_client):
+    """Phase 13: POST /_validate-all zwraca proof pack per stacja."""
+    pid = _create_project(app_client)
+    # Setup 2 stacje.
+    app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/station-V-A",
+        json={
+            "mv_neutral_grounding_ref": "mng_petersen",
+            "tap_changer_refs": [],
+            "der_specs": [{"der_id": "der_001", "der_kind": "PV"}],
+            "transformer_tap_changers": {"tr_001": "tc_oltc_110sn_19_125"},
+            "bay_hv_fuses": {},
+            "bay_vts": {},
+            "bay_device_withstand": {},
+        },
+    )
+    app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/station-V-B",
+        json={
+            "mv_neutral_grounding_ref": "mng_isolated",
+            "tap_changer_refs": [],
+            "der_specs": [],
+            "transformer_tap_changers": {},
+            "bay_hv_fuses": {},
+            "bay_vts": {},
+            "bay_device_withstand": {
+                "POLE-01": {
+                    "device_id": "wstd_breaker_vacuum_15_25",
+                    "i_peak_calculated_ka": 50,
+                    "i_thermal_calculated_ka": 20,
+                    "t_clearing_s": 1.0,
+                }
+            },
+        },
+    )
+
+    res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["station_count"] == 2
+    assert len(body["per_station"]) == 2
+    # Both stations should have proofs (per logic).
+    station_ids = {s["station_id"] for s in body["per_station"]}
+    assert station_ids == {"station-V-A", "station-V-B"}
+
+
 def test_persistence_round_trip_complex_der_spec(app_client):
     """JSONB der_specs zachowuje wszystkie pola po round-tripie."""
     pid = _create_project(app_client)

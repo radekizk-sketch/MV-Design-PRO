@@ -2,11 +2,38 @@
  * Testy AddDerWizard (Faza D) — 5-krokowy guided flow dodawania DER.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
 
 import { AddDerWizard } from '../AddDerWizard';
 import { useStationDerStore, selectDersOfStation } from '../store';
+
+// Phase 8: Wizard pulls catalog snapshot via React Query — need QueryClient.
+function render(ui: ReactElement) {
+  // Stub fetch dla useAudit2CatalogSnapshot (Wizard pre-fetcher).
+  if (!(global as { fetch?: unknown }).fetch || (global.fetch as { _isStub?: boolean })._isStub !== true) {
+    const stub = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        bess_operation_modes: [],
+        tap_changers: [],
+        hv_fuses: [],
+        device_withstand: [],
+        pf_curves: [],
+        block_transformers: [],
+        mv_neutral_groundings: [],
+      }),
+    }) as unknown as typeof fetch & { _isStub: boolean };
+    (stub as unknown as { _isStub: boolean })._isStub = true;
+    global.fetch = stub;
+  }
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 

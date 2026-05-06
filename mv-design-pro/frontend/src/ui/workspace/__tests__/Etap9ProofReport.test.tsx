@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
+import { renderWithQueryClient as render } from '../../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../../app-state';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';

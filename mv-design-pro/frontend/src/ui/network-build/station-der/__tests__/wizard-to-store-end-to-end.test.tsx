@@ -9,10 +9,31 @@
  * do `attachDer`. Wybory użytkownika ginęły w klikiek "Utwórz".
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import type { ReactElement } from 'react';
 
 import { AddDerWizard } from '../AddDerWizard';
+
+function render(ui: ReactElement) {
+  global.fetch = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      bess_operation_modes: [],
+      tap_changers: [],
+      hv_fuses: [],
+      device_withstand: [],
+      pf_curves: [],
+      block_transformers: [],
+      mv_neutral_groundings: [],
+    }),
+  }) as never;
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return rtlRender(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
 import { useStationDerStore, selectAllDers } from '../store';
 
 describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {

@@ -12,6 +12,9 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   summarizeReadiness,
+  useGenerateAudit2ProofPack,
+  useGenerateAudit2Report,
+  useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
 import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
@@ -685,6 +688,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
 
 function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeProjectName = useAppStateStore((state) => state.activeProjectName);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseName = useAppStateStore((state) => state.activeCaseName);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const patchSurfaceSession = useNetworkBuildStore((state) => state.patchSurfaceSession);
@@ -692,6 +696,10 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const openChildSurface = useChildSurfaceLauncher(surface);
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
+  // Phase 11: integracja audit2 report.
+  const audit2ProofPack = useGenerateAudit2ProofPack();
+  const audit2Report = useGenerateAudit2Report();
+  const audit2ConfigList = useStationAudit2ConfigList(activeProjectId);
 
   const markDirty = () =>
     patchSurfaceSession(surface.surfaceId, {
@@ -888,6 +896,72 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         showLineage
         showReproducibility
       />
+      {/* Phase 11: audit2 report — JSON/text PL/LaTeX dla rozszerzen audytu 2. */}
+      <SectionCard
+        title="Raport audytu 2 (rozszerzenia)"
+        eyebrow="JSON · text PL · LaTeX"
+      >
+        <p className="mb-2 text-xs text-slate-700">
+          Generuje raport walidacji rozszerzen audytu 2 (BESS modes, tap-changers,
+          hosting capacity, withstand, VT grounding). Format: JSON dla integracji
+          + text PL dla audytu + LaTeX dla dolaczenia do uzasadnienia inzynierskiego.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            data-testid="audit2-report-generate-pack"
+            disabled={!activeProjectId || audit2ProofPack.isPending}
+            onClick={() => {
+              const configs = audit2ConfigList.data ?? [];
+              audit2ProofPack.mutate({
+                station_id: configs[0]?.station_id ?? 'aggregate',
+                hosting_capacity_specs: configs.map((c) => ({
+                  station_id: c.station_id,
+                  p_export_kw: c.der_specs.length * 1000,
+                  p_import_kw: 0,
+                })),
+                generated_at_iso: '1970-01-01T00:00:00Z',
+              });
+            }}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
+          >
+            {audit2ProofPack.isPending ? 'Generowanie pakietu...' : '1. Generuj proof pack'}
+          </button>
+          <button
+            type="button"
+            data-testid="audit2-report-render"
+            disabled={!audit2ProofPack.data || audit2Report.isPending}
+            onClick={() => {
+              if (!audit2ProofPack.data) return;
+              audit2Report.mutate({
+                project_name: activeProjectName ?? 'project',
+                station_id: audit2ProofPack.data.station_id,
+                proof_pack: audit2ProofPack.data,
+                operator_pl: 'PSE',
+                generated_at_iso: '1970-01-01T00:00:00Z',
+                formats: ['json', 'text_pl', 'latex'],
+              });
+            }}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-50"
+          >
+            {audit2Report.isPending ? 'Generowanie raportu...' : '2. Renderuj raport'}
+          </button>
+        </div>
+        {audit2Report.data && (
+          <div data-testid="audit2-report-preview" className="mt-3 space-y-2">
+            {audit2Report.data.text_pl && (
+              <div>
+                <div className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
+                  Text PL (preview)
+                </div>
+                <pre className="max-h-[300px] overflow-auto rounded bg-slate-50 p-2 text-[11px] text-slate-800">
+                  {audit2Report.data.text_pl}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </SectionCard>
     </div>
   );
 }
@@ -1681,9 +1755,13 @@ function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
 
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const projectId = useAppStateStore((state) => state.activeProjectId);
   // Faza F: kontekst stacja+DER w uzasadnieniu inżynierskim.
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const stationCount = new Set(allDers.map((d) => d.station_id)).size;
+  // Phase 10: integracja audit2 ProofPack.
+  const generateProofPack = useGenerateAudit2ProofPack();
+  const stationConfigList = useStationAudit2ConfigList(projectId);
   return (
     <div data-testid="proof-surface" className="space-y-4">
       <MiniSldCard surface={surface} />
@@ -1742,6 +1820,79 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           </div>
         </SectionCard>
       )}
+      {/* Phase 10: audit2 proof pack — generuje walidacje rozszerzen audytu 2. */}
+      <SectionCard
+        title="Dowody audytu 2 (eng.10/13/15/17/18/20)"
+        eyebrow="Pakiet walidacji rozszerzen"
+      >
+        <p className="mb-2 text-xs text-slate-700">
+          Generuje pakiet 5 typow dowodow dla rozszerzen audytu 2:
+          BESS_OPERATION_MODES, TAP_CHANGER_PLAN, HOSTING_CAPACITY_EXPORT,
+          DEVICE_WITHSTAND, VT_GROUNDING_VALIDATION.
+        </p>
+        <button
+          type="button"
+          data-testid="audit2-proof-generate"
+          disabled={!projectId || generateProofPack.isPending || (stationConfigList.data ?? []).length === 0}
+          onClick={() => {
+            if (!projectId) return;
+            const configs = stationConfigList.data ?? [];
+            // Z konfiguracji wszystkich stacji projektu zlozymy specs dla generate-proof-pack.
+            // Dla kazdej stacji z hosting_capacity (gdy DER specs istnieja) -> walidacja.
+            const hostingSpecs = configs
+              .filter((c) => c.der_specs.length > 0)
+              .map((c) => ({
+                station_id: c.station_id,
+                p_export_kw: c.der_specs.reduce(
+                  (sum: number) => sum + 1000, // konserwatywne 1MW per DER fallback (real wartosc z snapshot)
+                  0,
+                ),
+                p_import_kw: 0,
+              }));
+            generateProofPack.mutate({
+              station_id: configs[0]?.station_id ?? 'aggregate',
+              hosting_capacity_specs: hostingSpecs,
+            });
+          }}
+          className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {generateProofPack.isPending ? 'Generowanie...' : 'Generuj dowody audytu 2'}
+        </button>
+        {generateProofPack.data && (
+          <div data-testid="audit2-proof-result" className="mt-3 space-y-2">
+            <div className="text-xs">
+              <strong>Wynik:</strong>{' '}
+              <span className={generateProofPack.data.all_pass ? 'text-emerald-700' : 'text-rose-700'}>
+                {generateProofPack.data.all_pass ? 'WSZYSTKIE OK' : 'BLOKERY OBECNE'}
+              </span>{' '}
+              · {generateProofPack.data.proof_count} dowodow,{' '}
+              {generateProofPack.data.fail_count} blokerow.
+            </div>
+            <div className="space-y-1">
+              {generateProofPack.data.proofs.map((p) => (
+                <div
+                  key={p.proof_id}
+                  data-testid={`audit2-proof-${p.proof_type}`}
+                  className={
+                    'rounded border px-2 py-1 text-[11px] '
+                    + (p.pass_status
+                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
+                      : 'border-rose-300 bg-rose-50 text-rose-800')
+                  }
+                >
+                  <span className="font-mono">{p.proof_type}</span>: {p.summary_pl}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {generateProofPack.isError && (
+          <div className="mt-2 text-xs text-rose-700">
+            Blad generowania: {generateProofPack.error.message}
+          </div>
+        )}
+      </SectionCard>
+
       <SectionCard title="Dostępne paczki uzasadnień" eyebrow="Lista 12 typów">
         <div data-testid="proof-pack-list" className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           {PROOF_PACK_TYPES.map((pt) => (

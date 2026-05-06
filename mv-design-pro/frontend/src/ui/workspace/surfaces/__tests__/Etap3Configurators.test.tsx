@@ -3,12 +3,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
+import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
 
 const minimalSurface = {
   surfaceId: 'surface-test',

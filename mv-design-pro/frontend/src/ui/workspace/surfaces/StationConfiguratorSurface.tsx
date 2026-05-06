@@ -14,6 +14,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../app-state';
 
 import { StationConfigurator } from '../../network-build/station-configurator/StationConfigurator';
+import type { StationConfigBayRow } from '../../network-build/station-configurator/cards/StationConfigBaysCard';
+import type { ProtectionRow } from '../../network-build/station-configurator/cards/StationConfigProtectionCard';
+import type { StationConfigTransformerRow } from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
 import {
   AddDerWizard,
   useStationAudit2Config,
@@ -240,31 +243,108 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
     setPendingDetach(null);
   }, [pendingDetach, detachDer]);
 
+  // Phase 8: helper do mutacji audit2 config (centralizuje budowe body).
+  const mutateAudit2 = useCallback(
+    (patch: Partial<{
+      mv_neutral_grounding_ref: string | null;
+      tap_changer_refs: readonly string[];
+      transformer_tap_changers: Record<string, string>;
+      bay_hv_fuses: Record<string, string>;
+      bay_vts: Record<string, string>;
+    }>) => {
+      if (!projectId || !stationRef) {
+        notify('Najpierw wybierz aktywny projekt i stację.', 'warning');
+        return;
+      }
+      const current = audit2Config.data;
+      updateAudit2Config.mutate({
+        projectId,
+        stationId: stationRef,
+        body: {
+          mv_neutral_grounding_ref:
+            patch.mv_neutral_grounding_ref !== undefined
+              ? patch.mv_neutral_grounding_ref
+              : current?.mv_neutral_grounding_ref ?? null,
+          tap_changer_refs: [...(patch.tap_changer_refs ?? current?.tap_changer_refs ?? [])],
+          der_specs: current?.der_specs ?? [],
+          transformer_tap_changers: {
+            ...(current?.transformer_tap_changers ?? {}),
+            ...(patch.transformer_tap_changers ?? {}),
+          },
+          bay_hv_fuses: {
+            ...(current?.bay_hv_fuses ?? {}),
+            ...(patch.bay_hv_fuses ?? {}),
+          },
+          bay_vts: {
+            ...(current?.bay_vts ?? {}),
+            ...(patch.bay_vts ?? {}),
+          },
+          bay_device_withstand: current?.bay_device_withstand ?? {},
+        },
+      });
+    },
+    [projectId, stationRef, audit2Config.data, updateAudit2Config],
+  );
+
   const configuratorProps = useMemo(() => {
     const base = buildBaseStationProps(stationName, localConfig);
+    // Phase 8: projektuj per-transformer / per-bay refs z audit2Config do propsow.
+    const transformerTapChangers = audit2Config.data?.transformer_tap_changers ?? {};
+    const bayFuses = audit2Config.data?.bay_hv_fuses ?? {};
+    const bayVts = audit2Config.data?.bay_vts ?? {};
+    const bayWithstand = audit2Config.data?.bay_device_withstand ?? {};
     return {
       ...base,
       basic: {
         ...base.basic,
-        // Punkt 3: onChange wywoluje PUT przez React Query mutation
-        // (optimistic update + invalidation po sukcesie).
         onChange: (changes: { mvNeutralGroundingRef?: string | null }) => {
-          if (!projectId || !stationRef) {
-            notify('Najpierw wybierz aktywny projekt i stację.', 'warning');
-            return;
-          }
           if ('mvNeutralGroundingRef' in changes) {
-            updateAudit2Config.mutate({
-              projectId,
-              stationId: stationRef,
-              body: {
-                mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null,
-                tap_changer_refs: audit2Config.data?.tap_changer_refs ?? [],
-                der_specs: audit2Config.data?.der_specs ?? [],
+            mutateAudit2({ mv_neutral_grounding_ref: changes.mvNeutralGroundingRef ?? null });
+          }
+        },
+      },
+      transformer: {
+        ...base.transformer,
+        // Phase 8: rzutuj tapChangerCatalogRef per row + onChange przekazuje
+        // patch transformer_tap_changers do mutateAudit2.
+        transformers: (base.transformer.transformers as readonly StationConfigTransformerRow[]).map((tr) => ({
+          ...tr,
+          tapChangerCatalogRef: transformerTapChangers[tr.transformerId] ?? null,
+        })),
+        onChange: (transformerId: string, changes: { tapChangerCatalogRef?: string | null }) => {
+          if ('tapChangerCatalogRef' in changes) {
+            mutateAudit2({
+              transformer_tap_changers: {
+                [transformerId]: changes.tapChangerCatalogRef ?? '',
               },
             });
           }
         },
+      },
+      bays: {
+        ...base.bays,
+        // Cast wymagany bo `base.bays.bays` w pustym stanie ma typ never[].
+        // Mapowanie dziala poprawnie gdy snapshot dostarcza realne wpisy.
+        bays: (base.bays.bays as readonly StationConfigBayRow[]).map((b) => ({
+          ...b,
+          hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
+        })),
+      },
+      protection: {
+        ...base.protection,
+        // Phase 8: VT per-bay z audit2Config.bay_vts.
+        relays: (base.protection.relays as readonly ProtectionRow[]).map((r) => ({
+          ...r,
+          vtCatalogRef: bayVts[r.bayDesignation] ?? null,
+        })),
+        // Phase 8: device withstand per-bay z audit2Config.
+        deviceWithstandRows: Object.entries(bayWithstand).map(([bayDesignation, spec]) => ({
+          bayDesignation,
+          deviceCatalogRef: (spec as { device_id: string }).device_id,
+          i_peak_calculated_ka: (spec as { i_peak_calculated_ka: number }).i_peak_calculated_ka,
+          i_thermal_calculated_ka: (spec as { i_thermal_calculated_ka: number }).i_thermal_calculated_ka,
+          t_clearing_s: (spec as { t_clearing_s: number }).t_clearing_s,
+        })),
       },
       derSources: {
         stationId: stationRef ?? 'unselected',
@@ -275,7 +355,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
         onDetachDer: requestDetach,
       },
     };
-  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, projectId, audit2Config.data, updateAudit2Config]);
+  }, [stationName, stationRef, ders, handleOpenDer, handleShowOnSld, handleAddDer, requestDetach, localConfig, audit2Config.data, mutateAudit2]);
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">

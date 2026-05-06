@@ -655,6 +655,19 @@ class StationAudit2ConfigORM(Base):
     der_specs: Mapped[list[dict[str, Any]]] = mapped_column(
         DeterministicJSON(), nullable=False, default=list
     )
+    # Phase 8: per-transformer/bay mapping (full UI wiring).
+    transformer_tap_changers: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    bay_hv_fuses: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    bay_vts: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
+    bay_device_withstand: Mapped[dict[str, Any]] = mapped_column(
+        DeterministicJSON(), nullable=False, default=dict
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
