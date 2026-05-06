@@ -1,7 +1,11 @@
 /**
  * Karta 1 — Dane podstawowe (PR-8a, brief 2 §8 karta 1).
+ *
+ * Pakiet H: wybór typu uziemienia neutralnego SN z `MV_NEUTRAL_GROUNDING_CATALOG`
+ * (Naprawa B.1 — wymagane do walidacji 67N i SC1F oraz VT voltage_factor eng.20).
  */
 
+import { MV_NEUTRAL_GROUNDING_CATALOG } from '../../station-der/catalogs';
 import type { CompletenessStatus } from '../../../inspector/v2/InspectorStickyHeader';
 
 export type StationTopologicalType = 'końcowa' | 'przelotowa' | 'odgałęźna' | 'sekcyjna';
@@ -17,12 +21,15 @@ export interface StationConfigBasicCardProps {
   readonly owner?: string;
   readonly location?: string;
   readonly completeness: CompletenessStatus;
+  /** Pakiet H: catalog_ref do typu uziemienia neutralnego SN. */
+  readonly mvNeutralGroundingRef?: string | null;
   readonly onChange?: (changes: Partial<{
     stationName: string;
     designation: string;
     constructionType: StationConstructionType;
     owner: string;
     location: string;
+    mvNeutralGroundingRef: string | null;
   }>) => void;
 }
 
@@ -37,7 +44,7 @@ const CONSTRUCTION_LABEL_PL: Record<StationConstructionType, string> = {
 export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.Element {
   const {
     stationName, designation, topologicalType, constructionType,
-    snVoltageKv, nnVoltageLevels, owner, location, onChange,
+    snVoltageKv, nnVoltageLevels, owner, location, mvNeutralGroundingRef, onChange,
   } = props;
 
   return (
@@ -87,6 +94,34 @@ export function StationConfigBasicCard(props: StationConfigBasicCardProps): JSX.
           <span className="text-scada-muted">Napięcie SN: </span>
           <span data-testid="station-sn-voltage" className="font-mono text-scada-text">{snVoltageKv} kV</span>
         </div>
+        {/* Pakiet H: typ uziemienia neutralnego SN (z katalogu). */}
+        <label className="flex flex-col">
+          <span className="text-scada-muted">Uziemienie neutralne SN (z katalogu)</span>
+          <select
+            data-testid="station-mv-neutral-grounding"
+            value={mvNeutralGroundingRef ?? ''}
+            onChange={(e) =>
+              onChange?.({ mvNeutralGroundingRef: e.target.value || null })
+            }
+            className="rounded border border-scada-border bg-scada-bg px-2 py-1 text-scada-text"
+          >
+            <option value="">— wybierz —</option>
+            {MV_NEUTRAL_GROUNDING_CATALOG.map((g) => (
+              <option key={g.id} value={g.id}>{g.label_pl}</option>
+            ))}
+          </select>
+          {mvNeutralGroundingRef && (() => {
+            const g = MV_NEUTRAL_GROUNDING_CATALOG.find((x) => x.id === mvNeutralGroundingRef);
+            if (!g) return null;
+            const requires67N = g.grounding_type === 'isolated' || g.grounding_type === 'petersen_coil';
+            return (
+              <div className="mt-1 rounded bg-scada-panel-raised px-2 py-1 text-[10px] text-scada-text">
+                Typ: {g.grounding_type} · I_k1 [{g.typical_ik1_a_range.min}-{g.typical_ik1_a_range.max} A]
+                · Wymagane 67N: {requires67N ? 'tak' : 'nie'}
+              </div>
+            );
+          })()}
+        </label>
         <div>
           <span className="text-scada-muted">Poziomy nN: </span>
           {nnVoltageLevels.length > 0 ? (

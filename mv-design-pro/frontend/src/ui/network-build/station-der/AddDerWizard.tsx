@@ -26,9 +26,11 @@ import {
   LV_VOLTAGE_LEVEL_CATALOG,
   LVRT_CURVE_CATALOG,
   NC_RFG_PROFILE_CATALOG,
+  PF_CURVE_CATALOG,
   PV_INVERTER_CATALOG,
   WIND_TURBINE_CATALOG,
   selectBessModesForPcs,
+  selectBlockTransformersForDer,
   selectConnectionVariantsForKind,
   selectHvrtCurvesForProfile,
   selectLvrtCurvesForProfile,
@@ -78,6 +80,10 @@ interface WizardSelections {
   derName: string;
   /** Naprawa eng.10: tryby pracy BESS (multi-select). */
   bessOperationModeRefs: readonly string[];
+  /** Pakiet H: block-trafo catalog dla dedicated_transformer. */
+  blockTransformerCatalogRef: string | null;
+  /** Pakiet H: krzywa P(f) — regulacja częstotliwości. */
+  pfCurveRef: string | null;
 }
 
 const EMPTY_SELECTIONS: WizardSelections = {
@@ -92,6 +98,8 @@ const EMPTY_SELECTIONS: WizardSelections = {
   hvrtCurveRef: null,
   derName: '',
   bessOperationModeRefs: [],
+  blockTransformerCatalogRef: null,
+  pfCurveRef: null,
 };
 
 export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
@@ -451,6 +459,25 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   testId="add-der-voltage-level"
                 />
               )}
+              {/* Pakiet H: block-trafo selector dla dedicated_transformer. */}
+              {selections.connectionSide === 'dedicated_transformer' && (() => {
+                const candidates = selectBlockTransformersForDer({ derKind });
+                return (
+                  <Select
+                    label="Transformator dedykowany (block-trafo, z katalogu)"
+                    required
+                    value={selections.blockTransformerCatalogRef ?? ''}
+                    onChange={(v) =>
+                      setSelections((s) => ({ ...s, blockTransformerCatalogRef: v || null }))
+                    }
+                    options={[
+                      { id: '', label: '— wybierz block-trafo —' },
+                      ...candidates.map((b) => ({ id: b.id, label: b.label_pl })),
+                    ]}
+                    testId="add-der-block-transformer"
+                  />
+                );
+              })()}
             </div>
           )}
 
@@ -588,6 +615,24 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                   ...hvrtCurves.map((c) => ({ id: c.id, label: c.label_pl })),
                 ]}
                 testId="add-der-hvrt"
+              />
+              {/* Pakiet H: P(f) krzywa regulacji częstotliwości (NC RfG Art. 13/15). */}
+              <Select
+                label="Krzywa P(f) — regulacja częstotliwości (NC RfG Art. 13/15)"
+                disabled={!selections.ncRfgProfileRef}
+                value={selections.pfCurveRef ?? ''}
+                onChange={(v) => setSelections((s) => ({ ...s, pfCurveRef: v || null }))}
+                options={[
+                  { id: '', label: '— wybierz (opcjonalnie) —' },
+                  ...PF_CURVE_CATALOG.filter((c) => {
+                    const profile = NC_RFG_PROFILE_CATALOG.find(
+                      (p) => p.id === selections.ncRfgProfileRef,
+                    );
+                    if (!profile) return false;
+                    return c.operator_code === profile.operator_code;
+                  }).map((c) => ({ id: c.id, label: c.label_pl })),
+                ]}
+                testId="add-der-pf-curve"
               />
             </div>
           )}
