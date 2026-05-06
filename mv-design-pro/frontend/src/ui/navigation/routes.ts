@@ -14,6 +14,12 @@ export interface RouteDefinition {
 }
 
 export const ROUTES = {
+  DASHBOARD: {
+    hash: '#dashboard',
+    label: 'Pulpit projektu',
+    description: 'Lista projektów i tworzenie nowego projektu',
+    icon: 'DASH',
+  },
   SLD: {
     hash: '#sld',
     label: 'Schemat jednokreskowy',
@@ -57,7 +63,7 @@ export const ROUTES = {
   SWITCHGEAR: {
     hash: '#switchgear',
     label: 'Rozdzielnica: pola i aparaty',
-    description: 'Kreator konfiguracji pol i aparatow rozdzielnicy',
+    description: 'Konfiguracja pol i aparatow rozdzielnicy',
     icon: 'SWG',
     requiredMode: 'MODEL_EDIT',
   },

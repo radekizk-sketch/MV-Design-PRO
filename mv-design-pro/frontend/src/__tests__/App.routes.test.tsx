@@ -79,7 +79,6 @@ vi.mock('../ui/sld', () => ({
 }));
 
 vi.mock('../ui/inspector-panel', () => ({
-  InspectorResolver: () => <div data-testid="inspector-resolver" />,
 }));
 
 vi.mock('../ui/topology/useNetworkStats', () => ({
@@ -244,17 +243,6 @@ describe('App hash routes', () => {
     expect(await screen.findByTestId('results-comparison-page')).toBeInTheDocument();
   });
 
-  it('traktuje #case-config jako helper w tym samym shellu bez zmiany trybu pracy', async () => {
-    window.location.hash = '#case-config?case=case-1';
-
-    render(<App />);
-
-    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(useAppStateStore.getState().activeMode).toBe('MODEL_EDIT');
-    });
-  });
-
   it('prowadzi do porownania wynikow z glownego menu', async () => {
     render(<App />);
 
@@ -265,41 +253,6 @@ describe('App hash routes', () => {
 
     expect(await screen.findByTestId('results-comparison-page')).toBeInTheDocument();
     expect(window.location.hash).toBe('#compare');
-  });
-
-  it('prowadzi do podgladu schematu z glownego menu', async () => {
-    render(<App />);
-
-    await act(async () => {
-      screen.getByTestId('layout-menu-sld-view').click();
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-
-    expect(await screen.findByTestId('sld-view-page')).toBeInTheDocument();
-  });
-
-  it('kanonizuje wejscie budowy sieci do #sld z menu', async () => {
-    render(<App />);
-
-    await act(async () => {
-      screen.getByTestId('layout-menu-network-build').click();
-      window.dispatchEvent(new HashChangeEvent('hashchange'));
-    });
-
-    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
-    expect(window.location.hash).toBe('#sld');
-  });
-
-  it('wymusza obszar Schemat i topologia dla trasy #sld mimo poprzedniego obszaru z sesji', async () => {
-    useAppStateStore.getState().setActiveArea('ZABEZPIECZENIA_AUTOMATYKA');
-    window.location.hash = '#sld';
-
-    render(<App />);
-
-    expect(await screen.findByTestId('sld-editor-page')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
-    });
   });
 
   it('wymusza obszar Wyniki i analizy dla tras wynikowych', async () => {

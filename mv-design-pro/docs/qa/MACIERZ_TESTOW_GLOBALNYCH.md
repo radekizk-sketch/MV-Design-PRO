@@ -27,20 +27,17 @@ Backend analiza i topologia:
 Frontend katalog-first i workflow:
 - `frontend/src/ui/network-build/__tests__/catalogBrowser.test.tsx`
 - `frontend/src/ui/network-build/__tests__/catalogFirstRules.test.ts`
-- `frontend/src/ui/network-build/__tests__/contextMenuIntegration.test.ts`
-- `frontend/src/ui/network-build/__tests__/operationFormRouter.test.tsx`
 - `frontend/src/ui/network-build/__tests__/workflowIntegration.test.ts`
 
-Frontend SLD:
-- `frontend/src/ui/sld/core/__tests__/catalogContract.test.ts`
-- `frontend/src/ui/sld/core/__tests__/determinism.test.ts`
-- `frontend/src/ui/sld/core/__tests__/goldenNetworkE2E.test.ts`
-- `frontend/src/ui/sld/core/__tests__/readinessGates.test.ts`
-- `frontend/src/ui/sld/core/__tests__/semanticGraphContract.test.ts`
-- `frontend/src/ui/sld/core/__tests__/sldSemanticModel.test.ts`
-- `frontend/src/ui/sld/core/__tests__/stationBlockBuilder.test.ts`
-- `frontend/src/ui/sld/__tests__/powerFlowOverlayGeometryInvariant.test.tsx`
-- `frontend/src/ui/sld/__tests__/sldCanonicalHygiene.test.ts`
+Frontend SLD v2 (po wygaszeniu starego SLD — PR-5c):
+- `frontend/src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts`
+- `frontend/src/ui/sld/v2/__tests__/visualFixtures.test.ts`
+- `frontend/src/ui/sld/v2/__tests__/renderers.test.tsx`
+- `frontend/src/ui/sld/v2/__tests__/ViewportController.test.ts`
+- `frontend/src/ui/sld/v2/__tests__/LodPolicy.test.ts`
+- `frontend/src/ui/sld/v2/__tests__/StationInternalView.test.tsx`
+- `frontend/src/ui/sld/v2/command/__tests__/SldCommandService.test.ts`
+- `frontend/src/ui/sld/v2/core/__tests__/ports.test.ts`
 
 Frontend White Box i eksport sladu:
 - `frontend/src/ui/proof/__tests__/TraceViewer.test.tsx`

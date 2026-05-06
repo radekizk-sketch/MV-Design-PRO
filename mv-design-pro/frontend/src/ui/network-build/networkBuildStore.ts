@@ -1,10 +1,8 @@
 import { create } from 'zustand';
 
-import { useActiveCaseId } from '../app-state';
 import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus } from '../shared/enmVisibility';
-import { deriveOperationalWorkspaceBlockStateFromSnapshot } from '../topology/liveReadiness';
 import { getOperationSurfaceByOp } from '../topology/modals/operationSurfaceRegistry';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import type { ElementType } from '../types';
@@ -18,7 +16,6 @@ import type {
   ReadinessInfo,
   TerminalRef,
 } from '../../types/enm';
-import { buildBlockerCountsByElement } from './liveReadiness';
 import type {
   ActiveInspectorPanel,
   ActiveObjectCard,
@@ -659,17 +656,6 @@ export interface TransformerSummary {
   ukPercent: number;
 }
 
-export interface LoadSummary {
-  id: string;
-  name: string;
-  stationRef: string | null;
-  stationName: string | null;
-  busRef: string;
-  pKw: number;
-  qKvar: number;
-  catalogRef: string | null;
-}
-
 export interface OzeSourceSummary {
   id: string;
   name: string;
@@ -895,10 +881,10 @@ export function computeBuildPhase(
   if (!snapshot) return 'NO_SOURCE';
   if (snapshot.sources.length === 0) return 'NO_SOURCE';
 
-  const hasTrunks = (logicalViews?.trunks ?? []).some((trunk) => (trunk.segments?.length ?? 0) > 0);
+  const hasTrunks = (logicalViews?.trunks?.length ?? 0) > 0;
   if (!hasTrunks) return 'HAS_SOURCE';
 
-  const hasStations = (snapshot.substations ?? []).some((station) => station.station_type !== 'gpz');
+  const hasStations = (snapshot.substations?.length ?? 0) > 0;
   if (!hasStations) return 'HAS_TRUNKS';
 
   if (readiness?.ready) return 'READY';
@@ -991,7 +977,6 @@ export function selectStationSummaries(
   if (!snapshot) return [];
 
   return (snapshot.substations ?? [])
-    .filter((s) => s.station_type !== 'gpz')
     .map((s) => {
       const stationBays = (snapshot.bays ?? []).filter((b) => b.substation_ref === s.id);
       const branchBays = stationBays.filter(
@@ -1040,31 +1025,6 @@ export function selectTransformerSummaries(
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
-export function selectLoadSummaries(
-  snapshot: EnergyNetworkModel | null,
-): LoadSummary[] {
-  if (!snapshot) return [];
-
-  return (snapshot.loads ?? [])
-    .map((load) => {
-      const station = (snapshot.substations ?? []).find((candidate) =>
-        candidate.bus_refs.includes(load.bus_ref),
-      );
-
-      return {
-        id: load.ref_id,
-        name: load.name,
-        stationRef: station?.id ?? null,
-        stationName: station?.name ?? null,
-        busRef: load.bus_ref,
-        pKw: load.p_mw * 1000,
-        qKvar: load.q_mvar * 1000,
-        catalogRef: load.catalog_ref ?? null,
-      };
-    })
-    .sort((a, b) => a.id.localeCompare(b.id));
-}
-
 export function selectOzeSourceSummaries(
   snapshot: EnergyNetworkModel | null,
 ): OzeSourceSummary[] {
@@ -1086,133 +1046,6 @@ export function selectOzeSourceSummaries(
       hasTransformer: g.blocking_transformer_ref != null || g.connection_variant === 'nn_side',
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
-}
-
-export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null): string | null {
-  if (!snapshot) return null;
-
-  const sourceStationRef = snapshot.sources.find((source) => source.substation_ref)?.substation_ref;
-  if (sourceStationRef) return sourceStationRef;
-
-  const gpzStation = snapshot.substations.find((station) => station.station_type === 'gpz');
-  return gpzStation?.ref_id ?? snapshot.substations[0]?.ref_id ?? null;
-}
-
-export interface ConfiguredGridSourceSnField {
-  ref_id: string;
-  name: string;
-  bus_ref: string;
-  substation_ref: string;
-  bay_role: 'OUT' | 'FEEDER';
-  gpz_section_id?: string | null;
-  source: 'legacy_bay' | 'field_spec';
-}
-
-type FieldSpecRecord = {
-  field_ref?: unknown;
-  ref_id?: unknown;
-  name?: unknown;
-  bay_role?: unknown;
-  bus_ref?: unknown;
-  equipment_refs?: unknown;
-  gpz_section_id?: unknown;
-  meta?: unknown;
-};
-
-function readNonEmptyString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function defaultConfiguredFieldName(role: 'OUT' | 'FEEDER'): string {
-  return role === 'OUT' ? 'Pole odpływowe SN' : 'Pole liniowe SN';
-}
-
-function listCanonicalFieldSpecs(station: EnergyNetworkModel['substations'][number]): FieldSpecRecord[] {
-  const meta = asRecord((station as { meta?: unknown }).meta);
-  const rawSpecs = meta?.field_specs;
-  if (!Array.isArray(rawSpecs)) return [];
-  return rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null);
-}
-
-function hasConfiguredFieldSpec(spec: FieldSpecRecord): boolean {
-  const equipmentRefs = Array.isArray(spec.equipment_refs) ? spec.equipment_refs : [];
-  if (equipmentRefs.some((ref) => typeof ref === 'string' && ref.trim())) return true;
-
-  const meta = asRecord(spec.meta);
-  if (asRecord(meta?.catalog_binding) !== null) return true;
-  return readNonEmptyString(meta?.apparatus_kind) !== null;
-}
-
-export function selectConfiguredGridSourceSnFields(
-  snapshot: EnergyNetworkModel | null,
-): ConfiguredGridSourceSnField[] {
-  if (!snapshot) return [];
-
-  const stationRef = selectGridSourceStationRef(snapshot);
-  if (!stationRef) return [];
-
-  const station = snapshot.substations.find(
-    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
-  );
-  const stationRefs = new Set([stationRef, station?.ref_id, station?.id].filter(Boolean) as string[]);
-  const mediumVoltageBusRefs = new Set(
-    snapshot.buses
-      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
-      .map((bus) => bus.ref_id),
-  );
-
-  const legacyFields: ConfiguredGridSourceSnField[] = snapshot.bays
-    .filter((bay) => stationRefs.has(bay.substation_ref))
-    .filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER')
-    .filter((bay) => mediumVoltageBusRefs.has(bay.bus_ref))
-    .filter((bay) => (bay.equipment_refs?.length ?? 0) > 0)
-    .map((bay) => ({
-      ref_id: bay.ref_id,
-      name: bay.name,
-      bus_ref: bay.bus_ref,
-      substation_ref: bay.substation_ref,
-      bay_role: bay.bay_role as 'OUT' | 'FEEDER',
-      gpz_section_id: bay.gpz_section_id ?? null,
-      source: 'legacy_bay' as const,
-    }));
-
-  const canonicalFields: ConfiguredGridSourceSnField[] = station
-    ? listCanonicalFieldSpecs(station)
-      .map<ConfiguredGridSourceSnField | null>((spec) => {
-        const refId = readNonEmptyString(spec.field_ref) ?? readNonEmptyString(spec.ref_id);
-        const busRef = readNonEmptyString(spec.bus_ref);
-        const bayRole = readNonEmptyString(spec.bay_role)?.toUpperCase();
-        if (!refId || !busRef) return null;
-        if (bayRole !== 'OUT' && bayRole !== 'FEEDER') return null;
-        if (!mediumVoltageBusRefs.has(busRef)) return null;
-        if (!hasConfiguredFieldSpec(spec)) return null;
-        const role = bayRole as 'OUT' | 'FEEDER';
-        const name = readNonEmptyString(spec.name);
-
-        return {
-          ref_id: refId,
-          name: name && name !== refId ? name : defaultConfiguredFieldName(role),
-          bus_ref: busRef,
-          substation_ref: station.ref_id,
-          bay_role: role,
-          gpz_section_id: readNonEmptyString(spec.gpz_section_id) ?? null,
-          source: 'field_spec' as const,
-        };
-      })
-      .filter((field): field is ConfiguredGridSourceSnField => field !== null)
-    : [];
-
-  const byRef = new Map<string, ConfiguredGridSourceSnField>();
-  for (const field of [...legacyFields, ...canonicalFields]) {
-    byRef.set(field.ref_id, field);
-  }
-  return [...byRef.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function selectBlockersByCategory(
@@ -1273,18 +1106,17 @@ export function buildPhaseLabel(phase: BuildPhase): string {
     case 'NO_SOURCE':
       return 'Brak źródła zasilania';
     case 'HAS_SOURCE':
-      return 'GPZ gotowy - skonfiguruj pole SN';
+      return 'GPZ zdefiniowany - dodaj pole SN GPZ i pierwszy odcinek';
     case 'HAS_TRUNKS':
       return 'Magistrala wyprowadzona z pola GPZ - osadź stacje i ZKSN';
     case 'HAS_STATIONS':
-      return 'Stacje SN/nN osadzone - uzupełnij dane transformatorów i odbiory';
+      return 'Stacje osadzone - uzupełnij dane';
     case 'READY':
-      return 'Model gotowy do obliczeń';
+      return 'Gotowy do analizy';
   }
 }
 
 export function useNetworkBuildDerived() {
-  const activeCaseId = useActiveCaseId();
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
   const fixActions = useSnapshotStore((s) => s.fixActions);
@@ -1292,27 +1124,16 @@ export function useNetworkBuildDerived() {
   const readinessStatus = useReadinessLiveStore((s) => s.status);
   const readinessReady = useReadinessLiveStore((s) => s.ready);
   const readinessLoading = useReadinessLiveStore((s) => s.loading);
-  const blockerCountsByElement = buildBlockerCountsByElement(readinessIssues);
+  const blockerCountsByElement = new Map<string, number>();
 
   const sourceCount = snapshot?.sources?.length ?? 0;
-  const realTrunks = (logicalViews?.trunks ?? []).filter(
-    (trunk) => (trunk.segments?.length ?? 0) > 0,
-  );
-  const trunkCount = realTrunks.length;
-  const trunkSegmentCount = realTrunks.reduce(
-    (total, trunk) => total + (trunk.segments?.length ?? 0),
-    0,
-  );
+  const trunkCount = logicalViews?.trunks?.length ?? 0;
   const branchCount = logicalViews?.branches?.length ?? 0;
-  const stationCount = (snapshot?.substations ?? []).filter((station) => station.station_type !== 'gpz').length;
+  const stationCount = snapshot?.substations?.length ?? 0;
   const transformerCount = snapshot?.transformers?.length ?? 0;
-  const loadCount = snapshot?.loads?.length ?? 0;
   const generatorCount = snapshot?.generators?.length ?? 0;
   const readinessBlockers = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
-  const workspaceBlockState = deriveOperationalWorkspaceBlockStateFromSnapshot(
-    snapshot,
-    activeCaseId !== null,
-  );
+  const workspaceBlockState: { title: string } | null = null;
   const readinessVisualState = resolveReadinessVisualState({
     issues: readinessIssues,
     status: readinessStatus,
@@ -1330,10 +1151,7 @@ export function useNetworkBuildDerived() {
   const ringCandidates = selectRingCandidates(snapshot, logicalViews);
   const stationSummaries = selectStationSummaries(snapshot, blockerCountsByElement);
   const transformerSummaries = selectTransformerSummaries(snapshot);
-  const loadSummaries = selectLoadSummaries(snapshot);
   const ozeSourceSummaries = selectOzeSourceSummaries(snapshot);
-  const configuredGpzSnFields = selectConfiguredGridSourceSnFields(snapshot);
-  const gridSourceStationRef = selectGridSourceStationRef(snapshot);
   const blockersByCategory = selectBlockersByCategory(readinessBlockers);
   const isReady = readinessVisualState === 'ready' && sourceCount > 0;
   const readiness = {
@@ -1341,15 +1159,10 @@ export function useNetworkBuildDerived() {
     blockers: readinessIssues.filter((issue) => issue.severity === 'BLOCKER'),
     warnings: readinessIssues.filter((issue) => issue.severity !== 'BLOCKER'),
   };
-  const resolvedBuildPhaseLabel = sourceCount === 0
-    ? workspaceBlockState?.title ?? buildPhaseLabel(buildPhase)
-    : configuredGpzSnFields.length > 0 && trunkSegmentCount === 0
-      ? 'Pole SN GPZ gotowe - wyprowadź magistralę SN'
-      : buildPhaseLabel(buildPhase);
 
   return {
     buildPhase,
-    buildPhaseLabel: resolvedBuildPhaseLabel,
+    buildPhaseLabel: (workspaceBlockState as { title: string } | null)?.title ?? buildPhaseLabel(buildPhase),
     snapshot,
     logicalViews,
     fixActions,
@@ -1360,19 +1173,13 @@ export function useNetworkBuildDerived() {
     stationSummaries,
     transformerSummaries,
     ozeSourceSummaries,
-    configuredGpzSnFields,
-    configuredGpzSnFieldCount: configuredGpzSnFields.length,
-    gridSourceStationRef,
     blockersByCategory,
     sourceCount,
     trunkCount,
     branchCount,
-    trunkSegmentCount,
     stationCount,
     transformerCount,
-    loadCount,
     generatorCount,
-    loadSummaries,
     isReady,
     readiness,
     workspaceBlockState,

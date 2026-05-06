@@ -17,28 +17,33 @@
  * - Propsinterface identyczny z CanonicalLayoutProps
  */
 
-import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { useActiveCaseId, useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
-import { IssuePanelContainer } from '../issue-panel';
-import { GuidedBuildActionPanel } from '../network-build/GuidedBuildActionPanel';
-import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
-import { SldVisualModes } from '../network-build/SldVisualModes';
+import { GlobalSearch } from '../network-build/GlobalSearch';
+import { CommandPalette } from '../network-build/CommandPalette';
+import { notify } from '../notifications/store';
+import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
+import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
+import { useAppStateStore } from '../app-state/store';
 import type { AreaId } from '../navigation/areaRegistry';
 
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
+import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
 import { V12OverlayModeController } from './V12OverlayModeController';
 import { AreaContextPanel } from './context-panels';
+import { WorkflowContextStrip } from './WorkflowContextStrip';
 
 export interface AppShellV12Props {
-  children: ReactNode;
+  children?: ReactNode;
   onCalculate?: () => void;
   onViewResults?: () => void;
   projectName?: string;
@@ -90,8 +95,8 @@ function ContextPanelShell({
     <aside
       data-testid="context-panel"
       data-area={areaCode}
-      className="flex w-[284px] shrink-0 flex-col border-r border-[#10263d] bg-[#050810]"
-      style={{ minWidth: 284, maxWidth: 284 }}
+      className="flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
+      style={{ minWidth: 280, maxWidth: 280 }}
     >
       <AreaContextPanel areaCode={areaCode} />
     </aside>
@@ -112,14 +117,49 @@ export function AppShellV12({
   networkStats,
 }: AppShellV12Props) {
   const issuePanelOpen = useIssuePanelOpen();
-  const activeCaseId = useActiveCaseId();
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
-  const contextArea: AreaId = 'MODEL_SIECI';
+  const activeArea = useAppStateStore((s) => s.activeArea);
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [contextCollapsed] = useState(false);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [, setMassReviewOpen] = useState(false);
+  const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
+  const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
+
+  // Ctrl+K = globalne wyszukiwanie ENM
+  // Ctrl+Shift+P = paleta komend (ekrany + akcje SLD + skróty)
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const meta = event.ctrlKey || event.metaKey;
+      if (meta && event.shiftKey && (event.key === 'P' || event.key === 'p')) {
+        event.preventDefault();
+        setCommandPaletteOpen((v) => !v);
+        return;
+      }
+      if (meta && event.key === 'k') {
+        event.preventDefault();
+        setGlobalSearchOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
+  // Komendy z palety publikują custom event z informacją (np. wymagany kontekst).
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<string>).detail;
+      if (typeof detail === 'string' && detail.length > 0) {
+        notify(detail, 'info');
+      }
+    };
+    window.addEventListener('mvdesignpro:command-palette-info', listener);
+    return () => window.removeEventListener('mvdesignpro:command-palette-info', listener);
+  }, []);
 
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
@@ -127,10 +167,10 @@ export function AppShellV12({
   const inspectorWidthClass = useMemo(() => {
     if (inspectorCollapsed) return 'w-10';
     switch (activeSurface?.sizeClass) {
-      case 'A': return 'w-[380px]';
-      case 'B': return 'w-[min(40vw,540px)]';
-      case 'C': return 'w-[min(52vw,760px)]';
-      default:  return 'w-[320px]';
+      case 'A': return 'w-[420px]';
+      case 'B': return 'w-[620px]';
+      case 'C': return 'w-[min(70vw,1100px)]';
+      default:  return 'w-[360px]';
     }
   }, [activeSurface, inspectorCollapsed]);
 
@@ -140,17 +180,11 @@ export function AppShellV12({
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
       return <WorkspaceSurfaceRouter region="panel" />;
     }
-    if (activeMode === 'MODEL_EDIT' && !selectedElement) {
-      return <GuidedBuildActionPanel />;
-    }
     if (inspectorContent) return inspectorContent;
-    if (activeMode === 'MODEL_EDIT' && selectedElement) {
-      return <InspectorEngineeringView />;
-    }
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
-  }, [activeMode, activeSurface, inspectorContent, isReadOnly, selectedElement]);
+  }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
   return (
     <div
@@ -172,10 +206,24 @@ export function AppShellV12({
       />
 
       {/* === Pasek przepływu pracy (48px, tylko MODEL_EDIT) === */}
+      {activeMode === 'MODEL_EDIT' && (
+        <WorkflowContextStrip
+          onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
+          onOpenCatalogBrowser={navigateToCatalog}
+          onOpenMassReview={() => setMassReviewOpen(true)}
+          onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
+          onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
+        />
+      )}
+
       {/* === Główny układ 4-kolumnowy === */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* NavigationRail (56px) */}
+        <NavigationRail />
+
+        {/* ContextPanel (320px, zwijany) */}
         {!mainSurfaceExpanded && (
-          <ContextPanelShell areaCode={contextArea} collapsed={contextCollapsed} />
+          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} />
         )}
 
         {/* Kanwas SLD — elastyczny */}
@@ -189,8 +237,7 @@ export function AppShellV12({
         >
           {/* Tryby wizualne SLD (MODEL_EDIT) */}
           {activeMode === 'MODEL_EDIT' && !mainSurfaceExpanded && (
-            <div className="flex h-[34px] shrink-0 items-center border-b border-[#10263d] bg-[#07111c] px-2">
-              <SldVisualModes />
+            <div className="flex h-[40px] shrink-0 items-center border-b border-scada-border bg-[#0a151e] px-2">
             </div>
           )}
 
@@ -265,7 +312,6 @@ export function AppShellV12({
         {/* Panel zgłoszeń (issue panel) */}
         {issuePanelOpen && (
           <aside className="w-[360px] shrink-0 overflow-hidden border-l border-scada-border bg-scada-surface">
-            <IssuePanelContainer caseId={activeCaseId} />
           </aside>
         )}
       </div>
@@ -278,6 +324,46 @@ export function AppShellV12({
         networkStats={networkStats}
       />
 
+      {/* Modale */}
+      <GlobalSearch isOpen={globalSearchOpen} onClose={() => setGlobalSearchOpen(false)} />
+      <CommandPalette
+        isOpen={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        extraCommands={[
+          {
+            id: 'shortcut:open-enm-inspector',
+            label: 'Otwórz Inspektor modelu ENM',
+            description: 'Diagnostyka inżynierska modelu sieci.',
+            keywords: 'enm inspektor diagnostyka modelu sieci',
+            run: () => {
+              window.location.hash = '#enm-inspector';
+              setCommandPaletteOpen(false);
+            },
+          },
+          {
+            id: 'shortcut:open-fault-scenarios',
+            label: 'Scenariusze zwarciowe',
+            description: 'Zarządzaj scenariuszami zwarć i analiz.',
+            keywords: 'fault scenariusze zwarciowe zwarcia analizy',
+            run: () => {
+              window.location.hash = '#fault-scenarios';
+              setCommandPaletteOpen(false);
+            },
+          },
+          {
+            id: 'shortcut:open-dashboard',
+            label: 'Pulpit projektu',
+            description: 'Lista projektów + nowy projekt (E-00).',
+            keywords: 'pulpit dashboard projekt lista nowy',
+            run: () => {
+              window.location.hash = '#dashboard';
+              setCommandPaletteOpen(false);
+            },
+          },
+        ]}
+      />
+      <ProjectMetadataModal isOpen={projectMetadataOpen} onClose={() => setProjectMetadataOpen(false)} />
+      <SnapshotHistoryModal isOpen={snapshotHistoryOpen} onClose={() => setSnapshotHistoryOpen(false)} />
     </div>
   );
 }

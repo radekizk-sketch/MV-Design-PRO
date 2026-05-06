@@ -1,13 +1,13 @@
 ﻿/**
- * App Root â€” CANONICAL_LAYOUT + UI_INTEGRATION_E2E + V12.5
+ * App Root — CANONICAL_LAYOUT + UI_INTEGRATION_E2E + V12.5
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
+ * - ui_canonical_parity.md: Layout narzędziowy ZAWSZE renderowany
  * - wizard_screens.md Â§ 1.3: Active case bar (always visible)
  * - UI_CORE_ARCHITECTURE.md Â§ 4.1: Navigation structure
  *
  * CANONICAL RULE:
- * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
+ * > Layout narzędziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * Main application entry with:
@@ -17,21 +17,22 @@
  * - Empty state overlays (NOT empty screens)
  *
  * Routes (Polish):
- * - "" / "#sld" â†’ Schemat jednokreskowy (SLD Editor)
- * - "#sld-view" â†’ Podglad schematu (SLD Read-Only Viewer)
- * - "#analysis" â†’ Poziom analityczny (E-24)
- * - "#report" â†’ Generator raportu (E-25)
- * - "#variants" / "#catalog" / "#case-config" â†’ Helpery shell-a
+ * - "" / "#sld" → Schemat jednokreskowy (SLD Editor)
+ * - "#sld-view" → Podglad schematu (SLD Read-Only Viewer)
+ * - "#analysis" → Poziom analityczny (E-24)
+ * - "#report" → Generator raportu (E-25)
+ * - "#variants" / "#catalog" / "#case-config" → Helpery shell-a
  * - "#results" / "#proof" / "#protection-results" / "#power-flow-results" / "#compare"
- *   â†’ aliasy prowadzÄ…ce do E-24
+ *   → aliasy prowadzące do E-24
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 
-import { SLDViewPage, SldEditorPage } from './ui/sld';
 import { EnmInspectorPage } from './ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from './ui/fault-scenarios';
 import { CanonicalLayout } from './ui/layout';
+import { SldWorkspaceContainer } from './ui/sld/v2/canvas/SldWorkspaceContainer';
+import { ProjectDashboardSurface } from './ui/workspace/surfaces/ProjectDashboardSurface';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
@@ -58,7 +59,6 @@ import {
 } from './ui/navigation';
 import { NotificationToast } from './ui/notifications/NotificationToast';
 import { notify } from './ui/notifications/store';
-import { InspectorResolver } from './ui/inspector-panel';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
 import type { AreaId } from './ui/navigation/areaRegistry';
@@ -171,6 +171,7 @@ function App() {
   const [hashVersion, setHashVersion] = useState(0);
   const setActiveMode = useAppStateStore((state) => state.setActiveMode);
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
@@ -297,7 +298,7 @@ function App() {
       notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'BĹ‚Ä…d uruchomienia obliczeĹ„';
+      const message = error instanceof Error ? error.message : 'BĹ‚ąd uruchomienia obliczeĹ„';
       notify(message, 'error');
     }
   }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);
@@ -386,7 +387,7 @@ function App() {
         break;
       case 'navigator':
       case 'inspector':
-        // Toggle panels â€” handled by layout
+        // Toggle panels — handled by layout
         break;
       default:
         if (import.meta.env.DEV) {
@@ -414,7 +415,6 @@ function App() {
     onCalculate: handleCalculate,
     onViewResults: handleViewResults,
     projectName: projectName ?? undefined,
-    inspectorContent: <InspectorResolver />,
     validationStatus: validationStatus,
     validationWarnings: readiness?.warnings?.length ?? 0,
     validationErrors: readiness?.blockers?.length ?? 0,
@@ -422,7 +422,7 @@ function App() {
     networkStats: networkStats,
   };
 
-  // Inspektor modelu ENM (v4.2 â€” diagnostyka inĹĽynierska)
+  // Inspektor modelu ENM (v4.2 — diagnostyka inĹĽynierska)
   if (route === '#enm-inspector') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
@@ -443,11 +443,21 @@ function App() {
     );
   }
 
+  // E-00: Pulpit projektu (Dashboard) — renderowany dla #dashboard ORAZ
+  // domyślnie gdy brak aktywnego projektu (etap 2 dostawy).
+  if (route === '#dashboard' || (route === '' && !activeProjectId)) {
+    return wrapWithReadyIndicator(
+      <CanonicalLayout {...layoutProps}>
+        <ProjectDashboardSurface />
+      </CanonicalLayout>
+    );
+  }
+
   // SLD_READ_ONLY_UI: Podglad schematu jednokreskowego (tylko odczyt)
   if (route === '#sld-view') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>
-        <SLDViewPage useDemo={false} />
+        <SldWorkspaceContainer readOnly />
       </CanonicalLayout>
     );
   }
@@ -461,11 +471,13 @@ function App() {
       </CanonicalLayout>
     );
   }
-  // CANONICAL_LAYOUT: Default â€” SLD Editor Page (ALWAYS shows tools)
-  // This replaces the old DesignerPage with proper Canonical-style layout
+  // CANONICAL_LAYOUT: domyślna trasa "" / "#sld" → środowisko SLD (E-01).
+  // Etap 1 dostawy: SldWorkspaceContainer renderuje SldCanvasV2 z menu
+  // kontekstowym i drill-downem stacji. Adapter danych snapshot → propsy
+  // rendererów dostarcza Etap 3 roadmapy.
   return wrapWithReadyIndicator(
     <CanonicalLayout {...layoutProps}>
-      <SldEditorPage useDemo={false} />
+      <SldWorkspaceContainer />
     </CanonicalLayout>
   );
 }

@@ -550,10 +550,48 @@ def _pick_compliance_source_ref(snapshot: dict[str, Any], options: dict[str, Any
     return "source-compliance"
 
 
+def _phase_state_default_fault_current_from_grounding(
+    audit2_extensions: dict[str, object] | None,
+) -> tuple[float, float, float] | None:
+    """
+    Phase 46: jesli audit2 grounding ustawione, zwraca median Ik1 z catalogu
+    jako default fault_current_a dla phase_state_sn solvera.
+
+    Zwraca None gdy nie mozna ustalic.
+    """
+    if not audit2_extensions:
+        return None
+    sc_ext = audit2_extensions.get("sc_iec60909_extensions") or {}
+    if not isinstance(sc_ext, dict):
+        return None
+    grounding = sc_ext.get("mv_neutral_grounding") or {}
+    if not isinstance(grounding, dict):
+        return None
+    ik1_range = grounding.get("typical_ik1_a_range") or {}
+    if not isinstance(ik1_range, dict):
+        return None
+    try:
+        ik1_min = float(ik1_range.get("min", 0))
+        ik1_max = float(ik1_range.get("max", 0))
+    except (TypeError, ValueError):
+        return None
+    if ik1_max <= 0:
+        return None
+    median = (ik1_min + ik1_max) / 2.0
+    # Symetryczne 1-fazowe doziemne — Ik1 na fazie A, 0 na B i C.
+    return (median, 0.0, 0.0)
+
+
 def _execute_phase_state_sn(run: CanonicalRun) -> None:
     snapshot = run.snapshot or {}
     target_bus_ref = _pick_phase_state_target(snapshot, run.options)
     target_bus_id = _graph_id_from_ref(target_bus_ref)
+    # Phase 46: opt-in audit2 grounding -> default fault_current_a.
+    audit2_extensions_ps = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    fault_default = _phase_state_default_fault_current_from_grounding(audit2_extensions_ps)
     target_bus = next(
         (
             raw_bus
@@ -582,7 +620,9 @@ def _execute_phase_state_sn(run: CanonicalRun) -> None:
         fault_current_a=_phase_value_from_options(
             run.options,
             "fault_current_a",
-            default=(0.0, 0.0, 0.0),
+            # Phase 46: gdy audit2 grounding ustawione, uzywamy median Ik1 z
+            # catalogu jako default. Override w run.options ma priorytet.
+            default=(fault_default if fault_default is not None else (0.0, 0.0, 0.0)),
         ),
         open_phase=_open_phase_flags_from_options(run.options),
         unbalance_alert_percent=float(run.options.get("unbalance_alert_percent", 10.0)),
@@ -787,6 +827,19 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     graph_nodes = graph_element_context.get("nodes", {})
     graph_branches = graph_element_context.get("branches", {})
     short_circuit_type = _short_circuit_type_from_options(run.options)
+
+    # Phase 43: opt-in audit2 dla SC. Grounding Z0/Z1 wplywa na Z0_bus oraz
+    # block-trafo Z wplywa na fault current contribution. Aplikuje przed
+    # build_zero_sequence_zbus.
+    audit2_extensions_sc = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    if audit2_extensions_sc is not None:
+        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+
+        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions_sc)
+
     z0_bus = (
         build_zero_sequence_zbus(enm, graph)
         if _short_circuit_requires_z0(short_circuit_type)
@@ -978,6 +1031,71 @@ def _solve_power_flow_with_method(
     raise ValueError(f"Nieznany tryb rozpływu mocy: {solver_method}")
 
 
+def _maybe_load_audit2_extensions(
+    *, project_id_str: str | None, station_id: str | None
+) -> dict[str, object] | None:
+    """
+    Phase 41: opt-in audit2 extensions z DB. Zwraca None gdy brak ID-kow lub
+    config nie istnieje. NOT-A-SOLVER: tylko orchestracja, nie physics.
+    """
+    if not project_id_str or not station_id:
+        return None
+    try:
+        from uuid import UUID
+
+        pid_uuid = UUID(str(project_id_str))
+    except ValueError:
+        return None
+
+    try:
+        from infrastructure.persistence.db import (
+            create_engine_from_url,
+            create_session_factory,
+        )
+        from infrastructure.persistence.models import StationAudit2ConfigORM
+        from infrastructure.persistence.unit_of_work import build_uow_factory
+    except ImportError:
+        return None
+
+    import os
+
+    db_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
+    try:
+        engine = create_engine_from_url(db_url)
+        session_factory = create_session_factory(engine)
+        uow_factory = build_uow_factory(session_factory)
+    except Exception:
+        return None
+
+    with uow_factory() as uow:
+        if uow.session is None:
+            return None
+        cfg = (
+            uow.session.query(StationAudit2ConfigORM)
+            .filter(
+                StationAudit2ConfigORM.project_id == pid_uuid,
+                StationAudit2ConfigORM.station_id == station_id,
+            )
+            .one_or_none()
+        )
+        if cfg is None:
+            return None
+
+        from solver_input.audit2_der_payload import (
+            build_station_audit2_payload,
+            extract_solver_extensions_from_payload,
+        )
+
+        payload = build_station_audit2_payload(
+            station_id=cfg.station_id,
+            mv_neutral_grounding_ref=cfg.mv_neutral_grounding_ref,
+            tap_changer_refs=list(cfg.tap_changer_refs or []),
+            der_specs=list(cfg.der_specs or []),
+            transformer_tap_changers=dict(cfg.transformer_tap_changers or {}),
+        )
+        return extract_solver_extensions_from_payload(payload)
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -1007,12 +1125,25 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         trace_level=str(run.options.get("trace_level", "full")),
     )
     base_mva = float(run.options.get("base_mva", 100.0))
+    # Phase 41: opt-in integracja audit2 z istniejacym pipeline'em.
+    # Jesli run.options zawiera audit2_project_id + audit2_station_id, ladujemy
+    # config z DB i aplikujemy adjustments do graph PRZED solverem.
+    audit2_extensions = _maybe_load_audit2_extensions(
+        project_id_str=run.options.get("audit2_project_id"),
+        station_id=run.options.get("audit2_station_id"),
+    )
+    if audit2_extensions is not None:
+        from solver_input.audit2_solver_adjuster import apply_audit2_to_network_model
+
+        apply_audit2_to_network_model(graph=graph, audit2_extensions=audit2_extensions)
+
     pf_input = PowerFlowInput(
         graph=graph,
         base_mva=base_mva,
         slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
         pq=pq_specs,
         options=options,
+        audit2_extensions=audit2_extensions,
     )
     requested_solver_method = _normalize_power_flow_solver_method(
         run.options.get("solver_method") or run.options.get("method")

@@ -3,13 +3,13 @@
 **Version:** 1.1  
 **Status:** CANONICAL  
 **Phase:** 2.x.2  
-**Standard:** DIgSILENT benchmark â€” **FULL PARITY**
+**Standard:** DIgSILENT benchmark — **FULL PARITY**
 
 ---
 
 ## 1. Cel dokumentu
 
-Definicja **Topology Tree** â€” hierarchicznej eksploracji sieci jako alternatywy dla SLD.
+Definicja **Topology Tree** — hierarchicznej eksploracji sieci jako alternatywy dla SLD.
 
 ---
 
@@ -33,7 +33,7 @@ PROJECT
 
 | Klik w Tree | Reakcja |
 |-------------|---------|
-| Element | SLD centruje + highlight, Inspector otwiera siÄ™ |
+| Element | SLD centruje + highlight, Inspector otwiera się |
 | Station | SLD zoom do stacji |
 | Voltage Level | Filtruje wyĹ›wietlanie |
 
@@ -47,16 +47,16 @@ Global Focus = (Target Element, Active Case, Active Run, Active Snapshot, Active
 
 **Zasady:**
 1. Jeden globalny fokus wspĂłĹ‚dzielony przez Tree, SLD, Results, Inspector
-2. Zmiana w jednym widoku â†’ aktualizacja WSZYSTKICH
-3. ESC cofa fokus o poziom (Elementâ†’Runâ†’Snapshotâ†’Case)
+2. Zmiana w jednym widoku → aktualizacja WSZYSTKICH
+3. ESC cofa fokus o poziom (Element→Run→Snapshot→Case)
 
 ---
 
 ## 5. FORBIDDEN
 
 - Wiele aktywnych fokusĂłw jednoczeĹ›nie
-- Rozjazd kontekstu miÄ™dzy widokami
-- Reset kontekstu przy przeĹ‚Ä…czaniu widokĂłw
+- Rozjazd kontekstu między widokami
+- Reset kontekstu przy przeĹ‚ączaniu widokĂłw
 
 ---
 

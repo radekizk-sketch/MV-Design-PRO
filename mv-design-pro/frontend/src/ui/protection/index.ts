@@ -20,7 +20,6 @@ import {
 export * from './types';
 export * from './api';
 export * from './sanity-types';
-export * from './useProtectionReadModel';
 
 export type {
   ElementProtectionAssignment,

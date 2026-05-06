@@ -1,0 +1,211 @@
+/**
+ * Testy enmToSldAdapter (Iteracja 11) — adapter ENM → propsy rendererów SldCanvasV2.
+ *
+ * Pokrycie:
+ *  1. Pusty snapshot → puste tablice.
+ *  2. Determinizm: ten sam input → ten sam output (10× pod rząd).
+ *  3. GPZ z transformatorem 110/SN → GpzRendererProps z voltageHighKv=110.
+ *  4. Sekcje GPZ → SectionRendererProps z poprawnym numer + bayCount.
+ *  5. Logical views: trunks → cableRuns z runKind='main_trunk'.
+ *  6. Generators (PV/BESS/FW) → DerRendererProps.
+ *  7. Stacje pole-wymiarowe (mv_lv/inline/branch/...) → StationOnRunRendererProps.
+ */
+
+import { describe, it, expect } from 'vitest';
+
+import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
+import type {
+  EnergyNetworkModel,
+  LogicalViewsV1,
+} from '../../../../../types/enm';
+
+const EMPTY_HEADER = {
+  enm_version: '1.0' as const,
+  name: 'test',
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+  revision: 1,
+  hash_sha256: 'a'.repeat(64),
+  defaults: { frequency_hz: 50, unit_system: 'SI' as const },
+};
+
+function buildEmptySnapshot(): EnergyNetworkModel {
+  return {
+    header: EMPTY_HEADER,
+    buses: [],
+    branches: [],
+    transformers: [],
+    sources: [],
+    loads: [],
+    generators: [],
+    substations: [],
+    bays: [],
+    measurements: [],
+    protection_devices: [],
+    protection_assignments: [],
+    line_runs: [],
+    connection_nodes: [],
+    cable_joints: [],
+  } as never;
+}
+
+describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
+  it('zwraca puste tablice gdy snapshot jest null', () => {
+    const r = buildSldDataFromSnapshot(null, null);
+    expect(r.gpzs).toEqual([]);
+    expect(r.sections).toEqual([]);
+    expect(r.cableRuns).toEqual([]);
+    expect(r.stations).toEqual([]);
+    expect(r.ders).toEqual([]);
+  });
+
+  it('zwraca puste tablice gdy snapshot pusty', () => {
+    const snap = buildEmptySnapshot();
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs).toEqual([]);
+    expect(r.sections).toEqual([]);
+    expect(r.cableRuns).toEqual([]);
+    expect(r.stations).toEqual([]);
+    expect(r.ders).toEqual([]);
+  });
+
+  it('jest deterministyczny: ten sam input → ten sam output 10× pod rząd', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b', ref_id: 'b', name: 'BUS-1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b'], transformer_refs: [],
+      } as never,
+    ];
+    const first = buildSldDataFromSnapshot(snap, null);
+    for (let i = 0; i < 9; i++) {
+      const next = buildSldDataFromSnapshot(snap, null);
+      expect(JSON.stringify(next)).toBe(JSON.stringify(first));
+    }
+  });
+
+  it('GPZ → GpzRendererProps z voltageHighKv=110 i voltageLowKv z busa', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b1', ref_id: 'b1', name: 'BUS-SN', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ Centralny', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b1'], transformer_refs: [],
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs).toHaveLength(1);
+    expect(r.gpzs[0].id).toBe('GPZ-1');
+    expect(r.gpzs[0].name).toBe('GPZ Centralny');
+    expect(r.gpzs[0].voltageHighKv).toBe(110);
+    expect(r.gpzs[0].voltageLowKv).toBe(15);
+  });
+
+  it('Sekcje GPZ → SectionRendererProps z numer + bayCount', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b1', ref_id: 'b1', name: 'B1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b1'], transformer_refs: [],
+        gpz_sections: [
+          { section_id: 'SEC-A', order: 1, bus_ref: 'b1' },
+          { section_id: 'SEC-B', order: 2, bus_ref: 'b1' },
+        ],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'bay1', ref_id: 'bay1', name: 'POLE 01', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b1', gpz_section_id: 'SEC-A', equipment_refs: [] } as never,
+      { id: 'bay2', ref_id: 'bay2', name: 'POLE 02', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b1', gpz_section_id: 'SEC-A', equipment_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.sections).toHaveLength(2);
+    expect(r.sections[0].number).toBe(1);
+    expect(r.sections[0].busVoltageKv).toBe(15);
+    expect(r.sections[0].bayCount).toBe(2);
+    expect(r.sections[1].number).toBe(2);
+    expect(r.sections[1].bayCount).toBe(0);
+  });
+
+  it('logical_views.trunks → cableRuns z main_trunk runKind', () => {
+    const snap = buildEmptySnapshot();
+    snap.branches = [
+      {
+        id: 'k1', ref_id: 'k1', name: 'K-1', tags: [], meta: {},
+        type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+        length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+      } as never,
+    ];
+    const lv: LogicalViewsV1 = {
+      trunks: [{ corridor_ref: 'TRUNK-1', corridor_type: 'main', segments: ['k1'], no_point_ref: null, terminals: [] }],
+      branches: [],
+      secondary_connectors: [],
+      terminals: [],
+    };
+    const r = buildSldDataFromSnapshot(snap, lv);
+    expect(r.cableRuns).toHaveLength(1);
+    expect(r.cableRuns[0].id).toBe('TRUNK-1');
+    expect(r.cableRuns[0].runKind).toBe('main_trunk');
+    expect(r.cableRuns[0].segmentKind).toBe('cable_sn');
+  });
+
+  it('Linia napowietrzna SN → segmentKind=overhead_line_sn', () => {
+    const snap = buildEmptySnapshot();
+    snap.branches = [
+      {
+        id: 'l1', ref_id: 'l1', name: 'L-1', tags: [], meta: {},
+        type: 'line_overhead', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+        length_km: 2, r_ohm_per_km: 0.3, x_ohm_per_km: 0.4,
+      } as never,
+    ];
+    const lv: LogicalViewsV1 = {
+      trunks: [{ corridor_ref: 'T1', corridor_type: 'overhead', segments: ['l1'], no_point_ref: null, terminals: [] }],
+      branches: [],
+      secondary_connectors: [],
+      terminals: [],
+    };
+    const r = buildSldDataFromSnapshot(snap, lv);
+    expect(r.cableRuns[0].segmentKind).toBe('overhead_line_sn');
+  });
+
+  it('Generators z gen_type=pv_inverter/bess/wind_inverter → DER renderery', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      { id: 'g1', ref_id: 'PV-1', name: 'PV-1', tags: [], meta: {}, bus_ref: 'b', p_mw: 1.5, gen_type: 'pv_inverter' } as never,
+      { id: 'g2', ref_id: 'BESS-1', name: 'BESS-1', tags: [], meta: {}, bus_ref: 'b', p_mw: 2.0, gen_type: 'bess' } as never,
+      { id: 'g3', ref_id: 'FW-1', name: 'FW-1', tags: [], meta: {}, bus_ref: 'b', p_mw: 5.0, gen_type: 'wind_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.ders).toHaveLength(3);
+    expect(r.ders.find((d) => d.kind === 'PV')).toBeTruthy();
+    expect(r.ders.find((d) => d.kind === 'BESS')).toBeTruthy();
+    expect(r.ders.find((d) => d.kind === 'FW')).toBeTruthy();
+    // P_mw → nominalPowerKw
+    expect(r.ders.find((d) => d.id === 'PV-1')?.nominalPowerKw).toBe(1500);
+  });
+
+  it('Stacje pole-wymiarowe → StationOnRunRendererProps z poprawnym topologicalType', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'Stacja-1', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja-2', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'Stacja-3', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's4', ref_id: 'ST-4', name: 'Stacja-4', tags: [], meta: {}, station_type: 'sectional', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's5', ref_id: 'ST-5', name: 'Stacja-5', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(5);
+    const types = r.stations.map((s) => s.topologicalType);
+    expect(types).toContain('końcowa');
+    expect(types).toContain('przelotowa');
+    expect(types).toContain('odgałęźna');
+    expect(types).toContain('sekcyjna');
+  });
+});

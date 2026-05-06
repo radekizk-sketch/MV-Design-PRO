@@ -1,233 +1,210 @@
 /**
- * sld_render_artifacts.ts — CI render artifact generator (RUN #3H DOMKNIECIE §8).
+ * sld_render_artifacts.ts — CI render artifact generator dla nowego SLD v2.
  *
- * Generates deterministic SLD render artifacts for CI pipeline:
- * - Loads golden networks (self-contained topology builders)
- * - Applies example overrides
- * - Produces artifact manifest files:
- *     artifacts/<networkId>__<layoutHash>__<overridesHash>.svg.json
- *     artifacts/<networkId>__<layoutHash>__<overridesHash>.png.json
+ * Po PR-5c (wygaszenie starego SLD) pipeline jest:
+ *   BuildSequence (lista komend) → HierarchicalLayout (computeLayout) → EffectiveLayout
  *
- * The .json files contain the full render metadata (node positions,
- * edge routes, effective bounds) which would be consumed by an SVG/PNG
- * renderer (not implemented in v1 — CI verifies determinism of metadata).
+ * Generuje deterministyczne artefakty renderingu dla 3 sieci golden:
+ *   - radial_5: GPZ + 1 sekcja + 1 pole + 1 ciąg + 5 stacji
+ *   - branch_3: GPZ + 1 sekcja + 1 pole + ciąg główny + 1 odgałęzienie + 3 stacje
+ *   - der_pv: GPZ + 1 sekcja + 1 pole + 1 ciąg + 1 stacja + 1 PV
  *
- * USAGE:
- *   npx tsx scripts/sld_render_artifacts.ts
+ * USAGE: npx tsx scripts/sld_render_artifacts.ts
  *
- * PIPELINE:
- *   TopologyInput → VisualGraph → LayoutResult → applyOverrides → EffectiveLayout
- *   → artifact manifest (JSON with SVG/PNG metadata)
+ * Plik wyjściowy:
+ *   artifacts/<networkId>__<layoutHash>.json
+ * zawiera EffectiveLayout (elements + paths + hash) jako stabilny JSON.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 
-// Inline golden network builder (same as test fixtures — self-contained)
-// We import from the frontend source tree
-import { buildVisualGraphFromTopology } from '../frontend/src/ui/sld/core/topologyAdapterV2';
-import { computeLayout } from '../frontend/src/ui/sld/core/layoutPipeline';
-import { computeLayoutResultHash } from '../frontend/src/ui/sld/core/layoutResult';
-import type { LayoutResultV1 } from '../frontend/src/ui/sld/core/layoutResult';
-import { applyOverrides } from '../frontend/src/ui/sld/core/applyOverrides';
-import type { EffectiveLayoutV1 } from '../frontend/src/ui/sld/core/applyOverrides';
 import {
-  OverrideScopeV1,
-  OverrideOperationV1,
-  OVERRIDES_VERSION,
-  computeOverridesHash,
-  canonicalizeOverrides,
-} from '../frontend/src/ui/sld/core/geometryOverrides';
-import type { ProjectGeometryOverridesV1, GeometryOverrideItemV1 } from '../frontend/src/ui/sld/core/geometryOverrides';
-import type { TopologyInputV1 } from '../frontend/src/ui/sld/core/topologyInputReader';
-import { BranchKind, StationKind } from '../frontend/src/ui/sld/core/topologyInputReader';
+  appendCommand,
+  emptyBuildSequence,
+  type BuildCommand,
+  type BuildSequence,
+} from '../frontend/src/ui/sld/v2/builder/BuildSequence';
+import { computeLayout } from '../frontend/src/ui/sld/v2/builder/HierarchicalLayout';
 
-// =============================================================================
-// GOLDEN NETWORKS
-// =============================================================================
+interface NetworkArtifact {
+  readonly networkId: string;
+  readonly description: string;
+  readonly sequence: BuildSequence;
+}
 
-function buildGoldenRadial5(): TopologyInputV1 {
-  const nodes = [
-    { id: 'bus_gpz', name: 'Szyna GPZ 15kV', voltageKv: 15, stationId: null, busIndex: null, inService: true },
+function buildRadial5(): NetworkArtifact {
+  let seq = emptyBuildSequence();
+  const cmds: BuildCommand[] = [
+    { type: 'InsertGpz', id: 'gpz', name: 'GPZ Test', voltageHighKv: 110, voltageLowKv: 15, scShortCircuitMva: 500 },
+    { type: 'AddSection', id: 'sec1', gpzId: 'gpz', number: 1, busVoltageKv: 15 },
+    { type: 'AddBay', id: 'bay1', sectionId: 'sec1', designation: 'F01', bayTemplateId: 'bay_template_line_out' },
+    {
+      type: 'ExtendCableRun',
+      id: 'run1',
+      fromBayId: 'bay1',
+      fromPortId: 'bay1:sn_output',
+      runKind: 'main_trunk',
+      segmentKind: 'cable_sn',
+      catalogRef: null,
+      lengthKm: 0.5,
+      parentRunId: null,
+      branchOriginStationId: null,
+    },
   ];
-  const branches: TopologyInputV1['branches'] = [];
-  const stations: TopologyInputV1['stations'] = [];
-  const loads: TopologyInputV1['loads'] = [];
-
   for (let i = 1; i <= 5; i++) {
-    const pad = String(i).padStart(2, '0');
-    const snBusId = `bus_sn_st${pad}`;
-    const nnBusId = `bus_nn_st${pad}`;
-    const stId = `st${pad}`;
-    const fromId = i === 1 ? 'bus_gpz' : `bus_sn_st${String(i - 1).padStart(2, '0')}`;
-
-    nodes.push(
-      { id: snBusId, name: `Szyna SN St${pad}`, voltageKv: 15, stationId: stId, busIndex: null, inService: true },
-      { id: nnBusId, name: `Szyna nN St${pad}`, voltageKv: 0.4, stationId: stId, busIndex: null, inService: true },
-    );
-    branches.push(
-      { id: `line_${pad}`, name: `Linia SN ${pad}`, fromNodeId: fromId, toNodeId: snBusId, kind: BranchKind.LINE, isNormallyOpen: false, inService: true, catalogRef: 'AFL-6 120', lengthKm: 2.0, ratedPowerMva: null, voltageHvKv: null, voltageLvKv: null },
-      { id: `tr_${pad}`, name: `TR St${pad}`, fromNodeId: snBusId, toNodeId: nnBusId, kind: BranchKind.TR_LINK, isNormallyOpen: false, inService: true, catalogRef: 'TR-250', lengthKm: null, ratedPowerMva: 0.25, voltageHvKv: 15, voltageLvKv: 0.4 },
-    );
-    stations.push(
-      { id: stId, name: `Stacja ${pad}`, stationType: StationKind.DISTRIBUTION, voltageKv: 15, busIds: [snBusId, nnBusId], branchIds: [], switchIds: [], transformerIds: [`tr_${pad}`] },
-    );
-    loads.push(
-      { id: `load_${pad}`, name: `Odbiorca ${pad}`, nodeId: nnBusId, inService: true, pMw: 0.1, qMvar: 0.03 },
-    );
-  }
-
-  return {
-    snapshotId: 'golden-radial-5',
-    snapshotFingerprint: 'golden_radial_5_fp',
-    connectionNodes: nodes,
-    branches,
-    devices: [],
-    stations,
-    generators: [],
-    sources: [{ id: 'src_gpz', name: 'Zasilanie GPZ', nodeId: 'bus_gpz', inService: true }],
-    loads,
-    protectionBindings: [],
-    fixActions: [],
-  };
-}
-
-// =============================================================================
-// OVERRIDE BUILDERS
-// =============================================================================
-
-function makeOverridesForLayout(layout: LayoutResultV1): ProjectGeometryOverridesV1 {
-  const items: GeometryOverrideItemV1[] = [];
-
-  for (let i = 0; i < Math.min(2, layout.nodePlacements.length); i++) {
-    const node = layout.nodePlacements[i];
-    items.push({
-      elementId: node.nodeId,
-      scope: OverrideScopeV1.NODE,
-      operation: OverrideOperationV1.MOVE_DELTA,
-      payload: { dx: 20 * (i + 1), dy: -20 },
+    cmds.push({
+      type: 'InsertStationOnRun',
+      id: `st${i}`,
+      runId: 'run1',
+      afterSegmentId: 'seg-prev',
+      stationName: `Stacja ${i}`,
+      stationTemplateId: i === 5 ? 'station_template_terminal' : 'station_template_inline',
     });
   }
+  for (const c of cmds) seq = appendCommand(seq, c);
+  return { networkId: 'radial_5', description: 'GPZ + 1 sekcja + 1 pole + ciąg + 5 stacji', sequence: seq };
+}
 
-  if (layout.switchgearBlocks.length > 0) {
-    const block = layout.switchgearBlocks[0];
-    items.push({
-      elementId: block.blockId,
-      scope: OverrideScopeV1.BLOCK,
-      operation: OverrideOperationV1.MOVE_DELTA,
-      payload: { dx: 40, dy: 0 },
-    });
+function buildBranch3(): NetworkArtifact {
+  let seq = emptyBuildSequence();
+  const cmds: BuildCommand[] = [
+    { type: 'InsertGpz', id: 'gpz', name: 'GPZ Test', voltageHighKv: 110, voltageLowKv: 15, scShortCircuitMva: 500 },
+    { type: 'AddSection', id: 'sec1', gpzId: 'gpz', number: 1, busVoltageKv: 15 },
+    { type: 'AddBay', id: 'bay1', sectionId: 'sec1', designation: 'F01', bayTemplateId: 'bay_template_line_out' },
+    {
+      type: 'ExtendCableRun',
+      id: 'mainrun',
+      fromBayId: 'bay1',
+      fromPortId: 'bay1:sn_output',
+      runKind: 'main_trunk',
+      segmentKind: 'cable_sn',
+      catalogRef: null,
+      lengthKm: 1.0,
+      parentRunId: null,
+      branchOriginStationId: null,
+    },
+    {
+      type: 'InsertStationOnRun',
+      id: 'st_branch_origin',
+      runId: 'mainrun',
+      afterSegmentId: 'seg1',
+      stationName: 'Stacja branch',
+      stationTemplateId: 'station_template_branch',
+    },
+    {
+      type: 'ExtendCableRun',
+      id: 'sub_run1',
+      fromBayId: 'bay1',
+      fromPortId: 'st_branch_origin:sn_branch',
+      runKind: 'branch',
+      segmentKind: 'overhead_line_sn',
+      catalogRef: null,
+      lengthKm: 0.7,
+      parentRunId: 'mainrun',
+      branchOriginStationId: 'st_branch_origin',
+    },
+    {
+      type: 'InsertStationOnRun',
+      id: 'st_branch_end',
+      runId: 'sub_run1',
+      afterSegmentId: 'seg-sub',
+      stationName: 'Stacja końcowa odgałęzienia',
+      stationTemplateId: 'station_template_terminal',
+    },
+    {
+      type: 'InsertStationOnRun',
+      id: 'st_main_end',
+      runId: 'mainrun',
+      afterSegmentId: 'seg2',
+      stationName: 'Stacja końcowa',
+      stationTemplateId: 'station_template_terminal',
+    },
+  ];
+  for (const c of cmds) seq = appendCommand(seq, c);
+  return { networkId: 'branch_3', description: 'GPZ + ciąg główny + odgałęzienie + 3 stacje', sequence: seq };
+}
+
+function buildDerPv(): NetworkArtifact {
+  let seq = emptyBuildSequence();
+  const cmds: BuildCommand[] = [
+    { type: 'InsertGpz', id: 'gpz', name: 'GPZ Test', voltageHighKv: 110, voltageLowKv: 15, scShortCircuitMva: 500 },
+    { type: 'AddSection', id: 'sec1', gpzId: 'gpz', number: 1, busVoltageKv: 15 },
+    { type: 'AddBay', id: 'bay1', sectionId: 'sec1', designation: 'F01', bayTemplateId: 'bay_template_line_out' },
+    {
+      type: 'ExtendCableRun',
+      id: 'run1',
+      fromBayId: 'bay1',
+      fromPortId: 'bay1:sn_output',
+      runKind: 'main_trunk',
+      segmentKind: 'cable_sn',
+      catalogRef: null,
+      lengthKm: 0.5,
+      parentRunId: null,
+      branchOriginStationId: null,
+    },
+    {
+      type: 'InsertStationOnRun',
+      id: 'st_pv',
+      runId: 'run1',
+      afterSegmentId: 'seg1',
+      stationName: 'Stacja PV',
+      stationTemplateId: 'station_template_pv',
+    },
+    {
+      type: 'AttachDer',
+      id: 'pv1',
+      derKind: 'PV',
+      attachmentPortId: 'st_pv:sn_der_pv',
+      parentStationId: 'st_pv',
+      nominalPowerKw: 2000,
+      portKind: 'sn_der_pv',
+    },
+  ];
+  for (const c of cmds) seq = appendCommand(seq, c);
+  return { networkId: 'der_pv', description: 'GPZ + 1 stacja PV z 2 MW PV', sequence: seq };
+}
+
+function serializeArtifact(networkId: string, description: string, layout: ReturnType<typeof computeLayout>) {
+  const elements: Record<string, { x: number; y: number; widthPx?: number; heightPx?: number }> = {};
+  for (const [id, slot] of layout.elements.entries()) {
+    elements[id] = { x: slot.x, y: slot.y };
+    if ('widthPx' in slot && typeof slot.widthPx === 'number') elements[id].widthPx = slot.widthPx;
+    if ('heightPx' in slot && typeof slot.heightPx === 'number') elements[id].heightPx = slot.heightPx;
   }
-
-  return canonicalizeOverrides({
-    overridesVersion: OVERRIDES_VERSION,
-    studyCaseId: 'ci-render',
-    snapshotHash: 'golden_radial_5_fp',
-    items,
-  });
-}
-
-// =============================================================================
-// ARTIFACT GENERATOR
-// =============================================================================
-
-interface RenderArtifact {
-  networkId: string;
-  layoutHash: string;
-  overridesHash: string;
-  effectiveHash: string;
-  appliedCount: number;
-  nodeCount: number;
-  edgeCount: number;
-  blockCount: number;
-  bounds: { x: number; y: number; width: number; height: number };
-  nodePlacements: readonly { nodeId: string; x: number; y: number }[];
-}
-
-function generateArtifact(networkId: string, input: TopologyInputV1, overrides: ProjectGeometryOverridesV1 | null): RenderArtifact {
-  const adapterResult = buildVisualGraphFromTopology(input);
-  const layoutResult = computeLayout(adapterResult.graph, undefined, adapterResult.stationBlockDetails);
-  const layoutHash = computeLayoutResultHash(layoutResult);
-  const effective = applyOverrides(layoutResult, overrides);
-  const overridesHash = overrides ? computeOverridesHash(overrides) : '00000000';
-
+  const paths: Record<string, ReadonlyArray<{ x: number; y: number }>> = {};
+  for (const [id, pathPoints] of layout.paths.entries()) {
+    paths[id] = pathPoints;
+  }
   return {
     networkId,
-    layoutHash,
-    overridesHash,
-    effectiveHash: effective.effectiveHash,
-    appliedCount: effective.appliedCount,
-    nodeCount: effective.nodePlacements.length,
-    edgeCount: effective.edgeRoutes.length,
-    blockCount: effective.switchgearBlocks.length,
-    bounds: effective.bounds,
-    nodePlacements: effective.nodePlacements.map((p) => ({
-      nodeId: p.nodeId,
-      x: p.position.x,
-      y: p.position.y,
-    })),
+    description,
+    layoutVersion: layout.version,
+    layoutHash: layout.hash,
+    elementCount: layout.elements.size,
+    pathCount: layout.paths.size,
+    elements,
+    paths,
   };
 }
-
-// =============================================================================
-// MAIN
-// =============================================================================
 
 function main(): void {
   const artifactsDir = path.resolve(__dirname, '..', 'artifacts');
-  fs.mkdirSync(artifactsDir, { recursive: true });
-
-  console.log('SLD Render Artifacts Generator (RUN #3H DOMKNIECIE)');
-  console.log(`Output: ${artifactsDir}`);
-  console.log('');
-
-  // Golden network: 5-station radial
-  const input = buildGoldenRadial5();
-
-  // --- Without overrides ---
-  const artifactBase = generateArtifact('golden-radial-5', input, null);
-  const baseFilename = `${artifactBase.networkId}__${artifactBase.layoutHash}__${artifactBase.overridesHash}`;
-
-  const baseSvgPath = path.join(artifactsDir, `${baseFilename}.svg.json`);
-  const basePngPath = path.join(artifactsDir, `${baseFilename}.png.json`);
-  fs.writeFileSync(baseSvgPath, JSON.stringify({ ...artifactBase, format: 'svg' }, null, 2));
-  fs.writeFileSync(basePngPath, JSON.stringify({ ...artifactBase, format: 'png' }, null, 2));
-  console.log(`[BASE] ${baseFilename}.svg.json`);
-  console.log(`[BASE] ${baseFilename}.png.json`);
-
-  // --- With overrides ---
-  // Need LayoutResult to generate overrides
-  const adapterResult = buildVisualGraphFromTopology(input);
-  const layoutResult = computeLayout(adapterResult.graph, undefined, adapterResult.stationBlockDetails);
-  const overrides = makeOverridesForLayout(layoutResult);
-
-  const artifactOverrides = generateArtifact('golden-radial-5', input, overrides);
-  const overridesFilename = `${artifactOverrides.networkId}__${artifactOverrides.layoutHash}__${artifactOverrides.overridesHash}`;
-
-  const overSvgPath = path.join(artifactsDir, `${overridesFilename}.svg.json`);
-  const overPngPath = path.join(artifactsDir, `${overridesFilename}.png.json`);
-  fs.writeFileSync(overSvgPath, JSON.stringify({ ...artifactOverrides, format: 'svg' }, null, 2));
-  fs.writeFileSync(overPngPath, JSON.stringify({ ...artifactOverrides, format: 'png' }, null, 2));
-  console.log(`[OVER] ${overridesFilename}.svg.json`);
-  console.log(`[OVER] ${overridesFilename}.png.json`);
-
-  // Determinism check — run 10 times and verify hashes are identical
-  console.log('');
-  console.log('Determinism check (10 iterations)...');
-  let allMatch = true;
-  for (let i = 0; i < 10; i++) {
-    const art = generateArtifact('golden-radial-5', input, overrides);
-    if (art.effectiveHash !== artifactOverrides.effectiveHash) {
-      console.log(`  FAIL: iteration ${i} produced different effectiveHash`);
-      allMatch = false;
-    }
-  }
-  if (allMatch) {
-    console.log('  OK: all 10 iterations produced identical effectiveHash');
+  if (!fs.existsSync(artifactsDir)) {
+    fs.mkdirSync(artifactsDir, { recursive: true });
   }
 
-  console.log('');
-  console.log(`Generated ${4} artifact files in ${artifactsDir}`);
+  const networks = [buildRadial5(), buildBranch3(), buildDerPv()];
+
+  for (const net of networks) {
+    const layout = computeLayout(net.sequence);
+    const artifact = serializeArtifact(net.networkId, net.description, layout);
+    const fileName = `${net.networkId}__${layout.hash}.json`;
+    const filePath = path.join(artifactsDir, fileName);
+    fs.writeFileSync(filePath, JSON.stringify(artifact, null, 2), 'utf-8');
+    console.log(`[sld_render_artifacts] ${net.networkId}: hash=${layout.hash} elements=${layout.elements.size} paths=${layout.paths.size} → ${fileName}`);
+  }
+  console.log(`[sld_render_artifacts] ${networks.length} sieci wyrenderowanych do ${artifactsDir}`);
 }
 
 main();

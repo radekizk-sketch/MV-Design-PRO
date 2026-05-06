@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 64" width="46" height="64" data-symbol="load_switch">
+  <!-- Rozłącznik SN: prostokątny blok z poziomym mostkiem (mostek zamkniętego rozłącznika) -->
+  <line x1="23" y1="0" x2="23" y2="14" stroke="currentColor" stroke-width="2"/>
+  <rect x="8" y="14" width="30" height="36" fill="none" stroke="currentColor" stroke-width="2"/>
+  <line x1="23" y1="50" x2="23" y2="64" stroke="currentColor" stroke-width="2"/>
+  <!-- Mostek poziomy odróżniający rozłącznik od wyłącznika -->
+  <line x1="13" y1="32" x2="33" y2="32" stroke="currentColor" stroke-width="2.5"/>
+  <!-- Anchor markers (deterministyczne) -->
+  <circle cx="23" cy="0" r="0.5" fill="currentColor" data-anchor="top"/>
+  <circle cx="23" cy="64" r="0.5" fill="currentColor" data-anchor="bottom"/>
+</svg>

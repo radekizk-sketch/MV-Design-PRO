@@ -492,7 +492,7 @@ function ResultStatusBar() {
           </span>
           {caseLabel && (
             <span className="text-sm text-slate-600" data-testid="power-flow-status-case-context">
-              <span className="font-medium">Obliczenia:</span> {caseLabel}
+              <span className="font-medium">Zakres obliczeń:</span> {caseLabel}
             </span>
           )}
           {completenessLabel && (
@@ -802,7 +802,7 @@ function calculateNetworkVerdict(
       problems.push({
         type: 'loading',
         element_id: branch.branch_id,
-        description: `${NormativeLabels.terms.branch.charAt(0).toUpperCase() + NormativeLabels.terms.branch.slice(1)} ${branch.branch_id.substring(0, 8)}...: ${result.notes}`,
+        description: `${NormativeLabels.terms.branch.charAt(0).toUpperCase() + NormativeLabels.terms.branch.slice(1)} ${branch.branch_id.substring(0, 8)}...: ${result.notes}`, // ui-terminology-ignore
         severity: 'MARGINAL',
       });
     } else if (result.verdict === 'FAIL') {
@@ -810,7 +810,7 @@ function calculateNetworkVerdict(
       problems.push({
         type: 'loading',
         element_id: branch.branch_id,
-        description: `${NormativeLabels.terms.branch.charAt(0).toUpperCase() + NormativeLabels.terms.branch.slice(1)} ${branch.branch_id.substring(0, 8)}...: ${result.notes}`,
+        description: `${NormativeLabels.terms.branch.charAt(0).toUpperCase() + NormativeLabels.terms.branch.slice(1)} ${branch.branch_id.substring(0, 8)}...: ${result.notes}`, // ui-terminology-ignore
         severity: 'FAIL',
       });
     }

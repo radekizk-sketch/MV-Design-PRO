@@ -336,12 +336,12 @@ def validate_and_materialize_catalog_binding(
         return (
             CatalogPolicyError(
                 code="catalog.ref_required",
-                message_pl="Element techniczny wymaga powiÄ…zania z katalogiem",
+                message_pl="Element techniczny wymaga powiązania z katalogiem",
                 errors=[
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            "RÄ™czny odpowiednik GPZ musi byÄ‡ kompletny albo naleĹĽy podaÄ‡ "
+                            "Ręczny odpowiednik GPZ musi być kompletny albo naleĹĽy podać "
                             "'catalog_binding'."
                         ),
                     }

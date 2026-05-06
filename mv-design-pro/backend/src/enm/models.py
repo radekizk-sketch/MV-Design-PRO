@@ -164,6 +164,9 @@ class OverheadLine(BranchBase):
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
     rating: BranchRating | None = None
+    # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
+    endpoint_a_port: PortRef | None = None
+    endpoint_b_port: PortRef | None = None
 
 
 class Cable(BranchBase):
@@ -177,6 +180,11 @@ class Cable(BranchBase):
     b0_siemens_per_km: float | None = None
     rating: BranchRating | None = None
     insulation: Literal["XLPE", "PVC", "PAPER"] | None = None
+    # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
+    endpoint_a_port: PortRef | None = None
+    endpoint_b_port: PortRef | None = None
+    # Mufy kablowe (brief 1 §4 pkt 4) — punkty na segmencie kabla bez podziału topologii
+    cable_joints: list[CableJoint] = []
 
 
 class SwitchBranch(BranchBase):
@@ -339,7 +347,7 @@ class Generator(ENMElement):
     """
 
     @model_validator(mode="after")
-    def _validate_connection_variant_consistency(self) -> "Generator":
+    def _validate_connection_variant_consistency(self) -> Generator:
         """V12S-008: connection_variant musi byc spojny z station_ref/blocking_transformer_ref.
 
         Tabela prawdy:
@@ -453,6 +461,137 @@ class ProtectionAssignment(ENMElement):
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# PR-3 rebuild SLD: Port, ConnectionNode, LineRun, CableJoint
+# Addytywne rozszerzenia ENM dla konstruktywnego builder-a SLD.
+# ---------------------------------------------------------------------------
+
+
+class PortKind(str):
+    """Typy portów technicznych w ENM (PR-3 rebuild SLD).
+
+    Reprezentuje funkcjonalną rolę portu w polu / stacji / DER.
+    """
+
+    SN_INPUT = "sn_input"
+    SN_OUTPUT = "sn_output"
+    SN_BRANCH = "sn_branch"
+    SN_TRANSFORMER = "sn_transformer"
+    SN_MEASUREMENT = "sn_measurement"
+    SN_DER_PV = "sn_der_pv"
+    SN_DER_BESS = "sn_der_bess"
+    SN_DER_FW = "sn_der_fw"
+    SN_COUPLER = "sn_coupler"
+    SN_RESERVE = "sn_reserve"
+    NN_FEEDER = "nn_feeder"
+    NN_LOAD = "nn_load"
+    NN_DER_PV = "nn_der_pv"
+    NN_DER_BESS = "nn_der_bess"
+    NN_DER_FW = "nn_der_fw"
+
+
+class Port(BaseModel):
+    """Port techniczny obiektu ENM (PR-3 rebuild SLD).
+
+    Adres wewnątrz `Bay` lub `Substation` — endpoint dla kabla / linii / DER.
+    Port nie jest węzłem fizycznym; służy jako jawne miejsce przyłączenia.
+    """
+
+    id: str
+    kind: Literal[
+        "sn_input",
+        "sn_output",
+        "sn_branch",
+        "sn_transformer",
+        "sn_measurement",
+        "sn_der_pv",
+        "sn_der_bess",
+        "sn_der_fw",
+        "sn_coupler",
+        "sn_reserve",
+        "nn_feeder",
+        "nn_load",
+        "nn_der_pv",
+        "nn_der_bess",
+        "nn_der_fw",
+    ]
+    nominal_voltage_kv: float
+    bay_ref: str | None = None
+    substation_ref: str
+    occupied_by: str | None = None  # ref do segmentu kabla/linii
+    meta: dict = Field(default_factory=dict)
+
+
+class PortRef(BaseModel):
+    """Referencja do portu (immutable adres)."""
+
+    port_id: str
+
+
+class ConnectionNode(BaseModel):
+    """Punkt przyłączenia (interpretacja, nie węzeł fizyczny).
+
+    Konieczny dla wnioskowania typu topologicznego stacji z portów (PR-6).
+    """
+
+    id: str
+    location: Literal["bay", "bus", "der_terminal", "branch_point"]
+    voltage_kv: float
+    parent_ref: str  # bay_id / bus_id / der_id / branch_point_id
+
+
+class CableJoint(BaseModel):
+    """Mufa kablowa — punkt na segmencie kabla SN bez podziału topologii.
+
+    Brief 1 §4 pkt 4. Element pomocniczy do dokumentacji ułożenia.
+    """
+
+    id: str
+    parent_segment_id: str
+    position_km: float  # odległość od endpoint_a w km
+    joint_type: Literal[
+        "mufa_termoutwardzalna",
+        "mufa_zimna",
+        "mufa_olejowa",
+        "mufa_zywiczna",
+    ]
+    catalog_ref: str | None = None
+    name: str | None = None
+
+
+class LineRunSegmentRef(BaseModel):
+    """Element ciągu liniowego — referencja do segmentu kabla/linii."""
+
+    segment_ref: str  # ref do OverheadLine / Cable
+    order: int
+
+
+class LineRunStationRef(BaseModel):
+    """Element ciągu liniowego — stacja na ciągu (między segmentami)."""
+
+    substation_ref: str
+    order: int
+
+
+class LineRun(BaseModel):
+    """Ciąg liniowy — sekwencja segmentów + stacji jako jeden konstrukt.
+
+    Brief 1 §8 + Brief 2 §6. W przeciwieństwie do `Corridor` (radial/ring),
+    `LineRun` jawnie wymienia porządek elementów wraz ze stacjami pomiędzy.
+    """
+
+    id: str
+    name: str | None = None
+    run_kind: Literal["main_trunk", "branch", "ring", "loop"]
+    starting_bay_ref: str  # pole SN GPZ skąd ciąg startuje
+    starting_port_ref: str  # konkretny port pola wyjściowego
+    segments: list[LineRunSegmentRef] = []
+    stations: list[LineRunStationRef] = []
+    nop_station_ref: str | None = None  # stacja z punktem normalnie otwartym (dla pierścieni)
+    parent_run_ref: str | None = None  # dla odgałęzień: ref do ciągu macierzystego
+    branch_origin_station_ref: str | None = None  # punkt startu odgałęzienia
+
+
 class Substation(ENMElement):
     """Stacja SN/nn — logiczny kontener z rozdzielnicami.
 
@@ -481,6 +620,12 @@ class Substation(ENMElement):
     transformer_refs: list[str] = []
     entry_point_ref: str | None = None
     gpz_sections: list[GPZSection] = []
+    # PR-3 rebuild SLD: porty zewnętrzne stacji + multi-voltage nN
+    external_ports: list[Port] = []
+    nn_voltage_levels: list[float] = []  # poziomy nN (np. [0.4, 0.69])
+    construction_type: (
+        Literal["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"] | None
+    ) = None
 
 
 class GPZSection(BaseModel):
@@ -514,6 +659,9 @@ class Bay(ENMElement):
     gpz_section_id: str | None = None
     equipment_refs: list[str] = []
     protection_ref: str | None = None
+    # PR-3 rebuild SLD: porty pola — wnioskowane z bay_role + bus + reservation slots
+    ports: list[Port] = []
+    bay_template_ref: str | None = None  # referencja do BayTemplate w katalogu
 
 
 # ---------------------------------------------------------------------------
@@ -1002,3 +1150,6 @@ class EnergyNetworkModel(BaseModel):
     measurements: list[Measurement] = []
     protection_assignments: list[ProtectionAssignment] = []
     branch_points: list[BranchPointSN] = []
+    # PR-3 rebuild SLD: nowe kolekcje (addytywne, opcjonalne)
+    line_runs: list[LineRun] = []
+    connection_nodes: list[ConnectionNode] = []

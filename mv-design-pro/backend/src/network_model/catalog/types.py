@@ -1695,6 +1695,12 @@ class PVInverterType:
     control_mode: str | None = None
     grid_code: str | None = None
     manufacturer: str | None = None
+    dynamic_profile_id: str | None = None
+    """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
+
+    Brak wartości oznacza fallback do default per kind w resolverze
+    `resolve_der_dynamic_profile` — żaden DER nie zostanie bez modelu.
+    """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow PV MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1713,6 +1719,7 @@ class PVInverterType:
             "control_mode": self.control_mode,
             "grid_code": self.grid_code,
             "manufacturer": self.manufacturer,
+            "dynamic_profile_id": self.dynamic_profile_id,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1739,6 +1746,7 @@ class PVInverterType:
             control_mode=data.get("control_mode"),
             grid_code=data.get("grid_code"),
             manufacturer=data.get("manufacturer"),
+            dynamic_profile_id=data.get("dynamic_profile_id"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
@@ -1776,6 +1784,12 @@ class BESSInverterType:
     un_kv: float = 0.4
     s_n_kva: float | None = None
     manufacturer: str | None = None
+    dynamic_profile_id: str | None = None
+    """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
+
+    Brak wartości oznacza fallback do default per kind w resolverze
+    `resolve_der_dynamic_profile` — żaden DER nie zostanie bez modelu.
+    """
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow BESS MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1792,6 +1806,7 @@ class BESSInverterType:
             "un_kv": self.un_kv,
             "s_n_kva": self.s_n_kva,
             "manufacturer": self.manufacturer,
+            "dynamic_profile_id": self.dynamic_profile_id,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1812,6 +1827,7 @@ class BESSInverterType:
             un_kv=float(data.get("un_kv", data.get("u_n_kv", 0.4))),
             s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
+            dynamic_profile_id=data.get("dynamic_profile_id"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",

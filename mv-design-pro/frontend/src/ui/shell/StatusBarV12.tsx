@@ -1,7 +1,7 @@
 /**
  * StatusBarV12 — V12 dolny pasek statusu (28px)
  *
- * Zawiera: projekt, cel obliczeń, stan projektu,
+ * Zawiera: projekt, aktywny przypadek, wariant, migawka,
  *          run_id, hash widoku, gotowość modelu, walidacja, sieć.
  */
 
@@ -12,6 +12,7 @@ import {
   useActiveMode,
   useActiveProjectId,
   useActiveRunId,
+  useActiveSnapshotId,
   useAppStateStore,
   useEnmHashChain,
   shortHash,
@@ -19,6 +20,7 @@ import {
 } from '../app-state';
 import { useStudyCasesStore } from '../study-cases/store';
 import type { ResultStatus } from '../types';
+import { getAreaDefinition } from '../navigation/areaRegistry';
 
 function getResultDot(status: ResultStatus) {
   if (status === 'FRESH') return 'text-scada-energized';
@@ -54,14 +56,20 @@ export function StatusBarV12({
   const projectName = useAppStateStore((s) => s.activeProjectName);
   const caseId = useActiveCaseId();
   const caseName = useActiveCaseName();
+  const snapshotId = useActiveSnapshotId();
   const runId = useActiveRunId();
   const activeWorkMode = useAppStateStore((s) => s.activeWorkMode);
+  const activeArea = useAppStateStore((s) => s.activeArea);
   const variantName = useAppStateStore((s) => s.activeVariantName);
   const hashChain = useEnmHashChain();
 
   const appResultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const studyCaseResultStatus = useStudyCasesStore((s) => s.activeCase?.result_status ?? null);
   const resultStatus: ResultStatus = studyCaseResultStatus ?? appResultStatus;
+
+  const snapshotDisplay = snapshotId
+    ? snapshotId.length > 10 ? `${snapshotId.slice(0, 10)}…` : snapshotId
+    : '—';
 
   const runDisplay = runId
     ? runId.length > 8 ? runId.slice(0, 8) : runId
@@ -76,7 +84,7 @@ export function StatusBarV12({
   const hashTooltipTitle = buildHashTooltip(hashChain, viewHash);
 
   const modeLabel = activeMode === 'MODEL_EDIT' ? 'Edycja' : 'Odczyt';
-  const areaLabel = 'Model';
+  const areaLabel = getAreaDefinition(activeArea).labelShort;
   const workModeLabel = activeWorkMode === 'TE'
     ? 'Model'
     : activeWorkMode === 'TW'
@@ -102,9 +110,9 @@ export function StatusBarV12({
       {/* Lewa: kontekst projektu i tryb */}
       <div className="flex items-center gap-2 overflow-hidden" data-testid="active-case-bar">
         <span className="sr-only">
-          Bieżący zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
-          Obliczenia: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
-          Stan projektu: {variantName || (caseId ? caseName || '(bez nazwy)' : 'nie wybrano')}.
+          Biezacy zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
+          Przypadek: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
+          Wariant: {variantName || (caseId ? caseName || '(bez nazwy)' : 'nie wybrano')}.
         </span>
         {/* Obszar + Tryb */}
         <span
@@ -130,9 +138,9 @@ export function StatusBarV12({
 
         <Separator />
 
-        {/* Cel obliczeń */}
+        {/* Zakres obliczeń */}
         <div className="flex items-center gap-1" data-testid="status-case">
-          <span className="text-scada-muted">Obliczenia:</span>
+          <span className="text-scada-muted">Zakres obliczeń:</span>
           {caseId ? (
             <span className="font-medium text-scada-text">{caseName || 'Bez nazwy'}</span>
           ) : (
@@ -142,9 +150,9 @@ export function StatusBarV12({
 
         <Separator />
 
-        {/* Stan projektu */}
+        {/* Wariant */}
         <div className="flex items-center gap-1" data-testid="status-variant">
-          <span className="text-scada-muted">Stan:</span>
+          <span className="text-scada-muted">Wariant:</span>
           {variantName ? (
             <span className="font-medium text-scada-text">{variantName}</span>
           ) : (
@@ -152,7 +160,15 @@ export function StatusBarV12({
           )}
         </div>
 
-        {/* Tryb legacy */}
+        <Separator />
+
+        {/* Wersja modelu */}
+        <div className="flex items-center gap-1" data-testid="status-snapshot">
+          <span className="text-scada-muted">Wersja modelu:</span>
+          <span className="font-mono text-scada-text">{snapshotDisplay}</span>
+        </div>
+
+        {/* Tryb pracy */}
         <Separator />
         <span data-testid="status-mode" className="text-scada-muted">{modeLabel}</span>
       </div>
@@ -176,7 +192,7 @@ export function StatusBarV12({
         {runDisplay && (
           <>
             <div className="flex items-center gap-1" data-testid="status-run-id">
-              <span className="text-scada-muted">Uruchomienie:</span>
+              <span className="text-scada-muted">Ostatnie obliczenie:</span>
               <span className="font-mono text-[9px] text-scada-text">{runDisplay}</span>
             </div>
             <Separator />
@@ -254,8 +270,8 @@ function buildHashTooltip(chain: EnmHashChain | null, fallbackViewHash?: string)
     'Hash audytu (V12S-010, kliknij, aby skopiować pełny):',
     `  Semantyka:   ${shortHash(chain?.semantic)}    topologia + role + pasma + katalog`,
     `  Wejścia:     ${shortHash(chain?.input)}    R/X/B, ratingi, długości, sk3`,
-    `  Obliczenia:  ${shortHash(chain?.case)}    parametry celu obliczeń`,
-    `  Stan:        ${shortHash(chain?.variant)}    stan projektu`,
+    `  Przypadek:   ${shortHash(chain?.case)}    parametry przypadku obliczeniowego`,
+    `  Wariant:     ${shortHash(chain?.variant)}    delta wariantu (overlay)`,
     `  Łączniki:    ${shortHash(chain?.switching)}    stany open/closed`,
   ];
   if (!chain && fallbackViewHash) {

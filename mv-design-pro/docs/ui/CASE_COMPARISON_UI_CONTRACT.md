@@ -11,14 +11,14 @@
 ## 1. Cel dokumentu
 
 Niniejszy dokument definiuje **kanoniczny interfejs porĂłwnywania Case / Variant / Study**,
-umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z praktykÄ… DIgSILENT benchmark oraz benchmark.
+umoĹĽliwiający **inĹĽynierską analizę rĂłĹĽnic** zgodnie z praktyką DIgSILENT benchmark oraz benchmark.
 
 **Pytanie fundamentalne:**
-> **CO siÄ™ zmieniĹ‚o, GDZIE, o ILE i DLACZEGO?**
+> **CO się zmieniĹ‚o, GDZIE, o ILE i DLACZEGO?**
 
 ---
 
-## 2. Definicje pojÄ™Ä‡ (BINDING)
+## 2. Definicje pojęć (BINDING)
 
 ### 2.1 Case (Przypadek obliczeniowy)
 
@@ -37,26 +37,26 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 
 ### 2.2 Variant (Wariant)
 
-**Variant** to Case z modyfikacjami topologii lub parametrĂłw wzglÄ™dem Case bazowego.
+**Variant** to Case z modyfikacjami topologii lub parametrĂłw względem Case bazowego.
 
 | Atrybut | Opis |
 |---------|------|
 | `base_case_id` | UUID przypadku bazowego |
 | `variant_name` | Nazwa wariantu |
-| `topology_changes` | Lista zmian topologii (dodane/usuniÄ™te/zmienione elementy) |
+| `topology_changes` | Lista zmian topologii (dodane/usunięte/zmienione elementy) |
 | `parameter_changes` | Lista zmian parametrĂłw (setpointy, stany, type_ref) |
 
-**INVARIANT:** Variant MUSI mieÄ‡ powiÄ…zanie z Case bazowym. Brak orphan Variants.
+**INVARIANT:** Variant MUSI mieć powiązanie z Case bazowym. Brak orphan Variants.
 
 ### 2.3 Study (Studium)
 
-**Study** to zbiĂłr powiÄ…zanych Cases/Variants analizowanych wspĂłlnie.
+**Study** to zbiĂłr powiązanych Cases/Variants analizowanych wspĂłlnie.
 
 | Atrybut | Opis |
 |---------|------|
 | `study_id` | UUID studium |
 | `study_name` | Nazwa studium |
-| `cases` | Lista UUID Cases naleĹĽÄ…cych do studium |
+| `cases` | Lista UUID Cases naleĹĽących do studium |
 | `comparison_config` | Konfiguracja porĂłwnaĹ„ (elementy, metryki) |
 
 ---
@@ -69,39 +69,39 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 |----------------|------|--------|
 | Case A vs Case B | PorĂłwnanie dwĂłch przypadkĂłw | MUST |
 | Case A vs Case B vs Case C | PorĂłwnanie wielokrotne (A/B/C/...) | MUST |
-| Variant vs Base Case | PorĂłwnanie wariantu z bazÄ… | MUST |
+| Variant vs Base Case | PorĂłwnanie wariantu z bazą | MUST |
 | Cross-Study Comparison | PorĂłwnanie Cases z rĂłĹĽnych studiĂłw | SHOULD |
 
-### 3.2 PorĂłwnywane wielkoĹ›ci â€” Power Flow (PF)
+### 3.2 PorĂłwnywane wielkoĹ›ci — Power Flow (PF)
 
-| WielkoĹ›Ä‡ | Symbol | Jednostka | Element | FormuĹ‚a rĂłĹĽnicy |
+| WielkoĹ›ć | Symbol | Jednostka | Element | FormuĹ‚a rĂłĹĽnicy |
 |----------|--------|-----------|---------|-----------------|
-| NapiÄ™cie wÄ™zĹ‚a | U | kV / p.u. | BUS | Î”U = U_B - U_A |
-| Moc czynna przepĹ‚ywu | P | MW | LINE / TRAFO | Î”P = P_B - P_A |
-| Moc bierna przepĹ‚ywu | Q | Mvar | LINE / TRAFO | Î”Q = Q_B - Q_A |
-| PrÄ…d linii | I | A | LINE / TRAFO | Î”I = I_B - I_A |
-| ObciÄ…ĹĽenie termiczne | Loading | % | LINE / TRAFO | Î”Loading = Loading_B - Loading_A |
-| Straty | P_loss | kW | LINE / TRAFO | Î”P_loss = P_loss_B - P_loss_A |
+| Napięcie węzĹ‚a | U | kV / p.u. | BUS | ΔU = U_B - U_A |
+| Moc czynna przepĹ‚ywu | P | MW | LINE / TRAFO | ΔP = P_B - P_A |
+| Moc bierna przepĹ‚ywu | Q | Mvar | LINE / TRAFO | ΔQ = Q_B - Q_A |
+| Prąd linii | I | A | LINE / TRAFO | ΔI = I_B - I_A |
+| ObciąĹĽenie termiczne | Loading | % | LINE / TRAFO | ΔLoading = Loading_B - Loading_A |
+| Straty | P_loss | kW | LINE / TRAFO | ΔP_loss = P_loss_B - P_loss_A |
 
-### 3.3 PorĂłwnywane wielkoĹ›ci â€” Short Circuit (SC)
+### 3.3 PorĂłwnywane wielkoĹ›ci — Short Circuit (SC)
 
-| WielkoĹ›Ä‡ | Symbol | Jednostka | Element | FormuĹ‚a rĂłĹĽnicy |
+| WielkoĹ›ć | Symbol | Jednostka | Element | FormuĹ‚a rĂłĹĽnicy |
 |----------|--------|-----------|---------|-----------------|
-| PrÄ…d zwarciowy poczÄ…tkowy | Ikâ€ł | kA | BUS | Î”Ikâ€ł = Ikâ€ł_B - Ikâ€ł_A |
-| PrÄ…d udarowy | ip | kA | BUS | Î”ip = ip_B - ip_A |
-| PrÄ…d cieplny | Ith | kA | BUS | Î”Ith = Ith_B - Ith_A |
-| Impedancja Thevenina | Z_th | Î© | BUS | Î”Z_th = Z_th_B - Z_th_A |
-| WspĂłĹ‚czynnik Îş | Îş | - | BUS | Î”Îş = Îş_B - Îş_A |
+| Prąd zwarciowy początkowy | Ikâ€ł | kA | BUS | ΔIkâ€ł = Ikâ€ł_B - Ikâ€ł_A |
+| Prąd udarowy | ip | kA | BUS | Δip = ip_B - ip_A |
+| Prąd cieplny | Ith | kA | BUS | ΔIth = Ith_B - Ith_A |
+| Impedancja Thevenina | Z_th | Ω | BUS | ΔZ_th = Z_th_B - Z_th_A |
+| WspĂłĹ‚czynnik Îş | Îş | - | BUS | ΔÎş = Îş_B - Îş_A |
 
-**BINDING (IEC 60909):** PorĂłwnania zwarciowe MUSZÄ„ byÄ‡ wykonywane **PER BUS**, NIE per linia.
+**BINDING (IEC 60909):** PorĂłwnania zwarciowe MUSZĄ być wykonywane **PER BUS**, NIE per linia.
 
 ### 3.4 PorĂłwnywane statusy
 
 | Status | Opis | Prezentacja rĂłĹĽnicy |
 |--------|------|---------------------|
-| `in_service` | Element w eksploatacji | `True â†’ False`, `False â†’ True` |
-| `Switch.state` | Stan Ĺ‚Ä…cznika | `OPEN â†’ CLOSED`, `CLOSED â†’ OPEN` |
-| `type_ref` | Referencja typu katalogowego | `TypeA â†’ TypeB`, `None â†’ TypeA` |
+| `in_service` | Element w eksploatacji | `True → False`, `False → True` |
+| `Switch.state` | Stan Ĺ‚ącznika | `OPEN → CLOSED`, `CLOSED → OPEN` |
+| `type_ref` | Referencja typu katalogowego | `TypeA → TypeB`, `None → TypeA` |
 
 ---
 
@@ -112,34 +112,34 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 **Struktura tabeli:**
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                        TABELA PORĂ“WNAĹ: Case A vs Case B                         â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Element     â”‚ Parametr  â”‚  Case A    â”‚  Case B    â”‚    Î”     â”‚   %Î”    â”‚ Status â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ BUS_001     â”‚ U [kV]    â”‚   15.00    â”‚   14.85    â”‚  -0.15   â”‚  -1.0%  â”‚   â–Ľ    â”‚
-â”‚ BUS_002     â”‚ U [kV]    â”‚   15.00    â”‚   15.12    â”‚  +0.12   â”‚  +0.8%  â”‚   â–˛    â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ LINE_001    â”‚ I [A]     â”‚   125.3    â”‚   142.7    â”‚  +17.4   â”‚ +13.9%  â”‚   â–˛    â”‚
-â”‚ LINE_001    â”‚ P [MW]    â”‚    2.45    â”‚    2.78    â”‚  +0.33   â”‚ +13.5%  â”‚   â–˛    â”‚
-â”‚ LINE_001    â”‚ Q [Mvar]  â”‚    0.82    â”‚    0.94    â”‚  +0.12   â”‚ +14.6%  â”‚   â–˛    â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ TRAFO_001   â”‚ Loading % â”‚   72.5     â”‚   85.3     â”‚  +12.8   â”‚ +17.7%  â”‚   âš     â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ SW_001      â”‚ State     â”‚   OPEN     â”‚  CLOSED    â”‚    â€”     â”‚    â€”    â”‚ ZMIANA â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”Ś─────────────────────────────────────────────────────────────────────────────────â”
+│                        TABELA PORĂ“WNAĹ: Case A vs Case B                         │
+â”ś─────────────┬───────────┬────────────┬────────────┬──────────┬─────────┬────────┤
+│ Element     │ Parametr  │  Case A    │  Case B    │    Δ     │   %Δ    │ Status │
+â”ś─────────────â”Ľ───────────â”Ľ────────────â”Ľ────────────â”Ľ──────────â”Ľ─────────â”Ľ────────┤
+│ BUS_001     │ U [kV]    │   15.00    │   14.85    │  -0.15   │  -1.0%  │   â–Ľ    │
+│ BUS_002     │ U [kV]    │   15.00    │   15.12    │  +0.12   │  +0.8%  │   â–˛    │
+â”ś─────────────â”Ľ───────────â”Ľ────────────â”Ľ────────────â”Ľ──────────â”Ľ─────────â”Ľ────────┤
+│ LINE_001    │ I [A]     │   125.3    │   142.7    │  +17.4   │ +13.9%  │   â–˛    │
+│ LINE_001    │ P [MW]    │    2.45    │    2.78    │  +0.33   │ +13.5%  │   â–˛    │
+│ LINE_001    │ Q [Mvar]  │    0.82    │    0.94    │  +0.12   │ +14.6%  │   â–˛    │
+â”ś─────────────â”Ľ───────────â”Ľ────────────â”Ľ────────────â”Ľ──────────â”Ľ─────────â”Ľ────────┤
+│ TRAFO_001   │ Loading % │   72.5     │   85.3     │  +12.8   │ +17.7%  │   âš     │
+â”ś─────────────â”Ľ───────────â”Ľ────────────â”Ľ────────────â”Ľ──────────â”Ľ─────────â”Ľ────────┤
+│ SW_001      │ State     │   OPEN     │  CLOSED    │    —     │    —    │ ZMIANA │
+└─────────────┴───────────┴────────────┴────────────┴──────────┴─────────┴────────â”
 ```
 
-**Kolumny OBOWIÄ„ZKOWE:**
+**Kolumny OBOWIĄZKOWE:**
 
 | Kolumna | Opis | Sortowanie |
 |---------|------|------------|
 | Element | Identyfikator elementu (nazwa + typ) | Alfabetycznie |
-| Parametr | Nazwa wielkoĹ›ci + jednostka | StaĹ‚a kolejnoĹ›Ä‡ |
-| Case A | WartoĹ›Ä‡ w Case A | - |
-| Case B | WartoĹ›Ä‡ w Case B | - |
-| Î” | RĂłĹĽnica absolutna (B - A) | MalejÄ…co wg |Î”| |
-| %Î” | RĂłĹĽnica procentowa ((B-A)/A Ă— 100%) | MalejÄ…co wg |%Î”| |
+| Parametr | Nazwa wielkoĹ›ci + jednostka | StaĹ‚a kolejnoĹ›ć |
+| Case A | WartoĹ›ć w Case A | - |
+| Case B | WartoĹ›ć w Case B | - |
+| Δ | RĂłĹĽnica absolutna (B - A) | Malejąco wg |Δ| |
+| %Δ | RĂłĹĽnica procentowa ((B-A)/A Ă— 100%) | Malejąco wg |%Δ| |
 | Status | Indykator kierunku zmiany | - |
 
 **Indykatory statusu:**
@@ -149,7 +149,7 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 | â–˛ | Wzrost wartoĹ›ci |
 | â–Ľ | Spadek wartoĹ›ci |
 | âš  | Przekroczenie progu ostrzeĹĽenia |
-| âś– | Przekroczenie progu bĹ‚Ä™du |
+| âś– | Przekroczenie progu bĹ‚ędu |
 | = | Brak zmiany (opcjonalnie ukryte) |
 | ZMIANA | Zmiana stanu binarnego |
 | N/A | Brak porĂłwnywalnoĹ›ci |
@@ -157,96 +157,96 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 ### 4.2 Tabela porĂłwnaĹ„ wielokrotnych (A/B/C/...)
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    TABELA PORĂ“WNAĹ: Case A vs Case B vs Case C                              â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Element     â”‚ Parametr  â”‚  Case A  â”‚  Case B  â”‚  Case C  â”‚ Î”Aâ†’B     â”‚ Î”Aâ†’C     â”‚ Range     â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ BUS_001     â”‚ U [kV]    â”‚  15.00   â”‚  14.85   â”‚  15.20   â”‚  -0.15   â”‚  +0.20   â”‚ 0.35 kV   â”‚
-â”‚ LINE_001    â”‚ I [A]     â”‚  125.3   â”‚  142.7   â”‚  118.2   â”‚  +17.4   â”‚   -7.1   â”‚ 24.5 A    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”Ś────────────────────────────────────────────────────────────────────────────────────────────â”
+│                    TABELA PORĂ“WNAĹ: Case A vs Case B vs Case C                              │
+â”ś─────────────┬───────────┬──────────┬──────────┬──────────┬──────────┬──────────┬───────────┤
+│ Element     │ Parametr  │  Case A  │  Case B  │  Case C  │ ΔA→B     │ ΔA→C     │ Range     │
+â”ś─────────────â”Ľ───────────â”Ľ──────────â”Ľ──────────â”Ľ──────────â”Ľ──────────â”Ľ──────────â”Ľ───────────┤
+│ BUS_001     │ U [kV]    │  15.00   │  14.85   │  15.20   │  -0.15   │  +0.20   │ 0.35 kV   │
+│ LINE_001    │ I [A]     │  125.3   │  142.7   │  118.2   │  +17.4   │   -7.1   │ 24.5 A    │
+└─────────────┴───────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────────â”
 ```
 
 **Kolumna Range:** Zakres wartoĹ›ci max - min dla danego elementu/parametru.
 
 ### 4.3 Overlay rĂłĹĽnic na SLD (Difference Overlay)
 
-**Zasada:** RĂłĹĽnice sÄ… prezentowane jako **nakĹ‚adka** na diagramie SLD, **BEZ modyfikacji warstwy CAD**.
+**Zasada:** RĂłĹĽnice są prezentowane jako **nakĹ‚adka** na diagramie SLD, **BEZ modyfikacji warstwy CAD**.
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    SLD â€” OVERLAY PORĂ“WNANIA                      â”‚
-â”‚                                                                 â”‚
-â”‚   Warstwa bazowa (SLD):                                         â”‚
-â”‚   â•â•â•â•â•¦â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•¦â•â•â•â•                               â”‚
-â”‚       â•‘                    â•‘                                    â”‚
-â”‚                                                                 â”‚
-â”‚   Warstwa overlay (rĂłĹĽnice):                                    â”‚
-â”‚                                                                 â”‚
-â”‚      [Î”U=-0.15kV]       [Î”U=+0.12kV]                           â”‚
-â”‚         â–Ľ                   â–˛                                   â”‚
-â”‚      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•                                 â”‚
-â”‚           [Î”I=+17.4A â–˛]                                        â”‚
-â”‚                                                                 â”‚
-â”‚   Legenda kolorĂłw:                                             â”‚
-â”‚   â–¬â–¬â–¬ Zielony: zmiana â‰¤5%                                      â”‚
-â”‚   â–¬â–¬â–¬ Ĺ»ĂłĹ‚ty:   zmiana 5-15%                                    â”‚
-â”‚   â–¬â–¬â–¬ Czerwony: zmiana >15%                                    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”Ś─────────────────────────────────────────────────────────────────â”
+│                    SLD — OVERLAY PORĂ“WNANIA                      │
+│                                                                 │
+│   Warstwa bazowa (SLD):                                         │
+│   â•â•â•â•â•¦â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•¦â•â•â•â•                               │
+│       â•‘                    â•‘                                    │
+│                                                                 │
+│   Warstwa overlay (rĂłĹĽnice):                                    │
+│                                                                 │
+│      [ΔU=-0.15kV]       [ΔU=+0.12kV]                           │
+│         â–Ľ                   â–˛                                   │
+│      â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•                                 │
+│           [ΔI=+17.4A â–˛]                                        │
+│                                                                 │
+│   Legenda kolorĂłw:                                             │
+│   â–¬â–¬â–¬ Zielony: zmiana ≤5%                                      │
+│   â–¬â–¬â–¬ Ĺ»ĂłĹ‚ty:   zmiana 5-15%                                    │
+│   â–¬â–¬â–¬ Czerwony: zmiana >15%                                    │
+└─────────────────────────────────────────────────────────────────â”
 ```
 
 **BINDING:** Overlay rĂłĹĽnic NIE modyfikuje symboli SLD ani NetworkModel.
 
 **Kodowanie kolorystyczne overlay:**
 
-| PrĂłg %Î” | Kolor | Znaczenie |
+| PrĂłg %Δ | Kolor | Znaczenie |
 |---------|-------|-----------|
-| |%Î”| â‰¤ 5% | Zielony | Zmiana minimalna |
-| 5% < |%Î”| â‰¤ 15% | Ĺ»ĂłĹ‚ty | Zmiana umiarkowana |
-| |%Î”| > 15% | Czerwony | Zmiana istotna |
+| |%Δ| ≤ 5% | Zielony | Zmiana minimalna |
+| 5% < |%Δ| ≤ 15% | Ĺ»ĂłĹ‚ty | Zmiana umiarkowana |
+| |%Δ| > 15% | Czerwony | Zmiana istotna |
 | N/A | Szary | Brak porĂłwnywalnoĹ›ci |
 
 ### 4.4 Panel przyczyn (WHY Panel)
 
-**Cel:** OdpowiedĹş na pytanie **DLACZEGO** wartoĹ›ci siÄ™ rĂłĹĽniÄ….
+**Cel:** OdpowiedĹş na pytanie **DLACZEGO** wartoĹ›ci się rĂłĹĽnią.
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                    PANEL PRZYCZYN RĂ“Ĺ»NIC                         â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Element: LINE_001                                               â”‚
-â”‚ Parametr: I [A]                                                 â”‚
-â”‚ Î” = +17.4 A (+13.9%)                                           â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ PRZYCZYNY ZIDENTYFIKOWANE:                                      â”‚
-â”‚                                                                 â”‚
-â”‚ 1. ZMIANA TOPOLOGII                                             â”‚
-â”‚    â””â”€ SW_003 (ĹÄ…cznik): OPEN â†’ CLOSED                          â”‚
-â”‚       WpĹ‚yw: Zmiana przepĹ‚ywu mocy na alternatywnej Ĺ›cieĹĽce    â”‚
-â”‚                                                                 â”‚
-â”‚ 2. ZMIANA STANU ELEMENTU                                        â”‚
-â”‚    â””â”€ LOAD_005: in_service True â†’ False                        â”‚
-â”‚       WpĹ‚yw: Zmniejszenie obciÄ…ĹĽenia na feederze               â”‚
-â”‚                                                                 â”‚
-â”‚ 3. ZMIANA PARAMETRĂ“W                                            â”‚
-â”‚    â””â”€ SOURCE_001: P_setpoint 5.0 MW â†’ 6.2 MW                   â”‚
-â”‚       WpĹ‚yw: Wzrost generacji wpĹ‚ywa na przepĹ‚yw               â”‚
-â”‚                                                                 â”‚
-â”‚ 4. ZMIANA TYPU KATALOGOWEGO                                     â”‚
-â”‚    â””â”€ Brak zmian typu                                          â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ DIAGNOSTYKA:                                                    â”‚
-â”‚ â€˘ GĹ‚Ăłwna przyczyna: zmiana topologii (SW_003)                  â”‚
-â”‚ â€˘ WspĂłĹ‚czynnik korelacji: 0.87                                 â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”Ś─────────────────────────────────────────────────────────────────â”
+│                    PANEL PRZYCZYN RĂ“Ĺ»NIC                         │
+â”ś─────────────────────────────────────────────────────────────────┤
+│ Element: LINE_001                                               │
+│ Parametr: I [A]                                                 │
+│ Δ = +17.4 A (+13.9%)                                           │
+â”ś─────────────────────────────────────────────────────────────────┤
+│ PRZYCZYNY ZIDENTYFIKOWANE:                                      │
+│                                                                 │
+│ 1. ZMIANA TOPOLOGII                                             │
+│    └─ SW_003 (Ĺącznik): OPEN → CLOSED                          │
+│       WpĹ‚yw: Zmiana przepĹ‚ywu mocy na alternatywnej Ĺ›cieĹĽce    │
+│                                                                 │
+│ 2. ZMIANA STANU ELEMENTU                                        │
+│    └─ LOAD_005: in_service True → False                        │
+│       WpĹ‚yw: Zmniejszenie obciąĹĽenia na feederze               │
+│                                                                 │
+│ 3. ZMIANA PARAMETRĂ“W                                            │
+│    └─ SOURCE_001: P_setpoint 5.0 MW → 6.2 MW                   │
+│       WpĹ‚yw: Wzrost generacji wpĹ‚ywa na przepĹ‚yw               │
+│                                                                 │
+│ 4. ZMIANA TYPU KATALOGOWEGO                                     │
+│    └─ Brak zmian typu                                          │
+â”ś─────────────────────────────────────────────────────────────────┤
+│ DIAGNOSTYKA:                                                    │
+│ • GĹ‚Ăłwna przyczyna: zmiana topologii (SW_003)                  │
+│ • WspĂłĹ‚czynnik korelacji: 0.87                                 │
+└─────────────────────────────────────────────────────────────────â”
 ```
 
 **Kategorie przyczyn (MUST):**
 
 | Kategoria | Opis | PrzykĹ‚ady |
 |-----------|------|-----------|
-| **ZMIANA TOPOLOGII** | Zmiana struktury sieci | Switch OPENâ†’CLOSED, dodanie/usuniÄ™cie elementu |
-| **ZMIANA STANU ELEMENTU** | Zmiana in_service | Element wĹ‚Ä…czony/wyĹ‚Ä…czony |
+| **ZMIANA TOPOLOGII** | Zmiana struktury sieci | Switch OPEN→CLOSED, dodanie/usunięcie elementu |
+| **ZMIANA STANU ELEMENTU** | Zmiana in_service | Element wĹ‚ączony/wyĹ‚ączony |
 | **ZMIANA PARAMETRĂ“W** | Zmiana setpointĂłw | P, Q, tap_position, voltage setpoint |
 | **ZMIANA TYPU KATALOGOWEGO** | Zmiana type_ref | Inny typ linii/transformatora |
 
@@ -258,53 +258,53 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 
 | ReguĹ‚a | Opis | Konsekwencja |
 |--------|------|--------------|
-| SC-CMP-001 | PorĂłwnania zwarciowe WYĹÄ„CZNIE per BUS | PorĂłwnywanie Ikâ€ł na linii = ZABRONIONE |
-| SC-CMP-002 | Zwarcie musi mieÄ‡ ten sam typ | 3-fazowe vs 1-fazowe = NOT COMPARABLE |
-| SC-CMP-003 | WspĂłĹ‚czynnik c musi byÄ‡ identyczny | c_max vs c_min = NOT COMPARABLE |
-| SC-CMP-004 | Metoda obliczeniowa musi byÄ‡ identyczna | IEC-B vs IEC-C = NOT COMPARABLE |
+| SC-CMP-001 | PorĂłwnania zwarciowe WYĹĄCZNIE per BUS | PorĂłwnywanie Ikâ€ł na linii = ZABRONIONE |
+| SC-CMP-002 | Zwarcie musi mieć ten sam typ | 3-fazowe vs 1-fazowe = NOT COMPARABLE |
+| SC-CMP-003 | WspĂłĹ‚czynnik c musi być identyczny | c_max vs c_min = NOT COMPARABLE |
+| SC-CMP-004 | Metoda obliczeniowa musi być identyczna | IEC-B vs IEC-C = NOT COMPARABLE |
 
 ### 5.2 ReguĹ‚y Power Flow (PF)
 
 | ReguĹ‚a | Opis | Konsekwencja |
 |--------|------|--------------|
-| PF-CMP-001 | PrzepĹ‚ywy liniowe per instancja (LINE/TRAFO) | Î”I, Î”P, Î”Q wzdĹ‚uĹĽ konkretnej linii |
-| PF-CMP-002 | NapiÄ™cia per BUS | Î”U zawsze na wÄ™Ĺşle |
-| PF-CMP-003 | Kierunek przepĹ‚ywu musi byÄ‡ uwzglÄ™dniony | P > 0 (od), P < 0 (do) |
+| PF-CMP-001 | PrzepĹ‚ywy liniowe per instancja (LINE/TRAFO) | ΔI, ΔP, ΔQ wzdĹ‚uĹĽ konkretnej linii |
+| PF-CMP-002 | Napięcia per BUS | ΔU zawsze na węĹşle |
+| PF-CMP-003 | Kierunek przepĹ‚ywu musi być uwzględniony | P > 0 (od), P < 0 (do) |
 | PF-CMP-004 | RĂłĹĽne topologie = jawne oznaczenie | DIFFERENT TOPOLOGY w kolumnie Status |
 
 ### 5.3 ReguĹ‚y porĂłwnywalnoĹ›ci (Comparability)
 
 | Sytuacja | Status | DziaĹ‚anie |
 |----------|--------|-----------|
-| Element istnieje w obu Cases | COMPARABLE | Oblicz Î”, %Î” |
-| Element istnieje tylko w Case A | NOT IN B | WyĹ›wietl "Element usuniÄ™ty" |
+| Element istnieje w obu Cases | COMPARABLE | Oblicz Δ, %Δ |
+| Element istnieje tylko w Case A | NOT IN B | WyĹ›wietl "Element usunięty" |
 | Element istnieje tylko w Case B | NOT IN A | WyĹ›wietl "Element dodany" |
-| RĂłĹĽna topologia (wyspy) | DIFFERENT TOPOLOGY | WyĹ›wietl ostrzeĹĽenie, Î” = N/A |
-| RĂłĹĽny typ analizy | NOT COMPARABLE | Blokada porĂłwnania, komunikat bĹ‚Ä™du |
+| RĂłĹĽna topologia (wyspy) | DIFFERENT TOPOLOGY | WyĹ›wietl ostrzeĹĽenie, Δ = N/A |
+| RĂłĹĽny typ analizy | NOT COMPARABLE | Blokada porĂłwnania, komunikat bĹ‚ędu |
 | Brak wynikĂłw (NONE/OUTDATED) | RESULTS REQUIRED | Wymagaj obliczenia przed porĂłwnaniem |
 
 ---
 
-## 6. Kontekst i spĂłjnoĹ›Ä‡ (MUST)
+## 6. Kontekst i spĂłjnoĹ›ć (MUST)
 
 ### 6.1 NagĹ‚Ăłwek porĂłwnania
 
-**KaĹĽde porĂłwnanie MUSI jawnie pokazywaÄ‡ kontekst:**
+**KaĹĽde porĂłwnanie MUSI jawnie pokazywać kontekst:**
 
 ```
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚ PORĂ“WNANIE PRZYPADKĂ“W                                           â”‚
-â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
-â”‚ Case A:    SC_CASE_001 (Zwarcie na BUS_BoundaryNode)                     â”‚
-â”‚ Case B:    SC_CASE_002 (Zwarcie na BUS_BoundaryNode â€” wariant bez SW_003)â”‚
-â”‚ Run:       2026-01-28 19:45:12 / 2026-01-28 19:52:33           â”‚
-â”‚ Analysis:  Short Circuit (IEC 60909, c_max=1.1)                â”‚
-â”‚ Target:    BUS (Ikâ€ł, ip, Ith)                                  â”‚
-â”‚ Snapshot:  snap_abc123 / snap_def456                           â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+â”Ś─────────────────────────────────────────────────────────────────â”
+│ PORĂ“WNANIE PRZYPADKĂ“W                                           │
+â”ś─────────────────────────────────────────────────────────────────┤
+│ Case A:    SC_CASE_001 (Zwarcie na BUS_BoundaryNode)                     │
+│ Case B:    SC_CASE_002 (Zwarcie na BUS_BoundaryNode — wariant bez SW_003)│
+│ Run:       2026-01-28 19:45:12 / 2026-01-28 19:52:33           │
+│ Analysis:  Short Circuit (IEC 60909, c_max=1.1)                │
+│ Target:    BUS (Ikâ€ł, ip, Ith)                                  │
+│ Snapshot:  snap_abc123 / snap_def456                           │
+└─────────────────────────────────────────────────────────────────â”
 ```
 
-**Pola kontekstu OBOWIÄ„ZKOWE:**
+**Pola kontekstu OBOWIĄZKOWE:**
 
 | Pole | Opis |
 |------|------|
@@ -320,27 +320,27 @@ umoĹĽliwiajÄ…cy **inĹĽynierskÄ… analizÄ™ rĂłĹĽnic** zgodnie z p
 |-------------------------|----------------------|
 | WybĂłr Case A | Ustawienie jako baza porĂłwnania |
 | WybĂłr Case B | Ustawienie jako cel porĂłwnania |
-| KlikniÄ™cie "PorĂłwnaj" | Otwarcie widoku porĂłwnawczego |
+| Kliknięcie "PorĂłwnaj" | Otwarcie widoku porĂłwnawczego |
 
 ### 6.3 Integracja z Element Inspector
 
 | Akcja w Comparison Table | Reakcja Element Inspector |
 |--------------------------|---------------------------|
-| KlikniÄ™cie wiersza elementu | Otwarcie Property Grid dla elementu |
-| KlikniÄ™cie "WHY" | Otwarcie panelu przyczyn dla elementu |
+| Kliknięcie wiersza elementu | Otwarcie Property Grid dla elementu |
+| Kliknięcie "WHY" | Otwarcie panelu przyczyn dla elementu |
 
 ### 6.4 Integracja z Topology Tree
 
 | Akcja w drzewie | Reakcja Comparison UI |
 |-----------------|----------------------|
 | Zaznaczenie elementu | PodĹ›wietlenie wiersza w tabeli |
-| RozwiniÄ™cie kategorii | Filtrowanie tabeli do kategorii |
+| Rozwinięcie kategorii | Filtrowanie tabeli do kategorii |
 
 ---
 
 ## 7. Scenariusze poprawne (ALLOWED)
 
-### 7.1 Scenariusz: PorĂłwnanie wpĹ‚ywu stanu Ĺ‚Ä…cznika
+### 7.1 Scenariusz: PorĂłwnanie wpĹ‚ywu stanu Ĺ‚ącznika
 
 ```
 DANE WEJĹšCIOWE:
@@ -349,26 +349,26 @@ DANE WEJĹšCIOWE:
 - Analiza: Short Circuit na BUS_007
 
 WYNIK:
-- Tabela pokazuje Î”Ikâ€ł na BUS_007
-- WHY Panel wskazuje: "Zmiana topologii: SW_003 OPEN â†’ CLOSED"
+- Tabela pokazuje ΔIkâ€ł na BUS_007
+- WHY Panel wskazuje: "Zmiana topologii: SW_003 OPEN → CLOSED"
 - Overlay na SLD koloruje BUS_007 i SW_003
 ```
 
-### 7.2 Scenariusz: PorĂłwnanie wielokrotne scenariuszy obciÄ…ĹĽenia
+### 7.2 Scenariusz: PorĂłwnanie wielokrotne scenariuszy obciąĹĽenia
 
 ```
 DANE WEJĹšCIOWE:
-- Case A: PF_WINTER_PEAK (obciÄ…ĹĽenie zimowe szczytowe)
-- Case B: PF_SUMMER_MIN (obciÄ…ĹĽenie letnie minimalne)
-- Case C: PF_MAINTENANCE (z wyĹ‚Ä…czonÄ… liniÄ… L5)
+- Case A: PF_WINTER_PEAK (obciąĹĽenie zimowe szczytowe)
+- Case B: PF_SUMMER_MIN (obciąĹĽenie letnie minimalne)
+- Case C: PF_MAINTENANCE (z wyĹ‚ączoną linią L5)
 - Analiza: Power Flow
 
 WYNIK:
-- Tabela A/B/C z kolumnÄ… Range
-- WHY Panel per element pokazuje rĂłĹĽnice obciÄ…ĹĽeĹ„ i topologii
+- Tabela A/B/C z kolumną Range
+- WHY Panel per element pokazuje rĂłĹĽnice obciąĹĽeĹ„ i topologii
 ```
 
-### 7.3 Scenariusz: PorĂłwnanie wariantu z bazÄ…
+### 7.3 Scenariusz: PorĂłwnanie wariantu z bazą
 
 ```
 DANE WEJĹšCIOWE:
@@ -398,16 +398,16 @@ WYNIK:
 âś“ "BUS_007: Ikâ€ł wzrosĹ‚o o 15% (z 12.5 kA do 14.4 kA)"
 ```
 
-### 8.2 PorĂłwnywanie zwarÄ‡ na linii zamiast na BUS
+### 8.2 PorĂłwnywanie zwarć na linii zamiast na BUS
 
 **FORBIDDEN:**
 ```
-âťŚ PorĂłwnanie Ikâ€ł na LINE_001 (linia nie ma Ikâ€ł â€” zwarcie jest na BUS)
+âťŚ PorĂłwnanie Ikâ€ł na LINE_001 (linia nie ma Ikâ€ł — zwarcie jest na BUS)
 ```
 
 **CORRECT:**
 ```
-âś“ PorĂłwnanie Ikâ€ł na BUS_FROM (poczÄ…tek linii) lub BUS_TO (koniec linii)
+âś“ PorĂłwnanie Ikâ€ł na BUS_FROM (początek linii) lub BUS_TO (koniec linii)
 ```
 
 ### 8.3 PorĂłwnywanie Cases rĂłĹĽnych typĂłw
@@ -415,7 +415,7 @@ WYNIK:
 **FORBIDDEN:**
 ```
 âťŚ PorĂłwnanie Power Flow Case z Short Circuit Case
-   Status: NOT COMPARABLE â€” rĂłĹĽne typy analiz
+   Status: NOT COMPARABLE — rĂłĹĽne typy analiz
 ```
 
 ### 8.4 PorĂłwnywanie bez aktualnych wynikĂłw
@@ -430,12 +430,12 @@ WYNIK:
 
 **FORBIDDEN:**
 ```
-âťŚ "WartoĹ›ci siÄ™ rĂłĹĽniÄ…" (bez wskazania przyczyny)
+âťŚ "WartoĹ›ci się rĂłĹĽnią" (bez wskazania przyczyny)
 ```
 
 **CORRECT:**
 ```
-âś“ WHY Panel zawsze dostÄ™pny z listÄ… zidentyfikowanych przyczyn
+âś“ WHY Panel zawsze dostępny z listą zidentyfikowanych przyczyn
 ```
 
 ---
@@ -444,20 +444,20 @@ WYNIK:
 
 ### 9.1 Raport porĂłwnawczy (Comparison Report)
 
-**Widok porĂłwnawczy MUSI byÄ‡ drukowalny jako PDF zawierajÄ…cy:**
+**Widok porĂłwnawczy MUSI być drukowalny jako PDF zawierający:**
 
-| Sekcja | ZawartoĹ›Ä‡ |
+| Sekcja | ZawartoĹ›ć |
 |--------|-----------|
 | NagĹ‚Ăłwek | Data, wersja obliczeĹ„, nazwy Cases |
 | Kontekst | Typ analizy, snapshot IDs, parametry |
-| Tabela rĂłĹĽnic | PeĹ‚na tabela z Î” i %Î” |
+| Tabela rĂłĹĽnic | PeĹ‚na tabela z Δ i %Δ |
 | Legenda kolorĂłw | WyjaĹ›nienie progĂłw kolorystycznych |
 | Podsumowanie przyczyn | Agregat WHY Panel dla top zmian |
 | Stopka | Timestamp generowania, checksum |
 
 ### 9.2 ReguĹ‚a: Ekran = PDF
 
-**BINDING:** ZawartoĹ›Ä‡ ekranu MUSI byÄ‡ identyczna z zawartoĹ›ciÄ… PDF.
+**BINDING:** ZawartoĹ›ć ekranu MUSI być identyczna z zawartoĹ›cią PDF.
 
 | Aspekt | Ekran | PDF |
 |--------|-------|-----|
@@ -468,7 +468,7 @@ WYNIK:
 
 ### 9.3 Metadane audytowe
 
-**KaĹĽdy raport MUSI zawieraÄ‡:**
+**KaĹĽdy raport MUSI zawierać:**
 
 | Pole | Opis |
 |------|------|
@@ -483,16 +483,16 @@ WYNIK:
 
 ## 10. Odniesienia do benchmark / DIgSILENT benchmark
 
-### 10.1 benchmark â€” Output Window
+### 10.1 benchmark — Output Window
 
 | Funkcja PF | Odpowiednik MV-DESIGN-PRO |
 |------------|---------------------------|
 | Study Case Comparison | Case Comparison Table |
-| Result Diff View | Î”Column + %Î”Column |
+| Result Diff View | ΔColumn + %ΔColumn |
 | Highlight Changes | Overlay rĂłĹĽnic na SLD |
 | Cross-reference | WHY Panel |
 
-### 10.2 benchmark â€” Study Manager
+### 10.2 benchmark — Study Manager
 
 | Funkcja benchmark | Odpowiednik MV-DESIGN-PRO |
 |--------------|---------------------------|
@@ -502,32 +502,32 @@ WYNIK:
 
 ### 10.3 WspĂłlny paradygmat
 
-**ZarĂłwno benchmark jak i benchmark stosujÄ…:**
+**ZarĂłwno benchmark jak i benchmark stosują:**
 1. PorĂłwnania per-element (nie agregowane)
 2. Jasne wskazanie ĹşrĂłdĹ‚a rĂłĹĽnic
-3. IntegracjÄ™ z diagramem jednokreskowym
+3. Integrację z diagramem jednokreskowym
 4. Eksport do raportu z peĹ‚nym kontekstem
 
 ---
 
 ## 11. PrzejĹ›cia trybĂłw (Mode Gating)
 
-### 11.1 DostÄ™pnoĹ›Ä‡ porĂłwnaĹ„ w trybach
+### 11.1 DostępnoĹ›ć porĂłwnaĹ„ w trybach
 
-| Tryb systemowy | DostÄ™pnoĹ›Ä‡ Comparison UI |
+| Tryb systemowy | DostępnoĹ›ć Comparison UI |
 |----------------|--------------------------|
-| MODEL_EDIT | ZABLOKOWANE â€” brak wynikĂłw do porĂłwnania |
-| CASE_CONFIG | ZABLOKOWANE â€” wyniki mogÄ… byÄ‡ nieaktualne |
-| RESULT_VIEW | DOZWOLONE â€” wynik FRESH wymagany |
+| MODEL_EDIT | ZABLOKOWANE — brak wynikĂłw do porĂłwnania |
+| CASE_CONFIG | ZABLOKOWANE — wyniki mogą być nieaktualne |
+| RESULT_VIEW | DOZWOLONE — wynik FRESH wymagany |
 
-### 11.2 Warunki dostÄ™pu
+### 11.2 Warunki dostępu
 
 | Warunek | Status |
 |---------|--------|
 | Case A: result_state = FRESH | WYMAGANY |
 | Case B: result_state = FRESH | WYMAGANY |
 | Case A.case_type = Case B.case_type | WYMAGANY |
-| Snapshot A i B istniejÄ… | WYMAGANY |
+| Snapshot A i B istnieją | WYMAGANY |
 
 ---
 
@@ -571,7 +571,7 @@ Response:
                 {
                     "category": "TOPOLOGY_CHANGE",
                     "source_element_id": "uuid",
-                    "description": "SW_003: OPEN â†’ CLOSED"
+                    "description": "SW_003: OPEN → CLOSED"
                 }
             ]
         }
@@ -585,7 +585,7 @@ Response:
 
 | Data | Wersja | Zmiany |
 |------|--------|--------|
-| 2026-01-28 | 1.0 | Utworzenie dokumentu â€” PHASE 2.x.6 DOC-LOCKED |
+| 2026-01-28 | 1.0 | Utworzenie dokumentu — PHASE 2.x.6 DOC-LOCKED |
 
 ---
 

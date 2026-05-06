@@ -1,5 +1,5 @@
 ﻿/**
- * Global Application State Store â€” P12a Data Manager Parity
+ * Global Application State Store — P12a Data Manager Parity
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md Â§ 1.2: Operating modes (MODEL_EDIT, CASE_CONFIG, RESULT_VIEW)
@@ -14,7 +14,7 @@
  *
  * INVARIANTS:
  * - Exactly ONE active case per project
- * - No activeCaseId â†’ [Oblicz] button DISABLED
+ * - No activeCaseId → [Oblicz] button DISABLED
  * - MODEL_EDIT: model mutable, results invalidated on change
  * - CASE_CONFIG: model read-only, case config mutable
  * - RESULT_VIEW: everything read-only
@@ -56,7 +56,7 @@ export type CaseKind = 'ShortCircuitCase' | 'PowerFlowCase';
 
 /**
  * Analysis type for UI Context.
- * CANONICAL: UI_CORE_ARCHITECTURE.md Â§ 5.2 â€” Analysis type in Context Bar hierarchy
+ * CANONICAL: UI_CORE_ARCHITECTURE.md Â§ 5.2 — Analysis type in Context Bar hierarchy
  */
 export type AnalysisType = 'SHORT_CIRCUIT' | 'LOAD_FLOW' | 'PROTECTION' | null;
 
@@ -459,7 +459,7 @@ export function useCaseKindLabel(): string | null {
     case 'ShortCircuitCase':
       return 'Zakres zwarciowy';
     case 'PowerFlowCase':
-      return 'Przypadek rozplywu mocy';
+      return 'Zakres obliczeń rozplywu mocy';
     default:
       return kind;
   }
@@ -577,7 +577,7 @@ export function useActiveAnalysisType(): AnalysisType {
 
 /**
  * Hook: Get active analysis type label in Polish.
- * CANONICAL: PROOF_UI_ARCHITECTURE.md Â§ 7.6 â€” Polish terminology in UI
+ * CANONICAL: PROOF_UI_ARCHITECTURE.md Â§ 7.6 — Polish terminology in UI
  */
 export function useActiveAnalysisTypeLabel(): string | null {
   const analysisType = useAppStateStore((state) => state.activeAnalysisType);

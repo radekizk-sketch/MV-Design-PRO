@@ -1,15 +1,15 @@
-﻿# P28 â€” COVERAGE COMPLETENESS SCORE (benchmark+++)
+﻿# P28 — COVERAGE COMPLETENESS SCORE (benchmark+++)
 
 ## 1. Cel
 
-P28 dostarcza **liczbowy audyt kompletnoĹ›ci analizy** w skali 0â€“100.
+P28 dostarcza **liczbowy audyt kompletnoĹ›ci analizy** w skali 0–100.
 Wynik jest informacyjny i nie oznacza PASS/FAIL.
 
 ## 2. Zakres (P28 ONLY)
 
 **WejĹ›cia (readâ€‘only):**
 - Proof Audit Matrix (P14)
-- ProofDocument (P11â€“P19)
+- ProofDocument (P11–P19)
 - `NormativeReport` (P20)
 - `VoltageProfileView` (P21)
 - `ProtectionInsightView` + `ProtectionCurvesITView` (P22/Câ€‘P22)
@@ -18,15 +18,15 @@ Wynik jest informacyjny i nie oznacza PASS/FAIL.
 
 **WyjĹ›cie:**
 - `CoverageScoreView` (JSON/DTO)
-- sekcja PDF â€žKompletnoĹ›Ä‡ analizy (P28)â€ť.
+- sekcja PDF â€žKompletnoĹ›ć analizy (P28)â€ť.
 
 ## 3. Logika oceny (deterministyczna)
 
 1. Start od 100 pkt.
-2. Odejmij punkty za brakujÄ…ce Proof Packi (P11/P15/P17/P18/P19).
-3. Odejmij punkty za brakujÄ…ce widoki P20/P21/P22/P25/P26.
+2. Odejmij punkty za brakujące Proof Packi (P11/P15/P17/P18/P19).
+3. Odejmij punkty za brakujące widoki P20/P21/P22/P25/P26.
 4. Dodaj **jawne kary** za NOT COMPUTED (sumowane, z limitem bezpieczeĹ„stwa).
-5. Wynik jest obcinany do przedziaĹ‚u 0â€“100.
+5. Wynik jest obcinany do przedziaĹ‚u 0–100.
 
 ## 4. NOT COMPUTED
 
@@ -42,8 +42,8 @@ KaĹĽdy brak danych (P20/P21/P22/P25/P26) jest jawnie widoczny w:
 
 ## 6. Integracja z P24+
 
-Sekcja PDF â€žKompletnoĹ›Ä‡ analizy (P28)â€ť zawiera:
-- wynik 0â€“100,
-- listÄ™ brakĂłw,
+Sekcja PDF â€žKompletnoĹ›ć analizy (P28)â€ť zawiera:
+- wynik 0–100,
+- listę brakĂłw,
 - krytyczne luki (np. brak P19).
 

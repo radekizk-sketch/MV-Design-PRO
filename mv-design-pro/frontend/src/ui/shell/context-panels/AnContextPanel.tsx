@@ -47,7 +47,7 @@ export function AnContextPanel() {
         </span>
         <div className="mt-1 grid grid-cols-1 gap-0.5 text-[11px] text-scada-text">
           <div data-testid="an-active-case">
-            <span className="text-scada-muted">Przypadek: </span>
+            <span className="text-scada-muted">Zakres obliczeń: </span>
             <span className="font-mono">{activeCaseName ?? '—'}</span>
           </div>
           <div data-testid="an-active-variant">
@@ -55,7 +55,7 @@ export function AnContextPanel() {
             <span className="font-mono">{activeVariantName ?? '—'}</span>
           </div>
           <div data-testid="an-active-snapshot">
-            <span className="text-scada-muted">Migawka: </span>
+            <span className="text-scada-muted">Wersja modelu: </span>
             <span className="font-mono">{activeSnapshotId ?? '—'}</span>
           </div>
         </div>

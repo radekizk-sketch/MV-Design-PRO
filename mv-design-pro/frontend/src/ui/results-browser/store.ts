@@ -263,7 +263,7 @@ export const useResultsBrowserStore = create<ResultsBrowserState>((set, get) => 
       set({ availableRuns: data, isLoadingRuns: false });
     } catch (err) {
       set({
-        error: err instanceof Error ? err.message : 'Błąd wczytywania listy runów',
+        error: err instanceof Error ? err.message : 'Błąd wczytywania listy obliczeń',
         isLoadingRuns: false,
       });
     }

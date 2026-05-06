@@ -90,7 +90,7 @@ class TestSchemaLock:
         schema = SolverInputEnvelope.model_json_schema()
         props = set(schema.get("properties", {}).keys())
 
-        # Frozen set of expected properties for v1.0
+        # Frozen set of expected properties for v1.0 (audit2_extensions added in Phase 52)
         expected_props = {
             "solver_input_version",
             "case_id",
@@ -100,6 +100,7 @@ class TestSchemaLock:
             "provenance_summary",
             "payload",
             "trace",
+            "audit2_extensions",
         }
         assert props == expected_props, (
             f"Envelope schema changed. "

@@ -46,14 +46,15 @@ def extract_action_ids_from_builders() -> set[str]:
 
 
 def extract_handled_actions() -> set[str]:
-    """Extract action IDs that have handlers in SLDView/ModalController."""
+    """Extract action IDs handled by SLD v2 command service / context-menu actions."""
     ids: set[str] = set()
 
-    for ts_file in [
-        SLD_DIR / "SLDView.tsx",
-        SLD_DIR / "ModalController.tsx",
-        CONTEXT_MENU_DIR / "EngineeringContextMenu.tsx",
-    ]:
+    # PR-5c: stary SLD wygaszony; po nowym pipeline handlery są w v2/command + context-menu/actions
+    candidates = [
+        SLD_DIR / "v2" / "command" / "SldCommandService.ts",
+        CONTEXT_MENU_DIR / "actions.ts",
+    ]
+    for ts_file in candidates:
         if not ts_file.exists():
             continue
         content = ts_file.read_text(encoding="utf-8")
@@ -64,16 +65,24 @@ def extract_handled_actions() -> set[str]:
 
 
 def check_modal_registry() -> set[str]:
-    """Extract registered modal IDs."""
+    """Extract registered modal IDs (PR-5c: nowy konwent — komponenty *Modal w topology/modals/index.ts)."""
     ids: set[str] = set()
-    registry_file = FRONTEND_SRC / "ui" / "topology" / "modals" / "modalRegistry.ts"
-    if not registry_file.exists():
-        return ids
-
-    content = registry_file.read_text(encoding="utf-8")
-    modal_pattern = re.compile(r"MODAL_[A-Z_]+")
-    for match in modal_pattern.finditer(content):
-        ids.add(match.group())
+    candidates = [
+        FRONTEND_SRC / "ui" / "topology" / "modals" / "index.ts",
+        FRONTEND_SRC / "ui" / "topology" / "modals" / "modalRegistry.ts",
+        FRONTEND_SRC / "ui" / "network-build" / "modals" / "modalRegistry.ts",
+    ]
+    # Stary konwent: MODAL_FOO_BAR. Nowy konwent: export { FooModal } from './FooModal';
+    legacy_pattern = re.compile(r"MODAL_[A-Z_]+")
+    component_pattern = re.compile(r"export\s+\{\s*([A-Z][A-Za-z0-9]*Modal)\s*\}")
+    for registry_file in candidates:
+        if not registry_file.exists():
+            continue
+        content = registry_file.read_text(encoding="utf-8")
+        for match in legacy_pattern.finditer(content):
+            ids.add(match.group())
+        for match in component_pattern.finditer(content):
+            ids.add(match.group(1))
     return ids
 
 

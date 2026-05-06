@@ -1,4 +1,4 @@
-﻿# SWITCHING STATE EXPLORER â€” Kontrakt UI (PF-grade)
+﻿# SWITCHING STATE EXPLORER — Kontrakt UI (PF-grade)
 
 **Wersja:** 1.0
 **Status:** CANONICAL (BINDING)
@@ -7,65 +7,65 @@
 **Utworzono:** 2026-01-28
 
 **Referencje (BINDING):**
-- `SYSTEM_SPEC.md` â€” definicje NetworkModel, Switch, Case
-- `ARCHITECTURE.md` â€” warstwa Application (NOT-A-SOLVER rule)
-- `AGENTS.md` â€” governance, zasady normatywne
-- `PLANS.md` â€” Phase 2.x.3
-- `docs/ui/ui_canonical_parity.md` â€” tryby pracy, lifecycle
-- `docs/ui/sld_rules.md` â€” integracja SLD
-- `docs/ui/TOPOLOGY_TREE_CONTRACT.md` (jeĹ›li istnieje) â€” synchronizacja selekcji
-- `docs/ui/RESULTS_BROWSER_CONTRACT.md` â€” integracja z wynikami
-- `docs/ui/ELEMENT_INSPECTOR_CONTRACT.md` â€” integracja z inspektorem
+- `SYSTEM_SPEC.md` — definicje NetworkModel, Switch, Case
+- `ARCHITECTURE.md` — warstwa Application (NOT-A-SOLVER rule)
+- `AGENTS.md` — governance, zasady normatywne
+- `PLANS.md` — Phase 2.x.3
+- `docs/ui/ui_canonical_parity.md` — tryby pracy, lifecycle
+- `docs/ui/sld_rules.md` — integracja SLD
+- `docs/ui/TOPOLOGY_TREE_CONTRACT.md` (jeĹ›li istnieje) — synchronizacja selekcji
+- `docs/ui/RESULTS_BROWSER_CONTRACT.md` — integracja z wynikami
+- `docs/ui/ELEMENT_INSPECTOR_CONTRACT.md` — integracja z inspektorem
 
 ---
 
 ## 1. Executive Summary
 
-**Switching State Explorer** to narzÄ™dzie UI klasy **DIgSILENT benchmark / benchmark** dla eksploracji stanĂłw Ĺ‚Ä…czeniowych aparatury i ich wpĹ‚ywu na topologiÄ™ efektywnÄ… sieci.
+**Switching State Explorer** to narzędzie UI klasy **DIgSILENT benchmark / benchmark** dla eksploracji stanĂłw Ĺ‚ączeniowych aparatury i ich wpĹ‚ywu na topologię efektywną sieci.
 
 **Zakres funkcjonalny:**
-- PrzeglÄ…danie i edycja (na poziomie UI-kontraktu) stanĂłw aparatury OPEN/CLOSED
-- Ocena spĂłjnoĹ›ci i Ĺ‚Ä…cznoĹ›ci sieci (algorytmiczna identyfikacja wysp â€” Islands)
-- Wizualizacja wpĹ‚ywu stanĂłw na topologiÄ™ efektywnÄ…
+- Przeglądanie i edycja (na poziomie UI-kontraktu) stanĂłw aparatury OPEN/CLOSED
+- Ocena spĂłjnoĹ›ci i Ĺ‚ącznoĹ›ci sieci (algorytmiczna identyfikacja wysp — Islands)
+- Wizualizacja wpĹ‚ywu stanĂłw na topologię efektywną
 - Integracja z SLD, Element Inspector, Results Browser, Topology Tree
 
-**NOT-A-SOLVER rule:** Switching State Explorer **NIE wykonuje obliczeĹ„ fizycznych** (prÄ…dy, napiÄ™cia). Obliczenia pozostajÄ… w warstwie Solver. Explorer wykonuje wyĹ‚Ä…cznie analizÄ™ topologicznÄ… (graph traversal, connected components).
+**NOT-A-SOLVER rule:** Switching State Explorer **NIE wykonuje obliczeĹ„ fizycznych** (prądy, napięcia). Obliczenia pozostają w warstwie Solver. Explorer wykonuje wyĹ‚ącznie analizę topologiczną (graph traversal, connected components).
 
-**MAX DATA, MAX CONTROL:** Brak uproszczeĹ„. Wszystkie aparaty widoczne, wszystkie stany dostÄ™pne. UĹĽytkownik decyduje o filtrowaniu.
+**MAX DATA, MAX CONTROL:** Brak uproszczeĹ„. Wszystkie aparaty widoczne, wszystkie stany dostępne. UĹĽytkownik decyduje o filtrowaniu.
 
 ---
 
 ## 2. Definicje terminĂłw (BINDING)
 
-### 2.1 Switching Apparatus (Aparat Ĺ‚Ä…czeniowy)
+### 2.1 Switching Apparatus (Aparat Ĺ‚ączeniowy)
 
 **Definicja:**
-Element topologiczny bez impedancji (PF-rule), zmieniajÄ…cy efektywnÄ… topologiÄ™ sieci poprzez stan OPEN/CLOSED.
+Element topologiczny bez impedancji (PF-rule), zmieniający efektywną topologię sieci poprzez stan OPEN/CLOSED.
 
 **Typy aparatĂłw (zgodnie z NetworkModel):**
 | Typ | Identyfikator | Opis | Impedancja |
 |-----|---------------|------|-----------|
-| **Breaker** | BREAKER | WyĹ‚Ä…cznik mocy | ZERO (PF-rule) |
-| **Disconnector** | DISCONNECTOR | OdĹ‚Ä…cznik | ZERO (PF-rule) |
-| **Load Switch** | LOAD_SWITCH | ĹÄ…cznik obciÄ…ĹĽenia | ZERO (PF-rule) |
+| **Breaker** | BREAKER | WyĹ‚ącznik mocy | ZERO (PF-rule) |
+| **Disconnector** | DISCONNECTOR | OdĹ‚ącznik | ZERO (PF-rule) |
+| **Load Switch** | LOAD_SWITCH | Ĺącznik obciąĹĽenia | ZERO (PF-rule) |
 | **Fuse** | FUSE | Bezpiecznik | ZERO (PF-rule) |
 
-**INVARIANT (PF-rule):** Aparat Ĺ‚Ä…czeniowy **NIE MA** impedancji (R, X, B). Zmienia **wyĹ‚Ä…cznie** topologiÄ™ (wÄ™zĹ‚y poĹ‚Ä…czone/rozĹ‚Ä…czone).
+**INVARIANT (PF-rule):** Aparat Ĺ‚ączeniowy **NIE MA** impedancji (R, X, B). Zmienia **wyĹ‚ącznie** topologię (węzĹ‚y poĹ‚ączone/rozĹ‚ączone).
 
 ---
 
 ### 2.2 Effective Topology (Topologia efektywna)
 
 **Definicja:**
-Graf sieci po uwzglÄ™dnieniu:
-- stanĂłw aparatĂłw Ĺ‚Ä…czeniowych (OPEN â†’ krawÄ™dĹş usuniÄ™ta, CLOSED â†’ krawÄ™dĹş obecna),
-- flag `in_service` (False â†’ element usuniÄ™ty z grafu).
+Graf sieci po uwzględnieniu:
+- stanĂłw aparatĂłw Ĺ‚ączeniowych (OPEN → krawędĹş usunięta, CLOSED → krawędĹş obecna),
+- flag `in_service` (False → element usunięty z grafu).
 
 **ReguĹ‚y konstrukcji:**
 1. Bazowy graf: wszystkie Bus + wszystkie Branch z `in_service = True`
-2. Aparaty w stanie **CLOSED**: krawÄ™dĹş miÄ™dzy `from_bus` i `to_bus` obecna (impedancja ZERO)
-3. Aparaty w stanie **OPEN**: krawÄ™dĹş usuniÄ™ta (Bus rozĹ‚Ä…czone)
-4. Elementy z `in_service = False`: caĹ‚kowicie usuniÄ™te z grafu
+2. Aparaty w stanie **CLOSED**: krawędĹş między `from_bus` i `to_bus` obecna (impedancja ZERO)
+3. Aparaty w stanie **OPEN**: krawędĹş usunięta (Bus rozĹ‚ączone)
+4. Elementy z `in_service = False`: caĹ‚kowicie usunięte z grafu
 
 **MUST:** Effective Topology jest obliczana algorytmicznie (graph traversal) po kaĹĽdej zmianie stanu aparatu.
 
@@ -77,9 +77,9 @@ Graf sieci po uwzglÄ™dnieniu:
 SpĂłjna skĹ‚adowa grafu efektywnego (connected component w sensie graph theory).
 
 **WĹ‚aĹ›ciwoĹ›ci:**
-- KaĹĽdy Bus naleĹĽy do dokĹ‚adnie jednej Island (lub jest izolowany â€” Island 1-elementowa)
-- Bus w obrÄ™bie Island sÄ… poĹ‚Ä…czone Ĺ›cieĹĽkÄ… topologicznÄ… (istnieje path bez przejĹ›cia przez aparat OPEN)
-- RĂłĹĽne Islands sÄ… rozĹ‚Ä…czone (nie istnieje path miÄ™dzy nimi)
+- KaĹĽdy Bus naleĹĽy do dokĹ‚adnie jednej Island (lub jest izolowany — Island 1-elementowa)
+- Bus w obrębie Island są poĹ‚ączone Ĺ›cieĹĽką topologiczną (istnieje path bez przejĹ›cia przez aparat OPEN)
+- RĂłĹĽne Islands są rozĹ‚ączone (nie istnieje path między nimi)
 
 **Identyfikacja (algorytmiczna):**
 Connected components detection (BFS/DFS na grafie Effective Topology).
@@ -94,28 +94,28 @@ Connected components detection (BFS/DFS na grafie Effective Topology).
 
 | Stan | Definicja | Interpretacja (nie-binding) |
 |------|-----------|----------------------------|
-| **Energized** | Island zawiera co najmniej 1 Source z `in_service = True` | Wyspa "zasilona" (potencjalnie pod napiÄ™ciem) |
-| **De-energized** | Island **nie zawiera** ĹĽadnego Source | Wyspa "odĹ‚Ä…czona od zasilania" |
+| **Energized** | Island zawiera co najmniej 1 Source z `in_service = True` | Wyspa "zasilona" (potencjalnie pod napięciem) |
+| **De-energized** | Island **nie zawiera** ĹĽadnego Source | Wyspa "odĹ‚ączona od zasilania" |
 
 **CRITICAL:** Status Energized/De-energized **NIE JEST** wynikiem obliczeĹ„ fizycznych (Power Flow, Short Circuit). To **interpretacja topologiczna**.
 
 **FORBIDDEN:**
-- UĹĽywanie wyniku Power Flow (napiÄ™cia U) do okreĹ›lenia statusu Energized (to byĹ‚oby SOLVER logic)
-- Prezentowanie statusu Energized jako "gwarancji napiÄ™cia" (wymaga PF)
+- UĹĽywanie wyniku Power Flow (napięcia U) do okreĹ›lenia statusu Energized (to byĹ‚oby SOLVER logic)
+- Prezentowanie statusu Energized jako "gwarancji napięcia" (wymaga PF)
 
 **ALLOWED:**
 - Prezentowanie statusu Energized jako "flagi obecnoĹ›ci ĹşrĂłdĹ‚a w wyspie" (interpretacja topologiczna)
-- Wizualne ostrzeĹĽenie: "Island de-energized (brak Source) â€” Power Flow moĹĽe nie zbiegaÄ‡"
+- Wizualne ostrzeĹĽenie: "Island de-energized (brak Source) — Power Flow moĹĽe nie zbiegać"
 
 ---
 
 ## 3. Funkcje UI (PF-grade)
 
-### 3.1 Widok â€žSwitching Explorer" â€” pierwszy klasowy panel UI
+### 3.1 Widok â€žSwitching Explorer" — pierwszy klasowy panel UI
 
-**Cel:** Dedykowany panel dla eksploracji stanĂłw Ĺ‚Ä…czeniowych i topologii efektywnej.
+**Cel:** Dedykowany panel dla eksploracji stanĂłw Ĺ‚ączeniowych i topologii efektywnej.
 
-**Layout (rĂłwnorzÄ™dny z SLD, Results Browser, Topology Tree):**
+**Layout (rĂłwnorzędny z SLD, Results Browser, Topology Tree):**
 
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
@@ -133,12 +133,12 @@ Connected components detection (BFS/DFS na grafie Effective Topology).
 â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
 â”‚                                                                         â”‚
 â”‚ â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
-â”‚ â”‚ LISTA APARATĂ“W (250 elementĂłw, posortowane: Name â†‘)              â”‚ â”‚
+â”‚ â”‚ LISTA APARATĂ“W (250 elementĂłw, posortowane: Name ↑)              â”‚ â”‚
 â”‚ â”śâ”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”¤ â”‚
 â”‚ â”‚  ID â”‚ Name       â”‚ Type â”‚ State    â”‚ From Bus â”‚ To Bus   â”‚Island â”‚ â”‚
 â”‚ â”śâ”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”Ľâ”€â”€â”€â”€â”€â”€â”€â”¤ â”‚
 â”‚ â”‚ 001 â”‚ CB-01      â”‚ BRK  â”‚ â—Ź CLOSED â”‚ Bus-01   â”‚ Bus-02   â”‚ Isl-1 â”‚ â”‚
-â”‚ â”‚ 002 â”‚ DS-01      â”‚ DISC â”‚ â—‹ OPEN   â”‚ Bus-02   â”‚ Bus-03   â”‚ â€”     â”‚ â”‚
+â”‚ â”‚ 002 â”‚ DS-01      â”‚ DISC â”‚ â—‹ OPEN   â”‚ Bus-02   â”‚ Bus-03   â”‚ —     â”‚ â”‚
 â”‚ â”‚ 003 â”‚ CB-02      â”‚ BRK  â”‚ â—Ź CLOSED â”‚ Bus-03   â”‚ Bus-04   â”‚ Isl-2 â”‚ â”‚
 â”‚ â”‚ ... â”‚ ...        â”‚ ...  â”‚ ...      â”‚ ...      â”‚ ...      â”‚ ...   â”‚ â”‚
 â”‚ â””â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â” â”‚
@@ -148,7 +148,7 @@ Connected components detection (BFS/DFS na grafie Effective Topology).
 â”‚ â”‚ TOPOLOGY CHECKS (pre-solver validation)                          â”‚ â”‚
 â”‚ â”‚  âś“ Liczba Islands:       3                                        â”‚ â”‚
 â”‚ â”‚  âš  Islands bez Source:   2 (Island-2, Island-3)                  â”‚ â”‚
-â”‚ â”‚  âš  Busy odĹ‚Ä…czone:       5 (Bus-10, Bus-11, Bus-12, ...)         â”‚ â”‚
+â”‚ â”‚  âš  Busy odĹ‚ączone:       5 (Bus-10, Bus-11, Bus-12, ...)         â”‚ â”‚
 â”‚ â”‚  âś“ Dangling elements:    0                                        â”‚ â”‚
 â”‚ â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
 â”‚                                                                         â”‚
@@ -167,39 +167,39 @@ Connected components detection (BFS/DFS na grafie Effective Topology).
 **Funkcje MUST:**
 1. **Lista aparatĂłw**: wszystkie Switch z modelu, sortowalne, filtrowalne
 2. **Szybkie wyszukiwanie**: po nazwie/ID (regex support)
-3. **Toggle State**: przeĹ‚Ä…czenie OPEN â†” CLOSED (z potwierdzeniem, jeĹ›li Result = FRESH)
+3. **Toggle State**: przeĹ‚ączenie OPEN â†” CLOSED (z potwierdzeniem, jeĹ›li Result = FRESH)
 4. **Batch Operations**: menu do grupowej zmiany stanĂłw (zaznaczenie wielu + akcja)
 5. **Restore Normal State**: powrĂłt do stanu bazowego Case (Case.baseline_switching_state)
 6. **Topology Checks**: sekcja walidacji (liczba Islands, Islands bez Source, dangling buses)
 7. **Opcje widoku**: filtry szybkie (tylko OPEN, tylko out-of-service)
-8. **Synchronizacja**: wybĂłr aparatu w Explorerze â†’ podĹ›wietlenie na SLD + fokus w Element Inspector
+8. **Synchronizacja**: wybĂłr aparatu w Explorerze → podĹ›wietlenie na SLD + fokus w Element Inspector
 9. **Print/Export**: wydruk listy aparatĂłw + Island summary (PDF/Excel)
 
 ---
 
 ### 3.2 Integracja z SLD (BINDING)
 
-**Zasada (1:1 z SLD_UI_CONTRACT.md):** Stany aparatĂłw na SLD sÄ… **zawsze jednoznaczne** (symbol + kolor stanu).
+**Zasada (1:1 z SLD_UI_CONTRACT.md):** Stany aparatĂłw na SLD są **zawsze jednoznaczne** (symbol + kolor stanu).
 
 #### 3.2.1 Symbolika aparatĂłw na SLD
 
 | Stan | Symbol SLD | Kolor |
 |------|-----------|-------|
-| **CLOSED** | â”€â”€â—Źâ”€â”€ (symbol zamkniÄ™ty) | Czarny (normalny) |
+| **CLOSED** | â”€â”€â—Źâ”€â”€ (symbol zamknięty) | Czarny (normalny) |
 | **OPEN** | â”€â”€ â”€â”€ (symbol otwarty, przerwa) | Niebieski (stan otwarty) |
-| **out-of-service** | â”„â”„ â”„â”„ (przerywany, szary) | Szary (wyĹ‚Ä…czony z obliczeĹ„) |
+| **out-of-service** | â”„â”„ â”„â”„ (przerywany, szary) | Szary (wyĹ‚ączony z obliczeĹ„) |
 
-**MUST:** PrzeĹ‚Ä…czenie aparatu (OPEN â†” CLOSED) w Switching Explorer â†’ natychmiastowa zmiana symbolu na SLD (bez odĹ›wieĹĽania strony).
+**MUST:** PrzeĹ‚ączenie aparatu (OPEN â†” CLOSED) w Switching Explorer → natychmiastowa zmiana symbolu na SLD (bez odĹ›wieĹĽania strony).
 
 ---
 
 #### 3.2.2 Natychmiastowa zmiana Effective Topology
 
-**INVARIANT:** Zmiana stanu aparatu â†’ przeliczenie Effective Topology â†’ aktualizacja Islands â†’ aktualizacja overlay SLD.
+**INVARIANT:** Zmiana stanu aparatu → przeliczenie Effective Topology → aktualizacja Islands → aktualizacja overlay SLD.
 
 **Pipeline (synchroniczny, < 100 ms):**
 ```
-User: Toggle CB-01 (CLOSED â†’ OPEN)
+User: Toggle CB-01 (CLOSED → OPEN)
       â”‚
       â–Ľ
 NetworkModel.update(Switch.state = OPEN)
@@ -218,7 +218,7 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 ```
 
 **FORBIDDEN:**
-- OpĂłĹşnione przeliczenie topologii (uĹĽytkownik musi kliknÄ…Ä‡ "Refresh")
+- OpĂłĹşnione przeliczenie topologii (uĹĽytkownik musi kliknąć "Refresh")
 - Oczekiwanie na uruchomienie solvera (PF, SC) do aktualizacji Islands
 - Przechowywanie "starych" Islands po zmianie stanu aparatu
 
@@ -235,7 +235,7 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 | Wariant | Opis | PrzykĹ‚ad |
 |---------|------|----------|
 | **Kolorowanie tĹ‚a Bus** | KaĹĽda Island = inny kolor tĹ‚a | Island-1: zielony, Island-2: niebieski, Island-3: ĹĽĂłĹ‚ty |
-| **Obrys wyspy** | Linia obrysowa wokĂłĹ‚ Bus naleĹĽÄ…cych do Island | Linia przerywana, gruboĹ›Ä‡ 2px |
+| **Obrys wyspy** | Linia obrysowa wokĂłĹ‚ Bus naleĹĽących do Island | Linia przerywana, gruboĹ›ć 2px |
 | **Etykieta Island** | Etykieta tekstowa na SLD | "Island-1 (5 Bus, 1 Source)" |
 
 **MUST:** Legenda kolorĂłw Islands widoczna w rogu SLD (lub w panelu Switching Explorer).
@@ -252,7 +252,7 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 â”‚   â•‘          [Source]             â•‘                         â”‚
 â”‚   â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•©â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť                         â”‚
 â”‚                 â•‘                                            â”‚
-â”‚                 â•‘  CB-OPEN (aparat OPEN â€” granica wysp)     â”‚
+â”‚                 â•‘  CB-OPEN (aparat OPEN — granica wysp)     â”‚
 â”‚                 â•‘                                            â”‚
 â”‚   â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•©â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—                         â”‚
 â”‚   â•‘ Island-2 (niebieski)          â•‘                         â”‚
@@ -271,7 +271,7 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 
 ### 3.3 Integracja z Results Browser (BINDING)
 
-**Zasada (invalidation semantics):** Zmiana stanĂłw aparatĂłw **MAY** invalidate Results (jeĹ›li obowiÄ…zuje kontrakt invalidation).
+**Zasada (invalidation semantics):** Zmiana stanĂłw aparatĂłw **MAY** invalidate Results (jeĹ›li obowiązuje kontrakt invalidation).
 
 #### 3.3.1 Invalidation Rule (zgodnie z ui_canonical_parity.md)
 
@@ -279,22 +279,22 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 1. Status wynikĂłw Case przechodzi w stan **OUTDATED** (jeĹ›li wyniki istniaĹ‚y)
 2. UĹĽytkownik widzi banner ostrzeĹĽenia:
    ```
-   âš  Wyniki obliczeĹ„ sÄ… NIEAKTUALNE (zmieniono topologiÄ™).
+   âš  Wyniki obliczeĹ„ są NIEAKTUALNE (zmieniono topologię).
       [Uruchom ponownie obliczenia] [Anuluj zmiany]
    ```
-3. Results Browser pokazuje ikonÄ™ **OUTDATED** przy Case
+3. Results Browser pokazuje ikonę **OUTDATED** przy Case
 
 **FORBIDDEN:**
 - Cicha zmiana topologii bez sygnalizacji wpĹ‚ywu na wyniki
 - Automatyczne uruchomienie solverĂłw po zmianie stanu aparatu (uĹĽytkownik decyduje)
-- UsuniÄ™cie wynikĂłw bez ostrzeĹĽenia
+- Usunięcie wynikĂłw bez ostrzeĹĽenia
 
 ---
 
-#### 3.3.2 WidocznoĹ›Ä‡ wynikĂłw w Results Browser
+#### 3.3.2 WidocznoĹ›ć wynikĂłw w Results Browser
 
 **MUST:** Results Browser pokazuje:
-- **ListÄ™ Case'Ăłw** z statusem wynikĂłw (NONE / FRESH / OUTDATED)
+- **Listę Case'Ăłw** z statusem wynikĂłw (NONE / FRESH / OUTDATED)
 - **Filtr**: "PokaĹĽ tylko Case z FRESH results"
 - **Akcja**: "Mark all Cases as OUTDATED" (po zmianie stanĂłw aparatĂłw)
 
@@ -324,12 +324,12 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 #### 3.4.1 Synchronizacja selekcji (4-widokowa)
 
 **MUST:**
-1. Klik na aparacie w Switching Explorer â†’ podĹ›wietlenie w Topology Tree (rozwiniÄ™cie Ĺ›cieĹĽki)
-2. Klik na aparacie w Topology Tree â†’ podĹ›wietlenie w Switching Explorer (scroll do wiersza)
-3. Klik na aparacie na SLD â†’ podĹ›wietlenie w Switching Explorer + Tree
-4. Otwarcie Element Inspector (zakĹ‚adka Switch) â†’ odczyt Global Focus
+1. Klik na aparacie w Switching Explorer → podĹ›wietlenie w Topology Tree (rozwinięcie Ĺ›cieĹĽki)
+2. Klik na aparacie w Topology Tree → podĹ›wietlenie w Switching Explorer (scroll do wiersza)
+3. Klik na aparacie na SLD → podĹ›wietlenie w Switching Explorer + Tree
+4. Otwarcie Element Inspector (zakĹ‚adka Switch) → odczyt Global Focus
 
-**PrzykĹ‚ad (ASCII â€” synchronizacja):**
+**PrzykĹ‚ad (ASCII — synchronizacja):**
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ TOPOLOGY TREE            â”‚ SWITCHING EXPLORER                  â”‚
@@ -353,10 +353,10 @@ TopologyChecks.refresh()  â† aktualizacja Topology Checks (liczba wysp)
 #### 3.4.2 Stan aparatu w Topology Tree
 
 **MUST:** Topology Tree pokazuje:
-- IkonÄ™ stanu aparatu: **â—Ź** (CLOSED) / **â—‹** (OPEN)
-- PrzynaleĹĽnoĹ›Ä‡ do Island (opcjonalnie, jako tooltip)
+- Ikonę stanu aparatu: **â—Ź** (CLOSED) / **â—‹** (OPEN)
+- PrzynaleĹĽnoĹ›ć do Island (opcjonalnie, jako tooltip)
 
-**PrzykĹ‚ad (ASCII â€” Topology Tree):**
+**PrzykĹ‚ad (ASCII — Topology Tree):**
 ```
 Topology Tree:
   Project-01
@@ -364,7 +364,7 @@ Topology Tree:
        â””â”€ VoltageLevel-15
            â”śâ”€ Bus-01 (Island-1)
            â”śâ”€ CB-01 â—Ź (CLOSED, Island-1)
-           â”śâ”€ DS-01 â—‹ (OPEN, â€” boundary)
+           â”śâ”€ DS-01 â—‹ (OPEN, — boundary)
            â”śâ”€ Bus-02 (Island-2)
            â””â”€ CB-02 â—Ź (CLOSED, Island-2)
 ```
@@ -379,15 +379,15 @@ Topology Tree:
 
 **MUST:** Element Inspector dla Switch zawiera zakĹ‚adki:
 
-| ZakĹ‚adka | ZawartoĹ›Ä‡ |
+| ZakĹ‚adka | ZawartoĹ›ć |
 |----------|-----------|
 | **Overview** | ID, Name, Type, State, From Bus, To Bus, Island ID, In Service |
-| **Parameters** | Parametry techniczne (jeĹ›li istniejÄ…: rated_current, breaking_capacity) |
-| **Switching History** | Historia zmian stanu (timestamp, user, OPEN â†’ CLOSED) |
+| **Parameters** | Parametry techniczne (jeĹ›li istnieją: rated_current, breaking_capacity) |
+| **Switching History** | Historia zmian stanu (timestamp, user, OPEN → CLOSED) |
 | **Topology Impact** | WpĹ‚yw na Islands (Before/After toggle) |
-| **Results** | Brak (Switch nie ma wynikĂłw solverĂłw â€” to aparat bez impedancji) |
+| **Results** | Brak (Switch nie ma wynikĂłw solverĂłw — to aparat bez impedancji) |
 
-**PrzykĹ‚ad (ASCII â€” Element Inspector):**
+**PrzykĹ‚ad (ASCII — Element Inspector):**
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ ELEMENT INSPECTOR: Switch CB-01                              â”‚
@@ -415,7 +415,7 @@ Topology Tree:
 #### 3.5.2 Akcja Toggle State w Element Inspector
 
 **MUST:**
-- Przycisk [Toggle State] w Element Inspector â†’ zmiana stanu Switch
+- Przycisk [Toggle State] w Element Inspector → zmiana stanu Switch
 - Natychmiastowa aktualizacja Effective Topology + Islands
 - Synchronizacja z Switching Explorer (wiersz zaktualizowany)
 - Synchronizacja z SLD (symbol zaktualizowany)
@@ -428,9 +428,9 @@ Topology Tree:
 
 ### 3.6 Walidacja topologii (pre-solver, NOT-A-SOLVER)
 
-**Cel:** Switching Explorer musi pokazywaÄ‡ sekcjÄ™ **Topology Checks** (pre-solver validation).
+**Cel:** Switching Explorer musi pokazywać sekcję **Topology Checks** (pre-solver validation).
 
-#### 3.6.1 Topology Checks â€” lista sprawdzeĹ„
+#### 3.6.1 Topology Checks — lista sprawdzeĹ„
 
 **MUST:** Topology Checks zawiera:
 
@@ -438,62 +438,62 @@ Topology Tree:
 |-------|------|--------|
 | **Liczba Islands** | Liczba izolowanych wysp (connected components) | Informacyjny (liczba) |
 | **Islands bez Source** | Lista Islands bez ĹĽadnego Source | âš  WARNING |
-| **Busy odĹ‚Ä…czone (dangling)** | Bus bez ĹĽadnego poĹ‚Ä…czenia (degree = 0) | âš  WARNING |
-| **Source odĹ‚Ä…czony (dangling)** | Source na Bus bez poĹ‚Ä…czeĹ„ | âš  WARNING |
+| **Busy odĹ‚ączone (dangling)** | Bus bez ĹĽadnego poĹ‚ączenia (degree = 0) | âš  WARNING |
+| **Source odĹ‚ączony (dangling)** | Source na Bus bez poĹ‚ączeĹ„ | âš  WARNING |
 | **Islands z wieloma Source** | Jedna Island z > 1 Source (potential conflict) | Informacyjny |
 
-**PrzykĹ‚ad (ASCII â€” Topology Checks):**
+**PrzykĹ‚ad (ASCII — Topology Checks):**
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ TOPOLOGY CHECKS (pre-solver validation)                     â”‚
 â”‚                                                              â”‚
 â”‚  âś“ Liczba Islands:         3                                â”‚
 â”‚  âš  Islands bez Source:     Island-2, Island-3               â”‚
-â”‚      (Power Flow moĹĽe nie zbiegaÄ‡)                          â”‚
-â”‚  âš  Busy odĹ‚Ä…czone:         5 (Bus-10, Bus-11, Bus-12, ...) â”‚
+â”‚      (Power Flow moĹĽe nie zbiegać)                          â”‚
+â”‚  âš  Busy odĹ‚ączone:         5 (Bus-10, Bus-11, Bus-12, ...) â”‚
 â”‚  âś“ Dangling elements:      0                                â”‚
 â”‚  â„ą Islands z > 1 Source:   Island-1 (2 Source)              â”‚
 â”‚                                                              â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
-**NOT-A-SOLVER rule:** Topology Checks **NIE wykonuje** obliczeĹ„ fizycznych. To wyĹ‚Ä…cznie graph analysis (degree, connected components, Source presence).
+**NOT-A-SOLVER rule:** Topology Checks **NIE wykonuje** obliczeĹ„ fizycznych. To wyĹ‚ącznie graph analysis (degree, connected components, Source presence).
 
 ---
 
 #### 3.6.2 FORBIDDEN w Topology Checks
 
 **ZABRONIONE:**
-- Wykonywanie obliczeĹ„ prÄ…dĂłw, napiÄ™Ä‡ w Topology Checks (to Solver Layer)
+- Wykonywanie obliczeĹ„ prądĂłw, napięć w Topology Checks (to Solver Layer)
 - Prezentowanie statusu "Energized" jako wyniku Power Flow (to interpretacja topologiczna, NIE wynik PF)
-- Automatyczna "naprawa" topologii (przeĹ‚Ä…czanie aparatĂłw bez zgody uĹĽytkownika)
+- Automatyczna "naprawa" topologii (przeĹ‚ączanie aparatĂłw bez zgody uĹĽytkownika)
 - Ukrywanie ostrzeĹĽeĹ„ (wszystkie WARNING widoczne)
 
 ---
 
 ### 3.7 Tryby pracy Switching Explorer (MAX DANYCH, MAX KONTROLA)
 
-**Zasada (benchmark-grade):** Brak uproszczeĹ„. Wszystkie aparaty widoczne, wszystkie opcje dostÄ™pne.
+**Zasada (benchmark-grade):** Brak uproszczeĹ„. Wszystkie aparaty widoczne, wszystkie opcje dostępne.
 
 #### 3.7.1 Panele rozwijane i modale
 
 **ALLOWED (opcjonalne rozszerzenia):**
 
-| Panel/Modal | Opis | DostÄ™pnoĹ›Ä‡ |
+| Panel/Modal | Opis | DostępnoĹ›ć |
 |-------------|------|-----------|
-| **Batch Switching** | Symulacja wielu przeĹ‚Ä…czeĹ„ jako zestaw zmian (Apply All / Revert All) | Dropdown menu "Batch Operations" |
-| **Switching Sequence** | KolejnoĹ›Ä‡ operacji Ĺ‚Ä…czeniowych (opis, bez automatycznego wykonywania) | Modal "Define Sequence" |
+| **Batch Switching** | Symulacja wielu przeĹ‚ączeĹ„ jako zestaw zmian (Apply All / Revert All) | Dropdown menu "Batch Operations" |
+| **Switching Sequence** | KolejnoĹ›ć operacji Ĺ‚ączeniowych (opis, bez automatycznego wykonywania) | Modal "Define Sequence" |
 | **Restore Normal State** | PowrĂłt do stanu bazowego Case (Case.baseline_switching_state) | Przycisk w Switching Explorer |
 
-**MUST:** Wszystkie operacje grupowe wymagajÄ… **potwierdzenia** (confirmation dialog):
+**MUST:** Wszystkie operacje grupowe wymagają **potwierdzenia** (confirmation dialog):
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚ POTWIERDZENIE                                                â”‚
 â”‚                                                              â”‚
-â”‚  Czy chcesz zastosowaÄ‡ 12 zmian stanĂłw aparatĂłw?            â”‚
-â”‚   - CB-01: CLOSED â†’ OPEN                                    â”‚
-â”‚   - CB-02: OPEN â†’ CLOSED                                    â”‚
-â”‚   - DS-01: CLOSED â†’ OPEN                                    â”‚
+â”‚  Czy chcesz zastosować 12 zmian stanĂłw aparatĂłw?            â”‚
+â”‚   - CB-01: CLOSED → OPEN                                    â”‚
+â”‚   - CB-02: OPEN → CLOSED                                    â”‚
+â”‚   - DS-01: CLOSED → OPEN                                    â”‚
 â”‚   ...                                                        â”‚
 â”‚                                                              â”‚
 â”‚  âš  Uwaga: Ta operacja invaliduje wyniki obliczeĹ„.           â”‚
@@ -504,13 +504,13 @@ Topology Tree:
 
 ---
 
-#### 3.7.2 FORBIDDEN â€” uproszczenia
+#### 3.7.2 FORBIDDEN — uproszczenia
 
 **ZABRONIONE:**
-- "Basic Mode" (ukrywajÄ…cy aparaty out-of-service)
+- "Basic Mode" (ukrywający aparaty out-of-service)
 - Automatyczne filtrowanie aparatĂłw (uĹĽytkownik decyduje)
 - Ukrywanie ostrzeĹĽeĹ„ "Islands bez Source" (dla uproszczenia UI)
-- "Auto-repair topology" (automatyczne przeĹ‚Ä…czanie aparatĂłw)
+- "Auto-repair topology" (automatyczne przeĹ‚ączanie aparatĂłw)
 
 ---
 
@@ -518,19 +518,19 @@ Topology Tree:
 
 **Zasada (Print-First Contract, zgodnie z SLD_UI_CONTRACT.md):** Ekran = PDF (bez utraty informacji).
 
-#### 3.8.1 ZawartoĹ›Ä‡ wydruku
+#### 3.8.1 ZawartoĹ›ć wydruku
 
 **MUST:** Wydruk Switching Explorer zawiera:
 
-| Sekcja | ZawartoĹ›Ä‡ |
+| Sekcja | ZawartoĹ›ć |
 |--------|-----------|
 | **NagĹ‚Ăłwek** | Project Name, Case Name, Snapshot Timestamp, User |
 | **Lista aparatĂłw** | Tabela: ID, Name, Type, State, From Bus, To Bus, Island ID |
 | **Island Summary** | Tabela: Island ID, Number of Bus, Number of Source, Energized (Yes/No) |
 | **Topology Checks** | Lista ostrzeĹĽeĹ„ (Islands bez Source, dangling Bus) |
-| **RĂłĹĽnice vs baseline** | Tabela aparatĂłw z rĂłĹĽnymi stanami wzglÄ™dem Case.baseline_switching_state |
+| **RĂłĹĽnice vs baseline** | Tabela aparatĂłw z rĂłĹĽnymi stanami względem Case.baseline_switching_state |
 
-**PrzykĹ‚ad (ASCII â€” wydruk PDF, strona 1):**
+**PrzykĹ‚ad (ASCII — wydruk PDF, strona 1):**
 ```
 â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 â”‚                  SWITCHING STATE REPORT                      â”‚
@@ -548,7 +548,7 @@ Topology Tree:
 â”‚  ID    Name       Type  State    From Bus  To Bus   Island  â”‚
 â”‚  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”‚
 â”‚  001   CB-01      BRK   â—Ź CLOSED Bus-01    Bus-02   Isl-1   â”‚
-â”‚  002   DS-01      DISC  â—‹ OPEN   Bus-02    Bus-03   â€”       â”‚
+â”‚  002   DS-01      DISC  â—‹ OPEN   Bus-02    Bus-03   —       â”‚
 â”‚  003   CB-02      BRK   â—Ź CLOSED Bus-03    Bus-04   Isl-2   â”‚
 â”‚  ...   ...        ...   ...      ...       ...      ...     â”‚
 â”‚                                                              â”‚
@@ -567,7 +567,7 @@ Topology Tree:
 â”‚  TOPOLOGY CHECKS                                             â”‚
 â”‚                                                              â”‚
 â”‚  âš  Islands bez Source: Isl-2, Isl-3                         â”‚
-â”‚  âš  Busy odĹ‚Ä…czone: 5 (Bus-10, Bus-11, Bus-12, ...)          â”‚
+â”‚  âš  Busy odĹ‚ączone: 5 (Bus-10, Bus-11, Bus-12, ...)          â”‚
 â”‚                                                              â”‚
 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
 â”‚                                                              â”‚
@@ -575,8 +575,8 @@ Topology Tree:
 â”‚                                                              â”‚
 â”‚  ID    Name       Baseline   Current   Change               â”‚
 â”‚  â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€              â”‚
-â”‚  002   DS-01      CLOSED     OPEN      â—Ź â†’ â—‹                â”‚
-â”‚  007   CB-05      OPEN       CLOSED    â—‹ â†’ â—Ź                â”‚
+â”‚  002   DS-01      CLOSED     OPEN      â—Ź → â—‹                â”‚
+â”‚  007   CB-05      OPEN       CLOSED    â—‹ → â—Ź                â”‚
 â”‚                                                              â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -592,18 +592,18 @@ Topology Tree:
 **Cel:** Sprawdzenie aktualnych stanĂłw aparatĂłw i identyfikacja wysp.
 
 **Kroki:**
-1. UĹĽytkownik otwiera Switching Explorer (menu: Tools â†’ Switching State Explorer)
-2. Widzi listÄ™ wszystkich aparatĂłw z filtrami (Type, State, Feeder, Island)
-3. Klika na aparat CB-01 â†’ podĹ›wietlenie na SLD + fokus w Element Inspector
-4. Widzi sekcjÄ™ Topology Checks: 3 Islands, 2 bez Source
+1. UĹĽytkownik otwiera Switching Explorer (menu: Tools → Switching State Explorer)
+2. Widzi listę wszystkich aparatĂłw z filtrami (Type, State, Feeder, Island)
+3. Klika na aparat CB-01 → podĹ›wietlenie na SLD + fokus w Element Inspector
+4. Widzi sekcję Topology Checks: 3 Islands, 2 bez Source
 5. Widzi overlay Islands na SLD (kolorowanie tĹ‚a Bus)
 6. Eksportuje raport do PDF (lista aparatĂłw + Island summary)
 
-**Rezultat:** UĹĽytkownik ma peĹ‚ny wglÄ…d w stany aparatĂłw i topologiÄ™ efektywnÄ….
+**Rezultat:** UĹĽytkownik ma peĹ‚ny wgląd w stany aparatĂłw i topologię efektywną.
 
 ---
 
-### 4.2 Scenariusz poprawny: PrzeĹ‚Ä…czenie aparatu i ocena wpĹ‚ywu
+### 4.2 Scenariusz poprawny: PrzeĹ‚ączenie aparatu i ocena wpĹ‚ywu
 
 **Aktorzy:** Designer, Analyst
 
@@ -613,21 +613,21 @@ Topology Tree:
 1. UĹĽytkownik otwiera Switching Explorer
 2. Filtruje aparaty: Type = BREAKER, State = CLOSED
 3. Wybiera CB-02 (CLOSED)
-4. Klika [Toggle State] â†’ CB-02 przechodzi w stan OPEN
+4. Klika [Toggle State] → CB-02 przechodzi w stan OPEN
 5. System:
    - Przelicza Effective Topology (graph traversal)
-   - Wykrywa nowe Islands (Island-1 rozdziela siÄ™ na Island-1a i Island-1b)
+   - Wykrywa nowe Islands (Island-1 rozdziela się na Island-1a i Island-1b)
    - Aktualizuje overlay na SLD (nowe kolory wysp)
-   - Aktualizuje Topology Checks (liczba wysp: 3 â†’ 4)
+   - Aktualizuje Topology Checks (liczba wysp: 3 → 4)
    - Pokazuje banner: âš  Wyniki obliczeĹ„ OUTDATED
 6. UĹĽytkownik widzi w Element Inspector (zakĹ‚adka Topology Impact):
    ```
-   Before: CB-02 CLOSED â†’ Island-1 (15 Bus, 1 Source)
-   After:  CB-02 OPEN   â†’ Island-1a (8 Bus, 1 Source) + Island-1b (7 Bus, 0 Source)
+   Before: CB-02 CLOSED → Island-1 (15 Bus, 1 Source)
+   After:  CB-02 OPEN   → Island-1a (8 Bus, 1 Source) + Island-1b (7 Bus, 0 Source)
    ```
-7. UĹĽytkownik zapisuje zmianÄ™ lub cofa (Revert)
+7. UĹĽytkownik zapisuje zmianę lub cofa (Revert)
 
-**Rezultat:** UĹĽytkownik oceniĹ‚ wpĹ‚yw zmiany stanu aparatu na topologiÄ™ bez uruchamiania solverĂłw.
+**Rezultat:** UĹĽytkownik oceniĹ‚ wpĹ‚yw zmiany stanu aparatu na topologię bez uruchamiania solverĂłw.
 
 ---
 
@@ -635,18 +635,18 @@ Topology Tree:
 
 **Aktorzy:** Designer
 
-**Cel:** Symulacja scenariusza operacyjnego (np. wyĹ‚Ä…czenie feedera).
+**Cel:** Symulacja scenariusza operacyjnego (np. wyĹ‚ączenie feedera).
 
 **Kroki:**
 1. UĹĽytkownik otwiera Switching Explorer
 2. Zaznacza aparaty (Ctrl+Click): CB-01, CB-02, DS-03 (wszystkie CLOSED)
-3. Klika [Batch Operations â–Ľ] â†’ [Open Selected Switches]
+3. Klika [Batch Operations â–Ľ] → [Open Selected Switches]
 4. System pokazuje modal potwierdzenia:
    ```
-   Czy otworzyÄ‡ 3 aparaty?
-     - CB-01: CLOSED â†’ OPEN
-     - CB-02: CLOSED â†’ OPEN
-     - DS-03: CLOSED â†’ OPEN
+   Czy otworzyć 3 aparaty?
+     - CB-01: CLOSED → OPEN
+     - CB-02: CLOSED → OPEN
+     - DS-03: CLOSED → OPEN
 
    âš  Ta operacja invaliduje wyniki obliczeĹ„.
 
@@ -656,10 +656,10 @@ Topology Tree:
 6. System:
    - Zmienia stany aparatĂłw
    - Przelicza Effective Topology
-   - Aktualizuje Islands (1 â†’ 4 wyspy)
+   - Aktualizuje Islands (1 → 4 wyspy)
    - Pokazuje banner OUTDATED
 
-**Rezultat:** UĹĽytkownik wykonaĹ‚ operacjÄ™ grupowÄ… i oceniĹ‚ jej wpĹ‚yw.
+**Rezultat:** UĹĽytkownik wykonaĹ‚ operację grupową i oceniĹ‚ jej wpĹ‚yw.
 
 ---
 
@@ -674,11 +674,11 @@ Topology Tree:
 2. Klika [Restore Normal State]
 3. System pokazuje modal:
    ```
-   Czy przywrĂłciÄ‡ stan bazowy Case?
+   Czy przywrĂłcić stan bazowy Case?
 
-   Zmiany do cofniÄ™cia:
-     - CB-01: OPEN â†’ CLOSED (baseline)
-     - CB-02: CLOSED â†’ OPEN (baseline)
+   Zmiany do cofnięcia:
+     - CB-01: OPEN → CLOSED (baseline)
+     - CB-02: CLOSED → OPEN (baseline)
      - ...
 
    [Restore] [Cancel]
@@ -686,7 +686,7 @@ Topology Tree:
 4. UĹĽytkownik klika [Restore]
 5. System przywraca Case.baseline_switching_state
 
-**Rezultat:** SieÄ‡ wraca do stanu bazowego.
+**Rezultat:** Sieć wraca do stanu bazowego.
 
 ---
 
@@ -694,39 +694,39 @@ Topology Tree:
 
 **ZABRONIONE:**
 
-**Kroki (NIE implementowaÄ‡):**
-1. UĹĽytkownik przeĹ‚Ä…cza aparat CB-01 (CLOSED â†’ OPEN)
+**Kroki (NIE implementować):**
+1. UĹĽytkownik przeĹ‚ącza aparat CB-01 (CLOSED → OPEN)
 2. System automatycznie uruchamia Power Flow (bez zgody uĹĽytkownika)
 3. UĹĽytkownik widzi nowe wyniki (nie wie, ĹĽe solver zostaĹ‚ uruchomiony)
 
 **Dlaczego FORBIDDEN:**
 - Naruszenie zasady "Explicit Calculate Step" (ui_canonical_parity.md)
-- UĹĽytkownik traci kontrolÄ™ nad obliczeniami
+- UĹĽytkownik traci kontrolę nad obliczeniami
 - Ryzyko nieoczekiwanych wynikĂłw (np. solver nie zbiega)
 
 **Poprawne podejĹ›cie:**
 - System pokazuje banner: âš  Wyniki OUTDATED
-- UĹĽytkownik decyduje, kiedy uruchomiÄ‡ solver
+- UĹĽytkownik decyduje, kiedy uruchomić solver
 
 ---
 
-### 4.6 Scenariusz FORBIDDEN: Prezentacja "prÄ…dĂłw w aparacie"
+### 4.6 Scenariusz FORBIDDEN: Prezentacja "prądĂłw w aparacie"
 
 **ZABRONIONE:**
 
-**Kroki (NIE implementowaÄ‡):**
+**Kroki (NIE implementować):**
 1. UĹĽytkownik otwiera Switching Explorer
-2. Widzi kolumnÄ™ "Current [A]" w liĹ›cie aparatĂłw
-3. System pokazuje prÄ…dy przepĹ‚ywajÄ…ce przez aparat (z wynikĂłw Power Flow)
+2. Widzi kolumnę "Current [A]" w liĹ›cie aparatĂłw
+3. System pokazuje prądy przepĹ‚ywające przez aparat (z wynikĂłw Power Flow)
 
 **Dlaczego FORBIDDEN:**
-- Aparat Ĺ‚Ä…czeniowy **NIE MA** impedancji (PF-rule)
-- "PrÄ…d w aparacie" to interpretacja fizyczna (wymaga Power Flow)
+- Aparat Ĺ‚ączeniowy **NIE MA** impedancji (PF-rule)
+- "Prąd w aparacie" to interpretacja fizyczna (wymaga Power Flow)
 - Switching Explorer to warstwa topologiczna (NOT-A-SOLVER)
 
 **Poprawne podejĹ›cie:**
-- "PrÄ…dy w aparacie" pokazywane w Results Browser (po uruchomieniu PF)
-- Switching Explorer pokazuje **wyĹ‚Ä…cznie** stan topologiczny (OPEN/CLOSED)
+- "Prądy w aparacie" pokazywane w Results Browser (po uruchomieniu PF)
+- Switching Explorer pokazuje **wyĹ‚ącznie** stan topologiczny (OPEN/CLOSED)
 
 ---
 
@@ -734,26 +734,26 @@ Topology Tree:
 
 **ZABRONIONE:**
 
-**Kroki (NIE implementowaÄ‡):**
+**Kroki (NIE implementować):**
 1. System wykrywa Island bez Source (Island-2)
-2. System automatycznie przeĹ‚Ä…cza aparat DS-01 (OPEN â†’ CLOSED) aby poĹ‚Ä…czyÄ‡ Islands
-3. UĹĽytkownik widzi zmianÄ™ bez swojego dziaĹ‚ania
+2. System automatycznie przeĹ‚ącza aparat DS-01 (OPEN → CLOSED) aby poĹ‚ączyć Islands
+3. UĹĽytkownik widzi zmianę bez swojego dziaĹ‚ania
 
 **Dlaczego FORBIDDEN:**
 - Naruszenie zasady "user control" (ARCHITECTURE.md)
 - Ryzyko nieoczekiwanych zmian topologii
-- UĹĽytkownik traci pewnoĹ›Ä‡, co zostaĹ‚o zmienione
+- UĹĽytkownik traci pewnoĹ›ć, co zostaĹ‚o zmienione
 
 **Poprawne podejĹ›cie:**
 - System pokazuje ostrzeĹĽenie: âš  Island-2 bez Source
-- System **SUGERUJE** akcjÄ™: "RozwaĹĽ zamkniÄ™cie DS-01 aby poĹ‚Ä…czyÄ‡ Islands"
-- UĹĽytkownik decyduje, czy zastosowaÄ‡ sugestiÄ™
+- System **SUGERUJE** akcję: "RozwaĹĽ zamknięcie DS-01 aby poĹ‚ączyć Islands"
+- UĹĽytkownik decyduje, czy zastosować sugestię
 
 ---
 
 ## 5. PrzykĹ‚ady ASCII (Binding Illustrations)
 
-### 5.1 PrzykĹ‚ad 1: Dwie wyspy (Islands) â€” ring otwarty
+### 5.1 PrzykĹ‚ad 1: Dwie wyspy (Islands) — ring otwarty
 
 **Topologia:**
 - Bus-01, Bus-02, Bus-03, Bus-04 (ring)
@@ -773,28 +773,28 @@ Topology Tree:
       â•±          â•˛
   Bus-02        Bus-04
       â”‚            â”‚
-  CB-02 â—Ź      â—‹ CB-03 (OPEN â€” granica wysp)
+  CB-02 â—Ź      â—‹ CB-03 (OPEN — granica wysp)
       â”‚            â”‚
-  Bus-03 â”€ â”€ â”€ â”€ Bus-04 (nie poĹ‚Ä…czone topologicznie)
+  Bus-03 â”€ â”€ â”€ â”€ Bus-04 (nie poĹ‚ączone topologicznie)
 
 Islands:
-  Island-1: {Bus-01, Bus-02, Bus-03, Bus-04} â†’ wszystkie poĹ‚Ä…czone (ring zamkniÄ™ty przez CB-01, CB-02, CB-04)
+  Island-1: {Bus-01, Bus-02, Bus-03, Bus-04} → wszystkie poĹ‚ączone (ring zamknięty przez CB-01, CB-02, CB-04)
 
-Uwaga: CB-03 OPEN, ale Bus-04 jest poĹ‚Ä…czony z Bus-01 przez CB-04 (ring zamkniÄ™ty)
-â†’ Tylko JEDNA wyspa (Island-1)
+Uwaga: CB-03 OPEN, ale Bus-04 jest poĹ‚ączony z Bus-01 przez CB-04 (ring zamknięty)
+→ Tylko JEDNA wyspa (Island-1)
 ```
 
-**CRITICAL INSIGHT:** Ring otwarty (jeden aparat OPEN) **NIE tworzy** dwĂłch wysp, jeĹ›li ring jest zamkniÄ™ty przez innÄ… Ĺ›cieĹĽkÄ™. Islands zaleĹĽÄ… od **wszystkich** Ĺ›cieĹĽek topologicznych.
+**CRITICAL INSIGHT:** Ring otwarty (jeden aparat OPEN) **NIE tworzy** dwĂłch wysp, jeĹ›li ring jest zamknięty przez inną Ĺ›cieĹĽkę. Islands zaleĹĽą od **wszystkich** Ĺ›cieĹĽek topologicznych.
 
 ---
 
-### 5.2 PrzykĹ‚ad 2: Dwie wyspy (Islands) â€” feeder odĹ‚Ä…czony
+### 5.2 PrzykĹ‚ad 2: Dwie wyspy (Islands) — feeder odĹ‚ączony
 
 **Topologia:**
 - Bus-01 (z Source-01)
-- Bus-02 (poĹ‚Ä…czony z Bus-01 przez CB-01: CLOSED)
-- Bus-03 (poĹ‚Ä…czony z Bus-02 przez DS-01: **OPEN** â† boundary)
-- Bus-04 (poĹ‚Ä…czony z Bus-03 przez CB-02: CLOSED)
+- Bus-02 (poĹ‚ączony z Bus-01 przez CB-01: CLOSED)
+- Bus-03 (poĹ‚ączony z Bus-02 przez DS-01: **OPEN** â† boundary)
+- Bus-04 (poĹ‚ączony z Bus-03 przez CB-02: CLOSED)
 
 **Effective Topology:**
 ```
@@ -806,7 +806,7 @@ Uwaga: CB-03 OPEN, ale Bus-04 jest poĹ‚Ä…czony z Bus-01 przez CB-04 (ring 
       â”‚
     Bus-02
       â•‘
-      â•‘  DS-01 â—‹ (OPEN â€” granica wysp)
+      â•‘  DS-01 â—‹ (OPEN — granica wysp)
       â•‘
     Bus-03
       â”‚
@@ -815,8 +815,8 @@ Uwaga: CB-03 OPEN, ale Bus-04 jest poĹ‚Ä…czony z Bus-01 przez CB-04 (ring 
     Bus-04
 
 Islands:
-  Island-1: {Bus-01, Bus-02} â€” Energized (zawiera Source-01)
-  Island-2: {Bus-03, Bus-04} â€” De-energized (brak Source)
+  Island-1: {Bus-01, Bus-02} — Energized (zawiera Source-01)
+  Island-2: {Bus-03, Bus-04} — De-energized (brak Source)
 ```
 
 **Switching Explorer pokazuje:**
@@ -826,7 +826,7 @@ Islands:
 â”‚                                                              â”‚
 â”‚  âś“ Liczba Islands:       2                                  â”‚
 â”‚  âš  Islands bez Source:   Island-2 (Bus-03, Bus-04)          â”‚
-â”‚                         Power Flow moĹĽe nie zbiegaÄ‡!         â”‚
+â”‚                         Power Flow moĹĽe nie zbiegać!         â”‚
 â”‚  âś“ Dangling elements:    0                                  â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
@@ -837,7 +837,7 @@ Islands:
 â”‚ SLD                                                          â”‚
 â”‚                                                              â”‚
 â”‚   â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•—                                     â”‚
-â”‚   â•‘ Island-1 (â–  zielony) â€” Energized                        â”‚
+â”‚   â•‘ Island-1 (â–  zielony) — Energized                        â”‚
 â”‚   â•‘   [Source-01]     â•‘                                     â”‚
 â”‚   â•‘       â”‚           â•‘                                     â”‚
 â”‚   â•‘     Bus-01        â•‘                                     â”‚
@@ -847,10 +847,10 @@ Islands:
 â”‚   â•‘     Bus-02        â•‘                                     â”‚
 â”‚   â•šâ•â•â•â•â•â•â•â•©â•â•â•â•â•â•â•â•â•â•â•â•ť                                     â”‚
 â”‚           â•‘                                                  â”‚
-â”‚        DS-01 â—‹ (OPEN â€” boundary, czerwona linia przerywana) â”‚
+â”‚        DS-01 â—‹ (OPEN — boundary, czerwona linia przerywana) â”‚
 â”‚           â•‘                                                  â”‚
 â”‚   â•”â•â•â•â•â•â•â•â•©â•â•â•â•â•â•â•â•â•â•â•â•—                                     â”‚
-â”‚   â•‘ Island-2 (â–  niebieski) â€” De-energized âš                  â”‚
+â”‚   â•‘ Island-2 (â–  niebieski) — De-energized âš                  â”‚
 â”‚   â•‘     Bus-03        â•‘                                     â”‚
 â”‚   â•‘       â”‚           â•‘                                     â”‚
 â”‚   â•‘   CB-02 â—Ź         â•‘                                     â”‚
@@ -866,7 +866,7 @@ Islands:
 
 ---
 
-### 5.3 PrzykĹ‚ad 3: Ring otwarty w dwĂłch miejscach â†’ dwie wyspy
+### 5.3 PrzykĹ‚ad 3: Ring otwarty w dwĂłch miejscach → dwie wyspy
 
 **Topologia:**
 - Bus-01 (z Source-01)
@@ -891,8 +891,8 @@ Bus-02  Bus-04
   Bus-03 (izolowany)
 
 Islands:
-  Island-1: {Bus-01, Bus-02, Bus-04} â€” Energized (zawiera Source-01)
-  Island-2: {Bus-03} â€” De-energized (izolowany, brak Ĺ›cieĹĽki do Bus-01)
+  Island-1: {Bus-01, Bus-02, Bus-04} — Energized (zawiera Source-01)
+  Island-2: {Bus-03} — De-energized (izolowany, brak Ĺ›cieĹĽki do Bus-01)
 ```
 
 **Switching Explorer pokazuje:**
@@ -902,7 +902,7 @@ Islands:
 â”‚                                                              â”‚
 â”‚  âś“ Liczba Islands:       2                                  â”‚
 â”‚  âš  Islands bez Source:   Island-2 (Bus-03)                  â”‚
-â”‚  âš  Bus izolowany:        Bus-03 (brak poĹ‚Ä…czeĹ„ topologicznych)â”‚
+â”‚  âš  Bus izolowany:        Bus-03 (brak poĹ‚ączeĹ„ topologicznych)â”‚
 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
 ```
 
@@ -912,43 +912,43 @@ Islands:
 
 **Implementacja zgodna z SWITCHING_STATE_EXPLORER_CONTRACT.md, jeĹ›li:**
 
-- [ ] **Switching Explorer panel** zaimplementowany jako rĂłwnorzÄ™dny widok (z SLD, Results Browser, Topology Tree)
+- [ ] **Switching Explorer panel** zaimplementowany jako rĂłwnorzędny widok (z SLD, Results Browser, Topology Tree)
 - [ ] **Lista aparatĂłw** pokazuje wszystkie Switch z filtrami (Type, State, In Service, Feeder, Island)
 - [ ] **Szybkie wyszukiwanie** po nazwie/ID (regex support)
-- [ ] **Toggle State** (OPEN â†” CLOSED) z natychmiastowÄ… aktualizacjÄ… Effective Topology + Islands
+- [ ] **Toggle State** (OPEN â†” CLOSED) z natychmiastową aktualizacją Effective Topology + Islands
 - [ ] **Effective Topology** przeliczana algorytmicznie (graph traversal, NOT solver) po kaĹĽdej zmianie stanu
 - [ ] **Islands** wykrywane algorytmicznie (connected components, NOT solver)
 - [ ] **SLD overlay Islands** (kolorowanie tĹ‚a Bus lub obrys wysp)
-- [ ] **Topology Checks** pokazujÄ…: liczba Islands, Islands bez Source, dangling Bus (pre-solver validation)
-- [ ] **Invalidation Rule**: zmiana stanu aparatu â†’ Result status = OUTDATED (z bannerem ostrzeĹĽenia)
-- [ ] **Synchronizacja 4-widokowa**: wybĂłr aparatu w Explorerze â†’ podĹ›wietlenie SLD/Tree/Inspector
+- [ ] **Topology Checks** pokazują: liczba Islands, Islands bez Source, dangling Bus (pre-solver validation)
+- [ ] **Invalidation Rule**: zmiana stanu aparatu → Result status = OUTDATED (z bannerem ostrzeĹĽenia)
+- [ ] **Synchronizacja 4-widokowa**: wybĂłr aparatu w Explorerze → podĹ›wietlenie SLD/Tree/Inspector
 - [ ] **Element Inspector (Switch)**: zakĹ‚adki Overview, Parameters, Switching History, Topology Impact
 - [ ] **Batch Operations**: grupowa zmiana stanĂłw (z potwierdzeniem)
 - [ ] **Restore Normal State**: powrĂłt do Case.baseline_switching_state
 - [ ] **Print/Export**: wydruk listy aparatĂłw + Island summary (PDF/Excel)
-- [ ] **NOT-A-SOLVER rule**: Switching Explorer **NIE wykonuje** obliczeĹ„ fizycznych (prÄ…dy, napiÄ™cia)
-- [ ] **FORBIDDEN: Auto-repair topology** â€” system **NIE przeĹ‚Ä…cza** aparatĂłw bez zgody uĹĽytkownika
-- [ ] **FORBIDDEN: Prezentacja "prÄ…dĂłw w aparacie"** â€” to wynik Power Flow, nie topologii
+- [ ] **NOT-A-SOLVER rule**: Switching Explorer **NIE wykonuje** obliczeĹ„ fizycznych (prądy, napięcia)
+- [ ] **FORBIDDEN: Auto-repair topology** — system **NIE przeĹ‚ącza** aparatĂłw bez zgody uĹĽytkownika
+- [ ] **FORBIDDEN: Prezentacja "prądĂłw w aparacie"** — to wynik Power Flow, nie topologii
 - [ ] **FORBIDDEN: Automatyczne uruchomienie solvera** po zmianie stanu aparatu
 
 ---
 
-## 7. Terminologia i zgodnoĹ›Ä‡ z benchmark
+## 7. Terminologia i zgodnoĹ›ć z benchmark
 
-### 7.1 Mapowanie terminĂłw benchmark â†’ MV-DESIGN-PRO
+### 7.1 Mapowanie terminĂłw benchmark → MV-DESIGN-PRO
 
 | benchmark Term | MV-DESIGN-PRO Term | Opis |
 |-------------------|--------------------|------|
-| **Switch** | Switch | Aparat Ĺ‚Ä…czeniowy (BREAKER, DISCONNECTOR, LOAD_SWITCH, FUSE) |
-| **Topology** | Effective Topology | Graf sieci po uwzglÄ™dnieniu stanĂłw aparatĂłw i `in_service` |
+| **Switch** | Switch | Aparat Ĺ‚ączeniowy (BREAKER, DISCONNECTOR, LOAD_SWITCH, FUSE) |
+| **Topology** | Effective Topology | Graf sieci po uwzględnieniu stanĂłw aparatĂłw i `in_service` |
 | **Island** | Island | SpĂłjna skĹ‚adowa grafu (connected component) |
-| **Out of Service** | `in_service = False` | Element wyĹ‚Ä…czony z obliczeĹ„ |
+| **Out of Service** | `in_service = False` | Element wyĹ‚ączony z obliczeĹ„ |
 | **Pre-calculation Check** | Topology Checks | Walidacja topologii przed uruchomieniem solvera |
 | **Study Case** | Case | Przypadek obliczeniowy (konfiguracja + opcjonalnie wyniki) |
 
 ---
 
-### 7.2 ZgodnoĹ›Ä‡ z benchmark
+### 7.2 ZgodnoĹ›ć z benchmark
 
 | benchmark Feature | MV-DESIGN-PRO Equivalent | Status |
 |--------------|--------------------------|--------|
@@ -970,5 +970,5 @@ Islands:
 
 **KONIEC DOKUMENTU**
 
-**STATUS:** CANONICAL (BINDING) â€” kaĹĽda implementacja Switching State Explorer MUSI byÄ‡ zgodna z tym kontraktem.
+**STATUS:** CANONICAL (BINDING) — kaĹĽda implementacja Switching State Explorer MUSI być zgodna z tym kontraktem.
 

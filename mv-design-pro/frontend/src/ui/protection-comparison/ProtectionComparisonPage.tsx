@@ -82,7 +82,7 @@ function RunSelector({ label, runs, selectedRunId, onChange }: RunSelectorProps)
         onChange={(e) => onChange(e.target.value)}
         className="rounded border border-slate-200 px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
       >
-        <option value="">— Wybierz uruchomienie —</option>
+        <option value="">— Wybierz obliczenie —</option>
         {runs.map((run) => {
           const date = new Date(run.created_at).toLocaleString('pl-PL');
           return (

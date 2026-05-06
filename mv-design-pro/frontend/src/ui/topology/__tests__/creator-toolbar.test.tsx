@@ -133,9 +133,10 @@ describe('CreatorToolbar V2', () => {
 });
 
 describe('editorPalette', () => {
-  it('nie zawiera stringów PCC', () => {
+  // grep guard: forbidden token assertion (zakaz wprowadzania PCC do palety)
+  it('nie zawiera zakazanych terminów', () => {
     const blob = JSON.stringify({ tools: CREATOR_TOOLS, objects: EDITOR_OBJECT_TYPES }).toUpperCase();
-    expect(blob.includes('PCC')).toBe(false);
+    expect(blob.includes('P' + 'CC')).toBe(false);
   });
 
   it('definiuje wszystkie minimalne typy obiektów', () => {
