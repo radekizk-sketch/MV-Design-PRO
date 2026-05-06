@@ -1144,8 +1144,19 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
           { label: 'Kompletnosc zgodnosci przejsciowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
         ]}
       />
-      <SectionCard title="Biezacy widok koordynacji" eyebrow="Widok wynikowy">
-        <p className="text-xs text-slate-400">Widok koordynacji nie jest dostepny.</p>
+      <SectionCard title="Bieżący widok koordynacji" eyebrow="Widok wynikowy">
+        <div className="space-y-2">
+          <p className="text-sm text-slate-300">
+            Wykres TCC (czasowo-prądowy) renderowany z ProtectionCurvesEditor po
+            wyborze pary nadrzędny ↔ podrzędny w sekcji "Ustawienia". Aktywne
+            uruchomienie analizy: <code>{String(surface.routeState.payload?.runId ?? '—')}</code>.
+          </p>
+          <p className="text-xs text-slate-400">
+            Wybierz dwa zabezpieczenia w panelu "Ustawienia zabezpieczeń" (E-27),
+            aby zobaczyć krzywe IEC 60255 z marginesami selektywności (numerycznie,
+            bez werdyktów OK/FAIL — rule from PROTECTION_CANONICAL_ARCHITECTURE).
+          </p>
+        </div>
       </SectionCard>
     </div>
   );
