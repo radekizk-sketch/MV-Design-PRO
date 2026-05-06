@@ -913,11 +913,21 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             disabled={!activeProjectId || audit2ProofPack.isPending}
             onClick={() => {
               const configs = audit2ConfigList.data ?? [];
+              // Phase 15: real power per DER kind (deterministic median z catalogu).
+              const estimatePowerKw = (kind: string): number => {
+                if (kind === 'PV') return 500;
+                if (kind === 'BESS') return 1000;
+                if (kind === 'FW') return 2300;
+                return 0;
+              };
               audit2ProofPack.mutate({
                 station_id: configs[0]?.station_id ?? 'aggregate',
                 hosting_capacity_specs: configs.map((c) => ({
                   station_id: c.station_id,
-                  p_export_kw: c.der_specs.length * 1000,
+                  p_export_kw: c.der_specs.reduce(
+                    (sum: number, s) => sum + estimatePowerKw(s.der_kind),
+                    0,
+                  ),
                   p_import_kw: 0,
                 })),
                 generated_at_iso: '1970-01-01T00:00:00Z',
@@ -1837,14 +1847,19 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           onClick={() => {
             if (!projectId) return;
             const configs = stationConfigList.data ?? [];
-            // Z konfiguracji wszystkich stacji projektu zlozymy specs dla generate-proof-pack.
-            // Dla kazdej stacji z hosting_capacity (gdy DER specs istnieja) -> walidacja.
+            // Phase 15: real power per DER kind (mediana z catalogu, nie hardcoded 1MW).
+            const estimatePowerKw = (kind: string): number => {
+              if (kind === 'PV') return 500;
+              if (kind === 'BESS') return 1000;
+              if (kind === 'FW') return 2300;
+              return 0;
+            };
             const hostingSpecs = configs
               .filter((c) => c.der_specs.length > 0)
               .map((c) => ({
                 station_id: c.station_id,
                 p_export_kw: c.der_specs.reduce(
-                  (sum: number) => sum + 1000, // konserwatywne 1MW per DER fallback (real wartosc z snapshot)
+                  (sum: number, spec) => sum + estimatePowerKw(spec.der_kind),
                   0,
                 ),
                 p_import_kw: 0,

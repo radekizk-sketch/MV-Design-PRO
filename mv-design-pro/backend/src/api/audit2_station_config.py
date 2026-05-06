@@ -209,6 +209,11 @@ def validate_all_audit2(
         generate_tap_changer_plan_proof,
         generate_vt_grounding_validation_proof,
     )
+    from network_model.catalog.audit2_catalogs import (
+        VT_CATALOG_FOR_FACTOR,
+        estimate_der_power_kw,
+        get_tap_changer,
+    )
 
     with uow_factory() as uow:
         assert uow.session is not None
@@ -222,32 +227,42 @@ def validate_all_audit2(
 
         for cfg in configs:
             proofs = []
-            # Hosting capacity (gdy DERs obecne).
+            # Phase 20: hosting capacity z realnych mocy DER (nie hardcoded 1MW).
             if cfg.der_specs:
+                p_export_real = sum(
+                    estimate_der_power_kw(
+                        der_kind=str(spec.get("der_kind", "")),
+                        block_transformer_catalog_ref=spec.get("block_transformer_catalog_ref"),
+                    )
+                    for spec in cfg.der_specs
+                    if isinstance(spec, dict)
+                )
                 proofs.append(
                     generate_hosting_capacity_export_proof(
                         station_id=cfg.station_id,
-                        # Konserwatywne: 1 MW per DER + 0 odbiorow (worst case eksport).
-                        p_export_kw=len(cfg.der_specs) * 1000.0,
-                        p_import_kw=0.0,
+                        p_export_kw=p_export_real,
+                        p_import_kw=0.0,  # TODO: dolaczyc loady ze snapshotu
                     )
                 )
-            # Tap-changer (gdy mappings istnieja).
+            # Phase 20: tap-changer z realnym typem transformatora (ekstrakcja z catalog applicable_to).
             for tr_id, tc_ref in (cfg.transformer_tap_changers or {}).items():
                 if not tc_ref:
                     continue
+                tc = get_tap_changer(str(tc_ref))
+                # Wybor typu transformatora: pierwszy applicable z katalogu (deterministyczne).
+                tr_type = tc.applicable_to[0] if tc and tc.applicable_to else "transformer_15_04"
                 proofs.append(
                     generate_tap_changer_plan_proof(
                         transformer_id=str(tr_id),
-                        transformer_type="transformer_15_04",  # default; UI moze podac dokladniej
+                        transformer_type=tr_type,
                         tap_changer_ref=str(tc_ref),
-                        requires_avr=False,
+                        # AVR wymagany gdy tap-changer go obsluguje (real-data)
+                        requires_avr=tc.supports_avr if tc else False,
                     )
                 )
-            # VT grounding (per bay).
+            # Phase 20: VT grounding z realnym voltage_factor z VT catalogu (nie hardcoded 1.9).
             grounding = cfg.mv_neutral_grounding_ref
             if grounding:
-                # Map ref to grounding type.
                 grounding_type = (
                     "isolated"
                     if grounding == "mng_isolated"
@@ -259,12 +274,13 @@ def validate_all_audit2(
                     if grounding == "mng_directly"
                     else "isolated"
                 )
-                # Na potrzeby walidacji uzywamy U_th=1.9 jako default (worst-safe).
-                for bay_id, _vt_ref in (cfg.bay_vts or {}).items():
+                for bay_id, vt_ref in (cfg.bay_vts or {}).items():
+                    # Real voltage_factor z catalogu VT (zamiast 1.9 hardcoded).
+                    vt_factor = VT_CATALOG_FOR_FACTOR.get(str(vt_ref), 1.9)
                     proofs.append(
                         generate_vt_grounding_validation_proof(
                             bay_designation=str(bay_id),
-                            vt_voltage_factor=1.9,
+                            vt_voltage_factor=vt_factor,
                             grounding_type=grounding_type,
                         )
                     )

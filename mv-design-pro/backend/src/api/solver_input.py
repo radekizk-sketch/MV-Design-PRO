@@ -11,7 +11,8 @@ from __future__ import annotations
 from typing import Any
 
 from domain.study_case import StudyCaseConfig
-from fastapi import APIRouter, HTTPException, Path
+from api.dependencies import get_uow_factory
+from fastapi import APIRouter, Depends, HTTPException, Path
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.core.graph import NetworkGraph
 from pydantic import BaseModel
@@ -64,6 +65,8 @@ class SolverInputResponse(BaseModel):
     provenance_summary: dict[str, Any]
     payload: dict[str, Any]
     trace: list[dict[str, Any]]
+    # Phase 17: audit2 extensions exposed via API for solver consumers.
+    audit2_extensions: dict[str, Any] | None = None
 
 
 class EligibilityMapResponse(BaseModel):
@@ -92,8 +95,16 @@ async def get_solver_input(
         ...,
         description="Analysis type: short_circuit_3f, short_circuit_1f, load_flow, protection",
     ),
+    project_id: str | None = None,
+    station_id: str | None = None,
+    uow_factory=Depends(get_uow_factory),
 ) -> SolverInputResponse:
-    """Generate and return solver-input for the given case and analysis type."""
+    """
+    Generate and return solver-input for the given case and analysis type.
+
+    Phase 17: jesli `project_id` + `station_id` przekazane, podlacza
+    audit2 config z bazy do envelope (`audit2_extensions` populated).
+    """
     # Validate analysis_type
     try:
         at = SolverAnalysisType(analysis_type)
@@ -108,6 +119,37 @@ async def get_solver_input(
     config = _get_config_for_case(case_id)
     catalog = get_default_mv_catalog()
 
+    # Phase 17: pull audit2 station config z DB (gdy project+station pdane).
+    audit2_payload: dict[str, Any] | None = None
+    if project_id and station_id:
+        from uuid import UUID
+
+        from infrastructure.persistence.models import StationAudit2ConfigORM
+
+        try:
+            pid_uuid = UUID(project_id)
+        except ValueError:
+            pid_uuid = None
+
+        if pid_uuid is not None:
+            with uow_factory() as uow:
+                assert uow.session is not None
+                cfg = (
+                    uow.session.query(StationAudit2ConfigORM)
+                    .filter(
+                        StationAudit2ConfigORM.project_id == pid_uuid,
+                        StationAudit2ConfigORM.station_id == station_id,
+                    )
+                    .one_or_none()
+                )
+                if cfg is not None:
+                    audit2_payload = {
+                        "station_id": cfg.station_id,
+                        "mv_neutral_grounding_ref": cfg.mv_neutral_grounding_ref,
+                        "tap_changer_refs": list(cfg.tap_changer_refs or []),
+                        "der_specs": list(cfg.der_specs or []),
+                    }
+
     envelope = build_solver_input(
         graph=graph,
         catalog=catalog,
@@ -115,6 +157,7 @@ async def get_solver_input(
         enm_revision="current",
         analysis_type=at,
         config=config,
+        audit2_station_payload=audit2_payload,
     )
 
     return SolverInputResponse(
@@ -126,6 +169,7 @@ async def get_solver_input(
         provenance_summary=envelope.provenance_summary.model_dump(mode="json"),
         payload=envelope.payload,
         trace=[t.model_dump(mode="json") for t in envelope.trace],
+        audit2_extensions=envelope.audit2_extensions,
     )
 
 

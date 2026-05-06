@@ -41,6 +41,8 @@ export interface StationConfigBaysCardProps {
   readonly onShowOnSld?: (bayId: string) => void;
   readonly onCopyConfig?: (bayId: string) => void;
   readonly onDeleteBay?: (bayId: string) => void;
+  /** Phase 18: HV fuse onChange (per bay). */
+  readonly onChangeHvFuse?: (bayId: string, fuseId: string | null) => void;
 }
 
 const STATUS_CLASS: Record<StationConfigBayRow['statusPl'], string> = {
@@ -50,7 +52,7 @@ const STATUS_CLASS: Record<StationConfigBayRow['statusPl'], string> = {
 };
 
 export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.Element {
-  const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay } = props;
+  const { bays, onOpenBay, onShowOnSld, onCopyConfig, onDeleteBay, onChangeHvFuse } = props;
 
   return (
     <div data-testid="station-config-bays" className="flex flex-col gap-2 text-xs">
@@ -91,7 +93,21 @@ export function StationConfigBaysCard(props: StationConfigBaysCardProps): JSX.El
                 </td>
                 <td className={STATUS_CLASS[b.statusPl]}>{b.statusPl}</td>
                 <td data-testid={`bay-fuse-${b.bayId}`} className="text-[10px]">
-                  {b.hvFuseCatalogRef ? (() => {
+                  {onChangeHvFuse ? (
+                    <select
+                      data-testid={`bay-fuse-select-${b.bayId}`}
+                      value={b.hvFuseCatalogRef ?? ''}
+                      onChange={(e) => onChangeHvFuse(b.bayId, e.target.value || null)}
+                      className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
+                    >
+                      <option value="">—</option>
+                      {HV_FUSE_CATALOG.map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.nominal_voltage_kv}kV/{f.nominal_current_a}A · {f.class.replace('_', '-')}
+                        </option>
+                      ))}
+                    </select>
+                  ) : b.hvFuseCatalogRef ? (() => {
                     const fuse = HV_FUSE_CATALOG.find((f) => f.id === b.hvFuseCatalogRef);
                     return fuse ? (
                       <span className="font-mono text-scada-text" title={fuse.label_pl}>

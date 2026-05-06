@@ -1049,6 +1049,51 @@ def validate_device_withstand(
     }
 
 
+# =============================================================================
+# Phase 20: VT catalog lookup (mirror frontend protection-catalogs.ts VT_CATALOG)
+# =============================================================================
+#
+# Mapping vt_id -> voltage_factor. Pelny katalog VT zostal zdefiniowany w
+# frontendowym `protection-catalogs.ts` (4 pozycje), ale dla walidacji backendowej
+# wystarczy lookup voltage_factor — wartosc 1.2/1.5/1.9 wg klasy.
+
+VT_CATALOG_FOR_FACTOR: dict[str, float] = {
+    "vt_15kv_100v_3p": 1.9,   # 3P klasa zabezpieczeniowa, 8h
+    "vt_20kv_100v_3p": 1.9,   # 3P klasa zabezpieczeniowa, 8h
+    "vt_15kv_100v_05": 1.2,   # 0.5 klasa pomiarowa, continuous
+    "vt_20kv_dual": 1.9,      # 3P + 0.5 dual, U_th wg 3P
+}
+
+
+def estimate_der_power_kw(*, der_kind: str, block_transformer_catalog_ref: str | None = None) -> float:
+    """
+    Estymuje moc DER na podstawie block-trafo (gdy dedicated_transformer)
+    lub typowych wartosci dla der_kind.
+
+    Phase 15: zastepuje hardcoded 1MW placeholder.
+
+    Logika:
+    1. Jesli block_transformer wskazany, uzywamy sn_kva (deterministic, real catalog).
+    2. W przeciwnym wypadku typowe wartosci per kind (PV: 500 kW, BESS: 1000, FW: 2300).
+
+    Te typowe wartosci bazuja na medianie z PV_INVERTER_CATALOG / BESS_PCS_CATALOG /
+    WIND_TURBINE_CATALOG (frontendowe staticki). Brak mozliwosci znania konkretnego
+    device_catalog z poziomu audit2 (DER specs nie ma device_ref) — uzywamy median.
+    """
+    if block_transformer_catalog_ref:
+        btr = get_block_transformer(block_transformer_catalog_ref)
+        if btr is not None:
+            return float(btr.sn_kva)
+    # Median per kind based on typowe katalogowe wartosci.
+    if der_kind == "PV":
+        return 500.0
+    if der_kind == "BESS":
+        return 1000.0
+    if der_kind == "FW":
+        return 2300.0
+    return 0.0
+
+
 def validate_hosting_capacity_export(
     *, station_id: str, p_export_kw: float, p_import_kw: float
 ) -> dict:

@@ -46,6 +46,8 @@ export interface StationConfigProtectionCardProps {
   readonly mvNeutralGroundingType?: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded';
   /** Naprawa eng.18: lista aparatów do walidacji wytrzymałości. */
   readonly deviceWithstandRows?: readonly DeviceWithstandRow[];
+  /** Phase 18: VT onChange (per bay). */
+  readonly onChangeVt?: (bayDesignation: string, vtId: string | null) => void;
 }
 
 const SELECTIVITY_CLASS: Record<ProtectionRow['selectivityStatus'], string> = {
@@ -65,6 +67,7 @@ export function StationConfigProtectionCard(
     controlMode,
     mvNeutralGroundingType,
     deviceWithstandRows,
+    onChangeVt,
   } = props;
 
   // Naprawa eng.20: walidacja VT vs typ uziemienia.
@@ -119,6 +122,7 @@ export function StationConfigProtectionCard(
                 <th className="text-left">Funkcje</th>
                 <th className="text-right">Nastawy</th>
                 <th className="text-left">Selektywność</th>
+                <th className="text-left">VT (per pole)</th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +134,28 @@ export function StationConfigProtectionCard(
                   <td className="text-right font-mono">{r.settingsCount}</td>
                   <td className={SELECTIVITY_CLASS[r.selectivityStatus]}>
                     {r.selectivityStatus}
+                  </td>
+                  <td>
+                    {/* Phase 18: VT select per row gdy onChangeVt dostarczony. */}
+                    {onChangeVt ? (
+                      <select
+                        data-testid={`relay-vt-select-${r.relayId}`}
+                        value={r.vtCatalogRef ?? ''}
+                        onChange={(e) => onChangeVt(r.bayDesignation, e.target.value || null)}
+                        className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
+                      >
+                        <option value="">—</option>
+                        {VT_CATALOG.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.label_pl}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-[10px] text-scada-muted">
+                        {r.vtCatalogRef ?? '—'}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

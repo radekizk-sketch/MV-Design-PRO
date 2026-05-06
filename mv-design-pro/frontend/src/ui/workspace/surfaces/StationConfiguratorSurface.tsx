@@ -329,6 +329,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           ...b,
           hvFuseCatalogRef: bayFuses[b.bayId] ?? null,
         })),
+        // Phase 18: HV fuse onChange propaguje do mutateAudit2.
+        onChangeHvFuse: (bayId: string, fuseId: string | null) => {
+          mutateAudit2({
+            bay_hv_fuses: { [bayId]: fuseId ?? '' },
+          });
+        },
       },
       protection: {
         ...base.protection,
@@ -345,6 +351,12 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           i_thermal_calculated_ka: (spec as { i_thermal_calculated_ka: number }).i_thermal_calculated_ka,
           t_clearing_s: (spec as { t_clearing_s: number }).t_clearing_s,
         })),
+        // Phase 18: VT onChange per bay (select propaguje do mutateAudit2).
+        onChangeVt: (bayDesignation: string, vtId: string | null) => {
+          mutateAudit2({
+            bay_vts: { [bayDesignation]: vtId ?? '' },
+          });
+        },
       },
       derSources: {
         stationId: stationRef ?? 'unselected',
