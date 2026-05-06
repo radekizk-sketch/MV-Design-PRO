@@ -160,6 +160,62 @@ def test_isolation_between_projects(app_client):
     assert res2.json() == []
 
 
+def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
+    """Phase 49: validate_all uzywa real loads z snapshot, nie placeholder 0.0."""
+    pid = _create_project(app_client)
+    # Setup config z DER (p_export = 2 * 1000 kW = 2000 kW, w/o real nominal_power_kw).
+    app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/station-real-loads",
+        json={
+            "mv_neutral_grounding_ref": None,
+            "tap_changer_refs": [],
+            "der_specs": [
+                {"der_id": "der_1", "der_kind": "PV", "nominal_power_kw": 1000},
+                {"der_id": "der_2", "der_kind": "PV", "nominal_power_kw": 1000},
+            ],
+            "transformer_tap_changers": {},
+            "bay_hv_fuses": {},
+            "bay_vts": {},
+            "bay_device_withstand": {},
+        },
+    )
+    # Run validate-all — bez snapshotu w DB, p_import = 0 (no loads found).
+    res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
+    assert res.status_code == 200
+    body = res.json()
+    # Hosting capacity proof istnieje dla station-real-loads.
+    station_result = next(
+        s for s in body["per_station"] if s["station_id"] == "station-real-loads"
+    )
+    hosting_proofs = [
+        p
+        for p in station_result["proofs"]
+        if p["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
+    ]
+    assert len(hosting_proofs) > 0
+    # p_export_kw = 2000, p_import_kw = 0 (no snapshot).
+    proof = hosting_proofs[0]
+    assert proof["details"]["p_export_kw"] == 2000.0
+    assert proof["details"]["p_import_kw"] == 0.0
+    # Status: requires_ramp_down (ratio inf).
+
+
+def test_aggregate_loads_per_station_helper_no_snapshot(app_client):
+    """Phase 49: helper graceful gdy projekt nie ma snapshotu."""
+    from uuid import UUID
+    from api.audit2_station_config import _aggregate_loads_per_station_for_project
+
+    pid = _create_project(app_client)
+    # Backend uzywa app.state.uow_factory.
+    app = app_client.app  # type: ignore[attr-defined]
+    uow_factory = app.state.uow_factory
+    with uow_factory() as uow:
+        result = _aggregate_loads_per_station_for_project(
+            uow=uow, project_id=UUID(pid)
+        )
+    assert result == {}
+
+
 def test_validate_all_returns_pack_per_station(app_client):
     """Phase 13: POST /_validate-all zwraca proof pack per stacja."""
     pid = _create_project(app_client)

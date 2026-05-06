@@ -58,6 +58,72 @@ class StationAudit2ConfigBody(BaseModel):
     bay_device_withstand: dict[str, BayDeviceWithstandSpec] = Field(default_factory=dict)
 
 
+def _aggregate_loads_per_station_for_project(*, uow, project_id: UUID) -> dict[str, float]:
+    """
+    Phase 49: agreguje moce odbiorow per stacja z aktywnego snapshotu projektu.
+
+    Logika:
+    1. Znajdz active_network_snapshot_id w ProjectORM.
+    2. Pobierz NetworkSnapshot z snapshot_repository.
+    3. Iteruj po snapshot.graph.loads (jesli istnieja) — sumuj p_kw per station_ref.
+
+    Zwraca dict {station_id: p_import_kw}. Pusty gdy snapshot nie istnieje
+    lub graph nie ma loads.
+    """
+    from infrastructure.persistence.models import ProjectORM
+
+    if uow.session is None or uow.snapshots is None:
+        return {}
+
+    project = uow.session.query(ProjectORM).filter(ProjectORM.id == project_id).one_or_none()
+    if project is None or not project.active_network_snapshot_id:
+        return {}
+
+    snapshot = uow.snapshots.get_snapshot(project.active_network_snapshot_id)
+    if snapshot is None:
+        return {}
+
+    loads_per_station: dict[str, float] = {}
+    # NetworkGraph.loads (jesli istnieja) — agreguj p_kw per station/node attribute.
+    graph = snapshot.graph
+    raw_loads = getattr(graph, "loads", None) or {}
+    if isinstance(raw_loads, dict):
+        loads_iter = raw_loads.values()
+    else:
+        loads_iter = raw_loads
+
+    for load in loads_iter:
+        # Load model moze miec rozne pola: nominal_power_kw / p_kw / station_ref / node_id.
+        station_ref = (
+            getattr(load, "station_ref", None)
+            or getattr(load, "station_id", None)
+            or getattr(load, "node_id", None)
+        )
+        if not station_ref:
+            continue
+        p_kw = (
+            getattr(load, "nominal_power_kw", None)
+            or getattr(load, "p_kw", None)
+            or getattr(load, "p_mw", None)
+        )
+        if p_kw is None:
+            continue
+        try:
+            p_kw_float = float(p_kw)
+            # Konwersja MW->kW gdy widac niska wartosc.
+            if hasattr(load, "p_mw") and not hasattr(load, "p_kw") and not hasattr(
+                load, "nominal_power_kw"
+            ):
+                p_kw_float = p_kw_float * 1000
+        except (TypeError, ValueError):
+            continue
+        loads_per_station[str(station_ref)] = (
+            loads_per_station.get(str(station_ref), 0.0) + p_kw_float
+        )
+
+    return loads_per_station
+
+
 def _to_dict(orm: StationAudit2ConfigORM) -> dict[str, Any]:
     return {
         "id": str(orm.id),
@@ -303,6 +369,12 @@ def validate_all_audit2(
             .filter(StationAudit2ConfigORM.project_id == project_id)
             .all()
         )
+        # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
+        # p_import_kw (loady) dla hosting capacity validation.
+        loads_per_station = _aggregate_loads_per_station_for_project(
+            uow=uow, project_id=project_id
+        )
+
         per_station_results: list[dict[str, Any]] = []
         all_pass = True
 
@@ -325,11 +397,13 @@ def validate_all_audit2(
                             der_kind=str(spec.get("der_kind", "")),
                             block_transformer_catalog_ref=spec.get("block_transformer_catalog_ref"),
                         )
+                # Phase 49: real p_import_kw z snapshotu (nie zero placeholder).
+                p_import_real = float(loads_per_station.get(cfg.station_id, 0.0))
                 proofs.append(
                     generate_hosting_capacity_export_proof(
                         station_id=cfg.station_id,
                         p_export_kw=p_export_real,
-                        p_import_kw=0.0,  # TODO: dolaczyc loady ze snapshotu
+                        p_import_kw=p_import_real,
                     )
                 )
             # Phase 20: tap-changer z realnym typem transformatora (ekstrakcja z catalog applicable_to).
