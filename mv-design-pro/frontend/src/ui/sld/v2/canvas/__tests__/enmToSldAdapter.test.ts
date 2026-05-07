@@ -768,6 +768,157 @@ describe('projectBayTelemetry — mapowanie BayRuntimeState → GpzBayDescriptor
   });
 });
 
+// =============================================================================
+// Phase 0B-4: LineRun.stations[] consumed by adapter (PARTIAL → RESOLVED)
+// =============================================================================
+
+describe('buildStations — konsumuje line_runs.stations[] z explicit order', () => {
+  it('Stacje w line_runs.stations[] sortowane po order, jeden ciąg = jeden kanał Y', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'B', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'C', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-A',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'ST-3', order: 3 },
+          { substation_ref: 'ST-1', order: 1 },
+          { substation_ref: 'ST-2', order: 2 },
+        ],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(3);
+    /* Sortowanie po order: ST-1 (order=1) → ST-2 (order=2) → ST-3 (order=3). */
+    expect(r.stations[0].id).toBe('ST-1');
+    expect(r.stations[1].id).toBe('ST-2');
+    expect(r.stations[2].id).toBe('ST-3');
+    /* Wszystkie 3 stacje na tym samym kanale Y (1 ciąg). */
+    expect(r.stations[0].y).toBe(r.stations[1].y);
+    expect(r.stations[1].y).toBe(r.stations[2].y);
+  });
+
+  it('Wiele line_runs → osobne kanały Y, deterministyczne sortowanie po lineRun.id', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-A1', name: 'A1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-B1', name: 'B1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-Z', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-z', starting_port_ref: 'port-z',
+        segments: [], stations: [{ substation_ref: 'ST-B1', order: 1 }],
+      },
+      {
+        id: 'run-A', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-a', starting_port_ref: 'port-a',
+        segments: [], stations: [{ substation_ref: 'ST-A1', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    /* Sortowanie line_runs po id: run-A (idx=0) → run-Z (idx=1).
+     * Stacje w run-A na kanale Y_RUN_BASE; stacje w run-Z na kanale Y_RUN_BASE+RUN_PITCH. */
+    const stationA = r.stations.find((s) => s.id === 'ST-A1');
+    const stationB = r.stations.find((s) => s.id === 'ST-B1');
+    expect(stationA).toBeDefined();
+    expect(stationB).toBeDefined();
+    expect(stationA!.y).toBeLessThan(stationB!.y);
+  });
+
+  it('Stacje NIE wymienione w line_runs (orphans) → osobny kanał Y po lineRun-bazowanych', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-IN-RUN', name: 'In', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-ORPHAN', name: 'Orphan', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [], stations: [{ substation_ref: 'ST-IN-RUN', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    const inRun = r.stations.find((s) => s.id === 'ST-IN-RUN');
+    const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
+    expect(inRun).toBeDefined();
+    expect(orphan).toBeDefined();
+    /* Orphan na osobnym (wyższym) kanale Y. */
+    expect(orphan!.y).toBeGreaterThan(inRun!.y);
+  });
+
+  it('Brak line_runs (legacy ENM) → wszystkie stacje jako orphans (back-compat)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'B', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    /* Brak snap.line_runs → fallback do orphan placement (legacy behavior). */
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    /* Sortowanie alfabetyczne po ref_id: ST-1 → ST-2. Oba w kanale 0 (orphanRunBase=0). */
+    expect(r.stations[0].id).toBe('ST-1');
+    expect(r.stations[1].id).toBe('ST-2');
+    expect(r.stations[0].y).toBe(r.stations[1].y);
+  });
+
+  it('Stacja typu GPZ NIE wpada do field stations nawet gdy w line_runs', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'g', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'GPZ-1', order: 1 },  // GPZ — pomijany
+          { substation_ref: 'ST-1', order: 2 },
+        ],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* GPZ NIE jest w r.stations (jest osobno w r.gpzs). */
+    expect(r.stations.map((s) => s.id)).toEqual(['ST-1']);
+  });
+
+  it('Determinizm: ten sam ENM z line_runs → ten sam output 5× pod rząd', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-A', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-B', name: 'B', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'ST-B', order: 2 },
+          { substation_ref: 'ST-A', order: 1 },
+        ],
+      },
+    ];
+    const reference = buildSldDataFromSnapshot(snap, null);
+    for (let i = 0; i < 5; i++) {
+      const result = buildSldDataFromSnapshot(snap, null);
+      expect(result.stations).toEqual(reference.stations);
+    }
+  });
+});
+
 describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {
   it('Bay z runtime_state CB=zamkniety → GpzBayDescriptor.cbState=closed', () => {
     const snap = buildEmptySnapshot();

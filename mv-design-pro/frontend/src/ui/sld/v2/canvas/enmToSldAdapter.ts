@@ -759,19 +759,64 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
 // Stations (na ciągach)
 // -----------------------------------------------------------------------------
 
+/**
+ * Buduje listę stacji na ciągach z dwóch źródeł:
+ *  1. **`snapshot.line_runs[]`** (Phase 0B-4 fix): jeśli ENM zawiera explicit
+ *     LineRun, każdy ciąg = osobny kanał Y, stacje sortowane po `order`
+ *     w `lineRun.stations[]`. Stabilna sortacja po `lineRun.id` (alfabetycznie)
+ *     gwarantuje deterministyczne kanały Y.
+ *  2. **Orphans**: stacje pole-wymiarowe NIE wymienione w żadnym `line_runs[]`
+ *     lądują w "orphan channel" wg starego algorytmu (idx/5). Daje back-compat
+ *     z legacy ENM bez `line_runs[]` oraz toleruje stacje nieprzypisane.
+ *
+ * Wynik: deterministyczna pozycja stacji w SLD, oparta na ENM truth (Inv 9).
+ */
 function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[] {
   const substations = snapshot.substations ?? [];
+  const lineRuns = snapshot.line_runs ?? [];
   const stations: StationOnRunRendererProps[] = [];
 
-  // Stacje typu mv_lv / inline / branch / terminal / sectional → wzdłuż ciągu.
-  const fieldStations = substations.filter((s) =>
-    ['mv_lv', 'inline', 'branch', 'terminal', 'sectional', 'switching', 'customer'].includes(
-      s.station_type,
-    ),
-  );
+  const fieldStationKinds = new Set([
+    'mv_lv', 'inline', 'branch', 'terminal', 'sectional', 'switching', 'customer',
+  ]);
+  const fieldStationByRef = new Map<string, Substation>();
+  for (const st of substations) {
+    if (fieldStationKinds.has(st.station_type)) {
+      fieldStationByRef.set(st.ref_id, st);
+    }
+  }
 
-  fieldStations.forEach((st, idx) => {
-    const runIndex = Math.floor(idx / 5); // 5 stacji per ciąg, potem nowy kanał Y
+  /* Phase 0B-4: śledzimy które stacje już zostały umieszczone przez line_runs.
+   * Reszta to "orphans" (legacy fallback). */
+  const placed = new Set<string>();
+
+  // 1. Stacje z line_runs — deterministyczne sortowanie po lineRun.id, potem station.order.
+  const sortedRuns = [...lineRuns].sort((a, b) => a.id.localeCompare(b.id));
+  sortedRuns.forEach((lr, runIdx) => {
+    const sortedStations = [...lr.stations].sort((a, b) => a.order - b.order);
+    sortedStations.forEach((sref, posInRun) => {
+      const sub = fieldStationByRef.get(sref.substation_ref);
+      if (!sub) return; // stacja nie jest field-station (np. GPZ) lub nie istnieje
+      placed.add(sref.substation_ref);
+      stations.push({
+        id: sub.ref_id,
+        x: X_STATIONS_START + posInRun * STATION_PITCH,
+        y: Y_RUN_BASE + runIdx * RUN_PITCH,
+        name: sub.name || sub.ref_id,
+        topologicalType: classifyTopologicalType(sub),
+        nnVoltageLevelsCount: 1,
+      });
+    });
+  });
+
+  // 2. Orphan field-stations — back-compat dla ENM bez line_runs[] albo ze
+  //    stacjami nieprzypisanymi. Wpadają w kanał za ostatnim lineRun.
+  const orphanRunBase = sortedRuns.length;
+  const orphans = [...fieldStationByRef.values()]
+    .filter((s) => !placed.has(s.ref_id))
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+  orphans.forEach((st, idx) => {
+    const runIndex = orphanRunBase + Math.floor(idx / 5);
     const positionInRun = idx % 5;
     stations.push({
       id: st.ref_id,

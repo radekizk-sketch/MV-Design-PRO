@@ -804,6 +804,29 @@ export interface ProtectionAssignment extends ENMElement {
 // ROOT
 // ---------------------------------------------------------------------------
 
+export interface LineRunSegmentRefV1 {
+  segment_ref: string;
+  order: number;
+}
+
+export interface LineRunStationRefV1 {
+  substation_ref: string;
+  order: number;
+}
+
+export interface LineRunV1 {
+  id: string;
+  name?: string | null;
+  run_kind: 'main_trunk' | 'branch' | 'ring' | 'loop';
+  starting_bay_ref: string;
+  starting_port_ref: string;
+  segments: LineRunSegmentRefV1[];
+  stations: LineRunStationRefV1[];
+  nop_station_ref?: string | null;
+  parent_run_ref?: string | null;
+  branch_origin_station_ref?: string | null;
+}
+
 export interface EnergyNetworkModel {
   header: ENMHeader;
   buses: Bus[];
@@ -821,6 +844,8 @@ export interface EnergyNetworkModel {
   protection_assignments: ProtectionAssignment[];
   /** Opcjonalne widoki logiczne Snapshota (kanoniczne wejście segmentacji SLD). */
   logical_views?: LogicalViewsV1;
+  /** Phase 0B-4: ciągi liniowe — explicit order stacji (zamiast wnioskowania z grafu). */
+  line_runs?: LineRunV1[];
 }
 
 // ---------------------------------------------------------------------------
