@@ -408,11 +408,40 @@ Future (Phase 1+):
 
 ---
 
-## 17. Test count auto-update
+## 17. Test count auto-update — `docs_count_consistency_guard.py`
 
-Liczby testów w sekcjach 9, 10, 13 są wynikiem ostatniego refaktoru.
-Planuje się sprawdzanie zgodności między doc count a faktycznym `it(...)`
-count w CI guard `docs_count_consistency_guard.py` (Phase 0B).
+Liczby testów w sekcjach 9, 10, 13, 18, 19 dokumentu są pilnowane przez CI guard
+`mv-design-pro/scripts/docs_count_consistency_guard.py` (Phase 0B-2,
+RESOLVED).
+
+### Konwencja zapisu w doc
+
+Doc cytuje plik testowy w jednym z dwóch formatów:
+
+  - **Liczba dokładna** — `<file>.test.tsx` — N cases / N tests / N test cases.
+    Guard wymaga `actual == N`. Każdy spadek lub wzrost oznacza
+    nieaktualną dokumentację.
+  - **Dolne ograniczenie** — `<file>.test.tsx` — N+ cases / N+ tests.
+    Guard wymaga `actual >= N` ORAZ `actual <= TOLERANCE_FACTOR * N` (default 3.0).
+    Daje komfort z dodawaniem testów bez ciągłego zmieniania doc, ale wymaga
+    aktualizacji gdy actual wyrasta poza tolerance (doc wtedy nie odzwierciedla
+    skali pokrycia).
+
+### Uruchomienie lokalne
+
+```bash
+cd mv-design-pro
+python scripts/docs_count_consistency_guard.py            # pretty output
+python scripts/docs_count_consistency_guard.py --strict   # bez tolerance
+python scripts/docs_count_consistency_guard.py --json     # CI-friendly
+```
+
+### Test guard'a samego
+
+`backend/tests/ci/test_docs_count_consistency_guard.py` — 12 cases. Pokrywa:
+parser pattern (exact/+/synonimy), TS/PY test count, exact match,
+lower-bound drop / within-range / tolerance violation, missing file,
+real-repo smoke.
 
 ---
 
