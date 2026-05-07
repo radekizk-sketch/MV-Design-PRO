@@ -1708,6 +1708,83 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
   });
 });
 
+describe('GpzSwitchgearRenderer — commit 10: per-role tła kolumn pól (audyt SLD §D.3)', () => {
+  it('Pole liniowe (GPZ_LINE_BAY) → tło COLOR_BAY_LINE (#171B20)', () => {
+    const { container } = r();
+    const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    expect(body?.getAttribute('fill')).toBe('#171B20');
+  });
+
+  it('Pole TR (TRANSFORMER) → tło COLOR_BAY_TR (#1A2438) — niebieski', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], fieldRole: FIELD_ROLE.TRANSFORMER }],
+        },
+      ],
+    });
+    const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    expect(body?.getAttribute('fill')).toBe('#1A2438');
+  });
+
+  it('Pole pomiarowe (MEASUREMENT) → tło COLOR_BAY_MEASUREMENT (#2A2616) — żółtawe', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], fieldRole: FIELD_ROLE.MEASUREMENT }],
+        },
+      ],
+    });
+    const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    expect(body?.getAttribute('fill')).toBe('#2A2616');
+  });
+
+  it('Pole RMU_LINE → tło COLOR_BAY_LINE (jak inne liniowe)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], fieldRole: FIELD_ROLE.RMU_LINE }],
+        },
+      ],
+    });
+    const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    expect(body?.getAttribute('fill')).toBe('#171B20');
+  });
+
+  it('Manipulation override: COLOR_MANIPULATION_BG ma pierwszeństwo nad per-role', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], fieldRole: FIELD_ROLE.TRANSFORMER, inManipulation: true }],
+        },
+      ],
+    });
+    const body = container.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    /* COLOR_MANIPULATION_BG = #5C5512. */
+    expect(body?.getAttribute('fill')).toBe('#5C5512');
+  });
+});
+
 describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna iteracja', () => {
   it('Pole TRANSFORMER (SCADA-grade): ApparatusTransformerSymbol + ApparatusLvBreaker (NIE głowica)', () => {
     const { container } = r({

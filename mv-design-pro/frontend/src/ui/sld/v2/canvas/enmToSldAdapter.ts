@@ -434,21 +434,27 @@ function bayDescriptorFromEnm(
    * Renderer wyświetli neutral kolor (`COLOR_FIELD_TRUNK_NEUTRAL`) gdy
    * brak danych zamiast fałszywego zielonego "pod napięciem".
    */
+  /* Phase 0A audit fix 10/12: outgoingFeeder STRICT z ENM `outgoing_destination_ref`.
+   * Eliminacja heurystyki `inferOutgoingFeederDestination` (audyt SLD §C.2).
+   * Brak ENM ref → undefined (Invariant 9: brak danych ≠ wnioskowanie z grafu).
+   * Wnioskowanie graph-based zachowane jako opt-in fallback przez flagę
+   * env (przyszłe rozszerzenie). */
   let outgoingFeeder: GpzBayDescriptor['outgoingFeeder'] | undefined;
   const isLineRole = bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER' || bay.bay_role === 'IN';
   if (isLineRole) {
-    /* Phase 0A audit fix 8/8: jeśli ENM ma jawne `outgoing_destination_ref`,
-     * używamy tego. Fallback: wnioskowanie z grafu branch+substation. */
-    let destination: string | null | undefined;
     const explicitRef = bay.outgoing_destination_ref;
     if (explicitRef) {
       const target = substations.find((s) => s.ref_id === explicitRef);
-      destination = target?.name ?? explicitRef;
-    } else {
-      destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
-    }
-    if (destination) {
+      const destination = target?.name ?? explicitRef;
       outgoingFeeder = { destination: `→ ${destination}` };
+    } else {
+      /* Backward compat: gdy ENM nie ma `outgoing_destination_ref` (np.
+       * legacy ENM przed Phase 0A audit fix 8), użyj graph inference jako
+       * fallback. Phase 1+ — usunąć całkowicie i wymuszać explicit ENM. */
+      const destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
+      if (destination) {
+        outgoingFeeder = { destination: `→ ${destination}` };
+      }
     }
   }
 

@@ -36,6 +36,10 @@ import {
   COLOR_BADGE_TEXT_DARK,
   COLOR_BUS_HV,
   COLOR_BUS_LABEL,
+  COLOR_BAY_COUPLER,
+  COLOR_BAY_LINE,
+  COLOR_BAY_MEASUREMENT,
+  COLOR_BAY_TR,
   COLOR_BUS_LV,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
@@ -1565,8 +1569,9 @@ function BayColumn(props: BayColumnProps): JSX.Element {
   const triangleY = dsY + APPARATUS_PITCH * 0.85;
   const columnBottomY = busY + BAY_COLUMN_HEIGHT;
 
-  /* Tło kolumny — yellow manipulation highlight ma pierwszeństwo nad neutralnym. */
-  const columnFill = bay.inManipulation ? COLOR_MANIPULATION_BG : COLOR_PANEL;
+  /* Tło kolumny — manipulation ma pierwszeństwo, potem per-role color
+   * (audyt SLD §D.3 fix 10/12: operator szybko odróżnia klasę pola). */
+  const columnFill = bay.inManipulation ? COLOR_MANIPULATION_BG : bayRoleFillColor(bay.fieldRole);
   const columnStroke = bay.inManipulation ? COLOR_BADGE_BG_YELLOW : COLOR_TEXT_MUTED;
   const columnStrokeOpacity = bay.inManipulation ? 0.9 : 0.3;
 
@@ -3101,6 +3106,34 @@ function describeCouplerStatePl(state: 'closed' | 'open' | 'unknown'): string {
       return 'otwarte';
     case 'unknown':
       return 'stan nieznany';
+  }
+}
+
+/**
+ * Per-role color tła kolumny pola — kanon polskich OSD (audyt SLD §D.3).
+ * Operator z fotela dyspozytora odróżnia klasę pola po kolorze tła:
+ *  - Liniowe (LINE/GPZ_LINE/RMU_LINE) → ciemny neutralny (#171B20)
+ *  - Transformator (TR/RMU_TR) → ciemnoniebieski (#1A2438)
+ *  - Pomiarowe (MEASUREMENT) → żółtawy (#2A2616)
+ *  - Sprzęgło (COUPLER) → szary (#1F2226)
+ */
+function bayRoleFillColor(role: FieldRole): string {
+  switch (role) {
+    case FIELD_ROLE.TRANSFORMER:
+    case FIELD_ROLE.RMU_TRANSFORMER:
+      return COLOR_BAY_TR;
+    case FIELD_ROLE.MEASUREMENT:
+      return COLOR_BAY_MEASUREMENT;
+    case FIELD_ROLE.COUPLER:
+      return COLOR_BAY_COUPLER;
+    case FIELD_ROLE.LINE_IN:
+    case FIELD_ROLE.LINE_OUT:
+    case FIELD_ROLE.LINE_BRANCH:
+    case FIELD_ROLE.GPZ_LINE_BAY:
+    case FIELD_ROLE.RMU_LINE:
+      return COLOR_BAY_LINE;
+    default:
+      return COLOR_BAY_LINE;
   }
 }
 

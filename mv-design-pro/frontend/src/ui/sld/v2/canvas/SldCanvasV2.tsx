@@ -17,7 +17,9 @@ import {
 } from '../viewport/ViewportController';
 import {
   DEFAULT_LAYER_VISIBILITY,
+  createLodController,
   inferLodFromScale,
+  type LodController,
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
@@ -86,6 +88,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  /* INVARIANT 5/6 + Phase 0A audit fix 11: LOD histereza FSM eliminuje
+   * migotanie przy bouncing zoom (deadband 15%, debounce 250ms — konfig
+   * w `LodPolicy.createLodController`). Bez tego operator widzi przeskakujące
+   * elementy LOD przy płynnym zoom-in/out. */
+  const lodControllerRef = useRef<LodController | null>(null);
+  if (lodControllerRef.current === null) {
+    lodControllerRef.current = createLodController({ initialScale: transform.scale });
+  }
 
   // Auto-fit przy pierwszym renderze (jeśli mamy obiekty)
   useMemo(() => {
@@ -106,7 +116,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     setTransform(fitToView(expanded, { width, height }));
   }, [gpzs, sections, stations, ders, width, height]);
 
-  const lod: LodLevel = lodOverride !== undefined ? lodOverride : inferLodFromScale(transform.scale);
+  /* LOD obliczany przez LodController — histereza FSM zapobiega flicker.
+   * `update()` zwraca aktualne LOD po zastosowaniu deadband + debounce. */
+  const lod: LodLevel = lodOverride !== undefined
+    ? lodOverride
+    : lodControllerRef.current.update(transform.scale);
+  /* Fallback dla testów bez LodControllera (powinien być zawsze inicjalizowany). */
+  void inferLodFromScale; // referencja zachowana dla back-compat innych callerów
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
 
   const handleWheel = useCallback((e: React.WheelEvent) => {

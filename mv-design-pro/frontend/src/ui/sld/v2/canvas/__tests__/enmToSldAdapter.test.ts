@@ -393,6 +393,34 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(bay?.feederName).toBe('SADY');
   });
 
+  it('Bay BEZ outgoing_destination_ref + BEZ branch graph → outgoingFeeder=undefined (Invariant 9)', () => {
+    /* Phase 0A audit fix 10/12: STRICT mode — brak ENM ref + brak branch
+     * graph → undefined (NIE zafałszowane). Audyt SLD §C.2: heurystyka
+     * graph-based zachowana jako fallback ale nie kieruje. */
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        /* Brak outgoing_destination_ref + brak branches → undefined. */
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.outgoingFeeder).toBeUndefined();
+  });
+
   it('Bay.outgoing_destination_ref z ENM → adapter NIE wnioskuje z grafu, używa explicit', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

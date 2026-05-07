@@ -88,6 +88,21 @@ export const COLOR_BUS_LABEL = '#C8CDD2' as const;
 export const COLOR_FIELD_TRUNK_ENERGIZED = '#13C45A' as const;
 export const COLOR_FIELD_TRUNK_NEUTRAL = '#7E8790' as const;
 
+/* ---------------------------------------------------------------------------
+   Per-role bay colors (Phase 0A audit fix 10/12 — operator-grade per OSD)
+   Tła kolumn pól per FieldRole. Operator szybko odróżnia klasę pola
+   w gęsto upakowanej rozdzielni.
+   --------------------------------------------------------------------------- */
+
+/** Pole liniowe (LINE_IN/OUT/BRANCH, GPZ_LINE_BAY, RMU_LINE) — neutralny ciemny. */
+export const COLOR_BAY_LINE = '#171B20' as const;
+/** TRANSFORMER/RMU_TRANSFORMER — niebieski subtelny (rozróżnienie pola TR). */
+export const COLOR_BAY_TR = '#1A2438' as const;
+/** MEASUREMENT — żółtawy subtelny (rozróżnienie pola PN). */
+export const COLOR_BAY_MEASUREMENT = '#2A2616' as const;
+/** COUPLER — szary (rozróżnienie sprzęgła). */
+export const COLOR_BAY_COUPLER = '#1F2226' as const;
+
 /** Pełen rejestr kolorów dla theme provider / tests. */
 export const SLD_V2_COLORS = {
   bg: COLOR_BG,
