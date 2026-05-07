@@ -298,3 +298,320 @@ describe('GpzSwitchgearRenderer — wieloma sekcjami SCADA-grade (8+8 pól + spr
     expect(container.querySelector('[data-testid="sld-v2-gpz-section-label-sec-2"]')).not.toBeNull();
   });
 });
+
+// =============================================================================
+// SCADA-grade: state badges (SPZ/SCO/OWG/NZ/LRW/ARN/...) — Phase 0A refinement
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — stos badge\'y stanu (SCADA secondary architecture)', () => {
+  it('SPZ enabled → badge SPZ z status row "Zal."', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], secondary: { spz: 'enabled' } }],
+        },
+      ],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-spz"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute('data-badge-state')).toBe('enabled');
+    expect(badge?.textContent).toContain('SPZ');
+    expect(badge?.textContent).toContain('Zal.');
+  });
+
+  it('SCO blocked → badge SCO z status row "Zabl." na czerwonym tle', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], secondary: { sco: 'blocked' } }],
+        },
+      ],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-sco"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.getAttribute('data-badge-state')).toBe('blocked');
+    expect(badge?.textContent).toContain('Zabl.');
+  });
+
+  it('NZ restricted → status row "Odst."', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], secondary: { nz: 'restricted' } }],
+        },
+      ],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-nz"]');
+    expect(badge?.textContent).toContain('Odst.');
+  });
+
+  it('OWG disabled → status row "Odbl."', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], secondary: { owg: 'disabled' } }],
+        },
+      ],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-owg"]');
+    expect(badge?.textContent).toContain('Odbl.');
+  });
+
+  it('wiele flag jednocześnie → stos badge\'y w kanonicznej kolejności (SPZ→SCO→OWG→NZ→LRW)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [
+            {
+              ...DEFAULT_BAYS[0],
+              secondary: {
+                spz: 'enabled',
+                sco: 'restricted',
+                owg: 'enabled',
+                nz: 'restricted',
+                lrw: 'restricted',
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const stack = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-stack"]');
+    expect(stack).not.toBeNull();
+    expect(stack?.getAttribute('data-badge-count')).toBe('5');
+    // Kolejność dzieci powinna odpowiadać kanonicznej kolejności BADGE_ORDER.
+    const children = stack ? Array.from(stack.children) : [];
+    const codes = children.map((c) => c.getAttribute('data-badge-code'));
+    expect(codes).toEqual(['SPZ', 'SCO', 'OWG', 'NZ', 'LRW']);
+  });
+
+  it('brak secondary → brak stosu badge\'y', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-badge-stack"]')).toBeNull();
+  });
+
+  it('ARN enabled → badge ARN z żółtym tłem', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], secondary: { arn: 'enabled' } }],
+        },
+      ],
+    });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-arn"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toContain('ARN');
+  });
+});
+
+// =============================================================================
+// SCADA-grade: CT primary + ratio
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — CT primary + przekładnia', () => {
+  it('CT primary renderuje się zawsze (otwarte kółko)', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).not.toBeNull();
+  });
+
+  it('ctRatio="200/5" → tekst widoczny obok CT', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], ctRatio: '200/5' }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ct-ratio"]')?.textContent).toBe('200/5');
+  });
+
+  it('brak ctRatio → tekst przekładni nie renderowany', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ct-ratio"]')).toBeNull();
+  });
+});
+
+// =============================================================================
+// SCADA-grade: przycisk KAS
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — przycisk KAS (kasowanie sygnalizacji)', () => {
+  it('hasKasButton=true → element KAS + LED kropka', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], hasKasButton: true }],
+        },
+      ],
+    });
+    const kas = container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]');
+    expect(kas).not.toBeNull();
+    expect(kas?.textContent).toContain('KAS');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas-led"]')).not.toBeNull();
+  });
+
+  it('hasKasButton=false (domyślnie) → brak KAS', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]')).toBeNull();
+  });
+});
+
+// =============================================================================
+// SCADA-grade: panel pomiarowy P/Q/I1/I2/I3
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — panel pomiarowy pod numerem pola', () => {
+  it('measurements P/Q/I1/I2/I3 → wszystkie wartości w panelu', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            measurements: { p: 0.0, q: 0.0, i1: 0, i2: 0, i3: 0 },
+          }],
+        },
+      ],
+    });
+    const panel = container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]');
+    expect(panel).not.toBeNull();
+    expect(panel?.getAttribute('data-row-count')).toBe('5');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-p"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-q"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-i1"]')).not.toBeNull();
+  });
+
+  it('częściowe pomiary (tylko P i I1) → tylko te 2 wiersze', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], measurements: { p: 11.2, i1: 185 } }],
+        },
+      ],
+    });
+    const panel = container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]');
+    expect(panel?.getAttribute('data-row-count')).toBe('2');
+  });
+
+  it('brak measurements → brak panelu pomiarowego', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]')).toBeNull();
+  });
+
+  it('format wartości P=11.2 → "11.2"; I1=185 → "185"', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], measurements: { p: 11.2, i1: 185 } }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-p"]')?.textContent).toContain('11.2');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-i1"]')?.textContent).toContain('185');
+  });
+});
+
+// =============================================================================
+// SCADA-grade: zwarcie doziemne marker + manipulation highlight
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — marker zwarcia doziemnego (Idł)', () => {
+  it('groundFault="fault" → cyan circle marker u góry pola', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], groundFault: 'fault' }],
+        },
+      ],
+    });
+    const marker = container.querySelector('[data-testid="sld-v2-gpz-bay-ground-fault"]');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute('data-state')).toBe('fault');
+  });
+
+  it('groundFault="detected" → marker w stanie wykryto (nie wypełniony)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], groundFault: 'detected' }],
+        },
+      ],
+    });
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-bay-ground-fault"]')?.getAttribute('data-state'),
+    ).toBe('detected');
+  });
+
+  it('groundFault="normal" lub brak → brak markera', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ground-fault"]')).toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — yellow manipulation highlight', () => {
+  it('inManipulation=true → tło pola oliwkowe', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], inManipulation: true }],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]');
+    expect(bay?.getAttribute('data-in-manipulation')).toBe('true');
+    const body = bay?.querySelector('[data-testid="sld-v2-gpz-bay-body"]');
+    expect(body?.getAttribute('fill')).toBe('#5C5512'); // COLOR_MANIPULATION_BG
+  });
+
+  it('inManipulation=false (domyślnie) → tło neutralne', () => {
+    const { container } = r();
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]');
+    expect(bay?.getAttribute('data-in-manipulation')).toBe('false');
+  });
+});
+
+// =============================================================================
+// SCADA-grade: integracja end-to-end (pole z pełną architekturą)
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — pełna architektura SCADA pola', () => {
+  it('pole z badge\'ami + CT + KAS + pomiarami + ground fault renderuje wszystkie elementy', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            ctRatio: '200/5',
+            hasKasButton: true,
+            groundFault: 'detected',
+            secondary: {
+              spz: 'enabled',
+              sco: 'restricted',
+              owg: 'enabled',
+            },
+            measurements: { p: 0.0, q: 0.0, i1: 0, i2: 0, i3: 0 },
+          }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ct-ratio"]')?.textContent).toBe('200/5');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-ground-fault"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-badge-stack"]')?.getAttribute('data-badge-count')).toBe('3');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]')).not.toBeNull();
+  });
+});

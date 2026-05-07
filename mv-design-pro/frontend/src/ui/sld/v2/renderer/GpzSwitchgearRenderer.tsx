@@ -27,11 +27,22 @@
  */
 
 import {
+  COLOR_BADGE_BG_LIGHT,
+  COLOR_BADGE_BG_RED,
+  COLOR_BADGE_BG_YELLOW,
+  COLOR_BADGE_STATUS_BLOCKED,
+  COLOR_BADGE_STATUS_NEUTRAL,
+  COLOR_BADGE_STATUS_OK,
+  COLOR_BADGE_TEXT_DARK,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
   COLOR_DEVICE_OPEN,
   COLOR_DEVICE_OPEN_BORDER,
+  COLOR_GROUND_FAULT,
+  COLOR_KAS_LED,
   COLOR_LINE_PRIMARY,
+  COLOR_MANIPULATION_BG,
+  COLOR_MEASUREMENT_VALUE,
   COLOR_NODE,
   COLOR_PANEL,
   COLOR_PANEL_RAISED,
@@ -39,6 +50,7 @@ import {
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   COLOR_TEXT_MUTED,
+  FONT_MONO,
   FONT_SANS,
   FONT_SIZES,
   STROKE_BUSBAR_PX,
@@ -57,21 +69,41 @@ const TR_WINDING_GAP = 7;
 const TR_HV_LEAD_LEN = 10;
 const TR_LV_LEAD_LEN = 10;
 const SECTION_LABEL_GAP = 18;
-const BAY_COLUMN_WIDTH = 30;
-const BAY_COLUMN_HEIGHT = 100;
-const BAY_GAP = 4;
-const BAY_HEADER_HEIGHT = 14;
+const BAY_COLUMN_WIDTH = 56;
+const BAY_COLUMN_HEIGHT = 110;
+const BAY_GAP = 6;
+const BAY_HEADER_HEIGHT = 12;
 const BAY_NUMBER_GAP = 14;
-const COUPLER_BAY_WIDTH = 36;
+const COUPLER_BAY_WIDTH = 44;
 const COUPLER_BAY_HEIGHT = BAY_COLUMN_HEIGHT;
 const SECTION_INTER_GAP = 28;
 const APPARATUS_PITCH = 18;
 const CB_SIZE = 9;
 const DS_RADIUS = 4.5;
 const TRIANGLE_SIZE = 6;
+const CT_RADIUS = 3.5;
 const SECTION_BUS_OVERHANG = 10;
 const VERTICAL_PADDING = 10;
 const HORIZONTAL_PADDING = 14;
+
+/* Apparatus column geometry inside bay (left half of column). */
+const APPARATUS_COL_X_OFFSET = 12;
+/* State-badge column geometry inside bay (right half of column). */
+const BADGE_COL_X_OFFSET = 28;
+const BADGE_WIDTH = 22;
+const BADGE_LABEL_HEIGHT = 8;
+const BADGE_STATUS_HEIGHT = 8;
+const BADGE_ROW_HEIGHT = BADGE_LABEL_HEIGHT + BADGE_STATUS_HEIGHT + 1; // 17
+const BADGE_FONT_SIZE = 7;
+
+/* KAS LED + label (under bay number). */
+const KAS_LED_RADIUS = 3;
+const KAS_ROW_HEIGHT = 16;
+
+/* Measurement panel (under KAS row). */
+const MEASUREMENT_ROW_HEIGHT = 10;
+const MEASUREMENT_PANEL_HEADER_HEIGHT = 12;
+const MEASUREMENT_FONT_SIZE = 8;
 
 // =============================================================================
 // Public types
@@ -88,6 +120,67 @@ export type GpzBayEnergization = 'energized' | 'deenergized' | 'tripped' | 'unkn
 /** Stan łączeniowy CB/DS w polu — domyślnie closed (kanon SCADA = green). */
 export type GpzApparatusSwitchState = 'closed' | 'open' | 'unknown';
 
+/**
+ * Stan funkcji wtórnej (zabezpieczenia / automatyki) na polu.
+ *
+ *  - `enabled`   → "Zal." (zielony) — funkcja aktywna w gotowości
+ *  - `disabled`  → "Odbl." (szary) — funkcja odblokowana ale nieaktywna
+ *  - `restricted`→ "Odst." (czerwony) — odstawiona ręcznie
+ *  - `blocked`   → "Zabl." (czerwony bg) — zablokowana logicznie
+ */
+export type SecondaryFlagState = 'enabled' | 'disabled' | 'restricted' | 'blocked';
+
+/**
+ * Architektura wtórna pola — flagi zabezpieczeń i automatyk.
+ *
+ * Każde pole SCADA pokazuje stos badge'y dla aktywnych funkcji wtórnych:
+ *   SPZ  — Samoczynne Ponowne Załączenie (auto-reclosure)
+ *   SCO  — Samoczynne Częstotliwościowe Odciążanie
+ *   OWG  — Ochrona Wstecznie Generatora / Overcurrent Generator
+ *   NZ   — Niskonapięciowe Zabezpieczenie
+ *   LRW  — Lokalna Rezerwa Wyłącznikowa
+ *   ARN  — Automatyczna Regulacja Napięcia
+ *   BKR  — Blokada wyłącznika (transformatorowy)
+ *   STYCZ.— Stycznik (contactor)
+ *   AWSC — Automatyczne Wyłączenie Sieci Cieplnej / dedykowana automatyka
+ *   ZS   — Zwarcie Szynowe
+ *   SZR  — Samoczynne Załączenie Rezerwy
+ */
+export interface BaySecondaryFlags {
+  readonly spz?: SecondaryFlagState;
+  readonly sco?: SecondaryFlagState;
+  readonly owg?: SecondaryFlagState;
+  readonly nz?: SecondaryFlagState;
+  readonly lrw?: SecondaryFlagState;
+  readonly arn?: SecondaryFlagState;
+  readonly bkr?: SecondaryFlagState;
+  readonly stycz?: SecondaryFlagState;
+  readonly awsc?: SecondaryFlagState;
+  readonly zs?: SecondaryFlagState;
+  readonly szr?: SecondaryFlagState;
+}
+
+/**
+ * Pomiary pola — wyświetlane w panelu pomiarowym pod numerem pola.
+ *
+ * Wszystkie wartości są opcjonalne — renderer pokazuje tylko te dostarczone.
+ * Jednostki:
+ *   p, q  — MW / Mvar
+ *   i1..3 — A
+ *   idl   — kA (prąd doziemny)
+ */
+export interface BayMeasurements {
+  readonly p?: number;
+  readonly q?: number;
+  readonly i1?: number;
+  readonly i2?: number;
+  readonly i3?: number;
+  readonly idl?: number;
+}
+
+/** Stan markera zwarcia doziemnego (cyan circle u góry pola). */
+export type GroundFaultMarkerState = 'normal' | 'detected' | 'fault';
+
 export interface GpzBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -100,6 +193,21 @@ export interface GpzBayDescriptor {
   readonly energization?: GpzBayEnergization;
   readonly cbState?: GpzApparatusSwitchState;
   readonly dsState?: GpzApparatusSwitchState;
+  /**
+   * Architektura wtórna pola — stos badge'y SPZ/SCO/OWG/NZ/LRW/ARN/...
+   * Renderowane tylko jeśli `secondary` jest dostarczone.
+   */
+  readonly secondary?: BaySecondaryFlags;
+  /** Przekładnia CT, np. "200/5", "300/5". Wyświetlana obok markera CT. */
+  readonly ctRatio?: string;
+  /** Czy renderować przycisk KAS (kasowanie sygnalizacji) pod numerem pola. */
+  readonly hasKasButton?: boolean;
+  /** Marker zwarcia doziemnego (cyan circle u góry pola). */
+  readonly groundFault?: GroundFaultMarkerState;
+  /** Czy pole jest w stanie manipulacji (yellow background highlight). */
+  readonly inManipulation?: boolean;
+  /** Pomiary pola — renderowane w panelu pod numerem pola. */
+  readonly measurements?: BayMeasurements;
 }
 
 export interface GpzSectionDescriptor {
@@ -145,6 +253,9 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const transformerCount = Math.max(1, props.transformerCount ?? 1);
   const layout = computeSwitchgearLayout(sortedSections, props.couplers);
 
+  /* Maksymalna głębokość footera (KAS + panel pomiarowy) wśród wszystkich pól. */
+  const footerDepth = computeMaxFooterDepth(sortedSections);
+
   const totalWidth = Math.max(360, layout.totalWidth + 2 * HORIZONTAL_PADDING);
   const totalHeight =
     TITLE_BAR_HEIGHT +
@@ -152,6 +263,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
     SECTION_LABEL_GAP +
     BAY_COLUMN_HEIGHT +
     BAY_NUMBER_GAP +
+    footerDepth +
     VERTICAL_PADDING * 2;
 
   const stroke = props.selected ? COLOR_SELECTION : COLOR_LINE_PRIMARY;
@@ -453,13 +565,26 @@ function BayColumn(props: BayColumnProps): JSX.Element {
   const dsState = bay.dsState ?? 'closed';
   const energizedColor = energizationColor(energization);
   const trackColor = bay.hasMissingRequiredDevice ? '#FFB020' : energizedColor;
+  const apparatusCx = x + APPARATUS_COL_X_OFFSET;
 
-  // Y kursor wewnątrz kolumny (od szyny w dół).
+  /* Y-kursor: kolumna jest hanging-DOWN, busY = górna krawędź. */
   const headerY = busY + 2;
-  const cbY = headerY + BAY_HEADER_HEIGHT + 4;
-  const dsY = cbY + APPARATUS_PITCH;
-  const triangleY = dsY + APPARATUS_PITCH * 0.6;
+  const bodyTopY = headerY + BAY_HEADER_HEIGHT + 2;
+  const cbY = bodyTopY + 8;
+  const ctY = cbY + APPARATUS_PITCH;
+  const dsY = ctY + APPARATUS_PITCH;
+  const triangleY = dsY + APPARATUS_PITCH * 0.85;
   const columnBottomY = busY + BAY_COLUMN_HEIGHT;
+
+  /* Tło kolumny — yellow manipulation highlight ma pierwszeństwo nad neutralnym. */
+  const columnFill = bay.inManipulation ? COLOR_MANIPULATION_BG : COLOR_PANEL;
+  const columnStroke = bay.inManipulation ? COLOR_BADGE_BG_YELLOW : COLOR_TEXT_MUTED;
+  const columnStrokeOpacity = bay.inManipulation ? 0.9 : 0.3;
+
+  /* Footer (numer pola + KAS + pomiary). */
+  const numberY = columnBottomY + BAY_NUMBER_GAP - 2;
+  const kasY = numberY + KAS_ROW_HEIGHT;
+  const measurementHeaderY = bay.hasKasButton ? kasY + KAS_ROW_HEIGHT : numberY + KAS_ROW_HEIGHT;
 
   return (
     <g
@@ -468,6 +593,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       data-field-role={bay.fieldRole}
       data-energization={energization}
       data-bay-number={bay.bayNumber ?? ''}
+      data-in-manipulation={bay.inManipulation ? 'true' : 'false'}
       onClick={
         onClickBay
           ? (e) => {
@@ -478,68 +604,321 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       }
       style={{ cursor: onClickBay ? 'pointer' : 'default' }}
     >
-      {/* Korpus kolumny (subtelne tło) */}
+      {/* Korpus kolumny (subtelne tło, manipulation = oliwkowe) */}
       <rect
         x={x}
         y={busY}
         width={BAY_COLUMN_WIDTH}
         height={BAY_COLUMN_HEIGHT}
-        fill={COLOR_PANEL}
-        stroke={COLOR_TEXT_MUTED}
-        strokeOpacity={0.3}
-        strokeWidth={0.8}
+        fill={columnFill}
+        stroke={columnStroke}
+        strokeOpacity={columnStrokeOpacity}
+        strokeWidth={bay.inManipulation ? 1.2 : 0.8}
         rx={1}
+        data-testid="sld-v2-gpz-bay-body"
       />
 
       {/* Nagłówek pola — feeder name lub designation */}
       <text
-        x={x + BAY_COLUMN_WIDTH / 2}
+        x={apparatusCx}
         y={headerY + 9}
         textAnchor="middle"
         fill={COLOR_TEXT_PRIMARY}
         fontFamily={FONT_SANS}
         fontSize={FONT_SIZES.technicalPanel - 1}
         fontWeight={600}
+        data-testid="sld-v2-gpz-bay-header"
       >
         {(bay.feederName ?? bay.designation).slice(0, 8)}
       </text>
 
-      {/* Pionowy tor pola */}
+      {/* Marker zwarcia doziemnego (cyan circle u góry) */}
+      {bay.groundFault && bay.groundFault !== 'normal' && (
+        <GroundFaultMarker cx={apparatusCx} cy={bodyTopY + 3} state={bay.groundFault} />
+      )}
+
+      {/* Pionowy tor pola (apparatus column line) */}
       <line
-        x1={x + BAY_COLUMN_WIDTH / 2}
+        x1={apparatusCx}
         y1={busY}
-        x2={x + BAY_COLUMN_WIDTH / 2}
+        x2={apparatusCx}
         y2={columnBottomY - 4}
         stroke={trackColor}
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
       {/* CB (filled square) */}
-      <ApparatusCbSquare cx={x + BAY_COLUMN_WIDTH / 2} cy={cbY} state={cbState} energized={energization === 'energized'} />
+      <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
+
+      {/* CT primary (small open circle) + ratio label po lewej */}
+      <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
 
       {/* DS (filled circle) */}
-      <ApparatusDsCircle cx={x + BAY_COLUMN_WIDTH / 2} cy={dsY} state={dsState} energized={energization === 'energized'} />
+      <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
 
       {/* Cable head triangle (downward) */}
-      <ApparatusCableHead cx={x + BAY_COLUMN_WIDTH / 2} cy={triangleY} energized={energization === 'energized'} />
+      <ApparatusCableHead cx={apparatusCx} cy={triangleY} energized={energization === 'energized'} />
+
+      {/* Stos badge'y stanu po prawej (SPZ/SCO/OWG/NZ/LRW/ARN/...) */}
+      {bay.secondary && (
+        <BadgeStack
+          x={x + BADGE_COL_X_OFFSET}
+          y={bodyTopY + 2}
+          flags={bay.secondary}
+        />
+      )}
 
       {/* Numer pola pod kolumną */}
       {bay.bayNumber && (
         <text
           x={x + BAY_COLUMN_WIDTH / 2}
-          y={columnBottomY + BAY_NUMBER_GAP - 2}
+          y={numberY}
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
           fontSize={FONT_SIZES.bayLabel}
           fontWeight={700}
+          data-testid="sld-v2-gpz-bay-number"
         >
           {bay.bayNumber}
         </text>
       )}
 
+      {/* Przycisk KAS (kasowanie sygnalizacji) — etykieta + LED kropka */}
+      {bay.hasKasButton && (
+        <KasButton cx={x + BAY_COLUMN_WIDTH / 2} cy={kasY} />
+      )}
+
+      {/* Panel pomiarowy — feeder header + P/Q/I1/I2/I3 */}
+      {bay.measurements && hasAnyMeasurement(bay.measurements) && (
+        <MeasurementPanel
+          x={x + BAY_COLUMN_WIDTH / 2}
+          y={measurementHeaderY}
+          width={BAY_COLUMN_WIDTH}
+          feederName={bay.feederName}
+          measurements={bay.measurements}
+        />
+      )}
+
       {/* Tooltip aria. */}
       <title>{`${bay.designation} (${bay.fieldRole}) — ${describeEnergizationPl(energization)}`}</title>
+    </g>
+  );
+}
+
+/* =============================================================================
+   SCADA decorations: BadgeStack, KasButton, MeasurementPanel, GroundFaultMarker, CtPrimary
+   ============================================================================= */
+
+interface BadgeStackProps {
+  readonly x: number;
+  readonly y: number;
+  readonly flags: BaySecondaryFlags;
+}
+
+/** Renderuje stos badge'y zabezpieczeń (SPZ/SCO/OWG/NZ/LRW/ARN/...). */
+function BadgeStack(props: BadgeStackProps): JSX.Element {
+  const { x, y, flags } = props;
+  const items = collectBadges(flags);
+  return (
+    <g data-testid="sld-v2-gpz-bay-badge-stack" data-badge-count={String(items.length)}>
+      {items.map((item, idx) => (
+        <BadgeRow
+          key={item.code}
+          x={x}
+          y={y + idx * BADGE_ROW_HEIGHT}
+          code={item.code}
+          state={item.state}
+        />
+      ))}
+    </g>
+  );
+}
+
+interface BadgeRowProps {
+  readonly x: number;
+  readonly y: number;
+  readonly code: string;
+  readonly state: SecondaryFlagState;
+}
+
+function BadgeRow(props: BadgeRowProps): JSX.Element {
+  const { x, y, code, state } = props;
+  const visual = badgeVisual(code, state);
+  const labelTextY = y + BADGE_LABEL_HEIGHT - 1.5;
+  const statusTextY = y + BADGE_LABEL_HEIGHT + BADGE_STATUS_HEIGHT - 1;
+  return (
+    <g
+      data-testid={`sld-v2-gpz-bay-badge-${code.toLowerCase()}`}
+      data-badge-code={code}
+      data-badge-state={state}
+    >
+      <rect
+        x={x}
+        y={y}
+        width={BADGE_WIDTH}
+        height={BADGE_LABEL_HEIGHT}
+        fill={visual.labelBg}
+        stroke={visual.labelBorder}
+        strokeWidth={0.5}
+        rx={1}
+      />
+      <text
+        x={x + BADGE_WIDTH / 2}
+        y={labelTextY}
+        textAnchor="middle"
+        fill={visual.labelFg}
+        fontFamily={FONT_SANS}
+        fontSize={BADGE_FONT_SIZE}
+        fontWeight={700}
+      >
+        {code}
+      </text>
+      <text
+        x={x + BADGE_WIDTH / 2}
+        y={statusTextY}
+        textAnchor="middle"
+        fill={visual.statusColor}
+        fontFamily={FONT_SANS}
+        fontSize={BADGE_FONT_SIZE - 0.5}
+        fontWeight={600}
+      >
+        {statusLabel(state)}
+      </text>
+    </g>
+  );
+}
+
+interface KasButtonProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+function KasButton(props: KasButtonProps): JSX.Element {
+  const { cx, cy } = props;
+  return (
+    <g data-testid="sld-v2-gpz-bay-kas">
+      <text
+        x={cx - 4}
+        y={cy + 1}
+        textAnchor="end"
+        fill={COLOR_TEXT_SECONDARY}
+        fontFamily={FONT_SANS}
+        fontSize={9}
+        fontWeight={700}
+      >
+        KAS
+      </text>
+      <circle
+        cx={cx + 4}
+        cy={cy - 2}
+        r={KAS_LED_RADIUS}
+        fill={COLOR_KAS_LED}
+        data-testid="sld-v2-gpz-bay-kas-led"
+      />
+    </g>
+  );
+}
+
+interface MeasurementPanelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly feederName?: string;
+  readonly measurements: BayMeasurements;
+}
+
+function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
+  const { x, y, width, feederName, measurements } = props;
+  const rows = collectMeasurementRows(measurements);
+  const labelX = x - width / 2 + 4;
+  const valueX = x + width / 2 - 4;
+  return (
+    <g data-testid="sld-v2-gpz-bay-measurement-panel" data-row-count={String(rows.length)}>
+      {feederName && (
+        <text
+          x={x}
+          y={y + 8}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={MEASUREMENT_FONT_SIZE}
+          fontWeight={600}
+        >
+          {feederName.slice(0, 10)}
+        </text>
+      )}
+      {rows.map((row, idx) => {
+        const rowY = y + MEASUREMENT_PANEL_HEADER_HEIGHT + idx * MEASUREMENT_ROW_HEIGHT;
+        return (
+          <g key={row.label} data-testid={`sld-v2-gpz-bay-measurement-${row.label.toLowerCase()}`}>
+            <text
+              x={labelX}
+              y={rowY + MEASUREMENT_FONT_SIZE - 1}
+              fill={COLOR_TEXT_MUTED}
+              fontFamily={FONT_SANS}
+              fontSize={MEASUREMENT_FONT_SIZE}
+            >
+              {row.label}
+            </text>
+            <text
+              x={valueX}
+              y={rowY + MEASUREMENT_FONT_SIZE - 1}
+              textAnchor="end"
+              fill={COLOR_MEASUREMENT_VALUE}
+              fontFamily={FONT_MONO}
+              fontSize={MEASUREMENT_FONT_SIZE}
+            >
+              {row.value}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+interface GroundFaultMarkerProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly state: GroundFaultMarkerState;
+}
+
+function GroundFaultMarker(props: GroundFaultMarkerProps): JSX.Element {
+  const { cx, cy, state } = props;
+  const fill = state === 'fault' ? COLOR_GROUND_FAULT : COLOR_PANEL_RAISED;
+  return (
+    <g data-testid="sld-v2-gpz-bay-ground-fault" data-state={state}>
+      <circle cx={cx} cy={cy} r={3} fill={fill} stroke={COLOR_GROUND_FAULT} strokeWidth={1.2} />
+    </g>
+  );
+}
+
+interface CtPrimaryProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly ratio?: string;
+}
+
+function CtPrimary(props: CtPrimaryProps): JSX.Element {
+  const { cx, cy, ratio } = props;
+  return (
+    <g data-testid="sld-v2-gpz-bay-ct-primary">
+      <circle cx={cx} cy={cy} r={CT_RADIUS} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+      {ratio && (
+        <text
+          x={cx - CT_RADIUS - 2}
+          y={cy + 3}
+          textAnchor="end"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={7}
+          fontWeight={600}
+          data-testid="sld-v2-gpz-bay-ct-ratio"
+        >
+          {ratio}
+        </text>
+      )}
     </g>
   );
 }
@@ -811,4 +1190,144 @@ function describeEnergizationPl(state: GpzBayEnergization): string {
     case 'unknown':
       return 'stan nieznany';
   }
+}
+
+/* =============================================================================
+   SCADA helpers — badge visuals, measurement rows, footer depth
+   ============================================================================= */
+
+interface BadgeItem {
+  readonly code: string;
+  readonly state: SecondaryFlagState;
+  readonly order: number;
+}
+
+/**
+ * Kanoniczne uporządkowanie badge'y SCADA — zgodne z wzorcem operatorskim:
+ * SPZ → SCO → OWG → NZ → LRW → ARN → BKR → STYCZ. → AWSC → ZS → SZR.
+ */
+const BADGE_ORDER: ReadonlyArray<{ key: keyof BaySecondaryFlags; code: string }> = [
+  { key: 'spz', code: 'SPZ' },
+  { key: 'sco', code: 'SCO' },
+  { key: 'owg', code: 'OWG' },
+  { key: 'nz', code: 'NZ' },
+  { key: 'lrw', code: 'LRW' },
+  { key: 'arn', code: 'ARN' },
+  { key: 'bkr', code: 'BKR' },
+  { key: 'stycz', code: 'STYCZ' },
+  { key: 'awsc', code: 'AWSC' },
+  { key: 'zs', code: 'ZS' },
+  { key: 'szr', code: 'SZR' },
+];
+
+const BADGE_MAX_VISIBLE = 5;
+
+function collectBadges(flags: BaySecondaryFlags): readonly BadgeItem[] {
+  const items: BadgeItem[] = [];
+  BADGE_ORDER.forEach((entry, idx) => {
+    const state = flags[entry.key];
+    if (state) {
+      items.push({ code: entry.code, state, order: idx });
+    }
+  });
+  return items.slice(0, BADGE_MAX_VISIBLE);
+}
+
+interface BadgeVisual {
+  readonly labelBg: string;
+  readonly labelFg: string;
+  readonly labelBorder: string;
+  readonly statusColor: string;
+}
+
+/** Mapa code → kolor tła. SPZ/ARN/SZR = żółty, SCO/NZ/LRW/AWSC/ZS = czerwony, reszta = jasny. */
+function badgeVisual(code: string, state: SecondaryFlagState): BadgeVisual {
+  const yellow = code === 'SPZ' || code === 'ARN' || code === 'SZR';
+  const red = code === 'SCO' || code === 'NZ' || code === 'LRW' || code === 'AWSC' || code === 'ZS';
+  const labelBg = yellow ? COLOR_BADGE_BG_YELLOW : red ? COLOR_BADGE_BG_RED : COLOR_BADGE_BG_LIGHT;
+  const labelFg = red ? COLOR_TEXT_PRIMARY : COLOR_BADGE_TEXT_DARK;
+  const labelBorder = red ? COLOR_BADGE_STATUS_BLOCKED : COLOR_TEXT_MUTED;
+  const statusColor = statusColorFor(state);
+  return { labelBg, labelFg, labelBorder, statusColor };
+}
+
+function statusColorFor(state: SecondaryFlagState): string {
+  switch (state) {
+    case 'enabled':
+      return COLOR_BADGE_STATUS_OK;
+    case 'disabled':
+      return COLOR_BADGE_STATUS_NEUTRAL;
+    case 'restricted':
+    case 'blocked':
+      return COLOR_BADGE_STATUS_BLOCKED;
+  }
+}
+
+function statusLabel(state: SecondaryFlagState): string {
+  switch (state) {
+    case 'enabled':
+      return 'Zal.';
+    case 'disabled':
+      return 'Odbl.';
+    case 'restricted':
+      return 'Odst.';
+    case 'blocked':
+      return 'Zabl.';
+  }
+}
+
+interface MeasurementRow {
+  readonly label: string;
+  readonly value: string;
+}
+
+function collectMeasurementRows(m: BayMeasurements): readonly MeasurementRow[] {
+  const rows: MeasurementRow[] = [];
+  if (m.p !== undefined) rows.push({ label: 'P', value: formatNumber(m.p) });
+  if (m.q !== undefined) rows.push({ label: 'Q', value: formatNumber(m.q) });
+  if (m.idl !== undefined) rows.push({ label: 'Idł', value: formatNumber(m.idl) });
+  if (m.i1 !== undefined) rows.push({ label: 'I1', value: formatInteger(m.i1) });
+  if (m.i2 !== undefined) rows.push({ label: 'I2', value: formatInteger(m.i2) });
+  if (m.i3 !== undefined) rows.push({ label: 'I3', value: formatInteger(m.i3) });
+  return rows;
+}
+
+function hasAnyMeasurement(m: BayMeasurements): boolean {
+  return (
+    m.p !== undefined ||
+    m.q !== undefined ||
+    m.idl !== undefined ||
+    m.i1 !== undefined ||
+    m.i2 !== undefined ||
+    m.i3 !== undefined
+  );
+}
+
+function formatNumber(value: number): string {
+  if (Number.isNaN(value)) return '—';
+  return value.toFixed(1);
+}
+
+function formatInteger(value: number): string {
+  if (Number.isNaN(value)) return '—';
+  return Math.round(value).toString();
+}
+
+function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[]): number {
+  let kasDepth = 0;
+  let measurementDepth = 0;
+  for (const section of sections) {
+    for (const bay of section.bays) {
+      if (bay.hasKasButton) {
+        kasDepth = Math.max(kasDepth, KAS_ROW_HEIGHT);
+      }
+      if (bay.measurements && hasAnyMeasurement(bay.measurements)) {
+        const rowCount = collectMeasurementRows(bay.measurements).length;
+        const depth =
+          MEASUREMENT_PANEL_HEADER_HEIGHT + rowCount * MEASUREMENT_ROW_HEIGHT + 4;
+        measurementDepth = Math.max(measurementDepth, depth);
+      }
+    }
+  }
+  return kasDepth + measurementDepth;
 }

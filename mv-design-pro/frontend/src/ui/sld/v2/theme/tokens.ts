@@ -41,6 +41,34 @@ export const COLOR_PARTIAL = '#FFC857' as const; // wynik częściowy
 export const COLOR_REPORT_READY = '#13C45A' as const; // raport gotowy
 export const COLOR_REPORT_BLOCKED = '#FF333D' as const; // raport zablokowany
 
+/* ---------------------------------------------------------------------------
+   SCADA-grade badge & decoration tokens (Phase 0A refinement)
+   Wzorowane na ekranach dyspozytorskich Energa / Tauron / PSE.
+   --------------------------------------------------------------------------- */
+
+/** Tło żółtego badge'a (SPZ, ARN, SZR — auto-funkcje aktywne). */
+export const COLOR_BADGE_BG_YELLOW = '#E5C828' as const;
+/** Tło białego/jasnego badge'a (OWG, BKR, STYCZ. — przekaźniki). */
+export const COLOR_BADGE_BG_LIGHT = '#D8DEE3' as const;
+/** Tło czerwonego badge'a (SCO/NZ/LRW Zabl. — blokada/wyłączenie). */
+export const COLOR_BADGE_BG_RED = '#7A1414' as const;
+/** Tekst badge'a na żółtym/jasnym tle (czarny). */
+export const COLOR_BADGE_TEXT_DARK = '#0B0E11' as const;
+/** Status row "Zal." (zał./pracuje) — zielony. */
+export const COLOR_BADGE_STATUS_OK = '#2DB54E' as const;
+/** Status row "Odbl." (odblokowane / w gotowości) — szary. */
+export const COLOR_BADGE_STATUS_NEUTRAL = '#9CA3A8' as const;
+/** Status row "Odst./Zabl." (odstawione / zablokowane) — czerwony. */
+export const COLOR_BADGE_STATUS_BLOCKED = '#FF4D4D' as const;
+/** Kropka LED przycisku KAS (purpurowa — kasowanie sygnalizacji). */
+export const COLOR_KAS_LED = '#9D5BFF' as const;
+/** Tło pola w stanie manipulacji (oliwkowe/żółte). */
+export const COLOR_MANIPULATION_BG = '#5C5512' as const;
+/** Marker zwarcia doziemnego (cyan/turkus — kanon SCADA). */
+export const COLOR_GROUND_FAULT = '#35E1FF' as const;
+/** Wartość pomiaru w panelu — biel monoszpaltowa. */
+export const COLOR_MEASUREMENT_VALUE = '#FFFFFF' as const;
+
 /** Pełen rejestr kolorów dla theme provider / tests. */
 export const SLD_V2_COLORS = {
   bg: COLOR_BG,
