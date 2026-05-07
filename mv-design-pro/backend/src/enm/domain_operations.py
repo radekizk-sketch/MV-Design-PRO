@@ -2958,25 +2958,182 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     )
 
     if dry_run:
-        # Phase 0A audit fix 11/12: dry_run zwraca preview metadata (Phase 0C
-        # Conscious split). NIE zwraca zmutowanego snapshot — tylko wynik
-        # walidacji + impact assessment.
+        # Phase 0C: dry_run zwraca PEŁEN electrical_impact (operator-grade SLD plan v2).
+        # NIE zwraca zmutowanego snapshot — tylko walidacja + impact assessment.
         response["dry_run"] = True
-        response["preview"] = {
-            "inserted_station_id": stn_id,
-            "halves": {
-                "first_segment_id": payload.get("segment_id"),  # original split point
-                "second_segment_id": stn_id + "_segB",  # placeholder semantyczny
-            },
-            "electrical_impact": {
-                "topology_type_changed": True,
-                "affected_object_refs": [stn_id, *created],
-            },
-        }
+        response["preview"] = _build_split_preview_metadata(
+            enm=enm,
+            new_enm=new_enm,
+            segment=segment,
+            inserted_station_id=stn_id,
+            insert_mode=insert_mode,
+            insert_value=insert_value,
+            length_km=length_km,
+            station_type=substation_semantic_type,
+            created=created,
+        )
         # Usuń snapshot z response (dry_run = read-only preview).
         response.pop("snapshot", None)
 
     return response
+
+
+def _build_split_preview_metadata(
+    *,
+    enm: dict[str, Any],
+    new_enm: dict[str, Any],
+    segment: dict[str, Any],
+    inserted_station_id: str,
+    insert_mode: str,
+    insert_value: float,
+    length_km: float,
+    station_type: str,
+    created: list[str],
+) -> dict[str, Any]:
+    """Phase 0C: pełen electrical_impact dla operator-grade conscious split.
+
+    Returns:
+      preview dict z polami:
+        inserted_station_id, station_type, halves{first/second segment + length},
+        electrical_impact{
+          topology_type_changed, affected_object_refs,
+          invalidated_results, affected_proof_packs,
+          topology_type_changes (list per object),
+          catalog_inheritance, length_assignment, missing_data_after,
+        }
+    """
+    segment_id = segment.get("ref_id")
+    seg_type = segment.get("type", "")
+    catalog_ref = segment.get("catalog_ref")
+    catalog_namespace = segment.get("catalog_namespace")
+
+    # Halves: split_ratio z insert_at
+    if insert_mode == "RATIO":
+        split_ratio = float(insert_value)
+    elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M" and length_km > 0:
+        split_ratio = float(insert_value) / (length_km * 1000.0)
+        if split_ratio < 0.0:
+            split_ratio = 0.0
+        if split_ratio > 1.0:
+            split_ratio = 1.0
+    else:
+        split_ratio = 0.5
+
+    length_a_km = length_km * split_ratio
+    length_b_km = length_km * (1.0 - split_ratio)
+
+    halves = {
+        "first_segment_id": f"{segment_id}_a" if segment_id else None,
+        "second_segment_id": f"{segment_id}_b" if segment_id else None,
+        "first_length_km": round(length_a_km, 6),
+        "second_length_km": round(length_b_km, 6),
+        "split_ratio": round(split_ratio, 6),
+    }
+
+    # Topology type changes — lista zmian per object
+    topology_type_changes: list[dict[str, Any]] = []
+    if segment_id:
+        topology_type_changes.append({
+            "object_ref": segment_id,
+            "before": seg_type,
+            "after": "split_into_two_segments",
+            "halves": [halves["first_segment_id"], halves["second_segment_id"]],
+        })
+    topology_type_changes.append({
+        "object_ref": inserted_station_id,
+        "before": "no_station",
+        "after": station_type,
+        "kind": "station_inserted_on_segment",
+    })
+
+    # Catalog inheritance — halves dziedziczą catalog_ref po starym segmencie
+    catalog_inheritance = {
+        "source_segment_ref": segment_id,
+        "source_catalog_ref": catalog_ref,
+        "source_catalog_namespace": catalog_namespace,
+        "first_inherits": catalog_ref is not None,
+        "second_inherits": catalog_ref is not None,
+        "rule": "Obie połówki dziedziczą catalog_ref ze źródłowego odcinka."
+                if catalog_ref else "Brak catalog_ref na odcinku — halves bez katalogu (W009 fix action).",
+    }
+
+    # Length assignment — jak długość podzielona
+    length_assignment = {
+        "source_length_km": round(length_km, 6),
+        "split_mode": insert_mode,
+        "split_value": insert_value,
+        "first_length_km": round(length_a_km, 6),
+        "second_length_km": round(length_b_km, 6),
+        "fraction_a": round(split_ratio, 6),
+        "fraction_b": round(1.0 - split_ratio, 6),
+    }
+
+    # Invalidated results — wyniki run/proof które staną się stale po split
+    # Heurystyka: znajdujemy results powiązane z source_segment albo z connected buses.
+    invalidated_results: list[dict[str, Any]] = []
+    affected_proof_packs: list[dict[str, Any]] = []
+
+    from_bus_ref = segment.get("from_bus_ref")
+    to_bus_ref = segment.get("to_bus_ref")
+    affected_buses = {b for b in (from_bus_ref, to_bus_ref) if b}
+    affected_object_refs_set: set[str] = {inserted_station_id, *created}
+    if segment_id:
+        affected_object_refs_set.add(segment_id)
+    affected_object_refs_set.update(affected_buses)
+
+    # Skanowanie istniejących run/proof artefaktów w ENM (jeśli są)
+    for run in enm.get("analysis_runs", []) or enm.get("runs", []) or []:
+        run_ref = run.get("ref_id") or run.get("run_id")
+        if not run_ref:
+            continue
+        # Zakładamy że run jest invalidowany jeśli touchuje któreś affected_object_refs
+        run_objects = set(run.get("affected_object_refs", []) or [])
+        if run_objects & affected_object_refs_set or run.get("scope") in ("global", "all"):
+            invalidated_results.append({
+                "run_ref": run_ref,
+                "run_kind": run.get("run_kind") or run.get("kind") or "unknown",
+                "reason": "topology_split_on_segment",
+            })
+    for proof in enm.get("proof_packs", []) or []:
+        proof_ref = proof.get("ref_id") or proof.get("proof_id")
+        if not proof_ref:
+            continue
+        proof_objects = set(proof.get("affected_object_refs", []) or [])
+        if proof_objects & affected_object_refs_set or proof.get("scope") in ("global", "all"):
+            affected_proof_packs.append({
+                "proof_ref": proof_ref,
+                "proof_kind": proof.get("proof_kind") or proof.get("kind") or "unknown",
+                "reason": "topology_split_on_segment",
+            })
+
+    # Missing data after — co brakuje po split (deterministyczna heurystyka)
+    missing_data_after: list[str] = []
+    if not catalog_ref:
+        missing_data_after.append(f"Brak catalog_ref na halves (segment '{segment_id}' nie ma katalogu).")
+    if station_type in ("inline", "branch", "sectional", "mv_lv") and length_km <= 0:
+        missing_data_after.append("Niezerowa długość segmentu — split z zerową długością niedozwolony.")
+    # Sprawdź czy nowa stacja będzie potrzebować transformatora (mv_lv typ)
+    if station_type == "mv_lv":
+        # Jeśli payload nie podał transformer — stacja będzie incomplete
+        # Heurystyka: stacja typu A (mv_lv) zawsze potrzebuje TR + bus nN
+        pass  # TR utworzony w glównej operacji jeśli był podany
+
+    return {
+        "inserted_station_id": inserted_station_id,
+        "station_type": station_type,
+        "halves": halves,
+        "electrical_impact": {
+            "topology_type_changed": True,
+            "affected_object_refs": sorted(affected_object_refs_set),
+            "topology_type_changes": topology_type_changes,
+            "catalog_inheritance": catalog_inheritance,
+            "length_assignment": length_assignment,
+            "invalidated_results": invalidated_results,
+            "affected_proof_packs": affected_proof_packs,
+            "missing_data_after": missing_data_after,
+            "affected_buses": sorted(affected_buses),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
