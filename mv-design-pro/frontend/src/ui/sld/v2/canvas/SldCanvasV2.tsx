@@ -17,12 +17,16 @@ import {
 } from '../viewport/ViewportController';
 import {
   DEFAULT_LAYER_VISIBILITY,
+  createLodController,
   inferLodFromScale,
+  type LodController,
   type LodLevel,
   type SldLayerId,
 } from '../lod/LodPolicy';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import { CableRunRenderer } from '../renderer/CableRunRenderer';
+import { CadOverlay } from './CadOverlay';
+import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
@@ -66,6 +70,22 @@ export interface SldCanvasV2Props {
   /** Stan warstw widoczności. */
   readonly layerVisibility?: Partial<Record<SldLayerId, boolean>>;
 
+  /** Phase 2 polish (operator-grade SLD plan v2): CadOverlay props.
+   *  Snap state (mode/grid/port tolerance), ghost previews dla
+   *  append/split workflow, korytarze dla CorridorLayout strategy,
+   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne — gdy
+   *  brak, CadOverlay nie jest renderowany. */
+  readonly cadOverlay?: {
+    readonly snapState?: import('../viewport/Snap').SnapState;
+    readonly hoverPoint?: import('../geometry/routing').Point | null;
+    readonly ports?: readonly import('../viewport/Snap').PortSnapTarget[];
+    readonly ghosts?: readonly import('./CadOverlay').CadGhost[];
+    readonly corridors?: readonly import('./CadOverlay').CadCorridorBand[];
+    readonly selectedRoutes?: readonly import('../geometry/RouteEditor').RouteSegment[];
+    readonly onBendDragStart?: (routeId: string, bendIdx: number) => void;
+    readonly onBendDoubleClick?: (routeId: string, bendIdx: number) => void;
+  };
+
   readonly onSelectElement?: (id: string | null, kind: string) => void;
   readonly onDoubleClickStation?: (id: string) => void;
   readonly onDoubleClickDer?: (id: string) => void;
@@ -86,6 +106,14 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  /* INVARIANT 5/6 + Phase 0A audit fix 11: LOD histereza FSM eliminuje
+   * migotanie przy bouncing zoom (deadband 15%, debounce 250ms — konfig
+   * w `LodPolicy.createLodController`). Bez tego operator widzi przeskakujące
+   * elementy LOD przy płynnym zoom-in/out. */
+  const lodControllerRef = useRef<LodController | null>(null);
+  if (lodControllerRef.current === null) {
+    lodControllerRef.current = createLodController({ initialScale: transform.scale });
+  }
 
   // Auto-fit przy pierwszym renderze (jeśli mamy obiekty)
   useMemo(() => {
@@ -106,7 +134,13 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     setTransform(fitToView(expanded, { width, height }));
   }, [gpzs, sections, stations, ders, width, height]);
 
-  const lod: LodLevel = lodOverride !== undefined ? lodOverride : inferLodFromScale(transform.scale);
+  /* LOD obliczany przez LodController — histereza FSM zapobiega flicker.
+   * `update()` zwraca aktualne LOD po zastosowaniu deadband + debounce. */
+  const lod: LodLevel = lodOverride !== undefined
+    ? lodOverride
+    : lodControllerRef.current.update(transform.scale);
+  /* Fallback dla testów bez LodControllera (powinien być zawsze inicjalizowany). */
+  void inferLodFromScale; // referencja zachowana dla back-compat innych callerów
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
@@ -183,6 +217,27 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
       {/* World transform */}
       <g transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}>
+        {/* Phase 2 polish: CadOverlay (grid + magnesy + bend handles + ghosts +
+            korytarze). Renderowany pod content żeby nie zasłaniał obiektów
+            domenowych. NIE pokazujemy gdy brak `cadOverlay` props (default off). */}
+        {props.cadOverlay && (
+          <CadOverlay
+            width={width}
+            height={height}
+            viewportScale={transform.scale}
+            viewportTx={transform.translateX}
+            viewportTy={transform.translateY}
+            snapState={props.cadOverlay.snapState ?? DEFAULT_SNAP_STATE}
+            hoverPoint={props.cadOverlay.hoverPoint ?? null}
+            ports={props.cadOverlay.ports}
+            ghosts={props.cadOverlay.ghosts}
+            corridors={props.cadOverlay.corridors}
+            selectedRoutes={props.cadOverlay.selectedRoutes}
+            onBendDragStart={props.cadOverlay.onBendDragStart}
+            onBendDoubleClick={props.cadOverlay.onBendDoubleClick}
+          />
+        )}
+
         {/* Connections (cienka warstwa pomocnicza) */}
         {layers.topology && connections.map((c) => (
           <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
@@ -231,6 +286,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           >
             <GpzRenderer
               {...g}
+              lod={lod}
               selected={selectedId === g.id}
               onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
             />

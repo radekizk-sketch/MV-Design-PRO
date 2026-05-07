@@ -51,6 +51,8 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
     { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny', group: 'budowa' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
+    { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
     { id: 'set-switch-state', labelPl: 'Zmień stan łącznika', group: 'edycja' },
     { id: 'show-measurements', labelPl: 'Pokaż pomiary pola', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki pola', group: 'widok' },
@@ -58,6 +60,8 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'delete-bay', labelPl: 'Usuń pole', group: 'usun' },
   ],
   cable_segment_sn: [
+    /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
+    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
     { id: 'insert-station', labelPl: 'Wstaw stację transformatorową', group: 'budowa' },
     { id: 'insert-zksn', labelPl: 'Wstaw złącze kablowe SN', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
@@ -70,6 +74,8 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'delete-segment', labelPl: 'Usuń odcinek', group: 'usun' },
   ],
   overhead_line_sn: [
+    /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
+    { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
     { id: 'insert-station', labelPl: 'Wstaw stację transformatorową', group: 'budowa' },
     { id: 'insert-pole', labelPl: 'Wstaw słup rozgałęźny', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
@@ -117,6 +123,7 @@ export function getMenuActions(
   kind: SldElementKindForMenu,
   context?: {
     readonly bayHasOutgoingRun?: boolean;
+    readonly bayIsRunEndpoint?: boolean;  // Phase 0B: czy pole jest endpointem ciągu (free terminal)
     readonly stationHasFreeBay?: boolean;
     readonly hasResults?: boolean;
   },
@@ -130,6 +137,15 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl: 'Pole ma już wyprowadzony ciąg główny.',
+      };
+    }
+    /* Phase 0B (operator-grade SLD plan v2): append-on-endpoint dostępny TYLKO
+     * gdy pole jest free endpointem ciągu (bus z topology_terminal tag). */
+    if (a.id === 'append-station-on-endpoint' && ctx.bayIsRunEndpoint === false) {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl: 'Pole nie jest końcem ciągu. Najpierw wyprowadź ciąg lub wybierz endpoint.',
       };
     }
     if (a.id === 'start-branch' && kind === 'station' && ctx.stationHasFreeBay === false) {
@@ -211,4 +227,18 @@ export const COMMAND_FEEDBACK_PL = {
   switchStateChanged: (designationQ: string, newState: string) =>
     `Aparat ${designationQ}: stan zmieniony na "${newState}".`,
   nopMarked: (stationName: string) => `Stacja "${stationName}" oznaczona jako punkt normalnie otwarty.`,
+  /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
+  appendStarted: 'Wskaż punkt zakończenia odcinka.',
+  appendEndpointPicked: 'Wybrano koniec odcinka. Wybierz typ stacji.',
+  appendPreviewReady: 'Podgląd: odcinek zostanie zakończony w stacji.',
+  appendCommitted: (stationName: string) =>
+    `Utworzono stację "${stationName}" na końcu odcinka i przypięto port wejściowy SN.`,
+  appendCancelled: 'Operacja anulowana. Model bez zmian.',
+  continueFromStation: 'Kontynuuj ciąg z portu wyjściowego stacji.',
+  /* Phase 0C: Conscious Split workflow */
+  splitPreviewReady: 'Podgląd świadomego podziału odcinka.',
+  splitImpactSummary: (count: number) =>
+    `Operacja unieważni ${count} wyników obliczeń.`,
+  splitCommitted: 'Odcinek został podzielony na dwa odcinki end-to-end.',
+  splitCancelled: 'Podział odcinka anulowany. Model bez zmian.',
 } as const;

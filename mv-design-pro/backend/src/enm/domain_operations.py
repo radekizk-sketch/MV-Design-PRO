@@ -53,6 +53,12 @@ CANONICAL_OPS = frozenset(
         "add_nn_load",
         "delete_element",
         "refresh_snapshot",
+        # Phase 0B-3: CRUD GPZ sekcji (LV i HV) — wymagane dla StationCard editora.
+        "add_gpz_section",
+        "update_gpz_section",
+        "delete_gpz_section",
+        # Phase 0B (operator-grade SLD plan v2): append-on-endpoint workflow
+        "append_station_on_endpoint",
     }
 )
 
@@ -2388,13 +2394,23 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     4. Podłączenie stacji
     5. Gotowość i FixActions
     6. Zwrot odpowiedzi
+
+    Phase 0A audit fix 11/12: parametr `dry_run: bool = False` w payload.
+    Gdy True — operacja wykonuje pełną walidację i preview ENM hash + halves
+    + electrical_impact, ale NIE mutuje ENM. Wymagane dla Phase 0C
+    "Conscious split with preview".
     """
+    dry_run = bool(payload.get("dry_run", False))
     segment_id = payload.get("segment_id") or payload.get("segment_ref")
     insert_at = payload.get("insert_at", {})
     station = payload.get("station", {})
     sn_fields_raw = payload.get("sn_fields", [])
     transformer = payload.get("transformer", {})
     nn_block = payload.get("nn_block", {})
+
+    if dry_run:
+        # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
+        enm = copy.deepcopy(enm)
 
     # Normalize sn_fields: accept list of strings or list of dicts
     _role_str_map = {
@@ -2931,7 +2947,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
     )
 
-    return _response(
+    response = _response(
         new_enm,
         created=created,
         deleted=deleted,
@@ -2940,6 +2956,184 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         audit=audit,
         events=events,
     )
+
+    if dry_run:
+        # Phase 0C: dry_run zwraca PEŁEN electrical_impact (operator-grade SLD plan v2).
+        # NIE zwraca zmutowanego snapshot — tylko walidacja + impact assessment.
+        response["dry_run"] = True
+        response["preview"] = _build_split_preview_metadata(
+            enm=enm,
+            new_enm=new_enm,
+            segment=segment,
+            inserted_station_id=stn_id,
+            insert_mode=insert_mode,
+            insert_value=insert_value,
+            length_km=length_km,
+            station_type=substation_semantic_type,
+            created=created,
+        )
+        # Usuń snapshot z response (dry_run = read-only preview).
+        response.pop("snapshot", None)
+
+    return response
+
+
+def _build_split_preview_metadata(
+    *,
+    enm: dict[str, Any],
+    new_enm: dict[str, Any],
+    segment: dict[str, Any],
+    inserted_station_id: str,
+    insert_mode: str,
+    insert_value: float,
+    length_km: float,
+    station_type: str,
+    created: list[str],
+) -> dict[str, Any]:
+    """Phase 0C: pełen electrical_impact dla operator-grade conscious split.
+
+    Returns:
+      preview dict z polami:
+        inserted_station_id, station_type, halves{first/second segment + length},
+        electrical_impact{
+          topology_type_changed, affected_object_refs,
+          invalidated_results, affected_proof_packs,
+          topology_type_changes (list per object),
+          catalog_inheritance, length_assignment, missing_data_after,
+        }
+    """
+    segment_id = segment.get("ref_id")
+    seg_type = segment.get("type", "")
+    catalog_ref = segment.get("catalog_ref")
+    catalog_namespace = segment.get("catalog_namespace")
+
+    # Halves: split_ratio z insert_at
+    if insert_mode == "RATIO":
+        split_ratio = float(insert_value)
+    elif insert_mode == "ODLEGLOSC_OD_POCZATKU_M" and length_km > 0:
+        split_ratio = float(insert_value) / (length_km * 1000.0)
+        if split_ratio < 0.0:
+            split_ratio = 0.0
+        if split_ratio > 1.0:
+            split_ratio = 1.0
+    else:
+        split_ratio = 0.5
+
+    length_a_km = length_km * split_ratio
+    length_b_km = length_km * (1.0 - split_ratio)
+
+    halves = {
+        "first_segment_id": f"{segment_id}_a" if segment_id else None,
+        "second_segment_id": f"{segment_id}_b" if segment_id else None,
+        "first_length_km": round(length_a_km, 6),
+        "second_length_km": round(length_b_km, 6),
+        "split_ratio": round(split_ratio, 6),
+    }
+
+    # Topology type changes — lista zmian per object
+    topology_type_changes: list[dict[str, Any]] = []
+    if segment_id:
+        topology_type_changes.append({
+            "object_ref": segment_id,
+            "before": seg_type,
+            "after": "split_into_two_segments",
+            "halves": [halves["first_segment_id"], halves["second_segment_id"]],
+        })
+    topology_type_changes.append({
+        "object_ref": inserted_station_id,
+        "before": "no_station",
+        "after": station_type,
+        "kind": "station_inserted_on_segment",
+    })
+
+    # Catalog inheritance — halves dziedziczą catalog_ref po starym segmencie
+    catalog_inheritance = {
+        "source_segment_ref": segment_id,
+        "source_catalog_ref": catalog_ref,
+        "source_catalog_namespace": catalog_namespace,
+        "first_inherits": catalog_ref is not None,
+        "second_inherits": catalog_ref is not None,
+        "rule": "Obie połówki dziedziczą catalog_ref ze źródłowego odcinka."
+                if catalog_ref else "Brak catalog_ref na odcinku — halves bez katalogu (W009 fix action).",
+    }
+
+    # Length assignment — jak długość podzielona
+    length_assignment = {
+        "source_length_km": round(length_km, 6),
+        "split_mode": insert_mode,
+        "split_value": insert_value,
+        "first_length_km": round(length_a_km, 6),
+        "second_length_km": round(length_b_km, 6),
+        "fraction_a": round(split_ratio, 6),
+        "fraction_b": round(1.0 - split_ratio, 6),
+    }
+
+    # Invalidated results — wyniki run/proof które staną się stale po split
+    # Heurystyka: znajdujemy results powiązane z source_segment albo z connected buses.
+    invalidated_results: list[dict[str, Any]] = []
+    affected_proof_packs: list[dict[str, Any]] = []
+
+    from_bus_ref = segment.get("from_bus_ref")
+    to_bus_ref = segment.get("to_bus_ref")
+    affected_buses = {b for b in (from_bus_ref, to_bus_ref) if b}
+    affected_object_refs_set: set[str] = {inserted_station_id, *created}
+    if segment_id:
+        affected_object_refs_set.add(segment_id)
+    affected_object_refs_set.update(affected_buses)
+
+    # Skanowanie istniejących run/proof artefaktów w ENM (jeśli są)
+    for run in enm.get("analysis_runs", []) or enm.get("runs", []) or []:
+        run_ref = run.get("ref_id") or run.get("run_id")
+        if not run_ref:
+            continue
+        # Zakładamy że run jest invalidowany jeśli touchuje któreś affected_object_refs
+        run_objects = set(run.get("affected_object_refs", []) or [])
+        if run_objects & affected_object_refs_set or run.get("scope") in ("global", "all"):
+            invalidated_results.append({
+                "run_ref": run_ref,
+                "run_kind": run.get("run_kind") or run.get("kind") or "unknown",
+                "reason": "topology_split_on_segment",
+            })
+    for proof in enm.get("proof_packs", []) or []:
+        proof_ref = proof.get("ref_id") or proof.get("proof_id")
+        if not proof_ref:
+            continue
+        proof_objects = set(proof.get("affected_object_refs", []) or [])
+        if proof_objects & affected_object_refs_set or proof.get("scope") in ("global", "all"):
+            affected_proof_packs.append({
+                "proof_ref": proof_ref,
+                "proof_kind": proof.get("proof_kind") or proof.get("kind") or "unknown",
+                "reason": "topology_split_on_segment",
+            })
+
+    # Missing data after — co brakuje po split (deterministyczna heurystyka)
+    missing_data_after: list[str] = []
+    if not catalog_ref:
+        missing_data_after.append(f"Brak catalog_ref na halves (segment '{segment_id}' nie ma katalogu).")
+    if station_type in ("inline", "branch", "sectional", "mv_lv") and length_km <= 0:
+        missing_data_after.append("Niezerowa długość segmentu — split z zerową długością niedozwolony.")
+    # Sprawdź czy nowa stacja będzie potrzebować transformatora (mv_lv typ)
+    if station_type == "mv_lv":
+        # Jeśli payload nie podał transformer — stacja będzie incomplete
+        # Heurystyka: stacja typu A (mv_lv) zawsze potrzebuje TR + bus nN
+        pass  # TR utworzony w glównej operacji jeśli był podany
+
+    return {
+        "inserted_station_id": inserted_station_id,
+        "station_type": station_type,
+        "halves": halves,
+        "electrical_impact": {
+            "topology_type_changed": True,
+            "affected_object_refs": sorted(affected_object_refs_set),
+            "topology_type_changes": topology_type_changes,
+            "catalog_inheritance": catalog_inheritance,
+            "length_assignment": length_assignment,
+            "invalidated_results": invalidated_results,
+            "affected_proof_packs": affected_proof_packs,
+            "missing_data_after": missing_data_after,
+            "affected_buses": sorted(affected_buses),
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -4273,6 +4467,650 @@ def refresh_snapshot(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------
+# Phase 0B-3: CRUD GPZ sekcji (LV i HV) dla StationCard editora
+# ---------------------------------------------------------------------------
+
+
+def _resolve_gpz_sections_field(side: str) -> str:
+    """`side` ('lv'/'hv') → klucz w substation. Inny side → ValueError."""
+    if side == "lv":
+        return "gpz_sections"
+    if side == "hv":
+        return "gpz_hv_sections"
+    raise ValueError(f"Nieprawidłowa strona sekcji GPZ: '{side}' (oczekiwane: 'lv'|'hv').")
+
+
+def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any] | None:
+    for sub in enm.get("substations", []):
+        if sub.get("ref_id") == substation_ref:
+            return sub
+    return None
+
+
+def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
+
+    Payload:
+      substation_ref: str        — ID stacji GPZ
+      side: 'lv' | 'hv'          — która strona (default 'lv')
+      section_id: str            — kanoniczny ID nowej sekcji (unikalny w substation)
+      bus_ref: str               — ref_id istniejącej szyny pod sekcją
+      order: int (optional)      — pozycja w sekcjach (default = max+1)
+      name: str (optional)       — etykieta sekcji
+      line_field_name: str (optional)
+    """
+    substation_ref = payload.get("substation_ref")
+    if not substation_ref:
+        return _error_response(
+            "Brak identyfikatora stacji.", "gpz_section.add.substation_missing"
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.", "gpz_section.add.substation_missing"
+        )
+    if sub.get("station_type") != "gpz":
+        return _error_response(
+            f"Stacja '{substation_ref}' nie jest typu 'gpz' (jest {sub.get('station_type')}).",
+            "gpz_section.add.invalid_station_type",
+        )
+
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.add.invalid_side")
+
+    section_id = payload.get("section_id")
+    if not section_id:
+        return _error_response(
+            "Brak `section_id` dla nowej sekcji.", "gpz_section.add.section_id_missing"
+        )
+
+    bus_ref = payload.get("bus_ref")
+    if not bus_ref:
+        return _error_response(
+            "Brak `bus_ref` dla nowej sekcji.", "gpz_section.add.bus_ref_missing"
+        )
+    if not any(b.get("ref_id") == bus_ref for b in enm.get("buses", [])):
+        return _error_response(
+            f"Szyna '{bus_ref}' nie istnieje.", "gpz_section.add.bus_ref_missing"
+        )
+
+    existing = list(sub.get(sections_field) or [])
+    if any(s.get("section_id") == section_id for s in existing):
+        return _error_response(
+            f"Sekcja '{section_id}' już istnieje w {side.upper()}.",
+            "gpz_section.add.duplicate_section_id",
+        )
+
+    order = payload.get("order")
+    if order is None:
+        order = (max((s.get("order", 0) for s in existing), default=0) + 1)
+
+    new_section: dict[str, Any] = {
+        "section_id": section_id,
+        "order": int(order),
+        "bus_ref": bus_ref,
+    }
+    if payload.get("name"):
+        new_section["name"] = payload["name"]
+    if payload.get("line_field_name"):
+        new_section["line_field_name"] = payload["line_field_name"]
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None  # already checked
+    new_sections = list(new_sub.get(sections_field) or [])
+    new_sections.append(new_section)
+    # Sort deterministycznie po order, potem section_id (dla stabilności gdy order kolizja).
+    new_sections.sort(key=lambda s: (s.get("order", 0), s.get("section_id", "")))
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Dodano sekcję {side.upper()} '{section_id}' do stacji {substation_ref}",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_ADDED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        created=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref).
+
+    Payload:
+      substation_ref: str
+      side: 'lv' | 'hv' (default 'lv')
+      section_id: str            — ID sekcji do aktualizacji
+      updates: dict              — pola do zmiany (name/order/bus_ref/left_coupler_ref/right_coupler_ref/line_field_name)
+
+    Pola NIE w `updates` pozostają niezmienione. `section_id` NIE może być
+    zmieniony (immutable identyfikator).
+    """
+    substation_ref = payload.get("substation_ref")
+    section_id = payload.get("section_id")
+    if not substation_ref or not section_id:
+        return _error_response(
+            "Brak `substation_ref` lub `section_id`.",
+            "gpz_section.update.identifier_missing",
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.",
+            "gpz_section.update.substation_missing",
+        )
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.update.invalid_side")
+
+    existing_sections = sub.get(sections_field) or []
+    if not any(s.get("section_id") == section_id for s in existing_sections):
+        return _error_response(
+            f"Sekcja '{section_id}' nie istnieje w {side.upper()}.",
+            "gpz_section.update.section_missing",
+        )
+
+    updates = payload.get("updates") or {}
+    # Whitelist pól do aktualizacji (section_id NIE jest tu — immutable).
+    allowed_keys = {"name", "order", "bus_ref", "left_coupler_ref", "right_coupler_ref", "line_field_name"}
+    rejected = [k for k in updates.keys() if k not in allowed_keys]
+    if rejected:
+        return _error_response(
+            f"Niedozwolone klucze updates: {rejected}. Dozwolone: {sorted(allowed_keys)}.",
+            "gpz_section.update.disallowed_keys",
+        )
+    if "bus_ref" in updates:
+        if not any(b.get("ref_id") == updates["bus_ref"] for b in enm.get("buses", [])):
+            return _error_response(
+                f"Szyna '{updates['bus_ref']}' nie istnieje.",
+                "gpz_section.update.bus_ref_missing",
+            )
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None
+    new_sections = list(new_sub.get(sections_field) or [])
+    for sec in new_sections:
+        if sec.get("section_id") == section_id:
+            for key, value in updates.items():
+                # Allow None to clear optional fields (np. usuń coupler).
+                if value is None:
+                    sec.pop(key, None)
+                else:
+                    sec[key] = value
+            break
+    new_sections.sort(key=lambda s: (s.get("order", 0), s.get("section_id", "")))
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Zaktualizowano sekcję {side.upper()} '{section_id}'",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_UPDATED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        updated=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Usuwa sekcję GPZ ze stacji.
+
+    Walidacja:
+      - sekcja musi istnieć
+      - żadne `bay.gpz_section_id` w ENM nie może wskazywać na usuwaną sekcję
+        (operator musi najpierw przepiąć/usunąć pola)
+
+    Payload:
+      substation_ref: str
+      side: 'lv' | 'hv' (default 'lv')
+      section_id: str
+    """
+    substation_ref = payload.get("substation_ref")
+    section_id = payload.get("section_id")
+    if not substation_ref or not section_id:
+        return _error_response(
+            "Brak `substation_ref` lub `section_id`.",
+            "gpz_section.delete.identifier_missing",
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.",
+            "gpz_section.delete.substation_missing",
+        )
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.delete.invalid_side")
+
+    existing_sections = sub.get(sections_field) or []
+    if not any(s.get("section_id") == section_id for s in existing_sections):
+        return _error_response(
+            f"Sekcja '{section_id}' nie istnieje w {side.upper()}.",
+            "gpz_section.delete.section_missing",
+        )
+
+    # Walidacja: czy nie ma pól odwołujących się do tej sekcji?
+    bays_using_section = [
+        bay.get("ref_id")
+        for bay in enm.get("bays", [])
+        if bay.get("substation_ref") == substation_ref
+        and bay.get("gpz_section_id") == section_id
+    ]
+    if bays_using_section:
+        return _error_response(
+            f"Nie można usunąć sekcji '{section_id}': używana przez pola {bays_using_section}. "
+            "Najpierw przepiąć/usunąć pola.",
+            "gpz_section.delete.in_use",
+        )
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None
+    new_sections = [s for s in (new_sub.get(sections_field) or []) if s.get("section_id") != section_id]
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Usunięto sekcję {side.upper()} '{section_id}'",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_DELETED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        deleted=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Phase 0B: append_station_on_endpoint (operator-grade SLD plan v2)
+# ---------------------------------------------------------------------------
+
+
+def _find_endpoint_bus_for_run(enm: dict[str, Any], run_ref: str) -> str | None:
+    """Znajduje końcową szynę (terminal) dla LineRun po `run_ref`.
+
+    Heurystyka: corridor.ordered_segment_refs[-1].to_bus_ref jeśli to terminal
+    (helper_bus albo brak innych podłączeń niż via to_bus_ref).
+    """
+    for corridor in enm.get("corridors", []):
+        if corridor.get("ref_id") == run_ref:
+            ordered = corridor.get("ordered_segment_refs", [])
+            if not ordered:
+                return None
+            last_seg_ref = ordered[-1]
+            for branch in enm.get("branches", []):
+                if branch.get("ref_id") == last_seg_ref:
+                    return branch.get("to_bus_ref")
+    return None
+
+
+def _bus_is_free_terminal(enm: dict[str, Any], bus_ref: str) -> bool:
+    """Czy szyna jest wolnym terminalem (helper_bus + topology_terminal)?
+
+    Wolny terminal = nie jest przypisany do żadnej Substation (poza GPZ),
+    nie ma innych branch wychodzących, ma tag 'topology_terminal'.
+    """
+    bus = None
+    for b in enm.get("buses", []):
+        if b.get("ref_id") == bus_ref:
+            bus = b
+            break
+    if not bus:
+        return False
+    tags = bus.get("tags", []) or []
+    if "topology_terminal" not in tags and "helper_bus" not in tags:
+        # Bez tagów helper — sprawdź czy nie jest już końcówką stacji.
+        for sub in enm.get("substations", []):
+            if bus_ref in (sub.get("bus_refs") or []):
+                return False
+    # Ma terminal? Sprawdź ile branchów go ma jako endpoint.
+    inbound = sum(
+        1
+        for b in enm.get("branches", [])
+        if b.get("from_bus_ref") == bus_ref or b.get("to_bus_ref") == bus_ref
+    )
+    # Wolny terminal = dokładnie 1 branch dochodzi do niego (poprzedni segment).
+    return inbound <= 1
+
+
+def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Phase 0B: addytywna operacja — dodaj stację na końcu istniejącego ciągu.
+
+    Workflow operator-grade SLD plan v2: endpoint bay/segment → terminate
+    in station (bez rozcinania). Naturalny flow inżyniera: zakończ ciąg w
+    stacji zamiast dzielić odcinek w środku.
+
+    Payload:
+      endpoint_bus_ref: str    — terminal helper_bus na końcu segmentu (lub
+                                 użyj run_ref do auto-detekcji)
+      run_ref: str (opcjonalny) — ID corridor/LineRun (zamiast endpoint_bus_ref)
+      station_type: 'inline' | 'branch' | 'terminal' | 'sectional' | 'mv_lv'
+      station: { name, station_type, sn_voltage_kv?, nn_voltage_kv }
+      transformer: { transformer_catalog_ref } (opcjonalny)
+      nn_voltage_kv: float (opcjonalny — domyślnie z station.nn_voltage_kv)
+      dry_run: bool (Phase 0C-style preview)
+
+    Determinizm: stacja generuje stabilny ID z seed = endpoint_bus_ref + station.name.
+    Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
+    Substation. Endpoint_bus staje się pierwszą szyną SN nowej stacji.
+    """
+    dry_run = bool(payload.get("dry_run", False))
+    endpoint_bus_ref = payload.get("endpoint_bus_ref")
+    run_ref = payload.get("run_ref")
+    station_payload = payload.get("station", {})
+    station_name = station_payload.get("name") or payload.get("station_name") or "Nowa stacja"
+    transformer_payload = payload.get("transformer") or {}
+    # nn_voltage_kv: explicit z payload (None → fallback 0.4; 0 → walidacja niżej rzuca błąd)
+    nn_voltage_raw = station_payload.get("nn_voltage_kv")
+    if nn_voltage_raw is None:
+        nn_voltage_raw = payload.get("nn_voltage_kv")
+    nn_voltage_kv = nn_voltage_raw if nn_voltage_raw is not None else 0.4
+
+    # Step 0: walidacja wejścia
+    if not endpoint_bus_ref and run_ref:
+        endpoint_bus_ref = _find_endpoint_bus_for_run(enm, run_ref)
+    if not endpoint_bus_ref:
+        return _error_response(
+            "Brak identyfikatora terminala. Podaj `endpoint_bus_ref` lub `run_ref` "
+            "z istniejącym corridor.",
+            "station.append.endpoint_missing",
+        )
+
+    # Walidacja: bus istnieje
+    endpoint_bus = None
+    for b in enm.get("buses", []):
+        if b.get("ref_id") == endpoint_bus_ref:
+            endpoint_bus = b
+            break
+    if not endpoint_bus:
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie istnieje.",
+            "station.append.endpoint_not_found",
+        )
+
+    # Walidacja: bus jest wolnym terminalem (nie podłączony do innej Substation)
+    if not _bus_is_free_terminal(enm, endpoint_bus_ref):
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie jest wolnym terminalem — "
+            "jest już podłączona do innej stacji lub ma więcej niż 1 segment.",
+            "station.append.endpoint_not_free",
+        )
+
+    # Walidacja: voltage compat
+    sn_voltage_kv = endpoint_bus.get("voltage_kv")
+    if not sn_voltage_kv or sn_voltage_kv <= 0:
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie ma napięcia znamionowego.",
+            "station.append.voltage_missing",
+        )
+
+    if nn_voltage_kv <= 0:
+        return _error_response(
+            "Brak napięcia nN stacji. Podaj `nn_voltage_kv` > 0.",
+            "station.append.nn_voltage_missing",
+        )
+
+    # Walidacja station_type
+    station_type_raw = station_payload.get("station_type") or payload.get("station_type") or "terminal"
+    semantic_to_substation = {
+        "inline": "inline",
+        "branch": "branch",
+        "terminal": "mv_lv",
+        "sectional": "sectional",
+        "mv_lv": "mv_lv",
+        "A": "mv_lv",
+        "B": "inline",
+        "C": "branch",
+        "D": "sectional",
+    }
+    substation_type = semantic_to_substation.get(station_type_raw)
+    if not substation_type:
+        return _error_response(
+            f"Typ stacji '{station_type_raw}' nieprawidłowy. "
+            "Wymagane: inline, branch, terminal, sectional, mv_lv lub A-D.",
+            "station.append.station_type_invalid",
+        )
+
+    # Step 1: deterministic seed
+    seed = _compute_seed(
+        {
+            "op": "append_station_on_endpoint",
+            "endpoint_bus": endpoint_bus_ref,
+            "station_name": station_name,
+            "station_type": substation_type,
+        }
+    )
+    substation_ref = f"sub/{seed}/substation"
+    bus_nn_ref = f"bus/{seed}/nn"
+    bay_in_ref = f"bay/{seed}/in"
+    bay_tr_ref = f"bay/{seed}/tr"
+    transformer_ref = f"tr/{seed}/transformer"
+
+    # Dry-run: deepcopy, zwracamy preview metadata
+    new_enm = copy.deepcopy(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    # Step 2: utworzenie Substation
+    new_substation = {
+        "ref_id": substation_ref,
+        "name": station_name,
+        "station_type": substation_type,
+        "bus_refs": [endpoint_bus_ref],
+        "transformer_refs": [],
+        "tags": [],
+        "meta": {"created_by": "append_station_on_endpoint"},
+    }
+    new_enm.setdefault("substations", []).append(new_substation)
+    created.append(substation_ref)
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "STATION_CREATED",
+        "element_id": substation_ref,
+    })
+
+    # Step 3: Bay(IN) wskazujący na endpoint_bus
+    new_bay_in = {
+        "ref_id": bay_in_ref,
+        "name": f"Pole IN — {station_name}",
+        "bay_role": "IN",
+        "substation_ref": substation_ref,
+        "bus_ref": endpoint_bus_ref,
+        "equipment_refs": [],
+        "tags": [],
+        "meta": {},
+    }
+    new_enm.setdefault("bays", []).append(new_bay_in)
+    created.append(bay_in_ref)
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "FIELDS_CREATED_SN",
+        "element_id": bay_in_ref,
+    })
+
+    # Step 4: opcjonalny Transformator + Bus nN + Bay(TR)
+    transformer_catalog_ref = (
+        transformer_payload.get("transformer_catalog_ref")
+        or transformer_payload.get("catalog_ref")
+    )
+    if transformer_catalog_ref:
+        # Bus nN
+        bus_nn = {
+            "ref_id": bus_nn_ref,
+            "name": f"Szyna nN {station_name}",
+            "voltage_kv": nn_voltage_kv,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {"substation_ref": substation_ref},
+        }
+        new_enm.setdefault("buses", []).append(bus_nn)
+        new_substation["bus_refs"].append(bus_nn_ref)
+        created.append(bus_nn_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "BUS_NN_CREATED",
+            "element_id": bus_nn_ref,
+        })
+
+        # Transformator SN/nN
+        transformer = {
+            "ref_id": transformer_ref,
+            "name": f"TR {station_name}",
+            "hv_bus_ref": endpoint_bus_ref,
+            "lv_bus_ref": bus_nn_ref,
+            "uhv_kv": sn_voltage_kv,
+            "ulv_kv": nn_voltage_kv,
+            "sn_mva": transformer_payload.get("sn_mva", 0.0),
+            "uk_percent": transformer_payload.get("uk_percent", 0.0),
+            "pk_kw": transformer_payload.get("pk_kw", 0.0),
+            "catalog_ref": transformer_catalog_ref,
+            "catalog_namespace": "TRAFO_SN_NN",
+            "source_mode": "KATALOG",
+            "tags": [],
+            "meta": {},
+        }
+        # Materializacja z katalogu (ujednolicony wzorzec)
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=transformer_payload.get("catalog_binding"),
+            default_namespace="TRAFO_SN_NN",
+        )
+        if not isinstance(materialization, dict):
+            binding_payload, materialized_params = materialization
+            _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
+            _apply_materialized_transformer_fields(transformer, materialized_params)
+        new_enm.setdefault("transformers", []).append(transformer)
+        new_substation["transformer_refs"].append(transformer_ref)
+        created.append(transformer_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "TR_CREATED",
+            "element_id": transformer_ref,
+        })
+
+        # Bay(TR)
+        new_bay_tr = {
+            "ref_id": bay_tr_ref,
+            "name": f"Pole TR — {station_name}",
+            "bay_role": "TR",
+            "substation_ref": substation_ref,
+            "bus_ref": endpoint_bus_ref,
+            "equipment_refs": [transformer_ref],
+            "tags": [],
+            "meta": {},
+        }
+        new_enm.setdefault("bays", []).append(new_bay_tr)
+        created.append(bay_tr_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "FIELDS_CREATED_SN",
+            "element_id": bay_tr_ref,
+        })
+
+    # Step 5: re-tag endpoint_bus jako część stacji
+    for b in new_enm.get("buses", []):
+        if b.get("ref_id") == endpoint_bus_ref:
+            existing_tags = list(b.get("tags") or [])
+            if "topology_terminal" in existing_tags:
+                existing_tags.remove("topology_terminal")
+            if "helper_bus" in existing_tags:
+                existing_tags.remove("helper_bus")
+            existing_tags.append("substation_bus")
+            b["tags"] = existing_tags
+            meta = b.setdefault("meta", {})
+            meta["substation_ref"] = substation_ref
+            meta["render_on_sld"] = True
+            meta["show_in_project_tree"] = True
+            break
+
+    # Step 6: update LineRun (corridor) jeśli wskazany
+    if run_ref:
+        for corridor in new_enm.get("corridors", []):
+            if corridor.get("ref_id") == run_ref:
+                stations = corridor.setdefault("station_refs", [])
+                if substation_ref not in stations:
+                    stations.append(substation_ref)
+                ev_seq += 1
+                events.append({
+                    "event_seq": ev_seq,
+                    "event_type": "LOGICAL_VIEWS_UPDATED",
+                    "element_id": run_ref,
+                })
+                break
+
+    # Audit + emit STATION_APPENDED_ON_ENDPOINT
+    audit.append({
+        "step": ev_seq,
+        "action": f"Utworzono stację '{station_name}' na końcu odcinka",
+        "element_id": substation_ref,
+    })
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "STATION_APPENDED_ON_ENDPOINT",
+        "element_id": substation_ref,
+        "affected_object_refs": list(created),
+    })
+
+    response = _response(
+        new_enm,
+        created=created,
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+    # Phase 0C-style dry_run: usunąć snapshot, zwrócić preview metadata
+    if dry_run:
+        response["dry_run"] = True
+        response["preview"] = {
+            "appended_station_id": substation_ref,
+            "endpoint_bus_ref": endpoint_bus_ref,
+            "created_refs": list(created),
+            "electrical_impact": {
+                "topology_changed": True,
+                "affected_object_refs": [substation_ref, *created],
+                "endpoint_bus_consumed": True,
+                "new_terminal_bus_ref": bus_nn_ref if transformer_catalog_ref else None,
+            },
+        }
+        response.pop("snapshot", None)
+
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -4291,6 +5129,10 @@ _HANDLERS: dict[str, Any] = {
     "update_element_parameters": update_element_parameters,
     "delete_element": delete_element,
     "refresh_snapshot": refresh_snapshot,
+    "add_gpz_section": add_gpz_section,
+    "update_gpz_section": update_gpz_section,
+    "delete_gpz_section": delete_gpz_section,
+    "append_station_on_endpoint": append_station_on_endpoint,
 }
 
 

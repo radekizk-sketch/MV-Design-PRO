@@ -40,6 +40,10 @@ export type CanonicalOpName =
   | 'add_ct'
   | 'add_vt'
   | 'add_relay'
+  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+  | 'add_gpz_section'
+  | 'update_gpz_section'
+  | 'delete_gpz_section'
   | 'delete_element'
   | 'refresh_snapshot';
 
@@ -65,6 +69,9 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_ct',
   'add_vt',
   'add_relay',
+  'add_gpz_section',
+  'update_gpz_section',
+  'delete_gpz_section',
   'delete_element',
   'refresh_snapshot',
 ] as const satisfies readonly CanonicalOpName[];
@@ -494,5 +501,41 @@ export interface ConnectSecondaryRingSNPayload {
 export interface SetNormalOpenPointPayload {
   switch_ref: string;
   corridor_ref?: string;
+}
+
+// =============================================================================
+// Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
+// =============================================================================
+
+export type GpzSectionSide = 'lv' | 'hv';
+
+export interface AddGpzSectionPayload {
+  substation_ref: string;
+  side?: GpzSectionSide;
+  section_id: string;
+  bus_ref: string;
+  order?: number;
+  name?: string;
+  line_field_name?: string;
+}
+
+export interface UpdateGpzSectionPayload {
+  substation_ref: string;
+  side?: GpzSectionSide;
+  section_id: string;
+  updates: {
+    name?: string | null;
+    order?: number;
+    bus_ref?: string;
+    left_coupler_ref?: string | null;
+    right_coupler_ref?: string | null;
+    line_field_name?: string | null;
+  };
+}
+
+export interface DeleteGpzSectionPayload {
+  substation_ref: string;
+  side?: GpzSectionSide;
+  section_id: string;
 }
 

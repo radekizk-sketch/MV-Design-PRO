@@ -620,6 +620,10 @@ class Substation(ENMElement):
     transformer_refs: list[str] = []
     entry_point_ref: str | None = None
     gpz_sections: list[GPZSection] = []
+    # Phase 0A audit fix 8/8: GPZ HV side (110 kV) — eliminuje synthesize w adapterze.
+    # Każda sekcja HV ma własny bus, opcjonalnie source_ref + couplery do innych sekcji.
+    # Pusta lista = single 110 kV bus (kanon) — adapter generuje 1 sekcję domyślną.
+    gpz_hv_sections: list[GPZSection] = []
     # PR-3 rebuild SLD: porty zewnętrzne stacji + multi-voltage nN
     external_ports: list[Port] = []
     nn_voltage_levels: list[float] = []  # poziomy nN (np. [0.4, 0.69])
@@ -662,6 +666,24 @@ class Bay(ENMElement):
     # PR-3 rebuild SLD: porty pola — wnioskowane z bay_role + bus + reservation slots
     ports: list[Port] = []
     bay_template_ref: str | None = None  # referencja do BayTemplate w katalogu
+    # Phase 0A audit fix 8/8: kanoniczny identyfikator dyspozytorski pola
+    # (np. "10", "23/1") — wyświetlany pod kolumną w SLD GPZ. NIE pochodzi
+    # z `name` (które może być długie/lokalne), tylko explicit numer pola.
+    bay_number: str | None = None
+    # Krótka nazwa odpływu/feedera — UI label osobny od `bay.name`. Np.
+    # "SADY", "OKRĘŻNA" — używany w nagłówku kolumny w SLD GPZ.
+    feeder_short_name: str | None = None
+    # Cel feedera (substation ref docelowej stacji). Eliminuje wnioskowanie
+    # z grafu w adapterze SLD (BLOCKER system §D). Adapter wyświetla
+    # destination jako "→ {substation.name}".
+    outgoing_destination_ref: str | None = None
+    # Phase 0B-1: runtime_state telemetry pipeline (OPEN Inv 17 → RESOLVED).
+    # Snapshot SCADA per-pole — primary_device_states (CB/DS/ES actual_state),
+    # control_mode, pending_command, energization_and_safety. Adapter SLD
+    # konsumuje to pole gdy obecne; brak → renderer pokazuje neutral 'unknown'
+    # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
+    # późniejszej sekcji modułu.
+    runtime_state: "BayRuntimeState | None" = None
 
 
 # ---------------------------------------------------------------------------
@@ -1153,3 +1175,8 @@ class EnergyNetworkModel(BaseModel):
     # PR-3 rebuild SLD: nowe kolekcje (addytywne, opcjonalne)
     line_runs: list[LineRun] = []
     connection_nodes: list[ConnectionNode] = []
+
+
+# Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał
+# się do faktycznej klasy zdefiniowanej niżej w module (linia 929).
+Bay.model_rebuild()

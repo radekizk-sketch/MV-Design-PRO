@@ -13,11 +13,43 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
+import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
 import type {
+  BayRuntimeState,
+  BaySwitchState,
   EnergyNetworkModel,
   LogicalViewsV1,
 } from '../../../../../types/enm';
+
+function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
+  return {
+    actual_state: 'nieznany',
+    control_mode: 'miejscowe',
+    communication_ok: false,
+    interlock_blocked: false,
+    ...overrides,
+  };
+}
+
+function makeRuntime(states: Record<string, BaySwitchState>, opts: Partial<BayRuntimeState> = {}): BayRuntimeState {
+  return {
+    secondary_communication_status: 'ok',
+    last_good_update_at: null,
+    control_availability: 'dostepne',
+    measurement_availability: 'dostepne',
+    primary_device_states: states,
+    active_alarms: [],
+    pending_command: null,
+    energization_and_safety: {
+      energized_from_bus_side: false,
+      energized_from_feeder_side: false,
+      grounded: false,
+      visible_isolation_gap: false,
+      safe_to_work: false,
+    },
+    ...opts,
+  };
+}
 
 const EMPTY_HEADER = {
   enm_version: '1.0' as const,
@@ -191,6 +223,407 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.ders.find((d) => d.id === 'PV-1')?.nominalPowerKw).toBe(1500);
   });
 
+  it('GPZ → GpzRendererProps zawiera sections + couplers + bays z ENM (e2e wiring)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'BUS-15kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'bs', ref_id: 'bs-out', name: 'BUS-out', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ Centralny', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: ['TR1', 'TR2'],
+        gpz_sections: [
+          { section_id: 'SEC-A', order: 1, name: 'sekcja A', bus_ref: 'b15', right_coupler_ref: 'bay-spr' },
+          { section_id: 'SEC-B', order: 2, name: 'sekcja B', bus_ref: 'b15', left_coupler_ref: 'bay-spr' },
+        ],
+      } as never,
+      {
+        id: 's2', ref_id: 'ST-001', name: 'ST-001 SADY', tags: [], meta: {},
+        station_type: 'mv_lv', bus_refs: ['bs-out'], transformer_refs: [],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-out-1', name: 'POLE 01 SADY', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'SEC-A', equipment_refs: ['cb1', 'ds1'] } as never,
+      { id: 'b2', ref_id: 'bay-spr', name: 'Sprzęgło', tags: [], meta: {}, bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15', equipment_refs: ['cb-spr'] } as never,
+      { id: 'b3', ref_id: 'bay-tr-1', name: 'Pole TR1', tags: [], meta: {}, bay_role: 'TR', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'SEC-B', equipment_refs: [] } as never,
+    ];
+    snap.branches = [
+      { id: 'br1', ref_id: 'br1', name: 'Kabel Sady', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'bs-out', status: 'closed', length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1 } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs).toHaveLength(1);
+    const g = r.gpzs[0];
+
+    /* Sections z ENM gpz_sections[]. */
+    expect(g.sections).toHaveLength(2);
+    expect(g.sections?.[0].sectionId).toBe('SEC-A');
+    expect(g.sections?.[0].sectionLabel).toBe('sekcja A');
+    expect(g.sections?.[1].sectionLabel).toBe('sekcja B');
+
+    /* Bays per sekcja (excluding couplers). */
+    expect(g.sections?.[0].bays).toHaveLength(1);
+    expect(g.sections?.[0].bays[0].bayRef).toBe('bay-out-1');
+    expect(g.sections?.[1].bays).toHaveLength(1);
+    expect(g.sections?.[1].bays[0].bayRef).toBe('bay-tr-1');
+
+    /* Coupler między sekcjami. */
+    expect(g.couplers).toHaveLength(1);
+    expect(g.couplers?.[0].couplerId).toBe('bay-spr');
+    expect(g.couplers?.[0].leftSectionId).toBe('SEC-A');
+    expect(g.couplers?.[0].rightSectionId).toBe('SEC-B');
+
+    /* TransformerCount z transformer_refs. */
+    expect(g.transformerCount).toBe(2);
+
+    /* feedersCount z bays[role=OUT]. */
+    expect(g.feedersCount).toBe(1);
+
+    /* Outgoing feeder destination derived from topology branch.
+     * Invariant 9: brak telemetrii w ENM → energized UNDEFINED (NIE
+     * hardcoded true). Renderer wyświetli neutral kolor. */
+    const outBay = g.sections?.[0].bays[0];
+    expect(outBay?.outgoingFeeder?.destination).toBe('→ ST-001 SADY');
+    expect(outBay?.outgoingFeeder?.energized).toBeUndefined();
+
+    /* Bay z TR (nieliniowy) — brak outgoingFeeder. */
+    const trBay = g.sections?.[1].bays[0];
+    expect(trBay?.outgoingFeeder).toBeUndefined();
+
+    /* hasMissingRequiredDevice = true gdy equipment_refs puste. */
+    expect(trBay?.hasMissingRequiredDevice).toBe(true);
+    expect(outBay?.hasMissingRequiredDevice).toBe(false);
+  });
+
+  it('Bay LINE_OUT z ENM → esState=unknown + Q-designations IEC 81346 (Q0/Q9/Q1/Q8/T1)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-1', name: 'POLE 01', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    /* ES present (line role → BHP) ale stan unknown (Invariant 9). */
+    expect(bay?.esState).toBe('unknown');
+    /* Q-designations zgodnie z IEC 81346-2 dla pola liniowego. */
+    expect(bay?.qDesignations).toEqual({ cb: 'Q0', ds: 'Q9', dsBus: 'Q1', es: 'Q8', ct: 'T1' });
+  });
+
+  it('Bay COUPLER → esState=absent (sprzęgło GPZ tradycyjnie bez ES)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-cpl', name: 'Sprzęgło', tags: [], meta: {}, bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* COUPLER bays są w sekcji ale są filtrowane przez sectionFromGpzSection
+     * (kuplery renderowane osobno w couplers[]). Tu testujemy nie ten case
+     * — bo coupler bay nie pojawi się w bays[]. */
+    expect(r.gpzs[0].sections?.[0].bays).toHaveLength(0);
+  });
+
+  it('Bay TR → esState=unknown + Q-designations bez DS_LIN (TR ma tylko DS_BUS)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-tr', name: 'Pole TR1', tags: [], meta: {}, bay_role: 'TR', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.esState).toBe('unknown');
+    expect(bay?.qDesignations).toEqual({ cb: 'Q0', ds: 'Q1', es: 'Q8', ct: 'T1' });
+  });
+
+  it('ENM gpz_hv_sections[] dostarczone → adapter NIE syntetyzuje, używa explicit (BLOCKER-26 fix)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b110', ref_id: 'b110-A', name: 'BUS-110-A', voltage_kv: 110, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b110b', ref_id: 'b110-B', name: 'BUS-110-B', voltage_kv: 110, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b15', ref_id: 'b15', name: 'BUS-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.transformers = [
+      { id: 't1', ref_id: 'TR1', name: 'TR1', tags: [], meta: {}, hv_bus_ref: 'b110-A', lv_bus_ref: 'b15', sn_mva: 25, uhv_kv: 110, ulv_kv: 15, uk_percent: 12, pk_kw: 100 } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: ['TR1'],
+        gpz_hv_sections: [
+          { section_id: 'hv-A', order: 1, name: 'HV-A', bus_ref: 'b110-A' },
+          { section_id: 'hv-B', order: 2, name: 'HV-B', bus_ref: 'b110-B' },
+        ],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'hv-bay-1', name: 'POR', tags: [], meta: {}, bay_role: 'IN', substation_ref: 'GPZ-1', bus_ref: 'b110-A', gpz_section_id: 'hv-A', equipment_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* hvSections z ENM NIE z synthesize — 2 sekcje (NIE 1 z synth). */
+    expect(r.gpzs[0].hvSections).toHaveLength(2);
+    expect(r.gpzs[0].hvSections?.[0].sectionId).toBe('hv-A');
+    expect(r.gpzs[0].hvSections?.[1].sectionId).toBe('hv-B');
+    /* Pole HV-bay-1 jest w sekcji hv-A (z gpz_section_id), NIE syntezowane. */
+    expect(r.gpzs[0].hvSections?.[0].bays).toHaveLength(1);
+    expect(r.gpzs[0].hvSections?.[0].bays[0].bayRef).toBe('hv-bay-1');
+    /* NIE ma prefixu __hv-derived- (bo NIE syntezowane). */
+    expect(r.gpzs[0].hvSections?.[0].bays[0].bayRef).not.toContain('__hv-derived-');
+  });
+
+  it('Bay.bay_number z ENM → renderer otrzymuje przez bayNumber prop', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'POLE 23', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        bay_number: '23/1', // explicit kanon dyspozytorski
+        feeder_short_name: 'SADY',
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.bayNumber).toBe('23/1');
+    /* feeder_short_name preferowane przed bay.name. */
+    expect(bay?.feederName).toBe('SADY');
+  });
+
+  it('Bay BEZ outgoing_destination_ref + BEZ branch graph → outgoingFeeder=undefined (Invariant 9)', () => {
+    /* Phase 0A audit fix 10/12: STRICT mode — brak ENM ref + brak branch
+     * graph → undefined (NIE zafałszowane). Audyt SLD §C.2: heurystyka
+     * graph-based zachowana jako fallback ale nie kieruje. */
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        /* Brak outgoing_destination_ref + brak branches → undefined. */
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.outgoingFeeder).toBeUndefined();
+  });
+
+  it('Bay.outgoing_destination_ref z ENM → adapter NIE wnioskuje z grafu, używa explicit', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+      { id: 'st', ref_id: 'ST-DEST', name: 'STACJA DOCELOWA', tags: [], meta: {}, station_type: 'mv_lv', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        outgoing_destination_ref: 'ST-DEST',
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    /* Destination = nazwa stacji (z lookupu), NIE z wnioskowania graph. */
+    expect(bay?.outgoingFeeder?.destination).toBe('→ STACJA DOCELOWA');
+  });
+
+  it('Invariant 9 — coupler bez telemetrii ENM → closed=unknown (NIE hardcoded true)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b1', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [
+          { section_id: 'A', order: 1, bus_ref: 'b15', right_coupler_ref: 'spr1' },
+          { section_id: 'B', order: 2, bus_ref: 'b15', left_coupler_ref: 'spr1' },
+        ],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b', ref_id: 'spr1', name: 'Sprzęgło', tags: [], meta: {}, bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15', equipment_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs[0].couplers).toHaveLength(1);
+    expect(r.gpzs[0].couplers?.[0].closed).toBe('unknown');
+  });
+
+  it('Invariant 9 — synthesized HV bays NIE mają hardcoded energization/cbState/dsState', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b110', ref_id: 'b110', name: 'BUS-110', voltage_kv: 110, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b15', ref_id: 'b15', name: 'BUS-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.transformers = [
+      { id: 't1', ref_id: 'TR1', name: 'TR1', tags: [], meta: {}, hv_bus_ref: 'b110', lv_bus_ref: 'b15', sn_mva: 25, uhv_kv: 110, ulv_kv: 15, uk_percent: 12, pk_kw: 100 } as never,
+    ];
+    snap.sources = [
+      { id: 'src1', ref_id: 'EC2', name: 'EC2', tags: [], meta: {}, bus_ref: 'b110', model: 'thevenin', sk3_mva: 1500 } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: ['TR1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const hvSec = r.gpzs[0].hvSections?.[0];
+    expect(hvSec).toBeDefined();
+    /* HV bays NIE mają hardkodowanych runtime states. */
+    for (const bay of hvSec!.bays) {
+      expect(bay.energization).toBeUndefined();
+      expect(bay.cbState).toBeUndefined();
+      expect(bay.dsState).toBeUndefined();
+      /* bayRef ma stabilny prefix `__hv-derived-` (synthesized — NIE ENM bay ref). */
+      expect(bay.bayRef).toContain('__hv-derived-');
+    }
+  });
+
+  it('Invariant 9 — inferHvVoltageKv nie używa heurystyki "voltage > 30" (deterministyczne ENM lookup)', () => {
+    /* GPZ bez transformatorów → voltageHighKv=110 jako default UI fallback,
+     * ale derived path nie używa heurystyki source.bus_ref. */
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* Brak trafa → fallback 110 (na poziomie UI). */
+    expect(r.gpzs[0].voltageHighKv).toBe(110);
+    /* Brak hvSections — brak danych do syntezy. */
+    expect(r.gpzs[0].hvSections).toBeUndefined();
+  });
+
+  it('GPZ bez gpz_sections → sections=[] + couplers=[] (no-op gracefully)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b1', ref_id: 'b1', name: 'B1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b1'], transformer_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs).toHaveLength(1);
+    expect(r.gpzs[0].sections).toEqual([]);
+    expect(r.gpzs[0].couplers).toEqual([]);
+    expect(r.gpzs[0].feedersCount).toBe(0);
+  });
+
+  it('GPZ z transformatorem 110/SN → voltageHighKv = uhv_kv z transformatora', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b1', ref_id: 'b110', name: 'BUS-110', voltage_kv: 110, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b2', ref_id: 'b15', name: 'BUS-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.transformers = [
+      { id: 't1', ref_id: 'TR1', name: 'TR1', tags: [], meta: {}, hv_bus_ref: 'b110', lv_bus_ref: 'b15', sn_mva: 25, uhv_kv: 110, ulv_kv: 15, uk_percent: 12, pk_kw: 100 } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: ['TR1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs[0].voltageHighKv).toBe(110);
+    expect(r.gpzs[0].voltageLowKv).toBe(15);
+    expect(r.gpzs[0].transformerCount).toBe(1);
+  });
+
+  it('GPZ z transformatorem + source → auto-syntezuje hvSections z TR feeder + incoming bay', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b110', ref_id: 'b110', name: 'BUS-110', voltage_kv: 110, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 'b15', ref_id: 'b15', name: 'BUS-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.transformers = [
+      { id: 't1', ref_id: 'TR1', name: 'TR1', tags: [], meta: {}, hv_bus_ref: 'b110', lv_bus_ref: 'b15', sn_mva: 25, uhv_kv: 110, ulv_kv: 15, uk_percent: 12, pk_kw: 100 } as never,
+      { id: 't2', ref_id: 'TR2', name: 'TR2', tags: [], meta: {}, hv_bus_ref: 'b110', lv_bus_ref: 'b15', sn_mva: 25, uhv_kv: 110, ulv_kv: 15, uk_percent: 12, pk_kw: 100 } as never,
+    ];
+    snap.sources = [
+      { id: 'src1', ref_id: 'EC2', name: 'EC2', tags: [], meta: {}, bus_ref: 'b110', model: 'thevenin', sk3_mva: 1500 } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: ['TR1', 'TR2'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const g = r.gpzs[0];
+    expect(g.hvSections).toBeDefined();
+    expect(g.hvSections).toHaveLength(1);
+    const hvSec = g.hvSections![0];
+    expect(hvSec.busVoltageKv).toBe(110);
+    expect(hvSec.sectionLabel).toBe('sekcja A');
+    /* 1 incoming + 2 TR feeders = 3 bays */
+    expect(hvSec.bays).toHaveLength(3);
+    expect(hvSec.bays[0].fieldRole).toBe('LINE_IN');
+    expect(hvSec.bays[0].designation).toBe('EC2');
+    expect(hvSec.bays[1].feederName).toBe('TR1');
+    expect(hvSec.bays[2].feederName).toBe('TR2');
+  });
+
+  it('GPZ bez transformatorów → hvSections=undefined (single-bus mode)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'BUS-15', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs[0].hvSections).toBeUndefined();
+  });
+
   it('Stacje pole-wymiarowe → StationOnRunRendererProps z poprawnym topologicalType', () => {
     const snap = buildEmptySnapshot();
     snap.substations = [
@@ -207,5 +640,371 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(types).toContain('przelotowa');
     expect(types).toContain('odgałęźna');
     expect(types).toContain('sekcyjna');
+  });
+});
+
+// =============================================================================
+// Phase 0B-1: BayRuntimeState telemetry pipeline (OPEN Inv 17 → RESOLVED)
+// =============================================================================
+
+describe('projectBayTelemetry — mapowanie BayRuntimeState → GpzBayDescriptor (commit 13)', () => {
+  it('null/undefined runtime → puste pola (renderer pokazuje neutral)', () => {
+    expect(projectBayTelemetry(null)).toEqual({});
+    expect(projectBayTelemetry(undefined)).toEqual({});
+  });
+
+  it('CB zamknięty + zdalne → cbState=closed, controlMode=remote', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.controlMode).toBe('remote');
+  });
+
+  it('CB otwarty + miejscowe → cbState=open, controlMode=local', () => {
+    const rt = makeRuntime({
+      'apparatus_cb': makeSwitchState({ actual_state: 'otwarty', control_mode: 'miejscowe' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('open');
+    expect(r.controlMode).toBe('local');
+  });
+
+  it('DS_LIN i ES osobno z różnymi stanami → mapowane niezależnie', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+      'apparatus_es_q8': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.dsState).toBe('open');
+    expect(r.esState).toBe('closed');
+  });
+
+  it('actual_state="awaria" → cbState=unknown (renderer neutral)', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'awaria', control_mode: 'odstawione' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('unknown');
+  });
+
+  it('"_naped_rozbrojony" warianty → mapowane na pozycję mechaniczną', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety_naped_rozbrojony', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty_naped_rozbrojony', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.dsState).toBe('open');
+  });
+
+  it('pending_command obecny → inManipulation=true (renderer wyróżnia żółtym)', () => {
+    const rt = makeRuntime(
+      {
+        'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      },
+      {
+        pending_command: {
+          command_id: 'cmd-1',
+          command_kind: 'open',
+          target_device_ref: 'apparatus_cb_q0',
+          state: 'oczekuje',
+          progress_percent: null,
+          last_event_at: null,
+          last_event_message_pl: null,
+        } as never,
+      },
+    );
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBe(true);
+  });
+
+  it('interlock_blocked na CB → inManipulation=true', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({
+        actual_state: 'zamkniety',
+        control_mode: 'zdalne',
+        interlock_blocked: true,
+      }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBe(true);
+  });
+
+  it('Brak pending_command + brak interlocków → inManipulation=undefined', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBeUndefined();
+  });
+
+  it('Klucze deterministycznie sortowane → stabilny wybór gdy >1 device w kategorii', () => {
+    const rt1 = makeRuntime({
+      'apparatus_cb_q0_b': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+      'apparatus_cb_q0_a': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const rt2 = makeRuntime({
+      'apparatus_cb_q0_a': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_cb_q0_b': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+    });
+    expect(projectBayTelemetry(rt1).cbState).toBe('closed');  // pierwszy alfabetycznie = a
+    expect(projectBayTelemetry(rt2).cbState).toBe('closed');
+  });
+
+  it('DS_BUS rozróżnione od DS_LIN po nazwie klucza (_dsbus vs _dslin)', () => {
+    const rt = makeRuntime({
+      'apparatus_ds_bus_q1': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    /* DS_LIN to ten "domyślny" mapowany do dsState w GpzBayDescriptor.
+     * DS_BUS jest osobny — adapter na razie nie eksponuje go, ale klasyfikacja
+     * w pickFirstStateForCategory rozróżnia oba. */
+    expect(r.dsState).toBe('open');  // DS_LIN actual=otwarty
+  });
+});
+
+// =============================================================================
+// Phase 0B-4: LineRun.stations[] consumed by adapter (PARTIAL → RESOLVED)
+// =============================================================================
+
+describe('buildStations — konsumuje line_runs.stations[] z explicit order', () => {
+  it('Stacje w line_runs.stations[] sortowane po order, jeden ciąg = jeden kanał Y', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'B', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'ST-3', name: 'C', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-A',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'ST-3', order: 3 },
+          { substation_ref: 'ST-1', order: 1 },
+          { substation_ref: 'ST-2', order: 2 },
+        ],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(3);
+    /* Sortowanie po order: ST-1 (order=1) → ST-2 (order=2) → ST-3 (order=3). */
+    expect(r.stations[0].id).toBe('ST-1');
+    expect(r.stations[1].id).toBe('ST-2');
+    expect(r.stations[2].id).toBe('ST-3');
+    /* Wszystkie 3 stacje na tym samym kanale Y (1 ciąg). */
+    expect(r.stations[0].y).toBe(r.stations[1].y);
+    expect(r.stations[1].y).toBe(r.stations[2].y);
+  });
+
+  it('Wiele line_runs → osobne kanały Y, deterministyczne sortowanie po lineRun.id', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-A1', name: 'A1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-B1', name: 'B1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-Z', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-z', starting_port_ref: 'port-z',
+        segments: [], stations: [{ substation_ref: 'ST-B1', order: 1 }],
+      },
+      {
+        id: 'run-A', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-a', starting_port_ref: 'port-a',
+        segments: [], stations: [{ substation_ref: 'ST-A1', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    /* Sortowanie line_runs po id: run-A (idx=0) → run-Z (idx=1).
+     * Stacje w run-A na kanale Y_RUN_BASE; stacje w run-Z na kanale Y_RUN_BASE+RUN_PITCH. */
+    const stationA = r.stations.find((s) => s.id === 'ST-A1');
+    const stationB = r.stations.find((s) => s.id === 'ST-B1');
+    expect(stationA).toBeDefined();
+    expect(stationB).toBeDefined();
+    expect(stationA!.y).toBeLessThan(stationB!.y);
+  });
+
+  it('Stacje NIE wymienione w line_runs (orphans) → osobny kanał Y po lineRun-bazowanych', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-IN-RUN', name: 'In', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-ORPHAN', name: 'Orphan', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [], stations: [{ substation_ref: 'ST-IN-RUN', order: 1 }],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    const inRun = r.stations.find((s) => s.id === 'ST-IN-RUN');
+    const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
+    expect(inRun).toBeDefined();
+    expect(orphan).toBeDefined();
+    /* Orphan na osobnym (wyższym) kanale Y. */
+    expect(orphan!.y).toBeGreaterThan(inRun!.y);
+  });
+
+  it('Brak line_runs (legacy ENM) → wszystkie stacje jako orphans (back-compat)', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'B', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    /* Brak snap.line_runs → fallback do orphan placement (legacy behavior). */
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.stations).toHaveLength(2);
+    /* Sortowanie alfabetyczne po ref_id: ST-1 → ST-2. Oba w kanale 0 (orphanRunBase=0). */
+    expect(r.stations[0].id).toBe('ST-1');
+    expect(r.stations[1].id).toBe('ST-2');
+    expect(r.stations[0].y).toBe(r.stations[1].y);
+  });
+
+  it('Stacja typu GPZ NIE wpada do field stations nawet gdy w line_runs', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'g', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's1', ref_id: 'ST-1', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'GPZ-1', order: 1 },  // GPZ — pomijany
+          { substation_ref: 'ST-1', order: 2 },
+        ],
+      },
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* GPZ NIE jest w r.stations (jest osobno w r.gpzs). */
+    expect(r.stations.map((s) => s.id)).toEqual(['ST-1']);
+  });
+
+  it('Determinizm: ten sam ENM z line_runs → ten sam output 5× pod rząd', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-A', name: 'A', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-B', name: 'B', tags: [], meta: {}, station_type: 'branch', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1', run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1', starting_port_ref: 'port-1',
+        segments: [],
+        stations: [
+          { substation_ref: 'ST-B', order: 2 },
+          { substation_ref: 'ST-A', order: 1 },
+        ],
+      },
+    ];
+    const reference = buildSldDataFromSnapshot(snap, null);
+    for (let i = 0; i < 5; i++) {
+      const result = buildSldDataFromSnapshot(snap, null);
+      expect(result.stations).toEqual(reference.stations);
+    }
+  });
+});
+
+describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {
+  it('Bay z runtime_state CB=zamkniety → GpzBayDescriptor.cbState=closed', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        runtime_state: makeRuntime({
+          'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+          'apparatus_es_q8': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+        }),
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.cbState).toBe('closed');
+    expect(bay?.esState).toBe('open');
+    expect(bay?.controlMode).toBe('remote');
+  });
+
+  it('Bay BEZ runtime_state → cbState undefined, esState fallback ("unknown" gdy hasEs)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        /* brak runtime_state */
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.cbState).toBeUndefined();
+    expect(bay?.dsState).toBeUndefined();
+    expect(bay?.controlMode).toBeUndefined();
+    /* hasEs=true dla OUT → fallback 'unknown' (Invariant 9). */
+    expect(bay?.esState).toBe('unknown');
+  });
+
+  it('Coupler bay z runtime_state → couplerDescriptor.closed=closed', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [
+          { section_id: 'A', order: 1, bus_ref: 'b15', right_coupler_ref: 'bay-coup' },
+          { section_id: 'B', order: 2, bus_ref: 'b15', left_coupler_ref: 'bay-coup' },
+        ],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'cpl', ref_id: 'bay-coup', name: 'CPL', tags: [], meta: {},
+        bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15',
+        equipment_refs: ['cb-coup'],
+        runtime_state: makeRuntime({
+          'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+        }),
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs[0].couplers?.[0]?.closed).toBe('closed');
   });
 });

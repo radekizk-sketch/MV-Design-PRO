@@ -26,6 +26,28 @@ export interface DerRendererProps {
   readonly selected?: boolean;
   readonly missingData?: boolean;
   /**
+   * Phase 0C operator-grade SLD plan v2 (Acceptance Invariant 10):
+   * DER zawsze ma PCC + connection_variant + port + voltage_level —
+   * albo widoczny missing-connection blocker.
+   *
+   * `missingPcc=true` renderuje czerwony X badge nadrzędny do innych badge'y
+   * (dominujący wizualnie, operator widzi natychmiast). Backend walidator
+   * E028/E029 już blokuje runs gdy ten flag, ale renderer wyróżnia obiekt
+   * również wizualnie aby operator wiedział KTÓRY DER jest niekompletny.
+   */
+  readonly missingPcc?: boolean;
+  /**
+   * Phase 0C: wariant przyłączenia (z ENM Generator.connection_variant).
+   * Konsumowane przez `DerConnectionTreeRenderer` przy LOD ≥ 3 do narysowania
+   * pełnego drzewa: falownik → trafo blokowy → port stacji.
+   */
+  readonly connectionVariant?:
+    | 'nn_side'
+    | 'block_transformer'
+    | 'LV_BEHIND_STATION_TRANSFORMER'
+    | 'DEDICATED_MV_CONNECTION'
+    | 'SOURCE_CONNECTION_STATION';
+  /**
    * Naprawa hmi.3: LOD (Level of Detail) — uproszczony marker dla zoom out.
    *  - 'full' (default): pełen symbol (DER_BLOCK_SIZE 60px)
    *  - 'compact': romb mniejszy + etykieta typu (35px)
@@ -55,7 +77,7 @@ const KIND_FILL_COLOR: Record<DerRendererProps['kind'], string> = {
 export function DerRenderer(props: DerRendererProps): JSX.Element {
   const {
     id, x, y, kind, name, nominalPowerKw, hasBlockTransformer,
-    selected, missingData, lod = 'full', onClick, onDoubleClick,
+    selected, missingData, missingPcc, lod = 'full', onClick, onDoubleClick,
   } = props;
 
   // Naprawa hmi.3: LOD = 'marker' renderuje minimalną kropkę (overview zoom).
@@ -173,6 +195,43 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         >
           <title>Brakuje danych do obliczeń</title>
         </circle>
+      )}
+      {/* Phase 0C: missing PCC blocker — dominujący wizualnie czerwony X badge.
+       * Renderowany NAD innymi badge'ami (Acceptance Invariant 10: DER bez PCC =
+       * blocker, NIE normalny badge). */}
+      {missingPcc && (
+        <g data-testid={`sld-v2-der-${id}-missing-pcc`}>
+          <circle
+            cx={half - 6}
+            cy={half - 6}
+            r={8}
+            fill="#FF4040"
+            stroke="#A00000"
+            strokeWidth={1.5}
+            opacity={0.95}
+          >
+            <title>BLOKADA: Brak punktu przyłączenia (PCC) lub connection_variant</title>
+          </circle>
+          {/* Czerwony X jako symbol blocker */}
+          <line
+            x1={half - 9}
+            y1={half - 9}
+            x2={half - 3}
+            y2={half - 3}
+            stroke="#FFFFFF"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+          <line
+            x1={half - 9}
+            y1={half - 3}
+            x2={half - 3}
+            y2={half - 9}
+            stroke="#FFFFFF"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+          />
+        </g>
       )}
     </g>
   );

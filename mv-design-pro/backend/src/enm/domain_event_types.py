@@ -43,4 +43,10 @@ DOMAIN_EVENT_TYPES: list[str] = [
     "ANALYSIS_RUN_STARTED",
     "ANALYSIS_RUN_COMPLETED",
     "RESULTS_MAPPED",
+    # Phase 0B: append-on-endpoint workflow (operator-grade SLD plan v2)
+    "STATION_APPENDED_ON_ENDPOINT",
+    # Phase 0B-3: GPZ section CRUD (already in dispatcher)
+    "GPZ_SECTION_ADDED",
+    "GPZ_SECTION_UPDATED",
+    "GPZ_SECTION_DELETED",
 ]

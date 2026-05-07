@@ -288,6 +288,114 @@ class ENMValidator:
                     )
                 )
 
+        # E028: DER (inverter generator) bez connection_variant
+        # Phase 0C operator-grade SLD plan v2: każdy DER musi mieć jawnie
+        # zdefiniowany connection_variant — bez tego SLD nie wie jak
+        # narysować drzewo połączeń (LV_BEHIND_STATION_TRANSFORMER vs
+        # DEDICATED_MV_CONNECTION vs SOURCE_CONNECTION_STATION vs
+        # nn_side / block_transformer).
+        _INVERTER_GEN_TYPES = {
+            "pv_inverter",
+            "wind_inverter",
+            "fw_pmsg",
+            "fw_dfig",
+            "fw_scig",
+            "bess",
+        }
+        for gen in enm.generators:
+            gen_type = getattr(gen, "gen_type", None)
+            if gen_type not in _INVERTER_GEN_TYPES:
+                continue
+            connection_variant = getattr(gen, "connection_variant", None)
+            if not connection_variant:
+                issues.append(
+                    ValidationIssue(
+                        code="E028",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"DER '{gen.ref_id}' (typ {gen_type}) nie ma "
+                            f"`connection_variant`. Każdy falownik wymaga jawnego "
+                            f"określenia toru przyłączenia "
+                            f"(nn_side / block_transformer / SOURCE_CONNECTION_STATION)."
+                        ),
+                        element_refs=[gen.ref_id],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Wybierz wariant przyłączenia DER '{gen.name or gen.ref_id}': "
+                            f"nN za transformatorem stacji, dedykowany transformator blokowy, "
+                            f"lub osobna stacja źródłowa SN."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=gen.ref_id,
+                            modal_type="GeneratorModal",
+                            payload_hint={"required": "connection_variant"},
+                        ),
+                    )
+                )
+
+        # E029: DER (inverter generator) bezpośrednio na szynie SN — niedozwolone
+        # Decision #11 + #12 + #14 (BINDING): falownik (pv_inverter, wind_inverter,
+        # fw_*, bess) jest ZAWSZE elementem nN.
+        #
+        # E029 strzela TYLKO gdy:
+        #   - bus_ref jest SN (>1 kV)
+        #   - connection_variant ∈ {nn_side, LV_BEHIND_STATION_TRANSFORMER, None}
+        #     (warianty bez explicit trafo blokowego w schemacie ENM)
+        #
+        # E029 NIE strzela dla:
+        #   - block_transformer (Decision #14: trafo blokowy w schemacie ENM —
+        #     bus_ref może być SN bo blocking_transformer_ref wskazuje na trafo
+        #     LV→MV w torze)
+        #   - DEDICATED_MV_CONNECTION (analogicznie)
+        #   - SOURCE_CONNECTION_STATION (osobna stacja źródłowa SN/nN)
+        _SN_DIRECT_FORBIDDEN_VARIANTS = {None, "nn_side", "LV_BEHIND_STATION_TRANSFORMER"}
+        bus_voltage_map: dict[str, float] = {}
+        for b in enm.buses:
+            if b.voltage_kv is not None:
+                bus_voltage_map[b.ref_id] = float(b.voltage_kv)
+
+        for gen in enm.generators:
+            gen_type = getattr(gen, "gen_type", None)
+            if gen_type not in _INVERTER_GEN_TYPES:
+                continue
+            connection_variant = getattr(gen, "connection_variant", None)
+            if connection_variant not in _SN_DIRECT_FORBIDDEN_VARIANTS:
+                # Wariant deklaruje trafo w torze (block_transformer / DEDICATED_MV /
+                # SOURCE_CONNECTION_STATION) — bus_ref może być SN bez naruszenia.
+                continue
+            bus_ref = getattr(gen, "bus_ref", None)
+            if not bus_ref:
+                continue
+            bus_voltage = bus_voltage_map.get(bus_ref)
+            if bus_voltage is not None and bus_voltage > 1.0:
+                issues.append(
+                    ValidationIssue(
+                        code="E029",
+                        severity=SEVERITY_BLOCKER,
+                        message_pl=(
+                            f"Falownik '{gen.ref_id}' (typ {gen_type}) "
+                            f"jest podłączony bezpośrednio do szyny SN "
+                            f"({bus_ref}, U={bus_voltage} kV). "
+                            f"Każdy falownik energoelektroniczny jest elementem nN — "
+                            f"wymagany transformator nn/SN w torze przyłączenia."
+                        ),
+                        element_refs=[gen.ref_id, bus_ref],
+                        wizard_step_hint="K6",
+                        suggested_fix=(
+                            f"Przepnij falownik na szynę nN i dodaj transformator nn/SN "
+                            f"łączący ją z aktualną szyną SN ({bus_ref}). "
+                            f"Lub użyj connection_variant='block_transformer' z trafem blokowym."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=gen.ref_id,
+                            modal_type="GeneratorModal",
+                            payload_hint={"required": "nn_bus_ref_with_transformer"},
+                        ),
+                    )
+                )
+
         # E009: Brak referencji katalogowej (CATALOG-FIRST)
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable) and not branch.catalog_ref:
