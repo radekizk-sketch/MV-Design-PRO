@@ -1,10 +1,12 @@
 # SLD GPZ Switchgear Depth (Phase 0A)
 
-**Status:** BINDING (Phase 0A)
-**Wersja:** 1.0
+**Status:** BINDING (Phase 0A — refinement po audycie 5-osobowego zespołu)
+**Wersja:** 2.0 (post-audit)
 **Pliki źródłowe:**
 - `frontend/src/ui/sld/v2/renderer/GpzRenderer.tsx` (entry, decyzja delegacji)
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx` (full switchgear LOD ≥ 1)
+- `frontend/src/ui/sld/v2/canvas/enmToSldAdapter.ts` (mapping ENM → renderer)
+- `frontend/src/ui/sld/v2/theme/tokens.ts` (GPZ_GEOMETRY + paleta)
 
 ---
 
@@ -242,3 +244,167 @@ co przy `lod ≥ 1` deleguje do `GpzSwitchgearRenderer` z całym pipelinem.
 | Transformer measurements (Temp. oleju, Uarn, NZACZ, MVA, flow) | **TELEMETRY** | Te pomiary to runtime SCADA, nie domain config. Przyszły kanał telemetry pipe-uje przez `transformerMeasurements` props. Brak danych = brak panelu (graceful). |
 | `Bay.outgoing_feeder_destination` | **DERIVED** | Adapter wnioskuje z topologii (branch + substation). Stabilne i deterministyczne. |
 | Title bar action ("Kasowanie sygnalizacji zabezpieczeń") | **UI label** | Hardkod / przez UI preferencje (nie ENM). |
+
+---
+
+## 13. Audit zespołu 5-osobowego (Phase 0A refinement)
+
+Audyt przeprowadzony przez 3 zespoły agentów obejmujące 13 ról ekspertów:
+zespół SLD/UX OSD (5 ekspertów), zespół MV engineering (5 ekspertów), zespół
+system/E2E architecture (3 ekspertów). Wynik: 5 BLOCKERów konsensusowych +
+liczne HIGH/MEDIUM. Wdrożone fixy:
+
+### Fix 1/5: Tokenizacja GPZ_GEOMETRY + paleta SCADA correctness
+- 30+ magic numbers → `GPZ_GEOMETRY` namespace w `theme/tokens.ts`.
+- `COLOR_BUS_HV` (#F2F4F6 biały) zamiast czerwonego (kolizja z alarm).
+- `COLOR_BUS_LV` (#3DB4FF cyan) zamiast zielonego (kolizja z deviceClosed).
+- `COLOR_KAS_LED` (#E5C828 żółty) zamiast fioletu (kanon Energa).
+- `COLOR_FIELD_TRUNK_ENERGIZED/NEUTRAL` — magistrala SN reaguje na stan.
+- Czcionki badge/sterowanie/measurement: 7-8 → 9-10 (próg czytelności).
+- Y/Δ markery TR: armLen 5→6, strokeWidth 1.2→1.6.
+
+### Fix 2/5: ENM truth — Acceptance Invariant 9 (brak fabricated states)
+- Adapter NIE hardkoduje już `energization='energized'`, `cbState='closed'`,
+  `outgoingFeeder.energized=true`, `coupler.closed=true`. Pola pozostają
+  `undefined` / `'unknown'` → renderer pokazuje neutral.
+- `inferHvVoltageKv` deterministyczne (bez heurystyki "voltage > 30").
+- Set iteration sortowane explicit.
+- HV synth bayRef ma stabilny prefix `__hv-derived-` (jasne oznaczenie).
+- Coupler.closed: backwards-compat boolean + 'closed'/'open'/'unknown'.
+
+### Fix 3/5: Symbol uziemnika ES + Q-numeracja IEC 81346
+- `ApparatusEarthingSwitch` (kanon IEC 60617 7-13-05): boczna gałąź z
+  trójkątem ziemi. closed=czerwony BHP marker, open=szary dashed,
+  unknown=szary z '?', absent=nie renderowany.
+- `EarthingSwitchState`: 4 stany (closed/open/unknown/absent).
+- `qDesignations`: Q0=CB, Q1=DS_BUS, Q9=DS_LIN, Q8=ES, T1=CT (IEC 81346-2).
+- Adapter `deriveQDesignations(bay_role)` mapuje rolę → kanoniczne Q.
+- Adapter wnioskuje esState z bay_role (LINE/TR/MEASUREMENT → 'unknown';
+  COUPLER → 'absent').
+
+### Fix 4/5: Trunk arrows kierunkowe + rozszerzone onClick API
+- Strzałka ▼ na środku każdej linii outgoing feeder (kanon SCADA — operator
+  widzi kierunek nawet bez animacji).
+- `onClickCb / onClickDs / onClickEs / onClickKas / onClickCoupler` —
+  drill-down per aparat. ES wymaga BHP-protected auth.
+- Każdy aparat owinięty w klikalne `<g>` z `stopPropagation`.
+
+### Fix 5/5: Doc update (ten dokument).
+
+---
+
+## 14. State machine — `SecondaryFlagState` × `EarthingSwitchState`
+
+### SecondaryFlagState (badge zabezpieczenia)
+
+| Stan | Etykieta | Kolor statusu | Semantyka |
+|---|---|---|---|
+| `enabled` | "Zal." | `COLOR_BADGE_STATUS_OK` zielony | Funkcja aktywna w gotowości |
+| `disabled` | "Odbl." | `COLOR_BADGE_STATUS_NEUTRAL` szary | Odblokowana ale nieaktywna |
+| `restricted` | "Odst." | `COLOR_BADGE_STATUS_BLOCKED` czerwony | Odstawiona ręcznie przez operatora |
+| `blocked` | "Zabl." | `COLOR_BADGE_STATUS_BLOCKED` czerwony | Zablokowana logicznie (interlock) |
+
+### EarthingSwitchState (uziemnik — BHP)
+
+| Stan | Wizualizacja | Kolor | Semantyka |
+|---|---|---|---|
+| `open` | dashed nóżka + trójkąt ziemi szary muted | `COLOR_TEXT_MUTED` | Uziemnik wyłączony — pole NIE uziemione (normalny stan pracy pod napięciem) |
+| `closed` | solid nóżka + trójkąt ziemi czerwony | `COLOR_DEVICE_OPEN` | Uziemnik załączony — pole UZIEMIONE. **BLOKADA** załączenia pola pod napięciem (BHP) |
+| `unknown` | dashed nóżka + '?' | `COLOR_TEXT_MUTED` | Brak telemetrii ze sterownika (Invariant 9) |
+| `absent` | nie renderowany | — | Pole nie ma uziemnika (RMU bez ES, sprzęgło) |
+
+### GpzApparatusSwitchState (CB / DS)
+
+| Stan | Symbol CB | Symbol DS | Semantyka |
+|---|---|---|---|
+| `closed` | filled square zielony | filled circle zielony | Aparat zamknięty, pod napięciem (gdy bay energized) |
+| `open` | square z czerwoną przerwą | circle z czerwoną przerwą | Aparat otwarty |
+| `unknown` | jak energization=unknown | jak energization=unknown | Brak telemetrii |
+
+### Tranzycje (informacyjnie — implementuje warstwa SCADA telemetry)
+
+```
+[unknown] ── otrzymujemy wartość z sterownika ──→ [open|closed]
+[open]    ── operator załącza ─────────────────→ [closed]
+[closed]  ── operator wyłącza ─────────────────→ [open]
+[*]       ── utrata komunikacji ───────────────→ [unknown]
+```
+
+---
+
+## 15. Anti-patterns (NIE wolno)
+
+Acceptance Invariants 1-17 z planu projektu są BINDING. Poniżej konkretne
+anti-patterny dla GPZ Switchgear renderera:
+
+### 15.1 Renderer NIE może
+- ❌ Hardkodować stanów aparatów (`energized: true`) gdy ENM nie ma danych. Brak danych = `undefined` → renderer pokazuje neutral. **Naruszenie Invariant 9**.
+- ❌ Mieć żadnej fizyki / heurystyki / wnioskowania domen. Tylko projekcja `props` → SVG.
+- ❌ Modyfikować ENM. Renderer jest read-only.
+- ❌ Animować elementów (chyba że jawnie udokumentowane jako CSS class). Brak RNG, brak fps deps.
+- ❌ Używać kolorów ad-hoc — wszystkie z `theme/tokens.ts`.
+- ❌ Wprowadzać magic numbers — wszystkie wymiary z `GPZ_GEOMETRY`.
+
+### 15.2 Adapter NIE może
+- ❌ Wnioskować stanów elektrycznych (energization, switching state). Brak danych ENM = `undefined`.
+- ❌ Stosować heurystyk typu "if voltage > 30 → HV". Tylko deterministyczne lookupy.
+- ❌ Mutować snapshot ENM.
+- ❌ Iterować Set / Map bez explicit sortowania (non-determinism).
+
+### 15.3 Backend ENM NIE może
+- ❌ Przesyłać wartości "0.00" gdy nie ma danych. Brak = `null`/`undefined`, nigdy `0.00`.
+- ❌ Wprowadzać runtime telemetry do core ENM (powinno być oddzielnym kanałem).
+
+### 15.4 Stylistycznie NIE wolno
+- ❌ Używać czerwonego dla szyn lub obiektów pod napięciem (kanon: czerwony = alarm/zwarcie/blokada).
+- ❌ Używać zielonego dla szyn (zielony = aparat zamknięty).
+- ❌ Używać fioletu dla LED operacyjnych (kanon Energa: KAS = żółta dioda).
+- ❌ Stosować font < 9px dla badge / 10px dla pomiarów (próg czytelności).
+- ❌ Skracać etykiety bez ellipsis "…" (operator nie widzi że uciął).
+
+---
+
+## 16. Decision tree — topologia GPZ (single-bus / two-bus / breaker-and-half)
+
+```
+GPZ ENM data
+    │
+    ├── transformer_refs.length === 0 ────→ GpzCompactBlock (LOD 0 only)
+    │
+    └── transformer_refs.length ≥ 1
+        │
+        └── shouldDelegateToSwitchgear(props):
+            • lod ≥ 1 ?
+            • sections.length > 0 ?
+            │
+            ├── NIE ────→ GpzCompactBlock (zwarty schemat)
+            │
+            └── TAK ────→ GpzSwitchgearRenderer
+                │
+                └── isTwoBus = (hvSections.length > 0)
+                    │
+                    ├── false ────→ Single-bus mode
+                    │              (HV tower → TR → SN bus → bays)
+                    │
+                    └── true  ────→ Two-bus mode
+                                   (HV bus + bays || TR symbols || LV bus + bays)
+
+Auto-synthesis: adapter.synthesizeHvSections() generuje hvSections gdy:
+  - Substation.transformer_refs nie pusta
+  - Co najmniej 1 transformer ma hv_bus_ref
+  Zawiera: 1 HV sekcję z TR feeder bays + incoming line bays (dla każdego
+  source na hv_bus_ref). Stany aparatów = undefined (Invariant 9).
+
+Future (Phase 1+):
+  - breaker_and_a_half: 3 sekcje, każda z dedicated CB/DS, 1.5 CB per bay
+  - ring_main_unit_topology: pierścień 110 kV z NOP indicator
+  Wymaga rozbudowy ENM o `gpz_hv_sections[]` + `nop_segment_ref`.
+```
+
+---
+
+## 17. Test count auto-update
+
+Liczby testów w sekcjach 9, 10, 13 są wynikiem ostatniego refaktoru.
+Planuje się sprawdzanie zgodności między doc count a faktycznym `it(...)`
+count w CI guard `docs_count_consistency_guard.py` (Phase 0B).
