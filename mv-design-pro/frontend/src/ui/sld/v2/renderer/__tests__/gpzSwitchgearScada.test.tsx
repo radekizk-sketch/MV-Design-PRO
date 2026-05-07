@@ -1256,6 +1256,144 @@ describe('GpzSwitchgearRenderer — two-bus topology (110 kV + 15 kV z TR pomię
   });
 });
 
+describe('GpzSwitchgearRenderer — uziemnik (ES) i Q-numeracja IEC 81346', () => {
+  it('esState="closed" → marker uziemnika z czerwonym (BHP — pole uziemione)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], esState: 'closed' as const }],
+        },
+      ],
+    });
+    const es = container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]');
+    expect(es).not.toBeNull();
+    expect(es?.getAttribute('data-state')).toBe('closed');
+  });
+
+  it('esState="open" → marker uziemnika z dashed line (open)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], esState: 'open' as const }],
+        },
+      ],
+    });
+    const es = container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]');
+    expect(es?.getAttribute('data-state')).toBe('open');
+  });
+
+  it('esState="unknown" → marker z ? (Invariant 9: brak telemetrii)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], esState: 'unknown' as const }],
+        },
+      ],
+    });
+    const es = container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]');
+    expect(es?.getAttribute('data-state')).toBe('unknown');
+  });
+
+  it('esState="absent" → ES NIE renderowany w ogóle (BayColumn pomija)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], esState: 'absent' as const }],
+        },
+      ],
+    });
+    /* Pola RMU/COUPLER nie mają uziemnika — symbol pominięty całkowicie. */
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).toBeNull();
+  });
+
+  it('brak esState → brak symbolu uziemnika (backwards compat)', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).toBeNull();
+  });
+
+  it('qDesignations.cb="Q0" → etykieta Q0 obok CB', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], qDesignations: { cb: 'Q0', ds: 'Q9', es: 'Q8', ct: 'T1' } }],
+        },
+      ],
+    });
+    const cbLabel = container.querySelector('[data-testid="sld-v2-gpz-bay-q-cb"]');
+    const dsLabel = container.querySelector('[data-testid="sld-v2-gpz-bay-q-ds"]');
+    const ctLabel = container.querySelector('[data-testid="sld-v2-gpz-bay-q-ct"]');
+    expect(cbLabel?.textContent).toBe('Q0');
+    expect(dsLabel?.textContent).toBe('Q9');
+    expect(ctLabel?.textContent).toBe('T1');
+  });
+
+  it('qDesignations.es renderowany TYLKO gdy esState != absent', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              ...DEFAULT_BAYS[0],
+              qDesignations: { es: 'Q8' },
+              /* Brak esState → ES absent → Q8 NIE renderowany. */
+            },
+          ],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-q-es"]')).toBeNull();
+  });
+
+  it('qDesignations.es renderowany gdy esState=closed/open/unknown', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'Sekcja I',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            { ...DEFAULT_BAYS[0], esState: 'closed' as const, qDesignations: { es: 'Q8' } },
+          ],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-q-es"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-q-es"]')?.textContent).toBe('Q8');
+  });
+});
+
 describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej', () => {
   const HV_BAYS = [
     {

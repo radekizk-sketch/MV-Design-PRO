@@ -94,6 +94,8 @@ const SECTION_INTER_GAP = GPZ_GEOMETRY.sectionInterGap;
 const APPARATUS_PITCH = GPZ_GEOMETRY.apparatusPitch;
 const CB_SIZE = GPZ_GEOMETRY.cbSize;
 const DS_RADIUS = GPZ_GEOMETRY.dsRadius;
+const ES_BRANCH_LEN = GPZ_GEOMETRY.esBranchLength;
+const ES_BRANCH_OFFSET = GPZ_GEOMETRY.esBranchOffset;
 const TRIANGLE_SIZE = GPZ_GEOMETRY.triangleSize;
 const CT_RADIUS = GPZ_GEOMETRY.ctRadius;
 const SECTION_BUS_OVERHANG = GPZ_GEOMETRY.sectionBusOverhang;
@@ -134,6 +136,20 @@ export type GpzBayEnergization = 'energized' | 'deenergized' | 'tripped' | 'unkn
 
 /** Stan łączeniowy CB/DS w polu — domyślnie closed (kanon SCADA = green). */
 export type GpzApparatusSwitchState = 'closed' | 'open' | 'unknown';
+
+/**
+ * Stan uziemnika (Earthing Switch — ES).
+ *
+ * BHP-krytyczny: jego stan determinuje, czy pole jest bezpieczne do prac
+ * (PN-EN 62271-102). Operator MUSI widzieć jednoznacznie.
+ *
+ *  - 'open'    → pole pod napięciem / nieuziemione (normalny stan pracy)
+ *  - 'closed'  → pole uziemione (czerwony marker bezpieczeństwa)
+ *  - 'unknown' → brak telemetrii ze sterownika (Invariant 9)
+ *  - 'absent'  → pole nie ma uziemnika (np. proste RMU bez ES — symbol nie
+ *                 renderowany, niemniej dokumentowany w typie)
+ */
+export type EarthingSwitchState = 'open' | 'closed' | 'unknown' | 'absent';
 
 /**
  * Stan funkcji wtórnej (zabezpieczenia / automatyki) na polu.
@@ -263,6 +279,35 @@ export interface GpzBayDescriptor {
    * `hasKasButton: true` żeby był widoczny.
    */
   readonly pNumber?: string;
+  /**
+   * Stan uziemnika pola (Earthing Switch, ES). Renderowany jako boczna
+   * gałąź z trójkątem ziemi (kanon IEC 60617 7-13-05). 'absent' nie
+   * renderuje symbolu. Brak pola → fallback 'absent' (backward compat).
+   *
+   * BHP-krytyczne: closed → czerwony marker bezpieczeństwa
+   * (`COLOR_DEVICE_OPEN`), open → szary muted, unknown → szary muted z
+   * znakiem zapytania.
+   */
+  readonly esState?: EarthingSwitchState;
+  /**
+   * Oznaczenia aparatów wg IEC 81346-2 — Q0/Q1/Q9 dla łączników, T1 dla
+   * trafa. Renderowane jako małe etykiety obok każdego symbolu w polu.
+   * Klucze:
+   *  - `cb`  → wyłącznik (Q0 typowo)
+   *  - `ds`  → odłącznik liniowy (Q9 typowo)
+   *  - `dsBus` → odłącznik szynowy (Q1 typowo)
+   *  - `es`  → uziemnik (Q8 typowo)
+   *  - `ct`  → przekładnik prądowy (T1)
+   *
+   * Brak pola → renderer pomija etykietę.
+   */
+  readonly qDesignations?: {
+    readonly cb?: string;
+    readonly ds?: string;
+    readonly dsBus?: string;
+    readonly es?: string;
+    readonly ct?: string;
+  };
   /**
    * Wychodzący feeder pola liniowego (kanoniczny dla bays
    * `LINE_OUT`/`GPZ_LINE_BAY`/`LINE_BRANCH`). Definiuje cel kabla wychodzącego
@@ -1494,14 +1539,52 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* CB (filled square) */}
+      {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2) */}
       <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
+      {bay.qDesignations?.cb && (
+        <QDesignationLabel
+          x={apparatusCx + CB_SIZE / 2 + 3}
+          y={cbY + 2}
+          text={bay.qDesignations.cb}
+          slot="cb"
+        />
+      )}
 
       {/* CT primary (small open circle) + ratio label po lewej */}
       <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
+      {bay.qDesignations?.ct && (
+        <QDesignationLabel
+          x={apparatusCx + CT_RADIUS + 3}
+          y={ctY + 2}
+          text={bay.qDesignations.ct}
+          slot="ct"
+        />
+      )}
 
-      {/* DS (filled circle) */}
+      {/* DS (filled circle) + opcjonalna etykieta Q */}
       <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
+      {bay.qDesignations?.ds && (
+        <QDesignationLabel
+          x={apparatusCx + DS_RADIUS + 3}
+          y={dsY + 2}
+          text={bay.qDesignations.ds}
+          slot="ds"
+        />
+      )}
+
+      {/* Uziemnik (ES) — boczna gałąź z trójkątem ziemi (BHP-krytyczny).
+       * Renderowany na poziomie DS gdy esState !== 'absent'. */}
+      {bay.esState && bay.esState !== 'absent' && (
+        <ApparatusEarthingSwitch cxAxis={apparatusCx} cy={dsY + APPARATUS_PITCH * 0.4} state={bay.esState} />
+      )}
+      {bay.qDesignations?.es && bay.esState && bay.esState !== 'absent' && (
+        <QDesignationLabel
+          x={apparatusCx + ES_BRANCH_OFFSET + 6}
+          y={dsY + APPARATUS_PITCH * 0.4 - 4}
+          text={bay.qDesignations.es}
+          slot="es"
+        />
+      )}
 
       {/* Cable head triangle (downward) */}
       <ApparatusCableHead cx={apparatusCx} cy={triangleY} energized={energization === 'energized'} />
@@ -1930,6 +2013,125 @@ function ApparatusCableHead(props: { cx: number; cy: number; energized: boolean 
         strokeWidth={1.2}
       />
     </g>
+  );
+}
+
+interface ApparatusEarthingSwitchProps {
+  /** Środek osi pola (gdzie jest pionowy track). */
+  readonly cxAxis: number;
+  /** Y pozycji uziemnika (zwykle przy DS lub na końcu kolumny). */
+  readonly cy: number;
+  readonly state: EarthingSwitchState;
+}
+
+/**
+ * Symbol uziemnika (ES) — boczna gałąź zakończona trójkątem ziemi.
+ *
+ * Kanon IEC 60617 7-13-05: krótka pozioma gałąź z osi pola, zakończona
+ * trójkątem ziemi (3 krótkie poziome kreski malejącej długości skierowane
+ * w dół). PN-EN 62271-102 wymaga jednoznacznej wizualizacji ES dla BHP.
+ *
+ * Kolor:
+ *  - 'closed'  → czerwony (`COLOR_DEVICE_OPEN`) — uziemnik załączony,
+ *                pole UZIEMIONE (bezpieczne do prac, ale BLOKADA pracy
+ *                pod napięciem)
+ *  - 'open'    → szary muted — pole NIE uziemione (normalne)
+ *  - 'unknown' → szary muted ze znakiem '?'
+ *  - 'absent'  → renderer pomija (zwraca pusty `<g/>`)
+ */
+function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Element {
+  const { cxAxis, cy, state } = props;
+  if (state === 'absent') {
+    return <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state="absent" />;
+  }
+  const closed = state === 'closed';
+  const unknown = state === 'unknown';
+  const stroke = closed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
+  const sw = closed ? 1.6 : 1.2;
+  /* Boczna gałąź wychodzi z osi pola na PRAWO (kanon SCADA: ES po prawej
+   * stronie aparatu liniowego). */
+  const branchEndX = cxAxis + ES_BRANCH_OFFSET;
+  /* Trójkąt ziemi: 3 poziome kreski o malejącej szerokości pod końcówką. */
+  const groundTopY = cy + 1;
+  return (
+    <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state={state}>
+      {/* Pozioma gałąź z osi pola */}
+      <line
+        x1={cxAxis}
+        y1={cy}
+        x2={branchEndX}
+        y2={cy}
+        stroke={stroke}
+        strokeWidth={sw}
+      />
+      {/* Krótka pionowa nóżka (przerwana = open, ciągła = closed) */}
+      {closed ? (
+        <line
+          x1={branchEndX}
+          y1={cy}
+          x2={branchEndX}
+          y2={cy + ES_BRANCH_LEN * 0.55}
+          stroke={stroke}
+          strokeWidth={sw}
+        />
+      ) : (
+        <line
+          x1={branchEndX}
+          y1={cy + 1}
+          x2={branchEndX}
+          y2={cy + ES_BRANCH_LEN * 0.4}
+          stroke={stroke}
+          strokeWidth={sw}
+          strokeDasharray="1.5 1.5"
+        />
+      )}
+      {/* Trójkąt ziemi (3 poziome kreski) */}
+      <line x1={branchEndX - 3.5} y1={groundTopY + ES_BRANCH_LEN * 0.6} x2={branchEndX + 3.5} y2={groundTopY + ES_BRANCH_LEN * 0.6} stroke={stroke} strokeWidth={sw} />
+      <line x1={branchEndX - 2.5} y1={groundTopY + ES_BRANCH_LEN * 0.85} x2={branchEndX + 2.5} y2={groundTopY + ES_BRANCH_LEN * 0.85} stroke={stroke} strokeWidth={sw} />
+      <line x1={branchEndX - 1.5} y1={groundTopY + ES_BRANCH_LEN * 1.1} x2={branchEndX + 1.5} y2={groundTopY + ES_BRANCH_LEN * 1.1} stroke={stroke} strokeWidth={sw} />
+      {/* Znak '?' dla unknown */}
+      {unknown && (
+        <text
+          x={branchEndX + 4}
+          y={cy + 3}
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.badge}
+          fontWeight={700}
+        >
+          ?
+        </text>
+      )}
+    </g>
+  );
+}
+
+interface QDesignationLabelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly text: string;
+  /** Test-id suffix (cb/ds/es/ct/...). */
+  readonly slot: string;
+}
+
+/**
+ * Etykieta IEC 81346-2 obok aparatu (Q0/Q1/Q9 dla łączników, T1 trafo).
+ * Mała, przygaszona — operator może odczytać ale nie dominuje.
+ */
+function QDesignationLabel(props: QDesignationLabelProps): JSX.Element {
+  const { x, y, text, slot } = props;
+  return (
+    <text
+      x={x}
+      y={y}
+      fill={COLOR_TEXT_MUTED}
+      fontFamily={FONT_MONO}
+      fontSize={FONT_SIZES.transformerRatio}
+      fontWeight={500}
+      data-testid={`sld-v2-gpz-bay-q-${slot}`}
+    >
+      {text}
+    </text>
   );
 }
 

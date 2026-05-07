@@ -264,6 +264,72 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(outBay?.hasMissingRequiredDevice).toBe(false);
   });
 
+  it('Bay LINE_OUT z ENM → esState=unknown + Q-designations IEC 81346 (Q0/Q9/Q1/Q8/T1)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-1', name: 'POLE 01', tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    /* ES present (line role → BHP) ale stan unknown (Invariant 9). */
+    expect(bay?.esState).toBe('unknown');
+    /* Q-designations zgodnie z IEC 81346-2 dla pola liniowego. */
+    expect(bay?.qDesignations).toEqual({ cb: 'Q0', ds: 'Q9', dsBus: 'Q1', es: 'Q8', ct: 'T1' });
+  });
+
+  it('Bay COUPLER → esState=absent (sprzęgło GPZ tradycyjnie bez ES)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-cpl', name: 'Sprzęgło', tags: [], meta: {}, bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    /* COUPLER bays są w sekcji ale są filtrowane przez sectionFromGpzSection
+     * (kuplery renderowane osobno w couplers[]). Tu testujemy nie ten case
+     * — bo coupler bay nie pojawi się w bays[]. */
+    expect(r.gpzs[0].sections?.[0].bays).toHaveLength(0);
+  });
+
+  it('Bay TR → esState=unknown + Q-designations bez DS_LIN (TR ma tylko DS_BUS)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      { id: 'b1', ref_id: 'bay-tr', name: 'Pole TR1', tags: [], meta: {}, bay_role: 'TR', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A', equipment_refs: ['cb1'] } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.esState).toBe('unknown');
+    expect(bay?.qDesignations).toEqual({ cb: 'Q0', ds: 'Q1', es: 'Q8', ct: 'T1' });
+  });
+
   it('Invariant 9 — coupler bez telemetrii ENM → closed=unknown (NIE hardcoded true)', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

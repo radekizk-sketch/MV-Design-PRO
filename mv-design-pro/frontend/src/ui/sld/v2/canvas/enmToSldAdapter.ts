@@ -383,15 +383,52 @@ function bayDescriptorFromEnm(
   }
 
   /* Bay number = order w sekcji (jeśli ENM nie ma `bay_number`, zostawiamy
-   * niezdefiniowane — renderer wtedy go nie wyświetla). */
+   * niezdefiniowane — renderer wtedy go nie wyświetla).
+   *
+   * esState: większość pól GPZ klasy A ma uziemnik (BHP). Wnioskujemy z
+   * field role: pola liniowe / TR mają ES, pola pomiarowe (PN) tradycyjnie
+   * też. Sprzęgło COUPLER zwykle bez ES (kanon Energa). Stan → 'unknown'
+   * (Invariant 9: brak telemetrii ENM).
+   *
+   * qDesignations: kanon IEC 81346-2 dla pól GPZ — Q0=CB, Q1=DS_BUS,
+   * Q9=DS_LIN, Q8=ES, T1=CT. Wartości generowane deterministycznie z roli.
+   */
+  const hasEs = isLineRole || bay.bay_role === 'TR' || bay.bay_role === 'MEASUREMENT';
+  const esState: GpzBayDescriptor['esState'] = hasEs ? 'unknown' : 'absent';
+
   return {
     bayRef: bay.ref_id,
     fieldRole,
     designation: bay.name || bay.ref_id,
     feederName: bay.name ?? undefined,
     hasMissingRequiredDevice: (bay.equipment_refs?.length ?? 0) === 0,
+    esState,
+    qDesignations: deriveQDesignations(bay.bay_role),
     outgoingFeeder,
   };
+}
+
+/**
+ * Wnioskuje kanoniczne oznaczenia IEC 81346-2 z roli pola.
+ * Konwencja polskich GPZ: Q0=CB, Q1=DS_BUS, Q9=DS_LIN, Q8=ES, T1=CT.
+ */
+function deriveQDesignations(bayRole: Bay['bay_role']): GpzBayDescriptor['qDesignations'] {
+  switch (bayRole) {
+    case 'OUT':
+    case 'IN':
+    case 'FEEDER':
+      return { cb: 'Q0', ds: 'Q9', dsBus: 'Q1', es: 'Q8', ct: 'T1' };
+    case 'TR':
+      return { cb: 'Q0', ds: 'Q1', es: 'Q8', ct: 'T1' };
+    case 'COUPLER':
+      return { cb: 'Q0', ds: 'Q1', ct: 'T1' };
+    case 'MEASUREMENT':
+      return { ds: 'Q1', es: 'Q8' };
+    case 'OZE':
+      return { cb: 'Q0', ds: 'Q9', es: 'Q8', ct: 'T1' };
+    default:
+      return undefined;
+  }
 }
 
 function inferOutgoingFeederDestination(
