@@ -44,7 +44,7 @@ describe('createLodController — histereza zapobiega migotaniu', () => {
   });
 
   it('debounce 250ms blokuje zmianę przed upływem czasu', () => {
-    let now = 1000;
+    const now = 1000;
     const ctrl = createLodController({
       initialScale: 0.5,
       hysteresisMargin: 0.15,
@@ -62,7 +62,7 @@ describe('createLodController — histereza zapobiega migotaniu', () => {
   });
 
   it('powrót przed upływem debounce anuluje przejście', () => {
-    let _now = 1000;
+    const _now = 1000;
     const ctrl = createLodController({
       initialScale: 0.5,
       hysteresisMargin: 0.15,

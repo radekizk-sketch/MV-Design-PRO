@@ -1015,3 +1015,243 @@ describe('GpzSwitchgearRenderer — sprzęgło: pełna architektura SCADA', () =
     expect(container.querySelector('[data-testid="sld-v2-gpz-bay-badge-szr"]')).not.toBeNull();
   });
 });
+
+describe('GpzSwitchgearRenderer — title bar action (Kasowanie sygnalizacji zabezpieczeń)', () => {
+  it('titleBarAction → tekst widoczny w pasku tytułu', () => {
+    const { container } = r({ titleBarAction: 'Kasowanie sygnalizacji zabezpieczeń' });
+    const action = container.querySelector('[data-testid="sld-v2-gpz-switchgear-title-bar-action"]');
+    expect(action).not.toBeNull();
+    expect(action?.textContent).toBe('Kasowanie sygnalizacji zabezpieczeń');
+  });
+
+  it('brak titleBarAction → brak tekstu akcji', () => {
+    const { container } = r();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-switchgear-title-bar-action"]'),
+    ).toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — TR measurements (Temp. oleju, Uarn, NZACZ, MVA, flow)', () => {
+  it('transformerMeasurements → panel pomiarów dla TR1 (Temp. oleju, Uarn, NZACZ, MVA)', () => {
+    const { container } = r({
+      transformerCount: 1,
+      transformerMeasurements: [
+        { oilTemperatureC: 47.2, uarnKv: 15.4, nzacz: '9/19', apparentMva: 16, flow: 'down' },
+      ],
+    });
+    const panel = container.querySelector('[data-testid="sld-v2-gpz-tr-measurements-0"]');
+    expect(panel).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-tr-measurement-oil-temp-0"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-tr-measurement-uarn-0"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-tr-measurement-nzacz-0"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-tr-measurement-mva-0"]'),
+    ).not.toBeNull();
+  });
+
+  it('transformerMeasurements flow="down" → strzałka kierunku przepływu (magenta/down)', () => {
+    const { container } = r({
+      transformerCount: 1,
+      transformerMeasurements: [{ flow: 'down' }],
+    });
+    const arrow = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-0"]');
+    expect(arrow).not.toBeNull();
+    expect(arrow?.getAttribute('data-flow-direction')).toBe('down');
+  });
+
+  it('transformerMeasurements flow="up" → strzałka skierowana w górę', () => {
+    const { container } = r({
+      transformerCount: 1,
+      transformerMeasurements: [{ flow: 'up' }],
+    });
+    const arrow = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-0"]');
+    expect(arrow).not.toBeNull();
+    expect(arrow?.getAttribute('data-flow-direction')).toBe('up');
+  });
+
+  it('transformerMeasurements flow="none" → brak strzałki', () => {
+    const { container } = r({
+      transformerCount: 1,
+      transformerMeasurements: [{ flow: 'none' }],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-0"]')).toBeNull();
+  });
+
+  it('brak transformerMeasurements → brak panelu pomiarów TR', () => {
+    const { container } = r({ transformerCount: 1 });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-tr-measurements-0"]')).toBeNull();
+  });
+
+  it('2 TR → 2 osobne panele pomiarów (indeks 0 i 1)', () => {
+    const { container } = r({
+      transformerCount: 2,
+      transformerMeasurements: [
+        { oilTemperatureC: 47.2 },
+        { oilTemperatureC: 49.5 },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-tr-measurements-0"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-tr-measurements-1"]')).not.toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — two-bus topology (110 kV + 15 kV z TR pomiędzy)', () => {
+  const HV_BAYS = [
+    {
+      bayRef: 'hv-1',
+      fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+      designation: 'POR',
+      feederName: 'POR',
+      bayNumber: '05',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      cbState: 'closed' as const,
+      dsState: 'closed' as const,
+    },
+    {
+      bayRef: 'hv-2',
+      fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+      designation: 'EC2',
+      feederName: 'EC2',
+      bayNumber: '03',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      cbState: 'closed' as const,
+      dsState: 'closed' as const,
+    },
+  ];
+
+  function rTwoBus(overrides: Partial<Parameters<typeof GpzSwitchgearRenderer>[0]> = {}) {
+    return render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-8"
+          x={0}
+          y={0}
+          name="GPZ-8 PGL"
+          voltageHighKv={110}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'lv-sec-1',
+              order: 1,
+              name: 'Sekcja A LV',
+              sectionLabel: 'sekcja A',
+              busVoltageKv: 15,
+              bays: DEFAULT_BAYS,
+            },
+          ]}
+          couplers={[]}
+          hvSections={[
+            {
+              sectionId: 'hv-sec-1',
+              order: 1,
+              name: 'Sekcja A HV',
+              sectionLabel: 'sekcja A',
+              busVoltageKv: 110,
+              bays: HV_BAYS,
+            },
+          ]}
+          hvCouplers={[]}
+          transformerCount={2}
+          transformerMeasurements={[
+            { oilTemperatureC: 17.5, uarnKv: 15.4, nzacz: '7', apparentMva: 25, flow: 'up' },
+            { oilTemperatureC: 19.4, uarnKv: 15.0, nzacz: '7', apparentMva: 25, flow: 'down' },
+          ]}
+          {...overrides}
+        />
+      </svg>,
+    );
+  }
+
+  it('two-bus mode → osobna szyna HV (110 kV) i LV (15 kV)', () => {
+    const { container } = rTwoBus();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-hv-bus"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-lv-bus"]')).not.toBeNull();
+  });
+
+  it('single-bus mode (brak hvSections) → brak osobnej szyny HV/LV, jest main bus', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-hv-bus"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-lv-bus"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-switchgear-main-bus"]')).not.toBeNull();
+  });
+
+  it('two-bus mode → etykiety napięcia "110kV" przy końcach szyny HV', () => {
+    const { container } = rTwoBus();
+    const left = container.querySelector('[data-testid="sld-v2-gpz-switchgear-hv-bus-label-left"]');
+    const right = container.querySelector('[data-testid="sld-v2-gpz-switchgear-hv-bus-label-right"]');
+    expect(left?.textContent).toBe('110kV');
+    expect(right?.textContent).toBe('110kV');
+  });
+
+  it('two-bus mode → etykiety napięcia "15kV" przy końcach szyny LV', () => {
+    const { container } = rTwoBus();
+    const left = container.querySelector('[data-testid="sld-v2-gpz-switchgear-lv-bus-label-left"]');
+    const right = container.querySelector('[data-testid="sld-v2-gpz-switchgear-lv-bus-label-right"]');
+    expect(left?.textContent).toBe('15kV');
+    expect(right?.textContent).toBe('15kV');
+  });
+
+  it('two-bus mode → HV bays renderowane (POR, EC2) z numerami pól', () => {
+    const { container } = rTwoBus();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-hv-1"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-hv-2"]')).not.toBeNull();
+    expect(container.textContent).toContain('POR');
+    expect(container.textContent).toContain('EC2');
+  });
+
+  it('two-bus mode → LV bays renderowane (SADY, OKRĘŻNA) razem z HV', () => {
+    const { container } = rTwoBus();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-b-2"]')).not.toBeNull();
+    expect(container.textContent).toContain('SADY');
+  });
+
+  it('two-bus mode → TR symbol w środku (między HV a LV) renderowany jako TwoBusTrColumn', () => {
+    const { container } = rTwoBus();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-switchgear-two-bus-tr-column"]'),
+    ).not.toBeNull();
+    /* TR1 i TR2 obecne. */
+    const trs = container.querySelectorAll('[data-testid="sld-v2-gpz-switchgear-transformer-symbol"]');
+    expect(trs.length).toBe(2);
+  });
+
+  it('two-bus mode → MVA label widoczny przy każdym TR', () => {
+    const { container } = rTwoBus();
+    const mvaLabels = container.querySelectorAll('[data-testid^="sld-v2-gpz-tr-mva-label-"]');
+    expect(mvaLabels.length).toBe(2);
+    expect(Array.from(mvaLabels).map((l) => l.textContent)).toEqual(['25MVA', '25MVA']);
+  });
+
+  it('two-bus mode → HV bay column hangs from HV bus (data-bay-ref na HV bay)', () => {
+    const { container } = rTwoBus();
+    const hvBay = container.querySelector('[data-testid="sld-v2-gpz-bay-hv-1"]');
+    expect(hvBay?.getAttribute('data-bay-ref')).toBe('hv-1');
+  });
+
+  it('two-bus mode → HV section label "sekcja A" z dedykowanym test-id', () => {
+    const { container } = rTwoBus();
+    const hvLabel = container.querySelector(
+      '[data-testid="sld-v2-gpz-hv-section-label-hv-sec-1"]',
+    );
+    expect(hvLabel).not.toBeNull();
+    expect(hvLabel?.textContent).toBe('sekcja A');
+  });
+
+  it('two-bus mode → flow strzałki różnych kierunków dla TR1 (up) i TR2 (down)', () => {
+    const { container } = rTwoBus();
+    const a0 = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-0"]');
+    const a1 = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-1"]');
+    expect(a0?.getAttribute('data-flow-direction')).toBe('up');
+    expect(a1?.getAttribute('data-flow-direction')).toBe('down');
+  });
+});

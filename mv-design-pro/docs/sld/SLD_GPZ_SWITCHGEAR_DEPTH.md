@@ -116,13 +116,82 @@ Wszystkie kolory zaznaczenia używają tokenu `COLOR_SELECTION` z `theme/tokens.
   - Token zaznaczenia (nie hardkod).
   - Delegacja do switchgear (LOD ≥ 1).
   - HV-tower w switchgear renderer.
-- `renderer/__tests__/gpzSwitchgearScada.test.tsx` — 18 cases SCADA-grade:
+- `renderer/__tests__/gpzSwitchgearScada.test.tsx` — 90 cases SCADA-grade:
   - Każde pole ma kolumnę z CB + DS + cable head.
   - Numer pola pod kolumną.
   - Feeder name w nagłówku.
   - Koloryzacja energizacji (energized → COLOR_DEVICE_CLOSED).
   - Open CB → marker przerwy (COLOR_DEVICE_OPEN).
   - Etykieta sekcji (S1, S2, ...) nad szyną.
-  - Sprzęgło między sekcjami (CB + tło + state badge).
+  - Sprzęgło między sekcjami (CB + tło + state badge + KAS SP/SZR).
   - TR z Y na 110 kV i Δ na SN (osobne markery).
   - Wieloma sekcjami (8+8 pól + sprzęgło).
+  - Badge stack (SPZ/SCO/OWG/NZ/LRW/ARN/BKR/STYCZ/AWSC/ZS/SZR).
+  - KAS button + LED + opcjonalny P-number.
+  - Vertical "STEROWANIE ZDALNE/LOKALNE" label na lewym marginesie pola.
+  - Panel pomiarowy (P/Q/I1-3/U1-3/U12-31/U0/f/Idł).
+  - Marker zwarcia doziemnego (cyan circle).
+  - Manipulation highlight (oliwkowe tło).
+  - Pomiar prądu sprzęgła "I X".
+  - Title bar action (Kasowanie sygnalizacji zabezpieczeń).
+  - TR measurements panel (Temp. oleju / Uarn / NZACZ / MVA).
+  - Flow direction arrow (up=żółta, down=magenta).
+  - Two-bus topology (110 kV + 15 kV z TR pomiędzy).
+
+## 10. Two-Bus Topology (Phase 0A refinement)
+
+Operator-grade ekran dyspozytorski wymaga osobnego rysowania szyn 110 kV i SN
+z transformatorami pomiędzy. Włączane przez prop `hvSections`:
+
+```ts
+<GpzSwitchgearRenderer
+  hvSections={[
+    { sectionId, order, name, sectionLabel: 'sekcja A', busVoltageKv: 110, bays: [...] },
+    { sectionId, order, name, sectionLabel: 'sekcja B', busVoltageKv: 110, bays: [...] },
+  ]}
+  hvCouplers={[...]}     // sprzęgła sekcyjne 110 kV (np. SP)
+  sections={[...]}        // 15 kV (LV) sekcje (jak dotychczas)
+  couplers={[...]}        // sprzęgła sekcyjne 15 kV
+  transformerCount={2}
+  transformerMeasurements={[
+    { oilTemperatureC: 17.5, uarnKv: 15.4, nzacz: '7', apparentMva: 25, flow: 'up' },
+    { oilTemperatureC: 19.4, uarnKv: 15.0, nzacz: '7', apparentMva: 25, flow: 'down' },
+  ]}
+  titleBarAction="Kasowanie sygnalizacji zabezpieczeń"
+/>
+```
+
+Layout (top-down):
+```
+[Title bar: GPZ-8 PGL  +  Kasowanie sygnalizacji zabezpieczeń  +  110/15 kV]
+[110 kV bus (red) ─────────────────────────────────] 110kV
+        |    |    |    |
+       POR   6    SP   EC2   ← HV bays hangujące w dół
+       05    06   4    3
+        |    |         |
+       [TR2 25MVA]    [TR1 25MVA]      ← TR symbols między HV i LV bus
+       Temp. oleju                       (Y/Δ markers + measurements + flow arrow)
+       Uarn  NZACZ
+        |    |         |
+[15 kV bus (green) ────────────────────────────────] 15kV
+        |    |    |    |    |    |    |
+       PN2  ZU2  TR2  BKR2 SP   BKR1 ZU1 PN1   ← LV bays hangujące w dół
+       10   08   06   04   02   01   05  07
+```
+
+Test ID-y dedykowane two-bus mode:
+- `sld-v2-gpz-switchgear-hv-bus` — HV bus line.
+- `sld-v2-gpz-switchgear-lv-bus` — LV bus line.
+- `sld-v2-gpz-switchgear-hv-bus-label-{left,right}` — etykieta "110kV" przy końcach.
+- `sld-v2-gpz-switchgear-lv-bus-label-{left,right}` — etykieta "15kV" przy końcach.
+- `sld-v2-gpz-switchgear-two-bus-tr-column` — wrapper wszystkich TR symboli.
+- `sld-v2-gpz-tr-mva-label-{idx}` — etykieta MVA przy TR (np. "25MVA").
+- `sld-v2-gpz-hv-section-label-{sectionId}` — etykieta HV sekcji ("sekcja A").
+- `sld-v2-gpz-tr-measurements-{idx}` — wrapper panelu pomiarów TR.
+- `sld-v2-gpz-tr-measurement-{oil-temp,uarn,nzacz,mva}-{idx}` — poszczególne wiersze.
+- `sld-v2-gpz-tr-flow-arrow-{idx}` — strzałka kierunku przepływu.
+- `sld-v2-gpz-switchgear-title-bar-action` — tekst akcji w pasku tytułu.
+
+Backwards compatibility:
+- Brak `hvSections` (lub pusta tablica) → tryb single-bus jak dotychczas.
+- Wszystkie istniejące testy (71 cases) niezmienione — brak regresji.

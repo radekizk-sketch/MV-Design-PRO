@@ -258,6 +258,33 @@ export interface GpzBayDescriptor {
   readonly pNumber?: string;
 }
 
+/**
+ * Kierunek przepływu mocy przez transformator (kanon SCADA — strzałka pod TR).
+ *   - `down` → moc płynie z 110 kV w dół do SN (nominalny tryb GPZ)
+ *   - `up`   → moc płynie z SN do 110 kV (eksport, np. duże źródło OZE)
+ *   - `none` → brak strzałki (brak danych lub TR wyłączony)
+ */
+export type TransformerPowerFlow = 'down' | 'up' | 'none';
+
+/**
+ * Pomiary i opisy stanu transformatora wyświetlane przy symbolu TR.
+ *
+ * Wszystkie pola opcjonalne — renderer pokazuje wyłącznie dostarczone wartości.
+ * Kanon SCADA (Tauron / Energa / PSE):
+ *   - `oilTemperatureC` → temp. oleju w °C (np. 47.2)
+ *   - `uarnKv`          → napięcie regulacyjne odczepu (np. 15.4)
+ *   - `nzacz`           → numer zakresu odczepu (np. "9/19" lub "NZACZ 9")
+ *   - `flow`            → kierunek przepływu mocy
+ *   - `apparentMva`     → moc pozorna w MVA (np. 16.0)
+ */
+export interface TransformerMeasurements {
+  readonly oilTemperatureC?: number;
+  readonly uarnKv?: number;
+  readonly nzacz?: string;
+  readonly flow?: TransformerPowerFlow;
+  readonly apparentMva?: number;
+}
+
 export interface GpzSectionDescriptor {
   readonly sectionId: string;
   readonly order: number;
@@ -300,9 +327,36 @@ export interface GpzSwitchgearRendererProps {
   readonly name: string;
   readonly voltageHighKv: number;
   readonly voltageLowKv: number;
+  /**
+   * Sekcje strony SN (np. 15 kV) — main bus rendererowany tradycyjnie u dołu
+   * w trybie two-bus albo w środku w trybie single-bus.
+   */
   readonly sections: readonly GpzSectionDescriptor[];
   readonly couplers: readonly GpzCouplerDescriptor[];
+  /**
+   * Sekcje strony 110 kV (HV bus). Obecność włącza tryb **two-bus**:
+   *   ── 110 kV bus ── (HV bays poniżej)
+   *           |  TR1 / TR2 / ...
+   *   ── 15 kV bus ── (LV bays poniżej)
+   *
+   * Pusta tablica lub brak → tryb single-bus (zachowanie sprzed Phase 0A
+   * refinement two-bus).
+   */
+  readonly hvSections?: readonly GpzSectionDescriptor[];
+  readonly hvCouplers?: readonly GpzCouplerDescriptor[];
   readonly transformerCount?: number;
+  /**
+   * Pomiary i opisy stanu transformatorów wyświetlane przy symbolach TR (Y/Δ).
+   * Jeśli podano `n` elementów, każdy element odnosi się do TR o tym samym
+   * indeksie (TR1 → index 0, TR2 → index 1). Brak elementu → brak panelu
+   * pomiarowego dla danego TR.
+   */
+  readonly transformerMeasurements?: readonly TransformerMeasurements[];
+  /**
+   * Tekst akcji w pasku tytułu (kanon SCADA: "Kasowanie sygnalizacji
+   * zabezpieczeń"). Renderowany po prawej stronie pod napięciem.
+   */
+  readonly titleBarAction?: string;
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
   readonly onClickSection?: (sectionId: string) => void;
@@ -315,27 +369,55 @@ export interface GpzSwitchgearRendererProps {
 
 export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.Element {
   const sortedSections = [...props.sections].sort((a, b) => a.order - b.order);
+  const sortedHvSections = props.hvSections
+    ? [...props.hvSections].sort((a, b) => a.order - b.order)
+    : [];
   const transformerCount = Math.max(1, props.transformerCount ?? 1);
+  const isTwoBus = sortedHvSections.length > 0;
   const layout = computeSwitchgearLayout(sortedSections, props.couplers);
+  const hvLayout = isTwoBus
+    ? computeSwitchgearLayout(sortedHvSections, props.hvCouplers ?? [])
+    : null;
 
   /* Maksymalna głębokość footera (KAS + panel pomiarowy) wśród wszystkich pól. */
   const footerDepth = computeMaxFooterDepth(sortedSections);
+  const hvFooterDepth = isTwoBus ? computeMaxFooterDepth(sortedHvSections) : 0;
 
-  const totalWidth = Math.max(360, layout.totalWidth + 2 * HORIZONTAL_PADDING);
-  const totalHeight =
-    TITLE_BAR_HEIGHT +
-    HV_TOWER_HEIGHT +
-    SECTION_LABEL_GAP +
-    BAY_COLUMN_HEIGHT +
-    BAY_NUMBER_GAP +
-    footerDepth +
-    VERTICAL_PADDING * 2;
+  const layoutMaxWidth = Math.max(layout.totalWidth, hvLayout?.totalWidth ?? 0);
+  const totalWidth = Math.max(360, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
+
+  const TWO_BUS_TR_GAP = 84; // TR symbol + measurements between HV LV buses
+  const totalHeight = isTwoBus
+    ? TITLE_BAR_HEIGHT +
+      VERTICAL_PADDING +
+      BAY_COLUMN_HEIGHT +
+      BAY_NUMBER_GAP +
+      hvFooterDepth +
+      TWO_BUS_TR_GAP +
+      BAY_COLUMN_HEIGHT +
+      BAY_NUMBER_GAP +
+      footerDepth +
+      VERTICAL_PADDING
+    : TITLE_BAR_HEIGHT +
+      HV_TOWER_HEIGHT +
+      SECTION_LABEL_GAP +
+      BAY_COLUMN_HEIGHT +
+      BAY_NUMBER_GAP +
+      footerDepth +
+      VERTICAL_PADDING * 2;
 
   const stroke = props.selected ? COLOR_SELECTION : COLOR_LINE_PRIMARY;
   const strokeWidth = props.selected ? 2 : 1.5;
 
   const sectionsBlockY = TITLE_BAR_HEIGHT + HV_TOWER_HEIGHT;
   const busY = sectionsBlockY + SECTION_LABEL_GAP / 2;
+
+  /* Two-bus geometry: HV bus near top, LV bus lower, TR symbols between. */
+  const hvBusY = TITLE_BAR_HEIGHT + VERTICAL_PADDING + BAY_COLUMN_HEIGHT;
+  const hvBaysBottomY = hvBusY + BAY_NUMBER_GAP + hvFooterDepth;
+  const trGapTopY = hvBaysBottomY + 4;
+  const trGapBottomY = trGapTopY + TWO_BUS_TR_GAP;
+  const lvBusY = trGapBottomY;
 
   return (
     <g
@@ -390,66 +472,254 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
         {props.voltageHighKv} / {props.voltageLowKv} kV
       </text>
 
-      {/* Tor 110 kV → TR(1..N) → szyna SN */}
-      <HvTowerColumn
-        cx={totalWidth / 2}
-        topY={TITLE_BAR_HEIGHT}
-        bottomY={busY}
-        transformerCount={transformerCount}
-        voltageHighKv={props.voltageHighKv}
-        voltageLowKv={props.voltageLowKv}
-      />
-
-      {/* Pojedyncza pozioma szyna główna SN — operator-grade rendering */}
-      <line
-        x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
-        y1={busY}
-        x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
-        y2={busY}
-        stroke={COLOR_LINE_PRIMARY}
-        strokeWidth={STROKE_BUSBAR_PX}
-        data-testid="sld-v2-gpz-switchgear-main-bus"
-      />
-
-      {/* Sekcje + sprzęgła + kolumny pól */}
-      {layout.cells.map((cell) => {
-        if (cell.kind === 'bay') {
-          return (
-            <BayColumn
-              key={`bay-${cell.bay.bayRef}`}
-              x={HORIZONTAL_PADDING + cell.x}
-              busY={busY}
-              bay={cell.bay}
-              voltageKv={cell.busVoltageKv}
-              onClickBay={props.onClickBay}
-            />
-          );
-        }
-        return (
-          <CouplerBay
-            key={`coupler-${cell.coupler.couplerId}`}
-            x={HORIZONTAL_PADDING + cell.x}
-            busY={busY}
-            coupler={cell.coupler}
-          />
-        );
-      })}
-
-      {/* Etykiety sekcji (S1, S2, ...) — po lewej każdej sekcji nad szyną. */}
-      {layout.sectionLabels.map((label) => (
+      {/* Tekst akcji "Kasowanie sygnalizacji zabezpieczeń" — kanon SCADA. */}
+      {props.titleBarAction && (
         <text
-          key={`label-${label.sectionId}`}
-          x={HORIZONTAL_PADDING + label.x}
-          y={busY - 4}
+          x={totalWidth / 2}
+          y={16}
+          textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_SANS}
           fontSize={FONT_SIZES.technicalPanel}
-          fontWeight={700}
-          data-testid={`sld-v2-gpz-section-label-${label.sectionId}`}
+          fontWeight={500}
+          data-testid="sld-v2-gpz-switchgear-title-bar-action"
         >
-          {label.text}
+          {props.titleBarAction}
         </text>
-      ))}
+      )}
+
+      {isTwoBus && hvLayout ? (
+        <>
+          {/* === Tryb two-bus: HV bus + HV bays + TR symbols + LV bus + LV bays === */}
+
+          {/* Pozioma szyna 110 kV (HV bus) */}
+          <line
+            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            y1={hvBusY}
+            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            y2={hvBusY}
+            stroke={COLOR_DEVICE_OPEN}
+            strokeWidth={STROKE_BUSBAR_PX}
+            data-testid="sld-v2-gpz-switchgear-hv-bus"
+          />
+          <text
+            x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
+            y={hvBusY + 3}
+            textAnchor="end"
+            fill={COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+            fontWeight={600}
+            data-testid="sld-v2-gpz-switchgear-hv-bus-label-left"
+          >
+            {`${props.voltageHighKv}kV`}
+          </text>
+          <text
+            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
+            y={hvBusY + 3}
+            textAnchor="start"
+            fill={COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+            fontWeight={600}
+            data-testid="sld-v2-gpz-switchgear-hv-bus-label-right"
+          >
+            {`${props.voltageHighKv}kV`}
+          </text>
+
+          {/* HV sekcje + sprzęgła + kolumny pól (hangujące w dół z HV bus) */}
+          {hvLayout.cells.map((cell) => {
+            if (cell.kind === 'bay') {
+              return (
+                <BayColumn
+                  key={`hv-bay-${cell.bay.bayRef}`}
+                  x={HORIZONTAL_PADDING + cell.x}
+                  busY={hvBusY}
+                  bay={cell.bay}
+                  voltageKv={cell.busVoltageKv}
+                  onClickBay={props.onClickBay}
+                />
+              );
+            }
+            return (
+              <CouplerBay
+                key={`hv-coupler-${cell.coupler.couplerId}`}
+                x={HORIZONTAL_PADDING + cell.x}
+                busY={hvBusY}
+                coupler={cell.coupler}
+              />
+            );
+          })}
+
+          {/* HV etykiety sekcji */}
+          {hvLayout.sectionLabels.map((label) => (
+            <text
+              key={`hv-label-${label.sectionId}`}
+              x={HORIZONTAL_PADDING + label.x}
+              y={hvBusY - 4}
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.technicalPanel}
+              fontWeight={700}
+              data-testid={`sld-v2-gpz-hv-section-label-${label.sectionId}`}
+            >
+              {label.text}
+            </text>
+          ))}
+
+          {/* TR symbols między HV bays bottom a LV bus */}
+          <TwoBusTrColumn
+            cx={totalWidth / 2}
+            topY={trGapTopY}
+            bottomY={trGapBottomY}
+            transformerCount={transformerCount}
+            voltageHighKv={props.voltageHighKv}
+            voltageLowKv={props.voltageLowKv}
+            measurements={props.transformerMeasurements}
+          />
+
+          {/* Pozioma szyna 15 kV (LV bus) */}
+          <line
+            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            y1={lvBusY}
+            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            y2={lvBusY}
+            stroke={COLOR_DEVICE_CLOSED}
+            strokeWidth={STROKE_BUSBAR_PX}
+            data-testid="sld-v2-gpz-switchgear-lv-bus"
+          />
+          <text
+            x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
+            y={lvBusY + 3}
+            textAnchor="end"
+            fill={COLOR_DEVICE_CLOSED}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+            fontWeight={700}
+            data-testid="sld-v2-gpz-switchgear-lv-bus-label-left"
+          >
+            {`${props.voltageLowKv}kV`}
+          </text>
+          <text
+            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
+            y={lvBusY + 3}
+            textAnchor="start"
+            fill={COLOR_DEVICE_CLOSED}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+            fontWeight={700}
+            data-testid="sld-v2-gpz-switchgear-lv-bus-label-right"
+          >
+            {`${props.voltageLowKv}kV`}
+          </text>
+
+          {/* LV sekcje + sprzęgła + kolumny pól */}
+          {layout.cells.map((cell) => {
+            if (cell.kind === 'bay') {
+              return (
+                <BayColumn
+                  key={`lv-bay-${cell.bay.bayRef}`}
+                  x={HORIZONTAL_PADDING + cell.x}
+                  busY={lvBusY}
+                  bay={cell.bay}
+                  voltageKv={cell.busVoltageKv}
+                  onClickBay={props.onClickBay}
+                />
+              );
+            }
+            return (
+              <CouplerBay
+                key={`lv-coupler-${cell.coupler.couplerId}`}
+                x={HORIZONTAL_PADDING + cell.x}
+                busY={lvBusY}
+                coupler={cell.coupler}
+              />
+            );
+          })}
+
+          {/* LV etykiety sekcji */}
+          {layout.sectionLabels.map((label) => (
+            <text
+              key={`lv-label-${label.sectionId}`}
+              x={HORIZONTAL_PADDING + label.x}
+              y={lvBusY - 4}
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.technicalPanel}
+              fontWeight={700}
+              data-testid={`sld-v2-gpz-section-label-${label.sectionId}`}
+            >
+              {label.text}
+            </text>
+          ))}
+        </>
+      ) : (
+        <>
+          {/* === Tryb single-bus (legacy) === */}
+
+          {/* Tor 110 kV → TR(1..N) → szyna SN */}
+          <HvTowerColumn
+            cx={totalWidth / 2}
+            topY={TITLE_BAR_HEIGHT}
+            bottomY={busY}
+            transformerCount={transformerCount}
+            voltageHighKv={props.voltageHighKv}
+            voltageLowKv={props.voltageLowKv}
+            measurements={props.transformerMeasurements}
+          />
+
+          {/* Pojedyncza pozioma szyna główna SN — operator-grade rendering */}
+          <line
+            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            y1={busY}
+            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            y2={busY}
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={STROKE_BUSBAR_PX}
+            data-testid="sld-v2-gpz-switchgear-main-bus"
+          />
+
+          {/* Sekcje + sprzęgła + kolumny pól */}
+          {layout.cells.map((cell) => {
+            if (cell.kind === 'bay') {
+              return (
+                <BayColumn
+                  key={`bay-${cell.bay.bayRef}`}
+                  x={HORIZONTAL_PADDING + cell.x}
+                  busY={busY}
+                  bay={cell.bay}
+                  voltageKv={cell.busVoltageKv}
+                  onClickBay={props.onClickBay}
+                />
+              );
+            }
+            return (
+              <CouplerBay
+                key={`coupler-${cell.coupler.couplerId}`}
+                x={HORIZONTAL_PADDING + cell.x}
+                busY={busY}
+                coupler={cell.coupler}
+              />
+            );
+          })}
+
+          {/* Etykiety sekcji (S1, S2, ...) — po lewej każdej sekcji nad szyną. */}
+          {layout.sectionLabels.map((label) => (
+            <text
+              key={`label-${label.sectionId}`}
+              x={HORIZONTAL_PADDING + label.x}
+              y={busY - 4}
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.technicalPanel}
+              fontWeight={700}
+              data-testid={`sld-v2-gpz-section-label-${label.sectionId}`}
+            >
+              {label.text}
+            </text>
+          ))}
+        </>
+      )}
     </g>
   );
 }
@@ -465,10 +735,11 @@ interface HvTowerColumnProps {
   transformerCount: number;
   voltageHighKv: number;
   voltageLowKv: number;
+  measurements?: readonly TransformerMeasurements[];
 }
 
 function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
-  const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv } = props;
+  const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
 
   // Rozkład TR: jeśli >1, rozsadzamy poziomo wokół środka.
   const trSpacing = 60;
@@ -562,6 +833,26 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             {`${voltageHighKv}/${voltageLowKv}`}
           </text>
 
+          {/* Strzałka kierunku przepływu (kanon SCADA: nad TR) */}
+          {measurements?.[idx]?.flow && measurements[idx].flow !== 'none' && (
+            <TransformerFlowArrow
+              cx={trX - TR_RADIUS - 6}
+              cy={(trTopCenterY + trBottomCenterY) / 2}
+              direction={measurements[idx].flow as 'up' | 'down'}
+              trIndex={idx}
+            />
+          )}
+
+          {/* Panel pomiarów TR po lewej (Temp. oleju / Uarn / NZACZ / MVA) */}
+          {measurements?.[idx] && (
+            <TransformerMeasurementPanel
+              x={trX - TR_RADIUS - 12}
+              y={(trTopCenterY + trBottomCenterY) / 2 + TR_RADIUS + 12}
+              data={measurements[idx]}
+              trIndex={idx}
+            />
+          )}
+
           {/* Pionowy łącznik trójkąt → szyna SN */}
           <line
             x1={trX}
@@ -571,6 +862,154 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
             stroke={COLOR_LINE_PRIMARY}
             strokeWidth={STROKE_FIELD_TRACK_PX}
           />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+// =============================================================================
+// Two-Bus TR Column (TR symbols między HV bus a LV bus, bez 110 kV feed line)
+// =============================================================================
+
+interface TwoBusTrColumnProps {
+  cx: number;
+  topY: number;
+  bottomY: number;
+  transformerCount: number;
+  voltageHighKv: number;
+  voltageLowKv: number;
+  measurements?: readonly TransformerMeasurements[];
+}
+
+/**
+ * Renderuje stos TR symboli między HV bus a LV bus dla two-bus topology.
+ *
+ * Każdy TR ma:
+ *   - pionowy łącznik z HV bus (topY) do TR symbol
+ *   - dwa okręgi (Y/Δ kanon IEC)
+ *   - pionowy łącznik z TR do LV bus (bottomY)
+ *   - opcjonalnie: panel pomiarów + flow arrow + etykieta MVA
+ */
+function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
+  const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
+  const trSpacing = 80;
+  const trsX: number[] = [];
+  const startX = cx - ((transformerCount - 1) * trSpacing) / 2;
+  for (let i = 0; i < transformerCount; i++) {
+    trsX.push(startX + i * trSpacing);
+  }
+  const trCenterY = (topY + bottomY) / 2;
+  const trTopCenterY = trCenterY - (TR_RADIUS + TR_WINDING_GAP / 2);
+  const trBottomCenterY = trCenterY + (TR_RADIUS + TR_WINDING_GAP / 2);
+
+  return (
+    <g data-testid="sld-v2-gpz-switchgear-two-bus-tr-column">
+      {trsX.map((trX, idx) => (
+        <g
+          key={`twobus-tr-${idx}`}
+          data-testid="sld-v2-gpz-switchgear-transformer-symbol"
+          data-tr-index={String(idx)}
+        >
+          {/* Pionowy łącznik z HV bus do TR góra */}
+          <line
+            x1={trX}
+            y1={topY}
+            x2={trX}
+            y2={trTopCenterY - TR_RADIUS}
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={STROKE_FIELD_TRACK_PX}
+          />
+
+          {/* Y na stronie 110 kV */}
+          <YNodeMarker cx={trX} cy={trTopCenterY - TR_RADIUS - 2} />
+
+          {/* Dwa sprzężone okręgi */}
+          <circle
+            cx={trX}
+            cy={trTopCenterY}
+            r={TR_RADIUS}
+            fill={COLOR_PANEL_RAISED}
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={1.4}
+          />
+          <circle
+            cx={trX}
+            cy={trBottomCenterY}
+            r={TR_RADIUS}
+            fill={COLOR_PANEL_RAISED}
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={1.4}
+          />
+
+          {/* Trójkąt na stronie SN */}
+          <DeltaNodeMarker cx={trX} cy={trBottomCenterY + TR_RADIUS + 2} />
+
+          {/* Pionowy łącznik z TR dół do LV bus */}
+          <line
+            x1={trX}
+            y1={trBottomCenterY + TR_RADIUS + 4}
+            x2={trX}
+            y2={bottomY}
+            stroke={COLOR_DEVICE_CLOSED}
+            strokeWidth={STROKE_FIELD_TRACK_PX}
+          />
+
+          {/* Etykieta TR + MVA po prawej */}
+          <text
+            x={trX + TR_RADIUS + 5}
+            y={trCenterY + 3}
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel}
+            fontWeight={600}
+          >
+            TR{idx + 1}
+          </text>
+          {measurements?.[idx]?.apparentMva !== undefined && (
+            <text
+              x={trX + TR_RADIUS + 5}
+              y={trCenterY + 14}
+              fill={COLOR_TEXT_SECONDARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.technicalPanel - 1}
+              fontWeight={500}
+              data-testid={`sld-v2-gpz-tr-mva-label-${idx}`}
+            >
+              {`${measurements[idx].apparentMva!.toFixed(0)}MVA`}
+            </text>
+          )}
+          {!measurements?.[idx]?.apparentMva && (
+            <text
+              x={trX + TR_RADIUS + 5}
+              y={trCenterY + 14}
+              fill={COLOR_TEXT_MUTED}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.technicalPanel - 1}
+            >
+              {`${voltageHighKv}/${voltageLowKv}`}
+            </text>
+          )}
+
+          {/* Flow arrow (z lewej strony TR) */}
+          {measurements?.[idx]?.flow && measurements[idx].flow !== 'none' && (
+            <TransformerFlowArrow
+              cx={trX - TR_RADIUS - 6}
+              cy={trCenterY}
+              direction={measurements[idx].flow as 'up' | 'down'}
+              trIndex={idx}
+            />
+          )}
+
+          {/* Panel pomiarów po lewej */}
+          {measurements?.[idx] && (
+            <TransformerMeasurementPanel
+              x={trX - TR_RADIUS - 12}
+              y={trCenterY - 6}
+              data={measurements[idx]}
+              trIndex={idx}
+            />
+          )}
         </g>
       ))}
     </g>
@@ -607,6 +1046,120 @@ function DeltaNodeMarker(props: NodeMarkerProps): JSX.Element {
         stroke={COLOR_LINE_PRIMARY}
         strokeWidth={1.2}
       />
+    </g>
+  );
+}
+
+interface TransformerFlowArrowProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly direction: 'up' | 'down';
+  readonly trIndex: number;
+}
+
+/**
+ * Strzałka kierunku przepływu mocy transformatora.
+ * `up`   → moc z SN do 110 kV (eksport, zwykle żółta)
+ * `down` → moc z 110 kV do SN (import, zwykle magenta)
+ */
+function TransformerFlowArrow(props: TransformerFlowArrowProps): JSX.Element {
+  const { cx, cy, direction, trIndex } = props;
+  const fill = direction === 'up' ? COLOR_BADGE_BG_YELLOW : COLOR_KAS_LED;
+  const size = 4;
+  const tipY = direction === 'up' ? cy - size : cy + size;
+  const baseY = direction === 'up' ? cy + size : cy - size;
+  return (
+    <g
+      data-testid={`sld-v2-gpz-tr-flow-arrow-${trIndex}`}
+      data-flow-direction={direction}
+    >
+      <polygon
+        points={`${cx},${tipY} ${cx - size * 0.86},${baseY} ${cx + size * 0.86},${baseY}`}
+        fill={fill}
+        stroke={fill}
+        strokeWidth={0.5}
+      />
+    </g>
+  );
+}
+
+interface TransformerMeasurementPanelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly data: TransformerMeasurements;
+  readonly trIndex: number;
+}
+
+/**
+ * Panel pomiarów transformatora (Temp. oleju / Uarn / NZACZ / MVA).
+ * Renderowany po lewej stronie symbolu TR jako stos label/value.
+ */
+function TransformerMeasurementPanel(props: TransformerMeasurementPanelProps): JSX.Element {
+  const { x, y, data, trIndex } = props;
+  const rows: { label: string; value: string; testId: string }[] = [];
+  if (data.oilTemperatureC !== undefined) {
+    rows.push({
+      label: 'Temp. oleju',
+      value: data.oilTemperatureC.toFixed(1),
+      testId: 'oil-temp',
+    });
+  }
+  if (data.uarnKv !== undefined) {
+    rows.push({
+      label: 'Uarn',
+      value: data.uarnKv.toFixed(1),
+      testId: 'uarn',
+    });
+  }
+  if (data.nzacz) {
+    rows.push({
+      label: 'NZACZ',
+      value: data.nzacz,
+      testId: 'nzacz',
+    });
+  }
+  if (data.apparentMva !== undefined) {
+    rows.push({
+      label: 'MVA',
+      value: data.apparentMva.toFixed(0),
+      testId: 'mva',
+    });
+  }
+  if (rows.length === 0) {
+    return <g data-testid={`sld-v2-gpz-tr-measurements-${trIndex}`} />;
+  }
+  return (
+    <g data-testid={`sld-v2-gpz-tr-measurements-${trIndex}`}>
+      {rows.map((row, idx) => {
+        const rowY = y + idx * MEASUREMENT_ROW_HEIGHT;
+        return (
+          <g
+            key={row.testId}
+            data-testid={`sld-v2-gpz-tr-measurement-${row.testId}-${trIndex}`}
+          >
+            <text
+              x={x}
+              y={rowY}
+              textAnchor="end"
+              fill={COLOR_TEXT_MUTED}
+              fontFamily={FONT_SANS}
+              fontSize={MEASUREMENT_FONT_SIZE}
+            >
+              {row.label}
+            </text>
+            <text
+              x={x + 4}
+              y={rowY}
+              textAnchor="start"
+              fill={COLOR_MEASUREMENT_VALUE}
+              fontFamily={FONT_MONO}
+              fontSize={MEASUREMENT_FONT_SIZE}
+            >
+              {row.value}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
