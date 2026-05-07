@@ -82,7 +82,7 @@ describe('WorkflowOrchestrator — handleEsc', () => {
   });
 
   it('append aktywny + ESC → cancelled + idle', () => {
-    let s: AppendState = startAppend(INITIAL_ORCHESTRATOR_STATE.append);
+    const s: AppendState = startAppend(INITIAL_ORCHESTRATOR_STATE.append);
     let state = activateWorkflow(INITIAL_ORCHESTRATOR_STATE, 'append-on-endpoint');
     state = updateAppend(state, s);
     const after = handleEsc(state);
@@ -91,7 +91,7 @@ describe('WorkflowOrchestrator — handleEsc', () => {
   });
 
   it('split aktywny + ESC → cancelled + idle', () => {
-    let s: SplitState = startSplit(INITIAL_ORCHESTRATOR_STATE.split);
+    const s: SplitState = startSplit(INITIAL_ORCHESTRATOR_STATE.split);
     let state = activateWorkflow(INITIAL_ORCHESTRATOR_STATE, 'conscious-split');
     state = updateSplit(state, s);
     const after = handleEsc(state);
