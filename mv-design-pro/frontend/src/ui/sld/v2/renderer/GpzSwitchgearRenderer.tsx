@@ -69,11 +69,15 @@ const TR_WINDING_GAP = 7;
 const TR_HV_LEAD_LEN = 10;
 const TR_LV_LEAD_LEN = 10;
 const SECTION_LABEL_GAP = 18;
-const BAY_COLUMN_WIDTH = 56;
+const BAY_COLUMN_WIDTH = 64;
 const BAY_COLUMN_HEIGHT = 110;
 const BAY_GAP = 6;
 const BAY_HEADER_HEIGHT = 12;
 const BAY_NUMBER_GAP = 14;
+
+/* Vertical "Sterowanie zdalne/lokalne" label on left margin of bay. */
+const STEROWANIE_LABEL_X_OFFSET = 6;
+const STEROWANIE_FONT_SIZE = 7;
 const COUPLER_BAY_WIDTH = 120;
 const COUPLER_BAY_HEIGHT = BAY_COLUMN_HEIGHT;
 const COUPLER_LEG_INSET = 18;
@@ -90,10 +94,10 @@ const SECTION_BUS_OVERHANG = 10;
 const VERTICAL_PADDING = 10;
 const HORIZONTAL_PADDING = 14;
 
-/* Apparatus column geometry inside bay (left half of column). */
-const APPARATUS_COL_X_OFFSET = 12;
-/* State-badge column geometry inside bay (right half of column). */
-const BADGE_COL_X_OFFSET = 28;
+/* Apparatus column geometry inside bay (left-center of column). */
+const APPARATUS_COL_X_OFFSET = 18;
+/* State-badge column geometry inside bay (right of apparatus). */
+const BADGE_COL_X_OFFSET = 36;
 const BADGE_WIDTH = 22;
 const BADGE_LABEL_HEIGHT = 8;
 const BADGE_STATUS_HEIGHT = 8;
@@ -168,10 +172,22 @@ export interface BaySecondaryFlags {
  * Pomiary pola — wyświetlane w panelu pomiarowym pod numerem pola.
  *
  * Wszystkie wartości są opcjonalne — renderer pokazuje tylko te dostarczone.
+ * Kanoniczna kolejność wierszy w panelu (top → bottom):
+ *   napięcia fazowe (U1/U2/U3) → międzyfazowe (U12/U23/U31) → zerowe (U0)
+ *   → częstotliwość (f) → moce (P/Q/Idł) → prądy (I1/I2/I3).
+ *
  * Jednostki:
- *   p, q  — MW / Mvar
- *   i1..3 — A
- *   idl   — kA (prąd doziemny)
+ *   u1..3, u12..31, u0 — kV (napięcia)
+ *   f                  — Hz (częstotliwość)
+ *   p, q               — MW / Mvar
+ *   i1..3              — A
+ *   idl                — kA (prąd doziemny)
+ *
+ * Typy bayów SCADA (pełna gama referencyjna):
+ *   - Outgoing line:  P, Q, I1-3
+ *   - PN (voltage):   U1-3, U12-31, U0, f
+ *   - TR feeder:      P, Q, I1-3 + opcjonalnie U
+ *   - Wszystkie:      f opcjonalna
  */
 export interface BayMeasurements {
   readonly p?: number;
@@ -180,10 +196,27 @@ export interface BayMeasurements {
   readonly i2?: number;
   readonly i3?: number;
   readonly idl?: number;
+  readonly f?: number;
+  readonly u1?: number;
+  readonly u2?: number;
+  readonly u3?: number;
+  readonly u12?: number;
+  readonly u23?: number;
+  readonly u31?: number;
+  readonly u0?: number;
 }
 
 /** Stan markera zwarcia doziemnego (cyan circle u góry pola). */
 export type GroundFaultMarkerState = 'normal' | 'detected' | 'fault';
+
+/**
+ * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
+ * marginesie kolumny pola.
+ *   - `remote` → "STEROWANIE ZDALNE" (zielony)
+ *   - `local`  → "STEROWANIE LOKALNE" (żółty/ostrzegawczy)
+ *   - `unknown`→ etykieta przygaszona
+ */
+export type BayControlMode = 'remote' | 'local' | 'unknown';
 
 export interface GpzBayDescriptor {
   readonly bayRef: string;
@@ -212,6 +245,17 @@ export interface GpzBayDescriptor {
   readonly inManipulation?: boolean;
   /** Pomiary pola — renderowane w panelu pod numerem pola. */
   readonly measurements?: BayMeasurements;
+  /**
+   * Tryb sterowania pola — wyświetlany jako pionowa etykieta na lewym
+   * marginesie ("STEROWANIE ZDALNE" / "STEROWANIE LOKALNE"). Brak → brak etykiety.
+   */
+  readonly controlMode?: BayControlMode;
+  /**
+   * Numer P-* identyfikatora aparatu (np. "P133", "C434", "PE32").
+   * Wyświetlany jako mała przygaszona etykieta pod LED-em KAS. Wymaga
+   * `hasKasButton: true` żeby był widoczny.
+   */
+  readonly pNumber?: string;
 }
 
 export interface GpzSectionDescriptor {
@@ -653,6 +697,16 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         {(bay.feederName ?? bay.designation).slice(0, 8)}
       </text>
 
+      {/* Vertical "STEROWANIE ZDALNE/LOKALNE" label na lewym marginesie */}
+      {bay.controlMode && (
+        <SterowanieLabel
+          cx={x + STEROWANIE_LABEL_X_OFFSET}
+          cyTop={bodyTopY + 4}
+          cyBottom={busY + BAY_COLUMN_HEIGHT - 4}
+          mode={bay.controlMode}
+        />
+      )}
+
       {/* Marker zwarcia doziemnego (cyan circle u góry) */}
       {bay.groundFault && bay.groundFault !== 'normal' && (
         <GroundFaultMarker cx={apparatusCx} cy={bodyTopY + 3} state={bay.groundFault} />
@@ -705,9 +759,9 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         </text>
       )}
 
-      {/* Przycisk KAS (kasowanie sygnalizacji) — etykieta + LED kropka */}
+      {/* Przycisk KAS (kasowanie sygnalizacji) — etykieta + LED kropka + opcjonalnie P-number */}
       {bay.hasKasButton && (
-        <KasButton cx={x + BAY_COLUMN_WIDTH / 2} cy={kasY} />
+        <KasButton cx={x + BAY_COLUMN_WIDTH / 2} cy={kasY} pNumber={bay.pNumber} />
       )}
 
       {/* Panel pomiarowy — feeder header + P/Q/I1/I2/I3 */}
@@ -819,6 +873,8 @@ interface KasButtonProps {
   readonly testId?: string;
   /** Test-id LED (domyślnie "sld-v2-gpz-bay-kas-led"). */
   readonly ledTestId?: string;
+  /** Numer P-* identyfikatora pod LED-em (np. "P133", "C434"). Renderowany gdy podany. */
+  readonly pNumber?: string;
 }
 
 function KasButton(props: KasButtonProps): JSX.Element {
@@ -828,6 +884,7 @@ function KasButton(props: KasButtonProps): JSX.Element {
     label = 'KAS',
     testId = 'sld-v2-gpz-bay-kas',
     ledTestId = 'sld-v2-gpz-bay-kas-led',
+    pNumber,
   } = props;
   return (
     <g data-testid={testId} data-kas-label={label}>
@@ -849,6 +906,20 @@ function KasButton(props: KasButtonProps): JSX.Element {
         fill={COLOR_KAS_LED}
         data-testid={ledTestId}
       />
+      {pNumber && (
+        <text
+          x={cx + 4}
+          y={cy + 8}
+          textAnchor="middle"
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_SANS}
+          fontSize={6.5}
+          fontWeight={500}
+          data-testid={`${testId}-pnumber`}
+        >
+          {pNumber}
+        </text>
+      )}
     </g>
   );
 }
@@ -925,6 +996,65 @@ function GroundFaultMarker(props: GroundFaultMarkerProps): JSX.Element {
       <circle cx={cx} cy={cy} r={3} fill={fill} stroke={COLOR_GROUND_FAULT} strokeWidth={1.2} />
     </g>
   );
+}
+
+interface SterowanieLabelProps {
+  readonly cx: number;
+  readonly cyTop: number;
+  readonly cyBottom: number;
+  readonly mode: BayControlMode;
+}
+
+/**
+ * Pionowa etykieta trybu sterowania na lewym marginesie pola.
+ *
+ * Tekst rotowany -90° (czyta się od dołu do góry — kanon SCADA).
+ * Pozycjonowany w pionowej środkowej osi `cx` w przedziale (cyTop, cyBottom).
+ */
+function SterowanieLabel(props: SterowanieLabelProps): JSX.Element {
+  const { cx, cyTop, cyBottom, mode } = props;
+  const cy = (cyTop + cyBottom) / 2;
+  const text = sterowanieText(mode);
+  const fill = sterowanieColor(mode);
+  return (
+    <g data-testid="sld-v2-gpz-bay-sterowanie" data-control-mode={mode}>
+      <text
+        transform={`rotate(-90, ${cx}, ${cy})`}
+        x={cx}
+        y={cy + 2}
+        textAnchor="middle"
+        fill={fill}
+        fontFamily={FONT_SANS}
+        fontSize={STEROWANIE_FONT_SIZE}
+        fontWeight={700}
+        letterSpacing={0.5}
+      >
+        {text}
+      </text>
+    </g>
+  );
+}
+
+function sterowanieText(mode: BayControlMode): string {
+  switch (mode) {
+    case 'remote':
+      return 'STEROWANIE ZDALNE';
+    case 'local':
+      return 'STEROWANIE LOKALNE';
+    case 'unknown':
+      return 'STEROWANIE ?';
+  }
+}
+
+function sterowanieColor(mode: BayControlMode): string {
+  switch (mode) {
+    case 'remote':
+      return COLOR_BADGE_STATUS_OK;
+    case 'local':
+      return COLOR_BADGE_BG_YELLOW;
+    case 'unknown':
+      return COLOR_TEXT_MUTED;
+  }
 }
 
 interface CtPrimaryProps {
@@ -1492,8 +1622,27 @@ interface MeasurementRow {
   readonly value: string;
 }
 
+/**
+ * Buduje wiersze panelu pomiarowego w kanonicznej kolejności SCADA:
+ *   1. Napięcia fazowe (U1, U2, U3)
+ *   2. Napięcia międzyfazowe (U12, U23, U31)
+ *   3. Napięcie zerowe (U0)
+ *   4. Częstotliwość (f)
+ *   5. Moce (P, Q, Idł)
+ *   6. Prądy (I1, I2, I3)
+ *
+ * Każdy wiersz pojawia się tylko gdy dostarczona wartość.
+ */
 function collectMeasurementRows(m: BayMeasurements): readonly MeasurementRow[] {
   const rows: MeasurementRow[] = [];
+  if (m.u1 !== undefined) rows.push({ label: 'U1', value: formatVoltage(m.u1) });
+  if (m.u2 !== undefined) rows.push({ label: 'U2', value: formatVoltage(m.u2) });
+  if (m.u3 !== undefined) rows.push({ label: 'U3', value: formatVoltage(m.u3) });
+  if (m.u12 !== undefined) rows.push({ label: 'U12', value: formatVoltage(m.u12) });
+  if (m.u23 !== undefined) rows.push({ label: 'U23', value: formatVoltage(m.u23) });
+  if (m.u31 !== undefined) rows.push({ label: 'U31', value: formatVoltage(m.u31) });
+  if (m.u0 !== undefined) rows.push({ label: 'U0', value: formatVoltage(m.u0) });
+  if (m.f !== undefined) rows.push({ label: 'f', value: formatFrequency(m.f) });
   if (m.p !== undefined) rows.push({ label: 'P', value: formatNumber(m.p) });
   if (m.q !== undefined) rows.push({ label: 'Q', value: formatNumber(m.q) });
   if (m.idl !== undefined) rows.push({ label: 'Idł', value: formatNumber(m.idl) });
@@ -1510,7 +1659,15 @@ function hasAnyMeasurement(m: BayMeasurements): boolean {
     m.idl !== undefined ||
     m.i1 !== undefined ||
     m.i2 !== undefined ||
-    m.i3 !== undefined
+    m.i3 !== undefined ||
+    m.f !== undefined ||
+    m.u1 !== undefined ||
+    m.u2 !== undefined ||
+    m.u3 !== undefined ||
+    m.u12 !== undefined ||
+    m.u23 !== undefined ||
+    m.u31 !== undefined ||
+    m.u0 !== undefined
   );
 }
 
@@ -1522,6 +1679,18 @@ function formatNumber(value: number): string {
 function formatInteger(value: number): string {
   if (Number.isNaN(value)) return '—';
   return Math.round(value).toString();
+}
+
+/** Napięcia zawsze 1 dec (kanon SCADA — np. "15.4"). */
+function formatVoltage(value: number): string {
+  if (Number.isNaN(value)) return '—';
+  return value.toFixed(1);
+}
+
+/** Częstotliwość zawsze 2 dec (kanon SCADA — np. "49.94"). */
+function formatFrequency(value: number): string {
+  if (Number.isNaN(value)) return '—';
+  return value.toFixed(2);
 }
 
 function computeMaxFooterDepth(sections: readonly GpzSectionDescriptor[]): number {

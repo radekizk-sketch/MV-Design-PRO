@@ -766,6 +766,235 @@ describe('GpzSwitchgearRenderer — sprzęgło: yellow manipulation highlight', 
   });
 });
 
+// =============================================================================
+// SCADA-grade: vertical Sterowanie label (control mode indicator)
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — vertical Sterowanie label', () => {
+  it('controlMode="remote" → "STEROWANIE ZDALNE" rotowany tekst zielony', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'remote' }],
+        },
+      ],
+    });
+    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
+    expect(label).not.toBeNull();
+    expect(label?.getAttribute('data-control-mode')).toBe('remote');
+    expect(label?.textContent).toBe('STEROWANIE ZDALNE');
+    const text = label?.querySelector('text');
+    expect(text?.getAttribute('fill')).toBe('#2DB54E'); // COLOR_BADGE_STATUS_OK
+    expect(text?.getAttribute('transform')).toContain('rotate(-90');
+  });
+
+  it('controlMode="local" → "STEROWANIE LOKALNE" żółty', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'local' }],
+        },
+      ],
+    });
+    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
+    expect(label?.textContent).toBe('STEROWANIE LOKALNE');
+    expect(label?.querySelector('text')?.getAttribute('fill')).toBe('#E5C828'); // COLOR_BADGE_BG_YELLOW
+  });
+
+  it('controlMode="unknown" → "STEROWANIE ?" przygaszony', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], controlMode: 'unknown' }],
+        },
+      ],
+    });
+    const label = container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]');
+    expect(label?.textContent).toBe('STEROWANIE ?');
+  });
+
+  it('brak controlMode → brak etykiety', () => {
+    const { container } = r();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-sterowanie"]')).toBeNull();
+  });
+});
+
+// =============================================================================
+// SCADA-grade: P-number identifier under KAS LED
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — P-number pod LED-em KAS', () => {
+  it('hasKasButton + pNumber="C434" → P-number widoczny pod LED-em', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], hasKasButton: true, pNumber: 'C434' }],
+        },
+      ],
+    });
+    const pNumber = container.querySelector('[data-testid="sld-v2-gpz-bay-kas-pnumber"]');
+    expect(pNumber).not.toBeNull();
+    expect(pNumber?.textContent).toBe('C434');
+  });
+
+  it('pNumber bez hasKasButton → P-number NIE renderowany (KAS jest wyłączony)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], pNumber: 'C434' }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas-pnumber"]')).toBeNull();
+  });
+
+  it('hasKasButton bez pNumber → KAS bez P-number', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], hasKasButton: true }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-kas-pnumber"]')).toBeNull();
+  });
+});
+
+// =============================================================================
+// SCADA-grade: voltage measurements + frequency in canonical order
+// =============================================================================
+
+describe('GpzSwitchgearRenderer — napięcia + częstotliwość w panelu pomiarowym', () => {
+  it('U1/U2/U3 → 3 wiersze napięć fazowych', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            measurements: { u1: 8.9, u2: 8.9, u3: 8.7 },
+          }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u1"]')?.textContent).toContain('8.9');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u2"]')?.textContent).toContain('8.9');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u3"]')?.textContent).toContain('8.7');
+  });
+
+  it('U12/U23/U31 → 3 wiersze napięć międzyfazowych', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            measurements: { u12: 15.4, u23: 15.4, u31: 15.4 },
+          }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u12"]')?.textContent).toContain('15.4');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u23"]')?.textContent).toContain('15.4');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u31"]')?.textContent).toContain('15.4');
+  });
+
+  it('U0=0.1 → wiersz napięcia zerowego', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], measurements: { u0: 0.1 } }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-u0"]')?.textContent).toContain('0.1');
+  });
+
+  it('f=49.94 → wiersz częstotliwości z 2 dec', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], measurements: { f: 49.94 } }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-f"]')?.textContent).toContain('49.94');
+  });
+
+  it('f=50 → wiersz "50.00" (zawsze 2 dec)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], measurements: { f: 50 } }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-f"]')?.textContent).toContain('50.00');
+  });
+
+  it('PN bay (U1/U2/U3 + U12/U23/U31 + U0 + f) → 8 wierszy w kanonicznej kolejności', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            measurements: {
+              u1: 8.9, u2: 8.9, u3: 8.7,
+              u12: 15.4, u23: 15.4, u31: 15.4,
+              u0: 0.1,
+              f: 49.00,
+            },
+          }],
+        },
+      ],
+    });
+    const panel = container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]');
+    expect(panel?.getAttribute('data-row-count')).toBe('8');
+  });
+
+  it('TR feeder (U + f + P + Q + I) → wszystkie wiersze w canonical order', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15,
+          bays: [{
+            ...DEFAULT_BAYS[0],
+            measurements: {
+              u1: 67.0, u2: 67.2, u3: 67.1,
+              f: 49,
+              p: 4.1, q: 0.7,
+              i1: 155, i2: 156, i3: 154,
+            },
+          }],
+        },
+      ],
+    });
+    const panel = container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]');
+    expect(panel?.getAttribute('data-row-count')).toBe('9');
+    // Sprawdź kolejność: U1 przed P, P przed I1.
+    const children = panel ? Array.from(panel.querySelectorAll('[data-testid^="sld-v2-gpz-bay-measurement-"]')) : [];
+    const labels = children.map((c) => c.getAttribute('data-testid'));
+    const u1Idx = labels.indexOf('sld-v2-gpz-bay-measurement-u1');
+    const fIdx = labels.indexOf('sld-v2-gpz-bay-measurement-f');
+    const pIdx = labels.indexOf('sld-v2-gpz-bay-measurement-p');
+    const i1Idx = labels.indexOf('sld-v2-gpz-bay-measurement-i1');
+    expect(u1Idx).toBeLessThan(fIdx);
+    expect(fIdx).toBeLessThan(pIdx);
+    expect(pIdx).toBeLessThan(i1Idx);
+  });
+});
+
 describe('GpzSwitchgearRenderer — sprzęgło: pełna architektura SCADA', () => {
   it('sprzęgło z numerami + I + KAS SP + SZR + KAS SZR renderuje wszystkie elementy', () => {
     const { container } = rWithCoupler({
