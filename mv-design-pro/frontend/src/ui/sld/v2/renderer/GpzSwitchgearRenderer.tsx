@@ -74,8 +74,12 @@ const BAY_COLUMN_HEIGHT = 110;
 const BAY_GAP = 6;
 const BAY_HEADER_HEIGHT = 12;
 const BAY_NUMBER_GAP = 14;
-const COUPLER_BAY_WIDTH = 44;
+const COUPLER_BAY_WIDTH = 120;
 const COUPLER_BAY_HEIGHT = BAY_COLUMN_HEIGHT;
+const COUPLER_LEG_INSET = 18;
+const COUPLER_DS_OFFSET_Y = 22;
+const COUPLER_HORIZONTAL_OFFSET_Y = 36;
+const COUPLER_BAY_NUMBER_OFFSET_Y = 8;
 const SECTION_INTER_GAP = 28;
 const APPARATUS_PITCH = 18;
 const CB_SIZE = 9;
@@ -226,6 +230,23 @@ export interface GpzCouplerDescriptor {
   readonly rightSectionId: string;
   readonly designation: string;
   readonly closed: boolean;
+  /** Numer pola lewej nogi sprzęgła (np. "15"). */
+  readonly bayNumberLeft?: string;
+  /** Numer pola prawej nogi sprzęgła (np. "17"). */
+  readonly bayNumberRight?: string;
+  /**
+   * Architektura wtórna sprzęgła — najczęściej SZR (Samoczynne Załączenie
+   * Rezerwy), opcjonalnie SPZ. Renderowane jako stos badge'y.
+   */
+  readonly secondary?: BaySecondaryFlags;
+  /** Czy renderować przycisk "KAS SP" (kasowanie sygnalizacji sprzęgła poprzecznego). */
+  readonly hasKasSp?: boolean;
+  /** Czy renderować przycisk "KAS SZR" (kasowanie sygnalizacji SZR). */
+  readonly hasKasSzr?: boolean;
+  /** Prąd pomiarowy sprzęgła w A — wyświetlany pod CB jako "I  X". */
+  readonly currentI?: number;
+  /** Czy sprzęgło jest w stanie manipulacji (yellow background). */
+  readonly inManipulation?: boolean;
 }
 
 export interface GpzSwitchgearRendererProps {
@@ -792,12 +813,24 @@ function BadgeRow(props: BadgeRowProps): JSX.Element {
 interface KasButtonProps {
   readonly cx: number;
   readonly cy: number;
+  /** Etykieta przycisku (domyślnie "KAS"). Sprzęgło używa "KAS SP", "KAS SZR". */
+  readonly label?: string;
+  /** Test-id rodzica (domyślnie "sld-v2-gpz-bay-kas"). */
+  readonly testId?: string;
+  /** Test-id LED (domyślnie "sld-v2-gpz-bay-kas-led"). */
+  readonly ledTestId?: string;
 }
 
 function KasButton(props: KasButtonProps): JSX.Element {
-  const { cx, cy } = props;
+  const {
+    cx,
+    cy,
+    label = 'KAS',
+    testId = 'sld-v2-gpz-bay-kas',
+    ledTestId = 'sld-v2-gpz-bay-kas-led',
+  } = props;
   return (
-    <g data-testid="sld-v2-gpz-bay-kas">
+    <g data-testid={testId} data-kas-label={label}>
       <text
         x={cx - 4}
         y={cy + 1}
@@ -807,14 +840,14 @@ function KasButton(props: KasButtonProps): JSX.Element {
         fontSize={9}
         fontWeight={700}
       >
-        KAS
+        {label}
       </text>
       <circle
         cx={cx + 4}
         cy={cy - 2}
         r={KAS_LED_RADIUS}
         fill={COLOR_KAS_LED}
-        data-testid="sld-v2-gpz-bay-kas-led"
+        data-testid={ledTestId}
       />
     </g>
   );
@@ -1011,78 +1044,256 @@ interface CouplerBayProps {
 function CouplerBay(props: CouplerBayProps): JSX.Element {
   const { x, busY, coupler } = props;
   const closed = coupler.closed;
-  const fill = closed ? COLOR_DEVICE_CLOSED : COLOR_PANEL;
-  const stroke = closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_DEVICE_OPEN_BORDER;
-  const cx = x + COUPLER_BAY_WIDTH / 2;
-  const cyCb = busY + 28;
+
+  /* CB visual: closed = green filled, open = cyan hollow (kanon SCADA). */
+  const cbFill = closed ? COLOR_DEVICE_CLOSED : COLOR_PANEL_RAISED;
+  const cbStroke = closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_SELECTION;
+
+  /* Track / wire color: green when coupler closed (current path), white otherwise. */
+  const trackColor = closed ? COLOR_DEVICE_CLOSED : COLOR_LINE_PRIMARY;
+
+  /* Geometry: two legs dropping from busY, joined by horizontal connection with CB in middle. */
+  const leftLegX = x + COUPLER_LEG_INSET;
+  const rightLegX = x + COUPLER_BAY_WIDTH - COUPLER_LEG_INSET;
+  const cbCx = (leftLegX + rightLegX) / 2;
+  const dsY = busY + COUPLER_DS_OFFSET_Y;
+  const horizontalY = busY + COUPLER_HORIZONTAL_OFFSET_Y;
+
+  /* Decoration positions (under horizontal CB row). */
+  const measurementY = horizontalY + 14;
+  const kasSpY = measurementY + 14;
+  const badgeStackY = kasSpY + 8;
+  const kasSzrY = badgeStackY + 18;
+
+  /* Yellow manipulation highlight (oliwkowe tło). */
+  const bodyFill = coupler.inManipulation ? COLOR_MANIPULATION_BG : COLOR_PANEL_RAISED;
+  const bodyStroke = coupler.inManipulation ? COLOR_BADGE_BG_YELLOW : COLOR_TEXT_MUTED;
+  const bodyStrokeOpacity = coupler.inManipulation ? 0.9 : 0.45;
+  const bodyStrokeWidth = coupler.inManipulation ? 1.2 : 0.8;
+
+  const useFallbackLabel = !coupler.bayNumberLeft && !coupler.bayNumberRight;
 
   return (
     <g
       data-testid={`sld-v2-gpz-coupler-${coupler.couplerId}`}
       data-closed={String(closed)}
       data-coupler-id={coupler.couplerId}
+      data-in-manipulation={coupler.inManipulation ? 'true' : 'false'}
     >
-      {/* Tło sprzęgła — subtelnie wyróżnione */}
+      {/* Tło sprzęgła */}
       <rect
         x={x}
         y={busY}
         width={COUPLER_BAY_WIDTH}
         height={COUPLER_BAY_HEIGHT}
-        fill={COLOR_PANEL_RAISED}
-        stroke={COLOR_TEXT_MUTED}
-        strokeOpacity={0.45}
-        strokeWidth={0.8}
+        fill={bodyFill}
+        stroke={bodyStroke}
+        strokeOpacity={bodyStrokeOpacity}
+        strokeWidth={bodyStrokeWidth}
         rx={1}
+        data-testid="sld-v2-gpz-coupler-body"
       />
 
-      {/* Etykieta sprzęgła */}
-      <text
-        x={cx}
-        y={busY + 10}
-        textAnchor="middle"
-        fill={COLOR_TEXT_SECONDARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.technicalPanel - 1}
-        fontWeight={600}
-      >
-        Sprz.
-      </text>
+      {/* Numery pól nad każdą nogą (np. 15, 17). Fallback: "Sprz." na środku. */}
+      {useFallbackLabel ? (
+        <text
+          x={cbCx}
+          y={busY + COUPLER_BAY_NUMBER_OFFSET_Y + 2}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.technicalPanel - 1}
+          fontWeight={600}
+        >
+          Sprz.
+        </text>
+      ) : (
+        <>
+          {coupler.bayNumberLeft && (
+            <text
+              x={leftLegX}
+              y={busY + COUPLER_BAY_NUMBER_OFFSET_Y + 2}
+              textAnchor="middle"
+              fill={COLOR_TEXT_PRIMARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.bayLabel - 4}
+              fontWeight={700}
+              data-testid="sld-v2-gpz-coupler-bay-number-left"
+            >
+              {coupler.bayNumberLeft}
+            </text>
+          )}
+          {coupler.bayNumberRight && (
+            <text
+              x={rightLegX}
+              y={busY + COUPLER_BAY_NUMBER_OFFSET_Y + 2}
+              textAnchor="middle"
+              fill={COLOR_TEXT_PRIMARY}
+              fontFamily={FONT_SANS}
+              fontSize={FONT_SIZES.bayLabel - 4}
+              fontWeight={700}
+              data-testid="sld-v2-gpz-coupler-bay-number-right"
+            >
+              {coupler.bayNumberRight}
+            </text>
+          )}
+        </>
+      )}
 
-      {/* Pionowy tor sprzęgła (kreska) */}
+      {/* Lewa noga: pionowy łącznik z busa do horyzontalnej części */}
       <line
-        x1={cx}
+        x1={leftLegX}
         y1={busY}
-        x2={cx}
-        y2={busY + COUPLER_BAY_HEIGHT - 6}
-        stroke={COLOR_LINE_PRIMARY}
+        x2={leftLegX}
+        y2={horizontalY}
+        stroke={trackColor}
+        strokeWidth={STROKE_FIELD_TRACK_PX}
+        data-testid="sld-v2-gpz-coupler-leg-left"
+      />
+
+      {/* Prawa noga */}
+      <line
+        x1={rightLegX}
+        y1={busY}
+        x2={rightLegX}
+        y2={horizontalY}
+        stroke={trackColor}
+        strokeWidth={STROKE_FIELD_TRACK_PX}
+        data-testid="sld-v2-gpz-coupler-leg-right"
+      />
+
+      {/* DS otwarty (kółko) na górze każdej nogi — kanoniczny marker rozłącznika */}
+      <circle
+        cx={leftLegX}
+        cy={dsY}
+        r={DS_RADIUS}
+        fill={COLOR_PANEL_RAISED}
+        stroke={closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        data-testid="sld-v2-gpz-coupler-ds-left"
+      />
+      <circle
+        cx={rightLegX}
+        cy={dsY}
+        r={DS_RADIUS}
+        fill={COLOR_PANEL_RAISED}
+        stroke={closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        data-testid="sld-v2-gpz-coupler-ds-right"
+      />
+
+      {/* Lewy odcinek poziomu (od lewej nogi do CB) */}
+      <line
+        x1={leftLegX}
+        y1={horizontalY}
+        x2={cbCx - CB_SIZE / 2 - 1}
+        y2={horizontalY}
+        stroke={trackColor}
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* CB sprzęgła */}
+      {/* Prawy odcinek poziomu (od CB do prawej nogi) */}
+      <line
+        x1={cbCx + CB_SIZE / 2 + 1}
+        y1={horizontalY}
+        x2={rightLegX}
+        y2={horizontalY}
+        stroke={trackColor}
+        strokeWidth={STROKE_FIELD_TRACK_PX}
+      />
+
+      {/* CB sprzęgła w środku poziomej części (cyan hollow gdy open, green gdy closed) */}
       <rect
-        x={cx - CB_SIZE / 2}
-        y={cyCb - CB_SIZE / 2}
+        x={cbCx - CB_SIZE / 2}
+        y={horizontalY - CB_SIZE / 2}
         width={CB_SIZE}
         height={CB_SIZE}
-        fill={fill}
-        stroke={stroke}
+        fill={cbFill}
+        stroke={cbStroke}
         strokeWidth={1.4}
         rx={1}
         data-testid="sld-v2-gpz-coupler-cb"
         data-state={closed ? 'closed' : 'open'}
       />
-      {!closed && (
-        <line
-          x1={cx - CB_SIZE / 2 + 1}
-          y1={cyCb}
-          x2={cx + CB_SIZE / 2 - 1}
-          y2={cyCb}
-          stroke={COLOR_DEVICE_OPEN}
-          strokeWidth={1.4}
+
+      {/* Pomiar prądu sprzęgła "I  X" */}
+      {coupler.currentI !== undefined && (
+        <CouplerCurrentDisplay cx={cbCx} cy={measurementY} value={coupler.currentI} />
+      )}
+
+      {/* KAS SP — kasowanie sygnalizacji sprzęgła */}
+      {coupler.hasKasSp && (
+        <KasButton
+          cx={cbCx + 4}
+          cy={kasSpY}
+          label="KAS SP"
+          testId="sld-v2-gpz-coupler-kas-sp"
+          ledTestId="sld-v2-gpz-coupler-kas-sp-led"
+        />
+      )}
+
+      {/* Stos badge'y (najczęściej SZR + opcjonalnie SPZ) */}
+      {coupler.secondary && (
+        <BadgeStack
+          x={cbCx - BADGE_WIDTH / 2}
+          y={badgeStackY}
+          flags={coupler.secondary}
+        />
+      )}
+
+      {/* KAS SZR — kasowanie sygnalizacji automatyki SZR */}
+      {coupler.hasKasSzr && (
+        <KasButton
+          cx={cbCx + 4}
+          cy={kasSzrY}
+          label="KAS SZR"
+          testId="sld-v2-gpz-coupler-kas-szr"
+          ledTestId="sld-v2-gpz-coupler-kas-szr-led"
         />
       )}
 
       <title>{`${coupler.designation} — ${closed ? 'zamknięte' : 'otwarte'}`}</title>
+    </g>
+  );
+}
+
+/** Pomiar prądu sprzęgła "I  X" — jednorzędowy panel pomiarowy nad CB. */
+function CouplerCurrentDisplay(props: { cx: number; cy: number; value: number }): JSX.Element {
+  const { cx, cy, value } = props;
+  return (
+    <g data-testid="sld-v2-gpz-coupler-current">
+      <rect
+        x={cx - 16}
+        y={cy - 5}
+        width={32}
+        height={10}
+        fill={COLOR_PANEL}
+        stroke={COLOR_TEXT_MUTED}
+        strokeOpacity={0.5}
+        strokeWidth={0.5}
+        rx={1}
+      />
+      <text
+        x={cx - 12}
+        y={cy + 3}
+        textAnchor="start"
+        fill={COLOR_TEXT_SECONDARY}
+        fontFamily={FONT_SANS}
+        fontSize={MEASUREMENT_FONT_SIZE - 1}
+        fontWeight={600}
+      >
+        I
+      </text>
+      <text
+        x={cx + 13}
+        y={cy + 3}
+        textAnchor="end"
+        fill={COLOR_MEASUREMENT_VALUE}
+        fontFamily={FONT_MONO}
+        fontSize={MEASUREMENT_FONT_SIZE - 1}
+      >
+        {formatInteger(value)}
+      </text>
     </g>
   );
 }

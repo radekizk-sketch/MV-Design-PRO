@@ -615,3 +615,174 @@ describe('GpzSwitchgearRenderer — pełna architektura SCADA pola', () => {
     expect(container.querySelector('[data-testid="sld-v2-gpz-bay-measurement-panel"]')).not.toBeNull();
   });
 });
+
+// =============================================================================
+// SCADA-grade: sprzęgło sekcyjne — Phase 0A refinement
+// =============================================================================
+
+function rWithCoupler(couplerOverrides: Partial<Parameters<typeof GpzSwitchgearRenderer>[0]['couplers'][0]> = {}) {
+  return r({
+    sections: [
+      { sectionId: 'sec-1', order: 1, name: 'Sekcja I', sectionLabel: 'S1', busVoltageKv: 15, bays: DEFAULT_BAYS },
+      {
+        sectionId: 'sec-2', order: 2, name: 'Sekcja II', sectionLabel: 'S2', busVoltageKv: 15,
+        bays: DEFAULT_BAYS.map((b) => ({ ...b, bayRef: `${b.bayRef}-s2` })),
+      },
+    ],
+    couplers: [
+      {
+        couplerId: 'cpl-1',
+        leftSectionId: 'sec-1',
+        rightSectionId: 'sec-2',
+        designation: 'Sprzęgło S1-S2',
+        closed: true,
+        ...couplerOverrides,
+      },
+    ],
+  });
+}
+
+describe('GpzSwitchgearRenderer — sprzęgło SCADA dwoma nogami + poziomy CB', () => {
+  it('sprzęgło renderuje 2 nogi (lewa + prawa) z DS u góry każdej', () => {
+    const { container } = rWithCoupler();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-leg-left"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-leg-right"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-ds-left"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-ds-right"]')).not.toBeNull();
+  });
+
+  it('domyślnie (bez bay numbers) renderuje fallback "Sprz."', () => {
+    const { container } = rWithCoupler();
+    expect(container.textContent).toContain('Sprz.');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-bay-number-left"]')).toBeNull();
+  });
+
+  it('z bayNumberLeft="15" + bayNumberRight="17" → numery nad nogami, brak "Sprz."', () => {
+    const { container } = rWithCoupler({ bayNumberLeft: '15', bayNumberRight: '17' });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-bay-number-left"]')?.textContent).toBe('15');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-bay-number-right"]')?.textContent).toBe('17');
+    // "Sprz." fallback nie jest wyświetlany gdy są bay numbers.
+    const coupler = container.querySelector('[data-testid="sld-v2-gpz-coupler-cpl-1"]');
+    expect(coupler?.textContent).not.toContain('Sprz.');
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: stylizacja CB cyan/green', () => {
+  it('zamknięte → CB green filled (COLOR_DEVICE_CLOSED)', () => {
+    const { container } = rWithCoupler({ closed: true });
+    const cb = container.querySelector('[data-testid="sld-v2-gpz-coupler-cb"]') as Element;
+    expect(cb.getAttribute('data-state')).toBe('closed');
+    expect(cb.getAttribute('fill')).toBe(COLOR_DEVICE_CLOSED);
+  });
+
+  it('otwarte → CB cyan hollow (COLOR_SELECTION jako cyan)', () => {
+    const { container } = rWithCoupler({ closed: false });
+    const cb = container.querySelector('[data-testid="sld-v2-gpz-coupler-cb"]') as Element;
+    expect(cb.getAttribute('data-state')).toBe('open');
+    // Kanon SCADA: open coupler CB = cyan hollow (COLOR_SELECTION = #35C7FF).
+    expect(cb.getAttribute('stroke')).toBe('#35C7FF');
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: pomiar prądu I', () => {
+  it('currentI=0 → renderuje display "I  0"', () => {
+    const { container } = rWithCoupler({ currentI: 0 });
+    const display = container.querySelector('[data-testid="sld-v2-gpz-coupler-current"]');
+    expect(display).not.toBeNull();
+    expect(display?.textContent).toContain('I');
+    expect(display?.textContent).toContain('0');
+  });
+
+  it('currentI=185 → wartość zaokrąglona "185"', () => {
+    const { container } = rWithCoupler({ currentI: 185 });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-current"]')?.textContent).toContain('185');
+  });
+
+  it('brak currentI → brak panelu prądu', () => {
+    const { container } = rWithCoupler();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-current"]')).toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: KAS SP + KAS SZR', () => {
+  it('hasKasSp=true → KAS SP button + LED', () => {
+    const { container } = rWithCoupler({ hasKasSp: true });
+    const kas = container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-sp"]');
+    expect(kas).not.toBeNull();
+    expect(kas?.textContent).toContain('KAS SP');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-sp-led"]')).not.toBeNull();
+  });
+
+  it('hasKasSzr=true → KAS SZR button + LED', () => {
+    const { container } = rWithCoupler({ hasKasSzr: true });
+    const kas = container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-szr"]');
+    expect(kas).not.toBeNull();
+    expect(kas?.textContent).toContain('KAS SZR');
+  });
+
+  it('oba KAS jednocześnie → oba widoczne', () => {
+    const { container } = rWithCoupler({ hasKasSp: true, hasKasSzr: true });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-sp"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-szr"]')).not.toBeNull();
+  });
+
+  it('brak hasKas* → brak przycisków KAS', () => {
+    const { container } = rWithCoupler();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-sp"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-szr"]')).toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: badge SZR', () => {
+  it('secondary.szr=enabled → badge SZR z status row "Zal."', () => {
+    const { container } = rWithCoupler({ secondary: { szr: 'enabled' } });
+    const badge = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-szr"]');
+    expect(badge).not.toBeNull();
+    expect(badge?.textContent).toContain('SZR');
+    expect(badge?.textContent).toContain('Zal.');
+  });
+
+  it('SZR + SPZ → 2 badge\'y w stosie', () => {
+    const { container } = rWithCoupler({ secondary: { spz: 'enabled', szr: 'restricted' } });
+    const stack = container.querySelector('[data-testid="sld-v2-gpz-bay-badge-stack"]');
+    expect(stack?.getAttribute('data-badge-count')).toBe('2');
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: yellow manipulation highlight', () => {
+  it('inManipulation=true → tło sprzęgła oliwkowe + data-attribute', () => {
+    const { container } = rWithCoupler({ inManipulation: true });
+    const coupler = container.querySelector('[data-testid="sld-v2-gpz-coupler-cpl-1"]');
+    expect(coupler?.getAttribute('data-in-manipulation')).toBe('true');
+    const body = coupler?.querySelector('[data-testid="sld-v2-gpz-coupler-body"]');
+    expect(body?.getAttribute('fill')).toBe('#5C5512'); // COLOR_MANIPULATION_BG
+  });
+
+  it('domyślnie nie w manipulacji', () => {
+    const { container } = rWithCoupler();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-coupler-cpl-1"]')?.getAttribute('data-in-manipulation'),
+    ).toBe('false');
+  });
+});
+
+describe('GpzSwitchgearRenderer — sprzęgło: pełna architektura SCADA', () => {
+  it('sprzęgło z numerami + I + KAS SP + SZR + KAS SZR renderuje wszystkie elementy', () => {
+    const { container } = rWithCoupler({
+      bayNumberLeft: '15',
+      bayNumberRight: '17',
+      currentI: 0,
+      hasKasSp: true,
+      hasKasSzr: true,
+      secondary: { szr: 'enabled' },
+      closed: false,
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-bay-number-left"]')?.textContent).toBe('15');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-bay-number-right"]')?.textContent).toBe('17');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-cb"]')?.getAttribute('data-state')).toBe('open');
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-current"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-sp"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-coupler-kas-szr"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-badge-szr"]')).not.toBeNull();
+  });
+});
