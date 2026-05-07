@@ -268,6 +268,8 @@ def build_golden_network() -> EnergyNetworkModel:
             p_mw=0.5,
             q_mvar=0.0,
             gen_type="pv_inverter",
+            connection_variant="nn_side",
+            station_ref="sub_s05",
         )
     )
     bays.append(
@@ -289,6 +291,8 @@ def build_golden_network() -> EnergyNetworkModel:
             p_mw=2.0,
             q_mvar=0.0,
             gen_type="wind_inverter",
+            connection_variant="nn_side",
+            station_ref="sub_s10",
         )
     )
     bays.append(
