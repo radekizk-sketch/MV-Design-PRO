@@ -31,6 +31,8 @@ import {
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
+import { buildCanonicalGpzProps } from './enmToCanonicalGpzAdapter';
+import type { GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
 import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
 import {
   hasPaletteDragData,
@@ -256,6 +258,24 @@ export function SldWorkspaceContainer(
     () => buildSldDataFromSnapshot(snapshot, logicalViews),
     [snapshot, logicalViews],
   );
+
+  /* Phase R4 (operator-grade GPZ rebuild): dla każdego GPZ z legacy adaptera
+   * budujemy canonical props z ENM. SldCanvasV2 renderuje GpzCanonicalRenderer
+   * gdy canonical istnieje dla danego id; inaczej fallback do legacy renderera.
+   * Adapter throwa gdy substation nie jest typu 'gpz' — wtedy pomijamy element. */
+  const canonicalGpzs = useMemo<readonly GpzCanonicalRendererProps[]>(() => {
+    if (!snapshot) return [];
+    const out: GpzCanonicalRendererProps[] = [];
+    for (const g of sldData.gpzs) {
+      try {
+        const canonical = buildCanonicalGpzProps(snapshot, g.id, { x: g.x, y: g.y });
+        out.push(canonical);
+      } catch {
+        // Substation nie jest typu 'gpz' lub nie istnieje — legacy fallback.
+      }
+    }
+    return out;
+  }, [snapshot, sldData.gpzs]);
 
   const isEmpty = useMemo(() => {
     return (
@@ -562,6 +582,7 @@ export function SldWorkspaceContainer(
         width={measured.width}
         height={measured.height}
         gpzs={sldData.gpzs}
+        canonicalGpzs={canonicalGpzs}
         sections={sldData.sections}
         cableRuns={sldData.cableRuns}
         stations={sldData.stations}

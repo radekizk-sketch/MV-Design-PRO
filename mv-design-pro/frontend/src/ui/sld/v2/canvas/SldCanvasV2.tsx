@@ -30,6 +30,10 @@ import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
+import {
+  GpzCanonicalRenderer,
+  type GpzCanonicalRendererProps,
+} from '../renderer/GpzCanonicalRenderer';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
 import { StationOnRunRenderer, type StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
@@ -50,6 +54,13 @@ export interface SldCanvasV2Props {
 
   /** Lista obiektów do renderowania. */
   readonly gpzs: readonly GpzRendererProps[];
+  /**
+   * Operator-grade canonical GPZ props (Phase R4 rebuild).
+   * Gdy podane dla `id` z `gpzs[]`, kanwa renderuje `GpzCanonicalRenderer`
+   * (pełna rozdzielnia SCADA OSD) zamiast legacy `GpzRenderer` (placeholder).
+   * Caller (SldWorkspaceContainer) wywołuje `buildCanonicalGpzProps` z ENM.
+   */
+  readonly canonicalGpzs?: readonly GpzCanonicalRendererProps[];
   readonly sections: readonly SectionRendererProps[];
   readonly cableRuns: ReadonlyArray<{
     id: string;
@@ -98,7 +109,7 @@ export interface SldCanvasV2Props {
 
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
-    width, height, gpzs, sections, cableRuns, stations, ders, connections = [],
+    width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu,
   } = props;
@@ -277,21 +288,47 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         ))}
 
         {/* GPZ blocks */}
-        {gpzs.map((g) => (
-          <g
-            key={g.id}
-            onContextMenu={
-              onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
-            }
-          >
-            <GpzRenderer
-              {...g}
-              lod={lod}
-              selected={selectedId === g.id}
-              onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
-            />
-          </g>
-        ))}
+        {gpzs.map((g) => {
+          /* Phase R4: prefer canonical SCADA-OSD renderer gdy adapter
+           * dostarczył canonical props dla tego id. Fallback do legacy
+           * `GpzRenderer` gdy brak (np. snapshot bez gpz_sections + bez bays). */
+          const canonical = canonicalGpzs?.find((c) => c.id === g.id);
+          if (canonical) {
+            return (
+              <g
+                key={g.id}
+                onContextMenu={
+                  onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
+                }
+                onClick={
+                  onSelectElement
+                    ? (e) => {
+                        e.stopPropagation();
+                        onSelectElement(g.id, 'gpz');
+                      }
+                    : undefined
+                }
+              >
+                <GpzCanonicalRenderer {...canonical} />
+              </g>
+            );
+          }
+          return (
+            <g
+              key={g.id}
+              onContextMenu={
+                onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
+              }
+            >
+              <GpzRenderer
+                {...g}
+                lod={lod}
+                selected={selectedId === g.id}
+                onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
+              />
+            </g>
+          );
+        })}
 
         {/* Stacje na ciągu */}
         {stations.map((st) => (
