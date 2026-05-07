@@ -25,24 +25,39 @@ export function inferLodFromScale(scale: number): LodLevel {
   return 4;
 }
 
+/**
+ * Wszystkie kindy elementów rozpoznawane przez LOD policy.
+ *
+ * Phase 0A dodaje 4 nowe kindy:
+ * - `mini_block_compact` (LOD 0+): mini-RMU w wariancie kompaktowym.
+ * - `mini_block_detail` (LOD 2+): mini-RMU w wariancie szczegółowym.
+ * - `gpz_switchgear` (LOD 1+): GPZ z sekcjami i polami (delegacja).
+ * - `der_sub_tree` (LOD 3+): pełne drzewo połączeniowe DER.
+ */
+export type LodElementKind =
+  | 'gpz_block'
+  | 'section'
+  | 'bay_head'
+  | 'device'
+  | 'device_label'
+  | 'cable_run'
+  | 'station_block'
+  | 'station_internal'
+  | 'der_marker'
+  | 'der_full'
+  | 'measurement'
+  | 'q_label'
+  | 'missing_data_marker'
+  | 'alarm_marker'
+  | 'nop_marker'
+  | 'mini_block_compact'
+  | 'mini_block_detail'
+  | 'gpz_switchgear'
+  | 'der_sub_tree';
+
 /** Czy element typu X jest widoczny na danym LOD. */
 export function isVisibleAtLod(
-  elementKind:
-    | 'gpz_block'
-    | 'section'
-    | 'bay_head'
-    | 'device'
-    | 'device_label'
-    | 'cable_run'
-    | 'station_block'
-    | 'station_internal'
-    | 'der_marker'
-    | 'der_full'
-    | 'measurement'
-    | 'q_label'
-    | 'missing_data_marker'
-    | 'alarm_marker'
-    | 'nop_marker',
+  elementKind: LodElementKind,
   lod: LodLevel,
 ): boolean {
   switch (elementKind) {
@@ -61,6 +76,10 @@ export function isVisibleAtLod(
     case 'missing_data_marker': return lod >= 1;
     case 'alarm_marker': return lod >= 0;
     case 'nop_marker': return lod >= 1;
+    case 'mini_block_compact': return lod >= 0;
+    case 'mini_block_detail': return lod >= 2;
+    case 'gpz_switchgear': return lod >= 1;
+    case 'der_sub_tree': return lod >= 3;
   }
 }
 
@@ -122,3 +141,156 @@ export const LAYER_LABELS_PL: Readonly<Record<SldLayerId, string>> = {
   topology: 'Topologia pracy',
   alarms: 'Alarmy / blokady',
 };
+
+// =============================================================================
+// LOD Hysteresis FSM (Phase 0A)
+// =============================================================================
+
+/**
+ * Histereza LOD: zapobiega migotaniu na progach (np. 0.68 ↔ 0.72 dla
+ * progu 0.7). Reguła:
+ *   - Aby przejść z LOD N do LOD N+1, scale musi przekroczyć próg(N) *
+ *     (1 + hysteresisMargin).
+ *   - Aby przejść z LOD N do LOD N-1, scale musi spaść poniżej próg(N) *
+ *     (1 - hysteresisMargin).
+ *
+ * Domyślny margines: 0.15 (15%) — stabilizuje przejścia.
+ *
+ * Debounce: zmiana LOD wymaga utrzymania nowego progu przez `debounceMs`
+ * (domyślnie 250 ms). Wcześniejszy powrót do poprzedniego progu anuluje
+ * przejście.
+ *
+ * Acceptance Invariant nr 6: LOD zmienia tylko szczegół wizualny, NIE
+ * topologię. Hysteresis controller jest pure state machine — nie dotyka
+ * domeny.
+ */
+export interface LodControllerOptions {
+  readonly initialScale: number;
+  /** Margines histerezy (0–1). Domyślnie 0.15 (15%). */
+  readonly hysteresisMargin?: number;
+  /** Debounce ms dla zmiany LOD. Domyślnie 250 ms. */
+  readonly debounceMs?: number;
+  /**
+   * Wstrzyknięcie zegara — używane w testach. Pozwala kontrolować
+   * upływ czasu bez czekania na real timery.
+   */
+  readonly nowProvider?: () => number;
+}
+
+export interface LodController {
+  /**
+   * Aktualizuje scale. Zwraca aktualny LOD (po zastosowaniu histerezy
+   * i debounce). Wywołanie nie ma efektów ubocznych.
+   */
+  update(scale: number, atTimeMs?: number): LodLevel;
+  /** Aktualny LOD bez aktualizacji scale. */
+  getLod(): LodLevel;
+  /** Ostatnio przekazany scale. */
+  getScale(): number;
+  /** Reset do scale, bez histerezy/debounce. */
+  reset(scale: number): void;
+}
+
+interface PendingTransition {
+  readonly targetLod: LodLevel;
+  readonly armedAtMs: number;
+}
+
+/**
+ * Tworzy kontroler LOD z histerezą i debounce.
+ *
+ * Czysty stateful — bez React, bez timerów. Wywołujący (np. ViewportController)
+ * wywołuje `update(scale, atTimeMs)` w każdej klatce / przy każdej zmianie
+ * scale.
+ */
+export function createLodController(opts: LodControllerOptions): LodController {
+  const margin = opts.hysteresisMargin ?? 0.15;
+  const debounceMs = opts.debounceMs ?? 250;
+  const nowProvider = opts.nowProvider ?? (() => Date.now());
+
+  let currentLod: LodLevel = inferLodFromScale(opts.initialScale);
+  let lastScale = opts.initialScale;
+  let pending: PendingTransition | null = null;
+
+  function applyHysteresis(scale: number): LodLevel {
+    // Próg górny dla obecnego LOD (próg powyżej którego rozważamy LOD+1).
+    const upperThreshold = upperBoundForLod(currentLod);
+    const lowerThreshold = lowerBoundForLod(currentLod);
+    if (upperThreshold !== null && scale >= upperThreshold * (1 + margin)) {
+      return inferLodFromScale(scale);
+    }
+    if (lowerThreshold !== null && scale <= lowerThreshold * (1 - margin)) {
+      return inferLodFromScale(scale);
+    }
+    return currentLod;
+  }
+
+  return {
+    update(scale: number, atTimeMs?: number): LodLevel {
+      lastScale = scale;
+      const now = atTimeMs ?? nowProvider();
+      const candidate = applyHysteresis(scale);
+
+      if (candidate === currentLod) {
+        // Zmiana scale nie wymusza zmiany LOD — anuluj oczekujące przejście.
+        pending = null;
+        return currentLod;
+      }
+
+      // Inicjuj lub aktualizuj oczekujące przejście.
+      if (!pending || pending.targetLod !== candidate) {
+        pending = { targetLod: candidate, armedAtMs: now };
+      }
+
+      // Jeśli debounce już upłynął (lub debounceMs == 0), commituj.
+      if (now - pending.armedAtMs >= debounceMs) {
+        currentLod = pending.targetLod;
+        pending = null;
+      }
+      return currentLod;
+    },
+    getLod(): LodLevel {
+      return currentLod;
+    },
+    getScale(): number {
+      return lastScale;
+    },
+    reset(scale: number): void {
+      currentLod = inferLodFromScale(scale);
+      lastScale = scale;
+      pending = null;
+    },
+  };
+}
+
+/** Górna granica scale dla danego LOD (poza którą rozważamy LOD+1). */
+function upperBoundForLod(lod: LodLevel): number | null {
+  switch (lod) {
+    case 0:
+      return LOD_ZOOM_THRESHOLDS.LOD_0_MAX;
+    case 1:
+      return LOD_ZOOM_THRESHOLDS.LOD_1_MAX;
+    case 2:
+      return LOD_ZOOM_THRESHOLDS.LOD_2_MAX;
+    case 3:
+      return LOD_ZOOM_THRESHOLDS.LOD_3_MAX;
+    case 4:
+      return null; // brak górnego progu
+  }
+}
+
+/** Dolna granica scale dla danego LOD (poniżej której rozważamy LOD-1). */
+function lowerBoundForLod(lod: LodLevel): number | null {
+  switch (lod) {
+    case 0:
+      return null; // brak dolnego progu
+    case 1:
+      return LOD_ZOOM_THRESHOLDS.LOD_0_MAX;
+    case 2:
+      return LOD_ZOOM_THRESHOLDS.LOD_1_MAX;
+    case 3:
+      return LOD_ZOOM_THRESHOLDS.LOD_2_MAX;
+    case 4:
+      return LOD_ZOOM_THRESHOLDS.LOD_3_MAX;
+  }
+}
