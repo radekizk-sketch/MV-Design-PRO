@@ -25,6 +25,8 @@ import {
 } from '../lod/LodPolicy';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
 import { CableRunRenderer } from '../renderer/CableRunRenderer';
+import { CadOverlay } from './CadOverlay';
+import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
 import { DerRenderer, type DerRendererProps } from '../renderer/DerRenderer';
 import { GpzRenderer, type GpzRendererProps } from '../renderer/GpzRenderer';
@@ -67,6 +69,22 @@ export interface SldCanvasV2Props {
 
   /** Stan warstw widoczności. */
   readonly layerVisibility?: Partial<Record<SldLayerId, boolean>>;
+
+  /** Phase 2 polish (operator-grade SLD plan v2): CadOverlay props.
+   *  Snap state (mode/grid/port tolerance), ghost previews dla
+   *  append/split workflow, korytarze dla CorridorLayout strategy,
+   *  zaznaczone routes dla bend handles. Wszystkie opcjonalne — gdy
+   *  brak, CadOverlay nie jest renderowany. */
+  readonly cadOverlay?: {
+    readonly snapState?: import('../viewport/Snap').SnapState;
+    readonly hoverPoint?: import('../geometry/routing').Point | null;
+    readonly ports?: readonly import('../viewport/Snap').PortSnapTarget[];
+    readonly ghosts?: readonly import('./CadOverlay').CadGhost[];
+    readonly corridors?: readonly import('./CadOverlay').CadCorridorBand[];
+    readonly selectedRoutes?: readonly import('../geometry/RouteEditor').RouteSegment[];
+    readonly onBendDragStart?: (routeId: string, bendIdx: number) => void;
+    readonly onBendDoubleClick?: (routeId: string, bendIdx: number) => void;
+  };
 
   readonly onSelectElement?: (id: string | null, kind: string) => void;
   readonly onDoubleClickStation?: (id: string) => void;
@@ -199,6 +217,27 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
       {/* World transform */}
       <g transform={`translate(${transform.translateX}, ${transform.translateY}) scale(${transform.scale})`}>
+        {/* Phase 2 polish: CadOverlay (grid + magnesy + bend handles + ghosts +
+            korytarze). Renderowany pod content żeby nie zasłaniał obiektów
+            domenowych. NIE pokazujemy gdy brak `cadOverlay` props (default off). */}
+        {props.cadOverlay && (
+          <CadOverlay
+            width={width}
+            height={height}
+            viewportScale={transform.scale}
+            viewportTx={transform.translateX}
+            viewportTy={transform.translateY}
+            snapState={props.cadOverlay.snapState ?? DEFAULT_SNAP_STATE}
+            hoverPoint={props.cadOverlay.hoverPoint ?? null}
+            ports={props.cadOverlay.ports}
+            ghosts={props.cadOverlay.ghosts}
+            corridors={props.cadOverlay.corridors}
+            selectedRoutes={props.cadOverlay.selectedRoutes}
+            onBendDragStart={props.cadOverlay.onBendDragStart}
+            onBendDoubleClick={props.cadOverlay.onBendDoubleClick}
+          />
+        )}
+
         {/* Connections (cienka warstwa pomocnicza) */}
         {layers.topology && connections.map((c) => (
           <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
