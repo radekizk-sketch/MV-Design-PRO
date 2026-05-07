@@ -57,6 +57,8 @@ CANONICAL_OPS = frozenset(
         "add_gpz_section",
         "update_gpz_section",
         "delete_gpz_section",
+        # Phase 0B (operator-grade SLD plan v2): append-on-endpoint workflow
+        "append_station_on_endpoint",
     }
 )
 
@@ -4586,6 +4588,372 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
 
 # ---------------------------------------------------------------------------
+# Phase 0B: append_station_on_endpoint (operator-grade SLD plan v2)
+# ---------------------------------------------------------------------------
+
+
+def _find_endpoint_bus_for_run(enm: dict[str, Any], run_ref: str) -> str | None:
+    """Znajduje końcową szynę (terminal) dla LineRun po `run_ref`.
+
+    Heurystyka: corridor.ordered_segment_refs[-1].to_bus_ref jeśli to terminal
+    (helper_bus albo brak innych podłączeń niż via to_bus_ref).
+    """
+    for corridor in enm.get("corridors", []):
+        if corridor.get("ref_id") == run_ref:
+            ordered = corridor.get("ordered_segment_refs", [])
+            if not ordered:
+                return None
+            last_seg_ref = ordered[-1]
+            for branch in enm.get("branches", []):
+                if branch.get("ref_id") == last_seg_ref:
+                    return branch.get("to_bus_ref")
+    return None
+
+
+def _bus_is_free_terminal(enm: dict[str, Any], bus_ref: str) -> bool:
+    """Czy szyna jest wolnym terminalem (helper_bus + topology_terminal)?
+
+    Wolny terminal = nie jest przypisany do żadnej Substation (poza GPZ),
+    nie ma innych branch wychodzących, ma tag 'topology_terminal'.
+    """
+    bus = None
+    for b in enm.get("buses", []):
+        if b.get("ref_id") == bus_ref:
+            bus = b
+            break
+    if not bus:
+        return False
+    tags = bus.get("tags", []) or []
+    if "topology_terminal" not in tags and "helper_bus" not in tags:
+        # Bez tagów helper — sprawdź czy nie jest już końcówką stacji.
+        for sub in enm.get("substations", []):
+            if bus_ref in (sub.get("bus_refs") or []):
+                return False
+    # Ma terminal? Sprawdź ile branchów go ma jako endpoint.
+    inbound = sum(
+        1
+        for b in enm.get("branches", [])
+        if b.get("from_bus_ref") == bus_ref or b.get("to_bus_ref") == bus_ref
+    )
+    # Wolny terminal = dokładnie 1 branch dochodzi do niego (poprzedni segment).
+    return inbound <= 1
+
+
+def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Phase 0B: addytywna operacja — dodaj stację na końcu istniejącego ciągu.
+
+    Workflow operator-grade SLD plan v2: endpoint bay/segment → terminate
+    in station (bez rozcinania). Naturalny flow inżyniera: zakończ ciąg w
+    stacji zamiast dzielić odcinek w środku.
+
+    Payload:
+      endpoint_bus_ref: str    — terminal helper_bus na końcu segmentu (lub
+                                 użyj run_ref do auto-detekcji)
+      run_ref: str (opcjonalny) — ID corridor/LineRun (zamiast endpoint_bus_ref)
+      station_type: 'inline' | 'branch' | 'terminal' | 'sectional' | 'mv_lv'
+      station: { name, station_type, sn_voltage_kv?, nn_voltage_kv }
+      transformer: { transformer_catalog_ref } (opcjonalny)
+      nn_voltage_kv: float (opcjonalny — domyślnie z station.nn_voltage_kv)
+      dry_run: bool (Phase 0C-style preview)
+
+    Determinizm: stacja generuje stabilny ID z seed = endpoint_bus_ref + station.name.
+    Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
+    Substation. Endpoint_bus staje się pierwszą szyną SN nowej stacji.
+    """
+    dry_run = bool(payload.get("dry_run", False))
+    endpoint_bus_ref = payload.get("endpoint_bus_ref")
+    run_ref = payload.get("run_ref")
+    station_payload = payload.get("station", {})
+    station_name = station_payload.get("name") or payload.get("station_name") or "Nowa stacja"
+    transformer_payload = payload.get("transformer") or {}
+    # nn_voltage_kv: explicit z payload (None → fallback 0.4; 0 → walidacja niżej rzuca błąd)
+    nn_voltage_raw = station_payload.get("nn_voltage_kv")
+    if nn_voltage_raw is None:
+        nn_voltage_raw = payload.get("nn_voltage_kv")
+    nn_voltage_kv = nn_voltage_raw if nn_voltage_raw is not None else 0.4
+
+    # Step 0: walidacja wejścia
+    if not endpoint_bus_ref and run_ref:
+        endpoint_bus_ref = _find_endpoint_bus_for_run(enm, run_ref)
+    if not endpoint_bus_ref:
+        return _error_response(
+            "Brak identyfikatora terminala. Podaj `endpoint_bus_ref` lub `run_ref` "
+            "z istniejącym corridor.",
+            "station.append.endpoint_missing",
+        )
+
+    # Walidacja: bus istnieje
+    endpoint_bus = None
+    for b in enm.get("buses", []):
+        if b.get("ref_id") == endpoint_bus_ref:
+            endpoint_bus = b
+            break
+    if not endpoint_bus:
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie istnieje.",
+            "station.append.endpoint_not_found",
+        )
+
+    # Walidacja: bus jest wolnym terminalem (nie podłączony do innej Substation)
+    if not _bus_is_free_terminal(enm, endpoint_bus_ref):
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie jest wolnym terminalem — "
+            "jest już podłączona do innej stacji lub ma więcej niż 1 segment.",
+            "station.append.endpoint_not_free",
+        )
+
+    # Walidacja: voltage compat
+    sn_voltage_kv = endpoint_bus.get("voltage_kv")
+    if not sn_voltage_kv or sn_voltage_kv <= 0:
+        return _error_response(
+            f"Szyna '{endpoint_bus_ref}' nie ma napięcia znamionowego.",
+            "station.append.voltage_missing",
+        )
+
+    if nn_voltage_kv <= 0:
+        return _error_response(
+            "Brak napięcia nN stacji. Podaj `nn_voltage_kv` > 0.",
+            "station.append.nn_voltage_missing",
+        )
+
+    # Walidacja station_type
+    station_type_raw = station_payload.get("station_type") or payload.get("station_type") or "terminal"
+    semantic_to_substation = {
+        "inline": "inline",
+        "branch": "branch",
+        "terminal": "mv_lv",
+        "sectional": "sectional",
+        "mv_lv": "mv_lv",
+        "A": "mv_lv",
+        "B": "inline",
+        "C": "branch",
+        "D": "sectional",
+    }
+    substation_type = semantic_to_substation.get(station_type_raw)
+    if not substation_type:
+        return _error_response(
+            f"Typ stacji '{station_type_raw}' nieprawidłowy. "
+            "Wymagane: inline, branch, terminal, sectional, mv_lv lub A-D.",
+            "station.append.station_type_invalid",
+        )
+
+    # Step 1: deterministic seed
+    seed = _compute_seed(
+        {
+            "op": "append_station_on_endpoint",
+            "endpoint_bus": endpoint_bus_ref,
+            "station_name": station_name,
+            "station_type": substation_type,
+        }
+    )
+    substation_ref = f"sub/{seed}/substation"
+    bus_nn_ref = f"bus/{seed}/nn"
+    bay_in_ref = f"bay/{seed}/in"
+    bay_tr_ref = f"bay/{seed}/tr"
+    transformer_ref = f"tr/{seed}/transformer"
+
+    # Dry-run: deepcopy, zwracamy preview metadata
+    new_enm = copy.deepcopy(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    # Step 2: utworzenie Substation
+    new_substation = {
+        "ref_id": substation_ref,
+        "name": station_name,
+        "station_type": substation_type,
+        "bus_refs": [endpoint_bus_ref],
+        "transformer_refs": [],
+        "tags": [],
+        "meta": {"created_by": "append_station_on_endpoint"},
+    }
+    new_enm.setdefault("substations", []).append(new_substation)
+    created.append(substation_ref)
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "STATION_CREATED",
+        "element_id": substation_ref,
+    })
+
+    # Step 3: Bay(IN) wskazujący na endpoint_bus
+    new_bay_in = {
+        "ref_id": bay_in_ref,
+        "name": f"Pole IN — {station_name}",
+        "bay_role": "IN",
+        "substation_ref": substation_ref,
+        "bus_ref": endpoint_bus_ref,
+        "equipment_refs": [],
+        "tags": [],
+        "meta": {},
+    }
+    new_enm.setdefault("bays", []).append(new_bay_in)
+    created.append(bay_in_ref)
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "FIELDS_CREATED_SN",
+        "element_id": bay_in_ref,
+    })
+
+    # Step 4: opcjonalny Transformator + Bus nN + Bay(TR)
+    transformer_catalog_ref = (
+        transformer_payload.get("transformer_catalog_ref")
+        or transformer_payload.get("catalog_ref")
+    )
+    if transformer_catalog_ref:
+        # Bus nN
+        bus_nn = {
+            "ref_id": bus_nn_ref,
+            "name": f"Szyna nN {station_name}",
+            "voltage_kv": nn_voltage_kv,
+            "phase_system": "3ph",
+            "tags": [],
+            "meta": {"substation_ref": substation_ref},
+        }
+        new_enm.setdefault("buses", []).append(bus_nn)
+        new_substation["bus_refs"].append(bus_nn_ref)
+        created.append(bus_nn_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "BUS_NN_CREATED",
+            "element_id": bus_nn_ref,
+        })
+
+        # Transformator SN/nN
+        transformer = {
+            "ref_id": transformer_ref,
+            "name": f"TR {station_name}",
+            "hv_bus_ref": endpoint_bus_ref,
+            "lv_bus_ref": bus_nn_ref,
+            "uhv_kv": sn_voltage_kv,
+            "ulv_kv": nn_voltage_kv,
+            "sn_mva": transformer_payload.get("sn_mva", 0.0),
+            "uk_percent": transformer_payload.get("uk_percent", 0.0),
+            "pk_kw": transformer_payload.get("pk_kw", 0.0),
+            "catalog_ref": transformer_catalog_ref,
+            "catalog_namespace": "TRAFO_SN_NN",
+            "source_mode": "KATALOG",
+            "tags": [],
+            "meta": {},
+        }
+        # Materializacja z katalogu (ujednolicony wzorzec)
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=transformer_payload.get("catalog_binding"),
+            default_namespace="TRAFO_SN_NN",
+        )
+        if not isinstance(materialization, dict):
+            binding_payload, materialized_params = materialization
+            _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
+            _apply_materialized_transformer_fields(transformer, materialized_params)
+        new_enm.setdefault("transformers", []).append(transformer)
+        new_substation["transformer_refs"].append(transformer_ref)
+        created.append(transformer_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "TR_CREATED",
+            "element_id": transformer_ref,
+        })
+
+        # Bay(TR)
+        new_bay_tr = {
+            "ref_id": bay_tr_ref,
+            "name": f"Pole TR — {station_name}",
+            "bay_role": "TR",
+            "substation_ref": substation_ref,
+            "bus_ref": endpoint_bus_ref,
+            "equipment_refs": [transformer_ref],
+            "tags": [],
+            "meta": {},
+        }
+        new_enm.setdefault("bays", []).append(new_bay_tr)
+        created.append(bay_tr_ref)
+        ev_seq += 1
+        events.append({
+            "event_seq": ev_seq,
+            "event_type": "FIELDS_CREATED_SN",
+            "element_id": bay_tr_ref,
+        })
+
+    # Step 5: re-tag endpoint_bus jako część stacji
+    for b in new_enm.get("buses", []):
+        if b.get("ref_id") == endpoint_bus_ref:
+            existing_tags = list(b.get("tags") or [])
+            if "topology_terminal" in existing_tags:
+                existing_tags.remove("topology_terminal")
+            if "helper_bus" in existing_tags:
+                existing_tags.remove("helper_bus")
+            existing_tags.append("substation_bus")
+            b["tags"] = existing_tags
+            meta = b.setdefault("meta", {})
+            meta["substation_ref"] = substation_ref
+            meta["render_on_sld"] = True
+            meta["show_in_project_tree"] = True
+            break
+
+    # Step 6: update LineRun (corridor) jeśli wskazany
+    if run_ref:
+        for corridor in new_enm.get("corridors", []):
+            if corridor.get("ref_id") == run_ref:
+                stations = corridor.setdefault("station_refs", [])
+                if substation_ref not in stations:
+                    stations.append(substation_ref)
+                ev_seq += 1
+                events.append({
+                    "event_seq": ev_seq,
+                    "event_type": "LOGICAL_VIEWS_UPDATED",
+                    "element_id": run_ref,
+                })
+                break
+
+    # Audit + emit STATION_APPENDED_ON_ENDPOINT
+    audit.append({
+        "step": ev_seq,
+        "action": f"Utworzono stację '{station_name}' na końcu odcinka",
+        "element_id": substation_ref,
+    })
+    ev_seq += 1
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "STATION_APPENDED_ON_ENDPOINT",
+        "element_id": substation_ref,
+        "affected_object_refs": list(created),
+    })
+
+    response = _response(
+        new_enm,
+        created=created,
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+    # Phase 0C-style dry_run: usunąć snapshot, zwrócić preview metadata
+    if dry_run:
+        response["dry_run"] = True
+        response["preview"] = {
+            "appended_station_id": substation_ref,
+            "endpoint_bus_ref": endpoint_bus_ref,
+            "created_refs": list(created),
+            "electrical_impact": {
+                "topology_changed": True,
+                "affected_object_refs": [substation_ref, *created],
+                "endpoint_bus_consumed": True,
+                "new_terminal_bus_ref": bus_nn_ref if transformer_catalog_ref else None,
+            },
+        }
+        response.pop("snapshot", None)
+
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -4607,6 +4975,7 @@ _HANDLERS: dict[str, Any] = {
     "add_gpz_section": add_gpz_section,
     "update_gpz_section": update_gpz_section,
     "delete_gpz_section": delete_gpz_section,
+    "append_station_on_endpoint": append_station_on_endpoint,
 }
 
 
