@@ -1527,22 +1527,27 @@ function BayColumn(props: BayColumnProps): JSX.Element {
   const cbState = bay.cbState ?? 'unknown';
   const dsState = bay.dsState ?? 'unknown';
 
-  /* INVARIANT 13 (audyt MV BLOCKER-1+15): renderer iteruje BAY_DEVICE_ORDER_POLICY
-   * — pole MEASUREMENT nie ma CB, pole TR ma TRANSFORMER + LV_BREAKER zamiast
-   * cable head, pole RMU_LINE używa SWITCH_DISCONNECTOR a nie CB+DS.
-   * Pełna iteracja sloty po sloty wymaga `bay.equipment_refs[]` z ENM (Phase 1+);
-   * Phase 0A: filter widocznych symboli per slot whitelist. */
+  /* INVARIANT 13 (audyt MV BLOCKER-1+15, 3-ci audyt SLD §C.1): renderer
+   * iteruje BAY_DEVICE_ORDER_POLICY w PEŁNI — wszystkie 12 typów ApparatusKind
+   * mają whitelist boolean flag. Polityka kontroluje symbole, NIE renderer. */
   const slots = getBayDeviceOrder(bay.fieldRole);
   const hasSlot = (kind: typeof APPARATUS_KIND[keyof typeof APPARATUS_KIND]): boolean =>
     slots.some((s) => s.apparatusKind === kind);
   const showCb = hasSlot(APPARATUS_KIND.CIRCUIT_BREAKER);
-  const showDs = hasSlot(APPARATUS_KIND.DISCONNECTOR) || hasSlot(APPARATUS_KIND.SWITCH_DISCONNECTOR);
+  const showDsCircle = hasSlot(APPARATUS_KIND.DISCONNECTOR);
+  const showSwitchDisconnector = hasSlot(APPARATUS_KIND.SWITCH_DISCONNECTOR);
   const showCt = hasSlot(APPARATUS_KIND.CT);
   const showEs = hasSlot(APPARATUS_KIND.EARTHING_SWITCH);
   const showCableHead = hasSlot(APPARATUS_KIND.CABLE_HEAD);
-  /* MEASUREMENT bay ma VT (Phase 0A: placeholder marker; pełny VT trójfazowy
-   * w Phase 1 jako ApparatusVtThreePhase). */
-  const showVtMarker = hasSlot(APPARATUS_KIND.VT) && bay.fieldRole === FIELD_ROLE.MEASUREMENT;
+  const showFuse = hasSlot(APPARATUS_KIND.FUSE);
+  const showSurgeArrester = hasSlot(APPARATUS_KIND.SURGE_ARRESTER);
+  const showTransformer = hasSlot(APPARATUS_KIND.TRANSFORMER);
+  const showLvBreaker = hasSlot(APPARATUS_KIND.LV_BREAKER);
+  /* VT trójfazowy renderowany dla pól z VT na MAIN_AXIS (MEASUREMENT).
+   * Pola GPZ_LINE_BAY mają VT na LATERAL_BRANCH (opcjonalnie) — placeholder
+   * pomijany. */
+  const showVt = hasSlot(APPARATUS_KIND.VT)
+    && slots.some((s) => s.apparatusKind === APPARATUS_KIND.VT && s.position === 'MAIN_AXIS');
   const energizedColor = energizationColor(energization);
   const trackColor = bay.hasMissingRequiredDevice ? '#FFB020' : energizedColor;
   const apparatusCx = x + APPARATUS_COL_X_OFFSET;
@@ -1712,36 +1717,51 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         </>
       )}
 
-      {/* VT marker dla MEASUREMENT bay (placeholder; pełny VT trójfazowy w
-       * Phase 1 jako ApparatusVtThreePhase z bezpiecznikami i Y-trójkątem). */}
-      {showVtMarker && (
-        <g data-testid="sld-v2-gpz-bay-vt-marker" data-field-role={bay.fieldRole}>
-          <circle
+      {/* VT trójfazowy dla MEASUREMENT bay — pełny symbol IEC 60617 S00310 +
+       * tradycja PSE/Energa (3 okręgi fazowe L1/L2/L3 + trójkąt ziemi).
+       * Zastępuje placeholder żółty z poprzedniej iteracji. */}
+      {showVt && (
+        <ApparatusVtThreePhase cx={apparatusCx} cy={dsY + 2} />
+      )}
+
+      {/* SWITCH_DISCONNECTOR (rozłącznik z load-break) — kanon RMU/RM6.
+       * Większy od zwykłego DS, z dodatkową kreską load-break (kanon IEC 60617
+       * S00198). Renderowany na pozycji CB dla RMU pola (RMU_LINE_ORDER nie ma
+       * CB, tylko SD jako jedyny łącznik). */}
+      {showSwitchDisconnector && (
+        <g
+          onClick={
+            onClickDs
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickDs(bay.bayRef);
+                }
+              : undefined
+          }
+          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        >
+          <ApparatusSwitchDisconnector
             cx={apparatusCx}
-            cy={ctY}
-            r={CT_RADIUS + 1.5}
-            fill={COLOR_PANEL_RAISED}
-            stroke={COLOR_BADGE_BG_YELLOW}
-            strokeWidth={1.4}
+            cy={cbY}
+            state={dsState}
+            energized={energization === 'energized'}
           />
-          <text
-            x={apparatusCx}
-            y={ctY + 2.5}
-            textAnchor="middle"
-            fill={COLOR_BADGE_BG_YELLOW}
-            fontFamily={FONT_SANS}
-            fontSize={FONT_SIZES.transformerRatio}
-            fontWeight={700}
-          >
-            VT
-          </text>
+          {bay.qDesignations?.ds && (
+            <QDesignationLabel
+              x={apparatusCx + 9 + 3}
+              y={cbY + 2}
+              text={bay.qDesignations.ds}
+              slot="switch-disconnector"
+            />
+          )}
         </g>
       )}
 
       {/* DS (filled circle) + opcjonalna etykieta Q.
        * Pole TR ma tylko DS_BUS (Q1) → renderowany na górze; ten DS to DS_LIN
-       * (Q9) — NIEobecny dla TR według polityki. */}
-      {showDs && bay.fieldRole !== FIELD_ROLE.TRANSFORMER && bay.fieldRole !== FIELD_ROLE.RMU_TRANSFORMER && (
+       * (Q9) — NIEobecny dla TR według polityki. RMU_LINE używa SD na cbY
+       * pozycji, nie ma DS na osi. */}
+      {showDsCircle && bay.fieldRole !== FIELD_ROLE.TRANSFORMER && bay.fieldRole !== FIELD_ROLE.RMU_TRANSFORMER && (
         <g
           onClick={
             onClickDs
@@ -1765,32 +1785,69 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         </g>
       )}
 
-      {/* Uziemnik (ES) — boczna gałąź z trójkątem ziemi (BHP-krytyczny).
-       * Renderowany na poziomie DS gdy esState !== 'absent' I rola pola ma
-       * ES w polityce. Pole COUPLER bez ES (renderowany przez CouplerBay). */}
-      {showEs && bay.esState && bay.esState !== 'absent' && (
-        <g
-          onClick={
-            onClickEs
-              ? (e) => {
-                  e.stopPropagation();
-                  onClickEs(bay.bayRef);
-                }
-              : undefined
-          }
-          style={{ cursor: onClickEs ? 'pointer' : undefined }}
-        >
-          <ApparatusEarthingSwitch cxAxis={apparatusCx} cy={dsY + APPARATUS_PITCH * 0.4} state={bay.esState} />
-          {bay.qDesignations?.es && (
-            <QDesignationLabel
-              x={apparatusCx + ES_BRANCH_OFFSET + 6}
-              y={dsY + APPARATUS_PITCH * 0.4 - 4}
-              text={bay.qDesignations.es}
-              slot="es"
-            />
-          )}
-        </g>
+      {/* FUSE — bezpieczniki na osi pola (MEASUREMENT, RMU_TRANSFORMER, TR
+       * fuse-switch). Renderowany na pozycji CT dla MEASUREMENT, na pozycji
+       * CB dla TR fuse-switch. */}
+      {showFuse && (
+        <ApparatusFuse cx={apparatusCx} cy={ctY} state="unknown" />
       )}
+
+      {/* SURGE_ARRESTER — ogranicznik przepięć na bocznej gałęzi LEWO. */}
+      {showSurgeArrester && (
+        <ApparatusSurgeArrester cx={apparatusCx - 14} cy={dsY} />
+      )}
+
+      {/* TRANSFORMER — symbol trafa NA OSI pola TR (kanon: pole TR kończy się
+       * portem do trafa, nie głowicą kablową). */}
+      {showTransformer && (
+        <ApparatusTransformerSymbol cx={apparatusCx} cy={triangleY} />
+      )}
+
+      {/* LV_BREAKER — wyłącznik nN za trafem (poniżej TRANSFORMER symbolu). */}
+      {showLvBreaker && (
+        <ApparatusLvBreaker cx={apparatusCx} cy={triangleY + 14} state="unknown" />
+      )}
+
+      {/* Uziemnik (ES) — boczna gałąź z trójkątem ziemi (BHP-krytyczny).
+       * Side z BAY_DEVICE_ORDER_POLICY (audyt MV B2): renderer konsumuje
+       * `slot.side` ('LEFT' | 'RIGHT'). Phase 0A wszystkie ES po RIGHT
+       * (zgodnie z polityką), ale infrastruktura na LEFT gotowa. */}
+      {showEs && bay.esState && bay.esState !== 'absent' && (() => {
+        const esSlot = slots.find((s) => s.apparatusKind === APPARATUS_KIND.EARTHING_SWITCH);
+        const esSide: 'LEFT' | 'RIGHT' = esSlot?.side === 'LEFT' ? 'LEFT' : 'RIGHT';
+        const labelX = esSide === 'LEFT'
+          ? apparatusCx - ES_BRANCH_OFFSET - 12
+          : apparatusCx + ES_BRANCH_OFFSET + 6;
+        return (
+          <g
+            onClick={
+              onClickEs
+                ? (e) => {
+                    e.stopPropagation();
+                    onClickEs(bay.bayRef);
+                  }
+                : undefined
+            }
+            style={{ cursor: onClickEs ? 'pointer' : undefined }}
+            data-es-side={esSide}
+          >
+            <ApparatusEarthingSwitch
+              cxAxis={apparatusCx}
+              cy={dsY + APPARATUS_PITCH * 0.4}
+              state={bay.esState}
+              side={esSide}
+            />
+            {bay.qDesignations?.es && (
+              <QDesignationLabel
+                x={labelX}
+                y={dsY + APPARATUS_PITCH * 0.4 - 4}
+                text={bay.qDesignations.es}
+                slot="es"
+              />
+            )}
+          </g>
+        );
+      })()}
 
       {/* Cable head triangle (downward).
        * Pole TR/MEASUREMENT/COUPLER NIE kończą się głowicą kablową — TR
@@ -2293,6 +2350,13 @@ interface ApparatusEarthingSwitchProps {
   /** Y pozycji uziemnika (zwykle przy DS lub na końcu kolumny). */
   readonly cy: number;
   readonly state: EarthingSwitchState;
+  /**
+   * Strona gałęzi bocznej. Kanon polski OSD:
+   *  - 'RIGHT' (domyślnie) — pole liniowe LINE_*, GPZ_LINE_BAY, RMU_LINE
+   *  - 'LEFT' — pole TRANSFORMER (Energa GPZ Olsztyn 2/Słupsk Sosnowa)
+   *  Renderer pozycjonuje gałąź zgodnie z `slot.side` z BayDeviceOrderPolicy.
+   */
+  readonly side?: 'LEFT' | 'RIGHT';
 }
 
 /**
@@ -2311,7 +2375,7 @@ interface ApparatusEarthingSwitchProps {
  *  - 'absent'  → renderer pomija (zwraca pusty `<g/>`)
  */
 function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Element {
-  const { cxAxis, cy, state } = props;
+  const { cxAxis, cy, state, side = 'RIGHT' } = props;
   if (state === 'absent') {
     return <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state="absent" />;
   }
@@ -2319,9 +2383,10 @@ function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Eleme
   const unknown = state === 'unknown';
   const stroke = closed ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
   const sw = closed ? 1.6 : 1.2;
-  /* Boczna gałąź wychodzi z osi pola na PRAWO (kanon SCADA: ES po prawej
-   * stronie aparatu liniowego). */
-  const branchEndX = cxAxis + ES_BRANCH_OFFSET;
+  /* Boczna gałąź wychodzi z osi pola — strona z `slot.side` polityki.
+   * Domyślnie po RIGHT (LINE_*, GPZ_LINE_BAY, RMU_LINE, TRANSFORMER,
+   * MEASUREMENT, COUPLER). LEFT zarezerwowane dla custom layout per OSD. */
+  const branchEndX = side === 'LEFT' ? cxAxis - ES_BRANCH_OFFSET : cxAxis + ES_BRANCH_OFFSET;
   /* Trójkąt ziemi: 3 poziome kreski o malejącej szerokości pod końcówką. */
   const groundTopY = cy + 1;
   return (
@@ -2373,6 +2438,220 @@ function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Eleme
           ?
         </text>
       )}
+    </g>
+  );
+}
+
+/* =============================================================================
+   Nowe symbole aparatury (Phase 0A audit fix 9/12)
+   ============================================================================= */
+
+interface ApparatusFuseProps {
+  readonly cx: number;
+  readonly cy: number;
+  /** Stan: 'healthy' (zdrowy) lub 'blown' (przepalony). */
+  readonly state?: 'healthy' | 'blown' | 'unknown';
+}
+
+/**
+ * Bezpiecznik (kanon IEC 60617-7-04): pionowy prostokąt z kreską diagonalną.
+ *  - healthy → wypełniony zielony
+ *  - blown   → czerwony badge z X
+ *  - unknown → szary
+ */
+function ApparatusFuse(props: ApparatusFuseProps): JSX.Element {
+  const { cx, cy, state = 'unknown' } = props;
+  const blown = state === 'blown';
+  const fill = state === 'healthy' ? COLOR_DEVICE_CLOSED : blown ? COLOR_DEVICE_OPEN : COLOR_TEXT_MUTED;
+  const stroke = state === 'healthy' ? COLOR_DEVICE_CLOSED_BORDER : blown ? COLOR_DEVICE_OPEN_BORDER : COLOR_TEXT_MUTED;
+  return (
+    <g data-testid="sld-v2-gpz-bay-fuse" data-state={state}>
+      <rect
+        x={cx - 3.5}
+        y={cy - 6}
+        width={7}
+        height={12}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.2}
+        rx={1}
+      />
+      {blown && (
+        <line x1={cx - 3} y1={cy - 5} x2={cx + 3} y2={cy + 5} stroke={COLOR_TEXT_PRIMARY} strokeWidth={1.4} />
+      )}
+    </g>
+  );
+}
+
+interface ApparatusSurgeArresterProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+/**
+ * Ogranicznik przepięć (kanon IEC 60617 S00345): prostokąt z poziomymi
+ * zygzakami fazowymi. Renderowany na bocznej gałęzi LEWO od osi pola.
+ */
+function ApparatusSurgeArrester(props: ApparatusSurgeArresterProps): JSX.Element {
+  const { cx, cy } = props;
+  return (
+    <g data-testid="sld-v2-gpz-bay-surge-arrester">
+      <rect
+        x={cx - 3.5}
+        y={cy - 6}
+        width={7}
+        height={12}
+        fill={COLOR_PANEL_RAISED}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+        rx={0.5}
+      />
+      {/* 2 poziome kreski fazowe wewnątrz (kanon HV arrester). */}
+      <line x1={cx - 2} y1={cy - 2} x2={cx + 2} y2={cy - 2} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+      <line x1={cx - 2} y1={cy + 2} x2={cx + 2} y2={cy + 2} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+      {/* Strzałka ziemi pod prostokątem. */}
+      <line x1={cx - 2} y1={cy + 7} x2={cx + 2} y2={cy + 7} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <line x1={cx - 1} y1={cy + 8.5} x2={cx + 1} y2={cy + 8.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+    </g>
+  );
+}
+
+interface ApparatusSwitchDisconnectorProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly state?: GpzApparatusSwitchState;
+  readonly energized: boolean;
+}
+
+/**
+ * Rozłącznik load-break (kanon IEC 60617 S00198 — kombinowany rozłącznik
+ * z odłącznikiem widocznym). Większy od zwykłego DS, z dodatkową kreską
+ * rozłączania na boku — operator wyraźnie odróżnia od DS.
+ *
+ * RMU/RM6: pole liniowe ma SD zamiast CB+DS (kanon Schneider RM6, ABB
+ * SafeRing).
+ */
+function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorProps): JSX.Element {
+  const { cx, cy, state = 'unknown', energized } = props;
+  const open = state === 'open';
+  const unknown = state === 'unknown';
+  const fill = unknown ? COLOR_TEXT_MUTED : open ? COLOR_PANEL_RAISED : energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
+  const stroke = unknown ? COLOR_TEXT_MUTED : open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  return (
+    <g data-testid="sld-v2-gpz-bay-switch-disconnector" data-state={state}>
+      {/* Korpus okrągły większy niż DS (DS_RADIUS=4.5; SD radius=6). */}
+      <circle cx={cx} cy={cy} r={6} fill={fill} stroke={stroke} strokeWidth={1.4} />
+      {/* Krótka kreska "load break" na zewnętrznej krawędzi (kanon SD). */}
+      <line
+        x1={cx + 6}
+        y1={cy - 3}
+        x2={cx + 9}
+        y2={cy}
+        stroke={stroke}
+        strokeWidth={1.4}
+      />
+      {open && (
+        <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke={COLOR_DEVICE_OPEN} strokeWidth={1.4} />
+      )}
+      {unknown && (
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.badge} fontWeight={700}>?</text>
+      )}
+    </g>
+  );
+}
+
+interface ApparatusVtThreePhaseProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+/**
+ * Przekładnik napięciowy trójfazowy (VT — kanon polskiego pola pomiarowego PN).
+ *
+ * Konstrukcja IEC 60617 S00310 + tradycja PSE/Energa:
+ *   - 3 okręgi fazowe (uzwojenie pierwotne) ułożone w trójkąt.
+ *   - Kreski Y/Δ w środku każdego okręgu.
+ *   - Trójkąt ziemi pod neutral point (Y0).
+ *
+ * Renderowany w polu MEASUREMENT (PN) ZAMIAST placeholdera "VT" tekstu.
+ */
+function ApparatusVtThreePhase(props: ApparatusVtThreePhaseProps): JSX.Element {
+  const { cx, cy } = props;
+  const r = 4;
+  const dx = 5;
+  const dy = 4;
+  return (
+    <g data-testid="sld-v2-gpz-bay-vt-three-phase">
+      {/* Faza L1 (lewa-góra). */}
+      <circle cx={cx - dx} cy={cy - dy} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <text x={cx - dx} y={cy - dy + 1.5} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={5}>L1</text>
+      {/* Faza L2 (prawa-góra). */}
+      <circle cx={cx + dx} cy={cy - dy} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <text x={cx + dx} y={cy - dy + 1.5} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={5}>L2</text>
+      {/* Faza L3 (środek-dół). */}
+      <circle cx={cx} cy={cy + dy + 1} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <text x={cx} y={cy + dy + 2.5} textAnchor="middle" fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={5}>L3</text>
+      {/* Trójkąt ziemi pod neutral point. */}
+      <line x1={cx - 3} y1={cy + dy + 7} x2={cx + 3} y2={cy + dy + 7} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <line x1={cx - 2} y1={cy + dy + 8.5} x2={cx + 2} y2={cy + dy + 8.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+      <line x1={cx - 1} y1={cy + dy + 10} x2={cx + 1} y2={cy + dy + 10} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+    </g>
+  );
+}
+
+interface ApparatusLvBreakerProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly state?: GpzApparatusSwitchState;
+}
+
+/**
+ * Wyłącznik nN (LV breaker — mały kwadrat za transformatorem po stronie nN).
+ * Kanon IEC: kwadrat z "n" lub "lv" w środku.
+ */
+function ApparatusLvBreaker(props: ApparatusLvBreakerProps): JSX.Element {
+  const { cx, cy, state = 'unknown' } = props;
+  const open = state === 'open';
+  const unknown = state === 'unknown';
+  const size = 7;
+  const fill = unknown ? COLOR_TEXT_MUTED : open ? COLOR_PANEL_RAISED : COLOR_DEVICE_CLOSED;
+  const stroke = unknown ? COLOR_TEXT_MUTED : open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  return (
+    <g data-testid="sld-v2-gpz-bay-lv-breaker" data-state={state}>
+      <rect
+        x={cx - size / 2}
+        y={cy - size / 2}
+        width={size}
+        height={size}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.2}
+        rx={0.5}
+      />
+      <text x={cx} y={cy + 1.5} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_MONO} fontSize={4} fontWeight={700}>nN</text>
+    </g>
+  );
+}
+
+interface ApparatusTransformerSymbolProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+/**
+ * Symbol transformatora SN/nN w polu TR (mini wersja TR symbolu z TwoBusTrColumn).
+ * Renderowany NA OSI POLA (NIE jako separate column) — końcówka pola TR.
+ */
+function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProps): JSX.Element {
+  const { cx, cy } = props;
+  const r = 5;
+  const gap = 4;
+  return (
+    <g data-testid="sld-v2-gpz-bay-transformer-symbol">
+      {/* Okrąg górny (strona SN). */}
+      <circle cx={cx} cy={cy - gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      {/* Okrąg dolny (strona nN). */}
+      <circle cx={cx} cy={cy + gap / 2} r={r} fill={COLOR_PANEL_RAISED} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
     </g>
   );
 }

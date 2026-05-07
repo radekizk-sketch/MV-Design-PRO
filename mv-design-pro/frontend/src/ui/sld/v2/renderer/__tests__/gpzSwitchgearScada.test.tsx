@@ -1605,8 +1605,8 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).toBeNull();
     /* CableHead NIE renderowany. */
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).toBeNull();
-    /* VT marker JEST renderowany. */
-    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-vt-marker"]')).not.toBeNull();
+    /* VT trójfazowy renderowany (commit 9: zastąpił placeholder marker). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-vt-three-phase"]')).not.toBeNull();
     /* DS jest (DS_BUS Q1). ES jest. */
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).not.toBeNull();
@@ -1669,8 +1669,11 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
     const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-rmu-1"]');
     /* RMU_LINE: SWITCH_DISCONNECTOR + CT + ES + CABLE_HEAD. Bez CB! */
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).toBeNull();
-    /* DS jest (SWITCH_DISCONNECTOR jest renderowany jako DS). */
-    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
+    /* SWITCH_DISCONNECTOR jest (commit 9: dedykowany komponent z load-break
+     * kanon IEC 60617 S00198 — wyróżnia od zwykłego DS). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-switch-disconnector"]')).not.toBeNull();
+    /* Brak DS (RMU_LINE_ORDER nie ma DISCONNECTOR, tylko SWITCH_DISCONNECTOR). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).toBeNull();
     /* CT jest (RMU_LINE_ORDER definiuje CT). */
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).not.toBeNull();
     /* CableHead jest. */
@@ -1702,6 +1705,183 @@ describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => 
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).not.toBeNull();
     expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).not.toBeNull();
+  });
+});
+
+describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna iteracja', () => {
+  it('Pole TRANSFORMER (SCADA-grade): ApparatusTransformerSymbol + ApparatusLvBreaker (NIE głowica)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-tr',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'tr-bay-1',
+              fieldRole: FIELD_ROLE.TRANSFORMER,
+              designation: 'TR1',
+              feederName: 'TR1',
+              bayNumber: '03',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-tr-bay-1"]');
+    /* Pole TR ma symbol trafa NA OSI (nie cable head). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-transformer-symbol"]')).not.toBeNull();
+    /* + LV breaker po stronie nN. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-lv-breaker"]')).not.toBeNull();
+    /* Brak głowicy kablowej. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).toBeNull();
+  });
+
+  it('Pole TRANSFORMER ma fuse (TRANSFORMER_ORDER zawiera FUSE jako optional)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-tr',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'tr-bay-1',
+              fieldRole: FIELD_ROLE.TRANSFORMER,
+              designation: 'TR1',
+              feederName: 'TR1',
+              bayNumber: '03',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-tr-bay-1"]');
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-fuse"]')).not.toBeNull();
+  });
+
+  it('Pole MEASUREMENT ma VT trójfazowy (NIE placeholder marker), bez CB/CT', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-pn',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'pn-bay-1',
+              fieldRole: FIELD_ROLE.MEASUREMENT,
+              designation: 'PN1',
+              feederName: 'PN1',
+              bayNumber: '12',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-pn-bay-1"]');
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-vt-three-phase"]')).not.toBeNull();
+    /* Stary placeholder marker NIE renderowany. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-vt-marker"]')).toBeNull();
+    /* MEASUREMENT ma fuse (MEASUREMENT_ORDER definiuje). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-fuse"]')).not.toBeNull();
+  });
+
+  it('Pole RMU_LINE używa SWITCH_DISCONNECTOR (nie zwykły DS) — kanon RM6', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-rmu',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'rmu-bay-1',
+              fieldRole: FIELD_ROLE.RMU_LINE,
+              designation: 'OUT',
+              feederName: 'OUT',
+              bayNumber: '01',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-rmu-bay-1"]');
+    /* SWITCH_DISCONNECTOR — większy niż DS, z load-break kreską (kanon IEC). */
+    const sd = bay?.querySelector('[data-testid="sld-v2-gpz-bay-switch-disconnector"]');
+    expect(sd).not.toBeNull();
+    /* Brak zwykłego DS w polu RMU. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).toBeNull();
+    /* Brak CB. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).toBeNull();
+  });
+
+  it('Pole GPZ_LINE_BAY ma surge_arrester gdy polityka definiuje (LATERAL LEFT)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-gpz',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'gpz-bay-1',
+              fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+              designation: 'X',
+              feederName: 'X',
+              bayNumber: '1',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-gpz-bay-1"]');
+    /* GPZ_LINE_BAY_ORDER ma SURGE_ARRESTER (optional LATERAL LEFT). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-surge-arrester"]')).not.toBeNull();
+  });
+
+  it('ES strona zgodnie z slot.side z polityki (data-es-side atrybut)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              ...DEFAULT_BAYS[0],
+              esState: 'unknown' as const,
+              qDesignations: { es: 'Q8' },
+            },
+          ],
+        },
+      ],
+    });
+    /* GPZ_LINE_BAY_ORDER ma slot ES.side='RIGHT'. */
+    const esWrapper = container.querySelector('[data-es-side]');
+    expect(esWrapper?.getAttribute('data-es-side')).toBe('RIGHT');
   });
 });
 
