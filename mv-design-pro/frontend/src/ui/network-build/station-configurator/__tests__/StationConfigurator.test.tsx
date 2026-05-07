@@ -58,9 +58,16 @@ describe('StationConfigurator — 10 kart', () => {
   it('renderuje wszystkie 10 zakładek z polskimi etykietami', () => {
     render(<StationConfigurator {...minimalProps} />);
     const labels = [
-      'Podstawowe', 'Topologia i porty', 'Rozdzielnia SN', 'Pola SN',
-      'Transformator SN/nN', 'Rozdzielnica nN', 'Źródła i magazyny',
-      'Zabezpieczenia', 'Pomiary', 'Gotowość obliczeń',
+      'Identyfikacja i szablon',
+      'Topologia, porty i PCC',
+      'Rozdzielnia SN',
+      'Pola SN',
+      'Transformatory SN/nN',
+      /Strona nN i poziomy napi/i,
+      'Źródła i magazyny',
+      'Zabezpieczenia i automatyka',
+      /Pomiary, telemechanika i sygna/i,
+      'Gotowość obliczeń',
     ];
     for (const l of labels) {
       expect(screen.getByText(l)).toBeInTheDocument();

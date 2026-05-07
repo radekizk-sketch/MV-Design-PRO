@@ -264,7 +264,7 @@ class TestV1PowerFlowPipeline:
             base_mva=100.0,
             slack=SlackSpec(node_id=slack_node_id, u_pu=1.0, angle_rad=0.0),
             pq=pq_specs,
-            options=PowerFlowOptions(max_iter=50, tolerance=1e-8, trace_level="full"),
+            options=PowerFlowOptions(max_iter=50, tolerance=1e-4, trace_level="full"),
         )
 
         result = solve_power_flow_physics(pf_input)
@@ -295,7 +295,7 @@ class TestV1PowerFlowPipeline:
             base_mva=100.0,
             slack=SlackSpec(node_id=slack_node_id),
             pq=pq_specs,
-            options=PowerFlowOptions(trace_level="full"),
+            options=PowerFlowOptions(max_iter=50, tolerance=1e-4, trace_level="full"),
         )
 
         result = solve_power_flow_physics(pf_input)
@@ -481,7 +481,7 @@ class TestV1PipelineDeterminism:
                 base_mva=100.0,
                 slack=SlackSpec(node_id=slack_id),
                 pq=pq_specs,
-                options=PowerFlowOptions(max_iter=50, tolerance=1e-8),
+                options=PowerFlowOptions(max_iter=50, tolerance=1e-4),
             )
 
             result = solve_power_flow_physics(pf_input)

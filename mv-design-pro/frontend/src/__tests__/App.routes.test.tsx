@@ -32,6 +32,9 @@ vi.mock('../ui/layout', () => ({
       <button type="button" data-testid="layout-menu-network-build" onClick={() => onMenuAction?.('network-build')}>
         Budowa sieci
       </button>
+      <button type="button" data-testid="layout-menu-readiness" onClick={() => onMenuAction?.('readiness')}>
+        Gotowosc
+      </button>
       {(() => {
         const hash = window.location.hash;
         const queryIndex = hash.indexOf('?');
@@ -111,6 +114,24 @@ describe('App hash routes', () => {
 
     expect(root).toHaveAttribute('data-ui-theme', 'dark-scada');
     expect(root).toHaveClass('mv-dark-scada');
+  });
+
+  it('odtwarza migawkę ENM po odświeżeniu aktywnego zakresu obliczeń', async () => {
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-1', 'Zakres E2E', 'ShortCircuitCase', 'OUTDATED');
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-1');
+    });
   });
 
   it('przełącza się na #results bez pustego ekranu i przekazuje run do widoku wyników', async () => {
@@ -219,6 +240,24 @@ describe('App hash routes', () => {
     });
 
     expect(window.location.hash).toBe('#sld');
+  });
+
+  it('otwiera E-04 po akcji gotowosci z glownego paska', async () => {
+    useAppStateStore
+      .getState()
+      .setActiveCase('case-readiness', 'Zakres gotowosci', 'ShortCircuitCase', 'OUTDATED');
+
+    render(<App />);
+
+    await act(async () => {
+      screen.getByTestId('layout-menu-readiness').click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const activeSurface = useNetworkBuildStore.getState().activeSurface;
+    expect(activeSurface?.screenCode).toBe('E-04');
+    expect(activeSurface?.tabId).toBe('braki');
+    expect(activeSurface?.subjectRef).toBe('case-readiness');
   });
 
   it('renderuje aktywny surface porownania wynikow dla #compare', async () => {

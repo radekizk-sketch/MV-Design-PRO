@@ -29,6 +29,7 @@ export interface TransformerStationEditorProps {
     high: string;
     low: string;
   };
+  submitLabel?: string;
   initialData?: Partial<TransformerStationFormData>;
   busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>;
   catalogEntries?: CatalogEntry[];
@@ -91,6 +92,7 @@ export function TransformerStationEditor({
     high: 'Strona SN wyznaczana z odcinka magistrali',
     low: 'Strona nN tworzona za transformatorem',
   },
+  submitLabel,
   initialData,
   busOptions,
   catalogEntries = [],
@@ -314,7 +316,7 @@ export function TransformerStationEditor({
           onClick={handleSubmit}
           className="rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
         >
-          {mode === 'create' ? 'Dodaj' : 'Zapisz'}
+          {submitLabel ?? (mode === 'create' ? 'Dodaj' : 'Zapisz')}
         </button>
       </div>
     </>

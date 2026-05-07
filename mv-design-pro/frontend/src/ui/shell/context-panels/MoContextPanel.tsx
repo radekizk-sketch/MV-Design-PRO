@@ -162,7 +162,7 @@ function StartProjectPanel() {
     const projectSlug = slugifyProjectName(projectName);
     const projectId = `project:${projectSlug}:${form.voltageKv}kv`;
     const goalSlug = form.calculationGoal === 'ShortCircuitCase' ? 'zwarcie-max' : 'rozplyw-szczyt';
-    const caseId = `case:${projectSlug}:${goalSlug}`;
+    const caseId = `scope:${projectSlug}:${goalSlug}`;
     const variantId = `variant:${projectSlug}:${slugifyProjectName(form.projectState)}`;
     const caseName = form.calculationGoal === 'ShortCircuitCase'
       ? 'Zwarcie maksymalne IEC 60909'

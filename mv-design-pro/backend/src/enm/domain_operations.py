@@ -63,7 +63,7 @@ LEGACY_FIELD_COLLECTIONS = frozenset({"bays", "measurements", "protection_assign
 # ---------------------------------------------------------------------------
 
 
-def _canonical_json(data: Any) -> str:
+def _canonical_json(data: object) -> str:
     """Kanoniczny JSON: sortowane klucze, brak spacji, stabilna repr. liczb."""
     return json.dumps(data, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
@@ -84,7 +84,7 @@ def _quantize_ratio(value: float, quantum: float = 1e-6) -> float:
     return round(value / quantum) * quantum
 
 
-def _extract_catalog_binding_item_id(catalog_binding: Any) -> str | None:
+def _extract_catalog_binding_item_id(catalog_binding: object) -> str | None:
     """Odczytaj kanoniczne catalog_item_id z compat fallback do item_id."""
     if not isinstance(catalog_binding, dict):
         return None
@@ -99,7 +99,7 @@ def _extract_catalog_binding_item_id(catalog_binding: Any) -> str | None:
     return None
 
 
-def _extract_catalog_binding_namespace(catalog_binding: Any) -> str | None:
+def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
     """Odczytaj namespace z kanonicznego payloadu lub legacy fallback."""
     if not isinstance(catalog_binding, dict):
         return None
@@ -114,7 +114,7 @@ def _extract_catalog_binding_namespace(catalog_binding: Any) -> str | None:
     return None
 
 
-def _extract_catalog_binding_version(catalog_binding: Any) -> str | None:
+def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
     """Odczytaj wersję katalogu z payloadu binding."""
     if not isinstance(catalog_binding, dict):
         return None
@@ -130,7 +130,7 @@ def _extract_catalog_binding_version(catalog_binding: Any) -> str | None:
 
 def _apply_catalog_metadata(
     target: dict[str, Any],
-    catalog_binding: Any,
+    catalog_binding: object,
     *,
     default_namespace: str | None = None,
     default_source_mode: str = "KATALOG",
@@ -147,6 +147,51 @@ def _apply_catalog_metadata(
     version = _extract_catalog_binding_version(catalog_binding)
     if version:
         target.setdefault("meta", {})["catalog_item_version"] = version
+
+
+def _gpz_line_field_branch_type(apparatus_kind: object) -> str:
+    normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
+    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
+        return "disconnector"
+    if normalized in {"LOAD_SWITCH", "LS", "ROZLACZNIK", "ROZŁĄCZNIK"}:
+        return "switch"
+    if normalized in {"MEASUREMENT", "VT", "POMIAR"}:
+        return "switch"
+    return "breaker"
+
+
+def _normalize_gpz_line_field_apparatus(payload: dict[str, Any]) -> dict[str, Any] | None:
+    raw = payload.get("gpz_line_field_apparatus")
+    if not isinstance(raw, dict):
+        return None
+
+    binding = raw.get("catalog_binding")
+    catalog_ref = (
+        _extract_catalog_binding_item_id(binding)
+        if isinstance(binding, dict)
+        else None
+    )
+    if catalog_ref is None:
+        catalog_ref = raw.get("catalog_ref") or raw.get("catalog_item_id")
+    if not isinstance(catalog_ref, str) or not catalog_ref.strip():
+        return None
+
+    catalog_ref = catalog_ref.strip()
+    binding_payload = _build_catalog_binding_payload(
+        catalog_ref,
+        binding,
+        default_namespace="APARAT_SN",
+        default_version="2024.1",
+    )
+    apparatus_kind = raw.get("apparatus_kind")
+    if not isinstance(apparatus_kind, str) or not apparatus_kind.strip():
+        apparatus_kind = "BREAKER"
+
+    return {
+        "apparatus_kind": apparatus_kind.strip().upper(),
+        "catalog_ref": catalog_ref,
+        "catalog_binding": binding_payload,
+    }
 
 
 def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, Any]]:
@@ -277,7 +322,7 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
     return None
 
 
-def _resolve_catalog_ref(catalog_ref: Any, catalog_binding: Any) -> str | None:
+def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | None:
     """Rozwiąż catalog_ref z jawnego pola albo z catalog_binding.catalog_item_id.
 
     Zwraca None, gdy referencja jest pusta/niepoprawna.
@@ -1065,7 +1110,7 @@ def _get_catalog_safe():
 
 def _build_catalog_binding_payload(
     catalog_ref: str,
-    catalog_binding: Any,
+    catalog_binding: object,
     *,
     default_namespace: str,
     default_version: str | None = None,
@@ -1086,7 +1131,7 @@ def _build_catalog_binding_payload(
 def _materialize_catalog_payload(
     *,
     catalog_ref: str,
-    catalog_binding: Any,
+    catalog_binding: object,
     default_namespace: str,
     default_version: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
@@ -1178,7 +1223,7 @@ def _apply_materialized_transformer_fields(
             target[target_key] = materialized_params[source_key]
 
 
-def _as_positive_float(value: Any) -> float | None:
+def _as_positive_float(value: object) -> float | None:
     try:
         parsed = float(value)
     except (TypeError, ValueError):
@@ -1514,7 +1559,7 @@ def _resolve_manual_source_equivalent(
             "source.manual_equivalent_invalid",
         )
 
-    def _as_positive_number(value: Any) -> float | None:
+    def _as_positive_number(value: object) -> float | None:
         if not isinstance(value, int | float):
             return None
         normalized = float(value)
@@ -1522,7 +1567,7 @@ def _resolve_manual_source_equivalent(
             return None
         return normalized
 
-    def _as_non_negative_number(value: Any) -> float | None:
+    def _as_non_negative_number(value: object) -> float | None:
         if not isinstance(value, int | float):
             return None
         normalized = float(value)
@@ -1630,7 +1675,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     gpz_section_entries = _normalize_gpz_section_entries(payload)
     sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
     if len(gpz_section_entries) != sections_count:
-        fallback_line_fields_count = _read_gpz_line_fields_count({}, payload)
+        requested_line_fields_count = _read_gpz_line_fields_count({}, payload)
         gpz_section_entries = [
             {
                 "order": index,
@@ -1638,7 +1683,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "bus_name": None,
                 "line_field_name": None,
                 "line_field_names": [],
-                "line_fields_count": fallback_line_fields_count,
+                "line_fields_count": requested_line_fields_count,
             }
             for index in range(sections_count)
         ]
@@ -1771,6 +1816,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "Brak napięcia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw defaults.sn_nominal_kv w nagłówku ENM.",
             "source.missing_voltage",
         )
+    line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
 
     seed = _compute_seed(
         {
@@ -1952,28 +1998,135 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             line_field_names = []
         for field_index in range(int(section.get("line_fields_count") or 1)):
             bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}/{field_index + 1:03d}")
+            terminal_bus_ref = _make_id(
+                "gpz",
+                seed,
+                f"bay/{idx + 1:03d}/{field_index + 1:03d}/terminal",
+            )
+            apparatus_ref = _make_id(
+                "gpz",
+                seed,
+                f"bay/{idx + 1:03d}/{field_index + 1:03d}/apparatus",
+            )
             bay_name = (
                 line_field_names[field_index]
                 if field_index < len(line_field_names)
                 else f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
             )
             section["line_field_refs"].append(bay_ref)
+            equipment_refs: list[str] = []
+            field_meta: dict[str, Any] = {
+                "gpz_section_id": section["section_id"],
+                "gpz_section_order": section["order"],
+                "gpz_line_field_index": field_index,
+                "gpz_line_fields_count": section["line_fields_count"],
+                "source_field_kind": "FEEDER",
+                "field_status": "READY_FOR_TRUNK",
+            }
+
+            if line_field_apparatus is not None:
+                result = create_node(
+                    new_enm,
+                    {
+                        "ref_id": terminal_bus_ref,
+                        "name": f"Zacisk odpływowy {bay_name}",
+                        "voltage_kv": voltage_kv,
+                        "tags": ["helper_bus", "field_terminal"],
+                        "meta": {
+                            "visual_role": "FIELD_TERMINAL",
+                            "render_on_sld": False,
+                            "show_in_project_tree": False,
+                            "field_ref": bay_ref,
+                            "station_ref": substation_ref,
+                            "port_kind": "trunk_out",
+                            "gpz_section_id": section["section_id"],
+                        },
+                    },
+                )
+                if not result.success:
+                    return _error_response(
+                        (
+                            "Nie udało się utworzyć zacisku technicznego pola GPZ: "
+                            f"{result.issues[0].message_pl if result.issues else '?'}"
+                        ),
+                        "source.field_terminal_failed",
+                    )
+                new_enm = result.enm
+                created.append(terminal_bus_ref)
+                ev_seq += 1
+                events.append(
+                    {
+                        "event_seq": ev_seq,
+                        "event_type": "FIELD_TERMINAL_CREATED_SN",
+                        "element_id": terminal_bus_ref,
+                    }
+                )
+
+                apparatus_binding = line_field_apparatus["catalog_binding"]
+                apparatus_data = {
+                    "ref_id": apparatus_ref,
+                    "name": f"Aparat {bay_name}",
+                    "type": _gpz_line_field_branch_type(line_field_apparatus["apparatus_kind"]),
+                    "from_bus_ref": section["bus_ref"],
+                    "to_bus_ref": terminal_bus_ref,
+                    "status": "closed",
+                    "r_ohm": 0.0,
+                    "x_ohm": 0.0,
+                    "catalog_ref": line_field_apparatus["catalog_ref"],
+                    "tags": ["gpz_field_device"],
+                    "meta": {
+                        "field_ref": bay_ref,
+                        "station_ref": substation_ref,
+                        "bay_role": "OUT",
+                        "apparatus_kind": line_field_apparatus["apparatus_kind"],
+                        "terminal_bus_ref": terminal_bus_ref,
+                        "render_on_sld": False,
+                        "show_in_project_tree": False,
+                        "requires_catalog_binding": False,
+                        "catalog_binding": copy.deepcopy(apparatus_binding),
+                    },
+                }
+                _apply_catalog_metadata(apparatus_data, apparatus_binding, default_namespace="APARAT_SN")
+                result = create_branch(new_enm, apparatus_data)
+                if not result.success:
+                    return _error_response(
+                        (
+                            "Nie udało się utworzyć aparatu pola GPZ: "
+                            f"{result.issues[0].message_pl if result.issues else '?'}"
+                        ),
+                        "source.field_apparatus_failed",
+                    )
+                new_enm = result.enm
+                created.append(apparatus_ref)
+                ev_seq += 1
+                events.append(
+                    {
+                        "event_seq": ev_seq,
+                        "event_type": "FIELD_DEVICE_CREATED_SN",
+                        "element_id": apparatus_ref,
+                    }
+                )
+                equipment_refs = [apparatus_ref]
+                field_meta.update(
+                    {
+                        "apparatus_kind": line_field_apparatus["apparatus_kind"],
+                        "catalog_binding": copy.deepcopy(apparatus_binding),
+                        "terminal_bus_ref": terminal_bus_ref,
+                        "default_device_ref": apparatus_ref,
+                        "field_status": "CONFIGURED_FOR_TRUNK",
+                    }
+                )
+
             field_specs.append(
                 _build_field_spec(
                     field_ref=bay_ref,
                     name=bay_name,
-                    bay_role="FEEDER",
+                    bay_role="OUT" if line_field_apparatus is not None else "FEEDER",
                     bus_ref=section["bus_ref"],
                     gpz_section_id=section["section_id"],
+                    equipment_refs=equipment_refs,
                     tags=["gpz_line_field"],
-                    meta={
-                        "gpz_section_id": section["section_id"],
-                        "gpz_section_order": section["order"],
-                        "gpz_line_field_index": field_index,
-                        "gpz_line_fields_count": section["line_fields_count"],
-                        "source_field_kind": "FEEDER",
-                        "field_status": "READY_FOR_TRUNK",
-                    },
+                    meta=field_meta,
                 )
             )
 

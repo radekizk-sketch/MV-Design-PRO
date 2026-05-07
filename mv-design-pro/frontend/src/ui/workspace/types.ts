@@ -562,7 +562,7 @@ export const SURFACE_REGISTRY: Record<WorkspaceScreenCode, WorkspaceSurfaceDefin
 export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDefinition> = {
   variants_runs: {
     helperCode: 'variants_runs',
-    titlePl: 'Przebiegi obliczen',
+    titlePl: 'Przebiegi obliczeń',
     componentRef: 'VariantsRunsHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,

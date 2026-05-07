@@ -264,8 +264,8 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-09': screen({
     id: 'E-09',
-    labelFull: 'Migawki modelu i historia uruchomień',
-    labelShort: 'Migawki',
+    labelFull: 'Wersje modelu i historia obliczeń',
+    labelShort: 'Wersje',
     areaId: 'HISTORIA_AUDYT',
     icon: 'ikona-ekran-migawki-historia',
     canonicalRoute: '/workspace/snapshots-and-runs',

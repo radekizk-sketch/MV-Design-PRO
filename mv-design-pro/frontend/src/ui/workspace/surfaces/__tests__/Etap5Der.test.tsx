@@ -14,6 +14,7 @@ import { render, screen } from '@testing-library/react';
 
 import { PvSourceSurface, BessSurface, FwSurface } from '../DerSurfaces';
 import { useStationDerStore } from '../../../network-build/station-der';
+import { useSnapshotStore } from '../../../topology/snapshotStore';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
@@ -39,6 +40,7 @@ function makeSurface(entityRef: string | null) {
 describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
+    useSnapshotStore.getState().reset();
   });
 
   it('PvSourceSurface (E-21) bez entityRef pokazuje empty state', () => {
@@ -65,11 +67,73 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
     });
 
     render(<PvSourceSurface surface={makeSurface('der_pv_1')} />);
-    expect(screen.getByText('PV Centralna 1')).toBeInTheDocument();
+    expect(screen.getAllByText('PV Centralna 1').length).toBeGreaterThan(0);
     expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
     expect(screen.getByText('po stronie SN')).toBeInTheDocument();
-    expect(screen.getByText('2500 kW')).toBeInTheDocument();
+    expect(screen.getAllByText('2500 kW').length).toBeGreaterThan(0);
     expect(screen.getByText(/PSE/)).toBeInTheDocument();
+  });
+
+  it('PvSourceSurface odtwarza DER z ENM snapshot po odswiezeniu lokalnego store', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model testowy',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_pv_snapshot',
+            ref_id: 'gen_pv_snapshot',
+            name: 'Blok PV ze snapshotu',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_lv_1',
+            p_mw: 0.5,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'pv_inv_500',
+            station_ref: 'station_snapshot',
+            connection_variant: 'nn_side',
+          },
+        ],
+        substations: [
+          {
+            id: 'station_snapshot',
+            ref_id: 'station_snapshot',
+            name: 'ST Snapshot',
+            tags: [],
+            meta: {},
+            station_type: 'mv_lv',
+            bus_refs: ['bus_lv_1'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_pv_snapshot')} />);
+
+    expect(screen.getAllByText('Blok PV ze snapshotu').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Brak referencji/)).not.toBeInTheDocument();
+    expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
+    expect(screen.queryByText('0.5 MW')).not.toBeInTheDocument();
+    expect(screen.getAllByText('500 kW').length).toBeGreaterThan(0);
+    expect(screen.getByText('pv_inv_500')).toBeInTheDocument();
   });
 
   it('BessSurface (E-22) renderuje konfigurator BESS z derKind=BESS', () => {

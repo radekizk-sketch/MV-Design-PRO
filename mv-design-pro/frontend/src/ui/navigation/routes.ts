@@ -35,35 +35,35 @@ export const ROUTES = {
   ANALYSIS: {
     hash: '#analysis',
     label: 'Poziom analityczny',
-    description: 'Analityka E-24 w glownym shellu',
+    description: 'Analityka E-24 w głównej ramie aplikacji',
     icon: 'ANL',
     requiredMode: 'RESULT_VIEW',
   },
   REPORT: {
     hash: '#report',
     label: 'Generator raportu',
-    description: 'Konfiguracja i podglad raportu technicznego',
+    description: 'Konfiguracja i podgląd raportu technicznego',
     icon: 'RPT',
     requiredMode: 'RESULT_VIEW',
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Przebiegi obliczen',
-    description: 'Helper wyboru przebiegow i identyfikatorow uruchomien',
+    label: 'Przebiegi obliczeń',
+    description: 'Pomocnik wyboru przebiegów i identyfikatorów uruchomień',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },
   CASE_CONFIG: {
     hash: '#case-config',
     label: 'Parametry analizy',
-    description: 'Helper konfiguracji analizy w glownym shellu',
+    description: 'Pomocnik konfiguracji analizy w głównej ramie aplikacji',
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
   SWITCHGEAR: {
     hash: '#switchgear',
     label: 'Rozdzielnica: pola i aparaty',
-    description: 'Konfiguracja pol i aparatow rozdzielnicy',
+    description: 'Konfiguracja pól i aparatów rozdzielnicy',
     icon: 'SWG',
     requiredMode: 'MODEL_EDIT',
   },
@@ -76,13 +76,13 @@ export const ROUTES = {
   FAULT_SCENARIOS: {
     hash: '#fault-scenarios',
     label: 'Scenariusze zwarciowe',
-    description: 'Zarzadzanie scenariuszami zwarc i analiz',
+    description: 'Zarządzanie scenariuszami zwarć i analiz',
     icon: 'SCN',
   },
   CATALOG: {
     hash: '#catalog',
-    label: 'Biblioteka typow',
-    description: 'Helper katalogowy shell-a',
+    label: 'Biblioteka typów',
+    description: 'Pomocnik katalogowy w głównej ramie aplikacji',
     icon: 'CAT',
   },
 } satisfies Record<string, RouteDefinition>;
@@ -269,7 +269,6 @@ export function navigateToSwitchgear(context: RouteContextOptions = {}): void {
     assignRouteContext(params, context);
   });
 }
-
 
 export function navigateToAnalysis(context: RouteContextOptions = {}): void {
   navigateToAnalysisRoute(context);

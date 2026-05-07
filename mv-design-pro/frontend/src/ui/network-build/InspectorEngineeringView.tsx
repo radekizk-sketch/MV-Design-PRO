@@ -539,7 +539,7 @@ function buildSemanticSegmentSections(
     },
     {
       id: 'insert_station_on_segment_sn',
-      label: 'Wstaw stacje',
+      label: 'Wstaw stację',
       op: 'insert_station_on_segment_sn',
       context: semanticActionContext(selectedElement, { segment_ref: segmentRef }),
     },

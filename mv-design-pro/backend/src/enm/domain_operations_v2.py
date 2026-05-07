@@ -230,7 +230,7 @@ def _same_nominal_voltage(left_kv: float, right_kv: float, tolerance_kv: float =
     return abs(left_kv - right_kv) <= tolerance_kv
 
 
-def _sn_bay_branch_type(apparatus_kind: Any) -> str:
+def _sn_bay_branch_type(apparatus_kind: object) -> str:
     normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
     if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
         return "disconnector"
@@ -1275,7 +1275,15 @@ def _default_sn_bay_name(role: str) -> str:
 
 def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj pole SN do istniejącej rozdzielnicy bez zapisu do legacy bays."""
+    existing_field_ref = payload.get("existing_field_ref") or payload.get("field_ref")
+    existing_field_ref = (
+        existing_field_ref.strip()
+        if isinstance(existing_field_ref, str) and existing_field_ref.strip()
+        else None
+    )
     bus_ref = payload.get("bus_ref")
+    if existing_field_ref and (not isinstance(bus_ref, str) or not bus_ref.strip()):
+        bus_ref = _field_bus_ref(enm, existing_field_ref)
     station_ref = payload.get("station_ref")
 
     if not isinstance(bus_ref, str) or not bus_ref.strip():
@@ -1288,6 +1296,15 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
 
     bay_role = _normalize_sn_bay_role(payload)
     raw_specs = _substation_meta_specs(station, "field_specs")
+    existing_field = _field_record(enm, existing_field_ref) if existing_field_ref else None
+    if existing_field_ref and not isinstance(existing_field, dict):
+        return _error_response("Nie znaleziono pola SN do konfiguracji.", "sn.field_not_found")
+    if existing_field and existing_field.get("bus_ref") != bus_ref:
+        return _error_response(
+            "Wskazane pole SN nie należy do wybranej szyny SN.",
+            "sn.field_bus_mismatch",
+        )
+
     role_index = len(
         [
             spec
@@ -1304,7 +1321,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "n": role_index,
         }
     )
-    field_ref = _make_id("sn", seed, "bay")
+    field_ref = existing_field_ref or _make_id("sn", seed, "bay")
     gpz_section_id = payload.get("gpz_section_id")
     if not isinstance(gpz_section_id, str) or not gpz_section_id.strip():
         gpz_sections = station.get("gpz_sections")
@@ -1322,7 +1339,11 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     field_name = (
         field_name_raw.strip()
         if isinstance(field_name_raw, str) and field_name_raw.strip()
-        else _default_sn_bay_name(bay_role)
+        else (
+            existing_field.get("name")
+            if isinstance(existing_field, dict) and isinstance(existing_field.get("name"), str)
+            else _default_sn_bay_name(bay_role)
+        )
     )
     terminal_bus_ref = _make_id("sn", seed, "bay_terminal")
     apparatus_ref = _make_id("sn", seed, "bay_device")
@@ -1333,23 +1354,71 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     catalog_namespace = _catalog_namespace(catalog_binding, "APARAT_SN")
     catalog_ref = _catalog_item_id(catalog_binding)
     branch_type = _sn_bay_branch_type(apparatus_kind)
-    field_spec = _build_field_spec(
-        field_ref=field_ref,
-        name=field_name,
-        bay_role=bay_role,
-        bus_ref=bus_ref,
-        gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
-        equipment_refs=[apparatus_ref],
-        tags=list(payload.get("tags") or []),
-        meta={
-            "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
-            "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-            "terminal_bus_ref": terminal_bus_ref,
-            "default_device_ref": apparatus_ref,
-        },
-    )
 
     new_enm = copy.deepcopy(enm)
+    existing_equipment_refs = _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
+    existing_apparatus_ref = existing_equipment_refs[0] if existing_equipment_refs else None
+
+    if existing_apparatus_ref:
+        branch = next(
+            (
+                item
+                for item in new_enm.get("branches", [])
+                if isinstance(item, dict) and item.get("ref_id") == existing_apparatus_ref
+            ),
+            None,
+        )
+        if branch is not None:
+            branch["name"] = f"Aparat {field_name}"
+            branch["type"] = branch_type
+            branch["source_mode"] = "KATALOG"
+            branch["catalog_namespace"] = catalog_namespace
+            branch["catalog_ref"] = catalog_ref
+            branch.setdefault("tags", [])
+            meta = branch.setdefault("meta", {})
+            if isinstance(meta, dict):
+                meta.update(
+                    {
+                        "field_ref": field_ref,
+                        "station_ref": station["ref_id"],
+                        "bay_role": bay_role,
+                        "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                        "requires_catalog_binding": catalog_ref is None,
+                        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                    }
+                )
+            _update_field_spec(
+                new_enm,
+                field_ref,
+                {
+                    "name": field_name,
+                    "bay_role": bay_role,
+                    "equipment_refs": existing_equipment_refs,
+                    "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
+                    "meta": {
+                        **(existing_field.get("meta") if isinstance(existing_field.get("meta"), dict) else {}),
+                        "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                        "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                        "default_device_ref": existing_apparatus_ref,
+                        "field_status": "CONFIGURED_FOR_TRUNK",
+                    },
+                },
+            )
+            return _response(
+                new_enm,
+                created=[],
+                selection_id=field_ref,
+                selection_type="bay",
+                events=[
+                    {
+                        "event_seq": 1,
+                        "event_type": "FIELD_DEVICE_UPDATED_SN",
+                        "element_id": existing_apparatus_ref,
+                    },
+                    {"event_seq": 2, "event_type": "FIELD_UPDATED_SN", "element_id": field_ref},
+                ],
+            )
+
     result = create_node(
         new_enm,
         {
@@ -1374,6 +1443,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "sn.field_terminal_failed",
         )
     new_enm = result.enm
+    created = [terminal_bus_ref]
 
     result = create_branch(
         new_enm,
@@ -1410,18 +1480,60 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "sn.field_apparatus_failed",
         )
     new_enm = result.enm
+    created.append(apparatus_ref)
 
-    if not _append_substation_field_spec(
-        new_enm,
-        station_ref=station["ref_id"],
-        meta_key="field_specs",
-        field_spec=field_spec,
-    ):
-        return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+    if existing_field_ref:
+        existing_tags = existing_field.get("tags") if isinstance(existing_field, dict) else []
+        existing_meta = existing_field.get("meta") if isinstance(existing_field, dict) else {}
+        _update_field_spec(
+            new_enm,
+            field_ref,
+            {
+                "name": field_name,
+                "bay_role": bay_role,
+                "bus_ref": bus_ref,
+                "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
+                "equipment_refs": [apparatus_ref],
+                "tags": list(existing_tags) if isinstance(existing_tags, list) else [],
+                "meta": {
+                    **(existing_meta if isinstance(existing_meta, dict) else {}),
+                    "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                    "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                    "terminal_bus_ref": terminal_bus_ref,
+                    "default_device_ref": apparatus_ref,
+                    "field_status": "CONFIGURED_FOR_TRUNK",
+                },
+            },
+        )
+    else:
+        field_spec = _build_field_spec(
+            field_ref=field_ref,
+            name=field_name,
+            bay_role=bay_role,
+            bus_ref=bus_ref,
+            gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
+            equipment_refs=[apparatus_ref],
+            tags=list(payload.get("tags") or []),
+            meta={
+                "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
+                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+                "terminal_bus_ref": terminal_bus_ref,
+                "default_device_ref": apparatus_ref,
+                "field_status": "CONFIGURED_FOR_TRUNK",
+            },
+        )
+        if not _append_substation_field_spec(
+            new_enm,
+            station_ref=station["ref_id"],
+            meta_key="field_specs",
+            field_spec=field_spec,
+        ):
+            return _error_response("Nie znaleziono stacji dla szyny SN.", "sn.station_not_found")
+        created.insert(0, field_ref)
 
     return _response(
         new_enm,
-        created=[field_ref, terminal_bus_ref, apparatus_ref],
+        created=created,
         selection_id=field_ref,
         selection_type="bay",
         events=[
@@ -1594,8 +1706,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "model": "pq",
             "catalog_ref": catalog_ref,
             "catalog_namespace": _catalog_namespace(catalog_binding, "OBCIAZENIE"),
-            "source_mode": "KATALOG" if catalog_ref else "RECZNY",
-            "parameter_source": "CATALOG" if catalog_ref else "MANUAL",
+            "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
+            "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
             "tags": [],
             "meta": {
                 "load_kind": payload.get("load_kind", "SKUPIONY"),

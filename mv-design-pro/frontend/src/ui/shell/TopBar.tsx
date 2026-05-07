@@ -235,7 +235,7 @@ export function TopBar({
           onClick={() => navigateToCaseConfig({ caseId: activeCaseId })}
           className="sr-only"
         >
-          Konfiguruj obliczenia
+          Konfiguruj zakres
         </button>
         <ResultStatus status={resultStatus} />
       </div>
@@ -251,9 +251,9 @@ export function TopBar({
         <button
           type="button"
           data-testid="top-bar-calculate"
-          title={canCalculate ? 'Uruchom obliczenia' : calculateBlockedReason ?? 'Obliczenia są zablokowane'}
+          title={canCalculate ? 'Wykonaj analizę' : calculateBlockedReason ?? 'Analiza jest zablokowana'}
           onClick={handleCalculate}
-          aria-disabled={!canCalculate}
+          aria-label={canCalculate ? 'Wykonaj analizę' : 'Sprawdź braki danych'}
           className={clsx(
             'flex h-10 items-center gap-2 rounded-[4px] px-4 font-mono-eng text-[13px] font-bold transition-colors',
             canCalculate

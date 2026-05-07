@@ -182,7 +182,10 @@ export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
 
       <div data-testid={`der-card-content-${activeCard}`} className="flex-1 overflow-y-auto p-3 text-xs">
         {children[activeCard] ?? (
-          <div className="italic text-scada-muted">Brak danych w sekcji "{labels[activeCard]}".</div>
+          <div className="rounded border border-amber-700 bg-amber-950/20 p-3 text-scada-muted">
+            Brak danych katalogowych dla tej sekcji. Uzupełnij wybór katalogowy albo otwórz
+            wskazany obiekt z kontekstu stacji.
+          </div>
         )}
       </div>
     </div>

@@ -227,7 +227,7 @@ describe('buildPhaseLabel', () => {
     expect(buildPhaseLabel('HAS_SOURCE')).toContain('GPZ');
     expect(buildPhaseLabel('HAS_TRUNKS')).toContain('Magistrala');
     expect(buildPhaseLabel('HAS_STATIONS')).toContain('Stacje');
-    expect(buildPhaseLabel('READY')).toContain('gotowy');
+    expect(buildPhaseLabel('READY')).toMatch(/gotowy/i);
   });
 });
 

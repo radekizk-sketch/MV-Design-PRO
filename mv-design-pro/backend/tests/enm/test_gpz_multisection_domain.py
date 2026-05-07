@@ -4,6 +4,7 @@ from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
+CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
 
 
 def _empty_enm() -> dict:
@@ -101,6 +102,14 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
             ],
             "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
             "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
+            "gpz_line_field_apparatus": {
+                "apparatus_kind": "BREAKER",
+                "catalog_binding": {
+                    "catalog_namespace": "APARAT_SN",
+                    "catalog_item_id": CATALOG_APARAT_SN,
+                    "catalog_item_version": "2024.1",
+                },
+            },
         },
     )
 
@@ -127,10 +136,63 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
         assert section_fields[-1]["name"] == f"Pole sekcji {section_index + 1} 12"
 
         for field_index, field in enumerate(section_fields):
-            assert field["bay_role"] == "FEEDER"
+            assert field["bay_role"] == "OUT"
             assert field["bus_ref"] == section["bus_ref"]
             assert field["tags"] == ["gpz_line_field"]
+            assert len(field["equipment_refs"]) == 1
+            assert field["meta"]["apparatus_kind"] == "BREAKER"
+            assert field["meta"]["catalog_binding"]["catalog_item_id"] == CATALOG_APARAT_SN
             assert field["meta"]["source_field_kind"] == "FEEDER"
-            assert field["meta"]["field_status"] == "READY_FOR_TRUNK"
+            assert field["meta"]["field_status"] == "CONFIGURED_FOR_TRUNK"
             assert field["meta"]["gpz_line_field_index"] == field_index
             assert field["meta"]["gpz_line_fields_count"] == 12
+
+
+def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
+    created = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Edycja",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "gpz_sections": [{"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"}],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
+        },
+    )
+    snapshot = created["snapshot"]
+    substation = snapshot["substations"][0]
+    field_ref = substation["meta"]["field_specs"][0]["field_ref"]
+    bus_ref = substation["meta"]["field_specs"][0]["bus_ref"]
+
+    result = execute_domain_operation(
+        enm_dict=snapshot,
+        op_name="add_sn_bay",
+        payload={
+            "existing_field_ref": field_ref,
+            "station_ref": substation["ref_id"],
+            "bus_ref": bus_ref,
+            "bay_role": "OUT",
+            "field_name": "Pole odpływowe 1",
+            "apparatus_kind": "BREAKER",
+            "catalog_binding": {
+                "catalog_namespace": "APARAT_SN",
+                "catalog_item_id": CATALOG_APARAT_SN,
+                "catalog_item_version": "2024.1",
+            },
+        },
+    )
+
+    assert result.get("error") in (None, "")
+    updated = result["snapshot"]
+    fields = updated["substations"][0]["meta"]["field_specs"]
+    assert len(fields) == 1
+    assert fields[0]["field_ref"] == field_ref
+    assert fields[0]["name"] == "Pole odpływowe 1"
+    assert fields[0]["bay_role"] == "OUT"
+    assert len(fields[0]["equipment_refs"]) == 1
+    assert fields[0]["meta"]["field_status"] == "CONFIGURED_FOR_TRUNK"
+    assert len(updated["branches"]) == 1
+    assert updated["branches"][0]["meta"]["field_ref"] == field_ref

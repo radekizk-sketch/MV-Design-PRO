@@ -288,6 +288,39 @@ describe('InsertStationForm', () => {
     expect(closeFormMock).toHaveBeenCalledTimes(1);
   });
 
+  it('po wyborze schematu sekcyjnego wysyla pole sprzegla i zgodny typ stacji', async () => {
+    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Sekcyjna/i }));
+
+    expect(screen.getAllByText(/Pole sprz/i).length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByTestId('station-submit'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          station: expect.objectContaining({
+            station_type: 'sectional',
+          }),
+          sn_fields: expect.arrayContaining([
+            expect.objectContaining({ field_role: 'SPRZEGLO' }),
+          ]),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2];
+    expect(payload.sn_fields).toHaveLength(4);
+  });
+
   it('uzywa pierwszego odcinka z korytarza, gdy karta magistrali nie przekazuje segmentu bezposrednio', async () => {
     networkBuildState.activeOperationForm.context = {
       corridor_ref: 'corr-1',

@@ -40,6 +40,33 @@ interface NnConfigurationOption {
   converterKind?: ConverterType['kind'];
 }
 
+const STATION_KIND_OPTIONS: Array<{
+  value: TopologicalStationKind;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'inline',
+    label: 'Przelotowa',
+    description: 'Wejście i wyjście magistrali SN oraz pole transformatorowe.',
+  },
+  {
+    value: 'terminal',
+    label: 'Końcowa',
+    description: 'Zasilanie jednostronne, bez pola wyjściowego magistrali.',
+  },
+  {
+    value: 'branch',
+    label: 'Rozgałęźna',
+    description: 'Magistrala z dodatkowym polem odgałęźnym.',
+  },
+  {
+    value: 'sectional',
+    label: 'Sekcyjna',
+    description: 'Układ z polem sprzęgła dla podziału sekcji SN.',
+  },
+];
+
 function buildDefaultSnFields(stationKind: TopologicalStationKind) {
   const createField = (
     fieldRole: 'LINIA_IN' | 'LINIA_OUT' | 'LINIA_ODG' | 'TRANSFORMATOROWE' | 'SPRZEGLO',
@@ -303,6 +330,161 @@ function stationNameFromData(data: TransformerStationFormData): string | undefin
   return name || refId || undefined;
 }
 
+function StationSystemPreview({
+  stationTypeLabel,
+  stationKind,
+  snVoltageKv,
+  nnVoltageKv,
+  requiredNnVoltageIsValid,
+  snFieldLabels,
+  outgoingFeederCount,
+  nnConfigurationLabel,
+  recommendedTransformer,
+}: {
+  stationTypeLabel: string;
+  stationKind: TopologicalStationKind;
+  snVoltageKv: number;
+  nnVoltageKv: number | null;
+  requiredNnVoltageIsValid: boolean;
+  snFieldLabels: string[];
+  outgoingFeederCount: number;
+  nnConfigurationLabel: string;
+  recommendedTransformer: TransformerType | null;
+}) {
+  const snFieldCount = snFieldLabels.length;
+  const transformerLabel = recommendedTransformer
+    ? `${recommendedTransformer.name} · ${formatMva(recommendedTransformer.rated_power_mva)} MVA`
+    : 'transformator do doboru';
+  const nnVoltageLabel = requiredNnVoltageIsValid ? `${formatKv(nnVoltageKv)} kV` : 'do ustalenia';
+  const stationGoal =
+    stationKind === 'terminal'
+      ? 'Zasilanie jednostronne bez kontynuacji magistrali.'
+      : stationKind === 'branch'
+        ? 'Węzeł z odpływem odgałęźnym z magistrali SN.'
+        : stationKind === 'sectional'
+          ? 'Podział sekcji z polem sprzęgłowym.'
+          : 'Wpięcie przelotowe w istniejącą magistralę SN.';
+
+  return (
+    <div className="mt-4 space-y-3">
+      <div className="border border-[#1d4b69] bg-[#06111d] p-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="font-mono-eng text-[10px] uppercase tracking-[0.18em] text-[#79d7ff]">
+              Schemat jednokreskowy stacji
+            </div>
+            <div className="mt-1 text-sm font-semibold text-white">{stationTypeLabel}</div>
+            <div className="mt-1 text-xs leading-5 text-[#a8c7e2]">{stationGoal}</div>
+          </div>
+          <div className="border border-[#28425f] bg-[#07111c] px-3 py-2 text-right font-mono-eng text-[10px] uppercase tracking-[0.1em] text-[#9fc2df]">
+            <div>{formatKv(snVoltageKv)} kV SN</div>
+            <div>{nnVoltageLabel} nN</div>
+          </div>
+        </div>
+
+        <div className="mt-4 border border-[#17314c] bg-[#07111c] p-3">
+          <div className="flex items-center gap-3">
+            <div className="w-20 shrink-0 font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#79d7ff]">
+              Szyna SN
+            </div>
+            <div className="h-[3px] flex-1 bg-[#e5f3ff]" />
+            <div className="shrink-0 border border-[#1d5b90] bg-[#071b34] px-2 py-1 text-xs font-semibold text-white">
+              {formatKv(snVoltageKv)} kV
+            </div>
+          </div>
+
+          <div
+            className="mt-3 grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${Math.max(1, Math.min(4, snFieldCount))}, minmax(0, 1fr))` }}
+          >
+            {snFieldLabels.map((label, index) => {
+              const isTransformerField = label.toLowerCase().includes('transformator');
+              return (
+                <div key={`${label}-${index}`} className="min-w-0">
+                  <div className="mx-auto h-5 w-[2px] bg-[#e5f3ff]" />
+                  <div
+                    className={`min-h-[86px] border px-2 py-2 text-center ${
+                      isTransformerField
+                        ? 'border-[#22c55e] bg-[#052019]'
+                        : 'border-[#d6a21d] bg-[#211806]'
+                    }`}
+                    title={label}
+                  >
+                    <div
+                      className={`mx-auto grid h-7 w-7 place-items-center border text-[11px] font-bold ${
+                        isTransformerField
+                          ? 'border-[#86efac] text-[#86efac]'
+                          : 'border-[#facc15] text-[#ffe08a]'
+                      }`}
+                    >
+                      {index + 1}
+                    </div>
+                    <div className="mt-2 text-[11px] font-semibold leading-4 text-white">
+                      {label}
+                    </div>
+                  </div>
+                  <div className="mx-auto h-5 w-[2px] bg-[#e5f3ff]" />
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+            <div className="border border-[#14532d] bg-[#061f18] px-3 py-3">
+              <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#86efac]">
+                Transformator SN/nN
+              </div>
+              <div className="mt-2 text-sm font-semibold leading-5 text-white">{transformerLabel}</div>
+              <div className="mt-2 text-xs leading-5 text-[#a8c7e2]">
+                Dobór filtrowany po napięciu SN i wymaganym napięciu strony nN.
+              </div>
+            </div>
+            <div className="border border-[#164e63] bg-[#061826] px-3 py-3">
+              <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#67e8f9]">
+                Strona nN
+              </div>
+              <div className="mt-2 text-sm font-semibold text-white">
+                {nnVoltageLabel} · {outgoingFeederCount} odpływy
+              </div>
+              <div className="mt-2 text-xs leading-5 text-[#a8c7e2]">{nnConfigurationLabel}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border border-[#28425f] bg-[#07111c] p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="font-mono-eng text-[10px] uppercase tracking-[0.18em] text-[#79d7ff]">
+            Decyzje projektowe
+          </div>
+          <div className="border border-[#31506f] px-2 py-1 text-[10px] font-semibold text-[#bfdbfe]">
+            {snFieldCount} pól SN · {outgoingFeederCount} odpływy nN
+          </div>
+        </div>
+        <dl className="mt-3 grid gap-2 text-xs md:grid-cols-2">
+          <SystemPreviewRow label="Funkcja w sieci" value={stationTypeLabel} />
+          <SystemPreviewRow label="Napięcie SN" value={`${formatKv(snVoltageKv)} kV`} />
+          <SystemPreviewRow label="Napięcie nN" value={nnVoltageLabel} />
+          <SystemPreviewRow label="Odpływy nN" value={`${outgoingFeederCount}`} />
+          <SystemPreviewRow label="Pola SN" value={snFieldLabels.join(', ')} />
+          <SystemPreviewRow label="Transformator" value={transformerLabel} />
+        </dl>
+      </div>
+    </div>
+  );
+}
+
+function SystemPreviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border border-[#1d3550] bg-[#06111d] px-3 py-2">
+      <dt className="font-mono-eng text-[10px] uppercase tracking-[0.12em] text-[#8eb1cf]">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words leading-5 text-[#e6f4ff]">{value}</dd>
+    </div>
+  );
+}
+
 export function InsertStationForm() {
   const context = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
@@ -355,7 +537,7 @@ export function InsertStationForm() {
   );
   const segmentLabel = useMemo(() => engineeringSegmentLabel(segmentId), [segmentId]);
   const positionOnSegment = (context?.position_on_segment as number) ?? 0.5;
-  const stationKind = useMemo(
+  const initialStationKind = useMemo(
     () =>
       normalizeTopologicalStationKind(
         (context?.station as Record<string, unknown> | undefined)?.station_type
@@ -363,6 +545,10 @@ export function InsertStationForm() {
       ),
     [context],
   );
+  const [stationKind, setStationKind] = useState<TopologicalStationKind>(initialStationKind);
+  useEffect(() => {
+    setStationKind(initialStationKind);
+  }, [initialStationKind]);
   const stationTypeLabelPl = useMemo(
     () => formatStationTypeLabelPl(stationKind),
     [stationKind],
@@ -419,6 +605,14 @@ export function InsertStationForm() {
   const transformerCatalogEntries = useMemo(
     () => toTransformerCatalogEntries(compatibleTransformerTypes, sourcePowerMva),
     [compatibleTransformerTypes, sourcePowerMva],
+  );
+  const recommendedTransformer = compatibleTransformerTypes[0] ?? null;
+  const editorInitialData = useMemo<Partial<TransformerStationFormData>>(
+    () => ({
+      ...initialData,
+      catalog_ref: initialData.catalog_ref || recommendedTransformer?.id || '',
+    }),
+    [initialData, recommendedTransformer?.id],
   );
   const converterCatalogEntries = useMemo(
     () => toConverterCatalogEntries(filteredConverters),
@@ -669,6 +863,59 @@ export function InsertStationForm() {
         </section>
 
         <section className="border border-[#24405d] bg-[#081522] p-3 shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#19e6ff]">
+                Typ i schemat stacji
+              </div>
+              <p className="mt-1 text-xs leading-5 text-[#a8c7e2]">
+                Wybierz funkcję stacji w sieci. Od tego zależą pola SN, dostępne zaciski i dalsze
+                kroki modelowania.
+              </p>
+            </div>
+            <div className="border border-[#1d4ed8] bg-[#071b34] px-3 py-2 text-xs text-[#bfdbfe]">
+              SN {formatKv(stationSnVoltageKv)} kV / nN{' '}
+              {requiredNnVoltageIsValid ? formatKv(requiredNnVoltageKv) : '-'} kV
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-2">
+            {STATION_KIND_OPTIONS.map((option) => {
+              const active = stationKind === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStationKind(option.value)}
+                  className={`border px-3 py-2 text-left transition ${
+                    active
+                      ? 'border-[#04d6ff] bg-[#063047] text-white'
+                      : 'border-[#28425f] bg-[#07111c] text-[#a8c7e2] hover:border-[#3a668f]'
+                  }`}
+                >
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className="mt-1 block text-xs leading-5 text-[#8eb1cf]">
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <StationSystemPreview
+            stationTypeLabel={stationTypeLabelPl}
+            stationKind={stationKind}
+            snVoltageKv={stationSnVoltageKv}
+            nnVoltageKv={requiredNnVoltageKv}
+            requiredNnVoltageIsValid={requiredNnVoltageIsValid}
+            snFieldLabels={snFieldPreview}
+            outgoingFeederCount={outgoingFeederCount}
+            nnConfigurationLabel={selectedConfiguration.label}
+            recommendedTransformer={recommendedTransformer}
+          />
+        </section>
+
+        <section className="border border-[#24405d] bg-[#081522] p-3 shadow-[inset_0_1px_0_rgba(148,163,184,0.05)]">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.18em] text-[#19e6ff]">
@@ -840,9 +1087,10 @@ export function InsertStationForm() {
               ? `Strona nN za transformatorem (${formatKv(requiredNnVoltageKv)} kV)`
               : 'Strona nN za transformatorem, napięcie po wyborze konfiguracji',
           }}
-          initialData={initialData}
+          initialData={editorInitialData}
           busOptions={stationBusOptions}
           catalogEntries={transformerCatalogEntries}
+          submitLabel="Wstaw stację na odcinku"
           onSubmit={handleSubmit}
           onCancel={closeForm}
         />

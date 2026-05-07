@@ -6,6 +6,8 @@ ZRODLA DANYCH:
     PN-EN 60076-1:2011 / ZREW Transformatory specyfikacja typ T-42
 - Transformatory SN/nN (15/0.4 kV, 20/0.4 kV):
     PN-EN 60076-11:2004 Tabl.A + Rozporzadzenie UE 2019/1783 Tier 2 / ABB katalog dystrybucyjny
+- Transformatory SN/nN dla zrodel falownikowych PV/BESS/FW:
+    referencyjne profile projektowe 15/0.5-6.3 kV oraz 20/0.5-6.3 kV
 
 KONWENCJE:
 - rated_power_mva [MVA] — moc znamionowa
@@ -35,7 +37,8 @@ TYPOSZEREG PRZEMYSLOWY:
   SN/nN (15/0.4 kV): 630, 1000 kVA Yd11  — 2 mocy specjalne
   SN/nN (20/0.4 kV): 63, 100, 160, 250, 400, 630, 1000, 1250, 1600 kVA Dyn11  — 9 mocy
   SN/nN (20/0.4 kV): 630, 1000 kVA Yd11  — 2 mocy specjalne
-  Razem: 34 rekordy
+  SN/nN PV/BESS/FW: 15/0.5-6.3 kV i 20/0.5-6.3 kV - 142 rekordy referencyjne
+  Razem: 176 rekordow
 """
 
 from typing import Any
@@ -909,12 +912,102 @@ TRANSFORMER_SN_NN_20_04_YD11: list[dict[str, Any]] = [
 
 
 # =============================================================================
+# TRANSFORMATORY SN/nN DLA ZRODEL FALOWNIKOWYCH PV / BESS / FW
+# =============================================================================
+
+_INVERTER_LV_VOLTAGES_KV = (0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3)
+_INVERTER_TR_POWER_MVA_LOW_LV = (0.5, 0.63, 0.8, 1.0, 1.25, 1.6, 2.0, 2.5, 3.15, 4.0, 5.0)
+_INVERTER_TR_POWER_MVA_MEDIUM_LV = (1.0, 1.6, 2.5, 3.15, 4.0, 5.0, 6.3, 8.0, 10.0)
+
+
+def _catalog_token(value: float) -> str:
+    text = f"{value:g}".replace(".", "p")
+    return text
+
+
+def _kva_label(power_mva: float) -> str:
+    kva = power_mva * 1000
+    return f"{int(kva)} kVA" if kva < 1000 else f"{power_mva:g} MVA"
+
+
+def _estimate_inverter_transformer_params(power_mva: float) -> dict[str, float]:
+    if power_mva <= 0.63:
+        return {"uk_percent": 5.0, "pk_kw_per_mva": 12.7, "p0_kw_per_mva": 2.1, "i0_percent": 1.5}
+    if power_mva <= 1.6:
+        return {"uk_percent": 6.0, "pk_kw_per_mva": 11.0, "p0_kw_per_mva": 1.7, "i0_percent": 1.2}
+    if power_mva <= 3.15:
+        return {"uk_percent": 6.0, "pk_kw_per_mva": 10.5, "p0_kw_per_mva": 1.5, "i0_percent": 1.0}
+    if power_mva <= 6.3:
+        return {"uk_percent": 7.0, "pk_kw_per_mva": 9.5, "p0_kw_per_mva": 1.2, "i0_percent": 0.8}
+    return {"uk_percent": 8.0, "pk_kw_per_mva": 8.8, "p0_kw_per_mva": 1.0, "i0_percent": 0.7}
+
+
+def _build_inverter_transformer_types(sn_voltage_kv: float, lv_voltage_kv: float) -> list[dict[str, Any]]:
+    power_ratings = (
+        _INVERTER_TR_POWER_MVA_LOW_LV
+        if lv_voltage_kv <= 1.0
+        else _INVERTER_TR_POWER_MVA_MEDIUM_LV
+    )
+    records: list[dict[str, Any]] = []
+    sn_token = _catalog_token(sn_voltage_kv)
+    lv_token = _catalog_token(lv_voltage_kv)
+    for power_mva in power_ratings:
+        power_token = _catalog_token(power_mva)
+        params = _estimate_inverter_transformer_params(power_mva)
+        records.append(
+            {
+                "id": f"tr-sn-nn-{sn_token}-{lv_token}-{power_token}mva-dyn11-inverter",
+                "name": (
+                    f"TR {sn_voltage_kv:g}/{lv_voltage_kv:g} kV "
+                    f"{_kva_label(power_mva)} Dyn11 PV/BESS/FW"
+                ),
+                "params": {
+                    "rated_power_mva": power_mva,
+                    "voltage_hv_kv": sn_voltage_kv,
+                    "voltage_lv_kv": lv_voltage_kv,
+                    "uk_percent": params["uk_percent"],
+                    "pk_kw": round(power_mva * params["pk_kw_per_mva"], 2),
+                    "i0_percent": params["i0_percent"],
+                    "p0_kw": round(power_mva * params["p0_kw_per_mva"], 2),
+                    "vector_group": "Dyn11",
+                    "cooling_class": "ONAN/ONAF" if power_mva >= 2.0 else "ONAN",
+                    "tap_min": -2,
+                    "tap_max": 2,
+                    "tap_step_percent": 2.5,
+                    "manufacturer": "MV-DESIGN-PRO reference",
+                    "standard": "PN-EN 60076-11 / IEC 60076-16",
+                    "verification_status": "REFERENCYJNY",
+                    "catalog_status": "REFERENCYJNY_V1",
+                    "source_reference": (
+                        "Referencyjny typoszereg transformatorow blokowych "
+                        "dla falownikow PV/BESS/FW"
+                    ),
+                    "contract_version": "2.0",
+                    "verification_note": (
+                        "Profil referencyjny do doboru wariantowego; parametry strat "
+                        "i uk% wymagaja potwierdzenia karta producenta w projekcie wykonawczym."
+                    ),
+                },
+            }
+        )
+    return records
+
+
+TRANSFORMER_SN_NN_INVERTER_BLOCK: list[dict[str, Any]] = [
+    record
+    for _sn_voltage in (15.0, 20.0)
+    for _lv_voltage in _INVERTER_LV_VOLTAGES_KV
+    for record in _build_inverter_transformer_types(_sn_voltage, _lv_voltage)
+]
+
+
+# =============================================================================
 # FUNKCJE DOSTEPU
 # =============================================================================
 
 
 def get_all_transformer_types() -> list[dict[str, Any]]:
-    """Zwraca wszystkie typy transformatorow w katalogu (34 rekordy)."""
+    """Zwraca wszystkie typy transformatorow w katalogu."""
     return (
         TRANSFORMER_WN_SN_110_15
         + TRANSFORMER_WN_SN_110_20
@@ -922,6 +1015,7 @@ def get_all_transformer_types() -> list[dict[str, Any]]:
         + TRANSFORMER_SN_NN_20_04_DYN11
         + TRANSFORMER_SN_NN_15_04_YD11
         + TRANSFORMER_SN_NN_20_04_YD11
+        + TRANSFORMER_SN_NN_INVERTER_BLOCK
     )
 
 
@@ -931,12 +1025,13 @@ def get_wn_sn_transformer_types() -> list[dict[str, Any]]:
 
 
 def get_sn_nn_transformer_types() -> list[dict[str, Any]]:
-    """Zwraca transformatory SN/nN (15/0.4 kV i 20/0.4 kV)."""
+    """Zwraca transformatory SN/nN dystrybucyjne i falownikowe PV/BESS/FW."""
     return (
         TRANSFORMER_SN_NN_15_04_DYN11
         + TRANSFORMER_SN_NN_20_04_DYN11
         + TRANSFORMER_SN_NN_15_04_YD11
         + TRANSFORMER_SN_NN_20_04_YD11
+        + TRANSFORMER_SN_NN_INVERTER_BLOCK
     )
 
 
@@ -957,9 +1052,14 @@ def get_transformer_catalog_statistics() -> dict[str, Any]:
         "statusy_katalogowe": sorted({t["params"]["catalog_status"] for t in all_types}),
         "grupy_polaczen": vector_groups,
         "moce_znamionowe_mva": power_ratings,
-        "producenci": ["ZREW Transformatory", "ABB", "Trafo Zywiec"],
+        "producenci": ["ZREW Transformatory", "ABB", "Trafo Zywiec", "MV-DESIGN-PRO reference"],
         "napiecia_wn_sn": ["110/15 kV", "110/20 kV"],
-        "napiecia_sn_nn": ["15/0.4 kV", "20/0.4 kV"],
+        "napiecia_sn_nn": [
+            "15/0.4 kV",
+            "20/0.4 kV",
+            "15/0.5-6.3 kV PV/BESS/FW",
+            "20/0.5-6.3 kV PV/BESS/FW",
+        ],
     }
 
 

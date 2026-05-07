@@ -4,6 +4,24 @@ import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import { CatalogBrowser } from '../network-build/CatalogBrowser';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
+import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
+import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
+import { AddGridSourceForm } from '../network-build/forms/AddGridSourceForm';
+import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
+import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
+import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
+import { AddRelayForm } from '../network-build/forms/AddRelayForm';
+import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
+import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
+import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
+import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
+import { ContinueTrunkForm } from '../network-build/forms/ContinueTrunkForm';
+import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
+import { InsertSectionSwitchForm } from '../network-build/forms/InsertSectionSwitchForm';
+import { InsertStationForm } from '../network-build/forms/InsertStationForm';
+import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
+import { StartBranchForm } from '../network-build/forms/StartBranchForm';
+import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
 import { useSelectionStore } from '../selection';
 import { useSnapshotStore } from '../topology/snapshotStore';
 import {
@@ -61,6 +79,10 @@ import {
   type WorkspaceSurfaceCode,
   type WorkspaceSurfaceDescriptor,
 } from './types';
+import { isCanonicalOpName, type CanonicalOpName } from '../../types/domainOps';
+import { resolveFixActionSurface } from '../../types/fixActionSurface';
+import type { EnergyNetworkModel, FixAction } from '../../types/enm';
+import type { ElementType } from '../types';
 
 interface WorkspaceSurfaceRouterProps {
   region: 'panel' | 'main';
@@ -99,10 +121,10 @@ function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
     >
       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Mini-SLD</div>
       <div className="mt-2 text-sm font-medium">
-        Kontekst obiektu pozostaje zsynchronizowany z glownym schematem.
+        Kontekst obiektu pozostaje zsynchronizowany z głównym schematem.
       </div>
       <div className="mt-1 text-xs text-slate-300">
-        Ten widok pracuje w tej samej ramie aplikacji. Powiazany obiekt: {surface.entityRef ?? 'aktywny kontekst'}.
+        Ten widok pracuje w tej samej ramie aplikacji. Powiązany obiekt: {surface.entityRef ?? 'aktywny kontekst'}.
       </div>
     </div>
   );
@@ -676,7 +698,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Biezacy widok analityki" eyebrow="Wyniki">
+      <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
         ) : (
@@ -999,17 +1021,17 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                   { label: 'Obliczenie', value: activeRunId ?? 'Brak aktywnego uruchomienia' },
                   {
                     label: 'Rola',
-                    value: 'Panel pomocniczy pozostaje w glownym oknie roboczym i otwiera tylko dozwolone widoki.',
+                    value: 'Panel pomocniczy pozostaje w głównym oknie roboczym i otwiera tylko dozwolone widoki.',
                   },
                   {
                     label: 'Status migracji',
-                    value: 'Panel zarzadzania przypadkami zostal wchloniety do jednej ramy aplikacji.',
+                    value: 'Panel zarządzania przypadkami został włączony do jednej ramy aplikacji.',
                   },
                 ]}
                 columns={2}
               />
             </SectionCard>
-            <SectionCard title="Szybkie przejscia pomocnicze">
+            <SectionCard title="Szybkie przejścia pomocnicze">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
                   label="Parametry analizy"
@@ -1025,10 +1047,10 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                   }
                 />
                 <SurfaceActionButton
-                  label="Biblioteka typow"
+                  label="Biblioteka typów"
                   onClick={() =>
                     openChildSurface('catalog_admin', {
-                      titlePl: 'Biblioteka typow',
+                      titlePl: 'Biblioteka typów',
                       sizeClass: 'B',
                       openMode: 'replace_right_panel',
                       supportsMiniSld: false,
@@ -1049,7 +1071,7 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                   openChildSurface('analysis', {
                     screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                     tabId: 'results',
-                    titlePl: 'Nakladka wynikowa na schemacie',
+                    titlePl: 'Nakładka wynikowa na schemacie',
                     sizeClass: 'C',
                     supportsMiniSld: true,
                   });
@@ -1061,24 +1083,24 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             <SectionCard title="Akcje wariantu">
               <div className="flex flex-wrap gap-2">
                 <SurfaceActionButton
-                  label="Otworz wyniki"
+                  label="Otwórz wyniki"
                   onClick={() =>
                     openChildSurface('analysis', {
                       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                       tabId: 'results',
-                      titlePl: 'Nakladka wynikowa na schemacie',
+                      titlePl: 'Nakładka wynikowa na schemacie',
                       sizeClass: 'C',
                       supportsMiniSld: true,
                     })
                   }
                 />
                 <SurfaceActionButton
-                  label="Porownanie przebiegow"
+                  label="Porównanie przebiegów"
                   onClick={() =>
                     openChildSurface('analysis', {
                       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                       tabId: 'compare',
-                      titlePl: 'Porownanie przebiegow',
+                      titlePl: 'Porównanie przebiegów',
                       sizeClass: 'C',
                       supportsMiniSld: true,
                     })
@@ -1209,10 +1231,72 @@ function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescrip
   );
 }
 
+function inferElementTypeForFixAction(
+  snapshot: EnergyNetworkModel | null,
+  elementRef: string,
+): ElementType {
+  if ((snapshot?.generators ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) {
+    const generator = snapshot?.generators.find((item) => item.ref_id === elementRef || item.id === elementRef);
+    if (generator?.gen_type === 'pv_inverter') return 'PVInverter';
+    if (generator?.gen_type === 'bess') return 'BESSInverter';
+    return 'Generator';
+  }
+  if ((snapshot?.substations ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Station';
+  if ((snapshot?.bays ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'BaySN';
+  if ((snapshot?.branches ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'LineBranch';
+  if ((snapshot?.transformers ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'TransformerBranch';
+  if ((snapshot?.sources ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Source';
+  if ((snapshot?.loads ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Load';
+  if ((snapshot?.measurements ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'Measurement';
+  if ((snapshot?.protection_assignments ?? []).some((item) => item.ref_id === elementRef || item.id === elementRef)) return 'ProtectionAssignment';
+  return 'Bus';
+}
+
+function resolveElementNameForFixAction(
+  snapshot: EnergyNetworkModel | null,
+  elementRef: string,
+): string {
+  const candidates = [
+    ...(snapshot?.generators ?? []),
+    ...(snapshot?.substations ?? []),
+    ...(snapshot?.bays ?? []),
+    ...(snapshot?.branches ?? []),
+    ...(snapshot?.transformers ?? []),
+    ...(snapshot?.sources ?? []),
+    ...(snapshot?.loads ?? []),
+    ...(snapshot?.measurements ?? []),
+    ...(snapshot?.protection_assignments ?? []),
+    ...(snapshot?.buses ?? []),
+  ];
+  return candidates.find((item) => item.ref_id === elementRef || item.id === elementRef)?.name ?? elementRef;
+}
+
+function fallbackFixActionFromBlocker(blocker: {
+  code: string;
+  element_ref: string | null;
+}): FixAction {
+  return {
+    code: blocker.code,
+    action_type: 'ADD_MISSING_DEVICE',
+    element_ref: blocker.element_ref,
+    modal_type: null,
+    panel: null,
+    step: null,
+    focus: null,
+    payload_hint: null,
+    surface_descriptor: null,
+    message_pl: blocker.element_ref ? 'Przejdź do elementu i uzupełnij dane' : 'Pokaż szczegóły braku danych',
+  };
+}
+
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
+  const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const selectElement = useSelectionStore((state) => state.selectElement);
+  const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
   const allDers = useStationDerStore((state) => selectAllDers(state));
   const blockerCount = readiness?.blockers?.length ?? 0;
   const warningCount = readiness?.warnings?.length ?? 0;
@@ -1261,10 +1345,45 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     return fixActions.find((fa) => fa.element_ref === elementRef) ?? null;
   };
 
-  const handleFixActionClick = (action: { element_ref: string | null }) => {
+  const handleFixActionClick = (action: FixAction) => {
     if (action.element_ref) {
-      // Wybor elementu: synchronizacja z store selekcji.
-      // Tutaj only switch selection — surface routing to inny krok.
+      selectElement({
+        id: action.element_ref,
+        type: inferElementTypeForFixAction(snapshot, action.element_ref),
+        name: resolveElementNameForFixAction(snapshot, action.element_ref),
+      });
+      centerSldOnElement(action.element_ref);
+    }
+
+    const target = action.surface_descriptor ?? resolveFixActionSurface({
+      code: action.code,
+      action_type: action.action_type,
+      element_ref: action.element_ref,
+      modal_type: action.modal_type,
+      panel: action.panel,
+      step_hint: action.step,
+      focus_ref: action.focus,
+      payload_hint: action.payload_hint,
+    });
+
+    if (target.kind === 'operation_form' && target.operation) {
+      openOperationForm(target.operation, {
+        ...target.context,
+        element_ref: target.element_ref ?? action.element_ref,
+        focus_ref: target.focus_ref ?? action.focus,
+      });
+      return;
+    }
+
+    if (target.kind === 'navigate_to_element' && target.element_ref) {
+      openRouteSurface('E-01', {
+        titlePl: 'Schemat i topologia',
+        entityRef: target.element_ref,
+        subjectKind: 'entity',
+        subjectRef: target.element_ref,
+        route: 'sld',
+        supportsMiniSld: true,
+      });
     }
   };
 
@@ -1307,7 +1426,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
         <SectionCard title="Blokery (krytyczne)" eyebrow="Lista">
           <ul className="space-y-2">
             {readiness.blockers.map((blocker, idx) => {
-              const action = fixActionByElement(blocker.element_ref);
+              const action = fixActionByElement(blocker.element_ref) ?? fallbackFixActionFromBlocker(blocker);
               return (
                 <li
                   key={`${blocker.code}-${idx}`}
@@ -1559,14 +1678,13 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
         <div data-testid="protection-coordination-tcc" className="space-y-2">
           <TimeCurrentChart curves={sampleCurves} faultMarkers={sampleFaults} />
           <p className="text-xs text-slate-500">
-            Krzywe demo (IEC 60255 SI) wygenerowane lokalnie do podglądu osi
-            i skali log-log. Po podpięciu solvera <code>protection_iec60255</code>
-            punkty krzywej (CurvePoint[]) pochodzą wprost z backendu —
-            tabela jest read-only widokiem.
+            Krzywe referencyjne (IEC 60255 SI) pokazują oś i skalę log-log.
+            Punkty krzywej (CurvePoint[]) są prezentowane jako dane wejściowe
+            modułu zabezpieczeń, a tabela jest widokiem tylko do odczytu.
           </p>
           <p className="text-xs text-slate-500">
             Markery zwarciowe (Ik″ 3F i Ik 1F) ilustrują typowe punkty pracy.
-            Aktywne uruchomienie:{' '}
+            Aktywne obliczenie:{' '}
             <code>{String(surface.routeState.payload?.runId ?? '—')}</code>.
           </p>
         </div>
@@ -1657,13 +1775,13 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
           ]}
         />
       </SectionCard>
-      <SectionCard title="Nawigacja kanoniczna" eyebrow="Glowne okno robocze">
+      <SectionCard title="Nawigacja kanoniczna" eyebrow="Główne okno robocze">
         <div className="flex flex-wrap gap-2">
           <SurfaceActionButton
-            label="Przebiegi obliczen"
+            label="Przebiegi obliczeń"
             onClick={() =>
               openChildSurface('variants', {
-                titlePl: 'Przebiegi obliczen',
+                titlePl: 'Przebiegi obliczeń',
                 sizeClass: 'C',
                 supportsMiniSld: true,
                 subjectKind: 'helper_context',
@@ -1672,12 +1790,12 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
             }
           />
           <SurfaceActionButton
-            label="Nakladka wynikowa"
+            label="Nakładka wynikowa"
             onClick={() =>
               openChildSurface('analysis', {
                 screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
                 tabId: 'results',
-                titlePl: 'Nakladka wynikowa na schemacie',
+                titlePl: 'Nakładka wynikowa na schemacie',
                 sizeClass: 'C',
                 supportsMiniSld: true,
               })
@@ -2188,12 +2306,108 @@ function ExportButton({
   );
 }
 
+function OperationWithoutFormNotice({ operation }: { operation: CanonicalOpName }) {
+  const closeActiveSurface = useNetworkBuildStore((state) => state.closeActiveSurface);
+  const label = operation === 'delete_element'
+    ? 'Usunięcie elementu'
+    : 'Odświeżenie modelu';
+
+  return (
+    <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="font-semibold">{label}</div>
+      <p className="mt-2">
+        Ta akcja wymaga wskazanego obiektu i jest wykonywana bez osobnego formularza.
+        Uruchom ją z menu kontekstowego właściwego elementu na SLD, aby zachować
+        powiązanie z modelem sieci.
+      </p>
+      <button
+        type="button"
+        onClick={closeActiveSurface}
+        className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+      >
+        Wróć do SLD
+      </button>
+    </div>
+  );
+}
+
+function OperationBindingError({ value }: { value: unknown }) {
+  return (
+    <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+      <div className="font-semibold">Nie znaleziono formularza akcji</div>
+      <p className="mt-2">
+        System nie rozpoznał powiązania akcji z formularzem konfiguracji. Zamknij
+        panel i uruchom akcję ponownie z właściwego elementu SLD.
+      </p>
+      {typeof value === 'string' && value.trim() && (
+        <p className="mt-2 text-xs text-red-700">Identyfikator akcji: {value}</p>
+      )}
+    </div>
+  );
+}
+
+function OperationFormSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const operation = surface.routeState.payload?.operation;
+
+  if (typeof operation !== 'string' || !isCanonicalOpName(operation)) {
+    return <OperationBindingError value={operation} />;
+  }
+
+  switch (operation) {
+    case 'add_grid_source_sn':
+      return <AddGridSourceForm />;
+    case 'add_sn_bay':
+      return <AddSnBayForm />;
+    case 'continue_trunk_segment_sn':
+      return <ContinueTrunkForm />;
+    case 'insert_station_on_segment_sn':
+      return <InsertStationForm />;
+    case 'insert_branch_pole_on_segment_sn':
+      return <InsertBranchPoleForm />;
+    case 'insert_zksn_on_segment_sn':
+      return <InsertZksnForm />;
+    case 'start_branch_segment_sn':
+      return <StartBranchForm />;
+    case 'insert_section_switch_sn':
+      return <InsertSectionSwitchForm />;
+    case 'connect_secondary_ring_sn':
+    case 'set_normal_open_point':
+      return <ConnectRingForm />;
+    case 'add_transformer_sn_nn':
+      return <AddTransformerForm />;
+    case 'assign_catalog_to_element':
+      return <AssignCatalogForm />;
+    case 'update_element_parameters':
+      return <UpdateElementParametersForm />;
+    case 'add_nn_outgoing_field':
+      return <AddNnOutgoingFieldForm />;
+    case 'add_converter_source':
+      return <AddConverterSourceForm />;
+    case 'add_genset_nn':
+    case 'add_ups_nn':
+      return <AddDispatchableSourceForm />;
+    case 'add_nn_load':
+      return <AddNnLoadForm />;
+    case 'add_ct':
+    case 'add_vt':
+      return <AddMeasurementForm />;
+    case 'add_relay':
+      return <AddRelayForm />;
+    case 'delete_element':
+    case 'refresh_snapshot':
+      return <OperationWithoutFormNotice operation={operation} />;
+  }
+}
+
+const delegatedSurfaceBodies: Record<string, (surface: WorkspaceSurfaceDescriptor) => ReactNode> = {
+  operation_form: (surface) => <OperationFormSurface surface={surface} />,
+};
+
 function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   const delegate = surface.routeState.payload?.delegate;
-  const delegateBodies: Record<string, ReactNode> = {
-  };
+  const delegateBodies = delegatedSurfaceBodies;
   if (typeof delegate === 'string' && delegate in delegateBodies) {
-    return delegateBodies[delegate];
+    return delegateBodies[delegate]?.(surface) ?? null;
   }
 
   switch (surface.screenCode) {

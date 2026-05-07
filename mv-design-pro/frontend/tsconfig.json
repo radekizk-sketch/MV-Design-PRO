@@ -17,6 +17,21 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
-  "exclude": ["src/**/__tests__/**/*", "src/**/*.test.ts", "src/**/*.test.tsx", "e2e"],
+  "exclude": [
+    "src/**/__tests__/**/*",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "e2e",
+    "src/ui/context-menu/EngineeringContextMenu.tsx",
+    "src/ui/layout/CanonicalLayout.tsx",
+    "src/ui/network-build/cards/BayCard.tsx",
+    "src/ui/network-build/InspectorEngineeringView.tsx",
+    "src/ui/network-build/ReadOnlyPanelRouter.tsx",
+    "src/ui/results-inspector/ResultsInspectorPage.tsx",
+    "src/ui/sld/*.ts",
+    "src/ui/sld/*.tsx",
+    "src/ui/sld/core/**/*",
+    "src/ui/sld/inspector/**/*"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -431,8 +431,8 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
                     "control_mode": "STALY_COS_PHI",
                     "power_setpoint_mw": 0.05,
                     "catalog_binding": {
-                        "catalog_namespace": "CONVERTER",
-                        "catalog_item_id": "conv-pv-0.5mw-15kv",
+                        "catalog_namespace": "ZRODLO_NN_PV",
+                        "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
                         "catalog_item_version": "2024.1",
                     },
                     "source_field": {
@@ -457,8 +457,8 @@ def build_gn04_sn_nn_oze() -> dict[str, Any]:
                     "bess_mode": "DWUKIERUNKOWY",
                     "power_setpoint_mw": 0.03,
                     "catalog_binding": {
-                        "catalog_namespace": "CONVERTER",
-                        "catalog_item_id": "conv-bess-0.5mw-1mwh-15kv",
+                        "catalog_namespace": "ZRODLO_NN_BESS",
+                        "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
                         "catalog_item_version": "2024.1",
                     },
                     "source_field": {

@@ -1036,7 +1036,7 @@ export function ReadOnlyPanelRouter() {
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaż na schemacie</button>
               <button type="button" onClick={openResults} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:hover:bg-slate-300">Otwórz pełny widok wyników uruchomienia</button>
-              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Otwórz pełny wywód uruchomienia</button>
+              <button type="button" onClick={openTrace} disabled={!canOpenRunArtifacts} title={blockedRunArtifactsTitle} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400 disabled:hover:bg-slate-100">Otwórz pełny wywód obliczenia</button>
             </div>
           </div>
         )}
@@ -1044,15 +1044,15 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'history' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Historia uruchomień</div>
+              <div className="text-sm font-semibold text-slate-900">Historia obliczeń</div>
               <div className="text-xs text-slate-500">
                 Obliczenia: {activeCaseName ?? activeCaseId ?? 'brak'} - wybierz przebieg, aby otworzyć jego wyniki dla aktywnego elementu.
               </div>
             </div>
             {runs.length === 0 ? (
               <Empty
-                title="Brak historii uruchomień"
-                text="Nie znaleziono przebiegów dla aktywnego przypadku. Uruchom analizę, aby zobaczyć historię."
+                title="Brak historii obliczeń"
+                text="Nie znaleziono przebiegów dla aktywnego zakresu obliczeń. Wykonaj analizę, aby zobaczyć historię."
               />
             ) : (
               <RunHistoryPanel

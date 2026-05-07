@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { clsx } from 'clsx';
 
-import { fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../catalog/api';
-import type { SourceSystemCatalogType } from '../../../catalog/types';
+import { fetchMvApparatusTypes, fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../catalog/api';
+import type { MVApparatusType, SourceSystemCatalogType } from '../../../catalog/types';
 import type {
   GpzGroundingType,
   ManualSourceShortCircuitMode,
@@ -26,6 +26,8 @@ export interface GridSourceFormData {
   catalog_ref: string | null;
   gpz_section_name: string;
   gpz_line_field_name: string;
+  gpz_line_field_apparatus_kind: GpzLineFieldApparatusKind;
+  gpz_line_field_apparatus_catalog_ref: string | null;
   sections_count: number;
   line_fields_per_section: number;
   manual_mode: boolean;
@@ -55,6 +57,7 @@ interface FieldError {
 type ReadinessState = 'complete' | 'warning' | 'missing';
 type PreviewStatus = 'idle' | 'loading' | 'ready' | 'error';
 type CatalogStatus = 'idle' | 'loading' | 'ready' | 'error';
+type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
 
 interface GpzEditorSection {
   order: number;
@@ -71,13 +74,15 @@ const DEFAULT_DATA: GridSourceFormData = {
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
   x_ohm: null,
-  notes: 'Ekran E-03B - karta GPZ zaawansowana',
+  notes: '',
   catalog_ref: null,
   gpz_section_name: 'Sekcja',
   gpz_line_field_name: 'Pole odpływowe',
+  gpz_line_field_apparatus_kind: 'BREAKER',
+  gpz_line_field_apparatus_catalog_ref: null,
   sections_count: 2,
   line_fields_per_section: 2,
-  manual_mode: true,
+  manual_mode: false,
   zero_sequence_enabled: true,
   r0_ohm: null,
   x0_ohm: null,
@@ -218,6 +223,13 @@ function validateForm(data: GridSourceFormData): FieldError[] {
     errors.push({
       field: 'gpz_line_field_name',
       message: 'Nazwa pola liniowego GPZ musi mieć co najmniej 3 znaki.',
+    });
+  }
+
+  if (!data.gpz_line_field_apparatus_catalog_ref?.trim()) {
+    errors.push({
+      field: 'gpz_line_field_apparatus_catalog_ref',
+      message: 'Dobierz aparat SN dla pól liniowych GPZ.',
     });
   }
 
@@ -372,6 +384,45 @@ function sourceCatalogLabel(item: SourceSystemCatalogType): string {
   return [item.name, manufacturer, voltage, sk].filter(Boolean).join(' · ');
 }
 
+function apparatusKindLabel(value: string | undefined): string {
+  switch ((value ?? '').trim().toUpperCase()) {
+    case 'WYLACZNIK':
+    case 'BREAKER':
+      return 'Wyłącznik';
+    case 'ODLACZNIK':
+    case 'DISCONNECTOR':
+      return 'Odłącznik';
+    case 'ROZLACZNIK':
+    case 'ROZLACZNIK_BEZPIECZNIKOWY':
+    case 'LOAD_SWITCH':
+      return 'Rozłącznik';
+    case 'REKLOZER':
+      return 'Reklozer';
+    default:
+      return value ?? 'Aparat SN';
+  }
+}
+
+function mvApparatusLabel(item: MVApparatusType): string {
+  return `${item.name} · ${apparatusKindLabel(item.device_kind)} · Un ${formatNumber(item.u_n_kv, 1)} kV · In ${formatNumber(item.i_n_a, 0)} A`;
+}
+
+function matchesLineFieldApparatusKind(
+  item: MVApparatusType,
+  kind: GpzLineFieldApparatusKind,
+): boolean {
+  const deviceKind = item.device_kind?.toUpperCase();
+  if (kind === 'BREAKER') {
+    return deviceKind === 'WYLACZNIK' || deviceKind === 'REKLOZER' || deviceKind === 'BREAKER';
+  }
+  if (kind === 'DISCONNECTOR') {
+    return deviceKind === 'ODLACZNIK' || deviceKind === 'UZIEMNIK' || deviceKind === 'DISCONNECTOR';
+  }
+  return deviceKind === 'ROZLACZNIK'
+    || deviceKind === 'ROZLACZNIK_BEZPIECZNIKOWY'
+    || deviceKind === 'LOAD_SWITCH';
+}
+
 function findCatalogItem(
   items: SourceSystemCatalogType[],
   catalogRef: string | null,
@@ -479,6 +530,9 @@ export function GridSourceEditor({
   const [catalogItems, setCatalogItems] = useState<SourceSystemCatalogType[]>([]);
   const [catalogStatus, setCatalogStatus] = useState<CatalogStatus>('idle');
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [mvApparatusItems, setMvApparatusItems] = useState<MVApparatusType[]>([]);
+  const [mvApparatusStatus, setMvApparatusStatus] = useState<CatalogStatus>('idle');
+  const [mvApparatusError, setMvApparatusError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -516,6 +570,37 @@ export function GridSourceEditor({
         setCatalogItems([]);
         setCatalogStatus('error');
         setCatalogError(getCatalogErrorMessage(error));
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setMvApparatusStatus('loading');
+    setMvApparatusError(null);
+
+    fetchMvApparatusTypes()
+      .then((items) => {
+        if (cancelled) {
+          return;
+        }
+        setMvApparatusItems(Array.isArray(items) ? items : []);
+        setMvApparatusStatus('ready');
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+        setMvApparatusItems([]);
+        setMvApparatusStatus('error');
+        setMvApparatusError(getCatalogErrorMessage(error));
       });
 
     return () => {
@@ -580,6 +665,30 @@ export function GridSourceEditor({
     () => findCatalogItem(catalogItems, formData.catalog_ref),
     [catalogItems, formData.catalog_ref],
   );
+  const filteredMvApparatusItems = useMemo(
+    () =>
+      mvApparatusItems.filter((item) =>
+        matchesLineFieldApparatusKind(item, formData.gpz_line_field_apparatus_kind),
+      ),
+    [formData.gpz_line_field_apparatus_kind, mvApparatusItems],
+  );
+  const selectedLineFieldApparatus = useMemo(
+    () =>
+      mvApparatusItems.find((item) => item.id === formData.gpz_line_field_apparatus_catalog_ref)
+      ?? null,
+    [formData.gpz_line_field_apparatus_catalog_ref, mvApparatusItems],
+  );
+  useEffect(() => {
+    if (!isOpen || formData.gpz_line_field_apparatus_catalog_ref || filteredMvApparatusItems.length === 0) {
+      return;
+    }
+    handleChange('gpz_line_field_apparatus_catalog_ref', filteredMvApparatusItems[0].id);
+  }, [
+    filteredMvApparatusItems,
+    formData.gpz_line_field_apparatus_catalog_ref,
+    handleChange,
+    isOpen,
+  ]);
   const gpzBuildSections = useMemo(() => buildEditorGpzSections(formData), [formData]);
   const gpzCouplerCount = Math.max(0, gpzBuildSections.length - 1);
   const dataSourceLabel = formData.manual_mode
@@ -663,7 +772,7 @@ export function GridSourceEditor({
                 </h2>
               </div>
               <p className="mt-1 font-mono-eng text-[11px] text-[#8fb4d8]">
-                Ekran E-03B · Karta GPZ zaawansowana · {formatNumber(formData.sn_voltage_kv, 0)} kV
+                Dodanie GPZ do modelu sieci · {formatNumber(formData.sn_voltage_kv, 0)} kV
               </p>
             </div>
             <span className="rounded-[3px] border border-[#1d3550] bg-[#091728] px-2 py-1 font-mono-eng text-[10px] font-semibold uppercase tracking-[0.14em] text-[#67d9ff]">
@@ -738,7 +847,7 @@ export function GridSourceEditor({
               />
               <AdvancedDataRow
                 label="Zasada obliczeń"
-                value="UI wysyła dane wejściowe, wynik wraca z backendu"
+                value="Interfejs wysyła dane wejściowe, wynik wraca z backendu"
               />
             </div>
           </ScadaSection>
@@ -974,6 +1083,55 @@ export function GridSourceEditor({
               </FieldShell>
             </div>
 
+            <div className="grid gap-3 xl:grid-cols-[180px_minmax(0,1fr)]">
+              <FieldShell label="Aparat pól liniowych">
+                <select
+                  value={formData.gpz_line_field_apparatus_kind}
+                  onChange={(event) => {
+                    handleChange(
+                      'gpz_line_field_apparatus_kind',
+                      event.target.value as GpzLineFieldApparatusKind,
+                    );
+                    handleChange('gpz_line_field_apparatus_catalog_ref', null);
+                  }}
+                  className={selectClass()}
+                >
+                  <option value="BREAKER">Wyłącznik</option>
+                  <option value="LOAD_SWITCH">Rozłącznik</option>
+                  <option value="DISCONNECTOR">Odłącznik</option>
+                </select>
+              </FieldShell>
+
+              <FieldShell
+                label="Typ katalogowy aparatu GPZ"
+                error={getFieldError('gpz_line_field_apparatus_catalog_ref')}
+              >
+                <select
+                  value={formData.gpz_line_field_apparatus_catalog_ref ?? ''}
+                  onChange={(event) =>
+                    handleChange('gpz_line_field_apparatus_catalog_ref', event.target.value || null)
+                  }
+                  className={selectClass()}
+                >
+                  <option value="">
+                    {mvApparatusStatus === 'loading'
+                      ? 'Ładowanie katalogu APARAT_SN...'
+                      : '— wybierz aparat dla pól GPZ —'}
+                  </option>
+                  {filteredMvApparatusItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {mvApparatusLabel(item)}
+                    </option>
+                  ))}
+                </select>
+                {mvApparatusStatus === 'error' && (
+                  <span className={ERROR_CLASS}>
+                    {mvApparatusError ?? 'Nie udało się pobrać katalogu APARAT_SN.'}
+                  </span>
+                )}
+              </FieldShell>
+            </div>
+
             <div className="grid gap-2 xl:grid-cols-2">
               {gpzBuildSections.map((section) => (
                 <div
@@ -997,10 +1155,13 @@ export function GridSourceEditor({
                     {section.lineFieldNames.slice(0, 12).map((fieldName, fieldIndex) => (
                       <div
                         key={`${section.order}-${fieldName}-${fieldIndex}`}
-                        className="truncate rounded-[3px] border border-[#102d48] bg-[#020812] px-2 py-1 font-mono-eng text-[10px] text-[#a8bed6]"
-                        title={fieldName}
+                        className="min-w-0 rounded-[3px] border border-[#102d48] bg-[#020812] px-2 py-1 font-mono-eng text-[10px] text-[#a8bed6]"
+                        title={`${fieldName} · ${selectedLineFieldApparatus?.name ?? 'aparat nie wybrany'}`}
                       >
-                        {fieldName}
+                        <div className="truncate font-bold text-scada-text">{fieldName}</div>
+                        <div className="truncate text-[#6f9fc5]">
+                          {selectedLineFieldApparatus?.name ?? 'dobierz aparat'}
+                        </div>
                       </div>
                     ))}
                   </div>

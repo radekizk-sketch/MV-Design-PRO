@@ -1,8 +1,8 @@
 /**
- * RunListView — cross-case execution run list (Pakiet H).
+ * RunListView — lista ostatnich obliczeń dla wszystkich zakresów (Pakiet H).
  *
- * Scope: WSZYSTKIE runy (across cases), z filtrami case/data/status/ProofType.
- * RÓŻNICA od `study-cases/RunHistoryPanel`: tamten jest per-case, ten jest cross-case.
+ * Scope: wszystkie ostatnie obliczenia, z filtrami zakresu, daty, statusu i typu uzasadnienia.
+ * RÓŻNICA od `study-cases/RunHistoryPanel`: tamten jest dla jednego zakresu, ten jest przekrojowy.
  *
  * White box: deterministic — sortowanie DESC po created_at, tie-break po run_id ASC.
  * Filtracja jest pure function, łatwo testowalna.
@@ -70,16 +70,16 @@ export function RunListView({ runs, availableCases, onRunClick }: RunListViewPro
       className="flex flex-col gap-3 p-3 bg-scada-surface text-scada-text border border-scada-border"
     >
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold">Historia uruchomień (przekrojowo)</h3>
+        <h3 className="text-sm font-semibold">Historia obliczeń (przekrojowo)</h3>
         <span className="text-xs text-scada-muted" data-testid="run-list-count">
-          {filteredAndSorted.length} / {runs.length} runów
+          {filteredAndSorted.length} / {runs.length} obliczeń
         </span>
       </div>
 
       <div className="flex flex-wrap gap-2 text-xs" data-testid="run-list-filters">
         {availableCases && availableCases.length > 0 && (
           <label className="flex items-center gap-1">
-            Przypadek:
+            Zakres obliczeń:
             <select
               value={filter.case_id ?? ''}
               onChange={(e) => updateFilter('case_id', e.target.value || undefined)}
@@ -159,7 +159,7 @@ export function RunListView({ runs, availableCases, onRunClick }: RunListViewPro
 
       {filteredAndSorted.length === 0 ? (
         <p className="text-xs text-scada-muted" data-testid="run-list-empty">
-          Brak runów spełniających filtry.
+          Brak obliczeń spełniających filtry.
         </p>
       ) : (
         <table className="w-full text-xs" data-testid="run-list-table">

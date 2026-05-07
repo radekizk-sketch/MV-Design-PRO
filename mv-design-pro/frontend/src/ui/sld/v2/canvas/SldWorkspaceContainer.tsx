@@ -19,14 +19,17 @@ import { SldContextMenuController } from '../../../context-menu/SldContextMenuCo
 import type { SldContextMenuRequest } from '../../../context-menu/SldContextMenuController';
 import { useNetworkBuildStore } from '../../../network-build/networkBuildStore';
 import { notify } from '../../../notifications/store';
+import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import type { Bay, EnergyNetworkModel, Substation, Transformer } from '../../../../types/enm';
+import type { ElementType, SelectedElement } from '../../../types';
 import {
   COMMAND_FEEDBACK_PL,
   toastBus,
   type SldElementKindForMenu,
 } from '../command/SldCommandService';
 import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
-import { StationInternalView } from './StationInternalView';
+import { StationInternalView, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
 import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
 import {
@@ -40,6 +43,84 @@ const MIN_CANVAS_WIDTH_PX = 360;
 const MIN_CANVAS_HEIGHT_PX = 240;
 const STATION_INTERNAL_WIDTH_PX = 880;
 const STATION_INTERNAL_HEIGHT_PX = 560;
+
+function findSubstationByRef(
+  snapshot: EnergyNetworkModel | null,
+  substationRef: string,
+): Substation | null {
+  return (
+    (snapshot?.substations ?? []).find(
+      (substation) => substation.ref_id === substationRef || substation.id === substationRef,
+    ) ?? null
+  );
+}
+
+function findBusVoltage(snapshot: EnergyNetworkModel | null, busRef: string): number | null {
+  return (snapshot?.buses ?? []).find((bus) => bus.ref_id === busRef || bus.id === busRef)?.voltage_kv ?? null;
+}
+
+function inferStationTopologicalType(
+  station: Substation | null,
+  fallback?: StationInternalViewProps['topologicalType'],
+): StationInternalViewProps['topologicalType'] {
+  if (fallback) return fallback;
+  switch (station?.station_type) {
+    case 'inline':
+      return 'przelotowa';
+    case 'branch':
+      return 'odgałęźna';
+    case 'sectional':
+      return 'sekcyjna';
+    case 'terminal':
+    default:
+      return 'końcowa';
+  }
+}
+
+function selectStationTransformers(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+): Transformer[] {
+  if (!snapshot || !station) return [];
+  const transformerRefs = new Set(station.transformer_refs ?? []);
+  const busRefs = new Set(station.bus_refs ?? []);
+  return (snapshot.transformers ?? []).filter(
+    (transformer) =>
+      transformerRefs.has(transformer.ref_id)
+      || transformerRefs.has(transformer.id)
+      || busRefs.has(transformer.hv_bus_ref)
+      || busRefs.has(transformer.lv_bus_ref),
+  );
+}
+
+function selectStationBays(
+  snapshot: EnergyNetworkModel | null,
+  station: Substation | null,
+): Bay[] {
+  if (!snapshot || !station) return [];
+  return (snapshot.bays ?? []).filter((bay) => bay.substation_ref === station.ref_id);
+}
+
+function uniqueSortedVoltages(values: Array<number | null | undefined>): number[] {
+  return Array.from(
+    new Set(
+      values
+        .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+        .map((value) => Number(value.toFixed(3))),
+    ),
+  ).sort((a, b) => a - b);
+}
+
+function mapDerKindToElementType(kind: 'PV' | 'BESS' | 'FW'): ElementType {
+  switch (kind) {
+    case 'PV':
+      return 'PVInverter';
+    case 'BESS':
+      return 'BESSInverter';
+    case 'FW':
+      return 'Generator';
+  }
+}
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -160,6 +241,7 @@ export function SldWorkspaceContainer(
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const selectElement = useSelectionStore((state) => state.selectElement);
 
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
@@ -198,9 +280,54 @@ export function SldWorkspaceContainer(
 
   const closeContextMenu = useCallback(() => setContextRequest(null), []);
 
-  const handleSelectElement = useCallback((id: string | null) => {
+  const handleSelectElement = useCallback((id: string | null, kind: string) => {
     setSelectedId(id);
-  }, []);
+    if (!id) {
+      selectElement(null);
+      return;
+    }
+
+    let selected: SelectedElement | null = null;
+    if (kind === 'der') {
+      const der = sldData.ders.find((item) => item.id === id);
+      if (der) {
+        selected = {
+          id,
+          type: mapDerKindToElementType(der.kind),
+          name: der.name,
+        };
+      }
+    } else if (kind === 'station') {
+      const station = sldData.stations.find((item) => item.id === id);
+      selected = {
+        id,
+        type: 'Station',
+        name: station?.name ?? findSubstationByRef(snapshot, id)?.name ?? id,
+      };
+    } else if (kind === 'gpz') {
+      const gpz = sldData.gpzs.find((item) => item.id === id);
+      selected = {
+        id,
+        type: 'Source',
+        name: gpz?.name ?? findSubstationByRef(snapshot, id)?.name ?? id,
+      };
+    } else if (kind === 'cable_run') {
+      const run = sldData.cableRuns.find((item) => item.id === id);
+      selected = {
+        id,
+        type: 'LineBranch',
+        name: run?.id ?? id,
+      };
+    } else if (kind === 'section') {
+      selected = {
+        id,
+        type: 'Bus',
+        name: `Sekcja SN ${id}`,
+      };
+    }
+
+    selectElement(selected ?? { id, type: 'DescriptiveElement', name: id });
+  }, [selectElement, snapshot, sldData]);
 
   const handleDoubleClickStation = useCallback((id: string) => {
     setInternalStationId(id);
@@ -354,23 +481,69 @@ export function SldWorkspaceContainer(
 
   const internalStationProps = useMemo(() => {
     if (!internalStationId) return null;
-    // Etap 1: wybudowanie pełnego deskryptora wymaga adaptera ENM → InternalSldDTO
-    // (Etap 3+). Tymczasowo prezentujemy minimalny deskryptor, który pozwala
-    // sprawdzić, że overlay otwiera się poprawnie.
+    const station = findSubstationByRef(snapshot, internalStationId);
+    const stationVisual = sldData.stations.find((item) => item.id === internalStationId);
+    const stationTransformers = selectStationTransformers(snapshot, station);
+    const stationBays = selectStationBays(snapshot, station);
+    const stationBusRefs = new Set(station?.bus_refs ?? []);
+
+    const snVoltageKv =
+      uniqueSortedVoltages([
+        ...Array.from(stationBusRefs).map((busRef) => findBusVoltage(snapshot, busRef)),
+        ...stationTransformers.map((transformer) => transformer.uhv_kv),
+      ].filter((voltage): voltage is number => typeof voltage === 'number' && voltage >= 1))[0]
+      ?? 15;
+
+    const nnVoltageLevels = uniqueSortedVoltages([
+      ...Array.from(stationBusRefs)
+        .map((busRef) => findBusVoltage(snapshot, busRef))
+        .filter((voltage): voltage is number => typeof voltage === 'number' && voltage < 1),
+      ...stationTransformers
+        .map((transformer) => transformer.ulv_kv)
+        .filter((voltage) => voltage < 1),
+    ]);
+
+    const overlayWidth = Math.min(
+      STATION_INTERNAL_WIDTH_PX,
+      Math.max(360, measured.width - 24),
+    );
+    const overlayHeight = Math.min(
+      STATION_INTERNAL_HEIGHT_PX,
+      Math.max(300, measured.height - 24),
+    );
+
     return {
       substationId: internalStationId,
-      name: internalStationId,
-      topologicalType: 'końcowa' as const,
-      snVoltageKv: 15,
-      nnVoltageLevels: [0.4],
-      bays: [] as const,
-      transformers: [] as const,
-      nnSwitchgears: [] as const,
-      width: STATION_INTERNAL_WIDTH_PX,
-      height: STATION_INTERNAL_HEIGHT_PX,
+      name: station?.name || stationVisual?.name || internalStationId,
+      topologicalType: inferStationTopologicalType(station, stationVisual?.topologicalType),
+      snVoltageKv,
+      nnVoltageLevels,
+      bays: stationBays.map((bay) => ({
+        bayId: bay.ref_id,
+        designation: bay.name || bay.ref_id,
+        bayRole: bay.bay_role,
+        devices: [],
+      })),
+      transformers: stationTransformers.map((transformer) => ({
+        transformerId: transformer.ref_id,
+        designation: transformer.name || transformer.ref_id,
+        snMva: transformer.sn_mva,
+        uhvKv: transformer.uhv_kv,
+        ulvKv: transformer.ulv_kv,
+      })),
+      nnSwitchgears: nnVoltageLevels.map((voltage) => ({
+        designation: `Rozdzielnica nN ${voltage} kV`,
+        nnVoltageKv: voltage,
+        feedersCount: (snapshot?.loads ?? []).filter((load) => {
+          const loadVoltage = findBusVoltage(snapshot, load.bus_ref);
+          return loadVoltage !== null && Math.abs(loadVoltage - voltage) < 0.001;
+        }).length,
+      })),
+      width: overlayWidth,
+      height: overlayHeight,
       onClose: closeInternalStation,
     };
-  }, [internalStationId, closeInternalStation]);
+  }, [internalStationId, closeInternalStation, measured.height, measured.width, snapshot, sldData.stations]);
 
   return (
     <div

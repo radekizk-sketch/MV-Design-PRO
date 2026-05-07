@@ -481,7 +481,9 @@ export function resolveBusSnRef(
     return isMediumVoltageBus(bus) ? bus.ref_id : null;
   }
 
-  const fieldRef = readString(context?.field_ref) || readString(context?.bay_ref);
+  const fieldRef = readString(context?.field_ref)
+    || readString(context?.bay_ref)
+    || readString(context?.existing_field_ref);
   if (fieldRef) {
     const bay = findBay(snapshot, fieldRef);
     const bus = findBus(snapshot, bay?.bus_ref);

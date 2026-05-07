@@ -10,7 +10,7 @@ import {
   type ElementTypeForInspector,
   type InspectorTabId,
   visibleTabsFor,
-} from './inspectorTabs';
+} from './inspectorTabDefinitions';
 import { InspectorStickyHeader, type StickyHeaderProps } from './InspectorStickyHeader';
 import { InspectorBreadcrumb, type BreadcrumbItem } from './InspectorBreadcrumb';
 
@@ -96,3 +96,5 @@ export function InspectorTabs(props: InspectorTabsProps): JSX.Element {
     </div>
   );
 }
+
+export default InspectorTabs;

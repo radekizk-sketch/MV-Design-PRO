@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../network-build/networkBuildStore', () => ({
@@ -25,6 +25,7 @@ vi.mock('../../../shared/generatorTypeLabels', () => ({
 import { OzContextPanel } from '../OzContextPanel';
 import { SchematContextPanel } from '../SchematContextPanel';
 import { WynikiContextPanel } from '../WynikiContextPanel';
+import { useSnapshotStore } from '../../../topology/snapshotStore';
 
 describe('context-panel-empty-states - stany puste z przyczyną i akcją', () => {
   it('panel Źródła i przyłączenia pokazuje przyczynę oraz akcję naprawczą', () => {
@@ -35,11 +36,44 @@ describe('context-panel-empty-states - stany puste z przyczyną i akcją', () =>
   });
 
   it('panel Schemat i topologia prowadzi do Modelu sieci z pustej kanwy', () => {
-    render(<SchematContextPanel />);
+    act(() => {
+      useSnapshotStore.getState().reset();
+    });
+    const { container } = render(<SchematContextPanel />);
     expect(screen.getByText(/Start pustej kanwy/)).toBeInTheDocument();
     expect(screen.getByText(/Dodaj GPZ jako pierwszy element modelu/)).toBeInTheDocument();
+    expect(screen.getByText(/Wybierz albo utwórz zakres obliczeń/)).toBeInTheDocument();
     expect(screen.getByText(/Przejdź do budowy GPZ/)).toBeInTheDocument();
     expect(screen.getByTestId('schemat-action-go-model')).toBeInTheDocument();
+    expect(container.textContent ?? '').not.toMatch(/snapshot|Przypadek/i);
+  });
+
+  it('panel Schemat i topologia nie pokazuje technicznego snapshotu przy pustej wersji modelu', () => {
+    act(() => {
+      useSnapshotStore.setState({
+        snapshot: {
+          header: { hash_sha256: 'hash-e2e' },
+          sources: [],
+          buses: [],
+          bays: [],
+          branches: [],
+          substations: [],
+          transformers: [],
+          generators: [],
+          loads: [],
+        } as any,
+        readiness: null,
+      });
+    });
+
+    const { container } = render(<SchematContextPanel />);
+
+    expect(screen.getByText(/Aktualna wersja modelu nie zawiera elementów schematu/)).toBeInTheDocument();
+    expect(container.textContent ?? '').not.toMatch(/snapshot|Przypadek/i);
+
+    act(() => {
+      useSnapshotStore.getState().reset();
+    });
   });
 
   it('panel Wyniki i analizy prowadzi do Studiów obliczeniowych, gdy nie ma wyników', () => {

@@ -53,7 +53,8 @@ export function CatalogPicker({
     return entries.filter(
       (e) =>
         e.name.toLowerCase().includes(lower) ||
-        (e.manufacturer && e.manufacturer.toLowerCase().includes(lower)),
+        (e.manufacturer && e.manufacturer.toLowerCase().includes(lower)) ||
+        (e.summary && e.summary.toLowerCase().includes(lower)),
     );
   }, [entries, searchTerm]);
 

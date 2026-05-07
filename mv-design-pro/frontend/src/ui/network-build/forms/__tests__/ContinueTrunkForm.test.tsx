@@ -74,7 +74,7 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Kontynuuj magistralę z pola SN')).toBeInTheDocument();
+    expect(screen.getByText('Połącz zacisk pola SN z odcinkiem')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Pierwszy odcinek magistrali SN')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('np. 350'), { target: { value: '400' } });

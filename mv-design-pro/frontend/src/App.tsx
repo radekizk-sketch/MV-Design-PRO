@@ -178,6 +178,9 @@ function App() {
   const setActiveRun = useAppStateStore((state) => state.setActiveRun);
   const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
   const readiness = useSnapshotStore((state) => state.readiness);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const snapshotError = useSnapshotStore((state) => state.error);
+  const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
   const createAndExecuteRun = useExecutionRunsStore((state) => state.createAndExecuteRun);
   const appReady = useAppReady();
   const projectName = useActiveProjectName();
@@ -212,6 +215,14 @@ function App() {
       setActiveMode('MODEL_EDIT');
     }
   }, [route, setActiveMode]);
+
+  useEffect(() => {
+    if (!activeCaseId || snapshot || snapshotError) {
+      return;
+    }
+
+    void refreshSnapshotFromBackend(activeCaseId);
+  }, [activeCaseId, refreshSnapshotFromBackend, snapshot, snapshotError]);
 
   useEffect(() => {
     const params = getCurrentSearchParams();
@@ -373,6 +384,17 @@ function App() {
       case 'variants':
         navigateToVariants({ caseId: activeCaseId });
         break;
+      case 'readiness':
+      case 'show-readiness':
+        openRouteSurface('E-04', {
+          titlePl: 'Gotowość modelu i lista braków',
+          tabId: 'braki',
+          subjectKind: 'analysis_case',
+          subjectRef: activeCaseId,
+          route: 'analysis',
+          openMode: 'replace_right_panel',
+        });
+        break;
       case 'proof':
       case 'whitebox':
         navigateToProof({ runId: activeRunId });
@@ -403,6 +425,7 @@ function App() {
     navigateToCatalog,
     navigateToCompare,
     navigateToNetworkBuild,
+    openRouteSurface,
     navigateToProof,
     navigateToReport,
     navigateToResultsProtection,

@@ -711,6 +711,7 @@ class TestNnFieldAdapters:
                 "materialized_params": {
                     "catalog_item_id": "conv-pv-500",
                     "catalog_item_version": "2024.1",
+                    "un_kv": 0.4,
                     "rated_power_ac_kw": 500.0,
                     "max_power_kw": 500.0,
                     "control_mode": "STALY_COS_PHI",

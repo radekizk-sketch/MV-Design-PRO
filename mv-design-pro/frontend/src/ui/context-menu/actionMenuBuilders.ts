@@ -1137,12 +1137,12 @@ export function buildStudyCaseContextMenu(
     action('validate_selectivity', 'Sprawdź selektywność ochrony...', { enabled: hasFresh, handler: handlers.onValidateSelectivity }),
     sep('s4'),
     // --- Klonowanie i eksport ---
-    action('clone_case', 'Klonuj Study Case...', { handler: handlers.onCloneCase }),
+    action('clone_case', 'Klonuj zakres obliczeń...', { handler: handlers.onCloneCase }),
     action('export_results', 'Eksportuj wyniki (PDF/DOCX)...', { enabled: hasFresh, handler: handlers.onExportResults }),
     action('export_json', 'Eksportuj wyniki (JSON)...', { enabled: hasFresh, handler: handlers.onExportJSON }),
     action('show_tree', 'Zaznacz w drzewie', { handler: handlers.onShowInTree }),
     action('show_diagram', 'Pokaż na schemacie', { handler: handlers.onShowOnDiagram }),
-    action('history', 'Historia uruchomień...', { handler: handlers.onHistory }),
+    action('history', 'Historia obliczeń...', { handler: handlers.onHistory }),
     sep('s5'),
     action('delete', 'Usuń Study Case...', { enabled: edit, handler: handlers.onDelete }),
   ];
@@ -1165,7 +1165,7 @@ export function buildAnalysisResultContextMenu(
     // --- Podgląd ---
     action('show_summary', 'Pokaż podsumowanie wyników...', { handler: handlers.onShowSummary }),
     action('show_per_element', 'Pokaż wyniki po elementach...', { handler: handlers.onShowPerElement }),
-    action('show_overlay', 'Pokaż overlay na SLD...', { handler: handlers.onShowOverlay }),
+    action('show_overlay', 'Pokaż nakładkę na SLD...', { handler: handlers.onShowOverlay }),
     action('show_whitebox', 'Pokaż wywód obliczeń...', { handler: handlers.onShowWhitebox }),
     sep('s2'),
     // --- Zwarcia ---
@@ -1181,7 +1181,7 @@ export function buildAnalysisResultContextMenu(
     sep('s3'),
     // --- Porównanie ---
     action('compare_with', 'Porównaj z innym wynikiem...', { handler: handlers.onCompareWith }),
-    action('show_delta_overlay', 'Pokaż delta overlay...', { handler: handlers.onShowDeltaOverlay }),
+    action('show_delta_overlay', 'Pokaż nakładkę różnic...', { handler: handlers.onShowDeltaOverlay }),
     sep('s4'),
     // --- Eksport ---
     action('export_pdf', 'Eksportuj raport (PDF)...', { handler: handlers.onExportPDF }),
@@ -1189,7 +1189,7 @@ export function buildAnalysisResultContextMenu(
     action('export_json', 'Eksportuj dane (JSON)...', { handler: handlers.onExportJSON }),
     action('export_whitebox', 'Eksportuj wywód obliczeń (LaTeX)...', { handler: handlers.onExportWhitebox }),
     sep('s5'),
-    action('history', 'Historia uruchomień...', { handler: handlers.onHistory }),
+    action('history', 'Historia obliczeń...', { handler: handlers.onHistory }),
     action('delete', 'Usuń wynik analizy...', { handler: handlers.onDelete }),
   ];
 }

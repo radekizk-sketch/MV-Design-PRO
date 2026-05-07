@@ -165,10 +165,10 @@ export function WorkflowContextStrip({
           </span>
           <div className="min-w-0">
             <div className="truncate text-[12px] font-semibold text-scada-text">
-              Start projektu: przypadek obliczeniowy i GPZ
+              Start projektu: zakres obliczeń i GPZ
             </div>
             <div className="truncate text-[10px] text-scada-muted">
-              Kolejność pracy: przypadek, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i dowód.
+              Kolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i uzasadnienie.
             </div>
           </div>
           <button
@@ -284,7 +284,7 @@ function WorkflowActions({
       <WorkflowAction testId="wcs-catalog" label="Katalog" title="Katalog techniczny" onClick={onOpenCatalogBrowser} icon={<IconCatalog />} />
       <WorkflowAction testId="wcs-mass-review" label="Przeglądy" title="Przeglądy masowe" onClick={onOpenMassReview} icon={<IconReview />} badge={blockerBadge} />
       <WorkflowAction testId="wcs-project-metadata" label="Metadane" title="Metadane projektu" onClick={onOpenProjectMetadata} icon={<IconMetadata />} />
-      <WorkflowAction testId="wcs-history" label="Historia" title="Historia migawek" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
+      <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji modelu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
     </div>
   );
 }

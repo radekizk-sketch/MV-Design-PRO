@@ -1,19 +1,5 @@
-/**
- * TrunkContinueModal — dialog "Kontynuuj magistralę".
- *
- * Mapuje się na operację domenową: continue_trunk_segment_sn.
- * Dodaje kolejny odcinek do istniejącej magistrali SN.
- * Tryby: create / edit.
- * Walidacja inline + komunikaty PL.
- * Brak fizyki — wyłącznie formularz prezentacyjny.
- */
-
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
 export type GeometryMode = 'ODCINEK_PROSTY' | 'ZALAMANIE' | 'RASTER';
@@ -47,10 +33,6 @@ interface TrunkContinueModalProps {
   onCancel: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
-
 interface FieldError {
   field: string;
   message: string;
@@ -60,23 +42,19 @@ function validateForm(data: TrunkContinueFormData): FieldError[] {
   const errors: FieldError[] = [];
 
   if (!data.segment_kind) {
-    errors.push({ field: 'segment_kind', message: 'Rodzaj odcinka jest wymagany' });
+    errors.push({ field: 'segment_kind', message: 'Rodzaj odcinka jest wymagany.' });
   }
 
   if (data.length_m <= 0) {
-    errors.push({ field: 'length_m', message: 'Długość musi być > 0 m' });
+    errors.push({ field: 'length_m', message: 'Długość musi być większa od 0 m.' });
   }
 
   if (!data.catalog_ref) {
-    errors.push({ field: 'catalog_ref', message: 'Wybór typu z katalogu jest wymagany' });
+    errors.push({ field: 'catalog_ref', message: 'Wybór typu z katalogu jest wymagany.' });
   }
 
   return errors;
 }
-
-// ---------------------------------------------------------------------------
-// Defaults
-// ---------------------------------------------------------------------------
 
 const DEFAULT_DATA: TrunkContinueFormData = {
   segment_kind: 'KABEL_SN',
@@ -87,10 +65,6 @@ const DEFAULT_DATA: TrunkContinueFormData = {
   direction: 'E',
 };
 
-// ---------------------------------------------------------------------------
-// Labels
-// ---------------------------------------------------------------------------
-
 const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
   KABEL_SN: 'Kabel SN',
   LINIA_NAPOWIETRZNA: 'Linia napowietrzna',
@@ -99,7 +73,7 @@ const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
 const GEOMETRY_MODE_LABELS: Record<GeometryMode, string> = {
   ODCINEK_PROSTY: 'Odcinek prosty',
   ZALAMANIE: 'Załamanie',
-  RASTER: 'Raster',
+  RASTER: 'Siatka pomocnicza',
 };
 
 const DIRECTION_LABELS: Record<Direction, string> = {
@@ -130,10 +104,6 @@ function engineeringPortLabel(portId: string): string {
   if (normalized.includes('in')) return 'zacisk wejściowy pola SN';
   return 'zacisk pola SN';
 }
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
 
 export function TrunkContinueModal({
   isOpen,
@@ -197,6 +167,7 @@ export function TrunkContinueModal({
   );
 
   if (!isOpen) return null;
+
   const terminalDisplayName = terminalName || terminalId;
   const trunkDisplayName = engineeringTrunkLabel(trunkId);
   const terminalPortDisplayName = engineeringPortLabel(terminalPortId);
@@ -212,8 +183,10 @@ export function TrunkContinueModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
-      <div className="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
-        {/* Header */}
+      <div
+        className="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        data-testid="trunk-continue-modal"
+      >
         <div className="border-b border-[#17314c] bg-[#081522] px-6 py-4">
           <h2 className="font-mono-eng text-lg font-semibold text-white">
             {mode === 'create' ? 'Połącz zacisk pola SN z odcinkiem' : 'Edycja odcinka magistrali'}
@@ -223,8 +196,7 @@ export function TrunkContinueModal({
           </p>
         </div>
 
-        {/* Body */}
-        <div className="px-6 py-4 space-y-4">
+        <div className="space-y-4 px-6 py-4">
           <div>
             <h3 className={sectionTitleClass}>Kontekst pola</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -233,7 +205,7 @@ export function TrunkContinueModal({
                 <input
                   type="text"
                   value={trunkDisplayName}
-                  readOnly={true}
+                  readOnly
                   className={readOnlyInputClass}
                 />
               </div>
@@ -242,7 +214,7 @@ export function TrunkContinueModal({
                 <input
                   type="text"
                   value={terminalDisplayName}
-                  readOnly={true}
+                  readOnly
                   className={readOnlyInputClass}
                 />
               </div>
@@ -251,7 +223,7 @@ export function TrunkContinueModal({
                 <input
                   type="text"
                   value={terminalPortDisplayName}
-                  readOnly={true}
+                  readOnly
                   className={readOnlyInputClass}
                 />
               </div>
@@ -260,7 +232,7 @@ export function TrunkContinueModal({
                 <input
                   type="text"
                   value={terminalVoltageLabel}
-                  readOnly={true}
+                  readOnly
                   className={readOnlyInputClass}
                 />
               </div>
@@ -273,11 +245,9 @@ export function TrunkContinueModal({
             </div>
           )}
 
-          {/* === SEKCJA: Dane wymagane === */}
           <div>
             <h3 className={sectionTitleClass}>Dane wymagane</h3>
 
-            {/* Rodzaj odcinka */}
             <div className="mb-3">
               <label className={labelClass}>Rodzaj odcinka</label>
               <select
@@ -304,7 +274,6 @@ export function TrunkContinueModal({
               )}
             </div>
 
-            {/* Długość */}
             <div>
               <label className={labelClass}>Długość [m]</label>
               <input
@@ -324,7 +293,6 @@ export function TrunkContinueModal({
             </div>
           </div>
 
-          {/* === SEKCJA: Katalog === */}
           <div className={sectionDividerClass}>
             <h3 className={sectionTitleClass}>Katalog</h3>
 
@@ -352,7 +320,6 @@ export function TrunkContinueModal({
               </div>
             )}
 
-            {/* Info badge */}
             <div className="flex items-start gap-2 border border-[#174c75] bg-[#071b2b] px-3 py-2">
               <span className="mt-0.5 text-sm font-bold text-[#19e6ff]">i</span>
               <p className="text-xs text-[#a8c7e2]">
@@ -361,14 +328,12 @@ export function TrunkContinueModal({
             </div>
           </div>
 
-          {/* === SEKCJA: Geometria (opcjonalnie) === */}
           <div className={sectionDividerClass}>
             <h3 className={sectionTitleClass}>Geometria</h3>
 
             <div className="grid grid-cols-2 gap-4">
-              {/* Kierunek prowadzenia */}
               <div>
-                <label className={labelClass}>Kierunek prowadzenia</label>
+                <label className={labelClass}>Sposób prowadzenia</label>
                 <select
                   value={formData.geometry_mode}
                   onChange={(e) => handleChange('geometry_mode', e.target.value)}
@@ -382,7 +347,6 @@ export function TrunkContinueModal({
                 </select>
               </div>
 
-              {/* Kierunek */}
               <div>
                 <label className={labelClass}>Kierunek</label>
                 <select
@@ -400,7 +364,6 @@ export function TrunkContinueModal({
             </div>
           </div>
 
-          {/* === SEKCJA: Uwagi === */}
           <div className={sectionDividerClass}>
             <h3 className={sectionTitleClass}>Uwagi</h3>
 
@@ -414,15 +377,16 @@ export function TrunkContinueModal({
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex justify-end gap-3 border-t border-[#17314c] bg-[#050c14] px-6 py-4">
           <button
+            type="button"
             onClick={onCancel}
             className="border border-[#28425f] bg-[#07111c] px-4 py-2 text-sm font-medium text-[#b7d3ed] hover:border-[#42617e] hover:bg-[#0a1826]"
           >
             Anuluj
           </button>
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={submitDisabled}
             className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"

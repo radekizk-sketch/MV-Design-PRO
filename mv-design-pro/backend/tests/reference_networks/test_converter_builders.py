@@ -12,7 +12,9 @@ def test_gn04_uses_canonical_converter_sources() -> None:
     assert len(generators) >= 2
 
     converter_generators = [
-        generator for generator in generators if generator.get("catalog_namespace") == "CONVERTER"
+        generator
+        for generator in generators
+        if generator.get("catalog_namespace") in {"ZRODLO_NN_PV", "ZRODLO_NN_BESS"}
     ]
     assert len(converter_generators) >= 2
     assert {generator.get("gen_type") for generator in converter_generators} >= {
@@ -27,11 +29,12 @@ def test_gn05_keeps_converter_sources_after_protection_extension() -> None:
 
     generators = enm.get("generators", [])
     assert any(
-        generator.get("catalog_namespace") == "CONVERTER"
+        generator.get("catalog_namespace") == "ZRODLO_NN_PV"
         and generator.get("gen_type") == "pv_inverter"
         for generator in generators
     )
     assert any(
-        generator.get("catalog_namespace") == "CONVERTER" and generator.get("gen_type") == "bess"
+        generator.get("catalog_namespace") == "ZRODLO_NN_BESS"
+        and generator.get("gen_type") == "bess"
         for generator in generators
     )

@@ -72,6 +72,8 @@ vi.mock('../shared/GridSourceEditor', () => ({
               notes: '',
               gpz_section_name: 'Sekcja A',
               gpz_line_field_name: 'Pole liniowe',
+              gpz_line_field_apparatus_kind: 'BREAKER',
+              gpz_line_field_apparatus_catalog_ref: 'sw-cb-abb-vd4-24kv-630a',
               sections_count: 3,
               line_fields_per_section: 12,
               zero_sequence_enabled: true,
@@ -86,14 +88,14 @@ vi.mock('../shared/GridSourceEditor', () => ({
             })
           }
         >
-          Zatwierdz katalog
+          Zatwierdź katalog
         </button>
         <button
           type="button"
           data-testid="grid-source-modal-submit-manual-power"
           onClick={() =>
             onSubmit({
-              source_name: 'GPZ Reczny',
+              source_name: 'GPZ Ręczny',
               sn_voltage_kv: 15,
               sk3_mva: 250,
               rx_ratio: 0.15,
@@ -103,6 +105,8 @@ vi.mock('../shared/GridSourceEditor', () => ({
               notes: '',
               gpz_section_name: 'Sekcja B',
               gpz_line_field_name: 'Pole SN',
+              gpz_line_field_apparatus_kind: 'BREAKER',
+              gpz_line_field_apparatus_catalog_ref: 'sw-cb-abb-vd4-24kv-630a',
               sections_count: 2,
               line_fields_per_section: 2,
               zero_sequence_enabled: false,
@@ -117,7 +121,7 @@ vi.mock('../shared/GridSourceEditor', () => ({
             })
           }
         >
-          Zatwierdz recznie mocowo
+          Zatwierdź ręcznie mocowo
         </button>
         <button
           type="button"
@@ -133,7 +137,9 @@ vi.mock('../shared/GridSourceEditor', () => ({
               x_ohm: 1.87,
               notes: '',
               gpz_section_name: 'Sekcja C',
-              gpz_line_field_name: 'Pole zasilajace',
+              gpz_line_field_name: 'Pole zasilające',
+              gpz_line_field_apparatus_kind: 'BREAKER',
+              gpz_line_field_apparatus_catalog_ref: 'sw-cb-abb-vd4-24kv-630a',
               sections_count: 2,
               line_fields_per_section: 3,
               zero_sequence_enabled: true,
@@ -148,7 +154,7 @@ vi.mock('../shared/GridSourceEditor', () => ({
             })
           }
         >
-          Zatwierdz recznie impedancyjnie
+          Zatwierdź ręcznie impedancyjnie
         </button>
       </div>
     );
@@ -164,9 +170,9 @@ describe('AddGridSourceForm', () => {
     window.location.hash = '';
   });
 
-  it('pokazuje błąd backendu i nie zamyka formularza po odpowiedzi error', async () => {
+  it('pokazuje błąd backendu i nie zamyka formularza po odpowiedzi błędu', async () => {
     executeDomainOperationMock.mockResolvedValue({
-      error: '500 - Blad serwera',
+      error: '500 - Błąd serwera',
     });
 
     render(<AddGridSourceForm />);
@@ -225,10 +231,10 @@ describe('AddGridSourceForm', () => {
     });
 
     expect(closeFormMock).not.toHaveBeenCalled();
-    expect(screen.getByText('500 - Blad serwera')).toBeInTheDocument();
+    expect(screen.getByText('500 - Błąd serwera')).toBeInTheDocument();
   });
 
-  it('wysyla reczna umowe rownowazna GPZ w trybie mocy zwarciowej', async () => {
+  it('wysyła ręczny równoważnik GPZ w trybie mocy zwarciowej', async () => {
     executeDomainOperationMock.mockResolvedValue({
       snapshot: { header: { name: 'case-1' } },
     });
@@ -242,7 +248,7 @@ describe('AddGridSourceForm', () => {
         'case-1',
         'add_grid_source_sn',
         expect.objectContaining({
-          source_name: 'GPZ Reczny',
+          source_name: 'GPZ Ręczny',
           voltage_kv: 15,
           sections_count: 2,
           line_fields_per_section: 2,
@@ -283,10 +289,11 @@ describe('AddGridSourceForm', () => {
     });
 
     expect(collapseSurfaceStackToMock).toHaveBeenCalledWith(null);
+    expect(closeFormMock).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe('#sld');
   });
 
-  it('wysyla reczna umowe rownowazna GPZ w trybie impedancyjnym', async () => {
+  it('wysyła ręczny równoważnik GPZ w trybie impedancyjnym', async () => {
     executeDomainOperationMock.mockResolvedValue({
       snapshot: { header: { name: 'case-1' } },
     });
@@ -311,16 +318,16 @@ describe('AddGridSourceForm', () => {
             {
               order: 0,
               name: 'Sekcja C 1',
-              line_field_name: 'Pole zasilajace',
+              line_field_name: 'Pole zasilające',
               line_fields_count: 3,
-              line_field_names: ['Pole zasilajace 1', 'Pole zasilajace 2', 'Pole zasilajace 3'],
+              line_field_names: ['Pole zasilające 1', 'Pole zasilające 2', 'Pole zasilające 3'],
             },
             {
               order: 1,
               name: 'Sekcja C 2',
-              line_field_name: 'Pole zasilajace',
+              line_field_name: 'Pole zasilające',
               line_fields_count: 3,
-              line_field_names: ['Pole zasilajace 1', 'Pole zasilajace 2', 'Pole zasilajace 3'],
+              line_field_names: ['Pole zasilające 1', 'Pole zasilające 2', 'Pole zasilające 3'],
             },
           ],
           manual_equivalent: {
@@ -350,6 +357,7 @@ describe('AddGridSourceForm', () => {
     });
 
     expect(collapseSurfaceStackToMock).toHaveBeenCalledWith(null);
+    expect(closeFormMock).toHaveBeenCalledTimes(1);
     expect(window.location.hash).toBe('#sld');
   });
 });

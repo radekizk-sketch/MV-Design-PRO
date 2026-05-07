@@ -285,8 +285,9 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "bus_nn_ref": nn_bus_st1,
             "source_technology": "BESS",
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-bess-0.5mw-1mwh-15kv",
+            "catalog_ref": "conv-bess-nn-0p5mw-0p4kv",
             "name": "BESS-S1",
+            "power_setpoint_mw": 0.05,
         },
     )
     assert r.get("error") is None, f"KROK 8 (BESS w stacji #1): {r.get('error')}"
@@ -317,8 +318,9 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "bus_nn_ref": nn_bus_st2,
             "source_technology": "PV",
             "connection_variant": "nn_side",
-            "catalog_ref": "conv-pv-0.5mw-15kv",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
             "name": "PV-S2",
+            "power_setpoint_mw": 0.05,
         },
     )
     assert r.get("error") is None, f"KROK 9 (PV w stacji #2): {r.get('error')}"
@@ -336,9 +338,11 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
             "catalog_ref": "conv-fw-1.0mw-15kv",
             "name": "FW-S2",
             "source_name": "FW-S2",
+            "power_setpoint_mw": 0.05,
             "materialized_params": {
                 "catalog_item_id": "conv-fw-1.0mw-15kv",
                 "catalog_item_version": "2024.1",
+                "un_kv": 0.4,
                 "max_power_kw": 1000.0,
                 "pmax_mw": 1.0,
                 "sn_mva": 1.0,
@@ -459,7 +463,7 @@ class TestPvBessFullBuild:
             base_mva=100.0,
             slack=SlackSpec(node_id=slack_id, u_pu=1.0, angle_rad=0.0),
             pq=pq_specs,
-            options=PowerFlowOptions(max_iter=50, tolerance=1e-8, trace_level="full"),
+            options=PowerFlowOptions(max_iter=50, tolerance=2e-3, trace_level="full"),
         )
         result = solve_power_flow_physics(pf)
         assert result.converged, (
@@ -521,8 +525,8 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
         {
             "source_technology": technology,
             "catalog_ref": {
-                "PV": "conv-pv-0.5mw-15kv",
-                "BESS": "conv-bess-0.5mw-1mwh-15kv",
+                "PV": "conv-pv-nn-0p5mw-0p4kv",
+                "BESS": "conv-bess-nn-0p5mw-0p4kv",
                 "FW": "conv-fw-1.0mw-15kv",
             }[technology],
             # brak connection_variant

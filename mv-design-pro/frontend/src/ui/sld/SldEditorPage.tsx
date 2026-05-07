@@ -144,35 +144,35 @@ const DOCK_TOOL_COPY: Record<
   },
   assign_catalog: {
     label: 'Przypisz typ katalogowy',
-    description: 'Powiaz element z katalogiem technicznym bez bocznych adapterow.',
+    description: 'Powiąż element z katalogiem technicznym bez bocznych adapterów.',
   },
   delete_element: {
-    label: 'Usun element',
-    description: 'Usun element z modelu wraz z kontrola skutkow topologicznych.',
+    label: 'Usuń element',
+    description: 'Usuń element z modelu wraz z kontrolą skutków topologicznych.',
   },
   add_grid_source_sn: {
-    label: 'Dodaj zrodlo zasilania GPZ',
-    description: 'Rozpocznij model od GPZ w trybie uproszczonym albo pelnym.',
+    label: 'Dodaj źródło zasilania GPZ',
+    description: 'Rozpocznij model od GPZ w trybie uproszczonym albo pełnym.',
   },
   continue_trunk_segment_sn: {
-    label: 'Wyprowadz ciag glowny',
-    description: 'Wskaz port pola SN. Formularz wymusi wybor kabla SN albo linii napowietrznej SN.',
+    label: 'Wyprowadź ciąg główny',
+    description: 'Wskaż port pola SN. Formularz wymusi wybór kabla SN albo linii napowietrznej SN.',
   },
   insert_station_on_segment_sn: {
-    label: 'Wstaw stacje w ciag',
-    description: 'Dodaj stacje topologiczna SN/nN w wybrany odcinek ciagu glownego.',
+    label: 'Wstaw stację w ciąg',
+    description: 'Dodaj stację topologiczną SN/nN w wybrany odcinek ciągu głównego.',
   },
   start_branch_segment_sn: {
-    label: 'Rozpocznij odgalezienie',
-    description: 'Utworz odgalezienie z dopuszczonego portu lub punktu rozgaleznego.',
+    label: 'Rozpocznij odgałęzienie',
+    description: 'Utwórz odgałęzienie z dopuszczonego portu lub punktu rozgałęźnego.',
   },
   connect_secondary_ring_sn: {
-    label: 'Domknij pierscien',
-    description: 'Polacz dwa porty pomocnicze w pierscien z kontrola typu odcinka.',
+    label: 'Domknij pierścień',
+    description: 'Połącz dwa porty pomocnicze w pierścień z kontrolą typu odcinka.',
   },
   set_normal_open_point: {
     label: 'Ustaw punkt normalnie otwarty',
-    description: 'Wybierz lacznik w pierscieniu i ustaw scenariuszowy stan otwarcia.',
+    description: 'Wybierz łącznik w pierścieniu i ustaw scenariuszowy stan otwarcia.',
   },
   add_converter_source_pv: {
     label: 'Dodaj zrodlo fotowoltaiczne',
@@ -1049,7 +1049,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeProjectName ?? activeProjectId ?? 'Nie wybrano',
       },
       {
-        label: 'Przypadek',
+        label: 'Zakres obliczeń',
         value: activeCaseName ?? activeCaseId ?? 'Nie wybrano',
         tone: hasActiveCase ? ('default' as const) : ('warn' as const),
       },
@@ -1058,11 +1058,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         value: activeVariant?.name ?? 'Brak',
       },
       {
-        label: 'Migawka modelu',
+        label: 'Wersja modelu',
         value: activeSnapshotId ?? 'Brak',
       },
       {
-        label: 'Uruchomienie',
+        label: 'Ostatnie obliczenie',
         value: activeRunId ?? 'Brak',
       },
       {
@@ -1105,7 +1105,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const dockActionGroups = useMemo(() => {
     const toolDisabledReason = (toolId: Exclude<CreatorTool, null>): string | null => {
       if (!activeCaseId) {
-        return 'Najpierw wybierz aktywny przypadek obliczeniowy.';
+        return 'Najpierw wybierz aktywny zakres obliczeń.';
       }
       if (toolId !== 'add_grid_source_sn' && !hasSource) {
         return 'Najpierw dodaj zrodlo zasilania GPZ.';

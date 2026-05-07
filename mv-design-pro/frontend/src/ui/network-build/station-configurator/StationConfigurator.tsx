@@ -93,15 +93,15 @@ export interface StationConfiguratorProps {
 }
 
 const CARD_LABELS: Record<StationConfigCardId, string> = {
-  basic: 'Podstawowe',
-  topology: 'Topologia i porty',
+  basic: 'Identyfikacja i szablon',
+  topology: 'Topologia, porty i PCC',
   'sn-switchgear': 'Rozdzielnia SN',
   bays: 'Pola SN',
-  transformer: 'Transformator SN/nN',
-  'nn-switchgear': 'Rozdzielnica nN',
+  transformer: 'Transformatory SN/nN',
+  'nn-switchgear': 'Strona nN i poziomy napięć',
   'der-sources': 'Źródła i magazyny',
-  protection: 'Zabezpieczenia',
-  measurements: 'Pomiary',
+  protection: 'Zabezpieczenia i automatyka',
+  measurements: 'Pomiary, telemechanika i sygnały',
   readiness: 'Gotowość obliczeń',
 };
 

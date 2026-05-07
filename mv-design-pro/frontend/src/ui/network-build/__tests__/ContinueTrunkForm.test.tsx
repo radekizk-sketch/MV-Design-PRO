@@ -158,7 +158,7 @@ describe('ContinueTrunkForm', () => {
     expect(screen.queryByText('Północny-zachód (NW)')).not.toBeInTheDocument();
   });
 
-  it('blokuje zapis, gdy terminal magistrali nie zostal rozstrzygniety', async () => {
+  it('blokuje zapis, gdy terminal magistrali nie został rozstrzygnięty', async () => {
     activeOperationContextState.value = {
       element_ref: 'source-gpz-1',
       element_type: 'Source',
@@ -171,7 +171,7 @@ describe('ContinueTrunkForm', () => {
     expect(await screen.findByTestId('catalog-picker-search')).toBeInTheDocument();
   });
 
-  it('wysyla nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
+  it('wysyła nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
     const context = buildOperationContext({
       canonicalOp: 'continue_trunk_segment_sn',
       elementId: 'bay-out-1',

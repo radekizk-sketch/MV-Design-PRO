@@ -134,6 +134,15 @@ function buildGridSourcePayload(data: GridSourceFormData) {
     zero_sequence: buildZeroSequence(data),
     grounding: buildGrounding(data),
     catalog_binding: catalogBinding ?? undefined,
+    gpz_line_field_apparatus: data.gpz_line_field_apparatus_catalog_ref
+      ? {
+          apparatus_kind: data.gpz_line_field_apparatus_kind,
+          catalog_binding: normalizeCatalogBinding(
+            data.gpz_line_field_apparatus_catalog_ref,
+            'APARAT_SN',
+          ),
+        }
+      : undefined,
   };
 
   if (data.short_circuit_mode === 'IMPEDANCE') {
@@ -205,6 +214,7 @@ export function AddGridSourceForm() {
   const handleSubmit = useCallback(
     async (data: GridSourceFormData) => {
       if (!activeCaseId) {
+        setFormError('Wybierz aktywny zakres obliczeń przed zapisem GPZ.');
         return;
       }
 
@@ -230,9 +240,10 @@ export function AddGridSourceForm() {
       }
 
       collapseSurfaceStackTo(null);
+      closeForm();
       navigateToSld();
     },
-    [activeCaseId, collapseSurfaceStackTo, executeDomainOperation],
+    [activeCaseId, closeForm, collapseSurfaceStackTo, executeDomainOperation],
   );
 
   return (

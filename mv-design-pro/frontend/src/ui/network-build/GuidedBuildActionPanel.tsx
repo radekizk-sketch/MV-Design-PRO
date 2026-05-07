@@ -102,6 +102,7 @@ export function GuidedBuildActionPanel() {
     sourceCount,
     configuredGpzSnFieldCount,
     configuredGpzSnFields,
+    unconfiguredGpzSnFields,
     trunkSegmentCount,
     stationCount,
     transformerCount,
@@ -114,6 +115,7 @@ export function GuidedBuildActionPanel() {
 
   const firstOpenTerminal = openTerminals[0] ?? null;
   const firstConfiguredField = configuredGpzSnFields[0] ?? null;
+  const firstUnconfiguredField = unconfiguredGpzSnFields[0] ?? null;
   const firstOpenTerminalField = firstOpenTerminal
     ? configuredGpzSnFields.find((field) => field.ref_id === firstOpenTerminal.element_id) ?? null
     : null;
@@ -153,6 +155,10 @@ export function GuidedBuildActionPanel() {
     if (configuredGpzSnFieldCount === 0) {
       openOperationForm('add_sn_bay', {
         station_ref: gridSourceStationRef ?? undefined,
+        bus_ref: firstUnconfiguredField?.bus_ref,
+        existing_field_ref: firstUnconfiguredField?.ref_id,
+        field_name: firstUnconfiguredField?.name,
+        gpz_section_id: firstUnconfiguredField?.gpz_section_id ?? undefined,
         bay_role: 'OUT',
       });
       return;
@@ -190,6 +196,7 @@ export function GuidedBuildActionPanel() {
   }, [
     configuredGpzSnFieldCount,
     firstConfiguredField,
+    firstUnconfiguredField,
     firstOpenTerminal,
     firstOpenTerminalField,
     firstSegmentId,

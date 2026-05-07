@@ -66,7 +66,7 @@ function getTypeParams(type: CatalogListItem, category: TypeCategory): string {
       return `${record.voltage_rating_kv ?? '-'} kV, Sk3=${record.sk3_mva ?? '-'} MVA, R/X=${record.rx_ratio ?? '-'}`;
     case 'BRANCH_POLE':
     case 'ZKSN':
-      return `${record.switch_device_kind ?? '-'}, ${record.switch_rated_current_a ?? '-'} A, porty BRANCH=${record.branch_ports_count ?? '-'}`;
+      return `${record.switch_device_kind ?? '-'}, ${record.switch_rated_current_a ?? '-'} A, porty odgałęzienia=${record.branch_ports_count ?? '-'}`;
     case 'MEASUREMENT_TRANSFORMER':
     case 'CONVERTER':
     default:

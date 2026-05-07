@@ -35,13 +35,13 @@ describe('StatusBarV12 — pasek statusu V12', () => {
     expect(screen.getByTestId('status-area-mode')).toBeInTheDocument();
   });
 
-  it('pokazuje model jako stały obszar roboczy shell-a i aktywny tryb pracy', () => {
+  it('pokazuje aktywny obszar roboczy shell-a i aktywny tryb pracy', () => {
     act(() => {
       useAppStateStore.getState().setActiveArea('AN');
       useAppStateStore.getState().setActiveWorkMode('TW');
     });
     render(<StatusBarV12 />);
-    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('Model / Wyniki');
+    expect(screen.getByTestId('status-area-mode')).toHaveTextContent('Studia / Wyniki');
   });
 
   it('pokazuje status walidacji (valid/warnings/errors)', () => {
@@ -117,6 +117,7 @@ describe('StatusBarV12 — pasek statusu V12', () => {
       expect(title).toMatch(/Obliczenia:\s*ccccccc/);
       expect(title).toMatch(/Stan:\s*vvvvvvv/);
       expect(title).toMatch(/Łączniki:\s*wwwwwww/);
+      expect(title).not.toMatch(/Przypadek|legacy|snapshot|run/i);
     });
 
     it('pokazuje placeholder „—" w tooltipie dla brakujących hashy chainu', () => {
@@ -136,5 +137,27 @@ describe('StatusBarV12 — pasek statusu V12', () => {
       expect(title).toMatch(/Stan:\s*—/);
       expect(title).toMatch(/Łączniki:\s*—/);
     });
+  });
+
+  it('nie ujawnia zakazanych terminów w widocznych i dostępnościowych etykietach', () => {
+    act(() => {
+      const store = useAppStateStore.getState();
+      store.setActiveCase('case-1', 'Zwarcie maksymalne IEC 60909');
+      store.setActiveSnapshot('ver-technical-id');
+      store.setActiveRun('calc-technical-id');
+    });
+
+    const { container } = render(<StatusBarV12 />);
+    const values = [container.textContent ?? ''];
+    container.querySelectorAll('[aria-label], [title]').forEach((node) => {
+      const element = node as HTMLElement;
+      values.push(element.getAttribute('aria-label') ?? '');
+      values.push(element.getAttribute('title') ?? '');
+    });
+    const userText = values.join('\n');
+
+    expect(userText).toContain('Zakres obliczeń');
+    expect(userText).toContain('Ostatnie obliczenie');
+    expect(userText).not.toMatch(/Przypadek|legacy|\b(run|case|snapshot|proof|mock|placeholder)\b/i);
   });
 });

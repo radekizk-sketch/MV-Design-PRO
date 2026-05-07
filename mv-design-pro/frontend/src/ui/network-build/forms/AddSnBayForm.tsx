@@ -60,8 +60,45 @@ function toCatalogEntries(items: MVApparatusType[]): CatalogEntry[] {
     id: item.id,
     name: item.name,
     manufacturer: item.manufacturer,
-    summary: `Un ${item.u_n_kv} kV, In ${item.i_n_a} A`,
+    summary: `${apparatusKindLabel(item.device_kind)} · Un ${item.u_n_kv} kV, In ${item.i_n_a} A`,
   }));
+}
+
+function apparatusKindLabel(value: string | undefined): string {
+  switch ((value ?? '').trim().toUpperCase()) {
+    case 'WYLACZNIK':
+    case 'BREAKER':
+      return 'Wyłącznik';
+    case 'ODLACZNIK':
+    case 'DISCONNECTOR':
+      return 'Odłącznik';
+    case 'ROZLACZNIK':
+    case 'ROZLACZNIK_BEZPIECZNIKOWY':
+    case 'LOAD_SWITCH':
+      return 'Rozłącznik';
+    case 'REKLOZER':
+      return 'Reklozer';
+    case 'UZIEMNIK':
+      return 'Uziemnik';
+    default:
+      return value ?? 'Aparat SN';
+  }
+}
+
+function catalogItemMatchesApparatusKind(item: MVApparatusType, apparatusKind: ApparatusKind): boolean {
+  const deviceKind = item.device_kind?.toUpperCase();
+  if (apparatusKind === 'BREAKER') {
+    return deviceKind === 'WYLACZNIK' || deviceKind === 'REKLOZER' || deviceKind === 'BREAKER';
+  }
+  if (apparatusKind === 'DISCONNECTOR') {
+    return deviceKind === 'ODLACZNIK' || deviceKind === 'UZIEMNIK' || deviceKind === 'DISCONNECTOR';
+  }
+  if (apparatusKind === 'LOAD_SWITCH') {
+    return deviceKind === 'ROZLACZNIK'
+      || deviceKind === 'ROZLACZNIK_BEZPIECZNIKOWY'
+      || deviceKind === 'LOAD_SWITCH';
+  }
+  return deviceKind === 'MEASUREMENT';
 }
 
 export function AddSnBayForm() {
@@ -96,6 +133,10 @@ export function AddSnBayForm() {
       '',
     [context],
   );
+  const initialFieldName = useMemo(() => {
+    const raw = context?.field_name ?? context?.name;
+    return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+  }, [context?.field_name, context?.name]);
 
   const [busRef, setBusRef] = useState(resolvedBusRef ?? busOptions[0]?.ref_id ?? '');
   const [bayRole, setBayRole] = useState<SnBayRole>(initialRole);
@@ -133,8 +174,8 @@ export function AddSnBayForm() {
       MEASUREMENT: 'Pole pomiarowe SN',
       OZE: 'Pole źródłowe SN',
     };
-    setFieldName(defaultNames[bayRole]);
-  }, [bayRole]);
+    setFieldName(initialFieldName ?? defaultNames[bayRole]);
+  }, [bayRole, initialFieldName]);
 
   useEffect(() => {
     let active = true;
@@ -143,12 +184,7 @@ export function AddSnBayForm() {
         if (!active) {
           return;
         }
-        const filtered = types.filter((item) => {
-          if (apparatusKind === 'MEASUREMENT') {
-            return item.device_kind?.toUpperCase() === 'MEASUREMENT';
-          }
-          return item.device_kind?.toUpperCase() === apparatusKind;
-        });
+        const filtered = types.filter((item) => catalogItemMatchesApparatusKind(item, apparatusKind));
         setCatalogEntries(toCatalogEntries(filtered.length > 0 ? filtered : types));
         setCatalogError(null);
       })
@@ -193,6 +229,10 @@ export function AddSnBayForm() {
       const response = await executeDomainOperation(activeCaseId, 'add_sn_bay', {
         bus_ref: busRef,
         station_ref: stationRef,
+        existing_field_ref:
+          typeof context?.existing_field_ref === 'string' && context.existing_field_ref.trim()
+            ? context.existing_field_ref.trim()
+            : undefined,
         bay_role: bayRole,
         field_name: fieldName.trim() || undefined,
         apparatus_kind: apparatusKind,
@@ -229,6 +269,7 @@ export function AddSnBayForm() {
     catalogItemId,
     collapseSurfaceStackTo,
     context?.gpz_section_id,
+    context?.existing_field_ref,
     executeDomainOperation,
     fieldName,
     stationRef,

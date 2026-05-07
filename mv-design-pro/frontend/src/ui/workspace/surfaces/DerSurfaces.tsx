@@ -21,16 +21,23 @@ import { useCallback, useMemo } from 'react';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
+  type DerCardId,
   type DerKind,
   type DerStationContext,
 } from '../../network-build/der-configurator/DerConfigurator';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
+  EMPTY_DER_CATALOGS,
+  EMPTY_DER_PROFILES,
+  EMPTY_DER_READINESS,
   selectDerById,
   useStationDerStore,
   getNcRfgProfile,
 } from '../../network-build/station-der';
+import type { ConnectionSide, StationDerConnection } from '../../network-build/station-der';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
+import { useSnapshotStore } from '../../topology/snapshotStore';
+import type { Generator } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 interface DerSurfaceProps {
@@ -45,6 +52,115 @@ interface DerWrapperProps {
   readonly testId: string;
 }
 
+function connectionSideFromGenerator(generator: Generator): ConnectionSide {
+  switch (generator.connection_variant) {
+    case 'DEDICATED_MV_CONNECTION':
+    case 'block_transformer':
+      return 'dedicated_transformer';
+    case 'SOURCE_CONNECTION_STATION':
+      return 'SN';
+    default:
+      return 'nN';
+  }
+}
+
+function buildDerFromGenerator(
+  generator: Generator | null | undefined,
+  fallbackKind: DerKind,
+): StationDerConnection | null {
+  if (!generator) return null;
+  const connectionSide = connectionSideFromGenerator(generator);
+  return {
+    id: generator.ref_id,
+    project_id: 'snapshot',
+    station_id: generator.station_ref ?? '',
+    der_kind: fallbackKind,
+    name: generator.name || generator.ref_id,
+    connection_side: connectionSide,
+    pcc_ref: (generator as { pcc_ref?: string | null }).pcc_ref ?? generator.bus_ref ?? null,
+    bay_ref: (generator as { bay_ref?: string | null }).bay_ref ?? null,
+    transformer_ref:
+      (generator as { transformer_ref?: string | null }).transformer_ref
+      ?? (connectionSide === 'dedicated_transformer' ? `tr_${generator.ref_id}` : null),
+    lv_busbar_ref:
+      (generator as { lv_busbar_ref?: string | null }).lv_busbar_ref
+      ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null),
+    connection_node_ref: null,
+    internal_cable_ref: null,
+    voltage_level_ref: (generator as { voltage_level_ref?: string | null }).voltage_level_ref ?? null,
+    catalogs: {
+      ...EMPTY_DER_CATALOGS,
+      device_catalog_ref: generator.catalog_ref ?? null,
+    },
+    profiles: { ...EMPTY_DER_PROFILES },
+    nominal_power_kw: typeof generator.p_mw === 'number' ? generator.p_mw * 1000 : null,
+    completeness: generator.catalog_ref ? 'partial' : 'missing_profile',
+    readiness: { ...EMPTY_DER_READINESS },
+    created_at: '',
+    updated_at: '',
+  };
+}
+
+function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="grid grid-cols-[160px_1fr] gap-2 border-b border-scada-border/60 py-1 last:border-b-0">
+      <dt className="text-scada-muted">{label}</dt>
+      <dd className="font-medium text-scada-text">{value}</dd>
+    </div>
+  );
+}
+
+function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX.Element>> {
+  return {
+    basic: (
+      <dl>
+        <FieldRow label="Nazwa" value={der.name} />
+        <FieldRow label="Punkt przyłączenia" value={der.pcc_ref ?? MISSING_DASH} />
+        <FieldRow
+          label="Moc znamionowa"
+          value={der.nominal_power_kw !== null ? `${der.nominal_power_kw} kW` : MISSING_DASH}
+        />
+        <FieldRow label="Pozycja katalogowa" value={der.catalogs.device_catalog_ref ?? MISSING_DASH} />
+      </dl>
+    ),
+    topology: (
+      <dl>
+        <FieldRow label="Stacja" value={der.station_id || MISSING_DASH} />
+        <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side)} />
+        <FieldRow label="Pole SN" value={der.bay_ref ?? MISSING_DASH} />
+        <FieldRow label="Szyna nN" value={der.lv_busbar_ref ?? MISSING_DASH} />
+        <FieldRow label="Transformator" value={der.transformer_ref ?? MISSING_DASH} />
+      </dl>
+    ),
+    inverters: (
+      <dl>
+        <FieldRow label="Urządzenie z katalogu" value={der.catalogs.device_catalog_ref ?? MISSING_DASH} />
+        <FieldRow label="Bateria" value={der.catalogs.battery_catalog_ref ?? MISSING_DASH} />
+        <FieldRow label="Sterownik" value={der.catalogs.controller_catalog_ref ?? MISSING_DASH} />
+      </dl>
+    ),
+    'frt-hvrt': (
+      <dl>
+        <FieldRow label="Krzywa LVRT" value={der.profiles.lvrt_curve_ref ?? MISSING_DASH} />
+        <FieldRow label="Krzywa HVRT" value={der.profiles.hvrt_curve_ref ?? MISSING_DASH} />
+      </dl>
+    ),
+    ncrfg: (
+      <dl>
+        <FieldRow label="Zgodność przyłączeniowa" value={der.profiles.nc_rfg_profile_ref ?? MISSING_DASH} />
+        <FieldRow label="Regulacja" value={der.profiles.regulation_profile_ref ?? MISSING_DASH} />
+      </dl>
+    ),
+    readiness: (
+      <dl>
+        <FieldRow label="Status konfiguracji" value={der.completeness} />
+        <FieldRow label="Zwarcie 3-fazowe" value={der.readiness.sc_3f} />
+        <FieldRow label="Zgodność przyłączeniowa" value={der.readiness.nc_rfg} />
+      </dl>
+    ),
+  };
+}
+
 function DerSurfaceShell({
   surface,
   screenCode,
@@ -52,35 +168,49 @@ function DerSurfaceShell({
   title,
   testId,
 }: DerWrapperProps): JSX.Element {
-  const derId = surface.entityRef ?? null;
-  const der = useStationDerStore((state) =>
+  const derId = surface.entityRef
+    ?? (typeof surface.routeState.payload?.derId === 'string' ? surface.routeState.payload.derId : null);
+  const storeDer = useStationDerStore((state) =>
     derId ? selectDerById(state, derId) : null,
   );
+  const snapshot = useSnapshotStore((state) => state.snapshot);
+  const snapshotDer = useMemo(
+    () => buildDerFromGenerator(
+      derId ? snapshot?.generators?.find((generator) => generator.ref_id === derId) : null,
+      derKind,
+    ),
+    [derId, derKind, snapshot?.generators],
+  );
+  const der = storeDer ?? snapshotDer;
+  const derView = der;
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
 
   const navigateToStation = useCallback(() => {
-    if (!der?.station_id) return;
+    if (!derView?.station_id) return;
     openRouteSurface('E-13', {
-      entityRef: der.station_id,
+      entityRef: derView.station_id,
       subjectKind: 'helper_context',
     });
-  }, [der?.station_id, openRouteSurface]);
+  }, [derView?.station_id, openRouteSurface]);
 
   const stationContext: DerStationContext | undefined = useMemo(() => {
-    if (!der) return undefined;
+    if (!derView) return undefined;
+    const station = snapshot?.substations?.find(
+      (item) => item.ref_id === derView.station_id || item.id === derView.station_id,
+    );
     return {
-      stationId: der.station_id,
-      stationName: der.station_id, // fallback — pełna nazwa stacji wymaga snapshotu
+      stationId: derView.station_id,
+      stationName: station?.name ?? derView.station_id,
       projectName: projectName ?? undefined,
-      connectionSide: der.connection_side,
-      pccRef: der.pcc_ref,
-      bayRef: der.bay_ref,
-      transformerRef: der.transformer_ref,
-      lvBusbarRef: der.lv_busbar_ref,
+      connectionSide: derView.connection_side,
+      pccRef: derView.pcc_ref,
+      bayRef: derView.bay_ref,
+      transformerRef: derView.transformer_ref,
+      lvBusbarRef: derView.lv_busbar_ref,
       onNavigateToStation: navigateToStation,
     };
-  }, [der, projectName, navigateToStation]);
+  }, [derView, projectName, navigateToStation, snapshot?.substations]);
 
   return (
     <div
@@ -108,6 +238,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
+          children={der ? buildDerCards(der) : undefined}
         />
       </div>
       {der && (

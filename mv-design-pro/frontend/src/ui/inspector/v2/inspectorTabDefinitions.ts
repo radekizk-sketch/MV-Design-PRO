@@ -1,5 +1,5 @@
 /**
- * InspectorTabs v2 — 11 zakładek inspektora (PR-7).
+ * Definicje zakładek inspectora v2 (PR-7).
  *
  * Brief 2 §5: Tabs:
  *   Podstawowe / SLD / Topologia / Aparatura / Dane elektryczne /

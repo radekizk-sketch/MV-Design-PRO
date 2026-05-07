@@ -30,7 +30,15 @@ export const FORBIDDEN_USER_LABELS = [
   'Error',
   'Warning',
   'Success',
+  'Fallback',
+  'Legacy',
+  'Debug',
+  'Mock',
+  'TODO',
   'Placeholder',
+  'Not implemented',
+  'Coming soon',
+  'Przypadek',
   'Etap 2',
   'wdrażane później',
   'panel w przygotowaniu',
@@ -46,7 +54,9 @@ export function findForbiddenUserLabels(text: string): string[] {
       if (token.test(text)) findings.add(label);
       continue;
     }
-    if (text.includes(label)) findings.add(label);
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const labelPattern = new RegExp(`\\b${escapedLabel}\\b`, 'i');
+    if (labelPattern.test(text)) findings.add(label);
   }
   return [...findings].sort();
 }

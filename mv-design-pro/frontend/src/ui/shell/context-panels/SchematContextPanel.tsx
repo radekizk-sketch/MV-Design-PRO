@@ -208,10 +208,10 @@ export function SchematContextPanel() {
           <div className="rounded-sm border border-scada-border bg-[#0a141d] p-3 text-[11px] leading-snug text-scada-muted">
             {!snapshot && <span className="mb-2 block font-semibold text-scada-text">Start pustej kanwy</span>}
             {snapshot ? (
-              'Aktualny snapshot nie zawiera elementów schematu do pokazania w drzewie.'
+              'Aktualna wersja modelu nie zawiera elementów schematu do pokazania w drzewie.'
             ) : (
               <div className="space-y-1">
-                <div>1. Wybierz albo utwórz przypadek obliczeniowy.</div>
+                <div>1. Wybierz albo utwórz zakres obliczeń.</div>
                 <div>2. Dodaj GPZ z parametrami zwarciowymi.</div>
                 <div>3. Wyprowadź magistralę SN, stacje i OZE/BESS.</div>
               </div>

@@ -53,7 +53,7 @@ describe('GridSourceEditor E-03B', () => {
     );
 
     expect(screen.getByTestId('grid-source-editor-dialog')).toHaveClass('bg-[#050810]');
-    expect(screen.getByText('Ekran E-03B · Karta GPZ zaawansowana · 15 kV')).toBeInTheDocument();
+    expect(screen.getByText(/Dodanie GPZ do modelu sieci.*15 kV/)).toBeInTheDocument();
     expect(screen.getByDisplayValue('GPZ 1')).toBeInTheDocument();
     expect(screen.getByDisplayValue('GPZ-01')).toBeInTheDocument();
     expect(screen.getByText('Identyfikacja GPZ')).toBeInTheDocument();

@@ -141,7 +141,7 @@ export function deriveEmbeddingRole(
   else if (trunkCount === 0 && branchCount === 0) {
     fixActions.push({
       code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja ${station.id} (${station.name}): brak krawedzi trunk i branch — nie mozna wyznaczyc roli`,
+      message: `Stacja ${station.id} (${station.name}): brak krawedzi magistrali i odgalezienia — nie mozna wyznaczyc roli`,
       elementId: station.id,
       fixHint: 'Sprawdz polaczenia stacji z magistrala.',
     });
@@ -159,7 +159,7 @@ export function deriveEmbeddingRole(
   else {
     fixActions.push({
       code: FieldDeviceFixCodes.STATION_EMBEDDING_UNDETERMINED,
-      message: `Stacja ${station.id}: nieoczekiwana kombinacja trunk=${trunkCount}, branch=${branchCount}`,
+      message: `Stacja ${station.id}: nieoczekiwana kombinacja magistrala=${trunkCount}, odgalezienia=${branchCount}`,
       elementId: station.id,
       fixHint: 'Sprawdz topologie stacji.',
     });

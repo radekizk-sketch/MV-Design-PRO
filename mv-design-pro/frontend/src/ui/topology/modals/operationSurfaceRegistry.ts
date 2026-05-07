@@ -48,7 +48,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'continue_trunk_segment_sn',
     'ContinueTrunkForm',
-    'Kontynuuj ciąg główny SN',
+    'Wyprowadź ciąg główny SN',
     'E-12',
     'A',
     'manual',

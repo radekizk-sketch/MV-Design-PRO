@@ -86,6 +86,20 @@ describe('TopBar - compact V12 chrome', () => {
     expect(onCalculate).toHaveBeenCalledOnce();
   });
 
+  it('Sprawdź braki pozostaje klikalne i otwiera gotowość obliczeń', () => {
+    const onMenuAction = vi.fn();
+    render(<TopBar projectName="Test" onMenuAction={onMenuAction} />);
+
+    const calculateButton = screen.getByTestId('top-bar-calculate');
+    expect(calculateButton).not.toHaveAttribute('aria-disabled');
+
+    act(() => {
+      fireEvent.click(calculateButton);
+    });
+
+    expect(onMenuAction).toHaveBeenCalledWith('readiness');
+  });
+
   it('Nakładka switches to result overlay mode and opens results', () => {
     const onViewResults = vi.fn();
     render(<TopBar projectName="Test" onViewResults={onViewResults} />);

@@ -86,4 +86,21 @@ describe('ProjectDashboardSurface — pulpit projektu E-00', () => {
     fireEvent.click(newBtn);
     expect(screen.getByRole('dialog', { name: 'Metadane projektu' })).toBeInTheDocument();
   });
+
+  it('blokuje zapis nowego projektu bez wymaganej nazwy', async () => {
+    (projectsApi.listProjects as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    render(<ProjectDashboardSurface />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-empty')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('dashboard-new-project'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('project-metadata-name')).toHaveFocus();
+    });
+    expect(screen.getByTestId('project-metadata-save')).toBeDisabled();
+    expect(screen.getByText('Nazwa projektu jest wymagana.')).toBeInTheDocument();
+  });
 });

@@ -11,6 +11,7 @@ import type {
   TransformerSummary,
   LoadSummary,
   ConfiguredGridSourceSnField,
+  GridSourceSnFieldCandidate,
 } from './networkBuildStore';
 import type { BranchViewV1, TerminalRef, TrunkViewV1 } from '../../types/enm';
 import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
@@ -145,8 +146,8 @@ function openPortLabel(
   return `${owner} · ${portRoleLabel(terminal.port_id)} · SN`;
 }
 
-function branchSourceLabel(branch: BranchViewV1): string {
-  return `${portRoleLabel(branch.from_port_id)} obiektu źródłowego`;
+function branchSourceLabel(segment: BranchViewV1): string {
+  return `${portRoleLabel(segment.from_port_id)} obiektu źródłowego`;
 }
 
 function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; testIdScope?: string }) {
@@ -193,21 +194,28 @@ function SnFieldSection({
   sourceCount,
   configuredFieldCount,
   gridSourceStationRef,
+  unconfiguredFields,
   testIdScope,
 }: {
   sourceCount: number;
   configuredFieldCount: number;
   gridSourceStationRef: string | null;
+  unconfiguredFields: GridSourceSnFieldCandidate[];
   testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const firstUnconfiguredField = unconfiguredFields[0] ?? null;
 
   const handleConfigureField = useCallback(() => {
     openForm('add_sn_bay', {
       station_ref: gridSourceStationRef ?? undefined,
+      bus_ref: firstUnconfiguredField?.bus_ref,
+      existing_field_ref: firstUnconfiguredField?.ref_id,
+      field_name: firstUnconfiguredField?.name,
+      gpz_section_id: firstUnconfiguredField?.gpz_section_id ?? undefined,
       bay_role: 'OUT',
     });
-  }, [gridSourceStationRef, openForm]);
+  }, [firstUnconfiguredField, gridSourceStationRef, openForm]);
 
   if (sourceCount === 0) {
     return (
@@ -227,6 +235,11 @@ function SnFieldSection({
       ) : (
         <p className={clsx('text-[11px]', mutedTextClass)}>
           Skonfiguruj pole odpływowe SN z aparaturą. Magistrala będzie wyprowadzona z jego zacisku wyjściowego.
+        </p>
+      )}
+      {firstUnconfiguredField && (
+        <p className={clsx('text-[11px]', primaryTextClass)}>
+          Następne pole z GPZ: {firstUnconfiguredField.name}
         </p>
       )}
       <ActionButton
@@ -349,7 +362,7 @@ function TrunksSection({
                 disabled={trunk.segments.length === 0}
                 className="ml-auto text-[10px] text-[#67d9ff] hover:text-scada-text"
               >
-                [Wstaw stację na odcinku]
+                Wstaw stację na odcinku
               </button>
             </div>
           ))}
@@ -843,6 +856,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     transformerCount,
     transformerSummaries,
     trunkSegmentCount,
+    unconfiguredGpzSnFields,
   } = useNetworkBuildDerived();
 
   const trunks = (logicalViews?.trunks ?? []).filter(
@@ -927,6 +941,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
             sourceCount={sourceCount}
             configuredFieldCount={configuredGpzSnFieldCount}
             gridSourceStationRef={gridSourceStationRef}
+            unconfiguredFields={unconfiguredGpzSnFields}
             testIdScope={testIdScope}
           />
         )}
