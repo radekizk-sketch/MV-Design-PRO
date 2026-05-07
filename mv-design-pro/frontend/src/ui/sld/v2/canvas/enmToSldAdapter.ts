@@ -20,6 +20,10 @@
  */
 
 import type {
+  BayDeviceState,
+  BayControlMode as EnmBayControlMode,
+  BayRuntimeState,
+  BaySwitchState,
   EnergyNetworkModel,
   LogicalViewsV1,
   Bus,
@@ -36,11 +40,146 @@ import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import type { StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type {
+  BayControlMode,
+  EarthingSwitchState,
+  GpzApparatusSwitchState,
   GpzBayDescriptor,
   GpzCouplerDescriptor,
   GpzSectionDescriptor,
 } from '../renderer/GpzSwitchgearRenderer';
 import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE } from '../domain/apparatusContracts';
+
+// =============================================================================
+// Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
+// =============================================================================
+
+/**
+ * Mapuje ENM BayDeviceState (PL) → GpzApparatusSwitchState (UI canon).
+ * `_naped_rozbrojony` warianty traktujemy jako odpowiednio closed/open
+ * (operator widzi pozycję mechaniczną; informacja o napędzie idzie do
+ * `interlock_blocked` flag w pending state).
+ * 'awaria' → 'unknown' (renderer pokazuje neutral z badge ostrzegawczym).
+ */
+function mapDeviceStateToSwitch(state: BayDeviceState | undefined): GpzApparatusSwitchState | undefined {
+  if (state === undefined) return undefined;
+  switch (state) {
+    case 'zamkniety':
+    case 'zamkniety_naped_rozbrojony':
+      return 'closed';
+    case 'otwarty':
+    case 'otwarty_naped_rozbrojony':
+      return 'open';
+    case 'nieznany':
+    case 'awaria':
+      return 'unknown';
+  }
+}
+
+function mapDeviceStateToEs(state: BayDeviceState | undefined): EarthingSwitchState | undefined {
+  if (state === undefined) return undefined;
+  switch (state) {
+    case 'zamkniety':
+    case 'zamkniety_naped_rozbrojony':
+      return 'closed';
+    case 'otwarty':
+    case 'otwarty_naped_rozbrojony':
+      return 'open';
+    case 'nieznany':
+    case 'awaria':
+      return 'unknown';
+  }
+}
+
+function mapControlMode(mode: EnmBayControlMode | undefined): BayControlMode | undefined {
+  if (mode === undefined) return undefined;
+  switch (mode) {
+    case 'zdalne':
+      return 'remote';
+    case 'miejscowe':
+    case 'lokalne_zablokowane':
+    case 'odstawione':
+      return 'local';
+  }
+}
+
+/**
+ * Wybiera BaySwitchState dla aparatu danego rodzaju z `runtime_state.primary_device_states`.
+ * Klucze tej mapy to `device_ref` z ENM (ID elementu). Konwencja Phase 0B-1: klucz
+ * zawiera substring identyfikatora aparatu — 'cb' (CB), 'ds_lin'/'ds-lin' (DS_LIN),
+ * 'ds_bus'/'ds-bus' (DS_BUS), 'es' (ES). Klucz NIE może zawierać dwóch kategorii
+ * jednocześnie (deterministyczne API).
+ *
+ * Wzorce dopasowania (kolejność ważna, sprawdzane po prefiksie kategorii):
+ *  - DS_BUS: zawiera 'ds_bus' lub 'ds-bus' lub kończy się '_dsbus'
+ *  - DS_LIN: zawiera 'ds_lin' lub 'ds-lin' lub kończy się '_dslin' lub '_ds' (bez 'bus')
+ *  - CB: zawiera '_cb' lub kończy się 'cb' (po lower-case) i nie ma 'ds'/'es'
+ *  - ES: zawiera '_es' lub kończy się 'es' i nie ma 'ds'/'cb'
+ *
+ * Brak dopasowania → undefined (renderer pokaże 'unknown' przy braku danych).
+ */
+type DeviceCategory = 'cb' | 'ds_lin' | 'ds_bus' | 'es';
+
+function classifyDeviceKey(key: string): DeviceCategory | undefined {
+  const k = key.toLowerCase();
+  if (k.includes('ds_bus') || k.includes('ds-bus') || k.endsWith('dsbus')) return 'ds_bus';
+  if (k.includes('ds_lin') || k.includes('ds-lin') || k.endsWith('dslin')) return 'ds_lin';
+  if (k.includes('_es') || /(?:^|[^a-z])es$/.test(k) || k.endsWith('_earthing')) return 'es';
+  if (k.includes('_cb') || /(?:^|[^a-z])cb$/.test(k) || k.endsWith('_breaker')) return 'cb';
+  if (k.includes('_ds') || /(?:^|[^a-z])ds$/.test(k)) return 'ds_lin';
+  return undefined;
+}
+
+function pickFirstStateForCategory(
+  states: Record<string, BaySwitchState> | undefined,
+  category: DeviceCategory,
+): BaySwitchState | undefined {
+  if (!states) return undefined;
+  /* Sortujemy klucze deterministycznie aby wybór był stabilny gdy >1 device
+   * w danej kategorii (np. 2 CB w polu OZE). */
+  const keys = Object.keys(states).sort();
+  for (const key of keys) {
+    if (classifyDeviceKey(key) === category) return states[key];
+  }
+  return undefined;
+}
+
+interface TelemetryProjection {
+  readonly cbState?: GpzApparatusSwitchState;
+  readonly dsState?: GpzApparatusSwitchState;
+  readonly esState?: EarthingSwitchState;
+  readonly controlMode?: BayControlMode;
+  readonly inManipulation?: boolean;
+}
+
+/**
+ * Projektuje BayRuntimeState → częściowy GpzBayDescriptor.
+ * Brak runtime_state → puste pola (renderer pokazuje neutral 'unknown').
+ */
+export function projectBayTelemetry(runtime: BayRuntimeState | null | undefined): TelemetryProjection {
+  if (!runtime) return {};
+  const cb = pickFirstStateForCategory(runtime.primary_device_states, 'cb');
+  const dsLin = pickFirstStateForCategory(runtime.primary_device_states, 'ds_lin');
+  const es = pickFirstStateForCategory(runtime.primary_device_states, 'es');
+  /* control_mode pola czytamy z CB (kanon: control_mode aparatu głównego rządzi polem). */
+  const controlMode = mapControlMode(cb?.control_mode);
+  /* Manipulation: pending_command niezakończone LUB jakiś interlock_blocked
+   * sygnalizuje że pole jest aktywnie zarządzane → renderer wyróżnia żółtym tłem. */
+  const interlockOnAny = Boolean(
+    cb?.interlock_blocked || dsLin?.interlock_blocked || es?.interlock_blocked,
+  );
+  const inManipulation = runtime.pending_command !== null && runtime.pending_command !== undefined
+    ? true
+    : interlockOnAny
+      ? true
+      : undefined;
+  return {
+    cbState: mapDeviceStateToSwitch(cb?.actual_state),
+    dsState: mapDeviceStateToSwitch(dsLin?.actual_state),
+    esState: mapDeviceStateToEs(es?.actual_state),
+    controlMode,
+    inManipulation,
+  };
+}
 
 // =============================================================================
 // Slot constants (deterministic layout)
@@ -371,17 +510,17 @@ function buildGpzSnSections(args: BuildSectionsArgs): BuildSectionsResult {
     if (!couplerRef) continue;
     const couplerBay = couplerBaysByRef.get(couplerRef);
     if (!couplerBay) continue;
+    /* Phase 0B-1: stan sprzęgła z BayRuntimeState gdy obecny — czytamy
+     * actual_state CB w polu COUPLER. Brak telemetrii → 'unknown'
+     * (Invariant 9). */
+    const couplerTelemetry = projectBayTelemetry(couplerBay.runtime_state);
+    const couplerClosed: GpzCouplerDescriptor['closed'] = couplerTelemetry.cbState ?? 'unknown';
     couplers.push({
       couplerId: couplerBay.ref_id,
       leftSectionId: left.section_id,
       rightSectionId: right.section_id,
       designation: couplerBay.name || couplerBay.ref_id,
-      /* INVARIANT 9: brak danych telemetrii ≠ default 'closed'. ENM Bay
-       * obecnie nie modeluje runtime switching state — adapter zwraca
-       * 'unknown', renderer wyświetli neutral szary. Gdy ENM zostanie
-       * rozszerzony o BayCanonicalModel.runtime_state.cb_switch_state,
-       * adapter będzie czytać prawdziwy stan. */
-      closed: 'unknown',
+      closed: couplerClosed,
     });
   }
 
@@ -469,7 +608,16 @@ function bayDescriptorFromEnm(
    * qDesignations: kanon IEC 81346-2 — generowane deterministycznie z roli.
    */
   const hasEs = isLineRole || bay.bay_role === 'TR' || bay.bay_role === 'MEASUREMENT';
-  const esState: GpzBayDescriptor['esState'] = hasEs ? 'unknown' : 'absent';
+
+  /* Phase 0B-1: konsumpcja BayRuntimeState — primary_device_states (CB/DS/ES
+   * actual_state), control_mode, pending_command. Brak runtime_state → adapter
+   * NIE syntezuje stanów (Invariant 9: lepiej 'unknown' niż fałszywy stan). */
+  const telemetry = projectBayTelemetry(bay.runtime_state);
+  /* esState fallback ladder:
+   *  1. telemetry.esState (ENM runtime_state) — najwyższy priorytet
+   *  2. 'unknown' gdy hasEs (pole z polityki ma ES, ale brak telemetrii)
+   *  3. 'absent' gdy hasEs===false (rola pola bez ES, np. COUPLER) */
+  const esState: GpzBayDescriptor['esState'] = telemetry.esState ?? (hasEs ? 'unknown' : 'absent');
 
   return {
     bayRef: bay.ref_id,
@@ -478,7 +626,11 @@ function bayDescriptorFromEnm(
     feederName: bay.feeder_short_name ?? bay.name ?? undefined,
     bayNumber: bay.bay_number ?? undefined,
     hasMissingRequiredDevice: (bay.equipment_refs?.length ?? 0) === 0,
+    cbState: telemetry.cbState,
+    dsState: telemetry.dsState,
     esState,
+    controlMode: telemetry.controlMode,
+    inManipulation: telemetry.inManipulation,
     qDesignations: deriveQDesignations(bay.bay_role),
     outgoingFeeder,
   };

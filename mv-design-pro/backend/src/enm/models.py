@@ -677,6 +677,13 @@ class Bay(ENMElement):
     # z grafu w adapterze SLD (BLOCKER system §D). Adapter wyświetla
     # destination jako "→ {substation.name}".
     outgoing_destination_ref: str | None = None
+    # Phase 0B-1: runtime_state telemetry pipeline (OPEN Inv 17 → RESOLVED).
+    # Snapshot SCADA per-pole — primary_device_states (CB/DS/ES actual_state),
+    # control_mode, pending_command, energization_and_safety. Adapter SLD
+    # konsumuje to pole gdy obecne; brak → renderer pokazuje neutral 'unknown'
+    # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
+    # późniejszej sekcji modułu.
+    runtime_state: "BayRuntimeState | None" = None
 
 
 # ---------------------------------------------------------------------------
@@ -1168,3 +1175,8 @@ class EnergyNetworkModel(BaseModel):
     # PR-3 rebuild SLD: nowe kolekcje (addytywne, opcjonalne)
     line_runs: list[LineRun] = []
     connection_nodes: list[ConnectionNode] = []
+
+
+# Phase 0B-1: rebuild Bay aby ForwardRef "BayRuntimeState | None" rozwiązał
+# się do faktycznej klasy zdefiniowanej niżej w module (linia 929).
+Bay.model_rebuild()

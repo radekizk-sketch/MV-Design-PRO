@@ -13,11 +13,43 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { buildSldDataFromSnapshot } from '../enmToSldAdapter';
+import { buildSldDataFromSnapshot, projectBayTelemetry } from '../enmToSldAdapter';
 import type {
+  BayRuntimeState,
+  BaySwitchState,
   EnergyNetworkModel,
   LogicalViewsV1,
 } from '../../../../../types/enm';
+
+function makeSwitchState(overrides: Partial<BaySwitchState>): BaySwitchState {
+  return {
+    actual_state: 'nieznany',
+    control_mode: 'miejscowe',
+    communication_ok: false,
+    interlock_blocked: false,
+    ...overrides,
+  };
+}
+
+function makeRuntime(states: Record<string, BaySwitchState>, opts: Partial<BayRuntimeState> = {}): BayRuntimeState {
+  return {
+    secondary_communication_status: 'ok',
+    last_good_update_at: null,
+    control_availability: 'dostepne',
+    measurement_availability: 'dostepne',
+    primary_device_states: states,
+    active_alarms: [],
+    pending_command: null,
+    energization_and_safety: {
+      energized_from_bus_side: false,
+      energized_from_feeder_side: false,
+      grounded: false,
+      visible_isolation_gap: false,
+      safe_to_work: false,
+    },
+    ...opts,
+  };
+}
 
 const EMPTY_HEADER = {
   enm_version: '1.0' as const,
@@ -608,5 +640,220 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(types).toContain('przelotowa');
     expect(types).toContain('odgałęźna');
     expect(types).toContain('sekcyjna');
+  });
+});
+
+// =============================================================================
+// Phase 0B-1: BayRuntimeState telemetry pipeline (OPEN Inv 17 → RESOLVED)
+// =============================================================================
+
+describe('projectBayTelemetry — mapowanie BayRuntimeState → GpzBayDescriptor (commit 13)', () => {
+  it('null/undefined runtime → puste pola (renderer pokazuje neutral)', () => {
+    expect(projectBayTelemetry(null)).toEqual({});
+    expect(projectBayTelemetry(undefined)).toEqual({});
+  });
+
+  it('CB zamknięty + zdalne → cbState=closed, controlMode=remote', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.controlMode).toBe('remote');
+  });
+
+  it('CB otwarty + miejscowe → cbState=open, controlMode=local', () => {
+    const rt = makeRuntime({
+      'apparatus_cb': makeSwitchState({ actual_state: 'otwarty', control_mode: 'miejscowe' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('open');
+    expect(r.controlMode).toBe('local');
+  });
+
+  it('DS_LIN i ES osobno z różnymi stanami → mapowane niezależnie', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+      'apparatus_es_q8': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.dsState).toBe('open');
+    expect(r.esState).toBe('closed');
+  });
+
+  it('actual_state="awaria" → cbState=unknown (renderer neutral)', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'awaria', control_mode: 'odstawione' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('unknown');
+  });
+
+  it('"_naped_rozbrojony" warianty → mapowane na pozycję mechaniczną', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety_naped_rozbrojony', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty_naped_rozbrojony', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.cbState).toBe('closed');
+    expect(r.dsState).toBe('open');
+  });
+
+  it('pending_command obecny → inManipulation=true (renderer wyróżnia żółtym)', () => {
+    const rt = makeRuntime(
+      {
+        'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      },
+      {
+        pending_command: {
+          command_id: 'cmd-1',
+          command_kind: 'open',
+          target_device_ref: 'apparatus_cb_q0',
+          state: 'oczekuje',
+          progress_percent: null,
+          last_event_at: null,
+          last_event_message_pl: null,
+        } as never,
+      },
+    );
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBe(true);
+  });
+
+  it('interlock_blocked na CB → inManipulation=true', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({
+        actual_state: 'zamkniety',
+        control_mode: 'zdalne',
+        interlock_blocked: true,
+      }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBe(true);
+  });
+
+  it('Brak pending_command + brak interlocków → inManipulation=undefined', () => {
+    const rt = makeRuntime({
+      'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    expect(r.inManipulation).toBeUndefined();
+  });
+
+  it('Klucze deterministycznie sortowane → stabilny wybór gdy >1 device w kategorii', () => {
+    const rt1 = makeRuntime({
+      'apparatus_cb_q0_b': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+      'apparatus_cb_q0_a': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+    });
+    const rt2 = makeRuntime({
+      'apparatus_cb_q0_a': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_cb_q0_b': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+    });
+    expect(projectBayTelemetry(rt1).cbState).toBe('closed');  // pierwszy alfabetycznie = a
+    expect(projectBayTelemetry(rt2).cbState).toBe('closed');
+  });
+
+  it('DS_BUS rozróżnione od DS_LIN po nazwie klucza (_dsbus vs _dslin)', () => {
+    const rt = makeRuntime({
+      'apparatus_ds_bus_q1': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+      'apparatus_ds_lin_q9': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+    });
+    const r = projectBayTelemetry(rt);
+    /* DS_LIN to ten "domyślny" mapowany do dsState w GpzBayDescriptor.
+     * DS_BUS jest osobny — adapter na razie nie eksponuje go, ale klasyfikacja
+     * w pickFirstStateForCategory rozróżnia oba. */
+    expect(r.dsState).toBe('open');  // DS_LIN actual=otwarty
+  });
+});
+
+describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (commit 13)', () => {
+  it('Bay z runtime_state CB=zamkniety → GpzBayDescriptor.cbState=closed', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        runtime_state: makeRuntime({
+          'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+          'apparatus_es_q8': makeSwitchState({ actual_state: 'otwarty', control_mode: 'zdalne' }),
+        }),
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.cbState).toBe('closed');
+    expect(bay?.esState).toBe('open');
+    expect(bay?.controlMode).toBe('remote');
+  });
+
+  it('Bay BEZ runtime_state → cbState undefined, esState fallback ("unknown" gdy hasEs)', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
+        equipment_refs: ['cb1'],
+        /* brak runtime_state */
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bay = r.gpzs[0].sections?.[0].bays[0];
+    expect(bay?.cbState).toBeUndefined();
+    expect(bay?.dsState).toBeUndefined();
+    expect(bay?.controlMode).toBeUndefined();
+    /* hasEs=true dla OUT → fallback 'unknown' (Invariant 9). */
+    expect(bay?.esState).toBe('unknown');
+  });
+
+  it('Coupler bay z runtime_state → couplerDescriptor.closed=closed', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 's', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [
+          { section_id: 'A', order: 1, bus_ref: 'b15', right_coupler_ref: 'bay-coup' },
+          { section_id: 'B', order: 2, bus_ref: 'b15', left_coupler_ref: 'bay-coup' },
+        ],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'cpl', ref_id: 'bay-coup', name: 'CPL', tags: [], meta: {},
+        bay_role: 'COUPLER', substation_ref: 'GPZ-1', bus_ref: 'b15',
+        equipment_refs: ['cb-coup'],
+        runtime_state: makeRuntime({
+          'apparatus_cb_q0': makeSwitchState({ actual_state: 'zamkniety', control_mode: 'zdalne' }),
+        }),
+      } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.gpzs[0].couplers?.[0]?.closed).toBe('closed');
   });
 });

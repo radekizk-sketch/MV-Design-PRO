@@ -323,6 +323,10 @@ export interface Bay extends ENMElement {
   /** Cel feedera (substation ref docelowej stacji) — eliminuje wnioskowanie
    *  z grafu w adapterze SLD. */
   outgoing_destination_ref?: string | null;
+  /** Phase 0B-1: snapshot SCADA telemetry per-pole (CB/DS/ES actual_state,
+   *  control_mode, pending_command). Adapter SLD konsumuje gdy obecne;
+   *  brak → 'unknown' (Invariant 9). Definicja typu BayRuntimeState niżej. */
+  runtime_state?: BayRuntimeState | null;
 }
 
 import type {
