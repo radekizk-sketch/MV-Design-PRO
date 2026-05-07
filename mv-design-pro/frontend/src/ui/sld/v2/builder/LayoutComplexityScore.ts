@@ -241,7 +241,7 @@ export function explainStrategy(score: LayoutComplexityScore, strategy: LayoutSt
       }% — operator zablokował ≥1/3 tras, layout respektuje locks.`;
     case 'simple_radial':
       return `${score.stationCount} stacji ≤ ${STRATEGY_THRESHOLDS.SIMPLE_RADIAL_THRESHOLD}, brak odgałęzień ani ringów — prosty radialny layout.`;
-    case 'corridor':
+    case 'corridor': {
       const reasons: string[] = [];
       if (score.stationCount >= STRATEGY_THRESHOLDS.STATION_CORRIDOR_THRESHOLD) {
         reasons.push(`${score.stationCount} stacji ≥ ${STRATEGY_THRESHOLDS.STATION_CORRIDOR_THRESHOLD}`);
@@ -256,6 +256,7 @@ export function explainStrategy(score: LayoutComplexityScore, strategy: LayoutSt
         reasons.push(`label density ${score.labelDensity.toFixed(2)} > ${STRATEGY_THRESHOLDS.LABEL_DENSITY_CORRIDOR_THRESHOLD}`);
       }
       return `Corridor strategy: ${reasons.join(', ')}.`;
+    }
     case 'hierarchical':
       return `Hierarchical layout: ${score.stationCount} stacji, ${score.branchCount} odgałęzień, ${score.ringCount} ringów — wszystkie poniżej corridor thresholds.`;
   }
