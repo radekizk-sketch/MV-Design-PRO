@@ -50,9 +50,11 @@ Geometria deterministyczna: rozmiar wynika z liczników (nie hardkod 200×80).
 
 ## 4. Symbol transformatora
 
-IEC 60617 — dwa sprzężone okręgi. Stała geometria:
-- Promień: `TR_RADIUS = 9` px (compact); `TR_RADIUS_SWITCH = 8` px (switchgear).
-- Odstęp uzwojeń: `TR_WINDING_GAP = 7` px.
+IEC 60617 — dwa sprzężone okręgi. Stała geometria z `GPZ_GEOMETRY` w `theme/tokens.ts`:
+- Promień: `GPZ_GEOMETRY.trRadius = 9` px (jednolite dla compact i switchgear).
+- Odstęp uzwojeń: `GPZ_GEOMETRY.trWindingGap = 7` px.
+- Y/Δ markery: `GPZ_GEOMETRY.trMarkerArmLen = 6` + `trMarkerStrokeWidth = 1.6`.
+- Spacing TR-ów: `singleBusTrSpacing = 60` (HvTowerColumn) / `twoBusTrSpacing = 80` (TwoBusTrColumn).
 
 Brak: linie skojarzonych zacisków, linie polaryzacji (Phase 1+ przy LOD 3).
 
@@ -89,14 +91,17 @@ Energization → kolor:
 - `tripped` → czerwony (token COLOR_DEVICE_OPEN).
 - `unknown` → neutralny szary (token COLOR_NODE).
 
-## 6. Kolory pól per role
+## 6. Kolory pól per role (DEFERRED Phase 1)
 
-| FieldRole | Kolor (fill) |
-|---|---|
-| LINE_IN / LINE_OUT / LINE_BRANCH / GPZ_LINE_BAY / RMU_LINE | `#1F2A38` |
-| TRANSFORMER / RMU_TRANSFORMER | `#A5C8FF` |
-| MEASUREMENT | `#FFE48A` |
-| COUPLER | `#9aa6b8` |
+UWAGA: tabela kolorów per `FieldRole` była zaplanowana ale **nie jest
+zaimplementowana w obecnym renderze** — wszystkie pola dziedziczą `columnFill`
+= `COLOR_PANEL` lub `COLOR_MANIPULATION_BG` (gdy `inManipulation`). Per-role
+kolorystyka pól wymaga refaktoru `BayColumn` (Phase 1) i będzie konsumować
+nowe tokeny `COLOR_BAY_LINE`, `COLOR_BAY_TR`, `COLOR_BAY_MEASUREMENT`,
+`COLOR_BAY_COUPLER` w `theme/tokens.ts`.
+
+Aktualny stan: rozróżnienie pól jest przez `data-field-role` atrybut
+i kolorystykę aparatów (energization), nie przez tło kolumny.
 
 ## 7. Brak hardkodowanych kolorów
 
@@ -118,7 +123,7 @@ Wszystkie kolory zaznaczenia używają tokenu `COLOR_SELECTION` z `theme/tokens.
   - Token zaznaczenia (nie hardkod).
   - Delegacja do switchgear (LOD ≥ 1).
   - HV-tower w switchgear renderer.
-- `renderer/__tests__/gpzSwitchgearScada.test.tsx` — 90 cases SCADA-grade:
+- `renderer/__tests__/gpzSwitchgearScada.test.tsx` — 117+ cases SCADA-grade (auto-update guard pending Phase 0B):
   - Każde pole ma kolumnę z CB + DS + cable head.
   - Numer pola pod kolumną.
   - Feeder name w nagłówku.

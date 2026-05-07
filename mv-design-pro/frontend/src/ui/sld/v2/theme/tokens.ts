@@ -66,6 +66,10 @@ export const COLOR_KAS_LED = '#E5C828' as const;
 export const COLOR_MANIPULATION_BG = '#5C5512' as const;
 /** Marker zwarcia doziemnego (cyan/turkus — kanon SCADA). */
 export const COLOR_GROUND_FAULT = '#35E1FF' as const;
+/** Strzałka kierunku przepływu mocy TR — eksport (od SN do 110 kV). Żółty. */
+export const COLOR_TR_FLOW_UP = '#E5C828' as const;
+/** Strzałka kierunku przepływu mocy TR — import (z 110 kV do SN). Magenta. */
+export const COLOR_TR_FLOW_DOWN = '#FF7AC1' as const;
 /** Wartość pomiaru w panelu — biel monoszpaltowa. */
 export const COLOR_MEASUREMENT_VALUE = '#FFFFFF' as const;
 
@@ -254,6 +258,10 @@ export const GPZ_GEOMETRY = {
   /** Two-bus: gap między HV bays bottom a LV bus (TR symbols). */
   twoBusTrGap: 84,
   twoBusTrSpacing: 80,
+  /** Single-bus: spacing TR-ów w HV tower column. */
+  singleBusTrSpacing: 60,
+  /** Minimalna szerokość rozdzielni (clamp dla małych GPZ). */
+  minSwitchgearWidth: 360,
   /** Magistrala sieci terenowej. */
   outgoingFeederDropPx: 36,
   fieldTrunkGapPx: 16,

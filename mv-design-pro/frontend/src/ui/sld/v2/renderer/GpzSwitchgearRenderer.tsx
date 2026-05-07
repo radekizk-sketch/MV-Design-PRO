@@ -44,6 +44,8 @@ import {
   COLOR_FIELD_TRUNK_ENERGIZED,
   COLOR_FIELD_TRUNK_NEUTRAL,
   COLOR_GROUND_FAULT,
+  COLOR_TR_FLOW_DOWN,
+  COLOR_TR_FLOW_UP,
   COLOR_KAS_LED,
   COLOR_LINE_PRIMARY,
   COLOR_MANIPULATION_BG,
@@ -116,6 +118,16 @@ const KAS_ROW_HEIGHT = GPZ_GEOMETRY.kasRowHeight;
 const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
 const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
 const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
+
+/**
+ * Skraca tekst do `maxLen` znaków z ellipsis "…" gdy ucięty.
+ * Anti-pattern §15.4: silent slice() bez wskaźnika ucięcia jest zakazany —
+ * operator nie wie że pełna nazwa była dłuższa.
+ */
+function truncateWithEllipsis(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  return text.slice(0, Math.max(1, maxLen - 1)) + '…';
+}
 
 const OUTGOING_FEEDER_DROP_PX = GPZ_GEOMETRY.outgoingFeederDropPx;
 const FIELD_TRUNK_GAP_PX = GPZ_GEOMETRY.fieldTrunkGapPx;
@@ -485,7 +497,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const hvFooterDepth = isTwoBus ? computeMaxFooterDepth(sortedHvSections) : 0;
 
   const layoutMaxWidth = Math.max(layout.totalWidth, hvLayout?.totalWidth ?? 0);
-  const totalWidth = Math.max(360, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
+  const totalWidth = Math.max(GPZ_GEOMETRY.minSwitchgearWidth, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
 
   /* Czy istnieje przynajmniej jedno pole liniowe SN z outgoing feeder? */
   const hasOutgoingFeeders =
@@ -888,7 +900,7 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
   const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
 
   // Rozkład TR: jeśli >1, rozsadzamy poziomo wokół środka.
-  const trSpacing = 60;
+  const trSpacing = GPZ_GEOMETRY.singleBusTrSpacing;
   const trsX: number[] = [];
   const startX = cx - ((transformerCount - 1) * trSpacing) / 2;
   for (let i = 0; i < transformerCount; i++) {
@@ -1369,8 +1381,10 @@ interface TransformerFlowArrowProps {
  */
 function TransformerFlowArrow(props: TransformerFlowArrowProps): JSX.Element {
   const { cx, cy, direction, trIndex } = props;
-  const fill = direction === 'up' ? COLOR_BADGE_BG_YELLOW : COLOR_KAS_LED;
-  const size = 4;
+  /* Up=eksport (żółty), down=import (magenta). Rozdzielone tokeny żeby
+   * zmiana KAS LED color nie pociągała za sobą zmiany flow arrow. */
+  const fill = direction === 'up' ? COLOR_TR_FLOW_UP : COLOR_TR_FLOW_DOWN;
+  const size = TRUNK_ARROW_SIZE;
   const tipY = direction === 'up' ? cy - size : cy + size;
   const baseY = direction === 'up' ? cy + size : cy - size;
   return (
@@ -1497,7 +1511,11 @@ function BayColumn(props: BayColumnProps): JSX.Element {
   /* Y-kursor: kolumna jest hanging-DOWN, busY = górna krawędź. */
   const headerY = busY + 2;
   const bodyTopY = headerY + BAY_HEADER_HEIGHT + 2;
-  const cbY = bodyTopY + 8;
+  /* DS_BUS (Q1) — odłącznik szynowy, przed CB (kanon polskiego pola liniowego).
+   * Renderowany TYLKO gdy bay.qDesignations.dsBus jest dostarczone (zwykle dla
+   * pól GPZ/LINE_*; pola RMU/COUPLER/MEASUREMENT bez Q1). */
+  const dsBusY = bodyTopY + 4;
+  const cbY = bay.qDesignations?.dsBus ? dsBusY + APPARATUS_PITCH * 0.7 : bodyTopY + 8;
   const ctY = cbY + APPARATUS_PITCH;
   const dsY = ctY + APPARATUS_PITCH;
   const triangleY = dsY + APPARATUS_PITCH * 0.85;
@@ -1556,7 +1574,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         fontWeight={600}
         data-testid="sld-v2-gpz-bay-header"
       >
-        {(bay.feederName ?? bay.designation).slice(0, 8)}
+        {truncateWithEllipsis(bay.feederName ?? bay.designation, 8)}
       </text>
 
       {/* Vertical "STEROWANIE ZDALNE/LOKALNE" label na lewym marginesie */}
@@ -1583,6 +1601,33 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         stroke={trackColor}
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
+
+      {/* DS_BUS (Q1) — odłącznik szynowy, kanoniczny dla pola liniowego SN
+       * (PN-EN 62271-200). Renderowany jako koło na osi pola tuż pod szyną
+       * gdy `qDesignations.dsBus` dostarczony. Stan dziedziczony z `dsState`
+       * (na typowym polu DS_BUS i DS_LIN sterowane tym samym sygnałem;
+       * przyszły refaktor może rozdzielić `dsBusState`/`dsLinState`). */}
+      {bay.qDesignations?.dsBus && (
+        <g
+          onClick={
+            onClickDs
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickDs(bay.bayRef);
+                }
+              : undefined
+          }
+          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        >
+          <ApparatusDsCircle cx={apparatusCx} cy={dsBusY} state={dsState} energized={energization === 'energized'} />
+          <QDesignationLabel
+            x={apparatusCx + DS_RADIUS + 3}
+            y={dsBusY + 2}
+            text={bay.qDesignations.dsBus}
+            slot="ds-bus"
+          />
+        </g>
+      )}
 
       {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2).
        * onClickCb dziedziczy stopPropagation aby nie konfliktować z onClickBay. */}
@@ -1907,7 +1952,7 @@ function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
           fontSize={MEASUREMENT_FONT_SIZE}
           fontWeight={600}
         >
-          {feederName.slice(0, 10)}
+          {truncateWithEllipsis(feederName, 10)}
         </text>
       )}
       {rows.map((row, idx) => {
@@ -1949,9 +1994,11 @@ interface GroundFaultMarkerProps {
 function GroundFaultMarker(props: GroundFaultMarkerProps): JSX.Element {
   const { cx, cy, state } = props;
   const fill = state === 'fault' ? COLOR_GROUND_FAULT : COLOR_PANEL_RAISED;
+  /* Promień 5 px (audyt UX D1.3): poziom widoczności z fotela dyspozytora
+   * (24" 1920×1080, dystans 60 cm). 3 px było ~0.6 mm, niewidoczne. */
   return (
     <g data-testid="sld-v2-gpz-bay-ground-fault" data-state={state}>
-      <circle cx={cx} cy={cy} r={3} fill={fill} stroke={COLOR_GROUND_FAULT} strokeWidth={1.2} />
+      <circle cx={cx} cy={cy} r={5} fill={fill} stroke={COLOR_GROUND_FAULT} strokeWidth={1.6} />
     </g>
   );
 }

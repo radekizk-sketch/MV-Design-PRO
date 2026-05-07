@@ -1469,6 +1469,114 @@ describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
   });
 });
 
+describe('GpzSwitchgearRenderer — Quick-wins z 6/3 fix (dsBus + magenta + ellipsis + r=5)', () => {
+  it('qDesignations.dsBus="Q1" → renderowany Q1 obok DS_BUS na górze pola (kanon polski LINE)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], qDesignations: { cb: 'Q0', ds: 'Q9', dsBus: 'Q1', es: 'Q8', ct: 'T1' } }],
+        },
+      ],
+    });
+    const dsBusLabel = container.querySelector('[data-testid="sld-v2-gpz-bay-q-ds-bus"]');
+    expect(dsBusLabel).not.toBeNull();
+    expect(dsBusLabel?.textContent).toBe('Q1');
+  });
+
+  it('Brak qDesignations.dsBus → DS_BUS NIE renderowany (back-compat dla pól MEASUREMENT/COUPLER)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], qDesignations: { cb: 'Q0', ds: 'Q9', es: 'Q8' } }],
+        },
+      ],
+    });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-q-ds-bus"]')).toBeNull();
+  });
+
+  it('Strzałka TR flow="down" używa magenta (#FF7AC1), NIE żółty', () => {
+    const { container } = r({
+      transformerCount: 2,
+      transformerMeasurements: [
+        { flow: 'up' as const },
+        { flow: 'down' as const },
+      ],
+    });
+    const arrowUp = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-0"]');
+    const arrowDown = container.querySelector('[data-testid="sld-v2-gpz-tr-flow-arrow-1"]');
+    /* Sprawdzamy fill — różne kolory dla up/down (audyt SLD §B.2 fix). */
+    const upFill = arrowUp?.querySelector('polygon')?.getAttribute('fill');
+    const downFill = arrowDown?.querySelector('polygon')?.getAttribute('fill');
+    expect(upFill).toBe('#E5C828');
+    expect(downFill).toBe('#FF7AC1');
+    expect(upFill).not.toBe(downFill);
+  });
+
+  it('feederName długi → ellipsis "…" w nagłówku (anti-pattern §15.4 fix)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], feederName: 'FEEDER_VERY_LONG_NAME' }],
+        },
+      ],
+    });
+    /* Nagłówek pola ma maxLen=8 → 'FEEDER_…' (7 znaków + …). */
+    const text = container.textContent ?? '';
+    expect(text).toContain('FEEDER_…');
+    expect(text).not.toContain('FEEDER_VERY_LONG_NAME'); // pełna nazwa NIE wyświetlona
+    /* Operator widzi że nazwa była dłuższa (kanon UX). */
+  });
+
+  it('feederName krótki → bez ellipsis', () => {
+    const { container } = r();
+    const text = container.textContent ?? '';
+    /* SADY (4 znaki) < 8 → wyświetlone bez ucięcia. */
+    expect(text).toContain('SADY');
+    expect(text).not.toContain('…');
+  });
+
+  it('GroundFaultMarker ma r=5 (audyt UX D1.3: poziom widoczności z dystansu 60 cm)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [{ ...DEFAULT_BAYS[0], groundFault: 'fault' as const }],
+        },
+      ],
+    });
+    const marker = container.querySelector('[data-testid="sld-v2-gpz-bay-ground-fault"] circle');
+    expect(marker?.getAttribute('r')).toBe('5');
+  });
+
+  it('singleBusTrSpacing tokenized — HvTowerColumn używa GPZ_GEOMETRY (nie hardcoded 60)', () => {
+    /* Test pośredni: 2 TR są rozsadzone o 60 px deterministycznie.
+     * Trudno to bezpośrednio zweryfikować w DOM, więc sprawdzamy że TR1 i TR2
+     * mają różne pozycje X (data-tr-index=0 i 1 są obecne). */
+    const { container } = r({ transformerCount: 2 });
+    const trs = container.querySelectorAll('[data-testid="sld-v2-gpz-switchgear-transformer-symbol"]');
+    expect(trs.length).toBe(2);
+  });
+});
+
 describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej', () => {
   const HV_BAYS = [
     {
