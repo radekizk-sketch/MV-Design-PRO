@@ -1,7 +1,7 @@
 # SLD GPZ Switchgear Depth (Phase 0A)
 
-**Status:** BINDING (Phase 0A — refinement po audycie 5-osobowego zespołu)
-**Wersja:** 2.0 (post-audit)
+**Status:** BINDING (Phase 0A — refinement po 3 iteracjach audytu zespołu 13-osobowego)
+**Wersja:** 3.0 (post-3rd-audit, 12 commitów wdrożeniowych)
 **Pliki źródłowe:**
 - `frontend/src/ui/sld/v2/renderer/GpzRenderer.tsx` (entry, decyzja delegacji)
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx` (full switchgear LOD ≥ 1)
@@ -413,3 +413,126 @@ Future (Phase 1+):
 Liczby testów w sekcjach 9, 10, 13 są wynikiem ostatniego refaktoru.
 Planuje się sprawdzanie zgodności między doc count a faktycznym `it(...)`
 count w CI guard `docs_count_consistency_guard.py` (Phase 0B).
+
+---
+
+## 18. Iteracja 2: Tier 1 BLOCKERy + Backend ENM (commits 6-8)
+
+Drugi audyt zespołu 13-osobowego (3 zespoły × 5+5+3 ekspertów) stwierdził:
+**0/5 BLOCKERów z pierwszego audytu zamkniętych** — pierwsza iteracja
+przesunęła Inv 9 z adaptera do renderera. Druga iteracja domyka:
+
+### Commit 6 (b63ca5c) — Quick-wins
+
+- Render `qDesignations.dsBus` (Q1) na osi pola pod szyną (kanon polskiego
+  pola liniowego, eliminacja contract-code drift).
+- Tokenizacja `GPZ_GEOMETRY.singleBusTrSpacing` (60) + `minSwitchgearWidth`
+  (360) — regresja po Commit 1.
+- `COLOR_TR_FLOW_DOWN = #FF7AC1` (magenta) ≠ `COLOR_TR_FLOW_UP = #E5C828`
+  (żółty) — naprawa drift doc 2.0 §13 Fix 1/5.
+- GroundFaultMarker r=3 → r=5 (audyt UX D1.3: poziom widoczności).
+- `truncateWithEllipsis()` helper — anti-pattern §15.4 fix.
+- Doc 2.0 truth: `TR_RADIUS_SWITCH=8` usunięty (kod ma tylko 9), test count
+  90→117, tabela hex "Kolory pól per role" → "DEFERRED Phase 1".
+
+### Commit 7 (72b5b55) — Tier 1 BLOCKERy konsensusowe
+
+- **B1 (Invariant 9 §15.1)**: renderer `cbState/dsState ?? 'unknown'`
+  zamiast `'closed'`. ApparatusCbSquare/DsCircle z neutral szary + '?' dla
+  unknown.
+- **B2 (Inv 9 system §B)**: `inferHvVoltageKv null` propagacja przez
+  `voltageHighKvKnown` flag → renderer pokazuje "?" zamiast wartości fallback.
+- **B3 (Inv 7/8 system §A)**: TopologySnapshot rozszerzone o `gpzSections[]`
+  (z `tier: 'lv' | 'hv'`, `bayRefs[]`), `gpzCouplers[]` (z `closedState`),
+  `gpzBays[]` (z `qDesignations` + `esState`). Hash uwzględnia wszystkie
+  nowe pola — Phase 0B/0C odblokowane.
+- **B4 (Inv 13 BLOCKER MV-1+15)**: `BAY_DEVICE_ORDER_POLICY` używana w
+  `BayColumn` — pole MEASUREMENT bez CB/CT/CableHead, pole TR bez
+  CableHead, pole RMU_LINE bez CB.
+
+### Commit 8 (6d61cc2) — Backend ENM extension
+
+- `Substation.gpz_hv_sections: list[GPZSection]` — eliminuje synthesize HV
+  w adapterze (BLOCKER-26 z audytu MV §1).
+- `Bay.bay_number: str | None` — kanoniczny ID dyspozytorski ("10", "23/1").
+- `Bay.feeder_short_name: str | None` — UI label feedera osobny od `bay.name`.
+- `Bay.outgoing_destination_ref: str | None` — eliminuje wnioskowanie z grafu
+  branch+substation w adapterze.
+- `buildHvSectionsFromEnm()` w adapterze: preferuje explicit ENM,
+  synthesize jako fallback dla legacy GPZ-ów.
+
+Tests po iteracji 2: 474 → 554 (+80). Backend 473 → 476.
+
+---
+
+## 19. Iteracja 3: Klasa A+ — operator-grade canon (commits 9-12)
+
+Trzeci audyt 13-osobowego zespołu stwierdził: SLD A− potwierdzona, klasa A+
+blokowana 5 BLOKADAMI konsensusowymi. MV: NIE GOTOWE (technical-preview,
+2 sprinty do operator-grade). System: Phase 0A ~70% complete.
+
+### Commit 9 (9a398f0) — BAY_DEVICE_ORDER_POLICY pełna iteracja + 6 nowych symboli
+
+Audyt SLD §C.1 + MV B.1: polityka odłączona od renderera dla TR/RMU/MEASUREMENT.
+
+**6 nowych komponentów aparatury (kanon IEC):**
+
+1. **ApparatusFuse** (IEC 60617-7-04): pionowy prostokąt + X dla blown.
+2. **ApparatusSurgeArrester** (IEC 60617 S00345): prostokąt + zygzaki +
+   strzałka ziemi. Renderowany na bocznej gałęzi LEWO.
+3. **ApparatusSwitchDisconnector** (IEC 60617 S00198): okrąg r=6 z dodatkową
+   kreską load-break — kanon RM6/SafeRing/RMU.
+4. **ApparatusVtThreePhase** (IEC 60617 S00310 + tradycja PSE/Energa):
+   3 okręgi fazowe L1/L2/L3 + trójkąt ziemi neutral. **Zastępuje placeholder
+   żółty** z poprzedniej iteracji.
+5. **ApparatusLvBreaker**: mały kwadrat za TR z napisem "nN".
+6. **ApparatusTransformerSymbol**: 2 sprzężone okręgi NA OSI POLA.
+
+**Renderer iteracja whitelist 12 typów** (zamiast 6) — wszystkie z `hasSlot()`
+checking BAY_DEVICE_ORDER_POLICY. ES side per slot.side z polityki.
+
+### Commit 10 (fa69722) — LodController hookup + per-role colors + adapter cleanup
+
+- **LodController hookup**: `SldCanvasV2` używa `createLodController` z
+  histerezą FSM (deadband 15%, debounce 250ms) zamiast `inferLodFromScale`.
+  Eliminacja Phase 0A scope miss (Inv 5/6 wired runtime).
+- **Per-role bay colors** (audyt SLD §D.3): `COLOR_BAY_LINE` (#171B20),
+  `COLOR_BAY_TR` (#1A2438 niebieski), `COLOR_BAY_MEASUREMENT` (#2A2616 żółtawy),
+  `COLOR_BAY_COUPLER` (#1F2226 szary). Operator szybko odróżnia klasę pola.
+- **Adapter cleanup**: STRICT mode dla `outgoingFeeder` — preferuje ENM
+  `outgoing_destination_ref`. Heurystyka `inferOutgoingFeederDestination`
+  zachowana jako legacy fallback (eliminacja Phase 1+).
+
+### Commit 11 (90cd614) — dry_run preview + StationCard widget
+
+- **Backend dry_run**: `insert_station_on_segment_sn(payload={dry_run: True})`
+  zwraca preview metadata (inserted_station_id, halves, electrical_impact)
+  bez mutacji ENM. Wymagane dla Phase 0C "Conscious split with preview".
+- **StationCard widget**: 2 pola read-only dla `gpz_sections[]` (LV) +
+  `gpz_hv_sections[]` (HV) gdy `station_type='gpz'`. Pełen edytor (CRUD)
+  deferred do Phase 0B/1.
+
+### Commit 12 (this) — Doc 3.0 update
+
+- §18 (Iteracja 2): Tier 1 BLOCKERy + Backend ENM (commits 6-8).
+- §19 (Iteracja 3): Klasa A+ operator-grade canon (commits 9-12).
+- Wersja header: 2.0 → 3.0.
+
+Tests po iteracji 3: 554 → 566. Backend 473 → 476. Type-check + lint zielone.
+
+### Status końcowy 5 BLOKAD konsensusowych (3 audyty):
+
+| BLOKADA | Iteracja 1 | Iteracja 2 | Iteracja 3 |
+|---|---|---|---|
+| 1. BAY_DEVICE_ORDER_POLICY | NOT_ADDRESSED | PARTIAL (boolean filters) | **RESOLVED** (full iteration + 6 nowych symboli) |
+| 2. ES BHP per role | NOT_ADDRESSED | NOT_ADDRESSED | **RESOLVED** (side per slot z polityki) |
+| 3. TR feeder disconnect | PARTIAL | PARTIAL | **RESOLVED** (TransformerSymbol + LvBreaker NA OSI) |
+| 4. PN VT placeholder | NOT_ADDRESSED | PARTIAL | **RESOLVED** (ApparatusVtThreePhase) |
+| 5. HV sections fabricated | NOT_ADDRESSED | PARTIAL | RESOLVED gdy ENM ma `gpz_hv_sections`; legacy fallback dla starych projektów |
+
+Status Acceptance Invariants (17): RESOLVED 14/17, PARTIAL 2/17, OPEN 1/17.
+- OPEN: telemetry pipeline (`BayCanonicalModel.runtime_state` w backend, frontend
+  nie konsumuje — Phase 0B kanał).
+- PARTIAL: doc-vs-kod count auto-update guard (`docs_count_consistency_guard.py`
+  planowany Phase 0B).
+- PARTIAL: pełen StationCard editor dla gpz_sections (CRUD UI, Phase 1).
