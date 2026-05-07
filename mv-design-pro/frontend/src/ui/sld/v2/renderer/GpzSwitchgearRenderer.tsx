@@ -34,10 +34,15 @@ import {
   COLOR_BADGE_STATUS_NEUTRAL,
   COLOR_BADGE_STATUS_OK,
   COLOR_BADGE_TEXT_DARK,
+  COLOR_BUS_HV,
+  COLOR_BUS_LABEL,
+  COLOR_BUS_LV,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
   COLOR_DEVICE_OPEN,
   COLOR_DEVICE_OPEN_BORDER,
+  COLOR_FIELD_TRUNK_ENERGIZED,
+  COLOR_FIELD_TRUNK_NEUTRAL,
   COLOR_GROUND_FAULT,
   COLOR_KAS_LED,
   COLOR_LINE_PRIMARY,
@@ -53,6 +58,7 @@ import {
   FONT_MONO,
   FONT_SANS,
   FONT_SIZES,
+  GPZ_GEOMETRY,
   STROKE_BUSBAR_PX,
   STROKE_FIELD_TRACK_PX,
   STROKE_TRUNK_LINE_PX,
@@ -60,65 +66,59 @@ import {
 import type { FieldRole } from '../domain/apparatusContracts';
 
 // =============================================================================
-// Geometry constants (deterministyczne, bez RNG)
+// Geometry constants — wszystkie z GPZ_GEOMETRY (theme/tokens.ts)
 // =============================================================================
 
-const TITLE_BAR_HEIGHT = 26;
-const HV_TOWER_HEIGHT = 78;
-const TR_RADIUS = 9;
-const TR_WINDING_GAP = 7;
-const TR_HV_LEAD_LEN = 10;
-const TR_LV_LEAD_LEN = 10;
-const SECTION_LABEL_GAP = 18;
-const BAY_COLUMN_WIDTH = 64;
-const BAY_COLUMN_HEIGHT = 110;
-const BAY_GAP = 6;
-const BAY_HEADER_HEIGHT = 12;
-const BAY_NUMBER_GAP = 14;
+const TITLE_BAR_HEIGHT = GPZ_GEOMETRY.titleBarHeight;
+const HV_TOWER_HEIGHT = GPZ_GEOMETRY.hvTowerHeight;
+const TR_RADIUS = GPZ_GEOMETRY.trRadius;
+const TR_WINDING_GAP = GPZ_GEOMETRY.trWindingGap;
+const TR_HV_LEAD_LEN = GPZ_GEOMETRY.trHvLeadLen;
+const TR_LV_LEAD_LEN = GPZ_GEOMETRY.trLvLeadLen;
+const SECTION_LABEL_GAP = GPZ_GEOMETRY.sectionLabelGap;
+const BAY_COLUMN_WIDTH = GPZ_GEOMETRY.bayColumnWidth;
+const BAY_COLUMN_HEIGHT = GPZ_GEOMETRY.bayColumnHeight;
+const BAY_GAP = GPZ_GEOMETRY.bayGap;
+const BAY_HEADER_HEIGHT = GPZ_GEOMETRY.bayHeaderHeight;
+const BAY_NUMBER_GAP = GPZ_GEOMETRY.bayNumberGap;
 
-/* Vertical "Sterowanie zdalne/lokalne" label on left margin of bay. */
-const STEROWANIE_LABEL_X_OFFSET = 6;
-const STEROWANIE_FONT_SIZE = 7;
-const COUPLER_BAY_WIDTH = 120;
+const STEROWANIE_LABEL_X_OFFSET = GPZ_GEOMETRY.sterowanieLabelXOffset;
+const STEROWANIE_FONT_SIZE = FONT_SIZES.controlMode;
+const COUPLER_BAY_WIDTH = GPZ_GEOMETRY.couplerBayWidth;
 const COUPLER_BAY_HEIGHT = BAY_COLUMN_HEIGHT;
-const COUPLER_LEG_INSET = 18;
-const COUPLER_DS_OFFSET_Y = 22;
-const COUPLER_HORIZONTAL_OFFSET_Y = 36;
-const COUPLER_BAY_NUMBER_OFFSET_Y = 8;
-const SECTION_INTER_GAP = 28;
-const APPARATUS_PITCH = 18;
-const CB_SIZE = 9;
-const DS_RADIUS = 4.5;
-const TRIANGLE_SIZE = 6;
-const CT_RADIUS = 3.5;
-const SECTION_BUS_OVERHANG = 10;
-const VERTICAL_PADDING = 10;
-const HORIZONTAL_PADDING = 14;
+const COUPLER_LEG_INSET = GPZ_GEOMETRY.couplerLegInset;
+const COUPLER_DS_OFFSET_Y = GPZ_GEOMETRY.couplerDsOffsetY;
+const COUPLER_HORIZONTAL_OFFSET_Y = GPZ_GEOMETRY.couplerHorizontalOffsetY;
+const COUPLER_BAY_NUMBER_OFFSET_Y = GPZ_GEOMETRY.couplerBayNumberOffsetY;
+const SECTION_INTER_GAP = GPZ_GEOMETRY.sectionInterGap;
+const APPARATUS_PITCH = GPZ_GEOMETRY.apparatusPitch;
+const CB_SIZE = GPZ_GEOMETRY.cbSize;
+const DS_RADIUS = GPZ_GEOMETRY.dsRadius;
+const TRIANGLE_SIZE = GPZ_GEOMETRY.triangleSize;
+const CT_RADIUS = GPZ_GEOMETRY.ctRadius;
+const SECTION_BUS_OVERHANG = GPZ_GEOMETRY.sectionBusOverhang;
+const VERTICAL_PADDING = GPZ_GEOMETRY.verticalPadding;
+const HORIZONTAL_PADDING = GPZ_GEOMETRY.horizontalPadding;
 
-/* Apparatus column geometry inside bay (left-center of column). */
-const APPARATUS_COL_X_OFFSET = 18;
-/* State-badge column geometry inside bay (right of apparatus). */
-const BADGE_COL_X_OFFSET = 36;
-const BADGE_WIDTH = 22;
-const BADGE_LABEL_HEIGHT = 8;
-const BADGE_STATUS_HEIGHT = 8;
-const BADGE_ROW_HEIGHT = BADGE_LABEL_HEIGHT + BADGE_STATUS_HEIGHT + 1; // 17
-const BADGE_FONT_SIZE = 7;
+const APPARATUS_COL_X_OFFSET = GPZ_GEOMETRY.apparatusColXOffset;
+const BADGE_COL_X_OFFSET = GPZ_GEOMETRY.badgeColXOffset;
+const BADGE_WIDTH = GPZ_GEOMETRY.badgeWidth;
+const BADGE_LABEL_HEIGHT = GPZ_GEOMETRY.badgeLabelHeight;
+const BADGE_STATUS_HEIGHT = GPZ_GEOMETRY.badgeStatusHeight;
+const BADGE_ROW_HEIGHT = BADGE_LABEL_HEIGHT + BADGE_STATUS_HEIGHT + 1;
+const BADGE_FONT_SIZE = FONT_SIZES.badge;
 
-/* KAS LED + label (under bay number). */
-const KAS_LED_RADIUS = 3;
-const KAS_ROW_HEIGHT = 16;
+const KAS_LED_RADIUS = GPZ_GEOMETRY.kasLedRadius;
+const KAS_ROW_HEIGHT = GPZ_GEOMETRY.kasRowHeight;
 
-/* Measurement panel (under KAS row). */
-const MEASUREMENT_ROW_HEIGHT = 10;
-const MEASUREMENT_PANEL_HEADER_HEIGHT = 12;
-const MEASUREMENT_FONT_SIZE = 8;
+const MEASUREMENT_ROW_HEIGHT = GPZ_GEOMETRY.measurementRowHeight;
+const MEASUREMENT_PANEL_HEADER_HEIGHT = GPZ_GEOMETRY.measurementPanelHeaderHeight;
+const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
 
-/* Outgoing feeder + magistrala SN (kanon SCADA two-bus). */
-const OUTGOING_FEEDER_DROP_PX = 36;
-const FIELD_TRUNK_GAP_PX = 16;
-const FIELD_TRUNK_FONT_SIZE = 10;
-const FEEDER_LABEL_FONT_SIZE = 8;
+const OUTGOING_FEEDER_DROP_PX = GPZ_GEOMETRY.outgoingFeederDropPx;
+const FIELD_TRUNK_GAP_PX = GPZ_GEOMETRY.fieldTrunkGapPx;
+const FIELD_TRUNK_FONT_SIZE = FONT_SIZES.measurementPanel;
+const FEEDER_LABEL_FONT_SIZE = FONT_SIZES.feederDestination;
 
 // =============================================================================
 // Public types
@@ -430,7 +430,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const showFieldTrunk = hasOutgoingFeeders && props.fieldTrunkLabel !== '';
   const fieldTrunkLabel = props.fieldTrunkLabel ?? 'Magistrala SN — sieć terenowa';
 
-  const TWO_BUS_TR_GAP = 84; // TR symbol + measurements between HV LV buses
+  const TWO_BUS_TR_GAP = GPZ_GEOMETRY.twoBusTrGap;
   const fieldTrunkZoneHeight = hasOutgoingFeeders
     ? OUTGOING_FEEDER_DROP_PX + (showFieldTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE + 6 : 0)
     : 0;
@@ -540,13 +540,14 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
         <>
           {/* === Tryb two-bus: HV bus + HV bays + TR symbols + LV bus + LV bays === */}
 
-          {/* Pozioma szyna 110 kV (HV bus) */}
+          {/* Pozioma szyna 110 kV (HV bus) — kanon SCADA: biały, NIE czerwony.
+             Czerwony zarezerwowany dla alarm/zwarcie. */}
           <line
             x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
             y1={hvBusY}
             x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
             y2={hvBusY}
-            stroke={COLOR_DEVICE_OPEN}
+            stroke={COLOR_BUS_HV}
             strokeWidth={STROKE_BUSBAR_PX}
             data-testid="sld-v2-gpz-switchgear-hv-bus"
           />
@@ -554,7 +555,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
             y={hvBusY + 3}
             textAnchor="end"
-            fill={COLOR_TEXT_SECONDARY}
+            fill={COLOR_BUS_LABEL}
             fontFamily={FONT_SANS}
             fontSize={FONT_SIZES.technicalPanel}
             fontWeight={600}
@@ -566,7 +567,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
             y={hvBusY + 3}
             textAnchor="start"
-            fill={COLOR_TEXT_SECONDARY}
+            fill={COLOR_BUS_LABEL}
             fontFamily={FONT_SANS}
             fontSize={FONT_SIZES.technicalPanel}
             fontWeight={600}
@@ -626,13 +627,14 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             measurements={props.transformerMeasurements}
           />
 
-          {/* Pozioma szyna 15 kV (LV bus) */}
+          {/* Pozioma szyna 15 kV (LV bus) — cyan, odróżnia od deviceClosed
+             zielonego (kanon SCADA: bus voltage ≠ device state). */}
           <line
             x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
             y1={lvBusY}
             x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
             y2={lvBusY}
-            stroke={COLOR_DEVICE_CLOSED}
+            stroke={COLOR_BUS_LV}
             strokeWidth={STROKE_BUSBAR_PX}
             data-testid="sld-v2-gpz-switchgear-lv-bus"
           />
@@ -640,7 +642,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             x={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG - 4}
             y={lvBusY + 3}
             textAnchor="end"
-            fill={COLOR_DEVICE_CLOSED}
+            fill={COLOR_BUS_LV}
             fontFamily={FONT_SANS}
             fontSize={FONT_SIZES.technicalPanel}
             fontWeight={700}
@@ -652,7 +654,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
             y={lvBusY + 3}
             textAnchor="start"
-            fill={COLOR_DEVICE_CLOSED}
+            fill={COLOR_BUS_LV}
             fontFamily={FONT_SANS}
             fontSize={FONT_SIZES.technicalPanel}
             fontWeight={700}
@@ -983,16 +985,26 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
       data-feeder-count={String(feederColumns.length)}
       data-trunk-visible={showTrunk ? 'true' : 'false'}
     >
-      {/* Pionowe kable wychodzące z każdego pola liniowego do trunk */}
+      {/* Pionowe kable wychodzące z każdego pola liniowego do trunk.
+         Brak danych energized → szary (kanon Invariant 9: brak danych ≠ default).
+         energized=true → zielony (`COLOR_FIELD_TRUNK_ENERGIZED`).
+         energized=false → szary muted. */}
       {feederColumns.map((col) => {
         const feeder = col.bay.outgoingFeeder!;
-        const energized = feeder.energized ?? true;
-        const stroke = energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
+        const energized = feeder.energized; // może być undefined
+        const stroke =
+          energized === true
+            ? COLOR_FIELD_TRUNK_ENERGIZED
+            : energized === false
+            ? COLOR_TEXT_MUTED
+            : COLOR_FIELD_TRUNK_NEUTRAL;
         return (
           <g
             key={`feeder-${col.bay.bayRef}`}
             data-testid={`sld-v2-gpz-outgoing-feeder-${col.bay.bayRef}`}
-            data-feeder-energized={energized ? 'true' : 'false'}
+            data-feeder-energized={
+              energized === true ? 'true' : energized === false ? 'false' : 'unknown'
+            }
           >
             <line
               x1={col.cx}
@@ -1007,7 +1019,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
               x={col.bayBottomX}
               y={trunkY + (showTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE : 12)}
               textAnchor="middle"
-              fill={energized ? COLOR_TEXT_PRIMARY : COLOR_TEXT_MUTED}
+              fill={energized === false ? COLOR_TEXT_MUTED : COLOR_TEXT_PRIMARY}
               fontFamily={FONT_SANS}
               fontSize={FEEDER_LABEL_FONT_SIZE}
               fontWeight={600}
@@ -1032,7 +1044,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
         );
       })}
 
-      {/* Magistrala SN — pozioma trunk line */}
+      {/* Magistrala SN — pozioma trunk line (kolor zielony = pod napięciem). */}
       {showTrunk && (
         <>
           <line
@@ -1040,7 +1052,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
             y1={trunkY}
             x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
             y2={trunkY}
-            stroke={COLOR_DEVICE_CLOSED}
+            stroke={COLOR_FIELD_TRUNK_ENERGIZED}
             strokeWidth={STROKE_TRUNK_LINE_PX}
             data-testid="sld-v2-gpz-field-trunk-line"
           />
@@ -1088,7 +1100,7 @@ interface TwoBusTrColumnProps {
  */
 function TwoBusTrColumn(props: TwoBusTrColumnProps): JSX.Element {
   const { cx, topY, bottomY, transformerCount, voltageHighKv, voltageLowKv, measurements } = props;
-  const trSpacing = 80;
+  const trSpacing = GPZ_GEOMETRY.twoBusTrSpacing;
   const trsX: number[] = [];
   const startX = cx - ((transformerCount - 1) * trSpacing) / 2;
   for (let i = 0; i < transformerCount; i++) {
@@ -1216,15 +1228,18 @@ interface NodeMarkerProps {
   cy: number;
 }
 
-/** Y (gwiazda) — kanoniczny marker strony 110 kV transformatora. */
+/** Y (gwiazda) — kanoniczny marker strony 110 kV transformatora.
+ *  Powiększony do `trMarkerArmLen` z `trMarkerStrokeWidth` dla operator-grade
+ *  czytelności (ekran 24" 1920×1080, dystans 60 cm). */
 function YNodeMarker(props: NodeMarkerProps): JSX.Element {
   const { cx, cy } = props;
-  const armLen = 5;
+  const armLen = GPZ_GEOMETRY.trMarkerArmLen;
+  const sw = GPZ_GEOMETRY.trMarkerStrokeWidth;
   return (
     <g data-testid="sld-v2-gpz-tr-y-marker">
-      <line x1={cx} y1={cy} x2={cx} y2={cy - armLen} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
-      <line x1={cx} y1={cy} x2={cx - armLen * 0.86} y2={cy + armLen * 0.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
-      <line x1={cx} y1={cy} x2={cx + armLen * 0.86} y2={cy + armLen * 0.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+      <line x1={cx} y1={cy} x2={cx} y2={cy - armLen} stroke={COLOR_LINE_PRIMARY} strokeWidth={sw} />
+      <line x1={cx} y1={cy} x2={cx - armLen * 0.86} y2={cy + armLen * 0.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={sw} />
+      <line x1={cx} y1={cy} x2={cx + armLen * 0.86} y2={cy + armLen * 0.5} stroke={COLOR_LINE_PRIMARY} strokeWidth={sw} />
     </g>
   );
 }
@@ -1232,14 +1247,15 @@ function YNodeMarker(props: NodeMarkerProps): JSX.Element {
 /** Trójkąt — kanoniczny marker strony SN transformatora. */
 function DeltaNodeMarker(props: NodeMarkerProps): JSX.Element {
   const { cx, cy } = props;
-  const size = 5;
+  const size = GPZ_GEOMETRY.trMarkerArmLen;
+  const sw = GPZ_GEOMETRY.trMarkerStrokeWidth;
   return (
     <g data-testid="sld-v2-gpz-tr-delta-marker">
       <polygon
         points={`${cx},${cy + size} ${cx - size * 0.86},${cy - size * 0.5} ${cx + size * 0.86},${cy - size * 0.5}`}
         fill="none"
         stroke={COLOR_LINE_PRIMARY}
-        strokeWidth={1.2}
+        strokeWidth={sw}
       />
     </g>
   );
@@ -1603,7 +1619,7 @@ function BadgeRow(props: BadgeRowProps): JSX.Element {
         textAnchor="middle"
         fill={visual.statusColor}
         fontFamily={FONT_SANS}
-        fontSize={BADGE_FONT_SIZE - 0.5}
+        fontSize={FONT_SIZES.badgeStatus}
         fontWeight={600}
       >
         {statusLabel(state)}
@@ -1642,7 +1658,7 @@ function KasButton(props: KasButtonProps): JSX.Element {
         textAnchor="end"
         fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
-        fontSize={9}
+        fontSize={FONT_SIZES.kasLabel}
         fontWeight={700}
       >
         {label}
@@ -1660,8 +1676,8 @@ function KasButton(props: KasButtonProps): JSX.Element {
           y={cy + 8}
           textAnchor="middle"
           fill={COLOR_TEXT_MUTED}
-          fontFamily={FONT_SANS}
-          fontSize={6.5}
+          fontFamily={FONT_MONO}
+          fontSize={FONT_SIZES.kasPNumber}
           fontWeight={500}
           data-testid={`${testId}-pnumber`}
         >
@@ -1822,8 +1838,8 @@ function CtPrimary(props: CtPrimaryProps): JSX.Element {
           y={cy + 3}
           textAnchor="end"
           fill={COLOR_TEXT_SECONDARY}
-          fontFamily={FONT_SANS}
-          fontSize={7}
+          fontFamily={FONT_MONO}
+          fontSize={FONT_SIZES.transformerRatio}
           fontWeight={600}
           data-testid="sld-v2-gpz-bay-ct-ratio"
         >

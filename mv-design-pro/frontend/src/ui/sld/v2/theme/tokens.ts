@@ -60,14 +60,29 @@ export const COLOR_BADGE_STATUS_OK = '#2DB54E' as const;
 export const COLOR_BADGE_STATUS_NEUTRAL = '#9CA3A8' as const;
 /** Status row "Odst./Zabl." (odstawione / zablokowane) — czerwony. */
 export const COLOR_BADGE_STATUS_BLOCKED = '#FF4D4D' as const;
-/** Kropka LED przycisku KAS (purpurowa — kasowanie sygnalizacji). */
-export const COLOR_KAS_LED = '#9D5BFF' as const;
+/** Kropka LED przycisku KAS (żółty — kanon Energa, kasowanie sygnalizacji). */
+export const COLOR_KAS_LED = '#E5C828' as const;
 /** Tło pola w stanie manipulacji (oliwkowe/żółte). */
 export const COLOR_MANIPULATION_BG = '#5C5512' as const;
 /** Marker zwarcia doziemnego (cyan/turkus — kanon SCADA). */
 export const COLOR_GROUND_FAULT = '#35E1FF' as const;
 /** Wartość pomiaru w panelu — biel monoszpaltowa. */
 export const COLOR_MEASUREMENT_VALUE = '#FFFFFF' as const;
+
+/* ---------------------------------------------------------------------------
+   Bus voltage palette (kanon SCADA: rozróżnienie szyn po napięciu)
+   Czerwony = alarm/zwarcie (NIE napięcie); biały/szary HV; cyan LV.
+   --------------------------------------------------------------------------- */
+
+/** Szyna 110 kV / WN — biały jasny (kanon Energa/Tauron, nie kolizyjny z alarmem). */
+export const COLOR_BUS_HV = '#F2F4F6' as const;
+/** Szyna 15/30 kV (SN) — cyan (odróżnia od deviceClosed zielonego). */
+export const COLOR_BUS_LV = '#3DB4FF' as const;
+/** Tekst etykiety napięcia szyny — jasnoszary z cieniowaniem. */
+export const COLOR_BUS_LABEL = '#C8CDD2' as const;
+/** Magistrala sieci terenowej (trunk) — zielony przy zasilaniu, neutral przy braku danych. */
+export const COLOR_FIELD_TRUNK_ENERGIZED = '#13C45A' as const;
+export const COLOR_FIELD_TRUNK_NEUTRAL = '#7E8790' as const;
 
 /** Pełen rejestr kolorów dla theme provider / tests. */
 export const SLD_V2_COLORS = {
@@ -148,7 +163,7 @@ export const FONT_MONO = '"JetBrains Mono", "Fira Code", monospace' as const;
 export const FONT_SIZES = {
   /** Oznaczenia pól (sans, 16–20). */
   bayLabel: 18,
-  /** Oznaczenia aparatów Q (sans, 15–18). */
+  /** Oznaczenia aparatów Q (sans, 15–18) — IEC 81346-2 (Q0/Q1/Q9/T1). */
   deviceQ: 16,
   /** Pomiary pod polem (mono, 15–18). */
   fieldMeasurement: 16,
@@ -160,6 +175,98 @@ export const FONT_SIZES = {
   numericValue: 14,
   /** Statusy raportowe (sans, 12). */
   reportStatus: 12,
+  /** Badge zabezpieczeń (SPZ/SCO/...) — czytelny ≥9 (audyt OSD). */
+  badge: 9,
+  /** Status row badge (Zal./Odbl./Odst./Zabl.). */
+  badgeStatus: 8,
+  /** Etykieta KAS (sans). */
+  kasLabel: 9,
+  /** P-numer pod LED-em KAS (mono). */
+  kasPNumber: 7,
+  /** Pionowa etykieta sterowania (rotowana). */
+  controlMode: 9,
+  /** Panel pomiarowy pola (mono). */
+  measurementPanel: 10,
+  /** Etykieta przekładni CT/VT. */
+  transformerRatio: 8,
+  /** Etykieta destination feedera. */
+  feederDestination: 9,
+} as const;
+
+/* ---------------------------------------------------------------------------
+   GPZ Switchgear geometry (Phase 0A operator-grade refinement)
+   Zwymiarowane wg kanonu ekranu dyspozytorskiego SCADA SN/110 kV.
+   --------------------------------------------------------------------------- */
+
+/** Geometria GPZ Switchgear renderera (kanoniczne wymiary world-space). */
+export const GPZ_GEOMETRY = {
+  /** Pasek tytułu (góra rozdzielni). */
+  titleBarHeight: 26,
+  /** Wysokość kolumny HV-tower w trybie single-bus. */
+  hvTowerHeight: 78,
+  /** Padding wewnętrzny (poziomy + pionowy). */
+  horizontalPadding: 14,
+  verticalPadding: 10,
+  /** Szyna sekcyjna — overhang poza ostatnie pole. */
+  sectionBusOverhang: 10,
+  /** Odstęp między sekcjami w polu. */
+  sectionInterGap: 28,
+  /** Odstęp między etykietą sekcji a pierwszym polem. */
+  sectionLabelGap: 18,
+  /** Pole — szerokość, wysokość, gap między polami. */
+  bayColumnWidth: 64,
+  bayColumnHeight: 110,
+  bayGap: 6,
+  /** Nagłówek pola (feeder name). */
+  bayHeaderHeight: 12,
+  /** Odstęp od dolnej krawędzi kolumny do numeru pola. */
+  bayNumberGap: 14,
+  /** Pitch aparatów w kolumnie (Y). */
+  apparatusPitch: 18,
+  /** Wymiary symboli aparatów (kanon IEC 60617). */
+  cbSize: 9,
+  dsRadius: 4.5,
+  esBranchLength: 8,        // długość gałęzi bocznej uziemnika
+  esBranchOffset: 8,        // przesunięcie od osi pola
+  triangleSize: 6,
+  ctRadius: 3.5,
+  /** Pozycja kolumny aparatów (X-offset od lewej krawędzi pola). */
+  apparatusColXOffset: 18,
+  /** Pozycja stosu badge (X-offset od lewej krawędzi pola). */
+  badgeColXOffset: 36,
+  badgeWidth: 22,
+  badgeLabelHeight: 8,
+  badgeStatusHeight: 8,
+  /** KAS button. */
+  kasLedRadius: 3,
+  kasRowHeight: 16,
+  /** Panel pomiarów. */
+  measurementRowHeight: 10,
+  measurementPanelHeaderHeight: 12,
+  /** Pionowa etykieta sterowania (rotowana -90°). */
+  sterowanieLabelXOffset: 6,
+  /** Sprzęgło. */
+  couplerBayWidth: 120,
+  couplerLegInset: 18,
+  couplerDsOffsetY: 22,
+  couplerHorizontalOffsetY: 36,
+  couplerBayNumberOffsetY: 8,
+  /** Two-bus: gap między HV bays bottom a LV bus (TR symbols). */
+  twoBusTrGap: 84,
+  twoBusTrSpacing: 80,
+  /** Magistrala sieci terenowej. */
+  outgoingFeederDropPx: 36,
+  fieldTrunkGapPx: 16,
+  /** Strzałka kierunku przepływu na trunk feeder. */
+  trunkArrowSize: 5,
+  /** Transformator (Y/Δ markers). */
+  trRadius: 9,
+  trWindingGap: 7,
+  trHvLeadLen: 10,
+  trLvLeadLen: 10,
+  /** Y/Δ markers — większy dla operator-grade czytelności. */
+  trMarkerArmLen: 6,
+  trMarkerStrokeWidth: 1.6,
 } as const;
 
 /** Snap to grid — każda współrzędna musi być wielokrotnością GRID_BASE_PX. */
