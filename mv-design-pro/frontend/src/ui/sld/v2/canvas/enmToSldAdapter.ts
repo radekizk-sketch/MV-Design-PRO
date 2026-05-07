@@ -138,9 +138,11 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
     const lvBus = findFirstBusByRefs(buses, gpz.bus_refs);
     const lvVoltageKv = lvBus?.voltage_kv ?? 15;
     /* HV voltage z ENM (transformer.uhv_kv lub bus.voltage_kv).
-     * Null = brak danych (renderer pokaże placeholder); fallback 110 wyłącznie
-     * przy renderowaniu, NIE w semantyce. */
-    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses) ?? 110;
+     * INVARIANT 9: brak danych = `null` propagowane do renderera, NIE
+     * fałszywy default 110. Renderer pokaże etykietę "?" zamiast zmyślonego
+     * "110 kV" (audyt system §B). */
+    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses);
+    const hvVoltageKvKnown = hvVoltageKv !== null;
     const transformerCount = Math.max(1, gpz.transformer_refs?.length ?? 0);
 
     /* Buduj sections + couplers + bays z gpz_sections[] (LV side). */
@@ -160,7 +162,7 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
       transformers,
       buses,
       sources,
-      hvVoltageKv,
+      hvVoltageKv: hvVoltageKv ?? 110, // synth używa fallback (display-only)
     });
 
     const feedersCount = sections.reduce(
@@ -173,7 +175,10 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
       x: X_GPZ + idx * (GPZ_WIDTH + 80),
       y: Y_GPZ,
       name: gpz.name || gpz.ref_id,
-      voltageHighKv: hvVoltageKv,
+      /* INVARIANT 9: gdy null → przekazujemy 110 jako display fallback ALE
+       * z `voltageHighKvKnown=false` flag żeby renderer mógł pokazać "?". */
+      voltageHighKv: hvVoltageKv ?? 110,
+      voltageHighKvKnown: hvVoltageKvKnown,
       voltageLowKv: lvVoltageKv,
       transformerCount,
       sections,

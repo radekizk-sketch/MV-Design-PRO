@@ -1469,6 +1469,242 @@ describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
   });
 });
 
+describe('GpzSwitchgearRenderer — Tier 1 fixes (BLOCKER konsensusowe)', () => {
+  it('Brak cbState w bay → renderer pokazuje neutral szary z "?" (Invariant 9 §15.1)', () => {
+    /* DEFAULT_BAYS[0] ma cbState='closed' explicit, ale stworzymy bay bez cbState. */
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'b-no-state',
+              fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+              designation: 'X',
+              feederName: 'X',
+              bayNumber: '1',
+              hasMissingRequiredDevice: false,
+              /* energization, cbState, dsState — UNDEFINED (Invariant 9). */
+            },
+          ],
+        },
+      ],
+    });
+    const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]');
+    expect(cb?.getAttribute('data-state')).toBe('unknown');
+    /* Znak '?' w środku CB. */
+    expect(cb?.textContent).toContain('?');
+  });
+
+  it('Brak dsState → DS data-state="unknown" (NIE fałszywe "closed")', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'b-no-state',
+              fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+              designation: 'X',
+              feederName: 'X',
+              bayNumber: '1',
+              hasMissingRequiredDevice: false,
+            },
+          ],
+        },
+      ],
+    });
+    const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]');
+    expect(ds?.getAttribute('data-state')).toBe('unknown');
+  });
+
+  it('voltageHighKvKnown=false → "?" zamiast wartości napięcia w title bar i bus labels', () => {
+    const { container } = render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-x"
+          x={0}
+          y={0}
+          name="GPZ-X"
+          voltageHighKv={110}
+          voltageHighKvKnown={false}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'sec-1',
+              order: 1,
+              name: 'S1',
+              sectionLabel: 'S1',
+              busVoltageKv: 15,
+              bays: DEFAULT_BAYS,
+            },
+          ]}
+          couplers={[]}
+          hvSections={[
+            {
+              sectionId: 'hv-sec-1',
+              order: 1,
+              name: 'HV',
+              sectionLabel: 'sekcja A',
+              busVoltageKv: 110,
+              bays: [],
+            },
+          ]}
+        />
+      </svg>,
+    );
+    /* Title bar pokazuje "? / 15 kV". */
+    const text = container.textContent ?? '';
+    expect(text).toContain('? / 15 kV');
+    /* HV bus labels pokazują "?kV". */
+    expect(text).toContain('?kV');
+  });
+
+  it('voltageHighKvKnown=true (default) → renderowane zwykłe wartości', () => {
+    const { container } = r();
+    const text = container.textContent ?? '';
+    expect(text).toContain('110 / 15 kV');
+    expect(text).not.toContain('?');
+  });
+
+  it('Pole MEASUREMENT (BLOCKER MV-8): NIE renderuje CB ani CT, ale renderuje VT marker', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-pn',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'pn-1',
+              fieldRole: FIELD_ROLE.MEASUREMENT,
+              designation: 'PN1',
+              feederName: 'PN',
+              bayNumber: '12',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-pn-1"]');
+    /* CB NIE renderowany (showCb=false dla MEASUREMENT). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).toBeNull();
+    /* CT NIE renderowany. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).toBeNull();
+    /* CableHead NIE renderowany. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).toBeNull();
+    /* VT marker JEST renderowany. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-vt-marker"]')).not.toBeNull();
+    /* DS jest (DS_BUS Q1). ES jest. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).not.toBeNull();
+  });
+
+  it('Pole TRANSFORMER (BLOCKER MV-7): NIE renderuje CableHead (kończy się portem do trafa)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-tr',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'tr-1',
+              fieldRole: FIELD_ROLE.TRANSFORMER,
+              designation: 'TR1',
+              feederName: 'TR1',
+              bayNumber: '03',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-tr-1"]');
+    /* TR ma CB + CT + ES, NIE ma CableHead. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).not.toBeNull();
+  });
+
+  it('Pole RMU_LINE (BLOCKER MV-1+15): NIE renderuje CB (RMU używa tylko load-switch)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-rmu',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              bayRef: 'rmu-1',
+              fieldRole: FIELD_ROLE.RMU_LINE,
+              designation: 'OUT',
+              feederName: 'OUT',
+              bayNumber: '01',
+              hasMissingRequiredDevice: false,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-rmu-1"]');
+    /* RMU_LINE: SWITCH_DISCONNECTOR + CT + ES + CABLE_HEAD. Bez CB! */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).toBeNull();
+    /* DS jest (SWITCH_DISCONNECTOR jest renderowany jako DS). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
+    /* CT jest (RMU_LINE_ORDER definiuje CT). */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).not.toBeNull();
+    /* CableHead jest. */
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).not.toBeNull();
+  });
+
+  it('Pole GPZ_LINE_BAY (default): wszystkie aparaty renderowane (CB+CT+DS+ES+CableHead)', () => {
+    const { container } = r({
+      sections: [
+        {
+          sectionId: 'sec-gpz',
+          order: 1,
+          name: 'S1',
+          sectionLabel: 'S1',
+          busVoltageKv: 15,
+          bays: [
+            {
+              ...DEFAULT_BAYS[0],
+              fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+              esState: 'unknown' as const,
+            },
+          ],
+        },
+      ],
+    });
+    const bay = container.querySelector('[data-testid="sld-v2-gpz-bay-b-1"]');
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ct-primary"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-ds"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]')).not.toBeNull();
+    expect(bay?.querySelector('[data-testid="sld-v2-gpz-bay-cable-head"]')).not.toBeNull();
+  });
+});
+
 describe('GpzSwitchgearRenderer — Quick-wins z 6/3 fix (dsBus + magenta + ellipsis + r=5)', () => {
   it('qDesignations.dsBus="Q1" → renderowany Q1 obok DS_BUS na górze pola (kanon polski LINE)', () => {
     const { container } = r({

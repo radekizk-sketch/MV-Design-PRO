@@ -66,6 +66,8 @@ import {
   STROKE_TRUNK_LINE_PX,
 } from '../theme/tokens';
 import type { FieldRole } from '../domain/apparatusContracts';
+import { APPARATUS_KIND, FIELD_ROLE } from '../domain/apparatusContracts';
+import { getBayDeviceOrder } from '../domain/bayDeviceOrder';
 
 // =============================================================================
 // Geometry constants — wszystkie z GPZ_GEOMETRY (theme/tokens.ts)
@@ -127,6 +129,14 @@ const MEASUREMENT_FONT_SIZE = FONT_SIZES.measurementPanel;
 function truncateWithEllipsis(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.slice(0, Math.max(1, maxLen - 1)) + '…';
+}
+
+/**
+ * Formatuje napięcie HV bus dla wyświetlenia. Zwraca "?" gdy nieznane
+ * (Invariant 9: brak danych ENM ≠ display fallback 110).
+ */
+function formatHvVoltage(value: number, known: boolean | undefined): string {
+  return known === false ? '?' : String(value);
 }
 
 const OUTGOING_FEEDER_DROP_PX = GPZ_GEOMETRY.outgoingFeederDropPx;
@@ -420,6 +430,14 @@ export interface GpzSwitchgearRendererProps {
   readonly y: number;
   readonly name: string;
   readonly voltageHighKv: number;
+  /**
+   * Czy `voltageHighKv` pochodzi z ENM danych (transformer.uhv_kv / bus).
+   * `false` = adapter zwrócił null, używamy fallback display-only — renderer
+   * pokazuje "?" zamiast wartości (Invariant 9: brak danych ≠ default).
+   * Domyślnie `true` (backwards compat dla testów które przekazują typowe
+   * `voltageHighKv: 110`).
+   */
+  readonly voltageHighKvKnown?: boolean;
   readonly voltageLowKv: number;
   /**
    * Sekcje strony SN (np. 15 kV) — main bus rendererowany tradycyjnie u dołu
@@ -593,7 +611,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
         fontFamily={FONT_SANS}
         fontSize={FONT_SIZES.technicalPanel}
       >
-        {props.voltageHighKv} / {props.voltageLowKv} kV
+        {formatHvVoltage(props.voltageHighKv, props.voltageHighKvKnown)} / {props.voltageLowKv} kV
       </text>
 
       {/* Tekst akcji "Kasowanie sygnalizacji zabezpieczeń" — kanon SCADA. */}
@@ -637,7 +655,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             fontWeight={600}
             data-testid="sld-v2-gpz-switchgear-hv-bus-label-left"
           >
-            {`${props.voltageHighKv}kV`}
+            {`${formatHvVoltage(props.voltageHighKv, props.voltageHighKvKnown)}kV`}
           </text>
           <text
             x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
@@ -649,7 +667,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
             fontWeight={600}
             data-testid="sld-v2-gpz-switchgear-hv-bus-label-right"
           >
-            {`${props.voltageHighKv}kV`}
+            {`${formatHvVoltage(props.voltageHighKv, props.voltageHighKvKnown)}kV`}
           </text>
 
           {/* HV sekcje + sprzęgła + kolumny pól (hangujące w dół z HV bus) */}
@@ -1501,9 +1519,30 @@ interface BayColumnProps {
 
 function BayColumn(props: BayColumnProps): JSX.Element {
   const { x, busY, bay, onClickBay, onClickCb, onClickDs, onClickEs, onClickKas } = props;
+  /* INVARIANT 9 + anti-pattern §15.1 (audyt system): brak danych ≠ default
+   * 'closed'. Renderer NIE może hardkodować stanów aparatów — gdy adapter
+   * nie dostarczył runtime telemetry, renderer pokazuje neutral 'unknown'
+   * (szary), NIE zafałszowane 'closed' (zielone). */
   const energization = bay.energization ?? 'unknown';
-  const cbState = bay.cbState ?? 'closed';
-  const dsState = bay.dsState ?? 'closed';
+  const cbState = bay.cbState ?? 'unknown';
+  const dsState = bay.dsState ?? 'unknown';
+
+  /* INVARIANT 13 (audyt MV BLOCKER-1+15): renderer iteruje BAY_DEVICE_ORDER_POLICY
+   * — pole MEASUREMENT nie ma CB, pole TR ma TRANSFORMER + LV_BREAKER zamiast
+   * cable head, pole RMU_LINE używa SWITCH_DISCONNECTOR a nie CB+DS.
+   * Pełna iteracja sloty po sloty wymaga `bay.equipment_refs[]` z ENM (Phase 1+);
+   * Phase 0A: filter widocznych symboli per slot whitelist. */
+  const slots = getBayDeviceOrder(bay.fieldRole);
+  const hasSlot = (kind: typeof APPARATUS_KIND[keyof typeof APPARATUS_KIND]): boolean =>
+    slots.some((s) => s.apparatusKind === kind);
+  const showCb = hasSlot(APPARATUS_KIND.CIRCUIT_BREAKER);
+  const showDs = hasSlot(APPARATUS_KIND.DISCONNECTOR) || hasSlot(APPARATUS_KIND.SWITCH_DISCONNECTOR);
+  const showCt = hasSlot(APPARATUS_KIND.CT);
+  const showEs = hasSlot(APPARATUS_KIND.EARTHING_SWITCH);
+  const showCableHead = hasSlot(APPARATUS_KIND.CABLE_HEAD);
+  /* MEASUREMENT bay ma VT (Phase 0A: placeholder marker; pełny VT trójfazowy
+   * w Phase 1 jako ApparatusVtThreePhase). */
+  const showVtMarker = hasSlot(APPARATUS_KIND.VT) && bay.fieldRole === FIELD_ROLE.MEASUREMENT;
   const energizedColor = energizationColor(energization);
   const trackColor = bay.hasMissingRequiredDevice ? '#FFB020' : energizedColor;
   const apparatusCx = x + APPARATUS_COL_X_OFFSET;
@@ -1630,67 +1669,106 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       )}
 
       {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2).
-       * onClickCb dziedziczy stopPropagation aby nie konfliktować z onClickBay. */}
-      <g
-        onClick={
-          onClickCb
-            ? (e) => {
-                e.stopPropagation();
-                onClickCb(bay.bayRef);
-              }
-            : undefined
-        }
-        style={{ cursor: onClickCb ? 'pointer' : undefined }}
-      >
-        <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
-        {bay.qDesignations?.cb && (
-          <QDesignationLabel
-            x={apparatusCx + CB_SIZE / 2 + 3}
-            y={cbY + 2}
-            text={bay.qDesignations.cb}
-            slot="cb"
-          />
-        )}
-      </g>
-
-      {/* CT primary (small open circle) + ratio label po lewej */}
-      <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
-      {bay.qDesignations?.ct && (
-        <QDesignationLabel
-          x={apparatusCx + CT_RADIUS + 3}
-          y={ctY + 2}
-          text={bay.qDesignations.ct}
-          slot="ct"
-        />
+       * onClickCb dziedziczy stopPropagation aby nie konfliktować z onClickBay.
+       * RENDER WARUNKOWY (BLOCKER MV-1+15): pole MEASUREMENT i RMU_LINE NIE mają
+       * CB → showCb=false → renderer pomija. */}
+      {showCb && (
+        <g
+          onClick={
+            onClickCb
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickCb(bay.bayRef);
+                }
+              : undefined
+          }
+          style={{ cursor: onClickCb ? 'pointer' : undefined }}
+        >
+          <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
+          {bay.qDesignations?.cb && (
+            <QDesignationLabel
+              x={apparatusCx + CB_SIZE / 2 + 3}
+              y={cbY + 2}
+              text={bay.qDesignations.cb}
+              slot="cb"
+            />
+          )}
+        </g>
       )}
 
-      {/* DS (filled circle) + opcjonalna etykieta Q */}
-      <g
-        onClick={
-          onClickDs
-            ? (e) => {
-                e.stopPropagation();
-                onClickDs(bay.bayRef);
-              }
-            : undefined
-        }
-        style={{ cursor: onClickDs ? 'pointer' : undefined }}
-      >
-        <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
-        {bay.qDesignations?.ds && (
-          <QDesignationLabel
-            x={apparatusCx + DS_RADIUS + 3}
-            y={dsY + 2}
-            text={bay.qDesignations.ds}
-            slot="ds"
+      {/* CT primary (small open circle) + ratio label po lewej.
+       * MEASUREMENT bay nie ma CT → showCt=false. */}
+      {showCt && (
+        <>
+          <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
+          {bay.qDesignations?.ct && (
+            <QDesignationLabel
+              x={apparatusCx + CT_RADIUS + 3}
+              y={ctY + 2}
+              text={bay.qDesignations.ct}
+              slot="ct"
+            />
+          )}
+        </>
+      )}
+
+      {/* VT marker dla MEASUREMENT bay (placeholder; pełny VT trójfazowy w
+       * Phase 1 jako ApparatusVtThreePhase z bezpiecznikami i Y-trójkątem). */}
+      {showVtMarker && (
+        <g data-testid="sld-v2-gpz-bay-vt-marker" data-field-role={bay.fieldRole}>
+          <circle
+            cx={apparatusCx}
+            cy={ctY}
+            r={CT_RADIUS + 1.5}
+            fill={COLOR_PANEL_RAISED}
+            stroke={COLOR_BADGE_BG_YELLOW}
+            strokeWidth={1.4}
           />
-        )}
-      </g>
+          <text
+            x={apparatusCx}
+            y={ctY + 2.5}
+            textAnchor="middle"
+            fill={COLOR_BADGE_BG_YELLOW}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.transformerRatio}
+            fontWeight={700}
+          >
+            VT
+          </text>
+        </g>
+      )}
+
+      {/* DS (filled circle) + opcjonalna etykieta Q.
+       * Pole TR ma tylko DS_BUS (Q1) → renderowany na górze; ten DS to DS_LIN
+       * (Q9) — NIEobecny dla TR według polityki. */}
+      {showDs && bay.fieldRole !== FIELD_ROLE.TRANSFORMER && bay.fieldRole !== FIELD_ROLE.RMU_TRANSFORMER && (
+        <g
+          onClick={
+            onClickDs
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickDs(bay.bayRef);
+                }
+              : undefined
+          }
+          style={{ cursor: onClickDs ? 'pointer' : undefined }}
+        >
+          <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
+          {bay.qDesignations?.ds && (
+            <QDesignationLabel
+              x={apparatusCx + DS_RADIUS + 3}
+              y={dsY + 2}
+              text={bay.qDesignations.ds}
+              slot="ds"
+            />
+          )}
+        </g>
+      )}
 
       {/* Uziemnik (ES) — boczna gałąź z trójkątem ziemi (BHP-krytyczny).
-       * Renderowany na poziomie DS gdy esState !== 'absent'.
-       * Klik wymaga uprawnień (operacja BHP — zwykle z separate auth). */}
-      {bay.esState && bay.esState !== 'absent' && (
+       * Renderowany na poziomie DS gdy esState !== 'absent' I rola pola ma
+       * ES w polityce. Pole COUPLER bez ES (renderowany przez CouplerBay). */}
+      {showEs && bay.esState && bay.esState !== 'absent' && (
         <g
           onClick={
             onClickEs
@@ -1714,8 +1792,13 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         </g>
       )}
 
-      {/* Cable head triangle (downward) */}
-      <ApparatusCableHead cx={apparatusCx} cy={triangleY} energized={energization === 'energized'} />
+      {/* Cable head triangle (downward).
+       * Pole TR/MEASUREMENT/COUPLER NIE kończą się głowicą kablową — TR
+       * port do trafa, MEASUREMENT VT, COUPLER mostek do drugiej sekcji.
+       * showCableHead reguluje renderowanie. */}
+      {showCableHead && (
+        <ApparatusCableHead cx={apparatusCx} cy={triangleY} energized={energization === 'energized'} />
+      )}
 
       {/* Stos badge'y stanu po prawej (SPZ/SCO/OWG/NZ/LRW/ARN/...) */}
       {bay.secondary && (
@@ -2099,10 +2182,23 @@ interface ApparatusVisualProps {
 }
 
 function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
-  const { cx, cy, state = 'closed', energized } = props;
+  /* INVARIANT 9: state='unknown' → neutral szary (NIE fałszywe closed/open).
+   * Operator widzi że nie ma telemetrii zamiast widzieć "wszystko zamknięte". */
+  const { cx, cy, state = 'unknown', energized } = props;
   const open = state === 'open';
-  const fill = open ? COLOR_PANEL_RAISED : energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
-  const stroke = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  const unknown = state === 'unknown';
+  const fill = unknown
+    ? COLOR_TEXT_MUTED
+    : open
+    ? COLOR_PANEL_RAISED
+    : energized
+    ? COLOR_DEVICE_CLOSED
+    : COLOR_TEXT_MUTED;
+  const stroke = unknown
+    ? COLOR_TEXT_MUTED
+    : open
+    ? COLOR_DEVICE_OPEN_BORDER
+    : COLOR_DEVICE_CLOSED_BORDER;
   return (
     <g data-testid="sld-v2-gpz-bay-cb" data-state={state}>
       <rect
@@ -2125,15 +2221,40 @@ function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
           strokeWidth={1.4}
         />
       )}
+      {unknown && (
+        <text
+          x={cx}
+          y={cy + 2.5}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.badge}
+          fontWeight={700}
+        >
+          ?
+        </text>
+      )}
     </g>
   );
 }
 
 function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
-  const { cx, cy, state = 'closed', energized } = props;
+  /* INVARIANT 9: state='unknown' → neutral szary (analogicznie do CB). */
+  const { cx, cy, state = 'unknown', energized } = props;
   const open = state === 'open';
-  const fill = open ? COLOR_PANEL_RAISED : energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
-  const stroke = open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  const unknown = state === 'unknown';
+  const fill = unknown
+    ? COLOR_TEXT_MUTED
+    : open
+    ? COLOR_PANEL_RAISED
+    : energized
+    ? COLOR_DEVICE_CLOSED
+    : COLOR_TEXT_MUTED;
+  const stroke = unknown
+    ? COLOR_TEXT_MUTED
+    : open
+    ? COLOR_DEVICE_OPEN_BORDER
+    : COLOR_DEVICE_CLOSED_BORDER;
   return (
     <g data-testid="sld-v2-gpz-bay-ds" data-state={state}>
       <circle cx={cx} cy={cy} r={DS_RADIUS} fill={fill} stroke={stroke} strokeWidth={1.2} />

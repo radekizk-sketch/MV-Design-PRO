@@ -184,6 +184,112 @@ describe('Hash Triad — coordinates quantization', () => {
   });
 });
 
+describe('Hash Triad — GPZ sekcje rozszerzenie (audyt system §A Inv 7/8)', () => {
+  it('zmiana gpzSections[].bayRefs → topology_hash zmienia się', () => {
+    const t1 = computeTopologyHash({
+      ...baseTopology,
+      gpzSections: [
+        {
+          sectionId: 'sec-A',
+          substationRef: 'gpz-1',
+          tier: 'lv',
+          order: 1,
+          busVoltageKv: 15,
+          bayRefs: ['bay-1', 'bay-2'],
+        },
+      ],
+    });
+    const t2 = computeTopologyHash({
+      ...baseTopology,
+      gpzSections: [
+        {
+          sectionId: 'sec-A',
+          substationRef: 'gpz-1',
+          tier: 'lv',
+          order: 1,
+          busVoltageKv: 15,
+          bayRefs: ['bay-1', 'bay-2', 'bay-3'], // dodane bay-3
+        },
+      ],
+    });
+    expect(t2).not.toBe(t1);
+  });
+
+  it('zmiana gpzCouplers[].closedState → topology_hash zmienia się', () => {
+    const t1 = computeTopologyHash({
+      ...baseTopology,
+      gpzCouplers: [
+        { couplerId: 'cpl-1', closedState: 'closed', leftSectionId: 'A', rightSectionId: 'B' },
+      ],
+    });
+    const t2 = computeTopologyHash({
+      ...baseTopology,
+      gpzCouplers: [
+        { couplerId: 'cpl-1', closedState: 'open', leftSectionId: 'A', rightSectionId: 'B' },
+      ],
+    });
+    expect(t2).not.toBe(t1);
+  });
+
+  it('zmiana qDesignations w bay → topology_hash zmienia się', () => {
+    const t1 = computeTopologyHash({
+      ...baseTopology,
+      gpzBays: [
+        { bayRef: 'bay-1', fieldRole: 'LINE_OUT', esState: 'unknown', qDesignations: { cb: 'Q0', ds: 'Q9' } },
+      ],
+    });
+    const t2 = computeTopologyHash({
+      ...baseTopology,
+      gpzBays: [
+        { bayRef: 'bay-1', fieldRole: 'LINE_OUT', esState: 'unknown', qDesignations: { cb: 'Q0', ds: 'Q9', es: 'Q8' } },
+      ],
+    });
+    expect(t2).not.toBe(t1);
+  });
+
+  it('zmiana esState w bay → topology_hash zmienia się (BHP-krytyczne)', () => {
+    const t1 = computeTopologyHash({
+      ...baseTopology,
+      gpzBays: [{ bayRef: 'bay-1', fieldRole: 'LINE_OUT', esState: 'open' }],
+    });
+    const t2 = computeTopologyHash({
+      ...baseTopology,
+      gpzBays: [{ bayRef: 'bay-1', fieldRole: 'LINE_OUT', esState: 'closed' }],
+    });
+    expect(t2).not.toBe(t1);
+  });
+
+  it('inny porządek bayRefs w sekcji → ten sam topology_hash (sortowanie kanoniczne)', () => {
+    const t1 = computeTopologyHash({
+      ...baseTopology,
+      gpzSections: [
+        {
+          sectionId: 'sec-A',
+          substationRef: 'gpz-1',
+          tier: 'lv',
+          order: 1,
+          busVoltageKv: 15,
+          bayRefs: ['bay-1', 'bay-2', 'bay-3'],
+        },
+      ],
+    });
+    const t2 = computeTopologyHash({
+      ...baseTopology,
+      gpzSections: [
+        {
+          sectionId: 'sec-A',
+          substationRef: 'gpz-1',
+          tier: 'lv',
+          order: 1,
+          busVoltageKv: 15,
+          bayRefs: ['bay-3', 'bay-1', 'bay-2'], // inny porządek
+        },
+      ],
+    });
+    expect(t2).toBe(t1);
+  });
+});
+
 describe('Hash Triad — view hash dependency', () => {
   it('warstwy widoczności wchodzą do view_hash niezależnie od kolejności', () => {
     const v1 = computeViewHash({ ...baseView, visibleLayers: ['a', 'b', 'c'] });

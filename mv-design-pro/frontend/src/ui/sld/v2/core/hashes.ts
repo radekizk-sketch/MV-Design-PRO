@@ -80,6 +80,18 @@ function hash(input: unknown, prefix: string): string {
 export interface TopologySnapshot {
   readonly objects: readonly TopologyObject[];
   readonly connections: readonly TopologyConnection[];
+  /**
+   * GPZ sekcje (LV + HV) z couplerami — wymagane dla deterministycznego
+   * topology_hash gdy operator edytuje sekcje (Phase 0B/0C).
+   * Audyt system §A: bez tego pola hash niezmienny przy zmianie sekcji.
+   */
+  readonly gpzSections?: readonly TopologyGpzSection[];
+  readonly gpzCouplers?: readonly TopologyGpzCoupler[];
+  /**
+   * Bays per sekcja z qDesignations + esState — wymagane bo refaktor
+   * konfiguracji aparatury w polu zmienia topologię elektryczną.
+   */
+  readonly gpzBays?: readonly TopologyGpzBay[];
 }
 
 export interface TopologyObject {
@@ -96,6 +108,34 @@ export interface TopologyConnection {
   readonly toPortId: string;
   readonly kind: string;
   readonly catalogRef?: string | null;
+}
+
+export interface TopologyGpzSection {
+  readonly sectionId: string;
+  /** GPZ ref_id który zawiera sekcję. */
+  readonly substationRef: string;
+  /** Tier napięciowy: 'lv' (15 kV) lub 'hv' (110 kV). */
+  readonly tier: 'lv' | 'hv';
+  readonly order: number;
+  readonly busVoltageKv: number;
+  /** Lista bay refs przypisanych do sekcji (sortowane). */
+  readonly bayRefs: readonly string[];
+}
+
+export interface TopologyGpzCoupler {
+  readonly couplerId: string;
+  /** Stan łączeniowy: 'closed' | 'open' | 'unknown'. */
+  readonly closedState: string;
+  readonly leftSectionId: string;
+  readonly rightSectionId: string;
+}
+
+export interface TopologyGpzBay {
+  readonly bayRef: string;
+  readonly fieldRole: string;
+  readonly esState?: string | null;
+  /** Q-numbers per slot (Q0, Q1, Q9, Q8, T1) — IEC 81346-2. */
+  readonly qDesignations?: Readonly<Record<string, string>> | null;
 }
 
 export function computeTopologyHash(snapshot: TopologySnapshot): string {
@@ -120,6 +160,37 @@ export function computeTopologyHash(snapshot: TopologySnapshot): string {
       .sort((a, b) =>
         a.from === b.from ? a.to.localeCompare(b.to) : a.from.localeCompare(b.from),
       ),
+    gpzSections: (snapshot.gpzSections ?? [])
+      .map((s) => ({
+        ref: s.sectionId,
+        sub: s.substationRef,
+        tier: s.tier,
+        order: s.order,
+        v: s.busVoltageKv,
+        bays: [...s.bayRefs].sort(),
+      }))
+      .sort((a, b) => a.ref.localeCompare(b.ref)),
+    gpzCouplers: (snapshot.gpzCouplers ?? [])
+      .map((c) => ({
+        ref: c.couplerId,
+        cs: c.closedState,
+        l: c.leftSectionId,
+        r: c.rightSectionId,
+      }))
+      .sort((a, b) => a.ref.localeCompare(b.ref)),
+    gpzBays: (snapshot.gpzBays ?? [])
+      .map((b) => ({
+        ref: b.bayRef,
+        role: b.fieldRole,
+        es: b.esState ?? null,
+        q: b.qDesignations
+          ? Object.entries(b.qDesignations)
+              .sort(([a], [c]) => a.localeCompare(c))
+              .map(([k, v]) => `${k}=${v}`)
+              .join('|')
+          : null,
+      }))
+      .sort((a, b) => a.ref.localeCompare(b.ref)),
   };
   return hash(canonical, 'top');
 }

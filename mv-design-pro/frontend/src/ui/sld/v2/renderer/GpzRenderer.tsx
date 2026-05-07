@@ -68,6 +68,13 @@ export interface GpzRendererProps {
   readonly y: number;
   readonly name: string;
   readonly voltageHighKv: number;
+  /**
+   * Czy `voltageHighKv` pochodzi z faktycznych danych ENM (transformer.uhv_kv
+   * lub bus.voltage_kv) — `false` oznacza fallback display-only (Invariant 9).
+   * Renderer pokazuje "?" zamiast wartości gdy `false`. Domyślnie `true`
+   * (backwards compat).
+   */
+  readonly voltageHighKvKnown?: boolean;
   readonly voltageLowKv: number;
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
@@ -136,6 +143,7 @@ export function GpzRenderer(props: GpzRendererProps): JSX.Element {
         y={props.y}
         name={props.name}
         voltageHighKv={props.voltageHighKv}
+        voltageHighKvKnown={props.voltageHighKvKnown}
         voltageLowKv={props.voltageLowKv}
         sections={props.sections ?? []}
         couplers={props.couplers ?? []}
