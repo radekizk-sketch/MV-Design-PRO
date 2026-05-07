@@ -94,6 +94,7 @@ def _derive_pv_records(converter_records: Iterable[dict]) -> list[dict]:
                 "id": record.get("id"),
                 "name": record.get("name"),
                 "params": {
+                    "un_kv": params.get("un_kv"),
                     "s_n_kva": float(params.get("sn_mva", 0.0)) * 1000.0,
                     "p_max_kw": float(params.get("pmax_mw", 0.0)) * 1000.0,
                     "cos_phi_min": params.get("cosphi_min"),
@@ -121,6 +122,7 @@ def _derive_bess_records(converter_records: Iterable[dict]) -> list[dict]:
                 "id": record.get("id"),
                 "name": record.get("name"),
                 "params": {
+                    "un_kv": params.get("un_kv"),
                     "p_charge_kw": p_max_kw,
                     "p_discharge_kw": p_max_kw,
                     "e_kwh": float(params.get("e_kwh", 0.0)),

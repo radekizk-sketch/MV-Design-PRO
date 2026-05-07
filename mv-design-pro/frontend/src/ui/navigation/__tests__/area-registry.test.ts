@@ -31,4 +31,19 @@ describe('area-registry - kanon obszarów roboczych', () => {
       expect(AREA_REGISTRY[area.id]).toBe(area);
     }
   });
+
+  it('nie eksponuje zakazanych terminow w aktywnych etykietach obszarow', () => {
+    const forbidden = /\b(proof|run|snapshot|feeder|branch|case|wizard|fallback|legacy|placeholder|todo|not implemented|coming soon|debug|mock)\b/i;
+
+    for (const area of AREA_DEFINITIONS) {
+      const visibleText = [
+        area.labelFull,
+        area.labelShort,
+        area.description,
+        area.tooltip,
+      ].join(' ');
+
+      expect(visibleText).not.toMatch(forbidden);
+    }
+  });
 });

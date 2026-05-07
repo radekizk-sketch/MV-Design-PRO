@@ -17,10 +17,10 @@ import {
   INSPECTOR_TAB_COUNT,
   visibleTabsFor,
   type InspectorTabId,
-} from '../inspectorTabs';
+} from '../inspectorTabDefinitions';
 import { InspectorBreadcrumb } from '../InspectorBreadcrumb';
 import { InspectorStickyHeader } from '../InspectorStickyHeader';
-import { InspectorTabs } from '../InspectorTabs';
+import InspectorTabs from '../InspectorTabs';
 
 describe('InspectorTabs — 11 zakładek (brief 2 §5)', () => {
   it('liczba zakładek = 11', () => {
@@ -227,6 +227,10 @@ describe('InspectorBreadcrumb', () => {
 });
 
 describe('InspectorTabs — composition', () => {
+  it('eksportuje komponent kompozycji inspectora', () => {
+    expect(typeof InspectorTabs).toBe('function');
+  });
+
   function make(elementType: 'gpz' | 'bay' | 'station' | 'der_pv' = 'station') {
     return render(
       <InspectorTabs

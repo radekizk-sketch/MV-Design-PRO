@@ -520,6 +520,75 @@ class TestNnFieldAdapters:
         assert nn_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
         assert nn_specs_after[-1]["bay_role"] == "FEEDER"
 
+    def test_add_nn_load_preserves_catalog_binding(self):
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        inserted = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert inserted.get("snapshot") is not None, f"Error: {inserted.get('error')}"
+
+        station_snapshot = inserted["snapshot"]
+        inserted_station = next(
+            sub
+            for sub in station_snapshot.get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        bus_by_ref = {bus["ref_id"]: bus for bus in station_snapshot.get("buses", [])}
+        nn_bus_ref = next(
+            ref
+            for ref in inserted_station.get("bus_refs", [])
+            if bus_by_ref.get(ref, {}).get("voltage_kv") == 0.4
+        )
+        feeder_result = execute_domain_operation(
+            enm_dict=station_snapshot,
+            op_name="add_nn_outgoing_field",
+            payload={"bus_nn_ref": nn_bus_ref, "station_ref": inserted_station["ref_id"]},
+        )
+        assert feeder_result.get("snapshot") is not None, f"Error: {feeder_result.get('error')}"
+        feeder_ref = feeder_result["changes"]["created_element_ids"][0]
+
+        result = execute_domain_operation(
+            enm_dict=feeder_result["snapshot"],
+            op_name="add_nn_load",
+            payload={
+                "bus_nn_ref": nn_bus_ref,
+                "feeder_ref": feeder_ref,
+                "active_power_kw": 15.0,
+                "reactive_power_kvar": 5.0,
+                "load_kind": "SKUPIONY",
+                "connection_type": "TROJFAZOWY",
+                "load_name": "Odbiór katalogowy nN",
+                "catalog_binding": {
+                    "catalog_namespace": "OBCIAZENIE",
+                    "catalog_item_id": "load-household-15kw",
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                    "snapshot_mapping_version": "1.0",
+                },
+            },
+        )
+
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        load = result["snapshot"]["loads"][0]
+        assert load["catalog_ref"] == "load-household-15kw"
+        assert load["catalog_namespace"] == "OBCIAZENIE"
+        assert load["parameter_source"] == "CATALOG"
+        assert load["meta"]["catalog_binding"]["catalog_item_id"] == "load-household-15kw"
+
     def test_add_nn_outgoing_field_supports_source_field_role_without_legacy_alias(self):
         _, snapshot = _build_gpz_plus_segments(1)
         first_seg = _get_first_segment_ref(snapshot)
@@ -642,6 +711,7 @@ class TestNnFieldAdapters:
                 "materialized_params": {
                     "catalog_item_id": "conv-pv-500",
                     "catalog_item_version": "2024.1",
+                    "un_kv": 0.4,
                     "rated_power_ac_kw": 500.0,
                     "max_power_kw": 500.0,
                     "control_mode": "STALY_COS_PHI",

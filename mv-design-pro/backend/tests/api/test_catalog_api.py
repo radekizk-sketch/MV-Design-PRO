@@ -25,6 +25,7 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         ("/api/catalog/lv-apparatus-types", "cb_nn_1000a"),
         ("/api/catalog/ct-types", "ct_400_5_5p20_15va_abb"),
         ("/api/catalog/vt-types", "vt_15kv_100v_05_abb"),
+        ("/api/catalog/wind-inverter-types", "conv-wind-2mw-15kv"),
         ("/api/catalog/protection/device-types", "ACME_REX500_v1"),
         ("/api/catalog/protection/curves", "curve_iec_normal_inverse"),
         ("/api/catalog/protection/templates", "template_rex500_oc"),
@@ -143,18 +144,26 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
     source_response = client.get("/api/catalog/source-system-types")
     pv_response = client.get("/api/catalog/pv-inverter-types")
     bess_response = client.get("/api/catalog/bess-inverter-types")
+    wind_response = client.get("/api/catalog/wind-inverter-types")
+    converter_response = client.get("/api/catalog/converter-types")
 
     assert source_response.status_code == 200
     assert pv_response.status_code == 200
     assert bess_response.status_code == 200
+    assert wind_response.status_code == 200
+    assert converter_response.status_code == 200
 
     source_payload = source_response.json()
     pv_payload = pv_response.json()
     bess_payload = bess_response.json()
+    wind_payload = wind_response.json()
+    converter_payload = converter_response.json()
 
     assert len(source_payload) >= 20
     assert len(pv_payload) >= 10
     assert len(bess_payload) >= 8
+    assert len(wind_payload) >= 3
+    assert len(converter_payload) >= len(pv_payload) + len(bess_payload) + len(wind_payload)
 
     source_first = source_payload[0]
     assert source_first["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
@@ -164,5 +173,10 @@ def test_source_and_converter_catalog_api_expose_quality_metadata(
 
     assert any(item["manufacturer"] for item in pv_payload)
     assert any(item["manufacturer"] for item in bess_payload)
+    assert any(item["manufacturer"] for item in wind_payload)
+    assert all(item["un_kv"] > 0 for item in pv_payload)
+    assert all(item["un_kv"] > 0 for item in bess_payload)
+    assert all(item["un_kv"] > 0 for item in wind_payload)
     assert all(item["source_reference"] for item in pv_payload)
     assert all(item["source_reference"] for item in bess_payload)
+    assert all(item["source_reference"] for item in wind_payload)

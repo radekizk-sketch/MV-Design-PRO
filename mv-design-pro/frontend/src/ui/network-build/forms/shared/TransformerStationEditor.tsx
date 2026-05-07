@@ -29,6 +29,7 @@ export interface TransformerStationEditorProps {
     high: string;
     low: string;
   };
+  submitLabel?: string;
   initialData?: Partial<TransformerStationFormData>;
   busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>;
   catalogEntries?: CatalogEntry[];
@@ -91,6 +92,7 @@ export function TransformerStationEditor({
     high: 'Strona SN wyznaczana z odcinka magistrali',
     low: 'Strona nN tworzona za transformatorem',
   },
+  submitLabel,
   initialData,
   busOptions,
   catalogEntries = [],
@@ -155,8 +157,8 @@ export function TransformerStationEditor({
   const content = (
     <>
       {!hideHeader && (
-        <div className="border-b border-gray-200 px-6 py-4">
-          <h2 className="text-lg font-semibold text-gray-900">
+        <div className="border-b border-[#24405d] px-6 py-4">
+          <h2 className="text-lg font-semibold text-white">
             {mode === 'create'
               ? 'Nowa stacja transformatorowa'
               : 'Edycja stacji transformatorowej'}
@@ -167,49 +169,49 @@ export function TransformerStationEditor({
       <div className="space-y-4 px-6 py-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Identyfikator</label>
+            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Identyfikator</label>
             <input
               type="text"
               value={formData.ref_id}
               onChange={(event) => handleChange('ref_id', event.target.value)}
               disabled={mode === 'edit'}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                getError('ref_id') ? 'border-red-500' : 'border-gray-300'
+              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
+                getError('ref_id') ? 'border-red-500' : 'border-[#28425f]'
               }`}
             />
             {getError('ref_id') && (
-              <p className="mt-1 text-xs text-red-600">{getError('ref_id')}</p>
+              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('ref_id')}</p>
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Nazwa</label>
+            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Nazwa</label>
             <input
               type="text"
               value={formData.name}
               onChange={(event) => handleChange('name', event.target.value)}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                getError('name') ? 'border-red-500' : 'border-gray-300'
+              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
+                getError('name') ? 'border-red-500' : 'border-[#28425f]'
               }`}
             />
-            {getError('name') && <p className="mt-1 text-xs text-red-600">{getError('name')}</p>}
+            {getError('name') && <p className="mt-1 text-xs text-[#ff9a9a]">{getError('name')}</p>}
           </div>
         </div>
 
         {busSelectionMode === 'station-sides' && (
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+            <div className="border border-[#14532d] bg-[#061f18] px-3 py-2">
+              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#17f7a8]">
                 Strona SN
               </div>
-              <div className="mt-1 text-sm font-medium text-emerald-950">
+              <div className="mt-1 text-sm font-medium text-[#d9ffe9]">
                 {stationSideLabels.high}
               </div>
             </div>
-            <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+            <div className="border border-[#164e63] bg-[#061826] px-3 py-2">
+              <div className="font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#19e6ff]">
                 Strona nN
               </div>
-              <div className="mt-1 text-sm font-medium text-sky-950">
+              <div className="mt-1 text-sm font-medium text-[#d7ecff]">
                 {stationSideLabels.low}
               </div>
             </div>
@@ -218,14 +220,14 @@ export function TransformerStationEditor({
 
         <div className={`grid grid-cols-2 gap-4 ${busSelectionMode === 'station-sides' ? 'hidden' : ''}`}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
               Szyna strony górnej (GN)
             </label>
             <select
               value={formData.hv_bus_ref}
               onChange={(event) => handleChange('hv_bus_ref', event.target.value)}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                getError('hv_bus_ref') ? 'border-red-500' : 'border-gray-300'
+              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
+                getError('hv_bus_ref') ? 'border-red-500' : 'border-[#28425f]'
               }`}
             >
               <option value="">— wybierz —</option>
@@ -236,18 +238,18 @@ export function TransformerStationEditor({
               ))}
             </select>
             {getError('hv_bus_ref') && (
-              <p className="mt-1 text-xs text-red-600">{getError('hv_bus_ref')}</p>
+              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('hv_bus_ref')}</p>
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">
               Szyna strony dolnej (DN)
             </label>
             <select
               value={formData.lv_bus_ref}
               onChange={(event) => handleChange('lv_bus_ref', event.target.value)}
-              className={`w-full rounded-md border px-3 py-2 text-sm ${
-                getError('lv_bus_ref') ? 'border-red-500' : 'border-gray-300'
+              className={`w-full rounded-md border bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none ${
+                getError('lv_bus_ref') ? 'border-red-500' : 'border-[#28425f]'
               }`}
             >
               <option value="">— wybierz —</option>
@@ -258,22 +260,22 @@ export function TransformerStationEditor({
               ))}
             </select>
             {getError('lv_bus_ref') && (
-              <p className="mt-1 text-xs text-red-600">{getError('lv_bus_ref')}</p>
+              <p className="mt-1 text-xs text-[#ff9a9a]">{getError('lv_bus_ref')}</p>
             )}
           </div>
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Pozycja zaczepu</label>
+          <label className="mb-1 block text-sm font-medium text-[#a8c7e2]">Pozycja zaczepu</label>
           <input
             type="number"
             value={formData.tap_position}
             onChange={(event) => handleChange('tap_position', parseInt(event.target.value, 10) || 0)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-[#28425f] bg-[#07111c] px-3 py-2 text-sm text-[#e6f4ff] outline-none focus:border-[#04d6ff]"
           />
         </div>
 
-        <div className="border-t border-gray-200 pt-4">
+        <div className="border-t border-[#24405d] pt-4">
           <CatalogPicker
             label="Typ transformatora z katalogu"
             entries={catalogEntries}
@@ -303,30 +305,30 @@ export function TransformerStationEditor({
         )}
       </div>
 
-      <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+      <div className="flex justify-end gap-3 border-t border-[#24405d] px-6 py-4">
         <button
           onClick={onCancel}
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-md border border-[#28425f] bg-[#07111c] px-4 py-2 text-sm font-medium text-[#c7dff6] hover:border-[#3a668f]"
         >
           Anuluj
         </button>
         <button
           onClick={handleSubmit}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="rounded-md bg-[#2563eb] px-4 py-2 text-sm font-medium text-white hover:bg-[#1d4ed8]"
         >
-          {mode === 'create' ? 'Dodaj' : 'Zapisz'}
+          {submitLabel ?? (mode === 'create' ? 'Dodaj' : 'Zapisz')}
         </button>
       </div>
     </>
   );
 
   if (embedded) {
-    return <div className="rounded-lg border border-slate-200 bg-white">{content}</div>;
+    return <div className="border border-[#24405d] bg-[#081522]">{content}</div>;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-      <div className="mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-lg bg-white shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
+      <div className="mx-4 max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]">
         {content}
       </div>
     </div>

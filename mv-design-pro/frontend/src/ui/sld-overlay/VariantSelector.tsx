@@ -96,7 +96,7 @@ export const VariantSelector: React.FC<VariantSelectorProps> = ({
       data-testid="variant-selector"
     >
       {/* Active variant selector */}
-      <label className="text-xs text-gray-600 font-medium">Wariant:</label>
+      <label className="text-xs text-gray-600 font-medium">Stan:</label>
       <select
         value={activeVariantId ?? ''}
         onChange={handleVariantChange}

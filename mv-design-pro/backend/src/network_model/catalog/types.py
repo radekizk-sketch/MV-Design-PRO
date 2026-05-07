@@ -1677,6 +1677,7 @@ class PVInverterType:
         name: Type name.
         s_n_kva: Rated apparent power [kVA].
         p_max_kw: Maximum active power [kW].
+        un_kv: Rated connection voltage [kV].
         cos_phi_min: Minimum power factor (optional).
         cos_phi_max: Maximum power factor (optional).
         control_mode: Default control mode (optional).
@@ -1688,6 +1689,7 @@ class PVInverterType:
     name: str
     s_n_kva: float
     p_max_kw: float
+    un_kv: float = 0.4
     cos_phi_min: float | None = None
     cos_phi_max: float | None = None
     control_mode: str | None = None
@@ -1711,6 +1713,7 @@ class PVInverterType:
             "name": self.name,
             "s_n_kva": self.s_n_kva,
             "p_max_kw": self.p_max_kw,
+            "un_kv": self.un_kv,
             "cos_phi_min": self.cos_phi_min,
             "cos_phi_max": self.cos_phi_max,
             "control_mode": self.control_mode,
@@ -1733,6 +1736,7 @@ class PVInverterType:
             name=str(data.get("name", "")),
             s_n_kva=float(data.get("s_n_kva", 0.0)),
             p_max_kw=float(data.get("p_max_kw", 0.0)),
+            un_kv=float(data.get("un_kv", data.get("u_n_kv", 0.4))),
             cos_phi_min=(
                 float(data["cos_phi_min"]) if data.get("cos_phi_min") is not None else None
             ),
@@ -1767,6 +1771,7 @@ class BESSInverterType:
         p_charge_kw: Charge power [kW].
         p_discharge_kw: Discharge power [kW].
         e_kwh: Nameplate energy capacity [kWh].
+        un_kv: Rated connection voltage [kV].
         s_n_kva: Rated apparent power [kVA] (optional).
         manufacturer: Manufacturer (optional).
     """
@@ -1776,6 +1781,7 @@ class BESSInverterType:
     p_charge_kw: float
     p_discharge_kw: float
     e_kwh: float
+    un_kv: float = 0.4
     s_n_kva: float | None = None
     manufacturer: str | None = None
     dynamic_profile_id: str | None = None
@@ -1797,6 +1803,7 @@ class BESSInverterType:
             "p_charge_kw": self.p_charge_kw,
             "p_discharge_kw": self.p_discharge_kw,
             "e_kwh": self.e_kwh,
+            "un_kv": self.un_kv,
             "s_n_kva": self.s_n_kva,
             "manufacturer": self.manufacturer,
             "dynamic_profile_id": self.dynamic_profile_id,
@@ -1817,6 +1824,7 @@ class BESSInverterType:
             p_charge_kw=float(data.get("p_charge_kw", 0.0)),
             p_discharge_kw=float(data.get("p_discharge_kw", 0.0)),
             e_kwh=float(data.get("e_kwh", 0.0)),
+            un_kv=float(data.get("un_kv", data.get("u_n_kv", 0.4))),
             s_n_kva=(float(data["s_n_kva"]) if data.get("s_n_kva") is not None else None),
             manufacturer=data.get("manufacturer"),
             dynamic_profile_id=data.get("dynamic_profile_id"),
@@ -1952,8 +1960,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.ZRODLO_NN_PV.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_PV.value,
-        solver_fields=("s_n_kva", "p_max_kw", "control_mode"),
+        solver_fields=("un_kv", "s_n_kva", "p_max_kw", "control_mode"),
         ui_fields=(
+            ("un_kv", "Un [kV]", "kV"),
             ("s_n_kva", "Sn [kVA]", "kVA"),
             ("p_max_kw", "Pmax [kW]", "kW"),
             ("control_mode", "Tryb sterowania", ""),
@@ -1963,8 +1972,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
     ),
     CatalogNamespace.ZRODLO_NN_BESS.value: MaterializationContract(
         namespace=CatalogNamespace.ZRODLO_NN_BESS.value,
-        solver_fields=("p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva"),
+        solver_fields=("un_kv", "p_charge_kw", "p_discharge_kw", "e_kwh", "s_n_kva"),
         ui_fields=(
+            ("un_kv", "Un [kV]", "kV"),
             ("p_charge_kw", "Pład [kW]", "kW"),
             ("p_discharge_kw", "Prozł [kW]", "kW"),
             ("e_kwh", "E [kWh]", "kWh"),

@@ -34,7 +34,7 @@ def test_maybe_load_audit2_extensions_none_for_invalid_uuid():
     assert _maybe_load_audit2_extensions(project_id_str="not-a-uuid", station_id="s1") is None
 
 
-def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config():
+def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp_path):
     """Phase 41: istniejacy config -> extensions dict z kluczami SC/PF/Protection."""
     from enm.canonical_analysis import _maybe_load_audit2_extensions
     from infrastructure.persistence.db import (
@@ -45,11 +45,13 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config():
     from infrastructure.persistence.models import StationAudit2ConfigORM
     from infrastructure.persistence.unit_of_work import build_uow_factory
 
-    # Setup in-memory DB.
     import os
-    os.environ["DATABASE_URL"] = "sqlite+pysqlite:///./test_audit2_canonical.db"
 
-    engine = create_engine_from_url("sqlite+pysqlite:///./test_audit2_canonical.db")
+    db_path = tmp_path / "test_audit2_canonical.db"
+    db_url = f"sqlite+pysqlite:///{db_path.as_posix()}"
+    os.environ["DATABASE_URL"] = db_url
+
+    engine = create_engine_from_url(db_url)
     init_db(engine)
     session_factory = create_session_factory(engine)
     uow_factory = build_uow_factory(session_factory)
@@ -92,12 +94,6 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config():
     extensions = _maybe_load_audit2_extensions(
         project_id_str=str(project_id), station_id=station_id
     )
-    # Cleanup test DB.
-    try:
-        os.remove("./test_audit2_canonical.db")
-    except OSError:
-        pass
-
     assert extensions is not None
     assert "power_flow_extensions" in extensions
     assert "sc_iec60909_extensions" in extensions

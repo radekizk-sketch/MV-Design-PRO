@@ -13,6 +13,7 @@
 import { useMemo } from 'react';
 import { clsx } from 'clsx';
 
+import { useAppStateStore } from '../app-state/store';
 import { useNetworkBuildDerived } from '../network-build/networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
 
@@ -88,6 +89,7 @@ export function WorkflowContextStrip({
   onOpenProjectMetadata,
   onOpenSnapshotHistory,
 }: WorkflowContextStripProps) {
+  const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const { buildPhase, buildPhaseLabel, blockersByCategory, isReady } = useNetworkBuildDerived();
   const snapshot = useSnapshotStore((state) => state.snapshot);
 
@@ -148,6 +150,48 @@ export function WorkflowContextStrip({
     loads: hasModel ? stats.loads : '—',
   };
 
+  if (!hasModel) {
+    return (
+      <div
+        data-testid="workflow-context-strip"
+        className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
+      >
+        <div
+          data-testid="wcs-empty-model-start"
+          className="flex min-w-0 flex-1 items-center gap-3"
+        >
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-sm border border-cyan-500/45 bg-cyan-500/12 font-mono text-[12px] font-bold text-cyan-200">
+            1
+          </span>
+          <div className="min-w-0">
+            <div className="truncate text-[12px] font-semibold text-scada-text">
+              Start projektu: zakres obliczeń i GPZ
+            </div>
+            <div className="truncate text-[10px] text-scada-muted">
+              Kolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i uzasadnienie.
+            </div>
+          </div>
+          <button
+            type="button"
+            data-testid="wcs-start-model"
+            onClick={() => setActiveArea('MODEL_SIECI')}
+            className="ml-2 h-8 shrink-0 rounded-sm border border-cyan-500/60 bg-cyan-500/15 px-3 text-[11px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-500/25"
+          >
+            Przejdź do budowy GPZ
+          </button>
+        </div>
+
+        <WorkflowActions
+          onOpenGlobalSearch={onOpenGlobalSearch}
+          onOpenCatalogBrowser={onOpenCatalogBrowser}
+          onOpenMassReview={onOpenMassReview}
+          onOpenProjectMetadata={onOpenProjectMetadata}
+          onOpenSnapshotHistory={onOpenSnapshotHistory}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       data-testid="workflow-context-strip"
@@ -205,13 +249,14 @@ export function WorkflowContextStrip({
         <Metric label="Odbiory nN" value={display.loads} />
       </div>
 
-      <div className="flex h-full shrink-0 items-center gap-7 border-l border-scada-border pl-5 pr-1">
-        <WorkflowAction testId="wcs-search" label="Szukaj" title="Szukaj elementu (Ctrl+K)" onClick={onOpenGlobalSearch} icon={<IconSearch />} />
-        <WorkflowAction testId="wcs-catalog" label="Katalog" title="Przeglądarka katalogów" onClick={onOpenCatalogBrowser} icon={<IconCatalog />} />
-        <WorkflowAction testId="wcs-mass-review" label="Przeglądy" title="Przeglądy masowe" onClick={onOpenMassReview} icon={<IconReview />} badge={display.blockers > 0 ? display.blockers : undefined} />
-        <WorkflowAction testId="wcs-project-metadata" label="Metadane" title="Metadane projektu" onClick={onOpenProjectMetadata} icon={<IconMetadata />} />
-        <WorkflowAction testId="wcs-history" label="Historia" title="Historia migawek" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
-      </div>
+      <WorkflowActions
+        onOpenGlobalSearch={onOpenGlobalSearch}
+        onOpenCatalogBrowser={onOpenCatalogBrowser}
+        onOpenMassReview={onOpenMassReview}
+        onOpenProjectMetadata={onOpenProjectMetadata}
+        onOpenSnapshotHistory={onOpenSnapshotHistory}
+        blockerBadge={display.blockers > 0 ? display.blockers : undefined}
+      />
     </div>
   );
 }
@@ -221,6 +266,25 @@ function Metric({ label, value }: { label: string; value: string | number }) {
     <div className="flex h-8 items-center gap-1.5 border-r border-scada-border px-3">
       <span className="whitespace-nowrap text-[11px] text-scada-muted">{label}:</span>
       <span className="whitespace-nowrap font-mono text-[11px] font-semibold text-scada-text">{value}</span>
+    </div>
+  );
+}
+
+function WorkflowActions({
+  onOpenGlobalSearch,
+  onOpenCatalogBrowser,
+  onOpenMassReview,
+  onOpenProjectMetadata,
+  onOpenSnapshotHistory,
+  blockerBadge,
+}: WorkflowContextStripProps & { blockerBadge?: number }) {
+  return (
+    <div className="flex h-full shrink-0 items-center gap-7 border-l border-scada-border pl-5 pr-1">
+      <WorkflowAction testId="wcs-search" label="Szukaj" title="Szukaj elementu (Ctrl+K)" onClick={onOpenGlobalSearch} icon={<IconSearch />} />
+      <WorkflowAction testId="wcs-catalog" label="Katalog" title="Katalog techniczny" onClick={onOpenCatalogBrowser} icon={<IconCatalog />} />
+      <WorkflowAction testId="wcs-mass-review" label="Przeglądy" title="Przeglądy masowe" onClick={onOpenMassReview} icon={<IconReview />} badge={blockerBadge} />
+      <WorkflowAction testId="wcs-project-metadata" label="Metadane" title="Metadane projektu" onClick={onOpenProjectMetadata} icon={<IconMetadata />} />
+      <WorkflowAction testId="wcs-history" label="Historia" title="Historia wersji modelu" onClick={onOpenSnapshotHistory} icon={<IconHistory />} />
     </div>
   );
 }

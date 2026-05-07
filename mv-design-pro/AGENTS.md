@@ -1,10 +1,46 @@
 # MV-DESIGN-PRO Agent Governance
 
-**Version:** 4.0
+**Version:** 4.1
 **Status:** CANONICAL & BINDING
 **Authority:** docs/spec/ > SYSTEM_SPEC.md > ARCHITECTURE.md > AGENTS.md > PLANS.md
+**Updated:** 2026-04-30 for GPT-5.5-oriented Codex workflows
 
 ---
+
+## 0. GPT-5.5 Operating Standard
+
+Use these rules for agent behavior. They do not weaken any domain, solver, proof, or architecture rule below.
+
+### 0.1 Prompting and Autonomy
+
+- Work from explicit outcomes, success criteria, constraints, and verification needs.
+- Avoid heavy process scripts and "think step by step" instructions; GPT-5.5 performs better with clear goals and room to choose the route.
+- Keep responses concise and direct by default. Expand only for architecture, solver, proof, safety, or audit-sensitive reasoning.
+- Gather enough context to act, then stop searching. Continue discovery only when a required fact, file, contract, or test result is missing.
+- Bias toward implementing requested changes after reading the relevant code. Ask only when local context cannot resolve a material ambiguity.
+
+### 0.2 Reasoning, Tools, and Verification
+
+- Match reasoning effort to task difficulty: low for simple edits, medium for normal implementation, high for complex debugging/architecture, xhigh only for very hard asynchronous work or evals.
+- Batch independent file reads/searches where tooling supports parallel calls.
+- Prefer `apply_patch` for manual edits and project-native tools for formatting, tests, and guards.
+- Preserve user changes. Do not revert unrelated dirty-worktree edits.
+- Use tests and guards as evals: choose the smallest meaningful set that exercises the changed behavior, and report any verification gap.
+
+### 0.3 OpenAI/API Work
+
+- For OpenAI API or agent integrations, prefer the Responses API for reasoning, tool-calling, and multi-turn workflows.
+- Use Structured Outputs instead of prompt-only JSON schemas when an API contract is required.
+- Put stable instructions before dynamic task context to improve prompt caching.
+- For current model behavior, pricing, API parameters, regulations, dependencies, or time-sensitive facts, verify against current sources and cite exact dates.
+- Do not add the current date to prompts or docs unless the task is time-sensitive.
+
+### 0.4 Język i kodowanie
+
+- W dokumentacji projektu, etykietach interfejsu, komunikatach i nowych komentarzach używaj polskiego języka technicznego.
+- Angielski zostawiaj tylko dla nazw własnych standardów, bibliotek, API, typów kodowych, ścieżek i identyfikatorów programu.
+- Każdy widoczny błąd kodowania, w tym typowe pozostałości po błędnym odczycie UTF-8, jest błędem do naprawy w dotykanym zakresie.
+- Nie zostawiaj w interfejsie ani dokumentacji mieszanki językowej, jeżeli nie wynika ona z nazwy własnej albo kontraktu kodowego.
 
 ## 1. Document Hierarchy
 
@@ -22,6 +58,17 @@ In case of conflict: `docs/spec/` wins (it is the most detailed and authoritativ
 ---
 
 ## 2. Immutable Rules
+
+### 2.0 Standard projektowania stacji
+
+Przy pracy nad GPZ, rozdzielnią SN, stacjami SN/nN, odgałęzieniami, zabezpieczeniami, kartami obiektów i SLD stosuj
+[`docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md`](docs/sld/STACJE_ELEKTROENERGETYCZNE_PROJECT_STANDARD.md).
+
+- Traktuj każdą stację jako funkcjonalny układ elektroenergetyczny: tor zasilania, tor transformatora, sekcje szyn, pola, aparaturę, uziemienie, zabezpieczenia, sterowanie, sygnalizację i wyprowadzone odcinki sieci.
+- Nie rysuj dekoracyjnej ani atrapowej aparatury. Każdy widoczny element schematu musi wynikać z danych domeny, katalogu, pola stacji, aparatu albo jawnego stanu brakujących danych.
+- Obowiązująca sekwencja budowy to `GPZ -> pole SN -> magistrala SN -> odcinek/stacja/odgałęzienie -> transformator/odbiór/OZE/BESS -> obliczenia serwerowe -> nakładka wyników i dowód obliczeń`.
+- Warstwa prezentacji wysyła wyłącznie dane wejściowe. Wartości obliczone pochodzą z solverów i wyników serwerowych.
+- Główne karty użytkownika są kartami inżynierskimi. Surowe identyfikatory, skróty haszy i referencje wewnętrzne mogą występować tylko w zwiniętej diagnostyce.
 
 ### 2.1 NOT-A-SOLVER Rule
 
@@ -162,12 +209,15 @@ Before any implementation:
 
 ### 6.2 Behavioral Rules
 
-1. Do not invent scope beyond the plan
+1. Do not invent scope beyond the request or the active plan
 2. Do not add features not requested
-3. Default to "do not change" when uncertain
-4. Reference SYSTEM_SPEC.md for architectural questions
+3. Prefer "no change" for architecture-sensitive ambiguity until the relevant spec is checked
+4. Reference SYSTEM_SPEC.md and docs/spec/ for architectural questions
 5. Preserve all existing functionality (no regressions)
 6. Follow existing code patterns and conventions
+7. State acceptance criteria before broad implementation work
+8. Verify with targeted tests, guards, type checks, or builds before finalizing
+9. If verification cannot run, record the exact blocker
 
 ### 6.3 Protection Rules (BINDING)
 

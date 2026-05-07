@@ -147,7 +147,16 @@ export function AddNnOutgoingFieldForm() {
             catalog_binding: normalizeCatalogBinding(catalogItemId, 'APARAT_NN') ?? undefined,
           };
 
-      await executeDomainOperation(activeCaseId, 'add_nn_outgoing_field', payload);
+      const response = await executeDomainOperation(activeCaseId, 'add_nn_outgoing_field', payload);
+      if (!response) {
+        const operationError = useSnapshotStore.getState().error;
+        setError(operationError ?? 'Nie udało się dodać pola nN.');
+        return;
+      }
+      if (response.error) {
+        setError(response.error);
+        return;
+      }
       closeForm();
     } catch (submitError) {
       setError(

@@ -89,6 +89,109 @@ def _converter_record(
     return {"id": item_id, "name": name, "params": params}
 
 
+_NN_INVERTER_VOLTAGES_KV = (0.4, 0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3)
+_PV_POWER_MW = (0.5, 1.0, 2.0, 3.0, 5.0)
+_BESS_POWER_MW = (0.5, 1.0, 2.0, 3.0, 5.0, 10.0)
+_FW_POWER_MW = (2.0, 3.0, 4.0, 5.0, 6.0)
+
+
+def _catalog_token(value: float) -> str:
+    return f"{value:g}".replace(".", "p")
+
+
+def _reactive_limit(power_mw: float) -> float:
+    return round(power_mw * 0.36, 2)
+
+
+def _sn_mva_for_power(power_mw: float) -> float:
+    return round(power_mw * 1.1, 3)
+
+
+def _build_nn_converter_family(
+    *,
+    kind: str,
+    voltage_kv: float,
+    powers_mw: tuple[float, ...],
+    manufacturer: str,
+    model_prefix: str,
+    name_prefix: str,
+    energy_hours: float | None = None,
+) -> list[dict[str, Any]]:
+    voltage_token = _catalog_token(voltage_kv)
+    records: list[dict[str, Any]] = []
+    for power_mw in powers_mw:
+        power_token = _catalog_token(power_mw)
+        q_limit = _reactive_limit(power_mw)
+        energy_kwh = power_mw * energy_hours * 1000 if energy_hours is not None else None
+        records.append(
+            _converter_record(
+                item_id=f"conv-{kind.lower()}-nn-{power_token}mw-{voltage_token}kv",
+                name=f"{name_prefix} {power_mw:g} MW / {voltage_kv:g} kV nN",
+                kind=kind,
+                un_kv=voltage_kv,
+                sn_mva=_sn_mva_for_power(power_mw),
+                pmax_mw=power_mw,
+                qmin_mvar=-q_limit,
+                qmax_mvar=q_limit,
+                cosphi_min=0.9,
+                cosphi_max=1.0,
+                manufacturer=manufacturer,
+                model=f"{model_prefix} {power_mw:g} MW {voltage_kv:g} kV",
+                e_kwh=energy_kwh,
+                control_mode="Q_U_DROOP",
+                grid_code="NC_RfG",
+                note=(
+                    "Referencyjny profil nN dla stacji SN/nN z transformatorem "
+                    "blokowym; parametry producenta nalezy potwierdzic przy doborze wykonawczym."
+                ),
+            )
+        )
+    return records
+
+
+CONVERTER_PV_NN: list[dict[str, Any]] = [
+    record
+    for _voltage in _NN_INVERTER_VOLTAGES_KV
+    for record in _build_nn_converter_family(
+        kind="PV",
+        voltage_kv=_voltage,
+        powers_mw=_PV_POWER_MW,
+        manufacturer="MV-DESIGN-PRO reference",
+        model_prefix="PV central inverter",
+        name_prefix="Falownik PV",
+    )
+]
+
+
+CONVERTER_BESS_NN: list[dict[str, Any]] = [
+    record
+    for _voltage in _NN_INVERTER_VOLTAGES_KV
+    for record in _build_nn_converter_family(
+        kind="BESS",
+        voltage_kv=_voltage,
+        powers_mw=_BESS_POWER_MW,
+        manufacturer="MV-DESIGN-PRO reference",
+        model_prefix="BESS PCS",
+        name_prefix="PCS BESS",
+        energy_hours=2.0,
+    )
+]
+
+
+CONVERTER_WIND_NN: list[dict[str, Any]] = [
+    record
+    for _voltage in _NN_INVERTER_VOLTAGES_KV
+    for record in _build_nn_converter_family(
+        kind="WIND",
+        voltage_kv=_voltage,
+        powers_mw=_FW_POWER_MW,
+        manufacturer="MV-DESIGN-PRO reference",
+        model_prefix="FW full-converter",
+        name_prefix="Falownik FW",
+    )
+]
+
+
 # =============================================================================
 # FARMY FOTOWOLTAICZNE (PV)
 # =============================================================================
@@ -704,7 +807,14 @@ CONVERTER_BESS: list[dict[str, Any]] = [
     ),
 ]
 
-for _converter_type in CONVERTER_PV + CONVERTER_WIND + CONVERTER_BESS:
+for _converter_type in (
+    CONVERTER_PV
+    + CONVERTER_PV_NN
+    + CONVERTER_WIND
+    + CONVERTER_WIND_NN
+    + CONVERTER_BESS
+    + CONVERTER_BESS_NN
+):
     _apply_quality_defaults(_converter_type)
 
 
@@ -715,24 +825,38 @@ for _converter_type in CONVERTER_PV + CONVERTER_WIND + CONVERTER_BESS:
 
 def get_all_converter_types() -> list[dict[str, Any]]:
     """Zwraca wszystkie typy zrodel konwerterowych i magazynow energii."""
-    for record in CONVERTER_PV + CONVERTER_WIND + CONVERTER_BESS:
+    for record in (
+        CONVERTER_PV
+        + CONVERTER_PV_NN
+        + CONVERTER_WIND
+        + CONVERTER_WIND_NN
+        + CONVERTER_BESS
+        + CONVERTER_BESS_NN
+    ):
         _apply_quality_defaults(record)
-    return CONVERTER_PV + CONVERTER_WIND + CONVERTER_BESS
+    return (
+        CONVERTER_PV
+        + CONVERTER_PV_NN
+        + CONVERTER_WIND
+        + CONVERTER_WIND_NN
+        + CONVERTER_BESS
+        + CONVERTER_BESS_NN
+    )
 
 
 def get_pv_types() -> list[dict[str, Any]]:
     """Zwraca typy farm PV."""
-    return CONVERTER_PV
+    return CONVERTER_PV + CONVERTER_PV_NN
 
 
 def get_wind_types() -> list[dict[str, Any]]:
     """Zwraca typy turbin wiatrowych."""
-    return CONVERTER_WIND
+    return CONVERTER_WIND + CONVERTER_WIND_NN
 
 
 def get_bess_types() -> list[dict[str, Any]]:
     """Zwraca typy magazynow energii."""
-    return CONVERTER_BESS
+    return CONVERTER_BESS + CONVERTER_BESS_NN
 
 
 def get_converter_catalog_statistics() -> dict[str, Any]:
@@ -749,9 +873,9 @@ def get_converter_catalog_statistics() -> dict[str, Any]:
 
     return {
         "liczba_konwerterow_ogolem": len(all_types),
-        "liczba_pv": len(CONVERTER_PV),
-        "liczba_wiatr": len(CONVERTER_WIND),
-        "liczba_bess": len(CONVERTER_BESS),
+        "liczba_pv": len(CONVERTER_PV + CONVERTER_PV_NN),
+        "liczba_wiatr": len(CONVERTER_WIND + CONVERTER_WIND_NN),
+        "liczba_bess": len(CONVERTER_BESS + CONVERTER_BESS_NN),
         "rodzaje": kinds,
         "producenci": manufacturers,
         "verification_statuses": sorted({t["params"]["verification_status"] for t in all_types}),

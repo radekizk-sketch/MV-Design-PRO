@@ -256,6 +256,33 @@ class TestCatalogGateInsertStation:
         # Sprawdz ze stacja zostala utworzona
         assert len(result.get("changes", {}).get("created_element_ids", [])) > 0
 
+    def test_reject_station_when_transformer_catalog_lv_voltage_does_not_match_station(self):
+        """Katalog transformatora musi być zgodny z napięciem strony nN stacji."""
+        enm = _empty_enm()
+        snapshot = _add_gpz(enm)
+        snapshot = _add_segment_with_catalog(snapshot)
+
+        seg_ref = _get_first_cable_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": seg_ref,
+                "station_type": "A",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.69},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": CATALOG_TRAFO_SN_NN,
+                },
+            },
+        )
+
+        assert result.get("error") is not None
+        assert result["error_code"] == "station.insert.transformer_voltage_mismatch"
+
     def test_station_without_create_transformer_passes(self):
         """insert_station BEZ create=True (no transformer) → nie wymaga katalogu TR."""
         enm = _empty_enm()

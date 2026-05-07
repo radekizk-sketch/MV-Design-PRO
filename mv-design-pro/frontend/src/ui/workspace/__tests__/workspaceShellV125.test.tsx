@@ -158,6 +158,12 @@ vi.mock('../../comparison/ResultsComparisonPage', () => ({
   ResultsComparisonPage: () => <div data-testid="results-comparison-page">CMP</div>,
 }));
 
+vi.mock('../../network-build/forms/AddGridSourceForm', () => ({
+  AddGridSourceForm: () => (
+    <div data-testid="add-grid-source-form">Formularz dodania GPZ do modelu sieci</div>
+  ),
+}));
+
 describe('workspace shell V12.5 surfaces', () => {
   beforeEach(() => {
     fetchMock.mockReset();
@@ -167,6 +173,17 @@ describe('workspace shell V12.5 surfaces', () => {
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
+  });
+
+  it('renderuje formularz operacji GPZ zamiast statycznego edytora E-10', () => {
+    useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn');
+
+    render(<WorkspaceSurfaceRouter region="panel" />);
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Dodaj źródło zasilania GPZ' })).toBeInTheDocument();
+    expect(screen.getByTestId('add-grid-source-form')).toBeInTheDocument();
+    expect(screen.queryByText(/add_grid_source_sn/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/roadmap/i)).not.toBeInTheDocument();
   });
 
   it('renderuje przemyslowy surface E-30 w glownym shellu', () => {
@@ -233,7 +250,7 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Przebiegi obliczen' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Przebiegi obliczeń' })).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
     expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();

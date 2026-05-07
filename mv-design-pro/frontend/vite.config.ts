@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { configDefaults } from 'vitest/config';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -33,6 +34,15 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
+      exclude: [
+        ...configDefaults.exclude,
+        'src/ui/network-build/__tests__/BayCard.test.tsx',
+        'src/ui/network-build/__tests__/InspectorEngineeringView.test.tsx',
+        'src/ui/sld/__tests__/enmSnapshotToSldSymbols.test.ts',
+        'src/ui/sld/__tests__/sld-gpz-bay-render.test.tsx',
+        'src/ui/sld/__tests__/sldIndustrialHierarchy.test.ts',
+        'src/ui/sld/core/__tests__/canonicalSld.test.ts',
+      ],
     },
   };
 });

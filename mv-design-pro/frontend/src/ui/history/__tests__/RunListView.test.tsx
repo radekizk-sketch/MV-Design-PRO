@@ -12,7 +12,7 @@ const SAMPLES: RunListEntry[] = [
   {
     run_id: 'R1',
     case_id: 'C1',
-    case_name: 'Przypadek A',
+    case_name: 'Zakres A',
     proof_type: 'SC3F_IEC60909',
     status: 'success',
     created_at: '2026-04-25T10:00:00Z',
@@ -22,7 +22,7 @@ const SAMPLES: RunListEntry[] = [
   {
     run_id: 'R2',
     case_id: 'C2',
-    case_name: 'Przypadek B',
+    case_name: 'Zakres B',
     proof_type: 'VDROP',
     status: 'failed',
     created_at: '2026-04-26T10:00:00Z',
@@ -36,6 +36,7 @@ describe('RunListView — cross-case run list', () => {
     expect(screen.getByTestId('run-list-view')).toBeInTheDocument();
     expect(screen.getByTestId('run-row-R1')).toBeInTheDocument();
     expect(screen.getByTestId('run-row-R2')).toBeInTheDocument();
+    expect(screen.getByText('Historia obliczeń (przekrojowo)')).toBeInTheDocument();
   });
 
   it('count widoczny w nagłówku', () => {
@@ -74,6 +75,7 @@ describe('RunListView — cross-case run list', () => {
     const { rerender } = render(<RunListView runs={SAMPLES} availableCases={cases} />);
     rerender(<RunListView runs={SAMPLES} availableCases={cases} />);
     expect(screen.getAllByTestId('run-filter-case').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Zakres obliczeń:').length).toBeGreaterThan(0);
   });
 
   it('klik wiersza wywołuje onRunClick z run_id', () => {
@@ -91,6 +93,14 @@ describe('RunListView — cross-case run list', () => {
       });
     });
     expect(screen.getByTestId('run-list-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('run-list-empty')).toHaveTextContent('Brak obliczeń');
+  });
+
+  it('nie pokazuje zakazanych angielskich terminów w aktywnych etykietach', () => {
+    const { container } = render(<RunListView runs={SAMPLES} />);
+    const visibleText = container.textContent ?? '';
+    expect(visibleText).not.toMatch(/\b(run|case|proof|snapshot|mock|placeholder)\b/i);
+    expect(visibleText).not.toMatch(/Przypadek/);
   });
 
   it('sortowanie DESC po dacie (najnowsze najpierw)', () => {

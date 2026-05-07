@@ -1,17 +1,16 @@
 /**
  * Panel kontekstu obszaru Studia obliczeniowe.
  *
- * Wyświetla:
- *  - Aktywny przypadek + wariant + migawkę
- *  - Listę typów analiz (SC_3F / SC_1F / LOAD_FLOW / PROTECTION / ...)
- *  - Lista przypadków obliczeniowych (StudyCaseList)
- *
- * Catalog-first, no codenames, dark SCADA palette.
+ * Wyświetla aktywny zakres, wariant, wersję modelu, typy analiz oraz listę
+ * zakresów obliczeń. Panel nie wykonuje obliczeń i nie mutuje modelu sieci.
  */
 
+import { useCallback, useEffect } from 'react';
 import { clsx } from 'clsx';
 import { useAppStateStore } from '../../app-state/store';
 import { StudyCaseList } from '../../study-cases/StudyCaseList';
+import { useStudyCasesStore } from '../../study-cases/store';
+import type { StudyCase } from '../../study-cases/types';
 
 interface AnalysisRow {
   code: string;
@@ -30,16 +29,52 @@ const ANALYSIS_TYPES: AnalysisRow[] = [
 ];
 
 export function AnContextPanel() {
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
   const activeVariantName = useAppStateStore((s) => s.activeVariantName);
   const activeSnapshotId = useAppStateStore((s) => s.activeSnapshotId);
+  const setActiveCase = useAppStateStore((s) => s.setActiveCase);
   const setActiveAnalysisType = useAppStateStore((s) => s.setActiveAnalysisType);
   const activeAnalysisType = useAppStateStore((s) => s.activeAnalysisType);
+  const setStudyCasesProjectId = useStudyCasesStore((s) => s.setProjectId);
+  const activateStudyCase = useStudyCasesStore((s) => s.activateCase);
+  const selectStudyCase = useStudyCasesStore((s) => s.selectCase);
+
+  useEffect(() => {
+    if (activeProjectId) {
+      setStudyCasesProjectId(activeProjectId);
+    }
+  }, [activeProjectId, setStudyCasesProjectId]);
+
+  const applyActiveCase = useCallback(
+    (studyCase: StudyCase) => {
+      selectStudyCase(studyCase.id);
+      if (studyCase.is_active) {
+        setActiveCase(studyCase.id, studyCase.name, 'ShortCircuitCase', studyCase.result_status);
+      }
+    },
+    [selectStudyCase, setActiveCase],
+  );
+
+  const handleActivateCase = useCallback(
+    async (caseId: string) => {
+      const activatedCase = await activateStudyCase(caseId);
+      applyActiveCase(activatedCase);
+    },
+    [activateStudyCase, applyActiveCase],
+  );
+
+  const handleCaseClick = useCallback(
+    (caseId: string) => {
+      selectStudyCase(caseId);
+    },
+    [selectStudyCase],
+  );
 
   return (
     <div
       data-testid="an-context-panel"
-      className="flex h-full flex-col overflow-hidden bg-scada-panel"
+      className="flex h-full flex-col overflow-auto bg-scada-panel"
     >
       <div className="border-b border-scada-border px-3 py-2">
         <span className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
@@ -61,6 +96,17 @@ export function AnContextPanel() {
         </div>
       </div>
 
+      <div className="shrink-0 border-b border-scada-border bg-scada-bg" data-testid="an-case-list">
+        <StudyCaseList
+          onCaseClick={handleCaseClick}
+          onActivateCase={handleActivateCase}
+          onCaseCreated={applyActiveCase}
+          createProjectId={activeProjectId}
+          createDisabled={!activeProjectId}
+          createDisabledReason="Najpierw utwórz albo wybierz projekt."
+        />
+      </div>
+
       <div className="border-b border-scada-border bg-scada-bg px-3 py-2">
         <div className="text-[10px] font-bold uppercase tracking-widest text-scada-muted">
           Zakres analizy
@@ -68,7 +114,10 @@ export function AnContextPanel() {
         <div className="mt-1.5 flex flex-col gap-1" data-testid="an-analysis-list">
           {ANALYSIS_TYPES.map((row) => {
             const matches =
-              (row.code === 'SC_3F' || row.code === 'SC_1F' || row.code === 'SC_2F' || row.code === 'SC_2F_G') &&
+              (row.code === 'SC_3F' ||
+                row.code === 'SC_1F' ||
+                row.code === 'SC_2F' ||
+                row.code === 'SC_2F_G') &&
               activeAnalysisType === 'SHORT_CIRCUIT';
             const isLoadFlow = row.code === 'LOAD_FLOW' && activeAnalysisType === 'LOAD_FLOW';
             const isProtection = row.code === 'PROTECTION' && activeAnalysisType === 'PROTECTION';
@@ -103,10 +152,6 @@ export function AnContextPanel() {
             );
           })}
         </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-auto" data-testid="an-case-list">
-        <StudyCaseList />
       </div>
     </div>
   );

@@ -41,6 +41,30 @@ vi.mock('../networkBuildStore', () => ({
   useActiveOperationContext: () => activeOperationContextState.value,
 }));
 
+vi.mock('../../catalog/api', () => ({
+  fetchCableTypes: vi.fn(async () => [
+    {
+      id: 'XRUHAKXS-3x120',
+      name: 'XRUHAKXS 3x120',
+      manufacturer: 'Katalog SN',
+      voltage_rating_kv: 15,
+      cross_section_mm2: 120,
+      rated_current_a: 200,
+    },
+  ]),
+  fetchLineTypes: vi.fn(async () => [
+    {
+      id: 'AFL-6-70',
+      name: 'AFL-6 70',
+      manufacturer: 'Katalog SN',
+      voltage_rating_kv: 15,
+      cross_section_mm2: 70,
+      rated_current_a: 180,
+    },
+  ]),
+  getCatalogErrorMessage: vi.fn(() => 'Nie udało się pobrać katalogu.'),
+}));
+
 describe('ContinueTrunkForm', () => {
   beforeEach(() => {
     activeOperationContextState.value = undefined;
@@ -75,7 +99,7 @@ describe('ContinueTrunkForm', () => {
     };
   });
 
-  it('renderuje kanoniczny kontekst kontynuacji magistrali', () => {
+  it('renderuje kanoniczny kontekst kontynuacji magistrali', async () => {
     const context = buildOperationContext({
       canonicalOp: 'continue_trunk_segment_sn',
       elementId: 'bay-out-1',
@@ -97,13 +121,44 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByDisplayValue('trunk-1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('bay-out-1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('bay-out-1:OUT')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Magistrala SN 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Szyna SN 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('zacisk wyjściowy pola SN')).toBeInTheDocument();
     expect(screen.getByDisplayValue('15 kV')).toBeInTheDocument();
+    expect(await screen.findByTestId('catalog-picker-search')).toBeInTheDocument();
   });
 
-  it('blokuje zapis, gdy terminal magistrali nie zostal rozstrzygniety', () => {
+  it('nie pokazuje kierunków ukośnych dla odcinka SN', async () => {
+    activeOperationContextState.value = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'bay-out-1',
+      elementType: 'BaySN',
+      snapshot: snapshotState.snapshot,
+      logicalViews: {
+        terminals: [
+          {
+            element_id: 'bay-out-1',
+            port_id: 'bay-out-1:OUT',
+            trunk_id: 'trunk-1',
+            status: 'DOSTEPNY',
+          },
+        ],
+      } as any,
+    });
+
+    render(<ContinueTrunkForm />);
+
+    expect(screen.getByText('Północ (N)')).toBeInTheDocument();
+    expect(screen.getByText('Wschód (E)')).toBeInTheDocument();
+    expect(screen.getByText('Południe (S)')).toBeInTheDocument();
+    expect(screen.getByText('Zachód (W)')).toBeInTheDocument();
+    expect(screen.queryByText('Północny-wschód (NE)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Południowy-wschód (SE)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Południowy-zachód (SW)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Północny-zachód (NW)')).not.toBeInTheDocument();
+  });
+
+  it('blokuje zapis, gdy terminal magistrali nie został rozstrzygnięty', async () => {
     activeOperationContextState.value = {
       element_ref: 'source-gpz-1',
       element_type: 'Source',
@@ -111,11 +166,12 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Brak jawnego terminala magistrali.')).toBeInTheDocument();
+    expect(screen.getByText('Brak jawnego zacisku lub pola SN.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Dodaj odcinek' })).toBeDisabled();
+    expect(await screen.findByTestId('catalog-picker-search')).toBeInTheDocument();
   });
 
-  it('wysyla nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
+  it('wysyła nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
     const context = buildOperationContext({
       canonicalOp: 'continue_trunk_segment_sn',
       elementId: 'bay-out-1',
@@ -139,9 +195,9 @@ describe('ContinueTrunkForm', () => {
     render(<ContinueTrunkForm />);
 
     fireEvent.change(screen.getByPlaceholderText('np. 350'), { target: { value: '350' } });
-    fireEvent.change(screen.getByPlaceholderText('Wskaż pozycję katalogową'), {
-      target: { value: 'XRUHAKXS-3x120' },
-    });
+    const catalogSearch = await screen.findByTestId('catalog-picker-search');
+    fireEvent.change(catalogSearch, { target: { value: 'XRU' } });
+    fireEvent.click(await screen.findByTestId('catalog-entry-XRUHAKXS-3x120'));
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj odcinek' }));
 
     await waitFor(() => {

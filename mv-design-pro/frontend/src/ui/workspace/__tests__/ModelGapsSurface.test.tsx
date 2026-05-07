@@ -10,10 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
+import { useSelectionStore } from '../../selection';
 import { WorkspaceSurfaceRouter } from '../WorkspaceSurfaceRouter';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
@@ -40,6 +41,7 @@ const E04_SURFACE: WorkspaceSurfaceDescriptor = {
 describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
   beforeEach(() => {
     useSnapshotStore.getState().reset();
+    useSelectionStore.getState().clearSelection();
     useNetworkBuildStore.setState({ activeSurface: E04_SURFACE });
   });
 
@@ -92,6 +94,7 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
     expect(screen.getByText(/Brak katalogu dla kabla SN K-12/)).toBeInTheDocument();
     expect(screen.getByText('catalog.cable.missing')).toBeInTheDocument();
     expect(screen.getByTestId('gap-blocker-1')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /Napraw:/ })).toHaveLength(2);
   });
 
   it('renderuje listę ostrzeżeń osobno od blokerów', () => {
@@ -134,5 +137,64 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
     expect(screen.getByText('Status: 3 blokerów, 1 ostrzeżeń')).toBeInTheDocument();
+  });
+
+  it('klik naprawy blockera wybiera element i otwiera powiazany formularz', () => {
+    useSnapshotStore.setState({
+      snapshot: {
+        generators: [
+          {
+            id: 'gen_pv_1',
+            ref_id: 'gen_pv_1',
+            name: 'Blok PV',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_1',
+            p_mw: 0.5,
+            gen_type: 'pv_inverter',
+          },
+        ],
+      } as never,
+      readiness: {
+        ready: false,
+        blockers: [
+          {
+            code: 'generator.block_variant_requires_block_transformer',
+            message_pl: 'Generator OZE wymaga transformatora',
+            element_ref: 'gen_pv_1',
+            severity: 'BLOCKER',
+          },
+        ],
+        warnings: [],
+      },
+      fixActions: [
+        {
+          code: 'generator.block_variant_requires_block_transformer',
+          action_type: 'ADD_MISSING_DEVICE',
+          element_ref: 'gen_pv_1',
+          modal_type: 'TransformerModal',
+          panel: 'transformer_panel',
+          step: 'K5',
+          focus: 'blocking_transformer_ref',
+          payload_hint: { required: 'blocking_transformer_ref' },
+          message_pl: 'Dodaj transformator dedykowany',
+        },
+      ],
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Napraw: Dodaj transformator dedykowany/ }));
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'gen_pv_1',
+      type: 'PVInverter',
+      name: 'Blok PV',
+    });
+    expect(useSelectionStore.getState().sldCenterOnElement).toBe('gen_pv_1');
+    expect(useNetworkBuildStore.getState().activeSurface?.routeState.payload).toMatchObject({
+      delegate: 'operation_form',
+      operation: 'add_transformer_sn_nn',
+    });
   });
 });

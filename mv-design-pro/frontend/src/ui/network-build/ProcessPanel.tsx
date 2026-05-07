@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { clsx } from 'clsx';
 
 import {
@@ -9,13 +9,26 @@ import type {
   OzeSourceSummary,
   StationSummary,
   TransformerSummary,
+  LoadSummary,
+  ConfiguredGridSourceSnField,
+  GridSourceSnFieldCandidate,
 } from './networkBuildStore';
 import type { BranchViewV1, TerminalRef, TrunkViewV1 } from '../../types/enm';
 import { buildConverterSourceOperationContext } from '../shared/converterSourceContext';
 import { formatGeneratorTypeShortLabelPl } from '../shared/generatorTypeLabels';
 import { formatStationTypeShortLabelPl } from '../shared/stationTypeLabels';
+import {
+  buildControlDeviceOptions,
+  measurementCountsForField,
+} from '../field/fieldControlSelectors';
+import { useFieldReadModel } from '../field/useFieldReadModel';
 
 type StatusLevel = 'done' | 'partial' | 'empty' | 'error';
+
+const mutedTextClass = 'text-[#8fb4d8]';
+const primaryTextClass = 'text-scada-text';
+const rowHoverClass = 'hover:bg-[#0a2033]';
+const sectionBorderClass = 'border-[#15324f]';
 
 function scopedTestId(testId: string, scope?: string): string {
   return scope ? `${scope}-${testId}` : testId;
@@ -63,15 +76,19 @@ function SectionHeader({ id, label, status, badge, collapsed, onToggle, testIdSc
     <button
       type="button"
       onClick={onToggle}
-      className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-chrome-50 transition-colors border-b border-chrome-100"
+      className={clsx(
+        'w-full flex items-center gap-2 px-3 py-2 text-left transition-colors border-b bg-[#06101c]',
+        rowHoverClass,
+        sectionBorderClass,
+      )}
       data-testid={scopedTestId(`process-section-${id}`, testIdScope)}
       data-collapsed={collapsed}
     >
-      {collapsed ? <IconChevronRight className="text-chrome-400" /> : <IconChevronDown className="text-chrome-400" />}
+      {collapsed ? <IconChevronRight className={mutedTextClass} /> : <IconChevronDown className={mutedTextClass} />}
       <StatusDot level={status} />
-      <span className="flex-1 text-xs font-semibold text-chrome-700 uppercase tracking-wider">{label}</span>
+      <span className={clsx('flex-1 text-xs font-semibold uppercase tracking-wider', primaryTextClass)}>{label}</span>
       {badge && (
-        <span className="text-[10px] text-chrome-500 bg-chrome-100 px-1.5 py-0.5 rounded-full">{badge}</span>
+        <span className="rounded border border-[#24506f] bg-[#081827] px-1.5 py-0.5 text-[10px] text-[#9ecbff]">{badge}</span>
       )}
     </button>
   );
@@ -93,16 +110,44 @@ function ActionButton({ label, onClick, variant = 'secondary', testId, testIdSco
       onClick={onClick}
       disabled={disabled}
       className={clsx(
-        'w-full text-left px-3 py-1.5 text-[11px] rounded-ind transition-colors',
+        'w-full text-left px-3 py-1.5 text-[11px] rounded-ind transition-colors border',
         variant === 'primary'
-          ? 'bg-ind-600 text-white hover:bg-ind-700 disabled:bg-chrome-300'
-          : 'text-ind-700 hover:bg-ind-50 disabled:text-chrome-400 disabled:hover:bg-transparent',
+          ? 'border-[#00d4ff] bg-[#07415f] text-scada-text hover:bg-[#09567d] disabled:border-[#1c2d3f] disabled:bg-[#07111f] disabled:text-[#536b86]'
+          : 'border-[#15324f] bg-[#07111f] text-[#9ecbff] hover:border-[#00d4ff] hover:bg-[#0a2033] hover:text-scada-text disabled:border-[#15324f] disabled:text-[#536b86] disabled:hover:bg-[#07111f]',
       )}
       data-testid={testId ? scopedTestId(testId, testIdScope) : undefined}
     >
       {label}
     </button>
   );
+}
+
+function safeTestToken(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]+/g, '-');
+}
+
+function portRoleLabel(portId?: string | null): string {
+  const normalized = (portId ?? '').toLowerCase();
+  if (normalized.includes('branch')) return 'zacisk odgałęźny';
+  if (normalized.includes('start') || normalized.includes('in') || normalized.includes('upstream')) {
+    return 'zacisk wejściowy';
+  }
+  if (normalized.includes('end') || normalized.includes('out') || normalized.includes('downstream')) {
+    return 'zacisk wyjściowy';
+  }
+  return 'zacisk techniczny';
+}
+
+function openPortLabel(
+  terminal: TerminalRef,
+  field: ConfiguredGridSourceSnField | null,
+): string {
+  const owner = field?.name?.trim() || 'obiekt sieci SN';
+  return `${owner} · ${portRoleLabel(terminal.port_id)} · SN`;
+}
+
+function branchSourceLabel(segment: BranchViewV1): string {
+  return `${portRoleLabel(segment.from_port_id)} obiektu źródłowego`;
 }
 
 function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; testIdScope?: string }) {
@@ -115,8 +160,8 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
   if (sourceCount === 0) {
     return (
       <div className="px-3 py-2">
-        <p className="text-[11px] text-chrome-500 mb-2">
-          Brak GPZ. Najpierw utworz GPZ z sekcjami i polami liniowymi, dopiero potem wyprowadz ciag glowny.
+        <p className={clsx('mb-2 text-[11px]', mutedTextClass)}>
+          Brak GPZ. Najpierw utwórz GPZ z sekcjami i polami liniowymi, dopiero potem wyprowadź ciąg główny.
         </p>
         <ActionButton
           label="+ Dodaj GPZ"
@@ -131,14 +176,77 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
 
   return (
     <div className="px-3 py-2">
-      <div className="flex items-center gap-2 text-[11px] text-chrome-700">
+      <div className={clsx('flex items-center gap-2 text-[11px]', primaryTextClass)}>
         <StatusDot level="done" />
-        <span>GPZ zdefiniowany ({sourceCount})</span>
+        <span>GPZ gotowy ({sourceCount})</span>
       </div>
       <ActionButton
-        label="Edytuj GPZ i pola SN"
+        label="Edytuj GPZ"
         onClick={handleAddSource}
         testId="btn-edit-source"
+        testIdScope={testIdScope}
+      />
+    </div>
+  );
+}
+
+function SnFieldSection({
+  sourceCount,
+  configuredFieldCount,
+  gridSourceStationRef,
+  unconfiguredFields,
+  testIdScope,
+}: {
+  sourceCount: number;
+  configuredFieldCount: number;
+  gridSourceStationRef: string | null;
+  unconfiguredFields: GridSourceSnFieldCandidate[];
+  testIdScope?: string;
+}) {
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const firstUnconfiguredField = unconfiguredFields[0] ?? null;
+
+  const handleConfigureField = useCallback(() => {
+    openForm('add_sn_bay', {
+      station_ref: gridSourceStationRef ?? undefined,
+      bus_ref: firstUnconfiguredField?.bus_ref,
+      existing_field_ref: firstUnconfiguredField?.ref_id,
+      field_name: firstUnconfiguredField?.name,
+      gpz_section_id: firstUnconfiguredField?.gpz_section_id ?? undefined,
+      bay_role: 'OUT',
+    });
+  }, [firstUnconfiguredField, gridSourceStationRef, openForm]);
+
+  if (sourceCount === 0) {
+    return (
+      <div className="px-3 py-2">
+        <p className={clsx('text-[11px]', mutedTextClass)}>Pole SN konfigurujesz dopiero po utworzeniu GPZ.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-3 py-2 space-y-2">
+      {configuredFieldCount > 0 ? (
+        <div className={clsx('flex items-center gap-2 text-[11px]', primaryTextClass)}>
+          <StatusDot level="done" />
+          <span>Pole odpływowe SN gotowe ({configuredFieldCount})</span>
+        </div>
+      ) : (
+        <p className={clsx('text-[11px]', mutedTextClass)}>
+          Skonfiguruj pole odpływowe SN z aparaturą. Magistrala będzie wyprowadzona z jego zacisku wyjściowego.
+        </p>
+      )}
+      {firstUnconfiguredField && (
+        <p className={clsx('text-[11px]', primaryTextClass)}>
+          Następne pole z GPZ: {firstUnconfiguredField.name}
+        </p>
+      )}
+      <ActionButton
+        label={configuredFieldCount > 0 ? '+ Dodaj kolejne pole SN' : 'Skonfiguruj pole SN'}
+        onClick={handleConfigureField}
+        variant={configuredFieldCount > 0 ? 'secondary' : 'primary'}
+        testId="btn-configure-sn-field"
         testIdScope={testIdScope}
       />
     </div>
@@ -148,28 +256,66 @@ function SourceSection({ sourceCount, testIdScope }: { sourceCount: number; test
 function TrunksSection({
   trunks,
   openTerminals,
+  sourceCount,
+  configuredFieldCount,
+  configuredFields,
   testIdScope,
 }: {
   trunks: TrunkViewV1[];
   openTerminals: TerminalRef[];
+  sourceCount: number;
+  configuredFieldCount: number;
+  configuredFields: ConfiguredGridSourceSnField[];
   testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const firstOpenTerminal = openTerminals[0] ?? null;
+  const firstConfiguredField = configuredFields[0] ?? null;
+  const fieldForTerminal = useCallback(
+    (terminal: TerminalRef | null) =>
+      terminal
+        ? configuredFields.find((field) => field.ref_id === terminal.element_id) ?? null
+        : null,
+    [configuredFields],
+  );
 
   const handleContinueTrunk = useCallback(
-    (terminal: TerminalRef) => {
+    (terminal: TerminalRef | null) => {
+      const matchingField = fieldForTerminal(terminal);
+      const terminalName = terminal
+        ? openPortLabel(terminal, matchingField)
+        : firstConfiguredField?.name;
       openForm('continue_trunk_segment_sn', {
-        terminal_id: terminal.element_id,
-        port_id: terminal.port_id,
-        trunk_id: terminal.trunk_id,
+        ...(terminal
+          ? {
+              terminal_id: terminal.element_id,
+              port_id: terminal.port_id,
+              trunk_id: terminal.trunk_id,
+              field_ref: matchingField?.ref_id,
+              terminal_name: terminalName,
+            }
+          : {
+              field_ref: firstConfiguredField?.ref_id,
+              terminal_id: firstConfiguredField?.ref_id,
+              terminal_name: terminalName,
+            }),
+        terminal_voltage_label: 'SN',
       });
     },
-    [openForm],
+    [fieldForTerminal, firstConfiguredField, openForm],
   );
 
   const handleInsertStation = useCallback(
-    (trunkId: string) => {
-      openForm('insert_station_on_segment_sn', { trunk_id: trunkId });
+    (trunk: TrunkViewV1) => {
+      const firstSegmentId = trunk.segments[0];
+      if (!firstSegmentId) return;
+
+      openForm('insert_station_on_segment_sn', {
+        segment_id: firstSegmentId,
+        segment_ref: firstSegmentId,
+        corridor_ref: trunk.corridor_ref,
+        position_on_segment: 0.5,
+      });
     },
     [openForm],
   );
@@ -177,25 +323,46 @@ function TrunksSection({
   return (
     <div className="px-3 py-2 space-y-2">
       {trunks.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">
-          Brak magistral. Po dodaniu GPZ utworz pole liniowe GPZ i dopiero z tego pola wyprowadz pierwszy odcinek.
-        </p>
+        <div className="space-y-2">
+          <p className={clsx('text-[11px]', mutedTextClass)}>
+            {sourceCount === 0
+              ? 'Magistralę SN można wyprowadzić dopiero po utworzeniu GPZ.'
+              : configuredFieldCount === 0
+                ? 'Najpierw skonfiguruj pole SN GPZ. Dopiero z jego zacisku wyjściowego wyprowadzisz magistralę.'
+                : 'Pole SN jest gotowe. Połącz jego zacisk wyjściowy z zaciskiem wejściowym pierwszego obiektu sieciowego.'}
+          </p>
+          {sourceCount > 0 && configuredFieldCount > 0 && (
+            <ActionButton
+              label={firstOpenTerminal || firstConfiguredField ? 'Połącz zacisk pola SN' : 'Brak wolnego pola liniowego GPZ'}
+              onClick={() => {
+                if (firstOpenTerminal || firstConfiguredField) {
+                  handleContinueTrunk(firstOpenTerminal);
+                }
+              }}
+              variant="primary"
+              testId="btn-start-trunk"
+              testIdScope={testIdScope}
+              disabled={!firstOpenTerminal && !firstConfiguredField}
+            />
+          )}
+        </div>
       ) : (
         <div className="space-y-1">
           {trunks.map((trunk, index) => (
             <div
               key={trunk.corridor_ref}
-              className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
+              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span className="font-medium">M{index + 1}</span>
-              <span className="text-chrome-500">{trunk.segments.length} segm.</span>
+              <span className={mutedTextClass}>{trunk.segments.length} segm.</span>
               {trunk.no_point_ref && <span className="text-eng-amber text-[10px]">NOP</span>}
               <button
                 type="button"
-                onClick={() => handleInsertStation(trunk.corridor_ref)}
-                className="ml-auto text-[10px] text-ind-600 hover:text-ind-800"
+                onClick={() => handleInsertStation(trunk)}
+                disabled={trunk.segments.length === 0}
+                className="ml-auto text-[10px] text-[#67d9ff] hover:text-scada-text"
               >
-                [Wstaw stację]
+                Wstaw stację na odcinku
               </button>
             </div>
           ))}
@@ -203,25 +370,28 @@ function TrunksSection({
       )}
 
       {openTerminals.length > 0 && (
-        <div className="border-t border-chrome-100 pt-2 space-y-1">
-          <p className="text-[10px] text-chrome-500 font-medium uppercase">Otwarte końce</p>
+        <div className="space-y-1 border-t border-[#15324f] pt-2">
+          <p className={clsx('text-[10px] font-medium uppercase', mutedTextClass)}>Wolne zaciski modelu</p>
           {openTerminals.map((terminal) => (
             <button
               key={`${terminal.element_id}-${terminal.port_id}`}
               type="button"
               onClick={() => handleContinueTrunk(terminal)}
-              className="w-full text-left text-[11px] text-ind-700 hover:bg-ind-50 px-2 py-1 rounded"
-              data-testid={scopedTestId(`btn-continue-${terminal.element_id}`, testIdScope)}
+              className="w-full rounded px-2 py-1 text-left text-[11px] text-[#9ecbff] hover:bg-[#0a2033]"
+              data-testid={scopedTestId(`btn-connect-port-${safeTestToken(terminal.element_id)}-${safeTestToken(terminal.port_id)}`, testIdScope)}
             >
-              Kontynuuj z {terminal.element_id}
+              <span className="block font-medium">Połącz zacisk</span>
+              <span className={clsx('block text-[10px]', mutedTextClass)}>
+                {openPortLabel(terminal, fieldForTerminal(terminal))}
+              </span>
             </button>
           ))}
         </div>
       )}
 
-      <div className="border-t border-chrome-100 pt-2">
-        <p className="text-[10px] text-chrome-500">
-          ZKSN i slup rozgalezny wstawiaj z menu odcinka SN albo z karty magistrali, nigdy bez wskazania segmentu.
+      <div className="border-t border-[#15324f] pt-2">
+        <p className={clsx('text-[10px]', mutedTextClass)}>
+          ZKSN i słup rozgałęźny wstawiaj z menu odcinka SN albo z karty magistrali, nigdy bez wskazania segmentu.
         </p>
       </div>
     </div>
@@ -241,15 +411,15 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
   return (
     <div className="px-3 py-2 space-y-2">
       {stations.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">
-          Brak stacji. Najpierw wyprowadz odcinek z pola GPZ, potem wstaw stacje w segment.
+        <p className={clsx('text-[11px]', mutedTextClass)}>
+          Brak stacji. Najpierw połącz zacisk wyjściowy pola GPZ z odcinkiem SN, potem wstaw stację w segment.
         </p>
       ) : (
         <div className="space-y-1">
           {stations.map((station) => (
             <div
               key={station.id}
-              className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
+              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span
                 className={clsx(
@@ -265,9 +435,9 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
                 <button
                   type="button"
                   onClick={() => handleStartBranch(station.id)}
-                  className="text-[10px] text-ind-600 hover:text-ind-800"
+                  className="text-[10px] text-[#67d9ff] hover:text-scada-text"
                 >
-                  [Odg.]
+                  [Zacisk odg.]
                 </button>
               )}
             </div>
@@ -282,23 +452,23 @@ function BranchesSection({ branches }: { branches: BranchViewV1[] }) {
   return (
     <div className="px-3 py-2 space-y-2">
       {branches.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">Brak odgałęzień.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Brak odgałęzień.</p>
       ) : (
         <div className="space-y-1">
           {branches.map((branch, index) => (
             <div
               key={`${branch.from_element_id}-${index}`}
-              className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
+              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span className="font-medium">O{index + 1}</span>
-              <span className="text-chrome-500">z {branch.from_element_id}</span>
-              <span className="text-chrome-400">{branch.segments.length} segm.</span>
+              <span className={mutedTextClass}>{branchSourceLabel(branch)}</span>
+              <span className="text-[#6f8cac]">{branch.segments.length} segm.</span>
             </div>
           ))}
         </div>
       )}
-      <p className="text-[10px] text-chrome-500">
-        Nowe odgalezienie rozpocznij z portu BRANCH_OUT pola, ZKSN albo slupa rozgaleznego.
+      <p className={clsx('text-[10px]', mutedTextClass)}>
+        Nowe odgałęzienie rozpocznij z wolnego zacisku odgałęźnego pola, ZKSN albo słupa rozgałęźnego.
       </p>
     </div>
   );
@@ -352,30 +522,49 @@ function SectioningSection({
 
 function TransformersSection({
   transformers,
+  loads,
+  stations,
   testIdScope,
 }: {
   transformers: TransformerSummary[];
+  loads: LoadSummary[];
+  stations: StationSummary[];
   testIdScope?: string;
 }) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const stationForNn = stations.find((station) => station.hasNnPart) ?? stations[0] ?? null;
+  const stationRefForNn = stationForNn?.id ?? null;
 
   const handleAddTransformer = useCallback(() => {
     openForm('add_transformer_sn_nn');
   }, [openForm]);
 
+  const handleAddNnFeeder = useCallback(() => {
+    if (!stationRefForNn) return;
+    openForm('add_nn_outgoing_field', {
+      station_ref: stationRefForNn,
+      field_role: 'FEEDER',
+    });
+  }, [openForm, stationRefForNn]);
+
+  const handleAddNnLoad = useCallback(() => {
+    if (!stationRefForNn) return;
+    openForm('add_nn_load', { station_ref: stationRefForNn });
+  }, [openForm, stationRefForNn]);
+
   return (
     <div className="px-3 py-2 space-y-2">
       {transformers.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">Brak transformatorów SN/nN.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Brak transformatorów SN/nN.</p>
       ) : (
         <div className="space-y-1">
           {transformers.map((transformer) => (
             <div
               key={transformer.id}
-              className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
+              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span className="truncate flex-1">{transformer.name}</span>
-              <span className="text-chrome-400">{transformer.snKva} kVA</span>
+              <span className="text-[#6f8cac]">{transformer.snKva} kVA</span>
               {transformer.catalogRef ? (
                 <span className="text-[10px] text-eng-green">KAT</span>
               ) : (
@@ -386,41 +575,100 @@ function TransformersSection({
         </div>
       )}
 
+      <div className="border-t border-[#15324f] pt-2">
+        <div className={clsx('mb-1 text-[10px] font-semibold uppercase tracking-wider', mutedTextClass)}>
+          Odbiory nN
+        </div>
+        {loads.length === 0 ? (
+          <p className={clsx('text-[11px]', mutedTextClass)}>Brak odbiorów nN.</p>
+        ) : (
+          <div className="space-y-1">
+            {loads.map((load) => (
+              <div
+                key={load.id}
+                className={clsx('flex items-center gap-2 rounded px-2 py-1 text-[11px]', primaryTextClass, rowHoverClass)}
+              >
+                <span className="truncate flex-1">{load.name}</span>
+                <span className="text-[#6f8cac]">{load.pKw.toFixed(1)} kW</span>
+                {load.catalogRef ? (
+                  <span className="text-[10px] text-eng-green">KAT</span>
+                ) : (
+                  <span className="text-[10px] text-eng-amber">RĘCZ</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <ActionButton
         label="+ Dodaj transformator"
         onClick={handleAddTransformer}
         testId="btn-add-transformer"
         testIdScope={testIdScope}
       />
+      <ActionButton
+        label="+ Dodaj odpływ nN"
+        onClick={handleAddNnFeeder}
+        testId="btn-add-nn-feeder"
+        testIdScope={testIdScope}
+        disabled={!stationForNn?.hasNnPart}
+      />
+      <ActionButton
+        label="+ Dodaj odbiór nN"
+        onClick={handleAddNnLoad}
+        variant={stationForNn?.hasNnPart ? 'primary' : 'secondary'}
+        testId="btn-add-nn-load"
+        testIdScope={testIdScope}
+        disabled={!stationForNn?.hasNnPart}
+      />
     </div>
   );
 }
 
-function OzeSection({ sources, testIdScope }: { sources: OzeSourceSummary[]; testIdScope?: string }) {
+function OzeSection({
+  sources,
+  stations,
+  testIdScope,
+}: {
+  sources: OzeSourceSummary[];
+  stations: StationSummary[];
+  testIdScope?: string;
+}) {
   const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const stationForNn = stations.find((station) => station.hasNnPart) ?? null;
+  const stationRefForNn = stationForNn?.id ?? null;
+
+  const buildContext = useCallback(
+    (technology: 'PV' | 'BESS' | 'FW') => ({
+      ...buildConverterSourceOperationContext(technology),
+      ...(stationRefForNn ? { station_ref: stationRefForNn } : {}),
+    }),
+    [stationRefForNn],
+  );
 
   const handleAddPV = useCallback(() => {
-    openForm('add_converter_source', buildConverterSourceOperationContext('PV'));
-  }, [openForm]);
+    openForm('add_converter_source', buildContext('PV'));
+  }, [buildContext, openForm]);
 
   const handleAddBESS = useCallback(() => {
-    openForm('add_converter_source', buildConverterSourceOperationContext('BESS'));
-  }, [openForm]);
+    openForm('add_converter_source', buildContext('BESS'));
+  }, [buildContext, openForm]);
 
   const handleAddFW = useCallback(() => {
-    openForm('add_converter_source', buildConverterSourceOperationContext('FW'));
-  }, [openForm]);
+    openForm('add_converter_source', buildContext('FW'));
+  }, [buildContext, openForm]);
 
   return (
     <div className="px-3 py-2 space-y-2">
       {sources.length === 0 ? (
-        <p className="text-[11px] text-chrome-500">Brak źródeł OZE/BESS.</p>
+        <p className={clsx('text-[11px]', mutedTextClass)}>Brak źródeł OZE/BESS.</p>
       ) : (
         <div className="space-y-1">
           {sources.map((source) => (
             <div
               key={source.id}
-              className="flex items-center gap-2 text-[11px] text-chrome-700 py-1 px-2 rounded hover:bg-chrome-50"
+              className={clsx('flex items-center gap-2 text-[11px] py-1 px-2 rounded', primaryTextClass, rowHoverClass)}
             >
               <span
                 className={clsx(
@@ -431,17 +679,112 @@ function OzeSection({ sources, testIdScope }: { sources: OzeSourceSummary[]; tes
                 {formatGeneratorTypeShortLabelPl(source.genType)}
               </span>
               <span className="truncate flex-1">{source.name}</span>
-              <span className="text-chrome-400">{(source.pMw * 1000).toFixed(0)} kW</span>
+              <span className="text-[#6f8cac]">{(source.pMw * 1000).toFixed(0)} kW</span>
             </div>
           ))}
         </div>
       )}
 
       <div className="flex gap-2">
-        <ActionButton label="+ PV" onClick={handleAddPV} testId="btn-add-pv" testIdScope={testIdScope} />
-        <ActionButton label="+ BESS" onClick={handleAddBESS} testId="btn-add-bess" testIdScope={testIdScope} />
-        <ActionButton label="+ FW" onClick={handleAddFW} testId="btn-add-fw" testIdScope={testIdScope} />
+        <ActionButton
+          label="+ PV"
+          onClick={handleAddPV}
+          testId="btn-add-pv"
+          testIdScope={testIdScope}
+          disabled={!stationForNn}
+        />
+        <ActionButton
+          label="+ BESS"
+          onClick={handleAddBESS}
+          testId="btn-add-bess"
+          testIdScope={testIdScope}
+          disabled={!stationForNn}
+        />
+        <ActionButton
+          label="+ FW"
+          onClick={handleAddFW}
+          testId="btn-add-fw"
+          testIdScope={testIdScope}
+          disabled={!stationForNn}
+        />
       </div>
+    </div>
+  );
+}
+
+function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
+  const openForm = useNetworkBuildStore((state) => state.openOperationForm);
+  const fieldReadModel = useFieldReadModel();
+
+  const candidate = useMemo(() => {
+    const fields = fieldReadModel.data.fields;
+    return fields.find((item) => buildControlDeviceOptions(item).length > 0) ?? fields[0] ?? null;
+  }, [fieldReadModel.data.fields]);
+
+  const measurements = measurementCountsForField(candidate);
+  const deviceOptions = useMemo(() => buildControlDeviceOptions(candidate), [candidate]);
+  const breakerRef = deviceOptions[0]?.ref_id ?? '';
+  const fieldRef = candidate?.bay_ref ?? '';
+  const hasRelay = Boolean(candidate?.canonical_model.base_model.protection_config);
+  const context = {
+    bay_ref: fieldRef,
+    field_ref: fieldRef,
+    breaker_ref: breakerRef,
+  };
+
+  const missingReason = !fieldRef
+    ? 'Brak pola SN w modelu.'
+    : !breakerRef
+      ? 'Pole SN nie ma aparatu wykonawczego.'
+      : measurements.ct === 0
+        ? 'Najpierw dodaj przekładnik prądowy CT do tego pola.'
+        : '';
+
+  return (
+    <div className="px-3 py-2 space-y-2">
+      {fieldRef ? (
+        <div className={clsx('space-y-1 text-[11px]', primaryTextClass)}>
+          <div className="flex items-center gap-2">
+            <StatusDot level={hasRelay ? 'done' : measurements.ct > 0 ? 'partial' : 'empty'} />
+            <span className="font-medium truncate">{candidate?.bay_name ?? fieldRef}</span>
+          </div>
+          <div className={clsx('grid grid-cols-3 gap-1 text-[10px]', mutedTextClass)}>
+            <span>CT: {measurements.ct}</span>
+            <span>VT: {measurements.vt}</span>
+            <span>{hasRelay ? 'Zabezp.: 1' : 'Zabezp.: brak'}</span>
+          </div>
+        </div>
+      ) : (
+        <p className={clsx('text-[11px]', mutedTextClass)}>
+          Zabezpieczenia dobierasz dopiero po utworzeniu pola SN z aparatem wykonawczym.
+        </p>
+      )}
+
+      <ActionButton
+        label="+ Dodaj CT do pola"
+        onClick={() => openForm('add_ct', context)}
+        testId="btn-add-field-ct"
+        testIdScope={testIdScope}
+        disabled={!fieldRef}
+      />
+      <ActionButton
+        label="+ Dodaj VT do pola"
+        onClick={() => openForm('add_vt', context)}
+        testId="btn-add-field-vt"
+        testIdScope={testIdScope}
+        disabled={!fieldRef}
+      />
+      <ActionButton
+        label="+ Dobierz zabezpieczenie wywodu"
+        onClick={() => openForm('add_relay', context)}
+        variant={measurements.ct > 0 && breakerRef ? 'primary' : 'secondary'}
+        testId="btn-add-field-relay"
+        testIdScope={testIdScope}
+        disabled={!fieldRef || !breakerRef || measurements.ct === 0}
+      />
+      {missingReason && (
+        <p className="text-[10px] text-eng-amber">{missingReason}</p>
+      )}
     </div>
   );
 }
@@ -457,7 +800,7 @@ function ReadinessSection({
     <div className="px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
         <StatusDot level={isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial'} />
-        <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : 'text-chrome-700')}>
+        <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : primaryTextClass)}>
           {isReady ? 'Gotowy do analizy' : `${blockersByCategory.total} blokad`}
         </span>
       </div>
@@ -490,13 +833,19 @@ export interface ProcessPanelProps {
 export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   const collapsedSections = useNetworkBuildStore((state) => state.collapsedSections);
   const toggleSection = useNetworkBuildStore((state) => state.toggleSection);
+  const fieldReadModel = useFieldReadModel();
 
   const {
     blockersByCategory,
     branchCount,
     buildPhaseLabel,
+    configuredGpzSnFieldCount,
+    configuredGpzSnFields,
     generatorCount,
+    gridSourceStationRef,
     isReady,
+    loadCount,
+    loadSummaries,
     logicalViews,
     openTerminals,
     ozeSourceSummaries,
@@ -506,11 +855,30 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     stationSummaries,
     transformerCount,
     transformerSummaries,
-    trunkCount,
+    trunkSegmentCount,
+    unconfiguredGpzSnFields,
   } = useNetworkBuildDerived();
 
-  const trunks = logicalViews?.trunks ?? [];
+  const trunks = (logicalViews?.trunks ?? []).filter(
+    (trunk) => (trunk.segments?.length ?? 0) > 0,
+  );
   const branches = logicalViews?.branches ?? [];
+  const protectionStats = useMemo(() => {
+    let withCt = 0;
+    let withRelay = 0;
+
+    for (const item of fieldReadModel.data.fields) {
+      const counts = measurementCountsForField(item);
+      if (counts.ct > 0) withCt += 1;
+      if (item.canonical_model.base_model.protection_config) withRelay += 1;
+    }
+
+    return {
+      fields: fieldReadModel.data.fields.length,
+      withCt,
+      withRelay,
+    };
+  }, [fieldReadModel.data.fields]);
 
   const isSectionCollapsed = useCallback(
     (id: string) => collapsedSections.has(id),
@@ -518,12 +886,19 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
   );
 
   const sourceStatus: StatusLevel = sourceCount > 0 ? 'done' : 'empty';
-  const trunkStatus: StatusLevel = trunkCount > 0 ? 'done' : sourceCount > 0 ? 'partial' : 'empty';
-  const stationStatus: StatusLevel = stationCount > 0 ? 'done' : trunkCount > 0 ? 'partial' : 'empty';
+  const snFieldStatus: StatusLevel = configuredGpzSnFieldCount > 0 ? 'done' : sourceCount > 0 ? 'partial' : 'empty';
+  const trunkStatus: StatusLevel = trunkSegmentCount > 0 ? 'done' : configuredGpzSnFieldCount > 0 ? 'partial' : 'empty';
+  const stationStatus: StatusLevel = stationCount > 0 ? 'done' : trunkSegmentCount > 0 ? 'partial' : 'empty';
   const branchStatus: StatusLevel = branchCount > 0 ? 'done' : 'empty';
   const sectioningStatus: StatusLevel = logicalViews?.secondary_connectors?.length ? 'done' : 'empty';
   const transformerStatus: StatusLevel = transformerCount > 0 ? 'done' : stationCount > 0 ? 'partial' : 'empty';
   const ozeStatus: StatusLevel = generatorCount > 0 ? 'done' : 'empty';
+  const protectionStatus: StatusLevel =
+    protectionStats.withRelay > 0
+      ? 'done'
+      : protectionStats.withCt > 0 || protectionStats.fields > 0
+        ? 'partial'
+        : 'empty';
   const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
 
   return (
@@ -531,8 +906,11 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
       className={clsx('flex flex-col h-full overflow-hidden', className)}
       data-testid={scopedTestId('process-panel', testIdScope)}
     >
-      <div className="px-3 py-2 bg-ind-50 border-b border-ind-200">
-        <p className="text-[11px] font-semibold text-ind-800">{buildPhaseLabel}</p>
+      <div className="border-b border-[#15324f] bg-[#07111f] px-3 py-2">
+        <p className="font-mono-eng text-[10px] font-semibold uppercase tracking-[0.22em] text-[#8fb4d8]">
+          Prowadzony edytor SLD
+        </p>
+        <p className="mt-1 text-[11px] font-semibold text-scada-text">{buildPhaseLabel}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -550,21 +928,47 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
         )}
 
         <SectionHeader
+          id="sn-fields"
+          label="Pola SN GPZ"
+          status={snFieldStatus}
+          badge={configuredGpzSnFieldCount > 0 ? `${configuredGpzSnFieldCount}` : undefined}
+          collapsed={isSectionCollapsed('sn-fields')}
+          onToggle={() => toggleSection('sn-fields')}
+          testIdScope={testIdScope}
+        />
+        {!isSectionCollapsed('sn-fields') && (
+          <SnFieldSection
+            sourceCount={sourceCount}
+            configuredFieldCount={configuredGpzSnFieldCount}
+            gridSourceStationRef={gridSourceStationRef}
+            unconfiguredFields={unconfiguredGpzSnFields}
+            testIdScope={testIdScope}
+          />
+        )}
+
+        <SectionHeader
           id="trunks"
-          label="Magistrale"
+          label="Magistrala SN"
           status={trunkStatus}
-          badge={trunkCount > 0 ? `${trunkCount}` : undefined}
+          badge={trunkSegmentCount > 0 ? `${trunkSegmentCount}` : undefined}
           collapsed={isSectionCollapsed('trunks')}
           onToggle={() => toggleSection('trunks')}
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('trunks') && (
-          <TrunksSection trunks={trunks} openTerminals={openTerminals} testIdScope={testIdScope} />
+          <TrunksSection
+            trunks={trunks}
+            openTerminals={openTerminals}
+            sourceCount={sourceCount}
+            configuredFieldCount={configuredGpzSnFieldCount}
+            configuredFields={configuredGpzSnFields}
+            testIdScope={testIdScope}
+          />
         )}
 
         <SectionHeader
           id="stations"
-          label="Stacje"
+          label="Stacje SN/nN"
           status={stationStatus}
           badge={stationCount > 0 ? `${stationCount}` : undefined}
           collapsed={isSectionCollapsed('stations')}
@@ -600,18 +1004,27 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
           id="transformers"
           label="Transformatory i nN"
           status={transformerStatus}
-          badge={transformerCount > 0 ? `${transformerCount}` : undefined}
+          badge={
+            transformerCount > 0 || loadCount > 0
+              ? `${transformerCount} TR / ${loadCount} odb.`
+              : undefined
+          }
           collapsed={isSectionCollapsed('transformers')}
           onToggle={() => toggleSection('transformers')}
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('transformers') && (
-          <TransformersSection transformers={transformerSummaries} testIdScope={testIdScope} />
+          <TransformersSection
+            transformers={transformerSummaries}
+            loads={loadSummaries}
+            stations={stationSummaries}
+            testIdScope={testIdScope}
+          />
         )}
 
         <SectionHeader
           id="oze"
-          label="Źródła OZE / BESS"
+          label="OZE / BESS"
           status={ozeStatus}
           badge={generatorCount > 0 ? `${generatorCount}` : undefined}
           collapsed={isSectionCollapsed('oze')}
@@ -619,12 +1032,29 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('oze') && (
-          <OzeSection sources={ozeSourceSummaries} testIdScope={testIdScope} />
+          <OzeSection
+            sources={ozeSourceSummaries}
+            stations={stationSummaries}
+            testIdScope={testIdScope}
+          />
+        )}
+
+        <SectionHeader
+          id="protection"
+          label="Pomiary i zabezpieczenia"
+          status={protectionStatus}
+          badge={protectionStats.withRelay > 0 ? `${protectionStats.withRelay}` : undefined}
+          collapsed={isSectionCollapsed('protection')}
+          onToggle={() => toggleSection('protection')}
+          testIdScope={testIdScope}
+        />
+        {!isSectionCollapsed('protection') && (
+          <ProtectionSection testIdScope={testIdScope} />
         )}
 
         <SectionHeader
           id="readiness"
-          label="Gotowość do analizy"
+          label="Gotowość obliczeń"
           status={readinessStatus}
           collapsed={isSectionCollapsed('readiness')}
           onToggle={() => toggleSection('readiness')}

@@ -1,57 +1,108 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { GridSourceEditor } from '../shared/GridSourceEditor';
 
-describe('GridSourceEditor catalog fallback', () => {
+const baseSolverPreview = {
+  sk_mva: 310,
+  ik3_ka: 11.93,
+  ik1_ka: 4.21,
+  ip_ka: 30.82,
+  ith_ka: 11.93,
+  kappa: 1.826,
+  z1_ohm: { r_ohm: 0.086, x_ohm: 0.7206 },
+  z0_ohm: { r_ohm: 0.276, x_ohm: 2.306 },
+  formula_ref: 'IEC 60909 / short_circuit_core',
+};
+
+let solverFetchMock: ReturnType<typeof vi.fn>;
+
+describe('GridSourceEditor E-03B', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-    global.fetch = vi.fn();
+    solverFetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body ?? '{}')) as { sk3_mva?: number | null };
+      const isReducedSource = body.sk3_mva === 155;
+
+      return {
+        ok: true,
+        json: async () => ({
+          ...baseSolverPreview,
+          sk_mva: body.sk3_mva ?? baseSolverPreview.sk_mva,
+          ik3_ka: isReducedSource ? 5.97 : baseSolverPreview.ik3_ka,
+          ik1_ka: isReducedSource ? 2.1 : baseSolverPreview.ik1_ka,
+          ip_ka: isReducedSource ? 15.41 : baseSolverPreview.ip_ka,
+          ith_ka: isReducedSource ? 5.97 : baseSolverPreview.ith_ka,
+        }),
+      } as Response;
+    });
+    vi.stubGlobal('fetch', solverFetchMock);
   });
 
-  it('nie pokazuje surowego 500 i odblokowuje ręczną definicję GPZ, gdy katalog nie odpowiada', async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: false,
-      status: 500,
-      statusText: 'Internal Server Error',
-      json: async () => {
-        throw new Error('empty response');
-      },
-    });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-    const { container } = render(
+  it('startuje jako jednoznaczny ciemny formularz GPZ z domyślnymi danymi', async () => {
+    render(
       <GridSourceEditor
         isOpen
         mode="create"
-        initialData={{
-          source_name: 'POZ1',
-          sections_count: 2,
-          gpz_section_name: 'sekcja 1',
-          gpz_line_field_name: 'pole1',
-        }}
         onCancel={vi.fn()}
         onSubmit={vi.fn()}
       />,
     );
 
-    await waitFor(() => {
-      expect(screen.getByText(/Włączono ręczną definicję parametrów GPZ/)).toBeInTheDocument();
+    expect(screen.getByTestId('grid-source-editor-dialog')).toHaveClass('bg-[#050810]');
+    expect(screen.getByText(/Dodanie GPZ do modelu sieci.*15 kV/)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('GPZ 1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('GPZ-01')).toBeInTheDocument();
+    expect(screen.getByText('Identyfikacja GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Parametry zwarciowe na szynach SN')).toBeInTheDocument();
+    expect(screen.getByText('Sekcje szyn GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Liczba pól liniowych na sekcję')).toBeInTheDocument();
+    expect(screen.getByText('każde pole ma osobny zacisk wyjściowy')).toBeInTheDocument();
+    expect(screen.queryByText('Pola odpływowe - Sekcja A')).not.toBeInTheDocument();
+    expect(screen.queryByText('Pola odpływowe - Sekcja B')).not.toBeInTheDocument();
+    expect(screen.getByText('Podsumowanie obliczone')).toBeInTheDocument();
+    expect(screen.getByText('Gotowość GPZ')).toBeInTheDocument();
+    expect(screen.getByText('Ik\'\' (1-faz. maks.)')).toBeInTheDocument();
+    expect(screen.getByText('ip (3-faz. maks.)')).toBeInTheDocument();
+    expect(screen.getByText('Ith (3-faz., tk)')).toBeInTheDocument();
+    expect(screen.getByText('Z0 źródła')).toBeInTheDocument();
+    expect(await screen.findByText('IEC 60909 / short_circuit_core')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Zapisz GPZ' })).toBeInTheDocument();
+    expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Nazwa GPZ jest wymagana/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Katalog' })).not.toBeInTheDocument();
+  });
+
+  it('wysyła nowe dane wejściowe do backendu i pokazuje zwrócone podsumowanie', async () => {
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('310.0 MVA')).toBeInTheDocument();
+    expect(screen.getAllByText('11.93 kA').length).toBeGreaterThan(0);
+
+    fireEvent.change(screen.getByDisplayValue('310'), { target: { value: '155' } });
+
+    await waitFor(() => expect(screen.getByText('155.0 MVA')).toBeInTheDocument());
+    expect(screen.getAllByText('5.97 kA').length).toBeGreaterThan(0);
+
+    const lastCall = solverFetchMock.mock.calls.at(-1);
+    const lastRequest = JSON.parse(String((lastCall?.[1] as RequestInit | undefined)?.body));
+    expect(lastRequest).toMatchObject({
+      voltage_kv: 15,
+      short_circuit_mode: 'SHORT_CIRCUIT_POWER',
+      sk3_mva: 155,
+      rx_ratio: 0.12,
+      zero_sequence_enabled: true,
+      z0_z1_ratio: 3.2,
     });
-
-    expect(screen.queryByText(/500 Internal Server Error: No detail/)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Katalog' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Umowa równoważna ręczna' })).toBeEnabled();
-
-    const voltageInput = screen.getByText('Napięcie SN [kV]').parentElement?.querySelector('input');
-    const sk3Input = screen.getByText('Sk3 [MVA]').parentElement?.querySelector('input');
-    const rxInput = screen.getByText('R/X').parentElement?.querySelector('input');
-
-    expect(voltageInput).toBeInTheDocument();
-    expect(sk3Input).toBeInTheDocument();
-    expect(rxInput).toBeInTheDocument();
-    expect(voltageInput).toBeEnabled();
-    expect(sk3Input).toBeEnabled();
-    expect(rxInput).toBeEnabled();
-    expect(container).toHaveTextContent('Backend katalogów nie odpowiada');
   });
 });

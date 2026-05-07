@@ -92,6 +92,19 @@ vi.mock('../../networkBuildStore', () => ({
 vi.mock('../../../catalog/api', () => ({
   fetchConverterTypes: vi.fn(async () => [
     {
+      id: 'conv-pv-15',
+      name: 'PV 1 MW 15 kV',
+      manufacturer: 'Bad Voltage Co',
+      kind: 'PV',
+      un_kv: 15,
+      sn_mva: 1.1,
+      pmax_mw: 1.0,
+      qmin_mvar: -0.2,
+      qmax_mvar: 0.2,
+      cosphi_min: 0.9,
+      cosphi_max: 1,
+    },
+    {
       id: 'conv-pv-1',
       name: 'PV 1 MW',
       manufacturer: 'PV Co',
@@ -204,7 +217,7 @@ describe('AddConverterSourceForm', () => {
           quantity: 1,
           power_setpoint_mw: 0.75,
           catalog_binding: expect.objectContaining({
-            catalog_namespace: 'CONVERTER',
+            catalog_namespace: 'ZRODLO_NN_PV',
             catalog_item_id: 'conv-pv-1',
           }),
           source_field: expect.objectContaining({

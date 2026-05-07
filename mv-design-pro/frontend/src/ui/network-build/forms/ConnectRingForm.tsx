@@ -43,7 +43,7 @@ export function ConnectRingForm() {
         ?? (context?.from_bus_ref as string)
         ?? ''
       ).trim(),
-      label: (context?.terminalA_label as string) ?? 'Terminal A',
+      label: (context?.terminalA_label as string) ?? 'Zacisk A',
     }),
     [context],
   );
@@ -56,7 +56,7 @@ export function ConnectRingForm() {
         ?? (context?.to_bus_ref as string)
         ?? ''
       ).trim(),
-      label: (context?.terminalB_label as string) ?? 'Terminal B',
+      label: (context?.terminalB_label as string) ?? 'Zacisk B',
     }),
     [context],
   );

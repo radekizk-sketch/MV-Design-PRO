@@ -123,6 +123,7 @@ def test_failed_materialization_leaves_snapshot_unchanged(
                 "rated_power_ac_kw": 50.0,
                 "max_power_kw": 55.0,
                 "control_mode": "STALY_COS_PHI",
+                "un_kv": 0.4,
                 "pmax_mw": 0.055,
                 "sn_mva": 0.05,
             },
@@ -137,6 +138,7 @@ def test_failed_materialization_leaves_snapshot_unchanged(
                 "charge_power_kw": 40.0,
                 "discharge_power_kw": 40.0,
                 "operation_mode": "DWUKIERUNKOWY",
+                "un_kv": 0.4,
                 "pmax_mw": 0.04,
                 "sn_mva": 0.04,
                 "e_kwh": 100.0,
@@ -190,7 +192,7 @@ def test_pv_uses_catalog_materialization_when_payload_does_not_supply_it() -> No
             {
                 "catalog_binding": {
                     "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-0.5mw-15kv",
+                    "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                 },
             },
@@ -202,10 +204,10 @@ def test_pv_uses_catalog_materialization_when_payload_does_not_supply_it() -> No
     assert snapshot is not None
     created = snapshot["generators"][0]
 
-    assert created.get("catalog_ref") == "conv-pv-0.5mw-15kv"
+    assert created.get("catalog_ref") == "conv-pv-nn-0p5mw-0p4kv"
     assert created.get("materialized_params", {}).get("rated_power_ac_kw") == 550.0
     assert created.get("materialized_params", {}).get("max_power_kw") == 500.0
-    assert created.get("materialized_params", {}).get("control_mode") == "STALY_COS_PHI"
+    assert created.get("materialized_params", {}).get("control_mode") == "Q_U_DROOP"
 
 
 def test_bess_uses_catalog_materialization_when_payload_supplies_only_operation_mode() -> None:
@@ -217,7 +219,7 @@ def test_bess_uses_catalog_materialization_when_payload_supplies_only_operation_
             {
                 "catalog_binding": {
                     "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-bess-0.5mw-1mwh-15kv",
+                    "catalog_item_id": "conv-bess-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                 },
                 "bess_mode": "DWUKIERUNKOWY",
@@ -230,7 +232,7 @@ def test_bess_uses_catalog_materialization_when_payload_supplies_only_operation_
     assert snapshot is not None
     created = snapshot["generators"][0]
 
-    assert created.get("catalog_ref") == "conv-bess-0.5mw-1mwh-15kv"
+    assert created.get("catalog_ref") == "conv-bess-nn-0p5mw-0p4kv"
     assert created.get("materialized_params", {}).get("usable_capacity_kwh") == 1000.0
     assert created.get("materialized_params", {}).get("charge_power_kw") == 500.0
     assert created.get("materialized_params", {}).get("discharge_power_kw") == 500.0

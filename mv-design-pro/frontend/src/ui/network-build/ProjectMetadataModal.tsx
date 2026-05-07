@@ -7,7 +7,7 @@
  * BINDING: 100% PL etykiety.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 
 // =============================================================================
@@ -64,10 +64,15 @@ export function ProjectMetadataModal({
   onSave,
 }: ProjectMetadataModalProps) {
   const [form, setForm] = useState<ProjectMetadata>({ ...DEFAULT_METADATA, ...metadata });
+  const nameInputRef = useRef<HTMLInputElement | null>(null);
+  const projectNameValid = form.projectName.trim().length > 0;
 
   useEffect(() => {
     if (isOpen) {
       setForm({ ...DEFAULT_METADATA, ...metadata });
+      requestAnimationFrame(() => {
+        nameInputRef.current?.focus();
+      });
     }
   }, [isOpen, metadata]);
 
@@ -79,6 +84,10 @@ export function ProjectMetadataModal({
   );
 
   const handleSave = useCallback(() => {
+    if (!form.projectName.trim()) {
+      nameInputRef.current?.focus();
+      return;
+    }
     onSave?.(form);
     onClose();
   }, [form, onSave, onClose]);
@@ -135,6 +144,9 @@ export function ProjectMetadataModal({
               onChange={(v) => handleChange('projectName', v)}
               placeholder="np. Sieć SN Gmina Przykład"
               required
+              inputRef={nameInputRef}
+              error={!projectNameValid ? 'Nazwa projektu jest wymagana.' : undefined}
+              dataTestId="project-metadata-name"
             />
             <Field
               label="Opis"
@@ -241,7 +253,9 @@ export function ProjectMetadataModal({
           <button
             type="button"
             onClick={handleSave}
-            className="px-4 py-1.5 text-[11px] bg-blue-600 text-white rounded hover:bg-blue-700 font-medium"
+            disabled={!projectNameValid}
+            className="px-4 py-1.5 text-[11px] bg-blue-600 text-white rounded hover:bg-blue-700 font-medium disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+            data-testid="project-metadata-save"
           >
             Zapisz
           </button>
@@ -264,6 +278,9 @@ function Field({
   required,
   multiline,
   rows = 2,
+  inputRef,
+  error,
+  dataTestId,
 }: {
   label: string;
   value: string;
@@ -273,6 +290,9 @@ function Field({
   required?: boolean;
   multiline?: boolean;
   rows?: number;
+  inputRef?: React.Ref<HTMLInputElement>;
+  error?: string;
+  dataTestId?: string;
 }) {
   return (
     <div>
@@ -294,10 +314,14 @@ function Field({
         />
       ) : (
         <input
+          ref={inputRef}
           type={type}
+          autoFocus={Boolean(inputRef)}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
+          aria-invalid={Boolean(error)}
+          data-testid={dataTestId}
           className={clsx(
             'w-full px-2.5 py-1.5 text-[11px] border border-gray-200 rounded',
             'focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100',
@@ -305,6 +329,7 @@ function Field({
           )}
         />
       )}
+      {error && <div className="mt-1 text-[10px] text-red-600">{error}</div>}
     </div>
   );
 }

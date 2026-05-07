@@ -1,5 +1,10 @@
 """Solvers for network model calculations."""
 
+from .grid_source_preview import (
+    GridSourcePreviewInput,
+    GridSourcePreviewResult,
+    compute_grid_source_preview,
+)
 from .power_flow_newton import PowerFlowNewtonSolution, PowerFlowNewtonSolver
 from .power_flow_result import (
     POWER_FLOW_RESULT_VERSION,
@@ -65,6 +70,9 @@ __all__ = [
     "PowerFlowSummary",
     "PowerFlowResultV1",
     "build_power_flow_result_v1",
+    "GridSourcePreviewInput",
+    "GridSourcePreviewResult",
+    "compute_grid_source_preview",
     "PROTECTION_IEC60255_SOLVER_VERSION",
     "IEC60255CurveType",
     "SelectivityVerdict",

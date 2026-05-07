@@ -833,6 +833,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "materialized_params": {
                     "catalog_item_id": "conv-pv-e2e-1",
                     "catalog_item_version": "2024.1",
+                    "un_kv": 0.4,
                     "rated_power_ac_kw": 1000.0,
                     "max_power_kw": 1000.0,
                     "control_mode": "STALY_COS_PHI",

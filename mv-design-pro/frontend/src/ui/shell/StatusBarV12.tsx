@@ -1,8 +1,8 @@
 /**
  * StatusBarV12 — V12 dolny pasek statusu (28px)
  *
- * Zawiera: projekt, aktywny przypadek, wariant, migawka,
- *          run_id, hash widoku, gotowość modelu, walidacja, sieć.
+ * Zawiera: projekt, aktywny zakres obliczeń, wariant, wersję modelu,
+ *          identyfikator ostatniego obliczenia, hash widoku, gotowość modelu, walidacja, sieć.
  */
 
 import { clsx } from 'clsx';
@@ -110,8 +110,8 @@ export function StatusBarV12({
       {/* Lewa: kontekst projektu i tryb */}
       <div className="flex items-center gap-2 overflow-hidden" data-testid="active-case-bar">
         <span className="sr-only">
-          Biezacy zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
-          Przypadek: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
+          Bieżący zestaw: {caseId ? caseName || '(bez nazwy)' : 'Nie wybrano'}.
+          Zakres obliczeń: {caseId ? caseName || '(bez nazwy)' : 'nie wybrano'}.
           Wariant: {variantName || (caseId ? caseName || '(bez nazwy)' : 'nie wybrano')}.
         </span>
         {/* Obszar + Tryb */}
@@ -188,7 +188,7 @@ export function StatusBarV12({
           </>
         )}
 
-        {/* Run ID */}
+        {/* Ostatnie obliczenie */}
         {runDisplay && (
           <>
             <div className="flex items-center gap-1" data-testid="status-run-id">
@@ -270,12 +270,12 @@ function buildHashTooltip(chain: EnmHashChain | null, fallbackViewHash?: string)
     'Hash audytu (V12S-010, kliknij, aby skopiować pełny):',
     `  Semantyka:   ${shortHash(chain?.semantic)}    topologia + role + pasma + katalog`,
     `  Wejścia:     ${shortHash(chain?.input)}    R/X/B, ratingi, długości, sk3`,
-    `  Przypadek:   ${shortHash(chain?.case)}    parametry przypadku obliczeniowego`,
-    `  Wariant:     ${shortHash(chain?.variant)}    delta wariantu (overlay)`,
+    `  Obliczenia:  ${shortHash(chain?.case)}    parametry zakresu obliczeń`,
+    `  Stan:        ${shortHash(chain?.variant)}    delta wariantu modelu`,
     `  Łączniki:    ${shortHash(chain?.switching)}    stany open/closed`,
   ];
   if (!chain && fallbackViewHash) {
-    lines.push('', `  Hash widoku: ${shortHash(fallbackViewHash)} (legacy)`);
+    lines.push('', `  Hash widoku: ${shortHash(fallbackViewHash)} (tryb zgodności)`);
   }
   return lines.join('\n');
 }

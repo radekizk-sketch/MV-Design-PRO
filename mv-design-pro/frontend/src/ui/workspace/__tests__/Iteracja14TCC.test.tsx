@@ -55,10 +55,10 @@ describe('Iteracja 14 — TCC chart w E-28 ProtectionCoordinationSurface', () =>
     expect(container.querySelector('.recharts-responsive-container')).toBeInTheDocument();
   });
 
-  it('ostrzega o demo-naturze danych i wskazuje backendowy solver', () => {
+  it('opisuje referencyjne dane krzywych IEC 60255 bez komunikatu demonstracyjnego', () => {
     render(<WorkspaceSurfaceRouter region="main" />);
-    expect(screen.getByText(/protection_iec60255/)).toBeInTheDocument();
-    expect(screen.getByText(/Krzywe demo \(IEC 60255 SI\)/)).toBeInTheDocument();
+    expect(screen.getByText(/Krzywe IEC 60255/)).toBeInTheDocument();
+    expect(screen.getByText(/Krzywe referencyjne \(IEC 60255 SI\)/)).toBeInTheDocument();
   });
 
   it('podaje active runId z surface.routeState', () => {

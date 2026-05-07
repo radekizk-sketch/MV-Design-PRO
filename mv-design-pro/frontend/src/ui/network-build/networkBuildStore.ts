@@ -656,6 +656,17 @@ export interface TransformerSummary {
   ukPercent: number;
 }
 
+export interface LoadSummary {
+  id: string;
+  name: string;
+  stationRef: string | null;
+  stationName: string | null;
+  busRef: string;
+  pKw: number;
+  qKvar: number;
+  catalogRef: string | null;
+}
+
 export interface OzeSourceSummary {
   id: string;
   name: string;
@@ -881,7 +892,7 @@ export function computeBuildPhase(
   if (!snapshot) return 'NO_SOURCE';
   if (snapshot.sources.length === 0) return 'NO_SOURCE';
 
-  const hasTrunks = (logicalViews?.trunks?.length ?? 0) > 0;
+  const hasTrunks = (logicalViews?.trunks ?? []).some((trunk) => (trunk.segments?.length ?? 0) > 0);
   if (!hasTrunks) return 'HAS_SOURCE';
 
   const hasStations = (snapshot.substations?.length ?? 0) > 0;
@@ -1025,6 +1036,31 @@ export function selectTransformerSummaries(
     .sort((a, b) => a.id.localeCompare(b.id));
 }
 
+export function selectLoadSummaries(
+  snapshot: EnergyNetworkModel | null,
+): LoadSummary[] {
+  if (!snapshot) return [];
+
+  return (snapshot.loads ?? [])
+    .map((load) => {
+      const station = (snapshot.substations ?? []).find((candidate) =>
+        candidate.bus_refs.includes(load.bus_ref),
+      );
+
+      return {
+        id: load.ref_id,
+        name: load.name,
+        stationRef: station?.id ?? null,
+        stationName: station?.name ?? null,
+        busRef: load.bus_ref,
+        pKw: load.p_mw * 1000,
+        qKvar: load.q_mvar * 1000,
+        catalogRef: load.catalog_ref ?? null,
+      };
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export function selectOzeSourceSummaries(
   snapshot: EnergyNetworkModel | null,
 ): OzeSourceSummary[] {
@@ -1046,6 +1082,185 @@ export function selectOzeSourceSummaries(
       hasTransformer: g.blocking_transformer_ref != null || g.connection_variant === 'nn_side',
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export function selectGridSourceStationRef(snapshot: EnergyNetworkModel | null): string | null {
+  if (!snapshot) return null;
+
+  const sourceStationRef = snapshot.sources.find((source) => source.substation_ref)?.substation_ref;
+  if (sourceStationRef) return sourceStationRef;
+
+  const gpzStation = snapshot.substations.find((station) => station.station_type === 'gpz');
+  return gpzStation?.ref_id ?? snapshot.substations[0]?.ref_id ?? null;
+}
+
+export interface ConfiguredGridSourceSnField {
+  ref_id: string;
+  name: string;
+  bus_ref: string;
+  substation_ref: string;
+  bay_role: 'OUT' | 'FEEDER';
+  gpz_section_id?: string | null;
+  source: 'legacy_bay' | 'field_spec';
+}
+
+export interface GridSourceSnFieldCandidate extends ConfiguredGridSourceSnField {
+  configured: boolean;
+}
+
+type FieldSpecRecord = {
+  field_ref?: unknown;
+  ref_id?: unknown;
+  name?: unknown;
+  bay_role?: unknown;
+  bus_ref?: unknown;
+  equipment_refs?: unknown;
+  gpz_section_id?: unknown;
+  tags?: unknown;
+  meta?: unknown;
+};
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function defaultConfiguredFieldName(role: 'OUT' | 'FEEDER'): string {
+  return role === 'OUT' ? 'Pole odpływowe SN' : 'Pole liniowe SN';
+}
+
+function listCanonicalFieldSpecs(station: EnergyNetworkModel['substations'][number]): FieldSpecRecord[] {
+  const meta = asRecord((station as { meta?: unknown }).meta);
+  const rawSpecs = meta?.field_specs;
+  if (!Array.isArray(rawSpecs)) return [];
+  return rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null);
+}
+
+function hasConfiguredFieldSpec(spec: FieldSpecRecord): boolean {
+  const equipmentRefs = Array.isArray(spec.equipment_refs) ? spec.equipment_refs : [];
+  if (equipmentRefs.some((ref) => typeof ref === 'string' && ref.trim())) return true;
+
+  const meta = asRecord(spec.meta);
+  if (asRecord(meta?.catalog_binding) !== null) return true;
+  return readNonEmptyString(meta?.apparatus_kind) !== null;
+}
+
+export function selectConfiguredGridSourceSnFields(
+  snapshot: EnergyNetworkModel | null,
+): ConfiguredGridSourceSnField[] {
+  if (!snapshot) return [];
+
+  const stationRef = selectGridSourceStationRef(snapshot);
+  if (!stationRef) return [];
+
+  const station = (snapshot.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  const stationRefs = new Set([stationRef, station?.ref_id, station?.id].filter(Boolean) as string[]);
+  const mediumVoltageBusRefs = new Set(
+    (snapshot.buses ?? [])
+      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .map((bus) => bus.ref_id),
+  );
+
+  const legacyFields: ConfiguredGridSourceSnField[] = (snapshot.bays ?? [])
+    .filter((bay) => stationRefs.has(bay.substation_ref))
+    .filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER')
+    .filter((bay) => mediumVoltageBusRefs.has(bay.bus_ref))
+    .filter((bay) => (bay.equipment_refs?.length ?? 0) > 0)
+    .map((bay) => ({
+      ref_id: bay.ref_id,
+      name: bay.name,
+      bus_ref: bay.bus_ref,
+      substation_ref: bay.substation_ref,
+      bay_role: bay.bay_role as 'OUT' | 'FEEDER',
+      gpz_section_id: bay.gpz_section_id ?? null,
+      source: 'legacy_bay' as const,
+    }));
+
+  const canonicalFields: ConfiguredGridSourceSnField[] = station
+    ? listCanonicalFieldSpecs(station)
+      .map<ConfiguredGridSourceSnField | null>((spec) => {
+        const refId = readNonEmptyString(spec.field_ref) ?? readNonEmptyString(spec.ref_id);
+        const busRef = readNonEmptyString(spec.bus_ref);
+        const bayRole = readNonEmptyString(spec.bay_role)?.toUpperCase();
+        if (!refId || !busRef) return null;
+        if (bayRole !== 'OUT' && bayRole !== 'FEEDER') return null;
+        if (!mediumVoltageBusRefs.has(busRef)) return null;
+        if (!hasConfiguredFieldSpec(spec)) return null;
+        const role = bayRole as 'OUT' | 'FEEDER';
+        const name = readNonEmptyString(spec.name);
+
+        return {
+          ref_id: refId,
+          name: name && name !== refId ? name : defaultConfiguredFieldName(role),
+          bus_ref: busRef,
+          substation_ref: station.ref_id,
+          bay_role: role,
+          gpz_section_id: readNonEmptyString(spec.gpz_section_id) ?? null,
+          source: 'field_spec' as const,
+        };
+      })
+      .filter((field): field is ConfiguredGridSourceSnField => field !== null)
+    : [];
+
+  const byRef = new Map<string, ConfiguredGridSourceSnField>();
+  for (const field of [...legacyFields, ...canonicalFields]) {
+    byRef.set(field.ref_id, field);
+  }
+  return [...byRef.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function selectGridSourceSnFieldCandidates(
+  snapshot: EnergyNetworkModel | null,
+): GridSourceSnFieldCandidate[] {
+  if (!snapshot) return [];
+
+  const stationRef = selectGridSourceStationRef(snapshot);
+  if (!stationRef) return [];
+
+  const station = snapshot.substations.find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  if (!station) return [];
+
+  const mediumVoltageBusRefs = new Set(
+    snapshot.buses
+      .filter((bus) => typeof bus.voltage_kv === 'number' && bus.voltage_kv >= 1)
+      .map((bus) => bus.ref_id),
+  );
+
+  return listCanonicalFieldSpecs(station)
+    .map<GridSourceSnFieldCandidate | null>((spec) => {
+      const refId = readNonEmptyString(spec.field_ref) ?? readNonEmptyString(spec.ref_id);
+      const busRef = readNonEmptyString(spec.bus_ref);
+      const bayRole = readNonEmptyString(spec.bay_role)?.toUpperCase();
+      if (!refId || !busRef) return null;
+      if (bayRole !== 'OUT' && bayRole !== 'FEEDER') return null;
+      if (!mediumVoltageBusRefs.has(busRef)) return null;
+      const tags = Array.isArray(spec.tags) ? spec.tags : [];
+      if (!tags.some((tag) => tag === 'gpz_line_field')) return null;
+      const role = bayRole as 'OUT' | 'FEEDER';
+      const name = readNonEmptyString(spec.name);
+
+      return {
+        ref_id: refId,
+        name: name && name !== refId ? name : defaultConfiguredFieldName(role),
+        bus_ref: busRef,
+        substation_ref: station.ref_id,
+        bay_role: role,
+        gpz_section_id: readNonEmptyString(spec.gpz_section_id) ?? null,
+        source: 'field_spec',
+        configured: hasConfiguredFieldSpec(spec),
+      };
+    })
+    .filter((field): field is GridSourceSnFieldCandidate => field !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export function selectBlockersByCategory(
@@ -1128,9 +1343,14 @@ export function useNetworkBuildDerived() {
 
   const sourceCount = snapshot?.sources?.length ?? 0;
   const trunkCount = logicalViews?.trunks?.length ?? 0;
+  const trunkSegmentCount = (logicalViews?.trunks ?? []).reduce(
+    (count, trunk) => count + (trunk.segments?.length ?? 0),
+    0,
+  );
   const branchCount = logicalViews?.branches?.length ?? 0;
   const stationCount = snapshot?.substations?.length ?? 0;
   const transformerCount = snapshot?.transformers?.length ?? 0;
+  const loadCount = snapshot?.loads?.length ?? 0;
   const generatorCount = snapshot?.generators?.length ?? 0;
   const readinessBlockers = readinessIssues.filter((issue) => issue.severity === 'BLOCKER');
   const workspaceBlockState: { title: string } | null = null;
@@ -1151,7 +1371,12 @@ export function useNetworkBuildDerived() {
   const ringCandidates = selectRingCandidates(snapshot, logicalViews);
   const stationSummaries = selectStationSummaries(snapshot, blockerCountsByElement);
   const transformerSummaries = selectTransformerSummaries(snapshot);
+  const loadSummaries = selectLoadSummaries(snapshot);
   const ozeSourceSummaries = selectOzeSourceSummaries(snapshot);
+  const configuredGpzSnFields = selectConfiguredGridSourceSnFields(snapshot);
+  const gpzSnFieldCandidates = selectGridSourceSnFieldCandidates(snapshot);
+  const unconfiguredGpzSnFields = gpzSnFieldCandidates.filter((field) => !field.configured);
+  const gridSourceStationRef = selectGridSourceStationRef(snapshot);
   const blockersByCategory = selectBlockersByCategory(readinessBlockers);
   const isReady = readinessVisualState === 'ready' && sourceCount > 0;
   const readiness = {
@@ -1172,13 +1397,21 @@ export function useNetworkBuildDerived() {
     ringCandidates,
     stationSummaries,
     transformerSummaries,
+    loadSummaries,
     ozeSourceSummaries,
+    configuredGpzSnFields,
+    gpzSnFieldCandidates,
+    unconfiguredGpzSnFields,
+    configuredGpzSnFieldCount: configuredGpzSnFields.length,
+    gridSourceStationRef,
     blockersByCategory,
     sourceCount,
     trunkCount,
+    trunkSegmentCount,
     branchCount,
     stationCount,
     transformerCount,
+    loadCount,
     generatorCount,
     isReady,
     readiness,

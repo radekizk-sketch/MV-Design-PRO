@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useAppStateStore } from '../app-state/store';
+import { useSnapshotStore } from '../topology/snapshotStore';
+import { makeCalculationReadySnapshot } from '../../test/enmCalculationSnapshot';
 import type { OperatingMode } from '../types';
 
 type AppAction =
@@ -72,6 +74,7 @@ const PERMISSION_MATRIX: Record<OperatingMode, Record<AppAction, boolean>> = {
 describe('Mode Permissions Matrix', () => {
   beforeEach(() => {
     useAppStateStore.getState().reset();
+    useSnapshotStore.getState().reset();
   });
 
   it('keeps MODEL_EDIT fully writable', () => {
@@ -107,6 +110,7 @@ describe('Mode Gating Rules', () => {
     const store = useAppStateStore.getState();
     store.setActiveMode('MODEL_EDIT');
     store.setActiveCase('case-1', 'SC-001', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
     expect(store.canCalculate()).toBe(true);
   });
 

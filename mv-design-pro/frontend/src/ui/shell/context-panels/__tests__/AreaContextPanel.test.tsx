@@ -50,9 +50,37 @@ import { AreaContextPanel } from '../AreaContextPanel';
 
 describe('AreaContextPanel - routing dziewięciu obszarów', () => {
   it('renderuje panel Model sieci', () => {
+    act(() => {
+      useAppStateStore.getState().setActiveProject(null);
+      useAppStateStore.getState().setActiveCase(null);
+      useAppStateStore.getState().setActiveVariant(null);
+    });
     render(<AreaContextPanel areaCode="MODEL_SIECI" />);
     expect(screen.getByTestId('mo-context-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('mock-process-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('mo-project-start')).toBeInTheDocument();
+    expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
+      'Utwórz projekt i przejdź do GPZ',
+    );
+    expect(screen.getByText('Cel obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Stan projektu')).toBeInTheDocument();
+  });
+
+  it('Model sieci: pierwszy krok tworzy jednoznaczny projekt z domyślnymi parametrami', () => {
+    act(() => {
+      useAppStateStore.getState().setActiveProject(null);
+      useAppStateStore.getState().setActiveCase(null);
+      useAppStateStore.getState().setActiveVariant(null);
+    });
+    render(<AreaContextPanel areaCode="MODEL_SIECI" />);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('mo-create-project'));
+    });
+
+    const state = useAppStateStore.getState();
+    expect(state.activeProjectName).toBe('Sieć SN - projekt roboczy');
+    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
+    expect(state.activeVariantName).toBe('Stan projektowany 2026');
   });
 
   it('renderuje panel Schemat i topologia', () => {

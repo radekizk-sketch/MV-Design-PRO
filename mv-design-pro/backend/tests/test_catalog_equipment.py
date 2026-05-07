@@ -60,10 +60,11 @@ class TestTransformerCatalog:
 
     def test_sn_nn_voltage_levels(self):
         """Transformatory SN/nN maja poprawne napiecia."""
+        allowed_lv_levels = {0.4, 0.5, 0.69, 0.8, 1.0, 3.15, 6.0, 6.3}
         for t in get_sn_nn_transformer_types():
             p = t["params"]
             assert p["voltage_hv_kv"] in (15.0, 20.0)
-            assert p["voltage_lv_kv"] == 0.4
+            assert p["voltage_lv_kv"] in allowed_lv_levels
 
     def test_transformer_uk_positive(self):
         """Wszystkie transformatory maja uk% > 0."""

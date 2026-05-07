@@ -1,17 +1,10 @@
 /**
  * no-dead-clicks-in-primary-workflow
  *
- * Weryfikuje, że kluczowe przyciski pierwotnego przepływu pracy
- * są podpięte pod konkretne akcje i nie są martwymi kliknięciami.
- *
- * Sprawdza kontrakty przycisków w TopBar:
- * - Oblicz → onCalculate callback
- * - Wyniki → onViewResults callback
- * - Przypadek → nawigacja do case-config
- * - Wariant → nawigacja do variants
+ * Verifies that primary top-bar controls are wired to concrete actions.
  */
 
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../app-state/store', () => ({
@@ -19,13 +12,14 @@ vi.mock('../../app-state/store', () => ({
     selector({
       activeWorkMode: 'TE',
       setActiveWorkMode: vi.fn(),
-      activeCaseName: 'Przypadek SC-1',
+      activeCaseName: 'Zwarcie maksymalne IEC 60909',
       activeCaseId: 'case-sc-1',
-      activeVariantName: 'Bazowy',
+      activeVariantName: 'Stan projektowany 2026',
       activeSnapshotId: null,
       activeProjectName: 'Projekt testowy',
       activeCaseResultStatus: 'NONE',
     }),
+  useCanCalculate: () => ({ allowed: true, reason: null }),
 }));
 
 vi.mock('../../navigation/routes', () => ({
@@ -36,54 +30,59 @@ vi.mock('../../navigation/routes', () => ({
 import { navigateToCaseConfig, navigateToVariants } from '../../navigation/routes';
 import { TopBar } from '../TopBar';
 
-describe('no dead clicks in primary workflow — TopBar', () => {
+describe('no dead clicks in primary workflow - TopBar', () => {
   it('Oblicz button calls onCalculate', () => {
     const onCalculate = vi.fn();
     render(<TopBar onCalculate={onCalculate} />);
 
-    const btn = screen.getByTestId('top-bar-calculate');
-    expect(btn).toBeInTheDocument();
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByTestId('top-bar-calculate'));
+
     expect(onCalculate).toHaveBeenCalledOnce();
   });
 
-  it('Wyniki button calls onViewResults', () => {
+  it('Analizy button calls onViewResults', () => {
     const onViewResults = vi.fn();
     render(<TopBar onViewResults={onViewResults} />);
 
-    const btn = screen.getByTestId('top-bar-results');
-    expect(btn).toBeInTheDocument();
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByTestId('top-bar-results'));
+
     expect(onViewResults).toHaveBeenCalledOnce();
   });
 
-  it('Przypadek button navigates to case-config', () => {
+  it('Nakładka button calls onViewResults', () => {
+    const onViewResults = vi.fn();
+    render(<TopBar onViewResults={onViewResults} />);
+
+    fireEvent.click(screen.getByTestId('top-bar-overlay'));
+
+    expect(onViewResults).toHaveBeenCalledOnce();
+  });
+
+  it('Obliczenia button navigates to case-config', () => {
     render(<TopBar />);
 
-    const btn = screen.getByTestId('ctx-przypadek');
-    expect(btn).toBeInTheDocument();
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByTestId('ctx-przypadek'));
+
     expect(navigateToCaseConfig).toHaveBeenCalled();
   });
 
-  it('Wariant button navigates to variants', () => {
+  it('Stan projektu button navigates to variants', () => {
     render(<TopBar />);
 
-    const btn = screen.getByTestId('ctx-wariant');
-    expect(btn).toBeInTheDocument();
-    fireEvent.click(btn);
+    fireEvent.click(screen.getByTestId('ctx-wariant'));
+
     expect(navigateToVariants).toHaveBeenCalled();
   });
 
-  it('work-mode-switcher renders all 6 mode buttons', () => {
-    render(<TopBar />);
+  it('Eksport and settings are wired to menu actions', () => {
+    const onMenuAction = vi.fn();
+    render(<TopBar onMenuAction={onMenuAction} />);
 
-    const switcher = screen.getByTestId('work-mode-switcher');
-    expect(switcher).toBeInTheDocument();
-    const modes = ['TE', 'TW', 'TZ', 'TP', 'TA', 'TN'];
-    for (const mode of modes) {
-      expect(screen.getByTestId(`work-mode-${mode}`)).toBeInTheDocument();
-    }
+    fireEvent.click(screen.getByTestId('top-bar-export'));
+    fireEvent.click(screen.getByTestId('top-bar-settings'));
+
+    expect(onMenuAction).toHaveBeenCalledWith('export');
+    expect(onMenuAction).toHaveBeenCalledWith('settings');
   });
 
   it('top-bar testid is always present', () => {

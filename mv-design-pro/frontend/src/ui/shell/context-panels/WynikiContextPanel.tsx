@@ -66,7 +66,7 @@ export function WynikiContextPanel() {
         <div className="mx-3 rounded border border-scada-border bg-scada-surface p-3 text-[11px] text-scada-muted">
           <div className="text-[10px] font-bold uppercase tracking-widest">Warunek przejścia</div>
           <p className="mt-1 leading-snug">
-            Aby zobaczyć wyniki, wybierz przypadek obliczeniowy i uruchom analizę
+            Aby zobaczyć wyniki, wybierz zakres obliczeń i wykonaj analizę
             w obszarze Studia obliczeniowe.
           </p>
           <button

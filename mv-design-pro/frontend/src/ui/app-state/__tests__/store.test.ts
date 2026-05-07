@@ -15,6 +15,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAppStateStore } from '../store';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { makeCalculationReadySnapshot } from '../../../test/enmCalculationSnapshot';
 
 describe('useAppStateStore', () => {
   beforeEach(() => {
@@ -249,25 +250,30 @@ describe('useAppStateStore', () => {
       it('should return true with active case + MODEL_EDIT + NONE results', () => {
         useAppStateStore.getState().setActiveCase('case-1', 'Case', 'ShortCircuitCase', 'NONE');
         useAppStateStore.getState().setActiveMode('MODEL_EDIT');
+        useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
         expect(useAppStateStore.getState().canCalculate()).toBe(true);
       });
 
       it('should return true with active case + MODEL_EDIT + OUTDATED results', () => {
         useAppStateStore.getState().setActiveCase('case-1', 'Case', 'ShortCircuitCase', 'OUTDATED');
         useAppStateStore.getState().setActiveMode('MODEL_EDIT');
+        useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
         expect(useAppStateStore.getState().canCalculate()).toBe(true);
       });
 
       it('should return false when readiness has blocker', () => {
         useAppStateStore.getState().setActiveCase('case-1', 'Case', 'ShortCircuitCase', 'OUTDATED');
         useAppStateStore.getState().setActiveMode('MODEL_EDIT');
-        useSnapshotStore.setState({ readiness: {
-          ready: false,
-          blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
-          warnings: [],
-          summary: { blocker_count: 1, warning_count: 0 },
-          checked_at: '2026-01-01T00:00:00Z',
-        } });
+        useSnapshotStore.setState({
+          snapshot: makeCalculationReadySnapshot(),
+          readiness: {
+            ready: false,
+            blockers: [{ code: 'catalog.ref_missing', message_pl: 'Brak katalogu' }],
+            warnings: [],
+            summary: { blocker_count: 1, warning_count: 0 },
+            checked_at: '2026-01-01T00:00:00Z',
+          },
+        });
 
         expect(useAppStateStore.getState().canCalculate()).toBe(false);
       });

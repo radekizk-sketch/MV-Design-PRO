@@ -66,6 +66,7 @@ def test_policy_accepts_catalog_grid_source_with_multisection_payload():
         "rx_ratio": 0.10,
         "catalog_ref": CATALOG_ZRODLO_SN,
         "sections_count": 2,
+        "line_fields_per_section": 12,
         "gpz_sections": [
             {"order": 0, "name": "Sekcja 1", "line_field_name": "Pole liniowe 1"},
             {"order": 1, "name": "Sekcja 2", "line_field_name": "Pole liniowe 2"},
@@ -91,6 +92,7 @@ def test_canonical_spec_accepts_multisection_manual_grid_source_payload():
     assert spec.required_fields == ("voltage_kv",)
     assert "sections_count" in spec.optional_fields
     assert "gpz_sections" in spec.optional_fields
+    assert "line_fields_per_section" in spec.optional_fields
     assert "grounding" in spec.optional_fields
     assert "zero_sequence" in spec.optional_fields
     assert "short_circuit_mode" in spec.optional_fields
@@ -100,6 +102,7 @@ def test_canonical_spec_accepts_multisection_manual_grid_source_payload():
         {
             "voltage_kv": 15.0,
             "sections_count": 2,
+            "line_fields_per_section": 12,
             "gpz_sections": [
                 {"order": 0, "name": "Sekcja 1"},
                 {"order": 1, "name": "Sekcja 2"},

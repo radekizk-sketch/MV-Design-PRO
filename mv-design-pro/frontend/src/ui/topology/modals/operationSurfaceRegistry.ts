@@ -48,7 +48,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'continue_trunk_segment_sn',
     'ContinueTrunkForm',
-    'Kontynuuj ciag glowny SN',
+    'Wyprowadź ciąg główny SN',
     'E-12',
     'A',
     'manual',
@@ -59,7 +59,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'insert_station_on_segment_sn',
     'InsertStationForm',
-    'Wstaw stacje SN/nN',
+    'Wstaw stację SN/nN',
     'E-13',
     'B',
     'manual',
@@ -70,7 +70,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'start_branch_segment_sn',
     'StartBranchForm',
-    'Dodaj odgalezienie SN',
+    'Dodaj odgałęzienie SN',
     'E-16',
     'A',
     'manual',
@@ -81,7 +81,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'insert_section_switch_sn',
     'InsertSectionSwitchForm',
-    'Wstaw lacznik sekcyjny',
+    'Wstaw łącznik sekcyjny',
     'E-17',
     'B',
     'manual',
@@ -92,7 +92,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'connect_secondary_ring_sn',
     'ConnectRingForm',
-    'Domknij pierscien wtorny',
+    'Domknij pierścień wtórny',
     'E-17',
     'B',
     'manual',
@@ -114,7 +114,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_nn_outgoing_field',
     'AddNnOutgoingFieldForm',
-    'Dodaj odplyw nN',
+    'Dodaj odpływ nN',
     'E-19',
     'A',
     'manual',
@@ -125,7 +125,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_nn_load',
     'AddNnLoadForm',
-    'Dodaj obciazenie nN',
+    'Dodaj obciążenie nN',
     'E-20',
     'A',
     'manual',
@@ -136,7 +136,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_converter_source',
     'AddConverterSourceForm',
-    'Dodaj zrodlo przeksztaltnikowe',
+    'Dodaj źródło przekształtnikowe',
     'E-21',
     'B',
     'manual',
@@ -169,7 +169,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'update_element_parameters',
     'UpdateElementParametersForm',
-    'Zmien parametry elementu',
+    'Zmień parametry elementu',
     'E-03',
     'B',
     'manual',
@@ -202,7 +202,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_grid_source_sn',
     'AddGridSourceForm',
-    'Dodaj zrodlo zasilania GPZ',
+    'Dodaj źródło zasilania GPZ',
     'E-10',
     'B',
     'manual',
@@ -235,7 +235,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'insert_branch_pole_on_segment_sn',
     'InsertBranchPoleForm',
-    'Wstaw slup rozgalezny',
+    'Wstaw słup rozgałęźny',
     'E-15',
     'B',
     'manual',
@@ -246,7 +246,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'insert_zksn_on_segment_sn',
     'InsertZksnForm',
-    'Wstaw zlacze kablowe SN',
+    'Wstaw złącze kablowe SN',
     'E-14',
     'B',
     'transactional',
@@ -257,7 +257,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_ct',
     'AddMeasurementForm',
-    'Dodaj przekladnik pradowy',
+    'Dodaj przekładnik prądowy',
     'E-11',
     'B',
     'manual',
@@ -268,7 +268,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'add_vt',
     'AddMeasurementForm',
-    'Dodaj przekladnik napieciowy',
+    'Dodaj przekładnik napięciowy',
     'E-11',
     'B',
     'manual',

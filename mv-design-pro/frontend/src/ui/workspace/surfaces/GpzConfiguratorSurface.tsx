@@ -1,26 +1,7 @@
-/**
- * GpzConfiguratorSurface (E-10) — konfigurator GPZ.
- *
- * Etap 3 dostawy: 5 kart konfiguracji Głównego Punktu Zasilającego:
- *   1. Identyfikacja (nazwa, oznaczenie ruchowe, OSD, lokalizacja)
- *   2. Strona 110 kV (źródło, moc zwarciowa, R/X)
- *   3. Transformator 110/SN (katalog, moc, uk%, układ połączeń)
- *   4. Sekcje SN (liczba, system szyn, sprzęgło)
- *   5. Bilans pól SN (liczba pól per sekcja, status kompletności)
- *
- * Uwagi:
- *   - Struktura kart UI dostarczona w Etapie 3; integracja z ENM domain ops
- *     (POST add_grid_source_sn z parametrami transformatora 110/SN) jest
- *     przewidziana w Etapie 4 (sieć terenowa wymaga GPZ jako punktu wyjścia).
- *   - Katalog transformatora 110/SN: backend ma TRANSFORMER_WN_SN_110_15 i
- *     _110_20 w mv_transformer_catalog.py — mapowanie do dropdownu w karcie
- *     "Transformator 110/SN".
- */
-
 import { useMemo, useState } from 'react';
 
-import { useSnapshotStore } from '../../topology/snapshotStore';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
+import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
@@ -56,7 +37,7 @@ interface GpzData {
 }
 
 const TRAFO_110_CATALOG_OPTIONS = [
-  { id: '__missing__', label: '— wybierz —' },
+  { id: '__missing__', label: '-- wybierz --' },
   { id: 'tr-wn-sn-110-15-25mva', label: '110/15 kV · 25 MVA · Yyn0' },
   { id: 'tr-wn-sn-110-15-40mva', label: '110/15 kV · 40 MVA · YNyn0' },
   { id: 'tr-wn-sn-110-15-63mva', label: '110/15 kV · 63 MVA · YNyn0' },
@@ -187,7 +168,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               required
             />
             <NumberField
-              label="Moc zwarciowa S″k 110 kV"
+              label="Moc zwarciowa S''k 110 kV"
               unit="MVA"
               value={data.hvShortCircuitMva}
               onChange={(v) => setData((d) => ({ ...d, hvShortCircuitMva: v }))}
@@ -196,15 +177,14 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
             />
             <NumberField
               label="Stosunek R/X źródła 110 kV"
-              unit="—"
+              unit="-"
               value={data.hvRX}
               onChange={(v) => setData((d) => ({ ...d, hvRX: v }))}
               placeholder="0,1"
             />
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
-              Dane wykorzystywane przez solver IEC 60909 do wyznaczenia impedancji
-              zastępczej źródła. Brak danych zwarciowych zablokuje obliczenia
-              zwarciowe (readiness gate).
+              Dane wejściowe są używane przez moduł obliczeń IEC 60909. Brak danych
+              zwarciowych blokuje odpowiednie pozycje gotowości obliczeń.
             </p>
           </div>
         )}
@@ -253,10 +233,12 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                   sectionsCount: Math.max(1, v ?? 1),
                   baysPerSectionCount:
                     v && v > d.baysPerSectionCount.length
-                      ? [...d.baysPerSectionCount, ...Array(v - d.baysPerSectionCount.length).fill(0)]
+                      ? [
+                          ...d.baysPerSectionCount,
+                          ...Array(v - d.baysPerSectionCount.length).fill(0),
+                        ]
                       : d.baysPerSectionCount.slice(0, v ?? 1),
-                }))
-              }
+                }))}
               required
             />
             <CheckboxField
@@ -271,7 +253,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               options={[
                 { id: 'pojedynczy sekcjonowany', label: 'Pojedynczy, sekcjonowany' },
                 { id: 'pojedynczy bez sekcji', label: 'Pojedynczy, bez sekcji' },
-                { id: 'podwójny', label: 'Podwójny' },
+                { id: 'podwojny', label: 'Podwójny' },
               ]}
             />
           </div>
@@ -280,8 +262,8 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
         {activeCard === 'bays-balance' && (
           <div data-testid="gpz-card-content-bays-balance" className="space-y-3">
             <p className="text-sm text-scada-muted">
-              Bilans pól SN per sekcja (typy pól: liniowe, transformatorowe,
-              pomiarowe, sprzęgłowe, sekcyjne, OZE, rezerwowe).
+              Bilans pól SN per sekcja: pola liniowe, transformatorowe, pomiarowe,
+              sprzęgłowe, sekcyjne, OZE i rezerwowe.
             </p>
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {data.baysPerSectionCount.map((count, idx) => (
@@ -296,8 +278,8 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     {count > 0 ? `${count} pól` : MISSING_DASH}
                   </div>
                   <p className="mt-2 text-xs text-scada-muted">
-                    Pola dodawane są przez prawy klik na sekcji w SLD →
-                    "Dodaj pole SN" (Etap 4 roadmapy).
+                    Pola dodaje się z menu kontekstowego sekcji lub przez akcję
+                    "Dodaj pole SN".
                   </p>
                 </div>
               ))}
@@ -307,9 +289,8 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
       </div>
 
       <div className="border-t border-scada-border p-3 text-xs text-scada-muted">
-        Zapis do modelu sieci: po wypełnieniu wymaganych pól użyj operacji
-        domenowej <code>add_grid_source_sn</code> (panel ENM). Pełna integracja
-        z modelem ENM przewidziana w Etapie 4 roadmapy.
+        Edytor GPZ pokazuje dane katalogowe, sekcje SN i braki wejściowe. Dodawanie
+        nowego GPZ wykonuje formularz "Dodaj źródło zasilania GPZ" z panelu budowy modelu.
       </div>
     </div>
   );
@@ -365,7 +346,7 @@ function NumberField({ label, unit, value, onChange, placeholder, required }: Nu
           const next = e.target.value === '' ? null : Number(e.target.value);
           onChange(next === null || Number.isNaN(next) ? null : next);
         }}
-        placeholder={placeholder ?? '— brak danych —'}
+        placeholder={placeholder ?? '-- brak danych --'}
         className="w-full rounded border border-scada-border bg-scada-surface px-2 py-1.5 text-sm text-scada-text placeholder:text-scada-muted focus:border-scada-sn focus:outline-none"
       />
     </div>

@@ -33,11 +33,11 @@ function corridorTypeLabel(type: string): string {
 function terminalStatusLabel(status: string): string {
   switch (status) {
     case 'OTWARTY':
-      return 'Otwarty (wolny)';
+      return 'Wolny';
     case 'ZAJETY':
       return 'Zajęty';
     case 'ZAREZERWOWANY_DLA_RINGU':
-      return 'Zarezerwowany — ring';
+      return 'Zarezerwowany dla pierścienia';
     default:
       return status;
   }
@@ -65,6 +65,18 @@ function branchTypeLabel(type: string): string {
     default:
       return type;
   }
+}
+
+function portRoleLabel(portId: string): string {
+  const normalized = portId.toLowerCase();
+  if (normalized.includes('branch')) return 'zacisk odgałęźny';
+  if (normalized.includes('start') || normalized.includes('in') || normalized.includes('upstream')) {
+    return 'zacisk wejściowy';
+  }
+  if (normalized.includes('end') || normalized.includes('out') || normalized.includes('downstream')) {
+    return 'zacisk wyjściowy';
+  }
+  return 'zacisk techniczny';
 }
 
 // =============================================================================
@@ -143,18 +155,18 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
 
     const terminalFields = trunkTerminals.map((t, idx) => ({
       key: `terminal_${t.element_id}_${idx}`,
-      label: `Terminal ${idx + 1} — ${t.port_id}`,
+      label: `Zacisk ${idx + 1} — ${portRoleLabel(t.port_id)}`,
       value: terminalStatusLabel(t.status),
       severity: terminalStatusSeverity(t.status),
     }));
 
     const terminalsSection: CardSection = {
       id: 'terminals',
-      label: 'Terminale',
+      label: 'Zaciski magistrali',
       fields:
         terminalFields.length > 0
           ? terminalFields
-          : [{ key: 'no_terminals', label: 'Brak terminali', value: '—' }],
+          : [{ key: 'no_terminals', label: 'Brak zacisków', value: '—' }],
     };
 
     const summarySection: CardSection = {
@@ -176,7 +188,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
         },
         {
           key: 'open_terminals',
-          label: 'Otwarte terminale',
+          label: 'Wolne zaciski',
           value: trunkTerminals.filter((t) => t.status === 'OTWARTY').length,
           unit: 'szt.',
           severity: trunkTerminals.some((t) => t.status === 'OTWARTY') ? 'warning' : 'ok',
@@ -197,24 +209,35 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
     openOperationForm('continue_trunk_segment_sn', {
       trunk_id: corridorRef,
       from_terminal_id: openTerminal?.element_id ?? null,
+      terminal_port_id: openTerminal?.port_id ?? null,
+      terminal_name: openTerminal ? `${portRoleLabel(openTerminal.port_id)} · SN` : undefined,
+      terminal_voltage_label: 'SN',
     });
   }, [openOperationForm, corridorRef, trunkTerminals]);
 
   const handleInsertStation = useCallback(() => {
-    openOperationForm('insert_station_on_segment_sn', { corridor_ref: corridorRef });
-  }, [openOperationForm, corridorRef]);
+    const firstSegmentId = segmentBranches[0]?.ref_id ?? corridor?.ordered_segment_refs[0];
+    if (!firstSegmentId) return;
+
+    openOperationForm('insert_station_on_segment_sn', {
+      segment_id: firstSegmentId,
+      segment_ref: firstSegmentId,
+      corridor_ref: corridorRef,
+      position_on_segment: 0.5,
+    });
+  }, [corridor?.ordered_segment_refs, openOperationForm, corridorRef, segmentBranches]);
 
   const actions = useMemo((): CardAction[] => [
     {
       id: 'continue_trunk_segment_sn',
-      label: 'Kontynuuj magistralę',
+      label: 'Połącz wolny zacisk',
       variant: 'primary',
       onClick: handleContinueTrunk,
       disabled: !hasOpenTerminal,
     },
     {
       id: 'insert_station_on_segment_sn',
-      label: 'Wstaw stację',
+      label: 'Wstaw stację na odcinku',
       variant: 'secondary',
       onClick: handleInsertStation,
       disabled: segmentBranches.length === 0,
