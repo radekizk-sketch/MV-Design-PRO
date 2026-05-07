@@ -36,7 +36,7 @@ function fewStationsRadial(): EnmInput {
     bays: [],
     generators: [],
     line_runs: [
-      { id: 'run-1', run_kind: 'main_trunk', starting_bay_ref: 'b1', starting_port_ref: 'p1', segments: [], stations: [] } as never,
+      { id: 'run-1', run_kind: 'main_trunk', starting_bay_ref: 'bay-1', starting_port_ref: 'port-1', segments: [], stations: [] } as never,
     ],
   } as EnmInput;
 }
@@ -54,8 +54,8 @@ function manyStationsBranches(): EnmInput {
   const lineRuns = Array.from({ length: 7 }, (_, i) => ({
     id: `run-${i}`,
     run_kind: i === 0 ? 'main_trunk' : 'branch',
-    starting_bay_ref: `b${i}`,
-    starting_port_ref: `p${i}`,
+    starting_bay_ref: `bay-${i}`,
+    starting_port_ref: `port-${i}`,
     segments: [],
     stations: [],
   }));
@@ -76,7 +76,7 @@ function networkWithRing(): EnmInput {
     bays: [],
     generators: [],
     line_runs: [
-      { id: 'ring-1', run_kind: 'ring', nop_station_ref: 'st4', starting_bay_ref: 'b', starting_port_ref: 'p', segments: [], stations: [] } as never,
+      { id: 'ring-1', run_kind: 'ring', nop_station_ref: 'st4', starting_bay_ref: 'bay-x', starting_port_ref: 'port-x', segments: [], stations: [] } as never,
     ],
   } as EnmInput;
 }
@@ -184,7 +184,7 @@ describe('chooseLayoutStrategy', () => {
       bays: [],
       generators: [],
       line_runs: [
-        { id: 'r', run_kind: 'main_trunk', starting_bay_ref: 'b', starting_port_ref: 'p', segments: [], stations: [] } as never,
+        { id: 'r', run_kind: 'main_trunk', starting_bay_ref: 'bay-x', starting_port_ref: 'port-x', segments: [], stations: [] } as never,
       ],
     };
     const score = computeComplexityScore(enm);
@@ -201,8 +201,8 @@ describe('chooseLayoutStrategy', () => {
       line_runs: Array.from({ length: 5 }, (_, i) => ({
         id: `branch-${i}`,
         run_kind: 'branch' as const,
-        starting_bay_ref: `b${i}`,
-        starting_port_ref: `p${i}`,
+        starting_bay_ref: `bay-${i}`,
+        starting_port_ref: `port-${i}`,
         segments: [],
         stations: [],
       })) as never,

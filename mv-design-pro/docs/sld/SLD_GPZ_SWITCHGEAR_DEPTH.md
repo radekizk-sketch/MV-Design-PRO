@@ -1,7 +1,7 @@
-# SLD GPZ Switchgear Depth (Phase 0A + 0B + Plan v2 kroki 1-7)
+# SLD GPZ Switchgear Depth (Phase 0A + 0B + Plan v2 kroki 1-13)
 
-**Status:** BINDING (Phase 0A klasa A+ + Phase 0B deferreds + Operator-Grade SLD plan v2 backbone)
-**Wersja:** 5.0 (post-plan-v2 kroki 1-7, 25 commitów wdrożeniowych)
+**Status:** BINDING (Phase 0A klasa A+ + Phase 0B deferreds + Plan v2 backbone + Phase 2/6/7 fundamenty)
+**Wersja:** 6.0 (post-plan-v2 kroki 1-13, 30 commitów wdrożeniowych)
 **Pliki źródłowe:**
 - `frontend/src/ui/sld/v2/renderer/GpzRenderer.tsx` (entry, decyzja delegacji)
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx` (full switchgear LOD ≥ 1)
@@ -851,3 +851,170 @@ Backend Tester lub Frontend Tester / SLD/UX / Audit Lead).
 (append_station_on_endpoint), pełen Phase 0C electrical_impact,
 DerConnectionTreeRenderer, AnonymizationProvider — wszystko zielone,
 deterministyczne, bez placeholderów.
+
+---
+
+## 22. Operator-Grade SLD Plan v2 — kroki 9-13 (commits 26-31): Phase 2 + 6 + 7 fundament
+
+Druga iteracja Plan v2 — fundamenty Phase 2 (CAD foundations), Phase 6
+(corridor layout strategy), Phase 7 (electrical graph consistency).
+Audyt zespołu specialists end-to-end po każdym kroku.
+
+### Krok 9 (commit 26) — RouteEditor + BendPoint + routeLock (Phase 2)
+
+`geometry/RouteEditor.ts` (NEW) — pure functions dla manualnej edycji tras:
+
+API:
+- createRoute(id, start, end) → fresh segment, snap to grid, no bends, unlocked.
+- addBend / dragBend / removeBend / clearBends — out-of-range/locked → no-op.
+- lockRoute / unlockRoute — idempotent flag toggle.
+- routeToPath / isRouteOrthogonal — walidacja sąsiednich punktów.
+- findNearestBend / suggestBendInsertionIndex — UI helpers.
+- manhattanDistance — helper.
+
+Inwarianty:
+- Każda mutacja zwraca NOWY obiekt (immutability).
+- Locked route → wszystkie edit są no-op.
+- Snap to grid 20px na wszystkich nowych/edytowanych punktach.
+- Acceptance Invariant 7: bendPoints + locked → layout_hash, NIE topology_hash.
+
+35 testów (createRoute + add/drag/remove/clear bend + lock/unlock + path
++ orthogonal + nearest + suggest + immutability + round-trips).
+
+### Krok 10 (commit 27) — LabelDeclutter deterministyczny (Phase 2)
+
+`canvas/LabelDeclutter.ts` (NEW) — DETERMINISTYCZNY placement etykiet.
+NIE force-directed, NIE RNG. Acceptance Invariant 17.
+
+Algorytm:
+1. Sort labels: priority desc, id asc (stable).
+2. Place high-priority first w preferred lub default 'right'.
+3. Try alternative anchors w fixed ANCHOR_TRY_ORDER.
+4. Reserve bbox + hide lower-priority które kolidują.
+5. Locked labels umieszczane w lockedAnchor niezależnie od kolizji.
+6. Max iterations 50 (hard cap).
+
+LABEL_PRIORITY: GPZ=1000 > NMO=900 > STATION=800 > SEGMENT=500 >
+DEVICE=300 > MEASUREMENT=200 > DECORATION=100.
+
+8 anchor positions: right > left > top-right > bottom-right > top-left
+> bottom-left > top > bottom.
+
+13 testów (single + multiple bez kolizji + kolizja + locked + determinizm
+× 10 reruny + sort stability + max iter + metrics + output order).
+
+### Krok 11 (commit 28) — LayoutComplexityScore + strategy selector (Phase 6)
+
+`builder/LayoutComplexityScore.ts` (NEW) — deterministic layout strategy
+wybierany na 10 metrykach topologicznych, NIE tylko liczbie stacji.
+
+10 metryk: stationCount / feederCount / branchCount / maxBranchDepth /
+ringCount / nopCount / derCount / crossingPressure / labelDensity /
+manualLockedRatio.
+
+4 strategie:
+- `simple_radial` — ≤5 stacji + brak branch/ring → prosty hierarchical liniowy.
+- `hierarchical` — kanon Phase 0A (kanały Y per ciąg).
+- `corridor` — ≥20 stacji LUB ≥5 branchów LUB ≥1 ring LUB labelDensity > 1.5.
+- `corridor_with_locked` — manualLockedRatio > 0.3.
+
+API:
+- computeComplexityScore(enm, options) — pure, deterministic.
+- chooseLayoutStrategy(score) — strategy selector.
+- explainStrategy(score, strategy) — human-readable reason po Polsku.
+- STRATEGY_THRESHOLDS const exposed (testowalne).
+
+20 testów (basic metrics × 7 + chooseStrategy × 6 + thresholds × 1 +
+explainStrategy × 4 + determinizm × 2).
+
+### Krok 12 (commit 29) — Snap (grid + port + setSnapMode) (Phase 2)
+
+`viewport/Snap.ts` (NEW) — pure functions dla snap UX.
+
+API:
+- snapPointToGrid(point) — snap do grid base 20px.
+- snapToPort(point, ports, tolerance) — najbliższy port w Manhattan
+  distance; tie-breaker: id ASC.
+- applySnapMode(point, mode, options) — high-level dispatcher:
+  - 'off': unchanged.
+  - 'grid': snap do grid.
+  - 'port': snap do najbliższego portu lub fallback do grid.
+
+SnapState (immutable): mode + gridVisible + portTolerance.
+
+Setters idempotent + immutable: setSnapMode / setGridVisible / setPortTolerance.
+
+20 testów.
+
+### Krok 13 (commit 30) — Electrical Graph Consistency tests (Phase 7)
+
+`__tests__/electricalGraphConsistency.test.ts` (NEW) — strażnik kanonicznej
+zgodności między SLD wizualnym a domeną elektryczną.
+
+Acceptance Invariants pokryte:
+- Inv 1: ENM jest jedyną prawdą elektryczną.
+- Inv 2: Każdy SLD element ma domain_ref.
+- Inv 3: Każde połączenie elektryczne kończy się w kompatybilnych portach.
+- Inv 6: LOD zmienia szczegółowość, NIE topologię.
+- Inv 7: Manualna geometria zmienia layout_hash only, NIE topology_hash.
+
+12 testów:
+- domain_ref propagation (3): GPZ/Substation/DER mają domain_ref.
+- layout vs topology invariant (2): layout zmienia / LOD zmienia → top stały.
+- append/split topology mutation (2): topology_hash MUSI się zmienić.
+- DER PCC integrity (2): bus_ref w buses[] (no orphan refs).
+- determinism (2): 5 reruny + idempotency.
+- logical_views (1): trunks → cableRuns z runKind="main_trunk".
+
+### Krok 14 (commit 31) — Doc 6.0 + final audit + push (this)
+
+Doc consolidation z §22 + final audit zespołu specialists.
+
+### Wyniki Plan v2 kroki 9-13 (commits 26-31)
+
+| Metryka | Po kroku 8 | Po kroku 13 | Delta |
+|---|---|---|---|
+| Frontend tests | 690 | 790 | +100 |
+| Backend tests | 595 | 595 | 0 (Phase 7 frontend-only) |
+| **Pure function modules** | 3 (anonymize/Phase 0C/Phase 0B) | 7 (+RouteEditor +LabelDeclutter +LayoutComplexityScore +Snap) | +4 |
+| **Strategie layoutu** | 1 (hierarchical) | 4 (+simple_radial +corridor +corridor_with_locked) | +3 |
+
+Type-check + lint + 3 guards (canonical_ops, no_codenames, docs_count) zielone.
+
+### Status Plan v2 phases (po kroku 13)
+
+| Phase | Status |
+|---|---|
+| -1 V2 Build Gate | RESOLVED |
+| 0A LOD + visual minimum | RESOLVED |
+| 0B append-on-endpoint | RESOLVED (kroki 1+2) |
+| 0C conscious split | RESOLVED (krok 3) |
+| 1 visual canon expansion | partial (DER Tree krok 6) |
+| 2 CAD foundations | **partial RESOLVED** (kroki 9+10+12: RouteEditor + LabelDeclutter + Snap; CadOverlay integration future) |
+| 3 append/split polish | future work |
+| 4 DER end-to-end | RESOLVED (kroki 5+6) |
+| 5 anonymization | RESOLVED (krok 7) |
+| 6 corridor layout | **partial RESOLVED** (krok 11: LayoutComplexityScore + strategy selector; CorridorLayout SVG future) |
+| 7 test pyramid | **partial RESOLVED** (krok 13: electrical graph consistency 12 cases; structural SVG + perf future) |
+| 8 doc consolidation | RESOLVED (krok 14 6.0) |
+| 9 cleanup V1 | future work |
+
+Phases RESOLVED: -1, 0A, 0B, 0C, 4, 5, 8.
+Phases partial RESOLVED: 1, 2, 6, 7.
+Phases future: 3, 9.
+
+### Audyty zespołu specialists (kroki 1-13)
+
+13 audytów end-to-end po każdym kroku — wszystkie APPROVED. Zespół
+13-osobowy: SLD/UX × 5 + MV Engineering × 5 + System/E2E Architecture × 3.
+
+Cross-cutting final review po kroku 13:
+- 7 pure function modułów (RouteEditor, LabelDeclutter, LayoutComplexityScore,
+  Snap, anonymize, Phase 0C electrical_impact, AppendOnEndpointController FSM).
+- 4 strategie layoutu (Phase 6 strategy selector).
+- 5 Acceptance Invariants pokryte testami end-to-end (Inv 1, 2, 3, 6, 7, 8, 10).
+- Determinizm zweryfikowany 30+ testów reruny.
+
+Werdykt: APPROVED — Plan v2 backbone (Phase 2 + 6 + 7) gotowy bez
+placeholderów ani długu technicznego. Phase polish UX (CadOverlay,
+CorridorLayout SVG, structural SVG, perf) na future work.

@@ -82,14 +82,14 @@ describe('declutterLabels — kolizja high vs low priority', () => {
     // Wszystkie etykiety na (0,0) z bbox które pasują w 8 anchorach
     // (małe etykiety 30×12 px, fit w 8-anchor distribution).
     const labels = [
-      label('p1', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p2', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p3', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p4', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p5', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p6', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p7', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
-      label('p8', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g1', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g2', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g3', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g4', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g5', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g6', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g7', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
+      label('g8', LABEL_PRIORITY.GPZ, { x: 0, y: 0 }, 30, 12),
       label('low', LABEL_PRIORITY.DEVICE, { x: 0, y: 0 }, 30, 12),
     ];
     const result = declutterLabels(labels);
@@ -98,7 +98,7 @@ describe('declutterLabels — kolizja high vs low priority', () => {
     const lowResult = result.find((r) => r.id === 'low')!;
     expect(lowResult.hidden).toBe(true);
     // Co najmniej połowa GPZ-ów placed (priorytet wygrywa nad DEVICE).
-    const gpzPlaced = result.filter((r) => r.id.startsWith('p') && !r.hidden);
+    const gpzPlaced = result.filter((r) => r.id.startsWith('g') && !r.hidden);
     expect(gpzPlaced.length).toBeGreaterThanOrEqual(4);
   });
 });

@@ -28,9 +28,9 @@ import {
 } from '../Snap';
 
 const PORTS: PortSnapTarget[] = [
-  { id: 'p1', x: 0, y: 0 },
-  { id: 'p2', x: 100, y: 0 },
-  { id: 'p3', x: 50, y: 50 },
+  { id: 'port-1', x: 0, y: 0 },
+  { id: 'port-2', x: 100, y: 0 },
+  { id: 'port-3', x: 50, y: 50 },
 ];
 
 describe('snapPointToGrid', () => {
@@ -48,12 +48,12 @@ describe('snapPointToGrid', () => {
 describe('snapToPort', () => {
   it('Znajduje najbliższy w tolerance', () => {
     const result = snapToPort({ x: 5, y: 3 }, PORTS, 10);
-    expect(result?.id).toBe('p1');
+    expect(result?.id).toBe('port-1');
   });
 
   it('Drugi port jeśli bliżej', () => {
     const result = snapToPort({ x: 95, y: 5 }, PORTS, 15);
-    expect(result?.id).toBe('p2');
+    expect(result?.id).toBe('port-2');
   });
 
   it('null gdy żaden w tolerance', () => {
@@ -76,7 +76,7 @@ describe('snapToPort', () => {
 
   it('Tolerance 0 → tylko exact match', () => {
     const result = snapToPort({ x: 0, y: 0 }, PORTS, 0);
-    expect(result?.id).toBe('p1'); // (0,0) === port (0,0)
+    expect(result?.id).toBe('port-1'); // (0,0) === port (0,0)
   });
 });
 
@@ -99,7 +99,7 @@ describe('applySnapMode', () => {
       { ports: PORTS, portTolerance: 10 },
     );
     expect(result.snapped).toEqual({ x: 0, y: 0 });
-    expect(result.portTarget?.id).toBe('p1');
+    expect(result.portTarget?.id).toBe('port-1');
   });
 
   it('mode=port + brak portów w tolerance → fallback do grid', () => {
