@@ -300,6 +300,9 @@ export interface Substation extends ENMElement {
   transformer_refs: string[];
   entry_point_ref?: string | null;
   gpz_sections?: GPZSection[] | null;
+  /** Phase 0A audit fix 8/8: GPZ HV side (110 kV) sekcje — eliminuje
+   *  synthesize w adapterze SLD. */
+  gpz_hv_sections?: GPZSection[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -313,6 +316,13 @@ export interface Bay extends ENMElement {
   gpz_section_id?: string | null;
   equipment_refs: string[];
   protection_ref?: string | null;
+  /** Phase 0A audit fix 8/8: kanoniczny ID pola dla dyspozytora ("10", "23/1"). */
+  bay_number?: string | null;
+  /** Krótka nazwa odpływu/feedera (UI label osobny od bay.name). */
+  feeder_short_name?: string | null;
+  /** Cel feedera (substation ref docelowej stacji) — eliminuje wnioskowanie
+   *  z grafu w adapterze SLD. */
+  outgoing_destination_ref?: string | null;
 }
 
 import type {

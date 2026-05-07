@@ -155,15 +155,27 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
       lvVoltageKv,
     });
 
-    /* Syntetyzuj HV sections (110 kV) z transformer + source data — gdy są
-     * transformatory z hv_bus_ref. Włącza two-bus topology w renderze. */
-    const hvSections = synthesizeHvSections({
+    /* HV sections (110 kV): preferuje jawne `gpz_hv_sections[]` z ENM
+     * (Phase 0A audit fix 8/8 — eliminacja synthesize). Fallback do synth
+     * gdy ENM ich nie ma (BLOCKER-26 z audytu MV — gap backend nadal
+     * częściowo otwarty dla pełnego two-bus modelowania). */
+    const explicitHvSections = buildHvSectionsFromEnm({
       gpz,
-      transformers,
+      bays,
+      branches,
       buses,
-      sources,
-      hvVoltageKv: hvVoltageKv ?? 110, // synth używa fallback (display-only)
+      substations,
+      hvVoltageKv: hvVoltageKv ?? 110,
     });
+    const hvSections = explicitHvSections.length > 0
+      ? explicitHvSections
+      : synthesizeHvSections({
+          gpz,
+          transformers,
+          buses,
+          sources,
+          hvVoltageKv: hvVoltageKv ?? 110,
+        });
 
     const feedersCount = sections.reduce(
       (acc, s) => acc + s.bays.filter((b) => b.fieldRole === FIELD_ROLE.LINE_OUT).length,
@@ -211,6 +223,50 @@ interface SynthesizeHvArgs {
  * większości GPZ); pierścieniowy 110 kV pozostaje przyszłym rozszerzeniem
  * (`gpz_hv_sections` + `hv_couplers`).
  */
+/**
+ * Phase 0A audit fix 8/8: Buduje GPZ HV sections z jawnych `gpz_hv_sections[]`
+ * w ENM (eliminacja BLOCKER-26 — synthesize). Każda sekcja HV ma własny bus
+ * i pola przypisane przez `gpz_section_id`.
+ *
+ * Zwraca pustą listę gdy ENM nie ma `gpz_hv_sections` — wtedy adapter
+ * fallbackuje do `synthesizeHvSections`.
+ */
+interface BuildHvFromEnmArgs {
+  readonly gpz: Substation;
+  readonly bays: readonly Bay[];
+  readonly branches: readonly Branch[];
+  readonly buses: readonly Bus[];
+  readonly substations: readonly Substation[];
+  readonly hvVoltageKv: number;
+}
+
+function buildHvSectionsFromEnm(args: BuildHvFromEnmArgs): GpzSectionDescriptor[] {
+  const { gpz, bays, branches, buses, substations, hvVoltageKv } = args;
+  const hvSections = gpz.gpz_hv_sections ?? [];
+  if (hvSections.length === 0) return [];
+
+  return hvSections
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((section) => {
+      const sectionBays = bays.filter(
+        (b) => b.substation_ref === gpz.ref_id && b.gpz_section_id === section.section_id,
+      );
+      const sectionBus = buses.find((b) => b.ref_id === section.bus_ref);
+      const sectionVoltageKv = sectionBus?.voltage_kv ?? hvVoltageKv;
+      return {
+        sectionId: section.section_id,
+        order: section.order,
+        name: section.name ?? `Sekcja HV ${section.order}`,
+        sectionLabel: section.line_field_name ?? `S${section.order}`,
+        busVoltageKv: sectionVoltageKv,
+        bays: sectionBays.map((bay) =>
+          bayDescriptorFromEnm(bay, branches, substations, gpz),
+        ),
+      };
+    });
+}
+
 function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
   const { gpz, transformers, buses, sources, hvVoltageKv } = args;
   const ownTransformers = transformers.filter((tr) =>
@@ -381,22 +437,30 @@ function bayDescriptorFromEnm(
   let outgoingFeeder: GpzBayDescriptor['outgoingFeeder'] | undefined;
   const isLineRole = bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER' || bay.bay_role === 'IN';
   if (isLineRole) {
-    const destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
+    /* Phase 0A audit fix 8/8: jeśli ENM ma jawne `outgoing_destination_ref`,
+     * używamy tego. Fallback: wnioskowanie z grafu branch+substation. */
+    let destination: string | null | undefined;
+    const explicitRef = bay.outgoing_destination_ref;
+    if (explicitRef) {
+      const target = substations.find((s) => s.ref_id === explicitRef);
+      destination = target?.name ?? explicitRef;
+    } else {
+      destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
+    }
     if (destination) {
       outgoingFeeder = { destination: `→ ${destination}` };
     }
   }
 
-  /* Bay number = order w sekcji (jeśli ENM nie ma `bay_number`, zostawiamy
-   * niezdefiniowane — renderer wtedy go nie wyświetla).
+  /* Phase 0A audit fix 8/8: konsumpcja nowych pól ENM Bay:
+   * - bay_number → renderer wyświetla pod kolumną (kanoniczny ID dyspozytorski).
+   * - feeder_short_name → UI label feedera (NIE bay.name — które jest długie).
    *
-   * esState: większość pól GPZ klasy A ma uziemnik (BHP). Wnioskujemy z
-   * field role: pola liniowe / TR mają ES, pola pomiarowe (PN) tradycyjnie
-   * też. Sprzęgło COUPLER zwykle bez ES (kanon Energa). Stan → 'unknown'
-   * (Invariant 9: brak telemetrii ENM).
+   * esState: większość pól GPZ klasy A ma uziemnik (BHP). Wnioskujemy z field
+   * role gdy ENM nie ma explicit telemetry. Sprzęgło COUPLER zwykle bez ES.
+   * Stan → 'unknown' (Invariant 9).
    *
-   * qDesignations: kanon IEC 81346-2 dla pól GPZ — Q0=CB, Q1=DS_BUS,
-   * Q9=DS_LIN, Q8=ES, T1=CT. Wartości generowane deterministycznie z roli.
+   * qDesignations: kanon IEC 81346-2 — generowane deterministycznie z roli.
    */
   const hasEs = isLineRole || bay.bay_role === 'TR' || bay.bay_role === 'MEASUREMENT';
   const esState: GpzBayDescriptor['esState'] = hasEs ? 'unknown' : 'absent';
@@ -405,7 +469,8 @@ function bayDescriptorFromEnm(
     bayRef: bay.ref_id,
     fieldRole,
     designation: bay.name || bay.ref_id,
-    feederName: bay.name ?? undefined,
+    feederName: bay.feeder_short_name ?? bay.name ?? undefined,
+    bayNumber: bay.bay_number ?? undefined,
     hasMissingRequiredDevice: (bay.equipment_refs?.length ?? 0) === 0,
     esState,
     qDesignations: deriveQDesignations(bay.bay_role),
