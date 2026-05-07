@@ -328,7 +328,15 @@ export interface GpzCouplerDescriptor {
   readonly leftSectionId: string;
   readonly rightSectionId: string;
   readonly designation: string;
-  readonly closed: boolean;
+  /**
+   * Stan sprzęgła (kanon SCADA).
+   * - `true`/'closed'  — pod napięciem (zielony fill).
+   * - `false`/'open'   — rozcięcie pierścienia (cyan hollow + przerwa CB).
+   * - `'unknown'`      — brak telemetrii (Invariant 9: brak danych ≠ default).
+   *
+   * Backwards compat: boolean → mapowany na 'closed'/'open'.
+   */
+  readonly closed: boolean | 'closed' | 'open' | 'unknown';
   /** Numer pola lewej nogi sprzęgła (np. "15"). */
   readonly bayNumberLeft?: string;
   /** Numer pola prawej nogi sprzęgła (np. "17"). */
@@ -1937,14 +1945,29 @@ interface CouplerBayProps {
 
 function CouplerBay(props: CouplerBayProps): JSX.Element {
   const { x, busY, coupler } = props;
-  const closed = coupler.closed;
+  const couplerState: 'closed' | 'open' | 'unknown' = normalizeCouplerState(coupler.closed);
 
-  /* CB visual: closed = green filled, open = cyan hollow (kanon SCADA). */
-  const cbFill = closed ? COLOR_DEVICE_CLOSED : COLOR_PANEL_RAISED;
-  const cbStroke = closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_SELECTION;
+  /* CB visual: closed = zielony filled, open = cyan hollow, unknown = szary. */
+  const cbFill =
+    couplerState === 'closed'
+      ? COLOR_DEVICE_CLOSED
+      : couplerState === 'unknown'
+      ? COLOR_TEXT_MUTED
+      : COLOR_PANEL_RAISED;
+  const cbStroke =
+    couplerState === 'closed'
+      ? COLOR_DEVICE_CLOSED_BORDER
+      : couplerState === 'unknown'
+      ? COLOR_TEXT_MUTED
+      : COLOR_SELECTION;
 
-  /* Track / wire color: green when coupler closed (current path), white otherwise. */
-  const trackColor = closed ? COLOR_DEVICE_CLOSED : COLOR_LINE_PRIMARY;
+  /* Track color — zielony tylko gdy zamknięte; unknown = neutral szary. */
+  const trackColor =
+    couplerState === 'closed'
+      ? COLOR_DEVICE_CLOSED
+      : couplerState === 'unknown'
+      ? COLOR_TEXT_MUTED
+      : COLOR_LINE_PRIMARY;
 
   /* Geometry: two legs dropping from busY, joined by horizontal connection with CB in middle. */
   const leftLegX = x + COUPLER_LEG_INSET;
@@ -1970,7 +1993,8 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
   return (
     <g
       data-testid={`sld-v2-gpz-coupler-${coupler.couplerId}`}
-      data-closed={String(closed)}
+      data-closed={couplerState === 'closed' ? 'true' : couplerState === 'open' ? 'false' : 'unknown'}
+      data-coupler-state={couplerState}
       data-coupler-id={coupler.couplerId}
       data-in-manipulation={coupler.inManipulation ? 'true' : 'false'}
     >
@@ -2062,7 +2086,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         cy={dsY}
         r={DS_RADIUS}
         fill={COLOR_PANEL_RAISED}
-        stroke={closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_LINE_PRIMARY}
+        stroke={couplerState === 'closed' ? COLOR_DEVICE_CLOSED_BORDER : couplerState === 'unknown' ? COLOR_TEXT_MUTED : COLOR_LINE_PRIMARY}
         strokeWidth={1.2}
         data-testid="sld-v2-gpz-coupler-ds-left"
       />
@@ -2071,7 +2095,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         cy={dsY}
         r={DS_RADIUS}
         fill={COLOR_PANEL_RAISED}
-        stroke={closed ? COLOR_DEVICE_CLOSED_BORDER : COLOR_LINE_PRIMARY}
+        stroke={couplerState === 'closed' ? COLOR_DEVICE_CLOSED_BORDER : couplerState === 'unknown' ? COLOR_TEXT_MUTED : COLOR_LINE_PRIMARY}
         strokeWidth={1.2}
         data-testid="sld-v2-gpz-coupler-ds-right"
       />
@@ -2107,7 +2131,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         strokeWidth={1.4}
         rx={1}
         data-testid="sld-v2-gpz-coupler-cb"
-        data-state={closed ? 'closed' : 'open'}
+        data-state={couplerState}
       />
 
       {/* Pomiar prądu sprzęgła "I  X" */}
@@ -2146,7 +2170,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         />
       )}
 
-      <title>{`${coupler.designation} — ${closed ? 'zamknięte' : 'otwarte'}`}</title>
+      <title>{`${coupler.designation} — ${describeCouplerStatePl(couplerState)}`}</title>
     </g>
   );
 }
@@ -2281,6 +2305,33 @@ function energizationColor(state: GpzBayEnergization): string {
       return COLOR_DEVICE_OPEN;
     case 'unknown':
       return COLOR_NODE;
+  }
+}
+
+/**
+ * Normalizuje stan sprzęgła z backwards-compatible API (boolean | string)
+ * do kanonicznej trojki 'closed' | 'open' | 'unknown'.
+ *
+ * - `true`  → 'closed'
+ * - `false` → 'open'
+ * - 'closed'/'open'/'unknown' → przekazywane bez zmian.
+ */
+function normalizeCouplerState(
+  raw: boolean | 'closed' | 'open' | 'unknown',
+): 'closed' | 'open' | 'unknown' {
+  if (raw === true) return 'closed';
+  if (raw === false) return 'open';
+  return raw;
+}
+
+function describeCouplerStatePl(state: 'closed' | 'open' | 'unknown'): string {
+  switch (state) {
+    case 'closed':
+      return 'zamknięte';
+    case 'open':
+      return 'otwarte';
+    case 'unknown':
+      return 'stan nieznany';
   }
 }
 

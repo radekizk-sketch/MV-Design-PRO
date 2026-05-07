@@ -135,10 +135,12 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
   const gpzStations = substations.filter((s) => s.station_type === 'gpz');
 
   return gpzStations.map((gpz, idx) => {
-    const associatedSource = findSourceForGpz(sources, gpz);
     const lvBus = findFirstBusByRefs(buses, gpz.bus_refs);
     const lvVoltageKv = lvBus?.voltage_kv ?? 15;
-    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses, associatedSource);
+    /* HV voltage z ENM (transformer.uhv_kv lub bus.voltage_kv).
+     * Null = brak danych (renderer pokaże placeholder); fallback 110 wyłącznie
+     * przy renderowaniu, NIE w semantyce. */
+    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses) ?? 110;
     const transformerCount = Math.max(1, gpz.transformer_refs?.length ?? 0);
 
     /* Buduj sections + couplers + bays z gpz_sections[] (LV side). */
@@ -212,39 +214,48 @@ function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
   if (ownTransformers.length === 0) return [];
 
   /* Wyznacz wspólny HV bus (zwykle jeden dla GPZ-1 / pierścieniowy poprawimy
-   * gdy ENM doda hv_sections). */
-  const hvBusRefs = new Set(ownTransformers.map((tr) => tr.hv_bus_ref).filter(Boolean));
-  if (hvBusRefs.size === 0) return [];
+   * gdy ENM doda hv_sections). Sortowanie deterministyczne — `Set` iteration
+   * order nie jest gwarantowane stabilne między engine'ami (audyt system §7). */
+  const hvBusRefs = Array.from(
+    new Set(ownTransformers.map((tr) => tr.hv_bus_ref).filter(Boolean)),
+  ).sort();
+  if (hvBusRefs.length === 0) return [];
 
-  const primaryHvBusRef = Array.from(hvBusRefs)[0];
+  const primaryHvBusRef = hvBusRefs[0];
   const hvBus = buses.find((b) => b.ref_id === primaryHvBusRef);
   const sectionVoltageKv = hvBus?.voltage_kv ?? hvVoltageKv;
 
-  /* Incoming line bays — sources na HV busie. */
+  /* Incoming line bays — sources na HV busie.
+   *
+   * INVARIANT 9 (audyt system §1): brak danych ≠ default. Stany aparatów
+   * NIE są hardkodowane jako 'closed' — adapter zostawia `undefined`,
+   * renderer pokazuje neutral / "brak danych" badge. Zafałszowanie stanu
+   * narusza Cardinal Rule (każdy element wizualny → ENM domain ref).
+   *
+   * Pole synthesized jako derived view z transformer + source data — bayRef
+   * ma stabilny prefix `__hv-derived__` (BLOCKER-26 w audycie MV § 6).
+   */
   const incomingSources = sources.filter((s) => s.bus_ref === primaryHvBusRef);
   const incomingBays: GpzBayDescriptor[] = incomingSources.map((src, idx) => ({
-    bayRef: `${gpz.ref_id}__hv-in-${src.ref_id}`,
+    bayRef: `${gpz.ref_id}__hv-derived-in-${src.ref_id}`,
     fieldRole: FIELD_ROLE.LINE_IN,
     designation: src.name || src.ref_id,
     feederName: (src.name || src.ref_id).slice(0, 8),
     bayNumber: `${(idx + 1) * 2 + 1}`,
     hasMissingRequiredDevice: false,
-    energization: 'energized' as const,
-    cbState: 'closed' as const,
-    dsState: 'closed' as const,
+    /* energization, cbState, dsState — UNDEFINED (brak telemetrii w ENM).
+     * Renderer pokaże 'unknown' (neutral) zamiast fałszywego 'energized'. */
   }));
 
   /* TR feeder bays. */
   const trBays: GpzBayDescriptor[] = ownTransformers.map((tr, idx) => ({
-    bayRef: `${gpz.ref_id}__hv-tr-${tr.ref_id}`,
+    bayRef: `${gpz.ref_id}__hv-derived-tr-${tr.ref_id}`,
     fieldRole: FIELD_ROLE.TRANSFORMER,
     designation: tr.name || `TR${idx + 1}`,
     feederName: `TR${idx + 1}`,
     bayNumber: `${(idx + 1) * 2}`,
     hasMissingRequiredDevice: false,
-    energization: 'energized' as const,
-    cbState: 'closed' as const,
-    dsState: 'closed' as const,
+    /* energization/cbState/dsState undefined — patrz wyżej. */
   }));
 
   return [
@@ -304,8 +315,12 @@ function buildGpzSnSections(args: BuildSectionsArgs): BuildSectionsResult {
       leftSectionId: left.section_id,
       rightSectionId: right.section_id,
       designation: couplerBay.name || couplerBay.ref_id,
-      /* Default closed=true; runtime SCADA telemetry override w przyszłości. */
-      closed: true,
+      /* INVARIANT 9: brak danych telemetrii ≠ default 'closed'. ENM Bay
+       * obecnie nie modeluje runtime switching state — adapter zwraca
+       * 'unknown', renderer wyświetli neutral szary. Gdy ENM zostanie
+       * rozszerzony o BayCanonicalModel.runtime_state.cb_switch_state,
+       * adapter będzie czytać prawdziwy stan. */
+      closed: 'unknown',
     });
   }
 
@@ -351,13 +366,19 @@ function bayDescriptorFromEnm(
   const fieldRole = ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role] ?? FIELD_ROLE.GPZ_LINE_BAY;
 
   /* Outgoing feeder: dla bay_role IN/OUT/FEEDER szukaj branch wychodzący z
-   * bus_ref bay'a do innej stacji. Cel = nazwa stacji docelowej. */
+   * bus_ref bay'a do innej stacji. Cel = nazwa stacji docelowej.
+   *
+   * INVARIANT 9: `energized` pozostaje UNDEFINED — adapter nie zna stanu
+   * SCADA telemetry (TODO przyszły kanał `BayCanonicalModel.runtime_state`).
+   * Renderer wyświetli neutral kolor (`COLOR_FIELD_TRUNK_NEUTRAL`) gdy
+   * brak danych zamiast fałszywego zielonego "pod napięciem".
+   */
   let outgoingFeeder: GpzBayDescriptor['outgoingFeeder'] | undefined;
   const isLineRole = bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER' || bay.bay_role === 'IN';
   if (isLineRole) {
     const destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
     if (destination) {
-      outgoingFeeder = { destination: `→ ${destination}`, energized: true };
+      outgoingFeeder = { destination: `→ ${destination}` };
     }
   }
 
@@ -392,32 +413,37 @@ function inferOutgoingFeederDestination(
   return null;
 }
 
+/**
+ * Wnioskuje napięcie strony HV GPZ z dostępnych danych ENM.
+ *
+ * Reguła deterministyczna (audyt MV §6 BLOCKER-29: zero heurystyk):
+ *   1) Trafo skojarzony z GPZ przez `transformer_refs` ma `uhv_kv` → użyj.
+ *   2) Bus po stronie HV trafa (`tr.hv_bus_ref`) ma `voltage_kv` → użyj.
+ *   3) Brak danych → `null` (Invariant 9: brak danych ≠ 110 kV default).
+ *
+ * Eliminacja heurystyki "voltage_kv > 30" (niejednoznaczne dla 30 kV
+ * wytwórców). Zwracane null sygnalizuje renderowi brak danych — UI pokaże
+ * placeholder zamiast fałszywego "110 kV".
+ */
 function inferHvVoltageKv(
   transformers: readonly Transformer[],
   gpz: Substation,
   buses: readonly Bus[],
-  source: Source | null,
-): number {
-  /* 1) Z trafo skojarzonego z GPZ — uhv_kv. */
-  for (const tr of transformers) {
+): number | null {
+  const ownTransformers = transformers.filter((tr) =>
+    gpz.transformer_refs?.includes(tr.ref_id),
+  );
+  /* (1) Wprost z trafo: uhv_kv. */
+  for (const tr of ownTransformers) {
+    if (tr.uhv_kv) return tr.uhv_kv;
+  }
+  /* (2) Z busa po stronie HV trafa. */
+  for (const tr of ownTransformers) {
     if (!tr.hv_bus_ref) continue;
     const hvBus = buses.find((b) => b.ref_id === tr.hv_bus_ref);
-    if (hvBus && tr.uhv_kv) return tr.uhv_kv;
+    if (hvBus?.voltage_kv) return hvBus.voltage_kv;
   }
-  /* 2) Z busa skojarzonego ze źródłem (jeśli to bus 110 kV). */
-  if (source) {
-    const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
-    if (sourceBus && sourceBus.voltage_kv > (gpz.bus_refs[0] ? 30 : 0)) {
-      return sourceBus.voltage_kv;
-    }
-  }
-  return 110;
-}
-
-function findSourceForGpz(sources: readonly Source[], gpz: Substation): Source | null {
-  return (
-    sources.find((s) => s.substation_ref === gpz.ref_id || gpz.bus_refs.includes(s.bus_ref)) ?? null
-  );
+  return null;
 }
 
 function findFirstBusByRefs(buses: readonly Bus[], busRefs: readonly string[]): Bus | null {
