@@ -1,0 +1,880 @@
+/**
+ * GpzCanonicalRenderer — Phase R2 Operator-Grade Rebuild (clean-room).
+ *
+ * Pełen renderer GPZ klasy SCADA OSD (Mikronika MIKRA II / Sygnity / PSE-Energa).
+ *
+ * NIE MODYFIKUJE legacy GpzRenderer.tsx ani GpzSwitchgearRenderer.tsx.
+ * Konsumuje BEZPOŚREDNIO ENM data (Substation + Bay[] + Transformer[] +
+ * Bus[] + Generator[]). Mapping na visual props bez fallback do placeholderów.
+ *
+ * Acceptance Invariants (Faza R1 reality check):
+ *   1. ZAKAZ placeholderów ("GPZ 1", "TR1", "?/15 kV") w widoku.
+ *   2. ZAKAZ nakładających tekstów (każdy <text> deterministyczny key).
+ *   3. PEŁEN kanon SCADA: header + HV + TR + sekcje + pola + sprzęgła + magistrale.
+ *   4. End-to-end ENM → render bez fallbacków.
+ *   5. Brak danych → "—" lub missing-data badge (NIE "?").
+ *
+ * @see docs/audit/GPZ_RENDERER_REALITY_CHECK.md
+ */
+
+import {
+  COLOR_BG,
+  COLOR_BUS_HV,
+  COLOR_BUS_LV,
+  COLOR_LINE_PRIMARY,
+  COLOR_PANEL,
+  COLOR_PANEL_RAISED,
+  COLOR_TEXT_MUTED,
+  COLOR_TEXT_PRIMARY,
+  COLOR_TEXT_SECONDARY,
+  FONT_MONO,
+  FONT_SANS,
+  FONT_SIZES,
+} from '../theme/tokens';
+
+import {
+  GpzOperatorHeader,
+  type ControlAvailabilityStatus,
+  type GpzAlarmFlags,
+  type GpzStationBalance,
+  type TransmissionStatus,
+} from './GpzOperatorHeader';
+
+/* =============================================================================
+   Domain types (z ENM, projected to canonical SLD)
+   ============================================================================= */
+
+export interface CanonicalGpzSection {
+  /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
+  readonly sectionId: string;
+  /** Order w rozdzielni (1-N). */
+  readonly order: number;
+  /** Etykieta widoczna ("S1"/"S2"/...). */
+  readonly label: string;
+  /** Napięcie szyny (kV). */
+  readonly busVoltageKv: number;
+  /** Lista pól na sekcji. */
+  readonly bays: readonly CanonicalGpzBay[];
+}
+
+export interface CanonicalGpzBay {
+  readonly bayRef: string;
+  /** Numer dyspozytorski ("10", "23/1") z ENM `Bay.bay_number`. */
+  readonly bayNumber: string | null;
+  /** Krótka nazwa odpływu z `Bay.feeder_short_name`. */
+  readonly feederName: string | null;
+  /** Cel feedera (np. "→ STAROŁĘCKA 42"). */
+  readonly destinationLabel: string | null;
+  /** Rola pola — z ENM `Bay.bay_role`. */
+  readonly fieldRole: BayFieldRole;
+  /** Aparatura z `BAY_DEVICE_ORDER_POLICY` (kanon IEC 81346). */
+  readonly cbState?: SwitchState;
+  readonly dsState?: SwitchState;
+  readonly esState?: 'closed' | 'open' | 'absent' | 'unknown';
+  /** Q-numbering (z ENM lub deterministyczne wnioskowanie). */
+  readonly qDesignations: {
+    readonly cb?: string;
+    readonly dsBus?: string;
+    readonly dsLin?: string;
+    readonly es?: string;
+    readonly ct?: string;
+  };
+  /** Status badge'y (SPZ/SCO/OWG/NZ/LRW/ARN/...). */
+  readonly statusFlags?: readonly StatusFlag[];
+  /** Pomiary per pole. */
+  readonly measurements?: BayMeasurements | null;
+  /** Tryb sterowania. */
+  readonly controlMode?: 'remote' | 'local' | 'unknown';
+  /** Flag: pole w stanie manipulacji. */
+  readonly inManipulation?: boolean;
+}
+
+export type BayFieldRole =
+  | 'LINE_OUT'
+  | 'LINE_IN'
+  | 'LINE_BRANCH'
+  | 'TRANSFORMER'
+  | 'COUPLER'
+  | 'MEASUREMENT';
+
+export type SwitchState = 'closed' | 'open' | 'unknown';
+export type StatusFlag = 'SPZ' | 'SCO' | 'OWG' | 'NZ' | 'LRW' | 'ARN' | 'BKR' | 'STYCZ' | 'AWSC' | 'ZS' | 'SZR';
+
+export interface BayMeasurements {
+  readonly pMw?: number | null;
+  readonly qMvar?: number | null;
+  readonly u12Kv?: number | null;
+  readonly u23Kv?: number | null;
+  readonly u31Kv?: number | null;
+  readonly i1A?: number | null;
+  readonly i2A?: number | null;
+  readonly i3A?: number | null;
+  readonly fHz?: number | null;
+}
+
+export interface CanonicalGpzCoupler {
+  readonly couplerId: string;
+  readonly leftSectionId: string;
+  readonly rightSectionId: string;
+  readonly designation: string;
+  readonly closedState: SwitchState;
+}
+
+export interface CanonicalGpzTransformer {
+  readonly transformerRef: string;
+  readonly designation: string; // "TR1", "TR2"
+  readonly snMva: number;
+  readonly uhvKv: number;
+  readonly ulvKv: number;
+  readonly vectorGroup: string | null; // "Dyn11" itp.
+}
+
+export interface CanonicalGpzHvSection {
+  readonly sectionId: string;
+  readonly order: number;
+  readonly busVoltageKv: number;
+  readonly label: string;
+  readonly bays: readonly CanonicalGpzBay[];
+}
+
+export interface GpzCanonicalRendererProps {
+  readonly id: string;
+  readonly x: number;
+  readonly y: number;
+  /** Nazwa GPZ (z ENM `Substation.name`). PUSTA gdy ENM nie ma. */
+  readonly name: string;
+  /** Adres + radio (opcjonalne — z ENM meta). */
+  readonly addressLine?: string;
+  readonly radioId?: string;
+  /** Status SCADA. */
+  readonly transmissionStatus?: TransmissionStatus;
+  readonly controlAvailability?: ControlAvailabilityStatus;
+  /** Bilans stacji (z runtime SCADA). */
+  readonly balance?: GpzStationBalance;
+  /** Alarmy. */
+  readonly alarms?: GpzAlarmFlags;
+  /** HV side: 110 kV bus + pola HV liniowe + pola TR. Brak → tylko LV. */
+  readonly hvSections?: readonly CanonicalGpzHvSection[];
+  /** Transformatory NA OSI (T1...Tn). */
+  readonly transformers: readonly CanonicalGpzTransformer[];
+  /** LV side: ≥1 sekcja 15 kV. */
+  readonly sections: readonly CanonicalGpzSection[];
+  /** Sprzęgła międzysekcyjne LV. */
+  readonly couplers: readonly CanonicalGpzCoupler[];
+
+  /* Interakcja */
+  readonly onClickBay?: (bayRef: string) => void;
+  readonly onDoubleClickBay?: (bayRef: string) => void;
+  readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickCoupler?: (couplerId: string) => void;
+  readonly onClickTransformer?: (transformerRef: string) => void;
+  readonly onResetSignals?: () => void;
+}
+
+/* =============================================================================
+   Geometry constants
+   ============================================================================= */
+
+const HEADER_WIDTH = 320;
+const HV_BUS_Y = 180;
+const HV_BAY_HEIGHT = 80;
+const TR_AREA_Y = 280;
+const TR_HEIGHT = 80;
+const LV_BUS_GAP = 16;
+const LV_SECTION_GAP = 28;
+const LV_BAY_HEIGHT = 220;
+const BAY_WIDTH = 56;
+const BAY_PITCH = 60;
+const TR_WIDTH = 60;
+const SECTION_LABEL_WIDTH = 30;
+const PAGE_PADDING = 24;
+
+/* =============================================================================
+   Main renderer
+   ============================================================================= */
+
+export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Element {
+  const widestSection = Math.max(...props.sections.map((s) => s.bays.length), 1);
+  const totalLvWidth = SECTION_LABEL_WIDTH + widestSection * BAY_PITCH + PAGE_PADDING * 2;
+  const totalHvBays = props.hvSections?.reduce((acc, s) => acc + s.bays.length, 0) ?? 0;
+  const totalHvWidth = SECTION_LABEL_WIDTH + (totalHvBays + props.transformers.length) * BAY_PITCH + PAGE_PADDING * 2;
+  const totalWidth = Math.max(totalLvWidth, totalHvWidth, HEADER_WIDTH * 2 + PAGE_PADDING);
+  const sectionsBlockY = TR_AREA_Y + TR_HEIGHT + LV_BUS_GAP;
+  const sectionsBlockHeight = props.sections.length * (LV_BAY_HEIGHT + LV_SECTION_GAP);
+  const totalHeight = sectionsBlockY + sectionsBlockHeight + PAGE_PADDING;
+
+  return (
+    <g
+      data-testid={`sld-v2-gpz-canonical-${props.id}`}
+      data-element-kind="gpz_canonical"
+      data-element-id={props.id}
+      data-gpz-name={props.name}
+      transform={`translate(${props.x}, ${props.y})`}
+    >
+      {/* Tło rozdzielni */}
+      <rect
+        x={0}
+        y={0}
+        width={totalWidth}
+        height={totalHeight}
+        fill={COLOR_BG}
+        stroke={COLOR_TEXT_MUTED}
+        strokeOpacity={0.3}
+        strokeWidth={1}
+        rx={2}
+        data-testid={`gpz-canonical-${props.id}-frame`}
+      />
+
+      {/* 1. Header (top-left) */}
+      <GpzOperatorHeader
+        x={PAGE_PADDING}
+        y={PAGE_PADDING}
+        width={HEADER_WIDTH}
+        gpzName={props.name || '—'}
+        addressLine={props.addressLine}
+        radioId={props.radioId}
+        transmissionStatus={props.transmissionStatus}
+        controlAvailability={props.controlAvailability}
+        balance={props.balance}
+        alarms={props.alarms}
+        onResetSignalsClick={props.onResetSignals}
+      />
+
+      {/* 2. HV side — 110 kV bus + HV bays */}
+      <HvSection
+        x={PAGE_PADDING}
+        y={HV_BUS_Y}
+        width={totalWidth - PAGE_PADDING * 2}
+        sections={props.hvSections ?? []}
+        transformerCount={props.transformers.length}
+      />
+
+      {/* 3. Transformatory NA OSI */}
+      <TransformersBlock
+        x={PAGE_PADDING}
+        y={TR_AREA_Y}
+        width={totalWidth - PAGE_PADDING * 2}
+        transformers={props.transformers}
+        onClickTransformer={props.onClickTransformer}
+      />
+
+      {/* 4. LV sections — szyny 15 kV + pola SN */}
+      {props.sections.map((section, sectionIdx) => (
+        <LvSection
+          key={`section-${section.sectionId}`}
+          section={section}
+          x={PAGE_PADDING}
+          y={sectionsBlockY + sectionIdx * (LV_BAY_HEIGHT + LV_SECTION_GAP)}
+          width={totalWidth - PAGE_PADDING * 2}
+          onClickBay={props.onClickBay}
+          onDoubleClickBay={props.onDoubleClickBay}
+          onContextMenuBay={props.onContextMenuBay}
+        />
+      ))}
+
+      {/* 5. Sprzęgła LV (między sekcjami) */}
+      {props.couplers.map((coupler) => {
+        const leftIdx = props.sections.findIndex((s) => s.sectionId === coupler.leftSectionId);
+        if (leftIdx < 0) return null;
+        const couplerY = sectionsBlockY + leftIdx * (LV_BAY_HEIGHT + LV_SECTION_GAP) + LV_BAY_HEIGHT;
+        const couplerX = PAGE_PADDING + (totalWidth - PAGE_PADDING * 2) / 2;
+        return (
+          <CouplerSymbol
+            key={`coupler-${coupler.couplerId}`}
+            x={couplerX}
+            y={couplerY}
+            coupler={coupler}
+            onClick={props.onClickCoupler}
+          />
+        );
+      })}
+
+      {/* 6. Etykiety sekcji + napięcia */}
+      {props.sections.map((section, idx) => (
+        <SectionLabel
+          key={`section-label-${section.sectionId}`}
+          x={4}
+          y={sectionsBlockY + idx * (LV_BAY_HEIGHT + LV_SECTION_GAP) + LV_BAY_HEIGHT - 24}
+          label={section.label}
+          voltageKv={section.busVoltageKv}
+        />
+      ))}
+    </g>
+  );
+}
+
+/* =============================================================================
+   HV switchgear (110 kV side)
+   ============================================================================= */
+
+interface HvSectionProps {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly sections: readonly CanonicalGpzHvSection[];
+  readonly transformerCount: number;
+}
+
+function HvSection(props: HvSectionProps): JSX.Element {
+  const { x, y, width, sections, transformerCount } = props;
+  if (sections.length === 0 && transformerCount === 0) {
+    // Brak HV — placeholder explicit "—" (NIE "?")
+    return (
+      <g data-testid="gpz-canonical-hv-empty" transform={`translate(${x}, ${y})`}>
+        <text fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel}>
+          Strona 110 kV — brak danych ENM
+        </text>
+      </g>
+    );
+  }
+
+  return (
+    <g data-testid="gpz-canonical-hv" transform={`translate(${x}, ${y})`}>
+      {/* HV bus 110 kV — pozioma szyna */}
+      <line
+        x1={SECTION_LABEL_WIDTH}
+        y1={0}
+        x2={width}
+        y2={0}
+        stroke={COLOR_BUS_HV}
+        strokeWidth={2.5}
+        data-testid="gpz-canonical-hv-bus"
+      />
+      <text
+        x={4}
+        y={4}
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily={FONT_MONO}
+        fontSize={FONT_SIZES.bayLabel}
+        fontWeight={700}
+      >
+        110 kV
+      </text>
+
+      {/* HV pola liniowe (powyżej szyny — wchodzą "z góry") */}
+      {sections.flatMap((section) =>
+        section.bays.map((bay, idx) => (
+          <HvLineBay
+            key={`hv-bay-${bay.bayRef}`}
+            x={SECTION_LABEL_WIDTH + 30 + idx * BAY_PITCH * 1.2}
+            y={-HV_BAY_HEIGHT}
+            bay={bay}
+          />
+        )),
+      )}
+    </g>
+  );
+}
+
+interface HvLineBayProps {
+  readonly x: number;
+  readonly y: number;
+  readonly bay: CanonicalGpzBay;
+}
+
+function HvLineBay(props: HvLineBayProps): JSX.Element {
+  const { x, y, bay } = props;
+  return (
+    <g
+      data-testid={`gpz-canonical-hv-bay-${bay.bayRef}`}
+      data-bay-role={bay.fieldRole}
+      transform={`translate(${x}, ${y})`}
+    >
+      {/* Pionowy tor pola HV */}
+      <line x1={0} y1={0} x2={0} y2={HV_BAY_HEIGHT} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
+      {/* CB symbol (kwadrat) */}
+      <ApparatusCb cx={0} cy={20} state={bay.cbState ?? 'unknown'} />
+      {/* DS symbol (koło) */}
+      <ApparatusDs cx={0} cy={50} state={bay.dsState ?? 'unknown'} />
+      {/* Numer pola HV */}
+      <text
+        x={0}
+        y={-6}
+        textAnchor="middle"
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily={FONT_SANS}
+        fontSize={FONT_SIZES.bayLabel}
+        fontWeight={700}
+      >
+        {bay.bayNumber ?? '—'}
+      </text>
+    </g>
+  );
+}
+
+/* =============================================================================
+   Transformers block (NA OSI: TR1, TR2, ...)
+   ============================================================================= */
+
+interface TransformersBlockProps {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly transformers: readonly CanonicalGpzTransformer[];
+  readonly onClickTransformer?: (ref: string) => void;
+}
+
+function TransformersBlock(props: TransformersBlockProps): JSX.Element {
+  const { x, y, width, transformers, onClickTransformer } = props;
+  if (transformers.length === 0) {
+    return (
+      <g data-testid="gpz-canonical-transformers-empty" transform={`translate(${x}, ${y})`}>
+        <text fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel}>
+          Brak transformatorów w ENM
+        </text>
+      </g>
+    );
+  }
+
+  // Rozłóż transformatory równomiernie wzdłuż osi X.
+  const trGap = (width - transformers.length * TR_WIDTH) / (transformers.length + 1);
+
+  return (
+    <g data-testid="gpz-canonical-transformers" transform={`translate(${x}, ${y})`}>
+      {transformers.map((tr, idx) => (
+        <TransformerSymbol
+          key={`tr-${tr.transformerRef}`}
+          x={trGap + idx * (TR_WIDTH + trGap)}
+          y={0}
+          transformer={tr}
+          onClick={onClickTransformer}
+        />
+      ))}
+    </g>
+  );
+}
+
+interface TransformerSymbolProps {
+  readonly x: number;
+  readonly y: number;
+  readonly transformer: CanonicalGpzTransformer;
+  readonly onClick?: (ref: string) => void;
+}
+
+function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
+  const { x, y, transformer, onClick } = props;
+  const cx = TR_WIDTH / 2;
+  return (
+    <g
+      data-testid={`gpz-canonical-transformer-${transformer.transformerRef}`}
+      transform={`translate(${x}, ${y})`}
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(transformer.transformerRef); } : undefined}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      {/* Pionowy tor TR (od HV bus do LV bus) */}
+      <line x1={cx} y1={-LV_BUS_GAP} x2={cx} y2={TR_HEIGHT + LV_BUS_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      {/* Górny okrąg (HV) z markerem Y */}
+      <circle cx={cx} cy={20} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      <text x={cx} y={24} textAnchor="middle" fill={COLOR_LINE_PRIMARY} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>Y</text>
+      {/* Dolny okrąg (LV) z markerem Δ */}
+      <circle cx={cx} cy={48} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      <polygon points={`${cx - 6},${56} ${cx + 6},${56} ${cx},${42}`} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
+      {/* Etykieta: TR1 */}
+      <text x={cx + 22} y={26} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
+        {transformer.designation}
+      </text>
+      {/* Moc + napięcia */}
+      <text x={cx + 22} y={40} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
+        {transformer.snMva.toFixed(1)} MVA
+      </text>
+      <text x={cx + 22} y={52} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
+        {transformer.uhvKv}/{transformer.ulvKv} kV
+      </text>
+    </g>
+  );
+}
+
+/* =============================================================================
+   LV section (szyny 15 kV + pola)
+   ============================================================================= */
+
+interface LvSectionProps {
+  readonly section: CanonicalGpzSection;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly onClickBay?: (bayRef: string) => void;
+  readonly onDoubleClickBay?: (bayRef: string) => void;
+  readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+}
+
+function LvSection(props: LvSectionProps): JSX.Element {
+  const { section, x, y, width, onClickBay, onDoubleClickBay, onContextMenuBay } = props;
+  return (
+    <g
+      data-testid={`gpz-canonical-section-${section.sectionId}`}
+      data-section-label={section.label}
+      data-section-voltage={String(section.busVoltageKv)}
+      transform={`translate(${x}, ${y})`}
+    >
+      {/* Szyna LV (pozioma) — ZIELONY (kanon: szyna SN) */}
+      <line
+        x1={SECTION_LABEL_WIDTH}
+        y1={0}
+        x2={width}
+        y2={0}
+        stroke={COLOR_BUS_LV}
+        strokeWidth={2.5}
+        data-testid={`gpz-canonical-section-${section.sectionId}-bus`}
+      />
+
+      {/* Pola */}
+      {section.bays.map((bay, idx) => (
+        <LvBay
+          key={`bay-${bay.bayRef}`}
+          bay={bay}
+          x={SECTION_LABEL_WIDTH + 24 + idx * BAY_PITCH}
+          y={4}
+          onClick={onClickBay}
+          onDoubleClick={onDoubleClickBay}
+          onContextMenu={onContextMenuBay}
+        />
+      ))}
+    </g>
+  );
+}
+
+interface LvBayProps {
+  readonly bay: CanonicalGpzBay;
+  readonly x: number;
+  readonly y: number;
+  readonly onClick?: (ref: string) => void;
+  readonly onDoubleClick?: (ref: string) => void;
+  readonly onContextMenu?: (ref: string, evt: { clientX: number; clientY: number }) => void;
+}
+
+function LvBay(props: LvBayProps): JSX.Element {
+  const { bay, x, y, onClick, onDoubleClick, onContextMenu } = props;
+  const trackHeight = LV_BAY_HEIGHT - 30;
+  return (
+    <g
+      data-testid={`gpz-canonical-bay-${bay.bayRef}`}
+      data-bay-role={bay.fieldRole}
+      data-bay-number={bay.bayNumber ?? ''}
+      transform={`translate(${x}, ${y})`}
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(bay.bayRef); } : undefined}
+      onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(bay.bayRef); } : undefined}
+      onContextMenu={
+        onContextMenu
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenu(bay.bayRef, { clientX: e.clientX, clientY: e.clientY });
+            }
+          : undefined
+      }
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      {/* Tło pola (per-role color) */}
+      <rect
+        x={-BAY_WIDTH / 2}
+        y={0}
+        width={BAY_WIDTH}
+        height={LV_BAY_HEIGHT}
+        fill={bayRoleFillColor(bay.fieldRole)}
+        stroke={bay.inManipulation ? '#FFB020' : COLOR_TEXT_MUTED}
+        strokeOpacity={bay.inManipulation ? 0.9 : 0.3}
+        strokeWidth={bay.inManipulation ? 1.4 : 0.8}
+        rx={1}
+      />
+
+      {/* Pionowy tor pola */}
+      <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} />
+
+      {/* Header pola — feeder name */}
+      {bay.feederName && (
+        <text
+          x={0}
+          y={14}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.bayLabel - 1}
+          fontWeight={600}
+        >
+          {bay.feederName.slice(0, 8)}
+        </text>
+      )}
+
+      {/* DS_BUS (Q1) — odłącznik szynowy nad CB */}
+      {bay.qDesignations.dsBus && (
+        <g>
+          <ApparatusDs cx={0} cy={32} state={bay.dsState ?? 'unknown'} />
+          <text x={9} y={36} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            {bay.qDesignations.dsBus}
+          </text>
+        </g>
+      )}
+
+      {/* CB (Q0) — wyłącznik */}
+      {bay.qDesignations.cb && (
+        <g>
+          <ApparatusCb cx={0} cy={56} state={bay.cbState ?? 'unknown'} />
+          <text x={11} y={60} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            {bay.qDesignations.cb}
+          </text>
+        </g>
+      )}
+
+      {/* CT (T1) — przekładnik prądowy */}
+      {bay.qDesignations.ct && (
+        <g>
+          <circle cx={0} cy={80} r={5} fill="none" stroke="#FFC857" strokeWidth={1.4} />
+          <text x={9} y={84} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            {bay.qDesignations.ct}
+          </text>
+        </g>
+      )}
+
+      {/* DS_LIN (Q9) — odłącznik liniowy */}
+      {bay.qDesignations.dsLin && (
+        <g>
+          <ApparatusDs cx={0} cy={104} state={bay.dsState ?? 'unknown'} />
+          <text x={9} y={108} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            {bay.qDesignations.dsLin}
+          </text>
+        </g>
+      )}
+
+      {/* ES (Q8) — uziemnik na bocznej gałęzi */}
+      {bay.qDesignations.es && bay.esState !== 'absent' && (
+        <g>
+          <line x1={0} y1={130} x2={14} y2={130} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.4} />
+          <line x1={14} y1={126} x2={14} y2={134} stroke={bay.esState === 'closed' ? '#FF4040' : COLOR_TEXT_MUTED} strokeWidth={1.6} />
+          {/* Trójkąt ziemi */}
+          <line x1={11} y1={138} x2={17} y2={138} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <line x1={12} y1={141} x2={16} y2={141} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+          <line x1={13} y1={144} x2={15} y2={144} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+          <text x={20} y={132} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            {bay.qDesignations.es}
+          </text>
+        </g>
+      )}
+
+      {/* Cable head (głowica kablowa) — trójkąt na końcu */}
+      {bay.fieldRole !== 'TRANSFORMER' && bay.fieldRole !== 'COUPLER' && bay.fieldRole !== 'MEASUREMENT' && (
+        <polygon
+          points={`-6,${trackHeight - 4} 6,${trackHeight - 4} 0,${trackHeight + 6}`}
+          fill="none"
+          stroke={COLOR_LINE_PRIMARY}
+          strokeWidth={1.4}
+        />
+      )}
+
+      {/* Numer pola pod kolumną */}
+      {bay.bayNumber && (
+        <text
+          x={0}
+          y={trackHeight + 22}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.bayLabel}
+          fontWeight={700}
+        >
+          {bay.bayNumber}
+        </text>
+      )}
+
+      {/* Etykieta destynacji feedera */}
+      {bay.destinationLabel && (
+        <text
+          x={0}
+          y={trackHeight + 36}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_MONO}
+          fontSize={9}
+        >
+          {bay.destinationLabel.slice(0, 12)}
+        </text>
+      )}
+
+      {/* Status flags badge stack (po prawej stronie pola) */}
+      {bay.statusFlags && bay.statusFlags.length > 0 && (
+        <BayStatusBadges x={BAY_WIDTH / 2 - 4} y={4} flags={bay.statusFlags} />
+      )}
+
+      {/* Pomiary panel pod numerem pola */}
+      {bay.measurements && (
+        <BayMeasurementsPanel x={-BAY_WIDTH / 2 + 2} y={trackHeight + 42} width={BAY_WIDTH - 4} measurements={bay.measurements} />
+      )}
+    </g>
+  );
+}
+
+/* =============================================================================
+   Apparatus symbols
+   ============================================================================= */
+
+interface ApparatusProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly state: SwitchState;
+}
+
+function ApparatusCb(props: ApparatusProps): JSX.Element {
+  const { cx, cy, state } = props;
+  const fill = state === 'closed' ? '#13C45A' : state === 'open' ? '#1F1F1F' : '#5A5A5A';
+  const stroke = state === 'closed' ? '#0A8A3F' : state === 'open' ? '#FF4040' : '#3A3A3A';
+  return (
+    <g data-testid={`gpz-canonical-cb`} data-state={state}>
+      <rect x={cx - 6} y={cy - 6} width={12} height={12} fill={fill} stroke={stroke} strokeWidth={1.5} />
+      {state === 'open' && (
+        <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke="#FF4040" strokeWidth={1.5} />
+      )}
+      {state === 'unknown' && (
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={9} fontWeight={700}>?</text>
+      )}
+    </g>
+  );
+}
+
+function ApparatusDs(props: ApparatusProps): JSX.Element {
+  const { cx, cy, state } = props;
+  const fill = state === 'closed' ? '#13C45A' : state === 'open' ? '#1F1F1F' : '#5A5A5A';
+  const stroke = state === 'closed' ? '#0A8A3F' : state === 'open' ? '#FF4040' : '#3A3A3A';
+  return (
+    <g data-testid={`gpz-canonical-ds`} data-state={state}>
+      <circle cx={cx} cy={cy} r={5} fill={fill} stroke={stroke} strokeWidth={1.4} />
+      {state === 'open' && (
+        <line x1={cx - 5} y1={cy} x2={cx + 5} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
+      )}
+      {state === 'unknown' && (
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
+      )}
+    </g>
+  );
+}
+
+/* =============================================================================
+   Sub-components
+   ============================================================================= */
+
+interface SectionLabelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
+  readonly voltageKv: number;
+}
+
+function SectionLabel(props: SectionLabelProps): JSX.Element {
+  const { x, y, label, voltageKv } = props;
+  return (
+    <g data-testid={`gpz-canonical-section-label-${label}`} transform={`translate(${x}, ${y})`}>
+      <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
+        {label}
+      </text>
+      <text y={12} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+        {voltageKv} kV
+      </text>
+    </g>
+  );
+}
+
+interface CouplerSymbolProps {
+  readonly x: number;
+  readonly y: number;
+  readonly coupler: CanonicalGpzCoupler;
+  readonly onClick?: (id: string) => void;
+}
+
+function CouplerSymbol(props: CouplerSymbolProps): JSX.Element {
+  const { x, y, coupler, onClick } = props;
+  return (
+    <g
+      data-testid={`gpz-canonical-coupler-${coupler.couplerId}`}
+      data-coupler-state={coupler.closedState}
+      transform={`translate(${x}, ${y})`}
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(coupler.couplerId); } : undefined}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      <line x1={0} y1={0} x2={0} y2={LV_SECTION_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      <ApparatusCb cx={0} cy={LV_SECTION_GAP / 2} state={coupler.closedState} />
+      <text x={12} y={LV_SECTION_GAP / 2 + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+        {coupler.designation}
+      </text>
+    </g>
+  );
+}
+
+interface BayStatusBadgesProps {
+  readonly x: number;
+  readonly y: number;
+  readonly flags: readonly StatusFlag[];
+}
+
+function BayStatusBadges(props: BayStatusBadgesProps): JSX.Element {
+  const { x, y, flags } = props;
+  return (
+    <g data-testid={`gpz-canonical-status-badges`} data-flag-count={flags.length} transform={`translate(${x}, ${y})`}>
+      {flags.slice(0, 6).map((flag, idx) => (
+        <g key={`flag-${flag}-${idx}`} data-testid={`gpz-canonical-flag-${flag}`}>
+          <rect x={0} y={idx * 12} width={20} height={10} fill="#FFC857" fillOpacity={0.2} stroke="#FFC857" strokeWidth={0.5} rx={1} />
+          <text x={2} y={idx * 12 + 8} fill="#FFC857" fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+            {flag}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+interface BayMeasurementsPanelProps {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly measurements: BayMeasurements;
+}
+
+function BayMeasurementsPanel(props: BayMeasurementsPanelProps): JSX.Element {
+  const { x, y, width, measurements } = props;
+  const rows: { label: string; value: number | null | undefined; unit: string }[] = [
+    { label: 'P', value: measurements.pMw, unit: 'MW' },
+    { label: 'Q', value: measurements.qMvar, unit: 'MVAr' },
+    { label: 'I', value: measurements.i1A, unit: 'A' },
+  ];
+  const visibleRows = rows.filter((r) => r.value !== undefined && r.value !== null);
+  if (visibleRows.length === 0) return <g data-testid="gpz-canonical-measurements-empty" />;
+  return (
+    <g data-testid="gpz-canonical-measurements" transform={`translate(${x}, ${y})`}>
+      {visibleRows.map((row, idx) => (
+        <g key={`m-${row.label}`} data-testid={`gpz-canonical-measurement-${row.label}`}>
+          <text x={0} y={idx * 10 + 6} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={8}>
+            {row.label}
+          </text>
+          <text
+            x={width}
+            y={idx * 10 + 6}
+            textAnchor="end"
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_MONO}
+            fontSize={8}
+            fontWeight={600}
+          >
+            {row.value!.toFixed(1)} {row.unit}
+          </text>
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/* =============================================================================
+   Helpers
+   ============================================================================= */
+
+function bayRoleFillColor(role: BayFieldRole): string {
+  switch (role) {
+    case 'TRANSFORMER': return '#1A2438';
+    case 'MEASUREMENT': return '#2A2616';
+    case 'COUPLER': return '#1F2226';
+    case 'LINE_OUT':
+    case 'LINE_IN':
+    case 'LINE_BRANCH':
+    default:
+      return COLOR_PANEL;
+  }
+}
+
+void COLOR_PANEL_RAISED;
