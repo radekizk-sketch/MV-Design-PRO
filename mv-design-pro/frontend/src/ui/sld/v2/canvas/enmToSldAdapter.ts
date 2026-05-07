@@ -27,11 +27,20 @@ import type {
   Substation,
   Source,
   Generator,
+  Bay,
+  GPZSection,
+  Transformer,
 } from '../../../../types/enm';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import type { StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
+import type {
+  GpzBayDescriptor,
+  GpzCouplerDescriptor,
+  GpzSectionDescriptor,
+} from '../renderer/GpzSwitchgearRenderer';
+import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE } from '../domain/apparatusContracts';
 
 // =============================================================================
 // Slot constants (deterministic layout)
@@ -119,24 +128,290 @@ function buildGpzs(snapshot: EnergyNetworkModel): GpzRendererProps[] {
   const substations = snapshot.substations ?? [];
   const sources = snapshot.sources ?? [];
   const buses = snapshot.buses ?? [];
+  const bays = snapshot.bays ?? [];
+  const branches = snapshot.branches ?? [];
+  const transformers = snapshot.transformers ?? [];
 
-  // Każda stacja station_type='gpz' renderowana jako blok.
   const gpzStations = substations.filter((s) => s.station_type === 'gpz');
 
   return gpzStations.map((gpz, idx) => {
     const associatedSource = findSourceForGpz(sources, gpz);
     const lvBus = findFirstBusByRefs(buses, gpz.bus_refs);
     const lvVoltageKv = lvBus?.voltage_kv ?? 15;
-    void associatedSource;
+    const hvVoltageKv = inferHvVoltageKv(transformers, gpz, buses, associatedSource);
+    const transformerCount = Math.max(1, gpz.transformer_refs?.length ?? 0);
+
+    /* Buduj sections + couplers + bays z gpz_sections[] (LV side). */
+    const { sections, couplers } = buildGpzSnSections({
+      gpz,
+      bays,
+      branches,
+      buses,
+      substations,
+      lvVoltageKv,
+    });
+
+    /* Syntetyzuj HV sections (110 kV) z transformer + source data — gdy są
+     * transformatory z hv_bus_ref. Włącza two-bus topology w renderze. */
+    const hvSections = synthesizeHvSections({
+      gpz,
+      transformers,
+      buses,
+      sources,
+      hvVoltageKv,
+    });
+
+    const feedersCount = sections.reduce(
+      (acc, s) => acc + s.bays.filter((b) => b.fieldRole === FIELD_ROLE.LINE_OUT).length,
+      0,
+    );
+
     return {
       id: gpz.ref_id,
       x: X_GPZ + idx * (GPZ_WIDTH + 80),
       y: Y_GPZ,
       name: gpz.name || gpz.ref_id,
-      voltageHighKv: 110,
+      voltageHighKv: hvVoltageKv,
       voltageLowKv: lvVoltageKv,
+      transformerCount,
+      sections,
+      couplers,
+      hvSections: hvSections.length > 0 ? hvSections : undefined,
+      hvCouplers: undefined, // ENM nie modeluje obecnie HV sprzęgieł — gap udokumentowany
+      feedersCount,
     };
   });
+}
+
+interface SynthesizeHvArgs {
+  readonly gpz: Substation;
+  readonly transformers: readonly Transformer[];
+  readonly buses: readonly Bus[];
+  readonly sources: readonly Source[];
+  readonly hvVoltageKv: number;
+}
+
+/**
+ * Syntetyzuje HV (110 kV) sekcje z istniejących danych ENM:
+ *   - TR feeder bays (po jednym na transformator z hv_bus_ref skojarzonym z GPZ)
+ *   - Incoming line bays (po jednym na source na tym samym hv_bus_ref)
+ *
+ * Ta synteza jest deterministyczna i traceable do ENM (`transformer_refs`,
+ * `transformer.hv_bus_ref`, `source.bus_ref`). Włącza two-bus topology w
+ * renderze gdy GPZ ma faktyczne transformatory 110/SN.
+ *
+ * Gap: ENM nie modeluje obecnie sprzęgieł HV (110 kV bus jest pojedynczy w
+ * większości GPZ); pierścieniowy 110 kV pozostaje przyszłym rozszerzeniem
+ * (`gpz_hv_sections` + `hv_couplers`).
+ */
+function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
+  const { gpz, transformers, buses, sources, hvVoltageKv } = args;
+  const ownTransformers = transformers.filter((tr) =>
+    gpz.transformer_refs?.includes(tr.ref_id),
+  );
+  if (ownTransformers.length === 0) return [];
+
+  /* Wyznacz wspólny HV bus (zwykle jeden dla GPZ-1 / pierścieniowy poprawimy
+   * gdy ENM doda hv_sections). */
+  const hvBusRefs = new Set(ownTransformers.map((tr) => tr.hv_bus_ref).filter(Boolean));
+  if (hvBusRefs.size === 0) return [];
+
+  const primaryHvBusRef = Array.from(hvBusRefs)[0];
+  const hvBus = buses.find((b) => b.ref_id === primaryHvBusRef);
+  const sectionVoltageKv = hvBus?.voltage_kv ?? hvVoltageKv;
+
+  /* Incoming line bays — sources na HV busie. */
+  const incomingSources = sources.filter((s) => s.bus_ref === primaryHvBusRef);
+  const incomingBays: GpzBayDescriptor[] = incomingSources.map((src, idx) => ({
+    bayRef: `${gpz.ref_id}__hv-in-${src.ref_id}`,
+    fieldRole: FIELD_ROLE.LINE_IN,
+    designation: src.name || src.ref_id,
+    feederName: (src.name || src.ref_id).slice(0, 8),
+    bayNumber: `${(idx + 1) * 2 + 1}`,
+    hasMissingRequiredDevice: false,
+    energization: 'energized' as const,
+    cbState: 'closed' as const,
+    dsState: 'closed' as const,
+  }));
+
+  /* TR feeder bays. */
+  const trBays: GpzBayDescriptor[] = ownTransformers.map((tr, idx) => ({
+    bayRef: `${gpz.ref_id}__hv-tr-${tr.ref_id}`,
+    fieldRole: FIELD_ROLE.TRANSFORMER,
+    designation: tr.name || `TR${idx + 1}`,
+    feederName: `TR${idx + 1}`,
+    bayNumber: `${(idx + 1) * 2}`,
+    hasMissingRequiredDevice: false,
+    energization: 'energized' as const,
+    cbState: 'closed' as const,
+    dsState: 'closed' as const,
+  }));
+
+  return [
+    {
+      sectionId: `${gpz.ref_id}__hv-sec-1`,
+      order: 1,
+      name: 'sekcja 110 kV',
+      sectionLabel: 'sekcja A',
+      busVoltageKv: sectionVoltageKv,
+      bays: [...incomingBays, ...trBays],
+    },
+  ];
+}
+
+interface BuildSectionsArgs {
+  readonly gpz: Substation;
+  readonly bays: readonly Bay[];
+  readonly branches: readonly Branch[];
+  readonly buses: readonly Bus[];
+  readonly substations: readonly Substation[];
+  readonly lvVoltageKv: number;
+}
+
+interface BuildSectionsResult {
+  readonly sections: GpzSectionDescriptor[];
+  readonly couplers: GpzCouplerDescriptor[];
+}
+
+function buildGpzSnSections(args: BuildSectionsArgs): BuildSectionsResult {
+  const { gpz, bays, branches, buses, substations, lvVoltageKv } = args;
+  const gpzSections = (gpz.gpz_sections ?? []).slice().sort((a, b) => a.order - b.order);
+
+  const gpzBays = bays.filter((b) => b.substation_ref === gpz.ref_id);
+  const couplerBaysByRef = new Map<string, Bay>();
+  for (const b of gpzBays) {
+    if (b.bay_role === 'COUPLER') {
+      couplerBaysByRef.set(b.ref_id, b);
+    }
+  }
+
+  const sections: GpzSectionDescriptor[] = gpzSections.map((sec) =>
+    sectionFromGpzSection(sec, gpzBays, branches, buses, substations, gpz, lvVoltageKv),
+  );
+
+  const couplers: GpzCouplerDescriptor[] = [];
+  /* Każda granica między sekcją i (i+1) — sprzęgło, jeśli right_coupler_ref bay
+   * istnieje i bay_role==='COUPLER'. */
+  for (let i = 0; i < gpzSections.length - 1; i++) {
+    const left = gpzSections[i];
+    const right = gpzSections[i + 1];
+    const couplerRef = left.right_coupler_ref ?? right.left_coupler_ref;
+    if (!couplerRef) continue;
+    const couplerBay = couplerBaysByRef.get(couplerRef);
+    if (!couplerBay) continue;
+    couplers.push({
+      couplerId: couplerBay.ref_id,
+      leftSectionId: left.section_id,
+      rightSectionId: right.section_id,
+      designation: couplerBay.name || couplerBay.ref_id,
+      /* Default closed=true; runtime SCADA telemetry override w przyszłości. */
+      closed: true,
+    });
+  }
+
+  return { sections, couplers };
+}
+
+function sectionFromGpzSection(
+  sec: GPZSection,
+  gpzBays: readonly Bay[],
+  branches: readonly Branch[],
+  buses: readonly Bus[],
+  substations: readonly Substation[],
+  gpz: Substation,
+  fallbackVoltageKv: number,
+): GpzSectionDescriptor {
+  const sectionBus = buses.find((b) => b.ref_id === sec.bus_ref);
+  const sectionVoltageKv = sectionBus?.voltage_kv ?? fallbackVoltageKv;
+
+  const sectionBays = gpzBays
+    .filter((b) => b.gpz_section_id === sec.section_id)
+    .filter((b) => b.bay_role !== 'COUPLER'); // sprzęgła traktujemy osobno
+
+  const bayDescriptors: GpzBayDescriptor[] = sectionBays.map((b) =>
+    bayDescriptorFromEnm(b, branches, substations, gpz),
+  );
+
+  return {
+    sectionId: sec.section_id,
+    order: sec.order,
+    name: sec.name ?? `Sekcja ${sec.order}`,
+    sectionLabel: sec.name ?? `S${sec.order}`,
+    busVoltageKv: sectionVoltageKv,
+    bays: bayDescriptors,
+  };
+}
+
+function bayDescriptorFromEnm(
+  bay: Bay,
+  branches: readonly Branch[],
+  substations: readonly Substation[],
+  gpz: Substation,
+): GpzBayDescriptor {
+  const fieldRole = ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role] ?? FIELD_ROLE.GPZ_LINE_BAY;
+
+  /* Outgoing feeder: dla bay_role IN/OUT/FEEDER szukaj branch wychodzący z
+   * bus_ref bay'a do innej stacji. Cel = nazwa stacji docelowej. */
+  let outgoingFeeder: GpzBayDescriptor['outgoingFeeder'] | undefined;
+  const isLineRole = bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER' || bay.bay_role === 'IN';
+  if (isLineRole) {
+    const destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
+    if (destination) {
+      outgoingFeeder = { destination: `→ ${destination}`, energized: true };
+    }
+  }
+
+  /* Bay number = order w sekcji (jeśli ENM nie ma `bay_number`, zostawiamy
+   * niezdefiniowane — renderer wtedy go nie wyświetla). */
+  return {
+    bayRef: bay.ref_id,
+    fieldRole,
+    designation: bay.name || bay.ref_id,
+    feederName: bay.name ?? undefined,
+    hasMissingRequiredDevice: (bay.equipment_refs?.length ?? 0) === 0,
+    outgoingFeeder,
+  };
+}
+
+function inferOutgoingFeederDestination(
+  bay: Bay,
+  branches: readonly Branch[],
+  substations: readonly Substation[],
+  gpz: Substation,
+): string | null {
+  /* Branche dotykające busa pola — jedna z końcówek == bay.bus_ref. */
+  for (const br of branches) {
+    if (br.from_bus_ref !== bay.bus_ref && br.to_bus_ref !== bay.bus_ref) continue;
+    const otherBusRef = br.from_bus_ref === bay.bus_ref ? br.to_bus_ref : br.from_bus_ref;
+    /* Stacja zawierająca otherBusRef. */
+    const dest = substations.find(
+      (s) => s.ref_id !== gpz.ref_id && s.bus_refs.includes(otherBusRef),
+    );
+    if (dest) return dest.name || dest.ref_id;
+  }
+  return null;
+}
+
+function inferHvVoltageKv(
+  transformers: readonly Transformer[],
+  gpz: Substation,
+  buses: readonly Bus[],
+  source: Source | null,
+): number {
+  /* 1) Z trafo skojarzonego z GPZ — uhv_kv. */
+  for (const tr of transformers) {
+    if (!tr.hv_bus_ref) continue;
+    const hvBus = buses.find((b) => b.ref_id === tr.hv_bus_ref);
+    if (hvBus && tr.uhv_kv) return tr.uhv_kv;
+  }
+  /* 2) Z busa skojarzonego ze źródłem (jeśli to bus 110 kV). */
+  if (source) {
+    const sourceBus = buses.find((b) => b.ref_id === source.bus_ref);
+    if (sourceBus && sourceBus.voltage_kv > (gpz.bus_refs[0] ? 30 : 0)) {
+      return sourceBus.voltage_kv;
+    }
+  }
+  return 110;
 }
 
 function findSourceForGpz(sources: readonly Source[], gpz: Substation): Source | null {

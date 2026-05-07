@@ -55,6 +55,7 @@ import {
   FONT_SIZES,
   STROKE_BUSBAR_PX,
   STROKE_FIELD_TRACK_PX,
+  STROKE_TRUNK_LINE_PX,
 } from '../theme/tokens';
 import type { FieldRole } from '../domain/apparatusContracts';
 
@@ -112,6 +113,12 @@ const KAS_ROW_HEIGHT = 16;
 const MEASUREMENT_ROW_HEIGHT = 10;
 const MEASUREMENT_PANEL_HEADER_HEIGHT = 12;
 const MEASUREMENT_FONT_SIZE = 8;
+
+/* Outgoing feeder + magistrala SN (kanon SCADA two-bus). */
+const OUTGOING_FEEDER_DROP_PX = 36;
+const FIELD_TRUNK_GAP_PX = 16;
+const FIELD_TRUNK_FONT_SIZE = 10;
+const FEEDER_LABEL_FONT_SIZE = 8;
 
 // =============================================================================
 // Public types
@@ -256,6 +263,27 @@ export interface GpzBayDescriptor {
    * `hasKasButton: true` żeby był widoczny.
    */
   readonly pNumber?: string;
+  /**
+   * Wychodzący feeder pola liniowego (kanoniczny dla bays
+   * `LINE_OUT`/`GPZ_LINE_BAY`/`LINE_BRANCH`). Definiuje cel kabla wychodzącego
+   * z głowicy do magistrali sieci terenowej.
+   *
+   * Renderer w trybie two-bus rozszerza kolumnę pola: pionowy kabel z
+   * cable-head w dół do trunk line, oznaczenie celu (np. "→ ST-001 SADY"),
+   * koloryzacja zgodna z `energized` (zielony pod napięciem, szary
+   * de-energized).
+   *
+   * Jeśli pole nie jest pole liniowe (np. TRANSFORMER, MEASUREMENT) — feeder
+   * nie powinien być definiowany.
+   */
+  readonly outgoingFeeder?: {
+    /** Etykieta celu (np. "→ Sady ST-001", "→ NMO-12"). */
+    readonly destination: string;
+    /** Czy feeder pod napięciem (driver kolorystyki). */
+    readonly energized?: boolean;
+    /** Numer odpływu / linii (np. "L-203"). Renderowany jako sub-label. */
+    readonly feederNumber?: string;
+  };
 }
 
 /**
@@ -357,6 +385,15 @@ export interface GpzSwitchgearRendererProps {
    * zabezpieczeń"). Renderowany po prawej stronie pod napięciem.
    */
   readonly titleBarAction?: string;
+  /**
+   * Etykieta magistrali sieci terenowej — pozioma trunk line poniżej pól
+   * liniowych SN, do której dochodzą feedery wychodzące. Domyślnie:
+   * "Magistrala SN — sieć terenowa". Pusty string ukrywa trunk line.
+   *
+   * Renderowany tylko w trybie two-bus i tylko jeśli przynajmniej jedno pole
+   * LV ma `outgoingFeeder`.
+   */
+  readonly fieldTrunkLabel?: string;
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
   readonly onClickSection?: (sectionId: string) => void;
@@ -386,7 +423,17 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const layoutMaxWidth = Math.max(layout.totalWidth, hvLayout?.totalWidth ?? 0);
   const totalWidth = Math.max(360, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
 
+  /* Czy istnieje przynajmniej jedno pole liniowe SN z outgoing feeder? */
+  const hasOutgoingFeeders =
+    isTwoBus && sortedSections.some((s) => s.bays.some((b) => b.outgoingFeeder));
+  /* Czy renderować magistralę SN (trunk line)? Domyślnie tak, gdy są feedery. */
+  const showFieldTrunk = hasOutgoingFeeders && props.fieldTrunkLabel !== '';
+  const fieldTrunkLabel = props.fieldTrunkLabel ?? 'Magistrala SN — sieć terenowa';
+
   const TWO_BUS_TR_GAP = 84; // TR symbol + measurements between HV LV buses
+  const fieldTrunkZoneHeight = hasOutgoingFeeders
+    ? OUTGOING_FEEDER_DROP_PX + (showFieldTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE + 6 : 0)
+    : 0;
   const totalHeight = isTwoBus
     ? TITLE_BAR_HEIGHT +
       VERTICAL_PADDING +
@@ -397,6 +444,7 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
       BAY_COLUMN_HEIGHT +
       BAY_NUMBER_GAP +
       footerDepth +
+      fieldTrunkZoneHeight +
       VERTICAL_PADDING
     : TITLE_BAR_HEIGHT +
       HV_TOWER_HEIGHT +
@@ -652,6 +700,20 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
               {label.text}
             </text>
           ))}
+
+          {/* Pola liniowe SN — outgoing feeders w kierunku magistrali */}
+          {hasOutgoingFeeders && (
+            <FieldTrunkZone
+              cells={layout.cells}
+              hOffset={HORIZONTAL_PADDING}
+              totalWidth={totalWidth}
+              lvBaysBottomY={
+                lvBusY + BAY_COLUMN_HEIGHT + BAY_NUMBER_GAP + footerDepth
+              }
+              showTrunk={showFieldTrunk}
+              trunkLabel={fieldTrunkLabel}
+            />
+          )}
         </>
       ) : (
         <>
@@ -864,6 +926,139 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
           />
         </g>
       ))}
+    </g>
+  );
+}
+
+// =============================================================================
+// Field trunk zone (pola liniowe SN → magistrala sieci terenowej)
+// =============================================================================
+
+interface FieldTrunkZoneProps {
+  /** Cells z layoutu LV (zawiera bays + couplery z pozycjami x). */
+  readonly cells: readonly Cell[];
+  /** Poziome offset dla wszystkich pozycji (HORIZONTAL_PADDING). */
+  readonly hOffset: number;
+  /** Pełna szerokość rozdzielni (do trunk line endpoints). */
+  readonly totalWidth: number;
+  /** Y pozycja dolnej krawędzi LV bays (po footerze) — start zone. */
+  readonly lvBaysBottomY: number;
+  /** Czy renderować trunk line + label. */
+  readonly showTrunk: boolean;
+  /** Etykieta magistrali (np. "Magistrala SN — sieć terenowa"). */
+  readonly trunkLabel: string;
+}
+
+/**
+ * Renderuje strefę magistrali sieci terenowej.
+ *
+ * Każde pole liniowe SN z `outgoingFeeder` rozszerza pionowy kabel od dolnej
+ * krawędzi LV bay do trunk line. Każdy feeder ma etykietę celu (np. "→ Sady
+ * ST-001") i opcjonalnie numer linii.
+ *
+ * Trunk line — pozioma linia ciągła łącząca wszystkie outgoing feedery; pod
+ * nią etykieta zbiorcza (kanon SCADA: "Magistrala SN — sieć terenowa").
+ */
+function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
+  const { cells, hOffset, totalWidth, lvBaysBottomY, showTrunk, trunkLabel } = props;
+  const trunkY = lvBaysBottomY + OUTGOING_FEEDER_DROP_PX;
+
+  /* Zbieramy bays z outgoingFeeder + ich centerline X. */
+  const feederColumns = cells
+    .filter((cell): cell is Extract<Cell, { kind: 'bay' }> => cell.kind === 'bay')
+    .filter((cell) => cell.bay.outgoingFeeder !== undefined)
+    .map((cell) => ({
+      bay: cell.bay,
+      cx: hOffset + cell.x + APPARATUS_COL_X_OFFSET,
+      bayBottomX: hOffset + cell.x + BAY_COLUMN_WIDTH / 2,
+    }));
+
+  if (feederColumns.length === 0) {
+    return <g data-testid="sld-v2-gpz-field-trunk-zone" data-feeder-count="0" />;
+  }
+
+  return (
+    <g
+      data-testid="sld-v2-gpz-field-trunk-zone"
+      data-feeder-count={String(feederColumns.length)}
+      data-trunk-visible={showTrunk ? 'true' : 'false'}
+    >
+      {/* Pionowe kable wychodzące z każdego pola liniowego do trunk */}
+      {feederColumns.map((col) => {
+        const feeder = col.bay.outgoingFeeder!;
+        const energized = feeder.energized ?? true;
+        const stroke = energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
+        return (
+          <g
+            key={`feeder-${col.bay.bayRef}`}
+            data-testid={`sld-v2-gpz-outgoing-feeder-${col.bay.bayRef}`}
+            data-feeder-energized={energized ? 'true' : 'false'}
+          >
+            <line
+              x1={col.cx}
+              y1={lvBaysBottomY}
+              x2={col.cx}
+              y2={trunkY}
+              stroke={stroke}
+              strokeWidth={STROKE_FIELD_TRACK_PX}
+            />
+            {/* Etykieta celu (przy trunk, pod kablem) */}
+            <text
+              x={col.bayBottomX}
+              y={trunkY + (showTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE : 12)}
+              textAnchor="middle"
+              fill={energized ? COLOR_TEXT_PRIMARY : COLOR_TEXT_MUTED}
+              fontFamily={FONT_SANS}
+              fontSize={FEEDER_LABEL_FONT_SIZE}
+              fontWeight={600}
+              data-testid={`sld-v2-gpz-outgoing-feeder-destination-${col.bay.bayRef}`}
+            >
+              {feeder.destination}
+            </text>
+            {feeder.feederNumber && (
+              <text
+                x={col.bayBottomX}
+                y={trunkY + (showTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE * 2 + 2 : 22)}
+                textAnchor="middle"
+                fill={COLOR_TEXT_MUTED}
+                fontFamily={FONT_MONO}
+                fontSize={FEEDER_LABEL_FONT_SIZE - 1}
+                data-testid={`sld-v2-gpz-outgoing-feeder-number-${col.bay.bayRef}`}
+              >
+                {feeder.feederNumber}
+              </text>
+            )}
+          </g>
+        );
+      })}
+
+      {/* Magistrala SN — pozioma trunk line */}
+      {showTrunk && (
+        <>
+          <line
+            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
+            y1={trunkY}
+            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
+            y2={trunkY}
+            stroke={COLOR_DEVICE_CLOSED}
+            strokeWidth={STROKE_TRUNK_LINE_PX}
+            data-testid="sld-v2-gpz-field-trunk-line"
+          />
+          {/* Etykieta trunk po prawej */}
+          <text
+            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
+            y={trunkY + 3}
+            textAnchor="start"
+            fill={COLOR_TEXT_SECONDARY}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.technicalPanel - 1}
+            fontWeight={600}
+            data-testid="sld-v2-gpz-field-trunk-label"
+          >
+            {trunkLabel}
+          </text>
+        </>
+      )}
     </g>
   );
 }

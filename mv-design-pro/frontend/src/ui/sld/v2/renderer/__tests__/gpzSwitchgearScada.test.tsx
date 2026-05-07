@@ -1255,3 +1255,225 @@ describe('GpzSwitchgearRenderer — two-bus topology (110 kV + 15 kV z TR pomię
     expect(a1?.getAttribute('data-flow-direction')).toBe('down');
   });
 });
+
+describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej', () => {
+  const HV_BAYS = [
+    {
+      bayRef: 'hv-1',
+      fieldRole: FIELD_ROLE.GPZ_LINE_BAY,
+      designation: 'POR',
+      feederName: 'POR',
+      bayNumber: '05',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+    },
+  ];
+
+  const LV_BAYS_WITH_FEEDERS = [
+    {
+      bayRef: 'lv-line-1',
+      fieldRole: FIELD_ROLE.LINE_OUT,
+      designation: 'SADY',
+      feederName: 'SADY',
+      bayNumber: '11',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      cbState: 'closed' as const,
+      dsState: 'closed' as const,
+      outgoingFeeder: {
+        destination: '→ ST-001 SADY',
+        energized: true,
+        feederNumber: 'L-203',
+      },
+    },
+    {
+      bayRef: 'lv-line-2',
+      fieldRole: FIELD_ROLE.LINE_OUT,
+      designation: 'OKRĘŻNA',
+      feederName: 'OKRĘŻNA',
+      bayNumber: '13',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      cbState: 'closed' as const,
+      dsState: 'closed' as const,
+      outgoingFeeder: {
+        destination: '→ NMO-12',
+        energized: true,
+      },
+    },
+    {
+      bayRef: 'lv-tr-1',
+      fieldRole: FIELD_ROLE.TRANSFORMER,
+      designation: 'TR1',
+      feederName: 'TR1',
+      bayNumber: '03',
+      hasMissingRequiredDevice: false,
+      energization: 'energized' as const,
+      // Brak outgoingFeeder — pole TR nie wychodzi do magistrali.
+    },
+  ];
+
+  function rTrunk(overrides: Partial<Parameters<typeof GpzSwitchgearRenderer>[0]> = {}) {
+    return render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-trunk"
+          x={0}
+          y={0}
+          name="GPZ-8 PGL"
+          voltageHighKv={110}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'lv-sec-1',
+              order: 1,
+              name: 'Sekcja A',
+              sectionLabel: 'sekcja A',
+              busVoltageKv: 15,
+              bays: LV_BAYS_WITH_FEEDERS,
+            },
+          ]}
+          couplers={[]}
+          hvSections={[
+            {
+              sectionId: 'hv-sec-1',
+              order: 1,
+              name: 'Sekcja A HV',
+              sectionLabel: 'sekcja A',
+              busVoltageKv: 110,
+              bays: HV_BAYS,
+            },
+          ]}
+          hvCouplers={[]}
+          transformerCount={1}
+          {...overrides}
+        />
+      </svg>,
+    );
+  }
+
+  it('LV pole liniowe (LINE_OUT) z outgoingFeeder → renderowane wyjście kabla', () => {
+    const { container } = rTrunk();
+    const feeder1 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-1"]',
+    );
+    const feeder2 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-2"]',
+    );
+    expect(feeder1).not.toBeNull();
+    expect(feeder2).not.toBeNull();
+  });
+
+  it('LV pole TR (bez outgoingFeeder) → brak feeder visualization', () => {
+    const { container } = rTrunk();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-lv-tr-1"]'),
+    ).toBeNull();
+  });
+
+  it('Etykieta destination widoczna pod każdym feederem', () => {
+    const { container } = rTrunk();
+    const dest1 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-destination-lv-line-1"]',
+    );
+    const dest2 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-destination-lv-line-2"]',
+    );
+    expect(dest1?.textContent).toBe('→ ST-001 SADY');
+    expect(dest2?.textContent).toBe('→ NMO-12');
+  });
+
+  it('Numer feedera (L-203) widoczny gdy podany', () => {
+    const { container } = rTrunk();
+    const num = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-number-lv-line-1"]',
+    );
+    expect(num?.textContent).toBe('L-203');
+  });
+
+  it('Brak feederNumber → brak osobnego numer-test-id (tylko destination)', () => {
+    const { container } = rTrunk();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-number-lv-line-2"]'),
+    ).toBeNull();
+  });
+
+  it('Magistrala SN — domyślna trunk line + etykieta widoczne gdy są feedery', () => {
+    const { container } = rTrunk();
+    const trunk = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-line"]');
+    const label = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]');
+    expect(trunk).not.toBeNull();
+    expect(label?.textContent).toBe('Magistrala SN — sieć terenowa');
+  });
+
+  it('Custom fieldTrunkLabel → użyta zamiast domyślnej', () => {
+    const { container } = rTrunk({ fieldTrunkLabel: 'Magistrala 15 kV — Olesno' });
+    const label = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]');
+    expect(label?.textContent).toBe('Magistrala 15 kV — Olesno');
+  });
+
+  it('Pusty fieldTrunkLabel ("") → trunk line ukryty (showTrunk=false)', () => {
+    const { container } = rTrunk({ fieldTrunkLabel: '' });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-line"]')).toBeNull();
+    expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]')).toBeNull();
+    /* Feedery nadal widoczne — sama trunk wyłączona. */
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-1"]'),
+    ).not.toBeNull();
+  });
+
+  it('Brak żadnego outgoingFeeder w sections → field trunk zone z feeder-count=0', () => {
+    const { container } = rTrunk({
+      sections: [
+        {
+          sectionId: 'lv-no-feeder',
+          order: 1,
+          name: 'Sekcja A',
+          sectionLabel: 'sekcja A',
+          busVoltageKv: 15,
+          bays: [LV_BAYS_WITH_FEEDERS[2]], // tylko TR, bez outgoingFeeder
+        },
+      ],
+    });
+    /* Strefa nie renderowana wcale (hasOutgoingFeeders=false). */
+    expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-zone"]')).toBeNull();
+  });
+
+  it('Single-bus mode (brak hvSections) → field trunk NIE renderowany nawet z feederami', () => {
+    const { container } = rTrunk({ hvSections: undefined });
+    expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-zone"]')).toBeNull();
+  });
+
+  it('De-energized feeder → kolor szary (data-feeder-energized="false")', () => {
+    const { container } = rTrunk({
+      sections: [
+        {
+          sectionId: 'lv-sec-1',
+          order: 1,
+          name: 'Sekcja A',
+          sectionLabel: 'sekcja A',
+          busVoltageKv: 15,
+          bays: [
+            {
+              ...LV_BAYS_WITH_FEEDERS[0],
+              outgoingFeeder: {
+                destination: '→ ST-X (wyłączony)',
+                energized: false,
+              },
+            },
+          ],
+        },
+      ],
+    });
+    const f = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-1"]',
+    );
+    expect(f?.getAttribute('data-feeder-energized')).toBe('false');
+  });
+
+  it('feeder-count atrybut na zone wrapper = liczba pól z outgoingFeeder', () => {
+    const { container } = rTrunk();
+    const zone = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-zone"]');
+    expect(zone?.getAttribute('data-feeder-count')).toBe('2');
+  });
+});

@@ -231,6 +231,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           >
             <GpzRenderer
               {...g}
+              lod={lod}
               selected={selectedId === g.id}
               onClick={onSelectElement ? (id) => onSelectElement(id, 'gpz') : undefined}
             />

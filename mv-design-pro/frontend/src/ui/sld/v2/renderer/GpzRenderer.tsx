@@ -36,6 +36,7 @@ import {
   GpzSwitchgearRenderer,
   type GpzCouplerDescriptor,
   type GpzSectionDescriptor,
+  type TransformerMeasurements,
 } from './GpzSwitchgearRenderer';
 
 // =============================================================================
@@ -89,6 +90,22 @@ export interface GpzRendererProps {
   readonly sections?: readonly GpzSectionDescriptor[];
   /** Sprzęgła międzysekcyjne — LOD ≥ 1. */
   readonly couplers?: readonly GpzCouplerDescriptor[];
+  /**
+   * Sekcje strony 110 kV (HV bus). Włączają tryb two-bus topology w
+   * GpzSwitchgearRenderer (LOD ≥ 1).
+   */
+  readonly hvSections?: readonly GpzSectionDescriptor[];
+  /** Sprzęgła międzysekcyjne na 110 kV. */
+  readonly hvCouplers?: readonly GpzCouplerDescriptor[];
+  /** Pomiary i opisy stanu transformatorów (Temp. oleju, Uarn, NZACZ, MVA, flow). */
+  readonly transformerMeasurements?: readonly TransformerMeasurements[];
+  /** Tekst akcji w pasku tytułu (np. "Kasowanie sygnalizacji zabezpieczeń"). */
+  readonly titleBarAction?: string;
+  /**
+   * Etykieta magistrali sieci terenowej (kanon SCADA). Pusty string ukrywa
+   * trunk line, niezdefiniowane → domyślne "Magistrala SN — sieć terenowa".
+   */
+  readonly fieldTrunkLabel?: string;
   /** Liczba odpływów SN — używane do wnioskowania `outgoingBayCount` przy LOD 0 z ENM. */
   readonly feedersCount?: number;
   readonly onClickSection?: (sectionId: string) => void;
@@ -117,6 +134,12 @@ export function GpzRenderer(props: GpzRendererProps): JSX.Element {
         voltageLowKv={props.voltageLowKv}
         sections={props.sections ?? []}
         couplers={props.couplers ?? []}
+        hvSections={props.hvSections}
+        hvCouplers={props.hvCouplers}
+        transformerCount={props.transformerCount}
+        transformerMeasurements={props.transformerMeasurements}
+        titleBarAction={props.titleBarAction}
+        fieldTrunkLabel={props.fieldTrunkLabel}
         selected={props.selected}
         onClick={props.onClick}
         onClickSection={props.onClickSection}

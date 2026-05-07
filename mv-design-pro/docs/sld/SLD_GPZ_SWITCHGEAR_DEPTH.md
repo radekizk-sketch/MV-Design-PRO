@@ -195,3 +195,50 @@ Test ID-y dedykowane two-bus mode:
 Backwards compatibility:
 - Brak `hvSections` (lub pusta tablica) → tryb single-bus jak dotychczas.
 - Wszystkie istniejące testy (71 cases) niezmienione — brak regresji.
+
+## 11. Pola liniowe SN → magistrala sieci terenowej
+
+Każde LV pole liniowe (`bay_role: 'OUT' | 'FEEDER' | 'IN'`) renderuje wychodzący
+kabel do magistrali SN. Adapter ENM automatycznie wnioskuje cel feedera z
+topologii (branch.from_bus_ref / to_bus_ref → docelowa stacja).
+
+```ts
+GpzBayDescriptor.outgoingFeeder = {
+  destination: '→ ST-001 SADY',  // wnioskowane z branch + substation lookup
+  energized: true,                // domyślnie true
+  feederNumber: 'L-203',          // opcjonalnie
+};
+```
+
+Trunk line (magistrala) renderowana automatycznie gdy są feedery; etykieta
+domyślna "Magistrala SN — sieć terenowa" lub custom przez `fieldTrunkLabel`.
+Pusty string ukrywa trunk (zostają tylko pojedyncze drops).
+
+## 12. End-to-end pipeline — ENM → adapter → renderer
+
+`enmToSldAdapter.ts.buildGpzs()` buduje pełny propsy GPZ z ENM:
+
+| ENM field | → GpzRendererProps |
+|---|---|
+| `Substation.gpz_sections[]` | `sections[]` (LV side, LOD ≥ 1) |
+| `Substation.gpz_sections[].right_coupler_ref` | `couplers[]` (sprzęgła SN) |
+| `bays[]` filtered by `gpz_section_id` | `sections[].bays[]` |
+| `bays[].bay_role` | mapped via `ENM_BAY_ROLE_TO_FIELD_ROLE` → `fieldRole` |
+| `branches[]` from `bay.bus_ref` to other station | `outgoingFeeder.destination` (auto-derived) |
+| `Substation.transformer_refs.length` | `transformerCount` |
+| `transformers[].uhv_kv` (matched to GPZ) | `voltageHighKv` |
+| `bus_refs[0].voltage_kv` | `voltageLowKv` |
+| `transformers[]` z hv_bus_ref + `sources[]` na tym busie | auto-syntezowane `hvSections[]` (HV side, two-bus mode) |
+
+`SldCanvasV2` przekazuje `lod` (z scale/override) → `<GpzRenderer lod={lod}/>`,
+co przy `lod ≥ 1` deleguje do `GpzSwitchgearRenderer` z całym pipelinem.
+
+### Backend ENM gaps (udokumentowane długi)
+
+| Pole | Status | Komentarz |
+|---|---|---|
+| `Substation.gpz_hv_sections[]` | **GAP** | ENM nie modeluje HV (110 kV) sekcji. Adapter syntezuje 1 HV sekcję z transformatorów + źródeł — wystarczy do typowego GPZ z pojedynczym 110 kV busem; pierścień 110 kV wymaga rozbudowy ENM. |
+| `Substation.hv_couplers[]` | **GAP** | Sprzęgła HV nieobecne w ENM (większość GPZ ma jeden 110 kV bus). Renderer obsługuje przez `hvCouplers` props. |
+| Transformer measurements (Temp. oleju, Uarn, NZACZ, MVA, flow) | **TELEMETRY** | Te pomiary to runtime SCADA, nie domain config. Przyszły kanał telemetry pipe-uje przez `transformerMeasurements` props. Brak danych = brak panelu (graceful). |
+| `Bay.outgoing_feeder_destination` | **DERIVED** | Adapter wnioskuje z topologii (branch + substation). Stabilne i deterministyczne. |
+| Title bar action ("Kasowanie sygnalizacji zabezpieczeń") | **UI label** | Hardkod / przez UI preferencje (nie ENM). |
