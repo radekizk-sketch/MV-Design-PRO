@@ -80,7 +80,7 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     useNetworkBuildStore.setState({ activeSurface: PROOF_SURFACE } as never);
   });
 
-  it('button widoczny w ProofSurface', () => {
+  it('button widoczny w powierzchni uzasadnienia', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     expect(screen.getByTestId('audit2-power-flow-run')).toBeDefined();
@@ -93,15 +93,15 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     expect(btn.disabled).toBe(true);
   });
 
-  it('snapshot status pokazuje "Brak aktywnego snapshotu" gdy snapshot null', () => {
+  it('status wersji modelu pokazuje brak aktywnej wersji modelu', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
     useSnapshotStore.setState({ snapshot: null });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const status = screen.getByTestId('audit2-pf-snapshot-status');
-    expect(status.textContent).toContain('Brak aktywnego snapshotu');
+    expect(status.textContent).toContain('Brak aktywnej wersji modelu');
   });
 
-  it('snapshot status pokazuje aktywny hash gdy snapshot loaded', () => {
+  it('status wersji modelu pokazuje aktywny hash', () => {
     useAppStateStore.setState({ activeProjectId: 'proj-1', activeRunId: 'run-1' });
     useSnapshotStore.setState({
       snapshot: {
@@ -110,7 +110,7 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     });
     renderWithFetchStub(<WorkspaceSurfaceRouter region="main" />, basicFetchStub);
     const status = screen.getByTestId('audit2-pf-snapshot-status');
-    expect(status.textContent).toContain('Aktywny snapshot');
+    expect(status.textContent).toContain('Aktywna wersja modelu');
     expect(status.textContent).toContain('abc123def456abc1');
   });
 
@@ -191,7 +191,7 @@ describe('ProofSurface — audit2 Power Flow button (Phase 40)', () => {
     });
     const result = screen.getByTestId('audit2-power-flow-result');
     expect(result.textContent).toContain('TAK');
-    expect(result.textContent).toContain('5 wezlow');
-    expect(result.textContent).toContain('3 galezi');
+    expect(result.textContent).toContain('5 węzłów');
+    expect(result.textContent).toContain('3 gałęzi');
   });
 });

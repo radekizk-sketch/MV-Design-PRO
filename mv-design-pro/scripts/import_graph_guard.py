@@ -14,9 +14,6 @@ ENTRYPOINT_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("legacy layout import", r"PowerFactoryLayout"),
         ("legacy helper page import", r"TypeLibraryBrowser|CaseConfigPage"),
     ],
-    "frontend/src/ui/layout/CanonicalLayout.tsx": [
-        ("legacy layout import", r"PowerFactoryLayout"),
-    ],
     "frontend/src/ui/navigation/routes.ts": [
         ("legacy public route", r"#reference-patterns|#protection-settings|#power-distribution"),
     ],

@@ -122,7 +122,7 @@ export function StationConfigProtectionCard(
                 <th className="text-left">Funkcje</th>
                 <th className="text-right">Nastawy</th>
                 <th className="text-left">Selektywność</th>
-                <th className="text-left">VT (per pole)</th>
+                <th className="text-left">Przekładnik napięciowy</th>
               </tr>
             </thead>
             <tbody>
@@ -136,7 +136,7 @@ export function StationConfigProtectionCard(
                     {r.selectivityStatus}
                   </td>
                   <td>
-                    {/* Phase 18: VT select per row gdy onChangeVt dostarczony. */}
+                    {/* Wybór przekładnika napięciowego dla pola, gdy formularz przekazuje handler zmiany. */}
                     {onChangeVt ? (
                       <select
                         data-testid={`relay-vt-select-${r.relayId}`}

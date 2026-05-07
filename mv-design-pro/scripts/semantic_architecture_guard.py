@@ -11,16 +11,10 @@ SRC = FRONTEND / "src"
 V12XX = ROOT / "docs" / "v12xx"
 
 REQUIRED_FILES = (
-    "frontend/src/ui/engineering-semantic/resultFreshness.ts",
-    "frontend/src/ui/engineering-semantic/__tests__/sld-view-change-does-not-invalidate-calculation-results.test.ts",
-    "frontend/src/ui/engineering-semantic/__tests__/semantic-change-invalidates-result.test.ts",
-    "frontend/src/ui/engineering-semantic/__tests__/engineer-workflow-gpz-bay-segment-through-station.test.tsx",
-    "frontend/src/ui/engineering-semantic/semanticDiagnosticsReport.ts",
-    "frontend/src/ui/engineering-semantic/semanticSelection.ts",
-    "frontend/src/ui/engineering-semantic/__tests__/semantic-diagnostics-report.test.ts",
-    "frontend/src/ui/engineering-semantic/__tests__/semantic-selection.test.ts",
-    "frontend/src/ui/sld/SldSemanticDiagnosticsPanel.tsx",
-    "frontend/src/ui/sld/__tests__/SldSemanticDiagnosticsPanel.test.tsx",
+    "frontend/src/ui/engineering-semantic/semanticInspectorAdapter.ts",
+    "frontend/src/ui/inspector-panel/SemanticInspectorCard.tsx",
+    "frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx",
+    "frontend/src/ui/sld/v2/canvas/SldCanvasV2.tsx",
     "docs/v12xx/REJESTR_DECYZJI_SEMANTYCZNYCH.md",
 )
 
@@ -40,21 +34,9 @@ FILE_PATTERN_RULES: dict[str, list[tuple[str, str]]] = {
         ("nop-from-branch-type", r"branch\.type\s*===\s*['\"](?:switch|breaker|bus_coupler|disconnector)['\"]"),
         ("nop-without-logical-views", r"resolveNopCandidates\s*\(\s*snapshot\s*\)"),
     ],
-    "frontend/src/engine/sld-layout/phase2-bay-detection.ts": [
-        ("bay-name-fragment-classification", r"\belementName\s*\.\s*includes\s*\("),
-        ("bay-terminal-name-classification", r"\bterminalNames\b"),
-        ("bay-label-fragment-classification", r"\b(label|name)\s*\.\s*toLowerCase\s*\(\s*\)\s*\.\s*includes\s*\("),
-    ],
-    "frontend/src/ui/engineering-semantic/sldProjectionAdapter.ts": [
-        ("unknown-node-fallback", r"UnknownNode|unknown.*rectangle|fallback.*node"),
-    ],
-    "frontend/src/ui/sld/SLDView.tsx": [
+    "frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx": [
         ("local-semantic-kind-mapping", r"function\s+mapSemanticElementKindToElementType\s*\("),
         ("local-semantic-selection-builder", r"function\s+createSemanticSelectedElement\s*\("),
-    ],
-    "frontend/src/ui/sld/SldEditorPage.tsx": [
-        ("local-semantic-kind-mapping", r"function\s+mapSemanticElementKindToElementType\s*\("),
-        ("local-semantic-element-lookup", r"function\s+findSemanticElement\s*\("),
     ],
 }
 
@@ -106,36 +88,43 @@ def check_file_patterns() -> list[str]:
 
 
 def check_semantic_model_contract() -> list[str]:
-    text = read_text("frontend/src/ui/engineering-semantic/types.ts")
-    match = re.search(r"export interface EngineeringSemanticModel \{(?P<body>[\s\S]*?)\n\}", text)
+    text = read_text("frontend/src/ui/engineering-semantic/semanticInspectorAdapter.ts")
+    match = re.search(r"export interface EngineeringSemanticModelForInspector \{(?P<body>[\s\S]*?)\n\}", text)
     if match is None:
-        return ["[semantic-model-contract] EngineeringSemanticModel interface not found"]
+        return ["[semantic-model-contract] EngineeringSemanticModelForInspector interface not found"]
     body = match.group("body")
-    forbidden = ("violations", "diagnosticsHash", "readinessHash", "inputHash", "viewHash", "overlayHash")
+    forbidden = ("diagnosticsHash", "readinessHash", "inputHash", "viewHash", "overlayHash")
     return [
-        f"[semantic-model-core] EngineeringSemanticModel must not contain {field}"
+        f"[semantic-model-core] EngineeringSemanticModelForInspector must not contain {field}"
         for field in forbidden
         if re.search(rf"\b{re.escape(field)}\b", body)
     ]
 
 
 def check_required_contract_fields() -> list[str]:
-    text = read_text("frontend/src/ui/engineering-semantic/types.ts")
+    text = read_text("frontend/src/ui/engineering-semantic/semanticInspectorAdapter.ts")
     required_pairs = {
-        "ResultBinding": ("elementRefId", "semanticHash", "inputSnapshotRefId", "inputHash", "proofRefId", "reportEligibility"),
-        "SldOverlayProjection": ("baseViewHash", "overlayHash", "resultHash", "inputSnapshotRefId"),
-        "SldRoute": ("connectionId", "pathPoints", "routeClass"),
-        "EngineeringConnection": ("validatedByRuleRefs", "orientation", "connectionKind"),
-        "SemanticDiagnosticsReport": (
-            "enmElementsWithoutSemanticElement",
-            "semanticElementsWithoutRole",
-            "semanticElementsWithoutPorts",
-            "semanticElementsWithoutNetworkPosition",
-            "semanticElementsWithoutCatalogOrEquivalent",
-            "enmElementsNotProductionRenderable",
-            "elementsRenderedAsSketch",
-            "elementsRenderedAsSemanticBlock",
-            "legacySilentPromotionRefIds",
+        "EngineeringSemanticModelForInspector": ("semanticHash", "elements"),
+        "EngineeringElementForInspector": (
+            "refId",
+            "elementKind",
+            "engineeringRole",
+            "functionalRole",
+            "networkPosition",
+            "voltageDomain",
+            "completeness",
+            "reportEligibility",
+            "dataQualityState",
+            "ports",
+        ),
+        "SemanticInspectorCardModel": (
+            "status",
+            "titlePl",
+            "semanticHash",
+            "refId",
+            "displayName",
+            "messagePl",
+            "repairActionPl",
         ),
     }
     violations: list[str] = []
@@ -152,13 +141,13 @@ def check_required_contract_fields() -> list[str]:
 
 
 def check_legacy_mapping_status_contract() -> list[str]:
-    text = read_text("frontend/src/ui/engineering-semantic/types.ts")
+    text = read_text("frontend/src/ui/engineering-semantic/semanticInspectorAdapter.ts")
     required_statuses = (
-        "ZMAPOWANY_PELNIE",
-        "ZMAPOWANY_CZESCIOWO",
-        "WYMAGA_DECYZJI_UZYTKOWNIKA",
-        "NIEZGODNY_Z_KANONEM",
-        "ODRZUCONY",
+        "SEMANTYKA_OK",
+        "BLOKADA_SEMANTYCZNA",
+        "MODEL_TECHNICZNY_NIEPELNY",
+        "MODEL_TECHNICZNY_PELNY",
+        "NIERAPORTOWALNY_BRAK_DANYCH",
     )
     violations: list[str] = []
     for status in required_statuses:

@@ -34,15 +34,7 @@ export default defineConfig(({ mode }) => {
       globals: true,
       setupFiles: ['./src/test/setup.ts'],
       include: ['src/**/*.{test,spec}.{ts,tsx}'],
-      exclude: [
-        ...configDefaults.exclude,
-        'src/ui/network-build/__tests__/BayCard.test.tsx',
-        'src/ui/network-build/__tests__/InspectorEngineeringView.test.tsx',
-        'src/ui/sld/__tests__/enmSnapshotToSldSymbols.test.ts',
-        'src/ui/sld/__tests__/sld-gpz-bay-render.test.tsx',
-        'src/ui/sld/__tests__/sldIndustrialHierarchy.test.ts',
-        'src/ui/sld/core/__tests__/canonicalSld.test.ts',
-      ],
+      exclude: [...configDefaults.exclude],
     },
   };
 });

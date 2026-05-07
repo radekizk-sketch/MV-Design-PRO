@@ -34,8 +34,8 @@ export const TECHNICAL_DEBT_REGISTRY: readonly TechnicalDebtItem[] = [
       'frontend/src/ui/topology/modals/operationSurfaceRegistry.ts',
       'frontend/src/ui/network-build/networkBuildStore.ts',
       'frontend/src/ui/network-build/ProcessPanel.tsx',
-      'frontend/src/ui/sld/SldEditorPage.tsx',
-      'frontend/src/ui/sld/sldDetailLevel.ts',
+      'frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx',
+      'frontend/src/ui/sld/v2/command/SldCommandService.ts',
     ],
     tests: [
       'npm run type-check',

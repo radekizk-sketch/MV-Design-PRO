@@ -447,3 +447,80 @@ Pozostały do przejścia i naprawy w tej pętli:
 - Szeroka walidacja `type-check`, `lint`, `test`, `build`, testy E2E i guardy.
 
 Twarda uwaga statusowa: aplikacja jest częściowo utwardzona w ścieżce start -> projekt -> zakres -> GPZ -> odcinek -> stacja, ale cel całościowy nie jest jeszcze ukończony.
+## Release-gate update: type-check/build odblokowane
+
+Data: 2026-05-07.
+
+W tej fazie bezwarunkowo odblokowano globalny TypeScript i build bez obniżania strictness oraz bez produkcyjnych wykluczeń w `tsconfig.json`.
+
+Naprawy:
+
+- usunięto martwe legacy SLD i odłączone panele blokujące type-check,
+- zaktualizowano `test:golden` na aktywne testy SLD v2,
+- usunięto stare wykluczenia Vitest,
+- zaktualizowano guardy import/semantic architecture do aktywnych plików,
+- poprawiono aktywne etykiety audit2 tak, aby nie wracały `run`, `snapshot`, `Power Flow`, stare angielskie opisy i widoczne mojibake w dotkniętym zakresie,
+- test audit2 został zaktualizowany do nowych polskich etykiet.
+
+Walidacja zielona:
+
+```bash
+cd mv-design-pro/frontend
+npm run type-check
+npm run build
+npm run lint
+npm run test:ci
+npm run test:golden
+npm run guard:grep-zero
+npm run guard:ui-terminology
+npm run guard:codenames
+npm run test:e2e:setup:real
+npm run test:e2e:real
+```
+
+Wyniki:
+
+- `npm run type-check`: PASS.
+- `npm run build`: PASS, wyłącznie ostrzeżenie Vite o dużym chunku.
+- `npm run lint`: PASS.
+- `npm run test:ci`: PASS, 249 plików, 3078 testów passed, 1 skipped.
+- `npm run test:golden`: PASS, 146 testów SLD v2.
+- `npm run guard:grep-zero`: PASS.
+- `npm run guard:ui-terminology`: PASS.
+- `npm run guard:codenames`: PASS.
+- `npm run test:e2e:real`: PASS, real-backend smoke.
+
+Backend i guardy CI:
+
+```bash
+cd mv-design-pro/backend
+poetry run pytest -q
+```
+
+Wynik: 4663 passed, 6 skipped, 4 xpassed.
+
+Lokalne odpowiedniki guardów CI:
+
+- `py -3.11 mv-design-pro/scripts/arch_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/repo_hygiene_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/docs_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/sld_determinism_guards.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/dialog_completeness_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/local_truth_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/import_graph_guard.py`: PASS.
+- `py -3.11 mv-design-pro/scripts/semantic_architecture_guard.py`: PASS.
+
+Browser Use / IAB:
+
+Ponowiona próba użycia Browser Use / IAB zakończyła się komunikatem: `No Codex IAB backends were discovered`. Zgodnie z goal użyto Playwright fallback.
+
+Playwright fallback:
+
+- `npm run test:e2e:real`: PASS.
+- Dodatkowe uruchomienie całego katalogu `e2e` na realnym backendzie (`node ./scripts/playwright-run-real.mjs`) dało 26 passed i 14 failed. Porażki dotyczą historycznych, nie-CI speców z selektorami starego shell-a (`project-tree`, `left-panel-mode-readiness`, `mode-indicator`, `sld-connections-layer`) oraz testów oczekujących SLD przy braku aktywnego projektu, podczas gdy aktywny kontrakt startowy to E-00.
+
+Aktualny status:
+
+- CI release-gate jest zielony lokalnie.
+- Smoke browser pass wymagany przez workflow CI jest zielony.
+- Pełny katalog historycznych E2E wymaga osobnej migracji speców do aktywnego AppShell/SLD v2; nie jest traktowany jako dowód ukończenia całego wieloetapowego celu E2E.

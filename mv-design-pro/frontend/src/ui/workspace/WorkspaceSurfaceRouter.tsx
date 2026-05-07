@@ -2033,36 +2033,32 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         )}
       </SectionCard>
 
-      {/* Phase 37+46: audit2 Power Flow run — pełna pętla DB → wrapper → audit trail.
-          Kanał 1 (direct): ten przycisk → POST /api/cases/audit2-power-flow.
-          Kanał 2 (indirect): ustaw run.options.audit2_project_id +
-          audit2_station_id w istniejącym Calculate flow (opt-in dla canonical_run
-          pipeline obejmujących PF, SC, phase_state_sn). */}
+      {/* Rozszerzona analiza audit2: pętla baza danych -> adapter -> ślad audytowy.
+          Drugi kanał integracji korzysta z identyfikatorów projektu i stacji
+          przekazanych do istniejącego przepływu obliczeń PF, SC i phase_state_sn. */}
       <SectionCard
-        title="Audit2 Power Flow (rozszerzona analiza z aplikacja zaczepow)"
+        title="Audit2 rozpływ mocy (rozszerzona analiza z aplikacją zaczepów)"
         eyebrow="POST /api/cases/audit2-power-flow"
       >
         <p className="mb-2 text-xs text-slate-700">
-          Uruchamia pełną pętlę: pobiera audit2 station config z DB, aplikuje
-          adjustments do network model (tap-changer + block-trafo Z + grounding +
-          BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
-          sieci. Zwraca audit trail. Solvery PF/SC/phase_state_sn rozszerzone o
-          opt-in audit2 (Phase 41+43+46) — przekaż <code>audit2_project_id</code> +{' '}
-          <code>audit2_station_id</code> w <code>run.options</code> aby aktywowac
-          drugi kanał integracji.
+          Uruchamia pełną pętlę: pobiera konfigurację stacji audit2 z bazy danych,
+          stosuje korekty zaczepów, impedancji transformatora blokowego, uziemienia,
+          rezerwy BESS i charakterystyki P(f), a następnie wywołuje moduł rozpływu
+          mocy dla zaadaptowanej sieci. Wynik zawiera ślad audytowy oraz klucze
+          rozszerzeń użyte w integracji.
         </p>
         <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">
           {snapshotId ? (
             <>
-              <span className="text-emerald-700">●</span> Aktywny snapshot:{' '}
-              <code className="text-[10px]">{snapshotId.slice(0, 16)}...</code> — wczytany
-              z DB jako real NetworkGraph.
+              <span className="text-emerald-700">●</span> Aktywna wersja modelu:{' '}
+              <code className="text-[10px]">{snapshotId.slice(0, 16)}...</code> - wczytana
+              z bazy danych jako graf sieci.
             </>
           ) : (
             <>
-              <span className="text-amber-700">●</span> Brak aktywnego snapshotu —
-              backend uzyje empty graph, solver moze rzucic blad. Wykonaj operacje
-              domenowa aby wygenerowac snapshot.
+              <span className="text-amber-700">●</span> Brak aktywnej wersji modelu -
+              backend użyje pustego grafu, a moduł obliczeniowy może zwrócić błąd.
+              Wykonaj operację domenową, aby wygenerować wersję modelu.
             </>
           )}
         </div>
@@ -2081,14 +2077,13 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               station_id: stationId,
               base_mva: 100.0,
               slack_node_id: 'slack',
-              // Phase 39: auto-inject snapshot_id z aktywnego snapshot store
-              // — backend laduje real NetworkGraph zamiast empty stub.
+              // Aktywna wersja modelu trafia do backendu, aby użyć grafu sieci zamiast pustego wejścia.
               snapshot_id: snapshotId ?? undefined,
             });
           }}
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {runPowerFlow.isPending ? 'Uruchamianie...' : 'Uruchom audit2 Power Flow'}
+          {runPowerFlow.isPending ? 'Trwa obliczanie...' : 'Oblicz audit2 rozpływ mocy'}
         </button>
         {runPowerFlow.data && (
           <div data-testid="audit2-power-flow-result" className="mt-3 space-y-2 rounded border border-blue-300 bg-blue-50 p-3 text-xs text-blue-900">
@@ -2096,21 +2091,21 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               Wynik dla stacji <code>{runPowerFlow.data.station_id}</code>
             </div>
             <div>
-              Solver wywolany: {runPowerFlow.data.solver_attempted ? 'TAK' : 'NIE'}
+              Moduł obliczeniowy wywołany: {runPowerFlow.data.solver_attempted ? 'TAK' : 'NIE'}
               {runPowerFlow.data.solver_error && (
-                <span className="ml-2 text-rose-700">(blad: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
+                <span className="ml-2 text-rose-700">(błąd: {runPowerFlow.data.solver_error.slice(0, 80)})</span>
               )}
             </div>
             <div>
-              Graph: {runPowerFlow.data.graph_node_count} wezlow,{' '}
-              {runPowerFlow.data.graph_branch_count} galezi,{' '}
-              {runPowerFlow.data.graph_inverter_source_count} zrodel.
+              Graf sieci: {runPowerFlow.data.graph_node_count} węzłów,{' '}
+              {runPowerFlow.data.graph_branch_count} gałęzi,{' '}
+              {runPowerFlow.data.graph_inverter_source_count} źródeł.
             </div>
             <div className="text-[11px] font-mono">
-              audit2 ext keys: [{runPowerFlow.data.audit2_extensions_keys.join(', ')}]
+              Klucze rozszerzeń audit2: [{runPowerFlow.data.audit2_extensions_keys.join(', ')}]
             </div>
             <details>
-              <summary className="cursor-pointer">Audit trail (apply changes)</summary>
+              <summary className="cursor-pointer">Ślad audytowy zastosowanych zmian</summary>
               <pre className="mt-1 overflow-auto bg-white p-1 text-[10px]">
                 {JSON.stringify(runPowerFlow.data.audit2_applied, null, 2)}
               </pre>
@@ -2119,7 +2114,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         )}
         {runPowerFlow.isError && (
           <div className="mt-2 text-xs text-rose-700">
-            Blad uruchomienia: {runPowerFlow.error.message}
+            Błąd obliczeń: {runPowerFlow.error.message}
           </div>
         )}
       </SectionCard>
