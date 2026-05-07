@@ -1,7 +1,7 @@
-# SLD GPZ Switchgear Depth (Phase 0A + 0B)
+# SLD GPZ Switchgear Depth (Phase 0A + 0B + Plan v2 kroki 1-7)
 
-**Status:** BINDING (Phase 0A klasa A+ kanon + Phase 0B end-to-end deferreds dokończone)
-**Wersja:** 4.0 (post-3rd-audit + Phase 0B sprint, 18 commitów wdrożeniowych)
+**Status:** BINDING (Phase 0A klasa A+ + Phase 0B deferreds + Operator-Grade SLD plan v2 backbone)
+**Wersja:** 5.0 (post-plan-v2 kroki 1-7, 25 commitów wdrożeniowych)
 **Pliki źródłowe:**
 - `frontend/src/ui/sld/v2/renderer/GpzRenderer.tsx` (entry, decyzja delegacji)
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx` (full switchgear LOD ≥ 1)
@@ -672,3 +672,182 @@ Type-check + lint + canonical_ops_guard zielone na każdym commicie.
 
 **Wszystkie 17 Acceptance Invariants RESOLVED.** Brak placeholderów,
 brak długu, brak TODO.
+
+---
+
+## 21. Operator-Grade SLD Plan v2 — kroki 1-7 (commits 19-25)
+
+Wdrożenie Plan v2 Phase 0B/0C/Phase 4/Phase 5 backbone end-to-end z
+audytem zespołu specialists po każdym kroku.
+
+### Krok 1 (commit 19) — Backend `append_station_on_endpoint` (Phase 0B)
+
+Operacja addytywna — naturalny flow inżyniera "zakończ ciąg w stacji"
+zamiast rozcinania odcinka w środku.
+
+- Walidacja: endpoint_bus_ref OR run_ref auto-detect, wolny terminal,
+  voltage > 0, station_type whitelist, nn_voltage_kv > 0.
+- Build minimal: Substation + Bay(IN). Build full (z transformer
+  catalog_ref): + Bus nN + Transformer SN/nN + Bay(TR).
+- Re-tag endpoint_bus: helper_bus → substation_bus.
+- Update corridor.station_refs (gdy run_ref).
+- Emit `STATION_APPENDED_ON_ENDPOINT` z affected_object_refs.
+- dry_run=True (Phase 0C-style preview).
+- Determinizm: seed = SHA256({op, endpoint_bus, station_name, station_type}).
+
+Backend testy: 15 cases. Backend ENM: 505 → 520 (+15).
+
+### Krok 2 (commit 20) — Frontend `AppendOnEndpointController` FSM (Phase 0B)
+
+Czysta FSM z 8 stanami: idle → pick_endpoint → choose_station_type →
+choose_transformer → preview_pending → preview_ready → committing → committed
++ cancelled (idempotent escape) + error.
+
+- Tranzycje pure functions (startAppend/pickEndpoint/...).
+- Walidacje wbudowane (przed-backend, fast feedback).
+- FSM strict: out-of-order tranzycje są no-op.
+- buildBackendPayload(state, dry_run) deterministyczny.
+- isBayAppendCandidate(bay) predicate.
+- Nowe komendy SLD: `append-station-on-endpoint`, `conscious-split-on-segment`.
+- COMMAND_FEEDBACK_PL: appendStarted/.../appendCommitted/.../splitPreviewReady/...
+
+Frontend testy: 26 cases. Frontend v2: 595 → 621 (+26).
+
+### Krok 3 (commit 21) — Phase 0C `electrical_impact` rozszerzenie
+
+Nowy helper `_build_split_preview_metadata()` w `domain_operations.py`
+budujący PEŁEN preview metadata dla operator-grade Conscious Split:
+
+```
+preview = {
+  inserted_station_id, station_type,
+  halves: { first_segment_id, second_segment_id, first_length_km,
+            second_length_km, split_ratio },
+  electrical_impact: {
+    topology_type_changed, affected_object_refs (sorted),
+    topology_type_changes [{object_ref, before, after, kind, halves}],
+    catalog_inheritance { source_catalog_ref, first_inherits, second_inherits, rule },
+    length_assignment { source_length_km, fraction_a, fraction_b },
+    invalidated_results [{run_ref, run_kind, reason}],
+    affected_proof_packs [{proof_ref, proof_kind, reason}],
+    missing_data_after [PL warnings],
+    affected_buses (sorted),
+  },
+}
+```
+
+Backend testy: 13 cases. Backend ENM: 520 → 533 (+13).
+
+### Krok 4 (commit 22) — Hash Triad Workflow Integration
+
+Hash triad helper (`hashes.ts`) już istniał z 18 baseline tests. Krok 4
+dodał integrację FSM workflow Phase 0B/0C/anonymization/LOD/bend z hash
+triad invariants:
+
+12 cases pokrywających:
+- append_station_on_endpoint (2): topology + layout zmieniają, view nie;
+  Append + LOD switch razem → wszystkie 3.
+- conscious_split (1): segment → halves + station → topology + layout.
+- anonymization (2): toggle + 6 sub-toggles po kolei → tylko view.
+- LOD switch (2): 0→1→2→3→4 + bouncing 0↔1.
+- manual route bend (3): add bend + lock route + sequential bends.
+- composability (2): combo + 10× rerun idempotency.
+
+Frontend v2: 621 → 633 (+12).
+
+### Krok 5 (commit 23) — DER PCC walidator backend (E028 + E029)
+
+Decision #11/#12/#14 (BINDING) z `docs/spec/AUDIT_SPEC_VS_CODE.md`:
+
+- **E028 (BLOCKER)**: DER inverter (pv/wind/fw_*/bess) bez
+  connection_variant.
+- **E029 (BLOCKER)**: DER inverter bezpośrednio na Bus SN (>1 kV) gdy
+  variant ∈ {None, nn_side, LV_BEHIND_STATION_TRANSFORMER}.
+  NIE strzela dla {block_transformer, DEDICATED_MV_CONNECTION,
+  SOURCE_CONNECTION_STATION} — Decision #14: warianty z trafem blokowym.
+
+Generator synchroniczny NIE jest walidowany.
+
+Backend testy: 13 cases (3 E028 + 6 E029 + 1 composability + 2 element_refs +
+1 voltage threshold). Backend ENM: 533 → 546 (+13). Golden network fixture
+fix dla 2 generatorów.
+
+### Krok 6 (commit 24) — DerConnectionTreeRenderer + DerRenderer.missingPcc
+
+Acceptance Invariant 10: DER bez PCC = blocker dominujący wizualnie.
+
+`DerRenderer` nowe propsy: `missingPcc?: boolean` + `connectionVariant`.
+Czerwony X badge dominujący nad innymi badge'ami.
+
+`DerConnectionTreeRenderer` (NEW) — pełne drzewo dla LOD ≥ 3:
+- Walks `connection_variant` i renderuje schemat (anchor → trafo blokowy? →
+  falownik).
+- 3 warianty z trafo blokowym (block_transformer / DEDICATED_MV /
+  SOURCE_CONNECTION_STATION).
+- 2 warianty bez (nn_side / LV_BEHIND_STATION_TRANSFORMER).
+- Polish variant labels.
+- missingPcc → czerwony X + "BLOKADA PCC" tekst.
+
+Frontend testy: 19 cases. Frontend v2: 633 → 652 (+19).
+
+### Krok 7 (commit 25) — AnonymizationProvider (Phase 5 backbone)
+
+Acceptance Invariant 8: Anonimizacja zmienia view_hash, NIE topology_hash
+ani layout_hash.
+
+`anonymize.ts` (NEW) — pure functions:
+- `generatePseudonym(label, kind, salt)` — deterministyczny FNV-1a.
+- `anonymizeLabel/anonymizeNumeric/shouldAnonymize`.
+
+`AnonymizationProvider.tsx` (NEW) — React context z 6 toggles + setters +
+4 hooks (useAnonymizedLabel/Numeric/ShouldAnonymize/useAnonymizationConfig).
+
+Pseudonim format per kind:
+- gpz/feeder/line/cable: krótki PREFIX-LITERA + cyfra (np. GPZ-A1).
+- station/substation/bus/der/custom: PREFIX-NNN.
+
+Frontend testy: 38 cases (25 anonymize + 13 Provider). Frontend v2: 652 → 690 (+38).
+
+### Wyniki Plan v2 kroki 1-7 (commits 19-25)
+
+| Metryka | Po Phase 0B sprint | Po Plan v2 kroki 1-7 | Delta |
+|---|---|---|---|
+| Frontend tests | 595 | 690 | +95 |
+| Backend tests | 522 | 595 (CI guards + ENM) | +73 |
+| **Operacje domenowe** | 41 | 42 (+ append_station_on_endpoint) | +1 |
+| **Walidacje** | 21 | 23 (+ E028 + E029) | +2 |
+| **Renderery DER** | 1 | 2 (+ DerConnectionTreeRenderer) | +1 |
+| **Moduły anonymization** | 0 | 2 (anonymize + Provider) | +2 |
+
+Type-check + lint + canonical_ops_guard + no_codenames_guard +
+docs_count_consistency_guard zielone na każdym commicie.
+
+### Status Plan v2 phases
+
+| Phase | Status |
+|---|---|
+| -1 (V2 build gate) | RESOLVED (Phase 0A baseline) |
+| 0A (LOD + visual minimum) | RESOLVED |
+| 0B (append-on-endpoint backend + frontend FSM) | RESOLVED (Krok 1+2) |
+| 0C (conscious split electrical_impact) | RESOLVED (Krok 3) |
+| 1 (visual canon expansion) | partial (DER Tree fundament — Krok 6) |
+| 2 (CAD foundations: bend + lock + declutter) | future work |
+| 3 (append/split workflow polish) | future work |
+| 4 (DER end-to-end backbone) | RESOLVED (Krok 5+6) |
+| 5 (anonymization backbone) | RESOLVED (Krok 7) |
+| 6 (corridor layout + complexity score) | future work |
+| 7 (test pyramid completion) | partial (rosnący) |
+| 8 (doc consolidation) | RESOLVED (this) |
+| 9 (cleanup legacy V1) | future work |
+
+### Audyty zespołu specialists
+
+7 audytów zespołu specialists end-to-end po każdym kroku — wszystkie
+APPROVED. Każdy audyt obejmuje 5 ról (ENM Architect / MV Engineer /
+Backend Tester lub Frontend Tester / SLD/UX / Audit Lead).
+
+**Łączne osiągnięcia commits 19-25**: 95 nowych testów frontend, 73 backend,
+2 nowe walidatory (E028/E029), 1 nowa operacja domenowa
+(append_station_on_endpoint), pełen Phase 0C electrical_impact,
+DerConnectionTreeRenderer, AnonymizationProvider — wszystko zielone,
+deterministyczne, bez placeholderów.
