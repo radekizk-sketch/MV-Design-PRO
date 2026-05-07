@@ -13,6 +13,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { useAppStateStore } from '../../app-state';
 import { formatStationTypeLabelPl } from '../../shared/stationTypeLabels';
+import { GpzSectionsEditor } from './GpzSectionsEditor';
 
 // =============================================================================
 // Helpers
@@ -323,6 +324,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       sections={sections}
       actions={actions}
       onClose={closeObjectCard}
+      footer={station.station_type === 'gpz' ? <GpzSectionsEditor station={station} /> : undefined}
     />
   );
 }

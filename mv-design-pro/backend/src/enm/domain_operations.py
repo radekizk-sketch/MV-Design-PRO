@@ -53,6 +53,10 @@ CANONICAL_OPS = frozenset(
         "add_nn_load",
         "delete_element",
         "refresh_snapshot",
+        # Phase 0B-3: CRUD GPZ sekcji (LV i HV) — wymagane dla StationCard editora.
+        "add_gpz_section",
+        "update_gpz_section",
+        "delete_gpz_section",
     }
 )
 
@@ -4304,6 +4308,284 @@ def refresh_snapshot(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, 
 
 
 # ---------------------------------------------------------------------------
+# Phase 0B-3: CRUD GPZ sekcji (LV i HV) dla StationCard editora
+# ---------------------------------------------------------------------------
+
+
+def _resolve_gpz_sections_field(side: str) -> str:
+    """`side` ('lv'/'hv') → klucz w substation. Inny side → ValueError."""
+    if side == "lv":
+        return "gpz_sections"
+    if side == "hv":
+        return "gpz_hv_sections"
+    raise ValueError(f"Nieprawidłowa strona sekcji GPZ: '{side}' (oczekiwane: 'lv'|'hv').")
+
+
+def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any] | None:
+    for sub in enm.get("substations", []):
+        if sub.get("ref_id") == substation_ref:
+            return sub
+    return None
+
+
+def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
+
+    Payload:
+      substation_ref: str        — ID stacji GPZ
+      side: 'lv' | 'hv'          — która strona (default 'lv')
+      section_id: str            — kanoniczny ID nowej sekcji (unikalny w substation)
+      bus_ref: str               — ref_id istniejącej szyny pod sekcją
+      order: int (optional)      — pozycja w sekcjach (default = max+1)
+      name: str (optional)       — etykieta sekcji
+      line_field_name: str (optional)
+    """
+    substation_ref = payload.get("substation_ref")
+    if not substation_ref:
+        return _error_response(
+            "Brak identyfikatora stacji.", "gpz_section.add.substation_missing"
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.", "gpz_section.add.substation_missing"
+        )
+    if sub.get("station_type") != "gpz":
+        return _error_response(
+            f"Stacja '{substation_ref}' nie jest typu 'gpz' (jest {sub.get('station_type')}).",
+            "gpz_section.add.invalid_station_type",
+        )
+
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.add.invalid_side")
+
+    section_id = payload.get("section_id")
+    if not section_id:
+        return _error_response(
+            "Brak `section_id` dla nowej sekcji.", "gpz_section.add.section_id_missing"
+        )
+
+    bus_ref = payload.get("bus_ref")
+    if not bus_ref:
+        return _error_response(
+            "Brak `bus_ref` dla nowej sekcji.", "gpz_section.add.bus_ref_missing"
+        )
+    if not any(b.get("ref_id") == bus_ref for b in enm.get("buses", [])):
+        return _error_response(
+            f"Szyna '{bus_ref}' nie istnieje.", "gpz_section.add.bus_ref_missing"
+        )
+
+    existing = list(sub.get(sections_field) or [])
+    if any(s.get("section_id") == section_id for s in existing):
+        return _error_response(
+            f"Sekcja '{section_id}' już istnieje w {side.upper()}.",
+            "gpz_section.add.duplicate_section_id",
+        )
+
+    order = payload.get("order")
+    if order is None:
+        order = (max((s.get("order", 0) for s in existing), default=0) + 1)
+
+    new_section: dict[str, Any] = {
+        "section_id": section_id,
+        "order": int(order),
+        "bus_ref": bus_ref,
+    }
+    if payload.get("name"):
+        new_section["name"] = payload["name"]
+    if payload.get("line_field_name"):
+        new_section["line_field_name"] = payload["line_field_name"]
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None  # already checked
+    new_sections = list(new_sub.get(sections_field) or [])
+    new_sections.append(new_section)
+    # Sort deterministycznie po order, potem section_id (dla stabilności gdy order kolizja).
+    new_sections.sort(key=lambda s: (s.get("order", 0), s.get("section_id", "")))
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Dodano sekcję {side.upper()} '{section_id}' do stacji {substation_ref}",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_ADDED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        created=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref).
+
+    Payload:
+      substation_ref: str
+      side: 'lv' | 'hv' (default 'lv')
+      section_id: str            — ID sekcji do aktualizacji
+      updates: dict              — pola do zmiany (name/order/bus_ref/left_coupler_ref/right_coupler_ref/line_field_name)
+
+    Pola NIE w `updates` pozostają niezmienione. `section_id` NIE może być
+    zmieniony (immutable identyfikator).
+    """
+    substation_ref = payload.get("substation_ref")
+    section_id = payload.get("section_id")
+    if not substation_ref or not section_id:
+        return _error_response(
+            "Brak `substation_ref` lub `section_id`.",
+            "gpz_section.update.identifier_missing",
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.",
+            "gpz_section.update.substation_missing",
+        )
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.update.invalid_side")
+
+    existing_sections = sub.get(sections_field) or []
+    if not any(s.get("section_id") == section_id for s in existing_sections):
+        return _error_response(
+            f"Sekcja '{section_id}' nie istnieje w {side.upper()}.",
+            "gpz_section.update.section_missing",
+        )
+
+    updates = payload.get("updates") or {}
+    # Whitelist pól do aktualizacji (section_id NIE jest tu — immutable).
+    allowed_keys = {"name", "order", "bus_ref", "left_coupler_ref", "right_coupler_ref", "line_field_name"}
+    rejected = [k for k in updates.keys() if k not in allowed_keys]
+    if rejected:
+        return _error_response(
+            f"Niedozwolone klucze updates: {rejected}. Dozwolone: {sorted(allowed_keys)}.",
+            "gpz_section.update.disallowed_keys",
+        )
+    if "bus_ref" in updates:
+        if not any(b.get("ref_id") == updates["bus_ref"] for b in enm.get("buses", [])):
+            return _error_response(
+                f"Szyna '{updates['bus_ref']}' nie istnieje.",
+                "gpz_section.update.bus_ref_missing",
+            )
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None
+    new_sections = list(new_sub.get(sections_field) or [])
+    for sec in new_sections:
+        if sec.get("section_id") == section_id:
+            for key, value in updates.items():
+                # Allow None to clear optional fields (np. usuń coupler).
+                if value is None:
+                    sec.pop(key, None)
+                else:
+                    sec[key] = value
+            break
+    new_sections.sort(key=lambda s: (s.get("order", 0), s.get("section_id", "")))
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Zaktualizowano sekcję {side.upper()} '{section_id}'",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_UPDATED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        updated=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Usuwa sekcję GPZ ze stacji.
+
+    Walidacja:
+      - sekcja musi istnieć
+      - żadne `bay.gpz_section_id` w ENM nie może wskazywać na usuwaną sekcję
+        (operator musi najpierw przepiąć/usunąć pola)
+
+    Payload:
+      substation_ref: str
+      side: 'lv' | 'hv' (default 'lv')
+      section_id: str
+    """
+    substation_ref = payload.get("substation_ref")
+    section_id = payload.get("section_id")
+    if not substation_ref or not section_id:
+        return _error_response(
+            "Brak `substation_ref` lub `section_id`.",
+            "gpz_section.delete.identifier_missing",
+        )
+    sub = _find_substation(enm, substation_ref)
+    if sub is None:
+        return _error_response(
+            f"Stacja '{substation_ref}' nie istnieje.",
+            "gpz_section.delete.substation_missing",
+        )
+    side = payload.get("side", "lv")
+    try:
+        sections_field = _resolve_gpz_sections_field(side)
+    except ValueError as exc:
+        return _error_response(str(exc), "gpz_section.delete.invalid_side")
+
+    existing_sections = sub.get(sections_field) or []
+    if not any(s.get("section_id") == section_id for s in existing_sections):
+        return _error_response(
+            f"Sekcja '{section_id}' nie istnieje w {side.upper()}.",
+            "gpz_section.delete.section_missing",
+        )
+
+    # Walidacja: czy nie ma pól odwołujących się do tej sekcji?
+    bays_using_section = [
+        bay.get("ref_id")
+        for bay in enm.get("bays", [])
+        if bay.get("substation_ref") == substation_ref
+        and bay.get("gpz_section_id") == section_id
+    ]
+    if bays_using_section:
+        return _error_response(
+            f"Nie można usunąć sekcji '{section_id}': używana przez pola {bays_using_section}. "
+            "Najpierw przepiąć/usunąć pola.",
+            "gpz_section.delete.in_use",
+        )
+
+    new_enm = copy.deepcopy(enm)
+    new_sub = _find_substation(new_enm, substation_ref)
+    assert new_sub is not None
+    new_sections = [s for s in (new_sub.get(sections_field) or []) if s.get("section_id") != section_id]
+    new_sub[sections_field] = new_sections
+
+    audit = [{
+        "step": 1,
+        "action": f"Usunięto sekcję {side.upper()} '{section_id}'",
+        "element_id": section_id,
+    }]
+    events = [{"event_seq": 1, "event_type": "GPZ_SECTION_DELETED", "element_id": section_id}]
+    return _response(
+        new_enm,
+        deleted=[section_id],
+        selection_id=substation_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -4322,6 +4604,9 @@ _HANDLERS: dict[str, Any] = {
     "update_element_parameters": update_element_parameters,
     "delete_element": delete_element,
     "refresh_snapshot": refresh_snapshot,
+    "add_gpz_section": add_gpz_section,
+    "update_gpz_section": update_gpz_section,
+    "delete_gpz_section": delete_gpz_section,
 }
 
 
