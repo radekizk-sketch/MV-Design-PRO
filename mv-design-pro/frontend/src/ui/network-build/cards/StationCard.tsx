@@ -158,6 +158,25 @@ export function StationCard({ elementId }: { elementId: string }) {
           value: nnBuses.length,
           unit: 'szt.',
         },
+        // Phase 0A audit fix 11/12: GPZ sekcje (LV + HV) — readonly view do
+        // czasu pełnego edytora (Phase 1+). Operator widzi liczbę sekcji.
+        ...(station.station_type === 'gpz' ? [
+          {
+            key: 'gpz_sections_lv_count',
+            label: 'Sekcje SN (LV)',
+            value: (station.gpz_sections ?? []).length,
+            unit: 'szt.',
+            severity: ((station.gpz_sections ?? []).length === 0 ? 'warning' : 'ok') as 'warning' | 'ok',
+          },
+          {
+            key: 'gpz_sections_hv_count',
+            label: 'Sekcje 110 kV (HV)',
+            value: (station.gpz_hv_sections ?? []).length,
+            unit: 'szt.',
+            // 0 sekcji HV w ENM = adapter syntezuje 1 (legacy fallback).
+            severity: ((station.gpz_hv_sections ?? []).length === 0 ? 'warning' : 'ok') as 'warning' | 'ok',
+          },
+        ] : []),
       ],
     };
 

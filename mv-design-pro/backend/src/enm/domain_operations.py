@@ -2388,13 +2388,23 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     4. Podłączenie stacji
     5. Gotowość i FixActions
     6. Zwrot odpowiedzi
+
+    Phase 0A audit fix 11/12: parametr `dry_run: bool = False` w payload.
+    Gdy True — operacja wykonuje pełną walidację i preview ENM hash + halves
+    + electrical_impact, ale NIE mutuje ENM. Wymagane dla Phase 0C
+    "Conscious split with preview".
     """
+    dry_run = bool(payload.get("dry_run", False))
     segment_id = payload.get("segment_id") or payload.get("segment_ref")
     insert_at = payload.get("insert_at", {})
     station = payload.get("station", {})
     sn_fields_raw = payload.get("sn_fields", [])
     transformer = payload.get("transformer", {})
     nn_block = payload.get("nn_block", {})
+
+    if dry_run:
+        # Wykonaj na deep-copy, NIE mutując oryginalnego ENM (`copy` zaimportowane na poziomie modułu).
+        enm = copy.deepcopy(enm)
 
     # Normalize sn_fields: accept list of strings or list of dicts
     _role_str_map = {
@@ -2931,7 +2941,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
     )
 
-    return _response(
+    response = _response(
         new_enm,
         created=created,
         deleted=deleted,
@@ -2940,6 +2950,27 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         audit=audit,
         events=events,
     )
+
+    if dry_run:
+        # Phase 0A audit fix 11/12: dry_run zwraca preview metadata (Phase 0C
+        # Conscious split). NIE zwraca zmutowanego snapshot — tylko wynik
+        # walidacji + impact assessment.
+        response["dry_run"] = True
+        response["preview"] = {
+            "inserted_station_id": stn_id,
+            "halves": {
+                "first_segment_id": payload.get("segment_id"),  # original split point
+                "second_segment_id": stn_id + "_segB",  # placeholder semantyczny
+            },
+            "electrical_impact": {
+                "topology_type_changed": True,
+                "affected_object_refs": [stn_id, *created],
+            },
+        }
+        # Usuń snapshot z response (dry_run = read-only preview).
+        response.pop("snapshot", None)
+
+    return response
 
 
 # ---------------------------------------------------------------------------
