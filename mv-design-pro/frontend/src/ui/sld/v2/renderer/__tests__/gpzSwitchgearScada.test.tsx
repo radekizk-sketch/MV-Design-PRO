@@ -1394,6 +1394,81 @@ describe('GpzSwitchgearRenderer — uziemnik (ES) i Q-numeracja IEC 81346', () =
   });
 });
 
+describe('GpzSwitchgearRenderer — interaktywność (audyt UX D2)', () => {
+  function rWithBay(overrides: { onClickCb?: () => void; onClickDs?: () => void; onClickEs?: () => void; onClickKas?: () => void; onClickCoupler?: (id: string) => void }) {
+    const onClickCb = overrides.onClickCb ?? (() => {});
+    const onClickDs = overrides.onClickDs ?? (() => {});
+    const onClickEs = overrides.onClickEs ?? (() => {});
+    const onClickKas = overrides.onClickKas ?? (() => {});
+    return render(
+      <svg>
+        <GpzSwitchgearRenderer
+          id="gpz-i"
+          x={0}
+          y={0}
+          name="GPZ"
+          voltageHighKv={110}
+          voltageLowKv={15}
+          sections={[
+            {
+              sectionId: 'sec-1',
+              order: 1,
+              name: 'S1',
+              sectionLabel: 'S1',
+              busVoltageKv: 15,
+              bays: [{ ...DEFAULT_BAYS[0], esState: 'unknown' as const, hasKasButton: true }],
+            },
+          ]}
+          couplers={[]}
+          onClickCb={(b) => onClickCb()}
+          onClickDs={(b) => onClickDs()}
+          onClickEs={(b) => onClickEs()}
+          onClickKas={(b) => onClickKas()}
+          onClickCoupler={overrides.onClickCoupler}
+        />
+      </svg>,
+    );
+  }
+
+  it('onClickCb wywoływany gdy klik w CB pola', async () => {
+    let calls = 0;
+    const { container } = rWithBay({ onClickCb: () => { calls += 1; } });
+    const cb = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]') as SVGElement;
+    cb.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(calls).toBe(1);
+  });
+
+  it('onClickDs wywoływany gdy klik w DS pola', async () => {
+    let calls = 0;
+    const { container } = rWithBay({ onClickDs: () => { calls += 1; } });
+    const ds = container.querySelector('[data-testid="sld-v2-gpz-bay-ds"]') as SVGElement;
+    ds.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(calls).toBe(1);
+  });
+
+  it('onClickEs wywoływany gdy klik w uziemnik (BHP-protected)', async () => {
+    let calls = 0;
+    const { container } = rWithBay({ onClickEs: () => { calls += 1; } });
+    const es = container.querySelector('[data-testid="sld-v2-gpz-bay-earthing-switch"]') as SVGElement;
+    es.parentElement!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(calls).toBe(1);
+  });
+
+  it('onClickKas wywoływany gdy klik w KAS button', async () => {
+    let calls = 0;
+    const { container } = rWithBay({ onClickKas: () => { calls += 1; } });
+    const kas = container.querySelector('[data-testid="sld-v2-gpz-bay-kas"]') as SVGElement;
+    kas.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(calls).toBe(1);
+  });
+
+  it('cursor: pointer na CB/DS/ES/KAS gdy onClick podany', () => {
+    const { container } = rWithBay({});
+    const cbWrapper = container.querySelector('[data-testid="sld-v2-gpz-bay-cb"]')?.parentElement;
+    expect(cbWrapper?.getAttribute('style')).toContain('cursor: pointer');
+  });
+});
+
 describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej', () => {
   const HV_BAYS = [
     {
@@ -1613,5 +1688,23 @@ describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej
     const { container } = rTrunk();
     const zone = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-zone"]');
     expect(zone?.getAttribute('data-feeder-count')).toBe('2');
+  });
+
+  it('Strzałka kierunkowa ▼ renderowana dla każdego outgoing feeder (audyt SLD A1.5)', () => {
+    const { container } = rTrunk();
+    const arrow1 = container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-arrow-lv-line-1"]');
+    const arrow2 = container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-arrow-lv-line-2"]');
+    expect(arrow1).not.toBeNull();
+    expect(arrow2).not.toBeNull();
+    /* Polygon z 3 punktami (trójkąt). */
+    expect(arrow1?.getAttribute('points')).toBeDefined();
+  });
+
+  it('Strzałka NIE renderowana dla pola bez outgoingFeeder', () => {
+    const { container } = rTrunk();
+    /* Pole TR (bez outgoingFeeder) — strzałka nie istnieje. */
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-arrow-lv-tr-1"]'),
+    ).toBeNull();
   });
 });

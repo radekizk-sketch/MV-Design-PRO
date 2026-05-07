@@ -121,6 +121,7 @@ const OUTGOING_FEEDER_DROP_PX = GPZ_GEOMETRY.outgoingFeederDropPx;
 const FIELD_TRUNK_GAP_PX = GPZ_GEOMETRY.fieldTrunkGapPx;
 const FIELD_TRUNK_FONT_SIZE = FONT_SIZES.measurementPanel;
 const FEEDER_LABEL_FONT_SIZE = FONT_SIZES.feederDestination;
+const TRUNK_ARROW_SIZE = GPZ_GEOMETRY.trunkArrowSize;
 
 // =============================================================================
 // Public types
@@ -451,6 +452,16 @@ export interface GpzSwitchgearRendererProps {
   readonly onClick?: (id: string) => void;
   readonly onClickSection?: (sectionId: string) => void;
   readonly onClickBay?: (bayRef: string) => void;
+  /** Klik w aparat CB pola — drill-down do statystyk/historii zwarć. */
+  readonly onClickCb?: (bayRef: string) => void;
+  /** Klik w aparat DS pola — drill-down do nastaw rozłącznika. */
+  readonly onClickDs?: (bayRef: string) => void;
+  /** Klik w uziemnik (ES) pola — kontrola BHP, wymaga uprawnień. */
+  readonly onClickEs?: (bayRef: string) => void;
+  /** Klik w przycisk KAS — kasowanie sygnalizacji zabezpieczeń. */
+  readonly onClickKas?: (bayRef: string) => void;
+  /** Klik w sprzęgło (CB sprzęgła) — operator otwiera/zamyka. */
+  readonly onClickCoupler?: (couplerId: string) => void;
 }
 
 // =============================================================================
@@ -640,6 +651,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
+                  onClickCb={props.onClickCb}
+                  onClickDs={props.onClickDs}
+                  onClickEs={props.onClickEs}
+                  onClickKas={props.onClickKas}
                 />
               );
             }
@@ -649,6 +664,8 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                 x={HORIZONTAL_PADDING + cell.x}
                 busY={hvBusY}
                 coupler={cell.coupler}
+                onClickCoupler={props.onClickCoupler}
+                onClickKas={props.onClickKas}
               />
             );
           })}
@@ -727,6 +744,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
+                  onClickCb={props.onClickCb}
+                  onClickDs={props.onClickDs}
+                  onClickEs={props.onClickEs}
+                  onClickKas={props.onClickKas}
                 />
               );
             }
@@ -736,6 +757,8 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                 x={HORIZONTAL_PADDING + cell.x}
                 busY={lvBusY}
                 coupler={cell.coupler}
+                onClickCoupler={props.onClickCoupler}
+                onClickKas={props.onClickKas}
               />
             );
           })}
@@ -807,6 +830,10 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                   bay={cell.bay}
                   voltageKv={cell.busVoltageKv}
                   onClickBay={props.onClickBay}
+                  onClickCb={props.onClickCb}
+                  onClickDs={props.onClickDs}
+                  onClickEs={props.onClickEs}
+                  onClickKas={props.onClickKas}
                 />
               );
             }
@@ -816,6 +843,8 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
                 x={HORIZONTAL_PADDING + cell.x}
                 busY={busY}
                 coupler={cell.coupler}
+                onClickCoupler={props.onClickCoupler}
+                onClickKas={props.onClickKas}
               />
             );
           })}
@@ -1041,7 +1070,10 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
       {/* Pionowe kable wychodzące z każdego pola liniowego do trunk.
          Brak danych energized → szary (kanon Invariant 9: brak danych ≠ default).
          energized=true → zielony (`COLOR_FIELD_TRUNK_ENERGIZED`).
-         energized=false → szary muted. */}
+         energized=false → szary muted.
+
+         Strzałka kierunku zasilania (►/▼ na środku linii) — kanon SCADA:
+         operator widzi kierunek przepływu nawet gdy linia nie pulsuje. */}
       {feederColumns.map((col) => {
         const feeder = col.bay.outgoingFeeder!;
         const energized = feeder.energized; // może być undefined
@@ -1051,6 +1083,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
             : energized === false
             ? COLOR_TEXT_MUTED
             : COLOR_FIELD_TRUNK_NEUTRAL;
+        const arrowMidY = (lvBaysBottomY + trunkY) / 2;
         return (
           <g
             key={`feeder-${col.bay.bayRef}`}
@@ -1066,6 +1099,14 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
               y2={trunkY}
               stroke={stroke}
               strokeWidth={STROKE_FIELD_TRACK_PX}
+            />
+            {/* Strzałka kierunku ▼ — wskazuje wypływ z GPZ do magistrali. */}
+            <polygon
+              points={`${col.cx},${arrowMidY + TRUNK_ARROW_SIZE} ${col.cx - TRUNK_ARROW_SIZE * 0.7},${arrowMidY - TRUNK_ARROW_SIZE * 0.5} ${col.cx + TRUNK_ARROW_SIZE * 0.7},${arrowMidY - TRUNK_ARROW_SIZE * 0.5}`}
+              fill={stroke}
+              stroke={stroke}
+              strokeWidth={0.5}
+              data-testid={`sld-v2-gpz-outgoing-feeder-arrow-${col.bay.bayRef}`}
             />
             {/* Etykieta celu (przy trunk, pod kablem) */}
             <text
@@ -1438,10 +1479,14 @@ interface BayColumnProps {
   bay: GpzBayDescriptor;
   voltageKv: number;
   onClickBay?: (bayRef: string) => void;
+  onClickCb?: (bayRef: string) => void;
+  onClickDs?: (bayRef: string) => void;
+  onClickEs?: (bayRef: string) => void;
+  onClickKas?: (bayRef: string) => void;
 }
 
 function BayColumn(props: BayColumnProps): JSX.Element {
-  const { x, busY, bay, onClickBay } = props;
+  const { x, busY, bay, onClickBay, onClickCb, onClickDs, onClickEs, onClickKas } = props;
   const energization = bay.energization ?? 'unknown';
   const cbState = bay.cbState ?? 'closed';
   const dsState = bay.dsState ?? 'closed';
@@ -1539,16 +1584,29 @@ function BayColumn(props: BayColumnProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2) */}
-      <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
-      {bay.qDesignations?.cb && (
-        <QDesignationLabel
-          x={apparatusCx + CB_SIZE / 2 + 3}
-          y={cbY + 2}
-          text={bay.qDesignations.cb}
-          slot="cb"
-        />
-      )}
+      {/* CB (filled square) + opcjonalna etykieta Q (IEC 81346-2).
+       * onClickCb dziedziczy stopPropagation aby nie konfliktować z onClickBay. */}
+      <g
+        onClick={
+          onClickCb
+            ? (e) => {
+                e.stopPropagation();
+                onClickCb(bay.bayRef);
+              }
+            : undefined
+        }
+        style={{ cursor: onClickCb ? 'pointer' : undefined }}
+      >
+        <ApparatusCbSquare cx={apparatusCx} cy={cbY} state={cbState} energized={energization === 'energized'} />
+        {bay.qDesignations?.cb && (
+          <QDesignationLabel
+            x={apparatusCx + CB_SIZE / 2 + 3}
+            y={cbY + 2}
+            text={bay.qDesignations.cb}
+            slot="cb"
+          />
+        )}
+      </g>
 
       {/* CT primary (small open circle) + ratio label po lewej */}
       <CtPrimary cx={apparatusCx} cy={ctY} ratio={bay.ctRatio} />
@@ -1562,28 +1620,53 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       )}
 
       {/* DS (filled circle) + opcjonalna etykieta Q */}
-      <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
-      {bay.qDesignations?.ds && (
-        <QDesignationLabel
-          x={apparatusCx + DS_RADIUS + 3}
-          y={dsY + 2}
-          text={bay.qDesignations.ds}
-          slot="ds"
-        />
-      )}
+      <g
+        onClick={
+          onClickDs
+            ? (e) => {
+                e.stopPropagation();
+                onClickDs(bay.bayRef);
+              }
+            : undefined
+        }
+        style={{ cursor: onClickDs ? 'pointer' : undefined }}
+      >
+        <ApparatusDsCircle cx={apparatusCx} cy={dsY} state={dsState} energized={energization === 'energized'} />
+        {bay.qDesignations?.ds && (
+          <QDesignationLabel
+            x={apparatusCx + DS_RADIUS + 3}
+            y={dsY + 2}
+            text={bay.qDesignations.ds}
+            slot="ds"
+          />
+        )}
+      </g>
 
       {/* Uziemnik (ES) — boczna gałąź z trójkątem ziemi (BHP-krytyczny).
-       * Renderowany na poziomie DS gdy esState !== 'absent'. */}
+       * Renderowany na poziomie DS gdy esState !== 'absent'.
+       * Klik wymaga uprawnień (operacja BHP — zwykle z separate auth). */}
       {bay.esState && bay.esState !== 'absent' && (
-        <ApparatusEarthingSwitch cxAxis={apparatusCx} cy={dsY + APPARATUS_PITCH * 0.4} state={bay.esState} />
-      )}
-      {bay.qDesignations?.es && bay.esState && bay.esState !== 'absent' && (
-        <QDesignationLabel
-          x={apparatusCx + ES_BRANCH_OFFSET + 6}
-          y={dsY + APPARATUS_PITCH * 0.4 - 4}
-          text={bay.qDesignations.es}
-          slot="es"
-        />
+        <g
+          onClick={
+            onClickEs
+              ? (e) => {
+                  e.stopPropagation();
+                  onClickEs(bay.bayRef);
+                }
+              : undefined
+          }
+          style={{ cursor: onClickEs ? 'pointer' : undefined }}
+        >
+          <ApparatusEarthingSwitch cxAxis={apparatusCx} cy={dsY + APPARATUS_PITCH * 0.4} state={bay.esState} />
+          {bay.qDesignations?.es && (
+            <QDesignationLabel
+              x={apparatusCx + ES_BRANCH_OFFSET + 6}
+              y={dsY + APPARATUS_PITCH * 0.4 - 4}
+              text={bay.qDesignations.es}
+              slot="es"
+            />
+          )}
+        </g>
       )}
 
       {/* Cable head triangle (downward) */}
@@ -1616,7 +1699,12 @@ function BayColumn(props: BayColumnProps): JSX.Element {
 
       {/* Przycisk KAS (kasowanie sygnalizacji) — etykieta + LED kropka + opcjonalnie P-number */}
       {bay.hasKasButton && (
-        <KasButton cx={x + BAY_COLUMN_WIDTH / 2} cy={kasY} pNumber={bay.pNumber} />
+        <KasButton
+          cx={x + BAY_COLUMN_WIDTH / 2}
+          cy={kasY}
+          pNumber={bay.pNumber}
+          onClick={onClickKas ? () => onClickKas(bay.bayRef) : undefined}
+        />
       )}
 
       {/* Panel pomiarowy — feeder header + P/Q/I1/I2/I3 */}
@@ -1730,6 +1818,8 @@ interface KasButtonProps {
   readonly ledTestId?: string;
   /** Numer P-* identyfikatora pod LED-em (np. "P133", "C434"). Renderowany gdy podany. */
   readonly pNumber?: string;
+  /** Handler kliku (kasowanie sygnalizacji). Z stopPropagation. */
+  readonly onClick?: () => void;
 }
 
 function KasButton(props: KasButtonProps): JSX.Element {
@@ -1740,9 +1830,22 @@ function KasButton(props: KasButtonProps): JSX.Element {
     testId = 'sld-v2-gpz-bay-kas',
     ledTestId = 'sld-v2-gpz-bay-kas-led',
     pNumber,
+    onClick,
   } = props;
   return (
-    <g data-testid={testId} data-kas-label={label}>
+    <g
+      data-testid={testId}
+      data-kas-label={label}
+      onClick={
+        onClick
+          ? (e) => {
+              e.stopPropagation();
+              onClick();
+            }
+          : undefined
+      }
+      style={{ cursor: onClick ? 'pointer' : undefined }}
+    >
       <text
         x={cx - 4}
         y={cy + 1}
@@ -2143,10 +2246,12 @@ interface CouplerBayProps {
   x: number;
   busY: number;
   coupler: GpzCouplerDescriptor;
+  onClickCoupler?: (couplerId: string) => void;
+  onClickKas?: (bayRef: string) => void;
 }
 
 function CouplerBay(props: CouplerBayProps): JSX.Element {
-  const { x, busY, coupler } = props;
+  const { x, busY, coupler, onClickCoupler, onClickKas } = props;
   const couplerState: 'closed' | 'open' | 'unknown' = normalizeCouplerState(coupler.closed);
 
   /* CB visual: closed = zielony filled, open = cyan hollow, unknown = szary. */
@@ -2322,19 +2427,32 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
         strokeWidth={STROKE_FIELD_TRACK_PX}
       />
 
-      {/* CB sprzęgła w środku poziomej części (cyan hollow gdy open, green gdy closed) */}
-      <rect
-        x={cbCx - CB_SIZE / 2}
-        y={horizontalY - CB_SIZE / 2}
-        width={CB_SIZE}
-        height={CB_SIZE}
-        fill={cbFill}
-        stroke={cbStroke}
-        strokeWidth={1.4}
-        rx={1}
-        data-testid="sld-v2-gpz-coupler-cb"
-        data-state={couplerState}
-      />
+      {/* CB sprzęgła w środku poziomej części (cyan hollow gdy open, green gdy closed).
+       * Klik = operator otwiera/zamyka sprzęgło. */}
+      <g
+        onClick={
+          onClickCoupler
+            ? (e) => {
+                e.stopPropagation();
+                onClickCoupler(coupler.couplerId);
+              }
+            : undefined
+        }
+        style={{ cursor: onClickCoupler ? 'pointer' : undefined }}
+      >
+        <rect
+          x={cbCx - CB_SIZE / 2}
+          y={horizontalY - CB_SIZE / 2}
+          width={CB_SIZE}
+          height={CB_SIZE}
+          fill={cbFill}
+          stroke={cbStroke}
+          strokeWidth={1.4}
+          rx={1}
+          data-testid="sld-v2-gpz-coupler-cb"
+          data-state={couplerState}
+        />
+      </g>
 
       {/* Pomiar prądu sprzęgła "I  X" */}
       {coupler.currentI !== undefined && (
@@ -2349,6 +2467,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
           label="KAS SP"
           testId="sld-v2-gpz-coupler-kas-sp"
           ledTestId="sld-v2-gpz-coupler-kas-sp-led"
+          onClick={onClickKas ? () => onClickKas(coupler.couplerId) : undefined}
         />
       )}
 
@@ -2369,6 +2488,7 @@ function CouplerBay(props: CouplerBayProps): JSX.Element {
           label="KAS SZR"
           testId="sld-v2-gpz-coupler-kas-szr"
           ledTestId="sld-v2-gpz-coupler-kas-szr-led"
+          onClick={onClickKas ? () => onClickKas(coupler.couplerId) : undefined}
         />
       )}
 

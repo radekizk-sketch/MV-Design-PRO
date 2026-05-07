@@ -110,6 +110,11 @@ export interface GpzRendererProps {
   readonly feedersCount?: number;
   readonly onClickSection?: (sectionId: string) => void;
   readonly onClickBay?: (bayRef: string) => void;
+  readonly onClickCb?: (bayRef: string) => void;
+  readonly onClickDs?: (bayRef: string) => void;
+  readonly onClickEs?: (bayRef: string) => void;
+  readonly onClickKas?: (bayRef: string) => void;
+  readonly onClickCoupler?: (couplerId: string) => void;
 }
 
 // =============================================================================
@@ -144,6 +149,11 @@ export function GpzRenderer(props: GpzRendererProps): JSX.Element {
         onClick={props.onClick}
         onClickSection={props.onClickSection}
         onClickBay={props.onClickBay}
+        onClickCb={props.onClickCb}
+        onClickDs={props.onClickDs}
+        onClickEs={props.onClickEs}
+        onClickKas={props.onClickKas}
+        onClickCoupler={props.onClickCoupler}
       />
     );
   }
