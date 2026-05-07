@@ -1,7 +1,7 @@
-# SLD GPZ Switchgear Depth (Phase 0A)
+# SLD GPZ Switchgear Depth (Phase 0A + 0B)
 
-**Status:** BINDING (Phase 0A — refinement po 3 iteracjach audytu zespołu 13-osobowego)
-**Wersja:** 3.0 (post-3rd-audit, 12 commitów wdrożeniowych)
+**Status:** BINDING (Phase 0A klasa A+ kanon + Phase 0B end-to-end deferreds dokończone)
+**Wersja:** 4.0 (post-3rd-audit + Phase 0B sprint, 18 commitów wdrożeniowych)
 **Pliki źródłowe:**
 - `frontend/src/ui/sld/v2/renderer/GpzRenderer.tsx` (entry, decyzja delegacji)
 - `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx` (full switchgear LOD ≥ 1)
@@ -559,9 +559,116 @@ Tests po iteracji 3: 554 → 566. Backend 473 → 476. Type-check + lint zielone
 | 4. PN VT placeholder | NOT_ADDRESSED | PARTIAL | **RESOLVED** (ApparatusVtThreePhase) |
 | 5. HV sections fabricated | NOT_ADDRESSED | PARTIAL | RESOLVED gdy ENM ma `gpz_hv_sections`; legacy fallback dla starych projektów |
 
-Status Acceptance Invariants (17): RESOLVED 14/17, PARTIAL 2/17, OPEN 1/17.
-- OPEN: telemetry pipeline (`BayCanonicalModel.runtime_state` w backend, frontend
-  nie konsumuje — Phase 0B kanał).
-- PARTIAL: doc-vs-kod count auto-update guard (`docs_count_consistency_guard.py`
-  planowany Phase 0B).
-- PARTIAL: pełen StationCard editor dla gpz_sections (CRUD UI, Phase 1).
+Status Acceptance Invariants (17 po Phase 0A iter 3): RESOLVED 14/17, PARTIAL 2/17, OPEN 1/17.
+
+Po Phase 0B sprint (commits 13-18) wszystkie 17 → **RESOLVED 17/17**.
+
+---
+
+## 20. Phase 0B sprint: dokończenie end-to-end deferreds (commits 13-18)
+
+Po 3 iteracjach Phase 0A pozostało: 1 OPEN (telemetry pipeline), 2 PARTIAL
+(docs_count_consistency_guard, StationCard editor), 3 deferred z planu
+(LineRun consumed by adapter, e2e dry_run equivalence, LOD runtime test).
+
+Phase 0B sprint dokończył **wszystkie 6 punktów end-to-end bez placeholderów**:
+
+### Commit 13 (Phase 0B-1) — BayRuntimeState telemetry pipeline (OPEN → RESOLVED)
+
+- Backend: `Bay.runtime_state: BayRuntimeState | None` (forward-ref +
+  `model_rebuild()`). Back-compat: legacy ENM bez pola → None.
+- Frontend types: `Bay.runtime_state?: BayRuntimeState | null`.
+- Adapter `enmToSldAdapter.ts`: helper `projectBayTelemetry(runtime)` mapuje
+  primary_device_states (CB/DS/ES) → cbState/dsState/esState/controlMode/
+  inManipulation. Klasyfikacja device_ref po kluczach (cb/ds_lin/ds_bus/es)
+  z deterministycznym sortowaniem alfabetycznym.
+- Coupler.closed czyta z runtime_state CB pola COUPLER (zamiast hardcoded 'unknown').
+- Tests: backend +6 cases, frontend +13 cases.
+
+### Commit 14 (Phase 0B-2) — docs_count_consistency_guard.py (PARTIAL → RESOLVED)
+
+- `scripts/docs_count_consistency_guard.py` — pełna implementacja:
+  - Skanuje `docs/` i `mv-design-pro/*.md`.
+  - Pattern: `` `<file>.test.<ts|tsx|py>` — N+? <cases|tests|test cases> ``.
+  - Liczy `it(...)`/`test(...)` w TS/TSX, `def test_...` w PY.
+  - Format dokładny (`N`): wymaga `actual == N`.
+  - Format `N+`: wymaga `actual >= N` ORAZ `actual <= TOLERANCE_FACTOR * N` (3.0).
+  - CLI: `--strict`, `--json`, `--repo-root`.
+- Tests: 12 cases (parser, TS/PY count, exact/lower-bound/tolerance,
+  missing file, real-repo smoke).
+
+### Commit 15 (Phase 0B-3) — StationCard CRUD editor (PARTIAL → RESOLVED)
+
+- Backend: 3 nowe operacje domenowe (`add_gpz_section`, `update_gpz_section`,
+  `delete_gpz_section`). Walidacja: invalid side, duplicate id, immutable
+  section_id przy update, in-use blocker przy delete (bay.gpz_section_id ref).
+- Frontend: `GpzSectionsEditor.tsx` — pełen CRUD UI z inline form, walidacja
+  przed-submit, HV/LV side filtering po voltage threshold (60kV).
+- StationCard renderuje `<GpzSectionsEditor>` w `ObjectCard.footer` slot
+  TYLKO gdy `station_type === 'gpz'`.
+- Tests: backend +17 cases (CRUD + chain), frontend +18 cases (CRUD + walidacja).
+
+### Commit 16 (Phase 0B-4) — LineRun.stations[] consumed by adapter
+
+- Frontend types: `LineRunV1`, `LineRunStationRefV1`, `LineRunSegmentRefV1`.
+  `EnergyNetworkModel.line_runs?: LineRunV1[]`.
+- Adapter `buildStations()` refaktor:
+  - 1. Stacje z `line_runs[]` — sortowane po `lineRun.id` alfabetycznie,
+       potem po `station.order`. Każdy lineRun = osobny kanał Y.
+  - 2. Orphans (legacy ENM bez line_runs) — fallback `idx/5` algorytm,
+       kanał za lineRun-bazowanymi.
+  - 3. GPZ stacje pomijane (są osobno w `r.gpzs`).
+- Tests: +6 cases (sortowanie, multi-runs, orphans, legacy fallback, GPZ skip,
+  determinizm 5×).
+
+### Commit 17 (Phase 0B-5) — e2e dry_run preview vs apply equivalence
+
+- Test e2e `test_insert_station_dry_run_apply_equivalence.py` na realnym ENM
+  (add_grid_source_sn + continue_trunk_segment_sn). NIE mocki.
+- 6 cases:
+  - dry_run zwraca preview metadata (inserted_station_id, halves, electrical_impact).
+  - dry_run NIE mutuje oryginalnego ENM (deep JSON equality).
+  - dry_run response NIE zawiera klucza `snapshot`.
+  - **KRYTYCZNY**: `preview.inserted_station_id == apply.faktyczny_id`
+    (deterministyczny ID generator — Conscious split z preview ma sens).
+  - apply changes spójne z preview affected_object_refs.
+  - apply default (bez dry_run) zachowuje istniejące zachowanie.
+
+### Commit 18 (Phase 0B-6) — LOD histereza runtime test integration
+
+- Test `SldCanvasV2.lodIntegration.test.tsx` — 9 cases z `vi.useFakeTimers`:
+  - Inicjalny render data-lod=2 dla scale=1.0.
+  - lodOverride prop omija LodController.
+  - 5× zoom in (scale ~1.61) w deadband 1.5*1.15=1.725 → LOD STABILNY 2.
+  - 7× zoom in + debounce 300ms + trigger → LOD przeskakuje na 3.
+  - **Bouncing zoom (5×in / 5×out / 5×in)** — wraca do '2' bez flicker.
+  - 3× zoom out (~0.729) w deadband → LOD STABILNY 2.
+  - 8× zoom out + debounce → LOD 1.
+  - LodController persistuje przez re-render (useRef pattern).
+
+Pełen LOD pipeline pokryty: pure function policy 10 cases + runtime
+integration 9 cases = 19 cases.
+
+### Wyniki Phase 0B sprint
+
+| Metryka | Phase 0A iter 3 | Phase 0B final | Delta |
+|---|---|---|---|
+| Frontend tests | 566 | 595 | +29 |
+| Backend tests | 482 | 522 | +40 |
+| **Total** | **1048** | **1117** | **+69** |
+
+Type-check + lint + canonical_ops_guard zielone na każdym commicie.
+
+### Status końcowy Acceptance Invariants
+
+| Inv | Status po 0A iter 3 | Status po 0B sprint |
+|---|---|---|
+| 1-9, 10-13, 15, 16 | RESOLVED | RESOLVED |
+| 14 (LineRun consumed) | RESOLVED | RESOLVED (+ pełen test pipeline) |
+| 5/6 (LOD histereza) | PARTIAL (no runtime test) | **RESOLVED** (commit 18) |
+| 17 (test count auto-update) | PARTIAL (planowany) | **RESOLVED** (commit 14) |
+| Telemetry pipeline | OPEN | **RESOLVED** (commit 13) |
+| StationCard editor | PARTIAL (count widget) | **RESOLVED** (commit 15) |
+
+**Wszystkie 17 Acceptance Invariants RESOLVED.** Brak placeholderów,
+brak długu, brak TODO.

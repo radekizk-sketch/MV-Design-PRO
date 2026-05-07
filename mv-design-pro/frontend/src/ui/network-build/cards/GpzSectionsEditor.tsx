@@ -35,6 +35,11 @@ interface EditorState {
   readonly originalSectionId?: string;
 }
 
+interface DeleteConfirmState {
+  readonly side: GpzSectionSide;
+  readonly section_id: string;
+}
+
 const INITIAL_EDITOR_STATE: EditorState = {
   mode: 'idle',
   side: 'lv',
@@ -69,6 +74,7 @@ export function GpzSectionsEditor({ station }: Props) {
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const [editor, setEditor] = useState<EditorState>(INITIAL_EDITOR_STATE);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<DeleteConfirmState | null>(null);
 
   const lvSections = useMemo(() => station.gpz_sections ?? [], [station.gpz_sections]);
   const hvSections = useMemo(() => station.gpz_hv_sections ?? [], [station.gpz_hv_sections]);
@@ -167,49 +173,88 @@ export function GpzSectionsEditor({ station }: Props) {
     closeEditor();
   }, [editor, lvSections, hvSections, station.ref_id, openOperationForm, closeEditor]);
 
-  const handleDelete = useCallback(
-    (side: GpzSectionSide, sectionId: string) => {
-      if (!window.confirm(`Czy na pewno usunąć sekcję '${sectionId}' (${side.toUpperCase()})?`)) return;
-      const payload: DeleteGpzSectionPayload = {
-        substation_ref: station.ref_id,
-        side,
-        section_id: sectionId,
-      };
-      openOperationForm('delete_gpz_section', payload as unknown as Record<string, unknown>);
-    },
-    [station.ref_id, openOperationForm],
-  );
+  const requestDelete = useCallback((side: GpzSectionSide, sectionId: string) => {
+    setPendingDelete({ side, section_id: sectionId });
+  }, []);
 
-  const renderSectionRow = (side: GpzSectionSide, section: GPZSection) => (
-    <li
-      key={`${side}-${section.section_id}`}
-      data-testid={`gpz-section-row-${side}-${section.section_id}`}
-      className="flex items-center justify-between gap-2 py-1 text-sm"
-    >
-      <span className="flex-1 font-mono">
-        <span className="text-zinc-300">{section.section_id}</span>
-        <span className="text-zinc-500"> · porządek {section.order}</span>
-        <span className="text-zinc-400">{section.name ? ` · ${section.name}` : ''}</span>
-        <span className="text-zinc-500"> · szyna {section.bus_ref}</span>
-      </span>
-      <button
-        type="button"
-        data-testid={`gpz-section-edit-${side}-${section.section_id}`}
-        className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
-        onClick={() => startEdit(side, section)}
+  const cancelDelete = useCallback(() => {
+    setPendingDelete(null);
+  }, []);
+
+  const confirmDelete = useCallback(() => {
+    if (!pendingDelete) return;
+    const payload: DeleteGpzSectionPayload = {
+      substation_ref: station.ref_id,
+      side: pendingDelete.side,
+      section_id: pendingDelete.section_id,
+    };
+    openOperationForm('delete_gpz_section', payload as unknown as Record<string, unknown>);
+    setPendingDelete(null);
+  }, [pendingDelete, station.ref_id, openOperationForm]);
+
+  const renderSectionRow = (side: GpzSectionSide, section: GPZSection) => {
+    const isPendingDelete =
+      pendingDelete !== null
+      && pendingDelete.side === side
+      && pendingDelete.section_id === section.section_id;
+    return (
+      <li
+        key={`${side}-${section.section_id}`}
+        data-testid={`gpz-section-row-${side}-${section.section_id}`}
+        className="flex items-center justify-between gap-2 py-1 text-sm"
       >
-        Edytuj
-      </button>
-      <button
-        type="button"
-        data-testid={`gpz-section-delete-${side}-${section.section_id}`}
-        className="rounded border border-red-600 px-2 py-0.5 text-xs text-red-300 hover:bg-red-900/30"
-        onClick={() => handleDelete(side, section.section_id)}
-      >
-        Usuń
-      </button>
-    </li>
-  );
+        <span className="flex-1 font-mono">
+          <span className="text-zinc-300">{section.section_id}</span>
+          <span className="text-zinc-500"> · porządek {section.order}</span>
+          <span className="text-zinc-400">{section.name ? ` · ${section.name}` : ''}</span>
+          <span className="text-zinc-500"> · szyna {section.bus_ref}</span>
+        </span>
+        {isPendingDelete ? (
+          <span
+            data-testid={`gpz-section-delete-confirm-${side}-${section.section_id}`}
+            className="flex items-center gap-1"
+          >
+            <span className="text-xs text-red-300">Potwierdź usunięcie?</span>
+            <button
+              type="button"
+              data-testid={`gpz-section-delete-confirm-yes-${side}-${section.section_id}`}
+              className="rounded border border-red-700 bg-red-900/40 px-2 py-0.5 text-xs text-red-200"
+              onClick={confirmDelete}
+            >
+              Tak
+            </button>
+            <button
+              type="button"
+              data-testid={`gpz-section-delete-confirm-no-${side}-${section.section_id}`}
+              className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300"
+              onClick={cancelDelete}
+            >
+              Anuluj
+            </button>
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              data-testid={`gpz-section-edit-${side}-${section.section_id}`}
+              className="rounded border border-zinc-600 px-2 py-0.5 text-xs text-zinc-300 hover:bg-zinc-800"
+              onClick={() => startEdit(side, section)}
+            >
+              Edytuj
+            </button>
+            <button
+              type="button"
+              data-testid={`gpz-section-delete-${side}-${section.section_id}`}
+              className="rounded border border-red-600 px-2 py-0.5 text-xs text-red-300 hover:bg-red-900/30"
+              onClick={() => requestDelete(side, section.section_id)}
+            >
+              Usuń
+            </button>
+          </>
+        )}
+      </li>
+    );
+  };
 
   const renderForm = () => {
     if (editor.mode === 'idle') return null;

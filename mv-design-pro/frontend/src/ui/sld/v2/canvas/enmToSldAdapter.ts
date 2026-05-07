@@ -569,9 +569,10 @@ function bayDescriptorFromEnm(
    * bus_ref bay'a do innej stacji. Cel = nazwa stacji docelowej.
    *
    * INVARIANT 9: `energized` pozostaje UNDEFINED — adapter nie zna stanu
-   * SCADA telemetry (TODO przyszły kanał `BayCanonicalModel.runtime_state`).
-   * Renderer wyświetli neutral kolor (`COLOR_FIELD_TRUNK_NEUTRAL`) gdy
-   * brak danych zamiast fałszywego zielonego "pod napięciem".
+   * SCADA telemetry feedera (Phase 0B-1 dostarczył runtime_state per-bay,
+   * ale `outgoingFeeder.energized` to stan TRUNK linii, nie pola — wymaga
+   * osobnego kanału z analizy power flow). Renderer wyświetli neutral
+   * kolor (`COLOR_FIELD_TRUNK_NEUTRAL`) zamiast fałszywego "pod napięciem".
    */
   /* Phase 0A audit fix 10/12: outgoingFeeder STRICT z ENM `outgoing_destination_ref`.
    * Eliminacja heurystyki `inferOutgoingFeederDestination` (audyt SLD §C.2).

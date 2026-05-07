@@ -442,7 +442,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     ];
     snap.bays = [
       {
-        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
         bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
         equipment_refs: ['cb1'],
         /* Brak outgoing_destination_ref + brak branches → undefined. */
@@ -468,7 +468,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     ];
     snap.bays = [
       {
-        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
         bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
         equipment_refs: ['cb1'],
         outgoing_destination_ref: 'ST-DEST',
@@ -934,7 +934,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     ];
     snap.bays = [
       {
-        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
         bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
         equipment_refs: ['cb1'],
         runtime_state: makeRuntime({
@@ -964,7 +964,7 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     ];
     snap.bays = [
       {
-        id: 'b1', ref_id: 'bay-1', name: 'P1', tags: [], meta: {},
+        id: 'b1', ref_id: 'bay-1', name: 'Pole 1', tags: [], meta: {},
         bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'A',
         equipment_refs: ['cb1'],
         /* brak runtime_state */

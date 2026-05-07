@@ -250,12 +250,18 @@ describe('GpzSectionsEditor — Edit flow', () => {
   });
 });
 
-describe('GpzSectionsEditor — Delete flow', () => {
-  it('Klik "Usuń" + confirm → wywołuje delete_gpz_section', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+describe('GpzSectionsEditor — Delete flow (inline confirm)', () => {
+  it('Klik "Usuń" → pokazuje inline confirm (Tak/Anuluj), NIE wywołuje od razu', () => {
+    const { getByTestId, queryByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+    fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-B'));
+    expect(queryByTestId('gpz-section-delete-confirm-lv-SEC-B')).toBeTruthy();
+    expect(openOperationForm).not.toHaveBeenCalled();
+  });
+
+  it('Klik "Usuń" → "Tak" → wywołuje delete_gpz_section', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-B'));
-    expect(confirmSpy).toHaveBeenCalled();
+    fireEvent.click(getByTestId('gpz-section-delete-confirm-yes-lv-SEC-B'));
     expect(openOperationForm).toHaveBeenCalledWith(
       'delete_gpz_section',
       expect.objectContaining({
@@ -264,25 +270,23 @@ describe('GpzSectionsEditor — Delete flow', () => {
         section_id: 'SEC-B',
       }),
     );
-    confirmSpy.mockRestore();
   });
 
-  it('Klik "Usuń" + cancel → NIE wywołuje delete_gpz_section', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
+  it('Klik "Usuń" → "Anuluj" → NIE wywołuje delete_gpz_section', () => {
+    const { getByTestId, queryByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-lv-SEC-A'));
+    fireEvent.click(getByTestId('gpz-section-delete-confirm-no-lv-SEC-A'));
+    expect(queryByTestId('gpz-section-delete-confirm-lv-SEC-A')).toBeNull();
     expect(openOperationForm).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
-  it('Delete HV section → side=hv w payload', () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('Delete HV section + confirm → side=hv w payload', () => {
     const { getByTestId } = render(<GpzSectionsEditor station={buildGpz()} />);
     fireEvent.click(getByTestId('gpz-section-delete-hv-HV-A'));
+    fireEvent.click(getByTestId('gpz-section-delete-confirm-yes-hv-HV-A'));
     expect(openOperationForm).toHaveBeenCalledWith(
       'delete_gpz_section',
       expect.objectContaining({ side: 'hv', section_id: 'HV-A' }),
     );
-    confirmSpy.mockRestore();
   });
 });
