@@ -23,7 +23,6 @@
     "src/**/*.test.tsx",
     "e2e",
     "src/ui/context-menu/EngineeringContextMenu.tsx",
-    "src/ui/layout/CanonicalLayout.tsx",
     "src/ui/network-build/cards/BayCard.tsx",
     "src/ui/network-build/InspectorEngineeringView.tsx",
     "src/ui/network-build/ReadOnlyPanelRouter.tsx",

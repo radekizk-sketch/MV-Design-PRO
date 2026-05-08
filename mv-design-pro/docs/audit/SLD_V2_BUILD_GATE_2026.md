@@ -1,145 +1,210 @@
 # SLD V2 — Build Gate Audit (Phase -1)
 
-**Data audytu:** 2026-05-07
+**Data audytu:** 2026-05-08
 **Branch:** `claude/electrical-infrastructure-design-ChbTk`
+**HEAD:** R59 (po naprawie PCC term w domain_operations.py)
 **Status bramki:** ✅ ZIELONY (Phase -1 zaliczone)
 
 ---
 
 ## Cel
 
-Przed rozbudową SLD V2 do operator-grade (Phase 0A→9) potwierdzić, że
+Przed rozbudową SLD V2 do operator-grade (kolejne fazy planu) potwierdzić, że
 aktualnie aktywny moduł V2 spełnia bezwzględne wymagania bramki wejściowej:
 
 1. `npm run type-check` zielony (zero błędów typów na ścieżkach V2 i ścieżkach
    aktywnych shellu V12).
-2. `npm run build` zielony (vite build + tsc).
+2. `npm run build` zielony (`tsc && vite build`).
 3. Zero importów z V1 SLD (`src/ui/sld/core/**`, `src/ui/sld/inspector/**`,
-   `src/ui/sld/*.ts`, `src/ui/sld/*.tsx`) z plików V2 (`src/ui/sld/v2/**`).
+   top-level `src/ui/sld/*.ts/.tsx`) z plików V2 (`src/ui/sld/v2/**`).
 4. Zero martwych stubów / no-op rendererów / pustych adapterów w aktywnych
    modułach V2 (canvas, command, renderer, viewport, geometry, builder,
-   domain, lod, theme, core).
-5. Wszystkie testy V2 zielone (jednostkowe, kontrakt, snapshoty wizualne).
+   domain, lod, theme, core, workflow, anonymization).
+5. Wszystkie testy V2 zielone (jednostkowe, kontrakt, integracyjne,
+   strukturalne SVG, snapshoty wizualne).
 
 ---
 
-## Stan zastany (potwierdzenie)
+## Stan zastany — pomiary 2026-05-08
 
 ### Kompilacja
 
 | Sprawdzenie | Wynik |
 |---|---|
-| `cd mv-design-pro/frontend && npm ci` | OK (518 paczek) |
 | `cd mv-design-pro/frontend && npm run type-check` (`tsc --noEmit`) | ✅ zielony |
-| `cd mv-design-pro/frontend && npm run build` (`tsc && vite build`) | ✅ zielony, 1129 modułów, dist=1.4 MB (ostrzeżenie chunk-size > 500 kB istniejące, nieblokujące) |
+| `cd mv-design-pro/frontend && npm run build` (`tsc && vite build`) | ✅ zielony, 1158 modułów |
+| Bundle (po code splitting R57) | `vendor-react` 142 kB · `chunk-charts` 383 kB · `chunk-sld` 389 kB · `chunk-wizard` 47 kB · main 713 kB · CSS 115 kB |
 
 ### Testy V2
 
-| Plik testowy | Liczba testów |
+| Liczba plików testowych V2 | 57 |
 |---|---|
-| `src/ui/sld/v2/__tests__/renderers.test.tsx` | 24 |
-| `src/ui/sld/v2/__tests__/HierarchicalLayout.test.ts` | 18 |
-| `src/ui/sld/v2/__tests__/LodPolicy.test.ts` | 22 |
-| `src/ui/sld/v2/__tests__/StationInternalView.test.tsx` | 5 |
-| `src/ui/sld/v2/__tests__/visualFixtures.test.ts` | 119 |
-| `src/ui/sld/v2/__tests__/ViewportController.test.ts` | 12 |
-| `src/ui/sld/v2/canvas/__tests__/SldWorkspaceContainer.test.tsx` | 6 |
-| `src/ui/sld/v2/canvas/__tests__/enmToSldAdapter.test.ts` | 9 |
-| `src/ui/sld/v2/canvas/__tests__/LassoSelector.test.tsx` | 8 |
-| `src/ui/sld/v2/canvas/__tests__/SldDerIntegration.test.tsx` | 2 |
-| `src/ui/sld/v2/command/__tests__/SldCommandService.test.ts` | 14 |
-| `src/ui/sld/v2/core/__tests__/ports.test.ts` | 29 |
-| **Razem** | **268 / 268 zielonych** |
+| **Liczba testów V2** | **1189 ✅ wszystkie zielone** |
+| Frontend total (cały Vitest) | 304 plików · 4193 testów · 1 skipped |
+| Backend total (pytest) | 4797 passed · 6 skipped · 4 xpassed |
 
 ### Izolacja od V1
 
 | Sprawdzenie | Wynik |
 |---|---|
-| `grep -rn 'from .*sld/core' src/ui/sld/v2/` | 0 hits |
-| `grep -rn 'from .*sld/inspector' src/ui/sld/v2/` | 0 hits |
-| `grep -rn 'from .*sld/[A-Z]' src/ui/sld/v2/` (pliki top-level V1) | 0 hits |
+| `python scripts/sld_v2_build_gate_guard.py` | ✅ OK (55 plików V2 zeskanowanych, 0 V1 imports) |
+| `grep "from .*sld/core" src/ui/sld/v2` | 0 hits |
+| `grep "from .*sld/inspector" src/ui/sld/v2` | 0 hits |
 
-V1 pozostaje wyłączony z `tsconfig.json` przez `exclude`:
-```
+V1 pozostaje wyłączony z `tsconfig.json` przez `exclude` (do Phase 9):
+```json
 "src/ui/sld/*.ts",
 "src/ui/sld/*.tsx",
 "src/ui/sld/core/**/*",
 "src/ui/sld/inspector/**/*"
 ```
-Dług techniczny do zamknięcia w Phase 9.
 
-### Aktywne moduły V2 (mapa)
+R58 sprzątnęło stałe `src/ui/layout/CanonicalLayout.tsx` z excludes (plik został
+usunięty jako dead code — V12 alias w `layout/index.ts` jest jedynym CanonicalLayout).
+
+---
+
+## Aktywne moduły V2 — mapa (rzeczywisty stan)
 
 ```
 src/ui/sld/v2/
+├── anonymization/
+│   ├── AnonymizationProvider.tsx     124 lines  (Phase 5)
+│   └── anonymize.ts                              (Phase 5)
 ├── builder/
 │   ├── BuildSequence.ts
-│   └── HierarchicalLayout.ts
+│   ├── CorridorLayout.ts             241 lines  (Phase 6)
+│   ├── HierarchicalLayout.ts
+│   ├── LayoutComplexityScore.ts                  (Phase 6)
+│   └── LayoutStrategyDispatch.ts                 (Phase 6)
 ├── canvas/
+│   ├── CadOverlay.tsx                            (Phase 2)
+│   ├── LabelDeclutter.ts             249 lines  (Phase 2)
 │   ├── LassoSelector.tsx
 │   ├── SldCanvasV2.tsx
-│   ├── SldWorkspaceContainer.tsx     # mount point shellu V12
+│   ├── SldWorkspaceContainer.tsx                 # mount point shellu V12
 │   ├── StationInternalView.tsx
+│   ├── buildNetworkTerrain.ts
+│   ├── enmToCanonicalGpzAdapter.ts
 │   └── enmToSldAdapter.ts
 ├── command/
-│   └── SldCommandService.ts          # COMMAND_FEEDBACK_PL + toastBus
+│   └── SldCommandService.ts                      # COMMAND_FEEDBACK_PL + toastBus
 ├── core/
-│   └── ports.ts                       # 15 kinds portów first-class
+│   ├── hashes.ts                     362 lines  (Phase 0A)
+│   └── ports.ts                                  # 15 kinds portów first-class
 ├── domain/
-│   └── HierarchyTree.ts
+│   ├── HierarchyTree.ts
+│   ├── apparatusContracts.ts         172 lines  (Phase 0A)
+│   ├── apparatusSymbolPolicy.ts                  (Phase 0A)
+│   ├── apparatusVisualState.ts       156 lines  (Phase 0A)
+│   └── bayDeviceOrder.ts             154 lines  (Phase 0A)
 ├── geometry/
-│   ├── routing.ts                     # orthogonal L-routing
+│   ├── RouteEditor.ts                            (Phase 2)
+│   ├── routing.ts
 │   └── slot.ts
 ├── lod/
-│   └── LodPolicy.ts                   # 5-poziomowy LOD (bez histerezy — Phase 0A)
+│   └── LodPolicy.ts                              # 5-poziomowy LOD
+├── modals/
+│   ├── AddApparatusModal.tsx
+│   ├── ApparatusStateModal.tsx
+│   ├── BayConfigModal.tsx
+│   ├── CouplerEditModal.tsx
+│   ├── SldModal.tsx
+│   └── TransformerEditModal.tsx
 ├── renderer/
 │   ├── BayRenderer.tsx
 │   ├── CableRunRenderer.tsx
 │   ├── ConnectionRenderer.tsx
+│   ├── DerConnectionTreeRenderer.tsx             (Phase 4)
 │   ├── DerRenderer.tsx
 │   ├── DeviceRenderer.tsx
-│   ├── GpzRenderer.tsx                # 200×80 prostokąt — Phase 0A delegacja
+│   ├── GpzCanonicalRenderer.tsx
+│   ├── GpzOperatorHeader.tsx
+│   ├── GpzRenderer.tsx
+│   ├── GpzSwitchgearRenderer.tsx    3330 lines  (Phase 0A — pełna rozdzielnia)
+│   ├── MiniBlockFootprints.ts                    (Phase 0A)
+│   ├── MiniBlockRmuRenderer.tsx      474 lines  (Phase 0A — kompozycja z bays[])
+│   ├── NetworkTerrainRenderer.tsx
 │   ├── SectionRenderer.tsx
-│   └── StationOnRunRenderer.tsx       # 140×60 prostokąt — Phase 0A delegacja
+│   └── StationOnRunRenderer.tsx
 ├── theme/
-│   └── tokens.ts                       # 22 tokeny SCADA
-└── viewport/
-    └── ViewportController.ts
+│   └── tokens.ts                                 # 22 tokeny SCADA
+├── viewport/
+│   ├── Snap.ts
+│   └── ViewportController.ts
+└── workflow/
+    ├── AppendOnEndpointController.ts 299 lines  (Phase 0B)
+    ├── ConsciousSplitController.ts   399 lines  (Phase 0C)
+    └── WorkflowOrchestrator.ts
 ```
 
 ---
 
-## Stwierdzone ograniczenia (do Phase 0A→9)
+## Implementacja vs. plan operator-grade
 
-Bramka jest zielona dla istniejącej powierzchni V2, ale operator-grade wymaga
-rozwinięcia funkcjonalnego — to NIE JEST defekt Phase -1, lecz scope Phase 0A→9:
+Wbrew oryginalnemu opisowi Phase -1 (pre-istniejący stale), V2 ma już
+zaimplementowane znaczne fragmenty Phase 0A→6. Phase -1 koncentruje się
+WYŁĄCZNIE na bramce build/type-check/test/V1-isolation — i ta jest zielona.
 
-| # | Ograniczenie | Faza naprawy |
-|---|---|---|
-| 1 | Stacja na ciągu = pojedynczy prostokąt 140×60 | Phase 0A (`MiniBlockRmuRenderer`) |
-| 2 | GPZ = pojedynczy prostokąt 200×80 | Phase 0A (`GpzSwitchgearRenderer`) |
-| 3 | LOD bez histerezy (możliwe migotanie 0.68↔0.72) | Phase 0A (`createLodController`) |
-| 4 | Brak `ApparatusVisualState` w V2 (5-wymiarowa matryca stanów) | Phase 0A (`v2/domain/apparatusVisualState.ts`) |
-| 5 | Brak `BayDeviceOrderPolicy` jako jawnego kontraktu w V2 | Phase 0A (`v2/domain/bayDeviceOrder.ts`) |
-| 6 | Kontrakty aparatów w V1 (`fieldDeviceContracts.ts`) | Phase 0A (clean V2 port w `v2/domain/apparatusContracts.ts`) |
-| 7 | Brak `topology_hash` / `layout_hash` / `view_hash` rozdzielenia | Phase 0A (`v2/core/hashes.ts`) |
-| 8 | Brak append-on-endpoint workflow | Phase 0B |
-| 9 | `insert_station_on_segment_sn` bez `dry_run`/electrical-impact preview | Phase 0C |
-| 10 | Brak DER PCC walidatora | Phase 4 |
-| 11 | Brak deterministycznego label declutter | Phase 2 |
-| 12 | Brak layout korytarzowego sterowanego complexity score | Phase 6 |
-| 13 | V1 SLD pozostaje na dysku (excluded w tsconfig) | Phase 9 |
+| Faza | Status implementacji (skala wysokopoziomowa) |
+|---|---|
+| **Phase -1** Build Gate | ✅ **Zaliczona** (ten dokument) |
+| Phase 0A LOD + Visual Minimum | ⬛ Większość zaimplementowana (mini-block, GPZ switchgear, apparatusContracts, apparatusVisualState, bayDeviceOrder, hashes) — wymaga audytu funkcjonalnego pokrycia względem briefu |
+| Phase 0B Append-on-Endpoint | ⬛ Workflow controller istnieje (299 linii) — wymaga weryfikacji backend `append_station_on_endpoint` |
+| Phase 0C Conscious Split | ⬛ Workflow controller istnieje (399 linii) — wymaga weryfikacji backend `dry_run` |
+| Phase 1 Visual Canon Expansion | ⬛ MiniBlockFootprints + 7 typów stacji wymaga audytu vs. brief |
+| Phase 2 CAD Foundations | ⬛ CadOverlay, LabelDeclutter, RouteEditor istnieją — wymaga weryfikacji deterministyczności |
+| Phase 3 Append/Split Polish | ⬛ Częściowo (ghost preview, Esc-cancel) |
+| Phase 4 DER End-to-End | ⬛ DerConnectionTreeRenderer istnieje |
+| Phase 5 Anonimizacja | ⬛ AnonymizationProvider + anonymize.ts istnieją |
+| Phase 6 Layout Korytarzowy | ⬛ CorridorLayout, LayoutComplexityScore, LayoutStrategyDispatch istnieją |
+| Phase 7 Test Pyramid | ⬛ 1189 testów V2 (structural, electrical-graph, readability, perf, hash invariants) |
+| Phase 8 Documentation | ⬛ Wymaga konsolidacji 12 dokumentów w `docs/sld/` |
+| Phase 9 Cleanup V1 | ⬜ Zaplanowane (V1 tsconfig-excluded, do usunięcia) |
+
+**Wnioski:**
+1. Phase -1 (ten dokument) jest zamknięty na zielono.
+2. Phase 0A-6 są w znacznej mierze zaimplementowane — wymagają osobnego audytu
+   funkcjonalnego względem `Acceptance Invariants` 1-17 z planu.
+3. Phase 7 ma 1189 testów (vs. ~115 nowych snapshotów w planie) — pokrycie wysokie.
+4. Phase 8 (konsolidacja docs) i Phase 9 (cleanup V1) pozostają do zrobienia.
 
 ---
 
-## Kryteria zaliczenia Phase -1
+## Mierzalne kryteria zaliczenia Phase -1 (CI-checkable)
 
-- [x] type-check zielony
-- [x] build zielony
-- [x] 268 testów V2 zielonych
-- [x] zero importów V1 z V2
-- [x] dokument audytu (ten plik) wypełniony
-- [x] smoke test `buildGate.test.ts` weryfikuje publiczne API V2
-- [x] guard `sld_v2_build_gate_guard.py` rozszerzony i uruchamialny w CI
+- [x] **type-check zielony** — `tsc --noEmit` exit 0
+- [x] **build zielony** — `tsc && vite build` exit 0
+- [x] **1189 testów V2 zielonych** — `npx vitest run src/ui/sld/v2`
+- [x] **0 importów V1 z V2** — `python scripts/sld_v2_build_gate_guard.py` exit 0
+- [x] **dokument audytu** — ten plik
+- [x] **smoke test buildGate.test.ts** — 12 testów weryfikujących publiczne API V2
+- [x] **guard `sld_v2_build_gate_guard.py`** — uruchamialny w CI, sprawdza V1 imports + tsconfig + smoke test + audit doc
+- [x] **tsconfig.json sprzątnięty** — usunięty stary `CanonicalLayout.tsx` exclude (R58 dead code cleanup)
 
-Bramka zamknięta na zielono — można rozpocząć Phase 0A.
+**Bramka zamknięta na zielono. Można rozpocząć szczegółowe audyty Phase 0A-9
+przeciwko Acceptance Invariants 1-17.**
+
+---
+
+## Komendy weryfikacyjne (kopiuj-wklej)
+
+```bash
+cd mv-design-pro
+
+# 1. Phase -1 build gate
+cd frontend
+npm run type-check
+VITE_API_URL=http://localhost VITE_API_URL_DEV=http://localhost npm run build
+npx vitest run --no-file-parallelism src/ui/sld/v2/__tests__/buildGate.test.ts
+cd ..
+
+# 2. Guard
+python scripts/sld_v2_build_gate_guard.py
+
+# 3. Pełen suite V2
+cd frontend && npx vitest run --no-file-parallelism src/ui/sld/v2 && cd ..
+
+# 4. Pełen frontend test:ci
+cd frontend && npm run test:ci && cd ..
+```
