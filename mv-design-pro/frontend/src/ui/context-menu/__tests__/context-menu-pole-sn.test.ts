@@ -8,10 +8,11 @@ import {
 import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 
 describe('context-menu-pole-sn - kanon menu pola SN', () => {
-  it('ma wszystkie wymagane akcje i sekcje w kolejnosci kanonicznej', () => {
+  it('ma wszystkie wymagane akcje i sekcje w kolejnosci kanonicznej (R51 + Edytuj editor R47)', () => {
     expect(FIELD_SN_MENU_ACTIONS.map((action) => action.label)).toEqual([
       'Otwórz w inspektorze',
-      'Edytuj konfigurację pola',
+      'Edytuj pole (editor R47)',
+      'Edytuj konfigurację pola (legacy 8-sekcji)',
       'Zmień aparat łączeniowy',
       'Zmień przekładnik prądowy',
       'Zmień przekładnik napięciowy',

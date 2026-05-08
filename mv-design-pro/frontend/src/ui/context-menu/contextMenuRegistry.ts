@@ -43,7 +43,9 @@ export interface CanonicalContextMenuActionDefinition {
 
 export const FIELD_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
   field('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
-  field('edit_configuration', 'Edytuj konfigurację pola', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditConfiguration'),
+  /* R51 (Zasada 13): kanoniczny editor pola SN — BayEditorStandalone z executeDomainOperation('configure_bay'). */
+  field('edit-bay-editor', 'Edytuj pole (editor R47)', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditBayEditor'),
+  field('edit_configuration', 'Edytuj konfigurację pola (legacy 8-sekcji)', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditConfiguration'),
   field('change_switchgear', 'Zmień aparat łączeniowy', 'Edytuj', 'ikona-obiekt-wylacznik', 'onChangeSwitchgear'),
   field('change_ct', 'Zmień przekładnik prądowy', 'Edytuj', 'ikona-analiza-prad', 'onChangeCT'),
   field('change_vt', 'Zmień przekładnik napięciowy', 'Edytuj', 'ikona-analiza-napiecie', 'onChangeVT'),
@@ -80,7 +82,9 @@ export const SOURCE_CONNECTION_MENU_ACTIONS: readonly CanonicalContextMenuAction
 
 export const SEGMENT_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
   segment('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
-  segment('edit_segment', 'Edytuj odcinek', 'Edytuj', 'ikona-ekran-odcinek-sn', 'onEditSegment'),
+  /* R51 (Zasada 13): kanoniczny editor odcinka — LineSegmentInline z executeDomainOperation('configure_cable'). */
+  segment('edit-segment-inline', 'Edytuj odcinek (inline R47)', 'Edytuj', 'ikona-ekran-odcinek-sn', 'onEditSegmentInline'),
+  segment('edit_segment', 'Edytuj odcinek (legacy 4-kart)', 'Edytuj', 'ikona-ekran-odcinek-sn', 'onEditSegment'),
   segment('assign_catalog', 'Zmień typ katalogowy', 'Edytuj', 'ikona-dane-katalogowe', 'onAssignCatalog'),
   segment('insert_station_on_segment_sn', 'Wstaw stację', 'Dodaj', 'ikona-obiekt-stacja-sn-nn', 'onInsertStation'),
   segment('insert_zksn', 'Wstaw ZKSN', 'Dodaj', 'ikona-obiekt-zksn', 'onInsertZksn'),
@@ -94,8 +98,10 @@ export const SEGMENT_SN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinit
 
 export const STATION_SN_NN_MENU_ACTIONS: readonly CanonicalContextMenuActionDefinition[] = [
   station('open_inspector', 'Otwórz w inspektorze', 'Otwórz', 'ikona-ekran-inspektor-techniczny', 'onOpenInspector', 'always'),
-  station('station_edit_simple', 'Edytuj kreatorem prostym', 'Edytuj', 'ikona-obiekt-stacja-sn-nn', 'onEditSimple'),
-  station('station_edit_advanced', 'Edytuj kreatorem zaawansowanym', 'Edytuj', 'ikona-ekran-stacja-sn-nn', 'onEditAdvanced'),
+  /* R51 (Zasada 13): kanoniczny wizard 8-step — StationWizardSurface z executeDomainOperation('create_station_complete'/'update_station_complete'). */
+  station('edit-station-wizard', 'Edytuj stację (wizard 8 stepów R46)', 'Edytuj', 'ikona-obiekt-stacja-sn-nn', 'onEditStationWizard'),
+  station('station_edit_simple', 'Edytuj kreatorem prostym (legacy)', 'Edytuj', 'ikona-obiekt-stacja-sn-nn', 'onEditSimple'),
+  station('station_edit_advanced', 'Edytuj kreatorem zaawansowanym (legacy)', 'Edytuj', 'ikona-ekran-stacja-sn-nn', 'onEditAdvanced'),
   station('station_edit_sn_fields', 'Edytuj pola SN', 'Edytuj', 'ikona-obiekt-pole-sn', 'onEditSnFields'),
   station('station_edit_transformer', 'Edytuj transformator', 'Edytuj', 'ikona-obiekt-transformator', 'onEditTransformer'),
   station('station_edit_nn_side', 'Edytuj stronę nN', 'Edytuj', 'ikona-obiekt-strona-nn', 'onEditNnSide'),

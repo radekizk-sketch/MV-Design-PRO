@@ -181,6 +181,10 @@ const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'configure-cts-vts': 'E-11',
   'configure-protection': 'E-11',
   'open-station-config': 'E-13',
+  // R51 (Zasada 13): akcje kontekstowe SLD "Edytuj X" otwierają nowe wizard/editor
+  'edit-station-wizard': 'E-13',  // prawy klik na stację → StationWizard mode='edit'
+  'edit-bay-editor': 'E-11',      // prawy klik na pole → BayEditorStandalone mode='edit'
+  'edit-segment-inline': 'E-12',  // prawy klik na odcinek → LineSegmentInline mode='edit'
   // Etap 4: sieć terenowa (odcinki SN, ZK SN, słupy, NOP, odgałęzienia):
   'edit-laying': 'E-12',
   'edit-line': 'E-12',

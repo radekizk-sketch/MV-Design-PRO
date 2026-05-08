@@ -236,6 +236,11 @@ export function buildStationContextMenu(
   const result = mode === 'RESULT_VIEW';
   const extendedActions = [
     action('properties', result ? 'Pokaż właściwości...' : 'Właściwości stacji...', { handler: handlers.onProperties }),
+    /* R51 (Zasada 13): kanoniczne "Edytuj stację (wizard)" — otwiera StationWizard 8-step */
+    action('edit-station-wizard', 'Edytuj stację (wizard 8 stepów)...', {
+      enabled: edit,
+      actionKey: 'station_edit_wizard',
+    }),
     sep('s1'),
     // --- Pola SN (1-6) ---
     action('add_sn_bay', 'Dodaj pole SN liniowe IN...', {

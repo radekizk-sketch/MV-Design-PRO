@@ -14,10 +14,11 @@ import { hasTechnicalIcon } from '../../icons/technicalIconRegistry';
 const handlers = new Proxy({}, { get: () => () => undefined }) as Record<string, () => void>;
 
 describe('context-menu-segment-station - kanon menu odcinka SN i stacji SN/nN', () => {
-  it('menu odcinka SN ma formalne akcje modelowania magistrali i obiektow posrednich', () => {
+  it('menu odcinka SN ma formalne akcje modelowania magistrali i obiektow posrednich (R51 + Edytuj inline)', () => {
     expect(SEGMENT_SN_MENU_ACTIONS.map((action) => action.label)).toEqual([
       'Otwórz w inspektorze',
-      'Edytuj odcinek',
+      'Edytuj odcinek (inline R47)',
+      'Edytuj odcinek (legacy 4-kart)',
       'Zmień typ katalogowy',
       'Wstaw stację',
       'Wstaw ZKSN',
@@ -30,11 +31,12 @@ describe('context-menu-segment-station - kanon menu odcinka SN i stacji SN/nN', 
     ]);
   });
 
-  it('menu stacji SN/nN ma osobne akcje dla strony SN, transformatora i strony nN', () => {
+  it('menu stacji SN/nN ma osobne akcje dla strony SN, transformatora i strony nN (R51 + wizard 8-step)', () => {
     expect(STATION_SN_NN_MENU_ACTIONS.map((action) => action.label)).toEqual([
       'Otwórz w inspektorze',
-      'Edytuj kreatorem prostym',
-      'Edytuj kreatorem zaawansowanym',
+      'Edytuj stację (wizard 8 stepów R46)',
+      'Edytuj kreatorem prostym (legacy)',
+      'Edytuj kreatorem zaawansowanym (legacy)',
       'Edytuj pola SN',
       'Edytuj transformator',
       'Edytuj stronę nN',
