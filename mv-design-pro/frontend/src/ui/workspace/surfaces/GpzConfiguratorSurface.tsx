@@ -32,6 +32,8 @@ import {
   getHvTransformerById,
   type HvTransformerSpec,
 } from '../../catalog/hvTransformerCatalog';
+import { GPZ_PRESETS, getGpzPresetById } from './gpzPresets';
+import { analyzeGpz, type GpzSuggestion, type SuggestionLevel } from './gpzAdvisor';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import type { Substation, Transformer, Bus, Bay, Generator } from '../../../types/enm';
 
@@ -234,6 +236,17 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
     [eng, formMeta.hvShortCircuitMva],
   );
 
+  /* R38: Engineer Assistant suggestions (live computed z stanu GPZ) */
+  const suggestions = useMemo(() => analyzeGpz({
+    substation: eng.substation,
+    transformers: eng.transformers,
+    hvBuses: eng.hvBuses,
+    lvBuses: eng.lvBuses,
+    bays: eng.bays,
+    hvShortCircuitMva: formMeta.hvShortCircuitMva,
+    hvRX: formMeta.hvRX,
+  }), [eng, formMeta.hvShortCircuitMva, formMeta.hvRX]);
+
   /* Filter catalog dla naszych voltages */
   const filteredCatalog = useMemo(() => {
     const uhvKv = eng.hvBuses[0]?.voltage_kv ?? 110;
@@ -288,6 +301,72 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
       [gpzRef],
     );
   }, [gpzRef, patchSnapshot]);
+
+  /* R39: Apply preset — atomic operation: ustawia S''k + R/X + system szyn +
+   * stosuje katalog transformatora. Liczba transformatorów i sekcji wymaga
+   * dedykowanych ENM ops (insert_section_*); tutaj ustawiamy tylko TE pola
+   * które mogą być modyfikowane przez patchSnapshot. */
+  const applyPreset = useCallback((presetId: string) => {
+    if (!gpzRef) return;
+    const preset = getGpzPresetById(presetId);
+    if (!preset) return;
+    /* Update meta z presetu */
+    patchSnapshot(
+      (snap) => ({
+        ...snap,
+        substations: (snap.substations ?? []).map((s) =>
+          s.ref_id === gpzRef
+            ? {
+                ...s,
+                meta: {
+                  ...s.meta,
+                  hv_short_circuit_mva: preset.typicalSk3Mva,
+                  hv_rx: preset.typicalRX,
+                  busbar_system: preset.busbarSystem,
+                  applied_preset: preset.id,
+                },
+              }
+            : s,
+        ),
+      }),
+      [gpzRef],
+    );
+    setFormMeta((m) => ({
+      ...m,
+      hvShortCircuitMva: preset.typicalSk3Mva,
+      hvRX: preset.typicalRX,
+      busbarSystem: preset.busbarSystem,
+    }));
+    /* Apply transformator z preset'a */
+    const spec = getHvTransformerById(preset.transformerCatalogId);
+    if (spec && eng.transformers.length > 0) {
+      patchSnapshot(
+        (snap) => ({
+          ...snap,
+          transformers: (snap.transformers ?? []).map((t) =>
+            (snap.substations ?? []).find((s) => s.ref_id === gpzRef)?.transformer_refs?.includes(t.ref_id)
+              ? {
+                  ...t,
+                  name: spec.designation,
+                  sn_mva: spec.snMva,
+                  uhv_kv: spec.uhvKv,
+                  ulv_kv: spec.ulvKv,
+                  uk_percent: spec.ukPercent,
+                  pk_kw: spec.pcuKw,
+                  vector_group: spec.vectorGroup,
+                  catalog_ref: spec.id,
+                }
+              : t,
+          ),
+        }),
+        [gpzRef, ...eng.transformers.map((t) => t.ref_id)],
+      );
+    }
+    notify(
+      `Zastosowano preset "${preset.label}". S''k=${preset.typicalSk3Mva} MVA, R/X=${preset.typicalRX}, system szyn=${preset.busbarSystem}. ${spec ? `Transformatory: ${spec.designation}.` : ''} Wyniki obliczeń unieważnione.`,
+      'success',
+    );
+  }, [gpzRef, patchSnapshot, eng.transformers]);
 
   /* Apply transformer catalog → wszystkie transformatory GPZ */
   const applyCatalogToAll = useCallback((catalogId: string) => {
@@ -482,9 +561,35 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
           </div>
         )}
 
-        {/* === KARTA 3: TRANSFORMATOR Z KATALOGU === */}
+        {/* === KARTA 3: TRANSFORMATOR Z KATALOGU + PRESETY === */}
         {activeCard === 'transformer' && (
           <div data-testid="gpz-card-content-transformer" className="space-y-3">
+            {/* R39: Quick Presets — atomic configuration GPZ */}
+            <div className="rounded border border-scada-sn bg-scada-sn/10 p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-scada-sn">
+                ⚡ Quick Presety GPZ — atomic configuration
+              </div>
+              <div className="mt-1 text-xs text-scada-muted">
+                Wybierz typ obszaru, formularz wypełni S''k + R/X + system szyn + transformator.
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
+                {GPZ_PRESETS.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => applyPreset(p.id)}
+                    data-testid={`gpz-preset-${p.id}`}
+                    className="rounded border border-scada-border bg-scada-surface p-2 text-left text-xs hover:border-scada-sn hover:bg-scada-sn/5"
+                  >
+                    <div className="font-semibold text-scada-text">{p.label}</div>
+                    <div className="mt-1 text-scada-muted">{p.description}</div>
+                    <div className="mt-1 text-[10px] uppercase tracking-wider text-scada-sn">
+                      {p.locationTag} · {p.useCase}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="rounded border border-scada-border bg-scada-surface p-3">
               <div className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
                 Katalog HV transformatorów
@@ -671,17 +776,118 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
         )}
       </div>
 
-      {/* Completeness footer */}
-      <div className="border-t border-scada-border p-3 text-xs">
-        <div className="font-semibold text-scada-muted">Kompletność danych GPZ:</div>
-        <ul className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5">
+      {/* R38: Engineer Assistant Panel (sticky bottom) */}
+      <EngineerAssistantPanel
+        suggestions={suggestions}
+        completenessChecks={completenessChecks}
+        onJumpTo={(tab) => setActiveCard(tab)}
+      />
+    </div>
+  );
+}
+
+/* =============================================================================
+   Engineer Assistant Panel (R38)
+   ============================================================================= */
+
+interface EngineerAssistantPanelProps {
+  readonly suggestions: readonly GpzSuggestion[];
+  readonly completenessChecks: ReadonlyArray<{ label: string; done: boolean }>;
+  readonly onJumpTo: (tab: GpzCardId) => void;
+}
+
+const LEVEL_ICON: Record<SuggestionLevel, string> = {
+  blocker: '🔴',
+  warning: '🟡',
+  suggestion: '🔵',
+  info: '✅',
+};
+
+const LEVEL_TEXT_CLASS: Record<SuggestionLevel, string> = {
+  blocker: 'text-red-400',
+  warning: 'text-amber-400',
+  suggestion: 'text-blue-400',
+  info: 'text-green-400',
+};
+
+function EngineerAssistantPanel({ suggestions, completenessChecks, onJumpTo }: EngineerAssistantPanelProps): JSX.Element {
+  const blockerCount = suggestions.filter((s) => s.level === 'blocker').length;
+  const warningCount = suggestions.filter((s) => s.level === 'warning').length;
+  const suggestionCount = suggestions.filter((s) => s.level === 'suggestion').length;
+  const doneCount = completenessChecks.filter((c) => c.done).length;
+  const isComplete = blockerCount === 0 && warningCount === 0 && doneCount === completenessChecks.length;
+  return (
+    <div data-testid="gpz-engineer-assistant" className="border-t border-scada-border bg-scada-bg p-3 text-xs">
+      {/* Header */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+          🛠 Asystent inżyniera projektanta
+        </div>
+        <div className="flex gap-2 text-[10px]">
+          <span className="text-red-400">{blockerCount} 🔴</span>
+          <span className="text-amber-400">{warningCount} 🟡</span>
+          <span className="text-blue-400">{suggestionCount} 🔵</span>
+          <span className="text-scada-muted">|</span>
+          <span className="text-scada-text">{doneCount}/{completenessChecks.length} kompletnych</span>
+        </div>
+      </div>
+      {/* All complete celebration */}
+      {isComplete && suggestions.length === 1 && suggestions[0].level === 'info' && (
+        <div data-testid="gpz-assistant-complete" className="rounded border border-green-500 bg-green-900/20 p-2 text-green-300">
+          ✅ GPZ jest kompletny inżyniersko. Możesz uruchomić obliczenia z E-23 (Krótkie zwarcie) lub E-24 (Power Flow).
+        </div>
+      )}
+      {/* Suggestions list */}
+      {suggestions.length > 0 && !(isComplete && suggestions.length === 1) && (
+        <ul className="space-y-1.5" data-testid="gpz-assistant-suggestions">
+          {suggestions.slice(0, 6).map((s, idx) => (
+            <li
+              key={idx}
+              data-testid={`gpz-assistant-suggestion-${s.level}-${idx}`}
+              className="flex items-start gap-2 rounded border border-scada-border bg-scada-surface p-2"
+            >
+              <span className="text-base leading-none">{LEVEL_ICON[s.level]}</span>
+              <div className="flex-1">
+                <div className={`font-semibold ${LEVEL_TEXT_CLASS[s.level]}`}>{s.title}</div>
+                <div className="mt-0.5 text-[10.5px] text-scada-muted">{s.description}</div>
+                <div className="mt-1 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onJumpTo(s.tab)}
+                    data-testid={`gpz-assistant-jumpto-${s.tab}`}
+                    className="rounded border border-scada-sn px-2 py-0.5 text-[10px] text-scada-sn hover:bg-scada-sn hover:text-white"
+                  >
+                    Przejdź do karty: {CARD_LABELS[s.tab]}
+                  </button>
+                  {s.quickAction && (
+                    <span className="text-[10px] text-scada-muted">
+                      💡 {s.quickAction.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+          {suggestions.length > 6 && (
+            <li className="text-[10px] text-scada-muted">
+              ... i {suggestions.length - 6} więcej sugestii
+            </li>
+          )}
+        </ul>
+      )}
+      {/* Completeness checklist (kondensowana) */}
+      <details className="mt-3">
+        <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
+          Pełna lista kompletności ({doneCount}/{completenessChecks.length})
+        </summary>
+        <ul className="mt-2 grid grid-cols-2 gap-x-4 gap-y-0.5">
           {completenessChecks.map((c, idx) => (
             <li key={idx} className={c.done ? 'text-green-400' : 'text-amber-400'}>
               {c.done ? '✓' : '○'} {c.label}
             </li>
           ))}
         </ul>
-      </div>
+      </details>
     </div>
   );
 }
