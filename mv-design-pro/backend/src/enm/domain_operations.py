@@ -40,6 +40,7 @@ CANONICAL_OPS = frozenset(
         "insert_station_on_segment_sn",
         "insert_branch_pole_on_segment_sn",
         "insert_zksn_on_segment_sn",
+        "insert_joint_on_segment_sn",
         "start_branch_segment_sn",
         "insert_section_switch_sn",
         "connect_secondary_ring_sn",
@@ -3174,6 +3175,11 @@ def _insert_branch_point_on_segment_sn(
             "ZKSN można osadzić wyłącznie na odcinku kablowym.",
             "branch_point.invalid_parent_medium",
         )
+    if branch_point_type == "joint" and seg_type != "cable":
+        return _error_response(
+            "Mufę kablową można osadzić wyłącznie na odcinku kablowym.",
+            "branch_point.invalid_parent_medium",
+        )
 
     bp_catalog_ref = _require_catalog_ref(
         payload_ref=payload.get("catalog_ref"),
@@ -3351,6 +3357,17 @@ def insert_branch_pole_on_segment_sn(
 
 def insert_zksn_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     return _insert_branch_point_on_segment_sn(enm, payload, branch_point_type="zksn")
+
+
+def insert_joint_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Wstawia mufę kablową na odcinku SN (cable only).
+
+    Mufa = punkt łączenia dwóch kabli (bez rozgałęzienia, branch_ports_count=0).
+    Topologicznie odcinek A-B → A-X + X-B z mufą w X.
+
+    Phase 0C compatible: rozcięcie odcinka + invalidacja wyników (Inv 4).
+    """
+    return _insert_branch_point_on_segment_sn(enm, payload, branch_point_type="joint")
 
 
 # ---------------------------------------------------------------------------
@@ -5678,6 +5695,7 @@ _HANDLERS: dict[str, Any] = {
     "insert_station_on_segment_sn": insert_station_on_segment_sn,
     "insert_branch_pole_on_segment_sn": insert_branch_pole_on_segment_sn,
     "insert_zksn_on_segment_sn": insert_zksn_on_segment_sn,
+    "insert_joint_on_segment_sn": insert_joint_on_segment_sn,
     "start_branch_segment_sn": start_branch_segment_sn,
     "insert_section_switch_sn": insert_section_switch_sn,
     "connect_secondary_ring_sn": connect_secondary_ring_sn,

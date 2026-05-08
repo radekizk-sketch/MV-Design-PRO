@@ -9,15 +9,17 @@
  *   - Steps: Identyfikacja | Pola+aparatura | TR | nN | DER | Zabezpieczenia
  *            | Powiązania | Gotowość
  *   - Stepy opcjonalne (TR/nN/DER) z przyciskiem "Pomiń"
- *   - Save = patchSnapshot atomowo dla całego drafta (R46)
- *     [executeDomainOperation('create-station-complete') wymagany backend
- *      operation; tymczasowo używamy patchSnapshot dla UI parity]
+ *   - Save (Step 8): hierarchia 2-stopniowa per Zasada 6:
+ *     1) executeDomainOperation('create_station_complete' / 'update_station_complete')
+ *        — backend op implementowany w R49 (snake_case naming)
+ *     2) Fallback: synthesizeStationEnm + patchSnapshot lokalnie (R48) gdy
+ *        backend niedostępny lub brak activeCaseId
  *   - Edycja: mode='edit', skok do dowolnego stepu
  *
  * Każde pole:
  *   - data-testid = "wizard-{step}-{field}"
  *   - onChange → setDraft (lokalny state)
- *   - Save (Step 8) → patchSnapshot(draft) + Inv 4 invalidate
+ *   - Save (Step 8) → executeDomainOperation lub fallback patchSnapshot + Inv 4 invalidate
  *
  * Brak dead clicks:
  *   - "Wstecz" / "Dalej" / "Pomiń" / "Zapisz i utwórz" — wszystkie z handlerami

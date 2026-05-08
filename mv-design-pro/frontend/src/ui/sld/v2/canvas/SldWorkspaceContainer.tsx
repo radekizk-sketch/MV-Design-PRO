@@ -40,6 +40,30 @@ import { TransformerEditModal, type TransformerData } from '../modals/Transforme
 import { CouplerEditModal, type CouplerData } from '../modals/CouplerEditModal';
 import { ApparatusStateModal, type ApparatusStateData } from '../modals/ApparatusStateModal';
 import { AddApparatusModal, type AddApparatusData, type ApparatusKind } from '../modals/AddApparatusModal';
+import {
+  AppendStationModal,
+  type AppendStationFormData,
+  type AppendStationModalContext,
+} from '../modals/AppendStationModal';
+import {
+  ConsciousSplitModal,
+  type ConsciousSplitFormData,
+  type ConsciousSplitModalContext,
+} from '../modals/ConsciousSplitModal';
+import type { SplitElectricalImpact } from '../workflow/ConsciousSplitController';
+import {
+  DeleteConfirmModal,
+  type DeletableKind,
+  type DeleteConfirmModalContext,
+} from '../modals/DeleteConfirmModal';
+import {
+  SegmentInsertModal,
+  type SegmentInsertFormData,
+  type SegmentInsertModalContext,
+  type SegmentInsertObjectKind,
+  SEGMENT_INSERT_BACKEND_OPS,
+  SEGMENT_INSERT_LABELS_PL,
+} from '../modals/SegmentInsertModal';
 import { AnonymizationProvider } from '../anonymization/AnonymizationProvider';
 import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
 import {
@@ -196,41 +220,26 @@ const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'open-fw-config': 'E-23',
   'show-frt-hvrt': 'E-26',
   'show-ncrfg': 'E-26',
+  // R61: pozostałe akcje menu → konfiguratory (operacje wykonywane w ich UI):
+  'insert-gpz': 'E-10',          // Konfigurator GPZ (mode=create) → add_grid_source_sn
+  'add-section': 'E-10',         // GPZ Konfigurator → karta "Sekcje" → add_gpz_section
+  'add-bay': 'E-13',             // Stacja Konfigurator → kreator pól → add_sn_bay
+  'extend-trunk': 'E-12',        // Konfigurator odcinka — kontynuacja ciągu z bay endpoint
+  'continue-trunk': 'E-12',      // Konfigurator odcinka — kontynuacja ciągu ze stacji
+  'start-branch': 'E-12',        // Konfigurator odcinka — start odgałęzienia
+  'add-load': 'E-13',            // Stacja Konfigurator → karta "Strona nN" → add_nn_load
+  'show-measurements': 'E-29',   // Pomiary i telemetria pola
 };
 
-/** Akcje, które są zaplanowane w kolejnych etapach roadmapy — toast informacyjny. */
+/** Akcje z odsyłaczem do innego ekranu / konfiguratora — toast informacyjny.
+ *  Te akcje SĄ dostępne, ale nie z menu kontekstowego — wymagają nawigacji
+ *  do konkretnego konfiguratora. Hint kieruje operatora gdzie iść. */
 const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
-  'insert-gpz': 'Wstawianie Głównego Punktu Zasilającego: Etap 6 roadmapy (insert tool). Tymczasowo użyj operacji domenowej add_grid_source_sn z panelu ENM.',
-  'add-section': 'Dodawanie sekcji rozdzielni SN: Etap 4 roadmapy (sieć terenowa).',
-  'add-bay': 'Dodawanie pola SN: Etap 4 roadmapy.',
-  'extend-trunk': 'Wyprowadzanie ciągu głównego: Etap 4 roadmapy.',
-  'start-branch': 'Rozpoczynanie odgałęzienia: Etap 4 roadmapy.',
-  'insert-station': 'Wstawianie stacji transformatorowej: Etap 4 roadmapy.',
-  'insert-zksn': 'Wstawianie złącza kablowego SN: Etap 4 roadmapy.',
-  'insert-sectional': 'Wstawianie łącznika sekcyjnego: Etap 4 roadmapy.',
-  'insert-joint': 'Wstawianie mufy kablowej: Etap 4 roadmapy.',
-  'insert-pole': 'Wstawianie słupa rozgałęźnego: Etap 4 roadmapy.',
   'add-source': 'Wybór rodzaju DER (PV/BESS/FW) odbywa się w karcie "Źródła i magazyny" konfiguratora stacji E-13.',
-  'add-load': 'Dodawanie obciążenia nN: Etap 4 roadmapy.',
-  'continue-trunk': 'Kontynuacja ciągu głównego: Etap 4 roadmapy.',
-  'set-switch-state': 'Zmiana stanu łącznika: Etap 6 roadmapy.',
-  'show-measurements': 'Podgląd pomiarów pola: Etap 7 roadmapy.',
   'show-sc-source': 'Dane zwarciowe źródła GPZ: dostępne w karcie "Strona 110 kV" konfiguratora GPZ (E-10).',
   'show-sc-data': 'Dane zwarciowe sekcji: dostępne w konfiguratorze GPZ (E-10) → "Strona 110 kV".',
   'change-family-to-overhead': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
   'change-family-to-cable': 'Zmiana rodziny: użyj konfiguratora odcinka (E-12) → karta "Identyfikacja & rodzina".',
-  'delete-bay': 'Usuwanie pola SN: Etap 4 roadmapy.',
-  'delete-segment': 'Usuwanie odcinka: Etap 4 roadmapy.',
-  'delete-station': 'Usuwanie stacji: Etap 4 roadmapy.',
-  'delete-pv': 'Usuwanie źródła PV: Etap 5 roadmapy.',
-  'delete-bess': 'Usuwanie BESS: Etap 5 roadmapy.',
-  'delete-fw': 'Usuwanie farmy wiatrowej: Etap 5 roadmapy.',
-  /* Phase 0B/0C operator-grade SLD: backend operacje gotowe (44 testy zielone),
-     workflow controllery istnieją (AppendOnEndpointController, ConsciousSplitController,
-     WorkflowOrchestrator), ale UI ghost-preview + modal pickera nie są jeszcze
-     zintegrowane z menu kontekstowym. Phase 3 polish dokończy integrację. */
-  'append-station-on-endpoint': 'Zakończ ciąg w stacji: backend gotowy (append_station_on_endpoint), UI integracji ghost-preview brakuje. Tymczasowo użyj operacji domenowej z panelu ENM.',
-  'conscious-split-on-segment': 'Świadomy podział odcinka: backend gotowy (insert_station_on_segment_sn z dry_run), UI integracji preview elektrycznego brakuje. Tymczasowo użyj insert-station bez preview.',
 };
 
 export interface SldWorkspaceContainerProps {
@@ -346,6 +355,26 @@ function SldWorkspaceContainerInner(
    * Otwierany przez context menu pola → 'configure-cts-vts'. */
   const [addApparatusModalState, setAddApparatusModalState] = useState<{ open: boolean; data: AddApparatusData | null }>(
     { open: false, data: null },
+  );
+  /* R61 Phase 0B: AppendStationModal — zakończ ciąg w stacji.
+   * Otwierany przez context menu pola na free endpoint → 'append-station-on-endpoint'. */
+  const [appendModalState, setAppendModalState] = useState<{ open: boolean; context: AppendStationModalContext | null }>(
+    { open: false, context: null },
+  );
+  /* R61 Phase 0C: ConsciousSplitModal — świadomy podział odcinka SN.
+   * Otwierany przez context menu odcinka → 'conscious-split-on-segment'. */
+  const [splitModalState, setSplitModalState] = useState<{ open: boolean; context: ConsciousSplitModalContext | null }>(
+    { open: false, context: null },
+  );
+  /* R61: DeleteConfirmModal — potwierdzenie usunięcia obiektu.
+   * Otwierany przez delete-bay/segment/station/pv/bess/fw. */
+  const [deleteModalState, setDeleteModalState] = useState<{ open: boolean; context: DeleteConfirmModalContext | null }>(
+    { open: false, context: null },
+  );
+  /* R61: SegmentInsertModal — wstawia ZKSN/łącznik/mufę/słup na odcinku SN.
+   * Otwierany przez insert-zksn/sectional/joint/pole. */
+  const [segmentInsertModalState, setSegmentInsertModalState] = useState<{ open: boolean; context: SegmentInsertModalContext | null }>(
+    { open: false, context: null },
   );
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
@@ -713,19 +742,200 @@ function SldWorkspaceContainerInner(
         return;
       }
 
-      // 2) Akcje roadmapowe — toast informacyjny z dokładną etapowością.
+      /* R61 Phase 0B: 'append-station-on-endpoint' z menu pola SN
+       * (free endpoint) → otwiera AppendStationModal.
+       * Modal po submit wywołuje executeDomainOperation('append_station_on_endpoint', payload). */
+      if (actionId === 'append-station-on-endpoint' && kind === 'bay' && elementId && snapshot) {
+        const bay = (snapshot.bays ?? []).find((b) => b.ref_id === elementId);
+        if (!bay) {
+          notify(`Pole '${elementId}' nie znalezione w modelu.`, 'warning');
+          return;
+        }
+        /* Endpoint bus = bus_ref pola (szyna na której kończy się ciąg). */
+        const endpointBusRef = bay.bus_ref ?? '';
+        if (!endpointBusRef) {
+          notify(`Pole '${bay.bay_number ?? elementId}' nie ma szyny — nie można dodać stacji.`, 'warning');
+          return;
+        }
+        const snVoltageKv = findBusVoltage(snapshot, endpointBusRef) ?? 15;
+        setAppendModalState({
+          open: true,
+          context: {
+            endpointBusRef,
+            bayRef: bay.ref_id,
+            snVoltageKv,
+            /* run_ref nie jest first-class polem Bay; backend wnioskuje
+               z endpoint_bus_ref + topologii. Pole opcjonalne. */
+            runRef: null,
+          },
+        });
+        return;
+      }
+
+      /* R61: DELETE actions (6 menu items) — wszystkie wywołują delete_element. */
+      if (
+        (actionId === 'delete-bay' && kind === 'bay')
+        || (actionId === 'delete-segment' && (kind === 'cable_segment_sn' || kind === 'overhead_line_sn'))
+        || (actionId === 'delete-station' && kind === 'station')
+        || (actionId === 'delete-pv' && kind === 'der_pv')
+        || (actionId === 'delete-bess' && kind === 'der_bess')
+        || (actionId === 'delete-fw' && kind === 'der_fw')
+      ) {
+        if (!elementId || !snapshot) {
+          notify(`Brak ref obiektu do usunięcia.`, 'warning');
+          return;
+        }
+        const deleteKindMap: Record<string, DeletableKind> = {
+          'delete-bay': 'bay',
+          'delete-segment': 'segment',
+          'delete-station': 'station',
+          'delete-pv': 'der_pv',
+          'delete-bess': 'der_bess',
+          'delete-fw': 'der_fw',
+        };
+        const deletableKind = deleteKindMap[actionId];
+        /* Określ display name z snapshotu. */
+        let displayName = elementId;
+        let cascadeRefs: string[] = [];
+        if (deletableKind === 'bay') {
+          const bay = (snapshot.bays ?? []).find((b) => b.ref_id === elementId);
+          displayName = bay?.bay_number ?? bay?.feeder_short_name ?? bay?.name ?? elementId;
+        } else if (deletableKind === 'segment') {
+          const branch = (snapshot.branches ?? []).find((b) => b.ref_id === elementId);
+          displayName = branch?.name ?? elementId;
+        } else if (deletableKind === 'station') {
+          const station = (snapshot.substations ?? []).find((s) => s.ref_id === elementId);
+          displayName = station?.name ?? elementId;
+          /* Cascade dla stacji: wszystkie pola + transformatory + szyny.
+           * bays NIE są first-class polem Substation — discoverujemy po substation_ref. */
+          if (station) {
+            const stationBayRefs = (snapshot.bays ?? [])
+              .filter((b) => b.substation_ref === station.ref_id)
+              .map((b) => b.ref_id);
+            cascadeRefs = [
+              ...stationBayRefs,
+              ...(station.transformer_refs ?? []),
+              ...(station.bus_refs ?? []),
+            ];
+          }
+        } else {
+          /* DER. */
+          const gen = (snapshot.generators ?? []).find((g) => g.ref_id === elementId);
+          displayName = gen?.name ?? elementId;
+        }
+        setDeleteModalState({
+          open: true,
+          context: {
+            elementRef: elementId,
+            elementKind: deletableKind,
+            displayName,
+            cascadeRefs,
+          },
+        });
+        return;
+      }
+
+      /* R61: INSERT-ON-SEGMENT actions (4 menu items) — open SegmentInsertModal.
+       * Wszystkie wywołują _insert_branch_point_on_segment_sn (lub similar) backend op. */
+      if (
+        (actionId === 'insert-zksn' && kind === 'cable_segment_sn')
+        || (actionId === 'insert-joint' && kind === 'cable_segment_sn')
+        || (actionId === 'insert-sectional' && (kind === 'cable_segment_sn' || kind === 'overhead_line_sn'))
+        || (actionId === 'insert-pole' && kind === 'overhead_line_sn')
+      ) {
+        if (!elementId || !snapshot) {
+          notify(`Brak referencji odcinka.`, 'warning');
+          return;
+        }
+        const branch = (snapshot.branches ?? []).find((b) => b.ref_id === elementId);
+        if (!branch) {
+          notify(`Odcinek '${elementId}' nie znaleziony.`, 'warning');
+          return;
+        }
+        const isLineOrCable = branch.type === 'line_overhead' || branch.type === 'cable';
+        if (!isLineOrCable) {
+          notify(`Odcinek '${elementId}' nie jest typu liniowego.`, 'warning');
+          return;
+        }
+        const lineBranch = branch as { length_km: number; from_bus_ref?: string; to_bus_ref?: string; ref_id: string };
+        if ((lineBranch.length_km ?? 0) <= 0) {
+          notify(`Odcinek '${elementId}' ma zerową długość.`, 'warning');
+          return;
+        }
+        const objectKindMap: Record<string, SegmentInsertObjectKind> = {
+          'insert-zksn': 'zksn',
+          'insert-sectional': 'sectional',
+          'insert-joint': 'joint',
+          'insert-pole': 'pole',
+        };
+        setSegmentInsertModalState({
+          open: true,
+          context: {
+            segmentRef: lineBranch.ref_id,
+            fromBusRef: lineBranch.from_bus_ref ?? '',
+            toBusRef: lineBranch.to_bus_ref ?? '',
+            lengthKm: lineBranch.length_km,
+            objectKind: objectKindMap[actionId],
+          },
+        });
+        return;
+      }
+
+      /* R61 Phase 0C: 'conscious-split-on-segment' i legacy 'insert-station' z menu
+       * odcinka SN (cable lub overhead line) → otwiera ConsciousSplitModal.
+       * Oba akcje wywołują ten sam backend operation insert_station_on_segment_sn.
+       * Modal po preview wywołuje executeDomainOperation z dry_run=true,
+       * po commit z dry_run=false. */
+      if ((actionId === 'conscious-split-on-segment' || actionId === 'insert-station')
+          && elementId && snapshot
+          && (kind === 'cable_segment_sn' || kind === 'overhead_line_sn')) {
+        const branch = (snapshot.branches ?? []).find((b) => b.ref_id === elementId);
+        if (!branch) {
+          notify(`Odcinek '${elementId}' nie znaleziony w modelu.`, 'warning');
+          return;
+        }
+        /* length_km jest tylko na OverheadLine i Cable (nie na SwitchBranch/FuseBranch). */
+        const isLineOrCable = branch.type === 'line_overhead' || branch.type === 'cable';
+        if (!isLineOrCable) {
+          notify(`Odcinek '${elementId}' nie jest typu liniowego (kabel/napowietrzny) — podział niemożliwy.`, 'warning');
+          return;
+        }
+        const lineBranch = branch as { length_km: number; from_bus_ref?: string; to_bus_ref?: string; ref_id: string };
+        const lengthKm = lineBranch.length_km ?? 0;
+        if (lengthKm <= 0) {
+          notify(`Odcinek '${elementId}' ma zerową długość — podział niemożliwy.`, 'warning');
+          return;
+        }
+        const fromBusRef = lineBranch.from_bus_ref ?? '';
+        const toBusRef = lineBranch.to_bus_ref ?? '';
+        const snVoltageKv = findBusVoltage(snapshot, fromBusRef) ?? findBusVoltage(snapshot, toBusRef) ?? 15;
+        setSplitModalState({
+          open: true,
+          context: {
+            segmentRef: lineBranch.ref_id,
+            segmentType: kind === 'cable_segment_sn' ? 'cable' : 'line_overhead',
+            fromBusRef,
+            toBusRef,
+            lengthKm,
+            snVoltageKv,
+          },
+        });
+        return;
+      }
+
+      // 2) Akcje z odsyłaczem do innego ekranu — informacja gdzie iść.
       const hint = ACTION_ROADMAP_HINT_PL[actionId];
       if (hint) {
         notify(hint, 'info');
         return;
       }
 
-      // 5) Fallback — komunikat ogólny (nie powinien wystąpić, ale gwarantuje brak dead click).
-      notify(`Akcja "${actionId}" nie jest jeszcze dostępna w tej wersji.`, 'info');
-      // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
-      void kind;
+      // 3) Fallback — generic dead-click guard (nie powinien się zdarzyć dla
+      //    akcji z SLD_MENU_REGISTRY; jeśli się zdarzy, oznacza brak handlera
+      //    dla nowo dodanej akcji menu — bug do naprawy).
+      notify(`Akcja "${actionId}" (${kind}) nie ma przypisanego handlera.`, 'warning');
     },
-    [openRouteSurface, readOnly],
+    [openRouteSurface, readOnly, snapshot, activeCaseId, executeDomainOperation, patchSnapshot],
   );
 
   // Toast feedback z bus'a (informacja zwrotna z poziomu menu).
@@ -1169,6 +1379,251 @@ function SldWorkspaceContainerInner(
               );
             }
             setApparatusStateModalState({ open: false, data: null });
+          }}
+        />
+      )}
+
+      {/* R61 Phase 0B: AppendStationModal — zakończ ciąg w stacji.
+       * Backend operation: append_station_on_endpoint. Tworzy nową stację +
+       * pin port wejściowy SN do endpoint busa. Invaliduje run + powiązane wyniki. */}
+      {appendModalState.open && appendModalState.context && (
+        <AppendStationModal
+          isOpen={appendModalState.open}
+          context={appendModalState.context}
+          onClose={() => setAppendModalState({ open: false, context: null })}
+          onSubmit={async (form: AppendStationFormData) => {
+            const ctx = appendModalState.context;
+            if (!ctx) return;
+            if (!activeCaseId) {
+              notify('Brak aktywnego zakresu obliczeń (case). Ustaw aktywny case w kontekście projektu.', 'warning');
+              return;
+            }
+            const payload: Record<string, unknown> = {
+              endpoint_bus_ref: ctx.endpointBusRef,
+              station: {
+                name: form.stationName,
+                station_type: form.stationType,
+                nn_voltage_kv: form.nnVoltageKv,
+              },
+              nn_voltage_kv: form.nnVoltageKv,
+            };
+            if (ctx.runRef) payload.run_ref = ctx.runRef;
+            if (form.transformerCatalogRef.trim()) {
+              payload.transformer = {
+                transformer_catalog_ref: form.transformerCatalogRef.trim(),
+              };
+            }
+            try {
+              await executeDomainOperation(activeCaseId, 'append_station_on_endpoint', payload);
+              notify(
+                `Utworzono stację '${form.stationName}' na końcu ciągu (port wejściowy SN przypięty do ${ctx.endpointBusRef}). Wyniki obliczeń ciągu unieważnione.`,
+                'success',
+              );
+              setAppendModalState({ open: false, context: null });
+            } catch (e) {
+              notify(
+                `Błąd tworzenia stacji: ${(e as Error).message}`,
+                'error',
+              );
+              /* Pozostaw modal otwarty — operator może poprawić dane lub anulować. */
+            }
+          }}
+        />
+      )}
+
+      {/* R61 Phase 0C: ConsciousSplitModal — świadomy podział odcinka SN.
+       * 2-stage flow: form → preview (dry_run=true z electrical_impact) → commit (dry_run=false).
+       * Backend operation: insert_station_on_segment_sn. */}
+      {splitModalState.open && splitModalState.context && (
+        <ConsciousSplitModal
+          isOpen={splitModalState.open}
+          context={splitModalState.context}
+          onClose={() => setSplitModalState({ open: false, context: null })}
+          onPreview={async (form: ConsciousSplitFormData): Promise<SplitElectricalImpact> => {
+            const ctx = splitModalState.context;
+            if (!ctx) throw new Error('Brak kontekstu modala podziału.');
+            if (!activeCaseId) throw new Error('Brak aktywnego zakresu obliczeń (case).');
+            const payload: Record<string, unknown> = {
+              segment_id: ctx.segmentRef,
+              insert_at: { mode: 'RATIO', value: form.insertAtRatio },
+              dry_run: true,
+            };
+            if (form.insertedKind === 'station') {
+              payload.station = {
+                name: form.stationName,
+                station_type: form.stationType,
+                nn_voltage_kv: form.nnVoltageKv,
+              };
+              payload.nn_voltage_kv = form.nnVoltageKv;
+              if (form.transformerCatalogRef.trim()) {
+                payload.transformer = {
+                  transformer_catalog_ref: form.transformerCatalogRef.trim(),
+                };
+              }
+            }
+            const response = await executeDomainOperation(activeCaseId, 'insert_station_on_segment_sn', payload);
+            /* Backend zwraca preview { halves, electrical_impact } w response.
+             * DomainOpResponseV1 nie zawiera tego w typie — używamy structural cast. */
+            const preview = (response as unknown as {
+              preview?: {
+                halves?: { length_km: number }[];
+                electrical_impact?: {
+                  topology_type_changed: boolean;
+                  affected_object_refs: string[];
+                  catalog_inheritance: {
+                    source_segment_ref?: string | null;
+                    source_catalog_ref?: string | null;
+                    first_inherits?: boolean;
+                    second_inherits?: boolean;
+                    rule?: string;
+                  };
+                  invalidated_results: { run_ref: string; run_kind: string; reason: string }[];
+                  affected_proof_packs: { proof_ref: string; proof_kind: string; reason: string }[];
+                  missing_data_after: string[];
+                  affected_buses: string[];
+                };
+              };
+            })?.preview;
+            if (!preview?.electrical_impact) {
+              throw new Error('Backend nie zwrócił electrical_impact w preview.');
+            }
+            const ei = preview.electrical_impact;
+            const halves = preview.halves ?? [];
+            const firstLengthKm = halves[0]?.length_km ?? form.insertAtRatio * ctx.lengthKm;
+            const secondLengthKm = halves[1]?.length_km ?? (1 - form.insertAtRatio) * ctx.lengthKm;
+            /* Mapowanie snake_case (backend) → camelCase (controller contract). */
+            return {
+              topologyTypeChanged: ei.topology_type_changed,
+              affectedObjectRefs: ei.affected_object_refs,
+              halves: {
+                firstSegmentId: null,
+                secondSegmentId: null,
+                firstLengthKm,
+                secondLengthKm,
+                splitRatio: form.insertAtRatio,
+              },
+              catalogInheritance: {
+                sourceSegmentRef: ei.catalog_inheritance.source_segment_ref ?? null,
+                sourceCatalogRef: ei.catalog_inheritance.source_catalog_ref ?? null,
+                firstInherits: ei.catalog_inheritance.first_inherits ?? false,
+                secondInherits: ei.catalog_inheritance.second_inherits ?? false,
+                rule: ei.catalog_inheritance.rule ?? '',
+              },
+              invalidatedResults: ei.invalidated_results.map((r) => ({
+                runRef: r.run_ref,
+                runKind: r.run_kind,
+                reason: r.reason,
+              })),
+              affectedProofPacks: ei.affected_proof_packs.map((p) => ({
+                proofRef: p.proof_ref,
+                proofKind: p.proof_kind,
+                reason: p.reason,
+              })),
+              missingDataAfter: ei.missing_data_after,
+              affectedBuses: ei.affected_buses,
+            };
+          }}
+          onCommit={async (form: ConsciousSplitFormData) => {
+            const ctx = splitModalState.context;
+            if (!ctx) return;
+            if (!activeCaseId) {
+              notify('Brak aktywnego zakresu obliczeń (case).', 'warning');
+              return;
+            }
+            const payload: Record<string, unknown> = {
+              segment_id: ctx.segmentRef,
+              insert_at: { mode: 'RATIO', value: form.insertAtRatio },
+            };
+            if (form.insertedKind === 'station') {
+              payload.station = {
+                name: form.stationName,
+                station_type: form.stationType,
+                nn_voltage_kv: form.nnVoltageKv,
+              };
+              payload.nn_voltage_kv = form.nnVoltageKv;
+              if (form.transformerCatalogRef.trim()) {
+                payload.transformer = {
+                  transformer_catalog_ref: form.transformerCatalogRef.trim(),
+                };
+              }
+            }
+            try {
+              await executeDomainOperation(activeCaseId, 'insert_station_on_segment_sn', payload);
+              notify(
+                `Podzielono odcinek '${ctx.segmentRef}' i wstawiono ${form.insertedKind === 'station' ? `stację '${form.stationName}'` : form.insertedKind}. Wyniki obliczeń odcinka unieważnione.`,
+                'success',
+              );
+              setSplitModalState({ open: false, context: null });
+            } catch (e) {
+              notify(
+                `Błąd podziału odcinka: ${(e as Error).message}`,
+                'error',
+              );
+            }
+          }}
+        />
+      )}
+
+      {/* R61: DeleteConfirmModal — uniwersalny modal potwierdzenia usunięcia.
+       * Backend: delete_element. Cascade delete + Inv 4 invalidate. */}
+      {deleteModalState.open && deleteModalState.context && (
+        <DeleteConfirmModal
+          isOpen={deleteModalState.open}
+          context={deleteModalState.context}
+          onClose={() => setDeleteModalState({ open: false, context: null })}
+          onConfirm={async (elementRef: string) => {
+            if (!activeCaseId) {
+              notify('Brak aktywnego zakresu obliczeń (case).', 'warning');
+              return;
+            }
+            const ctx = deleteModalState.context;
+            if (!ctx) return;
+            try {
+              await executeDomainOperation(activeCaseId, 'delete_element', {
+                element_ref: elementRef,
+              });
+              notify(
+                `Usunięto ${ctx.displayName} (${ctx.elementRef}). Wyniki obliczeń unieważnione.`,
+                'success',
+              );
+              setDeleteModalState({ open: false, context: null });
+            } catch (e) {
+              notify(`Błąd usunięcia: ${(e as Error).message}`, 'error');
+            }
+          }}
+        />
+      )}
+
+      {/* R61: SegmentInsertModal — wstawia ZKSN/łącznik/mufę/słup na odcinku.
+       * Backend: insert_zksn/_section_switch/_joint/_branch_pole_on_segment_sn. */}
+      {segmentInsertModalState.open && segmentInsertModalState.context && (
+        <SegmentInsertModal
+          isOpen={segmentInsertModalState.open}
+          context={segmentInsertModalState.context}
+          onClose={() => setSegmentInsertModalState({ open: false, context: null })}
+          onSubmit={async (form: SegmentInsertFormData) => {
+            const ctx = segmentInsertModalState.context;
+            if (!ctx) return;
+            if (!activeCaseId) {
+              notify('Brak aktywnego zakresu obliczeń (case).', 'warning');
+              return;
+            }
+            const opName = SEGMENT_INSERT_BACKEND_OPS[ctx.objectKind];
+            const objectLabel = SEGMENT_INSERT_LABELS_PL[ctx.objectKind];
+            try {
+              await executeDomainOperation(activeCaseId, opName, {
+                segment_id: ctx.segmentRef,
+                insert_at: { mode: 'RATIO', value: form.insertAtRatio },
+                name: form.objectName,
+              });
+              notify(
+                `Wstawiono ${objectLabel} '${form.objectName}' na odcinku '${ctx.segmentRef}'. Odcinek podzielony, wyniki unieważnione.`,
+                'success',
+              );
+              setSegmentInsertModalState({ open: false, context: null });
+            } catch (e) {
+              notify(`Błąd wstawienia ${objectLabel}: ${(e as Error).message}`, 'error');
+            }
           }}
         />
       )}
