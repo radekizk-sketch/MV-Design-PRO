@@ -5183,7 +5183,7 @@ def create_station_complete(enm: dict[str, Any], payload: dict[str, Any]) -> dic
       - bays nieempty (przynajmniej 1)
       - przynajmniej 1 bay z role LINE_FULL (inflow path)
       - jeśli has_transformer → has_lv_side też (transformator wymaga LV bus)
-      - jeśli DER → pcc_ref required (Zasada DER PCC blocker)
+      - jeśli DER → pcc_ref required (walidacja punktu przyłączenia)
 
     Determinizm: ref_id z deterministycznego seed = station.ref_id || name + timestamp.
     """
@@ -5241,7 +5241,7 @@ def create_station_complete(enm: dict[str, Any], payload: dict[str, Any]) -> dic
     if has_der:
         if not der_payload.get("pcc_ref"):
             return _error_response(
-                "DER bez PCC ref — wymagane wybranie punktu przyłączenia (szyna).",
+                "DER bez wskazanego punktu przyłączenia (pcc_ref) — wymagana referencja do szyny.",
                 "station.create.der_pcc_missing",
             )
         der_variant_raw = der_payload.get("connection_variant")
