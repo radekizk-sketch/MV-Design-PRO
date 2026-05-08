@@ -48,28 +48,31 @@ Przed implementacją przeczytaj (bez modyfikacji):
 
 ---
 
-## NIEZMIENNE ZASADY UX (12 zasad)
+## NIEZMIENNE ZASADY UX (13 zasad)
 
 ### Zasada 1 — Jedna główna ścieżka pracy
 
 Główna ścieżka inżyniera ma być jawna i widoczna jako breadcrumb + progress bar:
 
 ```
-1. Projekt
-   └─ 2. Dane wejściowe (GPZ, sieć, stacje)
-          └─ 3. Parametry normowe (Sk'', c-max/min, częstotliwość)
-                 └─ 4. Topologia (SLD, ciągi, sprzęgła, NOP)
-                        └─ 5. Aparatura (CB/DS/CT/VT per pole)
-                               └─ 6. Zabezpieczenia
-                                      └─ 7. Obliczenia (E-23 SC, load flow)
-                                             └─ 8. Wyniki + Proof Packs
-                                                    └─ 9. Raport (PDF/DOCX)
+1. Projekt (nazwa + standard normowy)
+   └─ 2. GPZ (wizard: identyfikacja → strona 110 kV → trafa → sekcje SN → gotowość)
+          └─ 3. Sieć — rysowanie ciągów + wstawianie KOMPLETNYCH stacji
+                 (każda stacja = wizard: typ → pola+aparatura → TR → nN → DER → 
+                  zabezpieczenia hint → powiązania → gotowość)
+                        └─ 4. Zabezpieczenia (pełna koordynacja TCC, selektywność)
+                               └─ 5. Obliczenia (E-23 SC, load flow)
+                                      └─ 6. Wyniki + dobór aparatury (Proof Packs)
+                                             └─ 7. Korekty (jeśli dobór nie pasuje)
+                                                    └─ 8. Raport (PDF/DOCX)
 ```
 
 Każdy krok musi mieć:
 - `entry_condition`: co musi być spełnione żeby wejść
 - `exit_condition`: co musi być zrobione żeby przejść dalej
 - `blocking_badge`: co blokuje przejście (widoczny w UI, nie ukryty w konsoli)
+
+**KLUCZOWA RÓŻNICA vs. typowe systemy:** Krok 3 NIE jest „dodaj stację, potem skonfiguruj pola, potem skonfiguruj aparaturę, potem dodaj DER". Krok 3 jest **JEDNYM przepływem** w którym wstawiana stacja od razu jest pełną stacją z aparaturą i DER. Inżynier projektujący nie cofa się do „skonfiguruj pole" jeśli ma cały czas w głowie kontekst tej stacji.
 
 ### Zasada 2 — Panel lewy = drzewo nawigacji, nie lista plików
 
@@ -178,9 +181,38 @@ Trzy hashe muszą być zawsze rozdzielone:
 
 Obliczenia wynikowe zależą od `topology_hash`. Geometria nie może invalidować obliczeń.
 
+### Zasada 13 — Wstawienie obiektu = jego pełna konfiguracja w jednym przepływie
+
+**Inżynier projektujący ma kontekst obiektu w głowie tylko podczas jego wstawiania.** Wymuszanie powrotu „do edycji" po to żeby skonfigurować pola, aparaturę, transformatory, DER — to anti-pattern biurokratyczny, nie inżynierski.
+
+**Reguła:**
+- Każdy obiekt domenowy (GPZ, stacja, ciąg kablowy, pole SN, transformator, DER) ma swój **wizard wieloetapowy w jednym oknie** otwierany przy wstawianiu.
+- Wizard prowadzi przez wszystkie wymagane do kompletności pola w jednym przepływie.
+- Po „Zapisz i utwórz" obiekt jest **kompletny ENM-owo** (lub blocker badge wyraźnie sygnalizuje czego brakuje).
+- **Edycja** istniejącego obiektu otwiera **ten sam wizard** z aktualnymi wartościami i opcją skoku do dowolnego stepu — jest to akcja kontekstowa (klik prawy → Edytuj / dwuklik), NIE odrębny „krok" workflow.
+
+**Konsekwencja dla architektury:**
+- E-13 StationConfigurator NIE jest „kartą stacji" do której wracasz — jest **Wizardem Stacji** używanym przy wstawianiu i przy edycji.
+- E-11 BayConfigurator NIE jest „krokiem 5 workflow" — jest **stepem w Wizardzie Stacji** (sekcja „Pola SN") oraz akcją kontekstową „Edytuj pole" wywoływaną z SLD.
+- E-12 LineSegmentConfigurator NIE jest osobnym krokiem — jest inline-em rysowania ciągu (typ kabla + długość + ułożenie w jednym tooltipie podczas drop).
+
+**Zakaz:**
+- „Wstaw pustą stację, potem otwórz konfigurator, potem dodaj pola, potem dodaj aparaturę" — to chaos.
+- Pasek statusu typu „Stacja niekompletna — kliknij Edytuj żeby uzupełnić" jako default flow — to zła UX.
+- Modal który zamyka się i każe wracać do drugiego modala — to chaos.
+
+**Akcept:**
+- Jeden wizard wieloetapowy z stepperem na górze, zawartością środka, footerem „Anuluj / Zapisz i utwórz / Zapisz i utwórz kolejną".
+- Stepper pokazuje całą sekwencję od razu — inżynier widzi co go czeka.
+- Możliwość pominięcia opcjonalnych stepów (DER, jeśli stacja nie jest źródłowa) bez zamykania wizarda.
+
 ---
 
-## WORKFLOW INŻYNIERA SN — 10 kroków z kryteriami wyjścia
+## WORKFLOW INŻYNIERA SN — 8 kroków z kryteriami wyjścia
+
+> **Filozofia:** Każdy krok kończy się kompletnym, spójnym ENM-em. Nie ma „wstawiłem ale nie skonfigurowałem" — wstawienie obiektu = jego pełna konfiguracja w jednym przepływie (Zasada 13). Powrót do edycji jest akcją kontekstową, nie wymuszonym krokiem workflow.
+
+---
 
 ### Krok 1: Projekt — identyfikacja i kontekst
 **Entry:** Brak  
@@ -195,81 +227,120 @@ Obliczenia wynikowe zależą od `topology_hash`. Geometria nie może invalidowa�
 
 ---
 
-### Krok 2: GPZ — dane wejściowe strona 110 kV
+### Krok 2: GPZ — wizard kompletnej konfiguracji
 **Entry:** Projekt istnieje z nazwą i standardem  
-**Co robi inżynier:**
-- Konfiguruje GPZ: nazwa, operator, napięcie, tryb uziemienia
-- Wprowadza moc zwarciową S''k [MVA] i R/X
-- Opcjonalnie: Z0/Z1, R0/X0 dla obliczeń asymetrycznych
-- Wybiera transformatory z katalogu HV
+**Co robi inżynier (jeden wizard wieloetapowy w jednym oknie):**
+1. Identyfikacja: nazwa, operator, napięcie, tryb uziemienia
+2. Strona 110 kV: S''k, R/X, opcjonalnie Z0/Z1, R0/X0
+3. Transformatory HV/SN z katalogu (typ, moc, napięcia, układ)
+4. Sekcje SN: liczba sekcji, sprzęgło, układ szyn
+5. Bilans pól SN: liczba pól liniowych/TR/pomiarowych, presety
+6. Gotowość: checklist, blocker badge dla brakujących danych
 
-**Exit condition:** S''k > 0, R/X > 0, co najmniej 1 transformator  
+**Exit condition (wizard nie zamknie się dopóki nie spełnione):**  
+S''k > 0, R/X > 0, co najmniej 1 transformator z katalogu, co najmniej 1 sekcja SN
+
 **Blocking badge:** ❌ Brak mocy zwarciowej GPZ  
-**Karta:** E-03 (GpzConfiguratorSurface) — Simple lub Advanced
+**Wzorzec:** R45 GpzConfiguratorSurface — Simple/Advanced mode (juz zaimplementowany 10.0/10)
 
 ---
 
-### Krok 3: Topologia sieci — SLD rysowanie
+### Krok 3: Sieć — rysowanie ciągów + wstawianie KOMPLETNYCH stacji
 **Entry:** GPZ skonfigurowany (Krok 2 OK)  
 **Co robi inżynier:**
-- Na SLD canvas: dodaje ciągi kablowe, stacje odbiorcze
-- Definiuje: długości odcinków, typy kabli z katalogu
-- Ustawia NOP (Normalnie Otwarte Połączenia) dla schematu pierścieniowego
-- Konfiguruje typy stacji (RMU, RM6, złącze, etc.)
 
-**Exit condition:** Przynajmniej 1 ciąg kablowy od GPZ + 1 stacja odbiorcza  
-**Blocking badge:** ⚠ Sieć niepołączona (wyspy)  
-**Karta:** E-00 (SldEditorPage) + kontekstowe E-12 per odcinek
+**3a. Rysowanie ciągu kablowego (inline, bez modala):**
+- Klik „Dodaj ciąg" → klik źródło (port wyjścia GPZ lub stacja) → klik kierunek
+- Inline tooltip podczas dropu: typ kabla z katalogu, długość [m], typ ułożenia, temperatura
+- Po confirm → ciąg istnieje w ENM z R/X/Imax
+
+**3b. Wstawianie stacji = WIZARD STACJI (jeden modal, multi-step, bez wyjścia w środku):**
+
+```
+┌─ Wizard: Wstaw stację ──────────────────────────────────────────────┐
+│ [1.Identyfikacja] [2.Pola+aparatura] [3.TR] [4.nN] [5.DER] [6.Zabezp.] │
+│ [7.Powiązania] [8.Gotowość]                                          │
+├─────────────────────────────────────────────────────────────────────┤
+│  AKTYWNY STEP — pełna treść konfiguracyjna                           │
+├─────────────────────────────────────────────────────────────────────┤
+│ [Anuluj]                          [← Wstecz] [Dalej →] [Zapisz i utwórz]│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Steps wizarda:**
+
+1. **Identyfikacja** — nazwa, numer ewidencyjny, typ stacji (RMU/RM6/złącze/wolnostojąca), producent z katalogu, lokalizacja
+2. **Pola SN + aparatura per pole** (w jednej karcie):
+   - Lista pól z rolami (LINE/TR/COUPLER/MEASUREMENT/OZE)
+   - Per każde pole: CB (typ, Icu), DS (typ), CT (klasa, ratio), VT jeśli dotyczy, SA (odgromnik), uziemnik, bezpieczniki dla TR
+   - Walidacja inline: pole liniowe musi mieć CT — badge ⚠ jeśli brak
+3. **Transformator SN/nN** (jeśli stacja typu transformatorowego):
+   - Wybór z katalogu (Sn, Un HV/LV, uk%, vector)
+   - Tap, regulacja
+   - Opcjonalny — pomijany wizard jeśli typ stacji = złącze
+4. **Strona nN** (jeśli stacja ma TR):
+   - Un nN (230/400 V), układ sieci nN, wyłącznik główny nN
+   - Opcjonalny
+5. **DER (PV/BESS/FW)** (jeśli stacja jest źródłowa):
+   - Typ DER, moc, connection_variant (LV_BEHIND_STATION_TR / DEDICATED_MV / SOURCE_STATION)
+   - PCC ref (wymagany — bez PCC blocker)
+   - Falownik/PCS z katalogu, blokowy trafo dla DEDICATED_MV
+   - **Pomijalny tylko jeśli stacja nie ma być źródłowa** — w innym wypadku blocker
+6. **Zabezpieczenia (hint level)**:
+   - Per pole liniowe/TR: typ zabezpieczenia (nadprądowe/ziemnozwarciowe/różnicowe), urządzenie z katalogu
+   - **Podstawowe nastawy** (Ir nominalne, kategoria koordynacji)
+   - Pełna koordynacja TCC w Kroku 4
+7. **Powiązania portów**:
+   - sn_input ← do którego ciągu / portu wyjścia źródła SN się przypina
+   - sn_output → który ciąg odchodzi z tej stacji
+   - Opcjonalnie: NOP (jeśli stacja jest punktem otwarcia w pierścieniu)
+8. **Gotowość**:
+   - Checklist 12 punktów (każdy ✅/⚠/❌)
+   - Blocker badges widoczne (np. „Pole L1 bez CT", „DER bez PCC")
+   - Przycisk „Zapisz i utwórz" aktywny tylko jeśli brak ❌ (⚠ akceptowane)
+
+**Exit condition kroku 3 (z wizarda):**  
+Stacja zapisana ENM-owo z kompletną aparaturą, transformatorem (jeśli typu transformatorowego), DER (jeśli źródłowa), zabezpieczeniami (hint), powiązaniami portów.
+
+**Exit condition kroku 3 (workflow):**  
+Co najmniej 1 ciąg kablowy od GPZ + co najmniej 1 stacja KOMPLETNA (nie wireframe).
+
+**Blocking badge:** ⚠ Sieć niepołączona (wyspy) | ❌ Stacja kompletna ale niepowiązana
+
+**Akcja kontekstowa (zawsze dostępna):**  
+- Klik prawy na stację SLD → „Edytuj stację" → otwiera ten sam wizard z aktualnymi wartościami i opcją skoku do dowolnego stepu
+- Dwuklik na stację SLD → otwiera wizard na stepie 1 (Identyfikacja)
+- Klik prawy na pole SN w mini-RMU → „Edytuj pole" → otwiera wizard na stepie 2 z preselected polem
+
+**Karty (technicznie):**
+- E-13 StationWizardSurface (multi-step wizard)
+- E-12 LineSegmentInline (tooltip podczas dropu ciągu)
+- E-11 BayEditorPanel (subkomponent wewnątrz Step 2 oraz akcja kontekstowa)
 
 ---
 
-### Krok 4: Stacje — konfiguracja RMU/RM6
-**Entry:** Topologia narysowana (Krok 3 OK)  
+### Krok 4: Zabezpieczenia — pełna koordynacja TCC
+**Entry:** Sieć + stacje z hint-em zabezpieczeń (Krok 3 OK)  
 **Co robi inżynier:**
-- Per stacja: typ (RMU/RM6/złącze), producent z katalogu, pola SN
-- Konfiguruje pola wejściowe (IN) i wyjściowe (OUT)
-- Definiuje pobory (moce transformatorów SN/nN)
-- Ustawia transformatory SN/nN z katalogu
+- Otwiera widok krzywych TCC (Time-Current Characteristics)
+- Per ciąg liniowy: weryfikuje selektywność (główne vs. lokalne zabezpieczenia)
+- Konfiguruje precyzyjne nastawy: Ir, Isd, t1, t2, k (IEC 60255)
+- Sprawdza krzywe na wykresie I-t z naniesionymi Ik3 z obliczeń
 
-**Exit condition:** Każda stacja ma co najmniej 1 pole IN + poprawny typ  
-**Blocking badge:** ❌ Stacja bez pola wejściowego  
-**Karta:** E-13 (StationConfiguratorSurface)
+**Exit condition:** Wszystkie ciągi mają zabezpieczenie selektywne (brak overlap krzywych)  
+**Blocking badge:** ⚠ Brak selektywności między pole_main i pole_lokalne  
+**Karta:** E-31 (ProtectionCoordinationSurface) — pełen edytor TCC
 
----
-
-### Krok 5: Aparatura — CB/DS/CT/VT per pole
-**Entry:** Stacje skonfigurowane (Krok 4 OK)  
-**Co robi inżynier:**
-- Per pole SN: typ wyłącznika/rozłącznika, numer fabryczny
-- Dodaje CT: klasa dokładności, przekładnia dla pola liniowego i TR
-- Dodaje VT: klasa dokładności, napięcie dla pola pomiarowego
-- Sprawdza uziemniki i odgromniki
-
-**Exit condition:** Pola liniowe mają CT; pola TR mają CT + bezpieczniki  
-**Blocking badge:** ⚠ Pole liniowe bez CT (brak danych dla zabezpieczeń)  
-**Karta:** E-11 (BayConfiguratorSurface)
+> **Uwaga:** Hint zabezpieczenia (typ relay, Ir nominalne) został już ustawiony w wizardzie stacji w Kroku 3. Tutaj jest TYLKO pełna koordynacja krzywych — nie definiowanie zabezpieczenia od zera.
 
 ---
 
-### Krok 6: Zabezpieczenia — krzywe TCC
-**Entry:** CT zdefiniowane (Krok 5 OK)  
-**Co robi inżynier:**
-- Wybiera typ zabezpieczenia (nadprądowe, ziemnozwarciowe, różnicowe)
-- Konfiguruje nastawy: Ir, Isd, t1, t2 (IEC 60255 koordynacja)
-- Weryfikuje selektywność na krzywych TCC
-
-**Exit condition:** Co najmniej 1 zabezpieczenie per ciąg z katalogu  
-**Blocking badge:** ⚠ Ciąg bez zabezpieczenia — koordynacja niemożliwa  
-**Karta:** E-31 (ProtectionSurface)
-
----
-
-### Krok 7: Obliczenia — E-23 IEC 60909 + load flow
+### Krok 5: Obliczenia — E-23 IEC 60909 + load flow
 **Entry:** Topologia + aparatura + zabezpieczenia OK  
 **Co robi inżynier:**
 - Uruchamia obliczenia zwarciowe IEC 60909 (E-23)
 - Uruchamia przepływ mocy (Newton-Raphson)
-- Weryfikuje: Ik3 per szyna, profil napięć, straty
+- Czeka na zakończenie (async, progress bar)
 
 **Exit condition:** Obliczenia zakończone bez SOLVER_ERROR  
 **Blocking badge:** ❌ Obliczenia nieaktualne — zmieniono topologię po ostatnim uruchomieniu  
@@ -277,34 +348,37 @@ Obliczenia wynikowe zależą od `topology_hash`. Geometria nie może invalidowa�
 
 ---
 
-### Krok 8: Wyniki — przegląd i weryfikacja
-**Entry:** Obliczenia wykonane (Krok 7 OK)  
+### Krok 6: Wyniki + dobór aparatury — weryfikacja katalogowa
+**Entry:** Obliczenia wykonane (Krok 5 OK)  
 **Co robi inżynier:**
-- Przegląda Ik3/Ik1 per szyna (czy CB wytrzymuje?)
-- Przegląda profil napięć (czy U > 0.95 Un w ostatniej stacji?)
-- Porównuje wyniki z katalogowymi zdolnościami CB/DS
-- Sprawdza Proof Packs (WHITE BOX audit trail)
+- Przegląda tabelę: szyna | Un | Ik3 | Ik1 | ip | Ith
+- Porównuje z katalogowymi zdolnościami CB/DS dla każdego pola (Proof Pack per aparat)
+- Sprawdza profil napięć (czy U > 0.95 Un w ostatniej stacji?)
+- Identyfikuje aparaty przekroczone (Icu < Ik3 → blocker)
 
-**Exit condition:** Żadna szyna bez „equipment overloaded" blocker  
+**Exit condition:** Wszystkie aparaty w zakresie katalogowym ALBO inżynier akceptuje korekty (Krok 7)  
 **Blocking badge:** ❌ CB przekroczony Ik'' na szynach GPZ  
-**Karta:** E-04 (ResultsBrowserSurface)
+**Karta:** E-04 (ResultsBrowserSurface) + E-33 (EquipmentProofSurface)
 
 ---
 
-### Krok 9: Dobór aparatury — weryfikacja katalogowa
-**Entry:** Wyniki znane (Krok 8 OK)  
+### Krok 7: Korekty (warunkowy — pomijany jeśli Krok 6 zielony)
+**Entry:** Krok 6 wykazał przekroczenie  
 **Co robi inżynier:**
-- Weryfikuje że CB: Icu ≥ 1.1 × Ik3, Ip ≥ ip3
-- Weryfikuje że kable: Ith ≥ Ith3 (cieplna wytrzymałość)
-- Koryguje dobór jeśli niezbędne (powrót do Krok 4 z nowymi danymi)
+- Klik prawy na problematyczny aparat → „Edytuj pole" → wizard stacji otwiera się na stepie 2 z preselected polem
+- Wymienia CB/DS/CT na większy z katalogu
+- Zapisuje → patchSnapshot invaliduje wyniki Kroku 5
+- Wraca do Kroku 5 i Kroku 6 (re-run)
 
-**Exit condition:** Wszystkie aparaty w zakresie katalogowym  
-**Karta:** E-04 + E-33 (EquipmentProofSurface)
+**Exit condition:** Pętla Krok 5 ↔ Krok 7 aż wszystkie aparaty pasują  
+**Karta:** E-13 wizard (akcja kontekstowa)
+
+> **Uwaga:** Krok 7 jest „pętlą korekt", nie sztywną fazą. Inżynier wraca do edycji **konkretnego aparatu** (akcja kontekstowa z wyniku), nie do „karty 4 stacje" jako workflow step.
 
 ---
 
-### Krok 10: Raport — generacja dokumentu
-**Entry:** Dobór aparatury zatwierdzony (Krok 9 OK)  
+### Krok 8: Raport — generacja dokumentu
+**Entry:** Dobór aparatury zatwierdzony (Krok 6 zielony)  
 **Co robi inżynier:**
 - Wybiera zakres raportu (obliczenia SC, load flow, protection, dobór CB)
 - Generuje PDF/DOCX z Proof Packs
@@ -406,65 +480,182 @@ Router per `entityType`:
 
 ---
 
-### E-11 — BayConfiguratorSurface
+### E-13 — Station Wizard (KLUCZOWY — wzorzec dla Zasady 13)
 
-**Status implementacji:** Częściowy (8 kart), wymaga przeglądu martwych klików  
-**Plik:** `src/ui/workspace/surfaces/BayConfiguratorSurface.tsx`
+**Status implementacji:** Istnieje 10-kartowy `StationConfiguratorSurface` — WYMAGA REFAKTORU do wizarda wieloetapowego  
+**Plik:** `src/ui/workspace/surfaces/StationConfiguratorSurface.tsx` → przekształcić w `StationWizardSurface.tsx`
 
-**Wymagane karty:**
-1. Dane podstawowe (numer, typ pola: LINE/TR/COUPLER/MEASUREMENT/OZE)
-2. Aparatura pierwotna (CB: typ, producent, Icu, Icd; DS: typ, producent)
-3. Przekładniki prądowe (CT: klasa, przekładnia, Sn)
-4. Przekładniki napięciowe (VT: klasa, przekładnia — tylko dla MEASUREMENT)
-5. Zabezpieczenia (typ zabezpieczenia, nastawy)
-6. Pomiary (liczniki, telemetria)
-7. Porty SN (przypisanie portów wej/wyj do topologii)
-8. Podgląd SLD (mini-SLD pola)
-9. Obliczenia (Ik'' per szyna pola, Ip, Ith)
+**Architektura: Multi-step wizard w jednym oknie**
 
-**Wymagane testy:**
-- Każda karta ma `data-testid="bay-card-{tab-name}"`
-- Przycisk Zapisz na każdej karcie → `executeDomainOperation('configure-bay', ...)`
-- Test: klik Zapisz → sprawdź mock executeDomainOperation wywołane z poprawnym payload
+```tsx
+type StationWizardStep =
+  | 'identification'      // Step 1
+  | 'bays_and_apparatus'  // Step 2 (zawiera E-11 BayEditor jako subkomponent)
+  | 'transformer'         // Step 3 (opcjonalny)
+  | 'lv_side'             // Step 4 (opcjonalny — tylko gdy stacja ma TR)
+  | 'der'                 // Step 5 (opcjonalny — tylko gdy stacja jest źródłowa)
+  | 'protection_hint'     // Step 6
+  | 'connections'         // Step 7
+  | 'readiness';          // Step 8
 
-**Wzorzec Save payload:**
-```ts
-executeDomainOperation({
-  op_type: 'configure-bay',
-  entity_ref: bayRef,
-  payload: {
-    bay_role: 'LINE_FULL' | 'TR_FULL' | 'COUPLER' | 'MEASUREMENT' | 'OZE',
-    cb_catalog_ref: string | null,
-    ct_catalog_ref: string | null,
-    ct_ratio: number | null,
-    // ... reszta pól
-  }
-})
+interface StationWizardProps {
+  mode: 'create' | 'edit';
+  initialStep?: StationWizardStep;     // dla edycji — skok do konkretnego stepu
+  preselectedBayRef?: string;          // dla edycji pola z SLD
+  initialEnmRef?: string;              // dla edycji — ładuje aktualne wartości
+  onComplete: (stationRef: string) => void;
+  onCancel: () => void;
+}
 ```
+
+**Layout wizarda:**
+- Header: stepper z 8 ikonami + status każdego stepu (✅/⚠/❌/⬜)
+- Body: aktywny step content
+- Footer: [Anuluj] [← Wstecz] [Dalej →] [Zapisz i utwórz] | dla edycji: [Anuluj] [Zapisz zmiany]
+
+**Każdy step ma:**
+- `data-testid="station-wizard-step-{name}"`
+- Walidację inline (badge ⚠/❌ widoczny w stepperze)
+- Możliwość pominięcia stepów opcjonalnych (TR/nN/DER) — przycisk „Pomiń" w footer
+
+**Step 2 — Pola i aparatura (najbogatszy step):**
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Pola SN tej stacji:                              [+ Dodaj pole] │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │ Pole 1: L1 (LINE_FULL)                  [Edytuj] [Usuń] │ │
+│  │  ├─ CB: ABB VD4 630-16 (Icu=16kA)                       │ │
+│  │  ├─ DS: ABB DSG/4 (630A)                                │ │
+│  │  ├─ CT: 200/5 kl. 0.5S                                  │ │
+│  │  ├─ SA: ABB MWK 24                                      │ │
+│  │  └─ Uziemnik: tak (boczny)                              │ │
+│  ├─────────────────────────────────────────────────────────┤ │
+│  │ Pole 2: TR1 (TR_FULL)                   [Edytuj] [Usuń] │ │
+│  │  └─ ...                                                 │ │
+│  └─────────────────────────────────────────────────────────┘ │
+│                                                              │
+│ Klik [Edytuj] otwiera inline panel BayEditor (E-11)          │
+│ — NIE odrębny modal, NIE zamknięcie wizarda                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Step 5 — DER (warunkowy):**
+- Toggle: „Czy stacja jest źródłowa? (PV/BESS/FW)"
+- Jeśli NIE → przycisk „Pomiń" → step pominięty, wizard idzie dalej
+- Jeśli TAK → wymagane pola: typ DER, moc, connection_variant, **PCC ref (blocker bez PCC)**, falownik z katalogu
+
+**Step 8 — Gotowość:**
+Checklist 12 punktów (zsynchronizowany z gpzAdvisor analogicznym `stationAdvisor`):
+- [✅] Identyfikacja kompletna
+- [✅] Co najmniej 1 pole IN
+- [✅] Każde pole liniowe ma CT
+- [✅] Pole TR ma CT + bezpieczniki (jeśli switch-fuse)
+- [⚠] Pole TR1 — brak SA (sugestia inżynierska)
+- [✅] Transformator z katalogu
+- [✅] Napięcie nN zgodne z katalogiem trafo
+- [⬜] DER — brak (stacja nie źródłowa, OK)
+- [✅] Zabezpieczenia hint per pole
+- [✅] sn_input powiązany z ciągiem GPZ→ST1
+- [✅] sn_output powiązany z ciągiem ST1→ST2
+- [✅] Brak blokerów
+
+Przycisk „Zapisz i utwórz" aktywny tylko gdy brak ❌ (⚠ akceptowane jako sugestie).
+
+**Save flow:**
+```ts
+// Po kliknięciu „Zapisz i utwórz" — JEDNA atomowa operacja:
+await executeDomainOperation({
+  op_type: 'create-station-complete',
+  payload: {
+    station: { name, type, producer, location, ... },
+    bays: [
+      { role: 'LINE_FULL', cb_ref, ds_ref, ct_ref, ct_ratio, sa_ref, ... },
+      { role: 'TR_FULL', cb_ref, fuse_ref, ct_ref, ... },
+    ],
+    transformer: { catalog_ref, tap, vector } | null,
+    lv_side: { un_kv, scheme, main_breaker } | null,
+    der: { kind, sn_kva, connection_variant, pcc_ref, inverter_ref } | null,
+    protection_hints: [{ bay_ref, relay_type, ir_a, category }],
+    connections: { sn_input_segment_ref, sn_output_segment_ref, nop_state },
+  },
+});
+// Backend tworzy stację + pola + aparaturę + DER + zabezpieczenia w JEDNYM eventcie ENM
+// Inv 4 invalidate jeden raz, nie 8 razy
+```
+
+**Edycja istniejącej stacji:**
+- Akcja kontekstowa: klik prawy na stację → „Edytuj stację" → wizard otwiera się z `mode='edit'`, `initialEnmRef`, `initialStep='identification'`
+- Edycja konkretnego pola: klik prawy na pole na SLD → „Edytuj pole" → wizard otwiera się z `mode='edit'`, `initialStep='bays_and_apparatus'`, `preselectedBayRef`
+- Save w trybie edit: częściowy patch przez `patchSnapshot` (tylko zmienione fragmenty)
 
 ---
 
-### E-13 — StationConfiguratorSurface
+### E-11 — BayEditor (subkomponent, NIE osobna karta workflow)
 
-**Status implementacji:** 10 kart, wymaga weryfikacji martwych klików  
-**Plik:** `src/ui/workspace/surfaces/StationConfiguratorSurface.tsx`
+**Status:** Istnieje `BayConfiguratorSurface` — WYMAGA REFAKTORU na komponent wbudowany  
+**Nowa rola:** Komponent inline używany w Step 2 wizarda stacji ORAZ jako akcja kontekstowa „Edytuj pole" z SLD.
 
-**Karty (10):**
-1. Identyfikacja i szablon (nazwa, numer ewidencyjny, typ stacji, producent)
-2. Topologia, porty i PCC (powiązania z ciągami, punkt przyłączenia)
-3. Rozdzielnia SN (typ: RMU/RM6/rozdzielnia wolnostojąca, napięcie Un)
-4. Pola SN (lista pól, typy, konfiguracja)
-5. Transformatory SN/nN (moc, napięcia, impedancja, producent)
-6. Strona nN i poziomy napięć (Un nN, układ sieci nN)
-7. Źródła i magazyny (PV, BESS, FW — z PCC validation)
-8. Zabezpieczenia i automatyka
-9. Pomiary, telemechanika i sygnały
-10. Gotowość obliczeń (checklist 12 punktów)
+**Plik (nowy):** `src/ui/workspace/components/BayEditor.tsx`  
+**Plik (deprecate):** `src/ui/workspace/surfaces/BayConfiguratorSurface.tsx` → cienki wrapper do `BayEditor` dla zgodności wstecznej, do usunięcia w P2
 
-**Kluczowe walidacje:**
-- Stacja MUSI mieć co najmniej 1 pole z rolą IN (wejście zasilania) — blocker
-- Każde źródło/magazyn DER MUSI mieć PCC — blocker bez PCC = missing-connection
-- Napięcie nN musi być zgodne z katalogu trafo (230/400 V lub 110 V)
+**Props:**
+```tsx
+interface BayEditorProps {
+  bayRef: string | null;          // null = nowe pole
+  parentStationRef: string;
+  initialValues?: Partial<Bay>;
+  onSave: (bay: Bay) => void;     // emituje do wizarda lub do executeDomainOperation
+  onCancel: () => void;
+  embedded: boolean;              // true = w wizardzie, false = standalone modal
+}
+```
+
+**Sekcje (compact, w jednej karcie scrollowalnej, NIE 9 zakładek):**
+1. Rola pola (LINE/TR/COUPLER/MEASUREMENT/OZE) — radio
+2. Wyłącznik (CB): typ z katalogu, Icu, Icd, numer fabryczny
+3. Rozłącznik szynowy (DS): typ z katalogu
+4. Przekładniki prądowe (CT): klasa, przekładnia, Sn (wymagane dla LINE/TR)
+5. Przekładnik napięciowy (VT): klasa, przekładnia (tylko dla MEASUREMENT)
+6. Odgromnik (SA): typ z katalogu (sugerowane)
+7. Uziemnik: typ + lokalizacja (zawsze boczny od toru głównego)
+8. Bezpieczniki (tylko dla TR_FULL switch-fuse): typ, In
+9. Walidacja inline: ⚠/❌ badge per sekcja
+
+**Save:**
+- W trybie embedded (`embedded=true`): emit `onSave(bayDraft)` do wizarda — wizard zbiera wszystkie pola do `executeDomainOperation` przy „Zapisz i utwórz" stacji
+- W trybie standalone (`embedded=false`, edycja z SLD): bezpośrednio `executeDomainOperation('configure-bay', ...)` z fallback `patchSnapshot`
+
+**Wymagane testy:**
+- Render bez bay_ref → puste pola, walidacja wymaga roli
+- Render z bay_ref → ładuje z ENM
+- Zmiana roli LINE → TR → walidacja wymaga bezpieczników
+- Pole liniowe bez CT → badge ❌
+- Save embedded → emit onSave z poprawnym kształtem
+- Save standalone → executeDomainOperation called
+
+---
+
+### E-12 — LineSegmentInline (inline tooltip, NIE pełna karta)
+
+**Status implementacji:** BRAK — do zaimplementowania jako inline tooltip podczas dropu ciągu  
+**Plik:** `src/ui/sld/v2/canvas/LineSegmentInlineEditor.tsx`
+
+**Wymagane pola (compact tooltip):**
+- Typ kabla z katalogu (3×120 XUHAKXS, 3×240 XUHAKXS, etc.) — autocomplete
+- Długość odcinka [m]
+- Typ ułożenia (ziemia, kanał, powietrze) — radio
+- Temperatura obliczeniowa [°C] — slider z domyślną 30°C
+
+**Live preview (inline poniżej formularza):**
+- R = r₀ · L [Ω]
+- X = x₀ · L [Ω]
+- Imax = Im · Kt [A]
+
+**Save:**
+- Przycisk [Confirm] → `executeDomainOperation('create-line-segment', payload)` z R/X/Imax obliczonymi
+- Tooltip zamyka się, ciąg pojawia się na SLD jako kompletny
+
+**Edycja:** Klik prawy na ciąg → „Edytuj ciąg" → ten sam tooltip otwiera się z aktualnymi wartościami.
 
 ---
 
@@ -534,19 +725,38 @@ Każdy modal w SldWorkspaceContainer musi:
 4. Zamykać się przez `closeModal()` ze store
 5. Mieć test: `render modal → fill fields → click save → expect executeDomainOperation called`
 
-### Kanon modali (wymagane):
+### Kanon modali / wizardów (wymagane):
+
+**Modale stanu (fast-path, jedno-polowe — toggle stanu):**
 
 | Modal | Trigger | OP type | Pola |
 |---|---|---|---|
 | SwitchStateModal | Klik na CB/DS/ES na SLD | `set-switch-state` | state: open/closed/locked |
-| AddApparatusModal | „Dodaj aparat" per pole | `configure-equipment` | kind, catalog_ref, accuracy |
-| CbEditModal | Klik edytuj na CB | `configure-cb` | catalog_ref, Icu, serial |
-| CtConfigModal | Klik edytuj CT | `configure-ct` | ratio, class, sn_va |
-| VtConfigModal | Klik edytuj VT | `configure-vt` | ratio, class, connection |
-| CableEditModal | Klik na odcinek | `configure-cable` | catalog_ref, length, installation |
-| TransformerEditModal | Klik na TR | `configure-transformer` | catalog_ref, tap, vector |
-| StationEditModal | Klik na stację | `configure-station` | name, type, producer |
-| NopModal | Klik na NOP | `set-nop-state` | open/closed (planowany) |
+| NopStateModal | Klik na NOP | `set-nop-state` | open/closed |
+
+**Wizardy konfiguracyjne (multi-step, kompletny obiekt):**
+
+| Wizard | Trigger | OP type | Wynik |
+|---|---|---|---|
+| GpzWizard (E-03 R45) | Krok 2 workflow / „Edytuj GPZ" | `create-gpz-complete` / `update-gpz` | Kompletny GPZ z trafami, sekcjami, polami |
+| StationWizard (E-13 nowy) | Krok 3 workflow / „Edytuj stację" / dwuklik na SLD | `create-station-complete` / `update-station-partial` | Kompletna stacja z polami, aparaturą, TR, nN, DER, zabezpieczeniami |
+
+**Inline editory (tooltip, prosty obiekt):**
+
+| Editor | Trigger | OP type | Pola |
+|---|---|---|---|
+| LineSegmentInline (E-12) | Drop ciągu na SLD / „Edytuj ciąg" | `create-line-segment` / `configure-cable` | catalog_ref, length, installation |
+
+**Subkomponenty (NIE osobne modale — wbudowane w wizard / akcja kontekstowa):**
+
+| Komponent | Kontekst użycia |
+|---|---|
+| BayEditor (E-11) | Wbudowany w Step 2 StationWizard ORAZ akcja „Edytuj pole" z SLD |
+| TransformerEditor | Wbudowany w Step 3 StationWizard ORAZ akcja „Edytuj TR" z SLD |
+| DerEditor | Wbudowany w Step 5 StationWizard ORAZ akcja „Edytuj DER" z SLD |
+| ProtectionHintEditor | Wbudowany w Step 6 StationWizard (pełna koordynacja w E-31) |
+
+**Zasada:** Tylko obiekty atomowe (stan switcha, NOP) mają osobne modale. Obiekty złożone (GPZ, stacja) używają wizarda. Obiekty proste z paroma polami (ciąg) używają inline tooltip.
 
 ---
 
@@ -638,13 +848,34 @@ test('Pełny workflow: Projekt → GPZ → Topologia → Stacja → Pole', async
   await page.click('[data-testid="gpz-save"]');
   await expect(page.locator('[data-testid="readiness-gpz"]')).toHaveAttribute('data-level', 'complete');
 
-  // Krok 3: Topologia (tryb rysowania SLD)
+  // Krok 3: Sieć — rysuję ciąg + wstawiam stację KOMPLETNĄ z wizarda
   await page.click('[data-testid="sld-tool-add-line"]');
   await page.click('[data-testid="sld-canvas"]', { position: { x: 300, y: 200 } });
-  // ... dalej
+  // LineSegmentInline tooltip
+  await page.fill('[data-testid="line-cable-catalog"]', '3x120 XUHAKXS');
+  await page.fill('[data-testid="line-length-m"]', '450');
+  await page.click('[data-testid="line-confirm"]');
 
-  // Weryfikacja: SLD ma element z domain_ref
+  // Wstawiam stację — otwiera się StationWizard
+  await page.click('[data-testid="sld-tool-add-station"]');
+  await page.click('[data-testid="sld-canvas"]', { position: { x: 500, y: 200 } });
+  await expect(page.locator('[data-testid="station-wizard"]')).toBeVisible();
+  // Step 1: Identyfikacja
+  await page.fill('[data-testid="station-name"]', 'ST-001 Wschód');
+  await page.click('[data-testid="station-type-rmu"]');
+  await page.click('[data-testid="wizard-next"]');
+  // Step 2: Pola + aparatura — dodaję 3 pola
+  await page.click('[data-testid="bay-add"]');
+  // ... wypełniam pola, CB, CT, etc.
+  await page.click('[data-testid="wizard-next"]');
+  // ... pozostałe stepy
+  // Step 8: Gotowość — Save
+  await page.click('[data-testid="wizard-save-and-create"]');
+
+  // Weryfikacja: SLD ma element z domain_ref + stacja jest KOMPLETNA
   await expect(page.locator('[data-domain-ref]').first()).toBeVisible();
+  // Stacja kompletna = nie wireframe
+  await expect(page.locator('[data-station-readiness="complete"]')).toBeVisible();
 });
 ```
 
@@ -829,20 +1060,23 @@ Dopiero po zielonym przejściu WSZYSTKICH 6 kroków karta jest DONE.
 - `forbidden_ui_terms_guard.py` zielony
 - Każde pole ma `data-testid`
 
-### P1 — Wysokie (sprint bieżący)
-- E-12 LineSegmentConfigurator — nowy (brak implementacji)
-- E-11 BayConfigurator — audyt martwych klików, weryfikacja Save handlers
-- E-13 StationConfigurator — audyt martwych klików, weryfikacja DER PCC
+### P1 — Wysokie (sprint bieżący — KLUCZOWE dla Zasady 13)
+- **StationWizard (E-13 refaktor)** — przekształcenie `StationConfiguratorSurface` z 10 osobnych kart na multi-step wizard z 8 stepami w jednym oknie; jedna atomowa operacja `create-station-complete`
+- **BayEditor (E-11 refaktor)** — przekształcenie z osobnej `BayConfiguratorSurface` na subkomponent wbudowany w Step 2 StationWizarda + akcja kontekstowa „Edytuj pole"
+- **LineSegmentInline (E-12 nowy)** — inline tooltip podczas dropu ciągu (typ kabla + długość + ułożenie)
+- **Backend: domain operation `create-station-complete`** — atomowa operacja tworząca stację+pola+aparaturę+TR+DER+zabezpieczenia w jednym evencie ENM (jeden Inv 4 invalidate, nie 8)
+- **Akcje kontekstowe SLD** — prawy klik na stację/pole/ciąg/TR otwiera odpowiedni wizard/editor z preselected stepem
 
 ### P2 — Średnie (sprint następny)
 - Undo/Redo UI (Ctrl+Z wywołuje `undoSnapshot()`, widoczny licznik w topbar)
 - LOD histereza (15% deadband, debounce 250ms) — `LodPolicy.ts`
 - MiniBlockRmuRenderer — mini-blok RMU z faktycznych pól (nie prostokąt)
+- Pełna koordynacja TCC w E-31 (Krok 4 workflow) — selektywność krzywych
 
 ### P3 — Planowane
 - Anonimizacja deterministyczna (SHA-256 pseudonimy)
 - Layout korytarzowy dla sieci 30-80 stacji
-- E2E pełny workflow Steps 1-10
+- E2E pełny workflow Steps 1-8 (z naciskiem na Krok 3 StationWizard end-to-end)
 
 ---
 
@@ -854,31 +1088,41 @@ Poniższy tekst skopiuj jako pierwsze polecenie w nowej sesji Claude Code:
 Jesteś Senior Frontend Architect + Senior UX Engineer + Inżynier Sieci SN pracującym nad MV-DESIGN-PRO.
 
 WAŻNE: Przeczytaj NAJPIERW te pliki (bez modyfikacji, tylko read):
-1. mv-design-pro/docs/prompts/UX_ENGINEER_WORKFLOW_PROMPT.md  ← TEN PLIK
+1. mv-design-pro/docs/prompts/UX_ENGINEER_WORKFLOW_PROMPT.md  ← TEN PLIK (cały, ze szczególną uwagą na Zasadę 13)
 2. mv-design-pro/SYSTEM_SPEC.md
 3. mv-design-pro/frontend/src/ui/topology/snapshotStore.ts
-4. mv-design-pro/frontend/src/ui/workspace/surfaces/GpzConfiguratorSurface.tsx (wzorzec)
-5. mv-design-pro/frontend/src/ui/workspace/surfaces/__tests__/Etap3Configurators.test.tsx (wzorzec testów)
+4. mv-design-pro/frontend/src/ui/workspace/surfaces/GpzConfiguratorSurface.tsx (wzorzec wizarda — R45)
+5. mv-design-pro/frontend/src/ui/workspace/surfaces/GpzConfiguratorSimple.tsx (wzorzec Simple mode)
+6. mv-design-pro/frontend/src/ui/workspace/surfaces/__tests__/Etap3Configurators.test.tsx (wzorzec testów)
 
-ZADANIE: [WPISZ KONKRETNE ZADANIE, np. "Zaimplementuj E-12 LineSegmentConfigurator zgodnie ze specyfikacją w UX_ENGINEER_WORKFLOW_PROMPT.md"]
+ZADANIE: [WPISZ KONKRETNE ZADANIE, np. "Zrefaktoruj StationConfiguratorSurface w StationWizard z 8 stepami zgodnie ze specyfikacją E-13 w UX_ENGINEER_WORKFLOW_PROMPT.md"]
 
-OBOWIĄZKOWE ZASADY:
-1. Każdy przycisk Zapisz wywołuje executeDomainOperation lub patchSnapshot — NIGDY toast-only
-2. Każde pole ma data-testid i onChange handler
-3. Każda nowa karta ma test jednostkowy z testem handlera Zapisz
-4. dead_click_guard.py musi być zielony po twojej zmianie
-5. forbidden_ui_terms_guard.py musi być zielony
-6. Wzorzec implementacji: GpzConfiguratorSimple.tsx (Simple) i GpzConfiguratorSurface.tsx (Advanced)
-7. Wzorzec testów: Etap3Configurators.test.tsx
-8. Żadnych placeholderów — jeśli nie możesz czegoś zaimplementować, pomijasz sekcję całkowicie
+OBOWIĄZKOWE ZASADY (z prompt document):
+1. Zasada 13 — wstawienie obiektu = JEGO PEŁNA KONFIGURACJA W JEDNYM PRZEPŁYWIE
+   - Stacja wstawiona = stacja z polami, aparaturą, TR, DER, zabezpieczeniami, powiązaniami
+   - NIE dziel na "wstaw stację" + "skonfiguruj pola" + "skonfiguruj aparaturę" + "dodaj DER"
+   - Multi-step wizard w JEDNYM oknie (stepper na górze, nie kolejne modale)
+   - Edycja = ten sam wizard z mode='edit', skok do dowolnego stepu
+2. Każdy przycisk Zapisz wywołuje executeDomainOperation lub patchSnapshot — NIGDY toast-only
+3. Każde pole ma data-testid i onChange handler
+4. Każda nowa karta ma test jednostkowy z testem handlera Zapisz
+5. dead_click_guard.py musi być zielony po twojej zmianie
+6. forbidden_ui_terms_guard.py musi być zielony
+7. Wzorzec wizarda: GpzConfiguratorSurface.tsx (R45 — 10.0/10)
+8. Wzorzec testów: Etap3Configurators.test.tsx
+9. Żadnych placeholderów — jeśli nie możesz czegoś zaimplementować, pomijasz sekcję całkowicie
+10. Atomowy save: wizard zbiera wszystkie pola → JEDNA operacja executeDomainOperation('create-X-complete') → backend tworzy całą hierarchię w jednym evencie
 
 DoD (Definition of Done):
 - [ ] Wszystkie pola mają data-testid
 - [ ] Wszystkie przyciski Zapisz wywołują mutację stanu (nie notify-only)
 - [ ] Test jednostkowy zielony (Vitest)
+- [ ] Test E2E: wstawienie obiektu z wizarda → obiekt na SLD jest KOMPLETNY (nie wireframe)
+- [ ] Test edycji: prawy klik na obiekt → wizard otwiera się z aktualnymi wartościami
 - [ ] dead_click_guard.py zielony
 - [ ] forbidden_ui_terms_guard.py zielony
 - [ ] Brak TODO/PLACEHOLDER w kodzie
+- [ ] Brak osobnych modali typu "AddBay", "AddTransformer" jeśli są częścią wizarda stacji
 ```
 
 ---
@@ -1010,7 +1254,8 @@ export function TargetConfiguratorSurface({ surface }: Props) {
 | Wersja | Data | Zmiany |
 |---|---|---|
 | 1.0 | 2026-05-08 | Wersja inicjalna — po R45 Dual Mode GPZ Configurator |
+| 1.1 | 2026-05-08 | **Krytyczna korekta:** Workflow przeprojektowany z 10 kroków na 8. Krok 3 łączy „rysowanie sieci" + „konfiguracja stacji" + „aparatura" + „DER" w jeden wizard wieloetapowy. Dodana **Zasada 13** — wstawienie obiektu = pełna konfiguracja w jednym przepływie. E-13 przekształcony z 10 osobnych kart na **StationWizard z 8 stepami w jednym oknie**. E-11 BayConfigurator zdegradowany z osobnej karty workflow do subkomponentu w Step 2 wizarda. E-12 LineSegment przeprojektowany z karty na inline tooltip. Backend: nowa atomowa operacja `create-station-complete`. |
 
 ---
 
-*Dokument generowany jako kanon pracy na podstawie audytu R42-R45 GpzConfigurator (10.0/10) oraz wytycznych architektury MV-DESIGN-PRO.*
+*Dokument generowany jako kanon pracy na podstawie audytu R42-R45 GpzConfigurator (10.0/10) oraz wytycznych architektury MV-DESIGN-PRO. Wersja 1.1 — feedback: „Wstawiając stację masz ją w pełni konfigurować od początku do końca wraz z PV/BESS/FW; nie wracamy potem bez sensu do edycji"*
