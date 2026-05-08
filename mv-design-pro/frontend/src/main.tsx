@@ -4,6 +4,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { queryClient } from './query-client';
+import { registerTestApi } from './test-api';
+
+/* R52: rejestruje window.__mvDesignProTestApi w dev/test (no-op w prod). */
+registerTestApi();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
