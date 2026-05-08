@@ -159,7 +159,7 @@ WYŁĄCZNIE na bramce build/type-check/test/V1-isolation — i ta jest zielona.
 | Phase 5 Anonimizacja | ⬛ AnonymizationProvider + anonymize.ts istnieją |
 | Phase 6 Layout Korytarzowy | ⬛ CorridorLayout, LayoutComplexityScore, LayoutStrategyDispatch istnieją |
 | Phase 7 Test Pyramid | ⬛ 1189 testów V2 (structural, electrical-graph, readability, perf, hash invariants) |
-| Phase 8 Documentation | ⬛ Wymaga konsolidacji 12 dokumentów w `docs/sld/` |
+| Phase 8 Documentation | ⬛ 6/12 docs (LOD_OPERATOR_GRADE, MINI_BLOCK_SPEC, SYMBOLS_OPERATOR_GRADE, GPZ_SWITCHGEAR_DEPTH, **STATION_APPEND_WORKFLOW** ←R61, **CONSCIOUS_SPLIT_WORKFLOW** ←R61); 6 docs do napisania |
 | Phase 9 Cleanup V1 | ⬜ Zaplanowane (V1 tsconfig-excluded, do usunięcia) |
 
 **Wnioski:**
@@ -167,7 +167,32 @@ WYŁĄCZNIE na bramce build/type-check/test/V1-isolation — i ta jest zielona.
 2. Phase 0A-6 są w znacznej mierze zaimplementowane — wymagają osobnego audytu
    funkcjonalnego względem `Acceptance Invariants` 1-17 z planu.
 3. Phase 7 ma 1189 testów (vs. ~115 nowych snapshotów w planie) — pokrycie wysokie.
-4. Phase 8 (konsolidacja docs) i Phase 9 (cleanup V1) pozostają do zrobienia.
+4. Phase 8 (konsolidacja docs) — 6/12 ukończone (R61 dodał APPEND + SPLIT).
+5. Phase 9 (cleanup V1) pozostaje do zrobienia.
+
+### Zidentyfikowana luka integracji UI (Phase 0B/0C → Phase 3)
+
+Backend operacje `append_station_on_endpoint` (Phase 0B) i
+`insert_station_on_segment_sn` z `dry_run=True` (Phase 0C) są zaimplementowane
+i przetestowane (44 testy backendu zielone). Frontend controllery FSM
+(`AppendOnEndpointController.ts` 299 linii, `ConsciousSplitController.ts`
+399 linii, `WorkflowOrchestrator.ts`) istnieją z pełną logiką.
+
+**Brakujące ogniwo:** integracja w `SldWorkspaceContainer.handleAction()` —
+clickanie menu items `append-station-on-endpoint` i `conscious-split-on-segment`
+nie dispatchuje do controllerów (ani nie renderuje ghost preview, ani nie
+otwiera modala pickera). R60 dodało informujące toasty w
+`ACTION_ROADMAP_HINT_PL` żeby operator wiedział, że backend gotowy ale UI
+integracja w toku.
+
+Pełna integracja wymaga:
+- CadOverlay rendering ghost preview (segment + station footprint dla append, halves dla split).
+- Modal/picker typu stacji dla append + modal typu obiektu dla split.
+- Electrical impact panel dla split (lista invalidated_results).
+- Dispatch handler w `SldWorkspaceContainer.handleAction()` wywołujący `executeDomainOperation()`.
+- 2 E2E specy Playwright (append-on-endpoint + conscious-split).
+
+To jest scope Phase 3 polish.
 
 ---
 

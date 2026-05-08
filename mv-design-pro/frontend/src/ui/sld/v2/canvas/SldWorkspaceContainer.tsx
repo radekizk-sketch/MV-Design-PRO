@@ -225,6 +225,12 @@ const ACTION_ROADMAP_HINT_PL: Readonly<Record<string, string>> = {
   'delete-pv': 'Usuwanie źródła PV: Etap 5 roadmapy.',
   'delete-bess': 'Usuwanie BESS: Etap 5 roadmapy.',
   'delete-fw': 'Usuwanie farmy wiatrowej: Etap 5 roadmapy.',
+  /* Phase 0B/0C operator-grade SLD: backend operacje gotowe (44 testy zielone),
+     workflow controllery istnieją (AppendOnEndpointController, ConsciousSplitController,
+     WorkflowOrchestrator), ale UI ghost-preview + modal pickera nie są jeszcze
+     zintegrowane z menu kontekstowym. Phase 3 polish dokończy integrację. */
+  'append-station-on-endpoint': 'Zakończ ciąg w stacji: backend gotowy (append_station_on_endpoint), UI integracji ghost-preview brakuje. Tymczasowo użyj operacji domenowej z panelu ENM.',
+  'conscious-split-on-segment': 'Świadomy podział odcinka: backend gotowy (insert_station_on_segment_sn z dry_run), UI integracji preview elektrycznego brakuje. Tymczasowo użyj insert-station bez preview.',
 };
 
 export interface SldWorkspaceContainerProps {
