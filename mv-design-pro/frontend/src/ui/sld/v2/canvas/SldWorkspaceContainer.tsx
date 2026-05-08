@@ -286,6 +286,11 @@ export function SldWorkspaceContainer(
    * zmian z BayConfigModal/TransformerEditModal/CouplerEditModal do SLD
    * canvas + inspector + property grids. */
   const patchSnapshot = useSnapshotStore((state) => state.patchSnapshot);
+  /* R27: executeDomainOperation dla pełnej propagacji backend → ENM →
+   * recalculate proof packs. Hierarchia: gdy activeCaseId obecny →
+   * executeDomainOperation, fallback patchSnapshot (offline live-edit). */
+  const executeDomainOperation = useSnapshotStore((state) => state.executeDomainOperation);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
@@ -781,113 +786,206 @@ export function SldWorkspaceContainer(
         </div>
       )}
 
-      {/* R22: BayConfigModal — edycja pola SN z LIVE PROPAGATION do snapshot.
-       * onSubmit: patchSnapshot mutuje ENM Bay → SLD canvas re-render → mini-RMU
-       * z nowym bay_number/feeder_short_name/bay_role/outgoing_destination_ref.
-       * Inv 4: lastChanges (affected_object_refs) propagujemy do invalidate
-       * downstream calculations. */}
+      {/* R22+R27: BayConfigModal — edycja pola SN z LIVE PROPAGATION + backend.
+       * Hierarchia:
+       *   1. activeCaseId obecny → executeDomainOperation('update_element_parameters')
+       *      → backend mutuje ENM, response.snapshot zastępuje store, wszelkie
+       *        wyniki obliczeń są INVALIDOWANE przez analysis_dispatch
+       *   2. fallback (offline) → patchSnapshot(local) z lastChanges (Inv 4)
+       *
+       * Inv 4 zachowane w obu ścieżkach. */}
       {bayModalState.open && bayModalState.data && (
         <BayConfigModal
           isOpen={bayModalState.open}
           initial={bayModalState.data}
           onClose={() => setBayModalState({ open: false, data: null })}
-          onSubmit={(updated) => {
-            patchSnapshot(
-              (snap) => ({
-                ...snap,
-                bays: (snap.bays ?? []).map((b) =>
-                  b.ref_id === updated.bayRef
-                    ? {
-                        ...b,
-                        bay_number: updated.bayNumber || null,
-                        feeder_short_name: updated.feederName || null,
-                        bay_role: mapCanonicalRoleToBayRole(updated.fieldRole),
-                        outgoing_destination_ref: updated.destinationLabel || null,
-                      }
-                    : b,
-                ),
-              }),
-              [updated.bayRef],
-            );
-            notify(
-              `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef}. Wyniki obliczeń pola zostały unieważnione.`,
-              'success',
-            );
+          onSubmit={async (updated) => {
+            if (activeCaseId) {
+              try {
+                await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+                  element_ref: updated.bayRef,
+                  updates: {
+                    bay_number: updated.bayNumber || null,
+                    feeder_short_name: updated.feederName || null,
+                    bay_role: mapCanonicalRoleToBayRole(updated.fieldRole),
+                    outgoing_destination_ref: updated.destinationLabel || null,
+                  },
+                });
+                notify(
+                  `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef}. Wyniki obliczeń pola unieważnione.`,
+                  'success',
+                );
+              } catch (e) {
+                notify(
+                  `Błąd zapisu pola — fallback do live-edit (snapshot lokalny): ${(e as Error).message}`,
+                  'warning',
+                );
+                /* Fallback do patchSnapshot gdy backend niedostępny */
+                patchSnapshot(
+                  (snap) => ({
+                    ...snap,
+                    bays: (snap.bays ?? []).map((b) =>
+                      b.ref_id === updated.bayRef
+                        ? {
+                            ...b,
+                            bay_number: updated.bayNumber || null,
+                            feeder_short_name: updated.feederName || null,
+                            bay_role: mapCanonicalRoleToBayRole(updated.fieldRole),
+                            outgoing_destination_ref: updated.destinationLabel || null,
+                          }
+                        : b,
+                    ),
+                  }),
+                  [updated.bayRef],
+                );
+              }
+            } else {
+              /* Brak activeCaseId — local-only live-edit */
+              patchSnapshot(
+                (snap) => ({
+                  ...snap,
+                  bays: (snap.bays ?? []).map((b) =>
+                    b.ref_id === updated.bayRef
+                      ? {
+                          ...b,
+                          bay_number: updated.bayNumber || null,
+                          feeder_short_name: updated.feederName || null,
+                          bay_role: mapCanonicalRoleToBayRole(updated.fieldRole),
+                          outgoing_destination_ref: updated.destinationLabel || null,
+                        }
+                      : b,
+                  ),
+                }),
+                [updated.bayRef],
+              );
+              notify(
+                `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef} (live-edit, brak active case).`,
+                'info',
+              );
+            }
             setBayModalState({ open: false, data: null });
           }}
         />
       )}
 
-      {/* R22: TransformerEditModal — edycja transformatora z LIVE PROPAGATION. */}
+      {/* R22+R27: TransformerEditModal — edycja transformatora z LIVE PROPAGATION + backend. */}
       {transformerModalState.open && transformerModalState.data && (
         <TransformerEditModal
           isOpen={transformerModalState.open}
           initial={transformerModalState.data}
           onClose={() => setTransformerModalState({ open: false, data: null })}
-          onSubmit={(updated) => {
-            patchSnapshot(
-              (snap) => ({
-                ...snap,
-                transformers: (snap.transformers ?? []).map((t) =>
-                  t.ref_id === updated.transformerRef
-                    ? {
-                        ...t,
-                        name: updated.designation || t.name,
-                        sn_mva: updated.snMva,
-                        uhv_kv: updated.uhvKv,
-                        ulv_kv: updated.ulvKv,
-                        vector_group: updated.vectorGroup,
-                        catalog_ref: updated.catalogRef,
-                      }
-                    : t,
-                ),
-              }),
-              [updated.transformerRef],
-            );
-            notify(
-              `Zapisano konfigurację transformatora ${updated.designation}. Wyniki SC i load flow zostały unieważnione.`,
-              'success',
-            );
+          onSubmit={async (updated) => {
+            const updates = {
+              name: updated.designation,
+              sn_mva: updated.snMva,
+              uhv_kv: updated.uhvKv,
+              ulv_kv: updated.ulvKv,
+              vector_group: updated.vectorGroup,
+              catalog_ref: updated.catalogRef,
+            };
+            if (activeCaseId) {
+              try {
+                await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+                  element_ref: updated.transformerRef,
+                  updates,
+                });
+                notify(
+                  `Zapisano konfigurację transformatora ${updated.designation}. Wyniki SC i load flow unieważnione.`,
+                  'success',
+                );
+              } catch (e) {
+                notify(
+                  `Błąd zapisu transformatora — fallback do live-edit: ${(e as Error).message}`,
+                  'warning',
+                );
+                patchSnapshot(
+                  (snap) => ({
+                    ...snap,
+                    transformers: (snap.transformers ?? []).map((t) =>
+                      t.ref_id === updated.transformerRef ? { ...t, ...updates, name: updated.designation || t.name } : t,
+                    ),
+                  }),
+                  [updated.transformerRef],
+                );
+              }
+            } else {
+              patchSnapshot(
+                (snap) => ({
+                  ...snap,
+                  transformers: (snap.transformers ?? []).map((t) =>
+                    t.ref_id === updated.transformerRef ? { ...t, ...updates, name: updated.designation || t.name } : t,
+                  ),
+                }),
+                [updated.transformerRef],
+              );
+              notify(
+                `Zapisano konfigurację transformatora ${updated.designation} (live-edit, brak active case).`,
+                'info',
+              );
+            }
             setTransformerModalState({ open: false, data: null });
           }}
         />
       )}
 
-      {/* R22: CouplerEditModal — edycja sprzęgła z LIVE PROPAGATION.
+      {/* R22+R27: CouplerEditModal — edycja sprzęgła z LIVE PROPAGATION + backend.
        * Stan sprzęgła wpływa na topologię — invaliduje WSZYSTKIE wyniki sekcji
-       * powiązanych (left + right). Komentarz operatora zapisany w meta. */}
+       * powiązanych (left + right). */}
       {couplerModalState.open && couplerModalState.data && (
         <CouplerEditModal
           isOpen={couplerModalState.open}
           initial={couplerModalState.data}
           onClose={() => setCouplerModalState({ open: false, data: null })}
-          onSubmit={(updated) => {
-            patchSnapshot(
-              (snap) => {
-                /* Sprzęgło to bay z bay_role='COUPLER'. Mutujemy bay z
-                 * matching ref_id albo (gdy nie ma bezpośrednio matching)
-                 * komentarz idzie w meta. */
-                const updatedBays = (snap.bays ?? []).map((b) =>
-                  b.ref_id === updated.couplerId
-                    ? {
-                        ...b,
-                        meta: {
-                          ...b.meta,
-                          coupler_state: updated.closedState,
-                          coupler_auto_mode: updated.autoMode,
-                          coupler_comment: updated.comment,
-                        },
-                      }
-                    : b,
+          onSubmit={async (updated) => {
+            const metaUpdates = {
+              coupler_state: updated.closedState,
+              coupler_auto_mode: updated.autoMode,
+              coupler_comment: updated.comment,
+            };
+            if (activeCaseId) {
+              try {
+                await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+                  element_ref: updated.couplerId,
+                  updates: { meta: metaUpdates },
+                });
+                notify(
+                  `Zapisano konfigurację sprzęgła ${updated.designation}: stan ${updated.closedState}. Wyniki sekcji ${updated.leftSectionId} i ${updated.rightSectionId} unieważnione.`,
+                  'success',
                 );
-                return { ...snap, bays: updatedBays };
-              },
-              [updated.couplerId, updated.leftSectionId, updated.rightSectionId],
-            );
-            notify(
-              `Zapisano konfigurację sprzęgła ${updated.designation}: stan ${updated.closedState}. Wyniki sekcji ${updated.leftSectionId} i ${updated.rightSectionId} zostały unieważnione.`,
-              'success',
-            );
+              } catch (e) {
+                notify(
+                  `Błąd zapisu sprzęgła — fallback do live-edit: ${(e as Error).message}`,
+                  'warning',
+                );
+                patchSnapshot(
+                  (snap) => ({
+                    ...snap,
+                    bays: (snap.bays ?? []).map((b) =>
+                      b.ref_id === updated.couplerId
+                        ? { ...b, meta: { ...b.meta, ...metaUpdates } }
+                        : b,
+                    ),
+                  }),
+                  [updated.couplerId, updated.leftSectionId, updated.rightSectionId],
+                );
+              }
+            } else {
+              patchSnapshot(
+                (snap) => ({
+                  ...snap,
+                  bays: (snap.bays ?? []).map((b) =>
+                    b.ref_id === updated.couplerId
+                      ? { ...b, meta: { ...b.meta, ...metaUpdates } }
+                      : b,
+                  ),
+                }),
+                [updated.couplerId, updated.leftSectionId, updated.rightSectionId],
+              );
+              notify(
+                `Zapisano konfigurację sprzęgła ${updated.designation} (live-edit, brak active case).`,
+                'info',
+              );
+            }
             setCouplerModalState({ open: false, data: null });
           }}
         />
