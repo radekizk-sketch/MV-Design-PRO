@@ -29,7 +29,7 @@
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 
-import { useActiveMode, useIssuePanelOpen } from '../app-state';
+import { useActiveMode } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
@@ -161,7 +161,6 @@ export function AppShellV12({
   onMenuAction,
   networkStats,
 }: AppShellV12Props) {
-  const issuePanelOpen = useIssuePanelOpen();
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
@@ -393,12 +392,6 @@ export function AppShellV12({
                 </button>
               </div>
             )}
-          </aside>
-        )}
-
-        {/* Panel zgłoszeń (issue panel) */}
-        {issuePanelOpen && (
-          <aside className="w-[360px] shrink-0 overflow-hidden border-l border-scada-border bg-scada-surface">
           </aside>
         )}
       </div>

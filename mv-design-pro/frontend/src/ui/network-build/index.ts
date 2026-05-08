@@ -34,8 +34,6 @@ export type {
 // Krok V — Context menu, visual modes, catalog, search, mass review, modals
 export { CatalogBrowser } from './CatalogBrowser';
 export { GlobalSearch } from './GlobalSearch';
-export { TopContextBar } from './TopContextBar';
-export type { TopContextBarProps } from './TopContextBar';
 export { ProjectMetadataModal } from './ProjectMetadataModal';
 export type { ProjectMetadataModalProps, ProjectMetadata } from './ProjectMetadataModal';
 export { SnapshotHistoryModal, OP_LABELS } from './SnapshotHistoryModal';
