@@ -21,6 +21,7 @@
  */
 
 import { expect, test, type Page } from '@playwright/test';
+import { collectConsoleErrors } from './helpers/console-failure';
 import {
   TEST_APP_STATE,
   TEST_SELECTION_STATE,
@@ -60,10 +61,26 @@ async function openStationWizard(page: Page, entityRef?: string): Promise<void> 
 }
 
 test.describe('StationWizard E2E (R52 — Zasada 13 end-to-end)', () => {
+  /* R54: Collector dla console errors dla każdego testu — assertion w afterEach. */
+  let consoleAccumulator: { errors: string[]; pageErrors: string[] } | null = null;
+
   test.beforeEach(async ({ page }) => {
+    consoleAccumulator = collectConsoleErrors(page);
     await seedTestState(page);
     await page.goto('/');
     await waitForAppReady(page);
+  });
+
+  test.afterEach(async () => {
+    if (!consoleAccumulator) return;
+    expect(
+      consoleAccumulator.pageErrors,
+      `pageerror:\n${consoleAccumulator.pageErrors.join('\n')}`,
+    ).toEqual([]);
+    expect(
+      consoleAccumulator.errors,
+      `console.error:\n${consoleAccumulator.errors.join('\n')}`,
+    ).toEqual([]);
   });
 
   test('Wizard renderuje 8 stepów stepper (R46)', async ({ page }) => {

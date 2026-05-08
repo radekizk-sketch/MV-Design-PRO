@@ -189,6 +189,7 @@ export function AppShellV12({
   return (
     <div
       data-testid="canonical-layout"
+      data-workspace-shell
       data-v12-shell
       className="flex h-screen flex-col overflow-hidden bg-scada-bg text-scada-text"
     >

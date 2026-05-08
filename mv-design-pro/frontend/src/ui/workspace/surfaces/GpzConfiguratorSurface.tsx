@@ -868,7 +868,7 @@ function GpzConfiguratorAdvanced(props: GpzConfiguratorAdvancedProps): JSX.Eleme
                     ))}
                   </ul>
                 ) : (
-                  <p className="text-scada-muted">Brak danych readiness — uruchom obliczenia z E-23/E-24.</p>
+                  <p className="text-scada-muted">Brak danych gotowości obliczeń — uruchom obliczenia z E-23/E-24.</p>
                 )}
               </div>
             </div>

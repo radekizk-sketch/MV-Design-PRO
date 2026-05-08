@@ -61,30 +61,41 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
     expect(screen.getByText(/Środowisko inżynierskie MV-DESIGN-PRO/)).toBeInTheDocument();
   });
 
-  // === Test C: Konfigurator GPZ (E-10) ===
-  it('C. GPZ ma 5 kart konfiguracyjnych z polskimi etykietami', () => {
-    render(<GpzConfiguratorSurface surface={sampleSurface} />);
-    ['Identyfikacja', 'Strona 110 kV', 'Transformator 110/SN', 'Sekcje SN', 'Bilans pól SN'].forEach((label) => {
+  // === Test C: Konfigurator GPZ (E-10) — z entityRef widzi karty Advanced (R45) ===
+  it('C. GPZ ma 5 kart konfiguracyjnych z polskimi etykietami (Advanced mode)', () => {
+    const surfaceWithGpz = { ...sampleSurface, entityRef: 'gpz-test' };
+    render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+    /* R45 dual mode — przełącz na Advanced żeby zobaczyć 7 kart inżynierskich. */
+    fireEvent.click(screen.getByTestId('gpz-mode-advanced-switch'));
+    ['Identyfikacja', 'Strona 110 kV', 'Sekcje SN', 'Bilans pól SN'].forEach((label) => {
       expect(screen.getByText(label)).toBeInTheDocument();
     });
   });
 
   // === Test D: Pole SN (E-11) ===
-  it('D. Pole SN ma 8 sekcji konfiguratora', () => {
+  it('D. Pole SN renderuje się (R47 Editor mode default)', () => {
     render(<BayConfiguratorSurface surface={sampleSurface} />);
     expect(screen.getByTestId('bay-configurator-surface')).toBeInTheDocument();
   });
 
-  // === Test E: Stacja (E-13) ===
-  it('E. Stacja ma 10 kart (PR-8a brief 2 §8)', () => {
+  // === Test E: Stacja (E-13) — R46 wizard 8-step default + przełącznik do legacy ===
+  it('E. Stacja ma wizard 8-step (R46) + dostęp do legacy 10-kart przez switcher', () => {
     render(<StationConfiguratorSurface surface={sampleSurface} />);
+    /* Default = wizard. */
+    expect(screen.getByTestId('station-wizard-surface')).toBeInTheDocument();
+    /* Toggle do legacy view (10-kart). */
+    fireEvent.click(screen.getByTestId('station-mode-legacy-switch'));
     expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
   });
 
-  // === Test F: Odcinek SN (E-12) ===
-  it('F. Odcinek SN obsługuje przełączanie rodziny kabel/linia', () => {
+  // === Test F: Odcinek SN (E-12) — R47 Inline mode default + przełącznik do legacy ===
+  it('F. Odcinek SN — Inline mode default + legacy 4-kart przez switcher', () => {
     render(<SnSegmentSurface surface={sampleSurface} />);
     expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
+    /* R47 default Inline (LineSegmentInline). */
+    expect(screen.getByTestId('line-segment-inline')).toBeInTheDocument();
+    /* Toggle do legacy 4-kart. */
+    fireEvent.click(screen.getByTestId('segment-mode-legacy-switch'));
     expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
   });
 
@@ -125,10 +136,12 @@ describe('Etap 10 — Testy akceptacyjne workflow inżyniera E2E', () => {
     expect(empty.textContent).not.toContain('0,00');
   });
 
-  // === Test K: Polskie etykiety ===
+  // === Test K: Polskie etykiety (z entityRef → karty Advanced widoczne) ===
   it('K. UI używa polskich etykiet z diakrytyką', () => {
-    render(<GpzConfiguratorSurface surface={sampleSurface} />);
-    // Polski z diakrytyką
+    const surfaceWithGpz = { ...sampleSurface, entityRef: 'gpz-test' };
+    render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+    fireEvent.click(screen.getByTestId('gpz-mode-advanced-switch'));
+    // Polski z diakrytyką w nagłówku Advanced
     expect(screen.getByText(/Główny Punkt Zasilający/)).toBeInTheDocument();
   });
 
