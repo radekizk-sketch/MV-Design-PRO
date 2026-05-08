@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { GPZ_PRESETS, getGpzPresetById, filterGpzPresetsByLocation } from '../gpzPresets';
+import { GPZ_PRESETS, getGpzPresetById, filterGpzPresetsByCategory, GPZ_CATEGORY_LABELS_PL } from '../gpzPresets';
 import { analyzeGpz } from '../gpzAdvisor';
 import { HV_TRANSFORMER_CATALOG } from '../../../catalog/hvTransformerCatalog';
 import type { Substation, Transformer, Bus, Bay } from '../../../../types/enm';
@@ -25,12 +25,31 @@ describe('gpzPresets', () => {
     }
   });
 
-  it('Wszystkie 4 location tags reprezentowane (wiejski/miejski/przemysłowy/tranzytowy)', () => {
-    const tags = new Set(GPZ_PRESETS.map((p) => p.locationTag));
-    expect(tags.has('wiejski')).toBe(true);
-    expect(tags.has('miejski')).toBe(true);
-    expect(tags.has('przemysłowy')).toBe(true);
-    expect(tags.has('tranzytowy')).toBe(true);
+  it('Wszystkie 6 kategorii technicznych reprezentowanych', () => {
+    const categories = new Set(GPZ_PRESETS.map((p) => p.category));
+    expect(categories.has('distributed')).toBe(true);
+    expect(categories.has('distribution_standard')).toBe(true);
+    expect(categories.has('distribution_dense')).toBe(true);
+    expect(categories.has('distribution_n_minus_2')).toBe(true);
+    expect(categories.has('industrial')).toBe(true);
+    expect(categories.has('transmission_node')).toBe(true);
+  });
+
+  it('GPZ_CATEGORY_LABELS_PL zawiera polskie etykiety dla wszystkich kategorii', () => {
+    expect(GPZ_CATEGORY_LABELS_PL['distributed']).toBe('Rozproszony');
+    expect(GPZ_CATEGORY_LABELS_PL['distribution_standard']).toBe('Rozdzielczy podstawowy');
+    expect(GPZ_CATEGORY_LABELS_PL['distribution_dense']).toBe('Rozdzielczy aglomeracyjny');
+    expect(GPZ_CATEGORY_LABELS_PL['distribution_n_minus_2']).toBe('Rozdzielczy aglomeracyjny N-2');
+    expect(GPZ_CATEGORY_LABELS_PL['industrial']).toBe('Przemysłowy (sieć izolowana)');
+    expect(GPZ_CATEGORY_LABELS_PL['transmission_node']).toBe('Węzłowy WN/SN (tranzytowy)');
+  });
+
+  it('Brak terminologii "wiejski/miejski" w labelach (techniczna klasyfikacja)', () => {
+    for (const p of GPZ_PRESETS) {
+      expect(p.label).not.toMatch(/wiejski/i);
+      expect(p.label).not.toMatch(/miejski/i);
+      expect(p.description).not.toMatch(/wsi |wieś/i);
+    }
   });
 
   it('S\'\'k * R/X w sensownym zakresie', () => {
@@ -42,15 +61,15 @@ describe('gpzPresets', () => {
   });
 
   it('getGpzPresetById znajduje istniejący preset', () => {
-    const p = getGpzPresetById('preset-rural-standard');
+    const p = getGpzPresetById('preset-distribution-standard');
     expect(p).not.toBeNull();
     expect(p?.transformerCount).toBe(2);
   });
 
-  it('filterGpzPresetsByLocation filtruje po tagu', () => {
-    const wiejski = filterGpzPresetsByLocation('wiejski');
-    expect(wiejski.length).toBeGreaterThan(0);
-    for (const p of wiejski) expect(p.locationTag).toBe('wiejski');
+  it('filterGpzPresetsByCategory filtruje po kategorii', () => {
+    const distributed = filterGpzPresetsByCategory('distributed');
+    expect(distributed.length).toBeGreaterThan(0);
+    for (const p of distributed) expect(p.category).toBe('distributed');
   });
 });
 

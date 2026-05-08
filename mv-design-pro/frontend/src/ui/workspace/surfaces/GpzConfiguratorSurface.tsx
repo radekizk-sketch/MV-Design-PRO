@@ -32,7 +32,7 @@ import {
   getHvTransformerById,
   type HvTransformerSpec,
 } from '../../catalog/hvTransformerCatalog';
-import { GPZ_PRESETS, getGpzPresetById } from './gpzPresets';
+import { GPZ_PRESETS, getGpzPresetById, GPZ_CATEGORY_LABELS_PL } from './gpzPresets';
 import { analyzeGpz, type GpzSuggestion, type SuggestionLevel } from './gpzAdvisor';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import type { Substation, Transformer, Bus, Bay, Generator } from '../../../types/enm';
@@ -584,7 +584,7 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
                     <div className="font-semibold text-scada-text">{p.label}</div>
                     <div className="mt-1 text-scada-muted">{p.description}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-scada-sn">
-                      {p.locationTag} · {p.useCase}
+                      {GPZ_CATEGORY_LABELS_PL[p.category]} · {p.useCase}
                     </div>
                   </button>
                 ))}
