@@ -62,6 +62,9 @@ CANONICAL_OPS = frozenset(
         # R49 (Zasada 13): atomowa operacja create-station-complete dla wizarda E-13
         "create_station_complete",
         "update_station_complete",
+        # R50: partial updates dla E-11 BayEditor + E-12 LineSegmentInline
+        "configure_bay",
+        "configure_cable",
     }
 )
 
@@ -5482,6 +5485,190 @@ def create_station_complete(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
 
 # ---------------------------------------------------------------------------
+# configure_bay (R50) — partial update istniejącego pola SN
+# ---------------------------------------------------------------------------
+
+
+def configure_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """R50: Aktualizuje meta + bay_role istniejącego pola SN.
+
+    Wzorzec dla edycji per-pole z UI E-11 (BayConfiguratorSurface — Editor mode)
+    oraz akcji kontekstowej "Edytuj pole" z SLD.
+
+    Payload:
+      bay_ref: str (required)
+      cb_catalog_ref: str | None
+      cb_icu_ka: float | None
+      ds_catalog_ref: str | None
+      ct_catalog_ref: str | None
+      ct_ratio: str | None
+      has_vt: bool
+      has_surge_arrester: bool
+      has_fuse: bool
+      bay_role: 'LINE_FULL' | 'TR_FULL' | 'COUPLER' | 'MEASUREMENT' | 'OZE'
+        (mapowane do Bay.bay_role IN/OUT/TR/COUPLER/MEASUREMENT/OZE)
+
+    Walidacje:
+      - bay_ref required
+      - bay istnieje w ENM
+      - bay_role valid (jeśli podany)
+      - LINE_FULL bez CT → warning (nie blocker — zachowuje pole edytowalne)
+    """
+    bay_ref = payload.get("bay_ref")
+    if not bay_ref:
+        return _error_response(
+            "Brak bay_ref. Wymagane.",
+            "bay.configure.bay_ref_missing",
+        )
+
+    new_enm = copy.deepcopy(enm)
+    bay = None
+    for b in new_enm.get("bays", []):
+        if b.get("ref_id") == bay_ref:
+            bay = b
+            break
+    if not bay:
+        return _error_response(
+            f"Pole '{bay_ref}' nie istnieje w ENM.",
+            "bay.configure.bay_not_found",
+        )
+
+    # Walidacja bay_role (jeśli podany)
+    role_raw = payload.get("bay_role")
+    if role_raw is not None:
+        if role_raw not in _BAY_ROLE_MAP:
+            return _error_response(
+                f"Rola pola '{role_raw}' nieprawidłowa. "
+                f"Wymagane: {', '.join(sorted(_BAY_ROLE_MAP.keys()))}.",
+                "bay.configure.role_invalid",
+            )
+        bay["bay_role"] = _BAY_ROLE_MAP[role_raw]
+
+    # Update meta — tylko podane klucze (partial update)
+    bay_meta = bay.setdefault("meta", {})
+    for key in (
+        "cb_catalog_ref", "cb_icu_ka", "ds_catalog_ref",
+        "ct_catalog_ref", "ct_ratio",
+    ):
+        if key in payload:
+            bay_meta[key] = payload[key]
+    for bool_key in ("has_vt", "has_surge_arrester", "has_fuse"):
+        if bool_key in payload:
+            bay_meta[bool_key] = bool(payload[bool_key])
+
+    audit = [{
+        "step": 1,
+        "action": f"Zaktualizowano pole SN '{bay.get('name', bay_ref)}'",
+        "element_id": bay_ref,
+    }]
+    events = [{
+        "event_seq": 1,
+        "event_type": "BAY_UPDATED",
+        "element_id": bay_ref,
+        "affected_object_refs": [bay_ref, bay.get("substation_ref")],
+    }]
+
+    return _response(
+        new_enm,
+        updated=[bay_ref],
+        selection_id=bay_ref,
+        selection_type="bay",
+        audit=audit,
+        events=events,
+    )
+
+
+# ---------------------------------------------------------------------------
+# configure_cable (R50) — partial update istniejącego segmentu kabla
+# ---------------------------------------------------------------------------
+
+
+def configure_cable(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """R50: Aktualizuje meta + parametry istniejącego segmentu kabla SN.
+
+    Wzorzec dla edycji per-segment z UI E-12 (SnSegmentSurface — Inline mode)
+    oraz akcji kontekstowej "Edytuj odcinek" z SLD.
+
+    Payload:
+      segment_ref: str (required) — ref_id branchu
+      cable_catalog_ref: str | None
+      length_m: float | None
+      installation: 'ground' | 'channel' | 'air' | None
+      temperature_c: float | None
+      r_ohm: float | None (wynik estymatora frontend)
+      x_ohm: float | None
+      imax_a: float | None
+
+    Walidacje:
+      - segment_ref required
+      - branch istnieje
+      - length_m > 0 jeśli podany
+      - cable_catalog_ref nieempty jeśli podany
+    """
+    segment_ref = payload.get("segment_ref")
+    if not segment_ref:
+        return _error_response(
+            "Brak segment_ref. Wymagane.",
+            "cable.configure.segment_ref_missing",
+        )
+
+    new_enm = copy.deepcopy(enm)
+    branch = None
+    for b in new_enm.get("branches", []):
+        if b.get("ref_id") == segment_ref:
+            branch = b
+            break
+    if not branch:
+        return _error_response(
+            f"Segment '{segment_ref}' nie istnieje w ENM.",
+            "cable.configure.segment_not_found",
+        )
+
+    # Walidacja length_m
+    if "length_m" in payload:
+        length = payload["length_m"]
+        if length is None or length <= 0:
+            return _error_response(
+                "length_m musi być > 0.",
+                "cable.configure.length_invalid",
+            )
+
+    # Update meta + bezpośrednie pola
+    branch_meta = branch.setdefault("meta", {})
+    for key in (
+        "cable_catalog_ref", "length_m", "installation",
+        "temperature_c", "r_ohm", "x_ohm", "imax_a",
+    ):
+        if key in payload:
+            branch_meta[key] = payload[key]
+
+    # Sync catalog_ref jeśli wskazany
+    if "cable_catalog_ref" in payload and payload["cable_catalog_ref"]:
+        branch["catalog_ref"] = payload["cable_catalog_ref"]
+
+    audit = [{
+        "step": 1,
+        "action": f"Zaktualizowano odcinek SN '{branch.get('name', segment_ref)}'",
+        "element_id": segment_ref,
+    }]
+    events = [{
+        "event_seq": 1,
+        "event_type": "CABLE_UPDATED",
+        "element_id": segment_ref,
+        "affected_object_refs": [segment_ref],
+    }]
+
+    return _response(
+        new_enm,
+        updated=[segment_ref],
+        selection_id=segment_ref,
+        selection_type="branch",
+        audit=audit,
+        events=events,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -5508,6 +5695,9 @@ _HANDLERS: dict[str, Any] = {
     "create_station_complete": create_station_complete,
     # update wykorzystuje ten sam handler — wykrywa istniejący ref_id i robi cleanup+recreate
     "update_station_complete": create_station_complete,
+    # R50: partial updates dla E-11 + E-12
+    "configure_bay": configure_bay,
+    "configure_cable": configure_cable,
 }
 
 
