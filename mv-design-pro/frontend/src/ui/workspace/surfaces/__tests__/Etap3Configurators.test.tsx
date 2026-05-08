@@ -30,50 +30,74 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     vi.clearAllMocks();
   });
 
-  describe('GpzConfiguratorSurface (E-10)', () => {
-    it('renderuje 5 kart konfiguracyjnych z polskimi etykietami', () => {
+  describe('GpzConfiguratorSurface (E-03 R36)', () => {
+    /* R36 wymaga entityRef żeby pokazać formularz; bez ref → empty state */
+    const surfaceWithGpz = { ...minimalSurface, entityRef: 'gpz-test' };
+
+    it('Bez entityRef → empty state (placeholder zaproszenia)', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
+      expect(screen.getByTestId('gpz-configurator-surface-empty')).toBeInTheDocument();
+    });
+
+    it('Z entityRef → renderuje 7 kart inżynierskich (R36)', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
       expect(screen.getByText('Strona 110 kV')).toBeInTheDocument();
-      expect(screen.getByText('Transformator 110/SN')).toBeInTheDocument();
+      expect(screen.getByText('Transformator z katalogu')).toBeInTheDocument();
       expect(screen.getByText('Sekcje SN')).toBeInTheDocument();
       expect(screen.getByText('Bilans pól SN')).toBeInTheDocument();
+      /* R36 nowe karty */
+      expect(screen.getByText('Podsumowanie obliczeniowe')).toBeInTheDocument();
+      expect(screen.getByText('Wyniki obliczeń live')).toBeInTheDocument();
     });
 
-    it('nie pokazuje technicznego identyfikatora akcji ani tekstu roadmapy', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    it('NIE pokazuje technicznego identyfikatora akcji ani tekstu roadmapy', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       expect(screen.queryByText(/add_grid_source_sn/)).not.toBeInTheDocument();
       expect(screen.queryByText(/roadmap/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/Dodaj źródło zasilania GPZ/)).toBeInTheDocument();
     });
 
-    it('domyślnie aktywna jest karta Identyfikacja', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    it('Domyślnie aktywna jest karta Identyfikacja', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
       expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
     });
 
-    it('zmiana karty wyświetla nową zawartość', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    it('Zmiana karty wyświetla nową zawartość (Transformator)', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
       expect(screen.getByTestId('gpz-card-content-transformer')).toBeInTheDocument();
-      expect(screen.getByText('Katalog transformatora 110/SN')).toBeInTheDocument();
+      expect(screen.getByText(/Katalog HV transformatorów/)).toBeInTheDocument();
     });
 
-    it('karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    it('Karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
-      expect(screen.getByText(/Moc zwarciowa S''k 110 kV/)).toBeInTheDocument();
-      expect(screen.getByText(/MVA/)).toBeInTheDocument();
+      expect(screen.getByTestId('gpz-sk-mva')).toBeInTheDocument();
     });
 
-    it('karta Bilans pól SN pokazuje braki danych jako kreskę zamiast zera', () => {
-      render(<GpzConfiguratorSurface surface={minimalSurface} />);
+    it('R36 — karta Podsumowanie obliczeniowe ma sekcje moc/SC/spadek/zasoby', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      fireEvent.click(screen.getByTestId('gpz-card-tab-calc-summary'));
+      expect(screen.getByTestId('gpz-card-content-calc-summary')).toBeInTheDocument();
+      expect(screen.getByText(/Moc rozporządzalna/)).toBeInTheDocument();
+      expect(screen.getByText(/Krótkie zwarcie/)).toBeInTheDocument();
+      expect(screen.getByText(/Spadek napięcia/)).toBeInTheDocument();
+      expect(screen.getByText(/Zasoby/)).toBeInTheDocument();
+    });
+
+    it('R36 — karta Wyniki obliczeń live ma sekcje readiness + invalidate', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      fireEvent.click(screen.getByTestId('gpz-card-tab-live-results'));
+      expect(screen.getByTestId('gpz-card-content-live-results')).toBeInTheDocument();
+      expect(screen.getByText(/Status gotowości obliczeń/)).toBeInTheDocument();
+      expect(screen.getByText(/Inwalidacja wyników/)).toBeInTheDocument();
+    });
+
+    it('R36 — karta Bilans pól SN renderuje tabelę', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
       fireEvent.click(screen.getByTestId('gpz-card-tab-bays-balance'));
-      const balanceContent = screen.getByTestId('gpz-card-content-bays-balance');
-      const dashes = balanceContent.querySelectorAll('div');
-      const dashCount = Array.from(dashes).filter((el) => el.textContent === '—').length;
-      expect(dashCount).toBeGreaterThan(0);
+      expect(screen.getByTestId('gpz-bay-balance-table')).toBeInTheDocument();
     });
   });
 

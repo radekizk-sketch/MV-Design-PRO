@@ -96,7 +96,7 @@ describe('SldWorkspaceContainer R27 — modal → executeDomainOperation', () =>
 
     /* Snapshot mutated locally */
     expect(useSnapshotStore.getState().snapshot?.bays?.[0].bay_number).toBe('99');
-    expect(useSnapshotStore.getState().lastChanges?.affected_object_refs).toEqual(['bay-1']);
+    expect(useSnapshotStore.getState().lastChanges?.updated_element_ids).toEqual(['bay-1']);
     cleanup();
   });
 
@@ -109,7 +109,7 @@ describe('SldWorkspaceContainer R27 — modal → executeDomainOperation', () =>
       materialized_params: null,
       layout: null,
       selection_hint: null,
-      changes: { affected_object_refs: ['bay-1'], created: [], updated: [], deleted: [] },
+      changes: { updated_element_ids: ['bay-1'], created: [], updated: [], deleted: [] },
       domain_events: [],
     } as never));
     useSnapshotStore.setState({ executeDomainOperation: execSpy } as never);
@@ -218,6 +218,6 @@ describe('SldWorkspaceContainer R27 — modal → executeDomainOperation', () =>
         ['bay-1'],
       );
     });
-    expect(useSnapshotStore.getState().lastChanges?.affected_object_refs).toEqual(['bay-1']);
+    expect(useSnapshotStore.getState().lastChanges?.updated_element_ids).toEqual(['bay-1']);
   });
 });

@@ -392,11 +392,10 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     /* lastChanges propagation — invaliduje wyniki w innych komponentach
      * (Inv 4 — Case Immutability Rule). */
     const changesInfo: ChangesInfo = {
-      affected_object_refs: [...affectedObjectRefs],
-      created: [],
-      updated: affectedObjectRefs.map((ref) => ({ ref_id: ref, kind: 'unknown' })),
-      deleted: [],
-    } as never;
+      created_element_ids: [],
+      updated_element_ids: [...affectedObjectRefs],
+      deleted_element_ids: [],
+    };
     set({
       snapshot: updated,
       lastChanges: changesInfo,
@@ -410,7 +409,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     if (current) redoStack.push(current);
     set({
       snapshot: previous,
-      lastChanges: { affected_object_refs: [], created: [], updated: [], deleted: [] } as never,
+      lastChanges: { created_element_ids: [], updated_element_ids: [], deleted_element_ids: [] },
     });
     return true;
   },
@@ -425,7 +424,7 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     }
     set({
       snapshot: next,
-      lastChanges: { affected_object_refs: [], created: [], updated: [], deleted: [] } as never,
+      lastChanges: { created_element_ids: [], updated_element_ids: [], deleted_element_ids: [] },
     });
     return true;
   },

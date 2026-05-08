@@ -3,7 +3,7 @@
  * end-to-end: store → snapshot → SLD canvas → mini-RMU pokazuje nowe dane.
  *
  * Reference invariant: Inv 4 (Case Immutability Rule) — wyniki obliczeń
- * INVALIDOWANE przez `lastChanges.affected_object_refs[]`.
+ * INVALIDOWANE przez `lastChanges.updated_element_ids[]`.
  */
 import { describe, expect, it, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
@@ -92,7 +92,7 @@ describe('snapshotStore.patchSnapshot — R22 lokalna mutacja', () => {
     expect(bay?.feeder_short_name).toBe('NEW1');
   });
 
-  it('patchSnapshot ustawia lastChanges.affected_object_refs (Inv 4)', () => {
+  it('patchSnapshot ustawia lastChanges.updated_element_ids (Inv 4)', () => {
     useSnapshotStore.setState({ snapshot: makeSnapshot() });
     const { result } = renderHook(() => useSnapshotStore());
 
@@ -103,8 +103,8 @@ describe('snapshotStore.patchSnapshot — R22 lokalna mutacja', () => {
       );
     });
 
-    expect(result.current.lastChanges?.affected_object_refs).toEqual(['bay-1', 'sta-1', 'sec-1']);
-    expect(result.current.lastChanges?.updated.length).toBe(3);
+    expect(result.current.lastChanges?.updated_element_ids).toEqual(['bay-1', 'sta-1', 'sec-1']);
+    expect(result.current.lastChanges?.updated_element_ids.length).toBe(3);
   });
 
   it('patchSnapshot mutuje transformer (sn_mva, uhv_kv)', () => {

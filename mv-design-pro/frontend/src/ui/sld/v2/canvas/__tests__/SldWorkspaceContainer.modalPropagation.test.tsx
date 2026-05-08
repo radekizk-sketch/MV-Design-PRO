@@ -113,7 +113,7 @@ describe('SldWorkspaceContainer R22-R23 — modal → snapshot → canvas propag
     expect(bayAfter?.bay_number).toBe('99');
 
     /* lastChanges propagated */
-    expect(useSnapshotStore.getState().lastChanges?.affected_object_refs).toEqual(['bay-1']);
+    expect(useSnapshotStore.getState().lastChanges?.updated_element_ids).toEqual(['bay-1']);
 
     /* Canvas re-rendered — sta-1 mini-RMU jeszcze obecny */
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-sta-1"]')).toBeTruthy();
@@ -196,7 +196,7 @@ describe('SldWorkspaceContainer R22-R23 — modal → snapshot → canvas propag
     cleanup();
   });
 
-  it('patchSnapshot z affected_object_refs invaliduje lastChanges (Inv 4)', () => {
+  it('patchSnapshot z updated_element_ids invaliduje lastChanges (Inv 4)', () => {
     render(<SldWorkspaceContainer width={800} height={600} />);
 
     act(() => {
@@ -207,10 +207,10 @@ describe('SldWorkspaceContainer R22-R23 — modal → snapshot → canvas propag
     });
 
     const lc = useSnapshotStore.getState().lastChanges;
-    expect(lc?.affected_object_refs).toContain('bay-1');
-    expect(lc?.affected_object_refs).toContain('sta-1');
-    expect(lc?.affected_object_refs).toContain('tr-1');
-    expect(lc?.updated.length).toBe(3);
+    expect(lc?.updated_element_ids).toContain('bay-1');
+    expect(lc?.updated_element_ids).toContain('sta-1');
+    expect(lc?.updated_element_ids).toContain('tr-1');
+    expect(lc?.updated_element_ids.length).toBe(3);
     cleanup();
   });
 });
