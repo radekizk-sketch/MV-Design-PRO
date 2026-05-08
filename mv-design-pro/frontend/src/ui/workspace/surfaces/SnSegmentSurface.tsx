@@ -1,5 +1,8 @@
 /**
- * SnSegmentSurface (E-12) — konfigurator odcinka SN.
+ * SnSegmentSurface (E-12 R47) — konfigurator odcinka SN.
+ *
+ * R47 (Zasada 13): Domyślnie renderuje LineSegmentInline (compact editor).
+ * Toggle "Widok 4-kart (legacy)" pozwala wrócić do pełnej karty.
  *
  * Etap 4 dostawy: parametry odcinka kabla SN albo linii napowietrznej SN:
  * 4 karty: Identyfikacja & rodzina / Katalog & przewód / Trasa & ułożenie /
@@ -10,11 +13,21 @@
  * insert_station_on_segment_sn — Etap 6 (insert tool).
  */
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useAppStateStore } from '../../app-state';
+import { notify } from '../../notifications/store';
 import { MISSING_DASH } from '../../shared/formatPolishValue';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import {
+  LineSegmentInline,
+  EMPTY_LINE_SEGMENT_DRAFT,
+  type LineSegmentInlineDraft,
+  computeLineSegmentParams,
+} from '../components/LineSegmentInline';
+
+type SegmentMode = 'inline' | 'legacy';
 
 type SegmentCardId = 'identification' | 'catalog' | 'route' | 'rating';
 
@@ -58,7 +71,159 @@ interface SnSegmentSurfaceProps {
 }
 
 export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
-  const { surface } = props;
+  const [mode, setMode] = useState<SegmentMode>('inline');
+
+  if (mode === 'inline') {
+    return <SnSegmentInline surface={props.surface} onSwitchToLegacy={() => setMode('legacy')} />;
+  }
+  return <SnSegmentLegacy surface={props.surface} onSwitchToInline={() => setMode('inline')} />;
+}
+
+interface SnSegmentInlineProps {
+  readonly surface: WorkspaceSurfaceDescriptor;
+  readonly onSwitchToLegacy: () => void;
+}
+
+function SnSegmentInline(props: SnSegmentInlineProps): JSX.Element {
+  const { surface, onSwitchToLegacy } = props;
+  const segmentRef = surface.entityRef ?? null;
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const patchSnapshot = useSnapshotStore((s) => s.patchSnapshot);
+  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+
+  const initialDraft = useMemo<LineSegmentInlineDraft>(() => {
+    if (!segmentRef || !snapshot) return EMPTY_LINE_SEGMENT_DRAFT;
+    const seg = ((snapshot.branches ?? []) as Array<{ ref_id: string; meta?: Record<string, unknown> }>)
+      .find((b) => b.ref_id === segmentRef);
+    if (!seg) return EMPTY_LINE_SEGMENT_DRAFT;
+    const meta = (seg.meta ?? {}) as Record<string, unknown>;
+    return {
+      cableCatalogRef: (meta['cable_catalog_ref'] as string) ?? '',
+      lengthM: (meta['length_m'] as number) ?? 100,
+      installation: ((meta['installation'] as 'ground' | 'channel' | 'air') ?? 'ground'),
+      temperatureC: (meta['temperature_c'] as number) ?? 30,
+    };
+  }, [segmentRef, snapshot]);
+
+  const handleSave = useCallback(
+    async (
+      draft: LineSegmentInlineDraft,
+      computed: ReturnType<typeof computeLineSegmentParams>,
+    ) => {
+      if (!segmentRef) {
+        notify('Brak referencji odcinka — nie można zapisać.', 'warning');
+        return;
+      }
+      let backendOk = false;
+      if (activeCaseId) {
+        try {
+          const response = await executeDomainOperation(activeCaseId, 'configure-cable', {
+            segment_ref: segmentRef,
+            cable_catalog_ref: draft.cableCatalogRef,
+            length_m: draft.lengthM,
+            installation: draft.installation,
+            temperature_c: draft.temperatureC,
+            r_ohm: computed.rOhm,
+            x_ohm: computed.xOhm,
+            imax_a: computed.imaxA,
+          });
+          backendOk = Boolean(response);
+        } catch {
+          backendOk = false;
+        }
+      }
+      if (!backendOk) {
+        patchSnapshot(
+          (snap) => ({
+            ...snap,
+            branches: (snap.branches ?? []).map((b) =>
+              b.ref_id === segmentRef
+                ? ({
+                    ...b,
+                    meta: {
+                      ...((b as { meta?: Record<string, unknown> }).meta ?? {}),
+                      cable_catalog_ref: draft.cableCatalogRef,
+                      length_m: draft.lengthM,
+                      installation: draft.installation,
+                      temperature_c: draft.temperatureC,
+                      r_ohm: computed.rOhm,
+                      x_ohm: computed.xOhm,
+                      imax_a: computed.imaxA,
+                    },
+                  } as typeof b)
+                : b,
+            ),
+          }),
+          [segmentRef],
+        );
+        notify('Zapisano odcinek (lokalnie). Backend operation będzie zsynchronizowany przy następnym refresh.', 'info');
+      } else {
+        notify('Zapisano odcinek. Wyniki obliczeń zostały unieważnione (Inv 4).', 'info');
+      }
+    },
+    [activeCaseId, segmentRef, executeDomainOperation, patchSnapshot],
+  );
+
+  const handleCancel = useCallback(() => {
+    notify('Anulowano edycję odcinka. Model bez zmian.', 'info');
+  }, []);
+
+  return (
+    <div data-testid="sn-segment-surface" className="flex h-full w-full flex-col p-4">
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            E-12 · Inline edytor odcinka SN (R47 — Zasada 13)
+          </div>
+          <h2 className="mt-1 text-base font-semibold text-scada-text">
+            {segmentRef ?? 'Odcinek niewybrany'}
+          </h2>
+          {!segmentRef && (
+            <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+              Brak referencji do odcinka. Wybierz odcinek z lewego nawigatora lub
+              kliknij odcinek w SLD i wybierz "Edytuj odcinek".
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="segment-mode-inline-switch"
+            aria-pressed={true}
+            className="rounded bg-scada-accent px-3 py-1 text-xs text-white"
+          >
+            Inline (R47)
+          </button>
+          <button
+            type="button"
+            data-testid="segment-mode-legacy-switch"
+            onClick={onSwitchToLegacy}
+            className="rounded border border-scada-border px-3 py-1 text-xs text-scada-text hover:bg-scada-hover-nav"
+          >
+            Widok 4-kart (legacy) →
+          </button>
+        </div>
+      </div>
+      <div className="flex-1 overflow-auto">
+        <LineSegmentInline
+          initialDraft={initialDraft}
+          onSave={handleSave}
+          onCancel={handleCancel}
+          mode={segmentRef ? 'edit' : 'create'}
+        />
+      </div>
+    </div>
+  );
+}
+
+interface SnSegmentLegacyProps {
+  readonly surface: WorkspaceSurfaceDescriptor;
+  readonly onSwitchToInline: () => void;
+}
+
+function SnSegmentLegacy(props: SnSegmentLegacyProps): JSX.Element {
+  const { surface, onSwitchToInline } = props;
   const segmentRef = surface.entityRef ?? null;
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const [activeCard, setActiveCard] = useState<SegmentCardId>('identification');
@@ -86,16 +251,36 @@ export function SnSegmentSurface(props: SnSegmentSurfaceProps): JSX.Element {
 
   return (
     <div data-testid="sn-segment-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-12 · Odcinek SN
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            E-12 · Odcinek SN (legacy 4-kart)
+          </div>
+          <h2 className="mt-1 text-base font-semibold text-scada-text">{segmentName}</h2>
+          <div className="mt-1 text-xs text-scada-muted">
+            Rodzina:{' '}
+            <span className="font-medium text-scada-text">
+              {data.family === 'kabel_sn' ? 'Kabel SN' : 'Linia napowietrzna SN'}
+            </span>
+          </div>
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">{segmentName}</h2>
-        <div className="mt-1 text-xs text-scada-muted">
-          Rodzina:{' '}
-          <span className="font-medium text-scada-text">
-            {data.family === 'kabel_sn' ? 'Kabel SN' : 'Linia napowietrzna SN'}
-          </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="segment-mode-inline-switch"
+            onClick={onSwitchToInline}
+            className="rounded border border-scada-border px-3 py-1 text-xs text-scada-text hover:bg-scada-hover-nav"
+          >
+            ← Inline (R47)
+          </button>
+          <button
+            type="button"
+            data-testid="segment-mode-legacy-switch"
+            aria-pressed={true}
+            className="rounded bg-scada-accent px-3 py-1 text-xs text-white"
+          >
+            Widok 4-kart
+          </button>
         </div>
       </div>
 

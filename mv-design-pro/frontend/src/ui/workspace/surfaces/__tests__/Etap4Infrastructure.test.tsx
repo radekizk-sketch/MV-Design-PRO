@@ -31,9 +31,12 @@ const minimalSurface = {
 } as never;
 
 describe('Etap 4 — surface\'y sieci terenowej', () => {
-  it('SnSegmentSurface (E-12) renderuje 4 karty i przełączanie rodziny zmienia katalog', () => {
+  it('SnSegmentSurface (E-12) renderuje 4 karty (legacy mode) i przełączanie rodziny zmienia katalog', () => {
     render(<SnSegmentSurface surface={minimalSurface} />);
     expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
+    /* R47: domyślnie inline mode → przełącz do legacy. */
+    fireEvent.click(screen.getByTestId('segment-mode-legacy-switch'));
+
     expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
     expect(screen.getByText('Katalog & przewód')).toBeInTheDocument();
     expect(screen.getByText('Trasa & ułożenie')).toBeInTheDocument();

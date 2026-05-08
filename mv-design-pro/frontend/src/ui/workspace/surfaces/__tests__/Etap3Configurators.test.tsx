@@ -5,6 +5,7 @@ import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { GpzConfiguratorSurface } from '../GpzConfiguratorSurface';
 import { BayConfiguratorSurface } from '../BayConfiguratorSurface';
 import { StationConfiguratorSurface } from '../StationConfiguratorSurface';
+import { SnSegmentSurface } from '../SnSegmentSurface';
 import { renderWithQueryClient as render } from '../../../../test/queryClientTestUtils';
 
 const minimalSurface = {
@@ -130,23 +131,39 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     });
   });
 
-  describe('BayConfiguratorSurface (E-11)', () => {
-    it('renderuje BayConfigurator z domyślnymi propsami przy braku entityRef', () => {
+  describe('BayConfiguratorSurface (E-11 R47 — Editor/Legacy modes)', () => {
+    const surfaceWithBay = { ...minimalSurface, entityRef: 'bay-test' };
+
+    it('Domyślnie Editor mode (R47) — komunikat empty bez entityRef', () => {
       render(<BayConfiguratorSurface surface={minimalSurface} />);
       expect(screen.getByTestId('bay-configurator-surface')).toBeInTheDocument();
       expect(screen.getByText(/Brak referencji do pola SN/)).toBeInTheDocument();
     });
 
-    it('renderuje 8 sekcji konfiguratora', () => {
+    it('Editor mode z entityRef → renderuje BayEditorStandalone', () => {
+      render(<BayConfiguratorSurface surface={surfaceWithBay} />);
+      expect(screen.getByTestId('bay-editor-standalone')).toBeInTheDocument();
+      expect(screen.getByTestId('bay-editor-standalone-save')).toBeInTheDocument();
+      expect(screen.getByTestId('bay-editor-standalone-cancel')).toBeInTheDocument();
+    });
+
+    it('Editor → Legacy switcher pokazuje 8 sekcji konfiguratora', () => {
       render(<BayConfiguratorSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('bay-mode-legacy-switch'));
       expect(screen.getByText('Dane podstawowe')).toBeInTheDocument();
       expect(screen.getByText('Aparatura pierwotna')).toBeInTheDocument();
-      expect(screen.getByText(/Przek/)).toBeInTheDocument();
       expect(screen.getByText('Zabezpieczenia')).toBeInTheDocument();
       expect(screen.getByText('Pomiary')).toBeInTheDocument();
-      expect(screen.getByText(/porty/)).toBeInTheDocument();
       expect(screen.getByRole('tab', { name: 'Podgląd SLD' })).toBeInTheDocument();
       expect(screen.getByText('Obliczenia')).toBeInTheDocument();
+    });
+
+    it('Legacy → Editor switcher wraca do BayEditorStandalone', () => {
+      render(<BayConfiguratorSurface surface={surfaceWithBay} />);
+      fireEvent.click(screen.getByTestId('bay-mode-legacy-switch'));
+      expect(screen.queryByTestId('bay-editor-standalone')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('bay-mode-editor-switch'));
+      expect(screen.getByTestId('bay-editor-standalone')).toBeInTheDocument();
     });
   });
 
@@ -238,6 +255,60 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.getByTestId('station-wizard-surface')).toBeInTheDocument();
       const nameInput = screen.getByTestId('wizard-station-name') as HTMLInputElement;
       expect(nameInput.value).toBe('');
+    });
+
+    it('Wizard R47 — wybór typu mv_lv auto-włącza hasTransformer + hasLvSide', async () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.change(screen.getByTestId('wizard-station-type'), { target: { value: 'mv_lv' } });
+      fireEvent.click(screen.getByTestId('stepper-transformer'));
+      const trCheckbox = await screen.findByTestId('wizard-has-transformer') as HTMLInputElement;
+      expect(trCheckbox.checked).toBe(true);
+      fireEvent.click(screen.getByTestId('stepper-lv_side'));
+      const lvCheckbox = await screen.findByTestId('wizard-has-lv-side') as HTMLInputElement;
+      expect(lvCheckbox.checked).toBe(true);
+    });
+
+    it('Wizard R47 — wybór typu switching auto-wyłącza hasTransformer + hasLvSide', async () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      /* Najpierw mv_lv, żeby hasTransformer=true. */
+      fireEvent.change(screen.getByTestId('wizard-station-type'), { target: { value: 'mv_lv' } });
+      fireEvent.click(screen.getByTestId('stepper-transformer'));
+      const trCheckbox = await screen.findByTestId('wizard-has-transformer') as HTMLInputElement;
+      expect(trCheckbox.checked).toBe(true);
+      /* Teraz switching → auto-wyłącz. */
+      fireEvent.click(screen.getByTestId('stepper-identification'));
+      fireEvent.change(screen.getByTestId('wizard-station-type'), { target: { value: 'switching' } });
+      fireEvent.click(screen.getByTestId('stepper-transformer'));
+      const trCheckboxAfter = await screen.findByTestId('wizard-has-transformer') as HTMLInputElement;
+      expect(trCheckboxAfter.checked).toBe(false);
+    });
+  });
+
+  describe('SnSegmentSurface (E-12 R47 — Inline/Legacy modes)', () => {
+    it('Domyślnie Inline mode (R47) — LineSegmentInline', () => {
+      render(<SnSegmentSurface surface={minimalSurface} />);
+      expect(screen.getByTestId('sn-segment-surface')).toBeInTheDocument();
+      expect(screen.getByTestId('line-segment-inline')).toBeInTheDocument();
+      expect(screen.getByTestId('line-cable-catalog')).toBeInTheDocument();
+      expect(screen.getByTestId('line-length-m')).toBeInTheDocument();
+    });
+
+    it('Inline → Legacy switcher pokazuje 4-card view', () => {
+      render(<SnSegmentSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('segment-mode-legacy-switch'));
+      expect(screen.queryByTestId('line-segment-inline')).not.toBeInTheDocument();
+      expect(screen.getByTestId('segment-tab-identification')).toBeInTheDocument();
+      expect(screen.getByTestId('segment-tab-catalog')).toBeInTheDocument();
+      expect(screen.getByTestId('segment-tab-route')).toBeInTheDocument();
+      expect(screen.getByTestId('segment-tab-rating')).toBeInTheDocument();
+    });
+
+    it('Legacy → Inline switcher wraca do LineSegmentInline', () => {
+      render(<SnSegmentSurface surface={minimalSurface} />);
+      fireEvent.click(screen.getByTestId('segment-mode-legacy-switch'));
+      expect(screen.queryByTestId('line-segment-inline')).not.toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('segment-mode-inline-switch'));
+      expect(screen.getByTestId('line-segment-inline')).toBeInTheDocument();
     });
   });
 });

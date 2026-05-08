@@ -26,12 +26,14 @@
  * Wzorzec kanon: GpzConfiguratorSurface R45 (10.0/10).
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
 import type { Substation } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { BayEditor, type BayEditorDraft } from '../components/BayEditor';
 
 /* =============================================================================
    Step taxonomy
@@ -81,18 +83,8 @@ const READINESS_BADGE: Record<ReadinessLevel, { icon: string; color: string }> =
 
 type StationKind = 'rmu' | 'rm6' | 'switching' | 'mv_lv' | 'inline' | 'branch' | 'terminal' | 'sectional' | 'customer';
 
-interface BayDraft {
-  readonly id: string;
-  role: 'LINE_FULL' | 'TR_FULL' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
-  cbCatalogRef: string;
-  cbIcuKa: number;
-  dsCatalogRef: string;
-  ctCatalogRef: string;
-  ctRatio: string;
-  hasVt: boolean;
-  hasSurgeArrester: boolean;
-  hasFuse: boolean;
-}
+/** Bay draft — re-eksport z `components/BayEditor.tsx` (single source of truth). */
+type BayDraft = BayEditorDraft;
 
 interface ProtectionHintDraft {
   bayId: string;
@@ -264,6 +256,8 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
 
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const patchSnapshot = useSnapshotStore((s) => s.patchSnapshot);
+  const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const existingStation = useMemo(
     () => findExistingStation(snapshot, stationRef),
@@ -273,6 +267,20 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
   const [draft, setDraft] = useState<StationWizardDraft>(() => buildDraftFromSubstation(existingStation));
   const [activeStep, setActiveStep] = useState<StationWizardStepId>('identification');
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  /* Wave 6 — auto-toggle hasTransformer/hasLvSide na podstawie typu stacji.
+     mv_lv (transformatorowa) wymaga TR + nN; switching/inline/branch — nie. */
+  useEffect(() => {
+    if (draft.stationType === 'mv_lv' || draft.stationType === 'customer') {
+      if (!draft.hasTransformer) setDraft((d) => ({ ...d, hasTransformer: true }));
+      if (!draft.hasLvSide) setDraft((d) => ({ ...d, hasLvSide: true }));
+    }
+    if (draft.stationType === 'switching' || draft.stationType === 'sectional') {
+      if (draft.hasTransformer) setDraft((d) => ({ ...d, hasTransformer: false }));
+      if (draft.hasLvSide) setDraft((d) => ({ ...d, hasLvSide: false }));
+    }
+  }, [draft.stationType, draft.hasTransformer, draft.hasLvSide]);
 
   const updateDraft = useCallback(
     <K extends keyof StationWizardDraft>(key: K, value: StationWizardDraft[K]) => {
@@ -319,65 +327,143 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
   const overallReadiness = readinessByStep['readiness'];
   const canSave = overallReadiness !== 'blocker';
 
-  const handleSaveAndCreate = useCallback(() => {
+  const buildAtomicPayload = useCallback(() => ({
+    station: {
+      ref_id: existingStation?.ref_id ?? null,
+      name: draft.name.trim(),
+      registry_number: draft.registryNumber,
+      station_type: draft.stationType,
+      rated_voltage_kv: draft.ratedVoltageKv,
+      producer: draft.producer,
+    },
+    bays: draft.bays.map((b) => ({
+      role: b.role,
+      cb_catalog_ref: b.cbCatalogRef || null,
+      cb_icu_ka: b.cbIcuKa,
+      ds_catalog_ref: b.dsCatalogRef || null,
+      ct_catalog_ref: b.ctCatalogRef || null,
+      ct_ratio: b.ctRatio || null,
+      has_vt: b.hasVt,
+      has_surge_arrester: b.hasSurgeArrester,
+      has_fuse: b.hasFuse,
+    })),
+    transformer: draft.hasTransformer
+      ? {
+          catalog_ref: draft.transformerCatalogRef,
+          sn_kva: draft.transformerSnKva,
+          vector_group: draft.transformerVectorGroup,
+          uk_percent: draft.transformerUkPercent,
+        }
+      : null,
+    lv_side: draft.hasLvSide
+      ? {
+          un_v: draft.lvVoltageV,
+          scheme_kind: draft.lvSchemeKind,
+          main_breaker_ref: draft.lvMainBreakerCatalogRef || null,
+        }
+      : null,
+    der: draft.hasDer
+      ? {
+          kind: draft.derKind,
+          sn_kva: draft.derSnKva,
+          connection_variant: draft.derConnectionVariant,
+          pcc_ref: draft.derPccRef,
+          inverter_catalog_ref: draft.derInverterCatalogRef || null,
+        }
+      : null,
+    protection_hints: draft.protectionHints,
+    connections: {
+      sn_input_segment_ref: draft.snInputSegmentRef || null,
+      sn_output_segment_ref: draft.snOutputSegmentRef || null,
+      is_nop_point: draft.isNopPoint,
+    },
+  }), [existingStation, draft]);
+
+  const handleSaveAndCreate = useCallback(async () => {
     if (!canSave) {
       setSaveError('Nie można zapisać: są blokady w gotowości.');
       return;
     }
     setSaveError(null);
-    /* R46: patchSnapshot dla całego drafta. Backend operation
-       'create-station-complete' wymaga implementacji w backendzie — to przyszły
-       commit. Tymczasem patchSnapshot zapewnia UI parity (Inv 4 invalidate). */
-    if (mode === 'create') {
-      const newRefId = `station-${Date.now()}`;
-      patchSnapshot(
-        (snap) => ({
-          ...snap,
-          substations: [
-            ...(snap.substations ?? []),
-            {
-              id: newRefId,
-              ref_id: newRefId,
-              name: draft.name.trim(),
-              tags: [],
-              meta: {
-                registry_number: draft.registryNumber,
-                rated_voltage_kv: draft.ratedVoltageKv,
-                producer: draft.producer,
-              },
-              station_type: draft.stationType === 'rmu' || draft.stationType === 'rm6' ? 'mv_lv' : draft.stationType,
-              bus_refs: [],
-              transformer_refs: [],
-            } as Substation,
-          ],
-        }),
-        [newRefId],
-      );
-      notify(`Utworzono stację "${draft.name.trim()}".`, 'info');
-    } else if (existingStation) {
-      patchSnapshot(
-        (snap) => ({
-          ...snap,
-          substations: (snap.substations ?? []).map((s) =>
-            s.ref_id === existingStation.ref_id
-              ? {
-                  ...s,
-                  name: draft.name.trim(),
-                  meta: {
-                    ...(s.meta ?? {}),
-                    registry_number: draft.registryNumber,
-                    rated_voltage_kv: draft.ratedVoltageKv,
-                    producer: draft.producer,
-                  },
-                }
-              : s,
-          ),
-        }),
-        [existingStation.ref_id],
-      );
-      notify(`Zaktualizowano stację "${draft.name.trim()}".`, 'info');
+    setSaving(true);
+    /* Hierarchia per Zasada 6 UX_ENGINEER_WORKFLOW_PROMPT.md:
+       1) executeDomainOperation('create-station-complete' / 'update-station-complete')
+       2) jeśli brak activeCaseId / backend error → patchSnapshot lokalnie
+    */
+    const opName = mode === 'create' ? 'create-station-complete' : 'update-station-complete';
+    const payload = buildAtomicPayload();
+    let backendOk = false;
+    if (activeCaseId) {
+      try {
+        const response = await executeDomainOperation(activeCaseId, opName, payload);
+        backendOk = Boolean(response);
+      } catch {
+        backendOk = false;
+      }
     }
-  }, [canSave, mode, draft, existingStation, patchSnapshot]);
+    if (!backendOk) {
+      /* Fallback: patchSnapshot atomowo (Inv 4 invalidate). */
+      if (mode === 'create') {
+        const newRefId = `station-${Date.now()}`;
+        patchSnapshot(
+          (snap) => ({
+            ...snap,
+            substations: [
+              ...(snap.substations ?? []),
+              {
+                id: newRefId,
+                ref_id: newRefId,
+                name: draft.name.trim(),
+                tags: [],
+                meta: {
+                  registry_number: draft.registryNumber,
+                  rated_voltage_kv: draft.ratedVoltageKv,
+                  producer: draft.producer,
+                  has_transformer: draft.hasTransformer,
+                  has_lv_side: draft.hasLvSide,
+                  has_der: draft.hasDer,
+                  bay_count: draft.bays.length,
+                },
+                station_type: draft.stationType === 'rmu' || draft.stationType === 'rm6' ? 'mv_lv' : draft.stationType,
+                bus_refs: [],
+                transformer_refs: [],
+              } as Substation,
+            ],
+          }),
+          [newRefId],
+        );
+        notify(`Utworzono stację "${draft.name.trim()}" (lokalnie). Backend create-station-complete będzie zsynchronizowany przy następnym refresh.`, 'info');
+      } else if (existingStation) {
+        patchSnapshot(
+          (snap) => ({
+            ...snap,
+            substations: (snap.substations ?? []).map((s) =>
+              s.ref_id === existingStation.ref_id
+                ? {
+                    ...s,
+                    name: draft.name.trim(),
+                    meta: {
+                      ...(s.meta ?? {}),
+                      registry_number: draft.registryNumber,
+                      rated_voltage_kv: draft.ratedVoltageKv,
+                      producer: draft.producer,
+                      has_transformer: draft.hasTransformer,
+                      has_lv_side: draft.hasLvSide,
+                      has_der: draft.hasDer,
+                    },
+                  }
+                : s,
+            ),
+          }),
+          [existingStation.ref_id],
+        );
+        notify(`Zaktualizowano stację "${draft.name.trim()}" (lokalnie).`, 'info');
+      }
+    } else {
+      notify(`${mode === 'create' ? 'Utworzono' : 'Zaktualizowano'} stację "${draft.name.trim()}". Wyniki obliczeń zostały unieważnione (Inv 4).`, 'info');
+    }
+    setSaving(false);
+  }, [canSave, mode, draft, existingStation, patchSnapshot, executeDomainOperation, activeCaseId, buildAtomicPayload]);
 
   const handleCancel = useCallback(() => {
     setDraft(buildDraftFromSubstation(existingStation));
@@ -493,11 +579,15 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
             <button
               type="button"
               data-testid="wizard-save-and-create"
-              disabled={!canSave}
+              disabled={!canSave || saving}
               onClick={handleSaveAndCreate}
               className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {mode === 'create' ? 'Zapisz i utwórz' : 'Zapisz zmiany'}
+              {saving
+                ? 'Zapisywanie…'
+                : mode === 'create'
+                  ? 'Zapisz i utwórz'
+                  : 'Zapisz zmiany'}
             </button>
           )}
         </div>
@@ -644,153 +734,15 @@ function StepBaysAndApparatus({ draft, update }: StepCommonProps) {
           index={idx}
           onChange={(patch) => updateBay(idx, patch)}
           onRemove={() => removeBay(idx)}
+          testIdPrefix="bay-editor"
         />
       ))}
     </section>
   );
 }
 
-interface BayEditorProps {
-  readonly bay: BayDraft;
-  readonly index: number;
-  readonly onChange: (patch: Partial<BayDraft>) => void;
-  readonly onRemove: () => void;
-}
-
-function BayEditor({ bay, index, onChange, onRemove }: BayEditorProps) {
-  const requiresCt = bay.role === 'LINE_FULL' || bay.role === 'TR_FULL';
-  const requiresVt = bay.role === 'MEASUREMENT';
-  const requiresFuse = bay.role === 'TR_FULL';
-  const ctMissing = requiresCt && !bay.ctCatalogRef.trim();
-
-  return (
-    <div data-testid={`bay-editor-${index}`} className="rounded border border-scada-border bg-scada-bg p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="font-semibold">Pole #{index + 1}</span>
-          <select
-            data-testid={`wizard-bay-${index}-role`}
-            value={bay.role}
-            onChange={(e) => onChange({ role: e.target.value as BayDraft['role'] })}
-            className="rounded border border-scada-border bg-scada-bg-soft px-2 py-0.5"
-          >
-            <option value="LINE_FULL">Liniowe (LINE_FULL)</option>
-            <option value="TR_FULL">Transformatorowe (TR_FULL)</option>
-            <option value="COUPLER">Sprzęgło (COUPLER)</option>
-            <option value="MEASUREMENT">Pomiarowe (MEASUREMENT)</option>
-            <option value="OZE">OZE/DER (OZE)</option>
-          </select>
-        </div>
-        <button
-          type="button"
-          data-testid={`wizard-bay-${index}-remove`}
-          onClick={onRemove}
-          className="text-xs text-red-400 hover:text-red-300"
-        >
-          Usuń
-        </button>
-      </div>
-      <div className="grid grid-cols-2 gap-3 text-xs">
-        <Field label="CB — typ z katalogu">
-          <input
-            data-testid={`wizard-bay-${index}-cb-ref`}
-            type="text"
-            value={bay.cbCatalogRef}
-            onChange={(e) => onChange({ cbCatalogRef: e.target.value })}
-            placeholder="np. ABB VD4 630-16"
-            className="w-full rounded border border-scada-border bg-scada-bg-soft px-2 py-1"
-          />
-        </Field>
-        <Field label="CB — Icu [kA]">
-          <input
-            data-testid={`wizard-bay-${index}-cb-icu`}
-            type="number"
-            value={bay.cbIcuKa}
-            onChange={(e) => onChange({ cbIcuKa: Number(e.target.value) })}
-            className="w-full rounded border border-scada-border bg-scada-bg-soft px-2 py-1"
-          />
-        </Field>
-        <Field label="DS — rozłącznik">
-          <input
-            data-testid={`wizard-bay-${index}-ds-ref`}
-            type="text"
-            value={bay.dsCatalogRef}
-            onChange={(e) => onChange({ dsCatalogRef: e.target.value })}
-            placeholder="np. ABB DSG/4"
-            className="w-full rounded border border-scada-border bg-scada-bg-soft px-2 py-1"
-          />
-        </Field>
-        {requiresCt && (
-          <Field label={`CT — przekładnik prądowy${ctMissing ? ' ⚠ wymagany' : ''}`}>
-            <input
-              data-testid={`wizard-bay-${index}-ct-ref`}
-              type="text"
-              value={bay.ctCatalogRef}
-              onChange={(e) => onChange({ ctCatalogRef: e.target.value })}
-              placeholder="np. ABB KOFA 200/5 0.5S"
-              className={`w-full rounded border bg-scada-bg-soft px-2 py-1 ${ctMissing ? 'border-amber-600' : 'border-scada-border'}`}
-            />
-          </Field>
-        )}
-        {requiresCt && (
-          <Field label="CT — przekładnia">
-            <input
-              data-testid={`wizard-bay-${index}-ct-ratio`}
-              type="text"
-              value={bay.ctRatio}
-              onChange={(e) => onChange({ ctRatio: e.target.value })}
-              placeholder="np. 200/5"
-              className="w-full rounded border border-scada-border bg-scada-bg-soft px-2 py-1"
-            />
-          </Field>
-        )}
-        {requiresVt && (
-          <Field label="VT — przekładnik napięciowy">
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                data-testid={`wizard-bay-${index}-has-vt`}
-                type="checkbox"
-                checked={bay.hasVt}
-                onChange={(e) => onChange({ hasVt: e.target.checked })}
-              />
-              <span>Pole pomiarowe — VT podłączony</span>
-            </label>
-          </Field>
-        )}
-        {requiresFuse && (
-          <Field label="Bezpieczniki HV (switch-fuse)">
-            <label className="flex items-center gap-2 text-xs">
-              <input
-                data-testid={`wizard-bay-${index}-has-fuse`}
-                type="checkbox"
-                checked={bay.hasFuse}
-                onChange={(e) => onChange({ hasFuse: e.target.checked })}
-              />
-              <span>Pole TR z bezpiecznikiem</span>
-            </label>
-          </Field>
-        )}
-        <Field label="Odgromnik (SA)">
-          <label className="flex items-center gap-2 text-xs">
-            <input
-              data-testid={`wizard-bay-${index}-has-sa`}
-              type="checkbox"
-              checked={bay.hasSurgeArrester}
-              onChange={(e) => onChange({ hasSurgeArrester: e.target.checked })}
-            />
-            <span>SA na linii</span>
-          </label>
-        </Field>
-      </div>
-      {ctMissing && (
-        <div data-testid={`wizard-bay-${index}-blocker-ct`} className="mt-2 rounded bg-amber-950/30 px-2 py-1 text-[11px] text-amber-200">
-          ⚠ Pole {bay.role === 'LINE_FULL' ? 'liniowe' : 'TR'} bez CT — brak danych dla
-          obliczeń zabezpieczeń.
-        </div>
-      )}
-    </div>
-  );
-}
+/* BayEditor — wyciągnięty do `../components/BayEditor.tsx` (R47).
+   Używany w Step 2 wizarda przez import. */
 
 /* =============================================================================
    Step 3 — Transformator
