@@ -411,3 +411,212 @@ describe('buildCanonicalGpzProps — determinizm', () => {
     }
   });
 });
+
+describe('buildCanonicalGpzProps R16 — receivingStations (pełen mini-RMU)', () => {
+  function makeRecvStation(refId: string, name: string, type: Substation['station_type'] = 'mv_lv'): Substation {
+    return {
+      id: refId,
+      ref_id: refId,
+      name,
+      tags: [],
+      meta: {},
+      station_type: type,
+      bus_refs: [`${refId}-bus-15`],
+      transformer_refs: [`${refId}-tr`],
+    } as Substation;
+  }
+
+  it('GPZ bez bays z outgoing_destination_ref → receivingStations=[]', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g')],
+      bays: [bay('b1', 'OUT', 'g', 'bus-15')],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations).toEqual([]);
+  });
+
+  it('GPZ z 1 bay → 1 receivingStation z bays SN', () => {
+    const recvSta = makeRecvStation('sta-1', 'STAROŁĘCKA 42');
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g'), recvSta],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', {
+          outgoing_destination_ref: 'sta-1',
+          feeder_short_name: 'PST1',
+          bay_number: '10',
+        }),
+        bay('sta-1-b-in', 'IN', 'sta-1', 'sta-1-bus-15'),
+        bay('sta-1-b-tr', 'TR', 'sta-1', 'sta-1-bus-15'),
+        bay('sta-1-b-out', 'OUT', 'sta-1', 'sta-1-bus-15'),
+      ],
+      transformers: [transformer('sta-1-tr', { sn_mva: 0.63 })],
+      buses: [bus('bus-15', 15), bus('sta-1-bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations?.length).toBe(1);
+    const station = props.receivingStations![0];
+    expect(station.stationRef).toBe('sta-1');
+    expect(station.name).toBe('STAROŁĘCKA 42');
+    expect(station.sourceBayRef).toBe('gpz-b1');
+    expect(station.cableNumber).toBe('PST1');
+    expect(station.snBays.length).toBe(3);
+    expect(station.hasTransformer).toBe(true);
+    expect(station.transformerRatedKva).toBe(630);
+    expect(station.nnFeedersCount).toBeGreaterThan(0);
+    expect(station.footprintType).toBe('mv_lv_terminal');
+  });
+
+  it('Stacja receiving z DER → footprintType=der_station + derBadges', () => {
+    const recvSta = makeRecvStation('sta-der', 'PV STATION');
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g'), recvSta],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-der' }),
+        bay('sta-der-b1', 'IN', 'sta-der', 'sta-der-bus-15'),
+      ],
+      transformers: [transformer('sta-der-tr', { sn_mva: 0.4 })],
+      generators: [
+        {
+          id: 'g1', ref_id: 'g1', name: 'PV1', tags: [], meta: {},
+          bus_ref: 'sta-der-bus-15', p_mw: 0.1, gen_type: 'pv_inverter',
+          station_ref: 'sta-der',
+        } as never,
+        {
+          id: 'g2', ref_id: 'g2', name: 'BESS1', tags: [], meta: {},
+          bus_ref: 'sta-der-bus-15', p_mw: 0.5, gen_type: 'bess',
+          station_ref: 'sta-der',
+        } as never,
+      ],
+      buses: [bus('bus-15', 15), bus('sta-der-bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const station = props.receivingStations![0];
+    expect(station.footprintType).toBe('der_station');
+    expect(station.derBadges.length).toBe(2);
+    expect(station.derBadges.find((b) => b.kind === 'PV')?.count).toBe(1);
+    expect(station.derBadges.find((b) => b.kind === 'BESS')?.count).toBe(1);
+  });
+
+  it('Stacja receiving z station_type=switching → footprintType=switching_station', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g'), makeRecvStation('sta-sw', 'SP-1', 'switching')],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-sw' }),
+        bay('sta-sw-b1', 'IN', 'sta-sw', 'sta-sw-bus-15'),
+      ],
+      buses: [bus('bus-15', 15), bus('sta-sw-bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations![0].footprintType).toBe('switching_station');
+  });
+
+  it('Stacja receiving bez transformer → missingData=true (Inv 9)', () => {
+    const recvSta = makeRecvStation('sta-1', 'STA');
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g'), recvSta],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-1' }),
+        bay('sta-1-b1', 'IN', 'sta-1', 'sta-1-bus-15'),
+      ],
+      transformers: [], // brak — missingData
+      buses: [bus('bus-15', 15), bus('sta-1-bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations![0].missingData).toBe(true);
+    expect(props.receivingStations![0].hasTransformer).toBe(false);
+  });
+
+  it('outgoing_destination_ref wskazujący na inny GPZ → pominięty (NIE receiving)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [
+        gpz('g1'),
+        gpz('g2', { name: 'GPZ-2' }),
+      ],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g1', 'bus-15', { outgoing_destination_ref: 'g2' }),
+      ],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g1', { x: 0, y: 0 });
+    expect(props.receivingStations).toEqual([]);
+  });
+
+  it('outgoing_destination_ref wskazujący na nieistniejącą stację → pominięty', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g')],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-ghost' }),
+      ],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations).toEqual([]);
+  });
+
+  it('Wiele bays GPZ → wiele receivingStations zachowując mapping sourceBayRef', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [
+        gpz('g'),
+        makeRecvStation('sta-1', 'STA1'),
+        makeRecvStation('sta-2', 'STA2'),
+        makeRecvStation('sta-3', 'STA3'),
+      ],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-1' }),
+        bay('gpz-b2', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-2' }),
+        bay('gpz-b3', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-3' }),
+        bay('sta-1-b1', 'IN', 'sta-1', 'sta-1-bus-15'),
+        bay('sta-2-b1', 'IN', 'sta-2', 'sta-2-bus-15'),
+        bay('sta-3-b1', 'IN', 'sta-3', 'sta-3-bus-15'),
+      ],
+      transformers: [
+        transformer('sta-1-tr', { sn_mva: 0.4 }),
+        transformer('sta-2-tr', { sn_mva: 0.4 }),
+        transformer('sta-3-tr', { sn_mva: 0.4 }),
+      ],
+      buses: [
+        bus('bus-15', 15),
+        bus('sta-1-bus-15', 15),
+        bus('sta-2-bus-15', 15),
+        bus('sta-3-bus-15', 15),
+      ],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.receivingStations?.length).toBe(3);
+    const sourceBayRefs = props.receivingStations!.map((s) => s.sourceBayRef);
+    expect(sourceBayRefs).toEqual(['gpz-b1', 'gpz-b2', 'gpz-b3']);
+  });
+
+  it('snBays mapping: bay_role=TR → fieldRole=TRANSFORMER, MEASUREMENT → MEASUREMENT', () => {
+    const recvSta = makeRecvStation('sta-1', 'STA');
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g'), recvSta],
+      bays: [
+        bay('gpz-b1', 'OUT', 'g', 'bus-15', { outgoing_destination_ref: 'sta-1' }),
+        bay('sta-1-tr-bay', 'TR', 'sta-1', 'sta-1-bus-15'),
+        bay('sta-1-meas', 'MEASUREMENT', 'sta-1', 'sta-1-bus-15'),
+        bay('sta-1-cpl', 'COUPLER', 'sta-1', 'sta-1-bus-15'),
+      ],
+      transformers: [transformer('sta-1-tr', { sn_mva: 0.4 })],
+      buses: [bus('bus-15', 15), bus('sta-1-bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    const station = props.receivingStations![0];
+    const trBay = station.snBays.find((b) => b.bayRef === 'sta-1-tr-bay');
+    expect(trBay?.fieldRole).toBe('TRANSFORMER');
+    const measBay = station.snBays.find((b) => b.bayRef === 'sta-1-meas');
+    expect(measBay?.fieldRole).toBe('MEASUREMENT');
+    const cplBay = station.snBays.find((b) => b.bayRef === 'sta-1-cpl');
+    expect(cplBay?.fieldRole).toBe('COUPLER');
+  });
+});

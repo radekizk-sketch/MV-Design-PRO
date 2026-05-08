@@ -30,6 +30,7 @@ import type {
   CanonicalGpzHvSection,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
+  CanonicalReceivingStation,
   GpzCanonicalRendererProps,
   StatusFlag,
   SwitchState,
@@ -91,7 +92,132 @@ export function buildCanonicalGpzProps(
     sections: buildLvSections(substation, allBays, enm.buses ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? []),
+    receivingStations: buildReceivingStations(enm, allBays),
   };
+}
+
+/**
+ * R16: Buduje pełne `CanonicalReceivingStation[]` z ENM dla pól GPZ z
+ * `outgoing_destination_ref`. Każda stacja odbiorcza ma kompletne dane
+ * potrzebne do `MiniBlockRmuRenderer`: bays SN, transformer info,
+ * DER badges, missing-data status.
+ *
+ * Inv 1: każda stacja ma `domain_ref` (Substation.ref_id z ENM).
+ * Inv 9: brak danych → `missingData=true`, NIE placeholder.
+ */
+function buildReceivingStations(
+  enm: Pick<EnergyNetworkModel, 'substations' | 'bays' | 'transformers' | 'generators'>,
+  gpzBays: readonly Bay[],
+): CanonicalReceivingStation[] {
+  const result: CanonicalReceivingStation[] = [];
+  const allSubs = enm.substations ?? [];
+  const allBays = enm.bays ?? [];
+  const allTrafos = enm.transformers ?? [];
+  const allGens = enm.generators ?? [];
+
+  for (const gpzBay of gpzBays) {
+    const destRef = gpzBay.outgoing_destination_ref;
+    if (!destRef) continue;
+    const station = allSubs.find((s) => s.ref_id === destRef);
+    if (!station) continue;
+    /* GPZ source — pomijamy (sekcje GPZ nie są stacjami odbiorczymi) */
+    if (station.station_type === 'gpz') continue;
+
+    const stationBays = allBays.filter((b) => b.substation_ref === station.ref_id);
+    const stationTrafos = allTrafos.filter((t) => station.transformer_refs?.includes(t.ref_id));
+    /* DER w stacji — generators z station_ref matching */
+    const stationGens = allGens.filter((g) => g.station_ref === station.ref_id);
+
+    const snBays = stationBays.map((b) => ({
+      bayRef: b.ref_id,
+      fieldRole: mapBayRoleToReceivingFieldRole(b.bay_role),
+      designation: b.bay_number ?? b.feeder_short_name ?? b.ref_id,
+      hasMissingRequiredDevice: (b.equipment_refs?.length ?? 0) === 0,
+    }));
+
+    const transformerRatedKva = stationTrafos.length > 0
+      ? stationTrafos.reduce((sum, t) => sum + (t.sn_mva * 1000), 0)
+      : null;
+
+    /* Liczba odpływów nN — pola FEEDER lub OUT na sekcjach nN.
+     * W ENM mamy informację jako `outgoing_destination_ref` na bay typu LINE_OUT
+     * dla sekcji nN, ale tutaj uproszczeniem: count bays z LINE_OUT/FEEDER. */
+    const nnFeedersCount = stationBays.filter(
+      (b) => b.bay_role === 'OUT' || b.bay_role === 'FEEDER',
+    ).length;
+
+    /* DER badges — agregacja generators per gen_type. */
+    const derCounts = { PV: 0, BESS: 0, FW: 0 };
+    for (const g of stationGens) {
+      const k = mapGeneratorKindToDerKind(g.gen_type);
+      if (k) derCounts[k]++;
+    }
+    const derBadges: CanonicalReceivingStation['derBadges'] = (Object.keys(derCounts) as Array<'PV' | 'BESS' | 'FW'>)
+      .filter((k) => derCounts[k] > 0)
+      .map((k) => ({ kind: k, count: derCounts[k] }));
+
+    const footprintType = mapStationTypeToFootprint(station.station_type, stationGens.length > 0);
+
+    /* Missing data flag — pole bez aparatów lub bez transformer ref dla mv_lv */
+    const missingData = snBays.some((b) => b.hasMissingRequiredDevice)
+      || (footprintType.startsWith('mv_lv') && stationTrafos.length === 0);
+
+    result.push({
+      stationRef: station.ref_id,
+      name: station.name || '—',
+      sourceBayRef: gpzBay.ref_id,
+      cableNumber: gpzBay.feeder_short_name ?? null,
+      footprintType,
+      snBays,
+      hasTransformer: stationTrafos.length > 0,
+      transformerRatedKva,
+      nnFeedersCount,
+      derBadges,
+      missingData,
+    });
+  }
+  return result;
+}
+
+function mapBayRoleToReceivingFieldRole(role: Bay['bay_role']): CanonicalReceivingStation['snBays'][number]['fieldRole'] {
+  switch (role) {
+    case 'IN': return 'LINE_IN';
+    case 'OUT': return 'LINE_OUT';
+    case 'TR': return 'TRANSFORMER';
+    case 'COUPLER': return 'COUPLER';
+    case 'FEEDER': return 'LINE_OUT';
+    case 'MEASUREMENT': return 'MEASUREMENT';
+    case 'OZE': return 'TRANSFORMER';
+    default: return 'LINE_OUT';
+  }
+}
+
+function mapGeneratorKindToDerKind(genType: string | null | undefined): 'PV' | 'BESS' | 'FW' | null {
+  if (!genType) return null;
+  /* gen_type values: 'synchronous' | 'pv_inverter' | 'wind_inverter' |
+   *                  'fw_pmsg' | 'fw_dfig' | 'fw_scig' | 'bess' */
+  if (genType === 'pv_inverter') return 'PV';
+  if (genType === 'bess') return 'BESS';
+  if (genType === 'wind_inverter' || genType.startsWith('fw_')) return 'FW';
+  return null;
+}
+
+function mapStationTypeToFootprint(
+  stationType: Substation['station_type'],
+  hasDer: boolean,
+): CanonicalReceivingStation['footprintType'] {
+  if (hasDer) return 'der_station';
+  switch (stationType) {
+    case 'switching': return 'switching_station';
+    case 'customer': return 'mv_lv_customer';
+    case 'inline': return 'mv_lv_inline';
+    case 'branch': return 'mv_lv_branch';
+    case 'sectional': return 'mv_lv_sectional';
+    case 'terminal': return 'mv_lv_terminal';
+    case 'mv_lv':
+    default:
+      return 'mv_lv_terminal';
+  }
 }
 
 /* =============================================================================

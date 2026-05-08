@@ -43,6 +43,11 @@ import {
   type TransmissionStatus,
 } from './GpzOperatorHeader';
 
+import {
+  MiniBlockRmuRenderer,
+  type MiniBlockBayDescriptor,
+} from './MiniBlockRmuRenderer';
+
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
    ============================================================================= */
@@ -140,6 +145,55 @@ export interface CanonicalGpzHvSection {
   readonly bays: readonly CanonicalGpzBay[];
 }
 
+/**
+ * CanonicalReceivingStation — stacja odbiorcza (mini-RMU/RM6) podłączona
+ * do pola GPZ przez kabel SN.
+ *
+ * Reuse `MiniBlockBayDescriptor` z `MiniBlockRmuRenderer` (fieldRole + designation
+ * + missing badge). Renderowana jako pełen mini-RMU pod GPZ wymaga PEŁNEJ
+ * kontraktu propsów MiniBlockRmuRenderer.
+ *
+ * Linkowana do pola GPZ przez `sourceBayRef`. Gdy GPZ ma 20 pól liniowych,
+ * `receivingStations[]` ma do 20 elementów (1:1 mapping).
+ */
+export interface CanonicalReceivingStation {
+  /** Stable id z ENM `Substation.ref_id` (stacja odbiorcza). */
+  readonly stationRef: string;
+  /** Nazwa stacji odbiorczej (z ENM `Substation.name`). */
+  readonly name: string;
+  /** Pole GPZ z którego idzie kabel — match z `Bay.ref_id` w GPZ. */
+  readonly sourceBayRef: string;
+  /** Numer dyspozytorski kabla — match z `Bay.feeder_short_name`. */
+  readonly cableNumber: string | null;
+  /** Footprint type stacji odbiorczej (z ENM `Substation.station_type`). */
+  readonly footprintType:
+    | 'mv_lv_terminal'
+    | 'mv_lv_inline'
+    | 'mv_lv_branch'
+    | 'mv_lv_sectional'
+    | 'mv_lv_customer'
+    | 'switching_station'
+    | 'der_station';
+  /** Pola SN stacji odbiorczej (z ENM `Bay[]` filtered by substation_ref). */
+  readonly snBays: ReadonlyArray<{
+    readonly bayRef: string;
+    readonly fieldRole:
+      | 'LINE_IN' | 'LINE_OUT' | 'LINE_BRANCH'
+      | 'TRANSFORMER' | 'COUPLER' | 'MEASUREMENT'
+      | 'TIE_OPEN' | 'CUSTOMER';
+    readonly designation: string;
+    readonly hasMissingRequiredDevice: boolean;
+  }>;
+  readonly hasTransformer: boolean;
+  readonly transformerRatedKva: number | null;
+  readonly nnFeedersCount: number;
+  readonly derBadges: ReadonlyArray<{
+    readonly kind: 'PV' | 'BESS' | 'FW';
+    readonly count: number;
+  }>;
+  readonly missingData: boolean;
+}
+
 export interface GpzCanonicalRendererProps {
   readonly id: string;
   readonly x: number;
@@ -164,9 +218,19 @@ export interface GpzCanonicalRendererProps {
   readonly sections: readonly CanonicalGpzSection[];
   /** Sprzęgła międzysekcyjne LV. */
   readonly couplers: readonly CanonicalGpzCoupler[];
+  /**
+   * R16: Pełne stacje odbiorcze (mini-RMU/RM6) podłączone do pól GPZ.
+   * Każda stacja ma `sourceBayRef` matching z `Bay` w `sections[].bays[]`.
+   * Renderer rysuje cable run z pola GPZ (cable head) do mini-RMU bloku.
+   *
+   * Brak / pusta lista → render fallback `OutgoingFeederStub` (label only).
+   */
+  readonly receivingStations?: readonly CanonicalReceivingStation[];
 
   /* Interakcja */
   readonly onClickBay?: (bayRef: string) => void;
+  readonly onClickReceivingStation?: (stationRef: string) => void;
+  readonly onDoubleClickReceivingStation?: (stationRef: string) => void;
   readonly onDoubleClickBay?: (bayRef: string) => void;
   readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
   readonly onClickCoupler?: (couplerId: string) => void;
@@ -267,7 +331,7 @@ function GpzCanonicalRendererImpl(props: GpzCanonicalRendererProps): JSX.Element
         onClickTransformer={props.onClickTransformer}
       />
 
-      {/* 4. LV sections — szyny 15 kV + pola SN */}
+      {/* 4. LV sections — szyny 15 kV + pola SN + magistrale do mini-RMU */}
       {props.sections.map((section, sectionIdx) => (
         <LvSection
           key={`section-${section.sectionId}`}
@@ -275,9 +339,12 @@ function GpzCanonicalRendererImpl(props: GpzCanonicalRendererProps): JSX.Element
           x={PAGE_PADDING}
           y={sectionsBlockY + sectionIdx * (LV_BAY_HEIGHT + LV_SECTION_GAP)}
           width={totalWidth - PAGE_PADDING * 2}
+          receivingStations={props.receivingStations ?? []}
           onClickBay={props.onClickBay}
           onDoubleClickBay={props.onDoubleClickBay}
           onContextMenuBay={props.onContextMenuBay}
+          onClickReceivingStation={props.onClickReceivingStation}
+          onDoubleClickReceivingStation={props.onDoubleClickReceivingStation}
         />
       ))}
 
@@ -578,13 +645,21 @@ interface LvSectionProps {
   readonly x: number;
   readonly y: number;
   readonly width: number;
+  readonly receivingStations?: readonly CanonicalReceivingStation[];
   readonly onClickBay?: (bayRef: string) => void;
   readonly onDoubleClickBay?: (bayRef: string) => void;
   readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickReceivingStation?: (stationRef: string) => void;
+  readonly onDoubleClickReceivingStation?: (stationRef: string) => void;
 }
 
 function LvSection(props: LvSectionProps): JSX.Element {
-  const { section, x, y, width, onClickBay, onDoubleClickBay, onContextMenuBay } = props;
+  const {
+    section, x, y, width,
+    receivingStations = [],
+    onClickBay, onDoubleClickBay, onContextMenuBay,
+    onClickReceivingStation, onDoubleClickReceivingStation,
+  } = props;
   return (
     <g
       data-testid={`gpz-canonical-section-${section.sectionId}`}
@@ -608,11 +683,14 @@ function LvSection(props: LvSectionProps): JSX.Element {
         <LvBay
           key={`bay-${bay.bayRef}`}
           bay={bay}
+          receivingStation={receivingStations.find((s) => s.sourceBayRef === bay.bayRef) ?? null}
           x={SECTION_LABEL_WIDTH + 24 + idx * BAY_PITCH}
           y={4}
           onClick={onClickBay}
           onDoubleClick={onDoubleClickBay}
           onContextMenu={onContextMenuBay}
+          onClickReceivingStation={onClickReceivingStation}
+          onDoubleClickReceivingStation={onDoubleClickReceivingStation}
         />
       ))}
     </g>
@@ -621,15 +699,23 @@ function LvSection(props: LvSectionProps): JSX.Element {
 
 interface LvBayProps {
   readonly bay: CanonicalGpzBay;
+  /** R16: full mini-RMU stacji odbiorczej (gdy ENM ma `outgoing_destination_ref`). */
+  readonly receivingStation?: CanonicalReceivingStation | null;
   readonly x: number;
   readonly y: number;
   readonly onClick?: (ref: string) => void;
   readonly onDoubleClick?: (ref: string) => void;
   readonly onContextMenu?: (ref: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickReceivingStation?: (stationRef: string) => void;
+  readonly onDoubleClickReceivingStation?: (stationRef: string) => void;
 }
 
 function LvBay(props: LvBayProps): JSX.Element {
-  const { bay, x, y, onClick, onDoubleClick, onContextMenu } = props;
+  const {
+    bay, receivingStation, x, y,
+    onClick, onDoubleClick, onContextMenu,
+    onClickReceivingStation, onDoubleClickReceivingStation,
+  } = props;
   const trackHeight = LV_BAY_HEIGHT - 30;
   const ariaLabel = bayAriaLabel(bay);
   const tooltipText = bayTooltipText(bay);
@@ -829,10 +915,26 @@ function LvBay(props: LvBayProps): JSX.Element {
         </text>
       )}
 
-      {/* Etykieta destynacji feedera + outgoing cable do mini-RMU stacji odbiorczej.
+      {/* Outgoing cable do mini-RMU stacji odbiorczej (R16 — pełen mini-RMU).
        * Kanon SCADA OSD: z cable-head trzpień kabla schodzi w dół i kończy się
-       * w bloku mini-RMU (lub label box z numerem dyspozytorskim kabla). */}
-      {bay.destinationLabel && (
+       * w PEŁNYM bloku mini-RMU (MiniBlockRmuRenderer) z faktycznymi polami.
+       *
+       * Hierarchia fallbacków (od najbogatszego do najsłabszego):
+       *   1. receivingStation podana → MiniRmuOutgoingFeeder (R16)
+       *   2. tylko destinationLabel z bay → OutgoingFeederStub (R13 fallback)
+       *   3. brak danych → nothing rendered (Inv 9)
+       */}
+      {receivingStation ? (
+        <MiniRmuOutgoingFeeder
+          x={0}
+          y={trackHeight + 8}
+          fieldRole={bay.fieldRole}
+          cableNumber={bay.feederName ?? ''}
+          station={receivingStation}
+          onClick={onClickReceivingStation}
+          onDoubleClick={onDoubleClickReceivingStation}
+        />
+      ) : bay.destinationLabel && (
         <OutgoingFeederStub
           x={0}
           y={trackHeight + 8}
@@ -1062,7 +1164,108 @@ function CouplerSymbol(props: CouplerSymbolProps): JSX.Element {
 }
 
 /* =============================================================================
-   OutgoingFeederStub — kabel + mini-block destynacji (R13)
+   MiniRmuOutgoingFeeder — kabel + PEŁEN mini-RMU stacji odbiorczej (R16)
+   ============================================================================= */
+
+interface MiniRmuOutgoingFeederProps {
+  readonly x: number;
+  readonly y: number;
+  readonly fieldRole: BayFieldRole;
+  readonly cableNumber: string;
+  readonly station: CanonicalReceivingStation;
+  readonly onClick?: (stationRef: string) => void;
+  readonly onDoubleClick?: (stationRef: string) => void;
+}
+
+/**
+ * Renderuje pełen kabel SN GPZ → stacja odbiorcza:
+ *   - Cable head (trójkąt) na poziomie pola GPZ
+ *   - Pionowy kabel SN per-role color (TR/MEAS/LINE)
+ *   - Numer dyspozytorski kabla (label nad mini-RMU)
+ *   - PEŁEN MiniBlockRmuRenderer (compact wariant) z bays + transformer +
+ *     LV feeders + DER badges + missing data warnings
+ *
+ * MiniBlockRmuRenderer ma własne data-testid + a11y (poprzez onClick).
+ * Klik mini-RMU → onClickReceivingStation (drill-down).
+ */
+function MiniRmuOutgoingFeeder(props: MiniRmuOutgoingFeederProps): JSX.Element {
+  const { x, y, fieldRole, cableNumber, station, onClick, onDoubleClick } = props;
+  /* Geometry: cable head (y=0) → vertical run (y=8..stubLength) → mini-RMU centered */
+  const stubLength = 50;
+  const miniRmuY = stubLength + 28; // środek mini-RMU pod kablem (compact h=56, więc center = stubLength+28)
+  /* Per-role color toru (kanon SCADA OSD) */
+  const trackColor = fieldRole === 'TRANSFORMER'
+    ? '#3B7ABC'
+    : fieldRole === 'MEASUREMENT'
+      ? '#E8C100'
+      : COLOR_BUS_LV;
+  /* Mini-RMU bay descriptors transformed do MiniBlockBayDescriptor */
+  const miniBays: MiniBlockBayDescriptor[] = station.snBays.map((b) => ({
+    bayRef: b.bayRef,
+    fieldRole: b.fieldRole as MiniBlockBayDescriptor['fieldRole'],
+    designation: b.designation,
+    hasMissingRequiredDevice: b.hasMissingRequiredDevice,
+  }));
+  return (
+    <g
+      data-testid="gpz-canonical-receiving-station-feeder"
+      data-station-ref={station.stationRef}
+      data-source-bay-ref={station.sourceBayRef}
+      transform={`translate(${x}, ${y})`}
+    >
+      {/* Cable head (trójkąt) — kanon SCADA */}
+      <polygon
+        points="-5,0 5,0 0,8"
+        fill={COLOR_PANEL_RAISED}
+        stroke={trackColor}
+        strokeWidth={1.4}
+      />
+      {/* Pionowy kabel SN do mini-RMU */}
+      <line
+        x1={0}
+        y1={8}
+        x2={0}
+        y2={stubLength}
+        stroke={trackColor}
+        strokeWidth={1.6}
+        data-testid="gpz-canonical-receiving-station-cable"
+      />
+      {/* Numer dyspozytorski kabla — label nad mini-RMU */}
+      {cableNumber && (
+        <text
+          x={0}
+          y={stubLength - 3}
+          textAnchor="middle"
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_MONO}
+          fontSize={7}
+        >
+          {cableNumber.slice(0, 12)}
+        </text>
+      )}
+      {/* PEŁEN mini-RMU stacji odbiorczej (R16 — kanon SCADA OSD parity) */}
+      <MiniBlockRmuRenderer
+        id={station.stationRef}
+        x={0}
+        y={miniRmuY}
+        variant="compact"
+        footprintType={station.footprintType}
+        name={station.name}
+        snBays={miniBays}
+        hasTransformer={station.hasTransformer}
+        transformerRatedKva={station.transformerRatedKva}
+        nnFeedersCount={station.nnFeedersCount}
+        derBadges={station.derBadges}
+        missingData={station.missingData}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+      />
+    </g>
+  );
+}
+
+/* =============================================================================
+   OutgoingFeederStub — kabel + mini-block destynacji (R13 fallback)
    ============================================================================= */
 
 interface OutgoingFeederStubProps {
