@@ -465,7 +465,7 @@ export function BayCard({ elementId }: { elementId: string }) {
       id: 'results',
       label: 'Wyniki projektowe pola',
       fields: [
-        { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
+        { key: 'run_ref', label: 'Identyfikator obliczenia', value: projectResults?.run_ref ?? null },
         {
           key: 'result_state',
           label: 'Stan wynikow',

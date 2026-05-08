@@ -49,7 +49,6 @@ async function openStationWizard(page: Page, entityRef?: string): Promise<void> 
      Najpierw seed snapshot store żeby patchSnapshot fallback działał.
      E-13 surface bez entityRef → Wizard mode='create' (pusty draft). */
   await page.evaluate((ref) => {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     const w = window as unknown as Record<string, any>;
     if (w.__mvDesignProTestApi?.seedEmptySnapshot) {
       w.__mvDesignProTestApi.seedEmptySnapshot();

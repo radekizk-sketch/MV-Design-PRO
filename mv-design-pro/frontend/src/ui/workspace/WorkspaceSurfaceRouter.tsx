@@ -2048,7 +2048,8 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           BESS reserved + P(f) droop), wywołuje Power Flow solver z zaadaptowanej
           sieci. Zwraca audit trail. Solvery PF/SC/phase_state_sn rozszerzone o
           opt-in audit2 (Phase 41+43+46) — przekaż <code>audit2_project_id</code> +{' '}
-          <code>audit2_station_id</code> w <code>run.options</code> aby aktywowac
+          {/* ui-terminology-ignore */}
+          <code>audit2_station_id</code> w polu <code>options</code> obliczenia aby aktywowac
           drugi kanał integracji.
         </p>
         <div data-testid="audit2-pf-snapshot-status" className="mb-2 rounded bg-slate-100 p-2 text-[11px]">

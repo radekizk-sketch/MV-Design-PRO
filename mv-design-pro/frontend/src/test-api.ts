@@ -101,7 +101,6 @@ export function registerTestApi(): void {
           transformers: [],
           substations: [],
           bays: [],
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any,
       });
     },

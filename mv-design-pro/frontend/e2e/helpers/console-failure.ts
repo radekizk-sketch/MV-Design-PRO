@@ -40,7 +40,6 @@ export function failOnConsoleErrors(page: Page, opts: ConsoleFailureOptions = {}
   page.on('console', (msg) => {
     const type = msg.type();
     if (opts.logAll) {
-      // eslint-disable-next-line no-console
       console.log(`[browser ${type}] ${msg.text()}`);
     }
     if (type !== 'error') return;

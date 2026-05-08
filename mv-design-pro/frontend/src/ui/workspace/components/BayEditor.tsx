@@ -94,7 +94,7 @@ export function BayEditor(props: BayEditorProps): JSX.Element {
           >
             <option value="LINE_FULL">Liniowe (LINE_FULL)</option>
             <option value="TR_FULL">Transformatorowe (TR_FULL)</option>
-            <option value="COUPLER">Sprzęgło (COUPLER)</option>
+            <option value="COUPLER">Sprzęgło sekcyjne</option>
             <option value="MEASUREMENT">Pomiarowe (MEASUREMENT)</option>
             <option value="OZE">OZE/DER (OZE)</option>
           </select>
@@ -174,7 +174,7 @@ export function BayEditor(props: BayEditorProps): JSX.Element {
                 checked={bay.hasVt}
                 onChange={(e) => onChange({ hasVt: e.target.checked })}
               />
-              <span>Pole pomiarowe — VT podłączony</span>
+              <span>Pole pomiarowe — przekładnik napięciowy podłączony</span>
             </label>
           </Field>
         )}

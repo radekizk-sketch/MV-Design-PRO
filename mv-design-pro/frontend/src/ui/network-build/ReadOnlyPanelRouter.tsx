@@ -591,7 +591,7 @@ export function ReadOnlyPanelRouter() {
     }
 
     return [
-      { label: 'Uruchomienie', value: projectResults.run_ref },
+      { label: 'Identyfikator obliczenia', value: projectResults.run_ref },
       { label: 'Stan wynikow', value: projectResults.result_state },
       {
         label: 'Wklady w zwarciu',

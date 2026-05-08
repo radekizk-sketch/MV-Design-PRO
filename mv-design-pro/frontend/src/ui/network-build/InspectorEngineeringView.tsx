@@ -286,7 +286,7 @@ function buildBaySections(
         id: 'results',
         label: 'Wyniki projektowe pola',
         fields: [
-          { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
+          { key: 'run_ref', label: 'Identyfikator obliczenia', value: projectResults?.run_ref ?? null },
           { key: 'result_state', label: 'Stan wyników', value: resultStateLabel(projectResults?.result_state) },
           { key: 'result_message', label: 'Opis wyników', value: projectResults?.result_message_pl ?? null },
           {
