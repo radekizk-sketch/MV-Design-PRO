@@ -95,6 +95,9 @@ export interface CanonicalGpzBay {
   readonly controlMode?: 'remote' | 'local' | 'unknown';
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
+  /** R32: Ground fault active — cyjan circle u góry pola (kanon polski).
+   *  Wskazuje awarię ziemnozwarciową w polu. */
+  readonly groundFaultActive?: boolean;
 }
 
 export type BayFieldRole =
@@ -942,6 +945,39 @@ function LvBay(props: LvBayProps): JSX.Element {
           cableNumber={bay.feederName ?? ''}
           fieldRole={bay.fieldRole}
         />
+      )}
+
+      {/* R32: Ground fault marker — cyjan circle u góry pola (kanon polski).
+       * Aktywny gdy bay.groundFaultActive=true (z runtime_state SCADA).
+       * Pulsująca animacja dla sygnalizacji aktywnego zwarcia. */}
+      {bay.groundFaultActive && (
+        <g data-testid="gpz-canonical-ground-fault-marker">
+          <circle cx={0} cy={6} r={4.5} fill="#00FFFF" stroke="#00B8B8" strokeWidth={1.4}>
+            <animate
+              attributeName="r"
+              values="3.5;5.5;3.5"
+              dur="0.8s"
+              repeatCount="indefinite"
+            />
+            <animate
+              attributeName="fill-opacity"
+              values="0.5;1.0;0.5"
+              dur="0.8s"
+              repeatCount="indefinite"
+            />
+          </circle>
+          <text
+            x={0}
+            y={9}
+            textAnchor="middle"
+            fill="#003030"
+            fontFamily={FONT_SANS}
+            fontSize={6}
+            fontWeight={700}
+          >
+            ZW
+          </text>
+        </g>
       )}
 
       {/* Status flags badge stack (po prawej stronie pola) */}

@@ -38,6 +38,9 @@ import type { NetworkTerrainRendererProps } from '../renderer/NetworkTerrainRend
 import { BayConfigModal, type BayConfigData } from '../modals/BayConfigModal';
 import { TransformerEditModal, type TransformerData } from '../modals/TransformerEditModal';
 import { CouplerEditModal, type CouplerData } from '../modals/CouplerEditModal';
+import { ApparatusStateModal, type ApparatusStateData } from '../modals/ApparatusStateModal';
+import { AddApparatusModal, type AddApparatusData, type ApparatusKind } from '../modals/AddApparatusModal';
+import { AnonymizationProvider } from '../anonymization/AnonymizationProvider';
 import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
 import {
   hasPaletteDragData,
@@ -269,7 +272,22 @@ function useMeasuredSize(
   return size;
 }
 
+/**
+ * R33: Public export wraps SldWorkspaceContainer w AnonymizationProvider
+ * żeby renderery v2 (kanoniczne + mini-RMU + network terrain) miały dostęp
+ * do `useAnonymizedLabel` hook. Brak provider = no-op (raw labels).
+ */
 export function SldWorkspaceContainer(
+  props: SldWorkspaceContainerProps = {},
+): JSX.Element {
+  return (
+    <AnonymizationProvider>
+      <SldWorkspaceContainerInner {...props} />
+    </AnonymizationProvider>
+  );
+}
+
+function SldWorkspaceContainerInner(
   props: SldWorkspaceContainerProps = {},
 ): JSX.Element {
   const { readOnly = false, width: widthOverride, height: heightOverride } = props;
@@ -307,6 +325,16 @@ export function SldWorkspaceContainer(
     { open: false, data: null },
   );
   const [couplerModalState, setCouplerModalState] = useState<{ open: boolean; data: CouplerData | null }>(
+    { open: false, data: null },
+  );
+  /* R30: ApparatusStateModal — sterowanie łącznikami (CB/DS/ES) per pole.
+   * Otwierany przez context menu action 'set-switch-state'. */
+  const [apparatusStateModalState, setApparatusStateModalState] = useState<{ open: boolean; data: ApparatusStateData | null }>(
+    { open: false, data: null },
+  );
+  /* R31: AddApparatusModal — dodawanie pojedynczego aparatu (CT/VT/SA/Fuse) do pola.
+   * Otwierany przez context menu pola → 'configure-cts-vts'. */
+  const [addApparatusModalState, setAddApparatusModalState] = useState<{ open: boolean; data: AddApparatusData | null }>(
     { open: false, data: null },
   );
   // Iteracja 12: lasso multi-select state.
@@ -546,6 +574,90 @@ export function SldWorkspaceContainer(
               fieldRole: mapBayRoleToCanonicalFieldRole(bay.bay_role),
               destinationLabel: bay.outgoing_destination_ref ?? '',
               controlMode: 'remote',
+            },
+          });
+          return;
+        }
+      }
+
+      /* R31: 'configure-cts-vts' lub 'configure-equipment' (kind=bay) → AddApparatusModal */
+      if ((actionId === 'configure-cts-vts' || actionId === 'configure-equipment')
+          && kind === 'bay' && elementId && snapshot) {
+        const bay = (snapshot.bays ?? []).find((b) => b.ref_id === elementId);
+        if (bay) {
+          const fieldRoleMap: Record<string, AddApparatusData['fieldRole']> = {
+            IN: 'LINE_IN', OUT: 'LINE_OUT', TR: 'TRANSFORMER',
+            COUPLER: 'COUPLER', FEEDER: 'LINE_OUT', MEASUREMENT: 'MEASUREMENT', OZE: 'TRANSFORMER',
+          };
+          const defaultKind: ApparatusKind = actionId === 'configure-cts-vts' ? 'ct' : 'cable_head';
+          setAddApparatusModalState({
+            open: true,
+            data: {
+              bayRef: bay.ref_id,
+              bayNumber: bay.bay_number ?? '',
+              fieldRole: fieldRoleMap[bay.bay_role] ?? 'LINE_OUT',
+              apparatusKind: defaultKind,
+              designation: defaultKind === 'ct' ? 'T1' : '',
+              ratioPrimary: defaultKind === 'ct' ? 200 : null,
+              ratioSecondary: defaultKind === 'ct' ? 5 : null,
+              accuracyClass: defaultKind === 'ct' ? '0.5' : '',
+              ratedVoltageKv: null,
+              ratedCurrentA: defaultKind === 'ct' ? 200 : null,
+              catalogRef: null,
+            },
+          });
+          return;
+        }
+      }
+
+      /* R30: 'set-switch-state' (kind=bay) → otwiera ApparatusStateModal
+       * dla sterowania łącznikami CB/DS/ES per pole. Operacyjnie krytyczna
+       * akcja dyspozytora — używana 100+ razy dziennie. */
+      if (actionId === 'set-switch-state' && kind === 'bay' && elementId && snapshot) {
+        const bay = (snapshot.bays ?? []).find((b) => b.ref_id === elementId);
+        if (bay) {
+          /* Ekstraktujemy aktualne stany z runtime_state albo defaultujemy do unknown.
+           * BayDeviceState (PL) → SwitchState (UI):
+           *   zamkniety → closed, otwarty → open, nieznany/awaria → unknown,
+           *   _naped_rozbrojony → closed/open (uproszczenie). */
+          const runtime = bay.runtime_state ?? null;
+          const mapDevState = (raw: string | undefined): 'closed' | 'open' | 'unknown' => {
+            if (!raw) return 'unknown';
+            if (raw === 'zamkniety' || raw === 'zamkniety_naped_rozbrojony') return 'closed';
+            if (raw === 'otwarty' || raw === 'otwarty_naped_rozbrojony') return 'open';
+            return 'unknown';
+          };
+          const cbState = mapDevState(runtime?.primary_device_states?.cb?.actual_state);
+          const dsBusState = mapDevState(runtime?.primary_device_states?.ds_bus?.actual_state);
+          const dsLinState = mapDevState(runtime?.primary_device_states?.ds_lin?.actual_state);
+          const esRaw = runtime?.primary_device_states?.es?.actual_state;
+          const esState: 'closed' | 'open' | 'absent' | 'unknown' = esRaw === 'zamkniety'
+            ? 'closed'
+            : esRaw === 'otwarty'
+              ? 'open'
+              : 'unknown';
+          /* Tryb sterowania — z first device's control_mode */
+          const firstDevState = Object.values(runtime?.primary_device_states ?? {})[0];
+          const ctrlMode: 'remote' | 'local' | 'unknown' = firstDevState?.control_mode === 'zdalne'
+            ? 'remote'
+            : firstDevState?.control_mode === 'miejscowe' || firstDevState?.control_mode === 'lokalne_zablokowane'
+              ? 'local'
+              : 'unknown';
+          setApparatusStateModalState({
+            open: true,
+            data: {
+              bayRef: bay.ref_id,
+              bayNumber: bay.bay_number ?? '',
+              feederName: bay.feeder_short_name ?? '',
+              cbState,
+              dsBusState,
+              dsLinState,
+              esState,
+              cbQ: 'Q0',
+              dsBusQ: 'Q1',
+              dsLinQ: 'Q9',
+              esQ: 'Q8',
+              controlMode: ctrlMode,
             },
           });
           return;
@@ -924,6 +1036,129 @@ export function SldWorkspaceContainer(
               );
             }
             setTransformerModalState({ open: false, data: null });
+          }}
+        />
+      )}
+
+      {/* R31: AddApparatusModal — dodawanie aparatu (CT/VT/SA/Fuse) do pola.
+       * Backend: add_sn_bay można rozszerzyć ale dla MVP — patchSnapshot dodaje
+       * apparatus_ref do bay.equipment_refs. */}
+      {addApparatusModalState.open && addApparatusModalState.data && (
+        <AddApparatusModal
+          isOpen={addApparatusModalState.open}
+          initial={addApparatusModalState.data}
+          onClose={() => setAddApparatusModalState({ open: false, data: null })}
+          onSubmit={(updated) => {
+            const apparatusRef = `${updated.bayRef}__${updated.apparatusKind}__${updated.designation}`;
+            patchSnapshot(
+              (snap) => ({
+                ...snap,
+                bays: (snap.bays ?? []).map((b) =>
+                  b.ref_id === updated.bayRef
+                    ? {
+                        ...b,
+                        equipment_refs: [...(b.equipment_refs ?? []), apparatusRef],
+                        meta: {
+                          ...b.meta,
+                          [`apparatus_${apparatusRef}`]: {
+                            kind: updated.apparatusKind,
+                            designation: updated.designation,
+                            ratio_primary: updated.ratioPrimary,
+                            ratio_secondary: updated.ratioSecondary,
+                            accuracy_class: updated.accuracyClass,
+                            rated_voltage_kv: updated.ratedVoltageKv,
+                            rated_current_a: updated.ratedCurrentA,
+                            catalog_ref: updated.catalogRef,
+                          },
+                        },
+                      }
+                    : b,
+                ),
+              }),
+              [updated.bayRef],
+            );
+            notify(
+              `Dodano aparat ${updated.designation} (${updated.apparatusKind}) do pola ${updated.bayNumber || updated.bayRef}.`,
+              'success',
+            );
+            setAddApparatusModalState({ open: false, data: null });
+          }}
+        />
+      )}
+
+      {/* R30: ApparatusStateModal — sterowanie łącznikami CB/DS/ES per pole.
+       * Operacyjnie krytyczne: dyspozytor klika 100+ razy dziennie. Backend
+       * pipeline z fallback do live-edit (3-stopniowa hierarchia jak inne modale). */}
+      {apparatusStateModalState.open && apparatusStateModalState.data && (
+        <ApparatusStateModal
+          isOpen={apparatusStateModalState.open}
+          initial={apparatusStateModalState.data}
+          onClose={() => setApparatusStateModalState({ open: false, data: null })}
+          onSubmit={async (delta) => {
+            /* Mapowanie odwrotne: SwitchState (UI) → BayDeviceState (PL) */
+            const toEnmState = (s: 'closed' | 'open' | 'unknown'): string =>
+              s === 'closed' ? 'zamkniety' : s === 'open' ? 'otwarty' : 'nieznany';
+            const updates: Record<string, unknown> = {
+              operator_comment: delta.operatorComment,
+            };
+            if (delta.cbState) updates['runtime_state.primary_device_states.cb.actual_state'] = toEnmState(delta.cbState);
+            if (delta.dsBusState) updates['runtime_state.primary_device_states.ds_bus.actual_state'] = toEnmState(delta.dsBusState);
+            if (delta.dsLinState) updates['runtime_state.primary_device_states.ds_lin.actual_state'] = toEnmState(delta.dsLinState);
+            if (delta.esState) {
+              const esEnm = delta.esState === 'closed' ? 'zamkniety' : delta.esState === 'open' ? 'otwarty' : 'nieznany';
+              updates['runtime_state.primary_device_states.es.actual_state'] = esEnm;
+            }
+            if (activeCaseId) {
+              try {
+                await executeDomainOperation(activeCaseId, 'update_element_parameters', {
+                  element_ref: delta.bayRef,
+                  updates,
+                });
+                notify(
+                  `Wykonano sterowanie pola ${delta.bayRef}. Wyniki obliczeń pola unieważnione.`,
+                  'success',
+                );
+              } catch (e) {
+                notify(
+                  `Błąd sterowania — fallback do live-edit: ${(e as Error).message}`,
+                  'warning',
+                );
+                /* Fallback patchSnapshot — mutuj runtime_state lokalnie.
+                 * Uwaga: tylko gdy bay.runtime_state istnieje (zachowujemy
+                 * pełną strukturę BayRuntimeState — Inv typesafe). */
+                patchSnapshot(
+                  (snap) => ({
+                    ...snap,
+                    bays: (snap.bays ?? []).map((b) => {
+                      if (b.ref_id !== delta.bayRef) return b;
+                      if (!b.runtime_state) return b; // brak runtime → no-op (Inv 9)
+                      const newDevices = { ...b.runtime_state.primary_device_states };
+                      const setDev = (key: string, raw: string): void => {
+                        const oldDev = newDevices[key];
+                        if (!oldDev) return;
+                        newDevices[key] = { ...oldDev, actual_state: raw as never };
+                      };
+                      if (delta.cbState) setDev('cb', toEnmState(delta.cbState));
+                      if (delta.dsBusState) setDev('ds_bus', toEnmState(delta.dsBusState));
+                      if (delta.dsLinState) setDev('ds_lin', toEnmState(delta.dsLinState));
+                      if (delta.esState) setDev('es', delta.esState === 'closed' ? 'zamkniety' : delta.esState === 'open' ? 'otwarty' : 'nieznany');
+                      return {
+                        ...b,
+                        runtime_state: { ...b.runtime_state, primary_device_states: newDevices },
+                      };
+                    }),
+                  }),
+                  [delta.bayRef],
+                );
+              }
+            } else {
+              /* Brak activeCaseId — local-only */
+              notify(
+                `Sterowanie pola ${delta.bayRef} (live-edit, brak active case).`,
+                'info',
+              );
+            }
+            setApparatusStateModalState({ open: false, data: null });
           }}
         />
       )}

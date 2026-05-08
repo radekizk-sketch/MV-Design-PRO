@@ -16,6 +16,7 @@
 import type {
   Bay,
   BayDeviceState,
+  BayRuntimeState,
   Bus,
   EnergyNetworkModel,
   Substation,
@@ -331,7 +332,30 @@ function buildBay(bay: Bay, _buses: readonly Bus[]): CanonicalGpzBay {
     measurements: extractMeasurements(runtime),
     controlMode: extractControlMode(runtime),
     inManipulation: extractInManipulation(runtime),
+    groundFaultActive: extractGroundFaultActive(runtime),
   };
+}
+
+/**
+ * R32: Wyciąga flagę ground fault z runtime_state.
+ * Mapping: BayRuntimeState.energization_and_safety.earth_fault_active
+ *   lub aktywne alarmy zawierające 'earth_fault' / 'zwarcie_doziemne'.
+ */
+function extractGroundFaultActive(runtime: BayRuntimeState | null): boolean {
+  if (!runtime) return false;
+  /* Hook 1: explicit flag w energization_and_safety (jeśli ENM rozszerzona) */
+  const safety = runtime.energization_and_safety as { earth_fault_active?: boolean } | undefined;
+  if (safety?.earth_fault_active === true) return true;
+  /* Hook 2: active alarm zawierający 'earth' lub 'zwarcie' lub 'doziem' */
+  const alarms = runtime.active_alarms as Array<{ alarm_code?: string; alarm_kind?: string }> | undefined;
+  if (alarms && alarms.some((a) =>
+    (a.alarm_code ?? '').toLowerCase().includes('earth') ||
+    (a.alarm_code ?? '').toLowerCase().includes('zwarcie') ||
+    (a.alarm_kind ?? '').toLowerCase().includes('doziem')
+  )) {
+    return true;
+  }
+  return false;
 }
 
 function buildCouplers(gpz: Substation, bays: readonly Bay[]): CanonicalGpzCoupler[] {

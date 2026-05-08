@@ -90,6 +90,19 @@ export interface SnapshotState {
     updater: (snapshot: EnergyNetworkModel) => EnergyNetworkModel,
     affectedObjectRefs?: readonly string[],
   ) => void;
+  /**
+   * R33: Undo/redo dla patchSnapshot. Każdy patchSnapshot push'uje stary
+   * snapshot na undo stack (max 20). undoSnapshot() restoruje poprzedni.
+   * Hookpoint dla Ctrl+Z w canvas.
+   *
+   * Limit 20 zapobiega nieograniczonemu growth — operator dyspozytora
+   * potrzebuje 1-3 undos w typowych workflows.
+   */
+  undoSnapshot: () => boolean;
+  redoSnapshot: () => boolean;
+  /** Read-only: ile undos dostępnych (dla UI button enable/disable). */
+  canUndo: () => boolean;
+  canRedo: () => boolean;
   clearError: () => void;
   reset: () => void;
 }
@@ -216,6 +229,15 @@ function createHistoryEntry(
 // ---------------------------------------------------------------------------
 // Store
 // ---------------------------------------------------------------------------
+
+/**
+ * R33: Undo/redo stacks (closure scope — nie część SnapshotState żeby nie
+ * zwiększać re-render'ów subskrybentów store przy push/pop).
+ * Limit MAX_UNDO=20 (operator typically needs 1-3 undos w workflows).
+ */
+const MAX_UNDO = 20;
+let undoStack: EnergyNetworkModel[] = [];
+let redoStack: EnergyNetworkModel[] = [];
 
 export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   snapshot: null,
@@ -361,6 +383,11 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
   ) => {
     const current = get().snapshot;
     if (!current) return;
+    /* R33: Push current na undo stack (max MAX_UNDO=20).
+     * redoStack jest wyczyszczony — nowy patch zapisuje "głęboki" path. */
+    undoStack.push(current);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+    redoStack = [];
     const updated = updater(current);
     /* lastChanges propagation — invaliduje wyniki w innych komponentach
      * (Inv 4 — Case Immutability Rule). */
@@ -376,9 +403,42 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     });
   },
 
+  undoSnapshot: () => {
+    const previous = undoStack.pop();
+    if (!previous) return false;
+    const current = get().snapshot;
+    if (current) redoStack.push(current);
+    set({
+      snapshot: previous,
+      lastChanges: { affected_object_refs: [], created: [], updated: [], deleted: [] } as never,
+    });
+    return true;
+  },
+
+  redoSnapshot: () => {
+    const next = redoStack.pop();
+    if (!next) return false;
+    const current = get().snapshot;
+    if (current) {
+      undoStack.push(current);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+    }
+    set({
+      snapshot: next,
+      lastChanges: { affected_object_refs: [], created: [], updated: [], deleted: [] } as never,
+    });
+    return true;
+  },
+
+  canUndo: () => undoStack.length > 0,
+  canRedo: () => redoStack.length > 0,
+
   clearError: () => set({ error: null, errorCode: null }),
 
-  reset: () =>
+  reset: () => {
+    /* R33: clear undo/redo stacks na reset */
+    undoStack = [];
+    redoStack = [];
     set({
       snapshot: null,
       logicalViews: null,
@@ -393,5 +453,6 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       loading: false,
       error: null,
       errorCode: null,
-    }),
+    });
+  },
 }));

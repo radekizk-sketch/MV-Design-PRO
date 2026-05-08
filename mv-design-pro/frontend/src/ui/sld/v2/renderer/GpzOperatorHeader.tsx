@@ -356,7 +356,12 @@ function AlarmStrip(props: AlarmStripProps): JSX.Element {
       {items.map((item, idx) => {
         const color = item.severity === 'red' ? COLOR_BADGE_BG_RED : COLOR_BADGE_BG_YELLOW;
         return (
-          <g key={idx} data-testid={`gpz-header-alarm-${idx}`}>
+          <g
+            key={idx}
+            data-testid={`gpz-header-alarm-${idx}`}
+            data-alarm-severity={item.severity}
+            data-alarm-active="true"
+          >
             <rect
               x={0} y={idx * ROW_HEIGHT}
               width={width}
@@ -365,7 +370,17 @@ function AlarmStrip(props: AlarmStripProps): JSX.Element {
               fillOpacity={0.15}
               stroke={color}
               strokeWidth={0.8}
-            />
+            >
+              {/* R32: Active alarm strip animation — kanon SCADA OSD.
+               * Pulsujące tło dla red severity (1s cycle), wolniejsze dla orange.
+               * Pure SVG <animate> — deterministic, no JS. */}
+              <animate
+                attributeName="fill-opacity"
+                values={item.severity === 'red' ? '0.15;0.45;0.15' : '0.15;0.30;0.15'}
+                dur={item.severity === 'red' ? '1s' : '2s'}
+                repeatCount="indefinite"
+              />
+            </rect>
             <text
               x={width / 2}
               y={idx * ROW_HEIGHT + 10}
