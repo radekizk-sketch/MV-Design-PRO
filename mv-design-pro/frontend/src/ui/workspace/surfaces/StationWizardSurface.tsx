@@ -395,7 +395,10 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
        1) executeDomainOperation('create-station-complete' / 'update-station-complete')
        2) jeśli brak activeCaseId / backend error → patchSnapshot lokalnie
     */
-    const opName = mode === 'create' ? 'create-station-complete' : 'update-station-complete';
+    /* Backend op naming: snake_case (zgodnie z _HANDLERS w domain_operations.py).
+       Wcześniejsze wersje używały kebab-case — backend nie znajdował handlera
+       i frontend zawsze szedł fallback. R49 fixes. */
+    const opName = mode === 'create' ? 'create_station_complete' : 'update_station_complete';
     const payload = buildAtomicPayload();
     let backendOk = false;
     if (activeCaseId) {

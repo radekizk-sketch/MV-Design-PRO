@@ -118,7 +118,7 @@ function SnSegmentInline(props: SnSegmentInlineProps): JSX.Element {
       let backendOk = false;
       if (activeCaseId) {
         try {
-          const response = await executeDomainOperation(activeCaseId, 'configure-cable', {
+          const response = await executeDomainOperation(activeCaseId, 'configure_cable', {
             segment_ref: segmentRef,
             cable_catalog_ref: draft.cableCatalogRef,
             length_m: draft.lengthM,

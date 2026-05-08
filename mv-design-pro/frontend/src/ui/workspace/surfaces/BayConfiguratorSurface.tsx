@@ -117,7 +117,7 @@ function BayConfiguratorEditor(props: BayConfiguratorEditorProps): JSX.Element {
       let backendOk = false;
       if (activeCaseId) {
         try {
-          const response = await executeDomainOperation(activeCaseId, 'configure-bay', {
+          const response = await executeDomainOperation(activeCaseId, 'configure_bay', {
             bay_ref: bayRef,
             cb_catalog_ref: final.cbCatalogRef || null,
             cb_icu_ka: final.cbIcuKa,

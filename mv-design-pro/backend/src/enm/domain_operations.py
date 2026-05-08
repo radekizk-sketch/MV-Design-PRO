@@ -59,6 +59,9 @@ CANONICAL_OPS = frozenset(
         "delete_gpz_section",
         # Phase 0B (operator-grade SLD plan v2): append-on-endpoint workflow
         "append_station_on_endpoint",
+        # R49 (Zasada 13): atomowa operacja create-station-complete dla wizarda E-13
+        "create_station_complete",
+        "update_station_complete",
     }
 )
 
@@ -5111,6 +5114,374 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
 
 # ---------------------------------------------------------------------------
+# create_station_complete (R49) — Zasada 13: pełna konfiguracja stacji w jednym ruchu
+# ---------------------------------------------------------------------------
+
+
+_STATION_KIND_MAP = {
+    "rmu": "mv_lv",
+    "rm6": "mv_lv",
+    "switching": "switching",
+    "mv_lv": "mv_lv",
+    "inline": "inline",
+    "branch": "branch",
+    "terminal": "terminal",
+    "sectional": "sectional",
+    "customer": "customer",
+}
+
+_BAY_ROLE_MAP = {
+    "LINE_FULL": "OUT",
+    "TR_FULL": "TR",
+    "COUPLER": "COUPLER",
+    "MEASUREMENT": "MEASUREMENT",
+    "OZE": "OZE",
+}
+
+_DER_KIND_TO_GEN_TYPE = {
+    "PV": "pv_inverter",
+    "BESS": "bess",
+    "FW": "wind_inverter",
+}
+
+_DER_VARIANT_MAP = {
+    "lv_behind_tr": "LV_BEHIND_STATION_TRANSFORMER",
+    "dedicated_mv": "DEDICATED_MV_CONNECTION",
+    "source_station": "SOURCE_CONNECTION_STATION",
+}
+
+
+def create_station_complete(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """R49: Atomowa operacja tworzenia/aktualizacji KOMPLETNEJ stacji SN.
+
+    Wdraża Zasadę 13 (UX_ENGINEER_WORKFLOW_PROMPT.md) end-to-end na backendzie:
+    inżynier wstawia stację → wizard zbiera pełen draft → JEDNA operacja
+    backend tworzy hierarchię: Substation + Bus(HV) + Bus(LV)? + Bay[]
+    + Transformer? + Generator(DER)? z deterministycznymi ref_id.
+
+    Payload (kontrakt z frontendu R47 buildAtomicPayload):
+      station: { ref_id?, name, registry_number, station_type,
+                 rated_voltage_kv, producer }
+      bays: [{ role, cb_catalog_ref?, cb_icu_ka, ds_catalog_ref?,
+                ct_catalog_ref?, ct_ratio?, has_vt, has_surge_arrester,
+                has_fuse }]
+      transformer: { catalog_ref?, sn_kva, vector_group, uk_percent } | None
+      lv_side: { un_v, scheme_kind, main_breaker_ref? } | None
+      der: { kind: 'PV'|'BESS'|'FW', sn_kva, connection_variant,
+              pcc_ref, inverter_catalog_ref? } | None
+      protection_hints: [{ bay_id, relay_type, ir_nominal_a }]
+      connections: { sn_input_segment_ref?, sn_output_segment_ref?,
+                      is_nop_point }
+
+    Walidacje (blockers → error_response):
+      - name required
+      - station_type valid
+      - rated_voltage_kv > 0
+      - bays nieempty (przynajmniej 1)
+      - przynajmniej 1 bay z role LINE_FULL (inflow path)
+      - jeśli has_transformer → has_lv_side też (transformator wymaga LV bus)
+      - jeśli DER → pcc_ref required (Zasada DER PCC blocker)
+
+    Determinizm: ref_id z deterministycznego seed = station.ref_id || name + timestamp.
+    """
+    station_payload = payload.get("station", {}) or {}
+    station_name = (station_payload.get("name") or "").strip()
+    if not station_name:
+        return _error_response(
+            "Brak nazwy stacji. Wymagane pole 'station.name'.",
+            "station.create.name_missing",
+        )
+
+    station_kind_raw = station_payload.get("station_type", "rmu")
+    station_type = _STATION_KIND_MAP.get(station_kind_raw)
+    if not station_type:
+        return _error_response(
+            f"Typ stacji '{station_kind_raw}' nieprawidłowy. "
+            f"Wymagane: {', '.join(sorted(_STATION_KIND_MAP.keys()))}.",
+            "station.create.station_type_invalid",
+        )
+
+    rated_voltage_kv = station_payload.get("rated_voltage_kv", 0) or 0
+    if rated_voltage_kv <= 0:
+        return _error_response(
+            "Napięcie znamionowe SN musi być > 0.",
+            "station.create.rated_voltage_invalid",
+        )
+
+    bays_payload = payload.get("bays", []) or []
+    if not bays_payload:
+        return _error_response(
+            "Stacja musi mieć przynajmniej jedno pole SN (bay).",
+            "station.create.bays_missing",
+        )
+
+    has_inflow_bay = any(b.get("role") == "LINE_FULL" for b in bays_payload)
+    if not has_inflow_bay:
+        return _error_response(
+            "Stacja musi mieć przynajmniej jedno pole liniowe (LINE_FULL).",
+            "station.create.no_inflow_bay",
+        )
+
+    transformer_payload = payload.get("transformer")
+    lv_side_payload = payload.get("lv_side")
+    der_payload = payload.get("der")
+    has_transformer = bool(transformer_payload)
+    has_lv_side = bool(lv_side_payload)
+    has_der = bool(der_payload)
+
+    if has_transformer and not has_lv_side:
+        return _error_response(
+            "Transformator wymaga skonfigurowanej strony nN (lv_side).",
+            "station.create.transformer_without_lv",
+        )
+
+    if has_der:
+        if not der_payload.get("pcc_ref"):
+            return _error_response(
+                "DER bez PCC ref — wymagane wybranie punktu przyłączenia (szyna).",
+                "station.create.der_pcc_missing",
+            )
+        der_variant_raw = der_payload.get("connection_variant")
+        if der_variant_raw not in _DER_VARIANT_MAP:
+            return _error_response(
+                f"Wariant przyłączenia DER '{der_variant_raw}' nieprawidłowy. "
+                f"Wymagane: {', '.join(sorted(_DER_VARIANT_MAP.keys()))}.",
+                "station.create.der_variant_invalid",
+            )
+        if der_payload.get("kind") not in _DER_KIND_TO_GEN_TYPE:
+            return _error_response(
+                f"Typ DER '{der_payload.get('kind')}' nieprawidłowy. "
+                "Wymagane: PV, BESS, FW.",
+                "station.create.der_kind_invalid",
+            )
+
+    # Mode detection: existing ref_id → update; brak → create.
+    existing_ref = station_payload.get("ref_id")
+    is_update = bool(existing_ref) and any(
+        s.get("ref_id") == existing_ref for s in enm.get("substations", []) or []
+    )
+
+    # Deterministic seed
+    seed = _compute_seed({
+        "op": "create_station_complete",
+        "name": station_name,
+        "kind": station_type,
+        "ref_id": existing_ref or "",
+    })
+    station_ref = existing_ref or f"station/{seed}"
+    hv_bus_ref = f"{station_ref}-bus-hv"
+    lv_bus_ref = f"{station_ref}-bus-lv"
+    transformer_ref = f"{station_ref}-tr"
+    generator_ref = f"{station_ref}-der"
+
+    new_enm = copy.deepcopy(enm)
+    created: list[str] = []
+    updated: list[str] = []
+    events: list[dict[str, Any]] = []
+    audit: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    # Drop existing entities (cleanup before recreating) for update mode
+    if is_update:
+        new_enm["substations"] = [
+            s for s in new_enm.get("substations", []) if s.get("ref_id") != station_ref
+        ]
+        new_enm["bays"] = [
+            b for b in new_enm.get("bays", []) if b.get("substation_ref") != station_ref
+        ]
+        new_enm["buses"] = [
+            b for b in new_enm.get("buses", [])
+            if b.get("ref_id") not in {hv_bus_ref, lv_bus_ref}
+        ]
+        new_enm["transformers"] = [
+            t for t in new_enm.get("transformers", []) if t.get("ref_id") != transformer_ref
+        ]
+        new_enm["generators"] = [
+            g for g in new_enm.get("generators", []) if g.get("ref_id") != generator_ref
+        ]
+        updated.append(station_ref)
+
+    # Step 1: Buses
+    new_enm.setdefault("buses", []).append({
+        "id": hv_bus_ref,
+        "ref_id": hv_bus_ref,
+        "name": f"{station_name} — szyna SN",
+        "tags": [],
+        "meta": {},
+        "voltage_kv": rated_voltage_kv,
+        "phase_system": "3ph",
+    })
+    if not is_update:
+        created.append(hv_bus_ref)
+    bus_refs_for_substation = [hv_bus_ref]
+
+    if has_lv_side:
+        lv_un_v = lv_side_payload.get("un_v", 400)
+        new_enm["buses"].append({
+            "id": lv_bus_ref,
+            "ref_id": lv_bus_ref,
+            "name": f"{station_name} — szyna nN",
+            "tags": [],
+            "meta": {"lv_scheme_kind": lv_side_payload.get("scheme_kind", "tns")},
+            "voltage_kv": lv_un_v / 1000.0,
+            "phase_system": "3ph",
+        })
+        if not is_update:
+            created.append(lv_bus_ref)
+        bus_refs_for_substation.append(lv_bus_ref)
+
+    # Step 2: Bays
+    protection_hints = {
+        h.get("bay_id") or h.get("bayId"): h
+        for h in (payload.get("protection_hints") or [])
+    }
+    bay_refs_created: list[str] = []
+    for bay_payload in bays_payload:
+        bay_id_local = bay_payload.get("id") or bay_payload.get("bay_id") or f"bay-{len(bay_refs_created) + 1}"
+        bay_ref = f"{station_ref}-{bay_id_local}"
+        role_raw = bay_payload.get("role", "LINE_FULL")
+        role = _BAY_ROLE_MAP.get(role_raw, "OUT")
+        hint = protection_hints.get(bay_id_local, {})
+        new_enm.setdefault("bays", []).append({
+            "id": bay_ref,
+            "ref_id": bay_ref,
+            "name": f"{station_name} — pole {role_raw}",
+            "tags": [],
+            "meta": {
+                "cb_catalog_ref": bay_payload.get("cb_catalog_ref"),
+                "cb_icu_ka": bay_payload.get("cb_icu_ka"),
+                "ds_catalog_ref": bay_payload.get("ds_catalog_ref"),
+                "ct_catalog_ref": bay_payload.get("ct_catalog_ref"),
+                "ct_ratio": bay_payload.get("ct_ratio"),
+                "has_vt": bool(bay_payload.get("has_vt", False)),
+                "has_surge_arrester": bool(bay_payload.get("has_surge_arrester", True)),
+                "has_fuse": bool(bay_payload.get("has_fuse", False)),
+                "protection_relay_type": hint.get("relay_type") or hint.get("relayType"),
+                "protection_ir_nominal_a": hint.get("ir_nominal_a") or hint.get("irNominalA"),
+            },
+            "bay_role": role,
+            "substation_ref": station_ref,
+            "bus_ref": hv_bus_ref,
+            "equipment_refs": [],
+        })
+        bay_refs_created.append(bay_ref)
+        if not is_update:
+            created.append(bay_ref)
+
+    # Step 3: Transformer
+    transformer_refs_for_substation: list[str] = []
+    if has_transformer and has_lv_side:
+        sn_kva = transformer_payload.get("sn_kva", 630)
+        new_enm.setdefault("transformers", []).append({
+            "id": transformer_ref,
+            "ref_id": transformer_ref,
+            "name": f"{station_name} — TR1",
+            "tags": [],
+            "meta": {"catalog_ref": transformer_payload.get("catalog_ref")},
+            "hv_bus_ref": hv_bus_ref,
+            "lv_bus_ref": lv_bus_ref,
+            "sn_mva": sn_kva / 1000.0,
+            "uhv_kv": rated_voltage_kv,
+            "ulv_kv": lv_side_payload.get("un_v", 400) / 1000.0,
+            "uk_percent": transformer_payload.get("uk_percent", 6),
+            "pk_kw": sn_kva * 0.011,
+            "vector_group": transformer_payload.get("vector_group", "Dyn5"),
+            "catalog_ref": transformer_payload.get("catalog_ref"),
+            "parameter_source": "OVERRIDE",
+        })
+        transformer_refs_for_substation.append(transformer_ref)
+        if not is_update:
+            created.append(transformer_ref)
+
+    # Step 4: Generator (DER)
+    if has_der:
+        der_kind = der_payload.get("kind")
+        der_variant = _DER_VARIANT_MAP[der_payload["connection_variant"]]
+        gen_bus_ref = (
+            lv_bus_ref
+            if der_payload["connection_variant"] == "lv_behind_tr" and has_lv_side
+            else (der_payload.get("pcc_ref") or hv_bus_ref)
+        )
+        new_enm.setdefault("generators", []).append({
+            "id": generator_ref,
+            "ref_id": generator_ref,
+            "name": f"{station_name} — DER {der_kind}",
+            "tags": [],
+            "meta": {
+                "inverter_catalog_ref": der_payload.get("inverter_catalog_ref"),
+                "pcc_ref": der_payload.get("pcc_ref"),
+            },
+            "bus_ref": gen_bus_ref,
+            "p_mw": der_payload.get("sn_kva", 0) / 1000.0,
+            "gen_type": _DER_KIND_TO_GEN_TYPE[der_kind],
+            "connection_variant": der_variant,
+            "station_ref": station_ref,
+        })
+        if not is_update:
+            created.append(generator_ref)
+
+    # Step 5: Substation z referencjami
+    connections = payload.get("connections", {}) or {}
+    new_enm.setdefault("substations", []).append({
+        "id": station_ref,
+        "ref_id": station_ref,
+        "name": station_name,
+        "tags": [],
+        "meta": {
+            "registry_number": station_payload.get("registry_number"),
+            "rated_voltage_kv": rated_voltage_kv,
+            "producer": station_payload.get("producer"),
+            "has_transformer": has_transformer,
+            "has_lv_side": has_lv_side,
+            "has_der": has_der,
+            "bay_count": len(bays_payload),
+            "sn_input_segment_ref": connections.get("sn_input_segment_ref"),
+            "sn_output_segment_ref": connections.get("sn_output_segment_ref"),
+            "is_nop_point": bool(connections.get("is_nop_point", False)),
+            "created_by": "create_station_complete",
+        },
+        "station_type": station_type,
+        "bus_refs": bus_refs_for_substation,
+        "transformer_refs": transformer_refs_for_substation,
+    })
+    if not is_update:
+        created.append(station_ref)
+
+    # Audit + events
+    audit.append({
+        "step": ev_seq + 1,
+        "action": (
+            f"{'Zaktualizowano' if is_update else 'Utworzono'} stację '{station_name}' "
+            f"({len(bays_payload)} pól, {'1 trafa' if has_transformer else 'brak trafa'}, "
+            f"{'1 DER' if has_der else 'brak DER'})"
+        ),
+        "element_id": station_ref,
+    })
+    ev_seq += 1
+    affected_refs = [station_ref, *bay_refs_created, *bus_refs_for_substation,
+                      *transformer_refs_for_substation]
+    if has_der:
+        affected_refs.append(generator_ref)
+
+    events.append({
+        "event_seq": ev_seq,
+        "event_type": "STATION_CREATED_COMPLETE" if not is_update else "STATION_UPDATED_COMPLETE",
+        "element_id": station_ref,
+        "affected_object_refs": list(set(affected_refs)),
+    })
+
+    return _response(
+        new_enm,
+        created=created,
+        updated=updated,
+        selection_id=station_ref,
+        selection_type="substation",
+        audit=audit,
+        events=events,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
 
@@ -5133,6 +5504,10 @@ _HANDLERS: dict[str, Any] = {
     "update_gpz_section": update_gpz_section,
     "delete_gpz_section": delete_gpz_section,
     "append_station_on_endpoint": append_station_on_endpoint,
+    # R49: Zasada 13 — atomowa stacja w jednym wywołaniu
+    "create_station_complete": create_station_complete,
+    # update wykorzystuje ten sam handler — wykrywa istniejący ref_id i robi cleanup+recreate
+    "update_station_complete": create_station_complete,
 }
 
 
