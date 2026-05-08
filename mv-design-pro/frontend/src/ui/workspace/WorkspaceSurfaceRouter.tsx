@@ -2503,7 +2503,8 @@ export function WorkspaceSurfaceRouter({ region }: WorkspaceSurfaceRouterProps) 
     return null;
   }
 
-  const renderInMain = activeSurface.openMode === 'expand_workspace';
+  const renderInMain =
+    activeSurface.openMode === 'expand_workspace' || activeSurface.sizeClass === 'C';
   if ((region === 'main' && !renderInMain) || (region === 'panel' && renderInMain)) {
     return null;
   }

@@ -27,6 +27,13 @@ vi.mock('../../navigation/routes', () => ({
   navigateToVariants: vi.fn(),
 }));
 
+vi.mock('../../history/hooks', () => ({
+  useHistoryState: () => ({
+    undo: { execute: vi.fn(), isEnabled: false, tooltip: 'Cofnij ostatnią operację' },
+    redo: { execute: vi.fn(), isEnabled: false, tooltip: 'Ponów ostatnią cofniętą operację' },
+  }),
+}));
+
 import { navigateToCaseConfig, navigateToVariants } from '../../navigation/routes';
 import { TopBar } from '../TopBar';
 

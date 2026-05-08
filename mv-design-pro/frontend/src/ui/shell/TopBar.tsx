@@ -13,6 +13,7 @@ import { useAppStateStore, useCanCalculate } from '../app-state/store';
 import type { WorkMode } from '../app-state/store';
 import type { ResultStatus } from '../types';
 import { navigateToCaseConfig, navigateToVariants } from '../navigation/routes';
+import { useHistoryState } from '../history/hooks';
 
 interface WorkModeDef {
   code: WorkMode;
@@ -157,6 +158,7 @@ export function TopBar({
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const { allowed: canCalculate, reason: calculateBlockedReason } = useCanCalculate();
+  const { undo, redo } = useHistoryState();
 
   const displayProjectName = activeProjectName || projectName || '— nie otwarto —';
   const scopeDisplay = activeCaseName || activeVariantName
@@ -165,15 +167,32 @@ export function TopBar({
 
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
+      const isCtrlOrMeta = event.ctrlKey || event.metaKey;
+      // F2–F7: przelączniki trybów pracy
       const mode = WORK_MODES.find((entry) => entry.key === event.key);
       if (mode && !event.ctrlKey && !event.altKey && !event.metaKey) {
         event.preventDefault();
         setActiveWorkMode(mode.code);
+        return;
+      }
+      // Ctrl+Z / Cmd+Z: Cofnij
+      if (isCtrlOrMeta && event.key === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        if (undo.isEnabled) void undo.execute();
+        return;
+      }
+      // Ctrl+Y / Cmd+Shift+Z: Ponów
+      if (
+        (event.ctrlKey && event.key === 'y') ||
+        (event.metaKey && event.shiftKey && event.key === 'z')
+      ) {
+        event.preventDefault();
+        if (redo.isEnabled) void redo.execute();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setActiveWorkMode]);
+  }, [setActiveWorkMode, undo, redo]);
 
   const handleCalculate = useCallback(() => {
     if (!canCalculate) {
@@ -248,6 +267,40 @@ export function TopBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 px-3">
+        {/* Cofnij / Ponów — skróty Ctrl+Z / Ctrl+Y */}
+        <button
+          type="button"
+          data-testid="top-bar-undo"
+          aria-label={undo.tooltip}
+          title={undo.tooltip}
+          disabled={!undo.isEnabled}
+          onClick={() => { if (undo.isEnabled) void undo.execute(); }}
+          className={clsx(
+            'grid h-10 w-10 place-items-center rounded-[4px] border text-[16px] leading-none transition-colors',
+            undo.isEnabled
+              ? 'border-[#15324f] text-[#7fb0dd] hover:bg-[#0b2135] hover:text-scada-text'
+              : 'border-[#15324f]/40 text-scada-muted/30 cursor-not-allowed',
+          )}
+        >
+          ↶
+        </button>
+        <button
+          type="button"
+          data-testid="top-bar-redo"
+          aria-label={redo.tooltip}
+          title={redo.tooltip}
+          disabled={!redo.isEnabled}
+          onClick={() => { if (redo.isEnabled) void redo.execute(); }}
+          className={clsx(
+            'grid h-10 w-10 place-items-center rounded-[4px] border text-[16px] leading-none transition-colors',
+            redo.isEnabled
+              ? 'border-[#15324f] text-[#7fb0dd] hover:bg-[#0b2135] hover:text-scada-text'
+              : 'border-[#15324f]/40 text-scada-muted/30 cursor-not-allowed',
+          )}
+        >
+          ↷
+        </button>
+
         <button
           type="button"
           data-testid="top-bar-calculate"

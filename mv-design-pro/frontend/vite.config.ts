@@ -29,6 +29,48 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: (id: string) => {
+            // React ecosystem (runtime — tiny, keep with main)
+            if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+              return 'vendor-react';
+            }
+            // Heavy math / charting
+            if (id.includes('node_modules/katex') || id.includes('node_modules/recharts')) {
+              return 'chunk-charts';
+            }
+            // PDF export
+            if (id.includes('node_modules/jspdf') || id.includes('node_modules/html2canvas')) {
+              return 'chunk-export';
+            }
+            // SLD V2 — renderery, geometry, builder
+            if (id.includes('src/ui/sld/v2/') || id.includes('src/engine/sld-layout/')) {
+              return 'chunk-sld';
+            }
+            // Station wizard + bay editor (large wizard surfaces)
+            if (
+              id.includes('station-wizard') ||
+              id.includes('station-configurator') ||
+              id.includes('BayEditor') ||
+              id.includes('BayCard')
+            ) {
+              return 'chunk-wizard';
+            }
+            // Results + proof surfaces (E-24 … E-37)
+            if (
+              id.includes('results-browser') ||
+              id.includes('results-inspector') ||
+              id.includes('proof-inspector') ||
+              id.includes('protection-coordination')
+            ) {
+              return 'chunk-results';
+            }
+          },
+        },
+      },
+    },
     test: {
       environment: 'jsdom',
       globals: true,

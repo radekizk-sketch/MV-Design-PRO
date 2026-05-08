@@ -37,14 +37,12 @@ import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
 import { useNetworkBuildStore } from '../network-build/networkBuildStore';
-import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
 import { useWorkspaceLayoutStore } from '../workspace/workspaceLayoutStore';
 import type { AreaId } from '../navigation/areaRegistry';
 
-import { UndoRedoButtons } from '../history/UndoRedoButtons';
 import { NavigationRail } from './NavigationRail';
 import { TopBar } from './TopBar';
 import { StatusBarV12 } from './StatusBarV12';
@@ -183,7 +181,6 @@ export function AppShellV12({
 
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [, setMassReviewOpen] = useState(false);
   const [projectMetadataOpen, setProjectMetadataOpen] = useState(false);
   const [snapshotHistoryOpen, setSnapshotHistoryOpen] = useState(false);
 
@@ -219,7 +216,9 @@ export function AppShellV12({
   }, []);
 
   const isReadOnly = activeMode === 'RESULT_VIEW';
-  const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
+  // sizeClass C surfaces expand to full workspace automatically (avoids narrow-panel crush)
+  const mainSurfaceExpanded =
+    activeSurface?.openMode === 'expand_workspace' || activeSurface?.sizeClass === 'C';
 
   // Szerokość inspektora: sizeClass override gdy surface aktywny, inaczej store
   const inspectorWidthStyle = useMemo<CSSProperties>(() => {
@@ -227,7 +226,7 @@ export function AppShellV12({
     switch (activeSurface?.sizeClass) {
       case 'A': return { width: 420 };
       case 'B': return { width: 620 };
-      case 'C': return { width: 'min(70vw, 1100px)' };
+      case 'C': return { width: storedRightWidth }; // sizeClass C renders in main, not panel
       default:  return { width: storedRightWidth };
     }
   }, [activeSurface, rightCollapsed, storedRightWidth]);
@@ -254,14 +253,14 @@ export function AppShellV12({
   }, [storedRightWidth, setRightWidth]);
 
   const resolvedInspectorContent = useMemo(() => {
-    if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
+    if (activeSurface && !mainSurfaceExpanded) {
       return <WorkspaceSurfaceRouter region="panel" />;
     }
     if (inspectorContent) return inspectorContent;
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
-  }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
+  }, [activeSurface, mainSurfaceExpanded, inspectorContent, isReadOnly, selectedElement]);
 
 
   return (
@@ -274,10 +273,8 @@ export function AppShellV12({
     >
       {/* === V12 — sync work-mode → overlay visibility (headless) === */}
       <V12OverlayModeController />
-      {/* === Skróty cofnij/ponów (Ctrl+Z/Y) — bezgłowy === */}
-      <div className="sr-only" aria-hidden="true"><UndoRedoButtons /></div>
 
-      {/* === TopBar V12 (48px) — kontekst + tryby === */}
+      {/* === TopBar V12 (70px) — kontekst + tryby + cofnij/ponów === */}
       <div data-testid="workspace-topbar">
         <TopBar
           projectName={projectName}
@@ -287,16 +284,8 @@ export function AppShellV12({
         />
       </div>
 
-      {/* === Pasek przepływu pracy (48px, tylko MODEL_EDIT) === */}
-      {activeMode === 'MODEL_EDIT' && (
-        <WorkflowContextStrip
-          onOpenGlobalSearch={() => setGlobalSearchOpen(true)}
-          onOpenCatalogBrowser={navigateToCatalog}
-          onOpenMassReview={() => setMassReviewOpen(true)}
-          onOpenProjectMetadata={() => setProjectMetadataOpen(true)}
-          onOpenSnapshotHistory={() => setSnapshotHistoryOpen(true)}
-        />
-      )}
+      {/* === Pasek metryk modelu (36px, tylko MODEL_EDIT) === */}
+      {activeMode === 'MODEL_EDIT' && <WorkflowContextStrip />}
 
       {/* === Główny układ 4-kolumnowy === */}
       <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -456,6 +445,26 @@ export function AppShellV12({
             run: () => {
               window.location.hash = '#dashboard';
               setCommandPaletteOpen(false);
+            },
+          },
+          {
+            id: 'shortcut:open-project-metadata',
+            label: 'Metadane projektu',
+            description: 'Edytuj metadane: nazwa, opis, klient, nr umowy.',
+            keywords: 'metadane projekt opis klient umowa',
+            run: () => {
+              setCommandPaletteOpen(false);
+              setProjectMetadataOpen(true);
+            },
+          },
+          {
+            id: 'shortcut:open-snapshot-history',
+            label: 'Historia migawek modelu',
+            description: 'Przeglądaj i przywracaj poprzednie wersje modelu ENM.',
+            keywords: 'historia migawki wersje model enm cofnij przywróć',
+            run: () => {
+              setCommandPaletteOpen(false);
+              setSnapshotHistoryOpen(true);
             },
           },
         ]}
