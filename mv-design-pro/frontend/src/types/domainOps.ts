@@ -45,7 +45,13 @@ export type CanonicalOpName =
   | 'update_gpz_section'
   | 'delete_gpz_section'
   | 'delete_element'
-  | 'refresh_snapshot';
+  | 'refresh_snapshot'
+  // R49 (Zasada 13): atomowa operacja stacji wizard E-13
+  | 'create_station_complete'
+  | 'update_station_complete'
+  // R50: partial updates dla E-11 BayEditor + E-12 LineSegmentInline
+  | 'configure_bay'
+  | 'configure_cable';
 
 export const CANONICAL_OPERATION_NAMES = [
   'add_grid_source_sn',
@@ -74,6 +80,11 @@ export const CANONICAL_OPERATION_NAMES = [
   'delete_gpz_section',
   'delete_element',
   'refresh_snapshot',
+  // R49+R50 (Zasada 13)
+  'create_station_complete',
+  'update_station_complete',
+  'configure_bay',
+  'configure_cable',
 ] as const satisfies readonly CanonicalOpName[];
 
 const CANONICAL_OPERATION_SET = new Set<string>(CANONICAL_OPERATION_NAMES);

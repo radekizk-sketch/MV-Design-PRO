@@ -234,17 +234,150 @@ function findExistingStation(
   return (snapshot.substations ?? []).find((s) => s.ref_id === stationRef) ?? null;
 }
 
-function buildDraftFromSubstation(station: Substation | null): StationWizardDraft {
+const BAY_ROLE_REVERSE_MAP: Record<string, BayDraft['role']> = {
+  IN: 'LINE_FULL',
+  OUT: 'LINE_FULL',
+  FEEDER: 'LINE_FULL',
+  TR: 'TR_FULL',
+  COUPLER: 'COUPLER',
+  MEASUREMENT: 'MEASUREMENT',
+  OZE: 'OZE',
+};
+
+const GEN_TYPE_REVERSE_MAP: Record<string, StationWizardDraft['derKind']> = {
+  pv_inverter: 'PV',
+  bess: 'BESS',
+  wind_inverter: 'FW',
+  fw_pmsg: 'FW',
+  fw_dfig: 'FW',
+  fw_scig: 'FW',
+};
+
+const DER_VARIANT_REVERSE_MAP: Record<string, StationWizardDraft['derConnectionVariant']> = {
+  LV_BEHIND_STATION_TRANSFORMER: 'lv_behind_tr',
+  DEDICATED_MV_CONNECTION: 'dedicated_mv',
+  SOURCE_CONNECTION_STATION: 'source_station',
+  nn_side: 'lv_behind_tr',
+  block_transformer: 'dedicated_mv',
+};
+
+/**
+ * R53 Bug #2 fix: ładuje pełną hierarchię ENM stacji do StationWizardDraft.
+ *
+ * Wcześniej ładowało TYLKO Substation.meta — gubiąc bays/transformer/DER
+ * przy edit. Pierwszy Save w mode='update' = data loss.
+ *
+ * Tutaj: czyta z snapshot Bay[], Bus[], Transformer[], Generator[] po
+ * deterministycznym lookup (substation_ref, bus_refs, station_ref).
+ */
+function buildDraftFromSnapshot(
+  snapshot: ReturnType<typeof useSnapshotStore.getState>['snapshot'],
+  station: Substation | null,
+): StationWizardDraft {
   if (!station) return EMPTY_DRAFT;
+
+  const meta = (station.meta ?? {}) as Record<string, unknown>;
+  const stationRef = station.ref_id;
+
+  /* Bays: filter snapshot.bays po substation_ref. */
+  const stationBays = (snapshot?.bays ?? []).filter((b) => b.substation_ref === stationRef);
+  const bays: BayDraft[] = stationBays.map((bay, idx) => {
+    const bayMeta = (bay.meta ?? {}) as Record<string, unknown>;
+    const bayRoleSrc = bay.bay_role ?? 'OUT';
+    return {
+      id: bay.ref_id.replace(`${stationRef}-`, '') || `bay-${idx + 1}`,
+      role: BAY_ROLE_REVERSE_MAP[bayRoleSrc] ?? 'LINE_FULL',
+      cbCatalogRef: (bayMeta['cb_catalog_ref'] as string) ?? '',
+      cbIcuKa: (bayMeta['cb_icu_ka'] as number) ?? 16,
+      dsCatalogRef: (bayMeta['ds_catalog_ref'] as string) ?? '',
+      ctCatalogRef: (bayMeta['ct_catalog_ref'] as string) ?? '',
+      ctRatio: (bayMeta['ct_ratio'] as string) ?? '200/5',
+      hasVt: Boolean(bayMeta['has_vt']),
+      hasSurgeArrester: Boolean(bayMeta['has_surge_arrester'] ?? true),
+      hasFuse: Boolean(bayMeta['has_fuse']),
+    };
+  });
+
+  /* Protection hints — z bay.meta.protection_relay_type/ir_nominal_a. */
+  const protectionHints = stationBays
+    .map((bay) => {
+      const m = (bay.meta ?? {}) as Record<string, unknown>;
+      const relayType = m['protection_relay_type'] as string | null | undefined;
+      if (!relayType) return null;
+      const localId = bay.ref_id.replace(`${stationRef}-`, '') || bay.ref_id;
+      return {
+        bayId: localId,
+        relayType: relayType as 'overcurrent' | 'earth_fault' | 'differential',
+        irNominalA: (m['protection_ir_nominal_a'] as number) ?? 100,
+      };
+    })
+    .filter((h): h is NonNullable<typeof h> => h !== null);
+
+  /* Buses: HV (voltage > 1 kV) i LV (< 1 kV). */
+  const stationBuses = (snapshot?.buses ?? []).filter((b) =>
+    (station.bus_refs ?? []).includes(b.ref_id),
+  );
+  const lvBus = stationBuses.find((b) => b.voltage_kv < 1);
+  const hvBus = stationBuses.find((b) => b.voltage_kv >= 1);
+  const ratedVoltageKv = hvBus?.voltage_kv ?? (meta['rated_voltage_kv'] as number) ?? 15;
+
+  /* Transformer: filter snapshot.transformers po refs lub hv_bus_ref. */
+  const stationTransformer = (snapshot?.transformers ?? []).find((t) =>
+    (station.transformer_refs ?? []).includes(t.ref_id) ||
+    (hvBus && t.hv_bus_ref === hvBus.ref_id),
+  );
+  const hasTransformer = Boolean(stationTransformer);
+
+  /* LV side: hasLvSide = istnieje LV bus. */
+  const hasLvSide = Boolean(lvBus);
+
+  /* DER: filter snapshot.generators po station_ref. */
+  const stationGenerator = (snapshot?.generators ?? []).find((g) => g.station_ref === stationRef);
+  const hasDer = Boolean(stationGenerator);
+  const derGenType = stationGenerator?.gen_type ?? null;
+  const derKind = derGenType ? GEN_TYPE_REVERSE_MAP[derGenType] ?? null : null;
+  const derVariantSrc = stationGenerator?.connection_variant ?? null;
+  const derConnectionVariant = derVariantSrc ? DER_VARIANT_REVERSE_MAP[derVariantSrc] ?? null : null;
+  const derMeta = (stationGenerator?.meta ?? {}) as Record<string, unknown>;
+
   return {
     ...EMPTY_DRAFT,
     name: station.name ?? '',
-    registryNumber: ((station.meta as Record<string, unknown> | undefined)?.['registry_number'] as string) ?? '',
+    registryNumber: (meta['registry_number'] as string) ?? '',
     stationType: (station.station_type as StationKind) ?? 'rmu',
-    ratedVoltageKv: ((station.meta as Record<string, unknown> | undefined)?.['rated_voltage_kv'] as number) ?? 15,
-    producer: ((station.meta as Record<string, unknown> | undefined)?.['producer'] as string) ?? '',
+    ratedVoltageKv,
+    producer: (meta['producer'] as string) ?? '',
+
+    bays,
+
+    hasTransformer,
+    transformerCatalogRef: stationTransformer?.catalog_ref ?? '',
+    transformerSnKva: stationTransformer ? Math.round(stationTransformer.sn_mva * 1000) : 630,
+    transformerVectorGroup: stationTransformer?.vector_group ?? 'Dyn5',
+    transformerUkPercent: stationTransformer?.uk_percent ?? 6,
+
+    hasLvSide,
+    lvVoltageV: lvBus ? Math.round(lvBus.voltage_kv * 1000) : 400,
+    lvSchemeKind: ((lvBus?.meta ?? {}) as Record<string, unknown>)['lv_scheme_kind'] as StationWizardDraft['lvSchemeKind'] ?? 'tns',
+    lvMainBreakerCatalogRef: '',
+
+    hasDer,
+    derKind,
+    derSnKva: stationGenerator ? Math.round(stationGenerator.p_mw * 1000) : 0,
+    derConnectionVariant,
+    derPccRef: (derMeta['pcc_ref'] as string) ?? '',
+    derInverterCatalogRef: (derMeta['inverter_catalog_ref'] as string) ?? '',
+
+    protectionHints,
+
+    snInputSegmentRef: (meta['sn_input_segment_ref'] as string) ?? '',
+    snOutputSegmentRef: (meta['sn_output_segment_ref'] as string) ?? '',
+    isNopPoint: Boolean(meta['is_nop_point']),
   };
 }
+
+/* R53: usunięto buildDraftFromSubstation (gubił hierarchię). Cały kod
+   używa buildDraftFromSnapshot, które ładuje bays/transformer/DER ze snapshot. */
 
 /* =============================================================================
    Surface
@@ -269,7 +402,9 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
     [snapshot, stationRef],
   );
 
-  const [draft, setDraft] = useState<StationWizardDraft>(() => buildDraftFromSubstation(existingStation));
+  /* R53 Bug #2 fix: ładuje PEŁNĄ hierarchię (substation + bays + TR + DER) ze
+     snapshot. Wcześniej buildDraftFromSubstation gubiło bays/TR/DER → data loss. */
+  const [draft, setDraft] = useState<StationWizardDraft>(() => buildDraftFromSnapshot(snapshot, existingStation));
   const [activeStep, setActiveStep] = useState<StationWizardStepId>('identification');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -461,11 +596,11 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
   }, [canSave, mode, draft, existingStation, patchSnapshot, executeDomainOperation, activeCaseId, buildAtomicPayload]);
 
   const handleCancel = useCallback(() => {
-    setDraft(buildDraftFromSubstation(existingStation));
+    setDraft(buildDraftFromSnapshot(snapshot, existingStation));
     setActiveStep('identification');
     setSaveError(null);
     notify('Anulowano. Model bez zmian.', 'info');
-  }, [existingStation]);
+  }, [snapshot, existingStation]);
 
   if (!stationRef && mode === 'edit') {
     return (

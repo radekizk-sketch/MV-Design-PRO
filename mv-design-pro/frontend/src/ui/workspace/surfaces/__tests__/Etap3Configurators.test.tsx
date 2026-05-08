@@ -257,6 +257,127 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(nameInput.value).toBe('');
     });
 
+    it('Wizard R53 — edit mode ładuje PEŁNĄ hierarchię (bays + TR + DER) ze snapshot', async () => {
+      /* Seed snapshot z kompletną stacją: 2 bays + transformer + DER. */
+      useSnapshotStore.setState({
+        snapshot: {
+          header: { schema_version: '1.0', network_id: 'test', base_voltage_kv: 15, base_mva: 100, cmax: 1.1, cmin: 0.95, frequency_hz: 50 },
+          buses: [
+            { id: 'st-x-bus-hv', ref_id: 'st-x-bus-hv', name: 'HV', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+            { id: 'st-x-bus-lv', ref_id: 'st-x-bus-lv', name: 'LV', tags: [], meta: { lv_scheme_kind: 'tns' }, voltage_kv: 0.4, phase_system: '3ph' },
+          ],
+          branches: [], switches: [], sources: [], loads: [],
+          transformers: [
+            { id: 'st-x-tr', ref_id: 'st-x-tr', name: 'TR1', tags: [], meta: {},
+              hv_bus_ref: 'st-x-bus-hv', lv_bus_ref: 'st-x-bus-lv',
+              sn_mva: 0.63, uhv_kv: 15, ulv_kv: 0.4, uk_percent: 6, pk_kw: 7,
+              vector_group: 'Dyn5', catalog_ref: 'ABB-EXISTING' },
+          ],
+          generators: [
+            { id: 'st-x-der', ref_id: 'st-x-der', name: 'PV-1', tags: [],
+              meta: { pcc_ref: 'st-x-bus-lv', inverter_catalog_ref: 'SMA-60' },
+              bus_ref: 'st-x-bus-lv', p_mw: 0.05, gen_type: 'pv_inverter',
+              connection_variant: 'LV_BEHIND_STATION_TRANSFORMER', station_ref: 'st-x' },
+          ],
+          substations: [
+            { id: 'st-x', ref_id: 'st-x', name: 'ST-Existing', tags: [],
+              meta: { registry_number: '999/24', producer: 'Schneider', rated_voltage_kv: 15 },
+              station_type: 'mv_lv', bus_refs: ['st-x-bus-hv', 'st-x-bus-lv'],
+              transformer_refs: ['st-x-tr'] },
+          ],
+          bays: [
+            { id: 'st-x-b-1', ref_id: 'st-x-b-1', name: 'Pole L1', tags: [],
+              meta: { cb_catalog_ref: 'ABB VD4', cb_icu_ka: 16, ct_catalog_ref: 'ABB CT', ct_ratio: '200/5', has_surge_arrester: true },
+              bay_role: 'OUT', substation_ref: 'st-x', bus_ref: 'st-x-bus-hv', equipment_refs: [] },
+            { id: 'st-x-b-2', ref_id: 'st-x-b-2', name: 'Pole TR1', tags: [],
+              meta: { cb_catalog_ref: 'ABB VD4', cb_icu_ka: 16, ct_catalog_ref: 'ABB CT', has_fuse: true },
+              bay_role: 'TR', substation_ref: 'st-x', bus_ref: 'st-x-bus-hv', equipment_refs: [] },
+          ],
+        } as never,
+      });
+
+      const surfaceWithExisting = { ...minimalSurface, entityRef: 'st-x' };
+      render(<StationConfiguratorSurface surface={surfaceWithExisting} />);
+
+      /* Step 1 — name + producer załadowane. */
+      expect((screen.getByTestId('wizard-station-name') as HTMLInputElement).value).toBe('ST-Existing');
+      expect((screen.getByTestId('wizard-producer') as HTMLInputElement).value).toBe('Schneider');
+
+      /* Step 2 — 2 bays załadowane. */
+      fireEvent.click(screen.getByTestId('stepper-bays_and_apparatus'));
+      expect(screen.getByTestId('bay-editor-0')).toBeInTheDocument();
+      expect(screen.getByTestId('bay-editor-1')).toBeInTheDocument();
+      expect((screen.getByTestId('wizard-bay-0-cb-ref') as HTMLInputElement).value).toBe('ABB VD4');
+      expect((screen.getByTestId('wizard-bay-0-ct-ref') as HTMLInputElement).value).toBe('ABB CT');
+
+      /* Step 3 — transformer załadowany. */
+      fireEvent.click(screen.getByTestId('stepper-transformer'));
+      expect((screen.getByTestId('wizard-has-transformer') as HTMLInputElement).checked).toBe(true);
+      expect((screen.getByTestId('wizard-transformer-ref') as HTMLInputElement).value).toBe('ABB-EXISTING');
+
+      /* Step 4 — LV side załadowany. */
+      fireEvent.click(screen.getByTestId('stepper-lv_side'));
+      expect((screen.getByTestId('wizard-has-lv-side') as HTMLInputElement).checked).toBe(true);
+      expect((screen.getByTestId('wizard-lv-voltage') as HTMLInputElement).value).toBe('400');
+
+      /* Step 5 — DER załadowany. */
+      fireEvent.click(screen.getByTestId('stepper-der'));
+      expect((screen.getByTestId('wizard-has-der') as HTMLInputElement).checked).toBe(true);
+      expect((screen.getByTestId('wizard-der-kind') as HTMLSelectElement).value).toBe('PV');
+      expect((screen.getByTestId('wizard-der-connection-variant') as HTMLSelectElement).value).toBe('lv_behind_tr');
+      expect((screen.getByTestId('wizard-der-pcc-ref') as HTMLSelectElement).value).toBe('st-x-bus-lv');
+    });
+
+    it('Wizard R53 — edit + Save NIE GUBI istniejących bays/TR/DER (regression test data loss)', async () => {
+      /* Seed: stacja z 1 bay + TR. */
+      useSnapshotStore.setState({
+        snapshot: {
+          header: { schema_version: '1.0', network_id: 'test', base_voltage_kv: 15, base_mva: 100, cmax: 1.1, cmin: 0.95, frequency_hz: 50 },
+          buses: [
+            { id: 'st-y-bus-hv', ref_id: 'st-y-bus-hv', name: 'HV', tags: [], meta: {}, voltage_kv: 15, phase_system: '3ph' },
+            { id: 'st-y-bus-lv', ref_id: 'st-y-bus-lv', name: 'LV', tags: [], meta: {}, voltage_kv: 0.4, phase_system: '3ph' },
+          ],
+          branches: [], switches: [], sources: [], loads: [], generators: [],
+          transformers: [
+            { id: 'st-y-tr', ref_id: 'st-y-tr', name: 'TR', tags: [], meta: {},
+              hv_bus_ref: 'st-y-bus-hv', lv_bus_ref: 'st-y-bus-lv',
+              sn_mva: 0.4, uhv_kv: 15, ulv_kv: 0.4, uk_percent: 6, pk_kw: 5 },
+          ],
+          substations: [
+            { id: 'st-y', ref_id: 'st-y', name: 'ST-Y', tags: [],
+              meta: { registry_number: '1', producer: 'X', rated_voltage_kv: 15 },
+              station_type: 'mv_lv', bus_refs: ['st-y-bus-hv', 'st-y-bus-lv'],
+              transformer_refs: ['st-y-tr'] },
+          ],
+          bays: [
+            { id: 'st-y-b-1', ref_id: 'st-y-b-1', name: 'Pole', tags: [],
+              meta: { cb_catalog_ref: 'CB1', ct_catalog_ref: 'CT1' },
+              bay_role: 'OUT', substation_ref: 'st-y', bus_ref: 'st-y-bus-hv', equipment_refs: [] },
+          ],
+        } as never,
+      });
+
+      const surfaceWithExisting = { ...minimalSurface, entityRef: 'st-y' };
+      render(<StationConfiguratorSurface surface={surfaceWithExisting} />);
+
+      /* Zmień tylko nazwę → Save. */
+      fireEvent.change(screen.getByTestId('wizard-station-name'), { target: { value: 'ST-Y-zmieniona' } });
+      fireEvent.click(screen.getByTestId('stepper-readiness'));
+      const saveBtn = screen.getByTestId('wizard-save-and-create') as HTMLButtonElement;
+      expect(saveBtn.disabled).toBe(false);
+      fireEvent.click(saveBtn);
+      await new Promise((r) => setTimeout(r, 50));
+
+      /* Po Save: snapshot ma nadal 1 bay + 1 TR (NIE wymazane). */
+      const snap = useSnapshotStore.getState().snapshot;
+      const editedStation = snap?.substations?.find((s) => s.ref_id === 'st-y');
+      expect(editedStation?.name).toBe('ST-Y-zmieniona');
+      const stationBays = (snap?.bays ?? []).filter((b) => b.substation_ref === 'st-y');
+      expect(stationBays.length).toBe(1); // BUG #2 fix: nie utracone
+      const stationTr = (snap?.transformers ?? []).find((t) => t.ref_id === 'st-y-tr');
+      expect(stationTr).toBeDefined();
+    });
+
     it('Wizard R47 — wybór typu mv_lv auto-włącza hasTransformer + hasLvSide', async () => {
       render(<StationConfiguratorSurface surface={surfaceWithStation} />);
       fireEvent.change(screen.getByTestId('wizard-station-type'), { target: { value: 'mv_lv' } });
