@@ -30,74 +30,103 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     vi.clearAllMocks();
   });
 
-  describe('GpzConfiguratorSurface (E-03 R36)', () => {
-    /* R36 wymaga entityRef żeby pokazać formularz; bez ref → empty state */
+  describe('GpzConfiguratorSurface (E-03 R42 — Simple/Advanced modes)', () => {
     const surfaceWithGpz = { ...minimalSurface, entityRef: 'gpz-test' };
 
-    it('Bez entityRef → empty state (placeholder zaproszenia)', () => {
+    /* R42: Helper switch from default Simple → Advanced mode */
+    const switchToAdvanced = () => {
+      fireEvent.click(screen.getByTestId('gpz-mode-advanced-switch'));
+    };
+
+    it('Bez entityRef → empty state (Simple mode default)', () => {
       render(<GpzConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByTestId('gpz-configurator-surface-empty')).toBeInTheDocument();
+      expect(screen.getByTestId('gpz-simple-empty')).toBeInTheDocument();
     });
 
-    it('Z entityRef → renderuje 7 kart inżynierskich (R36)', () => {
+    it('Domyślnie Simple mode (E-03A) — zwarty atrapa-style accordion', () => {
       render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      expect(screen.getByTestId('gpz-configurator-simple')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-identification')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-shortcircuit')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-normative')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-sections')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-calc-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('sec-readiness')).toBeInTheDocument();
+    });
+
+    it('Mode switcher Simple → Advanced przełącza widok (R42)', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      expect(screen.getByTestId('gpz-configurator-simple')).toBeInTheDocument();
+      switchToAdvanced();
+      expect(screen.getByTestId('gpz-configurator-surface')).toBeInTheDocument();
+      expect(screen.queryByTestId('gpz-configurator-simple')).not.toBeInTheDocument();
+    });
+
+    it('Advanced — renderuje 7 kart inżynierskich (R36)', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
       expect(screen.getByText('Identyfikacja')).toBeInTheDocument();
       expect(screen.getByText('Strona 110 kV')).toBeInTheDocument();
       expect(screen.getByText('Transformator z katalogu')).toBeInTheDocument();
       expect(screen.getByText('Sekcje SN')).toBeInTheDocument();
       expect(screen.getByText('Bilans pól SN')).toBeInTheDocument();
-      /* R36 nowe karty */
       expect(screen.getByText('Podsumowanie obliczeniowe')).toBeInTheDocument();
       expect(screen.getByText('Wyniki obliczeń live')).toBeInTheDocument();
     });
 
-    it('NIE pokazuje technicznego identyfikatora akcji ani tekstu roadmapy', () => {
+    it('Advanced — domyślnie aktywna karta Identyfikacja', () => {
       render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
-      expect(screen.queryByText(/add_grid_source_sn/)).not.toBeInTheDocument();
-      expect(screen.queryByText(/roadmap/i)).not.toBeInTheDocument();
-    });
-
-    it('Domyślnie aktywna jest karta Identyfikacja', () => {
-      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
       expect(screen.getByTestId('gpz-card-content-identification')).toBeInTheDocument();
-      expect(screen.queryByTestId('gpz-card-content-transformer')).not.toBeInTheDocument();
     });
 
-    it('Zmiana karty wyświetla nową zawartość (Transformator)', () => {
+    it('Advanced — Karta Strona 110 kV zawiera pole moc zwarciowa S\'\'k', () => {
       render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
-      expect(screen.getByTestId('gpz-card-content-transformer')).toBeInTheDocument();
-      expect(screen.getByText(/Katalog HV transformatorów/)).toBeInTheDocument();
-    });
-
-    it('Karta Strona 110 kV zawiera pole moc zwarciowa z jednostką MVA', () => {
-      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
       fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
       expect(screen.getByTestId('gpz-sk-mva')).toBeInTheDocument();
     });
 
-    it('R36 — karta Podsumowanie obliczeniowe ma sekcje moc/SC/spadek/zasoby', () => {
+    it('Advanced R43 — Karta Strona 110 kV ma Z0/Z1 + neutralne uziemienie', () => {
       render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
+      fireEvent.click(screen.getByTestId('gpz-card-tab-hv-side'));
+      expect(screen.getByTestId('gpz-z0-z1')).toBeInTheDocument();
+      expect(screen.getByTestId('gpz-r0-x0')).toBeInTheDocument();
+      expect(screen.getByText(/System uziemienia/)).toBeInTheDocument();
+    });
+
+    it('Advanced R44 — Karta Podsumowanie zawiera Ik1, Ip, Ith (asymmetric SC)', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
       fireEvent.click(screen.getByTestId('gpz-card-tab-calc-summary'));
-      expect(screen.getByTestId('gpz-card-content-calc-summary')).toBeInTheDocument();
-      expect(screen.getByText(/Moc rozporządzalna/)).toBeInTheDocument();
-      expect(screen.getByText(/Krótkie zwarcie/)).toBeInTheDocument();
-      expect(screen.getByText(/Spadek napięcia/)).toBeInTheDocument();
-      expect(screen.getByText(/Zasoby/)).toBeInTheDocument();
+      expect(screen.getByTestId('calc-ik3-hv')).toBeInTheDocument();
+      expect(screen.getByTestId('calc-ik1-hv')).toBeInTheDocument();
+      expect(screen.getByTestId('calc-ip3-hv')).toBeInTheDocument();
+      expect(screen.getByTestId('calc-ith3-hv')).toBeInTheDocument();
     });
 
-    it('R36 — karta Wyniki obliczeń live ma sekcje readiness + invalidate', () => {
+    it('Advanced — karta Bilans pól SN renderuje tabelę', () => {
       render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
-      fireEvent.click(screen.getByTestId('gpz-card-tab-live-results'));
-      expect(screen.getByTestId('gpz-card-content-live-results')).toBeInTheDocument();
-      expect(screen.getByText(/Status gotowości obliczeń/)).toBeInTheDocument();
-      expect(screen.getByText(/Inwalidacja wyników/)).toBeInTheDocument();
-    });
-
-    it('R36 — karta Bilans pól SN renderuje tabelę', () => {
-      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
       fireEvent.click(screen.getByTestId('gpz-card-tab-bays-balance'));
       expect(screen.getByTestId('gpz-bay-balance-table')).toBeInTheDocument();
+    });
+
+    it('Advanced — Karta Transformator pokazuje Quick Presety', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
+      fireEvent.click(screen.getByTestId('gpz-card-tab-transformer'));
+      expect(screen.getByText(/Quick Presety GPZ/)).toBeInTheDocument();
+      expect(screen.getByText(/Katalog HV transformatorów/)).toBeInTheDocument();
+    });
+
+    it('Advanced → Simple — switcher pozwala wrócić', () => {
+      render(<GpzConfiguratorSurface surface={surfaceWithGpz} />);
+      switchToAdvanced();
+      expect(screen.getByTestId('gpz-configurator-surface')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('gpz-mode-simple-switch'));
+      expect(screen.getByTestId('gpz-configurator-simple')).toBeInTheDocument();
     });
   });
 

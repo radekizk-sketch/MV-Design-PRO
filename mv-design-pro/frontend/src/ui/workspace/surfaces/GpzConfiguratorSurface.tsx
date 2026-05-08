@@ -33,6 +33,7 @@ import {
   type HvTransformerSpec,
 } from '../../catalog/hvTransformerCatalog';
 import { GPZ_PRESETS, getGpzPresetById, GPZ_CATEGORY_LABELS_PL } from './gpzPresets';
+import { GpzConfiguratorSimple } from './GpzConfiguratorSimple';
 import { analyzeGpz, type GpzSuggestion, type SuggestionLevel } from './gpzAdvisor';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import type { Substation, Transformer, Bus, Bay, Generator } from '../../../types/enm';
@@ -103,6 +104,10 @@ interface CalcSummary {
   readonly inLvSumA: number;
   readonly ik3HvKa: number | null; // Ik" 3F po stronie HV
   readonly ik3LvKa: number | null; // Ik" 3F po stronie LV (after trafo impedance)
+  /* R44: Asymmetric short circuits + impulse + thermal currents */
+  readonly ik1HvKa: number | null; // Ik" 1F po stronie HV (line-to-ground)
+  readonly ip3HvKa: number | null; // ip 3F impulse current (kappa·√2·Ik3)
+  readonly ith3HvKa: number | null; // Ith thermal current (1s)
   readonly voltageDropExpected: number | null; // %
   readonly lossesEstimateKw: number | null;
   readonly oilTotalL: number;
@@ -147,6 +152,24 @@ function computeCalcSummary(
         : null;
     }
   }
+  /* R44: Ik1 1F-N (line-to-ground) per IEC 60909.
+   * Wzór: Ik1 = 3·c·Un / (√3·(2·Z1+Z0))
+   * Z0/Z1 z meta substacji, default 3.0 (typowe dla rezystancyjnego). */
+  const z0z1Ratio = ((eng.substation?.meta as { hv_z0_z1_ratio?: number })?.hv_z0_z1_ratio) ?? 3.0;
+  const ik1HvKa = ik3HvKa !== null
+    ? (3 * ik3HvKa) / (2 + z0z1Ratio)
+    : null;
+  /* R44: ip impulse current per IEC 60909.
+   * Wzór: ip = κ·√2·Ik3
+   * κ = 1.02 + 0.98·exp(-3·R/X) — typowo 1.5-1.9 dla GPZ z R/X=0.05-0.20 */
+  const rxRatio = ((eng.substation?.meta as { hv_rx?: number })?.hv_rx) ?? 0.10;
+  const xrRatio = rxRatio > 0 ? 1 / rxRatio : 10;
+  const kappa = 1.02 + 0.98 * Math.exp(-3 / xrRatio);
+  const ip3HvKa = ik3HvKa !== null ? kappa * Math.sqrt(2) * ik3HvKa : null;
+  /* R44: Ith thermal current (1s) per IEC 60909.
+   * Wzór: Ith = Ik3·√(m+n) gdzie m+n typowo 1.0-1.4 dla 1s.
+   * Uproszczenie: m+n=1.2. */
+  const ith3HvKa = ik3HvKa !== null ? ik3HvKa * Math.sqrt(1.2) : null;
   /* Voltage drop estimate przy 80% obciążenia */
   const loadingFactor = 0.8;
   const voltageDropExpected = eng.transformers.length > 0
@@ -192,6 +215,9 @@ function computeCalcSummary(
     inLvSumA: inLvSum,
     ik3HvKa,
     ik3LvKa,
+    ik1HvKa,
+    ip3HvKa,
+    ith3HvKa,
     voltageDropExpected,
     lossesEstimateKw,
     oilTotalL: oilTotal,
@@ -204,8 +230,34 @@ function computeCalcSummary(
    Surface
    ============================================================================= */
 
+/**
+ * R42: Mode switcher Simple/Advanced.
+ * - Simple (default): atrapa-style accordion z atrapy HTML user'a (E-03A)
+ * - Advanced: pełen 7-tabowy formularz inżynierski z R36
+ *
+ * Domyślnie tryb uproszczony — szybki start dla 80% przypadków.
+ * Tryb zaawansowany dla pełnej kontroli inżynierskiej.
+ */
+export type GpzMode = 'simple' | 'advanced';
+
 export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
+  const [mode, setMode] = useState<GpzMode>('simple');
+  const gpzRef = surface.entityRef ?? null;
+
+  if (mode === 'simple') {
+    return <GpzConfiguratorSimple gpzRef={gpzRef} onSwitchToAdvanced={() => setMode('advanced')} />;
+  }
+  return <GpzConfiguratorAdvanced surface={surface} onSwitchToSimple={() => setMode('simple')} />;
+}
+
+interface GpzConfiguratorAdvancedProps {
+  readonly surface: WorkspaceSurfaceDescriptor;
+  readonly onSwitchToSimple: () => void;
+}
+
+function GpzConfiguratorAdvanced(props: GpzConfiguratorAdvancedProps): JSX.Element {
+  const { surface, onSwitchToSimple } = props;
   const [activeCard, setActiveCard] = useState<GpzCardId>('identification');
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -438,21 +490,41 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
 
   return (
     <div data-testid="gpz-configurator-surface" data-gpz-ref={gpzRef} className="flex h-full w-full flex-col p-4">
-      {/* Header */}
-      <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-03 · Główny Punkt Zasilający — konfigurator inżynierski
+      {/* Header z mode switcher */}
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            E-03 · Główny Punkt Zasilający — konfigurator zaawansowany
+          </div>
+          <h2 className="mt-1 text-base font-semibold text-scada-text">
+            {eng.substation?.name ?? gpzRef}
+          </h2>
+          <div className="mt-1 flex items-center gap-3 text-xs text-scada-muted">
+            <span data-testid="gpz-completeness">Kompletność: {doneCount}/{completenessChecks.length}</span>
+            {lastChanges && lastChanges.updated_element_ids.length > 0 && (
+              <span data-testid="gpz-invalidate-warning" className="text-amber-400">
+                ⚠ Wyniki nieaktualne ({lastChanges.updated_element_ids.length} ref)
+              </span>
+            )}
+          </div>
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">
-          {eng.substation?.name ?? gpzRef}
-        </h2>
-        <div className="mt-1 flex items-center gap-3 text-xs text-scada-muted">
-          <span data-testid="gpz-completeness">Kompletność: {doneCount}/{completenessChecks.length}</span>
-          {lastChanges && lastChanges.updated_element_ids.length > 0 && (
-            <span data-testid="gpz-invalidate-warning" className="text-amber-400">
-              ⚠ Wyniki nieaktualne ({lastChanges.updated_element_ids.length} ref)
-            </span>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-wider text-scada-muted">Tryb:</span>
+          <button
+            data-testid="gpz-mode-simple-switch"
+            type="button"
+            onClick={onSwitchToSimple}
+            className="rounded border border-scada-border bg-scada-surface px-3 py-1 text-xs text-scada-muted hover:border-scada-sn hover:text-scada-text"
+          >
+            ← Uproszczony
+          </button>
+          <button
+            data-testid="gpz-mode-advanced"
+            type="button"
+            className="rounded border border-scada-sn bg-scada-sn/15 px-3 py-1 text-xs font-semibold text-scada-sn"
+          >
+            Zaawansowany
+          </button>
         </div>
       </div>
 
@@ -554,9 +626,57 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               value={calc.ik3HvKa !== null ? `${calc.ik3HvKa.toFixed(2)} kA` : MISSING_DASH}
               testId="gpz-ik3-hv"
             />
+            {/* R43: Składowa zerowa Z0/Z1 — krytyczne dla obliczeń zwarcia 1F */}
+            <div className="mt-3 rounded border border-scada-border bg-scada-surface p-2">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-scada-sn">
+                Składowa zerowa (zwarcia 1F i 2F-N)
+              </div>
+              <NumberField
+                label="Stosunek Z0/Z1 (impedancja zerowa)"
+                unit="-"
+                value={(formMeta as { hvZ0Z1Ratio?: number }).hvZ0Z1Ratio ?? null}
+                onChange={(v) => saveMeta('hv_z0_z1_ratio', v)}
+                placeholder="np. 3.0"
+                testId="gpz-z0-z1"
+              />
+              <NumberField
+                label="Stosunek R0/X0"
+                unit="-"
+                value={(formMeta as { hvR0X0?: number }).hvR0X0 ?? null}
+                onChange={(v) => saveMeta('hv_r0_x0', v)}
+                placeholder="np. 0.3"
+                testId="gpz-r0-x0"
+              />
+            </div>
+            {/* R43: Uziemienie punktu neutralnego SN */}
+            <div className="mt-3 rounded border border-scada-border bg-scada-surface p-2">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-scada-sn">
+                Uziemienie punktu neutralnego SN
+              </div>
+              <SelectField
+                label="System uziemienia"
+                value={(formMeta as { neutralArrangement?: string }).neutralArrangement ?? 'rezystancja'}
+                onChange={(v) => saveMeta('neutral_arrangement', v)}
+                options={[
+                  { id: 'izolowany', label: 'Izolowany (sieć izolowana)' },
+                  { id: 'rezystancja', label: 'Rezystancja (uziemienie rezystancyjne)' },
+                  { id: 'reaktancja', label: 'Reaktancja (uziemienie indukcyjne)' },
+                  { id: 'kompensacja', label: 'Kompensacja (cewka Petersena)' },
+                  { id: 'skutecznie_uziemiony', label: 'Skutecznie uziemiony' },
+                ]}
+              />
+              <NumberField
+                label="Prąd zwarciowy 1F (Ik1) granica"
+                unit="A"
+                value={(formMeta as { neutralIk1Limit?: number }).neutralIk1Limit ?? null}
+                onChange={(v) => saveMeta('neutral_ik1_limit', v)}
+                placeholder="np. 100 A dla rezystancyjnego"
+                testId="gpz-neutral-ik1"
+              />
+            </div>
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
-              Ik" obliczone wg IEC 60909 z wzoru S\"k / (√3 · Un). Zmiana S\"k inwaliduje
-              wszystkie wyniki SC + load flow tej GPZ.
+              Ik 3F obliczone wg IEC 60909 z wzoru c·Un / (√3·Z1). Z0/Z1 wpływa na obliczenia
+              zwarcia 1F. Zmiana parametrów inwaliduje wyniki SC + load flow.
             </p>
           </div>
         )}
@@ -696,9 +816,15 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <Metric label={'Ik" 3F po stronie 110 kV'} value={calc.ik3HvKa !== null ? `${calc.ik3HvKa.toFixed(2)} kA` : MISSING_DASH} testId="calc-ik3-hv" />
                 <Metric label={'Ik" 3F po stronie SN'} value={calc.ik3LvKa !== null ? `${calc.ik3LvKa.toFixed(2)} kA` : MISSING_DASH} testId="calc-ik3-lv" />
+                {/* R44: Asymmetric SC + Ip + Ith */}
+                <Metric label={'Ik" 1F (line-to-ground)'} value={calc.ik1HvKa !== null ? `${calc.ik1HvKa.toFixed(2)} kA` : MISSING_DASH} testId="calc-ik1-hv" />
+                <Metric label={'ip 3F (impulse current)'} value={calc.ip3HvKa !== null ? `${calc.ip3HvKa.toFixed(2)} kA` : MISSING_DASH} testId="calc-ip3-hv" />
+                <Metric label={'Ith 3F (thermal 1s)'} value={calc.ith3HvKa !== null ? `${calc.ith3HvKa.toFixed(2)} kA` : MISSING_DASH} testId="calc-ith3-hv" />
               </div>
               <p className="mt-2 text-[10px] text-scada-muted">
-                Ik" 3F SN obliczone z impedancji źródła + parallel transformatorów (uk%).
+                <strong>Ik 3F:</strong> z S''k/(√3·Un). <strong>Ik 1F:</strong> 3·Ik3/(2+Z0/Z1).{' '}
+                <strong>ip:</strong> κ·√2·Ik3 (κ = 1.02+0.98·e^(-3·R/X)).{' '}
+                <strong>Ith:</strong> Ik·√(m+n) dla t=1s.
                 Pełen rachunek wykonuje moduł SC IEC 60909 (E-23).
               </p>
             </div>
