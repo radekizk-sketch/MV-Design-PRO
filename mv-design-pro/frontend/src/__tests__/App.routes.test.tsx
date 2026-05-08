@@ -19,7 +19,7 @@ vi.mock('../ui/layout', () => ({
     onCalculate?: () => void;
     onMenuAction?: (actionId: string) => void;
   }) => (
-    <div data-testid="canonical-layout">
+    <div data-testid="workspace-shell">
       <button type="button" data-testid="layout-calculate" onClick={onCalculate}>
         Oblicz
       </button>

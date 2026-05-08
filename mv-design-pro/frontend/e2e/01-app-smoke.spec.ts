@@ -1,15 +1,15 @@
 /**
- * 01-app-smoke (R54) — smoke test z fail-on-console-errors.
+ * 01-app-smoke (R55) — smoke test z fail-on-console-errors.
  *
  * Wymóg Etap 1+18 prompt huntowego: aplikacja się ładuje, brak console.error,
  * brak pageerror, widoczny shell, topbar, lewy panel, główny obszar, prawy panel.
  *
- * Zakres:
- *   1. App shell się montuje
- *   2. Brak runtime crashes
- *   3. Brak console errors (z whitelist React DevTools / HMR)
- *   4. Brak pageerror
- *   5. Główne regiony layoutu obecne (canonical-layout, main-content, inspector-panel-sidebar)
+ * R55: zaktualizowane test IDs do kanonicznych:
+ *   workspace-shell (było: canonical-layout)
+ *   right-panel (było: inspector-panel-sidebar)
+ *   right-panel-collapse (było: inspector-panel-toggle)
+ *   left-panel — nowy
+ *   workspace-topbar — nowy
  */
 
 import { expect, test, type Page } from '@playwright/test';
@@ -33,7 +33,7 @@ async function waitForAppReady(page: Page): Promise<void> {
   });
 }
 
-test.describe('01 — App Smoke (R54 fail-on-console-errors)', () => {
+test.describe('01 — App Smoke (R55 canonical test IDs)', () => {
   test('Aplikacja ładuje się bez console errors i pageerror', async ({ page }) => {
     /* Collect zamiast fail — testy mają widzieć WSZYSTKIE errors końcowo,
        nie tylko pierwszy. Asercja po ready. */
@@ -59,10 +59,11 @@ test.describe('01 — App Smoke (R54 fail-on-console-errors)', () => {
     await page.goto('/');
     await waitForAppReady(page);
 
-    await expect(page.locator('[data-testid="canonical-layout"]')).toBeVisible();
+    /* R55: kanoniczne test IDs */
+    await expect(page.locator('[data-testid="workspace-shell"]')).toBeVisible();
     await expect(page.locator('[data-testid="main-content"]')).toBeVisible();
-    /* Inspector panel może być collapsed — sprawdzamy tylko obecność w DOM. */
-    await expect(page.locator('[data-testid="inspector-panel-sidebar"]')).toHaveCount(1);
+    /* Prawy panel może być collapsed — sprawdzamy tylko obecność w DOM. */
+    await expect(page.locator('[data-testid="right-panel"]')).toHaveCount(1);
   });
 
   test('Active case bar widoczny + przycisk Oblicz dostępny', async ({ page }) => {
@@ -80,7 +81,8 @@ test.describe('01 — App Smoke (R54 fail-on-console-errors)', () => {
     await page.goto('/');
     await waitForAppReady(page);
 
-    const toggleBtn = page.locator('[data-testid="inspector-panel-toggle"]');
+    /* R55: right-panel-collapse (było: inspector-panel-toggle) */
+    const toggleBtn = page.locator('[data-testid="right-panel-collapse"]');
     if (await toggleBtn.count() > 0) {
       await toggleBtn.click();
       await page.waitForTimeout(200);

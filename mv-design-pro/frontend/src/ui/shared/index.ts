@@ -9,3 +9,4 @@
 
 export * from './verdict-messages';
 export * from './formatPolishValue';
+export * from './WorkflowStatusBadge';

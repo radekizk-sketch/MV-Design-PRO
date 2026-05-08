@@ -18,7 +18,7 @@
  * @see docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md PR-1
  */
 
-/** Status wyniku obliczeń wg kanonu V12.x. */
+/** Status wyniku obliczeń wg kanonu V12.x (jakość wyniku). */
 export type CalculationStatus =
   | 'ok'
   | 'partial'
@@ -27,7 +27,7 @@ export type CalculationStatus =
   | 'n_a'
   | 'pending';
 
-/** Etykiety polskojęzyczne dla statusów. */
+/** Etykiety polskojęzyczne dla statusów jakości wyników. */
 export const POLISH_STATUS_LABEL: Readonly<Record<CalculationStatus, string>> = {
   ok: 'wynik pełny',
   partial: 'wynik częściowy',
@@ -46,6 +46,83 @@ export const POLISH_STATUS_SHORT: Readonly<Record<CalculationStatus, string>> = 
   n_a: 'n.d.',
   pending: '…',
 };
+
+// =============================================================================
+// R55 — WorkflowCalculationStatus (7-stanowy automat stanu przypadku obliczeniowego)
+//
+// Separacja od CalculationStatus (jakość wyniku) — ten typ opisuje ETAP przepływu
+// inżynierskiego, a nie jakość liczby w komórce tabeli.
+//
+// Mapowanie do ResultStatus z store.ts:
+//   idle      ↔  NONE (nie uruchomiono)
+//   blocked   ↔  NONE + brakujące dane
+//   ready     ↔  NONE + dane kompletne
+//   running   ↔  (brak w V12 — dodane R55)
+//   calculated ↔ FRESH
+//   stale     ↔  OUTDATED
+//   error     ↔  error (nowy)
+// =============================================================================
+
+/**
+ * 7-stanowy automat stanu przypadku obliczeniowego.
+ * Używany w badge'ach statusu i aktywnym pasku przypadku.
+ */
+export type WorkflowCalculationStatus =
+  | 'idle'       // nie uruchomiono żadnych obliczeń
+  | 'blocked'    // brakujące dane blokują obliczenia (walidacja)
+  | 'ready'      // dane pełne, obliczenia możliwe
+  | 'running'    // obliczenia w toku
+  | 'calculated' // wyniki aktualne
+  | 'stale'      // model zmieniony po obliczeniach (wyniki nieaktualne)
+  | 'error';     // obliczenia zakończone błędem
+
+/** Polskie etykiety dla 7-stanowego statusu przepływu. */
+export const WORKFLOW_STATUS_LABEL: Readonly<Record<WorkflowCalculationStatus, string>> = {
+  idle: 'Brak obliczeń',
+  blocked: 'Dane niekompletne',
+  ready: 'Gotowe do obliczeń',
+  running: 'Obliczenia w toku',
+  calculated: 'Wyniki aktualne',
+  stale: 'Wyniki nieaktualne',
+  error: 'Błąd obliczeń',
+};
+
+/** Skrócone etykiety (do badge'y w wąskich komponentach). */
+export const WORKFLOW_STATUS_SHORT: Readonly<Record<WorkflowCalculationStatus, string>> = {
+  idle: '—',
+  blocked: 'Blokada',
+  ready: 'Gotowe',
+  running: '…',
+  calculated: 'OK',
+  stale: 'Nieaktual.',
+  error: 'Błąd',
+};
+
+/** Kolory Tailwind dla badge'y statusu przepływu (bezpieczne tokeny). */
+export const WORKFLOW_STATUS_COLOR: Readonly<Record<WorkflowCalculationStatus, string>> = {
+  idle: 'text-scada-muted bg-transparent',
+  blocked: 'text-amber-400 bg-amber-400/10',
+  ready: 'text-sky-400 bg-sky-400/10',
+  running: 'text-sky-300 bg-sky-300/10 animate-pulse',
+  calculated: 'text-emerald-400 bg-emerald-400/10',
+  stale: 'text-orange-400 bg-orange-400/10',
+  error: 'text-red-400 bg-red-400/10',
+};
+
+/**
+ * Mapowanie `ResultStatus` (store) → `WorkflowCalculationStatus` (UI).
+ * Używaj gdy chcesz wyświetlić 7-stanowy badge na podstawie danych z store.
+ */
+export function resultStatusToWorkflowStatus(
+  resultStatus: 'NONE' | 'FRESH' | 'OUTDATED',
+  hasBlockers: boolean,
+): WorkflowCalculationStatus {
+  if (resultStatus === 'FRESH') return 'calculated';
+  if (resultStatus === 'OUTDATED') return 'stale';
+  // NONE
+  if (hasBlockers) return 'blocked';
+  return 'idle';
+}
 
 /** Standardowy placeholder braku danych (em-dash). */
 export const MISSING_DASH = '—' as const;

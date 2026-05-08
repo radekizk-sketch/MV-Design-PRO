@@ -15,9 +15,18 @@
  * - data-testid="main-content" zachowany (testy layoutu)
  * - data-testid="inspector-panel-sidebar" zachowany (testy layoutu)
  * - Propsinterface identyczny z CanonicalLayoutProps
+ *
+ * R55 CANONICAL TEST IDs (nowe):
+ * - data-testid="workspace-shell"         — korzeń całego shella
+ * - data-testid="workspace-topbar"        — pasek górny
+ * - data-testid="left-panel"              — panel lewy (kontekst obszaru)
+ * - data-testid="left-panel-collapse"     — przycisk zwijania lewego panelu
+ * - data-testid="right-panel"             — panel prawy (inspektor techniczny)
+ * - data-testid="right-panel-collapse"    — alias inspector-panel-toggle
+ * - data-testid="right-panel-resize-handle" — uchwyt zmiany szerokości prawego panelu
  */
 
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { clsx } from 'clsx';
 
 import { useActiveMode, useIssuePanelOpen } from '../app-state';
@@ -32,6 +41,7 @@ import { navigateToCatalog } from '../navigation/routes';
 import { useSelectionStore } from '../selection';
 import { WorkspaceSurfaceRouter } from '../workspace';
 import { useAppStateStore } from '../app-state/store';
+import { useWorkspaceLayoutStore } from '../workspace/workspaceLayoutStore';
 import type { AreaId } from '../navigation/areaRegistry';
 
 import { UndoRedoButtons } from '../history/UndoRedoButtons';
@@ -86,19 +96,56 @@ function IconClipboard({ className }: { className?: string }) {
 function ContextPanelShell({
   areaCode,
   collapsed,
+  width,
+  onCollapse,
 }: {
   areaCode: AreaId;
   collapsed: boolean;
+  width: number;
+  onCollapse: () => void;
 }) {
-  if (collapsed) return null;
   return (
     <aside
-      data-testid="context-panel"
+      data-testid="left-panel"
       data-area={areaCode}
-      className="flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
-      style={{ minWidth: 280, maxWidth: 280 }}
+      data-collapsed={collapsed}
+      className={clsx(
+        'flex shrink-0 flex-col border-r border-scada-border bg-scada-panel transition-all duration-200 ease-in-out',
+        collapsed ? 'w-10' : '',
+      )}
+      style={collapsed ? undefined : { width, minWidth: 220, maxWidth: 480 }}
     >
-      <AreaContextPanel areaCode={areaCode} />
+      {/* Nagłówek lewego panelu */}
+      <div className="flex h-8 shrink-0 items-center border-b border-scada-border px-2">
+        <button
+          type="button"
+          onClick={onCollapse}
+          data-testid="left-panel-collapse"
+          aria-label={collapsed ? 'Rozwiń panel kontekstu' : 'Zwiń panel kontekstu'}
+          title={collapsed ? 'Rozwiń panel kontekstu' : 'Zwiń panel kontekstu'}
+          className={clsx(
+            'flex h-6 w-6 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text',
+            collapsed && 'mx-auto',
+          )}
+        >
+          {collapsed ? (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          ) : (
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          )}
+        </button>
+        {!collapsed && (
+          <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
+            Panel kontekstu
+          </span>
+        )}
+      </div>
+
+      {!collapsed && <AreaContextPanel areaCode={areaCode} />}
     </aside>
   );
 }
@@ -122,8 +169,18 @@ export function AppShellV12({
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const activeArea = useAppStateStore((s) => s.activeArea);
 
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [contextCollapsed] = useState(false);
+  // R55: layout state z persystowanego store (leftCollapsed, rightCollapsed, rightWidth, leftWidth)
+  const leftCollapsed = useWorkspaceLayoutStore((s) => s.leftCollapsed);
+  const rightCollapsed = useWorkspaceLayoutStore((s) => s.rightCollapsed);
+  const storedLeftWidth = useWorkspaceLayoutStore((s) => s.leftWidth);
+  const storedRightWidth = useWorkspaceLayoutStore((s) => s.rightWidth);
+  const setLeftCollapsed = useWorkspaceLayoutStore((s) => s.setLeftCollapsed);
+  const setRightCollapsed = useWorkspaceLayoutStore((s) => s.setRightCollapsed);
+  const setRightWidth = useWorkspaceLayoutStore((s) => s.setRightWidth);
+
+  // Uchwyt resize prawego panelu (drag)
+  const resizeDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [, setMassReviewOpen] = useState(false);
@@ -164,17 +221,37 @@ export function AppShellV12({
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
 
-  const inspectorWidthClass = useMemo(() => {
-    if (inspectorCollapsed) return 'w-10';
+  // Szerokość inspektora: sizeClass override gdy surface aktywny, inaczej store
+  const inspectorWidthStyle = useMemo<CSSProperties>(() => {
+    if (rightCollapsed) return { width: 40 };
     switch (activeSurface?.sizeClass) {
-      case 'A': return 'w-[420px]';
-      case 'B': return 'w-[620px]';
-      case 'C': return 'w-[min(70vw,1100px)]';
-      default:  return 'w-[360px]';
+      case 'A': return { width: 420 };
+      case 'B': return { width: 620 };
+      case 'C': return { width: 'min(70vw, 1100px)' };
+      default:  return { width: storedRightWidth };
     }
-  }, [activeSurface, inspectorCollapsed]);
+  }, [activeSurface, rightCollapsed, storedRightWidth]);
 
-  const toggleInspector = useCallback(() => setInspectorCollapsed((v) => !v), []);
+  const toggleInspector = useCallback(() => setRightCollapsed(!rightCollapsed), [rightCollapsed, setRightCollapsed]);
+  const toggleLeftPanel = useCallback(() => setLeftCollapsed(!leftCollapsed), [leftCollapsed, setLeftCollapsed]);
+
+  // Drag resize prawego panelu — zmienia szerokość od lewej krawędzi
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    resizeDragRef.current = { startX: e.clientX, startWidth: storedRightWidth };
+    const onMove = (ev: PointerEvent) => {
+      if (!resizeDragRef.current) return;
+      const delta = resizeDragRef.current.startX - ev.clientX;
+      setRightWidth(resizeDragRef.current.startWidth + delta);
+    };
+    const onUp = () => {
+      resizeDragRef.current = null;
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+    };
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  }, [storedRightWidth, setRightWidth]);
 
   const resolvedInspectorContent = useMemo(() => {
     if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
@@ -186,9 +263,11 @@ export function AppShellV12({
     );
   }, [activeSurface, inspectorContent, isReadOnly, selectedElement]);
 
+
   return (
     <div
-      data-testid="canonical-layout"
+      data-testid="workspace-shell"
+      data-testid-alias="canonical-layout"
       data-workspace-shell
       data-v12-shell
       className="flex h-screen flex-col overflow-hidden bg-scada-bg text-scada-text"
@@ -199,12 +278,14 @@ export function AppShellV12({
       <div className="sr-only" aria-hidden="true"><UndoRedoButtons /></div>
 
       {/* === TopBar V12 (48px) — kontekst + tryby === */}
-      <TopBar
-        projectName={projectName}
-        onMenuAction={onMenuAction}
-        onCalculate={onCalculate}
-        onViewResults={onViewResults}
-      />
+      <div data-testid="workspace-topbar">
+        <TopBar
+          projectName={projectName}
+          onMenuAction={onMenuAction}
+          onCalculate={onCalculate}
+          onViewResults={onViewResults}
+        />
+      </div>
 
       {/* === Pasek przepływu pracy (48px, tylko MODEL_EDIT) === */}
       {activeMode === 'MODEL_EDIT' && (
@@ -222,9 +303,14 @@ export function AppShellV12({
         {/* NavigationRail (56px) */}
         <NavigationRail />
 
-        {/* ContextPanel (320px, zwijany) */}
+        {/* ContextPanel (lewy, zwijany) */}
         {!mainSurfaceExpanded && (
-          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} />
+          <ContextPanelShell
+            areaCode={activeArea}
+            collapsed={leftCollapsed}
+            width={storedLeftWidth}
+            onCollapse={toggleLeftPanel}
+          />
         )}
 
         {/* Kanwas SLD — elastyczny */}
@@ -251,16 +337,27 @@ export function AppShellV12({
           </div>
         </section>
 
-        {/* Inspektor (360px, zwijany) */}
+        {/* Inspektor (prawy, zwijany, z uchwytem zmiany szerokości) */}
         {!hideInspector && (
           <aside
-            data-testid="inspector-panel-sidebar"
-            data-collapsed={inspectorCollapsed}
-            className={clsx(
-              'flex shrink-0 flex-col overflow-hidden border-l border-scada-border bg-scada-surface transition-all duration-200 ease-in-out',
-              inspectorWidthClass,
-            )}
+            data-testid="right-panel"
+            data-testid-alias="inspector-panel-sidebar"
+            data-collapsed={rightCollapsed}
+            className="flex shrink-0 flex-col overflow-hidden border-l border-scada-border bg-scada-surface transition-all duration-200 ease-in-out"
+            style={inspectorWidthStyle}
           >
+            {/* Uchwyt zmiany szerokości (drag od lewej krawędzi) */}
+            {!rightCollapsed && (
+              <div
+                data-testid="right-panel-resize-handle"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Zmień szerokość inspektora"
+                className="absolute -left-0.5 top-0 z-10 h-full w-1 cursor-col-resize opacity-0 hover:opacity-100 hover:bg-scada-accent/40"
+                onPointerDown={handleResizePointerDown}
+              />
+            )}
+
             {/* Nagłówek inspektora */}
             <div className="flex h-8 shrink-0 items-center border-b border-scada-border px-2">
               <button
@@ -268,15 +365,15 @@ export function AppShellV12({
                 onClick={toggleInspector}
                 className={clsx(
                   'flex h-6 w-6 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text',
-                  inspectorCollapsed && 'mx-auto',
+                  rightCollapsed && 'mx-auto',
                 )}
-                aria-label={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
-                title={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
-                data-testid="inspector-panel-toggle"
+                aria-label={rightCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
+                title={rightCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
+                data-testid="right-panel-collapse"
               >
-                {inspectorCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
+                {rightCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
               </button>
-              {!inspectorCollapsed && (
+              {!rightCollapsed && (
                 <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wider text-scada-muted">
                   Inspektor techniczny
                 </span>
@@ -284,14 +381,14 @@ export function AppShellV12({
             </div>
 
             {/* Treść inspektora */}
-            {!inspectorCollapsed && (
+            {!rightCollapsed && (
               <div className="min-h-0 flex-1 overflow-auto">
                 {resolvedInspectorContent}
               </div>
             )}
 
             {/* Stan zwinięty */}
-            {inspectorCollapsed && (
+            {rightCollapsed && (
               <div
                 className="flex flex-col items-center gap-2 pt-2"
                 data-testid="inspector-collapsed-icon"
