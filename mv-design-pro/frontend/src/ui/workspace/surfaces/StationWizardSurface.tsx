@@ -34,6 +34,11 @@ import { notify } from '../../notifications/store';
 import type { Substation } from '../../../types/enm';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 import { BayEditor, type BayEditorDraft } from '../components/BayEditor';
+import {
+  synthesizeStationEnm,
+  mergeStationEnmIntoSnapshot,
+  type SynthesizeStationDraft,
+} from './synthesizeStationEnm';
 
 /* =============================================================================
    Step taxonomy
@@ -402,63 +407,50 @@ export function StationWizardSurface(props: StationWizardSurfaceProps): JSX.Elem
       }
     }
     if (!backendOk) {
-      /* Fallback: patchSnapshot atomowo (Inv 4 invalidate). */
-      if (mode === 'create') {
-        const newRefId = `station-${Date.now()}`;
-        patchSnapshot(
-          (snap) => ({
-            ...snap,
-            substations: [
-              ...(snap.substations ?? []),
-              {
-                id: newRefId,
-                ref_id: newRefId,
-                name: draft.name.trim(),
-                tags: [],
-                meta: {
-                  registry_number: draft.registryNumber,
-                  rated_voltage_kv: draft.ratedVoltageKv,
-                  producer: draft.producer,
-                  has_transformer: draft.hasTransformer,
-                  has_lv_side: draft.hasLvSide,
-                  has_der: draft.hasDer,
-                  bay_count: draft.bays.length,
-                },
-                station_type: draft.stationType === 'rmu' || draft.stationType === 'rm6' ? 'mv_lv' : draft.stationType,
-                bus_refs: [],
-                transformer_refs: [],
-              } as Substation,
-            ],
-          }),
-          [newRefId],
-        );
-        notify(`Utworzono stację "${draft.name.trim()}" (lokalnie). Backend create-station-complete będzie zsynchronizowany przy następnym refresh.`, 'info');
-      } else if (existingStation) {
-        patchSnapshot(
-          (snap) => ({
-            ...snap,
-            substations: (snap.substations ?? []).map((s) =>
-              s.ref_id === existingStation.ref_id
-                ? {
-                    ...s,
-                    name: draft.name.trim(),
-                    meta: {
-                      ...(s.meta ?? {}),
-                      registry_number: draft.registryNumber,
-                      rated_voltage_kv: draft.ratedVoltageKv,
-                      producer: draft.producer,
-                      has_transformer: draft.hasTransformer,
-                      has_lv_side: draft.hasLvSide,
-                      has_der: draft.hasDer,
-                    },
-                  }
-                : s,
-            ),
-          }),
-          [existingStation.ref_id],
-        );
-        notify(`Zaktualizowano stację "${draft.name.trim()}" (lokalnie).`, 'info');
-      }
+      /* R48 Fallback: synthesize KOMPLETNĄ hierarchię ENM (substation + bays
+         + buses + transformer + DER) i merge'uj atomowo do snapshot.
+         Inv 4 invalidate przez affectedRefs. */
+      const stationRef = mode === 'create'
+        ? `station-${Date.now()}`
+        : existingStation!.ref_id;
+      const synthDraft: SynthesizeStationDraft = {
+        name: draft.name,
+        registryNumber: draft.registryNumber,
+        stationType: draft.stationType,
+        ratedVoltageKv: draft.ratedVoltageKv,
+        producer: draft.producer,
+        bays: draft.bays,
+        hasTransformer: draft.hasTransformer,
+        transformerCatalogRef: draft.transformerCatalogRef,
+        transformerSnKva: draft.transformerSnKva,
+        transformerVectorGroup: draft.transformerVectorGroup,
+        transformerUkPercent: draft.transformerUkPercent,
+        hasLvSide: draft.hasLvSide,
+        lvVoltageV: draft.lvVoltageV,
+        lvSchemeKind: draft.lvSchemeKind,
+        lvMainBreakerCatalogRef: draft.lvMainBreakerCatalogRef,
+        hasDer: draft.hasDer,
+        derKind: draft.derKind,
+        derSnKva: draft.derSnKva,
+        derConnectionVariant: draft.derConnectionVariant,
+        derPccRef: draft.derPccRef,
+        derInverterCatalogRef: draft.derInverterCatalogRef,
+        protectionHints: draft.protectionHints,
+        snInputSegmentRef: draft.snInputSegmentRef,
+        snOutputSegmentRef: draft.snOutputSegmentRef,
+        isNopPoint: draft.isNopPoint,
+      };
+      const synthesized = synthesizeStationEnm(stationRef, synthDraft);
+      const mergeMode: 'create' | 'update' = mode === 'create' ? 'create' : 'update';
+      patchSnapshot(
+        (snap) => mergeStationEnmIntoSnapshot(snap, synthesized, mergeMode),
+        synthesized.affectedRefs,
+      );
+      const summary = `${draft.bays.length} pól, ${synthesized.transformer ? '1 trafo' : 'brak trafa'}, ${synthesized.generator ? '1 DER' : 'brak DER'}`;
+      notify(
+        `${mode === 'create' ? 'Utworzono' : 'Zaktualizowano'} kompletną stację "${draft.name.trim()}" (${summary}, lokalnie). Backend op zsynchronizuje przy refresh.`,
+        'info',
+      );
     } else {
       notify(`${mode === 'create' ? 'Utworzono' : 'Zaktualizowano'} stację "${draft.name.trim()}". Wyniki obliczeń zostały unieważnione (Inv 4).`, 'info');
     }

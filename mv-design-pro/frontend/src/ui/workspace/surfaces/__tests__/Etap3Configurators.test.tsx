@@ -268,6 +268,79 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(lvCheckbox.checked).toBe(true);
     });
 
+    it('Wizard R48 — Save tworzy KOMPLETNĄ hierarchię ENM w snapshot (bays + buses + TR + DER)', async () => {
+      /* Seed snapshot store z minimalnym empty ENM (patchSnapshot wymaga niepustego snapshot). */
+      useSnapshotStore.setState({
+        snapshot: {
+          header: {
+            schema_version: '1.0',
+            network_id: 'test',
+            base_voltage_kv: 15,
+            base_mva: 100,
+            cmax: 1.1,
+            cmin: 0.95,
+            frequency_hz: 50,
+          },
+          buses: [],
+          branches: [],
+          switches: [],
+          sources: [],
+          generators: [],
+          loads: [],
+          transformers: [],
+          substations: [],
+          bays: [],
+        } as never,
+      });
+      render(<StationConfiguratorSurface surface={minimalSurface} />);
+      /* Step 1 — nazwa, typ mv_lv (auto-on TR + LV). */
+      fireEvent.change(screen.getByTestId('wizard-station-name'), { target: { value: 'ST-Test-R48' } });
+      fireEvent.change(screen.getByTestId('wizard-station-type'), { target: { value: 'mv_lv' } });
+      fireEvent.change(screen.getByTestId('wizard-producer'), { target: { value: 'ABB SafePlus' } });
+
+      /* Step 2 — dodaj 2 bays. */
+      fireEvent.click(screen.getByTestId('stepper-bays_and_apparatus'));
+      fireEvent.click(screen.getByTestId('wizard-bay-add'));
+      fireEvent.change(screen.getByTestId('wizard-bay-0-cb-ref'), { target: { value: 'ABB VD4' } });
+      fireEvent.change(screen.getByTestId('wizard-bay-0-ct-ref'), { target: { value: 'ABB KOFA' } });
+      fireEvent.click(screen.getByTestId('wizard-bay-add'));
+      fireEvent.change(screen.getByTestId('wizard-bay-1-cb-ref'), { target: { value: 'ABB VD4' } });
+      fireEvent.change(screen.getByTestId('wizard-bay-1-ct-ref'), { target: { value: 'ABB KOFA' } });
+
+      /* Step 3 — Transformator (auto-włączony). */
+      fireEvent.click(screen.getByTestId('stepper-transformer'));
+      const trCheckbox = screen.getByTestId('wizard-has-transformer') as HTMLInputElement;
+      expect(trCheckbox.checked).toBe(true);
+      fireEvent.change(screen.getByTestId('wizard-transformer-ref'), { target: { value: 'ABB TUMETIC 630' } });
+
+      /* Step 8 — Save. */
+      fireEvent.click(screen.getByTestId('stepper-readiness'));
+      const saveBtn = screen.getByTestId('wizard-save-and-create') as HTMLButtonElement;
+      expect(saveBtn.disabled).toBe(false);
+
+      const snapshotBefore = useSnapshotStore.getState().snapshot;
+      const subsBefore = snapshotBefore?.substations?.length ?? 0;
+      const baysBefore = snapshotBefore?.bays?.length ?? 0;
+      const busesBefore = snapshotBefore?.buses?.length ?? 0;
+      const trsBefore = snapshotBefore?.transformers?.length ?? 0;
+
+      fireEvent.click(saveBtn);
+      /* Wait for async patchSnapshot completion (microtask). */
+      await new Promise((r) => setTimeout(r, 50));
+
+      const snapshotAfter = useSnapshotStore.getState().snapshot;
+      expect(snapshotAfter?.substations?.length ?? 0).toBe(subsBefore + 1);
+      expect(snapshotAfter?.bays?.length ?? 0).toBe(baysBefore + 2);
+      expect(snapshotAfter?.buses?.length ?? 0).toBe(busesBefore + 2); // HV + LV
+      expect(snapshotAfter?.transformers?.length ?? 0).toBe(trsBefore + 1);
+
+      /* Substation referencje są spójne z syntetyzowaną hierarchią. */
+      const newStation = snapshotAfter?.substations?.[snapshotAfter.substations.length - 1];
+      expect(newStation?.name).toBe('ST-Test-R48');
+      expect(newStation?.bus_refs).toHaveLength(2);
+      expect(newStation?.transformer_refs).toHaveLength(1);
+    });
+
     it('Wizard R47 — wybór typu switching auto-wyłącza hasTransformer + hasLvSide', async () => {
       render(<StationConfiguratorSurface surface={surfaceWithStation} />);
       /* Najpierw mv_lv, żeby hasTransformer=true. */
