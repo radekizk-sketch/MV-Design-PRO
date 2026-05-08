@@ -17,6 +17,9 @@
  * @see docs/audit/GPZ_RENDERER_REALITY_CHECK.md
  */
 
+import { memo } from 'react';
+import type React from 'react';
+
 import {
   COLOR_BG,
   COLOR_BUS_HV,
@@ -193,7 +196,9 @@ const PAGE_PADDING = 24;
    Main renderer
    ============================================================================= */
 
-export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Element {
+export const GpzCanonicalRenderer = memo(GpzCanonicalRendererImpl);
+
+function GpzCanonicalRendererImpl(props: GpzCanonicalRendererProps): JSX.Element {
   const widestSection = Math.max(...props.sections.map((s) => s.bays.length), 1);
   const totalLvWidth = SECTION_LABEL_WIDTH + widestSection * BAY_PITCH + PAGE_PADDING * 2;
   const totalHvBays = props.hvSections?.reduce((acc, s) => acc + s.bays.length, 0) ?? 0;
@@ -210,6 +215,10 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
       data-element-id={props.id}
       data-gpz-name={props.name}
       transform={`translate(${props.x}, ${props.y})`}
+      role="group"
+      aria-label={`GPZ ${props.name || 'bez nazwy'} — rozdzielnia ${
+        props.transformers.length > 0 ? `${props.transformers[0].uhvKv}/${props.transformers[0].ulvKv} kV` : ''
+      } (${props.sections.length} sekcji LV, ${props.transformers.length} transformatorów)`}
     >
       {/* Tło rozdzielni */}
       <rect
@@ -374,6 +383,17 @@ interface HvLineBayProps {
 
 function HvLineBay(props: HvLineBayProps): JSX.Element {
   const { x, y, bay } = props;
+  /* Kanon polski LINE_FULL dla pola 110 kV (z góry do szyny):
+   *   y=-6   numer pola (label)
+   *   y= 4   wierzchołek toru (wejście liniowe / wyjście do TR)
+   *   y= 14  CableHead lub odgromnik (zewnątrz)
+   *   y= 22  DS_LIN (Q9) — odłącznik liniowy
+   *   y= 32  ES (boczny) — uziemnik
+   *   y= 42  CT (T1) — przekładnik prądowy
+   *   y= 52  CB (Q0) — wyłącznik
+   *   y= 62  DS_BUS (Q1) — odłącznik szynowy
+   *   y= HV_BAY_HEIGHT (=80) — szyna
+   */
   return (
     <g
       data-testid={`gpz-canonical-hv-bay-${bay.bayRef}`}
@@ -381,12 +401,52 @@ function HvLineBay(props: HvLineBayProps): JSX.Element {
       transform={`translate(${x}, ${y})`}
     >
       {/* Pionowy tor pola HV */}
-      <line x1={0} y1={0} x2={0} y2={HV_BAY_HEIGHT} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
-      {/* CB symbol (kwadrat) */}
-      <ApparatusCb cx={0} cy={20} state={bay.cbState ?? 'unknown'} />
-      {/* DS symbol (koło) */}
-      <ApparatusDs cx={0} cy={50} state={bay.dsState ?? 'unknown'} />
-      {/* Numer pola HV */}
+      <line x1={0} y1={4} x2={0} y2={HV_BAY_HEIGHT} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
+
+      {/* Cable head / line entry — szczyt pola */}
+      <CableHead cx={0} cy={4} />
+
+      {/* DS_LIN (Q9) — odłącznik liniowy (kółko) */}
+      <ApparatusDs cx={0} cy={20} state={bay.dsState ?? 'unknown'} />
+      {bay.qDesignations.dsLin && (
+        <text x={9} y={22} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {bay.qDesignations.dsLin}
+        </text>
+      )}
+
+      {/* ES (boczny) — uziemnik */}
+      <ApparatusEs cx={0} cy={32} state={bay.esState ?? 'unknown'} />
+      {bay.qDesignations.es && (
+        <text x={20} y={34} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {bay.qDesignations.es}
+        </text>
+      )}
+
+      {/* CT (T1) — przekładnik prądowy */}
+      <ApparatusCt cx={0} cy={44} />
+      {bay.qDesignations.ct && (
+        <text x={9} y={46} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {bay.qDesignations.ct}
+        </text>
+      )}
+
+      {/* CB (Q0) — wyłącznik (kwadrat) */}
+      <ApparatusCb cx={0} cy={56} state={bay.cbState ?? 'unknown'} />
+      {bay.qDesignations.cb && (
+        <text x={9} y={58} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {bay.qDesignations.cb}
+        </text>
+      )}
+
+      {/* DS_BUS (Q1) — odłącznik szynowy (kółko) */}
+      <ApparatusDs cx={0} cy={70} state={bay.dsState ?? 'unknown'} />
+      {bay.qDesignations.dsBus && (
+        <text x={9} y={72} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>
+          {bay.qDesignations.dsBus}
+        </text>
+      )}
+
+      {/* Numer pola HV (label) */}
       <text
         x={0}
         y={-6}
@@ -398,6 +458,20 @@ function HvLineBay(props: HvLineBayProps): JSX.Element {
       >
         {bay.bayNumber ?? '—'}
       </text>
+
+      {/* Feeder name (sub-label, opcjonalny) */}
+      {bay.feederName && (
+        <text
+          x={0}
+          y={HV_BAY_HEIGHT + 12}
+          textAnchor="middle"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={9}
+        >
+          {bay.feederName}
+        </text>
+      )}
     </g>
   );
 }
@@ -546,12 +620,47 @@ interface LvBayProps {
 function LvBay(props: LvBayProps): JSX.Element {
   const { bay, x, y, onClick, onDoubleClick, onContextMenu } = props;
   const trackHeight = LV_BAY_HEIGHT - 30;
+  const ariaLabel = bayAriaLabel(bay);
+  const handleKeyDown = (e: React.KeyboardEvent<SVGGElement>): void => {
+    /* Keyboard nav (a11y P1):
+     *   Enter / Space → onClick (otwiera modal)
+     *   F2 → onDoubleClick (drill-down)
+     *   F10 / Shift+F10 / ContextMenu key → onContextMenu w środku pola
+     */
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (onClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick(bay.bayRef);
+      }
+    } else if (e.key === 'F2') {
+      if (onDoubleClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        onDoubleClick(bay.bayRef);
+      }
+    } else if (e.key === 'ContextMenu' || (e.key === 'F10' && e.shiftKey)) {
+      if (onContextMenu) {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = e.currentTarget as SVGGElement;
+        const rect = target.getBoundingClientRect();
+        onContextMenu(bay.bayRef, {
+          clientX: rect.left + rect.width / 2,
+          clientY: rect.top + rect.height / 2,
+        });
+      }
+    }
+  };
   return (
     <g
       data-testid={`gpz-canonical-bay-${bay.bayRef}`}
       data-bay-role={bay.fieldRole}
       data-bay-number={bay.bayNumber ?? ''}
       transform={`translate(${x}, ${y})`}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={ariaLabel}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(bay.bayRef); } : undefined}
       onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(bay.bayRef); } : undefined}
       onContextMenu={
@@ -563,7 +672,8 @@ function LvBay(props: LvBayProps): JSX.Element {
             }
           : undefined
       }
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      onKeyDown={onClick || onDoubleClick || onContextMenu ? handleKeyDown : undefined}
+      style={{ cursor: onClick ? 'pointer' : 'default', outline: 'none' }}
     >
       {/* Tło pola (per-role color) */}
       <rect
@@ -661,6 +771,34 @@ function LvBay(props: LvBayProps): JSX.Element {
         />
       )}
 
+      {/* VT (PU) — pole MEASUREMENT z bocznej gałęzi pomiarowej z bezpiecznikami.
+       * Kanon polski: VT na bocznej gałęzi z dwoma bezpiecznikami (HRC) u góry.
+       * Renderowane TYLKO gdy fieldRole === 'MEASUREMENT'. */}
+      {bay.fieldRole === 'MEASUREMENT' && (
+        <g data-testid="gpz-canonical-measurement-vt">
+          {/* Boczna gałąź pozioma od toru głównego */}
+          <line x1={0} y1={56} x2={18} y2={56} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.4} />
+          {/* Pionowy tor VT */}
+          <line x1={18} y1={56} x2={18} y2={140} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.4} />
+          {/* Bezpiecznik HRC (prostokąt) */}
+          <rect x={14} y={62} width={8} height={14} fill={COLOR_PANEL_RAISED} stroke="#A06030" strokeWidth={1.2} rx={1} />
+          {/* VT okrąg z PU */}
+          <circle cx={18} cy={100} r={8} fill="none" stroke="#E89B3C" strokeWidth={1.5} />
+          <text x={18} y={103} textAnchor="middle" fill="#E89B3C" fontFamily={FONT_MONO} fontSize={8} fontWeight={700}>PU</text>
+          {/* Symbol ziemi (bottom) */}
+          <line x1={14} y1={142} x2={22} y2={142} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <line x1={15} y1={144} x2={21} y2={144} stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+          <line x1={16} y1={146} x2={20} y2={146} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+        </g>
+      )}
+
+      {/* Surge arrester (odgromnik) — w polu LINE_OUT i LINE_IN po stronie linii */}
+      {(bay.fieldRole === 'LINE_OUT' || bay.fieldRole === 'LINE_IN' || bay.fieldRole === 'LINE_BRANCH') && (
+        <g data-testid="gpz-canonical-line-surge-arrester" transform={`translate(${-BAY_WIDTH / 2 + 8}, ${trackHeight - 18})`}>
+          <ApparatusSurgeArrester cx={0} cy={0} />
+        </g>
+      )}
+
       {/* Numer pola pod kolumną */}
       {bay.bayNumber && (
         <text
@@ -743,6 +881,105 @@ function ApparatusDs(props: ApparatusProps): JSX.Element {
       {state === 'unknown' && (
         <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
       )}
+    </g>
+  );
+}
+
+/**
+ * Uziemnik (ES) — boczny od toru głównego (kanon polski).
+ * 'closed' → czerwony marker safety + symbol ziemi.
+ * 'open' → przygaszony szary boczny symbol.
+ * 'absent' → nie renderuje (Inv 9: brak ≠ 0).
+ */
+interface ApparatusEsProps {
+  readonly cx: number;
+  readonly cy: number;
+  readonly state: 'closed' | 'open' | 'absent' | 'unknown';
+}
+
+function ApparatusEs(props: ApparatusEsProps): JSX.Element | null {
+  const { cx, cy, state } = props;
+  if (state === 'absent') return null;
+  const stroke = state === 'closed' ? '#FF4040' : '#5A5A5A';
+  const fill = state === 'closed' ? '#FF4040' : '#1F1F1F';
+  return (
+    <g data-testid="gpz-canonical-es" data-state={state}>
+      {/* Boczna gałąź pozioma */}
+      <line x1={cx} y1={cy} x2={cx + 8} y2={cy} stroke={stroke} strokeWidth={1.2} />
+      {/* Kropka ES (kółko małe) */}
+      <circle cx={cx + 8} cy={cy} r={2.5} fill={fill} stroke={stroke} strokeWidth={1} />
+      {/* Symbol ziemi (3 poziome kreski) */}
+      <line x1={cx + 6} y1={cy + 4} x2={cx + 10} y2={cy + 4} stroke={stroke} strokeWidth={1.2} />
+      <line x1={cx + 7} y1={cy + 6} x2={cx + 9} y2={cy + 6} stroke={stroke} strokeWidth={1} />
+      {state === 'unknown' && (
+        <text x={cx + 8} y={cy - 4} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={7} fontWeight={700}>?</text>
+      )}
+    </g>
+  );
+}
+
+/**
+ * Przekładnik prądowy (CT) — żółty/pomarańczowy okrąg z PI w osi.
+ * Brak stanu — zawsze czynny (lub uszkodzony, ale to inne pole).
+ */
+interface ApparatusCtProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+function ApparatusCt(props: ApparatusCtProps): JSX.Element {
+  const { cx, cy } = props;
+  return (
+    <g data-testid="gpz-canonical-ct">
+      <circle cx={cx} cy={cy} r={4.5} fill={COLOR_PANEL_RAISED} stroke="#E89B3C" strokeWidth={1.4} />
+      <text x={cx} y={cy + 2.5} textAnchor="middle" fill="#E89B3C" fontFamily={FONT_MONO} fontSize={6} fontWeight={700}>PI</text>
+    </g>
+  );
+}
+
+/**
+ * Odgromnik / surge arrester — pionowy marker do ziemi.
+ * Symbol kanon: prostokąt + symbol ziemi pod.
+ */
+interface ApparatusSurgeArresterProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+function ApparatusSurgeArrester(props: ApparatusSurgeArresterProps): JSX.Element {
+  const { cx, cy } = props;
+  return (
+    <g data-testid="gpz-canonical-surge-arrester">
+      <rect x={cx - 3} y={cy - 6} width={6} height={10} fill={COLOR_PANEL_RAISED} stroke="#A06030" strokeWidth={1.2} />
+      {/* Strzałka piorunu w środku */}
+      <path d={`M${cx - 1},${cy - 4} L${cx + 1},${cy} L${cx - 1},${cy + 1} L${cx + 1},${cy + 3}`} fill="none" stroke="#FFAA00" strokeWidth={0.8} />
+      {/* Symbol ziemi pod */}
+      <line x1={cx - 4} y1={cy + 6} x2={cx + 4} y2={cy + 6} stroke="#A06030" strokeWidth={1.2} />
+      <line x1={cx - 3} y1={cy + 8} x2={cx + 3} y2={cy + 8} stroke="#A06030" strokeWidth={1} />
+      <line x1={cx - 2} y1={cy + 10} x2={cx + 2} y2={cy + 10} stroke="#A06030" strokeWidth={0.8} />
+    </g>
+  );
+}
+
+/**
+ * Głowica kablowa — symbol końcówki kabla SN.
+ * Trójkąt do dołu + label "K".
+ */
+interface CableHeadProps {
+  readonly cx: number;
+  readonly cy: number;
+}
+
+function CableHead(props: CableHeadProps): JSX.Element {
+  const { cx, cy } = props;
+  return (
+    <g data-testid="gpz-canonical-cable-head">
+      <polygon
+        points={`${cx - 5},${cy} ${cx + 5},${cy} ${cx},${cy + 8}`}
+        fill={COLOR_PANEL_RAISED}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.2}
+      />
     </g>
   );
 }
@@ -874,6 +1111,34 @@ function bayRoleFillColor(role: BayFieldRole): string {
     case 'LINE_BRANCH':
     default:
       return COLOR_PANEL;
+  }
+}
+
+/**
+ * Buduje opis pola SN do ARIA-label (a11y).
+ * Format polski: "Pole {numer} {rola} {feeder} {stan CB}"
+ */
+function bayAriaLabel(bay: CanonicalGpzBay): string {
+  const parts: string[] = ['Pole'];
+  if (bay.bayNumber) parts.push(bay.bayNumber);
+  parts.push(bayRolePolishLabel(bay.fieldRole));
+  if (bay.feederName) parts.push(bay.feederName);
+  if (bay.cbState === 'closed') parts.push('— wyłącznik zamknięty');
+  else if (bay.cbState === 'open') parts.push('— wyłącznik otwarty');
+  else if (bay.cbState === 'unknown') parts.push('— stan wyłącznika nieznany');
+  if (bay.inManipulation) parts.push('(w manipulacji)');
+  return parts.join(' ');
+}
+
+function bayRolePolishLabel(role: BayFieldRole): string {
+  switch (role) {
+    case 'LINE_OUT': return 'liniowe wyjściowe';
+    case 'LINE_IN': return 'liniowe wejściowe';
+    case 'LINE_BRANCH': return 'odgałęzienie liniowe';
+    case 'TRANSFORMER': return 'transformatorowe';
+    case 'COUPLER': return 'sprzęgło';
+    case 'MEASUREMENT': return 'pomiarowe';
+    default: return '';
   }
 }
 
