@@ -74,6 +74,22 @@ export interface SnapshotState {
   /** Refresh snapshot from backend without mutation (calls refresh_snapshot op). */
   refreshFromBackend: (caseId: string) => Promise<DomainOpResponseV1 | null>;
   setSnapshot: (response: DomainOpResponseV1) => void;
+  /**
+   * R22: Lokalna mutacja snapshot przez updater function (immutable).
+   * Używane przez UI modale (BayConfigModal, TransformerEditModal, CouplerEditModal)
+   * dla natychmiastowego propagowania zmian do SLD canvas + inspector + property
+   * grids — BEZ czekania na backend.
+   *
+   * Inv 4 (Case Immutability): wyniki obliczeń są INVALIDOWANE — `lastChanges`
+   * zawiera affected_object_refs[] które blokuje przeszłe wyniki.
+   *
+   * Backend persistence dzieje się w R26+ przez executeDomainOperation.
+   * Tymczasem patchSnapshot pozwala UI live-edit experience.
+   */
+  patchSnapshot: (
+    updater: (snapshot: EnergyNetworkModel) => EnergyNetworkModel,
+    affectedObjectRefs?: readonly string[],
+  ) => void;
   clearError: () => void;
   reset: () => void;
 }
@@ -336,6 +352,27 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       lastChanges: response.changes,
       lastEvents: response.domain_events,
       operationHistory: [],
+    });
+  },
+
+  patchSnapshot: (
+    updater: (snapshot: EnergyNetworkModel) => EnergyNetworkModel,
+    affectedObjectRefs: readonly string[] = [],
+  ) => {
+    const current = get().snapshot;
+    if (!current) return;
+    const updated = updater(current);
+    /* lastChanges propagation — invaliduje wyniki w innych komponentach
+     * (Inv 4 — Case Immutability Rule). */
+    const changesInfo: ChangesInfo = {
+      affected_object_refs: [...affectedObjectRefs],
+      created: [],
+      updated: affectedObjectRefs.map((ref) => ({ ref_id: ref, kind: 'unknown' })),
+      deleted: [],
+    } as never;
+    set({
+      snapshot: updated,
+      lastChanges: changesInfo,
     });
   },
 

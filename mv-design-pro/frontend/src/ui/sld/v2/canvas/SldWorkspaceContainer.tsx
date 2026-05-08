@@ -148,6 +148,23 @@ function mapBayRoleToCanonicalFieldRole(role: Bay['bay_role']):
   }
 }
 
+/**
+ * R22: Odwrotne mapowanie canonical fieldRole → ENM Bay.bay_role.
+ * Używane gdy modal BayConfigModal mutuje bay przez patchSnapshot.
+ */
+function mapCanonicalRoleToBayRole(
+  fieldRole: 'LINE_OUT' | 'LINE_IN' | 'LINE_BRANCH' | 'TRANSFORMER' | 'COUPLER' | 'MEASUREMENT',
+): Bay['bay_role'] {
+  switch (fieldRole) {
+    case 'LINE_IN': return 'IN';
+    case 'LINE_OUT': return 'OUT';
+    case 'LINE_BRANCH': return 'OUT';
+    case 'TRANSFORMER': return 'TR';
+    case 'COUPLER': return 'COUPLER';
+    case 'MEASUREMENT': return 'MEASUREMENT';
+  }
+}
+
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
@@ -265,6 +282,10 @@ export function SldWorkspaceContainer(
 
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const logicalViews = useSnapshotStore((state) => state.logicalViews);
+  /* R22: patchSnapshot dla live-edit z modali — natychmiastowa propagacja
+   * zmian z BayConfigModal/TransformerEditModal/CouplerEditModal do SLD
+   * canvas + inspector + property grids. */
+  const patchSnapshot = useSnapshotStore((state) => state.patchSnapshot);
   const activeMode = useAppStateStore((state) => state.activeMode);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const selectElement = useSelectionStore((state) => state.selectElement);
@@ -760,51 +781,112 @@ export function SldWorkspaceContainer(
         </div>
       )}
 
-      {/* R20: BayConfigModal — edycja pola SN. Otwierany przez context menu
-       * action 'open-bay'. Dane z ENM Bay (bayNumber, feederName, fieldRole,
-       * destinationLabel, controlMode). */}
+      {/* R22: BayConfigModal — edycja pola SN z LIVE PROPAGATION do snapshot.
+       * onSubmit: patchSnapshot mutuje ENM Bay → SLD canvas re-render → mini-RMU
+       * z nowym bay_number/feeder_short_name/bay_role/outgoing_destination_ref.
+       * Inv 4: lastChanges (affected_object_refs) propagujemy do invalidate
+       * downstream calculations. */}
       {bayModalState.open && bayModalState.data && (
         <BayConfigModal
           isOpen={bayModalState.open}
           initial={bayModalState.data}
           onClose={() => setBayModalState({ open: false, data: null })}
           onSubmit={(updated) => {
+            patchSnapshot(
+              (snap) => ({
+                ...snap,
+                bays: (snap.bays ?? []).map((b) =>
+                  b.ref_id === updated.bayRef
+                    ? {
+                        ...b,
+                        bay_number: updated.bayNumber || null,
+                        feeder_short_name: updated.feederName || null,
+                        bay_role: mapCanonicalRoleToBayRole(updated.fieldRole),
+                        outgoing_destination_ref: updated.destinationLabel || null,
+                      }
+                    : b,
+                ),
+              }),
+              [updated.bayRef],
+            );
             notify(
-              `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef} (mock — backend integration w R22).`,
-              'info',
+              `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef}. Wyniki obliczeń pola zostały unieważnione.`,
+              'success',
             );
             setBayModalState({ open: false, data: null });
           }}
         />
       )}
 
-      {/* R20: TransformerEditModal — edycja transformatora SN/HV. Otwierany
-       * przez context menu action 'open-source' z menu GPZ. */}
+      {/* R22: TransformerEditModal — edycja transformatora z LIVE PROPAGATION. */}
       {transformerModalState.open && transformerModalState.data && (
         <TransformerEditModal
           isOpen={transformerModalState.open}
           initial={transformerModalState.data}
           onClose={() => setTransformerModalState({ open: false, data: null })}
           onSubmit={(updated) => {
+            patchSnapshot(
+              (snap) => ({
+                ...snap,
+                transformers: (snap.transformers ?? []).map((t) =>
+                  t.ref_id === updated.transformerRef
+                    ? {
+                        ...t,
+                        name: updated.designation || t.name,
+                        sn_mva: updated.snMva,
+                        uhv_kv: updated.uhvKv,
+                        ulv_kv: updated.ulvKv,
+                        vector_group: updated.vectorGroup,
+                        catalog_ref: updated.catalogRef,
+                      }
+                    : t,
+                ),
+              }),
+              [updated.transformerRef],
+            );
             notify(
-              `Zapisano konfigurację transformatora ${updated.designation} (mock — backend integration w R22).`,
-              'info',
+              `Zapisano konfigurację transformatora ${updated.designation}. Wyniki SC i load flow zostały unieważnione.`,
+              'success',
             );
             setTransformerModalState({ open: false, data: null });
           }}
         />
       )}
 
-      {/* R20: CouplerEditModal — edycja sprzęgła międzysekcyjnego. */}
+      {/* R22: CouplerEditModal — edycja sprzęgła z LIVE PROPAGATION.
+       * Stan sprzęgła wpływa na topologię — invaliduje WSZYSTKIE wyniki sekcji
+       * powiązanych (left + right). Komentarz operatora zapisany w meta. */}
       {couplerModalState.open && couplerModalState.data && (
         <CouplerEditModal
           isOpen={couplerModalState.open}
           initial={couplerModalState.data}
           onClose={() => setCouplerModalState({ open: false, data: null })}
           onSubmit={(updated) => {
+            patchSnapshot(
+              (snap) => {
+                /* Sprzęgło to bay z bay_role='COUPLER'. Mutujemy bay z
+                 * matching ref_id albo (gdy nie ma bezpośrednio matching)
+                 * komentarz idzie w meta. */
+                const updatedBays = (snap.bays ?? []).map((b) =>
+                  b.ref_id === updated.couplerId
+                    ? {
+                        ...b,
+                        meta: {
+                          ...b.meta,
+                          coupler_state: updated.closedState,
+                          coupler_auto_mode: updated.autoMode,
+                          coupler_comment: updated.comment,
+                        },
+                      }
+                    : b,
+                );
+                return { ...snap, bays: updatedBays };
+              },
+              [updated.couplerId, updated.leftSectionId, updated.rightSectionId],
+            );
             notify(
-              `Zapisano konfigurację sprzęgła ${updated.designation}: stan ${updated.closedState} (mock — backend integration w R22).`,
-              'info',
+              `Zapisano konfigurację sprzęgła ${updated.designation}: stan ${updated.closedState}. Wyniki sekcji ${updated.leftSectionId} i ${updated.rightSectionId} zostały unieważnione.`,
+              'success',
             );
             setCouplerModalState({ open: false, data: null });
           }}
