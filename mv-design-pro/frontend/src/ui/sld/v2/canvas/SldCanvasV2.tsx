@@ -36,6 +36,10 @@ import {
 } from '../renderer/GpzCanonicalRenderer';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
 import { StationOnRunRenderer, type StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
+import {
+  NetworkTerrainRenderer,
+  type NetworkTerrainRendererProps,
+} from '../renderer/NetworkTerrainRenderer';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -61,6 +65,13 @@ export interface SldCanvasV2Props {
    * Caller (SldWorkspaceContainer) wywołuje `buildCanonicalGpzProps` z ENM.
    */
   readonly canonicalGpzs?: readonly GpzCanonicalRendererProps[];
+
+  /**
+   * Pełna sieć terenowa (R17): stacje połączone kablami SN przez porty
+   * sn_input/sn_output. Reuse `NetworkTerrainRenderer`. Gdy podane,
+   * kanwa renderuje sieć ZAMIAST legacy stations[] + cableRuns[].
+   */
+  readonly networkTerrain?: NetworkTerrainRendererProps | null;
   readonly sections: readonly SectionRendererProps[];
   readonly cableRuns: ReadonlyArray<{
     id: string;
@@ -110,6 +121,7 @@ export interface SldCanvasV2Props {
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
+    networkTerrain,
     selectedId, lodOverride, layerVisibility,
     onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu,
   } = props;
@@ -330,8 +342,52 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           );
         })}
 
-        {/* Stacje na ciągu */}
-        {stations.map((st) => (
+        {/* R17: Pełna sieć terenowa (NetworkTerrainRenderer) — gdy ENM ma
+         * substations + line_runs, renderuje pełen graph kabli SN łączących
+         * stacje przez porty sn_input/sn_output. ZASTĘPUJE legacy stations[]+
+         * cableRuns[] gdy `networkTerrain` jest podane. */}
+        {networkTerrain ? (
+          <NetworkTerrainRenderer
+            {...networkTerrain}
+            selectedId={selectedId}
+            onClickStation={
+              onSelectElement
+                ? (id) => onSelectElement(id, 'station')
+                : networkTerrain.onClickStation
+            }
+            onDoubleClickStation={onDoubleClickStation ?? networkTerrain.onDoubleClickStation}
+            onContextMenuStation={
+              onContextMenu
+                ? (stationRef, evt) =>
+                    onContextMenu({
+                      kind: 'station',
+                      elementId: stationRef,
+                      clientX: evt.clientX,
+                      clientY: evt.clientY,
+                    })
+                : networkTerrain.onContextMenuStation
+            }
+            onClickSegment={
+              onSelectElement
+                ? (segId) => onSelectElement(segId, 'cable_segment_sn')
+                : networkTerrain.onClickSegment
+            }
+            onContextMenuSegment={
+              onContextMenu
+                ? (segId, evt) =>
+                    onContextMenu({
+                      kind: 'cable_segment_sn',
+                      elementId: segId,
+                      clientX: evt.clientX,
+                      clientY: evt.clientY,
+                    })
+                : networkTerrain.onContextMenuSegment
+            }
+          />
+        ) : null}
+
+        {/* Stacje na ciągu (legacy fallback gdy brak networkTerrain) */}
+        {!networkTerrain && stations.map((st) => (
           <g
             key={st.id}
             onContextMenu={

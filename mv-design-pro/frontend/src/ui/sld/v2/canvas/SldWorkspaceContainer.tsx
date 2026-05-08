@@ -32,7 +32,12 @@ import { SldCanvasV2, type SldCanvasContextMenuRequest } from './SldCanvasV2';
 import { StationInternalView, type StationInternalViewProps } from './StationInternalView';
 import { buildSldDataFromSnapshot } from './enmToSldAdapter';
 import { buildCanonicalGpzProps } from './enmToCanonicalGpzAdapter';
+import { buildNetworkTerrain } from './buildNetworkTerrain';
 import type { GpzCanonicalRendererProps } from '../renderer/GpzCanonicalRenderer';
+import type { NetworkTerrainRendererProps } from '../renderer/NetworkTerrainRenderer';
+import { BayConfigModal, type BayConfigData } from '../modals/BayConfigModal';
+import { TransformerEditModal, type TransformerData } from '../modals/TransformerEditModal';
+import { CouplerEditModal, type CouplerData } from '../modals/CouplerEditModal';
 import { LassoSelector, rectFromPoints, type LassoRect } from './LassoSelector';
 import {
   hasPaletteDragData,
@@ -121,6 +126,25 @@ function mapDerKindToElementType(kind: 'PV' | 'BESS' | 'FW'): ElementType {
       return 'BESSInverter';
     case 'FW':
       return 'Generator';
+  }
+}
+
+/**
+ * R20: Mapowanie ENM `Bay.bay_role` → canonical `BayFieldRole` używany
+ * w `BayConfigModal`. Symetryczna wersja do `mapBayRoleToFieldRole`
+ * z `enmToCanonicalGpzAdapter`.
+ */
+function mapBayRoleToCanonicalFieldRole(role: Bay['bay_role']):
+  'LINE_OUT' | 'LINE_IN' | 'LINE_BRANCH' | 'TRANSFORMER' | 'COUPLER' | 'MEASUREMENT' {
+  switch (role) {
+    case 'IN': return 'LINE_IN';
+    case 'OUT': return 'LINE_OUT';
+    case 'TR': return 'TRANSFORMER';
+    case 'COUPLER': return 'COUPLER';
+    case 'FEEDER': return 'LINE_OUT';
+    case 'MEASUREMENT': return 'MEASUREMENT';
+    case 'OZE': return 'TRANSFORMER';
+    default: return 'LINE_OUT';
   }
 }
 
@@ -248,6 +272,17 @@ export function SldWorkspaceContainer(
   const [contextRequest, setContextRequest] = useState<SldContextMenuRequest | null>(null);
   const [internalStationId, setInternalStationId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /* R20: modale edycji per element kind (bay/transformer/coupler).
+   * Otwierane przez context menu actions. State trzymany w containerze. */
+  const [bayModalState, setBayModalState] = useState<{ open: boolean; data: BayConfigData | null }>(
+    { open: false, data: null },
+  );
+  const [transformerModalState, setTransformerModalState] = useState<{ open: boolean; data: TransformerData | null }>(
+    { open: false, data: null },
+  );
+  const [couplerModalState, setCouplerModalState] = useState<{ open: boolean; data: CouplerData | null }>(
+    { open: false, data: null },
+  );
   // Iteracja 12: lasso multi-select state.
   const [lassoRect, setLassoRect] = useState<LassoRect | null>(null);
   const lassoStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -276,6 +311,21 @@ export function SldWorkspaceContainer(
     }
     return out;
   }, [snapshot, sldData.gpzs]);
+
+  /* R17/R18: Pełna sieć terenowa — stacje + cable runs przez porty IN/OUT.
+   * Budujemy gdy snapshot ma substations (poza GPZ) i line_runs.
+   * NetworkTerrainRenderer ZASTĘPUJE legacy stations[]+cableRuns[] gdy
+   * networkTerrain jest podane (architektura kanwy SldCanvasV2). */
+  const networkTerrain = useMemo<NetworkTerrainRendererProps | null>(() => {
+    if (!snapshot) return null;
+    const fieldStations = (snapshot.substations ?? []).filter((s) => s.station_type !== 'gpz');
+    if (fieldStations.length === 0) return null;
+    const built = buildNetworkTerrain(snapshot);
+    return {
+      ...built,
+      overlayMode: 'none', // hookpoint dla R19 calculation overlays
+    };
+  }, [snapshot]);
 
   const isEmpty = useMemo(() => {
     return (
@@ -457,6 +507,47 @@ export function SldWorkspaceContainer(
         return;
       }
 
+      /* R20: 'open-bay' → otwiera BayConfigModal z danymi z ENM bay */
+      if (actionId === 'open-bay' && kind === 'bay' && elementId && snapshot) {
+        const bay = (snapshot.bays ?? []).find((b) => b.ref_id === elementId);
+        if (bay) {
+          setBayModalState({
+            open: true,
+            data: {
+              bayRef: bay.ref_id,
+              bayNumber: bay.bay_number ?? '',
+              feederName: bay.feeder_short_name ?? '',
+              fieldRole: mapBayRoleToCanonicalFieldRole(bay.bay_role),
+              destinationLabel: bay.outgoing_destination_ref ?? '',
+              controlMode: 'remote',
+            },
+          });
+          return;
+        }
+      }
+
+      /* R20: 'open-source' z menu GPZ → otwiera TransformerEditModal dla GPZ trafa */
+      if (actionId === 'open-source' && kind === 'gpz' && elementId && snapshot) {
+        const gpz = (snapshot.substations ?? []).find((s) => s.ref_id === elementId);
+        const firstTrRef = gpz?.transformer_refs?.[0];
+        const tr = (snapshot.transformers ?? []).find((t) => t.ref_id === firstTrRef);
+        if (tr) {
+          setTransformerModalState({
+            open: true,
+            data: {
+              transformerRef: tr.ref_id,
+              designation: tr.name ?? `T${tr.ref_id.slice(-1)}`,
+              snMva: tr.sn_mva,
+              uhvKv: tr.uhv_kv,
+              ulvKv: tr.ulv_kv,
+              vectorGroup: tr.vector_group ?? null,
+              catalogRef: tr.catalog_ref ?? null,
+            },
+          });
+          return;
+        }
+      }
+
       // 1b) Faza G: 'add-source' z menu stacji → otwiera E-13 Karta 7 i prosi
       //     o kreator DER. Stację identyfikuje elementId (kontekst SLD).
       if (actionId === 'add-source' && kind === 'station' && elementId) {
@@ -583,6 +674,7 @@ export function SldWorkspaceContainer(
         height={measured.height}
         gpzs={sldData.gpzs}
         canonicalGpzs={canonicalGpzs}
+        networkTerrain={networkTerrain}
         sections={sldData.sections}
         cableRuns={sldData.cableRuns}
         stations={sldData.stations}
@@ -666,6 +758,57 @@ export function SldWorkspaceContainer(
             </div>
           </div>
         </div>
+      )}
+
+      {/* R20: BayConfigModal — edycja pola SN. Otwierany przez context menu
+       * action 'open-bay'. Dane z ENM Bay (bayNumber, feederName, fieldRole,
+       * destinationLabel, controlMode). */}
+      {bayModalState.open && bayModalState.data && (
+        <BayConfigModal
+          isOpen={bayModalState.open}
+          initial={bayModalState.data}
+          onClose={() => setBayModalState({ open: false, data: null })}
+          onSubmit={(updated) => {
+            notify(
+              `Zapisano konfigurację pola ${updated.bayNumber || updated.bayRef} (mock — backend integration w R22).`,
+              'info',
+            );
+            setBayModalState({ open: false, data: null });
+          }}
+        />
+      )}
+
+      {/* R20: TransformerEditModal — edycja transformatora SN/HV. Otwierany
+       * przez context menu action 'open-source' z menu GPZ. */}
+      {transformerModalState.open && transformerModalState.data && (
+        <TransformerEditModal
+          isOpen={transformerModalState.open}
+          initial={transformerModalState.data}
+          onClose={() => setTransformerModalState({ open: false, data: null })}
+          onSubmit={(updated) => {
+            notify(
+              `Zapisano konfigurację transformatora ${updated.designation} (mock — backend integration w R22).`,
+              'info',
+            );
+            setTransformerModalState({ open: false, data: null });
+          }}
+        />
+      )}
+
+      {/* R20: CouplerEditModal — edycja sprzęgła międzysekcyjnego. */}
+      {couplerModalState.open && couplerModalState.data && (
+        <CouplerEditModal
+          isOpen={couplerModalState.open}
+          initial={couplerModalState.data}
+          onClose={() => setCouplerModalState({ open: false, data: null })}
+          onSubmit={(updated) => {
+            notify(
+              `Zapisano konfigurację sprzęgła ${updated.designation}: stan ${updated.closedState} (mock — backend integration w R22).`,
+              'info',
+            );
+            setCouplerModalState({ open: false, data: null });
+          }}
+        />
       )}
     </div>
   );

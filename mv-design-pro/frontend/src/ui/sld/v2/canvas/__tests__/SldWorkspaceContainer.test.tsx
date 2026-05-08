@@ -236,7 +236,10 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
 
     render(<SldWorkspaceContainer width={400} height={320} />);
 
-    fireEvent.doubleClick(screen.getByTestId('sld-v2-station-station_1'));
+    /* R17/R19: legacy StationOnRunRenderer został zastąpiony przez
+     * NetworkTerrainRenderer + MiniBlockRmuRenderer dla field stations.
+     * Stary testid 'sld-v2-station-{id}' → nowy 'sld-v2-mini-rmu-{id}'. */
+    fireEvent.doubleClick(screen.getByTestId('sld-v2-mini-rmu-station_1'));
 
     const internal = screen.getByTestId('sld-v2-station-internal-station_1');
     expect(internal.textContent).toContain('Stacja Przelotowa');
