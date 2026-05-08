@@ -394,7 +394,8 @@ describe('GpzCanonicalRenderer — replica GPZ-5 PST (Mikronika MIKRA reference)
         { couplerId: 'cpl-9', leftSectionId: 's1', rightSectionId: 's2', designation: 'SPRZĘGŁO 9', closedState: 'closed' },
       ],
     };
-    const { container, getByText } = render(<svg width={1800} height={1000}><GpzCanonicalRenderer {...props} /></svg>);
+    const { container, getByText, getAllByText } = render(<svg width={1800} height={1000}><GpzCanonicalRenderer {...props} /></svg>);
+    void getByText; // not used after R12 tooltip change
     expect(getByText('GPZ-5 PST')).toBeTruthy();
     expect(getByText('TRANSMISJA POPRAWNA')).toBeTruthy();
     expect(getByText('-3.1')).toBeTruthy();
@@ -408,8 +409,8 @@ describe('GpzCanonicalRenderer — replica GPZ-5 PST (Mikronika MIKRA reference)
     expect(container.querySelectorAll('[data-testid^="gpz-canonical-bay-"]')).toHaveLength(6);
     // Sprzęgło
     expect(container.querySelector('[data-testid="gpz-canonical-coupler-cpl-9"]')).toBeTruthy();
-    // Destinations widoczne
-    expect(getByText(/→ MST1795/)).toBeTruthy();
-    expect(getByText(/→ K\/E537/)).toBeTruthy();
+    // Destinations widoczne (text + tooltip <title> mogą oba zawierać)
+    expect(getAllByText(/→ MST1795/).length).toBeGreaterThan(0);
+    expect(getAllByText(/→ K\/E537/).length).toBeGreaterThan(0);
   });
 });

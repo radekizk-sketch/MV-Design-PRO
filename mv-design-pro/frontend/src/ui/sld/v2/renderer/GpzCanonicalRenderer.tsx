@@ -528,13 +528,24 @@ interface TransformerSymbolProps {
 function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
   const { x, y, transformer, onClick } = props;
   const cx = TR_WIDTH / 2;
+  const tooltipText = [
+    `Transformator ${transformer.designation}`,
+    `Moc: ${transformer.snMva.toFixed(1)} MVA`,
+    `Napięcia: ${transformer.uhvKv}/${transformer.ulvKv} kV`,
+    transformer.vectorGroup ? `Grupa wektorowa: ${transformer.vectorGroup}` : null,
+    `Ref: ${transformer.transformerRef}`,
+  ].filter(Boolean).join('\n');
   return (
     <g
       data-testid={`gpz-canonical-transformer-${transformer.transformerRef}`}
       transform={`translate(${x}, ${y})`}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(transformer.transformerRef); } : undefined}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={`Transformator ${transformer.designation}, ${transformer.snMva.toFixed(1)} MVA, ${transformer.uhvKv} kilowoltów na ${transformer.ulvKv} kilowoltów`}
+      style={{ cursor: onClick ? 'pointer' : 'default', outline: 'none' }}
     >
+      <title>{tooltipText}</title>
       {/* Pionowy tor TR (od HV bus do LV bus) */}
       <line x1={cx} y1={-LV_BUS_GAP} x2={cx} y2={TR_HEIGHT + LV_BUS_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
       {/* Górny okrąg (HV) z markerem Y */}
@@ -621,6 +632,7 @@ function LvBay(props: LvBayProps): JSX.Element {
   const { bay, x, y, onClick, onDoubleClick, onContextMenu } = props;
   const trackHeight = LV_BAY_HEIGHT - 30;
   const ariaLabel = bayAriaLabel(bay);
+  const tooltipText = bayTooltipText(bay);
   const handleKeyDown = (e: React.KeyboardEvent<SVGGElement>): void => {
     /* Keyboard nav (a11y P1):
      *   Enter / Space → onClick (otwiera modal)
@@ -675,6 +687,9 @@ function LvBay(props: LvBayProps): JSX.Element {
       onKeyDown={onClick || onDoubleClick || onContextMenu ? handleKeyDown : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default', outline: 'none' }}
     >
+      {/* SVG native tooltip — pełna telemetria pola po hover (kanon SCADA OSD) */}
+      <title>{tooltipText}</title>
+
       {/* Tło pola (per-role color) */}
       <rect
         x={-BAY_WIDTH / 2}
@@ -814,18 +829,17 @@ function LvBay(props: LvBayProps): JSX.Element {
         </text>
       )}
 
-      {/* Etykieta destynacji feedera */}
+      {/* Etykieta destynacji feedera + outgoing cable do mini-RMU stacji odbiorczej.
+       * Kanon SCADA OSD: z cable-head trzpień kabla schodzi w dół i kończy się
+       * w bloku mini-RMU (lub label box z numerem dyspozytorskim kabla). */}
       {bay.destinationLabel && (
-        <text
+        <OutgoingFeederStub
           x={0}
-          y={trackHeight + 36}
-          textAnchor="middle"
-          fill={COLOR_TEXT_SECONDARY}
-          fontFamily={FONT_MONO}
-          fontSize={9}
-        >
-          {bay.destinationLabel.slice(0, 12)}
-        </text>
+          y={trackHeight + 8}
+          destinationLabel={bay.destinationLabel}
+          cableNumber={bay.feederName ?? ''}
+          fieldRole={bay.fieldRole}
+        />
       )}
 
       {/* Status flags badge stack (po prawej stronie pola) */}
@@ -1018,18 +1032,122 @@ interface CouplerSymbolProps {
 
 function CouplerSymbol(props: CouplerSymbolProps): JSX.Element {
   const { x, y, coupler, onClick } = props;
+  const tooltipText = [
+    `Sprzęgło międzysekcyjne ${coupler.designation}`,
+    `Stan CB: ${switchStateLabel(coupler.closedState)}`,
+    `Lewa sekcja: ${coupler.leftSectionId}`,
+    `Prawa sekcja: ${coupler.rightSectionId}`,
+    `ID: ${coupler.couplerId}`,
+  ].join('\n');
+  const ariaLabel = `Sprzęgło ${coupler.designation}, wyłącznik ${switchStateLabel(coupler.closedState)}`;
   return (
     <g
       data-testid={`gpz-canonical-coupler-${coupler.couplerId}`}
       data-coupler-state={coupler.closedState}
       transform={`translate(${x}, ${y})`}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(coupler.couplerId); } : undefined}
-      style={{ cursor: onClick ? 'pointer' : 'default' }}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={ariaLabel}
+      style={{ cursor: onClick ? 'pointer' : 'default', outline: 'none' }}
     >
+      <title>{tooltipText}</title>
       <line x1={0} y1={0} x2={0} y2={LV_SECTION_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
       <ApparatusCb cx={0} cy={LV_SECTION_GAP / 2} state={coupler.closedState} />
       <text x={12} y={LV_SECTION_GAP / 2 + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
         {coupler.designation}
+      </text>
+    </g>
+  );
+}
+
+/* =============================================================================
+   OutgoingFeederStub — kabel + mini-block destynacji (R13)
+   ============================================================================= */
+
+interface OutgoingFeederStubProps {
+  readonly x: number;
+  readonly y: number;
+  readonly destinationLabel: string;
+  readonly cableNumber: string;
+  readonly fieldRole: BayFieldRole;
+}
+
+/**
+ * Renderuje kabel SN wychodzący z pola GPZ:
+ *   - cable-head (trójkąt)
+ *   - krótki tor pionowy
+ *   - mini-block z nazwą stacji odbiorczej + numerem dyspozytorskim kabla
+ *
+ * Per-role color: TR — niebieski, MEASUREMENT — żółty, LINE_* — zielony (kanon SCADA OSD).
+ */
+function OutgoingFeederStub(props: OutgoingFeederStubProps): JSX.Element {
+  const { x, y, destinationLabel, cableNumber, fieldRole } = props;
+  const stubLength = 36;
+  const blockWidth = 70;
+  const blockHeight = 24;
+  /* Kolor toru — kanon polski per fieldRole */
+  const trackColor = fieldRole === 'TRANSFORMER'
+    ? '#3B7ABC'
+    : fieldRole === 'MEASUREMENT'
+      ? '#E8C100'
+      : COLOR_BUS_LV;
+  /* Kolor labela destynacji — kategoria stacji odbiorczej */
+  const labelColor = destinationLabel.toUpperCase().startsWith('ZKSN')
+    ? '#FFC857'
+    : destinationLabel.toUpperCase().startsWith('STA')
+      ? '#13C45A'
+      : COLOR_TEXT_PRIMARY;
+  return (
+    <g
+      data-testid="gpz-canonical-outgoing-feeder"
+      data-destination={destinationLabel}
+      transform={`translate(${x}, ${y})`}
+    >
+      {/* Cable head (trójkąt) — kanon SCADA */}
+      <polygon
+        points="-5,0 5,0 0,8"
+        fill={COLOR_PANEL_RAISED}
+        stroke={trackColor}
+        strokeWidth={1.4}
+      />
+      {/* Krótki kabel pionowy (do bloku destynacji) */}
+      <line x1={0} y1={8} x2={0} y2={stubLength} stroke={trackColor} strokeWidth={1.6} />
+      {/* Mini-block destynacji */}
+      <rect
+        x={-blockWidth / 2}
+        y={stubLength}
+        width={blockWidth}
+        height={blockHeight}
+        fill={COLOR_PANEL}
+        stroke={trackColor}
+        strokeWidth={1.0}
+        rx={2}
+      />
+      {/* Numer dyspozytorski kabla (mała linia u góry mini-bloku) */}
+      {cableNumber && (
+        <text
+          x={0}
+          y={stubLength + 9}
+          textAnchor="middle"
+          fill={COLOR_TEXT_MUTED}
+          fontFamily={FONT_MONO}
+          fontSize={7}
+        >
+          {cableNumber.slice(0, 10)}
+        </text>
+      )}
+      {/* Nazwa stacji odbiorczej */}
+      <text
+        x={0}
+        y={stubLength + 19}
+        textAnchor="middle"
+        fill={labelColor}
+        fontFamily={FONT_SANS}
+        fontSize={8}
+        fontWeight={600}
+      >
+        {destinationLabel.slice(0, 14)}
       </text>
     </g>
   );
@@ -1128,6 +1246,96 @@ function bayAriaLabel(bay: CanonicalGpzBay): string {
   else if (bay.cbState === 'unknown') parts.push('— stan wyłącznika nieznany');
   if (bay.inManipulation) parts.push('(w manipulacji)');
   return parts.join(' ');
+}
+
+/**
+ * Buduje pełen tekst tooltipu (SVG <title>) dla pola SN.
+ * Zawiera: numer + role + feeder + destynacja + Q-numbery + stany aparatów +
+ * pomiary + tryb sterowania + flagi.
+ *
+ * Kanon: każda linia 1 fakt, total ≤ 12 linii.
+ */
+function bayTooltipText(bay: CanonicalGpzBay): string {
+  const lines: string[] = [];
+  const headline = bay.bayNumber
+    ? `Pole ${bay.bayNumber} — ${bayRolePolishLabel(bay.fieldRole)}`
+    : bayRolePolishLabel(bay.fieldRole);
+  lines.push(headline);
+  if (bay.feederName) lines.push(`Odpływ: ${bay.feederName}`);
+  if (bay.destinationLabel) lines.push(`Cel: ${bay.destinationLabel}`);
+
+  const apparatusLines: string[] = [];
+  if (bay.qDesignations.cb) apparatusLines.push(`CB ${bay.qDesignations.cb}: ${switchStateLabel(bay.cbState)}`);
+  if (bay.qDesignations.dsBus) apparatusLines.push(`DS_BUS ${bay.qDesignations.dsBus}: ${switchStateLabel(bay.dsState)}`);
+  if (bay.qDesignations.dsLin) apparatusLines.push(`DS_LIN ${bay.qDesignations.dsLin}: ${switchStateLabel(bay.dsState)}`);
+  if (bay.qDesignations.es) {
+    const es = bay.esState ?? 'unknown';
+    apparatusLines.push(`ES ${bay.qDesignations.es}: ${esStateLabel(es)}`);
+  }
+  if (bay.qDesignations.ct) apparatusLines.push(`CT ${bay.qDesignations.ct}: czynny`);
+  if (apparatusLines.length > 0) {
+    lines.push('');
+    lines.push('Aparatura:');
+    lines.push(...apparatusLines);
+  }
+
+  if (bay.measurements) {
+    const m = bay.measurements;
+    const measLines: string[] = [];
+    if (m.pMw != null) measLines.push(`P = ${m.pMw.toFixed(2)} MW`);
+    if (m.qMvar != null) measLines.push(`Q = ${m.qMvar.toFixed(2)} MVAr`);
+    if (m.u12Kv != null) measLines.push(`U12 = ${m.u12Kv.toFixed(2)} kV`);
+    if (m.u23Kv != null) measLines.push(`U23 = ${m.u23Kv.toFixed(2)} kV`);
+    if (m.u31Kv != null) measLines.push(`U31 = ${m.u31Kv.toFixed(2)} kV`);
+    if (m.fHz != null) measLines.push(`f = ${m.fHz.toFixed(2)} Hz`);
+    if (measLines.length > 0) {
+      lines.push('');
+      lines.push('Pomiary:');
+      lines.push(...measLines);
+    }
+  }
+
+  if (bay.controlMode) {
+    lines.push('');
+    lines.push(`Sterowanie: ${controlModeLabel(bay.controlMode)}`);
+  }
+
+  if (bay.statusFlags && bay.statusFlags.length > 0) {
+    lines.push(`Flagi: ${bay.statusFlags.join(', ')}`);
+  }
+
+  if (bay.inManipulation) {
+    lines.push('');
+    lines.push('⚠ POLE W STANIE MANIPULACJI');
+  }
+
+  return lines.join('\n');
+}
+
+function switchStateLabel(state: SwitchState | undefined): string {
+  switch (state) {
+    case 'closed': return 'zamknięty';
+    case 'open': return 'otwarty';
+    case 'unknown': return 'stan nieznany';
+    default: return '—';
+  }
+}
+
+function esStateLabel(state: 'closed' | 'open' | 'absent' | 'unknown'): string {
+  switch (state) {
+    case 'closed': return 'załączony (UWAGA: pole uziemione)';
+    case 'open': return 'otwarty';
+    case 'absent': return 'brak';
+    case 'unknown': return 'stan nieznany';
+  }
+}
+
+function controlModeLabel(mode: 'remote' | 'local' | 'unknown'): string {
+  switch (mode) {
+    case 'remote': return 'zdalne';
+    case 'local': return 'lokalne';
+    case 'unknown': return 'nieznane';
+  }
 }
 
 function bayRolePolishLabel(role: BayFieldRole): string {
