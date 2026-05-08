@@ -1,6 +1,9 @@
 /**
  * StationConfiguratorSurface (E-13) — wrapper konfiguratora stacji SN/nN.
  *
+ * R46 (Zasada 13): Domyślnie renderuje StationWizardSurface (8-step wizard).
+ * Toggle do Legacy 10-card view dla backward compat.
+ *
  * Karta 7 "Źródła i magazyny" jest pomostem do E-21/E-22/E-23: czyta
  * `useStationDerStore` aby pokazać DERy przypięte do tej stacji oraz
  * wywołuje `openRouteSurface('E-21'/'E-22'/'E-23')` z stationContext.
@@ -29,6 +32,9 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { notify } from '../../notifications/store';
 import type { WorkspaceSurfaceDescriptor } from '../types';
+import { StationWizardSurface } from './StationWizardSurface';
+
+type StationConfigMode = 'wizard' | 'legacy';
 
 interface StationConfiguratorSurfaceProps {
   readonly surface: WorkspaceSurfaceDescriptor;
@@ -113,6 +119,48 @@ const DER_KIND_TO_SCREEN: Record<AddDerKindRequest, 'E-21' | 'E-22' | 'E-23'> = 
 
 export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProps): JSX.Element {
   const { surface } = props;
+  const [mode, setMode] = useState<StationConfigMode>('wizard');
+
+  if (mode === 'wizard') {
+    return (
+      <div className="flex h-full w-full flex-col">
+        <div className="border-b border-scada-border bg-scada-bg-soft px-4 py-2 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            data-testid="station-mode-wizard-switch"
+            aria-pressed={true}
+            onClick={() => setMode('wizard')}
+            className="rounded bg-scada-accent px-3 py-1 text-xs text-white"
+          >
+            Wizard (8 stepów)
+          </button>
+          <button
+            type="button"
+            data-testid="station-mode-legacy-switch"
+            aria-pressed={false}
+            onClick={() => setMode('legacy')}
+            className="rounded border border-scada-border px-3 py-1 text-xs text-scada-text hover:bg-scada-hover-nav"
+          >
+            Widok 10-kart (legacy) →
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <StationWizardSurface surface={surface} />
+        </div>
+      </div>
+    );
+  }
+
+  return <StationConfiguratorLegacy surface={surface} onSwitchToWizard={() => setMode('wizard')} />;
+}
+
+interface StationConfiguratorLegacyProps {
+  readonly surface: WorkspaceSurfaceDescriptor;
+  readonly onSwitchToWizard: () => void;
+}
+
+function StationConfiguratorLegacy(props: StationConfiguratorLegacyProps): JSX.Element {
+  const { surface, onSwitchToWizard } = props;
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const stationRef = surface.entityRef ?? null;
   const ders = useStationDerStore((state) =>
@@ -372,17 +420,37 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
 
   return (
     <div data-testid="station-configurator-surface" className="flex h-full w-full flex-col p-4">
-      <div className="mb-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
-          E-13 · Konfigurator stacji SN/nN
+      <div className="mb-4 flex items-start justify-between">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+            E-13 · Konfigurator stacji SN/nN (legacy 10-kart)
+          </div>
+          <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
+          {!stationRef && (
+            <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+              Brak referencji do stacji w kontekście. Wybierz stację z lewego nawigatora
+              modelu lub kliknij stację w SLD i wybierz "Otwórz konfigurator stacji".
+            </p>
+          )}
         </div>
-        <h2 className="mt-1 text-base font-semibold text-scada-text">{stationName}</h2>
-        {!stationRef && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
-            Brak referencji do stacji w kontekście. Wybierz stację z lewego nawigatora
-            modelu lub kliknij stację w SLD i wybierz "Otwórz konfigurator stacji".
-          </p>
-        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="station-mode-wizard-switch"
+            onClick={onSwitchToWizard}
+            className="rounded border border-scada-border px-3 py-1 text-xs text-scada-text hover:bg-scada-hover-nav"
+          >
+            ← Wizard (8 stepów)
+          </button>
+          <button
+            type="button"
+            data-testid="station-mode-legacy-switch"
+            aria-pressed={true}
+            className="rounded bg-scada-accent px-3 py-1 text-xs text-white"
+          >
+            Widok 10-kart
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-auto rounded border border-scada-border bg-scada-panel">
         <StationConfigurator {...configuratorProps} defaultCard="der-sources" />

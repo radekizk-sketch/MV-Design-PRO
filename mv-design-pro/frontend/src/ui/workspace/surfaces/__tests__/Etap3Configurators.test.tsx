@@ -150,30 +150,94 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
     });
   });
 
-  describe('StationConfiguratorSurface (E-13)', () => {
-    it('renderuje StationConfigurator z 10 kartami', () => {
-      render(<StationConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
-      const cards = [
-        'Identyfikacja i szablon',
-        'Topologia, porty i PCC',
-        'Rozdzielnia SN',
-        'Pola SN',
-        'Transformatory SN/nN',
-        'Strona nN i poziomy napięć',
-        'Źródła i magazyny',
-        'Zabezpieczenia i automatyka',
-        'Pomiary, telemechanika i sygnały',
-        'Gotowość obliczeń',
-      ];
-      for (const label of cards) {
-        expect(screen.getByRole('tab', { name: label })).toBeInTheDocument();
-      }
+  describe('StationConfiguratorSurface (E-13 R46 — Wizard/Legacy modes)', () => {
+    const surfaceWithStation = { ...minimalSurface, entityRef: 'station-test' };
+
+    const switchToLegacy = () => {
+      fireEvent.click(screen.getByTestId('station-mode-legacy-switch'));
+    };
+
+    it('Domyślnie Wizard mode (R46) — 8 stepów wizarda', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      expect(screen.getByTestId('station-wizard-surface')).toBeInTheDocument();
+      expect(screen.getByTestId('station-wizard-stepper')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-identification')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-bays_and_apparatus')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-transformer')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-lv_side')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-der')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-protection_hint')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-connections')).toBeInTheDocument();
+      expect(screen.getByTestId('stepper-readiness')).toBeInTheDocument();
     });
 
-    it('pokazuje komunikat o braku referencji gdy entityRef=null', () => {
+    it('Wizard — domyślnie aktywny step Identyfikacja', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      expect(screen.getByTestId('station-wizard-step-identification')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-station-name')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-station-type')).toBeInTheDocument();
+    });
+
+    it('Wizard — przejście Dalej → Step 2 (Pola + aparatura)', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.click(screen.getByTestId('wizard-next'));
+      expect(screen.getByTestId('station-wizard-step-bays-and-apparatus')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-bay-add')).toBeInTheDocument();
+    });
+
+    it('Wizard — Step 2 dodaje pole z aparaturą (CB/DS/CT)', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.click(screen.getByTestId('wizard-next'));
+      fireEvent.click(screen.getByTestId('wizard-bay-add'));
+      expect(screen.getByTestId('bay-editor-0')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-bay-0-role')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-bay-0-cb-ref')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-bay-0-ct-ref')).toBeInTheDocument();
+    });
+
+    it('Wizard — Step 5 DER ma blocker bez PCC', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.click(screen.getByTestId('stepper-der'));
+      fireEvent.click(screen.getByTestId('wizard-has-der'));
+      expect(screen.getByTestId('wizard-der-pcc-blocker')).toBeInTheDocument();
+    });
+
+    it('Wizard — Step 8 Gotowość pokazuje checklist + summary', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.click(screen.getByTestId('stepper-readiness'));
+      expect(screen.getByTestId('station-wizard-step-readiness')).toBeInTheDocument();
+      expect(screen.getByTestId('wizard-readiness-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('check-identification')).toBeInTheDocument();
+      expect(screen.getByTestId('check-bays')).toBeInTheDocument();
+    });
+
+    it('Wizard — Save disabled gdy są blockerzy (brak nazwy + brak pól)', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      fireEvent.click(screen.getByTestId('stepper-readiness'));
+      const saveBtn = screen.getByTestId('wizard-save-and-create') as HTMLButtonElement;
+      expect(saveBtn.disabled).toBe(true);
+    });
+
+    it('Wizard → Legacy switcher pozwala przełączyć na widok 10-kart', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      switchToLegacy();
+      expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Identyfikacja i szablon' })).toBeInTheDocument();
+    });
+
+    it('Legacy → Wizard switcher pozwala wrócić do wizarda', () => {
+      render(<StationConfiguratorSurface surface={surfaceWithStation} />);
+      switchToLegacy();
+      expect(screen.getByTestId('station-configurator-surface')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('station-mode-wizard-switch'));
+      expect(screen.getByTestId('station-wizard-surface')).toBeInTheDocument();
+    });
+
+    it('Wizard bez entityRef (mode=create) — pusty draft', () => {
       render(<StationConfiguratorSurface surface={minimalSurface} />);
-      expect(screen.getByText(/Brak referencji do stacji/)).toBeInTheDocument();
+      expect(screen.getByTestId('station-wizard-surface')).toBeInTheDocument();
+      const nameInput = screen.getByTestId('wizard-station-name') as HTMLInputElement;
+      expect(nameInput.value).toBe('');
     });
   });
 });
