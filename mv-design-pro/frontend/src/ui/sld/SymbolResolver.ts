@@ -77,7 +77,9 @@ export type EtapSymbolId =
   | 'catalog'
   | 'study_case'
   | 'results'
-  | 'folder';
+  | 'folder'
+  // Station symbols
+  | 'gpz_station';
 
 /**
  * Port definition (x,y w układzie viewBox 100x100).
@@ -447,6 +449,16 @@ const SYMBOL_DEFINITIONS: Record<EtapSymbolId, Omit<ResolvedSymbol, 'symbolId'>>
     allowedRotations: [0],
     defaultRotation: 0,
   },
+  gpz_station: {
+    description: 'Stacja GPZ / Main Supply Substation',
+    viewBox: '0 0 100 100',
+    ports: {
+      top:    { x: 50, y: 0  },
+      bottom: { x: 50, y: 100 },
+    },
+    allowedRotations: [0],
+    defaultRotation: 0,
+  },
 };
 
 /**
@@ -583,6 +595,10 @@ export function resolveSymbol(symbol: AnySldSymbol): ResolvedSymbol | null {
     case 'Load':
       // Load → symbol odbiornika
       return getSymbolDefinition('load');
+
+    case 'Station':
+    case 'BaySN':
+      return getSymbolDefinition('gpz_station');
 
     default:
       warnOnce(`[SymbolResolver] Nieznany elementType: ${elementType}`);

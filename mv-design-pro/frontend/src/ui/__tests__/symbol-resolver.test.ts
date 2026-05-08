@@ -331,10 +331,10 @@ describe('SymbolResolver', () => {
   });
 
   describe('getAllSymbolIds', () => {
-    it('should return all 33 ETAP symbol IDs', () => {
+    it('should return all 34 ETAP symbol IDs', () => {
       const ids = getAllSymbolIds();
 
-      expect(ids).toHaveLength(33);
+      expect(ids).toHaveLength(34);
       // Core SLD symbols (15)
       expect(ids).toContain('busbar');
       expect(ids).toContain('circuit_breaker');
@@ -371,6 +371,8 @@ describe('SymbolResolver', () => {
       expect(ids).toContain('study_case');
       expect(ids).toContain('results');
       expect(ids).toContain('folder');
+      // Station symbols (1)
+      expect(ids).toContain('gpz_station');
     });
   });
 

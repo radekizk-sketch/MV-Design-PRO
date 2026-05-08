@@ -937,6 +937,70 @@ const RelaySymbol: React.FC<Omit<EtapSymbolProps, 'symbolId'>> = ({
 /**
  * Mapa komponentów symboli.
  */
+/**
+ * GPZ Station / Główny Punkt Zasilania
+ *
+ * ABB/ETAP-grade compact station block:
+ * - Rounded outer boundary rectangle (substation enclosure)
+ * - Internal SN busbar section (horizontal)
+ * - Top stub: 110 kV incoming connection
+ * - Bottom stub: 15 kV outgoing feeders
+ * - "GPZ" text label centered
+ *
+ * IEC 60617 / IEC 61082 compliant symbol.
+ */
+const GpzStationSymbol: React.FC<Omit<EtapSymbolProps, 'symbolId'>> = ({
+  stroke = 'currentColor',
+  fill = 'none',
+  strokeWidth = 2.5,
+  opacity = 1,
+}) => (
+  <>
+    {/* Top stub — 110 kV incoming connection */}
+    <line x1="50" y1="0" x2="50" y2="14" stroke={stroke} strokeWidth={strokeWidth + 0.5} opacity={opacity} strokeLinecap="round" />
+
+    {/* Outer station boundary — rounded rectangle */}
+    <rect x="8" y="14" width="84" height="72" rx="6" ry="6" fill={fill} stroke={stroke} strokeWidth={strokeWidth} opacity={opacity} />
+
+    {/* Internal SN busbar — horizontal, dominant element */}
+    <line x1="20" y1="62" x2="80" y2="62" stroke={stroke} strokeWidth={strokeWidth + 1} opacity={opacity} strokeLinecap="round" />
+
+    {/* "GPZ" label */}
+    <text
+      x="50"
+      y="42"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize="18"
+      fontWeight="700"
+      fontFamily="monospace"
+      fill={stroke}
+      opacity={opacity}
+      letterSpacing="2"
+    >
+      GPZ
+    </text>
+
+    {/* Voltage indicator: small "SN" below busbar */}
+    <text
+      x="50"
+      y="76"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fontSize="9"
+      fontWeight="400"
+      fontFamily="sans-serif"
+      fill={stroke}
+      opacity={opacity * 0.7}
+    >
+      SN
+    </text>
+
+    {/* Bottom stub — SN feeder output */}
+    <line x1="50" y1="86" x2="50" y2="100" stroke={stroke} strokeWidth={strokeWidth} opacity={opacity} strokeLinecap="round" />
+  </>
+);
+
 const SYMBOL_COMPONENTS: Record<EtapSymbolId, React.FC<Omit<EtapSymbolProps, 'symbolId'>>> = {
   busbar: BusbarSymbol,
   circuit_breaker: CircuitBreakerSymbol,
@@ -974,6 +1038,8 @@ const SYMBOL_COMPONENTS: Record<EtapSymbolId, React.FC<Omit<EtapSymbolProps, 'sy
   results: ResultsSymbol,
   relay: RelaySymbol,
   folder: FolderSymbol,
+  // Station symbols
+  gpz_station: GpzStationSymbol,
 };
 
 /**
