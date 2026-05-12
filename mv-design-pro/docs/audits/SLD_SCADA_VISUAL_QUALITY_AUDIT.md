@@ -23,15 +23,21 @@ Running 5 tests using 1 worker
   3 passed (5.7s)
 ```
 
-**Screenshot:** [`screenshots/sld-empty-state.png`](screenshots/sld-empty-state.png) (163 KB)
+**Screenshoty (5 widoków):**
 
-Screenshot pokazuje aktywną aplikację MV-DESIGN-PRO V12.2:
-- ciemne SCADA tło z polskim UI,
-- panele „Schemat i topologii", „Gotowość obliczeń", „Inspektor techniczny" (E-03),
-- status bar z LOD 2 i 100% scale,
-- pusta kanwa SLD V2 z komunikatem „Schemat oczekuje na dane modelu sieci",
-- top bar z przyciskami: „Sprawdź braki", „Nakładka", „Analizy", „Eksport",
-- model i status: „nie otwarto", „nie skonfiguruj projekt", „Brak wyników".
+| Plik | Widok | Co pokazuje |
+|---|---|---|
+| [`screenshots/sld-empty-state.png`](screenshots/sld-empty-state.png) | `#sld` (E-01) | Pusta kanwa SLD V2 z polskim komunikatem „Schemat oczekuje na dane modelu sieci", panele Schemat/Gotowość/Inspektor, status bar LOD 2 100% |
+| [`screenshots/sld-view-readonly.png`](screenshots/sld-view-readonly.png) | `#sld-view` | Identyczny widok w trybie tylko-do-odczytu |
+| [`screenshots/dashboard.png`](screenshots/dashboard.png) | `#dashboard` (E-00) | „Środowisko inżynierskie MV-DESIGN-PRO" — pełny formularz „Utwórz projekt SN" z polskimi polami: napięcie sieci 15 kV, norma IEC 60909:20…, układ „Pierścień SN z punktem normalnym…", uziemienie „Rezystor uziemiający", cel „Zwarcie maksymalne IEC 60909", stan „Stan projektowany 2026" |
+| [`screenshots/catalog-types.png`](screenshots/catalog-types.png) | `#catalog` (E-06) | Biblioteka typów: panel kategorii (cable_sn, line_sn, switch_equipment, transformer_sn itp.), Inspektor po prawej, status namespace |
+| [`screenshots/analysis-view.png`](screenshots/analysis-view.png) | `#analysis` (E-24) | Poziom analityczny z kontekstem analitycznym (PROJEKT/WARIANT/WERSJA MODELU/OBLICZENIA/OBIEKT/ZAKŁADKA) — wszystkie pokazują „Brak …" jawnie, nie 0.00 (goal §7); panel Inspektor z polskimi etykietami: Nazwa, Producent, Typ, Prąd znamionowy, Napięcie znamionowe, Częstotliwość, Rodzaj pola, Zabudowa, Zabezpieczenia |
+
+Wszystkie 5 widoków:
+- **dark/black SCADA background** ✓ (goal SCADA visual)
+- **polskie etykiety** ✓ (goal §8: UI po polsku)
+- **NIE 0.00 przy brakach** — wszystkie braki danych jako „— " lub „Brak …" jawnie (goal §7)
+- **brak zakazanych terminów** (proof/run/snapshot/case/branch/feeder/fallback/legacy/mock/debug/TODO/placeholder)
 
 Uruchomienie spec'a (powtarzalne):
 ```bash

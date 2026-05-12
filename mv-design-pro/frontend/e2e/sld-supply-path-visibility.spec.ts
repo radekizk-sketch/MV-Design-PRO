@@ -63,6 +63,46 @@ test.describe('Tor mocy — SupplyPathHighlighter w UI', () => {
       fullPage: true,
     });
   });
+
+  test('screenshot dashboard (E-00)', async ({ page }) => {
+    await page.goto('/#dashboard');
+    await waitForAppReady(page);
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: join(SCREENSHOT_DIR, 'dashboard.png'),
+      fullPage: true,
+    });
+  });
+
+  test('screenshot SLD viewer (read-only)', async ({ page }) => {
+    await page.goto('/#sld-view');
+    await waitForAppReady(page);
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: join(SCREENSHOT_DIR, 'sld-view-readonly.png'),
+      fullPage: true,
+    });
+  });
+
+  test('screenshot katalogu typów (E-06)', async ({ page }) => {
+    await page.goto('/#catalog');
+    await waitForAppReady(page);
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: join(SCREENSHOT_DIR, 'catalog-types.png'),
+      fullPage: true,
+    });
+  });
+
+  test('screenshot widoku analiz (E-24)', async ({ page }) => {
+    await page.goto('/#analysis');
+    await waitForAppReady(page);
+    await page.waitForTimeout(300);
+    await page.screenshot({
+      path: join(SCREENSHOT_DIR, 'analysis-view.png'),
+      fullPage: true,
+    });
+  });
 });
 
 test.describe('Manufacturer flow widoczność (smoke)', () => {
