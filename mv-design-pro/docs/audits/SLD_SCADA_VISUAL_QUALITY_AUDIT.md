@@ -43,6 +43,25 @@
 
 Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "endpoint_ports", missing_endpoints: [...]}` jest poprawnie tłumaczony przez `executeFixActionSurface` na otwarcie formularza edycji kabla/linii.
 
+### 1.2.a SupplyPathHighlighter (PR 3 element — interpretacja topologii toru zasilania)
+
+| Element | Lokalizacja | Status |
+|---|---|---|
+| BFS od źródeł przez zamknięte łączniki + transformatory | `frontend/src/ui/sld/v2/canvas/SupplyPathHighlighter.ts` | NOWY |
+| Testy 8 scenariuszy (radial closed/open, ring NMO, transformator, generator, determinizm, edge cases) | `frontend/src/ui/sld/v2/canvas/__tests__/SupplyPathHighlighter.test.ts` | NOWY |
+
+**Kontrakt:**
+- Pure topology, **brak fizyki** (bez prądów/napięć/impedancji — to solver).
+- Wynik: `energizedBusRefs`, `energizedBranchRefs`, `energizedTransformerRefs`, `openPointBranchRefs` (NMO + otwarte łączniki), `energizedSubstationRefs`, `energizedGeneratorRefs`, `sourceRefs`.
+- BFS przechodzi przez `branch.status === 'closed'` oraz każdy `Transformer` (oba kierunki HV↔LV).
+- Otwarte łączniki (status='open') między energized i nie-energized szynami zaznaczane jako openPoints — operator widzi czerwony marker NMO.
+- Deterministyczne (sortowane wyjścia).
+
+**Use case operatorski:**
+- Renderer SLD wywołuje `buildSupplyPathHighlight(enm)` raz na render.
+- Każdy element (kabel/szyna/stacja/DER) renderuje się w kolorze zielonym (energized) lub szarym (nie zasilony) na podstawie `isElementEnergized(highlight, ref)`.
+- NMO/punkty otwarte renderują się w kolorze czerwonym przez `isOpenPoint(highlight, ref)`.
+
 ### 1.3 PR 3 minimalne — strukturalne testy renderów
 
 | Test | Lokalizacja | Pokrycie |
@@ -61,7 +80,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 | Sekcje SN GPZ | 7/10 | 8/10 | 9/10 | 9/10 | n/a | Sekcje + pola + couplery działają. |
 | Stacja mini-RMU | 7/10 | 8/10 | 8/10 | 8/10 | n/a | `MiniBlockRmuRenderer` z 4 wariantami footprintu (terminal/inline/branch/sectional). Mini-pola IN/OUT/TR/DER widoczne. Mini-szyna obecna. |
 | Kanon aparatów (CB/DS/ES/CT/VT/FUSE) | n/a | n/a | 9/10 | 9/10 | 9/10 | Kwadrat/kółko/romb/boczny czerwony — zgodne z goal. |
-| Tor mocy (zielony/czerwony) | 6/10 | 7/10 | 7/10 | 7/10 | n/a | Paleta `overlayTypes.ts` poprawna. SupplyPathHighlighter niezbudowany (PR 3 pełne). |
+| Tor mocy (zielony/czerwony) | 7/10 | 8/10 | 8/10 | 8/10 | n/a | Paleta `overlayTypes.ts` poprawna. **`SupplyPathHighlighter` zbudowany** — BFS od źródeł przez zamknięte łączniki + transformatory; openPoints dla NMO. Integracja w `SldCanvasV2` toggle „Pokaż tor zasilania" — PR 3 pełne. |
 | Połączenie kończy się w porcie | 0/10 | 0/10 | 0/10 | 0/10 | n/a | **Przed PR 1**: porty opcjonalne, brak warningu. **Po PR 1**: detekcja brakujących portów + warning marker + readiness blocker. **Cel 10/10** osiągalny dopiero po włączeniu flagi `ENM_STRICT_PORT_BINDING` (PR 1.b). |
 | Klikalność elementów | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Główne elementy klikalne; pełna macierz 26 typów elementów — PR 2 pełne. |
 | Deep link readiness → element | 3/10 | 3/10 | 3/10 | 3/10 | n/a | E030 deep link działa; pozostałe blockery bez wzbogaconych deep linków — PR 2 pełne. |
