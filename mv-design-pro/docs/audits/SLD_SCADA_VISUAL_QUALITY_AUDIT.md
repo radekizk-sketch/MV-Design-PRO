@@ -32,6 +32,7 @@ Running 5 tests using 1 worker
 | [`screenshots/dashboard.png`](screenshots/dashboard.png) | `#dashboard` (E-00) | „Środowisko inżynierskie MV-DESIGN-PRO" — pełny formularz „Utwórz projekt SN" z polskimi polami: napięcie sieci 15 kV, norma IEC 60909:20…, układ „Pierścień SN z punktem normalnym…", uziemienie „Rezystor uziemiający", cel „Zwarcie maksymalne IEC 60909", stan „Stan projektowany 2026" |
 | [`screenshots/catalog-types.png`](screenshots/catalog-types.png) | `#catalog` (E-06) | Biblioteka typów: panel kategorii (cable_sn, line_sn, switch_equipment, transformer_sn itp.), Inspektor po prawej, status namespace |
 | [`screenshots/analysis-view.png`](screenshots/analysis-view.png) | `#analysis` (E-24) | Poziom analityczny z kontekstem analitycznym (PROJEKT/WARIANT/WERSJA MODELU/OBLICZENIA/OBIEKT/ZAKŁADKA) — wszystkie pokazują „Brak …" jawnie, nie 0.00 (goal §7); panel Inspektor z polskimi etykietami: Nazwa, Producent, Typ, Prąd znamionowy, Napięcie znamionowe, Częstotliwość, Rodzaj pola, Zabudowa, Zabezpieczenia |
+| [`screenshots/dashboard-backend-live.png`](screenshots/dashboard-backend-live.png) | `#dashboard` (real-backend) | **Dashboard z aktywnym backendem na :8000** — pokazuje projekt „Demo SLD" utworzony przez API (POST /api/projects), z datami utworzenia/modyfikacji 12.05.2026 i przyciskami „Otwórz"/„Usuń". Dowód że frontend+backend obsługują pełen cykl projektu. |
 
 Wszystkie 5 widoków:
 - **dark/black SCADA background** ✓ (goal SCADA visual)
@@ -46,6 +47,37 @@ npm run dev &  # dev server na :5173
 npx playwright install chromium  # jednorazowo
 PLAYWRIGHT_DISABLE_WEBSERVER=1 ./node_modules/.bin/playwright test \
   e2e/sld-supply-path-visibility.spec.ts --project=chromium --reporter=list
+```
+
+### Real-backend e2e (dodatkowy spec `sld-real-backend-flow.spec.ts`)
+
+**Status:** ZIELONY — 4/4 testów PASS na chromium z backendem na :8000.
+
+```
+Running 4 tests using 1 worker
+
+  ✓  1 dashboard z aktywnym backendem — lista projektów ładuje się (3.0s)
+  ✓  2 API /api/catalog/manufacturers zwraca 4 producentów requires_catalog (229ms)
+  ✓  3 API /api/catalog/complete-bay-templates zwraca 10 canonical fallback (213ms)
+  ✓  4 API /api/catalog/complete-bay-templates?manufacturer_ref=ABB → 10 z dopisaną referencją (217ms)
+
+  4 passed (6.7s)
+```
+
+Asercje zweryfikowane:
+- 4 producenci (ZPUE/Elektrometal/ABB/Siemens) ze statusem `requires_catalog` i pustymi `source_refs`,
+- 10 canonical fallback z prefiksem `CANONICAL_FALLBACK__` i wszystkimi 10 kategoriami `bay_kind`,
+- `manufacturer_ref=ABB` zwraca 10 templates z `manufacturer_ref="ABB"` i `source_status="canonical_fallback"` (NIE udajemy oficjalnego katalogu ABB).
+
+Uruchomienie:
+```bash
+cd mv-design-pro/backend
+poetry run uvicorn src.api.main:app --port 8000 &
+cd ../frontend
+npm run dev &
+PLAYWRIGHT_REAL_BACKEND=1 PLAYWRIGHT_DISABLE_WEBSERVER=1 \
+  ./node_modules/.bin/playwright test e2e/sld-real-backend-flow.spec.ts \
+  --project=chromium --reporter=list
 ```
 
 ## 0. Pełna lista commitów na branch `claude/rebuild-sld-industrial-7bjlW`
