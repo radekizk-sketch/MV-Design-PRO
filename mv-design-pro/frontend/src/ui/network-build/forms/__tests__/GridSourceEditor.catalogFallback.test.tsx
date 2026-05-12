@@ -19,7 +19,38 @@ let solverFetchMock: ReturnType<typeof vi.fn>;
 
 describe('GridSourceEditor E-03B', () => {
   beforeEach(() => {
-    solverFetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+    solverFetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/api/catalog/source-system-types')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 'source-system-15kv-310mva',
+            name: 'System 110/15 kV 310 MVA',
+            manufacturer: 'Katalog OSD',
+            voltage_rating_kv: 15,
+            sk3_mva: 310,
+            rx_ratio: 0.12,
+            earthing_system: 'resistor_grounded',
+          }]),
+        } as Response;
+      }
+
+      if (url.includes('/api/catalog/mv-apparatus-types')) {
+        return {
+          ok: true,
+          json: async () => ([{
+            id: 'mv-breaker-15kv-630a',
+            name: 'Wyłącznik SN 15 kV 630 A',
+            manufacturer: 'Katalog OSD',
+            device_kind: 'BREAKER',
+            u_n_kv: 15,
+            i_n_a: 630,
+            breaking_capacity_ka: 16,
+          }]),
+        } as Response;
+      }
+
       const body = JSON.parse(String(init?.body ?? '{}')) as { sk3_mva?: number | null };
       const isReducedSource = body.sk3_mva === 155;
 
@@ -69,11 +100,42 @@ describe('GridSourceEditor E-03B', () => {
     expect(screen.getByText('ip (3-faz. maks.)')).toBeInTheDocument();
     expect(screen.getByText('Ith (3-faz., tk)')).toBeInTheDocument();
     expect(screen.getByText('Z0 źródła')).toBeInTheDocument();
-    expect(await screen.findByText('IEC 60909 / short_circuit_core')).toBeInTheDocument();
+    expect(await screen.findByText('Obliczenie IEC 60909 po stronie serwera')).toBeInTheDocument();
+    expect(screen.getAllByText(/System 110\/15 kV 310 MVA/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('source-system-15kv-310mva')).not.toBeInTheDocument();
+    expect(screen.queryByText('IEC 60909 / short_circuit_core')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Zapisz GPZ' })).toBeInTheDocument();
     expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Nazwa GPZ jest wymagana/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Katalog' })).not.toBeInTheDocument();
+  });
+
+  it('domyślnie wybiera katalog GPZ i aparaturę pola, aby zapis nie był martwym kliknięciem', async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await screen.findByText('Obliczenie IEC 60909 po stronie serwera');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz GPZ' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      catalog_ref: 'source-system-15kv-310mva',
+      gpz_line_field_apparatus_catalog_ref: 'mv-breaker-15kv-630a',
+      manual_mode: false,
+      sn_voltage_kv: 15,
+      sk3_mva: 310,
+      rx_ratio: 0.12,
+    }));
+    expect(screen.queryByText(/Pozycja katalogowa jest wymagana/)).not.toBeInTheDocument();
   });
 
   it('wysyła nowe dane wejściowe do backendu i pokazuje zwrócone podsumowanie', async () => {

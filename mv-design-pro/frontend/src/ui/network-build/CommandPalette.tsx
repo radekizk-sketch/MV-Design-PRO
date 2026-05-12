@@ -47,6 +47,7 @@ const SLD_KIND_LABEL_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   gpz: 'GPZ',
   section: 'Sekcja SN',
   bay: 'Pole SN',
+  apparatus: 'Aparat pola SN',
   cable_segment_sn: 'Kabel SN',
   overhead_line_sn: 'Linia napowietrzna SN',
   station: 'Stacja',
@@ -129,7 +130,7 @@ export function CommandPalette({
           id: `menu:${kind}:${action.id}`,
           category: 'menu',
           label: `${SLD_KIND_LABEL_PL[kind]} → ${action.labelPl}`,
-          description: `Akcja menu kontekstowego SLD (${kind})`,
+          description: `Akcja menu kontekstowego SLD (${SLD_KIND_LABEL_PL[kind]})`,
           keywords: `${SLD_KIND_LABEL_PL[kind]} ${action.labelPl} ${action.id}`,
           run: () => {
             // Akcje SLD wymagają kontekstu (elementu na kanwie). Z palety

@@ -1,0 +1,9 @@
+= : The term '=' is not recognized as the name of a cmdlet, function, script file, or operable program. Check the spell
+ing of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ = Get-Content -Raw -LiteralPath 'C:\Users\radek\Documents\GitHub\MV-D ...
++ ~
+    + CategoryInfo          : ObjectNotFound: (=:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+ 
+Error: Input must be provided either through stdin or as a prompt argument when using --print

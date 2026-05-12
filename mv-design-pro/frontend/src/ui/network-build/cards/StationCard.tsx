@@ -1,8 +1,8 @@
 /**
- * StationCard â€” karta obiektu stacji elektroenergetycznej (SN/nN).
+ * StationCard — karta obiektu stacji elektroenergetycznej (SN/nN).
  *
- * WyĹ›wietla identyfikacjÄ™, strukturÄ™ logicznÄ… stacji (pola SN, transformatory, szyny),
- * listÄ™ pĂłl z rolami oraz listÄ™ transformatorĂłw.
+ * Wyświetla identyfikację, strukturę logiczną stacji (pola SN, transformatory, szyny),
+ * listę pól z rolami oraz listę transformatorów.
  *
  * BINDING: 100% PL etykiety.
  */
@@ -35,19 +35,19 @@ function buildConverterSourceContext(
 function bayRoleLabel(role: string): string {
   switch (role) {
     case 'IN':
-      return 'ZasilajÄ…ce (wejĹ›cie)';
+      return 'Zasilające (wejście)';
     case 'OUT':
-      return 'OdgaĹ‚Ä™Ĺşne (wyjĹ›cie)';
+      return 'Odgałęźne (wyjście)';
     case 'TR':
       return 'Transformatorowe';
     case 'COUPLER':
-      return 'SprzÄ™gĹ‚o sekcji';
+      return 'Sprzęgło sekcji';
     case 'FEEDER':
-      return 'ZasilajÄ…ce odgaĹ‚Ä™Ĺşne';
+      return 'Zasilające odgałęźne';
     case 'MEASUREMENT':
       return 'Pomiarowe';
     case 'OZE':
-      return 'OZE / ĹşrĂłdĹ‚o';
+      return 'OZE / źródło';
     default:
       return role;
   }
@@ -123,8 +123,8 @@ export function StationCard({ elementId }: { elementId: string }) {
         },
         {
           key: 'entry_point',
-          label: 'Punkt wejĹ›cia',
-          value: station.entry_point_ref ?? 'â€”',
+          label: 'Punkt wejścia',
+          value: station.entry_point_ref ?? '—',
         },
       ],
     };
@@ -181,7 +181,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       ],
     };
 
-    // Pola SN â€” kaĹĽde pole jako wiersz
+    // Pola SN — każde pole jako wiersz
     const bayFields = stationBays.map((bay) => ({
       key: `bay_${bay.id}`,
       label: bay.name,
@@ -194,7 +194,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       fields:
         bayFields.length > 0
           ? bayFields
-          : [{ key: 'no_bays', label: 'Brak pĂłl', value: 'Nie zdefiniowano pĂłl SN', severity: 'warning' as const }],
+          : [{ key: 'no_bays', label: 'Brak pól', value: 'Nie zdefiniowano pól SN', severity: 'warning' as const }],
     };
 
     // Transformer-to-bay assignment enrichment (via equipment_refs)
@@ -202,7 +202,7 @@ export function StationCard({ elementId }: { elementId: string }) {
       const trBay = stationBays.find((bay) =>
         bay.bay_role === 'TR' && bay.equipment_refs?.includes(tr.ref_id),
       );
-      const bayInfo = trBay ? ` â†’ Pole: ${trBay.name}` : '';
+      const bayInfo = trBay ? ` → Pole: ${trBay.name}` : '';
       return {
         key: `tr_${tr.ref_id}`,
         label: tr.name,
@@ -227,11 +227,11 @@ export function StationCard({ elementId }: { elementId: string }) {
         id: 'analysis',
         label: 'Wyniki analizy',
         fields: [
-          { key: 'u_bus_pu', label: 'NapiÄ™cie U szyny', value: null, unit: 'pu', source: 'calculated' },
-          { key: 'ik3', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'ik1', label: 'PrÄ…d zwarciowy Ikâ‚', value: null, unit: 'kA', source: 'calculated' },
-          { key: 'max_tr_loading', label: 'Maks. obciÄ…ĹĽenie trafo', value: null, unit: '%', source: 'calculated' },
-          { key: 'no_results', label: 'Status', value: 'Brak wynikĂłw â€” uruchom analizÄ™', severity: 'warning' },
+          { key: 'u_bus_pu', label: 'Napięcie U szyny', value: null, unit: 'pu', source: 'calculated' },
+          { key: 'ik3', label: 'Pr?d zwarciowy Ik3', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'ik1', label: 'Pr?d zwarciowy Ik1', value: null, unit: 'kA', source: 'calculated' },
+          { key: 'max_tr_loading', label: 'Maks. obciążenie trafo', value: null, unit: '%', source: 'calculated' },
+          { key: 'no_results', label: 'Status', value: 'Brak wyników — uruchom analizę', severity: 'warning' },
         ],
       });
     }

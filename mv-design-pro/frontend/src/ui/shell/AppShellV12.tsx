@@ -24,6 +24,7 @@ import { useActiveMode, useIssuePanelOpen } from '../app-state';
 import { EmptyInspectorPanel } from '../inspector-panel/EmptyInspectorPanel';
 import { GlobalSearch } from '../network-build/GlobalSearch';
 import { CommandPalette } from '../network-build/CommandPalette';
+import { InspectorEngineeringView } from '../network-build/InspectorEngineeringView';
 import { notify } from '../notifications/store';
 import { ProjectMetadataModal } from '../network-build/ProjectMetadataModal';
 import { SnapshotHistoryModal } from '../network-build/SnapshotHistoryModal';
@@ -80,24 +81,62 @@ function IconClipboard({ className }: { className?: string }) {
   );
 }
 
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tagName = target.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || target.isContentEditable;
+}
+
 /**
  * Wrapper panelu kontekstu obszaru.
  */
 function ContextPanelShell({
   areaCode,
   collapsed,
+  onToggle,
 }: {
   areaCode: AreaId;
   collapsed: boolean;
+  onToggle: () => void;
 }) {
-  if (collapsed) return null;
+  if (collapsed) {
+    return (
+      <aside
+        data-testid="context-panel-collapsed-rail"
+        data-collapsed="true"
+        className="flex w-10 shrink-0 flex-col items-center border-r border-scada-border bg-scada-surface pt-2"
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex h-8 w-8 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text"
+          aria-label="Pokaż lewy pasek boczny"
+          title="Pokaż lewy pasek boczny"
+          data-testid="context-panel-toggle"
+        >
+          <IconChevronRight />
+        </button>
+      </aside>
+    );
+  }
   return (
     <aside
       data-testid="context-panel"
       data-area={areaCode}
-      className="flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
+      data-collapsed="false"
+      className="relative flex w-[280px] shrink-0 flex-col border-r border-scada-border bg-scada-panel"
       style={{ minWidth: 280, maxWidth: 280 }}
     >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="absolute right-1 top-1 z-10 flex h-7 w-7 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text"
+        aria-label="Ukryj lewy pasek boczny"
+        title="Ukryj lewy pasek boczny"
+        data-testid="context-panel-toggle"
+      >
+        <IconChevronLeft />
+      </button>
       <AreaContextPanel areaCode={areaCode} />
     </aside>
   );
@@ -123,7 +162,7 @@ export function AppShellV12({
   const activeArea = useAppStateStore((s) => s.activeArea);
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
-  const [contextCollapsed] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [, setMassReviewOpen] = useState(false);
@@ -135,6 +174,17 @@ export function AppShellV12({
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const meta = event.ctrlKey || event.metaKey;
+      if (isEditableTarget(event.target) && event.key !== 'Escape') return;
+      if (meta && !event.shiftKey && (event.key === 'b' || event.key === 'B')) {
+        event.preventDefault();
+        setContextCollapsed((v) => !v);
+        return;
+      }
+      if (meta && event.shiftKey && (event.key === 'b' || event.key === 'B')) {
+        event.preventDefault();
+        setInspectorCollapsed((v) => !v);
+        return;
+      }
       if (meta && event.shiftKey && (event.key === 'P' || event.key === 'p')) {
         event.preventDefault();
         setCommandPaletteOpen((v) => !v);
@@ -164,6 +214,12 @@ export function AppShellV12({
   const isReadOnly = activeMode === 'RESULT_VIEW';
   const mainSurfaceExpanded = activeSurface?.openMode === 'expand_workspace';
 
+  useEffect(() => {
+    if (activeSurface && activeSurface.openMode !== 'expand_workspace') {
+      setInspectorCollapsed(false);
+    }
+  }, [activeSurface?.openMode, activeSurface?.surfaceId]);
+
   const inspectorWidthClass = useMemo(() => {
     if (inspectorCollapsed) return 'w-10';
     switch (activeSurface?.sizeClass) {
@@ -174,6 +230,7 @@ export function AppShellV12({
     }
   }, [activeSurface, inspectorCollapsed]);
 
+  const toggleContextPanel = useCallback(() => setContextCollapsed((v) => !v), []);
   const toggleInspector = useCallback(() => setInspectorCollapsed((v) => !v), []);
 
   const resolvedInspectorContent = useMemo(() => {
@@ -181,6 +238,9 @@ export function AppShellV12({
       return <WorkspaceSurfaceRouter region="panel" />;
     }
     if (inspectorContent) return inspectorContent;
+    if (selectedElement) {
+      return <InspectorEngineeringView />;
+    }
     return (
       <EmptyInspectorPanel selectedElement={selectedElement} isReadOnly={isReadOnly} />
     );
@@ -223,7 +283,7 @@ export function AppShellV12({
 
         {/* ContextPanel (320px, zwijany) */}
         {!mainSurfaceExpanded && (
-          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} />
+          <ContextPanelShell areaCode={activeArea} collapsed={contextCollapsed} onToggle={toggleContextPanel} />
         )}
 
         {/* Kanwas SLD — elastyczny */}
@@ -269,8 +329,8 @@ export function AppShellV12({
                   'flex h-6 w-6 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text',
                   inspectorCollapsed && 'mx-auto',
                 )}
-                aria-label={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
-                title={inspectorCollapsed ? 'Rozwiń Inspektor techniczny' : 'Zwiń Inspektor techniczny'}
+                aria-label={inspectorCollapsed ? 'Pokaż prawy pasek boczny' : 'Ukryj prawy pasek boczny'}
+                title={inspectorCollapsed ? 'Pokaż prawy pasek boczny' : 'Ukryj prawy pasek boczny'}
                 data-testid="inspector-panel-toggle"
               >
                 {inspectorCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
@@ -295,15 +355,9 @@ export function AppShellV12({
                 className="flex flex-col items-center gap-2 pt-2"
                 data-testid="inspector-collapsed-icon"
               >
-                <button
-                  type="button"
-                  onClick={toggleInspector}
-                  className="flex h-8 w-8 items-center justify-center rounded text-scada-muted transition-colors hover:bg-scada-active hover:text-scada-text"
-                  title="Otwórz Inspektor techniczny"
-                  aria-label="Otwórz Inspektor techniczny"
-                >
+                <span className="flex h-8 w-8 items-center justify-center text-scada-muted" aria-hidden="true">
                   <IconClipboard />
-                </button>
+                </span>
               </div>
             )}
           </aside>

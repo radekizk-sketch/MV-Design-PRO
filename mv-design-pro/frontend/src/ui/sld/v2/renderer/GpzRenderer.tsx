@@ -110,7 +110,7 @@ export interface GpzRendererProps {
   readonly titleBarAction?: string;
   /**
    * Etykieta magistrali sieci terenowej (kanon SCADA). Pusty string ukrywa
-   * trunk line, niezdefiniowane → domyślne "Magistrala SN — sieć terenowa".
+   * Opis strefy wyprowadzeń SN, niezdefiniowane → domyślne "Wyprowadzenia SN".
    */
   readonly fieldTrunkLabel?: string;
   /** Liczba odpływów SN — używane do wnioskowania `outgoingBayCount` przy LOD 0 z ENM. */

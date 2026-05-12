@@ -168,7 +168,7 @@ describe('InspectorStickyHeader', () => {
         calculationStatus="none"
       />,
     );
-    const text = container.textContent ?? '';
+      const text = container.textContent ?? '';
     expect(text).not.toMatch(/\b(?:snapshot|case|run|legacy|wizard|fallback|migawka|przypadek|uruchomienie|proof)\b/i);
   });
 });

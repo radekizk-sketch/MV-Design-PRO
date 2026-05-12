@@ -253,7 +253,7 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 
   await openSegmentInspector(page, segmentRefs[0]);
   await expect(page.getByTestId('sld-segment-inspector-catalog')).toContainText(CABLE_ID);
-  await expect(page.getByTestId('sld-segment-inspector-namespace')).toContainText('KABEL_SN');
+  await expect(page.getByTestId('sld-segment-inspector-catalog-family')).toContainText('KABEL_SN');
   await capture(page, testInfo, '02a-segment-inspector-with-catalog');
 
   await page.getByTestId('sld-segment-open-catalog-picker').click();

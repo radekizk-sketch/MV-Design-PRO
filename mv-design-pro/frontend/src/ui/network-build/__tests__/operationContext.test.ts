@@ -53,6 +53,9 @@ const snapshot = {
     { id: 'bus-ring-a', ref_id: 'bus-ring-a', name: 'Ring A', voltage_kv: 15 },
     { id: 'bus-ring-b', ref_id: 'bus-ring-b', name: 'Ring B', voltage_kv: 15 },
     { id: 'bus-gpz-1', ref_id: 'bus-gpz-1', name: 'Szyna GPZ 1', voltage_kv: 15 },
+    { id: 'bus-trunk-start', ref_id: 'bus-trunk-start', name: 'Zacisk pola GPZ', voltage_kv: 15 },
+    { id: 'bus-trunk-mid', ref_id: 'bus-trunk-mid', name: 'Węzeł pośredni ciągu', voltage_kv: 15 },
+    { id: 'bus-trunk-end', ref_id: 'bus-trunk-end', name: 'Koniec ciągu M1', voltage_kv: 15 },
   ],
   sources: [
     { id: 'source-gpz-1', ref_id: 'source-gpz-1', name: 'GPZ 1', bus_ref: 'bus-sn-1' },
@@ -86,6 +89,20 @@ const snapshot = {
     { ref_id: 'sw-a', name: 'Lacznik A', type: 'switch' },
     { ref_id: 'sw-b', name: 'Lacznik B', type: 'disconnector' },
     { ref_id: 'line-1', name: 'Linia 1', type: 'cable' },
+    {
+      ref_id: 'seg-1',
+      name: 'Odcinek 1',
+      type: 'cable',
+      from_bus_ref: 'bus-trunk-start',
+      to_bus_ref: 'bus-trunk-mid',
+    },
+    {
+      ref_id: 'seg-2',
+      name: 'Odcinek 2',
+      type: 'cable',
+      from_bus_ref: 'bus-trunk-mid',
+      to_bus_ref: 'bus-trunk-end',
+    },
   ],
   branch_points: [
     {
@@ -230,6 +247,28 @@ describe('buildOperationContext', () => {
     expect(context.terminal_name).toBe('Szyna SN 1');
     expect(context.terminal_voltage_label).toBe('15 kV');
     expect(context.is_first_trunk_segment).toBe(true);
+  });
+
+  it('kontynuuje ciąg z końca istniejącego odcinka zamiast blokować formularz bez pola SN', () => {
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'trunk-1',
+      elementType: 'LineBranch',
+      snapshot,
+      logicalViews,
+    });
+
+    expect(context.trunk_id).toBe('trunk-1');
+    expect(context.trunkId).toBe('trunk-1');
+    expect(context.from_terminal_id).toBe('bus-trunk-end');
+    expect(context.terminal_id).toBe('bus-trunk-end');
+    expect(context.terminalId).toBe('bus-trunk-end');
+    expect(context.terminal_port_id).toBe('trunk_end');
+    expect(context.from_bus_ref).toBe('bus-trunk-end');
+    expect(context.terminal_name).toBe('Koniec ciągu M1');
+    expect(context.terminal_voltage_label).toBe('15 kV');
+    expect(context.is_first_trunk_segment).toBe(false);
+    expect(context.existing_segment_count).toBe(2);
   });
 
   it('dla pierwszego odcinka z obiektu zrodla nie tworzy sztucznego terminala ani trunk_id', () => {

@@ -1,0 +1,99 @@
+- generic [ref=e4] [box=0,0,3656,2060]:
+  - generic [ref=e6] [box=-1,-1,1,28]:
+    - button [disabled] [ref=e7] [box=-1,-1,58,28]:
+      - generic [ref=e8] [box=6,2,11,21]: ↶
+      - generic [ref=e9] [box=23,6,27,14]: Cofnij
+    - button [disabled] [ref=e10] [box=60,-1,62,28]:
+      - generic [ref=e11] [box=67,2,11,21]: ↷
+      - generic [ref=e12] [box=84,6,31,14]: Ponów
+  - banner [ref=e13] [box=0,0,3656,70]:
+    - generic [ref=e14] [box=0,0,136,69]:
+      - generic [ref=e15] [box=14,19,107,14]: MV-DESIGN-PRO
+      - generic [ref=e16] [box=14,32,107,17]: "12.2"
+    - generic "Kontekst projektu" [ref=e17] [box=136,0,2936,69]:
+      - button "Projekt Sieć SN - projekt roboczy" [ref=e690] [cursor=pointer] [box=136,0,164,69]
+      - button "Cel / stan Zwarcie maksymalne IEC 60909 · Stan projektowany 2026" [ref=e691] [cursor=pointer] [box=300,0,224,69]
+      - button "Konfiguruj zakres" [ref=e28] [cursor=pointer] [box=135,-1,1,1]
+      - generic "Brak wyników" [ref=e29] [box=524,0,136,69]
+    - generic [ref=e33] [box=3086,23,49,22]:
+      - generic [ref=e34] [box=3091,23,44,10]: 06:29:49
+      - generic [ref=e35] [box=3086,37,49,9]: 11.05.2026
+    - generic [ref=e36] [box=3150,0,506,69]:
+      - button "Sprawdź braki danych" [ref=e37] [cursor=pointer] [box=3161,17,160,35]
+      - button "Nakładka" [ref=e43] [cursor=pointer] [box=3328,17,91,35]
+      - button "Analizy" [ref=e47] [cursor=pointer] [box=3426,17,86,35]
+      - button "Eksport" [ref=e51] [cursor=pointer] [box=3519,17,85,35]
+      - button "Ustawienia" [ref=e55] [cursor=pointer] [box=3611,17,35,35]
+  - generic [ref=e59] [box=0,70,3656,48]:
+    - generic [ref=e60] [box=10,79,3323,28]:
+      - 'generic "Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą" [ref=e692] [box=10,79,161,28]'
+      - 'generic "Blokady: T=3 K=0 E=0" [ref=e888] [box=172,79,95,28]'
+      - generic [ref=e699] [box=267,79,143,28]
+      - generic [ref=e704] [box=411,79,86,28]
+      - generic [ref=e707] [box=497,79,73,28]
+      - generic [ref=e710] [box=571,79,100,28]
+      - generic [ref=e713] [box=671,79,165,28]
+      - generic [ref=e716] [box=836,79,109,28]
+      - generic [ref=e719] [box=945,79,93,28]
+    - generic [ref=e66] [box=3333,70,313,47]:
+      - button "Szukaj" [ref=e67] [cursor=pointer] [box=3352,76,35,35]
+      - button "Katalog" [ref=e72] [cursor=pointer] [box=3412,76,35,35]
+      - button "Przeglądy 3" [ref=e889] [cursor=pointer] [box=3471,76,43,35]
+      - button "Metadane" [ref=e82] [cursor=pointer] [box=3538,76,45,35]
+      - button "Historia" [ref=e87] [cursor=pointer] [box=3607,76,35,35]
+  - generic [ref=e92] [box=0,118,3656,1918]:
+    - navigation "Pasek obszarów roboczych" [ref=e93] [box=0,118,49,1918]:
+      - generic [ref=e94] [box=-2,125,52,1904]
+    - complementary [ref=e157] [box=49,118,280,1918]:
+      - button "Ukryj lewy pasek boczny" [ref=e158] [cursor=pointer] [box=300,121,24,24]
+      - generic [ref=e352] [box=49,118,279,1918]
+    - generic [ref=e205] [box=329,158,2966,1878]:
+      - img [ref=e206] [box=329,158,2966,1877]
+      - region "Gotowość obliczeń na schemacie" [ref=e211] [box=2925,168,360,53]
+      - button "Odłącznik szynowy" [ref=e1036] [cursor=pointer] [box=1155,1108,66,44]
+      - button "Wyłącznik SN" [ref=e1037] [cursor=pointer] [box=1155,1152,70,44]
+      - button "Przekładnik prądowy" [ref=e1038] [cursor=pointer] [box=1155,1196,66,44]
+      - button "Rozłącznik" [ref=e1039] [cursor=pointer] [box=1155,1240,70,44]
+      - button "Uziemnik" [ref=e1040] [cursor=pointer] [box=1177,1287,66,62]
+      - button "Głowica kablowa / port odpływu" [ref=e1041] [cursor=pointer] [box=1155,1398,59,103]
+      - button "Odłącznik szynowy" [ref=e1042] [cursor=pointer] [box=1306,1108,66,44]
+      - button "Wyłącznik SN" [ref=e1043] [cursor=pointer] [box=1306,1152,70,44]
+      - button "Przekładnik prądowy" [ref=e1044] [cursor=pointer] [box=1306,1196,66,44]
+      - button "Rozłącznik" [ref=e1045] [cursor=pointer] [box=1306,1240,70,44]
+      - button "Uziemnik" [ref=e1046] [cursor=pointer] [box=1328,1287,66,62]
+      - button "Głowica kablowa / port odpływu" [ref=e1047] [cursor=pointer] [box=1306,1398,59,103]
+      - button "Odłącznik szynowy" [ref=e1048] [cursor=pointer] [box=1764,1108,66,44]
+      - button "Wyłącznik SN" [ref=e1049] [cursor=pointer] [box=1764,1152,70,44]
+      - button "Przekładnik prądowy" [ref=e1050] [cursor=pointer] [box=1764,1196,66,44]
+      - button "Rozłącznik" [ref=e1051] [cursor=pointer] [box=1764,1240,70,44]
+      - button "Uziemnik" [ref=e1052] [cursor=pointer] [box=1786,1287,66,62]
+      - button "Głowica kablowa / port odpływu" [ref=e1053] [cursor=pointer] [box=1764,1398,59,103]
+      - button "Odłącznik szynowy" [ref=e1054] [cursor=pointer] [box=1915,1108,66,44]
+      - button "Wyłącznik SN" [ref=e1055] [cursor=pointer] [box=1915,1152,70,44]
+      - button "Przekładnik prądowy" [ref=e1056] [cursor=pointer] [box=1915,1196,66,44]
+      - button "Rozłącznik" [ref=e1057] [cursor=pointer] [box=1915,1240,70,44]
+      - button "Uziemnik" [ref=e1058] [cursor=pointer] [box=1937,1287,66,62]
+      - button "Głowica kablowa / port odpływu" [ref=e1059] [cursor=pointer] [box=1915,1398,59,103]
+    - complementary [ref=e218] [box=3296,118,360,1918]:
+      - generic [ref=e219] [box=3298,118,359,28]
+      - generic [ref=e1060] [box=3298,146,359,1890]
+  - generic "Pasek statusu aplikacji" [ref=e325] [box=0,2036,3656,24]:
+    - generic [ref=e326] [box=10,2039,784,18]:
+      - generic [ref=e327] [box=10,2048,1,1]: "Bieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026."
+      - generic [ref=e328] [box=10,2039,81,18]: Model / Model
+      - generic [ref=e329] [box=98,2041,2,15]: "|"
+      - generic [ref=e330] [box=108,2041,151,15]
+      - generic [ref=e333] [box=266,2041,2,15]: "|"
+      - generic [ref=e334] [box=275,2041,216,15]
+      - generic [ref=e337] [box=498,2041,2,15]: "|"
+      - generic [ref=e338] [box=507,2041,149,15]
+      - generic [ref=e341] [box=663,2041,2,15]: "|"
+      - generic [ref=e342] [box=673,2041,77,15]
+      - generic [ref=e345] [box=757,2041,2,15]: "|"
+      - generic [ref=e346] [box=766,2041,28,15]: Edycja
+    - generic [ref=e347] [box=3395,2041,251,15]:
+      - generic [ref=e884] [box=3395,2041,63,15]: Brak wyników
+      - generic [ref=e885] [box=3465,2041,2,15]: "|"
+      - generic [ref=e1160] [box=3474,2041,69,15]: ▲ 1 ostrzeżenie
+      - generic [ref=e887] [box=3550,2041,2,15]: "|"
+      - generic [ref=e348] [box=3560,2041,86,15]

@@ -237,7 +237,7 @@ export function TrunkCard({ corridorRef }: { corridorRef: string }) {
     },
     {
       id: 'insert_station_on_segment_sn',
-      label: 'Wstaw stację na odcinku',
+      label: 'Podziel odcinek i wstaw stację',
       variant: 'secondary',
       onClick: handleInsertStation,
       disabled: segmentBranches.length === 0,

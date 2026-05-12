@@ -2098,6 +2098,9 @@ describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej
         destination: '→ ST-001 SADY',
         energized: true,
         feederNumber: 'L-203',
+        segmentTypeLabel: 'Kabel SN',
+        segmentLengthLabel: '500 m',
+        catalogLabel: 'XRUHAKXS 120/25',
       },
     },
     {
@@ -2113,6 +2116,9 @@ describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej
       outgoingFeeder: {
         destination: '→ NMO-12',
         energized: true,
+        segmentTypeLabel: 'Linia napowietrzna SN',
+        segmentLengthLabel: '700 m',
+        catalogLabel: 'AFL-6 70',
       },
     },
     {
@@ -2212,28 +2218,62 @@ describe('GpzSwitchgearRenderer — pola liniowe SN i magistrala sieci terenowej
     ).toBeNull();
   });
 
-  it('Magistrala SN — domyślna trunk line + etykieta widoczne gdy są feedery', () => {
+  it('wyprowadzenia SN nie tworzą wspólnej linii pod wszystkimi głowicami', () => {
     const { container } = rTrunk();
     const trunk = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-line"]');
     const label = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]');
-    expect(trunk).not.toBeNull();
-    expect(label?.textContent).toBe('Magistrala SN — sieć terenowa');
+    expect(trunk).toBeNull();
+    expect(label?.textContent).toBe('Wyprowadzenia SN');
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-corridor-lv-line-1"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-corridor-lv-line-2"]'),
+    ).not.toBeNull();
   });
 
-  it('Custom fieldTrunkLabel → użyta zamiast domyślnej', () => {
-    const { container } = rTrunk({ fieldTrunkLabel: 'Magistrala 15 kV — Olesno' });
+  it('Custom fieldTrunkLabel → użyta jako opis strefy wyprowadzeń', () => {
+    const { container } = rTrunk({ fieldTrunkLabel: 'Wyprowadzenia 15 kV — Olesno' });
     const label = container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]');
-    expect(label?.textContent).toBe('Magistrala 15 kV — Olesno');
+    expect(label?.textContent).toBe('Wyprowadzenia 15 kV — Olesno');
   });
 
   it('Pusty fieldTrunkLabel ("") → trunk line ukryty (showTrunk=false)', () => {
     const { container } = rTrunk({ fieldTrunkLabel: '' });
     expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-line"]')).toBeNull();
     expect(container.querySelector('[data-testid="sld-v2-gpz-field-trunk-label"]')).toBeNull();
-    /* Feedery nadal widoczne — sama trunk wyłączona. */
+    /* Wyprowadzenia nadal widoczne — wyłączony jest tylko opis zbiorczy. */
     expect(
       container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-1"]'),
     ).not.toBeNull();
+  });
+
+  it('parametry odcinka są widoczne przy korytarzu wyprowadzonym z głowicy', () => {
+    const { container } = rTrunk();
+    const params1 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-parameters-lv-line-1"]',
+    );
+    const params2 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-parameters-lv-line-2"]',
+    );
+    expect(params1?.textContent).toBe('XRUHAKXS 120/25 · 500 m');
+    expect(params2?.textContent).toBe('AFL-6 70 · 700 m');
+  });
+
+  it('każde wyprowadzenie startuje w osi własnej głowicy i ma osobny pas antykolizyjny', () => {
+    const { container } = rTrunk();
+    const f1 = container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-1"]');
+    const f2 = container.querySelector('[data-testid="sld-v2-gpz-outgoing-feeder-lv-line-2"]');
+    const drop1 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-drop-lv-line-1"]',
+    );
+    const drop2 = container.querySelector(
+      '[data-testid="sld-v2-gpz-outgoing-feeder-drop-lv-line-2"]',
+    );
+    expect(drop1?.getAttribute('x1')).toBe(f1?.getAttribute('data-cable-head-x'));
+    expect(drop2?.getAttribute('x1')).toBe(f2?.getAttribute('data-cable-head-x'));
+    expect(f1?.getAttribute('data-lane-index')).toBe('0');
+    expect(f2?.getAttribute('data-lane-index')).toBe('1');
   });
 
   it('Brak żadnego outgoingFeeder w sections → field trunk zone z feeder-count=0', () => {

@@ -96,7 +96,7 @@ def test_analysis_runs_router_ignores_legacy_analysis_run_rows(client: TestClien
 
     detail_response = client.get(f"/api/analysis-runs/{legacy_run.id}")
     assert detail_response.status_code == 404
-    assert detail_response.json()["detail"] == f"Run {legacy_run.id} not found"
+    assert detail_response.json()["detail"] == f"Nie znaleziono obliczenia {legacy_run.id}"
     assert client.get(f"/analysis-runs/{legacy_run.id}").status_code == 404
 
 

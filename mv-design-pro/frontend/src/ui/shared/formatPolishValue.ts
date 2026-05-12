@@ -8,7 +8,7 @@
  *
  * Cel: wyeliminować chaos „ściany zer” w SLD i panelach inżynierskich
  * w sytuacjach, gdy obliczenia nie zostały uruchomione, dane są niekompletne,
- * a komponent zwracał błędnie `(value ?? 0).toFixed(2)`.
+ * a komponent zwracał błędnie `(value ? 0).toFixed(2)`.
  *
  * Używaj zamiast lokalnych `formatNumber`. Każdy nowy widok inżynierski powinien
  * korzystać wyłącznie z tej funkcji albo z helperów `formatCurrent` /

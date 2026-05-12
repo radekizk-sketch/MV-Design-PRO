@@ -13,6 +13,7 @@ export type SldElementKindForMenu =
   | 'gpz'
   | 'section'
   | 'bay'
+  | 'apparatus'
   | 'cable_segment_sn'
   | 'overhead_line_sn'
   | 'station'
@@ -49,7 +50,6 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-equipment', labelPl: 'Skonfiguruj aparaturę', group: 'edycja' },
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
-    { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny', group: 'budowa' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
     /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
     { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
@@ -59,11 +59,22 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
     { id: 'delete-bay', labelPl: 'Usuń pole', group: 'usun' },
   ],
+  apparatus: [
+    { id: 'open-bay', labelPl: 'Otwórz kartę pola', group: 'edycja' },
+    { id: 'configure-equipment', labelPl: 'Skonfiguruj aparat', group: 'edycja' },
+    { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
+    { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
+    { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny z głowicy', group: 'budowa' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', group: 'widok' },
+    { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
+  ],
   cable_segment_sn: [
+    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
+    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', group: 'budowa' },
+    { id: 'insert-zksn', labelPl: 'Zakończ odcinek w ZK SN', group: 'budowa' },
+    { id: 'insert-pole', labelPl: 'Zakończ odcinek słupem rozgałęźnym', group: 'budowa' },
     /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
     { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
-    { id: 'insert-station', labelPl: 'Wstaw stację transformatorową', group: 'budowa' },
-    { id: 'insert-zksn', labelPl: 'Wstaw złącze kablowe SN', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
     { id: 'insert-joint', labelPl: 'Wstaw mufę kablową', group: 'budowa' },
     { id: 'change-catalog', labelPl: 'Zmień katalog kabla', group: 'edycja' },
@@ -74,10 +85,11 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'delete-segment', labelPl: 'Usuń odcinek', group: 'usun' },
   ],
   overhead_line_sn: [
+    { id: 'continue-trunk-from-endpoint', labelPl: 'Kontynuuj ciąg główny', group: 'budowa' },
+    { id: 'insert-station', labelPl: 'Zakończ odcinek stacją SN/nN', group: 'budowa' },
+    { id: 'insert-pole', labelPl: 'Zakończ odcinek słupem rozgałęźnym', group: 'budowa' },
     /* Phase 0C (operator-grade SLD plan v2): świadomy split z preview */
     { id: 'conscious-split-on-segment', labelPl: 'Podziel odcinek (świadomy)', group: 'budowa' },
-    { id: 'insert-station', labelPl: 'Wstaw stację transformatorową', group: 'budowa' },
-    { id: 'insert-pole', labelPl: 'Wstaw słup rozgałęźny', group: 'budowa' },
     { id: 'insert-sectional', labelPl: 'Wstaw łącznik sekcyjny', group: 'budowa' },
     { id: 'change-catalog', labelPl: 'Zmień katalog przewodu', group: 'edycja' },
     { id: 'edit-line', labelPl: 'Edytuj parametry linii', group: 'edycja' },
@@ -126,6 +138,7 @@ export function getMenuActions(
     readonly bayIsRunEndpoint?: boolean;  // Phase 0B: czy pole jest endpointem ciągu (free terminal)
     readonly stationHasFreeBay?: boolean;
     readonly hasResults?: boolean;
+    readonly apparatusKind?: string;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
@@ -137,6 +150,13 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl: 'Pole ma już wyprowadzony ciąg główny.',
+      };
+    }
+    if (kind === 'apparatus' && a.id === 'extend-trunk' && ctx.apparatusKind !== 'cable_head') {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl: 'Ciąg główny można wyprowadzić tylko z głowicy kablowej / portu odpływu pola SN.',
       };
     }
     /* Phase 0B (operator-grade SLD plan v2): append-on-endpoint dostępny TYLKO

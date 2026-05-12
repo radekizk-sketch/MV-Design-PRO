@@ -5,6 +5,13 @@
 **Data:** 2026-05-07
 **Zakres audytu:** Phase R1-R5 — od reality check (1/10) do wired integration
 
+> **Korekta 2026-05-08:** ten dokument potwierdza parytet strukturalny i kontraktowy
+> renderera GPZ, a nie zweryfikowany parytet pixel-level. W repo nie było w chwili
+> audytu referencyjnych zrzutów SCADA, golden image snapshots ani porównania
+> side-by-side. Deklaracje 9/10 lub 10/10 poniżej należy czytać jako ocenę
+> architektury, terminologii, danych ENM i testów DOM, nie jako dowód identyczności
+> wizualnej z Mikronika MIKRA, Sygnity, ABB MicroSCADA ani innym systemem OSD.
+
 ---
 
 ## Przedmiot audytu
@@ -221,7 +228,13 @@ python ../scripts/no_codenames_guard.py
 
 ## Acceptance
 
-**APPROVED** — średnia 9.38/10 ≥ próg 9.0. R6 closure zatwierdzone.
+**APPROVED jako fundament strukturalny** — średnia 9.38/10 ≥ próg 9.0 dla
+architektury, kontraktu danych, terminologii i testów DOM.
+
+**NIE APPROVED jako pixel-level visual parity** — brak referencyjnych zrzutów,
+brak golden image snapshots i brak formalnego porównania obrazu. Dowody
+wizualne są opisane w `docs/sld/SLD_VISUAL_PARITY_EVIDENCE.md`, a lista
+kontrolna w `docs/sld/SLD_VISUAL_PARITY_CHECKLIST.md`.
 
 Następne kroki (R7+) są w gap-list i nie blokują merge tej iteracji.
 

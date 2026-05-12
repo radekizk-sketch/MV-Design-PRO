@@ -1,0 +1,12 @@
+{
+  "evidence": {
+    "url": "http://127.0.0.1:5174/#/schemat?fresh=gpz-outgoing-corridors",
+    "sharedLinePresent": false,
+    "corridors": [],
+    "params": [],
+    "title": "MV-DESIGN PRO",
+    "bodyTextSample": "↶\nCofnij\n↷\nPonów\nMV-DESIGN-PRO\n12.2\nPROJEKT\n— nie otwarto —\nCEL / STAN\n— skonfiguruj projekt —\nKonfiguruj zakres\nBrak wyników\n22:52:36\n10.05.2026\nSprawdź braki\nNakładka\nAnalizy\nEksport\n1\nStart projektu: zakres obliczeń i GPZ\nKolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i uzasadnienie.\nPrzejdź do budowy GPZ\nSzukaj\nKatalog\nPrzeglądy\nMetadane\nHistoria\nModel\n!\nSchemat\nStudia\nWyniki\nW\nZabezp.\nŹródła\nKatalogi\nRaporty\nHistoria\nNawigator modelu\n←\nMODEL SIECI\nWymagany projekt SN\nKROK 1 Z 6\nUtwórz projekt SN\nNAZWA PROJEKTU\nNAPIĘCIE SN\n15 kV\n20 kV\n30 kV\nNORMA\nIEC 60909:2016\nUKŁAD SIECI\nPierścień SN z punktem normalnie otwartym\nSieć promieniowa SN\nUkład mieszany SN\nUZIEMIENIE PUNKTU NEUTRALNEGO\nRezystor uziemiający\nPunkt neutralny izolowany\nCewka Petersena\nCEL OBLICZEŃ\nZwarcie maksymalne IEC 60909\nRozpływ mocy - obciążenie szczytowe\nSTAN PROJEKTU\nStan projektowany 2026\nStan istniejący\nRozbudowa OZE\nUtwórz projekt i przejdź do GPZ\n1\nProjekt SN\n2\nŹródło zasilania GPZ\n3\nPole SN i magistrala\n4\nStacje SN/nN i transformatory\n5\nPV, FW i BESS\n6\nObliczenia i raport\nNieznana trasa interfejsu\n\nAktywna trasa #/schemat nie jest zmapowana do kanonicznego surface'u. Pr"
+  },
+  "consoleErrors": [],
+  "failedRequests": []
+}

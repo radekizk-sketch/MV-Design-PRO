@@ -1,0 +1,2551 @@
+{
+  "analysis_case_context": {
+    "applicability_scope": [
+      "SC",
+      "REPORT"
+    ],
+    "assumptions": {
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "ibg_assumptions_ref": "ibg_model_snapshot",
+      "load_assumptions_ref": "sc_load_snapshot",
+      "source_assumptions_ref": "sc_source_max",
+      "switching_state_ref": "snapshot_switching_state",
+      "temperature_assumptions_ref": "temperature_short_circuit",
+      "transformer_tap_assumptions_ref": "tap_frozen"
+    },
+    "case_kind": "ZWARCIOWY_MAKS",
+    "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "lineage": {
+      "analysis_type": "short_circuit_sn",
+      "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+      "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+    },
+    "missing_prerequisites": [],
+    "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+    "quality_gate": "G4",
+    "reproducibility": {
+      "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "bay_contract_version": "V12.5",
+      "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+      "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+      "catalog_materialization_status": "partial",
+      "catalog_schema_version": "catalog_v1",
+      "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "domain_model_version": "1.0",
+      "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "enm_projection_version": "v12xx.m1.1",
+      "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "formula_set_version": "iec60909_v1",
+      "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+      "method_version": "canonical_run_v1",
+      "operating_variant_ref": "variant.uklad_normalny",
+      "proof_renderer_version": "white_box_trace_v1",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+      "result_rules_version": "result_rules_v12_5",
+      "results_contract_version": "V12.5",
+      "rounding_policy_ref": "rounding/default",
+      "ruleset_version": "result_rules_v12_5",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "solver_family": "iec60909_short_circuit",
+      "solver_version": "1.0.0",
+      "standard_basis_ref": "IEC_60909",
+      "switching_snapshot_ref": "switching.uklad_normalny.base",
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "variant_ref": "variant.uklad_normalny"
+    },
+    "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+    "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+    "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+    "variant_ref": null
+  },
+  "catalog_context": [
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/2198c2d64f97af56180d550b87688413/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/21a2599fa445575bf817e28a1fcbfa35/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4ce26a19bfd685e1312ba8820272b400/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4d4271d6a4cc2e8afccb2eb36dedc4b0/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/e69d5c9c1556b13c7326e01a5d40dd77/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole pomiarowe S1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole rezerwowe S2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN GPZ - ST-01",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-tfk-yakxs-3x120@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.9,
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.408,
+        "rated_current_a": 230.0,
+        "x_ohm_per_km": 0.355
+      },
+      "name": "Linia SN ST-02 - ST-03 BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN ST-01 - ST-02 PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-120@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/4995fadfb6859caf34000f4083605845/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.8,
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.572,
+        "rated_current_a": 185.0,
+        "x_ohm_per_km": 0.368
+      },
+      "name": "Linia SN ST-03 - ST-04 FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-50@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Odgałęzienie",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Kabel SN ST-04 - ZK-05",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/5aa3cba283d2a78361e014a901b8a5af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/a2f80d7ce6b08b15e35bafdc76f05c63/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/ba12505cba96937d7fa38de365041c62/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/d2b096813afd5cf446205f377833e5f7/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f7ad94aace1728fae5c6ea593b1793a4/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f98961a95cd962180ce405330c3ea305/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/420489f8f83b8a3be4914a99a7ab35af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/685d4cd58b4707370202582a59a59fb2/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/7330aa5d2544af6e37c055e734cd5bbc/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/78c0ac8d8a74bceab48f5e31ce71d836/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/8ff672e06c4a764c9298c3a56292db3d/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/93a351b0e547a93a51cdaa9406b57c41/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/369a515bef4d249e274d8a1244ec564c/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/9f21063c589783fcffe78ada2bc21fbb/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/a7cfb99957677c300b2a180599ba4586/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "element_id": "bess/958c1a3189170f4253f9470be1cd3234/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "e_kwh": 2000.0,
+        "id": "conv-bess-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "PCS BESS 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "BESS ST-03 1 MW / 2 MWh",
+      "source_catalog": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "source_catalog_label": "ZRODLO_NN_BESS:conv-bess-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "element_id": "pv/7410b524aea7d67f89c42a4ec7a1e6d3/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "id": "conv-pv-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "Falownik PV 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "PV ST-02 1 MW",
+      "source_catalog": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "source_catalog_label": "ZRODLO_NN_PV:conv-pv-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/source/main",
+      "element_type": "ZRODLO_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "ik3_ka": 19.25,
+        "r0_ohm": 0.4,
+        "rx_ratio": 0.1,
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "short_circuit_model": "short_circuit_power",
+        "sk3_mva": 500.0,
+        "voltage_rating_kv": 15.0,
+        "x0_ohm": 1.8,
+        "z0_z1_ratio": 3.2
+      },
+      "name": "GPZ 2xTR 110/15 kV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-15kv-500mva-rx010@legacy",
+      "source_mode": "KATALOG"
+    }
+  ],
+  "catalog_context_summary": {
+    "by_parameter_origin": {
+      "CATALOG": 37
+    },
+    "by_type": {
+      "ODBIOR": 5,
+      "ODCINEK_SN": 14,
+      "POMIAR": 12,
+      "TRANSFORMATOR_SN_NN": 5,
+      "ZRODLO": 2,
+      "ZRODLO_SN": 1
+    },
+    "element_count": 39,
+    "manual_override_count": 0,
+    "manual_override_element_count": 0
+  },
+  "export_artifact": {
+    "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "completeness_status": "complete",
+    "export_kind": "json",
+    "export_ref": "cb815433586311aa51e8bed6779e8c8b3d026bc648d0023658bc6a522a76f425",
+    "generated_at": "2026-05-10T15:01:48.396119+00:00",
+    "generated_by_version": "v12_5_export_artifact/1.0",
+    "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+    "lineage": {
+      "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "analysis_type": "short_circuit_sn",
+      "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+      "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+      "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+      "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+    },
+    "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+    "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+    "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace"
+  },
+  "export_policy": {
+    "allows_partial": true,
+    "carries_analysis_case_context": true,
+    "carries_generated_at": true,
+    "carries_generated_by_version": true,
+    "carries_input_hash": true,
+    "carries_proof_pack_ref": true,
+    "carries_result_hash": true,
+    "not_applicable_rendering": "status_field",
+    "null_rendering": "null",
+    "partial_rendering": "status_field",
+    "requires_confirmation": false
+  },
+  "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+  "report_options": {
+    "detail_level": "standardowy",
+    "detail_level_label": "Standardowy",
+    "focus_table": null,
+    "profile": "osd",
+    "profile_label": "OSD",
+    "scope": "whole_run",
+    "scope_label": "Cały model",
+    "section_labels": [
+      "Podsumowanie",
+      "Wyniki tabelaryczne",
+      "Kontekst katalogowy"
+    ],
+    "sections": [
+      "summary",
+      "results",
+      "catalog"
+    ]
+  },
+  "report_type": "analysis_run_report",
+  "report_version": "2.0.0",
+  "results": {
+    "automation_trace": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "branches": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "buses": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "dynamic_stability": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "index": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "export_artifact": {
+        "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness_status": "complete",
+        "export_kind": "json",
+        "export_ref": "fc8939cfbf06da10c7ba140f89635a11c903a5d520118142fc636f76dfbf1422",
+        "generated_at": "2026-05-10T15:01:47.894226+00:00",
+        "generated_by_version": "v12_5_export_artifact/1.0",
+        "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+        "lineage": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "analysis_type": "short_circuit_sn",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace"
+      },
+      "export_policy": {
+        "allows_partial": true,
+        "carries_analysis_case_context": true,
+        "carries_generated_at": true,
+        "carries_generated_by_version": true,
+        "carries_input_hash": true,
+        "carries_proof_pack_ref": true,
+        "carries_result_hash": true,
+        "not_applicable_rendering": "status_field",
+        "null_rendering": "null",
+        "partial_rendering": "status_field",
+        "requires_confirmation": false
+      },
+      "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+      "run_header": {
+        "analysis_case_context": {
+          "applicability_scope": [
+            "SC",
+            "REPORT"
+          ],
+          "assumptions": {
+            "grounding_assumptions_ref": "network_grounding_snapshot",
+            "ibg_assumptions_ref": "ibg_model_snapshot",
+            "load_assumptions_ref": "sc_load_snapshot",
+            "source_assumptions_ref": "sc_source_max",
+            "switching_state_ref": "snapshot_switching_state",
+            "temperature_assumptions_ref": "temperature_short_circuit",
+            "transformer_tap_assumptions_ref": "tap_frozen"
+          },
+          "case_kind": "ZWARCIOWY_MAKS",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "completeness": "complete",
+          "completeness_legacy": "pelny",
+          "lineage": {
+            "analysis_type": "short_circuit_sn",
+            "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+            "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+            "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+          },
+          "missing_prerequisites": [],
+          "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+          "quality_gate": "G4",
+          "reproducibility": {
+            "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+            "bay_contract_version": "V12.5",
+            "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+            "catalog_materialization_contract_version": "catalog_materialization_v1",
+            "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+            "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+            "catalog_materialization_status": "partial",
+            "catalog_schema_version": "catalog_v1",
+            "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+            "domain_model_version": "1.0",
+            "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+            "enm_projection_version": "v12xx.m1.1",
+            "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+            "export_generator_version": "v12_5_export_artifact/1.0",
+            "formula_set_version": "iec60909_v1",
+            "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+            "method_version": "canonical_run_v1",
+            "operating_variant_ref": "variant.uklad_normalny",
+            "proof_renderer_version": "white_box_trace_v1",
+            "quality_gate_policy_version": "v12_5_quality_gate",
+            "report_contract_version": "analysis_report_v2",
+            "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+            "result_rules_version": "result_rules_v12_5",
+            "results_contract_version": "V12.5",
+            "rounding_policy_ref": "rounding/default",
+            "ruleset_version": "result_rules_v12_5",
+            "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+            "solver_family": "iec60909_short_circuit",
+            "solver_version": "1.0.0",
+            "standard_basis_ref": "IEC_60909",
+            "switching_snapshot_ref": "switching.uklad_normalny.base",
+            "tolerance_policy_ref": "solver_tolerance/default",
+            "variant_ref": "variant.uklad_normalny"
+          },
+          "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "variant_ref": null
+        },
+        "case_id": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "created_at": "2026-05-10T15:01:47.799941+00:00",
+        "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+        "project_id": "0750f967-3e29-4274-9711-78c40dfa7a39",
+        "result_state": "VALID",
+        "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_id": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "solver_kind": "short_circuit_sn",
+        "status": "FINISHED"
+      },
+      "tables": [
+        {
+          "columns": [
+            {
+              "key": "target_id",
+              "label_pl": "Cel"
+            },
+            {
+              "key": "fault_type",
+              "label_pl": "Typ zwarcia"
+            },
+            {
+              "key": "ikss_ka",
+              "label_pl": "Ik''",
+              "unit": "kA"
+            },
+            {
+              "key": "ip_ka",
+              "label_pl": "ip",
+              "unit": "kA"
+            },
+            {
+              "key": "ith_ka",
+              "label_pl": "Ith",
+              "unit": "kA"
+            },
+            {
+              "key": "sk_mva",
+              "label_pl": "Sk''",
+              "unit": "MVA"
+            },
+            {
+              "key": "reporting_status",
+              "label_pl": "Status raportowy"
+            },
+            {
+              "key": "proof_status",
+              "label_pl": "Status uzasadnienia"
+            },
+            {
+              "key": "proof_ref",
+              "label_pl": "Identyfikator uzasadnienia"
+            }
+          ],
+          "label_pl": "Zwarcia",
+          "row_count": 11,
+          "table_id": "short_circuit"
+        },
+        {
+          "columns": [
+            {
+              "key": "title",
+              "label_pl": "Opis"
+            }
+          ],
+          "label_pl": "Slad obliczen",
+          "row_count": 77,
+          "table_id": "trace"
+        }
+      ]
+    },
+    "phase_state": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "short_circuit": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 18.98948920423694,
+          "ip_ka": 37.68427616324067,
+          "ith_ka": 18.98948920423694,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:d27f0efe532463594a79723470396b87538d709ec6f7b919153555070220c3e5",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:d27f0efe532463594a79723470396b87538d709ec6f7b919153555070220c3e5",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 13.156304044607626,
+          "synthetic": false,
+          "target_id": "0c7e548f-3aad-5948-b944-51a8451e38b6",
+          "target_name": "Szyna nN ST-04 stacja FW"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 29.180345657862404,
+          "ip_ka": 42.11300944599294,
+          "ith_ka": 29.180345657862404,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:6c3c9b17a18a3f9533fa85b70e1c336e93687a8277caa675ff0680ce80a4da6b",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:6c3c9b17a18a3f9533fa85b70e1c336e93687a8277caa675ff0680ce80a4da6b",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 758.1276189275932,
+          "synthetic": false,
+          "target_id": "121d6126-0522-5a81-a0a4-b977ab063928",
+          "target_name": "Kabel SN ST-01 - ST-02 PV"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/369a515bef4d249e274d8a1244ec564c/nn",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 19.788999808948372,
+          "ip_ka": 40.449029531302976,
+          "ith_ka": 19.788999808948372,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:7cbdd1e2fee7deaf9f54e3083aab925ef3cbf37b3fc36d9259bc5f2fffcedc4d",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              15,
+              16,
+              17,
+              18,
+              19,
+              20,
+              21
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:7cbdd1e2fee7deaf9f54e3083aab925ef3cbf37b3fc36d9259bc5f2fffcedc4d",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 13.710221240027753,
+          "synthetic": false,
+          "target_id": "17ea9c4f-946d-5c16-80c1-9ae1add59745",
+          "target_name": "Szyna nN ST-02 stacja PV"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 70.03260804425223,
+          "ip_ka": 101.07091509520734,
+          "ith_ka": 70.03260804425223,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:ac8cbcaeba69554fcaace3b5c4af3a7afa92331348870d041482eea8ce100f27",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              22,
+              23,
+              24,
+              25,
+              26,
+              27,
+              28
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:ac8cbcaeba69554fcaace3b5c4af3a7afa92331348870d041482eea8ce100f27",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 1819.5005297880257,
+          "synthetic": false,
+          "target_id": "29389da1-6e9b-5c7a-8573-4af7592d5f4a",
+          "target_name": "Kabel SN GPZ - ST-01"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 14.255250570174317,
+          "ip_ka": 20.71546273993589,
+          "ith_ka": 14.255250570174317,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:e55186d4befc03f9eb5fcce6e4a861b015b18e79ee307e9953721e91f809d3d6",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              29,
+              30,
+              31,
+              32,
+              33,
+              34,
+              35
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:e55186d4befc03f9eb5fcce6e4a861b015b18e79ee307e9953721e91f809d3d6",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 370.36227393250687,
+          "synthetic": false,
+          "target_id": "69553fd1-8dba-58f2-acf0-c6550adb1c1a",
+          "target_name": "Linia SN ST-02 - ST-03 BESS"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "gpz/b18179bba62cc38f962858627a87da6f/source/main",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": "SOURCE_GROUND",
+          "ikss_ka": 21.169499337804766,
+          "ip_ka": 52.27181302595395,
+          "ith_ka": 21.169499337804766,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:a67ccc5bcbee7c27a13ec75194532ea1ae79ebd84d9ad83053c109432afe4ecb",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              36,
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:a67ccc5bcbee7c27a13ec75194532ea1ae79ebd84d9ad83053c109432afe4ecb",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 549.9997263581033,
+          "synthetic": true,
+          "target_id": "6a5527ba-792f-5461-9845-39969b12820f",
+          "target_name": "GND (GPZ 2xTR 110/15 kV)"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/a7cfb99957677c300b2a180599ba4586/nn",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 18.893520444869896,
+          "ip_ka": 37.21862120645742,
+          "ith_ka": 18.893520444869896,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:400bcb48197efe5e6dce5481e50aba60d6e07ecfd54229366a3c5a27afe7c04d",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48,
+              49
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:400bcb48197efe5e6dce5481e50aba60d6e07ecfd54229366a3c5a27afe7c04d",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 13.0898149377424,
+          "synthetic": false,
+          "target_id": "94d9bd41-43d6-5df9-aa59-c99c9a9feb21",
+          "target_name": "Szyna nN ZK-05 stacja ko?cowa"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 6.54769241103494,
+          "ip_ka": 9.494549844254065,
+          "ith_ka": 6.54769241103494,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:4791223d222dacd3eb2fc8339d59ea0f950e2502fb146ad93a4aec1478c9f4d7",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              50,
+              51,
+              52,
+              53,
+              54,
+              55,
+              56
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:4791223d222dacd3eb2fc8339d59ea0f950e2502fb146ad93a4aec1478c9f4d7",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 170.11403892368514,
+          "synthetic": false,
+          "target_id": "a8a5036d-1f63-5963-af2a-be65342ce837",
+          "target_name": "Kabel SN ST-04 - ZK-05"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/9f21063c589783fcffe78ada2bc21fbb/nn",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 19.915051193197147,
+          "ip_ka": 41.03823262435944,
+          "ith_ka": 19.915051193197147,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:c425a807dd0bb21414132851ea0cffb7a81437b3581af26dad8c6cf32876389c",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              57,
+              58,
+              59,
+              60,
+              61,
+              62,
+              63
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:c425a807dd0bb21414132851ea0cffb7a81437b3581af26dad8c6cf32876389c",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 13.797552200781062,
+          "synthetic": false,
+          "target_id": "c5e051cb-1673-5341-8d14-85cb6395480e",
+          "target_name": "Szyna nN ST-01 stacja zwyk?a"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/4995fadfb6859caf34000f4083605845/downstream",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 7.440253720858779,
+          "ip_ka": 10.820217185020027,
+          "ith_ka": 7.440253720858779,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:44fa13e6925c9007c20e862dff044e91f839dd106a9f3d4607d6d20e52a19b59",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              64,
+              65,
+              66,
+              67,
+              68,
+              69,
+              70
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:44fa13e6925c9007c20e862dff044e91f839dd106a9f3d4607d6d20e52a19b59",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 193.3034619859619,
+          "synthetic": false,
+          "target_id": "cd01d1c7-59e8-5be3-a6d5-75333ff73bae",
+          "target_name": "Linia SN ST-03 - ST-04 FW"
+        },
+        {
+          "analysis_type": "short_circuit_3f",
+          "dopuszczalnosc_raportowa": true,
+          "element_id": "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn",
+          "fault_type": "3F",
+          "flags": [],
+          "graph_role": null,
+          "ikss_ka": 19.47144216579149,
+          "ip_ka": 39.405911817906485,
+          "ith_ka": 19.47144216579149,
+          "proof_binding": {
+            "method_basis": "IEC_60909",
+            "proof_engine_version": "white_box_trace_v1",
+            "proof_kind": "white_box_trace",
+            "proof_ref": "proof:short-circuit:5253d8685316f3fd6ca659d9a95d88b983282377f44f9e8a645808ed02fe663d",
+            "proof_status": "complete",
+            "proof_status_pl": "pelny",
+            "reporting_limitations": [],
+            "reporting_status": "reportable",
+            "reporting_status_pl": "raportowalny",
+            "requires_z0": false,
+            "trace_step_refs": [
+              71,
+              72,
+              73,
+              74,
+              75,
+              76,
+              77
+            ],
+            "z0_source": "NOT_APPLICABLE"
+          },
+          "proof_ref": "proof:short-circuit:5253d8685316f3fd6ca659d9a95d88b983282377f44f9e8a645808ed02fe663d",
+          "proof_status": "complete",
+          "proof_status_pl": "pelny",
+          "reporting_limitations": [],
+          "reporting_status": "reportable",
+          "reporting_status_pl": "raportowalny",
+          "sk_mva": 13.490210851115934,
+          "synthetic": false,
+          "target_id": "fe60cbc8-037b-5fd3-9334-1e1b7d8ee2b6",
+          "target_name": "Szyna nN ST-03 stacja BESS"
+        }
+      ],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "source_compliance": {
+      "analysis_case_context": {
+        "applicability_scope": [
+          "SC",
+          "REPORT"
+        ],
+        "assumptions": {
+          "grounding_assumptions_ref": "network_grounding_snapshot",
+          "ibg_assumptions_ref": "ibg_model_snapshot",
+          "load_assumptions_ref": "sc_load_snapshot",
+          "source_assumptions_ref": "sc_source_max",
+          "switching_state_ref": "snapshot_switching_state",
+          "temperature_assumptions_ref": "temperature_short_circuit",
+          "transformer_tap_assumptions_ref": "tap_frozen"
+        },
+        "case_kind": "ZWARCIOWY_MAKS",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "completeness": "complete",
+        "completeness_legacy": "pelny",
+        "lineage": {
+          "analysis_type": "short_circuit_sn",
+          "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+          "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+        },
+        "missing_prerequisites": [],
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "quality_gate": "G4",
+        "reproducibility": {
+          "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "bay_contract_version": "V12.5",
+          "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+          "catalog_materialization_contract_version": "catalog_materialization_v1",
+          "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+          "catalog_materialization_status": "partial",
+          "catalog_schema_version": "catalog_v1",
+          "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "domain_model_version": "1.0",
+          "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "enm_projection_version": "v12xx.m1.1",
+          "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "export_generator_version": "v12_5_export_artifact/1.0",
+          "formula_set_version": "iec60909_v1",
+          "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+          "method_version": "canonical_run_v1",
+          "operating_variant_ref": "variant.uklad_normalny",
+          "proof_renderer_version": "white_box_trace_v1",
+          "quality_gate_policy_version": "v12_5_quality_gate",
+          "report_contract_version": "analysis_report_v2",
+          "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+          "result_rules_version": "result_rules_v12_5",
+          "results_contract_version": "V12.5",
+          "rounding_policy_ref": "rounding/default",
+          "ruleset_version": "result_rules_v12_5",
+          "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+          "solver_family": "iec60909_short_circuit",
+          "solver_version": "1.0.0",
+          "standard_basis_ref": "IEC_60909",
+          "switching_snapshot_ref": "switching.uklad_normalny.base",
+          "tolerance_policy_ref": "solver_tolerance/default",
+          "variant_ref": "variant.uklad_normalny"
+        },
+        "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "variant_ref": null
+      },
+      "rows": [],
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    }
+  },
+  "run": {
+    "analysis_case_context": {
+      "applicability_scope": [
+        "SC",
+        "REPORT"
+      ],
+      "assumptions": {
+        "grounding_assumptions_ref": "network_grounding_snapshot",
+        "ibg_assumptions_ref": "ibg_model_snapshot",
+        "load_assumptions_ref": "sc_load_snapshot",
+        "source_assumptions_ref": "sc_source_max",
+        "switching_state_ref": "snapshot_switching_state",
+        "temperature_assumptions_ref": "temperature_short_circuit",
+        "transformer_tap_assumptions_ref": "tap_frozen"
+      },
+      "case_kind": "ZWARCIOWY_MAKS",
+      "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "completeness": "complete",
+      "completeness_legacy": "pelny",
+      "lineage": {
+        "analysis_type": "short_circuit_sn",
+        "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+      },
+      "missing_prerequisites": [],
+      "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+      "quality_gate": "G4",
+      "reproducibility": {
+        "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "bay_contract_version": "V12.5",
+        "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "catalog_materialization_contract_version": "catalog_materialization_v1",
+        "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+        "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+        "catalog_materialization_status": "partial",
+        "catalog_schema_version": "catalog_v1",
+        "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "domain_model_version": "1.0",
+        "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "enm_projection_version": "v12xx.m1.1",
+        "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "export_generator_version": "v12_5_export_artifact/1.0",
+        "formula_set_version": "iec60909_v1",
+        "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+        "method_version": "canonical_run_v1",
+        "operating_variant_ref": "variant.uklad_normalny",
+        "proof_renderer_version": "white_box_trace_v1",
+        "quality_gate_policy_version": "v12_5_quality_gate",
+        "report_contract_version": "analysis_report_v2",
+        "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+        "result_rules_version": "result_rules_v12_5",
+        "results_contract_version": "V12.5",
+        "rounding_policy_ref": "rounding/default",
+        "ruleset_version": "result_rules_v12_5",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+        "solver_family": "iec60909_short_circuit",
+        "solver_version": "1.0.0",
+        "standard_basis_ref": "IEC_60909",
+        "switching_snapshot_ref": "switching.uklad_normalny.base",
+        "tolerance_policy_ref": "solver_tolerance/default",
+        "variant_ref": "variant.uklad_normalny"
+      },
+      "rodzaj_przypadku": "ZWARCIOWY_MAKS",
+      "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "variant_ref": null
+    },
+    "analysis_type": "short_circuit_sn",
+    "created_at": "2026-05-10T15:01:47.799941+00:00",
+    "deterministic_id": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+    "export_artifact": {
+      "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "completeness_status": "complete",
+      "export_kind": "json",
+      "export_ref": "fc8939cfbf06da10c7ba140f89635a11c903a5d520118142fc636f76dfbf1422",
+      "generated_at": "2026-05-10T15:01:47.894226+00:00",
+      "generated_by_version": "v12_5_export_artifact/1.0",
+      "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+      "lineage": {
+        "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+        "analysis_type": "short_circuit_sn",
+        "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+        "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+        "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+        "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace",
+        "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+      },
+      "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+      "result_hash": "f1c82091e73bb926c574cecd02363b80a4f57e4c3937d9a83b275ae8b607a77f",
+      "run_ref": "73e052f4-5121-498d-9f91-562b3f6ebace"
+    },
+    "export_policy": {
+      "allows_partial": true,
+      "carries_analysis_case_context": true,
+      "carries_generated_at": true,
+      "carries_generated_by_version": true,
+      "carries_input_hash": true,
+      "carries_proof_pack_ref": true,
+      "carries_result_hash": true,
+      "not_applicable_rendering": "status_field",
+      "null_rendering": "null",
+      "partial_rendering": "status_field",
+      "requires_confirmation": false
+    },
+    "finished_at": "2026-05-10T15:01:47.894226+00:00",
+    "id": "73e052f4-5121-498d-9f91-562b3f6ebace",
+    "input_hash": "c9f5fc779d2440f921c800b941aaa084518671299357468dc10772d63996b7bb",
+    "proof_pack_ref": "proof-pack:73e052f4-5121-498d-9f91-562b3f6ebace",
+    "result_status": "VALID",
+    "results_valid": true,
+    "status": "FINISHED",
+    "summary_json": {
+      "max_ikss_ka": 70.03260804425223,
+      "row_count": 11
+    },
+    "trace_summary": {
+      "count": 77,
+      "duration_ms": null,
+      "first_step": "Zk",
+      "last_step": "Sk",
+      "phases": [
+        "Zk",
+        "Ikss",
+        "kappa",
+        "Ip",
+        "Ib",
+        "Ith",
+        "Sk"
+      ],
+      "warnings": []
+    }
+  },
+  "summary": {
+    "max_ikss_ka": 70.03260804425223,
+    "row_count": 11
+  },
+  "title": "Raport analizy zwarciowej"
+}

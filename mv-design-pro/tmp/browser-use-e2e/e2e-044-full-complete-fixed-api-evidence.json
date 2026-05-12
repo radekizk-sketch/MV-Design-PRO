@@ -1,0 +1,428 @@
+{
+  "project_id": "c6f7a810-4dd8-42ca-b667-0abf63fbcbd3",
+  "case_id": "3a0847e4-0067-4f35-b162-8f6020e85a9d",
+  "steps": [
+    {
+      "name": "GPZ 2 sekcje, pola SN",
+      "selection_hint": {
+        "element_id": "gpz/1ddc4d3fda99291428c73ffa0af673c9/substation",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odcinek 1 GPZ-ST-01",
+      "selection_hint": {
+        "element_id": "bus/0f15d4ba98bd693ed9ef231e358892da/downstream",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odcinek 2 ST-01-ST-PV",
+      "selection_hint": {
+        "element_id": "bus/3113444e656c6095e4ac87c16cfe42ff/downstream",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odcinek 3 ST-PV-ST-BESS",
+      "selection_hint": {
+        "element_id": "bus/2cd957c23757ebf635cec07660750535/downstream",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odcinek 4 ST-BESS-ST-FW linia",
+      "selection_hint": {
+        "element_id": "bus/0bb5a2163d93c2940a70cadc7870e209/downstream",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odcinek 5 ST-FW-ZKSN kabel",
+      "selection_hint": {
+        "element_id": "bus/b79fc95ce4f69727d63ed3280bc22c7e/downstream",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "ST-01 stacja przelotowa",
+      "selection_hint": {
+        "element_id": "stn/317ec8d52c7585eeba6da40b8a9935e5/station",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "ST-PV stacja z PV",
+      "selection_hint": {
+        "element_id": "stn/8d5e8cf166d9d5ac8e4cfc53627d0acf/station",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "ST-BESS stacja z BESS",
+      "selection_hint": {
+        "element_id": "stn/c0e0d5aa4a6b576ce06285829fda1afe/station",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Słup rozgałęźny na linii SN",
+      "selection_hint": {
+        "element_id": "bp/01db8fc319edc3e7a81ee75544550c8b/branch_pole",
+        "element_type": "branch_pole",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odgałęzienie od słupa",
+      "selection_hint": {
+        "element_id": "bus/ae50222ec7a3fb528f2ffac347eaf1c7/branch_end",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Stacja na końcu odgałęzienia słupowego",
+      "selection_hint": {
+        "element_id": "sub/f069e51f02f60fc9829a5b336295b2c7/substation",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "ZKSN na kablu SN",
+      "selection_hint": {
+        "element_id": "bp/6f5053fed2602fa54bce753020691e0f/zksn",
+        "element_type": "zksn",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odgałęzienie z ZKSN",
+      "selection_hint": {
+        "element_id": "bus/6f751bec7b01c231ade4cdd92d27775b/branch_end",
+        "element_type": "bus",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Stacja za ZKSN",
+      "selection_hint": {
+        "element_id": "sub/05b5b3a12b43efb4f068df4d0088e290/substation",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "ST-FW na końcu ciągu głównego",
+      "selection_hint": {
+        "element_id": "sub/3cf5fa59b7512d1072ba0f0d44a95b58/substation",
+        "element_type": "substation",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-01 stacja przelotowa",
+      "selection_hint": {
+        "element_id": "nn/d9507df251f56244699d80b74e264b20/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-PV stacja z PV",
+      "selection_hint": {
+        "element_id": "nn/a9aeb5ee9963f01227b98fd8db20a803/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-BESS stacja z BESS",
+      "selection_hint": {
+        "element_id": "nn/2aa59c785aee49a72edbb26ed446f69e/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-FW stacja z FW",
+      "selection_hint": {
+        "element_id": "nn/2de5fbbc0789d92e3fd2fe60c222e977/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-ODG stacja końcowa odgałęzienia",
+      "selection_hint": {
+        "element_id": "nn/ca76c883385be7b5fef845cfdf574aa1/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "Odbiór ST-ZK stacja za ZKSN",
+      "selection_hint": {
+        "element_id": "nn/60c1f73adb5a86617d00b477ec6ebe12/load",
+        "element_type": "load",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "PV ST-PV stacja z PV",
+      "selection_hint": {
+        "element_id": "nn/5e6cdbc759dc95527ed9e07bd1603b41/source_field",
+        "element_type": "bay",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "BESS ST-BESS stacja z BESS",
+      "selection_hint": {
+        "element_id": "nn/078d356263838d1080a2f6203d10c980/source_field",
+        "element_type": "bay",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    },
+    {
+      "name": "FW ST-FW stacja z FW",
+      "selection_hint": {
+        "element_id": "nn/920e1fbbbecc2e6cece8b56622d8cf0a/source_field",
+        "element_type": "bay",
+        "zoom_to": true
+      },
+      "created": [],
+      "deleted": []
+    }
+  ],
+  "main_segments_initial": [
+    "seg/0f15d4ba98bd693ed9ef231e358892da/segment",
+    "seg/3113444e656c6095e4ac87c16cfe42ff/segment",
+    "seg/2cd957c23757ebf635cec07660750535/segment",
+    "seg/0bb5a2163d93c2940a70cadc7870e209/segment",
+    "seg/b79fc95ce4f69727d63ed3280bc22c7e/segment"
+  ],
+  "protection_config": {
+    "template_ref": "template_rex500_oc",
+    "template_fingerprint": "e2e-044-template-rex500",
+    "library_manifest_ref": {
+      "library_id": "default_mv_catalog",
+      "revision": "2024.1"
+    },
+    "overrides": {
+      "device_type_ref": "ACME_REX500_v1",
+      "curve_ref": "IEC_SI",
+      "ct_ratio": "400/5",
+      "vt_ratio": "15000/100",
+      "i_pickup_a": 180.0,
+      "tms": 0.12,
+      "protected_scope": "ciąg główny i odgałęzienia"
+    },
+    "bound_at": "2026-05-10T15:44:11.866046+00:00"
+  },
+  "counts": {
+    "substations": 7,
+    "buses": 39,
+    "branches": 32,
+    "transformers": 6,
+    "loads": 6,
+    "generators": 3,
+    "branch_points": 2,
+    "protection_assignments": 0,
+    "bays": 6
+  },
+  "validation_status": "OK",
+  "validation_issues": [],
+  "readiness": {
+    "case_id": "3a0847e4-0067-4f35-b162-8f6020e85a9d",
+    "enm_revision": 32,
+    "validation": {
+      "status": "OK",
+      "issues": [],
+      "analysis_available": {
+        "short_circuit_3f": true,
+        "short_circuit_1f": true,
+        "load_flow": true
+      }
+    },
+    "readiness": {
+      "ready": true,
+      "blockers": []
+    },
+    "analysis_readiness": {
+      "short_circuit_3f": true,
+      "short_circuit_1f": true,
+      "load_flow": true,
+      "protection": false
+    },
+    "topology_completeness": {
+      "has_substations": true,
+      "has_bays": true,
+      "has_junctions": false,
+      "has_corridors": true
+    },
+    "element_counts": {
+      "buses": 39,
+      "branches": 32,
+      "transformers": 6,
+      "sources": 1,
+      "loads": 6,
+      "generators": 3,
+      "substations": 7,
+      "bays": 6,
+      "junctions": 0,
+      "corridors": 1,
+      "measurements": 0,
+      "protection_assignments": 0
+    }
+  },
+  "sc_runs": {
+    "3F": {
+      "run_id": "d9edb486-b0ba-476d-b454-3efb54308ec0",
+      "results": 17,
+      "reporting_status": "reportable",
+      "proof_status": "complete"
+    },
+    "1F": {
+      "run_id": "a91a3b85-f21d-4f65-bf6e-d6a31b61971f",
+      "results": 17,
+      "reporting_status": "reportable",
+      "proof_status": "complete"
+    },
+    "2F": {
+      "run_id": "24fcbfc2-d13b-4008-9ca8-3f086f0ff7bd",
+      "results": 17,
+      "reporting_status": "reportable",
+      "proof_status": "complete"
+    },
+    "2FG": {
+      "run_id": "047144eb-4270-494f-9257-adad0ac52699",
+      "results": 17,
+      "reporting_status": "reportable",
+      "proof_status": "complete"
+    }
+  },
+  "pf": {
+    "run_id": "16dd8014-1a55-4465-a95a-46642ba9e48b",
+    "bus_rows": 40,
+    "branch_rows": 19,
+    "readiness": {
+      "blockers": [],
+      "ready": true
+    }
+  },
+  "protection": {
+    "run_id": "9d1b9c4c-c8fe-4cb3-ab48-0b73324c6421",
+    "status": "FINISHED",
+    "evaluations": 1,
+    "steps": 3
+  },
+  "exports": {
+    "sc:report/json": {
+      "status": 200,
+      "size": 113863
+    },
+    "sc:report/docx": {
+      "status": 200,
+      "size": 38355
+    },
+    "sc:report/pdf": {
+      "status": 200,
+      "size": 3651
+    },
+    "sc:proof/json": {
+      "status": 200,
+      "size": 277757
+    },
+    "sc:proof/latex": {
+      "status": 200,
+      "size": 44442
+    },
+    "sc:proof/pdf": {
+      "status": 200,
+      "size": 24930
+    },
+    "pf:report/json": {
+      "status": 200,
+      "size": 114128
+    },
+    "pf:report/docx": {
+      "status": 200,
+      "size": 38483
+    },
+    "pf:report/pdf": {
+      "status": 200,
+      "size": 4813
+    },
+    "pf:proof/json": {
+      "status": 200,
+      "size": 85089
+    },
+    "pf:proof/latex": {
+      "status": 200,
+      "size": 4213
+    },
+    "pf:proof/pdf": {
+      "status": 200,
+      "size": 4008
+    }
+  }
+}

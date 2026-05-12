@@ -13,9 +13,9 @@ import {
 } from '../SldCommandService';
 
 describe('SldCommandService — SLD_MENU_REGISTRY', () => {
-  it('rejestruje 10 typów menu (per element kind)', () => {
+  it('rejestruje typy menu dla elementów SLD', () => {
     const kinds: SldElementKindForMenu[] = [
-      'background', 'gpz', 'section', 'bay', 'cable_segment_sn',
+      'background', 'gpz', 'section', 'bay', 'apparatus', 'cable_segment_sn',
       'overhead_line_sn', 'station', 'der_pv', 'der_bess', 'der_fw',
     ];
     for (const kind of kinds) {
@@ -39,15 +39,32 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
     expect(hasAddBay).toBe(true);
   });
 
-  it('menu pola SN ma "Wyprowadź ciąg główny" + "Rozpocznij odgałęzienie"', () => {
+  it('menu pola SN nie wyprowadza ciągu; akcja należy do głowicy w polu', () => {
     const actions = SLD_MENU_REGISTRY.bay;
-    expect(actions.some((a) => a.id === 'extend-trunk')).toBe(true);
+    expect(actions.some((a) => a.id === 'extend-trunk')).toBe(false);
     expect(actions.some((a) => a.id === 'start-branch')).toBe(true);
   });
 
-  it('menu kabla SN ma "Wstaw stację transformatorową" + zmiana rodziny na napowietrzną', () => {
+  it('menu aparatu zawiera wyprowadzenie ciągu tylko jako akcję głowicy kablowej', () => {
+    const actions = SLD_MENU_REGISTRY.apparatus;
+    expect(actions.some((a) => a.id === 'extend-trunk')).toBe(true);
+
+    const breakerActions = getMenuActions('apparatus', { apparatusKind: 'breaker' });
+    const breakerExtend = breakerActions.find((a) => a.id === 'extend-trunk');
+    expect(breakerExtend?.disabled).toBe(true);
+    expect(breakerExtend?.disabledReasonPl).toContain('głowicy kablowej');
+
+    const cableHeadActions = getMenuActions('apparatus', { apparatusKind: 'cable_head' });
+    const cableHeadExtend = cableHeadActions.find((a) => a.id === 'extend-trunk');
+    expect(cableHeadExtend?.disabled).toBeUndefined();
+  });
+
+  it('menu kabla SN przewiduje dalszy projekt: kontynuacja, stacja, ZK SN i słup', () => {
     const actions = SLD_MENU_REGISTRY.cable_segment_sn;
+    expect(actions.some((a) => a.id === 'continue-trunk-from-endpoint')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-station')).toBe(true);
+    expect(actions.some((a) => a.id === 'insert-zksn')).toBe(true);
+    expect(actions.some((a) => a.id === 'insert-pole')).toBe(true);
     expect(actions.some((a) => a.id === 'change-family-to-overhead')).toBe(true);
     expect(actions.some((a) => a.id === 'insert-joint' && a.labelPl === 'Wstaw mufę kablową')).toBe(true);
   });
@@ -75,8 +92,8 @@ describe('SldCommandService — SLD_MENU_REGISTRY', () => {
 });
 
 describe('SldCommandService — getMenuActions z context', () => {
-  it('extend-trunk disabled gdy bayHasOutgoingRun=true', () => {
-    const actions = getMenuActions('bay', { bayHasOutgoingRun: true });
+  it('extend-trunk disabled na głowicy, gdy pole ma już wyprowadzony ciąg', () => {
+    const actions = getMenuActions('apparatus', { apparatusKind: 'cable_head', bayHasOutgoingRun: true });
     const extendAction = actions.find((a) => a.id === 'extend-trunk');
     expect(extendAction?.disabled).toBe(true);
     expect(extendAction?.disabledReasonPl).toContain('wyprowadzony');

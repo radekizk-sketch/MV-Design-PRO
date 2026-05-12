@@ -3,8 +3,8 @@
  *
  * CANONICAL ALIGNMENT:
  * - ui_canonical_parity.md: Layout narzędziowy ZAWSZE renderowany
- * - wizard_screens.md Â§ 1.3: Active case bar (always visible)
- * - UI_CORE_ARCHITECTURE.md Â§ 4.1: Navigation structure
+ * - wizard_screens.md § 1.3: Active case bar (always visible)
+ * - UI_CORE_ARCHITECTURE.md § 4.1: Navigation structure
  *
  * CANONICAL RULE:
  * > Layout narzędziowy ZAWSZE jest renderowany.
@@ -17,7 +17,8 @@
  * - Empty state overlays (NOT empty screens)
  *
  * Routes (Polish):
- * - "" / "#sld" → Schemat jednokreskowy (SLD Editor)
+ * - "" bez aktywnego projektu → Pulpit projektu E-00
+ * - "" z aktywnym projektem / "#sld" → Schemat jednokreskowy E-01
  * - "#sld-view" → Podglad schematu (SLD Read-Only Viewer)
  * - "#analysis" → Poziom analityczny (E-24)
  * - "#report" → Generator raportu (E-25)
@@ -64,8 +65,15 @@ import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
 import type { AreaId } from './ui/navigation/areaRegistry';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
+  ANALYSIS_ROUTE_DEFAULT_TAB,
   REPORT_SURFACE_SCREEN_CODE,
 } from './ui/workspace/types';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string | null | undefined): value is string {
+  return typeof value === 'string' && UUID_RE.test(value);
+}
 
 function useActiveProjectName(): string | null {
   const store = useAppStateStore();
@@ -151,6 +159,66 @@ function resolveRouteArea(route: string): AreaId | null {
   return null;
 }
 
+function resolveDerSurfaceFromSldSelection(params: URLSearchParams): {
+  screenCode: 'E-21' | 'E-22' | 'E-23';
+  entityType: 'pv_source' | 'bess_source' | 'fw_source';
+  titlePl: string;
+  derKind: 'PV' | 'BESS' | 'FW';
+} | null {
+  const selectedRef = params.get('sel');
+  if (!selectedRef) {
+    return null;
+  }
+
+  const normalizedType = (params.get('type') ?? '').toUpperCase();
+  const normalizedRole = (params.get('role') ?? '').toUpperCase();
+  const normalizedSemanticHash = (params.get('sh') ?? '').toUpperCase();
+  const joinedSelection = `${normalizedType} ${normalizedRole} ${normalizedSemanticHash}`;
+
+  if (
+    joinedSelection.includes('PV')
+    || normalizedType === 'PVINVERTER'
+    || normalizedSemanticHash.startsWith('SOURCE:PV')
+  ) {
+    return {
+      screenCode: 'E-21',
+      entityType: 'pv_source',
+      titlePl: params.get('name') ?? 'Falownik PV',
+      derKind: 'PV',
+    };
+  }
+
+  if (
+    joinedSelection.includes('BESS')
+    || joinedSelection.includes('STORAGE')
+    || normalizedType === 'BESSINVERTER'
+    || normalizedSemanticHash.startsWith('SOURCE:BESS')
+  ) {
+    return {
+      screenCode: 'E-22',
+      entityType: 'bess_source',
+      titlePl: params.get('name') ?? 'Magazyn energii',
+      derKind: 'BESS',
+    };
+  }
+
+  if (
+    joinedSelection.includes('WIND')
+    || joinedSelection.includes('FW')
+    || normalizedSemanticHash.startsWith('SOURCE:FW')
+    || normalizedSemanticHash.startsWith('SOURCE:WIND')
+  ) {
+    return {
+      screenCode: 'E-23',
+      entityType: 'fw_source',
+      titlePl: params.get('name') ?? 'Farma wiatrowa',
+      derKind: 'FW',
+    };
+  }
+
+  return null;
+}
+
 function UnknownRoutePage({ route }: { route: string }) {
   return (
     <div className="flex h-full items-center justify-center bg-slate-50">
@@ -158,7 +226,7 @@ function UnknownRoutePage({ route }: { route: string }) {
         <h1 className="text-lg font-semibold">Nieznana trasa interfejsu</h1>
         <p className="mt-2 text-sm leading-6">
           Aktywna trasa <code>{route || '(pusta)'}</code> nie jest zmapowana do kanonicznego
-          surface&apos;u. PrzejdĹş do jednej z aktywnych sekcji albo popraw routing.
+          powierzchni. Przejdź do jednej z aktywnych sekcji albo popraw routing.
         </p>
       </div>
     </div>
@@ -173,9 +241,14 @@ function App() {
   const setActiveArea = useAppStateStore((state) => state.setActiveArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
+  const activeCaseKind = useAppStateStore((state) => state.activeCaseKind);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const setActiveCase = useAppStateStore((state) => state.setActiveCase);
   const setActiveRun = useAppStateStore((state) => state.setActiveRun);
+  const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
+  const setActiveCaseResultStatus = useAppStateStore((state) => state.setActiveCaseResultStatus);
   const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
@@ -207,6 +280,28 @@ function App() {
     }
   }, [route, setActiveArea]);
 
+  useEffect(() => {
+    const params = getCurrentSearchParams();
+    const routeCaseId = params.get('case')?.trim();
+    if (!routeCaseId || routeCaseId === activeCaseId) {
+      return;
+    }
+
+    setActiveCase(
+      routeCaseId,
+      activeCaseName ?? 'Zakres obliczeń z adresu',
+      activeCaseKind ?? 'ShortCircuitCase',
+      'NONE',
+    );
+  }, [
+    activeCaseId,
+    activeCaseKind,
+    activeCaseName,
+    hashVersion,
+    route,
+    setActiveCase,
+  ]);
+
   // Sync mode with route
   useEffect(() => {
     if (isResultsRoute(route)) {
@@ -227,12 +322,48 @@ function App() {
   useEffect(() => {
     const params = getCurrentSearchParams();
     const routeRunId = params.get('run');
+    const routeSelectedRef = params.get('sel');
+    if (route === ROUTES.SLD.hash || route === ROUTES.SLD_VIEW.hash || route === '') {
+      const derSurface = resolveDerSurfaceFromSldSelection(params);
+      if (derSurface) {
+        openRouteSurface(derSurface.screenCode, {
+          entityRef: routeSelectedRef,
+          entityType: derSurface.entityType,
+          subjectKind: 'entity',
+          subjectRef: routeSelectedRef,
+          titlePl: derSurface.titlePl,
+          route: 'sld',
+          payload: {
+            derId: routeSelectedRef,
+            derKind: derSurface.derKind,
+            derName: derSurface.titlePl,
+            derRole: params.get('role'),
+            semanticHash: params.get('sh'),
+            selectionType: params.get('type'),
+          },
+        });
+        return;
+      }
+    }
     if (
       route === ROUTES.ANALYSIS.hash
       || isAnalysisRouteAlias(route)
     ) {
       setActiveRun(routeRunId);
       setExecutionActiveRun(routeRunId);
+      if (isUuid(routeRunId)) {
+        void fetch(`/api/analysis-runs/${routeRunId}/snapshot`)
+          .then((response) => (response.ok ? response.json() : null))
+          .then((payload: { snapshot_id?: unknown } | null) => {
+            if (typeof payload?.snapshot_id === 'string' && payload.snapshot_id.trim()) {
+              setActiveSnapshot(payload.snapshot_id);
+              setActiveCaseResultStatus('FRESH');
+            }
+          })
+          .catch(() => {
+            // Brak wersji modelu nie blokuje samej nawigacji; ekran wyników pokaże status braku.
+          });
+      }
       openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
         titlePl: 'Poziom analityczny',
         tabId: resolveAnalysisSurfaceTab(route, params),
@@ -249,6 +380,19 @@ function App() {
     if (route === ROUTES.REPORT.hash) {
       setActiveRun(routeRunId);
       setExecutionActiveRun(routeRunId);
+      if (isUuid(routeRunId)) {
+        void fetch(`/api/analysis-runs/${routeRunId}/snapshot`)
+          .then((response) => (response.ok ? response.json() : null))
+          .then((payload: { snapshot_id?: unknown } | null) => {
+            if (typeof payload?.snapshot_id === 'string' && payload.snapshot_id.trim()) {
+              setActiveSnapshot(payload.snapshot_id);
+              setActiveCaseResultStatus('FRESH');
+            }
+          })
+          .catch(() => {
+            // Raport pozostaje otwarty; brak wersji modelu jest widoczny w sekcji statusu.
+          });
+      }
       openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
         entityRef: params.get('sel'),
         subjectKind: 'report',
@@ -288,7 +432,16 @@ function App() {
       return;
     }
     clearRouteManagedSurface();
-  }, [clearRouteManagedSurface, hashVersion, openRouteSurface, route, setActiveRun, setExecutionActiveRun]);
+  }, [
+    clearRouteManagedSurface,
+    hashVersion,
+    openRouteSurface,
+    route,
+    setActiveCaseResultStatus,
+    setActiveRun,
+    setActiveSnapshot,
+    setExecutionActiveRun,
+  ]);
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {
@@ -304,22 +457,68 @@ function App() {
 
     try {
       const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
-      const run = await createAndExecuteRun(activeCaseId, { analysis_type: analysisType });
+      let caseIdForRun = activeCaseId;
+      if (!isUuid(caseIdForRun)) {
+        caseIdForRun = crypto.randomUUID();
+        setActiveCase(
+          caseIdForRun,
+          activeCaseName ?? 'Zwarcie maksymalne IEC 60909',
+          activeCaseKind ?? 'ShortCircuitCase',
+          'NONE',
+        );
+      }
+      const run = await createAndExecuteRun(caseIdForRun, { analysis_type: analysisType });
       setActiveRun(run.id);
-      notify('Uruchomiono obliczenia. PrzejdĹş do widoku wynikĂłw po zakoĹ„czeniu.', 'success');
+      setActiveCaseResultStatus('FRESH');
+      try {
+        const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
+        if (response.ok) {
+          const payload = (await response.json()) as { snapshot_id?: unknown };
+          if (typeof payload.snapshot_id === 'string' && payload.snapshot_id.trim()) {
+            setActiveSnapshot(payload.snapshot_id);
+          }
+        }
+      } catch {
+        // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
+      }
+      notify('Obliczenie zakończone. Otwieram wyniki.', 'success');
       navigateToResults({ runId: run.id });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'BĹ‚ąd uruchomienia obliczeĹ„';
+      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
       notify(message, 'error');
     }
-  }, [activeAnalysisType, activeCaseId, createAndExecuteRun, navigateToResults, readiness, setActiveRun]);
+  }, [
+    activeAnalysisType,
+    activeCaseId,
+    activeCaseKind,
+    activeCaseName,
+    createAndExecuteRun,
+    navigateToResults,
+    readiness,
+    setActiveCase,
+    setActiveCaseResultStatus,
+    setActiveRun,
+    setActiveSnapshot,
+  ]);
 
   /**
    * Navigate to canonical E-24 results surface.
    */
   const handleViewResults = useCallback(() => {
+    const params = getCurrentSearchParams();
+    openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+      titlePl: 'Poziom analityczny',
+      tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
+      entityRef: params.get('sel'),
+      subjectKind: 'analysis_run',
+      subjectRef: activeRunId,
+      payload: {
+        runId: activeRunId,
+        legacyRoute: ROUTES.ANALYSIS.hash,
+      },
+    });
     navigateToResults({ runId: activeRunId });
-  }, [activeRunId, navigateToResults]);
+  }, [activeRunId, navigateToResults, openRouteSurface]);
 
   const networkStats = useNetworkStats();
 
@@ -351,7 +550,7 @@ function App() {
   const handleMenuAction = useCallback((actionId: string) => {
     switch (actionId) {
       case 'sld':
-        window.location.hash = '';
+        navigateToNetworkBuild();
         break;
       case 'network-build':
         navigateToNetworkBuild();
@@ -379,6 +578,8 @@ function App() {
         navigateToCompare({ runId: activeRunId });
         break;
       case 'report':
+      case 'export':
+        setActiveArea('RAPORTY_UZASADNIENIA');
         navigateToReport({ runId: activeRunId });
         break;
       case 'variants':
@@ -386,6 +587,7 @@ function App() {
         break;
       case 'readiness':
       case 'show-readiness':
+        setActiveArea('MODEL_SIECI');
         openRouteSurface('E-04', {
           titlePl: 'Gotowość modelu i lista braków',
           tabId: 'braki',
@@ -445,7 +647,7 @@ function App() {
     networkStats: networkStats,
   };
 
-  // Inspektor modelu ENM (v4.2 — diagnostyka inĹĽynierska)
+  // Inspektor modelu ENM (v4.2 — diagnostyka inżynierska)
   if (route === '#enm-inspector') {
     return wrapWithReadyIndicator(
       <CanonicalLayout {...layoutProps}>

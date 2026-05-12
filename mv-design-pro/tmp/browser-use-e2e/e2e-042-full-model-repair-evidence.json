@@ -1,0 +1,113 @@
+{
+  "case_id": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+  "updated_zero_sequence": 6,
+  "relay_added": [
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004"
+  ],
+  "branch_points": {
+    "slup_error": "POST /api/cases/d2dee258-0d5c-44cc-a90b-ee5ddcf47d74/enm/domain-ops HTTP 422: {\"detail\":{\"code\":\"catalog.ref_required\",\"message_pl\":\"Powiązanie katalogowe jest niekompletne lub niepoprawne\",\"errors\":[{\"code\":\"catalog.ref_required\",\"message_pl\":\"Nieznana kategoria katalogu: mv_branch_points\"}]}}"
+  },
+  "fw": {
+    "error": "POST /api/cases/d2dee258-0d5c-44cc-a90b-ee5ddcf47d74/enm/domain-ops HTTP 422: {\"detail\":{\"code\":\"catalog.unknown_namespace\",\"message_pl\":\"Nieznana kategoria katalogu: CONVERTER\",\"errors\":[{\"code\":\"catalog.unknown_namespace\",\"message_pl\":\"Nieznana kategoria katalogu: CONVERTER\"}]}}"
+  },
+  "counts": {
+    "substations": 6,
+    "buses": 21,
+    "branches": 15,
+    "transformers": 5,
+    "loads": 5,
+    "generators": 2,
+    "branch_points": 0,
+    "protection_assignments": 4
+  },
+  "validation_status": "OK",
+  "validation_issues": 0,
+  "readiness_phase": null,
+  "sc_runs": {
+    "3F": {
+      "run_id": "ef6e2d48-1ce6-4cb0-a9e6-693ccda5f9e0",
+      "results": 11
+    },
+    "1F": {
+      "run_id": "aeaa91d0-23e6-491f-8480-c8597e1e97b6",
+      "results": 0
+    },
+    "2F": {
+      "run_id": "b06895fc-2136-48af-b71e-738d29270052",
+      "results": 11
+    },
+    "2FG": {
+      "error": "POST /api/cases/d2dee258-0d5c-44cc-a90b-ee5ddcf47d74/runs/short-circuit HTTP 422: {\"detail\":\"Nieobslugiwany typ zwarcia: 2FG\",\"request_id\":\"7474321c-6e77-4645-8405-2a58e5327bf0\",\"error_type\":\"ValueError\"}"
+    }
+  },
+  "pf_run_id": "3dad40db-68f3-4d69-bc97-c2e41acf8818",
+  "pf": {
+    "error": null,
+    "bus_rows": 22,
+    "branch_rows": 12
+  },
+  "protection": {
+    "run_id": "bc5ad327-2346-40fd-a65e-222c171070f0",
+    "execute_status": "FINISHED",
+    "evaluations": 1,
+    "invalid": 0,
+    "trace_steps": 3
+  },
+  "exports": {
+    "SC": {
+      "export/report/json": {
+        "status": 200,
+        "bytes": 108607
+      },
+      "export/report/docx": {
+        "status": 200,
+        "bytes": 38295
+      },
+      "export/report/pdf": {
+        "status": 200,
+        "bytes": 3534
+      },
+      "export/proof/json": {
+        "status": 200,
+        "bytes": 223230
+      },
+      "export/proof/latex": {
+        "status": 200,
+        "bytes": 28902
+      },
+      "export/proof/pdf": {
+        "status": 200,
+        "bytes": 17043
+      }
+    },
+    "PF": {
+      "export/report/json": {
+        "status": 200,
+        "bytes": 107278
+      },
+      "export/report/docx": {
+        "status": 200,
+        "bytes": 38396
+      },
+      "export/report/pdf": {
+        "status": 200,
+        "bytes": 4366
+      },
+      "export/proof/json": {
+        "status": 200,
+        "bytes": 92636
+      },
+      "export/proof/latex": {
+        "status": 200,
+        "bytes": 2827
+      },
+      "export/proof/pdf": {
+        "status": 200,
+        "bytes": 3324
+      }
+    }
+  }
+}

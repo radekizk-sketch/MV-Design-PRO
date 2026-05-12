@@ -91,6 +91,20 @@ def test_extract_catalog_binding_supports_canonical_converter_source_binding():
     assert binding["catalog_item_id"] == "conv-fw-3mw-15kv"
 
 
+def test_validate_and_materialize_catalog_binding_accepts_fw_converter_catalog():
+    error, solver_fields = validate_and_materialize_catalog_binding(
+        "add_converter_source",
+        {
+            "source_technology": "FW",
+            "catalog_ref": "conv-wind-nn-2mw-0p4kv",
+        },
+    )
+
+    assert error is None
+    assert solver_fields["un_kv"] == 0.4
+    assert solver_fields["pmax_mw"] == 2.0
+
+
 def test_extract_catalog_binding_supports_add_sn_bay_catalog_binding():
     binding = extract_catalog_binding(
         "add_sn_bay",
@@ -139,6 +153,34 @@ def test_validate_and_materialize_catalog_binding_accepts_transformer_catalog_re
     assert error is None
     assert solver_fields["rated_power_mva"] is not None
     assert solver_fields["uk_percent"] is not None
+
+
+def test_validate_catalog_binding_accepts_zksn_catalog_ref_from_branch_point_catalog():
+    error, solver_fields = validate_and_materialize_catalog_binding(
+        "insert_zksn_on_segment_sn",
+        {
+            "segment_id": "seg-1",
+            "catalog_ref": "ZKSN-2P-630A",
+            "catalog_namespace": "mv_branch_points",
+        },
+    )
+
+    assert error is None
+    assert solver_fields == {}
+
+
+def test_validate_catalog_binding_rejects_unknown_branch_point_catalog_ref():
+    error, _ = validate_and_materialize_catalog_binding(
+        "insert_branch_pole_on_segment_sn",
+        {
+            "segment_id": "seg-1",
+            "catalog_ref": "BRAK-TAKIEGO-SLUPA",
+            "catalog_namespace": "mv_branch_points",
+        },
+    )
+
+    assert error is not None
+    assert error.code == "catalog.materialization_failed"
 
 
 def test_insert_station_payload_accepts_topological_station_type():

@@ -94,7 +94,10 @@ def test_topology_radial_10_stations_deterministic() -> None:
 
         assert len(enm["sources"]) == 1
         assert len(enm["branches"]) == 10
-        assert len(enm["buses"]) == 11
+        sn_buses = [bus for bus in enm["buses"] if bus.get("voltage_kv") == 15.0]
+        wn_buses = [bus for bus in enm["buses"] if bus.get("voltage_kv") == 110.0]
+        assert len(sn_buses) == 11
+        assert len(wn_buses) == 1
 
     assert hash_runs[0] == hash_runs[1] == hash_runs[2]
 

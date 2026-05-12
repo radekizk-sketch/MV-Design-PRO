@@ -780,9 +780,7 @@ export const SLDViewCanvas: React.FC<SLDViewCanvasProps> = ({
         {/* Render symbols with energization + readiness state + V12 readability (LOD/filtry/szkielet) */}
         {renderableSymbols.map((symbol) => {
           const elementRef = symbol.elementId ?? symbol.id;
-          const severity = highlightedElements?.get(elementRef)
-            ?? highlightedElements?.get(symbol.id)
-            ?? null;
+          const severity = highlightedElements?.get(elementRef) ?? highlightedElements?.get(symbol.id) ?? null;
           const opacity = getOpacity(symbol.id, symbol.elementType as import('../types').ElementType);
           if (opacity === 0) return null;
           return (

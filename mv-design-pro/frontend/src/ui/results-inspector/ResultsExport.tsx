@@ -267,7 +267,7 @@ export function ResultsExport({ exportData }: ResultsExportProps) {
         <div className="mb-3">
           <h3 className="text-sm font-semibold text-slate-900">Generator raportu końcowego</h3>
           <p className="mt-1 text-xs text-slate-500">
-            Raport korzysta ze wspolnego kontraktu wynikow, uzasadnienia inzynierskiego i aktywnego uruchomienia.
+            Raport korzysta ze wspólnego kontraktu wyników, uzasadnienia inżynierskiego i aktywnego obliczenia.
           </p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">

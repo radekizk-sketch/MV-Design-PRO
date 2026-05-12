@@ -184,12 +184,12 @@ describe('ProtectionLibraryBrowser', () => {
     render(<ProtectionLibraryBrowser />);
 
     await waitFor(() => {
-      expect(screen.getByText('PrzekaĹşnik Sepam 20')).toBeInTheDocument();
+      expect(screen.getByText('Przekaźnik Sepam 20')).toBeInTheDocument();
     });
 
     expect(screen.getByText(/dane analityczne - wymagaja weryfikacji/i)).toBeInTheDocument();
 
-    await user.click(screen.getByText('PrzekaĹşnik Sepam 20'));
+    await user.click(screen.getByText('Przekaźnik Sepam 20'));
 
     await waitFor(() => {
       expect(screen.getByText(/rekord analityczny/i)).toBeInTheDocument();

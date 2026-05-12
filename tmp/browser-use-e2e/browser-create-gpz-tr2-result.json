@@ -1,0 +1,12 @@
+{
+  "status": 200,
+  "caseId": "browser-gpz-tr2-1778473917750",
+  "transformers": 2,
+  "transformerRefs": [
+    "gpz/ea497b0f1adb116680e39bf3e015b5f8/transformer/001/wn_sn",
+    "gpz/ea497b0f1adb116680e39bf3e015b5f8/transformer/002/wn_sn"
+  ],
+  "buses": 8,
+  "branches": 5,
+  "error": null
+}

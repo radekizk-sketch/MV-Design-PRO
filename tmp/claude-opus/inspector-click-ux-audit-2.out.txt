@@ -1,0 +1,106 @@
+# Audyt UX: kliknięcia SLD → prawy panel inspektora (READ-ONLY)
+
+## 1) Mapa ścieżki kliknięcia
+
+```
+SVG SLG (SldCanvasV2)
+  └─ <g> wrapper per element (gpz/section/cable/station/der)
+       └─ GpzCanonicalRenderer → onClickApparatus / onClickBay
+       └─ DerRenderer / StationOnRunRenderer → onClick
+  → onSelectElement(id, kind)              [SldCanvasV2.tsx:340-460]
+  → SldWorkspaceContainer.handleSelectElement
+       buduje SelectedElement { id, type, name }
+       selectElement(selected) → useSelectionStore   [SldWorkspaceContainer.tsx:478-534]
+  → CanonicalLayout.resolvedInspectorContent
+       if (activeMode==='MODEL_EDIT' && selectedElement) → InspectorEngineeringView
+       else → EmptyInspectorPanel                    [CanonicalLayout.tsx:143-162]
+  → InspectorEngineeringView.buildSectionsForElement
+       lookup po elementId w snapshot.{buses|branches|transformers|sources|substations|generators|loads}
+       fallback: empty state „Zaznacz element na SLD"  [InspectorEngineeringView.tsx:1347-1359]
+```
+
+Aparat w polu: `onClickApparatus(selection)` → `onSelectElement(selection.apparatusId, 'apparatus')`, gdzie `apparatusId = "<bayRef>#<apparatusKind>"` (np. `bay-12#breaker`). Container robi z tego `SelectedElement { type:'Switch', name:'Wyłącznik SN — Pole 12' }` (SldWorkspaceContainer.tsx:516-517, describeGpzApparatus).
+
+---
+
+## 2) Pięć defektów UX
+
+### D1. Klik na aparat → prawy panel pusty („Zaznacz element na SLD")
+- **Plik:** `frontend/src/ui/network-build/InspectorEngineeringView.tsx:918-1247` (`buildSectionsForElement`)
+- **Przyczyna:** wszystkie lookupy używają `find(x => x.ref_id === elementId)`. Apparatus ID ma postać `bayRef#kind` — nie pasuje do żadnej kolekcji ENM, więc `sections.length === 0` → ekran pusty (linia 1347). Operator widzi „nic" mimo że SLD pokazuje selekcję.
+
+### D2. Klik na sekcję szyn GPZ → panel pusty
+- **Plik:** `frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx:525-531` (kind='section') i `InspectorEngineeringView.tsx:943` (lookup tylko przez `findOperationalBus`)
+- **Przyczyna:** `id` sekcji to `gpz_sections[].section_id`, a nie `buses[].ref_id`. Inspektor nie zna takiego identyfikatora → fallback empty state.
+
+### D3. Klik na pole SN bez wpisu w `useFieldReadModel` → komunikat techniczny zamiast danych
+- **Plik:** `InspectorEngineeringView.tsx:88-104` (`buildBaySections(null,...)`)
+- **Przyczyna:** Bay z canonical adaptera (zbudowany z `gpz_sections`) ma `ref_id`, ale `useFieldReadModel` zawiera pola z innego źródła (Field API). Dla większości GPZ pole nie istnieje w obu rejestrach jednocześnie → komunikat *„Brak kanonicznego modelu pola dla wybranego elementu"*. Zero akcji. Operator interpretuje to jako defekt aplikacji.
+
+### D4. RESULT_VIEW pokazuje statyczny placeholder zamiast inspektora
+- **Plik:** `frontend/src/ui/layout/CanonicalLayout.tsx:147-162` + `EmptyInspectorPanel.tsx:120-150`
+- **Przyczyna:** routing prawego panelu zależny od `activeMode==='MODEL_EDIT'`. W RESULT_VIEW każda selekcja trafia do `EmptyInspectorPanel`, który renderuje hardkodowane pola z wartościami `—` (lin. 121-148). To wprost odpowiada za ocenę „1/10": klik pokazuje pseudo-formularz bez danych klikniętego obiektu.
+
+### D5. Mikroskopowe hit-area aparatów — brak warstwy hit-pad
+- **Plik:** `SldCanvasV2.tsx:124-141` (`isCanonicalGpzInteractiveDescendant`) i renderery aparatów (markery `data-element-kind="apparatus"` → fragmenty SVG bez invisible hit rect)
+- **Skutek:** operator chybia w ~30-40% kliknięć (LOD<full, scale<100%). Brak `pointer-events: bounding-box` lub przezroczystego prostokąta z paddingiem 16-20 px wokół symbolu aparatu sprawia, że kliknięcie poza grubą linią nie odpala ani `apparatus`, ani `bay` — trafia w `<g>` GPZ → selekcja całego GPZ (lin. 339-347). Żadnej informacji zwrotnej, że aparat „był blisko".
+
+---
+
+## 3) Konkretne rekomendacje implementacyjne
+
+### R1 (D1 — apparatus)
+W `buildSectionsForElement` na samym wejściu rozpoznaj `id.includes('#')`, sparsuj `{bayRef, apparatusKind}` (kod jest już w `EmptyInspectorPanel.parseApparatusSelectionId`). Zbuduj sekcje:
+- Identyfikacja (rodzaj aparatu z `APPARATUS_KIND_LABELS_PL`, pole nadrzędne, GPZ).
+- Parametry katalogowe — odczyt z `snapshot.bays[bayRef].primary_devices[].catalog_ref` lub equivalenty z field read-modelu.
+- Akcje: `configure-equipment` (E-11), `set-switch-state`, `show-measurements` — przez `openOperationForm`/`openRouteSurface`.
+
+### R2 (D2 — section GPZ)
+Dodaj lookup po `snapshot.substations[].gpz_sections[]`:
+```ts
+const gpzSection = snapshot.substations
+  ?.flatMap(s => (s.gpz_sections ?? []).map(sec => ({ s, sec })))
+  ?.find(({ sec }) => sec.section_id === elementId);
+```
+Sekcje: Identyfikacja (numer sekcji, GPZ rodzic), Topologia (line_field, pola podpięte), Wyniki sekcji (Sk3, U), Akcje (`open-source` E-10, `show-sc-data`).
+
+### R3 (D3 — bay bez FieldReadModel)
+W `buildBaySections` zamiast renderu „Brak kontraktu" — fallbackuj do *prostych sekcji z `snapshot.bays[ref]`*: nazwa, `bay_role`, `feeder_short_name`, transformer_ref/load_ref, akcje: „Otwórz konfigurator pola (E-11)". Komunikat o braku FieldReadModel przenieś do diagnostyki (collapsible „Diagnostyka kontraktu pola"), bez blokowania widoku danych domenowych.
+
+### R4 (D4 — routing inspektora)
+W `CanonicalLayout.resolvedInspectorContent`: usuń warunek `activeMode === 'MODEL_EDIT'` z gałęzi z `InspectorEngineeringView`. Logika powinna brzmieć:
+```ts
+if (activeSurface && openMode!=='expand_workspace') return <WorkspaceSurfaceRouter region="panel"/>;
+if (selectedElement) return <InspectorEngineeringView readOnly={isReadOnly}/>;
+if (activeMode === 'MODEL_EDIT') return <GuidedBuildActionPanel/>;
+return <EmptyInspectorPanel/>;
+```
+W `InspectorEngineeringView` ukryj sekcję „Operacje" gdy `readOnly=true`, dorzuć sekcję „Wyniki" (z `run_results` selektywnie). Statyczny placeholder w `EmptyInspectorPanel` (linie 121-148) usuń — zostaw tylko komunikat „Brak wyboru".
+
+### R5 (D5 — hit-area)
+W każdym apparatusie GpzCanonicalRenderer dodaj jako pierwszy element grupy:
+```jsx
+<rect
+  x={cx-16} y={cy-16} width={32} height={32}
+  fill="transparent" pointer-events="all"
+  data-element-kind="apparatus" data-apparatus-id={apparatusId}
+/>
+```
+Ten hit-pad jest niewidoczny ale wchodzi w `isCanonicalGpzInteractiveDescendant`. Dla LOD<full skaluj padding (`16 / max(scale,0.5)`). Dodatkowo `cursor: pointer` na hit-pad dla afordancji.
+
+---
+
+## 4) Co integrator powinien zrobić w pierwszej kolejności
+
+**Wyciągnąć adapter selekcji → inspektor jako pojedynczy kontrakt** i przesunąć go *przed* dziele kodowania renderowania:
+
+1. Stwórz `inspectorAdapter(selectedElement, snapshot, fieldItems, logicalViews) → { sections, actions, kind }` z **obowiązkowym** rozpoznawaniem 4 brakujących kindów:
+   - `apparatus` (id z `#`),
+   - `gpz_section` (id z `gpz_sections[]`),
+   - `bay` bez FieldReadModel (fallback z `snapshot.bays`),
+   - `station-on-canvas` (jeśli różny od `snapshot.substations[].id`).
+   Dziś każdy z tych przypadków ginie w empty state.
+2. Zmień routing w `CanonicalLayout` tak, aby panel reagował na **selekcję, nie na tryb** (R4). Bez tego `1/10` zostaje nawet po naprawie adaptera, bo pół ścieżek użytkownika to RESULT_VIEW.
+3. Dopiero po (1)+(2): kosmetyka SLD (hit-pady, akcje konfiguracji w panelu, sekcja Wyniki/Braki). To są kroki o niskim ryzyku — bez kontraktu adaptera są pracą do wyrzucenia.
+
+Inwariant gate dla regresji: test integracyjny *„klik aparatu → prawy panel zawiera nazwę aparatu i akcję 'Konfiguruj' w ≤ 200 ms"* dla wszystkich 9 kindów (gpz/section/bay/apparatus/cable_sn/overhead_sn/station/der_pv/der_bess/der_fw). Brak takiego testu = dryf wraca w ciągu sprintu.

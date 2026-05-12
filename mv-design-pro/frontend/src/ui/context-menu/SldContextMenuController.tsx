@@ -38,6 +38,7 @@ export interface SldMenuContext {
   readonly bayHasOutgoingRun?: boolean;
   readonly stationHasFreeBay?: boolean;
   readonly hasResults?: boolean;
+  readonly apparatusKind?: string;
 }
 
 export interface SldContextMenuControllerProps {
@@ -59,6 +60,7 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   gpz: 'Główny Punkt Zasilający',
   section: 'Sekcja rozdzielni SN',
   bay: 'Pole SN',
+  apparatus: 'Aparat pola SN',
   cable_segment_sn: 'Odcinek kabla SN',
   overhead_line_sn: 'Odcinek linii napowietrznej SN',
   station: 'Stacja transformatorowa SN/nN',
@@ -73,6 +75,7 @@ const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>>
   gpz: 'Source',
   section: 'Bus',
   bay: 'BaySN',
+  apparatus: 'Switch',
   cable_segment_sn: 'LineBranch',
   overhead_line_sn: 'LineBranch',
   station: 'Station',

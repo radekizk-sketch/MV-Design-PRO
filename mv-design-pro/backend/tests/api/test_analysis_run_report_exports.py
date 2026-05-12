@@ -436,6 +436,27 @@ def test_trace_export_payload_carries_asymmetric_short_circuit_proof_status() ->
     assert payload["white_box_trace"][0]["method_basis"] == "IEC_60909"
 
 
+def test_analysis_run_export_endpoints_support_short_circuit_runs(app_client, monkeypatch) -> None:
+    from api import analysis_runs as analysis_runs_api
+
+    run = _build_sc_run()
+    monkeypatch.setattr(analysis_runs_api, "_require_canonical_run", lambda _run_id: run)
+
+    report_json = app_client.get(f"/api/analysis-runs/{run.id}/export/report/json")
+    assert report_json.status_code == 200
+    assert report_json.headers["content-type"].startswith("application/json")
+    assert report_json.json()["report_type"] == "analysis_run_report"
+
+    proof_latex = app_client.get(f"/api/analysis-runs/{run.id}/export/proof/latex")
+    assert proof_latex.status_code == 200
+    assert "Uzasadnienie inżynierskie obliczeń" in proof_latex.text
+    assert str(run.id) in proof_latex.text
+
+    proof_json = app_client.get(f"/api/analysis-runs/{run.id}/export/proof/json")
+    assert proof_json.status_code == 200
+    assert proof_json.json()["proof_pack_ref"].startswith("proof-pack:")
+
+
 def test_report_payload_supports_phase_state_focus_table() -> None:
     payload = build_analysis_run_report_payload(
         _build_phase_state_run(),

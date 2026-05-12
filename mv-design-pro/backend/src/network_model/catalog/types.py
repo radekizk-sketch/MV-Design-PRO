@@ -846,6 +846,7 @@ class InverterType:
         qmax_mvar: Maximum reactive power [MVAr] (optional).
         cosphi_min: Minimum cos(phi) (optional).
         cosphi_max: Maximum cos(phi) (optional).
+        kind: Inverter technology family.
         manufacturer: Manufacturer name (optional).
         model: Model designation (optional).
     """
@@ -859,6 +860,7 @@ class InverterType:
     qmax_mvar: float | None = None
     cosphi_min: float | None = None
     cosphi_max: float | None = None
+    kind: str = "INVERTER"
     manufacturer: str | None = None
     model: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
@@ -879,6 +881,7 @@ class InverterType:
             "qmax_mvar": self.qmax_mvar,
             "cosphi_min": self.cosphi_min,
             "cosphi_max": self.cosphi_max,
+            "kind": self.kind,
             "manufacturer": self.manufacturer,
             "model": self.model,
             **_catalog_metadata_to_dict(
@@ -907,6 +910,7 @@ class InverterType:
             cosphi_max=(
                 float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
             ),
+            kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
             **_catalog_metadata_kwargs(
@@ -1996,6 +2000,28 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("name_pl", "Szablon", ""),
             ("device_type_ref", "Typ urządzenia", ""),
             ("curve_ref", "Krzywa", ""),
+        ),
+    ),
+    CatalogNamespace.CONVERTER.value: MaterializationContract(
+        namespace=CatalogNamespace.CONVERTER.value,
+        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        ui_fields=(
+            ("un_kv", "Un [kV]", "kV"),
+            ("sn_mva", "Sn [MVA]", "MVA"),
+            ("pmax_mw", "Pmax [MW]", "MW"),
+            ("qmin_mvar", "Qmin [Mvar]", "Mvar"),
+            ("qmax_mvar", "Qmax [Mvar]", "Mvar"),
+            ("kind", "Technologia", ""),
+        ),
+    ),
+    CatalogNamespace.INVERTER.value: MaterializationContract(
+        namespace=CatalogNamespace.INVERTER.value,
+        solver_fields=("un_kv", "sn_mva", "pmax_mw", "qmin_mvar", "qmax_mvar", "kind"),
+        ui_fields=(
+            ("un_kv", "Un [kV]", "kV"),
+            ("sn_mva", "Sn [MVA]", "MVA"),
+            ("pmax_mw", "Pmax [MW]", "MW"),
+            ("kind", "Technologia", ""),
         ),
     ),
 }

@@ -31,6 +31,7 @@ import {
   FONT_SANS,
   FONT_SIZES,
 } from '../theme/tokens';
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 
 import {
   GpzOperatorHeader,
@@ -87,6 +88,25 @@ export interface CanonicalGpzBay {
   readonly controlMode?: 'remote' | 'local' | 'unknown';
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
+}
+
+export type CanonicalGpzApparatusKind =
+  | 'disconnect_bus'
+  | 'breaker'
+  | 'ct'
+  | 'vt'
+  | 'switch_disconnector'
+  | 'earthing_switch'
+  | 'fuse'
+  | 'cable_head'
+  | 'transformer_symbol';
+
+export interface CanonicalGpzApparatusSelection {
+  readonly apparatusId: string;
+  readonly bayRef: string;
+  readonly apparatusKind: CanonicalGpzApparatusKind;
+  readonly designation: string | null;
+  readonly labelPl: string;
 }
 
 export type BayFieldRole =
@@ -166,6 +186,9 @@ export interface GpzCanonicalRendererProps {
   readonly onClickBay?: (bayRef: string) => void;
   readonly onDoubleClickBay?: (bayRef: string) => void;
   readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onContextMenuSection?: (sectionId: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
   readonly onClickCoupler?: (couplerId: string) => void;
   readonly onClickTransformer?: (transformerRef: string) => void;
   readonly onResetSignals?: () => void;
@@ -181,31 +204,70 @@ const HV_BAY_HEIGHT = 80;
 const TR_AREA_Y = 280;
 const TR_HEIGHT = 80;
 const LV_BUS_GAP = 16;
-const LV_SECTION_GAP = 28;
-const LV_BAY_HEIGHT = 220;
-const BAY_WIDTH = 56;
-const BAY_PITCH = 60;
+const LV_SECTION_COUPLER_GAP = 72;
+const LV_SECTION_MIN_WIDTH = 260;
+const LV_BAY_HEIGHT = 250;
+const LV_TR_UPSTREAM_HEIGHT = 182;
+const BAY_WIDTH = 74;
+const BAY_PITCH = 82;
 const TR_WIDTH = 60;
 const SECTION_LABEL_WIDTH = 30;
 const PAGE_PADDING = 24;
+
+interface LvSectionLayout {
+  readonly section: CanonicalGpzSection;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+}
+
+function getLvSectionWidth(section: CanonicalGpzSection): number {
+  const bayCount = Math.max(section.bays.length, 1);
+  const baySpan = (bayCount - 1) * BAY_PITCH + BAY_WIDTH;
+  return Math.max(LV_SECTION_MIN_WIDTH, SECTION_LABEL_WIDTH + 32 + baySpan + 32);
+}
+
+function getLvSwitchgearWidth(sections: readonly CanonicalGpzSection[]): number {
+  if (sections.length === 0) return 0;
+  const sectionWidthSum = sections.reduce((sum, section) => sum + getLvSectionWidth(section), 0);
+  return sectionWidthSum + (sections.length - 1) * LV_SECTION_COUPLER_GAP;
+}
+
+function buildLvSectionLayouts(
+  sections: readonly CanonicalGpzSection[],
+  startX: number,
+  y: number,
+): readonly LvSectionLayout[] {
+  let cursor = startX;
+  return sections.map((section, index) => {
+    const width = getLvSectionWidth(section);
+    const layout: LvSectionLayout = { section, x: cursor, y, width };
+    cursor += width + (index < sections.length - 1 ? LV_SECTION_COUPLER_GAP : 0);
+    return layout;
+  });
+}
 
 /* =============================================================================
    Main renderer
    ============================================================================= */
 
 export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Element {
-  const widestSection = Math.max(...props.sections.map((s) => s.bays.length), 1);
-  const totalLvWidth = SECTION_LABEL_WIDTH + widestSection * BAY_PITCH + PAGE_PADDING * 2;
+  const lvSwitchgearWidth = getLvSwitchgearWidth(props.sections);
+  const totalLvWidth = lvSwitchgearWidth + PAGE_PADDING * 2;
   const totalHvBays = props.hvSections?.reduce((acc, s) => acc + s.bays.length, 0) ?? 0;
   const totalHvWidth = SECTION_LABEL_WIDTH + (totalHvBays + props.transformers.length) * BAY_PITCH + PAGE_PADDING * 2;
   const totalWidth = Math.max(totalLvWidth, totalHvWidth, HEADER_WIDTH * 2 + PAGE_PADDING);
   const sectionsBlockY = TR_AREA_Y + TR_HEIGHT + LV_BUS_GAP;
-  const sectionsBlockHeight = props.sections.length * (LV_BAY_HEIGHT + LV_SECTION_GAP);
+  const sectionsBlockHeight = props.sections.length > 0 ? LV_BAY_HEIGHT : 60;
   const totalHeight = sectionsBlockY + sectionsBlockHeight + PAGE_PADDING;
+  const lvStartX = Math.max(PAGE_PADDING, (totalWidth - lvSwitchgearWidth) / 2);
+  const lvSectionLayouts = buildLvSectionLayouts(props.sections, lvStartX, sectionsBlockY);
+  const lvSectionLayoutById = new Map(lvSectionLayouts.map((layout) => [layout.section.sectionId, layout]));
 
   return (
     <g
       data-testid={`sld-v2-gpz-canonical-${props.id}`}
+      data-parity-key="gpz.root"
       data-element-kind="gpz_canonical"
       data-element-id={props.id}
       data-gpz-name={props.name}
@@ -222,6 +284,7 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
         strokeOpacity={0.3}
         strokeWidth={1}
         rx={2}
+        data-parity-key="gpz.frame"
         data-testid={`gpz-canonical-${props.id}-frame`}
       />
 
@@ -259,30 +322,39 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
       />
 
       {/* 4. LV sections — szyny 15 kV + pola SN */}
-      {props.sections.map((section, sectionIdx) => (
+      {lvSectionLayouts.map((layout, index) => (
         <LvSection
-          key={`section-${section.sectionId}`}
-          section={section}
-          x={PAGE_PADDING}
-          y={sectionsBlockY + sectionIdx * (LV_BAY_HEIGHT + LV_SECTION_GAP)}
-          width={totalWidth - PAGE_PADDING * 2}
+          key={`section-${layout.section.sectionId}-${index}`}
+          section={layout.section}
+          x={layout.x}
+          y={layout.y}
+          width={layout.width}
           onClickBay={props.onClickBay}
           onDoubleClickBay={props.onDoubleClickBay}
           onContextMenuBay={props.onContextMenuBay}
+          onContextMenuSection={props.onContextMenuSection}
+          onClickApparatus={props.onClickApparatus}
+          onContextMenuApparatus={props.onContextMenuApparatus}
         />
       ))}
 
       {/* 5. Sprzęgła LV (między sekcjami) */}
-      {props.couplers.map((coupler) => {
-        const leftIdx = props.sections.findIndex((s) => s.sectionId === coupler.leftSectionId);
-        if (leftIdx < 0) return null;
-        const couplerY = sectionsBlockY + leftIdx * (LV_BAY_HEIGHT + LV_SECTION_GAP) + LV_BAY_HEIGHT;
-        const couplerX = PAGE_PADDING + (totalWidth - PAGE_PADDING * 2) / 2;
+      {props.couplers.map((coupler, index) => {
+        const leftLayout = lvSectionLayoutById.get(coupler.leftSectionId);
+        const rightLayout = lvSectionLayoutById.get(coupler.rightSectionId);
+        if (!leftLayout || !rightLayout) return null;
+        const firstLayout = leftLayout.x <= rightLayout.x ? leftLayout : rightLayout;
+        const secondLayout = leftLayout.x <= rightLayout.x ? rightLayout : leftLayout;
+        const couplerStartX = firstLayout.x + firstLayout.width;
+        const couplerEndX = secondLayout.x;
+        const couplerLineLength = Math.max(24, couplerEndX - couplerStartX);
+        const couplerX = couplerStartX + couplerLineLength / 2;
         return (
           <CouplerSymbol
-            key={`coupler-${coupler.couplerId}`}
+            key={`coupler-${coupler.couplerId}-${index}`}
             x={couplerX}
-            y={couplerY}
+            y={sectionsBlockY}
+            lineLength={couplerLineLength}
             coupler={coupler}
             onClick={props.onClickCoupler}
           />
@@ -290,13 +362,13 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
       })}
 
       {/* 6. Etykiety sekcji + napięcia */}
-      {props.sections.map((section, idx) => (
+      {lvSectionLayouts.map((layout, index) => (
         <SectionLabel
-          key={`section-label-${section.sectionId}`}
-          x={4}
-          y={sectionsBlockY + idx * (LV_BAY_HEIGHT + LV_SECTION_GAP) + LV_BAY_HEIGHT - 24}
-          label={section.label}
-          voltageKv={section.busVoltageKv}
+          key={`section-label-${layout.section.sectionId}-${index}`}
+          x={layout.x + 4}
+          y={layout.y - 24}
+          label={layout.section.label}
+          voltageKv={layout.section.busVoltageKv}
         />
       ))}
     </g>
@@ -318,18 +390,18 @@ interface HvSectionProps {
 function HvSection(props: HvSectionProps): JSX.Element {
   const { x, y, width, sections, transformerCount } = props;
   if (sections.length === 0 && transformerCount === 0) {
-    // Brak HV — placeholder explicit "—" (NIE "?")
     return (
-      <g data-testid="gpz-canonical-hv-empty" transform={`translate(${x}, ${y})`}>
-        <text fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel}>
-          Strona 110 kV — brak danych ENM
+      <g data-testid="gpz-canonical-hv-empty" data-parity-key="gpz.hv.missing" transform={`translate(${x}, ${y})`}>
+        <rect x={0} y={-18} width={170} height={24} rx={3} fill="#101A27" stroke="#3C536A" strokeWidth={1} />
+        <text x={10} y={0} fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={12} fontWeight={700}>
+          Brak danych 110 kV
         </text>
       </g>
     );
   }
 
   return (
-    <g data-testid="gpz-canonical-hv" transform={`translate(${x}, ${y})`}>
+    <g data-testid="gpz-canonical-hv" data-parity-key="gpz.hv" transform={`translate(${x}, ${y})`}>
       {/* HV bus 110 kV — pozioma szyna */}
       <line
         x1={SECTION_LABEL_WIDTH}
@@ -338,6 +410,7 @@ function HvSection(props: HvSectionProps): JSX.Element {
         y2={0}
         stroke={COLOR_BUS_HV}
         strokeWidth={2.5}
+        data-parity-key="gpz.bus.hv"
         data-testid="gpz-canonical-hv-bus"
       />
       <text
@@ -352,10 +425,10 @@ function HvSection(props: HvSectionProps): JSX.Element {
       </text>
 
       {/* HV pola liniowe (powyżej szyny — wchodzą "z góry") */}
-      {sections.flatMap((section) =>
+      {sections.flatMap((section, sectionIndex) =>
         section.bays.map((bay, idx) => (
           <HvLineBay
-            key={`hv-bay-${bay.bayRef}`}
+            key={`hv-bay-${section.sectionId}-${bay.bayRef}-${sectionIndex}-${idx}`}
             x={SECTION_LABEL_WIDTH + 30 + idx * BAY_PITCH * 1.2}
             y={-HV_BAY_HEIGHT}
             bay={bay}
@@ -377,6 +450,7 @@ function HvLineBay(props: HvLineBayProps): JSX.Element {
   return (
     <g
       data-testid={`gpz-canonical-hv-bay-${bay.bayRef}`}
+      data-parity-key="gpz.hv.bay"
       data-bay-role={bay.fieldRole}
       transform={`translate(${x}, ${y})`}
     >
@@ -418,9 +492,10 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
   const { x, y, width, transformers, onClickTransformer } = props;
   if (transformers.length === 0) {
     return (
-      <g data-testid="gpz-canonical-transformers-empty" transform={`translate(${x}, ${y})`}>
-        <text fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel}>
-          Brak transformatorów w ENM
+      <g data-testid="gpz-canonical-transformers-empty" data-parity-key="gpz.transformer.missing" transform={`translate(${x}, ${y})`}>
+        <rect x={0} y={-18} width={195} height={24} rx={3} fill="#101A27" stroke="#3C536A" strokeWidth={1} />
+        <text x={10} y={0} fill={COLOR_TEXT_MUTED} fontFamily={FONT_SANS} fontSize={12} fontWeight={700}>
+          Brak transformatora WN/SN
         </text>
       </g>
     );
@@ -430,10 +505,10 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
   const trGap = (width - transformers.length * TR_WIDTH) / (transformers.length + 1);
 
   return (
-    <g data-testid="gpz-canonical-transformers" transform={`translate(${x}, ${y})`}>
+    <g data-testid="gpz-canonical-transformers" data-parity-key="gpz.transformers" transform={`translate(${x}, ${y})`}>
       {transformers.map((tr, idx) => (
         <TransformerSymbol
-          key={`tr-${tr.transformerRef}`}
+          key={`tr-${tr.transformerRef}-${idx}`}
           x={trGap + idx * (TR_WIDTH + trGap)}
           y={0}
           transformer={tr}
@@ -457,6 +532,7 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
   return (
     <g
       data-testid={`gpz-canonical-transformer-${transformer.transformerRef}`}
+      data-parity-key="gpz.transformer.symbol"
       transform={`translate(${x}, ${y})`}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(transformer.transformerRef); } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
@@ -464,10 +540,10 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
       {/* Pionowy tor TR (od HV bus do LV bus) */}
       <line x1={cx} y1={-LV_BUS_GAP} x2={cx} y2={TR_HEIGHT + LV_BUS_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
       {/* Górny okrąg (HV) z markerem Y */}
-      <circle cx={cx} cy={20} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      <circle cx={cx} cy={20} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.hv" />
       <text x={cx} y={24} textAnchor="middle" fill={COLOR_LINE_PRIMARY} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>Y</text>
       {/* Dolny okrąg (LV) z markerem Δ */}
-      <circle cx={cx} cy={48} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      <circle cx={cx} cy={48} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.sn" />
       <polygon points={`${cx - 6},${56} ${cx + 6},${56} ${cx},${42}`} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
       {/* Etykieta: TR1 */}
       <text x={cx + 22} y={26} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
@@ -496,40 +572,69 @@ interface LvSectionProps {
   readonly onClickBay?: (bayRef: string) => void;
   readonly onDoubleClickBay?: (bayRef: string) => void;
   readonly onContextMenuBay?: (bayRef: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onContextMenuSection?: (sectionId: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
 }
 
 function LvSection(props: LvSectionProps): JSX.Element {
-  const { section, x, y, width, onClickBay, onDoubleClickBay, onContextMenuBay } = props;
+  const {
+    section,
+    x,
+    y,
+    width,
+    onClickBay,
+    onDoubleClickBay,
+    onContextMenuBay,
+    onContextMenuSection,
+    onClickApparatus,
+    onContextMenuApparatus,
+  } = props;
   return (
     <g
       data-testid={`gpz-canonical-section-${section.sectionId}`}
+      data-parity-key="gpz.section"
       data-section-label={section.label}
       data-section-voltage={String(section.busVoltageKv)}
+      data-section-layout="single-bus-segment"
       transform={`translate(${x}, ${y})`}
+      onContextMenu={
+        onContextMenuSection
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenuSection(section.sectionId, { clientX: e.clientX, clientY: e.clientY });
+            }
+          : undefined
+      }
     >
-      {/* Szyna LV (pozioma) — ZIELONY (kanon: szyna SN) */}
+      {/* Pola */}
+      {section.bays.map((bay, idx) => (
+        <LvBay
+          key={`bay-${section.sectionId}-${bay.bayRef}-${idx}`}
+          bay={bay}
+          x={32 + idx * BAY_PITCH}
+          y={0}
+          onClick={onClickBay}
+          onDoubleClick={onDoubleClickBay}
+          onContextMenu={onContextMenuBay}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        />
+      ))}
+
+      {/* Szyna SN musi być warstwą nad kolumnami pól, jak w ekranach operatorskich. */}
       <line
-        x1={SECTION_LABEL_WIDTH}
+        x1={0}
         y1={0}
         x2={width}
         y2={0}
         stroke={COLOR_BUS_LV}
-        strokeWidth={2.5}
+        strokeWidth={4}
+        strokeLinecap="square"
+        data-parity-key="gpz.bus.sn"
         data-testid={`gpz-canonical-section-${section.sectionId}-bus`}
       />
-
-      {/* Pola */}
-      {section.bays.map((bay, idx) => (
-        <LvBay
-          key={`bay-${bay.bayRef}`}
-          bay={bay}
-          x={SECTION_LABEL_WIDTH + 24 + idx * BAY_PITCH}
-          y={4}
-          onClick={onClickBay}
-          onDoubleClick={onDoubleClickBay}
-          onContextMenu={onContextMenuBay}
-        />
-      ))}
     </g>
   );
 }
@@ -541,14 +646,204 @@ interface LvBayProps {
   readonly onClick?: (ref: string) => void;
   readonly onDoubleClick?: (ref: string) => void;
   readonly onContextMenu?: (ref: string, evt: { clientX: number; clientY: number }) => void;
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
+}
+
+interface BayApparatusPolicy {
+  readonly dsBus: boolean;
+  readonly cb: boolean;
+  readonly ct: boolean;
+  readonly dsLin: boolean;
+  readonly es: boolean;
+  readonly cableHead: boolean;
+  readonly vt: boolean;
+  readonly fuse: boolean;
+}
+
+function getBayApparatusPolicy(fieldRole: BayFieldRole): BayApparatusPolicy {
+  switch (fieldRole) {
+    case 'LINE_IN':
+    case 'LINE_OUT':
+    case 'LINE_BRANCH':
+      return { dsBus: true, cb: true, ct: true, dsLin: true, es: true, cableHead: true, vt: false, fuse: false };
+    case 'TRANSFORMER':
+      return { dsBus: true, cb: true, ct: true, dsLin: false, es: true, cableHead: false, vt: false, fuse: true };
+    case 'COUPLER':
+      return { dsBus: true, cb: true, ct: true, dsLin: false, es: false, cableHead: false, vt: false, fuse: false };
+    case 'MEASUREMENT':
+      return { dsBus: true, cb: false, ct: false, dsLin: false, es: true, cableHead: false, vt: true, fuse: false };
+  }
+}
+
+interface ApparatusTextProps {
+  readonly x: number;
+  readonly y: number;
+  readonly value?: string;
+}
+
+function ApparatusText(props: ApparatusTextProps): JSX.Element | null {
+  if (!props.value) return null;
+  return (
+    <text x={props.x} y={props.y} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+      {props.value}
+    </text>
+  );
+}
+
+interface ClickableApparatusProps {
+  readonly bay: CanonicalGpzBay;
+  readonly kind: CanonicalGpzApparatusKind;
+  readonly designation?: string | null;
+  readonly labelPl: string;
+  readonly parityKey: string;
+  readonly required?: boolean;
+  readonly hitBox?: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+  readonly onContextMenuApparatus?: (selection: CanonicalGpzApparatusSelection, evt: { clientX: number; clientY: number }) => void;
+  readonly children: JSX.Element | readonly JSX.Element[];
+}
+
+function apparatusId(bayRef: string, kind: CanonicalGpzApparatusKind): string {
+  return `${bayRef}#${kind}`;
+}
+
+function ClickableApparatus(props: ClickableApparatusProps): JSX.Element {
+  const id = apparatusId(props.bay.bayRef, props.kind);
+  const selection: CanonicalGpzApparatusSelection = {
+    apparatusId: id,
+    bayRef: props.bay.bayRef,
+    apparatusKind: props.kind,
+    designation: props.designation ?? null,
+    labelPl: props.labelPl,
+  };
+  const handleClick = props.onClickApparatus
+    ? (e: MouseEvent<Element>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        props.onClickApparatus?.(selection);
+      }
+    : undefined;
+  const handleContextMenu = props.onContextMenuApparatus
+    ? (e: MouseEvent<Element>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        props.onContextMenuApparatus?.(selection, { clientX: e.clientX, clientY: e.clientY });
+      }
+    : undefined;
+  const handleKeyDown = props.onClickApparatus
+    ? (e: KeyboardEvent<Element>) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        e.stopPropagation();
+        props.onClickApparatus?.(selection);
+      }
+    : undefined;
+  const handlePointerDown = props.onClickApparatus
+    ? (e: PointerEvent<Element>) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        props.onClickApparatus?.(selection);
+      }
+    : undefined;
+  const handleMouseDown = props.onClickApparatus
+    ? (e: MouseEvent<Element>) => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        props.onClickApparatus?.(selection);
+      }
+    : undefined;
+  return (
+    <g
+      data-testid={`gpz-canonical-apparatus-${id}`}
+      data-element-kind="apparatus"
+      data-element-id={id}
+      data-bay-ref={props.bay.bayRef}
+      data-apparatus-kind={props.kind}
+      data-apparatus-label={props.labelPl}
+      data-apparatus-required={props.required === false ? 'false' : 'true'}
+      data-designation-present={Boolean(props.designation)}
+      data-parity-key={props.parityKey}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
+      style={{ cursor: props.onClickApparatus || props.onContextMenuApparatus ? 'pointer' : 'default' }}
+    >
+      {props.hitBox && (
+        <foreignObject
+          x={props.hitBox.x}
+          y={props.hitBox.y}
+          width={props.hitBox.width}
+          height={props.hitBox.height}
+          pointerEvents="all"
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onMouseDown={handleMouseDown}
+          onContextMenu={handleContextMenu}
+          data-testid={`gpz-canonical-apparatus-${id}-hitbox`}
+          data-element-kind="apparatus"
+          data-element-id={id}
+          data-parity-key={`${props.parityKey}.hitbox`}
+        >
+          <button
+            type="button"
+            aria-label={props.labelPl}
+            onClick={handleClick}
+            onPointerDown={handlePointerDown}
+            onMouseDown={handleMouseDown}
+            onContextMenu={handleContextMenu}
+            onKeyDown={handleKeyDown}
+            onFocus={() => props.onClickApparatus?.(selection)}
+            data-testid={`gpz-canonical-apparatus-${id}-button`}
+            data-element-kind="apparatus"
+            data-element-id={id}
+            style={{
+              width: '100%',
+              height: '100%',
+              margin: 0,
+              padding: 0,
+              border: 0,
+              background: 'transparent',
+              cursor: props.onClickApparatus || props.onContextMenuApparatus ? 'pointer' : 'default',
+              color: 'transparent',
+              fontSize: 0,
+              lineHeight: 0,
+            }}
+          />
+        </foreignObject>
+      )}
+      <g pointerEvents="none">{props.children}</g>
+    </g>
+  );
 }
 
 function LvBay(props: LvBayProps): JSX.Element {
-  const { bay, x, y, onClick, onDoubleClick, onContextMenu } = props;
+  const { bay, x, y, onClick, onDoubleClick, onContextMenu, onClickApparatus, onContextMenuApparatus } = props;
   const trackHeight = LV_BAY_HEIGHT - 30;
+  const apparatus = getBayApparatusPolicy(bay.fieldRole);
+  const esState = bay.esState ?? 'unknown';
+  if (bay.fieldRole === 'TRANSFORMER') {
+    return (
+      <LvTransformerBay
+        bay={bay}
+        x={x}
+        y={y}
+        onClick={onClick}
+        onDoubleClick={onDoubleClick}
+        onContextMenu={onContextMenu}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      />
+    );
+  }
   return (
     <g
       data-testid={`gpz-canonical-bay-${bay.bayRef}`}
+      data-parity-key="gpz.bay"
       data-bay-role={bay.fieldRole}
       data-bay-number={bay.bayNumber ?? ''}
       transform={`translate(${x}, ${y})`}
@@ -568,97 +863,179 @@ function LvBay(props: LvBayProps): JSX.Element {
       {/* Tło pola (per-role color) */}
       <rect
         x={-BAY_WIDTH / 2}
-        y={0}
+        y={-24}
         width={BAY_WIDTH}
-        height={LV_BAY_HEIGHT}
+        height={LV_BAY_HEIGHT + 24}
         fill={bayRoleFillColor(bay.fieldRole)}
         stroke={bay.inManipulation ? '#FFB020' : COLOR_TEXT_MUTED}
         strokeOpacity={bay.inManipulation ? 0.9 : 0.3}
         strokeWidth={bay.inManipulation ? 1.4 : 0.8}
         rx={1}
+        data-parity-key="gpz.bay.panel"
       />
 
       {/* Pionowy tor pola */}
-      <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} />
+      <line x1={0} y1={0} x2={0} y2={trackHeight} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.6} data-parity-key="gpz.bay.power_path" />
 
       {/* Header pola — feeder name */}
       {bay.feederName && (
         <text
           x={0}
-          y={14}
+          y={18}
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.bayLabel - 1}
-          fontWeight={600}
+          fontSize={10}
+          fontWeight={700}
+          data-testid="gpz-bay-feeder-label"
+          data-parity-key="gpz.bay.feeder_label"
         >
-          {bay.feederName.slice(0, 8)}
+          {bay.feederName.slice(0, 10)}
         </text>
       )}
 
       {/* DS_BUS (Q1) — odłącznik szynowy nad CB */}
-      {bay.qDesignations.dsBus && (
-        <g>
+      {apparatus.dsBus && (
+        <ClickableApparatus
+          bay={bay}
+          kind="disconnect_bus"
+          designation={bay.qDesignations.dsBus}
+          labelPl="Odłącznik szynowy"
+          parityKey="gpz.apparatus.ds.bus"
+          hitBox={{ x: -16, y: 20, width: 36, height: 24 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
           <ApparatusDs cx={0} cy={32} state={bay.dsState ?? 'unknown'} />
-          <text x={9} y={36} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
-            {bay.qDesignations.dsBus}
-          </text>
-        </g>
+          <ApparatusText x={9} y={36} value={bay.qDesignations.dsBus} />
+        </ClickableApparatus>
       )}
 
       {/* CB (Q0) — wyłącznik */}
-      {bay.qDesignations.cb && (
-        <g>
+      {apparatus.cb && (
+        <ClickableApparatus
+          bay={bay}
+          kind="breaker"
+          designation={bay.qDesignations.cb}
+          labelPl="Wyłącznik SN"
+          parityKey="gpz.apparatus.cb.main"
+          hitBox={{ x: -16, y: 44, width: 38, height: 24 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
           <ApparatusCb cx={0} cy={56} state={bay.cbState ?? 'unknown'} />
-          <text x={11} y={60} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
-            {bay.qDesignations.cb}
-          </text>
-        </g>
+          <ApparatusText x={11} y={60} value={bay.qDesignations.cb} />
+        </ClickableApparatus>
       )}
 
       {/* CT (T1) — przekładnik prądowy */}
-      {bay.qDesignations.ct && (
-        <g>
+      {apparatus.ct && (
+        <ClickableApparatus
+          bay={bay}
+          kind="ct"
+          designation={bay.qDesignations.ct}
+          labelPl="Przekładnik prądowy"
+          parityKey="gpz.apparatus.ct"
+          hitBox={{ x: -16, y: 68, width: 36, height: 24 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
           <circle cx={0} cy={80} r={5} fill="none" stroke="#FFC857" strokeWidth={1.4} />
-          <text x={9} y={84} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
-            {bay.qDesignations.ct}
+          <ApparatusText x={9} y={84} value={bay.qDesignations.ct} />
+        </ClickableApparatus>
+      )}
+
+      {apparatus.vt && (
+        <ClickableApparatus
+          bay={bay}
+          kind="vt"
+          labelPl="Przekładnik napięciowy"
+          parityKey="gpz.apparatus.vt.side"
+          hitBox={{ x: -4, y: 58, width: 46, height: 36 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
+          <line x1={0} y1={72} x2={16} y2={72} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <circle cx={21} cy={66} r={5} fill="none" stroke="#FFB020" strokeWidth={1.4} />
+          <circle cx={21} cy={78} r={5} fill="none" stroke="#FFB020" strokeWidth={1.4} />
+          <text x={30} y={75} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+            VT
           </text>
-        </g>
+        </ClickableApparatus>
       )}
 
       {/* DS_LIN (Q9) — odłącznik liniowy */}
-      {bay.qDesignations.dsLin && (
-        <g>
-          <ApparatusDs cx={0} cy={104} state={bay.dsState ?? 'unknown'} />
-          <text x={9} y={108} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
-            {bay.qDesignations.dsLin}
-          </text>
-        </g>
+      {apparatus.dsLin && (
+        <ClickableApparatus
+          bay={bay}
+          kind="switch_disconnector"
+          designation={bay.qDesignations.dsLin}
+          labelPl="Rozłącznik liniowy"
+          parityKey="gpz.apparatus.ds.line"
+          hitBox={{ x: -16, y: 92, width: 38, height: 24 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
+          <ApparatusSwitchDisconnector cx={0} cy={104} state={bay.dsState ?? 'unknown'} />
+          <ApparatusText x={9} y={108} value={bay.qDesignations.dsLin} />
+        </ClickableApparatus>
+      )}
+
+      {apparatus.fuse && (
+        <ClickableApparatus
+          bay={bay}
+          kind="fuse"
+          labelPl="Bezpieczniki pola transformatorowego"
+          parityKey="gpz.apparatus.fuse"
+          hitBox={{ x: -14, y: 92, width: 28, height: 46 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
+          <rect x={-5} y={96} width={10} height={18} fill="#D8D063" stroke="#FFEA70" strokeWidth={1} />
+          <rect x={-5} y={116} width={10} height={18} fill="#D8D063" stroke="#FFEA70" strokeWidth={1} />
+        </ClickableApparatus>
       )}
 
       {/* ES (Q8) — uziemnik na bocznej gałęzi */}
-      {bay.qDesignations.es && bay.esState !== 'absent' && (
-        <g>
+      {apparatus.es && esState !== 'absent' && (
+        <ClickableApparatus
+          bay={bay}
+          kind="earthing_switch"
+          designation={bay.qDesignations.es}
+          labelPl="Uziemnik boczny"
+          parityKey="gpz.apparatus.es.side"
+          hitBox={{ x: -4, y: 118, width: 36, height: 34 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
           <line x1={0} y1={130} x2={14} y2={130} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.4} />
-          <line x1={14} y1={126} x2={14} y2={134} stroke={bay.esState === 'closed' ? '#FF4040' : COLOR_TEXT_MUTED} strokeWidth={1.6} />
+          <line x1={14} y1={126} x2={14} y2={134} stroke={esState === 'closed' ? '#FF4040' : COLOR_TEXT_MUTED} strokeWidth={1.6} />
           {/* Trójkąt ziemi */}
           <line x1={11} y1={138} x2={17} y2={138} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
           <line x1={12} y1={141} x2={16} y2={141} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
           <line x1={13} y1={144} x2={15} y2={144} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
-          <text x={20} y={132} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
-            {bay.qDesignations.es}
-          </text>
-        </g>
+          <ApparatusText x={20} y={132} value={bay.qDesignations.es} />
+        </ClickableApparatus>
       )}
 
       {/* Cable head (głowica kablowa) — trójkąt na końcu */}
-      {bay.fieldRole !== 'TRANSFORMER' && bay.fieldRole !== 'COUPLER' && bay.fieldRole !== 'MEASUREMENT' && (
-        <polygon
-          points={`-6,${trackHeight - 4} 6,${trackHeight - 4} 0,${trackHeight + 6}`}
-          fill="none"
-          stroke={COLOR_LINE_PRIMARY}
-          strokeWidth={1.4}
-        />
+      {apparatus.cableHead && (
+        <ClickableApparatus
+          bay={bay}
+          kind="cable_head"
+          labelPl="Głowica kablowa / port odpływu"
+          parityKey="gpz.apparatus.cable_head"
+          hitBox={{ x: -16, y: trackHeight - 42, width: 32, height: 56 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
+          <polygon
+            points={`-6,${trackHeight - 4} 6,${trackHeight - 4} 0,${trackHeight + 6}`}
+            fill="none"
+            stroke={COLOR_LINE_PRIMARY}
+            strokeWidth={1.4}
+          />
+        </ClickableApparatus>
       )}
 
       {/* Numer pola pod kolumną */}
@@ -703,6 +1080,180 @@ function LvBay(props: LvBayProps): JSX.Element {
   );
 }
 
+function LvTransformerBay(props: LvBayProps): JSX.Element {
+  const { bay, x, y, onClick, onDoubleClick, onContextMenu, onClickApparatus, onContextMenuApparatus } = props;
+  const esState = bay.esState ?? 'unknown';
+  const topY = -LV_TR_UPSTREAM_HEIGHT;
+  const transformerY = -142;
+  return (
+    <g
+      data-testid={`gpz-canonical-bay-${bay.bayRef}`}
+      data-parity-key="gpz.bay"
+      data-bay-role={bay.fieldRole}
+      data-bay-orientation="upstream-transformer"
+      data-bay-number={bay.bayNumber ?? ''}
+      transform={`translate(${x}, ${y})`}
+      onClick={onClick ? (e) => { e.stopPropagation(); onClick(bay.bayRef); } : undefined}
+      onDoubleClick={onDoubleClick ? (e) => { e.stopPropagation(); onDoubleClick(bay.bayRef); } : undefined}
+      onContextMenu={
+        onContextMenu
+          ? (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onContextMenu(bay.bayRef, { clientX: e.clientX, clientY: e.clientY });
+            }
+          : undefined
+      }
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
+      <rect
+        x={-BAY_WIDTH / 2}
+        y={topY}
+        width={BAY_WIDTH}
+        height={LV_TR_UPSTREAM_HEIGHT}
+        fill={bayRoleFillColor(bay.fieldRole)}
+        stroke={bay.inManipulation ? '#FFB020' : COLOR_TEXT_MUTED}
+        strokeOpacity={bay.inManipulation ? 0.9 : 0.3}
+        strokeWidth={bay.inManipulation ? 1.4 : 0.8}
+        rx={1}
+        data-parity-key="gpz.bay.panel"
+      />
+      <line
+        x1={0}
+        y1={0}
+        x2={0}
+        y2={topY + 18}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.8}
+        data-parity-key="gpz.bay.tr.upstream_path"
+      />
+      <text
+        x={0}
+        y={topY + 12}
+        textAnchor="middle"
+        fill={COLOR_TEXT_PRIMARY}
+        fontFamily={FONT_SANS}
+        fontSize={10}
+        fontWeight={700}
+        data-parity-key="gpz.bay.feeder_label"
+      >
+        {(bay.feederName ?? 'Pole TR').slice(0, 10)}
+      </text>
+
+      <ClickableApparatus
+        bay={bay}
+        kind="disconnect_bus"
+        designation={bay.qDesignations.dsBus}
+        labelPl="Odłącznik szynowy pola transformatorowego"
+        parityKey="gpz.apparatus.ds.bus"
+        hitBox={{ x: -16, y: -40, width: 36, height: 24 }}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      >
+        <ApparatusDs cx={0} cy={-28} state={bay.dsState ?? 'unknown'} />
+        <ApparatusText x={9} y={-24} value={bay.qDesignations.dsBus} />
+      </ClickableApparatus>
+
+      <ClickableApparatus
+        bay={bay}
+        kind="breaker"
+        designation={bay.qDesignations.cb}
+        labelPl="Wyłącznik pola transformatorowego"
+        parityKey="gpz.apparatus.cb.main"
+        hitBox={{ x: -16, y: -66, width: 38, height: 24 }}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      >
+        <ApparatusCb cx={0} cy={-54} state={bay.cbState ?? 'unknown'} />
+        <ApparatusText x={11} y={-50} value={bay.qDesignations.cb} />
+      </ClickableApparatus>
+
+      <ClickableApparatus
+        bay={bay}
+        kind="ct"
+        designation={bay.qDesignations.ct}
+        labelPl="Przekładnik prądowy pola transformatorowego"
+        parityKey="gpz.apparatus.ct"
+        hitBox={{ x: -16, y: -90, width: 36, height: 24 }}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      >
+        <circle cx={0} cy={-78} r={5} fill="none" stroke="#FFC857" strokeWidth={1.4} />
+        <ApparatusText x={9} y={-74} value={bay.qDesignations.ct} />
+      </ClickableApparatus>
+
+      <ClickableApparatus
+        bay={bay}
+        kind="fuse"
+        labelPl="Bezpieczniki pola transformatorowego"
+        parityKey="gpz.apparatus.fuse"
+        hitBox={{ x: -14, y: -132, width: 28, height: 46 }}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      >
+        <rect x={-5} y={-108} width={10} height={18} fill="#D8D063" stroke="#FFEA70" strokeWidth={1} />
+        <rect x={-5} y={-128} width={10} height={18} fill="#D8D063" stroke="#FFEA70" strokeWidth={1} />
+      </ClickableApparatus>
+
+      {esState !== 'absent' && (
+        <ClickableApparatus
+          bay={bay}
+          kind="earthing_switch"
+          designation={bay.qDesignations.es}
+          labelPl="Uziemnik boczny pola transformatorowego"
+          parityKey="gpz.apparatus.es.side"
+          hitBox={{ x: -4, y: -108, width: 38, height: 34 }}
+          onClickApparatus={onClickApparatus}
+          onContextMenuApparatus={onContextMenuApparatus}
+        >
+          <line x1={0} y1={-96} x2={16} y2={-96} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.4} />
+          <line x1={16} y1={-100} x2={16} y2={-92} stroke={esState === 'closed' ? '#FF4040' : COLOR_TEXT_MUTED} strokeWidth={1.6} />
+          <line x1={13} y1={-88} x2={19} y2={-88} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.2} />
+          <line x1={14} y1={-85} x2={18} y2={-85} stroke={COLOR_LINE_PRIMARY} strokeWidth={1.0} />
+          <line x1={15} y1={-82} x2={17} y2={-82} stroke={COLOR_LINE_PRIMARY} strokeWidth={0.8} />
+          <ApparatusText x={22} y={-94} value={bay.qDesignations.es} />
+        </ClickableApparatus>
+      )}
+
+      <ClickableApparatus
+        bay={bay}
+        kind="transformer_symbol"
+        labelPl="Transformator WN/SN powiązany z polem TR"
+        parityKey="gpz.bay.tr.upstream.transformer_symbol"
+        hitBox={{ x: -20, y: transformerY - 18, width: 64, height: 58 }}
+        onClickApparatus={onClickApparatus}
+        onContextMenuApparatus={onContextMenuApparatus}
+      >
+        <circle cx={0} cy={transformerY} r={12} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.8} />
+        <circle cx={0} cy={transformerY + 22} r={12} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.8} />
+        <text x={16} y={transformerY + 3} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={10} fontWeight={700}>
+          TR
+        </text>
+        <text x={16} y={transformerY + 17} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={8}>
+          WN/SN
+        </text>
+        <text x={16} y={transformerY + 31} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={8}>
+          param. w karcie TR
+        </text>
+      </ClickableApparatus>
+
+      {bay.bayNumber && (
+        <text
+          x={0}
+          y={18}
+          textAnchor="middle"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.bayLabel}
+          fontWeight={700}
+        >
+          {bay.bayNumber}
+        </text>
+      )}
+    </g>
+  );
+}
+
 /* =============================================================================
    Apparatus symbols
    ============================================================================= */
@@ -718,7 +1269,7 @@ function ApparatusCb(props: ApparatusProps): JSX.Element {
   const fill = state === 'closed' ? '#13C45A' : state === 'open' ? '#1F1F1F' : '#5A5A5A';
   const stroke = state === 'closed' ? '#0A8A3F' : state === 'open' ? '#FF4040' : '#3A3A3A';
   return (
-    <g data-testid={`gpz-canonical-cb`} data-state={state}>
+    <g data-testid={`gpz-canonical-cb`} data-parity-key="gpz.apparatus.cb" data-state={state}>
       <rect x={cx - 6} y={cy - 6} width={12} height={12} fill={fill} stroke={stroke} strokeWidth={1.5} />
       {state === 'open' && (
         <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke="#FF4040" strokeWidth={1.5} />
@@ -735,10 +1286,33 @@ function ApparatusDs(props: ApparatusProps): JSX.Element {
   const fill = state === 'closed' ? '#13C45A' : state === 'open' ? '#1F1F1F' : '#5A5A5A';
   const stroke = state === 'closed' ? '#0A8A3F' : state === 'open' ? '#FF4040' : '#3A3A3A';
   return (
-    <g data-testid={`gpz-canonical-ds`} data-state={state}>
+    <g data-testid={`gpz-canonical-ds`} data-parity-key="gpz.apparatus.ds" data-state={state}>
       <circle cx={cx} cy={cy} r={5} fill={fill} stroke={stroke} strokeWidth={1.4} />
       {state === 'open' && (
         <line x1={cx - 5} y1={cy} x2={cx + 5} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
+      )}
+      {state === 'unknown' && (
+        <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
+      )}
+    </g>
+  );
+}
+
+function ApparatusSwitchDisconnector(props: ApparatusProps): JSX.Element {
+  const { cx, cy, state } = props;
+  const fill = state === 'closed' ? '#13C45A' : state === 'open' ? '#1F1F1F' : '#5A5A5A';
+  const stroke = state === 'closed' ? '#0A8A3F' : state === 'open' ? '#FF4040' : '#3A3A3A';
+  const d = 6.5;
+  return (
+    <g data-testid="gpz-canonical-load-switch" data-parity-key="gpz.apparatus.switch_disconnector" data-state={state}>
+      <polygon
+        points={`${cx},${cy - d} ${cx + d},${cy} ${cx},${cy + d} ${cx - d},${cy}`}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.5}
+      />
+      {state === 'open' && (
+        <line x1={cx - d} y1={cy} x2={cx + d} y2={cy} stroke="#FF4040" strokeWidth={1.4} />
       )}
       {state === 'unknown' && (
         <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={8} fontWeight={700}>?</text>
@@ -761,7 +1335,7 @@ interface SectionLabelProps {
 function SectionLabel(props: SectionLabelProps): JSX.Element {
   const { x, y, label, voltageKv } = props;
   return (
-    <g data-testid={`gpz-canonical-section-label-${label}`} transform={`translate(${x}, ${y})`}>
+    <g data-testid={`gpz-canonical-section-label-${label}`} data-parity-key="gpz.section.label" transform={`translate(${x}, ${y})`}>
       <text fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
         {label}
       </text>
@@ -775,23 +1349,35 @@ function SectionLabel(props: SectionLabelProps): JSX.Element {
 interface CouplerSymbolProps {
   readonly x: number;
   readonly y: number;
+  readonly lineLength: number;
   readonly coupler: CanonicalGpzCoupler;
   readonly onClick?: (id: string) => void;
 }
 
 function CouplerSymbol(props: CouplerSymbolProps): JSX.Element {
-  const { x, y, coupler, onClick } = props;
+  const { x, y, lineLength, coupler, onClick } = props;
+  const halfLength = Math.max(12, lineLength / 2);
   return (
     <g
       data-testid={`gpz-canonical-coupler-${coupler.couplerId}`}
+      data-parity-key="gpz.coupler"
       data-coupler-state={coupler.closedState}
+      data-coupler-orientation="horizontal"
       transform={`translate(${x}, ${y})`}
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(coupler.couplerId); } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      <line x1={0} y1={0} x2={0} y2={LV_SECTION_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
-      <ApparatusCb cx={0} cy={LV_SECTION_GAP / 2} state={coupler.closedState} />
-      <text x={12} y={LV_SECTION_GAP / 2 + 3} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
+      <line
+        x1={-halfLength}
+        y1={0}
+        x2={halfLength}
+        y2={0}
+        stroke={COLOR_BUS_LV}
+        strokeWidth={2.5}
+        data-parity-key="gpz.coupler.bus_bridge"
+      />
+      <ApparatusCb cx={0} cy={0} state={coupler.closedState} />
+      <text x={0} y={-10} textAnchor="middle" fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={9}>
         {coupler.designation}
       </text>
     </g>
@@ -807,7 +1393,7 @@ interface BayStatusBadgesProps {
 function BayStatusBadges(props: BayStatusBadgesProps): JSX.Element {
   const { x, y, flags } = props;
   return (
-    <g data-testid={`gpz-canonical-status-badges`} data-flag-count={flags.length} transform={`translate(${x}, ${y})`}>
+    <g data-testid={`gpz-canonical-status-badges`} data-parity-key="gpz.status_flags" data-flag-count={flags.length} transform={`translate(${x}, ${y})`}>
       {flags.slice(0, 6).map((flag, idx) => (
         <g key={`flag-${flag}-${idx}`} data-testid={`gpz-canonical-flag-${flag}`}>
           <rect x={0} y={idx * 12} width={20} height={10} fill="#FFC857" fillOpacity={0.2} stroke="#FFC857" strokeWidth={0.5} rx={1} />
@@ -837,9 +1423,9 @@ function BayMeasurementsPanel(props: BayMeasurementsPanelProps): JSX.Element {
   const visibleRows = rows.filter((r) => r.value !== undefined && r.value !== null);
   if (visibleRows.length === 0) return <g data-testid="gpz-canonical-measurements-empty" />;
   return (
-    <g data-testid="gpz-canonical-measurements" transform={`translate(${x}, ${y})`}>
+    <g data-testid="gpz-canonical-measurements" data-parity-key="gpz.measurements" transform={`translate(${x}, ${y})`}>
       {visibleRows.map((row, idx) => (
-        <g key={`m-${row.label}`} data-testid={`gpz-canonical-measurement-${row.label}`}>
+        <g key={`m-${row.label}-${idx}`} data-testid={`gpz-canonical-measurement-${row.label}`}>
           <text x={0} y={idx * 10 + 6} fill={COLOR_TEXT_MUTED} fontFamily={FONT_MONO} fontSize={8}>
             {row.label}
           </text>

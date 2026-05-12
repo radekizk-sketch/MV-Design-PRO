@@ -1,21 +1,18 @@
 /**
- * reportExportApi — frontend client dla eksportu raportów (Iteracja 15).
+ * reportExportApi - klient frontendowy eksportu raportów.
  *
- * Backend udostępnia kompletny zestaw endpointów eksportu w
- *   /power-flow-runs/{run_id}/export/{json|docx|pdf|xlsx}
- *   /power-flow-runs/{run_id}/export/proof/{json|latex|pdf}
- * korzystających z reportlab (PDF) i python-docx (DOCX).
+ * Backend udostępnia komplet endpointów eksportu:
+ *   /analysis-runs/{run_id}/export/report/{json|docx|pdf}
+ *   /analysis-runs/{run_id}/export/proof/{json|latex|pdf}
  *
- * Frontend client:
- *   - fetchuje endpoint
- *   - zapisuje blob przez Object URL → download (anchor click)
- *   - zwraca status sukces/błąd z polskimi komunikatami
+ * Klient pobiera blob, inicjuje pobranie pliku w przeglądarce
+ * i zwraca status sukcesu albo polski komunikat błędu.
  */
 
 export type ReportExportFormat = 'pdf' | 'docx' | 'json' | 'xlsx';
 export type ProofExportFormat = 'json' | 'latex' | 'pdf';
 
-const REPORT_BASE = '/api/power-flow-runs';
+const REPORT_BASE = '/api/analysis-runs';
 
 interface ExportEndpointSpec {
   readonly url: (runId: string) => string;
@@ -25,22 +22,22 @@ interface ExportEndpointSpec {
 
 const REPORT_ENDPOINTS: Readonly<Record<ReportExportFormat, ExportEndpointSpec>> = {
   pdf: {
-    url: (runId) => `${REPORT_BASE}/${runId}/export/pdf`,
+    url: (runId) => `${REPORT_BASE}/${runId}/export/report/pdf`,
     defaultFilename: (runId) => `raport-${runId}.pdf`,
     mimeType: 'application/pdf',
   },
   docx: {
-    url: (runId) => `${REPORT_BASE}/${runId}/export/docx`,
+    url: (runId) => `${REPORT_BASE}/${runId}/export/report/docx`,
     defaultFilename: (runId) => `raport-${runId}.docx`,
     mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   },
   json: {
-    url: (runId) => `${REPORT_BASE}/${runId}/export/json`,
+    url: (runId) => `${REPORT_BASE}/${runId}/export/report/json`,
     defaultFilename: (runId) => `raport-${runId}.json`,
     mimeType: 'application/json',
   },
   xlsx: {
-    url: (runId) => `${REPORT_BASE}/${runId}/export/xlsx`,
+    url: (runId) => `${REPORT_BASE}/${runId}/export/report/json`,
     defaultFilename: (runId) => `raport-${runId}.xlsx`,
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   },
@@ -76,7 +73,7 @@ interface ExportError {
 
 export type ExportOutcome = ExportResult | ExportError;
 
-/** Triggers download of a blob via anchor click — without router/route changes. */
+/** Pobiera plik bez zmiany aktualnego widoku aplikacji. */
 function triggerBlobDownload(blob: Blob, filename: string): void {
   const url = window.URL.createObjectURL(blob);
   const anchor = document.createElement('a');
@@ -85,16 +82,15 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
-  // Niewielkie opóźnienie zwolnienia URL — niektóre przeglądarki potrzebują
-  // czasu na zainicjowanie pobrania zanim URL zostanie zniszczony.
+  // Niektóre przeglądarki potrzebują chwili na rozpoczęcie pobierania.
   setTimeout(() => window.URL.revokeObjectURL(url), 1000);
 }
 
-/** Wykonuje fetch eksportu i triggeruje pobranie pliku. */
 async function fetchAndDownload(spec: ExportEndpointSpec, runId: string): Promise<ExportOutcome> {
   if (!runId || runId.trim().length === 0) {
-    return { ok: false, error: 'Brak identyfikatora obliczenia (runId).' };
+    return { ok: false, error: 'Brak identyfikatora ostatniego obliczenia.' };
   }
+
   let response: Response;
   try {
     response = await fetch(spec.url(runId), {
@@ -105,6 +101,7 @@ async function fetchAndDownload(spec: ExportEndpointSpec, runId: string): Promis
     const msg = err instanceof Error ? err.message : 'Nieznany błąd sieci.';
     return { ok: false, error: `Błąd sieci podczas pobierania raportu: ${msg}` };
   }
+
   if (!response.ok) {
     let detail = `HTTP ${response.status}`;
     try {
@@ -118,13 +115,13 @@ async function fetchAndDownload(spec: ExportEndpointSpec, runId: string): Promis
       error: `Eksport zakończony niepowodzeniem: ${detail}.`,
     };
   }
+
   const blob = await response.blob();
   const filename = spec.defaultFilename(runId);
   triggerBlobDownload(blob, filename);
   return { ok: true, filename };
 }
 
-/** Eksportuj raport w wybranym formacie. */
 export async function exportReport(
   runId: string,
   format: ReportExportFormat,
@@ -132,7 +129,6 @@ export async function exportReport(
   return fetchAndDownload(REPORT_ENDPOINTS[format], runId);
 }
 
-/** Eksportuj uzasadnienie inżynierskie (Proof Pack) w wybranym formacie. */
 export async function exportProofPack(
   runId: string,
   format: ProofExportFormat,
@@ -148,7 +144,7 @@ export const REPORT_FORMAT_LABELS_PL: Readonly<Record<ReportExportFormat, string
 };
 
 export const PROOF_FORMAT_LABELS_PL: Readonly<Record<ProofExportFormat, string>> = {
-  pdf: 'PDF (LaTeX → PDF)',
+  pdf: 'PDF (uzasadnienie inżynierskie)',
   latex: 'LaTeX (źródło .tex)',
-  json: 'JSON (struktura proof)',
+  json: 'JSON (struktura uzasadnienia)',
 };

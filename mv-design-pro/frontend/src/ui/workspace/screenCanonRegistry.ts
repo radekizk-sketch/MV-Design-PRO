@@ -218,8 +218,8 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
   }),
   'E-07': screen({
     id: 'E-07',
-    labelFull: 'Przypadki obliczeniowe',
-    labelShort: 'Przypadki',
+    labelFull: 'Zakresy obliczeń',
+    labelShort: 'Zakresy',
     areaId: 'STUDIA_OBLICZENIOWE',
     icon: 'ikona-ekran-przypadki-obliczeniowe',
     canonicalRoute: '/workspace/study-cases',

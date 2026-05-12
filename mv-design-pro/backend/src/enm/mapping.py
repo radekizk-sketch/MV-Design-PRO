@@ -149,6 +149,14 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
         if idx is not None and node.name.startswith("GND ("):
             y0_bus[idx, idx] += complex(1e6, 0.0)
 
+    # Zero-sequence paths can be intentionally blocked by transformer vector
+    # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
+    # calculations singular; adding a local numerical reference keeps them
+    # isolated from the solved SN network.
+    for idx in range(size):
+        if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
+            y0_bus[idx, idx] += complex(1e6, 0.0)
+
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:

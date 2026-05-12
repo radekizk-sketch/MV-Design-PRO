@@ -1,0 +1,73 @@
+{
+  "project_id": "10d93330-5784-4d9c-8d7d-44d99bf84516",
+  "case_id": "af957569-00d2-4c0c-87b4-3f4bad5c8d53",
+  "gpz_ref": "gpz/78b20347f4dfd7cf3f8bb3ffc89181d8/substation",
+  "field_specs": 8,
+  "main_segments": [
+    "seg/3f4de2084d610ec30368bc2b6babffd2/segment",
+    "seg/7a3261fc3c07b00f49cffe488f8dfe2c/segment",
+    "seg/d7792a5f44a699229fff8a31934fae54/segment",
+    "seg/f26774f48c0a86d6269e10af47d8c0a6/segment",
+    "seg/39dc4cb803e1d2751d0f0f5705ddfd53/segment"
+  ],
+  "stations": [
+    "sub/9563075577494bac1061c996d8fe189f/substation",
+    "sub/5ff7391cf1492e9a501a5b6f279f4248/substation",
+    "sub/573a17ab13d67ac0a108c3902c94542f/substation",
+    "sub/abf2fc78756b8f73c307747b7d151ee4/substation",
+    "sub/4993e89c242b1a8dd5186a068f9d65fb/substation"
+  ],
+  "branch_points_status": {
+    "slup": "ok"
+  },
+  "der_status": {
+    "PV": "ok",
+    "BESS": "ok",
+    "FW_error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/enm/domain-ops HTTP 422: {\"detail\":{\"code\":\"catalog.unknown_namespace\",\"message_pl\":\"Nieznana kategoria katalogu: CONVERTER\",\"errors\":[{\"code\":\"catalog.unknown_namespace\",\"message_pl\":\"Nieznana kategoria katalogu: CONVERTER\"}]}}"
+  },
+  "counts": {
+    "substations": 6,
+    "buses": 23,
+    "branches": 16,
+    "transformers": 5,
+    "loads": 5,
+    "generators": 2,
+    "branch_points": 1,
+    "protection_assignments": 6
+  },
+  "validation_status": "FAIL",
+  "validation_issues": 1,
+  "readiness_keys": [
+    "case_id",
+    "enm_revision",
+    "validation",
+    "readiness",
+    "analysis_readiness",
+    "topology_completeness",
+    "element_counts"
+  ],
+  "sc_runs": {
+    "3F": {
+      "error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/runs/short-circuit HTTP 422: {\"detail\":[{\"code\":\"E003\",\"severity\":\"BLOCKER\",\"message_pl\":\"Wyspa sieci odcięta od źródła zasilania: bp/8759521b39d020ecce44f401062b391d/branch_bus_1.\",\"element_refs\":[\"bp/8759521b39d020ecce44f401062b391d/branch_bus_1\"],\"wizard_step_hint\":\"K4\",\"suggested_fix\":\"Połącz odizolowane szyny z resztą sieci.\",\"fix_action\":null}]}"
+    },
+    "1F": {
+      "error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/runs/short-circuit HTTP 422: {\"detail\":[{\"code\":\"E003\",\"severity\":\"BLOCKER\",\"message_pl\":\"Wyspa sieci odcięta od źródła zasilania: bp/8759521b39d020ecce44f401062b391d/branch_bus_1.\",\"element_refs\":[\"bp/8759521b39d020ecce44f401062b391d/branch_bus_1\"],\"wizard_step_hint\":\"K4\",\"suggested_fix\":\"Połącz odizolowane szyny z resztą sieci.\",\"fix_action\":null}]}"
+    },
+    "2F": {
+      "error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/runs/short-circuit HTTP 422: {\"detail\":[{\"code\":\"E003\",\"severity\":\"BLOCKER\",\"message_pl\":\"Wyspa sieci odcięta od źródła zasilania: bp/8759521b39d020ecce44f401062b391d/branch_bus_1.\",\"element_refs\":[\"bp/8759521b39d020ecce44f401062b391d/branch_bus_1\"],\"wizard_step_hint\":\"K4\",\"suggested_fix\":\"Połącz odizolowane szyny z resztą sieci.\",\"fix_action\":null}]}"
+    },
+    "2FG": {
+      "error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/runs/short-circuit HTTP 422: {\"detail\":[{\"code\":\"E003\",\"severity\":\"BLOCKER\",\"message_pl\":\"Wyspa sieci odcięta od źródła zasilania: bp/8759521b39d020ecce44f401062b391d/branch_bus_1.\",\"element_refs\":[\"bp/8759521b39d020ecce44f401062b391d/branch_bus_1\"],\"wizard_step_hint\":\"K4\",\"suggested_fix\":\"Połącz odizolowane szyny z resztą sieci.\",\"fix_action\":null}]}"
+    }
+  },
+  "pf_run_id": null,
+  "pf": {
+    "error": "POST /api/cases/af957569-00d2-4c0c-87b4-3f4bad5c8d53/runs/power-flow HTTP 422: {\"detail\":[{\"code\":\"E003\",\"severity\":\"BLOCKER\",\"message_pl\":\"Wyspa sieci odcięta od źródła zasilania: bp/8759521b39d020ecce44f401062b391d/branch_bus_1.\",\"element_refs\":[\"bp/8759521b39d020ecce44f401062b391d/branch_bus_1\"],\"wizard_step_hint\":\"K4\",\"suggested_fix\":\"Połącz odizolowane szyny z resztą sieci.\",\"fix_action\":null}]}",
+    "bus_rows": 0,
+    "branch_rows": 0
+  },
+  "protection": {
+    "error": "POST /api/projects/10d93330-5784-4d9c-8d7d-44d99bf84516/protection-runs HTTP 422: {\"detail\":[{\"type\":\"string_type\",\"loc\":[\"body\",\"sc_run_id\"],\"msg\":\"Input should be a valid string\",\"input\":null,\"url\":\"https://errors.pydantic.dev/2.12/v/string_type\"}]}"
+  },
+  "exports": {}
+}

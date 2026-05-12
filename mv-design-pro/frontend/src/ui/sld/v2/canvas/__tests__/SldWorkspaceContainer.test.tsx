@@ -25,7 +25,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     useSnapshotStore.getState().reset();
     // network-build store nie ma reset wbudowanego — wymuszamy spójny stan
     // przez bezpośrednie wyczyszczenie krytycznych pól.
-    useNetworkBuildStore.setState({ activeSurface: null });
+    useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
     useSelectionStore.setState({
       selectedElements: [],
       selectedElement: null,
@@ -75,6 +75,17 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
     expect(arg.elementId).toBeNull();
     expect(arg.clientX).toBe(120);
     expect(arg.clientY).toBe(240);
+  });
+
+  it('pusty komunikat SLD nie blokuje menu prawego kliknięcia tła', () => {
+    render(<SldWorkspaceContainer width={800} height={600} />);
+
+    fireEvent.contextMenu(screen.getByTestId('sld-empty-state').firstElementChild!, {
+      clientX: 340,
+      clientY: 260,
+    });
+
+    expect(screen.getByText('Wstaw główny punkt zasilania')).toBeInTheDocument();
   });
 
   it('respektuje tryb readOnly (data atrybut + brak zewnętrznego rozróżnienia w pustym widoku)', () => {
@@ -236,7 +247,7 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
 
     render(<SldWorkspaceContainer width={400} height={320} />);
 
-    fireEvent.doubleClick(screen.getByTestId('sld-v2-station-station_1'));
+    fireEvent.doubleClick(screen.getByTestId('sld-v2-mini-rmu-station_1'));
 
     const internal = screen.getByTestId('sld-v2-station-internal-station_1');
     expect(internal.textContent).toContain('Stacja Przelotowa');
@@ -246,6 +257,26 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
   });
 
   it('klik DER na SLD synchronizuje wspólny SelectionState dla inspektora', () => {
+    useNetworkBuildStore.setState({
+      activeSurface: {
+        surfaceId: 'operation:add_grid_source_sn:test',
+        screenCode: 'E-10',
+        titlePl: 'Dodaj źródło zasilania GPZ',
+        openMode: 'replace_right_panel',
+        sizeClass: 'B',
+        stackLevel: 1,
+      } as never,
+      surfaceStack: [
+        {
+          surfaceId: 'operation:add_grid_source_sn:test',
+          screenCode: 'E-10',
+          titlePl: 'Dodaj źródło zasilania GPZ',
+          openMode: 'replace_right_panel',
+          sizeClass: 'B',
+          stackLevel: 1,
+        } as never,
+      ],
+    });
     useSnapshotStore.setState({
       snapshot: {
         header: {
@@ -338,5 +369,122 @@ describe('SldWorkspaceContainer — Etap 1 wiring', () => {
       name: 'Blok PV',
     });
     expect(useSelectionStore.getState().propertyGridOpen).toBe(true);
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('klik aparatu w polu SN zamyka kartę roboczą i pokazuje właściwy obiekt w inspektorze', () => {
+    useNetworkBuildStore.setState({
+      activeSurface: {
+        surfaceId: 'operation:add_grid_source_sn:test',
+        screenCode: 'E-10',
+        titlePl: 'Dodaj źródło zasilania GPZ',
+        openMode: 'replace_right_panel',
+        sizeClass: 'B',
+        stackLevel: 1,
+      } as never,
+      surfaceStack: [
+        {
+          surfaceId: 'operation:add_grid_source_sn:test',
+          screenCode: 'E-10',
+          titlePl: 'Dodaj źródło zasilania GPZ',
+          openMode: 'replace_right_panel',
+          sizeClass: 'B',
+          stackLevel: 1,
+        } as never,
+      ],
+    });
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Sieć testowa',
+          created_at: '2026-05-01T00:00:00Z',
+          updated_at: '2026-05-01T00:00:00Z',
+          revision: 1,
+          hash_sha256: 'd'.repeat(64),
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [
+          {
+            id: 'bus_s1',
+            ref_id: 'bus_s1',
+            name: 'Szyna S1',
+            tags: [],
+            meta: {},
+            voltage_kv: 15,
+          } as never,
+        ],
+        transformers: [],
+        branches: [],
+        sources: [],
+        loads: [],
+        generators: [],
+        substations: [
+          {
+            id: 'gpz_1',
+            ref_id: 'gpz_1',
+            name: 'GPZ Test',
+            tags: [],
+            meta: {},
+            station_type: 'gpz',
+            bus_refs: ['bus_s1'],
+            transformer_refs: [],
+            gpz_sections: [
+              {
+                section_id: 's1',
+                name: 'Sekcja 1',
+                order: 1,
+                bus_ref: 'bus_s1',
+              },
+            ],
+          } as never,
+        ],
+        bays: [
+          {
+            id: 'bay_1',
+            ref_id: 'bay_1',
+            name: 'Pole odpływowe 1',
+            tags: [],
+            meta: {},
+            bay_role: 'OUT',
+            substation_ref: 'gpz_1',
+            bus_ref: 'bus_s1',
+            gpz_section_id: 's1',
+            bay_number: '1',
+            feeder_short_name: 'Pole odpływowe',
+          } as never,
+        ],
+        junctions: [],
+        branch_points: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      } as never,
+      logicalViews: null,
+      readiness: null,
+      fixActions: [],
+      materializedParams: null,
+      layout: null,
+      selectionHint: null,
+      lastChanges: null,
+      lastEvents: [],
+      operationHistory: [],
+      loading: false,
+      error: null,
+      errorCode: null,
+    });
+
+    render(<SldWorkspaceContainer width={900} height={520} />);
+
+    fireEvent.mouseDown(screen.getByTestId('gpz-canonical-apparatus-bay_1#breaker-button'), {
+      button: 0,
+    });
+
+    expect(useSelectionStore.getState().selectedElement).toMatchObject({
+      id: 'bay_1#breaker',
+      type: 'Switch',
+      name: expect.stringContaining('Wyłącznik SN'),
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });

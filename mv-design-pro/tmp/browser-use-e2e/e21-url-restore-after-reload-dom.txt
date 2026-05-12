@@ -1,0 +1,183 @@
+- button [disabled]:
+  - generic: ↶
+  - generic: Cofnij
+- button [disabled]:
+  - generic: ↷
+  - generic: Ponów
+- banner:
+  - generic: MV-DESIGN-PRO
+  - generic: "12.2"
+  - generic "Kontekst projektu":
+    - button "Projekt Sieć SN - projekt roboczy":
+      - generic: Projekt
+      - generic: Sieć SN - projekt roboczy
+    - button "Cel / stan Zwarcie maksymalne IEC 60909 · Stan projektowany 2026":
+      - generic: Cel / stan
+      - generic: Zwarcie maksymalne IEC 60909 · Stan projektowany 2026
+    - button "Konfiguruj zakres"
+    - generic "Brak wyników":
+      - generic: Brak wyników
+  - generic: 18:52:29
+  - generic: 11.05.2026
+  - button "Sprawdź braki danych":
+    - generic: Sprawdź braki
+  - button "Nakładka":
+    - generic: Nakładka
+  - button "Analizy":
+    - generic: Analizy
+  - button "Eksport":
+    - generic: Eksport
+  - button "Ustawienia":
+- 'generic "Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą"':
+  - generic: "Faza projektu:"
+  - generic: BUDOWA
+- 'generic "Blokady: T=2 K=0 E=0"':
+  - generic: "Blokery:"
+  - generic: "2"
+- generic: "Gotowość:"
+- generic: 76%
+- generic: "Elementy:"
+- generic: "0"
+- generic: "Pola SN:"
+- generic: "0"
+- generic: "Stacje SN/nN:"
+- generic: "0"
+- generic: "Długość SN:"
+- generic: brak odcinków
+- generic: "Transformatory:"
+- generic: "0"
+- generic: "Odbiory nN:"
+- generic: "0"
+- button "Szukaj":
+  - generic: Szukaj
+- button "Katalog":
+  - generic: Katalog
+- button "Przeglądy 2":
+  - generic: Przeglądy
+  - generic: "2"
+- button "Metadane":
+  - generic: Metadane
+- button "Historia":
+  - generic: Historia
+- navigation "Pasek obszarów roboczych":
+  - 'button "Model sieci. Budowa i edycja struktury sieci SN. Skrót: Ctrl+1"':
+    - generic: Model
+    - generic "Braki modelu": "!"
+  - 'button "Schemat i topologia. Praca na schemacie jednokreskowym, topologii i przełączeniach. Skrót: Ctrl+2"':
+    - generic: Schemat
+  - 'button "Studia obliczeniowe. Warianty pracy sieci, gotowość obliczeń, wyniki i raporty. Skrót: Ctrl+3"':
+    - generic: Studia
+  - 'button "Wyniki i analizy. Przegląd wyników, porównania i nakładki wynikowe SLD. Skrót: Ctrl+4"':
+    - generic: Wyniki
+    - generic "Wyniki dostępne po obliczeniach": W
+  - 'button "Zabezpieczenia i automatyka. Nastawy, selektywność, automatyka i logika działania. Skrót: Ctrl+5"':
+    - generic: Zabezp.
+  - 'button "Źródła i przyłączenia. Źródła PV, magazyny energii, farmy wiatrowe i wymagania operatora. Skrót: Ctrl+6"':
+    - generic: Źródła
+  - 'button "Katalogi techniczne. Typy, aparatura, przewody, transformatory i profile katalogowe. Skrót: Ctrl+7"':
+    - generic: Katalogi
+  - 'button "Raporty i uzasadnienia. Raporty OSD, uzasadnienia inżynierskie i pakiety audytowe. Skrót: Ctrl+8"':
+    - generic: Raporty
+  - 'button "Historia i audyt. Wersje modelu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9"':
+    - generic: Historia
+- complementary:
+  - button "Ukryj lewy pasek boczny":
+  - button "Schemat i topologia":
+    - generic: Schemat i topologia
+  - generic: Następna akcja
+  - generic: i
+  - button "△ 2 elementów wymaga uzupełnienia danych Pokaż":
+    - generic: △
+    - generic: 2 elementów wymaga uzupełnienia danych
+    - generic: Pokaż
+  - generic: Gotowość schematu
+  - generic: 76%
+  - generic: Blokery (2)
+  - button "Pokaż wszystkie"
+  - generic: Brak źródła zasilania w modelu sieci.
+  - generic: Brak szyn (węzłów) w modelu sieci.
+  - textbox "Szukaj w drzewie modelu":
+    - /placeholder: Szukaj obiektu
+  - generic: Aktualna wersja modelu nie zawiera elementów schematu do pokazania w drzewie.
+  - button "+ Dodaj element":
+    - generic: +
+    - generic: Dodaj element
+  - button "Gotowość"
+  - generic: "0"
+- region "Gotowość obliczeń na schemacie":
+  - generic: Gotowość obliczeń
+  - generic: zablokowane
+  - generic: "Blokady: 2"
+  - generic: "Ostrzeżenia: 1"
+- generic: Schemat jednokreskowy
+- heading "Schemat oczekuje na dane modelu sieci" [level=2]
+- paragraph: Rozpocznij budowę od wstawienia Głównego Punktu Zasilającego. Kliknij prawym przyciskiem myszy na kanwie, aby otworzyć menu kontekstowe budowy modelu.
+- paragraph: "Pomoc inżynierska: prawy klik na elementach modelu otwiera akcje właściwe dla danego obiektu (pole, stacja, kabel, źródło OZE)."
+- complementary:
+  - button "Ukryj prawy pasek boczny":
+  - generic: Inspektor techniczny
+  - button "Schemat"
+  - generic: /
+  - button "Falownik PV 0.5 MW / 0.4 kV nN"
+  - heading "Falownik PV 0.5 MW / 0.4 kV nN" [level=2]
+  - generic: Klasa B
+  - generic: Poziom 1
+  - generic: "Zapis: transakcyjny"
+  - generic: E-21 · Konfigurator falownika PV
+  - heading "Falownik PV 0.5 MW / 0.4 kV nN" [level=2]
+  - paragraph: Falownik wybrany na schemacie, ale brakuje pełnego wpisu OZE w modelu. Uzupełnij katalog, PCC, tor przyłączenia, profile NC RfG/FRT i zabezpieczenia.
+  - generic: "Kontekst:"
+  - generic: Sieć SN - projekt roboczy
+  - generic: ">"
+  - button
+  - generic: ">"
+  - generic: PV / FV
+  - generic: po stronie nN
+  - tablist:
+    - tab "Dane podstawowe" [selected]
+    - tab "Tor przyłączenia"
+    - tab "Falownik z katalogu"
+    - tab "Regulacja PV"
+    - tab "FRT / LVRT / HVRT"
+    - tab "Zgodność przyłączeniowa"
+    - tab "Gotowość obliczeń"
+  - term: Nazwa źródła
+  - definition: Falownik PV 0.5 MW / 0.4 kV nN
+  - term: Punkt przyłączenia
+  - definition: brak danych
+  - term: Moc znamionowa AC
+  - definition: brak danych
+  - term: Urządzenie katalogowe
+  - definition: brak danych katalogowych
+  - term: Moduł NC RfG
+  - definition: brak danych
+  - paragraph: Konfiguracja zaczyna się od falownika lub PCS, bo to urządzenie definiuje napięcie nN, prąd zwarciowy, model dynamiczny i wymagania FRT.
+  - generic: Punkt przyłączenia
+  - generic: po stronie nN
+  - generic: Moc znamionowa
+  - generic: —
+  - generic: Profil NC RfG
+  - generic: —
+- generic "Pasek statusu aplikacji":
+  - generic: "Bieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026."
+  - generic: Schemat / Model
+  - generic: "|"
+  - generic: "Projekt:"
+  - generic: Sieć SN - projekt roboczy
+  - generic: "|"
+  - generic: "Zakres obliczeń:"
+  - generic: Zwarcie maksymalne IEC 60909
+  - generic: "|"
+  - generic: "Wariant:"
+  - generic: Stan projektowany 2026
+  - generic: "|"
+  - generic: "Wersja modelu:"
+  - generic: —
+  - generic: "|"
+  - generic: Edycja
+  - generic: Brak wyników
+  - generic: "|"
+  - generic: ✕ 2 błędów
+  - generic: "|"
+  - generic: "Węzły: 0"
+  - generic: "Gałęzie: 0"

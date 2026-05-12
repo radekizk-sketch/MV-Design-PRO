@@ -3,8 +3,8 @@
  *
  * CANONICAL ALIGNMENT:
  * - wizard_screens.md § 1.2: internal operating context compatibility layer
- * - ui_canonical_parity.md Â§ B.2: Result freshness (NONE, FRESH, OUTDATED)
- * - sld_rules.md Â§ A.2: Element types and symbol mapping
+ * - ui_canonical_parity.md § B.2: Result freshness (NONE, FRESH, OUTDATED)
+ * - sld_rules.md § A.2: Element types and symbol mapping
  *
  * These types are used across Property Grid, Context Menu, and Selection components.
  */
@@ -21,25 +21,25 @@ import type {
  */
 export type OperatingMode = 'MODEL_EDIT' | 'CASE_CONFIG' | 'RESULT_VIEW';
 /**
- * Result freshness status (per ui_canonical_parity.md Â§ B.2).
+ * Result freshness status (per ui_canonical_parity.md § B.2).
  */
 export type ResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
 
 /**
  * Element type in the network model — rozszerzenie A–AZ.
- * Maps 1:1 to SLD symbols (bijection per sld_rules.md Â§ A.1).
+ * Maps 1:1 to SLD symbols (bijection per sld_rules.md § A.1).
  */
 export type ElementType =
   // Istniejące typy SN (A–L)
   | 'Bus'                    // A-B: Szyna SN / GPZ
-  | 'LineBranch'             // D-E: Segment magistrali/odgaĹ‚ęzienia
+  | 'LineBranch'             // D-E: Segment magistrali/odgałęzienia
   | 'TransformerBranch'      // L: Transformator SN/nN
-  | 'Switch'                 // I: Aparat SN (wyĹ‚ącznik/rozĹ‚ącznik)
-  | 'Source'                 // A: GPZ / ĹąrĂłdĹ‚o SN
-  | 'Load'                   // S: OdbiĂłr
+  | 'Switch'                 // I: Aparat SN (wyłącznik/rozłącznik)
+  | 'Source'                 // A: GPZ / Źródło SN
+  | 'Load'                   // S: Odbiór
   | 'Generator'              // Istniejący typ generatora
   | 'Measurement'            // K: CT SN / VT SN
-  | 'ProtectionAssignment'   // J: PrzekaĹşnik SN
+  | 'ProtectionAssignment'   // J: Przekaźnik SN
   // Nowe typy infrastruktury SN
   | 'Terminal'               // C: Terminal magistrali SN
   | 'PortBranch'             // F: Port BRANCH SN
@@ -47,60 +47,60 @@ export type ElementType =
   | 'BranchPole'             // G2: Slup rozgalezny SN
   | 'ZKSN'                   // G3: ZKSN
   | 'BaySN'                  // H: Pole SN
-  | 'Relay'                  // J: PrzekaĹşnik SN (logiczny)
-  | 'SecondaryLink'          // P: PoĹ‚ączenie wtĂłrne (pierĹ›cieĹ„)
+  | 'Relay'                  // J: Przekaźnik SN (logiczny)
+  | 'SecondaryLink'          // P: Połączenie wtórne (pierścień)
   | 'NOP'                    // Q: Punkt normalnie otwarty
   // Typy nN (M–O, R–AP)
   | 'BusNN'                  // M: Szyna nN
-  | 'MainBreakerNN'          // N: Pole gĹ‚Ăłwne nN (wyĹ‚ącznik gĹ‚Ăłwny)
-  | 'FeederNN'               // O: OdpĹ‚yw nN (pole odpĹ‚ywowe)
+  | 'MainBreakerNN'          // N: Pole główne nN (wyłącznik główny)
+  | 'FeederNN'               // O: Odpływ nN (pole odpływowe)
   | 'SegmentNN'              // R: Segment nN (odcinek linii/kabla)
-  | 'LoadNN'                 // S: OdbiĂłr nN
+  | 'LoadNN'                 // S: Odbiór nN
   | 'SwitchboardNN'          // T: Rozdzielnica nN
-  | 'SourceFieldNN'          // U: Pole ĹşrĂłdĹ‚owe nN
-  // ĹąrĂłdĹ‚a nN (V–Z)
+  | 'SourceFieldNN'          // U: Pole źródłowe nN
+  // Źródła nN (V–Z)
   | 'PVInverter'             // V: Falownik PV
   | 'BESSInverter'           // W: Falownik BESS
-  | 'EnergyStorage'          // X: Magazyn energii (moduĹ‚ BESS)
-  | 'Genset'                 // Y: ZespĂłĹ‚ prądotwĂłrczy / agregat
+  | 'EnergyStorage'          // X: Magazyn energii (moduł BESS)
+  | 'Genset'                 // Y: Zespół prądotwórczy / agregat
   | 'UPS'                    // Z: UPS
   // Pomiary i zabezpieczenia nN (AA–AE)
   | 'EnergyMeter'            // AA: Licznik energii
-  | 'PowerQualityMeter'      // AB: Pomiar jakoĹ›ci energii
+  | 'PowerQualityMeter'      // AB: Pomiar jakości energii
   | 'SurgeArresterNN'        // AC: Ogranicznik przepięć nN
   | 'Earthing'               // AD: Uziemienie
-  | 'MeasurementNN'          // AE: PrzekĹ‚adnik nN (CT/VT)
+  | 'MeasurementNN'          // AE: Przekładnik nN (CT/VT)
   // Infrastruktura szyn nN (AF–AR)
   | 'AuxBus'                 // AF: Szyna pomocnicza
-  | 'ConnectionPoint'        // AG: Punkt przyĹ‚ączenia odbiorcy
-  | 'SwitchNN'               // AH: Urządzenie Ĺ‚ączeniowe nN
+  | 'ConnectionPoint'        // AG: Punkt przyłączenia odbiorcy
+  | 'SwitchNN'               // AH: Urządzenie łączeniowe nN
   | 'ProtectionNN'           // AI: Zabezpieczenie nN (logiczne)
-  | 'SourceController'       // AJ: Regulator/sterownik ĹşrĂłdĹ‚a
-  | 'InternalJunction'       // AK: Punkt wspĂłlny w rozdzielnicy
-  | 'CableJointNN'           // AL: ZĹ‚ącze kablowe nN
+  | 'SourceController'       // AJ: Regulator/sterownik źródła
+  | 'InternalJunction'       // AK: Punkt wspólny w rozdzielnicy
+  | 'CableJointNN'           // AL: Złącze kablowe nN
   | 'FaultCurrentLimiter'    // AM: Ogranicznik prądu zwarciowego
   | 'FilterCompensator'      // AN: Filtr/kompensator
   | 'TelecontrolDevice'      // AO: Urządzenie komunikacyjne
   | 'BusSectionNN'           // AP: Sekcja szyn nN
-  | 'BusCouplerNN'           // AQ: SprzęgĹ‚o szyn nN
-  | 'ReserveLink'            // AR: Zworka/Ĺ‚ącznik rezerwowy nN
-  // Parametry logiczne ĹşrĂłdeĹ‚ (AS–AZ)
-  | 'SourceDisconnect'       // AS: Punkt odĹ‚ączenia ĹşrĂłdĹ‚a
-  | 'PowerLimit'             // AT: Ograniczenie mocy ĹşrĂłdĹ‚a
-  | 'WorkProfile'            // AU: Profil pracy ĹşrĂłdĹ‚a
+  | 'BusCouplerNN'           // AQ: Sprzęgło szyn nN
+  | 'ReserveLink'            // AR: Zworka/łącznik rezerwowy nN
+  // Parametry logiczne źródeł (AS–AZ)
+  | 'SourceDisconnect'       // AS: Punkt odłączenia źródła
+  | 'PowerLimit'             // AT: Ograniczenie mocy źródła
+  | 'WorkProfile'            // AU: Profil pracy źródła
   | 'OperatingMode'          // AV: Tryb pracy
-  | 'ConnectionConstraints'  // AW: Ograniczenia przyĹ‚ączeniowe
-  | 'MeteringBlock'          // AX: UkĹ‚ad pomiarowo-rozliczeniowy
-  | 'SyncPoint'              // AY: Punkt synchronizacji ĹşrĂłdĹ‚a
+  | 'ConnectionConstraints'  // AW: Ograniczenia przyłączeniowe
+  | 'MeteringBlock'          // AX: Układ pomiarowo-rozliczeniowy
+  | 'SyncPoint'              // AY: Punkt synchronizacji źródła
   | 'DescriptiveElement';    // AZ: Elementy opisowe
 
 /**
- * Switch state (per SYSTEM_SPEC.md Â§ 2.4).
+ * Switch state (per SYSTEM_SPEC.md § 2.4).
  */
 export type SwitchState = 'OPEN' | 'CLOSED';
 
 /**
- * Switch type (per sld_rules.md Â§ A.2).
+ * Switch type (per sld_rules.md § A.2).
  */
 export type SwitchType = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'FUSE';
 
@@ -132,6 +132,8 @@ export interface SelectedElement {
   type: ElementType;
   name: string;
   semanticHash?: string;
+  semanticElementKind?: string;
+  semanticEngineeringRole?: string;
 }
 
 /**
@@ -147,7 +149,7 @@ export interface MultiSelection {
 
 /**
  * Property field definition for Property Grid.
- * Deterministic ordering per ui_canonical_parity.md Â§ D.3.
+ * Deterministic ordering per ui_canonical_parity.md § D.3.
  */
 export interface PropertyField {
   key: string;
@@ -169,7 +171,7 @@ export interface PropertyField {
 
 /**
  * Property section definition (grouped fields).
- * Sections appear in deterministic order per wizard_screens.md Â§ 3.
+ * Sections appear in deterministic order per wizard_screens.md § 3.
  */
 export interface PropertySection {
   id: string;

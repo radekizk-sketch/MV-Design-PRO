@@ -65,6 +65,13 @@ function renderGpz(overrides: Partial<GpzCanonicalRendererProps> = {}) {
   );
 }
 
+function readTranslate(element: Element): { x: number; y: number } {
+  const transform = element.getAttribute('transform') ?? '';
+  const match = /translate\(([-\d.]+),\s*([-\d.]+)\)/.exec(transform);
+  if (!match) return { x: Number.NaN, y: Number.NaN };
+  return { x: Number(match[1]), y: Number(match[2]) };
+}
+
 /* ---------------------------------------------------------------------------
    1. ZAKAZ placeholderów
    --------------------------------------------------------------------------- */
@@ -86,14 +93,14 @@ describe('GpzCanonicalRenderer — zakaz placeholderów (Acceptance Inv R1)', ()
     // GpzOperatorHeader pokazuje "—" dla pustego name.
   });
 
-  it('Brak transformatorów → explicit "Brak transformatorów w ENM" (NIE TR1 placeholder)', () => {
+  it('Brak transformatorów → explicit "Brak transformatora WN/SN" (NIE TR1 placeholder)', () => {
     const { getByText } = renderGpz({ transformers: [] });
-    expect(getByText(/Brak transformatorów w ENM/)).toBeTruthy();
+    expect(getByText(/Brak transformatora WN\/SN/)).toBeTruthy();
   });
 
-  it('Brak HV sections + brak transformatorów → explicit "Strona 110 kV — brak danych ENM"', () => {
+  it('Brak HV sections + brak transformatorów → explicit "Brak danych 110 kV"', () => {
     const { getByText } = renderGpz({ hvSections: [], transformers: [] });
-    expect(getByText(/Strona 110 kV — brak danych ENM/)).toBeTruthy();
+    expect(getByText(/Brak danych 110 kV/)).toBeTruthy();
   });
 });
 
@@ -186,12 +193,56 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
     expect(container.querySelector('[data-testid="gpz-canonical-bay-b-3"]')).toBeTruthy();
   });
 
+  it('5a. Szyna SN przechodzi nad kolumnami pól, a pionowy tor pola startuje z szyny', () => {
+    const { container } = renderGpz();
+    const section = container.querySelector('[data-testid="gpz-canonical-section-sec-1"]');
+    const bus = container.querySelector('[data-testid="gpz-canonical-section-sec-1-bus"]');
+    const firstBay = container.querySelector('[data-testid="gpz-canonical-bay-b-1"]');
+
+    expect(section).toBeTruthy();
+    expect(bus).toBeTruthy();
+    expect(firstBay).toBeTruthy();
+    expect(section?.lastElementChild).toBe(bus);
+    expect(firstBay?.getAttribute('transform')).toContain(', 0)');
+    expect(bus?.getAttribute('stroke-width') ?? bus?.getAttribute('strokeWidth')).toBe('4');
+  });
+
+  it('5b. Etykieta odpływu pola jest pod szyną i nie koliduje z etykietą sekcji', () => {
+    const { container } = renderGpz();
+    const feederLabel = container.querySelector('[data-testid="gpz-bay-feeder-label"]');
+
+    expect(feederLabel).toBeTruthy();
+    expect(Number(feederLabel?.getAttribute('y'))).toBeGreaterThan(0);
+  });
+
   it('6. Aparatura: CB + DS + ES per pole', () => {
     const { container } = renderGpz();
     const cbs = container.querySelectorAll('[data-testid="gpz-canonical-cb"]');
     const dss = container.querySelectorAll('[data-testid="gpz-canonical-ds"]');
     expect(cbs.length).toBeGreaterThan(0);
     expect(dss.length).toBeGreaterThan(0);
+  });
+
+  it('6a. Pole SN bez oznaczen Q nadal pokazuje wymagane aparaty, a nie pusta kreske', () => {
+    const sections: CanonicalGpzSection[] = [
+      {
+        sectionId: 'sec-1',
+        order: 1,
+        label: 'S1',
+        busVoltageKv: 15,
+        bays: [bay('bay-without-q', 'LINE_OUT', { qDesignations: {} })],
+      },
+    ];
+    const { container } = renderGpz({ sections });
+    const bayEl = container.querySelector('[data-testid="gpz-canonical-bay-bay-without-q"]');
+
+    expect(bayEl).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.ds.bus"]')).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.cb.main"]')).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.ct"]')).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.ds.line"]')).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.es.side"]')).toBeTruthy();
+    expect(bayEl?.querySelector('[data-parity-key="gpz.apparatus.cable_head"]')).toBeTruthy();
   });
 
   it('7. Q-numbering (Q0/Q1/Q9/Q8/T1) widoczny w polach', () => {
@@ -209,6 +260,31 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
     ];
     const { container } = renderGpz({ couplers });
     expect(container.querySelector('[data-testid="gpz-canonical-coupler-cpl-9"]')).toBeTruthy();
+  });
+
+  it('8a. Dwie sekcje SN sa segmentami jednej osi szyn, nie dwoma systemami szyn', () => {
+    const couplers: CanonicalGpzCoupler[] = [
+      { couplerId: 'cpl-9', leftSectionId: 'sec-1', rightSectionId: 'sec-2', designation: 'SPRZEG 9', closedState: 'closed' },
+    ];
+    const { container } = renderGpz({ couplers });
+    const section1 = container.querySelector('[data-testid="gpz-canonical-section-sec-1"]');
+    const section2 = container.querySelector('[data-testid="gpz-canonical-section-sec-2"]');
+    const coupler = container.querySelector('[data-testid="gpz-canonical-coupler-cpl-9"]');
+
+    expect(section1).toBeTruthy();
+    expect(section2).toBeTruthy();
+    expect(coupler).toBeTruthy();
+    expect(section1?.getAttribute('data-section-layout')).toBe('single-bus-segment');
+    expect(section2?.getAttribute('data-section-layout')).toBe('single-bus-segment');
+
+    const section1Position = readTranslate(section1!);
+    const section2Position = readTranslate(section2!);
+    const couplerPosition = readTranslate(coupler!);
+
+    expect(section1Position.y).toBe(section2Position.y);
+    expect(section2Position.x).toBeGreaterThan(section1Position.x);
+    expect(couplerPosition.y).toBe(section1Position.y);
+    expect(coupler?.getAttribute('data-coupler-orientation')).toBe('horizontal');
   });
 
   it('9. Magistrale: pole z destinationLabel pokazuje cel', () => {
@@ -232,6 +308,21 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
     const { container } = renderGpz({ sections });
     const trBayEl = container.querySelector('[data-testid="gpz-canonical-bay-b-tr"]');
     expect(trBayEl?.getAttribute('data-bay-role')).toBe('TRANSFORMER');
+  });
+
+  it('11a. Pole TR jest prowadzone do góry od szyny i pokazuje transformator', () => {
+    const trBay = bay('b-tr-up', 'TRANSFORMER', { bayNumber: 'TR', feederName: 'TR1' });
+    const sections: CanonicalGpzSection[] = [
+      { sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [trBay] },
+    ];
+    const { container } = renderGpz({ sections });
+    const trBayEl = container.querySelector('[data-testid="gpz-canonical-bay-b-tr-up"]');
+
+    expect(trBayEl?.getAttribute('data-bay-orientation')).toBe('upstream-transformer');
+    expect(trBayEl?.querySelector('[data-parity-key="gpz.bay.tr.upstream_path"]')).toBeTruthy();
+    expect(trBayEl?.querySelector('[data-parity-key="gpz.bay.tr.upstream.transformer_symbol"]')).toBeTruthy();
+    expect(trBayEl?.querySelector('[data-parity-key="gpz.apparatus.fuse"]')).toBeTruthy();
+    expect(trBayEl?.querySelector('[data-parity-key="gpz.apparatus.es.side"]')).toBeTruthy();
   });
 
   it('12. Status badges (gdy bay.statusFlags ≠ [])', () => {
@@ -311,6 +402,75 @@ describe('GpzCanonicalRenderer — interakcja', () => {
     const bayEl = container.querySelector('[data-testid="gpz-canonical-bay-b-1"]')!;
     fireEvent.contextMenu(bayEl, { clientX: 100, clientY: 200 });
     expect(handler).toHaveBeenCalledWith('b-1', expect.objectContaining({ clientX: 100, clientY: 200 }));
+  });
+
+  it('Klik aparatu wybiera dokładnie ten aparat, nie całe pole', () => {
+    const apparatusHandler = vi.fn();
+    const bayHandler = vi.fn();
+    const { container } = renderGpz({
+      onClickApparatus: apparatusHandler,
+      onClickBay: bayHandler,
+    });
+    const breaker = container.querySelector('[data-testid="gpz-canonical-apparatus-b-1#breaker"]')!;
+    const breakerHitbox = container.querySelector('[data-testid="gpz-canonical-apparatus-b-1#breaker-hitbox"]')!;
+    const breakerButton = container.querySelector('[data-testid="gpz-canonical-apparatus-b-1#breaker-button"]')!;
+
+    expect(breaker.getAttribute('role')).toBeNull();
+    expect(breakerHitbox.getAttribute('pointer-events')).toBe('all');
+    expect(breakerButton.getAttribute('aria-label')).toBe('Wyłącznik SN');
+    fireEvent.click(breakerButton);
+
+    expect(apparatusHandler).toHaveBeenCalledWith({
+      apparatusId: 'b-1#breaker',
+      bayRef: 'b-1',
+      apparatusKind: 'breaker',
+      designation: 'Q0',
+      labelPl: 'Wyłącznik SN',
+    });
+    expect(bayHandler).not.toHaveBeenCalled();
+  });
+
+  it('Prawy klik głowicy zwraca aparat cable_head jako źródło wyprowadzenia ciągu', () => {
+    const apparatusMenuHandler = vi.fn();
+    const { container } = renderGpz({ onContextMenuApparatus: apparatusMenuHandler });
+    const cableHead = container.querySelector('[data-testid="gpz-canonical-apparatus-b-1#cable_head-button"]')!;
+
+    fireEvent.contextMenu(cableHead, { clientX: 123, clientY: 234 });
+
+    expect(apparatusMenuHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apparatusId: 'b-1#cable_head',
+        bayRef: 'b-1',
+        apparatusKind: 'cable_head',
+        labelPl: 'Głowica kablowa / port odpływu',
+      }),
+      expect.objectContaining({ clientX: 123, clientY: 234 }),
+    );
+  });
+
+  it('Hitbox głowicy obejmuje dolny zacisk odpływowy, a nie tylko mały trójkąt', () => {
+    const apparatusMenuHandler = vi.fn();
+    const bayMenuHandler = vi.fn();
+    const { container } = renderGpz({
+      onContextMenuApparatus: apparatusMenuHandler,
+      onContextMenuBay: bayMenuHandler,
+    });
+    const cableHeadHitbox = container.querySelector(
+      '[data-testid="gpz-canonical-apparatus-b-1#cable_head-hitbox"]',
+    )!;
+
+    expect(cableHeadHitbox.getAttribute('pointer-events')).toBe('all');
+    expect(Number(cableHeadHitbox.getAttribute('height'))).toBeGreaterThanOrEqual(48);
+    fireEvent.contextMenu(cableHeadHitbox, { clientX: 123, clientY: 234 });
+
+    expect(apparatusMenuHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        apparatusId: 'b-1#cable_head',
+        apparatusKind: 'cable_head',
+      }),
+      expect.objectContaining({ clientX: 123, clientY: 234 }),
+    );
+    expect(bayMenuHandler).not.toHaveBeenCalled();
   });
 
   it('Click na coupler → onClickCoupler', () => {

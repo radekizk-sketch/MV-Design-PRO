@@ -11,12 +11,13 @@
  * Test ten chroni przed regresją "operator widzi GPZ 1 / TR1 / Sekcja 2"
  * z audytu `docs/audit/GPZ_RENDERER_REALITY_CHECK.md`.
  */
-import { describe, expect, it } from 'vitest';
-import { render, cleanup } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { render, cleanup, fireEvent } from '@testing-library/react';
 
 import { SldCanvasV2 } from '../SldCanvasV2';
 import type { GpzRendererProps } from '../../renderer/GpzRenderer';
 import type { GpzCanonicalRendererProps } from '../../renderer/GpzCanonicalRenderer';
+import { FIELD_ROLE } from '../../domain/apparatusContracts';
 
 function legacyGpzProps(id: string, name: string): GpzRendererProps {
   return {
@@ -63,14 +64,18 @@ function canonicalGpzProps(id: string, name: string): GpzCanonicalRendererProps 
         sectionId: 'sec-1',
         order: 1,
         label: 'S1',
-        voltageKv: 15,
+        busVoltageKv: 15,
         bays: [
           {
             bayRef: 'bay-1',
+            bayNumber: '10',
             order: 1,
-            fieldRole: 'GPZ_LINE_BAY',
+            fieldRole: 'LINE_OUT',
             feederName: 'PST1',
-            apparatus: { cb: 'closed', dsLin: 'closed', dsBus: 'closed', es: 'open' },
+            destinationLabel: 'PST1',
+            cbState: 'closed',
+            dsState: 'closed',
+            esState: 'open',
             qDesignations: { cb: 'Q0', dsBus: 'Q1', dsLin: 'Q9', es: 'Q8' },
             statusFlags: [],
             controlMode: 'remote',
@@ -101,6 +106,85 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
      * Legacy GpzRenderer NIE ma tego atrybutu. */
     const canonical = container.querySelector('[data-testid="sld-v2-gpz-canonical-gpz-1"]');
     expect(canonical).toBeTruthy();
+    cleanup();
+  });
+
+  it('klik pola w canonical GPZ wybiera konkretny obiekt BaySN', () => {
+    const onSelectElement = vi.fn();
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        onSelectElement={onSelectElement}
+      />,
+    );
+
+    const bay = container.querySelector('[data-testid="gpz-canonical-bay-bay-1"]');
+    expect(bay).toBeTruthy();
+    fireEvent.click(bay as Element);
+    expect(onSelectElement).toHaveBeenCalledWith('bay-1', 'bay');
+    cleanup();
+  });
+
+  it('klik aparatu w polu GPZ wybiera aparat, a nie całe pole', () => {
+    const onSelectElement = vi.fn();
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        onSelectElement={onSelectElement}
+      />,
+    );
+
+    const breaker = container.querySelector('[data-testid="gpz-canonical-apparatus-bay-1#breaker"]');
+    expect(breaker).toBeTruthy();
+    fireEvent.click(breaker as Element);
+    expect(onSelectElement).toHaveBeenCalledWith('bay-1#breaker', 'apparatus');
+    expect(onSelectElement).not.toHaveBeenCalledWith('bay-1', 'bay');
+    cleanup();
+  });
+
+  it('prawy klik głowicy w polu GPZ otwiera menu aparatu cable_head', () => {
+    const onSelectElement = vi.fn();
+    const onContextMenu = vi.fn();
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        onSelectElement={onSelectElement}
+        onContextMenu={onContextMenu}
+      />,
+    );
+
+    const cableHead = container.querySelector('[data-testid="gpz-canonical-apparatus-bay-1#cable_head"]');
+    expect(cableHead).toBeTruthy();
+    fireEvent.contextMenu(cableHead as Element, { clientX: 321, clientY: 123 });
+
+    expect(onSelectElement).toHaveBeenCalledWith('bay-1#cable_head', 'apparatus');
+    expect(onContextMenu).toHaveBeenCalledWith({
+      kind: 'apparatus',
+      elementId: 'bay-1#cable_head',
+      clientX: 321,
+      clientY: 123,
+    });
     cleanup();
   });
 
@@ -183,6 +267,116 @@ describe('SldCanvasV2 — canonicalGpzs integration (Phase R4)', () => {
     expect(container.textContent).toContain('T1');
     expect(container.textContent).toContain('T2');
     expect(container.textContent).toContain('S1');
+    cleanup();
+  });
+
+  it('kanwa renderuje stację z PV po nN jako mini-RMU z widocznymi wyłącznikami nN', () => {
+    const { container } = render(
+      <SldCanvasV2
+        width={1000}
+        height={700}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[
+          {
+            id: 'run-pv',
+            runKind: 'main_trunk',
+            segmentKind: 'cable_sn',
+            pathPoints: [
+              { x: 180, y: 272 },
+              { x: 180, y: 360 },
+              { x: 900, y: 360 },
+            ],
+          },
+        ]}
+        stations={[
+          {
+            id: 'st-pv',
+            x: 620,
+            y: 414,
+            name: '01-K3583',
+            topologicalType: 'przelotowa',
+            lod: 2,
+            footprintType: 'der_station',
+            snBays: [
+              { bayRef: 'we', fieldRole: FIELD_ROLE.RMU_LINE, designation: 'WE', hasMissingRequiredDevice: false },
+              { bayRef: 'wy', fieldRole: FIELD_ROLE.RMU_LINE, designation: 'WY', hasMissingRequiredDevice: false },
+              { bayRef: 'tr', fieldRole: FIELD_ROLE.RMU_TRANSFORMER, designation: 'TR', hasMissingRequiredDevice: false },
+            ],
+            hasTransformer: true,
+            transformerRatedKva: 400,
+            nnFeedersCount: 2,
+            derBadges: [{ kind: 'PV', connectionSide: 'nn', count: 2 }],
+          },
+        ]}
+        ders={[]}
+      />,
+    );
+
+    expect(container.querySelector('[data-parity-key="station.mini.root"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.pv.nn_connection"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-element-kind="lv_breaker"][data-symbol-canon="circuit_breaker_square"]').length).toBe(2);
+    expect(container.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
+    cleanup();
+  });
+
+  it('prawy klik toru pola SN nie otwiera menu calego GPZ', () => {
+    const onContextMenu = vi.fn();
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        onContextMenu={onContextMenu}
+      />,
+    );
+
+    const powerPath = container.querySelector('[data-parity-key="gpz.bay.power_path"]');
+    expect(powerPath).toBeTruthy();
+    fireEvent.contextMenu(powerPath as Element, { clientX: 340, clientY: 240 });
+
+    expect(onContextMenu).toHaveBeenCalledWith({
+      kind: 'bay',
+      elementId: 'bay-1',
+      clientX: 340,
+      clientY: 240,
+    });
+    expect(onContextMenu).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'gpz', elementId: 'gpz-1' }),
+    );
+    cleanup();
+  });
+});
+
+describe('SldCanvasV2 - wybor transformatora WN/SN w GPZ', () => {
+  it('klik transformatora WN/SN wybiera konkretny transformator, a nie caly GPZ', () => {
+    const onSelectElement = vi.fn();
+    const { container } = render(
+      <SldCanvasV2
+        width={800}
+        height={600}
+        gpzs={[legacyGpzProps('gpz-1', 'GPZ-5 PST')]}
+        canonicalGpzs={[canonicalGpzProps('gpz-1', 'GPZ-5 PST')]}
+        sections={[]}
+        cableRuns={[]}
+        stations={[]}
+        ders={[]}
+        onSelectElement={onSelectElement}
+      />,
+    );
+
+    const transformer = container.querySelector('[data-testid="gpz-canonical-transformer-tr-1"]');
+    expect(transformer).toBeTruthy();
+    fireEvent.click(transformer as Element);
+
+    expect(onSelectElement).toHaveBeenCalledWith('tr-1', 'transformer');
+    expect(onSelectElement).not.toHaveBeenCalledWith('gpz-1', 'gpz');
     cleanup();
   });
 });

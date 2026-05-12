@@ -48,8 +48,8 @@ export const ROUTES = {
   },
   VARIANTS: {
     hash: '#variants',
-    label: 'Przebiegi obliczeń',
-    description: 'Pomocnik wyboru przebiegów i identyfikatorów uruchomień',
+    label: 'Stan obliczeń',
+    description: 'Wariant pracy sieci, gotowość obliczeń, wyniki i raport techniczny',
     icon: 'VAR',
     requiredMode: 'MODEL_EDIT',
   },

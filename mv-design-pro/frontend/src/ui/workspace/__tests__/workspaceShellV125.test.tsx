@@ -142,7 +142,7 @@ vi.mock('../../study-cases/RunHistoryPanel', () => ({
 
 vi.mock('../../results-inspector', () => ({
   ResultsInspectorPage: ({ forcedTab }: { forcedTab?: string }) => (
-    <div data-testid="results-inspector-page">{forcedTab ?? 'RESULTS'}</div>
+    <div data-testid="results-inspector-page">{forcedTab ? 'RESULTS' : 'BRAK_ZAKLADKI'}</div>
   ),
 }));
 
@@ -199,7 +199,7 @@ describe('workspace shell V12.5 surfaces', () => {
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-30'].titlePl }),
     ).toBeInTheDocument();
     expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: /Zbieznosc rozplywu/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /Zbieżność rozpływu/i })).toBeInTheDocument();
     expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Powierzchnia pomocnicza/i)).not.toBeInTheDocument();
   });
@@ -245,16 +245,102 @@ describe('workspace shell V12.5 surfaces', () => {
     expect(screen.getAllByText('proof-pack-1').length).toBeGreaterThan(0);
   });
 
-  it('renderuje mini-SLD dla helper surface wariantow', () => {
+  it('karta Stan obliczeń wariantu pokazuje stan inżynierski bez żargonu i akcje przejść', () => {
+    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+    useAppStateStore.getState().setActiveCase('case-1', 'Lato — szczyt obciążenia');
+
     useNetworkBuildStore.getState().openRouteSurface('variants_runs');
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    expect(screen.getByRole('heading', { level: 2, name: 'Przebiegi obliczeń' })).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 3, name: 'Aktywny kontekst wariantu' })).toBeInTheDocument();
-    expect(screen.queryByTestId('case-manager')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Parametry analizy' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Stan obliczeń wariantu' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: 'Stan obliczeń wariantu' })).toBeInTheDocument();
+
+    expect(screen.queryByTestId('workspace-mini-sld')).not.toBeInTheDocument();
+    expect(screen.queryByText(/case-manager/i)).not.toBeInTheDocument();
+
+    expect(screen.getByText('Projekt')).toBeInTheDocument();
+    expect(screen.getByText('Wariant pracy sieci')).toBeInTheDocument();
+    expect(screen.getByText('Stan obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Liczba wykonanych obliczeń')).toBeInTheDocument();
+    expect(screen.getByText('Ostatnie obliczenie')).toBeInTheDocument();
+    expect(screen.getByText('Następny krok')).toBeInTheDocument();
+    expect(screen.getByText('GPZ Wschód')).toBeInTheDocument();
+    expect(screen.getByText('Lato — szczyt obciążenia')).toBeInTheDocument();
+    expect(screen.getByText('Brak wyników do prezentacji')).toBeInTheDocument();
+    expect(screen.getByText('Brak wykonanych obliczeń')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Nie wykonano jeszcze obliczeń dla tego wariantu/i),
+    ).toBeInTheDocument();
+
+    expect(screen.getByRole('button', { name: 'Sprawdź gotowość' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pokaż wyniki' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Porównaj wyniki' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Raport techniczny' })).toBeInTheDocument();
+
+    const visibleText = document.body.textContent ?? '';
+    expect(visibleText).not.toMatch(/MINI-SLD|VARIANTS_RUNS|variants_runs|Status migracji|Wersja modelu|Brak aktywnego uruchomienia/i);
+  });
+
+  it('karta Stan obliczeń wariantu liczy wykonane obliczenia i pokazuje ostatnie bez identyfikatorów', () => {
+    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+    useAppStateStore.getState().setActiveCase('case-1', 'Wariant pracy A');
+    useExecutionRunsStore.setState({
+      runs: [
+        {
+          id: 'run-a',
+          study_case_id: 'case-1',
+          analysis_type: 'LOAD_FLOW',
+          solver_input_hash: 'h-a',
+          status: 'DONE',
+          started_at: '2026-04-19T10:00:00Z',
+          finished_at: '2026-04-19T10:01:00Z',
+          error_message: null,
+        },
+        {
+          id: 'run-b',
+          study_case_id: 'case-1',
+          analysis_type: 'SC_3F',
+          solver_input_hash: 'h-b',
+          status: 'DONE',
+          started_at: '2026-04-20T10:00:00Z',
+          finished_at: '2026-04-20T10:02:00Z',
+          error_message: null,
+        },
+        {
+          id: 'run-c',
+          study_case_id: 'case-1',
+          analysis_type: 'SC_1F',
+          solver_input_hash: 'h-c',
+          status: 'PENDING',
+          started_at: '2026-04-20T11:00:00Z',
+          finished_at: null,
+          error_message: null,
+        },
+      ],
+    });
+
+    useNetworkBuildStore.getState().openRouteSurface('variants_runs');
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    expect(screen.getByText('Wyniki dostępne (wykonano 2)')).toBeInTheDocument();
+    expect(screen.getByText(/Zwarcie trójfazowe \(3F\)/)).toBeInTheDocument();
+    expect(screen.queryByTestId('variants-empty-state')).not.toBeInTheDocument();
+
+    const visibleText = document.body.textContent ?? '';
+    expect(visibleText).not.toMatch(/run-a|run-b|run-c|h-a|h-b|h-c/);
+  });
+
+  it('przyciski karty Stan obliczeń wariantu otwierają istniejące powierzchnie', async () => {
+    const user = userEvent.setup();
+    useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+    useAppStateStore.getState().setActiveCase('case-1', 'Wariant pracy A');
+    useNetworkBuildStore.getState().openRouteSurface('variants_runs');
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    await user.click(screen.getByRole('button', { name: 'Sprawdź gotowość' }));
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-04');
   });
 
   it('otwiera dedykowany surface E-28 z launchera koordynacji', async () => {
@@ -267,7 +353,7 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    await user.click(screen.getByRole('button', { name: 'Koordynacja zabezpieczen' }));
+    await user.click(screen.getByRole('button', { name: 'Koordynacja zabezpieczeń' }));
 
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-28');
     expect(
@@ -276,12 +362,12 @@ describe('workspace shell V12.5 surfaces', () => {
   });
 
   it.each([
-    ['Koordynacja zabezpieczen', 'E-28'],
+    ['Koordynacja zabezpieczeń', 'E-28'],
     ['Charakterystyki FRT/LVRT/HVRT', 'E-26'],
-    ['Rozplyw mocy NR/GS/FD', 'E-30'],
+    ['Rozpływ mocy NR/GS/FD', 'E-30'],
     ['Stan fazowy SN', 'E-31'],
-    ['Stabilnosc dynamiczna', 'E-32'],
-    ['Wklady zrodel rozszerzone', 'E-33'],
+    ['Stabilność dynamiczna', 'E-32'],
+    ['Wkłady źródeł rozszerzone', 'E-33'],
     ['Weryfikacja cieplna i dynamiczna', 'E-34'],
   ] as const)(
     'launcher "%s" otwiera %s z kanonicznym title/class/tab',
@@ -305,8 +391,8 @@ describe('workspace shell V12.5 surfaces', () => {
   );
 
   it.each([
-    ['Uzasadnienie inzynierskie', 'E-36'],
-    ['Wklady zrodel', 'E-33'],
+    ['Uzasadnienie inżynierskie', 'E-36'],
+    ['Wkłady źródeł', 'E-33'],
   ] as const)(
     'launcher raportowy "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {

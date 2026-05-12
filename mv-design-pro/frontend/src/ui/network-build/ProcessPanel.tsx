@@ -362,7 +362,7 @@ function TrunksSection({
                 disabled={trunk.segments.length === 0}
                 className="ml-auto text-[10px] text-[#67d9ff] hover:text-scada-text"
               >
-                Wstaw stację na odcinku
+                Podziel odcinek i wstaw stację
               </button>
             </div>
           ))}
@@ -391,7 +391,10 @@ function TrunksSection({
 
       <div className="border-t border-[#15324f] pt-2">
         <p className={clsx('text-[10px]', mutedTextClass)}>
-          ZKSN i słup rozgałęźny wstawiaj z menu odcinka SN albo z karty magistrali, nigdy bez wskazania segmentu.
+          ZKSN i słup rozgałęźny dodawaj na końcu odcinka albo przez świadomy podział odcinka z podglądem skutków topologicznych.
+        </p>
+        <p className={clsx('mt-1 text-[10px] font-semibold', mutedTextClass)}>
+          Nigdy bez wskazania segmentu.
         </p>
       </div>
     </div>
@@ -412,7 +415,7 @@ function StationsSection({ stations }: { stations: StationSummary[] }) {
     <div className="px-3 py-2 space-y-2">
       {stations.length === 0 ? (
         <p className={clsx('text-[11px]', mutedTextClass)}>
-          Brak stacji. Najpierw połącz zacisk wyjściowy pola GPZ z odcinkiem SN, potem wstaw stację w segment.
+          Brak stacji. Najpierw połącz głowicę odpływową pola GPZ z odcinkiem SN, potem zakończ odcinek stacją z portem wejściowym.
         </p>
       ) : (
         <div className="space-y-1">

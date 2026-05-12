@@ -2,8 +2,8 @@
  * GpzOperatorHeader testy (Phase 1 expansion polish — SCADA OSD parity).
  *
  * Pokrycie:
- *   1. Render bazowy (gpz name + transmission status).
- *   2. 4 transmission statuses (ok/degraded/lost/unknown) z PL labels.
+ *   1. Render bazowy (gpz name; unknown transmission is silent).
+ *   2. 3 visible transmission statuses (ok/degraded/lost) z PL labels.
  *   3. Address + radio rendered.
  *   4. Balance P/Q rendered (z zaokrągleniem do 1 miejsca).
  *   5. Alarmy: 4 kinds z PL labels (POŻAR / drzwi / AW UJP / wentylacja).
@@ -26,11 +26,11 @@ function renderHeader(props: Partial<React.ComponentProps<typeof GpzOperatorHead
 
 describe('GpzOperatorHeader — render bazowy', () => {
   it('Renderuje nazwę GPZ + transmission status', () => {
-    const { container, getByText } = renderHeader();
+    const { container, getByText, queryByText } = renderHeader();
     expect(container.querySelector('[data-testid="sld-v2-gpz-operator-header"]')).toBeTruthy();
     expect(getByText('GPZ-5 PST')).toBeTruthy();
-    // Default unknown transmission
-    expect(getByText('TRANSMISJA NIEZNANA')).toBeTruthy();
+    expect(queryByText('TRANSMISJA NIEZNANA')).toBeNull();
+    expect(container.querySelector('[data-testid="gpz-header-transmission"]')).toBeNull();
   });
 
   it('data-gpz-name + data-transmission attributes', () => {
@@ -57,9 +57,10 @@ describe('GpzOperatorHeader — transmission status PL', () => {
     expect(getByText('BRAK TRANSMISJI')).toBeTruthy();
   });
 
-  it('unknown (default) → "TRANSMISJA NIEZNANA"', () => {
-    const { getByText } = renderHeader();
-    expect(getByText('TRANSMISJA NIEZNANA')).toBeTruthy();
+  it('unknown (default) → status transmisji jest ukryty', () => {
+    const { container, queryByText } = renderHeader();
+    expect(queryByText('TRANSMISJA NIEZNANA')).toBeNull();
+    expect(container.querySelector('[data-testid="gpz-header-transmission"]')).toBeNull();
   });
 });
 
@@ -189,9 +190,10 @@ describe('GpzOperatorHeader — reset signals click', () => {
 });
 
 describe('GpzOperatorHeader — self-degrade (operator-grade)', () => {
-  it('Tylko gpzName → header minimalny (header background + name + transmission)', () => {
+  it('Tylko gpzName → header minimalny bez statusu nieznanej transmisji', () => {
     const { container } = renderHeader();
     // Wszystkie opcjonalne sub-komponenty hidden
+    expect(container.querySelector('[data-testid="gpz-header-transmission"]')).toBeNull();
     expect(container.querySelector('[data-testid="gpz-header-address"]')).toBeNull();
     expect(container.querySelector('[data-testid="gpz-header-balance"]')).toBeNull();
     expect(container.querySelector('[data-testid="gpz-header-alarms"]')).toBeNull();

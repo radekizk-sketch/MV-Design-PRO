@@ -29,7 +29,8 @@ export function inferLodFromScale(scale: number): LodLevel {
  * Wszystkie kindy elementów rozpoznawane przez LOD policy.
  *
  * Phase 0A dodaje 4 nowe kindy:
- * - `mini_block_compact` (LOD 0+): mini-RMU w wariancie kompaktowym.
+ * - `mini_block_overview` (LOD 0+): mini-RMU w widoku systemowym.
+ * - `mini_block_compact` (LOD 1+): mini-RMU w wariancie kompaktowym.
  * - `mini_block_detail` (LOD 2+): mini-RMU w wariancie szczegółowym.
  * - `gpz_switchgear` (LOD 1+): GPZ z sekcjami i polami (delegacja).
  * - `der_sub_tree` (LOD 3+): pełne drzewo połączeniowe DER.
@@ -50,6 +51,7 @@ export type LodElementKind =
   | 'missing_data_marker'
   | 'alarm_marker'
   | 'nop_marker'
+  | 'mini_block_overview'
   | 'mini_block_compact'
   | 'mini_block_detail'
   | 'gpz_switchgear'
@@ -76,7 +78,8 @@ export function isVisibleAtLod(
     case 'missing_data_marker': return lod >= 1;
     case 'alarm_marker': return lod >= 0;
     case 'nop_marker': return lod >= 1;
-    case 'mini_block_compact': return lod >= 0;
+    case 'mini_block_overview': return lod >= 0;
+    case 'mini_block_compact': return lod >= 1;
     case 'mini_block_detail': return lod >= 2;
     case 'gpz_switchgear': return lod >= 1;
     case 'der_sub_tree': return lod >= 3;

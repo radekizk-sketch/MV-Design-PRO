@@ -23,7 +23,7 @@ import {
  *   • status obliczeń ≠ 'ok' nigdy nie zwraca wartości liczbowej zamiast etykiety
  *
  * Każdy nowy widok powinien używać formatPolishValue / formatCurrent / ...
- * Bezpośrednie `(value ?? 0).toFixed(...)` jest niedopuszczalne.
+ * Bezpośrednie `(value ? 0).toFixed(...)` jest niedopuszczalne.
  *
  * @see docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md PR-1
  */

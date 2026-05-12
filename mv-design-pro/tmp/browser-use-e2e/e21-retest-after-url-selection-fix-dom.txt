@@ -1,0 +1,238 @@
+- button [disabled]:
+  - generic: ↶
+  - generic: Cofnij
+- button [disabled]:
+  - generic: ↷
+  - generic: Ponów
+- banner:
+  - generic: MV-DESIGN-PRO
+  - generic: "12.2"
+  - generic "Kontekst projektu":
+    - button "Projekt Sieć SN - projekt roboczy":
+      - generic: Projekt
+      - generic: Sieć SN - projekt roboczy
+    - button "Cel / stan Zwarcie maksymalne IEC 60909 · Stan projektowany 2026":
+      - generic: Cel / stan
+      - generic: Zwarcie maksymalne IEC 60909 · Stan projektowany 2026
+    - button "Konfiguruj zakres"
+    - generic "Brak wyników":
+      - generic: Brak wyników
+  - generic: 17:06:49
+  - generic: 11.05.2026
+  - button "Wykonaj analizę":
+    - generic: Oblicz
+  - button "Nakładka":
+    - generic: Nakładka
+  - button "Analizy":
+    - generic: Analizy
+  - button "Eksport":
+    - generic: Eksport
+  - button "Ustawienia":
+- 'generic "Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą"':
+  - generic: "Faza projektu:"
+  - generic: BUDOWA
+- 'generic "Blokady: T=2 K=0 E=0"':
+  - generic: "Blokery:"
+  - generic: "2"
+- generic: "Gotowość:"
+- generic: 76%
+- generic: "Elementy:"
+- generic: "8"
+- generic: "Pola SN:"
+- generic: "1"
+- generic: "Stacje SN/nN:"
+- generic: "1"
+- generic: "Długość SN:"
+- generic: brak odcinków
+- generic: "Transformatory:"
+- generic: "2"
+- generic: "Odbiory nN:"
+- generic: "0"
+- button "Szukaj":
+  - generic: Szukaj
+- button "Katalog":
+  - generic: Katalog
+- button "Przeglądy 2":
+  - generic: Przeglądy
+  - generic: "2"
+- button "Metadane":
+  - generic: Metadane
+- button "Historia":
+  - generic: Historia
+- navigation "Pasek obszarów roboczych":
+  - 'button "Model sieci. Budowa i edycja struktury sieci SN. Skrót: Ctrl+1"':
+    - generic: Model
+    - generic "Braki modelu": "!"
+  - 'button "Schemat i topologia. Praca na schemacie jednokreskowym, topologii i przełączeniach. Skrót: Ctrl+2"':
+    - generic: Schemat
+  - 'button "Studia obliczeniowe. Warianty pracy sieci, gotowość obliczeń, wyniki i raporty. Skrót: Ctrl+3"':
+    - generic: Studia
+  - 'button "Wyniki i analizy. Przegląd wyników, porównania i nakładki wynikowe SLD. Skrót: Ctrl+4"':
+    - generic: Wyniki
+    - generic "Wyniki dostępne po obliczeniach": W
+  - 'button "Zabezpieczenia i automatyka. Nastawy, selektywność, automatyka i logika działania. Skrót: Ctrl+5"':
+    - generic: Zabezp.
+  - 'button "Źródła i przyłączenia. Źródła PV, magazyny energii, farmy wiatrowe i wymagania operatora. Skrót: Ctrl+6"':
+    - generic: Źródła
+  - 'button "Katalogi techniczne. Typy, aparatura, przewody, transformatory i profile katalogowe. Skrót: Ctrl+7"':
+    - generic: Katalogi
+  - 'button "Raporty i uzasadnienia. Raporty OSD, uzasadnienia inżynierskie i pakiety audytowe. Skrót: Ctrl+8"':
+    - generic: Raporty
+  - 'button "Historia i audyt. Wersje modelu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9"':
+    - generic: Historia
+- complementary:
+  - button "Ukryj lewy pasek boczny":
+  - button "Schemat i topologia":
+    - generic: Schemat i topologia
+  - generic: Następna akcja
+  - generic: i
+  - button "◎ Brak aktywnych blokad modelu Pokaż":
+    - generic: ◎
+    - generic: Brak aktywnych blokad modelu
+    - generic: Pokaż
+  - generic: Gotowość schematu
+  - generic: 100%
+  - generic: Blokery (0)
+  - button "Pokaż wszystkie"
+  - generic: Brak blokad w aktualnym stanie modelu.
+  - textbox "Szukaj w drzewie modelu":
+    - /placeholder: Szukaj obiektu
+  - generic: GPZ i źródła
+  - generic: ◎
+  - generic: "1"
+  - button "⊙ GPZ katalogowy 2TR ◎":
+    - generic: ⊙
+    - generic: GPZ katalogowy 2TR
+    - generic: ◎
+  - generic: Szyny SN
+  - generic: ◎
+  - generic: "4"
+  - button "⊙ Szyna GPZ S1 15 kV 15 kV ◎":
+    - generic: ⊙
+    - generic: Szyna GPZ S1 15 kV
+    - generic: 15 kV
+    - generic: ◎
+  - button "⊙ Szyna GPZ S2 15 kV 15 kV ◎":
+    - generic: ⊙
+    - generic: Szyna GPZ S2 15 kV
+    - generic: 15 kV
+    - generic: ◎
+  - button "⊙ Szyna 110 kV TR1 110 kV ◎":
+    - generic: ⊙
+    - generic: Szyna 110 kV TR1
+    - generic: 110 kV
+    - generic: ◎
+  - button "⊙ Szyna 110 kV TR2 110 kV ◎":
+    - generic: ⊙
+    - generic: Szyna 110 kV TR2
+    - generic: 110 kV
+    - generic: ◎
+  - generic: Odcinki SN
+  - generic: ◎
+  - generic: "1"
+  - button "⊙ Sprzęgło sekcji GPZ 1-2 odcinek SN ◎":
+    - generic: ⊙
+    - generic: Sprzęgło sekcji GPZ 1-2
+    - generic: odcinek SN
+    - generic: ◎
+  - generic: Stacje SN/nN
+  - generic: ◎
+  - generic: "1"
+  - button "⊙ GPZ katalogowy 2TR gpz ◎":
+    - generic: ⊙
+    - generic: GPZ katalogowy 2TR
+    - generic: gpz
+    - generic: ◎
+  - generic: Transformatory
+  - generic: ◎
+  - generic: "2"
+  - button "⊙ TR1 110/15 kV 25 MVA ◎":
+    - generic: ⊙
+    - generic: TR1 110/15 kV
+    - generic: 25 MVA
+    - generic: ◎
+  - button "⊙ TR2 110/15 kV 25 MVA ◎":
+    - generic: ⊙
+    - generic: TR2 110/15 kV
+    - generic: 25 MVA
+    - generic: ◎
+  - button "+ Dodaj element":
+    - generic: +
+    - generic: Dodaj element
+  - button "Gotowość"
+  - generic: "9"
+- region "Gotowość obliczeń na schemacie":
+  - generic: Gotowość obliczeń
+  - generic: gotowe
+  - generic: "Blokady: 0"
+  - generic: "Ostrzeżenia: 1"
+- button "Odłącznik szynowy"
+- button "Wyłącznik SN"
+- button "Przekładnik prądowy"
+- button "Rozłącznik"
+- button "Uziemnik"
+- button "Głowica kablowa / port odpływu"
+- button "Odłącznik szynowy"
+- button "Wyłącznik SN"
+- button "Przekładnik prądowy"
+- button "Rozłącznik"
+- button "Uziemnik"
+- button "Głowica kablowa / port odpływu"
+- button "Odłącznik szynowy"
+- button "Wyłącznik SN"
+- button "Przekładnik prądowy"
+- button "Rozłącznik"
+- button "Uziemnik"
+- button "Głowica kablowa / port odpływu"
+- button "Odłącznik szynowy"
+- button "Wyłącznik SN"
+- button "Przekładnik prądowy"
+- button "Rozłącznik"
+- button "Uziemnik"
+- button "Głowica kablowa / port odpływu"
+- complementary:
+  - button "Ukryj prawy pasek boczny":
+  - generic: Inspektor techniczny
+  - heading "Falownik PV 0.5 MW / 0.4 kV nN" [level=3]
+  - paragraph: Źródło przekształtnikowe PV - PV za transformatorem SN/nN
+  - generic: Konfiguracja falownika PV
+  - button "Otwórz konfigurację falownika"
+  - button "Uzupełnij dane wejściowe"
+  - generic: Karta obejmuje falownik z katalogu, PCC, tor SN/nN, NC RfG, Q(U), P(f), FRT/HVRT, rozpływ mocy, wkład zwarciowy i zabezpieczenia nN.
+  - heading "Falownik PV w stacji" [level=4]
+  - generic: Urządzenie
+  - button "Falownik PV 0.5 MW / 0.4 kV nN"
+  - generic: Rodzaj
+  - generic "falownik PV"
+  - generic: Stacja
+  - generic "brak danych"
+  - generic: Punkt przyłączenia
+  - generic "brak danych"
+  - generic: Strona napięciowa
+  - generic "nie wyznaczono"
+  - heading "Operacje" [level=4]
+  - button "Zmień katalog falownika"
+  - button "Uzupełnij parametry falownika"
+- generic "Pasek statusu aplikacji":
+  - generic: "Bieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026."
+  - generic: Schemat / Model
+  - generic: "|"
+  - generic: "Projekt:"
+  - generic: Sieć SN - projekt roboczy
+  - generic: "|"
+  - generic: "Zakres obliczeń:"
+  - generic: Zwarcie maksymalne IEC 60909
+  - generic: "|"
+  - generic: "Wariant:"
+  - generic: Stan projektowany 2026
+  - generic: "|"
+  - generic: "Wersja modelu:"
+  - generic: —
+  - generic: "|"
+  - generic: Edycja
+  - generic: Brak wyników
+  - generic: "|"
+  - generic: ▲ 1 ostrzeżenie
+  - generic: "|"
+  - generic: "Węzły: 2"
+  - generic: "Gałęzie: 3"

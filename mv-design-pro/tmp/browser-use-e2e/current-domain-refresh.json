@@ -1,0 +1,169 @@
+﻿{
+    "snapshot":  {
+                     "header":  {
+                                    "enm_version":  "1.0",
+                                    "name":  "Model sieci - 3e6f5929",
+                                    "description":  null,
+                                    "created_at":  "2026-05-11T04:18:47.994381Z",
+                                    "updated_at":  "2026-05-11T04:18:47.994381Z",
+                                    "revision":  1,
+                                    "hash_sha256":  "6b84dc19b71b9773a8b85bf1e37b4326024609323d20cae81e6449a6a1ff5326",
+                                    "defaults":  {
+                                                     "frequency_hz":  50.0,
+                                                     "unit_system":  "SI",
+                                                     "sn_nominal_kv":  null
+                                                 },
+                                    "semantic_hash":  null,
+                                    "input_hash":  null,
+                                    "case_hash":  null,
+                                    "variant_hash":  null,
+                                    "switching_snapshot_hash":  null
+                                },
+                     "buses":  [
+
+                               ],
+                     "branches":  [
+
+                                  ],
+                     "transformers":  [
+
+                                      ],
+                     "sources":  [
+
+                                 ],
+                     "loads":  [
+
+                               ],
+                     "generators":  [
+
+                                    ],
+                     "substations":  [
+
+                                     ],
+                     "bays":  [
+
+                              ],
+                     "junctions":  [
+
+                                   ],
+                     "corridors":  [
+
+                                   ],
+                     "measurements":  [
+
+                                      ],
+                     "protection_assignments":  [
+
+                                                ],
+                     "branch_points":  [
+
+                                       ],
+                     "line_runs":  [
+
+                                   ],
+                     "connection_nodes":  [
+
+                                          ]
+                 },
+    "logical_views":  {
+                          "trunks":  [
+
+                                     ],
+                          "branches":  [
+
+                                       ],
+                          "secondary_connectors":  [
+
+                                                   ],
+                          "terminals":  [
+
+                                        ]
+                      },
+    "readiness":  {
+                      "ready":  false,
+                      "blockers":  [
+                                       {
+                                           "code":  "E001",
+                                           "message_pl":  "Brak ÅºrÃ³dÅa zasilania w modelu sieci.",
+                                           "element_ref":  null,
+                                           "severity":  "BLOKUJACE"
+                                       },
+                                       {
+                                           "code":  "E002",
+                                           "message_pl":  "Brak szyn (wÄzÅÃ³w) w modelu sieci.",
+                                           "element_ref":  null,
+                                           "severity":  "BLOKUJACE"
+                                       }
+                                   ],
+                      "warnings":  [
+                                       {
+                                           "code":  "W003",
+                                           "message_pl":  "Brak odbiorÃ³w i generatorÃ³w â rozpÅyw mocy bÄdzie pusty.",
+                                           "element_ref":  null,
+                                           "severity":  "OSTRZEZENIE"
+                                       }
+                                   ]
+                  },
+    "fix_actions":  [
+                        {
+                            "code":  "E001",
+                            "action_type":  "ADD_MISSING_DEVICE",
+                            "element_ref":  null,
+                            "panel":  "SourceModal",
+                            "step":  "K2",
+                            "focus":  null,
+                            "message_pl":  "Dodaj ÅºrÃ³dÅo zasilania (sieÄ zewnÄtrzna lub Thevenin) na szynie gÅÃ³wnej."
+                        },
+                        {
+                            "code":  "E002",
+                            "action_type":  "ADD_MISSING_DEVICE",
+                            "element_ref":  null,
+                            "panel":  "NodeModal",
+                            "step":  "K3",
+                            "focus":  null,
+                            "message_pl":  "Dodaj przynajmniej jednÄ\u0085 szynÄ w kroku K2 lub K3."
+                        },
+                        {
+                            "code":  "W003",
+                            "action_type":  "ADD_MISSING_DEVICE",
+                            "element_ref":  null,
+                            "panel":  "LoadModal",
+                            "step":  "K6",
+                            "focus":  null,
+                            "message_pl":  "Dodaj odbiory lub generatory w kroku K6."
+                        }
+                    ],
+    "changes":  {
+                    "created_element_ids":  [
+
+                                            ],
+                    "updated_element_ids":  [
+
+                                            ],
+                    "deleted_element_ids":  [
+
+                                            ]
+                },
+    "selection_hint":  null,
+    "audit_trail":  [
+
+                    ],
+    "domain_events":  [
+
+                      ],
+    "materialized_params":  {
+                                "lines_sn":  {
+
+                                             },
+                                "transformers_sn_nn":  {
+
+                                                       },
+                                "sources_sn":  {
+
+                                               }
+                            },
+    "layout":  {
+                   "layout_hash":  "sha256:0419d4bd3ae5b6f85401b8906449dd3e69fe71a533b7707ac16cd24c8a24ea64",
+                   "layout_version":  "1.0"
+               }
+}

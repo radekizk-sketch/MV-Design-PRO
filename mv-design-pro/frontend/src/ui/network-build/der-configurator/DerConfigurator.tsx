@@ -1,23 +1,12 @@
 /**
- * DerConfigurator — uniwersalny konfigurator DER (PV/BESS/FW) z 6-7 kartami.
+ * Uniwersalny konfigurator DER dla E-21/E-22/E-23.
  *
- * Brief 2 §10/11/12. Wspólna struktura:
- *  Karta 1: Dane podstawowe
- *  Karta 2: Topologia przyłączenia
- *  Karta 3: Falowniki / PCS / Turbiny (zależnie od typu)
- *  Karta 4: Generator / plant controller / Sieć kolektorowa (FW)
- *  Karta 5: FRT/LVRT/HVRT
- *  Karta 6: NC RfG / Zgodność przyłączeniowa
- *  Karta 7: Gotowość obliczeń (PV/BESS — FW pomija ten tab gdy brak modułów)
- *
- * Faza E: kontekst stacji.
- *  Konfigurator wyświetla breadcrumb `Projekt > GPZ > Ciąg > Stacja > DER`
- *  jeśli `stationContext` został podany. Breadcrumb klikalny — nawigacja do
- *  E-13 (stacja). Kontekst zawiera connection_side, pcc_ref, bay_ref,
- *  transformer_ref, lv_busbar_ref — dane pochodzą z `useStationDerStore`.
+ * Karty są inżynierskie: pokazują falownik lub PCS, punkt przyłączenia,
+ * wymagania NC RfG, FRT/HVRT, gotowość obliczeń i zabezpieczenia. Brak danych
+ * jest jawnie nazwany, nigdy nie jest zastępowany zerem.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 export type DerKind = 'PV' | 'BESS' | 'FW';
 
@@ -47,25 +36,23 @@ export interface DerStationContext {
   readonly bayRef?: string | null;
   readonly transformerRef?: string | null;
   readonly lvBusbarRef?: string | null;
-  /** Wywoływane przy kliknięciu breadcrumb-a aby wrócić do E-13. */
   readonly onNavigateToStation?: () => void;
 }
 
 export interface DerConfiguratorProps {
   readonly derId: string;
   readonly derKind: DerKind;
-  readonly children?: Partial<Record<DerCardId, React.ReactNode>>;
+  readonly children?: Partial<Record<DerCardId, ReactNode>>;
   readonly defaultCard?: DerCardId;
-  /** Kontekst stacji — gdy DER jest przyłączony do konkretnej stacji. */
   readonly stationContext?: DerStationContext;
 }
 
 const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> = {
   PV: {
     basic: 'Dane podstawowe',
-    topology: 'Topologia przyłączenia',
-    inverters: 'Falowniki',
-    'plant-controller': 'Plant controller',
+    topology: 'Tor przyłączenia',
+    inverters: 'Falownik z katalogu',
+    'plant-controller': 'Regulacja PV',
     'frt-hvrt': 'FRT / LVRT / HVRT',
     ncrfg: 'Zgodność przyłączeniowa',
     readiness: 'Gotowość obliczeń',
@@ -74,7 +61,7 @@ const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> =
     basic: 'Dane podstawowe',
     topology: 'Transformator i przyłącze',
     inverters: 'PCS / falowniki',
-    'plant-controller': 'Bateria + tryby pracy',
+    'plant-controller': 'Bateria i tryby pracy',
     'frt-hvrt': 'FRT / HVRT',
     ncrfg: 'Zgodność przyłączeniowa',
     readiness: 'Gotowość obliczeń',
@@ -97,12 +84,77 @@ const DER_KIND_LABEL_PL: Record<DerKind, string> = {
 };
 
 const CONNECTION_SIDE_LABEL_PL: Record<NonNullable<DerStationContext['connectionSide']>, string> = {
-  SN: 'po SN',
-  nN: 'po nN',
+  SN: 'po stronie SN',
+  nN: 'po stronie nN',
   dedicated_transformer: 'transformator dedykowany',
   at_zksn: 'na ZK SN',
   at_branch_pole: 'na słupie rozgałęźnym',
   at_cable_joint: 'na mufie kablowej',
+};
+
+const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> = {
+  PV: {
+    basic: [
+      'Wybierz falownik PV z katalogu i określ moc AC instalacji.',
+      'Wskaż, czy PV pracuje po stronie nN za transformatorem SN/nN, po SN, czy przez transformator dedykowany.',
+    ],
+    topology: [
+      'Powiąż PCC z szyną, polem SN albo szyną nN stacji.',
+      'Dla PV po nN wymagany jest tor: pole SN, transformator SN/nN, szyna nN, wyłącznik nN, zabezpieczenie i falownik.',
+    ],
+    inverters: [
+      'Falownik musi pochodzić z katalogu: producent, moc, napięcie AC i wkład zwarciowy.',
+      'Nie wpisuj parametrów z ręki, jeżeli istnieje pozycja katalogowa.',
+    ],
+    'plant-controller': [
+      'Ustaw Q(U), P(f), cos phi i ewentualne ograniczenie eksportu.',
+      'Regulacja ma być zgodna z wybranym profilem operatora.',
+    ],
+    'frt-hvrt': [
+      'Wybierz krzywe LVRT i HVRT oraz model dynamiczny falownika.',
+      'Brak modelu dynamicznego blokuje pełną ocenę FRT/HVRT.',
+    ],
+    ncrfg: [
+      'Wybierz profil NC RfG operatora i moduł A/B/C/D.',
+      'Sprawdź minimalną moc zwarciową w PCC oraz wymagania Q(U) i P(f).',
+    ],
+    readiness: [
+      'Gotowość wymaga PCC, falownika, profilu NC RfG, FRT/HVRT, danych zwarciowych i zabezpieczenia.',
+      'Braki prowadzą do konkretnego pola konfiguracji.',
+    ],
+  },
+  BESS: {
+    basic: [
+      'Wybierz PCS i baterię z katalogu.',
+      'Określ moc ładowania, moc rozładowania, pojemność i SoC.',
+    ],
+    topology: [
+      'Powiąż PCS z PCC i właściwym poziomem napięcia.',
+      'Wariant nN wymaga szyny nN i wyłącznika źródłowego.',
+    ],
+    inverters: [
+      'PCS musi mieć napięcie zgodne z punktem przyłączenia.',
+      'Tryb grid-forming musi pochodzić z katalogu PCS.',
+    ],
+    'plant-controller': [
+      'Wybierz tryby pracy BESS: ładowanie, rozładowanie, czuwanie, FCR lub Q(U).',
+    ],
+    'frt-hvrt': ['Wybierz FRT/HVRT i model dynamiczny PCS.'],
+    ncrfg: ['Wybierz profil NC RfG operatora i sprawdź zakres pracy P/Q.'],
+    readiness: ['Brak PCS, baterii, PCC lub profilu NC RfG blokuje obliczenia.'],
+  },
+  FW: {
+    basic: [
+      'Wybierz turbinę i liczbę jednostek z katalogu.',
+      'Określ moc farmy i punkt przyłączenia.',
+    ],
+    topology: ['Powiąż farmę z polem SN, transformatorem albo siecią kolektorową.'],
+    inverters: ['Turbina musi mieć katalogowy model generatora i wkład zwarciowy.'],
+    'plant-controller': ['Wybierz regulator farmy, Q(U), P(f) i ograniczenia mocy.'],
+    'frt-hvrt': ['Wybierz FRT/HVRT i model dynamiczny PMSG/DFIG/SCIG.'],
+    ncrfg: ['Wybierz profil NC RfG oraz moduł B/C/D według mocy.'],
+    readiness: ['Brak turbiny, PCC, modelu dynamicznego lub zabezpieczeń blokuje pełną analizę.'],
+  },
 };
 
 export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
@@ -112,53 +164,17 @@ export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
   const cardIds = Object.keys(labels) as DerCardId[];
 
   return (
-    <div data-testid={`der-configurator-${derId}`} data-der-kind={derKind} className="flex h-full flex-col bg-scada-panel">
-      {stationContext && (
-        <div
-          data-testid="der-breadcrumb"
-          data-station-id={stationContext.stationId}
-          className="flex flex-wrap items-center gap-1.5 border-b border-scada-border bg-scada-surface px-3 py-2 text-[11px]"
-        >
-          <span className="text-scada-muted">Kontekst:</span>
-          {stationContext.projectName && (
-            <>
-              <span className="font-medium text-scada-text">{stationContext.projectName}</span>
-              <span className="text-scada-muted">›</span>
-            </>
-          )}
-          {stationContext.gpzName && (
-            <>
-              <span className="text-scada-text">{stationContext.gpzName}</span>
-              <span className="text-scada-muted">›</span>
-            </>
-          )}
-          {stationContext.trunkName && (
-            <>
-              <span className="text-scada-text">{stationContext.trunkName}</span>
-              <span className="text-scada-muted">›</span>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={stationContext.onNavigateToStation}
-            data-testid="der-breadcrumb-station"
-            className="rounded px-1 py-0.5 font-medium text-scada-sn hover:bg-scada-hover-nav"
-            disabled={!stationContext.onNavigateToStation}
-          >
-            {stationContext.stationName}
-          </button>
-          <span className="text-scada-muted">›</span>
-          <span className="font-semibold text-scada-text">
-            {DER_KIND_LABEL_PL[derKind]}
-          </span>
-          {stationContext.connectionSide && (
-            <span className="ml-auto rounded border border-scada-border bg-scada-panel px-2 py-0.5 text-[10px] text-scada-muted">
-              {CONNECTION_SIDE_LABEL_PL[stationContext.connectionSide]}
-            </span>
-          )}
-        </div>
-      )}
-      <nav role="tablist" className="flex shrink-0 overflow-x-auto border-b border-scada-border bg-scada-surface">
+    <div
+      data-testid={`der-configurator-${derId}`}
+      data-der-kind={derKind}
+      className="flex h-full flex-col bg-scada-panel"
+    >
+      {stationContext && <DerBreadcrumb stationContext={stationContext} derKind={derKind} />}
+
+      <nav
+        role="tablist"
+        className="flex shrink-0 overflow-x-auto border-b border-scada-border bg-scada-surface"
+      >
         {cardIds.map((id) => (
           <button
             key={id}
@@ -181,13 +197,91 @@ export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
       </nav>
 
       <div data-testid={`der-card-content-${activeCard}`} className="flex-1 overflow-y-auto p-3 text-xs">
-        {children[activeCard] ?? (
-          <div className="rounded border border-amber-700 bg-amber-950/20 p-3 text-scada-muted">
-            Brak danych katalogowych dla tej sekcji. Uzupełnij wybór katalogowy albo otwórz
-            wskazany obiekt z kontekstu stacji.
-          </div>
-        )}
+        {children[activeCard] ?? <DefaultCard derKind={derKind} cardId={activeCard} />}
       </div>
     </div>
   );
 }
+
+function DerBreadcrumb({
+  stationContext,
+  derKind,
+}: {
+  readonly stationContext: DerStationContext;
+  readonly derKind: DerKind;
+}) {
+  return (
+    <div
+      data-testid="der-breadcrumb"
+      data-station-id={stationContext.stationId}
+      className="flex flex-wrap items-center gap-1.5 border-b border-scada-border bg-scada-surface px-3 py-2 text-[11px]"
+    >
+      <span className="text-scada-muted">Kontekst:</span>
+      {stationContext.projectName && (
+        <>
+          <span className="font-medium text-scada-text">{stationContext.projectName}</span>
+          <span className="text-scada-muted">{'>'}</span>
+        </>
+      )}
+      {stationContext.gpzName && (
+        <>
+          <span className="text-scada-text">{stationContext.gpzName}</span>
+          <span className="text-scada-muted">{'>'}</span>
+        </>
+      )}
+      {stationContext.trunkName && (
+        <>
+          <span className="text-scada-text">{stationContext.trunkName}</span>
+          <span className="text-scada-muted">{'>'}</span>
+        </>
+      )}
+      <button
+        type="button"
+        onClick={stationContext.onNavigateToStation}
+        data-testid="der-breadcrumb-station"
+        className="rounded px-1 py-0.5 font-medium text-scada-sn hover:bg-scada-hover-nav"
+        disabled={!stationContext.onNavigateToStation}
+      >
+        {stationContext.stationName}
+      </button>
+      <span className="text-scada-muted">{'>'}</span>
+      <span className="font-semibold text-scada-text">
+        {DER_KIND_LABEL_PL[derKind]}
+      </span>
+      {stationContext.connectionSide && (
+        <span className="ml-auto rounded border border-scada-border bg-scada-panel px-2 py-0.5 text-[10px] text-scada-muted">
+          {CONNECTION_SIDE_LABEL_PL[stationContext.connectionSide]}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function DefaultCard({
+  derKind,
+  cardId,
+}: {
+  readonly derKind: DerKind;
+  readonly cardId: DerCardId;
+}) {
+  return (
+    <div
+      data-testid="der-card-engineering-guidance"
+      className="rounded border border-scada-border bg-scada-surface p-3 text-scada-text"
+    >
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-scada-muted">
+        Dane wymagane
+      </div>
+      <ul className="mt-2 space-y-1.5 text-[12px] leading-5">
+        {DEFAULT_CARD_HINTS[derKind][cardId].map((item) => (
+          <li key={item} className="flex gap-2">
+            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-scada-sn" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default DerConfigurator;

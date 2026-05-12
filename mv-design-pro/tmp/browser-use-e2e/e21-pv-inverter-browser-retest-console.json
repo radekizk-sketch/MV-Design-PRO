@@ -1,0 +1,17 @@
+{
+  "beforeUrl": "http://127.0.0.1:5174/#sld?fresh=pv-inspector-final-1778452710066&sel=stn%2F3eab13f89c75abe7810839fa46079e75%2Fnn_source%2Fpv_inverter&type=PVInverter&name=Falownik+PV+0.5+MW+%2F+0.4+kV+nN&kind=SOURCE&role=PV_INVERTER&sh=source%3Apv",
+  "checks": {
+    "url": "http://127.0.0.1:5174/#sld?fresh=pv-inspector-final-1778452710066&sel=stn%2F3eab13f89c75abe7810839fa46079e75%2Fnn_source%2Fpv_inverter&type=PVInverter&name=Falownik+PV+0.5+MW+%2F+0.4+kV+nN&kind=SOURCE&role=PV_INVERTER&sh=source%3Apv",
+    "hadOpenButton": false,
+    "clickedOpenButton": false,
+    "hasE21Surface": true,
+    "keepsInverterName": true,
+    "hasNcrfg": true,
+    "hasFrt": true,
+    "hasProtection": true,
+    "notUnselected": true,
+    "noFalseZero": true,
+    "newLogCount": 0
+  },
+  "logs": []
+}

@@ -1,0 +1,33 @@
+{
+  "status": 200,
+  "substationCount": 1,
+  "substations": [
+    {
+      "ref_id": "gpz/9cd0b0d84d0a89bbede57d0a677ffb08/substation",
+      "name": "GPZ 1",
+      "station_type": "gpz",
+      "bus_refs": [
+        "gpz/9cd0b0d84d0a89bbede57d0a677ffb08/section/001/bus_sn",
+        "gpz/9cd0b0d84d0a89bbede57d0a677ffb08/section/002/bus_sn"
+      ],
+      "transformer_refs": []
+    }
+  ],
+  "bayCount": 0,
+  "bays": [],
+  "generatorCount": 0,
+  "generators": [],
+  "lineRuns": 1,
+  "rawKeys": [
+    "snapshot",
+    "logical_views",
+    "readiness",
+    "fix_actions",
+    "changes",
+    "selection_hint",
+    "audit_trail",
+    "domain_events",
+    "materialized_params",
+    "layout"
+  ]
+}

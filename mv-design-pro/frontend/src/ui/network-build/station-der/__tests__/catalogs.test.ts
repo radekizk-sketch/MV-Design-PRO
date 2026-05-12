@@ -80,6 +80,13 @@ describe('LVRT/HVRT curve catalog', () => {
     const curves = selectHvrtCurvesForProfile('ncrfg_energa');
     expect(curves.every((c) => c.operator_code === 'Energa')).toBe(true);
   });
+
+  it('kazdy profil operatora daje co najmniej jedna krzywa LVRT i HVRT', () => {
+    for (const profile of NC_RFG_PROFILE_CATALOG) {
+      expect(selectLvrtCurvesForProfile(profile.id).length).toBeGreaterThan(0);
+      expect(selectHvrtCurvesForProfile(profile.id).length).toBeGreaterThan(0);
+    }
+  });
 });
 
 describe('LvVoltageLevelCatalog', () => {

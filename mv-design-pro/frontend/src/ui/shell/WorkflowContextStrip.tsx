@@ -102,37 +102,65 @@ export function WorkflowContextStrip({
     const branches = Array.isArray(model?.branches)
       ? model.branches as Array<Record<string, unknown>>
       : [];
+    let lengthBranchCount = 0;
     const lengthKm = branches.reduce((sum, branch) => {
       const raw = branch.length_km ?? branch.lengthKm ?? branch.length;
       const value = typeof raw === 'number' ? raw : Number(raw);
-      return Number.isFinite(value) ? sum + value : sum;
+      if (!Number.isFinite(value) || value <= 0) {
+        return sum;
+      }
+      lengthBranchCount += 1;
+      return sum + value;
     }, 0);
     return {
       buses: count('buses'),
       branches: count('branches'),
       stations: count('substations'),
+      sources: count('sources'),
       transformers: count('transformers'),
       loads: count('loads'),
       bays: count('bays'),
       generators: count('generators'),
       lengthKm,
+      lengthBranchCount,
     };
   }, [snapshot]);
 
   const hasModel = Boolean(snapshot);
-  const blockerCounts = blockersByCategory ?? { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
+  const hasElectricalRoot = stats.sources > 0 || stats.stations > 0;
+  const structuralBlockers = hasModel
+    ? [
+      stats.sources === 0 && stats.stations === 0,
+      stats.buses === 0,
+      hasElectricalRoot && stats.buses > 0 && stats.lengthBranchCount === 0,
+      hasElectricalRoot && stats.buses > 0 && stats.transformers === 0,
+      hasElectricalRoot && stats.buses > 0 && stats.loads === 0,
+    ].filter(Boolean).length
+    : 0;
+  const rawBlockerCounts = blockersByCategory ?? { topologia: 0, katalogi: 0, eksploatacja: 0, analiza: 0, total: 0 };
+  const blockerCounts = {
+    ...rawBlockerCounts,
+    topologia: rawBlockerCounts.topologia + structuralBlockers,
+    total: rawBlockerCounts.total + structuralBlockers,
+  };
+  const isModelReady = isReady && structuralBlockers === 0;
+  const visualBuildPhase = isModelReady ? buildPhase : hasElectricalRoot ? 'HAS_SOURCE' : buildPhase;
   const chipClass = hasModel
-    ? PHASE_CHIP[buildPhase] ?? 'border-scada-border bg-scada-bg text-scada-text'
+    ? PHASE_CHIP[visualBuildPhase] ?? 'border-scada-border bg-scada-bg text-scada-text'
     : 'border-scada-border bg-scada-bg text-scada-muted';
-  const dotClass = hasModel ? PHASE_DOT[buildPhase] ?? 'bg-scada-muted' : 'bg-scada-muted';
+  const dotClass = hasModel ? PHASE_DOT[visualBuildPhase] ?? 'bg-scada-muted' : 'bg-scada-muted';
   const readinessPercent = !hasModel
     ? 0
-    : isReady
+    : isModelReady
       ? 100
       : Math.max(0, Math.min(99, 100 - blockerCounts.total * 12));
   const readinessLabel = hasModel ? `${readinessPercent}%` : '—';
-  const phaseTitle = hasModel ? `Faza budowy modelu: ${buildPhaseLabel}` : 'Brak aktywnego modelu';
-  const phaseLabel = hasModel ? (isReady ? 'GOTOWE' : 'BUDOWA') : 'BRAK MODELU';
+  const phaseTitle = hasModel
+    ? isModelReady
+      ? `Faza budowy modelu: ${buildPhaseLabel}`
+      : 'Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą'
+    : 'Brak aktywnego modelu';
+  const phaseLabel = hasModel ? (isModelReady ? 'GOTOWE' : 'BUDOWA') : 'BRAK MODELU';
   const blockerLabel = hasModel ? String(blockerCounts.total) : '—';
   const elementCount = stats.buses
     + stats.branches
@@ -145,7 +173,11 @@ export function WorkflowContextStrip({
     elementCount: hasModel ? elementCount : '—',
     bays: hasModel ? stats.bays || stats.branches : '—',
     stations: hasModel ? stats.stations : '—',
-    lengthKm: hasModel ? `${stats.lengthKm.toFixed(2)} km` : '—',
+    lengthKm: hasModel
+      ? stats.lengthBranchCount > 0
+        ? `${stats.lengthKm.toFixed(2)} km`
+        : 'brak odcinków'
+      : '—',
     transformers: hasModel ? stats.transformers : '—',
     loads: hasModel ? stats.loads : '—',
   };
@@ -235,7 +267,7 @@ export function WorkflowContextStrip({
           <span className="font-mono text-[11px] font-semibold text-scada-text">{readinessLabel}</span>
           <span className="h-1.5 w-9 overflow-hidden rounded-full bg-scada-bg">
             <span
-              className={clsx('block h-full', isReady ? 'bg-emerald-400' : 'bg-amber-400')}
+              className={clsx('block h-full', isModelReady ? 'bg-emerald-400' : 'bg-amber-400')}
               style={{ width: `${readinessPercent}%` }}
             />
           </span>

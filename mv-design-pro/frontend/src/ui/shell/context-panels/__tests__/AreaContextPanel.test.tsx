@@ -46,6 +46,7 @@ vi.mock('../../../shared/generatorTypeLabels', () => ({
 }));
 
 import { useAppStateStore } from '../../../app-state/store';
+import { type SnapshotState, useSnapshotStore } from '../../../topology/snapshotStore';
 import { AreaContextPanel } from '../AreaContextPanel';
 
 describe('AreaContextPanel - routing dziewięciu obszarów', () => {
@@ -79,14 +80,117 @@ describe('AreaContextPanel - routing dziewięciu obszarów', () => {
 
     const state = useAppStateStore.getState();
     expect(state.activeProjectName).toBe('Sieć SN - projekt roboczy');
+    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
+    expect(state.activeCaseId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
     expect(state.activeVariantName).toBe('Stan projektowany 2026');
+  });
+
+  it('Model sieci: istniejący projekt dostaje zakres obliczeń bez zmiany nazwy projektu', () => {
+    act(() => {
+      useAppStateStore.getState().setActiveProject('project:e2e-existing', 'E2E UIUX RESET');
+      useAppStateStore.getState().setActiveCase(null);
+      useAppStateStore.getState().setActiveVariant(null);
+    });
+    render(<AreaContextPanel areaCode="MODEL_SIECI" />);
+
+    expect(screen.getByRole('heading', { name: 'Utwórz zakres obliczeń' })).toBeInTheDocument();
+    expect(screen.getByTestId('mo-create-project')).toHaveTextContent(
+      'Utwórz zakres i przejdź do GPZ',
+    );
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('mo-create-project'));
+    });
+
+    const state = useAppStateStore.getState();
+    expect(state.activeProjectId).toBe('project:e2e-existing');
+    expect(state.activeProjectName).toBe('E2E UIUX RESET');
+    expect(state.activeCaseName).toBe('Zwarcie maksymalne IEC 60909');
   });
 
   it('renderuje panel Schemat i topologia', () => {
     render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
     expect(screen.getByTestId('schemat-context-panel')).toBeInTheDocument();
     expect(screen.getByTestId('schemat-action-show-topology')).toBeInTheDocument();
+  });
+
+  it('Schemat: odcinki SN pokazują typ katalogowy zamiast surowego typu cable', () => {
+    act(() => {
+      useSnapshotStore.setState({
+        snapshot: {
+          sources: [],
+          buses: [],
+          bays: [],
+          substations: [],
+          branches: [{
+            id: 'seg-1',
+            ref_id: 'SEG-1',
+            name: 'T1',
+            type: 'cable',
+            catalog_ref: 'XRUHAKXS 120/25',
+            length_km: 0.21,
+          }],
+        } as SnapshotState['snapshot'],
+        readiness: { ready: true, blockers: [], warnings: [] } as SnapshotState['readiness'],
+      });
+    });
+
+    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+
+    expect(screen.getByText('XRUHAKXS 120/25 · 0.21 km')).toBeInTheDocument();
+    expect(screen.queryByText('cable · 0.21 km')).not.toBeInTheDocument();
+    act(() => {
+      useSnapshotStore.getState().reset();
+    });
+  });
+
+  it('Schemat: powtarzający się kod blokera nie generuje duplikatu klucza React', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const snapshot = {
+      sources: [],
+      buses: [],
+      bays: [],
+      branches: [],
+      substations: [],
+    } as SnapshotState['snapshot'];
+    const readiness = {
+      ready: false,
+      blockers: [
+        {
+          code: 'switch.catalog_ref_missing',
+          element_ref: 'stn/1/sn_field_breaker/000',
+          message_pl: 'Łącznik pola SN 1 nie ma przypisanej referencji katalogowej.',
+        },
+        {
+          code: 'switch.catalog_ref_missing',
+          element_ref: 'stn/1/sn_field_breaker/001',
+          message_pl: 'Łącznik pola SN 2 nie ma przypisanej referencji katalogowej.',
+        },
+      ],
+      warnings: [],
+    } as SnapshotState['readiness'];
+    act(() => {
+      useSnapshotStore.setState({
+        snapshot,
+        readiness,
+      });
+    });
+
+    render(<AreaContextPanel areaCode="SCHEMAT_TOPOLOGIA" />);
+
+    expect(screen.getByText(/SN 1/)).toBeInTheDocument();
+    expect(screen.getByText(/SN 2/)).toBeInTheDocument();
+    expect(
+      errorSpy.mock.calls.some((call) =>
+        String(call[0]).includes('Encountered two children with the same key'),
+      ),
+    ).toBe(false);
+
+    errorSpy.mockRestore();
+    act(() => {
+      useSnapshotStore.getState().reset();
+    });
   });
 
   it('renderuje panel Studia obliczeniowe', () => {

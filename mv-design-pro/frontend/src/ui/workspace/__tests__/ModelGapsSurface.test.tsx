@@ -94,7 +94,7 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
     expect(screen.getByText(/Brak katalogu dla kabla SN K-12/)).toBeInTheDocument();
     expect(screen.getByText('catalog.cable.missing')).toBeInTheDocument();
     expect(screen.getByTestId('gap-blocker-1')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Napraw:/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: 'Napraw teraz' })).toHaveLength(2);
   });
 
   it('renderuje listę ostrzeżeń osobno od blokerów', () => {
@@ -184,7 +184,7 @@ describe('ModelGapsSurface (E-04) — gotowość modelu', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /Napraw: Dodaj transformator dedykowany/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Napraw teraz' }));
 
     expect(useSelectionStore.getState().selectedElement).toMatchObject({
       id: 'gen_pv_1',

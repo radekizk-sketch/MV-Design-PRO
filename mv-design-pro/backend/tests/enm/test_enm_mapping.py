@@ -142,6 +142,59 @@ class TestBasicMapping:
         assert len(trafo_branches) == 1
         assert trafo_branches[0].rated_power_mva == 25.0
 
+    def test_zero_sequence_zbus_handles_transformer_blocked_lv_side(self):
+        enm = _make_enm(
+            buses=[
+                Bus(ref_id="bus_src", name="GPZ SN", voltage_kv=15),
+                Bus(ref_id="bus_fault", name="Szyna SN", voltage_kv=15),
+                Bus(ref_id="bus_nn", name="Szyna nN", voltage_kv=0.4),
+            ],
+            sources=[
+                Source(
+                    ref_id="src_grid",
+                    name="Siec",
+                    bus_ref="bus_src",
+                    model="thevenin",
+                    r_ohm=0.08,
+                    x_ohm=0.8,
+                    r0_ohm=0.16,
+                    x0_ohm=1.6,
+                ),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="bus_src",
+                    to_bus_ref="bus_fault",
+                    length_km=2.0,
+                    r_ohm_per_km=0.25,
+                    x_ohm_per_km=0.32,
+                    r0_ohm_per_km=0.75,
+                    x0_ohm_per_km=0.96,
+                ),
+            ],
+            transformers=[
+                Transformer(
+                    ref_id="tr_1",
+                    name="TR SN/nN",
+                    hv_bus_ref="bus_fault",
+                    lv_bus_ref="bus_nn",
+                    sn_mva=0.63,
+                    uhv_kv=15,
+                    ulv_kv=0.4,
+                    uk_percent=6,
+                    pk_kw=7.5,
+                    vector_group="Dyn11",
+                ),
+            ],
+        )
+        graph = map_enm_to_network_graph(enm)
+
+        z0_bus = build_zero_sequence_zbus(enm, graph)
+
+        assert z0_bus.shape[0] > 0
+
     def test_load_applied_to_node(self):
         enm = _make_enm(
             buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],

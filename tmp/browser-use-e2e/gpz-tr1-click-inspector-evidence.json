@@ -1,0 +1,7 @@
+{
+  "url": "http://127.0.0.1:5174/#sld?fresh=gpz-tr2-api-browser-evidence&sel=gpz%2Fea497b0f1adb116680e39bf3e015b5f8%2Ftransformer%2F001%2Fwn_sn&type=TransformerBranch&name=TR1+110%2F15+kV",
+  "hasTransformerHeader": true,
+  "hasPower": true,
+  "hasVoltage": true,
+  "rightPanel": "INSPEKTOR TECHNICZNY\nTR1 110/15 kV\n\nTransformator ? Oznaczenie: gpz/ea497b0f1adb116680e39bf3e015b5f8/transformer/001/wn_sn\n\nIDENTYFIKACJA\nOznaczenie transformatora\ngpz/ea497b0f1adb116680e39bf3e015b5f8/transformer/001/wn_sn\nNazwa\nTR1 110/15 kV\nTyp\nTransformator\nTOPOLOGIA\nSzyna GN (SN)\ngpz/ea497b0f1adb116680e39bf3e015b5f8/transformer/001/bus_110\nSzyna DN (nN)\ngpz/ea497b0f1adb116680e39bf3e015b5f8/section/001/bus_sn\nPARAMETRY ELEKTRYCZNE\nMoc znamionowa\n25MVA\nNapięcie zwarcia uk\n12%\nStraty zwarciowe Pk\n120kW\nPozycja zaczepu\n0\nGrupa wektorowa\nYNd11\nKATALOG\nPozycja katalogowa\n?\nOPERACJE\nPrzypisz katalog\nEdytuj parametry\nBieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026.\nSchemat / Model\n|\nProjekt:\nBrowser GPZ 2TR\n|\nZakres obliczeń:\nZwarcie maksymalne IEC 60909\n|\nWariant:\nStan projektowany 2026\n|\nWersja modelu:\n—\n|\nEdycja\nBrak wyników\n|\n✕ 2 błędów\n|\nWęzły: 2\nGałęzie: 7"
+}

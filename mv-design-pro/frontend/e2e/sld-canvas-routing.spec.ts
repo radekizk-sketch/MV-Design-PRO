@@ -2,7 +2,7 @@
  * E2E — Etap 1 wiring kanwy SLD.
  *
  * Sprawdza, że po starcie aplikacji:
- * 1. Domyślna trasa renderuje data-testid="sld-canvas-v2" (kanwa widoczna).
+ * 1. Trasa #sld renderuje data-testid="sld-canvas-v2" (kanwa widoczna).
  * 2. Pusty model pokazuje polski komunikat empty state.
  * 3. Right-click na tle kanwy otwiera menu kontekstowe z trzema akcjami
  *    `background` (Wstaw główny punkt zasilania, Otwórz katalogi techniczne,
@@ -23,8 +23,8 @@ async function waitForAppReady(page: Page): Promise<void> {
 }
 
 test.describe('Etap 1 — wiring kanwy SLD', () => {
-  test('domyślna trasa renderuje SldCanvasV2 z polskim empty state', async ({ page }) => {
-    await page.goto('/');
+  test('trasa #sld renderuje SldCanvasV2 z polskim empty state', async ({ page }) => {
+    await page.goto('/#sld');
     await waitForAppReady(page);
 
     await expect(page.getByTestId('sld-canvas-v2')).toBeVisible();
@@ -35,7 +35,7 @@ test.describe('Etap 1 — wiring kanwy SLD', () => {
   });
 
   test('right-click na kanwie otwiera menu kontekstowe tła', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/#sld');
     await waitForAppReady(page);
 
     const canvas = page.getByTestId('sld-canvas-v2');

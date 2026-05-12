@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -19,6 +20,13 @@ from api.canonical_run_views import (
     build_sld_overlay,
     build_source_compliance_results_response,
 )
+from api.analysis_run_exports import (
+    build_analysis_run_trace_export_payload,
+    export_run_report_docx_response,
+    export_run_report_json_response,
+    export_run_report_pdf_response,
+    export_run_trace_pdf_response,
+)
 from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from enm.canonical_analysis import (
@@ -31,6 +39,7 @@ from enm.canonical_analysis import (
     list_runs_for_project as list_canonical_runs_for_project,
 )
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 
 router = APIRouter()
 
@@ -40,7 +49,7 @@ def _require_canonical_run(run_id: UUID) -> CanonicalRun:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail=f"Nie znaleziono obliczenia {run_id}",
         )
     return run
 
@@ -72,7 +81,7 @@ def get_analysis_run(run_id: str) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail=f"Nie znaleziono obliczenia {run_id}",
         ) from exc
     return canonicalize_json(build_analysis_run_detail(_require_canonical_run(parsed_run_id)))
 
@@ -95,7 +104,7 @@ def get_analysis_run_results(run_id: UUID) -> dict[str, Any]:
     if canonical_run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki przebiegu {run_id} są niedostępne (status={canonical_run.status})",
+            detail=f"Wyniki obliczenia {run_id} są niedostępne (status={canonical_run.status})",
         )
     return canonicalize_json(build_result_items(canonical_run))
 
@@ -144,7 +153,7 @@ def get_analysis_run_trace(run_id: UUID) -> dict[str, Any]:
     if trace_payload is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ślad obliczeniowy niedostępny dla tego przebiegu analizy",
+            detail="Ślad obliczeniowy niedostępny dla tego obliczenia",
         )
     return canonicalize_json({"trace": trace_payload})
 
@@ -155,7 +164,7 @@ def get_analysis_run_trace_summary(run_id: UUID) -> dict[str, Any]:
     if trace_payload is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ślad obliczeniowy niedostępny dla tego przebiegu analizy",
+            detail="Ślad obliczeniowy niedostępny dla tego obliczenia",
         )
     summary = build_trace_summary(trace_payload)
     return canonicalize_json(
@@ -170,28 +179,145 @@ def get_analysis_run_trace_summary(run_id: UUID) -> dict[str, Any]:
     )
 
 
-@router.get("/projects/{project_id}/analysis-runs/{run_id}/export/docx")
-def export_analysis_run_docx(project_id: UUID, run_id: UUID) -> dict[str, Any]:
-    _ = project_id, run_id
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail=(
-            "Eksport DOCX dla ogólnego endpointu /analysis-runs został wycofany z toru "
-            "produkcyjnego. Użyj kanonicznych endpointów execution/power-flow."
-        ),
+def _analysis_run_filename_stem(run: CanonicalRun, suffix: str) -> str:
+    analysis_label = str(run.analysis_type).replace("_", "-")
+    return f"{suffix}-{analysis_label}"
+
+
+def _latex_escape(value: object) -> str:
+    text = str(value)
+    return (
+        text.replace("\\", r"\textbackslash{}")
+        .replace("&", r"\&")
+        .replace("%", r"\%")
+        .replace("$", r"\$")
+        .replace("#", r"\#")
+        .replace("_", r"\_")
+        .replace("{", r"\{")
+        .replace("}", r"\}")
+        .replace("~", r"\textasciitilde{}")
+        .replace("^", r"\textasciicircum{}")
     )
 
 
-@router.get("/projects/{project_id}/analysis-runs/{run_id}/export/pdf")
-def export_analysis_run_pdf(project_id: UUID, run_id: UUID) -> dict[str, Any]:
-    _ = project_id, run_id
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail=(
-            "Eksport PDF dla ogólnego endpointu /analysis-runs został wycofany z toru "
-            "produkcyjnego. Użyj kanonicznych endpointów execution/power-flow."
-        ),
+def _proof_latex_response(run: CanonicalRun) -> Response:
+    payload = build_analysis_run_trace_export_payload(run)
+    trace = payload.get("white_box_trace") or []
+    lines = [
+        r"\documentclass[11pt]{article}",
+        r"\usepackage[utf8]{inputenc}",
+        r"\usepackage[T1]{fontenc}",
+        r"\usepackage[polish]{babel}",
+        r"\usepackage{longtable}",
+        r"\usepackage{geometry}",
+        r"\geometry{margin=20mm}",
+        r"\begin{document}",
+        r"\section*{Uzasadnienie inżynierskie obliczeń}",
+        rf"\textbf{{Obliczenie:}} {_latex_escape(run.id)}\\",
+        rf"\textbf{{Typ analizy:}} {_latex_escape(run.analysis_type)}\\",
+        rf"\textbf{{Wersja modelu użyta do obliczeń:}} {_latex_escape(payload.get('snapshot_id') or 'brak danych')}\\",
+        rf"\textbf{{Skrót danych wejściowych:}} {_latex_escape(payload.get('input_hash') or 'brak danych')}\\",
+        r"\section*{Kroki obliczeniowe}",
+    ]
+    if not trace:
+        lines.append("Brak danych śladu obliczeń.")
+    for index, step in enumerate(trace, start=1):
+        title = step.get("title") or step.get("description") or step.get("key") or f"Krok {index}"
+        lines.extend(
+            [
+                rf"\subsection*{{{index}. {_latex_escape(title)}}}",
+                rf"\textbf{{Faza:}} {_latex_escape(step.get('phase') or 'brak danych')}\\",
+                rf"\textbf{{Obiekt:}} {_latex_escape(step.get('element_id') or step.get('target_id') or 'brak danych')}\\",
+            ]
+        )
+        if step.get("formula_latex"):
+            lines.append(r"\[")
+            lines.append(str(step["formula_latex"]))
+            lines.append(r"\]")
+        if step.get("substitution"):
+            lines.append(rf"\textbf{{Podstawienie:}} {_latex_escape(step['substitution'])}\\")
+        if step.get("result") is not None:
+            lines.append(rf"\textbf{{Wynik:}} {_latex_escape(canonicalize_json(step['result']))}\\")
+        if step.get("unit_check"):
+            lines.append(rf"\textbf{{Kontrola jednostek:}} {_latex_escape(step['unit_check'])}\\")
+    lines.append(r"\end{document}")
+    return Response(
+        content="\n".join(lines),
+        media_type="application/x-tex",
+        headers={
+            "Content-Disposition": f'attachment; filename="uzasadnienie_{run.id}.tex"',
+        },
     )
+
+
+@router.get("/analysis-runs/{run_id}/export/report/json")
+def export_analysis_run_report_json(run_id: UUID) -> Response:
+    run = _require_canonical_run(run_id)
+    return export_run_report_json_response(
+        run,
+        filename_stem=_analysis_run_filename_stem(run, "raport"),
+    )
+
+
+@router.get("/analysis-runs/{run_id}/export/report/docx")
+def export_analysis_run_report_docx(run_id: UUID) -> Response:
+    run = _require_canonical_run(run_id)
+    try:
+        return export_run_report_docx_response(
+            run,
+            filename_stem=_analysis_run_filename_stem(run, "raport"),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+
+@router.get("/analysis-runs/{run_id}/export/report/pdf")
+def export_analysis_run_report_pdf(run_id: UUID) -> Response:
+    run = _require_canonical_run(run_id)
+    try:
+        return export_run_report_pdf_response(
+            run,
+            filename_stem=_analysis_run_filename_stem(run, "raport"),
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+
+
+@router.get("/analysis-runs/{run_id}/export/proof/json")
+def export_analysis_run_proof_json(run_id: UUID) -> Response:
+    run = _require_canonical_run(run_id)
+    payload = canonicalize_json(build_analysis_run_trace_export_payload(run))
+    return Response(
+        content=(
+            payload
+            if isinstance(payload, str)
+            else json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
+        ),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f'attachment; filename="uzasadnienie_{run.id}.json"',
+        },
+    )
+
+
+@router.get("/analysis-runs/{run_id}/export/proof/latex")
+def export_analysis_run_proof_latex(run_id: UUID) -> Response:
+    return _proof_latex_response(_require_canonical_run(run_id))
+
+
+@router.get("/analysis-runs/{run_id}/export/proof/pdf")
+def export_analysis_run_proof_pdf(run_id: UUID) -> Response:
+    run = _require_canonical_run(run_id)
+    try:
+        return export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/index")

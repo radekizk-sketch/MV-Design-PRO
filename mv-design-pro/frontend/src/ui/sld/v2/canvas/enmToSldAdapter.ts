@@ -37,7 +37,19 @@ import type {
 } from '../../../../types/enm';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
-import type { StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
+import {
+  STATION_RUN_TRUNK_OFFSET_Y,
+  type StationOnRunRendererProps,
+} from '../renderer/StationOnRunRenderer';
+import {
+  MINI_BLOCK_FOOTPRINT,
+  deriveFootprintType,
+  type StationFootprintType,
+} from '../renderer/MiniBlockFootprints';
+import type {
+  MiniBlockBayDescriptor,
+  MiniBlockDerBadge,
+} from '../renderer/MiniBlockRmuRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type {
   BayControlMode,
@@ -194,10 +206,35 @@ const SECTION_X_BASE = 100;
 const SECTION_PITCH = 320;
 const SECTION_WIDTH = 280;
 
-const Y_RUN_BASE = 320;
-const RUN_PITCH = 110;
-const X_STATIONS_START = 200;
-const STATION_PITCH = 180;
+const RUN_PITCH = 130;
+const X_STATIONS_START = 900;
+const STATION_PITCH = 220;
+
+const CANONICAL_PAGE_PADDING = 24;
+const CANONICAL_HEADER_WIDTH = 320;
+const CANONICAL_SECTION_LABEL_WIDTH = 30;
+const CANONICAL_LV_SECTION_MIN_WIDTH = 260;
+const CANONICAL_LV_SECTION_COUPLER_GAP = 72;
+const CANONICAL_BAY_WIDTH = 74;
+const CANONICAL_BAY_PITCH = 82;
+const CANONICAL_TR_AREA_Y = 280;
+const CANONICAL_TR_HEIGHT = 80;
+const CANONICAL_LV_BUS_GAP = 16;
+const CANONICAL_LV_BAY_HEIGHT = 250;
+const CANONICAL_LV_TRACK_HEIGHT = CANONICAL_LV_BAY_HEIGHT - 30;
+const CANONICAL_LV_BLOCK_Y = CANONICAL_TR_AREA_Y + CANONICAL_TR_HEIGHT + CANONICAL_LV_BUS_GAP;
+const CANONICAL_GPZ_FRAME_BOTTOM_Y =
+  Y_GPZ + CANONICAL_LV_BLOCK_Y + CANONICAL_LV_BAY_HEIGHT + CANONICAL_PAGE_PADDING;
+const CANONICAL_CABLE_HEAD_TIP_Y =
+  Y_GPZ
+  + CANONICAL_LV_BLOCK_Y
+  + CANONICAL_LV_TRACK_HEIGHT
+  + 6;
+const GPZ_FIELD_CABLE_HEAD_CLEARANCE_Y = 44;
+// Kanał poziomy musi być poza ramką GPZ. W przeciwnym razie wygląda jak wspólna szyna głowic.
+const Y_RUN_BASE = CANONICAL_GPZ_FRAME_BOTTOM_Y + GPZ_FIELD_CABLE_HEAD_CLEARANCE_Y;
+const GPZ_FIELD_CABLE_HEAD_Y = CANONICAL_CABLE_HEAD_TIP_Y;
+const PENDING_RUN_LENGTH = 140;
 
 const DER_OFFSET_RIGHT = 80;
 
@@ -210,6 +247,19 @@ interface CableRunRendererPropsLight {
   runKind: 'main_trunk' | 'branch' | 'ring' | 'loop';
   pathPoints: ReadonlyArray<{ x: number; y: number }>;
   segmentKind: 'cable_sn' | 'overhead_line_sn';
+  segmentRefs?: readonly string[];
+  segmentPaths?: ReadonlyArray<{
+    segmentRef: string;
+    pathPoints: ReadonlyArray<{ x: number; y: number }>;
+  }>;
+  label?: string;
+  segmentLabels?: ReadonlyArray<{
+    segmentRef: string;
+    text: string;
+    x: number;
+    y: number;
+  }>;
+  pendingEndpoint?: boolean;
 }
 
 function isCableLikeBranch(b: Branch): boolean {
@@ -253,7 +303,7 @@ export function buildSldDataFromSnapshot(
   const gpzs = buildGpzs(snapshot);
   const sections = buildSections(snapshot);
   const stations = buildStations(snapshot);
-  const cableRuns = buildCableRuns(snapshot, logicalViews);
+  const cableRuns = buildCableRuns(snapshot, logicalViews, stations);
   const ders = buildDers(snapshot, stations);
 
   return { gpzs, sections, cableRuns, stations, ders };
@@ -586,14 +636,22 @@ function bayDescriptorFromEnm(
     if (explicitRef) {
       const target = substations.find((s) => s.ref_id === explicitRef);
       const destination = target?.name ?? explicitRef;
-      outgoingFeeder = { destination: `→ ${destination}` };
+      const outgoingBranch = findOutgoingBranchForBay(bay, branches, substations, explicitRef);
+      outgoingFeeder = {
+        destination: `→ ${destination}`,
+        ...(outgoingBranch ? outgoingBranchDisplayData(outgoingBranch) : {}),
+      };
     } else {
       /* Backward compat: gdy ENM nie ma `outgoing_destination_ref` (np.
        * legacy ENM przed Phase 0A audit fix 8), użyj graph inference jako
        * fallback. Phase 1+ — usunąć całkowicie i wymuszać explicit ENM. */
       const destination = inferOutgoingFeederDestination(bay, branches, substations, gpz);
       if (destination) {
-        outgoingFeeder = { destination: `→ ${destination}` };
+        const outgoingBranch = findOutgoingBranchForBay(bay, branches, substations);
+        outgoingFeeder = {
+          destination: `→ ${destination}`,
+          ...(outgoingBranch ? outgoingBranchDisplayData(outgoingBranch) : {}),
+        };
       }
     }
   }
@@ -677,6 +735,93 @@ function inferOutgoingFeederDestination(
     if (dest) return dest.name || dest.ref_id;
   }
   return null;
+}
+
+function findOutgoingBranchForBay(
+  bay: Bay,
+  branches: readonly Branch[],
+  substations: readonly Substation[],
+  explicitDestinationRef?: string,
+): Branch | null {
+  const touchingCableLikeBranches = branches.filter((branch) => {
+    if (!isCableLikeBranch(branch)) return false;
+    return branch.from_bus_ref === bay.bus_ref || branch.to_bus_ref === bay.bus_ref;
+  });
+  if (touchingCableLikeBranches.length === 0) return null;
+
+  const explicitTarget = explicitDestinationRef
+    ? substations.find((station) => station.ref_id === explicitDestinationRef)
+    : undefined;
+  if (explicitTarget) {
+    const branchToTarget = touchingCableLikeBranches.find((branch) => {
+      const otherBusRef = branch.from_bus_ref === bay.bus_ref ? branch.to_bus_ref : branch.from_bus_ref;
+      return explicitTarget.bus_refs.includes(otherBusRef);
+    });
+    if (branchToTarget) return branchToTarget;
+  }
+
+  return touchingCableLikeBranches[0] ?? null;
+}
+
+function outgoingBranchDisplayData(
+  branch: Branch,
+): Pick<
+  NonNullable<GpzBayDescriptor['outgoingFeeder']>,
+  'segmentTypeLabel' | 'segmentLengthLabel' | 'catalogLabel'
+> {
+  const segmentKind = classifySegmentKind(branch);
+  return {
+    segmentTypeLabel: segmentKindLabel(segmentKind),
+    segmentLengthLabel: formatCableRunLength([branch]),
+    catalogLabel: readCatalogTypeLabel(branch),
+  };
+}
+
+function readCatalogTypeLabel(branch: Branch): string | undefined {
+  const materialized = branch.materialized_params;
+  if (materialized && typeof materialized === 'object') {
+    for (const key of [
+      'type_designation',
+      'type_label',
+      'catalog_label',
+      'display_name',
+      'designation',
+      'name',
+      'catalog_item_id',
+    ]) {
+      const raw = materialized[key];
+      if (typeof raw === 'string' && raw.trim()) {
+        return formatCatalogTypeLabel(raw);
+      }
+    }
+  }
+  return typeof branch.catalog_ref === 'string' && branch.catalog_ref.trim()
+    ? formatCatalogTypeLabel(branch.catalog_ref)
+    : undefined;
+}
+
+function formatCatalogTypeLabel(raw: string): string {
+  const value = raw.trim();
+  const directTypePattern = /^[A-Z0-9ĄĆĘŁŃÓŚŹŻ][A-Z0-9ĄĆĘŁŃÓŚŹŻ/ .-]{2,}$/u;
+  if (directTypePattern.test(value) && !value.includes(':')) return value;
+
+  const normalized = value
+    .replace(/^KABEL_SN:/i, '')
+    .replace(/^LINIA_SN:/i, '')
+    .replace(/@[^@]+$/u, '')
+    .replace(/^cable-/i, '')
+    .replace(/^line-/i, '')
+    .replace(/^base-/i, '')
+    .replace(/^tfk-/i, '')
+    .replace(/-/gu, ' ')
+    .replace(/\bxlpe\b/giu, 'XLPE')
+    .replace(/\bal\b/giu, 'Al')
+    .replace(/\bst\b/giu, 'St')
+    .replace(/\b3c\s+(\d+)\b/iu, '3x$1')
+    .replace(/\b3x(\d+)\b/iu, '3x$1')
+    .trim();
+
+  return normalized ? normalized.toUpperCase().replace(/\bAL\b/u, 'Al').replace(/\bST\b/u, 'St') : value;
 }
 
 /**
@@ -799,13 +944,20 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       const sub = fieldStationByRef.get(sref.substation_ref);
       if (!sub) return; // stacja nie jest field-station (np. GPZ) lub nie istnieje
       placed.add(sref.substation_ref);
+      const stationSldDetails = buildStationMiniBlockDetails(snapshot, sub);
       stations.push({
         id: sub.ref_id,
         x: X_STATIONS_START + posInRun * STATION_PITCH,
-        y: Y_RUN_BASE + runIdx * RUN_PITCH,
+        y: Y_RUN_BASE + runIdx * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
         name: sub.name || sub.ref_id,
         topologicalType: classifyTopologicalType(sub),
         nnVoltageLevelsCount: 1,
+        footprintType: stationSldDetails.footprintType,
+        snBays: stationSldDetails.snBays,
+        hasTransformer: stationSldDetails.hasTransformer,
+        transformerRefs: stationSldDetails.transformerRefs,
+        nnFeedersCount: stationSldDetails.nnFeedersCount,
+        derBadges: stationSldDetails.derBadges,
       });
     });
   });
@@ -819,17 +971,179 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
   orphans.forEach((st, idx) => {
     const runIndex = orphanRunBase + Math.floor(idx / 5);
     const positionInRun = idx % 5;
+    const stationSldDetails = buildStationMiniBlockDetails(snapshot, st);
     stations.push({
       id: st.ref_id,
       x: X_STATIONS_START + positionInRun * STATION_PITCH,
-      y: Y_RUN_BASE + runIndex * RUN_PITCH,
+      y: Y_RUN_BASE + runIndex * RUN_PITCH + STATION_RUN_TRUNK_OFFSET_Y,
       name: st.name || st.ref_id,
       topologicalType: classifyTopologicalType(st),
       nnVoltageLevelsCount: 1,
+      footprintType: stationSldDetails.footprintType,
+      snBays: stationSldDetails.snBays,
+      hasTransformer: stationSldDetails.hasTransformer,
+      transformerRefs: stationSldDetails.transformerRefs,
+      nnFeedersCount: stationSldDetails.nnFeedersCount,
+      derBadges: stationSldDetails.derBadges,
     });
   });
 
   return stations;
+}
+
+interface StationMiniBlockDetails {
+  readonly footprintType: StationFootprintType;
+  readonly snBays: readonly MiniBlockBayDescriptor[];
+  readonly hasTransformer: boolean;
+  readonly transformerRefs: readonly string[];
+  readonly nnFeedersCount: number;
+  readonly derBadges: readonly MiniBlockDerBadge[];
+}
+
+function buildStationMiniBlockDetails(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
+): StationMiniBlockDetails {
+  const derBadges = buildStationDerBadges(snapshot, station.ref_id);
+  const explicitBays = buildExplicitStationMiniBays(snapshot, station.ref_id);
+  const explicitRoles = explicitBays.map((bay) => bay.fieldRole);
+  const footprintType = deriveFootprintType(station.station_type, explicitRoles, derBadges.length > 0);
+  const snBays = explicitBays.length > 0
+    ? explicitBays
+    : buildExpectedStationMiniBays(station.ref_id, MINI_BLOCK_FOOTPRINT[footprintType].defaultSnBayRoles);
+  const transformerRefs = collectStationTransformerRefs(snapshot, station);
+
+  return {
+    footprintType,
+    snBays,
+    transformerRefs,
+    hasTransformer:
+      transformerRefs.length > 0 ||
+      snBays.some((bay) => bay.fieldRole === FIELD_ROLE.RMU_TRANSFORMER || bay.fieldRole === FIELD_ROLE.TRANSFORMER) ||
+      MINI_BLOCK_FOOTPRINT[footprintType].hasTransformer,
+    nnFeedersCount: derBadges.some((badge) => badge.connectionSide === 'nn') ? 2 : 1,
+    derBadges,
+  };
+}
+
+function collectStationTransformerRefs(
+  snapshot: EnergyNetworkModel,
+  station: Substation,
+): string[] {
+  const refs = new Set<string>(station.transformer_refs ?? []);
+  const stationBusRefs = new Set(
+    (snapshot.buses ?? [])
+      .filter((bus) => {
+        const scopedBus = bus as Bus & { substation_ref?: string };
+        return scopedBus.substation_ref === station.ref_id || scopedBus.substation_ref === station.id;
+      })
+      .flatMap((bus) => [bus.ref_id, bus.id].filter((value): value is string => Boolean(value))),
+  );
+  for (const transformer of snapshot.transformers ?? []) {
+    if (
+      stationBusRefs.has(transformer.hv_bus_ref)
+      || stationBusRefs.has(transformer.lv_bus_ref)
+      || refs.has(transformer.id)
+      || refs.has(transformer.ref_id)
+    ) {
+      refs.add(transformer.ref_id);
+    }
+  }
+  return [...refs].filter(Boolean).sort();
+}
+
+function buildExplicitStationMiniBays(
+  snapshot: EnergyNetworkModel,
+  stationRef: string,
+): MiniBlockBayDescriptor[] {
+  return [...(snapshot.bays ?? [])]
+    .filter((bay) => bay.substation_ref === stationRef)
+    .sort(compareBaysForSld)
+    .map((bay, index) => {
+      const fieldRole = mapStationBayRoleToMiniRole(ENM_BAY_ROLE_TO_FIELD_ROLE[bay.bay_role]);
+      return {
+        bayRef: bay.ref_id,
+        fieldRole,
+        designation: bay.bay_number ?? bay.feeder_short_name ?? bay.name ?? `Pole ${index + 1}`,
+        hasMissingRequiredDevice: bay.equipment_refs.length === 0,
+      };
+    });
+}
+
+function buildExpectedStationMiniBays(
+  stationRef: string,
+  defaultRoles: readonly MiniBlockBayDescriptor['fieldRole'][],
+): MiniBlockBayDescriptor[] {
+  return defaultRoles.map((fieldRole, index) => ({
+    bayRef: `${stationRef}/expected-bay/${index + 1}`,
+    fieldRole,
+    designation: expectedStationBayDesignation(fieldRole, index),
+    hasMissingRequiredDevice: true,
+  }));
+}
+
+function expectedStationBayDesignation(
+  fieldRole: MiniBlockBayDescriptor['fieldRole'],
+  index: number,
+): string {
+  if (fieldRole === FIELD_ROLE.RMU_TRANSFORMER || fieldRole === FIELD_ROLE.TRANSFORMER) return 'TR';
+  if (fieldRole === FIELD_ROLE.COUPLER) return 'SPR';
+  if (fieldRole === FIELD_ROLE.MEASUREMENT) return 'POM';
+  if (index === 0) return 'WE';
+  if (index === 1) return 'WY';
+  return `ODG ${index - 1}`;
+}
+
+function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {
+  if (
+    fieldRole === FIELD_ROLE.LINE_IN ||
+    fieldRole === FIELD_ROLE.LINE_OUT ||
+    fieldRole === FIELD_ROLE.LINE_BRANCH ||
+    fieldRole === FIELD_ROLE.GPZ_LINE_BAY
+  ) {
+    return FIELD_ROLE.RMU_LINE;
+  }
+  if (fieldRole === FIELD_ROLE.TRANSFORMER) return FIELD_ROLE.RMU_TRANSFORMER;
+  return fieldRole;
+}
+
+function buildStationDerBadges(
+  snapshot: EnergyNetworkModel,
+  stationRef: string,
+): MiniBlockDerBadge[] {
+  const counters = new Map<string, MiniBlockDerBadge>();
+  for (const gen of snapshot.generators ?? []) {
+    if (generatorStationRef(gen) !== stationRef) continue;
+    const kind = mapGenTypeToDerKind(gen);
+    if (!kind) continue;
+    const connectionSide = mapGeneratorConnectionSide(gen);
+    const key = `${kind}:${connectionSide}`;
+    const current = counters.get(key);
+    counters.set(key, {
+      kind,
+      connectionSide,
+      count: (current?.count ?? 0) + 1,
+    });
+  }
+  return [...counters.values()].sort((a, b) => `${a.kind}:${a.connectionSide}`.localeCompare(`${b.kind}:${b.connectionSide}`));
+}
+
+function generatorStationRef(gen: Generator): string | null {
+  return gen.station_ref ?? (typeof gen.meta?.station_ref === 'string' ? gen.meta.station_ref : null);
+}
+
+function mapGeneratorConnectionSide(gen: Generator): MiniBlockDerBadge['connectionSide'] {
+  switch (gen.connection_variant) {
+    case 'nn_side':
+    case 'LV_BEHIND_STATION_TRANSFORMER':
+      return 'nn';
+    case 'block_transformer':
+    case 'DEDICATED_MV_CONNECTION':
+    case 'SOURCE_CONNECTION_STATION':
+      return 'dedicated';
+    default:
+      return 'sn';
+  }
 }
 
 function classifyTopologicalType(
@@ -856,9 +1170,57 @@ function classifyTopologicalType(
 function buildCableRuns(
   snapshot: EnergyNetworkModel,
   logicalViews: LogicalViewsV1 | null,
+  stations: readonly StationOnRunRendererProps[],
 ): CableRunRendererPropsLight[] {
   const branches = (snapshot.branches ?? []).filter(isCableLikeBranch);
+  const lineRuns = [...(snapshot.line_runs ?? [])].sort((a, b) => a.id.localeCompare(b.id));
+  const stationByRef = new Map(stations.map((station) => [station.id, station]));
   const runs: CableRunRendererPropsLight[] = [];
+
+  if (lineRuns.length > 0) {
+    lineRuns.forEach((lineRun, idx) => {
+      const segmentRefs = lineRunSegmentRefs(lineRun);
+      const runSegments = segmentRefs
+        .map((segmentRef) => branches.find((branch) => branch.ref_id === segmentRef))
+        .filter((branch): branch is Branch => Boolean(branch));
+      const firstSegment = runSegments[0] ?? branches[0] ?? null;
+      const segmentKind = firstSegment ? classifySegmentKind(firstSegment) : 'cable_sn';
+      const runStations = [...lineRun.stations]
+        .sort((a, b) => a.order - b.order)
+        .map((stationRef) => stationByRef.get(stationRef.substation_ref))
+        .filter((station): station is StationOnRunRendererProps => Boolean(station));
+      const y = runStations[0]?.y !== undefined
+        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
+        : Y_RUN_BASE + idx * RUN_PITCH;
+      const startingBayRef = inferRunStartingBayRef(runSegments, lineRun.starting_bay_ref);
+      const startX = inferStartingBayOutletX(snapshot, startingBayRef, idx);
+      const endX = runStations.length > 0
+        ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1].topologicalType)
+        : pendingRunEndX(startX, runSegments.length);
+      const terminalX = runStations.length > 0
+        ? Math.max(endX, startX + STATION_PITCH)
+        : endX;
+      const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
+      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
+
+      runs.push({
+        id: lineRun.id,
+        runKind: lineRun.run_kind,
+        segmentKind,
+        segmentRefs: runSegments.map((segment) => segment.ref_id),
+        segmentPaths,
+        label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
+        segmentLabels,
+        pendingEndpoint: runStations.length === 0,
+        pathPoints: [
+          { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
+          { x: startX, y },
+          { x: terminalX, y },
+        ],
+      });
+    });
+    return runs;
+  }
 
   if (logicalViews && logicalViews.trunks.length > 0) {
     // Dla każdego trunku — pojedynczy widoczny ciąg główny.
@@ -869,16 +1231,27 @@ function buildCableRuns(
       if (segments.length === 0) return;
 
       const y = Y_RUN_BASE + idx * RUN_PITCH;
-      const xStart = SECTION_X_BASE + 60;
-      const xEnd = X_STATIONS_START + 5 * STATION_PITCH;
+      const startingBayRef = inferRunStartingBayRef(segments, null);
+      const xStart = inferStartingBayOutletX(snapshot, startingBayRef, idx);
+      const stationsOnRun = stationsForConnectionY(stations, y);
+      const xEnd = stationsOnRun.length > 0
+        ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1].topologicalType)
+        : pendingRunEndX(xStart, segments.length);
       const segmentKind = classifySegmentKind(segments[0]);
+      const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
+      const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
 
       runs.push({
         id: trunk.corridor_ref,
         runKind: 'main_trunk',
         segmentKind,
+        segmentRefs: segments.map((segment) => segment.ref_id),
+        segmentPaths,
+        label: buildCableRunLabel(segments, segmentKind),
+        segmentLabels,
+        pendingEndpoint: stationsOnRun.length === 0,
         pathPoints: [
-          { x: xStart, y: Y_SECTIONS + 40 },
+          { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: xStart, y },
           { x: xEnd, y },
         ],
@@ -894,15 +1267,20 @@ function buildCableRuns(
       const segmentKind = classifySegmentKind(segments[0]);
       const yBranch = Y_RUN_BASE + (logicalViews.trunks.length + brIdx) * RUN_PITCH;
       const xStart = X_STATIONS_START + brIdx * STATION_PITCH;
+      const xEnd = xStart + 3 * STATION_PITCH;
 
       runs.push({
         id: br.branch_id,
         runKind: 'branch',
         segmentKind,
+        segmentRefs: segments.map((segment) => segment.ref_id),
+        segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd),
+        label: buildCableRunLabel(segments, segmentKind),
+        segmentLabels: buildRunSegmentLabels(segments, [], xStart, yBranch, xEnd),
         pathPoints: [
           { x: xStart, y: Y_RUN_BASE - 10 },
           { x: xStart, y: yBranch },
-          { x: xStart + 3 * STATION_PITCH, y: yBranch },
+          { x: xEnd, y: yBranch },
         ],
       });
     });
@@ -911,19 +1289,332 @@ function buildCableRuns(
 
   // Fallback: każda branch → osobna prosta linia (nie ma logical_views).
   branches.forEach((b, idx) => {
+    const y = Y_RUN_BASE + idx * RUN_PITCH;
+    const startingBayRef = readBranchOriginBayRef(b);
+    const xStart = inferStartingBayOutletX(snapshot, startingBayRef, idx);
+    const stationsOnRun = stationsForConnectionY(stations, y);
+    const xEnd = stationsOnRun.length > 0
+      ? stationsOnRun[stationsOnRun.length - 1].x + stationRunEndOffset(stationsOnRun[stationsOnRun.length - 1].topologicalType)
+      : pendingRunEndX(xStart, 1);
+    const segmentKind = classifySegmentKind(b);
+    const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
+    const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
     runs.push({
       id: b.ref_id,
       runKind: 'main_trunk',
-      segmentKind: classifySegmentKind(b),
+      segmentKind,
+      segmentRefs: [b.ref_id],
+      segmentPaths,
+      label: buildCableRunLabel([b], segmentKind),
+      segmentLabels,
+      pendingEndpoint: stationsOnRun.length === 0,
       pathPoints: [
-        { x: SECTION_X_BASE + 60, y: Y_SECTIONS + 40 + idx * 4 },
-        { x: SECTION_X_BASE + 60, y: Y_RUN_BASE + idx * RUN_PITCH },
-        { x: X_STATIONS_START + 4 * STATION_PITCH, y: Y_RUN_BASE + idx * RUN_PITCH },
+        { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y + idx * 4 },
+        { x: xStart, y },
+        { x: xEnd, y },
       ],
     });
   });
 
   return runs;
+}
+
+function pendingRunEndX(startX: number, segmentCount: number): number {
+  return startX + PENDING_RUN_LENGTH + Math.max(0, segmentCount - 1) * 110;
+}
+
+function buildCableRunLabel(
+  segments: readonly Branch[],
+  segmentKind: 'cable_sn' | 'overhead_line_sn',
+): string {
+  const catalogLabels = distinctCatalogLabels(segments);
+  const typeLabel =
+    catalogLabels.length === 1
+      ? catalogLabels[0]
+      : catalogLabels.length > 1
+        ? 'różne typy katalogowe'
+        : 'brak typu katalogowego';
+  void segmentKind;
+  return `${typeLabel} · ${formatCableRunLength(segments)}`;
+}
+
+function segmentKindLabel(segmentKind: 'cable_sn' | 'overhead_line_sn'): string {
+  return segmentKind === 'overhead_line_sn' ? 'Linia napowietrzna SN' : 'Kabel SN';
+}
+
+function formatCableRunLength(segments: readonly Branch[]): string {
+  const lengthKm = totalBranchLengthKm(segments);
+  if (lengthKm <= 0) return 'brak długości';
+  if (lengthKm < 1) return `${Math.round(lengthKm * 1000)} m`;
+  return `${formatPolishNumber(lengthKm)} km`;
+}
+
+function formatPolishNumber(value: number): string {
+  const rounded = Math.round(value * 100) / 100;
+  return rounded.toLocaleString('pl-PL', {
+    minimumFractionDigits: Number.isInteger(rounded) ? 0 : 1,
+    maximumFractionDigits: 2,
+  });
+}
+
+function readBranchLengthKm(segment: Branch): number {
+  const raw = (segment as unknown as Record<string, unknown>).length_km;
+  return typeof raw === 'number' ? raw : Number(raw);
+}
+
+function totalBranchLengthKm(segments: readonly Branch[]): number {
+  return segments.reduce((sum, segment) => {
+    const value = readBranchLengthKm(segment);
+    return Number.isFinite(value) && value > 0 ? sum + value : sum;
+  }, 0);
+}
+
+function buildRunSegmentLabels(
+  segments: readonly Branch[],
+  stationsOnRun: readonly StationOnRunRendererProps[],
+  startX: number,
+  y: number,
+  terminalX: number,
+): NonNullable<CableRunRendererPropsLight['segmentLabels']> {
+  return segments.map((segment, index) => {
+    const { fromX, toX } = runSegmentXBounds(segments, stationsOnRun, startX, terminalX, index);
+    return {
+      segmentRef: segment.ref_id,
+      text: buildCableRunLabel([segment], classifySegmentKind(segment)),
+      x: (fromX + toX) / 2,
+      y: y + (index % 2 === 0 ? -12 : 18),
+    };
+  });
+}
+
+function buildRunSegmentPaths(
+  segments: readonly Branch[],
+  stationsOnRun: readonly StationOnRunRendererProps[],
+  startX: number,
+  y: number,
+  terminalX: number,
+): NonNullable<CableRunRendererPropsLight['segmentPaths']> {
+  return segments.map((segment, index) => {
+    const { fromX, toX } = runSegmentXBounds(segments, stationsOnRun, startX, terminalX, index);
+    const pathPoints = index === 0
+      ? [
+          { x: fromX, y: GPZ_FIELD_CABLE_HEAD_Y },
+          { x: fromX, y },
+          { x: toX, y },
+        ]
+      : [
+          { x: fromX, y },
+          { x: toX, y },
+        ];
+    return {
+      segmentRef: segment.ref_id,
+      pathPoints,
+    };
+  });
+}
+
+function runSegmentXBounds(
+  segments: readonly Branch[],
+  stationsOnRun: readonly StationOnRunRendererProps[],
+  startX: number,
+  terminalX: number,
+  index: number,
+): { fromX: number; toX: number } {
+  const previousStation = stationsOnRun[index - 1];
+  const nextStation = stationsOnRun[index];
+  if (nextStation) {
+    const fromX = previousStation ? stationOutputX(previousStation) ?? startX : startX;
+    const toX = stationInputX(nextStation) ?? terminalX;
+    return { fromX, toX: Math.max(fromX, toX) };
+  }
+
+  const anchoredSegments = Math.min(stationsOnRun.length, segments.length);
+  const remainingStart = anchoredSegments > 0
+    ? stationOutputX(stationsOnRun[anchoredSegments - 1]) ?? startX
+    : startX;
+  const remainingSegments = Math.max(segments.length - anchoredSegments, 1);
+  const remainingIndex = Math.max(0, index - anchoredSegments);
+  const segmentPitch = Math.max(40, (terminalX - remainingStart) / remainingSegments);
+  const fromX = remainingStart + segmentPitch * remainingIndex;
+  const toX = remainingIndex === remainingSegments - 1
+    ? terminalX
+    : remainingStart + segmentPitch * (remainingIndex + 1);
+  return { fromX, toX };
+}
+
+function stationInputX(station: StationOnRunRendererProps | undefined): number | null {
+  if (!station) return null;
+  return station.x + stationRunStartOffset(station.topologicalType);
+}
+
+function stationOutputX(station: StationOnRunRendererProps | undefined): number | null {
+  if (!station) return null;
+  return station.x + stationRunEndOffset(station.topologicalType);
+}
+
+function distinctCatalogLabels(segments: readonly Branch[]): string[] {
+  return [...new Set(segments.map(readCatalogTypeLabel).filter((label): label is string => Boolean(label)))];
+}
+
+function stationsForConnectionY(
+  stations: readonly StationOnRunRendererProps[],
+  connectionY: number,
+): StationOnRunRendererProps[] {
+  return stations
+    .filter((station) => Math.abs((station.y - STATION_RUN_TRUNK_OFFSET_Y) - connectionY) <= 0.5)
+    .sort((a, b) => a.x - b.x);
+}
+
+function lineRunSegmentRefs(
+  lineRun: NonNullable<EnergyNetworkModel['line_runs']>[number],
+): string[] {
+  return lineRun.segments
+    .map((segment) => typeof segment === 'string' ? segment : segment.segment_ref)
+    .filter((segmentRef): segmentRef is string => Boolean(segmentRef));
+}
+
+function inferRunStartingBayRef(
+  segments: readonly Branch[],
+  explicitStartingBayRef: string | null | undefined,
+): string | null {
+  if (typeof explicitStartingBayRef === 'string' && explicitStartingBayRef.trim()) {
+    return explicitStartingBayRef.trim();
+  }
+  return readBranchOriginBayRef(segments[0]);
+}
+
+function readBranchOriginBayRef(segment: Branch | null | undefined): string | null {
+  const meta = segment?.meta;
+  if (!meta || typeof meta !== 'object') return null;
+  const raw = meta.origin_bay_ref ?? meta.field_ref;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+function inferStartingBayOutletX(
+  snapshot: EnergyNetworkModel,
+  startingBayRef: string | null,
+  runIndex: number,
+): number {
+  const canonicalX = inferCanonicalGpzBayOutletX(snapshot, startingBayRef, runIndex);
+  if (canonicalX !== null) return canonicalX;
+
+  const bays = [...(snapshot.bays ?? [])]
+    .filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER')
+    .sort(compareBaysForSld);
+  const selectedIndex = startingBayRef
+    ? Math.max(0, bays.findIndex((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef))
+    : runIndex;
+  const bayIndex = selectedIndex >= 0 ? selectedIndex : runIndex;
+  return SECTION_X_BASE + 48 + bayIndex * 34;
+}
+
+function inferCanonicalGpzBayOutletX(
+  snapshot: EnergyNetworkModel,
+  startingBayRef: string | null,
+  runIndex: number,
+): number | null {
+  const gpz = (snapshot.substations ?? []).find((station) => station.station_type === 'gpz');
+  if (!gpz) return null;
+
+  const sectionIds = (gpz.gpz_sections ?? [])
+    .slice()
+    .sort((a, b) => a.order - b.order)
+    .map((section) => section.section_id);
+  if (sectionIds.length === 0) return null;
+
+  const gpzBays = (snapshot.bays ?? [])
+    .filter((bay) => bay.substation_ref === gpz.ref_id && bay.bay_role !== 'COUPLER');
+  if (gpzBays.length === 0) return null;
+
+  const selectedBay = startingBayRef
+    ? gpzBays.find((bay) => bay.ref_id === startingBayRef || bay.id === startingBayRef)
+    : null;
+  const fallbackFeeders = gpzBays.filter((bay) => bay.bay_role === 'OUT' || bay.bay_role === 'FEEDER');
+  const fallbackBay = fallbackFeeders[Math.max(0, runIndex % Math.max(fallbackFeeders.length, 1))] ?? gpzBays[0];
+  const bay = selectedBay ?? fallbackBay;
+  if (!bay) return null;
+
+  const sectionOrder = new Map(sectionIds.map((sectionId, index) => [sectionId, index]));
+  const baysBySection = new Map<string, Bay[]>();
+  for (const sectionId of sectionIds) baysBySection.set(sectionId, []);
+  for (const item of gpzBays) {
+    const key = item.gpz_section_id && baysBySection.has(item.gpz_section_id)
+      ? item.gpz_section_id
+      : sectionIds[0];
+    baysBySection.get(key)?.push(item);
+  }
+
+  const sectionWidths = sectionIds.map((sectionId) => canonicalLvSectionWidth(baysBySection.get(sectionId)?.length ?? 0));
+  const lvSwitchgearWidth =
+    sectionWidths.reduce((sum, width) => sum + width, 0)
+    + (sectionWidths.length - 1) * CANONICAL_LV_SECTION_COUPLER_GAP;
+  const totalWidth = Math.max(
+    lvSwitchgearWidth + CANONICAL_PAGE_PADDING * 2,
+    CANONICAL_HEADER_WIDTH * 2 + CANONICAL_PAGE_PADDING,
+  );
+  const lvStartX = Math.max(CANONICAL_PAGE_PADDING, (totalWidth - lvSwitchgearWidth) / 2);
+
+  const targetSectionId = bay.gpz_section_id && sectionOrder.has(bay.gpz_section_id)
+    ? bay.gpz_section_id
+    : sectionIds[0];
+  const targetSectionIndex = sectionOrder.get(targetSectionId) ?? 0;
+  const targetSectionBays = baysBySection.get(targetSectionId) ?? [];
+  const bayIndex = Math.max(0, targetSectionBays.findIndex((item) => item.ref_id === bay.ref_id || item.id === bay.id));
+  const sectionOffset =
+    sectionWidths.slice(0, targetSectionIndex).reduce((sum, width) => sum + width, 0)
+    + targetSectionIndex * CANONICAL_LV_SECTION_COUPLER_GAP;
+
+  return X_GPZ + lvStartX + sectionOffset + 32 + bayIndex * CANONICAL_BAY_PITCH;
+}
+
+function canonicalLvSectionWidth(bayCountRaw: number): number {
+  const bayCount = Math.max(bayCountRaw, 1);
+  const baySpan = (bayCount - 1) * CANONICAL_BAY_PITCH + CANONICAL_BAY_WIDTH;
+  return Math.max(
+    CANONICAL_LV_SECTION_MIN_WIDTH,
+    CANONICAL_SECTION_LABEL_WIDTH + 32 + baySpan + 32,
+  );
+}
+
+function compareBaysForSld(a: Bay, b: Bay): number {
+  const bySection = String(a.gpz_section_id ?? '').localeCompare(String(b.gpz_section_id ?? ''));
+  if (bySection !== 0) return bySection;
+  const aNumber = Number.parseFloat(String(a.bay_number ?? ''));
+  const bNumber = Number.parseFloat(String(b.bay_number ?? ''));
+  if (Number.isFinite(aNumber) && Number.isFinite(bNumber) && aNumber !== bNumber) {
+    return aNumber - bNumber;
+  }
+  return a.ref_id.localeCompare(b.ref_id);
+}
+
+function stationRunEndOffset(
+  topologicalType: StationOnRunRendererProps['topologicalType'],
+): number {
+  switch (topologicalType) {
+    case 'przelotowa':
+    case 'sekcyjna':
+      return 28;
+    case 'odgałęźna':
+      return 36;
+    case 'końcowa':
+    default:
+      return 0;
+  }
+}
+
+function stationRunStartOffset(
+  topologicalType: StationOnRunRendererProps['topologicalType'],
+): number {
+  switch (topologicalType) {
+    case 'przelotowa':
+    case 'sekcyjna':
+      return -28;
+    case 'odgałęźna':
+      return -36;
+    case 'końcowa':
+    default:
+      return 0;
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -940,7 +1631,7 @@ function buildDers(
   for (const gen of generators) {
     const kind = mapGenTypeToDerKind(gen);
     if (!kind) continue;
-    const stationRef = gen.station_ref ?? null;
+    const stationRef = generatorStationRef(gen);
     const station = stationRef ? stations.find((s) => s.id === stationRef) : null;
     const baseX = station ? station.x + DER_OFFSET_RIGHT : 800;
     const baseY = station ? station.y + 60 : Y_RUN_BASE + 60;
@@ -951,8 +1642,9 @@ function buildDers(
       y: baseY,
       kind,
       name: gen.name || gen.ref_id,
-      nominalPowerKw: (gen.p_mw ?? 0) * 1000,
+      nominalPowerKw: gen.p_mw !== null && gen.p_mw !== undefined ? gen.p_mw * 1000 : null,
       hasBlockTransformer: gen.connection_variant === 'block_transformer',
+      lod: 'compact',
     });
   }
   return ders;

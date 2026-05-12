@@ -12,7 +12,6 @@ import {
   COLOR_TEXT_SECONDARY,
   FONT_MONO,
   FONT_SANS,
-  FONT_SIZES,
 } from '../theme/tokens';
 
 export interface DerRendererProps {
@@ -58,8 +57,8 @@ export interface DerRendererProps {
   readonly onDoubleClick?: (id: string) => void;
 }
 
-const DER_BLOCK_SIZE = 60;
-const DER_COMPACT_SIZE = 35;
+const DER_BLOCK_SIZE = 44;
+const DER_COMPACT_SIZE = 28;
 const DER_MARKER_SIZE = 12;
 
 const KIND_LABEL_PL: Record<DerRendererProps['kind'], string> = {
@@ -137,11 +136,11 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
         x={0}
         y={4}
         textAnchor="middle"
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_SANS}
-        fontSize={FONT_SIZES.bayLabel}
-        fontWeight={700}
-      >
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={lod === 'compact' ? 9 : 13}
+          fontWeight={700}
+        >
         {KIND_LABEL_PL[kind]}
       </text>
       {/* Nazwa DER pod symbolem (LOD=full only) */}
@@ -152,7 +151,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_PRIMARY}
           fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.technicalPanel}
+          fontSize={9}
         >
           {name}
         </text>
@@ -165,7 +164,7 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           textAnchor="middle"
           fill={COLOR_TEXT_SECONDARY}
           fontFamily={FONT_MONO}
-          fontSize={FONT_SIZES.numericValue}
+          fontSize={9}
         >
           {nominalPowerKw.toFixed(0)} kW
         </text>

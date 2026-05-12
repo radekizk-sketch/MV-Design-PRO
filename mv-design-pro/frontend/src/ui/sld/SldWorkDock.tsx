@@ -179,7 +179,9 @@ export function SldWorkDock({
         </Section>
 
         <Section eyebrow="Drzewo modelu" title="Topologiczne drzewo pracy" testId="sld-dock-project-tree">
-          {projectTreeContent ?? (
+          {projectTreeContent ? (
+            projectTreeContent
+          ) : (
             <div
               data-testid="project-tree"
               data-empty="true"
@@ -309,7 +311,9 @@ export function SldWorkDock({
 
         {dockMode === 'readiness' && (
           <div className="min-h-full" data-testid="sld-dock-process-mode">
-            {processContent ?? (
+            {processContent ? (
+              processContent
+            ) : (
               <div className="rounded border border-scada-border bg-scada-surface p-4 text-sm text-scada-muted shadow-sm shadow-cyan-950/10">
                 Brak aktywnego panelu procesu dla biezacego kontekstu.
               </div>

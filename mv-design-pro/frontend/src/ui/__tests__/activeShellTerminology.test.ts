@@ -25,7 +25,10 @@ const FORBIDDEN_ACTIVE_LABELS = [
   'Aktywny wariant',
   'Kontekst przypadku',
   'Warianty i uruchomienia',
+  'Przebiegi obliczeń',
   'Historia uruchomień',
+  'Stan uruchomienia',
+  'Id migawki',
   'Porównanie wariantów',
 ];
 

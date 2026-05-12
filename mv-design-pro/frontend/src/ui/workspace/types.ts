@@ -562,7 +562,7 @@ export const SURFACE_REGISTRY: Record<WorkspaceScreenCode, WorkspaceSurfaceDefin
 export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDefinition> = {
   variants_runs: {
     helperCode: 'variants_runs',
-    titlePl: 'Przebiegi obliczeń',
+    titlePl: 'Stan obliczeń wariantu',
     componentRef: 'VariantsRunsHelperSurface',
     allowedCapabilities: ['read_context', 'select_context', 'open_canonical_surface'],
     mayWriteModel: false,
@@ -571,7 +571,7 @@ export const HELPER_SURFACE_REGISTRY: Record<HelperSurfaceCode, HelperSurfaceDef
   },
   catalog_picker: {
     helperCode: 'catalog_picker',
-    titlePl: 'WybĂłr pozycji katalogowej',
+    titlePl: 'Wybór pozycji katalogowej',
     componentRef: 'CatalogPickerHelperSurface',
     allowedCapabilities: ['read_context', 'pick_catalog_item', 'open_canonical_surface'],
     mayWriteModel: false,

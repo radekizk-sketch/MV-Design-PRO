@@ -1,0 +1,50 @@
+[
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478534928:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478534928:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:51:12.547Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478534928:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478534928:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:51:12.554Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.249Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.269Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.330Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.396Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.477Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  },
+  {
+    "level": "error",
+    "message": "Warning: Encountered two children with the same key, `%s`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.%s ident \n    at div\n    at div\n    at div\n    at InspectorEngineeringView (http://127.0.0.1:5174/src/ui/network-build/InspectorEngineeringView.tsx?t=1778478671860:1427:44)\n    at div\n    at aside\n    at div\n    at div\n    at AppShellV12 (http://127.0.0.1:5174/src/ui/shell/AppShellV12.tsx?t=1778478671860:180:3)\n    at div\n    at App (http://127.0.0.1:5174/src/App.tsx?t=1778478671860:159:29)\n    at QueryClientProvider (http://127.0.0.1:5174/node_modules/.vite/deps/@tanstack_react-query.js?v=47a48280:3168:3)",
+    "timestamp": "2026-05-11T05:52:17.506Z",
+    "url": "http://127.0.0.1:5174/node_modules/.vite/deps/chunk-WERSD76P.js?v=47a48280"
+  }
+]

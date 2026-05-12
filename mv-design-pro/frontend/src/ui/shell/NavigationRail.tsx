@@ -3,7 +3,9 @@ import { clsx } from 'clsx';
 
 import { useAppStateStore } from '../app-state/store';
 import { AREA_DEFINITIONS, type AreaId } from '../navigation/areaRegistry';
+import { navigateToSld } from '../navigation/routes';
 import { TechnicalIcon } from '../icons/technicalIconRegistry';
+import { useNetworkBuildStore } from '../network-build/networkBuildStore';
 
 function statusMarker(areaId: AreaId, activeArea: AreaId) {
   if (areaId === 'MODEL_SIECI') {
@@ -21,6 +23,18 @@ function statusMarker(areaId: AreaId, activeArea: AreaId) {
 export function NavigationRail() {
   const activeArea = useAppStateStore((s) => s.activeArea);
   const setActiveArea = useAppStateStore((s) => s.setActiveArea);
+  const collapseSurfaceStackTo = useNetworkBuildStore((s) => s.collapseSurfaceStackTo);
+
+  const navigateToArea = useCallback(
+    (areaId: AreaId) => {
+      setActiveArea(areaId);
+      if (areaId === 'SCHEMAT_TOPOLOGIA') {
+        collapseSurfaceStackTo(null);
+        navigateToSld();
+      }
+    },
+    [collapseSurfaceStackTo, setActiveArea],
+  );
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -28,16 +42,16 @@ export function NavigationRail() {
       const idx = Number.parseInt(e.key, 10) - 1;
       if (idx >= 0 && idx < AREA_DEFINITIONS.length) {
         e.preventDefault();
-        setActiveArea(AREA_DEFINITIONS[idx].id);
+        navigateToArea(AREA_DEFINITIONS[idx].id);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setActiveArea]);
+  }, [navigateToArea]);
 
   const handleAreaClick = useCallback(
-    (areaId: AreaId) => setActiveArea(areaId),
-    [setActiveArea],
+    (areaId: AreaId) => navigateToArea(areaId),
+    [navigateToArea],
   );
 
   return (

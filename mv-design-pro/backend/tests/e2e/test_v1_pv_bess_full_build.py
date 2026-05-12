@@ -383,8 +383,16 @@ class TestPvBessFullBuild:
         # GPZ + 2 stacje SN/nN → ≥ 5 buses (1 GPZ SN + 2 stacja SN + 2 nN)
         assert len(enm["buses"]) >= 5, f"Za mało szyn: {len(enm['buses'])}"
 
-        # 2 transformatory SN/nN
-        assert len(enm["transformers"]) == 2, f"Oczekiwano 2 trafo, jest {len(enm['transformers'])}"
+        # 2 transformatory SN/nN. Transformator WN/SN GPZ jest osobnym elementem zasilania.
+        sn_nn_transformers = [
+            trafo
+            for trafo in enm["transformers"]
+            if trafo.get("uhv_kv") == 15.0 and trafo.get("ulv_kv") == 0.4
+        ]
+        assert len(sn_nn_transformers) == 2, (
+            f"Oczekiwano 2 trafo SN/nN, jest {len(sn_nn_transformers)} "
+            f"(wszystkie transformatory: {len(enm['transformers'])})"
+        )
 
         # GPZ (station_type='gpz') + 2 stacje przelotowe (station_type='inline') = 3 substation
         substations = enm.get("substations", [])

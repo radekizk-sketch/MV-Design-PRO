@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { updateUrlWithSelection } from './urlState';
+import { readSelectionFromUrl, updateUrlWithSelection } from './urlState';
 
 describe('urlState', () => {
   beforeEach(() => {
@@ -28,5 +28,25 @@ describe('urlState', () => {
     expect(params.get('sel')).toBe('bus-1');
     expect(params.get('type')).toBe('Bus');
     expect(params.get('name')).toBe('Szyna 1');
+  });
+
+  it('odtwarza z adresu falownik PV razem z rolą inżynierską', () => {
+    updateUrlWithSelection({
+      id: 'stn/st-001/nn_source/pv_inverter',
+      type: 'PVInverter',
+      name: 'Falownik PV 0.5 MW / 0.4 kV nN',
+      semanticHash: 'source:pv-1',
+      semanticElementKind: 'SOURCE',
+      semanticEngineeringRole: 'PV_INVERTER',
+    });
+
+    expect(readSelectionFromUrl()).toEqual({
+      id: 'stn/st-001/nn_source/pv_inverter',
+      type: 'PVInverter',
+      name: 'Falownik PV 0.5 MW / 0.4 kV nN',
+      semanticHash: 'source:pv-1',
+      semanticElementKind: 'SOURCE',
+      semanticEngineeringRole: 'PV_INVERTER',
+    });
   });
 });

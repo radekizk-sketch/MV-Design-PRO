@@ -1,0 +1,2376 @@
+{
+  "analysis_case_context": {
+    "applicability_scope": [
+      "PF",
+      "REPORT"
+    ],
+    "assumptions": {
+      "grounding_assumptions_ref": "network_grounding_snapshot",
+      "ibg_assumptions_ref": "ibg_model_snapshot",
+      "load_assumptions_ref": "pf_load_max",
+      "source_assumptions_ref": "pf_source_nominal",
+      "switching_state_ref": "snapshot_switching_state",
+      "temperature_assumptions_ref": "temperature_operating",
+      "transformer_tap_assumptions_ref": "oltc_active"
+    },
+    "case_kind": "ROZPLYW_MAX_OBC",
+    "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "completeness": "complete",
+    "completeness_legacy": "pelny",
+    "lineage": {
+      "analysis_type": "PF",
+      "project_ref": "0750f967-3e29-4274-9711-78c40dfa7a39",
+      "run_ref": "695daf7a-68e9-4954-8923-5f816cb931df",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+    },
+    "missing_prerequisites": [],
+    "proof_pack_ref": "proof-pack:695daf7a-68e9-4954-8923-5f816cb931df",
+    "quality_gate": "G4",
+    "reproducibility": {
+      "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "bay_contract_version": "V12.5",
+      "case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "catalog_materialization_contract_version": "catalog_materialization_v1",
+      "catalog_materialization_hash": "459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+      "catalog_materialization_ref": "catalog-materialization:459884e2b857766168920c79b027f37058fe304060d629757a53904e797a48f9",
+      "catalog_materialization_status": "partial",
+      "catalog_schema_version": "catalog_v1",
+      "catalog_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "domain_model_version": "1.0",
+      "enm_hash": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "enm_projection_version": "v12xx.m1.1",
+      "enm_snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "export_generator_version": "v12_5_export_artifact/1.0",
+      "formula_set_version": "pf_result_v1",
+      "input_hash": "8ccfeb67832d43b5381d91ad3157d08c259ebc9147352b9ac2b925dd229f07b1",
+      "method_version": "canonical_run_v1",
+      "operating_variant_ref": "variant.uklad_normalny",
+      "proof_renderer_version": "white_box_trace_v1",
+      "quality_gate_policy_version": "v12_5_quality_gate",
+      "report_contract_version": "analysis_report_v2",
+      "result_hash": "5f5180e630d72263236150963532881fdb882e807d8d2fb663ebdfb70786ac41",
+      "result_rules_version": "result_rules_v12_5",
+      "results_contract_version": "V12.5",
+      "rounding_policy_ref": "rounding/default",
+      "ruleset_version": "result_rules_v12_5",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+      "solver_family": "power_flow_newton",
+      "solver_version": "load-flow-newton-raphson-v1",
+      "standard_basis_ref": "NR_POWER_FLOW",
+      "switching_snapshot_ref": "switching.uklad_normalny.base",
+      "tolerance_policy_ref": "solver_tolerance/default",
+      "variant_ref": "variant.uklad_normalny"
+    },
+    "rodzaj_przypadku": "ROZPLYW_MAX_OBC",
+    "run_ref": "695daf7a-68e9-4954-8923-5f816cb931df",
+    "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+    "variant_ref": null
+  },
+  "catalog_context": [
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/2198c2d64f97af56180d550b87688413/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/21a2599fa445575bf817e28a1fcbfa35/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4ce26a19bfd685e1312ba8820272b400/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4d4271d6a4cc2e8afccb2eb36dedc4b0/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/e69d5c9c1556b13c7326e01a5d40dd77/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole pomiarowe S1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole rezerwowe S2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN GPZ - ST-01",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-tfk-yakxs-3x120@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.9,
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.408,
+        "rated_current_a": 230.0,
+        "x_ohm_per_km": 0.355
+      },
+      "name": "Linia SN ST-02 - ST-03 BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN ST-01 - ST-02 PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-120@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/4995fadfb6859caf34000f4083605845/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.8,
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.572,
+        "rated_current_a": 185.0,
+        "x_ohm_per_km": 0.368
+      },
+      "name": "Linia SN ST-03 - ST-04 FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-50@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Odgałęzienie",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Kabel SN ST-04 - ZK-05",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/5aa3cba283d2a78361e014a901b8a5af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/a2f80d7ce6b08b15e35bafdc76f05c63/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/ba12505cba96937d7fa38de365041c62/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/d2b096813afd5cf446205f377833e5f7/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f7ad94aace1728fae5c6ea593b1793a4/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f98961a95cd962180ce405330c3ea305/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/420489f8f83b8a3be4914a99a7ab35af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/685d4cd58b4707370202582a59a59fb2/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/7330aa5d2544af6e37c055e734cd5bbc/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/78c0ac8d8a74bceab48f5e31ce71d836/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/8ff672e06c4a764c9298c3a56292db3d/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/93a351b0e547a93a51cdaa9406b57c41/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/369a515bef4d249e274d8a1244ec564c/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/9f21063c589783fcffe78ada2bc21fbb/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/a7cfb99957677c300b2a180599ba4586/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "element_id": "bess/958c1a3189170f4253f9470be1cd3234/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "e_kwh": 2000.0,
+        "id": "conv-bess-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "PCS BESS 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "BESS ST-03 1 MW / 2 MWh",
+      "source_catalog": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "source_catalog_label": "ZRODLO_NN_BESS:conv-bess-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "element_id": "pv/7410b524aea7d67f89c42a4ec7a1e6d3/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "id": "conv-pv-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "Falownik PV 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "PV ST-02 1 MW",
+      "source_catalog": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "source_catalog_label": "ZRODLO_NN_PV:conv-pv-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    {
+      "catalog_binding": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/source/main",
+      "element_type": "ZRODLO_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "ik3_ka": 19.25,
+        "r0_ohm": 0.4,
+        "rx_ratio": 0.1,
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "short_circuit_model": "short_circuit_power",
+        "sk3_mva": 500.0,
+        "voltage_rating_kv": 15.0,
+        "x0_ohm": 1.8,
+        "z0_z1_ratio": 3.2
+      },
+      "name": "GPZ 2xTR 110/15 kV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-15kv-500mva-rx010@legacy",
+      "source_mode": "KATALOG"
+    }
+  ],
+  "catalog_context_by_element": {
+    "bess/958c1a3189170f4253f9470be1cd3234/converter": {
+      "catalog_binding": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "element_id": "bess/958c1a3189170f4253f9470be1cd3234/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "e_kwh": 2000.0,
+        "id": "conv-bess-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "PCS BESS 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "BESS ST-03 1 MW / 2 MWh",
+      "source_catalog": {
+        "catalog_item_id": "conv-bess-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_BESS"
+      },
+      "source_catalog_label": "ZRODLO_NN_BESS:conv-bess-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    "ct/5aa3cba283d2a78361e014a901b8a5af/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/5aa3cba283d2a78361e014a901b8a5af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "ct/a2f80d7ce6b08b15e35bafdc76f05c63/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/a2f80d7ce6b08b15e35bafdc76f05c63/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "ct/ba12505cba96937d7fa38de365041c62/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/ba12505cba96937d7fa38de365041c62/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "ct/d2b096813afd5cf446205f377833e5f7/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/d2b096813afd5cf446205f377833e5f7/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "ct/f7ad94aace1728fae5c6ea593b1793a4/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f7ad94aace1728fae5c6ea593b1793a4/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "ct/f98961a95cd962180ce405330c3ea305/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "element_id": "ct/f98961a95cd962180ce405330c3ea305/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "ratio_primary_a": 400.0,
+        "ratio_secondary_a": 5.0
+      },
+      "name": "CT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "ct_400_5_5p20_15va_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "CT"
+      },
+      "source_catalog_label": "CT:ct_400_5_5p20_15va_abb",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S1-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole pomiarowe S1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-1",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole liniowe S2-2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole transformatorowe TR2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus": {
+      "catalog_binding": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Aparat Pole rezerwowe S2",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "sw-cb-abb-vd4-24kv-630a",
+        "catalog_item_version": "2024.1",
+        "catalog_namespace": "APARAT_SN"
+      },
+      "source_catalog_label": "APARAT_SN:sw-cb-abb-vd4-24kv-630a@2024.1",
+      "source_mode": "KATALOG"
+    },
+    "gpz/b18179bba62cc38f962858627a87da6f/source/main": {
+      "catalog_binding": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "element_id": "gpz/b18179bba62cc38f962858627a87da6f/source/main",
+      "element_type": "ZRODLO_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "ik3_ka": 19.25,
+        "r0_ohm": 0.4,
+        "rx_ratio": 0.1,
+        "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+        "short_circuit_model": "short_circuit_power",
+        "sk3_mva": 500.0,
+        "voltage_rating_kv": 15.0,
+        "x0_ohm": 1.8,
+        "z0_z1_ratio": 3.2
+      },
+      "name": "GPZ 2xTR 110/15 kV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "src-gpz-15kv-500mva-rx010",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "ZRODLO_SN"
+      },
+      "source_catalog_label": "ZRODLO_SN:src-gpz-15kv-500mva-rx010@legacy",
+      "source_mode": "KATALOG"
+    },
+    "nn/2198c2d64f97af56180d550b87688413/load": {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/2198c2d64f97af56180d550b87688413/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    "nn/21a2599fa445575bf817e28a1fcbfa35/load": {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/21a2599fa445575bf817e28a1fcbfa35/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    "nn/4ce26a19bfd685e1312ba8820272b400/load": {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4ce26a19bfd685e1312ba8820272b400/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    "nn/4d4271d6a4cc2e8afccb2eb36dedc4b0/load": {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/4d4271d6a4cc2e8afccb2eb36dedc4b0/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    "nn/e69d5c9c1556b13c7326e01a5d40dd77/load": {
+      "catalog_binding": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "element_id": "nn/e69d5c9c1556b13c7326e01a5d40dd77/load",
+      "element_type": "ODBIOR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": null,
+      "name": "Odbi?r ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "load_przem_75kw",
+        "catalog_item_version": null,
+        "catalog_namespace": "OBCIAZENIE"
+      },
+      "source_catalog_label": "OBCIAZENIE:load_przem_75kw",
+      "source_mode": "KATALOG"
+    },
+    "pv/7410b524aea7d67f89c42a4ec7a1e6d3/converter": {
+      "catalog_binding": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "element_id": "pv/7410b524aea7d67f89c42a4ec7a1e6d3/converter",
+      "element_type": "ZRODLO",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": "2.0",
+        "catalog_status": "REFERENCYJNY_V1",
+        "contract_version": "2.0",
+        "id": "conv-pv-nn-1mw-0p4kv",
+        "manufacturer": "MV-DESIGN-PRO reference",
+        "name": "Falownik PV 1 MW / 0.4 kV nN",
+        "un_kv": 0.4,
+        "verification_status": "REFERENCYJNY"
+      },
+      "name": "PV ST-02 1 MW",
+      "source_catalog": {
+        "catalog_item_id": "conv-pv-nn-1mw-0p4kv",
+        "catalog_item_version": null,
+        "catalog_namespace": "ZRODLO_NN_PV"
+      },
+      "source_catalog_label": "ZRODLO_NN_PV:conv-pv-nn-1mw-0p4kv",
+      "source_mode": "KATALOG"
+    },
+    "seg/1bebb008b671a66cd0af10b4e7d4b994/segment": {
+      "catalog_binding": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN GPZ - ST-01",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-tfk-yakxs-3x120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-tfk-yakxs-3x120@legacy",
+      "source_mode": "KATALOG"
+    },
+    "seg/2ac828cb7b3200708aba808d82da515c/segment": {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.9,
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.408,
+        "rated_current_a": 230.0,
+        "x_ohm_per_km": 0.355
+      },
+      "name": "Linia SN ST-02 - ST-03 BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    "seg/35e3d5f4d673c933b6766452d997a9de/segment": {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 390.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.253,
+        "rated_current_a": 230.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.1
+      },
+      "name": "Kabel SN ST-01 - ST-02 PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-120",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-120@legacy",
+      "source_mode": "KATALOG"
+    },
+    "seg/4995fadfb6859caf34000f4083605845/segment": {
+      "catalog_binding": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "element_id": "seg/4995fadfb6859caf34000f4083605845/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "b_us_per_km": 2.8,
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.572,
+        "rated_current_a": 185.0,
+        "x_ohm_per_km": 0.368
+      },
+      "name": "Linia SN ST-03 - ST-04 FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "line-base-al-st-50",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "LINIA_SN"
+      },
+      "source_catalog_label": "LINIA_SN:line-base-al-st-50@legacy",
+      "source_mode": "KATALOG"
+    },
+    "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment": {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Odgałęzienie",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment": {
+      "catalog_binding": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "element_id": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+      "element_type": "ODCINEK_SN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "c_nf_per_km": 320.0,
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "r_ohm_per_km": 0.443,
+        "rated_current_a": 165.0,
+        "voltage_rating_kv": 20.0,
+        "x_ohm_per_km": 0.11
+      },
+      "name": "Kabel SN ST-04 - ZK-05",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "cable-base-xlpe-al-3c-70",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "KABEL_SN"
+      },
+      "source_catalog_label": "KABEL_SN:cable-base-xlpe-al-3c-70@legacy",
+      "source_mode": "KATALOG"
+    },
+    "tr/369a515bef4d249e274d8a1244ec564c/transformer": {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/369a515bef4d249e274d8a1244ec564c/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-02 stacja PV",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    "tr/9f21063c589783fcffe78ada2bc21fbb/transformer": {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/9f21063c589783fcffe78ada2bc21fbb/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-01 stacja zwyk?a",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    "tr/a7cfb99957677c300b2a180599ba4586/transformer": {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/a7cfb99957677c300b2a180599ba4586/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ZK-05 stacja ko?cowa",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer": {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-04 stacja FW",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer": {
+      "catalog_binding": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "element_id": "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer",
+      "element_type": "TRANSFORMATOR_SN_NN",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "p0_kw": 1.3,
+        "pk_kw": 8.0,
+        "rated_power_mva": 0.63,
+        "uk_percent": 5.0,
+        "vector_group": "Dyn11",
+        "voltage_hv_kv": 15.0,
+        "voltage_lv_kv": 0.4
+      },
+      "name": "TR ST-03 stacja BESS",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "tr-sn-nn-15-04-630kva-dyn11",
+        "catalog_item_version": "legacy",
+        "catalog_namespace": "TRAFO_SN_NN"
+      },
+      "source_catalog_label": "TRAFO_SN_NN:tr-sn-nn-15-04-630kva-dyn11@legacy",
+      "source_mode": "KATALOG"
+    },
+    "vt/420489f8f83b8a3be4914a99a7ab35af/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/420489f8f83b8a3be4914a99a7ab35af/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    "vt/685d4cd58b4707370202582a59a59fb2/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/685d4cd58b4707370202582a59a59fb2/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    "vt/7330aa5d2544af6e37c055e734cd5bbc/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/7330aa5d2544af6e37c055e734cd5bbc/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/001",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    "vt/78c0ac8d8a74bceab48f5e31ce71d836/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/78c0ac8d8a74bceab48f5e31ce71d836/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/004",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    "vt/8ff672e06c4a764c9298c3a56292db3d/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/8ff672e06c4a764c9298c3a56292db3d/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/002/002",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    },
+    "vt/93a351b0e547a93a51cdaa9406b57c41/measurement": {
+      "catalog_binding": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "element_id": "vt/93a351b0e547a93a51cdaa9406b57c41/measurement",
+      "element_type": "POMIAR",
+      "has_manual_overrides": false,
+      "manual_override_count": 0,
+      "materialized_params": {
+        "accuracy_class": null,
+        "burden_va": null,
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "ratio_primary_v": 15000.0,
+        "ratio_secondary_v": 100.0
+      },
+      "name": "VT pola gpz/b18179bba62cc38f962858627a87da6f/bay/001/003",
+      "parameter_origin": "CATALOG",
+      "parameter_source": "CATALOG",
+      "source_catalog": {
+        "catalog_item_id": "vt_15kv_100v_05_abb",
+        "catalog_item_version": null,
+        "catalog_namespace": "VT"
+      },
+      "source_catalog_label": "VT:vt_15kv_100v_05_abb",
+      "source_mode": "KATALOG"
+    }
+  },
+  "catalog_context_summary": {
+    "by_parameter_origin": {
+      "CATALOG": 37
+    },
+    "by_type": {
+      "ODBIOR": 5,
+      "ODCINEK_SN": 14,
+      "POMIAR": 12,
+      "TRANSFORMATOR_SN_NN": 5,
+      "ZRODLO": 2,
+      "ZRODLO_SN": 1
+    },
+    "element_count": 39,
+    "manual_override_count": 0,
+    "manual_override_element_count": 0
+  },
+  "export_artifact": {
+    "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "completeness_status": "complete",
+    "export_kind": "whitebox_package",
+    "export_ref": "59b1d53119bc4fece412a1642ac0761cc6d0597b0b2bfcbd95387204024e7d19",
+    "generated_at": "2026-05-10T15:01:48.901080+00:00",
+    "generated_by_version": "v12_5_export_artifact/1.0",
+    "input_hash": "8ccfeb67832d43b5381d91ad3157d08c259ebc9147352b9ac2b925dd229f07b1",
+    "lineage": {
+      "analysis_case_ref": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+      "analysis_type": "PF",
+      "input_hash": "8ccfeb67832d43b5381d91ad3157d08c259ebc9147352b9ac2b925dd229f07b1",
+      "proof_pack_ref": "proof-pack:695daf7a-68e9-4954-8923-5f816cb931df",
+      "result_hash": "5f5180e630d72263236150963532881fdb882e807d8d2fb663ebdfb70786ac41",
+      "run_ref": "695daf7a-68e9-4954-8923-5f816cb931df",
+      "snapshot_ref": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754"
+    },
+    "proof_pack_ref": "proof-pack:695daf7a-68e9-4954-8923-5f816cb931df",
+    "result_hash": "5f5180e630d72263236150963532881fdb882e807d8d2fb663ebdfb70786ac41",
+    "run_ref": "695daf7a-68e9-4954-8923-5f816cb931df"
+  },
+  "export_policy": {
+    "allows_partial": true,
+    "carries_analysis_case_context": true,
+    "carries_generated_at": true,
+    "carries_generated_by_version": true,
+    "carries_input_hash": true,
+    "carries_proof_pack_ref": true,
+    "carries_result_hash": true,
+    "not_applicable_rendering": "status_field",
+    "null_rendering": "null",
+    "partial_rendering": "status_field",
+    "requires_confirmation": false
+  },
+  "input_hash": "8ccfeb67832d43b5381d91ad3157d08c259ebc9147352b9ac2b925dd229f07b1",
+  "proof_pack_ref": "proof-pack:695daf7a-68e9-4954-8923-5f816cb931df",
+  "run_id": "695daf7a-68e9-4954-8923-5f816cb931df",
+  "selection_index": {},
+  "snapshot_id": "52d6ee6785aa78322996f3b5660ed6c5045b036dbb37e1def6abd02f81c5e754",
+  "white_box_trace": [
+    {
+      "phase": "init",
+      "related_elements": [],
+      "result": {
+        "046d0960-741c-59fa-9317-1452dfe696a0": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "0c7e548f-3aad-5948-b944-51a8451e38b6": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "121d6126-0522-5a81-a0a4-b977ab063928": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "17ea9c4f-946d-5c16-80c1-9ae1add59745": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "29389da1-6e9b-5c7a-8573-4af7592d5f4a": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "69553fd1-8dba-58f2-acf0-c6550adb1c1a": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "6a5527ba-792f-5461-9845-39969b12820f": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "7906d35f-c395-5c75-aebe-ea64c0cab7e8": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "7973f54e-d0f1-5168-9092-6e7145056358": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "94d9bd41-43d6-5df9-aa59-c99c9a9feb21": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "98311964-af0e-5c89-bddb-b48d95ac747e": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "991e8c37-94db-5db0-9fba-382bb38b2097": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "a8a5036d-1f63-5963-af2a-be65342ce837": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "a9aa4597-49b5-5777-9510-71f8d22d98b2": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "ae458d7a-a12e-5c24-b055-b0288dccada7": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "aea7add1-8caf-50a7-9c6c-f0d96a637754": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "c5e051cb-1673-5341-8d14-85cb6395480e": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "cd01d1c7-59e8-5be3-a6d5-75333ff73bae": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "e0b61a1e-37c2-5549-a138-363ba5290a5f": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "e91a14d8-894b-504d-854b-47eec8946757": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "f344e737-e83f-5d5d-a5d0-7f91e9cd1d94": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        },
+        "fe60cbc8-037b-5fd3-9334-1e1b7d8ee2b6": {
+          "theta_rad": 0.0,
+          "v_pu": 1.0
+        }
+      },
+      "selection_refs": [],
+      "step": 1,
+      "title": "Stan poczatkowy"
+    },
+    {
+      "inputs": {
+        "max_mismatch_pu": {
+          "unit": "pu",
+          "value": 0.007050000000000001
+        }
+      },
+      "notes": "singular_jacobian",
+      "phase": "newton_raphson",
+      "related_elements": [],
+      "result": {
+        "norm_mismatch": {
+          "unit": "pu",
+          "value": 0.009667574295395082
+        }
+      },
+      "selection_refs": [],
+      "step": 2,
+      "title": "Iteracja Newtona-Raphsona 1"
+    },
+    {
+      "phase": "final",
+      "related_elements": [],
+      "result": {
+        "converged": {
+          "value": false
+        },
+        "iterations": {
+          "value": 30
+        },
+        "max_mismatch_pu": {
+          "unit": "pu",
+          "value": 0.007050000000000001
+        }
+      },
+      "selection_refs": [],
+      "step": 3,
+      "title": "Wynik koncowy"
+    }
+  ]
+}

@@ -91,7 +91,7 @@ def _parse_uuid(value: str, field_name: str = "id") -> UUID:
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{field_name} musi byc poprawnym UUID",
+            detail=f"{field_name} musi być poprawnym UUID",
         ) from exc
 
 
@@ -102,7 +102,7 @@ def _parse_analysis_type(value: str) -> ExecutionAnalysisType:
         valid = ", ".join(t.value for t in ExecutionAnalysisType)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nieprawidlowy typ analizy: {value}. Dozwolone: {valid}",
+            detail=f"Nieprawidłowy typ analizy: {value}. Dozwolone: {valid}",
         ) from exc
 
 
@@ -220,7 +220,7 @@ def get_run(run_id: str) -> dict[str, Any]:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail=f"Nie znaleziono obliczenia {run_id}",
         )
     return run.to_execution_dict()
 
@@ -235,11 +235,11 @@ def get_run_results(run_id: str) -> dict[str, Any]:
     if run is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Run {run_id} not found",
+            detail=f"Nie znaleziono obliczenia {run_id}",
         )
     if run.status != "FINISHED":
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Wyniki niedostepne - status przebiegu: {run.status}",
+            detail=f"Wyniki niedostępne - status obliczenia: {run.status}",
         )
     return build_execution_result_set(run)

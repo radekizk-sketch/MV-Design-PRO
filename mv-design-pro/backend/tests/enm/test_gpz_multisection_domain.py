@@ -39,6 +39,7 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert len(snapshot["sources"]) == 1
     assert len(snapshot["substations"]) == 1
     assert snapshot["bays"] == []
+    assert len(snapshot["transformers"]) == 2
 
     source = snapshot["sources"][0]
     substation = snapshot["substations"][0]
@@ -47,7 +48,9 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert source["substation_ref"] == substation["ref_id"]
     assert len(sections) == 2
     assert len(substation["bus_refs"]) == 2
+    assert len(substation["transformer_refs"]) == 2
     assert substation["meta"]["gpz_section_count"] == 2
+    assert substation["meta"]["wn_sn_transformer_count"] == 2
     assert substation["meta"]["grounding"]["type"] == "resistor_grounded"
     assert substation["meta"]["zero_sequence"]["enabled"] is True
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
@@ -65,6 +68,24 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert source["r0_ohm"] == 0.4
     assert source["x0_ohm"] == 1.8
     assert source["z0_z1_ratio"] == 1.3
+
+    transformers = {transformer["ref_id"]: transformer for transformer in snapshot["transformers"]}
+    for index, transformer_ref in enumerate(substation["transformer_refs"]):
+        transformer = transformers[transformer_ref]
+        assert transformer["name"].startswith(f"TR{index + 1} 110/15")
+        assert transformer["uhv_kv"] == 110.0
+        assert transformer["ulv_kv"] == 15.0
+        assert transformer["sn_mva"] == 25.0
+        assert transformer["uk_percent"] == 11.0
+        assert transformer["vector_group"] == "Yd11"
+        assert transformer["catalog_ref"] == "tr-wn-sn-110-15-25mva-yd11"
+        assert transformer["source_mode"] == "KATALOG"
+        assert transformer["materialized_params"]["catalog_item_id"] == (
+            "tr-wn-sn-110-15-25mva-yd11"
+        )
+        assert transformer["lv_bus_ref"] == sections[index]["bus_ref"]
+        assert transformer["meta"]["gpz_section_id"] == sections[index]["section_id"]
+        assert transformer["meta"]["catalog_role"] == "TRANSFORMATOR_WN_SN"
 
     buses = {bus["ref_id"]: bus for bus in snapshot["buses"]}
     assert buses[sections[0]["bus_ref"]]["grounding"]["type"] == "resistor_grounded"

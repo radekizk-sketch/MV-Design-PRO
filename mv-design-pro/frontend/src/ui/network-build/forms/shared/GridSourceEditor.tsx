@@ -29,6 +29,7 @@ export interface GridSourceFormData {
   gpz_line_field_apparatus_kind: GpzLineFieldApparatusKind;
   gpz_line_field_apparatus_catalog_ref: string | null;
   sections_count: number;
+  transformer_count: number;
   line_fields_per_section: number;
   manual_mode: boolean;
   zero_sequence_enabled: boolean;
@@ -81,6 +82,7 @@ const DEFAULT_DATA: GridSourceFormData = {
   gpz_line_field_apparatus_kind: 'BREAKER',
   gpz_line_field_apparatus_catalog_ref: null,
   sections_count: 2,
+  transformer_count: 2,
   line_fields_per_section: 2,
   manual_mode: false,
   zero_sequence_enabled: true,
@@ -122,6 +124,7 @@ function mergeInitialData(initialData?: Partial<GridSourceFormData>): GridSource
   return {
     ...merged,
     sections_count: Math.max(1, Math.min(4, Math.trunc(merged.sections_count || 1))),
+    transformer_count: Math.max(1, Math.min(4, Math.trunc(merged.transformer_count || 1))),
     line_fields_per_section: Math.max(
       1,
       Math.min(12, Math.trunc(merged.line_fields_per_section || 1)),
@@ -191,6 +194,17 @@ function validateForm(data: GridSourceFormData): FieldError[] {
     errors.push({
       field: 'sections_count',
       message: 'Liczba sekcji GPZ musi mieścić się w zakresie 1-4.',
+    });
+  }
+
+  if (
+    !Number.isInteger(data.transformer_count)
+    || data.transformer_count < 1
+    || data.transformer_count > 4
+  ) {
+    errors.push({
+      field: 'transformer_count',
+      message: 'Liczba transformatorów 110/SN musi mieścić się w zakresie 1-4.',
     });
   }
 
@@ -578,6 +592,34 @@ export function GridSourceEditor({
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen || formData.manual_mode || formData.catalog_ref || catalogItems.length === 0) {
+      return;
+    }
+
+    const firstCatalogItem = catalogItems[0];
+    setFormData((previous) => {
+      if (previous.manual_mode || previous.catalog_ref) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        catalog_ref: firstCatalogItem.id,
+        manual_mode: false,
+        sn_voltage_kv: Number.isFinite(firstCatalogItem.voltage_rating_kv)
+          ? firstCatalogItem.voltage_rating_kv
+          : previous.sn_voltage_kv,
+        sk3_mva: Number.isFinite(firstCatalogItem.sk3_mva)
+          ? firstCatalogItem.sk3_mva
+          : previous.sk3_mva,
+        rx_ratio: typeof firstCatalogItem.rx_ratio === 'number' && Number.isFinite(firstCatalogItem.rx_ratio)
+          ? firstCatalogItem.rx_ratio
+          : previous.rx_ratio,
+      };
+    });
+  }, [catalogItems, formData.catalog_ref, formData.manual_mode, isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
       return undefined;
     }
@@ -694,13 +736,20 @@ export function GridSourceEditor({
   const dataSourceLabel = formData.manual_mode
     ? 'Ręczny równoważnik ekspercki'
     : selectedCatalogItem?.name ?? formData.catalog_ref ?? 'Katalog źródła systemowego';
+  const catalogBindingLabel = formData.manual_mode
+    ? 'nie dotyczy'
+    : selectedCatalogItem
+      ? sourceCatalogLabel(selectedCatalogItem)
+      : formData.catalog_ref
+        ? 'wybrano pozycję katalogową'
+        : 'brak';
   const previewPayload = useMemo(() => buildPreviewPayload(formData), [formData]);
   const readinessRows = useMemo(() => getReadinessRows(formData), [formData]);
-  const pendingMetricLabel = previewStatus === 'loading' ? 'solver...' : '—';
+  const pendingMetricLabel = previewStatus === 'loading' ? 'obliczanie...' : '—';
   const ik1MetricLabel = previewStatus === 'loading'
-    ? 'solver...'
+    ? 'obliczanie...'
     : previewStatus === 'ready' && preview?.ik1_ka === null
-      ? 'brak Z0 z solvera'
+      ? 'brak składowej zerowej Z0'
       : formatKiloamp(preview?.ik1_ka);
 
   useEffect(() => {
@@ -811,7 +860,7 @@ export function GridSourceEditor({
                 </button>
               </div>
 
-              <FieldShell label="Pozycja katalogowa ZRODLO_SN" error={getFieldError('catalog_ref')}>
+              <FieldShell label="Typ źródła z katalogu" error={getFieldError('catalog_ref')}>
                 <select
                   value={formData.catalog_ref ?? ''}
                   onChange={(event) => handleCatalogSelect(event.target.value)}
@@ -842,7 +891,7 @@ export function GridSourceEditor({
               <AdvancedDataRow label="Źródło parametrów" value={dataSourceLabel} />
               <AdvancedDataRow
                 label="Powiązanie katalogowe"
-                value={formData.manual_mode ? 'nie dotyczy' : formData.catalog_ref ?? 'brak'}
+                value={catalogBindingLabel}
                 tone={!formData.manual_mode && !formData.catalog_ref ? 'warning' : 'normal'}
               />
               <AdvancedDataRow
@@ -1045,6 +1094,19 @@ export function GridSourceEditor({
                 </select>
               </FieldShell>
 
+              <FieldShell label="Transformatory 110/SN" error={getFieldError('transformer_count')}>
+                <select
+                  value={formData.transformer_count}
+                  onChange={(event) => handleChange('transformer_count', Number(event.target.value))}
+                  className={selectClass(getFieldError('transformer_count'))}
+                >
+                  <option value={1}>1 x 110/SN</option>
+                  <option value={2}>2 x 110/SN</option>
+                  <option value={3}>3 x 110/SN</option>
+                  <option value={4}>4 x 110/SN</option>
+                </select>
+              </FieldShell>
+
               <FieldShell label="Bazowa nazwa sekcji GPZ" error={getFieldError('gpz_section_name')}>
                 <input
                   type="text"
@@ -1221,12 +1283,12 @@ export function GridSourceEditor({
             <div className="rounded-[3px] border border-[#1d5b90] bg-[#081d33] p-3">
               {previewStatus === 'loading' && (
                 <SolverMessage tone="neutral">
-                  Backend solvera liczy podsumowanie z danych wejściowych.
+                  Trwa obliczanie podsumowania z danych wejściowych.
                 </SolverMessage>
               )}
               {previewStatus === 'error' && (
                 <SolverMessage tone="warning">
-                  {previewError ?? 'Backend solvera nie zwrócił podsumowania GPZ.'}
+                  {previewError ?? 'Nie udało się wyznaczyć podsumowania GPZ.'}
                 </SolverMessage>
               )}
               <SummaryRow
@@ -1246,7 +1308,10 @@ export function GridSourceEditor({
               <SummaryRow label="Ith (3-faz., tk)" value={formatKiloamp(preview?.ith_ka)} />
               <SummaryRow label="Z1 źródła" value={formatComplex(preview?.z1_ohm)} />
               <SummaryRow label="Z0 źródła" value={formatComplex(preview?.z0_ohm)} />
-              <SummaryRow label="Źródło wyników" value={preview?.formula_ref ?? 'backend solver'} />
+              <SummaryRow
+                label="Źródło wyników"
+                value={preview ? 'Obliczenie IEC 60909 po stronie serwera' : 'nie wyznaczono'}
+              />
             </div>
           </ScadaSection>
 
