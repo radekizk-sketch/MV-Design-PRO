@@ -8,6 +8,12 @@ Eksport publiczny:
   SIEMENS — wszyscy `requires_catalog`)
 """
 
+from .canonical_fallback import (
+    CANONICAL_FALLBACK_REGISTRY,
+    get_canonical_fallback_for_bay_kind,
+    list_canonical_fallback_for_manufacturer,
+    list_canonical_fallback_templates,
+)
 from .complete_mv_bay_template import (
     BayKind,
     CompleteMvBayTemplate,
@@ -37,6 +43,7 @@ __all__ = [
     "ABB",
     "BayKind",
     "BusbarSystem",
+    "CANONICAL_FALLBACK_REGISTRY",
     "CompleteMvBayTemplate",
     "ConstructionType",
     "ELEKTROMETAL",
@@ -49,7 +56,10 @@ __all__ = [
     "SwitchgearFamily",
     "SwitchgearFamilyStatus",
     "ZPUE_WLOSZCZOWA",
+    "get_canonical_fallback_for_bay_kind",
     "get_manufacturer",
+    "list_canonical_fallback_for_manufacturer",
+    "list_canonical_fallback_templates",
     "list_manufacturers",
     "manufacturers_requiring_catalog",
     "verified_manufacturers",

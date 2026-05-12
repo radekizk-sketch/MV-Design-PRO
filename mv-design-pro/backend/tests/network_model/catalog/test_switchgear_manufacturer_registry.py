@@ -10,6 +10,7 @@ import pytest
 from network_model.catalog.bay_templates import BAY_TEMPLATE_LINE_OUT
 from network_model.catalog.switchgear import (
     ABB,
+    CANONICAL_FALLBACK_REGISTRY,
     ELEKTROMETAL,
     MANUFACTURER_REGISTRY,
     SIEMENS,
@@ -17,7 +18,10 @@ from network_model.catalog.switchgear import (
     CompleteMvBayTemplate,
     Manufacturer,
     SwitchgearFamily,
+    get_canonical_fallback_for_bay_kind,
     get_manufacturer,
+    list_canonical_fallback_for_manufacturer,
+    list_canonical_fallback_templates,
     list_manufacturers,
     manufacturers_requiring_catalog,
     verified_manufacturers,
@@ -228,3 +232,80 @@ class TestCompleteMvBayTemplate:
             source_refs=["catalog:test"],
         )
         assert a.compute_hash() == b.compute_hash()
+
+
+class TestCanonicalFallbackRegistry:
+    """Rejestr 10 kanonicznych fallbacków — szablony producent-niezależne."""
+
+    def test_registry_has_ten_canonical_templates(self):
+        assert len(CANONICAL_FALLBACK_REGISTRY) == 10
+
+    def test_all_have_canonical_fallback_status(self):
+        for template in CANONICAL_FALLBACK_REGISTRY.values():
+            assert template.source_status == "canonical_fallback"
+            assert template.manufacturer_ref is None
+            assert template.switchgear_family_ref is None
+            assert template.source_refs == []
+            assert template.is_verified() is False
+
+    def test_all_have_unique_template_refs(self):
+        refs = [t.template_ref for t in CANONICAL_FALLBACK_REGISTRY.values()]
+        assert len(set(refs)) == len(refs)
+
+    def test_all_have_computed_hash(self):
+        for template in CANONICAL_FALLBACK_REGISTRY.values():
+            assert len(template.hash) == 64  # sha256
+
+    def test_list_canonical_fallback_templates_deterministic(self):
+        first = [t.template_ref for t in list_canonical_fallback_templates()]
+        assert first == sorted(first)
+        for _ in range(10):
+            assert [t.template_ref for t in list_canonical_fallback_templates()] == first
+
+    def test_bay_kinds_cover_main_categories(self):
+        kinds = {t.bay_kind for t in CANONICAL_FALLBACK_REGISTRY.values()}
+        # Pokrycie wymaganych kategorii §11A.4.
+        required_kinds = {
+            "liniowe_doplywowe",
+            "liniowe_odplywowe",
+            "transformatorowe",
+            "pomiarowe",
+            "sprzeglowe_poprzeczne",
+            "pv",
+            "bess",
+            "fw",
+            "rezerwowe",
+            "potrzeb_wlasnych",
+        }
+        assert required_kinds.issubset(kinds)
+
+    def test_get_canonical_fallback_for_bay_kind_transformatorowe(self):
+        template = get_canonical_fallback_for_bay_kind("transformatorowe")
+        assert template is not None
+        assert template.bay_kind == "transformatorowe"
+        assert template.bay_role == "TR"
+        # base_template ma kanon Q-szynowy → CB → CT → TR.
+        device_kinds = [d.kind for d in template.base_template.devices]
+        assert "CB" in device_kinds
+        assert "TRANSFORMER_DEVICE" in device_kinds
+
+    def test_get_canonical_fallback_for_bay_kind_pv(self):
+        template = get_canonical_fallback_for_bay_kind("pv")
+        assert template is not None
+        assert template.bay_kind == "pv"
+        assert template.bay_role == "OZE"
+
+    def test_list_canonical_fallback_for_manufacturer_without_ref_returns_all(self):
+        templates = list_canonical_fallback_for_manufacturer(None)
+        assert len(templates) == 10
+        for t in templates:
+            assert t.manufacturer_ref is None
+
+    def test_list_canonical_fallback_for_manufacturer_with_ref_marks_meta(self):
+        """ZPUE_WLOSZCZOWA (requires_catalog) → fallback z dopisanym manufacturer_ref."""
+        templates = list_canonical_fallback_for_manufacturer("ZPUE_WLOSZCZOWA")
+        assert len(templates) == 10
+        for t in templates:
+            assert t.manufacturer_ref == "ZPUE_WLOSZCZOWA"
+            # Status nadal canonical_fallback — to nie jest oficjalny katalog ZPUE.
+            assert t.source_status == "canonical_fallback"
