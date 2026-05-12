@@ -79,6 +79,21 @@ export function buildCanonicalGpzProps(
     substation.transformer_refs?.includes(t.ref_id),
   );
 
+  const lvSections = buildLvSections(substation, allBays, enm.buses ?? []);
+  // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
+  // przypisania TR do sekcji wg `lv_bus_ref`.
+  const sectionIdByLvBusRef = new Map<string, string>();
+  for (const sec of substation.gpz_sections ?? []) {
+    if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
+  }
+
+  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef);
+  // Inżynierski wymóg: TR WN/SN przyłączony do szyny SN przez pole TR z
+  // aparaturą (DS-CB-CT-ES). Pole TR jest renderowane przez `TrFieldColumn`
+  // w `GpzCanonicalRenderer` (nad szyną SN, pomiędzy TR a sekcją SN) —
+  // adapter NIE syntezuje pola TR jako bay (uniknięcie podwójnego renderu
+  // poniżej szyny SN).
+
   return {
     id: substation.ref_id,
     x: options.x,
@@ -90,8 +105,8 @@ export function buildCanonicalGpzProps(
     controlAvailability: options.controlAvailability,
     balance: options.balance,
     alarms: options.alarms,
-    transformers: buildTransformers(allTransformers),
-    sections: buildLvSections(substation, allBays, enm.buses ?? []),
+    transformers,
+    sections: lvSections,
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? []),
   };
@@ -173,7 +188,10 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
   return [...byRef.values()];
 }
 
-function buildTransformers(transformers: readonly Transformer[]): CanonicalGpzTransformer[] {
+function buildTransformers(
+  transformers: readonly Transformer[],
+  sectionIdByLvBusRef: ReadonlyMap<string, string>,
+): CanonicalGpzTransformer[] {
   return transformers
     .slice()
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
@@ -184,6 +202,8 @@ function buildTransformers(transformers: readonly Transformer[]): CanonicalGpzTr
       uhvKv: tr.uhv_kv,
       ulvKv: tr.ulv_kv,
       vectorGroup: tr.vector_group ?? null,
+      lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
+      hvBusRef: tr.hv_bus_ref ?? null,
     }));
 }
 

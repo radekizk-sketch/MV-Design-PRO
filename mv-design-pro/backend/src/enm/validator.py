@@ -7,6 +7,8 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
+import os
+
 import networkx as nx
 from pydantic import BaseModel
 
@@ -47,6 +49,20 @@ def _voltage_band(voltage_kv: float) -> str:
     if voltage_kv <= _VOLTAGE_BAND_SN_MAX:
         return "SN"
     return "WN"
+
+
+_STRICT_PORT_BINDING_ENV = "ENM_STRICT_PORT_BINDING"
+
+
+def _strict_port_binding_enabled() -> bool:
+    """True gdy walidator wymusza obecność `endpoint_a_port` / `endpoint_b_port`.
+
+    Domyślnie False — migracja `enm.migrations.endpoint_ports` jest
+    konserwatywna i pozostawia luki tam gdzie operator musi świadomie wybrać
+    port. Flaga włącza twardy gate E030 dla projektów po zmigrowanych
+    fixture'ach (PR 1.b).
+    """
+    return os.environ.get(_STRICT_PORT_BINDING_ENV, "0").lower() in ("1", "true", "yes", "on")
 
 
 class ValidationIssue(BaseModel):
@@ -462,6 +478,63 @@ class ENMValidator:
                         ),
                     )
                 )
+
+        # E030: Połączenie SN bez wskazanego portu endpointu
+        # PR 1 rebuild SLD: każdy Cable / OverheadLine musi mieć
+        # endpoint_a_port i endpoint_b_port wskazujące kompatybilny Port pola
+        # na obu szynach. Konserwatywna automigracja `enm.migrations.endpoint_ports`
+        # przypisuje port automatycznie tylko gdy jest dokładnie jeden kandydat;
+        # pozostałe przypadki muszą zostać domknięte ręcznie w E-12 (segment SN).
+        #
+        # Gating: flaga `ENM_STRICT_PORT_BINDING=1` aktywuje walidację dla
+        # wszystkich projektów. Domyślnie wyłączona, by stopniowo migrować
+        # historyczne dane (PR 1.b włącza flagę po pełnej migracji fixture).
+        if _strict_port_binding_enabled():
+            self._check_endpoint_ports(enm, issues)
+
+    def _check_endpoint_ports(
+        self, enm: EnergyNetworkModel, issues: list[ValidationIssue]
+    ) -> None:
+        """E030: jawny port endpointu wymagany dla Cable / OverheadLine."""
+        for branch in enm.branches:
+            if not isinstance(branch, OverheadLine | Cable):
+                continue
+            missing_endpoints: list[str] = []
+            if branch.endpoint_a_port is None:
+                missing_endpoints.append("a")
+            if branch.endpoint_b_port is None:
+                missing_endpoints.append("b")
+            if not missing_endpoints:
+                continue
+            sides_pl = " i ".join(
+                "wejściowy (A)" if e == "a" else "wyjściowy (B)" for e in missing_endpoints
+            )
+            issues.append(
+                ValidationIssue(
+                    code="E030",
+                    severity=SEVERITY_BLOCKER,
+                    message_pl=(
+                        f"Połączenie '{branch.ref_id}' nie ma wskazanego portu "
+                        f"endpointu {sides_pl}. Wskaż port pola SN na właściwej "
+                        f"szynie w karcie odcinka."
+                    ),
+                    element_refs=[branch.ref_id],
+                    wizard_step_hint="E-12",
+                    suggested_fix=(
+                        "Otwórz kartę odcinka SN (E-12) i przypisz port pola "
+                        "liniowego/odgałęźnego po obu stronach kabla/linii."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=branch.ref_id,
+                        modal_type="SegmentSnModal",
+                        payload_hint={
+                            "required": "endpoint_ports",
+                            "missing_endpoints": missing_endpoints,
+                        },
+                    ),
+                )
+            )
 
     # ------------------------------------------------------------------
     # WARNINGS (W001-W004)

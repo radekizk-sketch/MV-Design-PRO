@@ -123,6 +123,11 @@ export interface BranchBase extends ENMElement {
   overrides?: ParameterOverride[] | null;
 }
 
+/** Referencja do portu pola SN (immutable adres endpointu połączenia). */
+export interface PortRef {
+  port_id: string;
+}
+
 export interface OverheadLine extends BranchBase {
   type: 'line_overhead';
   length_km: number;
@@ -133,6 +138,11 @@ export interface OverheadLine extends BranchBase {
   x0_ohm_per_km?: number | null;
   b0_siemens_per_km?: number | null;
   rating?: BranchRating | null;
+  /** Jawny port endpointu A (od strony from_bus_ref). Opcjonalny dla
+   *  wstecznej kompatybilności; brak → readiness blocker E030. */
+  endpoint_a_port?: PortRef | null;
+  /** Jawny port endpointu B (od strony to_bus_ref). */
+  endpoint_b_port?: PortRef | null;
 }
 
 export interface Cable extends BranchBase {
@@ -146,6 +156,11 @@ export interface Cable extends BranchBase {
   b0_siemens_per_km?: number | null;
   rating?: BranchRating | null;
   insulation?: 'XLPE' | 'PVC' | 'PAPER' | null;
+  /** Jawny port endpointu A (od strony from_bus_ref). Opcjonalny dla
+   *  wstecznej kompatybilności; brak → readiness blocker E030. */
+  endpoint_a_port?: PortRef | null;
+  /** Jawny port endpointu B (od strony to_bus_ref). */
+  endpoint_b_port?: PortRef | null;
 }
 
 export interface SwitchBranch extends BranchBase {

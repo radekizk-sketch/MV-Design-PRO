@@ -24,10 +24,12 @@ import type {
   BayControlMode as EnmBayControlMode,
   BayRuntimeState,
   BaySwitchState,
+  Cable,
   EnergyNetworkModel,
   LogicalViewsV1,
   Bus,
   Branch,
+  OverheadLine,
   Substation,
   Source,
   Generator,
@@ -60,6 +62,7 @@ import type {
   GpzSectionDescriptor,
 } from '../renderer/GpzSwitchgearRenderer';
 import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE } from '../domain/apparatusContracts';
+import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -260,10 +263,44 @@ interface CableRunRendererPropsLight {
     y: number;
   }>;
   pendingEndpoint?: boolean;
+  /** True gdy któryś z segmentów (Cable / OverheadLine) ma brak
+   *  `endpoint_a_port` lub `endpoint_b_port` — wymaga ręcznego
+   *  domknięcia w E-12 (segment SN). Renderer pokazuje dashed stroke
+   *  i czerwony marker. */
+  missingEndpointPort?: boolean;
+  /** Lista segmentów z brakującymi portami (do tooltip / panelu
+   *  problemów). */
+  missingPortSegmentRefs?: readonly string[];
+  /** Czy wszystkie segmenty są pod napięciem zgodnie z `SupplyPathHighlighter`
+   *  (topologia, nie fizyka). Renderer może użyć tej flagi do podświetlenia
+   *  zielonym torem mocy gdy aktywny jest tryb operatorski. */
+  energized?: boolean;
+  /** Czy któryś z segmentów jest punktem otwartym (NMO / status='open')
+   *  zgodnie z `SupplyPathHighlighter.openPointBranchRefs`. */
+  containsOpenPoint?: boolean;
 }
 
 function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
+}
+
+/** Detekcja brakujących portów endpointu na segmentach kabla/linii. */
+function detectMissingEndpointPorts(
+  segments: readonly Branch[],
+): { missing: boolean; missingSegmentRefs: readonly string[] } {
+  const missingSegmentRefs: string[] = [];
+  for (const seg of segments) {
+    if (seg.type !== 'cable' && seg.type !== 'line_overhead') continue;
+    const a = (seg as Cable | OverheadLine).endpoint_a_port;
+    const b = (seg as Cable | OverheadLine).endpoint_b_port;
+    if (!a || !b) {
+      missingSegmentRefs.push(seg.ref_id);
+    }
+  }
+  return {
+    missing: missingSegmentRefs.length > 0,
+    missingSegmentRefs,
+  };
 }
 
 function classifySegmentKind(b: Branch): 'cable_sn' | 'overhead_line_sn' {
@@ -280,7 +317,22 @@ export interface SldDataPayload {
   readonly cableRuns: CableRunRendererPropsLight[];
   readonly stations: StationOnRunRendererProps[];
   readonly ders: DerRendererProps[];
+  /** Wynik `SupplyPathHighlighter` — czysta topologia operatorska (bez fizyki).
+   *  Renderery mogą subskrybować flagę `energized` na poziomie cableRuns /
+   *  sections / stations, gdy tryb operatorski „Pokaż tor zasilania" jest
+   *  aktywny. */
+  readonly supplyPath: SupplyPathHighlight;
 }
+
+const EMPTY_SUPPLY_PATH_FROZEN: SupplyPathHighlight = Object.freeze({
+  energizedBusRefs: Object.freeze([]) as readonly string[],
+  energizedBranchRefs: Object.freeze([]) as readonly string[],
+  energizedTransformerRefs: Object.freeze([]) as readonly string[],
+  openPointBranchRefs: Object.freeze([]) as readonly string[],
+  energizedSubstationRefs: Object.freeze([]) as readonly string[],
+  energizedGeneratorRefs: Object.freeze([]) as readonly string[],
+  sourceRefs: Object.freeze([]) as readonly string[],
+});
 
 const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   gpzs: [],
@@ -288,6 +340,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   cableRuns: [],
   stations: [],
   ders: [],
+  supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
 });
 
 // =============================================================================
@@ -305,8 +358,29 @@ export function buildSldDataFromSnapshot(
   const stations = buildStations(snapshot);
   const cableRuns = buildCableRuns(snapshot, logicalViews, stations);
   const ders = buildDers(snapshot, stations);
+  const supplyPath = buildSupplyPathHighlight(snapshot);
 
-  return { gpzs, sections, cableRuns, stations, ders };
+  // Propaguj energized/openPoint na cableRuns na podstawie wyniku SupplyPath.
+  const energizedBranchSet = new Set(supplyPath.energizedBranchRefs);
+  const openPointSet = new Set(supplyPath.openPointBranchRefs);
+  const cableRunsAnnotated = cableRuns.map((run) => {
+    const refs = run.segmentRefs ?? [];
+    if (refs.length === 0) {
+      return run;
+    }
+    const allEnergized = refs.every((ref) => energizedBranchSet.has(ref));
+    const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
+    return { ...run, energized: allEnergized, containsOpenPoint: anyOpenPoint };
+  });
+
+  return {
+    gpzs,
+    sections,
+    cableRuns: cableRunsAnnotated,
+    stations,
+    ders,
+    supplyPath,
+  };
 }
 
 // -----------------------------------------------------------------------------
@@ -1203,6 +1277,7 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
 
+      const portStatus = detectMissingEndpointPorts(runSegments);
       runs.push({
         id: lineRun.id,
         runKind: lineRun.run_kind,
@@ -1212,6 +1287,8 @@ function buildCableRuns(
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
         segmentLabels,
         pendingEndpoint: runStations.length === 0,
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: startX, y },
@@ -1241,6 +1318,7 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
       const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
 
+      const portStatus = detectMissingEndpointPorts(segments);
       runs.push({
         id: trunk.corridor_ref,
         runKind: 'main_trunk',
@@ -1250,6 +1328,8 @@ function buildCableRuns(
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels,
         pendingEndpoint: stationsOnRun.length === 0,
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: xStart, y },
@@ -1269,6 +1349,7 @@ function buildCableRuns(
       const xStart = X_STATIONS_START + brIdx * STATION_PITCH;
       const xEnd = xStart + 3 * STATION_PITCH;
 
+      const portStatus = detectMissingEndpointPorts(segments);
       runs.push({
         id: br.branch_id,
         runKind: 'branch',
@@ -1277,6 +1358,8 @@ function buildCableRuns(
         segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd),
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels: buildRunSegmentLabels(segments, [], xStart, yBranch, xEnd),
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: xStart, y: Y_RUN_BASE - 10 },
           { x: xStart, y: yBranch },
@@ -1287,7 +1370,7 @@ function buildCableRuns(
     return runs;
   }
 
-  // Fallback: każda branch → osobna prosta linia (nie ma logical_views).
+  // Tor wstępny: każda branch → osobna prosta linia (nie ma logical_views).
   branches.forEach((b, idx) => {
     const y = Y_RUN_BASE + idx * RUN_PITCH;
     const startingBayRef = readBranchOriginBayRef(b);
@@ -1299,6 +1382,7 @@ function buildCableRuns(
     const segmentKind = classifySegmentKind(b);
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
     const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
+    const portStatus = detectMissingEndpointPorts([b]);
     runs.push({
       id: b.ref_id,
       runKind: 'main_trunk',
@@ -1308,6 +1392,8 @@ function buildCableRuns(
       label: buildCableRunLabel([b], segmentKind),
       segmentLabels,
       pendingEndpoint: stationsOnRun.length === 0,
+      missingEndpointPort: portStatus.missing,
+      missingPortSegmentRefs: portStatus.missingSegmentRefs,
       pathPoints: [
         { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y + idx * 4 },
         { x: xStart, y },

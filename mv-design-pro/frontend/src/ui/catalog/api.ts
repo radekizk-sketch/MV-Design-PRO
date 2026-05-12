@@ -1,4 +1,5 @@
 import { buildCatalogBinding } from './catalogBinding';
+import type { Manufacturer } from './manufacturer';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -138,6 +139,21 @@ async function postCatalogJson<T>(endpoint: string, body: unknown): Promise<T> {
 
 export async function fetchLineTypes(): Promise<LineType[]> {
   return fetchCatalogJson<LineType[]>('/api/catalog/line-types');
+}
+
+/** Lista producentów rozdzielnic SN (goal §11A). */
+export async function fetchManufacturers(): Promise<Manufacturer[]> {
+  return fetchCatalogJson<Manufacturer[]>('/api/catalog/manufacturers');
+}
+
+/** Lista rodzin rozdzielnic SN — opcjonalnie filtrowana per producent. */
+export async function fetchSwitchgearFamilies(
+  manufacturerRef?: string,
+): Promise<unknown[]> {
+  const query = manufacturerRef
+    ? `?manufacturer_ref=${encodeURIComponent(manufacturerRef)}`
+    : '';
+  return fetchCatalogJson<unknown[]>(`/api/catalog/switchgear-families${query}`);
 }
 
 export async function fetchCableTypes(): Promise<CableType[]> {

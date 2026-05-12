@@ -145,6 +145,12 @@ function resolveOperationFromModalType(
       return 'add_transformer_sn_nn';
     case 'StartBranchModal':
       return 'start_branch_segment_sn';
+    case 'SegmentSnModal':
+      // E030 (CONNECTION_PORT_MISSING): operator wybiera port endpointu
+      // dla istniejącego odcinka. Brak dedykowanej operacji domeny —
+      // kierujemy do `update_element_parameters` (edycja Cable/OverheadLine)
+      // dopóki nie powstanie osobna `assign_endpoint_port` op.
+      return 'update_element_parameters';
     default:
       return null;
   }
@@ -172,6 +178,9 @@ const FIX_ACTION_CODE_TO_OPERATION: Readonly<Record<string, CanonicalOpName>> = 
   'bess.transformer_required': 'add_transformer_sn_nn',
   'pv_bess.transformer_required': 'add_transformer_sn_nn',
   'switch.catalog_ref_missing': 'assign_catalog_to_element',
+  // E030 — operator domyka brakujący port endpointu kabla / linii w karcie odcinka.
+  'topology.connection_port_missing': 'update_element_parameters',
+  E030: 'update_element_parameters',
   LF_CONVERGENCE_TOLERANCE_INVALID: 'update_element_parameters',
   LF_CONVERGENCE_ITER_LIMIT_INVALID: 'update_element_parameters',
   LF_SOLVER_DAMPING_INVALID: 'update_element_parameters',

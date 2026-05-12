@@ -1,12 +1,19 @@
 """Tests for ENMValidator readiness semantics and validation issues."""
 
+import os
+
+import pytest
+
 from enm.models import (
+    Bay,
     Bus,
     Cable,
     EnergyNetworkModel,
     ENMHeader,
     OverheadLine,
+    Port,
     Source,
+    Substation,
     Transformer,
 )
 from enm.severity import (
@@ -415,3 +422,152 @@ class TestAnalysisAvailability:
     def test_loadflow_unavailable_without_loads(self):
         result = ENMValidator().validate(_minimal_enm())
         assert result.analysis_available.load_flow is False
+
+
+# ---------------------------------------------------------------------------
+# E030 — Połączenie SN bez wskazanego portu endpointu
+# ---------------------------------------------------------------------------
+
+
+def _enm_with_cable_no_ports() -> EnergyNetworkModel:
+    """ENM z kompletnym kontekstem (źródło, katalogi) ale bez portów endpointu kabla."""
+    return _enm(
+        buses=[
+            Bus(ref_id="bus_a", name="A", voltage_kv=15),
+            Bus(ref_id="bus_b", name="B", voltage_kv=15),
+        ],
+        sources=[
+            Source(
+                ref_id="src_a",
+                name="Grid A",
+                bus_ref="bus_a",
+                model="short_circuit_power",
+                sk3_mva=220,
+                catalog_ref="SRC_TEST",
+                catalog_namespace="ZRODLO_SN",
+                parameter_source="CATALOG",
+                source_mode="KATALOG",
+            )
+        ],
+        branches=[
+            Cable(
+                ref_id="cab_ab",
+                name="Kabel A→B",
+                from_bus_ref="bus_a",
+                to_bus_ref="bus_b",
+                length_km=1.0,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.08,
+                catalog_ref="cable-tfk-yakxs-3x120",
+                # endpoint_a_port / endpoint_b_port pominięte celowo
+            ),
+        ],
+        substations=[
+            Substation(
+                ref_id="st_a",
+                name="GPZ A",
+                station_type="gpz",
+                bus_refs=["bus_a"],
+            ),
+            Substation(
+                ref_id="st_b",
+                name="Stacja B",
+                station_type="mv_lv",
+                bus_refs=["bus_b"],
+            ),
+        ],
+        bays=[
+            Bay(
+                ref_id="bay_a_out",
+                name="Pole A",
+                bay_role="OUT",
+                substation_ref="st_a",
+                bus_ref="bus_a",
+                ports=[
+                    Port(
+                        id="port_a_out",
+                        kind="sn_output",
+                        nominal_voltage_kv=15.0,
+                        bay_ref="bay_a_out",
+                        substation_ref="st_a",
+                    )
+                ],
+            ),
+            Bay(
+                ref_id="bay_b_in",
+                name="Pole B",
+                bay_role="IN",
+                substation_ref="st_b",
+                bus_ref="bus_b",
+                ports=[
+                    Port(
+                        id="port_b_in",
+                        kind="sn_input",
+                        nominal_voltage_kv=15.0,
+                        bay_ref="bay_b_in",
+                        substation_ref="st_b",
+                    )
+                ],
+            ),
+        ],
+    )
+
+
+class TestE030EndpointPorts:
+    """E030: gating'owana flagą ENM_STRICT_PORT_BINDING walidacja portów endpointu."""
+
+    def test_disabled_by_default_no_e030(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.delenv("ENM_STRICT_PORT_BINDING", raising=False)
+        result = ENMValidator().validate(_enm_with_cable_no_ports())
+        codes = [i.code for i in result.issues]
+        assert "E030" not in codes
+
+    def test_enabled_flag_emits_blocker(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("ENM_STRICT_PORT_BINDING", "1")
+        result = ENMValidator().validate(_enm_with_cable_no_ports())
+        e030_issues = [i for i in result.issues if i.code == "E030"]
+        assert len(e030_issues) == 1
+        issue = e030_issues[0]
+        assert issue.severity == SEVERITY_BLOCKER
+        assert "endpoint" in issue.message_pl.lower() or "port" in issue.message_pl.lower()
+        assert "cab_ab" in issue.element_refs
+        assert issue.wizard_step_hint == "E-12"
+        assert issue.fix_action is not None
+        assert issue.fix_action.modal_type == "SegmentSnModal"
+        assert issue.fix_action.payload_hint.get("required") == "endpoint_ports"
+        assert set(issue.fix_action.payload_hint["missing_endpoints"]) == {"a", "b"}
+
+    def test_enabled_one_endpoint_only(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("ENM_STRICT_PORT_BINDING", "1")
+        enm = _enm_with_cable_no_ports()
+        # przypisz tylko endpoint A
+        from enm.models import PortRef
+
+        enm.branches[0].endpoint_a_port = PortRef(port_id="port_a_out")  # type: ignore[union-attr]
+        result = ENMValidator().validate(enm)
+        e030_issues = [i for i in result.issues if i.code == "E030"]
+        assert len(e030_issues) == 1
+        assert e030_issues[0].fix_action.payload_hint["missing_endpoints"] == ["b"]  # type: ignore[union-attr]
+
+    def test_enabled_both_endpoints_set_no_e030(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setenv("ENM_STRICT_PORT_BINDING", "1")
+        enm = _enm_with_cable_no_ports()
+        from enm.models import PortRef
+
+        enm.branches[0].endpoint_a_port = PortRef(port_id="port_a_out")  # type: ignore[union-attr]
+        enm.branches[0].endpoint_b_port = PortRef(port_id="port_b_in")  # type: ignore[union-attr]
+        result = ENMValidator().validate(enm)
+        codes = [i.code for i in result.issues]
+        assert "E030" not in codes
+
+    def test_flag_accepts_truthy_variants(self):
+        from enm.validator import _strict_port_binding_enabled
+
+        for val in ("1", "true", "TRUE", "yes", "on"):
+            os.environ["ENM_STRICT_PORT_BINDING"] = val
+            assert _strict_port_binding_enabled() is True
+        for val in ("0", "false", "no", "off", ""):
+            os.environ["ENM_STRICT_PORT_BINDING"] = val
+            assert _strict_port_binding_enabled() is False
+        os.environ.pop("ENM_STRICT_PORT_BINDING", None)
+        assert _strict_port_binding_enabled() is False

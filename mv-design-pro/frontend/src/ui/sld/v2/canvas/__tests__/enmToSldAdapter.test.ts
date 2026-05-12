@@ -1505,4 +1505,120 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     const r = buildSldDataFromSnapshot(snap, null);
     expect(r.gpzs[0].couplers?.[0]?.closed).toBe('closed');
   });
+
+  describe('SupplyPath integration (energized + openPoint propagation)', () => {
+    it('cable z aktywnym torem od źródła → energized=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+        { id: 'b_b', ref_id: 'b_b', name: 'B', voltage_kv: 15 } as never,
+      ];
+      snap.sources = [
+        { id: 'src', ref_id: 'src', name: 'Grid', bus_ref: 'b_a', model: 'short_circuit_power', sk3_mva: 250 } as never,
+      ];
+      snap.branches = [
+        { id: 'c1', ref_id: 'c1', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_b', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns).toHaveLength(1);
+      expect(r.cableRuns[0].energized).toBe(true);
+      expect(r.cableRuns[0].containsOpenPoint).toBe(false);
+    });
+
+    it('cable bez źródła → energized=false', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+        { id: 'b_b', ref_id: 'b_b', name: 'B', voltage_kv: 15 } as never,
+      ];
+      // brak sources!
+      snap.branches = [
+        { id: 'c1', ref_id: 'c1', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_b', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].energized).toBe(false);
+    });
+
+    it('supplyPath dostępny w SldDataPayload', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+      ];
+      snap.sources = [
+        { id: 'src', ref_id: 'src', name: 'Grid', bus_ref: 'b_a', model: 'short_circuit_power', sk3_mva: 250 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.supplyPath.energizedBusRefs).toContain('b_a');
+      expect(r.supplyPath.sourceRefs).toContain('src');
+    });
+
+    it('null snapshot → empty supplyPath', () => {
+      const r = buildSldDataFromSnapshot(null, null);
+      expect(r.supplyPath.energizedBusRefs).toEqual([]);
+      expect(r.supplyPath.sourceRefs).toEqual([]);
+    });
+  });
+
+  describe('endpoint port detection (E030)', () => {
+    it('kabel bez endpoint_a_port / endpoint_b_port → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_miss', ref_id: 'k_miss', name: 'K-MISS', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          // endpoint_a_port / endpoint_b_port pominięte celowo
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns).toHaveLength(1);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_miss']);
+    });
+
+    it('kabel z oba endpointami → missingEndpointPort=false', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_ok', ref_id: 'k_ok', name: 'K-OK', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          endpoint_a_port: { port_id: 'p_a' },
+          endpoint_b_port: { port_id: 'p_b' },
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(false);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual([]);
+    });
+
+    it('kabel z jednym brakującym portem → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_one', ref_id: 'k_one', name: 'K-ONE', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          endpoint_a_port: { port_id: 'p_a' },
+          // endpoint_b_port pominięty
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_one']);
+    });
+
+    it('linia napowietrzna bez portów → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'l_miss', ref_id: 'l_miss', name: 'L-MISS', tags: [], meta: {},
+          type: 'line_overhead', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 2, r_ohm_per_km: 0.3, x_ohm_per_km: 0.4,
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+    });
+  });
 });

@@ -557,8 +557,8 @@ describe('GpzCanonicalRenderer — replica GPZ-5 PST (Mikronika MIKRA reference)
     const { container, getByText } = render(<svg width={1800} height={1000}><GpzCanonicalRenderer {...props} /></svg>);
     expect(getByText('GPZ-5 PST')).toBeTruthy();
     expect(getByText('TRANSMISJA POPRAWNA')).toBeTruthy();
-    expect(getByText('-3.1')).toBeTruthy();
-    expect(getByText('-0.4')).toBeTruthy();
+    expect(getByText('-3.1 MW')).toBeTruthy();
+    expect(getByText('-0.4 MVAr')).toBeTruthy();
     // 2 transformatory
     expect(container.querySelectorAll('[data-testid^="gpz-canonical-transformer-"]')).toHaveLength(2);
     // 2 sekcje
