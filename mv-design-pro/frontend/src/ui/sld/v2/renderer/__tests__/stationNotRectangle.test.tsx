@@ -17,9 +17,9 @@ import { MiniBlockRmuRenderer } from '../MiniBlockRmuRenderer';
 import type { MiniBlockBayDescriptor } from '../MiniBlockRmuRenderer';
 
 const BAYS: MiniBlockBayDescriptor[] = [
-  { bayRef: 'bay_in', fieldRole: 'LINE_IN', designation: 'P1', hasMissingRequiredDevice: false },
-  { bayRef: 'bay_out', fieldRole: 'LINE_OUT', designation: 'P2', hasMissingRequiredDevice: false },
-  { bayRef: 'bay_tr', fieldRole: 'TRANSFORMER', designation: 'P3', hasMissingRequiredDevice: false },
+  { bayRef: 'bay_in', fieldRole: 'LINE_IN', designation: 'BAY-IN', hasMissingRequiredDevice: false },
+  { bayRef: 'bay_out', fieldRole: 'LINE_OUT', designation: 'BAY-OUT', hasMissingRequiredDevice: false },
+  { bayRef: 'bay_tr', fieldRole: 'TRANSFORMER', designation: 'BAY-TR', hasMissingRequiredDevice: false },
 ];
 
 describe('Mini-RMU: station NOT rectangle (PR 3 minimal guard)', () => {

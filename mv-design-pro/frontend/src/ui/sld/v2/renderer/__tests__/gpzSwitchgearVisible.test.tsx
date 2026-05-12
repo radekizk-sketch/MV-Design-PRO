@@ -36,7 +36,7 @@ const SECTIONS_LV: GpzSectionDescriptor[] = [
     order: 0,
     name: 'S1',
     busVoltageKv: 15,
-    bays: [makeBay('b1', 'P1'), makeBay('b2', 'P2')],
+    bays: [makeBay('b1', 'BAY-1'), makeBay('b2', 'BAY-2')],
     sectionLabel: 'S1',
   },
   {
@@ -44,7 +44,7 @@ const SECTIONS_LV: GpzSectionDescriptor[] = [
     order: 1,
     name: 'S2',
     busVoltageKv: 15,
-    bays: [makeBay('b3', 'P3'), makeBay('b4', 'P4')],
+    bays: [makeBay('b3', 'BAY-3'), makeBay('b4', 'BAY-4')],
     sectionLabel: 'S2',
   },
 ];
@@ -122,7 +122,7 @@ describe('GpzSwitchgearRenderer — visible structural elements (PR 3 minimal gu
         ...SECTIONS_LV[0],
         bays: [
           {
-            ...makeBay('b1', 'P1'),
+            ...makeBay('b1', 'BAY-1'),
             fieldRole: 'GPZ_LINE_BAY',
             outgoingFeeder: {
               destination: '→ ST-001 SADY',
