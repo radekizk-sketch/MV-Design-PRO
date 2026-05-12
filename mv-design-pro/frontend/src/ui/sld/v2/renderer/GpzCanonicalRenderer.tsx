@@ -208,7 +208,10 @@ const HV_BUS_Y = 180;
 const HV_BAY_HEIGHT = 80;
 const TR_AREA_Y = 280;
 const TR_HEIGHT = 80;
-const LV_BUS_GAP = 16;
+// Inżynierski wymóg: między dolnym zaciskiem TR a szyną SN musi być
+// pole transformatorowe (DS-CB-CT-ES). LV_BUS_GAP rezerwuje przestrzeń na
+// tę kolumnę aparatów.
+const LV_BUS_GAP = 110;
 const LV_SECTION_COUPLER_GAP = 72;
 const LV_SECTION_MIN_WIDTH = 260;
 const LV_BAY_HEIGHT = 250;
@@ -318,7 +321,9 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
       />
 
       {/* 3. Transformatory NA OSI sekcji (TR1 → Sekcja 1, TR2 → Sekcja 2).
-             Każdy TR pionowo łączy szynę 110 kV ze szyną SN swojej sekcji. */}
+             Każdy TR pionowo łączy szynę 110 kV z polem TR (a NIE bezpośrednio
+             z szyną SN — inżynierski wymóg: TR przyłączony przez pole TR z
+             aparaturą DS-CB-CT-ES). */}
       <TransformersBlock
         x={PAGE_PADDING}
         y={TR_AREA_Y}
@@ -326,8 +331,18 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
         transformers={props.transformers}
         lvSectionLayouts={lvSectionLayouts}
         hvBusY={HV_BUS_Y - TR_AREA_Y}
-        lvBusY={sectionsBlockY - TR_AREA_Y}
+        lvBusY={TR_HEIGHT + 8}
         onClickTransformer={props.onClickTransformer}
+      />
+
+      {/* 3a. Pola transformatorowe — kolumna aparatów (DS bus → CB → CT → ES)
+             między dolnym zaciskiem TR a szyną SN sekcji. */}
+      <TrFieldColumnsBlock
+        transformers={props.transformers}
+        lvSectionLayouts={lvSectionLayouts}
+        trBottomY={TR_AREA_Y + TR_HEIGHT + 8}
+        sectionsBlockY={sectionsBlockY}
+        onClickApparatus={props.onClickApparatus}
       />
 
       {/* 4. LV sections — szyny 15 kV + pola SN */}
@@ -590,6 +605,195 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
       })}
     </g>
   );
+}
+
+/* =============================================================================
+   TR Field Columns — pola transformatorowe między TR a szyną SN
+   ============================================================================= */
+
+interface TrFieldColumnsBlockProps {
+  readonly transformers: readonly CanonicalGpzTransformer[];
+  readonly lvSectionLayouts: readonly LvSectionLayout[];
+  /** Y dolnego zacisku TR (global, gdzie kończy się symbol Y/Δ). */
+  readonly trBottomY: number;
+  /** Y szyny SN sekcji (global). */
+  readonly sectionsBlockY: number;
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+}
+
+function TrFieldColumnsBlock(props: TrFieldColumnsBlockProps): JSX.Element {
+  const { transformers, lvSectionLayouts, trBottomY, sectionsBlockY, onClickApparatus } = props;
+  const sectionCenterById = new Map<string, number>();
+  for (const layout of lvSectionLayouts) {
+    sectionCenterById.set(layout.section.sectionId, layout.x + layout.width / 2);
+  }
+  const sectionsByOrder = lvSectionLayouts.slice().sort((a, b) => a.section.order - b.section.order);
+
+  return (
+    <g data-testid="gpz-canonical-tr-field-columns" data-parity-key="gpz.tr_fields">
+      {transformers.map((tr, idx) => {
+        let cx: number | null = null;
+        if (tr.lvSectionId && sectionCenterById.has(tr.lvSectionId)) {
+          cx = sectionCenterById.get(tr.lvSectionId)!;
+        } else if (sectionsByOrder[idx]) {
+          cx = sectionsByOrder[idx].x + sectionsByOrder[idx].width / 2;
+        }
+        if (cx === null) return null;
+        return (
+          <TrFieldColumn
+            key={`tr-field-${tr.transformerRef}-${idx}`}
+            cx={cx}
+            topY={trBottomY}
+            bottomY={sectionsBlockY}
+            transformerDesignation={tr.designation}
+            transformerRef={tr.transformerRef}
+            onClickApparatus={onClickApparatus}
+          />
+        );
+      })}
+    </g>
+  );
+}
+
+interface TrFieldColumnProps {
+  readonly cx: number;
+  readonly topY: number;
+  readonly bottomY: number;
+  readonly transformerDesignation: string;
+  readonly transformerRef: string;
+  readonly onClickApparatus?: (selection: CanonicalGpzApparatusSelection) => void;
+}
+
+/**
+ * Pole transformatorowe (TR field) — kolumna aparatów między dolnym zaciskiem
+ * TR a szyną SN sekcji.
+ *
+ * Kanon SCADA (od góry, czyli od TR, do dołu, czyli szyna SN):
+ *   1. Anchor TOP (dolny zacisk TR)
+ *   2. DS bus (odłącznik szynowy) — kółko
+ *   3. CB (wyłącznik) — kwadrat
+ *   4. CT (przekładnik prądowy) — 2 kółka mini
+ *   5. ES (uziemnik) — bok poziomy + arrow do ziemi
+ *   6. Anchor BOTTOM (szyna SN)
+ */
+function TrFieldColumn(props: TrFieldColumnProps): JSX.Element {
+  const { cx, topY, bottomY, transformerDesignation, transformerRef, onClickApparatus } = props;
+  const height = bottomY - topY;
+  // Pozycje 5 aparatów rozłożone równomiernie wzdłuż kolumny.
+  const dsBusY = topY + height * 0.18;
+  const cbY = topY + height * 0.38;
+  const ctY = topY + height * 0.58;
+  const esY = topY + height * 0.80;
+  const pseudoBay: CanonicalGpzBay = {
+    bayRef: `${transformerRef}__field`,
+    bayNumber: null,
+    feederName: `Pole ${transformerDesignation}`,
+    destinationLabel: null,
+    fieldRole: 'TRANSFORMER',
+    cbState: 'unknown',
+    dsState: 'unknown',
+    esState: 'unknown',
+    qDesignations: deriveTrQDesignations(),
+  };
+
+  const handleClick = (kind: CanonicalGpzApparatusKind, labelPl: string): void => {
+    if (!onClickApparatus) return;
+    onClickApparatus({
+      apparatusId: `${transformerRef}__field#${kind}`,
+      bayRef: pseudoBay.bayRef,
+      apparatusKind: kind,
+      designation: null,
+      labelPl,
+    });
+  };
+
+  return (
+    <g
+      data-testid={`gpz-canonical-tr-field-${transformerRef}`}
+      data-parity-key="gpz.tr_field"
+      data-tr-ref={transformerRef}
+    >
+      {/* Tor pionowy pola TR */}
+      <line
+        x1={cx}
+        y1={topY}
+        x2={cx}
+        y2={bottomY}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.5}
+      />
+
+      {/* DS bus — odłącznik szynowy (kółko) */}
+      <g
+        onClick={() => handleClick('disconnect_bus', 'Odłącznik szynowy pola TR')}
+        style={{ cursor: onClickApparatus ? 'pointer' : 'default' }}
+        data-testid={`gpz-canonical-tr-field-${transformerRef}-ds`}
+      >
+        <circle cx={cx} cy={dsBusY} r={6} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
+      </g>
+
+      {/* CB — wyłącznik (kwadrat) */}
+      <g
+        onClick={() => handleClick('breaker', 'Wyłącznik pola TR')}
+        style={{ cursor: onClickApparatus ? 'pointer' : 'default' }}
+        data-testid={`gpz-canonical-tr-field-${transformerRef}-cb`}
+      >
+        <rect
+          x={cx - 7}
+          y={cbY - 7}
+          width={14}
+          height={14}
+          fill="none"
+          stroke={COLOR_LINE_PRIMARY}
+          strokeWidth={1.5}
+        />
+      </g>
+
+      {/* CT — przekładnik prądowy (2 kółka) */}
+      <g
+        onClick={() => handleClick('ct', 'Przekładnik prądowy CT')}
+        style={{ cursor: onClickApparatus ? 'pointer' : 'default' }}
+        data-testid={`gpz-canonical-tr-field-${transformerRef}-ct`}
+      >
+        <circle cx={cx - 4} cy={ctY} r={4} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+        <circle cx={cx + 4} cy={ctY} r={4} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1} />
+      </g>
+
+      {/* ES — uziemnik (boczna kreska + arrow do ziemi po lewej) */}
+      <g
+        onClick={() => handleClick('earthing_switch', 'Uziemnik pola TR')}
+        style={{ cursor: onClickApparatus ? 'pointer' : 'default' }}
+        data-testid={`gpz-canonical-tr-field-${transformerRef}-es`}
+      >
+        <line x1={cx} y1={esY} x2={cx - 12} y2={esY} stroke="#FF4040" strokeWidth={1.5} />
+        <line x1={cx - 12} y1={esY - 3} x2={cx - 12} y2={esY + 3} stroke="#FF4040" strokeWidth={1.5} />
+        <line x1={cx - 15} y1={esY + 3} x2={cx - 9} y2={esY + 3} stroke="#FF4040" strokeWidth={1.5} />
+        <line x1={cx - 13} y1={esY + 5} x2={cx - 11} y2={esY + 5} stroke="#FF4040" strokeWidth={1.5} />
+      </g>
+
+      {/* Etykieta pola (np. "Pole TR1") */}
+      <text
+        x={cx + 18}
+        y={topY + 12}
+        fill={COLOR_TEXT_SECONDARY}
+        fontFamily={FONT_SANS}
+        fontSize={9}
+        fontWeight={600}
+      >
+        Pole {transformerDesignation}
+      </text>
+    </g>
+  );
+}
+
+function deriveTrQDesignations(): {
+  readonly cb?: string;
+  readonly dsBus?: string;
+  readonly dsLin?: string;
+  readonly es?: string;
+  readonly ct?: string;
+} {
+  return { dsBus: 'Q1', cb: 'Q0', es: 'Q9', ct: 'T1' };
 }
 
 interface TransformerSymbolProps {

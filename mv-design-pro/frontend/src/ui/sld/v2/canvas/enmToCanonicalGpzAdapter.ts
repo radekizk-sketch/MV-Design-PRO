@@ -86,6 +86,14 @@ export function buildCanonicalGpzProps(
   for (const sec of substation.gpz_sections ?? []) {
     if (sec.bus_ref) sectionIdByLvBusRef.set(sec.bus_ref, sec.section_id);
   }
+
+  const transformers = buildTransformers(allTransformers, sectionIdByLvBusRef);
+  // Inżynierski wymóg: TR WN/SN przyłączony do szyny SN przez pole TR z
+  // aparaturą (DS-CB-CT-ES). Pole TR jest renderowane przez `TrFieldColumn`
+  // w `GpzCanonicalRenderer` (nad szyną SN, pomiędzy TR a sekcją SN) —
+  // adapter NIE syntezuje pola TR jako bay (uniknięcie podwójnego renderu
+  // poniżej szyny SN).
+
   return {
     id: substation.ref_id,
     x: options.x,
@@ -97,7 +105,7 @@ export function buildCanonicalGpzProps(
     controlAvailability: options.controlAvailability,
     balance: options.balance,
     alarms: options.alarms,
-    transformers: buildTransformers(allTransformers, sectionIdByLvBusRef),
+    transformers,
     sections: lvSections,
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? []),
