@@ -1506,6 +1506,59 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     expect(r.gpzs[0].couplers?.[0]?.closed).toBe('closed');
   });
 
+  describe('SupplyPath integration (energized + openPoint propagation)', () => {
+    it('cable z aktywnym torem od źródła → energized=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+        { id: 'b_b', ref_id: 'b_b', name: 'B', voltage_kv: 15 } as never,
+      ];
+      snap.sources = [
+        { id: 'src', ref_id: 'src', name: 'Grid', bus_ref: 'b_a', model: 'short_circuit_power', sk3_mva: 250 } as never,
+      ];
+      snap.branches = [
+        { id: 'c1', ref_id: 'c1', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_b', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns).toHaveLength(1);
+      expect(r.cableRuns[0].energized).toBe(true);
+      expect(r.cableRuns[0].containsOpenPoint).toBe(false);
+    });
+
+    it('cable bez źródła → energized=false', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+        { id: 'b_b', ref_id: 'b_b', name: 'B', voltage_kv: 15 } as never,
+      ];
+      // brak sources!
+      snap.branches = [
+        { id: 'c1', ref_id: 'c1', name: 'C1', type: 'cable', from_bus_ref: 'b_a', to_bus_ref: 'b_b', status: 'closed', length_km: 1, r_ohm_per_km: 0.2, x_ohm_per_km: 0.08 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].energized).toBe(false);
+    });
+
+    it('supplyPath dostępny w SldDataPayload', () => {
+      const snap = buildEmptySnapshot();
+      snap.buses = [
+        { id: 'b_a', ref_id: 'b_a', name: 'A', voltage_kv: 15 } as never,
+      ];
+      snap.sources = [
+        { id: 'src', ref_id: 'src', name: 'Grid', bus_ref: 'b_a', model: 'short_circuit_power', sk3_mva: 250 } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.supplyPath.energizedBusRefs).toContain('b_a');
+      expect(r.supplyPath.sourceRefs).toContain('src');
+    });
+
+    it('null snapshot → empty supplyPath', () => {
+      const r = buildSldDataFromSnapshot(null, null);
+      expect(r.supplyPath.energizedBusRefs).toEqual([]);
+      expect(r.supplyPath.sourceRefs).toEqual([]);
+    });
+  });
+
   describe('endpoint port detection (E030)', () => {
     it('kabel bez endpoint_a_port / endpoint_b_port → missingEndpointPort=true', () => {
       const snap = buildEmptySnapshot();

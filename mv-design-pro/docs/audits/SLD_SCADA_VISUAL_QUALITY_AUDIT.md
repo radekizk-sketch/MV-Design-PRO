@@ -96,12 +96,12 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 | Sekcje SN GPZ | 7/10 | 8/10 | 9/10 | 9/10 | n/a | Sekcje + pola + couplery działają. |
 | Stacja mini-RMU | 7/10 | 8/10 | 8/10 | 8/10 | n/a | `MiniBlockRmuRenderer` z 4 wariantami footprintu (terminal/inline/branch/sectional). Mini-pola IN/OUT/TR/DER widoczne. Mini-szyna obecna. |
 | Kanon aparatów (CB/DS/ES/CT/VT/FUSE) | n/a | n/a | 9/10 | 9/10 | 9/10 | Kwadrat/kółko/romb/boczny czerwony — zgodne z goal. |
-| Tor mocy (zielony/czerwony) | 7/10 | 8/10 | 8/10 | 8/10 | n/a | Paleta `overlayTypes.ts` poprawna. **`SupplyPathHighlighter` zbudowany** — BFS od źródeł przez zamknięte łączniki + transformatory; openPoints dla NMO. Integracja w `SldCanvasV2` toggle „Pokaż tor zasilania" — PR 3 pełne. |
+| Tor mocy (zielony/czerwony) | 8/10 | 8/10 | 8/10 | 8/10 | n/a | Paleta `overlayTypes.ts` + **`SupplyPathHighlighter` zintegrowany w adapterze** — `cableRuns[].energized` i `cableRuns[].containsOpenPoint` propagowane z BFS. `SldDataPayload.supplyPath` udostępnia pełny wynik dla rendererów. Toggle „Pokaż tor zasilania" w `BuildSidebar` — PR 3 pełne. |
 | Połączenie kończy się w porcie | 0/10 | 0/10 | 0/10 | 0/10 | n/a | **Przed PR 1**: porty opcjonalne, brak warningu. **Po PR 1**: detekcja brakujących portów + warning marker + readiness blocker. **Cel 10/10** osiągalny dopiero po włączeniu flagi `ENM_STRICT_PORT_BINDING` (PR 1.b). |
 | Klikalność elementów | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Główne elementy klikalne; pełna macierz 26 typów elementów — PR 2 pełne. |
 | Deep link readiness → element | 3/10 | 3/10 | 3/10 | 3/10 | n/a | E030 deep link działa; pozostałe blockery bez wzbogaconych deep linków — PR 2 pełne. |
 | DER PCC visibility | 5/10 | 6/10 | 7/10 | 7/10 | n/a | Validator + renderery działają; brak dedykowanej zakładki PCC w E-21/E-22/E-23 — PR 4. |
-| Manufacturer flow | 7/10 | 7/10 | 7/10 | 7/10 | n/a | **Backend** warstwa + 10 kanonicznych fallbacków + 2 API endpointy (`GET /api/catalog/manufacturers`, `GET /api/catalog/complete-bay-templates?manufacturer_ref=...&bay_kind=...`) + **Frontend** `ManufacturerPicker.tsx` z badge „Wymaga uzupełnienia katalogu" + 7 testów. `SwitchgearFamilyPicker`, `BayTemplatePicker`, `BayTemplatePreview` + integracja w `StationConfigurator` — PR 5 frontend pełny. |
+| Manufacturer flow | 8/10 | 8/10 | 8/10 | 8/10 | n/a | **Backend** + 10 kanonicznych fallbacków + 2 API endpointy. **Frontend** 3 Pickery: `ManufacturerPicker.tsx` (7 testów), `SwitchgearFamilyPicker.tsx` (5 testów, fallback komunikat dla `requires_catalog`), `BayTemplatePicker.tsx` (8 testów, badge per source_status, filtr per bay_kind). Pozostała integracja w `StationConfigurator` + `BayTemplatePreview` — PR 5 frontend pełny. |
 
 ## 3. Verification commands (per acceptance gate)
 

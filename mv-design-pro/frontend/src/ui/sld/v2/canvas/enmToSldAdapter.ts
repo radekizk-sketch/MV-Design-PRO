@@ -62,6 +62,7 @@ import type {
   GpzSectionDescriptor,
 } from '../renderer/GpzSwitchgearRenderer';
 import { ENM_BAY_ROLE_TO_FIELD_ROLE, FIELD_ROLE } from '../domain/apparatusContracts';
+import { buildSupplyPathHighlight, type SupplyPathHighlight } from './SupplyPathHighlighter';
 
 // =============================================================================
 // Telemetry mapping (Phase 0B-1: BayRuntimeState → GpzBayDescriptor)
@@ -270,6 +271,13 @@ interface CableRunRendererPropsLight {
   /** Lista segmentów z brakującymi portami (do tooltip / panelu
    *  problemów). */
   missingPortSegmentRefs?: readonly string[];
+  /** Czy wszystkie segmenty są pod napięciem zgodnie z `SupplyPathHighlighter`
+   *  (topologia, nie fizyka). Renderer może użyć tej flagi do podświetlenia
+   *  zielonym torem mocy gdy aktywny jest tryb operatorski. */
+  energized?: boolean;
+  /** Czy któryś z segmentów jest punktem otwartym (NMO / status='open')
+   *  zgodnie z `SupplyPathHighlighter.openPointBranchRefs`. */
+  containsOpenPoint?: boolean;
 }
 
 function isCableLikeBranch(b: Branch): boolean {
@@ -309,7 +317,22 @@ export interface SldDataPayload {
   readonly cableRuns: CableRunRendererPropsLight[];
   readonly stations: StationOnRunRendererProps[];
   readonly ders: DerRendererProps[];
+  /** Wynik `SupplyPathHighlighter` — czysta topologia operatorska (bez fizyki).
+   *  Renderery mogą subskrybować flagę `energized` na poziomie cableRuns /
+   *  sections / stations, gdy tryb operatorski „Pokaż tor zasilania" jest
+   *  aktywny. */
+  readonly supplyPath: SupplyPathHighlight;
 }
+
+const EMPTY_SUPPLY_PATH_FROZEN: SupplyPathHighlight = Object.freeze({
+  energizedBusRefs: Object.freeze([]) as readonly string[],
+  energizedBranchRefs: Object.freeze([]) as readonly string[],
+  energizedTransformerRefs: Object.freeze([]) as readonly string[],
+  openPointBranchRefs: Object.freeze([]) as readonly string[],
+  energizedSubstationRefs: Object.freeze([]) as readonly string[],
+  energizedGeneratorRefs: Object.freeze([]) as readonly string[],
+  sourceRefs: Object.freeze([]) as readonly string[],
+});
 
 const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   gpzs: [],
@@ -317,6 +340,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   cableRuns: [],
   stations: [],
   ders: [],
+  supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
 });
 
 // =============================================================================
@@ -334,8 +358,29 @@ export function buildSldDataFromSnapshot(
   const stations = buildStations(snapshot);
   const cableRuns = buildCableRuns(snapshot, logicalViews, stations);
   const ders = buildDers(snapshot, stations);
+  const supplyPath = buildSupplyPathHighlight(snapshot);
 
-  return { gpzs, sections, cableRuns, stations, ders };
+  // Propaguj energized/openPoint na cableRuns na podstawie wyniku SupplyPath.
+  const energizedBranchSet = new Set(supplyPath.energizedBranchRefs);
+  const openPointSet = new Set(supplyPath.openPointBranchRefs);
+  const cableRunsAnnotated = cableRuns.map((run) => {
+    const refs = run.segmentRefs ?? [];
+    if (refs.length === 0) {
+      return run;
+    }
+    const allEnergized = refs.every((ref) => energizedBranchSet.has(ref));
+    const anyOpenPoint = refs.some((ref) => openPointSet.has(ref));
+    return { ...run, energized: allEnergized, containsOpenPoint: anyOpenPoint };
+  });
+
+  return {
+    gpzs,
+    sections,
+    cableRuns: cableRunsAnnotated,
+    stations,
+    ders,
+    supplyPath,
+  };
 }
 
 // -----------------------------------------------------------------------------
