@@ -147,6 +147,11 @@ export interface CanonicalGpzTransformer {
   readonly uhvKv: number;
   readonly ulvKv: number;
   readonly vectorGroup: string | null; // "Dyn11" itp.
+  /** Sekcja SN do której podłączony jest dolny zacisk TR. null gdy mapowanie
+   *  nie istnieje — renderer ustawia TR na środku kanwy (legacy). */
+  readonly lvSectionId?: string | null;
+  /** Ref szyny HV (110 kV) — do oznaczenia kierunku zasilania. */
+  readonly hvBusRef?: string | null;
 }
 
 export interface CanonicalGpzHvSection {
@@ -312,12 +317,16 @@ export function GpzCanonicalRenderer(props: GpzCanonicalRendererProps): JSX.Elem
         transformerCount={props.transformers.length}
       />
 
-      {/* 3. Transformatory NA OSI */}
+      {/* 3. Transformatory NA OSI sekcji (TR1 → Sekcja 1, TR2 → Sekcja 2).
+             Każdy TR pionowo łączy szynę 110 kV ze szyną SN swojej sekcji. */}
       <TransformersBlock
         x={PAGE_PADDING}
         y={TR_AREA_Y}
         width={totalWidth - PAGE_PADDING * 2}
         transformers={props.transformers}
+        lvSectionLayouts={lvSectionLayouts}
+        hvBusY={HV_BUS_Y - TR_AREA_Y}
+        lvBusY={sectionsBlockY - TR_AREA_Y}
         onClickTransformer={props.onClickTransformer}
       />
 
@@ -402,6 +411,43 @@ function HvSection(props: HvSectionProps): JSX.Element {
 
   return (
     <g data-testid="gpz-canonical-hv" data-parity-key="gpz.hv" transform={`translate(${x}, ${y})`}>
+      {/* Wskaźnik źródła systemu 110 kV — strzałka kierunku zasilania
+          z lewej strony szyny (kanon SCADA: zasilanie przychodzi z systemu). */}
+      <g data-testid="gpz-canonical-hv-source-indicator" data-parity-key="gpz.hv.source">
+        <line
+          x1={SECTION_LABEL_WIDTH - 28}
+          y1={0}
+          x2={SECTION_LABEL_WIDTH}
+          y2={0}
+          stroke={COLOR_BUS_HV}
+          strokeWidth={2.5}
+        />
+        <polygon
+          points={`${SECTION_LABEL_WIDTH - 32},-5 ${SECTION_LABEL_WIDTH - 32},5 ${SECTION_LABEL_WIDTH - 24},0`}
+          fill={COLOR_BUS_HV}
+        />
+        <text
+          x={SECTION_LABEL_WIDTH - 40}
+          y={-4}
+          textAnchor="end"
+          fill={COLOR_TEXT_PRIMARY}
+          fontFamily={FONT_SANS}
+          fontSize={10}
+          fontWeight={700}
+        >
+          System
+        </text>
+        <text
+          x={SECTION_LABEL_WIDTH - 40}
+          y={7}
+          textAnchor="end"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_MONO}
+          fontSize={10}
+        >
+          110 kV
+        </text>
+      </g>
       {/* HV bus 110 kV — pozioma szyna */}
       <line
         x1={SECTION_LABEL_WIDTH}
@@ -485,11 +531,16 @@ interface TransformersBlockProps {
   readonly y: number;
   readonly width: number;
   readonly transformers: readonly CanonicalGpzTransformer[];
+  readonly lvSectionLayouts: readonly LvSectionLayout[];
+  /** Y szyny 110 kV w lokalnym układzie bloku TR (translate y = TR_AREA_Y). */
+  readonly hvBusY: number;
+  /** Y szyny SN (LV) w lokalnym układzie bloku TR. */
+  readonly lvBusY: number;
   readonly onClickTransformer?: (ref: string) => void;
 }
 
 function TransformersBlock(props: TransformersBlockProps): JSX.Element {
-  const { x, y, width, transformers, onClickTransformer } = props;
+  const { x, y, width, transformers, lvSectionLayouts, hvBusY, lvBusY, onClickTransformer } = props;
   if (transformers.length === 0) {
     return (
       <g data-testid="gpz-canonical-transformers-empty" data-parity-key="gpz.transformer.missing" transform={`translate(${x}, ${y})`}>
@@ -501,20 +552,42 @@ function TransformersBlock(props: TransformersBlockProps): JSX.Element {
     );
   }
 
-  // Rozłóż transformatory równomiernie wzdłuż osi X.
-  const trGap = (width - transformers.length * TR_WIDTH) / (transformers.length + 1);
+  // Mapuj sectionId → center X (w globalnym układzie kanwy GPZ — przed translate).
+  const sectionCenterById = new Map<string, number>();
+  for (const layout of lvSectionLayouts) {
+    sectionCenterById.set(layout.section.sectionId, layout.x + layout.width / 2);
+  }
+
+  // Dla każdego TR wyznacz X w lokalnym układzie tego bloku (y = TR_AREA_Y).
+  const sectionsByOrder = lvSectionLayouts
+    .slice()
+    .sort((a, b) => a.section.order - b.section.order);
 
   return (
     <g data-testid="gpz-canonical-transformers" data-parity-key="gpz.transformers" transform={`translate(${x}, ${y})`}>
-      {transformers.map((tr, idx) => (
-        <TransformerSymbol
-          key={`tr-${tr.transformerRef}-${idx}`}
-          x={trGap + idx * (TR_WIDTH + trGap)}
-          y={0}
-          transformer={tr}
-          onClick={onClickTransformer}
-        />
-      ))}
+      {transformers.map((tr, idx) => {
+        let centerGlobalX: number | null = null;
+        if (tr.lvSectionId && sectionCenterById.has(tr.lvSectionId)) {
+          centerGlobalX = sectionCenterById.get(tr.lvSectionId)!;
+        } else if (sectionsByOrder[idx]) {
+          // Fallback: TR po indeksie sekcji (TR1 → S1, TR2 → S2).
+          const fallback = sectionsByOrder[idx];
+          centerGlobalX = fallback.x + fallback.width / 2;
+        }
+        // Lokalny X (kontener jest translate'owany o `x`).
+        const localX = centerGlobalX !== null ? centerGlobalX - x - TR_WIDTH / 2 : (width - TR_WIDTH) / 2;
+        return (
+          <TransformerSymbol
+            key={`tr-${tr.transformerRef}-${idx}`}
+            x={localX}
+            y={0}
+            transformer={tr}
+            hvBusY={hvBusY}
+            lvBusY={lvBusY}
+            onClick={onClickTransformer}
+          />
+        );
+      })}
     </g>
   );
 }
@@ -523,12 +596,18 @@ interface TransformerSymbolProps {
   readonly x: number;
   readonly y: number;
   readonly transformer: CanonicalGpzTransformer;
+  /** Y szyny 110 kV (lokalnie do bloku TR). */
+  readonly hvBusY: number;
+  /** Y szyny SN (lokalnie do bloku TR). */
+  readonly lvBusY: number;
   readonly onClick?: (ref: string) => void;
 }
 
 function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
-  const { x, y, transformer, onClick } = props;
+  const { x, y, transformer, hvBusY, lvBusY, onClick } = props;
   const cx = TR_WIDTH / 2;
+  const hvWindingY = 20;
+  const lvWindingY = 48;
   return (
     <g
       data-testid={`gpz-canonical-transformer-${transformer.transformerRef}`}
@@ -537,23 +616,50 @@ function TransformerSymbol(props: TransformerSymbolProps): JSX.Element {
       onClick={onClick ? (e) => { e.stopPropagation(); onClick(transformer.transformerRef); } : undefined}
       style={{ cursor: onClick ? 'pointer' : 'default' }}
     >
-      {/* Pionowy tor TR (od HV bus do LV bus) */}
-      <line x1={cx} y1={-LV_BUS_GAP} x2={cx} y2={TR_HEIGHT + LV_BUS_GAP} stroke={COLOR_LINE_PRIMARY} strokeWidth={2} />
+      {/* HV connector: od szyny 110 kV DO górnego zacisku TR (Y). */}
+      <line
+        x1={cx}
+        y1={hvBusY}
+        x2={cx}
+        y2={hvWindingY - 14}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={2}
+        data-parity-key="gpz.transformer.hv_connector"
+      />
+      {/* LV connector: od dolnego zacisku TR DO szyny SN sekcji. */}
+      <line
+        x1={cx}
+        y1={lvWindingY + 14}
+        x2={cx}
+        y2={lvBusY}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={2}
+        data-parity-key="gpz.transformer.lv_connector"
+      />
+      {/* Krótkie połączenie między uzwojeniami (środek symbolu). */}
+      <line
+        x1={cx}
+        y1={hvWindingY + 14}
+        x2={cx}
+        y2={lvWindingY - 14}
+        stroke={COLOR_LINE_PRIMARY}
+        strokeWidth={1.5}
+      />
       {/* Górny okrąg (HV) z markerem Y */}
-      <circle cx={cx} cy={20} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.hv" />
-      <text x={cx} y={24} textAnchor="middle" fill={COLOR_LINE_PRIMARY} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>Y</text>
+      <circle cx={cx} cy={hvWindingY} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.hv" />
+      <text x={cx} y={hvWindingY + 4} textAnchor="middle" fill={COLOR_LINE_PRIMARY} fontFamily={FONT_SANS} fontSize={11} fontWeight={700}>Y</text>
       {/* Dolny okrąg (LV) z markerem Δ */}
-      <circle cx={cx} cy={48} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.sn" />
-      <polygon points={`${cx - 6},${56} ${cx + 6},${56} ${cx},${42}`} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
+      <circle cx={cx} cy={lvWindingY} r={14} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={2} data-parity-key="gpz.transformer.winding.sn" />
+      <polygon points={`${cx - 6},${lvWindingY + 8} ${cx + 6},${lvWindingY + 8} ${cx},${lvWindingY - 6}`} fill="none" stroke={COLOR_LINE_PRIMARY} strokeWidth={1.5} />
       {/* Etykieta: TR1 */}
-      <text x={cx + 22} y={26} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
+      <text x={cx + 22} y={hvWindingY + 6} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>
         {transformer.designation}
       </text>
       {/* Moc + napięcia */}
-      <text x={cx + 22} y={40} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
+      <text x={cx + 22} y={hvWindingY + 20} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
         {transformer.snMva.toFixed(1)} MVA
       </text>
-      <text x={cx + 22} y={52} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
+      <text x={cx + 22} y={hvWindingY + 32} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={FONT_SIZES.numericValue}>
         {transformer.uhvKv}/{transformer.ulvKv} kV
       </text>
     </g>
