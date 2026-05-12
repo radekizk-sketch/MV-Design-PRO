@@ -37,6 +37,12 @@ export const URL_PARAMS = {
   DIAGNOSTIC_LAYER: 'diag_layer',
   /** Protection layer visibility (1|0) (PR-SLD-09) */
   PROTECTION_LAYER: 'prot_layer',
+  /** Semantic SLD element kind, used by engineering inspector restore */
+  SEMANTIC_ELEMENT_KIND: 'kind',
+  /** Semantic engineering role, used by engineering inspector restore */
+  SEMANTIC_ENGINEERING_ROLE: 'role',
+  /** Deterministic semantic hash, used only as a routing hint */
+  SEMANTIC_HASH: 'sh',
 } as const;
 
 /**
@@ -61,6 +67,56 @@ const VALID_ELEMENT_TYPES: ElementType[] = [
   'Switch',
   'Source',
   'Load',
+  'Generator',
+  'Measurement',
+  'ProtectionAssignment',
+  'Terminal',
+  'PortBranch',
+  'Station',
+  'BranchPole',
+  'ZKSN',
+  'BaySN',
+  'Relay',
+  'SecondaryLink',
+  'NOP',
+  'BusNN',
+  'MainBreakerNN',
+  'FeederNN',
+  'SegmentNN',
+  'LoadNN',
+  'SwitchboardNN',
+  'SourceFieldNN',
+  'PVInverter',
+  'BESSInverter',
+  'EnergyStorage',
+  'Genset',
+  'UPS',
+  'EnergyMeter',
+  'PowerQualityMeter',
+  'SurgeArresterNN',
+  'Earthing',
+  'MeasurementNN',
+  'AuxBus',
+  'ConnectionPoint',
+  'SwitchNN',
+  'ProtectionNN',
+  'SourceController',
+  'InternalJunction',
+  'CableJointNN',
+  'FaultCurrentLimiter',
+  'FilterCompensator',
+  'TelecontrolDevice',
+  'BusSectionNN',
+  'BusCouplerNN',
+  'ReserveLink',
+  'SourceDisconnect',
+  'PowerLimit',
+  'WorkProfile',
+  'OperatingMode',
+  'ConnectionConstraints',
+  'MeteringBlock',
+  'SyncPoint',
+  'DescriptiveElement',
 ];
 
 
@@ -91,6 +147,15 @@ export function encodeSelectionToParams(
     params.set(URL_PARAMS.SELECTION_ID, selection.id);
     params.set(URL_PARAMS.SELECTION_TYPE, selection.type);
     params.set(URL_PARAMS.SELECTION_NAME, selection.name);
+    if (selection.semanticElementKind) {
+      params.set(URL_PARAMS.SEMANTIC_ELEMENT_KIND, selection.semanticElementKind);
+    }
+    if (selection.semanticEngineeringRole) {
+      params.set(URL_PARAMS.SEMANTIC_ENGINEERING_ROLE, selection.semanticEngineeringRole);
+    }
+    if (selection.semanticHash) {
+      params.set(URL_PARAMS.SEMANTIC_HASH, selection.semanticHash);
+    }
   }
 
   return params;
@@ -110,6 +175,9 @@ export function decodeSelectionFromParams(
   const id = params.get(URL_PARAMS.SELECTION_ID);
   const type = params.get(URL_PARAMS.SELECTION_TYPE);
   const name = params.get(URL_PARAMS.SELECTION_NAME);
+  const semanticElementKind = params.get(URL_PARAMS.SEMANTIC_ELEMENT_KIND) ?? undefined;
+  const semanticEngineeringRole = params.get(URL_PARAMS.SEMANTIC_ENGINEERING_ROLE) ?? undefined;
+  const semanticHash = params.get(URL_PARAMS.SEMANTIC_HASH) ?? undefined;
 
   // All three params required for valid selection
   if (!id || !type || !name) {
@@ -125,7 +193,14 @@ export function decodeSelectionFromParams(
     return null;
   }
 
-  return { id, type, name };
+  return {
+    id,
+    type,
+    name,
+    ...(semanticElementKind ? { semanticElementKind } : {}),
+    ...(semanticEngineeringRole ? { semanticEngineeringRole } : {}),
+    ...(semanticHash ? { semanticHash } : {}),
+  };
 }
 
 /**
@@ -185,6 +260,9 @@ export function updateUrlWithSelection(selection: SelectedElement | null): void 
   params.delete(URL_PARAMS.SELECTION_ID);
   params.delete(URL_PARAMS.SELECTION_TYPE);
   params.delete(URL_PARAMS.SELECTION_NAME);
+  params.delete(URL_PARAMS.SEMANTIC_ELEMENT_KIND);
+  params.delete(URL_PARAMS.SEMANTIC_ENGINEERING_ROLE);
+  params.delete(URL_PARAMS.SEMANTIC_HASH);
 
   const selectionParams = encodeSelectionToParams(selection);
   for (const [key, value] of selectionParams.entries()) {
@@ -330,6 +408,15 @@ export function updateUrlWithSelectionAndDiagnostics(
     params.set(URL_PARAMS.SELECTION_ID, selection.id);
     params.set(URL_PARAMS.SELECTION_TYPE, selection.type);
     params.set(URL_PARAMS.SELECTION_NAME, selection.name);
+    if (selection.semanticElementKind) {
+      params.set(URL_PARAMS.SEMANTIC_ELEMENT_KIND, selection.semanticElementKind);
+    }
+    if (selection.semanticEngineeringRole) {
+      params.set(URL_PARAMS.SEMANTIC_ENGINEERING_ROLE, selection.semanticEngineeringRole);
+    }
+    if (selection.semanticHash) {
+      params.set(URL_PARAMS.SEMANTIC_HASH, selection.semanticHash);
+    }
   }
 
   // Add diagnostics params

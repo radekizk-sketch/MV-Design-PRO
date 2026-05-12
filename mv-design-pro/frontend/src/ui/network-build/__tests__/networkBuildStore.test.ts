@@ -13,6 +13,7 @@ import {
   computeBuildPhase,
   selectOpenTerminals,
   selectConfiguredGridSourceSnFields,
+  selectOzeSourceSummaries,
   selectBlockersByCategory,
   selectActiveOperationForm,
   buildPhaseLabel,
@@ -78,6 +79,40 @@ describe('computeBuildPhase', () => {
     const lv = { trunks: [{ id: 't1', segments: ['seg-1'] }], terminals: [], branches: [] } as unknown as LogicalViewsV1;
     const readiness = { ready: true, blockers: [] } as ReadinessInfo;
     expect(computeBuildPhase(enm, lv, readiness)).toBe('READY');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests: selectOzeSourceSummaries
+// ---------------------------------------------------------------------------
+
+describe('selectOzeSourceSummaries', () => {
+  it('wiąże PV po stronie nN ze stacją także dla generatora z refem stacji w metadanych', () => {
+    const enm = {
+      ...emptyENM(),
+      generators: [
+        {
+          ref_id: 'pv-nn-1',
+          name: 'Falownik PV 0,4 kV',
+          bus_ref: 'bus-nn-1',
+          p_mw: 0.5,
+          gen_type: 'pv_inverter',
+          connection_variant: 'nn_side',
+          meta: {
+            station_ref: 'st-pv-1',
+          },
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    expect(selectOzeSourceSummaries(enm)).toEqual([
+      expect.objectContaining({
+        id: 'pv-nn-1',
+        stationRef: 'st-pv-1',
+        genType: 'pv_inverter',
+        hasTransformer: true,
+      }),
+    ]);
   });
 });
 

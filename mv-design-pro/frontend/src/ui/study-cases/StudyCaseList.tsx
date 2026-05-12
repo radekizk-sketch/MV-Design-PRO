@@ -141,7 +141,7 @@ export function StudyCaseList({
     <div className="relative" onClick={closeContextMenu}>
       <div className="flex items-center justify-between border-b border-gray-200 px-2 py-1">
         <span className="text-xs font-medium text-gray-700">
-          Przypadki obliczeniowe ({cases.length})
+          Zakresy obliczeń ({cases.length})
         </span>
         {createProjectId && !createDisabled ? (
           <a
@@ -173,7 +173,7 @@ export function StudyCaseList({
 
       {cases.length === 0 ? (
         <div className="p-4 text-center text-xs text-gray-400">
-          Brak przypadków obliczeniowych.
+          Brak zakresów obliczeń.
           <br />
           Utwórz pierwszy zakres obliczeń.
         </div>

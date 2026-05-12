@@ -1,31 +1,24 @@
 /**
- * Testy E-21/E-22/E-23 surface'ów (Faza E: integracja z useStationDerStore).
- *
- * Po Fazie E surface'y czytają DER ze store'a `useStationDerStore` zamiast
- * hint'ów statycznych. Testy weryfikują:
- *  - empty state (brak entityRef)
- *  - render z DER ze store'a
- *  - breadcrumb z station_context
- *  - KPI cards (punkt przyłączenia, moc, profil NC RfG)
+ * Testy E-21/E-22/E-23: powierzchnie konfiguracji PV/BESS/FW z useStationDerStore.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it } from 'vitest';
 
-import { PvSourceSurface, BessSurface, FwSurface } from '../DerSurfaces';
-import { useStationDerStore } from '../../../network-build/station-der';
+import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
+import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
 
 const FROZEN_NOW = '2026-05-06T10:00:00Z';
 
-function makeSurface(entityRef: string | null) {
+function makeSurface(entityRef: string | null, payload: Record<string, unknown> = {}) {
   return {
     surfaceId: 'surface-test',
     screenCode: 'E-21' as const,
     titlePl: 'Test',
     entityRef,
     entityType: null,
-    routeState: { payload: {} },
+    routeState: { payload },
     breadcrumbs: [],
     supportsMiniSld: false,
     supportsChildren: false,
@@ -37,7 +30,7 @@ function makeSurface(entityRef: string | null) {
   } as never;
 }
 
-describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => {
+describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
   beforeEach(() => {
     useStationDerStore.getState().reset();
     useSnapshotStore.getState().reset();
@@ -49,7 +42,7 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
     expect(screen.getByText(/Brak referencji do źródła OZE/)).toBeInTheDocument();
   });
 
-  it('PvSourceSurface z entityRef i DER w store pokazuje breadcrumb + KPI', () => {
+  it('PvSourceSurface pokazuje zaawansowaną konfigurację falownika i profili', () => {
     useStationDerStore.getState().attachDer({
       id: 'der_pv_1',
       project_id: 'p',
@@ -60,21 +53,59 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
       pcc_ref: 'pcc_001',
       bay_ref: 'bay_001',
       voltage_level_ref: null,
-      catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
-      profiles: { nc_rfg_profile_ref: 'ncrfg_pse' },
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        ct_catalog_ref: 'ct_500_5_10p20',
+        vt_catalog_ref: 'vt_15kv_100v_3p',
+      },
+      profiles: {
+        nc_rfg_profile_ref: 'ncrfg_pse',
+        lvrt_curve_ref: 'lvrt_pse_b',
+        hvrt_curve_ref: 'hvrt_pse_b',
+        pf_curve_ref: 'pf_pse_2024',
+      },
       nominal_power_kw: 2500,
       created_at: FROZEN_NOW,
     });
+    useStationDerStore.getState().updateDerReadiness('der_pv_1', {
+      ...EMPTY_DER_READINESS,
+      sc_3f: 'partial',
+      sc_1f: 'partial',
+      vdrop: 'ready',
+      q_u: 'ready',
+      protection: 'partial',
+      protection_selectivity: 'partial',
+      frt: 'ready',
+      hvrt: 'ready',
+      nc_rfg: 'ready',
+      report_osd: 'partial',
+      report_technical: 'partial',
+    });
 
     render(<PvSourceSurface surface={makeSurface('der_pv_1')} />);
+
     expect(screen.getAllByText('PV Centralna 1').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
-    expect(screen.getByText('po stronie SN')).toBeInTheDocument();
+    expect(screen.getByText(/Konfigurator falownika PV/)).toBeInTheDocument();
+    expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
+    expect(screen.getAllByText(/SMA Sunny Central 2500-EV/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('po stronie SN').length).toBeGreaterThan(0);
     expect(screen.getAllByText('2500 kW').length).toBeGreaterThan(0);
     expect(screen.getByText(/PSE/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('der-card-tab-frt-hvrt'));
+    expect(screen.getByText('Model dynamiczny')).toBeInTheDocument();
+    expect(screen.getByText(/PV grid-following typowy/)).toBeInTheDocument();
+    expect(screen.getByText('LVRT')).toBeInTheDocument();
+    expect(screen.getByText('HVRT')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
+    expect(screen.getByText('Rozpływ mocy')).toBeInTheDocument();
+    expect(screen.getByText('Zabezpieczenia DER')).toBeInTheDocument();
+    expect(screen.getByText('Funkcje ANSI wymagane')).toBeInTheDocument();
+    expect(screen.getByText(/50, 51/)).toBeInTheDocument();
   });
 
-  it('PvSourceSurface odtwarza DER z ENM snapshot po odswiezeniu lokalnego store', () => {
+  it('PvSourceSurface odtwarza DER z ENM snapshot po odświeżeniu lokalnego store', () => {
     useSnapshotStore.setState({
       snapshot: {
         header: {
@@ -101,9 +132,17 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
             bus_ref: 'bus_lv_1',
             p_mw: 0.5,
             gen_type: 'pv_inverter',
-            catalog_ref: 'pv_inv_500',
+            catalog_ref: 'pv_inv_huawei_185',
             station_ref: 'station_snapshot',
             connection_variant: 'nn_side',
+            materialized_params: {
+              profiles: {
+                nc_rfg_profile_ref: 'ncrfg_pse',
+                lvrt_curve_ref: 'lvrt_pse_b',
+                hvrt_curve_ref: 'hvrt_pse_b',
+                pf_curve_ref: 'pf_pse_2024',
+              },
+            },
           },
         ],
         substations: [
@@ -133,10 +172,29 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
     expect(screen.getByTestId('der-breadcrumb')).toBeInTheDocument();
     expect(screen.queryByText('0.5 MW')).not.toBeInTheDocument();
     expect(screen.getAllByText('500 kW').length).toBeGreaterThan(0);
-    expect(screen.getByText('pv_inv_500')).toBeInTheDocument();
+    expect(screen.getAllByText(/Huawei SUN2000-185KTL/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('pv_inv_huawei_185')).not.toBeInTheDocument();
   });
 
-  it('BessSurface (E-22) renderuje konfigurator BESS z derKind=BESS', () => {
+  it('PvSourceSurface nie gubi falownika przekazanego z SLD, gdy snapshot nie ma jeszcze generatora', () => {
+    render(<PvSourceSurface surface={makeSurface('stn/st-001/nn_source/pv_inverter', {
+      derId: 'stn/st-001/nn_source/pv_inverter',
+      derName: 'Falownik PV 0.5 MW / 0.4 kV nN',
+      derRole: 'PV_INVERTER',
+    })} />);
+
+    expect(screen.getAllByText('Falownik PV 0.5 MW / 0.4 kV nN').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Brak referencji/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Falownik wybrany na schemacie/)).toBeInTheDocument();
+    expect(screen.getByText(/brakuje pełnego wpisu OZE/)).toBeInTheDocument();
+    expect(document.body.textContent ?? '').not.toMatch(/Ĺ|Ä|Ă|Â|â€|�/);
+    expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
+    expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
+    expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
+    expect(screen.getByText('Gotowość obliczeń')).toBeInTheDocument();
+  });
+
+  it('BessSurface (E-22) renderuje konfigurator PCS BESS z katalogiem i profilem', () => {
     useStationDerStore.getState().attachDer({
       id: 'der_bess_1',
       project_id: 'p',
@@ -157,10 +215,10 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
 
     render(<BessSurface surface={makeSurface('der_bess_1')} />);
     expect(screen.getByTestId('bess-surface')).toBeInTheDocument();
-    expect(screen.getByText(/Konfigurator BESS/)).toBeInTheDocument();
+    expect(screen.getByText(/Konfigurator PCS BESS/)).toBeInTheDocument();
     expect(screen.getByText('PCS / falowniki')).toBeInTheDocument();
-    expect(screen.getByText('Bateria + tryby pracy')).toBeInTheDocument();
-    expect(screen.getByText('po stronie nN')).toBeInTheDocument();
+    expect(screen.getByText('Bateria i tryby pracy')).toBeInTheDocument();
+    expect(screen.getAllByText('po stronie nN').length).toBeGreaterThan(0);
     expect(screen.getByText(/Energa-Operator/)).toBeInTheDocument();
   });
 
@@ -185,8 +243,6 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
     expect(screen.getByText(/Konfigurator farmy wiatrowej/)).toBeInTheDocument();
     expect(screen.getByText('Turbiny')).toBeInTheDocument();
     expect(screen.getByText('Sieć wewnętrzna farmy')).toBeInTheDocument();
-    // "transformator dedykowany" pojawia się 2× (breadcrumb + KPI) — używamy
-    // getAllByText.
     expect(screen.getAllByText('transformator dedykowany').length).toBeGreaterThan(0);
   });
 
@@ -210,7 +266,7 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
     expect(breadcrumb.textContent).toContain('station_xyz');
   });
 
-  it('KPI "Profil NC RfG" wyświetla MISSING_DASH gdy brak profilu', () => {
+  it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {
     useStationDerStore.getState().attachDer({
       id: 'der_no_profile',
       project_id: 'p',
@@ -220,13 +276,12 @@ describe('E-21/E-22/E-23 surface\'y — integracja z useStationDerStore', () => 
       connection_side: 'SN',
       pcc_ref: 'pcc_y',
       catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
-      profiles: {}, // brak NC RfG
+      profiles: {},
       nominal_power_kw: 2500,
       created_at: FROZEN_NOW,
     });
 
     render(<PvSourceSurface surface={makeSurface('der_no_profile')} />);
-    // Surface ma 3 KPI cards. "Profil NC RfG" → MISSING_DASH (—)
     const surface = screen.getByTestId('pv-source-surface');
     expect(surface.textContent).toContain('—');
   });

@@ -2,13 +2,13 @@
  * ResultStatusBar Component (Canonical-grade)
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md Â§ B.2: Result freshness display
- * - SYSTEM_SPEC.md Â§ 5: Explicit calculation trigger
+ * - ui_canonical_parity.md § B.2: Result freshness display
+ * - SYSTEM_SPEC.md § 5: Explicit calculation trigger
  *
  * DISPLAYS:
  * - Current result status (NONE/FRESH/OUTDATED)
  * - PF-like status message
- * - Analysis type selector (SC 3F, SC 1F, RozpĹ‚yw mocy)
+ * - Analysis type selector (SC 3F, SC 1F, Rozpływ mocy)
  * - [Oblicz] button (explicit calculation trigger)
  * - Last run timestamp and element count summary
  *
@@ -32,13 +32,13 @@ export type CalculationAnalysisType = 'SC_3F' | 'SC_1F' | 'LOAD_FLOW';
 const ANALYSIS_TYPE_LABELS: Record<CalculationAnalysisType, string> = {
   SC_3F: 'Zwarcie 3F (IEC 60909)',
   SC_1F: 'Zwarcie 1F (IEC 60909)',
-  LOAD_FLOW: 'RozpĹ‚yw mocy (Newton-Raphson)',
+  LOAD_FLOW: 'Rozpływ mocy (Newton-Raphson)',
 };
 
 const ANALYSIS_TYPE_SHORT: Record<CalculationAnalysisType, string> = {
   SC_3F: 'Zwarcie 3F',
   SC_1F: 'Zwarcie 1F',
-  LOAD_FLOW: 'RozpĹ‚yw mocy',
+  LOAD_FLOW: 'Rozpływ mocy',
 };
 
 interface Props {
@@ -155,7 +155,7 @@ export function ResultStatusBar({
               title={validationErrors.join('\n')}
               data-testid="validation-error-count"
             >
-              {validationErrors.length} bĹ‚ąd(Ăłw)
+              {validationErrors.length} błąd/błędy
             </span>
           )}
 
@@ -189,9 +189,9 @@ export function ResultStatusBar({
             title={
               !canRun
                 ? !analysisAvailable
-                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} — model nie speĹ‚nia wymagaĹ„`
+                  ? `${ANALYSIS_TYPE_LABELS[selectedAnalysis]} — model nie spełnia wymagań`
                   : validationErrors.length > 0
-                  ? 'Popraw bĹ‚ędy walidacji przed obliczeniem'
+                  ? 'Popraw błędy walidacji przed obliczeniem'
                   : isCalculating
                   ? 'Obliczenia w toku...'
                   : 'Uruchom obliczenia'
@@ -220,11 +220,11 @@ export function ResultStatusBar({
             <div className="flex items-center gap-3" data-testid="element-counts-summary">
               <span>Szyny: <span className="font-medium text-gray-700">{elementCounts.buses}</span></span>
               <span className="text-gray-300">|</span>
-              <span>GaĹ‚ęzie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
+              <span>Gałęzie: <span className="font-medium text-gray-700">{elementCounts.branches}</span></span>
               <span className="text-gray-300">|</span>
               <span>Transformatory: <span className="font-medium text-gray-700">{elementCounts.transformers}</span></span>
               <span className="text-gray-300">|</span>
-              <span>ĹąrĂłdĹ‚a: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
+              <span>Źródła: <span className="font-medium text-gray-700">{elementCounts.sources}</span></span>
               <span className="text-gray-300">|</span>
               <span>Odbiory: <span className="font-medium text-gray-700">{elementCounts.loads}</span></span>
               {elementCounts.generators > 0 && (

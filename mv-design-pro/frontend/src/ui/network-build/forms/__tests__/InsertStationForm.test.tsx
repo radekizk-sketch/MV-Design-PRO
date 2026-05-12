@@ -91,6 +91,15 @@ const transformerTypes = [
 
 const converterTypes = [
   {
+    id: 'PV-04',
+    name: 'Falownik PV 0,4 kV',
+    manufacturer: 'PV Test',
+    kind: 'PV' as const,
+    un_kv: 0.4,
+    sn_mva: 0.5,
+    pmax_mw: 0.45,
+  },
+  {
     id: 'PV-069',
     name: 'Falownik PV 0,69 kV',
     manufacturer: 'PV Test',
@@ -98,6 +107,15 @@ const converterTypes = [
     un_kv: 0.69,
     sn_mva: 0.8,
     pmax_mw: 0.75,
+  },
+  {
+    id: 'PV-15',
+    name: 'Falownik farmowy PV 15 kV',
+    manufacturer: 'PV Test',
+    kind: 'PV' as const,
+    un_kv: 15,
+    sn_mva: 5,
+    pmax_mw: 4.8,
   },
   {
     id: 'BESS-08',
@@ -357,6 +375,42 @@ describe('InsertStationForm', () => {
     });
   });
 
+  it('zamienia ref magistrali przekazany jako segment na istniejacy odcinek przed zapisem', async () => {
+    networkBuildState.activeOperationForm.context = {
+      segment_id: 'gpz/1/corridor_01',
+      position_on_segment: 0.5,
+      station_type: 'inline',
+    };
+    snapshotState.snapshot = {
+      ...baseSnapshot,
+      branches: [
+        { ref_id: 'gpz/1/corridor_01/segment_001', from_bus_ref: 'bus-sn', to_bus_ref: 'bus-sn' },
+      ],
+      corridors: [
+        { ref_id: 'gpz/1/corridor_01', ordered_segment_refs: ['gpz/1/corridor_01/segment_001'] },
+      ],
+    };
+    executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
+
+    render(<InsertStationForm />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    });
+
+    fireEvent.click(screen.getByTestId('station-submit'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          segment_id: 'gpz/1/corridor_01/segment_001',
+        }),
+      );
+    });
+  });
+
   it('dla PV pobiera napięcie strony nN z katalogu falownika i dobiera transformator o tym samym LV', async () => {
     executeDomainOperationMock.mockResolvedValue({ snapshot: { header: { name: 'case-1' } } });
 
@@ -392,13 +446,40 @@ describe('InsertStationForm', () => {
             nn_configuration: 'PV_INVERTER',
             source_converter_catalog_ref: 'PV-069',
             source_converter_un_kv: 0.69,
+            source_converter_name: 'Falownik PV 0,69 kV',
+            source_protection: expect.objectContaining({
+              device_catalog_ref: 'EM_ETANGO_400_V0',
+              device_label: 'Elektrometal e2TANGO-400',
+              protected_object: 'falownik PV i kabel nN do PCC',
+            }),
             outgoing_feeders_nn: expect.arrayContaining([
-              expect.objectContaining({ feeder_role: 'ZRODLO_NN_PV' }),
+              expect.objectContaining({
+                feeder_role: 'ZRODLO_NN_PV',
+                protection: expect.objectContaining({
+                  device_catalog_ref: 'EM_ETANGO_400_V0',
+                  analysis_scope: expect.stringContaining('koordynacja'),
+                }),
+              }),
             ]),
           }),
         }),
       );
     });
+  });
+
+  it('dla PV za transformatorem pokazuje tylko falowniki po stronie nN i wybiera zgodny katalog bez zgadywania', async () => {
+    render(<InsertStationForm />);
+
+    fireEvent.click(screen.getByRole('button', { name: /PV przez falownik/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('Falownik z katalogu-entries')).toHaveTextContent('PV-04');
+    });
+    expect(screen.getByTestId('Falownik z katalogu-entries')).toHaveTextContent('PV-069');
+    expect(screen.getByTestId('Falownik z katalogu-entries')).not.toHaveTextContent('PV-15');
+    expect((screen.getByLabelText('Falownik z katalogu') as HTMLSelectElement).value).toBe('PV-04');
+    expect(screen.getByTestId('transformer-options')).toHaveTextContent('TR-15-04');
+    expect(screen.getByTestId('station-side-low')).toHaveTextContent('0,4 kV');
   });
 
   it('blokuje zapis, gdy falownik wymaga napięcia bez zgodnego transformatora katalogowego', async () => {

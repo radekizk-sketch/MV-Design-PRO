@@ -1,0 +1,124 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { InspectorEngineeringView } from '../InspectorEngineeringView';
+
+const openOperationForm = vi.fn();
+
+const snapshot = {
+  buses: [
+    {
+      ref_id: 'bus-sn-1',
+      name: 'Szyna SN 1',
+      voltage_kv: 15,
+    },
+  ],
+  branches: [],
+  branch_points: [],
+  transformers: [],
+  sources: [],
+  substation: [],
+  substations: [],
+  bays: [
+    {
+      id: 'bay-1',
+      ref_id: 'bay_ref_1',
+      name: 'Pole liniowe 1',
+      bay_role: 'OUT',
+      substation_ref: 'gpz-1',
+      bus_ref: 'bus-sn-1',
+      equipment_refs: [],
+    },
+  ],
+  generators: [],
+  loads: [],
+};
+
+let mockSelectedElements: Array<{ id: string; type: string; name: string }> = [];
+let mockReadinessIssues: Array<{
+  severity: string;
+  element_ref: string | null;
+  element_refs: string[];
+  message_pl: string;
+}> = [];
+
+vi.mock('../networkBuildStore', () => ({
+  useNetworkBuildStore: (selector: (state: { openOperationForm: typeof openOperationForm }) => unknown) =>
+    selector({ openOperationForm }),
+}));
+
+vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: typeof mockSelectedElements }) => unknown) =>
+    selector({ selectedElements: mockSelectedElements }),
+}));
+
+vi.mock('../../topology/snapshotStore', () => ({
+  useSnapshotStore: (selector: (state: unknown) => unknown) =>
+    selector({ snapshot, logicalViews: null }),
+}));
+
+vi.mock('../../engineering-readiness/readinessLiveStore', () => ({
+  useReadinessLiveStore: (selector: (state: { issues: typeof mockReadinessIssues }) => unknown) =>
+    selector({ issues: mockReadinessIssues }),
+}));
+
+vi.mock('../../field/useFieldReadModel', () => ({
+  useFieldReadModel: () => ({
+    data: { fields: [] },
+    itemsByBayRef: new Map(),
+    itemsByBayId: new Map(),
+    isLoading: false,
+    error: null,
+  }),
+}));
+
+vi.mock('../../app-state', () => ({
+  useAppStateStore: (selector: (state: { activeMode: string }) => unknown) =>
+    selector({ activeMode: 'MODEL_EDIT' }),
+}));
+
+describe('InspectorEngineeringView - aparaty pola SN', () => {
+  beforeEach(() => {
+    openOperationForm.mockReset();
+    mockReadinessIssues = [];
+  });
+
+  it('pokazuje właściwości klikniętego wyłącznika SN w prawym panelu', () => {
+    mockSelectedElements = [{
+      id: 'bay_ref_1#breaker',
+      type: 'Switch',
+      name: 'Wyłącznik SN - Pole liniowe 1',
+    }];
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.getByText('Parametry aparatu')).toBeInTheDocument();
+    expect(screen.getByText('Wyłącznik SN')).toBeInTheDocument();
+    expect(screen.getByText('Łączenie robocze i zwarciowe pola')).toBeInTheDocument();
+    expect(screen.getByText('Pole liniowe 1')).toBeInTheDocument();
+    expect(screen.queryByText('Zaznacz element na SLD')).not.toBeInTheDocument();
+  });
+
+  it('udostępnia wyprowadzenie ciągu wyłącznie z głowicy odpływowej pola SN', () => {
+    mockSelectedElements = [{
+      id: 'bay_ref_1#cable_head',
+      type: 'Switch',
+      name: 'Głowica kablowa / port odpływowy - Pole liniowe 1',
+    }];
+
+    render(<InspectorEngineeringView />);
+
+    expect(screen.getByText('Wyprowadzenie sieci SN')).toBeInTheDocument();
+    expect(screen.getByText('Wyprowadź ciąg główny z głowicy')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Wyprowadź ciąg główny z głowicy'));
+
+    expect(openOperationForm).toHaveBeenCalledWith(
+      'continue_trunk_segment_sn',
+      expect.objectContaining({
+        field_ref: 'bay_ref_1',
+        bay_ref: 'bay_ref_1',
+        terminal_name: expect.stringContaining('Głowica kablowa'),
+      }),
+    );
+  });
+});

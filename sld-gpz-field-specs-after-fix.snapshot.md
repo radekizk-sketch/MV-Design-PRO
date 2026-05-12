@@ -1,0 +1,75 @@
+- generic [ref=e4]:
+  - generic [ref=e6]:
+    - button [disabled] [ref=e7]:
+      - generic [ref=e8]: ↶
+      - generic [ref=e9]: Cofnij
+    - button [disabled] [ref=e10]:
+      - generic [ref=e11]: ↷
+      - generic [ref=e12]: Ponów
+  - banner [ref=e13]:
+    - generic [ref=e14]:
+      - generic [ref=e15]: MV-DESIGN-PRO
+      - generic [ref=e16]: "12.2"
+    - generic "Kontekst projektu" [ref=e17]:
+      - button "Projekt Audyt UI UX 2026" [ref=e18] [cursor=pointer]
+      - button "Cel / stan Zwarcie maksymalne IEC 60909 · Stan projektowany 2026" [ref=e22] [cursor=pointer]
+      - button "Konfiguruj zakres" [ref=e28] [cursor=pointer]
+      - generic "Brak wyników" [ref=e29]
+    - generic [ref=e33]:
+      - generic [ref=e34]: 16:45:22
+      - generic [ref=e35]: 09.05.2026
+    - generic [ref=e36]:
+      - button "Sprawdź braki danych" [ref=e37] [cursor=pointer]
+      - button "Nakładka" [ref=e43] [cursor=pointer]
+      - button "Analizy" [ref=e47] [cursor=pointer]
+      - button "Eksport" [ref=e51] [cursor=pointer]
+      - button "Ustawienia" [ref=e55] [cursor=pointer]
+  - generic [ref=e59]:
+    - generic [ref=e60]:
+      - 'generic "Faza budowy modelu: Gotowy do analizy" [ref=e61]'
+      - 'generic "Blokady: T=0 K=0 E=0" [ref=e65]'
+      - generic [ref=e68]
+      - generic [ref=e73]
+      - generic [ref=e76]
+      - generic [ref=e79]
+      - generic [ref=e82]
+      - generic [ref=e85]
+      - generic [ref=e88]
+    - generic [ref=e91]:
+      - button "Szukaj" [ref=e92] [cursor=pointer]
+      - button "Katalog" [ref=e97] [cursor=pointer]
+      - button "Przeglądy" [ref=e102] [cursor=pointer]
+      - button "Metadane" [ref=e107] [cursor=pointer]
+      - button "Historia" [ref=e112] [cursor=pointer]
+  - generic [ref=e117]:
+    - navigation "Pasek obszarów roboczych" [ref=e118]:
+      - generic [ref=e119]
+    - complementary [ref=e182]:
+      - button "Ukryj lewy pasek boczny" [ref=e183] [cursor=pointer]
+      - generic [ref=e186]
+    - img [ref=e333]:
+      - generic [ref=e335]
+      - generic [ref=e462]: LOD 1 · 32%
+    - complementary [ref=e463]:
+      - generic [ref=e464]
+      - generic [ref=e470]
+  - generic "Pasek statusu aplikacji" [ref=e570]:
+    - generic [ref=e571]:
+      - generic [ref=e572]: "Bieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026."
+      - generic [ref=e573]: Schemat / Model
+      - generic [ref=e574]: "|"
+      - generic [ref=e575]
+      - generic [ref=e578]: "|"
+      - generic [ref=e579]
+      - generic [ref=e582]: "|"
+      - generic [ref=e583]
+      - generic [ref=e586]: "|"
+      - generic [ref=e587]
+      - generic [ref=e590]: "|"
+      - generic [ref=e591]: Edycja
+    - generic [ref=e592]:
+      - generic [ref=e593]: Brak wyników
+      - generic [ref=e594]: "|"
+      - generic [ref=e595]: ▲ 1 ostrzeżenie
+      - generic [ref=e596]: "|"
+      - generic [ref=e597]

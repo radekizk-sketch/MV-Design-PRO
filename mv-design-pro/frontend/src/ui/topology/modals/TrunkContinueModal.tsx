@@ -2,16 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CatalogPicker, type CatalogEntry } from './CatalogPicker';
 
 export type SegmentKind = 'KABEL_SN' | 'LINIA_NAPOWIETRZNA';
-export type GeometryMode = 'ODCINEK_PROSTY' | 'ZALAMANIE' | 'RASTER';
-export type Direction = 'N' | 'E' | 'S' | 'W';
 
 export interface TrunkContinueFormData {
   segment_kind: SegmentKind;
   length_m: number;
   catalog_ref: string | null;
   notes: string;
-  geometry_mode: GeometryMode;
-  direction: Direction;
 }
 
 interface TrunkContinueModalProps {
@@ -38,6 +34,20 @@ interface FieldError {
   message: string;
 }
 
+const DEFAULT_DATA: TrunkContinueFormData = {
+  segment_kind: 'KABEL_SN',
+  length_m: 0,
+  catalog_ref: null,
+  notes: '',
+};
+
+const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
+  KABEL_SN: 'Kabel SN',
+  LINIA_NAPOWIETRZNA: 'Linia napowietrzna SN',
+};
+
+const LENGTH_PRESETS = [100, 250, 500, 700, 1000];
+
 function validateForm(data: TrunkContinueFormData): FieldError[] {
   const errors: FieldError[] = [];
 
@@ -45,64 +55,100 @@ function validateForm(data: TrunkContinueFormData): FieldError[] {
     errors.push({ field: 'segment_kind', message: 'Rodzaj odcinka jest wymagany.' });
   }
 
-  if (data.length_m <= 0) {
-    errors.push({ field: 'length_m', message: 'Długość musi być większa od 0 m.' });
+  if (!Number.isFinite(data.length_m) || data.length_m <= 0) {
+    errors.push({ field: 'length_m', message: 'Podaj długość odcinka większą od 0 m.' });
   }
 
   if (!data.catalog_ref) {
-    errors.push({ field: 'catalog_ref', message: 'Wybór typu z katalogu jest wymagany.' });
+    errors.push({ field: 'catalog_ref', message: 'Wybierz typ z katalogu SN.' });
   }
 
   return errors;
 }
 
-const DEFAULT_DATA: TrunkContinueFormData = {
-  segment_kind: 'KABEL_SN',
-  length_m: 0,
-  catalog_ref: null,
-  notes: '',
-  geometry_mode: 'ODCINEK_PROSTY',
-  direction: 'E',
-};
-
-const SEGMENT_KIND_LABELS: Record<SegmentKind, string> = {
-  KABEL_SN: 'Kabel SN',
-  LINIA_NAPOWIETRZNA: 'Linia napowietrzna',
-};
-
-const GEOMETRY_MODE_LABELS: Record<GeometryMode, string> = {
-  ODCINEK_PROSTY: 'Odcinek prosty',
-  ZALAMANIE: 'Załamanie',
-  RASTER: 'Siatka pomocnicza',
-};
-
-const DIRECTION_LABELS: Record<Direction, string> = {
-  N: 'Północ (N)',
-  E: 'Wschód (E)',
-  S: 'Południe (S)',
-  W: 'Zachód (W)',
-};
-
 function engineeringTrunkLabel(trunkId: string): string {
   if (!trunkId.trim()) {
-    return 'Pierwszy odcinek magistrali SN';
+    return 'Nowy ciąg główny SN';
   }
 
   const indexedMatch = trunkId.match(/(?:corridor|trunk|magistrala)[_-]?(\d+)/i);
   if (indexedMatch?.[1]) {
-    return `Magistrala SN ${Number(indexedMatch[1])}`;
+    return `Ciąg główny SN ${Number(indexedMatch[1])}`;
   }
 
-  return 'Magistrala SN';
+  return 'Ciąg główny SN';
 }
 
 function engineeringPortLabel(portId: string): string {
   const normalized = portId.trim().toLowerCase();
-  if (!normalized) return 'zacisk pola SN';
-  if (normalized.includes('branch')) return 'zacisk odgałęźny SN';
-  if (normalized.includes('out')) return 'zacisk wyjściowy pola SN';
-  if (normalized.includes('in')) return 'zacisk wejściowy pola SN';
-  return 'zacisk pola SN';
+  if (normalized === 'trunk_end') return 'wolny koniec ciągu SN';
+  if (!normalized) return 'głowica odpływowa pola SN';
+  if (normalized.includes('branch')) return 'głowica odgałęzienia SN';
+  if (normalized.includes('out')) return 'głowica odpływowa pola SN';
+  if (normalized.includes('in')) return 'głowica wejściowa pola SN';
+  return 'głowica odpływowa pola SN';
+}
+
+function formatValue(value: number | undefined, unit: string, fractionDigits = 2): string {
+  if (value === undefined || !Number.isFinite(value)) return 'brak danych';
+  return `${value.toLocaleString('pl-PL', {
+    maximumFractionDigits: fractionDigits,
+  })} ${unit}`;
+}
+
+function techRows(entry: CatalogEntry | null, segmentKind: SegmentKind) {
+  if (!entry) return [];
+
+  return [
+    ['Napięcie znamionowe', formatValue(entry.voltage_rating_kv, 'kV', 1)],
+    ['Przekrój żył', formatValue(entry.cross_section_mm2, 'mm²', 0)],
+    ['Obciążalność długotrwała', formatValue(entry.rated_current_a, 'A', 0)],
+    ['Rezystancja R', formatValue(entry.r_ohm_per_km, 'Ω/km', 4)],
+    ['Reaktancja X', formatValue(entry.x_ohm_per_km, 'Ω/km', 4)],
+    [
+      segmentKind === 'KABEL_SN' ? 'Pojemność C' : 'Susceptancja B',
+      segmentKind === 'KABEL_SN'
+        ? formatValue(entry.c_nf_per_km, 'nF/km', 1)
+        : formatValue(entry.b_us_per_km, 'uS/km', 1),
+    ],
+    ['Materiał żył', entry.conductor_material || 'brak danych'],
+    ['Izolacja', entry.insulation_type || (segmentKind === 'KABEL_SN' ? 'brak danych' : 'nie dotyczy')],
+    ['Temperatura dopuszczalna', formatValue(entry.max_temperature_c, '°C', 0)],
+    ['Norma / standard', entry.standard || 'brak danych'],
+  ];
+}
+
+function normativeRows(segmentKind: SegmentKind) {
+  if (segmentKind === 'KABEL_SN') {
+    return [
+      ['Zakres normowy', 'PN-HD 620 / IEC 60502-2; obciążalność według IEC 60287'],
+      ['Warunki do sprawdzenia', 'temperatura gruntu, rezystywność cieplna gruntu, głębokość ułożenia, sposób ułożenia'],
+      ['Współczynniki korekcyjne', 'kg dla grupowania torów, korekta temperatury, korekta gruntu i osłon rurowych'],
+    ];
+  }
+
+  return [
+    ['Zakres normowy', 'PN-EN 50341; przewody według PN-EN 50182 / IEC 61089'],
+    ['Warunki do sprawdzenia', 'temperatura powietrza, wiatr, nasłonecznienie, sadź, naprężenia mechaniczne'],
+    ['Współczynniki korekcyjne', 'korekta temperatury przewodu, warunków chłodzenia i obciążeń klimatycznych'],
+  ];
+}
+
+function lengthLabel(lengthM: number): string {
+  if (!Number.isFinite(lengthM) || lengthM <= 0) return 'nie podano';
+  if (lengthM >= 1000) return `${(lengthM / 1000).toLocaleString('pl-PL')} km`;
+  return `${lengthM.toLocaleString('pl-PL')} m`;
+}
+
+function saveBlockerLabel(reason: string | null, hasCatalog: boolean, lengthM: number): string | null {
+  if (reason) {
+    return 'Nie znaleziono wolnego portu wyjściowego SN dla wybranego obiektu. Wybierz głowicę odpływową pola SN albo stację na końcu ciągu.';
+  }
+  if (!hasCatalog) return 'Wybierz typ katalogowy odcinka SN.';
+  if (!Number.isFinite(lengthM) || lengthM <= 0) {
+    return 'Podaj długość odcinka lub wybierz typową długość.';
+  }
+  return null;
 }
 
 export function TrunkContinueModal({
@@ -139,6 +185,27 @@ export function TrunkContinueModal({
     }
   }, [isOpen, initialData]);
 
+  const activeCatalogEntries = useMemo(
+    () => (formData.segment_kind === 'LINIA_NAPOWIETRZNA' ? lineCatalogEntries : cableCatalogEntries),
+    [cableCatalogEntries, formData.segment_kind, lineCatalogEntries],
+  );
+
+  useEffect(() => {
+    if (!isOpen || catalogLoading || formData.catalog_ref || activeCatalogEntries.length === 0) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      catalog_ref: activeCatalogEntries[0].id,
+    }));
+  }, [activeCatalogEntries, catalogLoading, formData.catalog_ref, isOpen]);
+
+  const selectedCatalogEntry = useMemo(
+    () => activeCatalogEntries.find((entry) => entry.id === formData.catalog_ref) ?? null,
+    [activeCatalogEntries, formData.catalog_ref],
+  );
+
   const handleChange = useCallback((field: keyof TrunkContinueFormData, value: unknown) => {
     setFormData((prev) => ({
       ...prev,
@@ -151,233 +218,306 @@ export function TrunkContinueModal({
   const handleSubmit = useCallback(() => {
     const validationErrors = validateForm(formData);
     setErrors(validationErrors);
-    if (validationErrors.length === 0) {
+    if (validationErrors.length === 0 && !submitDisabled) {
       onSubmit(formData);
     }
-  }, [formData, onSubmit]);
+  }, [formData, onSubmit, submitDisabled]);
 
   const getFieldError = (field: string): string | undefined => {
     if (!touched.has(field) && errors.length === 0) return undefined;
-    return errors.find((e) => e.field === field)?.message;
+    return errors.find((error) => error.field === field)?.message;
   };
-
-  const activeCatalogEntries = useMemo(
-    () => (formData.segment_kind === 'LINIA_NAPOWIETRZNA' ? lineCatalogEntries : cableCatalogEntries),
-    [cableCatalogEntries, formData.segment_kind, lineCatalogEntries],
-  );
 
   if (!isOpen) return null;
 
-  const terminalDisplayName = terminalName || terminalId;
+  const terminalDisplayName = terminalName || engineeringPortLabel(terminalPortId);
   const trunkDisplayName = engineeringTrunkLabel(trunkId);
   const terminalPortDisplayName = engineeringPortLabel(terminalPortId);
+  const startsFromOpenEndpoint = terminalPortId.trim().toLowerCase() === 'trunk_end';
+  const rows = techRows(selectedCatalogEntry, formData.segment_kind);
+  const normRows = normativeRows(formData.segment_kind);
+  const catalogDisplayName = selectedCatalogEntry?.name ?? SEGMENT_KIND_LABELS[formData.segment_kind];
+  const sourceLabel = startsFromOpenEndpoint
+    ? 'Port wyjściowy stacji / wolny koniec ciągu SN'
+    : 'Głowica odpływowa pola SN';
+  const sourceHint = startsFromOpenEndpoint
+    ? 'Kontynuacja zaczyna się za istniejącą stacją albo na wolnym końcu odcinka. Kolejny obiekt będzie końcem tworzonego odcinka.'
+    : 'Odcinek zaczyna się dokładnie w głowicy odpływowej pola SN. Sekcja i szyna są tylko kontekstem rozdzielni.';
+  const nextStepOptions = [
+    'Wstaw stację SN/nN',
+    'Wstaw ZK SN',
+    'Wstaw słup rozgałęźny',
+    'Kontynuuj kolejny odcinek',
+  ];
+  const formBlockedReason = saveBlockerLabel(
+    submitDisabledReason,
+    Boolean(formData.catalog_ref),
+    formData.length_m,
+  );
+  const buttonDisabled = submitDisabled || !formData.catalog_ref || formData.length_m <= 0;
+
   const sectionTitleClass =
     'mb-3 font-mono-eng text-[11px] font-bold uppercase tracking-[0.22em] text-[#19e6ff]';
   const labelClass =
     'mb-1 block font-mono-eng text-[11px] font-semibold uppercase tracking-[0.12em] text-[#8eb1cf]';
   const inputClass =
     'w-full border border-[#28425f] bg-[#07111c] px-3 py-2 font-mono-eng text-sm text-[#e6f4ff] outline-none focus:border-[#04d6ff]';
-  const readOnlyInputClass = `${inputClass} text-[#8fb3d1]`;
   const selectClass = `${inputClass} disabled:border-[#22364e] disabled:bg-[#050c14] disabled:text-[#607d99]`;
-  const sectionDividerClass = 'border-t border-[#17314c] pt-4';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#010711]/75 backdrop-blur-sm">
       <div
-        className="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="mx-4 max-h-[92vh] w-full max-w-4xl overflow-y-auto border border-[#24405d] bg-[#07111c] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
         data-testid="trunk-continue-modal"
+        data-terminal-id={terminalId || undefined}
       >
         <div className="border-b border-[#17314c] bg-[#081522] px-6 py-4">
-          <h2 className="font-mono-eng text-lg font-semibold text-white">
-            {mode === 'create' ? 'Połącz zacisk pola SN z odcinkiem' : 'Edycja odcinka magistrali'}
+          <p className="font-mono-eng text-[11px] font-bold uppercase tracking-[0.22em] text-[#19e6ff]">
+            Budowa ciągu SN
+          </p>
+          <h2 className="mt-1 font-mono-eng text-xl font-semibold text-white">
+            {mode === 'create'
+              ? startsFromOpenEndpoint
+                ? 'Kontynuuj ciąg SN z wybranego portu'
+                : 'Wyprowadź odcinek z głowicy pola SN'
+              : 'Edycja odcinka SN'}
           </h2>
-          <p className="mt-1 font-mono-eng text-xs text-[#8eb1cf]">
-            {trunkDisplayName} &middot; Zacisk: {terminalDisplayName}
+          <p className="mt-2 text-sm text-[#a8c7e2]">
+            {startsFromOpenEndpoint
+              ? 'Nowy odcinek zostanie dołączony do wolnego portu wyjściowego SN. Dalej wybierzesz stację, ZK SN, słup albo kolejny odcinek.'
+              : 'Odcinek zostanie przypięty do konkretnej głowicy odpływowej pola SN. Sekcja i szyna są tylko kontekstem rozdzielni.'}
           </p>
         </div>
 
-        <div className="space-y-4 px-6 py-4">
-          <div>
-            <h3 className={sectionTitleClass}>Kontekst pola</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Magistrala</label>
-                <input
-                  type="text"
-                  value={trunkDisplayName}
-                  readOnly
-                  className={readOnlyInputClass}
-                />
+        <div className="grid gap-5 px-6 py-5 lg:grid-cols-[1fr_320px]">
+          <div className="space-y-5">
+            <section>
+              <h3 className={sectionTitleClass}>Kontekst elektryczny</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="border border-[#17314c] bg-[#0a1724] p-3 sm:col-span-2">
+                  <span className="block text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">
+                    {sourceLabel}
+                  </span>
+                  <strong className="mt-1 block text-sm text-white">{terminalDisplayName}</strong>
+                </div>
+                <div className="border border-[#17314c] bg-[#0a1724] p-3">
+                  <span className="block text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">
+                    Rola portu
+                  </span>
+                  <strong className="mt-1 block text-sm text-white">{terminalPortDisplayName}</strong>
+                  <span className="mt-1 block text-[11px] text-[#8fb3d1]">
+                    {terminalVoltageLabel || 'Napięcie niepodane w modelu'}
+                  </span>
+                </div>
+                <div className="border border-[#17314c] bg-[#0a1724] p-3 sm:col-span-2">
+                  <span className="block text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">
+                    Ciąg zasilania
+                  </span>
+                  <strong className="mt-1 block text-sm text-white">{trunkDisplayName}</strong>
+                  <span className="mt-1 block text-[11px] text-[#8fb3d1]">
+                    Dalej: utwórz odcinek, a w następnym kroku zakończ go stacją, ZK SN albo punktem
+                    rozgałęźnym.
+                  </span>
+                </div>
               </div>
-              <div>
-                <label className={labelClass}>Zacisk źródłowy</label>
-                <input
-                  type="text"
-                  value={terminalDisplayName}
-                  readOnly
-                  className={readOnlyInputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Rola zacisku</label>
-                <input
-                  type="text"
-                  value={terminalPortDisplayName}
-                  readOnly
-                  className={readOnlyInputClass}
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Napięcie odniesienia</label>
-                <input
-                  type="text"
-                  value={terminalVoltageLabel}
-                  readOnly
-                  className={readOnlyInputClass}
-                />
-              </div>
-            </div>
-          </div>
+            </section>
 
-          {submitDisabledReason && (
-            <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
-              {submitDisabledReason}
-            </div>
-          )}
-
-          <div>
-            <h3 className={sectionTitleClass}>Dane wymagane</h3>
-
-            <div className="mb-3">
-              <label className={labelClass}>Rodzaj odcinka</label>
-              <select
-                value={formData.segment_kind}
-                onChange={(e) => handleChange('segment_kind', e.target.value)}
-                disabled={lockSegmentKind}
-                className={`${selectClass} ${
-                  getFieldError('segment_kind') ? 'border-[#ff4d4d]' : ''
-                }`}
-              >
-                {Object.entries(SEGMENT_KIND_LABELS).map(([val, label]) => (
-                  <option key={val} value={val}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              {getFieldError('segment_kind') && (
-                <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('segment_kind')}</p>
-              )}
-              {lockSegmentKind && (
-                <p className="mt-1 text-xs text-[#607d99]">
-                  Rodzina odcinka została ustalona w poprzednim kroku i nie jest tutaj zmieniana.
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label className={labelClass}>Długość [m]</label>
-              <input
-                type="number"
-                value={formData.length_m}
-                onChange={(e) => handleChange('length_m', parseFloat(e.target.value) || 0)}
-                step="1"
-                min="0"
-                className={`${inputClass} ${
-                  getFieldError('length_m') ? 'border-[#ff4d4d]' : ''
-                }`}
-                placeholder="np. 350"
-              />
-              {getFieldError('length_m') && (
-                <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('length_m')}</p>
-              )}
-            </div>
-          </div>
-
-          <div className={sectionDividerClass}>
-            <h3 className={sectionTitleClass}>Katalog</h3>
-
-            {catalogLoading ? (
-              <div className="border border-[#174c75] bg-[#071b2b] px-3 py-2 text-xs text-[#a8c7e2]">
-                Ładowanie katalogu kabli i linii SN...
-              </div>
-            ) : activeCatalogEntries.length > 0 ? (
-              <CatalogPicker
-                label={
-                  formData.segment_kind === 'LINIA_NAPOWIETRZNA'
-                    ? 'Typ linii z katalogu'
-                    : 'Typ kabla z katalogu'
-                }
-                entries={activeCatalogEntries}
-                selectedId={formData.catalog_ref ?? ''}
-                onChange={(id) => handleChange('catalog_ref', id || null)}
-                required
-                error={getFieldError('catalog_ref')}
-                placeholder="Wyszukaj typ w katalogu SN"
-              />
-            ) : (
+            {formBlockedReason && (
               <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
-                {catalogLoadError ?? 'Brak pozycji katalogowych dla wybranego rodzaju odcinka.'}
+                {formBlockedReason}
               </div>
             )}
 
-            <div className="flex items-start gap-2 border border-[#174c75] bg-[#071b2b] px-3 py-2">
-              <span className="mt-0.5 text-sm font-bold text-[#19e6ff]">i</span>
-              <p className="text-xs text-[#a8c7e2]">
-                Wybór katalogu jest wymagany przed utworzeniem odcinka.
-              </p>
-            </div>
-          </div>
+            <section>
+              <h3 className={sectionTitleClass}>Odcinek do utworzenia</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>Rodzaj odcinka</label>
+                  <select
+                    value={formData.segment_kind}
+                    onChange={(event) => handleChange('segment_kind', event.target.value)}
+                    disabled={lockSegmentKind}
+                    className={`${selectClass} ${
+                      getFieldError('segment_kind') ? 'border-[#ff4d4d]' : ''
+                    }`}
+                  >
+                    {Object.entries(SEGMENT_KIND_LABELS).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  {getFieldError('segment_kind') && (
+                    <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('segment_kind')}</p>
+                  )}
+                </div>
 
-          <div className={sectionDividerClass}>
-            <h3 className={sectionTitleClass}>Geometria</h3>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={labelClass}>Sposób prowadzenia</label>
-                <select
-                  value={formData.geometry_mode}
-                  onChange={(e) => handleChange('geometry_mode', e.target.value)}
-                  className={selectClass}
-                >
-                  {Object.entries(GEOMETRY_MODE_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className={labelClass}>Długość [m]</label>
+                  <input
+                    type="number"
+                    value={formData.length_m || ''}
+                    onChange={(event) => {
+                      const next = Number(event.target.value);
+                      handleChange('length_m', Number.isFinite(next) ? next : 0);
+                    }}
+                    step="1"
+                    min="0"
+                    className={`${inputClass} ${getFieldError('length_m') ? 'border-[#ff4d4d]' : ''}`}
+                    placeholder="np. 500"
+                  />
+                  {getFieldError('length_m') && (
+                    <p className="mt-1 text-xs text-[#ff6b6b]">{getFieldError('length_m')}</p>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label className={labelClass}>Kierunek</label>
-                <select
-                  value={formData.direction}
-                  onChange={(e) => handleChange('direction', e.target.value)}
-                  className={selectClass}
-                >
-                  {Object.entries(DIRECTION_LABELS).map(([val, label]) => (
-                    <option key={val} value={val}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-3 flex flex-wrap gap-2" aria-label="Typowe długości odcinka">
+                {LENGTH_PRESETS.map((length) => (
+                  <button
+                    key={length}
+                    type="button"
+                    onClick={() => handleChange('length_m', length)}
+                    className={`border px-3 py-1.5 text-xs font-semibold ${
+                      formData.length_m === length
+                        ? 'border-[#26f0b1] bg-[#073024] text-[#26f0b1]'
+                        : 'border-[#28425f] bg-[#07111c] text-[#b7d3ed] hover:border-[#04d6ff] hover:text-white'
+                    }`}
+                    data-testid={`length-preset-${length}`}
+                  >
+                    {lengthLabel(length)}
+                  </button>
+                ))}
               </div>
-            </div>
+            </section>
+
+            <section className="border-t border-[#17314c] pt-4">
+              <h3 className={sectionTitleClass}>Typ katalogowy</h3>
+              {catalogLoading ? (
+                <div className="border border-[#174c75] bg-[#071b2b] px-3 py-2 text-xs text-[#a8c7e2]">
+                  Ładowanie katalogu kabli i linii SN.
+                </div>
+              ) : activeCatalogEntries.length > 0 ? (
+                <CatalogPicker
+                  label={
+                    formData.segment_kind === 'LINIA_NAPOWIETRZNA'
+                      ? 'Linia z katalogu'
+                      : 'Kabel z katalogu'
+                  }
+                  entries={activeCatalogEntries}
+                  selectedId={formData.catalog_ref ?? ''}
+                  onChange={(id) => handleChange('catalog_ref', id || null)}
+                  required
+                  error={getFieldError('catalog_ref')}
+                  placeholder="Wyszukaj typ katalogowy SN"
+                />
+              ) : (
+                <div className="border border-[#a16207] bg-[#241806] px-3 py-2 text-xs text-[#ffc46b]">
+                  {catalogLoadError ?? 'Brak pozycji katalogowych dla wybranego rodzaju odcinka.'}
+                </div>
+              )}
+            </section>
+
+            <section className="border-t border-[#17314c] pt-4">
+              <h3 className={sectionTitleClass}>Punkt wyprowadzenia</h3>
+              <div className="border border-[#17314c] bg-[#071b2b] px-3 py-2 text-xs text-[#a8c7e2]">
+                {sourceHint}
+              </div>
+            </section>
+
+            <section className="border-t border-[#17314c] pt-4">
+              <h3 className={sectionTitleClass}>Uwagi techniczne</h3>
+              <div className="mb-3 grid gap-2">
+                {normRows.map(([label, value]) => (
+                  <div key={label} className="border border-[#17314c] bg-[#06101a] p-2 text-xs">
+                    <span className="block uppercase tracking-[0.12em] text-[#7899b5]">{label}</span>
+                    <strong className="mt-1 block font-medium text-[#e6f4ff]">{value}</strong>
+                  </div>
+                ))}
+              </div>
+              <textarea
+                value={formData.notes}
+                onChange={(event) => handleChange('notes', event.target.value)}
+                rows={3}
+                className={`${inputClass} resize-none`}
+                placeholder="Opcjonalnie: warunki ułożenia, rezerwa trasy, uwagi do katalogu."
+              />
+            </section>
           </div>
 
-          <div className={sectionDividerClass}>
-            <h3 className={sectionTitleClass}>Uwagi</h3>
+          <aside className="space-y-4">
+            <section className="border border-[#1d3854] bg-[#081522] p-4">
+              <h3 className={sectionTitleClass}>Decyzja techniczna</h3>
+              <dl className="space-y-3 text-sm">
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">Źródło</dt>
+                  <dd className="mt-1 text-white">{sourceLabel}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">Odcinek</dt>
+                  <dd className="mt-1 text-white">
+                    {catalogDisplayName} · {lengthLabel(formData.length_m)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] uppercase tracking-[0.14em] text-[#8eb1cf]">Dalej</dt>
+                  <dd className="mt-1 text-[#a8c7e2]">
+                    W następnym kroku wybierz właściwy koniec odcinka.
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {nextStepOptions.map((option) => (
+                  <div
+                    key={option}
+                    className="border border-[#28425f] bg-[#06101a] px-2 py-2 text-xs font-semibold text-[#d7ecff]"
+                  >
+                    {option}
+                  </div>
+                ))}
+              </div>
+            </section>
 
-            <textarea
-              value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              rows={3}
-              className={`${inputClass} resize-none`}
-              placeholder="Dodatkowe informacje..."
-            />
-          </div>
+            <section
+              className="border border-[#1d3854] bg-[#081522] p-4"
+              data-testid="trunk-selected-catalog-params"
+            >
+              <h3 className={sectionTitleClass}>Parametry katalogowe</h3>
+              {selectedCatalogEntry ? (
+                <>
+                  <p className="text-sm font-semibold text-white">{selectedCatalogEntry.name}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {rows.map(([label, value]) => (
+                      <div key={label} className="border border-[#17314c] bg-[#06101a] p-2">
+                        <span className="block text-[10px] uppercase tracking-[0.12em] text-[#7899b5]">
+                          {label}
+                        </span>
+                        <strong className="mt-1 block text-xs text-[#e6f4ff]">{value}</strong>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-[#ffc46b]">
+                  Wybierz typ katalogowy, żeby zapisać parametry techniczne odcinka.
+                </p>
+              )}
+            </section>
+
+            <section className="border border-[#28425f] bg-[#06101a] p-4">
+              <h3 className={sectionTitleClass}>Warunek zapisu</h3>
+              {formBlockedReason ? (
+                <p className="text-sm text-[#ffc46b]">{formBlockedReason}</p>
+              ) : (
+                <p className="text-sm text-[#26f0b1]">
+                  Dane odcinka są kompletne. Można utworzyć odcinek z wybranego punktu sieci.
+                </p>
+              )}
+            </section>
+          </aside>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-[#17314c] bg-[#050c14] px-6 py-4">
+        <div className="sticky bottom-0 z-10 flex justify-end gap-3 border-t border-[#17314c] bg-[#050c14] px-6 py-4">
           <button
             type="button"
             onClick={onCancel}
@@ -388,10 +528,10 @@ export function TrunkContinueModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={submitDisabled}
+            disabled={buttonDisabled}
             className="border border-[#1e6bff] bg-[#2864e8] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3474ff] disabled:cursor-not-allowed disabled:border-[#22364e] disabled:bg-[#0b1623] disabled:text-[#607d99]"
           >
-            {mode === 'create' ? 'Dodaj odcinek' : 'Zapisz zmiany'}
+            {mode === 'create' ? 'Utwórz odcinek SN' : 'Zapisz zmiany'}
           </button>
         </div>
       </div>

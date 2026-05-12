@@ -5,7 +5,7 @@
  * w kanonicznym shellu (ekran E-01 "Główne środowisko pracy SLD").
  */
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   computeBoundingBox,
@@ -24,7 +24,12 @@ import {
   type SldLayerId,
 } from '../lod/LodPolicy';
 import { COLOR_BG, COLOR_PANEL } from '../theme/tokens';
-import { CableRunRenderer } from '../renderer/CableRunRenderer';
+import {
+  CableRunRenderer,
+  type CableRunSegmentLabel,
+  type CableRunSegmentPath,
+  type CableRunStationPortGap,
+} from '../renderer/CableRunRenderer';
 import { CadOverlay } from './CadOverlay';
 import { DEFAULT_SNAP_STATE } from '../viewport/Snap';
 import { ConnectionRenderer } from '../renderer/ConnectionRenderer';
@@ -35,7 +40,11 @@ import {
   type GpzCanonicalRendererProps,
 } from '../renderer/GpzCanonicalRenderer';
 import { SectionRenderer, type SectionRendererProps } from '../renderer/SectionRenderer';
-import { StationOnRunRenderer, type StationOnRunRendererProps } from '../renderer/StationOnRunRenderer';
+import {
+  StationOnRunRenderer,
+  STATION_RUN_TRUNK_OFFSET_Y,
+  type StationOnRunRendererProps,
+} from '../renderer/StationOnRunRenderer';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -67,6 +76,11 @@ export interface SldCanvasV2Props {
     runKind: 'main_trunk' | 'branch' | 'ring' | 'loop';
     pathPoints: ReadonlyArray<{ x: number; y: number }>;
     segmentKind: 'cable_sn' | 'overhead_line_sn';
+    segmentRefs?: readonly string[];
+    segmentPaths?: readonly CableRunSegmentPath[];
+    label?: string;
+    segmentLabels?: readonly CableRunSegmentLabel[];
+    pendingEndpoint?: boolean;
   }>;
   readonly stations: readonly StationOnRunRendererProps[];
   readonly ders: readonly DerRendererProps[];
@@ -105,18 +119,62 @@ export interface SldCanvasV2Props {
    * Container otwiera menu kontekstowe na (clientX, clientY).
    */
   readonly onContextMenu?: (request: SldCanvasContextMenuRequest) => void;
+  readonly onViewportTransformChange?: (transform: ViewportTransform) => void;
+}
+
+function estimateCanonicalGpzFootprint(gpz: GpzCanonicalRendererProps): { width: number; height: number } {
+  const lvBayCount = gpz.sections.reduce((sum, section) => sum + Math.max(section.bays.length, 1), 0);
+  const hvBayCount = gpz.hvSections?.reduce((sum, section) => sum + section.bays.length, 0) ?? 0;
+  const sectionCount = Math.max(gpz.sections.length, 1);
+  return {
+    width: Math.max(720, lvBayCount * 70 + sectionCount * 96, hvBayCount * 72 + 360),
+    height: 680,
+  };
+}
+
+function isCanonicalGpzInteractiveDescendant(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return Boolean(
+    target.closest(
+      [
+        '[data-element-kind="apparatus"]',
+        '[data-testid^="gpz-canonical-apparatus-"]',
+        '[data-testid^="gpz-canonical-bay-"]',
+        '[data-testid^="gpz-canonical-section-"]',
+        '[data-testid^="gpz-canonical-coupler-"]',
+        '[data-parity-key^="gpz.apparatus"]',
+        '[data-parity-key^="gpz.bay"]',
+        '[data-parity-key^="gpz.section"]',
+        '[data-parity-key^="gpz.coupler"]',
+      ].join(','),
+    ),
+  );
+}
+
+function readSldInteractiveTarget(target: EventTarget | null): {
+  kind: SldElementContextKind;
+  elementId: string;
+} | null {
+  if (!(target instanceof Element)) return null;
+  const element = target.closest('[data-element-kind][data-element-id]');
+  if (!(element instanceof HTMLElement || element instanceof SVGElement)) return null;
+  const kind = element.getAttribute('data-element-kind') as SldElementContextKind | null;
+  const elementId = element.getAttribute('data-element-id');
+  if (!kind || !elementId) return null;
+  return { kind, elementId };
 }
 
 export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const {
     width, height, gpzs, canonicalGpzs, sections, cableRuns, stations, ders, connections = [],
     selectedId, lodOverride, layerVisibility,
-    onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu,
+    onSelectElement, onDoubleClickStation, onDoubleClickDer, onContextMenu, onViewportTransformChange,
   } = props;
 
   const [transform, setTransform] = useState<ViewportTransform>(IDENTITY_TRANSFORM);
   const isDraggingRef = useRef(false);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
   /* INVARIANT 5/6 + Phase 0A audit fix 11: LOD histereza FSM eliminuje
    * migotanie przy bouncing zoom (deadband 15%, debounce 250ms — konfig
    * w `LodPolicy.createLodController`). Bez tego operator widzi przeskakujące
@@ -130,6 +188,11 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   useMemo(() => {
     const allPoints: { x: number; y: number }[] = [];
     for (const g of gpzs) allPoints.push({ x: g.x, y: g.y });
+    for (const gpz of canonicalGpzs ?? []) {
+      const footprint = estimateCanonicalGpzFootprint(gpz);
+      allPoints.push({ x: gpz.x, y: gpz.y });
+      allPoints.push({ x: gpz.x + footprint.width, y: gpz.y + footprint.height });
+    }
     for (const s of sections) allPoints.push({ x: s.x, y: s.y });
     for (const st of stations) allPoints.push({ x: st.x, y: st.y });
     for (const d of ders) allPoints.push({ x: d.x, y: d.y });
@@ -143,7 +206,7 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       maxY: bbox.maxY + 200,
     };
     setTransform(fitToView(expanded, { width, height }));
-  }, [gpzs, sections, stations, ders, width, height]);
+  }, [gpzs, canonicalGpzs, sections, stations, ders, width, height]);
 
   /* LOD obliczany przez LodController — histereza FSM zapobiega flicker.
    * `update()` zwraca aktualne LOD po zastosowaniu deadband + debounce. */
@@ -154,13 +217,28 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   void inferLodFromScale; // referencja zachowana dla back-compat innych callerów
   const layers = { ...DEFAULT_LAYER_VISIBILITY, ...(layerVisibility ?? {}) };
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  useEffect(() => {
+    onViewportTransformChange?.(transform);
+  }, [onViewportTransformChange, transform]);
+
+  const handleWheel = useCallback((e: WheelEvent) => {
     e.preventDefault();
-    const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
     const cursorScreen = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
     setTransform((t) => zoomToCursor(t, cursorScreen, zoomFactor));
   }, []);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    svg.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      svg.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 1 || (e.button === 0 && e.target === e.currentTarget)) {
@@ -170,6 +248,22 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
     if (e.button === 0 && e.target === e.currentTarget) {
       onSelectElement?.(null, 'background');
     }
+  }, [onSelectElement]);
+
+  const handlePointerDownCapture = useCallback((e: React.PointerEvent<SVGSVGElement>) => {
+    if (e.button !== 0 || !onSelectElement) return;
+    const target = readSldInteractiveTarget(e.target);
+    if (!target || target.kind !== 'apparatus') return;
+    e.stopPropagation();
+    onSelectElement(target.elementId, 'apparatus');
+  }, [onSelectElement]);
+
+  const handleMouseDownCapture = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
+    if (e.button !== 0 || !onSelectElement) return;
+    const target = readSldInteractiveTarget(e.target);
+    if (!target || target.kind !== 'apparatus') return;
+    e.stopPropagation();
+    onSelectElement(target.elementId, 'apparatus');
   }, [onSelectElement]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
@@ -188,7 +282,8 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
   const handleSvgContextMenu = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (!onContextMenu) return;
     e.preventDefault();
-    if (e.target === e.currentTarget) {
+    const target = readSldInteractiveTarget(e.target);
+    if (!target) {
       onContextMenu({
         kind: 'background',
         elementId: null,
@@ -211,13 +306,15 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
 
   return (
     <svg
+      ref={svgRef}
       data-testid="sld-canvas-v2"
       data-lod={lod}
       width={width}
       height={height}
       style={{ background: COLOR_BG, userSelect: 'none' }}
-      onWheel={handleWheel}
       onMouseDown={handleMouseDown}
+      onMouseDownCapture={handleMouseDownCapture}
+      onPointerDownCapture={handlePointerDownCapture}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
@@ -249,39 +346,33 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           />
         )}
 
-        {/* Connections (cienka warstwa pomocnicza) */}
-        {layers.topology && connections.map((c) => (
-          <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
-        ))}
-
-        {/* Cable runs */}
-        {layers.equipment && cableRuns.map((run) => (
-          <g
-            key={run.id}
-            onContextMenu={
-              onContextMenu
-                ? buildElementContextMenuHandler(
-                    run.segmentKind === 'cable_sn' ? 'cable_segment_sn' : 'overhead_line_sn',
-                    run.id,
-                  )
-                : undefined
-            }
-          >
-            <CableRunRenderer
-              {...run}
-              selected={selectedId === run.id}
-              onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
-            />
-          </g>
-        ))}
+        {/* Warstwa połączeń i odcinków SN. Stabilny znacznik jest używany
+            przez E2E oraz diagnostykę widoku, nie zmienia semantyki SLD. */}
+        <g data-testid="sld-connections-layer">
+          {layers.topology && connections.map((c) => (
+            <ConnectionRenderer key={c.id} {...c} selected={selectedId === c.id} />
+          ))}
+        </g>
 
         {/* Sections (szyny SN GPZ) */}
         {sections.map((s) => (
           <g
             key={s.id}
+            data-testid={`sld-v2-section-hit-${s.id}`}
+            data-element-kind="section"
+            data-element-id={s.id}
+            onClick={
+              onSelectElement
+                ? (e) => {
+                    e.stopPropagation();
+                    onSelectElement(s.id, 'section');
+                  }
+                : undefined
+            }
             onContextMenu={
               onContextMenu ? buildElementContextMenuHandler('section', s.id) : undefined
             }
+            style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
           >
             <SectionRenderer {...s} />
           </g>
@@ -297,28 +388,139 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             return (
               <g
                 key={g.id}
+                data-testid={`sld-v2-gpz-hit-${g.id}`}
+                data-element-kind="gpz_container"
+                data-element-id={g.id}
                 onContextMenu={
-                  onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
+                  onContextMenu
+                    ? (e) => {
+                        if (isCanonicalGpzInteractiveDescendant(e.target)) return;
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onContextMenu({ kind: 'gpz', elementId: g.id, clientX: e.clientX, clientY: e.clientY });
+                      }
+                    : undefined
                 }
                 onClick={
                   onSelectElement
                     ? (e) => {
+                        if (isCanonicalGpzInteractiveDescendant(e.target)) return;
                         e.stopPropagation();
                         onSelectElement(g.id, 'gpz');
                       }
                     : undefined
                 }
               >
-                <GpzCanonicalRenderer {...canonical} />
+                <GpzCanonicalRenderer
+                  {...canonical}
+                  onClickBay={
+                    onSelectElement
+                      ? (bayRef) => onSelectElement(bayRef, 'bay')
+                      : canonical.onClickBay
+                  }
+                  onDoubleClickBay={
+                    onSelectElement
+                      ? (bayRef) => onSelectElement(bayRef, 'bay')
+                      : canonical.onDoubleClickBay
+                  }
+                  onContextMenuBay={
+                    onContextMenu
+                      ? (bayRef, evt) => {
+                          onContextMenu({
+                            kind: 'bay',
+                            elementId: bayRef,
+                            clientX: evt.clientX,
+                            clientY: evt.clientY,
+                          });
+                        }
+                      : canonical.onContextMenuBay
+                  }
+                  onContextMenuSection={
+                    onContextMenu
+                      ? (sectionId, evt) => {
+                          onContextMenu({
+                            kind: 'section',
+                            elementId: sectionId,
+                            clientX: evt.clientX,
+                            clientY: evt.clientY,
+                          });
+                        }
+                      : canonical.onContextMenuSection
+                  }
+                  onClickApparatus={
+                    onSelectElement
+                      ? (selection) => onSelectElement(selection.apparatusId, 'apparatus')
+                      : canonical.onClickApparatus
+                  }
+                  onClickTransformer={
+                    onSelectElement
+                      ? (transformerRef) => onSelectElement(transformerRef, 'transformer')
+                      : canonical.onClickTransformer
+                  }
+                  onContextMenuApparatus={
+                    onContextMenu
+                      ? (selection, evt) => {
+                          onSelectElement?.(selection.apparatusId, 'apparatus');
+                          onContextMenu({
+                            kind: 'apparatus',
+                            elementId: selection.apparatusId,
+                            clientX: evt.clientX,
+                            clientY: evt.clientY,
+                          });
+                        }
+                      : canonical.onContextMenuApparatus
+                  }
+                />
+                <rect
+                  x={canonical.x + 18}
+                  y={canonical.y + 18}
+                  width={290}
+                  height={56}
+                  fill="transparent"
+                  pointerEvents="all"
+                  data-testid={`sld-v2-gpz-header-hit-${g.id}`}
+                  data-element-kind="gpz"
+                  data-element-id={g.id}
+                  onClick={
+                    onSelectElement
+                      ? (e) => {
+                          e.stopPropagation();
+                          onSelectElement(g.id, 'gpz');
+                        }
+                      : undefined
+                  }
+                  onContextMenu={
+                    onContextMenu
+                      ? (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          onContextMenu({ kind: 'gpz', elementId: g.id, clientX: e.clientX, clientY: e.clientY });
+                        }
+                      : undefined
+                  }
+                  style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+                />
               </g>
             );
           }
           return (
             <g
               key={g.id}
+              data-testid={`sld-v2-gpz-hit-${g.id}`}
+              data-element-kind="gpz"
+              data-element-id={g.id}
               onContextMenu={
                 onContextMenu ? buildElementContextMenuHandler('gpz', g.id) : undefined
               }
+              onClick={
+                onSelectElement
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectElement(g.id, 'gpz');
+                    }
+                  : undefined
+              }
+              style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
             >
               <GpzRenderer
                 {...g}
@@ -331,19 +533,87 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
         })}
 
         {/* Stacje na ciągu */}
+        {layers.equipment && (
+          <g data-testid="sld-cable-runs-layer">
+            {cableRuns.map((run) => (
+              <g
+                key={run.id}
+                data-connection-ref={run.id}
+                data-element-kind="cable_run"
+                data-element-id={run.id}
+                onContextMenu={
+                  onContextMenu
+                    ? buildElementContextMenuHandler(
+                        run.segmentKind === 'cable_sn' ? 'cable_segment_sn' : 'overhead_line_sn',
+                        run.id,
+                      )
+                    : undefined
+                }
+              >
+                <CableRunRenderer
+                  {...run}
+                  stationPortGaps={buildStationPortGapsForRun(run, stations)}
+                  selected={selectedId === run.id}
+                  onClick={onSelectElement ? (id) => onSelectElement(id, 'cable_run') : undefined}
+                />
+              </g>
+            ))}
+          </g>
+        )}
+
         {stations.map((st) => (
           <g
             key={st.id}
+            data-testid={`sld-v2-station-hit-${st.id}`}
+            data-element-kind="station"
+            data-element-id={st.id}
             onContextMenu={
               onContextMenu ? buildElementContextMenuHandler('station', st.id) : undefined
             }
+            onClick={
+              onSelectElement
+                ? (e) => {
+                    e.stopPropagation();
+                    onSelectElement(st.id, 'station');
+                  }
+                : undefined
+            }
+            onDoubleClick={
+              onDoubleClickStation
+                ? (e) => {
+                    e.stopPropagation();
+                    onDoubleClickStation(st.id);
+                  }
+                : undefined
+            }
+            style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
           >
             <StationOnRunRenderer
               {...st}
+              lod={st.lod ?? lod}
               selected={selectedId === st.id}
               onClick={onSelectElement ? (id) => onSelectElement(id, 'station') : undefined}
               onDoubleClick={onDoubleClickStation}
             />
+            {st.transformerRefs?.map((transformerRef, index) => (
+              <g
+                key={`station-transformer-symbol-${transformerRef}`}
+                data-testid={`sld-symbol-transformer-${transformerRef}`}
+                data-element-kind="transformer_sn_nn"
+                data-element-id={transformerRef}
+                transform={`translate(${st.x + 46 + index * 18}, ${st.y + 16})`}
+                onClick={onSelectElement ? (event) => {
+                  event.stopPropagation();
+                  onSelectElement(transformerRef, 'transformer');
+                } : undefined}
+                style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
+              >
+                <rect x={-16} y={-16} width={32} height={36} fill="transparent" />
+                <circle cx={0} cy={-4} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                <circle cx={0} cy={8} r={7} fill="none" stroke="#18D26B" strokeWidth={1.4} />
+                <title>Transformator SN/nN {transformerRef}</title>
+              </g>
+            ))}
           </g>
         ))}
 
@@ -354,9 +624,29 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
           return (
             <g
               key={d.id}
+              data-testid={`sld-v2-der-hit-${d.id}`}
+              data-element-kind={menuKind}
+              data-element-id={d.id}
               onContextMenu={
                 onContextMenu ? buildElementContextMenuHandler(menuKind, d.id) : undefined
               }
+              onClick={
+                onSelectElement
+                  ? (e) => {
+                      e.stopPropagation();
+                      onSelectElement(d.id, 'der');
+                    }
+                  : undefined
+              }
+              onDoubleClick={
+                onDoubleClickDer
+                  ? (e) => {
+                      e.stopPropagation();
+                      onDoubleClickDer(d.id);
+                    }
+                  : undefined
+              }
+              style={{ cursor: onSelectElement ? 'pointer' : 'default' }}
             >
               <DerRenderer
                 {...d}
@@ -378,4 +668,57 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
       </g>
     </svg>
   );
+}
+
+type CableRunForPortGaps = SldCanvasV2Props['cableRuns'][number];
+
+function buildStationPortGapsForRun(
+  run: CableRunForPortGaps,
+  stations: readonly StationOnRunRendererProps[],
+): CableRunStationPortGap[] {
+  const gaps: CableRunStationPortGap[] = [];
+  for (const station of stations) {
+    const connectionY = station.y - STATION_RUN_TRUNK_OFFSET_Y;
+    if (!runHasHorizontalSegmentAtY(run, connectionY, station.x)) continue;
+    const [inputOffset, outputOffset] = stationPortOffsets(station.topologicalType);
+    gaps.push({
+      stationId: station.id,
+      y: connectionY,
+      inputX: station.x + inputOffset,
+      outputX: outputOffset === null ? null : station.x + outputOffset,
+    });
+  }
+  return gaps;
+}
+
+function runHasHorizontalSegmentAtY(
+  run: CableRunForPortGaps,
+  y: number,
+  x: number,
+): boolean {
+  for (let i = 0; i < run.pathPoints.length - 1; i++) {
+    const a = run.pathPoints[i];
+    const b = run.pathPoints[i + 1];
+    if (a.y !== b.y) continue;
+    if (Math.abs(a.y - y) > 0.5) continue;
+    const minX = Math.min(a.x, b.x);
+    const maxX = Math.max(a.x, b.x);
+    if (x >= minX && x <= maxX) return true;
+  }
+  return false;
+}
+
+function stationPortOffsets(
+  topologicalType: StationOnRunRendererProps['topologicalType'],
+): readonly [number, number | null] {
+  switch (topologicalType) {
+    case 'przelotowa':
+    case 'sekcyjna':
+      return [-28, 28];
+    case 'odgałęźna':
+      return [-36, 36];
+    case 'końcowa':
+    default:
+      return [0, null];
+  }
 }

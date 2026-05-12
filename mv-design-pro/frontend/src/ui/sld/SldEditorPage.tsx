@@ -1,13 +1,13 @@
 ﻿/**
- * SLD Editor Page â€” Canonical/CANONICAL Style Main Editor View
+ * SLD Editor Page — Canonical/CANONICAL Style Main Editor View
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md: Layout narzÄ™dziowy ZAWSZE renderowany
- * - wizard_screens.md Â§ 2.1: GĹ‚Ăłwna struktura okna
- * - sld_rules.md: SLD â†” selection synchronization
+ * - ui_canonical_parity.md: Layout narzędziowy ZAWSZE renderowany
+ * - wizard_screens.md § 2.1: Główna struktura okna
+ * - sld_rules.md: SLD ↔ selection synchronization
  *
  * CANONICAL RULE:
- * > Layout narzÄ™dziowy ZAWSZE jest renderowany.
+ * > Layout narzędziowy ZAWSZE jest renderowany.
  * > Brak danych = komunikat w obszarze roboczym, a NIE brak UI.
  *
  * FEATURES:
@@ -458,7 +458,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const clearSelection = useSelectionStore((state) => state.clearSelection);
   const centerSldOnElement = useSelectionStore((state) => state.centerSldOnElement);
 
-  // Readiness live store â€” real data from API
+  // Readiness live store — real data from API
   const readinessIssues = useReadinessLiveStore((state) => state.issues);
   const readinessStatus = useReadinessLiveStore((state) => state.status);
   const readinessLoading = useReadinessLiveStore((state) => state.loading);
@@ -466,7 +466,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
   const readinessToggleGroup = useReadinessLiveStore((state) => state.toggleGroup);
   const readinessRefresh = useReadinessLiveStore((state) => state.refresh);
 
-  // Study cases â€” for hasCases wiring
+  // Study cases — for hasCases wiring
   const studyCasesCount = useStudyCasesStore((state) => state.cases.length);
 
   const [isCreatingFirstCase, setIsCreatingFirstCase] = useState(false);
@@ -988,8 +988,8 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     const zaciskElementRef = primaryOpenTrunkTerminal?.element_id ?? primaryLineFeederBay?.refId ?? null;
     const zaciskPortRef =
       primaryOpenTrunkTerminal?.port_id
-      ?? resolveSemanticOutgoingPortRef(primaryLineFeederBay)
-      ?? null;
+      ? primaryOpenTrunkTerminal.port_id
+      : resolveSemanticOutgoingPortRef(primaryLineFeederBay) ?? null;
 
     if (zaciskElementRef) {
       const zaciskName = portRefToZaciskLabel(zaciskPortRef);
@@ -1364,7 +1364,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     withTimeout,
   ]);
 
-  // BLOK 8: Uruchom obliczenia â€” otwiera menedĹĽer przypadkĂłw z widokiem obliczeniowym
+  // BLOK 8: Uruchom obliczenia — otwiera menedżer przypadków z widokiem obliczeniowym
   const handleCalculate = useCallback(() => {
     openExecutionSurface();
   }, [openExecutionSurface]);
@@ -1441,7 +1441,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
     ]);
 
     if (resolved.mode !== 'DOMAIN_OP' || !resolved.canonicalOp) {
-      const reason = resolved.reasonPl ?? 'NarzÄ™dzie chwilowo niedostÄ™pne.';
+      const reason = resolved.reasonPl ?? 'Narzędzie chwilowo niedostępne.';
       setInteractionMessage(reason);
       notify(reason, 'warning');
       return;
@@ -1453,14 +1453,14 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
           id: target.id,
           label: target.name ?? target.id,
         });
-        const msg = 'Wybierz drugi port ringu, aby otworzyÄ‡ formularz domkniÄ™cia pierĹ›cienia.';
+        const msg = 'Wybierz drugi port ringu, aby otworzyć formularz domknięcia pierścienia.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
       }
 
       if (pendingRingTerminal.id === target.id) {
-        const msg = 'WskaĹĽ drugi, rĂłĹĽny port ringu.';
+        const msg = 'Wskaż drugi, różny port ringu.';
         setInteractionMessage(msg);
         notify(msg, 'warning');
         return;
@@ -1479,11 +1479,11 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
         openToolCatalogPicker(
           'connect_secondary_ring_sn',
           ringPayload,
-          `${pendingRingTerminal.label} â†’ ${target.name ?? target.id}`,
+          `${pendingRingTerminal.label} → ${target.name ?? target.id}`,
         )
       ) {
         setPendingRingTerminal(null);
-        const msg = 'Wybierz typ kabla lub linii dla domkniÄ™cia ringu.';
+        const msg = 'Wybierz typ kabla lub linii dla domknięcia ringu.';
         setInteractionMessage(msg);
         notify(msg, 'info');
         return;
@@ -1491,7 +1491,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
 
       openOperationForm('connect_secondary_ring_sn', ringPayload);
       setPendingRingTerminal(null);
-      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portĂłw ${pendingRingTerminal.label} i ${target.name}.`;
+      const msg = `Otworzono formularz ${resolved.canonicalOp} dla portów ${pendingRingTerminal.label} i ${target.name}.`;
       setInteractionMessage(msg);
       notify(msg, 'success');
       setActiveTool('select');
@@ -1550,7 +1550,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       notify(msg, 'success');
       setActiveTool('select');
     } else {
-      const err = `Operacja ${resolved.canonicalOp} nie powiodĹ‚a siÄ™.`;
+      const err = `Operacja ${resolved.canonicalOp} nie powiodła się.`;
       setInteractionMessage(err);
       notify(err, 'error');
     }
@@ -1588,9 +1588,9 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
       valid: resolved.mode === 'DOMAIN_OP',
       message_pl:
         resolved.reasonPl
-        ?? (resolved.catalogRequired && resolved.catalogLabelPl
-          ? `Wymagany typ z katalogu: ${resolved.catalogLabelPl}`
-          : `Gotowe: ${resolved.canonicalOp}`),
+          ?? (resolved.catalogRequired && resolved.catalogLabelPl
+            ? `Wymagany typ z katalogu: ${resolved.catalogLabelPl}`
+            : `Gotowe: ${resolved.canonicalOp}`),
       port_role: interaction.portRole,
     });
   }, [hasCanonicalTrunkStart, hasSource, hasRing, activeCaseId]);
@@ -1651,12 +1651,12 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             if (activeTool === 'add_grid_source_sn') {
               void runResolvedAction(
                 'add_grid_source_sn',
-                { id: 'canvas', type: 'Bus', name: 'pĹ‚Ăłtna' } as any,
+                { id: 'canvas', type: 'Bus', name: 'płótna' } as any,
                 { kind: 'canvas' },
               );
               return;
             }
-            setInteractionMessage('KlikniÄ™to tĹ‚o pĹ‚Ăłtna.');
+            setInteractionMessage('Kliknięto tło płótna.');
           }}
           onElementHover={(element) => {
             setHoveredElementName(element?.name ?? null);
@@ -1714,6 +1714,23 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
             await runResolvedAction(activeTool, element, { kind: 'element' });
           }}
         />
+
+        <div className="pointer-events-none absolute right-4 top-4 z-30 w-[min(380px,calc(100%-2rem))]">
+          <SldReadinessStack
+            activeCaseId={activeCaseId}
+            className="pointer-events-auto"
+            workspaceBlockState={null}
+            issues={readinessIssues}
+            status={readinessStatus}
+            ready={Boolean(enmReadiness?.ready)}
+            loading={readinessLoading}
+            collapsedGroups={readinessCollapsedGroups}
+            onToggleGroup={readinessToggleGroup}
+            onNavigateToElement={handleReadinessNavigate}
+            onFixAction={handleReadinessFixAction}
+            onQuickFix={handleDataGapQuickFix}
+          />
+        </div>
 
         {/* Empty state overlay is opt-in only; the active shell keeps the SLD canvas visually dominant. */}
         {forceEmptyState && emptyState && (
@@ -1891,7 +1908,7 @@ export const SldEditorPage: React.FC<SldEditorPageProps> = ({
                   activeCaseId,
                 );
                 notify(
-                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udaĹ‚o siÄ™ przypisaÄ‡ typu katalogowego.',
+                  success ? `Przypisano typ katalogowy: ${typeName}.` : 'Nie udało się przypisać typu katalogowego.',
                   success ? 'success' : 'error',
                 );
               })();

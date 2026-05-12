@@ -53,7 +53,10 @@ export function OzContextPanel() {
     [ozeSourceSummaries, filter],
   );
 
-  const totalPower = filtered.reduce((acc, s) => acc + (s.pMw ?? 0), 0);
+  const hasAnyRatedPower = filtered.some((s) => typeof s.pMw === 'number' && Number.isFinite(s.pMw));
+  const totalPower = hasAnyRatedPower
+    ? filtered.reduce((acc, s) => acc + (Number.isFinite(s.pMw) ? s.pMw : 0), 0)
+    : null;
 
   return (
     <div
@@ -72,7 +75,7 @@ export function OzContextPanel() {
           <span data-testid="oz-counter-power">
             <span className="text-scada-muted">Σ P: </span>
             <span className="font-mono font-bold text-scada-energized">
-              {totalPower.toFixed(2)} MW
+              {totalPower === null ? 'brak danych' : `${totalPower.toFixed(2)} MW`}
             </span>
           </span>
         </div>
@@ -127,7 +130,9 @@ export function OzContextPanel() {
                       {formatGeneratorTypeShortLabelPl(src.genType)}
                     </span>
                     <span>•</span>
-                    <span className="font-mono">{src.pMw.toFixed(2)} MW</span>
+                    <span className="font-mono">
+                      {Number.isFinite(src.pMw) ? `${src.pMw.toFixed(2)} MW` : 'brak danych'}
+                    </span>
                     {src.hasTransformer && (
                       <>
                         <span>•</span>

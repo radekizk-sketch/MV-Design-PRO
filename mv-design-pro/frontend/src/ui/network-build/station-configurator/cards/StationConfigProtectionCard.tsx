@@ -122,7 +122,7 @@ export function StationConfigProtectionCard(
                 <th className="text-left">Funkcje</th>
                 <th className="text-right">Nastawy</th>
                 <th className="text-left">Selektywność</th>
-                <th className="text-left">VT (per pole)</th>
+                <th className="text-left">Przekł. napięciowy pola</th>
               </tr>
             </thead>
             <tbody>

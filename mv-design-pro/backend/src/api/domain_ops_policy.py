@@ -368,6 +368,30 @@ def validate_and_materialize_catalog_binding(
             {},
         )
 
+    if operation in {"insert_branch_pole_on_segment_sn", "insert_zksn_on_segment_sn"}:
+        from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
+
+        catalog_ref = binding_data.get("catalog_item_id")
+        known_refs = {record.get("id") for record in get_all_branch_point_types()}
+        if catalog_ref in known_refs:
+            return None, {}
+        return (
+            CatalogPolicyError(
+                code="catalog.materialization_failed",
+                message_pl="Nie znaleziono pozycji katalogowej punktu pośredniego SN",
+                errors=[
+                    {
+                        "code": "catalog.materialization_failed",
+                        "message_pl": (
+                            f"Pozycja katalogowa '{catalog_ref}' nie istnieje w katalogu "
+                            "ZKSN i słupów odgałęźnych SN."
+                        ),
+                    }
+                ],
+            ),
+            {},
+        )
+
     binding_errors = validate_catalog_binding(binding_data)
     if binding_errors:
         return (

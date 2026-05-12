@@ -541,6 +541,6 @@ class StudyCaseService:
 
             # Update case
             updated_case = case.with_protection_config(new_config)
-            repo.save_study_case(updated_case)
+            repo.update_study_case(updated_case)
 
             return updated_case

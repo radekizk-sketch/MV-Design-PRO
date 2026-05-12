@@ -125,6 +125,7 @@ function buildGridSourcePayload(data: GridSourceFormData) {
     source_name: data.source_name,
     voltage_kv: data.sn_voltage_kv,
     sections_count: Math.max(1, Math.trunc(data.sections_count || 1)),
+    transformer_count: Math.max(1, Math.min(4, Math.trunc(data.transformer_count || 1))),
     line_fields_per_section: Math.max(
       1,
       Math.min(12, Math.trunc(data.line_fields_per_section || 1)),
@@ -192,6 +193,7 @@ export function AddGridSourceForm() {
     const catalogRef =
       catalogRefFromInput(context.catalog_ref) ?? catalogRefFromInput(context.catalog_binding);
     const sectionsCount = readNumber(context.sections_count);
+    const transformerCount = readNumber(context.transformer_count);
     const lineFieldsPerSection =
       readNumber(context.line_fields_per_section)
       ?? readNumber(context.gpz_line_fields_per_section);
@@ -204,6 +206,7 @@ export function AddGridSourceForm() {
     if (rxRatio !== null) initial.rx_ratio = rxRatio;
     if (catalogRef) initial.catalog_ref = catalogRef;
     if (sectionsCount !== null) initial.sections_count = sectionsCount;
+    if (transformerCount !== null) initial.transformer_count = transformerCount;
     if (lineFieldsPerSection !== null) initial.line_fields_per_section = lineFieldsPerSection;
     if (sectionName) initial.gpz_section_name = sectionName;
     if (lineFieldName) initial.gpz_line_field_name = lineFieldName;

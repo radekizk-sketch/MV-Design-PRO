@@ -49,8 +49,8 @@ EXEMPT_PATTERNS: list[str] = [
 
 # Directories to scan
 SCAN_DIRS: list[str] = [
-    os.path.join("mv-design-pro", "frontend", "src", "ui"),
-    os.path.join("mv-design-pro", "frontend", "src", "designer"),
+    os.path.join("frontend", "src", "ui"),
+    os.path.join("frontend", "src", "designer"),
 ]
 
 

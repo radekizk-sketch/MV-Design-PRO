@@ -6,6 +6,12 @@ Scope: PR-B only. This audit covers GPZ line bay, bus measurement bay, section c
 
 Out of scope: station SN/nN cubicle redesign, PV/BESS connection variants, public UI language cleanup, report/export flow, and golden updates.
 
+Visual parity note, 2026-05-08: this audit validates the frontend/backend switchgear
+contract and apparatus semantics. It does not validate pixel-level parity with an
+external SCADA system. Visual evidence and reference screenshot requirements are
+tracked in `docs/sld/SLD_VISUAL_PARITY_EVIDENCE.md` and
+`docs/sld/SLD_VISUAL_PARITY_CHECKLIST.md`.
+
 ## Baseline Findings
 
 - GPZ feeder field specs for `StationKind.MAIN_SUBSTATION` were resolved as `LINE_IN`, which reused the station line cubicle contract.

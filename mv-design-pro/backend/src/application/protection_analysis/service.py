@@ -330,6 +330,21 @@ class ProtectionAnalysisService:
         except ValueError:
             pass
 
+        try:
+            from enm.canonical_analysis import get_run as get_canonical_run
+
+            canonical_run = get_canonical_run(UUID(sc_run_id))
+        except Exception:
+            canonical_run = None
+        if canonical_run is not None and canonical_run.analysis_type == "short_circuit_sn":
+            return {
+                "run_id": str(canonical_run.id),
+                "analysis_type": canonical_run.analysis_type,
+                "status": canonical_run.status,
+                "result_summary": canonical_run.raw_result,
+                "input_snapshot": canonical_run.snapshot,
+            }
+
         return None
 
     def _get_sc_result(self, uow: UnitOfWork, sc_run_id: str) -> dict | None:
@@ -347,6 +362,25 @@ class ProtectionAnalysisService:
             entry = uow.analysis_runs_index.get(sc_run_id)
             if entry is not None and entry.meta_json:
                 return entry.meta_json.get("short_circuit_result")
+
+        try:
+            from enm.canonical_analysis import get_run as get_canonical_run
+
+            canonical_run = get_canonical_run(UUID(sc_run_id))
+        except Exception:
+            canonical_run = None
+        if canonical_run is not None and canonical_run.raw_result:
+            raw_result = canonical_run.raw_result
+            results = raw_result.get("results") or []
+            for item in sorted(results, key=lambda row: str(row.get("fault_node_id") or "")):
+                if item.get("ikss_a") is None:
+                    continue
+                return {
+                    "fault_node_id": item.get("fault_node_id"),
+                    "ikss_a": item.get("ikss_a"),
+                    "short_circuit_type": item.get("short_circuit_type")
+                    or raw_result.get("short_circuit_type"),
+                }
         return None
 
     def _get_run(self, uow: UnitOfWork, run_id: UUID) -> ProtectionAnalysisRun | None:
@@ -354,7 +388,7 @@ class ProtectionAnalysisService:
         Get a protection analysis run by ID.
         """
         results = uow.results.list_results(run_id)
-        for result in results:
+        for result in reversed(results):
             if result.get("result_type") == "protection_analysis_run":
                 return ProtectionAnalysisRun.from_dict(result.get("payload", {}))
         return None
@@ -509,9 +543,15 @@ class ProtectionAnalysisService:
             from network_model.catalog import CatalogRepository
 
             catalog = CatalogRepository(uow.session)
-            return catalog.get_protection_setting_template(template_ref)
+            template = catalog.get_protection_setting_template(template_ref)
+            if template is not None:
+                return template
         except Exception:
-            return None
+            pass
+
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        return get_default_mv_catalog().get_protection_setting_template(template_ref)
 
     def _get_curve(self, uow: UnitOfWork, curve_ref: str | None) -> ProtectionCurve | None:
         """
@@ -523,9 +563,15 @@ class ProtectionAnalysisService:
             from network_model.catalog import CatalogRepository
 
             catalog = CatalogRepository(uow.session)
-            return catalog.get_protection_curve(curve_ref)
+            curve = catalog.get_protection_curve(curve_ref)
+            if curve is not None:
+                return curve
         except Exception:
-            return None
+            pass
+
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        return get_default_mv_catalog().get_protection_curve(curve_ref)
 
     def _get_device_type(
         self, uow: UnitOfWork, device_type_ref: str | None
@@ -539,6 +585,12 @@ class ProtectionAnalysisService:
             from network_model.catalog import CatalogRepository
 
             catalog = CatalogRepository(uow.session)
-            return catalog.get_protection_device_type(device_type_ref)
+            device_type = catalog.get_protection_device_type(device_type_ref)
+            if device_type is not None:
+                return device_type
         except Exception:
-            return None
+            pass
+
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        return get_default_mv_catalog().get_protection_device_type(device_type_ref)

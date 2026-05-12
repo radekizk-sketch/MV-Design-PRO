@@ -249,7 +249,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       { id: 'b3', ref_id: 'bay-tr-1', name: 'Pole TR1', tags: [], meta: {}, bay_role: 'TR', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'SEC-B', equipment_refs: [] } as never,
     ];
     snap.branches = [
-      { id: 'br1', ref_id: 'br1', name: 'Kabel Sady', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'bs-out', status: 'closed', length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1 } as never,
+      { id: 'br1', ref_id: 'br1', name: 'Kabel Sady', tags: [], meta: {}, type: 'cable', from_bus_ref: 'b15', to_bus_ref: 'bs-out', status: 'closed', catalog_ref: 'XRUHAKXS 120/25', length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1 } as never,
     ];
 
     const r = buildSldDataFromSnapshot(snap, null);
@@ -286,6 +286,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const outBay = g.sections?.[0].bays[0];
     expect(outBay?.outgoingFeeder?.destination).toBe('→ ST-001 SADY');
     expect(outBay?.outgoingFeeder?.energized).toBeUndefined();
+    expect(outBay?.outgoingFeeder?.segmentTypeLabel).toBe('Kabel SN');
+    expect(outBay?.outgoingFeeder?.segmentLengthLabel).toBe('1 km');
+    expect(outBay?.outgoingFeeder?.catalogLabel).toBe('XRUHAKXS 120/25');
 
     /* Bay z TR (nieliniowy) — brak outgoingFeeder. */
     const trBay = g.sections?.[1].bays[0];
@@ -640,6 +643,501 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(types).toContain('przelotowa');
     expect(types).toContain('odgałęźna');
     expect(types).toContain('sekcyjna');
+  });
+
+  it('stacje terenowe są poza strefą GPZ i nie są osadzane w ramce rozdzielni', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ', tags: [], meta: {}, station_type: 'gpz', bus_refs: [], transformer_refs: [] } as never,
+      { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.gpzs[0].x).toBe(100);
+    expect(r.stations[0].x).toBeGreaterThanOrEqual(900);
+    expect(r.stations[0].x).toBeGreaterThan(r.gpzs[0].x + 700);
+  });
+
+  it('stacja terenowa dostaje mini-RMU z polami SN zamiast pojedynczej ikony', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations[0];
+
+    expect(station.snBays).toBeDefined();
+    expect(station.snBays?.map((bay) => bay.designation)).toEqual(['WE', 'WY', 'TR']);
+    expect(station.snBays?.every((bay) => bay.hasMissingRequiredDevice)).toBe(true);
+    expect(station.footprintType).toBe('mv_lv_inline');
+  });
+
+  it('PV po stronie nN propaguje badge stacji i pozwala renderować wyłączniki nN', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
+    ];
+    snap.generators = [
+      {
+        id: 'pv1',
+        ref_id: 'PV-1',
+        name: 'PV Galeria',
+        tags: [],
+        meta: {},
+        bus_ref: 'bus-nn',
+        p_mw: 0.5,
+        q_mvar: 0,
+        gen_type: 'pv_inverter',
+        station_ref: 'ST-PV',
+        connection_variant: 'nn_side',
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const station = r.stations[0];
+
+    expect(station.footprintType).toBe('der_station');
+    expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
+    expect(station.nnFeedersCount).toBe(2);
+  });
+
+  it('PV po stronie nN rozpoznaje stację z generator.meta.station_ref', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-PV', name: 'Stacja PV', tags: [], meta: {}, station_type: 'inline', bus_refs: ['bus-nn'], transformer_refs: ['tr-1'] } as never,
+    ];
+    snap.generators = [
+      {
+        id: 'pv1',
+        ref_id: 'PV-1',
+        name: 'PV Galeria',
+        tags: [],
+        meta: { station_ref: 'ST-PV' },
+        bus_ref: 'bus-nn',
+        p_mw: 0.5,
+        q_mvar: 0,
+        gen_type: 'pv_inverter',
+        connection_variant: 'nn_side',
+      } as never,
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
+    expect(r.ders.find((der) => der.id === 'PV-1')?.x).toBeGreaterThan(r.stations[0].x);
+  });
+
+  it('stacja terenowa jest pod kablem: kabel trafia w pole WE/WY, nie w środek stacji', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 500 m',
+        branch_type: 'cable',
+        from_bus_ref: 'B1',
+        to_bus_ref: 'B2',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: [{ segment_ref: 'SEG-1', order: 1 }],
+        stations: [{ substation_ref: 'ST-1', order: 1 }],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, {
+      trunks: [{ corridor_ref: 'run-1', segments: ['SEG-1'] }],
+      branches: [],
+      secondary_connectors: [],
+      terminals: [],
+    });
+
+    const cableY = r.cableRuns[0].pathPoints.at(-1)?.y;
+    expect(cableY).toBeDefined();
+    expect(r.stations[0].y).toBe(cableY! + 54);
+  });
+
+  it('odcinek SN startuje z głowicy pola GPZ, a nie z szyny ani etykiety', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+      { id: 'st', ref_id: 'ST-1', name: 'Stacja SN/nN 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-2', ref_id: 'bay-2', name: 'Pole odpływowe 2', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-2'],
+      } as never,
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odpływowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 500 m',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'B2',
+        catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-1', order: 1 }],
+        stations: [{ substation_ref: 'ST-1', order: 1 }],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const points = r.cableRuns[0].pathPoints;
+
+    expect(points[0].y).toBeGreaterThan(600);
+    expect(points[1].y).toBeGreaterThan(points[0].y + 90);
+    expect(points[1].y).toBeGreaterThan(760);
+    expect(points[0].x).toBe(416);
+    expect(points[0].x).toBe(points[1].x);
+    expect(points[1].y).toBe(points[2].y);
+    expect(points[2].x).toBeGreaterThan(points[0].x);
+    expect(r.stations[0].y).toBe(points[2].y + 54);
+    expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
+    expect(r.cableRuns[0].segmentLabels?.[0]?.text).toBe('XRUHAKXS 120/25 · 500 m');
+    expect(r.cableRuns[0].pendingEndpoint).toBe(false);
+  });
+
+  it('odcinek bez line_runs zachowuje głowicę źródłową z metadanych gałęzi', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'Szyna GPZ S1 15 kV', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odpływowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+      {
+        id: 'bay-2', ref_id: 'bay-2', name: 'Pole odpływowe 2', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-2'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 500 m',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'B2',
+        catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.5,
+        tags: [],
+        meta: { origin_bay_ref: 'bay-2', origin_apparatus_kind: 'cable_head' },
+      } as never,
+    ];
+    snap.line_runs = [];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const points = r.cableRuns[0].pathPoints;
+
+    expect(points[0].x).toBe(416);
+    expect(points[0].x).toBe(points[1].x);
+    expect(points.at(-1)?.x).toBe(points[0].x + 140);
+    expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
+  });
+
+  it('odcinek bez stacji końcowej jest krótki i opisany parametrami kabla', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odpływowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 500 m',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'B2',
+        catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-1', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const points = r.cableRuns[0].pathPoints;
+    const start = points[0];
+    const end = points.at(-1);
+
+    expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 500 m');
+    expect(r.cableRuns[0].pendingEndpoint).toBe(true);
+    expect(end?.x).toBe(start.x + 140);
+    expect(end?.x).toBeGreaterThan(start.x);
+    expect(end?.y).toBeGreaterThan(start.y);
+  });
+
+  it('dlugosc katalogowa nie steruje geometria oczekujacego odcinka', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odpływowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 100 m',
+        type: 'cable',
+        from_bus_ref: 'b15',
+        to_bus_ref: 'B2',
+        catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.1,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [{ segment_ref: 'SEG-1', order: 1 }],
+        stations: [],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const points = r.cableRuns[0].pathPoints;
+    const start = points[0];
+    const end = points.at(-1);
+
+    expect(r.cableRuns[0].label).toBe('XRUHAKXS 120/25 · 100 m');
+    expect(r.cableRuns[0].pendingEndpoint).toBe(true);
+    expect(end?.x).toBe(start.x + 140);
+  });
+
+  it('kilka odcinków bez stacji ma osobne etykiety i klikalne przedziały', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'b15', ref_id: 'b15', name: 'B', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      {
+        id: 'gpz', ref_id: 'GPZ-1', name: 'GPZ 1', tags: [], meta: {},
+        station_type: 'gpz', bus_refs: ['b15'], transformer_refs: [],
+        gpz_sections: [{ section_id: 'S1', order: 1, name: 'Sekcja 1', bus_ref: 'b15' }],
+      } as never,
+    ];
+    snap.bays = [
+      {
+        id: 'bay-1', ref_id: 'bay-1', name: 'Pole odpływowe 1', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'GPZ-1', bus_ref: 'b15', gpz_section_id: 'S1',
+        equipment_refs: ['cb-1'],
+      } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1', ref_id: 'SEG-1', name: 'T1', type: 'cable',
+        from_bus_ref: 'b15', to_bus_ref: 'B2', catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.21, tags: [], meta: {},
+      } as never,
+      {
+        id: 'seg-2', ref_id: 'SEG-2', name: 'T2', type: 'cable',
+        from_bus_ref: 'B2', to_bus_ref: 'B3', catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.23, tags: [], meta: {},
+      } as never,
+      {
+        id: 'seg-3', ref_id: 'SEG-3', name: 'T3', type: 'cable',
+        from_bus_ref: 'B3', to_bus_ref: 'B4', catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.18, tags: [], meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'bay-1#cable_head',
+        segments: [
+          { segment_ref: 'SEG-1', order: 1 },
+          { segment_ref: 'SEG-2', order: 2 },
+          { segment_ref: 'SEG-3', order: 3 },
+        ],
+        stations: [],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const run = r.cableRuns[0];
+    const startX = run.pathPoints[0].x;
+
+    expect(run.pathPoints.at(-1)?.x).toBe(startX + 360);
+    expect(run.segmentLabels?.map((label) => label.text)).toEqual([
+      'XRUHAKXS 120/25 · 210 m',
+      'XRUHAKXS 120/25 · 230 m',
+      'XRUHAKXS 120/25 · 180 m',
+    ]);
+    expect(run.segmentLabels?.map((label) => label.x)).toEqual([
+      startX + 60,
+      startX + 180,
+      startX + 300,
+    ]);
+    expect(run.segmentPaths?.map((segmentPath) => segmentPath.pathPoints.at(-1)?.x)).toEqual([
+      startX + 120,
+      startX + 240,
+      startX + 360,
+    ]);
+  });
+
+  it('ciąg kablowy kończy się na ostatnim porcie stacji i pokazuje trasę do kolejnej stacji', () => {
+    const snap = buildEmptySnapshot();
+    snap.substations = [
+      { id: 's1', ref_id: 'ST-1', name: 'Stacja 1', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      { id: 's2', ref_id: 'ST-2', name: 'Stacja 2', tags: [], meta: {}, station_type: 'terminal', bus_refs: [], transformer_refs: [] } as never,
+    ];
+    snap.branches = [
+      {
+        id: 'seg-1',
+        ref_id: 'SEG-1',
+        name: 'Kabel 500 m',
+        type: 'cable',
+        from_bus_ref: 'B1',
+        to_bus_ref: 'B2',
+        catalog_ref: 'XRUHAKXS 120/25',
+        length_km: 0.5,
+        tags: [],
+        meta: {},
+      } as never,
+      {
+        id: 'seg-2',
+        ref_id: 'SEG-2',
+        name: 'Kabel 700 m',
+        type: 'cable',
+        from_bus_ref: 'B2',
+        to_bus_ref: 'B3',
+        catalog_ref: 'XRUHAKXS 70/25',
+        length_km: 0.7,
+        tags: [],
+        meta: {},
+      } as never,
+    ];
+    snap.line_runs = [
+      {
+        id: 'run-1',
+        run_kind: 'main_trunk',
+        starting_bay_ref: 'bay-1',
+        starting_port_ref: 'port-1',
+        segments: [
+          { segment_ref: 'SEG-1', order: 1 },
+          { segment_ref: 'SEG-2', order: 2 },
+        ],
+        stations: [
+          { substation_ref: 'ST-1', order: 1 },
+          { substation_ref: 'ST-2', order: 2 },
+        ],
+      },
+    ];
+
+    const r = buildSldDataFromSnapshot(snap, null);
+
+    expect(r.cableRuns).toHaveLength(1);
+    expect(r.stations.map((station) => station.id)).toEqual(['ST-1', 'ST-2']);
+    const lastCablePoint = r.cableRuns[0].pathPoints.at(-1);
+    expect(lastCablePoint?.x).toBe(r.stations[1].x);
+    expect(lastCablePoint?.y).toBe(r.stations[1].y - 54);
+    expect(r.stations[0].x).toBeLessThan(r.stations[1].x);
+    expect(r.cableRuns[0].label).toBe('różne typy katalogowe · 1,2 km');
+    expect(r.cableRuns[0].segmentLabels?.map((label) => label.text)).toEqual([
+      'XRUHAKXS 120/25 · 500 m',
+      'XRUHAKXS 70/25 · 700 m',
+    ]);
+    expect(r.cableRuns[0].segmentPaths?.map((segmentPath) => segmentPath.segmentRef)).toEqual([
+      'SEG-1',
+      'SEG-2',
+    ]);
+    expect(r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(0)?.x).toBe(r.cableRuns[0].pathPoints[0].x);
+    expect(r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(-1)?.x).toBe(r.stations[0].x - 28);
+    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(0)?.x).toBe(r.stations[0].x + 28);
+    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(-1)?.x).toBe(r.stations[1].x);
   });
 });
 

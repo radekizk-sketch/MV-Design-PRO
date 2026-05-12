@@ -1,0 +1,66 @@
+﻿{
+    "header":  {
+                   "enm_version":  "1.0",
+                   "name":  "Model sieci - 3e6f5929",
+                   "description":  null,
+                   "created_at":  "2026-05-11T04:18:47.994381Z",
+                   "updated_at":  "2026-05-11T04:18:47.994381Z",
+                   "revision":  1,
+                   "hash_sha256":  "6b84dc19b71b9773a8b85bf1e37b4326024609323d20cae81e6449a6a1ff5326",
+                   "defaults":  {
+                                    "frequency_hz":  50.0,
+                                    "unit_system":  "SI",
+                                    "sn_nominal_kv":  null
+                                },
+                   "semantic_hash":  null,
+                   "input_hash":  null,
+                   "case_hash":  null,
+                   "variant_hash":  null,
+                   "switching_snapshot_hash":  null
+               },
+    "buses":  [
+
+              ],
+    "branches":  [
+
+                 ],
+    "transformers":  [
+
+                     ],
+    "sources":  [
+
+                ],
+    "loads":  [
+
+              ],
+    "generators":  [
+
+                   ],
+    "substations":  [
+
+                    ],
+    "bays":  [
+
+             ],
+    "junctions":  [
+
+                  ],
+    "corridors":  [
+
+                  ],
+    "measurements":  [
+
+                     ],
+    "protection_assignments":  [
+
+                               ],
+    "branch_points":  [
+
+                      ],
+    "line_runs":  [
+
+                  ],
+    "connection_nodes":  [
+
+                         ]
+}

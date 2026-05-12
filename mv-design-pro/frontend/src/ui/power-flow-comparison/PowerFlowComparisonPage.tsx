@@ -92,7 +92,7 @@ function ComparisonExportButton({ comparisonId, disabled }: ComparisonExportButt
       document.body.removeChild(a);
     } catch (error) {
       console.error('Export error:', error);
-      notify(`BĹ‚ąd eksportu: ${error instanceof Error ? error.message : 'Nieznany bĹ‚ąd'}`);
+      notify(`Błąd eksportu: ${error instanceof Error ? error.message : 'Nieznany błąd'}`);
     } finally {
       setIsExporting(false);
     }

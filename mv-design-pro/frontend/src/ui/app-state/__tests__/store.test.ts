@@ -81,6 +81,7 @@ describe('useAppStateStore', () => {
       useAppStateStore.getState().setActiveCase('case-1', 'Case 1', 'ShortCircuitCase', 'FRESH');
       useAppStateStore.getState().setActiveSnapshot('snap-1');
       useAppStateStore.getState().setActiveAnalysisType('SHORT_CIRCUIT');
+      useSnapshotStore.setState({ snapshot: makeCalculationReadySnapshot() });
 
       // Change project
       useAppStateStore.getState().setActiveProject('proj-2', 'Project 2');
@@ -94,6 +95,7 @@ describe('useAppStateStore', () => {
       expect(state.activeSnapshotId).toBeNull();
       expect(state.activeRunId).toBeNull();
       expect(state.activeAnalysisType).toBeNull();
+      expect(useSnapshotStore.getState().snapshot).toBeNull();
     });
 
     it('should NOT clear case context when same project is re-set', () => {

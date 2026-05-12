@@ -1,9 +1,9 @@
 /**
- * GlobalSearch â€” Wyszukiwarka globalna (Ctrl+K).
+ * GlobalSearch — Wyszukiwarka globalna (Ctrl+K).
  *
- * Command palette wyszukujÄ…ca elementy ENM po nazwie/ref_id/typie.
- * Wynik â†’ nawigacja do elementu na SLD + zaznaczenie w drzewie.
- * Max 20 wynikĂłw, grouping po kategoriach.
+ * Command palette wyszukująca elementy ENM po nazwie/ref_id/typie.
+ * Wynik → nawigacja do elementu na SLD + zaznaczenie w drzewie.
+ * Max 20 wyników, grouping po kategoriach.
  *
  * BINDING: 100% PL etykiety.
  */
@@ -31,13 +31,13 @@ interface SearchResult {
 type SearchCategory = 'sources' | 'buses' | 'branches' | 'transformers' | 'stations' | 'generators' | 'loads';
 
 const CATEGORY_LABELS: Record<SearchCategory, string> = {
-  sources: 'ĹąrĂłdĹ‚a zasilania',
+  sources: 'Źródła zasilania',
   buses: 'Szyny',
-  branches: 'GaĹ‚Ä™zie / Odcinki',
+  branches: 'Gałęzie / Odcinki',
   transformers: 'Transformatory',
   stations: 'Stacje',
-  generators: 'ĹąrĂłdĹ‚a OZE / Generatory',
-  loads: 'ObciÄ…ĹĽenia',
+  generators: 'Źródła OZE / Generatory',
+  loads: 'Obciążenia',
 };
 
 const CATEGORY_ORDER: SearchCategory[] = [
@@ -272,16 +272,16 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         <div className="max-h-[50vh] overflow-y-auto">
           {query.trim() && results.length === 0 && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Nie znaleziono elementĂłw</p>
-              <p className="text-[10px] text-gray-400 mt-1">SprĂłbuj innej frazy</p>
+              <p className="text-sm text-gray-500">Nie znaleziono elementów</p>
+              <p className="text-[10px] text-gray-400 mt-1">Spróbuj innej frazy</p>
             </div>
           )}
 
           {!query.trim() && (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-gray-500">Wpisz nazwÄ™ lub identyfikator elementu</p>
+              <p className="text-sm text-gray-500">Wpisz nazwę lub identyfikator elementu</p>
               <p className="text-[10px] text-gray-400 mt-1">
-                Szukaj szyn, odcinkĂłw, stacji, transformatorĂłw, ĹşrĂłdeĹ‚ OZE
+                Szukaj szyn, odcinków, stacji, transformatorów, źródeł OZE
               </p>
             </div>
           )}
@@ -327,8 +327,8 @@ export function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
         {/* Footer */}
         {results.length > 0 && (
           <div className="px-4 py-2 border-t border-gray-100 bg-gray-50 flex items-center gap-4 text-[10px] text-gray-400">
-            <span>{results.length} wynikĂłw</span>
-            <span>â†‘â†“ nawigacja</span>
+            <span>{results.length} wyników</span>
+            <span>↑↓ nawigacja</span>
             <span>Enter wybierz</span>
             <span>Esc zamknij</span>
           </div>

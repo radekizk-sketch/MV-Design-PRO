@@ -1,0 +1,11 @@
+{
+  "url": "http://127.0.0.1:5174/#sld?fresh=gpz-tr-ret-1778474500",
+  "keys": [
+    "mv-design-app-state",
+    "mv-design-selection-store"
+  ],
+  "entries": {
+    "mv-design-app-state": "{\"state\":{\"activeProjectId\":\"project:siec-sn-projekt-roboczy:15kv\",\"activeProjectName\":\"Sieć SN - projekt roboczy\",\"activeCaseId\":\"3e6f5929-9b48-4e3f-873b-1361023178c3\",\"activeCaseName\":\"Zwarcie maksymalne IEC 60909\",\"activeCaseKind\":\"ShortCircuitCase\",\"activeSnapshotId\":null,\"activeArea\":\"MODEL_SIECI\",\"activeVariantId\":\"variant:siec-sn-projekt-roboczy:stan-projektowany-2026\",\"activeVariantName\":\"Stan projektowany 2026\"},\"version\":2}",
+    "mv-design-selection-store": "{\"state\":{\"treeExpandedNodes\":[],\"propertyGridOpen\":false},\"version\":0}"
+  }
+}

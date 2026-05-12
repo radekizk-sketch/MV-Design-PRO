@@ -40,6 +40,18 @@ interface NnConfigurationOption {
   converterKind?: ConverterType['kind'];
 }
 
+interface NnFeederPayload {
+  feeder_role: NnFeederRole;
+  catalog_bindings: Record<string, unknown> | null;
+  protection?: {
+    breaker_role: string;
+    device_catalog_ref: string;
+    device_label: string;
+    protected_object: string;
+    analysis_scope: string;
+  };
+}
+
 const STATION_KIND_OPTIONS: Array<{
   value: TopologicalStationKind;
   label: string;
@@ -149,6 +161,7 @@ const DEFAULT_RECEIVER_NN_VOLTAGE_KV = 0.4;
 const DEFAULT_CUSTOM_NN_VOLTAGE_KV = 0.69;
 const SN_VOLTAGE_TOLERANCE_KV = 0.01;
 const NN_VOLTAGE_TOLERANCE_KV = 0.001;
+const MAX_STATION_NN_SOURCE_VOLTAGE_KV = 1;
 const NO_COMPATIBLE_TRANSFORMER_MESSAGE =
   'Brak transformatora katalogowego zgodnego z napięciem SN i napięciem strony nN źródła.';
 
@@ -180,6 +193,41 @@ function voltageMatches(
     && Number.isFinite(right)
     && Math.abs(left - right) <= toleranceKv
   );
+}
+
+function isStationNnSourceConverter(type: ConverterType): boolean {
+  return (
+    typeof type.un_kv === 'number'
+    && Number.isFinite(type.un_kv)
+    && type.un_kv > 0
+    && type.un_kv <= MAX_STATION_NN_SOURCE_VOLTAGE_KV
+  );
+}
+
+function compareStationNnSourceConverters(left: ConverterType, right: ConverterType): number {
+  const leftDistance = Math.abs(left.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
+  const rightDistance = Math.abs(right.un_kv - DEFAULT_RECEIVER_NN_VOLTAGE_KV);
+  if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+  return left.name.localeCompare(right.name, 'pl-PL') || left.id.localeCompare(right.id);
+}
+
+function hasEnoughTransformerPower(type: TransformerType, sourcePowerMva: number | null): boolean {
+  return sourcePowerMva == null || type.rated_power_mva >= sourcePowerMva;
+}
+
+function compareTransformersForSourcePower(
+  sourcePowerMva: number | null,
+): (left: TransformerType, right: TransformerType) => number {
+  return (left, right) => {
+    if (sourcePowerMva != null) {
+      const leftEnough = hasEnoughTransformerPower(left, sourcePowerMva);
+      const rightEnough = hasEnoughTransformerPower(right, sourcePowerMva);
+      if (leftEnough !== rightEnough) return leftEnough ? -1 : 1;
+    }
+    return left.rated_power_mva - right.rated_power_mva
+      || left.name.localeCompare(right.name, 'pl-PL')
+      || left.id.localeCompare(right.id);
+  };
 }
 
 function formatKv(value: number | null | undefined): string {
@@ -217,6 +265,17 @@ function sourceFeederRole(configuration: NnConfiguration): NnFeederRole | null {
     default:
       return null;
   }
+}
+
+function sourceProtectionIntent(configuration: NnConfiguration): NnFeederPayload['protection'] | undefined {
+  if (configuration !== 'PV_INVERTER') return undefined;
+  return {
+    breaker_role: 'wyłącznik nN źródła PV',
+    device_catalog_ref: 'EM_ETANGO_400_V0',
+    device_label: 'Elektrometal e2TANGO-400',
+    protected_object: 'falownik PV i kabel nN do PCC',
+    analysis_scope: 'nadprądowe, ziemnozwarciowe i koordynacja z wyłącznikiem głównym nN',
+  };
 }
 
 function toTransformerCatalogEntries(
@@ -297,23 +356,50 @@ function resolveSegmentIdFromContext(
   context: Record<string, unknown> | undefined,
   snapshot: unknown,
 ): string {
-  const directSegmentId = contextString(context, ['segment_id', 'segment_ref']);
-  if (directSegmentId) return directSegmentId;
-
-  const corridorRef = contextString(context, ['corridor_ref', 'trunk_id']);
-  if (!corridorRef) return '';
-
   const model = snapshot as {
+    branches?: Array<{
+      ref_id?: string;
+      id?: string;
+    }>;
     corridors?: Array<{
       ref_id?: string;
       id?: string;
       ordered_segment_refs?: string[];
     }>;
   } | null;
-  const corridor = model?.corridors?.find(
-    (candidate) => candidate.ref_id === corridorRef || candidate.id === corridorRef,
+  const resolveFromCorridor = (corridorRef: string): string => {
+    const corridor = model?.corridors?.find(
+      (candidate) => candidate.ref_id === corridorRef || candidate.id === corridorRef,
+    );
+    return corridor?.ordered_segment_refs?.find((ref) => branchExists(model, ref))?.trim()
+      ?? corridor?.ordered_segment_refs?.[0]?.trim()
+      ?? '';
+  };
+
+  const directSegmentId = contextString(context, ['segment_id', 'segment_ref']);
+  if (directSegmentId) {
+    if (branchExists(model, directSegmentId)) return directSegmentId;
+    const segmentFromCorridor = resolveFromCorridor(directSegmentId);
+    if (segmentFromCorridor) return segmentFromCorridor;
+
+    const firstAvailableBranch = model?.branches?.[0]?.ref_id ?? model?.branches?.[0]?.id ?? '';
+    if (firstAvailableBranch && directSegmentId.includes('corridor')) return firstAvailableBranch;
+    return directSegmentId;
+  }
+
+  const corridorRef = contextString(context, ['corridor_ref', 'trunk_id']);
+  if (!corridorRef) return '';
+  return resolveFromCorridor(corridorRef);
+}
+
+function branchExists(
+  model: { branches?: Array<{ ref_id?: string; id?: string }> } | null,
+  segmentId: string,
+): boolean {
+  return Boolean(
+    segmentId
+    && model?.branches?.some((branch) => branch.ref_id === segmentId || branch.id === segmentId),
   );
-  return corridor?.ordered_segment_refs?.[0]?.trim() ?? '';
 }
 
 function engineeringSegmentLabel(segmentId: string): string {
@@ -340,6 +426,7 @@ function StationSystemPreview({
   outgoingFeederCount,
   nnConfigurationLabel,
   recommendedTransformer,
+  selectedConverter,
 }: {
   stationTypeLabel: string;
   stationKind: TopologicalStationKind;
@@ -350,12 +437,18 @@ function StationSystemPreview({
   outgoingFeederCount: number;
   nnConfigurationLabel: string;
   recommendedTransformer: TransformerType | null;
+  selectedConverter: ConverterType | null;
 }) {
   const snFieldCount = snFieldLabels.length;
   const transformerLabel = recommendedTransformer
     ? `${recommendedTransformer.name} · ${formatMva(recommendedTransformer.rated_power_mva)} MVA`
     : 'transformator do doboru';
   const nnVoltageLabel = requiredNnVoltageIsValid ? `${formatKv(nnVoltageKv)} kV` : 'do ustalenia';
+  const isPvBehindTransformer = selectedConverter?.kind === 'PV';
+  const sourceProtection = sourceProtectionIntent(isPvBehindTransformer ? 'PV_INVERTER' : 'LOAD_NN');
+  const sourceLabel = selectedConverter
+    ? `${selectedConverter.name} · ${formatMva(selectedConverter.pmax_mw)} MW · ${formatKv(selectedConverter.un_kv)} kV`
+    : 'źródło do wyboru z katalogu';
   const stationGoal =
     stationKind === 'terminal'
       ? 'Zasilanie jednostronne bez kontynuacji magistrali.'
@@ -449,6 +542,45 @@ function StationSystemPreview({
               <div className="mt-2 text-xs leading-5 text-[#a8c7e2]">{nnConfigurationLabel}</div>
             </div>
           </div>
+          {isPvBehindTransformer && (
+            <div className="mt-3 border border-[#d6a21d] bg-[#1d1704] px-3 py-3">
+              <div className="grid gap-3 md:grid-cols-[1fr_1fr_1.2fr]">
+                <div>
+                  <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#ffe08a]">
+                    PV za transformatorem SN/nN
+                  </div>
+                  <div className="mt-2 text-sm font-semibold leading-5 text-white">{sourceLabel}</div>
+                  <div className="mt-1 text-xs leading-5 text-[#e8d79a]">
+                    PCC po stronie nN, z wpływem na rozpływ mocy i wkład zwarciowy zgodnie ze statusem modelu.
+                  </div>
+                </div>
+                <div>
+                  <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#ffe08a]">
+                    Aparatura nN PV
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-white">
+                    <span className="grid h-7 w-7 place-items-center border border-[#86efac] bg-[#06351f] font-bold">Q1</span>
+                    <span>wyłącznik nN falownika</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-xs text-white">
+                    <span className="grid h-7 w-7 place-items-center border border-[#86efac] bg-[#06351f] font-bold">Q2</span>
+                    <span>wyłącznik nN odpływu pomocniczego</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="font-mono-eng text-[10px] uppercase tracking-[0.14em] text-[#ffe08a]">
+                    Zabezpieczenie źródła
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-white">
+                    {sourceProtection?.device_label}
+                  </div>
+                  <div className="mt-1 text-xs leading-5 text-[#e8d79a]">
+                    Chroniony obiekt: {sourceProtection?.protected_object}. Zakres analizy: {sourceProtection?.analysis_scope}.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -468,6 +600,12 @@ function StationSystemPreview({
           <SystemPreviewRow label="Odpływy nN" value={`${outgoingFeederCount}`} />
           <SystemPreviewRow label="Pola SN" value={snFieldLabels.join(', ')} />
           <SystemPreviewRow label="Transformator" value={transformerLabel} />
+          {isPvBehindTransformer && (
+            <SystemPreviewRow
+              label="PV po stronie nN"
+              value={`${sourceLabel}; zabezpieczenie ${sourceProtection?.device_label ?? 'do doboru'}`}
+            />
+          )}
         </dl>
       </div>
     </div>
@@ -571,10 +709,16 @@ export function InsertStationForm() {
     [nnConfiguration],
   );
   const filteredConverters = useMemo(
-    () =>
-      selectedConfiguration.converterKind
-        ? converterTypes.filter((type) => type.kind === selectedConfiguration.converterKind)
-        : [],
+    () => {
+      if (!selectedConfiguration.converterKind) return [];
+      return converterTypes
+        .filter(
+          (type) =>
+            type.kind === selectedConfiguration.converterKind
+            && isStationNnSourceConverter(type),
+        )
+        .sort(compareStationNnSourceConverters);
+    },
     [converterTypes, selectedConfiguration.converterKind],
   );
   const selectedConverter = useMemo(
@@ -596,12 +740,23 @@ export function InsertStationForm() {
       : selectedConverter?.sn_mva ?? null;
   const compatibleTransformerTypes = useMemo(() => {
     if (!requiredNnVoltageIsValid) return [];
-    return transformerTypes.filter(
-      (type) =>
-        voltageMatches(type.voltage_hv_kv, stationSnVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
-        && voltageMatches(type.voltage_lv_kv, requiredNnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
-    );
-  }, [requiredNnVoltageIsValid, requiredNnVoltageKv, stationSnVoltageKv, transformerTypes]);
+    return transformerTypes
+      .filter(
+        (type) =>
+          voltageMatches(type.voltage_hv_kv, stationSnVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
+          && voltageMatches(type.voltage_lv_kv, requiredNnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
+      )
+      .sort(compareTransformersForSourcePower(sourcePowerMva));
+  }, [
+    requiredNnVoltageIsValid,
+    requiredNnVoltageKv,
+    sourcePowerMva,
+    stationSnVoltageKv,
+    transformerTypes,
+  ]);
+  const hasAdequateTransformerPower = compatibleTransformerTypes.some((type) =>
+    hasEnoughTransformerPower(type, sourcePowerMva),
+  );
   const transformerCatalogEntries = useMemo(
     () => toTransformerCatalogEntries(compatibleTransformerTypes, sourcePowerMva),
     [compatibleTransformerTypes, sourcePowerMva],
@@ -674,6 +829,13 @@ export function InsertStationForm() {
     }
   }, [filteredConverters, selectedConverterId]);
 
+  useEffect(() => {
+    if (!selectedConfiguration.converterKind || selectedConverterId || filteredConverters.length === 0) {
+      return;
+    }
+    setSelectedConverterId(filteredConverters[0].id);
+  }, [filteredConverters, selectedConfiguration.converterKind, selectedConverterId]);
+
   const configurationBlocker = useMemo(() => {
     if (selectedConfiguration.converterKind && filteredConverters.length === 0) {
       return `Brak pozycji katalogowych falowników dla konfiguracji: ${selectedConfiguration.label}.`;
@@ -687,10 +849,14 @@ export function InsertStationForm() {
     if (transformerTypes.length > 0 && compatibleTransformerTypes.length === 0) {
       return NO_COMPATIBLE_TRANSFORMER_MESSAGE;
     }
+    if (transformerTypes.length > 0 && !hasAdequateTransformerPower) {
+      return 'Brak transformatora katalogowego o mocy wystarczającej dla wybranego źródła nN.';
+    }
     return null;
   }, [
     compatibleTransformerTypes.length,
     filteredConverters.length,
+    hasAdequateTransformerPower,
     requiredNnVoltageIsValid,
     selectedConfiguration.converterKind,
     selectedConfiguration.label,
@@ -737,14 +903,29 @@ export function InsertStationForm() {
 
       const transformerBinding = normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN');
       const normalizedOutgoingFeederCount = clampOutgoingFeederCount(outgoingFeederCount);
-      const outgoingFeeders: Array<{ feeder_role: NnFeederRole; catalog_bindings: null }> =
+      const outgoingFeeders: NnFeederPayload[] =
         Array.from({ length: normalizedOutgoingFeederCount }, () => ({
           feeder_role: 'ODPLYW_NN',
           catalog_bindings: null,
         }));
       const feederRole = sourceFeederRole(nnConfiguration);
       if (feederRole) {
-        outgoingFeeders.push({ feeder_role: feederRole, catalog_bindings: null });
+        outgoingFeeders.push({
+          feeder_role: feederRole,
+          catalog_bindings: selectedConverter
+            ? {
+                source_converter: normalizeCatalogBinding(
+                  selectedConverter.id,
+                  nnConfiguration === 'PV_INVERTER'
+                    ? 'ZRODLO_NN_PV'
+                    : nnConfiguration === 'BESS_INVERTER'
+                      ? 'ZRODLO_NN_BESS'
+                      : 'CONVERTER',
+                ),
+              }
+            : null,
+          protection: sourceProtectionIntent(nnConfiguration),
+        });
       }
 
       const payload = {
@@ -774,7 +955,12 @@ export function InsertStationForm() {
           main_breaker_nn: true,
           nn_configuration: nnConfiguration,
           source_converter_catalog_ref: selectedConverter?.id,
+          source_converter_name: selectedConverter?.name,
+          source_converter_kind: selectedConverter?.kind,
           source_converter_un_kv: selectedConverter?.un_kv,
+          source_converter_sn_mva: selectedConverter?.sn_mva,
+          source_converter_pmax_mw: selectedConverter?.pmax_mw,
+          source_protection: sourceProtectionIntent(nnConfiguration),
           outgoing_feeders_nn_count: outgoingFeeders.length,
           outgoing_feeders_nn: outgoingFeeders,
         },
@@ -912,6 +1098,7 @@ export function InsertStationForm() {
             outgoingFeederCount={outgoingFeederCount}
             nnConfigurationLabel={selectedConfiguration.label}
             recommendedTransformer={recommendedTransformer}
+            selectedConverter={selectedConverter}
           />
         </section>
 
@@ -1090,7 +1277,7 @@ export function InsertStationForm() {
           initialData={editorInitialData}
           busOptions={stationBusOptions}
           catalogEntries={transformerCatalogEntries}
-          submitLabel="Wstaw stację na odcinku"
+          submitLabel="Podziel odcinek i wstaw stację"
           onSubmit={handleSubmit}
           onCancel={closeForm}
         />

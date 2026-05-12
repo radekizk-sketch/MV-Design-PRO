@@ -78,9 +78,9 @@ function NodeRow(props: {
           </span>
         )}
       </button>
-      {node.children && node.children.map((child) => (
+      {node.children && node.children.map((child, index) => (
         <NodeRow
-          key={child.id}
+          key={`${child.id}:${index}`}
           node={child}
           depth={depth + 1}
           selectedId={selectedId}
@@ -103,8 +103,8 @@ export function NavigatorSection(props: NavigatorSectionProps): JSX.Element {
           Pusty projekt — pierwsza czynność: Wstaw główny punkt zasilania.
         </div>
       ) : (
-        nodes.map((n) => (
-          <NodeRow key={n.id} node={n} depth={0} selectedId={selectedId} onSelect={onSelect} />
+        nodes.map((n, index) => (
+          <NodeRow key={`${n.id}:${index}`} node={n} depth={0} selectedId={selectedId} onSelect={onSelect} />
         ))
       )}
     </div>

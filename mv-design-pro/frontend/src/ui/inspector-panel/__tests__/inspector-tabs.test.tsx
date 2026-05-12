@@ -26,13 +26,12 @@ describe('inspector-tabs - Inspektor techniczny', () => {
     expect(tabs).toContain('wyniki');
   });
 
-  it('stan braku wyboru pokazuje karte semantyczna bez pustych zakladek specjalistycznych', () => {
+  it('stan braku wyboru pokazuje tylko inspektor techniczny bez karty semantycznej', () => {
     render(<EmptyInspectorPanel selectedElement={null} />);
-    expect(screen.getByText('Karta semantyczna')).toBeInTheDocument();
+    expect(screen.queryByText('Karta semantyczna')).not.toBeInTheDocument();
     expect(screen.getByText('Inspektor techniczny')).toBeInTheDocument();
-    expect(screen.getByText(/Rola/)).toBeInTheDocument();
-    expect(screen.getByText('Rodzaj elementu')).toBeInTheDocument();
-    expect(screen.getByText(/Kompletno/)).toBeInTheDocument();
+    expect(screen.getByText('Brak wyboru')).toBeInTheDocument();
+    expect(screen.getByText(/Wybierz GPZ/)).toBeInTheDocument();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
   });
 });

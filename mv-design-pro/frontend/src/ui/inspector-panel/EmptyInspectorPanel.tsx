@@ -61,6 +61,24 @@ const ELEMENT_TYPE_LABELS_PL: Record<ElementType, string> = {
   DescriptiveElement: 'Element opisowy',
 };
 
+const APPARATUS_KIND_LABELS_PL: Record<string, string> = {
+  disconnect_bus: 'Odłącznik szynowy',
+  breaker: 'Wyłącznik SN',
+  ct: 'Przekładnik prądowy',
+  vt: 'Przekładnik napięciowy',
+  switch_disconnector: 'Rozłącznik',
+  earthing_switch: 'Uziemnik boczny',
+  fuse: 'Bezpieczniki',
+  cable_head: 'Głowica kablowa / port odpływu',
+  transformer_symbol: 'Transformator WN/SN',
+};
+
+function parseApparatusSelectionId(id: string): { bayRef: string; apparatusKind: string } | null {
+  const marker = id.lastIndexOf('#');
+  if (marker <= 0 || marker === id.length - 1) return null;
+  return { bayRef: id.slice(0, marker), apparatusKind: id.slice(marker + 1) };
+}
+
 export interface EmptyInspectorPanelProps {
   selectedElement?: SelectedElement | null;
   isReadOnly?: boolean;
@@ -87,26 +105,19 @@ export function EmptyInspectorPanel({
         className={clsx('flex h-full flex-col bg-scada-panel text-scada-text', className)}
         data-testid="inspector-panel-empty"
       >
-        <InspectorSectionTitle title="Karta semantyczna" />
-        <div className="space-y-3 border-b border-scada-border p-3">
-          <InspectorField label="Rola inżynierska" value="—" />
-          <InspectorField label="Rodzaj elementu" value="—" />
-          <InspectorField label="Kompletność" value="—" />
-          <InspectorField label="Domena napięciowa" value="—" />
-          <div className="grid grid-cols-[112px_minmax(0,1fr)] items-start gap-2 text-[11px]">
-            <span className="text-scada-muted">Porty</span>
-            <div className="space-y-1 text-scada-text">
-              <div className="font-mono">—</div>
-              <div className="text-[10px] leading-snug text-scada-muted">
-                Wybierz element schematu, aby pokazać porty z modelu semantycznego.
-              </div>
-            </div>
-          </div>
-        </div>
-
         <InspectorSectionTitle title="Inspektor techniczny" />
         <div className="flex-1 overflow-auto p-3">
-          <div className="space-y-2">
+          <section className="rounded border border-scada-border bg-scada-surface p-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+              Brak wyboru
+            </h3>
+            <p className="mt-2 text-[12px] leading-snug text-scada-muted">
+              Wybierz GPZ, pole SN, odcinek, stację albo wynik na schemacie, aby zobaczyć
+              parametry techniczne, braki danych, wyniki i dostępne akcje.
+            </p>
+          </section>
+
+          <div className="mt-3 space-y-2">
             <InspectorField label="Nazwa" value="—" />
             <InspectorField label="Opis" value="—" />
             <InspectorField label="Producent" value="—" />
@@ -121,7 +132,7 @@ export function EmptyInspectorPanel({
 
           <div className="mt-5 flex items-center justify-between">
             <h3 className="text-[12px] font-semibold text-scada-text">Zabezpieczenia</h3>
-            <span className="text-emerald-400">◎</span>
+            <span className="text-emerald-400">●</span>
           </div>
           <div className="mt-2 space-y-2">
             <InspectorField label="Typ zabezpieczenia" value="—" />
@@ -133,7 +144,7 @@ export function EmptyInspectorPanel({
             <h3 className="text-[12px] font-semibold text-scada-text">Uwagi</h3>
             <div className="mt-2 flex h-8 items-center justify-between rounded-sm border border-scada-border bg-scada-bg px-2 text-[11px] text-scada-muted">
               <span>0</span>
-              <span className="text-scada-text">＋</span>
+              <span className="text-scada-text">+</span>
             </div>
           </div>
         </div>
@@ -142,6 +153,10 @@ export function EmptyInspectorPanel({
   }
 
   const typeLabel = ELEMENT_TYPE_LABELS_PL[selectedElement.type] ?? selectedElement.type;
+  const apparatusSelection = parseApparatusSelectionId(selectedElement.id);
+  const apparatusLabel = apparatusSelection
+    ? APPARATUS_KIND_LABELS_PL[apparatusSelection.apparatusKind] ?? apparatusSelection.apparatusKind
+    : null;
 
   return (
     <div
@@ -164,12 +179,25 @@ export function EmptyInspectorPanel({
           </dl>
         </section>
 
+        {apparatusSelection && (
+          <section className="mt-3 rounded border border-scada-border bg-scada-surface p-3">
+            <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
+              Parametry aparatu
+            </h3>
+            <dl className="mt-3 space-y-2 text-[12px]">
+              <InspectorRow label="Rodzaj aparatu" value={apparatusLabel ?? 'Aparat SN'} />
+              <InspectorRow label="Pole powiązane" value={apparatusSelection.bayRef} mono />
+              <InspectorRow label="Zakres edycji" value="Aparatura, przekładniki, zabezpieczenia i katalog pola" />
+            </dl>
+          </section>
+        )}
+
         <section className="mt-3 rounded border border-scada-border bg-scada-surface p-3">
           <h3 className="text-[11px] font-semibold uppercase tracking-widest text-scada-muted">
-            Warunek przejścia
+            Następny krok
           </h3>
           <p className="mt-2 text-[12px] leading-snug text-scada-muted">
-            Otwórz kanoniczną zakładkę inspektora albo menu obiektu na SLD, aby przejść do edycji,
+            Użyj zakładek inspektora albo menu obiektu na SLD, aby przejść do edycji,
             wyników, uzasadnienia lub raportu dla tego elementu.
           </p>
         </section>

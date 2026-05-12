@@ -100,15 +100,15 @@ export function ObjectCard({
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto">
-        {sections.map((section) => (
-          <div key={section.id} className="border-b border-gray-100">
+        {sections.map((section, sectionIndex) => (
+          <div key={`${section.id}:${sectionIndex}`} className="border-b border-gray-100">
             <div className="px-4 py-2">
               <h4 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
                 {section.label}
               </h4>
               <div className="space-y-1">
-                {section.fields.map((field) => (
-                  <div key={field.key} className="flex items-baseline justify-between gap-2">
+                {section.fields.map((field, fieldIndex) => (
+                  <div key={`${field.key}:${fieldIndex}`} className="flex items-baseline justify-between gap-2">
                     <span className="text-[11px] text-gray-500 flex-shrink-0">{field.label}</span>
                     <span
                       className={clsx(

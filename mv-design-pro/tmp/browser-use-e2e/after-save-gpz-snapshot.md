@@ -1,0 +1,219 @@
+- generic [ref=e4] [box=0,0,3654,1927]:
+  - generic [ref=e6] [box=-1,-1,1,28]:
+    - button [disabled] [ref=e7] [box=-1,-1,58,28]:
+      - generic [ref=e8] [box=6,2,11,21]: ↶
+      - generic [ref=e9] [box=23,6,27,14]: Cofnij
+    - button [disabled] [ref=e10] [box=60,-1,62,28]:
+      - generic [ref=e11] [box=67,2,11,21]: ↷
+      - generic [ref=e12] [box=84,6,31,14]: Ponów
+  - banner [ref=e13] [box=0,0,3654,70]:
+    - generic [ref=e14] [box=0,0,136,69]:
+      - generic [ref=e15] [box=14,19,107,14]: MV-DESIGN-PRO
+      - generic [ref=e16] [box=14,32,107,17]: "12.2"
+    - generic "Kontekst projektu" [ref=e17] [box=136,0,2933,69]:
+      - button "Projekt Sieć SN - projekt roboczy" [ref=e690] [cursor=pointer] [box=136,0,164,69]:
+        - generic [ref=e19] [box=150,15,135,15]: Projekt
+        - generic [ref=e21] [box=150,34,135,19]: Sieć SN - projekt roboczy
+      - button "Cel / stan Zwarcie maksymalne IEC 60909 · Stan projektowany 2026" [ref=e691] [cursor=pointer] [box=300,0,224,69]:
+        - generic [ref=e23] [box=314,15,195,15]: Cel / stan
+        - generic [ref=e24] [box=314,34,195,19]:
+          - generic [ref=e25] [box=314,34,177,19]: Zwarcie maksymalne IEC 60909 · Stan projektowany 2026
+          - img [ref=e26] [box=498,38,10,10]
+      - button "Konfiguruj zakres" [ref=e28] [cursor=pointer] [box=135,-1,1,1]
+      - generic "Brak wyników" [ref=e29] [box=524,0,136,69]:
+        - generic [ref=e31] [box=554,25,79,18]: Brak wyników
+    - generic [ref=e33] [box=3083,23,49,22]:
+      - generic [ref=e34] [box=3089,23,44,10]: 06:11:33
+      - generic [ref=e35] [box=3083,37,49,9]: 11.05.2026
+    - generic [ref=e36] [box=3148,0,506,69]:
+      - button "Sprawdź braki danych" [ref=e37] [cursor=pointer] [box=3158,17,160,35]:
+        - img [ref=e38] [box=3174,28,12,12]
+        - generic [ref=e40] [box=3193,25,93,19]: Sprawdź braki
+        - img [ref=e41] [box=3293,29,10,10]
+      - button "Nakładka" [ref=e43] [cursor=pointer] [box=3325,17,91,35]:
+        - generic [ref=e44] [box=3336,25,53,18]: Nakładka
+        - img [ref=e45] [box=3396,29,10,10]
+      - button "Analizy" [ref=e47] [cursor=pointer] [box=3424,17,86,35]:
+        - generic [ref=e48] [box=3434,25,46,18]: Analizy
+        - img [ref=e49] [box=3487,28,12,12]
+      - button "Eksport" [ref=e51] [cursor=pointer] [box=3517,17,85,35]:
+        - generic [ref=e52] [box=3527,25,46,18]: Eksport
+        - img [ref=e53] [box=3581,29,10,10]
+      - button "Ustawienia" [ref=e55] [cursor=pointer] [box=3609,17,35,35]:
+        - img [ref=e56] [box=3617,25,18,18]
+  - generic [ref=e59] [box=0,70,3654,48]:
+    - generic [ref=e60] [box=10,79,3320,28]:
+      - 'generic "Faza budowy modelu: uzupełnij brakujące elementy sieci przed analizą" [ref=e692] [box=10,79,161,28]':
+        - generic [ref=e693] [box=10,85,67,16]: "Faza projektu:"
+        - generic [ref=e694] [box=85,81,72,24]: BUDOWA
+      - 'generic "Blokady: T=3 K=0 E=0" [ref=e888] [box=172,79,95,28]':
+        - generic [ref=e697] [box=186,85,38,16]: "Blokery:"
+        - generic [ref=e698] [box=231,83,21,21]: "3"
+      - generic [ref=e699] [box=267,79,143,28]:
+        - generic [ref=e700] [box=281,85,51,16]: "Gotowość:"
+        - generic [ref=e701] [box=339,85,18,16]: 64%
+      - generic [ref=e704] [box=411,79,86,28]:
+        - generic [ref=e705] [box=421,85,47,16]: "Elementy:"
+        - generic [ref=e706] [box=473,85,12,16]: "12"
+      - generic [ref=e707] [box=497,79,73,28]:
+        - generic [ref=e708] [box=508,85,40,16]: "Pola SN:"
+        - generic [ref=e709] [box=553,85,6,16]: "5"
+      - generic [ref=e710] [box=571,79,100,28]:
+        - generic [ref=e711] [box=581,85,67,16]: "Stacje SN/nN:"
+        - generic [ref=e712] [box=653,85,6,16]: "1"
+      - generic [ref=e713] [box=671,79,165,28]:
+        - generic [ref=e714] [box=681,85,59,16]: "Długość SN:"
+        - generic [ref=e715] [box=745,85,79,16]: brak odcinków
+      - generic [ref=e716] [box=836,79,109,28]:
+        - generic [ref=e717] [box=846,85,76,16]: "Transformatory:"
+        - generic [ref=e718] [box=927,85,6,16]: "0"
+      - generic [ref=e719] [box=945,79,93,28]:
+        - generic [ref=e720] [box=955,85,59,16]: "Odbiory nN:"
+        - generic [ref=e721] [box=1020,85,6,16]: "0"
+    - generic [ref=e66] [box=3331,70,313,47]:
+      - button "Szukaj" [ref=e67] [cursor=pointer] [box=3350,76,35,35]:
+        - img [ref=e69] [box=3361,81,12,12]
+        - generic [ref=e71] [box=3353,95,28,10]: Szukaj
+      - button "Katalog" [ref=e72] [cursor=pointer] [box=3409,76,35,35]:
+        - img [ref=e74] [box=3421,81,12,12]
+        - generic [ref=e76] [box=3410,95,34,10]: Katalog
+      - button "Przeglądy 3" [ref=e889] [cursor=pointer] [box=3469,76,43,35]:
+        - img [ref=e79] [box=3484,81,12,12]
+        - generic [ref=e81] [box=3469,95,43,10]: Przeglądy
+        - generic [ref=e723] [box=3501,76,14,14]: "3"
+      - button "Metadane" [ref=e82] [cursor=pointer] [box=3536,76,45,35]:
+        - img [ref=e84] [box=3552,81,12,12]
+        - generic [ref=e86] [box=3536,95,45,10]: Metadane
+      - button "Historia" [ref=e87] [cursor=pointer] [box=3605,76,35,35]:
+        - img [ref=e89] [box=3617,81,12,12]
+        - generic [ref=e91] [box=3606,95,34,10]: Historia
+  - generic [ref=e92] [box=0,118,3654,1785]:
+    - navigation "Pasek obszarów roboczych" [ref=e93] [box=0,118,49,1785]:
+      - generic [ref=e94] [box=-2,125,52,1771]:
+        - 'button "Model sieci. Budowa i edycja struktury sieci SN. Skrót: Ctrl+1" [ref=e95] [cursor=pointer] [box=-2,128,52,52]':
+          - img [ref=e96] [box=14,132,20,20]
+          - generic [ref=e100] [box=11,159,26,11]: Model
+          - generic "Braki modelu" [ref=e101] [box=34,132,12,12]: "!"
+        - 'button "Schemat i topologia. Praca na schemacie jednokreskowym, topologii i przełączeniach. Skrót: Ctrl+2" [ref=e102] [cursor=pointer] [box=-2,184,52,52]':
+          - img [ref=e104] [box=14,187,20,20]
+          - generic [ref=e107] [box=6,214,35,11]: Schemat
+        - 'button "Studia obliczeniowe. Warianty pracy sieci, gotowość obliczeń, wyniki i raporty. Skrót: Ctrl+3" [ref=e108] [cursor=pointer] [box=-2,239,52,52]':
+          - img [ref=e109] [box=14,243,20,20]
+          - generic [ref=e113] [box=11,270,26,11]: Studia
+        - 'button "Wyniki i analizy. Przegląd wyników, porównania i nakładki wynikowe SLD. Skrót: Ctrl+4" [ref=e114] [cursor=pointer] [box=-2,295,52,52]':
+          - img [ref=e115] [box=14,298,20,20]
+          - generic [ref=e119] [box=10,325,28,11]: Wyniki
+          - generic "Wyniki dostępne po obliczeniach" [ref=e120] [box=33,298,14,12]: W
+        - 'button "Zabezpieczenia i automatyka. Nastawy, selektywność, automatyka i logika działania. Skrót: Ctrl+5" [ref=e121] [cursor=pointer] [box=-2,350,52,52]':
+          - img [ref=e122] [box=14,354,20,20]
+          - generic [ref=e127] [box=8,381,32,11]: Zabezp.
+        - 'button "Źródła i przyłączenia. Źródła PV, magazyny energii, farmy wiatrowe i wymagania operatora. Skrót: Ctrl+6" [ref=e128] [cursor=pointer] [box=-2,406,52,52]':
+          - img [ref=e129] [box=14,409,20,20]
+          - generic [ref=e134] [box=11,436,27,11]: Źródła
+        - 'button "Katalogi techniczne. Typy, aparatura, przewody, transformatory i profile katalogowe. Skrót: Ctrl+7" [ref=e135] [cursor=pointer] [box=-2,461,52,52]':
+          - img [ref=e136] [box=14,465,20,20]
+          - generic [ref=e140] [box=7,492,34,11]: Katalogi
+        - 'button "Raporty i uzasadnienia. Raporty OSD, uzasadnienia inżynierskie i pakiety audytowe. Skrót: Ctrl+8" [ref=e141] [cursor=pointer] [box=-2,517,52,52]':
+          - img [ref=e142] [box=14,520,20,20]
+          - generic [ref=e148] [box=8,547,33,11]: Raporty
+        - 'button "Historia i audyt. Wersje modelu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9" [ref=e149] [cursor=pointer] [box=-2,572,52,52]':
+          - img [ref=e150] [box=14,576,20,20]
+          - generic [ref=e156] [box=8,603,32,11]: Historia
+    - complementary [ref=e157] [box=49,118,280,1785]:
+      - button "Ukryj lewy pasek boczny" [ref=e158] [cursor=pointer] [box=300,121,24,24]:
+        - img [ref=e159] [box=305,127,14,14]
+      - generic [ref=e352] [box=49,118,279,1785]:
+        - generic [ref=e353] [box=49,118,279,44]:
+          - generic [ref=e354] [box=59,130,106,18]: Nawigator modelu
+          - generic [ref=e355] [box=310,130,7,19]: ←
+        - generic [ref=e356] [box=49,162,279,51]:
+          - generic [ref=e357] [box=59,169,258,14]: Model sieci
+          - generic "Gotowy do analizy" [ref=e890] [box=59,186,107,18]
+        - generic [ref=e725] [box=49,213,279,1690]:
+          - generic [ref=e726] [box=49,213,273,271]
+          - generic [ref=e758] [box=49,495,273,32]
+          - generic [ref=e761] [box=49,538,273,213]
+          - generic [ref=e783] [box=49,758,273,1451]
+    - generic [ref=e205] [box=329,158,2964,1745]:
+      - img [ref=e206] [box=329,158,2964,1745]:
+        - generic [ref=e923] [box=1115,368,1128,1104]:
+          - generic [ref=e925] [box=1115,501,204,70]
+          - generic [ref=e929] [box=1658,501,204,70]
+          - generic [ref=e933] [box=1115,368,1128,1104]
+        - generic [ref=e210] [box=337,1870,74,13]: LOD 2 · 170%
+      - region "Gotowość obliczeń na schemacie" [ref=e211] [box=2922,168,360,53]:
+        - generic [ref=e212] [box=2934,177,337,16]:
+          - generic [ref=e213] [box=2934,177,94,16]: Gotowość obliczeń
+          - generic [ref=e214] [box=3234,177,37,16]: gotowe
+        - generic [ref=e215] [box=2934,197,337,16]:
+          - generic [ref=e216] [box=2934,197,50,16]: "Blokady: 0"
+          - generic [ref=e217] [box=2991,197,68,16]: "Ostrzeżenia: 1"
+      - button "Odłącznik szynowy" [ref=e1036] [cursor=pointer] [box=1203,1040,61,41]
+      - button "Wyłącznik SN" [ref=e1037] [cursor=pointer] [box=1203,1081,65,41]
+      - button "Przekładnik prądowy" [ref=e1038] [cursor=pointer] [box=1203,1122,61,41]
+      - button "Rozłącznik" [ref=e1039] [cursor=pointer] [box=1203,1163,65,41]
+      - button "Uziemnik" [ref=e1040] [cursor=pointer] [box=1223,1207,61,58]
+      - button "Głowica kablowa / port odpływu" [ref=e1041] [cursor=pointer] [box=1203,1309,54,95]
+      - button "Odłącznik szynowy" [ref=e1042] [cursor=pointer] [box=1342,1040,61,41]
+      - button "Wyłącznik SN" [ref=e1043] [cursor=pointer] [box=1342,1081,65,41]
+      - button "Przekładnik prądowy" [ref=e1044] [cursor=pointer] [box=1342,1122,61,41]
+      - button "Rozłącznik" [ref=e1045] [cursor=pointer] [box=1342,1163,65,41]
+      - button "Uziemnik" [ref=e1046] [cursor=pointer] [box=1363,1207,61,58]
+      - button "Głowica kablowa / port odpływu" [ref=e1047] [cursor=pointer] [box=1342,1309,54,95]
+      - button "Odłącznik szynowy" [ref=e1048] [cursor=pointer] [box=1767,1040,61,41]
+      - button "Wyłącznik SN" [ref=e1049] [cursor=pointer] [box=1767,1081,65,41]
+      - button "Przekładnik prądowy" [ref=e1050] [cursor=pointer] [box=1767,1122,61,41]
+      - button "Rozłącznik" [ref=e1051] [cursor=pointer] [box=1767,1163,65,41]
+      - button "Uziemnik" [ref=e1052] [cursor=pointer] [box=1787,1207,61,58]
+      - button "Głowica kablowa / port odpływu" [ref=e1053] [cursor=pointer] [box=1767,1309,54,95]
+      - button "Odłącznik szynowy" [ref=e1054] [cursor=pointer] [box=1906,1040,61,41]
+      - button "Wyłącznik SN" [ref=e1055] [cursor=pointer] [box=1906,1081,65,41]
+      - button "Przekładnik prądowy" [ref=e1056] [cursor=pointer] [box=1906,1122,61,41]
+      - button "Rozłącznik" [ref=e1057] [cursor=pointer] [box=1906,1163,65,41]
+      - button "Uziemnik" [ref=e1058] [cursor=pointer] [box=1926,1207,61,58]
+      - button "Głowica kablowa / port odpływu" [ref=e1059] [cursor=pointer] [box=1906,1309,54,95]
+    - complementary [ref=e218] [box=3294,118,360,1785]:
+      - generic [ref=e219] [box=3295,118,359,28]:
+        - button "Ukryj prawy pasek boczny" [ref=e220] [cursor=pointer] [box=3302,121,21,21]:
+          - img [ref=e221] [box=3306,124,14,14]
+        - generic [ref=e223] [box=3329,124,125,15]: Inspektor techniczny
+      - generic [ref=e1060] [box=3295,146,359,1757]:
+        - generic [ref=e1061] [box=3295,146,359,31]:
+          - generic [ref=e1062] [box=3306,151,139,19]
+          - img [ref=e1066] [box=3633,156,10,10]
+        - generic [ref=e1068] [box=3295,177,359,1725]:
+          - generic [ref=e1069] [box=3306,188,338,96]
+          - generic [ref=e1072] [box=3306,295,338,308]
+          - generic [ref=e1133] [box=3306,620,338,21]
+          - generic [ref=e1136] [box=3306,648,338,87]
+          - generic [ref=e1155] [box=3306,753,338,53]
+  - generic "Pasek statusu aplikacji" [ref=e325] [box=0,1903,3654,24]:
+    - generic [ref=e326] [box=10,1906,784,18]:
+      - generic [ref=e327] [box=10,1915,1,1]: "Bieżący zestaw: Zwarcie maksymalne IEC 60909. Zakres obliczeń: Zwarcie maksymalne IEC 60909. Wariant: Stan projektowany 2026."
+      - generic [ref=e328] [box=10,1906,81,18]: Model / Model
+      - generic [ref=e329] [box=98,1908,2,15]: "|"
+      - generic [ref=e330] [box=108,1908,151,15]:
+        - generic [ref=e331] [box=108,1908,33,15]: "Projekt:"
+        - generic [ref=e332] [box=144,1908,115,15]: Sieć SN - projekt roboczy
+      - generic [ref=e333] [box=266,1908,2,15]: "|"
+      - generic [ref=e334] [box=275,1908,216,15]:
+        - generic [ref=e335] [box=275,1908,70,15]: "Zakres obliczeń:"
+        - generic [ref=e336] [box=349,1908,142,15]: Zwarcie maksymalne IEC 60909
+      - generic [ref=e337] [box=498,1908,2,15]: "|"
+      - generic [ref=e338] [box=507,1908,149,15]:
+        - generic [ref=e339] [box=507,1908,36,15]: "Wariant:"
+        - generic [ref=e340] [box=547,1908,110,15]: Stan projektowany 2026
+      - generic [ref=e341] [box=663,1908,2,15]: "|"
+      - generic [ref=e342] [box=673,1908,77,15]:
+        - generic [ref=e343] [box=673,1908,68,15]: "Wersja modelu:"
+        - generic [ref=e344] [box=744,1908,6,15]: —
+      - generic [ref=e345] [box=757,1908,2,15]: "|"
+      - generic [ref=e346] [box=766,1908,28,15]: Edycja
+    - generic [ref=e347] [box=3393,1908,251,15]:
+      - generic [ref=e884] [box=3393,1908,63,15]: Brak wyników
+      - generic [ref=e885] [box=3462,1908,2,15]: "|"
+      - generic [ref=e1160] [box=3472,1908,69,15]: ▲ 1 ostrzeżenie
+      - generic [ref=e887] [box=3548,1908,2,15]: "|"
+      - generic [ref=e348] [box=3557,1908,86,15]:
+        - generic [ref=e349] [box=3557,1908,37,15]: "Węzły: 2"
+        - generic [ref=e350] [box=3601,1908,43,15]: "Gałęzie: 5"

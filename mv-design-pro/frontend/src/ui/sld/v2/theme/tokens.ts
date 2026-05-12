@@ -80,8 +80,8 @@ export const COLOR_MEASUREMENT_VALUE = '#FFFFFF' as const;
 
 /** Szyna 110 kV / WN — biały jasny (kanon Energa/Tauron, nie kolizyjny z alarmem). */
 export const COLOR_BUS_HV = '#F2F4F6' as const;
-/** Szyna 15/30 kV (SN) — cyan (odróżnia od deviceClosed zielonego). */
-export const COLOR_BUS_LV = '#3DB4FF' as const;
+/** Szyna 15/30 kV (SN) — zielony tor operatorski zgodny z widokiem sieci SN. */
+export const COLOR_BUS_LV = '#13C45A' as const;
 /** Tekst etykiety napięcia szyny — jasnoszary z cieniowaniem. */
 export const COLOR_BUS_LABEL = '#C8CDD2' as const;
 /** Magistrala sieci terenowej (trunk) — zielony przy zasilaniu, neutral przy braku danych. */

@@ -121,7 +121,7 @@ export const INSPECTOR_SECTION_LABELS: Record<string, string> = {
   topology: 'Topologia',
   electrical: 'Parametry elektryczne',
   results: 'Wyniki obliczen',
-  power_flow: 'Rozplyw mocy',
+  power_flow: 'Rozpływ mocy',
   short_circuit: 'Prady zwarciowe',
   protection: 'Zabezpieczenia',
   diagnostics: 'Diagnostyka',

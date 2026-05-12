@@ -24,6 +24,7 @@ from uuid import UUID
 from domain.models import OperatingCase
 from domain.project_design_mode import ProjectDesignMode
 from domain.study_case import (
+    ProtectionConfig,
     StudyCase,
     StudyCaseConfig,
     StudyCaseResult,
@@ -109,6 +110,9 @@ class CaseRepository:
     def _row_to_study_case(self, row: StudyCaseORM) -> StudyCase:
         """Convert ORM row to StudyCase domain entity (P10a)."""
         config = StudyCaseConfig.from_dict(row.study_jsonb)
+        protection_config = ProtectionConfig.from_dict(
+            (row.study_jsonb or {}).get("protection_config") or {}
+        )
         result_refs = tuple(StudyCaseResult.from_dict(ref) for ref in (row.result_refs_jsonb or []))
         return StudyCase(
             id=row.id,
@@ -117,6 +121,7 @@ class CaseRepository:
             description=row.description or "",
             network_snapshot_id=row.network_snapshot_id,  # P10a
             config=config,
+            protection_config=protection_config,
             result_status=StudyCaseResultStatus(row.result_status or "NONE"),
             is_active=row.is_active or False,
             result_refs=result_refs,
@@ -140,6 +145,11 @@ class CaseRepository:
             study_jsonb = case.config.to_dict()
         else:
             study_jsonb = getattr(case, "study_payload", {})
+        if hasattr(case, "protection_config") and case.protection_config is not None:
+            study_jsonb = {
+                **study_jsonb,
+                "protection_config": case.protection_config.to_dict(),
+            }
 
         # If this case is active, deactivate all other cases in the project
         if is_active:
@@ -180,6 +190,11 @@ class CaseRepository:
             study_jsonb = case.config.to_dict()
         else:
             study_jsonb = getattr(case, "study_payload", {})
+        if hasattr(case, "protection_config") and case.protection_config is not None:
+            study_jsonb = {
+                **study_jsonb,
+                "protection_config": case.protection_config.to_dict(),
+            }
 
         # If this case is becoming active, deactivate all other cases
         if is_active and not row.is_active:

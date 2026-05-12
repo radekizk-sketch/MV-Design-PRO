@@ -22,10 +22,10 @@ interface WorkspaceOperationalBarProps {
 }
 
 const RUN_STATUS_LABELS: Record<string, string> = {
-  PENDING: 'Uruchomienie oczekuje',
-  RUNNING: 'Uruchomienie trwa',
-  DONE: 'Uruchomienie zakonczone',
-  FAILED: 'Uruchomienie nieudane',
+  PENDING: 'Obliczenie oczekuje',
+  RUNNING: 'Obliczenie trwa',
+  DONE: 'Obliczenie zakończone',
+  FAILED: 'Obliczenie nieudane',
 };
 
 function shortId(value: string | null): string {
@@ -107,12 +107,12 @@ export function WorkspaceOperationalBar({
       className="grid gap-2 border-t border-slate-200 bg-slate-100 px-3 py-2 md:grid-cols-3 xl:grid-cols-9"
     >
       <SegmentButton
-        label="Gotowosc obliczeniowa"
+        label="Gotowość obliczeń"
         value={isReady ? 'Gotowy do analizy' : `${blockersCount} blokad aktywnych`}
         tone={isReady ? 'ok' : blockersCount > 0 ? 'error' : 'warn'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowosc modelu i lista brakow',
+            titlePl: 'Gotowość modelu i lista braków',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
@@ -124,8 +124,8 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-computation"
       />
       <SegmentButton
-        label="Gotowosc zabezpieczeniowa"
-        value={protectionReady ? 'Brak blokad ochrony' : 'Wymaga uzupelnienia danych'}
+        label="Gotowość zabezpieczeń"
+        value={protectionReady ? 'Brak blokad ochrony' : 'Wymaga uzupełnienia danych'}
         tone={protectionReady ? 'ok' : 'warn'}
         onClick={() =>
           openRouteSurface('E-27', {
@@ -140,8 +140,8 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-protection"
       />
       <SegmentButton
-        label="Gotowosc raportowa"
-        value={reportReady ? 'Raport moze byc generowany' : 'Brak pelnego kontekstu raportu'}
+        label="Gotowość raportu"
+        value={reportReady ? 'Raport może być generowany' : 'Brak pełnego kontekstu raportu'}
         tone={reportReady ? 'ok' : 'warn'}
         onClick={() =>
           openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
@@ -153,7 +153,7 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-report"
       />
       <SegmentButton
-        label="Stan wynikow"
+        label="Stan wyników"
         value={resultStatusLabel}
         tone={resultTone}
         onClick={() =>
@@ -167,14 +167,14 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-results"
       />
       <SegmentButton
-        label="Stan uruchomienia"
+        label="Stan obliczenia"
         value={activeRun ? RUN_STATUS_LABELS[activeRun.status] ?? activeRun.status : 'Brak aktywnego uruchomienia'}
         tone={activeRun?.status === 'DONE' ? 'ok' : activeRun?.status === 'FAILED' ? 'error' : 'accent'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-run"
       />
       <SegmentButton
-        label="Id migawki"
+        label="Wersja modelu"
         value={shortId(activeSnapshotId)}
         tone={activeSnapshotId ? 'accent' : 'default'}
         onClick={() =>
@@ -183,7 +183,7 @@ export function WorkspaceOperationalBar({
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
-            tabId: 'migawki',
+            tabId: 'wersje-modelu',
             subjectKind: 'analysis_run',
             subjectRef: activeSnapshotId,
           })
@@ -191,19 +191,19 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-snapshot"
       />
       <SegmentButton
-        label="Uklad pracy"
+        label="Układ pracy"
         value={activeCaseName ?? 'Brak aktywnego wariantu'}
         tone={activeCaseName ? 'accent' : 'default'}
         onClick={() => navigateToVariants({ caseId: activeCaseId, snapshotId: activeSnapshotId })}
         testId="workspace-operational-variant"
       />
       <SegmentButton
-        label="Liczba brakow"
-        value={`${blockersCount} brakow modelu`}
+        label="Liczba braków"
+        value={`${blockersCount} braków modelu`}
         tone={blockersCount > 0 ? 'error' : 'ok'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowosc modelu i lista brakow',
+            titlePl: 'Gotowość modelu i lista braków',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,
@@ -215,20 +215,20 @@ export function WorkspaceOperationalBar({
         testId="workspace-operational-blockers"
       />
       <SegmentButton
-        label="Liczba bledow"
+        label="Liczba błędów"
         value={
           errorCount > 0
-            ? `${errorCount} bledow i blokad`
+            ? `${errorCount} błędów i blokad`
             : validationStatus === 'warnings'
               ? `${validationWarnings} ostrzezen`
               : readinessStatus === 'WARN'
                 ? 'Wynik czesciowy lub ostrzezenia'
-                : 'Brak krytycznych bledow'
+                : 'Brak krytycznych błędów'
         }
         tone={errorCount > 0 ? 'error' : validationStatus === 'warnings' || readinessStatus === 'WARN' ? 'warn' : 'ok'}
         onClick={() =>
           openRouteSurface('E-04', {
-            titlePl: 'Gotowosc modelu i lista brakow',
+            titlePl: 'Gotowość modelu i lista braków',
             sizeClass: 'B',
             openMode: 'replace_right_panel',
             supportsMiniSld: false,

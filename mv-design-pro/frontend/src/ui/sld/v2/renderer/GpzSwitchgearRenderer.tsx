@@ -148,6 +148,9 @@ const FIELD_TRUNK_GAP_PX = GPZ_GEOMETRY.fieldTrunkGapPx;
 const FIELD_TRUNK_FONT_SIZE = FONT_SIZES.measurementPanel;
 const FEEDER_LABEL_FONT_SIZE = FONT_SIZES.feederDestination;
 const TRUNK_ARROW_SIZE = GPZ_GEOMETRY.trunkArrowSize;
+const OUTGOING_CORRIDOR_LENGTH_PX = 132;
+const OUTGOING_CORRIDOR_LANE_PITCH_PX = 30;
+const OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX = 7;
 
 // =============================================================================
 // Public types
@@ -336,14 +339,13 @@ export interface GpzBayDescriptor {
     readonly ct?: string;
   };
   /**
-   * Wychodzący feeder pola liniowego (kanoniczny dla bays
-   * `LINE_OUT`/`GPZ_LINE_BAY`/`LINE_BRANCH`). Definiuje cel kabla wychodzącego
-   * z głowicy do magistrali sieci terenowej.
+   * Wychodzące połączenie pola liniowego (kanoniczne dla bays
+   * `LINE_OUT`/`GPZ_LINE_BAY`/`LINE_BRANCH`). Definiuje cel odcinka wychodzącego
+   * z głowicy kablowej pola SN.
    *
-   * Renderer w trybie two-bus rozszerza kolumnę pola: pionowy kabel z
-   * cable-head w dół do trunk line, oznaczenie celu (np. "→ ST-001 SADY"),
-   * koloryzacja zgodna z `energized` (zielony pod napięciem, szary
-   * de-energized).
+   * Renderer w trybie two-bus rozszerza kolumnę pola: pionowy odcinek z
+   * głowicy kablowej do osobnego korytarza wyjściowego, oznaczenie celu
+   * (np. "→ ST-001 SADY") i parametry odcinka, gdy ENM je dostarcza.
    *
    * Jeśli pole nie jest pole liniowe (np. TRANSFORMER, MEASUREMENT) — feeder
    * nie powinien być definiowany.
@@ -355,6 +357,12 @@ export interface GpzBayDescriptor {
     readonly energized?: boolean;
     /** Numer odpływu / linii (np. "L-203"). Renderowany jako sub-label. */
     readonly feederNumber?: string;
+    /** Rodzina odcinka z ENM, używana tylko jako awaryjny opis przy braku katalogu. */
+    readonly segmentTypeLabel?: string;
+    /** Długość odcinka z ENM, np. "500 m"; brak danych nie jest zerem. */
+    readonly segmentLengthLabel?: string;
+    /** Typ katalogowy kabla/linii, np. "XRUHAKXS 120/25". */
+    readonly catalogLabel?: string;
   };
 }
 
@@ -474,12 +482,8 @@ export interface GpzSwitchgearRendererProps {
    */
   readonly titleBarAction?: string;
   /**
-   * Etykieta magistrali sieci terenowej — pozioma trunk line poniżej pól
-   * liniowych SN, do której dochodzą feedery wychodzące. Domyślnie:
-   * "Magistrala SN — sieć terenowa". Pusty string ukrywa trunk line.
-   *
-   * Renderowany tylko w trybie two-bus i tylko jeśli przynajmniej jedno pole
-   * LV ma `outgoingFeeder`.
+   * Etykieta zbiorcza strefy wyprowadzeń SN. Pusty string ukrywa opis zbiorczy,
+   * ale nie ukrywa samych korytarzy z głowic pól.
    */
   readonly fieldTrunkLabel?: string;
   readonly selected?: boolean;
@@ -521,16 +525,21 @@ export function GpzSwitchgearRenderer(props: GpzSwitchgearRendererProps): JSX.El
   const layoutMaxWidth = Math.max(layout.totalWidth, hvLayout?.totalWidth ?? 0);
   const totalWidth = Math.max(GPZ_GEOMETRY.minSwitchgearWidth, layoutMaxWidth + 2 * HORIZONTAL_PADDING);
 
-  /* Czy istnieje przynajmniej jedno pole liniowe SN z outgoing feeder? */
-  const hasOutgoingFeeders =
-    isTwoBus && sortedSections.some((s) => s.bays.some((b) => b.outgoingFeeder));
-  /* Czy renderować magistralę SN (trunk line)? Domyślnie tak, gdy są feedery. */
+  const outgoingFeederCount = sortedSections.reduce(
+    (sum, section) => sum + section.bays.filter((bay) => bay.outgoingFeeder).length,
+    0,
+  );
+  /* Czy istnieje przynajmniej jedno pole liniowe SN z wyjściem z głowicy? */
+  const hasOutgoingFeeders = isTwoBus && outgoingFeederCount > 0;
+  /* Czy renderować opis zbiorczy strefy wyprowadzeń SN. */
   const showFieldTrunk = hasOutgoingFeeders && props.fieldTrunkLabel !== '';
-  const fieldTrunkLabel = props.fieldTrunkLabel ?? 'Magistrala SN — sieć terenowa';
+  const fieldTrunkLabel = props.fieldTrunkLabel ?? 'Wyprowadzenia SN';
 
   const TWO_BUS_TR_GAP = GPZ_GEOMETRY.twoBusTrGap;
   const fieldTrunkZoneHeight = hasOutgoingFeeders
-    ? OUTGOING_FEEDER_DROP_PX + (showFieldTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE + 6 : 0)
+    ? OUTGOING_FEEDER_DROP_PX
+      + OUTGOING_CORRIDOR_LANE_PITCH_PX * outgoingFeederCount
+      + (showFieldTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE + 6 : 0)
     : 0;
   const totalHeight = isTwoBus
     ? TITLE_BAR_HEIGHT +
@@ -1049,7 +1058,7 @@ function HvTowerColumn(props: HvTowerColumnProps): JSX.Element {
 }
 
 // =============================================================================
-// Field trunk zone (pola liniowe SN → magistrala sieci terenowej)
+// Strefa wyprowadzeń pól liniowych SN
 // =============================================================================
 
 interface FieldTrunkZoneProps {
@@ -1057,38 +1066,35 @@ interface FieldTrunkZoneProps {
   readonly cells: readonly Cell[];
   /** Poziome offset dla wszystkich pozycji (HORIZONTAL_PADDING). */
   readonly hOffset: number;
-  /** Pełna szerokość rozdzielni (do trunk line endpoints). */
+  /** Pełna szerokość rozdzielni, potrzebna do antykolizyjnego zawracania opisów. */
   readonly totalWidth: number;
   /** Y pozycja dolnej krawędzi LV bays (po footerze) — start zone. */
   readonly lvBaysBottomY: number;
-  /** Czy renderować trunk line + label. */
+  /** Czy renderować opis zbiorczy strefy wyprowadzeń. */
   readonly showTrunk: boolean;
-  /** Etykieta magistrali (np. "Magistrala SN — sieć terenowa"). */
+  /** Etykieta strefy wyprowadzeń, np. "Wyprowadzenia SN". */
   readonly trunkLabel: string;
 }
 
 /**
- * Renderuje strefę magistrali sieci terenowej.
+ * Renderuje strefę wyprowadzeń sieci terenowej z głowic pól SN.
  *
- * Każde pole liniowe SN z `outgoingFeeder` rozszerza pionowy kabel od dolnej
- * krawędzi LV bay do trunk line. Każdy feeder ma etykietę celu (np. "→ Sady
- * ST-001") i opcjonalnie numer linii.
- *
- * Trunk line — pozioma linia ciągła łącząca wszystkie outgoing feedery; pod
- * nią etykieta zbiorcza (kanon SCADA: "Magistrala SN — sieć terenowa").
+ * Każde pole liniowe SN z `outgoingFeeder` dostaje własny korytarz:
+ * pion wychodzi z osi głowicy kablowej, potem krótki odcinek poziomy prowadzi
+ * do lokalnego punktu zakończenia. Nie ma wspólnej kreski pod rozdzielnią,
+ * bo taka kreska wygląda jak elektryczne połączenie wszystkich głowic.
  */
 function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
   const { cells, hOffset, totalWidth, lvBaysBottomY, showTrunk, trunkLabel } = props;
-  const trunkY = lvBaysBottomY + OUTGOING_FEEDER_DROP_PX;
+  const firstLaneY = lvBaysBottomY + OUTGOING_FEEDER_DROP_PX;
 
-  /* Zbieramy bays z outgoingFeeder + ich centerline X. */
+  /* Zbieramy pola z wyjściem z głowicy oraz ich oś głowicy kablowej. */
   const feederColumns = cells
     .filter((cell): cell is Extract<Cell, { kind: 'bay' }> => cell.kind === 'bay')
     .filter((cell) => cell.bay.outgoingFeeder !== undefined)
     .map((cell) => ({
       bay: cell.bay,
       cx: hOffset + cell.x + APPARATUS_COL_X_OFFSET,
-      bayBottomX: hOffset + cell.x + BAY_COLUMN_WIDTH / 2,
     }));
 
   if (feederColumns.length === 0) {
@@ -1101,14 +1107,7 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
       data-feeder-count={String(feederColumns.length)}
       data-trunk-visible={showTrunk ? 'true' : 'false'}
     >
-      {/* Pionowe kable wychodzące z każdego pola liniowego do trunk.
-         Brak danych energized → szary (kanon Invariant 9: brak danych ≠ default).
-         energized=true → zielony (`COLOR_FIELD_TRUNK_ENERGIZED`).
-         energized=false → szary muted.
-
-         Strzałka kierunku zasilania (►/▼ na środku linii) — kanon SCADA:
-         operator widzi kierunek przepływu nawet gdy linia nie pulsuje. */}
-      {feederColumns.map((col) => {
+      {feederColumns.map((col, index) => {
         const feeder = col.bay.outgoingFeeder!;
         const energized = feeder.energized; // może być undefined
         const stroke =
@@ -1117,7 +1116,18 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
             : energized === false
             ? COLOR_TEXT_MUTED
             : COLOR_FIELD_TRUNK_NEUTRAL;
-        const arrowMidY = (lvBaysBottomY + trunkY) / 2;
+        const laneY = firstLaneY + index * OUTGOING_CORRIDOR_LANE_PITCH_PX;
+        const canGoRight =
+          col.cx + OUTGOING_CORRIDOR_LENGTH_PX + HORIZONTAL_PADDING <= totalWidth;
+        const direction = canGoRight ? 1 : -1;
+        const endX = col.cx + direction * OUTGOING_CORRIDOR_LENGTH_PX;
+        const labelAnchor = direction === 1 ? 'start' : 'end';
+        const labelX = endX + direction * 10;
+        const arrowMidY = (lvBaysBottomY + laneY) / 2;
+        const typeLabel = feeder.catalogLabel ?? 'brak typu katalogowego';
+        const technicalLabel = [typeLabel, feeder.segmentLengthLabel]
+          .filter((value): value is string => Boolean(value && value.trim()))
+          .join(' · ');
         return (
           <g
             key={`feeder-${col.bay.bayRef}`}
@@ -1125,16 +1135,19 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
             data-feeder-energized={
               energized === true ? 'true' : energized === false ? 'false' : 'unknown'
             }
+            data-lane-index={String(index)}
+            data-cable-head-x={String(col.cx)}
+            data-end-x={String(endX)}
           >
             <line
               x1={col.cx}
               y1={lvBaysBottomY}
               x2={col.cx}
-              y2={trunkY}
+              y2={laneY}
               stroke={stroke}
               strokeWidth={STROKE_FIELD_TRACK_PX}
+              data-testid={`sld-v2-gpz-outgoing-feeder-drop-${col.bay.bayRef}`}
             />
-            {/* Strzałka kierunku ▼ — wskazuje wypływ z GPZ do magistrali. */}
             <polygon
               points={`${col.cx},${arrowMidY + TRUNK_ARROW_SIZE} ${col.cx - TRUNK_ARROW_SIZE * 0.7},${arrowMidY - TRUNK_ARROW_SIZE * 0.5} ${col.cx + TRUNK_ARROW_SIZE * 0.7},${arrowMidY - TRUNK_ARROW_SIZE * 0.5}`}
               fill={stroke}
@@ -1142,11 +1155,30 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
               strokeWidth={0.5}
               data-testid={`sld-v2-gpz-outgoing-feeder-arrow-${col.bay.bayRef}`}
             />
-            {/* Etykieta celu (przy trunk, pod kablem) */}
+            <line
+              x1={col.cx}
+              y1={laneY}
+              x2={endX}
+              y2={laneY}
+              stroke={stroke}
+              strokeWidth={STROKE_TRUNK_LINE_PX}
+              strokeLinecap="round"
+              data-testid={`sld-v2-gpz-outgoing-feeder-corridor-${col.bay.bayRef}`}
+            />
+            <rect
+              x={endX - OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX / 2}
+              y={laneY - OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX / 2}
+              width={OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX}
+              height={OUTGOING_CORRIDOR_ENDPOINT_SIZE_PX}
+              fill={COLOR_PANEL}
+              stroke={stroke}
+              strokeWidth={2}
+              data-testid={`sld-v2-gpz-outgoing-feeder-endpoint-${col.bay.bayRef}`}
+            />
             <text
-              x={col.bayBottomX}
-              y={trunkY + (showTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE : 12)}
-              textAnchor="middle"
+              x={labelX}
+              y={laneY - 5}
+              textAnchor={labelAnchor}
               fill={energized === false ? COLOR_TEXT_MUTED : COLOR_TEXT_PRIMARY}
               fontFamily={FONT_SANS}
               fontSize={FEEDER_LABEL_FONT_SIZE}
@@ -1155,11 +1187,24 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
             >
               {feeder.destination}
             </text>
+            {technicalLabel && (
+              <text
+                x={labelX}
+                y={laneY + 11}
+                textAnchor={labelAnchor}
+                fill={COLOR_TEXT_MUTED}
+                fontFamily={FONT_MONO}
+                fontSize={FEEDER_LABEL_FONT_SIZE - 1}
+                data-testid={`sld-v2-gpz-outgoing-feeder-parameters-${col.bay.bayRef}`}
+              >
+                {technicalLabel}
+              </text>
+            )}
             {feeder.feederNumber && (
               <text
-                x={col.bayBottomX}
-                y={trunkY + (showTrunk ? FIELD_TRUNK_GAP_PX + FIELD_TRUNK_FONT_SIZE * 2 + 2 : 22)}
-                textAnchor="middle"
+                x={labelX}
+                y={laneY + (technicalLabel ? 24 : 11)}
+                textAnchor={labelAnchor}
                 fill={COLOR_TEXT_MUTED}
                 fontFamily={FONT_MONO}
                 fontSize={FEEDER_LABEL_FONT_SIZE - 1}
@@ -1172,32 +1217,19 @@ function FieldTrunkZone(props: FieldTrunkZoneProps): JSX.Element {
         );
       })}
 
-      {/* Magistrala SN — pozioma trunk line (kolor zielony = pod napięciem). */}
       {showTrunk && (
-        <>
-          <line
-            x1={HORIZONTAL_PADDING - SECTION_BUS_OVERHANG}
-            y1={trunkY}
-            x2={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG}
-            y2={trunkY}
-            stroke={COLOR_FIELD_TRUNK_ENERGIZED}
-            strokeWidth={STROKE_TRUNK_LINE_PX}
-            data-testid="sld-v2-gpz-field-trunk-line"
-          />
-          {/* Etykieta trunk po prawej */}
-          <text
-            x={totalWidth - HORIZONTAL_PADDING + SECTION_BUS_OVERHANG + 4}
-            y={trunkY + 3}
-            textAnchor="start"
-            fill={COLOR_TEXT_SECONDARY}
-            fontFamily={FONT_SANS}
-            fontSize={FONT_SIZES.technicalPanel - 1}
-            fontWeight={600}
-            data-testid="sld-v2-gpz-field-trunk-label"
-          >
-            {trunkLabel}
-          </text>
-        </>
+        <text
+          x={HORIZONTAL_PADDING}
+          y={firstLaneY + feederColumns.length * OUTGOING_CORRIDOR_LANE_PITCH_PX + FIELD_TRUNK_GAP_PX}
+          textAnchor="start"
+          fill={COLOR_TEXT_SECONDARY}
+          fontFamily={FONT_SANS}
+          fontSize={FONT_SIZES.technicalPanel - 1}
+          fontWeight={600}
+          data-testid="sld-v2-gpz-field-trunk-label"
+        >
+          {trunkLabel}
+        </text>
       )}
     </g>
   );
@@ -2103,7 +2135,7 @@ function MeasurementPanel(props: MeasurementPanelProps): JSX.Element {
       {rows.map((row, idx) => {
         const rowY = y + MEASUREMENT_PANEL_HEADER_HEIGHT + idx * MEASUREMENT_ROW_HEIGHT;
         return (
-          <g key={row.label} data-testid={`sld-v2-gpz-bay-measurement-${row.label.toLowerCase()}`}>
+          <g key={`${row.label}-${idx}`} data-testid={`sld-v2-gpz-bay-measurement-${row.label.toLowerCase()}`}>
             <text
               x={labelX}
               y={rowY + MEASUREMENT_FONT_SIZE - 1}
@@ -2262,7 +2294,12 @@ function ApparatusCbSquare(props: ApparatusVisualProps): JSX.Element {
     ? COLOR_DEVICE_OPEN_BORDER
     : COLOR_DEVICE_CLOSED_BORDER;
   return (
-    <g data-testid="sld-v2-gpz-bay-cb" data-state={state}>
+    <g
+      data-testid="sld-v2-gpz-bay-cb"
+      data-state={state}
+      data-apparatus-kind="circuit_breaker"
+      data-symbol-canon="circuit_breaker_square"
+    >
       <rect
         x={cx - CB_SIZE / 2}
         y={cy - CB_SIZE / 2}
@@ -2318,7 +2355,12 @@ function ApparatusDsCircle(props: ApparatusVisualProps): JSX.Element {
     ? COLOR_DEVICE_OPEN_BORDER
     : COLOR_DEVICE_CLOSED_BORDER;
   return (
-    <g data-testid="sld-v2-gpz-bay-ds" data-state={state}>
+    <g
+      data-testid="sld-v2-gpz-bay-ds"
+      data-state={state}
+      data-apparatus-kind="disconnector"
+      data-symbol-canon="disconnector_circle"
+    >
       <circle cx={cx} cy={cy} r={DS_RADIUS} fill={fill} stroke={stroke} strokeWidth={1.2} />
       {open && (
         <line
@@ -2395,7 +2437,12 @@ function ApparatusEarthingSwitch(props: ApparatusEarthingSwitchProps): JSX.Eleme
   /* Trójkąt ziemi: 3 poziome kreski o malejącej szerokości pod końcówką. */
   const groundTopY = cy + 1;
   return (
-    <g data-testid="sld-v2-gpz-bay-earthing-switch" data-state={state}>
+    <g
+      data-testid="sld-v2-gpz-bay-earthing-switch"
+      data-state={state}
+      data-apparatus-kind="earthing_switch"
+      data-symbol-canon="earthing_switch_lateral_branch"
+    >
       {/* Pozioma gałąź z osi pola */}
       <line
         x1={cxAxis}
@@ -2542,21 +2589,36 @@ function ApparatusSwitchDisconnector(props: ApparatusSwitchDisconnectorProps): J
   const unknown = state === 'unknown';
   const fill = unknown ? COLOR_TEXT_MUTED : open ? COLOR_PANEL_RAISED : energized ? COLOR_DEVICE_CLOSED : COLOR_TEXT_MUTED;
   const stroke = unknown ? COLOR_TEXT_MUTED : open ? COLOR_DEVICE_OPEN_BORDER : COLOR_DEVICE_CLOSED_BORDER;
+  const sdSize = 10;
   return (
-    <g data-testid="sld-v2-gpz-bay-switch-disconnector" data-state={state}>
+    <g
+      data-testid="sld-v2-gpz-bay-switch-disconnector"
+      data-state={state}
+      data-apparatus-kind="switch_disconnector"
+      data-symbol-canon="switch_disconnector_rotated_square"
+    >
       {/* Korpus okrągły większy niż DS (DS_RADIUS=4.5; SD radius=6). */}
-      <circle cx={cx} cy={cy} r={6} fill={fill} stroke={stroke} strokeWidth={1.4} />
+      <rect
+        x={cx - sdSize / 2}
+        y={cy - sdSize / 2}
+        width={sdSize}
+        height={sdSize}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={1.4}
+        transform={`rotate(45 ${cx} ${cy})`}
+      />
       {/* Krótka kreska "load break" na zewnętrznej krawędzi (kanon SD). */}
       <line
-        x1={cx + 6}
+        x1={cx + sdSize * 0.7}
         y1={cy - 3}
-        x2={cx + 9}
+        x2={cx + sdSize}
         y2={cy}
         stroke={stroke}
         strokeWidth={1.4}
       />
       {open && (
-        <line x1={cx - 6} y1={cy} x2={cx + 6} y2={cy} stroke={COLOR_DEVICE_OPEN} strokeWidth={1.4} />
+        <line x1={cx - sdSize / 2} y1={cy} x2={cx + sdSize / 2} y2={cy} stroke={COLOR_DEVICE_OPEN} strokeWidth={1.4} />
       )}
       {unknown && (
         <text x={cx} y={cy + 3} textAnchor="middle" fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.badge} fontWeight={700}>?</text>

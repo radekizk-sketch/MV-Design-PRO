@@ -36,6 +36,16 @@ function cableEntry(item: CableType): CatalogEntry {
     name: item.name,
     manufacturer: item.manufacturer,
     summary: `${item.voltage_rating_kv} kV, ${item.cross_section_mm2} mm2, Iz ${item.rated_current_a} A`,
+    voltage_rating_kv: item.voltage_rating_kv,
+    cross_section_mm2: item.cross_section_mm2,
+    rated_current_a: item.rated_current_a,
+    r_ohm_per_km: item.r_ohm_per_km,
+    x_ohm_per_km: item.x_ohm_per_km,
+    c_nf_per_km: item.c_nf_per_km,
+    max_temperature_c: item.max_temperature_c,
+    insulation_type: item.insulation_type,
+    conductor_material: item.conductor_material,
+    standard: item.standard,
   };
 }
 
@@ -45,7 +55,20 @@ function lineEntry(item: LineType): CatalogEntry {
     name: item.name,
     manufacturer: item.manufacturer,
     summary: `${item.voltage_rating_kv} kV, ${item.cross_section_mm2} mm2, Iz ${item.rated_current_a} A`,
+    voltage_rating_kv: item.voltage_rating_kv,
+    cross_section_mm2: item.cross_section_mm2,
+    rated_current_a: item.rated_current_a,
+    r_ohm_per_km: item.r_ohm_per_km,
+    x_ohm_per_km: item.x_ohm_per_km,
+    b_us_per_km: item.b_us_per_km,
+    max_temperature_c: item.max_temperature_c,
+    conductor_material: item.conductor_material,
+    standard: item.standard,
   };
+}
+
+function canUseElementRefAsFieldRef(elementType: string): boolean {
+  return ['BaySN', 'FieldSN', 'LineBaySN', 'SNBay', 'Bay'].includes(elementType);
 }
 
 export function ContinueTrunkForm() {
@@ -68,7 +91,16 @@ export function ContinueTrunkForm() {
   ).trim();
   const terminalName = ((context?.terminal_name as string) ?? '').trim();
   const terminalVoltageLabel = ((context?.terminal_voltage_label as string) ?? '').trim();
-  const fieldRef = ((context?.field_ref as string) ?? '').trim();
+  const explicitFieldRef = ((context?.field_ref as string) ?? '').trim();
+  const elementRef = ((context?.element_ref as string) ?? '').trim();
+  const elementType = (
+    (context?.element_type as string)
+    ?? (context?.elementType as string)
+    ?? ''
+  ).trim();
+  const fieldRef =
+    explicitFieldRef
+    || (elementRef && canUseElementRefAsFieldRef(elementType) ? elementRef : '');
   const hasTrunkStartRef = terminalId.length > 0 || fieldRef.length > 0;
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [segmentCatalogError, setSegmentCatalogError] = useState<string | null>(null);
@@ -190,7 +222,7 @@ export function ContinueTrunkForm() {
         catalogLoading={segmentCatalogLoading}
         catalogLoadError={segmentCatalogError}
         submitDisabled={!hasTrunkStartRef}
-        submitDisabledReason={!hasTrunkStartRef ? 'Brak jawnego zacisku lub pola SN.' : null}
+        submitDisabledReason={!hasTrunkStartRef ? 'Brak głowicy pola SN albo wolnego końca ciągu.' : null}
         onSubmit={handleSubmit}
         onCancel={closeForm}
       />

@@ -400,7 +400,7 @@ function mapInspectorPanelMeta(
     case 'field_measurements':
       return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
-      return { screenCode: 'E-33', sizeClass: 'B', titlePl: 'Wklady zrodel', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
+      return { screenCode: 'E-33', sizeClass: 'B', titlePl: 'Wkłady źródeł', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_work_safety':
@@ -412,7 +412,7 @@ function mapInspectorPanelMeta(
     case 'readiness':
       return { screenCode: 'E-04', sizeClass: 'B', titlePl: 'Gotowosc modelu i lista brakow', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: false, stackLevel: 1 };
     case 'history':
-      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Warianty i uruchomienia', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'variants_runs', sizeClass: 'C', titlePl: 'Stan obliczeń wariantu', route: 'variants', openMode: 'expand_workspace', supportsMiniSld: false, stackLevel: 1 };
     case 'topology':
     case 'secondary_links':
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Skladowe symetryczne i siec zerowa', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 1 };
@@ -420,7 +420,7 @@ function mapInspectorPanelMeta(
     case 'trace':
       return { screenCode: ANALYSIS_SURFACE_SCREEN_CODE, sizeClass: 'C', titlePl: 'Poziom analityczny', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
     case 'coordination':
-      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczen', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
+      return { screenCode: 'E-28', sizeClass: 'C', titlePl: 'Koordynacja zabezpieczeń', route: 'analysis', openMode: 'expand_workspace', supportsMiniSld: true, stackLevel: 1 };
   }
 }
 
@@ -1076,7 +1076,7 @@ export function selectOzeSourceSummaries(
       id: g.ref_id,
       name: g.name,
       genType: g.gen_type ?? 'unknown',
-      stationRef: g.station_ref ?? null,
+      stationRef: g.station_ref ?? (typeof g.meta?.station_ref === 'string' ? g.meta.station_ref : null),
       pMw: g.p_mw,
       connectionVariant: g.connection_variant ?? null,
       hasTransformer: g.blocking_transformer_ref != null || g.connection_variant === 'nn_side',

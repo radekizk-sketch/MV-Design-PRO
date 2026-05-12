@@ -25,7 +25,7 @@ const baseBays = [
 ];
 
 function r(
-  variant: 'compact' | 'detail' = 'compact',
+  variant: 'overview' | 'compact' | 'detail' = 'compact',
   overrides: Partial<Parameters<typeof MiniBlockRmuRenderer>[0]> = {},
 ) {
   return render(
@@ -87,25 +87,130 @@ describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
 describe('MiniBlockRmuRenderer — viewBox invariant', () => {
   it('compact ma stały rozmiar 100×56', () => {
     const vb = miniBlockViewBox('compact');
-    expect(vb).toEqual({ width: 100, height: 56 });
+    expect(vb).toEqual({ width: 148, height: 104 });
   });
 
   it('detail ma stały rozmiar 160×100', () => {
     const vb = miniBlockViewBox('detail');
-    expect(vb).toEqual({ width: 160, height: 100 });
+    expect(vb).toEqual({ width: 190, height: 144 });
+  });
+});
+
+describe('MiniBlockRmuRenderer - kanon operatorski', () => {
+  it('rysuje szynę SN i aparaty pól zamiast pojedynczego symbolu stacji', () => {
+    const { container } = r('compact');
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
+    expect(root?.querySelectorAll('[data-apparatus-kind="line-switch"]').length).toBe(2);
+    expect(root?.querySelector('[data-parity-key="station.mini.transformer_field"]')).not.toBeNull();
+  });
+
+  it('umieszcza nazwę stacji pod szyną jak w ekranach operatorskich', () => {
+    const { container } = r('compact');
+    const bus = container.querySelector('[data-parity-key="station.mini.bus.sn"]');
+    const name = container.querySelector('[data-parity-key="station.mini.name"]');
+
+    expect(Number(name?.getAttribute('y'))).toBeGreaterThan(Number(bus?.getAttribute('y1')));
+  });
+});
+
+describe('MiniBlockRmuRenderer - semantyczne roznice LOD', () => {
+  it('overview rysuje widok systemowy bez sekcji nN i transformatora pelnego', () => {
+    const { container } = r('overview');
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.getAttribute('data-lod-variant')).toBe('overview');
+    expect(root?.getAttribute('data-element-kind')).toBe('mini_block_overview');
+    expect(root?.querySelector('[data-parity-key="station.mini.bus.sn"]')).not.toBeNull();
+    expect(root?.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).toBeNull();
+    expect(root?.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).toBeNull();
+    expect(root?.querySelector('[data-parity-key="station.mini.transformer.power"]')).toBeNull();
+  });
+
+  it('compact i detail maja inne poziomy informacji', () => {
+    const compact = r('compact').container;
+    const detail = r('detail').container;
+
+    expect(compact.querySelector('[data-lod-variant="compact"]')).not.toBeNull();
+    expect(detail.querySelector('[data-lod-variant="detail"]')).not.toBeNull();
+    expect(compact.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).toBeNull();
+    expect(detail.querySelector('[data-testid="sld-v2-mini-rmu-lv-row"]')).not.toBeNull();
+    expect(compact.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).toBeNull();
+    expect(detail.querySelector('[data-testid="sld-v2-mini-rmu-tr-triangle"]')).not.toBeNull();
+  });
+});
+
+describe('MiniBlockRmuRenderer - kanon symboli aparatow', () => {
+  it('rozlacznik jest rombem, a uziemnik jest galazka boczna', () => {
+    const { container } = r('compact');
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.querySelectorAll('[data-parity-key="station.mini.line_switch"][data-symbol-canon="switch_disconnector_rotated_square"]').length).toBe(2);
+    expect(root?.querySelectorAll('[data-symbol-canon="earthing_switch_lateral_branch"]').length).toBe(2);
+    expect(root?.querySelector('[data-apparatus-kind="side-disconnector"]')).toBeNull();
+  });
+});
+
+describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
+  it('pokazuje PCC, widoczne wyłączniki nN i falowniki PV', () => {
+    const { container } = r('detail', {
+      footprintType: 'der_station',
+      derBadges: [{ kind: 'PV', count: 2 }],
+    });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+
+    expect(root?.querySelector('[data-parity-key="station.pv.nn_connection"]')).not.toBeNull();
+    expect(root?.querySelector('[data-element-kind="pcc"]')).not.toBeNull();
+    expect(root?.querySelectorAll('[data-element-kind="lv_breaker"][data-symbol-canon="circuit_breaker_square"]').length).toBe(2);
+    expect(root?.querySelectorAll('[data-element-kind="protection_relay"][data-protected-ref]').length).toBe(2);
+    expect(root?.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
+  });
+
+  it('widok szczegółowy PV nie dubluje badge i używa małej etykiety stacji', () => {
+    const { container } = r('detail', {
+      footprintType: 'der_station',
+      derBadges: [{ kind: 'PV', count: 2 }],
+    });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const name = root?.querySelector('[data-parity-key="station.mini.name"]');
+
+    expect(root?.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-PV"]')).toBeNull();
+    expect(Number(name?.getAttribute('font-size') ?? '0')).toBeLessThanOrEqual(9);
+  });
+
+  it('każdy symbol PV po nN ma własny klikany identyfikator', () => {
+    let clicked: string | null = null;
+    const { container } = r('detail', {
+      footprintType: 'der_station',
+      derBadges: [{ kind: 'PV', count: 2 }],
+      onClick: (id) => {
+        clicked = id;
+      },
+    });
+
+    const breaker = container.querySelector('[data-testid="sld-v2-mini-rmu-pv-lv-breaker-1"]') as SVGGElement;
+    breaker.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(clicked).toBe('st-1/pv/nn-breaker/Q1');
+
+    const protection = container.querySelector('[data-testid="sld-v2-mini-rmu-pv-protection-1"]') as SVGGElement;
+    protection.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(clicked).toBe('st-1/pv/protection/e2tango/Q1');
   });
 });
 
 describe('MiniBlockRmuRenderer — DER badges', () => {
-  it('PV badge widoczny gdy w listach DER', () => {
-    const { container } = r('detail', {
+  it('PV badge widoczny w widoku kompaktowym', () => {
+    const { container } = r('compact', {
       derBadges: [{ kind: 'PV', count: 1 }],
     });
     expect(container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-PV"]')).not.toBeNull();
   });
 
   it('BESS i FW badges renderowane razem', () => {
-    const { container } = r('detail', {
+    const { container } = r('compact', {
       derBadges: [
         { kind: 'PV', count: 2 },
         { kind: 'BESS', count: 1 },

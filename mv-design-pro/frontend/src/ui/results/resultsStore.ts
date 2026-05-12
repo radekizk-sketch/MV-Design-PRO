@@ -2,8 +2,8 @@
  * Results Lifecycle Store (Canonical-grade)
  *
  * CANONICAL ALIGNMENT:
- * - ui_canonical_parity.md Â§ B.2: Result freshness states
- * - SYSTEM_SPEC.md Â§ 5: Result lifecycle management
+ * - ui_canonical_parity.md § B.2: Result freshness states
+ * - SYSTEM_SPEC.md § 5: Result lifecycle management
  *
  * STATE MACHINE:
  *   NONE → FRESH (po obliczeniach)
@@ -13,8 +13,8 @@
  *
  * CANONICAL PARITY:
  * - Brak auto-run — jawny przycisk [Oblicz]
- * - Overlay wynikĂłw tylko dla FRESH
- * - KaĹĽda zmiana → OUTDATED
+ * - Overlay wyników tylko dla FRESH
+ * - Każda zmiana → OUTDATED
  */
 
 import { create } from 'zustand';

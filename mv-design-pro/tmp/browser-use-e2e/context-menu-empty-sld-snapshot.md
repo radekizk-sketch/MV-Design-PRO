@@ -1,0 +1,217 @@
+- generic [ref=e4] [box=0,0,3654,1927]:
+  - generic [ref=e6] [box=-1,-1,1,28]:
+    - button [disabled] [ref=e7] [box=-1,-1,58,28]:
+      - generic [ref=e8] [box=6,2,11,21]: ↶
+      - generic [ref=e9] [box=23,6,27,14]: Cofnij
+    - button [disabled] [ref=e10] [box=60,-1,62,28]:
+      - generic [ref=e11] [box=67,2,11,21]: ↷
+      - generic [ref=e12] [box=84,6,31,14]: Ponów
+  - banner [ref=e13] [box=0,0,3654,70]:
+    - generic [ref=e14] [box=0,0,136,69]:
+      - generic [ref=e15] [box=14,19,107,14]: MV-DESIGN-PRO
+      - generic [ref=e16] [box=14,32,107,17]: "12.2"
+    - generic "Kontekst projektu" [ref=e17] [box=136,0,2933,69]:
+      - button "Projekt — nie otwarto —" [ref=e18] [cursor=pointer] [box=136,0,164,69]:
+        - generic [ref=e19] [box=150,15,135,15]: Projekt
+        - generic [ref=e21] [box=150,34,107,19]: — nie otwarto —
+      - button "Cel / stan — skonfiguruj projekt —" [ref=e22] [cursor=pointer] [box=300,0,224,69]:
+        - generic [ref=e23] [box=314,15,195,15]: Cel / stan
+        - generic [ref=e24] [box=314,34,195,19]:
+          - generic [ref=e25] [box=314,34,164,19]: — skonfiguruj projekt —
+          - img [ref=e26] [box=485,38,10,10]
+      - button "Konfiguruj zakres" [ref=e28] [cursor=pointer] [box=135,-1,1,1]
+      - generic "Brak wyników" [ref=e29] [box=524,0,136,69]:
+        - generic [ref=e31] [box=554,25,79,18]: Brak wyników
+    - generic [ref=e33] [box=3083,23,49,22]:
+      - generic [ref=e34] [box=3089,23,44,10]: 06:10:14
+      - generic [ref=e35] [box=3083,37,49,9]: 11.05.2026
+    - generic [ref=e36] [box=3148,0,506,69]:
+      - button "Sprawdź braki danych" [ref=e37] [cursor=pointer] [box=3158,17,160,35]:
+        - img [ref=e38] [box=3174,28,12,12]
+        - generic [ref=e40] [box=3193,25,93,19]: Sprawdź braki
+        - img [ref=e41] [box=3293,29,10,10]
+      - button "Nakładka" [ref=e43] [cursor=pointer] [box=3325,17,91,35]:
+        - generic [ref=e44] [box=3336,25,53,18]: Nakładka
+        - img [ref=e45] [box=3396,29,10,10]
+      - button "Analizy" [ref=e47] [cursor=pointer] [box=3424,17,86,35]:
+        - generic [ref=e48] [box=3434,25,46,18]: Analizy
+        - img [ref=e49] [box=3487,28,12,12]
+      - button "Eksport" [ref=e51] [cursor=pointer] [box=3517,17,85,35]:
+        - generic [ref=e52] [box=3527,25,46,18]: Eksport
+        - img [ref=e53] [box=3581,29,10,10]
+      - button "Ustawienia" [ref=e55] [cursor=pointer] [box=3609,17,35,35]:
+        - img [ref=e56] [box=3617,25,18,18]
+  - generic [ref=e59] [box=0,70,3654,48]:
+    - generic [ref=e60] [box=10,77,3320,33]:
+      - generic [ref=e61] [box=10,79,28,28]: "1"
+      - generic [ref=e62] [box=49,77,436,33]:
+        - generic [ref=e63] [box=49,77,436,18]: "Start projektu: zakres obliczeń i GPZ"
+        - generic [ref=e64] [box=49,95,436,15]: "Kolejność pracy: zakres obliczeń, GPZ, magistrala SN, stacje, PV/FW/BESS, obliczenia i uzasadnienie."
+      - button "Przejdź do budowy GPZ" [ref=e65] [cursor=pointer] [box=502,79,143,28]
+    - generic [ref=e66] [box=3331,70,313,47]:
+      - button "Szukaj" [ref=e67] [cursor=pointer] [box=3350,76,35,35]:
+        - img [ref=e69] [box=3361,81,12,12]
+        - generic [ref=e71] [box=3353,95,28,10]: Szukaj
+      - button "Katalog" [ref=e72] [cursor=pointer] [box=3409,76,35,35]:
+        - img [ref=e74] [box=3421,81,12,12]
+        - generic [ref=e76] [box=3410,95,34,10]: Katalog
+      - button "Przeglądy" [ref=e77] [cursor=pointer] [box=3469,76,43,35]:
+        - img [ref=e79] [box=3484,81,12,12]
+        - generic [ref=e81] [box=3469,95,43,10]: Przeglądy
+      - button "Metadane" [ref=e82] [cursor=pointer] [box=3536,76,45,35]:
+        - img [ref=e84] [box=3552,81,12,12]
+        - generic [ref=e86] [box=3536,95,45,10]: Metadane
+      - button "Historia" [ref=e87] [cursor=pointer] [box=3605,76,35,35]:
+        - img [ref=e89] [box=3617,81,12,12]
+        - generic [ref=e91] [box=3606,95,34,10]: Historia
+  - generic [ref=e92] [box=0,118,3654,1785]:
+    - navigation "Pasek obszarów roboczych" [ref=e93] [box=0,118,49,1785]:
+      - generic [ref=e94] [box=-2,125,52,1771]:
+        - 'button "Model sieci. Budowa i edycja struktury sieci SN. Skrót: Ctrl+1" [ref=e95] [cursor=pointer] [box=-2,128,52,52]':
+          - img [ref=e96] [box=14,132,20,20]
+          - generic [ref=e100] [box=11,159,26,11]: Model
+          - generic "Braki modelu" [ref=e101] [box=34,132,12,12]: "!"
+        - 'button "Schemat i topologia. Praca na schemacie jednokreskowym, topologii i przełączeniach. Skrót: Ctrl+2" [ref=e102] [cursor=pointer] [box=-2,184,52,52]':
+          - img [ref=e104] [box=14,187,20,20]
+          - generic [ref=e107] [box=6,214,35,11]: Schemat
+        - 'button "Studia obliczeniowe. Warianty pracy sieci, gotowość obliczeń, wyniki i raporty. Skrót: Ctrl+3" [ref=e108] [cursor=pointer] [box=-2,239,52,52]':
+          - img [ref=e109] [box=14,243,20,20]
+          - generic [ref=e113] [box=11,270,26,11]: Studia
+        - 'button "Wyniki i analizy. Przegląd wyników, porównania i nakładki wynikowe SLD. Skrót: Ctrl+4" [ref=e114] [cursor=pointer] [box=-2,295,52,52]':
+          - img [ref=e115] [box=14,298,20,20]
+          - generic [ref=e119] [box=10,325,28,11]: Wyniki
+          - generic "Wyniki dostępne po obliczeniach" [ref=e120] [box=33,298,14,12]: W
+        - 'button "Zabezpieczenia i automatyka. Nastawy, selektywność, automatyka i logika działania. Skrót: Ctrl+5" [ref=e121] [cursor=pointer] [box=-2,350,52,52]':
+          - img [ref=e122] [box=14,354,20,20]
+          - generic [ref=e127] [box=8,381,32,11]: Zabezp.
+        - 'button "Źródła i przyłączenia. Źródła PV, magazyny energii, farmy wiatrowe i wymagania operatora. Skrót: Ctrl+6" [ref=e128] [cursor=pointer] [box=-2,406,52,52]':
+          - img [ref=e129] [box=14,409,20,20]
+          - generic [ref=e134] [box=11,436,27,11]: Źródła
+        - 'button "Katalogi techniczne. Typy, aparatura, przewody, transformatory i profile katalogowe. Skrót: Ctrl+7" [ref=e135] [cursor=pointer] [box=-2,461,52,52]':
+          - img [ref=e136] [box=14,465,20,20]
+          - generic [ref=e140] [box=7,492,34,11]: Katalogi
+        - 'button "Raporty i uzasadnienia. Raporty OSD, uzasadnienia inżynierskie i pakiety audytowe. Skrót: Ctrl+8" [ref=e141] [cursor=pointer] [box=-2,517,52,52]':
+          - img [ref=e142] [box=14,520,20,20]
+          - generic [ref=e148] [box=8,547,33,11]: Raporty
+        - 'button "Historia i audyt. Wersje modelu użyte do obliczeń, ostatnie obliczenia, zmiany i ślad audytu. Skrót: Ctrl+9" [ref=e149] [cursor=pointer] [box=-2,572,52,52]':
+          - img [ref=e150] [box=14,576,20,20]
+          - generic [ref=e156] [box=8,603,32,11]: Historia
+    - complementary [ref=e157] [box=49,118,280,1785]:
+      - button "Ukryj lewy pasek boczny" [ref=e158] [cursor=pointer] [box=300,121,24,24]:
+        - img [ref=e159] [box=305,127,14,14]
+      - generic [ref=e352] [box=49,118,279,1785]:
+        - generic [ref=e353] [box=49,118,279,44]:
+          - generic [ref=e354] [box=59,130,106,18]: Nawigator modelu
+          - generic [ref=e355] [box=310,130,7,19]: ←
+        - generic [ref=e356] [box=49,162,279,51]:
+          - generic [ref=e357] [box=59,169,258,14]: Model sieci
+          - generic "Wymagany projekt SN" [ref=e358] [box=59,186,118,18]:
+            - generic [ref=e359] [box=66,188,104,15]: Wymagany projekt SN
+        - generic [ref=e360] [box=49,213,279,1690]:
+          - generic [ref=e361] [box=49,213,279,62]:
+            - generic [ref=e362] [box=59,223,258,15]: Krok 1 z 6
+            - heading "Utwórz projekt SN" [level=2] [ref=e363] [box=59,245,258,17]
+          - generic [ref=e364] [box=49,274,279,455]:
+            - generic [ref=e365] [box=59,285,258,56]
+            - generic [ref=e367] [box=59,351,258,56]
+            - generic [ref=e372] [box=59,418,258,56]
+            - generic [ref=e374] [box=59,484,258,56]
+            - generic [ref=e376] [box=59,551,258,56]
+            - generic [ref=e378] [box=59,617,258,56]
+            - button "Utwórz projekt i przejdź do GPZ" [ref=e380] [cursor=pointer] [box=59,684,258,35]
+          - generic [ref=e381] [box=49,729,279,200]:
+            - generic [ref=e382] [box=49,734,279,32]
+            - generic [ref=e385] [box=49,766,279,32]
+            - generic [ref=e388] [box=49,798,279,32]
+            - generic [ref=e391] [box=49,830,279,32]
+            - generic [ref=e394] [box=49,862,279,32]
+            - generic [ref=e397] [box=49,894,279,32]
+    - generic [ref=e205] [box=329,158,2964,1745]:
+      - img [ref=e206] [box=329,158,2964,1745]:
+        - generic [ref=e210] [box=337,1870,74,13]: LOD 2 · 100%
+      - region "Gotowość obliczeń na schemacie" [ref=e211] [box=2922,168,360,53]:
+        - generic [ref=e212] [box=2934,177,337,16]:
+          - generic [ref=e213] [box=2934,177,94,16]: Gotowość obliczeń
+          - generic [ref=e214] [box=3192,177,79,16]: wynik częściowy
+        - generic [ref=e215] [box=2934,197,337,16]:
+          - generic [ref=e216] [box=2934,197,50,16]: "Blokady: 0"
+          - generic [ref=e217] [box=2991,197,68,16]: "Ostrzeżenia: 0"
+      - generic [box=329,158,2964,1745]:
+        - generic [box=1615,928,392,205]:
+          - generic [box=1637,950,348,17]: Schemat jednokreskowy
+          - heading "Schemat oczekuje na dane modelu sieci" [level=2] [box=1637,974,348,25]
+          - paragraph [box=1637,1009,348,63]: Rozpocznij budowę od wstawienia Głównego Punktu Zasilającego. Kliknij prawym przyciskiem myszy na kanwie, aby otworzyć menu kontekstowe budowy modelu.
+          - paragraph [box=1637,1083,348,28]: "Pomoc inżynierska: prawy klik na elementach modelu otwiera akcje właściwe dla danego obiektu (pole, stacja, kabel, źródło OZE)."
+      - menu [ref=e400] [box=1810,1030,260,217]:
+        - generic [ref=e401] [box=1811,1035,258,36]: Schemat — kanwa robocza
+        - generic [ref=e402] [box=1811,1071,258,142]:
+          - generic [ref=e403] [box=1811,1074,258,25]: Budowa
+          - menuitem "Wstaw główny punkt zasilania" [ref=e405] [cursor=pointer] [box=1811,1100,258,28]:
+            - generic [ref=e407] [box=1822,1105,162,17]: Wstaw główny punkt zasilania
+          - generic [ref=e408] [box=1811,1128,258,25]: Widok
+          - menuitem "Otwórz katalogi techniczne" [ref=e410] [cursor=pointer] [box=1811,1153,258,28]:
+            - generic [ref=e412] [box=1822,1158,147,17]: Otwórz katalogi techniczne
+          - menuitem "Pokaż gotowość modelu" [ref=e414] [cursor=pointer] [box=1811,1181,258,28]:
+            - generic [ref=e416] [box=1822,1186,132,17]: Pokaż gotowość modelu
+        - generic [ref=e418] [box=1822,1221,77,14]: "Tryb: Model sieci"
+    - complementary [ref=e218] [box=3294,118,360,1785]:
+      - generic [ref=e219] [box=3295,118,359,28]:
+        - button "Ukryj prawy pasek boczny" [ref=e220] [cursor=pointer] [box=3302,121,21,21]:
+          - img [ref=e221] [box=3306,124,14,14]
+        - generic [ref=e223] [box=3329,124,125,15]: Inspektor techniczny
+      - generic [ref=e225] [box=3295,146,359,1757]:
+        - generic [ref=e226] [box=3295,146,359,31]:
+          - generic [ref=e227] [box=3306,151,139,19]:
+            - img [ref=e228] [box=3306,156,10,10]
+            - generic [ref=e230] [box=3323,151,122,19]: Inspektor techniczny
+          - img [ref=e231] [box=3633,156,10,10]
+        - generic [ref=e233] [box=3295,177,359,1725]:
+          - generic [ref=e234] [box=3306,188,338,96]:
+            - heading "Brak wyboru" [level=3] [ref=e235] [box=3317,200,314,16]
+            - paragraph [ref=e236] [box=3317,223,314,49]: Wybierz GPZ, pole SN, odcinek, stację albo wynik na schemacie, aby zobaczyć parametry techniczne, braki danych, wyniki i dostępne akcje.
+          - generic [ref=e237] [box=3306,295,338,308]:
+            - generic [ref=e238] [box=3306,295,338,24]
+            - generic [ref=e244] [box=3306,326,338,24]
+            - generic [ref=e250] [box=3306,358,338,24]
+            - generic [ref=e256] [box=3306,389,338,24]
+            - generic [ref=e262] [box=3306,421,338,24]
+            - generic [ref=e268] [box=3306,452,338,24]
+            - generic [ref=e274] [box=3306,484,338,24]
+            - generic [ref=e280] [box=3306,515,338,24]
+            - generic [ref=e286] [box=3306,547,338,24]
+            - generic [ref=e292] [box=3306,578,338,24]
+          - generic [ref=e298] [box=3306,620,338,21]:
+            - heading "Zabezpieczenia" [level=3] [ref=e299] [box=3306,621,83,18]
+            - generic [ref=e300] [box=3635,620,8,21]: ●
+          - generic [ref=e301] [box=3306,648,338,87]:
+            - generic [ref=e302] [box=3306,648,338,24]
+            - generic [ref=e308] [box=3306,679,338,24]
+            - generic [ref=e314] [box=3306,711,338,24]
+          - generic [ref=e320] [box=3306,753,338,53]:
+            - heading "Uwagi" [level=3] [ref=e321] [box=3306,753,338,18]
+            - generic [ref=e322] [box=3306,778,338,28]
+  - generic "Pasek statusu aplikacji" [ref=e325] [box=0,1903,3654,24]:
+    - generic [ref=e326] [box=10,1906,600,18]:
+      - generic [ref=e327] [box=10,1915,1,1]: "Bieżący zestaw: Nie wybrano. Zakres obliczeń: nie wybrano. Wariant: nie wybrano."
+      - generic [ref=e328] [box=10,1906,81,18]: Model / Model
+      - generic [ref=e329] [box=98,1908,2,15]: "|"
+      - generic [ref=e330] [box=108,1908,112,15]:
+        - generic [ref=e331] [box=108,1908,33,15]: "Projekt:"
+        - generic [ref=e332] [box=144,1908,76,15]: — nie otwarto —
+      - generic [ref=e333] [box=227,1908,2,15]: "|"
+      - generic [ref=e334] [box=236,1908,127,15]:
+        - generic [ref=e335] [box=236,1908,70,15]: "Zakres obliczeń:"
+        - generic [ref=e336] [box=310,1908,53,15]: nie wybrano
+      - generic [ref=e337] [box=370,1908,2,15]: "|"
+      - generic [ref=e338] [box=380,1908,93,15]:
+        - generic [ref=e339] [box=380,1908,36,15]: "Wariant:"
+        - generic [ref=e340] [box=419,1908,53,15]: nie wybrano
+      - generic [ref=e341] [box=480,1908,2,15]: "|"
+      - generic [ref=e342] [box=489,1908,77,15]:
+        - generic [ref=e343] [box=489,1908,68,15]: "Wersja modelu:"
+        - generic [ref=e344] [box=560,1908,6,15]: —
+      - generic [ref=e345] [box=573,1908,2,15]: "|"
+      - generic [ref=e346] [box=582,1908,28,15]: Edycja
+    - generic [ref=e348] [box=3557,1908,86,15]:
+      - generic [ref=e349] [box=3557,1908,37,15]: "Węzły: 0"
+      - generic [ref=e350] [box=3601,1908,43,15]: "Gałęzie: 0"

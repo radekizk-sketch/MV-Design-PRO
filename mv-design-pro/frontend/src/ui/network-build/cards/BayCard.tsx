@@ -124,7 +124,7 @@ export function BayCard({ elementId }: { elementId: string }) {
   const dot = useElementStatusDot(resolvedElementId);
 
   const effectiveLegacyRole = useMemo(
-    () => bay?.bay_role ?? mapCanonicalRoleToLegacyRole(fieldItem?.canonical_model.base_model.bay_role),
+    () => mapCanonicalRoleToLegacyRole(fieldItem?.canonical_model.base_model.bay_role) ?? bay?.bay_role ?? null,
     [bay, fieldItem],
   );
 
@@ -209,7 +209,7 @@ export function BayCard({ elementId }: { elementId: string }) {
           value: bus?.name ?? null,
           severity: bus ? undefined : 'error',
         },
-        { key: 'bus_voltage', label: 'Napiecie nominalne', value: bus?.voltage_kv ?? null, unit: 'kV' },
+        { key: 'bus_voltage', label: 'Napięcie nominalne', value: bus?.voltage_kv ?? null, unit: 'kV' },
         { key: 'bus_grounding', label: 'Uziemienie szyny', value: bus?.grounding?.type ?? null },
       ],
     };
@@ -465,7 +465,7 @@ export function BayCard({ elementId }: { elementId: string }) {
       id: 'results',
       label: 'Wyniki projektowe pola',
       fields: [
-        { key: 'run_ref', label: 'Uruchomienie', value: projectResults?.run_ref ?? null },
+        { key: 'run_ref', label: 'Ostatnie obliczenie', value: projectResults?.run_ref ?? null },
         {
           key: 'result_state',
           label: 'Stan wynikow',
@@ -723,7 +723,7 @@ export function BayCard({ elementId }: { elementId: string }) {
         return [
           {
             id: 'continue_trunk_segment_sn',
-            label: 'Kontynuuj magistrale',
+            label: 'Kontynuuj ciąg główny',
             variant: 'primary',
             onClick: handleContinueTrunk,
           },
@@ -733,7 +733,7 @@ export function BayCard({ elementId }: { elementId: string }) {
         return [
           {
             id: 'start_branch_segment_sn',
-            label: 'Rozpocznij odgalezienie',
+            label: 'Rozpocznij odgałęzienie',
             variant: 'primary',
             onClick: handleStartBranch,
           },
@@ -801,7 +801,7 @@ export function BayCard({ elementId }: { elementId: string }) {
 
   const displayRole = fieldItem
     ? canonicalRoleLabel(fieldItem.canonical_model.base_model.bay_role)
-    : bayRoleLabel(effectiveLegacyRole ?? '');
+    : effectiveLegacyRole ? bayRoleLabel(effectiveLegacyRole) : 'Pole SN';
 
   return (
     <ObjectCard

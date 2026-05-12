@@ -1,0 +1,697 @@
+﻿{
+    "snapshot":  {
+                     "header":  {
+                                    "enm_version":  "1.0",
+                                    "name":  "Model sieci - manual-g",
+                                    "description":  null,
+                                    "created_at":  "2026-05-11T04:19:25.414839Z",
+                                    "updated_at":  "2026-05-11T04:19:25.434705Z",
+                                    "revision":  2,
+                                    "hash_sha256":  "35ac656a8f20bb5d22e18f699ec4c40b8fad00ba9ad692f88b512bd5cad690af",
+                                    "defaults":  {
+                                                     "frequency_hz":  50.0,
+                                                     "unit_system":  "SI",
+                                                     "sn_nominal_kv":  null
+                                                 },
+                                    "semantic_hash":  null,
+                                    "input_hash":  null,
+                                    "case_hash":  null,
+                                    "variant_hash":  null,
+                                    "switching_snapshot_hash":  null
+                                },
+                     "buses":  [
+                                   {
+                                       "id":  "9b53eb2b-5ab0-4bf8-a343-7487ee754702",
+                                       "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                       "name":  "Szyna GPZ S1 15 kV",
+                                       "tags":  [
+
+                                                ],
+                                       "meta":  {
+                                                    "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                                    "gpz_section_order":  0,
+                                                    "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation"
+                                                },
+                                       "voltage_kv":  15.0,
+                                       "frequency_hz":  null,
+                                       "phase_system":  "3ph",
+                                       "zone":  "GPZ",
+                                       "grounding":  {
+                                                         "type":  "resistor_grounded",
+                                                         "r_ohm":  12.0,
+                                                         "x_ohm":  null
+                                                     },
+                                       "nominal_limits":  null
+                                   },
+                                   {
+                                       "id":  "85b55fa9-4a3e-4998-8f6d-2ca48ca7ece0",
+                                       "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                       "name":  "Szyna GPZ S2 15 kV",
+                                       "tags":  [
+
+                                                ],
+                                       "meta":  {
+                                                    "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002",
+                                                    "gpz_section_order":  1,
+                                                    "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation"
+                                                },
+                                       "voltage_kv":  15.0,
+                                       "frequency_hz":  null,
+                                       "phase_system":  "3ph",
+                                       "zone":  "GPZ",
+                                       "grounding":  {
+                                                         "type":  "resistor_grounded",
+                                                         "r_ohm":  12.0,
+                                                         "x_ohm":  null
+                                                     },
+                                       "nominal_limits":  null
+                                   },
+                                   {
+                                       "id":  "13c4a3fb-08e3-4cb5-80e0-ea83a1eb1ddc",
+                                       "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/bus_110",
+                                       "name":  "Szyna 110 kV TR1",
+                                       "tags":  [
+                                                    "gpz_hv_bus",
+                                                    "helper_bus"
+                                                ],
+                                       "meta":  {
+                                                    "visual_role":  "GPZ_HV_BUS",
+                                                    "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                                    "gpz_transformer_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                                                    "render_on_sld":  true,
+                                                    "show_in_project_tree":  false
+                                                },
+                                       "voltage_kv":  110.0,
+                                       "frequency_hz":  null,
+                                       "phase_system":  "3ph",
+                                       "zone":  null,
+                                       "grounding":  null,
+                                       "nominal_limits":  null
+                                   },
+                                   {
+                                       "id":  "5376e4bb-6fdd-4198-8774-2a5f45c983dd",
+                                       "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/bus_110",
+                                       "name":  "Szyna 110 kV TR2",
+                                       "tags":  [
+                                                    "gpz_hv_bus",
+                                                    "helper_bus"
+                                                ],
+                                       "meta":  {
+                                                    "visual_role":  "GPZ_HV_BUS",
+                                                    "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                                    "gpz_transformer_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                                                    "render_on_sld":  true,
+                                                    "show_in_project_tree":  false
+                                                },
+                                       "voltage_kv":  110.0,
+                                       "frequency_hz":  null,
+                                       "phase_system":  "3ph",
+                                       "zone":  null,
+                                       "grounding":  null,
+                                       "nominal_limits":  null
+                                   }
+                               ],
+                     "branches":  [
+                                      {
+                                          "id":  "fa3735f0-ad84-4a94-8bec-88557f351811",
+                                          "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001",
+                                          "name":  "SprzÄgÅo sekcji GPZ 1-2",
+                                          "tags":  [
+
+                                                   ],
+                                          "meta":  {
+
+                                                   },
+                                          "from_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                          "to_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                          "status":  "closed",
+                                          "catalog_ref":  null,
+                                          "catalog_namespace":  null,
+                                          "parameter_source":  null,
+                                          "source_mode":  null,
+                                          "materialized_params":  null,
+                                          "overrides":  [
+
+                                                        ],
+                                          "type":  "bus_coupler",
+                                          "r_ohm":  null,
+                                          "x_ohm":  null
+                                      }
+                                  ],
+                     "transformers":  [
+                                          {
+                                              "id":  "f2064dff-3ade-47b5-a79b-16f3aaa206a4",
+                                              "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                                              "name":  "TR1 110/15 kV",
+                                              "tags":  [
+                                                           "gpz_wn_sn_transformer"
+                                                       ],
+                                              "meta":  {
+                                                           "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                                           "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                                           "gpz_section_order":  0,
+                                                           "visual_role":  "GPZ_WN_SN_TRANSFORMER"
+                                                       },
+                                              "hv_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/bus_110",
+                                              "lv_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                              "sn_mva":  25.0,
+                                              "uhv_kv":  110.0,
+                                              "ulv_kv":  15.0,
+                                              "uk_percent":  12.0,
+                                              "pk_kw":  120.0,
+                                              "p0_kw":  25.0,
+                                              "i0_percent":  0.2,
+                                              "vector_group":  "YNd11",
+                                              "hv_neutral":  null,
+                                              "lv_neutral":  null,
+                                              "tap_position":  null,
+                                              "tap_min":  null,
+                                              "tap_max":  null,
+                                              "tap_step_percent":  null,
+                                              "catalog_ref":  null,
+                                              "catalog_namespace":  "TRANSFORMATOR_110_SN",
+                                              "parameter_source":  "OVERRIDE",
+                                              "source_mode":  "EKSPERCKI_RECZNY",
+                                              "materialized_params":  {
+                                                                          "uhv_kv":  110.0,
+                                                                          "ulv_kv":  15.0,
+                                                                          "sn_mva":  25.0,
+                                                                          "uk_percent":  12.0,
+                                                                          "pk_kw":  120.0,
+                                                                          "vector_group":  "YNd11"
+                                                                      },
+                                              "overrides":  [
+
+                                                            ]
+                                          },
+                                          {
+                                              "id":  "c6e29891-3220-4653-89ec-a5e348836a0b",
+                                              "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                                              "name":  "TR2 110/15 kV",
+                                              "tags":  [
+                                                           "gpz_wn_sn_transformer"
+                                                       ],
+                                              "meta":  {
+                                                           "gpz_substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                                           "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002",
+                                                           "gpz_section_order":  1,
+                                                           "visual_role":  "GPZ_WN_SN_TRANSFORMER"
+                                                       },
+                                              "hv_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/bus_110",
+                                              "lv_bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                              "sn_mva":  25.0,
+                                              "uhv_kv":  110.0,
+                                              "ulv_kv":  15.0,
+                                              "uk_percent":  12.0,
+                                              "pk_kw":  120.0,
+                                              "p0_kw":  25.0,
+                                              "i0_percent":  0.2,
+                                              "vector_group":  "YNd11",
+                                              "hv_neutral":  null,
+                                              "lv_neutral":  null,
+                                              "tap_position":  null,
+                                              "tap_min":  null,
+                                              "tap_max":  null,
+                                              "tap_step_percent":  null,
+                                              "catalog_ref":  null,
+                                              "catalog_namespace":  "TRANSFORMATOR_110_SN",
+                                              "parameter_source":  "OVERRIDE",
+                                              "source_mode":  "EKSPERCKI_RECZNY",
+                                              "materialized_params":  {
+                                                                          "uhv_kv":  110.0,
+                                                                          "ulv_kv":  15.0,
+                                                                          "sn_mva":  25.0,
+                                                                          "uk_percent":  12.0,
+                                                                          "pk_kw":  120.0,
+                                                                          "vector_group":  "YNd11"
+                                                                      },
+                                              "overrides":  [
+
+                                                            ]
+                                          }
+                                      ],
+                     "sources":  [
+                                     {
+                                         "id":  "7b72d410-e8ce-4888-bf89-7038f8653d39",
+                                         "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                                         "name":  "GPZ 1",
+                                         "tags":  [
+
+                                                  ],
+                                         "meta":  {
+
+                                                  },
+                                         "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                         "model":  "short_circuit_power",
+                                         "substation_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                         "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                         "catalog_ref":  null,
+                                         "catalog_namespace":  null,
+                                         "parameter_source":  "MANUAL_EQUIVALENT",
+                                         "source_mode":  "EKSPERCKI_RECZNY",
+                                         "materialized_params":  {
+                                                                     "voltage_rating_kv":  15.0,
+                                                                     "sk3_mva":  310.0,
+                                                                     "rx_ratio":  0.12,
+                                                                     "short_circuit_model":  "short_circuit_power",
+                                                                     "short_circuit_mode":  "SHORT_CIRCUIT_POWER",
+                                                                     "manual_equivalent":  true,
+                                                                     "z0_z1_ratio":  3.2
+                                                                 },
+                                         "overrides":  [
+
+                                                       ],
+                                         "sk3_mva":  310.0,
+                                         "ik3_ka":  null,
+                                         "r_ohm":  null,
+                                         "x_ohm":  null,
+                                         "rx_ratio":  0.12,
+                                         "r0_ohm":  null,
+                                         "x0_ohm":  null,
+                                         "z0_z1_ratio":  3.2,
+                                         "c_max":  null,
+                                         "c_min":  null
+                                     }
+                                 ],
+                     "loads":  [
+
+                               ],
+                     "generators":  [
+
+                                    ],
+                     "substations":  [
+                                         {
+                                             "id":  "2362bb66-8095-427f-81e9-8d3d416be12f",
+                                             "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                             "name":  "GPZ 1",
+                                             "tags":  [
+
+                                                      ],
+                                             "meta":  {
+                                                          "gpz_section_count":  2,
+                                                          "wn_sn_transformer_count":  2,
+                                                          "grounding":  {
+                                                                            "type":  "resistor_grounded",
+                                                                            "r_ohm":  12.0
+                                                                        },
+                                                          "zero_sequence":  {
+                                                                                "enabled":  true,
+                                                                                "z0_z1_ratio":  3.2
+                                                                            },
+                                                          "short_circuit_mode":  "SHORT_CIRCUIT_POWER",
+                                                          "field_specs":  [
+                                                                              {
+                                                                                  "field_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/bay/001/001",
+                                                                                  "name":  "Pole odplywowe 1",
+                                                                                  "bay_role":  "FEEDER",
+                                                                                  "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                                                                  "equipment_refs":  [
+
+                                                                                                     ],
+                                                                                  "protection_ref":  null,
+                                                                                  "tags":  [
+                                                                                               "gpz_line_field"
+                                                                                           ],
+                                                                                  "meta":  {
+                                                                                               "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                                                                               "gpz_section_order":  0,
+                                                                                               "gpz_line_field_index":  0,
+                                                                                               "gpz_line_fields_count":  2,
+                                                                                               "source_field_kind":  "FEEDER",
+                                                                                               "field_status":  "READY_FOR_TRUNK"
+                                                                                           },
+                                                                                  "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001"
+                                                                              },
+                                                                              {
+                                                                                  "field_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/bay/001/002",
+                                                                                  "name":  "Pole odplywowe 2",
+                                                                                  "bay_role":  "FEEDER",
+                                                                                  "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                                                                  "equipment_refs":  [
+
+                                                                                                     ],
+                                                                                  "protection_ref":  null,
+                                                                                  "tags":  [
+                                                                                               "gpz_line_field"
+                                                                                           ],
+                                                                                  "meta":  {
+                                                                                               "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                                                                               "gpz_section_order":  0,
+                                                                                               "gpz_line_field_index":  1,
+                                                                                               "gpz_line_fields_count":  2,
+                                                                                               "source_field_kind":  "FEEDER",
+                                                                                               "field_status":  "READY_FOR_TRUNK"
+                                                                                           },
+                                                                                  "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001"
+                                                                              },
+                                                                              {
+                                                                                  "field_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/bay/002/001",
+                                                                                  "name":  "Pole odplywowe 1",
+                                                                                  "bay_role":  "FEEDER",
+                                                                                  "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                                                                  "equipment_refs":  [
+
+                                                                                                     ],
+                                                                                  "protection_ref":  null,
+                                                                                  "tags":  [
+                                                                                               "gpz_line_field"
+                                                                                           ],
+                                                                                  "meta":  {
+                                                                                               "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002",
+                                                                                               "gpz_section_order":  1,
+                                                                                               "gpz_line_field_index":  0,
+                                                                                               "gpz_line_fields_count":  2,
+                                                                                               "source_field_kind":  "FEEDER",
+                                                                                               "field_status":  "READY_FOR_TRUNK"
+                                                                                           },
+                                                                                  "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002"
+                                                                              },
+                                                                              {
+                                                                                  "field_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/bay/002/002",
+                                                                                  "name":  "Pole odplywowe 2",
+                                                                                  "bay_role":  "FEEDER",
+                                                                                  "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                                                                  "equipment_refs":  [
+
+                                                                                                     ],
+                                                                                  "protection_ref":  null,
+                                                                                  "tags":  [
+                                                                                               "gpz_line_field"
+                                                                                           ],
+                                                                                  "meta":  {
+                                                                                               "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002",
+                                                                                               "gpz_section_order":  1,
+                                                                                               "gpz_line_field_index":  1,
+                                                                                               "gpz_line_fields_count":  2,
+                                                                                               "source_field_kind":  "FEEDER",
+                                                                                               "field_status":  "READY_FOR_TRUNK"
+                                                                                           },
+                                                                                  "gpz_section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002"
+                                                                              }
+                                                                          ]
+                                                      },
+                                             "station_type":  "gpz",
+                                             "bus_refs":  [
+                                                              "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                                              "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn"
+                                                          ],
+                                             "transformer_refs":  [
+                                                                      "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                                                                      "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn"
+                                                                  ],
+                                             "entry_point_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                             "gpz_sections":  [
+                                                                  {
+                                                                      "section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001",
+                                                                      "order":  0,
+                                                                      "name":  "Sekcja 1",
+                                                                      "line_field_name":  "Pole odplywowe 1",
+                                                                      "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                                                      "incoming_source_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                                                                      "left_coupler_ref":  null,
+                                                                      "right_coupler_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001"
+                                                                  },
+                                                                  {
+                                                                      "section_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002",
+                                                                      "order":  1,
+                                                                      "name":  "Sekcja 2",
+                                                                      "line_field_name":  "Pole odplywowe 1",
+                                                                      "bus_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                                                      "incoming_source_ref":  null,
+                                                                      "left_coupler_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001",
+                                                                      "right_coupler_ref":  null
+                                                                  }
+                                                              ],
+                                             "gpz_hv_sections":  [
+
+                                                                 ],
+                                             "external_ports":  [
+
+                                                                ],
+                                             "nn_voltage_levels":  [
+
+                                                                   ],
+                                             "construction_type":  null
+                                         }
+                                     ],
+                     "bays":  [
+
+                              ],
+                     "junctions":  [
+
+                                   ],
+                     "corridors":  [
+                                       {
+                                           "id":  "0239d872-2d53-4214-b084-53661457eecd",
+                                           "ref_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/corridor_01",
+                                           "name":  "Magistrala 01",
+                                           "tags":  [
+
+                                                    ],
+                                           "meta":  {
+
+                                                    },
+                                           "corridor_type":  "radial",
+                                           "ordered_segment_refs":  [
+
+                                                                    ],
+                                           "no_point_ref":  null
+                                       }
+                                   ],
+                     "measurements":  [
+
+                                      ],
+                     "protection_assignments":  [
+
+                                                ],
+                     "branch_points":  [
+
+                                       ],
+                     "line_runs":  [
+
+                                   ],
+                     "connection_nodes":  [
+
+                                          ]
+                 },
+    "logical_views":  {
+                          "trunks":  [
+                                         {
+                                             "corridor_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/corridor_01",
+                                             "corridor_type":  "radial",
+                                             "segments":  [
+
+                                                          ],
+                                             "no_point_ref":  null,
+                                             "terminals":  [
+
+                                                           ],
+                                             "embedded_objects":  [
+
+                                                                  ]
+                                         }
+                                     ],
+                          "branches":  [
+
+                                       ],
+                          "secondary_connectors":  [
+
+                                                   ],
+                          "terminals":  [
+
+                                        ]
+                      },
+    "readiness":  {
+                      "ready":  false,
+                      "blockers":  [
+                                       {
+                                           "code":  "E009",
+                                           "message_pl":  "Å¹rÃ³dÅo \u0027gpz/e1b125f59ca1c7b79b013328b77aa982/source/main\u0027 nie ma referencji katalogowej (catalog_ref).",
+                                           "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                                           "severity":  "BLOKUJACE"
+                                       },
+                                       {
+                                           "code":  "E009",
+                                           "message_pl":  "Transformator \u0027gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn\u0027 nie ma referencji katalogowej (catalog_ref).",
+                                           "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                                           "severity":  "BLOKUJACE"
+                                       },
+                                       {
+                                           "code":  "E009",
+                                           "message_pl":  "Transformator \u0027gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn\u0027 nie ma referencji katalogowej (catalog_ref).",
+                                           "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                                           "severity":  "BLOKUJACE"
+                                       }
+                                   ],
+                      "warnings":  [
+                                       {
+                                           "code":  "W003",
+                                           "message_pl":  "Brak odbiorÃ³w i generatorÃ³w â rozpÅyw mocy bÄdzie pusty.",
+                                           "element_ref":  null,
+                                           "severity":  "OSTRZEZENIE"
+                                       }
+                                   ]
+                  },
+    "fix_actions":  [
+                        {
+                            "code":  "E009",
+                            "action_type":  "SELECT_CATALOG",
+                            "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                            "panel":  "SourceModal",
+                            "step":  "K2",
+                            "focus":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                            "message_pl":  "Wybierz ÅºrÃ³dÅo systemowe z katalogu i zapisz catalog_ref."
+                        },
+                        {
+                            "code":  "E009",
+                            "action_type":  "SELECT_CATALOG",
+                            "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                            "panel":  "TransformerModal",
+                            "step":  "K5",
+                            "focus":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                            "message_pl":  "Przypisz transformator z katalogu i zapisz catalog_ref."
+                        },
+                        {
+                            "code":  "E009",
+                            "action_type":  "SELECT_CATALOG",
+                            "element_ref":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                            "panel":  "TransformerModal",
+                            "step":  "K5",
+                            "focus":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                            "message_pl":  "Przypisz transformator z katalogu i zapisz catalog_ref."
+                        },
+                        {
+                            "code":  "W003",
+                            "action_type":  "ADD_MISSING_DEVICE",
+                            "element_ref":  null,
+                            "panel":  "LoadModal",
+                            "step":  "K6",
+                            "focus":  null,
+                            "message_pl":  "Dodaj odbiory lub generatory w kroku K6."
+                        }
+                    ],
+    "changes":  {
+                    "created_element_ids":  [
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/bus_110",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/bus_110",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                                                "gpz/e1b125f59ca1c7b79b013328b77aa982/corridor_01"
+                                            ],
+                    "updated_element_ids":  [
+
+                                            ],
+                    "deleted_element_ids":  [
+
+                                            ]
+                },
+    "selection_hint":  {
+                           "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation",
+                           "element_type":  "substation",
+                           "zoom_to":  true
+                       },
+    "audit_trail":  [
+                        {
+                            "step":  1,
+                            "action":  "Utworzono sekcje GPZ 1",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn"
+                        },
+                        {
+                            "step":  2,
+                            "action":  "Utworzono sekcje GPZ 2",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn"
+                        },
+                        {
+                            "step":  4,
+                            "action":  "Utworzono transformator WN/SN TR1",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn"
+                        },
+                        {
+                            "step":  6,
+                            "action":  "Utworzono transformator WN/SN TR2",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn"
+                        },
+                        {
+                            "step":  7,
+                            "action":  "Utworzono ÅºrÃ³dÅo zasilania",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main"
+                        },
+                        {
+                            "step":  8,
+                            "action":  "Utworzono sprzÄgÅo sekcyjne GPZ",
+                            "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001"
+                        }
+                    ],
+    "domain_events":  [
+                          {
+                              "event_seq":  1,
+                              "event_type":  "BUS_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/001/bus_sn"
+                          },
+                          {
+                              "event_seq":  2,
+                              "event_type":  "BUS_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/section/002/bus_sn"
+                          },
+                          {
+                              "event_seq":  3,
+                              "event_type":  "BUS_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/bus_110"
+                          },
+                          {
+                              "event_seq":  4,
+                              "event_type":  "TRANSFORMER_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/001/wn_sn"
+                          },
+                          {
+                              "event_seq":  5,
+                              "event_type":  "BUS_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/bus_110"
+                          },
+                          {
+                              "event_seq":  6,
+                              "event_type":  "TRANSFORMER_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/transformer/002/wn_sn"
+                          },
+                          {
+                              "event_seq":  7,
+                              "event_type":  "SOURCE_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/source/main"
+                          },
+                          {
+                              "event_seq":  8,
+                              "event_type":  "BRANCH_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/coupler/001"
+                          },
+                          {
+                              "event_seq":  9,
+                              "event_type":  "STATION_CREATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/substation"
+                          },
+                          {
+                              "event_seq":  10,
+                              "event_type":  "LOGICAL_VIEWS_UPDATED",
+                              "element_id":  "gpz/e1b125f59ca1c7b79b013328b77aa982/corridor_01"
+                          }
+                      ],
+    "materialized_params":  {
+                                "lines_sn":  {
+
+                                             },
+                                "transformers_sn_nn":  {
+
+                                                       },
+                                "sources_sn":  {
+
+                                               }
+                            },
+    "layout":  {
+                   "layout_hash":  "sha256:46449085502524f647f10ea8b9e86221c0e46dbca7e630ab46e32b66e3048691",
+                   "layout_version":  "1.0"
+               }
+}

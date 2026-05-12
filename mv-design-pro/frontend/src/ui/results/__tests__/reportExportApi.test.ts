@@ -1,5 +1,5 @@
 /**
- * Testy reportExportApi (Iteracja 15) — eksport raportu i Proof Pack.
+ * Testy reportExportApi - eksport raportu i uzasadnienia inżynierskiego.
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -12,9 +12,9 @@ import {
 } from '../reportExportApi';
 
 const RUN_ID = 'run-123-test';
+let anchorClickSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  // Mock URL.createObjectURL / revokeObjectURL.
   Object.defineProperty(window.URL, 'createObjectURL', {
     value: vi.fn(() => 'blob:mock'),
     writable: true,
@@ -25,14 +25,15 @@ beforeEach(() => {
     writable: true,
     configurable: true,
   });
+  anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('reportExportApi — eksport raportu', () => {
-  it('zwraca błąd gdy runId pusty', async () => {
+describe('reportExportApi - eksport raportu', () => {
+  it('zwraca błąd gdy identyfikator obliczenia jest pusty', async () => {
     const r = await exportReport('', 'pdf');
     expect(r.ok).toBe(false);
     if (!r.ok) {
@@ -40,7 +41,7 @@ describe('reportExportApi — eksport raportu', () => {
     }
   });
 
-  it('exportReport(pdf) wywołuje endpoint /export/pdf', async () => {
+  it('exportReport(pdf) wywołuje kanoniczny endpoint raportu', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
       blob: async () => new Blob([new Uint8Array([1, 2, 3])], { type: 'application/pdf' }),
@@ -48,19 +49,23 @@ describe('reportExportApi — eksport raportu', () => {
     } as never);
     const r = await exportReport(RUN_ID, 'pdf');
     expect(fetchSpy).toHaveBeenCalledTimes(1);
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/power-flow-runs/${RUN_ID}/export/pdf`);
+    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/report/pdf`);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.filename).toBe(`raport-${RUN_ID}.pdf`);
+    expect(anchorClickSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('exportReport(docx) wywołuje endpoint /export/docx', async () => {
+  it('exportReport(docx) wywołuje kanoniczny endpoint raportu', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
-      blob: async () => new Blob([], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }),
+      blob: async () =>
+        new Blob([], {
+          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
       json: async () => ({}),
     } as never);
     const r = await exportReport(RUN_ID, 'docx');
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/power-flow-runs/${RUN_ID}/export/docx`);
+    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/report/docx`);
     expect(r.ok).toBe(true);
   });
 
@@ -78,7 +83,7 @@ describe('reportExportApi — eksport raportu', () => {
     }
   });
 
-  it('exportReport zwraca polski błąd przy network failure', async () => {
+  it('exportReport zwraca polski błąd przy błędzie sieci', async () => {
     vi.spyOn(global, 'fetch').mockRejectedValueOnce(new Error('NetworkError: connection refused'));
     const r = await exportReport(RUN_ID, 'pdf');
     expect(r.ok).toBe(false);
@@ -88,7 +93,7 @@ describe('reportExportApi — eksport raportu', () => {
   });
 });
 
-describe('reportExportApi — eksport Proof Pack', () => {
+describe('reportExportApi - eksport uzasadnienia inżynierskiego', () => {
   it('exportProofPack(latex) wywołuje endpoint /export/proof/latex', async () => {
     const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValueOnce({
       ok: true,
@@ -96,7 +101,7 @@ describe('reportExportApi — eksport Proof Pack', () => {
       json: async () => ({}),
     } as never);
     const r = await exportProofPack(RUN_ID, 'latex');
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/power-flow-runs/${RUN_ID}/export/proof/latex`);
+    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/proof/latex`);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.filename).toBe(`uzasadnienie-${RUN_ID}.tex`);
   });
@@ -108,7 +113,7 @@ describe('reportExportApi — eksport Proof Pack', () => {
       json: async () => ({}),
     } as never);
     const r = await exportProofPack(RUN_ID, 'pdf');
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/power-flow-runs/${RUN_ID}/export/proof/pdf`);
+    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/proof/pdf`);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.filename).toBe(`uzasadnienie-${RUN_ID}.pdf`);
   });
@@ -120,7 +125,7 @@ describe('reportExportApi — eksport Proof Pack', () => {
       json: async () => ({}),
     } as never);
     const r = await exportProofPack(RUN_ID, 'json');
-    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/power-flow-runs/${RUN_ID}/export/proof/json`);
+    expect(fetchSpy.mock.calls[0]![0]).toBe(`/api/analysis-runs/${RUN_ID}/export/proof/json`);
     expect(r.ok).toBe(true);
   });
 });
@@ -133,7 +138,7 @@ describe('format labels', () => {
     expect(REPORT_FORMAT_LABELS_PL.xlsx).toContain('XLSX');
   });
 
-  it('Polskie etykiety formatów Proof Pack', () => {
+  it('Polskie etykiety formatów uzasadnienia inżynierskiego', () => {
     expect(PROOF_FORMAT_LABELS_PL.pdf).toContain('PDF');
     expect(PROOF_FORMAT_LABELS_PL.latex).toContain('LaTeX');
     expect(PROOF_FORMAT_LABELS_PL.json).toContain('JSON');

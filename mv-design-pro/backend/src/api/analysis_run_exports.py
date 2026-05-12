@@ -257,7 +257,7 @@ def build_analysis_run_report_payload(
 def _require_power_flow_bundle(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "PF":
         raise ValueError(
-            "Eksport raportu z kanonicznego przebiegu jest obecnie dostępny tylko dla rozpływu mocy.",
+            "Eksport raportu z kanonicznego obliczenia jest obecnie dostępny tylko dla rozpływu mocy.",
         )
     return build_power_flow_export_bundle(run)
 
@@ -445,7 +445,7 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
 def build_analysis_run_trace_export_payload(run: CanonicalRun) -> dict[str, Any]:
     trace_payload = canonicalize_json(build_extended_trace_response(run))
     if not trace_payload.get("white_box_trace"):
-        raise ValueError("Ślad obliczeniowy niedostępny dla tego przebiegu analizy.")
+        raise ValueError("Ślad obliczeniowy niedostępny dla tego obliczenia.")
     trace_payload["proof_pack_ref"] = resolve_proof_pack_ref(run)
     trace_payload["export_artifact"] = build_export_artifact(run, export_kind="whitebox_package")
     trace_payload["export_policy"] = build_export_policy("whitebox_package")
@@ -902,7 +902,7 @@ def export_run_report_docx_response(
         row[1].text = str(value) if value is not None else "—"
 
     add_pair("Typ analizy", run.analysis_type)
-    add_pair("Status przebiegu", run.status)
+    add_pair("Status obliczenia", run.status)
     add_pair("Status wyników", run.result_status)
     add_pair("Profil raportu", options["profile_label"])
     add_pair("Poziom szczegółowości", options["detail_level_label"])
@@ -1338,7 +1338,7 @@ def export_run_trace_pdf_response(
         f"Uruchomienie: {trace_payload.get('run_id')}", font_name="Helvetica", font_size=10
     )
     draw_wrapped(
-        f"Migawka: {trace_payload.get('snapshot_id') or '—'} | Hash wejścia: {trace_payload.get('input_hash') or '—'}",
+        f"Wersja modelu: {trace_payload.get('snapshot_id') or '—'} | Hash wejścia: {trace_payload.get('input_hash') or '—'}",
         font_name="Helvetica",
         font_size=9,
     )

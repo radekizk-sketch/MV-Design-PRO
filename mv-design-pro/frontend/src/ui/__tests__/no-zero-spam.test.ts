@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
  * GUARD KONTRAKTOWY — zakaz „0.00 spam" w widokach inżynierskich SLD.
  *
  * Definicja antypatternu:
- *   `(value ?? 0).toFixed(...)`           — domyśla zera, gdy brak danych
- *   `(value ?? 0).toLocaleString(...)`    — j.w.
+ *   `(value ? 0).toFixed(...)`           — domyśla zera, gdy brak danych
+ *   `(value ? 0).toLocaleString(...)`    — j.w.
  *   `(value || 0).toFixed(...)`           — j.w. (i błędny dla wartości 0)
  *
  * Zalecenie kanoniczne:
@@ -51,11 +51,11 @@ interface Violation {
 
 const FORBIDDEN_PATTERNS: Array<{ name: string; regex: RegExp }> = [
   {
-    name: '(... ?? 0).toFixed(',
+    name: '(... ? 0).toFixed(',
     regex: /\?\?\s*0\s*\)\s*\.toFixed\s*\(/,
   },
   {
-    name: '(... ?? 0).toLocaleString(',
+    name: '(... ? 0).toLocaleString(',
     regex: /\?\?\s*0\s*\)\s*\.toLocaleString\s*\(/,
   },
   {
@@ -117,7 +117,7 @@ function scanFile(path: string): Violation[] {
 
 describe('SLD: zakaz 0.00 spam (kanon CAD/SCADA rebuild)', () => {
   for (const sub of SLD_GLOB) {
-    it(`${sub} — brak antypatternu (... ?? 0).toFixed / .toLocaleString`, () => {
+    it(`${sub} — brak antypatternu (... ? 0).toFixed / .toLocaleString`, () => {
       const root = join(FRONTEND_SRC, sub);
       const violations: Violation[] = [];
       for (const file of walk(root)) {
@@ -129,7 +129,7 @@ describe('SLD: zakaz 0.00 spam (kanon CAD/SCADA rebuild)', () => {
           violations
             .map((v) => `  ${v.file}:${v.line}  [${v.pattern}]\n    ${v.snippet}`)
             .join('\n') +
-          '\n\nUżyj formatPolishValue() z ui/shared/formatPolishValue.ts zamiast (value ?? 0).toFixed(...)' +
+          '\n\nUżyj formatPolishValue() z ui/shared/formatPolishValue.ts zamiast (value ? 0).toFixed(...)' +
           '\nDokumentacja: docs/sld/SLD_CAD_SCADA_REBUILD.md §3.';
         // Wymuszamy czytelny komunikat błędu.
         expect(violations, message).toEqual([]);

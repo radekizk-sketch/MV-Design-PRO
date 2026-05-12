@@ -589,9 +589,13 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 onChange={(v) =>
                   setSelections((s) => ({
                     ...s,
-                    ncRfgProfileRef: v,
-                    lvrtCurveRef: null,
-                    hvrtCurveRef: null,
+                    ncRfgProfileRef: v || null,
+                    lvrtCurveRef: v ? selectLvrtCurvesForProfile(v)[0]?.id ?? null : null,
+                    hvrtCurveRef: v ? selectHvrtCurvesForProfile(v)[0]?.id ?? null : null,
+                    pfCurveRef: PF_CURVE_CATALOG.filter((c) => {
+                      const profile = NC_RFG_PROFILE_CATALOG.find((p) => p.id === v);
+                      return profile ? c.operator_code === profile.operator_code : false;
+                    })[0]?.id ?? null,
                   }))
                 }
                 options={[

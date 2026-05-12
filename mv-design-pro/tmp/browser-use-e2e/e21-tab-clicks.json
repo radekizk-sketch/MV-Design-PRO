@@ -1,0 +1,26 @@
+[
+  {
+    "name": "Falownik z katalogu",
+    "count": 1,
+    "clicked": true,
+    "contentVisible": true
+  },
+  {
+    "name": "FRT / LVRT / HVRT",
+    "count": 1,
+    "clicked": true,
+    "contentVisible": true
+  },
+  {
+    "name": "Zgodność przyłączeniowa",
+    "count": 1,
+    "clicked": true,
+    "contentVisible": true
+  },
+  {
+    "name": "Gotowość obliczeń",
+    "count": 1,
+    "clicked": true,
+    "contentVisible": true
+  }
+]

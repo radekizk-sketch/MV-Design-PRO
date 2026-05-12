@@ -74,10 +74,10 @@ describe('CommandPalette — paleta komend (Ctrl+Shift+P)', () => {
   it('zawiera komendy menu SLD_MENU_REGISTRY (poza tłem)', () => {
     render(<CommandPalette isOpen onClose={vi.fn()} />);
     const input = screen.getByTestId('command-palette-input') as HTMLInputElement;
-    fireEvent.change(input, { target: { value: 'transformatorowa' } });
+    fireEvent.change(input, { target: { value: 'ZK SN' } });
     const results = screen.getByTestId('command-palette-results');
-    // Menu cable_segment_sn ma "Wstaw stację transformatorową"
-    expect(results.textContent).toContain('Wstaw stację transformatorową');
+    // Menu odcinka kabla SN udostępnia warianty zakończenia odcinka.
+    expect(results.textContent).toContain('Zakończ odcinek w ZK SN');
   });
 
   it('wyświetla pusty stan gdy brak komend pasujących', () => {

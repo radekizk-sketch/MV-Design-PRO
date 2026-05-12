@@ -9,7 +9,7 @@ async function waitForAppReady(page: Page): Promise<void> {
     state: 'attached',
     timeout: 15000,
   });
-  await expect(page.locator('[data-testid="active-case-bar"]')).toBeVisible();
+  await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
 }
 
 async function seedTestState(page: Page): Promise<void> {
@@ -30,32 +30,36 @@ test.describe('UI Integration E2E Happy Path', () => {
   });
 
   test('renders canonical active case bar and mode indicator', async ({ page }) => {
-    await expect(page.locator('[data-testid="active-case-bar"]')).toBeVisible();
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'MODEL_EDIT');
-    await expect(page.locator('[data-testid="btn-change-case"]')).toBeVisible();
-    await expect(page.locator('[data-testid="btn-calculate"]')).toBeVisible();
+    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+    await expect(page.locator('[data-testid="ctx-project"]')).toContainText('Projekt Testowy');
+    await expect(page.locator('[data-testid="ctx-wariant"]')).toContainText('Przypadek Testowy 3F');
+    await expect(page.locator('[data-testid="top-bar-calculate"]')).toBeVisible();
   });
 
   test('opens canonical variants helper surface z active case bar', async ({ page }) => {
-    await page.locator('[data-testid="btn-change-case"]').click();
+    await page.locator('[data-testid="ctx-wariant"]').click();
 
-    await expect(page).toHaveURL(/#variants$/);
-    await expect(page.locator('[data-testid="workspace-surface-main"]')).toBeVisible();
-    await expect(page.getByText('Warianty, przypadki i uruchomienia')).toBeVisible();
+    await expect(page).toHaveURL(/#variants(\?|$)/);
+    const surface = page.locator('[data-testid="workspace-surface-main"]');
+    await expect(surface).toBeVisible();
+    await expect(surface.getByTestId('variants-engineering-surface')).toBeVisible();
+    await expect(surface.getByTestId('variants-engineering-surface').getByRole('heading', { name: 'Stan obliczeń wariantu' })).toBeVisible();
   });
 
   test('switches shell mode on canonical analytical routes', async ({ page }) => {
     await page.goto('/#analysis');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'RESULT_VIEW');
+    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
 
     await page.goto('/#proof');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'RESULT_VIEW');
+    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
 
     await page.goto('/');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'MODEL_EDIT');
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toBeVisible();
   });
 
   test('persists seeded UI state in localStorage', async ({ page }) => {
@@ -81,16 +85,16 @@ test.describe('Context Bar Synchronization', () => {
   });
 
   test('keeps calculate action visible and mode consistent while navigating', async ({ page }) => {
-    const calculateButton = page.locator('[data-testid="btn-calculate"]');
+    const calculateButton = page.locator('[data-testid="top-bar-calculate"]');
     await expect(calculateButton).toBeVisible();
 
     await page.goto('/#analysis');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'RESULT_VIEW');
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
 
     await page.goto('/#sld');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="mode-indicator"]')).toHaveAttribute('data-mode', 'MODEL_EDIT');
+    await expect(page.locator('[data-testid="workflow-context-strip"]')).toBeVisible();
     await expect(calculateButton).toBeVisible();
   });
 });

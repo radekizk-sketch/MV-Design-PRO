@@ -16,6 +16,15 @@ function issueTouchesElement(
   return issue.element_ref === elementId || issue.element_refs?.includes(elementId) === true;
 }
 
+export function issueTargetsElement(
+  issue: LiveReadinessIssueLike,
+  elementId: string | null | undefined,
+): boolean {
+  return typeof elementId === 'string' && elementId.length > 0
+    ? issueTouchesElement(issue, elementId)
+    : false;
+}
+
 function isBlocker(issue: LiveReadinessIssueLike): boolean {
   return issue.severity === 'BLOCKER';
 }

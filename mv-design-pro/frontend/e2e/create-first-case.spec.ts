@@ -57,6 +57,26 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
       return;
     }
 
+    if (method === 'GET' && pathname === '/api/projects') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          projects: projectCreated
+            ? [{
+                id: 'proj-001',
+                name: 'Projekt 1',
+                description: null,
+                created_at: '2026-01-01T00:00:00Z',
+                updated_at: '2026-01-01T00:00:00Z',
+              }]
+            : [],
+          total: projectCreated ? 1 : 0,
+        }),
+      });
+      return;
+    }
+
     if (method === 'POST' && pathname === '/api/study-cases') {
       caseCreated = true;
       await route.fulfill({
@@ -129,7 +149,7 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
   });
 }
 
-test('konfiguracja pierwszego wariantu pracy jest deterministyczna i bez freeze', async ({ page }) => {
+test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez freeze', async ({ page }) => {
   const guards = installConsoleGuards(page);
   await mockCaseCreationApi(page);
 
@@ -137,20 +157,19 @@ test('konfiguracja pierwszego wariantu pracy jest deterministyczna i bez freeze'
     localStorage.clear();
   });
 
-  await page.goto('/', { waitUntil: 'commit' });
+  await page.goto('/#dashboard', { waitUntil: 'commit' });
 
-  const createButton = page.getByTestId('sld-empty-overlay-create-case');
-  await expect(createButton).toBeVisible();
-  await createButton.click();
+  await expect(page.getByTestId('project-dashboard-surface')).toBeVisible();
+  await page.getByTestId('dashboard-new-project').click();
 
-  await expect(page.getByTestId('first-variant-quickstart')).toBeVisible();
-  await page.getByTestId('first-variant-project-name').fill('Projekt 1');
-  await page.getByTestId('first-variant-name').fill('Wariant 1');
-  await page.getByTestId('first-variant-submit').click();
+  await expect(page.getByRole('dialog', { name: 'Metadane projektu' })).toBeVisible();
+  await page.getByTestId('project-metadata-name').fill('Projekt 1');
+  await page.getByTestId('project-metadata-save').click();
 
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Biezacy zestaw:');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wariant 1');
-  await expect(createButton).toHaveCount(0);
+  await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('nie wybrano');
+  await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
   const uniqueWarnCount = guards.warningCounts.size;
   expect(guards.pageErrors, `Bledy pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);

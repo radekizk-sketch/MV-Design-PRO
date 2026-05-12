@@ -23,6 +23,7 @@ from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
 from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
+from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
 from api.reference_patterns import router as reference_patterns_router
 from api.result_contract_v1 import router as result_contract_v1_router
@@ -33,6 +34,7 @@ from api.solver_input import router as solver_input_router
 from api.study_cases import router as study_cases_router
 from api.switchgear_config import router as switchgear_config_router
 from api.xlsx_import import router as xlsx_import_router
+from api.unified_runs import router as unified_runs_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
@@ -108,12 +110,14 @@ app.include_router(project_archive_router)
 app.include_router(projects_router)
 app.include_router(proof_pack_router)
 app.include_router(protection_comparisons_router)
+app.include_router(protection_analysis_runs_router, prefix="/api")
 app.include_router(reference_patterns_router)
 app.include_router(sld_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)
 app.include_router(enm_router)
 app.include_router(execution_runs_router)
+app.include_router(unified_runs_router, prefix="/api")
 app.include_router(result_contract_v1_router)
 app.include_router(fault_scenarios_router)
 app.include_router(grid_source_preview_router)

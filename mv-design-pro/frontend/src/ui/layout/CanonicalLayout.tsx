@@ -83,6 +83,7 @@ export function CanonicalLayout({
   const activeMode = useActiveMode();
   const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
+  const shouldHideInspector = hideInspector || activeSurface?.screenCode === 'E-37';
 
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
@@ -149,7 +150,7 @@ export function CanonicalLayout({
     if (inspectorContent) {
       return inspectorContent;
     }
-    if (activeMode === 'MODEL_EDIT' && selectedElement) {
+    if (selectedElement) {
       return <InspectorEngineeringView />;
     }
     return (
@@ -206,7 +207,7 @@ export function CanonicalLayout({
           </div>
         </section>
 
-        {!hideInspector && (
+        {!shouldHideInspector && (
           <aside
             className={clsx(
               'flex shrink-0 flex-col overflow-hidden border border-slate-200 bg-white shadow-sm transition-all duration-200 ease-in-out',
@@ -224,13 +225,13 @@ export function CanonicalLayout({
                   'flex h-6 w-6 items-center justify-center rounded-ind text-chrome-400 transition-colors hover:bg-chrome-200 hover:text-chrome-700',
                   inspectorCollapsed && 'mx-auto',
                 )}
-                aria-label={inspectorCollapsed ? 'Rozwin panel wlasciwosci' : 'Zwin panel wlasciwosci'}
-                title={inspectorCollapsed ? 'Rozwin panel wlasciwosci' : 'Zwin panel wlasciwosci'}
+                aria-label={inspectorCollapsed ? 'Rozwiń panel właściwości' : 'Zwiń panel właściwości'}
+                title={inspectorCollapsed ? 'Rozwiń panel właściwości' : 'Zwiń panel właściwości'}
                 data-testid="inspector-panel-toggle"
               >
                 {inspectorCollapsed ? <IconChevronLeft /> : <IconChevronRight />}
               </button>
-              {!inspectorCollapsed && <span>Wlasciwosci</span>}
+              {!inspectorCollapsed && <span>Inspektor techniczny</span>}
             </div>
 
             {!inspectorCollapsed && (
@@ -245,8 +246,8 @@ export function CanonicalLayout({
                   type="button"
                   onClick={toggleInspector}
                   className="flex h-8 w-8 items-center justify-center rounded-ind text-chrome-400 transition-colors hover:bg-chrome-100 hover:text-chrome-700"
-                  title="Otworz panel wlasciwosci"
-                  aria-label="Otworz panel wlasciwosci"
+                  title="Otwórz panel właściwości"
+                  aria-label="Otwórz panel właściwości"
                 >
                   <IconClipboard />
                 </button>

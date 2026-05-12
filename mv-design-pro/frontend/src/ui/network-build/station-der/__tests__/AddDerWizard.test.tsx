@@ -214,6 +214,28 @@ describe('AddDerWizard — 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).disabled).toBe(false);
   });
 
+  it('profil Enea automatycznie wybiera dostepne krzywe LVRT/HVRT i odblokowuje Dalej', () => {
+    render(
+      <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-SN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-name'), { target: { value: 'PV-1' } });
+    fireEvent.change(screen.getByTestId('add-der-pcc-label'), { target: { value: 'PCC-PV' } });
+    fireEvent.change(screen.getByTestId('add-der-bay-name'), { target: { value: 'Pole PV' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+
+    expect((screen.getByTestId('add-der-lvrt') as HTMLSelectElement).value).toBe('lvrt_enea_b');
+    expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).value).toBe('hvrt_enea_b');
+    expect((screen.getByTestId('add-der-pf-curve') as HTMLSelectElement).value).toBe('pf_enea_b');
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it('Anulowanie zamyka modal bez tworzenia DER', () => {
     const onClose = vi.fn();
     render(

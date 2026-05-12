@@ -14,14 +14,19 @@ vi.mock('../ui/layout', () => ({
     children,
     onCalculate,
     onMenuAction,
+    onViewResults,
   }: {
     children: ReactNode;
     onCalculate?: () => void;
     onMenuAction?: (actionId: string) => void;
+    onViewResults?: () => void;
   }) => (
     <div data-testid="canonical-layout">
       <button type="button" data-testid="layout-calculate" onClick={onCalculate}>
         Oblicz
+      </button>
+      <button type="button" data-testid="layout-view-results" onClick={onViewResults}>
+        Analizy
       </button>
       <button type="button" data-testid="layout-menu-compare" onClick={() => onMenuAction?.('compare')}>
         Porownaj
@@ -131,6 +136,23 @@ describe('App hash routes', () => {
 
     await waitFor(() => {
       expect(refreshFromBackend).toHaveBeenCalledWith('case-1');
+    });
+  });
+
+  it('aktywuje zakres obliczeń z adresu schematu i odtwarza model ENM po odświeżeniu', async () => {
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    useSnapshotStore.setState({
+      snapshot: null,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = '#sld?case=case-from-route';
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeCaseId).toBe('case-from-route');
+      expect(refreshFromBackend).toHaveBeenCalledWith('case-from-route');
     });
   });
 
@@ -258,6 +280,62 @@ describe('App hash routes', () => {
     expect(activeSurface?.screenCode).toBe('E-04');
     expect(activeSurface?.tabId).toBe('braki');
     expect(activeSurface?.subjectRef).toBe('case-readiness');
+  });
+
+  it('odtwarza E-21 po odswiezeniu adresu SLD z wybranym falownikiem PV', async () => {
+    const selectedRef = 'stn/st-001/nn_source/pv_inverter';
+    window.location.hash = [
+      '#sld',
+      '?sel=stn%2Fst-001%2Fnn_source%2Fpv_inverter',
+      '&type=PVInverter',
+      '&name=Falownik+PV+0.5+MW+%2F+0.4+kV+nN',
+      '&kind=SOURCE',
+      '&role=PV_INVERTER',
+      '&sh=source%3Apv',
+    ].join('');
+
+    render(<App />);
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.screenCode).toBe('E-21');
+      expect(activeSurface?.entityRef).toBe(selectedRef);
+      expect(activeSurface?.entityType).toBe('pv_source');
+      expect(activeSurface?.titlePl).toBe('Falownik PV 0.5 MW / 0.4 kV nN');
+      expect(activeSurface?.routeState.route).toBe('sld');
+      expect(activeSurface?.routeState.payload?.derKind).toBe('PV');
+    });
+  });
+
+  it('gorny przycisk Analizy wraca do glownej powierzchni analitycznej z podpowierzchni', async () => {
+    useAppStateStore.getState().setActiveRun('run-active');
+    window.location.hash = '#analysis?run=run-active&sel=stn-1';
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-35');
+    });
+
+    useNetworkBuildStore.getState().openRouteSurface('E-26', {
+      titlePl: 'Charakterystyki FRT/LVRT/HVRT',
+      subjectKind: 'analysis_run',
+      subjectRef: 'run-active',
+    });
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-26');
+
+    await act(async () => {
+      screen.getByTestId('layout-view-results').click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.screenCode).toBe('E-35');
+      expect(activeSurface?.tabId).toBe('results');
+      expect(activeSurface?.subjectRef).toBe('run-active');
+      expect(activeSurface?.entityRef).toBe('stn-1');
+    });
   });
 
   it('renderuje aktywny surface porownania wynikow dla #compare', async () => {

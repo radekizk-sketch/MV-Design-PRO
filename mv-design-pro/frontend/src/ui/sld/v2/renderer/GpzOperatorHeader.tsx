@@ -78,7 +78,7 @@ const TRANSMISSION_LABELS_PL: Readonly<Record<TransmissionStatus, string>> = {
   ok: 'TRANSMISJA POPRAWNA',
   degraded: 'TRANSMISJA OGRANICZONA',
   lost: 'BRAK TRANSMISJI',
-  unknown: 'TRANSMISJA NIEZNANA',
+  unknown: '',
 };
 
 const TRANSMISSION_COLORS: Readonly<Record<TransmissionStatus, string>> = {
@@ -127,6 +127,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
   // Compute total height (variable based on present fields)
   const hasAddress = !!addressLine || !!radioId;
   const hasBalance = balance && (balance.pMw !== undefined || balance.qMvar !== undefined);
+  const hasKnownTransmission = transmissionStatus !== 'unknown';
   const hasAlarms = !!(alarms && (
     alarms.enclosureDoorOpen || alarms.awUjpAlarm
     || alarms.fireAlarm || alarms.hvacAlarm
@@ -139,6 +140,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
   return (
     <g
       data-testid="sld-v2-gpz-operator-header"
+      data-parity-key="gpz.header"
       data-gpz-name={gpzName}
       data-transmission={transmissionStatus}
       transform={`translate(${x}, ${y})`}
@@ -156,20 +158,22 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
         rx={2}
       />
 
-      {/* 1. Transmission status (top-right) */}
-      <g data-testid="gpz-header-transmission">
-        <text
-          x={width - HEADER_PADDING}
-          y={cursorY + 9}
-          textAnchor="end"
-          fill={TRANSMISSION_COLORS[transmissionStatus]}
-          fontFamily={FONT_SANS}
-          fontSize={FONT_SIZES.bayLabel}
-          fontWeight={700}
-        >
-          {TRANSMISSION_LABELS_PL[transmissionStatus]}
-        </text>
-      </g>
+      {/* 1. Transmission status (top-right). Status unknown is intentionally silent. */}
+      {hasKnownTransmission && (
+        <g data-testid="gpz-header-transmission" data-parity-key="gpz.header.transmission">
+          <text
+            x={width - HEADER_PADDING}
+            y={cursorY + 9}
+            textAnchor="end"
+            fill={TRANSMISSION_COLORS[transmissionStatus]}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.bayLabel}
+            fontWeight={700}
+          >
+            {TRANSMISSION_LABELS_PL[transmissionStatus]}
+          </text>
+        </g>
+      )}
 
       {/* 2. GPZ name — duża, accent yellow-orange */}
       <text
@@ -181,6 +185,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
         fontSize={FONT_SIZES.switchgearParams}
         fontWeight={800}
         data-testid="gpz-header-name"
+        data-parity-key="gpz.header.name"
       >
         {gpzName}
       </text>
@@ -189,7 +194,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
 
       {/* 3. Address + radio */}
       {hasAddress && (
-        <g data-testid="gpz-header-address">
+        <g data-testid="gpz-header-address" data-parity-key="gpz.header.address">
           {addressLine && (
             <text
               x={width / 2}
@@ -241,7 +246,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
 
       {/* 6. Control availability + reset signals action */}
       {hasControl && (
-        <g data-testid="gpz-header-control">
+        <g data-testid="gpz-header-control" data-parity-key="gpz.header.control">
           <circle
             cx={HEADER_PADDING + 4}
             cy={cursorY + 6}
@@ -260,6 +265,7 @@ export function GpzOperatorHeader(props: GpzOperatorHeaderProps): JSX.Element {
           {onResetSignalsClick && (
             <g
               data-testid="gpz-header-reset-signals"
+              data-parity-key="gpz.header.reset_signals"
               style={{ cursor: 'pointer' }}
               onClick={(e) => { e.stopPropagation(); onResetSignalsClick(); }}
             >
@@ -296,7 +302,7 @@ interface BalanceBlockProps {
 function BalanceBlock(props: BalanceBlockProps): JSX.Element {
   const { x, y, width, balance } = props;
   return (
-    <g data-testid="gpz-header-balance" transform={`translate(${x}, ${y})`}>
+    <g data-testid="gpz-header-balance" data-parity-key="gpz.header.balance" transform={`translate(${x}, ${y})`}>
       <text
         x={0} y={9}
         fill={COLOR_TEXT_SECONDARY}
@@ -352,7 +358,7 @@ function AlarmStrip(props: AlarmStripProps): JSX.Element {
   if (alarms.hvacAlarm) items.push({ label: 'Wentylacja / temperatura', severity: 'orange' });
 
   return (
-    <g data-testid="gpz-header-alarms" data-alarm-count={items.length} transform={`translate(${x}, ${y})`}>
+    <g data-testid="gpz-header-alarms" data-parity-key="gpz.header.alarms" data-alarm-count={items.length} transform={`translate(${x}, ${y})`}>
       {items.map((item, idx) => {
         const color = item.severity === 'red' ? COLOR_BADGE_BG_RED : COLOR_BADGE_BG_YELLOW;
         return (

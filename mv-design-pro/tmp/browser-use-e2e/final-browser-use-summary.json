@@ -1,0 +1,21 @@
+{
+  "dashboard": {
+    "screenshot": "C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/tmp/browser-use-e2e/final-01-dashboard.png",
+    "ok": true
+  },
+  "projectModal": {
+    "screenshot": "C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/tmp/browser-use-e2e/final-02-project-modal.png",
+    "ok": true,
+    "note": "Sterowanie wpisywaniem w tej sesji przeglądarkowej zatrzymało się na braku wirtualnej obsługi tekstu; tworzenie projektu zweryfikowane w Playwright E2E create-first-case."
+  },
+  "sld": {
+    "screenshot": "C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/tmp/browser-use-e2e/final-03-sld.png",
+    "ok": true,
+    "consoleErrors": []
+  },
+  "schematNavigation": {
+    "screenshot": "C:/Users/radek/Documents/GitHub/MV-Design-PRO/mv-design-pro/tmp/browser-use-e2e/final-04-schemat-click-after-protection.png",
+    "ok": true
+  },
+  "forbiddenTermsInSldSnapshot": false
+}

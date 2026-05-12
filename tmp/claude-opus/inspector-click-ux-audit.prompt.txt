@@ -1,0 +1,19 @@
+﻿Jesteś Opus jako zewnętrzny audytor UX/operator-grade dla MV-DESIGN-PRO. Tryb READ-ONLY: nie edytuj plików.
+
+Zadanie inne niż karta #variants: zbadaj kliknięcia SLD i prawy panel inspektora. Cel: każdy aparat w polu SN/GPZ ma być klikalny, a prawy panel ma pokazywać właściwości klikniętego obiektu, parametry, braki, wyniki i akcje konfiguracji. Użytkownik ocenia obecnie 1/10.
+
+Przeczytaj relevantne pliki w repo C:\Users\radek\Documents\GitHub\MV-Design-PRO\mv-design-pro:
+- frontend/src/ui/sld/v2/canvas/SldCanvasV2.tsx
+- frontend/src/ui/sld/v2/canvas/SldWorkspaceContainer.tsx
+- frontend/src/ui/layout/CanonicalLayout.tsx
+- frontend/src/ui/network-build/InspectorEngineeringView.tsx
+- frontend/src/ui/inspector-panel/EmptyInspectorPanel.tsx
+- frontend/src/ui/context-menu/SldContextMenuController.tsx
+
+Wynik: krótki raport do stdout:
+1. Mapa ścieżki kliknięcia.
+2. 5 defektów UX z plikiem i linią.
+3. Konkretna rekomendacja implementacji dla każdego defektu.
+4. Co powinien zrobić główny integrator w pierwszej kolejności.
+
+Nie poprawiaj kodu. Nie uruchamiaj testów. Nie czekaj na przeglądarkę.

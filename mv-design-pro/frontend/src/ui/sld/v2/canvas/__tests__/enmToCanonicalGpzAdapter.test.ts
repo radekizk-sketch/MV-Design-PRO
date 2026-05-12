@@ -411,3 +411,55 @@ describe('buildCanonicalGpzProps — determinizm', () => {
     }
   });
 });
+describe('buildCanonicalGpzProps - regresja przypisania pol SN do sekcji', () => {
+  it('nie zostawia pustej rozdzielni, gdy pola maja bus_ref, ale nie maja gpz_section_id', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
+        ],
+      })],
+      bays: [
+        bay('bay-01', 'OUT', 'g', 'bus-15', { bay_number: '1' }),
+        bay('bay-02', 'OUT', 'g', 'bus-15', { bay_number: '2' }),
+        bay('bay-03', 'TR', 'g', 'bus-15', { bay_number: '3' }),
+        bay('bay-04', 'MEASUREMENT', 'g', 'bus-15', { bay_number: '4' }),
+      ],
+      buses: [bus('bus-15', 15)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+
+    expect(props.sections).toHaveLength(2);
+    expect(props.sections[0].bays.map((b) => b.bayRef)).toEqual(['bay-01', 'bay-03']);
+    expect(props.sections[1].bays.map((b) => b.bayRef)).toEqual(['bay-02', 'bay-04']);
+  });
+});
+describe('buildCanonicalGpzProps - meta.field_specs', () => {
+  it('renderuje pola SN GPZ zapisane jako field_specs, gdy snapshot.bays jest pusty', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        meta: {
+          field_specs: [
+            { field_ref: 'field-01', name: 'Pole odpływowe SN 1', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's1', bay_number: '1' },
+            { field_ref: 'field-02', name: 'Pole odpływowe SN 2', bay_role: 'OUT', bus_ref: 'bus-15', gpz_section_id: 's2', bay_number: '2' },
+          ],
+        },
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-15' },
+        ],
+      })],
+      bays: [],
+      buses: [bus('bus-15', 15)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+
+    expect(props.sections[0].bays.map((bay) => bay.bayRef)).toEqual(['field-01']);
+    expect(props.sections[1].bays.map((bay) => bay.bayRef)).toEqual(['field-02']);
+  });
+});

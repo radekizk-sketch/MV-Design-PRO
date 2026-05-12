@@ -1,0 +1,839 @@
+{
+  "project_id": "0750f967-3e29-4274-9711-78c40dfa7a39",
+  "case_id": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+  "gpz_ref": "gpz/b18179bba62cc38f962858627a87da6f/substation",
+  "field_specs_count": 8,
+  "main_segment_refs": [
+    "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+    "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+    "seg/2ac828cb7b3200708aba808d82da515c/segment",
+    "seg/4995fadfb6859caf34000f4083605845/segment",
+    "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment"
+  ],
+  "station_refs": [
+    "sub/9f21063c589783fcffe78ada2bc21fbb/substation",
+    "sub/369a515bef4d249e274d8a1244ec564c/substation",
+    "sub/fa48ee9c2b8db0e036718f2f9fd287d2/substation",
+    "sub/b5b62af2ffa98c7e4fb289c2295c81e2/substation",
+    "sub/a7cfb99957677c300b2a180599ba4586/substation"
+  ],
+  "counts": {
+    "substations": 6,
+    "buses": 21,
+    "branches": 15,
+    "transformers": 5,
+    "loads": 5,
+    "generators": 2,
+    "branch_points": 0
+  },
+  "validation": {
+    "status": "WARN",
+    "issues": [
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/1bebb008b671a66cd0af10b4e7d4b994/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/1bebb008b671a66cd0af10b4e7d4b994/segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      },
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/2ac828cb7b3200708aba808d82da515c/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/2ac828cb7b3200708aba808d82da515c/segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      },
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/35e3d5f4d673c933b6766452d997a9de/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/35e3d5f4d673c933b6766452d997a9de/segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      },
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/4995fadfb6859caf34000f4083605845/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/4995fadfb6859caf34000f4083605845/segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/4995fadfb6859caf34000f4083605845/segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      },
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      },
+      {
+        "code": "W001",
+        "severity": "IMPORTANT",
+        "message_pl": "Gałąź 'seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+        "element_refs": [
+          "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment"
+        ],
+        "wizard_step_hint": "K7",
+        "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+        "fix_action": {
+          "action_type": "OPEN_MODAL",
+          "element_ref": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+          "modal_type": "BranchModal",
+          "payload_hint": {
+            "required": "zero_sequence"
+          }
+        }
+      }
+    ],
+    "analysis_available": {
+      "short_circuit_3f": true,
+      "short_circuit_1f": false,
+      "load_flow": true
+    }
+  },
+  "readiness": {
+    "case_id": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "enm_revision": 38,
+    "validation": {
+      "status": "WARN",
+      "issues": [
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/1bebb008b671a66cd0af10b4e7d4b994/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/1bebb008b671a66cd0af10b4e7d4b994/segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        },
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/2ac828cb7b3200708aba808d82da515c/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/2ac828cb7b3200708aba808d82da515c/segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        },
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/35e3d5f4d673c933b6766452d997a9de/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/35e3d5f4d673c933b6766452d997a9de/segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        },
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/4995fadfb6859caf34000f4083605845/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/4995fadfb6859caf34000f4083605845/segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/4995fadfb6859caf34000f4083605845/segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        },
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        },
+        {
+          "code": "W001",
+          "severity": "IMPORTANT",
+          "message_pl": "Gałąź 'seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment' nie ma składowej zerowej (Z₀) — zwarcia 1F/2F-Z niedostępne.",
+          "element_refs": [
+            "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment"
+          ],
+          "wizard_step_hint": "K7",
+          "suggested_fix": "Wprowadź parametry R₀/X₀ w kroku K7.",
+          "fix_action": {
+            "action_type": "OPEN_MODAL",
+            "element_ref": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+            "modal_type": "BranchModal",
+            "payload_hint": {
+              "required": "zero_sequence"
+            }
+          }
+        }
+      ],
+      "analysis_available": {
+        "short_circuit_3f": true,
+        "short_circuit_1f": false,
+        "load_flow": true
+      }
+    },
+    "readiness": {
+      "ready": true,
+      "blockers": []
+    },
+    "analysis_readiness": {
+      "short_circuit_3f": true,
+      "short_circuit_1f": false,
+      "load_flow": true,
+      "protection": false
+    },
+    "topology_completeness": {
+      "has_substations": true,
+      "has_bays": true,
+      "has_junctions": false,
+      "has_corridors": true
+    },
+    "element_counts": {
+      "buses": 21,
+      "branches": 15,
+      "transformers": 5,
+      "sources": 1,
+      "loads": 5,
+      "generators": 2,
+      "substations": 6,
+      "bays": 10,
+      "junctions": 0,
+      "corridors": 1,
+      "measurements": 12,
+      "protection_assignments": 0
+    }
+  },
+  "topology": {
+    "case_id": "d2dee258-0d5c-44cc-a90b-ee5ddcf47d74",
+    "enm_revision": 38,
+    "bus_count": 21,
+    "branch_count": 15,
+    "transformer_count": 5,
+    "source_count": 1,
+    "load_count": 5,
+    "generator_count": 2,
+    "measurement_count": 12,
+    "protection_count": 0,
+    "is_radial": true,
+    "has_cycles": false,
+    "adjacency": [
+      {
+        "bus_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "neighbor_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "via_ref": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "neighbor_ref": "bus/9f21063c589783fcffe78ada2bc21fbb/nn",
+        "via_ref": "tr/9f21063c589783fcffe78ada2bc21fbb/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "neighbor_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "via_ref": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+        "via_type": "line_overhead"
+      },
+      {
+        "bus_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "neighbor_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "via_ref": "seg/4995fadfb6859caf34000f4083605845/segment",
+        "via_type": "line_overhead"
+      },
+      {
+        "bus_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "neighbor_ref": "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn",
+        "via_ref": "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "neighbor_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "via_ref": "seg/35e3d5f4d673c933b6766452d997a9de/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "neighbor_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "via_ref": "seg/2ac828cb7b3200708aba808d82da515c/segment",
+        "via_type": "line_overhead"
+      },
+      {
+        "bus_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "neighbor_ref": "bus/369a515bef4d249e274d8a1244ec564c/nn",
+        "via_ref": "tr/369a515bef4d249e274d8a1244ec564c/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "neighbor_ref": "bus/61008ead13451a4410ca7e8c1f2fbad1/branch_end",
+        "via_ref": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/369a515bef4d249e274d8a1244ec564c/nn",
+        "neighbor_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "via_ref": "tr/369a515bef4d249e274d8a1244ec564c/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "neighbor_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "via_ref": "seg/4995fadfb6859caf34000f4083605845/segment",
+        "via_type": "line_overhead"
+      },
+      {
+        "bus_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "neighbor_ref": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+        "via_ref": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "neighbor_ref": "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn",
+        "via_ref": "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/61008ead13451a4410ca7e8c1f2fbad1/branch_end",
+        "neighbor_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "via_ref": "seg/61008ead13451a4410ca7e8c1f2fbad1/branch_segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+        "neighbor_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "via_ref": "seg/7a3d7a36afece5acf7edfdc81b4cc0cf/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+        "neighbor_ref": "bus/a7cfb99957677c300b2a180599ba4586/nn",
+        "via_ref": "tr/a7cfb99957677c300b2a180599ba4586/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/9f21063c589783fcffe78ada2bc21fbb/nn",
+        "neighbor_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "via_ref": "tr/9f21063c589783fcffe78ada2bc21fbb/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/a7cfb99957677c300b2a180599ba4586/nn",
+        "neighbor_ref": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+        "via_ref": "tr/a7cfb99957677c300b2a180599ba4586/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn",
+        "neighbor_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "via_ref": "tr/b5b62af2ffa98c7e4fb289c2295c81e2/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn",
+        "neighbor_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "via_ref": "tr/fa48ee9c2b8db0e036718f2f9fd287d2/transformer",
+        "via_type": "transformer"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/terminal",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "via_ref": "seg/1bebb008b671a66cd0af10b4e7d4b994/segment",
+        "via_type": "cable"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/coupler/001",
+        "via_type": "bus_coupler"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/terminal",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/apparatus",
+        "via_type": "breaker"
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "neighbor_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "via_ref": "gpz/b18179bba62cc38f962858627a87da6f/coupler/001",
+        "via_type": "bus_coupler"
+      }
+    ],
+    "spine": [
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/001/bus_sn",
+        "depth": 0,
+        "is_source": true,
+        "children_refs": [
+          "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn"
+        ]
+      },
+      {
+        "bus_ref": "bus/1bebb008b671a66cd0af10b4e7d4b994/downstream",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": [
+          "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+          "bus/9f21063c589783fcffe78ada2bc21fbb/nn"
+        ]
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/001/terminal",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/002/terminal",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/003/terminal",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/001/004/terminal",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/section/002/bus_sn",
+        "depth": 1,
+        "is_source": false,
+        "children_refs": [
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/terminal",
+          "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/terminal"
+        ]
+      },
+      {
+        "bus_ref": "bus/35e3d5f4d673c933b6766452d997a9de/downstream",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": [
+          "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+          "bus/369a515bef4d249e274d8a1244ec564c/nn",
+          "bus/61008ead13451a4410ca7e8c1f2fbad1/branch_end"
+        ]
+      },
+      {
+        "bus_ref": "bus/9f21063c589783fcffe78ada2bc21fbb/nn",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/001/terminal",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/terminal",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/terminal",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/terminal",
+        "depth": 2,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "bus/2ac828cb7b3200708aba808d82da515c/downstream",
+        "depth": 3,
+        "is_source": false,
+        "children_refs": [
+          "bus/4995fadfb6859caf34000f4083605845/downstream",
+          "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn"
+        ]
+      },
+      {
+        "bus_ref": "bus/369a515bef4d249e274d8a1244ec564c/nn",
+        "depth": 3,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "bus/61008ead13451a4410ca7e8c1f2fbad1/branch_end",
+        "depth": 3,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "bus/4995fadfb6859caf34000f4083605845/downstream",
+        "depth": 4,
+        "is_source": false,
+        "children_refs": [
+          "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+          "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn"
+        ]
+      },
+      {
+        "bus_ref": "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn",
+        "depth": 4,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "bus/7a3d7a36afece5acf7edfdc81b4cc0cf/downstream",
+        "depth": 5,
+        "is_source": false,
+        "children_refs": [
+          "bus/a7cfb99957677c300b2a180599ba4586/nn"
+        ]
+      },
+      {
+        "bus_ref": "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn",
+        "depth": 5,
+        "is_source": false,
+        "children_refs": []
+      },
+      {
+        "bus_ref": "bus/a7cfb99957677c300b2a180599ba4586/nn",
+        "depth": 6,
+        "is_source": false,
+        "children_refs": []
+      }
+    ],
+    "lateral_roots": [
+      "bus/369a515bef4d249e274d8a1244ec564c/nn",
+      "bus/61008ead13451a4410ca7e8c1f2fbad1/branch_end",
+      "bus/9f21063c589783fcffe78ada2bc21fbb/nn",
+      "bus/b5b62af2ffa98c7e4fb289c2295c81e2/nn",
+      "bus/fa48ee9c2b8db0e036718f2f9fd287d2/nn",
+      "gpz/b18179bba62cc38f962858627a87da6f/bay/002/002/terminal",
+      "gpz/b18179bba62cc38f962858627a87da6f/bay/002/003/terminal",
+      "gpz/b18179bba62cc38f962858627a87da6f/bay/002/004/terminal"
+    ]
+  },
+  "short_circuit_runs": {
+    "3F": {
+      "run_id": "73e052f4-5121-498d-9f91-562b3f6ebace",
+      "status": null,
+      "results": 11,
+      "readiness_status": null
+    },
+    "1F": {
+      "error": "POST /api/cases/d2dee258-0d5c-44cc-a90b-ee5ddcf47d74/runs/short-circuit -> HTTP 422: {\"detail\":\"Zwarcie 1F/2F+Z wymaga kompletnej skladowej zerowej Z0 w ENM\",\"request_id\":\"e842d57a-b872-42ad-b9b1-a37e6337081c\",\"error_type\":\"ValueError\"}"
+    },
+    "2F": {
+      "run_id": "98249c98-d5fa-40a6-94ba-c1641feadd9a",
+      "status": null,
+      "results": 11,
+      "readiness_status": null
+    },
+    "2FG": {
+      "error": "POST /api/cases/d2dee258-0d5c-44cc-a90b-ee5ddcf47d74/runs/short-circuit -> HTTP 422: {\"detail\":\"Nieobslugiwany typ zwarcia: 2FG\",\"request_id\":\"679ffc0f-8b58-4bb8-b752-32f932367841\",\"error_type\":\"ValueError\"}"
+    }
+  },
+  "power_flow_run_id": "695daf7a-68e9-4954-8923-5f816cb931df",
+  "power_flow_summary": {
+    "error": null,
+    "keys": [
+      "case_id",
+      "enm_revision",
+      "enm_hash",
+      "analysis_type",
+      "run_id",
+      "input_hash",
+      "readiness",
+      "result",
+      "trace"
+    ],
+    "bus_rows": 22,
+    "branch_rows": 12
+  },
+  "protection": {
+    "config": "saved",
+    "run_id": "f3f5b6e1-573f-45cb-8180-096f2d17606f",
+    "execute_status": "FINISHED",
+    "results_keys": [
+      "run_id",
+      "sc_run_id",
+      "protection_case_id",
+      "template_ref",
+      "template_fingerprint",
+      "evaluations",
+      "summary",
+      "created_at"
+    ],
+    "trace_steps": 3
+  },
+  "exports": {
+    "SC": {
+      "export/report/json": {
+        "status": 200,
+        "bytes": 104828,
+        "content_type": null
+      },
+      "export/report/docx": {
+        "status": 200,
+        "bytes": 38295,
+        "content_type": null
+      },
+      "export/report/pdf": {
+        "status": 200,
+        "bytes": 3534,
+        "content_type": null
+      },
+      "export/proof/json": {
+        "status": 200,
+        "bytes": 215487,
+        "content_type": null
+      },
+      "export/proof/latex": {
+        "status": 200,
+        "bytes": 28902,
+        "content_type": null
+      },
+      "export/proof/pdf": {
+        "status": 200,
+        "bytes": 17043,
+        "content_type": null
+      }
+    },
+    "PF": {
+      "export/report/json": {
+        "status": 200,
+        "bytes": 103499,
+        "content_type": null
+      },
+      "export/report/docx": {
+        "status": 200,
+        "bytes": 38396,
+        "content_type": null
+      },
+      "export/report/pdf": {
+        "status": 200,
+        "bytes": 4366,
+        "content_type": null
+      },
+      "export/proof/json": {
+        "status": 200,
+        "bytes": 84893,
+        "content_type": null
+      },
+      "export/proof/latex": {
+        "status": 200,
+        "bytes": 2827,
+        "content_type": null
+      },
+      "export/proof/pdf": {
+        "status": 200,
+        "bytes": 3324,
+        "content_type": null
+      }
+    }
+  }
+}

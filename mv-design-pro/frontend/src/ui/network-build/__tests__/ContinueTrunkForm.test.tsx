@@ -50,6 +50,13 @@ vi.mock('../../catalog/api', () => ({
       voltage_rating_kv: 15,
       cross_section_mm2: 120,
       rated_current_a: 200,
+      r_ohm_per_km: 0.253,
+      x_ohm_per_km: 0.101,
+      c_nf_per_km: 240,
+      max_temperature_c: 90,
+      insulation_type: 'XLPE',
+      conductor_material: 'Al',
+      standard: 'PN-HD 620',
     },
   ]),
   fetchLineTypes: vi.fn(async () => [
@@ -60,10 +67,35 @@ vi.mock('../../catalog/api', () => ({
       voltage_rating_kv: 15,
       cross_section_mm2: 70,
       rated_current_a: 180,
+      r_ohm_per_km: 0.443,
+      x_ohm_per_km: 0.36,
+      b_us_per_km: 2.8,
+      max_temperature_c: 80,
+      conductor_material: 'AlFe',
+      standard: 'PN-EN 50182',
     },
   ]),
   getCatalogErrorMessage: vi.fn(() => 'Nie udało się pobrać katalogu.'),
 }));
+
+function setCanonicalContext() {
+  activeOperationContextState.value = buildOperationContext({
+    canonicalOp: 'continue_trunk_segment_sn',
+    elementId: 'bay-out-1',
+    elementType: 'BaySN',
+    snapshot: snapshotState.snapshot,
+    logicalViews: {
+      terminals: [
+        {
+          element_id: 'bay-out-1',
+          port_id: 'bay-out-1:OUT',
+          trunk_id: 'trunk-1',
+          status: 'DOSTEPNY',
+        },
+      ],
+    } as any,
+  });
+}
 
 describe('ContinueTrunkForm', () => {
   beforeEach(() => {
@@ -90,72 +122,45 @@ describe('ContinueTrunkForm', () => {
           equipment_refs: [],
         },
       ],
-      buses: [
-        { id: 'bus-sn-1', ref_id: 'bus-sn-1', name: 'Szyna SN 1', voltage_kv: 15 },
-      ],
+      buses: [{ id: 'bus-sn-1', ref_id: 'bus-sn-1', name: 'Szyna SN 1', voltage_kv: 15 }],
       corridors: [
         { id: 'trunk-1', ref_id: 'trunk-1', ordered_segment_refs: ['seg-1', 'seg-2'] },
       ],
     };
   });
 
-  it('renderuje kanoniczny kontekst kontynuacji magistrali', async () => {
-    const context = buildOperationContext({
-      canonicalOp: 'continue_trunk_segment_sn',
-      elementId: 'bay-out-1',
-      elementType: 'BaySN',
-      snapshot: snapshotState.snapshot,
-      logicalViews: {
-        terminals: [
-          {
-            element_id: 'bay-out-1',
-            port_id: 'bay-out-1:OUT',
-            trunk_id: 'trunk-1',
-            status: 'DOSTEPNY',
-          },
-        ],
-      } as any,
-    });
-
-    activeOperationContextState.value = context;
+  it('renderuje kontekst głowicy pola SN i parametry katalogowe', async () => {
+    setCanonicalContext();
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByDisplayValue('Magistrala SN 1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Szyna SN 1')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('zacisk wyjściowy pola SN')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('15 kV')).toBeInTheDocument();
-    expect(await screen.findByTestId('catalog-picker-search')).toBeInTheDocument();
+    expect(screen.getByText('Ciąg główny SN 1')).toBeInTheDocument();
+    expect(screen.getAllByText('głowica odpływowa pola SN').length).toBeGreaterThan(0);
+    expect(screen.getByText('15 kV')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+    expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('Obciążalność');
+    expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('0,101 Ω/km');
   });
 
-  it('nie pokazuje kierunków ukośnych dla odcinka SN', async () => {
-    activeOperationContextState.value = buildOperationContext({
-      canonicalOp: 'continue_trunk_segment_sn',
-      elementId: 'bay-out-1',
-      elementType: 'BaySN',
-      snapshot: snapshotState.snapshot,
-      logicalViews: {
-        terminals: [
-          {
-            element_id: 'bay-out-1',
-            port_id: 'bay-out-1:OUT',
-            trunk_id: 'trunk-1',
-            status: 'DOSTEPNY',
-          },
-        ],
-      } as any,
-    });
+  it('nie wymaga wyboru strony świata dla odcinka SN', async () => {
+    setCanonicalContext();
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Północ (N)')).toBeInTheDocument();
-    expect(screen.getByText('Wschód (E)')).toBeInTheDocument();
-    expect(screen.getByText('Południe (S)')).toBeInTheDocument();
-    expect(screen.getByText('Zachód (W)')).toBeInTheDocument();
-    expect(screen.queryByText('Północny-wschód (NE)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Południowy-wschód (SE)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Południowy-zachód (SW)')).not.toBeInTheDocument();
-    expect(screen.queryByText('Północny-zachód (NW)')).not.toBeInTheDocument();
+    expect(screen.getByText('Punkt wyprowadzenia')).toBeInTheDocument();
+    expect(screen.getByText(/Odcinek zaczyna się dokładnie w głowicy odpływowej pola SN/i)).toBeInTheDocument();
+    expect(screen.queryByText('Geometria SLD')).not.toBeInTheDocument();
+    expect(screen.queryByText('Kierunek pierwszego odcinka')).not.toBeInTheDocument();
+    expect(screen.queryByText('Północ (N)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Wschód (E)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Południe (S)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Zachód (W)')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
   });
 
   it('blokuje zapis, gdy terminal magistrali nie został rozstrzygnięty', async () => {
@@ -166,39 +171,60 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Brak jawnego zacisku lub pola SN.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Dodaj odcinek' })).toBeDisabled();
-    expect(await screen.findByTestId('catalog-picker-search')).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        'Nie znaleziono wolnego portu wyjściowego SN dla wybranego obiektu. Wybierz głowicę odpływową pola SN albo stację na końcu ciągu.',
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeDisabled();
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
   });
 
-  it('wysyła nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
-    const context = buildOperationContext({
-      canonicalOp: 'continue_trunk_segment_sn',
-      elementId: 'bay-out-1',
-      elementType: 'BaySN',
-      snapshot: snapshotState.snapshot,
-      logicalViews: {
-        terminals: [
-          {
-            element_id: 'bay-out-1',
-            port_id: 'bay-out-1:OUT',
-            trunk_id: 'trunk-1',
-            status: 'DOSTEPNY',
-          },
-        ],
-      } as any,
-    });
-
+  it('pozwala wyprowadzić odcinek z pola SN przekazanego jako element_ref', async () => {
+    activeOperationContextState.value = {
+      element_ref: 'bay-out-1',
+      element_type: 'BaySN',
+      segment_kind: 'KABEL_SN',
+    };
     snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
-    activeOperationContextState.value = context;
 
     render(<ContinueTrunkForm />);
 
-    fireEvent.change(screen.getByPlaceholderText('np. 350'), { target: { value: '350' } });
-    const catalogSearch = await screen.findByTestId('catalog-picker-search');
-    fireEvent.change(catalogSearch, { target: { value: 'XRU' } });
-    fireEvent.click(await screen.findByTestId('catalog-entry-XRUHAKXS-3x120'));
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj odcinek' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+    fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '250' } });
+    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+
+    await waitFor(() => {
+      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        'case-1',
+        'continue_trunk_segment_sn',
+        expect.objectContaining({
+          field_ref: 'bay-out-1',
+          segment: expect.objectContaining({
+            dlugosc_m: 250,
+          }),
+        }),
+      );
+    });
+  });
+
+  it('wysyła nowy odcinek przez kanoniczny from_terminal_id i opcjonalny trunk_id', async () => {
+    setCanonicalContext();
+
+    snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
+
+    render(<ContinueTrunkForm />);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+    fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '350' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -218,5 +244,96 @@ describe('ContinueTrunkForm', () => {
     const payload = snapshotState.executeDomainOperation.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('from_bus_ref');
     expect(closeOperationFormMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('pozwala kontynuować ciąg z wolnego końca istniejącego odcinka', async () => {
+    activeOperationContextState.value = {
+      trunk_id: 'trunk-1',
+      from_terminal_id: 'bus-trunk-end',
+      terminal_id: 'bus-trunk-end',
+      terminal_port_id: 'trunk_end',
+      terminal_name: 'Koniec ciągu M1',
+      terminal_voltage_label: '15 kV',
+      default_termination: 'continue',
+      segment_kind: 'LINIA_NAPOWIETRZNA',
+    };
+    snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
+
+    render(<ContinueTrunkForm />);
+
+    expect(screen.getByText('Kontynuuj ciąg SN z wybranego portu')).toBeInTheDocument();
+    expect(screen.getAllByText('Port wyjściowy stacji / wolny koniec ciągu SN').length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText('AFL-6 70').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '400' } });
+    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+
+    await waitFor(() => {
+      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        'case-1',
+        'continue_trunk_segment_sn',
+        expect.objectContaining({
+          trunk_id: 'trunk-1',
+          from_terminal_id: 'bus-trunk-end',
+          segment: expect.objectContaining({
+            rodzaj: 'LINIA_NAPOWIETRZNA',
+            dlugosc_m: 400,
+          }),
+        }),
+      );
+    });
+  });
+
+  it('rozpoznaje wolny koniec ciągu po kliknięciu stacji SN/nN', async () => {
+    activeOperationContextState.value = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-1',
+      elementType: 'Station',
+      snapshot: snapshotState.snapshot,
+      logicalViews: {
+        terminals: [
+          {
+            element_id: 'bus-sn-1',
+            port_id: 'trunk_end',
+            trunk_id: 'trunk-1',
+            branch_id: null,
+            status: 'OTWARTY',
+          },
+        ],
+      } as any,
+    });
+    snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
+
+    render(<ContinueTrunkForm />);
+
+    expect(screen.getByText('Kontynuuj ciąg SN z wybranego portu')).toBeInTheDocument();
+    expect(screen.getByText('Stacja 1 - port wyjściowy SN')).toBeInTheDocument();
+    expect(screen.queryByText(/Brak głowicy pola SN albo wolnego końca ciągu/)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTestId('length-preset-250'));
+    expect(screen.getByText('XRUHAKXS 3x120 · 250 m')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+
+    await waitFor(() => {
+      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        'case-1',
+        'continue_trunk_segment_sn',
+        expect.objectContaining({
+          trunk_id: 'trunk-1',
+          from_terminal_id: 'bus-sn-1',
+          segment: expect.objectContaining({
+            dlugosc_m: 250,
+          }),
+        }),
+      );
+    });
   });
 });

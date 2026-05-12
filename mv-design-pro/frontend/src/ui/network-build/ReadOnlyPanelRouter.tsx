@@ -58,7 +58,7 @@ const TAB_LABELS: Record<InspectorTab, string> = {
   field_measurements: 'Pomiary pola',
   field_control: 'Sterowanie lacznikami',
   field_protection: 'Zabezpieczenie pola',
-  field_source_contributions: 'Wklady zrodel',
+  field_source_contributions: 'Wkłady źródeł',
   field_earth_fault: 'Tor ziemnozwarciowy',
   field_work_safety: 'Bezpieczenstwo do pracy',
   field_compare: 'Porownanie pol',
@@ -591,7 +591,7 @@ export function ReadOnlyPanelRouter() {
     }
 
     return [
-      { label: 'Uruchomienie', value: projectResults.run_ref },
+      { label: 'Ostatnie obliczenie', value: projectResults.run_ref },
       { label: 'Stan wynikow', value: projectResults.result_state },
       {
         label: 'Wklady w zwarciu',
@@ -732,7 +732,7 @@ export function ReadOnlyPanelRouter() {
     }
   }, [activeProjectId, selectedRunId]);
   const canOpenRunArtifacts = Boolean(selectedRunId);
-  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Brak aktywnego uruchomienia do otwarcia.';
+  const blockedRunArtifactsTitle = canOpenRunArtifacts ? undefined : 'Brak aktywnego obliczenia do otwarcia.';
   const handleSelectHistoryRun = useCallback((runId: string) => {
     setActiveRun(runId);
     void selectRun(runId);
@@ -846,7 +846,7 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'coordination' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Koordynacja zabezpieczen</div>
+              <div className="text-sm font-semibold text-slate-900">Koordynacja zabezpieczeń</div>
               <div className="text-xs text-slate-500">Panel laczy kontrakt pola, przypisania ochrony i diagnostyke read-model bez lokalnych adapterow wynikowych.</div>
             </div>
             <KeyValueList rows={coordinationRows} />
@@ -897,7 +897,7 @@ export function ReadOnlyPanelRouter() {
             )}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wklady zrodel</button>
+              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wkłady źródeł</button>
             </div>
           </div>
         )}
@@ -951,7 +951,7 @@ export function ReadOnlyPanelRouter() {
         {activeTab === 'field_source_contributions' && (
           <div className="space-y-4">
             <div>
-              <div className="text-sm font-semibold text-slate-900">Wklady zrodel</div>
+              <div className="text-sm font-semibold text-slate-900">Wkłady źródeł</div>
               <div className="text-xs text-slate-500">Jedyny kanoniczny widok wkładow zrodel w zwarciu i rozplywie dla pola.</div>
             </div>
             {fieldSourceContributionRows.length === 0 ? (
@@ -979,7 +979,7 @@ export function ReadOnlyPanelRouter() {
             )}
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={locate} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">Pokaz na schemacie</button>
-              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wklady zrodel</button>
+              <button type="button" onClick={() => setActiveTab('field_source_contributions')} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium text-white hover:bg-slate-800">Wkłady źródeł</button>
             </div>
           </div>
         )}

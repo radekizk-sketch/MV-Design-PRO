@@ -140,7 +140,7 @@ export const RESULT_STATUS_TOOLTIPS: Record<StudyCaseResultStatus, string> = {
   NONE: 'Brak wyników — obliczenia nie zostały jeszcze wykonane',
   FRESH: 'Wyniki aktualne — obliczenia wykonane po ostatniej zmianie modelu',
   OUTDATED:
-    'Wyniki nieaktualne — model został zmieniony po ostatnim obliczeniu. Zalecenie: Uruchom ponownie obliczenia.',
+    'Wyniki nieaktualne — model został zmieniony po ostatnim obliczeniu. Zalecenie: wykonaj obliczenia ponownie.',
 };
 
 /**

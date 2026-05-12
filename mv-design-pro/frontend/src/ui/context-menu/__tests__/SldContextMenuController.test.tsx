@@ -5,7 +5,7 @@
  *  1. request=null → controller renderuje null (menu zamknięte).
  *  2. request kind='bay' → menu z liczbą akcji = SLD_MENU_REGISTRY.bay.length.
  *  3. Etykiety są w polskim z SLD_MENU_REGISTRY.
- *  4. Kontekst (np. bayHasOutgoingRun) wyłącza akcję `extend-trunk`.
+ *  4. Menu pola nie udostępnia wyprowadzenia ciągu; robi to wyłącznie głowica kablowa.
  *  5. Klik akcji wywołuje onAction(actionId, kind, elementId) i onClose().
  */
 
@@ -79,7 +79,7 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
     expect(screen.getByText('Pokaż gotowość modelu')).toBeInTheDocument();
   });
 
-  it('respektuje kontekst — bayHasOutgoingRun=true blokuje akcję extend-trunk', () => {
+  it('nie pokazuje wyprowadzenia ciągu z poziomu pola SN', () => {
     render(
       <SldContextMenuController
         {...baseProps}
@@ -89,15 +89,11 @@ describe('SldContextMenuController — most SLD_MENU_REGISTRY ↔ ContextMenu', 
           clientX: 200,
           clientY: 300,
         }}
-        context={{ bayHasOutgoingRun: true }}
       />,
     );
 
-    const extendButton = screen
-      .getByText('Wyprowadź ciąg główny')
-      .closest('button') as HTMLButtonElement;
-    expect(extendButton.disabled).toBe(true);
-    expect(extendButton.title).toContain('Pole ma już wyprowadzony ciąg główny');
+    expect(screen.queryByText('Wyprowadź ciąg główny z głowicy')).not.toBeInTheDocument();
+    expect(screen.getByText('Rozpocznij odgałęzienie')).toBeInTheDocument();
   });
 
   it('header zawiera polską nazwę typu obiektu i nazwę elementu', () => {

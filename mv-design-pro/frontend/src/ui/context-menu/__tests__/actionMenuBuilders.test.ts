@@ -704,7 +704,7 @@ describeBuilder(
   14,
 );
 
-describe('buildSourceSNContextMenu ??? specific', () => {
+describe('buildSourceSNContextMenu ?? specific', () => {
   it('prowadzi do pol GPZ zamiast wyprowadzac magistrale bezposrednio ze zrodla', () => {
     const items = buildSourceSNContextMenu('MODEL_EDIT');
     const action = items.find((candidate) => candidate.id === 'open_gpz_fields');

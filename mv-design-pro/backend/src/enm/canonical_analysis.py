@@ -89,6 +89,8 @@ def _short_circuit_type_from_options(options: dict[str, Any]) -> ShortCircuitTyp
         "SC_2F": ShortCircuitType.TWO_PHASE,
         "2F+G": ShortCircuitType.TWO_PHASE_GROUND,
         "2F+Z": ShortCircuitType.TWO_PHASE_GROUND,
+        "2FG": ShortCircuitType.TWO_PHASE_GROUND,
+        "SC2FG": ShortCircuitType.TWO_PHASE_GROUND,
         "SC_2F_G": ShortCircuitType.TWO_PHASE_GROUND,
         "SC_2F+G": ShortCircuitType.TWO_PHASE_GROUND,
         "SC_2F+Z": ShortCircuitType.TWO_PHASE_GROUND,
@@ -850,7 +852,13 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     rows: list[dict[str, Any]] = []
     trace_steps: list[dict[str, Any]] = []
 
-    for node_id in sorted(graph.nodes.keys()):
+    reportable_fault_node_ids = [
+        node_id
+        for node_id in sorted(graph.nodes.keys())
+        if not graph_nodes.get(node_id, {}).get("skip_short_circuit_target", False)
+    ]
+
+    for node_id in reportable_fault_node_ids:
         if short_circuit_type == ShortCircuitType.THREE_PHASE:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
@@ -1717,10 +1725,19 @@ def _build_snapshot_graph_element_context(
         ref_id = str(raw_bus.get("ref_id") or "")
         if not ref_id:
             continue
+        tags = raw_bus.get("tags") or []
+        meta = raw_bus.get("meta") if isinstance(raw_bus.get("meta"), dict) else {}
+        skip_short_circuit_target = (
+            "helper_bus" in tags
+            or ("/section/" in ref_id and ref_id.endswith("/bus_sn"))
+            or meta.get("render_on_sld") is False
+            or meta.get("show_in_project_tree") is False
+        )
         node_context[_graph_id_from_ref(ref_id)] = {
             "element_id": ref_id,
             "element_type": "BUS",
             "synthetic": False,
+            "skip_short_circuit_target": skip_short_circuit_target,
         }
 
     for raw_branch in snapshot.get("branches") or []:

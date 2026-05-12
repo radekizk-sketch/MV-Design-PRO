@@ -102,6 +102,8 @@ _NAMESPACE_ACCESSOR: dict[str, str] = {
     CatalogNamespace.ZRODLO_NN_BESS.value: "get_bess_inverter_type",
     CatalogNamespace.ZABEZPIECZENIE.value: "get_protection_device_type",
     CatalogNamespace.NASTAWY_ZABEZPIECZEN.value: "get_protection_setting_template",
+    CatalogNamespace.CONVERTER.value: "get_converter_type",
+    CatalogNamespace.INVERTER.value: "get_inverter_type",
 }
 
 # Fallbacks for switch equipment

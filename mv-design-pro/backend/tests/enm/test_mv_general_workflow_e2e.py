@@ -845,6 +845,84 @@ class TestE2E5ReceivingStationsAndOzeBess:
         assert not result.get("error"), f"Nieoczekiwany błąd: {result.get('error_code')}"
         assert result.get("snapshot") is not None
 
+    def test_insert_station_with_pv_behind_sn_nn_transformer_creates_generator_and_protection(self) -> None:
+        s = _empty_enm()
+        s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
+        s = op(
+            s,
+            "continue_trunk_segment_sn",
+            {
+                "segment": {"rodzaj": "KABEL", "dlugosc_m": 500, "catalog_ref": CATALOG_CABLE_120},
+            },
+        )
+
+        seg_id = _find_segment(s, "cable")
+        s = op(
+            s,
+            "insert_station_on_segment_sn",
+            {
+                "segment_id": seg_id,
+                "name": "Stacja PV za transformatorem",
+                "station_type": "terminal",
+                "station": {"nn_voltage_kv": 0.4},
+                "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+                "nn_block": {
+                    "nn_configuration": "PV_INVERTER",
+                    "source_converter_catalog_ref": "conv-pv-e2e-1",
+                    "source_converter_name": "Falownik PV katalogowy",
+                    "source_converter_kind": "PV",
+                    "source_converter_un_kv": 0.4,
+                    "source_converter_sn_mva": 1.0,
+                    "source_converter_pmax_mw": 1.0,
+                    "outgoing_feeders_nn_count": 1,
+                    "outgoing_feeders_nn": [
+                        {"feeder_role": "ODPLYW_NN", "catalog_bindings": None},
+                        {
+                            "feeder_role": "ZRODLO_NN_PV",
+                            "catalog_bindings": {
+                                "source_converter": {
+                                    "catalog_namespace": "ZRODLO_NN_PV",
+                                    "catalog_item_id": "conv-pv-e2e-1",
+                                }
+                            },
+                            "protection": {
+                                "device_catalog_ref": "EM_ETANGO_400_V0",
+                                "device_label": "Elektrometal e2TANGO-400",
+                                "protected_object": "falownik PV i kabel nN do PCC",
+                                "analysis_scope": "nadpradowe i koordynacja z wyłącznikiem głównym nN",
+                            },
+                        },
+                    ],
+                    "source_protection": {
+                        "device_catalog_ref": "EM_ETANGO_400_V0",
+                        "device_label": "Elektrometal e2TANGO-400",
+                        "protected_object": "falownik PV i kabel nN do PCC",
+                        "analysis_scope": "nadpradowe i koordynacja z wyłącznikiem głównym nN",
+                    },
+                },
+            },
+        )
+
+        station_ref = next(
+            sub["ref_id"]
+            for sub in s.get("substations", [])
+            if sub.get("name") == "Stacja PV za transformatorem"
+        )
+        pv_generators = [gen for gen in s.get("generators", []) if gen.get("gen_type") == "pv_inverter"]
+        assert len(pv_generators) == 1
+        assert pv_generators[0]["catalog_ref"] == "conv-pv-e2e-1"
+        assert pv_generators[0]["connection_variant"] == "nn_side"
+        assert pv_generators[0]["station_ref"] == station_ref
+        assert pv_generators[0].get("meta", {}).get("protection_intent", {}).get("device_catalog_ref") == "EM_ETANGO_400_V0"
+
+        protections = [
+            item
+            for item in s.get("protection_assignments", [])
+            if item.get("catalog_ref") == "EM_ETANGO_400_V0"
+        ]
+        assert len(protections) == 1
+        assert protections[0].get("meta", {}).get("protected_object_ref") == pv_generators[0]["ref_id"]
+
     def test_branch_point_objects_in_topology_for_analysis(self) -> None:
         """Branch points muszą być widoczne w topologii i readiness."""
         s = _empty_enm()

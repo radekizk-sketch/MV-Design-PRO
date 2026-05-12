@@ -2,6 +2,7 @@
 
 import pytest
 from enm.canonical_analysis import (
+    _short_circuit_type_from_options,
     build_execution_result_set,
     build_short_circuit_results,
     create_run,
@@ -10,6 +11,7 @@ from enm.canonical_analysis import (
 )
 from enm.models import EnergyNetworkModel
 from enm.store import reset_enm_store, set_enm
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitType
 
 from tests.catalog_test_helpers import gpz_source_record
 
@@ -71,6 +73,66 @@ def _valid_enm_payload_with_z0(name: str) -> dict:
     return payload
 
 
+def _valid_enm_payload_with_helper_terminal(name: str) -> dict:
+    payload = _valid_enm_payload(name)
+    payload["buses"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "ref_id": "b_helper",
+            "name": "Zacisk techniczny",
+            "tags": ["helper_bus", "field_terminal"],
+            "meta": {
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+            },
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        }
+    )
+    payload["buses"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000005",
+            "ref_id": "gpz/test/section/001/bus_sn",
+            "name": "Szyna techniczna sekcji GPZ",
+            "tags": [],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        }
+    )
+    payload["branches"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000004",
+            "ref_id": "brk_helper",
+            "name": "Aparat pola",
+            "tags": [],
+            "meta": {"render_on_sld": False, "show_in_project_tree": False},
+            "from_bus_ref": "b1",
+            "to_bus_ref": "b_helper",
+            "status": "closed",
+            "type": "breaker",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+        }
+    )
+    payload["branches"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000006",
+            "ref_id": "brk_section_bus",
+            "name": "Lacznik szyny technicznej",
+            "tags": [],
+            "meta": {"render_on_sld": False, "show_in_project_tree": False},
+            "from_bus_ref": "b1",
+            "to_bus_ref": "gpz/test/section/001/bus_sn",
+            "status": "closed",
+            "type": "breaker",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+        }
+    )
+    return payload
+
+
 @pytest.fixture(autouse=True)
 def reset_state():
     reset_canonical_runs()
@@ -101,6 +163,28 @@ def test_execute_run_uses_frozen_snapshot_not_post_creation_enm_mutation():
     assert result.snapshot["header"]["name"] == "Siec pierwotna"
     assert result.raw_result is not None
     assert result.raw_result["enm_hash"] == frozen_hash
+
+
+def test_short_circuit_does_not_report_helper_field_terminals():
+    case_id = "canonical-sc-helper-terminal"
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(
+            _valid_enm_payload_with_helper_terminal("Siec z zaciskiem technicznym")
+        ),
+    )
+
+    run = create_run(case_id=case_id, analysis_type="short_circuit_sn")
+    result = execute_run(run.id)
+
+    assert result.status == "FINISHED", result.error_message
+    assert result.raw_result is not None
+    rows = build_short_circuit_results(result)["rows"]
+    assert rows
+    assert "b_helper" not in {row["element_id"] for row in rows}
+    assert "gpz/test/section/001/bus_sn" not in {row["element_id"] for row in rows}
+    assert all(row["target_name"] != "Zacisk techniczny" for row in rows)
+    assert all(row["target_name"] != "Szyna techniczna sekcji GPZ" for row in rows)
 
 
 def test_execute_run_supports_1f_when_z0_is_committed_in_enm():
@@ -165,6 +249,11 @@ def test_execute_run_supports_2fg_when_z0_is_committed_in_enm():
     assert row["proof_binding"]["trace_step_refs"]
     assert row["proof_binding"]["z0_source"] == "ENM_COMMITTED"
     assert "z0_ohm" in row["white_box_trace"][0]["inputs"]
+
+
+def test_short_circuit_type_accepts_sc2fg_alias_from_ui():
+    assert _short_circuit_type_from_options({"fault_type": "2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
+    assert _short_circuit_type_from_options({"fault_type": "SC2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
 
 
 def test_create_1f_run_blocks_without_committed_z0():

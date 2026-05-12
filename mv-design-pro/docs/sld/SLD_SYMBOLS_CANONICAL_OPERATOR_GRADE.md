@@ -7,8 +7,69 @@
 - `frontend/src/ui/sld/v2/domain/apparatusVisualState.ts`
 - `frontend/src/ui/sld/v2/domain/apparatusSymbolPolicy.ts`
 - `frontend/src/ui/sld/v2/domain/bayDeviceOrder.ts`
+- `frontend/src/ui/sld/v2/theme/tokens.ts`
+- `frontend/src/ui/sld/v2/renderer/StationOnRunRenderer.tsx`
+- `frontend/src/ui/sld/v2/renderer/CableRunRenderer.tsx`
 
 ---
+
+## 0. Operator-grade visual baseline
+
+### 0.1 Kanon aparatów łączeniowych - bez wyjątków
+
+Ten kanon jest wiążący dla wszystkich rendererów SLD: GPZ, pola SN, mini-RMU stacji,
+wewnętrzne SLD stacji, LOD, widoki raportowe i testy wizualne.
+
+| Aparat | Symbol obowiązkowy | Położenie | Zakaz |
+|---|---|---|---|
+| Wyłącznik SN/nN | kwadrat | oś toru głównego | nie wolno renderować jako kółko ani romb |
+| Odłącznik | kółko | oś toru głównego | nie wolno renderować jako prostokąt ani romb |
+| Rozłącznik | obrócony kwadrat / romb | oś toru głównego | nie wolno renderować jako kółko |
+| Uziemnik | gałąź boczna z symbolem ziemi | wyłącznie poza osią toru | nie wolno umieszczać w osi toru głównego |
+
+Źródła wdrożenia:
+
+- `frontend/src/ui/sld/v2/renderer/DeviceRenderer.tsx`
+- `frontend/src/ui/sld/v2/renderer/GpzSwitchgearRenderer.tsx`
+- `frontend/src/ui/sld/v2/renderer/MiniBlockRmuRenderer.tsx`
+- `frontend/src/ui/sld/v2/renderer/StationOnRunRenderer.tsx`
+
+Testy muszą sprawdzać atrybuty `data-symbol-canon`:
+
+- `circuit_breaker_square`
+- `disconnector_circle`
+- `switch_disconnector_rotated_square`
+- `earthing_switch_lateral_branch`
+
+### 0.2 PV przyłączone po stronie nN
+
+PV po stronie nN nie może być renderowane jako sam badge przy stacji. W widoku
+szczegółowym stacji trzeba pokazać czytelny tor:
+
+`pole SN -> transformator SN/nN -> szyna nN / PCC -> wyłącznik nN -> falownik PV`.
+
+Wariant z dwoma falownikami pokazuje dwa osobne wyłączniki nN, oznaczone `Q1`
+i `Q2`. Każdy wyłącznik nN jest kwadratem (`circuit_breaker_square`) i każdy
+symbol toru PV ma własny `data-element-id`, żeby inspektor, gotowość obliczeń,
+wyniki i raport mogły przejść do właściwego elementu.
+
+Aktywny tor SN w widoku sieciowym jest zielony. Dotyczy to:
+
+- magistrali terenowej,
+- odcinków kablowych i napowietrznych SN,
+- szyny SN w widoku GPZ/stacji,
+- mini-połączeń stacji w widoku sieciowym.
+
+Stacja SN/nN w widoku sieciowym nie może być pojedynczym rombem ani kartą informacyjną. Minimalny symbol to mini-rozdzielnica:
+
+- pozioma szyna SN,
+- 1-3 tory przyłączeniowe zależne od typu topologicznego,
+- rozłącznik jako zielony romb,
+- boczny czerwony marker dla sekcji/odgałęzienia, jeżeli wynika ze stanu,
+- etykieta: nazwa, typ topologiczny, napięcie/poziomy nN,
+- marker braku danych jako ostrzeżenie, bez wartości 0.00.
+
+Canonical GPZ musi renderować rozdzielnię, sekcje, pola i transformatory, gdy ENM zawiera dane. Gdy danych WN/TR brakuje, renderer pokazuje precyzyjny brak danych, a nie zastępcze wartości.
 
 ## 1. Reguła geometrii (Acceptance Invariant nr 13)
 

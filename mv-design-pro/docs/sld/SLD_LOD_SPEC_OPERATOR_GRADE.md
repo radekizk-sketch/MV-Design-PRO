@@ -10,7 +10,7 @@
 
 Operator-grade LOD ma być stabilny w pracy zoom (brak migotania), zachowywać Acceptance Invariant nr 6 (LOD zmienia szczegół wizualny, nie elektryczne znaczenie) i nadawać każdemu typowi obiektu dokładnie zdefiniowany próg widoczności.
 
-## 2. Pięć poziomów
+## 2. Poziomy LOD
 
 | LOD | Zakres scale | Zastosowanie | Główne kindy widoczne |
 |---|---|---|---|
@@ -18,7 +18,8 @@ Operator-grade LOD ma być stabilny w pracy zoom (brak migotania), zachowywać A
 | 1 | 0.30 – 0.70 | Sieć terenowa | + `gpz_switchgear`, `section`, `bay_head`, `nop_marker`, `missing_data_marker` |
 | 2 | 0.70 – 1.50 | Obiekty + bays | + `mini_block_detail`, `device`, `der_full` |
 | 3 | 1.50 – 3.00 | Szczegół techniczny | + `station_internal`, `device_label`, `q_label`, `measurement`, `der_sub_tree` |
-| 4 | ≥ 3.00 | Diagnostyka | wszystkie + warstwy diagnostyczne |
+| 4 | ≥ 3.00 | CAD / edycja precyzyjna | porty, kotwice, uchwyty tras, siatka, prowadnice |
+| 5 | na żądanie | Diagnostyka / wyniki / uzasadnienie | węzły obliczeniowe, ścieżki zasilania, wyniki, gotowość, raport |
 
 Progi: stałe `LOD_ZOOM_THRESHOLDS` w `frontend/src/ui/sld/v2/lod/LodPolicy.ts`.
 
@@ -71,6 +72,8 @@ type LodElementKind =
 ```
 
 Phase 0A dodaje 4 nowe kindy: `mini_block_compact`, `mini_block_detail`, `gpz_switchgear`, `der_sub_tree`.
+
+Aktywny `SldCanvasV2` przekazuje aktualny LOD do renderera stacji, aby stacja mogła przełączyć się między mini-blokiem RMU i pełniejszym widokiem bez utraty portów ani wyboru.
 
 ## 8. Hash invariants
 

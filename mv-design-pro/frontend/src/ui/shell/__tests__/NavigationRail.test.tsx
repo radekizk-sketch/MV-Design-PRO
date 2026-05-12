@@ -3,18 +3,23 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { AREA_DEFINITIONS } from '../../navigation/areaRegistry';
 import { useAppStateStore } from '../../app-state/store';
+import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { NavigationRail } from '../NavigationRail';
 
 describe('NavigationRail - pasek obszarów roboczych', () => {
   beforeEach(() => {
     act(() => {
+      window.history.replaceState(null, '', '/#variants');
       useAppStateStore.getState().setActiveArea('MODEL_SIECI');
+      useNetworkBuildStore.getState().reset();
     });
   });
 
   afterEach(() => {
     act(() => {
+      window.history.replaceState(null, '', '/');
       useAppStateStore.getState().setActiveArea('MODEL_SIECI');
+      useNetworkBuildStore.getState().reset();
     });
   });
 
@@ -40,6 +45,27 @@ describe('NavigationRail - pasek obszarów roboczych', () => {
       fireEvent.keyDown(window, { key: '5', ctrlKey: true });
     });
     expect(useAppStateStore.getState().activeArea).toBe('ZABEZPIECZENIA_AUTOMATYKA');
+  });
+
+  it('klik w Schemat wraca do bazowej kanwy SLD i zamyka widok pomocniczy', () => {
+    act(() => {
+      useNetworkBuildStore.getState().openRouteSurface('E-28', {
+        titlePl: 'Koordynacja zabezpieczeń',
+        route: 'analysis',
+        openMode: 'expand_workspace',
+      });
+    });
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-28');
+
+    render(<NavigationRail />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('nav-area-SCHEMAT_TOPOLOGIA'));
+    });
+
+    expect(useAppStateStore.getState().activeArea).toBe('SCHEMAT_TOPOLOGIA');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+    expect(useNetworkBuildStore.getState().surfaceStack).toHaveLength(0);
+    expect(window.location.hash).toBe('#sld');
   });
 
   it('Ctrl+9 aktywuje obszar Historia i audyt', () => {

@@ -142,6 +142,11 @@ explicit `sectionLabel` ani `name`.
 - 10+ E2E tests (golden_network_fixture)
 - 5+ regression tests (zakaz placeholderów + nakładających tekstów)
 
+**Korekta 2026-05-08:** “visual structural tests” oznaczają testy DOM/kontraktu
+renderera, a nie pixel-level visual parity. Pełny parytet wizualny wymaga
+referencyjnych zrzutów, checklisty porównawczej i golden image snapshots.
+Aktualne dowody są śledzone w `docs/sld/SLD_VISUAL_PARITY_EVIDENCE.md`.
+
 ### Faza R5: Audyt 13 ekspertów
 - Brutalna ocena 1-10 per ekspert
 - Średnia ≥ 9 = ACCEPTANCE

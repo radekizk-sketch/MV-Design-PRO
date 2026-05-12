@@ -22,6 +22,7 @@ const networkBuildState = {
     context: {
       from_bus_ref: 'bus-gpz-1',
       terminal_id: 'bus-gpz-1',
+      terminal_port_id: 'bay-out-1:OUT',
       segment_kind: 'KABEL_SN',
     },
   },
@@ -33,15 +34,12 @@ vi.mock('../../../app-state', () => ({
 }));
 
 vi.mock('../../../topology/snapshotStore', () => ({
-  useSnapshotStore: (
-    selector: (state: typeof snapshotState) => unknown,
-  ) => selector(snapshotState),
+  useSnapshotStore: (selector: (state: typeof snapshotState) => unknown) => selector(snapshotState),
 }));
 
 vi.mock('../../networkBuildStore', () => ({
-  useNetworkBuildStore: (
-    selector: (state: typeof networkBuildState) => unknown,
-  ) => selector(networkBuildState),
+  useNetworkBuildStore: (selector: (state: typeof networkBuildState) => unknown) =>
+    selector(networkBuildState),
   useActiveOperationForm: () => networkBuildState.activeOperationForm,
   useActiveOperationContext: () => networkBuildState.activeOperationForm.context,
 }));
@@ -55,12 +53,18 @@ vi.mock('../../../catalog/api', () => ({
       voltage_rating_kv: 15,
       cross_section_mm2: 120,
       rated_current_a: 240,
+      r_ohm_per_km: 0.253,
+      x_ohm_per_km: 0.101,
+      c_nf_per_km: 240,
+      max_temperature_c: 90,
+      insulation_type: 'XLPE',
+      conductor_material: 'Al',
+      standard: 'PN-HD 620',
     },
   ]),
   fetchLineTypes: vi.fn().mockResolvedValue([]),
-  getCatalogErrorMessage: (error: unknown) => (
-    error instanceof Error ? error.message : 'Błąd katalogu'
-  ),
+  getCatalogErrorMessage: (error: unknown) =>
+    error instanceof Error ? error.message : 'Błąd katalogu',
 }));
 
 describe('ContinueTrunkForm', () => {
@@ -69,23 +73,23 @@ describe('ContinueTrunkForm', () => {
     executeDomainOperationMock.mockReset();
   });
 
-  it('pozwala utworzyć pierwszy odcinek magistrali z GPZ bez trunk_id', async () => {
+  it('pozwala utworzyć pierwszy odcinek z głowicy pola SN bez ręcznego przepisywania katalogu', async () => {
     executeDomainOperationMock.mockResolvedValue({ ok: true });
 
     render(<ContinueTrunkForm />);
 
-    expect(screen.getByText('Połącz zacisk pola SN z odcinkiem')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('Pierwszy odcinek magistrali SN')).toBeInTheDocument();
+    expect(screen.getByText('Wyprowadź odcinek z głowicy pola SN')).toBeInTheDocument();
+    expect(screen.getByText('Nowy ciąg główny SN')).toBeInTheDocument();
+    expect(screen.getAllByText('głowica odpływowa pola SN').length).toBeGreaterThan(0);
 
-    fireEvent.change(screen.getByPlaceholderText('np. 350'), { target: { value: '400' } });
     await waitFor(() => {
-      expect(screen.getByTestId('catalog-picker-search')).toBeInTheDocument();
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
-    fireEvent.change(screen.getByTestId('catalog-picker-search'), {
-      target: { value: 'XRUHAKXS' },
-    });
-    fireEvent.click(screen.getByTestId('catalog-entry-XRUHAKXS-3x120'));
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj odcinek' }));
+    expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('0,253 Ω/km');
+    expect(screen.getByTestId('trunk-selected-catalog-params')).toHaveTextContent('PN-HD 620');
+
+    fireEvent.click(screen.getByTestId('length-preset-500'));
+    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
@@ -94,7 +98,7 @@ describe('ContinueTrunkForm', () => {
         expect.objectContaining({
           from_terminal_id: 'bus-gpz-1',
           segment: expect.objectContaining({
-            dlugosc_m: 400,
+            dlugosc_m: 500,
           }),
         }),
       );

@@ -8,7 +8,7 @@
  * 4. Brief 2 §6 pkt 7: typ topologiczny wnioskowany z portów (nie z station_type).
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { StationInternalView } from '../canvas/StationInternalView';
@@ -71,6 +71,33 @@ describe('StationInternalView — minimal terminal station', () => {
     expect(getByText('Pole 1')).toBeInTheDocument();
     expect(getByText('Pole 2')).toBeInTheDocument();
   });
+
+  it('uzupelnia puste dane stacji o czytelne pola WE/WY/TR i kanoniczne aparaty', () => {
+    const { container, getByText } = render(
+      <StationInternalView
+        substationId="st-empty"
+        name="Stacja pusta"
+        topologicalType="przelotowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        bays={[]}
+        transformers={[]}
+        nnSwitchgears={[]}
+        width={1000}
+        height={620}
+      />,
+    );
+
+    expect(getByText('WE')).toBeInTheDocument();
+    expect(getByText('WY')).toBeInTheDocument();
+    expect(screen.getAllByText('TR').length).toBeGreaterThanOrEqual(1);
+    expect(container.querySelectorAll('[data-parity-key^="station.internal.bay.panel."]').length).toBeGreaterThanOrEqual(3);
+    expect(container.querySelectorAll('[data-symbol-canon="switch_disconnector_rotated_square"]').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelectorAll('[data-symbol-canon="earthing_switch_lateral_branch"]').length).toBeGreaterThanOrEqual(2);
+    expect(container.querySelector('[data-element-kind="transformer_sn_nn"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.internal.transformer.to.nn"]')).toBeTruthy();
+    expect(container.querySelector('[data-parity-key="station.internal.bus.nn"]')).toBeTruthy();
+  });
 });
 
 describe('StationInternalView — transformator', () => {
@@ -130,6 +157,41 @@ describe('StationInternalView — multi-voltage nN (brief §13)', () => {
     expect(getByText('RnN-0.4kV-3')).toBeInTheDocument();
     expect(getByText(/Konstrukcja: wnętrzowa/)).toBeInTheDocument();
     expect(getByText(/Poziomy nN: 6\s*\/\s*0\.69\s*\/\s*0\.4 kV/)).toBeInTheDocument();
+  });
+
+  it('pokazuje PV przylaczone po nN z klikalnymi wylacznikami Q1/Q2', () => {
+    const selected: string[] = [];
+    const { container, getByText } = render(
+      <StationInternalView
+        substationId="st-pv"
+        name="Stacja z PV"
+        topologicalType="przelotowa"
+        snVoltageKv={15}
+        nnVoltageLevels={[0.4]}
+        bays={[]}
+        transformers={[]}
+        nnSwitchgears={[]}
+        ders={[{ derId: 'pv-1', kind: 'PV', connectionSide: 'nn', count: 2 }]}
+        width={1000}
+        height={680}
+        onSelectBay={(id) => selected.push(id)}
+      />,
+    );
+
+    expect(container.querySelector('[data-parity-key="station.internal.pv.nn_connection"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="station-internal-pv-nn-breaker-"][data-symbol-canon="circuit_breaker_square"]').length).toBe(2);
+    expect(container.querySelectorAll('[data-element-kind="protection_relay"][data-protected-ref]').length).toBe(2);
+    expect(container.querySelectorAll('[data-element-kind="pv_inverter"]').length).toBe(2);
+    expect(getByText('PV nN')).toBeInTheDocument();
+
+    const q1 = container.querySelector('[data-testid="station-internal-pv-nn-breaker-1"]');
+    expect(q1).toBeTruthy();
+    q1?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(selected).toContain('st-pv/pv/nn-breaker/Q1');
+
+    const protection = container.querySelector('[data-testid="station-internal-pv-protection-1"]');
+    protection?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(selected).toContain('st-pv/pv/protection/e2tango/Q1');
   });
 });
 

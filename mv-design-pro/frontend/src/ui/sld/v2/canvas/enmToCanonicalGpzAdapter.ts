@@ -71,7 +71,10 @@ export function buildCanonicalGpzProps(
     throw new Error(`Substation '${substationRef}' nie jest typu 'gpz' (jest ${substation.station_type}).`);
   }
 
-  const allBays = (enm.bays ?? []).filter((b) => b.substation_ref === substationRef);
+  const allBays = mergeBaysWithFieldSpecs(
+    substation,
+    (enm.bays ?? []).filter((b) => b.substation_ref === substationRef),
+  );
   const allTransformers = (enm.transformers ?? []).filter((t) =>
     substation.transformer_refs?.includes(t.ref_id),
   );
@@ -97,6 +100,78 @@ export function buildCanonicalGpzProps(
 /* =============================================================================
    Sub-builders
    ============================================================================= */
+
+type FieldSpecRecord = Record<string, unknown>;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function readFieldSpecs(station: Substation): FieldSpecRecord[] {
+  const meta = asRecord(station.meta);
+  const rawSpecs = meta?.field_specs;
+  return Array.isArray(rawSpecs)
+    ? rawSpecs.filter((spec): spec is FieldSpecRecord => asRecord(spec) !== null)
+    : [];
+}
+
+function normalizeBayRole(value: unknown): Bay['bay_role'] | null {
+  const role = readString(value)?.toUpperCase();
+  switch (role) {
+    case 'IN':
+    case 'OUT':
+    case 'TR':
+    case 'COUPLER':
+    case 'FEEDER':
+    case 'MEASUREMENT':
+    case 'OZE':
+      return role;
+    default:
+      return null;
+  }
+}
+
+function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay[] {
+  const byRef = new Map(bays.map((bay) => [bay.ref_id, bay]));
+  for (const spec of readFieldSpecs(station)) {
+    const refId = readString(spec.field_ref) ?? readString(spec.ref_id);
+    const busRef = readString(spec.bus_ref);
+    const bayRole = normalizeBayRole(spec.bay_role);
+    if (!refId || !busRef || !bayRole || byRef.has(refId)) continue;
+
+    byRef.set(refId, {
+      id: refId,
+      ref_id: refId,
+      name: readString(spec.name) ?? refId,
+      tags: readStringArray(spec.tags),
+      meta: {
+        ...(asRecord(spec.meta) ?? {}),
+        visual_source: 'substation_field_specs',
+      },
+      bay_role: bayRole,
+      substation_ref: station.ref_id,
+      bus_ref: busRef,
+      gpz_section_id: readString(spec.gpz_section_id),
+      equipment_refs: readStringArray(spec.equipment_refs),
+      bay_number: readString(spec.bay_number),
+      feeder_short_name: readString(spec.feeder_short_name),
+      outgoing_destination_ref: readString(spec.outgoing_destination_ref),
+    } as Bay);
+  }
+  return [...byRef.values()];
+}
 
 function buildTransformers(transformers: readonly Transformer[]): CanonicalGpzTransformer[] {
   return transformers
@@ -145,11 +220,13 @@ function buildLvSections(
     }];
   }
 
+  const bayBuckets = assignBaysToLvSections(sectionDefs, lvBays);
+
   return sectionDefs
     .slice()
     .sort((a, b) => a.order - b.order)
     .map((sec, idx) => {
-      const sectionBays = lvBays.filter((b) => b.gpz_section_id === sec.section_id);
+      const sectionBays = bayBuckets.get(sec.section_id) ?? [];
       const bus = buses.find((b) => b.ref_id === sec.bus_ref);
       return {
         sectionId: sec.section_id,
@@ -159,6 +236,37 @@ function buildLvSections(
         bays: sectionBays.map((b) => buildBay(b, buses)),
       };
     });
+}
+
+function assignBaysToLvSections(
+  sectionDefs: NonNullable<Substation['gpz_sections']>,
+  lvBays: readonly Bay[],
+): Map<string, Bay[]> {
+  const sortedSections = sectionDefs.slice().sort((a, b) => a.order - b.order);
+  const sectionIds = new Set(sortedSections.map((section) => section.section_id));
+  const buckets = new Map(sortedSections.map((section) => [section.section_id, [] as Bay[]]));
+  const unassigned: Bay[] = [];
+
+  for (const bay of lvBays) {
+    if (bay.gpz_section_id && sectionIds.has(bay.gpz_section_id)) {
+      buckets.get(bay.gpz_section_id)?.push(bay);
+    } else {
+      unassigned.push(bay);
+    }
+  }
+
+  for (const bay of unassigned) {
+    const matchingBusSections = sortedSections.filter((section) => section.bus_ref === bay.bus_ref);
+    const candidates = matchingBusSections.length > 0 ? matchingBusSections : sortedSections;
+    const target = candidates.reduce((best, section) => {
+      const bestSize = buckets.get(best.section_id)?.length ?? 0;
+      const currentSize = buckets.get(section.section_id)?.length ?? 0;
+      return currentSize < bestSize ? section : best;
+    });
+    buckets.get(target.section_id)?.push(bay);
+  }
+
+  return buckets;
 }
 
 function buildHvSections(

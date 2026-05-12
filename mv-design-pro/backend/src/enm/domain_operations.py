@@ -264,6 +264,19 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
 
 
 MAX_GPZ_LINE_FIELDS_PER_SECTION = 12
+MAX_GPZ_WN_SN_TRANSFORMERS = 4
+GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER = {
+    (15, 10): "tr-wn-sn-110-15-10mva-yd11",
+    (15, 16): "tr-wn-sn-110-15-16mva-yd11",
+    (15, 25): "tr-wn-sn-110-15-25mva-yd11",
+    (15, 40): "tr-wn-sn-110-15-40mva-yd11",
+    (15, 63): "tr-wn-sn-110-15-63mva-yd11",
+    (20, 10): "tr-wn-sn-110-20-10mva-yd11",
+    (20, 16): "tr-wn-sn-110-20-16mva-yd11",
+    (20, 25): "tr-wn-sn-110-20-25mva-yd11",
+    (20, 40): "tr-wn-sn-110-20-40mva-yd11",
+    (20, 63): "tr-wn-sn-110-20-63mva-yd11",
+}
 
 
 def _read_gpz_line_fields_count(entry: dict[str, Any], payload: dict[str, Any]) -> int:
@@ -286,6 +299,60 @@ def _read_gpz_line_fields_count(entry: dict[str, Any], payload: dict[str, Any]) 
                 return int(raw_value.strip())
             return 0
     return 1
+
+
+def _read_gpz_transformer_count(payload: dict[str, Any], sections_count: int) -> int:
+    for key in ("transformer_count", "transformers_count", "wn_sn_transformer_count"):
+        raw_value = payload.get(key)
+        if raw_value is None:
+            continue
+        if isinstance(raw_value, bool):
+            return 0
+        if isinstance(raw_value, int):
+            return raw_value
+        if isinstance(raw_value, float):
+            return int(raw_value) if raw_value.is_integer() else 0
+        if isinstance(raw_value, str) and raw_value.strip().isdigit():
+            return int(raw_value.strip())
+        return 0
+    return max(1, min(2, sections_count))
+
+
+def _resolve_gpz_wn_sn_transformer_catalog_ref(
+    payload: dict[str, Any],
+    *,
+    voltage_kv: float,
+    rated_power_mva: float,
+) -> str | dict[str, Any]:
+    explicit_ref = payload.get("transformer_catalog_ref")
+    if isinstance(explicit_ref, str) and explicit_ref.strip():
+        return explicit_ref.strip()
+
+    binding = payload.get("transformer_catalog_binding")
+    binding_ref = _extract_catalog_binding_item_id(binding)
+    if binding_ref:
+        return binding_ref
+
+    voltage_key = int(round(float(voltage_kv)))
+    power_key = int(round(float(rated_power_mva)))
+    default_ref = GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER.get(
+        (voltage_key, power_key)
+    )
+    if default_ref:
+        return default_ref
+
+    supported = ", ".join(
+        f"110/{voltage} kV {power} MVA"
+        for voltage, power in sorted(GPZ_WN_SN_TRANSFORMER_CATALOG_BY_VOLTAGE_AND_POWER)
+    )
+    return _error_response(
+        (
+            "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
+            f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
+            f"Dostępne rekordy: {supported}."
+        ),
+        "source.transformer_catalog_ref_missing",
+    )
 
 
 def _build_gpz_line_field_names(section_entry: dict[str, Any], count: int) -> list[str]:
@@ -1203,6 +1270,51 @@ def _apply_materialized_branch_fields(
             "in_a": float(rated_current_a),
         }
 
+    for key in ("r0_ohm_per_km", "x0_ohm_per_km", "b0_siemens_per_km"):
+        value = materialized_params.get(key)
+        if value is not None:
+            target[key] = float(value)
+
+
+def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -> None:
+    """Zachowaj dane katalogowe i elektryczne przy podziale odcinka SN."""
+    for key in (
+        "catalog_ref",
+        "catalog_namespace",
+        "source_mode",
+        "parameter_source",
+        "materialized_params",
+        "overrides",
+        "rating",
+        "insulation",
+        "b_siemens_per_km",
+        "r0_ohm_per_km",
+        "x0_ohm_per_km",
+        "b0_siemens_per_km",
+    ):
+        if source.get(key) is not None:
+            target[key] = copy.deepcopy(source[key])
+
+    if isinstance(source.get("meta"), dict):
+        target.setdefault("meta", {}).update(copy.deepcopy(source["meta"]))
+
+
+def _apply_explicit_segment_zero_sequence(
+    target: dict[str, Any],
+    segment_payload: dict[str, Any],
+) -> None:
+    """Przenieś jawnie podane R0/X0 odcinka bez wyliczania ani zgadywania."""
+    zero_sequence = segment_payload.get("zero_sequence")
+    source = zero_sequence if isinstance(zero_sequence, dict) else segment_payload
+    for payload_key, target_key in (
+        ("r0_ohm_per_km", "r0_ohm_per_km"),
+        ("x0_ohm_per_km", "x0_ohm_per_km"),
+        ("b0_siemens_per_km", "b0_siemens_per_km"),
+    ):
+        value = source.get(payload_key)
+        if isinstance(value, int | float):
+            target[target_key] = float(value)
+
 
 def _apply_materialized_transformer_fields(
     target: dict[str, Any],
@@ -1698,6 +1810,12 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
+    transformer_count = _read_gpz_transformer_count(payload, sections_count)
+    if transformer_count < 1 or transformer_count > MAX_GPZ_WN_SN_TRANSFORMERS:
+        return _error_response(
+            "GPZ musi mieć od 1 do 4 transformatorów 110/SN.",
+            "source.invalid_transformer_count",
+        )
     for index, entry in enumerate(gpz_section_entries):
         line_fields_count = entry.get("line_fields_count")
         if (
@@ -1805,8 +1923,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         if isinstance(materialization, dict):
             return materialization
         binding_payload, materialized_params = materialization
-        materialized_params.setdefault("short_circuit_model", "short_circuit_power")
-        materialized_params.setdefault("short_circuit_mode", "SHORT_CIRCUIT_POWER")
+        if not materialized_params.get("short_circuit_model"):
+            materialized_params["short_circuit_model"] = "short_circuit_power"
+        if not materialized_params.get("short_circuit_mode"):
+            materialized_params["short_circuit_mode"] = "SHORT_CIRCUIT_POWER"
     if zero_sequence_config:
         for key in ("r0_ohm", "x0_ohm", "z0_z1_ratio"):
             if zero_sequence_config.get(key) is not None:
@@ -1910,6 +2030,108 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "step": ev_seq,
                 "action": f"Utworzono sekcje GPZ {idx + 1}",
                 "element_id": section["bus_ref"],
+            }
+        )
+
+    gpz_transformer_refs: list[str] = []
+    for index in range(transformer_count):
+        order = index + 1
+        hv_bus_ref = _make_id("gpz", seed, f"transformer/{order:03d}/bus_110")
+        transformer_ref = _make_id("gpz", seed, f"transformer/{order:03d}/wn_sn")
+        section = gpz_sections[index % len(gpz_sections)]
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": hv_bus_ref,
+                "name": f"Szyna 110 kV TR{order}",
+                "voltage_kv": float(payload.get("hv_voltage_kv") or 110.0),
+                "tags": ["gpz_hv_bus", "helper_bus"],
+                "meta": {
+                    "visual_role": "GPZ_HV_BUS",
+                    "gpz_substation_ref": substation_ref,
+                    "gpz_transformer_ref": transformer_ref,
+                    "render_on_sld": True,
+                    "show_in_project_tree": False,
+                },
+            },
+        )
+        if not result.success:
+            return _error_response(
+                f"Nie udało się utworzyć szyny 110 kV transformatora GPZ: {result.issues[0].message_pl if result.issues else '?'}",
+                "source.transformer_hv_bus_failed",
+            )
+        new_enm = result.enm
+        created.append(hv_bus_ref)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BUS_CREATED", "element_id": hv_bus_ref}
+        )
+
+        transformer_rated_power_mva = float(payload.get("transformer_sn_mva") or 25.0)
+        transformer_catalog_ref = _resolve_gpz_wn_sn_transformer_catalog_ref(
+            payload,
+            voltage_kv=voltage_kv,
+            rated_power_mva=transformer_rated_power_mva,
+        )
+        if isinstance(transformer_catalog_ref, dict):
+            return transformer_catalog_ref
+
+        transformer_catalog_binding = payload.get("transformer_catalog_binding")
+        materialization = _materialize_catalog_payload(
+            catalog_ref=transformer_catalog_ref,
+            catalog_binding=transformer_catalog_binding,
+            default_namespace="TRAFO_SN_NN",
+        )
+        if isinstance(materialization, dict):
+            return materialization
+        transformer_binding_payload, transformer_materialized_params = materialization
+
+        transformer = {
+            "ref_id": transformer_ref,
+            "name": payload.get(f"transformer_{order}_name") or f"TR{order} 110/{voltage_kv:g} kV",
+            "tags": ["gpz_wn_sn_transformer"],
+            "meta": {
+                "gpz_substation_ref": substation_ref,
+                "gpz_section_id": section["section_id"],
+                "gpz_section_order": section["order"],
+                "visual_role": "GPZ_WN_SN_TRANSFORMER",
+            },
+            "hv_bus_ref": hv_bus_ref,
+            "lv_bus_ref": section["bus_ref"],
+            "sn_mva": transformer_rated_power_mva,
+            "uhv_kv": float(payload.get("hv_voltage_kv") or 110.0),
+            "ulv_kv": float(voltage_kv),
+            "uk_percent": float(payload.get("transformer_uk_percent") or 12.0),
+            "pk_kw": float(payload.get("transformer_pk_kw") or 120.0),
+            "p0_kw": float(payload.get("transformer_p0_kw") or 25.0),
+            "i0_percent": float(payload.get("transformer_i0_percent") or 0.2),
+            "vector_group": payload.get("transformer_vector_group") or "YNd11",
+            "catalog_ref": transformer_catalog_ref,
+            "overrides": [],
+        }
+        _apply_catalog_metadata(
+            transformer,
+            transformer_binding_payload,
+            default_namespace="TRAFO_SN_NN",
+        )
+        _apply_materialized_transformer_fields(transformer, transformer_materialized_params)
+        transformer["meta"]["catalog_role"] = "TRANSFORMATOR_WN_SN"
+        new_enm.setdefault("transformers", []).append(transformer)
+        gpz_transformer_refs.append(transformer_ref)
+        created.append(transformer_ref)
+        ev_seq += 1
+        events.append(
+            {
+                "event_seq": ev_seq,
+                "event_type": "TRANSFORMER_CREATED",
+                "element_id": transformer_ref,
+            }
+        )
+        audit.append(
+            {
+                "step": ev_seq,
+                "action": f"Utworzono transformator WN/SN TR{order}",
+                "element_id": transformer_ref,
             }
         )
 
@@ -2143,12 +2365,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
             "station_type": "gpz",
             "bus_refs": gpz_section_bus_refs,
-            "transformer_refs": [],
+            "transformer_refs": gpz_transformer_refs,
             "entry_point_ref": gpz_section_bus_refs[0],
             "gpz_sections": gpz_sections,
             "tags": [],
             "meta": {
                 "gpz_section_count": len(gpz_sections),
+                "wn_sn_transformer_count": len(gpz_transformer_refs),
                 "grounding": grounding_config,
                 "zero_sequence": zero_sequence_config,
                 "short_circuit_mode": materialized_params.get("short_circuit_mode"),
@@ -2315,7 +2538,16 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "status": "closed",
+        "meta": {},
     }
+    if field_ref:
+        branch_data["meta"].update(
+            {
+                "origin_bay_ref": field_ref,
+                "origin_apparatus_kind": "cable_head",
+                "origin_port_role": "OUTGOING_HEAD",
+            }
+        )
     materialization = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
         catalog_binding=segment_catalog_binding,
@@ -2331,6 +2563,7 @@ def continue_trunk_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> d
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
     _apply_materialized_branch_fields(branch_data, materialized_params)
+    _apply_explicit_segment_zero_sequence(branch_data, segment)
 
     result = create_branch(new_enm, branch_data)
     if not result.success:
@@ -2607,6 +2840,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
         "status": "closed",
     }
+    _copy_split_segment_fields(left_data, segment)
     if catalog_ref:
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
@@ -2644,6 +2878,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "x_ohm_per_km": segment.get("x_ohm_per_km", 0.0),
         "status": "closed",
     }
+    _copy_split_segment_fields(right_data, segment)
     if catalog_ref:
         materialization = _materialize_catalog_payload(
             catalog_ref=catalog_ref,
@@ -2778,13 +3013,20 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     for idx in range(max(feeder_count, len(feeders))):
         feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
         feeder_spec = feeders[idx] if idx < len(feeders) else {}
+        feeder_meta: dict[str, Any] = {
+            "feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN"),
+        }
+        if isinstance(feeder_spec.get("catalog_bindings"), dict):
+            feeder_meta["catalog_bindings"] = feeder_spec.get("catalog_bindings")
+        if isinstance(feeder_spec.get("protection"), dict):
+            feeder_meta["protection_intent"] = feeder_spec.get("protection")
         nn_field_specs.append(
             _build_field_spec(
                 field_ref=feeder_ref,
                 name=f"Odpływ nN {idx + 1}",
                 bay_role="FEEDER",
                 bus_ref=nn_bus_id,
-                meta={"feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN")},
+                meta=feeder_meta,
             )
         )
 
@@ -2915,6 +3157,106 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
 
         ev_seq += 1
         events.append({"event_seq": ev_seq, "event_type": "TR_CREATED", "element_id": tr_id})
+
+    nn_configuration = str(nn_block.get("nn_configuration") or "")
+    source_converter_ref = nn_block.get("source_converter_catalog_ref")
+    source_converter_kind = str(nn_block.get("source_converter_kind") or "")
+    source_protection = nn_block.get("source_protection")
+    source_kind_map = {
+        "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
+        "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
+        "FW_INVERTER": ("WIND", "wind_inverter", "ZRODLO_NN_FW", "FW_SOURCE_CREATED"),
+    }
+    source_spec = source_kind_map.get(nn_configuration)
+
+    if source_spec and source_converter_ref:
+        _technology, gen_type, catalog_namespace, event_type = source_spec
+        generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
+        p_mw = (
+            _as_positive_float(nn_block.get("source_converter_pmax_mw"))
+            or _as_positive_float(nn_block.get("source_converter_sn_mva"))
+            or 0.0
+        )
+        materialized_source_params = {
+            "catalog_item_id": source_converter_ref,
+            "catalog_item_version": "2024.1",
+            "un_kv": nn_block.get("source_converter_un_kv"),
+            "pmax_mw": p_mw,
+            "sn_mva": nn_block.get("source_converter_sn_mva"),
+            "station_transformer_ref": tr_id if transformer.get("create", True) else None,
+            "protection_intent": source_protection if isinstance(source_protection, dict) else None,
+        }
+        new_enm.setdefault("generators", []).append(
+            {
+                "ref_id": generator_ref,
+                "name": nn_block.get("source_converter_name") or "Źródło nN stacji",
+                "bus_ref": nn_bus_id,
+                "p_mw": p_mw,
+                "q_mvar": 0.0,
+                "gen_type": gen_type,
+                "station_ref": stn_id,
+                "catalog_ref": source_converter_ref,
+                "catalog_namespace": catalog_namespace,
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "connection_variant": "nn_side",
+                "materialized_params": materialized_source_params,
+                "meta": {
+                    "station_ref": stn_id,
+                    "connection_point_ref": nn_bus_id,
+                    "station_transformer_ref": tr_id if transformer.get("create", True) else None,
+                    "protection_intent": source_protection if isinstance(source_protection, dict) else None,
+                    "render_as_station_internal_source": True,
+                },
+            }
+        )
+        for sub in new_enm.get("substations", []):
+            if sub.get("ref_id") == stn_id:
+                sub_meta = sub.setdefault("meta", {})
+                sub_meta.setdefault("source_specs", []).append(
+                    {
+                        "technology": _technology,
+                        "catalog_ref": source_converter_ref,
+                        "catalog_namespace": catalog_namespace,
+                        "connection_variant": "nn_side",
+                        "connection_point_ref": nn_bus_id,
+                        "generator_ref": generator_ref,
+                        "converter_name": nn_block.get("source_converter_name"),
+                        "converter_kind": source_converter_kind or _technology,
+                        "protection_intent": (
+                            source_protection if isinstance(source_protection, dict) else None
+                        ),
+                    }
+                )
+                break
+        created.append(generator_ref)
+        if isinstance(source_protection, dict):
+            protection_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/protection")
+            breaker_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/breaker")
+            new_enm.setdefault("protection_assignments", []).append(
+                {
+                    "ref_id": protection_ref,
+                    "name": source_protection.get("device_label") or "Zabezpieczenie źródła nN",
+                    "breaker_ref": breaker_ref,
+                    "ct_ref": None,
+                    "vt_ref": None,
+                    "device_type": "overcurrent",
+                    "catalog_ref": source_protection.get("device_catalog_ref"),
+                    "settings": [],
+                    "is_enabled": True,
+                    "tags": ["station_nn_source_protection", "requires_ct_vt"],
+                    "meta": {
+                        "station_ref": stn_id,
+                        "protected_object_ref": generator_ref,
+                        "protected_object": source_protection.get("protected_object"),
+                        "analysis_scope": source_protection.get("analysis_scope"),
+                        "blocker_reason": "Dobierz CT/VT i nastawy zabezpieczenia źródła nN.",
+                    },
+                }
+            )
+            created.append(protection_ref)
+        ev_seq += 1
+        events.append({"event_seq": ev_seq, "event_type": event_type, "element_id": generator_ref})
 
     # --- nN Feeders ---
     ev_seq += 1
@@ -3258,6 +3600,7 @@ def _insert_branch_point_on_segment_sn(
             "status": "closed",
             "catalog_ref": segment.get("catalog_ref"),
         }
+        _copy_split_segment_fields(seg_data, segment)
         branch_res = create_branch(new_enm, seg_data)
         if not branch_res.success:
             return _error_response(
@@ -3287,6 +3630,38 @@ def _insert_branch_point_on_segment_sn(
         new_enm = port_res.enm
         created.append(port_bus)
         branch_port_bus_refs.append(port_bus)
+
+        connector_ref = _make_id("bp", seed, f"branch_connector_{idx + 1}")
+        connector_status = "open" if payload.get("switch_state") == "open" else "closed"
+        connector_res = create_branch(
+            new_enm,
+            {
+                "ref_id": connector_ref,
+                "name": f"Łącznik portu odgałęźnego {idx + 1}",
+                "type": "switch",
+                "from_bus_ref": bp_bus_ref,
+                "to_bus_ref": port_bus,
+                "status": connector_status,
+                "r_ohm": 0.0,
+                "x_ohm": 0.0,
+                "tags": ["branch_point_internal_connector"],
+                "meta": {
+                    "branch_point_ref": bp_ref,
+                    "port_id": f"BRANCH_{idx + 1}" if branch_point_type == "zksn" else "BRANCH",
+                    "render_on_sld": False,
+                    "show_in_project_tree": False,
+                    "requires_catalog_binding": False,
+                    "visual_role": "BRANCH_POINT_INTERNAL_SWITCH",
+                },
+            },
+        )
+        if not connector_res.success:
+            return _error_response(
+                "Nie udało się połączyć portu odgałęźnego z punktem rozgałęzienia.",
+                "branch_point.internal_connector_failed",
+            )
+        new_enm = connector_res.enm
+        created.append(connector_ref)
 
     # bp_catalog_ref already validated above (cannot be None here)
     completeness = "KOMPLETNY"
@@ -3485,6 +3860,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         default_namespace="KABEL_SN" if branch_type == "cable" else "LINIA_SN",
     )
     _apply_materialized_branch_fields(branch_data, materialized_params)
+    _apply_explicit_segment_zero_sequence(branch_data, segment)
     result = create_branch(new_enm, branch_data)
     if not result.success:
         return _error_response("Nie udało się utworzyć odgałęzienia.", "branch.creation_failed")
@@ -5147,14 +5523,20 @@ def execute_domain_operation(
     """
     canonical_name = op_name
 
-    if canonical_name not in _HANDLERS:
+    handler = _HANDLERS.get(canonical_name)
+    if handler is None:
+        from .domain_operations_v2 import ALL_V2_HANDLERS
+
+        handler = ALL_V2_HANDLERS.get(canonical_name)
+
+    if handler is None:
         return _error_response(
             f"Nieznana operacja: '{op_name}'. Dostępne: {', '.join(sorted(CANONICAL_OPS))}",
             "dispatcher.unknown_operation",
         )
 
     try:
-        return _HANDLERS[canonical_name](enm_dict, payload)
+        return handler(enm_dict, payload)
     except Exception as exc:
         return _error_response(
             f"Nieobsłużony wyjątek w operacji '{canonical_name}': {exc}",

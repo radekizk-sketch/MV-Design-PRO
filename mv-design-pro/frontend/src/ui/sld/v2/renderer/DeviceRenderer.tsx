@@ -31,6 +31,7 @@ export type DeviceKindV2 =
   | 'CB'
   | 'DS_BUS'
   | 'DS_LINE'
+  | 'SWITCH_DISCONNECTOR'
   | 'ES'
   | 'CT'
   | 'VT'
@@ -88,7 +89,76 @@ function renderDeviceShape(
   kind: DeviceKindV2,
   style: ReturnType<typeof getDeviceStyle>,
 ): JSX.Element {
-  switch (kind) {
+  if (kind === 'CB') {
+    const s = Math.min(DEVICE_BLOCK_STANDARD.width, DEVICE_BLOCK_STANDARD.height);
+    return (
+      <rect
+        x={-s / 2}
+        y={-s / 2}
+        width={s}
+        height={s}
+        fill={style.fill}
+        stroke={style.stroke}
+        strokeWidth={style.strokeWidth}
+        className={style.className}
+        data-symbol-canon="circuit_breaker_square"
+      />
+    );
+  }
+
+  if (kind === 'DS_BUS' || kind === 'DS_LINE') {
+    const r = Math.min(DEVICE_BLOCK_STANDARD.width, DEVICE_BLOCK_STANDARD.height) * 0.22;
+    return (
+      <circle
+        cx={0}
+        cy={0}
+        r={r}
+        fill={style.fill}
+        stroke={style.stroke}
+        strokeWidth={style.strokeWidth}
+        className={style.className}
+        data-symbol-canon="disconnector_circle"
+      />
+    );
+  }
+
+  if (kind === 'SWITCH_DISCONNECTOR') {
+    const s = Math.min(DEVICE_BLOCK_STANDARD.width, DEVICE_BLOCK_STANDARD.height) * 0.42;
+    return (
+      <rect
+        x={-s / 2}
+        y={-s / 2}
+        width={s}
+        height={s}
+        fill={style.fill}
+        stroke={style.stroke}
+        strokeWidth={style.strokeWidth}
+        className={style.className}
+        transform="rotate(45)"
+        data-symbol-canon="switch_disconnector_rotated_square"
+      />
+    );
+  }
+
+  if (kind === 'FUSE') {
+    const w = DEVICE_BLOCK_STANDARD.width * 0.22;
+    const h = DEVICE_BLOCK_STANDARD.height * 0.48;
+    return (
+      <rect
+        x={-w / 2}
+        y={-h / 2}
+        width={w}
+        height={h}
+        fill={style.fill}
+        stroke={style.stroke}
+        strokeWidth={style.strokeWidth}
+        className={style.className}
+        data-symbol-canon="fuse_vertical_rectangle"
+      />
+    );
+  }
+
+  switch (kind as DeviceKindV2) {
     case 'CB':
     case 'DS_BUS':
     case 'DS_LINE':
@@ -114,8 +184,17 @@ function renderDeviceShape(
       // Uziemnik na bocznym torze — pionowy tor + symbol ziemi
       const length = 30;
       return (
-        <g>
+        <g data-symbol-canon="earthing_switch_lateral_branch">
           {/* Pionowy boczny tor */}
+          <line
+            x1={0}
+            y1={0}
+            x2={20}
+            y2={0}
+            stroke={style.stroke}
+            strokeWidth={2}
+            className={style.className}
+          />
           <line
             x1={20}
             y1={0}
@@ -244,5 +323,7 @@ function renderDeviceShape(
         </g>
       );
     }
+    default:
+      throw new Error(`Nieobsługiwany aparat SLD: ${kind}`);
   }
 }
