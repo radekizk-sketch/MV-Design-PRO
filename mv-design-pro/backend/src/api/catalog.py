@@ -28,6 +28,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, status
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.catalog.switchgear import (
+    list_manufacturers as list_switchgear_manufacturers,
+)
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
@@ -308,6 +311,16 @@ def list_source_system_types() -> list[dict[str, Any]]:
 def list_branch_point_types(kind: str | None = None) -> list[dict[str, Any]]:
     """List all branch point types for branch poles and ZKSN."""
     return get_all_branch_point_types(kind)
+
+
+@router.get("/manufacturers")
+def list_manufacturers_endpoint() -> list[dict[str, Any]]:
+    """Lista producentów rozdzielnic SN (goal §11A).
+
+    Wszyscy startowi producenci mają `status='requires_catalog'` dopóki nie
+    pojawią się zweryfikowane source_refs. UI ma pokazać badge ostrzegawczy.
+    """
+    return [m.model_dump(mode="json") for m in list_switchgear_manufacturers()]
 
 
 @router.get("/protection/device-types")
