@@ -19,7 +19,17 @@ from .complete_mv_bay_template import (
     CompleteMvBayTemplate,
     SourceStatus,
 )
+from .device_instance import (
+    ApparatusKind,
+    BayDeviceInstanceTemplate,
+    ElectricalSide,
+)
 from .manufacturer import Manufacturer, ManufacturerStatus
+from .port_definition import (
+    DirectionHint,
+    PortDefinitionTemplate,
+    PortKind,
+)
 from .registry import (
     ABB,
     ELEKTROMETAL,
@@ -41,16 +51,22 @@ from .switchgear_family import (
 
 __all__ = [
     "ABB",
+    "ApparatusKind",
+    "BayDeviceInstanceTemplate",
     "BayKind",
     "BusbarSystem",
     "CANONICAL_FALLBACK_REGISTRY",
     "CompleteMvBayTemplate",
     "ConstructionType",
+    "DirectionHint",
     "ELEKTROMETAL",
+    "ElectricalSide",
     "InsulationType",
     "MANUFACTURER_REGISTRY",
     "Manufacturer",
     "ManufacturerStatus",
+    "PortDefinitionTemplate",
+    "PortKind",
     "SIEMENS",
     "SourceStatus",
     "SwitchgearFamily",

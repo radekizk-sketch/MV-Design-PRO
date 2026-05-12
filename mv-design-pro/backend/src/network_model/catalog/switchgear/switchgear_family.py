@@ -45,6 +45,16 @@ SwitchgearFamilyStatus = Literal[
     "deprecated",
 ]
 
+LifecycleStatus = Literal["current", "legacy", "archived", "unknown"]
+
+CompartmentModel = Literal[
+    "cable_compartment",
+    "busbar_compartment",
+    "apparatus_compartment",
+    "lv_control_compartment",
+    "metering_compartment",
+]
+
 
 class SwitchgearFamily(BaseModel):
     """Rodzina rozdzielnicy SN konkretnego producenta.
@@ -69,13 +79,23 @@ class SwitchgearFamily(BaseModel):
     manufacturer_ref: str
     family_name: str
     series_name: str | None = None
+    product_line_code: str | None = None
     voltage_levels: list[float] = Field(default_factory=list)
     rated_current_options: list[int] = Field(default_factory=list)
     short_time_current_options: list[int] = Field(default_factory=list)
     insulation_type: InsulationType = "unknown"
     construction_type: ConstructionType = "unknown"
     busbar_system: BusbarSystem = "unknown"
+    compartment_models: list[CompartmentModel] = Field(default_factory=list)
     allowed_bay_kinds: list[str] = Field(default_factory=list)
+    allowed_apparatus_kinds: list[str] = Field(default_factory=list)
+    allowed_interlocks: list[str] = Field(default_factory=list)
+    supported_lod_profiles: list[str] = Field(default_factory=list)
+    cad_footprint_ref: str | None = None
+    source_document_refs: list[str] = Field(default_factory=list)
+    source_version: str | None = None
+    verified_at: str | None = None
+    lifecycle_status: LifecycleStatus = "unknown"
     status: SwitchgearFamilyStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
     notes_pl: str | None = None

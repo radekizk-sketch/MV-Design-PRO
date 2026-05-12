@@ -34,6 +34,14 @@ ZPUE_WLOSZCZOWA = Manufacturer(
     country="PL",
     status="requires_catalog",
     source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Dane techniczne mogą pochodzić wyłącznie z oficjalnych katalogów ZPUE "
+        "S.A. (Włoszczowa), kart produktów lub dokumentacji zatwierdzonej "
+        "przez producenta. Niezweryfikowane wartości nie mogą być oznaczone "
+        "jako 'official_catalog'."
+    ),
     notes_pl=(
         "Producent rozdzielnic SN i stacji transformatorowych w Polsce. "
         "Wymaga uzupełnienia danych katalogowych z oficjalnych źródeł "
@@ -48,6 +56,13 @@ ELEKTROMETAL = Manufacturer(
     country="PL",
     status="requires_catalog",
     source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Dane techniczne mogą pochodzić wyłącznie z oficjalnych katalogów "
+        "Elektrometal Energetyka S.A. lub dokumentacji zatwierdzonej "
+        "przez producenta."
+    ),
     notes_pl=(
         "Polski producent rozdzielnic SN. Wymaga uzupełnienia danych "
         "katalogowych z oficjalnych źródeł producenta."
@@ -61,6 +76,14 @@ ABB = Manufacturer(
     country="CH",
     status="requires_catalog",
     source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Dane techniczne mogą pochodzić wyłącznie z oficjalnych kart "
+        "produktów ABB lub dokumentacji zatwierdzonej przez producenta. "
+        "Rodziny produktowe (UniGear, SafeRing, SafePlus itp.) wymagają "
+        "weryfikacji wersji katalogu."
+    ),
     notes_pl=(
         "Międzynarodowy producent rozdzielnic SN. Wymaga uzupełnienia "
         "danych katalogowych z oficjalnych kart produktów ABB."
@@ -74,6 +97,14 @@ SIEMENS = Manufacturer(
     country="DE",
     status="requires_catalog",
     source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Dane techniczne mogą pochodzić wyłącznie z oficjalnych kart "
+        "produktów Siemens lub dokumentacji zatwierdzonej przez producenta. "
+        "Rodziny produktowe (NXAIR, 8DJH, SIMOSEC itp.) wymagają weryfikacji "
+        "wersji katalogu."
+    ),
     notes_pl=(
         "Międzynarodowy producent rozdzielnic SN. Wymaga uzupełnienia "
         "danych katalogowych z oficjalnych kart produktów Siemens."

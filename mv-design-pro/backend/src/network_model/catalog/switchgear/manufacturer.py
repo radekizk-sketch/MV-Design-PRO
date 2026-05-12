@@ -27,8 +27,11 @@ ManufacturerStatus = Literal[
 ]
 
 
+LifecycleStatus = Literal["current", "legacy", "archived", "unknown"]
+
+
 class Manufacturer(BaseModel):
-    """Producent rozdzielnicy SN — pozycja katalogu.
+    """Producent rozdzielnicy SN — pozycja katalogu (goal §11A.2).
 
     Pola:
         manufacturer_ref: stabilny identyfikator (UPPER_SNAKE_CASE).
@@ -38,6 +41,11 @@ class Manufacturer(BaseModel):
         status: status weryfikacji katalogu (kanon §11A.2).
         source_refs: lista identyfikatorów źródeł danych (oficjalne PDF, karty
             katalogowe, repo verified). Pusta lista przy `requires_catalog`.
+        lifecycle_status: cykl życia producenta (current/legacy/archived).
+        verified_at: ISO-8601 timestamp ostatniej weryfikacji źródeł
+            (None gdy `requires_catalog`).
+        catalog_policy_pl: opis polityki źródeł dla tego producenta
+            (jakie dokumenty są wymagane, jak są weryfikowane).
         notes_pl: komentarz po polsku dla UI / audytu.
     """
 
@@ -47,6 +55,9 @@ class Manufacturer(BaseModel):
     country: str | None = None
     status: ManufacturerStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
+    lifecycle_status: LifecycleStatus = "unknown"
+    verified_at: str | None = None
+    catalog_policy_pl: str | None = None
     notes_pl: str | None = None
 
     def is_verified(self) -> bool:

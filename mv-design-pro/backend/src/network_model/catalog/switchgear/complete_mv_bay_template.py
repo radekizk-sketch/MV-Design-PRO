@@ -31,6 +31,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from ..bay_templates import BayTemplate
+from .device_instance import BayDeviceInstanceTemplate
+from .port_definition import PortDefinitionTemplate
 
 BayKind = Literal[
     "liniowe_doplywowe",
@@ -79,6 +81,19 @@ class CompleteMvBayTemplate(BaseModel):
     bay_role: Literal["IN", "OUT", "TR", "COUPLER", "FEEDER", "MEASUREMENT", "OZE"] = "OUT"
     source_status: SourceStatus = "requires_catalog"
     source_refs: list[str] = Field(default_factory=list)
+    # §11A.2 rozszerzenie — szablon pola producenta generuje pełne SLD pole.
+    template_name_pl: str | None = None
+    template_code: str | None = None
+    device_instances: list[BayDeviceInstanceTemplate] = Field(default_factory=list)
+    port_definitions: list[PortDefinitionTemplate] = Field(default_factory=list)
+    interlock_rules: list[str] = Field(default_factory=list)
+    operation_rules: list[str] = Field(default_factory=list)
+    protection_requirements: list[str] = Field(default_factory=list)
+    measurement_requirements: list[str] = Field(default_factory=list)
+    readiness_requirements: list[str] = Field(default_factory=list)
+    lod_variants: list[str] = Field(default_factory=lambda: ["LOD0", "LOD1", "LOD2", "LOD3"])
+    cad_anchors: dict[str, str] = Field(default_factory=dict)
+    label_slots: list[str] = Field(default_factory=list)
     version: str = "1.0"
     hash: str = ""
     notes_pl: str | None = None
