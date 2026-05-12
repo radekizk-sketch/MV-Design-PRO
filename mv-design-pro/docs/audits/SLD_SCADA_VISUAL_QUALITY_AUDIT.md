@@ -4,6 +4,26 @@
 **Data audytu:** 2026-05-12
 **Zakres:** PR 1 (port binding + migracja + walidator + adapter + guard) + minimalne fragmenty PR 2 (deep link readiness → E-12 dla `topology.connection_port_missing`) + minimalne PR 3 (snapshot strukturalne testy).
 
+## 0. Pełna lista commitów na branch `claude/rebuild-sld-industrial-7bjlW`
+
+| # | Commit | Element |
+|---|---|---|
+| 1 | `6966bd5` | PR 1 foundation: port binding endpoint + automigracja + walidator E030 + adapter warning (17 plików, 39 testów) |
+| 2 | `95ef09a` | SupplyPathHighlighter — BFS topologia bez fizyki (8 testów) |
+| 3 | `4259a95` | Manufacturer/SwitchgearFamily/CompleteMvBayTemplate (kompozycja) + 4 producenci `requires_catalog` (19 testów) |
+| 4 | `622c2a8` | API `GET /api/catalog/manufacturers` |
+| 5 | `92a8b2b` | Frontend `ManufacturerPicker.tsx` (7 testów) |
+| 6 | `d98e71b` | Canonical fallback registry (10 templates) + API `complete-bay-templates` (10 testów) |
+| 7 | `74fbc97` | SupplyPath adapter integration + `SwitchgearFamilyPicker.tsx` + `BayTemplatePicker.tsx` (17 testów) |
+| 8 | `28d3637` | `DerPccVariantInfo.tsx` widget — 5 wariantów GeneratorConnectionVariant (8 testów) |
+| 9 | `be2ba82` | `SupplyPathLegend.tsx` + naprawa no_codenames (6 testów) |
+| 10 | `49eaf0f` | `language_guard.py` — zakazane terminy backend Python (303 plików) |
+| 11 | `0e92274` | `false_zero_guard.py` — fałszywe 0.00 w UI (report-only, 542 plików) |
+| 12 | `532a7eb` | `gpz_switchgear_guard.py` + `station_not_rectangle_guard.py` (fail-mode CI) |
+| 13 | `b70a43e` | Integracja `DerPccVariantInfo` w `DerConfigurator` zakładka topology (8 testów) |
+| 14 | `a4aa805` | `SwitchgearTemplateStepper.tsx` — 4-krokowy flow producent→rodzina→szablon→apply (6 testów) |
+| 15 | `c662134` | E2E Playwright spec `sld-supply-path-visibility.spec.ts` (smoke + API contract) |
+
 ## 1. Co zostało dostarczone w tej iteracji
 
 ### 1.1 Port binding — fundament elektryczny (PR 1)
