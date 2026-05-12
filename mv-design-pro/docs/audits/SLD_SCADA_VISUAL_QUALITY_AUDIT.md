@@ -43,6 +43,22 @@
 
 Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "endpoint_ports", missing_endpoints: [...]}` jest poprawnie tłumaczony przez `executeFixActionSurface` na otwarcie formularza edycji kabla/linii.
 
+### 1.1.a Manufacturer / SwitchgearFamily / CompleteMvBayTemplate (PR 5 infrastruktura backend)
+
+| Element | Lokalizacja | Status |
+|---|---|---|
+| `Manufacturer` Pydantic model | `backend/src/network_model/catalog/switchgear/manufacturer.py` | NOWY |
+| `SwitchgearFamily` Pydantic model | `backend/src/network_model/catalog/switchgear/switchgear_family.py` | NOWY |
+| `CompleteMvBayTemplate` (kompozycja, NIE dziedziczenie) | `backend/src/network_model/catalog/switchgear/complete_mv_bay_template.py` | NOWY |
+| `ManufacturerRegistry` z 4 producentami (wszyscy `requires_catalog`) | `backend/src/network_model/catalog/switchgear/registry.py` | NOWY |
+| Testy registry + modeli (19 scenariuszy) | `backend/tests/network_model/catalog/test_switchgear_manufacturer_registry.py` | NOWY |
+
+**Reguła nadrzędna utrzymana:** wszyscy 4 startowi producenci (ZPUE Włoszczowa, Elektrometal, ABB, Siemens) mają `status="requires_catalog"` i puste `source_refs`. Test `test_all_starters_require_catalog` jawnie to wymusza. Bez zweryfikowanych źródeł katalogowych UI musi pokazać badge „Wymaga uzupełnienia katalogu".
+
+**Decyzja architektoniczna (kompozycja):** `CompleteMvBayTemplate` zawiera `base_template: BayTemplate` jako pole, NIE dziedziczy po `BayTemplate`. Wg recenzji planu: „Bezpieczniej: kompozycja albo rozszerzony wrapper. Dziedziczenie tylko jeśli obecny model Pydantic jest stabilny i testy to pokryją." Hash kontentu wyklucza `source_refs` (mogą się zmieniać niezależnie od istoty szablonu).
+
+**Statusy źródła:** `official_catalog` / `repo_verified` / `user_defined` / `canonical_fallback` / `requires_catalog` / `incomplete_requires_review`. Tylko `official_catalog` + `repo_verified` z niepustym `source_refs` zwracają `is_verified() == True`.
+
 ### 1.2.a SupplyPathHighlighter (PR 3 element — interpretacja topologii toru zasilania)
 
 | Element | Lokalizacja | Status |
@@ -85,7 +101,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 | Klikalność elementów | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Główne elementy klikalne; pełna macierz 26 typów elementów — PR 2 pełne. |
 | Deep link readiness → element | 3/10 | 3/10 | 3/10 | 3/10 | n/a | E030 deep link działa; pozostałe blockery bez wzbogaconych deep linków — PR 2 pełne. |
 | DER PCC visibility | 5/10 | 6/10 | 7/10 | 7/10 | n/a | Validator + renderery działają; brak dedykowanej zakładki PCC w E-21/E-22/E-23 — PR 4. |
-| Manufacturer flow | 0/10 | 0/10 | 0/10 | 0/10 | n/a | Brak warstwy Manufacturer/SwitchgearFamily/CompleteMvBayTemplate — PR 5. |
+| Manufacturer flow | 4/10 | 4/10 | 4/10 | 4/10 | n/a | **Backend warstwa zbudowana** — `Manufacturer`/`SwitchgearFamily`/`CompleteMvBayTemplate` przez kompozycję; 4 producentów ze statusem `requires_catalog`. UI Pickers + verified source_refs — PR 5 frontend. |
 
 ## 3. Verification commands (per acceptance gate)
 
