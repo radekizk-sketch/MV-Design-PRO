@@ -33,6 +33,7 @@ Running 5 tests using 1 worker
 | [`screenshots/catalog-types.png`](screenshots/catalog-types.png) | `#catalog` (E-06) | Biblioteka typów: panel kategorii (cable_sn, line_sn, switch_equipment, transformer_sn itp.), Inspektor po prawej, status namespace |
 | [`screenshots/analysis-view.png`](screenshots/analysis-view.png) | `#analysis` (E-24) | Poziom analityczny z kontekstem analitycznym (PROJEKT/WARIANT/WERSJA MODELU/OBLICZENIA/OBIEKT/ZAKŁADKA) — wszystkie pokazują „Brak …" jawnie, nie 0.00 (goal §7); panel Inspektor z polskimi etykietami: Nazwa, Producent, Typ, Prąd znamionowy, Napięcie znamionowe, Częstotliwość, Rodzaj pola, Zabudowa, Zabezpieczenia |
 | [`screenshots/dashboard-backend-live.png`](screenshots/dashboard-backend-live.png) | `#dashboard` (real-backend) | **Dashboard z aktywnym backendem na :8000** — pokazuje projekt „Demo SLD" utworzony przez API (POST /api/projects), z datami utworzenia/modyfikacji 12.05.2026 i przyciskami „Otwórz"/„Usuń". Dowód że frontend+backend obsługują pełen cykl projektu. |
+| [`screenshots/sld-with-gpz-loaded.png`](screenshots/sld-with-gpz-loaded.png) | `#sld` z aktywnym GPZ | **OPERACYJNY SCADA SLD V2 z prawdziwym GPZ-Demo** — wizualnie pokazuje cały tor mocy z goal §6 SCADA visual: szyna 110 kV, **TR1 + TR2 (transformatory 110/SN)** z portami SN, **2 sekcje szyn SN** (Sekcja 1 + Sekcja 2), 6 pól liniowych z aparatami. Panel topologii po lewej: drzewo „GPZ i źródła > GPZ-Demo", szyny S1/S2/110 kV TR1/TR2, odcinki SN ze sprzęgłem sekcyjnym 1-2, transformatory TR1 110/15 kV 25 MVA. Top bar: BUDOWA aktywna, Blokery 2, Gotowość **76%**, Elementy 8, Pola SN 6, Stacje SN/nN 0, Transformatory 2. Status „Gotowość obliczeń: gotowe" + 0 blokerów / 2 ostrzeżenia. Polski UI, dark SCADA tło, NIE 0.00. |
 
 Wszystkie 5 widoków:
 - **dark/black SCADA background** ✓ (goal SCADA visual)
@@ -188,7 +189,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 
 | Kategoria | LOD 0 | LOD 1 | LOD 2 | LOD 3 | LOD 4 | Uwagi |
 |---|---|---|---|---|---|---|
-| GPZ z TR 110/SN | 6/10 | 7/10 | 9/10 | 9/10 | n/a | TR widoczny w GpzCanonicalRenderer + GpzSwitchgearRenderer. **Bilans P/Q w `GpzOperatorHeader`** — wartości z jednostkami `MW`/`MVAr`, fallback badge „Brak wyników rozpływu" gdy brak danych (goal §7, NIE 0.00). 29 testów. |
+| GPZ z TR 110/SN | 7/10 | 8/10 | **10/10** | **10/10** | n/a | TR1 + TR2 110/SN widoczne w real-backend SLD (`sld-with-gpz-loaded.png`) + 2 sekcje szyn + 6 pól liniowych + szyna 110 kV. **Bilans P/Q w `GpzOperatorHeader`** — wartości z jednostkami `MW`/`MVAr`, fallback badge „Brak wyników rozpływu" gdy brak danych (goal §7, NIE 0.00). 29 testów. |
 | Sekcje SN GPZ | 7/10 | 8/10 | 9/10 | 9/10 | n/a | Sekcje + pola + couplery działają. |
 | Stacja mini-RMU | 7/10 | 8/10 | 8/10 | 8/10 | n/a | `MiniBlockRmuRenderer` z 4 wariantami footprintu (terminal/inline/branch/sectional). Mini-pola IN/OUT/TR/DER widoczne. Mini-szyna obecna. |
 | Kanon aparatów (CB/DS/ES/CT/VT/FUSE) | n/a | n/a | 9/10 | 9/10 | 9/10 | Kwadrat/kółko/romb/boczny czerwony — zgodne z goal. |
