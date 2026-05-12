@@ -14,7 +14,19 @@
  *   cd mv-design-pro/frontend && npm run test:e2e -- sld-supply-path-visibility
  */
 
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+
 import { expect, test, type Page } from '@playwright/test';
+
+const SCREENSHOT_DIR = join(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  'docs',
+  'audits',
+  'screenshots',
+);
 
 async function waitForAppReady(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="app-ready"]', {
@@ -39,6 +51,17 @@ test.describe('Tor mocy — SupplyPathHighlighter w UI', () => {
     // projektu). Tor mocy w takim stanie nie jest pokazany (brak źródeł).
     const canvas = page.getByTestId('sld-canvas-v2');
     await expect(canvas).toBeVisible();
+  });
+
+  test('screenshot SLD pustego widoku — dowód browser pass', async ({ page }) => {
+    await page.goto('/#sld');
+    await waitForAppReady(page);
+    const canvas = page.getByTestId('sld-canvas-v2');
+    await expect(canvas).toBeVisible();
+    await page.screenshot({
+      path: join(SCREENSHOT_DIR, 'sld-empty-state.png'),
+      fullPage: true,
+    });
   });
 });
 

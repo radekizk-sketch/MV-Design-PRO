@@ -4,6 +4,44 @@
 **Data audytu:** 2026-05-12
 **Zakres:** PR 1 (port binding + migracja + walidator + adapter + guard) + minimalne fragmenty PR 2 (deep link readiness → E-12 dla `topology.connection_port_missing`) + minimalne PR 3 (snapshot strukturalne testy).
 
+## 0.A Browser pass (Playwright e2e + screenshot)
+
+**Status:** ZIELONY — 3 testów PASS, 2 skipped (real-backend), Chrome Headless Shell 145.0.7632.6.
+
+Uruchomione na branchu `claude/rebuild-sld-industrial-7bjlW`:
+
+```
+Running 5 tests using 1 worker
+
+  ✓  1 [chromium] › sld-supply-path-visibility.spec.ts › Tor mocy SupplyPathHighlighter w UI › aplikacja na #sld renderuje SldCanvasV2 (smoke) (1.3s)
+  ✓  2 [chromium] › sld-supply-path-visibility.spec.ts › Tor mocy SupplyPathHighlighter w UI › SLD render bez ENM nie wybucha — empty state aktywny (1.2s)
+  ✓  3 [chromium] › sld-supply-path-visibility.spec.ts › Tor mocy SupplyPathHighlighter w UI › screenshot SLD pustego widoku — dowód browser pass (1.2s)
+  -  4 [chromium] › Manufacturer flow › GET /api/catalog/manufacturers (wymaga real-backend)
+  -  5 [chromium] › Manufacturer flow › GET /api/catalog/complete-bay-templates (wymaga real-backend)
+
+  2 skipped
+  3 passed (5.7s)
+```
+
+**Screenshot:** [`screenshots/sld-empty-state.png`](screenshots/sld-empty-state.png) (163 KB)
+
+Screenshot pokazuje aktywną aplikację MV-DESIGN-PRO V12.2:
+- ciemne SCADA tło z polskim UI,
+- panele „Schemat i topologii", „Gotowość obliczeń", „Inspektor techniczny" (E-03),
+- status bar z LOD 2 i 100% scale,
+- pusta kanwa SLD V2 z komunikatem „Schemat oczekuje na dane modelu sieci",
+- top bar z przyciskami: „Sprawdź braki", „Nakładka", „Analizy", „Eksport",
+- model i status: „nie otwarto", „nie skonfiguruj projekt", „Brak wyników".
+
+Uruchomienie spec'a (powtarzalne):
+```bash
+cd mv-design-pro/frontend
+npm run dev &  # dev server na :5173
+npx playwright install chromium  # jednorazowo
+PLAYWRIGHT_DISABLE_WEBSERVER=1 ./node_modules/.bin/playwright test \
+  e2e/sld-supply-path-visibility.spec.ts --project=chromium --reporter=list
+```
+
 ## 0. Pełna lista commitów na branch `claude/rebuild-sld-industrial-7bjlW`
 
 | # | Commit | Element |
