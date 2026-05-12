@@ -40,6 +40,7 @@ BusbarSystem = Literal[
 ]
 SwitchgearFamilyStatus = Literal[
     "verified",
+    "repo_verified",
     "user_defined",
     "requires_catalog",
     "deprecated",

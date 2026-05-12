@@ -24,7 +24,28 @@
 
 ## 4. Jakie rodziny rozdzielnic są zweryfikowane
 
-**ŻADNE.** Aby dodać rodzinę ABB (np. UniGear ZS1, SafeRing, SafePlus, UniSec), procedura:
+**`repo_verified` (NIE `official_catalog`):**
+
+| Rodzina | switchgear_family_ref | source_refs |
+|---|---|---|
+| UniGear ZS1 | `ABB__UNIGEAR_ZS1` | https://new.abb.com/medium-voltage/switchgear/air-insulated/iec-and-other-standards/unigear-zs1-portfolio |
+| SafeRing | `ABB__SAFERING` | https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit |
+
+### UniGear ZS1
+- voltage: 12 / 17.5 / 24 kV
+- rated current: 1250 / 2500 / 4000 A
+- Ith: 25 / 31 / 50 / 63 kA / 1s
+- konstrukcja: wysuwna (withdrawable), izolacja powietrzna, single busbar (opcjonalnie double)
+- bay kinds: liniowe / transformatorowe / pomiarowe / sprzęgłowe poprzeczne+podłużne / sekcyjne / potrzeb własnych / odgromnikowe
+
+### SafeRing
+- voltage: 12 / 17.5 / 24 kV
+- rated current: 630 A
+- Ith: 16 / 20 / 21 kA / 1s
+- konstrukcja: RMU, izolacja SF6, ring main, sealed-for-life
+- bay kinds: liniowe / transformatorowe
+
+Aby promować rodzinę do `verified` (oficjalny katalog ABB), procedura:
 1. Pobrać oficjalną kartę produktu ABB (np. UniGear ZS1 — najnowsza rewizja).
 2. Utworzyć `SwitchgearFamily` z:
    - `status="verified"`,

@@ -146,6 +146,16 @@ export async function fetchManufacturers(): Promise<Manufacturer[]> {
   return fetchCatalogJson<Manufacturer[]>('/api/catalog/manufacturers');
 }
 
+/** Lista rodzin rozdzielnic SN — opcjonalnie filtrowana per producent. */
+export async function fetchSwitchgearFamilies(
+  manufacturerRef?: string,
+): Promise<unknown[]> {
+  const query = manufacturerRef
+    ? `?manufacturer_ref=${encodeURIComponent(manufacturerRef)}`
+    : '';
+  return fetchCatalogJson<unknown[]>(`/api/catalog/switchgear-families${query}`);
+}
+
 export async function fetchCableTypes(): Promise<CableType[]> {
   return fetchCatalogJson<CableType[]>('/api/catalog/cable-types');
 }

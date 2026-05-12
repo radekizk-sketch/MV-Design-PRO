@@ -121,4 +121,53 @@ test.describe('Real-backend: utworzenie projektu i przejście do SLD', () => {
       expect(t.source_status).toBe('canonical_fallback');
     }
   });
+
+  test('API /api/catalog/switchgear-families zwraca 6 zweryfikowanych rodzin', async ({
+    page,
+  }) => {
+    const response = await page.request.get('/api/catalog/switchgear-families');
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as Array<{
+      switchgear_family_ref: string;
+      status: string;
+      source_refs: string[];
+    }>;
+    expect(body.length).toBe(6);
+    const refs = body.map((f) => f.switchgear_family_ref).sort();
+    expect(refs).toEqual([
+      'ABB__SAFERING',
+      'ABB__UNIGEAR_ZS1',
+      'ELEKTROMETAL__E2ALPHA',
+      'SIEMENS__8DJH',
+      'SIEMENS__NXAIR',
+      'ZPUE_WLOSZCZOWA__ROTOBLOK',
+    ]);
+    for (const f of body) {
+      expect(f.status).toBe('repo_verified');
+      expect(f.source_refs.length).toBeGreaterThan(0);
+      for (const ref of f.source_refs) {
+        expect(ref).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  test('API ?manufacturer_ref=ABB → 2 rodziny (UniGear ZS1 + SafeRing)', async ({ page }) => {
+    const response = await page.request.get(
+      '/api/catalog/switchgear-families?manufacturer_ref=ABB',
+    );
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as Array<{ family_name: string }>;
+    expect(body.length).toBe(2);
+    expect(body.map((f) => f.family_name).sort()).toEqual(['SafeRing', 'UniGear ZS1']);
+  });
+
+  test('API ?manufacturer_ref=SIEMENS → 2 rodziny (NXAIR + 8DJH)', async ({ page }) => {
+    const response = await page.request.get(
+      '/api/catalog/switchgear-families?manufacturer_ref=SIEMENS',
+    );
+    expect(response.ok()).toBe(true);
+    const body = (await response.json()) as Array<{ family_name: string }>;
+    expect(body.length).toBe(2);
+    expect(body.map((f) => f.family_name).sort()).toEqual(['8DJH', 'NXAIR']);
+  });
 });

@@ -19,6 +19,18 @@ from .complete_mv_bay_template import (
     CompleteMvBayTemplate,
     SourceStatus,
 )
+from .families import (
+    ABB__SAFERING,
+    ABB__UNIGEAR_ZS1,
+    ELEKTROMETAL__E2ALPHA,
+    SIEMENS__8DJH,
+    SIEMENS__NXAIR,
+    SWITCHGEAR_FAMILY_REGISTRY,
+    ZPUE_WLOSZCZOWA__ROTOBLOK,
+    get_switchgear_family,
+    list_families_for_manufacturer,
+    list_switchgear_families,
+)
 from .device_instance import (
     ApparatusKind,
     BayDeviceInstanceTemplate,
@@ -51,6 +63,8 @@ from .switchgear_family import (
 
 __all__ = [
     "ABB",
+    "ABB__SAFERING",
+    "ABB__UNIGEAR_ZS1",
     "ApparatusKind",
     "BayDeviceInstanceTemplate",
     "BayKind",
@@ -60,6 +74,7 @@ __all__ = [
     "ConstructionType",
     "DirectionHint",
     "ELEKTROMETAL",
+    "ELEKTROMETAL__E2ALPHA",
     "ElectricalSide",
     "InsulationType",
     "MANUFACTURER_REGISTRY",
@@ -68,15 +83,22 @@ __all__ = [
     "PortDefinitionTemplate",
     "PortKind",
     "SIEMENS",
+    "SIEMENS__8DJH",
+    "SIEMENS__NXAIR",
+    "SWITCHGEAR_FAMILY_REGISTRY",
     "SourceStatus",
     "SwitchgearFamily",
     "SwitchgearFamilyStatus",
     "ZPUE_WLOSZCZOWA",
+    "ZPUE_WLOSZCZOWA__ROTOBLOK",
     "get_canonical_fallback_for_bay_kind",
     "get_manufacturer",
+    "get_switchgear_family",
     "list_canonical_fallback_for_manufacturer",
     "list_canonical_fallback_templates",
+    "list_families_for_manufacturer",
     "list_manufacturers",
+    "list_switchgear_families",
     "manufacturers_requiring_catalog",
     "verified_manufacturers",
 ]

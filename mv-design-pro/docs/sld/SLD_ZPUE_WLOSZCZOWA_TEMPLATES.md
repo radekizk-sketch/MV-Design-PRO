@@ -24,7 +24,21 @@
 
 ## 4. Jakie rodziny rozdzielnic są zweryfikowane
 
-**ŻADNE.** Aby dodać rodzinę rozdzielnicy ZPUE, należy:
+**`repo_verified` (NIE `official_catalog`):**
+
+| Rodzina | switchgear_family_ref | source_refs |
+|---|---|---|
+| Rotoblok | `ZPUE_WLOSZCZOWA__ROTOBLOK` | https://zpue.pl/rozdzielnice-sn/rotoblok |
+
+### Rotoblok
+- voltage: 15 / 20 kV (max equipment 17.5 / 24 kV)
+- rated current: 630 / 1250 A
+- Ith: 16 kA / 1s, peak 40 kA
+- konstrukcja: wnętrzowa, dwuprzedziałowa, izolacja powietrzna, pojedynczy system szyn
+- bay kinds: RL1/RL4 (liniowe), RT1/RWT/RWT3/RWTp14 (transformatorowe), RS1L/RS4 (sprzęgłowe), RP1 (pomiarowe), RO1 (odgromnikowe), RTpwł4/RTpwł 25kVA (potrzeb własnych)
+- certyfikat IEL
+
+Aby promować do `verified` (oficjalny katalog ZPUE), procedura:
 1. Pobrać oficjalny katalog ZPUE (np. Rotoblok, Safevap — jeśli takie są aktualne).
 2. Utworzyć `SwitchgearFamily` z `status="verified"`, `source_document_refs=["catalog:zpue_<family>_<year>.pdf"]`, `source_version`, `verified_at`.
 3. Wypełnić `voltage_levels`, `rated_current_options`, `short_time_current_options`, `insulation_type`, `construction_type`, `busbar_system`.

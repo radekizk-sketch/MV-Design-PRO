@@ -24,7 +24,20 @@
 
 ## 4. Jakie rodziny rozdzielnic są zweryfikowane
 
-**ŻADNE.** Procedura promocji identyczna jak dla ZPUE — wymaga `source_document_refs`, `source_version`, `verified_at` i zatwierdzenia w PR.
+**`repo_verified` (NIE `official_catalog`):**
+
+| Rodzina | switchgear_family_ref | source_refs |
+|---|---|---|
+| e²ALPHA | `ELEKTROMETAL__E2ALPHA` | https://elektrometal-energetyka.pl/rozdzielnice-sn-e²alpha/ |
+
+### e²ALPHA
+- voltage: 12 / 17.5 / 24 kV
+- rated current: 630-2000 A (szyna do 2500 A)
+- Ith: 31.5 kA / 1s (12/17.5 kV), 25 kA / 1s (24 kV)
+- konstrukcja: wnętrzowa, 4-przedziałowa (busbar / cable / apparatus / lv_control), izolacja powietrzna, single busbar
+- klasyfikacja: LSC2B + PM + AFLR + IP4X/IP54
+
+Aby promować do `verified` (oficjalny katalog Elektrometal), procedura identyczna jak dla ZPUE.
 
 ## 5. Jakie typy pól wdrożono
 

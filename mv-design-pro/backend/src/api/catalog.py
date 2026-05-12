@@ -32,7 +32,13 @@ from network_model.catalog.switchgear import (
     list_canonical_fallback_for_manufacturer,
 )
 from network_model.catalog.switchgear import (
+    list_families_for_manufacturer,
+)
+from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
+)
+from network_model.catalog.switchgear import (
+    list_switchgear_families,
 )
 from pydantic import BaseModel
 
@@ -314,6 +320,29 @@ def list_source_system_types() -> list[dict[str, Any]]:
 def list_branch_point_types(kind: str | None = None) -> list[dict[str, Any]]:
     """List all branch point types for branch poles and ZKSN."""
     return get_all_branch_point_types(kind)
+
+
+@router.get("/switchgear-families")
+def list_switchgear_families_endpoint(
+    manufacturer_ref: str | None = None,
+) -> list[dict[str, Any]]:
+    """Lista rodzin rozdzielnic SN (goal §11A.3).
+
+    Z `manufacturer_ref` zwęża do rodzin danego producenta (np.
+    `?manufacturer_ref=ABB` → UniGear ZS1, SafeRing).
+
+    Bez parametru zwraca wszystkie zweryfikowane rodziny (6 startowych):
+    - ZPUE_WLOSZCZOWA__ROTOBLOK
+    - ELEKTROMETAL__E2ALPHA
+    - ABB__UNIGEAR_ZS1, ABB__SAFERING
+    - SIEMENS__NXAIR, SIEMENS__8DJH
+    """
+    families = (
+        list_families_for_manufacturer(manufacturer_ref)
+        if manufacturer_ref is not None
+        else list_switchgear_families()
+    )
+    return [f.model_dump(mode="json") for f in families]
 
 
 @router.get("/manufacturers")
