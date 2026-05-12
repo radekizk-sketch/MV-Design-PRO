@@ -1615,8 +1615,7 @@ function phase7_generate_canonical_annotations(
       continue;
     }
 
-    const firstFieldBusId = fields[0].busSectionId
-      ?? null;
+    const firstFieldBusId = fields[0].busSectionId ?? null;
     const rootBusId = firstFieldBusId ?? detail.busSections[0]?.id ?? block.blockId;
     const rootBusPlacement = placementMap.get(rootBusId);
     const gpzFieldPitchX = GRID_BASE * 6;
@@ -1639,8 +1638,7 @@ function phase7_generate_canonical_annotations(
 
     for (let index = 0; index < fields.length; index++) {
       const field = fields[index];
-      const rootId = field.busSectionId
-        ?? rootBusId;
+      const rootId = field.busSectionId ?? rootBusId;
       const axisX = snap(firstAxisX + index * gpzFieldPitchX);
       fieldAxes.set(field.id, axisX);
       gpzFeederFields.push({
