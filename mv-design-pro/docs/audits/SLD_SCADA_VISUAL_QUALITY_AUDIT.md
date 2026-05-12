@@ -101,7 +101,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 | Klikalność elementów | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Główne elementy klikalne; pełna macierz 26 typów elementów — PR 2 pełne. |
 | Deep link readiness → element | 3/10 | 3/10 | 3/10 | 3/10 | n/a | E030 deep link działa; pozostałe blockery bez wzbogaconych deep linków — PR 2 pełne. |
 | DER PCC visibility | 5/10 | 6/10 | 7/10 | 7/10 | n/a | Validator + renderery działają; brak dedykowanej zakładki PCC w E-21/E-22/E-23 — PR 4. |
-| Manufacturer flow | 4/10 | 4/10 | 4/10 | 4/10 | n/a | **Backend warstwa zbudowana** — `Manufacturer`/`SwitchgearFamily`/`CompleteMvBayTemplate` przez kompozycję; 4 producentów ze statusem `requires_catalog`. UI Pickers + verified source_refs — PR 5 frontend. |
+| Manufacturer flow | 6/10 | 6/10 | 6/10 | 6/10 | n/a | **Backend** warstwa + API `GET /api/catalog/manufacturers` + **Frontend** `ManufacturerPicker.tsx` z badge „Wymaga uzupełnienia katalogu" + 7 testów. `SwitchgearFamilyPicker`, `BayTemplatePicker`, `BayTemplatePreview` + integracja w `StationConfigurator` — PR 5 frontend pełny. |
 
 ## 3. Verification commands (per acceptance gate)
 
