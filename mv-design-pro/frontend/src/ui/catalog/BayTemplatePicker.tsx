@@ -77,7 +77,7 @@ const SOURCE_STATUS_BADGE: Record<BayTemplateSourceStatus, { class: string; labe
   },
   canonical_fallback: {
     class: 'bg-amber-100 text-amber-800 border-amber-300',
-    label: 'Szablon kanoniczny ogólny (fallback)',
+    label: 'Szablon kanoniczny ogólny (rozwiązanie zapasowe)',
   },
   requires_catalog: {
     class: 'bg-red-100 text-red-800 border-red-300',

@@ -105,7 +105,7 @@ export function ManufacturerPicker({
                   className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-red-700"
                 >
                   <span className="inline-block h-1.5 w-1.5 rounded-full bg-red-600" />
-                  Pole renderowane jako szablon kanoniczny ogólny (fallback).
+                  Pole renderowane jako szablon kanoniczny ogólny (rozwiązanie zapasowe).
                 </span>
               )}
             </button>

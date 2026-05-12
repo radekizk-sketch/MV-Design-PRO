@@ -88,7 +88,7 @@ export function SwitchgearFamilyPicker({
       >
         <span className="font-semibold">Brak zweryfikowanych rodzin rozdzielnic.</span>{' '}
         Producent <span className="font-mono">{manufacturerRef}</span> wymaga uzupełnienia
-        katalogu. Pole zostanie zbudowane z szablonu kanonicznego ogólnego (fallback)
+        katalogu. Pole zostanie zbudowane z szablonu kanonicznego ogólnego (rozwiązanie zapasowe)
         z badge ostrzegawczym.
       </div>
     );
