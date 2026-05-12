@@ -8,6 +8,10 @@
 
 import { useMemo, useState, type ReactNode } from 'react';
 
+import type { GeneratorConnectionVariant } from '../../../types/enm';
+
+import { DerPccVariantInfo } from './DerPccVariantInfo';
+
 export type DerKind = 'PV' | 'BESS' | 'FW';
 
 export type DerCardId =
@@ -45,6 +49,13 @@ export interface DerConfiguratorProps {
   readonly children?: Partial<Record<DerCardId, ReactNode>>;
   readonly defaultCard?: DerCardId;
   readonly stationContext?: DerStationContext;
+  /** Wariant przyłączenia DER do PCC (goal §13). null → blocker
+   *  `generator.connection_variant_missing` widoczny w karcie „Tor przyłączenia". */
+  readonly connectionVariant?: GeneratorConnectionVariant | null;
+  /** Referencja stacji (wymagana dla wariantów nn_side / LV_BEHIND_STATION_TRANSFORMER). */
+  readonly stationRef?: string | null;
+  /** Referencja transformatora blokowego (wymagana dla block_transformer). */
+  readonly blockingTransformerRef?: string | null;
 }
 
 const CARD_LABELS_BY_KIND: Record<DerKind, Partial<Record<DerCardId, string>>> = {
@@ -158,10 +169,25 @@ const DEFAULT_CARD_HINTS: Record<DerKind, Record<DerCardId, readonly string[]>> 
 };
 
 export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
-  const { derId, derKind, children = {}, defaultCard = 'basic', stationContext } = props;
+  const {
+    derId,
+    derKind,
+    children = {},
+    defaultCard = 'basic',
+    stationContext,
+    connectionVariant,
+    stationRef,
+    blockingTransformerRef,
+  } = props;
   const labels = useMemo(() => CARD_LABELS_BY_KIND[derKind], [derKind]);
   const [activeCard, setActiveCard] = useState<DerCardId>(defaultCard);
   const cardIds = Object.keys(labels) as DerCardId[];
+
+  const hasPccProps =
+    connectionVariant !== undefined
+    || stationRef !== undefined
+    || blockingTransformerRef !== undefined;
+  const showPccInfo = activeCard === 'topology' && hasPccProps && !children.topology;
 
   return (
     <div
@@ -197,6 +223,14 @@ export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
       </nav>
 
       <div data-testid={`der-card-content-${activeCard}`} className="flex-1 overflow-y-auto p-3 text-xs">
+        {showPccInfo && (
+          <DerPccVariantInfo
+            connectionVariant={connectionVariant ?? null}
+            stationRef={stationRef ?? null}
+            blockingTransformerRef={blockingTransformerRef ?? null}
+            className="mb-3"
+          />
+        )}
         {children[activeCard] ?? <DefaultCard derKind={derKind} cardId={activeCard} />}
       </div>
     </div>
