@@ -112,7 +112,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 
 | Kategoria | LOD 0 | LOD 1 | LOD 2 | LOD 3 | LOD 4 | Uwagi |
 |---|---|---|---|---|---|---|
-| GPZ z TR 110/SN | 6/10 | 7/10 | 8/10 | 8/10 | n/a | TR widoczny w GpzCanonicalRenderer + GpzSwitchgearRenderer. Bilans P/Q nieobecny — pozostaje PR 3 pełne. |
+| GPZ z TR 110/SN | 6/10 | 7/10 | 9/10 | 9/10 | n/a | TR widoczny w GpzCanonicalRenderer + GpzSwitchgearRenderer. **Bilans P/Q w `GpzOperatorHeader`** — wartości z jednostkami `MW`/`MVAr`, fallback badge „Brak wyników rozpływu" gdy brak danych (goal §7, NIE 0.00). 29 testów. |
 | Sekcje SN GPZ | 7/10 | 8/10 | 9/10 | 9/10 | n/a | Sekcje + pola + couplery działają. |
 | Stacja mini-RMU | 7/10 | 8/10 | 8/10 | 8/10 | n/a | `MiniBlockRmuRenderer` z 4 wariantami footprintu (terminal/inline/branch/sectional). Mini-pola IN/OUT/TR/DER widoczne. Mini-szyna obecna. |
 | Kanon aparatów (CB/DS/ES/CT/VT/FUSE) | n/a | n/a | 9/10 | 9/10 | 9/10 | Kwadrat/kółko/romb/boczny czerwony — zgodne z goal. |

@@ -87,22 +87,49 @@ describe('GpzOperatorHeader — address + radio', () => {
 });
 
 describe('GpzOperatorHeader — balance P/Q', () => {
-  it('Bilans P=2.5, Q=-0.4 renderowany z zaokrągleniem do 1 miejsca', () => {
+  it('Bilans P=2.5, Q=-0.4 renderowany z zaokrągleniem do 1 miejsca i jednostkami', () => {
     const { container, getByText } = renderHeader({
       balance: { pMw: 2.5, qMvar: -0.4 },
     });
     expect(container.querySelector('[data-testid="gpz-header-balance"]')).toBeTruthy();
     expect(getByText('Bilans stacji')).toBeTruthy();
-    expect(getByText('2.5')).toBeTruthy();
-    expect(getByText('-0.4')).toBeTruthy();
+    expect(getByText('2.5 MW')).toBeTruthy();
+    expect(getByText('-0.4 MVAr')).toBeTruthy();
   });
 
-  it('Balance null → renderuje "—"', () => {
-    const { container, getAllByText } = renderHeader({
+  it('Brak balance.pMw i balance.qMvar → komunikat "Brak wyników rozpływu" (goal §7)', () => {
+    const { container, getByText, queryByText } = renderHeader({
+      balance: { pMw: null, qMvar: null },
+    });
+    expect(
+      container.querySelector('[data-testid="gpz-header-balance-no-results"]'),
+    ).toBeTruthy();
+    expect(getByText('Brak wyników rozpływu')).toBeTruthy();
+    // NIE 0.0 i NIE jednostek
+    expect(queryByText('0.0 MW')).toBeNull();
+    expect(queryByText('0.0 MVAr')).toBeNull();
+    // data-no-results="true" attribut
+    expect(
+      container
+        .querySelector('[data-testid="gpz-header-balance"]')
+        ?.getAttribute('data-no-results'),
+    ).toBe('true');
+  });
+
+  it('P present, Q absent → P z jednostką, Q komunikat „brak danych"', () => {
+    const { getByTestId } = renderHeader({
+      balance: { pMw: 5.7, qMvar: null },
+    });
+    expect(getByTestId('gpz-header-balance-p-value').textContent).toContain('5.7 MW');
+    expect(getByTestId('gpz-header-balance-q-value').textContent).toContain('brak danych');
+  });
+
+  it('Balance null → renderuje komunikat „Brak wyników rozpływu"', () => {
+    const { container, getByText } = renderHeader({
       balance: { pMw: null, qMvar: null },
     });
     expect(container.querySelector('[data-testid="gpz-header-balance"]')).toBeTruthy();
-    expect(getAllByText('—').length).toBeGreaterThanOrEqual(2);
+    expect(getByText('Brak wyników rozpływu')).toBeTruthy();
   });
 
   it('Brak balance → block hidden', () => {
@@ -226,8 +253,8 @@ describe('GpzOperatorHeader — porównanie ze screenshotami SCADA OSD', () => {
     });
     expect(getByText('GPZ-5 PST')).toBeTruthy();
     expect(getByText('TRANSMISJA POPRAWNA')).toBeTruthy();
-    expect(getByText('-3.1')).toBeTruthy();
-    expect(getByText('-0.4')).toBeTruthy();
+    expect(getByText('-3.1 MW')).toBeTruthy();
+    expect(getByText('-0.4 MVAr')).toBeTruthy();
   });
 
   it('Replica GPZ-21 KEK: nazwa + adres + alarmy + kasowanie', () => {

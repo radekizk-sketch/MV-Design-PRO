@@ -301,8 +301,16 @@ interface BalanceBlockProps {
 
 function BalanceBlock(props: BalanceBlockProps): JSX.Element {
   const { x, y, width, balance } = props;
+  const pPresent = balance.pMw !== null && balance.pMw !== undefined;
+  const qPresent = balance.qMvar !== null && balance.qMvar !== undefined;
+  const noResults = !pPresent && !qPresent;
   return (
-    <g data-testid="gpz-header-balance" data-parity-key="gpz.header.balance" transform={`translate(${x}, ${y})`}>
+    <g
+      data-testid="gpz-header-balance"
+      data-parity-key="gpz.header.balance"
+      data-no-results={noResults ? 'true' : 'false'}
+      transform={`translate(${x}, ${y})`}
+    >
       <text
         x={0} y={9}
         fill={COLOR_TEXT_SECONDARY}
@@ -312,32 +320,64 @@ function BalanceBlock(props: BalanceBlockProps): JSX.Element {
       >
         Bilans stacji
       </text>
-      {/* P row */}
-      <rect x={0} y={13} width={width} height={ROW_HEIGHT} fill={COLOR_PANEL_RAISED} stroke={COLOR_TEXT_MUTED} strokeOpacity={0.3} />
-      <text x={4} y={13 + 10} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>P</text>
-      <text
-        x={width - 4}
-        y={13 + 10}
-        textAnchor="end"
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_MONO}
-        fontSize={FONT_SIZES.numericValue}
-      >
-        {balance.pMw !== null && balance.pMw !== undefined ? balance.pMw.toFixed(1) : '—'}
-      </text>
-      {/* Q row */}
-      <rect x={0} y={13 + ROW_HEIGHT} width={width} height={ROW_HEIGHT} fill={COLOR_PANEL_RAISED} stroke={COLOR_TEXT_MUTED} strokeOpacity={0.3} />
-      <text x={4} y={13 + ROW_HEIGHT + 10} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>Q</text>
-      <text
-        x={width - 4}
-        y={13 + ROW_HEIGHT + 10}
-        textAnchor="end"
-        fill={COLOR_TEXT_PRIMARY}
-        fontFamily={FONT_MONO}
-        fontSize={FONT_SIZES.numericValue}
-      >
-        {balance.qMvar !== null && balance.qMvar !== undefined ? balance.qMvar.toFixed(1) : '—'}
-      </text>
+      {noResults ? (
+        // Goal §7: brak wyniku ≠ 0.00. Pokazujemy explicit komunikat "Brak
+        // wyników rozpływu" zamiast formatowanego zera.
+        <g data-testid="gpz-header-balance-no-results">
+          <rect
+            x={0}
+            y={13}
+            width={width}
+            height={ROW_HEIGHT * 2}
+            fill={COLOR_PANEL_RAISED}
+            stroke={COLOR_BADGE_BG_YELLOW}
+            strokeOpacity={0.7}
+            strokeDasharray="3 2"
+          />
+          <text
+            x={width / 2}
+            y={13 + ROW_HEIGHT}
+            textAnchor="middle"
+            fill={COLOR_BADGE_BG_YELLOW}
+            fontFamily={FONT_SANS}
+            fontSize={FONT_SIZES.bayLabel}
+            fontWeight={600}
+          >
+            Brak wyników rozpływu
+          </text>
+        </g>
+      ) : (
+        <>
+          {/* P row */}
+          <rect x={0} y={13} width={width} height={ROW_HEIGHT} fill={COLOR_PANEL_RAISED} stroke={COLOR_TEXT_MUTED} strokeOpacity={0.3} />
+          <text x={4} y={13 + 10} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>P</text>
+          <text
+            x={width - 4}
+            y={13 + 10}
+            textAnchor="end"
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_MONO}
+            fontSize={FONT_SIZES.numericValue}
+            data-testid="gpz-header-balance-p-value"
+          >
+            {pPresent ? `${(balance.pMw as number).toFixed(1)} MW` : '— MW (brak danych)'}
+          </text>
+          {/* Q row */}
+          <rect x={0} y={13 + ROW_HEIGHT} width={width} height={ROW_HEIGHT} fill={COLOR_PANEL_RAISED} stroke={COLOR_TEXT_MUTED} strokeOpacity={0.3} />
+          <text x={4} y={13 + ROW_HEIGHT + 10} fill={COLOR_TEXT_PRIMARY} fontFamily={FONT_SANS} fontSize={FONT_SIZES.bayLabel} fontWeight={700}>Q</text>
+          <text
+            x={width - 4}
+            y={13 + ROW_HEIGHT + 10}
+            textAnchor="end"
+            fill={COLOR_TEXT_PRIMARY}
+            fontFamily={FONT_MONO}
+            fontSize={FONT_SIZES.numericValue}
+            data-testid="gpz-header-balance-q-value"
+          >
+            {qPresent ? `${(balance.qMvar as number).toFixed(1)} MVAr` : '— MVAr (brak danych)'}
+          </text>
+        </>
+      )}
     </g>
   );
 }
