@@ -100,7 +100,7 @@ Backend `FixAction` z `modal_type="SegmentSnModal"` i `payload_hint={required: "
 | Połączenie kończy się w porcie | 0/10 | 0/10 | 0/10 | 0/10 | n/a | **Przed PR 1**: porty opcjonalne, brak warningu. **Po PR 1**: detekcja brakujących portów + warning marker + readiness blocker. **Cel 10/10** osiągalny dopiero po włączeniu flagi `ENM_STRICT_PORT_BINDING` (PR 1.b). |
 | Klikalność elementów | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Główne elementy klikalne; pełna macierz 26 typów elementów — PR 2 pełne. |
 | Deep link readiness → element | 3/10 | 3/10 | 3/10 | 3/10 | n/a | E030 deep link działa; pozostałe blockery bez wzbogaconych deep linków — PR 2 pełne. |
-| DER PCC visibility | 5/10 | 6/10 | 7/10 | 7/10 | n/a | Validator + renderery działają; brak dedykowanej zakładki PCC w E-21/E-22/E-23 — PR 4. |
+| DER PCC visibility | 6/10 | 7/10 | 8/10 | 8/10 | n/a | Validator (E028/E029) + renderery działają. **`DerPccVariantInfo.tsx` zbudowany** — komponent prezentacyjny z 5 wariantami `GeneratorConnectionVariant` (polskie etykiety, opisy, wymagane refs, badge „Kompletny"/„Brakuje referencji"). 8 testów. Integracja w `DerConfigurator` zakładka topology + E2E klik DER badge — PR 4 pełny. |
 | Manufacturer flow | 8/10 | 8/10 | 8/10 | 8/10 | n/a | **Backend** + 10 kanonicznych fallbacków + 2 API endpointy. **Frontend** 3 Pickery: `ManufacturerPicker.tsx` (7 testów), `SwitchgearFamilyPicker.tsx` (5 testów, fallback komunikat dla `requires_catalog`), `BayTemplatePicker.tsx` (8 testów, badge per source_status, filtr per bay_kind). Pozostała integracja w `StationConfigurator` + `BayTemplatePreview` — PR 5 frontend pełny. |
 
 ## 3. Verification commands (per acceptance gate)
