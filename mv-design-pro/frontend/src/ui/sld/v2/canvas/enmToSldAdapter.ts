@@ -24,10 +24,12 @@ import type {
   BayControlMode as EnmBayControlMode,
   BayRuntimeState,
   BaySwitchState,
+  Cable,
   EnergyNetworkModel,
   LogicalViewsV1,
   Bus,
   Branch,
+  OverheadLine,
   Substation,
   Source,
   Generator,
@@ -260,10 +262,37 @@ interface CableRunRendererPropsLight {
     y: number;
   }>;
   pendingEndpoint?: boolean;
+  /** True gdy któryś z segmentów (Cable / OverheadLine) ma brak
+   *  `endpoint_a_port` lub `endpoint_b_port` — wymaga ręcznego
+   *  domknięcia w E-12 (segment SN). Renderer pokazuje dashed stroke
+   *  i czerwony marker. */
+  missingEndpointPort?: boolean;
+  /** Lista segmentów z brakującymi portami (do tooltip / panelu
+   *  problemów). */
+  missingPortSegmentRefs?: readonly string[];
 }
 
 function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
+}
+
+/** Detekcja brakujących portów endpointu na segmentach kabla/linii. */
+function detectMissingEndpointPorts(
+  segments: readonly Branch[],
+): { missing: boolean; missingSegmentRefs: readonly string[] } {
+  const missingSegmentRefs: string[] = [];
+  for (const seg of segments) {
+    if (seg.type !== 'cable' && seg.type !== 'line_overhead') continue;
+    const a = (seg as Cable | OverheadLine).endpoint_a_port;
+    const b = (seg as Cable | OverheadLine).endpoint_b_port;
+    if (!a || !b) {
+      missingSegmentRefs.push(seg.ref_id);
+    }
+  }
+  return {
+    missing: missingSegmentRefs.length > 0,
+    missingSegmentRefs,
+  };
 }
 
 function classifySegmentKind(b: Branch): 'cable_sn' | 'overhead_line_sn' {
@@ -1203,6 +1232,7 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
       const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
 
+      const portStatus = detectMissingEndpointPorts(runSegments);
       runs.push({
         id: lineRun.id,
         runKind: lineRun.run_kind,
@@ -1212,6 +1242,8 @@ function buildCableRuns(
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
         segmentLabels,
         pendingEndpoint: runStations.length === 0,
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: startX, y },
@@ -1241,6 +1273,7 @@ function buildCableRuns(
       const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
       const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
 
+      const portStatus = detectMissingEndpointPorts(segments);
       runs.push({
         id: trunk.corridor_ref,
         runKind: 'main_trunk',
@@ -1250,6 +1283,8 @@ function buildCableRuns(
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels,
         pendingEndpoint: stationsOnRun.length === 0,
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y },
           { x: xStart, y },
@@ -1269,6 +1304,7 @@ function buildCableRuns(
       const xStart = X_STATIONS_START + brIdx * STATION_PITCH;
       const xEnd = xStart + 3 * STATION_PITCH;
 
+      const portStatus = detectMissingEndpointPorts(segments);
       runs.push({
         id: br.branch_id,
         runKind: 'branch',
@@ -1277,6 +1313,8 @@ function buildCableRuns(
         segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd),
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels: buildRunSegmentLabels(segments, [], xStart, yBranch, xEnd),
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
           { x: xStart, y: Y_RUN_BASE - 10 },
           { x: xStart, y: yBranch },
@@ -1287,7 +1325,7 @@ function buildCableRuns(
     return runs;
   }
 
-  // Fallback: każda branch → osobna prosta linia (nie ma logical_views).
+  // Tor wstępny: każda branch → osobna prosta linia (nie ma logical_views).
   branches.forEach((b, idx) => {
     const y = Y_RUN_BASE + idx * RUN_PITCH;
     const startingBayRef = readBranchOriginBayRef(b);
@@ -1299,6 +1337,7 @@ function buildCableRuns(
     const segmentKind = classifySegmentKind(b);
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
     const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
+    const portStatus = detectMissingEndpointPorts([b]);
     runs.push({
       id: b.ref_id,
       runKind: 'main_trunk',
@@ -1308,6 +1347,8 @@ function buildCableRuns(
       label: buildCableRunLabel([b], segmentKind),
       segmentLabels,
       pendingEndpoint: stationsOnRun.length === 0,
+      missingEndpointPort: portStatus.missing,
+      missingPortSegmentRefs: portStatus.missingSegmentRefs,
       pathPoints: [
         { x: xStart, y: GPZ_FIELD_CABLE_HEAD_Y + idx * 4 },
         { x: xStart, y },

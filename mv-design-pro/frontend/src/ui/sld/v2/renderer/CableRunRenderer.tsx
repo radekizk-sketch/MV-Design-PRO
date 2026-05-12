@@ -44,6 +44,10 @@ export interface CableRunRendererProps {
   readonly label?: string;
   readonly segmentLabels?: readonly CableRunSegmentLabel[];
   readonly pendingEndpoint?: boolean;
+  /** True gdy któryś z segmentów ma brakujący endpoint_a_port lub
+   *  endpoint_b_port — wymaga ręcznego domknięcia w E-12 (segment SN).
+   *  Renderer pokazuje czerwony marker „brak portu" i dashed stroke. */
+  readonly missingEndpointPort?: boolean;
   readonly stationPortGaps?: readonly CableRunStationPortGap[];
   readonly selected?: boolean;
   readonly onClick?: (id: string) => void;
@@ -60,6 +64,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     label,
     segmentLabels = [],
     pendingEndpoint,
+    missingEndpointPort,
     stationPortGaps = [],
     selected,
     onClick,
@@ -73,11 +78,19 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
   const isDashed = runKind === 'ring' || runKind === 'loop';
   const isOverhead = segmentKind === 'overhead_line_sn';
 
-  const dasharray = isDashed
-    ? STROKE_DASHED_RING_DASH_PX
-    : isOverhead
-      ? '12 4'
-      : undefined;
+  // Brakujący port endpointu → dashed warning stroke nad zwykłym dasharray.
+  const dasharray = missingEndpointPort
+    ? '5 4'
+    : isDashed
+      ? STROKE_DASHED_RING_DASH_PX
+      : isOverhead
+        ? '12 4'
+        : undefined;
+  const strokeColor = missingEndpointPort
+    ? '#FF6B6B'
+    : selected
+      ? '#35C7FF'
+      : COLOR_FIELD_TRUNK_ENERGIZED;
 
   const hitPath = pathPoints
     .map((p, i) => (i === 0 ? `M ${p.x} ${p.y}` : `L ${p.x} ${p.y}`))
@@ -139,7 +152,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           data-testid={`sld-v2-run-${id}-visible-${index}`}
           d={visiblePath}
           fill="none"
-          stroke={selected ? '#35C7FF' : COLOR_FIELD_TRUNK_ENERGIZED}
+          stroke={strokeColor}
           strokeWidth={selected ? strokeWidth + 1 : strokeWidth}
           strokeDasharray={dasharray}
           strokeLinecap="round"
@@ -147,6 +160,48 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           pointerEvents="none"
         />
       ))}
+      {missingEndpointPort && (
+        <g
+          data-testid={`sld-v2-run-${id}-missing-port-marker`}
+          data-warning="connection_port_missing"
+          pointerEvents="none"
+        >
+          <circle
+            cx={pathPoints[0].x}
+            cy={pathPoints[0].y}
+            r={6}
+            fill="#0B141B"
+            stroke="#FF6B6B"
+            strokeWidth={1.5}
+          />
+          <text
+            x={pathPoints[0].x}
+            y={pathPoints[0].y + 3}
+            textAnchor="middle"
+            fill="#FF6B6B"
+            className="select-none text-[9px] font-bold"
+          >
+            !
+          </text>
+          <circle
+            cx={pathPoints[pathPoints.length - 1].x}
+            cy={pathPoints[pathPoints.length - 1].y}
+            r={6}
+            fill="#0B141B"
+            stroke="#FF6B6B"
+            strokeWidth={1.5}
+          />
+          <text
+            x={pathPoints[pathPoints.length - 1].x}
+            y={pathPoints[pathPoints.length - 1].y + 3}
+            textAnchor="middle"
+            fill="#FF6B6B"
+            className="select-none text-[9px] font-bold"
+          >
+            !
+          </text>
+        </g>
+      )}
       {label && labelPoint && (
         <text
           data-testid={`sld-v2-run-${id}-label`}

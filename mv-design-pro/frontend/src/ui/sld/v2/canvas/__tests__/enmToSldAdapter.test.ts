@@ -1505,4 +1505,67 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
     const r = buildSldDataFromSnapshot(snap, null);
     expect(r.gpzs[0].couplers?.[0]?.closed).toBe('closed');
   });
+
+  describe('endpoint port detection (E030)', () => {
+    it('kabel bez endpoint_a_port / endpoint_b_port → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_miss', ref_id: 'k_miss', name: 'K-MISS', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          // endpoint_a_port / endpoint_b_port pominięte celowo
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns).toHaveLength(1);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_miss']);
+    });
+
+    it('kabel z oba endpointami → missingEndpointPort=false', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_ok', ref_id: 'k_ok', name: 'K-OK', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          endpoint_a_port: { port_id: 'p_a' },
+          endpoint_b_port: { port_id: 'p_b' },
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(false);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual([]);
+    });
+
+    it('kabel z jednym brakującym portem → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'k_one', ref_id: 'k_one', name: 'K-ONE', tags: [], meta: {},
+          type: 'cable', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 1, r_ohm_per_km: 0.5, x_ohm_per_km: 0.1,
+          endpoint_a_port: { port_id: 'p_a' },
+          // endpoint_b_port pominięty
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+      expect(r.cableRuns[0].missingPortSegmentRefs).toEqual(['k_one']);
+    });
+
+    it('linia napowietrzna bez portów → missingEndpointPort=true', () => {
+      const snap = buildEmptySnapshot();
+      snap.branches = [
+        {
+          id: 'l_miss', ref_id: 'l_miss', name: 'L-MISS', tags: [], meta: {},
+          type: 'line_overhead', from_bus_ref: 'a', to_bus_ref: 'b', status: 'closed',
+          length_km: 2, r_ohm_per_km: 0.3, x_ohm_per_km: 0.4,
+        } as never,
+      ];
+      const r = buildSldDataFromSnapshot(snap, null);
+      expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+    });
+  });
 });
