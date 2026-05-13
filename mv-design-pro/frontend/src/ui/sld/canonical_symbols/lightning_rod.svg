@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Lightning rod / Iglica odgromnika — IEC 60617 -->
+  <!-- Vertical rod with arrow-shaped tip pointing up. Connected to earth at bottom. -->
+  <!-- Pointed tip (arrow) -->
+  <polygon points="50,5 45,20 55,20" fill="currentColor" stroke="currentColor" stroke-width="1"/>
+  <!-- Rod -->
+  <line x1="50" y1="20" x2="50" y2="80" stroke="currentColor" stroke-width="3"/>
+  <!-- Earth symbol -->
+  <line x1="40" y1="80" x2="60" y2="80" stroke="currentColor" stroke-width="3"/>
+  <line x1="44" y1="86" x2="56" y2="86" stroke="currentColor" stroke-width="2"/>
+  <line x1="48" y1="92" x2="52" y2="92" stroke="currentColor" stroke-width="2"/>
+  <!-- Ports: bottom: (50, 80) earth connection only -->
+</svg>

@@ -323,6 +323,194 @@
       "allowedRotations": [0, 90, 180, 270],
       "defaultRotation": 0,
       "notes": "Three-position disconnector/earthing switch (typical for SF6 GIS modules). Combines disconnector and earthing function in one apparatus — interlocked to prevent invalid states."
+    },
+    "alarm_marker": {
+      "description": "Znacznik alarmu / Alarm marker (decorative overlay, not a connection symbol)",
+      "viewBox": "0 0 24 24",
+      "ports": {},
+      "allowedRotations": [0],
+      "defaultRotation": 0,
+      "notes": "Visual overlay only — no electrical connection ports. Used as annotation badge on elements with active alarms. Non-standard viewBox 24x24 (decorative marker)."
+    },
+    "missing_data_marker": {
+      "description": "Znacznik braku danych / Missing data marker (decorative overlay)",
+      "viewBox": "0 0 24 24",
+      "ports": {},
+      "allowedRotations": [0],
+      "defaultRotation": 0,
+      "notes": "Visual overlay only — no electrical connection ports. Used as annotation badge on elements with incomplete catalog data. Non-standard viewBox 24x24."
+    },
+    "cable_head_triangle": {
+      "description": "Głowica kablowa / Cable head — IEC 60617",
+      "viewBox": "0 0 22 22",
+      "ports": {
+        "top": { "x": 11, "y": 2, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Cable termination at top of pole or in switchgear. Single connection port at top vertex (where cable attaches). Non-standard viewBox 22x22 (legacy symbol; normalization to 100x100 deferred to F1 sprint 4b)."
+    },
+    "cable_joint": {
+      "description": "Mufa kablowa / Cable joint — IEC 60617",
+      "viewBox": "0 0 16 16",
+      "ports": {
+        "top": { "x": 8, "y": 1, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "bottom": { "x": 8, "y": 15, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Inline cable splice/joint — does not interrupt continuity. Non-standard viewBox 16x16 (legacy symbol)."
+    },
+    "load_switch": {
+      "description": "Rozłącznik SN / Load break switch — IEC 60617",
+      "viewBox": "0 0 46 64",
+      "ports": {
+        "top": { "x": 23, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "bottom": { "x": 23, "y": 64, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Load break switch (rozłącznik z bezpiecznikiem). Can interrupt load current but NOT fault current — see SI-100 eligibility check (does not count as protectable apparatus for overcurrent analysis). Non-standard viewBox 46x64 (legacy symbol)."
+    },
+    "nop": {
+      "description": "Normalnie Otwarty Punkt / Normally Open Point — IEC 60617",
+      "viewBox": "0 0 32 32",
+      "ports": {
+        "left": { "x": 13, "y": 16, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "right": { "x": 19, "y": 16, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Normally Open Point — break in ring/loop topology. Two vertical lines with NO badge. Non-standard viewBox 32x32 (legacy symbol)."
+    },
+    "pole": {
+      "description": "Słup linii napowietrznej / Overhead line pole — IEC 60617",
+      "viewBox": "0 0 24 36",
+      "ports": {
+        "top": { "x": 12, "y": 2, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] },
+        "bottom": { "x": 12, "y": 34, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Overhead line support pole. Used for routing trunk SN through countryside terrain. Non-standard viewBox 24x36."
+    },
+    "zksn": {
+      "description": "Złącze kablowe SN / Cable junction box MV (ZK SN) — IEC 60617",
+      "viewBox": "0 0 32 32",
+      "ports": {
+        "top": { "x": 16, "y": 6, "kind": "LINE_IN", "voltage_kv_compat": [15, 20, 30] },
+        "bottom": { "x": 16, "y": 26, "kind": "LINE_OUT", "voltage_kv_compat": [15, 20, 30] },
+        "left": { "x": 6, "y": 16, "kind": "LINE_IN", "voltage_kv_compat": [15, 20, 30] },
+        "right": { "x": 26, "y": 16, "kind": "LINE_OUT", "voltage_kv_compat": [15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "MV cable junction box (Polish: Złącze Kablowe SN). 4-way connector for branch points on MV cable network. Non-standard viewBox 32x32 (legacy symbol)."
+    },
+    "lightning_rod": {
+      "description": "Iglica odgromnika / Lightning rod — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "bottom": { "x": 50, "y": 80, "kind": "EARTH", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] }
+      },
+      "allowedRotations": [0],
+      "defaultRotation": 0,
+      "notes": "Lightning protection rod with permanent earth connection. Mounted at GPZ or substation top."
+    },
+    "grounding_resistor": {
+      "description": "Rezystor uziemiający / Grounding resistor — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "TAP", "voltage_kv_compat": [15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Neutral grounding resistor. Limits ground fault current in transformer neutral or grounding transformer. Bottom is earth (not routed)."
+    },
+    "grounding_reactor": {
+      "description": "Dławik uziemiający (cewka Petersena) / Grounding reactor (Petersen coil) — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "TAP", "voltage_kv_compat": [15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Petersen coil for compensated MV networks. Tuned to network capacitance to suppress ground fault current."
+    },
+    "synchrocheck": {
+      "description": "Przekaźnik synchrocheck / Synchronism check relay — IEC 60617 + ANSI 25",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "TAP", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] },
+        "bottom": { "x": 50, "y": 100, "kind": "TAP", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Synchrocheck (ANSI 25) — verifies voltage / frequency / phase angle synchronism before closing a CB. Two measurement inputs (one per side of CB)."
+    },
+    "surge_arrester_10ka": {
+      "description": "Ogranicznik przepięć 10 kA / Surge arrester 10 kA — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "TAP", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Surge arrester with explicit 10 kA discharge current rating (In). Common MV rating per IEC 60099. Bottom is earth (not routed)."
+    },
+    "autotransformer": {
+      "description": "Autotransformator / Autotransformer — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "LINE_IN", "voltage_kv_compat": [15, 20, 30, 110, 220] },
+        "bottom": { "x": 50, "y": 95, "kind": "LINE_OUT", "voltage_kv_compat": [15, 20, 30, 110, 220] },
+        "tap": { "x": 95, "y": 50, "kind": "TAP", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] }
+      },
+      "allowedRotations": [0, 180],
+      "defaultRotation": 0,
+      "notes": "Single-winding autotransformer with shared neutral. Used for HV/HV voltage adaptation (e.g. 220/110 kV). Tap connection on side."
+    },
+    "transformer_tap_changer": {
+      "description": "Transformator 2W z OLTC (On-Load Tap Changer) / TR2W z regulacją pod obciążeniem — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "LINE_IN", "voltage_kv_compat": [110, 220] },
+        "bottom": { "x": 50, "y": 95, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 180],
+      "defaultRotation": 0,
+      "notes": "Two-winding transformer with on-load tap changer (OLTC). Used in GPZ for voltage regulation. Tap range typically ±10% in 1.25% steps."
+    },
+    "utility_source": {
+      "description": "Sieć zewnętrzna (External Grid) / Utility source — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [110, 220, 400] }
+      },
+      "allowedRotations": [0, 180],
+      "defaultRotation": 0,
+      "notes": "External transmission grid connection point (Point of Common Coupling at HV bus). Represents Thevenin equivalent of upstream network in solver_input. Typically HV side of GPZ (110 kV or higher)."
+    },
+    "pv_inverter_nc_rfg": {
+      "description": "Falownik PV z NC RfG compliance / PV inverter NC RfG-compliant — IEC 60617 + Reg. (EU) 2016/631",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [0.4, 0.8] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [0.4, 0.69, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 180],
+      "defaultRotation": 0,
+      "notes": "PV inverter compliant with NC RfG (Annex II Reg. (EU) 2016/631). DC input from PV array, AC output to grid. Profile (FRT/Q-U/cos φ(P)) per operator YAML in backend/src/catalog/profiles/nc_rfg/{operator}.yaml. Default operator: ENEA (per /goal V12K)."
+    },
+    "wind_turbine_full_converter": {
+      "description": "Turbina wiatrowa full-converter (Type 4) / Wind turbine full-converter — IEC 61400",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "bottom_right": { "x": 77, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [0.69, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 180],
+      "defaultRotation": 0,
+      "notes": "Wind turbine generator Type 4 (full-converter AC-DC-AC). Decoupled from grid via converter — provides flexibility for NC RfG compliance (FRT, Q-U, ramp rate)."
     }
   },
   "portTransformations": {

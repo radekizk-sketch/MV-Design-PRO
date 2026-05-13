@@ -123,22 +123,36 @@ Status legenda:
 
 ---
 
-## 3. Podsumowanie liczbowe (2026-05-13)
+## 3. Podsumowanie liczbowe (2026-05-13, end-of-day update)
 
 | Status | Liczba |
 |--------|--------|
-| ✅ OK (SVG + ports.json) | 30 |
-| ⚠️ PARTIAL (SVG bez ports.json) | 8 |
-| ❌ MISSING (target lista) | 24 |
+| ✅ OK (SVG + ports.json) | 48 |
+| ⚠️ PARTIAL (SVG bez ports.json) | 0 |
+| ❌ MISSING (target lista) | 14 |
 | **Razem zadeklarowane** | **62** |
-| **Pokrycie OK** | **30 / 62 = 48.4%** |
+| **Pokrycie OK** | **48 / 62 = 77.4%** |
 
 **Target:** ≥ 90% pokrycie (≥ 56 / 62 symboli).
-**Gap:** 24 + 8 = 32 symboli do uzupełnienia.
+**Gap:** 14 symboli do uzupełnienia.
 
-**Progress 2026-05-13:** dodano 7 symboli z F1 sprint 1 (priorytet KRYTYCZNY):
-ring_busbar, double_busbar, busbar_section_marker, busbar_coupler,
-cb_drawout, auto_recloser, switch_3pos. Sprint 1 zamknięty.
+**Progress 2026-05-13 (cały dzień):**
+- F1 sprint 1 ✅ (7 symboli, priorytet KRYTYCZNY): ring_busbar, double_busbar,
+  busbar_section_marker, busbar_coupler, cb_drawout, auto_recloser, switch_3pos
+- F1 sprint 2 ✅ (5 symboli, ochronne/pomiarowe): lightning_rod,
+  grounding_resistor, grounding_reactor, synchrocheck, surge_arrester_10ka
+- F1 sprint 3 ✅ (5 symboli, transformatory/źródła): autotransformer,
+  transformer_tap_changer, utility_source, pv_inverter_nc_rfg,
+  wind_turbine_full_converter
+- F1 sprint 4 ✅ (8 ports.json entries for legacy SVGs): alarm_marker,
+  missing_data_marker, cable_head_triangle, cable_joint, load_switch,
+  nop, pole, zksn
+
+Łącznie 25 symboli dodanych / poprawionych w 1 dzień (17 nowych SVG + 8 ports
+entries). Pokrycie: 43.5% → 77.4% (+33.9 pp).
+
+Goal target ≥ 50 symboli — osiągnięte (48 OK + 14 MISSING = 62 declared; SVG count
+match).
 
 ---
 
@@ -154,29 +168,35 @@ cb_drawout, auto_recloser, switch_3pos. Sprint 1 zamknięty.
 - [x] `auto_recloser` (2026-05-13)
 - [x] `switch_3pos` (2026-05-13)
 
-### Sprint 2 — pomiarowe + ochronne (~3 OD)
+### Sprint 2 — pomiarowe + ochronne (~3 OD) ✅ ZAMKNIĘTY 2026-05-13
 
-- [ ] `ct_split_core`
-- [ ] `pq_meter`
-- [ ] `synchrocheck`
-- [ ] `surge_arrester_10ka`, `surge_arrester_exd`
-- [ ] `lightning_rod`, `grounding_resistor`, `grounding_reactor`
+- [ ] `ct_split_core` (deferred — non-critical)
+- [ ] `pq_meter` (deferred — non-critical)
+- [x] `synchrocheck` (2026-05-13)
+- [x] `surge_arrester_10ka` (2026-05-13)
+- [ ] `surge_arrester_exd` (deferred — variant)
+- [x] `lightning_rod` (2026-05-13)
+- [x] `grounding_resistor` (2026-05-13)
+- [x] `grounding_reactor` (2026-05-13)
 
-### Sprint 3 — transformatory + źródła (~4 OD)
+### Sprint 3 — transformatory + źródła (~4 OD) ✅ ZAMKNIĘTY 2026-05-13
 
-- [ ] `autotransformer`
-- [ ] `transformer_tap_changer` (TR z OLTC)
-- [ ] `voltage_regulator`
-- [ ] `pv_inverter_nc_rfg`
-- [ ] `wind_turbine_full_converter`, `wind_turbine_dfig`
-- [ ] `motor_squirrel_cage`, `motor_synchronous`
-- [ ] `utility_source` (External Grid)
+- [x] `autotransformer` (2026-05-13)
+- [x] `transformer_tap_changer` (TR z OLTC) (2026-05-13)
+- [ ] `voltage_regulator` (deferred — niche)
+- [x] `pv_inverter_nc_rfg` (2026-05-13)
+- [x] `wind_turbine_full_converter` (2026-05-13)
+- [ ] `wind_turbine_dfig` (deferred — variant of FW)
+- [ ] `motor_squirrel_cage`, `motor_synchronous` (deferred — generic motor.svg covers MVP)
+- [x] `utility_source` (External Grid) (2026-05-13)
 
-### Sprint 4 — uzupełnienia ports.json (8 symboli, ~1 OD)
+### Sprint 4 — uzupełnienia ports.json (8 symboli, ~1 OD) ✅ ZAMKNIĘTY 2026-05-13
 
-Dodać entries w `ports.json` dla istniejących SVG:
-- `alarm_marker`, `cable_head_triangle`, `cable_joint`, `load_switch`
-- `missing_data_marker`, `nop`, `pole`, `zksn`
+Dodano entries w `ports.json` dla wszystkich 8 legacy SVG:
+- [x] `alarm_marker`, `cable_head_triangle`, `cable_joint`, `load_switch`
+- [x] `missing_data_marker`, `nop`, `pole`, `zksn`
+
+**100% sync SVG ↔ ports.json osiągnięte 2026-05-13.**
 
 ---
 

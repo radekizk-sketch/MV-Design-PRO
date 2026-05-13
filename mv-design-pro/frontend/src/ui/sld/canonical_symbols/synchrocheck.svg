@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Synchrocheck relay / Przekaźnik synchrocheck — IEC 60617 + ANSI 25 -->
+  <!-- Circle with "25" marker (ANSI code for synchronism check). -->
+  <!-- Relay circle -->
+  <circle cx="50" cy="50" r="32" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- ANSI code -->
+  <text x="50" y="58" font-family="sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="currentColor">25</text>
+  <!-- Sync wave indicator (two sine waves overlapping) -->
+  <path d="M 18 32 Q 22 26 26 32 Q 30 38 34 32" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <path d="M 66 32 Q 70 26 74 32 Q 78 38 82 32" fill="none" stroke="currentColor" stroke-width="1.5"/>
+  <!-- Connection stubs -->
+  <line x1="50" y1="0" x2="50" y2="18" stroke="currentColor" stroke-width="2"/>
+  <line x1="50" y1="82" x2="50" y2="100" stroke="currentColor" stroke-width="2"/>
+  <!-- Ports: top (50, 0) line1 measurement, bottom (50, 100) line2 measurement -->
+</svg>
