@@ -68,6 +68,18 @@ class StudyCaseConfig:
     # Default: "enea" — per /goal V12K (ENEA Operator pierwszy w priorytecie).
     operator_profile_id: str = "enea"
 
+    # SC input mode (PLAN_E2E_INDUSTRIAL § 3.9 K3 + ENGINEER_WORKFLOW_AUDIT § 3.1)
+    # "simplified" — projektant podaje tylko S″k_SN po stronie SN [MVA] + R/X
+    #                (wystarczające dla typowego projektu SN, IEC 60909).
+    # "advanced" — pełny model 110 kV + TR + GPZ z impedancjami (jak dotychczas).
+    # Default: "simplified" — uproszczona ścieżka dla typowego projektu.
+    sc_input_mode: str = "simplified"
+
+    # Simplified mode fields (used when sc_input_mode == "simplified").
+    # Pomijane w trybie "advanced" — solver używa modelu pełnego z NetworkGraph.
+    sc_simplified_sk_mva: float | None = None  # S″k po stronie SN [MVA]
+    sc_simplified_r_x_ratio: float = 0.1  # R/X stosunek po stronie SN (domyślnie 0.1)
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for storage."""
         return {
@@ -80,6 +92,9 @@ class StudyCaseConfig:
             "include_inverter_contribution": self.include_inverter_contribution,
             "thermal_time_seconds": self.thermal_time_seconds,
             "operator_profile_id": self.operator_profile_id,
+            "sc_input_mode": self.sc_input_mode,
+            "sc_simplified_sk_mva": self.sc_simplified_sk_mva,
+            "sc_simplified_r_x_ratio": self.sc_simplified_r_x_ratio,
         }
 
     @classmethod
@@ -95,6 +110,9 @@ class StudyCaseConfig:
             include_inverter_contribution=data.get("include_inverter_contribution", True),
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
             operator_profile_id=data.get("operator_profile_id", "enea"),
+            sc_input_mode=data.get("sc_input_mode", "simplified"),
+            sc_simplified_sk_mva=data.get("sc_simplified_sk_mva"),
+            sc_simplified_r_x_ratio=data.get("sc_simplified_r_x_ratio", 0.1),
         )
 
 

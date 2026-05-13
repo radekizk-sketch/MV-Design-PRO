@@ -8,6 +8,7 @@ import { clsx } from 'clsx';
 import type {
   CreateStudyCaseRequest,
   OperatorProfileId,
+  ScInputMode,
   StudyCase,
   StudyCaseConfig,
 } from './types';
@@ -51,11 +52,17 @@ export function CreateCaseDialog({
       e.preventDefault();
       clearError();
 
-      // operator_profile_id MUSI być przekazywany zawsze (default ENEA),
-      // niezależnie od useDefaultConfig — profil operatora to świadomy wybór
-      // projektanta, nie szczegół techniczny obliczeń.
+      // operator_profile_id + sc_input_mode (+ simplified inputs) MUSZĄ być
+      // przekazywane zawsze, niezależnie od useDefaultConfig — to świadome
+      // wybory projektanta, nie szczegóły techniczne obliczeń.
       const effectiveConfig: StudyCaseConfig = useDefaultConfig
-        ? { ...DEFAULT_STUDY_CASE_CONFIG, operator_profile_id: config.operator_profile_id }
+        ? {
+            ...DEFAULT_STUDY_CASE_CONFIG,
+            operator_profile_id: config.operator_profile_id,
+            sc_input_mode: config.sc_input_mode,
+            sc_simplified_sk_mva: config.sc_simplified_sk_mva,
+            sc_simplified_r_x_ratio: config.sc_simplified_r_x_ratio,
+          }
         : config;
 
       const request: CreateStudyCaseRequest = {
@@ -195,6 +202,95 @@ export function CreateCaseDialog({
                 profili FRT, Q(U), cos φ(P) oraz krzywych zabezpieczeń.
               </p>
             </div>
+
+            <div>
+              <label
+                htmlFor="sc-input-mode"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                {CONFIG_FIELD_LABELS.sc_input_mode} *
+              </label>
+              <select
+                id="sc-input-mode"
+                data-testid="sc-input-mode"
+                value={config.sc_input_mode}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    sc_input_mode: e.target.value as ScInputMode,
+                  }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="simplified">Uproszczony — moc zwarciowa po stronie SN</option>
+                <option value="advanced">Zaawansowany — model 110 kV + TR + GPZ</option>
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Tryb uproszczony jest wystarczający dla typowych projektów SN (IEC 60909).
+                Tryb zaawansowany użyj gdy potrzebujesz pełnego modelu strony 110 kV z transformatorem GPZ.
+              </p>
+            </div>
+
+            {config.sc_input_mode === 'simplified' && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 space-y-3">
+                <div>
+                  <label
+                    htmlFor="sc-sk-mva"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    {CONFIG_FIELD_LABELS.sc_simplified_sk_mva}
+                  </label>
+                  <input
+                    id="sc-sk-mva"
+                    data-testid="sc-sk-mva"
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={config.sc_simplified_sk_mva ?? ''}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        sc_simplified_sk_mva:
+                          e.target.value === '' ? null : Number.parseFloat(e.target.value),
+                      }))
+                    }
+                    placeholder="np. 250"
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Wartość deklarowana przez operatora w warunkach przyłączenia.
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="sc-rx-ratio"
+                    className="mb-1 block text-sm font-medium text-gray-700"
+                  >
+                    {CONFIG_FIELD_LABELS.sc_simplified_r_x_ratio}
+                  </label>
+                  <input
+                    id="sc-rx-ratio"
+                    data-testid="sc-rx-ratio"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={config.sc_simplified_r_x_ratio}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        sc_simplified_r_x_ratio: Number.parseFloat(e.target.value) || 0.1,
+                      }))
+                    }
+                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Domyślnie 0.1 (typowy dla sieci SN). Może być uściślone wg źródła
+                    operatora.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="flex items-center">
               <input
