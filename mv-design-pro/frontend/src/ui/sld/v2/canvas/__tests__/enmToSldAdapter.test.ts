@@ -726,7 +726,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
 
     expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
-    expect(r.ders.find((der) => der.id === 'PV-1')).toBeUndefined();
+    expect(r.ders.find((der) => der.id === 'PV-1')).toEqual(
+      expect.objectContaining({ kind: 'PV', connectionVariant: 'nn_side' }),
+    );
   });
 
   it('stacja terenowa jest pod kablem: kabel trafia w pole WE/WY, nie w środek stacji', () => {
