@@ -40,6 +40,17 @@ const snapshot = {
       r_ohm_per_km: 0.1,
       x_ohm_per_km: 0.1,
     },
+    {
+      id: 'brk-1',
+      ref_id: 'stn/1/sn_field_breaker/000',
+      name: 'Wyłącznik pola SN 1',
+      tags: [],
+      meta: {},
+      from_bus_ref: 'bus-operational',
+      to_bus_ref: 'bus-operational',
+      status: 'closed',
+      type: 'breaker',
+    },
   ],
   transformers: [],
   sources: [
@@ -76,6 +87,16 @@ describe('selectionResolution', () => {
     });
   });
 
+  it('resolves a station field breaker branch to Switch', () => {
+    expect(
+      resolveSelectedElementFromSnapshot(snapshot, 'stn/1/sn_field_breaker/000', 'Element schematu'),
+    ).toEqual({
+      id: 'stn/1/sn_field_breaker/000',
+      type: 'Switch',
+      name: 'Wyłącznik pola SN 1',
+    });
+  });
+
   it('resolves a source ref to Source', () => {
     expect(
       resolveSelectedElementFromSnapshot(snapshot, 'gpz/source', 'Element schematu'),
@@ -94,5 +115,19 @@ describe('selectionResolution', () => {
         name: 'Szyna wnstream',
       }),
     ).toBeNull();
+  });
+
+  it('canonicalizes a stale LineBranch URL selection for a station breaker to Switch', () => {
+    expect(
+      canonicalizeSelectedElement(snapshot, {
+        id: 'stn/1/sn_field_breaker/000',
+        type: 'LineBranch',
+        name: 'Wyłącznik pola SN 1',
+      }),
+    ).toEqual({
+      id: 'stn/1/sn_field_breaker/000',
+      type: 'Switch',
+      name: 'Wyłącznik pola SN 1',
+    });
   });
 });

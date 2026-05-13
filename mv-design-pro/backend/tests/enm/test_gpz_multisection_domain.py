@@ -47,10 +47,11 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
 
     assert source["substation_ref"] == substation["ref_id"]
     assert len(sections) == 2
-    assert len(substation["bus_refs"]) == 2
+    assert len(substation["bus_refs"]) == 4
     assert len(substation["transformer_refs"]) == 2
     assert substation["meta"]["gpz_section_count"] == 2
     assert substation["meta"]["wn_sn_transformer_count"] == 2
+    assert len(substation["meta"]["gpz_hv_bus_refs"]) == 2
     assert substation["meta"]["grounding"]["type"] == "resistor_grounded"
     assert substation["meta"]["zero_sequence"]["enabled"] is True
     assert substation["meta"]["short_circuit_mode"] == "SHORT_CIRCUIT_POWER"
@@ -167,6 +168,48 @@ def test_add_grid_source_sn_creates_real_line_fields_for_each_gpz_section():
             assert field["meta"]["field_status"] == "CONFIGURED_FOR_TRUNK"
             assert field["meta"]["gpz_line_field_index"] == field_index
             assert field["meta"]["gpz_line_fields_count"] == 12
+
+
+def test_add_grid_source_sn_manual_hv_short_circuit_anchors_source_on_110kv_bus():
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ WN/SN",
+            "voltage_kv": 15.0,
+            "hv_voltage_kv": 110.0,
+            "sections_count": 2,
+            "transformer_count": 2,
+            "gpz_sections": [
+                {"order": 0, "name": "Sekcja 1", "line_field_name": "Pole 1"},
+                {"order": 1, "name": "Sekcja 2", "line_field_name": "Pole 2"},
+            ],
+            "manual_equivalent": {
+                "sn_voltage_kv": 15.0,
+                "hv_voltage_kv": 110.0,
+                "short_circuit_input_side": "HV_110",
+                "short_circuit_mode": "SHORT_CIRCUIT_POWER",
+                "sk3_hv_mva": 3000.0,
+                "rx_ratio": 0.12,
+            },
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "zero_sequence": {"enabled": True, "z0_z1_ratio": 3.2},
+        },
+    )
+
+    assert result.get("error") in (None, "")
+    snapshot = result["snapshot"]
+    source = snapshot["sources"][0]
+    substation = snapshot["substations"][0]
+
+    hv_bus_refs = substation["meta"]["gpz_hv_bus_refs"]
+    assert source["bus_ref"] == hv_bus_refs[0]
+    assert source["gpz_section_id"] is None
+    assert source["source_side"] == "HV_110"
+    assert source["voltage_hv_kv"] == 110.0
+    assert source["sk3_hv_mva"] == 3000.0
+    assert source["materialized_params"]["short_circuit_input_side"] == "HV_110"
+    assert substation["entry_point_ref"] == hv_bus_refs[0]
 
 
 def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():

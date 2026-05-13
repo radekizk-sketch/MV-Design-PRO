@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   TrunkContinueModal,
   type TrunkContinueFormData,
+  type TrunkNextStep,
 } from '../../topology/modals/TrunkContinueModal';
 import type { CatalogEntry } from '../../topology/modals/CatalogPicker';
 import {
@@ -29,6 +30,48 @@ import {
   normalizeSegmentKind,
   normalizeSegmentNamespace,
 } from './catalogPayload';
+import { useSelectionStore } from '../../selection';
+import type { ElementType } from '../../types';
+import { buildOperationContext } from '../operationContext';
+import type { NetworkBuildOperationName } from '../networkBuildStore';
+import type { DomainOpResponseV1 } from '../../../types/enm';
+
+function nextOperationForStep(step: TrunkNextStep): NetworkBuildOperationName {
+  switch (step) {
+    case 'station':
+      return 'insert_station_on_segment_sn';
+    case 'zksn':
+      return 'insert_zksn_on_segment_sn';
+    case 'branch_pole':
+      return 'insert_branch_pole_on_segment_sn';
+    case 'continue':
+      return 'continue_trunk_segment_sn';
+  }
+}
+
+function createdSegmentRef(response: DomainOpResponseV1 | null): string {
+  const createdIds = response?.changes?.created_element_ids ?? [];
+  const branches = response?.snapshot?.branches ?? [];
+  return (
+    createdIds.find((id) => branches.some((branch) => branch.ref_id === id || branch.id === id))
+    ?? createdIds.find((id) => id.startsWith('seg/'))
+    ?? ''
+  );
+}
+
+function createdEndpointBusRef(
+  response: DomainOpResponseV1 | null,
+  segmentRef: string,
+): string {
+  const hintedElement = response?.selection_hint?.element_id;
+  if (response?.selection_hint?.element_type === 'bus' && hintedElement) {
+    return hintedElement;
+  }
+  const branch = response?.snapshot?.branches?.find(
+    (candidate) => candidate.ref_id === segmentRef || candidate.id === segmentRef,
+  );
+  return branch?.to_bus_ref ?? '';
+}
 
 function cableEntry(item: CableType): CatalogEntry {
   return {
@@ -71,11 +114,64 @@ function canUseElementRefAsFieldRef(elementType: string): boolean {
   return ['BaySN', 'FieldSN', 'LineBaySN', 'SNBay', 'Bay'].includes(elementType);
 }
 
+function canResolveElementAsTrunkStart(
+  elementType: string,
+): elementType is Extract<ElementType, 'Station' | 'LineBranch'> {
+  return elementType === 'Station' || elementType === 'LineBranch';
+}
+
 export function ContinueTrunkForm() {
-  const context = useActiveOperationContext();
+  const rawContext = useActiveOperationContext();
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
+  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  const logicalViews = useSnapshotStore((s) => s.logicalViews);
+  const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+
+  const context = useMemo(() => {
+    const rawElementRef = ((rawContext?.element_ref as string) ?? '').trim();
+    const rawElementType = (
+      (rawContext?.element_type as string)
+      ?? (rawContext?.elementType as string)
+      ?? ''
+    ).trim();
+    const hasExplicitStart = Boolean(
+      ((rawContext?.terminalId as string) ?? '').trim()
+      || ((rawContext?.terminal_id as string) ?? '').trim()
+      || ((rawContext?.from_terminal_id as string) ?? '').trim()
+      || ((rawContext?.field_ref as string) ?? '').trim(),
+    );
+    if (hasExplicitStart) {
+      return rawContext;
+    }
+
+    const fallbackElementRef = selectedElement?.id ?? rawElementRef;
+    const fallbackElementType = selectedElement?.type ?? rawElementType;
+    if (!fallbackElementRef || !canResolveElementAsTrunkStart(fallbackElementType)) {
+      return rawContext;
+    }
+
+    const selectionContext = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: fallbackElementRef,
+      elementType: fallbackElementType,
+      snapshot,
+      logicalViews,
+      extraContext: {
+        ...(rawContext?.segment_kind ? { segment_kind: rawContext.segment_kind } : {}),
+        ...(typeof rawContext?.length_m === 'number' ? { length_m: rawContext.length_m } : {}),
+        ...(rawContext?.catalog_binding ? { catalog_binding: rawContext.catalog_binding } : {}),
+      },
+    });
+    const hasResolvedStart = Boolean(
+      ((selectionContext.terminalId as string) ?? '').trim()
+      || ((selectionContext.terminal_id as string) ?? '').trim()
+      || ((selectionContext.from_terminal_id as string) ?? '').trim()
+    );
+    return hasResolvedStart ? { ...rawContext, ...selectionContext } : rawContext;
+  }, [logicalViews, rawContext, selectedElement, snapshot]);
 
   const trunkId = ((context?.trunkId as string) ?? (context?.trunk_id as string) ?? '').trim();
   const terminalId = (
@@ -102,6 +198,11 @@ export function ContinueTrunkForm() {
     explicitFieldRef
     || (elementRef && canUseElementRefAsFieldRef(elementType) ? elementRef : '');
   const hasTrunkStartRef = terminalId.length > 0 || fieldRef.length > 0;
+  const displayTerminalPortId = terminalPortId || (terminalId && !fieldRef ? 'trunk_end' : '');
+  const missingStartReason =
+    !hasTrunkStartRef && elementType === 'Station'
+      ? 'Wybrana stacja nie ma wolnego portu wyjściowego SN. Wybierz stację na końcu ciągu albo głowicę odpływową pola SN.'
+      : 'Brak głowicy pola SN albo wolnego końca ciągu.';
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [segmentCatalogError, setSegmentCatalogError] = useState<string | null>(null);
   const [segmentCatalogLoading, setSegmentCatalogLoading] = useState(true);
@@ -188,7 +289,51 @@ export function ContinueTrunkForm() {
         setCatalogError(response.error);
         return;
       }
+      const nextSegmentRef = createdSegmentRef(response);
+      const nextEndpointBusRef = createdEndpointBusRef(response, nextSegmentRef);
+      const nextTerminal = response.logical_views?.terminals?.find(
+        (terminal) => terminal.element_id === nextEndpointBusRef,
+      );
+      const nextTrunkId = nextTerminal?.trunk_id ?? trunkId;
+      const nextOperation = nextOperationForStep(data.next_step);
+      const nextContext =
+        nextOperation === 'continue_trunk_segment_sn'
+          ? {
+              trunk_id: nextTrunkId,
+              trunkId: nextTrunkId,
+              from_terminal_id: nextEndpointBusRef,
+              terminal_id: nextEndpointBusRef,
+              terminalId: nextEndpointBusRef,
+              terminal_port_id: nextTerminal?.port_id ?? 'trunk_end',
+              port_id: nextTerminal?.port_id ?? 'trunk_end',
+              from_bus_ref: nextEndpointBusRef,
+              terminal_name: 'Koniec nowego odcinka SN',
+              terminal_voltage_label: terminalVoltageLabel || 'SN',
+              element_ref: nextSegmentRef || nextEndpointBusRef,
+              element_type: 'LineBranch',
+              default_termination: 'continue',
+            }
+          : {
+              segment_id: nextSegmentRef,
+              segment_ref: nextSegmentRef,
+              segmentRef: nextSegmentRef,
+              endpoint_bus_ref: nextEndpointBusRef,
+              terminal_id: nextEndpointBusRef,
+              terminalId: nextEndpointBusRef,
+              terminal_port_id: nextTerminal?.port_id ?? 'trunk_end',
+              corridor_ref: nextTrunkId,
+              trunk_id: nextTrunkId,
+              run_ref: nextTrunkId,
+              placement_mode: 'ENDPOINT_APPEND',
+              endpoint_role: 'TO_BUS',
+              position_on_segment: 1,
+              element_ref: nextSegmentRef,
+              element_type: 'LineBranch',
+            };
       closeForm();
+      if (nextSegmentRef || nextEndpointBusRef) {
+        openOperationForm(nextOperation, nextContext);
+      }
     },
     [
       activeCaseId,
@@ -196,7 +341,9 @@ export function ContinueTrunkForm() {
       executeDomainOperation,
       fieldRef,
       hasTrunkStartRef,
+      openOperationForm,
       terminalId,
+      terminalVoltageLabel,
       trunkId,
     ],
   );
@@ -213,7 +360,7 @@ export function ContinueTrunkForm() {
         mode="create"
         trunkId={trunkId}
         terminalId={terminalId || fieldRef}
-        terminalPortId={terminalPortId}
+        terminalPortId={displayTerminalPortId}
         terminalName={terminalName}
         terminalVoltageLabel={terminalVoltageLabel}
         initialData={initialData}
@@ -222,7 +369,7 @@ export function ContinueTrunkForm() {
         catalogLoading={segmentCatalogLoading}
         catalogLoadError={segmentCatalogError}
         submitDisabled={!hasTrunkStartRef}
-        submitDisabledReason={!hasTrunkStartRef ? 'Brak głowicy pola SN albo wolnego końca ciągu.' : null}
+        submitDisabledReason={!hasTrunkStartRef ? missingStartReason : null}
         onSubmit={handleSubmit}
         onCancel={closeForm}
       />

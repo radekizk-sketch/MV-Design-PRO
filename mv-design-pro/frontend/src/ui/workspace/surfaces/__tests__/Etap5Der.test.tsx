@@ -92,6 +92,15 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getAllByText('2500 kW').length).toBeGreaterThan(0);
     expect(screen.getByText(/PSE/)).toBeInTheDocument();
 
+    fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
+    expect(screen.getByText('Certyfikowane falowniki PTPiREE')).toBeInTheDocument();
+    expect(screen.getByText(/9077 pozycji źródłowych PTPiREE/)).toBeInTheDocument();
+    expect(screen.getAllByText(/SolaX Power Network/).length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText('Szukaj w certyfikatach PTPiREE'), {
+      target: { value: 'U24-0355' },
+    });
+    expect(screen.getAllByText(/Zucchetti Centro Sistemi/).length).toBeGreaterThan(0);
+
     fireEvent.click(screen.getByTestId('der-card-tab-frt-hvrt'));
     expect(screen.getByText('Model dynamiczny')).toBeInTheDocument();
     expect(screen.getByText(/PV grid-following typowy/)).toBeInTheDocument();
@@ -191,6 +200,9 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
     expect(screen.getByText('FRT / LVRT / HVRT')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('der-card-tab-inverters'));
+    fireEvent.click(screen.getAllByText('zastosuj')[0]);
+    expect(screen.getByText('wybrano')).toBeInTheDocument();
     expect(screen.getByText('Gotowość obliczeń')).toBeInTheDocument();
   });
 

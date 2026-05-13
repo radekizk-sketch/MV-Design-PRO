@@ -22,6 +22,7 @@ export type CanonicalOpName =
   | 'add_sn_bay'
   | 'continue_trunk_segment_sn'
   | 'insert_station_on_segment_sn'
+  | 'append_station_on_endpoint'
   | 'insert_branch_pole_on_segment_sn'
   | 'insert_zksn_on_segment_sn'
   | 'start_branch_segment_sn'
@@ -52,6 +53,7 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_sn_bay',
   'continue_trunk_segment_sn',
   'insert_station_on_segment_sn',
+  'append_station_on_endpoint',
   'insert_branch_pole_on_segment_sn',
   'insert_zksn_on_segment_sn',
   'start_branch_segment_sn',

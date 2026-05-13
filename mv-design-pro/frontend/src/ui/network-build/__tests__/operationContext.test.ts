@@ -136,7 +136,7 @@ const logicalViews = {
       element_id: 'bay-out-1',
       port_id: 'bay-out-1:OUT',
       trunk_id: 'trunk-1',
-      status: 'DOSTEPNY',
+      status: 'OTWARTY',
     },
     {
       element_id: 'bus-ring-a',
@@ -189,6 +189,79 @@ describe('buildOperationContext', () => {
     expect(context.terminal_voltage_label).toBe('15 kV');
     expect(context.is_first_trunk_segment).toBe(false);
     expect(context.existing_segment_count).toBe(2);
+  });
+
+  it('kontynuuje ciąg ze stacji przez dostępny terminal pola SN tej stacji', () => {
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-1',
+      elementType: 'Station',
+      snapshot,
+      logicalViews,
+    });
+
+    expect(context.station_ref).toBe('st-1');
+    expect(context.trunk_id).toBe('trunk-1');
+    expect(context.trunkId).toBe('trunk-1');
+    expect(context.from_terminal_id).toBe('bay-out-1');
+    expect(context.terminal_id).toBe('bay-out-1');
+    expect(context.terminalId).toBe('bay-out-1');
+    expect(context.terminal_port_id).toBe('station_out');
+    expect(context.port_id).toBe('station_out');
+    expect(context.from_bus_ref).toBe('bus-sn-1');
+    expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
+    expect(context.terminal_voltage_label).toBe('15 kV');
+    expect(context.is_first_trunk_segment).toBe(false);
+    expect(context.existing_segment_count).toBe(2);
+  });
+
+  it('kontynuuje ciąg ze stacji przez techniczny koniec korytarza, gdy terminal logiczny nie istnieje', () => {
+    const stationCorridorSnapshot = {
+      ...snapshot,
+      buses: [
+        ...snapshot.buses,
+        { id: 'bus-st-open', ref_id: 'bus-st-open', name: 'Koniec za ST-1', voltage_kv: 15 },
+      ],
+      branches: [
+        ...snapshot.branches,
+        {
+          ref_id: 'seg-st-out',
+          name: 'Odcinek za ST-1',
+          type: 'cable',
+          from_bus_ref: 'bus-sn-1',
+          to_bus_ref: 'bus-st-open',
+        },
+      ],
+      corridors: [
+        {
+          id: 'corr-st',
+          ref_id: 'corr-st',
+          ordered_segment_refs: ['seg-st-out'],
+        },
+      ],
+    } as any;
+
+    const context = buildOperationContext({
+      canonicalOp: 'continue_trunk_segment_sn',
+      elementId: 'st-1',
+      elementType: 'Station',
+      snapshot: stationCorridorSnapshot,
+      logicalViews: { terminals: [] } as any,
+    });
+
+    expect(context.station_ref).toBe('st-1');
+    expect(context.trunk_id).toBe('corr-st');
+    expect(context.trunkId).toBe('corr-st');
+    expect(context.from_terminal_id).toBe('bus-st-open');
+    expect(context.terminal_id).toBe('bus-st-open');
+    expect(context.terminalId).toBe('bus-st-open');
+    expect(context.terminal_port_id).toBe('station_out');
+    expect(context.port_id).toBe('station_out');
+    expect(context.from_bus_ref).toBe('bus-st-open');
+    expect(context.terminal_name).toBe('ST-1 - port wyjściowy SN');
+    expect(context.terminal_voltage_label).toBe('15 kV');
+    expect(context.is_first_trunk_segment).toBe(false);
+    expect(context.existing_segment_count).toBe(1);
   });
 
   it('blokuje kontynuacje z szyny, gdy terminal pola nie jest jednoznaczny w logicalViews', () => {

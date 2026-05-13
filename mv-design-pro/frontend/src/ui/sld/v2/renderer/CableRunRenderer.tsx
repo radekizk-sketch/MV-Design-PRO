@@ -100,6 +100,15 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
     ? findLongestHorizontalSegmentMidpoint(pathPoints)
     : null;
   const terminalPoint = pathPoints[pathPoints.length - 1];
+  const readableSegmentLabels = declutterSegmentLabels(
+    segmentLabels
+      .map((segmentLabel) => avoidStationLabelCollision(segmentLabel, stationPortGaps))
+      .map((segmentLabel) => (
+        pendingEndpoint && terminalPoint
+          ? avoidPendingEndpointLabelCollision(segmentLabel, terminalPoint)
+          : segmentLabel
+      )),
+  );
 
   return (
     <g
@@ -218,7 +227,7 @@ export function CableRunRenderer(props: CableRunRendererProps): JSX.Element | nu
           {label}
         </text>
       )}
-      {segmentLabels.map((segmentLabel) => (
+      {readableSegmentLabels.map((segmentLabel) => (
         <text
           key={`${id}-segment-label-${segmentLabel.segmentRef}`}
           data-testid={`sld-v2-run-${id}-segment-label-${segmentLabel.segmentRef}`}
@@ -377,6 +386,70 @@ function cutHorizontalInterval(
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
+}
+
+function avoidStationLabelCollision(
+  label: CableRunSegmentLabel,
+  gaps: readonly CableRunStationPortGap[],
+): CableRunSegmentLabel {
+  const collidingGap = gaps.find((gap) => {
+    const stationMidX = gap.outputX === null ? gap.inputX : (gap.inputX + gap.outputX) / 2;
+    return Math.abs(label.y - gap.y) <= 24 && Math.abs(label.x - stationMidX) <= 128;
+  });
+  if (!collidingGap) return label;
+  return {
+    ...label,
+    y: Math.min(label.y - 34, collidingGap.y - 72),
+  };
+}
+
+function avoidPendingEndpointLabelCollision(
+  label: CableRunSegmentLabel,
+  terminalPoint: Point,
+): CableRunSegmentLabel {
+  const isNearPendingEndpoint =
+    Math.abs(label.y - terminalPoint.y) <= 34
+    && Math.abs(label.x - terminalPoint.x) <= 190;
+  if (!isNearPendingEndpoint) return label;
+  return {
+    ...label,
+    y: terminalPoint.y - 30,
+  };
+}
+
+function declutterSegmentLabels(
+  labels: readonly CableRunSegmentLabel[],
+): CableRunSegmentLabel[] {
+  const placed: CableRunSegmentLabel[] = [];
+  return labels.map((label) => {
+    let candidate = label;
+    let attempts = 0;
+    while (placed.some((other) => segmentLabelsOverlap(candidate, other)) && attempts < 6) {
+      candidate = {
+        ...candidate,
+        y: candidate.y - 20,
+      };
+      attempts += 1;
+    }
+    placed.push(candidate);
+    return candidate;
+  });
+}
+
+function segmentLabelsOverlap(
+  left: CableRunSegmentLabel,
+  right: CableRunSegmentLabel,
+): boolean {
+  const leftHalfWidth = estimateLabelWidth(left.text) / 2;
+  const rightHalfWidth = estimateLabelWidth(right.text) / 2;
+  return (
+    Math.abs(left.y - right.y) < 18
+    && Math.abs(left.x - right.x) < leftHalfWidth + rightHalfWidth + 12
+  );
+}
+
+function estimateLabelWidth(text: string): number {
+  return Math.max(52, Math.min(220, text.length * 7.2));
 }
 
 function findLongestHorizontalSegmentMidpoint(points: readonly Point[]): Point | null {

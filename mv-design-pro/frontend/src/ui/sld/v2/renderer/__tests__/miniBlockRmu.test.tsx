@@ -85,14 +85,14 @@ describe('MiniBlockRmuRenderer — kompozycja z bays', () => {
 });
 
 describe('MiniBlockRmuRenderer — viewBox invariant', () => {
-  it('compact ma stały rozmiar 100×56', () => {
+  it('compact ma stały rozmiar czytelny dla mini-RMU', () => {
     const vb = miniBlockViewBox('compact');
-    expect(vb).toEqual({ width: 148, height: 104 });
+    expect(vb).toEqual({ width: 190, height: 136 });
   });
 
-  it('detail ma stały rozmiar 160×100', () => {
+  it('detail ma stały rozmiar czytelny dla rozdzielnicy stacji', () => {
     const vb = miniBlockViewBox('detail');
-    expect(vb).toEqual({ width: 190, height: 144 });
+    expect(vb).toEqual({ width: 220, height: 164 });
   });
 });
 
@@ -198,6 +198,22 @@ describe('MiniBlockRmuRenderer - PV po stronie nN', () => {
     protection.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     expect(clicked).toBe('st-1/pv/protection/e2tango/Q1');
+  });
+});
+
+describe('MiniBlockRmuRenderer - PV layout readability', () => {
+  it('widok szczegolowy PV trzyma etykiete pod ukladem nN i rysuje cele rozdzielnicy', () => {
+    const { container } = r('detail', {
+      footprintType: 'der_station',
+      derBadges: [{ kind: 'PV', count: 2 }],
+    });
+    const root = container.querySelector('[data-testid="sld-v2-mini-rmu-st-1"]');
+    const name = root?.querySelector('[data-parity-key="station.mini.name"]');
+
+    expect(Number(name?.getAttribute('y') ?? '0')).toBeGreaterThan(80);
+    expect(root?.querySelector('[data-parity-key="station.pv.nn_compartment"]')).not.toBeNull();
+    expect(root?.querySelectorAll('[data-parity-key="station.pv.nn_feeder.cell"]').length).toBe(2);
+    expect(root?.querySelectorAll('[data-parity-key="station.mini.bay.cell"]').length).toBeGreaterThanOrEqual(2);
   });
 });
 

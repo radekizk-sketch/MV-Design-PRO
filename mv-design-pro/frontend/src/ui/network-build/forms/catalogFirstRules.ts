@@ -47,6 +47,9 @@ function hasManualGridSourceEquivalent(payload: Payload): boolean {
   const nonNegative = (value: unknown): boolean =>
     typeof value === 'number' && Number.isFinite(value) && value >= 0;
   const voltageKv = manualEquivalent.voltage_kv ?? payload.voltage_kv;
+  const inputSide = String(
+    manualEquivalent.short_circuit_input_side ?? payload.short_circuit_input_side ?? 'SN',
+  ).toUpperCase();
   const shortCircuitMode =
     typeof (manualEquivalent.short_circuit_mode ?? payload.short_circuit_mode) === 'string'
       ? String(manualEquivalent.short_circuit_mode ?? payload.short_circuit_mode)
@@ -62,6 +65,13 @@ function hasManualGridSourceEquivalent(payload: Payload): boolean {
     const rOhm = manualEquivalent.r_ohm ?? payload.r_ohm;
     const xOhm = manualEquivalent.x_ohm ?? payload.x_ohm;
     return nonNegative(rOhm) && positive(xOhm);
+  }
+
+  if (inputSide === 'HV_110' || inputSide === 'HV' || inputSide === 'WN') {
+    const voltageHvKv = manualEquivalent.hv_voltage_kv ?? manualEquivalent.voltage_hv_kv ?? payload.hv_voltage_kv;
+    const sk3HvMva = manualEquivalent.sk3_hv_mva ?? payload.sk3_hv_mva;
+    const rxRatio = manualEquivalent.rx_ratio ?? payload.rx_ratio;
+    return positive(voltageHvKv) && positive(sk3HvMva) && positive(rxRatio);
   }
 
   const sk3Mva = manualEquivalent.sk3_mva ?? payload.sk3_mva;

@@ -22,6 +22,7 @@ describe('TopBar - compact V12 chrome', () => {
   beforeEach(() => {
     act(() => {
       useAppStateStore.getState().setActiveWorkMode('TE');
+      useAppStateStore.getState().setActiveProject(null);
       useSnapshotStore.getState().reset();
     });
   });
@@ -29,6 +30,7 @@ describe('TopBar - compact V12 chrome', () => {
   afterEach(() => {
     act(() => {
       useAppStateStore.getState().setActiveWorkMode('TE');
+      useAppStateStore.getState().setActiveProject(null);
       useAppStateStore.getState().setActiveCase(null);
       useSnapshotStore.getState().reset();
     });
@@ -49,6 +51,23 @@ describe('TopBar - compact V12 chrome', () => {
     expect(screen.getByTestId('top-bar-export')).toHaveTextContent('Eksport');
     expect(screen.getByTestId('top-bar-settings')).toBeInTheDocument();
     expect(screen.queryByTestId('work-mode-switcher')).not.toBeInTheDocument();
+  });
+
+  it('ukrywa techniczny identyfikator projektu w nagłówku', () => {
+    const technicalProjectId = '3909c203-a795-4051-841f-45d5ab7d4fa3';
+    const generatedProjectName = 'E2E_BROWSER_USE_TEST_OPERATOR_GRADE_1778367370729';
+    act(() => {
+      useAppStateStore.getState().setActiveProject(
+        technicalProjectId,
+        generatedProjectName,
+      );
+    });
+
+    render(<TopBar projectName={generatedProjectName} />);
+
+    expect(screen.getByTestId('ctx-project')).toHaveTextContent('Projekt bez nazwy');
+    expect(screen.getByTestId('top-bar-v12').textContent).not.toContain(technicalProjectId);
+    expect(screen.getByTestId('top-bar-v12').textContent).not.toContain(generatedProjectName);
   });
 
   it.each(WORK_MODES.map((mode, idx) => [F_KEYS[idx], mode]))(

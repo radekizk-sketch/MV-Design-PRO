@@ -63,6 +63,27 @@ describe('StatusBarV12 — pasek statusu V12', () => {
     expect(screen.getByTestId('status-network').textContent).toMatch(/17/);
   });
 
+  it('ukrywa techniczne identyfikatory projektu, wersji modelu i obliczenia', () => {
+    const technicalProjectId = '3909c203-a795-4051-841f-45d5ab7d4fa3';
+    const generatedProjectName = 'E2E_BROWSER_USE_TEST_OPERATOR_GRADE_1778367370729';
+    act(() => {
+      const store = useAppStateStore.getState();
+      store.setActiveProject(technicalProjectId, generatedProjectName);
+      store.setActiveCase('case-technical-id', 'Stan projektowany 2026');
+      store.setActiveSnapshot('snapshot-technical-id');
+      store.setActiveRun('run-technical-id');
+    });
+
+    const { container } = render(<StatusBarV12 />);
+
+    expect(screen.getByTestId('status-project')).toHaveTextContent('Projekt bez nazwy');
+    expect(screen.getByTestId('status-snapshot')).toHaveTextContent('aktualna');
+    expect(screen.getByTestId('status-run-id')).toHaveTextContent('wykonane');
+    expect(container.textContent ?? '').not.toContain(technicalProjectId);
+    expect(container.textContent ?? '').not.toContain(generatedProjectName);
+    expect(container.textContent ?? '').not.toMatch(/snapshot-technical-id|run-technical-id/);
+  });
+
   describe('Hash audytu (V12S-010 — chain pięciu hashy)', () => {
     afterEach(() => {
       act(() => {

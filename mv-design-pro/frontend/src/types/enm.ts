@@ -773,6 +773,7 @@ export interface BranchPointSN extends ENMElement {
 export interface Corridor extends ENMElement {
   corridor_type: 'radial' | 'ring' | 'mixed';
   ordered_segment_refs: string[];
+  station_refs?: string[];
   no_point_ref?: string | null;
 }
 

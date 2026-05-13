@@ -17,8 +17,11 @@ import {
 export interface GridSourceFormData {
   source_name: string;
   sn_voltage_kv: number | null;
+  hv_voltage_kv: number | null;
   sk3_mva: number | null;
+  sk3_hv_mva: number | null;
   rx_ratio: number | null;
+  short_circuit_input_side: ShortCircuitInputSide;
   short_circuit_mode: ManualSourceShortCircuitMode;
   r_ohm: number | null;
   x_ohm: number | null;
@@ -59,6 +62,7 @@ type ReadinessState = 'complete' | 'warning' | 'missing';
 type PreviewStatus = 'idle' | 'loading' | 'ready' | 'error';
 type CatalogStatus = 'idle' | 'loading' | 'ready' | 'error';
 type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
+type ShortCircuitInputSide = 'SN' | 'HV_110';
 
 interface GpzEditorSection {
   order: number;
@@ -70,8 +74,11 @@ interface GpzEditorSection {
 const DEFAULT_DATA: GridSourceFormData = {
   source_name: 'GPZ 1',
   sn_voltage_kv: 15,
+  hv_voltage_kv: 110,
   sk3_mva: 310,
+  sk3_hv_mva: null,
   rx_ratio: 0.12,
+  short_circuit_input_side: 'SN',
   short_circuit_mode: 'SHORT_CIRCUIT_POWER',
   r_ohm: null,
   x_ohm: null,
@@ -248,7 +255,26 @@ function validateForm(data: GridSourceFormData): FieldError[] {
   }
 
   if (data.manual_mode) {
-    if (data.short_circuit_mode === 'IMPEDANCE') {
+    if (data.short_circuit_input_side === 'HV_110') {
+      if (!isPositive(data.hv_voltage_kv)) {
+        errors.push({
+          field: 'hv_voltage_kv',
+          message: 'Tryb WN/SN wymaga dodatniego napiÄ™cia strony WN.',
+        });
+      }
+      if (!isPositive(data.sk3_hv_mva)) {
+        errors.push({
+          field: 'sk3_hv_mva',
+          message: 'Podaj moc zwarciowÄ… Sk3 na szynie 110 kV.',
+        });
+      }
+      if (data.rx_ratio === null || data.rx_ratio < 0) {
+        errors.push({
+          field: 'rx_ratio',
+          message: 'Stosunek R/X musi byc nieujemny.',
+        });
+      }
+    } else if (data.short_circuit_mode === 'IMPEDANCE') {
       if (data.r_ohm === null || data.r_ohm < 0) {
         errors.push({
           field: 'r_ohm',
@@ -448,7 +474,14 @@ function findCatalogItem(
 }
 
 function buildPreviewPayload(data: GridSourceFormData): GridSourcePreviewRequest | null {
-  if (!isPositive(data.sn_voltage_kv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
+  const previewVoltageKv = data.manual_mode && data.short_circuit_input_side === 'HV_110'
+    ? data.hv_voltage_kv
+    : data.sn_voltage_kv;
+  const previewSk3Mva = data.manual_mode && data.short_circuit_input_side === 'HV_110'
+    ? data.sk3_hv_mva
+    : data.sk3_mva;
+
+  if (!isPositive(previewVoltageKv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
     return null;
   }
 
@@ -456,7 +489,7 @@ function buildPreviewPayload(data: GridSourceFormData): GridSourcePreviewRequest
     if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
       return null;
     }
-  } else if (!isPositive(data.sk3_mva) || data.rx_ratio === null || data.rx_ratio < 0) {
+  } else if (!isPositive(previewSk3Mva) || data.rx_ratio === null || data.rx_ratio < 0) {
     return null;
   }
 
@@ -472,9 +505,9 @@ function buildPreviewPayload(data: GridSourceFormData): GridSourcePreviewRequest
   }
 
   return {
-    voltage_kv: data.sn_voltage_kv,
+    voltage_kv: previewVoltageKv,
     short_circuit_mode: data.short_circuit_mode,
-    sk3_mva: data.sk3_mva,
+    sk3_mva: previewSk3Mva,
     rx_ratio: data.rx_ratio,
     r_ohm: data.r_ohm,
     x_ohm: data.x_ohm,
@@ -490,13 +523,16 @@ function buildPreviewPayload(data: GridSourceFormData): GridSourcePreviewRequest
 function getReadinessRows(data: GridSourceFormData): Array<[string, ReadinessState, string]> {
   const hasZeroSequenceInput =
     (data.r0_ohm !== null && data.x0_ohm !== null) || isPositive(data.z0_z1_ratio);
+  const hasShortCircuitInput = data.manual_mode && data.short_circuit_input_side === 'HV_110'
+    ? isPositive(data.hv_voltage_kv) && isPositive(data.sk3_hv_mva) && data.rx_ratio !== null
+    : isPositive(data.sk3_mva) && data.rx_ratio !== null;
 
   return [
     ['Identyfikacja', data.source_name.trim() ? 'complete' : 'missing', 'Kompletne'],
     ['Napięcie SN', isPositive(data.sn_voltage_kv) ? 'complete' : 'missing', 'Kompletne'],
     [
       'Parametry zwarciowe',
-      isPositive(data.sk3_mva) && data.rx_ratio !== null ? 'complete' : 'missing',
+      hasShortCircuitInput ? 'complete' : 'missing',
       'Kompletne',
     ],
     [
@@ -720,6 +756,15 @@ export function GridSourceEditor({
       ?? null,
     [formData.gpz_line_field_apparatus_catalog_ref, mvApparatusItems],
   );
+  const isHvShortCircuitInput =
+    formData.manual_mode && formData.short_circuit_input_side === 'HV_110';
+  const showRxInput = !formData.manual_mode || isHvShortCircuitInput;
+  const shortCircuitSectionTitle = isHvShortCircuitInput
+    ? 'Parametry zwarciowe na szynie 110 kV'
+    : 'Parametry zwarciowe na szynach SN';
+  const shortCircuitPowerField: keyof GridSourceFormData = isHvShortCircuitInput
+    ? 'sk3_hv_mva'
+    : 'sk3_mva';
   useEffect(() => {
     if (!isOpen || formData.gpz_line_field_apparatus_catalog_ref || filteredMvApparatusItems.length === 0) {
       return;
@@ -987,26 +1032,62 @@ export function GridSourceEditor({
             </div>
           </ScadaSection>
 
-          <ScadaSection title="Parametry zwarciowe na szynach SN">
+          <ScadaSection title={shortCircuitSectionTitle}>
+            {formData.manual_mode && (
+              <div className="grid gap-2 md:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => handleChange('short_circuit_input_side', 'SN')}
+                  className={modeButtonClass(formData.short_circuit_input_side === 'SN')}
+                >
+                  Tryb uproszczony: Sk3 po stronie SN
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleChange('short_circuit_input_side', 'HV_110')}
+                  className={modeButtonClass(formData.short_circuit_input_side === 'HV_110')}
+                >
+                  Tryb WN/SN: Sk3 na szynie 110 kV
+                </button>
+              </div>
+            )}
+
             <div className="grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
-              <FieldShell label="Moc zwarciowa Sk''" unit="MVA" error={getFieldError('sk3_mva')}>
+              {isHvShortCircuitInput && (
+                <FieldShell label="Napiecie szyny WN" unit="kV" error={getFieldError('hv_voltage_kv')}>
+                  <input
+                    type="number"
+                    value={formData.hv_voltage_kv ?? ''}
+                    onChange={handleNumericChange('hv_voltage_kv')}
+                    className={fieldClass(getFieldError('hv_voltage_kv'))}
+                  />
+                </FieldShell>
+              )}
+
+              <FieldShell
+                label={isHvShortCircuitInput ? "Moc zwarciowa Sk'' na 110 kV" : "Moc zwarciowa Sk'' po stronie SN"}
+                unit="MVA"
+                error={getFieldError(shortCircuitPowerField)}
+              >
                 <input
                   type="number"
-                  value={formData.sk3_mva ?? ''}
-                  onChange={handleNumericChange('sk3_mva')}
-                  className={fieldClass(getFieldError('sk3_mva'))}
+                  value={isHvShortCircuitInput ? formData.sk3_hv_mva ?? '' : formData.sk3_mva ?? ''}
+                  onChange={handleNumericChange(shortCircuitPowerField)}
+                  className={fieldClass(getFieldError(shortCircuitPowerField))}
                 />
               </FieldShell>
 
-              <FieldShell label="Stosunek R/X" error={getFieldError('rx_ratio')}>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formData.rx_ratio ?? ''}
-                  onChange={handleNumericChange('rx_ratio')}
-                  className={fieldClass(getFieldError('rx_ratio'))}
-                />
-              </FieldShell>
+              {showRxInput && (
+                <FieldShell label="Stosunek R/X" error={getFieldError('rx_ratio')}>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.rx_ratio ?? ''}
+                    onChange={handleNumericChange('rx_ratio')}
+                    className={fieldClass(getFieldError('rx_ratio'))}
+                  />
+                </FieldShell>
+              )}
 
               <FieldShell label="Normalny czas obliczeń">
                 <select className={selectClass()}>

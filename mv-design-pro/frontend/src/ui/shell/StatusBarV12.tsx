@@ -34,6 +34,26 @@ function getResultLabel(status: ResultStatus) {
   return 'Brak wyników';
 }
 
+function looksLikeTechnicalId(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(trimmed)
+    || /^E2E[_-]/i.test(trimmed)
+    || (/^[A-Z0-9_:-]{16,}$/.test(trimmed) && /[_:-]/.test(trimmed))
+    || /^[a-z]+[:/_-][a-z0-9/_-]{8,}$/i.test(trimmed)
+    || /^[0-9a-f]{16,}$/i.test(trimmed);
+}
+
+function projectDisplayName(name: string | null | undefined, id: string | null | undefined): string {
+  if (name && !looksLikeTechnicalId(name)) return name;
+  if (id) return 'Projekt bez nazwy';
+  return '— nie otwarto —';
+}
+
+function modelVersionDisplay(snapshotId: string | null): string {
+  return snapshotId ? 'aktualna' : '—';
+}
+
 interface StatusBarV12Props {
   validationStatus?: 'valid' | 'warnings' | 'errors' | null;
   validationWarnings?: number;
@@ -67,13 +87,9 @@ export function StatusBarV12({
   const studyCaseResultStatus = useStudyCasesStore((s) => s.activeCase?.result_status ?? null);
   const resultStatus: ResultStatus = studyCaseResultStatus ?? appResultStatus;
 
-  const snapshotDisplay = snapshotId
-    ? snapshotId.length > 10 ? `${snapshotId.slice(0, 10)}…` : snapshotId
-    : '—';
+  const snapshotDisplay = modelVersionDisplay(snapshotId);
 
-  const runDisplay = runId
-    ? runId.length > 8 ? runId.slice(0, 8) : runId
-    : null;
+  const runDisplay = runId ? 'wykonane' : null;
 
   // Hash audytu — preferuj chain V12S-010 (semantic). Fallback do viewHash gdy
   // backend jeszcze nie populuje pól w storze.
@@ -129,7 +145,7 @@ export function StatusBarV12({
           <span className="text-scada-muted">Projekt:</span>
           {projectId ? (
             <span className="font-medium text-scada-text truncate max-w-[140px]">
-              {projectName || projectId.slice(0, 8)}
+              {projectDisplayName(projectName, projectId)}
             </span>
           ) : (
             <span className="text-scada-grounded">— nie otwarto —</span>

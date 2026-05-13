@@ -382,6 +382,7 @@ const ELEMENT_TYPE_LABELS: Record<string, string> = {
   disconnector: 'Odłącznik',
   fuse: 'Bezpiecznik',
   bus_coupler: 'Sprzęgło szynowe',
+  Switch: 'Łącznik SN',
   substation: 'Stacja',
   bay: 'Pole',
   generator: 'Generator',
@@ -700,6 +701,18 @@ function readinessText(ready: boolean, blockedText = 'wynik zablokowany'): strin
 
 function isLineCable(b: Branch): b is Branch & { type: 'line_overhead' | 'cable' } {
   return b.type === 'line_overhead' || b.type === 'cable';
+}
+
+function isSwitchgearBranch(b: Branch): boolean {
+  return b.type === 'switch'
+    || b.type === 'breaker'
+    || b.type === 'bus_coupler'
+    || b.type === 'disconnector'
+    || b.type === 'fuse';
+}
+
+function switchgearBranchTypeLabel(branch: Branch): string {
+  return ELEMENT_TYPE_LABELS[branch.type] ?? 'Aparat SN';
 }
 
 interface SegmentTechnicalPayload {
@@ -1825,6 +1838,51 @@ function buildSectionsForElement(
   // Try branches
   const branch = snapshot.branches?.find((b) => b.ref_id === elementId);
   if (branch) {
+    if (isSwitchgearBranch(branch)) {
+      elementType = 'Switch';
+      elementName = branch.name;
+      const apparatusLabel = switchgearBranchTypeLabel(branch);
+      const branchParent = findParentStation(elementId, snapshot);
+      sections.push({
+        id: 'ident',
+        label: 'Identyfikacja',
+        fields: [
+          { key: 'ref_id', label: 'Oznaczenie aparatu', value: branch.ref_id },
+          { key: 'name', label: 'Nazwa', value: branch.name },
+          { key: 'kind', label: 'Rodzaj aparatu', value: apparatusLabel },
+          { key: 'status', label: 'Stan ruchowy', value: branch.status === 'closed' ? 'zamknięty' : 'otwarty' },
+          ...(branchParent ? [{ key: 'parent_station', label: 'Stacja nadrzędna', value: branchParent }] : []),
+        ],
+      });
+      sections.push({
+        id: 'topology',
+        label: 'Topologia',
+        fields: [
+          { key: 'from_bus', label: 'Szyna początkowa', value: branch.from_bus_ref },
+          { key: 'to_bus', label: 'Szyna końcowa', value: branch.to_bus_ref },
+        ],
+      });
+      sections.push({
+        id: 'catalog',
+        label: 'Katalog aparatu',
+        fields: [
+          { key: 'catalog_ref', label: 'Pozycja katalogowa', value: branch.catalog_ref ?? '?' },
+          { key: 'catalog_namespace', label: 'Przestrzeń katalogu', value: branch.catalog_namespace ?? 'APARAT_SN' },
+        ],
+      });
+      actions.push({
+        id: 'assign_catalog',
+        label: 'Przypisz katalog aparatu',
+        op: 'assign_catalog_to_element',
+        context: {
+          element_ref: branch.ref_id,
+          element_type: 'switch',
+          catalog_namespace: branch.catalog_namespace ?? 'APARAT_SN',
+        },
+      });
+      return { sections, elementType, elementName, actions };
+    }
+
     elementType = branch.type;
     elementName = branch.name;
     sections.push({
@@ -2034,6 +2092,7 @@ function buildSectionsForElement(
         { key: 'bus_count', label: 'Szyny', value: station.bus_refs.length, source: 'calculated' },
       ],
     });
+    actions.push({ id: 'continue_trunk_from_station', label: 'Kontynuuj ciąg SN', op: 'continue_trunk_segment_sn', variant: 'primary' });
     actions.push({ id: 'create_transformer_sn_nn', label: 'Dodaj transformator', op: 'add_transformer_sn_nn', context: { station_ref: station.id }, variant: 'primary' });
     actions.push({ id: 'create_converter_source_pv', label: 'Dodaj źródło przekształtnikowe PV', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'PV' } });
     actions.push({ id: 'create_converter_source_bess', label: 'Dodaj źródło przekształtnikowe BESS', op: 'add_converter_source', context: { station_ref: station.id, source_technology: 'BESS' } });
@@ -2190,7 +2249,8 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       : null,
     [elementId, snapshot],
   );
-  const isSelectedSegment = selectedElement?.type === 'LineBranch' || Boolean(selectedSegment);
+  const isSelectedSegment = selectedElement?.type === 'LineBranch'
+    && (!selectedSegment || isLineCable(selectedSegment));
   const selectedSegmentCatalogRef = selectedSegment?.catalog_ref ?? null;
   const selectedSegmentCatalogNamespace = inferSegmentCatalogNamespace(selectedSegment);
   const selectedSegmentPickerCategory = inferSegmentPickerCategory(selectedSegment);

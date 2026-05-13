@@ -7,6 +7,14 @@ import type { ConverterType, LVApparatusType } from '../../catalog/types';
 import { CatalogPicker, type CatalogEntry } from '../../topology/modals/CatalogPicker';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useActiveOperationForm, useNetworkBuildStore } from '../networkBuildStore';
+import {
+  PTPIREE_CERTIFIED_INVERTERS,
+  filterPtpireeCertifiedInverters,
+  formatPtpireeCertificateLabel,
+  getPtpireeCertifiedInverter,
+  loadPtpireeCertifiedInverters,
+  type PtpireeCertifiedInverterItem,
+} from '../station-der/ptpireeCertifiedInverters';
 import { catalogRefFromInput, normalizeCatalogBinding } from './catalogPayload';
 import {
   listNnBusOptions,
@@ -24,6 +32,7 @@ type ConverterCatalogNamespace = 'ZRODLO_NN_PV' | 'ZRODLO_NN_BESS' | 'CONVERTER'
 interface ConverterSourceContext extends Record<string, unknown> {
   source_technology?: SourceTechnology;
   connection_variant?: ConnectionVariant;
+  ptpiree_certificate_ref?: string;
 }
 
 interface TechnologyConfig {
@@ -64,6 +73,11 @@ function formatPower(value: number | null | undefined): string {
   return `${value.toFixed(3)} MW`;
 }
 
+function formatNumberInput(value: number | null | undefined): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '';
+  return value.toFixed(3);
+}
+
 function sameNominalVoltageKv(left: number, right: number): boolean {
   return Math.abs(left - right) <= 1e-6;
 }
@@ -89,6 +103,63 @@ function toCatalogEntries(types: ConverterType[] | LVApparatusType[]): CatalogEn
         ? `Un ${formatVoltageKv(item.un_kv)}, S ${item.sn_mva.toFixed(3)} MVA, Pmax ${item.pmax_mw.toFixed(3)} MW`
         : `Un ${formatVoltageKv(item.u_n_kv)}, In ${item.i_n_a} A`,
   }));
+}
+
+function compactSearch(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function ptpireeTechnologyScore(
+  technology: SourceTechnology,
+  item: PtpireeCertifiedInverterItem,
+): number {
+  const text = `${item.deviceKind} ${item.model}`.toLowerCase();
+  if (technology === 'BESS') {
+    return /bess|bat|akumulator|magazyn|hybryd/.test(text) ? 25 : 0;
+  }
+  if (technology === 'PV') {
+    return /pv|fotowolta|solar|falownik|inwerter|hybryd/.test(text) ? 20 : 0;
+  }
+  return /wiatr|wind|fw/.test(text) ? 25 : 0;
+}
+
+function findBestPtpireeCertificate(
+  converter: ConverterType | null,
+  technology: SourceTechnology,
+  registry: readonly PtpireeCertifiedInverterItem[],
+): PtpireeCertifiedInverterItem | null {
+  if (!converter) return null;
+  const converterManufacturer = compactSearch(converter.manufacturer);
+  const converterName = compactSearch(converter.name);
+  let best: { item: PtpireeCertifiedInverterItem; score: number } | null = null;
+
+  for (const item of registry) {
+    const itemManufacturer = compactSearch(item.manufacturer);
+    const itemModel = compactSearch(item.model);
+    let score = ptpireeTechnologyScore(technology, item);
+    if (converterManufacturer && itemManufacturer === converterManufacturer) {
+      score += 70;
+    } else if (
+      converterManufacturer &&
+      (itemManufacturer.includes(converterManufacturer) ||
+        converterManufacturer.includes(itemManufacturer))
+    ) {
+      score += 35;
+    }
+    if (converterName && itemModel === converterName) {
+      score += 90;
+    } else if (
+      converterName &&
+      (itemModel.includes(converterName) || converterName.includes(itemModel))
+    ) {
+      score += 45;
+    }
+    if (!best || score > best.score) {
+      best = { item, score };
+    }
+  }
+
+  return best && best.score >= 80 ? best.item : null;
 }
 
 export function AddConverterSourceForm() {
@@ -167,6 +238,12 @@ export function AddConverterSourceForm() {
   const [newFieldName, setNewFieldName] = useState('Pole źródłowe nN');
   const [apparatusCatalogId, setApparatusCatalogId] = useState('');
   const [converterCatalogId, setConverterCatalogId] = useState(initialCatalogRef);
+  const [ptpireeRegistry, setPtpireeRegistry] = useState(PTPIREE_CERTIFIED_INVERTERS);
+  const [ptpireeCertificateId, setPtpireeCertificateId] = useState(
+    typeof context?.ptpiree_certificate_ref === 'string' ? context.ptpiree_certificate_ref : '',
+  );
+  const [ptpireeQuery, setPtpireeQuery] = useState('');
+  const [autoFillFromCatalog, setAutoFillFromCatalog] = useState(true);
   const [sourceName, setSourceName] = useState(TECHNOLOGY[initialTechnology].defaultName);
   const [quantity, setQuantity] = useState('1');
   const [controlMode, setControlMode] = useState('STALY_COS_PHI');
@@ -199,6 +276,32 @@ export function AddConverterSourceForm() {
   useEffect(() => {
     setConverterCatalogId(initialCatalogRef);
   }, [initialCatalogRef]);
+
+  useEffect(() => {
+    setPtpireeCertificateId(
+      typeof context?.ptpiree_certificate_ref === 'string' ? context.ptpiree_certificate_ref : '',
+    );
+  }, [context?.ptpiree_certificate_ref]);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadPtpireeCertifiedInverters()
+      .then((registry) => {
+        if (active) {
+          setPtpireeRegistry(registry);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPtpireeRegistry(PTPIREE_CERTIFIED_INVERTERS);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -254,6 +357,19 @@ export function AddConverterSourceForm() {
     () => filteredConverters.find((entry) => entry.id === converterCatalogId) ?? null,
     [converterCatalogId, filteredConverters],
   );
+  const selectedPtpireeCertificate = useMemo(
+    () => getPtpireeCertifiedInverter(ptpireeCertificateId, ptpireeRegistry),
+    [ptpireeCertificateId, ptpireeRegistry],
+  );
+  const ptpireeMatches = useMemo(() => {
+    const fallbackQuery = selectedConverter
+      ? `${selectedConverter.manufacturer} ${selectedConverter.name}`
+      : '';
+    return filterPtpireeCertifiedInverters(
+      ptpireeQuery.trim() || fallbackQuery,
+      ptpireeRegistry,
+    ).slice(0, 40);
+  }, [ptpireeQuery, ptpireeRegistry, selectedConverter]);
   const sourceFieldOptions = useMemo(
     () => listNnSourceFieldOptions(snapshot, stationRef, busNnRef),
     [busNnRef, snapshot, stationRef],
@@ -293,6 +409,41 @@ export function AddConverterSourceForm() {
       setConverterCatalogId('');
     }
   }, [converterCatalogId, filteredConverters]);
+
+  useEffect(() => {
+    if (!converterCatalogId && filteredConverters.length === 1) {
+      setConverterCatalogId(filteredConverters[0].id);
+    }
+  }, [converterCatalogId, filteredConverters]);
+
+  useEffect(() => {
+    if (!selectedConverter || !autoFillFromCatalog) return;
+    const parsedQuantity = Math.max(1, Number.parseInt(quantity, 10) || 1);
+    setPowerSetpointMw(formatNumberInput(selectedConverter.pmax_mw * parsedQuantity));
+    setQMinMvar(formatNumberInput(selectedConverter.qmin_mvar));
+    setQMaxMvar(formatNumberInput(selectedConverter.qmax_mvar));
+    setControlMode((current) =>
+      selectedConverter.cosphi_min != null || selectedConverter.cosphi_max != null
+        ? 'STALY_COS_PHI'
+        : current,
+    );
+    setSourceName((current) => {
+      if (current.trim() && current !== tech.defaultName) return current;
+      return selectedConverter.name.toUpperCase().startsWith(tech.shortLabel)
+        ? selectedConverter.name
+        : `${tech.shortLabel} ${selectedConverter.name}`;
+    });
+  }, [autoFillFromCatalog, quantity, selectedConverter, tech.defaultName, tech.shortLabel]);
+
+  useEffect(() => {
+    if (!selectedConverter) return;
+    setPtpireeQuery((current) => current || `${selectedConverter.manufacturer} ${selectedConverter.name}`);
+    if (ptpireeCertificateId) return;
+    const best = findBestPtpireeCertificate(selectedConverter, sourceTechnology, ptpireeRegistry);
+    if (best) {
+      setPtpireeCertificateId(best.id);
+    }
+  }, [ptpireeCertificateId, ptpireeRegistry, selectedConverter, sourceTechnology]);
 
   useEffect(() => {
     setNewFieldName(`Pole ${tech.shortLabel} nN`);
@@ -455,6 +606,14 @@ export function AddConverterSourceForm() {
           cosphi_min: selectedConverter.cosphi_min ?? null,
           cosphi_max: selectedConverter.cosphi_max ?? null,
           e_kwh: selectedConverter.e_kwh ?? null,
+          ptpiree_certificate_ref: selectedPtpireeCertificate?.id ?? null,
+          ptpiree_document_number: selectedPtpireeCertificate?.documentNumber ?? null,
+          ptpiree_wos_version: selectedPtpireeCertificate?.wosVersion ?? null,
+          ptpiree_module_types: selectedPtpireeCertificate?.moduleTypes ?? [],
+          ptpiree_source_url: selectedPtpireeCertificate?.sourceUrl ?? null,
+          ptpiree_source_row: selectedPtpireeCertificate?.sourceRow ?? null,
+          ptpiree_electrical_data_status:
+            selectedPtpireeCertificate?.electricalDataStatus ?? 'requires_datasheet',
         },
       });
 
@@ -493,6 +652,7 @@ export function AddConverterSourceForm() {
     qMinMvar,
     quantity,
     selectedConverter,
+    selectedPtpireeCertificate,
     selectedTransformer,
     socMaxPercent,
     socMinPercent,
@@ -779,9 +939,22 @@ export function AddConverterSourceForm() {
               label={`Przekształtnik ${tech.shortLabel}`}
               entries={converterEntries}
               selectedId={converterCatalogId}
-              onChange={setConverterCatalogId}
+              onChange={(id) => {
+                setConverterCatalogId(id);
+                setAutoFillFromCatalog(true);
+                setPtpireeCertificateId('');
+                setPtpireeQuery('');
+              }}
               required
             />
+            <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                checked={autoFillFromCatalog}
+                onChange={(event) => setAutoFillFromCatalog(event.target.checked)}
+              />
+              Uzupełniaj P, Q, tryb i nazwę z katalogu falownika
+            </label>
             {requiredConverterVoltageKv !== null && (
               <div className="rounded-md border border-cyan-500/40 bg-cyan-950/30 px-3 py-2 text-[11px] text-cyan-100">
                 Katalog ograniczony do napięcia zacisku nN:{' '}
@@ -798,6 +971,85 @@ export function AddConverterSourceForm() {
                 konfigurację strony nN albo dobierz transformator blokowy do napięcia źródła.
               </div>
             )}
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Certyfikat falownika PTPiREE
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-500">
+                    Wykaz PTPiREE potwierdza certyfikat NC RfG/WOS. Dane elektryczne nadal pochodzą
+                    z katalogu falownika.
+                  </div>
+                </div>
+                <span className="rounded border border-slate-300 bg-white px-2 py-1 text-[10px] text-slate-600">
+                  {ptpireeRegistry.length} pozycji
+                </span>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <label className="block">
+                  <span className="text-[11px] font-medium text-slate-700">
+                    Szukaj producent/model/dokument
+                  </span>
+                  <input
+                    value={ptpireeQuery}
+                    onChange={(event) => setPtpireeQuery(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                    placeholder={
+                      selectedConverter
+                        ? `${selectedConverter.manufacturer} ${selectedConverter.name}`
+                        : 'np. Sungrow SG250'
+                    }
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] font-medium text-slate-700">
+                    Pozycja z wykazu
+                  </span>
+                  <select
+                    aria-label="Certyfikat PTPiREE"
+                    value={ptpireeCertificateId}
+                    onChange={(event) => setPtpireeCertificateId(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">brak przypisanego certyfikatu</option>
+                    {ptpireeMatches.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {formatPtpireeCertificateLabel(item)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                    Wybrany wpis
+                  </div>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {formatPtpireeCertificateLabel(selectedPtpireeCertificate)}
+                  </div>
+                </div>
+                <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                    Moduł NC RfG
+                  </div>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {selectedPtpireeCertificate?.moduleTypes.join(', ') ?? '—'}
+                  </div>
+                </div>
+                <div className="rounded border border-slate-200 bg-white px-3 py-2 text-xs">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-400">
+                    Dane katalogowe
+                  </div>
+                  <div className="mt-1 font-medium text-slate-800">
+                    {selectedPtpireeCertificate
+                      ? 'wymagana karta producenta'
+                      : 'nie przypisano'}
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs">
                 <div className="text-[10px] uppercase tracking-wide text-slate-400">
@@ -853,7 +1105,10 @@ export function AddConverterSourceForm() {
               </span>
               <input
                 value={powerSetpointMw}
-                onChange={(event) => setPowerSetpointMw(event.target.value)}
+                onChange={(event) => {
+                  setPowerSetpointMw(event.target.value);
+                  setAutoFillFromCatalog(false);
+                }}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 placeholder={nominalPowerMw != null ? nominalPowerMw.toFixed(3) : 'np. 0.500'}
               />
@@ -862,7 +1117,10 @@ export function AddConverterSourceForm() {
               <span className="text-[11px] font-medium text-slate-700">Qmin [Mvar]</span>
               <input
                 value={qMinMvar}
-                onChange={(event) => setQMinMvar(event.target.value)}
+                onChange={(event) => {
+                  setQMinMvar(event.target.value);
+                  setAutoFillFromCatalog(false);
+                }}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 placeholder={selectedConverter?.qmin_mvar?.toString() ?? '—'}
               />
@@ -871,7 +1129,10 @@ export function AddConverterSourceForm() {
               <span className="text-[11px] font-medium text-slate-700">Qmax [Mvar]</span>
               <input
                 value={qMaxMvar}
-                onChange={(event) => setQMaxMvar(event.target.value)}
+                onChange={(event) => {
+                  setQMaxMvar(event.target.value);
+                  setAutoFillFromCatalog(false);
+                }}
                 className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 placeholder={selectedConverter?.qmax_mvar?.toString() ?? '—'}
               />
