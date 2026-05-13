@@ -61,6 +61,13 @@ class StudyCaseConfig:
     include_inverter_contribution: bool = True
     thermal_time_seconds: float = 1.0  # Time for thermal current calculation
 
+    # Operator profile (NC RfG / IRiESD per OSD)
+    # Determines: FRT curves, Q-U envelope, cos φ(P) profile, ramp rate, dead band,
+    # frequency response thresholds. Loaded from backend/src/catalog/profiles/nc_rfg/
+    # {operator_profile_id}.yaml. Supported: pse | energa | tauron | enea | pge.
+    # Default: "enea" — per /goal V12K (ENEA Operator pierwszy w priorytecie).
+    operator_profile_id: str = "enea"
+
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for storage."""
         return {
@@ -72,6 +79,7 @@ class StudyCaseConfig:
             "include_motor_contribution": self.include_motor_contribution,
             "include_inverter_contribution": self.include_inverter_contribution,
             "thermal_time_seconds": self.thermal_time_seconds,
+            "operator_profile_id": self.operator_profile_id,
         }
 
     @classmethod
@@ -86,6 +94,7 @@ class StudyCaseConfig:
             include_motor_contribution=data.get("include_motor_contribution", True),
             include_inverter_contribution=data.get("include_inverter_contribution", True),
             thermal_time_seconds=data.get("thermal_time_seconds", 1.0),
+            operator_profile_id=data.get("operator_profile_id", "enea"),
         )
 
 

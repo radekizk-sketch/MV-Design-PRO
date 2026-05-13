@@ -13,6 +13,29 @@ export type StudyCaseResultStatus = 'NONE' | 'FRESH' | 'OUTDATED';
 /**
  * Study case configuration parameters.
  */
+/**
+ * Supported operator profiles (NC RfG / IRiESD per OSD).
+ * Source of truth: backend/src/catalog/profiles/nc_rfg/{id}.yaml
+ */
+export type OperatorProfileId = 'enea' | 'energa' | 'pge' | 'pse' | 'tauron';
+
+/**
+ * Operator profile metadata (UI-visible labels).
+ * Reflects YAML profiles in backend/src/catalog/profiles/nc_rfg/.
+ * For full narrative wymagań IRiESD: REQUIRES_SOURCE (vendor documentation,
+ * not fabricated — see V12K-014 ENEA narrative blocker).
+ */
+export const OPERATOR_PROFILES: Array<{
+  id: OperatorProfileId;
+  label_pl: string;
+}> = [
+  { id: 'enea', label_pl: 'ENEA Operator (domyślny)' },
+  { id: 'energa', label_pl: 'Energa Operator' },
+  { id: 'pge', label_pl: 'PGE Dystrybucja' },
+  { id: 'pse', label_pl: 'PSE (operator przesyłowy)' },
+  { id: 'tauron', label_pl: 'Tauron Dystrybucja' },
+];
+
 export interface StudyCaseConfig {
   // Short-circuit parameters
   c_factor_max: number;
@@ -27,6 +50,10 @@ export interface StudyCaseConfig {
   include_motor_contribution: boolean;
   include_inverter_contribution: boolean;
   thermal_time_seconds: number;
+
+  // Operator profile (NC RfG / IRiESD per OSD)
+  // Default: 'enea' per /goal V12K (ENEA Operator first in priority)
+  operator_profile_id: OperatorProfileId;
 }
 
 /**
@@ -121,6 +148,7 @@ export const DEFAULT_STUDY_CASE_CONFIG: StudyCaseConfig = {
   include_motor_contribution: true,
   include_inverter_contribution: true,
   thermal_time_seconds: 1.0,
+  operator_profile_id: 'enea',
 };
 
 /**
@@ -155,6 +183,7 @@ export const CONFIG_FIELD_LABELS: Record<keyof StudyCaseConfig, string> = {
   include_motor_contribution: 'Wkład silników',
   include_inverter_contribution: 'Wkład inwerterów',
   thermal_time_seconds: 'Czas cieplny [s]',
+  operator_profile_id: 'Operator (OSD)',
 };
 
 // =============================================================================

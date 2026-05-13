@@ -5,8 +5,17 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
-import type { StudyCase, StudyCaseConfig, CreateStudyCaseRequest } from './types';
-import { CONFIG_FIELD_LABELS, DEFAULT_STUDY_CASE_CONFIG } from './types';
+import type {
+  CreateStudyCaseRequest,
+  OperatorProfileId,
+  StudyCase,
+  StudyCaseConfig,
+} from './types';
+import {
+  CONFIG_FIELD_LABELS,
+  DEFAULT_STUDY_CASE_CONFIG,
+  OPERATOR_PROFILES,
+} from './types';
 import { useStudyCasesStore } from './store';
 
 interface CreateCaseDialogProps {
@@ -42,11 +51,18 @@ export function CreateCaseDialog({
       e.preventDefault();
       clearError();
 
+      // operator_profile_id MUSI być przekazywany zawsze (default ENEA),
+      // niezależnie od useDefaultConfig — profil operatora to świadomy wybór
+      // projektanta, nie szczegół techniczny obliczeń.
+      const effectiveConfig: StudyCaseConfig = useDefaultConfig
+        ? { ...DEFAULT_STUDY_CASE_CONFIG, operator_profile_id: config.operator_profile_id }
+        : config;
+
       const request: CreateStudyCaseRequest = {
         project_id: projectId,
         name: name.trim(),
         description: description.trim(),
-        config: useDefaultConfig ? undefined : config,
+        config: effectiveConfig,
         set_active: setActive,
       };
 
@@ -149,6 +165,37 @@ export function CreateCaseDialog({
               </label>
             </div>
 
+            <div>
+              <label
+                htmlFor="operator-profile-id"
+                className="mb-1 block text-sm font-medium text-gray-700"
+              >
+                {CONFIG_FIELD_LABELS.operator_profile_id} *
+              </label>
+              <select
+                id="operator-profile-id"
+                data-testid="operator-profile-id"
+                value={config.operator_profile_id}
+                onChange={(e) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    operator_profile_id: e.target.value as OperatorProfileId,
+                  }))
+                }
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
+              >
+                {OPERATOR_PROFILES.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.label_pl}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">
+                Wymagania NC RfG / IRiESD wybranego operatora wpływają na walidację
+                profili FRT, Q(U), cos φ(P) oraz krzywych zabezpieczeń.
+              </p>
+            </div>
+
             <div className="flex items-center">
               <input
                 type="checkbox"
@@ -158,7 +205,7 @@ export function CreateCaseDialog({
                 className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
               <label htmlFor="useDefaultConfig" className="ml-2 text-sm text-gray-700">
-                Użyj domyślnej konfiguracji
+                Użyj pozostałych parametrów obliczeń jako domyślnych
               </label>
             </div>
 
