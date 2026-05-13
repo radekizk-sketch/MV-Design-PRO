@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Ring busbar / Szyna pierścieniowa - IEC 60617 industrial -->
+  <!-- Two parallel busbar sections S1 (top) and S2 (bottom) with closure on right (ring topology). -->
+  <!-- S1 -->
+  <rect x="5" y="30" width="80" height="6" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- S2 -->
+  <rect x="5" y="64" width="80" height="6" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Ring closure (right side connecting S1 and S2) -->
+  <path d="M 85 33 L 95 33 L 95 67 L 85 67" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Section identifier markers -->
+  <text x="2" y="28" font-family="sans-serif" font-size="8" fill="currentColor">S1</text>
+  <text x="2" y="80" font-family="sans-serif" font-size="8" fill="currentColor">S2</text>
+  <!-- Ports:
+       left_s1: (0, 33) — S1 left connection
+       left_s2: (0, 67) — S2 left connection
+       right_s1: (95, 33) — S1 right (ring side)
+       right_s2: (95, 67) — S2 right (ring side) -->
+</svg>

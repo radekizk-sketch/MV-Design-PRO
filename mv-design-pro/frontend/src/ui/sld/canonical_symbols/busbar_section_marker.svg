@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Busbar section marker / Oznaczenie sekcji szyn - IEC 60617 -->
+  <!-- Short vertical separator line indicating section boundary on busbar. -->
+  <!-- Busbar segment (left side of section) -->
+  <rect x="0" y="45" width="40" height="10" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Section marker (double vertical dashes) -->
+  <line x1="48" y1="30" x2="48" y2="70" stroke="currentColor" stroke-width="2" stroke-dasharray="3,2"/>
+  <line x1="52" y1="30" x2="52" y2="70" stroke="currentColor" stroke-width="2" stroke-dasharray="3,2"/>
+  <!-- Busbar segment (right side of section) -->
+  <rect x="60" y="45" width="40" height="10" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Section label -->
+  <text x="42" y="22" font-family="sans-serif" font-size="6" fill="currentColor">SEC</text>
+  <!-- Ports:
+       left: (0, 50), right: (100, 50) -->
+</svg>
