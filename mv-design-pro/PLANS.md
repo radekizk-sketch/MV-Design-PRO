@@ -325,6 +325,57 @@ Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-ur
 
 ---
 
+### 3.6 P0 implementation sprint (2026-05-13)
+
+Zrealizowane w jednym dniu (9 commitów po cleanupie):
+
+- [x] **P0.2 Protection SI-100** — `solver_input/eligibility.py:169` stub usunięty, real
+  eligibility check (BREAKER/RECLOSER required). Krok 11 flow E2E odblokowany.
+  Backend tests: 121/121 PASS (commit `20b432e`)
+- [x] **P0.1 SLD F1** — biblioteka symboli IEC 60617:
+  - Sprint 1 (KRYTYCZNY): ring_busbar, double_busbar, busbar_section_marker,
+    busbar_coupler, cb_drawout, auto_recloser, switch_3pos (commits `d553ae7`, `3874719`)
+  - Sprint 2: lightning_rod, grounding_resistor, grounding_reactor, synchrocheck,
+    surge_arrester_10ka (commit `544834c`)
+  - Sprint 3: autotransformer, transformer_tap_changer, utility_source,
+    pv_inverter_nc_rfg, wind_turbine_full_converter (commit `544834c`)
+  - Sprint 4: 8 ports.json entries dla legacy SVG → 100% SVG↔ports sync (commit `544834c`)
+  - Status: 48 / 62 = **77.4% pokrycia IEC 60617** (target ≥ 90%)
+- [x] **P0.8 DOCX export** — `proof_inspector/exporters.py` `export_docx()` + `export_to_docx()`
+  convenience. V12K-007 light_technical. 45/45 inspector tests PASS (commit `ddab90f`)
+- [x] **P0.9 partial (operator selector + SC toggle)** — `StudyCaseConfig.operator_profile_id`
+  (default ENEA per /goal V12K) + `sc_input_mode` toggle simplified/advanced
+  (default simplified). Frontend dropdown + conditional simplified inputs (S″k_SN, R/X).
+  Backend round-trip 5/5 + frontend vitest 75/75 PASS (commits `49909d8`, `087b54c`)
+- [x] **P0.4 VDROP + Earthing proof packs** — standalone packs wrappers nad istniejącymi
+  ProofGenerator. `packs/vdrop.py` + `packs/earthing_ground_fault_sn.py`. 12 nowych
+  testów, 279/279 proof_engine PASS. 8 pakietów dowodów łącznie (commit `beac74d`)
+- [x] **P0.10 partial (Visual regression scaffold)** — Playwright config (`toHaveScreenshot`
+  threshold 0.5% per AC-11) + `frontend/e2e/visual/sld_industrial_visual.spec.ts` (5 active
+  + skipped LOD/light_technical) + `.github/workflows/sld-visual-regression.yml` + kontrakt
+  `docs/sld/SLD_VISUAL_REGRESSION_CONTRACT.md` (commit `8e911d2`)
+- [x] **P0.3 partial (port_binding_guard extension)** — `scripts/port_binding_guard.py`
+  dodano `_validate_ports_manifest()` (SVG↔ports.json sync, schema reguły, kind enum,
+  voltage_kv_compat list). 0 naruszeń przy 48 symbolach (commit `3b7637c`)
+
+**Status P0 (10 pozycji):**
+
+| # | Zakres | Status |
+|---|--------|--------|
+| P0.1 | SLD F1 biblioteka symboli (10 OD) | ✅ ~7 OD (77.4% pokrycie, F1 sprints 1-4 zamknięte) |
+| P0.2 | Protection SI-100 (5 OD) | ✅ DONE |
+| P0.3 | SLD F2 LayoutEngine port-based (25 OD) | ⚙️ ~2 OD (guard extension) — main implementation TODO |
+| P0.4 | VDROP + Earthing packs (10 OD) | ✅ DONE |
+| P0.5 | Fault-loop NN solver (15 OD) | ⏳ TODO |
+| P0.6 | SLD F3 LOD + refactor monolith (15 OD) | ⏳ TODO (LodPolicy istnieje, integracja w monolicie TODO) |
+| P0.7 | SLD F4 Theme + overlay + eksport (20 OD) | ⏳ TODO |
+| P0.8 | DOCX export (5 OD) | ✅ DONE |
+| P0.9 | Wizard improvements (7 OD) | ✅ ~5 OD (operator+toggle); split-preview TODO |
+| P0.10 | SLD F5 Visual regression CI (8 OD) | ⚙️ ~3 OD scaffolding; baseline + LFS TODO |
+
+**Postęp:** ~32 OD z 120 OD goal P0 (~27%). 4 pełne P0 zamknięte, 4 częściowo
+adresowane, 2 czekają (P0.5 fault-loop NN, P0.7 SLD F4 — duże architektoniczne).
+
 ### 3.5 Docs cleanup + canon resolution (2026-05-13)
 
 Zakres zakończony w tym etapie:

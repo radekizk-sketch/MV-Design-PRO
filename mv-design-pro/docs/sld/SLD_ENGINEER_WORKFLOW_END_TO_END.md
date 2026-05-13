@@ -87,7 +87,12 @@ System ma być narzędziem inżynierskim, nie panelem programistycznym. Eliminac
 
 **UX wymagania:** Pełny formularz, ale podzielony na logiczne sekcje (3-4 zakładki max).
 
-**Stan:** ❌ Brak toggle. Plan: P1 w PLAN_E2E_INDUSTRIAL § 3 (5 OD).
+**Stan:** ✅ UI toggle dostarczony 2026-05-13 (`CreateCaseDialog.tsx` data-testid=`sc-input-mode` + conditional inputs `sc-sk-mva` + `sc-rx-ratio`).
+Backend `StudyCaseConfig.sc_input_mode` + `sc_simplified_sk_mva` + `sc_simplified_r_x_ratio`
+zaimplementowane z backward-compat fallback. Default tryb: `simplified`.
+
+**Pozostały scope:** integracja `sc_simplified_sk_mva` w `solver_input/builder.py`
+(materializacja c_factor z S″k_SN gdy mode='simplified') — follow-up ~1 OD.
 
 ### Krok 4 — Wybór standardów operatora
 
@@ -107,7 +112,14 @@ System ma być narzędziem inżynierskim, nie panelem programistycznym. Eliminac
 
 > **BLOCKER:** Dokumentacja narracyjna ENEA Operator (IRiESD, NC RfG) — wymaga źródła. Nie fabrykować. YAML jest źródłem prawdy w repo (`backend/src/catalog/profiles/nc_rfg/enea.yaml`).
 
-**Stan:** ⚠️ YAML profile istnieją, brak UI selektora na K1. Plan: P1 (2 OD).
+**Stan:** ✅ UI selektor dostarczony 2026-05-13 (`CreateCaseDialog.tsx` data-testid=`operator-profile-id`).
+5 operatorów (ENEA default + Energa + PGE + PSE + Tauron) propagowane do
+`StudyCaseConfig.operator_profile_id`. YAML profile w
+`backend/src/catalog/profiles/nc_rfg/{operator}.yaml` pozostają jako source of truth
+parametrów NC RfG (loader.py).
+
+**BLOCKER (utrzymany):** narracja IRiESD ENEA Operator wymaga źródła vendor /
+regulatora — NIE fabrykować. UI tylko wybiera operator_profile_id.
 
 ### Krok 5 — Wybór katalogowych typów kabli/linii
 
@@ -251,7 +263,14 @@ System ma być narzędziem inżynierskim, nie panelem programistycznym. Eliminac
 - Margins selektywności numerical (brak werdyktów)
 - Strefy zadziałania wizualne na SLD overlay
 
-**Stan:** ❌ **DEAD CLICK** — `solver_input/eligibility.py:169` zwraca BLOKER „not implemented (stub)". Plan: P0 (5 OD).
+**Stan:** ✅ STUB SI-100 USUNIĘTY 2026-05-13 (commit P0.2). `solver_input/eligibility.py`
+implementuje realne warunki Protection eligibility:
+1. ≥ 1 BREAKER lub RECLOSER w grafie (chroniony aparat)
+2. SLACK źródło (E-D01 z common blockers)
+
+Krok 11 flow inżyniera odblokowany. Per-relay validation (settings, krzywe IDMT,
+CT/VT bindings) jest deferred do runtime'u `protection_engine_v1`. 121/121 protection
+testów PASS.
 
 ### Krok 12 — Wizualizacja wyników na SLD
 
@@ -288,7 +307,11 @@ System ma być narzędziem inżynierskim, nie panelem programistycznym. Eliminac
 - Każdy krok dowodu klikalny (raise issue / annotate)
 - Eksport 4 formatów: JSON + LaTeX + PDF + DOCX
 
-**Stan:** ⚠️ Częściowe (JSON + LaTeX + PDF działają; DOCX = LUKA). Plan: P1 (5 OD).
+**Stan:** ✅ DOCX EXPORT DOSTARCZONY 2026-05-13 (commit P0.8). `proof_inspector/exporters.py`
+implementuje `export_docx()` z python-docx. 8 pakietów dowodów (SC3F, VDROP, Equipment,
+PF, Losses, Protection, Earthing, LF Voltage) eksportowalne do 4 formatów:
+JSON + LaTeX + PDF + DOCX (V12K-007 light_technical). VDROP + Earthing standalone packs
+dostarczone 2026-05-13 (commit P0.4).
 
 ### Krok 14 — Eksport CAD/SCADA/raport
 

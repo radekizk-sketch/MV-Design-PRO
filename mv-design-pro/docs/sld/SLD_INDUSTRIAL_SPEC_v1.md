@@ -172,15 +172,19 @@ Snapshot / TopologyInput
 
 ## 5. F3 — LOD + warstwy + typografia + grid
 
-### 5.1 Level-of-Detail (5 poziomów)
+### 5.1 Level-of-Detail (5 poziomów) — zgodne z `frontend/src/ui/sld/v2/lod/LodPolicy.ts`
 
-| LOD | Zoom range | Co renderuje |
-|-----|------------|--------------|
-| LOD-0 (overview) | < 0.15× | tylko outline GPZ, magistrala, brak pól |
-| LOD-1 (planview) | 0.15–0.30× | + pola GPZ jako prostokąty z nazwą, bez detali |
-| LOD-2 (standard) | 0.30–0.70× | + CB, DS w polach, główne pomiary |
-| LOD-3 (technical) | 0.70–1.30× | + CT/VT, badge'e SPZ/SCO/OWG, parametry techniczne |
-| LOD-4 (full detail) | > 1.30× | wszystko + footnoty, snapshot info, źródła |
+| LOD | Zoom range | Nazwa | Co renderuje |
+|-----|------------|-------|--------------|
+| LOD-0 | < 0.3× | overview (mapa) | tylko outline GPZ, magistrala — bez pól |
+| LOD-1 | 0.3–0.7× | sieć (planview) | + pola GPZ jako prostokąty z nazwą, mini-RMU compact |
+| LOD-2 | 0.7–1.5× | obiekty (standard) | + CB, DS w polach, główne pomiary, mini-RMU detail |
+| LOD-3 | 1.5–3.0× | szczegół techniczny | + CT/VT, badge'e SPZ/SCO/OWG, DER sub-tree |
+| LOD-4 | > 3.0× | diagnostyka | wszystko + footnoty, snapshot info, źródła |
+
+Source of truth thresholds: `LOD_ZOOM_THRESHOLDS` w
+`frontend/src/ui/sld/v2/lod/LodPolicy.ts`. Wnioskowanie LOD z scale:
+`inferLodFromScale(scale: number): LodLevel`.
 
 ### 5.2 Warstwy (13 toggle'ach)
 

@@ -124,11 +124,13 @@ Skala oceny: 1 (atrapa) – 10 (industrial-grade ABB/Siemens). Akceptacja: **≥
 ### AC-08: LOD wzmacnia znaczenie elektryczne
 
 **Wymóg:** 5 poziomów LOD:
-- **LOD-0 (overview, zoom < 0.15×):** outline GPZ + magistrala — bez detali pól
-- **LOD-1 (planview, 0.15–0.30×):** + pola jako prostokąty z nazwą
-- **LOD-2 (standard, 0.30–0.70×):** + CB, DS w polach, główne pomiary
-- **LOD-3 (technical, 0.70–1.30×):** + CT/VT, badge'e SPZ/SCO/OWG, parametry techniczne
-- **LOD-4 (full detail, > 1.30×):** wszystko + footnoty, snapshot info
+- **LOD-0 (overview, zoom < 0.3×):** outline GPZ + magistrala — bez pól (mapa)
+- **LOD-1 (planview, 0.3–0.7×):** + pola jako prostokąty z nazwą, mini-RMU compact
+- **LOD-2 (standard, 0.7–1.5×):** + CB, DS w polach, główne pomiary, mini-RMU detail
+- **LOD-3 (technical, 1.5–3.0×):** + CT/VT, badge'e SPZ/SCO/OWG, DER sub-tree
+- **LOD-4 (diagnostyka, > 3.0×):** wszystko + footnoty, snapshot info
+
+Source of truth: `LOD_ZOOM_THRESHOLDS` w `frontend/src/ui/sld/v2/lod/LodPolicy.ts`.
 
 **Czego NIE wolno:**
 - Brak LOD (wszystko na każdym zoom)
