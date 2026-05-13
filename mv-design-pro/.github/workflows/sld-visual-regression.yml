@@ -1,0 +1,85 @@
+name: SLD Visual Regression
+
+# P0.10 / PLAN_SLD_REWORK F5 — Visual regression guard for SLD industrial-grade
+# rendering. Enforces SLD_VISUAL_ACCEPTANCE_CRITERIA AC-11 (60 snapshots,
+# threshold 0.5% pixel diff per playwright.config.ts toHaveScreenshot).
+#
+# Reference:
+# - docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md AC-11
+# - docs/plan/PLAN_SLD_REWORK.md § 7
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mv-design-pro/frontend/src/ui/sld/**'
+      - 'mv-design-pro/frontend/e2e/visual/**'
+      - 'mv-design-pro/frontend/playwright.config.ts'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mv-design-pro/frontend/src/ui/sld/**'
+      - 'mv-design-pro/frontend/e2e/visual/**'
+      - 'mv-design-pro/frontend/playwright.config.ts'
+
+# Avoid concurrent visual runs to prevent baseline-update race conditions.
+concurrency:
+  group: sld-visual-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  visual-regression:
+    name: SLD Visual Regression (reference scenarios)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    defaults:
+      run:
+        working-directory: mv-design-pro/frontend
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true  # Snapshot baselines stored via Git LFS (binary PNGs)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mv-design-pro/frontend/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Playwright browser (chromium only)
+        run: npx playwright install --with-deps chromium
+
+      - name: Run visual regression tests
+        run: npx playwright test --grep "visual:sld" --reporter=list
+        env:
+          CI: 'true'
+          PLAYWRIGHT_DISABLE_WEBSERVER: '1'
+          # No real backend needed — visual tests use #sld-view?ref=*
+          # reference scenarios (deterministic FE-only topologies).
+
+      - name: Upload visual diff artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sld-visual-regression-diffs-${{ github.run_id }}
+          path: |
+            mv-design-pro/frontend/test-results/**/*-actual.png
+            mv-design-pro/frontend/test-results/**/*-diff.png
+            mv-design-pro/frontend/test-results/**/*-expected.png
+          retention-days: 14
+          if-no-files-found: warn
+
+      - name: Upload Playwright HTML report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}
+          path: mv-design-pro/frontend/playwright-report
+          retention-days: 7
+          if-no-files-found: warn
