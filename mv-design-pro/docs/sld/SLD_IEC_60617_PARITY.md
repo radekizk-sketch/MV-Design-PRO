@@ -66,9 +66,9 @@ Status legenda:
 | `ct` | Przekładnik prądowy (CT) | ✅ OK | ct.svg |
 | `vt` | Przekładnik napięciowy (VT) | ✅ OK | vt.svg |
 | `metering_cubicle` | Pole pomiarowe | ✅ OK | metering_cubicle.svg |
-| `ct_split_core` | CT typu split-core | ❌ MISSING | — |
-| `pq_meter` | Licznik P+jQ | ❌ MISSING | — |
-| `synchrocheck` | Synchrocheck (ANSI 25) | ❌ MISSING | — |
+| `ct_split_core` | CT typu split-core | ❌ MISSING (P2) | — |
+| `pq_meter` | Licznik P+jQ (4-quadrant) | ✅ OK (nowy, 2026-05) | pq_meter.svg |
+| `synchrocheck` | Synchrocheck (ANSI 25) | ✅ OK (nowy, 2026-05) | synchrocheck.svg |
 
 ### 2.5 Ochronne (IEC 60617-10)
 
@@ -115,11 +115,11 @@ Status legenda:
 |------------|----------|------|------|
 | `capacitor` | Kondensator | ✅ OK | capacitor.svg |
 | `reactor` | Dławik | ✅ OK | reactor.svg |
-| `alarm_marker` | Marker alarmu | ⚠️ PARTIAL | alarm_marker.svg |
-| `missing_data_marker` | Marker brakujących danych | ⚠️ PARTIAL | missing_data_marker.svg |
-| `zksn` | ZK SN (złącze kablowe SN) | ⚠️ PARTIAL | zksn.svg |
-| `capacitor_bank` | Bateria kondensatorów | ❌ MISSING | — |
-| `reactor_shunt` | Dławik bocznikowy | ❌ MISSING | — |
+| `alarm_marker` | Marker alarmu | ✅ OK (2026-05) | alarm_marker.svg |
+| `missing_data_marker` | Marker brakujących danych | ✅ OK (2026-05) | missing_data_marker.svg |
+| `zksn` | ZK SN (złącze kablowe SN) | ✅ OK (2026-05) | zksn.svg |
+| `capacitor_bank` | Bateria kondensatorów (3F shunt VAR) | ✅ OK (nowy, 2026-05) | capacitor_bank.svg |
+| `reactor_shunt` | Dławik bocznikowy | ❌ MISSING (P2) | — |
 
 ---
 
@@ -127,14 +127,14 @@ Status legenda:
 
 | Status | Liczba |
 |--------|--------|
-| ✅ OK (SVG + ports.json) | 48 |
+| ✅ OK (SVG + ports.json) | **50** |
 | ⚠️ PARTIAL (SVG bez ports.json) | 0 |
-| ❌ MISSING (target lista) | 14 |
+| ❌ MISSING (target lista) | 12 |
 | **Razem zadeklarowane** | **62** |
-| **Pokrycie OK** | **48 / 62 = 77.4%** |
+| **Pokrycie OK** | **50 / 62 = 80.6%** |
 
-**Target:** ≥ 90% pokrycie (≥ 56 / 62 symboli).
-**Gap:** 14 symboli do uzupełnienia.
+**Goal target (`/goal` § P0.1): ≥ 50 symboli — ✅ HIT (50/50 exactly).**
+**IEC parity target: ≥ 90% (≥ 56 / 62). Gap: 12 symboli (P2 follow-up).**
 
 **Progress 2026-05-13 (cały dzień):**
 - F1 sprint 1 ✅ (7 symboli, priorytet KRYTYCZNY): ring_busbar, double_busbar,
@@ -170,14 +170,15 @@ match).
 
 ### Sprint 2 — pomiarowe + ochronne (~3 OD) ✅ ZAMKNIĘTY 2026-05-13
 
-- [ ] `ct_split_core` (deferred — non-critical)
-- [ ] `pq_meter` (deferred — non-critical)
+- [ ] `ct_split_core` (deferred — variant, P2)
+- [x] `pq_meter` (2026-05-13 EoD)
 - [x] `synchrocheck` (2026-05-13)
 - [x] `surge_arrester_10ka` (2026-05-13)
-- [ ] `surge_arrester_exd` (deferred — variant)
+- [ ] `surge_arrester_exd` (deferred — variant, P2)
 - [x] `lightning_rod` (2026-05-13)
 - [x] `grounding_resistor` (2026-05-13)
 - [x] `grounding_reactor` (2026-05-13)
+- [x] `capacitor_bank` (2026-05-13 EoD — VAR compensation)
 
 ### Sprint 3 — transformatory + źródła (~4 OD) ✅ ZAMKNIĘTY 2026-05-13
 

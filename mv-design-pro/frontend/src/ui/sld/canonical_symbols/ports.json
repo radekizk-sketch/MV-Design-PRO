@@ -511,6 +511,27 @@
       "allowedRotations": [0, 180],
       "defaultRotation": 0,
       "notes": "Wind turbine generator Type 4 (full-converter AC-DC-AC). Decoupled from grid via converter — provides flexibility for NC RfG compliance (FRT, Q-U, ramp rate)."
+    },
+    "pq_meter": {
+      "description": "Licznik P+jQ / Power meter (4-quadrant) — IEC 60617 + ANSI",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [0.4, 6, 10, 15, 20, 30] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [0.4, 6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "4-quadrant meter: kWh (active) + kvarh (reactive). Used at PCC for billing and grid code compliance reporting (4-quadrant import/export)."
+    },
+    "capacitor_bank": {
+      "description": "Bateria kondensatorów (3F shunt VAR) / Capacitor bank — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 5, "kind": "TAP", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Three-phase shunt capacitor bank (wye config with earth/neutral connection). Used for reactive power compensation (kvar) — improves cos φ and reduces line losses. Single TAP port — wye earth not routed externally."
     }
   },
   "portTransformations": {
