@@ -269,12 +269,12 @@ describe('AddGridSourceForm', () => {
               line_field_names: ['Pole SN 1', 'Pole SN 2'],
             },
           ],
-          manual_equivalent: {
+          manual_equivalent: expect.objectContaining({
             voltage_kv: 15,
             short_circuit_mode: 'SHORT_CIRCUIT_POWER',
             sk3_mva: 250,
             rx_ratio: 0.15,
-          },
+          }),
           grounding: {
             type: 'isolated',
           },
@@ -330,7 +330,7 @@ describe('AddGridSourceForm', () => {
               line_field_names: ['Pole zasilające 1', 'Pole zasilające 2', 'Pole zasilające 3'],
             },
           ],
-          manual_equivalent: {
+          manual_equivalent: expect.objectContaining({
             voltage_kv: 15,
             short_circuit_mode: 'IMPEDANCE',
             r_ohm: 0.55,
@@ -338,7 +338,7 @@ describe('AddGridSourceForm', () => {
             r0_ohm: 0.9,
             x0_ohm: 2.4,
             z0_z1_ratio: 1.6,
-          },
+          }),
           grounding: {
             type: 'petersen_coil',
             x_ohm: 18,

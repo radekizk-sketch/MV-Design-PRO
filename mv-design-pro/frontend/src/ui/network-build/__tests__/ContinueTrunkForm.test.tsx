@@ -108,6 +108,10 @@ function setCanonicalContext() {
   });
 }
 
+function getSubmitSegmentButton() {
+  return screen.getByRole('button', { name: /^Utwórz odcinek/ });
+}
+
 describe('ContinueTrunkForm', () => {
   beforeEach(() => {
     activeOperationContextState.value = undefined;
@@ -186,7 +190,7 @@ describe('ContinueTrunkForm', () => {
 
     expect(screen.getAllByText('Brak głowicy pola SN albo wolnego końca ciągu.').length)
       .toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeDisabled();
+    expect(getSubmitSegmentButton()).toBeDisabled();
     await waitFor(() => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
@@ -225,7 +229,7 @@ describe('ContinueTrunkForm', () => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
     fireEvent.click(screen.getByTestId('length-preset-250'));
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -269,8 +273,8 @@ describe('ContinueTrunkForm', () => {
     });
 
     fireEvent.click(screen.getByTestId('length-preset-250'));
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -301,8 +305,8 @@ describe('ContinueTrunkForm', () => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '250' } });
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -329,7 +333,7 @@ describe('ContinueTrunkForm', () => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '350' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -373,8 +377,8 @@ describe('ContinueTrunkForm', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '400' } });
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -424,8 +428,8 @@ describe('ContinueTrunkForm', () => {
 
     fireEvent.click(screen.getByTestId('length-preset-250'));
     expect(screen.getByText('XRUHAKXS 3x120 · 250 m')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(

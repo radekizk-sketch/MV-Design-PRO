@@ -1765,9 +1765,6 @@ function buildDers(
     if (!kind) continue;
     const stationRef = generatorStationRef(gen);
     const station = stationRef ? stations.find((s) => s.id === stationRef) : null;
-    if (station && mapGeneratorConnectionSide(gen) === 'nn') {
-      continue;
-    }
     const baseX = station ? station.x + DER_OFFSET_RIGHT : 800;
     const baseY = station ? station.y + 60 : Y_RUN_BASE + 60;
 

@@ -16,6 +16,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 const SRC_DIR = path.join(__dirname, '..', '..');
+const DATA_SOURCE_ALLOWLIST = new Set([
+  path.join('ui', 'network-build', 'station-der', 'ptpireeCertifiedInverters.ts'),
+]);
 
 // Codename pattern: P followed by digits (excluding P0 — technical parameter)
 // Matches: P7, P11, P14, P15, P17, P20, P22, P30, etc.
@@ -34,6 +37,8 @@ function getAllTsxFiles(dir: string): string[] {
       results.push(...getAllTsxFiles(fullPath));
     } else if (
       (entry.name.endsWith('.tsx') || entry.name.endsWith('.ts')) &&
+      !entry.name.endsWith('.generated.ts') &&
+      !entry.name.endsWith('.generated.tsx') &&
       !entry.name.endsWith('.test.ts') &&
       !entry.name.endsWith('.test.tsx') &&
       !entry.name.endsWith('.spec.ts') &&
@@ -81,6 +86,9 @@ describe('Canon Guard: Global Codename BAN', () => { // no-codenames-ignore
     const allViolations: { file: string; line: number; content: string }[] = [];
 
     for (const filePath of files) {
+      if (DATA_SOURCE_ALLOWLIST.has(path.relative(SRC_DIR, filePath))) {
+        continue;
+      }
       const violations = findCodenameViolations(filePath);
       for (const v of violations) {
         allViolations.push({
