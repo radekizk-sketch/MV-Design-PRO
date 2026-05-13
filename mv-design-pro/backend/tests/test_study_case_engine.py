@@ -156,7 +156,14 @@ class TestCreateCase:
         assert len(case.study_case_id) > 0
 
     def test_create_case_default_config(self, engine: StudyCaseEngine) -> None:
-        """Default config must have standard IEC values."""
+        """Default config must have standard IEC values.
+
+        NOTE: This test uses StudyCaseConfig from domain.study_case_engine,
+        not domain.study_case. The two classes are parallel (technical debt
+        flagged in REJESTR_DLUGU). The newer P0.9 fields (operator_profile_id,
+        sc_input_mode, sc_simplified_*) live only on domain.study_case for now.
+        TODO: consolidate the two classes in a follow-up cleanup.
+        """
         case = engine.create_case(
             snapshot_ref="snap_1",
             scenario_type=ScenarioType.LOAD_FLOW,
