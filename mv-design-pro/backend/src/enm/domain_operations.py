@@ -2446,7 +2446,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "ref_id": substation_ref,
             "name": payload.get("source_name") or f"GPZ {voltage_kv} kV",
             "station_type": "gpz",
-            "bus_refs": gpz_hv_bus_refs + gpz_section_bus_refs,
+            "bus_refs": gpz_section_bus_refs + gpz_hv_bus_refs,
             "transformer_refs": gpz_transformer_refs,
             "entry_point_ref": source_bus_ref,
             "gpz_sections": gpz_sections,

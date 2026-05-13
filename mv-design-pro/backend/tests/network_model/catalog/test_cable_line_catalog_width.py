@@ -27,11 +27,12 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     stats = get_catalog_statistics()
     summary = get_cable_catalog_quality_summary()
 
-    assert stats["liczba_kabli_ogolem"] == 51
-    assert stats["liczba_kabli_produkcyjnych"] == 50
-    assert summary["liczba_kabli_produkcyjnych"] == 50
+    assert stats["liczba_kabli_ogolem"] == 55
+    assert stats["liczba_kabli_produkcyjnych"] == 54
+    assert summary["liczba_kabli_produkcyjnych"] == 54
     assert summary["liczba_kabli_testowych"] == 1
     assert summary["rodziny_kabli"] == [
+        "ENEA_OPERATOR",
         "EPR_AL_1C",
         "EPR_AL_3C",
         "EPR_CU_1C",
@@ -44,7 +45,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
         "XLPE_CU_3C",
     ]
     assert summary["przekroje_kabli_mm2"] == [70, 120, 150, 185, 240, 300, 400]
-    assert summary["liczba_typow_1z"] == 29
+    assert summary["liczba_typow_1z"] == 33
     assert summary["liczba_typow_3z"] == 22
     assert summary["statusy_weryfikacji"] == [
         "CZESCIOWO_ZWERYFIKOWANY",
