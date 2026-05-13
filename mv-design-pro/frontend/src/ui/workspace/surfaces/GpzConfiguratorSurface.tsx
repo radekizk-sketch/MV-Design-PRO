@@ -5,6 +5,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import type { WorkspaceSurfaceDescriptor } from '../types';
 
 type GpzCardId = 'identification' | 'hv-side' | 'transformer' | 'sections' | 'bays-balance';
+type ShortCircuitInputMode = 'HV_110_ADVANCED' | 'SN_SIMPLIFIED';
 
 const CARD_LABELS: Record<GpzCardId, string> = {
   identification: 'Identyfikacja',
@@ -23,6 +24,8 @@ interface GpzData {
   designation: string;
   operator: string;
   location: string;
+  shortCircuitInputMode: ShortCircuitInputMode;
+  snShortCircuitMva: number | null;
   hvVoltageKv: number;
   hvShortCircuitMva: number | null;
   hvRX: number | null;
@@ -51,6 +54,8 @@ function emptyGpzData(): GpzData {
     designation: '',
     operator: '',
     location: '',
+    shortCircuitInputMode: 'HV_110_ADVANCED',
+    snShortCircuitMva: null,
     hvVoltageKv: 110,
     hvShortCircuitMva: null,
     hvRX: null,
@@ -81,9 +86,13 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
   }, [gpzRef, snapshot]);
 
   const completeness = useMemo(() => {
+    const hasShortCircuitInput =
+      data.shortCircuitInputMode === 'HV_110_ADVANCED'
+        ? data.hvShortCircuitMva !== null && data.hvShortCircuitMva > 0
+        : data.snShortCircuitMva !== null && data.snShortCircuitMva > 0;
     const checks = [
       data.name.trim().length > 0,
-      data.hvShortCircuitMva !== null && data.hvShortCircuitMva > 0,
+      hasShortCircuitInput,
       data.transformerCatalogId !== '__missing__',
       data.sectionsCount > 0,
     ];
@@ -160,6 +169,37 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
 
         {activeCard === 'hv-side' && (
           <div data-testid="gpz-card-content-hv-side" className="space-y-3">
+            <div className="grid gap-2 md:grid-cols-2">
+              <button
+                type="button"
+                data-testid="gpz-short-circuit-mode-hv"
+                onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'HV_110_ADVANCED' }))}
+                className={
+                  'border px-3 py-2 text-left text-xs font-semibold '
+                  + (data.shortCircuitInputMode === 'HV_110_ADVANCED'
+                    ? 'border-scada-sn bg-scada-surface text-scada-text'
+                    : 'border-scada-border text-scada-muted hover:text-scada-text')
+                }
+              >
+                Tryb WN/SN: Sk3 na szynie 110 kV
+              </button>
+              <button
+                type="button"
+                data-testid="gpz-short-circuit-mode-sn"
+                onClick={() => setData((d) => ({ ...d, shortCircuitInputMode: 'SN_SIMPLIFIED' }))}
+                className={
+                  'border px-3 py-2 text-left text-xs font-semibold '
+                  + (data.shortCircuitInputMode === 'SN_SIMPLIFIED'
+                    ? 'border-scada-sn bg-scada-surface text-scada-text'
+                    : 'border-scada-border text-scada-muted hover:text-scada-text')
+                }
+              >
+                Tryb uproszczony: tylko Sk3 po stronie SN
+              </button>
+            </div>
+
+            {data.shortCircuitInputMode === 'HV_110_ADVANCED' && (
+              <>
             <NumberField
               label="Napięcie znamionowe WN"
               unit="kV"
@@ -182,6 +222,18 @@ export function GpzConfiguratorSurface(props: GpzConfiguratorSurfaceProps): JSX.
               onChange={(v) => setData((d) => ({ ...d, hvRX: v }))}
               placeholder="0,1"
             />
+              </>
+            )}
+            {data.shortCircuitInputMode === 'SN_SIMPLIFIED' && (
+              <NumberField
+                label="Moc zwarciowa S''k po stronie SN"
+                unit="MVA"
+                value={data.snShortCircuitMva}
+                onChange={(v) => setData((d) => ({ ...d, snShortCircuitMva: v }))}
+                required
+                placeholder="np. 310"
+              />
+            )}
             <p className="rounded border border-scada-border bg-scada-surface p-2 text-[11px] text-scada-muted">
               Dane wejściowe są używane przez moduł obliczeń IEC 60909. Brak danych
               zwarciowych blokuje odpowiednie pozycje gotowości obliczeń.

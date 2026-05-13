@@ -49,6 +49,11 @@ CABLE_BASE_SOURCE_REFERENCE = (
 CABLE_MANUFACTURER_SOURCE_REFERENCE = (
     "IEC 60502-2 / karty katalogowe NKT i Tele-Fonika Kable dla rodzin SN"
 )
+ENEA_OPERATOR_CABLE_SOURCE_REFERENCE = (
+    "ENEA Operator - standard projektowy kabli SN; parametry elektryczne z "
+    "bazowej matrycy MV-DESIGN-PRO i kart producentow, do pelnej weryfikacji "
+    "wymagane jest podpiecie aktualnego dokumentu standardu ENEA Operator"
+)
 CATALOG_TEST_SOURCE_REFERENCE = (
     "Rekord testowy MV-DESIGN-PRO - nie stosowac w katalogu produkcyjnym"
 )
@@ -89,6 +94,8 @@ def _line_family(record_id: str) -> str:
 
 
 def _cable_family(record_id: str) -> str:
+    if record_id.startswith("cable-enea-operator-"):
+        return "ENEA_OPERATOR"
     if record_id.startswith("cable-nkt-"):
         return "NKT"
     if record_id.startswith("cable-tfk-"):
@@ -136,6 +143,19 @@ def _line_records_with_quality() -> list[dict[str, Any]]:
 
 
 def _cable_records_with_quality() -> list[dict[str, Any]]:
+    operator_records = [
+        _with_catalog_quality(
+            record,
+            source_reference=ENEA_OPERATOR_CABLE_SOURCE_REFERENCE,
+            verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
+            catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
+            verification_note=(
+                "Pozycja priorytetowa OSD dla projektanta. Nie oznacza pelnej "
+                "oficjalnej weryfikacji ENEA bez dolaczonego source_ref dokumentu operatora."
+            ),
+        )
+        for record in CABLE_ENEA_OPERATOR_STANDARD_TYPES
+    ]
     base_records = [
         _with_catalog_quality(
             record,
@@ -173,7 +193,7 @@ def _cable_records_with_quality() -> list[dict[str, Any]]:
         )
         for record in CABLE_INCOMPLETE_TYPES
     ]
-    return base_records + manufacturer_records + tests
+    return operator_records + base_records + manufacturer_records + tests
 
 
 def _status_list(records: list[dict[str, Any]], field_name: str) -> list[str]:
@@ -1594,6 +1614,93 @@ CABLE_TELEFONIKA_TYPES: list[dict[str, Any]] = [
 # =============================================================================
 # TYP NIEKOMPLETNY — do testów (brak danych cieplnych)
 # =============================================================================
+
+CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
+    {
+        "id": "cable-enea-operator-xruhakxs-1x120",
+        "name": "ENEA Operator standard - XRUHAKXS 1x120/25 mm2 12/20 kV",
+        "params": {
+            "manufacturer": "ENEA Operator",
+            "trade_name": "XRUHAKXS 1x120/25",
+            "base_type_id": "cable-base-xlpe-al-1c-120",
+            "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "cross_section_mm2": 120,
+            "number_of_cores": 1,
+            "r_ohm_per_km": 0.253,
+            "x_ohm_per_km": 0.118,
+            "c_nf_per_km": 240,
+            "rated_current_a": 255,
+            "voltage_rating_kv": 20.0,
+            "max_temperature_c": 90,
+            "jth_1s_a_per_mm2": JTH_AL_XLPE,
+            "standard": "ENEA Operator / PN-HD 620 / IEC 60502-2",
+        },
+    },
+    {
+        "id": "cable-enea-operator-xruhakxs-1x240",
+        "name": "ENEA Operator standard - XRUHAKXS 1x240/25 mm2 12/20 kV",
+        "params": {
+            "manufacturer": "ENEA Operator",
+            "trade_name": "XRUHAKXS 1x240/25",
+            "base_type_id": "cable-base-xlpe-al-1c-240",
+            "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "cross_section_mm2": 240,
+            "number_of_cores": 1,
+            "r_ohm_per_km": 0.125,
+            "x_ohm_per_km": 0.099,
+            "c_nf_per_km": 340,
+            "rated_current_a": 410,
+            "voltage_rating_kv": 20.0,
+            "max_temperature_c": 90,
+            "jth_1s_a_per_mm2": JTH_AL_XLPE,
+            "standard": "ENEA Operator / PN-HD 620 / IEC 60502-2",
+        },
+    },
+    {
+        "id": "cable-enea-operator-na2xs2y-1x150",
+        "name": "ENEA Operator standard - NA2XS2Y 1x150/25 mm2 12/20 kV",
+        "params": {
+            "manufacturer": "ENEA Operator",
+            "trade_name": "NA2XS2Y 1x150/25",
+            "base_type_id": "cable-base-xlpe-al-1c-150",
+            "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "cross_section_mm2": 150,
+            "number_of_cores": 1,
+            "r_ohm_per_km": 0.206,
+            "x_ohm_per_km": 0.107,
+            "c_nf_per_km": 290,
+            "rated_current_a": 310,
+            "voltage_rating_kv": 20.0,
+            "max_temperature_c": 90,
+            "jth_1s_a_per_mm2": JTH_AL_XLPE,
+            "standard": "ENEA Operator / PN-HD 620 / IEC 60502-2",
+        },
+    },
+    {
+        "id": "cable-enea-operator-na2xs2y-1x240",
+        "name": "ENEA Operator standard - NA2XS2Y 1x240/25 mm2 12/20 kV",
+        "params": {
+            "manufacturer": "ENEA Operator",
+            "trade_name": "NA2XS2Y 1x240/25",
+            "base_type_id": "cable-base-xlpe-al-1c-240",
+            "conductor_material": "AL",
+            "insulation_type": "XLPE",
+            "cross_section_mm2": 240,
+            "number_of_cores": 1,
+            "r_ohm_per_km": 0.125,
+            "x_ohm_per_km": 0.098,
+            "c_nf_per_km": 345,
+            "rated_current_a": 420,
+            "voltage_rating_kv": 20.0,
+            "max_temperature_c": 90,
+            "jth_1s_a_per_mm2": JTH_AL_XLPE,
+            "standard": "ENEA Operator / PN-HD 620 / IEC 60502-2",
+        },
+    },
+]
 
 CABLE_INCOMPLETE_TYPES: list[dict[str, Any]] = [
     {

@@ -167,4 +167,47 @@ describe('GridSourceEditor E-03B', () => {
       z0_z1_ratio: 3.2,
     });
   });
+
+  it('w trybie WN/SN wysyĹ‚a moc zwarciowÄ… na szynie 110 kV zamiast udawaÄ‡ dane SN', async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <GridSourceEditor
+        isOpen
+        mode="create"
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /R.*czny/ }));
+    fireEvent.click(screen.getByRole('button', { name: /110 kV/ }));
+
+    expect(screen.getByText('Parametry zwarciowe na szynie 110 kV')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Moc zwarciowa.*110 kV/), {
+      target: { value: '3000' },
+    });
+
+    await waitFor(() => {
+      const lastCall = solverFetchMock.mock.calls.at(-1);
+      const lastRequest = JSON.parse(String((lastCall?.[1] as RequestInit | undefined)?.body));
+      expect(lastRequest).toMatchObject({
+        voltage_kv: 110,
+        sk3_mva: 3000,
+        rx_ratio: 0.12,
+      });
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz GPZ' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      manual_mode: true,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: 110,
+      sk3_hv_mva: 3000,
+      sn_voltage_kv: 15,
+    }));
+  });
 });

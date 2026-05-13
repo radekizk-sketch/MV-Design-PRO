@@ -6,15 +6,20 @@ import { buildOperationContext } from '../operationContext';
 
 const snapshotState: {
   snapshot: any;
+  logicalViews: any;
   executeDomainOperation: ReturnType<typeof vi.fn>;
 } = {
   snapshot: null,
+  logicalViews: null,
   executeDomainOperation: vi.fn(async () => undefined),
 };
 
 const closeOperationFormMock = vi.fn();
 const activeOperationContextState: { value: Record<string, unknown> | undefined } = {
   value: undefined,
+};
+const selectedElementState: { value: any } = {
+  value: null,
 };
 
 vi.mock('../../app-state', () => ({
@@ -26,9 +31,15 @@ vi.mock('../../topology/snapshotStore', () => ({
   useSnapshotStore: (
     selector: (state: {
       snapshot: unknown;
+      logicalViews: unknown;
       executeDomainOperation: () => Promise<void>;
     }) => unknown,
   ) => selector(snapshotState),
+}));
+
+vi.mock('../../selection', () => ({
+  useSelectionStore: (selector: (state: { selectedElements: unknown[] }) => unknown) =>
+    selector({ selectedElements: selectedElementState.value ? [selectedElementState.value] : [] }),
 }));
 
 vi.mock('../networkBuildStore', () => ({
@@ -97,11 +108,17 @@ function setCanonicalContext() {
   });
 }
 
+function getSubmitSegmentButton() {
+  return screen.getByRole('button', { name: /^Utwórz odcinek/ });
+}
+
 describe('ContinueTrunkForm', () => {
   beforeEach(() => {
     activeOperationContextState.value = undefined;
+    selectedElementState.value = null;
     closeOperationFormMock.mockReset();
     snapshotState.executeDomainOperation.mockClear();
+    snapshotState.logicalViews = null;
     snapshotState.snapshot = {
       substations: [
         {
@@ -171,14 +188,106 @@ describe('ContinueTrunkForm', () => {
 
     render(<ContinueTrunkForm />);
 
-    expect(
-      screen.getAllByText(
-        'Nie znaleziono wolnego portu wyjściowego SN dla wybranego obiektu. Wybierz głowicę odpływową pola SN albo stację na końcu ciągu.',
-      ).length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeDisabled();
+    expect(screen.getAllByText('Brak głowicy pola SN albo wolnego końca ciągu.').length)
+      .toBeGreaterThan(0);
+    expect(getSubmitSegmentButton()).toBeDisabled();
     await waitFor(() => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+  });
+
+  it('gdy formularz ma pusty kontekst, bierze wolny koniec z aktualnie zaznaczonej stacji', async () => {
+    activeOperationContextState.value = {
+      element_ref: 'source-gpz-1',
+      element_type: 'Source',
+    };
+    selectedElementState.value = {
+      id: 'st-1',
+      type: 'Station',
+      name: 'Stacja 1',
+    };
+    snapshotState.logicalViews = {
+      terminals: [
+        {
+          element_id: 'bus-sn-1',
+          port_id: 'trunk_end',
+          trunk_id: 'trunk-1',
+          branch_id: null,
+          status: 'OTWARTY',
+        },
+      ],
+    };
+    snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
+
+    render(<ContinueTrunkForm />);
+
+    expect(screen.getByText('Kontynuuj ciąg SN z wybranego portu')).toBeInTheDocument();
+    expect(screen.getByText('Stacja 1 - port wyjściowy SN')).toBeInTheDocument();
+    expect(screen.queryByText(/Nie znaleziono wolnego portu wyjściowego SN/)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+    fireEvent.click(screen.getByTestId('length-preset-250'));
+    fireEvent.click(getSubmitSegmentButton());
+
+    await waitFor(() => {
+      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        'case-1',
+        'continue_trunk_segment_sn',
+        expect.objectContaining({
+          trunk_id: 'trunk-1',
+          from_terminal_id: 'bus-sn-1',
+        }),
+      );
+    });
+  });
+
+  it('odbudowuje wolny port z element_ref stacji, gdy selection store nie jest zsynchronizowany', async () => {
+    activeOperationContextState.value = {
+      element_ref: 'st-1',
+      element_type: 'Station',
+      segment_kind: 'KABEL_SN',
+    };
+    snapshotState.logicalViews = {
+      terminals: [
+        {
+          element_id: 'bus-sn-1',
+          port_id: 'trunk_end',
+          trunk_id: 'trunk-1',
+          branch_id: null,
+          status: 'OTWARTY',
+        },
+      ],
+    };
+    snapshotState.executeDomainOperation.mockResolvedValue({ ok: true });
+
+    render(<ContinueTrunkForm />);
+
+    expect(screen.getByText('Kontynuuj ciąg SN z wybranego portu')).toBeInTheDocument();
+    expect(screen.getByText('Stacja 1 - port wyjściowy SN')).toBeInTheDocument();
+    expect(screen.queryByText(/Nie znaleziono wolnego portu wyjściowego SN/)).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
+    });
+
+    fireEvent.click(screen.getByTestId('length-preset-250'));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
+
+    await waitFor(() => {
+      expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
+        'case-1',
+        'continue_trunk_segment_sn',
+        expect.objectContaining({
+          trunk_id: 'trunk-1',
+          from_terminal_id: 'bus-sn-1',
+          segment: expect.objectContaining({
+            dlugosc_m: 250,
+          }),
+        }),
+      );
     });
   });
 
@@ -196,8 +305,8 @@ describe('ContinueTrunkForm', () => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '250' } });
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -224,7 +333,7 @@ describe('ContinueTrunkForm', () => {
       expect(screen.getAllByText('XRUHAKXS 3x120').length).toBeGreaterThan(0);
     });
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '350' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -268,8 +377,8 @@ describe('ContinueTrunkForm', () => {
     });
 
     fireEvent.change(screen.getByPlaceholderText('np. 500'), { target: { value: '400' } });
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(
@@ -319,8 +428,8 @@ describe('ContinueTrunkForm', () => {
 
     fireEvent.click(screen.getByTestId('length-preset-250'));
     expect(screen.getByText('XRUHAKXS 3x120 · 250 m')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Utwórz odcinek SN' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: 'Utwórz odcinek SN' }));
+    expect(getSubmitSegmentButton()).toBeEnabled();
+    fireEvent.click(getSubmitSegmentButton());
 
     await waitFor(() => {
       expect(snapshotState.executeDomainOperation).toHaveBeenCalledWith(

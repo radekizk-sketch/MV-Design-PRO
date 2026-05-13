@@ -11,6 +11,7 @@ import {
   resolveFixActionElementType,
   surfaceOpSupportsForm,
 } from './fixActionSurfaceRuntime';
+import { resolveSelectedElementFromSnapshot } from './selectionResolution';
 
 type NotificationLevel = 'success' | 'info' | 'warning' | 'error';
 
@@ -70,11 +71,7 @@ function buildSelectionElement(
       : null;
   const elementType = resolveFixActionElementType(snapshot, targetRef, explicitType);
 
-  return {
-    id: targetRef,
-    type: elementType,
-    name: targetRef,
-  };
+  return resolveSelectedElementFromSnapshot(snapshot, targetRef, targetRef, elementType);
 }
 
 function navigateToSurfaceTarget(

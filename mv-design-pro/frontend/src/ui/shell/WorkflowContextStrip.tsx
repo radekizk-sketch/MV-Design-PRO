@@ -1,11 +1,11 @@
 /**
- * WorkflowContextStrip — compact SCADA workflow ribbon from the accepted ui.png shell.
+ * WorkflowContextStrip - compact SCADA workflow ribbon from the accepted ui.png shell.
  *
  * Pokazuje:
  *  - Fazę budowy sieci (buildPhase) jako kolorowy chip
- *  - Liczbę blokad (blockersByCategory.total) jako chip alarmowy
+ *  - Liczbę braków (blockersByCategory.total) jako chip alarmowy
  *  - Statystyki sieci (szyny, gałęzie, stacje) jako mini-filary
- *  - Szybkie akcje (Szukaj Ctrl+K, Katalog, Historia) — tylko ikony z tooltip
+ *  - Szybkie akcje (Szukaj Ctrl+K, Katalog, Historia) - tylko ikony z tooltip
  *
  * Cel: jeden gęsty pasek metryk i szybkich akcji bez osobnych kart.
  */
@@ -176,7 +176,7 @@ export function WorkflowContextStrip({
     lengthKm: hasModel
       ? stats.lengthBranchCount > 0
         ? `${stats.lengthKm.toFixed(2)} km`
-        : 'brak odcinków'
+        : 'brak długości'
       : '—',
     transformers: hasModel ? stats.transformers : '—',
     loads: hasModel ? stats.loads : '—',
@@ -246,10 +246,10 @@ export function WorkflowContextStrip({
           className="flex h-8 items-center gap-2 border-r border-scada-border px-4"
           data-testid={display.blockers > 0 ? 'workflow-blockers' : 'workflow-no-blockers'}
           title={hasModel
-            ? `Blokady: T=${blockerCounts.topologia} K=${blockerCounts.katalogi} E=${blockerCounts.eksploatacja}`
+            ? `Braki: topologia=${blockerCounts.topologia} katalogi=${blockerCounts.katalogi} eksploatacja=${blockerCounts.eksploatacja}`
             : 'Brak aktywnego modelu'}
         >
-          <span className="text-[11px] text-scada-muted">Blokery:</span>
+          <span className="text-[11px] text-scada-muted">Braki:</span>
           <span className={clsx(
             'grid h-6 min-w-6 place-items-center rounded-full px-1.5 text-[11px] font-bold',
             !hasModel

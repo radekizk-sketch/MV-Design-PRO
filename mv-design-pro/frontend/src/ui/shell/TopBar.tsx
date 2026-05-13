@@ -43,6 +43,22 @@ const RESULT_STATUS_CONFIG: Record<ResultStatus, { label: string; tone: string }
   },
 };
 
+function looksLikeTechnicalId(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(trimmed)
+    || /^E2E[_-]/i.test(trimmed)
+    || (/^[A-Z0-9_:-]{16,}$/.test(trimmed) && /[_:-]/.test(trimmed))
+    || /^[a-z]+[:/_-][a-z0-9/_-]{8,}$/i.test(trimmed)
+    || /^[0-9a-f]{16,}$/i.test(trimmed);
+}
+
+function projectDisplayName(name: string | null | undefined, id: string | null | undefined): string {
+  if (name && !looksLikeTechnicalId(name)) return name;
+  if (id) return 'Projekt bez nazwy';
+  return '— nie otwarto —';
+}
+
 function ServerClock() {
   const [time, setTime] = useState(() =>
     new Date().toLocaleTimeString('pl-PL', {
@@ -154,11 +170,12 @@ export function TopBar({
   const activeCaseName = useAppStateStore((s) => s.activeCaseName);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const activeVariantName = useAppStateStore((s) => s.activeVariantName);
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const resultStatus = useAppStateStore((s) => s.activeCaseResultStatus);
   const { allowed: canCalculate, reason: calculateBlockedReason } = useCanCalculate();
 
-  const displayProjectName = activeProjectName || projectName || '— nie otwarto —';
+  const displayProjectName = projectDisplayName(activeProjectName || projectName, activeProjectId);
   const scopeDisplay = activeCaseName || activeVariantName
     ? [activeCaseName, activeVariantName].filter(Boolean).join(' · ')
     : '— skonfiguruj projekt —';

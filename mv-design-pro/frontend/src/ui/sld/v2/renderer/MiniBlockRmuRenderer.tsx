@@ -35,12 +35,12 @@ import {
 
 const OVERVIEW_WIDTH = 118;
 const OVERVIEW_HEIGHT = 72;
-const COMPACT_WIDTH = 148;
-const COMPACT_HEIGHT = 104;
-const DETAIL_WIDTH = 190;
-const DETAIL_HEIGHT = 144;
-const DETAIL_DER_WIDTH = 268;
-const DETAIL_DER_HEIGHT = 226;
+const COMPACT_WIDTH = 190;
+const COMPACT_HEIGHT = 136;
+const DETAIL_WIDTH = 220;
+const DETAIL_HEIGHT = 164;
+const DETAIL_DER_WIDTH = 340;
+const DETAIL_DER_HEIGHT = 280;
 
 const FIELD_TOP_LEAD = 38;
 const FIELD_DEVICE_CENTER_ABOVE_BUS = 20;
@@ -55,6 +55,8 @@ const COLOR_DER_FW = '#5BFFD9';
 const COLOR_MISSING = '#FFC857';
 const COLOR_BLOCKER = '#FF5560';
 const COLOR_SCADA_SHADOW = '#05070A';
+const COLOR_BAY_CELL = '#0A1720';
+const COLOR_BAY_CELL_STROKE = '#17435A';
 
 type SymbolClickHandler = (elementId: string) => (e: MouseEvent<SVGGElement>) => void;
 
@@ -99,45 +101,30 @@ export interface MiniBlockRmuRendererProps {
 
 export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Element {
   const { variant } = props;
-  const showPvCircuit =
-    variant === 'detail' &&
-    props.derBadges.some((badge) => badge.kind === 'PV' && (badge.connectionSide ?? 'nn') === 'nn');
-  const width = variant === 'overview'
-    ? OVERVIEW_WIDTH
-    : variant === 'compact'
-      ? COMPACT_WIDTH
-      : showPvCircuit
-        ? DETAIL_DER_WIDTH
-        : DETAIL_WIDTH;
-  const height = variant === 'overview'
-    ? OVERVIEW_HEIGHT
-    : variant === 'compact'
-      ? COMPACT_HEIGHT
-      : showPvCircuit
-        ? DETAIL_DER_HEIGHT
-        : DETAIL_HEIGHT;
+  const showPvCircuit = hasPvNnCircuit(variant, props.derBadges);
+  const { width, height } = miniBlockDimensions(variant, showPvCircuit);
   const offsetX = -width / 2;
   const offsetY = -height / 2;
-  const busY = variant === 'overview' ? -8 : variant === 'compact' ? -10 : showPvCircuit ? -32 : -22;
+  const busY = variant === 'overview' ? -8 : variant === 'compact' ? -10 : showPvCircuit ? -34 : -22;
   const visibleSnBays = variant === 'overview' ? props.snBays.slice(0, 4) : props.snBays;
   const showLvRow = variant === 'detail' && MINI_BLOCK_FOOTPRINT[props.footprintType].hasLvSection;
   const labelNameY = variant === 'overview'
     ? 18
     : variant === 'compact'
-      ? 24
+      ? 40
       : showPvCircuit
-        ? offsetY + 18
-        : 42;
+        ? offsetY + height - 28
+        : 56;
   const labelTypeY = variant === 'overview'
     ? labelNameY + 13
     : variant === 'compact'
-      ? labelNameY + 17
+      ? labelNameY + 14
       : showPvCircuit
-        ? labelNameY + 13
-        : labelNameY + 17;
-  const labelPowerY = labelTypeY + 14;
-  const labelFontSize = variant === 'detail' ? (showPvCircuit ? 9 : 11) : FONT_SIZES.bayLabel;
-  const typeFontSize = variant === 'detail' ? (showPvCircuit ? 8 : 10) : FONT_SIZES.bayLabel - 1;
+        ? labelNameY + 12
+        : labelNameY + 13;
+  const labelPowerY = labelTypeY + 12;
+  const labelFontSize = variant === 'overview' ? 10 : variant === 'compact' ? 10 : showPvCircuit ? 9 : 10;
+  const typeFontSize = variant === 'overview' ? 9 : variant === 'compact' ? 8 : showPvCircuit ? 8 : 9;
   const isBlocker = props.snBays.length === 0;
   const stroke = props.selected ? COLOR_SELECTION : isBlocker ? COLOR_BLOCKER : 'transparent';
   const strokeWidth = props.selected ? 2.5 : 1.5;
@@ -231,7 +218,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       {showPvCircuit && (
         <PvConnectionTree
           stationId={props.id}
-          baseY={34}
+          baseY={28}
           onSymbolClick={handleSymbolClick}
         />
       )}
@@ -268,7 +255,7 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         {MINI_BLOCK_FOOTPRINT[props.footprintType].shortCodePl}
       </text>
 
-      {variant !== 'overview' && props.transformerRatedKva !== null && (
+      {variant !== 'overview' && !showPvCircuit && props.transformerRatedKva !== null && (
         <text
           x={0}
           y={labelPowerY}
@@ -341,6 +328,53 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
       )}
     </g>
   );
+}
+
+export function miniBlockDimensions(
+  variant: 'overview' | 'compact' | 'detail',
+  hasPvNnCircuit = false,
+): { width: number; height: number } {
+  if (variant === 'overview') return { width: OVERVIEW_WIDTH, height: OVERVIEW_HEIGHT };
+  if (variant === 'compact') return { width: COMPACT_WIDTH, height: COMPACT_HEIGHT };
+  return hasPvNnCircuit
+    ? { width: DETAIL_DER_WIDTH, height: DETAIL_DER_HEIGHT }
+    : { width: DETAIL_WIDTH, height: DETAIL_HEIGHT };
+}
+
+export function miniBlockStationPortOffsets(
+  variant: 'overview' | 'compact' | 'detail',
+  snBays: readonly MiniBlockBayDescriptor[],
+  derBadges: readonly MiniBlockDerBadge[] = [],
+): readonly [number, number | null] | null {
+  if (snBays.length === 0) return null;
+  const hasPvCircuit = hasPvNnCircuit(variant, derBadges);
+  const { width } = miniBlockDimensions(variant, hasPvCircuit);
+  const visibleSnBays = variant === 'overview' ? snBays.slice(0, 4) : snBays;
+  const left = -width / 2 + 24;
+  const right = width / 2 - 24;
+  const span = right - left;
+  const positioned = visibleSnBays.map((bay, idx) => ({
+    bay,
+    x: visibleSnBays.length === 1 ? 0 : left + (span * idx) / (visibleSnBays.length - 1),
+  }));
+  const linePorts = positioned.filter(({ bay }) => isLineLikeFieldRole(bay.fieldRole));
+  if (linePorts.length === 0) return null;
+  return [linePorts[0].x, linePorts[1]?.x ?? null];
+}
+
+function hasPvNnCircuit(
+  variant: 'overview' | 'compact' | 'detail',
+  derBadges: readonly MiniBlockDerBadge[],
+): boolean {
+  return variant === 'detail'
+    && derBadges.some((badge) => badge.kind === 'PV' && (badge.connectionSide ?? 'nn') === 'nn');
+}
+
+function isLineLikeFieldRole(role: FieldRole): boolean {
+  return role === FIELD_ROLE.LINE_IN
+    || role === FIELD_ROLE.LINE_OUT
+    || role === FIELD_ROLE.LINE_BRANCH
+    || role === FIELD_ROLE.RMU_LINE;
 }
 
 // =============================================================================
@@ -436,6 +470,22 @@ function BayMarker(props: BayMarkerProps): JSX.Element {
       style={{ cursor: onSymbolClick ? 'pointer' : 'default' }}
     >
       <title>{`${designation} (${fieldRole})`}</title>
+      {variant !== 'overview' && (
+        <rect
+          x={x - 16}
+          y={topY - 5}
+          width={32}
+          height={isTransformer ? 76 : 52}
+          fill={COLOR_BAY_CELL}
+          fillOpacity={0.58}
+          stroke={COLOR_BAY_CELL_STROKE}
+          strokeWidth={0.8}
+          rx={2}
+          ry={2}
+          data-parity-key="station.mini.bay.cell"
+          data-cell-role={fieldRole}
+        />
+      )}
 
       {variant === 'overview' ? (
         <g
@@ -616,7 +666,7 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
   const breakerY = baseY + 36;
   const inverterY = baseY + 58;
   const pccId = `${stationId}/pv/nn-pcc`;
-  const feederXs = [-22, 22];
+  const feederXs = [-28, 28];
 
   return (
     <g
@@ -625,8 +675,22 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
       data-element-kind="pv_nn_connection_tree"
       data-element-id={`${stationId}/pv/nn-connection`}
     >
-      <line x1={0} y1={baseY + 2} x2={0} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.2} />
-      <line x1={-38} y1={lvBusY} x2={38} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.6} strokeLinecap="butt" />
+      <rect
+        x={-86}
+        y={baseY + 1}
+        width={172}
+        height={76}
+        fill="#120F05"
+        fillOpacity={0.44}
+        stroke="#6F5A17"
+        strokeWidth={0.8}
+        strokeDasharray="4 3"
+        rx={2}
+        ry={2}
+        data-parity-key="station.pv.nn_compartment"
+      />
+      <line x1={0} y1={baseY - 16} x2={0} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.2} />
+      <line x1={-66} y1={lvBusY} x2={66} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.8} strokeLinecap="butt" />
       <g
         data-testid={`sld-v2-mini-rmu-pv-pcc-${stationId}`}
         data-element-kind="pcc"
@@ -644,6 +708,19 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
         const inverterId = `${stationId}/pv/inverter/${index + 1}`;
         return (
           <g key={breakerId} data-parity-key="station.pv.nn_feeder">
+            <rect
+              x={x - 18}
+              y={breakerY - 5}
+              width={36}
+              height={44}
+              fill="#161507"
+              fillOpacity={0.78}
+              stroke="#9A7A1B"
+              strokeWidth={0.8}
+              rx={2}
+              ry={2}
+              data-parity-key="station.pv.nn_feeder.cell"
+            />
             <line x1={x} y1={lvBusY} x2={x} y2={inverterY} stroke={COLOR_DER_PV} strokeWidth={1.8} />
             <g
               data-testid={`sld-v2-mini-rmu-pv-lv-breaker-${index + 1}`}
@@ -724,8 +801,8 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
       })}
 
       <text
-        x={46}
-        y={inverterY - 2}
+        x={70}
+        y={lvBusY + 4}
         fill={COLOR_DER_PV}
         fontFamily={FONT_SANS}
         fontSize={8}
@@ -734,7 +811,7 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
         stroke={COLOR_SCADA_SHADOW}
         strokeWidth={1.4}
       >
-        PV nN
+        PV / nN
       </text>
     </g>
   );

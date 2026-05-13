@@ -91,6 +91,9 @@ function buildGrounding(data: GridSourceFormData) {
 function buildManualEquivalent(data: GridSourceFormData) {
   const common = {
     voltage_kv: data.sn_voltage_kv,
+    sn_voltage_kv: data.sn_voltage_kv,
+    hv_voltage_kv: data.hv_voltage_kv,
+    short_circuit_input_side: data.short_circuit_input_side,
     short_circuit_mode: data.short_circuit_mode,
   };
 
@@ -111,7 +114,9 @@ function buildManualEquivalent(data: GridSourceFormData) {
 
   return {
     ...common,
-    sk3_mva: data.sk3_mva,
+    ...(data.short_circuit_input_side === 'HV_110'
+      ? { sk3_hv_mva: data.sk3_hv_mva }
+      : { sk3_mva: data.sk3_mva }),
     rx_ratio: data.rx_ratio,
   };
 }
@@ -125,6 +130,8 @@ function buildGridSourcePayload(data: GridSourceFormData) {
     source_name: data.source_name,
     voltage_kv: data.sn_voltage_kv,
     sections_count: Math.max(1, Math.trunc(data.sections_count || 1)),
+    hv_voltage_kv: data.hv_voltage_kv,
+    short_circuit_input_side: data.short_circuit_input_side,
     transformer_count: Math.max(1, Math.min(4, Math.trunc(data.transformer_count || 1))),
     line_fields_per_section: Math.max(
       1,
@@ -150,7 +157,11 @@ function buildGridSourcePayload(data: GridSourceFormData) {
     payload.r_ohm = data.r_ohm;
     payload.x_ohm = data.x_ohm;
   } else {
-    payload.sk3_mva = data.sk3_mva;
+    if (data.short_circuit_input_side === 'HV_110') {
+      payload.sk3_hv_mva = data.sk3_hv_mva;
+    } else {
+      payload.sk3_mva = data.sk3_mva;
+    }
     payload.rx_ratio = data.rx_ratio;
   }
 
@@ -188,7 +199,9 @@ export function AddGridSourceForm() {
     const initial: Partial<GridSourceFormData> = {};
     const sourceName = readString(context.source_name);
     const voltageKv = readNumber(context.sn_voltage_kv) ?? readNumber(context.voltage_kv);
+    const hvVoltageKv = readNumber(context.hv_voltage_kv);
     const sk3Mva = readNumber(context.sk3_mva);
+    const sk3HvMva = readNumber(context.sk3_hv_mva);
     const rxRatio = readNumber(context.rx_ratio);
     const catalogRef =
       catalogRefFromInput(context.catalog_ref) ?? catalogRefFromInput(context.catalog_binding);
@@ -202,7 +215,9 @@ export function AddGridSourceForm() {
 
     if (sourceName) initial.source_name = sourceName;
     if (voltageKv !== null) initial.sn_voltage_kv = voltageKv;
+    if (hvVoltageKv !== null) initial.hv_voltage_kv = hvVoltageKv;
     if (sk3Mva !== null) initial.sk3_mva = sk3Mva;
+    if (sk3HvMva !== null) initial.sk3_hv_mva = sk3HvMva;
     if (rxRatio !== null) initial.rx_ratio = rxRatio;
     if (catalogRef) initial.catalog_ref = catalogRef;
     if (sectionsCount !== null) initial.sections_count = sectionsCount;

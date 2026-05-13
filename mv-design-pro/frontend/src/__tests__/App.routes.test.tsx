@@ -6,6 +6,7 @@ import App from '../App';
 import { useAppStateStore } from '../ui/app-state/store';
 import { useReadinessLiveStore } from '../ui/engineering-readiness/readinessLiveStore';
 import { useNetworkBuildStore } from '../ui/network-build/networkBuildStore';
+import { useSelectionStore } from '../ui/selection/store';
 import { useExecutionRunsStore } from '../ui/study-cases/runStore';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 
@@ -110,6 +111,7 @@ describe('App hash routes', () => {
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
     useNetworkBuildStore.getState().reset();
+    useSelectionStore.getState().clearSelection();
   });
 
   it('renderuje cala aplikacje w ekranowym motywie dark SCADA', async () => {
@@ -153,6 +155,34 @@ describe('App hash routes', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeCaseId).toBe('case-from-route');
       expect(refreshFromBackend).toHaveBeenCalledWith('case-from-route');
+    });
+  });
+
+  it('przełącza projekt i zakres z adresu oraz usuwa stary snapshot ENM', async () => {
+    const refreshFromBackend = vi.fn().mockResolvedValue(null);
+    useAppStateStore.getState().setActiveProject('old-project', 'Stary projekt');
+    useAppStateStore.getState().setActiveCase('old-case', 'Stary zakres', 'ShortCircuitCase', 'NONE');
+    useSnapshotStore.setState({
+      snapshot: {
+        header: { hash_sha256: 'old-snapshot' },
+        sources: [{ ref_id: 'old-source', name: 'Stary GPZ' }],
+        buses: [],
+        branches: [],
+      } as never,
+      error: null,
+      refreshFromBackend,
+    });
+    window.location.hash = '#sld?project=new-project&case=new-case';
+
+    render(<App />);
+
+    await waitFor(() => {
+      const appState = useAppStateStore.getState();
+      expect(appState.activeProjectId).toBe('new-project');
+      expect(appState.activeProjectName).toBe('new-project');
+      expect(appState.activeCaseId).toBe('new-case');
+      expect(useSnapshotStore.getState().snapshot).toBeNull();
+      expect(refreshFromBackend).toHaveBeenCalledWith('new-case');
     });
   });
 
@@ -303,6 +333,42 @@ describe('App hash routes', () => {
       expect(activeSurface?.entityType).toBe('pv_source');
       expect(activeSurface?.titlePl).toBe('Falownik PV 0.5 MW / 0.4 kV nN');
       expect(activeSurface?.routeState.route).toBe('sld');
+      expect(activeSurface?.routeState.payload?.derKind).toBe('PV');
+    });
+  });
+
+  it('przestawia prawy panel ze starej operacji na E-21 po zaznaczeniu falownika PV w SLD', async () => {
+    const selectedRef = 'pv/625d6d8c5fb3e987ac13b2d4ffda1320/converter';
+    window.location.hash = '#sld?project=project-1&case=case-1';
+
+    render(<App />);
+
+    act(() => {
+      useNetworkBuildStore.getState().openOperationForm('add_transformer_sn_nn', {
+        station_ref: 'stn-1',
+      });
+    });
+
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-18');
+
+    await act(async () => {
+      useSelectionStore.getState().selectElement({
+        id: selectedRef,
+        type: 'PVInverter',
+        name: 'Blok PV',
+        semanticElementKind: 'SOURCE',
+        semanticEngineeringRole: 'PV_INVERTER',
+        semanticHash: 'source:pv',
+      });
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      const activeSurface = useNetworkBuildStore.getState().activeSurface;
+      expect(activeSurface?.screenCode).toBe('E-21');
+      expect(activeSurface?.entityRef).toBe(selectedRef);
+      expect(activeSurface?.entityType).toBe('pv_source');
+      expect(activeSurface?.titlePl).toBe('Blok PV');
       expect(activeSurface?.routeState.payload?.derKind).toBe('PV');
     });
   });

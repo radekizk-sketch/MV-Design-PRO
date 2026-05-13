@@ -5,6 +5,7 @@
 export * from './types';
 export * from './store';
 export * from './catalogs';
+export * from './ptpireeCertifiedInverters';
 export * from './protection-catalogs';
 export * from './readiness';
 export * from './selectivity-grading';

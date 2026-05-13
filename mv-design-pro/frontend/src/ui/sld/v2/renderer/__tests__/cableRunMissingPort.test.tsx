@@ -67,4 +67,74 @@ describe('CableRunRenderer — missing endpoint port warning', () => {
     const visible = container.querySelector('[data-testid="sld-v2-run-run_warn2-visible-0"]');
     expect(visible).not.toBeNull();
   });
+
+  it('odsuwa etykietę odcinka od aparatury mini-RMU stacji', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run_station"
+          runKind="main_trunk"
+          pathPoints={[
+            { x: 0, y: 0 },
+            { x: 300, y: 0 },
+          ]}
+          segmentKind="cable_sn"
+          segmentLabels={[
+            {
+              segmentRef: 'seg-1',
+              text: 'Kabel EPR Al 1×120 · 500 m',
+              x: 300,
+              y: -12,
+            },
+          ]}
+          stationPortGaps={[
+            {
+              stationId: 'st-1',
+              y: 0,
+              inputX: 272,
+              outputX: 328,
+            },
+          ]}
+        />
+      </svg>,
+    );
+
+    const label = container.querySelector('[data-testid="sld-v2-run-run_station-segment-label-seg-1"]');
+    expect(label?.getAttribute('y')).toBe('-72');
+  });
+
+  it('rozsuwa etykiety odcinków, gdy kilka segmentów ma prawie ten sam punkt opisu', () => {
+    const { container } = render(
+      <svg>
+        <CableRunRenderer
+          id="run_labels"
+          runKind="main_trunk"
+          pathPoints={[
+            { x: 0, y: 0 },
+            { x: 400, y: 0 },
+          ]}
+          segmentKind="cable_sn"
+          segmentLabels={[
+            {
+              segmentRef: 'seg-a',
+              text: 'EPR Al 1C 120 · 700 m',
+              x: 200,
+              y: -10,
+            },
+            {
+              segmentRef: 'seg-b',
+              text: 'EPR Al 1C 120 · 1 km',
+              x: 206,
+              y: -10,
+            },
+          ]}
+        />
+      </svg>,
+    );
+
+    const first = container.querySelector('[data-testid="sld-v2-run-run_labels-segment-label-seg-a"]');
+    const second = container.querySelector('[data-testid="sld-v2-run-run_labels-segment-label-seg-b"]');
+    expect(first?.getAttribute('y')).toBe('-10');
+    expect(second?.getAttribute('y')).toBe('-30');
+  });
 });

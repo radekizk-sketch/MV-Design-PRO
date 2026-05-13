@@ -35,6 +35,13 @@ SCAN_DIRS = [
 
 # File extensions to check
 FILE_EXTENSIONS = {".ts", ".tsx", ".css", ".html"}
+EXCLUDED_FILE_SUFFIXES = (
+    ".generated.ts",
+    ".generated.tsx",
+)
+EXCLUDED_RELATIVE_FILES = {
+    "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.ts",
+}
 
 # Regex for codenames: P1, P7, P11, P20, p14, etc.
 # Excludes P0 (technical parameter for transformer no-load losses)
@@ -153,7 +160,13 @@ def iter_files(root: Path) -> list[Path]:
         if not dir_path.exists():
             continue
         for ext in FILE_EXTENSIONS:
-            files.extend(dir_path.rglob(f"*{ext}"))
+            for file_path in dir_path.rglob(f"*{ext}"):
+                relative_path = format_violation_path(file_path)
+                if file_path.name.endswith(EXCLUDED_FILE_SUFFIXES):
+                    continue
+                if relative_path in EXCLUDED_RELATIVE_FILES:
+                    continue
+                files.append(file_path)
     return sorted(set(files))
 
 

@@ -330,18 +330,23 @@ function treeSearchPriority(title: string): number {
   if (title.includes('Odcinki')) return 0;
   if (title.includes('Stacje')) return 1;
   if (title.includes('Pola')) return 2;
-  if (title.includes('Szyny')) return 3;
+  if (title.includes('Aparatura')) return 3;
+  if (title.includes('Szyny')) return 4;
   return 4;
 }
 
 function buildTreeSections(snapshot: SnapshotRecord | null, blockerRefs: Set<string>): TreeSectionSpec[] {
   if (!snapshot) return [];
 
+  const branches = getCollection(snapshot, 'branches');
+  const switchgearBranches = branches.filter(isSwitchgearBranchRecord);
+  const lineBranches = branches.filter((item) => !isSwitchgearBranchRecord(item));
   const sections = [
     buildSection('GPZ i źródła', getCollection(snapshot, 'sources'), 'Źródło zasilania', blockerRefs, sourceTarget, undefined),
     buildSection('Szyny SN', getCollection(snapshot, 'buses'), 'Szyna', blockerRefs, busTarget, (item) => formatVoltage(item)),
     buildSection('Pola SN', getCollection(snapshot, 'bays'), 'Pole', blockerRefs, bayTarget, (item) => formatBayRole(item)),
-    buildSection('Odcinki SN', getCollection(snapshot, 'branches'), 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(item)),
+    buildSection('Aparatura SN', switchgearBranches, 'Aparat', blockerRefs, switchgearBranchTarget, (item) => formatSwitchgearBranchMeta(item)),
+    buildSection('Odcinki SN', lineBranches, 'Odcinek', blockerRefs, branchTarget, (item) => formatBranchMeta(item)),
     buildSection('Stacje SN/nN', getCollection(snapshot, 'substations'), 'Stacja', blockerRefs, stationTarget, (item) => formatStationType(item)),
     buildSection('Transformatory', getCollection(snapshot, 'transformers'), 'Transformator', blockerRefs, transformerTarget, (item) => formatTransformerMeta(item)),
     buildSection('Źródła i magazyny', getCollection(snapshot, 'generators'), 'Źródło', blockerRefs, generatorTarget, (item) => formatGeneratorMeta(item)),
@@ -419,6 +424,17 @@ function branchTarget(_item: SnapshotRecord, label: string): NavigatorTarget {
   };
 }
 
+function switchgearBranchTarget(item: SnapshotRecord, label: string): NavigatorTarget {
+  return {
+    elementType: 'Switch',
+    surfaceCode: 'E-11',
+    entityType: 'sn_bay',
+    titlePl: label || switchgearBranchTypeLabel(item.type),
+    tabId: 'aparatura',
+    payload: { branchType: asText(item.type) },
+  };
+}
+
 function stationTarget(_item: SnapshotRecord, label: string): NavigatorTarget {
   return {
     elementType: 'Station',
@@ -490,14 +506,17 @@ function isRecord(value: unknown): value is SnapshotRecord {
   return Boolean(value) && typeof value === 'object';
 }
 
+function isSwitchgearBranchRecord(item: SnapshotRecord): boolean {
+  return ['switch', 'breaker', 'bus_coupler', 'disconnector', 'fuse'].includes(asText(item.type));
+}
+
 function getRef(item: SnapshotRecord): string {
   return String(item.ref_id ?? item.id ?? '');
 }
 
 function getDisplayName(item: SnapshotRecord, fallbackLabel: string): string {
   const name = typeof item.name === 'string' && item.name.trim() ? item.name.trim() : null;
-  const ref = getRef(item);
-  return name ?? (ref || fallbackLabel);
+  return name ?? fallbackLabel;
 }
 
 function asText(value: unknown): string {
@@ -509,13 +528,47 @@ function formatVoltage(item: SnapshotRecord): string | undefined {
 }
 
 function formatBayRole(item: SnapshotRecord): string | undefined {
-  return typeof item.bay_role === 'string' ? item.bay_role : undefined;
+  const role = asText(item.bay_role).toUpperCase();
+  switch (role) {
+    case 'IN':
+    case 'INCOMING':
+    case 'DOPLYW':
+    case 'DOPŁYW':
+      return 'pole dopływowe';
+    case 'OUT':
+    case 'OUTGOING':
+    case 'ODPLYW':
+    case 'ODPŁYW':
+      return 'pole odpływowe';
+    case 'TR':
+    case 'TRANSFORMER':
+      return 'pole transformatorowe';
+    case 'COUPLER':
+    case 'SECTION':
+    case 'SEKCJA':
+      return 'sprzęgło / pole sekcyjne';
+    case 'METERING':
+    case 'POMIAR':
+      return 'pole pomiarowe';
+    case 'SOURCE':
+    case 'OZE':
+      return 'pole źródłowe';
+    default:
+      return role ? 'pole SN' : undefined;
+  }
 }
 
 function formatBranchMeta(item: SnapshotRecord): string | undefined {
   const parts: string[] = [];
   parts.push(readBranchCatalogLabel(item) ?? branchTypeLabel(item.type));
   if (typeof item.length_km === 'number') parts.push(`${item.length_km.toFixed(2)} km`);
+  return parts.length > 0 ? parts.join(' · ') : undefined;
+}
+
+function formatSwitchgearBranchMeta(item: SnapshotRecord): string | undefined {
+  const parts: string[] = [];
+  parts.push(readBranchCatalogLabel(item) ?? switchgearBranchTypeLabel(item.type));
+  if (typeof item.status === 'string') parts.push(item.status === 'closed' ? 'zamknięty' : 'otwarty');
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
@@ -527,6 +580,23 @@ function branchTypeLabel(value: unknown): string {
       return 'brak typu katalogowego';
     default:
       return 'odcinek SN';
+  }
+}
+
+function switchgearBranchTypeLabel(value: unknown): string {
+  switch (value) {
+    case 'breaker':
+      return 'wyłącznik SN';
+    case 'switch':
+      return 'łącznik SN';
+    case 'bus_coupler':
+      return 'sprzęgło szynowe SN';
+    case 'disconnector':
+      return 'odłącznik SN';
+    case 'fuse':
+      return 'bezpiecznik SN';
+    default:
+      return 'aparat SN';
   }
 }
 
@@ -559,7 +629,12 @@ function formatCatalogTypeLabel(raw: string): string {
 }
 
 function formatStationType(item: SnapshotRecord): string | undefined {
-  return typeof item.station_type === 'string' ? item.station_type : undefined;
+  const type = asText(item.station_type).toLowerCase();
+  if (type.includes('gpz')) return 'GPZ';
+  if (type.includes('przelot')) return 'stacja przelotowa';
+  if (type.includes('consumer') || type.includes('odbior')) return 'stacja odbiorcza';
+  if (type.includes('rmu') || type.includes('mv_lv') || type.includes('sn')) return 'stacja SN/nN';
+  return type ? 'stacja elektroenergetyczna' : undefined;
 }
 
 function formatTransformerMeta(item: SnapshotRecord): string | undefined {
@@ -568,9 +643,18 @@ function formatTransformerMeta(item: SnapshotRecord): string | undefined {
 
 function formatGeneratorMeta(item: SnapshotRecord): string | undefined {
   const parts: string[] = [];
-  if (typeof item.gen_type === 'string') parts.push(item.gen_type);
+  const kind = formatGeneratorKind(item);
+  if (kind) parts.push(kind);
   if (typeof item.p_mw === 'number') parts.push(`${item.p_mw} MW`);
   return parts.length > 0 ? parts.join(' · ') : undefined;
+}
+
+function formatGeneratorKind(item: SnapshotRecord): string | null {
+  const kind = `${asText(item.gen_type)} ${asText(item.type)} ${asText(item.source_type)} ${asText(item.kind)}`.toLowerCase();
+  if (kind.includes('bess') || kind.includes('pcs') || kind.includes('battery')) return 'BESS / magazyn energii';
+  if (kind.includes('wind') || kind.includes('fw') || kind.includes('wiatr')) return 'źródło wiatrowe';
+  if (kind.includes('pv') || kind.includes('solar') || kind.includes('inverter')) return 'falownik PV';
+  return kind.trim() ? 'źródło przekształtnikowe' : null;
 }
 
 function formatLoadMeta(item: SnapshotRecord): string | undefined {

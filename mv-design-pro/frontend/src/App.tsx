@@ -62,7 +62,9 @@ import { NotificationToast } from './ui/notifications/NotificationToast';
 import { notify } from './ui/notifications/store';
 import { useNetworkStats } from './ui/topology/useNetworkStats';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
+import { useSelectionStore } from './ui/selection/store';
 import type { AreaId } from './ui/navigation/areaRegistry';
+import type { SelectedElement } from './ui/types';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   ANALYSIS_ROUTE_DEFAULT_TAB,
@@ -159,20 +161,29 @@ function resolveRouteArea(route: string): AreaId | null {
   return null;
 }
 
-function resolveDerSurfaceFromSldSelection(params: URLSearchParams): {
+interface DerSurfaceRouteTarget {
+  selectedRef: string;
   screenCode: 'E-21' | 'E-22' | 'E-23';
   entityType: 'pv_source' | 'bess_source' | 'fw_source';
   titlePl: string;
   derKind: 'PV' | 'BESS' | 'FW';
-} | null {
-  const selectedRef = params.get('sel');
+}
+
+function resolveDerSurfaceTarget(input: {
+  selectedRef: string | null | undefined;
+  selectedType?: string | null;
+  selectedName?: string | null;
+  semanticRole?: string | null;
+  semanticHash?: string | null;
+}): DerSurfaceRouteTarget | null {
+  const selectedRef = input.selectedRef?.trim();
   if (!selectedRef) {
     return null;
   }
 
-  const normalizedType = (params.get('type') ?? '').toUpperCase();
-  const normalizedRole = (params.get('role') ?? '').toUpperCase();
-  const normalizedSemanticHash = (params.get('sh') ?? '').toUpperCase();
+  const normalizedType = (input.selectedType ?? '').toUpperCase();
+  const normalizedRole = (input.semanticRole ?? '').toUpperCase();
+  const normalizedSemanticHash = (input.semanticHash ?? '').toUpperCase();
   const joinedSelection = `${normalizedType} ${normalizedRole} ${normalizedSemanticHash}`;
 
   if (
@@ -181,9 +192,10 @@ function resolveDerSurfaceFromSldSelection(params: URLSearchParams): {
     || normalizedSemanticHash.startsWith('SOURCE:PV')
   ) {
     return {
+      selectedRef,
       screenCode: 'E-21',
       entityType: 'pv_source',
-      titlePl: params.get('name') ?? 'Falownik PV',
+      titlePl: input.selectedName?.trim() || 'Falownik PV',
       derKind: 'PV',
     };
   }
@@ -195,9 +207,10 @@ function resolveDerSurfaceFromSldSelection(params: URLSearchParams): {
     || normalizedSemanticHash.startsWith('SOURCE:BESS')
   ) {
     return {
+      selectedRef,
       screenCode: 'E-22',
       entityType: 'bess_source',
-      titlePl: params.get('name') ?? 'Magazyn energii',
+      titlePl: input.selectedName?.trim() || 'Magazyn energii',
       derKind: 'BESS',
     };
   }
@@ -209,14 +222,45 @@ function resolveDerSurfaceFromSldSelection(params: URLSearchParams): {
     || normalizedSemanticHash.startsWith('SOURCE:WIND')
   ) {
     return {
+      selectedRef,
       screenCode: 'E-23',
       entityType: 'fw_source',
-      titlePl: params.get('name') ?? 'Farma wiatrowa',
+      titlePl: input.selectedName?.trim() || 'Farma wiatrowa',
       derKind: 'FW',
     };
   }
 
   return null;
+}
+
+function resolveDerSurfaceFromSldSelection(params: URLSearchParams): DerSurfaceRouteTarget | null {
+  return resolveDerSurfaceTarget({
+    selectedRef: params.get('sel'),
+    selectedType: params.get('type'),
+    selectedName: params.get('name'),
+    semanticRole: params.get('role'),
+    semanticHash: params.get('sh'),
+  });
+}
+
+function resolveDerSurfaceFromSelectedElement(
+  selectedElement: SelectedElement | null,
+): DerSurfaceRouteTarget | null {
+  if (!selectedElement) {
+    return null;
+  }
+
+  return resolveDerSurfaceTarget({
+    selectedRef: selectedElement.id,
+    selectedType: selectedElement.type,
+    selectedName: selectedElement.name,
+    semanticRole: selectedElement.semanticEngineeringRole,
+    semanticHash: selectedElement.semanticHash,
+  });
+}
+
+function isSldRoute(route: string): boolean {
+  return route === ROUTES.SLD.hash || route === ROUTES.SLD_VIEW.hash || route === '';
 }
 
 function UnknownRoutePage({ route }: { route: string }) {
@@ -245,6 +289,7 @@ function App() {
   const activeCaseKind = useAppStateStore((state) => state.activeCaseKind);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const setActiveProject = useAppStateStore((state) => state.setActiveProject);
   const setActiveCase = useAppStateStore((state) => state.setActiveCase);
   const setActiveRun = useAppStateStore((state) => state.setActiveRun);
   const setActiveSnapshot = useAppStateStore((state) => state.setActiveSnapshot);
@@ -259,6 +304,7 @@ function App() {
   const projectName = useActiveProjectName();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
+  const selectedElement = useSelectionStore((state) => state.selectedElement);
 
   // NAVIGATION_SELECTOR_UI: Sync selection with URL (refresh preserves selection)
   useUrlSelectionSync();
@@ -282,6 +328,22 @@ function App() {
 
   useEffect(() => {
     const params = getCurrentSearchParams();
+    const routeProjectId = params.get('project')?.trim();
+    if (!routeProjectId || (routeProjectId === activeProjectId && projectName)) {
+      return;
+    }
+
+    setActiveProject(routeProjectId, routeProjectId);
+  }, [
+    activeProjectId,
+    hashVersion,
+    projectName,
+    route,
+    setActiveProject,
+  ]);
+
+  useEffect(() => {
+    const params = getCurrentSearchParams();
     const routeCaseId = params.get('case')?.trim();
     if (!routeCaseId || routeCaseId === activeCaseId) {
       return;
@@ -289,14 +351,12 @@ function App() {
 
     setActiveCase(
       routeCaseId,
-      activeCaseName ?? 'Zakres obliczeń z adresu',
-      activeCaseKind ?? 'ShortCircuitCase',
+      'Zakres obliczeń z adresu',
+      'ShortCircuitCase',
       'NONE',
     );
   }, [
     activeCaseId,
-    activeCaseKind,
-    activeCaseName,
     hashVersion,
     route,
     setActiveCase,
@@ -322,19 +382,19 @@ function App() {
   useEffect(() => {
     const params = getCurrentSearchParams();
     const routeRunId = params.get('run');
-    const routeSelectedRef = params.get('sel');
-    if (route === ROUTES.SLD.hash || route === ROUTES.SLD_VIEW.hash || route === '') {
-      const derSurface = resolveDerSurfaceFromSldSelection(params);
+    if (isSldRoute(route)) {
+      const derSurface = resolveDerSurfaceFromSelectedElement(selectedElement)
+        ?? resolveDerSurfaceFromSldSelection(params);
       if (derSurface) {
         openRouteSurface(derSurface.screenCode, {
-          entityRef: routeSelectedRef,
+          entityRef: derSurface.selectedRef,
           entityType: derSurface.entityType,
           subjectKind: 'entity',
-          subjectRef: routeSelectedRef,
+          subjectRef: derSurface.selectedRef,
           titlePl: derSurface.titlePl,
           route: 'sld',
           payload: {
-            derId: routeSelectedRef,
+            derId: derSurface.selectedRef,
             derKind: derSurface.derKind,
             derName: derSurface.titlePl,
             derRole: params.get('role'),
@@ -437,11 +497,45 @@ function App() {
     hashVersion,
     openRouteSurface,
     route,
+    selectedElement,
     setActiveCaseResultStatus,
     setActiveRun,
     setActiveSnapshot,
     setExecutionActiveRun,
   ]);
+
+  useEffect(() => {
+    return useSelectionStore.subscribe((state, previousState) => {
+      if (state.selectedElement === previousState.selectedElement) {
+        return;
+      }
+      if (!isSldRoute(getCurrentHashRoute())) {
+        return;
+      }
+
+      const derSurface = resolveDerSurfaceFromSelectedElement(state.selectedElement);
+      if (!derSurface) {
+        return;
+      }
+
+      openRouteSurface(derSurface.screenCode, {
+        entityRef: derSurface.selectedRef,
+        entityType: derSurface.entityType,
+        subjectKind: 'entity',
+        subjectRef: derSurface.selectedRef,
+        titlePl: derSurface.titlePl,
+        route: 'sld',
+        payload: {
+          derId: derSurface.selectedRef,
+          derKind: derSurface.derKind,
+          derName: derSurface.titlePl,
+          derRole: state.selectedElement?.semanticEngineeringRole ?? null,
+          semanticHash: state.selectedElement?.semanticHash ?? null,
+          selectionType: state.selectedElement?.type ?? null,
+        },
+      });
+    });
+  }, [openRouteSurface]);
 
   const handleCalculate = useCallback(async () => {
     if (!activeCaseId) {

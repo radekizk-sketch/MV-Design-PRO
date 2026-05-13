@@ -169,6 +169,16 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
     expect(container.querySelector('[data-testid="gpz-canonical-hv-bay-hv-1"]')).toBeTruthy();
   });
 
+  it('2a. Bez jawnej rozdzielni WN nie rysuje jednej wspólnej szyny 110 kV przez TR1/TR2', () => {
+    const { container } = renderGpz();
+    const hvRoot = container.querySelector('[data-testid="gpz-canonical-hv"]');
+
+    expect(hvRoot?.getAttribute('data-hv-bus-mode')).toBe('segmented_by_transformer');
+    expect(container.querySelector('[data-testid="gpz-canonical-hv-bus"]')).toBeNull();
+    expect(container.querySelector('[data-testid="gpz-canonical-hv-bus-segment-tr-1"]')).toBeTruthy();
+    expect(container.querySelector('[data-testid="gpz-canonical-hv-bus-segment-tr-2"]')).toBeTruthy();
+  });
+
   it('3. Transformatory NA OSI (TR1 + TR2 z Y/Δ + MVA)', () => {
     const { container, getByText, getAllByText } = renderGpz();
     expect(container.querySelectorAll('[data-testid^="gpz-canonical-transformer-"]')).toHaveLength(2);
@@ -213,6 +223,24 @@ describe('GpzCanonicalRenderer — 13 elementów strukturalnych SCADA OSD', () =
 
     expect(feederLabel).toBeTruthy();
     expect(Number(feederLabel?.getAttribute('y'))).toBeGreaterThan(0);
+  });
+
+  it('5c. Pole odpływowe nie traci numeru przez ucięcie etykiety', () => {
+    const { getByText, queryByText } = renderGpz({
+      sections: [
+        {
+          sectionId: 'sec-1',
+          order: 1,
+          label: 'S1',
+          busVoltageKv: 15,
+          bays: [bay('bay-out-1', 'LINE_OUT', { bayNumber: '1', feederName: 'Pole odpływowe 1' })],
+        },
+      ],
+      transformers: [TR1],
+    });
+
+    expect(getByText('Odpływ 1')).toBeTruthy();
+    expect(queryByText('Pole odpły')).toBeNull();
   });
 
   it('6. Aparatura: CB + DS + ES per pole', () => {

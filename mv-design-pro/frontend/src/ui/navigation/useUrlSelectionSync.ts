@@ -14,7 +14,22 @@
 
 import { useEffect, useRef } from 'react';
 import { useSelectionStore } from '../selection/store';
+import { canonicalizeSelectedElement } from '../shared/selectionResolution';
+import { useSnapshotStore } from '../topology/snapshotStore';
 import { readSelectionFromUrl, updateUrlWithSelection } from './urlState';
+
+type CanonicalSelection = ReturnType<typeof canonicalizeSelectedElement>;
+
+function sameSelection(left: CanonicalSelection, right: CanonicalSelection): boolean {
+  if (left === right) return true;
+  if (!left || !right) return false;
+  return left.id === right.id
+    && left.type === right.type
+    && left.name === right.name
+    && left.semanticElementKind === right.semanticElementKind
+    && left.semanticEngineeringRole === right.semanticEngineeringRole
+    && left.semanticHash === right.semanticHash;
+}
 
 /**
  * Hook to synchronize selection state with URL.
@@ -35,6 +50,7 @@ import { readSelectionFromUrl, updateUrlWithSelection } from './urlState';
 export function useUrlSelectionSync(): void {
   const selectedElement = useSelectionStore((state) => state.selectedElement);
   const selectElement = useSelectionStore((state) => state.selectElement);
+  const snapshot = useSnapshotStore((state) => state.snapshot);
 
   // Track if we're in the middle of restoring from URL
   // Prevents sync loop: URL → Store → URL
@@ -78,6 +94,22 @@ export function useUrlSelectionSync(): void {
 
     updateUrlWithSelection(selectedElement);
   }, [selectedElement]);
+
+  // 2b. Po dostępności snapshotu ENM kanonikalizujemy selekcję
+  // odtworzoną z URL, np. wyłącznik zapisany wcześniej jako LineBranch.
+  useEffect(() => {
+    if (!selectedElement || !snapshot) {
+      return;
+    }
+
+    const canonicalSelection = canonicalizeSelectedElement(snapshot, selectedElement);
+    if (sameSelection(canonicalSelection, selectedElement)) {
+      return;
+    }
+
+    selectElement(canonicalSelection);
+    updateUrlWithSelection(canonicalSelection);
+  }, [selectedElement, selectElement, snapshot]);
 
   // 3. Handle browser back/forward navigation
   useEffect(() => {

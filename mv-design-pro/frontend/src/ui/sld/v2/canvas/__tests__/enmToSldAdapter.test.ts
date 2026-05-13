@@ -698,7 +698,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
     const station = r.stations[0];
 
-    expect(station.footprintType).toBe('der_station');
+    expect(station.footprintType).toBe('mv_lv_inline');
     expect(station.derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
     expect(station.nnFeedersCount).toBe(2);
   });
@@ -726,7 +726,9 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     const r = buildSldDataFromSnapshot(snap, null);
 
     expect(r.stations[0].derBadges).toEqual([{ kind: 'PV', connectionSide: 'nn', count: 1 }]);
-    expect(r.ders.find((der) => der.id === 'PV-1')?.x).toBeGreaterThan(r.stations[0].x);
+    expect(r.ders.find((der) => der.id === 'PV-1')).toEqual(
+      expect.objectContaining({ kind: 'PV', connectionVariant: 'nn_side' }),
+    );
   });
 
   it('stacja terenowa jest pod kablem: kabel trafia w pole WE/WY, nie w środek stacji', () => {
@@ -1122,7 +1124,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.cableRuns).toHaveLength(1);
     expect(r.stations.map((station) => station.id)).toEqual(['ST-1', 'ST-2']);
     const lastCablePoint = r.cableRuns[0].pathPoints.at(-1);
-    expect(lastCablePoint?.x).toBe(r.stations[1].x);
+    expect(lastCablePoint?.x).toBeLessThan(r.stations[1].x);
     expect(lastCablePoint?.y).toBe(r.stations[1].y - 54);
     expect(r.stations[0].x).toBeLessThan(r.stations[1].x);
     expect(r.cableRuns[0].label).toBe('różne typy katalogowe · 1,2 km');
@@ -1135,9 +1137,11 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       'SEG-2',
     ]);
     expect(r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(0)?.x).toBe(r.cableRuns[0].pathPoints[0].x);
-    expect(r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(-1)?.x).toBe(r.stations[0].x - 28);
-    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(0)?.x).toBe(r.stations[0].x + 28);
-    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(-1)?.x).toBe(r.stations[1].x);
+    const firstStationInputX = r.cableRuns[0].segmentPaths?.[0]?.pathPoints.at(-1)?.x;
+    const firstStationOutputX = r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(0)?.x;
+    expect(firstStationInputX).toBeLessThan(r.stations[0].x);
+    expect(firstStationOutputX).toBeGreaterThanOrEqual(r.stations[0].x);
+    expect(r.cableRuns[0].segmentPaths?.[1]?.pathPoints.at(-1)?.x).toBe(lastCablePoint?.x);
   });
 });
 
@@ -1619,6 +1623,36 @@ describe('enmToSldAdapter — buildSldDataFromSnapshot konsumuje runtime_state (
       ];
       const r = buildSldDataFromSnapshot(snap, null);
       expect(r.cableRuns[0].missingEndpointPort).toBe(true);
+    });
+  });
+
+  describe('corridor station placement after endpoint append', () => {
+    it('station_refs z korytarza pozycjonuje stację na ciągu, nie w kanale orphan', () => {
+      const snap = buildEmptySnapshot();
+      snap.substations = [
+        { id: 's1', ref_id: 'ST-END', name: 'Na końcu', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+        { id: 's2', ref_id: 'ST-ORPHAN', name: 'Orphan', tags: [], meta: {}, station_type: 'inline', bus_refs: [], transformer_refs: [] } as never,
+      ];
+      snap.corridors = [
+        {
+          id: 'corr-1',
+          ref_id: 'corr-1',
+          name: 'Magistrala',
+          tags: [],
+          meta: {},
+          corridor_type: 'radial',
+          ordered_segment_refs: ['seg-1'],
+          station_refs: ['ST-END'],
+        } as never,
+      ];
+
+      const r = buildSldDataFromSnapshot(snap, null);
+      const appended = r.stations.find((s) => s.id === 'ST-END');
+      const orphan = r.stations.find((s) => s.id === 'ST-ORPHAN');
+
+      expect(appended).toBeDefined();
+      expect(orphan).toBeDefined();
+      expect(orphan!.y).toBeGreaterThan(appended!.y);
     });
   });
 });

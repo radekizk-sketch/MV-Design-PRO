@@ -160,9 +160,9 @@ describe('AppShellV12 workflow strip actions', () => {
       </AppShellV12>,
     );
 
-    expect(screen.getByText('brak odcinków')).toBeInTheDocument();
+    expect(screen.getByText('brak długości')).toBeInTheDocument();
     expect(screen.queryByText('0.00 km')).not.toBeInTheDocument();
-    expect(screen.getByTestId('workflow-blockers')).toHaveTextContent('Blokery:2');
+    expect(screen.getByTestId('workflow-blockers')).toHaveTextContent('Braki:2');
     expect(screen.getByTestId('wcs-model-readiness')).toHaveTextContent('Gotowość:76%');
 
     fireEvent.click(screen.getByTestId('wcs-search'));

@@ -636,7 +636,7 @@ Phase 0B sprint dokończył **wszystkie 6 punktów end-to-end bez placeholderów
 
 ### Commit 18 (Phase 0B-6) — LOD histereza runtime test integration
 
-- Test `SldCanvasV2.lodIntegration.test.tsx` — 9 cases z `vi.useFakeTimers`:
+- Test `SldCanvasV2.lodIntegration.test.tsx` — 10 cases z `vi.useFakeTimers`:
   - Inicjalny render data-lod=2 dla scale=1.0.
   - lodOverride prop omija LodController.
   - 5× zoom in (scale ~1.61) w deadband 1.5*1.15=1.725 → LOD STABILNY 2.

@@ -1,5 +1,7 @@
 import { buildCatalogBinding } from './catalogBinding';
+import type { BayKind, CompleteMvBayTemplateSummary } from './BayTemplatePicker';
 import type { Manufacturer } from './manufacturer';
+import type { SwitchgearFamily } from './SwitchgearFamilyPicker';
 import type {
   BranchPointCatalogType,
   BESSInverterCatalogType,
@@ -149,11 +151,25 @@ export async function fetchManufacturers(): Promise<Manufacturer[]> {
 /** Lista rodzin rozdzielnic SN — opcjonalnie filtrowana per producent. */
 export async function fetchSwitchgearFamilies(
   manufacturerRef?: string,
-): Promise<unknown[]> {
+): Promise<SwitchgearFamily[]> {
   const query = manufacturerRef
     ? `?manufacturer_ref=${encodeURIComponent(manufacturerRef)}`
     : '';
-  return fetchCatalogJson<unknown[]>(`/api/catalog/switchgear-families${query}`);
+  return fetchCatalogJson<SwitchgearFamily[]>(`/api/catalog/switchgear-families${query}`);
+}
+
+/** Lista kompletnych szablonów pól SN per producent/rodzina/funkcja pola. */
+export async function fetchCompleteBayTemplates(
+  manufacturerRef?: string | null,
+  bayKind?: BayKind | null,
+): Promise<CompleteMvBayTemplateSummary[]> {
+  const params = new URLSearchParams();
+  if (manufacturerRef) params.set('manufacturer_ref', manufacturerRef);
+  if (bayKind) params.set('bay_kind', bayKind);
+  const query = params.toString();
+  return fetchCatalogJson<CompleteMvBayTemplateSummary[]>(
+    `/api/catalog/complete-bay-templates${query ? `?${query}` : ''}`,
+  );
 }
 
 export async function fetchCableTypes(): Promise<CableType[]> {

@@ -556,6 +556,10 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             if opt in data:
                 src_data[opt] = data[opt]
         for opt in (
+            "source_side",
+            "sn_voltage_kv",
+            "voltage_hv_kv",
+            "sk3_hv_mva",
             "sk3_mva",
             "ik3_ka",
             "r_ohm",
