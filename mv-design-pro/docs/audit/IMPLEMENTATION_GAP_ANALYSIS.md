@@ -18,7 +18,7 @@
 | Backend solvery | 95% | 100% | brak fault-loop NN, brak osobnego fault_scenario_executor.py | P1 |
 | Backend analysis | 85% | 100% | reporting/ to atrap (brak DOCX), power_flow_interpretation/ szkielet | P1 |
 | Proof Engine | 70% | 100% | brak VDROP pack, brak Earthing pack, brak DOCX export | P0/P1 |
-| Catalog | 95% | 100% | brak vendor templates (ABB UniGear, Siemens 8DJH, ZPUE) — wymaga źródła | P2 |
+| Catalog | 95% | 100% | brak vendor templates (rodzina ABB / Siemens / ZPUE / Elektrometal — konkretne serie CANDIDATE, wymaga vendor datasheets) | P2 |
 | ENM | 90% (v1) | 100% (v2) | migracja v1→v2 (M0–M4) — wprowadza operating_variants, post_fault_states, profile, automatyka | P1 |
 | API | 90% | 100% | protection_runs blokowany przez SI-100 stub | P0 |
 | Frontend SLD | 50% | 90% | port-based routing, LOD, eksport, ring/double busbar, vendor templates — patrz SLD_VISUAL_QUALITY_AUDIT | P0 |
@@ -173,7 +173,7 @@
 
 ### 4.1 Vendor templates dla pól SN
 
-**Stan:** BayConfigurator istnieje, ale brak gotowych szablonów: ABB UniGear ZS1, Siemens 8DJH, ZPUE Włoszczowa, Elektromontaż.
+**Stan:** BayConfigurator istnieje, ale brak gotowych szablonów per vendor. Producenci-kandydaci (CANDIDATE / REQUIRES_SOURCE — konkretne serie wymagają weryfikacji wg vendor datasheets): rodzina ABB, Siemens, ZPUE Włoszczowa, Elektrometal.
 
 **Naprawa:** Vendor templates jako catalog entries + UI szablonów. **Wymaga źródła** dokumentacji vendor — nie fabrykować.
 

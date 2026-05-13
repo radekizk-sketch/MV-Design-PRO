@@ -64,12 +64,12 @@ Migracje wykonane w tym etapie (każdy „SUPERSEDED" pokazany z następcą):
 | `docs/audit/GPZ_RENDERER_*` (2) | ARCHIWALNE | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` + `SLD_VISUAL_QUALITY_AUDIT.md` |
 | `docs/audit/SLD_AUTOLAYOUT_AUDIT_I_NAPRAWA.md` | ARCHIWALNY | `docs/plan/PLAN_SLD_REWORK.md` + `SLD_IMPLEMENTATION_ROADMAP.md` |
 | `docs/audit/SLD_V2_BUILD_GATE_2026.md` | ARCHIWALNY | `docs/plan/PLAN_SLD_REWORK.md` |
-| `docs/audits/SLD_REBUILD_CAD_SCADA_AUDIT.md` (root) | ARCHIWALNY | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` |
-| `docs/audits/SLD_OPERATOR_GRADE_NETWORK_TOPOLOGY_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` |
-| `docs/audits/SLD_SCADA_VISUAL_QUALITY_AUDIT.md` | ARCHIWALNY | `docs/audits/SLD_VISUAL_QUALITY_AUDIT.md` (ten dokument family) |
-| `docs/audit/UX_10_10_AUDIT_2026_02_19.md` | ARCHIWALNY | `docs/audits/ENGINEER_WORKFLOW_AUDIT.md` |
-| `docs/audit/UI_UX_FORMULARZE_*` | ARCHIWALNY | `docs/audits/ENGINEER_WORKFLOW_AUDIT.md` |
-| `docs/audit/GAP_ANALYSIS_V60.md` | ARCHIWALNY | `docs/audit/AUDYT_BRAKI_2026-05.md` + `docs/audits/IMPLEMENTATION_GAP_ANALYSIS.md` |
+| `docs/audit/SLD_REBUILD_CAD_SCADA_AUDIT.md` (root) | ARCHIWALNY | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` |
+| `docs/audit/SLD_OPERATOR_GRADE_NETWORK_TOPOLOGY_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` |
+| `docs/audit/SLD_SCADA_VISUAL_QUALITY_AUDIT.md` | ARCHIWALNY | `docs/audit/SLD_VISUAL_QUALITY_AUDIT.md` (ten dokument family) |
+| `docs/audit/UX_10_10_AUDIT_2026_02_19.md` | ARCHIWALNY | `docs/audit/ENGINEER_WORKFLOW_AUDIT.md` |
+| `docs/audit/UI_UX_FORMULARZE_*` | ARCHIWALNY | `docs/audit/ENGINEER_WORKFLOW_AUDIT.md` |
+| `docs/audit/GAP_ANALYSIS_V60.md` | ARCHIWALNY | `docs/audit/AUDYT_BRAKI_2026-05.md` + `docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md` |
 | `docs/audit/ERROR_SCAN_REPORT.md` | ARCHIWALNY | `docs/audit/AUDYT_BRAKI_2026-05.md` |
 | `docs/audit/EP0_RECON_RESULTS.md` | ARCHIWALNY | `docs/audit/DOC_INVENTORY_2026-05.md` |
 | `docs/audit/AUDIT_PCC_REMOVAL.md` | ARCHIWALNY | (zakończone; brak następcy) |
@@ -87,13 +87,13 @@ Migracje wykonane w tym etapie (każdy „SUPERSEDED" pokazany z następcą):
 | `docs/audit/DESIGN_SYSTEM_AUDIT_2026_02_19.md` | ARCHIWALNY | (zakończone) |
 | `docs/audit/PROOF/SC_ASYMMETRICAL_4_1_CLOSURE.md` | ARCHIWALNY | `docs/proof_engine/P11_SC_CASE_MAPPING.md` |
 | `docs/audit/ZERO_ERROR/*` (4) | ARCHIWALNE | (zakończone gate ZERO_ERROR) |
-| `docs/audits/E13_*` (2) | ARCHIWALNE | `docs/sld/DER_PV_BESS_FW_CONFIGURATOR.md` |
-| `docs/audits/BROWSER_*` (3) | ARCHIWALNE | (snapshot E2E; nie wymagają następcy) |
-| `docs/audits/SLD_MANUFACTURER_TEMPLATE_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_MV_SWITCHGEAR_MANUFACTURER_TEMPLATES.md` |
-| `docs/audits/SLD_ENERGETYKA_SPECIALIST_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` |
+| `docs/audit/E13_*` (2) | ARCHIWALNE | `docs/sld/DER_PV_BESS_FW_CONFIGURATOR.md` |
+| `docs/audit/BROWSER_*` (3) | ARCHIWALNE | (snapshot E2E; nie wymagają następcy) |
+| `docs/audit/SLD_MANUFACTURER_TEMPLATE_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_MV_SWITCHGEAR_MANUFACTURER_TEMPLATES.md` |
+| `docs/audit/SLD_ENERGETYKA_SPECIALIST_AUDIT.md` | ARCHIWALNY | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` |
 | `docs/audyt/AUDYT_10_10_GLOBAL_SN.md` (root) | ARCHIWALNY | `PLANS.md` |
 | `docs/audit/V12_*` (2 root) | ARCHIWALNE | `docs/v12xx/` |
-| `docs/audit/OSTRA_OCENA_ZRZUTOW_UI_SLD.md` (root) | ARCHIWALNY | `docs/audits/SLD_VISUAL_QUALITY_AUDIT.md` |
+| `docs/audit/OSTRA_OCENA_ZRZUTOW_UI_SLD.md` (root) | ARCHIWALNY | `docs/audit/SLD_VISUAL_QUALITY_AUDIT.md` |
 | `docs/plan/M0_*.md` + `PLAN_10_10_GLOBAL_SN.md` (root, 8) | ARCHIWALNE | `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` |
 | `verification_v12_5*.md` (2 root) | ARCHIWALNE | (audyt zakończony) |
 | `tmp/browser-use-e2e/*.md` + `sld-gpz-*.snapshot.md` (10) | ARCHIWALNE | (test residue) |
@@ -112,11 +112,11 @@ Lista wiedzy z archiwalnych dokumentów, która została zachowana w aktualnych 
 
 | Wiedza | Stary dokument | Aktualne miejsce |
 |--------|----------------|------------------|
-| Audyt jakości wizualnej SLD (5 przyczyn „atrapy") | OSTRA_OCENA_ZRZUTOW_UI_SLD.md | `docs/audits/SLD_VISUAL_QUALITY_AUDIT.md` + `docs/audit/AUDYT_BRAKI_2026-05.md` § 7 |
+| Audyt jakości wizualnej SLD (5 przyczyn „atrapy") | OSTRA_OCENA_ZRZUTOW_UI_SLD.md | `docs/audit/SLD_VISUAL_QUALITY_AUDIT.md` + `docs/audit/AUDYT_BRAKI_2026-05.md` § 7 |
 | GPZ contract (12 pól, ring/double busbar) | MV_DESIGN_PRO_SLD_GPZ_CONTRACT_AUDIT.md | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` § 3 |
 | SLD runtime pipeline (3 etapy) | MV_DESIGN_PRO_SLD_RUNTIME_AUDIT.md | `docs/sld/SLD_E2E_PIPELINE_MAP.md` (aktywny) |
 | Mapowanie symboli IEC 60617 (lista 50+) | (porozrzucane) | `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` § 3.2 |
-| UX FlowSN (kreator SN-NN na żywo) | UI_UX_FORMULARZE_I_OKNA_*.md | `docs/audits/ENGINEER_WORKFLOW_AUDIT.md` + `docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md` |
+| UX FlowSN (kreator SN-NN na żywo) | UI_UX_FORMULARZE_I_OKNA_*.md | `docs/audit/ENGINEER_WORKFLOW_AUDIT.md` + `docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md` |
 | ZERO_ERROR gate criteria | ZERO_ERROR/FINAL_REPORT.md | `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` § 4 |
 | Profil NC RfG (5 OSD) | E13_*.md | `backend/src/catalog/profiles/nc_rfg/*.yaml` (źródło prawdy) + `docs/sld/DER_PV_BESS_FW_CONFIGURATOR.md` |
 | Browser E2E evidence | BROWSER_*.md | `docs/audit/archive/2026-05/browser-snapshots/` + `frontend/e2e/critical-run-flow.spec.ts` (live test) |
@@ -136,10 +136,10 @@ Po sprzątaniu zidentyfikowane luki — wymagają adresacji w kolejnych etapach:
 | Brak skonsolidowanej specyfikacji „SLD klasy SCADA/CAD" | P0 | `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` (utworzony) |
 | Brak jednoznacznych kryteriów akceptacji wizualnej | P0 | `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` (utworzony) |
 | Brak roadmap SLD V2 → klasa przemysłowa (5 faz) | P0 | `docs/plan/PLAN_SLD_REWORK.md` + `docs/sld/SLD_IMPLEMENTATION_ROADMAP.md` (utworzony) |
-| Brak gap analysis aktualnego stanu vs target | P0 | `docs/audits/IMPLEMENTATION_GAP_ANALYSIS.md` (utworzony) |
+| Brak gap analysis aktualnego stanu vs target | P0 | `docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md` (utworzony) |
 | Brak indeksu „od czego zacząć developer" | P0 | `docs/INDEX.md` (zaktualizowany) |
 | Brak dokumentu o wymaganiach ENEA Operator (poza YAML) | P1 / BLOCKER | YAML jest źródłem prawdy w `backend/src/catalog/profiles/nc_rfg/enea.yaml`. Dokumentacja narracyjna **wymaga źródła** (IRiESD Enea Operator) — nie fabrykować. |
-| Brak skonsolidowanej listy stuba / atrap w kodzie | P0 | `docs/audit/AUDYT_BRAKI_2026-05.md` § 8.1 (dead clicks) + `docs/audits/IMPLEMENTATION_GAP_ANALYSIS.md` |
+| Brak skonsolidowanej listy stuba / atrap w kodzie | P0 | `docs/audit/AUDYT_BRAKI_2026-05.md` § 8.1 (dead clicks) + `docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md` |
 | Brak dokumentu „dlaczego V12.xx i co znaczy" dla onboardingu | P2 | TODO (follow-up) |
 
 ---

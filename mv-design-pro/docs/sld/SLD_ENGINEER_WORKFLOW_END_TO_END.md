@@ -4,7 +4,7 @@
 **Wersja:** 1.0
 **Data:** 2026-05-13
 **Powiązane:**
-- `docs/audits/ENGINEER_WORKFLOW_AUDIT.md` — audyt aktualnego flow
+- `docs/audit/ENGINEER_WORKFLOW_AUDIT.md` — audyt aktualnego flow
 - `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` — plan E2E implementacji
 - `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` — docelowy SLD
 - `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` — kryteria akceptacji
@@ -54,7 +54,7 @@ System ma być narzędziem inżynierskim, nie panelem programistycznym. Eliminac
 - Logical_views automatycznie aktualizowane
 
 **UX wymagania:**
-- Selektor szablonu vendor (ABB GIS / Siemens AIS / ZPUE Włoszczowa SF6) — **wymaga vendor templates**
+- Selektor szablonu vendor (rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal) — **wymaga vendor templates (CANDIDATE / REQUIRES_SOURCE — konkretne serie do weryfikacji wg vendor datasheets)**
 - Toggle topologii szyn SN (single/double/ring) jako wizualny chooser z preview
 - Nie 10 pól tabelarycznych — wizualne wybory
 

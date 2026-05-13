@@ -96,7 +96,7 @@ The system follows the canonical reference architecture:
 - All calculations WHITE BOX (auditable)
 - Strict layer separation: Solver / Analysis / Application / Presentation
 
-> **Detail:** see Chapter 01 (Purpose & Scope) and Chapter 05 (System Canonical Contracts).
+> **Detail:** see [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (active canon) and [`docs/system/SPEC_MODEL_SYSTEMOWY_SN.md`](docs/system/SPEC_MODEL_SYSTEMOWY_SN.md) (binding system specs).
 
 ---
 
@@ -122,8 +122,7 @@ There is exactly ONE NetworkModel per project. It contains only physical electri
 - Boundary markers, legal/contractual boundaries
 - Station containers store no physics (logical grouping only)
 
-> **Detail:** see Chapter 02 (ENM Domain Model), Chapter 03 (Topology), Chapter 04 (Lines & Cables), Chapter 07 (Sources & Loads).
-> **ENM vs Solver model distinction:** see [AUDIT_SPEC_VS_CODE.md](docs/spec/AUDIT_SPEC_VS_CODE.md) Section 2.
+> **Detail:** see [`docs/system/SPEC_MODEL_SYSTEMOWY_SN.md`](docs/system/SPEC_MODEL_SYSTEMOWY_SN.md), [`docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md`](docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md), [`docs/domain/`](docs/domain/), [`docs/v12xx/MIGRACJA_ENM_V1_V2.md`](docs/v12xx/MIGRACJA_ENM_V1_V2.md).
 
 ---
 
@@ -135,7 +134,7 @@ There is exactly ONE NetworkModel per project. It contains only physical electri
 - Source, Load, Protection parameters are Case-dependent, NOT cataloged
 - Centralized resolver: `network_model.catalog.resolver`
 
-> **Detail:** see Chapter 08 (Type vs Instance & Catalogs).
+> **Detail:** see [`docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md`](docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md), [`docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md`](docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md), [`docs/catalog/`](docs/catalog/).
 
 ---
 
@@ -148,7 +147,7 @@ There is exactly ONE NetworkModel per project. It contains only physical electri
 
 Result Status Lifecycle: `NONE -> FRESH -> OUTDATED -> FRESH`
 
-> **Detail:** see Chapter 10 (Study Cases & Scenarios).
+> **Detail:** see [`docs/analysis/STUDY_CASE_SYSTEM_CANONICAL.md`](docs/analysis/STUDY_CASE_SYSTEM_CANONICAL.md), [`docs/architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md`](docs/architecture/STUDY_SCENARIO_WORKFLOW_CANONICAL_PLUS.md), [`docs/v12xx/MACIERZ_INVALIDACJI.md`](docs/v12xx/MACIERZ_INVALIDACJI.md).
 
 ---
 
@@ -185,7 +184,7 @@ class PowerFlowResult:
 
 FROZEN: These APIs cannot change without major version bump.
 
-> **Detail:** see Chapter 06 (Solver Contracts & Mapping).
+> **Detail:** see [`docs/system/SPEC_ANALIZY_WYNIKI_WHITE_BOX_RAPORTY.md`](docs/system/SPEC_ANALIZY_WYNIKI_WHITE_BOX_RAPORTY.md), [`docs/analysis/LOAD_FLOW_INPUT_CONTRACT.md`](docs/analysis/LOAD_FLOW_INPUT_CONTRACT.md), [`docs/analysis/LOAD_FLOW_RESULTSET_V1.md`](docs/analysis/LOAD_FLOW_RESULTSET_V1.md), [`docs/proof_engine/EQUATIONS_IEC60909_SC3F.md`](docs/proof_engine/EQUATIONS_IEC60909_SC3F.md).
 
 ---
 
@@ -206,7 +205,7 @@ Protection is a separate AnalysisType in the execution pipeline. It does NOT res
 - **Contracts**: See [`docs/analysis/PROTECTION_CONTRACTS.md`](docs/analysis/PROTECTION_CONTRACTS.md)
 - **Architecture**: See [`docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md`](docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md)
 
-> **Detail:** see Chapter 09 (Protection), Chapter 12 (Validation & QA).
+> **Detail:** see [`docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md`](docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md), [`docs/analysis/PROTECTION_CONTRACTS.md`](docs/analysis/PROTECTION_CONTRACTS.md), [`docs/protection/PROTECTION_SYSTEM_CANONICAL.md`](docs/protection/PROTECTION_SYSTEM_CANONICAL.md), [`docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md`](docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md) (validation/QA).
 > **Normative completion (IEC 60909-0:2016 asymmetrical):** see [`docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md`](docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md).
 
 ---
@@ -243,7 +242,7 @@ SC3F (IEC 60909), VDROP, Equipment, Power Flow, Losses & Energy, Protection Over
 
 NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 
-> **Detail:** see Chapter 12 (Validation & QA).
+> **Detail:** see [`docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md`](docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md), [`docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md`](docs/domain/READINESS_FIXACTIONS_CANONICAL_PL.md), [`docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md`](docs/qa/MACIERZ_TESTOW_GLOBALNYCH.md).
 
 ---
 
@@ -253,7 +252,7 @@ NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 - **SLD**: Visualization of NetworkModel (1:1 mapping, auto-layout, overlays)
 - **Wizard/SLD Unity**: Both edit THE SAME NetworkModel instance
 
-> **Detail:** see Chapter 05 (System Canonical Contracts), [`docs/spec/WIZARD_FLOW.md`](docs/spec/WIZARD_FLOW.md), [`docs/spec/SLD_TOPOLOGICAL_ENGINE.md`](docs/spec/SLD_TOPOLOGICAL_ENGINE.md).
+> **Detail:** see [`docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md`](docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md), [`docs/designer-wizard/MV_DESIGN_PRO_CANONICAL_WIZARD_ALGORITHM.md`](docs/designer-wizard/MV_DESIGN_PRO_CANONICAL_WIZARD_ALGORITHM.md), [`docs/sld/SLD_CONTRACT_FLOW_V1.md`](docs/sld/SLD_CONTRACT_FLOW_V1.md), [`docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`](docs/sld/SLD_INDUSTRIAL_SPEC_v1.md), [`docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md`](docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md).
 
 ---
 
@@ -270,7 +269,7 @@ NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 
 **Forbidden Terms in Core Model**: BoundaryNode, Connection Point, Virtual Node, Aggregated Element.
 
-> **Detail:** see Chapter 01 (Purpose, Scope, Definitions).
+> **Detail:** see [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (active terminology canon) and [`docs/system/SPEC_MODEL_SYSTEMOWY_SN.md`](docs/system/SPEC_MODEL_SYSTEMOWY_SN.md).
 
 ---
 
@@ -291,27 +290,38 @@ NetworkValidator runs BEFORE any solver execution (13 industrial-grade rules).
 
 ## 12. Reference Documents
 
+### 12.1 Active canon (binding)
+
 | Category | Location |
 |----------|----------|
-| **Detailed Specification (18 chapters)** | [`docs/spec/SPEC_CHAPTER_*.md`](docs/spec/) |
-| **Spec vs Code Audit** | [`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md) |
-| **Spec Expansion Plan** | [`docs/spec/SPEC_EXPANSION_PLAN.md`](docs/spec/SPEC_EXPANSION_PLAN.md) |
+| **V12.xx Canon (SOURCE OF TRUTH)** | [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) |
+| **Conflict registry** | [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) |
+| **ENM v1 → v2 migration** | [`docs/v12xx/MIGRACJA_ENM_V1_V2.md`](docs/v12xx/MIGRACJA_ENM_V1_V2.md) |
+| **System specs (6 binding)** | [`docs/system/SPEC_*.md`](docs/system/) |
+| **Domain contracts** | [`docs/domain/`](docs/domain/) |
+| **SLD contract + semantic + industrial spec** | [`docs/sld/SLD_CONTRACT_FLOW_V1.md`](docs/sld/SLD_CONTRACT_FLOW_V1.md), [`docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md`](docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md), [`docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`](docs/sld/SLD_INDUSTRIAL_SPEC_v1.md), [`docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md`](docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md), [`docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md`](docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md) |
 | Architecture | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
 | Agent Governance | [`AGENTS.md`](AGENTS.md) |
 | Operational Plan | [`PLANS.md`](PLANS.md) |
+| Plan E2E + SLD rework + workflow | [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md), [`docs/plan/PLAN_SLD_REWORK.md`](docs/plan/PLAN_SLD_REWORK.md), [`docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md`](docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md) |
 | UI Contracts | [`docs/ui/*.md`](docs/ui/) |
 | Proof Engine Specs | [`docs/proof_engine/*.md`](docs/proof_engine/) |
 | Architecture Decision Records | [`docs/adr/ADR-*.md`](docs/adr/) |
-| Protection Specs | [`docs/protection/*.md`](docs/protection/) |
-| Protection Architecture | [`docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md`](docs/analysis/PROTECTION_CANONICAL_ARCHITECTURE.md) |
-| Protection Contracts | [`docs/analysis/PROTECTION_CONTRACTS.md`](docs/analysis/PROTECTION_CONTRACTS.md) |
-| Protection Dependency Graph | [`docs/analysis/PROTECTION_DEPENDENCY_GRAPH.md`](docs/analysis/PROTECTION_DEPENDENCY_GRAPH.md) |
-| Protection Determinism Guards | [`docs/analysis/PROTECTION_DETERMINISM_GUARDS.md`](docs/analysis/PROTECTION_DETERMINISM_GUARDS.md) |
-| Protection AS-IS Map | [`docs/analysis/PROTECTION_ASIS_MAP.md`](docs/analysis/PROTECTION_ASIS_MAP.md) |
+| Protection Specs | [`docs/protection/*.md`](docs/protection/), [`docs/analysis/PROTECTION_*.md`](docs/analysis/) |
 | Analysis Specs | [`docs/analysis/*.md`](docs/analysis/) |
+| Catalog Specs | [`docs/catalog/CATALOG_*_V1_SPEC.md`](docs/catalog/) |
 | Canonical Compliance | [`CANONICAL_COMPLIANCE.md`](CANONICAL_COMPLIANCE.md) |
-| Documentation Index | [`docs/INDEX.md`](docs/INDEX.md) |
-| Historical ExecPlans (archive) | [`docs/audit/historical_execplans/`](docs/audit/historical_execplans/) |
+| Documentation Index | [`docs/INDEX.md`](docs/INDEX.md), [`docs/INDEX_KANONICZNY.md`](docs/INDEX_KANONICZNY.md) |
+| 2026-05 cleanup audits | [`docs/audit/DOC_INVENTORY_2026-05.md`](docs/audit/DOC_INVENTORY_2026-05.md), [`docs/audit/AUDYT_BRAKI_2026-05.md`](docs/audit/AUDYT_BRAKI_2026-05.md), [`docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md`](docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md), [`docs/audit/SLD_VISUAL_QUALITY_AUDIT.md`](docs/audit/SLD_VISUAL_QUALITY_AUDIT.md), [`docs/audit/ENGINEER_WORKFLOW_AUDIT.md`](docs/audit/ENGINEER_WORKFLOW_AUDIT.md), [`docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md`](docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md) |
+
+### 12.2 Archival (V11 reference; not active source of truth)
+
+| Category | Location |
+|----------|----------|
+| 18 historical chapters (all with "Historical note (V12.5)" disclaimer) | [`docs/spec/SPEC_CHAPTER_*.md`](docs/spec/) |
+| Historical spec-vs-code audit | [`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md) |
+| Historical spec expansion plan | [`docs/spec/SPEC_EXPANSION_PLAN.md`](docs/spec/SPEC_EXPANSION_PLAN.md) |
+| Closed audits & ExecPlans | [`docs/audit/archive/`](docs/audit/archive/), [`docs/audit/historical_execplans/`](docs/audit/historical_execplans/) |
 
 ---
 

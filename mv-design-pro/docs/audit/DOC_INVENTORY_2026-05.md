@@ -44,7 +44,7 @@ W razie konfliktu treści: **wygrywa wyższy priorytet**. Konflikt rozstrzygany 
 | `mv-design-pro/docs/proof_engine/` | 16 | BINDING + zamknięte plany P11–P32 |
 | `mv-design-pro/docs/catalog/` | 25 | mieszane — zamknięte plany katalog-first + aktywne specyfikacje typów |
 | `mv-design-pro/docs/audit/` | 24 + podkatalogi | mieszane — większość do archiwum |
-| `mv-design-pro/docs/audits/` (duplikat!) | 9 | wszystkie audyty SLD/E2E — kandydaci do archiwum lub konsolidacji |
+| `mv-design-pro/docs/audit/` (duplikat!) | 9 | wszystkie audyty SLD/E2E — kandydaci do archiwum lub konsolidacji |
 | `mv-design-pro/docs/audit/historical_execplans/` | 12 | ARCHIWUM (ExecPlan-01..16) |
 | `mv-design-pro/docs/plan/` | 0 → tworzony w tym etapie | docelowo: PLAN_E2E_INDUSTRIAL, PLAN_SLD_REWORK |
 | `docs/plan/` (root) | 8 | M0_*.md + PLAN_10_10_GLOBAL_SN.md — częściowo zamknięte |
@@ -91,7 +91,7 @@ Cztery dokumenty mówią różne rzeczy:
 
 ### 3.2 Duplikaty katalogów
 
-- `mv-design-pro/docs/audit/` (24+) vs `mv-design-pro/docs/audits/` (9, podobny zakres SLD) — **DUPLIKAT, do konsolidacji**.
+- `mv-design-pro/docs/audit/` (24+) vs `mv-design-pro/docs/audit/` (9, podobny zakres SLD) — **DUPLIKAT, do konsolidacji**.
 - `docs/INDEX.md` (root, 240 linii, UI contracts) vs `mv-design-pro/docs/INDEX.md` (54 linie, kanon V12.xx) — różny zakres, OK po wyraźnym rozdzieleniu w nagłówku.
 - `mv-design-pro/docs/INDEX.md` vs `mv-design-pro/docs/INDEX_KANONICZNY.md` — pierwszy wskazuje drugi, OK po podporządkowaniu.
 
@@ -181,7 +181,7 @@ Wszystkie 28 plików w `mv-design-pro/docs/spec/` mają już disclaimer „Histo
 - `mv-design-pro/docs/audit/ZERO_ERROR/*` (zamknięty, 4 pliki)
 - `mv-design-pro/docs/audit/PROOF/SC_ASYMMETRICAL_4_1_CLOSURE.md` (zamknięty, część proof_engine)
 - `mv-design-pro/docs/audit/spec_vs_code_gap_report.md` (zastąpiony przez `docs/spec/AUDIT_SPEC_VS_CODE.md`)
-- `mv-design-pro/docs/audits/*` (9 plików — duplikat katalogu; wszystkie audyty SLD do archiwum, są zastąpione przez SLD_INDUSTRIAL_SPEC_v1.md)
+- `mv-design-pro/docs/audit/*` (9 plików — duplikat katalogu; wszystkie audyty SLD do archiwum, są zastąpione przez SLD_INDUSTRIAL_SPEC_v1.md)
 - `mv-design-pro/docs/audit/AUDYT_KATALOG_FIRST_END_TO_END.md` — pozostaje aktywny (link z INDEX_KANONICZNY § 5)
 
 #### 4.3.3 Zamknięte plany katalog-first (kandydaci do archiwum)
@@ -223,7 +223,7 @@ Pełna lista 415 plików dostępna w wyniku `git ls-files '*.md' | sort`. Klasyf
 3. ✅ Fizyczne przeniesienie zamkniętych audytów do `docs/audit/archive/2026-05/` (ten etap).
 4. ✅ Stworzenie `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` (ten etap).
 5. ✅ Stworzenie `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` + `docs/plan/PLAN_SLD_REWORK.md` (ten etap).
-6. ⏳ Konsolidacja `docs/audit/` + `docs/audits/` (kolejny etap, follow-up).
+6. ⏳ Konsolidacja `docs/audit/` + `docs/audit/` (kolejny etap, follow-up).
 7. ⏳ Renumeracja duplikatów ADR (follow-up, niska waga).
 8. ⏳ Klasyfikacja per-plik wszystkich 415 dokumentów (follow-up — w PLANS.md jako P2).
 

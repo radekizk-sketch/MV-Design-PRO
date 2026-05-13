@@ -22,7 +22,7 @@ System jest „atrapą z klocków" jeśli SPEŁNIA którekolwiek z poniższych:
 | 1 | Tor mocy nie jest czytelny | TR 110/15 kV i tor SN nie jest podkreślony wizualnie, mieszają się z control | **PRAWDA** — defekt |
 | 2 | Stacje wyglądają jak klocki | StationOnRunRenderer rysuje prostokąt z napisem | **PRAWDA** — defekt |
 | 3 | GPZ nie wygląda jak rozdzielnia z TR + sekcjami + polami | GpzSwitchgearRenderer rysuje pola, ale brak czytelnego rozróżnienia sekcji, brak ring/double busbar primitivu | **PRAWDA** częściowa |
-| 4 | Pola SN nie wynikają z katalogowych szablonów producentów | BayConfigurator istnieje, ale catalog binding nie ma vendor templates (ABB UniGear / Siemens 8DJH / ZPUE) | **PRAWDA** — brak templates |
+| 4 | Pola SN nie wynikają z katalogowych szablonów producentów | BayConfigurator istnieje, ale catalog binding nie ma vendor templates (rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal — CANDIDATE / REQUIRES_SOURCE) | **PRAWDA** — brak templates |
 | 5 | Symbole aparatów mieszają się / nie mają znaczenia elektrycznego | 32 symbole są OK kanonicznie, ale brak port-based binding — symbol nie wiąże się z portem elektrycznym | **PRAWDA** częściowa |
 | 6 | Etykiety nachodzą na siebie | LabelDeclutter.ts istnieje, ale przy zoom < 0.5× labelki nakładają się | **PRAWDA** — defekt |
 | 7 | Odcinki nie wychodzą z głowic/portów | KRYTYCZNE — phase4_route_all_edges() konsumuje współrzędne, nie ports.json | **PRAWDA** — defekt KRYTYCZNY |
@@ -112,7 +112,7 @@ System jest „atrapą z klocków" jeśli SPEŁNIA którekolwiek z poniższych:
 
 **Stan:** 4/10
 - ✅ `BayConfigurator` z 8 sekcjami
-- ❌ Brak vendor templates (ABB UniGear ZS1 / Siemens 8DJH / ZPUE WROCŁAW Włoszczowa)
+- ❌ Brak vendor templates (rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal — konkretne serie CANDIDATE / REQUIRES_SOURCE)
 - ❌ Pole renderowane jako generic (3392-linijka monolit)
 
 **Naprawa:** F1 (vendor symbol library) + F3 (split renderer)

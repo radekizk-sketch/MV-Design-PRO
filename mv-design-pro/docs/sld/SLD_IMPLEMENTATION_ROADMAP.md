@@ -10,7 +10,7 @@
 - `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — specyfikacja techniczna
 - `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` — opis target state
 - `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` — kryteria akceptacji
-- `docs/audits/SLD_VISUAL_QUALITY_AUDIT.md` — audyt aktualnego stanu
+- `docs/audit/SLD_VISUAL_QUALITY_AUDIT.md` — audyt aktualnego stanu
 - `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` — szerszy plan E2E systemu
 
 ---

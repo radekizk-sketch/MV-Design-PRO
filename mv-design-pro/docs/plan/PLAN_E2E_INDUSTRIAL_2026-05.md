@@ -199,7 +199,7 @@ Etapy:
 
 ### 3.9 P2 — Konsolidacja UI (follow-up po SLD rework)
 
-- Konsolidacja `docs/audit/` + `docs/audits/`
+- Konsolidacja `docs/audit/` + `docs/audit/`
 - Renumeracja duplikatów ADR
 - Klasyfikacja per-plik 415 dokumentów (full per-file status)
 - DXF export roadmap

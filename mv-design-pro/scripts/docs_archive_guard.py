@@ -195,10 +195,10 @@ META_AUDIT_ALLOWLIST = {
     "docs/v12xx/REJESTR_KONFLIKTOW.md",
     # 2026-05 cleanup audits (extended) — discuss docs/spec/ status as part of
     # the documentation cleanup, do not route active canon through docs/spec/.
-    "docs/audits/DOCUMENTATION_CLEANUP_AUDIT.md",
-    "docs/audits/SLD_VISUAL_QUALITY_AUDIT.md",
-    "docs/audits/ENGINEER_WORKFLOW_AUDIT.md",
-    "docs/audits/IMPLEMENTATION_GAP_ANALYSIS.md",
+    "docs/audit/DOCUMENTATION_CLEANUP_AUDIT.md",
+    "docs/audit/SLD_VISUAL_QUALITY_AUDIT.md",
+    "docs/audit/ENGINEER_WORKFLOW_AUDIT.md",
+    "docs/audit/IMPLEMENTATION_GAP_ANALYSIS.md",
     "docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md",
     "docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md",
     "docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md",

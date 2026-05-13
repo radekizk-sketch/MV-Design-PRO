@@ -67,15 +67,15 @@ GPZ MUSI być renderowany jako **PEŁNA rozdzielnia** z:
 - ❌ Brak TR jako osobny symbol — to atrapa
 - ❌ Pola wszystkie wyglądające tak samo — brak rozróżnienia liniowe / TR / pomiarowe / sprzęgłowe
 
-### 3.3 Vendor templates (preferowane)
+### 3.3 Vendor templates (kandydaci — wymaga weryfikacji źródłowej)
 
-Pola SN powinny renderować się zgodnie z vendor templates:
-- **ABB UniGear ZS1** (szafa zamknięta z wyłącznikiem wyciągalnym)
-- **Siemens 8DJH / NXAIR** (środowisko SF6, wyłączniki próżniowe)
-- **ZPUE Włoszczowa** (polski producent — szafa Rotoblok, ETP, ROSCO)
-- **Elektromontaż** (typowo: szafa W-25, ZR)
+Pola SN powinny renderować się zgodnie z vendor templates. Producenci preferowani (kolejność umowna):
+- **ABB** — kandydat: rodzina szaf SN z wyłącznikiem wyciągalnym
+- **Siemens** — kandydat: rodzina SN z wyłącznikami próżniowymi w środowisku SF6
+- **ZPUE Włoszczowa** — kandydat: polski producent szaf SN
+- **Elektrometal** — kandydat: polski producent szaf SN
 
-**Status:** Vendor templates jako catalog entries — **wymaga źródła** (vendor datasheets). Nie fabrykować geometrii. Plan w `IMPLEMENTATION_GAP_ANALYSIS § 4.1`.
+**Status:** WSZYSTKIE konkretne nazwy serii (np. UniGear ZS1, 8DJH, NXAIR, Rotoblok, ETP, ROSCO) są **CANDIDATE / REQUIRES_SOURCE**. Wymagają weryfikacji wg aktualnych vendor datasheets producenta przed wprowadzeniem do katalogu jako BINDING. Nie fabrykować geometrii ani nazewnictwa. Plan w `IMPLEMENTATION_GAP_ANALYSIS § 4.1`.
 
 ---
 
@@ -83,7 +83,7 @@ Pola SN powinny renderować się zgodnie z vendor templates:
 
 ### 4.1 Stacja przelotowa SN/nN (typ I)
 
-- Renderowana jako **mini-RMU** (ABB RM6 / Siemens RMU 8DJH style): 3 pola liniowe + 1 pole TR
+- Renderowana jako **mini-RMU** (rodzina ABB / Siemens — konkretne serie wymagają weryfikacji vendor datasheets): 3 pola liniowe + 1 pole TR
 - Przy zoom > 1×: **expand inline** do pełnego sub-SLD z polami SN + TR + szyną NN + odbiorami
 - Pole NN może być multi-voltage (110 V, 230 V, 400 V) wg potrzeby
 

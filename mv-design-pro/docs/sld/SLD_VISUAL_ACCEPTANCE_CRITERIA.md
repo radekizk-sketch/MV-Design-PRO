@@ -5,7 +5,7 @@
 **Data:** 2026-05-13
 **Powiązane:**
 - `docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md` — opis docelowego SLD
-- `docs/audits/SLD_VISUAL_QUALITY_AUDIT.md` — audyt aktualnego stanu
+- `docs/audit/SLD_VISUAL_QUALITY_AUDIT.md` — audyt aktualnego stanu
 - `docs/plan/PLAN_SLD_REWORK.md` — plan adresacji
 
 ---
@@ -73,7 +73,7 @@ Skala oceny: 1 (atrapa) – 10 (industrial-grade ABB/Siemens). Akceptacja: **≥
 ### AC-04: Pola SN z vendor templates lub generic IEC 60617
 
 **Wymóg:** Pola SN MUSZĄ renderować się:
-- Z vendor templates (preferowane): ABB UniGear ZS1 / Siemens 8DJH NXAIR / ZPUE Włoszczowa Rotoblok ETP / Elektromontaż W-25 ZR
+- Z vendor templates (CANDIDATE — konkretne serie wymagają weryfikacji vendor datasheets): rodzina ABB / Siemens / ZPUE Włoszczowa / Elektrometal — konkretne nazwy serii są **REQUIRES_SOURCE**
 - LUB jako generic zgodny z IEC 60617 (compartment envelope + CB + DS + ES + CT + VT + surge arrester)
 
 **Czego NIE wolno:** Pole bez compartment envelope, bez CT/VT, bez surge arrester (brak znaczenia elektrycznego).

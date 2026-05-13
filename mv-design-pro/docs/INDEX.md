@@ -27,9 +27,9 @@
 5. [sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md](./sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md) — flow inżyniera 14-krokowy
 
 **Krok 3: Zrozumieć stan obecny (15 min)**
-6. [audits/IMPLEMENTATION_GAP_ANALYSIS.md](./audits/IMPLEMENTATION_GAP_ANALYSIS.md) — co działa, co nie, co brakuje
-7. [audits/SLD_VISUAL_QUALITY_AUDIT.md](./audits/SLD_VISUAL_QUALITY_AUDIT.md) — dlaczego SLD wygląda jak atrapa i co naprawić
-8. [audits/ENGINEER_WORKFLOW_AUDIT.md](./audits/ENGINEER_WORKFLOW_AUDIT.md) — luki w flow inżyniera
+6. [audit/IMPLEMENTATION_GAP_ANALYSIS.md](./audit/IMPLEMENTATION_GAP_ANALYSIS.md) — co działa, co nie, co brakuje
+7. [audit/SLD_VISUAL_QUALITY_AUDIT.md](./audit/SLD_VISUAL_QUALITY_AUDIT.md) — dlaczego SLD wygląda jak atrapa i co naprawić
+8. [audit/ENGINEER_WORKFLOW_AUDIT.md](./audit/ENGINEER_WORKFLOW_AUDIT.md) — luki w flow inżyniera
 
 **Krok 4: Zrozumieć plan (10 min)**
 9. [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E całego systemu (6 sprintów)
@@ -37,7 +37,7 @@
 11. [sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md](./sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md) — kryteria akceptacji (DoD)
 
 **Krok 5: Praca z dokumentacją**
-12. [audits/DOCUMENTATION_CLEANUP_AUDIT.md](./audits/DOCUMENTATION_CLEANUP_AUDIT.md) — co jest aktualne, co SUPERSEDED, co ARCHIWALNE
+12. [audit/DOCUMENTATION_CLEANUP_AUDIT.md](./audit/DOCUMENTATION_CLEANUP_AUDIT.md) — co jest aktualne, co SUPERSEDED, co ARCHIWALNE
 13. [audit/DOC_INVENTORY_2026-05.md](./audit/DOC_INVENTORY_2026-05.md) — pełna inwentaryzacja 415 plików
 
 ---
@@ -45,10 +45,10 @@
 ## Active 2026-05 cleanup deliverables (KANONICZNE)
 
 ### Audyty
-- [audits/DOCUMENTATION_CLEANUP_AUDIT.md](./audits/DOCUMENTATION_CLEANUP_AUDIT.md) — audyt sprzątania dokumentacji (klasyfikacja + migracje)
-- [audits/SLD_VISUAL_QUALITY_AUDIT.md](./audits/SLD_VISUAL_QUALITY_AUDIT.md) — audyt jakości wizualnej SLD (5/10 → cel 9/10)
-- [audits/ENGINEER_WORKFLOW_AUDIT.md](./audits/ENGINEER_WORKFLOW_AUDIT.md) — audyt flow inżyniera (14 kroków vs aktualny stan)
-- [audits/IMPLEMENTATION_GAP_ANALYSIS.md](./audits/IMPLEMENTATION_GAP_ANALYSIS.md) — luki implementacyjne per obszar
+- [audit/DOCUMENTATION_CLEANUP_AUDIT.md](./audit/DOCUMENTATION_CLEANUP_AUDIT.md) — audyt sprzątania dokumentacji (klasyfikacja + migracje)
+- [audit/SLD_VISUAL_QUALITY_AUDIT.md](./audit/SLD_VISUAL_QUALITY_AUDIT.md) — audyt jakości wizualnej SLD (5/10 → cel 9/10)
+- [audit/ENGINEER_WORKFLOW_AUDIT.md](./audit/ENGINEER_WORKFLOW_AUDIT.md) — audyt flow inżyniera (14 kroków vs aktualny stan)
+- [audit/IMPLEMENTATION_GAP_ANALYSIS.md](./audit/IMPLEMENTATION_GAP_ANALYSIS.md) — luki implementacyjne per obszar
 - [audit/DOC_INVENTORY_2026-05.md](./audit/DOC_INVENTORY_2026-05.md) — inwentaryzacja 415 plików
 - [audit/AUDYT_BRAKI_2026-05.md](./audit/AUDYT_BRAKI_2026-05.md) — audyt braków, błędów, atrap (8 obszarów A–H)
 
@@ -103,8 +103,7 @@
 - [v12xx/](./v12xx/) - nadrzedny kanon V12.xx, rejestry i macierze wykonawcze
 - [analysis/](./analysis/) - aktywne kontrakty analiz
 - [architecture/](./architecture/) - aktywne workflow i mapy architektury wykonawczej
-- [audit/](./audit/) - aktywne audyty (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, AUDYT_KATALOG_FIRST_END_TO_END)
-- [audits/](./audits/) - audyty SLD/workflow/cleanup/gap (4 nowe 2026-05)
+- [audit/](./audit/) - aktywne audyty (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, DOCUMENTATION_CLEANUP, SLD_VISUAL_QUALITY, ENGINEER_WORKFLOW, IMPLEMENTATION_GAP_ANALYSIS, AUDYT_KATALOG_FIRST_END_TO_END)
 - [plan/](./plan/) - aktywne plany (PLAN_E2E_INDUSTRIAL_2026-05, PLAN_SLD_REWORK)
 - [domain/](./domain/) - aktywne kontrakty domenowe
 - [proof_engine/](./proof_engine/) - aktywny White Box

@@ -21,7 +21,7 @@ Backend jest w ~80% gotowy do flow E2E inżyniera SN. Frontend SLD jest **funkcj
 |--------|-------------|-----------|-----------|--------------|
 | Hierarchia źródeł prawdy | Sprzeczność CLAUDE.md (spec/) vs INDEX/v12xx (v12xx/) | KRYTYCZNY | P0 | Rozstrzygnięte 2026-05-13: V12.xx wygrywa. CLAUDE.md, SYSTEM_SPEC.md, PLANS.md zaktualizowane. |
 | Liczba `.md` | 415 plików, dziesiątki zamkniętych | Brak fizycznego archiwum | P0 | Przenieść zamknięte audyty/plany do `docs/audit/archive/2026-05/`. |
-| `docs/audit/` vs `docs/audits/` | Duplikat katalogu (24 vs 9) | Mylą się ścieżki | P1 | Skonsolidować — wszystkie audyty SLD/E2E do archiwum lub do `docs/audit/`. |
+| `docs/audit/` vs `docs/audit/` | Duplikat katalogu (24 vs 9) | Mylą się ścieżki | P1 | Skonsolidować — wszystkie audyty SLD/E2E do archiwum lub do `docs/audit/`. |
 | `docs/spec/` (28 plików) | Wszystkie 28 mają „Historical note" disclaimer | Wciąż używane jako referencja w SYSTEM_SPEC v4.0 | P0 | Aktualizacja pointerów w SYSTEM_SPEC.md i PLANS.md. Pliki spec/ pozostają jako archiwum referencyjne. |
 | Duplikaty ADR | ADR-002, 003, 005, 006, 007, 008 mają duplikaty numerów | Niejednoznaczne odniesienia | P2 | Nowe ADR od ADR-011. Renumeracja istniejących to follow-up. |
 | Snapshoty E2E w gicie | `tmp/browser-use-e2e/*.md` (9) + `verification_v12_5*.md` (2) + `sld-gpz-*.snapshot.md` (1) | Pliki tymczasowe trzymane w repo głównym | P1 | Przenieść do `docs/audit/archive/2026-05/{browser-snapshots,verification}/`. |

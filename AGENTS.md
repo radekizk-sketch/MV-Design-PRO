@@ -15,18 +15,21 @@ Reguła języka i kodowania: dokumentacja projektu, etykiety interfejsu i komuni
 
 ## Authority
 
-Project authority order, highest first:
+Project authority order, highest first. Updated 2026-05-13 per conflict resolution V12K-011 (see `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`):
 
-1. `mv-design-pro/docs/spec/`
-2. `mv-design-pro/docs/spec/AUDIT_SPEC_VS_CODE.md`
-3. `mv-design-pro/SYSTEM_SPEC.md`
-4. `mv-design-pro/ARCHITECTURE.md`
-5. `mv-design-pro/AGENTS.md`
-6. `mv-design-pro/POWERFACTORY_COMPLIANCE.md`
-7. `mv-design-pro/PLANS.md`
-8. `docs/INDEX.md`
+1. `mv-design-pro/docs/v12xx/KANON_V12_XX.md` + V12.xx registries/matrices
+2. `mv-design-pro/docs/system/SPEC_*.md` (6 binding system specs)
+3. `mv-design-pro/docs/domain/`, `mv-design-pro/docs/sld/SLD_CONTRACT_FLOW_V1.md`, `mv-design-pro/docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`
+4. `mv-design-pro/SYSTEM_SPEC.md`
+5. `mv-design-pro/ARCHITECTURE.md`
+6. `mv-design-pro/AGENTS.md`
+7. `mv-design-pro/POWERFACTORY_COMPLIANCE.md`
+8. `mv-design-pro/PLANS.md`
+9. `mv-design-pro/docs/INDEX.md` + `INDEX_KANONICZNY.md`
+10. `mv-design-pro/docs/spec/SPEC_CHAPTER_*.md` (18 chapters) — **ARCHIVAL** (V11 reference; not active source of truth; all 28 files carry "Historical note (V12.5)" disclaimer)
+11. `mv-design-pro/docs/audit/archive/` + `historical_execplans/` — archive
 
-If documents conflict, stop and follow the highest-authority document. For architecture changes, consult `docs/spec/` first.
+If documents conflict, stop and follow the highest-authority document. Record any conflict in `mv-design-pro/docs/v12xx/REJESTR_KONFLIKTOW.md`. For architecture changes, consult `mv-design-pro/docs/v12xx/KANON_V12_XX.md` and `mv-design-pro/docs/system/` first.
 
 ## GPT-5.5 Operating Profile
 
