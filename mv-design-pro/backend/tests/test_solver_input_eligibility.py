@@ -101,9 +101,84 @@ class TestEligibilityBasic:
         result = check_eligibility(graph, catalog, SolverAnalysisType.LOAD_FLOW)
         assert result.eligible is True
 
-    def test_protection_always_ineligible(self):
-        """Protection analysis is stub — always ineligible."""
+    def test_protection_ineligible_when_no_breaker(self):
+        """Protection analysis is BLOCKER SI-100 when graph has no BREAKER/RECLOSER.
+
+        Replaces former unconditional stub. SI-100 now reflects real prerequisite:
+        protection needs at least one protectable apparatus.
+        """
         graph = _make_valid_network()
+        catalog = _make_valid_catalog()
+
+        result = check_eligibility(graph, catalog, SolverAnalysisType.PROTECTION)
+        assert result.eligible is False
+        si_100 = next((b for b in result.blockers if b.code == "SI-100"), None)
+        assert si_100 is not None
+        assert "BREAKER" in si_100.message or "RECLOSER" in si_100.message
+
+    def test_protection_eligible_when_breaker_present(self):
+        """Protection analysis is ELIGIBLE when graph has at least one BREAKER.
+
+        Critical fix: previously always blocked (stub). Now proper check.
+        """
+        from network_model.core.switch import Switch, SwitchState, SwitchType
+
+        graph = _make_valid_network()
+        graph.add_switch(
+            Switch(
+                id="cb_main",
+                name="Q01",
+                switch_type=SwitchType.BREAKER,
+                from_node_id="slack",
+                to_node_id="load",
+                state=SwitchState.CLOSED,
+            )
+        )
+        catalog = _make_valid_catalog()
+
+        result = check_eligibility(graph, catalog, SolverAnalysisType.PROTECTION)
+        assert result.eligible is True
+        assert not any(b.code == "SI-100" for b in result.blockers)
+
+    def test_protection_eligible_when_recloser_present(self):
+        """Protection eligibility accepts RECLOSER as protectable apparatus."""
+        from network_model.core.switch import Switch, SwitchState, SwitchType
+
+        graph = _make_valid_network()
+        graph.add_switch(
+            Switch(
+                id="rc1",
+                name="Auto-Recloser",
+                switch_type=SwitchType.RECLOSER,
+                from_node_id="slack",
+                to_node_id="load",
+                state=SwitchState.CLOSED,
+            )
+        )
+        catalog = _make_valid_catalog()
+
+        result = check_eligibility(graph, catalog, SolverAnalysisType.PROTECTION)
+        assert result.eligible is True
+
+    def test_protection_blocker_when_only_disconnector(self):
+        """DISCONNECTOR / LOAD_SWITCH / FUSE / EARTH_SWITCH do not satisfy SI-100.
+
+        They cannot interrupt fault current and therefore are not protectable
+        apparatus for overcurrent analysis.
+        """
+        from network_model.core.switch import Switch, SwitchState, SwitchType
+
+        graph = _make_valid_network()
+        graph.add_switch(
+            Switch(
+                id="ds1",
+                name="Disconnector",
+                switch_type=SwitchType.DISCONNECTOR,
+                from_node_id="slack",
+                to_node_id="load",
+                state=SwitchState.CLOSED,
+            )
+        )
         catalog = _make_valid_catalog()
 
         result = check_eligibility(graph, catalog, SolverAnalysisType.PROTECTION)
@@ -331,8 +406,8 @@ class TestEligibilityMap:
         expected = set(SolverAnalysisType)
         assert analysis_types == expected
 
-    def test_map_protection_always_blocked(self):
-        """Protection entry is always blocked in the map."""
+    def test_map_protection_blocked_when_no_breaker(self):
+        """Protection entry in map is blocked when graph has no BREAKER/RECLOSER."""
         graph = _make_valid_network()
         catalog = _make_valid_catalog()
 
@@ -342,6 +417,30 @@ class TestEligibilityMap:
             e for e in emap.entries if e.analysis_type == SolverAnalysisType.PROTECTION
         )
         assert prot_entry.eligible is False
+
+    def test_map_protection_eligible_with_breaker(self):
+        """Protection entry in map is eligible when graph has BREAKER and other prereqs OK."""
+        from network_model.core.switch import Switch, SwitchState, SwitchType
+
+        graph = _make_valid_network()
+        graph.add_switch(
+            Switch(
+                id="cb_main",
+                name="Q01",
+                switch_type=SwitchType.BREAKER,
+                from_node_id="slack",
+                to_node_id="load",
+                state=SwitchState.CLOSED,
+            )
+        )
+        catalog = _make_valid_catalog()
+
+        emap = build_eligibility_map(graph, catalog)
+
+        prot_entry = next(
+            e for e in emap.entries if e.analysis_type == SolverAnalysisType.PROTECTION
+        )
+        assert prot_entry.eligible is True
 
     def test_blockers_sorted_deterministically(self):
         """Blockers in eligibility result are sorted by (code, element_ref, message)."""
