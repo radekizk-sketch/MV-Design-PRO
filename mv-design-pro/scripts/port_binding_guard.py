@@ -155,6 +155,166 @@ def _iter_typescript_fixtures() -> list[Path]:
     return sorted(p for p in candidates if p.is_file())
 
 
+@dataclass
+class PortsManifestIssue:
+    """Schema violation in canonical_symbols/ports.json (PLAN_SLD_REWORK F1)."""
+
+    symbol_id: str
+    field_path: str
+    issue: str
+
+
+def _validate_ports_manifest() -> tuple[int, int, list[PortsManifestIssue]]:
+    """
+    Validate ports.json schema consistency (PLAN_SLD_REWORK F1, V12K-013).
+
+    Wymagane reguły (per SLD_IEC_60617_PARITY § 5):
+    1. Każdy SVG w canonical_symbols/ ma entry w ports.json (i odwrotnie)
+    2. Każda entry ma: description, viewBox, ports, allowedRotations, defaultRotation
+    3. Każdy port w entry ma: x, y (legacy entries akceptowane bez kind/voltage_kv_compat,
+       nowe entries 2026-05+ MUSZĄ mieć pełen schema z kind + voltage_kv_compat).
+
+    Zwraca:
+        (svg_count, json_count, list_of_violations)
+    """
+    ports_dir = FRONTEND_SRC / "ui" / "sld" / "canonical_symbols"
+    issues: list[PortsManifestIssue] = []
+    if not ports_dir.exists():
+        return (0, 0, issues)
+
+    svg_files = {p.stem for p in ports_dir.glob("*.svg")}
+    manifest_path = ports_dir / "ports.json"
+    if not manifest_path.exists():
+        return (len(svg_files), 0, issues)
+
+    raw = manifest_path.read_text(encoding="utf-8-sig")
+    try:
+        manifest = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        issues.append(
+            PortsManifestIssue(
+                symbol_id="<ports.json>",
+                field_path="$",
+                issue=f"invalid JSON: {exc}",
+            )
+        )
+        return (len(svg_files), 0, issues)
+
+    symbols = manifest.get("symbols", {})
+    if not isinstance(symbols, dict):
+        issues.append(
+            PortsManifestIssue(
+                symbol_id="<ports.json>",
+                field_path="$.symbols",
+                issue="symbols must be a JSON object",
+            )
+        )
+        return (len(svg_files), 0, issues)
+
+    # 1. SVG ↔ ports.json sync
+    for svg_name in sorted(svg_files):
+        if svg_name not in symbols:
+            issues.append(
+                PortsManifestIssue(
+                    symbol_id=svg_name,
+                    field_path="$.symbols",
+                    issue=f"SVG {svg_name}.svg has no ports.json entry",
+                )
+            )
+    for sym_id in sorted(symbols.keys()):
+        if sym_id not in svg_files:
+            issues.append(
+                PortsManifestIssue(
+                    symbol_id=sym_id,
+                    field_path=f"$.symbols.{sym_id}",
+                    issue="ports.json entry has no corresponding .svg file",
+                )
+            )
+
+    # 2. Required entry fields
+    required_entry_fields = ("description", "viewBox", "ports", "allowedRotations", "defaultRotation")
+    for sym_id, entry in symbols.items():
+        if not isinstance(entry, dict):
+            issues.append(
+                PortsManifestIssue(
+                    symbol_id=sym_id,
+                    field_path=f"$.symbols.{sym_id}",
+                    issue="entry must be a JSON object",
+                )
+            )
+            continue
+        for field_name in required_entry_fields:
+            if field_name not in entry:
+                issues.append(
+                    PortsManifestIssue(
+                        symbol_id=sym_id,
+                        field_path=f"$.symbols.{sym_id}.{field_name}",
+                        issue=f"missing required field {field_name!r}",
+                    )
+                )
+
+    # 3. Port coordinates and optional kind/voltage_kv_compat
+    for sym_id, entry in symbols.items():
+        if not isinstance(entry, dict):
+            continue
+        ports = entry.get("ports", {})
+        if not isinstance(ports, dict):
+            issues.append(
+                PortsManifestIssue(
+                    symbol_id=sym_id,
+                    field_path=f"$.symbols.{sym_id}.ports",
+                    issue="ports must be a JSON object",
+                )
+            )
+            continue
+        for port_id, port in ports.items():
+            if not isinstance(port, dict):
+                issues.append(
+                    PortsManifestIssue(
+                        symbol_id=sym_id,
+                        field_path=f"$.symbols.{sym_id}.ports.{port_id}",
+                        issue="port must be a JSON object",
+                    )
+                )
+                continue
+            for coord in ("x", "y"):
+                if coord not in port or not isinstance(port[coord], (int, float)):
+                    issues.append(
+                        PortsManifestIssue(
+                            symbol_id=sym_id,
+                            field_path=f"$.symbols.{sym_id}.ports.{port_id}.{coord}",
+                            issue=f"port {coord!r} must be a number",
+                        )
+                    )
+            # If kind is present, it must be a known enum value.
+            if "kind" in port:
+                kind = port["kind"]
+                allowed_kinds = {"BUS", "LINE_IN", "LINE_OUT", "EARTH", "TAP"}
+                if kind not in allowed_kinds:
+                    issues.append(
+                        PortsManifestIssue(
+                            symbol_id=sym_id,
+                            field_path=f"$.symbols.{sym_id}.ports.{port_id}.kind",
+                            issue=f"unknown port kind {kind!r}, expected one of {sorted(allowed_kinds)}",
+                        )
+                    )
+            # If voltage_kv_compat is present, must be list of numbers.
+            if "voltage_kv_compat" in port:
+                vc = port["voltage_kv_compat"]
+                if not isinstance(vc, list) or not all(
+                    isinstance(v, (int, float)) and v > 0 for v in vc
+                ):
+                    issues.append(
+                        PortsManifestIssue(
+                            symbol_id=sym_id,
+                            field_path=f"$.symbols.{sym_id}.ports.{port_id}.voltage_kv_compat",
+                            issue="voltage_kv_compat must be a list of positive numbers",
+                        )
+                    )
+
+    return (len(svg_files), len(symbols), issues)
+
+
 def run(*, strict: bool, json_output: bool) -> int:
     report = GuardReport()
 
@@ -163,8 +323,21 @@ def run(*, strict: bool, json_output: bool) -> int:
     for path in _iter_typescript_fixtures():
         _scan_typescript_fixture(path, report)
 
+    # PLAN_SLD_REWORK F1 + V12K-013: validate ports.json schema consistency.
+    svg_count, manifest_count, manifest_issues = _validate_ports_manifest()
+
     if json_output:
-        json.dump(report.to_dict(), sys.stdout, ensure_ascii=False, indent=2)
+        payload = report.to_dict()
+        payload["ports_manifest"] = {
+            "svg_count": svg_count,
+            "manifest_entry_count": manifest_count,
+            "in_sync": (svg_count == manifest_count) and not manifest_issues,
+            "issues": [
+                {"symbol_id": i.symbol_id, "field_path": i.field_path, "issue": i.issue}
+                for i in manifest_issues
+            ],
+        }
+        json.dump(payload, sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")
     else:
         print(
@@ -183,7 +356,22 @@ def run(*, strict: bool, json_output: bool) -> int:
             if len(report.violations) > 20:
                 print(f"  ... oraz {len(report.violations) - 20} kolejnych")
 
-    if strict and report.connections_missing_ports > 0:
+        # PLAN_SLD_REWORK F1 ports.json schema validation report
+        in_sync = svg_count == manifest_count and not manifest_issues
+        status_marker = "OK" if in_sync else "WARN"
+        print(
+            f"\nports.json schema [{status_marker}]: "
+            f"{svg_count} SVG plików, {manifest_count} entries w ports.json, "
+            f"{len(manifest_issues)} naruszeń schemy."
+        )
+        if manifest_issues:
+            print("\nNaruszenia ports.json (PLAN_SLD_REWORK F1 / V12K-013):")
+            for issue in manifest_issues[:20]:
+                print(f"  - [{issue.symbol_id}] {issue.field_path}: {issue.issue}")
+            if len(manifest_issues) > 20:
+                print(f"  ... oraz {len(manifest_issues) - 20} kolejnych")
+
+    if strict and (report.connections_missing_ports > 0 or manifest_issues):
         return 1
     return 0
 
