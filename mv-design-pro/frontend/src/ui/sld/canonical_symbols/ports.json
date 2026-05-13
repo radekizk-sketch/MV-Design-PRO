@@ -289,6 +289,40 @@
       "allowedRotations": [0, 90, 180, 270],
       "defaultRotation": 0,
       "notes": "Withdrawable circuit breaker in racked compartment (ABB UniGear-class / Siemens 8DJH-class — vendor binding requires datasheet verification, see SLD_INDUSTRIAL_SCADA_CAD_TARGET.md § 3.3)."
+    },
+    "busbar_coupler": {
+      "description": "Sprzęgło sekcji szyn / Busbar coupler — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "left": { "x": 0, "y": 50, "kind": "BUS", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] },
+        "right": { "x": 100, "y": 50, "kind": "BUS", "voltage_kv_compat": [6, 10, 15, 20, 30, 110] }
+      },
+      "allowedRotations": [0, 90],
+      "defaultRotation": 0,
+      "notes": "Connects two busbar sections (S1 left, S2 right) via DS + CB + DS sequence. Used in double_busbar topology for transferring loads between systems."
+    },
+    "auto_recloser": {
+      "description": "Auto-recloser / PPZ — IEC 60617 + ANSI 79",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Circuit breaker with auto-reclose function (ANSI 79). Used on overhead MV feeders to clear transient faults automatically."
+    },
+    "switch_3pos": {
+      "description": "Łącznik 3-pozycyjny ON/OFF/EARTH — IEC 60617",
+      "viewBox": "0 0 100 100",
+      "ports": {
+        "top": { "x": 50, "y": 0, "kind": "LINE_IN", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "bottom": { "x": 50, "y": 100, "kind": "LINE_OUT", "voltage_kv_compat": [6, 10, 15, 20, 30] },
+        "earth": { "x": 87, "y": 50, "kind": "EARTH", "voltage_kv_compat": [6, 10, 15, 20, 30] }
+      },
+      "allowedRotations": [0, 90, 180, 270],
+      "defaultRotation": 0,
+      "notes": "Three-position disconnector/earthing switch (typical for SF6 GIS modules). Combines disconnector and earthing function in one apparatus — interlocked to prevent invalid states."
     }
   },
   "portTransformations": {

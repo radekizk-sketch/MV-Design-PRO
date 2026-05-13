@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Busbar coupler / Sprzęgło sekcji szyn — IEC 60617 -->
+  <!-- Connects two busbar sections (S1 left, S2 right) via a CB+DS coupler bay. -->
+  <!-- Left busbar stub (S1 side) -->
+  <rect x="0" y="45" width="22" height="10" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Disconnector left side -->
+  <line x1="22" y1="50" x2="35" y2="50" stroke="currentColor" stroke-width="3"/>
+  <line x1="35" y1="50" x2="40" y2="42" stroke="currentColor" stroke-width="3"/>
+  <circle cx="35" cy="50" r="1.5" fill="currentColor"/>
+  <!-- Coupler CB body (X open-state) -->
+  <rect x="40" y="40" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3"/>
+  <line x1="42" y1="42" x2="58" y2="58" stroke="currentColor" stroke-width="2"/>
+  <line x1="58" y1="42" x2="42" y2="58" stroke="currentColor" stroke-width="2"/>
+  <!-- Disconnector right side -->
+  <line x1="60" y1="42" x2="65" y2="50" stroke="currentColor" stroke-width="3"/>
+  <line x1="65" y1="50" x2="78" y2="50" stroke="currentColor" stroke-width="3"/>
+  <circle cx="65" cy="50" r="1.5" fill="currentColor"/>
+  <!-- Right busbar stub (S2 side) -->
+  <rect x="78" y="45" width="22" height="10" fill="none" stroke="currentColor" stroke-width="3"/>
+  <!-- Label -->
+  <text x="42" y="78" font-family="sans-serif" font-size="6" fill="currentColor">COUPLER</text>
+  <!-- Ports:
+       left: (0, 50) — S1 bus side
+       right: (100, 50) — S2 bus side -->
+</svg>

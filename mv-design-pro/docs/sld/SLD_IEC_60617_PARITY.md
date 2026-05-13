@@ -32,7 +32,7 @@ Status legenda:
 | `ring_busbar` | Szyna pierścieniowa (S1+S2 ring) | ✅ OK (nowy, 2026-05) | ring_busbar.svg |
 | `double_busbar` | Szyna dwusystemowa (S1+S2 independent) | ✅ OK (nowy, 2026-05) | double_busbar.svg |
 | `busbar_section_marker` | Oznaczenie sekcji szyn | ✅ OK (nowy, 2026-05) | busbar_section_marker.svg |
-| `busbar_coupler` | Sprzęgło sekcji szyn | ❌ MISSING | — |
+| `busbar_coupler` | Sprzęgło sekcji szyn | ✅ OK (nowy, 2026-05) | busbar_coupler.svg |
 | `nop` | NOP (Normalnie Otwarty Punkt) | ⚠️ PARTIAL (brak entry w ports.json) | nop.svg |
 
 ### 2.2 Łączniki (IEC 60617-7)
@@ -45,9 +45,9 @@ Status legenda:
 | `load_switch` | Rozłącznik bezpiecznikowy | ⚠️ PARTIAL (brak entry w ports.json) | load_switch.svg |
 | `earthing_switch` | Uziemnik | ✅ OK | earthing_switch.svg |
 | `fuse` | Bezpiecznik | ✅ OK | fuse.svg |
-| `auto_recloser` | Auto-recloser (PPZ) | ❌ MISSING | — |
+| `auto_recloser` | Auto-recloser (PPZ) | ✅ OK (nowy, 2026-05) | auto_recloser.svg |
 | `motor_starter` | Rozrusznik silnika | ❌ MISSING | — |
-| `switch_3pos` | Łącznik 3-pozycyjny (ON/OFF/EARTH) | ❌ MISSING | — |
+| `switch_3pos` | Łącznik 3-pozycyjny (ON/OFF/EARTH) | ✅ OK (nowy, 2026-05) | switch_3pos.svg |
 
 ### 2.3 Transformatory (IEC 60617-6)
 
@@ -127,28 +127,32 @@ Status legenda:
 
 | Status | Liczba |
 |--------|--------|
-| ✅ OK (SVG + ports.json) | 27 |
+| ✅ OK (SVG + ports.json) | 30 |
 | ⚠️ PARTIAL (SVG bez ports.json) | 8 |
-| ❌ MISSING (target lista) | 27 |
+| ❌ MISSING (target lista) | 24 |
 | **Razem zadeklarowane** | **62** |
-| **Pokrycie OK** | **27 / 62 = 43.5%** |
+| **Pokrycie OK** | **30 / 62 = 48.4%** |
 
 **Target:** ≥ 90% pokrycie (≥ 56 / 62 symboli).
-**Gap:** 27 + 8 = 35 symboli do uzupełnienia.
+**Gap:** 24 + 8 = 32 symboli do uzupełnienia.
+
+**Progress 2026-05-13:** dodano 7 symboli z F1 sprint 1 (priorytet KRYTYCZNY):
+ring_busbar, double_busbar, busbar_section_marker, busbar_coupler,
+cb_drawout, auto_recloser, switch_3pos. Sprint 1 zamknięty.
 
 ---
 
 ## 4. Roadmap uzupełnień (PLAN_SLD_REWORK F1)
 
-### Sprint 1 — szyny + łączniki (priorytet KRYTYCZNY, ~3 OD)
+### Sprint 1 — szyny + łączniki (priorytet KRYTYCZNY, ~3 OD) ✅ ZAMKNIĘTY 2026-05-13
 
 - [x] `ring_busbar` (2026-05-13)
 - [x] `double_busbar` (2026-05-13)
 - [x] `busbar_section_marker` (2026-05-13)
 - [x] `cb_drawout` (2026-05-13)
-- [ ] `busbar_coupler`
-- [ ] `auto_recloser`
-- [ ] `switch_3pos`
+- [x] `busbar_coupler` (2026-05-13)
+- [x] `auto_recloser` (2026-05-13)
+- [x] `switch_3pos` (2026-05-13)
 
 ### Sprint 2 — pomiarowe + ochronne (~3 OD)
 
