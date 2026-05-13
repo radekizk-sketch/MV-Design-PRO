@@ -1,14 +1,79 @@
 # Documentation Index
 
+**Status:** AKTYWNY (kanon V12.xx)
+**Aktualizacja:** 2026-05-13 (po cleanupie + rozstrzygnięciu V12K-011)
+
+> **Cel:** Doprowadzić MV-DESIGN-PRO do systemu klasy przemysłowej SCADA/CAD (ETAP/DIgSILENT/ABB grade) — **nie atrapy z klocków**.
+
+> **Hierarchia kanonu** (po rozstrzygnięciu konfliktu V12K-001 / V12K-011 w 2026-05-13):
+> 1. `docs/v12xx/KANON_V12_XX.md` — kanon kierunkowy V12.xx (binding)
+> 2. `docs/system/SPEC_*.md` — wiążące specyfikacje systemowe
+> 3. `docs/domain/*.md`, `docs/sld/SLD_CONTRACT_FLOW_V1.md`, `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` — aktywne kontrakty
+> 4. `mv-design-pro/SYSTEM_SPEC.md`, `ARCHITECTURE.md`, `AGENTS.md`, `PLANS.md` — executive overview
+> 5. `docs/spec/SPEC_CHAPTER_*.md` (18 rozdziałów) — **ARCHIWALNE** (V11 reference; nie aktywny kanon)
+> 6. `docs/audit/archive/` + `docs/audit/historical_execplans/` — archiwum
+
+---
+
+## 🚀 START — Od czego zaczyna nowy developer
+
+**Krok 1: Zrozumieć kontekst (15 min)**
+1. [../SYSTEM_SPEC.md](../SYSTEM_SPEC.md) — wykonawcza specyfikacja systemu (1 strona)
+2. [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) — kanon V12.xx (binding, frozen 2026-04-24)
+3. [../PLANS.md](../PLANS.md) — aktualny status faz i prace bieżące
+
+**Krok 2: Zrozumieć cel (10 min)**
+4. [sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md](./sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md) — docelowy SLD klasy przemysłowej
+5. [sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md](./sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md) — flow inżyniera 14-krokowy
+
+**Krok 3: Zrozumieć stan obecny (15 min)**
+6. [audits/IMPLEMENTATION_GAP_ANALYSIS.md](./audits/IMPLEMENTATION_GAP_ANALYSIS.md) — co działa, co nie, co brakuje
+7. [audits/SLD_VISUAL_QUALITY_AUDIT.md](./audits/SLD_VISUAL_QUALITY_AUDIT.md) — dlaczego SLD wygląda jak atrapa i co naprawić
+8. [audits/ENGINEER_WORKFLOW_AUDIT.md](./audits/ENGINEER_WORKFLOW_AUDIT.md) — luki w flow inżyniera
+
+**Krok 4: Zrozumieć plan (10 min)**
+9. [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E całego systemu (6 sprintów)
+10. [sld/SLD_IMPLEMENTATION_ROADMAP.md](./sld/SLD_IMPLEMENTATION_ROADMAP.md) — roadmap SLD reworku (F1–F5)
+11. [sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md](./sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md) — kryteria akceptacji (DoD)
+
+**Krok 5: Praca z dokumentacją**
+12. [audits/DOCUMENTATION_CLEANUP_AUDIT.md](./audits/DOCUMENTATION_CLEANUP_AUDIT.md) — co jest aktualne, co SUPERSEDED, co ARCHIWALNE
+13. [audit/DOC_INVENTORY_2026-05.md](./audit/DOC_INVENTORY_2026-05.md) — pełna inwentaryzacja 415 plików
+
+---
+
+## Active 2026-05 cleanup deliverables (KANONICZNE)
+
+### Audyty
+- [audits/DOCUMENTATION_CLEANUP_AUDIT.md](./audits/DOCUMENTATION_CLEANUP_AUDIT.md) — audyt sprzątania dokumentacji (klasyfikacja + migracje)
+- [audits/SLD_VISUAL_QUALITY_AUDIT.md](./audits/SLD_VISUAL_QUALITY_AUDIT.md) — audyt jakości wizualnej SLD (5/10 → cel 9/10)
+- [audits/ENGINEER_WORKFLOW_AUDIT.md](./audits/ENGINEER_WORKFLOW_AUDIT.md) — audyt flow inżyniera (14 kroków vs aktualny stan)
+- [audits/IMPLEMENTATION_GAP_ANALYSIS.md](./audits/IMPLEMENTATION_GAP_ANALYSIS.md) — luki implementacyjne per obszar
+- [audit/DOC_INVENTORY_2026-05.md](./audit/DOC_INVENTORY_2026-05.md) — inwentaryzacja 415 plików
+- [audit/AUDYT_BRAKI_2026-05.md](./audit/AUDYT_BRAKI_2026-05.md) — audyt braków, błędów, atrap (8 obszarów A–H)
+
+### SLD industrial
+- [sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md](./sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md) — opis docelowego SLD
+- [sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md](./sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md) — kryteria akceptacji wizualnej
+- [sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md](./sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md) — flow inżyniera 14-krokowy
+- [sld/SLD_IMPLEMENTATION_ROADMAP.md](./sld/SLD_IMPLEMENTATION_ROADMAP.md) — roadmap implementacji
+- [sld/SLD_INDUSTRIAL_SPEC_v1.md](./sld/SLD_INDUSTRIAL_SPEC_v1.md) — specyfikacja techniczna (komplementarna)
+
+### Plany
+- [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E klasy przemysłowej
+- [plan/PLAN_SLD_REWORK.md](./plan/PLAN_SLD_REWORK.md) — fazowany plan reworku SLD (F1–F5)
+
+---
+
 ## Active Canon
 - [v12xx/KANON_V12_XX.md](./v12xx/KANON_V12_XX.md) - aktywne prawo produktu V12.xx
 - [v12xx/RAPORT_M0_INWENTARYZACJA.md](./v12xx/RAPORT_M0_INWENTARYZACJA.md) - inwentaryzacja startowa M0 V12.xx
 - [v12xx/BACKLOG_WDROZENIOWY_V12_XX.md](./v12xx/BACKLOG_WDROZENIOWY_V12_XX.md) - backlog wdrozeniowy M0-M4
 - [INDEX_KANONICZNY.md](./INDEX_KANONICZNY.md) - indeks wiążących dokumentów V12.5
-- [SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
-- [ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
-- [CANONICAL_COMPLIANCE.md](../CANONICAL_COMPLIANCE.md) - checklista zgodności
-- [PLANS.md](../PLANS.md) - aktywny plan wykonawczy
+- [../SYSTEM_SPEC.md](../SYSTEM_SPEC.md) - wykonawcza specyfikacja systemu
+- [../ARCHITECTURE.md](../ARCHITECTURE.md) - architektura referencyjna
+- [../CANONICAL_COMPLIANCE.md](../CANONICAL_COMPLIANCE.md) - checklista zgodności
+- [../PLANS.md](../PLANS.md) - aktywny plan wykonawczy
 - [01-Core.md](./01-Core.md) - kanon domeny i kontraktów rdzenia
 - [04-Application.md](./04-Application.md) - aktywna architektura aplikacji
 - [domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md](./domain/ENM_OP_CONTRACTS_CANONICAL_FULL.md) - kontrakty operacji domenowych
@@ -31,16 +96,20 @@
 - `docs/archive/` jest wyłącznie archiwum [historyczne](./archive/).
 - Żaden aktywny generator raportu, test, skrypt ani indeks dokumentacji nie może pobierać treści z `docs/archive/` jako kanonu.
 - Link do materiału historycznego musi być jawnie oznaczony `[historyczne]`.
+- Każdy aktualny dokument ma w nagłówku **Status** (AKTUALNY / SUPERSEDED / ARCHIWALNY / BLOCKER).
+- Każdy SUPERSEDED ma wskazanie aktualnego następcy.
 
 ## Active Areas
 - [v12xx/](./v12xx/) - nadrzedny kanon V12.xx, rejestry i macierze wykonawcze
 - [analysis/](./analysis/) - aktywne kontrakty analiz
 - [architecture/](./architecture/) - aktywne workflow i mapy architektury wykonawczej
-- [audit/](./audit/) - aktywne audyty i higiena repo V12.5
+- [audit/](./audit/) - aktywne audyty (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, AUDYT_KATALOG_FIRST_END_TO_END)
+- [audits/](./audits/) - audyty SLD/workflow/cleanup/gap (4 nowe 2026-05)
+- [plan/](./plan/) - aktywne plany (PLAN_E2E_INDUSTRIAL_2026-05, PLAN_SLD_REWORK)
 - [domain/](./domain/) - aktywne kontrakty domenowe
 - [proof_engine/](./proof_engine/) - aktywny White Box
 - [qa/](./qa/) - aktywna macierz jakości i bram testowych
-- [sld/](./sld/) - aktywne kontrakty i geometria SLD
+- [sld/](./sld/) - aktywne kontrakty i geometria SLD + 5 nowych SLD industrial docs (2026-05)
 - [study/](./study/) - aktywne workflow wariantów i uruchomień
 - [system/](./system/) - wiążące specyfikacje systemowe V12.5
 - [ui/](./ui/) - aktywne kontrakty UI
@@ -48,7 +117,8 @@
 - [tests/](./tests/) - aktywne kryteria testowe i goldeny
 
 ## Historical
-- [spec/](./spec/) [historyczne]
+- [spec/](./spec/) [historyczne] - 18 rozdziałów V11, wszystkie z disclaimer "Historical note (V12.5)"
 - [audit/historical_execplans/](./audit/historical_execplans/) [historyczne]
+- [audit/archive/2026-05/](./audit/archive/2026-05/) [archiwum] - 35+ zamkniętych audytów + planów M0 + snapshotów E2E + weryfikacji
 - [archive/README.md](./archive/README.md) [historyczne]
 - [archive/](./archive/) [historyczne]

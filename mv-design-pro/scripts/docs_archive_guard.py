@@ -180,6 +180,32 @@ def check_index_targets_exist() -> list[str]:
     return violations
 
 
+META_AUDIT_ALLOWLIST = {
+    # Audit and cleanup documents that explicitly discuss the docs/spec/ archival
+    # status as part of the V12.xx canon resolution (V12K-011). These documents
+    # describe the conflict and its resolution — they do not route active canon
+    # through docs/spec/.
+    "docs/audit/DOC_INVENTORY_2026-05.md",
+    "docs/audit/AUDYT_BRAKI_2026-05.md",
+    "docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md",
+    "docs/plan/PLAN_SLD_REWORK.md",
+    "docs/sld/SLD_INDUSTRIAL_SPEC_v1.md",
+    # V12.xx canon registry already records conflict V12K-002 about docs/spec/
+    # so its mention there is the canonical authoritative reference, not routing.
+    "docs/v12xx/REJESTR_KONFLIKTOW.md",
+    # 2026-05 cleanup audits (extended) — discuss docs/spec/ status as part of
+    # the documentation cleanup, do not route active canon through docs/spec/.
+    "docs/audits/DOCUMENTATION_CLEANUP_AUDIT.md",
+    "docs/audits/SLD_VISUAL_QUALITY_AUDIT.md",
+    "docs/audits/ENGINEER_WORKFLOW_AUDIT.md",
+    "docs/audits/IMPLEMENTATION_GAP_ANALYSIS.md",
+    "docs/sld/SLD_INDUSTRIAL_SCADA_CAD_TARGET.md",
+    "docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md",
+    "docs/sld/SLD_ENGINEER_WORKFLOW_END_TO_END.md",
+    "docs/sld/SLD_IMPLEMENTATION_ROADMAP.md",
+}
+
+
 def check_indexed_active_docs_for_historical_spec_refs() -> list[str]:
     violations: list[str] = []
     seen_paths: set[Path] = set()
@@ -201,6 +227,8 @@ def check_indexed_active_docs_for_historical_spec_refs() -> list[str]:
             seen_paths.add(resolved_target)
 
             rel_path = resolved_target.relative_to(ROOT).as_posix()
+            if rel_path in META_AUDIT_ALLOWLIST:
+                continue
             for line_no, line in enumerate(resolved_target.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
                 if not any(pattern in line for pattern in HISTORICAL_SPEC_PATTERNS):
                     continue

@@ -1,18 +1,36 @@
 # MV-DESIGN-PRO System Specification
 
-**Version:** 4.0
-**Status:** CANONICAL & BINDING
+**Version:** 4.1
+**Status:** CANONICAL & BINDING (executive overview only — detailed canon lives in `docs/v12xx/`)
 **Architecture Model:** Canonical Reference Architecture
+**Last updated:** 2026-05-13 (V12K-001 conflict resolution)
 
 This document is the **executive overview and navigation hub** for MV-DESIGN-PRO.
-The detailed specification lives in `docs/spec/` (18 chapters + supplements).
-This file provides the binding architectural rules, terminology, and pointers.
+The detailed canonical specification lives in **`docs/v12xx/KANON_V12_XX.md`** + V12.xx registries/matrices.
+The 18-chapter `docs/spec/` file set is ARCHIVAL (V11 reference) — see § 0 below.
 
 ---
 
 ## 0. Detailed Specification (SOURCE OF TRUTH)
 
-The full system specification is maintained in **`docs/spec/`**:
+The canonical source of truth is **`docs/v12xx/KANON_V12_XX.md`** (frozen 2026-04-24) + V12.xx registries:
+
+| Document | Role |
+|----------|------|
+| [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) | Top-level V12.xx canon (binding) |
+| [`docs/v12xx/REJESTR_DECYZJI.md`](docs/v12xx/REJESTR_DECYZJI.md) | Canon decisions |
+| [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) | Conflict resolutions |
+| [`docs/v12xx/REJESTR_DLUGU.md`](docs/v12xx/REJESTR_DLUGU.md) | Technical debt registry |
+| [`docs/v12xx/MIGRACJA_ENM_V1_V2.md`](docs/v12xx/MIGRACJA_ENM_V1_V2.md) | ENM v1→v2 migration |
+| [`docs/v12xx/MACIERZ_*.md`](docs/v12xx/) | Matrices (testing, API, reportability, permissions, IDs, interaction, invalidation, draft-vs-committed) |
+| [`docs/system/SPEC_*.md`](docs/system/) | Binding system-level specs (V12.5 fundament feeding V12.xx) |
+| [`docs/INDEX_KANONICZNY.md`](docs/INDEX_KANONICZNY.md) | Canon index |
+
+### 0.1 Archival reference (`docs/spec/`, 18 chapters)
+
+The 18-chapter `docs/spec/` set is preserved as **ARCHIVAL/CONTEXTUAL**. All 28 files carry a "Historical note (V12.5)" disclaimer. They are used for spec-vs-code audit only, not as active source of truth. See [`docs/audit/DOC_INVENTORY_2026-05.md`](docs/audit/DOC_INVENTORY_2026-05.md) and [`docs/v12xx/REJESTR_KONFLIKTOW.md`](docs/v12xx/REJESTR_KONFLIKTOW.md) V12K-001/002.
+
+### 0.2 Legacy chapter map (for audit reference only)
 
 ### Spec Chapters
 
@@ -37,16 +55,35 @@ The full system specification is maintained in **`docs/spec/`**:
 | 17 | Testing & Acceptance | [`docs/spec/SPEC_CHAPTER_17_TESTING_AND_ACCEPTANCE.md`](docs/spec/SPEC_CHAPTER_17_TESTING_AND_ACCEPTANCE.md) |
 | 18 | Production & Maintenance | [`docs/spec/SPEC_CHAPTER_18_PRODUCTION_AND_MAINTENANCE.md`](docs/spec/SPEC_CHAPTER_18_PRODUCTION_AND_MAINTENANCE.md) |
 
-### Supplements
+### Supplements (archival)
 
-| Document | Purpose |
-|----------|---------|
-| [`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md) | Spec-vs-code gap analysis (BINDING decision matrix) |
-| [`docs/spec/SPEC_EXPANSION_PLAN.md`](docs/spec/SPEC_EXPANSION_PLAN.md) | Spec expansion roadmap & AS-IS/TO-BE policy |
-| [`docs/spec/SPEC_GAP_SUPPLEMENT_PROTECTION_WHITEBOX_LEGACY.md`](docs/spec/SPEC_GAP_SUPPLEMENT_PROTECTION_WHITEBOX_LEGACY.md) | Gap closure: Protection, WhiteBox, OperatingCase |
-| [`docs/spec/ENERGY_NETWORK_MODEL.md`](docs/spec/ENERGY_NETWORK_MODEL.md) | ENM reference model |
-| [`docs/spec/SLD_TOPOLOGICAL_ENGINE.md`](docs/spec/SLD_TOPOLOGICAL_ENGINE.md) | SLD engine spec |
-| [`docs/spec/WIZARD_FLOW.md`](docs/spec/WIZARD_FLOW.md) | Wizard workflow |
+| Document | Status | Purpose |
+|----------|--------|---------|
+| [`docs/spec/AUDIT_SPEC_VS_CODE.md`](docs/spec/AUDIT_SPEC_VS_CODE.md) | ARCHIVAL | Spec-vs-code gap analysis (historical decision matrix) |
+| [`docs/spec/SPEC_EXPANSION_PLAN.md`](docs/spec/SPEC_EXPANSION_PLAN.md) | ARCHIVAL | Spec expansion roadmap (historical) |
+| [`docs/spec/SPEC_GAP_SUPPLEMENT_PROTECTION_WHITEBOX_LEGACY.md`](docs/spec/SPEC_GAP_SUPPLEMENT_PROTECTION_WHITEBOX_LEGACY.md) | ARCHIVAL | Gap closure: Protection, WhiteBox, OperatingCase (historical) |
+| [`docs/spec/ENERGY_NETWORK_MODEL.md`](docs/spec/ENERGY_NETWORK_MODEL.md) | ARCHIVAL | ENM v1 reference (superseded by V12.xx ENM v2 — see [`docs/v12xx/MIGRACJA_ENM_V1_V2.md`](docs/v12xx/MIGRACJA_ENM_V1_V2.md)) |
+| [`docs/spec/SLD_TOPOLOGICAL_ENGINE.md`](docs/spec/SLD_TOPOLOGICAL_ENGINE.md) | ARCHIVAL | SLD engine spec (superseded by [`docs/sld/SLD_CONTRACT_FLOW_V1.md`](docs/sld/SLD_CONTRACT_FLOW_V1.md) and [`docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`](docs/sld/SLD_INDUSTRIAL_SPEC_v1.md)) |
+| [`docs/spec/WIZARD_FLOW.md`](docs/spec/WIZARD_FLOW.md) | ARCHIVAL | Wizard K1–K10 workflow (historical) |
+
+### Active V12.xx canon — quick links
+
+| Document | Status | Purpose |
+|----------|--------|---------|
+| [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) | BINDING | Top-level canon |
+| [`docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md`](docs/system/SPEC_KATALOGI_I_MATERIALIZACJA_PARAMETROW.md) | BINDING | Catalog + materialization |
+| [`docs/system/SPEC_MODEL_SYSTEMOWY_SN.md`](docs/system/SPEC_MODEL_SYSTEMOWY_SN.md) | BINDING | System model (SN) |
+| [`docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md`](docs/system/SPEC_OPERACJE_DOMENOWE_I_SNAPSHOT.md) | BINDING | Domain operations & snapshot |
+| [`docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md`](docs/system/SPEC_GOTOWOSC_I_DZIALANIA_NAPRAWCZE.md) | BINDING | Readiness & fix actions |
+| [`docs/system/SPEC_ANALIZY_WYNIKI_WHITE_BOX_RAPORTY.md`](docs/system/SPEC_ANALIZY_WYNIKI_WHITE_BOX_RAPORTY.md) | BINDING | Analyses, results, WHITE BOX, reports |
+| [`docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md`](docs/system/SPEC_TYPOSZEREGI_I_KLASY_ELEMENTOW_TECHNICZNYCH.md) | BINDING | Technical series & element classes |
+| [`docs/sld/SLD_CONTRACT_FLOW_V1.md`](docs/sld/SLD_CONTRACT_FLOW_V1.md) | BINDING | SLD contract flow |
+| [`docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md`](docs/sld/SLD_SEMANTIC_MODEL_CANONICAL_V1.md) | BINDING | SLD semantic model |
+| [`docs/sld/SLD_INDUSTRIAL_SPEC_v1.md`](docs/sld/SLD_INDUSTRIAL_SPEC_v1.md) | BINDING | SLD industrial-grade specification (new, 2026-05) |
+| [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md) | LIVING | Industrial-grade E2E implementation plan |
+| [`docs/plan/PLAN_SLD_REWORK.md`](docs/plan/PLAN_SLD_REWORK.md) | LIVING | SLD rework phases F1–F5 |
+| [`docs/audit/DOC_INVENTORY_2026-05.md`](docs/audit/DOC_INVENTORY_2026-05.md) | AUDIT | Full documentation inventory |
+| [`docs/audit/AUDYT_BRAKI_2026-05.md`](docs/audit/AUDYT_BRAKI_2026-05.md) | AUDIT | Gaps, errors, atrap audit |
 
 ---
 

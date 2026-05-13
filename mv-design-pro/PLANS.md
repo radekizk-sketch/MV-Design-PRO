@@ -1,8 +1,11 @@
 # MV-DESIGN-PRO Operational Plan
 
-**Version:** 5.0
+**Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Reference:** [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview), [`docs/spec/`](docs/spec/) (detailed spec — source of truth)
+**Last updated:** 2026-05-13 (V12K-001 conflict resolution + docs cleanup)
+**Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
+**Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
+**Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
 
 ---
 
@@ -322,7 +325,34 @@ Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-ur
 
 ---
 
+### 3.5 Docs cleanup + canon resolution (2026-05-13)
+
+Zakres zakończony w tym etapie:
+- [x] Rozstrzygnięcie konfliktu V12K-001 (hierarchia kanonu): **V12.xx wygrywa**, `docs/spec/` formalnie ARCHIWALNY.
+- [x] Wpisy V12K-011..V12K-015 w `docs/v12xx/REJESTR_KONFLIKTOW.md` (canon hierarchy, archiwum audytów, SLD industrial rework, protection SI-100, brakujące proof packs).
+- [x] Aktualizacja `CLAUDE.md` (v hierarchii dokumentów → V12.xx canon na priorytecie 1).
+- [x] Aktualizacja `SYSTEM_SPEC.md` v4.1 (`docs/spec/` oznaczone ARCHIVAL, dodane pointery do V12.xx canon i nowych planów).
+- [x] Aktualizacja `PLANS.md` (ten plik, v5.1) — usunięte twierdzenie że `docs/spec/` to source of truth.
+- [x] Stworzenie `docs/audit/DOC_INVENTORY_2026-05.md` (415 plików, klasyfikacja, konflikty, duplikaty).
+- [x] Stworzenie `docs/audit/AUDYT_BRAKI_2026-05.md` (audyt 8 obszarów: A–H).
+- [x] Stworzenie `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` (flow inżyniera end-to-end + roadmap).
+- [x] Stworzenie `docs/sld/SLD_INDUSTRIAL_SPEC_v1.md` (specyfikacja SLD klasy przemysłowej).
+- [x] Stworzenie `docs/plan/PLAN_SLD_REWORK.md` (fazy F1–F5 reworka SLD).
+- [x] Fizyczna archiwizacja zamkniętych audytów + planów + snapshotów E2E + raportów weryfikacji do `docs/audit/archive/2026-05/`.
+
+---
+
 ## 4. Next Priorities
+
+### 4.0 P0 (po cleanupie 2026-05-13)
+
+| Item | Description | Status |
+|------|-------------|--------|
+| SLD rework F1 (port-based routing + symbol library IEC 60617) | Główna przyczyna wyglądu „atrapy". Patrz `docs/plan/PLAN_SLD_REWORK.md`. | TODO |
+| Protection SI-100 stub removal | Bramka E2E dla zabezpieczeń. Patrz `docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md` § 3.2. | TODO |
+| VDROP + Earthing proof packs | Bramki audyt2 (dobór przewodów + grounding). | TODO |
+| Fault-loop NN solver | Stacje SN/NN bez tego nie mają pełnej analizy NN. | TODO |
+| DOCX export dla proof engine | Wymaganie raportów PL. | TODO |
 
 ### 4.1 HIGH Priority
 
