@@ -223,6 +223,35 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
     expect(r.ders.find((d) => d.id === 'PV-1')?.nominalPowerKw).toBe(1500);
   });
 
+  it('NC RFG Module derivowany z p_mw per ENEA profile progi (enea.yaml)', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      // Moduł A: <1 MW (Mikro)
+      { id: 'g1', ref_id: 'PV-A', name: 'PV-A', tags: [], meta: {}, bus_ref: 'b', p_mw: 0.05, gen_type: 'pv_inverter' } as never,
+      // Moduł B: 1–50 MW (Małe)
+      { id: 'g2', ref_id: 'PV-B', name: 'PV-B', tags: [], meta: {}, bus_ref: 'b', p_mw: 5.0, gen_type: 'pv_inverter' } as never,
+      // Moduł C: 50–75 MW (Duże)
+      { id: 'g3', ref_id: 'PV-C', name: 'PV-C', tags: [], meta: {}, bus_ref: 'b', p_mw: 60.0, gen_type: 'pv_inverter' } as never,
+      // Moduł D: >75 MW (B. duże)
+      { id: 'g4', ref_id: 'PV-D', name: 'PV-D', tags: [], meta: {}, bus_ref: 'b', p_mw: 100.0, gen_type: 'pv_inverter' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.ders.find((d) => d.id === 'PV-A')?.ncRfgModule).toBe('A');
+    expect(r.ders.find((d) => d.id === 'PV-B')?.ncRfgModule).toBe('B');
+    expect(r.ders.find((d) => d.id === 'PV-C')?.ncRfgModule).toBe('C');
+    expect(r.ders.find((d) => d.id === 'PV-D')?.ncRfgModule).toBe('D');
+  });
+
+  it('NC RFG Module z backend nc_rfg_module nadpisuje pochodny', () => {
+    const snap = buildEmptySnapshot();
+    snap.generators = [
+      // p_mw = 5MW (Moduł B) ale backend ustawił C
+      { id: 'g1', ref_id: 'PV-1', name: 'PV-1', tags: [], meta: {}, bus_ref: 'b', p_mw: 5.0, gen_type: 'pv_inverter', nc_rfg_module: 'C' } as never,
+    ];
+    const r = buildSldDataFromSnapshot(snap, null);
+    expect(r.ders[0].ncRfgModule).toBe('C');
+  });
+
   it('GPZ → GpzRendererProps zawiera sections + couplers + bays z ENM (e2e wiring)', () => {
     const snap = buildEmptySnapshot();
     snap.buses = [

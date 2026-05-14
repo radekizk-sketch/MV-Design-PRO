@@ -205,8 +205,8 @@ export function DerRenderer(props: DerRendererProps): JSX.Element {
           <title>Transformator blokowy obecny</title>
         </circle>
       )}
-      {/* Badge: NC RFG Module A/B/C/D per ENEA profile (enea.yaml) */}
-      {ncRfgModule && lod !== 'marker' && (
+      {/* Badge: NC RFG Module A/B/C/D per ENEA profile (enea.yaml); marker lod returned early */}
+      {ncRfgModule && (
         <g data-testid={`sld-v2-der-${id}-nc-rfg-module`} data-nc-rfg-module={ncRfgModule}>
           {/* Kółko z literą modułu — górny lewy róg symbolu */}
           <circle

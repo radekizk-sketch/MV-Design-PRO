@@ -1730,6 +1730,7 @@ function buildDers(
       name: gen.name || gen.ref_id,
       nominalPowerKw: gen.p_mw !== null && gen.p_mw !== undefined ? gen.p_mw * 1000 : null,
       hasBlockTransformer: gen.connection_variant === 'block_transformer',
+      ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
       lod: 'compact',
     });
   }
@@ -1750,4 +1751,17 @@ function mapGenTypeToDerKind(gen: Generator): DerRendererProps['kind'] | null {
     default:
       return null;
   }
+}
+
+/**
+ * Wyprowadza NC RFG Module z mocy nominalnej wg progów ENEA profile (enea.yaml).
+ * Fallback gdy backend nie ustawił nc_rfg_module.
+ * A: Mikro (<1 MW), B: Małe (1–50 MW), C: Duże (50–75 MW), D: B. duże (>75 MW).
+ */
+function deriveNcRfgModule(pMw: number | null | undefined): 'A' | 'B' | 'C' | 'D' | null {
+  if (pMw === null || pMw === undefined || pMw <= 0) return null;
+  if (pMw < 1) return 'A';
+  if (pMw < 50) return 'B';
+  if (pMw < 75) return 'C';
+  return 'D';
 }
