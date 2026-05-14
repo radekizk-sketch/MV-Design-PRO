@@ -741,6 +741,47 @@ class TestNnFieldAdapters:
         assert "nn_source_field" in nn_specs_after[-1]["tags"]
         assert nn_specs_after[-1]["meta"]["source_field_kind"] == "PV"
 
+    def test_v12k_023_connection_variant_aliases(self):
+        """V12K-023/024: FE canonical connection variants alias-resolve to backend canonical.
+
+        FE DerRenderer.connectionVariant deklaruje 5 wartosci:
+          - nn_side, block_transformer (kanoniczne, backend OK)
+          - LV_BEHIND_STATION_TRANSFORMER -> alias nn_side
+          - SOURCE_CONNECTION_STATION -> alias block_transformer
+          - DEDICATED_MV_CONNECTION -> alias block_transformer
+
+        Alias-resolve oznacza ze backend NIE zwraca
+        converter.connection_variant_missing dla tych 3 FE wariantów.
+        """
+        from enm.domain_operations_v2 import add_converter_source
+
+        # Test minimal empty ENM — wystarczy aby sprawdzic alias resolution
+        # (rzeczywisty add wymaga full setup, ale to nie istota testu).
+        enm = {"substations": [], "buses": [], "transformers": [], "generators": []}
+
+        for fe_variant, _backend_canonical in [
+            ("LV_BEHIND_STATION_TRANSFORMER", "nn_side"),
+            ("SOURCE_CONNECTION_STATION", "block_transformer"),
+            ("DEDICATED_MV_CONNECTION", "block_transformer"),
+        ]:
+            result = add_converter_source(
+                enm,
+                {
+                    "source_technology": "PV",
+                    "connection_variant": fe_variant,
+                    "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+                    "station_ref": "stn/test/station",
+                    "bus_nn_ref": "stn/test/nn_bus",
+                },
+            )
+            err = result.get("error_code")
+            # Alias resolved gdy NIE jest connection_variant_missing.
+            # Inny error (np. station_not_found, block_transformer_missing) jest OK —
+            # oznacza ze variant zostal zaakceptowany ale brak innych wymagan.
+            assert (
+                err != "converter.connection_variant_missing"
+            ), f"FE variant {fe_variant} nie zostal rozpoznany (alias broken): {err}"
+
 
 # ===========================================================================
 # TEST 6: test_insert_station_readiness_blockers

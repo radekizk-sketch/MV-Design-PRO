@@ -2053,7 +2053,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "converter.source_technology_missing",
         )
 
-    connection_variant = payload.get("connection_variant")
+    # V12K-023: Backwards-compatible aliases for FE-canonical variants.
+    # FE DerRenderer.connectionVariant deklaruje 5 wartosci:
+    #   - nn_side, block_transformer (kanoniczne, backend OK)
+    #   - LV_BEHIND_STATION_TRANSFORMER -> alias nn_side (PV za trafo stacji nN)
+    #   - SOURCE_CONNECTION_STATION -> alias block_transformer (stacja przylaczeniowa)
+    #   - DEDICATED_MV_CONNECTION -> alias block_transformer (dedicated MV via block tr)
+    _VARIANT_ALIASES = {
+        "LV_BEHIND_STATION_TRANSFORMER": "nn_side",
+        "SOURCE_CONNECTION_STATION": "block_transformer",
+        "DEDICATED_MV_CONNECTION": "block_transformer",
+    }
+    connection_variant_raw = payload.get("connection_variant")
+    connection_variant = _VARIANT_ALIASES.get(connection_variant_raw, connection_variant_raw)
     if not isinstance(connection_variant, str) or connection_variant not in {
         "nn_side",
         "block_transformer",
