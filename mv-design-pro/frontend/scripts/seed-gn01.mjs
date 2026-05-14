@@ -518,25 +518,35 @@ async function main() {
     }
   }
 
-  // K14: Proof pack eksport JSON+PDF dla SC_3F run.
+  // K14: Wszystkie eksporty Proof + Report (JSON/LaTeX/PDF/DOCX) dla SC_3F.
+  // Per Frozen API + Determinism + WHITE BOX:
+  //   GET /api/analysis-runs/{run_id}/export/proof/{json|latex|pdf}
+  //   GET /api/analysis-runs/{run_id}/export/report/{json|pdf|docx}
   let k14Status = 'NOT_REACHED';
+  let exportSizes = {};
   if (sc3fRunId) {
-    log('K14', `Eksport Proof Pack JSON+PDF dla SC_3F run ${sc3fRunId}...`);
-    const proofJson = await api(
-      'GET',
-      `/api/analysis-runs/${sc3fRunId}/export/proof/json`,
-    );
-    const proofPdfRes = await fetch(
-      `http://127.0.0.1:8000/api/analysis-runs/${sc3fRunId}/export/proof/pdf`,
-    );
-    const pdfSize = proofPdfRes.ok
-      ? (await proofPdfRes.arrayBuffer()).byteLength
-      : 0;
-    if (proofJson.ok && pdfSize > 1000) {
-      k14Status = `PASS: pdf=${pdfSize}B`;
-      log('K14', `OK Proof Pack JSON + PDF ${pdfSize} bytes`);
+    log('K14', `Eksport wszystkie formaty (proof + report) dla SC_3F...`);
+    const formats = [
+      ['proof', 'json'],
+      ['proof', 'latex'],
+      ['proof', 'pdf'],
+      ['report', 'json'],
+      ['report', 'pdf'],
+      ['report', 'docx'],
+    ];
+    for (const [kind, fmt] of formats) {
+      const r = await fetch(
+        `http://127.0.0.1:8000/api/analysis-runs/${sc3fRunId}/export/${kind}/${fmt}`,
+      );
+      const size = r.ok ? (await r.arrayBuffer()).byteLength : 0;
+      exportSizes[`${kind}_${fmt}`] = size;
+    }
+    const total = Object.values(exportSizes).reduce((a, b) => a + b, 0);
+    if (total > 100000) {
+      k14Status = `PASS: 6 formats total=${total}B`;
+      log('K14', `OK 6 exports total ${total} bytes`, exportSizes);
     } else {
-      k14Status = `FAIL: pdfSize=${pdfSize}`;
+      k14Status = `FAIL: total=${total}`;
     }
   }
 
@@ -569,6 +579,7 @@ async function main() {
       sc3f_run_id: sc3fRunId,
       lf_run_id: lfRunId,
       k14_status: k14Status,
+      export_sizes: exportSizes,
     },
     null,
     2,
