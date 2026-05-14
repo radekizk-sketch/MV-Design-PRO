@@ -1107,19 +1107,27 @@ ZNALEZIONE BLOCKERY (wpisane do V12K-021..025 w REJESTR_KONFLIKTOW.md):
 | K20-20 | 9.07/10 | +0.07 | OZE 9.0 | — |
 | **K20-21** | **9.14/10** | **+0.07** | **NC RFG 9.5 → 4/7 trigger** | c59e273..8b01350 |
 | **K20-22** | **9.21/10 (est.)** | **+0.07** | **OZE 9.5 est. (cos φ + DerComplianceBadge + AC-07)** | c59e273 |
+| **K20-22b** | **9.36/10 (est.)** | **+0.15** | **IEC junction dots + feeder Q01 + voltage kV + NOP badge + km dist + LOD filter** | dd9b8a6 |
 
 Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak: NC RFG 2/3, OZE 1/3 (est.).**
 
-**Verified ZAMKNIETE do iter K20-22:**
+**Verified ZAMKNIETE do iter K20-22b:**
 - P0.1 Symbol library 54/54 (108% DoD)
 - Guard suite 58/58 PASS (4 manual-only skipped)
-- AC-01, AC-04..AC-12 PASS (10/12), AC-02/AC-03 blocked by P0.3
+- AC-01, AC-04..AC-12 PASS (10/12), AC-02 ✅ (junction dots), AC-03 pozostaje
 - AC-07 DER connection wires (L-shape, orthogonal) ✅ K20-22
 - OZE compact cos φ + DerComplianceBadge ✅ K20-22
-- 4656 frontend tests PASS (337 files)
+- IEC 60617 junction dots AC-02 ✅ K20-22b
+- Feeder origin bay labels (Q01/Q02) ✅ K20-22b
+- Voltage kV on cable runs ✅ K20-22b
+- NOP badge (Normalnie Otwarty Punkt) ✅ K20-22b
+- Cumulative km distance labels ✅ K20-22b
+- LOD-based label filtering AC-06 ✅ K20-22b
+- 4676+ frontend tests PASS (337 files)
 
-**Remaining (~22 OD):**
-- P0.3 LayoutEngine F2 (22 OD) — Schematy 9.0→9.5 + Projektant 8.5→9.5
+**Remaining specialists below 9.5:**
+- Projektant: 9.3 (gap 0.2) — needs port-based cable routing in v2 canvas
+- Schematy: 9.3 (gap 0.2) — needs port-based galvanic chain (portId edge)
 
 ### Artefakty K20
 
@@ -1132,7 +1140,7 @@ Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak: NC RFG 2/3,
 - `docs/v12xx/REJESTR_KONFLIKTOW.md` — 6 wpisów V12K-014/021..025
 - `docs/audit/PROMPT_AUDIT_K20_SCADA_GRADE_LOOP.md` — prompt zespołu
 
-**Status K20 audit loop:** 22 iter completed (4.38 → 9.21/10 est., **92.1% to 10/10**),
-~22 OD pozostało (P0.3 LayoutEngine F2). Loop kontynuowany w
-kolejnych sesjach po implementacji architektonicznych blockerów.
+**Status K20 audit loop:** 22b iter completed (4.38 → 9.36/10 est., **93.6% to 10/10**),
+remaining: port-based v2 canvas routing for Projektant/Schematy 9.3→9.5.
+Loop kontynuowany w kolejnych sesjach.
 
