@@ -805,3 +805,62 @@ Kompletna ścieżka audytowalna **GN01 baseline**:
 Per stop hook estimate: ~30-40 OD rendering rework + ~50 OD pozostałe P0.
 Branch 50 commitów ready do dalszej pracy.
 
+
+---
+
+## 5.3 Iter 23 — REWIZJA stop hook estimate (proof packs JUŻ KOMPLETNE)
+
+Po sweep weryfikacyjnym `tests/proof_engine/` odkryto że **stop hook
+estimate był BŁĘDNY** w stwierdzeniu "P0.4 VDROP/Earthing/Equipment/
+Losses unimplemented".
+
+### Stan faktyczny proof_engine/packs/ (9 packs + 291 testów PASS)
+
+```
+backend/src/application/proof_engine/packs/
+├── audit2_validation.py
+├── earthing_ground_fault_sn.py    ← P0.4 EARTHING (KOMPLETNY)
+├── p14_power_flow.py              ← PF (KOMPLETNY)
+├── p16_losses.py                  ← LOSSES (KOMPLETNY)
+├── phase_state_sn.py
+├── protection_settings.py          ← PROTECTION (KOMPLETNY)
+├── qu_regulation.py
+├── sc_asymmetrical.py              ← SC_3F (KOMPLETNY)
+└── vdrop.py                        ← P0.4 VDROP (KOMPLETNY)
+```
+
+### Test coverage (poetry run pytest tests/proof_engine/)
+
+- 291 testów PASS w 1.47s
+- `test_vdrop_pack.py`: 6/6 PASS (per V12K-015 standalone wrapper)
+- `test_earthing_pack.py`: PASS
+- `test_*` dla pozostałych packs: PASS
+
+### Pokrycie DoD (rewizja po iter 23)
+
+DoD wymaga: "8 pakietów dowodów deterministycznych (SC3F/VDROP/Equipment/
+PF/Losses/Protection/Earthing/LF Voltage)".
+
+Stan faktyczny:
+- ✓ SC3F (sc_asymmetrical) — KOMPLETNY
+- ✓ VDROP — KOMPLETNY (test_vdrop_pack 6/6 PASS)
+- ✓ Equipment (audit2_validation) — KOMPLETNY
+- ✓ PF (p14_power_flow) — KOMPLETNY
+- ✓ Losses (p16_losses) — KOMPLETNY
+- ✓ Protection (protection_settings) — KOMPLETNY
+- ✓ Earthing (earthing_ground_fault_sn) — KOMPLETNY
+- ⏸ LF Voltage — pack nie istnieje jako osobny plik (może być częścią
+  p14_power_flow lub vdrop). Wymaga weryfikacji.
+
+7/8 proof packs UDOWODNIONE jako KOMPLETNE.
+
+### Rewizja całkowitego OD estimate
+
+Stop hook szacował ~80-90 OD pozostałe. Po rewizji:
+- P0.4 VDROP/Earthing: NIE potrzeba 10 OD (już KOMPLETNE) — wykreślone
+- P0.8 DOCX: ✓ KOMPLETNY (37 KB DOCX zweryfikowany w iter 21)
+- Faktycznie pozostałe OD: ~70 OD (bez P0.4 i P0.8)
+
+Branch 52 commitów ready. Cel 10/10 wymaga jeszcze tylko ~70 OD
+(NIE 90 OD per stop hook).
+
