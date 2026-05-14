@@ -1776,6 +1776,7 @@ function buildDers(
       name: gen.name || gen.ref_id,
       nominalPowerKw: gen.p_mw !== null && gen.p_mw !== undefined ? gen.p_mw * 1000 : null,
       hasBlockTransformer: gen.connection_variant === 'block_transformer',
+      connectionVariant: gen.connection_variant,
       ncRfgModule: gen.nc_rfg_module ?? deriveNcRfgModule(gen.p_mw),
       operatingPMw: gen.p_mw ?? null,
       operatingQMvar: gen.q_mvar ?? null,
