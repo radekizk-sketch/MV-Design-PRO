@@ -1810,6 +1810,44 @@ describe('buildStations — konsumuje line_runs.stations[] z explicit order', ()
     expect(allHaveKva).toBe(true);
   });
 
+  // K30 audit loop: weryfikacja że adapter syntezuje main_trunk z łańcucha
+  // branches gdy brak jawnych line_runs (K30 live seed case).
+  it('K30 synthetic: 5 cables w łańcuchu GPZ→S2→S3→S4→S5 bez line_runs → 1 syntetyczny main_trunk', () => {
+    const snap = buildEmptySnapshot();
+    snap.buses = [
+      { id: 'gpz_bus', ref_id: 'gpz/abc/section/001/bus_sn', name: 'GPZ Sec1', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's2_bus', ref_id: 'stn/aa1/sn_bus', name: 'S2', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's3_bus', ref_id: 'stn/aa2/sn_bus', name: 'S3', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's4_bus', ref_id: 'stn/aa3/sn_bus', name: 'S4', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+      { id: 's5_bus', ref_id: 'stn/aa4/sn_bus', name: 'S5', voltage_kv: 15, phase_system: '3ph', tags: [], meta: {} } as never,
+    ];
+    snap.substations = [
+      { id: 'gpz', ref_id: 'gpz/abc/substation', name: 'GPZ Główny', tags: [], meta: {}, station_type: 'gpz', bus_refs: ['gpz/abc/section/001/bus_sn'], transformer_refs: [], gpz_sections: [{ section_id: 'A', order: 1, bus_ref: 'gpz/abc/section/001/bus_sn' }] } as never,
+      { id: 's2', ref_id: 'stn/aa1/station', name: 'S2', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/aa1/sn_bus'], transformer_refs: [] } as never,
+      { id: 's3', ref_id: 'stn/aa2/station', name: 'S3', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/aa2/sn_bus'], transformer_refs: [] } as never,
+      { id: 's4', ref_id: 'stn/aa3/station', name: 'S4', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/aa3/sn_bus'], transformer_refs: [] } as never,
+      { id: 's5', ref_id: 'stn/aa4/station', name: 'S5', tags: [], meta: {}, station_type: 'inline', bus_refs: ['stn/aa4/sn_bus'], transformer_refs: [] } as never,
+    ];
+    // Chain: GPZ_sec → S2 → S3 → S4 → S5 (5 cables w łańcuchu)
+    snap.branches = [
+      { id: 'c1', ref_id: 'seg/1', name: 'C1', type: 'cable', from_bus_ref: 'gpz/abc/section/001/bus_sn', to_bus_ref: 'stn/aa1/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 1.5, tags: [], meta: {} } as never,
+      { id: 'c2', ref_id: 'seg/2', name: 'C2', type: 'cable', from_bus_ref: 'stn/aa1/sn_bus', to_bus_ref: 'stn/aa2/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 1.0, tags: [], meta: {} } as never,
+      { id: 'c3', ref_id: 'seg/3', name: 'C3', type: 'cable', from_bus_ref: 'stn/aa2/sn_bus', to_bus_ref: 'stn/aa3/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 0.8, tags: [], meta: {} } as never,
+      { id: 'c4', ref_id: 'seg/4', name: 'C4', type: 'cable', from_bus_ref: 'stn/aa3/sn_bus', to_bus_ref: 'stn/aa4/sn_bus', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 0.5, tags: [], meta: {} } as never,
+      { id: 'c5', ref_id: 'seg/5', name: 'C5', type: 'cable', from_bus_ref: 'stn/aa4/sn_bus', to_bus_ref: 'stn/aa4/downstream', catalog_ref: 'cable-base-epr-al-1c-150', length_km: 0.3, tags: [], meta: {} } as never,
+    ];
+    snap.line_runs = []; // jawne brak — sprawdza synthesis path
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    // Z 5 cables w łańcuchu adapter syntezuje 1 main_trunk, NIE 5 osobnych run-ów
+    expect(r.cableRuns.length).toBe(1);
+    expect(r.cableRuns[0].runKind).toBe('main_trunk');
+    expect(r.cableRuns[0].segmentRefs?.length).toBe(5);
+    // 4 stacje końcowe widoczne (S2, S3, S4, S5 — S5 dochodzi do downstream
+    // ale to_bus matchuje stn/aa4/... więc widoczne)
+    expect(r.cableRuns[0].id).toMatch(/^synth_trunk_/);
+  });
+
   // K30 audit loop: weryfikacja że adapter nie crashes z runtime errors na
   // dużych snapshot (30 stacji = 30+ buses + 30+ transformers + DERs).
   it('K30 synthetic: deterministic output 3× pod rząd (no flaky behavior)', () => {

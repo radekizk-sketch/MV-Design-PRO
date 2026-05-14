@@ -1002,7 +1002,6 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
  */
 function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[] {
   const substations = snapshot.substations ?? [];
-  const lineRuns = snapshot.line_runs ?? [];
   const corridors = snapshot.corridors ?? [];
   const stations: StationOnRunRendererProps[] = [];
 
@@ -1015,6 +1014,33 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
       fieldStationByRef.set(st.ref_id, st);
     }
   }
+
+  // K30 audit loop: jeśli ENM nie ma jawnych line_runs ALE branches tworzą
+  // łańcuch GPZ→S→S→..., zsynchronizuj line_runs z buildCableRuns. Bez tego
+  // stacje wpadają w orphan-fallback (4×5 grid cluster), a kable są jeden
+  // wspólny main_trunk — visual inconsistency.
+  const explicitLineRuns = snapshot.line_runs ?? [];
+  const lineRuns = explicitLineRuns.length > 0
+    ? explicitLineRuns
+    : (() => {
+      const tempStations: StationOnRunRendererProps[] = [...fieldStationByRef.values()].map((s) => ({
+        id: s.ref_id, x: 0, y: 0, name: s.name || s.ref_id,
+        topologicalType: classifyTopologicalType(s), nnVoltageLevelsCount: 1,
+      }));
+      const cables = (snapshot.branches ?? []).filter(isCableLikeBranch);
+      const synth = inferLineRunsFromBranchChain(snapshot, cables, tempStations)
+        .filter((lr) => lr.segments.length >= 2);
+      // Dostosuj do EnergyNetworkModel.line_runs shape (run_kind itp.)
+      return synth.map((s) => ({
+        id: s.id,
+        run_kind: 'main_trunk' as const,
+        starting_bay_ref: null,
+        starting_port_ref: null,
+        segments: s.segments,
+        stations: s.stations,
+        nop_station_ref: null,
+      }));
+    })();
 
   /* Phase 0B-4: śledzimy które stacje już zostały umieszczone przez line_runs.
    * Reszta to "orphans" (legacy fallback). */
@@ -1315,6 +1341,90 @@ function classifyTopologicalType(
 // Cable runs (kable + linie napowietrzne SN)
 // -----------------------------------------------------------------------------
 
+/**
+ * Buduje syntetyczne line_runs gdy ENM nie ma jawnie zdefiniowanych line_runs
+ * ALE branches tworzą łańcuch GPZ → station → station → ... łączony przez
+ * from_bus_ref/to_bus_ref. Bez tego adapter wpada w fallback "każda branch =
+ * osobna prosta linia" co dla K30 (30 cables) daje 30 stacked horizontal lines
+ * zamiast jednego głównego ciągu. Adresuje user feedback K30 visualization.
+ */
+function inferLineRunsFromBranchChain(
+  snapshot: EnergyNetworkModel,
+  cables: readonly Branch[],
+  stations: readonly StationOnRunRendererProps[],
+): Array<{
+  id: string;
+  segments: Array<{ segment_ref: string; order: number }>;
+  stations: Array<{ substation_ref: string; order: number }>;
+}> {
+  if (cables.length === 0) return [];
+
+  // GPZ bus refs (chain roots).
+  const gpzBusRefs = new Set<string>();
+  for (const s of snapshot.substations ?? []) {
+    if (s.station_type === 'gpz') {
+      for (const ref of s.bus_refs ?? []) gpzBusRefs.add(ref);
+    }
+  }
+
+  // Outgoing map: from_bus_ref → cable departing from this bus.
+  // GPZ section buses naming: 'gpz/{hash}/section/NNN/bus_sn'.
+  // K30 sample: 'gpz/.../section/001/bus_sn' ma outgoing cable.
+  const outgoing = new Map<string, Branch>();
+  for (const c of cables) {
+    if (typeof c.from_bus_ref === 'string') outgoing.set(c.from_bus_ref, c);
+  }
+
+  // Find chain root buses: GPZ buses that have outgoing cable, OR section_bus
+  // pattern (gpz/.../section/NNN/bus_sn).
+  const rootBuses: string[] = [];
+  for (const busRef of outgoing.keys()) {
+    if (gpzBusRefs.has(busRef) || busRef.includes('/section/') && busRef.endsWith('/bus_sn')) {
+      rootBuses.push(busRef);
+    }
+  }
+  if (rootBuses.length === 0) return [];
+
+  // Build station-bus-ref map dla rozpoznania, która stacja jest na końcu kabla.
+  const stationIds = new Set(stations.map((s) => s.id));
+
+  const visited = new Set<string>();
+  const synthRuns: ReturnType<typeof inferLineRunsFromBranchChain> = [];
+
+  for (const rootBus of rootBuses) {
+    if (visited.has(rootBus)) continue;
+    const chain: Branch[] = [];
+    const chainStationRefs: string[] = [];
+    let currentBus: string | null = rootBus;
+    let safetyCounter = 0;
+    while (currentBus && outgoing.has(currentBus) && safetyCounter < 1000) {
+      const cable: Branch = outgoing.get(currentBus) as Branch;
+      if (visited.has(currentBus)) break;
+      visited.add(currentBus);
+      chain.push(cable);
+      // Wyciągnij stację z to_bus_ref (pattern: 'stn/{hash}/sn_bus').
+      const toBusMatch = (cable.to_bus_ref ?? '').match(/^(stn\/[a-f0-9]+)\//);
+      if (toBusMatch) {
+        const stationRef = `${toBusMatch[1]}/station`;
+        if (stationIds.has(stationRef) && !chainStationRefs.includes(stationRef)) {
+          chainStationRefs.push(stationRef);
+        }
+      }
+      currentBus = cable.to_bus_ref ?? null;
+      safetyCounter += 1;
+    }
+    if (chain.length > 0) {
+      synthRuns.push({
+        id: `synth_trunk_${synthRuns.length}`,
+        segments: chain.map((c, i) => ({ segment_ref: c.ref_id, order: i + 1 })),
+        stations: chainStationRefs.map((ref, i) => ({ substation_ref: ref, order: i + 1 })),
+      });
+    }
+  }
+
+  return synthRuns;
+}
+
 function buildCableRuns(
   snapshot: EnergyNetworkModel,
   logicalViews: LogicalViewsV1 | null,
@@ -1385,6 +1495,59 @@ function buildCableRuns(
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
         segmentLabels,
         pendingEndpoint: runStations.length === 0,
+        missingEndpointPort: portStatus.missing,
+        missingPortSegmentRefs: portStatus.missingSegmentRefs,
+        pathPoints: [
+          { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
+          { x: startX, y },
+          { x: terminalX, y },
+        ],
+      });
+    });
+    return runs;
+  }
+
+  // FALLBACK A (NEW): brak line_runs ALE branches tworzą łańcuch GPZ→S→S→...
+  // (≥2 cables w chain) → buduj syntetyczny main_trunk grupujący wszystkie
+  // ogniwa łańcucha jako jeden logical run. Adresuje feedback K30: stacje
+  // muszą być wizualnie połączone jako jeden ciąg, nie 30 disconnected lines.
+  // Trigger TYLKO gdy chain ma ≥2 cables (single-cable case → legacy fallback
+  // który czyta bay metadata z branch.meta.origin_bay_ref).
+  const synthesizedLineRuns = inferLineRunsFromBranchChain(snapshot, branches, stations)
+    .filter((lr) => lr.segments.length >= 2);
+  if (synthesizedLineRuns.length > 0) {
+    synthesizedLineRuns.forEach((lineRun, idx) => {
+      const runSegments = lineRun.segments
+        .map((seg) => branches.find((b) => b.ref_id === seg.segment_ref))
+        .filter((b): b is Branch => Boolean(b));
+      if (runSegments.length === 0) return;
+      const runStations = lineRun.stations
+        .map((sref) => stationByRef.get(sref.substation_ref))
+        .filter((s): s is StationOnRunRendererProps => Boolean(s));
+      const segmentKind = classifySegmentKind(runSegments[0]);
+      const y = runStations[0]?.y !== undefined
+        ? runStations[0].y - STATION_RUN_TRUNK_OFFSET_Y
+        : Y_RUN_BASE + idx * RUN_PITCH;
+      const firstBayRef = readBranchOriginBayRef(runSegments[0]);
+      const startX = inferStartingBayOutletX(snapshot, firstBayRef, idx);
+      const endX = runStations.length > 0
+        ? runStations[runStations.length - 1].x + stationRunEndOffset(runStations[runStations.length - 1])
+        : pendingRunEndX(startX, runSegments.length);
+      const terminalX = runStations.length > 0
+        ? Math.max(endX, startX + STATION_PITCH)
+        : endX;
+      const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
+      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
+      const portStatus = detectMissingEndpointPorts(runSegments);
+      runs.push({
+        id: lineRun.id,
+        runKind: 'main_trunk',
+        segmentKind,
+        segmentRefs: runSegments.map((s) => s.ref_id),
+        segmentPaths,
+        label: buildCableRunLabel(runSegments, segmentKind),
+        segmentLabels,
+        pendingEndpoint: false,
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
         pathPoints: [
