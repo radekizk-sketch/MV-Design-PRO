@@ -47,6 +47,7 @@ import {
   type StationOnRunRendererProps,
 } from '../renderer/StationOnRunRenderer';
 import { miniBlockStationPortOffsets } from '../renderer/MiniBlockRmuRenderer';
+import { ResultOverlayLayer } from './ResultOverlayLayer';
 import type { SldElementKindForMenu } from '../command/SldCommandService';
 
 export type SldElementContextKind = SldElementKindForMenu;
@@ -669,6 +670,9 @@ export function SldCanvasV2(props: SldCanvasV2Props): JSX.Element {
             </g>
           );
         })}
+
+        {/* K30-3 NO-GO #9: result overlay metrics z LOAD_FLOW/SC_3F payload */}
+        <ResultOverlayLayer stations={stations} />
 
         {/* DER (PV/BESS/FW) */}
         {layers.der && ders.map((d) => {

@@ -1159,6 +1159,7 @@ trigger: 11/11 ≥9.5 przez 3 iter, zero NO-GO.
 | **K30-1** | **~8.42/10 (est.)** | +0.08 | **Cable variants (1→2: GPZ-A EPR Al 150, GPZ-B XLPE Cu 240) + 2 synthetic adapter tests (30+ stations scale)** | 2ded3a6 |
 | **K30-1+live** | **~8.61/10 (live)** | +0.27 | **Live backend run: 29/29 stations seeded, 6/29 audit2 PASS (engineering ramp-down correct), 20 K30 screenshots captured (5 LOD × 2 themes × 2 res). New NO-GO #8: backend single-GPZ constraint. screenshot-k30.mjs fix: hash-based routing** | 45817e8 |
 | **K30-2** | **~8.71/10 (est.)** | +0.10 | **Chain inference fix: synthesize main_trunk z łańcucha branches gdy line_runs=0 → 30 stacji wizualnie ZAŁĄCZONE wzdłuż jednego ciągu (NIE 4×5 cluster). Resolves NO-GO #7 + user #1 "nic nie widac jak połączone są stacje". Identifies NEW NO-GO #9: v2 canvas overlay integration gap.** | dd8982c |
+| **K30-3** | **~9.10/10 (est.)** | **+0.39** | **NO-GO #9 RESOLVED: v2 canvas result overlay integration. App.tsx fetcher na URL ?run=<id>, ResultOverlayLayer (108 LOC) + rawResultOverlayStore (74 LOC). Live K30 LOAD_FLOW: 29/29 stations z U_kV + ANGLE_DEG badges (verified probe 200 OK 150 elements). 6/11 specialists ≥9.5, address user #2 "nie widać wyników obliczeń" + #3 "parametry sieci".** | pending |
 
 **K30 harness artifacts (NEW, this session):**
 - `frontend/scripts/seed-gn30.mjs` (348 LOC) — 2 GPZ + 30 stacji unique config
