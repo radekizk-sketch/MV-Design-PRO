@@ -202,6 +202,70 @@ describe('PowerFlowArrow — rendering', () => {
     );
   });
 
+  it('CR-FIX activeMw=0 renders without arrowhead + dashed line', () => {
+    const { container } = renderInSvg(
+      <PowerFlowArrow
+        fromXy={[100, 50]}
+        toXy={[300, 50]}
+        activeMw={0}
+        reactiveMvar={0}
+        loadingPct={0}
+      />,
+    );
+    const group = container.querySelector('[data-testid="sld-power-flow-arrow"]');
+    expect(group?.getAttribute('data-zero-flow')).toBe('true');
+    // Brak arrowhead
+    expect(container.querySelector('[data-testid$="-head"]')).toBeNull();
+    // Linia ma dashed pattern
+    const line = container.querySelector('[data-testid$="-line"]');
+    expect(line?.getAttribute('stroke-dasharray')).toBe('4 2');
+  });
+
+  it('CR-FIX activeMw=NaN renders as zero-flow', () => {
+    const { container } = renderInSvg(
+      <PowerFlowArrow
+        fromXy={[100, 50]}
+        toXy={[300, 50]}
+        activeMw={NaN}
+        reactiveMvar={0}
+        loadingPct={0}
+      />,
+    );
+    const group = container.querySelector('[data-testid="sld-power-flow-arrow"]');
+    expect(group?.getAttribute('data-zero-flow')).toBe('true');
+    expect(container.querySelector('[data-testid$="-head"]')).toBeNull();
+  });
+
+  it('CR-FIX activeMw=Infinity renders as zero-flow', () => {
+    const { container } = renderInSvg(
+      <PowerFlowArrow
+        fromXy={[100, 50]}
+        toXy={[300, 50]}
+        activeMw={Infinity}
+        reactiveMvar={0}
+        loadingPct={50}
+      />,
+    );
+    const group = container.querySelector('[data-testid="sld-power-flow-arrow"]');
+    expect(group?.getAttribute('data-zero-flow')).toBe('true');
+  });
+
+  it('positive activeMw retains arrowhead + solid line', () => {
+    const { container } = renderInSvg(
+      <PowerFlowArrow
+        fromXy={[100, 50]}
+        toXy={[300, 50]}
+        activeMw={2.5}
+        reactiveMvar={1.2}
+        loadingPct={60}
+      />,
+    );
+    const group = container.querySelector('[data-testid="sld-power-flow-arrow"]');
+    expect(group?.getAttribute('data-zero-flow')).toBe('false');
+    expect(container.querySelector('[data-testid$="-head"]')).not.toBeNull();
+    expect(container.querySelector('[data-testid$="-line"]')?.getAttribute('stroke-dasharray')).toBeNull();
+  });
+
   it('determinizm — same props → identyczny DOM', () => {
     const { container: a } = renderInSvg(
       <PowerFlowArrow

@@ -111,7 +111,11 @@ export function PowerFlowArrow({
   const severity = useMemo(() => computeFlowSeverity(loadingPct), [loadingPct]);
   const severityClass = SEVERITY_CLASSES[severity];
 
-  // Reverse direction when activeMw < 0
+  // CR-FIX (code-review ULEPSZENIE #2): activeMw=0 (lub NaN) edge case —
+  // gdy brak czynnego przepływu mocy, renderujemy arrowhead-LESS line z
+  // explicitnym atrybutem data-zero-flow="true" (caller może użyć w CSS).
+  // Default direction (from → to) zachowany dla deterministycznego placement.
+  const isZeroFlow = !Number.isFinite(activeMw) || activeMw === 0;
   const [fx0, fy0] = fromXy;
   const [tx0, ty0] = toXy;
   const reversed = activeMw < 0;
@@ -153,26 +157,30 @@ export function PowerFlowArrow({
     <g
       data-testid={testId}
       data-severity={severity}
+      data-zero-flow={isZeroFlow ? 'true' : 'false'}
       className={severityClass}
       aria-label={`Przepływ mocy ${flowLabel}, obciążenie ${loadingLabel}`}
     >
       <line
         x1={fx}
         y1={fy}
-        x2={baseCx.toFixed(2)}
-        y2={baseCy.toFixed(2)}
+        x2={isZeroFlow ? tx : baseCx.toFixed(2)}
+        y2={isZeroFlow ? ty : baseCy.toFixed(2)}
         stroke="currentColor"
         strokeWidth={2.5}
         strokeLinecap="round"
+        strokeDasharray={isZeroFlow ? '4 2' : undefined}
         data-testid={`${testId}-line`}
       />
-      <polygon
-        points={trianglePoints}
-        fill="currentColor"
-        stroke="currentColor"
-        strokeWidth={1}
-        data-testid={`${testId}-head`}
-      />
+      {!isZeroFlow && (
+        <polygon
+          points={trianglePoints}
+          fill="currentColor"
+          stroke="currentColor"
+          strokeWidth={1}
+          data-testid={`${testId}-head`}
+        />
+      )}
       {showLabel && (
         <text
           x={labelX.toFixed(2)}
